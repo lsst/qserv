@@ -384,6 +384,27 @@ public:
     /// @param val  the new value of the parameter
     virtual void setDatabaseServicesPoolSize(size_t val) = 0;
 
+    // ------------------------------------------------------
+    // -- Parameters of the Qserv master database services --
+    // ------------------------------------------------------
+
+    /// @return the DNS name or IP address of a machine of a database service
+    std::string const& qservMasterDatabaseHost() const { return _qservMasterDatabaseHost; }
+
+    /// @return the port number of the database service
+    uint16_t qservMasterDatabasePort() const { return _qservMasterDatabasePort; }
+
+    /// @return the name of a database user
+    std::string const& qservMasterDatabaseUser() const { return _qservMasterDatabaseUser; }
+
+    /// @return the database password
+    std::string const& qservMasterDatabasePassword() const { return _qservMasterDatabasePassword; }
+
+    /// @return the name of a database to be set upon the connection
+    std::string const& qservMasterDatabaseName() const { return _qservMasterDatabaseName; }
+
+    /// @return the number of concurrent connections to the database service
+    size_t qservMasterDatabaseServicesPoolSize() const { return _qservMasterDatabaseServicesPoolSize; }
 
     // --------------------------------------------------
     // -- Global parameters of the database connectors --
@@ -1016,6 +1037,12 @@ protected:
     static std::string  const defaultDatabasePassword;
     static std::string  const defaultDatabaseName;
     static size_t       const defaultDatabaseServicesPoolSize;
+    static std::string  const defaultQservMasterDatabaseHost;
+    static uint16_t     const defaultQservMasterDatabasePort;
+    static std::string  const defaultQservMasterDatabaseUser;
+    static std::string  const defaultQservMasterDatabasePassword;
+    static std::string  const defaultQservMasterDatabaseName;
+    static size_t       const defaultQservMasterDatabaseServicesPoolSize;
     static bool               defaultDatabaseAllowReconnect;        // read-write
     static unsigned int       defaultDatabaseConnectTimeoutSec;     // read-write
     static unsigned int       defaultDatabaseMaxReconnects;         // read-write
@@ -1113,25 +1140,22 @@ protected:
     // -- Database-specific parameters --
 
     std::string _databaseTechnology;
-
-    /// The DNS name or IP address of a machine where the database
-    /// server runs
     std::string _databaseHost;
-
-    /// The port number of the database service
-    uint16_t _databasePort;
-
-    /// The name of a database user
+    uint16_t    _databasePort;
     std::string _databaseUser;
-
-    /// The database password
     std::string _databasePassword;
-
-    /// The name of a database to be set upon the connection
     std::string _databaseName;
+    size_t      _databaseServicesPoolSize;
 
-    /// @return the number of concurrent connections to the database service
-    size_t _databaseServicesPoolSize;
+    // -- Parameters of the Qserv Master database --
+
+    std::string _qservMasterDatabaseTechnology;
+    std::string _qservMasterDatabaseHost;
+    uint16_t    _qservMasterDatabasePort;
+    std::string _qservMasterDatabaseUser;
+    std::string _qservMasterDatabasePassword;
+    std::string _qservMasterDatabaseName;
+    size_t      _qservMasterDatabaseServicesPoolSize;
 };
 
 }}} // namespace lsst::qserv::replica

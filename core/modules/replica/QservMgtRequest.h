@@ -103,6 +103,9 @@ public:
         /// server-side error.
         SERVER_ERROR,
 
+        /// Data received from a server can't be correctly interpreted
+        SERVER_BAD_RESPONSE,
+
         /// Expired due to a timeout (as per the Configuration)
         TIMEOUT_EXPIRED,
 
@@ -446,6 +449,7 @@ private:
 
     // Synchronization primitives for implementing QservMgtRequest::wait()
 
+    bool _finished = false;
     std::mutex _onFinishMtx;
     std::condition_variable _onFinishCv;
 };

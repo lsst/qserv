@@ -25,7 +25,8 @@
 #ifndef LSST_QSERV_WSCHED_SCHEDULERBASE_H
 #define LSST_QSERV_WSCHED_SCHEDULERBASE_H
 
-// System headers
+// Third party headers
+#include "nlohmann/json.hpp"
 
 // Qserv headers
 #include "wcontrol/Foreman.h"
@@ -100,6 +101,9 @@ public:
     virtual int maxInFlight() { return std::min(_maxThreads, _maxThreadsAdj); }
 
     std::string chunkStatusStr(); //< @return a string
+
+    /// @return a JSON representation of the object's status for the monitoring
+    nlohmann::json statusToJson();
 
     /// Remove task from this scheduler.
     /// @return - If task was still in the queue, return true.

@@ -20,7 +20,6 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-/// ChunkListCommand.h
 #ifndef LSST_QSERV_WPUBLISH_CHUNK_LIST_COMMAND_H
 #define LSST_QSERV_WPUBLISH_CHUNK_LIST_COMMAND_H
 
@@ -32,19 +31,21 @@
 #include "mysql/MySqlConfig.h"
 
 // Forward declarations
+namespace lsst {
+namespace qserv {
+namespace wpublish {
+    class ChunkInventory;
+}}}
 
+// This header declarations
 namespace lsst {
 namespace qserv {
 namespace wpublish {
 
-// Forward declarations
-class ChunkInventory;
-
 /**
   * Class ChunkListCommand is the base class for operations with chunk lists
   */
-class ChunkListCommand
-    :   public wbase::WorkerCommand {
+class ChunkListCommand : public wbase::WorkerCommand {
 
 public:
 
@@ -53,31 +54,23 @@ public:
     ChunkListCommand& operator=(ChunkListCommand const&) = delete;
     ChunkListCommand(ChunkListCommand const&) = delete;
 
-    /// The destructor
     ~ChunkListCommand() override = default;
 
 protected:
 
     /**
-     * The normal constructor of the class
-     *
-     * @param sendChannel    - communication channel for reporting results
-     * @param chunkInventory - transient collection of available chunks to be reloaded (if requested)
-     * @param mySqlConfig    - database connection parameters
-     * @param rebuild        - rebuild the list from actual database tables
-     * @param reload         - reload the list in worker's memory
+     * @param sendChannel     communication channel for reporting results
+     * @param chunkInventory  transient collection of available chunks to be reloaded (if requested)
+     * @param mySqlConfig     database connection parameters
+     * @param rebuild         rebuild the list from actual database tables
+     * @param reload          reload the list in worker's memory
      */
     ChunkListCommand(std::shared_ptr<wbase::SendChannel> const& sendChannel,
-                     std::shared_ptr<ChunkInventory>     const& chunkInventory,
-                     mysql::MySqlConfig                  const& mySqlConfig,
+                     std::shared_ptr<ChunkInventory> const& chunkInventory,
+                     mysql::MySqlConfig const& mySqlConfig,
                      bool rebuild,
                      bool reload);
 
-    /**
-     * Implement the corresponding method of the base class
-     *
-     * @see WorkerCommand::run()
-     */
     void run() override;
 
 private:
@@ -86,11 +79,11 @@ private:
      * Report error condition to the logging stream and reply back to
      * a service caller.
      *
-     * @param message - message to be reported
+     * @param message  message to be reported
      */
-    void reportError(std::string const& message);
+    void _reportError(std::string const& message);
 
-private:
+    // Parameters of the object
 
     std::shared_ptr<ChunkInventory> _chunkInventory;
     mysql::MySqlConfig const        _mySqlConfig;
@@ -102,8 +95,7 @@ private:
 /**
   * Class ReloadChunkListCommand reloads a list of chunks from the database
   */
-class ReloadChunkListCommand
-    :   public ChunkListCommand {
+class ReloadChunkListCommand : public ChunkListCommand {
 
 public:
 
@@ -113,23 +105,20 @@ public:
     ReloadChunkListCommand(ReloadChunkListCommand const&) = delete;
 
     /**
-     * The normal constructor of the class
-     *
-     * @param sendChannel    - communication channel for reporting results
-     * @param chunkInventory - transient collection of available chunks to be reloaded (if requested)
-     * @param mySqlConfig    - database connection parameters
+     * @param sendChannel     communication channel for reporting results
+     * @param chunkInventory  transient collection of available chunks to be reloaded (if requested)
+     * @param mySqlConfig     database connection parameters
      */
     ReloadChunkListCommand(std::shared_ptr<wbase::SendChannel> const& sendChannel,
-                           std::shared_ptr<ChunkInventory>     const& chunkInventory,
-                           mysql::MySqlConfig                  const& mySqlConfig)
+                           std::shared_ptr<ChunkInventory> const& chunkInventory,
+                           mysql::MySqlConfig const& mySqlConfig)
         :   ChunkListCommand(sendChannel,
                              chunkInventory,
                              mySqlConfig,
                              false,
                              true) {
-        }
+    }
 
-    /// The destructor
     ~ReloadChunkListCommand() override = default;
 };
 
@@ -138,8 +127,7 @@ public:
   * optionally (if requested) reloads a list of chunks from the database
   * into a transient list.
   */
-class RebuildChunkListCommand
-    :   public ChunkListCommand {
+class RebuildChunkListCommand : public ChunkListCommand {
 
 public:
 
@@ -149,26 +137,23 @@ public:
     RebuildChunkListCommand(RebuildChunkListCommand const&) = delete;
 
     /**
-     * The normal constructor of the class
-     *
-     * @param sendChannel    - communication channel for reporting results
-     * @param chunkInventory - transient collection of available chunks to be reloaded (if requested)
-     * @param mySqlConfig    - database connection parameters
-     * @param reload         - reload the list in worker's memory
+     * @param sendChannel     communication channel for reporting results
+     * @param chunkInventory  transient collection of available chunks to be reloaded (if requested)
+     * @param mySqlConfig     database connection parameters
+     * @param reload          reload the list in worker's memory
      */
     RebuildChunkListCommand(std::shared_ptr<wbase::SendChannel> const& sendChannel,
-                            std::shared_ptr<ChunkInventory>     const& chunkInventory,
-                            mysql::MySqlConfig                  const& mySqlConfig,
+                            std::shared_ptr<ChunkInventory> const& chunkInventory,
+                            mysql::MySqlConfig const& mySqlConfig,
                             bool reload)
         :   ChunkListCommand(sendChannel,
                              chunkInventory,
                              mySqlConfig,
                              true,
                              reload) {
-        }
+    }
 
-    /// The destructor
-    ~RebuildChunkListCommand() override {}
+    ~RebuildChunkListCommand() override = default;
 };
 
 }}} // namespace lsst::qserv::wpublish

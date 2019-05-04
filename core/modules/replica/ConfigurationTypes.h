@@ -370,6 +370,81 @@ struct ConfigurationGeneralParams {
 
     struct {
 
+        std::string const key         = "QSERV_MASTER_DB_HOST";
+        std::string const description = "database service location for the Qserv Master database.";
+
+        bool const updatable = false;
+
+        std::string get(Configuration::Ptr const& config) const { return config->qservMasterDatabaseHost(); }
+        std::string str(Configuration::Ptr const& config) const { return get(config); }
+
+    } qservMasterDatabaseHost;
+
+    struct {
+
+        std::string const key         = "QSERV_MASTER_DB_PORT";
+        std::string const description = "The database service port for the Qserv Master database.";
+
+        bool const updatable = false;
+
+        uint16_t    get(Configuration::Ptr const& config) const { return config->qservMasterDatabasePort(); }
+        std::string str(Configuration::Ptr const& config) const { return std::to_string(get(config)); }
+
+    } qservMasterDatabasePort;
+
+    struct {
+
+        std::string const key         = "QSERV_MASTER_DB_USER";
+        std::string const description = "A user account for connecting to the Qserv Master database.";
+
+        bool const updatable = false;
+
+        std::string get(Configuration::Ptr const& config) const { return config->qservMasterDatabaseUser(); }
+        std::string str(Configuration::Ptr const& config) const { return get(config); }
+
+    } qservMasterDatabaseUser;
+
+    struct {
+
+        std::string const key         = "QSERV_MASTER_DB_PASSWORD";
+        std::string const description = "A password for connecting to the Qserv Master database.";
+
+        bool const updatable = false;
+
+        std::string get(Configuration::Ptr const& config, bool scramble=true) const {
+            return scramble ? "xxxxxx" : config->qservMasterDatabasePassword();
+        }
+        std::string str(Configuration::Ptr const& config, bool scramble) const { return get(config, scramble); }
+
+    } qservMasterDatabasePassword;
+
+    struct {
+
+        std::string const key         = "QSERV_MASTER_DB_NAME";
+        std::string const description = "The name of the default database schema for the Qserv Master database.";
+
+        bool const updatable = false;
+
+        std::string get(Configuration::Ptr const& config) const { return config->qservMasterDatabaseName(); }
+        std::string str(Configuration::Ptr const& config) const { return get(config); }
+
+    } qservMasterDatabaseName;
+
+    struct {
+
+        std::string const key         = "QSERV_MASTER_DB_SVC_POOL_SIZE";
+        std::string const description = "The pool size at the client database services connector for the Qserv Master database.";
+        size_t            value;
+
+        bool const updatable = false;
+    
+        size_t      get(Configuration::Ptr const& config) const { return config->qservMasterDatabaseServicesPoolSize(); }
+        std::string str(Configuration::Ptr const& config) const { return std::to_string(get(config)); }
+
+    } qservMasterDatabaseServicesPoolSize;
+
+    struct {
+
         std::string const key         = "WORKER_TECHNOLOGY";
         std::string const description = "The name of a technology for implementing requests.";
         std::string       value;

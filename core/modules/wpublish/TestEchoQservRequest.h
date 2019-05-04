@@ -20,7 +20,6 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-/// TestEchoQservRequest.h
 #ifndef LSST_QSERV_WPUBLISH_TEST_ECHO_QSERV_REQUEST_H
 #define LSST_QSERV_WPUBLISH_TEST_ECHO_QSERV_REQUEST_H
 
@@ -29,12 +28,8 @@
 #include <memory>
 #include <string>
 
-// Third party headers
-
 // Qserv headers
 #include "wpublish/QservRequest.h"
-
-// Forward declarations
 
 namespace lsst {
 namespace qserv {
@@ -44,15 +39,14 @@ namespace wpublish {
   * Class TestEchoQservRequest represents a simple test request sending a string
   * to the worker management service and expecting the same value back.
   */
-class TestEchoQservRequest
-    :    public QservRequest {
+class TestEchoQservRequest : public QservRequest {
 
 public:
 
     /// Completion status of the operation
     enum Status {
         SUCCESS,    // successful completion of a request
-        ERROR       // an error occured during command execution
+        ERROR       // an error occurred during command execution
     };
 
     /// @return string representation of a status
@@ -74,20 +68,19 @@ public:
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
      *
-     * @param value    - a value to be sent to the worker service
-     * @param onFinish  - optional callback function to be called upon the completion
-     *                    (successful or not) of the request.
+     * @param value     a value to be sent to the worker service
+     * @param onFinish  optional callback function to be called upon the completion
+     *                  (successful or not) of the request.
      * @return smart pointer to the object of the class
      */
     static Ptr create(std::string const& value,
-                      CallbackType onFinish = nullptr);
+                      CallbackType onFinish=nullptr);
 
     // Default construction and copy semantics is prohibited
     TestEchoQservRequest() = delete;
     TestEchoQservRequest(TestEchoQservRequest const&) = delete;
     TestEchoQservRequest& operator=(TestEchoQservRequest const&) = delete;
 
-    /// Destructor
     ~TestEchoQservRequest() override;
 
 protected:
@@ -95,28 +88,23 @@ protected:
     /**
      * Normal constructor
      *
-     * @param value    - a value to be sent to the worker service
-     * @param onFinish - function to be called upon the completion of a request
+     * @param value     a value to be sent to the worker service
+     * @param onFinish  function to be called upon the completion of a request
      */
     TestEchoQservRequest(std::string const& value,
                          CallbackType onFinish);
 
-    /// Implement the corresponding method of the base class
     void onRequest(proto::FrameBuffer& buf) override;
 
-    /// Implement the corresponding method of the base class
     void onResponse(proto::FrameBufferView& view) override;
 
-    /// Implement the corresponding method of the base class
     void onError(std::string const& error) override;
 
 private:
 
-    /// Value to be sent to a worker
-    std::string _value;
+    // Parameters of the object
 
-    /// Optional callback function to be called upon the completion
-    /// (successfull or not) of the request.
+    std::string _value;
     CallbackType _onFinish;
 };
 

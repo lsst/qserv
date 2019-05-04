@@ -29,13 +29,10 @@
 #include <memory>
 #include <vector>
 
-// Third party headers
-
 // Qserv headers
 #include "wpublish/QservRequest.h"
 
-// Forward declarations
-
+// This header declarations
 namespace lsst {
 namespace qserv {
 namespace wpublish {
@@ -44,8 +41,7 @@ namespace wpublish {
   * Class ChunkGroupQservRequest implements a client-side request to
   * the Qserv worker management services.
   */
-class ChunkGroupQservRequest
-    :    public QservRequest {
+class ChunkGroupQservRequest : public QservRequest {
 
 public:
 
@@ -54,7 +50,7 @@ public:
         SUCCESS,    // successful completion of a request
         INVALID,    // invalid parameters of the request
         IN_USE,     // request is rejected because one of the chunks is in use
-        ERROR       // an error occured during command execution
+        ERROR       // an error occurred during command execution
     };
 
     /// @return string representation of a status
@@ -71,19 +67,16 @@ public:
     ChunkGroupQservRequest(ChunkGroupQservRequest const&) = delete;
     ChunkGroupQservRequest& operator=(ChunkGroupQservRequest const&) = delete;
 
-    /// Destructor
     ~ChunkGroupQservRequest() override;
 
 protected:
 
     /**
-     * Normal constructor
-     *
-     * @param add       - add a group if 'true', remove otherwise
-     * @param chunk     - chunk number
-     * @param databases - names of databases in the group
-     * @param force     - force the proposed change even if the chunk is in use
-     * @param onFinish  - optional callback function to be called upon the completion
+     * @param add        add a group if 'true', remove otherwise
+     * @param chunk      chunk number
+     * @param databases  names of databases in the group
+     * @param force      force the proposed change even if the chunk is in use
+     * @param onFinish   optional callback function to be called upon the completion
      *                   (successful or not) of the request.
      */
     ChunkGroupQservRequest(bool add,
@@ -92,13 +85,8 @@ protected:
                            bool force,
                            CallbackType onFinish);
 
-    /// Implement the corresponding method of the base class
     void onRequest(proto::FrameBuffer& buf) override;
-
-    /// Implement the corresponding method of the base class
     void onResponse(proto::FrameBufferView& view) override;
-
-    /// Implement the corresponding method of the base class
     void onError(std::string const& error) override;
 
 private:
@@ -116,8 +104,7 @@ private:
   * Class AddChunkGroupQservRequest implements a client-side request to
   * the Qserv worker management services.
   */
-class AddChunkGroupQservRequest
-    :    public ChunkGroupQservRequest {
+class AddChunkGroupQservRequest : public ChunkGroupQservRequest {
 
 public:
 
@@ -129,7 +116,6 @@ public:
     AddChunkGroupQservRequest(AddChunkGroupQservRequest const&) = delete;
     AddChunkGroupQservRequest& operator=(AddChunkGroupQservRequest const&) = delete;
 
-    /// Destructor
     ~AddChunkGroupQservRequest() override  = default;
 
     /**
@@ -137,23 +123,21 @@ public:
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
      *
-     * @param chunk     - the chunk number
-     * @param databases - names of databases in the group
-     * @param onFinish  - callback function to be called upon request completion
+     * @param chunk      the chunk number
+     * @param databases  names of databases in the group
+     * @param onFinish   callback function to be called upon request completion
      */
     static Ptr create(unsigned int chunk,
-                          std::vector<std::string> const& databases,
-                          CallbackType onFinish = nullptr);
+                      std::vector<std::string> const& databases,
+                      CallbackType onFinish = nullptr);
 
 private:
 
     /**
-     * Normal constructor
-     *
-     * @param chunk     - chunk number
-     * @param databases - names of databases in the group
-     * @param onFinish  - optional callback function to be called upon the completion
-     *                    (successful or not) of the request.
+     * @param chunk      chunk number
+     * @param databases  names of databases in the group
+     * @param onFinish   optional callback function to be called upon the completion
+     *                   (successful or not) of the request.
      */
     AddChunkGroupQservRequest(unsigned int chunk,
                               std::vector<std::string> const& databases,
@@ -164,8 +148,7 @@ private:
   * Class RemoveChunkGroupQservRequest implements a client-side request to
   * the Qserv worker management services.
   */
-class RemoveChunkGroupQservRequest
-    :    public ChunkGroupQservRequest {
+class RemoveChunkGroupQservRequest : public ChunkGroupQservRequest {
 
 public:
 
@@ -177,7 +160,6 @@ public:
     RemoveChunkGroupQservRequest(RemoveChunkGroupQservRequest const&) = delete;
     RemoveChunkGroupQservRequest& operator=(RemoveChunkGroupQservRequest const&) = delete;
 
-    /// Destructor
     ~RemoveChunkGroupQservRequest() override = default;
 
     /**
@@ -185,10 +167,10 @@ public:
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
      *
-     * @param chunk     - the chunk number
-     * @param databases - names of databases in the group
-     * @param force     - force the proposed change even if the chunk is in use
-     * @param onFinish  - callback function to be called upon request completion
+     * @param chunk      the chunk number
+     * @param databases  names of databases in the group
+     * @param force      force the proposed change even if the chunk is in use
+     * @param onFinish   callback function to be called upon request completion
      */
     static Ptr create(unsigned int chunk,
                       std::vector<std::string> const& databases,
@@ -198,12 +180,10 @@ public:
 private:
 
     /**
-     * Normal constructor
-     *
-     * @param chunk     - chunk number
-     * @param databases - names of databases in the group
-     * @param force     - force the proposed change even if the chunk is in use
-     * @param onFinish  - optional callback function to be called upon the completion
+     * @param chunk      chunk number
+     * @param databases  names of databases in the group
+     * @param force      force the proposed change even if the chunk is in use
+     * @param onFinish   optional callback function to be called upon the completion
      *                   (successful or not) of the request.
      */
     RemoveChunkGroupQservRequest(unsigned int chunk,

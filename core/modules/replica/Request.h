@@ -610,6 +610,7 @@ private:
 
     // Synchronization primitives for implementing Request::wait()
 
+    bool _finished = false;
     std::mutex _onFinishMtx;
     std::condition_variable _onFinishCv;
 };

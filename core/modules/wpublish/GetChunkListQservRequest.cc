@@ -27,21 +27,22 @@
 #include <stdexcept>
 #include <string>
 
-// Qserv headers
+// LSST headers
 #include "lsst/log/Log.h"
+
+using namespace lsst::qserv;
+using namespace std;
 
 namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.wpublish.GetChunkListQservRequest");
-
-using namespace lsst::qserv;
 
 wpublish::GetChunkListQservRequest::Status translate(proto::WorkerCommandGetChunkListR::Status status) {
     switch (status) {
         case proto::WorkerCommandGetChunkListR::SUCCESS: return wpublish::GetChunkListQservRequest::SUCCESS;
         case proto::WorkerCommandGetChunkListR::ERROR:   return wpublish::GetChunkListQservRequest::ERROR;
     }
-    throw std::domain_error(
+    throw domain_error(
             "GetChunkListQservRequest::translate  no match for Protobuf status: " +
             proto::WorkerCommandGetChunkListR_Status_Name(status));
 }
@@ -51,37 +52,41 @@ namespace lsst {
 namespace qserv {
 namespace wpublish {
 
-std::string GetChunkListQservRequest::status2str(Status status) {
+string GetChunkListQservRequest::status2str(Status status) {
     switch (status) {
         case SUCCESS: return "SUCCESS";
         case ERROR:   return "ERROR";
     }
-    throw std::domain_error(
+    throw domain_error(
             "GetChunkListQservRequest::status2str  no match for status: " +
-            std::to_string(status));
+            to_string(status));
 }
 
+
 GetChunkListQservRequest::Ptr GetChunkListQservRequest::create(
-                                        bool inUseOnly,
-                                        GetChunkListQservRequest::CallbackType onFinish) {
+                                    bool inUseOnly,
+                                    GetChunkListQservRequest::CallbackType onFinish) {
     return GetChunkListQservRequest::Ptr(new GetChunkListQservRequest(
         inUseOnly,
         onFinish
     ));
 }
 
+
 GetChunkListQservRequest::GetChunkListQservRequest(
-                                        bool inUseOnly,
-                                        GetChunkListQservRequest::CallbackType onFinish)
+                                bool inUseOnly,
+                                GetChunkListQservRequest::CallbackType onFinish)
     :   _inUseOnly(inUseOnly),
         _onFinish(onFinish) {
 
     LOGS(_log, LOG_LVL_DEBUG, "GetChunkListQservRequest  ** CONSTRUCTED **");
 }
 
+
 GetChunkListQservRequest::~GetChunkListQservRequest() {
     LOGS(_log, LOG_LVL_DEBUG, "GetChunkListQservRequest  ** DELETED **");
 }
+
 
 void GetChunkListQservRequest::onRequest(proto::FrameBuffer& buf) {
 
@@ -90,9 +95,10 @@ void GetChunkListQservRequest::onRequest(proto::FrameBuffer& buf) {
     buf.serialize(header);
 }
 
+
 void GetChunkListQservRequest::onResponse(proto::FrameBufferView& view) {
 
-    static std::string const context = "GetChunkListQservRequest  ";
+    string const context = "GetChunkListQservRequest  ";
 
     proto::WorkerCommandGetChunkListR reply;
     view.parse(reply);
@@ -122,7 +128,7 @@ void GetChunkListQservRequest::onResponse(proto::FrameBufferView& view) {
         // 2. it breaks the up-stream dependency on a caller object if a shared
         //    pointer to the object was mentioned as the lambda-function's closure
 
-        auto onFinish = std::move(_onFinish);
+        auto onFinish = move(_onFinish);
         _onFinish = nullptr;
         onFinish(::translate(reply.status()),
                  reply.error(),
@@ -130,7 +136,8 @@ void GetChunkListQservRequest::onResponse(proto::FrameBufferView& view) {
     }
 }
 
-void GetChunkListQservRequest::onError(std::string const& error) {
+
+void GetChunkListQservRequest::onError(string const& error) {
 
     if (nullptr != _onFinish) {
 
@@ -141,7 +148,7 @@ void GetChunkListQservRequest::onError(std::string const& error) {
         // 2. it breaks the up-stream dependency on a caller object if a shared
         //    pointer to the object was mentioned as the lambda-function's closure
 
-        auto onFinish = std::move(_onFinish);
+        auto onFinish = move(_onFinish);
         _onFinish = nullptr;
         onFinish(Status::ERROR,
                  error,

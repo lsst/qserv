@@ -214,12 +214,10 @@ void Request::wait() {
  
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
-    if (state() == State::FINISHED) return;
+    if (_finished) return;
 
     unique_lock<mutex> onFinishLock(_onFinishMtx);
-    _onFinishCv.wait(onFinishLock, [this] {
-        return state() == State::FINISHED;
-    });
+    _onFinishCv.wait(onFinishLock, [&] { return _finished; });
 }
 
 
@@ -242,12 +240,6 @@ void Request::expired(boost::system::error_code const& ec) {
 
     if (ec == boost::asio::error::operation_aborted) return;
 
-    // IMPORTANT: the final state is required to be tested twice. The first time
-    // it's done in order to avoid deadlock on the "in-flight" callbacks reporting
-    // their completion while the request termination is in a progress. And the second
-    // test is made after acquiring the lock to recheck the state in case if it
-    // has transitioned while acquiring the lock.
-
     if (state() == State::FINISHED) return;
 
     util::Lock lock(_mtx, context() + __func__);
@@ -261,12 +253,6 @@ void Request::expired(boost::system::error_code const& ec) {
 void Request::cancel() {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
-
-    // IMPORTANT: the final state is required to be tested twice. The first time
-    // it's done in order to avoid deadlock on the "in-flight" callbacks reporting
-    // their completion while the request termination is in a progress. And the second
-    // test is made after acquiring the lock to recheck the state in case if it
-    // has transitioned while acquiring the lock.
 
     if (state() == State::FINISHED) return;
 
@@ -312,6 +298,7 @@ void Request::finish(util::Lock const& lock,
     // Unblock threads (if any) waiting on the synchronization call
     // to method Request::wait()
 
+    _finished = true;
     _onFinishCv.notify_all();
 }
 

@@ -63,6 +63,7 @@ public:
 
     static Ptr create(Controller::Ptr const& controller,
                       HealthMonitorTask::WorkerEvictCallbackType const& onWorkerEvict,
+                      unsigned int workerResponseTimeoutSec,
                       HealthMonitorTask::Ptr const& healthMonitorTask,
                       ReplicationTask::Ptr const& replicationTask,
                       DeleteWorkerTask::Ptr const& deleteWorkerTask);
@@ -73,6 +74,7 @@ private:
 
     HttpProcessor(Controller::Ptr const& controller,
                   HealthMonitorTask::WorkerEvictCallbackType const& onWorkerEvict,
+                  unsigned int workerResponseTimeoutSec,
                   HealthMonitorTask::Ptr const& healthMonitorTask,
                   ReplicationTask::Ptr const& replicationTask,
                   DeleteWorkerTask::Ptr const& deleteWorkerTask);
@@ -84,17 +86,17 @@ private:
     /**
      * Log a message into the Logger's LOG_LVL_INFO stream
      */
-    void _info(std::string const& msg);
+    void _info(std::string const& msg) const;
 
     /**
      * Log a message into the Logger's LOG_LVL_DEBUG stream
      */
-    void _debug(std::string const& msg);
+    void _debug(std::string const& msg) const;
 
     /**
      * Log a message into the Logger's LOG_LVL_ERROR stream
      */
-    void _error(std::string const& msg);
+    void _error(std::string const& msg) const;
 
     /**
      * Process a request which return status of one worker.
@@ -235,15 +237,50 @@ private:
                    qhttp::Response::Ptr const& resp);
 
     /**
+     * Process a request for extracting various status info from Qserv workers
+     * (all of them or a subset of those as per parameters of a request).
+     */
+    void _getQservManyWorkersStatus(qhttp::Request::Ptr const& req,
+                                    qhttp::Response::Ptr const& resp);
+
+    /**
+     * Process a request for extracting various status info from one Qserv worker.
+     */
+    void _getQservWorkerStatus(qhttp::Request::Ptr const& req,
+                               qhttp::Response::Ptr const& resp);
+
+    /**
+     * Process a request for extracting a status on user queries launched to Qserv
+     */
+    void _getQservManyUserQuery(qhttp::Request::Ptr const& req,
+                                qhttp::Response::Ptr const& resp);
+
+    /**
+     * Process a request for extracting a status on a specific user query launched to Qserv
+     */
+    void _getQservUserQuery(qhttp::Request::Ptr const& req,
+                            qhttp::Response::Ptr const& resp);
+
+    /**
      * Pull the current Configuration and translate it into a JSON object
      */
     nlohmann::json _configToJson() const;
+
+    /**
+     * Find descriptions of queries
+     *
+     * @param workerInfo  worker info object to be inspected to extract identifier)s of queries
+     * @return descriptions of the queries
+     */
+    nlohmann::json _getQueries(nlohmann::json& workerInfo) const;
 
     Controller::Ptr const _controller;
 
     HealthMonitorTask::WorkerEvictCallbackType const _onWorkerEvict;
 
-    // References(!) to smart pointers to the tasks which can be managed
+    unsigned int const _workerResponseTimeoutSec;
+
+                      // References(!) to smart pointers to the tasks which can be managed
     // by this class. References to the pointers are used to avoid increasing
     // the reference counters to the pointed objects.
 

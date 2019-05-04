@@ -29,9 +29,14 @@
 // Qserv headers
 #include "lsst/log/Log.h"
 
+using namespace std;
+
 namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.wpublish.QservRequest");
+
+// Set this parameter to some reasonable default
+int const bufInitialSize = 1024;
 
 }  // namespace
 
@@ -39,10 +44,7 @@ namespace lsst {
 namespace qserv {
 namespace wpublish {
 
-std::atomic<size_t> QservRequest::_numClassInstances(0);
-
-// Set this parameter to some reasonable default
-int const QservRequest::_bufIncrementSize = 1024;
+atomic<size_t> QservRequest::_numClassInstances(0);
 
 QservRequest::~QservRequest() {
 
@@ -52,16 +54,19 @@ QservRequest::~QservRequest() {
     LOGS(_log, LOG_LVL_DEBUG, "QservRequest  destructed   instances: " << _numClassInstances);
 }
 
+
 QservRequest::QservRequest()
-    :    _bufSize(0),
-         _bufCapacity(_bufIncrementSize),
-         _buf(new char[_bufIncrementSize]) {
+    :   _bufIncrementSize(bufInitialSize),
+        _bufSize(0),
+        _bufCapacity(bufInitialSize),
+        _buf(new char[bufInitialSize]) {
 
     // This report is used solely for debugging purposes to allow tracking
     // potential memory leaks within applications.
     ++_numClassInstances;
     LOGS(_log, LOG_LVL_DEBUG, "QservRequest  constructed  instances: " << _numClassInstances);
 }
+
 
 char* QservRequest::GetRequest(int& dlen) {
 
@@ -73,24 +78,25 @@ char* QservRequest::GetRequest(int& dlen) {
     return _frameBuf.data();
 }
 
-bool QservRequest::ProcessResponse(const XrdSsiErrInfo&  eInfo,
+
+bool QservRequest::ProcessResponse(const XrdSsiErrInfo& eInfo,
                                    const XrdSsiRespInfo& rInfo) {
 
-    static std::string const context = "QservRequest::ProcessResponse  ";
+    string const context = "QservRequest::" + string(__func__) + "  ";
 
     if (eInfo.hasError()) {
 
         // Copy the argument before sending the upstream notification
         // Otherwise the current object may get disposed before we even had
         // a chance to notify XRootD/SSI by calling Finished().
-        std::string const errorStr = rInfo.eMsg;
+        string const errorStr = rInfo.eMsg;
 
         LOGS(_log, LOG_LVL_ERROR, context << "** FAILED **, error: " << errorStr);
 
-        // Tell XrootD to realease all resources associated with this request
+        // Tell XrootD to release all resources associated with this request
         Finished();
 
-        // Notify a subclass on the ubnormal condition
+        // Notify a subclass on the abnormal condition
         // WARNING: This has to be the last call as the object may get deleted
         //          downstream.
         onError(errorStr);
@@ -115,25 +121,26 @@ bool QservRequest::ProcessResponse(const XrdSsiErrInfo&  eInfo,
             // Copy the argument before sending the upstream notification
             // Otherwise the current object may get disposed before we even had
             // a chance to notify XRootD/SSI by calling Finished().
-            std::string const responseType = std::to_string(rInfo.rType);
+            string const responseType = to_string(rInfo.rType);
 
-            // Tell XrootD to realease all resources associated with this request
+            // Tell XrootD to release all resources associated with this request
             Finished();
 
-            // Notify a subclass on the ubnormal condition
+            // Notify a subclass on the abnormal condition
             // WARNING: This has to be the last call as the object may get deleted
             //          downstream.
-            onError("QservRequest::ProcessResponse  ** ERROR ** unexpeted response type: " + responseType);
+            onError("QservRequest::ProcessResponse  ** ERROR ** unexpected response type: " + responseType);
             return false;
     }
 }
 
+
 XrdSsiRequest::PRD_Xeq QservRequest::ProcessResponseData(const XrdSsiErrInfo& eInfo,
                                                          char* buff,
-                                                         int   blen,
-                                                         bool  last) {
+                                                         int blen,
+                                                         bool last) {
 
-    static std::string const context = "QservRequest::ProcessResponseData  ";
+    string const context = "QservRequest::" + string(__func__) + "  ";
 
     LOGS(_log, LOG_LVL_DEBUG, context << "eInfo.isOK: " << eInfo.isOK());
 
@@ -143,7 +150,7 @@ XrdSsiRequest::PRD_Xeq QservRequest::ProcessResponseData(const XrdSsiErrInfo& eI
         // Otherwise the current object may get disposed before we even had
         // a chance to notify XRootD/SSI by calling Finished().
 
-        std::string const errorStr = eInfo.Get();
+        string const errorStr = eInfo.Get();
         int         const errorNum = eInfo.GetArg();
 
         LOGS(_log, LOG_LVL_ERROR, context << "** FAILED **  eInfo.Get(): " << errorStr
@@ -165,7 +172,7 @@ XrdSsiRequest::PRD_Xeq QservRequest::ProcessResponseData(const XrdSsiErrInfo& eI
 
         if (last) {
 
-            // Tell XrootD to realease all resources associated with this request
+            // Tell XrootD to release all resources associated with this request
             Finished();
 
             // Ask a subclass to process the response
@@ -175,14 +182,15 @@ XrdSsiRequest::PRD_Xeq QservRequest::ProcessResponseData(const XrdSsiErrInfo& eI
             onResponse(view);
 
         } else {
-            // Extend the buffer and copy over its previous content into the new location
+            // Double the buffer's capacity and copy over its previous content into the new location
             int prevBufCapacity = _bufCapacity;
+            _bufIncrementSize = prevBufCapacity;
             _bufCapacity += _bufIncrementSize;
 
             char* prevBuf = _buf;
             _buf = new char[_bufCapacity];
 
-            std::copy(prevBuf, prevBuf + prevBufCapacity, _buf);
+            copy(prevBuf, prevBuf + prevBufCapacity, _buf);
 
             delete [] prevBuf;
 

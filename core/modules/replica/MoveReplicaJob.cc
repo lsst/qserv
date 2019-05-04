@@ -237,12 +237,6 @@ void MoveReplicaJob::_onCreateJobFinish() {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
-    // IMPORTANT: the final state is required to be tested twice. The first time
-    // it's done in order to avoid deadlock on the "in-flight" requests reporting
-    // their completion while the job termination is in a progress. And the second
-    // test is made after acquiring the lock to recheck the state in case if it
-    // has transitioned while acquiring the lock.
-
     if (state() == State::FINISHED) return;
 
     util::Lock lock(_mtx, context() + __func__);
@@ -291,12 +285,6 @@ void MoveReplicaJob::_onCreateJobFinish() {
 void MoveReplicaJob::_onDeleteJobFinish() {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
-
-    // IMPORTANT: the final state is required to be tested twice. The first time
-    // it's done in order to avoid deadlock on the "in-flight" requests reporting
-    // their completion while the job termination is in a progress. And the second
-    // test is made after acquiring the lock to recheck the state in case if it
-    // has transitioned while acquiring the lock.
 
     if (state() == State::FINISHED) return;
 

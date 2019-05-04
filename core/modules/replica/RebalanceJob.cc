@@ -88,10 +88,7 @@ RebalanceJob::RebalanceJob(string const& databaseFamily,
             options),
         _databaseFamily(databaseFamily),
         _estimateOnly(estimateOnly),
-        _onFinish(onFinish),
-        _numLaunched(0),
-        _numFinished(0),
-        _numSuccess(0) {
+        _onFinish(onFinish) {
 }
 
 
@@ -225,12 +222,6 @@ void RebalanceJob::notify(util::Lock const& lock) {
 void RebalanceJob::_onPrecursorJobFinish() {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
-
-    // IMPORTANT: the final state is required to be tested twice. The first time
-    // it's done in order to avoid deadlock on the "in-flight" requests reporting
-    // their completion while the job termination is in a progress. And the second
-    // test is made after acquiring the lock to recheck the state in case if it
-    // has transitioned while acquiring the lock.
 
     if (state() == State::FINISHED) return;
 
@@ -594,12 +585,6 @@ void RebalanceJob::_onJobFinish(MoveReplicaJob::Ptr const& job) {
          << "  chunk="             << job->chunk()
          << "  sourceWorker="      << job->sourceWorker()
          << "  destinationWorker=" << job->destinationWorker());
-
-    // IMPORTANT: the final state is required to be tested twice. The first time
-    // it's done in order to avoid deadlock on the "in-flight" requests reporting
-    // their completion while the job termination is in a progress. And the second
-    // test is made after acquiring the lock to recheck the state in case if it
-    // has transitioned while acquiring the lock.
 
     if (state() == State::FINISHED) {
         _activeJobs.remove(job);

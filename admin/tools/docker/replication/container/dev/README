@@ -26,11 +26,12 @@ docker run \
     -u "$(id -u):$(id -g)" \
     -v /etc/passwd:/etc/passwd:ro \
     -v /etc/group:/etc/group:ro \
+    -v $HOME:$HOME \
     -v $PWD:$PWD \
     -e "SOURCE=${PWD}" \
     qserv/replica:dev bash
 
-# Once logged into the runing container do:
+# Once logged into the running container do:
 #
 # NOTE: you may also check if your account (as mapped above) has required
 #       privileges to your home folder.

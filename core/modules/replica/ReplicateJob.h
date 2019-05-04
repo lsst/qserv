@@ -22,7 +22,6 @@
 #define LSST_QSERV_REPLICA_REPLICATEJOB_H
 
 // System headers
-#include <atomic>
 #include <functional>
 #include <list>
 #include <map>
@@ -229,13 +228,9 @@ protected:
     /// Jobs which are already active
     std::list<CreateReplicaJob::Ptr> _activeJobs;
 
-    // The counter of jobs which will be updated. They need to be atomic
-    // to avoid race condition between the onFinish() callbacks executed within
-    // the Controller's thread and this thread.
-
-    std::atomic<size_t> _numLaunched;   ///< the total number of replica creation jobs launched
-    std::atomic<size_t> _numFinished;   ///< the total number of finished jobs
-    std::atomic<size_t> _numSuccess;    ///< the number of successfully completed jobs
+    size_t _numLaunched = 0;    ///< the total number of replica creation jobs launched
+    size_t _numFinished = 0;    ///< the total number of finished jobs
+    size_t _numSuccess  = 0;    ///< the number of successfully completed jobs
 
     /// The result of the operation (gets updated as jobs are finishing)
     ReplicateJobResult _replicaData;

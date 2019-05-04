@@ -20,7 +20,6 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-/// GetChunkListQservRequest.h
 #ifndef LSST_QSERV_WPUBLISH_GET_CHUNK_LIST_QSERV_REQUEST_H
 #define LSST_QSERV_WPUBLISH_GET_CHUNK_LIST_QSERV_REQUEST_H
 
@@ -29,23 +28,18 @@
 #include <list>
 #include <memory>
 
-// Third party headers
-
 // Qserv headers
 #include "wpublish/QservRequest.h"
-
-// Forward declarations
 
 namespace lsst {
 namespace qserv {
 namespace wpublish {
 
 /**
-  * Class GetChunkListQservRequest inplements the client-side requests
+  * Class GetChunkListQservRequest implements the client-side requests
   * the Qserv worker services for a status of chunk lists.
   */
-class GetChunkListQservRequest
-    :    public QservRequest {
+class GetChunkListQservRequest : public QservRequest {
 
 public:
 
@@ -84,9 +78,9 @@ public:
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
      *
-     * @param inUseOnly - only report chunks which are in use
-     * @param onFinish  - optional callback function to be called upon the completion
-     *                    (successful or not) of the request.
+     * @param inUseOnly  only report chunks which are in use
+     * @param onFinish   optional callback function to be called upon the completion
+     *                   (successful or not) of the request.
      * @return smart pointer to the object of the class
      */
     static Ptr create(bool inUseOnly,
@@ -97,36 +91,29 @@ public:
     GetChunkListQservRequest(GetChunkListQservRequest const&) = delete;
     GetChunkListQservRequest& operator=(GetChunkListQservRequest const&) = delete;
 
-    /// Destructor
     ~GetChunkListQservRequest() override;
 
 protected:
 
     /**
-     * Normal constructor
-     *
-     * @param inUseOnly - only report chunks which are in use
-     * @param onFinish  - optional callback function to be called upon the completion
-     *                    (successful or not) of the request.
+     * @param inUseOnly  only report chunks which are in use
+     * @param onFinish   optional callback function to be called upon the completion
+     *                   (successful or not) of the request.
      */
     GetChunkListQservRequest(bool inUseOnly,
                              CallbackType onFinish);
 
-    /// Implement the corresponding method of the base class
     void onRequest(proto::FrameBuffer& buf) override;
 
-    /// Implement the corresponding method of the base class
     void onResponse(proto::FrameBufferView& view) override;
 
-    /// Implement the corresponding method of the base class
     void onError(std::string const& error) override;
 
 private:
 
-    bool _inUseOnly;
+    // Parameters of the object
 
-    /// Optional callback function to be called upon the completion
-    /// (successfull or not) of the request.
+    bool _inUseOnly;
     CallbackType _onFinish;
 };
 

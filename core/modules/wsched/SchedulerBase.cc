@@ -117,6 +117,29 @@ std::string SchedulerBase::chunkStatusStr() {
     return os.str();
 }
 
+nlohmann::json SchedulerBase::statusToJson() {
+    nlohmann::json status;
+    status["name"] = getName();
+    status["priority"] = getPriority();
+    
+    status["num_tasks_in_queue"] = getSize();
+    status["num_tasks_in_flight"] = getInFlight();
+
+    nlohmann::json queryIdToCount = nlohmann::json::array();
+    nlohmann::json chunkToNumTasks = nlohmann::json::array();
+    {
+        std::lock_guard<std::mutex> lock(_countsMutex);
+        for (auto&& entry: _userQueryCounts) {
+            queryIdToCount.push_back({entry.first, entry.second});
+        }
+        for (auto&& entry: _chunkTasks) {
+            chunkToNumTasks.push_back({entry.first, entry.second});
+        }
+    }
+    status["query_id_to_count"]  = queryIdToCount;
+    status["chunk_to_num_tasks"] = chunkToNumTasks;
+    return status;
+}
 
 void SchedulerBase::setMaxActiveChunks(int maxActive) {
     if (maxActive < 1) maxActive = 1;

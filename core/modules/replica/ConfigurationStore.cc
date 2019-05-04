@@ -493,9 +493,16 @@ void ConfigurationStore::_loadConfiguration(util::ConfigStore const& configStore
     ::parseKeyVal(configStore, "database.host",               _databaseHost,             defaultDatabaseHost);
     ::parseKeyVal(configStore, "database.port",               _databasePort,             defaultDatabasePort);
     ::parseKeyVal(configStore, "database.user",               _databaseUser,             defaultDatabaseUser);
-    ::parseKeyVal(configStore, "database.password",           _databasePassword,         "");
+    ::parseKeyVal(configStore, "database.password",           _databasePassword,         defaultDatabasePassword);
     ::parseKeyVal(configStore, "database.name",               _databaseName,             defaultDatabaseName);
     ::parseKeyVal(configStore, "database.services_pool_size", _databaseServicesPoolSize, defaultDatabaseServicesPoolSize);
+
+    ::parseKeyVal(configStore, "database.qserv_master_host",               _qservMasterDatabaseHost,             defaultQservMasterDatabaseHost);
+    ::parseKeyVal(configStore, "database.qserv_master_port",               _qservMasterDatabasePort,             defaultQservMasterDatabasePort);
+    ::parseKeyVal(configStore, "database.qserv_master_user",               _qservMasterDatabaseUser,             defaultQservMasterDatabaseUser);
+    ::parseKeyVal(configStore, "database.qserv_master_password",           _qservMasterDatabasePassword,         defaultQservMasterDatabasePassword);
+    ::parseKeyVal(configStore, "database.qserv_master_name",               _qservMasterDatabaseName,             defaultQservMasterDatabaseName);
+    ::parseKeyVal(configStore, "database.qserv_master_services_pool_size", _qservMasterDatabaseServicesPoolSize, defaultQservMasterDatabaseServicesPoolSize);
 
     ::parseKeyVal(configStore, "xrootd.auto_notify",         _xrootdAutoNotify, defaultXrootdAutoNotify);
     ::parseKeyVal(configStore, "xrootd.host",                _xrootdHost,       defaultXrootdHost);

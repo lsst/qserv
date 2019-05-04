@@ -112,6 +112,8 @@ public:
      */
     void processCommand(std::shared_ptr<wbase::WorkerCommand> const& command) override;
 
+    nlohmann::json statusToJson() override;
+
 private:
 
     std::shared_ptr<wdb::SQLBackend>       _backend;

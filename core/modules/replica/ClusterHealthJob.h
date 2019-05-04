@@ -22,7 +22,6 @@
 #define LSST_QSERV_REPLICA_CLUSTERHEALTHJOB_H
 
 // System headers
-#include <atomic>
 #include <functional>
 #include <map>
 #include <string>
@@ -258,10 +257,10 @@ private:
     ClusterHealth _health;
 
     /// The number of started requests
-    std::atomic<size_t> _numStarted;
+    size_t _numStarted = 0;
 
     /// The number of finished requests
-    std::atomic<size_t> _numFinished;
+    size_t _numFinished = 0;
 };
 
 }}} // namespace lsst::qserv::replica

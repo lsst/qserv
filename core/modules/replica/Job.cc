@@ -201,6 +201,7 @@ void Job::start() {
         // Unblock threads (if any) waiting on the synchronization call
         // to method Job::wait()
 
+        _finished = true;
         _onFinishCv.notify_all();
         return;
     }
@@ -220,21 +221,13 @@ void Job::wait() {
     if (state() == State::FINISHED) return;
 
     unique_lock<mutex> onFinishLock(_onFinishMtx);
-    _onFinishCv.wait(onFinishLock, [this] {
-        return state() == State::FINISHED;
-    });
+    _onFinishCv.wait(onFinishLock, [&] { return _finished; });
 }
 
 
 void Job::cancel() {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
-
-    // IMPORTANT: the final state is required to be tested twice. The first time
-    // it's done in order to avoid deadlock on the "in-flight" requests reporting
-    // their completion while the job termination is in a progress. And the second
-    // test is made after acquiring the lock to recheck the state in case if it
-    // has transitioned while acquiring the lock.
 
     if (state() == State::FINISHED) return;
 
@@ -281,6 +274,7 @@ void Job::finish(util::Lock const& lock,
     // Unblock threads (if any) waiting on the synchronization call
     // to method Job::wait()
 
+    _finished = true;
     _onFinishCv.notify_all();
 }
 
@@ -431,12 +425,6 @@ void Job::_heartbeat(boost::system::error_code const& ec) {
     // Ignore this event if the timer was aborted
     if (ec == boost::asio::error::operation_aborted) return;
 
-    // IMPORTANT: the final state is required to be tested twice. The first time
-    // it's done in order to avoid deadlock on the "in-flight" requests reporting
-    // their completion while the job termination is in a progress. And the second
-    // test is made after acquiring the lock to recheck the state in case if it
-    // has transitioned while acquiring the lock.
-
     if (state() == State::FINISHED) return;
 
     util::Lock lock(_mtx, context() + __func__);
@@ -485,12 +473,6 @@ void Job::_expired(boost::system::error_code const& ec) {
 
     // Ignore this event if the timer was aborted
     if (ec == boost::asio::error::operation_aborted) return;
-         
-    // IMPORTANT: the final state is required to be tested twice. The first time
-    // it's done in order to avoid deadlock on the "in-flight" requests reporting
-    // their completion while the job termination is in a progress. And the second
-    // test is made after acquiring the lock to recheck the state in case if it
-    // has transitioned while acquiring the lock.
 
     if (state() == State::FINISHED) return;
 

@@ -40,35 +40,6 @@ string const description =
     "This application probes and reports a status of the Replication system's"
     " and Qserv workers to see if they respond within the specified (or implied)"
     " timeout.";
-
-/**
- * 
- * @param caption
- *   Table caption
- *
- * @param workerResponded
- *   The collection of workers to be reported
- */
-void printStatus(string const& caption,
-                 map<string, bool> const& workerResponded) {
-
-    namespace util = lsst::qserv::util;
-
-    vector<string> columnWorker;
-    vector<string> columnStatus;
-
-    for (auto&& entry: workerResponded) {
-        columnWorker.push_back(entry.first);
-        columnStatus.push_back(entry.second ? "UP" : "*");
-    }
-    util::ColumnTablePrinter table(caption, "  ", false);
-
-    table.addColumn("worker", columnWorker, util::ColumnTablePrinter::LEFT);
-    table.addColumn("status", columnStatus, util::ColumnTablePrinter::LEFT);
-
-    table.print(cout, false, false);
-}
-
 } /// namespace
 
 
@@ -128,10 +99,29 @@ int ClusterHealthApp::runImpl() {
 
         auto&& health = job->clusterHealth();
 
+        map<string, map<string,string>> worker2status;
+        for (auto&& entry: health.qserv()) {
+            worker2status[entry.first]["qserv"] = entry.second ? "UP" : "*";
+        }
+        for (auto&& entry: health.replication()) {
+            worker2status[entry.first]["replication"] = entry.second ? "UP" : "*";
+        }
+        vector<string> columnWorker;
+        vector<string> columnQserv;
+        vector<string> columnReplica;
+        for (auto&& entry: worker2status) {
+            columnWorker .push_back(entry.first);
+            columnQserv  .push_back(entry.second["qserv"]);
+            columnReplica.push_back(entry.second["replication"]);
+        }
+        util::ColumnTablePrinter table("STATUS", "  ", false);
+
+        table.addColumn("worker",      columnWorker,  util::ColumnTablePrinter::LEFT);
+        table.addColumn("qserv",       columnQserv,   util::ColumnTablePrinter::LEFT);
+        table.addColumn("replication", columnReplica, util::ColumnTablePrinter::LEFT);
+
         cout << endl;
-        ::printStatus("REPLICATION WORKERS:", health.replication());
-        cout << endl;
-        ::printStatus("QSERV WORKERS:", health.qserv());
+        table.print(cout, false, false);
         cout << endl;
     }
     return 0;

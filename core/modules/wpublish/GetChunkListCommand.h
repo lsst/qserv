@@ -20,7 +20,6 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-/// GetChunkListCommand.h
 #ifndef LSST_QSERV_WPUBLISH_GET_CHUNK_LIST_COMMAND_H
 #define LSST_QSERV_WPUBLISH_GET_CHUNK_LIST_COMMAND_H
 
@@ -31,20 +30,22 @@
 #include "wbase/WorkerCommand.h"
 
 // Forward declarations
+namespace lsst {
+namespace qserv {
+namespace wpublish {
+    class ChunkInventory;
+    class ResourceMonitor;
+}}}
 
+// This header declarations
 namespace lsst {
 namespace qserv {
 namespace wpublish {
 
-// Forward declarations
-class ChunkInventory;
-class ResourceMonitor;
-
 /**
   * Class GetChunkListCommand returns a status of the chunk inventory
   */
-class GetChunkListCommand
-    :   public wbase::WorkerCommand {
+class GetChunkListCommand : public wbase::WorkerCommand {
 
 public:
 
@@ -53,38 +54,22 @@ public:
     GetChunkListCommand& operator=(GetChunkListCommand const&) = delete;
     GetChunkListCommand(GetChunkListCommand const&) = delete;
 
-    /// The destructor
     ~GetChunkListCommand() override = default;
 
     /**
-     * The normal constructor of the class
-     *
-     * @param sendChannel    - communication channel for reporting results
-     * @param chunkInventory - transient collection of available chunks to be reloaded (if requested)
-     * @param mySqlConfig    - database connection parameters
+     * @param sendChannel     communication channel for reporting results
+     * @param chunkInventory  transient collection of available chunks to be reloaded (if requested)
+     * @param resourceMonitor XRootD resource monitor for finding which chunks are in use
      */
     GetChunkListCommand(std::shared_ptr<wbase::SendChannel> const& sendChannel,
-                        std::shared_ptr<ChunkInventory>     const& chunkInventory,
-                        std::shared_ptr<ResourceMonitor>    const& resourceMonitor);
+                        std::shared_ptr<ChunkInventory> const& chunkInventory,
+                        std::shared_ptr<ResourceMonitor> const& resourceMonitor);
 
-    /**
-     * Implement the corresponding method of the base class
-     *
-     * @see WorkerCommand::run()
-     */
     void run() override;
 
 private:
 
-    /**
-     * Report error condition to the logging stream and reply back to
-     * a service caller.
-     *
-     * @param message - message to be reported
-     */
-    void reportError(std::string const& message);
-
-private:
+    // Parameters of the object
 
     std::shared_ptr<ChunkInventory>  _chunkInventory;
     std::shared_ptr<ResourceMonitor> _resourceMonitor;

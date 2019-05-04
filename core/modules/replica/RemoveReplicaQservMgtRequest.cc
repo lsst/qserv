@@ -104,12 +104,6 @@ void RemoveReplicaQservMgtRequest::startImpl(util::Lock const& lock) {
         [request] (wpublish::ChunkGroupQservRequest::Status status,
                    string const& error) {
 
-            // IMPORTANT: the final state is required to be tested twice. The first time
-            // it's done in order to avoid deadlock on the "in-flight" callbacks reporting
-            // their completion while the request termination is in a progress. And the second
-            // test is made after acquiring the lock to recheck the state in case if it
-            // has transitioned while acquiring the lock.
-
             if (request->state() == State::FINISHED) return;
         
             util::Lock lock(request->_mtx, request->context() + string(__func__) + "[callback]");

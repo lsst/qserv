@@ -89,10 +89,7 @@ DeleteWorkerJob::DeleteWorkerJob(string const& worker,
             options),
         _worker(worker),
         _permanentDelete(permanentDelete),
-        _onFinish(onFinish),
-        _numLaunched(0),
-        _numFinished(0),
-        _numSuccess(0) {
+        _onFinish(onFinish) {
 }
 
 
@@ -267,12 +264,6 @@ void DeleteWorkerJob::_onRequestFinish(FindAllRequest::Ptr const& request) {
          << "  worker="   << request->worker()
          << "  database=" << request->database());
 
-    // IMPORTANT: the final state is required to be tested twice. The first time
-    // it's done in order to avoid deadlock on the "in-flight" requests reporting
-    // their completion while the job termination is in a progress. And the second
-    // test is made after acquiring the lock to recheck the state in case if it
-    // has transitioned while acquiring the lock.
-    
     if (state() == State::FINISHED) return;
 
     util::Lock lock(_mtx, context() + __func__);
@@ -336,12 +327,6 @@ void DeleteWorkerJob::_onJobFinish(ReplicateJob::Ptr const& job) {
          << " numReplicas: " << job->numReplicas()
          << " state: " << job->state2string());
 
-    // IMPORTANT: the final state is required to be tested twice. The first time
-    // it's done in order to avoid deadlock on the "in-flight" requests reporting
-    // their completion while the job termination is in a progress. And the second
-    // test is made after acquiring the lock to recheck the state in case if it
-    // has transitioned while acquiring the lock.
-    
     if (state() == State::FINISHED) return;
 
     util::Lock lock(_mtx, context() + string(__func__) + "(ReplicateJob)");

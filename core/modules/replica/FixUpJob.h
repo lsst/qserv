@@ -22,7 +22,6 @@
 #define LSST_QSERV_REPLICA_FIXUPJOB_H
 
 // System headers
-#include <atomic>
 #include <functional>
 #include <list>
 #include <map>
@@ -209,13 +208,13 @@ private:
     FindAllJob::Ptr _findAllJob;
 
     /// The total number of iterations the job has gone so far
-    size_t _numIterations;
+    size_t _numIterations = 0;
 
     /// The number of chunks which require the fix-up but couldn't be locked
     /// in the exclusive mode. The counter will be analyzed upon a completion
     /// of the last request, and if it were found not empty another iteration
     /// of the job will be undertaken
-    size_t _numFailedLocks;
+    size_t _numFailedLocks = 0;
 
     /// A collection of requests grouped by the corresponding chunk
     /// number. The main idea is simplify tracking the completion status
@@ -234,13 +233,9 @@ private:
     /// A collection of requests implementing the operation
     std::list<ReplicationRequest::Ptr> _requests;
 
-    // The counter of requests which will be updated. They need to be atomic
-    // to avoid race condition between the onFinish() callbacks executed within
-    // the Controller's thread and this thread.
-
-    std::atomic<size_t> _numLaunched;   ///< the total number of requests launched
-    std::atomic<size_t> _numFinished;   ///< the total number of finished requests
-    std::atomic<size_t> _numSuccess;    ///< the number of successfully completed requests
+    size_t _numLaunched = 0;    ///< the total number of requests launched
+    size_t _numFinished = 0;    ///< the total number of finished requests
+    size_t _numSuccess  = 0;    ///< the number of successfully completed requests
 
     /// The result of the operation (gets updated as requests are finishing)
     FixUpJobResult _replicaData;

@@ -494,6 +494,30 @@ void ConfigApp::_dumpGeneralAsTable(string const& indent) const {
     value.      push_back(_general.databaseServicesPoolSize.str(_config));
     description.push_back(_general.databaseServicesPoolSize.description);
 
+    parameter.  push_back(_general.qservMasterDatabaseHost.key);
+    value.      push_back(_general.qservMasterDatabaseHost.str(_config));
+    description.push_back(_general.qservMasterDatabaseHost.description);
+
+    parameter.  push_back(_general.qservMasterDatabasePort.key);
+    value.      push_back(_general.qservMasterDatabasePort.str(_config));
+    description.push_back(_general.qservMasterDatabasePort.description);
+
+    parameter.  push_back(_general.qservMasterDatabaseUser.key);
+    value.      push_back(_general.qservMasterDatabaseUser.str(_config));
+    description.push_back(_general.qservMasterDatabaseUser.description);
+
+    parameter.  push_back(_general.qservMasterDatabasePassword.key);
+    value.      push_back(_general.qservMasterDatabasePassword.str(_config, scrambleDbPassword));
+    description.push_back(_general.qservMasterDatabasePassword.description);
+
+    parameter.  push_back(_general.qservMasterDatabaseName.key);
+    value.      push_back(_general.qservMasterDatabaseName.str(_config));
+    description.push_back(_general.qservMasterDatabaseName.description);
+
+    parameter.  push_back(_general.qservMasterDatabaseServicesPoolSize.key);
+    value.      push_back(_general.qservMasterDatabaseServicesPoolSize.str(_config));
+    description.push_back(_general.qservMasterDatabaseServicesPoolSize.description);
+
     parameter.  push_back(_general.workerTechnology.key);
     value.      push_back(_general.workerTechnology.str(_config));
     description.push_back(_general.workerTechnology.description);

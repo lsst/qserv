@@ -70,6 +70,7 @@ string QservMgtRequest::state2string(ExtendedState state) {
         case ExtendedState::SERVER_BAD:          return "SERVER_BAD";
         case ExtendedState::SERVER_CHUNK_IN_USE: return "SERVER_CHUNK_IN_USE";
         case ExtendedState::SERVER_ERROR:        return "SERVER_ERROR";
+        case ExtendedState::SERVER_BAD_RESPONSE: return "SERVER_BAD_RESPONSE";
         case ExtendedState::TIMEOUT_EXPIRED:     return "TIMEOUT_EXPIRED";
         case ExtendedState::CANCELLED:           return "CANCELLED";
     }
@@ -216,9 +217,7 @@ void QservMgtRequest::wait() {
     if (state() == State::FINISHED) return;
 
     unique_lock<mutex> onFinishLock(_onFinishMtx);
-    _onFinishCv.wait(onFinishLock, [this] {
-        return state() == State::FINISHED;
-    });
+    _onFinishCv.wait(onFinishLock, [&] { return _finished; });
 }
 
 
@@ -241,12 +240,6 @@ void QservMgtRequest::expired(boost::system::error_code const& ec) {
 
     if (ec == boost::asio::error::operation_aborted) return;
 
-    // IMPORTANT: the final state is required to be tested twice. The first time
-    // it's done in order to avoid deadlock on the "in-flight" callbacks reporting
-    // their completion while the request termination is in a progress. And the second
-    // test is made after acquiring the lock to recheck the state in case if it
-    // has transitioned while acquiring the lock.
-
     if (state() == State::FINISHED) return;
 
     util::Lock lock(_mtx, context() + __func__);
@@ -260,12 +253,6 @@ void QservMgtRequest::expired(boost::system::error_code const& ec) {
 void QservMgtRequest::cancel() {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
-
-    // IMPORTANT: the final state is required to be tested twice. The first time
-    // it's done in order to avoid deadlock on the "in-flight" callbacks reporting
-    // their completion while the request termination is in a progress. And the second
-    // test is made after acquiring the lock to recheck the state in case if it
-    // has transitioned while acquiring the lock.
 
     if (state() == State::FINISHED) return;
 
@@ -318,6 +305,7 @@ void QservMgtRequest::finish(util::Lock const& lock,
     // Unblock threads (if any) waiting on the synchronization call
     // to method QservMgtRequest::wait()
 
+    _finished = true;
     _onFinishCv.notify_all();
 }
 

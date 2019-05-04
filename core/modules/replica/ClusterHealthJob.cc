@@ -139,9 +139,7 @@ ClusterHealthJob::ClusterHealthJob(unsigned int timeoutSec,
         _onFinish(onFinish),
         _health(allWorkers
                 ? controller->serviceProvider()->config()->allWorkers()
-                : controller->serviceProvider()->config()->workers()),
-        _numStarted(0),
-        _numFinished(0) {
+                : controller->serviceProvider()->config()->workers()) {
 }
 
 
@@ -270,12 +268,6 @@ void ClusterHealthJob::_onRequestFinish(ServiceStatusRequest::Ptr const& request
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "[replication]"
          << "  worker=" << request->worker());
 
-    // IMPORTANT: the final state is required to be tested twice. The first time
-    // it's done in order to avoid deadlock on the "in-flight" requests reporting
-    // their completion while the job termination is in a progress. And the second
-    // test is made after acquiring the lock to recheck the state in case if it
-    // has transitioned while acquiring the lock.
-
     if (state() == State::FINISHED) return;
 
     util::Lock lock(_mtx, context() + string(__func__) + "[replication]");
@@ -293,12 +285,6 @@ void ClusterHealthJob::_onRequestFinish(TestEchoQservMgtRequest::Ptr const& requ
 
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "[qserv]"
          << "  worker=" << request->worker());
-
-    // IMPORTANT: the final state is required to be tested twice. The first time
-    // it's done in order to avoid deadlock on the "in-flight" requests reporting
-    // their completion while the job termination is in a progress. And the second
-    // test is made after acquiring the lock to recheck the state in case if it
-    // has transitioned while acquiring the lock.
 
     if (state() == State::FINISHED) return;
 

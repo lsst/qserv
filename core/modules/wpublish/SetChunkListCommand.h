@@ -20,7 +20,6 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-/// SetChunkListCommand.h
 #ifndef LSST_QSERV_WPUBLISH_SET_CHUNK_LIST_COMMAND_H
 #define LSST_QSERV_WPUBLISH_SET_CHUNK_LIST_COMMAND_H
 
@@ -39,21 +38,21 @@
 namespace lsst {
 namespace qserv {
 namespace wbase {
-class SendChannel;
+    class SendChannel;
+}
+namespace wpublish {
+    class ResourceMonitor;
 }}}
 
+// This header declarations
 namespace lsst {
 namespace qserv {
 namespace wpublish {
 
-// Forward declarations
-class ResourceMonitor;
-
 /**
   * Class SetChunkListCommand sets a new list of chunks
   */
-class SetChunkListCommand
-    :   public wbase::WorkerCommand {
+class SetChunkListCommand : public wbase::WorkerCommand {
 
 public:
 
@@ -69,55 +68,48 @@ public:
     SetChunkListCommand() = delete;
 
     /**
-     * The normal constructor of the class
-     *
-     * @param sendChannel     - communication channel for reporting results
-     * @param chunkInventory  - chunks known to the application
-     * @param resourceMonitor - counters of resources which are being used
-     * @param mySqlConfig     - database connection parameters
-     * @param chunks          - collection of chunks to replace the current one
-     * @param force           - force chunks removal even if chunks are in use
+     * @param sendChannel      communication channel for reporting results
+     * @param chunkInventory   chunks known to the application
+     * @param resourceMonitor  counters of resources which are being used
+     * @param mySqlConfig      database connection parameters
+     * @param chunks           collection of chunks to replace the current one
+     * @param force            force chunks removal even if chunks are in use
      */
     SetChunkListCommand(std::shared_ptr<wbase::SendChannel> const& sendChannel,
-                        std::shared_ptr<ChunkInventory>     const& chunkInventory,
-                        std::shared_ptr<ResourceMonitor>    const& resourceMonitor,
-                        mysql::MySqlConfig                  const& mySqlConfig,
-                        std::vector<Chunk>                  const& chunks,
-                        bool                                       force);
+                        std::shared_ptr<ChunkInventory> const& chunkInventory,
+                        std::shared_ptr<ResourceMonitor> const& resourceMonitor,
+                        mysql::MySqlConfig const& mySqlConfig,
+                        std::vector<Chunk> const& chunks,
+                        bool force);
 
-    /// The destructor
     ~SetChunkListCommand() override = default;
 
-    /**
-     * Implement the corresponding method of the base class
-     *
-     * @see WorkerCommand::run()
-     */
     void run() override;
 
 private:
 
     /**
      * Set the chunk list in the reply
-     * @param reply - message to be initialized
-     * @param prevExistMap - previous state of the ChunkList
+     *
+     * @param reply         message to be initialized
+     * @param prevExistMap  previous state of the ChunkList
      */
-    void setChunks(proto::WorkerCommandSetChunkListR& reply,
-                   ChunkInventory::ExistMap const& prevExistMap);
+    void _setChunks(proto::WorkerCommandSetChunkListR& reply,
+                    ChunkInventory::ExistMap const& prevExistMap);
 
     /**
      * Report error condition to the logging stream and reply back to
      * a service caller.
      *
-     * @param status       - error status
-     * @param message      - message to be reported
-     * @param prevExistMap - previous state of the ChunkList
+     * @param status        error status
+     * @param message       message to be reported
+     * @param prevExistMap  previous state of the ChunkList
      */
-    void reportError(proto::WorkerCommandSetChunkListR::Status status,
-                     std::string const& message,
-                     ChunkInventory::ExistMap const& prevExistMap);
+    void _reportError(proto::WorkerCommandSetChunkListR::Status status,
+                      std::string const& message,
+                      ChunkInventory::ExistMap const& prevExistMap);
 
-private:
+    // Parameters of the object
 
     std::shared_ptr<ChunkInventory> _chunkInventory;
     std::shared_ptr<ResourceMonitor> _resourceMonitor;

@@ -22,7 +22,6 @@
 #define LSST_QSERV_REPLICA_QSERV_GETREPLICASJOB_H
 
 // System headers
-#include <atomic>
 #include <functional>
 #include <list>
 #include <map>
@@ -201,13 +200,9 @@ private:
     /// A collection of requests implementing the operation
     std::list<GetReplicasQservMgtRequest::Ptr> _requests;
 
-    // The counter of requests which will be updated. They need to be atomic
-    // to avoid race condition between the onFinish() callbacks executed within
-    // the Controller's thread and this thread.
-
-    std::atomic<size_t> _numLaunched;   ///< the total number of requests launched
-    std::atomic<size_t> _numFinished;   ///< the total number of finished requests
-    std::atomic<size_t> _numSuccess;    ///< the number of successfully completed requests
+    size_t _numLaunched = 0;    ///< the total number of requests launched
+    size_t _numFinished = 0;    ///< the total number of finished requests
+    size_t _numSuccess  = 0;    ///< the number of successfully completed requests
 
     /// The result of the operation (gets updated as requests are finishing)
     QservGetReplicasJobResult _replicaData;

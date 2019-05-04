@@ -44,6 +44,7 @@
 #include "wpublish/AddChunkGroupCommand.h"
 #include "wpublish/ChunkListCommand.h"
 #include "wpublish/GetChunkListCommand.h"
+#include "wpublish/GetStatusCommand.h"
 #include "wpublish/RemoveChunkGroupCommand.h"
 #include "wpublish/ResourceMonitor.h"
 #include "wpublish/SetChunkListCommand.h"
@@ -148,6 +149,8 @@ void SsiRequest::execute(XrdSsiRequest& req) {
         }
         case ResourceUnit::WORKER: {
 
+            LOGS(_log, LOG_LVL_DEBUG, "Parsing WorkerCommand for resource=" << _resourceName);
+
             wbase::WorkerCommand::Ptr const command = parseWorkerCommand(reqData, reqSize);
             if (not command) return;
 
@@ -156,8 +159,7 @@ void SsiRequest::execute(XrdSsiRequest& req) {
             ReleaseRequestBuffer();
             _processor->processCommand(command);    // Queues the command to be run later.
 
-            LOGS(_log, LOG_LVL_DEBUG, "Enqueued WorkerCommand for " << ru <<
-                 " in " << t.getElapsed() << " seconds");
+            LOGS(_log, LOG_LVL_DEBUG, "Enqueued WorkerCommand for resource=" << _resourceName);
 
             break;
         }
@@ -189,7 +191,8 @@ wbase::WorkerCommand::Ptr SsiRequest::parseWorkerCommand(char const* reqData, in
         view.parse(header);
 
         LOGS(_log, LOG_LVL_INFO, "WorkerCommandH: command=" <<
-             proto::WorkerCommandH_Command_Name(header.command()));
+             proto::WorkerCommandH_Command_Name(header.command()) <<
+             " resource=" << _resourceName);
 
         switch (header.command()) {
             case proto::WorkerCommandH::TEST_ECHO: {
@@ -243,13 +246,13 @@ wbase::WorkerCommand::Ptr SsiRequest::parseWorkerCommand(char const* reqData, in
                 view.parse(message);
 
                 if (message.rebuild())
-                    command = std::make_shared<wpublish::RebuildChunkListCommand> (
+                    command = std::make_shared<wpublish::RebuildChunkListCommand>(
                                     sendChannel,
                                     _chunkInventory,
                                     _mySqlConfig,
                                     message.reload());
                 else
-                    command = std::make_shared<wpublish::ReloadChunkListCommand> (
+                    command = std::make_shared<wpublish::ReloadChunkListCommand>(
                                     sendChannel,
                                     _chunkInventory,
                                     _mySqlConfig);
@@ -257,7 +260,7 @@ wbase::WorkerCommand::Ptr SsiRequest::parseWorkerCommand(char const* reqData, in
             }
             case proto::WorkerCommandH::GET_CHUNK_LIST: {
 
-                command = std::make_shared<wpublish::GetChunkListCommand> (
+                command = std::make_shared<wpublish::GetChunkListCommand>(
                                     sendChannel,
                                     _chunkInventory,
                                     _resourceMonitor);
@@ -280,13 +283,20 @@ wbase::WorkerCommand::Ptr SsiRequest::parseWorkerCommand(char const* reqData, in
                 }
                 bool const force = message.force();
 
-                command = std::make_shared<wpublish::SetChunkListCommand> (
+                command = std::make_shared<wpublish::SetChunkListCommand>(
                                     sendChannel,
                                     _chunkInventory,
                                     _resourceMonitor,
                                     _mySqlConfig,
                                     chunks,
                                     force);
+                break;
+            }
+            case proto::WorkerCommandH::GET_STATUS: {
+                command = std::make_shared<wpublish::GetStatusCommand>(
+                                sendChannel,
+                                _processor,
+                                _resourceMonitor);
                 break;
             }
             default:
