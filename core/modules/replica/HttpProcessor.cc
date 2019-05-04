@@ -25,6 +25,7 @@
 // System headers
 #include <functional>
 #include <iterator>
+#include <limits>
 #include <map>
 #include <iomanip>
 #include <set>
@@ -33,9 +34,11 @@
 
 // Third party headers
 #include <boost/lexical_cast.hpp>
+#include "nlohmann/json.hpp"
 
 // Qserv headers
 #include "global/intTypes.h"
+#include "replica/ChunkNumber.h"
 #include "replica/ConfigurationTypes.h"
 #include "replica/Controller.h"
 #include "replica/DatabaseMySQL.h"
@@ -43,6 +46,7 @@
 #include "replica/Performance.h"
 #include "replica/QservMgtServices.h"
 #include "replica/QservStatusJob.h"
+#include "replica/ReplicaInfo.h"
 #include "replica/SqlRequest.h"
 
 
@@ -397,6 +401,29 @@ public:
     }
 };
 
+/**
+ * @return the name of a worker which has the least number of replicas
+ * among workers mentioned in the input collection of workrs.
+ */
+template<typename COLLECTION_OF_WORKERS>
+string leastLoadedWorker(DatabaseServices::Ptr const& databaseServices,
+                         COLLECTION_OF_WORKERS const& workers) {
+    string worker;
+    string const noSpecificDatabase;
+    bool   const allDatabases = true;
+    size_t numReplicas = numeric_limits<size_t>::max();
+    for (auto&& candidateWorker: workers) {
+        size_t const num = databaseServices->numWorkerReplicas(candidateWorker,
+                                                               noSpecificDatabase,
+                                                               allDatabases);
+        if (num < numReplicas) {
+            numReplicas = num;
+            worker = candidateWorker;
+        }
+    }
+    return worker;
+}
+
 }  // namespace
 
 
@@ -475,10 +502,14 @@ void HttpProcessor::_initialize() {
         {"GET",    "/replication/v1/qserv/worker/status/:name", bind(&HttpProcessor::_getQservWorkerStatus, self, _1, _2)},
         {"GET",    "/replication/v1/qserv/master/query", bind(&HttpProcessor::_getQservManyUserQuery, self, _1, _2)},
         {"GET",    "/replication/v1/qserv/master/query/:id", bind(&HttpProcessor::_getQservUserQuery, self, _1, _2)},
-        {"GET",    "/replication/v1/trans", bind(&HttpProcessor::_getTransactions, self, _1, _2)},
-        {"GET",    "/replication/v1/trans/:id", bind(&HttpProcessor::_getTransaction, self, _1, _2)},
-        {"POST",   "/replication/v1/trans", bind(&HttpProcessor::_beginTransaction, self, _1, _2)},
-        {"PUT",    "/replication/v1/trans/:id", bind(&HttpProcessor::_endTransaction, self, _1, _2)}
+        {"GET",    "/ingest/v1/trans", bind(&HttpProcessor::_getTransactions, self, _1, _2)},
+        {"GET",    "/ingest/v1/trans/:id", bind(&HttpProcessor::_getTransaction, self, _1, _2)},
+        {"POST",   "/ingest/v1/trans", bind(&HttpProcessor::_beginTransaction, self, _1, _2)},
+        {"PUT",    "/ingest/v1/trans/:id", bind(&HttpProcessor::_endTransaction, self, _1, _2)},
+        {"POST",   "/ingest/v1/database", bind(&HttpProcessor::_addDatabase, self, _1, _2)},
+        {"PUT",    "/ingest/v1/database/:name", bind(&HttpProcessor::_publishDatabase, self, _1, _2)},
+        {"POST",   "/ingest/v1/table", bind(&HttpProcessor::_addTable, self, _1, _2)},
+        {"POST",   "/ingest/v1/chunk", bind(&HttpProcessor::_addChunk, self, _1, _2)}
     });
     controller()->serviceProvider()->httpServer()->start();
 }
@@ -1010,7 +1041,8 @@ void HttpProcessor::_getConfig(qhttp::Request::Ptr const& req,
     _debug(__func__);
 
     try {
-        resp->send(_configToJson().dump(), "application/json");
+        auto const config  = controller()->serviceProvider()->config();
+        resp->send(Configuration::toJson(config).dump(), "application/json");
     } catch (exception const& ex) {
         _error(string(__func__) + " operation failed due to: " + string(ex.what()));
         resp->sendStatus(500);
@@ -1049,7 +1081,7 @@ void HttpProcessor::_updateGeneralConfig(qhttp::Request::Ptr const& req,
         ::saveConfigParameter(general.fsNumProcessingThreads,      req->query, config, logger);
         ::saveConfigParameter(general.workerFsBufferSizeBytes,     req->query, config, logger);
 
-        resp->send(_configToJson().dump(), "application/json");
+        resp->send(Configuration::toJson(config).dump(), "application/json");
 
     } catch (boost::bad_lexical_cast const& ex) {
         _error(string(__func__) + " invalid value of a configuration parameter: " + string(ex.what()));
@@ -1104,7 +1136,7 @@ void HttpProcessor::_updateWorkerConfig(qhttp::Request::Ptr const& req,
             if (isReadOnly != 0) config->setWorkerReadOnly(worker, true);
             if (isReadOnly == 0) config->setWorkerReadOnly(worker, false);
         }
-        resp->send(_configToJson().dump(), "application/json");
+        resp->send(Configuration::toJson(config).dump(), "application/json");
 
     } catch (invalid_argument const& ex) {
         _error(string(__func__) + " invalid parameters of the request");
@@ -1121,9 +1153,10 @@ void HttpProcessor::_deleteWorkerConfig(qhttp::Request::Ptr const& req,
     _debug(__func__);
 
     try {
+        auto const config = controller()->serviceProvider()->config();
         auto const worker = req->params.at("name");
         controller()->serviceProvider()->config()->deleteWorker(worker);
-        resp->send(_configToJson().dump(), "application/json");
+        resp->send(Configuration::toJson(config).dump(), "application/json");
     } catch (invalid_argument const& ex) {
         _error(string(__func__) + " no such worker");
         resp->sendStatus(404);
@@ -1139,7 +1172,7 @@ void HttpProcessor::_addWorkerConfig(qhttp::Request::Ptr const& req,
     _debug(__func__);
 
     try {
-        // All parameters must be provided
+        auto const config = controller()->serviceProvider()->config();
         
         WorkerInfo info;
         info.name       = ::getRequiredQueryParamStr   (req->query, "name");
@@ -1161,7 +1194,7 @@ void HttpProcessor::_addWorkerConfig(qhttp::Request::Ptr const& req,
         _debug(string(__func__) + " is_read_only=" + to_string(info.isReadOnly ? 1 : 0));
 
         controller()->serviceProvider()->config()->addWorker(info);
-        resp->send(_configToJson().dump(), "application/json");
+        resp->send(Configuration::toJson(config).dump(), "application/json");
 
     } catch (invalid_argument const& ex) {
         _error(string(__func__) + " invalid parameters of the request");
@@ -1178,9 +1211,10 @@ void HttpProcessor::_deleteFamilyConfig(qhttp::Request::Ptr const& req,
     _debug(__func__);
 
     try {
+        auto const config = controller()->serviceProvider()->config();
         auto const family = req->params.at("name");
         controller()->serviceProvider()->config()->deleteDatabaseFamily(family);
-        resp->send(_configToJson().dump(), "application/json");
+        resp->send(Configuration::toJson(config).dump(), "application/json");
     } catch (invalid_argument const& ex) {
         _error(string(__func__) + " invalid parameters of the request");
         resp->sendStatus(400);
@@ -1196,7 +1230,7 @@ void HttpProcessor::_addFamilyConfig(qhttp::Request::Ptr const& req,
     _debug(__func__);
 
     try {
-        // All parameters must be provided
+        auto const config = controller()->serviceProvider()->config();
         
         DatabaseFamilyInfo info;
         info.name             = ::getRequiredQueryParamStr( req->query, "name");
@@ -1213,8 +1247,8 @@ void HttpProcessor::_addFamilyConfig(qhttp::Request::Ptr const& req,
         if (0 == info.numStripes)       throw invalid_argument("'num_stripes' can't be equal to 0");
         if (0 == info.numSubStripes)    throw invalid_argument("'num_sub_stripes' can't be equal to 0");
 
-        controller()->serviceProvider()->config()->addDatabaseFamily(info);
-        resp->send(_configToJson().dump(), "application/json");
+        config->addDatabaseFamily(info);
+        resp->send(Configuration::toJson(config).dump(), "application/json");
 
     } catch (invalid_argument const& ex) {
         _error(string(__func__) + " invalid parameters of the request, ex: " + ex.what());
@@ -1231,9 +1265,10 @@ void HttpProcessor::_deleteDatabaseConfig(qhttp::Request::Ptr const& req,
     _debug(__func__);
 
     try {
+        auto const config = controller()->serviceProvider()->config();
         auto const database = req->params.at("name");
-        controller()->serviceProvider()->config()->deleteDatabase(database);
-        resp->send(_configToJson().dump(), "application/json");
+        config->deleteDatabase(database);
+        resp->send(Configuration::toJson(config).dump(), "application/json");
     } catch (invalid_argument const& ex) {
         _error(string(__func__) + " invalid parameters of the request");
         resp->sendStatus(400);
@@ -1249,7 +1284,7 @@ void HttpProcessor::_addDatabaseConfig(qhttp::Request::Ptr const& req,
     _debug(__func__);
 
     try {
-        // All parameters must be provided
+        auto const config = controller()->serviceProvider()->config();
         
         DatabaseInfo info;
         info.name   = ::getRequiredQueryParamStr(req->query, "name");
@@ -1259,8 +1294,8 @@ void HttpProcessor::_addDatabaseConfig(qhttp::Request::Ptr const& req,
         _debug(string(__func__) + " family=" + info.family);
 
  
-        controller()->serviceProvider()->config()->addDatabase(info);
-        resp->send(_configToJson().dump(), "application/json");
+        config->addDatabase(info);
+        resp->send(Configuration::toJson(config).dump(), "application/json");
 
     } catch (invalid_argument const& ex) {
         _error(string(__func__) + " invalid parameters of the request, ex: " + ex.what());
@@ -1277,10 +1312,11 @@ void HttpProcessor::_deleteTableConfig(qhttp::Request::Ptr const& req,
     _debug(__func__);
 
     try {
+        auto const config = controller()->serviceProvider()->config();
         auto const table = req->params.at("name");
         auto const database = ::getRequiredQueryParamStr(req->query, "database");
-        controller()->serviceProvider()->config()->deleteTable(database, table);
-        resp->send(_configToJson().dump(), "application/json");
+        config->deleteTable(database, table);
+        resp->send(Configuration::toJson(config).dump(), "application/json");
     } catch (invalid_argument const& ex) {
         _error(string(__func__) + " invalid parameters of the request");
         resp->sendStatus(400);
@@ -1296,7 +1332,7 @@ void HttpProcessor::_addTableConfig(qhttp::Request::Ptr const& req,
     _debug(__func__);
 
     try {
-        // All parameters must be provided
+        auto const config = controller()->serviceProvider()->config();
         
         auto const table         = ::getRequiredQueryParamStr( req->query, "name");
         auto const database      = ::getRequiredQueryParamStr( req->query, "database");
@@ -1306,8 +1342,8 @@ void HttpProcessor::_addTableConfig(qhttp::Request::Ptr const& req,
         _debug(string(__func__) + " database="       + database);
         _debug(string(__func__) + " is_partitioned=" + to_string(isPartitioned ? 1 : 0));
 
-        controller()->serviceProvider()->config()->addTable(database, table, isPartitioned);
-        resp->send(_configToJson().dump(), "application/json");
+        config->addTable(database, table, isPartitioned);
+        resp->send(Configuration::toJson(config).dump(), "application/json");
 
     } catch (invalid_argument const& ex) {
         _error(string(__func__) + " invalid parameters of the request, ex: " + ex.what());
@@ -1495,48 +1531,6 @@ void HttpProcessor::_getQservUserQuery(qhttp::Request::Ptr const& req,
 }
 
 
-json HttpProcessor::_configToJson() const {
-
-    json configJson;
-
-    auto const config = controller()->serviceProvider()->config();
-
-    // General parameters
-
-    ConfigurationGeneralParams general;
-    configJson["general"] = general.toJson(config);
-
-    // Workers
-
-    json workersJson;
-    for (auto&& worker: config->allWorkers()) {
-        auto const wi = config->workerInfo(worker);
-        workersJson.push_back(wi.toJson());
-    }
-    configJson["workers"] = workersJson;
-
-    // Database families, databases, and tables
-
-    json familiesJson;
-    for (auto&& family: config->databaseFamilies()) {
-        auto const fi = config->databaseFamilyInfo(family);
-        json familyJson = fi.toJson();
-        bool const allDatabases = true;
-        for (auto&& database: config->databases(family, allDatabases)) {
-            auto const di = config->databaseInfo(database);
-            familyJson["databases"].push_back(di.toJson());
-        }
-        familiesJson.push_back(familyJson);
-    }
-    configJson["families"] = familiesJson;
-
-    json resultJson;
-    resultJson["config"] = configJson;
-
-    return resultJson;
-}
-
-
 json HttpProcessor::_getQueries(json& workerInfo) const {
 
     json result;
@@ -1719,6 +1713,289 @@ void HttpProcessor::_endTransaction(qhttp::Request::Ptr const& req,
         result["transactions"].push_back(
             controller()->serviceProvider()->databaseServices()->endTransaction(id, abort).toJson()
         );
+
+    } catch (invalid_argument const& ex) {
+        auto error = "invalid parameters of the request, ex: " + string(ex.what());
+        _error(__func__, error);
+        result["error"] = error;
+    } catch (exception const& ex) {
+        auto error = "operation failed due to: " + string(ex.what());
+        _error(__func__, error);
+        result["error"] = error;
+    }
+    resp->send(result.dump(), "application/json");
+}
+
+
+void HttpProcessor::_addDatabase(qhttp::Request::Ptr const& req,
+                                 qhttp::Response::Ptr const& resp) {
+    _debug(__func__);
+
+    json result;
+    result["success"] = 0;
+    result["error"] = "";
+    result["database"] = json::object();
+
+    try {
+
+        ::HttpRequestBody body(req);
+
+        auto const database      = body.required("database");
+        auto const numStripes    = stoul(body.required("num_stripes"));
+        auto const numSubStripes = stoul(body.required("num_sub_stripes"));
+
+        _debug(string(__func__) + " database="      + database);
+        _debug(string(__func__) + " numStripes="    + to_string(numStripes));
+        _debug(string(__func__) + " numSubStripes=" + to_string(numSubStripes));
+
+        // Acquire a lock on the operations with the Ingest system
+
+        // Check if the database doesn't exist
+        
+        // Find an appropriate database family for the database. If none
+        // found then create a new one named after the database.
+
+        // Register the new database in the Configuration
+
+        // Get the JSON representation of the database
+
+        result["success"] = 1;
+
+    } catch (invalid_argument const& ex) {
+        auto error = "invalid parameters of the request, ex: " + string(ex.what());
+        _error(__func__, error);
+        result["error"] = error;
+    } catch (exception const& ex) {
+        auto error = "operation failed due to: " + string(ex.what());
+        _error(__func__, error);
+        result["error"] = error;
+    }
+    resp->send(result.dump(), "application/json");
+}
+
+
+void HttpProcessor::_publishDatabase(qhttp::Request::Ptr const& req,
+                                     qhttp::Response::Ptr const& resp) {
+    _debug(__func__);
+
+    json result;
+    result["success"] = 0;
+    result["error"] = "";
+    result["database"] = json::object();
+
+    try {
+
+        auto const database = ::getRequiredQueryParamStr(req->query, "database");
+
+        _debug(string(__func__) + " database=" + database);
+
+        // Acquire a lock on the operations with the Ingest system
+
+        // Check if the database exists
+
+        // Check if the database is not in the published state
+
+        // Publish the database in the configuration
+
+        // Get the JSON representation of the database
+
+        result["success"] = 1;
+
+    } catch (invalid_argument const& ex) {
+        auto error = "invalid parameters of the request, ex: " + string(ex.what());
+        _error(__func__, error);
+        result["error"] = error;
+    } catch (exception const& ex) {
+        auto error = "operation failed due to: " + string(ex.what());
+        _error(__func__, error);
+        result["error"] = error;
+    }
+    resp->send(result.dump(), "application/json");
+}
+
+
+void HttpProcessor::_addTable(qhttp::Request::Ptr const& req,
+                              qhttp::Response::Ptr const& resp) {
+    _debug(__func__);
+
+    json result;
+    result["success"] = 0;
+    result["error"] = "";
+
+    try {
+
+        ::HttpRequestBody body(req);
+
+        auto const database      = body.required("database");
+        auto const table         = body.required("table");
+        auto const isPartitioned = (bool)stoul(body.required("is_partitioned"));
+        auto const schema        = body.required("schema");
+
+        _debug(string(__func__) + " database="      + database);
+        _debug(string(__func__) + " table="         + table);
+        _debug(string(__func__) + " isPartitioned=" + (isPartitioned ? "1" : "0"));
+
+        // Acquire a lock on the operations with the Ingest system
+
+        // Check if the database exists
+
+        // Check if the database is not in the published state
+
+        // Check if the table doesn't exist
+
+        // Parse the schema string into a JSON object with definition of columns
+
+        // Check if the schema doesn't have a special column 'qserv_trans_id'
+        // Add it as the very first one
+
+        // Validate table schema by creating a table in a local database
+
+        // Register table in the Configuration
+
+        // Store schema in the Configuration
+
+        result["success"] = 1;
+
+    } catch (invalid_argument const& ex) {
+        auto error = "invalid parameters of the request, ex: " + string(ex.what());
+        _error(__func__, error);
+        result["error"] = error;
+    } catch (exception const& ex) {
+        auto error = "operation failed due to: " + string(ex.what());
+        _error(__func__, error);
+        result["error"] = error;
+    }
+    resp->send(result.dump(), "application/json");
+}
+
+
+void HttpProcessor::_addChunk(qhttp::Request::Ptr const& req,
+                              qhttp::Response::Ptr const& resp) {
+    _debug(__func__);
+
+    json result;
+    result["success"] = 0;
+    result["error"] = "";
+    result["location"] = json::object();
+
+    try {
+
+        ::HttpRequestBody body(req);
+
+        auto const transactionId = stoul(body.required("transaction_id"));
+        auto const chunk = stoul(body.required("chunk"));
+
+        _debug(string(__func__) + " transactionId=" + to_string(transactionId));
+        _debug(string(__func__) + " chunk=" + to_string(chunk));
+
+        auto const databaseServices = controller()->serviceProvider()->databaseServices();
+        auto const config = controller()->serviceProvider()->config();
+
+        auto const transactionInfo = databaseServices->transaction(transactionId);
+        if (transactionInfo.state != "STARTED") {
+            throw logic_error("this transaction is already over");
+        }
+        auto const databaseInfo = config->databaseInfo(transactionInfo.database);
+        auto const databaseFamilyInfo = config->databaseFamilyInfo(databaseInfo.family);
+
+        ChunkNumberQservValidator const validator(databaseFamilyInfo.numStripes,
+                                                  databaseFamilyInfo.numSubStripes);
+        if (not validator.valid(chunk)) {
+            throw logic_error("this chunk number is not valid");
+        }
+
+        // This locks prevents other invocations of the method from making different
+        // decisions on a chunk placement.
+        util::Lock lock(_ingestManagementMtx, "HttpProcessor::" + string(__func__));
+
+        // Decide on a worker where the chunk is best to be located.
+        // If the chunk is already there then use it. Otherwise register an empty chunk
+        // at some least loaded worker.
+        //
+        // ATTENTION: the current implementation of the algorithm assumes that
+        // newly ingested chunks won't have replicas. This will change later
+        // when the Replication system will be enhanced to allow creating replicas
+        // of chunks within UNPUBLISHED databases.
+        
+        string worker;
+
+        vector<ReplicaInfo> replicas;
+        databaseServices->findReplicas(replicas, chunk, transactionInfo.database);
+        if (replicas.size() > 1) {
+            throw runtime_error("this chunk has too many replicas");
+        }
+        if (replicas.size() == 1) {
+            worker = replicas[0].worker();
+        } else {
+
+            // Search chunk in all databases of the same family to see
+            // which workers may have replicas of the same chunk.
+            // The idea here is to ensure the 'chunk colocation' requirements
+            // is met, so that no unnecessary replica migration will be needed
+            // when the database will be being published.
+ 
+            bool const allDatabases = true;
+
+            set<string> candidateWorkers;
+            for (auto&& database: config->databases(databaseInfo.family, allDatabases)) {
+                vector<ReplicaInfo> replicas;
+                databaseServices->findReplicas(replicas, chunk, database);
+                for (auto&& replica: replicas) {
+                    candidateWorkers.insert(replica.worker());
+                }
+            }
+            if (not candidateWorkers.empty()) {
+
+                // Among those workers which have been found to have replicas with
+                // the same chunk pick the one which has the least number of replicas
+                // (of any chunks in any databases). The goal here is to ensure all
+                // workers are equally loaded with data.
+                //
+                // NOTE: a decision of which worker is 'least loaded' is based
+                // purely on the replica count, not on the amount of data residing
+                // in the workers' databases.
+
+                worker = ::leastLoadedWorker(databaseServices, candidateWorkers);
+
+            } else {
+
+                // We got here because no database within the family has a chunk
+                // with this number. Hence we need to pick some least loaded worker
+                // among all known workers. 
+
+                worker = ::leastLoadedWorker(databaseServices, config->workers());
+            }
+
+            // Register the new chunk
+            //
+            // TODO: Use status COMPLETE for now. Consider extending schema
+            // of table 'replica' to store the status as well. This will allow
+            // to differentiate between the 'INGEST_PRIMARY' and 'INGEST_SECONDARY' replicas,
+            // which will be used for making the second replica of a chunk and selecting
+            // the right version for further ingests.
+
+            auto const verifyTime = PerformanceUtils::now();
+            ReplicaInfo const newReplica(ReplicaInfo::Status::COMPLETE,
+                                         worker,
+                                         transactionInfo.database,
+                                         chunk,
+                                         verifyTime);
+            databaseServices->saveReplicaInfo(newReplica);
+        }
+        
+        // The sanity check, just to make sure we've found a worker
+        if (worker.empty()) {
+            throw runtime_error("no suitable worker found");
+        }
+
+        // Pull connection parameters of the loader for the worker
+
+        auto const workerInfo = config->workerInfo(worker);
+
+        result["success"] = 1;
+        result["location"]["worker"] = workerInfo.name;
+        result["location"]["host"]   = workerInfo.loaderHost;
+        result["location"]["port"]   = workerInfo.loaderPort;
 
     } catch (invalid_argument const& ex) {
         auto error = "invalid parameters of the request, ex: " + string(ex.what());

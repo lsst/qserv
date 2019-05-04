@@ -78,6 +78,9 @@ public:
     uint16_t    dbPort = 0;     /// The port number of the worker database service
     std::string dbUser;         /// The name of a user account for connecting to the database service
 
+    std::string loaderHost;     /// The host name (or IP address) of the ingest (loader) service
+    uint16_t    loaderPort = 0; /// The port number of the ingest service
+
     /// @return JSON representation of the object
     nlohmann::json toJson() const;
 };

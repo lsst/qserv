@@ -26,9 +26,6 @@
 #include <memory>
 #include <set>
 
-// Third party headers
-#include "nlohmann/json.hpp"
-
 // Qserv headers
 #include "qhttp/Server.h"
 #include "replica/DeleteWorkerTask.h"
@@ -290,9 +287,30 @@ private:
                          qhttp::Response::Ptr const& resp);
 
     /**
-     * Pull the current Configuration and translate it into a JSON object
+     * Register a database for an ingest
      */
-    nlohmann::json _configToJson() const;
+    void _addDatabase(qhttp::Request::Ptr const& req,
+                      qhttp::Response::Ptr const& resp);
+
+    /**
+     * Publish a database whose data were ingested earlier
+     */
+    void _publishDatabase(qhttp::Request::Ptr const& req,
+                          qhttp::Response::Ptr const& resp);
+
+    /**
+     * Register a database table for an ingest
+     */
+    void _addTable(qhttp::Request::Ptr const& req,
+                   qhttp::Response::Ptr const& resp);
+
+    /**
+     * Register (if it's not register yet) a chunk for ingest.
+     * Return connection parameters to an end-point service where chunk
+     * data will need to be ingested.
+     */
+    void _addChunk(qhttp::Request::Ptr const& req,
+                   qhttp::Response::Ptr const& resp);
 
     /**
      * Find descriptions of queries
@@ -319,6 +337,8 @@ private:
     uint64_t _replicationLevelReportTimeMs = 0; /// The time of the last cached report
 
     util::Mutex _replicationLevelMtx; /// Protects the replication level cache
+
+    util::Mutex _ingestManagementMtx;  /// Synchronized access to the Ingest management operations
 
     LOG_LOGGER _log;
 };

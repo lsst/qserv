@@ -64,6 +64,8 @@ json WorkerInfo::toJson() const {
     infoJson["db_host"]      = dbHost;
     infoJson["db_port"]      = dbPort;
     infoJson["db_user"]      = dbUser;
+    infoJson["loader_host"]  = loaderHost;
+    infoJson["loader_port"]  = loaderPort;
 
     return infoJson;
 }
