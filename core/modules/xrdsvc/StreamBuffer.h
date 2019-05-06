@@ -67,17 +67,13 @@ public:
     /// Call to recycle the buffer when finished (normally called by XrdSsi).
     void Recycle() override;
 
-    // Wait until Recycle() is called.
+    /// Wait until Recycle() is called.
     void waitForDoneWithThis();
 
-    // Inherited from XrdSsiStream:
-    // char  *data; //!> -> Buffer containing the data
-    // Buffer *next; //!> For chaining by buffer receiver
-
-    virtual ~StreamBuffer();
+    ~StreamBuffer() override;
 
 private:
-    // This constructor will invalidate 'input'.
+    /// This constructor will invalidate 'input'.
     explicit StreamBuffer(std::string &input);
 
     std::string _dataStr;

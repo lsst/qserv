@@ -112,7 +112,7 @@ public:
     BlendScheduler() = delete;
     BlendScheduler(BlendScheduler const&) = delete;
     BlendScheduler& operator=(BlendScheduler const&) = delete;
-    virtual ~BlendScheduler() = default;
+    ~BlendScheduler() override = default;
 
     void queCmd(util::Command::Ptr const& cmd) override;
     util::Command::Ptr getCmd(bool wait) override;
