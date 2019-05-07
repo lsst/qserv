@@ -81,6 +81,10 @@ public:
     std::string loaderHost;     /// The host name (or IP address) of the ingest (loader) service
     uint16_t    loaderPort = 0; /// The port number of the ingest service
 
+    std::string loaderTmpDir;   /// An absolute path to the temporary directory which would be used
+                                /// by the service. The folder must be write-enabled for a user
+                                /// under which the service will be run.
+
     /// @return JSON representation of the object
     nlohmann::json toJson() const;
 };
@@ -945,6 +949,75 @@ public:
     virtual WorkerInfo setWorkerDbUser(std::string const& name,
                                        std::string const& user) = 0;
 
+    /**
+     * Change the host name of the worker's Ingest service
+     *
+     * @note
+     *   This operation may throw implementation-specific exceptions
+     *   which are not covered by this technology-neutral interface.
+     * @note
+     *
+     * @param name
+     *   the name of a worker affected by the operation
+     *
+     * @param host
+     *   the name of a new host
+     *
+     * @return
+     *   updated worker descriptor
+     *
+     * @throw std::invalid_argument
+     *   if the specified worker was not found in the configuration.
+     */
+    virtual WorkerInfo setWorkerLoaderHost(std::string const& name,
+                                           std::string const& host) = 0;
+
+    /**
+     * Change the port number of the worker's Ingest service
+     *
+     * @note
+     *   This operation may throw implementation-specific exceptions
+     *   which are not covered by this technology-neutral interface.
+     * @note
+     *
+     * @param name
+     *   the name of a worker affected by the operation
+     *
+     * @param port
+     *   the number of a new port
+     *
+     * @return
+     *   updated worker descriptor
+     *
+     * @throw std::invalid_argument
+     *   if the specified worker was not found in the configuration.
+     */
+    virtual WorkerInfo setWorkerLoaderPort(std::string const& name,
+                                           uint16_t port) = 0;
+
+    /**
+     * Change the temporary directory of the worker's Ingest service
+     *
+     * @note
+     *   This operation may throw implementation-specific exceptions
+     *   which are not covered by this technology-neutral interface.
+     * @note
+     *
+     * @param name
+     *   the name of a worker
+     *
+     * @param tmpDir
+     *   the new file system path
+     *
+     * @return
+     *   updated worker descriptor
+     *
+     * @throw std::invalid_argument
+     *   if the specified worker was not found in the configuration.
+     */
+    virtual WorkerInfo setWorkerLoaderTmpDir(std::string const& name,
+                                             std::string const& tmpDir) = 0;
+
     /// @return the name of the default technology for implementing requests
     std::string const& workerTechnology() const { return _workerTechnology; }
 
@@ -972,6 +1045,12 @@ public:
     /// @param val  the new value of the parameter
     virtual void setWorkerFsBufferSizeBytes(size_t val) = 0;
 
+
+    /// @return the number of request processing threads in each worker's Ingest service
+    size_t loaderNumProcessingThreads() const { return _loaderNumProcessingThreads; }
+
+    /// @param val  the new value of the parameter
+    virtual void setLoaderNumProcessingThreads(size_t val) = 0;
 
     // -----------
     // -- Misc. --
@@ -1012,6 +1091,7 @@ protected:
     static size_t       const defaultWorkerNumProcessingThreads;
     static size_t       const defaultFsNumProcessingThreads;
     static size_t       const defaultWorkerFsBufferSizeBytes;
+    static size_t       const defaultLoaderNumProcessingThreads;
     static std::string  const defaultWorkerSvcHost;
     static uint16_t     const defaultWorkerSvcPort;
     static std::string  const defaultWorkerFsHost;
@@ -1020,6 +1100,9 @@ protected:
     static std::string  const defaultWorkerDbHost;
     static uint16_t     const defaultWorkerDbPort;
     static std::string  const defaultWorkerDbUser;
+    static std::string  const defaultWorkerLoaderHost;
+    static uint16_t     const defaultWorkerLoaderPort;
+    static std::string  const defaultWorkerLoaderTmpDir;
     static std::string  const defaultDatabaseTechnology;
     static std::string  const defaultDatabaseHost;
     static uint16_t     const defaultDatabasePort;
@@ -1042,17 +1125,17 @@ protected:
     static unsigned int const defaultNumSubStripes;
 
     /**
-     * In-place translation of the the data directory string by finding an optional
+     * In-place translation of the a worker directory string by finding an optional
      * placeholder '{worker}' and replacing it with the name of the specified worker.
      *
-     * @param dataDir
+     * @param path
      *   the string to be translated
      * 
      * @param workerName
      *   the actual name of a worker for replacing the placeholder
      */
-    static void translateDataDir(std::string&       dataDir,
-                                 std::string const& workerName);
+    static void translateWorkerDir(std::string& path,
+                                   std::string const& workerName);
     /**
      * Construct the object
      *
@@ -1143,6 +1226,7 @@ protected:
     size_t _workerNumProcessingThreads;
     size_t _fsNumProcessingThreads;
     size_t _workerFsBufferSizeBytes;
+    size_t _loaderNumProcessingThreads;
 
     std::map<std::string, DatabaseFamilyInfo> _databaseFamilyInfo;
     std::map<std::string, DatabaseInfo>       _databaseInfo;

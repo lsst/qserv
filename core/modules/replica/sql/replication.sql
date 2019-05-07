@@ -55,11 +55,18 @@ CREATE TABLE IF NOT EXISTS `config_worker` (
   `db_port`      SMALLINT UNSIGNED  DEFAULT NULL ,  -- override for the global default
   `db_user`      VARCHAR(255)       DEFAULT NULL ,  -- override for the global default
 
+  -- Ingest service
+
+  `loader_host`    VARCHAR(255)       NOT NULL ,        -- the host name on which the worker's ingest server runs
+  `loader_port`    SMALLINT UNSIGNED  DEFAULT NULL ,    -- override for the global default
+  `loader_tmp_dir` VARCHAR(255)       DEFAULT NULL ,    -- a file system path to the temporary folder
+
   PRIMARY KEY (`name`) ,
 
   UNIQUE  KEY (`svc_host`, `svc_port`) ,
   UNIQUE  KEY (`fs_host`,  `fs_port`) ,
   UNIQUE  KEY (`db_host`,  `db_port`)
+  UNIQUE  KEY (`loader_host`, `loader_port`)
 )
 ENGINE = InnoDB;
 

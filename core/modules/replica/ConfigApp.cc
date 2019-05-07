@@ -192,6 +192,21 @@ ConfigApp::ConfigApp(int argc, char* argv[])
         ", turn it int the read-write mode if 0.",
         _workerReadOnly);
 
+    updateWorkerCmd.option(
+        "worker-loader-host",
+        "The new DNS name or an IP address where the worker's Catalog Ingest service runs.",
+        _workerInfo.loaderHost);
+
+    updateWorkerCmd.option(
+        "worker-loader-port",
+        "The port number of the worker's Catalog Ingest service.",
+        _workerInfo.loaderPort);
+
+    updateWorkerCmd.option(
+        "worker-loader-tmp-dir",
+        "The name of a user account for a temporary folder of the worker's Catalog Ingest service.",
+        _workerInfo.loaderTmpDir);
+
     // Command-specific parameters, options and flags
 
     auto&& addWorkerCmd = parser().command("ADD_WORKER");
@@ -236,6 +251,36 @@ ConfigApp::ConfigApp(int argc, char* argv[])
         "Set to '0' if the worker is NOT turned into the read-only mode upon creation.",
         _workerInfo.isReadOnly);
 
+    addWorkerCmd.required(
+        "db-host",
+        "The DNS name or an IP address where the worker's Database Service runs.",
+        _workerInfo.dbHost);
+
+    addWorkerCmd.required(
+        "db-port",
+        "The port number of the worker's Database Service.",
+        _workerInfo.dbPort);
+
+    addWorkerCmd.required(
+        "db-user",
+        "The name of the MySQL user for the worker's Database Service",
+        _workerInfo.dbUser);
+
+    addWorkerCmd.required(
+        "loader-host",
+        "The DNS name or an IP address where the worker's Catalog Ingest Server runs.",
+        _workerInfo.loaderHost);
+
+    addWorkerCmd.required(
+        "loader-port",
+        "The port number of the worker's Catalog Ingest Server.",
+        _workerInfo.loaderPort);
+
+    addWorkerCmd.required(
+        "loader-tmp-dir",
+        "The temporay directory of the worker's Ingest Service",
+        _workerInfo.loaderTmpDir);
+
     // Command-specific parameters, options and flags
 
     parser().command("DELETE_WORKER").required(
@@ -264,6 +309,7 @@ ConfigApp::ConfigApp(int argc, char* argv[])
     ::addCommandOption(updateGeneralCmd, _general.workerNumProcessingThreads);
     ::addCommandOption(updateGeneralCmd, _general.fsNumProcessingThreads);
     ::addCommandOption(updateGeneralCmd, _general.workerFsBufferSizeBytes);
+    ::addCommandOption(updateGeneralCmd, _general.loaderNumProcessingThreads);
 
     // Command-specific parameters, options and flags
 
@@ -545,11 +591,15 @@ void ConfigApp::_dumpGeneralAsTable(string const& indent) const {
     value.      push_back(_general.workerFsBufferSizeBytes.str(_config));
     description.push_back(_general.workerFsBufferSizeBytes.description);
 
+    parameter.  push_back(_general.loaderNumProcessingThreads.key);
+    value.      push_back(_general.loaderNumProcessingThreads.str(_config));
+    description.push_back(_general.loaderNumProcessingThreads.description);
+
     util::ColumnTablePrinter table("GENERAL PARAMETERS:", indent, _verticalSeparator);
 
-    table.addColumn("parameter",   parameter,   util::ColumnTablePrinter::Alignment::LEFT);
+    table.addColumn("parameter",   parameter,   util::ColumnTablePrinter::LEFT);
     table.addColumn("value",       value);
-    table.addColumn("description", description, util::ColumnTablePrinter::Alignment::LEFT);
+    table.addColumn("description", description, util::ColumnTablePrinter::LEFT);
 
     table.print(cout, false, false);
 }
@@ -563,43 +613,52 @@ void ConfigApp::_dumpWorkersAsTable(string const& indent) const {
     vector<string> name;
     vector<string> isEnabled;
     vector<string> isReadOnly;
+    vector<string> dataDir;
     vector<string> svcHost;
     vector<string> svcPort;
     vector<string> fsHost;
     vector<string> fsPort;
-    vector<string> dataDir;
     vector<string> dbHost;
     vector<string> dbPort;
     vector<string> dbUser;
+    vector<string> loaderHost;
+    vector<string> loaderPort;
+    vector<string> loaderTmpDir;
 
     for (auto&& worker: _config->allWorkers()) {
         auto const wi = _config->workerInfo(worker);
-        name       .push_back(wi.name);
-        isEnabled  .push_back(wi.isEnabled  ? "yes" : "no");
-        isReadOnly .push_back(wi.isReadOnly ? "yes" : "no");
-        svcHost    .push_back(wi.svcHost);
-        svcPort    .push_back(to_string(wi.svcPort));
-        fsHost     .push_back(wi.fsHost);
-        fsPort     .push_back(to_string(wi.fsPort));
-        dbHost     .push_back(wi.dbHost);
-        dbPort     .push_back(to_string(wi.dbPort));
-        dbUser     .push_back(wi.dbUser);
-        dataDir    .push_back(wi.dataDir);
+        name.push_back(wi.name);
+        isEnabled.push_back(wi.isEnabled  ? "yes" : "no");
+        isReadOnly.push_back(wi.isReadOnly ? "yes" : "no");
+        dataDir.push_back(wi.dataDir);
+        svcHost.push_back(wi.svcHost);
+        svcPort.push_back(to_string(wi.svcPort));
+        fsHost.push_back(wi.fsHost);
+        fsPort.push_back(to_string(wi.fsPort));
+        dbHost.push_back(wi.dbHost);
+        dbPort.push_back(to_string(wi.dbPort));
+        dbUser.push_back(wi.dbUser);
+        loaderHost.push_back(wi.loaderHost);
+        loaderPort.push_back(to_string(wi.loaderPort));
+        loaderTmpDir.push_back(wi.loaderTmpDir);
     }
 
     util::ColumnTablePrinter table("WORKERS:", indent, _verticalSeparator);
 
-    table.addColumn("name",               name,        util::ColumnTablePrinter::Alignment::LEFT);
-    table.addColumn("enabled",            isEnabled);
-    table.addColumn("read-only",          isReadOnly);
-    table.addColumn("Replication server", svcHost,     util::ColumnTablePrinter::Alignment::LEFT);
-    table.addColumn(":port",              svcPort);
-    table.addColumn("File server",        fsHost,      util::ColumnTablePrinter::Alignment::LEFT);
-    table.addColumn(":port",              fsPort);
-    table.addColumn("Database server",    dbHost,      util::ColumnTablePrinter::Alignment::LEFT);
-    table.addColumn(":port",              dbPort);
-    table.addColumn(":user",              dbUser,      util::ColumnTablePrinter::Alignment::LEFT);
-    table.addColumn("Data directory",     dataDir,     util::ColumnTablePrinter::Alignment::LEFT);
+    table.addColumn("name", name, util::ColumnTablePrinter::LEFT);
+    table.addColumn("enabled", isEnabled);
+    table.addColumn("read-only", isReadOnly);
+    table.addColumn("Data directory", dataDir, util::ColumnTablePrinter::LEFT);
+    table.addColumn("Replication server", svcHost, util::ColumnTablePrinter::LEFT);
+    table.addColumn(":port", svcPort);
+    table.addColumn("File server", fsHost, util::ColumnTablePrinter::LEFT);
+    table.addColumn(":port", fsPort);
+    table.addColumn("Database server", dbHost, util::ColumnTablePrinter::LEFT);
+    table.addColumn(":port", dbPort);
+    table.addColumn(":user", dbUser, util::ColumnTablePrinter::LEFT);
+    table.addColumn("Ingest server", loaderHost, util::ColumnTablePrinter::LEFT);
+    table.addColumn(":port", loaderPort);
+    table.addColumn(":tmp", loaderTmpDir, util::ColumnTablePrinter::LEFT);
 
     table.print(cout, false, false);
 }
@@ -625,7 +684,7 @@ void ConfigApp::_dumpFamiliesAsTable(string const& indent) const {
 
     util::ColumnTablePrinter table("DATABASE FAMILIES:", indent, _verticalSeparator);
 
-    table.addColumn("name", name, util::ColumnTablePrinter::Alignment::LEFT);
+    table.addColumn("name", name, util::ColumnTablePrinter::LEFT);
     table.addColumn("replication level", replicationLevel);
     table.addColumn("stripes", numStripes);
     table.addColumn("sub-stripes", numSubStripes);
@@ -674,10 +733,10 @@ void ConfigApp::_dumpDatabasesAsTable(string const& indent) const {
 
     util::ColumnTablePrinter table("DATABASES & TABLES:", indent, _verticalSeparator);
 
-    table.addColumn("family",       familyName,   util::ColumnTablePrinter::Alignment::LEFT);
-    table.addColumn("database",     databaseName, util::ColumnTablePrinter::Alignment::LEFT);
+    table.addColumn("family",       familyName,   util::ColumnTablePrinter::LEFT);
+    table.addColumn("database",     databaseName, util::ColumnTablePrinter::LEFT);
     table.addColumn(":published",   isPublished);
-    table.addColumn("table",        tableName,    util::ColumnTablePrinter::Alignment::LEFT);
+    table.addColumn("table",        tableName,    util::ColumnTablePrinter::LEFT);
     table.addColumn(":partitioned", isPartitioned);
 
     table.print(cout, false, false);
@@ -775,7 +834,6 @@ int ConfigApp::_updateWorker() const {
             _config->setWorkerDataDir(_workerInfo.name,
                                       _workerInfo.dataDir);
         }
-
         if (not _workerInfo.dbHost.empty()
             and _workerInfo.dbHost != info.dbHost) {
 
@@ -805,6 +863,24 @@ int ConfigApp::_updateWorker() const {
         }
         if (_workerReadOnly == 0 and info.isReadOnly) {
             _config->setWorkerReadOnly(_workerInfo.name, false);
+        }
+        if (not _workerInfo.loaderHost.empty()
+            and _workerInfo.loaderHost != info.loaderHost) {
+
+            _config->setWorkerLoaderHost(_workerInfo.name,
+                                         _workerInfo.loaderHost);
+        }
+        if (_workerInfo.loaderPort != 0 and
+            _workerInfo.loaderPort != info.loaderPort) {
+
+            _config->setWorkerLoaderPort(_workerInfo.name,
+                                         _workerInfo.loaderPort);
+        }
+        if (not _workerInfo.loaderTmpDir.empty()
+            and _workerInfo.loaderTmpDir != _workerInfo.loaderTmpDir) {
+
+            _config->setWorkerLoaderTmpDir(_workerInfo.name,
+                                           _workerInfo.loaderTmpDir);
         }
     } catch (exception const& ex) {
         LOGS(_log, LOG_LVL_ERROR, context << "operation failed, exception: " << ex.what());

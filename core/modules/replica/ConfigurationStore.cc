@@ -259,6 +259,44 @@ WorkerInfo ConfigurationStore::setWorkerDbUser(std::string const& name,
 }
 
 
+WorkerInfo ConfigurationStore::setWorkerLoaderHost(string const& name,
+                                                   string const& host) {
+    LOGS(_log, LOG_LVL_DEBUG, context(__func__) << "  name=" << name << " host=" << host);
+
+    util::Lock lock(_mtx, context(__func__));
+    auto itr = safeFindWorker(lock, name, _classMethodContext(__func__));
+    itr->second.loaderHost = host;
+
+    return itr->second;
+}
+
+
+WorkerInfo ConfigurationStore::setWorkerLoaderPort(string const& name,
+                                                   uint16_t port) {
+    LOGS(_log, LOG_LVL_DEBUG, context(__func__) << "  name=" << name << " port=" << port);
+
+    util::Lock lock(_mtx, context(__func__));
+    auto itr = safeFindWorker(lock, name, _classMethodContext(__func__));
+    itr->second.loaderPort = port;
+
+    return itr->second;
+}
+
+
+WorkerInfo ConfigurationStore::setWorkerLoaderTmpDir(string const& name,
+                                                     string const& tmpDir) {
+
+    LOGS(_log, LOG_LVL_DEBUG, context(__func__) << "  name=" << name << " tmpDir=" << tmpDir);
+
+    util::Lock lock(_mtx, context(__func__));
+    auto itr = safeFindWorker(lock, name, _classMethodContext(__func__));
+    itr->second.loaderTmpDir = tmpDir;
+
+    return itr->second;
+
+}
+
+
 DatabaseFamilyInfo ConfigurationStore::addDatabaseFamily(DatabaseFamilyInfo const& info) {
 
     LOGS(_log, LOG_LVL_DEBUG, context(__func__) << "  familyInfo: " << info);
@@ -537,6 +575,7 @@ void ConfigurationStore::_loadConfiguration(util::ConfigStore const& configStore
     ::parseKeyVal(configStore, "worker.num_svc_processing_threads", _workerNumProcessingThreads,   defaultWorkerNumProcessingThreads);
     ::parseKeyVal(configStore, "worker.num_fs_processing_threads",  _fsNumProcessingThreads,       defaultFsNumProcessingThreads);
     ::parseKeyVal(configStore, "worker.fs_buf_size_bytes",          _workerFsBufferSizeBytes,      defaultWorkerFsBufferSizeBytes);
+    ::parseKeyVal(configStore, "worker.num_loader_processing_threads", _loaderNumProcessingThreads, defaultLoaderNumProcessingThreads);
 
 
     // Optional common parameters for workers
@@ -546,12 +585,16 @@ void ConfigurationStore::_loadConfiguration(util::ConfigStore const& configStore
     string   commonDataDir;
     uint16_t commonWorkerDbPort;
     string   commonWorkerDbUser;
+    uint16_t commonWorkerLoaderPort;
+    string   commonWorkerLoaderTmpDir;
 
     ::parseKeyVal(configStore, "worker.svc_port",    commonWorkerSvcPort,    defaultWorkerSvcPort);
     ::parseKeyVal(configStore, "worker.fs_port",     commonWorkerFsPort,     defaultWorkerFsPort);
     ::parseKeyVal(configStore, "worker.data_dir",    commonDataDir,          defaultDataDir);
     ::parseKeyVal(configStore, "worker.db_port",     commonWorkerDbPort,     defaultWorkerDbPort);
     ::parseKeyVal(configStore, "worker.db_user",     commonWorkerDbUser,     defaultWorkerDbUser);
+    ::parseKeyVal(configStore, "worker.loader_port",    commonWorkerLoaderPort,   defaultWorkerLoaderPort);
+    ::parseKeyVal(configStore, "worker.loader_tmp_dir", commonWorkerLoaderTmpDir, defaultWorkerLoaderTmpDir);
 
     // Parse optional worker-specific configuration sections. Assume default
     // or (previously parsed) common values if a whole section or individual
@@ -578,8 +621,12 @@ void ConfigurationStore::_loadConfiguration(util::ConfigStore const& configStore
         ::parseKeyVal(configStore, section+".db_host",      workerInfo.dbHost,     defaultWorkerDbHost);
         ::parseKeyVal(configStore, section+".db_port",      workerInfo.dbPort,     commonWorkerDbPort);
         ::parseKeyVal(configStore, section+".db_user",      workerInfo.dbUser,     commonWorkerDbUser);
+        ::parseKeyVal(configStore, section+".loader_host",    workerInfo.loaderHost,   defaultWorkerLoaderHost);
+        ::parseKeyVal(configStore, section+".loader_port",    workerInfo.loaderPort,   commonWorkerLoaderPort);
+        ::parseKeyVal(configStore, section+".loader_tmp_dir", workerInfo.loaderTmpDir, commonWorkerLoaderTmpDir);
 
-        Configuration::translateDataDir(workerInfo.dataDir, name);
+        Configuration::translateWorkerDir(workerInfo.dataDir, name);
+        Configuration::translateWorkerDir(workerInfo.loaderTmpDir, name);
     }
 
     // Parse mandatory database family-specific configuration sections

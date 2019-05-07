@@ -66,6 +66,7 @@ json WorkerInfo::toJson() const {
     infoJson["db_user"]      = dbUser;
     infoJson["loader_host"]  = loaderHost;
     infoJson["loader_port"]  = loaderPort;
+    infoJson["loader_tmp_dir"] = loaderTmpDir;
 
     return infoJson;
 }
@@ -118,7 +119,10 @@ ostream& operator <<(ostream& os, WorkerInfo const& info) {
         << "dataDir:'"   <<      info.dataDir    << "',"
         << "dbHost:'"    <<      info.dbHost     << "',"
         << "dbPort:"     <<      info.dbPort     << ","
-        << "dbUser:'"    <<      info.dbUser     << "')";
+        << "dbUser:'"    <<      info.dbUser     << "',"
+        << "loaderHost:'"   <<   info.loaderHost   << "',"
+        << "loaderPort:"    <<   info.loaderPort   << ","
+        << "loaderTmpDir:'" <<   info.loaderTmpDir << "')";
     return os;
 }
 
@@ -235,14 +239,18 @@ string       const Configuration::defaultWorkerTechnology             = "TEST";
 size_t       const Configuration::defaultWorkerNumProcessingThreads   = 1;
 size_t       const Configuration::defaultFsNumProcessingThreads       = 1;
 size_t       const Configuration::defaultWorkerFsBufferSizeBytes      = 1048576;
+size_t       const Configuration::defaultLoaderNumProcessingThreads   = 1;
 string       const Configuration::defaultWorkerSvcHost                = "localhost";
 uint16_t     const Configuration::defaultWorkerSvcPort                = 50000;
 string       const Configuration::defaultWorkerFsHost                 = "localhost";
 uint16_t     const Configuration::defaultWorkerFsPort                 = 50001;
-string       const Configuration::defaultDataDir                      = "{worker}";
+string       const Configuration::defaultDataDir                      = "data/{worker}";
 string       const Configuration::defaultWorkerDbHost                 = "localhost";
 uint16_t     const Configuration::defaultWorkerDbPort                 = 3306;
 string       const Configuration::defaultWorkerDbUser                 = FileUtils::getEffectiveUser();
+string       const Configuration::defaultWorkerLoaderHost             = "localhost";
+uint16_t     const Configuration::defaultWorkerLoaderPort             = 50002;
+string       const Configuration::defaultWorkerLoaderTmpDir           = "tmp/{worker}";
 string       const Configuration::defaultDatabaseTechnology           = "mysql";
 string       const Configuration::defaultDatabaseHost                 = "localhost";
 uint16_t     const Configuration::defaultDatabasePort                 = 3306;
@@ -265,22 +273,22 @@ unsigned int const Configuration::defaultNumStripes                   = 340;
 unsigned int const Configuration::defaultNumSubStripes                = 12;
 
 
-void Configuration::translateDataDir(string& dataDir,
-                                     string const& workerName) {
+void Configuration::translateWorkerDir(string& path,
+                                       string const& workerName) {
 
-    string::size_type const leftPos = dataDir.find('{');
+    string::size_type const leftPos = path.find('{');
     if (leftPos == string::npos) return;
 
-    string::size_type const rightPos = dataDir.find('}');
+    string::size_type const rightPos = path.find('}');
     if (rightPos == string::npos) return;
 
     if (rightPos <= leftPos) {
         throw invalid_argument(
-                "Configuration::" + string(__func__) + "  invalid template in the data directory path: '" +
-                dataDir + "'");
+                "Configuration::" + string(__func__) + "  invalid template in the worker directory path: '" +
+                path + "'");
     }
-    if (dataDir.substr (leftPos, rightPos - leftPos + 1) == "{worker}") {
-        dataDir.replace(leftPos, rightPos - leftPos + 1, workerName);
+    if (path.substr (leftPos, rightPos - leftPos + 1) == "{worker}") {
+        path.replace(leftPos, rightPos - leftPos + 1, workerName);
     }
 }
 
@@ -302,6 +310,7 @@ Configuration::Configuration()
         _workerNumProcessingThreads (defaultWorkerNumProcessingThreads),
         _fsNumProcessingThreads     (defaultFsNumProcessingThreads),
         _workerFsBufferSizeBytes    (defaultWorkerFsBufferSizeBytes),
+        _loaderNumProcessingThreads (defaultLoaderNumProcessingThreads),
         _databaseTechnology         (defaultDatabaseTechnology),
         _databaseHost               (defaultDatabaseHost),
         _databasePort               (defaultDatabasePort),
@@ -534,6 +543,7 @@ string Configuration::asString() const {
     ss << context() << "defaultWorkerNumProcessingThreads:    " << defaultWorkerNumProcessingThreads << "\n";
     ss << context() << "defaultFsNumProcessingThreads:        " << defaultFsNumProcessingThreads << "\n";
     ss << context() << "defaultWorkerFsBufferSizeBytes:       " << defaultWorkerFsBufferSizeBytes << "\n";
+    ss << context() << "defaultLoaderNumProcessingThreads:    " << defaultLoaderNumProcessingThreads << "\n";
     ss << context() << "defaultWorkerSvcHost:                 " << defaultWorkerSvcHost << "\n";
     ss << context() << "defaultWorkerSvcPort:                 " << defaultWorkerSvcPort << "\n";
     ss << context() << "defaultWorkerFsHost:                  " << defaultWorkerFsHost << "\n";
@@ -542,6 +552,9 @@ string Configuration::asString() const {
     ss << context() << "defaultWorkerDbHost:                  " << defaultWorkerDbHost << "\n";
     ss << context() << "defaultWorkerDbPort:                  " << defaultWorkerDbPort << "\n";
     ss << context() << "defaultWorkerDbUser:                  " << defaultWorkerDbUser << "\n";
+    ss << context() << "defaultWorkerLoaderHost:              " << defaultWorkerLoaderHost << "\n";
+    ss << context() << "defaultWorkerLoaderPort:              " << defaultWorkerLoaderPort << "\n";
+    ss << context() << "defaultWorkerLoaderTmpDir:            " << defaultWorkerLoaderTmpDir << "\n";
     ss << context() << "defaultDatabaseTechnology:            " << defaultDatabaseTechnology << "\n";
     ss << context() << "defaultDatabaseHost:                  " << defaultDatabaseHost << "\n";
     ss << context() << "defaultDatabasePort:                  " << defaultDatabasePort << "\n";
@@ -575,6 +588,7 @@ string Configuration::asString() const {
     ss << context() << "_workerTechnology:                    " << _workerTechnology << "\n";
     ss << context() << "_workerNumProcessingThreads:          " << _workerNumProcessingThreads << "\n";
     ss << context() << "_fsNumProcessingThreads:              " << _fsNumProcessingThreads << "\n";
+    ss << context() << "_loaderNumProcessingThreads:          " << _loaderNumProcessingThreads << "\n";
     ss << context() << "_workerFsBufferSizeBytes:             " << _workerFsBufferSizeBytes << "\n";
     ss << context() << "_databaseTechnology:                  " << _databaseTechnology << "\n";
     ss << context() << "_databaseHost:                        " << _databaseHost << "\n";

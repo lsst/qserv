@@ -509,6 +509,23 @@ struct ConfigurationGeneralParams {
 
     } workerFsBufferSizeBytes;
 
+    struct {
+
+        std::string const key         = "WORKER_LOADER_NUM_PROC_THREADS";
+        std::string const description = "The number of request processing threads in each worker's"
+                                        " catalog ingest server.";
+        size_t            value;
+
+        bool const updatable = true;
+
+        void save(Configuration::Ptr const& config) {
+            if (value != 0) config->setLoaderNumProcessingThreads(value);
+        }
+        size_t      get(Configuration::Ptr const& config) const { return config->loaderNumProcessingThreads(); }
+        std::string str(Configuration::Ptr const& config) const { return std::to_string(get(config)); }
+
+    } loaderNumProcessingThreads;
+    
     /**
      * Pull general parameters from the Configuration and put them into
      * a JSON array.

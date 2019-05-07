@@ -249,6 +249,18 @@ public:
     WorkerInfo setWorkerDbUser(std::string const& name,
                                std::string const& user) final;
 
+    /// @see Configuration::setWorkerLoaderHost()
+    WorkerInfo setWorkerLoaderHost(std::string const& name,
+                                   std::string const& host) final;
+
+    /// @see Configuration::setWorkerLoaderPort()
+    WorkerInfo setWorkerLoaderPort(std::string const& name,
+                                   uint16_t port) final;
+
+    /// @see Configuration::setWorkerLoaderTmpDir()
+    WorkerInfo setWorkerLoaderTmpDir(std::string const& name,
+                                     std::string const& tmpDir) final;
+
     /// @see Configuration::setWorkerTechnology()
     void setWorkerTechnology(std::string const& val) final {
         _set(_workerTechnology,
@@ -280,6 +292,14 @@ public:
              "fs_buf_size_bytes",
              val);
     }
+    /// @see Configuration::setLoaderNumProcessingThreads()
+    void setLoaderNumProcessingThreads(size_t val) final {
+        _set(_loaderNumProcessingThreads,
+             "worker",
+             "num_loader_processing_threads",
+             val);
+    }
+
 
     /// @see Configuration::addDatabaseFamily()
     DatabaseFamilyInfo addDatabaseFamily(DatabaseFamilyInfo const& info) final;

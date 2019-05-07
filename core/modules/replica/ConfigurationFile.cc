@@ -112,6 +112,7 @@ string ConfigurationFile::dump2init(Configuration::Ptr const& config) {
         << "num_svc_processing_threads = " << config->workerNumProcessingThreads() << "\n"
         << "num_fs_processing_threads  = " << config->fsNumProcessingThreads() << "\n"
         << "fs_buf_size_bytes          = " << config->workerFsBufferSizeBytes() << "\n"
+        << "num_loader_processing_threads = " << config->loaderNumProcessingThreads() << "\n"
         << "svc_host                   = " << defaultWorkerSvcHost << "\n"
         << "svc_port                   = " << defaultWorkerSvcPort << "\n"
         << "fs_host                    = " << defaultWorkerFsHost << "\n"
@@ -120,6 +121,9 @@ string ConfigurationFile::dump2init(Configuration::Ptr const& config) {
         << "db_host                    = " << defaultWorkerDbHost << "\n"
         << "db_port                    = " << defaultWorkerDbPort << "\n"
         << "db_user                    = " << defaultWorkerDbUser << "\n"
+        << "loader_host                = " << defaultWorkerLoaderHost << "\n"
+        << "loader_port                = " << defaultWorkerLoaderPort << "\n"
+        << "loader_tmp_dir             = " << defaultWorkerLoaderTmpDir << "\n"
         << "\n";
 
     for (auto&& worker: config->allWorkers()) {
@@ -136,6 +140,9 @@ string ConfigurationFile::dump2init(Configuration::Ptr const& config) {
             << "db_host      = " << info.dbHost << "\n"
             << "db_port      = " << info.dbPort << "\n"
             << "db_user      = " << info.dbUser << "\n"
+            << "loader_host    = " << info.loaderHost << "\n"
+            << "loader_port    = " << info.loaderPort << "\n"
+            << "loader_tmp_dir = " << info.loaderTmpDir << "\n"
             << "\n";
     }
     for (auto&& family: config->databaseFamilies()) {

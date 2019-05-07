@@ -120,6 +120,7 @@ string ConfigurationMySQL::dump2init(Configuration::Ptr const& config) {
     ::configInsert(str, "worker",     "num_svc_processing_threads", config->workerNumProcessingThreads());
     ::configInsert(str, "worker",     "num_fs_processing_threads",  config->fsNumProcessingThreads());
     ::configInsert(str, "worker",     "fs_buf_size_bytes",          config->workerFsBufferSizeBytes());
+    ::configInsert(str, "worker",     "num_loader_processing_threads", config->loaderNumProcessingThreads());
     ::configInsert(str, "worker",     "svc_host",                   defaultWorkerSvcHost);
     ::configInsert(str, "worker",     "svc_port",                   defaultWorkerSvcPort);
     ::configInsert(str, "worker",     "fs_host",                    defaultWorkerFsHost);
@@ -128,6 +129,9 @@ string ConfigurationMySQL::dump2init(Configuration::Ptr const& config) {
     ::configInsert(str, "worker",     "db_host",                    defaultWorkerDbHost);
     ::configInsert(str, "worker",     "db_port",                    defaultWorkerDbPort);
     ::configInsert(str, "worker",     "db_user",                    defaultWorkerDbUser);
+    ::configInsert(str, "worker",     "loader_host",                defaultWorkerLoaderHost);
+    ::configInsert(str, "worker",     "loader_port",                defaultWorkerLoaderPort);
+    ::configInsert(str, "worker",     "loader_tmp_dir",             defaultWorkerLoaderTmpDir);
 
     for (auto&& worker: config->allWorkers()) {
         auto&& info = config->workerInfo(worker);
@@ -142,7 +146,10 @@ string ConfigurationMySQL::dump2init(Configuration::Ptr const& config) {
             << "'" <<  info.dataDir << "',"
             << "'" <<  info.dbHost  << "',"
             <<         info.dbPort  << ","
-            << "'" <<  info.dbUser  << "'"
+            << "'" <<  info.dbUser  << "',"
+            << "'" <<  info.loaderHost   << "',"
+            <<         info.loaderPort   << ","
+            << "'" <<  info.loaderTmpDir << "'"
             << ");\n";
     }
     for (auto&& family: config->databaseFamilies()) {
@@ -654,6 +661,118 @@ WorkerInfo ConfigurationMySQL::setWorkerDbUser(std::string const& name,
 }
 
 
+WorkerInfo ConfigurationMySQL::setWorkerLoaderHost(std::string const& name,
+                                                   std::string const& host) {
+    string const context_ = context() + __func__;
+
+    LOGS(_log, LOG_LVL_DEBUG, context_ << "  name=" << name << " host=" << host);
+
+    database::mysql::ConnectionHandler handler;
+    try {
+
+        // First update the database
+        handler.conn = database::mysql::Connection::open(_connectionParams);
+        handler.conn->execute(
+            [&name,&host](decltype(handler.conn) conn) {
+                conn->begin();
+                conn->executeSimpleUpdateQuery(
+                    "config_worker",
+                    conn->sqlEqual("name", name),
+                    make_pair("loader_host", host));
+                conn->commit();
+            }
+        );
+
+        // Then update the transient state 
+
+        util::Lock lock(_mtx, context_);
+
+        auto itr = safeFindWorker(lock, name, context_);
+        itr->second.loaderHost = host;
+
+    } catch (database::mysql::Error const& ex) {
+        LOGS(_log, LOG_LVL_ERROR, context_ << "MySQL error: " << ex.what());
+        throw;
+    }
+    return workerInfo(name);
+}
+
+
+WorkerInfo ConfigurationMySQL::setWorkerLoaderPort(std::string const& name,
+                                                   uint16_t port) {
+    string const context_ = context() + __func__;
+
+    LOGS(_log, LOG_LVL_DEBUG, context_ << "  name=" << name << " port=" << port);
+
+    database::mysql::ConnectionHandler handler;
+    try {
+
+        // First update the database
+        handler.conn = database::mysql::Connection::open(_connectionParams);
+        handler.conn->execute(
+            [&name,port](decltype(handler.conn) conn) {
+                conn->begin();
+                conn->executeSimpleUpdateQuery(
+                    "config_worker",
+                    conn->sqlEqual("name", name),
+                    make_pair("loader_port", port));
+                conn->commit();
+            }
+        );
+
+        // Then update the transient state 
+
+        util::Lock lock(_mtx, context_);
+    
+        auto itr = safeFindWorker(lock, name, context_);
+        itr->second.loaderPort = port;
+
+    } catch (database::mysql::Error const& ex) {
+        LOGS(_log, LOG_LVL_ERROR, context_ << "MySQL error: " << ex.what());
+        throw;
+    }
+    return workerInfo(name);
+}
+
+
+WorkerInfo ConfigurationMySQL::setWorkerLoaderTmpDir(string const& name,
+                                                     string const& tmpDir) {
+
+    string const context_ = context() + __func__;
+
+    LOGS(_log, LOG_LVL_DEBUG, context_ << "  name=" << name << " dataDir=" << tmpDir);
+
+    database::mysql::ConnectionHandler handler;
+    try {
+
+        // First update the database
+        handler.conn = database::mysql::Connection::open(_connectionParams);
+        handler.conn->execute(
+            [&name,&tmpDir](decltype(handler.conn) conn) {
+                conn->begin();
+                conn->executeSimpleUpdateQuery(
+                    "config_worker",
+                    conn->sqlEqual("name", name),
+                    make_pair("loader_tmp_dir", tmpDir));
+                conn->commit();
+            }
+        );
+
+        // Then update the transient state 
+
+        util::Lock lock(_mtx, context_);
+
+        auto itr = safeFindWorker(lock, name, context_);
+        itr->second.loaderTmpDir = tmpDir;
+
+    } catch (database::mysql::Error const& ex) {
+        LOGS(_log, LOG_LVL_ERROR, context_ << "MySQL error: " << ex.what());
+        throw;
+    }
+    return workerInfo(name);
+}
+
+
 DatabaseFamilyInfo ConfigurationMySQL::addDatabaseFamily(DatabaseFamilyInfo const& info) {
 
     string const context_ = context() + __func__;
@@ -1064,6 +1183,8 @@ void ConfigurationMySQL::_loadConfigurationImpl(util::Lock const& lock,
     string   commonWorkerDataDir = Configuration::defaultDataDir;
     uint16_t commonWorkerDbPort  = Configuration::defaultWorkerDbPort;
     string   commonWorkerDbUser  = Configuration::defaultWorkerDbUser;
+    uint16_t commonWorkerLoaderPort   = Configuration::defaultWorkerLoaderPort;
+    string   commonWorkerLoaderTmpDir = Configuration::defaultWorkerLoaderTmpDir;
 
     database::mysql::Row row;
 
@@ -1107,8 +1228,11 @@ void ConfigurationMySQL::_loadConfigurationImpl(util::Lock const& lock,
         ::tryParameter(row, "worker", "svc_port",                   commonWorkerSvcPort)  or
         ::tryParameter(row, "worker", "fs_port",                    commonWorkerFsPort) or
         ::tryParameter(row, "worker", "data_dir",                   commonWorkerDataDir) or
-        ::tryParameter(row, "worker", "db_port",                    commonWorkerDbPort);
-        ::tryParameter(row, "worker", "db_user",                    commonWorkerDbUser);
+        ::tryParameter(row, "worker", "db_port",                    commonWorkerDbPort) or
+        ::tryParameter(row, "worker", "db_user",                    commonWorkerDbUser) or
+        ::tryParameter(row, "worker", "loader_port",                   commonWorkerLoaderPort) or
+        ::tryParameter(row, "worker", "loader_tmp_dir",                commonWorkerLoaderTmpDir) or
+        ::tryParameter(row, "worker", "num_loader_processing_threads", _loaderNumProcessingThreads);
     }
 
     // Read worker-specific configurations and construct WorkerInfo.
@@ -1129,8 +1253,12 @@ void ConfigurationMySQL::_loadConfigurationImpl(util::Lock const& lock,
         ::readMandatoryParameter(row, "db_host",      info.dbHost);
         ::readOptionalParameter( row, "db_port",      info.dbPort,     commonWorkerDbPort);
         ::readOptionalParameter( row, "db_user",      info.dbUser,     commonWorkerDbUser);
+        ::readMandatoryParameter(row, "loader_host",    info.loaderHost);
+        ::readOptionalParameter( row, "loader_port",    info.loaderPort,   commonWorkerLoaderPort);
+        ::readOptionalParameter( row, "loader_tmp_dir", info.loaderTmpDir, commonWorkerLoaderTmpDir);
 
-        Configuration::translateDataDir(info.dataDir, info.name);
+        Configuration::translateWorkerDir(info.dataDir, info.name);
+        Configuration::translateWorkerDir(info.loaderTmpDir, info.name);
 
         _workerInfo[info.name] = info;
     }
