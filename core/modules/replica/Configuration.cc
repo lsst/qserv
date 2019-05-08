@@ -418,12 +418,14 @@ vector<string> Configuration::databases(string const& family,
                                         bool allDatabases,
                                         bool isPublished) const {
 
-    util::Lock lock(_mtx, context() + string(__func__) + "(family)");
+    string const context_ = context() + string(__func__) + " "
+        + " family='" + family + "' allDatabases=" + string(allDatabases ? "1" : "0")
+        + " isPublished=" + string(isPublished ? "1" : "0") + "  ";
+
+    util::Lock lock(_mtx, context_);
 
     if (not family.empty() and not _databaseFamilyInfo.count(family)) {
-        throw invalid_argument(
-                "Configuration::" + string(__func__) + "  unknown database family: '" +
-                family + "'");
+        throw invalid_argument(context_ + "unknown database family");
     }
     vector<string> names;
     for (auto&& entry: _databaseInfo) {

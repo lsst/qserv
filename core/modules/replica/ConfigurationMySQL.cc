@@ -1295,6 +1295,7 @@ void ConfigurationMySQL::_loadConfigurationImpl(util::Lock const& lock,
         _databaseInfo[database].name = database;
 
         ::readMandatoryParameter(row, "family_name", _databaseInfo[database].family);
+        ::readMandatoryParameter(row, "is_published", _databaseInfo[database].isPublished);
     }
 
     // Read database-specific table definitions and extend the corresponding DatabaseInfo.

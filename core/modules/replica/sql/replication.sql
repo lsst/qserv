@@ -65,7 +65,7 @@ CREATE TABLE IF NOT EXISTS `config_worker` (
 
   UNIQUE  KEY (`svc_host`, `svc_port`) ,
   UNIQUE  KEY (`fs_host`,  `fs_port`) ,
-  UNIQUE  KEY (`db_host`,  `db_port`)
+  UNIQUE  KEY (`db_host`,  `db_port`) ,
   UNIQUE  KEY (`loader_host`, `loader_port`)
 )
 ENGINE = InnoDB;
@@ -137,7 +137,7 @@ CREATE TABLE IF NOT EXISTS `config_database` (
   `database`     VARCHAR(255)  NOT NULL ,
   `family_name`  VARCHAR(255)  NOT NULL ,
 
-  `is_published` BOOLEAN DEFAUT TRUE ,
+  `is_published` BOOLEAN DEFAULT TRUE ,
 
   -- Each database is allowed to belong to one family only
   --
