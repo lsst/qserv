@@ -377,10 +377,11 @@ DatabaseInfo ConfigurationStore::addDatabase(DatabaseInfo const& info) {
     if (_databaseInfo.find(info.name) != _databaseInfo.end()) {
         throw invalid_argument(_classMethodContext(__func__) + "  database already exists");
     }
+    auto const isNotPublished = 0;
     _databaseInfo[info.name] = DatabaseInfo{
         info.name,
         info.family,
-        info.isPublished,
+        isNotPublished,
         {},
         {}
     };

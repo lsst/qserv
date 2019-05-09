@@ -572,11 +572,13 @@ public:
     DatabaseInfo databaseInfo(std::string const& name) const;
 
     /**
-     * Register a new database
+     * Register a new database. The database will be put into the UNPUBLISHED
+     * state.
      * 
      * @param info
-     *   database descriptor (only the name and the database family attributes
-     *   will be considered.
+     *   database descriptor of which only the name of the database and the name
+     *   of its family will be considered. Other attributes (including its
+     *   publishing state an tables) will be ignored.
      *
      * @return
      *    a database descriptor of the newly created database

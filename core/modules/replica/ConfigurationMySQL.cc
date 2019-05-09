@@ -903,16 +903,18 @@ DatabaseInfo ConfigurationMySQL::addDatabase(DatabaseInfo const& info) {
     database::mysql::ConnectionHandler handler;
     try {
 
+        auto const isNotPublished = 0;
+
         // First update the database
         handler.conn = database::mysql::Connection::open(_connectionParams);
         handler.conn->execute(
-            [&info](decltype(handler.conn) conn) {
+            [&](decltype(handler.conn) conn) {
                 conn->begin();
                 conn->executeInsertQuery(
                     "config_database",
                     info.name,
                     info.family,
-                    info.isPublished ? 1 : 0
+                    isNotPublished
                 );
                 conn->commit();
             }
@@ -925,7 +927,7 @@ DatabaseInfo ConfigurationMySQL::addDatabase(DatabaseInfo const& info) {
         _databaseInfo[info.name] = DatabaseInfo{
             info.name,
             info.family,
-            info.isPublished,
+            isNotPublished,
             {},
             {}
         };
