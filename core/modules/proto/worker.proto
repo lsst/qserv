@@ -289,7 +289,10 @@ message WorkerCommandSetChunkListM {
 
     repeated WorkerCommandChunk chunks = 1;
 
-    optional bool force = 2 [ default = false];
+    // The operation involves databases which are listed below
+    repeated string databases = 2;
+
+    optional bool force = 3 [ default = false];
 }
 
 // The message to be sent back in response to the 'SET_CHUNK_LIST'

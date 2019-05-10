@@ -272,6 +272,7 @@ GetReplicasQservMgtRequest::Ptr QservMgtServices::getReplicas(
 SetReplicasQservMgtRequest::Ptr QservMgtServices::setReplicas(
                                         string const& worker,
                                         QservReplicaCollection const& newReplicas,
+                                        std::vector<std::string> const& databases,
                                         bool force,
                                         string const& jobId,
                                         SetReplicasQservMgtRequest::CallbackType const& onFinish,
@@ -295,6 +296,7 @@ SetReplicasQservMgtRequest::Ptr QservMgtServices::setReplicas(
             serviceProvider(),
             worker,
             newReplicas,
+            databases,
             force,
             [manager] (QservMgtRequest::Ptr const& request) {
                 manager->_finish(request->id());

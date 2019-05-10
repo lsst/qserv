@@ -27,6 +27,7 @@
 #include <functional>
 #include <list>
 #include <memory>
+#include <vector>
 
 // Qserv headers
 #include "wpublish/QservRequest.h"
@@ -83,12 +84,14 @@ public:
      * class when used on its input.
      *
      * @param chunks     collection of chunks to be transferred to the worker
+     * @param databases  limit a scope of the operation to databases of this collection
      * @param force      force the proposed change even if the chunk is in use
      * @param onFinish   optional callback function to be called upon the completion
      *                   (successful or not) of the request.
      * @return smart pointer to the object of the class
      */
    static Ptr create(ChunkCollection const& chunks,
+                     std::vector<std::string> const& databases,
                      bool force=false,
                      CallbackType onFinish=nullptr);
 
@@ -101,16 +104,9 @@ public:
 
 protected:
 
-    /**
-     * ATTENTION: the 'use_count' field of structure Chunk is ignored by this
-     * class when used on its input.
-     *
-     * @param chunks     collection of chunks to be transferred to the worker
-     * @param force      force the proposed change even if the chunk is in use
-     * @param onFinish   optional callback function to be called upon the completion
-     *                   (successful or not) of the request.
-     */
+    /// @see SetChunkListQservRequest::create())
     SetChunkListQservRequest(ChunkCollection const& chunks,
+                             std::vector<std::string> const& databases,
                              bool force,
                              CallbackType onFinish);
 
@@ -124,8 +120,9 @@ private:
 
     // Parameters of the object
 
-    ChunkCollection _chunks;
-    bool _force;
+    ChunkCollection const _chunks;
+    std::vector<std::string> const _databases;
+    bool const _force;
     CallbackType _onFinish;
 };
 
