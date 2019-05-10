@@ -48,6 +48,8 @@ while getopts hm c ; do
     case $c in
             h) usage ; exit 0 ;;
             m) NODE_TYPE="master" ;;
+            mm) NODE_TYPE="master-multi" ;;
+            ms) NODE_TYPE="master-shared" ;;
             \?) usage ; exit 2 ;;
     esac
 done
