@@ -185,8 +185,6 @@ void RebalanceJob::startImpl(util::Lock const& lock) {
         }
     );
     _findAllJob->start();
-
-    setState(lock, State::IN_PROGRESS);
 }
 
 

@@ -168,9 +168,7 @@ void DeleteReplicaJob::startImpl(util::Lock const& lock) {
              << " database family: '" << databaseFamily() << "'"
              << " worker: '" << worker() << "'");
 
-        setState(lock,
-                 State::FINISHED,
-                 ExtendedState::CONFIG_ERROR);
+        finish(lock, ExtendedState::CONFIG_ERROR);
         return;
     }
 
@@ -200,7 +198,8 @@ void DeleteReplicaJob::startImpl(util::Lock const& lock) {
              << " databaseFamily: " << databaseFamily()
              << " exception: " << ex.what());
         
-        throw;
+        finish(lock, ExtendedState::CONFIG_ERROR);
+        return;
 
     } catch (exception const& ex) {
 
@@ -211,9 +210,7 @@ void DeleteReplicaJob::startImpl(util::Lock const& lock) {
              << " databaseFamily: " << databaseFamily()
              << " exception: " << ex.what());
 
-        setState(lock,
-                 State::FINISHED,
-                 ExtendedState::FAILED);
+        finish(lock, ExtendedState::FAILED);
         return;
     }
     if (not _replicas.size()) {
@@ -223,9 +220,7 @@ void DeleteReplicaJob::startImpl(util::Lock const& lock) {
              << " worker: " << worker()
              << " databaseFamily: " << databaseFamily());
 
-        setState(lock,
-                 State::FINISHED,
-                 ExtendedState::FAILED);
+        finish(lock, ExtendedState::FAILED);
         return;
     }
 
@@ -288,7 +283,6 @@ void DeleteReplicaJob::startImpl(util::Lock const& lock) {
             }
         );
     }
-    setState(lock, State::IN_PROGRESS);
 }
 
 

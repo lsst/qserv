@@ -172,7 +172,7 @@ void QservGetReplicasJob::startImpl(util::Lock const& lock) {
             LOGS(_log, LOG_LVL_ERROR, context() << __func__
                  << "  failed to submit GetReplicasQservMgtRequest to Qserv worker: " << worker);
 
-            setState(lock, State::FINISHED, ExtendedState::FAILED);
+            finish(lock, ExtendedState::FAILED);
             return;
         }
         _requests.push_back(request);
@@ -181,8 +181,8 @@ void QservGetReplicasJob::startImpl(util::Lock const& lock) {
 
     // In case if no workers or database are present in the Configuration
     // at this time.
-    if (not _numLaunched) setState(lock, State::FINISHED);
-    else                  setState(lock, State::IN_PROGRESS);
+
+    if (not _numLaunched) finish(lock, ExtendedState::SUCCESS);
 }
 
 

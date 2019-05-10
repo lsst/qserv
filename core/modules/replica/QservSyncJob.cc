@@ -24,6 +24,7 @@
 
 // System headers
 #include <future>
+#include <map>
 #include <stdexcept>
 
 // Qserv headers
@@ -162,11 +163,14 @@ void QservSyncJob::startImpl(util::Lock const& lock) {
     auto const qservMgtServices = controller()->serviceProvider()->qservMgtServices();
     auto const self             = shared_from_base<QservSyncJob>();
 
+    // As a first step, before submitting requests to Qserv workers, pull replicas
+    // from the database for each worker. This step must succeed to avoid cancelling
+    // jobs should any problem with the database operation happened.
+
+    map<string, unique_ptr<QservReplicaCollection>> worker2newReplicas;
     for (auto&& worker: controller()->serviceProvider()->config()->workers()) {
 
-        // Pull replicas from the database for the worker
-
-        QservReplicaCollection newReplicas;
+        auto newReplicas = make_unique<QservReplicaCollection>();
         for (auto&& database: databases) {
 
             vector<ReplicaInfo> replicas;
@@ -180,16 +184,11 @@ void QservSyncJob::startImpl(util::Lock const& lock) {
                      << "  failed to pull replicas for worker: "
                      << worker << ", database: " << database);
 
-                // Set this state and cleanup before aborting the job
-
-                setState(lock, State::FINISHED, ExtendedState::FAILED);
-
-                cancelImpl(lock);
-
+                finish(lock, ExtendedState::FAILED);
                 return;
             }
             for (auto&& info: replicas) {
-                newReplicas.push_back(
+                newReplicas->push_back(
                     QservReplica{
                         info.chunk(),
                         info.database(),
@@ -198,13 +197,18 @@ void QservSyncJob::startImpl(util::Lock const& lock) {
                 );
             }
         }
+        worker2newReplicas.emplace(make_pair(worker, move(newReplicas)));
+    }
 
-        // Submit a request to the worker
+    // Submit requests to the workers
+
+    for (auto&& worker: controller()->serviceProvider()->config()->workers()) {
 
         _requests.push_back(
             qservMgtServices->setReplicas(
                 worker,
-                newReplicas,
+                *(worker2newReplicas[worker]),
+                databases,
                 force(),
                 id(),   /* jobId */
                 [self] (SetReplicasQservMgtRequest::Ptr const& request) {
@@ -218,8 +222,8 @@ void QservSyncJob::startImpl(util::Lock const& lock) {
 
     // In case if no workers or database are present in the Configuration
     // at this time.
-    if (not _numLaunched) setState(lock, State::FINISHED);
-    else                  setState(lock, State::IN_PROGRESS);
+
+    if (not _numLaunched) finish(lock, ExtendedState::SUCCESS);
 }
 
 

@@ -214,7 +214,6 @@ void DeleteWorkerJob::startImpl(util::Lock const& lock) {
                     // The rest will be happening in a method processing the completion
                     // of the above launched requests.
 
-                    setState(lock, State::IN_PROGRESS);
                     return;
                 }
             }
@@ -225,9 +224,6 @@ void DeleteWorkerJob::startImpl(util::Lock const& lock) {
     // at which we'll be changing its state within the replication system
 
     _disableWorker(lock);
-
-    setState(lock, State::IN_PROGRESS);
-    return;
 }
 
 

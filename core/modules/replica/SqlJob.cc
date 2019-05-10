@@ -184,8 +184,7 @@ void SqlJob::startImpl(util::Lock const& lock) {
     // In case if no workers or database are present in the Configuration
     // at this time.
 
-    if (not _numLaunched) setState(lock, State::FINISHED);
-    else                  setState(lock, State::IN_PROGRESS);
+    if (not _numLaunched) finish(lock, ExtendedState::SUCCESS);
 }
 
 
