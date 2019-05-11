@@ -264,6 +264,7 @@ string       const Configuration::defaultQservMasterDatabaseUser      = FileUtil
 string       const Configuration::defaultQservMasterDatabasePassword  = "";
 string       const Configuration::defaultQservMasterDatabaseName      = "qservMeta";
 size_t       const Configuration::defaultQservMasterDatabaseServicesPoolSize = 1;
+string             Configuration::_qservWorkerDatabasePassword        = "";
 bool               Configuration::defaultDatabaseAllowReconnect       = true;
 unsigned int       Configuration::defaultDatabaseConnectTimeoutSec    = 3600;
 unsigned int       Configuration::defaultDatabaseMaxReconnects        = 1;
@@ -482,6 +483,13 @@ DatabaseInfo Configuration::databaseInfo(string const& name) const {
                 "Configuration::" + string(__func__) + "  unknown database: '" + name + "'");
     }
     return itr->second;
+}
+
+
+string Configuration::setQservWorkerDatabasePassword(string const& newPassword) {
+    string result = newPassword;
+    swap(result, _qservWorkerDatabasePassword);
+    return result;
 }
 
 

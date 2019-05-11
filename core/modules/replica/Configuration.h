@@ -371,6 +371,30 @@ public:
     /// @return the number of concurrent connections to the database service
     size_t qservMasterDatabaseServicesPoolSize() const { return _qservMasterDatabaseServicesPoolSize; }
 
+    // ------------------------------------------------------
+    // -- Parameters of the Qserv worker database services --
+    // ------------------------------------------------------
+
+    /**
+     * This method is used by the workers when they need to connect directly
+     * to the corresponding MySQL/MariaDB service of the Qserv worker.
+     *
+     * @return
+     *   the password for the current worker
+     */
+    static std::string qservWorkerDatabasePassword() { return _qservWorkerDatabasePassword; }
+
+    /**
+     * Set the new password
+     * 
+     * @param newPassword
+     *   new password to be set
+     * 
+     * @return
+     *   the previous value of the password
+     */
+    static std::string setQservWorkerDatabasePassword(std::string const& newPassword);
+
     // --------------------------------------------------
     // -- Global parameters of the database connectors --
     // --------------------------------------------------
@@ -1253,6 +1277,10 @@ protected:
     std::string _qservMasterDatabasePassword;
     std::string _qservMasterDatabaseName;
     size_t      _qservMasterDatabaseServicesPoolSize;
+
+    // -- Parameters of the Qserv work database
+
+    static std::string _qservWorkerDatabasePassword;
 };
 
 }}} // namespace lsst::qserv::replica

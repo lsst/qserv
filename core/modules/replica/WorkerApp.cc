@@ -62,7 +62,8 @@ WorkerApp::WorkerApp(int argc, char* argv[])
             true    /* boostProtobufVersionCheck */,
             true    /* enableServiceProvider */
         ),
-        _log(LOG_GET("lsst.qserv.replica.WorkerApp")) {
+        _log(LOG_GET("lsst.qserv.replica.WorkerApp")),
+        _qservDbPassword(Configuration::qservWorkerDatabasePassword()) {
 
     // Configure the command line parser
 
@@ -70,12 +71,22 @@ WorkerApp::WorkerApp(int argc, char* argv[])
         "worker",
         "The name of a worker.",
         _worker);
+
+    parser().option(
+        "qserv-db-password",
+        "A password for the MySQL account of the Qserv worker database. The account"
+        " name is found in the Configuration.",
+        _qservDbPassword
+    );
 }
 
 
 int WorkerApp::runImpl() {
 
     string const context = "WorkerApp::" + string(__func__) + "  ";
+
+    // Set the database password
+    Configuration::setQservWorkerDatabasePassword(_qservDbPassword);
 
     WorkerRequestFactory requestFactory(serviceProvider());
 

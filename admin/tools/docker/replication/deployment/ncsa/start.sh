@@ -82,8 +82,9 @@ for WORKER in $WORKERS; do
         -e "LSST_LOG_CONFIG=${LSST_LOG_CONFIG}" \
         -e "CONFIG=${CONFIG}" \
         -e "WORKER=${WORKER}" \
+        -e "QSERV_WORKER_DB_PASSWORD=${QSERV_WORKER_DB_PASSWORD}" \
         "${REPLICATION_IMAGE_TAG}" \
-        bash -c \''/qserv/bin/qserv-replica-worker ${WORKER} --config=${CONFIG} --debug >& ${LOG_DIR}/${WORKER_CONTAINER_NAME}.log'\'
+        bash -c \''/qserv/bin/qserv-replica-worker ${WORKER} --config=${CONFIG} --qserv-db-password="${QSERV_WORKER_DB_PASSWORD}" --debug >& ${LOG_DIR}/${WORKER_CONTAINER_NAME}.log'\'
 done
 
 # Start master controller
