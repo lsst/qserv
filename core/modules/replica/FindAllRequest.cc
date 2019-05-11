@@ -134,7 +134,7 @@ void FindAllRequest::_wait(util::Lock const& lock) {
 
     // Always need to set the interval before launching the timer.
 
-    timer().expires_from_now(boost::posix_time::seconds(timerIvalSec()));
+    timer().expires_from_now(boost::posix_time::milliseconds(nextTimeIvalMsec()));
     timer().async_wait(
         boost::bind(
             &FindAllRequest::_awaken,

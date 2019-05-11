@@ -321,10 +321,4 @@ list<pair<string,string>> SqlRequest::extendedPersistentState() const {
 }
 
 
-unsigned int SqlRequest::nextTimeIvalMsec() {
-    auto result = _currentTimeIvalMsec;
-    _currentTimeIvalMsec = min( 2 * _currentTimeIvalMsec, 1000 * timerIvalSec());
-    return result;
-}
-
 }}} // namespace lsst::qserv::replica
