@@ -395,6 +395,33 @@ ConfigApp::ConfigApp(int argc, char* argv[])
         "The flag indicating (if present) that a table is partitioned.",
         _isPartitioned);
 
+    addTableCmd.flag(
+        "director",
+        "The flag indicating (if present) that this is a 'director' table of the database"
+        " Note that this flag only applies to the partitioned tables.",
+        _isDirector);
+
+    addTableCmd.option(
+        "director-key",
+        "The name of a column in the 'director' table of the database."
+        " Note that this option must be provided for the 'director' tables.",
+        _directorKey);
+
+    addTableCmd.option(
+        "chunk-id-key",
+        "The name of a column in the 'partitioned' table indicating a column which"
+        " is stores identifiers of chunks. Note that this option must be provided"
+        " for the 'partitioned' tables.",
+        _chunkIdKey);
+
+    addTableCmd.option(
+        "sub-chunk-id-key",
+        "The name of a column in the 'partitioned' table indicating a column which"
+        " is stores identifiers of sub-chunks. Note that this option must be provided"
+        " for the 'partitioned' tables.",
+        _subChunkIdKey);
+
+
     // Command-specific parameters, options and flags
 
     auto&& deleteTableCmd = parser().command("DELETE_TABLE");
@@ -703,6 +730,10 @@ void ConfigApp::_dumpDatabasesAsTable(string const& indent) const {
     vector<string> isPublished;
     vector<string> tableName;
     vector<string> isPartitioned;
+    vector<string> isDirector;
+    vector<string> directorKey;
+    vector<string> chunkIdKey;
+    vector<string> subChunkIdKey;
 
     string const noSpecificFamily;
     bool const allDatabases = true;
@@ -714,6 +745,15 @@ void ConfigApp::_dumpDatabasesAsTable(string const& indent) const {
             isPublished  .push_back(di.isPublished ? "yes" : "no");
             tableName    .push_back(table);
             isPartitioned.push_back("yes");
+            if (table == di.directorTable) {
+                isDirector .push_back("yes");
+                directorKey.push_back(di.directorTableKey);
+            } else {
+                isDirector .push_back("no");
+                directorKey.push_back("");
+            }
+            chunkIdKey   .push_back(di.chunkIdKey);
+            subChunkIdKey.push_back(di.subChunkIdKey);
         }
         for (auto& table: di.regularTables) {
             familyName   .push_back(di.family);
@@ -721,6 +761,10 @@ void ConfigApp::_dumpDatabasesAsTable(string const& indent) const {
             isPublished  .push_back(di.isPublished ? "yes" : "no");
             tableName    .push_back(table);
             isPartitioned.push_back("no");
+            isDirector   .push_back("no");
+            directorKey  .push_back("");
+            chunkIdKey   .push_back("");
+            subChunkIdKey.push_back("");
         }
         if (di.partitionedTables.empty() and di.regularTables.empty()) {
             familyName   .push_back(di.family);
@@ -728,6 +772,10 @@ void ConfigApp::_dumpDatabasesAsTable(string const& indent) const {
             isPublished  .push_back(di.isPublished ? "yes" : "no");
             tableName    .push_back("<no tables>");
             isPartitioned.push_back("n/a");
+            isDirector   .push_back("n/a");
+            directorKey  .push_back("n/a");
+            chunkIdKey   .push_back("n/a");
+            subChunkIdKey.push_back("n/a");
         }
     }
 
@@ -738,6 +786,10 @@ void ConfigApp::_dumpDatabasesAsTable(string const& indent) const {
     table.addColumn(":published",   isPublished);
     table.addColumn("table",        tableName,    util::ColumnTablePrinter::LEFT);
     table.addColumn(":partitioned", isPartitioned);
+    table.addColumn(":director",     isDirector);
+    table.addColumn(":director-key", directorKey);
+    table.addColumn(":chunk-id-key",     chunkIdKey);
+    table.addColumn(":sub-chunk-id-key", subChunkIdKey);
 
     table.print(cout, false, false);
 }
@@ -1047,7 +1099,10 @@ int ConfigApp::_addTable() {
         return 1;
     }
     try {
-        _config->addTable(_database, _table, _isPartitioned);
+        list<pair<string,string>> noColumns;
+        _config->addTable(_database, _table, _isPartitioned, noColumns,
+                          _isDirector, _directorKey,
+                          _chunkIdKey, _subChunkIdKey);
     } catch (exception const& ex) {
         LOGS(_log, LOG_LVL_ERROR, context << "operation failed, exception: " << ex.what());
         return 1;

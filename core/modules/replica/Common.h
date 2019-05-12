@@ -29,7 +29,9 @@
  */
 
 // System headers
+#include <list>
 #include <string>
+#include <tuple>
 
 // Qserv headers
 #include "replica/protocol.pb.h"
@@ -103,11 +105,11 @@ private:
 };
 
 /**
- * Structure ReplicationRequestParams encapsulates parameters of the replica
+ * Class ReplicationRequestParams encapsulates parameters of the replica
  * creation requests.
  */
-struct ReplicationRequestParams {
-
+class ReplicationRequestParams {
+public:
     int          priority = 0;
     std::string  database;
     unsigned int chunk = 0;
@@ -115,15 +117,15 @@ struct ReplicationRequestParams {
 
     ReplicationRequestParams() = default;
 
-    explicit ReplicationRequestParams(ProtocolRequestReplicate const& message);
+    explicit ReplicationRequestParams(ProtocolRequestReplicate const& request);
 };
 
 /**
- * Structure DeleteRequestParams represents parameters of the replica
+ * Class DeleteRequestParams represents parameters of the replica
  * deletion requests.
  */
-struct DeleteRequestParams {
-
+class DeleteRequestParams {
+public:
     int          priority = 0;
     std::string  database;
     unsigned int chunk = 0;
@@ -131,67 +133,86 @@ struct DeleteRequestParams {
 
     DeleteRequestParams() = default;
 
-    explicit DeleteRequestParams(ProtocolRequestDelete const& message);
+    explicit DeleteRequestParams(ProtocolRequestDelete const& request);
 };
 
 /**
- * Structure FindRequestParams represents parameters of a single replica
+ * Class FindRequestParams represents parameters of a single replica
  * lookup (finding) requests.
  */
-struct FindRequestParams {
-
+class FindRequestParams {
+public:
     int          priority = 0;
     std::string  database;
     unsigned int chunk = 0;
 
     FindRequestParams() = default;
 
-    explicit FindRequestParams(ProtocolRequestFind const& message);
+    explicit FindRequestParams(ProtocolRequestFind const& request);
 };
 
 /**
- * Structure FindAllRequestParams represents parameters of the replica
+ * Class FindAllRequestParams represents parameters of the replica
  * group (depends on a scope of the corresponding request) lookup (finding)
  * requests.
  */
-struct FindAllRequestParams {
-
+class FindAllRequestParams {
+public:
     int          priority = 0;
     std::string  database;
 
     FindAllRequestParams() = default;
 
-    explicit FindAllRequestParams(ProtocolRequestFindAll const& message);
+    explicit FindAllRequestParams(ProtocolRequestFindAll const& request);
 };
 
 /**
- * Structure EchoRequestParams represents parameters of the echo requests.
+ * Class EchoRequestParams represents parameters of the echo requests.
  */
-struct EchoRequestParams {
-
+class EchoRequestParams {
+public:
     int          priority = 0;
     std::string  data;
     uint64_t     delay = 0;
 
     EchoRequestParams() = default;
 
-    explicit EchoRequestParams(ProtocolRequestEcho const& message);
+    explicit EchoRequestParams(ProtocolRequestEcho const& request);
 };
 
 /**
- * Structure SqlRequestParams represents parameters of the SQL requests.
+ * Class SqlRequestParams represents parameters of the SQL requests.
  */
-struct SqlRequestParams {
+class SqlRequestParams {
+public:
+    int priority = 0;
 
-    int          priority = 0;
-    std::string  query;
-    std::string  user;
-    std::string  password;
-    uint64_t     maxRows = 0;
+    enum Type {
+        QUERY,
+        CREATE_DATABASE,
+        DROP_DATABASE,
+        ENABLE_DATABASE,
+        DISABLE_DATABASE,
+        CREATE_TABLE,
+        DROP_TABLE,
+        REMOVE_TABLE_PARTITIONING
+    };
+    Type type = QUERY;
+
+    uint64_t maxRows = 0;
+
+    std::string query;
+    std::string user;
+    std::string password;
+    std::string database;
+    std::string table;
+    std::string engine;
+
+    std::list<std::pair<std::string, std::string>> columns;
 
     SqlRequestParams() = default;
 
-    explicit SqlRequestParams(ProtocolRequestSql const& message);
+    explicit SqlRequestParams(ProtocolRequestSql const& request);
 };
 
 }}} // namespace lsst::qserv::replica

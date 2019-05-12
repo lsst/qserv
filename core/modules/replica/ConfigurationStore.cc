@@ -377,13 +377,28 @@ DatabaseInfo ConfigurationStore::addDatabase(DatabaseInfo const& info) {
     if (_databaseInfo.find(info.name) != _databaseInfo.end()) {
         throw invalid_argument(_classMethodContext(__func__) + "  database already exists");
     }
+
     auto const isNotPublished = 0;
+
+    map<string,
+        list<pair<string,string>>> const noTableColumns;
+
+    string const noDirectorTable;
+    string const noDirectorTableKey;
+    string const noChunkIdKey;
+    string const noSubChunkIdKey;
+
     _databaseInfo[info.name] = DatabaseInfo{
         info.name,
         info.family,
         isNotPublished,
         {},
-        {}
+        {},
+        noTableColumns,
+        noDirectorTable,
+        noDirectorTableKey,
+        noChunkIdKey,
+        noSubChunkIdKey
     };
     return _databaseInfo[info.name];
 }
@@ -431,47 +446,46 @@ void ConfigurationStore::deleteDatabase(string const& name) {
 }
 
 
-DatabaseInfo ConfigurationStore::addTable(string const& database,
-                                          string const& table,
-                                          bool isPartitioned) {
+DatabaseInfo ConfigurationStore::addTable(
+        string const& database,
+        string const& table,
+        bool isPartitioned,
+        list<pair<string,string>> const& columns,
+        bool isDirectorTable,
+        string const& directorTableKey,
+        string const& chunkIdKey,
+        string const& subChunkIdKey) {
 
     LOGS(_log, LOG_LVL_DEBUG, context(__func__) << "  database: " << database
-         << " table: " << table << " isPartitioned: " << (isPartitioned ? "true" : "false"));
+         << " table: " << table << " isPartitioned: " << (isPartitioned ? "true" : "false")
+         << " isDirectorTable: " << (isDirectorTable ? "true" : "false")
+         << " directorTableKey: " << directorTableKey << " chunkIdKey: " << chunkIdKey
+         << " subChunkIdKey: " << subChunkIdKey);
 
-    util::Lock lock(_mtx, context(__func__));
-
-    if (database.empty()) {
-        throw invalid_argument(_classMethodContext(__func__) + "  the database name can't be empty");
-    }
-    if (table.empty()) {
-        throw invalid_argument(_classMethodContext(__func__) + "  the table name can't be empty");
-    }
-
-    // Find the database
-    auto itr = _databaseInfo.find(database);
-    if (itr == _databaseInfo.end()) {
-        throw invalid_argument(_classMethodContext(__func__) + "  unknown database");
-    }
-    DatabaseInfo& info = itr->second;
-
-    // Find the table
-    if (find(info.partitionedTables.cbegin(),
-             info.partitionedTables.cend(),
-             table) != info.partitionedTables.cend() or
-        find(info.regularTables.cbegin(), 
-             info.regularTables.cend(),
-             table) != info.regularTables.cend()) {
-
-        throw invalid_argument(_classMethodContext(__func__) + "  table already exists");
-    }
-
-    // Insert the table into the corresponding collection
-    if (isPartitioned) {
-        info.partitionedTables.push_back(table);
-    } else {
-        info.regularTables.push_back(table);
-    }
-    return info;
+    validateTableParameters(
+        _classMethodContext(__func__),
+        database,
+        table,
+        isPartitioned,
+        columns,
+        isDirectorTable,
+        directorTableKey,
+        chunkIdKey,
+        subChunkIdKey
+    );
+    
+    // Update the transient state accordingly
+    return addTableTransient(
+        _classMethodContext(__func__),
+        database,
+        table,
+        isPartitioned,
+        columns,
+        isDirectorTable,
+        directorTableKey,
+        chunkIdKey,
+        subChunkIdKey
+    );
 }
 
 
@@ -502,16 +516,22 @@ DatabaseInfo ConfigurationStore::deleteTable(string const& database,
                           table);
     if (pTableItr != info.partitionedTables.cend()) {
         info.partitionedTables.erase(pTableItr);
-        return info;
     }
     auto rTableItr = find(info.regularTables.cbegin(),
                           info.regularTables.cend(),
                           table);
     if (rTableItr != info.regularTables.cend()) {
         info.regularTables.erase(rTableItr);
-        return info;
     }
-    throw invalid_argument(_classMethodContext(__func__) + "  unknown table");
+    if (info.directorTable == table) {
+        info.directorTable = string();
+        info.directorTableKey = string();
+    }
+    if (info.partitionedTables.size() == 0) {
+        info.chunkIdKey = string();
+        info.subChunkIdKey = string();
+    }
+    return info;
 }
 
 
@@ -695,6 +715,10 @@ void ConfigurationStore::_loadConfiguration(util::ConfigStore const& configStore
             istream_iterator<string> begin(ss), end;
             _databaseInfo[name].regularTables = vector<string>(begin, end);
         }
+        _databaseInfo[name].directorTable = configStore.getRequired(section+".director_table");
+        _databaseInfo[name].directorTableKey = configStore.getRequired(section+".director_table_key");
+        _databaseInfo[name].chunkIdKey = configStore.getRequired(section+".chunk_id_key");
+        _databaseInfo[name].subChunkIdKey = configStore.getRequired(section+".sub_chunk_id_key");
     }
     dumpIntoLogger();
 }

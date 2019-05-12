@@ -164,20 +164,12 @@ public:
     /// @see WorkerReplicationRequestBase::createSqlRequest
     WorkerSqlRequestPtr createSqlRequest(string const& worker,
                                          string const& id,
-                                         int priority,
-                                         string const& query,
-                                         string const& user,
-                                         string const& password,
-                                         size_t maxRows) const final {
+                                         ProtocolRequestSql const& request) const final {
         return WorkerSqlRequest::create(
             _serviceProvider,
             worker,
             id,
-            priority,
-            query,
-            user,
-            password,
-            maxRows);
+            request);
     }
 };
 
@@ -289,20 +281,12 @@ public:
     /// @see WorkerReplicationRequestBase::createSqlRequest
     WorkerSqlRequestPtr createSqlRequest(string const& worker,
                                          string const& id,
-                                         int priority,
-                                         string const& query,
-                                         string const& user,
-                                         string const& password,
-                                         size_t maxRows) const final {
+                                         ProtocolRequestSql const& request) const final {
         return WorkerSqlRequestPOSIX::create(
             _serviceProvider,
             worker,
             id,
-            priority,
-            query,
-            user,
-            password,
-            maxRows);
+            request);
     }
 };
 
@@ -415,20 +399,12 @@ public:
     /// @see WorkerReplicationRequestBase::createSqlRequest
     WorkerSqlRequestPtr createSqlRequest(string const& worker,
                                          string const& id,
-                                         int priority,
-                                         string const& query,
-                                         string const& user,
-                                         string const& password,
-                                         size_t maxRows) const final {
+                                         ProtocolRequestSql const& request) const final {
         return WorkerSqlRequestFS::create(
             _serviceProvider,
             worker,
             id,
-            priority,
-            query,
-            user,
-            password,
-            maxRows);
+            request);
     }
 };
 

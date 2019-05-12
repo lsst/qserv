@@ -25,6 +25,7 @@
 // System headers
 #include <iomanip>
 #include <iostream>
+#include <stdexcept>
 #include <vector>
 
 // Qserv headers
@@ -32,15 +33,26 @@
 #include "replica/Controller.h"
 #include "replica/SqlResultSet.h"
 #include "replica/SqlJob.h"
+#include "util/File.h"
 
 using namespace std;
 
 namespace {
 
 string const description =
-    "This application executes the same query against worker databases of"
+    "This application executes the same SQL statement against worker databases of"
     " select workers. Result sets will be reported upon a completion of"
     " the application.";
+
+vector<string> splitByFirstSpace(const string& str) {
+    vector<string> result;
+    auto const pos = str.find(' ');
+    if (pos != string::npos) {
+        result.push_back(str.substr(0, pos));
+        result.push_back(str.substr(pos+1));
+    }
+    return result;
+}
 
 } // namespace
 
@@ -66,35 +78,18 @@ SqlApp::SqlApp(int argc, char* argv[])
 
     // Configure the command line parser
 
-    parser().required(
-        "user",
-        "Worker-side MySQL user account for executing the query.",
-        _mysqlUser);
-
-    parser().required(
-        "password",
-        "Password for the MySQL account.",
-        _mysqlPassword);
-
-    parser().required(
-        "query",
-        "The query to be executed on all select workers",
-        _query);
-
+    parser().commands(
+        "command",
+        {"QUERY",
+         "CREATE_DATABASE", "DELETE_DATABASE", "ENABLE_DATABASE", "DISABLE_DATABASE",
+         "CREATE_TABLE", "DELETE_TABLE", "REMOVE_TABLE_PARTITIONS"},
+        _command
+    );
     parser().flag(
         "all-workers",
         "The flag for selecting all workers regardless of their status (DISABLED or READ-ONLY).",
-        _allWorkers);
-
-    parser().option(
-        "max-rows",
-        "The maximum number of rows to be pulled from result set at workers"
-        " when processing queries. NOTE: This parameter has nothing to do with"
-        " the SQL's 'LIMIT <num-rows>'. It serves as an additional fail safe"
-        " mechanism preventing protocol buffers from being overloaded by huge"
-        " result sets which might be accidentally initiated by users.",
-        _maxRows);
-
+        _allWorkers
+    );
     parser().option(
         "worker-response-timeout",
         "Maximum timeout (seconds) to wait before queries would finish."
@@ -102,12 +97,125 @@ SqlApp::SqlApp(int argc, char* argv[])
         " hanging for a substantial duration of time (which depends on the default Configuration)"
         " in case if some workers were down. The parameter applies to operations with"
         " the Replication workers.",
-        _timeoutSec);
-
+        _timeoutSec
+    );
     parser().option(
         "tables-page-size",
         "The number of rows in the table of replicas (0 means no pages).",
-        _pageSize);
+        _pageSize
+    );
+
+    auto& queryCmd = parser().command("QUERY");
+    queryCmd.required(
+        "user",
+        "Worker-side MySQL user account for executing the query.",
+        _mysqlUser
+    );
+    queryCmd.required(
+        "password",
+        "Password for the MySQL account.",
+        _mysqlPassword
+    );
+    queryCmd.required(
+        "query",
+        "The query to be executed on all select workers. If '-' is used instead of"
+        " the query then the query will be read from the Standard Input stream."
+        " NOTE: in the current implementation of the tool only a single query is"
+        " expected in either form of the query input.",
+        _query
+    );
+    queryCmd.option(
+        "max-rows",
+        "The maximum number of rows to be pulled from result set at workers"
+        " when processing queries. NOTE: This parameter has nothing to do with"
+        " the SQL's 'LIMIT <num-rows>'. It serves as an additional fail safe"
+        " mechanism preventing protocol buffers from being overloaded by huge"
+        " result sets which might be accidentally initiated by users.",
+        _maxRows
+    );
+
+    auto& createDbCmd = parser().command("CREATE_DATABASE");
+    createDbCmd.required(
+        "database",
+        "The name of a database to be created.",
+        _database
+    );
+
+    auto& deleteDbCmd = parser().command("DELETE_DATABASE");
+    deleteDbCmd.required(
+        "database",
+        "The name of a database to be deleted.",
+        _database
+    );
+
+    auto& enableDbCmd = parser().command("ENABLE_DATABASE");
+    enableDbCmd.required(
+        "database",
+        "The name of a database to be enabled at Qserv workers.",
+        _database
+    );
+
+    auto& disableDbCmd = parser().command("DISABLE_DATABASE");
+    disableDbCmd.required(
+        "database",
+        "The name of a database to be disable at Qserv workers.",
+        _database
+    );
+
+    auto& createTableCmd = parser().command("CREATE_TABLE");
+    createTableCmd.required(
+        "database",
+        "The name of an existing database where the table will be created.",
+        _database
+    );
+    createTableCmd.required(
+        "table",
+        "The name of a table to be created.",
+        _table
+    );
+    createTableCmd.required(
+        "engine",
+        "The name of a MySQL engine for the new table",
+        _engine
+    );
+    createTableCmd.required(
+        "schema-file",
+        "The name of a file where column definitions of the table schema will be"
+        " read from. If symbol '-' is passed instead of the file name then column"
+        " definitions will be read from the Standard Input File. The file is required"
+        " to have the following format: <column-name> <type>",
+        _schemaFile
+    );
+    createTableCmd.option(
+        "partition-by-column",
+        "The name of a column which is used for creating the table based on"
+        " the MySQL partitioning mechanism,",
+        _partitionByColumn
+    );
+
+    auto& deleteTableCmd = parser().command("DELETE_TABLE");
+    deleteTableCmd.required(
+        "database",
+        "The name of an existing database where the table is residing.",
+        _database
+    );
+    deleteTableCmd.required(
+        "table",
+        "The name of an existing table to be deleted.",
+        _table
+    );
+
+    auto& removeTablePartitionsCmd = parser().command("REMOVE_TABLE_PARTITIONS");
+    removeTablePartitionsCmd.required(
+        "database",
+        "The name of an existing database where the table is residing.",
+        _database
+    );
+    removeTablePartitionsCmd.required(
+        "table",
+        "The name of an existing table to be affected by the operation.",
+        _table
+    );
 }
 
 
@@ -118,14 +226,44 @@ int SqlApp::runImpl() {
         serviceProvider()->config()->setControllerRequestTimeoutSec(_timeoutSec);
     }
 
-    auto const job = SqlJob::create(
-        _query,
-        _mysqlUser,
-        _mysqlPassword,
-        _maxRows,
-        _allWorkers,
-        Controller::create(serviceProvider())
-    );
+    auto const controller = Controller::create(serviceProvider());
+    SqlBaseJob::Ptr job;
+    bool shouldHaveResultSet = false;
+    if (_command == "QUERY") {
+        shouldHaveResultSet = true;
+        job = SqlQueryJob::create(_query, _mysqlUser, _mysqlPassword, _maxRows,
+                                  _allWorkers, controller);
+    } else if(_command == "CREATE_DATABASE") {
+        job = SqlCreateDbJob::create(_database, _allWorkers, controller);
+    } else if(_command == "DELETE_DATABASE") {
+        job = SqlDeleteDbJob::create(_database, _allWorkers, controller);
+    } else if(_command == "ENABLE_DATABASE") {
+        job = SqlEnableDbJob::create(_database, _allWorkers, controller);
+    } else if(_command == "DISABLE_DATABASE") {
+        job = SqlDisableDbJob::create(_database, _allWorkers, controller);
+    } else if(_command == "CREATE_TABLE") {
+        list<pair<string,string>> columns;
+        int lineNum = 0;
+        for (auto&& line: util::File::getLines(_schemaFile)) {
+            ++lineNum;
+            auto tokens = ::splitByFirstSpace(line);
+            if (tokens.size() != 2 or tokens[0].empty() or tokens[1].empty()) {
+                throw invalid_argument(
+                        "SqlApp::" + string(__func__) + "  invalid format at line: " + to_string(lineNum) +
+                        " of file: " + _schemaFile);
+            }
+            columns.emplace_back(tokens[0], tokens[1]);
+        }
+        job = SqlCreateTableJob::create(_database, _table, _engine, _partitionByColumn,
+                                        columns, _allWorkers, controller);
+    } else if(_command == "DELETE_TABLE") {
+        job = SqlDeleteTableJob::create(_database, _table, _allWorkers, controller);
+    } else if(_command == "REMOVE_TABLE_PARTITIONS") {
+        job = SqlRemoveTablePartitionsJob::create(_database, _table, _allWorkers, controller);
+    } else {
+        throw logic_error(
+                "SqlApp::" + string(__func__) + "  command='" + _command + "' is not supported");
+    }
     job->start();
     job->wait();
 
@@ -141,18 +279,21 @@ int SqlApp::runImpl() {
             cout << "worker: " << worker << ",  error: " << resultSet.error << endl;
             continue;
         }
-        string const caption =
-            "worker: " + worker + ",  performance [sec]: " + to_string(resultSet.performanceSec);
-        string const indent = "";
+        string const caption = "worker: " + worker + ",  performance [sec]: " +
+                               to_string(resultSet.performanceSec);
+        if (shouldHaveResultSet) {
+            string const indent = "";
+            auto table = resultSet.toColumnTable(caption, indent);
 
-        auto table = resultSet.toColumnTable(caption, indent);
+            bool const topSeparator    = false;
+            bool const bottomSeparator = false;
+            bool const repeatedHeader  = false;
 
-        bool const topSeparator    = false;
-        bool const bottomSeparator = false;
-        bool const repeatedHeader  = false;
-
-        table.print(cout, topSeparator, bottomSeparator, _pageSize, repeatedHeader);
-        cout << "\n";
+            table.print(cout, topSeparator, bottomSeparator, _pageSize, repeatedHeader);
+            cout << "\n";
+        } else {
+            cout << caption << endl;
+        }
     }
     return 0;
 }

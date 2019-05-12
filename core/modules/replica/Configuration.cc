@@ -23,6 +23,7 @@
 #include "replica/Configuration.h"
 
 // System headers
+#include <algorithm>
 #include <set>
 #include <stdexcept>
 
@@ -90,6 +91,23 @@ json DatabaseInfo::toJson() const {
             {"name",           name},
             {"is_partitioned", 0}});
     }
+    for (auto&& columnsEntry: columns) {
+        string const& table = columnsEntry.first;
+        auto const& coldefs = columnsEntry.second;
+        json coldefsJson;
+        for (auto&& coldef: coldefs) {
+            json coldefJson;
+            coldefJson["name"] = coldef.first;
+            coldefJson["type"] = coldef.second;
+            coldefsJson.push_back(coldefJson);
+        }
+        infoJson["columns"][table] = coldefsJson;
+    }
+    infoJson["director_table"] = directorTable;
+    infoJson["director_table_key"] = directorTableKey;
+    infoJson["chunk_id_key"] = chunkIdKey;
+    infoJson["sub_chunk_id_key"] = subChunkIdKey;
+
     return infoJson;
 }
 
@@ -133,7 +151,11 @@ ostream& operator <<(ostream& os, DatabaseInfo const& info) {
         << "family:'" << info.family << "',"
         << "isPublished:" << (int)info.isPublished << ","
         << "partitionedTables:" << util::printable(info.partitionedTables) << ","
-        << "regularTables:" << util::printable(info.regularTables) << ")";
+        << "regularTables:" << util::printable(info.regularTables)  << ","
+        << "directorTable:" << info.directorTable << ","
+        << "directorTableKey:" << info.directorTableKey << ","
+        << "chunkIdKey:" << info.chunkIdKey << ","
+        << "subChunkIdKey:" << info.subChunkIdKey << ")";
     return os;
 }
 
@@ -181,10 +203,7 @@ json Configuration::toJson(Configuration::Ptr const& config) {
     }
     configJson["families"] = familiesJson;
 
-    json resultJson;
-    resultJson["config"] = configJson;
-
-    return resultJson;
+    return configJson;
 }
 
 
@@ -642,4 +661,119 @@ map<string, DatabaseInfo>::iterator Configuration::safeFindDatabase(util::Lock c
     throw invalid_argument(context + "  no such database: " + name);
 }
 
+
+bool Configuration::columnInSchema(string const& colName,
+                                   list<pair<string,string>> const& columns) const {
+    return columns.end() != find_if(
+         columns.begin(),
+         columns.end(),
+         [&] (pair<string,string> const& coldef) {
+             return coldef.first == colName;
+         }
+     );
+}
+
+
+void Configuration::validateTableParameters(
+        string const& context_,
+        string const& database,
+        string const& table,
+        bool isPartitioned,
+        list<pair<string,string>> const& columns,
+        bool isDirectorTable,
+        string const& directorTableKey,
+        string const& chunkIdKey,
+        string const& subChunkIdKey) const {
+
+    if (database.empty()) throw invalid_argument(context_ + "  the database name can't be empty");
+    if (table.empty()) throw invalid_argument(context_ + "  the table name can't be empty");
+
+    // Find the database (an exception will be thrown if not found)
+    auto info = databaseInfo(database);
+
+    // Find the table
+    if (find(info.partitionedTables.cbegin(),
+             info.partitionedTables.cend(),
+             table) != info.partitionedTables.cend() or
+        find(info.regularTables.cbegin(), 
+             info.regularTables.cend(),
+             table) != info.regularTables.cend()) {
+        throw invalid_argument(context_ + "  table already exists");
+    }
+
+    // Validate flags and column names
+    if (isPartitioned) {
+        if (isDirectorTable) {
+            if (not info.directorTable.empty()) {
+                throw invalid_argument(
+                        context_ + "  another table '" + info.directorTable +
+                        "' was already claimed as the 'director' table.");
+            }
+            if (directorTableKey.empty()) {
+                throw invalid_argument(
+                        context_ + "  a valid column name must be provided"
+                        " for the 'director' table");
+            }
+            if (not columnInSchema(directorTableKey, columns)) {
+                throw invalid_argument(
+                        context_ + "  a value of parameter 'directorTableKey'"
+                        " provided for the 'director' table '" + table + "' doesn't match any column"
+                        " in the table schema");                
+            }
+        }
+        map<string,string> const colDefs = {
+            {"chunkIdKey",    chunkIdKey},
+            {"subChunkIdKey", subChunkIdKey}
+        };
+        for (auto&& entry: colDefs) {
+            string const& role = entry.first;
+            string const& colName = entry.second;
+            if (colName.empty()) {
+                throw invalid_argument(
+                        context_ + "  a valid column name must be provided"
+                        " for the '" + role + "' parameter of the partitioned table");
+            }
+            if (not columnInSchema(colName, columns)) {
+                throw invalid_argument(
+                        context_ + "  no matching column found in the provided"
+                        " schema for name '" + colName + " as required by parameter '" + role +
+                        "' of the partitioned table: '" + table + "'");                
+            }
+        }
+    } else {
+        if (isDirectorTable) {
+            throw invalid_argument(context_ + "  regular tables can't be the 'director' ones");
+        }
+    }
+}
+
+
+DatabaseInfo Configuration::addTableTransient(
+        string const& context_,
+        string const& database,
+        string const& table,
+        bool isPartitioned,
+        list<pair<string,string>> const& columns,
+        bool isDirectorTable,
+        string const& directorTableKey,
+        string const& chunkIdKey,
+        string const& subChunkIdKey) {
+
+    util::Lock lock(_mtx, context_ + " -> Configuration::" + string(__func__));
+
+    auto& info = _databaseInfo[database];
+    if (isPartitioned) {
+        info.partitionedTables.push_back(table);
+        if (isDirectorTable) {
+            info.directorTable = table;
+            info.directorTableKey = directorTableKey;
+        }
+        info.chunkIdKey = chunkIdKey;
+        info.subChunkIdKey = subChunkIdKey;
+    } else {
+        info.regularTables.push_back(table);
+    }
+    info.columns[table] = columns;
+    return info;
+}
 }}} // namespace lsst::qserv::replica

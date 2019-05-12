@@ -30,9 +30,11 @@
 
 // System headers
 #include <iosfwd>
+#include <list>
 #include <map>
 #include <memory>
 #include <string>
+#include <tuple>
 #include <vector>
 
 // Third party headers
@@ -104,6 +106,28 @@ public:
 
     std::vector<std::string> partitionedTables; /// The names of the partitioned tables
     std::vector<std::string> regularTables;     /// The list of fully replicated tables
+
+    /// Table schema (optional) 
+    std::map<std::string,                       // table name
+             std::list<std::pair<std::string,   // column name
+                       std::string>>> columns;  // column type
+
+    /// @return the names of all tables
+    std::vector<std::string> tables() const {
+        std::vector<std::string> result(partitionedTables.begin(), partitionedTables.end());
+        result.insert(result.begin(), regularTables.begin(), regularTables.end());
+        return result;
+    }
+
+    std::string directorTable;      /// The name of the Qserv "director" table if any
+    std::string directorTableKey;   /// The name of the primary key column in the "director" table.
+
+    // Names of special columns of the partitioned tables.
+    //
+    // NOTE: all partitioned tables must have the same values of the keys.
+
+    std::string chunkIdKey;
+    std::string subChunkIdKey;
 
     /// @return JSON representation of the object
     nlohmann::json toJson() const;
@@ -654,16 +678,47 @@ public:
      * @param isPartitioned
      *   'true' if the table is partitioned
      *
+     * @param columns
+     *   (optional) column definitions as pairs of (name,type) of the table
+     *
+     * @param isDirectorTable
+     *   (optional) flag indicating if this is the "director" table of
+     *   the catalog. Note there could be only one such table in a catalog,
+     *   and this table must be "partitioned".
+     *
+     * @param directorTableKey
+     *   (optional) the name of a column in the "director" table which is
+     *   used as an "object" identifier for astronomical objects. This parameter
+     *   applies to the director tables only. And if provided (and allowed) the column
+     *   must be found among the names of columns in a value of parameter "columns".
+     * 
+     * @param chunkIdKey
+     *   (optional) the name of a column which stores identifiers of "chunks",
+     *   This parameter applies to all "partitioned" tables, and if provided the column
+     *   must be found among the names of columns in a value of parameter "columns".
+     * 
+     * @param subChunkIdKey
+     *   (optional) the name of a column which stores identifiers of "sub-chunks",
+     *   This parameter applies to all "partitioned" tables, and if provided the column
+     *   must be found among the names of columns in a value of parameter "columns".
+     *
      * @return
      *    a database descriptor of the updated database
      *
      * @throw std::invalid_argument
      *   if the specified database doesn't exists, or if the table already exists,
-     *   or if either of those parameters are the empty strings
+     *   or if either of those parameters are the empty strings, or other required
+     *   parameters have incorrect values or missing.
      */
     virtual DatabaseInfo addTable(std::string const& database,
                                   std::string const& table,
-                                  bool isPartitioned) = 0;
+                                  bool isPartitioned,
+                                  std::list<std::pair<std::string,std::string>> const& columns=
+                                        std::list<std::pair<std::string,std::string>>(),
+                                  bool isDirectorTable=false,
+                                  std::string const& directorTableKey="objectId",
+                                  std::string const& chunkIdKey="chunkId",
+                                  std::string const& subChunkIdKey="subChunkId") = 0;
 
     /**
      * Delete an existing table
@@ -1222,6 +1277,51 @@ protected:
     std::map<std::string, DatabaseInfo>::iterator safeFindDatabase(util::Lock const& lock,
                                                                    std::string const& name,
                                                                    std::string const& context);
+
+    /**
+     * 
+     * @param colName
+     *   the name of a column to be found
+     *
+     * @param columns
+     *   the schema definition
+     *
+     * @return
+     *   'true' if found
+     */
+    bool columnInSchema(std::string const& colName,
+                        std::list<std::pair<std::string, std::string>> const& columns) const;
+
+    /**
+     * Validate table parameters and thrown exception std::invalid_argument
+     * if any problems were found.
+     *
+     * @see Configuration::addTable()
+     */
+    void validateTableParameters(std::string const& context_,
+                                 std::string const& database,
+                                 std::string const& table,
+                                 bool isPartitioned,
+                                 std::list<std::pair<std::string,std::string>> const& columns,
+                                 bool isDirectorTable,
+                                 std::string const& directorTableKey,
+                                 std::string const& chunkIdKey,
+                                 std::string const& subChunkIdKey) const;
+
+    /**
+     * Update the transient state of the database by adding a new table
+     *
+     * @see Configuration::addTable()
+     */
+    DatabaseInfo addTableTransient(std::string const& context_,
+                                   std::string const& database,
+                                   std::string const& table,
+                                   bool isPartitioned,
+                                   std::list<std::pair<std::string,std::string>> const& columns,
+                                   bool isDirectorTable,
+                                   std::string const& directorTableKey,
+                                   std::string const& chunkIdKey,
+                                   std::string const& subChunkIdKey);
 
     /// To be used were thread safety is required
     mutable util::Mutex _mtx;

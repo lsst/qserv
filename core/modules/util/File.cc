@@ -25,6 +25,7 @@
 
 // System headers
 #include <fstream>
+#include <iostream>
 #include <stdexcept>
 
 // Qserv headers
@@ -55,17 +56,22 @@ vector<string> File::getLines(string const& fileName,
         throw invalid_argument(err);
     }
 
-    ifstream file(fileName);
-    if (not file.good()) {
-        string const err = context + "failed to open the file: '" + fileName + "'";
-        LOGS(_log, LOG_LVL_ERROR, err);
-        throw runtime_error(err);
-    }
-
     vector<string> result;
     string line;
-    while (file >> line) {
-        result.push_back(line);
+    if (fileName == "-") {
+        while (getline(cin, line)) {
+            result.push_back(line);
+        }
+    } else {
+        ifstream file(fileName);
+        if (not file.good()) {
+            string const err = context + "failed to open the file: '" + fileName + "'";
+            LOGS(_log, LOG_LVL_ERROR, err);
+            throw runtime_error(err);
+        }
+        while (getline(file, line)) {
+            result.push_back(line);
+        }
     }
     if (assertNotEmpty and result.empty()) {
         string const err = context + "no lines found in the file: '" + fileName + "'";

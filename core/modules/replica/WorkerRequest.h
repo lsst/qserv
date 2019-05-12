@@ -91,7 +91,7 @@ public:
 
     // Trivial getter methods
 
-    ServiceProvider::Ptr const& serviceProvider() { return _serviceProvider; }
+    ServiceProvider::Ptr const& serviceProvider() const { return _serviceProvider; }
 
     std::string const& worker() const { return _worker; }
 

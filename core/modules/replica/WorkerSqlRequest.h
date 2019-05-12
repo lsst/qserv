@@ -76,25 +76,8 @@ public:
      * @param id
      *   an identifier of a client request
      *
-     * @param priority
-     *   indicates the importance of the request
-     *
-     * @param query
-     *   the query to be executed
-     *
-     * @param user
-     *   the name of a database account for connecting to the database service
-     *
-     * @param password
-     *   a password for connecting to the database service
-     *
-     * @param maxRows
-     *   (optional) limit for the maximum number of rows to be returned with the request.
-     *   Laving the default value of the parameter to 0 will result in not imposing any
-     *   explicit restrictions on a size of the result set. NOte that other, resource-defined
-     *   restrictions will still apply. The later includes the maximum size of the Google Protobuf
-     *   objects, the amount of available memory, etc.
-     *
+     * @param request
+     *   ProtoBuf body of the request
      *
      * @return
      *   pointer to the created object
@@ -102,11 +85,7 @@ public:
     static Ptr create(ServiceProvider::Ptr const& serviceProvider,
                       std::string const& worker,
                       std::string const& id,
-                      int priority,
-                      std::string const& query,
-                      std::string const& user,
-                      std::string const& password,
-                      size_t maxRows=0);
+                      ProtocolRequestSql const& request);
 
     // Default construction and copy semantics are prohibited
 
@@ -116,13 +95,8 @@ public:
 
     ~WorkerSqlRequest() override = default;
 
-    // Trivial get methods
-
-    std::string const& query()    const { return _query; }
-    std::string const& user()     const { return _user; }
-    std::string const& password() const { return _password; }
-
-    size_t maxRows() const { return _maxRows; }
+    /// @return the original request
+    ProtocolRequestSql const& request() const { return _request; }
 
     /**
      * Extract request status into the Protobuf response object.
@@ -135,22 +109,35 @@ public:
     /// @see WorkerRequest::execute
     bool execute() override;
 
-protected:
+private:
 
     /// @see WorkerSqlRequest::create()
     WorkerSqlRequest(ServiceProvider::Ptr const& serviceProvider,
                      std::string const& worker,
                      std::string const& id,
-                     int priority,
-                     std::string const& query,
-                     std::string const& user,
-                     std::string const& password,
-                     size_t maxRows);
+                     ProtocolRequestSql const& request);
 
-private:
+    /// @return a connector as per the input request
+    std::shared_ptr<database::mysql::Connection> _connector() const;
 
     /**
-     * INitialize the Protobuf response object.
+     * The query generator uses parameters of a request to compose
+     * a desired query.
+     *
+     * @param conn
+     *   a reference to the database connector is needed to process arguments
+     *   to meet requirements of the database query processing engine.
+     *
+     * @return
+     *   a query as per the input request
+     *
+     * @throws std::invalid_argument
+     *   if the input parameters are not supported
+     */
+    std::string _query(std::shared_ptr<database::mysql::Connection> const& conn) const;
+
+    /**
+     * Initialize the Protobuf response object.
      * 
      * @note
      *   This method is called to extract result set of a query via the connector
@@ -163,10 +150,7 @@ private:
 
     // Input parameters
 
-    std::string const _query;
-    std::string const _user;
-    std::string const _password;
-    size_t      const _maxRows;
+    ProtocolRequestSql const _request;
 
     /// Cached result to be sent to a client
     mutable ProtocolResponseSql _response;

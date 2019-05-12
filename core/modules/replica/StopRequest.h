@@ -426,7 +426,14 @@ typedef StopRequest<StopDeleteRequestPolicy>      StopDeleteRequest;
 typedef StopRequest<StopFindRequestPolicy>        StopFindRequest;
 typedef StopRequest<StopFindAllRequestPolicy>     StopFindAllRequest;
 typedef StopRequest<StopEchoRequestPolicy>        StopEchoRequest;
-typedef StopRequest<StopSqlRequestPolicy>         StopSqlRequest;
+typedef StopRequest<StopSqlRequestPolicy>         StopSqlQueryRequest;
+typedef StopRequest<StopSqlRequestPolicy>         StopSqlCreateDbRequest;
+typedef StopRequest<StopSqlRequestPolicy>         StopSqlDeleteDbRequest;
+typedef StopRequest<StopSqlRequestPolicy>         StopSqlEnableDbRequest;
+typedef StopRequest<StopSqlRequestPolicy>         StopSqlDisableDbRequest;
+typedef StopRequest<StopSqlRequestPolicy>         StopSqlCreateTableRequest;
+typedef StopRequest<StopSqlRequestPolicy>         StopSqlDeleteTableRequest;
+typedef StopRequest<StopSqlRequestPolicy>         StopSqlRemoveTablePartitionsRequest;
 
 }}} // namespace lsst::qserv::replica
 

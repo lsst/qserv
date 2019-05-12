@@ -158,47 +158,71 @@ string Generators::uniqueId() {
 //        Parameters of requests          //
 ////////////////////////////////////////////
 
-ReplicationRequestParams::ReplicationRequestParams(ProtocolRequestReplicate const& message)
-    :   priority(message.priority()),
-        database(message.database()),
-        chunk(message.chunk()),
-        sourceWorker(message.worker()) {
+ReplicationRequestParams::ReplicationRequestParams(ProtocolRequestReplicate const& request)
+    :   priority(request.priority()),
+        database(request.database()),
+        chunk(request.chunk()),
+        sourceWorker(request.worker()) {
 }
 
 
-DeleteRequestParams::DeleteRequestParams(ProtocolRequestDelete const& message)
-    :   priority(message.priority()),
-        database(message.database()),
-        chunk(message.chunk()) {
+DeleteRequestParams::DeleteRequestParams(ProtocolRequestDelete const& request)
+    :   priority(request.priority()),
+        database(request.database()),
+        chunk(request.chunk()) {
 }
 
 
-FindRequestParams::FindRequestParams(ProtocolRequestFind const& message)
-    :   priority(message.priority()),
-        database(message.database()),
-        chunk(message.chunk()) {
+FindRequestParams::FindRequestParams(ProtocolRequestFind const& request)
+    :   priority(request.priority()),
+        database(request.database()),
+        chunk(request.chunk()) {
 }
 
 
-FindAllRequestParams::FindAllRequestParams(ProtocolRequestFindAll const& message)
-    :   priority(message.priority()),
-        database(message.database()) {
+FindAllRequestParams::FindAllRequestParams(ProtocolRequestFindAll const& request)
+    :   priority(request.priority()),
+        database(request.database()) {
 }
 
 
-EchoRequestParams::EchoRequestParams(ProtocolRequestEcho const& message)
-    :   priority(message.priority()),
-        data(message.data()),
-        delay(message.delay()) {
+EchoRequestParams::EchoRequestParams(ProtocolRequestEcho const& request)
+    :   priority(request.priority()),
+        data(request.data()),
+        delay(request.delay()) {
 }
 
 
-SqlRequestParams::SqlRequestParams(ProtocolRequestSql const& message)
-    :   priority(message.priority()),
-        query(message.query()),
-        user(message.user()),
-        password(message.password()),
-        maxRows(message.max_rows()) {
+SqlRequestParams::SqlRequestParams(ProtocolRequestSql const& request)
+    :   priority(request.priority()),
+        maxRows(request.max_rows()) {
+
+    auto const requestType = request.type();
+    switch (requestType) {
+        case ProtocolRequestSql::QUERY:                     type = QUERY; break;
+        case ProtocolRequestSql::CREATE_DATABASE:           type = CREATE_DATABASE; break;
+        case ProtocolRequestSql::DROP_DATABASE:             type = DROP_DATABASE; break;
+        case ProtocolRequestSql::ENABLE_DATABASE:           type = ENABLE_DATABASE; break;
+        case ProtocolRequestSql::DISABLE_DATABASE:          type = DISABLE_DATABASE; break;
+        case ProtocolRequestSql::CREATE_TABLE:              type = CREATE_TABLE; break;
+        case ProtocolRequestSql::DROP_TABLE:                type = DROP_TABLE; break;
+        case ProtocolRequestSql::REMOVE_TABLE_PARTITIONING: type = REMOVE_TABLE_PARTITIONING; break;
+        default:
+            throw runtime_error(
+                    "SqlRequestParams::" + string(__func__) +
+                    "  unsupported request type: " + ProtocolRequestSql_Type_Name(requestType));
+    }
+    if (request.has_query())    query    = request.query();
+    if (request.has_user())     user     = request.user();
+    if (request.has_password()) password = request.password();
+    if (request.has_database()) database = request.database();
+    if (request.has_table())    table    = request.table();
+    if (request.has_engine())   engine   = request.engine();
+
+    for (int index = 0; index < request.columns_size(); ++index) {
+        auto const& column = request.columns(index);
+        columns.emplace_back(column.name(), column.type());
+    }
 }
 
 }}} // namespace lsst::qserv::replica

@@ -32,6 +32,7 @@
 namespace lsst {
 namespace qserv {
 namespace replica {
+    class ProtocolRequestSql;
     class WorkerDeleteRequest;
     class WorkerEchoRequest;
     class WorkerFindAllRequest;
@@ -160,11 +161,7 @@ public:
     virtual WorkerSqlRequestPtr createSqlRequest(
             std::string const& worker,
             std::string const& id,
-            int priority,
-            std::string const& query,
-            std::string const& user,
-            std::string const& password,
-            size_t maxRows) const = 0;
+            ProtocolRequestSql const& request) const = 0;
  
 protected:
 
@@ -315,20 +312,12 @@ public:
     WorkerSqlRequestPtr createSqlRequest(
             std::string const& worker,
             std::string const& id,
-            int priority,
-            std::string const& query,
-            std::string const& user,
-            std::string const& password,
-            size_t maxRows) const final {
+            ProtocolRequestSql const& request) const final {
 
         return _ptr->createSqlRequest(
             worker,
             id,
-            priority,
-            query,
-            user,
-            password,
-            maxRows);
+            request);
     }
 
 protected:

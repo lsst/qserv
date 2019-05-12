@@ -132,7 +132,7 @@ ControllerApp::ControllerApp(int argc, char* argv[])
             "FIND",
             "FIND_ALL",
             "ECHO",
-            "SQL",
+            "SQL_QUERY",
             "STATUS",
             "STOP",
             "SERVICE_SUSPEND",
@@ -274,7 +274,7 @@ ControllerApp::ControllerApp(int argc, char* argv[])
 
     /// Request-specific parameters, options, flags
 
-    auto& sqlCmd = parser().command("SQL");
+    auto& sqlCmd = parser().command("SQL_QUERY");
 
     sqlCmd.description(
         "Ask a worker service to execute a query against its database, get a result"
@@ -318,9 +318,9 @@ ControllerApp::ControllerApp(int argc, char* argv[])
     statusCmd.required(
         "affected-request",
         "The type of a request affected by the operation. Supported types:"
-        " REPLICATE, DELETE, FIND, FIND_ALL, ECHO, SQL.",
+        " REPLICATE, DELETE, FIND, FIND_ALL, ECHO, SQL_QUERY.",
         _affectedRequest,
-       {"REPLICATE", "DELETE", "FIND", "FIND_ALL", "ECHO", "SQL"});
+       {"REPLICATE", "DELETE", "FIND", "FIND_ALL", "ECHO", "SQL_QUERY"});
 
     statusCmd.required(
         "id",
@@ -337,9 +337,9 @@ ControllerApp::ControllerApp(int argc, char* argv[])
     stopCmd.required(
         "affected-request",
         "The type of a request affected by the operation. Supported types:"
-        " REPLICATE, DELETE, FIND, FIND_ALL, ECHO, SQL.",
+        " REPLICATE, DELETE, FIND, FIND_ALL, ECHO, SQL_QUERY.",
         _affectedRequest,
-       {"REPLICATE", "DELETE", "FIND", "FIND_ALL", "ECHO", "SQL"});
+       {"REPLICATE", "DELETE", "FIND", "FIND_ALL", "ECHO", "SQL_QUERY"});
 
     stopCmd.required(
         "id",
@@ -434,14 +434,14 @@ int ControllerApp::runImpl() {
             },
             _priority,
             not _doNotTrackRequest);
-    } else if ("SQL" == _request) {
-        ptr = controller->sql(
+    } else if ("SQL_QUERY" == _request) {
+        ptr = controller->sqlQuery(
             _workerName,
             _sqlQuery,
             _sqlUser,
             _sqlPassword,
             _sqlMaxRows,
-            [&] (SqlRequest::Ptr const& ptr_) {
+            [&] (SqlQueryRequest::Ptr const& ptr_) {
                 ::printRequest(ptr_,
                                ptr_->responseData(),
                                ptr_->performance(),
@@ -495,16 +495,16 @@ int ControllerApp::runImpl() {
                     ::printRequestExtra<StatusEchoRequest>(ptr_);
                 },
                 not _doNotTrackRequest);
-        } else if ("SQL" == _affectedRequest) {
-            ptr = controller->statusOfSql(
+        } else if ("SQL_QUERY" == _affectedRequest) {
+            ptr = controller->statusOfSqlQuery(
                 _workerName,
                 _affectedRequestId,
-                [&] (StatusSqlRequest::Ptr const& ptr_) {
+                [&] (StatusSqlQueryRequest::Ptr const& ptr_) {
                     ::printRequest(ptr_,
                                    ptr_->responseData(),
                                    ptr_->performance(),
                                    _sqlPageSize);
-                    ::printRequestExtra<StatusSqlRequest>(ptr_);
+                    ::printRequestExtra<StatusSqlQueryRequest>(ptr_);
                 },
                 not _doNotTrackRequest);
         } else {
@@ -556,16 +556,16 @@ int ControllerApp::runImpl() {
                     ::printRequestExtra<StopEchoRequest>(ptr_);
                 },
                 not _doNotTrackRequest);
-        } else if ("SQL" == _affectedRequest) {
-            ptr = controller->stopSql(
+        } else if ("SQL_QUERY" == _affectedRequest) {
+            ptr = controller->stopSqlQuery(
                 _workerName,
                 _affectedRequestId,
-                [&] (StopSqlRequest::Ptr const& ptr_) {
+                [&] (StopSqlQueryRequest::Ptr const& ptr_) {
                     ::printRequest(ptr_,
                                    ptr_->responseData(),
                                    ptr_->performance(),
                                    _sqlPageSize);
-                    ::printRequestExtra<StopSqlRequest>(ptr_);
+                    ::printRequestExtra<StopSqlQueryRequest>(ptr_);
                 },
                 not _doNotTrackRequest);
         } else {

@@ -203,7 +203,12 @@ public:
     /// @see Configuration::addTable()
     DatabaseInfo addTable(std::string const& database,
                           std::string const& table,
-                          bool isPartitioned) final;
+                          bool isPartitioned,
+                          std::list<std::pair<std::string,std::string>> const& columns,
+                          bool isDirectorTable,
+                          std::string const& directorTableKey,
+                          std::string const& chunkIdKey,
+                          std::string const& subChunkIdKey) final;
 
     /// @see Configuration::deleteTable()
     DatabaseInfo deleteTable(std::string const& database,

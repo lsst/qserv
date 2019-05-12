@@ -319,6 +319,33 @@ private:
      */
     nlohmann::json _getQueries(nlohmann::json& workerInfo) const;
 
+    /**
+     * Report a error condition and send a error message back to a requester
+     * of a service.
+     *
+     * @param resp   the HTTP response channel
+     * @param func   the name of a context from which the operation was initiated
+     * @param error  error condition to be reported
+     */
+    void _sendError(qhttp::Response::Ptr const& resp,
+                    std::string const& func,
+                    std::string const& error) const;
+
+    /**
+     * Report a result back to a requester of a service upon its successful
+     * completion.
+     *
+     * @param resp    the HTTP response channel
+     * @param result  JSON object to be sent back
+     * @param success (optional) flag indicating if the operation was successful.
+     *                Note, that the method will still send a result regardless of
+     *                a value of the flag. The result object may provide more specific
+     *                info on a reason of a failure (if not success)
+     */
+    void _sendData(qhttp::Response::Ptr const& resp,
+                   nlohmann::json& result,
+                   bool success=true);
+
     Controller::Ptr const _controller;
 
     HealthMonitorTask::WorkerEvictCallbackType const _onWorkerEvict;
@@ -331,7 +358,8 @@ private:
 
     HealthMonitorTask::Ptr const& _healthMonitorTask;
 
-    std::string _replicationLevelReport; /// The cached state of the last replication levels report
+    /// The cached state of the last replication levels report
+    nlohmann::json _replicationLevelReport = nlohmann::json::object();
     
     uint64_t _replicationLevelReportTimeMs = 0; /// The time of the last cached report
 

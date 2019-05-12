@@ -168,15 +168,21 @@ string ConfigurationMySQL::dump2init(Configuration::Ptr const& config) {
 
             str << "INSERT INTO `config_database` VALUES ("
                 << "'" << databaseInfo.name << "','" << databaseInfo.family
-                << "'," << databaseInfo.isPublished << ");\n";
+                << "'," << databaseInfo.isPublished
+                << "','" << databaseInfo.chunkIdKey << "','" << databaseInfo.subChunkIdKey << "');\n";
 
             for (auto&& table: databaseInfo.partitionedTables) {
-                str << "INSERT INTO `config_database_table` VALUES ("
-                    << "'" << databaseInfo.name << "','" << table << "',1);\n";
+                if (table == databaseInfo.directorTable) {
+                    str << "INSERT INTO `config_database_table` VALUES ("
+                        << "'" << databaseInfo.name << "','" << table << "',1,1,'" << databaseInfo.directorTableKey << "');\n";
+                } else {
+                    str << "INSERT INTO `config_database_table` VALUES ("
+                        << "'" << databaseInfo.name << "','" << table << "',1,0,'');\n";
+                }
             }
             for (auto&& table: databaseInfo.regularTables) {
                 str << "INSERT INTO `config_database_table` VALUES ("
-                    << "'" << databaseInfo.name << "','" << table << "',0);\n";
+                    << "'" << databaseInfo.name << "','" << table << "',0,0,'');\n";
             }
         }
     }
@@ -924,12 +930,25 @@ DatabaseInfo ConfigurationMySQL::addDatabase(DatabaseInfo const& info) {
 
         util::Lock lock(_mtx, context_);
 
+        map<string,
+            list<pair<string,string>>> const noTableColumns;
+
+        string const noDirectorTable;
+        string const noDirectorTableKey;
+        string const noChunkIdKey;
+        string const noSubChunkIdKey;
+
         _databaseInfo[info.name] = DatabaseInfo{
             info.name,
             info.family,
             isNotPublished,
             {},
-            {}
+            {},
+            noTableColumns,
+            noDirectorTable,
+            noDirectorTableKey,
+            noChunkIdKey,
+            noSubChunkIdKey
         };
         return _databaseInfo[info.name];
 
@@ -1029,24 +1048,34 @@ void ConfigurationMySQL::deleteDatabase(string const& name) {
 }
 
 
-DatabaseInfo ConfigurationMySQL::addTable(string const& database,
-                                          string const& table,
-                                          bool isPartitioned) {
+DatabaseInfo ConfigurationMySQL::addTable(
+        string const& database,
+        string const& table,
+        bool isPartitioned,
+        list<pair<string,string>> const& columns,
+        bool isDirectorTable,
+        string const& directorTableKey,
+        string const& chunkIdKey,
+        string const& subChunkIdKey) {
 
     string const context_ = context() + __func__;
 
     LOGS(_log, LOG_LVL_DEBUG, context_ << "  database: " << database
          << " table: " << table << " isPartitioned: " << (isPartitioned ? "true" : "false"));
 
-    if (database.empty()) {
-        throw invalid_argument(context_ + "  the database name can't be empty");
-    }
-    if (table.empty()) {
-        throw invalid_argument(context_ + "  the table name can't be empty");
-    }
-    if (not isKnownDatabase(database)) {
-        throw invalid_argument(context_ + "  unknown database");
-    }
+    validateTableParameters(
+        context_,
+        database,
+        table,
+        isPartitioned,
+        columns,
+        isDirectorTable,
+        directorTableKey,
+        chunkIdKey,
+        subChunkIdKey
+    );
+
+    // Update the persistent state
 
     database::mysql::ConnectionHandler handler;
     try {
@@ -1054,29 +1083,50 @@ DatabaseInfo ConfigurationMySQL::addTable(string const& database,
         // First update the database
         handler.conn = database::mysql::Connection::open(_connectionParams);
         handler.conn->execute(
-            [&database,&table,isPartitioned](decltype(handler.conn) conn) {
+            [&](decltype(handler.conn) conn) {
                 conn->begin();
                 conn->executeInsertQuery(
                     "config_database_table",
                     database,
                     table,
-                    isPartitioned
+                    isPartitioned,
+                    isDirectorTable,
+                    directorTableKey
                 );
+                int colPosition = 0;
+                for (auto&& coldef: columns) {
+                    conn->executeInsertQuery(
+                        "config_database_table_schema",
+                        database,
+                        table,
+                        colPosition++,  // column position
+                        coldef.first,   // column name
+                        coldef.second   // column type
+                    );
+                }
+                if (isPartitioned) {
+                    conn->executeSimpleUpdateQuery(
+                        "config_database",
+                        conn->sqlEqual("database", database),
+                        make_pair("chunk_id_key", chunkIdKey),
+                        make_pair("sub_chunk_id_key", subChunkIdKey)
+                    );
+                }
                 conn->commit();
             }
         );
 
-        // Then update the transient state
-
-        util::Lock lock(_mtx, context_);
-
-        auto& info = _databaseInfo[database];
-        if (isPartitioned) {
-            info.partitionedTables.push_back(table);
-        } else {
-            info.regularTables.push_back(table);
-        }
-        return info;
+        // Update the transient state accordingly
+        return addTableTransient(
+            context_,
+            database,
+            table,
+            isPartitioned,
+            columns,
+            isDirectorTable,
+            directorTableKey,
+            chunkIdKey,
+            subChunkIdKey);
 
     } catch (database::mysql::Error const& ex) {
         LOGS(_log, LOG_LVL_ERROR, context_ << "MySQL error: " << ex.what());
@@ -1093,15 +1143,9 @@ DatabaseInfo ConfigurationMySQL::deleteTable(string const& database,
     LOGS(_log, LOG_LVL_DEBUG, context_ << "  database: " << database
          << " table: " << table);
 
-    if (database.empty()) {
-        throw invalid_argument(context_ + "  the database name can't be empty");
-    }
-    if (table.empty()) {
-        throw invalid_argument(context_ + "  the table name can't be empty");
-    }
-    if (not isKnownDatabase(database)) {
-        throw invalid_argument(context_ + "  unknown database");
-    }
+    if (database.empty()) throw invalid_argument(context_ + "  the database name can't be empty");
+    if (table.empty())  throw invalid_argument(context_ + "  the table name can't be empty");
+    if (not isKnownDatabase(database)) throw invalid_argument(context_ + "  unknown database");
 
     database::mysql::ConnectionHandler handler;
     try {
@@ -1140,6 +1184,14 @@ DatabaseInfo ConfigurationMySQL::deleteTable(string const& database,
                               table);
         if (rTableItr != info.regularTables.cend()) {
             info.regularTables.erase(rTableItr);
+        }
+        if (info.directorTable == table) {
+            info.directorTable = string();
+            info.directorTableKey = string();
+        }
+        if (info.partitionedTables.size() == 0) {
+            info.chunkIdKey = string();
+            info.subChunkIdKey = string();
         }
         return info;
 
@@ -1267,7 +1319,7 @@ void ConfigurationMySQL::_loadConfigurationImpl(util::Lock const& lock,
 
     // Read database family-specific configurations and construct DatabaseFamilyInfo
 
-    conn->execute("SELECT * FROM " + conn->sqlId ("config_database_family"));
+    conn->execute("SELECT * FROM " + conn->sqlId("config_database_family"));
 
     while (conn->next(row)) {
 
@@ -1298,6 +1350,8 @@ void ConfigurationMySQL::_loadConfigurationImpl(util::Lock const& lock,
 
         ::readMandatoryParameter(row, "family_name", _databaseInfo[database].family);
         ::readMandatoryParameter(row, "is_published", _databaseInfo[database].isPublished);
+        ::readMandatoryParameter(row, "chunk_id_key", _databaseInfo[database].chunkIdKey);
+        ::readMandatoryParameter(row, "sub_chunk_id_key", _databaseInfo[database].subChunkIdKey);
     }
 
     // Read database-specific table definitions and extend the corresponding DatabaseInfo.
@@ -1314,9 +1368,48 @@ void ConfigurationMySQL::_loadConfigurationImpl(util::Lock const& lock,
 
         bool isPartitioned;
         ::readMandatoryParameter(row, "is_partitioned", isPartitioned);
+        if (isPartitioned) {
+            _databaseInfo[database].partitionedTables.push_back(table);
+            bool isDirector;
+            ::readMandatoryParameter(row, "is_director", isDirector);
+            if (isDirector) {
+                _databaseInfo[database].directorTable = table;
+                ::readMandatoryParameter(row, "director_key", _databaseInfo[database].directorTableKey);
+            }
+        } else {
+            _databaseInfo[database].regularTables.push_back(table);
+        }
+    }
+    
+    // Read schema for each table (if available)
+    
+    for (auto&& databaseEntry: _databaseInfo) {
+        auto const& database = databaseEntry.first;
+        auto& info = databaseEntry.second;
 
-        if (isPartitioned) _databaseInfo[database].partitionedTables.push_back(table);
-        else               _databaseInfo[database].regularTables.push_back(table);
+        // A join collection of all tables
+        vector<string> tables;
+        tables.insert(tables.end(), info.partitionedTables.begin(), info.partitionedTables.end());
+        tables.insert(tables.end(), info.regularTables.begin(), info.regularTables.end());
+
+        for (auto&& table: tables) {
+            auto& tableColumns = info.columns[table];
+
+            conn->execute(
+                "SELECT "     + conn->sqlId("col_name") + "," + conn->sqlId("col_type") +
+                "  FROM "     + conn->sqlId("config_database_table_schema") +
+                "  WHERE "    + conn->sqlId("database")     + "=" + conn->sqlValue(database) +
+                "    AND "    + conn->sqlId("table")        + "=" + conn->sqlValue(table) +
+                "  ORDER BY " + conn->sqlId("col_position") + " ASC");
+
+            string colName;
+            string colType;
+            while (conn->next(row)) {
+                ::readMandatoryParameter(row, "col_name", colName);
+                ::readMandatoryParameter(row, "col_type", colType);
+                tableColumns.emplace_back(colName, colType);
+            }
+        }
     }
 
     // Values of these parameters are predetermined by the connection

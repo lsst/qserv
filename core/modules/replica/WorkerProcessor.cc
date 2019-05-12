@@ -467,11 +467,7 @@ void WorkerProcessor::enqueueForSql(std::string const& id,
         auto const ptr = _requestFactory.createSqlRequest(
             _worker,
             id,
-            request.priority(),
-            request.query(),
-            request.user(),
-            request.password(),
-            request.max_rows()
+            request
         );
         _newRequests.push(ptr);
     

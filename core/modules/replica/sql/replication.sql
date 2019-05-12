@@ -139,6 +139,9 @@ CREATE TABLE IF NOT EXISTS `config_database` (
 
   `is_published` BOOLEAN DEFAULT TRUE ,
 
+  `chunk_id_key`     VARCHAR(255)  DEFAULT "" ,
+  `sub_chunk_id_key` VARCHAR(255)  DEFAULT "" ,
+
   -- Each database is allowed to belong to one family only
   --
   PRIMARY KEY (`database`) ,
@@ -167,12 +170,44 @@ CREATE TABLE IF NOT EXISTS `config_database_table` (
   `table`     VARCHAR(255)  NOT NULL ,
 
   `is_partitioned` BOOLEAN NOT NULL ,
+  `is_director`    BOOLEAN NOT NULL ,
+
+  `director_key`  VARCHAR(255) DEFAULT "" ,
 
   PRIMARY KEY (`database`, `table`) ,
 
   CONSTRAINT `config_database_table_fk_1`
     FOREIGN KEY (`database` )
     REFERENCES `config_database` (`database` )
+    ON DELETE CASCADE
+    ON UPDATE CASCADE
+)
+ENGINE = InnoDB;
+
+
+-- -----------------------------------------------------
+-- Table `config_database_table_schema`
+-- -----------------------------------------------------
+--
+-- Database tables
+
+DROP TABLE IF EXISTS `config_database_table_schema` ;
+
+CREATE TABLE IF NOT EXISTS `config_database_table_schema` (
+
+  `database`  VARCHAR(255)  NOT NULL ,
+  `table`     VARCHAR(255)  NOT NULL ,
+
+  `col_position` INT NOT NULL ,             -- for preserving an order of columns in the table
+  `col_name`     VARCHAR(255)  NOT NULL ,
+  `col_type`     VARCHAR(255)  NOT NULL ,
+
+  UNIQUE KEY (`database`, `table`, `col_position`) ,
+  UNIQUE KEY (`database`, `table`, `col_name`) ,
+
+  CONSTRAINT `config_database_table_schema_fk_1`
+    FOREIGN KEY (`database`, `table`)
+    REFERENCES `config_database_table` (`database`, `table`)
     ON DELETE CASCADE
     ON UPDATE CASCADE
 )
@@ -476,7 +511,7 @@ DROP TABLE IF EXISTS `transaction` ;
 
 CREATE TABLE IF NOT EXISTS `transaction` (
 
-  `id` INT NOT NULL AUTO_INCREMENT ,
+  `id` MEDIUMINT UNSIGNED NOT NULL AUTO_INCREMENT ,
 
   `database` VARCHAR(255) NOT NULL ,
   `state`    VARCHAR(255) NOT NULL ,

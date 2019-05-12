@@ -47,6 +47,7 @@
 #include "replica/QservMgtServices.h"
 #include "replica/QservStatusJob.h"
 #include "replica/ReplicaInfo.h"
+#include "replica/SqlJob.h"
 #include "replica/SqlRequest.h"
 
 
@@ -338,13 +339,10 @@ bool saveConfigParameter(T& struct_,
  * is not a proper JSON object.
  */
 class HttpRequestBody {
-
 public:
 
-    /// Key-value pairs
-    map<string,string> kv;
-
-    HttpRequestBody() = delete;
+    /// parsed body of the request
+    json objJson;
 
     /**
      * The constructor will parse and evaluate a body of an HTTP request
@@ -366,38 +364,22 @@ public:
                     "unsupported content type: '" + contentType + "' instead of: '" +
                     requiredContentType + "'");
         }
-        json objJson;
         req->content >> objJson;
-        if (objJson.is_null()) {
-            ;   // empty body detected
-        } else if (objJson.is_object()) {
-            for (auto&& elem : objJson.items()) {
-                kv[elem.key()] = elem.value();
-            }
-        } else {
-            throw invalid_argument(
-                    "invalid format of the request body. A simple JSON object with"
-                    " <key>:<val> pairs of string data types for values"
-                    " was expected");
-        }
+        if (objJson.is_null() or objJson.is_object()) return;
+        throw invalid_argument(
+                "invalid format of the request body. A simple JSON object was expected");
     }
-
-    /// @return a value of a required parameter
-    string required(string const& name) const {
-        auto itr = kv.find(name);
-        if (kv.end() == itr) {
-            throw invalid_argument(
-                    "required parameter " + name + " is missing in the request body");
-        }
-        return itr->second;
+    template <typename T>
+    T required(string const& name) const {
+        if (objJson.find(name) != objJson.end()) return objJson[name];
+        throw invalid_argument(
+                "HttpRequestBody::" + string(__func__) + "<T> required parameter " + name +
+                " is missing in the request body");
     }
-
-    /// @return a value of an optional parameter if found. Otherwise return
-    /// the default value.
-    string optional(string const& name, string const& defaultValue) const {
-        auto itr = kv.find(name);
-        if (kv.end() == itr) return defaultValue;
-        return itr->second;
+    template <typename T>
+    T optional(string const& name, T const& defaultValue) const {
+        if (objJson.find(name) != objJson.end()) return objJson[name];
+        return defaultValue;
     }
 };
 
@@ -545,10 +527,10 @@ void HttpProcessor::_getReplicationLevel(qhttp::Request::Ptr const& req,
     //
     // TODO: add a cache control parameter to the class's constructor
 
-    if (not _replicationLevelReport.empty()) {
+    if (not _replicationLevelReport.is_null()) {
         uint64_t lastReportAgeMs = PerformanceUtils::now() - _replicationLevelReportTimeMs;
         if (lastReportAgeMs < 240 * 1000) {
-            resp->send(_replicationLevelReport, "application/json");
+            _sendData(resp, _replicationLevelReport);
             return;
         }
     }
@@ -577,11 +559,11 @@ void HttpProcessor::_getReplicationLevel(qhttp::Request::Ptr const& req,
             }
         }
 
-        json resultJson;
+        json result;
         for (auto&& family: config->databaseFamilies()) {
 
             size_t const replicationLevel = config->databaseFamilyInfo(family).replicationLevel;
-            resultJson["families"][family]["level"] = replicationLevel;
+            result["families"][family]["level"] = replicationLevel;
 
             for (auto&& database: config->databases(family)) {
                 _debug(string(__func__) + "  database=" + database);
@@ -720,19 +702,18 @@ void HttpProcessor::_getReplicationLevel(qhttp::Request::Ptr const& req,
                     databaseJson["levels"][0]["replication"]["online"]["num_chunks"] = numOrphanReplicationSystemChunks;
                     databaseJson["levels"][0]["replication"]["online"]["percent"   ] = percent;
                 }
-                resultJson["families"][family]["databases"][database] = databaseJson;
+                result["families"][family]["databases"][database] = databaseJson;
             }
         }
 
         // Update the cache
-        _replicationLevelReport = resultJson.dump();
+        _replicationLevelReport = result;
         _replicationLevelReportTimeMs = PerformanceUtils::now();
 
-        resp->send(_replicationLevelReport, "application/json");
+        _sendData(resp, _replicationLevelReport);
 
     } catch (exception const& ex) {
-        _error(string(__func__) + " operation failed due to: " + string(ex.what()));
-        resp->sendStatus(500);
+        _sendError(resp, __func__, "operation failed due to: " + string(ex.what()));
     }
 }
 
@@ -745,7 +726,7 @@ void HttpProcessor::_listWorkerStatuses(qhttp::Request::Ptr const& req,
         HealthMonitorTask::WorkerResponseDelay delays =
             _healthMonitorTask->workerResponseDelay();
 
-        json resultJson = json::array();
+        json workersJson = json::array();
         for (auto&& worker: controller()->serviceProvider()->config()->allWorkers()) {
 
             json workerJson;
@@ -770,13 +751,17 @@ void HttpProcessor::_listWorkerStatuses(qhttp::Request::Ptr const& req,
                 workerJson["replication"]["probe_delay_s"] = 0;
                 workerJson["qserv"      ]["probe_delay_s"] = 0;
             }
-            resultJson.push_back(workerJson);
+            workersJson.push_back(workerJson);
         }
-        resp->send(resultJson.dump(), "application/json");
+        json result;
+        result["workers"] = workersJson;
 
+        _sendData(resp, result);
+
+    } catch (invalid_argument const& ex) {
+        _sendError(resp, __func__, "invalid parameters of the request, ex: " + string(ex.what()));
     } catch (exception const& ex) {
-        _error(string(__func__) + " operation failed due to: " + string(ex.what()));
-        resp->sendStatus(500);
+        _sendError(resp, __func__, "operation failed due to: " + string(ex.what()));
     }
 }
 
@@ -791,7 +776,7 @@ void HttpProcessor::_getWorkerStatus(qhttp::Request::Ptr const& req,
 void HttpProcessor::_listControllers(qhttp::Request::Ptr const& req,
                                      qhttp::Response::Ptr const& resp) {
     _debug(__func__);
-    
+
     try {
 
         // Extract optional parameters of the query
@@ -819,13 +804,16 @@ void HttpProcessor::_listControllers(qhttp::Request::Ptr const& req,
             bool const isCurrent = info.id == controller()->identity().id;
             controllersJson.push_back(info.toJson(isCurrent));
         }
-        json resultJson;
-        resultJson["controllers"] = controllersJson;
-        resp->send(resultJson.dump(), "application/json");
 
+        json result;
+        result["controllers"] = controllersJson;
+
+        _sendData(resp, result);
+
+    } catch (invalid_argument const& ex) {
+        _sendError(resp, __func__, "invalid parameters of the request, ex: " + string(ex.what()));
     } catch (exception const& ex) {
-        _error(string(__func__) + " operation failed due to: " + string(ex.what()));
-        resp->sendStatus(500);
+        _sendError(resp, __func__, "operation failed due to: " + string(ex.what()));
     }
 }
 
@@ -849,18 +837,17 @@ void HttpProcessor::_getControllerInfo(qhttp::Request::Ptr const& req,
         _debug(string(__func__) + " log_to="         + to_string(toTimeStamp));
         _debug(string(__func__) + " log_max_events=" + to_string(maxEvents));
 
-        json resultJson;
-
         // General description of the Controller
 
         auto const dbSvc = controller()->serviceProvider()->databaseServices();
         auto const controllerInfo = dbSvc->controller(id);
 
         bool const isCurrent = controllerInfo.id == controller()->identity().id;
-        resultJson["controller"] = controllerInfo.toJson(isCurrent);
+
+        json result;
+        result["controller"] = controllerInfo.toJson(isCurrent);
 
         // Pull the Controller log data if requested
-        
         json jsonLog = json::array();
         if (log) {
             auto const events =
@@ -873,18 +860,15 @@ void HttpProcessor::_getControllerInfo(qhttp::Request::Ptr const& req,
                 jsonLog.push_back(event.toJson());
             }
         }
-        resultJson["log"] = jsonLog;
-        resp->send(resultJson.dump(), "application/json");
+        result["log"] = jsonLog;
+        _sendData(resp, result);
 
     } catch (DatabaseServicesNotFound const& ex) {
-        _error(string(__func__) + " no such controller found");
-        resp->sendStatus(404);
+        _sendError(resp, __func__, "no such controller found");
     } catch (invalid_argument const& ex) {
-        _error(string(__func__) + " invalid parameters of the request");
-        resp->sendStatus(400);
+        _sendError(resp, __func__, "invalid parameters of the request, ex: " + string(ex.what()));
     } catch (exception const& ex) {
-        _error(string(__func__) + " operation failed due to: " + string(ex.what()));
-        resp->sendStatus(500);
+        _sendError(resp, __func__, "operation failed due to: " + string(ex.what()));
     }
 }
 
@@ -909,8 +893,6 @@ void HttpProcessor::_listRequests(qhttp::Request::Ptr const& req,
 
         // Pull descriptions of the Requests
 
-        json requestsJson;
-
         auto const requests =
             controller()->serviceProvider()->databaseServices()->requests(
                 jobId,
@@ -918,19 +900,19 @@ void HttpProcessor::_listRequests(qhttp::Request::Ptr const& req,
                 toTimeStamp,
                 maxEntries);
 
+        json requestsJson;
         for (auto&& info: requests) {
             requestsJson.push_back(info.toJson());
         }
-        json resultJson;
-        resultJson["requests"] = requestsJson;
-        resp->send(resultJson.dump(), "application/json");
+        json result;
+        result["requests"] = requestsJson;
+
+        _sendData(resp, result);
 
     } catch (invalid_argument const& ex) {
-        _error(string(__func__) + " invalid parameters of the request");
-        resp->sendStatus(400);
+        _sendError(resp, __func__, "invalid parameters of the request, ex: " + string(ex.what()));
     } catch (exception const& ex) {
-        _error(string(__func__) + " operation failed due to: " + string(ex.what()));
-        resp->sendStatus(500);
+        _sendError(resp, __func__, "operation failed due to: " + string(ex.what()));
     }
 }
 
@@ -942,21 +924,17 @@ void HttpProcessor::_getRequestInfo(qhttp::Request::Ptr const& req,
     try {
         auto const id = req->params.at("id");
 
-        json requestJson;
-        requestJson["request"] =
-            controller()->serviceProvider()->databaseServices()->request(id).toJson();
+        json result;
+        result["request"] = controller()->serviceProvider()->databaseServices()->request(id).toJson();
 
-        resp->send(requestJson.dump(), "application/json");
+        _sendData(resp, result);
 
     } catch (DatabaseServicesNotFound const& ex) {
-        _error(string(__func__) + " no such request found");
-        resp->sendStatus(404);
+        _sendError(resp, __func__, "no such request found");
     } catch (invalid_argument const& ex) {
-        _error(string(__func__) + " invalid parameters of the request");
-        resp->sendStatus(400);
+        _sendError(resp, __func__, "invalid parameters of the request, ex: " + string(ex.what()));
     } catch (exception const& ex) {
-        _error(string(__func__) + " operation failed due to: " + string(ex.what()));
-        resp->sendStatus(500);
+        _sendError(resp, __func__, "operation failed due to: " + string(ex.what()));
     }
 }
 
@@ -983,7 +961,6 @@ void HttpProcessor::_listJobs(qhttp::Request::Ptr const& req,
 
         // Pull descriptions of the Jobs
 
-        json jobsJson;
 
         auto const jobs =
             controller()->serviceProvider()->databaseServices()->jobs(
@@ -993,19 +970,19 @@ void HttpProcessor::_listJobs(qhttp::Request::Ptr const& req,
                 toTimeStamp,
                 maxEntries);
 
+        json jobsJson;
         for (auto&& info: jobs) {
             jobsJson.push_back(info.toJson());
         }
-        json resultJson;
-        resultJson["jobs"] = jobsJson;
-        resp->send(resultJson.dump(), "application/json");
+        json result;
+        result["jobs"] = jobsJson;
+
+        _sendData(resp, result);
 
     } catch (invalid_argument const& ex) {
-        _error(string(__func__) + " invalid parameters of the request");
-        resp->sendStatus(400);
+        _sendError(resp, __func__, "invalid parameters of the request, ex: " + string(ex.what()));
     } catch (exception const& ex) {
-        _error(string(__func__) + " operation failed due to: " + string(ex.what()));
-        resp->sendStatus(500);
+        _sendError(resp, __func__, "operation failed due to: " + string(ex.what()));
     }
 }
 
@@ -1017,21 +994,17 @@ void HttpProcessor::_getJobInfo(qhttp::Request::Ptr const& req,
     try {
         auto const id = req->params.at("id");
 
-        json jobJson;
-        jobJson["job"] =
-            controller()->serviceProvider()->databaseServices()->job(id).toJson();
+        json result;
+        result["job"] = controller()->serviceProvider()->databaseServices()->job(id).toJson();
 
-        resp->send(jobJson.dump(), "application/json");
+        _sendData(resp, result);
 
     } catch (DatabaseServicesNotFound const& ex) {
-        _error(string(__func__) + " no such job found");
-        resp->sendStatus(404);
+        _sendError(resp, __func__, "no such job found");
     } catch (invalid_argument const& ex) {
-        _error(string(__func__) + " invalid parameters of the request");
-        resp->sendStatus(400);
+        _sendError(resp, __func__, "invalid parameters of the request, ex: " + string(ex.what()));
     } catch (exception const& ex) {
-        _error(string(__func__) + " operation failed due to: " + string(ex.what()));
-        resp->sendStatus(500);
+        _sendError(resp, __func__, "operation failed due to: " + string(ex.what()));
     }
 }
 
@@ -1042,10 +1015,16 @@ void HttpProcessor::_getConfig(qhttp::Request::Ptr const& req,
 
     try {
         auto const config  = controller()->serviceProvider()->config();
-        resp->send(Configuration::toJson(config).dump(), "application/json");
+
+        json result;
+        result["config"] = Configuration::toJson(config);
+
+        _sendData(resp, result);
+
+    } catch (invalid_argument const& ex) {
+        _sendError(resp, __func__, "invalid parameters of the request, ex: " + string(ex.what()));
     } catch (exception const& ex) {
-        _error(string(__func__) + " operation failed due to: " + string(ex.what()));
-        resp->sendStatus(500);
+        _sendError(resp, __func__, "operation failed due to: " + string(ex.what()));
     }
 }
 
@@ -1081,14 +1060,16 @@ void HttpProcessor::_updateGeneralConfig(qhttp::Request::Ptr const& req,
         ::saveConfigParameter(general.fsNumProcessingThreads,      req->query, config, logger);
         ::saveConfigParameter(general.workerFsBufferSizeBytes,     req->query, config, logger);
 
-        resp->send(Configuration::toJson(config).dump(), "application/json");
+        json result;
+        result["config"] = Configuration::toJson(config);
+        _sendData(resp, result);
 
     } catch (boost::bad_lexical_cast const& ex) {
-        _error(string(__func__) + " invalid value of a configuration parameter: " + string(ex.what()));
-        resp->sendStatus(400);
+        _sendError(resp, __func__, "invalid value of a configuration parameter: " + string(ex.what()));
+    } catch (invalid_argument const& ex) {
+        _sendError(resp, __func__, "invalid parameters of the request, ex: " + string(ex.what()));
     } catch (exception const& ex) {
-        _error(string(__func__) + " operation failed due to: " + string(ex.what()));
-        resp->sendStatus(500);
+        _sendError(resp, __func__, "operation failed due to: " + string(ex.what()));
     }
 }
 
@@ -1098,6 +1079,7 @@ void HttpProcessor::_updateWorkerConfig(qhttp::Request::Ptr const& req,
     _debug(__func__);
 
     try {
+        auto const config = controller()->serviceProvider()->config();
         auto const worker = req->params.at("name");
 
         // Get optional parameters of the query. Note the default values which
@@ -1120,7 +1102,6 @@ void HttpProcessor::_updateWorkerConfig(qhttp::Request::Ptr const& req,
         _debug(string(__func__) + " is_enabled="   + to_string(isEnabled));
         _debug(string(__func__) + " is_read_only=" + to_string(isReadOnly));
 
-        auto const config = controller()->serviceProvider()->config();
 
         if (not  svcHost.empty()) config->setWorkerSvcHost(worker, svcHost);
         if (0 != svcPort)         config->setWorkerSvcPort(worker, svcPort);
@@ -1136,14 +1117,15 @@ void HttpProcessor::_updateWorkerConfig(qhttp::Request::Ptr const& req,
             if (isReadOnly != 0) config->setWorkerReadOnly(worker, true);
             if (isReadOnly == 0) config->setWorkerReadOnly(worker, false);
         }
-        resp->send(Configuration::toJson(config).dump(), "application/json");
+        json result;
+        result["config"] = Configuration::toJson(config);
+
+        _sendData(resp, result);
 
     } catch (invalid_argument const& ex) {
-        _error(string(__func__) + " invalid parameters of the request");
-        resp->sendStatus(400);
+        _sendError(resp, __func__, "invalid parameters of the request, ex: " + string(ex.what()));
     } catch (exception const& ex) {
-        _error(string(__func__) + " operation failed due to: " + string(ex.what()));
-        resp->sendStatus(500);
+        _sendError(resp, __func__, "operation failed due to: " + string(ex.what()));
     }
 }
 
@@ -1155,14 +1137,17 @@ void HttpProcessor::_deleteWorkerConfig(qhttp::Request::Ptr const& req,
     try {
         auto const config = controller()->serviceProvider()->config();
         auto const worker = req->params.at("name");
-        controller()->serviceProvider()->config()->deleteWorker(worker);
-        resp->send(Configuration::toJson(config).dump(), "application/json");
+
+        config->deleteWorker(worker);
+        json result;
+        result["config"] = Configuration::toJson(config);
+
+        _sendData(resp, result);
+
     } catch (invalid_argument const& ex) {
-        _error(string(__func__) + " no such worker");
-        resp->sendStatus(404);
+        _sendError(resp, __func__, "invalid parameters of the request, ex: " + string(ex.what()));
     } catch (exception const& ex) {
-        _error(string(__func__) + " operation failed due to: " + string(ex.what()));
-        resp->sendStatus(500);
+        _sendError(resp, __func__, "operation failed due to: " + string(ex.what()));
     }
 }
 
@@ -1193,15 +1178,17 @@ void HttpProcessor::_addWorkerConfig(qhttp::Request::Ptr const& req,
         _debug(string(__func__) + " is_enabled="   + to_string(info.isEnabled  ? 1 : 0));
         _debug(string(__func__) + " is_read_only=" + to_string(info.isReadOnly ? 1 : 0));
 
-        controller()->serviceProvider()->config()->addWorker(info);
-        resp->send(Configuration::toJson(config).dump(), "application/json");
+        config->addWorker(info);
+
+        json result;
+        result["config"] = Configuration::toJson(config);
+
+        _sendData(resp, result);
 
     } catch (invalid_argument const& ex) {
-        _error(string(__func__) + " invalid parameters of the request");
-        resp->sendStatus(400);
+        _sendError(resp, __func__, "invalid parameters of the request, ex: " + string(ex.what()));
     } catch (exception const& ex) {
-        _error(string(__func__) + " operation failed due to: " + string(ex.what()));
-        resp->sendStatus(500);
+        _sendError(resp, __func__, "operation failed due to: " + string(ex.what()));
     }
 }
 
@@ -1213,14 +1200,18 @@ void HttpProcessor::_deleteFamilyConfig(qhttp::Request::Ptr const& req,
     try {
         auto const config = controller()->serviceProvider()->config();
         auto const family = req->params.at("name");
-        controller()->serviceProvider()->config()->deleteDatabaseFamily(family);
-        resp->send(Configuration::toJson(config).dump(), "application/json");
+
+        config->deleteDatabaseFamily(family);
+
+        json result;
+        result["config"] = Configuration::toJson(config);
+
+        _sendData(resp, result);
+
     } catch (invalid_argument const& ex) {
-        _error(string(__func__) + " invalid parameters of the request");
-        resp->sendStatus(400);
+        _sendError(resp, __func__, "invalid parameters of the request, ex: " + string(ex.what()));
     } catch (exception const& ex) {
-        _error(string(__func__) + " operation failed due to: " + string(ex.what()));
-        resp->sendStatus(500);
+        _sendError(resp, __func__, "operation failed due to: " + string(ex.what()));
     }
 }
 
@@ -1243,19 +1234,29 @@ void HttpProcessor::_addFamilyConfig(qhttp::Request::Ptr const& req,
         _debug(string(__func__) + " num_stripes="       + to_string(info.numStripes));
         _debug(string(__func__) + " num_sub_stripes="   + to_string(info.numSubStripes));
 
-        if (0 == info.replicationLevel) throw invalid_argument("'replication_level' can't be equal to 0");
-        if (0 == info.numStripes)       throw invalid_argument("'num_stripes' can't be equal to 0");
-        if (0 == info.numSubStripes)    throw invalid_argument("'num_sub_stripes' can't be equal to 0");
-
+        if (0 == info.replicationLevel) {
+            _sendError(resp, __func__, "'replication_level' can't be equal to 0");
+            return;
+        }
+        if (0 == info.numStripes) {
+            _sendError(resp, __func__, "'num_stripes' can't be equal to 0");
+            return;
+        }
+        if (0 == info.numSubStripes) {
+            _sendError(resp, __func__, "'num_sub_stripes' can't be equal to 0");
+            return;
+        }
         config->addDatabaseFamily(info);
-        resp->send(Configuration::toJson(config).dump(), "application/json");
+
+        json result;
+        result["config"] = Configuration::toJson(config);
+
+        _sendData(resp, result);
 
     } catch (invalid_argument const& ex) {
-        _error(string(__func__) + " invalid parameters of the request, ex: " + ex.what());
-        resp->sendStatus(400);
+        _sendError(resp, __func__, "invalid parameters of the request, ex: " + string(ex.what()));
     } catch (exception const& ex) {
-        _error(string(__func__) + " operation failed due to: " + string(ex.what()));
-        resp->sendStatus(500);
+        _sendError(resp, __func__, "operation failed due to: " + string(ex.what()));
     }
 }
 
@@ -1267,14 +1268,18 @@ void HttpProcessor::_deleteDatabaseConfig(qhttp::Request::Ptr const& req,
     try {
         auto const config = controller()->serviceProvider()->config();
         auto const database = req->params.at("name");
+
         config->deleteDatabase(database);
-        resp->send(Configuration::toJson(config).dump(), "application/json");
+
+        json result;
+        result["config"] = Configuration::toJson(config);
+
+        _sendData(resp, result);
+
     } catch (invalid_argument const& ex) {
-        _error(string(__func__) + " invalid parameters of the request");
-        resp->sendStatus(400);
+        _sendError(resp, __func__, "invalid parameters of the request, ex: " + string(ex.what()));
     } catch (exception const& ex) {
-        _error(string(__func__) + " operation failed due to: " + string(ex.what()));
-        resp->sendStatus(500);
+        _sendError(resp, __func__, "operation failed due to: " + string(ex.what()));
     }
 }
 
@@ -1293,16 +1298,17 @@ void HttpProcessor::_addDatabaseConfig(qhttp::Request::Ptr const& req,
         _debug(string(__func__) + " name="   + info.name);
         _debug(string(__func__) + " family=" + info.family);
 
- 
         config->addDatabase(info);
-        resp->send(Configuration::toJson(config).dump(), "application/json");
+
+        json result;
+        result["config"] = Configuration::toJson(config);
+
+        _sendData(resp, result);
 
     } catch (invalid_argument const& ex) {
-        _error(string(__func__) + " invalid parameters of the request, ex: " + ex.what());
-        resp->sendStatus(400);
+        _sendError(resp, __func__, "invalid parameters of the request, ex: " + string(ex.what()));
     } catch (exception const& ex) {
-        _error(string(__func__) + " operation failed due to: " + string(ex.what()));
-        resp->sendStatus(500);
+        _sendError(resp, __func__, "operation failed due to: " + string(ex.what()));
     }
 }
 
@@ -1315,14 +1321,18 @@ void HttpProcessor::_deleteTableConfig(qhttp::Request::Ptr const& req,
         auto const config = controller()->serviceProvider()->config();
         auto const table = req->params.at("name");
         auto const database = ::getRequiredQueryParamStr(req->query, "database");
+
         config->deleteTable(database, table);
-        resp->send(Configuration::toJson(config).dump(), "application/json");
+
+        json result;
+        result["config"] = Configuration::toJson(config);
+
+        _sendData(resp, result);
+
     } catch (invalid_argument const& ex) {
-        _error(string(__func__) + " invalid parameters of the request");
-        resp->sendStatus(400);
+        _sendError(resp, __func__, "invalid parameters of the request, ex: " + string(ex.what()));
     } catch (exception const& ex) {
-        _error(string(__func__) + " operation failed due to: " + string(ex.what()));
-        resp->sendStatus(500);
+        _sendError(resp, __func__, "operation failed due to: " + string(ex.what()));
     }
 }
 
@@ -1343,14 +1353,16 @@ void HttpProcessor::_addTableConfig(qhttp::Request::Ptr const& req,
         _debug(string(__func__) + " is_partitioned=" + to_string(isPartitioned ? 1 : 0));
 
         config->addTable(database, table, isPartitioned);
-        resp->send(Configuration::toJson(config).dump(), "application/json");
+
+        json result;
+        result["config"] = Configuration::toJson(config);
+
+        _sendData(resp, result);
 
     } catch (invalid_argument const& ex) {
-        _error(string(__func__) + " invalid parameters of the request, ex: " + ex.what());
-        resp->sendStatus(400);
+        _sendError(resp, __func__, "invalid parameters of the request, ex: " + string(ex.what()));
     } catch (exception const& ex) {
-        _error(string(__func__) + " operation failed due to: " + string(ex.what()));
-        resp->sendStatus(500);
+        _sendError(resp, __func__, "operation failed due to: " + string(ex.what()));
     }
 }
 
@@ -1365,18 +1377,18 @@ void HttpProcessor::_sqlQuery(qhttp::Request::Ptr const& req,
 
         ::HttpRequestBody body(req);
 
-        auto const worker   = body.required("worker");
-        auto const query    = body.required("query");
-        auto const user     = body.required("user");
-        auto const password = body.required("password");
-        auto const maxRows  = stoull(body.optional("max_rows", "0"));
+        auto const worker   = body.required<string>("worker");
+        auto const query    = body.required<string>("query");
+        auto const user     = body.required<string>("user");
+        auto const password = body.required<string>("password");
+        auto const maxRows  = body.optional<uint64_t>("max_rows", 0);
 
         _debug(string(__func__) + " worker="   + worker);
         _debug(string(__func__) + " query="    + query);
         _debug(string(__func__) + " user="     + user);
         _debug(string(__func__) + " maxRows="  + to_string(maxRows));
 
-        auto const request = controller()->sql(
+        auto const request = controller()->sqlQuery(
             worker,
             query,
             user,
@@ -1386,17 +1398,15 @@ void HttpProcessor::_sqlQuery(qhttp::Request::Ptr const& req,
         request->wait();
 
         json result;
-        result["success"]    = request->extendedState() == Request::SUCCESS ? 1 : 0;
         result["result_set"] = request->responseData().toJson();
 
-        resp->send(result.dump(), "application/json");
+        bool const success = request->extendedState() == Request::SUCCESS ? 1 : 0;
+        _sendData(resp, result, success);
 
     } catch (invalid_argument const& ex) {
-        _error(string(__func__) + " invalid parameters of the request, ex: " + ex.what());
-        resp->sendStatus(400);
+        _sendError(resp, __func__, "invalid parameters of the request, ex: " + string(ex.what()));
     } catch (exception const& ex) {
-        _error(string(__func__) + " operation failed due to: " + string(ex.what()));
-        resp->sendStatus(500);
+        _sendError(resp, __func__, "operation failed due to: " + string(ex.what()));
     }
 }
 
@@ -1429,14 +1439,12 @@ void HttpProcessor::_getQservManyWorkersStatus(qhttp::Request::Ptr const& req,
                 result["status"][worker]["success"] = 0;
             }        
         }
-        resp->send(result.dump(), "application/json");
+        _sendData(resp, result);
 
     } catch (invalid_argument const& ex) {
-        _error(string(__func__) + " invalid parameters of the request");
-        resp->sendStatus(400);
+        _sendError(resp, __func__, "invalid parameters of the request, ex: " + string(ex.what()));
     } catch (exception const& ex) {
-        _error(string(__func__) + " operation failed due to: " + string(ex.what()));
-        resp->sendStatus(500);
+        _sendError(resp, __func__, "operation failed due to: " + string(ex.what()));
     }
 }
 
@@ -1466,6 +1474,7 @@ void HttpProcessor::_getQservWorkerStatus(qhttp::Request::Ptr const& req,
         request->wait();
 
         json result;
+
         if (request->extendedState() == QservMgtRequest::ExtendedState::SUCCESS) {
             auto info = request->info();
             result["status"][worker]["success"] = 1;
@@ -1474,14 +1483,12 @@ void HttpProcessor::_getQservWorkerStatus(qhttp::Request::Ptr const& req,
         } else {
             result["status"][worker]["success"] = 0;
         }        
-        resp->send(result.dump(), "application/json");
+        _sendData(resp, result);
 
     } catch (invalid_argument const& ex) {
-        _error(string(__func__) + " invalid parameters of the request");
-        resp->sendStatus(400);
+        _sendError(resp, __func__, "invalid parameters of the request, ex: " + string(ex.what()));
     } catch (exception const& ex) {
-        _error(string(__func__) + " operation failed due to: " + string(ex.what()));
-        resp->sendStatus(500);
+        _sendError(resp, __func__, "operation failed due to: " + string(ex.what()));
     }
 }
 
@@ -1492,16 +1499,12 @@ void HttpProcessor::_getQservManyUserQuery(qhttp::Request::Ptr const& req,
 
     try {
         json result;
-        result["status"]["success"] = 0;
-
-        resp->send(result.dump(), "application/json");
+        _sendData(resp, result);
 
     } catch (invalid_argument const& ex) {
-        _error(string(__func__) + " invalid parameters of the request");
-        resp->sendStatus(400);
+        _sendError(resp, __func__, "invalid parameters of the request, ex: " + string(ex.what()));
     } catch (exception const& ex) {
-        _error(string(__func__) + " operation failed due to: " + string(ex.what()));
-        resp->sendStatus(500);
+        _sendError(resp, __func__, "operation failed due to: " + string(ex.what()));
     }
 }
 
@@ -1511,85 +1514,76 @@ void HttpProcessor::_getQservUserQuery(qhttp::Request::Ptr const& req,
     _debug(__func__);
 
     try {
-
         auto const id = stoull(req->params.at("id"));
 
-        _debug(string(__func__) + " id="   + to_string(id));
+        _debug(string(__func__) + " id=" + to_string(id));
 
         json result;
-        result["status"]["success"] = 0;
-
-        resp->send(result.dump(), "application/json");
+        _sendData(resp, result);
 
     } catch (invalid_argument const& ex) {
-        _error(string(__func__) + " invalid parameters of the request");
-        resp->sendStatus(400);
+        _sendError(resp, __func__, "invalid parameters of the request, ex: " + string(ex.what()));
     } catch (exception const& ex) {
-        _error(string(__func__) + " operation failed due to: " + string(ex.what()));
-        resp->sendStatus(500);
+        _sendError(resp, __func__, "operation failed due to: " + string(ex.what()));
     }
 }
 
 
 json HttpProcessor::_getQueries(json& workerInfo) const {
 
+    // Find identifiers of all queries in the wait queues of all schedulers
+    set<QueryId> qids;
+    for (auto&& scheduler: workerInfo.at("processor").at("queries").at("blend_scheduler").at("schedulers")) {
+        for (auto&& entry: scheduler.at("query_id_to_count")) {
+            qids.insert(entry[0].get<QueryId>());
+        }
+    }
+
+    // Connect to the database service of the Qserv Master
+    auto const config = controller()->serviceProvider()->config();
+    database::mysql::ConnectionParams const connectionParams(
+        config->qservMasterDatabaseHost(),
+        config->qservMasterDatabasePort(),
+        config->qservMasterDatabaseUser(),
+        config->qservMasterDatabasePassword(),
+        "qservMeta"
+    );
+    auto const conn = database::mysql::Connection::open(connectionParams);
+
+    // Extract descriptions of those queries from qservMeta
+
     json result;
-    try {
 
-        // Find identifiers of all queries in the wait queues of all schedulers
-        set<QueryId> qids;
-        for (auto&& scheduler: workerInfo.at("processor").at("queries").at("blend_scheduler").at("schedulers")) {
-            for (auto&& entry: scheduler.at("query_id_to_count")) {
-                qids.insert(entry[0].get<QueryId>());
-            }
-        }
-
-        // Connect to the database service of the Qserv Master
-        auto const config = controller()->serviceProvider()->config();
-        database::mysql::ConnectionParams const connectionParams(
-            config->qservMasterDatabaseHost(),
-            config->qservMasterDatabasePort(),
-            config->qservMasterDatabaseUser(),
-            config->qservMasterDatabasePassword(),
-            "qservMeta"
+    if (not qids.empty()) {
+        conn->execute(
+            "SELECT * FROM " + conn->sqlId("QInfo") +
+            "  WHERE "       + conn->sqlIn("queryId", qids)
         );
-        auto const conn = database::mysql::Connection::open(connectionParams);
-        
-        // Extract descriptions of those queries from qservMeta
-        if (not qids.empty()) {
-            conn->execute(
-                "SELECT * FROM " + conn->sqlId("QInfo") +
-                "  WHERE "       + conn->sqlIn("queryId", qids)
-            );
-            if (conn->hasResult()) {
+        if (conn->hasResult()) {
 
-                database::mysql::Row row;
-                while (conn->next(row)) {
+            database::mysql::Row row;
+            while (conn->next(row)) {
 
-                    QueryId queryId;
-                    if (not row.get("queryId", queryId)) continue;
+                QueryId queryId;
+                if (not row.get("queryId", queryId)) continue;
 
-                    string query;
-                    string status;
-                    string submitted;
-                    string completed;
+                string query;
+                string status;
+                string submitted;
+                string completed;
 
-                    row.get("query",     query);
-                    row.get("status",    status);
-                    row.get("submitted", submitted);
-                    row.get("completed", completed);
+                row.get("query",     query);
+                row.get("status",    status);
+                row.get("submitted", submitted);
+                row.get("completed", completed);
 
-                    string queryIdStr = to_string(queryId);
-                    result[queryIdStr]["query"]     = query;
-                    result[queryIdStr]["status"]    = status;
-                    result[queryIdStr]["submitted"] = submitted;
-                    result[queryIdStr]["completed"] = completed;
-                }
+                string queryIdStr = to_string(queryId);
+                result[queryIdStr]["query"]     = query;
+                result[queryIdStr]["status"]    = status;
+                result[queryIdStr]["submitted"] = submitted;
+                result[queryIdStr]["completed"] = completed;
             }
         }
-
-    } catch (exception const& ex) {
-        _error(string(__func__) + " operation failed due to: " + string(ex.what()));
     }
     return result;
 }
@@ -1599,31 +1593,25 @@ void HttpProcessor::_getTransactions(qhttp::Request::Ptr const& req,
                                      qhttp::Response::Ptr const& resp) {
     _debug(__func__);
 
-    json result;
-    result["success"] = 0;
-    result["error"] = "";
-    result["transactions"] = json::array();
 
     try {
+        auto const databaseServices = controller()->serviceProvider()->databaseServices();
         auto const database = ::getQueryParamStr(req->query, "database");
 
         _debug(string(__func__) + " database=" + database);
 
-        result["success"] = 1;
-        for (auto&& t: controller()->serviceProvider()->databaseServices()->transactions(database)) {
+        json result;
+        result["transactions"] = json::array();
+        for (auto&& t: databaseServices->transactions(database)) {
             result["transactions"].push_back(t.toJson());
-        }
+        }    
+        _sendData(resp, result);
 
     } catch (invalid_argument const& ex) {
-        auto error = "invalid parameters of the request, ex: " + string(ex.what());
-        _error(__func__, error);
-        result["error"] = error;
+        _sendError(resp, __func__, "invalid parameters of the request, ex: " + string(ex.what()));
     } catch (exception const& ex) {
-        auto error = "operation failed due to: " + string(ex.what());
-        _error(__func__, error);
-        result["error"] = error;
+        _sendError(resp, __func__, "operation failed due to: " + string(ex.what()));
     }
-    resp->send(result.dump(), "application/json");
 }
 
 
@@ -1631,31 +1619,22 @@ void HttpProcessor::_getTransaction(qhttp::Request::Ptr const& req,
                                     qhttp::Response::Ptr const& resp) {
     _debug(__func__);
 
-    json result;
-    result["success"] = 0;
-    result["error"] = "";
-    result["transactions"] = json::array();
-
     try {
+        auto const databaseServices = controller()->serviceProvider()->databaseServices();
         auto const id = stoul(req->params.at("id"));
 
         _debug(__func__, "id=" + to_string(id));
 
-        result["success"] = 1;
-        result["transactions"].push_back(
-            controller()->serviceProvider()->databaseServices()->transaction(id).toJson()
-        );
+        json result;
+        result["transaction"] = databaseServices->transaction(id).toJson();
+    
+        _sendData(resp, result);
 
     } catch (invalid_argument const& ex) {
-        auto error = "invalid parameters of the request, ex: " + string(ex.what());
-        _error(__func__, error);
-        result["error"] = error;
+        _sendError(resp, __func__, "invalid parameters of the request, ex: " + string(ex.what()));
     } catch (exception const& ex) {
-        auto error = "operation failed due to: " + string(ex.what());
-        _error(__func__, error);
-        result["error"] = error;
+        _sendError(resp, __func__, "operation failed due to: " + string(ex.what()));
     }
-    resp->send(result.dump(), "application/json");
 }
 
 
@@ -1663,33 +1642,30 @@ void HttpProcessor::_beginTransaction(qhttp::Request::Ptr const& req,
                                       qhttp::Response::Ptr const& resp) {
     _debug(__func__);
 
-    json result;
-    result["success"] = 0;
-    result["error"] = "";
-    result["transactions"] = json::array();
-
     try {
+        auto const config = controller()->serviceProvider()->config();
+        auto const databaseServices = controller()->serviceProvider()->databaseServices();
+
         ::HttpRequestBody body(req);
 
-        auto const database = body.required("database");
+        auto const database = body.required<string>("database");
 
         _debug(__func__, "database=" + database);
 
-        result["success"] = 1;
-        result["transactions"].push_back(
-            controller()->serviceProvider()->databaseServices()->beginTransaction(database).toJson()
-        );
+        if (config->databaseInfo(database).isPublished) {
+            _sendError(resp, __func__, "the database is already published");
+            return;
+        }
+        json result;
+        result["transaction"] = databaseServices->beginTransaction(database).toJson();
+
+        _sendData(resp, result);
 
     } catch (invalid_argument const& ex) {
-        auto error = "invalid parameters of the request, ex: " + string(ex.what());
-        _error(__func__, error);
-        result["error"] = error;
+        _sendError(resp, __func__, "invalid parameters of the request, ex: " + string(ex.what()));
     } catch (exception const& ex) {
-        auto error = "operation failed due to: " + string(ex.what());
-        _error(__func__, error);
-        result["error"] = error;
+        _sendError(resp, __func__, "operation failed due to: " + string(ex.what()));
     }
-    resp->send(result.dump(), "application/json");
 }
 
 
@@ -1697,33 +1673,26 @@ void HttpProcessor::_endTransaction(qhttp::Request::Ptr const& req,
                                     qhttp::Response::Ptr const& resp) {
     _debug(__func__);
 
-    json result;
-    result["success"] = 0;
-    result["error"] = "";
-    result["transactions"] = json::array();
-
     try {
-        auto const id    = stoul(req->params.at("id"));
+        auto const databaseServices = controller()->serviceProvider()->databaseServices();
+        auto const id = stoul(req->params.at("id"));
         auto const abort = ::getRequiredQueryParamBool(req->query, "abort");
 
         _debug(__func__, "id="    + to_string(id));
         _debug(__func__, "abort=" + to_string(abort ? 1 : 0));
 
-        result["success"] = 1;
-        result["transactions"].push_back(
-            controller()->serviceProvider()->databaseServices()->endTransaction(id, abort).toJson()
-        );
+        json result;
+        result["transaction"] = databaseServices->endTransaction(id, abort).toJson();
+    
+        // TODO: replicate MySQL partition associated with the transaction
+
+        _sendData(resp, result);
 
     } catch (invalid_argument const& ex) {
-        auto error = "invalid parameters of the request, ex: " + string(ex.what());
-        _error(__func__, error);
-        result["error"] = error;
+        _sendError(resp, __func__, "invalid parameters of the request, ex: " + string(ex.what()));
     } catch (exception const& ex) {
-        auto error = "operation failed due to: " + string(ex.what());
-        _error(__func__, error);
-        result["error"] = error;
+        _sendError(resp, __func__, "operation failed due to: " + string(ex.what()));
     }
-    resp->send(result.dump(), "application/json");
 }
 
 
@@ -1731,46 +1700,94 @@ void HttpProcessor::_addDatabase(qhttp::Request::Ptr const& req,
                                  qhttp::Response::Ptr const& resp) {
     _debug(__func__);
 
-    json result;
-    result["success"] = 0;
-    result["error"] = "";
-    result["database"] = json::object();
-
     try {
+        auto const config = controller()->serviceProvider()->config();
 
         ::HttpRequestBody body(req);
 
-        auto const database      = body.required("database");
-        auto const numStripes    = stoul(body.required("num_stripes"));
-        auto const numSubStripes = stoul(body.required("num_sub_stripes"));
+        DatabaseInfo databaseInfo;
+        databaseInfo.name = body.required<string>("database");
 
-        _debug(string(__func__) + " database="      + database);
+        auto const numStripes    = body.required<unsigned int>("num_stripes");
+        auto const numSubStripes = body.required<unsigned int>("num_sub_stripes");
+
+        _debug(string(__func__) + " database="      + databaseInfo.name);
         _debug(string(__func__) + " numStripes="    + to_string(numStripes));
         _debug(string(__func__) + " numSubStripes=" + to_string(numSubStripes));
-
-        // Acquire a lock on the operations with the Ingest system
-
-        // Check if the database doesn't exist
         
         // Find an appropriate database family for the database. If none
         // found then create a new one named after the database.
 
-        // Register the new database in the Configuration
+        string familyName;
+        for (auto&& candidateFamilyName: config->databaseFamilies()) {
+            auto const familyInfo = config->databaseFamilyInfo(candidateFamilyName);
+            if ((familyInfo.numStripes == numStripes) and (familyInfo.numSubStripes == numSubStripes)) {
+                familyName = candidateFamilyName;
+            }
+        }
+        if (familyName.empty()) {
 
-        // Get the JSON representation of the database
+            // When creating the family use partitioning attributes as the name of the family
+            // as shown below:
+            //
+            //   layout_<numStripes>_<numSubStripes>
 
-        result["success"] = 1;
+            familyName = "layout_" + to_string(numStripes) + "_" + to_string(numSubStripes);
+            DatabaseFamilyInfo familyInfo;
+            familyInfo.name = familyName;
+            familyInfo.replicationLevel = 1;
+            familyInfo.numStripes = numStripes;
+            familyInfo.numSubStripes = numSubStripes;
+            config->addDatabaseFamily(familyInfo);
+        }
+        
+        // Create the database at all QServ workers
+
+        bool const allWorkers = true;
+        auto const job = SqlCreateDbJob::create(
+            databaseInfo.name,
+            allWorkers,
+            controller()
+        );
+        job->start();
+        job->wait();
+
+        string error;
+        auto const& resultData = job->getResultData();
+        for (auto&& itr: resultData.resultSets) {
+            auto&& worker = itr.first;
+            auto&& resultSet = itr.second;
+            bool const succeeded = resultData.workers.at(worker);
+            if (not succeeded) {
+                error += "database creation failed on worker: " + worker + ",  error: " +
+                         resultSet.error + " ";
+            }
+        }
+        if (not error.empty()) {
+            _sendError(resp, __func__, error);
+            return;
+        }
+
+        // Register the new database in the Configuration.
+        // Note, this operation will fail if the database with the name
+        // already exists. Also, the new database won't have any tables
+        // until they will be added as a separate step.
+
+        databaseInfo.family = familyName;
+        databaseInfo.isPublished = false;
+
+        databaseInfo = config->addDatabase(databaseInfo);
+
+        json result;
+        result["database"] = databaseInfo.toJson();
+    
+        _sendData(resp, result);
 
     } catch (invalid_argument const& ex) {
-        auto error = "invalid parameters of the request, ex: " + string(ex.what());
-        _error(__func__, error);
-        result["error"] = error;
+        _sendError(resp, __func__, "invalid parameters of the request, ex: " + string(ex.what()));
     } catch (exception const& ex) {
-        auto error = "operation failed due to: " + string(ex.what());
-        _error(__func__, error);
-        result["error"] = error;
+        _sendError(resp, __func__, "operation failed due to: " + string(ex.what()));
     }
-    resp->send(result.dump(), "application/json");
 }
 
 
@@ -1778,39 +1795,49 @@ void HttpProcessor::_publishDatabase(qhttp::Request::Ptr const& req,
                                      qhttp::Response::Ptr const& resp) {
     _debug(__func__);
 
-    json result;
-    result["success"] = 0;
-    result["error"] = "";
-    result["database"] = json::object();
-
     try {
-
+        auto const config = controller()->serviceProvider()->config();
         auto const database = ::getRequiredQueryParamStr(req->query, "database");
 
         _debug(string(__func__) + " database=" + database);
 
-        // Acquire a lock on the operations with the Ingest system
+        if (config->databaseInfo(database).isPublished) {
+            _sendError(resp, __func__, "the database is already published");
+            return;
+        }
+           
+        // TODO: (re-)build the secondary index. Should we rather do this as
+        // in a separate REST call?
 
-        // Check if the database exists
+        // TODO: create database & tables entries in the Qserv master database
 
-        // Check if the database is not in the published state
+        // TODO: grant SELECT authorizations for the new database to Qserv
+        // MySQL account(s) at all workers and the master(s)
 
-        // Publish the database in the configuration
+        // TODO: register the database at CSS
 
-        // Get the JSON representation of the database
+        // TODO: enable this database in Qserv workers by adding an entry
+        // to table 'qservw_worker.Dbs'
 
-        result["success"] = 1;
+        // TODO: ask Replication workers to reload their Configurations so that
+        // they recognized the new database as the published one. This step should
+        // be probably done after publishing the database.
+        //
+        // NOTE: the rest should be taken care of by the Replication system.
+        // This includes registering chunks in the persistent store of the Replication
+        // system, synchronizing with Qserv workers, fixing, re-balancing,
+        // replicating, etc.
+
+        json result;
+        result["database"] = config->publishDatabase(database).toJson();
+    
+        _sendData(resp, result);
 
     } catch (invalid_argument const& ex) {
-        auto error = "invalid parameters of the request, ex: " + string(ex.what());
-        _error(__func__, error);
-        result["error"] = error;
+        _sendError(resp, __func__, "invalid parameters of the request, ex: " + string(ex.what()));
     } catch (exception const& ex) {
-        auto error = "operation failed due to: " + string(ex.what());
-        _error(__func__, error);
-        result["error"] = error;
+        _sendError(resp, __func__, "operation failed due to: " + string(ex.what()));
     }
-    resp->send(result.dump(), "application/json");
 }
 
 
@@ -1818,54 +1845,143 @@ void HttpProcessor::_addTable(qhttp::Request::Ptr const& req,
                               qhttp::Response::Ptr const& resp) {
     _debug(__func__);
 
-    json result;
-    result["success"] = 0;
-    result["error"] = "";
-
     try {
+        auto const config = controller()->serviceProvider()->config();
 
         ::HttpRequestBody body(req);
 
-        auto const database      = body.required("database");
-        auto const table         = body.required("table");
-        auto const isPartitioned = (bool)stoul(body.required("is_partitioned"));
-        auto const schema        = body.required("schema");
+        auto const database      = body.required<string>("database");
+        auto const table         = body.required<string>("table");
+        auto const isPartitioned = (bool)body.required<int>("is_partitioned");
+        auto const schema        = body.required<json>("schema");
+        auto const isDirector    = (bool)body.required<int>("is_director");
+        auto const directorKey   = body.optional<string>("director_key", "");
+        auto const chunkIdKey    = body.optional<string>("chunk_id_key", "");
+        auto const subChunkIdKey = body.optional<string>("sub_chunk_id_key", "");
 
         _debug(string(__func__) + " database="      + database);
         _debug(string(__func__) + " table="         + table);
         _debug(string(__func__) + " isPartitioned=" + (isPartitioned ? "1" : "0"));
+        _debug(string(__func__) + " schema="        + schema.dump());
+        _debug(string(__func__) + " isDirector="    + (isDirector ? "1" : "0"));
+        _debug(string(__func__) + " directorKey="   + directorKey);
+        _debug(string(__func__) + " chunkIdKey="    + chunkIdKey);
+        _debug(string(__func__) + " subChunkIdKey=" + subChunkIdKey);
 
-        // Acquire a lock on the operations with the Ingest system
+        // Make sure the database is known and it's not PUBLISHED yet
 
-        // Check if the database exists
+        auto databaseInfo = config->databaseInfo(database);
+        if (databaseInfo.isPublished) {
+           _sendError(resp, __func__, "the database is already published");
+            return;
+        }
 
-        // Check if the database is not in the published state
+        // Make sure the table doesn't exist in the Configuration
 
-        // Check if the table doesn't exist
+        for (auto&& existingTable: databaseInfo.tables()) {
+            if (table == existingTable) {
+                _sendError(resp, __func__, "table already exists");
+                return;
+            }
+        }
 
-        // Parse the schema string into a JSON object with definition of columns
+        // Translate table schema
 
-        // Check if the schema doesn't have a special column 'qserv_trans_id'
-        // Add it as the very first one
+        if (schema.is_null()) {
+            _sendError(resp, __func__, "table schema is empty");
+            return;
+        }
+        if (not schema.is_array()) {
+            _sendError(resp, __func__, "table schema is not defined as an array");
+            return;
+        }
 
-        // Validate table schema by creating a table in a local database
+        list<pair<string,string>> columns;
+
+        // The name of a special column for the super-transaction-based ingest.
+        // Always insert this column as the very first one into the schema.
+        string const partitionByColumn = "qserv_trans_id";
+        columns.emplace_front(partitionByColumn, "INT NOT NULL");
+
+        for (auto&& coldef: schema) {
+            if (not coldef.is_object()) {
+                _sendError(resp, __func__,
+                        "columns definitions in table schema are not JSON objects");
+                return;
+            }
+            if (0 == coldef.count("name")) {
+                _sendError(resp, __func__,
+                        "column attribute 'name' is missing in table schema for "
+                        "column number: " + to_string(columns.size() + 1));
+                return;
+            }
+            string colName = coldef["name"];
+            if (0 == coldef.count("type")) {
+                _sendError(resp, __func__,
+                        "column attribute 'type' is missing in table schema for "
+                        "column number: " + to_string(columns.size() + 1));
+                return;
+            }
+            string colType = coldef["type"];
+            
+            if (partitionByColumn == colName) {
+                _sendError(resp, __func__,
+                        "reserved column '" + partitionByColumn + "' is not allowed");
+                return;
+            }
+            columns.emplace_back(colName, colType);
+        }
+
+        // Create template tables on all workers. These tables will be used
+        // to create chunk-specific tables before loading data.
+
+        bool const allWorkers = true;
+        string const engine = "MyISAM";
+
+        auto const job = SqlCreateTableJob::create(
+            database,
+            table,
+            engine,
+            partitionByColumn,
+            columns,
+            allWorkers,
+            controller()
+        );
+        job->start();
+        job->wait();
+
+        string error;
+        auto const& resultData = job->getResultData();
+        for (auto&& itr: resultData.resultSets) {
+            auto&& worker = itr.first;
+            auto&& resultSet = itr.second;
+
+            bool const succeeded = resultData.workers.at(worker);
+            if (not succeeded) {
+                error += "table creation failed on worker: " + worker + ",  error: " +
+                         resultSet.error + " ";
+            }
+        }
+        if (not error.empty()) {
+            _sendError(resp, __func__, error);
+            return;
+        }
 
         // Register table in the Configuration
 
-        // Store schema in the Configuration
+        json result;
+        result["database"] = config->addTable(
+            database, table, isPartitioned, columns, isDirector,
+            directorKey, chunkIdKey, subChunkIdKey
+        ).toJson();
 
-        result["success"] = 1;
+        _sendData(resp, result);
 
     } catch (invalid_argument const& ex) {
-        auto error = "invalid parameters of the request, ex: " + string(ex.what());
-        _error(__func__, error);
-        result["error"] = error;
+        _sendError(resp, __func__, "invalid parameters of the request, ex: " + string(ex.what()));
     } catch (exception const& ex) {
-        auto error = "operation failed due to: " + string(ex.what());
-        _error(__func__, error);
-        result["error"] = error;
+        _sendError(resp, __func__,  "operation failed due to: " + string(ex.what()));
     }
-    resp->send(result.dump(), "application/json");
 }
 
 
@@ -1873,17 +1989,12 @@ void HttpProcessor::_addChunk(qhttp::Request::Ptr const& req,
                               qhttp::Response::Ptr const& resp) {
     _debug(__func__);
 
-    json result;
-    result["success"] = 0;
-    result["error"] = "";
-    result["location"] = json::object();
-
     try {
 
         ::HttpRequestBody body(req);
 
-        auto const transactionId = stoul(body.required("transaction_id"));
-        auto const chunk = stoul(body.required("chunk"));
+        uint32_t const transactionId = body.required<uint32_t>("transaction_id");
+        unsigned int const chunk = body.required<unsigned int>("chunk");
 
         _debug(string(__func__) + " transactionId=" + to_string(transactionId));
         _debug(string(__func__) + " chunk=" + to_string(chunk));
@@ -1893,7 +2004,8 @@ void HttpProcessor::_addChunk(qhttp::Request::Ptr const& req,
 
         auto const transactionInfo = databaseServices->transaction(transactionId);
         if (transactionInfo.state != "STARTED") {
-            throw logic_error("this transaction is already over");
+            _sendError(resp, __func__, "this transaction is already over");
+            return;
         }
         auto const databaseInfo = config->databaseInfo(transactionInfo.database);
         auto const databaseFamilyInfo = config->databaseFamilyInfo(databaseInfo.family);
@@ -1901,7 +2013,8 @@ void HttpProcessor::_addChunk(qhttp::Request::Ptr const& req,
         ChunkNumberQservValidator const validator(databaseFamilyInfo.numStripes,
                                                   databaseFamilyInfo.numSubStripes);
         if (not validator.valid(chunk)) {
-            throw logic_error("this chunk number is not valid");
+            _sendError(resp, __func__, "this chunk number is not valid");
+            return;
         }
 
         // This locks prevents other invocations of the method from making different
@@ -1922,7 +2035,8 @@ void HttpProcessor::_addChunk(qhttp::Request::Ptr const& req,
         vector<ReplicaInfo> replicas;
         databaseServices->findReplicas(replicas, chunk, transactionInfo.database);
         if (replicas.size() > 1) {
-            throw runtime_error("this chunk has too many replicas");
+            _sendError(resp, __func__, "this chunk has too many replicas");
+            return;
         }
         if (replicas.size() == 1) {
             worker = replicas[0].worker();
@@ -1953,7 +2067,7 @@ void HttpProcessor::_addChunk(qhttp::Request::Ptr const& req,
                 //
                 // NOTE: a decision of which worker is 'least loaded' is based
                 // purely on the replica count, not on the amount of data residing
-                // in the workers' databases.
+                // in the workers databases.
 
                 worker = ::leastLoadedWorker(databaseServices, candidateWorkers);
 
@@ -1985,27 +2099,46 @@ void HttpProcessor::_addChunk(qhttp::Request::Ptr const& req,
         
         // The sanity check, just to make sure we've found a worker
         if (worker.empty()) {
-            throw runtime_error("no suitable worker found");
+            _sendError(resp, __func__, "no suitable worker found");
+            return;
         }
 
         // Pull connection parameters of the loader for the worker
 
         auto const workerInfo = config->workerInfo(worker);
 
-        result["success"] = 1;
+        json result;
         result["location"]["worker"] = workerInfo.name;
         result["location"]["host"]   = workerInfo.loaderHost;
         result["location"]["port"]   = workerInfo.loaderPort;
 
+        _sendData(resp, result);
+
     } catch (invalid_argument const& ex) {
-        auto error = "invalid parameters of the request, ex: " + string(ex.what());
-        _error(__func__, error);
-        result["error"] = error;
+        _sendError(resp, __func__, "invalid parameters of the request, ex: " + string(ex.what()));
     } catch (exception const& ex) {
-        auto error = "operation failed due to: " + string(ex.what());
-        _error(__func__, error);
-        result["error"] = error;
+        _sendError(resp, __func__, "operation failed due to: " + string(ex.what()));
     }
+}
+
+
+void HttpProcessor::_sendError(qhttp::Response::Ptr const& resp,
+                               string const& func, string const& error) const {
+    _error(func, error);
+
+    json result;
+    result["success"] = 0;
+    result["error"] = error;
+
+    resp->send(result.dump(), "application/json");
+}
+
+
+void HttpProcessor::_sendData(qhttp::Response::Ptr const& resp,
+                              json& result, bool success) {
+    result["success"] = success ? 1 : 0;
+    result["error"] = "";
+
     resp->send(result.dump(), "application/json");
 }
 

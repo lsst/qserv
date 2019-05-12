@@ -162,6 +162,10 @@ string ConfigurationFile::dump2init(Configuration::Ptr const& config) {
             << "is_published       = " << (info.isPublished ? "1" : "0") << "\n"
             << "partitioned_tables = " << info.partitionedTables << "\n"
             << "regular_tables     = " << info.regularTables << "\n"
+            << "director_table     = " << info.directorTable << "\n"
+            << "director_table_key = " << info.directorTableKey << "\n"
+            << "chunk_id_key       = " << info.chunkIdKey << "\n"
+            << "sub_chunk_id_key   = " << info.subChunkIdKey << "\n"
             << "\n";
     }
     return str.str();
