@@ -3,7 +3,7 @@ case "$qserv_node_type" in
     mono|master) SERVICES="mysqld xrootd mysql-proxy qserv-watcher qserv-wmgr" ;;
     worker) SERVICES="mysqld xrootd qserv-wmgr" ;;
     master-multi) SERVICES="mysql-proxy" ;;
-    master-shared) SERVICES="xrootd mysqld qserv-watcher qserv-wmgr" ;;
+    master-shared) SERVICES="mysqld xrootd qserv-watcher qserv-wmgr" ;;
 esac
 
 check_qserv_run_dir() {

@@ -92,7 +92,7 @@ fi
 # Build the master-multi image
 
 awk \
--v NODE_TYPE="-mm" \
+-v NODE_TYPE="-c" \
 -v DOCKER_IMAGE="$DOCKER_IMAGE" \
 -v COMMENT_ON_WORKER="" \
 '{gsub(/<NODE_TYPE>/, NODE_TYPE);
@@ -113,7 +113,7 @@ fi
 # Build the master-shared image
 
 awk \
--v NODE_TYPE="-ms" \
+-v NODE_TYPE="-s" \
 -v DOCKER_IMAGE="$DOCKER_IMAGE" \
 -v COMMENT_ON_WORKER="" \
 '{gsub(/<NODE_TYPE>/, NODE_TYPE);
