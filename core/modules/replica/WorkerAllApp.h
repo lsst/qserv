@@ -104,12 +104,17 @@ private:
     /// of their configuration status (DISABLED or READ-ONLY).
     bool _allWorkers = false;
 
-        /// Also run (if 'true') embedded file servers)
-    bool _enableFileServer = false;
-    
     /// A password for the MySQL account of the Qserv worker database.
-    /// The account name is found in the Configuration.",
+    /// The account name is found in the Configuration.
+    /// NOTE: an assumption is that all worker databases are configured in
+    /// the same way.
     std::string _qservDbPassword;
+
+    /// Also run (if 'true') embedded file servers
+    bool _enableFileServer = false;
+
+    /// Also run (if 'true') embedded catalog ingest servers
+    bool _enableIngestServer = false;
 };
 
 }}} // namespace lsst::qserv::replica

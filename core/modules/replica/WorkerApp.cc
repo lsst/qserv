@@ -28,6 +28,7 @@
 // Qserv headers
 #include "replica/DatabaseMySQL.h"
 #include "replica/FileServer.h"
+#include "replica/IngestServer.h"
 #include "replica/ServiceProvider.h"
 #include "replica/WorkerProcessor.h"
 #include "replica/WorkerRequestFactory.h"
@@ -113,6 +114,11 @@ int WorkerApp::runImpl() {
         fileSvr->run();
     });
 
+    auto const ingestSvr = IngestServer::create(serviceProvider(), _worker);
+    thread ingestSvrThread([ingestSvr]() {
+        ingestSvr->run();
+    });
+
     // Print the 'heartbeat' report every 5 seconds
 
     util::BlockPost blockPost(5000, 5001);
@@ -128,6 +134,7 @@ int WorkerApp::runImpl() {
     }
     reqProcSvrThread.join();
     fileSvrThread.join();
+    ingestSvrThread.join();
     
     return 0;
 }
