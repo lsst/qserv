@@ -42,7 +42,7 @@
 namespace {
 
 // Current version of QMeta schema
-char const VERSION_STR[] = "1";
+char const VERSION_STR[] = "2";
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.qmeta.QMetaMysql");
 
@@ -784,7 +784,7 @@ QMetaMysql::_checkDb() {
     }
 
     // check that all tables are there
-    char const* requiredTables[] = {"QCzar", "QInfo", "QTable", "QWorker", "QMetadata"};
+    char const* requiredTables[] = {"QCzar", "QInfo", "QTable", "QWorker", "QMetadata", "QStatsTmp"};
     int const nTables = sizeof requiredTables / sizeof requiredTables[0];
     for (int i = 0; i != nTables; ++ i) {
         char const* const table = requiredTables[i];

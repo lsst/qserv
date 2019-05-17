@@ -54,34 +54,6 @@ namespace qmeta {
 
 QStatusMysql::QStatusMysql(mysql::MySqlConfig const& mysqlConf)
   : QStatus(), _conn(mysqlConf) {
-    // Check that database is in consistent state
-    try {
-        createQueryStatsTmpTable();
-    } catch (SqlError const& e) {
-        LOGS(_log, LOG_LVL_WARN, "QStatusMysql create table QStatsTmp failed. " << e.what());
-    }
-}
-
-
-void QStatusMysql::createQueryStatsTmpTable() {
-    LOGS(_log, LOG_LVL_DEBUG, "QStatusMysql create, if not exists, table QStatsTmp");
-    // If this is being run outside the constructor, _bdMutex may need to be locked first.
-    // Try to create the temporary table if it is not there.
-    QMetaTransaction trans(_conn);
-    sql::SqlErrorObject errObj;
-    sql::SqlResults results;
-    string query = "CREATE TABLE IF NOT EXISTS QStatsTmp (queryId bigint(20), "
-                        "totalChunks int, completedChunks int, "
-                        "queryBegin timestamp DEFAULT 0, "
-                        "lastUpdate timestamp DEFAULT 0, "
-                        "PRIMARY KEY (queryId)) "
-                        "ENGINE = MEMORY";
-    LOGS(_log, LOG_LVL_DEBUG, "Executing query: " << query);
-    if (not _conn.runQuery(query, results, errObj)) {
-        LOGS(_log, LOG_LVL_ERROR, "SQL query failed: " << query);
-        throw SqlError(ERR_LOC, errObj);
-    }
-    trans.commit();
 }
 
 

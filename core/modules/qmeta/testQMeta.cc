@@ -386,8 +386,6 @@ BOOST_AUTO_TEST_CASE(messWithQueryStats) {
     sqlConn = std::make_shared<SqlConnection>(testDB.sqlConfig);
     CzarId qid1 = 7; // just need a number.
 
-    LOGS(_log, LOG_LVL_WARN, "messWithQueryStats create table");
-    qStatus->createQueryStatsTmpTable();
     int totalChunks = 99;
     LOGS(_log, LOG_LVL_WARN, "messWithQueryStats register");
     qStatus->queryStatsTmpRegister(qid1, totalChunks);

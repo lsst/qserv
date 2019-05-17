@@ -50,10 +50,6 @@ public:
 
     virtual ~QStatus() = default;
 
-    /// Create the table for temporary query statistics.
-    /// @throw SqlError
-    virtual void createQueryStatsTmpTable() = 0;
-
     /// Insert a row for tracking chunksCompleted vs totalChunks of a query.
     /// @return true if successful.
     /// @throw SqlError
