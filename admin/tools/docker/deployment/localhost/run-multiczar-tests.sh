@@ -44,6 +44,8 @@ docker run --detach=true \
     --cap-add sys_ptrace \
     -e "QSERV_MASTER=$MASTER" --name "$MASTER" -h "${MASTER}" "$MASTER_SHARED_IMAGE"
 MASTER_IP=$(docker inspect -f '{{ .NetworkSettings.IPAddress }}' $MASTER)
+HOSTFILE="${HOSTFILE}$MASTER_IP  master.localdomain
+"
 
 for i in $CZARS;
 do
