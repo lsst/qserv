@@ -761,9 +761,9 @@ void DatabaseServicesMySQL::findReplicas(vector<ReplicaInfo>& replicas,
                                          string const& database,
                                          bool enabledWorkersOnly) {
     string const context =
-         "DatabaseServicesMySQL::" + string(__func__) + " chunk=" + to_string(chunk) +
-         "  database=" + database +
-         " ";
+        "DatabaseServicesMySQL::" + string(__func__) + " chunk=" + to_string(chunk) +
+        "  database=" + database +
+        " ";
 
     LOGS(_log, LOG_LVL_DEBUG, context);
 
@@ -802,7 +802,10 @@ void DatabaseServicesMySQL::findWorkerReplicas(vector<ReplicaInfo>& replicas,
                                                bool allDatabases,
                                                bool isPublished) {
 
-    string const context = "DatabaseServicesMySQL::" + string(__func__) + " ";
+    string const context = "DatabaseServicesMySQL::" + string(__func__) +
+        " worker=" + worker + " database=" + database +
+        " allDatabases=" + string(allDatabases ? "1" : "0") +
+        " isPublished=" + string(isPublished ? "1" : "0") + "  ";
 
     util::Lock lock(_mtx, context);
 
@@ -834,7 +837,10 @@ uint64_t DatabaseServicesMySQL::numWorkerReplicas(string const& worker,
                                                   bool allDatabases,
                                                   bool isPublished) {
 
-    string const context = "DatabaseServicesMySQL::" + string(__func__) + " ";
+    string const context = "DatabaseServicesMySQL::" + string(__func__) +
+        " worker=" + worker + " database=" + database +
+        " allDatabases=" + string(allDatabases ? "1" : "0") +
+        " isPublished=" + string(isPublished ? "1" : "0") + "  ";
 
     util::Lock lock(_mtx, context);
 
@@ -880,8 +886,10 @@ void DatabaseServicesMySQL::_findWorkerReplicasImpl(util::Lock const& lock,
                                                     bool allDatabases,
                                                     bool isPublished) {
     string const context =
-         "DatabaseServicesMySQL::" + string(__func__) + " worker=" + worker +
-         " database=" + database + " ";
+        "DatabaseServicesMySQL::" + string(__func__) +
+        " worker=" + worker + " database=" + database +
+        " allDatabases=" + string(allDatabases ? "1" : "0") +
+        " isPublished=" + string(isPublished ? "1" : "0") + "  ";
 
     LOGS(_log, LOG_LVL_DEBUG, context);
 
@@ -917,8 +925,10 @@ void DatabaseServicesMySQL::findWorkerReplicas(vector<ReplicaInfo>& replicas,
                                                bool allDatabases,
                                                bool isPublished) {
     string const context =
-         "DatabaseServicesMySQL::" + string(__func__) + " worker=" + worker +
-         " chunk=" + to_string(chunk) + " family=" + databaseFamily + " ";
+        "DatabaseServicesMySQL::" + string(__func__) + " worker=" + worker +
+        " chunk=" + to_string(chunk) + " family=" + databaseFamily +
+        " allDatabases=" + string(allDatabases ? "1" : "0") +
+        " isPublished=" + string(isPublished ? "1" : "0") + "  ";
 
     LOGS(_log, LOG_LVL_DEBUG, context);
 
@@ -2003,6 +2013,8 @@ void DatabaseServicesMySQL::_findReplicasImpl(util::Lock const& lock,
 
     LOGS(_log, LOG_LVL_DEBUG, context);
 
+    replicas.clear();
+
     _conn->execute(query);
 
     if (_conn->hasResult()) {
@@ -2039,16 +2051,20 @@ void DatabaseServicesMySQL::_findReplicasImpl(util::Lock const& lock,
             );
         }
         
-        // Extract files for each replica using identifiers of the replicas,
-        // update replicas and copy them over into the output collection.
+        // Extract files for each replica using identifiers of the replicas
+        // update replicas in the dictionary.
+        _findReplicaFilesImpl(lock, id2replica);
         
-        _findReplicaFilesImpl(lock, id2replica, replicas);
+        // Copy replicas from the dictionary into the output collection
+        for (auto&& entry: id2replica) {
+            replicas.push_back(entry.second);
+        }
     }
 }
 
+
 void DatabaseServicesMySQL::_findReplicaFilesImpl(util::Lock const& lock,
-                                                  map<uint64_t, ReplicaInfo> const& id2replica,
-                                                  vector<ReplicaInfo>& replicas) {
+                                                  map<uint64_t, ReplicaInfo>& id2replica) {
 
     string const context = "DatabaseServicesMySQL::" + string(__func__) + " ";
 
@@ -2092,8 +2108,8 @@ void DatabaseServicesMySQL::_findReplicaFilesImpl(util::Lock const& lock,
     // Iterate over batches, submit a query per batch, harvest and process
     // results.
     //
-    // IMPORTANT: the algorithm assumes that there will be at least one file
-    // per replica. This assumption will be enforced when the loop will end.
+    // IMPORTANT: the algorithm does NOT require replicas to have files because some
+    // replicas may still be in a process of being ingested.
 
     auto itr = ids.begin();         // points to the first replica identifier of a batch
     for (size_t size: batches) {
@@ -2109,17 +2125,9 @@ void DatabaseServicesMySQL::_findReplicaFilesImpl(util::Lock const& lock,
             ReplicaInfo::FileInfoCollection files;  // for accumulating files of the current
                                                     // replica
 
-            auto copyExtendMove = [&id2replica,
-                                   &replicas,
-                                   &files] (uint64_t replicaId) {
-
-                // Copy an incomplete replica from the input collection, extend it
-                // then move it into the output (complete) collection.
-
-                auto replica = id2replica.at(replicaId);
-                replica.setFileInfo(files);
-                replicas.push_back(move(replica));
-
+            // Extend a replica in place
+            auto extendReplicaThenClearFiles = [&id2replica,&files] (uint64_t replicaId) {
+                id2replica.at(replicaId).setFileInfo(files);
                 files.clear();
             };
 
@@ -2149,7 +2157,7 @@ void DatabaseServicesMySQL::_findReplicaFilesImpl(util::Lock const& lock,
 
                 if (replicaId != currentReplicaId) {
                     if (0 != currentReplicaId) {
-                        copyExtendMove(currentReplicaId);
+                        extendReplicaThenClearFiles(currentReplicaId);
                     }
                     currentReplicaId = replicaId;
                 }
@@ -2174,21 +2182,13 @@ void DatabaseServicesMySQL::_findReplicaFilesImpl(util::Lock const& lock,
             // when it detects changes in the replica identifier.
 
             if (0 != currentReplicaId) {
-                copyExtendMove(currentReplicaId);
+                extendReplicaThenClearFiles(currentReplicaId);
             }
         }
 
         // Advance iterator to the first identifier of the next
         // batch (if any).
         itr += size;
-    }
-    
-    // Sanity check to ensure a collection of files has been found for each input
-    // replica. Note that this is a requirements for a persistent collection
-    // of replicas stored by the Replication system.
-
-    if (replicas.size() != id2replica.size()) {
-        throw runtime_error(context + "database content may be corrupt");
     }
 }
 

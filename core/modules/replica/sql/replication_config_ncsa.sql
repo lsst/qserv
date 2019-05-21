@@ -49,7 +49,7 @@ INSERT INTO `config` VALUES ('worker', 'data_dir',                   '/qserv/dat
 INSERT INTO `config` VALUES ('worker', 'db_port',                    '3306');
 INSERT INTO `config` VALUES ('worker', 'db_user',                    'root');
 INSERT INTO `config` VALUES ('worker', 'loader_port',                '25002');
-INSERT INTO `config` VALUES ('worker', 'loader_tmp_dir',             '/qserv/data/tmp');
+INSERT INTO `config` VALUES ('worker', 'loader_tmp_dir',             '/qserv/data/ingest');
 INSERT INTO `config` VALUES ('worker', 'num_loader_processing_threads', '16');
 
 

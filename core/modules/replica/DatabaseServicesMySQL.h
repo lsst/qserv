@@ -312,14 +312,11 @@ private:
      *   this method
      *
      * @param id2replica
-     *   input collection of incomplete replicas
-     *
-     * @param replicas
-     *   output collection of complete replicas
+     *   input/output collection of incomplete replicas to be extended with
+     *   files (if any found)
      */
     void _findReplicaFilesImpl(util::Lock const& lock,
-                               std::map<uint64_t, ReplicaInfo> const& id2replica,
-                               std::vector<ReplicaInfo>& replicas);
+                               std::map<uint64_t, ReplicaInfo>& id2replica);
 
     /// @see DatabaseServicesMySQL::logControllerEvent()
     void _logControllerEvent(util::Lock const& lock,

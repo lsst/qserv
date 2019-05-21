@@ -265,6 +265,18 @@ DatabaseTestApp::DatabaseTestApp(int argc, char* argv[])
             "database-family",
             "The name of a database family.",
             _databaseFamilyName);
+        command.flag(
+            "all",
+            "Report all known databases in the specified family (if the one was provided)"
+            " or all families regardless if they are PUBLISHED or not. If this flag is not"
+            " used then a subset of databases in question is determined by a presence of"
+            " flag --published",
+            _allDatabases);
+        command.flag(
+            "published",
+            "Report a subset of PUBLISHED databases in the specified family (if the one was provided)"
+            " or all families. This flag is used only if flag --all is not used.",
+            _isPublished);
     }
 }
 
@@ -320,7 +332,9 @@ int DatabaseTestApp::runImpl() {
                 replicas,
                 _chunk,
                 _workerName,
-                _databaseFamilyName
+                _databaseFamilyName,
+                _allDatabases,
+                _isPublished
             );
         } else {
             throw logic_error(string(__func__) + ": unsupported operation: " + _operation);
