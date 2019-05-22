@@ -42,13 +42,11 @@ public:
 
     QStatusMysql(mysql::MySqlConfig const& mysqlConf);
 
+    QStatusMysql() = delete;
     QStatusMysql(QStatusMysql const&) = delete;
     QStatusMysql& operator=(QStatusMysql const&) = delete;
 
     virtual ~QStatusMysql() = default;
-
-    /// @see QStatus::createQueryStatsTable()
-    void createQueryStatsTmpTable() override;
 
     /// @see QStatus::queryStatsTmpRegister(QueryId queryId, int totalChunks)
     void queryStatsTmpRegister(QueryId queryId, int totalChunks) override;

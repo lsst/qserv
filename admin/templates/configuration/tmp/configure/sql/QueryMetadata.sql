@@ -5,7 +5,7 @@
 
 SET @OLD_UNIQUE_CHECKS=@@UNIQUE_CHECKS, UNIQUE_CHECKS=0;
 SET @OLD_FOREIGN_KEY_CHECKS=@@FOREIGN_KEY_CHECKS, FOREIGN_KEY_CHECKS=0;
-SET @OLD_SQL_MODE=@@SQL_MODE, SQL_MODE='TRADITIONAL,ALLOW_INVALID_DATES';
+SET @OLD_SQL_MODE=@@SQL_MODE, SQL_MODE='ALLOW_INVALID_DATES';
 
 -- -----------------------------------------------------
 -- Schema qservMeta
@@ -96,6 +96,20 @@ ENGINE = InnoDB
 COMMENT = 'Mapping of queries to workers';
 
 -- -----------------------------------------------------
+-- Table `QStatsTmp`
+-- MEMORY table - will be recreated(but empty) by mariadb every time server starts. 
+-- -----------------------------------------------------
+CREATE TABLE IF NOT EXISTS `QStatsTmp` (
+  `queryId` BIGINT NOT NULL COMMENT 'Query ID',
+  `totalChunks` INT COMMENT 'Total number of chunks in the query',
+  `completedChunks` INT COMMENT 'Number of completed chunks in the query',
+  `queryBegin` TIMESTAMP DEFAULT 0 COMMENT 'When the query was started', 
+  `lastUpdate` TIMESTAMP DEFAULT 0 COMMENT 'Last time completedChunks was updated',
+  PRIMARY KEY (`queryId`))
+ENGINE = MEMORY
+COMMENT = 'Table to track statistics of running queries.';
+
+-- -----------------------------------------------------
 -- View `ShowProcessList`
 -- This shows abbreviated Qmeta info suitable for "SHOW PROCESSLIST"
 -- -----------------------------------------------------
@@ -116,8 +130,12 @@ CREATE OR REPLACE
     `QInfo`.`completed` `Completed`,
     `QInfo`.`returned` `Returned`,
     `QInfo`.`czarId` `CzarId`,
-    REPLACE(`QInfo`.`resultLocation`, '#QID#',  `QInfo`.`queryId`) `ResultLocation`
+    REPLACE(`QInfo`.`resultLocation`, '#QID#',  `QInfo`.`queryId`) `ResultLocation`,
+    `QStatsTmp`.`totalChunks` `TotalChunks`,
+    `QStatsTmp`.`completedChunks` `CompletedChunks`,
+    `QStatsTmp`.`lastUpdate` `LastUpdate`
   FROM `QInfo` LEFT OUTER JOIN `QTable` USING (`queryId`)
+       LEFT OUTER JOIN `QStatsTmp` USING (`queryId`)
   GROUP BY `QInfo`.`queryId`;
 
 -- -----------------------------------------------------
@@ -141,9 +159,13 @@ CREATE OR REPLACE
     `QInfo`.`returned` `RETURNED`,
     `QInfo`.`czarId` `CZARID`,
     REPLACE(`QInfo`.`resultLocation`, '#QID#',  `QInfo`.`queryId`) `RESULTLOCATION`,
-    NULLIF(COUNT(`QWorker`.`chunk`), 0) `NCHUNKS`
+    NULLIF(COUNT(`QWorker`.`chunk`), 0) `NCHUNKS`,
+    `QStatsTmp`.`totalChunks` `TotalChunks`,
+    `QStatsTmp`.`completedChunks` `CompletedChunks`,
+    `QStatsTmp`.`lastUpdate` `LastUpdate`
   FROM `QInfo` LEFT OUTER JOIN `QTable` USING (`queryId`)
         LEFT OUTER JOIN `QWorker` USING (`queryId`)
+        LEFT OUTER JOIN `QStatsTmp` USING (`queryId`)
   GROUP BY `QInfo`.`queryId`;
 
 -- -----------------------------------------------------
@@ -160,7 +182,8 @@ COMMENT = 'Metadata about database as a whole, bunch of key-value pairs';
 -- Version 0 corresponds to initial QMeta release and it had no
 -- QMetadata table at all.
 -- Version 1 introduced QMetadata table and altered schema for QInfo table
-INSERT INTO `QMetadata` (`metakey`, `value`) VALUES ('version', '1');
+-- Version 2 added query progress data to ProcessList tables.
+INSERT INTO `QMetadata` (`metakey`, `value`) VALUES ('version', '2');
 
 SET SQL_MODE=@OLD_SQL_MODE;
 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS;
