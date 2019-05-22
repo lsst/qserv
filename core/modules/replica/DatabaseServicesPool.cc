@@ -240,6 +240,28 @@ void DatabaseServicesPool::findWorkerReplicas(vector<ReplicaInfo>& replicas,
 }
 
 
+void DatabaseServicesPool::findDatabaseReplicas(vector<ReplicaInfo>& replicas,
+                                                string const& database,
+                                                bool enabledWorkersOnly) {
+
+    ServiceAllocator service(shared_from_base<DatabaseServicesPool>());
+    service()->findDatabaseReplicas(replicas,
+                                    database,
+                                    enabledWorkersOnly);
+}
+
+
+void DatabaseServicesPool::findDatabaseChunks(vector<unsigned int>& chunks,
+                                              string const& database,
+                                              bool enabledWorkersOnly) {
+
+    ServiceAllocator service(shared_from_base<DatabaseServicesPool>());
+    service()->findDatabaseChunks(chunks,
+                                  database,
+                                  enabledWorkersOnly);
+}
+
+
 map<unsigned int, size_t> DatabaseServicesPool::actualReplicationLevel(
                                     string const& database,
                                     vector<string> const& workersToExclude) {

@@ -178,6 +178,19 @@ struct ConfigurationGeneralParams {
 
     struct {
 
+        std::string const key         = "CONTR_EMPTY_CHUNKS_DIR";
+        std::string const description = "A path to a folder where Qserv master stores its empty chunk lists.";
+        std::string       value;
+
+        bool const updatable = false;
+
+        std::string  get(Configuration::Ptr const& config) const { return config->controllerEmptyChunksDir(); }
+        std::string  str(Configuration::Ptr const& config) const { return get(config); }
+
+    } controllerEmptyChunksDir;
+
+    struct {
+
         std::string const key         = "CONTR_JOB_TIMEOUT_SEC";
         std::string const description = "default timeout for completing jobs";
         unsigned int      value;

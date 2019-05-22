@@ -136,6 +136,16 @@ public:
                             bool allDatabases,
                             bool isPublished) final;
 
+    /// @see DatabaseServices::findDatabaseReplicas()
+    void findDatabaseReplicas(std::vector<ReplicaInfo>& replicas,
+                              std::string const& database,
+                              bool enabledWorkersOnly) final;
+
+    /// @see DatabaseServices::findDatabaseChunks()
+    void findDatabaseChunks(std::vector<unsigned int>& chunks,
+                            std::string const& database,
+                            bool enabledWorkersOnly) final;
+
     /// @see DatabaseServices::actualReplicationLevel()
     std::map<unsigned int, size_t> actualReplicationLevel(
                                         std::string const& database,
@@ -317,6 +327,23 @@ private:
      */
     void _findReplicaFilesImpl(util::Lock const& lock,
                                std::map<uint64_t, ReplicaInfo>& id2replica);
+
+    /**
+     * Fetch replicas satisfying the specified query
+     *
+     * @param lock
+     *   a lock on DatabaseServicesMySQL::_mtx must be acquired before calling
+     *   this method
+     *
+     * @param chunks
+     *   collection of chunks to be returned
+     *
+     * @param query
+     *   SQL query against the corresponding table
+     */
+    void _findChunksImpl(util::Lock const& lock,
+                         std::vector<unsigned int>& chunks,
+                         std::string const& query);
 
     /// @see DatabaseServicesMySQL::logControllerEvent()
     void _logControllerEvent(util::Lock const& lock,

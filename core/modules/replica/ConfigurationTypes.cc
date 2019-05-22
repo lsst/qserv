@@ -55,6 +55,7 @@ json ConfigurationGeneralParams::toJson(Configuration::Ptr const& config) const 
     result.push_back(::paramToJson(controllerHttpPort,          config));
     result.push_back(::paramToJson(controllerHttpThreads,       config));
     result.push_back(::paramToJson(controllerRequestTimeoutSec, config));
+    result.push_back(::paramToJson(controllerEmptyChunksDir,    config));
     result.push_back(::paramToJson(jobTimeoutSec,               config));
     result.push_back(::paramToJson(jobHeartbeatTimeoutSec,      config));
     result.push_back(::paramToJson(xrootdAutoNotify,            config));

@@ -248,6 +248,7 @@ size_t       const Configuration::defaultControllerThreads            = 1;
 uint16_t     const Configuration::defaultControllerHttpPort           = 80;
 size_t       const Configuration::defaultControllerHttpThreads        = 1;
 unsigned int const Configuration::defaultControllerRequestTimeoutSec  = 3600;
+std::string  const Configuration::defaultControllerEmptyChunksDir     = "data/{worker}";
 unsigned int const Configuration::defaultJobTimeoutSec                = 6000;
 unsigned int const Configuration::defaultJobHeartbeatTimeoutSec       = 60;
 bool         const Configuration::defaultXrootdAutoNotify             = false;
@@ -320,6 +321,7 @@ Configuration::Configuration()
         _controllerHttpPort         (defaultControllerHttpPort),
         _controllerHttpThreads      (defaultControllerHttpThreads),
         _controllerRequestTimeoutSec(defaultControllerRequestTimeoutSec),
+        _controllerEmptyChunksDir   (defaultControllerEmptyChunksDir),
         _jobTimeoutSec              (defaultJobTimeoutSec),
         _jobHeartbeatTimeoutSec     (defaultJobHeartbeatTimeoutSec),
         _xrootdAutoNotify           (defaultXrootdAutoNotify),
@@ -562,6 +564,7 @@ string Configuration::asString() const {
     ss << context() << "defaultControllerHttpPort:            " << defaultControllerHttpPort << "\n";
     ss << context() << "defaultControllerHttpThreads:         " << defaultControllerHttpThreads << "\n";
     ss << context() << "defaultControllerRequestTimeoutSec:   " << defaultControllerRequestTimeoutSec << "\n";
+    ss << context() << "defaultControllerEmptyChunksDir:      " << defaultControllerEmptyChunksDir << "\n";
     ss << context() << "defaultJobTimeoutSec:                 " << defaultJobTimeoutSec << "\n";
     ss << context() << "defaultJobHeartbeatTimeoutSec:        " << defaultJobHeartbeatTimeoutSec << "\n";
     ss << context() << "defaultXrootdAutoNotify:              " << (defaultXrootdAutoNotify ? "1" : "0") << "\n";
@@ -608,6 +611,7 @@ string Configuration::asString() const {
     ss << context() << "_controllerHttpPort:                  " << _controllerHttpPort << "\n";
     ss << context() << "_controllerHttpThreads:               " << _controllerHttpThreads << "\n";
     ss << context() << "_controllerRequestTimeoutSec:         " << _controllerRequestTimeoutSec << "\n";
+    ss << context() << "_controllerEmptyChunksDir:            " << _controllerEmptyChunksDir << "\n";
     ss << context() << "_jobTimeoutSec:                       " << _jobTimeoutSec << "\n";
     ss << context() << "_jobHeartbeatTimeoutSec:              " << _jobHeartbeatTimeoutSec << "\n";
     ss << context() << "_xrootdAutoNotify:                    " << (_xrootdAutoNotify ? "1" : "0") << "\n";

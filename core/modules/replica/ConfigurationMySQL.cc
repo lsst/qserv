@@ -111,6 +111,7 @@ string ConfigurationMySQL::dump2init(Configuration::Ptr const& config) {
     ::configInsert(str, "controller", "request_timeout_sec",        config->controllerRequestTimeoutSec());
     ::configInsert(str, "controller", "job_timeout_sec",            config->jobTimeoutSec());
     ::configInsert(str, "controller", "job_heartbeat_sec",          config->jobHeartbeatTimeoutSec());
+    ::configInsert(str, "controller", "empty_chunks_dir",           config->controllerEmptyChunksDir());
     ::configInsert(str, "database",   "services_pool_size",         config->databaseServicesPoolSize());
     ::configInsert(str, "xrootd",     "auto_notify",                config->xrootdAutoNotify() ? 1 : 0);
     ::configInsert(str, "xrootd",     "host",                       config->xrootdHost());
@@ -1259,6 +1260,7 @@ void ConfigurationMySQL::_loadConfigurationImpl(util::Lock const& lock,
         ::tryParameter(row, "controller", "request_timeout_sec", _controllerRequestTimeoutSec) or
         ::tryParameter(row, "controller", "job_timeout_sec",     _jobTimeoutSec) or
         ::tryParameter(row, "controller", "job_heartbeat_sec",   _jobHeartbeatTimeoutSec) or
+        ::tryParameter(row, "controller", "empty_chunks_dir",    _controllerEmptyChunksDir) or
 
         ::tryParameter(row, "database", "services_pool_size", _databaseServicesPoolSize) or
 

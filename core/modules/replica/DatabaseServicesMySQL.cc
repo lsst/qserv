@@ -966,6 +966,85 @@ void DatabaseServicesMySQL::findWorkerReplicas(vector<ReplicaInfo>& replicas,
 }
 
 
+void DatabaseServicesMySQL::findDatabaseReplicas(
+                                vector<ReplicaInfo>& replicas,
+                                string const& database,
+                                bool enabledWorkersOnly) {
+    string const context =
+        "DatabaseServicesMySQL::" + string(__func__) +
+        "  database=" + database + " enabledWorkersOnly=" + string(enabledWorkersOnly ? "1" : "0") +
+        " ";
+
+    LOGS(_log, LOG_LVL_DEBUG, context);
+
+    if (not _configuration->isKnownDatabase(database)) {
+        throw invalid_argument(context + "unknown database");
+    }
+
+    util::Lock lock(_mtx, context);
+
+    try {
+        string const query =
+            "SELECT * FROM " + _conn->sqlId("replica") +
+            "  WHERE "       + _conn->sqlEqual("database", database) +
+            (enabledWorkersOnly ?
+             "   AND "       + _conn->sqlIn("worker", _configuration->workers(true)) : "");
+        _conn->execute(
+            [&](decltype(_conn) conn) {
+                conn->begin();
+                _findReplicasImpl(lock, replicas, query);
+                conn->rollback();
+            }
+        );
+    } catch (database::mysql::Error const& ex) {
+        LOGS(_log, LOG_LVL_ERROR, context << "failed, exception: " << ex.what());
+        if (_conn->inTransaction()) _conn->rollback();
+        throw;
+    }
+    LOGS(_log, LOG_LVL_DEBUG, context << "** DONE ** replicas.size(): " << replicas.size());
+}
+
+
+void DatabaseServicesMySQL::findDatabaseChunks(
+                                vector<unsigned int>& chunks,
+                                string const& database,
+                                bool enabledWorkersOnly) {
+    string const context =
+        "DatabaseServicesMySQL::" + string(__func__) +
+        "  database=" + database + " enabledWorkersOnly=" + string(enabledWorkersOnly ? "1" : "0") +
+        " ";
+
+    LOGS(_log, LOG_LVL_DEBUG, context);
+
+    if (not _configuration->isKnownDatabase(database)) {
+        throw invalid_argument(context + "unknown database");
+    }
+
+    util::Lock lock(_mtx, context);
+
+    try {
+        string const query =
+            "SELECT DISTINCT " + _conn->sqlId("chunk") + " FROM " + _conn->sqlId("replica") +
+            "  WHERE "         + _conn->sqlEqual("database", database) +
+            (enabledWorkersOnly ?
+             "   AND "         + _conn->sqlIn("worker", _configuration->workers(true)) : "") +
+            " ORDER BY "       + _conn->sqlId("chunk");
+        _conn->execute(
+            [&](decltype(_conn) conn) {
+                conn->begin();
+                _findChunksImpl(lock, chunks, query);
+                conn->rollback();
+            }
+        );
+    } catch (database::mysql::Error const& ex) {
+        LOGS(_log, LOG_LVL_ERROR, context << "failed, exception: " << ex.what());
+        if (_conn->inTransaction()) _conn->rollback();
+        throw;
+    }
+    LOGS(_log, LOG_LVL_DEBUG, context << "** DONE ** replicas.size(): " << chunks.size());
+}
+
+
 map<unsigned int, size_t> DatabaseServicesMySQL::actualReplicationLevel(
                                     string const& database,
                                     vector<string> const& workersToExclude) {
@@ -2189,6 +2268,27 @@ void DatabaseServicesMySQL::_findReplicaFilesImpl(util::Lock const& lock,
         // Advance iterator to the first identifier of the next
         // batch (if any).
         itr += size;
+    }
+}
+
+
+void DatabaseServicesMySQL::_findChunksImpl(util::Lock const& lock,
+                                            vector<unsigned int>& chunks,
+                                            string const& query) {
+    auto const context = "DatabaseServicesMySQL::" + string(__func__) + "(chunks,query) ";
+
+    LOGS(_log, LOG_LVL_DEBUG, context);
+
+    chunks.clear();
+
+    _conn->execute(query);
+    if (_conn->hasResult()) {
+        database::mysql::Row row;
+        while (_conn->next(row)) {
+            unsigned int chunk;
+            row.get("chunk", chunk);
+            chunks.push_back(chunk);
+        }
     }
 }
 

@@ -19,6 +19,7 @@ INSERT INTO `config` VALUES ('controller', 'http_server_threads',    '16');
 INSERT INTO `config` VALUES ('controller', 'request_timeout_sec', '57600');   -- 16 hours
 INSERT INTO `config` VALUES ('controller', 'job_timeout_sec',     '57600');   -- 16 hours
 INSERT INTO `config` VALUES ('controller', 'job_heartbeat_sec',       '0');   -- temporarily disabled
+INSERT INTO `config` VALUES ('controller', 'empty_chunks_dir',    '/qserv/data/qserv');
 
 -- Database service-specific parameters
 

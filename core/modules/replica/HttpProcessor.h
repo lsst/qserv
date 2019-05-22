@@ -315,6 +315,12 @@ private:
                    qhttp::Response::Ptr const& resp);
 
     /**
+     * (Re-)build the "empty chunks list" for a database.
+     */
+    void _buildEmptyChunksList(qhttp::Request::Ptr const& req,
+                               qhttp::Response::Ptr const& resp);
+
+    /**
      * Find descriptions of queries
      *
      * @param workerInfo  worker info object to be inspected to extract identifier)s of queries

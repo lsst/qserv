@@ -129,6 +129,14 @@ public:
                             bool allDatabases,
                             bool isPublished) final;
 
+    void findDatabaseReplicas(std::vector<ReplicaInfo>& replicas,
+                              std::string const& database,
+                              bool enabledWorkersOnly) final;
+
+    void findDatabaseChunks(std::vector<unsigned int>& chunks,
+                            std::string const& database,
+                            bool enabledWorkersOnly) final;
+
     std::map<unsigned int, size_t> actualReplicationLevel(
                                         std::string const& database,
                                         std::vector<std::string> const& workersToExclude) final;

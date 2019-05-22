@@ -400,9 +400,8 @@ public:
      * if any found.
      *
      * @note
-     *   No assumption on a new status of the replica object
-     *   passed into the method should be made if the operation fails
-     *   (returns 'false').
+     *   no assumption on a new status of the replica collection
+     *   passed into the method should be made if the operation fails.
      *
      * @param replica
      *   reference to an object to be initialized
@@ -435,8 +434,7 @@ public:
      *
      * @note
      *   no assumption on a new status of the replica collection
-     *   passed into the method should be made if the operation fails
-     *   (returns 'false').
+     *   passed into the method should be made if the operation fails.
      *
      * @param replicas
      *   collection of replicas (if any found)
@@ -463,8 +461,9 @@ public:
      * Find all replicas for the specified worker and a database (or all
      * databases if no specific one is requested).
      *
-     * ATTENTION: no assumption on a new status of the replica collection
-     * passed into the method should be made if the operation fails.
+     * @note
+     *   No assumption on a new status of the replica collection
+     *   passed into the method should be made if the operation fails.
      *
      * @param replicas
      *   collection of replicas (if any found)
@@ -500,8 +499,9 @@ public:
      * Find the number of replicas for the specified worker and a database (or all
      * databases if no specific one is requested).
      *
-     * ATTENTION: no assumption on a new status of the replica collection
-     * passed into the method should be made if the operation fails.
+     * @note
+     *   No assumption on a new status of the replica collection
+     *   passed into the method should be made if the operation fails.
      *
      * @param worker
      *   worker name
@@ -537,8 +537,7 @@ public:
      *
      * @note
      *   no assumption on a new status of the replica collection
-     *   passed into the method should be made if the operation fails
-     *   (returns 'false').
+     *   passed into the method should be made if the operation fails.
      *
      * @param replicas
      *   collection of replicas (if any found)
@@ -572,6 +571,54 @@ public:
                                     std::string const& databaseFamily=std::string(),
                                     bool allDatabases=false,
                                     bool isPublished=true) = 0;
+
+    /**
+     * Find all replicas for the specified the database.
+     *
+     * @note
+     *   no assumption on a new status of the replica collection
+     *   passed into the method should be made if the operation fails.
+     *
+     * @param replicas
+     *   collection of replicas (if any found)
+     *
+     * @param database
+     *   the name of a database limiting a scope of the lookup operation
+     *
+     * @param enabledWorkersOnly
+     *   (optional) if set to 'true' then only consider known
+     *   workers which are enabled in the Configuration
+     *
+     * @throw std::invalid_argument
+     *   if the database is unknown or empty
+     */
+    virtual void findDatabaseReplicas(std::vector<ReplicaInfo>& replicas,
+                                      std::string const& database,
+                                      bool enabledWorkersOnly=true) = 0;
+
+    /**
+     * Find all unique chunk numbers for the specified the database.
+     *
+     * @note
+     *   no assumption on a new status of the chunks collection
+     *   passed into the method should be made if the operation fails.
+     *
+     * @param chunks
+     *   collection of chunk numbers (if any found)
+     *
+     * @param database
+     *   the name of a database limiting a scope of the lookup operation
+     *
+     * @param enabledWorkersOnly
+     *   (optional) if set to 'true' then only consider known
+     *   workers which are enabled in the Configuration
+     *
+     * @throw std::invalid_argument
+     *   if the database is unknown or empty
+     */
+    virtual void findDatabaseChunks(std::vector<unsigned int>& chunks,
+                                    std::string const& database,
+                                    bool enabledWorkersOnly=true) = 0;
 
     /**
      * @return

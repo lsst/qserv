@@ -290,14 +290,17 @@ public:
     virtual void setControllerHttpThreads(size_t val) = 0;
 
 
-    // @return expiration timeout for requests
+    /// @return expiration timeout for requests
     unsigned int controllerRequestTimeoutSec() const { return _controllerRequestTimeoutSec; }
+
+    /// @return a path to a folder where Qserv master stores its "empty chunk lists"
+    std::string const& controllerEmptyChunksDir() const { return _controllerEmptyChunksDir; }
 
     /// @param val  the new value of the parameter
     virtual void setControllerRequestTimeoutSec(unsigned int val) = 0;
 
 
-    // @return expiration timeout for jobs
+    /// @return expiration timeout for jobs
     unsigned int jobTimeoutSec() const { return _jobTimeoutSec; }
 
     /// @param val  the new value of the parameter
@@ -1162,6 +1165,7 @@ protected:
     static uint16_t     const defaultControllerHttpPort;
     static size_t       const defaultControllerHttpThreads;
     static unsigned int const defaultControllerRequestTimeoutSec;
+    static std::string  const defaultControllerEmptyChunksDir;
     static unsigned int const defaultJobTimeoutSec;
     static unsigned int const defaultJobHeartbeatTimeoutSec;
     static bool         const defaultXrootdAutoNotify;
@@ -1335,6 +1339,7 @@ protected:
     uint16_t     _controllerHttpPort;
     size_t       _controllerHttpThreads;
     unsigned int _controllerRequestTimeoutSec;
+    std::string  _controllerEmptyChunksDir;
     unsigned int _jobTimeoutSec;
     unsigned int _jobHeartbeatTimeoutSec;
 

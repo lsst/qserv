@@ -33,6 +33,7 @@
 #include <sstream>
 
 // Third party headers
+#include <boost/filesystem.hpp>
 #include <boost/lexical_cast.hpp>
 #include "nlohmann/json.hpp"
 
@@ -54,6 +55,7 @@
 
 using namespace std;
 using namespace std::placeholders;
+namespace fs = boost::filesystem;
 using json = nlohmann::json;
 namespace qhttp = lsst::qserv::qhttp;
 using namespace lsst::qserv::replica;
@@ -501,7 +503,8 @@ void HttpProcessor::_initialize() {
         {"POST",   "/ingest/v1/database", bind(&HttpProcessor::_addDatabase, self, _1, _2)},
         {"PUT",    "/ingest/v1/database/:name", bind(&HttpProcessor::_publishDatabase, self, _1, _2)},
         {"POST",   "/ingest/v1/table", bind(&HttpProcessor::_addTable, self, _1, _2)},
-        {"POST",   "/ingest/v1/chunk", bind(&HttpProcessor::_addChunk, self, _1, _2)}
+        {"POST",   "/ingest/v1/chunk", bind(&HttpProcessor::_addChunk, self, _1, _2)},
+        {"POST",   "/ingest/v1/chunk/empty", bind(&HttpProcessor::_buildEmptyChunksList, self, _1, _2)}
     });
     controller()->serviceProvider()->httpServer()->start();
 }
@@ -2209,8 +2212,79 @@ void HttpProcessor::_addChunk(qhttp::Request::Ptr const& req,
 }
 
 
+void HttpProcessor::_buildEmptyChunksList(qhttp::Request::Ptr const& req,
+                                          qhttp::Response::Ptr const& resp) {
+    _debug(__func__);
+
+    try {
+        auto const databaseServices = controller()->serviceProvider()->databaseServices();
+        auto const config = controller()->serviceProvider()->config();
+
+        ::HttpRequestBody body(req);
+
+        string const database = body.required<string>("database");
+        bool const force = (bool)body.optional<int>("force", 0);
+
+        _debug(string(__func__) + " database=" + database);
+        _debug(string(__func__) + " force=" + string(force ? "1" : "0"));
+
+        auto const databaseInfo = config->databaseInfo(database);
+        if (databaseInfo.isPublished) {
+            throw invalid_argument("database is already published");
+        }
+
+        bool const enabledWorkersOnly = true;
+        vector<unsigned int> chunks;
+        databaseServices->findDatabaseChunks(chunks, database, enabledWorkersOnly);
+
+        set<unsigned int> uniqueChunks;
+        for (auto chunk: chunks) uniqueChunks.insert(chunk);
+
+        auto const file = "empty_" + database + ".txt";
+        auto const filePath = fs::path(config->controllerEmptyChunksDir()) / file;
+
+        if (not force) {
+            boost::system::error_code ec;
+            fs::file_status const stat = fs::status(filePath, ec);
+            if (stat.type() == fs::status_error) {
+                throw runtime_error("failed to check the status of file: " + filePath.string());
+            }
+            if (fs::exists(stat)) {
+                throw runtime_error("'force' is required to overwrite existing file: " + filePath.string());
+            }
+        }
+
+        _debug(__func__, "creating/opening file: " + filePath.string());
+        ofstream ofs(filePath.string());
+        if (not ofs.good()) {
+            throw runtime_error("failed to create/open file: " + filePath.string());
+        }
+        unsigned int const maxChunkAllowed = 1000000;
+        for (unsigned int chunk = 0; chunk < maxChunkAllowed; ++chunk) {
+            if (not uniqueChunks.count(chunk)) {
+                ofs << chunk << "\n";
+            }
+        }
+        ofs.flush();
+        ofs.close();
+
+        json result;
+        result["file"] = file;
+        result["num_chunks"] = chunks.size();
+
+        _sendData(resp, result);
+
+    } catch (invalid_argument const& ex) {
+        _sendError(resp, __func__, "invalid parameters of the request, ex: " + string(ex.what()));
+    } catch (exception const& ex) {
+        _sendError(resp, __func__, "operation failed due to: " + string(ex.what()));
+    }
+}
+
+
 void HttpProcessor::_sendError(qhttp::Response::Ptr const& resp,
-                               string const& func, string const& error) const {
+                               string const& func,
+                               string const& error) const {
     _error(func, error);
 
     json result;
@@ -2222,7 +2296,8 @@ void HttpProcessor::_sendError(qhttp::Response::Ptr const& resp,
 
 
 void HttpProcessor::_sendData(qhttp::Response::Ptr const& resp,
-                              json& result, bool success) {
+                              json& result,
+                              bool success) {
     result["success"] = success ? 1 : 0;
     result["error"] = "";
 

@@ -63,6 +63,7 @@ BOOST_AUTO_TEST_CASE(ConfigurationTest) {
         {"controller.request_timeout_sec",    "100"},
         {"controller.job_timeout_sec",        "200"},
         {"controller.job_heartbeat_sec",      "300"},
+        {"controller.empty_chunks_dir",       "/qserv/data/qserv"},
         {"database.technology",               "mysql"},
         {"database.host",                     "mysql.lsst.org"},
         {"database.port",                     "13306"},
@@ -216,6 +217,7 @@ BOOST_AUTO_TEST_CASE(ConfigurationTest) {
         BOOST_CHECK(config->controllerHttpPort()          == 8080);
         BOOST_CHECK(config->controllerHttpThreads()       == 3);
         BOOST_CHECK(config->controllerRequestTimeoutSec() == 100);
+        BOOST_CHECK(config->controllerEmptyChunksDir()    == "/qserv/data/qserv");
         BOOST_CHECK(config->jobTimeoutSec()               == 200);
         BOOST_CHECK(config->jobHeartbeatTimeoutSec()      == 300);
 

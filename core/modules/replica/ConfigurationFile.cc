@@ -83,6 +83,7 @@ string ConfigurationFile::dump2init(Configuration::Ptr const& config) {
         << "http_server_port    = " << config->controllerHttpPort() << "\n"
         << "http_server_threads = " << config->controllerHttpThreads() << "\n"
         << "request_timeout_sec = " << config->controllerRequestTimeoutSec() << "\n"
+        << "empty_chunks_dir    = " << config->controllerEmptyChunksDir() << "\n"
         << "job_timeout_sec     = " << config->jobTimeoutSec() << "\n"
         << "job_heartbeat_sec   = " << config->jobHeartbeatTimeoutSec() << "\n"
         << "\n";

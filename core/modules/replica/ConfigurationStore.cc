@@ -569,6 +569,7 @@ void ConfigurationStore::_loadConfiguration(util::ConfigStore const& configStore
     ::parseKeyVal(configStore, "controller.http_server_port",    _controllerHttpPort,          defaultControllerHttpPort);
     ::parseKeyVal(configStore, "controller.http_server_threads", _controllerHttpThreads,       defaultControllerHttpThreads);
     ::parseKeyVal(configStore, "controller.request_timeout_sec", _controllerRequestTimeoutSec, defaultControllerRequestTimeoutSec);
+    ::parseKeyVal(configStore, "controller.empty_chunks_dir",    _controllerEmptyChunksDir,    defaultControllerEmptyChunksDir);
     ::parseKeyVal(configStore, "controller.job_timeout_sec",     _jobTimeoutSec,               defaultJobTimeoutSec);
     ::parseKeyVal(configStore, "controller.job_heartbeat_sec",   _jobHeartbeatTimeoutSec,      defaultJobHeartbeatTimeoutSec);
 

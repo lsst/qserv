@@ -525,6 +525,10 @@ void ConfigApp::_dumpGeneralAsTable(string const& indent) const {
     value.      push_back(_general.controllerRequestTimeoutSec.str(_config));
     description.push_back(_general.controllerRequestTimeoutSec.description);
 
+    parameter.  push_back(_general.controllerEmptyChunksDir.key);
+    value.      push_back(_general.controllerEmptyChunksDir.str(_config));
+    description.push_back(_general.controllerEmptyChunksDir.description);
+
     parameter.  push_back(_general.jobTimeoutSec.key);
     value.      push_back(_general.jobTimeoutSec.str(_config));
     description.push_back(_general.jobTimeoutSec.description);
