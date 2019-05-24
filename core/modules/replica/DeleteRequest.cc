@@ -56,10 +56,10 @@ DeleteRequest::Ptr DeleteRequest::create(ServiceProvider::Ptr const& serviceProv
                                          string const& worker,
                                          string const& database,
                                          unsigned int chunk,
-                                         CallbackType const& onFinish,
-                                         int  priority,
-                                         bool keepTracking,
                                          bool allowDuplicate,
+                                         CallbackType const& onFinish,
+                                         int priority,
+                                         bool keepTracking,
                                          shared_ptr<Messenger> const& messenger) {
     return DeleteRequest::Ptr(
         new DeleteRequest(
@@ -68,10 +68,10 @@ DeleteRequest::Ptr DeleteRequest::create(ServiceProvider::Ptr const& serviceProv
             worker,
             database,
             chunk,
+            allowDuplicate,
             onFinish,
             priority,
             keepTracking,
-            allowDuplicate,
             messenger));
 }
 
@@ -81,10 +81,10 @@ DeleteRequest::DeleteRequest(ServiceProvider::Ptr const& serviceProvider,
                              string const& worker,
                              string const& database,
                              unsigned int chunk,
-                             CallbackType const& onFinish,
-                             int  priority,
-                             bool keepTracking,
                              bool allowDuplicate,
+                             CallbackType const& onFinish,
+                             int priority,
+                             bool keepTracking,
                              shared_ptr<Messenger> const& messenger)
     :   RequestMessenger(serviceProvider,
                          io_service,

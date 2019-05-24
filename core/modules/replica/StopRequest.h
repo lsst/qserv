@@ -277,6 +277,9 @@ public:
      *   an optional callback function to be called upon a completion of
      *   the request.
      *
+     * @param priority
+     *   priority level of the request
+     *
      * @param keepTracking
      *   keep tracking the request before it finishes or fails
      *
@@ -291,6 +294,7 @@ public:
                       std::string const& worker,
                       std::string const& targetRequestId,
                       CallbackType const& onFinish,
+                      int priority,
                       bool keepTracking,
                       std::shared_ptr<Messenger> const& messenger) {
         return StopRequest<POLICY>::Ptr(
@@ -302,6 +306,7 @@ public:
                 targetRequestId,
                 POLICY::targetRequestType(),
                 onFinish,
+                priority,
                 keepTracking,
                 messenger));
     }
@@ -349,6 +354,7 @@ private:
                 std::string const& targetRequestId,
                 ProtocolQueuedRequestType targetRequestType,
                 CallbackType const& onFinish,
+                int priority,
                 bool keepTracking,
                 std::shared_ptr<Messenger> const& messenger)
         :   StopRequestBase(serviceProvider,
@@ -357,6 +363,7 @@ private:
                             worker,
                             targetRequestId,
                             targetRequestType,
+                            priority,
                             keepTracking,
                             messenger),
             _onFinish(onFinish) {
@@ -434,6 +441,7 @@ typedef StopRequest<StopSqlRequestPolicy>         StopSqlDisableDbRequest;
 typedef StopRequest<StopSqlRequestPolicy>         StopSqlCreateTableRequest;
 typedef StopRequest<StopSqlRequestPolicy>         StopSqlDeleteTableRequest;
 typedef StopRequest<StopSqlRequestPolicy>         StopSqlRemoveTablePartitionsRequest;
+typedef StopRequest<StopSqlRequestPolicy>         StopSqlDeleteTablePartitionRequest;
 
 }}} // namespace lsst::qserv::replica
 

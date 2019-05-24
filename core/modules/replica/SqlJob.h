@@ -1009,6 +1009,120 @@ private:
     CallbackType _onFinish;     /// @note is reset when the job finishes
 };
 
+
+/**
+ * Class SqlDeleteTablePartitionJob represents a tool which will broadcast
+ * the same request for removing a MySQL partition corresponding to a given
+ * super-transaction from existing table from all worker databases of a setup.
+ * Result sets are collected in the above defined data structure.
+ */
+class SqlDeleteTablePartitionJob : public SqlBaseJob  {
+public:
+    /// The pointer type for instances of the class
+    typedef std::shared_ptr<SqlDeleteTablePartitionJob> Ptr;
+
+    /// The function type for notifications on the completion of the request
+    typedef std::function<void(Ptr)> CallbackType;
+
+    /// @return the unique name distinguishing this class from other types of jobs
+    static std::string typeName();
+
+    /**
+     * Static factory method is needed to prevent issue with the lifespan
+     * and memory management of instances created otherwise (as values or via
+     * low-level pointers).
+     *
+     * @param database
+     *   the name of a database from which a table will be deleted
+     *
+     * @param table
+     *   the name of an existing table to be affected by the operation
+     *
+     * @param transactionId
+     *   an identifier of a super-transaction corresponding to a MySQL partition
+     *   to be dropped. The transaction must exist, and it should be in
+     *   the ABORTED state.
+     *
+     * @param allWorkers
+     *   engage all known workers regardless of their status. If the flag
+     *   is set to 'false' then only 'ENABLED' workers which are not in
+     *   the 'READ-ONLY' state will be involved into the operation.
+     *
+     * @param controller
+     *   is needed launching requests and accessing the Configuration
+     *
+     * @param parentJobId
+     *   (optional) identifier of a parent job
+     *
+     * @param onFinish
+     *   (optional) callback function to be called upon a completion of the job
+     *
+     * @param options
+     *   (optional) defines the job priority, etc.
+     *
+     * @return
+     *   pointer to the created object
+     */
+    static Ptr create(std::string const& database,
+                      std::string const& table,
+                      uint32_t transactionId,
+                      bool allWorkers,
+                      Controller::Ptr const& controller,
+                      std::string const& parentJobId=std::string(),
+                      CallbackType const& onFinish=nullptr,
+                      Job::Options const& options=defaultOptions());
+
+    // Default construction and copy semantics are prohibited
+
+    SqlDeleteTablePartitionJob() = delete;
+    SqlDeleteTablePartitionJob(SqlDeleteTablePartitionJob const&) = delete;
+    SqlDeleteTablePartitionJob& operator=(SqlDeleteTablePartitionJob const&) = delete;
+
+    ~SqlDeleteTablePartitionJob() final = default;
+
+    // Trivial get methods
+
+    std::string const& database() const { return _database; }
+    std::string const& table()    const { return _table; }
+
+    uint32_t transactionId() const { return _transactionId; }
+
+
+    /// @see Job::extendedPersistentState()
+    std::list<std::pair<std::string,std::string>> extendedPersistentState() const final;
+
+protected:
+    /// @see Job::notify()
+    void notify(util::Lock const& lock) final;
+
+    /// @see SqlBaseJob::launchRequest()
+    SqlBaseRequest::Ptr launchRequest(util::Lock const& lock,
+                                      std::string const& worker) final;
+
+    /// @see SqlBaseJob::stopRequest()
+    void stopRequest(util::Lock const& lock,
+                     SqlBaseRequest::Ptr const& request) final;
+
+private:
+    /// @see SqlDeleteTablePartitionJob::create()
+    SqlDeleteTablePartitionJob(std::string const& database,
+                               std::string const& table,
+                               uint32_t transactionId,
+                               bool allWorkers,
+                               Controller::Ptr const& controller,
+                               std::string const& parentJobId,
+                               CallbackType const& onFinish,
+                               Job::Options const& options);
+
+    // Input parameters
+
+    std::string const _database;
+    std::string const _table;
+    uint32_t    const _transactionId;
+
+    CallbackType _onFinish;     /// @note is reset when the job finishes
+};
+
 }}} // namespace lsst::qserv::replica
 
 #endif // LSST_QSERV_REPLICA_SQLJOB_H

@@ -43,8 +43,6 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
-    class ControllerImpl;
-
     class ReplicationRequest;
     class DeleteRequest;
 
@@ -69,6 +67,7 @@ namespace replica {
     class SqlCreateTableRequest;
     class SqlDeleteTableRequest;
     class SqlRemoveTablePartitionsRequest;
+    class SqlDeleteTablePartitionRequest;
 
     typedef std::shared_ptr<SqlQueryRequest>                 SqlQueryRequestPtr;
     typedef std::shared_ptr<SqlCreateDbRequest>              SqlCreateDbRequestPtr;
@@ -78,6 +77,7 @@ namespace replica {
     typedef std::shared_ptr<SqlCreateTableRequest>           SqlCreateTableRequestPtr;
     typedef std::shared_ptr<SqlDeleteTableRequest>           SqlDeleteTableRequestPtr;
     typedef std::shared_ptr<SqlRemoveTablePartitionsRequest> SqlRemoveTablePartitionsRequestPtr;
+    typedef std::shared_ptr<SqlDeleteTablePartitionRequest>  SqlDeleteTablePartitionRequestPtr;
 
     class StopReplicationRequestPolicy;
     class StopDeleteRequestPolicy;
@@ -101,6 +101,7 @@ namespace replica {
     using StopSqlCreateTableRequest = StopRequest<StopSqlRequestPolicy>;
     using StopSqlDeleteTableRequest = StopRequest<StopSqlRequestPolicy>;
     using StopSqlRemoveTablePartitionsRequest = StopRequest<StopSqlRequestPolicy>;
+    using StopSqlDeleteTablePartitionRequest  = StopRequest<StopSqlRequestPolicy>;
 
     typedef std::shared_ptr<StopReplicationRequest> StopReplicationRequestPtr;
     typedef std::shared_ptr<StopDeleteRequest>      StopDeleteRequestPtr;
@@ -115,6 +116,7 @@ namespace replica {
     typedef std::shared_ptr<StopSqlCreateTableRequest> StopSqlCreateTableRequestPtr;
     typedef std::shared_ptr<StopSqlDeleteTableRequest> StopSqlDeleteTableRequestPtr;
     typedef std::shared_ptr<StopSqlRemoveTablePartitionsRequest> StopSqlRemoveTablePartitionsRequestPtr;
+    typedef std::shared_ptr<StopSqlDeleteTablePartitionRequest>  StopSqlDeleteTablePartitionRequestPtr;
 
     class StatusReplicationRequestPolicy;
     class StatusDeleteRequestPolicy;
@@ -138,6 +140,7 @@ namespace replica {
     using StatusSqlCreateTableRequest = StatusRequest<StatusSqlRequestPolicy>;
     using StatusSqlDeleteTableRequest = StatusRequest<StatusSqlRequestPolicy>;
     using StatusSqlRemoveTablePartitionsRequest = StatusRequest<StatusSqlRequestPolicy>;
+    using StatusSqlDeleteTablePartitionRequest  = StatusRequest<StatusSqlRequestPolicy>;
 
     typedef std::shared_ptr<StatusReplicationRequest> StatusReplicationRequestPtr;
     typedef std::shared_ptr<StatusDeleteRequest>      StatusDeleteRequestPtr;
@@ -152,6 +155,7 @@ namespace replica {
     typedef std::shared_ptr<StatusSqlCreateTableRequest> StatusSqlCreateTableRequestPtr;
     typedef std::shared_ptr<StatusSqlDeleteTableRequest> StatusSqlDeleteTableRequestPtr;
     typedef std::shared_ptr<StatusSqlRemoveTablePartitionsRequest> StatusSqlRemoveTablePartitionsRequestPtr;
+    typedef std::shared_ptr<StatusSqlDeleteTablePartitionRequest>  StatusSqlDeleteTablePartitionRequestPtr;
 
     class ServiceSuspendRequestPolicy;
     class ServiceResumeRequestPolicy;
@@ -368,213 +372,62 @@ public:
             std::string const& jobId="",
             unsigned int requestExpirationIvalSec=0);
 
-    StopReplicationRequestPtr stopReplication(
+    SqlDeleteTablePartitionRequestPtr sqlDeleteTablePartition(
             std::string const& workerName,
-            std::string const& targetRequestId,
-            std::function<void(StopReplicationRequestPtr)> const& onFinish=nullptr,
+            std::string const& database,
+            std::string const& table,
+            uint32_t transactionId,
+            std::function<void(SqlDeleteTablePartitionRequestPtr)> const& onFinish=nullptr,
+            int priority=0,
             bool keepTracking=true,
             std::string const& jobId="",
             unsigned int requestExpirationIvalSec=0);
 
-    StopDeleteRequestPtr stopReplicaDelete(
+    template <class REQUEST>
+    typename REQUEST::Ptr stopById(
             std::string const& workerName,
             std::string const& targetRequestId,
-            std::function<void(StopDeleteRequestPtr)> const& onFinish=nullptr,
+            typename REQUEST::CallbackType const& onFinish=nullptr,
+            int priority=0,
             bool keepTracking=true,
             std::string const& jobId="",
-            unsigned int requestExpirationIvalSec=0);
+            unsigned int requestExpirationIvalSec=0) {
 
-    StopFindRequestPtr stopReplicaFind(
+        _debug(__func__, "targetRequestId: " + targetRequestId);
+
+        return _submit<REQUEST,
+                       decltype(targetRequestId)>(
+            workerName,
+            targetRequestId,
+            onFinish,
+            priority,
+            keepTracking,
+            jobId,
+            requestExpirationIvalSec);        
+    }
+
+    template <class REQUEST>
+    typename REQUEST::Ptr statusById(
             std::string const& workerName,
             std::string const& targetRequestId,
-            std::function<void(StopFindRequestPtr)> const& onFinish=nullptr,
+            typename REQUEST::CallbackType const& onFinish=nullptr,
+            int priority=0,
             bool keepTracking=true,
             std::string const& jobId="",
-            unsigned int requestExpirationIvalSec=0);
+            unsigned int requestExpirationIvalSec=0) {
 
-    StopFindAllRequestPtr stopReplicaFindAll(
-            std::string const& workerName,
-            std::string const& targetRequestId,
-            std::function<void(StopFindAllRequestPtr)> const& onFinish=nullptr,
-            bool keepTracking=true,
-            std::string const& jobId="",
-            unsigned int requestExpirationIvalSec=0);
+        _debug(__func__, "targetRequestId: " + targetRequestId);
 
-    StopEchoRequestPtr stopEcho(
-            std::string const& workerName,
-            std::string const& targetRequestId,
-            std::function<void(StopEchoRequestPtr)> const& onFinish=nullptr,
-            bool keepTracking=true,
-            std::string const& jobId="",
-            unsigned int requestExpirationIvalSec=0);
-
-    StopSqlQueryRequestPtr stopSqlQuery(
-            std::string const& workerName,
-            std::string const& targetRequestId,
-            std::function<void(StopSqlQueryRequestPtr)> const& onFinish=nullptr,
-            bool keepTracking=true,
-            std::string const& jobId="",
-            unsigned int requestExpirationIvalSec=0);
-
-    StopSqlCreateDbRequestPtr stopSqlCreateDb(
-            std::string const& workerName,
-            std::string const& targetRequestId,
-            std::function<void(StopSqlCreateDbRequestPtr)> const& onFinish=nullptr,
-            bool keepTracking=true,
-            std::string const& jobId="",
-            unsigned int requestExpirationIvalSec=0);
-
-    StopSqlDeleteDbRequestPtr stopSqlDeleteDb(
-            std::string const& workerName,
-            std::string const& targetRequestId,
-            std::function<void(StopSqlDeleteDbRequestPtr)> const& onFinish=nullptr,
-            bool keepTracking=true,
-            std::string const& jobId="",
-            unsigned int requestExpirationIvalSec=0);
-
-    StopSqlEnableDbRequestPtr stopSqlEnableDb(
-            std::string const& workerName,
-            std::string const& targetRequestId,
-            std::function<void(StopSqlEnableDbRequestPtr)> const& onFinish=nullptr,
-            bool keepTracking=true,
-            std::string const& jobId="",
-            unsigned int requestExpirationIvalSec=0);
-
-    StopSqlDisableDbRequestPtr stopSqlDisableDb(
-            std::string const& workerName,
-            std::string const& targetRequestId,
-            std::function<void(StopSqlDisableDbRequestPtr)> const& onFinish=nullptr,
-            bool keepTracking=true,
-            std::string const& jobId="",
-            unsigned int requestExpirationIvalSec=0);
-
-    StopSqlCreateTableRequestPtr stopSqlCreateTable(
-            std::string const& workerName,
-            std::string const& targetRequestId,
-            std::function<void(StopSqlCreateTableRequestPtr)> const& onFinish=nullptr,
-            bool keepTracking=true,
-            std::string const& jobId="",
-            unsigned int requestExpirationIvalSec=0);
-
-    StopSqlDeleteTableRequestPtr stopSqlDeleteTable(
-            std::string const& workerName,
-            std::string const& targetRequestId,
-            std::function<void(StopSqlDeleteTableRequestPtr)> const& onFinish=nullptr,
-            bool keepTracking=true,
-            std::string const& jobId="",
-            unsigned int requestExpirationIvalSec=0);
-
-    StopSqlRemoveTablePartitionsRequestPtr stopSqlRemoveTablePartitions(
-            std::string const& workerName,
-            std::string const& targetRequestId,
-            std::function<void(StopSqlRemoveTablePartitionsRequestPtr)> const& onFinish=nullptr,
-            bool keepTracking=true,
-            std::string const& jobId="",
-            unsigned int requestExpirationIvalSec=0);
-
-    StatusReplicationRequestPtr statusOfReplication(
-            std::string const& workerName,
-            std::string const& targetRequestId,
-            std::function<void(StatusReplicationRequestPtr)> const& onFinish=nullptr,
-            bool keepTracking=false,
-            std::string const& jobId="",
-            unsigned int requestExpirationIvalSec=0);
-
-    StatusDeleteRequestPtr statusOfDelete(
-            std::string const& workerName,
-            std::string const& targetRequestId,
-            std::function<void(StatusDeleteRequestPtr)> const& onFinish=nullptr,
-            bool keepTracking=false,
-            std::string const& jobId="",
-            unsigned int requestExpirationIvalSec=0);
-
-    StatusFindRequestPtr statusOfFind(
-            std::string const& workerName,
-            std::string const& targetRequestId,
-            std::function<void(StatusFindRequestPtr)> const& onFinish=nullptr,
-            bool keepTracking=false,
-            std::string const& jobId="",
-            unsigned int requestExpirationIvalSec=0);
-
-    StatusFindAllRequestPtr statusOfFindAll(
-            std::string const& workerName,
-            std::string const& targetRequestId,
-            std::function<void(StatusFindAllRequestPtr)> const& onFinish=nullptr,
-            bool keepTracking=false,
-            std::string const& jobId="",
-            unsigned int requestExpirationIvalSec=0);
-
-    StatusEchoRequestPtr statusOfEcho(
-            std::string const& workerName,
-            std::string const& targetRequestId,
-            std::function<void(StatusEchoRequestPtr)> const& onFinish=nullptr,
-            bool keepTracking=false,
-            std::string const& jobId="",
-            unsigned int requestExpirationIvalSec=0);
-
-    StatusSqlQueryRequestPtr statusOfSqlQuery(
-            std::string const& workerName,
-            std::string const& targetRequestId,
-            std::function<void(StatusSqlQueryRequestPtr)> const& onFinish=nullptr,
-            bool keepTracking=false,
-            std::string const& jobId="",
-            unsigned int requestExpirationIvalSec=0);
-
-    StatusSqlCreateDbRequestPtr statusOfSqlCreateDb(
-            std::string const& workerName,
-            std::string const& targetRequestId,
-            std::function<void(StatusSqlCreateDbRequestPtr)> const& onFinish=nullptr,
-            bool keepTracking=false,
-            std::string const& jobId="",
-            unsigned int requestExpirationIvalSec=0);
-
-    StatusSqlDeleteDbRequestPtr statusOfSqlDeleteDb(
-            std::string const& workerName,
-            std::string const& targetRequestId,
-            std::function<void(StatusSqlDeleteDbRequestPtr)> const& onFinish=nullptr,
-            bool keepTracking=false,
-            std::string const& jobId="",
-            unsigned int requestExpirationIvalSec=0);
-
-    StatusSqlEnableDbRequestPtr statusOfSqlEnableDb(
-            std::string const& workerName,
-            std::string const& targetRequestId,
-            std::function<void(StatusSqlEnableDbRequestPtr)> const& onFinish=nullptr,
-            bool keepTracking=false,
-            std::string const& jobId="",
-            unsigned int requestExpirationIvalSec=0);
-
-    StatusSqlDisableDbRequestPtr statusOfSqlDisableDb(
-            std::string const& workerName,
-            std::string const& targetRequestId,
-            std::function<void(StatusSqlDisableDbRequestPtr)> const& onFinish=nullptr,
-            bool keepTracking=false,
-            std::string const& jobId="",
-            unsigned int requestExpirationIvalSec=0);
-
-    StatusSqlCreateTableRequestPtr statusOfSqlCreateTable(
-            std::string const& workerName,
-            std::string const& targetRequestId,
-            std::function<void(StatusSqlCreateTableRequestPtr)> const& onFinish=nullptr,
-            bool keepTracking=false,
-            std::string const& jobId="",
-            unsigned int requestExpirationIvalSec=0);
-
-    StatusSqlDeleteTableRequestPtr statusOfSqlDeleteTable(
-            std::string const& workerName,
-            std::string const& targetRequestId,
-            std::function<void(StatusSqlDeleteTableRequestPtr)> const& onFinish=nullptr,
-            bool keepTracking=false,
-            std::string const& jobId="",
-            unsigned int requestExpirationIvalSec=0);
-
-    StatusSqlRemoveTablePartitionsRequestPtr statusOfSqlRemoveTablePartitions(
-            std::string const& workerName,
-            std::string const& targetRequestId,
-            std::function<void(StatusSqlRemoveTablePartitionsRequestPtr)> const& onFinish=nullptr,
-            bool keepTracking=false,
-            std::string const& jobId="",
-            unsigned int requestExpirationIvalSec=0);
+        return _submit<REQUEST,
+                       decltype(targetRequestId)>(
+            workerName,
+            targetRequestId,
+            onFinish,
+            priority,
+            keepTracking,
+            jobId,
+            requestExpirationIvalSec);
+    }
 
     ServiceSuspendRequestPtr suspendWorkerService(
             std::string const& workerName,
@@ -606,24 +459,24 @@ public:
             std::string const& jobId="",
             unsigned int requestExpirationIvalSec=0);
 
-    template <class REQUEST_TYPE>
-    void requestsOfType(std::vector<typename REQUEST_TYPE::Ptr>& requests) const {
+    template <class REQUEST>
+    void requestsOfType(std::vector<typename REQUEST::Ptr>& requests) const {
         util::Lock lock(_mtx, _context(__func__));
         requests.clear();
         for (auto&& itr: _registry)
-            if (typename REQUEST_TYPE::Ptr ptr =
-                std::dynamic_pointer_cast<REQUEST_TYPE>(itr.second->request())) {
+            if (typename REQUEST::Ptr ptr =
+                std::dynamic_pointer_cast<REQUEST>(itr.second->request())) {
                 requests.push_back(ptr);
             }
     }
 
-    template <class REQUEST_TYPE>
+    template <class REQUEST>
     size_t numRequestsOfType() const {
         util::Lock lock(_mtx, _context(__func__));
         size_t result(0);
         for (auto&& itr: _registry) {
-            if (typename REQUEST_TYPE::Ptr request =
-                std::dynamic_pointer_cast<REQUEST_TYPE>(itr.second->request())) { ++result; }
+            if (typename REQUEST::Ptr request =
+                std::dynamic_pointer_cast<REQUEST>(itr.second->request())) { ++result; }
         }
         return result;
     }
@@ -694,24 +547,20 @@ private:
 
     std::string _context(std::string const& func=std::string()) const;
 
+    void _debug(std::string const& func, std::string const& msg=std::string()) const;
+
     void _finish(std::string const& id);
 
     void _assertIsRunning() const;
 
     /**
-     * Generic implementation for methods which launch look-alike (in terms
-     * of their input parameters) requests:
-     *
-     * @see Controller::sqlCreateDb
-     * @see Controller::sqlDeleteDb
-     * @see Controller::sqlEnableDb
-     * @see Controller::sqlDisableDb
+     * A generic version of the request creation and submission
+     * for a variable collection of the request-specific parameters.
      */
-    template <class REQUEST>
-    typename REQUEST::Ptr _sqlDbRequest(
-            util::Lock const& lock,
+    template <class REQUEST, typename...Targs>
+    typename REQUEST::Ptr _submit(
             std::string const& workerName,
-            std::string const& database,
+            Targs... Fargs,
             typename REQUEST::CallbackType const& onFinish,
             int priority,
             bool keepTracking,
@@ -720,12 +569,14 @@ private:
 
         _assertIsRunning();
 
+        util::Lock lock(_mtx, _context(__func__));
+
         auto const controller = shared_from_this();
         auto const request = REQUEST::create(
             serviceProvider(),
             serviceProvider()->io_service(),
             workerName,
-            database,
+            Fargs...,
             [controller] (typename REQUEST::Ptr const& request) {
                 controller->_finish(request->id());
             },
@@ -747,6 +598,47 @@ private:
 
         return request;
     }
+
+    /**
+     * Specialized version of the requests launcher for the worker service
+     * management requests.
+     */
+    template <class REQUEST>
+    typename REQUEST::Ptr _submit(
+            std::string const& workerName,
+            typename REQUEST::CallbackType const& onFinish,
+            std::string const& jobId,
+            unsigned int requestExpirationIvalSec) {
+
+        _assertIsRunning();
+
+        util::Lock lock(_mtx, _context(__func__));
+
+        auto const controller = shared_from_this();
+        auto const request = REQUEST::create(
+            serviceProvider(),
+            serviceProvider()->io_service(),
+            workerName,
+            [controller] (typename REQUEST::Ptr const& request) {
+                controller->_finish(request->id());
+            },
+            serviceProvider()->messenger()
+        );
+
+        // Register the request (along with its callback) by its unique
+        // identifier in the local registry. Once it's complete it'll
+        // be automatically removed from the Registry.
+
+        _registry[request->id()] =
+            std::make_shared<RequestWrapperImpl<REQUEST>>(request, onFinish);
+
+        // Initiate the request
+
+        request->start(controller, jobId, requestExpirationIvalSec);
+
+        return request;
+    }
+
     ControllerIdentity const _identity;     /// The unique identity of the instance
 
     uint64_t const _startTime;  /// The number of milliseconds since UNIX Epoch when

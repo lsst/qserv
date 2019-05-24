@@ -207,6 +207,7 @@ SqlRequestParams::SqlRequestParams(ProtocolRequestSql const& request)
         case ProtocolRequestSql::CREATE_TABLE:              type = CREATE_TABLE; break;
         case ProtocolRequestSql::DROP_TABLE:                type = DROP_TABLE; break;
         case ProtocolRequestSql::REMOVE_TABLE_PARTITIONING: type = REMOVE_TABLE_PARTITIONING; break;
+        case ProtocolRequestSql::DROP_TABLE_PARTITION:      type = DROP_TABLE_PARTITION; break;
         default:
             throw runtime_error(
                     "SqlRequestParams::" + string(__func__) +
@@ -218,6 +219,8 @@ SqlRequestParams::SqlRequestParams(ProtocolRequestSql const& request)
     if (request.has_database()) database = request.database();
     if (request.has_table())    table    = request.table();
     if (request.has_engine())   engine   = request.engine();
+    if (request.has_partition_by_column()) partitionByColumn = request.partition_by_column();
+    if (request.has_transaction_id())      transactionId     = request.transaction_id();
 
     for (int index = 0; index < request.columns_size(); ++index) {
         auto const& column = request.columns(index);

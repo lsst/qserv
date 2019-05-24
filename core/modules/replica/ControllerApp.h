@@ -111,6 +111,24 @@ private:
     /// A database password for establishing a connection with the worker's database
     std::string _sqlPassword;
 
+    /// The name of a database 
+    std::string _sqlDatabase;
+
+    /// The name of a table 
+    std::string _sqlTable;
+
+    /// The name of a MySQL engine for tables to be created
+    std::string _sqlEngine;
+
+    /// The name of a file where to read table schema from
+    std::string _sqlSchemaFile;
+
+    /// The name of the PK for the MySQL partitioned tables
+    std::string _sqlPartitionByColumn;
+
+    /// An identifier of a super-transaction
+    uint32_t _transactionId = 0;
+
     /// The optional limit for the total number of rows to be pulled from a result
     /// set when executing queries against the worker's database. The default value
     /// of 0 won't enforce any such limit.

@@ -97,8 +97,11 @@ public:
      * @param database
      *   the name of a database
      *
-     * @param chun
+     * @param chunk
      *   the number of a chunk to replicate (implies all relevant tables)
+     *
+     * @param allowDuplicate
+     *   follow a previously made request if the current one duplicates it
      *
      * @param onFinish
      *   an optional callback function to be called upon a completion of the request.
@@ -108,9 +111,6 @@ public:
      *
      * @param keepTracking
      *   keep tracking the request before it finishes or fails
-     *
-     * @param allowDuplicate
-     *   follow a previously made request if the current one duplicates it
      *
      * @param messenger
      *   an interface for communicating with workers
@@ -122,11 +122,11 @@ public:
                       boost::asio::io_service& io_service,
                       std::string const& worker,
                       std::string const& database,
-                      unsigned int  chunk,
-                      CallbackType const& onFinish,
-                      int  priority,
-                      bool keepTracking,
+                      unsigned int chunk,
                       bool allowDuplicate,
+                      CallbackType const& onFinish,
+                      int priority,
+                      bool keepTracking,
                       std::shared_ptr<Messenger> const& messenger);
 
 protected:
@@ -151,11 +151,11 @@ private:
                   boost::asio::io_service& io_service,
                   std::string const& worker,
                   std::string const& database,
-                  unsigned int  chunk,
-                  CallbackType const& onFinish,
-                  int  priority,
-                  bool keepTracking,
+                  unsigned int chunk,
                   bool allowDuplicate,
+                  CallbackType const& onFinish,
+                  int priority,
+                  bool keepTracking,
                   std::shared_ptr<Messenger> const& messenger);
 
     /**

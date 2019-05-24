@@ -86,6 +86,9 @@ protected:
      * @param targetRequestType
      *   type of a request affected by the operation
      *
+     * @param priority
+     *   priority level of the request
+     *
      * @param keepTracking
      *   keep tracking the request before it finishes or fails
      * 
@@ -98,6 +101,7 @@ protected:
                       std::string const& worker,
                       std::string const& targetRequestId,
                       ProtocolQueuedRequestType targetRequestType,
+                      int priority,
                       bool keepTracking,
                       std::shared_ptr<Messenger> const& messenger);
 

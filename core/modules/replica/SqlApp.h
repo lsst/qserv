@@ -69,6 +69,9 @@ private:
     std::string _schemaFile;
     std::string _partitionByColumn;     
 
+    uint32_t _transactionId = 0;    /// An identifier of a super-transaction corresponding to
+                                    /// to a MySQL partition.
+
     uint64_t _maxRows = 10000;  /// the "hard" limit for the result set extractor.
                                 /// This is not the same as SQL's 'LIMIT <num-rows>'.
     bool _allWorkers = false;   /// send the query to all workers regardless of their status

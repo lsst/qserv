@@ -189,6 +189,7 @@ message ProtocolRequestSql {
         CREATE_TABLE = 5;
         DROP_TABLE = 6;
         REMOVE_TABLE_PARTITIONING = 7;
+        DROP_TABLE_PARTITION = 8;
     }
     required Type type = 2;
 
@@ -211,8 +212,11 @@ message ProtocolRequestSql {
     /// The name of a column (if any) which will be used as a key for MySQL partitions
     optional string partition_by_column = 10 [default = ""];
 
+    optional uint32 transaction_id = 11 [default = 0];  /// An identifier of a super-transaction which
+                                                        /// corresponds to a MySQL partition to be removed
+
     /// table schema
-    repeated ProtocolRequestSqlColumn columns = 11;
+    repeated ProtocolRequestSqlColumn columns = 12;
 }
 
 // This request is sent to stop an on-going replication (if any is still in progress).

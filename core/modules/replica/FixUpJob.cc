@@ -31,6 +31,7 @@
 #include "lsst/log/Log.h"
 #include "replica/ErrorReporting.h"
 #include "replica/ServiceProvider.h"
+#include "replica/StopRequest.h"
 
 using namespace std;
 
@@ -200,10 +201,11 @@ void FixUpJob::cancelImpl(util::Lock const& lock) {
     for (auto&& ptr: _requests) {
         ptr->cancel();
         if (ptr->state() != Request::State::FINISHED)
-            controller()->stopReplication(
+            controller()->stopById<StopReplicationRequest>(
                 ptr->worker(),
                 ptr->id(),
                 nullptr,    /* onFinish */
+                options(lock).priority,
                 true,       /* keepTracking */
                 id()        /* jobId */);
     }

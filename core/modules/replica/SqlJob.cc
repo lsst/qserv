@@ -28,6 +28,7 @@
 // Qserv headers
 #include "replica/Configuration.h"
 #include "replica/ServiceProvider.h"
+#include "replica/StopRequest.h"
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -256,10 +257,11 @@ SqlBaseRequest::Ptr SqlQueryJob::launchRequest(util::Lock const& lock,
 
 void SqlQueryJob::stopRequest(util::Lock const& lock,
                               SqlBaseRequest::Ptr const& request) {
-    controller()->stopSqlQuery(
+    controller()->stopById<StopSqlQueryRequest>(
         request->worker(),
         request->id(),
         nullptr,    /* onFinish */
+        options(lock).priority,
         true,       /* keepTracking */
         id()        /* jobId */
     );
@@ -335,10 +337,11 @@ SqlBaseRequest::Ptr SqlCreateDbJob::launchRequest(util::Lock const& lock,
 
 void SqlCreateDbJob::stopRequest(util::Lock const& lock,
                                  SqlBaseRequest::Ptr const& request) {
-    controller()->stopSqlCreateDb(
+    controller()->stopById<StopSqlCreateDbRequest>(
         request->worker(),
         request->id(),
         nullptr,    /* onFinish */
+        options(lock).priority,
         true,       /* keepTracking */
         id()        /* jobId */
     );
@@ -414,10 +417,11 @@ SqlBaseRequest::Ptr SqlDeleteDbJob::launchRequest(util::Lock const& lock,
 
 void SqlDeleteDbJob::stopRequest(util::Lock const& lock,
                                  SqlBaseRequest::Ptr const& request) {
-    controller()->stopSqlDeleteDb(
+    controller()->stopById<StopSqlDeleteDbRequest>(
         request->worker(),
         request->id(),
         nullptr,    /* onFinish */
+        options(lock).priority,
         true,       /* keepTracking */
         id()        /* jobId */
     );
@@ -493,10 +497,11 @@ SqlBaseRequest::Ptr SqlEnableDbJob::launchRequest(util::Lock const& lock,
 
 void SqlEnableDbJob::stopRequest(util::Lock const& lock,
                                  SqlBaseRequest::Ptr const& request) {
-    controller()->stopSqlEnableDb(
+    controller()->stopById<StopSqlEnableDbRequest>(
         request->worker(),
         request->id(),
         nullptr,    /* onFinish */
+        options(lock).priority,
         true,       /* keepTracking */
         id()        /* jobId */
     );
@@ -572,10 +577,11 @@ SqlBaseRequest::Ptr SqlDisableDbJob::launchRequest(util::Lock const& lock,
 
 void SqlDisableDbJob::stopRequest(util::Lock const& lock,
                                  SqlBaseRequest::Ptr const& request) {
-    controller()->stopSqlDisableDb(
+    controller()->stopById<StopSqlDisableDbRequest>(
         request->worker(),
         request->id(),
         nullptr,    /* onFinish */
+        options(lock).priority,
         true,       /* keepTracking */
         id()        /* jobId */
     );
@@ -678,10 +684,11 @@ SqlBaseRequest::Ptr SqlCreateTableJob::launchRequest(util::Lock const& lock,
 
 void SqlCreateTableJob::stopRequest(util::Lock const& lock,
                                     SqlBaseRequest::Ptr const& request) {
-    controller()->stopSqlCreateTable(
+    controller()->stopById<StopSqlCreateTableRequest>(
         request->worker(),
         request->id(),
         nullptr,    /* onFinish */
+        options(lock).priority,
         true,       /* keepTracking */
         id()        /* jobId */
     );
@@ -766,10 +773,11 @@ SqlBaseRequest::Ptr SqlDeleteTableJob::launchRequest(util::Lock const& lock,
 
 void SqlDeleteTableJob::stopRequest(util::Lock const& lock,
                                     SqlBaseRequest::Ptr const& request) {
-    controller()->stopSqlDeleteTable(
+    controller()->stopById<StopSqlDeleteTableRequest>(
         request->worker(),
         request->id(),
         nullptr,    /* onFinish */
+        options(lock).priority,
         true,       /* keepTracking */
         id()        /* jobId */
     );
@@ -836,7 +844,7 @@ list<pair<string,string>> SqlRemoveTablePartitionsJob::extendedPersistentState()
 }
 
 SqlBaseRequest::Ptr SqlRemoveTablePartitionsJob::launchRequest(util::Lock const& lock,
-                                                     string const& worker) {
+                                                               string const& worker) {
     auto const self = shared_from_base<SqlRemoveTablePartitionsJob>();
     return controller()->sqlRemoveTablePartitions(
         worker,
@@ -853,11 +861,12 @@ SqlBaseRequest::Ptr SqlRemoveTablePartitionsJob::launchRequest(util::Lock const&
 
 
 void SqlRemoveTablePartitionsJob::stopRequest(util::Lock const& lock,
-                                    SqlBaseRequest::Ptr const& request) {
-    controller()->stopSqlRemoveTablePartitions(
+                                              SqlBaseRequest::Ptr const& request) {
+    controller()->stopById<StopSqlRemoveTablePartitionsRequest>(
         request->worker(),
         request->id(),
         nullptr,    /* onFinish */
+        options(lock).priority,
         true,       /* keepTracking */
         id()        /* jobId */
     );
@@ -867,6 +876,101 @@ void SqlRemoveTablePartitionsJob::stopRequest(util::Lock const& lock,
 void SqlRemoveTablePartitionsJob::notify(util::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "[" << typeName() << "]");
     notifyDefaultImpl<SqlRemoveTablePartitionsJob>(lock, _onFinish);
+}
+
+
+string SqlDeleteTablePartitionJob::typeName() { return "SqlDeleteTablePartitionJob"; }
+
+
+SqlDeleteTablePartitionJob::Ptr SqlDeleteTablePartitionJob::create(
+        string const& database,
+        string const& table,
+        uint32_t transactionId,
+        bool allWorkers,
+        Controller::Ptr const& controller,
+        string const& parentJobId,
+        CallbackType const& onFinish,
+        Job::Options const& options) {
+
+    return Ptr(new SqlDeleteTablePartitionJob(
+        database,
+        table,
+        transactionId,
+        allWorkers,
+        controller,
+        parentJobId,
+        onFinish,
+        options
+    ));
+}
+
+
+SqlDeleteTablePartitionJob::SqlDeleteTablePartitionJob(
+        string const& database,
+        string const& table,
+        uint32_t transactionId,
+        bool allWorkers,
+        Controller::Ptr const& controller,
+        string const& parentJobId,
+        CallbackType const& onFinish,
+        Job::Options const& options)
+    :   SqlBaseJob(
+            0,          /* maxRows */
+            allWorkers,
+            controller,
+            parentJobId,
+            options
+        ),
+        _database(database),
+        _table(table),
+        _transactionId(transactionId),
+        _onFinish(onFinish) {
+}
+
+
+list<pair<string,string>> SqlDeleteTablePartitionJob::extendedPersistentState() const {
+    list<pair<string,string>> result;
+    result.emplace_back("database", database());
+    result.emplace_back("table", table());
+    result.emplace_back("transaction_id", to_string(transactionId()));
+    result.emplace_back("all_workers", string(allWorkers() ? "1" : "0"));
+    return result;
+}
+
+SqlBaseRequest::Ptr SqlDeleteTablePartitionJob::launchRequest(util::Lock const& lock,
+                                                              string const& worker) {
+    auto const self = shared_from_base<SqlDeleteTablePartitionJob>();
+    return controller()->sqlDeleteTablePartition(
+        worker,
+        database(),
+        table(),
+        transactionId(),
+        [self] (SqlDeleteTablePartitionRequest::Ptr const& request) {
+            self->onRequestFinish(request);
+        },
+        options(lock).priority,
+        true,   /* keepTracking*/
+        id()    /* jobId */
+    );
+}
+
+
+void SqlDeleteTablePartitionJob::stopRequest(util::Lock const& lock,
+                                             SqlBaseRequest::Ptr const& request) {
+    controller()->stopById<StopSqlDeleteTablePartitionRequest>(
+        request->worker(),
+        request->id(),
+        nullptr,    /* onFinish */
+        options(lock).priority,
+        true,       /* keepTracking */
+        id()        /* jobId */
+    );
+}
+
+
+void SqlDeleteTablePartitionJob::notify(util::Lock const& lock) {
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "[" << typeName() << "]");
+    notifyDefaultImpl<SqlDeleteTablePartitionJob>(lock, _onFinish);
 }
 
 }}} // namespace lsst::qserv::replica

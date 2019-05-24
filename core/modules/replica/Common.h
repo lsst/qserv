@@ -195,7 +195,8 @@ public:
         DISABLE_DATABASE,
         CREATE_TABLE,
         DROP_TABLE,
-        REMOVE_TABLE_PARTITIONING
+        REMOVE_TABLE_PARTITIONING,
+        DROP_TABLE_PARTITION
     };
     Type type = QUERY;
 
@@ -207,6 +208,9 @@ public:
     std::string database;
     std::string table;
     std::string engine;
+    std::string partitionByColumn;
+
+    uint32_t transactionId = 0;
 
     std::list<std::pair<std::string, std::string>> columns;
 

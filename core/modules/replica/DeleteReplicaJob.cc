@@ -34,6 +34,7 @@
 #include "replica/ErrorReporting.h"
 #include "replica/QservMgtServices.h"
 #include "replica/ServiceProvider.h"
+#include "replica/StopRequest.h"
 
 using namespace std;
 using namespace lsst::qserv::replica;
@@ -300,10 +301,11 @@ void DeleteReplicaJob::cancelImpl(util::Lock const& lock) {
     for (auto&& ptr: _requests) {
         ptr->cancel();
         if (ptr->state() != Request::State::FINISHED)
-            controller()->stopReplicaDelete(
+            controller()->stopById<StopDeleteRequest>(
                 worker(),
                 ptr->id(),
                 nullptr,    /* onFinish */
+                options(lock).priority,
                 true,       /* keepTracking */
                 id()        /* jobId */);
     }

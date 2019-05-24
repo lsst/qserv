@@ -56,9 +56,9 @@ FindRequest::Ptr FindRequest::create(ServiceProvider::Ptr const& serviceProvider
                                      string const& worker,
                                      string const& database,
                                      unsigned int chunk,
+                                     bool computeCheckSum,
                                      CallbackType const& onFinish,
                                      int priority,
-                                     bool computeCheckSum,
                                      bool keepTracking,
                                      shared_ptr<Messenger> const& messenger) {
     return FindRequest::Ptr(
@@ -67,9 +67,9 @@ FindRequest::Ptr FindRequest::create(ServiceProvider::Ptr const& serviceProvider
                         worker,
                         database,
                         chunk,
+                        computeCheckSum,
                         onFinish,
                         priority,
-                        computeCheckSum,
                         keepTracking,
                         messenger));
 }
@@ -80,9 +80,9 @@ FindRequest::FindRequest(ServiceProvider::Ptr const& serviceProvider,
                            string const& worker,
                            string const& database,
                            unsigned int chunk,
+                           bool computeCheckSum,
                            CallbackType const& onFinish,
                            int priority,
-                           bool computeCheckSum,
                            bool keepTracking,
                            shared_ptr<Messenger> const& messenger)
     :   RequestMessenger(serviceProvider,

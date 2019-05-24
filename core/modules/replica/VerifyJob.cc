@@ -27,9 +27,12 @@
 #include <thread>
 
 // Qserv headers
-#include "lsst/log/Log.h"
 #include "replica/DatabaseServices.h"
 #include "replica/ServiceProvider.h"
+#include "replica/StopRequest.h"
+
+// LSST header
+#include "lsst/log/Log.h"
 
 using namespace std;
 
@@ -288,10 +291,11 @@ void VerifyJob::cancelImpl(util::Lock const& lock) {
         auto const& request = entry.second;
         request->cancel();
         if (request->state() != Request::State::FINISHED) {
-            controller()->stopReplicaFind(
+            controller()->stopById<StopFindRequest>(
                 request->worker(),
                 request->id(),
                 nullptr,    /* onFinish */
+                options(lock).priority,
                 true,       /* keepTracking */
                 id()        /* jobId */);
         }

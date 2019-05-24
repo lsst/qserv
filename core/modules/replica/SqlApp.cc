@@ -31,9 +31,9 @@
 // Qserv headers
 #include "replica/Configuration.h"
 #include "replica/Controller.h"
-#include "replica/SqlResultSet.h"
 #include "replica/SqlJob.h"
-#include "util/File.h"
+#include "replica/SqlResultSet.h"
+#include "replica/SqlSchemaUtils.h"
 
 using namespace std;
 
@@ -43,17 +43,6 @@ string const description =
     "This application executes the same SQL statement against worker databases of"
     " select workers. Result sets will be reported upon a completion of"
     " the application.";
-
-vector<string> splitByFirstSpace(const string& str) {
-    vector<string> result;
-    auto const pos = str.find(' ');
-    if (pos != string::npos) {
-        result.push_back(str.substr(0, pos));
-        result.push_back(str.substr(pos+1));
-    }
-    return result;
-}
-
 } // namespace
 
 namespace lsst {
@@ -82,7 +71,7 @@ SqlApp::SqlApp(int argc, char* argv[])
         "command",
         {"QUERY",
          "CREATE_DATABASE", "DELETE_DATABASE", "ENABLE_DATABASE", "DISABLE_DATABASE",
-         "CREATE_TABLE", "DELETE_TABLE", "REMOVE_TABLE_PARTITIONS"},
+         "CREATE_TABLE", "DELETE_TABLE", "REMOVE_TABLE_PARTITIONS", "DELETE_TABLE_PARTITION"},
         _command
     );
     parser().flag(
@@ -216,6 +205,25 @@ SqlApp::SqlApp(int argc, char* argv[])
         "The name of an existing table to be affected by the operation.",
         _table
     );
+
+    auto& deleteTablePartitionCmd = parser().command("DELETE_TABLE_PARTITION");
+    deleteTablePartitionCmd.required(
+        "database",
+        "The name of an existing database where the table is residing.",
+        _database
+    );
+    deleteTablePartitionCmd.required(
+        "table",
+        "The name of an existing table to be affected by the operation.",
+        _table
+    );
+    deleteTablePartitionCmd.required(
+        "transaction",
+        "An identifier of a super-transaction corresponding to a partition"
+        " to be dropped from the table. The transaction must exist, and it"
+        " should be in the ABORTED state.",
+        _transactionId
+    );
 }
 
 
@@ -242,24 +250,16 @@ int SqlApp::runImpl() {
     } else if(_command == "DISABLE_DATABASE") {
         job = SqlDisableDbJob::create(_database, _allWorkers, controller);
     } else if(_command == "CREATE_TABLE") {
-        list<pair<string,string>> columns;
-        int lineNum = 0;
-        for (auto&& line: util::File::getLines(_schemaFile)) {
-            ++lineNum;
-            auto tokens = ::splitByFirstSpace(line);
-            if (tokens.size() != 2 or tokens[0].empty() or tokens[1].empty()) {
-                throw invalid_argument(
-                        "SqlApp::" + string(__func__) + "  invalid format at line: " + to_string(lineNum) +
-                        " of file: " + _schemaFile);
-            }
-            columns.emplace_back(tokens[0], tokens[1]);
-        }
         job = SqlCreateTableJob::create(_database, _table, _engine, _partitionByColumn,
-                                        columns, _allWorkers, controller);
+                                        SqlSchemaUtils::readFromTextFile(_schemaFile),
+                                        _allWorkers, controller);
     } else if(_command == "DELETE_TABLE") {
         job = SqlDeleteTableJob::create(_database, _table, _allWorkers, controller);
     } else if(_command == "REMOVE_TABLE_PARTITIONS") {
         job = SqlRemoveTablePartitionsJob::create(_database, _table, _allWorkers, controller);
+    } else if(_command == "DELETE_TABLE_PARTITION") {
+        job = SqlDeleteTablePartitionJob::create(_database, _table, _transactionId,
+                                                 _allWorkers, controller);
     } else {
         throw logic_error(
                 "SqlApp::" + string(__func__) + "  command='" + _command + "' is not supported");

@@ -231,6 +231,10 @@ string WorkerSqlRequest::_query(database::mysql::Connection::Ptr const& conn) co
         case ProtocolRequestSql::REMOVE_TABLE_PARTITIONING:
             return "ALTER TABLE " + databaseTable + " REMOVE PARTITIONING";
 
+        case ProtocolRequestSql::DROP_TABLE_PARTITION:
+            return "ALTER TABLE " + databaseTable + " DROP PARTITION IF EXISTS " +
+                   conn->sqlId("p" + to_string(_request.transaction_id()));
+
         default:
             throw invalid_argument(
                     "WorkerSqlRequest::" + string(__func__) +

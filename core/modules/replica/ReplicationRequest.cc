@@ -58,10 +58,10 @@ ReplicationRequest::Ptr ReplicationRequest::create(
                             string const& sourceWorker,
                             string const& database,
                             unsigned int chunk,
+                            bool allowDuplicate,
                             CallbackType const& onFinish,
                             int priority,
                             bool keepTracking,
-                            bool allowDuplicate,
                             shared_ptr<Messenger> const& messenger) {
     return ReplicationRequest::Ptr(
         new ReplicationRequest(
@@ -71,10 +71,10 @@ ReplicationRequest::Ptr ReplicationRequest::create(
             sourceWorker,
             database,
             chunk,
+            allowDuplicate,
             onFinish,
             priority,
             keepTracking,
-            allowDuplicate,
             messenger));
 }
 
@@ -86,10 +86,10 @@ ReplicationRequest::ReplicationRequest(
                         string const& sourceWorker,
                         string const& database,
                         unsigned int chunk,
+                        bool allowDuplicate,
                         CallbackType const& onFinish,
                         int priority,
                         bool keepTracking,
-                        bool allowDuplicate,
                         shared_ptr<Messenger> const& messenger)
     :   RequestMessenger(
             serviceProvider,

@@ -275,6 +275,9 @@ public:
      *   an optional callback function to be called upon a completion of
      *   the request.
      *
+     * @param priority
+     *   priority level of the request
+     *
      * @param keepTracking
      *   keep tracking the request before it finishes or fails
      *
@@ -289,6 +292,7 @@ public:
                       std::string const& worker,
                       std::string const& targetRequestId,
                       CallbackType const& onFinish,
+                      int priority,
                       bool keepTracking,
                       std::shared_ptr<Messenger> const& messenger) {
 
@@ -301,6 +305,7 @@ public:
                 targetRequestId,
                 POLICY::targetRequestType(),
                 onFinish,
+                priority,
                 keepTracking,
                 messenger));
     }
@@ -362,6 +367,7 @@ private:
                   std::string const& targetRequestId,
                   ProtocolQueuedRequestType targetRequestType,
                   CallbackType const& onFinish,
+                  int priority,
                   bool keepTracking,
                   std::shared_ptr<Messenger> const& messenger)
         :   StatusRequestBase(serviceProvider,
@@ -370,6 +376,7 @@ private:
                               worker,
                               targetRequestId,
                               targetRequestType,
+                              priority,
                               keepTracking,
                               messenger),
             _onFinish(onFinish) {
@@ -447,6 +454,7 @@ typedef StatusRequest<StatusSqlRequestPolicy>         StatusSqlDisableDbRequest;
 typedef StatusRequest<StatusSqlRequestPolicy>         StatusSqlCreateTableRequest;
 typedef StatusRequest<StatusSqlRequestPolicy>         StatusSqlDeleteTableRequest;
 typedef StatusRequest<StatusSqlRequestPolicy>         StatusSqlRemoveTablePartitionsRequest;
+typedef StatusRequest<StatusSqlRequestPolicy>         StatusSqlDeleteTablePartitionRequest;
 
 }}} // namespace lsst::qserv::replica
 
