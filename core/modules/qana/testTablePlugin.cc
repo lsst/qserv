@@ -51,6 +51,7 @@
 #include "boost/test/included/unit_test.hpp"
 
 using namespace lsst::qserv;
+using lsst::qserv::query::TestFactory;
 
 struct TestFixture {
     TestFixture(void) {
@@ -91,44 +92,86 @@ void REQUIRE_IS_COLUMN_REF(std::vector<std::shared_ptr<query::ValueExpr>> const&
     }
 }
 
-std::vector<std::string> statements_1 {
-    "SELECT        objectId FROM Object ORDER BY        objectId",
-    "SELECT        objectId FROM Object ORDER BY Object.objectId",
-    "SELECT Object.objectId FROM Object ORDER BY        objectId",
-    "SELECT Object.objectId FROM Object ORDER BY Object.objectId",
+struct TestData {
+    TestData(std::string const& stmt_,
+             std::string const& db_,
+             std::string const& table_,
+             std::string const& tableAlias_)
+    : stmt(stmt_)
+    , db(db_)
+    , table(table_)
+    , tableAlias(tableAlias_)
+    {}
 
-    "SELECT o.objectId FROM Object o ORDER BY o.objectId",
-    "SELECT   objectId FROM Object o ORDER BY o.objectId",
-    "SELECT o.objectId FROM Object o ORDER BY   objectId",
-    "SELECT   objectId FROM Object o ORDER BY   objectId",
+    std::string stmt;
+    std::string db;
+    std::string table;
+    std::string tableAlias;
+};
 
-    "SELECT Object.objectId FROM Object o ORDER BY      o.objectId",
-    "SELECT        objectId FROM Object o ORDER BY Object.objectId",
+std::ostream& operator<<(std::ostream& os, TestData const& testData) {
+    os << "TestData(";
+    os << "stmt:" << testData.stmt;
+    os << "db:" << testData.db;
+    os << "table:" << testData.table;
+    os << "tableAlias:" << testData.tableAlias;
+    os << ")";
+    return os;
+}
 
+static const std::vector<TestData> statements_1 {
+    TestData("SELECT        objectId FROM Object ORDER BY        objectId",
+             TestFactory::getDefaultDbName(), "Object", TestFactory::getDefaultDbName() + ".Object"),
+    TestData("SELECT        objectId FROM Object ORDER BY Object.objectId",
+             TestFactory::getDefaultDbName(), "Object", TestFactory::getDefaultDbName() + ".Object"),
+    TestData("SELECT Object.objectId FROM Object ORDER BY        objectId",
+             TestFactory::getDefaultDbName(), "Object", TestFactory::getDefaultDbName() + ".Object"),
+    TestData("SELECT Object.objectId FROM Object ORDER BY Object.objectId",
+             TestFactory::getDefaultDbName(), "Object", TestFactory::getDefaultDbName() + ".Object"),
+
+    TestData("SELECT o.objectId FROM Object o ORDER BY o.objectId",
+             TestFactory::getDefaultDbName(), "Object", "o"),
+    TestData("SELECT   objectId FROM Object o ORDER BY o.objectId",
+             TestFactory::getDefaultDbName(), "Object", "o"),
+    TestData("SELECT o.objectId FROM Object o ORDER BY   objectId",
+             TestFactory::getDefaultDbName(), "Object", "o"),
+    TestData("SELECT   objectId FROM Object o ORDER BY   objectId",
+             TestFactory::getDefaultDbName(), "Object", "o"),
+
+    TestData("SELECT Object.objectId FROM Object o ORDER BY      o.objectId",
+             TestFactory::getDefaultDbName(), "Object", "o"),
+    TestData("SELECT        objectId FROM Object o ORDER BY Object.objectId",
+             TestFactory::getDefaultDbName(), "Object", "o"),
 };
 
 
 // Test that the SelectStmt is rewritten by the TablePlugin so that the TableRef in the FROM list is the
 // same as the one in the SELECT list, and that the ValueExpr in the SELECT list is the same as the one
 // in the ORDER BY clause.
-BOOST_DATA_TEST_CASE(PluginRewrite_1, statements_1, statement) {
-    auto&& selectStmt = makeStmtAndRunLogical(statement, css, schemaCfg);
+BOOST_DATA_TEST_CASE(PluginRewrite_1, statements_1, s) {
+    auto&& selectStmt = makeStmtAndRunLogical(s.stmt, css, schemaCfg);
+
+    auto&& fromTableRefList = selectStmt->getFromList().getTableRefList();
+    BOOST_REQUIRE_EQUAL(fromTableRefList.size(), size_t(1));
+    BOOST_REQUIRE_EQUAL(fromTableRefList[0]->getDb(), s.db);
+    BOOST_REQUIRE_EQUAL(fromTableRefList[0]->getTable(), s.table);
+    BOOST_REQUIRE_EQUAL(fromTableRefList[0]->getAlias(), s.tableAlias);
 
     // verify there is 1 value expr in the select list, and that it's a ColumnRef.
     auto&& selValExprList = *selectStmt->getSelectList().getValueExprList();
     REQUIRE_IS_COLUMN_REF(selValExprList, 1);
 
-    // verify that the TableRef in the ColumnRef is the same object as in the FromList.
+    // verify that the TableRef in the ColumnRef points same object as in the FromList.
     auto&& selColRef = selValExprList[0]->getFactor()->getColumnRef();
     auto&& fromTableRefs = selectStmt->getFromList().getTableRefList();
     BOOST_REQUIRE_EQUAL(fromTableRefs.size(), size_t(1));
-    BOOST_REQUIRE_EQUAL(selColRef->getTableRef(), fromTableRefs[0]);
+    // below is a pointer compare, not value compare; verify they point at the same object.
+    BOOST_REQUIRE_EQUAL(selColRef->getTableRef().get(), fromTableRefList[0].get());
 
     // verify there is 1 value expr in the order by list, and that it is the same as the ValueExpr in the select list.
     std::vector<std::shared_ptr<query::ValueExpr>> orderByValExprList;
     selectStmt->getOrderBy().findValueExprs(orderByValExprList);
     BOOST_REQUIRE_EQUAL(orderByValExprList.size(), size_t(1));
-    // below is a pointer compare, not value compare; verify they point at the same object.
     BOOST_REQUIRE_EQUAL(selValExprList[0].get(), orderByValExprList[0].get());
 }
 

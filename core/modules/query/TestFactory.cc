@@ -43,11 +43,21 @@ namespace qserv {
 namespace query {
 
 
+std::string TestFactory::getDefaultDbName() {
+    return "Somedb";
+}
+
+
+std::string TestFactory::getDefaultUserName() {
+    return "alice";
+}
+
+
 std::shared_ptr<QueryContext>
 TestFactory::newContext(std::shared_ptr<css::CssAccess> css, mysql::MySqlConfig const& schemaCfg) {
     std::shared_ptr<QueryContext> context = std::make_shared<QueryContext>("NoDb", css, schemaCfg);
-    context->defaultDb = "Somedb";
-    context->userName = "alice";
+    context->defaultDb = getDefaultDbName();
+    context->userName = getDefaultUserName();
     return context;
 }
 
