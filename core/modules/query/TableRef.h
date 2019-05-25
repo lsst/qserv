@@ -152,7 +152,7 @@ public:
     TableRef(std::string const& db_, std::string const& table_,
                std::string const& alias_)
             : TableRefBase(db_, table_, alias_) {
-        if(table_.empty()) { throw std::logic_error("TableRef without table"); }
+        if(table_.empty() && _alias.empty()) { throw std::logic_error("TableRef without table or alias."); }
     }
 
     virtual ~TableRef() {}

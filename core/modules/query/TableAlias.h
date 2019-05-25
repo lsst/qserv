@@ -145,42 +145,6 @@ public:
 };
 
 
-// nptodo this can probably get factored into Aliases. Maybe Aliases wants its own file?
-class TableAliases : public Aliases<std::shared_ptr<TableRefBase>> {
-public:
-    TableAliases() = default;
-
-    /**
-     * @brief Get the alias for a given db and table
-     *
-     * @param db Optional (may be an empty string). The database name to match. If empty, will return the
-     *           alias for the first matched table.
-     * @param table The table name to match.
-     * @return std::pair<std::string, std::shared_ptr<query::TableRefBase>>
-     *         the first element is the alias
-     *         the second element is the TableRefBase that is associated with the alias.
-     */
-    std::pair<std::string, std::shared_ptr<query::TableRefBase>>
-    getAliasFor(std::string const& db, std::string const& table) const;
-
-
-    /**
-     * @brief Get a table ref that is a superset of the passed in tableRef
-     *
-     * That is, the passed in tableRef->isSubset(<a table ref in the container>);
-     *
-     * @param tableRef
-     * @return std::shared_ptr<query::TableRefBase>
-     */
-    std::shared_ptr<query::TableRefBase> getTableRefMatch(std::shared_ptr<query::TableRefBase> const& tableRef);
-
-
-    // nptodo ? might need to add support for an "ambiguous" lookup (or set?), something to do with the
-    // db not being set, or the alias not being set? the impl in TableAliasReverse looks wrong or I don't
-    // understand it yet. TBD if we run into this as an issue maybe it was never actually used.
-};
-
-
 }}} // namespace lsst::qserv::query
 
 #endif // LSST_QSERV_QUERY_TABLEALIAS_H

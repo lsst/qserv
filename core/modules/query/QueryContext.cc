@@ -52,6 +52,41 @@ namespace qserv {
 namespace query {
 
 
+bool QueryContext::addUsedTableRef(std::shared_ptr<query::TableRefBase> const& tableRef) {
+    if (nullptr == tableRef) {
+        return false;
+    }
+    for (auto const& usedTableRef : _usedTableRefs) {
+        // At a minimum, make sure we aren't accepting a second tableRef with the same alias.
+        // It may worth adding more checks, e.g. if the alias is the same AND the db & table
+        // are the same, do something more fancy.
+        if (usedTableRef->getAlias() == tableRef->getAlias()) {
+            return false;
+        }
+    }
+    _usedTableRefs.push_back(tableRef);
+    return true;
+}
+
+
+std::shared_ptr<query::TableRefBase> QueryContext::getTableRefMatch(
+        std::shared_ptr<query::TableRefBase const> const& tableRef) {
+    if (nullptr == tableRef) {
+        return nullptr;
+    }
+    for (auto&& usedTableRef : _usedTableRefs) {
+        if (tableRef->isSubsetOf(*usedTableRef)) {
+            return usedTableRef;
+        }
+        if (tableRef->isAliasedBy(*usedTableRef)) {
+            return usedTableRef;
+        }
+    }
+    return nullptr;
+}
+
+
+
 /// Get the table schema for the tables mentioned in the SQL 'FROM' statement.
 /// This should be adequate and possibly desirable as this information is being used
 /// to restrict queries to particular nodes via the secondary index. Sub-queries are not

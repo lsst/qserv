@@ -98,7 +98,7 @@ void matchTableRefs(lsst::qserv::query::QueryContext& context,
     for (auto&& valueExpr : valueExprs) {
         if (valueExpr->isStar()) {
             auto valueFactor = valueExpr->getFactor();
-            auto tableRefMatch = context.tableAliases.getTableRefMatch(valueFactor->getTableStar());
+            auto tableRefMatch = context.getTableRefMatch(valueFactor->getTableStar());
             if (nullptr != tableRefMatch) {
                 valueFactor->setStar(tableRefMatch);
             }
@@ -109,7 +109,7 @@ void matchTableRefs(lsst::qserv::query::QueryContext& context,
         valueExpr->findColumnRefs(columnRefs);
         for (auto& columnRef : columnRefs) {
             std::shared_ptr<lsst::qserv::query::TableRefBase>& tableRef = columnRef->getTableRef();
-            auto&& tableRefMatch = context.tableAliases.getTableRefMatch(tableRef);
+            auto&& tableRefMatch = context.getTableRefMatch(tableRef);
             if (nullptr != tableRefMatch) {
                 tableRef = tableRefMatch;
             }
@@ -186,7 +186,7 @@ TablePlugin::applyLogical(query::SelectStmt& stmt,
         if (not tableRef->hasAlias()) {
             tableRef->setAlias(tableRef->getDb() + "." + tableRef->getTable());
         }
-        if (not context.tableAliases.set(tableRef, tableRef->getAlias())) {
+        if (not context.addUsedTableRef(tableRef)) {
             throw std::logic_error("could not set alias for " + tableRef->sqlFragment());
         }
         for (auto&& joinRef : tableRef->getJoins()){

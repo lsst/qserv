@@ -54,6 +54,7 @@ namespace qserv {
 namespace query {
     class ColumnRef;
     class QsRestrictor;
+    class TableRefBase;
 }}} // End of forward declarations
 
 
@@ -90,8 +91,13 @@ public:
 
     proto::ScanInfo scanInfo; // Tables scanned (for shared scans)
 
-    // Table aliasing
-    TableAliases tableAliases;
+    // Add a TableRef to the list of tables used by this query.
+    // This typically contains the TableRefs from the FROM list.
+    bool addUsedTableRef(std::shared_ptr<query::TableRefBase> const& tableRef);
+
+    // Get a TableRef from the list of tables used by this query that matches the pased in TableRef.
+    std::shared_ptr<query::TableRefBase> getTableRefMatch(
+            std::shared_ptr<query::TableRefBase const> const& tableRef);
 
     // Select List aliasing
     SelectListAliases selectListAliases;
@@ -118,6 +124,9 @@ public:
         return queryMapping.get() && queryMapping->hasChunks(); }
     bool hasSubChunks() const {
         return queryMapping.get() && queryMapping->hasSubChunks(); }
+
+private:
+    std::vector<std::shared_ptr<query::TableRefBase>> _usedTableRefs;
 };
 
 

@@ -56,37 +56,4 @@ SelectListAliases::getValueExprMatch(std::shared_ptr<query::ValueExpr const> con
 }
 
 
-
-std::pair<std::string, std::shared_ptr<query::TableRefBase>>
-TableAliases::getAliasFor(std::string const& db, std::string const& table) const {
-    for (auto&& aliasInfo : _aliasInfo) {
-        if (not db.empty() && db != aliasInfo.object->getDb()) {
-            continue;
-        }
-        if (table != aliasInfo.object->getTable()) {
-            continue;
-        }
-        return std::make_pair(aliasInfo.alias, aliasInfo.object);
-    }
-    return std::make_pair(std::string(), nullptr);
-}
-
-
-std::shared_ptr<query::TableRefBase>
-TableAliases::getTableRefMatch(std::shared_ptr<query::TableRefBase> const& tableRef) {
-    if (nullptr == tableRef) {
-        return nullptr;
-    }
-    for (auto&& aliasInfo : _aliasInfo) {
-        if (tableRef->isSubsetOf(*aliasInfo.object)) {
-            return aliasInfo.object;
-        }
-        if (tableRef->isAliasedBy(*aliasInfo.object)) {
-            return aliasInfo.object;
-        }
-    }
-    return nullptr;
-}
-
-
 }}} // namespace lsst::qserv::query
