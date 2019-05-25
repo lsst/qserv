@@ -29,12 +29,16 @@
 // Qserv headers
 #include "qhttp/Server.h"
 #include "replica/DeleteWorkerTask.h"
+#include "replica/EventLogger.h"
 #include "replica/HealthMonitorTask.h"
 #include "replica/ReplicationTask.h"
 #include "util/Mutex.h"
 
 // LSST headers
 #include "lsst/log/Log.h"
+
+// Forward declarations
+class ControllerEvent;
 
 // This header declarations
 namespace lsst {
@@ -46,8 +50,9 @@ namespace replica {
  * The constructor of the class will register requests handlers an start
  * the server.
  */
-class HttpProcessor : public std::enable_shared_from_this<HttpProcessor> {
-
+class HttpProcessor:
+        public EventLogger,
+        public std::enable_shared_from_this<HttpProcessor> {
 public:
 
     typedef std::shared_ptr<HttpProcessor> Ptr;
@@ -64,8 +69,6 @@ public:
                       HealthMonitorTask::Ptr const& healthMonitorTask,
                       ReplicationTask::Ptr const& replicationTask,
                       DeleteWorkerTask::Ptr const& deleteWorkerTask);
-
-    Controller::Ptr const controller() const { return _controller; }
 
 private:
 
@@ -346,13 +349,11 @@ private:
                    nlohmann::json& result,
                    bool success=true);
 
-    Controller::Ptr const _controller;
-
     HealthMonitorTask::WorkerEvictCallbackType const _onWorkerEvict;
 
     unsigned int const _workerResponseTimeoutSec;
 
-                      // References(!) to smart pointers to the tasks which can be managed
+    // References(!) to smart pointers to the tasks which can be managed
     // by this class. References to the pointers are used to avoid increasing
     // the reference counters to the pointed objects.
 

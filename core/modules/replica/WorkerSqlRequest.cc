@@ -129,6 +129,12 @@ bool WorkerSqlRequest::execute() {
         });
         setStatus(lock, STATUS_SUCCEEDED);
 
+    } catch(database::mysql::NoSuchTable const& ex) {
+
+        LOGS(_log, LOG_LVL_ERROR, context(__func__) << "  MySQL error: " << ex.what());
+        _response.set_error(ex.what());
+        setStatus(lock, STATUS_FAILED, EXT_STATUS_NO_SUCH_TABLE);
+
     } catch(database::mysql::Error const& ex) {
 
         LOGS(_log, LOG_LVL_ERROR, context(__func__) << "  MySQL error: " << ex.what());

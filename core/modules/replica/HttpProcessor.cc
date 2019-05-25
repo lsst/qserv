@@ -38,6 +38,7 @@
 
 // Qserv headers
 #include "global/intTypes.h"
+#include "replica/AbortTransactionJob.h"
 #include "replica/ChunkNumber.h"
 #include "replica/ConfigurationTypes.h"
 #include "replica/Controller.h"
@@ -58,6 +59,8 @@ namespace qhttp = lsst::qserv::qhttp;
 using namespace lsst::qserv::replica;
 
 namespace {
+
+string const taskName = "HTTP-PROCESSOR";
 
 /**
  * Extract a value of an optional parameter of a query (string value)
@@ -369,6 +372,7 @@ public:
         throw invalid_argument(
                 "invalid format of the request body. A simple JSON object was expected");
     }
+
     template <typename T>
     T required(string const& name) const {
         if (objJson.find(name) != objJson.end()) return objJson[name];
@@ -376,6 +380,7 @@ public:
                 "HttpRequestBody::" + string(__func__) + "<T> required parameter " + name +
                 " is missing in the request body");
     }
+
     template <typename T>
     T optional(string const& name, T const& defaultValue) const {
         if (objJson.find(name) != objJson.end()) return objJson[name];
@@ -395,9 +400,10 @@ string leastLoadedWorker(DatabaseServices::Ptr const& databaseServices,
     bool   const allDatabases = true;
     size_t numReplicas = numeric_limits<size_t>::max();
     for (auto&& candidateWorker: workers) {
-        size_t const num = databaseServices->numWorkerReplicas(candidateWorker,
-                                                               noSpecificDatabase,
-                                                               allDatabases);
+        size_t const num =
+            databaseServices->numWorkerReplicas(candidateWorker,
+                                                noSpecificDatabase,
+                                                allDatabases);
         if (num < numReplicas) {
             numReplicas = num;
             worker = candidateWorker;
@@ -440,7 +446,8 @@ HttpProcessor::HttpProcessor(Controller::Ptr const& controller,
                              HealthMonitorTask::Ptr const& healthMonitorTask,
                              ReplicationTask::Ptr const& replicationTask,
                              DeleteWorkerTask::Ptr const& deleteWorkerTask)
-    :   _controller(controller),
+    :   EventLogger(controller,
+                    taskName),
         _onWorkerEvict(onWorkerEvict),
         _workerResponseTimeoutSec(workerResponseTimeoutSec),
         _healthMonitorTask(healthMonitorTask),
@@ -449,11 +456,14 @@ HttpProcessor::HttpProcessor(Controller::Ptr const& controller,
 
 
 HttpProcessor::~HttpProcessor() {
+    logOnStopEvent();
     controller()->serviceProvider()->httpServer()->stop();
 }
 
 
 void HttpProcessor::_initialize() {
+
+    logOnStartEvent();
 
     auto self = shared_from_this();
 
@@ -498,7 +508,7 @@ void HttpProcessor::_initialize() {
 
 
 string HttpProcessor::_context() const {
-    return "HTTP-PROCESSOR ";
+    return taskName + " ";
 }
 
 
@@ -1194,7 +1204,7 @@ void HttpProcessor::_addWorkerConfig(qhttp::Request::Ptr const& req,
 
 
 void HttpProcessor::_deleteFamilyConfig(qhttp::Request::Ptr const& req,
-                                 qhttp::Response::Ptr const& resp) {
+                                        qhttp::Response::Ptr const& resp) {
     _debug(__func__);
 
     try {
@@ -1642,6 +1652,18 @@ void HttpProcessor::_beginTransaction(qhttp::Request::Ptr const& req,
                                       qhttp::Response::Ptr const& resp) {
     _debug(__func__);
 
+    uint32_t id = 0;
+    string database;
+
+    auto const logBeginTransaction = [&](string const& status, string const& msg=string()) {
+        ControllerEvent event;
+        event.operation = "BEGIN TRANSACTION";
+        event.status = status;
+        event.kvInfo.emplace_back("id", to_string(id));
+        event.kvInfo.emplace_back("database", database);
+        if (not msg.empty()) event.kvInfo.emplace_back("error", msg);
+        logEvent(event);
+    };
     try {
         auto const config = controller()->serviceProvider()->config();
         auto const databaseServices = controller()->serviceProvider()->databaseServices();
@@ -1656,15 +1678,22 @@ void HttpProcessor::_beginTransaction(qhttp::Request::Ptr const& req,
             _sendError(resp, __func__, "the database is already published");
             return;
         }
+        auto const trans = databaseServices->beginTransaction(database);
+
         json result;
-        result["transaction"] = databaseServices->beginTransaction(database).toJson();
+        result["transaction"] = trans.toJson();
 
         _sendData(resp, result);
+        logBeginTransaction("SUCCESS");
 
     } catch (invalid_argument const& ex) {
-        _sendError(resp, __func__, "invalid parameters of the request, ex: " + string(ex.what()));
+        auto const msg = "invalid parameters of the request, ex: " + string(ex.what());
+        _sendError(resp, __func__, msg);
+        logBeginTransaction("FAILED", msg);
     } catch (exception const& ex) {
-        _sendError(resp, __func__, "operation failed due to: " + string(ex.what()));
+        auto const msg = "operation failed due to: " + string(ex.what());
+        _sendError(resp, __func__, msg);
+        logBeginTransaction("FAILED", msg);
     }
 }
 
@@ -1673,25 +1702,62 @@ void HttpProcessor::_endTransaction(qhttp::Request::Ptr const& req,
                                     qhttp::Response::Ptr const& resp) {
     _debug(__func__);
 
+    uint32_t id = 0;
+    string database;
+    bool abort = false;
+
+    auto const logEndTransaction = [&](string const& status, string const& msg=string()) {
+        ControllerEvent event;
+        event.operation = "END TRANSACTION";
+        event.status = status;
+        event.kvInfo.emplace_back("id", to_string(id));
+        event.kvInfo.emplace_back("database", database);
+        event.kvInfo.emplace_back("abort", abort ? "true" : "false");
+        if (not msg.empty()) event.kvInfo.emplace_back("error", msg);
+        logEvent(event);
+    };
     try {
         auto const databaseServices = controller()->serviceProvider()->databaseServices();
-        auto const id = stoul(req->params.at("id"));
-        auto const abort = ::getRequiredQueryParamBool(req->query, "abort");
+        auto const config = controller()->serviceProvider()->config();
+
+        id = stoul(req->params.at("id"));
+        abort = ::getRequiredQueryParamBool(req->query, "abort");
 
         _debug(__func__, "id="    + to_string(id));
         _debug(__func__, "abort=" + to_string(abort ? 1 : 0));
 
+        auto const trans = databaseServices->endTransaction(id, abort);
+        auto const databaseInfo = config->databaseInfo(trans.database);
+        database = trans.database;
+
         json result;
-        result["transaction"] = databaseServices->endTransaction(id, abort).toJson();
-    
-        // TODO: replicate MySQL partition associated with the transaction
+        result["transaction"] = trans.toJson();
+
+        if (abort) {
+            // Drop the transaction-specific MySQL partition from the relevant tables
+            bool const allWorkers = true;
+            auto const job = AbortTransactionJob::create(id, allWorkers, controller());
+            logJobStartedEvent(AbortTransactionJob::typeName(), job, databaseInfo.family);
+            job->start();
+            logJobFinishedEvent(AbortTransactionJob::typeName(), job, databaseInfo.family);
+            job->wait();
+            result["data"] = job->getResultData().toJson();
+        } else {
+            // TODO: replicate MySQL partition associated with the transaction
+            _error(__func__, "replication stage is not implemented");
+        }
 
         _sendData(resp, result);
+        logEndTransaction("SUCCESS");
 
     } catch (invalid_argument const& ex) {
-        _sendError(resp, __func__, "invalid parameters of the request, ex: " + string(ex.what()));
+        auto const msg = "invalid parameters of the request, ex: " + string(ex.what());
+        _sendError(resp, __func__, msg);
+        logEndTransaction("FAILED", msg);
     } catch (exception const& ex) {
-        _sendError(resp, __func__, "operation failed due to: " + string(ex.what()));
+        auto const msg = "operation failed due to: " + string(ex.what());
+        _sendError(resp, __func__, msg);
+        logEndTransaction("FAILED", msg);
     }
 }
 
@@ -1750,7 +1816,9 @@ void HttpProcessor::_addDatabase(qhttp::Request::Ptr const& req,
             controller()
         );
         job->start();
+        logJobStartedEvent(SqlCreateDbJob::typeName(), job, familyName);
         job->wait();
+        logJobFinishedEvent(SqlCreateDbJob::typeName(), job, familyName);
 
         string error;
         auto const& resultData = job->getResultData();
@@ -1827,6 +1895,11 @@ void HttpProcessor::_publishDatabase(qhttp::Request::Ptr const& req,
         // This includes registering chunks in the persistent store of the Replication
         // system, synchronizing with Qserv workers, fixing, re-balancing,
         // replicating, etc.
+
+        ControllerEvent event;
+        event.status = "PUBLISH DATABASE";
+        event.kvInfo.emplace_back("database", database);
+        logEvent(event);
 
         json result;
         result["database"] = config->publishDatabase(database).toJson();
@@ -1932,6 +2005,11 @@ void HttpProcessor::_addTable(qhttp::Request::Ptr const& req,
             columns.emplace_back(colName, colType);
         }
 
+        // TODO: if this is a partitioned table then add columns for
+        //       chunk and sub-chunk numbers provided with the request.
+        //       Check if these columns aren't present in the schema.
+        //       Make sure they're provided for the partitioned table.
+
         // Create template tables on all workers. These tables will be used
         // to create chunk-specific tables before loading data.
 
@@ -1947,7 +2025,9 @@ void HttpProcessor::_addTable(qhttp::Request::Ptr const& req,
             allWorkers,
             controller()
         );
+        logJobStartedEvent(SqlCreateTableJob::typeName(), job, databaseInfo.family);
         job->start();
+        logJobFinishedEvent(SqlCreateTableJob::typeName(), job, databaseInfo.family);
         job->wait();
 
         string error;
@@ -2102,6 +2182,13 @@ void HttpProcessor::_addChunk(qhttp::Request::Ptr const& req,
             _sendError(resp, __func__, "no suitable worker found");
             return;
         }
+        ControllerEvent event;
+        event.status = "ADD CHUNK";
+        event.kvInfo.emplace_back("transaction", to_string(transactionInfo.id));
+        event.kvInfo.emplace_back("database", transactionInfo.database);
+        event.kvInfo.emplace_back("worker", worker);
+        event.kvInfo.emplace_back("chunk", to_string(chunk));
+        logEvent(event);
 
         // Pull connection parameters of the loader for the worker
 

@@ -237,6 +237,9 @@ void Connection::_processLastError(string const& context,
         case ER_DUP_ENTRY:
             throw DuplicateKeyError(msg);
 
+        case  ER_NO_SUCH_TABLE:
+            throw NoSuchTable(msg);
+
         case ER_ABORTING_CONNECTION:
         case ER_NEW_ABORTING_CONNECTION:
 

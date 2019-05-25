@@ -330,6 +330,7 @@ enum ProtocolStatusExt {
     FILE_MTIME    = 23;
     MYSQL_ERROR   = 24;
     LARGE_RESULT  = 25;
+    NO_SUCH_TABLE = 26;
 }
 
 message ProtocolFileInfo {

@@ -174,6 +174,23 @@ public:
 
 
 /**
+ * Instances of this exception class are thrown on queries involving non-existing
+ * tables.
+ */
+class NoSuchTable : public Error {
+public:
+
+    /**
+     * @param what
+     *   reason for the exception
+     */
+    explicit NoSuchTable(std::string const& what)
+        :   Error(what) {
+    }
+};
+
+
+/**
  * Instances of this exception class are thrown on failed attempts
  * to interpret the contents of the result set.
  */
