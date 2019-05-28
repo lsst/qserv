@@ -190,6 +190,8 @@ public:
     friend std::ostream& operator<<(std::ostream& os, ValueExpr const* ve);
 
     static ValueExprPtr newSimple(std::shared_ptr<ValueFactor> vt);
+    static ValueExprPtr newColumnExpr(std::string const& db, std::string const& table,
+                                      std::string const& alias, std::string const& column);
 
     class render;
     friend class render;

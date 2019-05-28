@@ -43,7 +43,6 @@
 #include "qana/QueryMapping.h"
 #include "query/DbTablePair.h"
 #include "query/FromList.h"
-#include "query/TableAlias.h"
 #include "query/ValueExpr.h"
 #include "global/stringTypes.h"
 
@@ -99,8 +98,33 @@ public:
     std::shared_ptr<query::TableRefBase> getTableRefMatch(
             std::shared_ptr<query::TableRefBase const> const& tableRef);
 
-    // Select List aliasing
-    SelectListAliases selectListAliases;
+    /**
+     * @brief Add a ValueExpr that is used in the SELECT list.
+     */
+    void addUsedValueExpr(std::shared_ptr<query::ValueExpr> const& valueExpr);
+
+    /**
+     * @brief Get a ValueExpr from the list of ValueExprs used in the SELECT list that matches a given
+     *        ValueExpr.
+     *
+     * This checks for two kinds of "match":
+     * 1. Subset: Where the passed-in valueExpr partially or completely matches a valueExpr in the list.
+     *            For example, "col" is a subset of "db.table.col". So is "table.col", and "db.table.col".
+     *            However, if the alias of the passed-in ValueExpr is populated and does not match the alias
+     *            of a valueExpr in the list, those two may not be a subset regardless of db, table, and
+     *            column values.
+     * 2. Alaised by: If the type of both ValueExprs is ColumnRef, then the 'table' value of the passed-in
+     *                valueExpr might contain the alias name. E.g. for a user query
+     *                "SELECT foo.col from tbl.col AS foo", "foo.col" in the SELECT list uses an alias to
+     *                describe the same table as "tbl.col AS foo" in the FROM list, and the normalized
+     *                ValueExpr is "db.tbl.col AS foo", so "foo.col" will be said to be 'aliased by'
+     *                "db.tbl.col AS foo".
+     *
+     * @param valExpr the expr to match
+     * @return std::shared_ptr<query::ValueExpr> that matching expr from the SELECT list, or nullptr
+     */
+    std::shared_ptr<query::ValueExpr> getValueExprMatch(
+            std::shared_ptr<query::ValueExpr> const& valExpr) const;
 
     // Owned QueryMapping and query restrictors
     std::shared_ptr<qana::QueryMapping> queryMapping;
@@ -126,7 +150,8 @@ public:
         return queryMapping.get() && queryMapping->hasSubChunks(); }
 
 private:
-    std::vector<std::shared_ptr<query::TableRefBase>> _usedTableRefs;
+    std::vector<std::shared_ptr<query::TableRefBase>> _usedTableRefs; ///< TableRefs from the FROM list
+    std::vector<std::shared_ptr<query::ValueExpr>> _usedValueExprs; ///< ValueExprs from the SELECT list
 };
 
 

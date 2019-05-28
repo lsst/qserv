@@ -168,6 +168,14 @@ bool ColumnRef::isSubsetOf(const ColumnRef::Ptr & rhs) const {
 }
 
 
+bool ColumnRef::isAliasedBy(ColumnRef const& rhs) const {
+    if (_column != rhs._column) {
+        return false;
+    }
+    return _tableRef->isAliasedBy(*rhs._tableRef);
+}
+
+
 bool ColumnRef::equal(ColumnRef const& rhs, bool useAlias) const {
     return _tableRef->equal(*rhs._tableRef, useAlias);
     if (_column != rhs._column) {

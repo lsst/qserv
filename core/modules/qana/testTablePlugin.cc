@@ -42,6 +42,7 @@
 #include "query/QueryContext.h"
 #include "query/SelectStmt.h"
 #include "query/TestFactory.h"
+#include "query/ValueFactor.h"
 #include "query/WhereClause.h"
 #include "util/IterableFormatter.h"
 

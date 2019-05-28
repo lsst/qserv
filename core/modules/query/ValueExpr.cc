@@ -139,6 +139,14 @@ ValueExprPtr ValueExpr::newSimple(std::shared_ptr<ValueFactor> vt)  {
 }
 
 
+ValueExprPtr ValueExpr::newColumnExpr(std::string const& db, std::string const& table,
+                                  std::string const& alias, std::string const& column) {
+    return newSimple(
+        query::ValueFactor::newColumnRefFactor(
+            std::make_shared<query::ColumnRef>(db, table, alias, column)));
+}
+
+
 ////////////////////////////////////////////////////////////////////////
 // ValueExpr
 ////////////////////////////////////////////////////////////////////////

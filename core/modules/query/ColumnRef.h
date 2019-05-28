@@ -94,6 +94,8 @@ public:
     // table (and the column) must be populated.
     bool isSubsetOf(const ColumnRef::Ptr & rhs) const;
 
+    bool isAliasedBy(ColumnRef const& rhs) const;
+
     // Compare this ColumnRef to rhs and return true if it is less than the other.
     // This will consider the alias, so if this == rhs by the alias it will return false.
     // That is, "db.table.col AS a" will be equal to "a.col"

@@ -86,6 +86,27 @@ std::shared_ptr<query::TableRefBase> QueryContext::getTableRefMatch(
 }
 
 
+void QueryContext::addUsedValueExpr(std::shared_ptr<query::ValueExpr> const& valueExpr) {
+    _usedValueExprs.push_back(valueExpr);
+}
+
+
+std::shared_ptr<query::ValueExpr>
+QueryContext::getValueExprMatch(std::shared_ptr<query::ValueExpr> const& valExpr) const {
+    for (auto&& usedValExpr : _usedValueExprs) {
+        if (valExpr->isSubsetOf(*usedValExpr)) {
+            return usedValExpr;
+        }
+        if (valExpr->isColumnRef() && usedValExpr->isColumnRef()) {
+            if (valExpr->getColumnRef()->isAliasedBy(*usedValExpr->getColumnRef())) {
+                return usedValExpr;
+            }
+        }
+    }
+    return nullptr;
+}
+
+
 
 /// Get the table schema for the tables mentioned in the SQL 'FROM' statement.
 /// This should be adequate and possibly desirable as this information is being used

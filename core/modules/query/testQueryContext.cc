@@ -118,4 +118,66 @@ BOOST_AUTO_TEST_CASE(UsedTables) {
 }
 
 
+BOOST_AUTO_TEST_CASE(UsedSelectListValueExprs) {
+    TestFactory factory;
+    auto queryContext = factory.newContext(css, schemaCfg);
+    // add a ColumnRef ValueExpr
+    auto columnRef1 = ValueExpr::newColumnExpr("db", "table", "alias1", "column1");
+    queryContext->addUsedValueExpr(columnRef1);
+    // add a different ColumnRef ValueExpr
+    auto columnRef2 = ValueExpr::newColumnExpr("db", "table", "alias2", "column2");
+    queryContext->addUsedValueExpr(columnRef2);
+
+    // get columnRef1 with a subset value match
+    BOOST_REQUIRE_EQUAL(queryContext->getValueExprMatch(ValueExpr::newColumnExpr("",        "",       "", "column1")).get(),
+                        columnRef1.get());
+    BOOST_REQUIRE_EQUAL(queryContext->getValueExprMatch(ValueExpr::newColumnExpr("",   "table",       "", "column1")).get(),
+                        columnRef1.get());
+    BOOST_REQUIRE_EQUAL(queryContext->getValueExprMatch(ValueExpr::newColumnExpr("db", "table",       "", "column1")).get(),
+                        columnRef1.get());
+    BOOST_REQUIRE_EQUAL(queryContext->getValueExprMatch(ValueExpr::newColumnExpr("",        "", "alias1", "column1")).get(),
+                        columnRef1.get());
+    BOOST_REQUIRE_EQUAL(queryContext->getValueExprMatch(ValueExpr::newColumnExpr("db", "table", "alias1", "column1")).get(),
+                        columnRef1.get());
+
+    // try some expected-fail values
+    BOOST_REQUIRE_EQUAL(queryContext->getValueExprMatch(ValueExpr::newColumnExpr("", "", "", "column3")).get(),
+                        nullptr);
+    BOOST_REQUIRE_EQUAL(queryContext->getValueExprMatch(ValueExpr::newColumnExpr("", "", "alias3", "column1")).get(),
+                        nullptr);
+    BOOST_REQUIRE_EQUAL(queryContext->getValueExprMatch(ValueExpr::newColumnExpr("", "", "alias2", "column1")).get(),
+                        nullptr);
+    BOOST_REQUIRE_EQUAL(queryContext->getValueExprMatch(ValueExpr::newColumnExpr("", "", "alias1", "column2")).get(),
+                        nullptr);
+
+    // get columnRef2 with a subset value match
+    BOOST_REQUIRE_EQUAL(queryContext->getValueExprMatch(ValueExpr::newColumnExpr("",        "",       "", "column2")).get(),
+                        columnRef2.get());
+    BOOST_REQUIRE_EQUAL(queryContext->getValueExprMatch(ValueExpr::newColumnExpr("",   "table",       "", "column2")).get(),
+                        columnRef2.get());
+    BOOST_REQUIRE_EQUAL(queryContext->getValueExprMatch(ValueExpr::newColumnExpr("db", "table",       "", "column2")).get(),
+                        columnRef2.get());
+    BOOST_REQUIRE_EQUAL(queryContext->getValueExprMatch(ValueExpr::newColumnExpr("",        "", "alias2", "column2")).get(),
+                        columnRef2.get());
+    BOOST_REQUIRE_EQUAL(queryContext->getValueExprMatch(ValueExpr::newColumnExpr("db", "table", "alias2", "column2")).get(),
+                        columnRef2.get());
+
+    // get columnRef1 with alias value match
+    BOOST_REQUIRE_EQUAL(queryContext->getValueExprMatch(ValueExpr::newColumnExpr("", "alias1", "", "column1")).get(),
+                        columnRef1.get());
+    // get columnRef2 with alias value match
+    BOOST_REQUIRE_EQUAL(queryContext->getValueExprMatch(ValueExpr::newColumnExpr("", "alias2", "", "column2")).get(),
+                        columnRef2.get());
+    // try some expected-fail alias matches
+    BOOST_REQUIRE_EQUAL(queryContext->getValueExprMatch(ValueExpr::newColumnExpr("", "alias1", "", "column2")).get(),
+                        nullptr);
+    BOOST_REQUIRE_EQUAL(queryContext->getValueExprMatch(ValueExpr::newColumnExpr("", "alias2", "", "column1")).get(),
+                        nullptr);
+    BOOST_REQUIRE_EQUAL(queryContext->getValueExprMatch(ValueExpr::newColumnExpr("", "alias3", "", "column2")).get(),
+                        nullptr);
+
+
+}
+
+
 BOOST_AUTO_TEST_SUITE_END()

@@ -66,7 +66,6 @@
 #include "query/QueryContext.h"
 #include "query/SelectList.h"
 #include "query/SelectStmt.h"
-#include "query/TableAlias.h"
 #include "query/TableRef.h"
 #include "query/typedefs.h"
 #include "query/ValueExpr.h"
@@ -83,7 +82,7 @@ void matchValueExprs(lsst::qserv::query::QueryContext& context, CLAUSE_T & claus
     lsst::qserv::query::ValueExprPtrRefVector valueExprRefs;
     clause.findValueExprRefs(valueExprRefs);
     for (auto&& valueExprRef : valueExprRefs) {
-        auto&& valueExprMatch = context.selectListAliases.getValueExprMatch(valueExprRef.get());
+        auto&& valueExprMatch = context.getValueExprMatch(valueExprRef.get());
         if (nullptr != valueExprMatch) {
             valueExprRef.get() = valueExprMatch;
         }
@@ -147,9 +146,7 @@ TablePlugin::applyLogical(query::SelectStmt& stmt,
         if (not valueExpr->hasAlias()) {
             if (not valueExpr->isStar()) {
                 valueExpr->setAlias(valueExpr->sqlFragment(false));
-                if (not context.selectListAliases.set(valueExpr, valueExpr->getAlias())) {
-                    throw std::logic_error("could not set alias for " + valueExpr->sqlFragment(false));
-                }
+                context.addUsedValueExpr(valueExpr);
             }
         } else {
             valueExpr->setAliasIsUserDefined(true);
