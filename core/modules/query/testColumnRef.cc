@@ -169,7 +169,7 @@ static const std::vector<TestColumns> COLUMN_REF_MATCHES = {
 };
 
 
-BOOST_DATA_TEST_CASE(ColumnRefMatches, COLUMN_REF_MATCHES, columns) {
+BOOST_DATA_TEST_CASE(ColumnRefSubset, COLUMN_REF_MATCHES, columns) {
     BOOST_REQUIRE_MESSAGE(columns.pass == columns.a->isSubsetOf(columns.b), columns.a <<
             (columns.pass ? "should " : "should NOT ") << "be a subset of " << columns.b);
 }
@@ -207,9 +207,6 @@ BOOST_DATA_TEST_CASE(ColumnRefLessThan, COLUMN_REF_LESS_THAN, columns) {
 }
 
 
-
-
-
 BOOST_AUTO_TEST_CASE(ColumnRefEqual) {
     // everything the same, check via alias
     BOOST_REQUIRE_EQUAL(query::ColumnRef("db", "table", "alais", "column").equal(
@@ -229,8 +226,28 @@ BOOST_AUTO_TEST_CASE(ColumnRefEqual) {
     // different alias, check via db & table
     BOOST_REQUIRE_EQUAL(query::ColumnRef("db", "table", "a", "column").equal(
                         query::ColumnRef("db", "table", "alais", "column"), false), true);
-
 }
 
+
+BOOST_AUTO_TEST_CASE(ColumnRefComplete) {
+    BOOST_REQUIRE_EQUAL(
+        query::ColumnRef("", "", "", "column").isComplete(),
+        false);
+    BOOST_REQUIRE_EQUAL(
+        query::ColumnRef("", "", "alias", "column").isComplete(),
+        false);
+    BOOST_REQUIRE_EQUAL(
+        query::ColumnRef("", "table", "", "column").isComplete(),
+        false);
+    BOOST_REQUIRE_EQUAL(
+        query::ColumnRef("", "table", "alias", "column").isComplete(),
+        false);
+    BOOST_REQUIRE_EQUAL(
+        query::ColumnRef("db", "table", "", "column").isComplete(),
+        false);
+    BOOST_REQUIRE_EQUAL(
+        query::ColumnRef("db", "table", "alias", "column").isComplete(),
+        true);
+}
 
 BOOST_AUTO_TEST_SUITE_END()

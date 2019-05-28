@@ -151,8 +151,23 @@ bool TableRef::isAliasedBy(TableRef const& rhs) const {
 }
 
 
+bool TableRef::isComplete() const {
+    if (_table.empty())
+        return false;
+    if (_db.empty())
+        return false;
+    if (_alias.empty())
+        return false;
+    for (auto&& joinRef : _joinRefs) {
+        if (not joinRef->getRight()->isComplete()) {
+            return false;
+        }
+    }
+    return true;
+}
+
+
 bool TableRef::operator<(const TableRef& rhs) const {
-    throw std::runtime_error("fixme?");
     return std::tie(_db, _table, _alias) < std::tie(rhs._db, rhs._table, rhs._alias);
 }
 

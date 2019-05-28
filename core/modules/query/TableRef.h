@@ -136,6 +136,9 @@ public:
      */
     bool isAliasedBy(TableRef const& rhs) const;
 
+    // return true if all the fields are populated, false if a field (like the database field) is empty.
+    bool isComplete() const;
+
     class Func {
     public:
         virtual ~Func() {}

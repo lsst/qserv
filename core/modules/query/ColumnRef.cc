@@ -48,8 +48,6 @@ namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.query.ColumnRef");
 
-typedef std::tuple<lsst::qserv::query::TableRefBase const&, std::string const&> TableRefStringTuple;
-
 }
 
 
@@ -157,15 +155,20 @@ void ColumnRef::renderTo(QueryTemplate& qt) const {
 
 
 bool ColumnRef::isSubsetOf(const ColumnRef::Ptr & rhs) const {
-    if (not _tableRef->isSubsetOf(*rhs->_tableRef)) {
+    return isSubsetOf(*rhs);
+}
+
+
+bool ColumnRef::isSubsetOf(ColumnRef const& rhs) const {
+    if (not _tableRef->isSubsetOf(*rhs._tableRef)) {
         return false;
     }
 
     // the columns can not be empty
-    if (_column.empty() || rhs->_column.empty()) {
+    if (_column.empty() || rhs._column.empty()) {
         return false;
     }
-    if (_column != rhs->_column) {
+    if (_column != rhs._column) {
         return false;
     }
     return true;
@@ -177,6 +180,13 @@ bool ColumnRef::isAliasedBy(ColumnRef const& rhs) const {
         return false;
     }
     return _tableRef->isAliasedBy(*rhs._tableRef);
+}
+
+
+bool ColumnRef::isComplete() const {
+    if (_column.empty()) // should not be possible, but for completeness we check it.
+        return false;
+    return _tableRef->isComplete();
 }
 
 

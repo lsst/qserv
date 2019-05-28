@@ -183,23 +183,30 @@ bool PostPlugin::verifyColumnsForOrderBy(query::ColumnRef::Vector const & availa
         query::ColumnRef::Vector const & required, query::ColumnRef::Vector & missing) {
     missing.clear();
 
+    auto columnRefCompare = [](query::ColumnRef::Ptr const& lhs, query::ColumnRef::Ptr const& rhs)
+        {
+            if (not lhs->isComplete() || not rhs->isComplete()) {
+                throw std::runtime_error("both column refs must be completely populated.");
+            }
+            return *lhs < *rhs;
+        };
+    typedef std::set<query::ColumnRef::Ptr, decltype(columnRefCompare)> columnRefSet;
+
     // convert `available` and `required` to sets:
-    std::set<query::ColumnRef::Ptr, util::Compare<query::ColumnRef>> availableSet(
-            available.begin(), available.end());
-    std::set<query::ColumnRef::Ptr, util::Compare<query::ColumnRef>> requiredSet(
-            required.begin(), required.end());
+    columnRefSet availableSet(available.begin(), available.end(), columnRefCompare);
+    columnRefSet requiredSet(required.begin(), required.end(), columnRefCompare);
 
     // create a list of missing columns, where for a column in `required` there is not an exact match in
     // `available`.
     std::set_difference(requiredSet.begin(), requiredSet.end(), availableSet.begin(), availableSet.end(),
-            std::inserter(missing, missing.end()), util::Compare<query::ColumnRef>());
+            std::inserter(missing, missing.end()), columnRefCompare);
 
     auto mItr = missing.rbegin();
     while (mItr != missing.rend()) {
         // make a set of ColumnRef from available that can match missing
         // if set size is 1, that is a usable match and we use that.
         // else (0 or >1) then we don't have a discrete match and we don't have a usable match.
-        std::set<query::ColumnRef::Ptr, util::Compare<query::ColumnRef>> usable;
+        columnRefSet usable(columnRefCompare);
         for (auto&& a : available) {
             if ((*mItr)->isSubsetOf(a)) {
                 usable.insert(a);
