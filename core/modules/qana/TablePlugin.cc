@@ -107,10 +107,10 @@ void matchTableRefs(lsst::qserv::query::QueryContext& context,
         std::vector<std::shared_ptr<lsst::qserv::query::ColumnRef>> columnRefs;
         valueExpr->findColumnRefs(columnRefs);
         for (auto& columnRef : columnRefs) {
-            std::shared_ptr<lsst::qserv::query::TableRefBase>& tableRef = columnRef->getTableRef();
-            auto&& tableRefMatch = context.getTableRefMatch(tableRef);
+            auto tableRef = columnRef->getTableRef();
+            auto tableRefMatch = context.getTableRefMatch(tableRef);
             if (nullptr != tableRefMatch) {
-                tableRef = tableRefMatch;
+                columnRef->setTable(tableRefMatch);
             }
         }
     }

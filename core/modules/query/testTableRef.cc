@@ -79,18 +79,18 @@ BOOST_AUTO_TEST_CASE(verifyPopulated_dbIsSetIgnoreDefault) {
 
 
 struct TestTableRefs {
-    TestTableRefs(std::shared_ptr<TableRefBase> const& TRa, std::shared_ptr<TableRefBase> const& TRb, bool p)
+    TestTableRefs(std::shared_ptr<TableRef> const& TRa, std::shared_ptr<TableRef> const& TRb, bool p)
     : a(TRa), b(TRb), pass(p)  {}
 
     TestTableRefs(std::string aDb, std::string aTable, std::string aAlias,
                   std::string bDb, std::string bTable, std::string bAlias, bool p)
-    : a(std::make_shared<TableRefBase>(aDb, aTable, aAlias))
-    , b(std::make_shared<TableRefBase>(bDb, bTable, bAlias))
+    : a(std::make_shared<TableRef>(aDb, aTable, aAlias))
+    , b(std::make_shared<TableRef>(bDb, bTable, bAlias))
     , pass(p)
     {}
 
-    std::shared_ptr<TableRefBase> a;
-    std::shared_ptr<TableRefBase> b;
+    std::shared_ptr<TableRef> a;
+    std::shared_ptr<TableRef> b;
     bool pass; // if the test should pass;
 };
 

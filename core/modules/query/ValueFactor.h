@@ -95,8 +95,8 @@ public:
     std::shared_ptr<FuncExpr> getFuncExpr() { return _funcExpr; }
     std::shared_ptr<ValueExpr const> getExpr() const { return _valueExpr; }
     std::shared_ptr<ValueExpr> getExpr() { return _valueExpr; }
-    std::shared_ptr<TableRefBase const> getTableStar() const { return _tableStar; }
-    std::shared_ptr<TableRefBase> getTableStar() { return _tableStar; }
+    std::shared_ptr<TableRef const> getTableStar() const { return _tableStar; }
+    std::shared_ptr<TableRef> getTableStar() { return _tableStar; }
     Type getType() const { return _type; }
 
     std::string const& getConstVal() const { return _constVal; }
@@ -129,7 +129,7 @@ public:
 
     /// Assign this object to be STAR value, optionally with a TableRef qualification. A
     /// Any previous parameters will be cleared.
-    void setStar(std::shared_ptr<TableRefBase> const& tableRef);
+    void setStar(std::shared_ptr<TableRef> const& tableRef);
 
     // determine if this object is the same as or a less complete description of the passed in object.
     bool isSubsetOf(ValueFactor const& rhs) const;
@@ -147,7 +147,7 @@ private:
     // when _type == STAR, _tableStar can be null or can contain table info for a table-qualified value
     // e.g. "Object.*". Qserv does not currently allow a database in this expression and the database field
     // must be empty.
-    std::shared_ptr<TableRefBase> _tableStar;
+    std::shared_ptr<TableRef> _tableStar;
 
 };
 

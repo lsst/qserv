@@ -49,7 +49,7 @@ namespace lsst {
 namespace qserv {
 namespace query {
     class QueryTemplate;
-    class TableRefBase;
+    class TableRef;
     class ValueFactor;
 }}} // End of forward declarations
 

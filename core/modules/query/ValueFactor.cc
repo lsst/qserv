@@ -85,7 +85,7 @@ ValueFactorPtr ValueFactor::newStarFactor(std::string const& table) {
     ValueFactorPtr term = std::make_shared<ValueFactor>();
     term->_type = STAR;
     if (!table.empty()) {
-        term->_tableStar = std::make_shared<TableRefBase>("", table, "");
+        term->_tableStar = std::make_shared<TableRef>("", table, "");
     }
     return term;
 }
@@ -252,7 +252,7 @@ void ValueFactor::set(std::shared_ptr<ValueExpr> const& valueExpr) {
 }
 
 
-void ValueFactor::setStar(std::shared_ptr<TableRefBase> const& tableRef) {
+void ValueFactor::setStar(std::shared_ptr<TableRef> const& tableRef) {
     _reset();
     _tableStar = tableRef;
     _type = STAR;

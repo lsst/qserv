@@ -53,7 +53,7 @@ namespace qserv {
 namespace query {
     class ColumnRef;
     class QsRestrictor;
-    class TableRefBase;
+    class TableRef;
 }}} // End of forward declarations
 
 
@@ -92,11 +92,11 @@ public:
 
     // Add a TableRef to the list of tables used by this query.
     // This typically contains the TableRefs from the FROM list.
-    bool addUsedTableRef(std::shared_ptr<query::TableRefBase> const& tableRef);
+    bool addUsedTableRef(std::shared_ptr<query::TableRef> const& tableRef);
 
     // Get a TableRef from the list of tables used by this query that matches the pased in TableRef.
-    std::shared_ptr<query::TableRefBase> getTableRefMatch(
-            std::shared_ptr<query::TableRefBase const> const& tableRef);
+    std::shared_ptr<query::TableRef> getTableRefMatch(
+            std::shared_ptr<query::TableRef const> const& tableRef);
 
     /**
      * @brief Add a ValueExpr that is used in the SELECT list.
@@ -150,7 +150,7 @@ public:
         return queryMapping.get() && queryMapping->hasSubChunks(); }
 
 private:
-    std::vector<std::shared_ptr<query::TableRefBase>> _usedTableRefs; ///< TableRefs from the FROM list
+    std::vector<std::shared_ptr<query::TableRef>> _usedTableRefs; ///< TableRefs from the FROM list
     std::vector<std::shared_ptr<query::ValueExpr>> _usedValueExprs; ///< ValueExprs from the SELECT list
 };
 

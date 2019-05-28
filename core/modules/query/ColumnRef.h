@@ -42,7 +42,7 @@ namespace lsst {
 namespace qserv {
 namespace query {
     class QueryTemplate;
-    class TableRefBase;
+    class TableRef;
 }}} // End of forward declarations
 
 
@@ -59,7 +59,7 @@ public:
 
     ColumnRef(std::string db_, std::string table_, std::string column_);
     ColumnRef(std::string db_, std::string table_, std::string tableAlias_, std::string column_);
-    ColumnRef(std::shared_ptr<TableRefBase> const& table, std::string const& column);
+    ColumnRef(std::shared_ptr<TableRef> const& table, std::string const& column);
     static Ptr newShared(std::string const& db_,
                          std::string const& table_,
                          std::string const& column_) {
@@ -71,11 +71,11 @@ public:
     std::string const& getColumn() const;
     std::string const& getTableAlias() const;
 
-    std::shared_ptr<TableRefBase> getTableRef() const;
-    std::shared_ptr<TableRefBase>& getTableRef();
+    std::shared_ptr<TableRef const> getTableRef() const;
 
     void setDb(std::string const& db);
     void setTable(std::string const& table);
+    void setTable(std::shared_ptr<TableRef> const& tableRef);
     void setColumn(std::string const& column);
     void set(std::string const& db, std::string const& table, std::string const& column);
 
@@ -107,7 +107,9 @@ public:
     bool operator<(const ColumnRef& rhs) const;
 
 private:
-    std::shared_ptr<TableRefBase> _tableRef;
+    // The TableRef in a ColumnRef should always be "simple" (have no joins). Right now this is enforced
+    // simply because the only way a TableRef is set here is in the implementation of this class.
+    std::shared_ptr<TableRef> _tableRef;
     std::string _column;
 };
 

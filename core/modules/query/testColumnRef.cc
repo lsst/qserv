@@ -55,7 +55,7 @@ BOOST_AUTO_TEST_SUITE(Suite)
 std::shared_ptr<query::ColumnRef> makeColumnWithTable(std::string const& db, std::string const& table,
         std::string const& tableAlias, std::string const& column) {
     return std::make_shared<query::ColumnRef>(
-        std::make_shared<query::TableRefBase>(db, table, tableAlias), column);
+        std::make_shared<query::TableRef>(db, table, tableAlias), column);
 }
 
 

@@ -52,7 +52,7 @@ namespace qserv {
 namespace query {
 
 
-bool QueryContext::addUsedTableRef(std::shared_ptr<query::TableRefBase> const& tableRef) {
+bool QueryContext::addUsedTableRef(std::shared_ptr<query::TableRef> const& tableRef) {
     if (nullptr == tableRef) {
         return false;
     }
@@ -69,8 +69,8 @@ bool QueryContext::addUsedTableRef(std::shared_ptr<query::TableRefBase> const& t
 }
 
 
-std::shared_ptr<query::TableRefBase> QueryContext::getTableRefMatch(
-        std::shared_ptr<query::TableRefBase const> const& tableRef) {
+std::shared_ptr<query::TableRef> QueryContext::getTableRefMatch(
+        std::shared_ptr<query::TableRef const> const& tableRef) {
     if (nullptr == tableRef) {
         return nullptr;
     }

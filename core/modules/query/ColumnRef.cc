@@ -78,16 +78,16 @@ std::ostream& operator<<(std::ostream& os, ColumnRef const* cr) {
 
 
 ColumnRef::ColumnRef(std::string db_, std::string table_, std::string column_)
-    : _tableRef(std::make_shared<TableRefBase>(db_, table_, "")), _column(column_) {
+    : _tableRef(std::make_shared<TableRef>(db_, table_, "")), _column(column_) {
 }
 
 
 ColumnRef::ColumnRef(std::string db_, std::string table_, std::string tableAlias_, std::string column_)
-    : _tableRef(std::make_shared<TableRefBase>(db_, table_, tableAlias_)), _column(column_) {
+    : _tableRef(std::make_shared<TableRef>(db_, table_, tableAlias_)), _column(column_) {
 }
 
 
-ColumnRef::ColumnRef(std::shared_ptr<TableRefBase> const& table, std::string const& column)
+ColumnRef::ColumnRef(std::shared_ptr<TableRef> const& table, std::string const& column)
     : _tableRef(table), _column(column) {
 }
 
@@ -112,12 +112,7 @@ std::string const& ColumnRef::getTableAlias() const {
 }
 
 
-std::shared_ptr<TableRefBase> ColumnRef::getTableRef() const {
-    return _tableRef;
-}
-
-
-std::shared_ptr<TableRefBase>& ColumnRef::getTableRef() {
+std::shared_ptr<TableRef const> ColumnRef::getTableRef() const {
     return _tableRef;
 }
 
@@ -131,6 +126,15 @@ void ColumnRef::setDb(std::string const& db) {
 void ColumnRef::setTable(std::string const& table) {
     LOGS(_log, LOG_LVL_TRACE, *this << "; set table:" << table);
     _tableRef->setTable(table);
+}
+
+
+void ColumnRef::setTable(std::shared_ptr<TableRef> const& tableRef) {
+    LOGS(_log, LOG_LVL_TRACE, *this << "; set table:" << *tableRef);
+    if (not tableRef->isSimple()) {
+        throw std::logic_error("The TableRef used by a ColumnRef must not have any joins.");
+    }
+    _tableRef = tableRef;
 }
 
 
@@ -195,14 +199,12 @@ bool ColumnRef::lessThan(ColumnRef const& rhs, bool useAlias) const {
 
 
 bool ColumnRef::operator==(const ColumnRef& rhs) const {
-    throw std::runtime_error("fixme?");
-    return TableRefStringTuple(*_tableRef, _column) == TableRefStringTuple(*rhs._tableRef, rhs._column);
+    return std::tie(*_tableRef, _column) == std::tie(*rhs._tableRef, rhs._column);
 }
 
 
 bool ColumnRef::operator<(const ColumnRef& rhs) const {
-    throw std::runtime_error("fixme?");
-    return TableRefStringTuple(*_tableRef, _column) < TableRefStringTuple(*rhs._tableRef, rhs._column);
+    return std::tie(*_tableRef, _column) < std::tie(*rhs._tableRef, rhs._column);
 }
 
 
