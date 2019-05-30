@@ -242,7 +242,7 @@ void TableRef::putTemplate(QueryTemplate& qt) const {
     auto aliasMode = qt.getAliasMode();
     if (QueryTemplate::USE == aliasMode) {
         if (hasAlias()) {
-            qt.append(_alias);
+            qt.append("`" + _alias + "`");
         } else {
             if (!_db.empty()) {
                 qt.append(_db);
@@ -260,7 +260,7 @@ void TableRef::putTemplate(QueryTemplate& qt) const {
     if (QueryTemplate::DEFINE == aliasMode) {
         if (hasAlias()) {
             qt.append("AS");
-            qt.append(_alias);
+            qt.append("`" + _alias + "`");
         }
     }
     typedef JoinRefPtrVector::const_iterator Iter;

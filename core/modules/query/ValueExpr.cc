@@ -379,7 +379,7 @@ void ValueExpr::render::applyToQT(ValueExpr const& ve) {
 
     if (_needsComma && _count++ > 0) { _qt.append(","); }
     if (_qt.getAliasMode() == QueryTemplate::USE && ve.hasAlias()) {
-        _qt.append(ve._alias);
+        _qt.append("`" + ve._alias + "`");
         return;
     }
     auto previousAliasMode = _qt.getAliasMode();
@@ -427,7 +427,7 @@ void ValueExpr::render::applyToQT(ValueExpr const& ve) {
     }
     _qt.setAliasMode(previousAliasMode);
     if (_qt.getAliasMode() == QueryTemplate::DEFINE) {
-        if (!ve._alias.empty()) { _qt.append("AS"); _qt.append(ve._alias); }
+        if (!ve._alias.empty()) { _qt.append("AS"); _qt.append("`" + ve._alias + "`"); }
     }
 }
 

@@ -61,7 +61,7 @@ public:
             db = cr.getDb();
             table = cr.getTable();
         } else {
-            table = cr.getTableRef()->getAlias();
+            table = "`" + cr.getTableRef()->getAlias() + "`";
         }
         column = cr.getColumn();
     }
