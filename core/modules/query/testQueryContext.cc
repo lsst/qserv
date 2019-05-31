@@ -35,6 +35,7 @@
 #include "css/CssAccess.h"
 #include "mysql/MySqlConfig.h"
 #include "query/QueryContext.h"
+#include "query/JoinRef.h"
 #include "query/TableRef.h"
 #include "query/TestFactory.h"
 
@@ -71,8 +72,8 @@ BOOST_AUTO_TEST_CASE(UsedTables) {
     // add a table ref
     auto tableRef1 = std::make_shared<TableRef>("db", "table", "alias");
     BOOST_REQUIRE_EQUAL(true, queryContext->addUsedTableRef(tableRef1));
-    // adding a table ref with the same alias (and other values) should fail.
-    BOOST_REQUIRE_EQUAL(false, queryContext->addUsedTableRef(
+    // adding a table ref with the same values should pass.
+    BOOST_REQUIRE_EQUAL(true, queryContext->addUsedTableRef(
         std::make_shared<TableRef>("db", "table", "alias")));
     // adding a table ref with the same alias (and different other values) should fail.
     BOOST_REQUIRE_EQUAL(false, queryContext->addUsedTableRef(
@@ -82,39 +83,36 @@ BOOST_AUTO_TEST_CASE(UsedTables) {
     BOOST_REQUIRE_EQUAL(true, queryContext->addUsedTableRef(tableRef2));
 
     // getting a table ref with the same values as an added TableRef should return the originally enetered object.
-    BOOST_REQUIRE_EQUAL(tableRef2.get(),
-        queryContext->getTableRefMatch(std::make_shared<TableRef>("db", "table", "another_alias")).get()
-    );
+    auto tableRefMatch = queryContext->getTableRefMatch(std::make_shared<TableRef>("db", "table", "another_alias"));
+    BOOST_REQUIRE(tableRefMatch != nullptr);
+    BOOST_REQUIRE_EQUAL(*tableRef2, *tableRefMatch);
 
     // getting a table ref with a subset of the same values as an added TableRef should return the originally enetered object.
-    BOOST_REQUIRE_EQUAL(tableRef2.get(),
-        queryContext->getTableRefMatch(std::make_shared<TableRef>("", "table", "another_alias")).get()
-    );
-    BOOST_REQUIRE_EQUAL(tableRef2.get(),
-        queryContext->getTableRefMatch(std::make_shared<TableRef>("", "", "another_alias")).get()
-    );
-    BOOST_REQUIRE_EQUAL(tableRef1.get(), // <- notice it gets the first object because same db & table name!
-        queryContext->getTableRefMatch(std::make_shared<TableRef>("db", "table", "")).get()
-    );
-    BOOST_REQUIRE_EQUAL(tableRef1.get(),
-        queryContext->getTableRefMatch(std::make_shared<TableRef>("", "table", "")).get()
-    );
+    tableRefMatch = queryContext->getTableRefMatch(std::make_shared<TableRef>("", "table", "another_alias"));
+    BOOST_REQUIRE(tableRefMatch != nullptr);
+    BOOST_REQUIRE_EQUAL(*tableRef2, *tableRefMatch);
+    tableRefMatch = queryContext->getTableRefMatch(std::make_shared<TableRef>("", "", "another_alias"));
+    BOOST_REQUIRE(tableRefMatch != nullptr);
+    BOOST_REQUIRE_EQUAL(*tableRef2, *tableRefMatch);
+    tableRefMatch = queryContext->getTableRefMatch(std::make_shared<TableRef>("db", "table", ""));
+    BOOST_REQUIRE(tableRefMatch != nullptr);
+    BOOST_REQUIRE_EQUAL(*tableRef1, *tableRefMatch); // <- notice it gets the first object because same db & table name!
+    tableRefMatch = queryContext->getTableRefMatch(std::make_shared<TableRef>("", "table", ""));
+    BOOST_REQUIRE(tableRefMatch != nullptr);
+    BOOST_REQUIRE_EQUAL(*tableRef1.get(), *tableRefMatch);
 
     // getting a table ref with the alias in the table position should return the originally enetered object.
-    BOOST_REQUIRE_EQUAL(tableRef2.get(),
-        queryContext->getTableRefMatch(std::make_shared<TableRef>("", "another_alias", "")).get()
-    );
+    tableRefMatch = queryContext->getTableRefMatch(std::make_shared<TableRef>("", "another_alias", ""));
+    BOOST_REQUIRE(tableRefMatch != nullptr);
+    BOOST_REQUIRE_EQUAL(*tableRef2, *tableRefMatch);
 
     // getting a table ref with non-matching values should return nullptr.
     BOOST_REQUIRE_EQUAL(nullptr,
-        queryContext->getTableRefMatch(std::make_shared<TableRef>("", "", "some_other_alias")).get()
-    );
+                        queryContext->getTableRefMatch(std::make_shared<TableRef>("", "", "some_other_alias")));
     BOOST_REQUIRE_EQUAL(nullptr,
-        queryContext->getTableRefMatch(std::make_shared<TableRef>("", "some_other_table", "")).get()
-    );
+                        queryContext->getTableRefMatch(std::make_shared<TableRef>("", "some_other_table", "")));
     BOOST_REQUIRE_EQUAL(nullptr,
-        queryContext->getTableRefMatch(std::make_shared<TableRef>("some_other_db", "some_other_table", "")).get()
-    );
+                        queryContext->getTableRefMatch(std::make_shared<TableRef>("some_other_db", "some_other_table", "")));
 }
 
 

@@ -186,7 +186,8 @@ TablePlugin::applyLogical(query::SelectStmt& stmt,
         if (not context.addUsedTableRef(tableRef)) {
             throw std::logic_error("could not set alias for " + tableRef->sqlFragment());
         }
-        for (auto&& joinRef : tableRef->getJoins()){
+        // If the TableRef being added does have JoinRefs, add those to the list of used TableRefs.
+        for (auto&& joinRef : tableRef->getJoins()) {
             aliasSetter(joinRef->getRight());
         }
     };

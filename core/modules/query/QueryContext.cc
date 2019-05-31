@@ -37,6 +37,7 @@
 
 // Qserv headers
 #include "query/ColumnRef.h"
+#include "query/JoinRef.h"
 #include "sql/SqlConnection.h"
 #include "sql/SqlResults.h"
 
@@ -56,15 +57,23 @@ bool QueryContext::addUsedTableRef(std::shared_ptr<query::TableRef> const& table
     if (nullptr == tableRef) {
         return false;
     }
+    // TableRefs added from the FROM list can have JoinRefs, which are nonsensical anywhere but in the FROM
+    // list. To prevent these from leaking into other parts of the statement, copy the TableRef but omit the
+    // JoinRefs.
+    auto addTableRef = std::make_shared<query::TableRef>(
+            tableRef->getDb(), tableRef->getTable(), tableRef->getAlias());
     for (auto const& usedTableRef : _usedTableRefs) {
-        // At a minimum, make sure we aren't accepting a second tableRef with the same alias.
-        // It may worth adding more checks, e.g. if the alias is the same AND the db & table
-        // are the same, do something more fancy.
-        if (usedTableRef->getAlias() == tableRef->getAlias()) {
+        // If the TableRef is already represented in the list (fully & exactly - but without joins) then just
+        // return true.
+        if (*usedTableRef == *addTableRef) {
+            return true;
+        }
+        // At a minimum, make sure we aren't accepting a second tableRef with different db or table but the same alias
+        if (usedTableRef->getAlias() == addTableRef->getAlias()) {
             return false;
         }
     }
-    _usedTableRefs.push_back(tableRef);
+    _usedTableRefs.push_back(addTableRef);
     return true;
 }
 
@@ -72,6 +81,10 @@ bool QueryContext::addUsedTableRef(std::shared_ptr<query::TableRef> const& table
 std::shared_ptr<query::TableRef> QueryContext::getTableRefMatch(
         std::shared_ptr<query::TableRef const> const& tableRef) {
     if (nullptr == tableRef) {
+        return nullptr;
+    }
+    // This should not be used with TableRefs that contain a join.
+    if (not tableRef->isSimple()) {
         return nullptr;
     }
     for (auto&& usedTableRef : _usedTableRefs) {
