@@ -61,7 +61,7 @@ export LSST_LOG_CONFIG="${QSERV_RUN_DIR}/etc/log4cxx.worker.properties"
 # takes single argument - program name
 pid_file_name() {
     local pidfile=${PID_DIR}/$1.pid
-#    test "${1}${NODE_TYPE}" = "cmsdmaster" && pidfile=${PID_DIR}/$1.mangr.pid  &&& re-enable this
+    test "${1}${NODE_TYPE}" = "cmsdmaster" && pidfile=${PID_DIR}/$1.mangr.pid
     echo $pidfile
 }
 
