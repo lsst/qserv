@@ -337,13 +337,12 @@ BOOST_AUTO_TEST_CASE(ObjectSelfJoinDistance) {
     std::string stmt = "select count(*) from LSST.Object o1,LSST.Object o2 "
         "WHERE qserv_areaspec_box(5.5, 5.5, 6.1, 6.1) AND "
         "scisql_angSep(o1.ra_Test,o1.decl_Test,o2.ra_Test,o2.decl_Test) < 0.02";
-    std::string expected = "SELECT count(*) AS QS1_COUNT "
-        "FROM Subchunks_LSST_100.Object_100_%S\007S% AS o1,"
-        "Subchunks_LSST_100.Object_100_%S\007S% AS o2 "
-        "WHERE scisql_s2PtInBox(o1.ra_Test,o1.decl_Test,5.5,5.5,6.1,6.1)=1 "
-        "AND scisql_s2PtInBox(o2.ra_Test,o2.decl_Test,5.5,5.5,6.1,6.1)=1 "
-        "AND scisql_angSep(o1.ra_Test,o1.decl_Test,o2.ra_Test,o2.decl_Test)<0.02";
-
+    std::string expected = "SELECT count(*) AS `QS1_COUNT` "
+        "FROM Subchunks_LSST_100.Object_100_%S\007S% AS `o1`,"
+        "Subchunks_LSST_100.Object_100_%S\007S% AS `o2` "
+        "WHERE scisql_s2PtInBox(`o1`.ra_Test,`o1`.decl_Test,5.5,5.5,6.1,6.1)=1 "
+        "AND scisql_s2PtInBox(`o2`.ra_Test,`o2`.decl_Test,5.5,5.5,6.1,6.1)=1 "
+        "AND scisql_angSep(`o1`.ra_Test,`o1`.decl_Test,`o2`.ra_Test,`o2`.decl_Test)<0.02";
     std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, stmt);
     std::shared_ptr<QueryContext> context = qs->dbgGetContext();
     BOOST_CHECK(context);
@@ -378,11 +377,10 @@ BOOST_AUTO_TEST_CASE(AliasHandling) {
     std::string stmt = "select o1.ra_PS, o1.ra_PS_Sigma, s.dummy, Exposure.exposureTime "
         "from LSST.Object o1,  Source s, Exposure "
         "WHERE o1.objectIdObjTest = s.objectIdSourceTest AND Exposure.id = o1.exposureId;";
-    std::string expected = "SELECT o1.ra_PS AS`o1.ra_PS`,o1.ra_PS_Sigma AS`o1.ra_PS_Sigma`,"
-        "s.dummy AS`s.dummy`,`LSST.Exposure`.exposureTime AS`Exposure.exposureTime`"
-        "FROM LSST.Object_100 AS o1,LSST.Source_100 AS s,LSST.Exposure AS`LSST.Exposure`"
-        "WHERE o1.objectIdObjTest=s.objectIdSourceTest AND `LSST.Exposure`.id=o1.exposureId";
-
+    std::string expected = "SELECT `o1`.ra_PS AS `o1.ra_PS`,`o1`.ra_PS_Sigma AS `o1.ra_PS_Sigma`,"
+        "`s`.dummy AS `s.dummy`,`LSST.Exposure`.exposureTime AS `Exposure.exposureTime` "
+        "FROM LSST.Object_100 AS `o1`,LSST.Source_100 AS `s`,LSST.Exposure AS `LSST.Exposure` "
+        "WHERE `o1`.objectIdObjTest=`s`.objectIdSourceTest AND `LSST.Exposure`.id=`o1`.exposureId";
     std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, stmt);
     std::shared_ptr<QueryContext> context = qs->dbgGetContext();
     BOOST_CHECK(context);
@@ -397,10 +395,9 @@ BOOST_AUTO_TEST_CASE(AliasHandling) {
 
 BOOST_AUTO_TEST_CASE(SpatialRestr) {
     std::string stmt = "select count(*) from Object where qserv_areaspec_box(359.1, 3.16, 359.2,3.17);";
-    std::string expected = "SELECT count(*) AS QS1_COUNT "
-        "FROM LSST.Object_100 AS`LSST.Object`"
+    std::string expected = "SELECT count(*) AS `QS1_COUNT` "
+        "FROM LSST.Object_100 AS `LSST.Object` "
         "WHERE scisql_s2PtInBox(`LSST.Object`.ra_Test,`LSST.Object`.decl_Test,359.1,3.16,359.2,3.17)=1";
-
     std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, stmt);
     std::shared_ptr<QueryContext> context = qs->dbgGetContext();
     BOOST_CHECK(context);
@@ -415,8 +412,8 @@ BOOST_AUTO_TEST_CASE(SpatialRestr) {
 
 BOOST_AUTO_TEST_CASE(SpatialRestr2) { // Redundant?
     std::string stmt = "select count(*) from LSST.Object where qserv_areaspec_box(359.1, 3.16, 359.2,3.17);";
-    std::string expected = "SELECT count(*) AS QS1_COUNT "
-        "FROM LSST.Object_100 AS`LSST.Object`"
+    std::string expected = "SELECT count(*) AS `QS1_COUNT` "
+        "FROM LSST.Object_100 AS `LSST.Object` "
         "WHERE scisql_s2PtInBox(`LSST.Object`.ra_Test,`LSST.Object`.decl_Test,359.1,3.16,359.2,3.17)=1";
     std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, stmt);
     std::shared_ptr<QueryContext> context = qs->dbgGetContext();
@@ -456,11 +453,10 @@ BOOST_AUTO_TEST_CASE(ChunkDensity) {
 
 BOOST_AUTO_TEST_CASE(AltDbName) {
     std::string stmt = "select count(*) from Object where qserv_areaspec_box(359.1, 3.16, 359.2, 3.17);";
-    std::string expected = "SELECT count(*) AS QS1_COUNT FROM "
-        "rplante_PT1_2_u_pt12prod_im3000_qserv.Object_100 AS`rplante_PT1_2_u_pt12prod_im3000_qserv.Object`"
+    std::string expected = "SELECT count(*) AS `QS1_COUNT` FROM "
+        "rplante_PT1_2_u_pt12prod_im3000_qserv.Object_100 AS `rplante_PT1_2_u_pt12prod_im3000_qserv.Object` "
         "WHERE scisql_s2PtInBox(`rplante_PT1_2_u_pt12prod_im3000_qserv.Object`.ra,"
                                "`rplante_PT1_2_u_pt12prod_im3000_qserv.Object`.decl,359.1,3.16,359.2,3.17)=1";
-
     qsTest.defaultDb ="rplante_PT1_2_u_pt12prod_im3000_qserv";
     std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, stmt);
     std::shared_ptr<QueryContext> context = qs->dbgGetContext();
@@ -501,7 +497,7 @@ BOOST_AUTO_TEST_CASE(CountQuery) {
 
 BOOST_AUTO_TEST_CASE(CountQuery2) {
     std::string stmt = "SELECT count(*) from LSST.Source;";
-    std::string expected_100 = "SELECT count(*) AS QS1_COUNT FROM LSST.Source_100 AS`LSST.Source`";
+    std::string expected_100 = "SELECT count(*) AS `QS1_COUNT` FROM LSST.Source_100 AS `LSST.Source`";
 
     std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, stmt);
 
@@ -647,17 +643,17 @@ BOOST_AUTO_TEST_CASE(Expression) {
 BOOST_AUTO_TEST_CASE(dm646) {
     // non-chunked query
     std::string stmt = "SELECT DISTINCT foo FROM Filter f;";
-    std::string expected = "SELECT DISTINCT f.foo AS`foo`FROM LSST.Filter AS f";
+    std::string expected = "SELECT DISTINCT `f`.foo AS `foo` FROM LSST.Filter AS `f`";
     // FIXME: non-chunked query shouldn't require merge operation, see DM-3165
-    std::string expectedMerge = "SELECT DISTINCT`foo`AS`foo`";
+    std::string expectedMerge = "SELECT DISTINCT foo AS `foo`";
     auto queries = queryAnaHelper.getInternalQueries(qsTest, stmt);
     BOOST_CHECK_EQUAL(queries[0], expected);
     BOOST_CHECK_EQUAL(queries[1], expectedMerge);
 
     // chunked query
     stmt = "SELECT DISTINCT zNumObs FROM Object;";
-    expected = "SELECT DISTINCT`LSST.Object`.zNumObs AS`zNumObs`FROM LSST.Object_100 AS`LSST.Object`";
-    expectedMerge = "SELECT DISTINCT`zNumObs`AS`zNumObs`";
+    expected = "SELECT DISTINCT `LSST.Object`.zNumObs AS `zNumObs` FROM LSST.Object_100 AS `LSST.Object`";
+    expectedMerge = "SELECT DISTINCT zNumObs AS `zNumObs`";
     queries = queryAnaHelper.getInternalQueries(qsTest, stmt);
     BOOST_CHECK_EQUAL(queries[0], expected);
     BOOST_CHECK_EQUAL(queries[1], expectedMerge);
@@ -668,7 +664,7 @@ BOOST_AUTO_TEST_CASE(dm681) {
     std::string stmt = "SELECT foo FROM Filter f limit 5";
     std::string stmt2 = "SELECT foo FROM Filter f limit 5;";
     std::string stmt3 = "SELECT foo FROM Filter f limit 5;; ";
-    std::string expected = "SELECT f.foo AS`foo`FROM LSST.Filter AS f LIMIT 5";
+    std::string expected = "SELECT `f`.foo AS `foo` FROM LSST.Filter AS `f` LIMIT 5";
     auto queries = queryAnaHelper.getInternalQueries(qsTest, stmt);
     BOOST_CHECK_EQUAL(queries[0], expected);
     queries = queryAnaHelper.getInternalQueries(qsTest, stmt2);
@@ -691,7 +687,9 @@ BOOST_AUTO_TEST_CASE(FuncExprPred) {
     std::string stmt = "SELECT  o1.objectId "
         "FROM Object o1 "
         "WHERE ABS( (scisql_fluxToAbMag(o1.gFlux_PS)-scisql_fluxToAbMag(o1.rFlux_PS)) - (scisql_fluxToAbMag(o1.gFlux_PS)-scisql_fluxToAbMag(o1.rFlux_PS)) ) < 1;";
-    std::string expected = "SELECT o1.objectId AS`o1.objectId`FROM LSST.Object_100 AS o1 WHERE ABS((scisql_fluxToAbMag(o1.gFlux_PS)-scisql_fluxToAbMag(o1.rFlux_PS))-(scisql_fluxToAbMag(o1.gFlux_PS)-scisql_fluxToAbMag(o1.rFlux_PS)))<1";
+    std::string expected = "SELECT `o1`.objectId AS `o1.objectId` "
+        "FROM LSST.Object_100 AS `o1` "
+        "WHERE ABS((scisql_fluxToAbMag(`o1`.gFlux_PS)-scisql_fluxToAbMag(`o1`.rFlux_PS))-(scisql_fluxToAbMag(`o1`.gFlux_PS)-scisql_fluxToAbMag(`o1`.rFlux_PS)))<1";
     auto queries = queryAnaHelper.getInternalQueries(qsTest, stmt);
     BOOST_CHECK_EQUAL(queries[0], expected);
     stmt = "SELECT  o1.objectId, o2.objectId objectId2 "
@@ -699,11 +697,11 @@ BOOST_AUTO_TEST_CASE(FuncExprPred) {
         "WHERE scisql_angSep(o1.ra_Test, o1.decl_Test, o2.ra_Test, o2.decl_Test) < 0.00001 "
         "AND o1.objectId <> o2.objectId AND "
         "ABS( (scisql_fluxToAbMag(o1.gFlux_PS)-scisql_fluxToAbMag(o1.rFlux_PS)) - (scisql_fluxToAbMag(o2.gFlux_PS)-scisql_fluxToAbMag(o2.rFlux_PS)) ) < 1;";
-    expected = "SELECT o1.objectId AS`o1.objectId`,o2.objectId AS objectId2 "
-        "FROM Subchunks_LSST_100.Object_100_%S\007S% AS o1,Subchunks_LSST_100.Object_100_%S\007S% AS o2 "
-        "WHERE scisql_angSep(o1.ra_Test,o1.decl_Test,o2.ra_Test,o2.decl_Test)<0.00001 "
-        "AND o1.objectId<>o2.objectId AND "
-        "ABS((scisql_fluxToAbMag(o1.gFlux_PS)-scisql_fluxToAbMag(o1.rFlux_PS))-(scisql_fluxToAbMag(o2.gFlux_PS)-scisql_fluxToAbMag(o2.rFlux_PS)))<1";
+    expected = "SELECT `o1`.objectId AS `o1.objectId`,`o2`.objectId AS `objectId2` "
+        "FROM Subchunks_LSST_100.Object_100_%S\007S% AS `o1`,Subchunks_LSST_100.Object_100_%S\007S% AS `o2` "
+        "WHERE scisql_angSep(`o1`.ra_Test,`o1`.decl_Test,`o2`.ra_Test,`o2`.decl_Test)<0.00001 "
+        "AND `o1`.objectId<>`o2`.objectId AND "
+        "ABS((scisql_fluxToAbMag(`o1`.gFlux_PS)-scisql_fluxToAbMag(`o1`.rFlux_PS))-(scisql_fluxToAbMag(`o2`.gFlux_PS)-scisql_fluxToAbMag(`o2`.rFlux_PS)))<1";
     queries = queryAnaHelper.getInternalQueries(qsTest, stmt);
     BOOST_CHECK_EQUAL(queries[0], expected);
 }
@@ -715,7 +713,7 @@ BOOST_FIXTURE_TEST_SUITE(Match, QueryAnaFixture)
 
 BOOST_AUTO_TEST_CASE(MatchTableWithoutWhere) {
     std::string stmt = "SELECT * FROM RefObjMatch;";
-    std::string expected = "SELECT * FROM LSST.RefObjMatch_100 AS`LSST.RefObjMatch`WHERE "
+    std::string expected = "SELECT * FROM LSST.RefObjMatch_100 AS `LSST.RefObjMatch` WHERE "
                            "(refObjectId IS NULL OR flags<>2)";
     std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, stmt);
     std::shared_ptr<QueryContext> context = qs->dbgGetContext();
@@ -733,7 +731,7 @@ BOOST_AUTO_TEST_CASE(MatchTableWithoutWhere) {
 BOOST_AUTO_TEST_CASE(MatchTableWithWhere) {
     std::string stmt = "SELECT * FROM RefObjMatch WHERE "
                        "foo!=bar AND baz<3.14159;";
-    std::string expected = "SELECT * FROM LSST.RefObjMatch_100 AS`LSST.RefObjMatch`WHERE "
+    std::string expected = "SELECT * FROM LSST.RefObjMatch_100 AS `LSST.RefObjMatch` WHERE "
                            "(refObjectId IS NULL OR flags<>2) "
                            "AND `LSST.RefObjMatch`.foo!=`LSST.RefObjMatch`.bar AND `LSST.RefObjMatch`.baz<3.14159";
     std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, stmt);
@@ -761,10 +759,9 @@ BOOST_AUTO_TEST_CASE(FreeIndex) {
     // Equi-join using index and free-form syntax
     std::string stmt = "SELECT s.ra, s.decl, o.foo FROM Source s, Object o "
         "WHERE s.objectIdSourceTest=o.objectIdObjTest and o.objectIdObjTest = 430209694171136;";
-    std::string expected = "SELECT s.ra AS`s.ra`,s.decl AS`s.decl`,o.foo AS`o.foo`"
-        "FROM LSST.Source_100 AS s,LSST.Object_100 AS o "
-        "WHERE s.objectIdSourceTest=o.objectIdObjTest AND o.objectIdObjTest=430209694171136";
-
+    std::string expected = "SELECT `s`.ra AS `s.ra`,`s`.decl AS `s.decl`,`o`.foo AS `o.foo` "
+        "FROM LSST.Source_100 AS `s`,LSST.Object_100 AS `o` "
+        "WHERE `s`.objectIdSourceTest=`o`.objectIdObjTest AND `o`.objectIdObjTest=430209694171136";
     auto queries = queryAnaHelper.getInternalQueries(qsTest, stmt);
     BOOST_CHECK_EQUAL(queries[0], expected);
 }
@@ -774,11 +771,11 @@ BOOST_AUTO_TEST_CASE(SpecIndexUsing) {
     std::string stmt = "SELECT s.ra, s.decl, o.foo "
         "FROM Object o JOIN Source2 s USING (objectIdObjTest) JOIN Source2 s2 USING (objectIdObjTest) "
         "WHERE o.objectId = 430209694171136;";
-    std::string expected = "SELECT s.ra AS`s.ra`,s.decl AS`s.decl`,o.foo AS`o.foo`"
-        "FROM LSST.Object_100 AS o "
-        "JOIN LSST.Source2_100 AS s USING(objectIdObjTest) "
-        "JOIN LSST.Source2_100 AS s2 USING(objectIdObjTest) "
-        "WHERE o.objectId=430209694171136";
+    std::string expected = "SELECT `s`.ra AS `s.ra`,`s`.decl AS `s.decl`,`o`.foo AS `o.foo` "
+        "FROM LSST.Object_100 AS `o` "
+        "JOIN LSST.Source2_100 AS `s` USING(objectIdObjTest) "
+        "JOIN LSST.Source2_100 AS `s2` USING(objectIdObjTest) "
+        "WHERE `o`.objectId=430209694171136";
     auto queries = queryAnaHelper.getInternalQueries(qsTest, stmt);
     BOOST_CHECK_EQUAL(queries[0], expected);
 }
@@ -789,11 +786,11 @@ BOOST_AUTO_TEST_CASE(SpecIndexOn) {
         "JOIN Source s ON s.objectIdSourceTest = Object.objectIdObjTest "
         "JOIN Source s2 ON s.objectIdSourceTest = s2.objectIdSourceTest "
         "WHERE LSST.Object.objectId = 430209694171136;";
-    std::string expected = "SELECT s.ra AS`s.ra`,s.decl AS`s.decl`,o.foo AS`o.foo`"
-        "FROM LSST.Object_100 AS o "
-        "JOIN LSST.Source_100 AS s ON s.objectIdSourceTest=o.objectIdObjTest "
-        "JOIN LSST.Source_100 AS s2 ON s.objectIdSourceTest=s2.objectIdSourceTest "
-        "WHERE o.objectId=430209694171136";
+    std::string expected = "SELECT `s`.ra AS `s.ra`,`s`.decl AS `s.decl`,`o`.foo AS `o.foo` "
+        "FROM LSST.Object_100 AS `o` "
+        "JOIN LSST.Source_100 AS `s` ON `s`.objectIdSourceTest=`o`.objectIdObjTest "
+        "JOIN LSST.Source_100 AS `s2` ON `s`.objectIdSourceTest=`s2`.objectIdSourceTest "
+        "WHERE `o`.objectId=430209694171136";
     auto queries = queryAnaHelper.getInternalQueries(qsTest, stmt);
     BOOST_CHECK_EQUAL(queries[0], expected);
 }
@@ -806,9 +803,9 @@ BOOST_AUTO_TEST_CASE(NoSpec) {
     std::string stmt = "SELECT s1.foo, s2.foo AS s2_foo "
         "FROM Source s1 NATURAL LEFT JOIN Source s2 "
         "WHERE s1.bar = s2.bar;";
-    std::string expected = "SELECT s1.foo AS`s1.foo`,s2.foo AS s2_foo "
-        "FROM LSST.Source_100 AS s1 NATURAL LEFT OUTER JOIN LSST.Source_100 AS s2 "
-        "WHERE s1.bar=s2.bar";
+    std::string expected = "SELECT `s1`.foo AS `s1.foo`,`s2`.foo AS `s2_foo` "
+        "FROM LSST.Source_100 AS `s1` NATURAL LEFT OUTER JOIN LSST.Source_100 AS `s2` "
+        "WHERE `s1`.bar=`s2`.bar";
     std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, stmt);
     qs->addChunk(ChunkSpec::makeFake(100,true));
     auto i = qs->cQueryBegin();
@@ -969,16 +966,16 @@ BOOST_AUTO_TEST_CASE(Case01_1081) {
         "INNER JOIN RefObjMatch o2t ON (o.objectIdObjTest = o2t.objectId) "
         "INNER JOIN SimRefObject t ON (o2t.refObjectId = t.refObjectId) "
         "WHERE  closestToObj = 1 OR closestToObj is NULL;";
-    std::string expected_100_subchunk_core = "SELECT count(*) AS QS1_COUNT "
-        "FROM Subchunks_LSST_100.Object_100_%S\007S% AS o "
-        "INNER JOIN LSST.RefObjMatch_100 AS o2t ON o.objectIdObjTest=o2t.objectId "
-        "INNER JOIN Subchunks_LSST_100.SimRefObject_100_%S\007S% AS t ON o2t.refObjectId=t.refObjectId "
-        "WHERE closestToObj=1 OR closestToObj IS NULL";
-    std::string expected_100_subchunk_overlap = "SELECT count(*) AS QS1_COUNT "
-        "FROM Subchunks_LSST_100.Object_100_%S\007S% AS o "
-        "INNER JOIN LSST.RefObjMatch_100 AS o2t ON o.objectIdObjTest=o2t.objectId "
-        "INNER JOIN Subchunks_LSST_100.SimRefObjectFullOverlap_100_%S\007S% AS t ON o2t.refObjectId=t.refObjectId "
-        "WHERE closestToObj=1 OR closestToObj IS NULL";
+    std::string expected_100_subchunk_core = "SELECT count(*) AS `QS1_COUNT` "
+        "FROM Subchunks_LSST_100.Object_100_%S\007S% AS `o` "
+        "INNER JOIN LSST.RefObjMatch_100 AS `o2t` ON `o`.objectIdObjTest=`o2t`.objectId "
+        "INNER JOIN Subchunks_LSST_100.SimRefObject_100_%S\007S% AS `t` ON `o2t`.refObjectId=`t`.refObjectId "
+        "WHERE `o`.closestToObj=1 OR `o`.closestToObj IS NULL";
+    std::string expected_100_subchunk_overlap = "SELECT count(*) AS `QS1_COUNT` "
+        "FROM Subchunks_LSST_100.Object_100_%S\007S% AS `o` "
+        "INNER JOIN LSST.RefObjMatch_100 AS `o2t` ON `o`.objectIdObjTest=`o2t`.objectId "
+        "INNER JOIN Subchunks_LSST_100.SimRefObjectFullOverlap_100_%S\007S% AS `t` ON `o2t`.refObjectId=`t`.refObjectId "
+        "WHERE `o`.closestToObj=1 OR `o`.closestToObj IS NULL";
     std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, stmt);
     std::shared_ptr<QueryContext> context = qs->dbgGetContext();
     BOOST_CHECK(context);
