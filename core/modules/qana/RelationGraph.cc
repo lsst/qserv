@@ -194,7 +194,7 @@ bool isOuterJoin(JoinRef::Type jt) {
 
 /// `getColumnRef` returns the ColumnRef in `ve` if there is one.
 ColumnRef::Ptr getColumnRef(ValueExprPtr const& ve) {
-    if (!ve) {
+    if (not ve || not ve->isColumnRef()) {
         LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__ << " returning nullptr");
         return nullptr;
     }

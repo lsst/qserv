@@ -37,6 +37,7 @@
 // Qserv headers
 #include "qana/QueryNotEvaluableError.h"
 #include "qana/RelationGraph.h"
+#include "query/ColumnRef.h"
 #include "query/QueryTemplate.h"
 #include "util/IterableFormatter.h"
 
@@ -49,6 +50,18 @@ namespace {
 namespace lsst {
 namespace qserv {
 namespace qana {
+
+
+ColumnVertexMap::Entry::Entry(ColumnRefConstPtr const& c, Vertex* t) :
+    cr(c), vertices(1, t) {
+}
+
+
+void ColumnVertexMap::Entry::swap(Entry& e) {
+    cr.swap(e.cr);
+    vertices.swap(e.vertices);
+}
+
 
 ColumnVertexMap::ColumnVertexMap(Vertex& v) {
     LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__);
@@ -109,8 +122,8 @@ void ColumnVertexMap::fuse(ColumnVertexMap& m,
             if (eq(*cur, *i)) {
                 // Found an entry with the same column reference as the
                 // currrent entry
-                if (!cur->cr->getTable().empty() || (!natural &&
-                    std::find(firstCol, endCol, cur->cr->getColumn()) == endCol)) {
+                if (not cur->cr->getTableAlias().empty() ||
+                    (not natural && std::find(firstCol, endCol, cur->cr->getColumn()) == endCol)) {
                     // The column reference is qualified or is not a natural
                     // join or using column, so mark it as ambiguous.
                     cur->markAmbiguous();
@@ -184,5 +197,21 @@ std::ostream& operator<<(std::ostream& os, ColumnVertexMap const& cvm) {
     return os;
 }
 
+
+bool ColumnRefLt::operator()(query::ColumnRef const& a,
+                             query::ColumnRef const& b) const {
+    int c = a.getColumn().compare(b.getColumn());
+    if (c == 0) {
+        c = a.getTableAlias().compare(b.getTableAlias());
+    }
+    return c < 0;
+}
+
+
+bool ColumnRefEq::operator()(query::ColumnRef const& a,
+                             query::ColumnRef const& b) const {
+    return a.getTableAlias() == b.getTableAlias() &&
+           a.getColumn() == b.getColumn();
+}
 
 }}} // namespace lsst::qserv::qana
