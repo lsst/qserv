@@ -167,13 +167,13 @@ BOOST_DATA_TEST_CASE(PluginRewrite_1, statements_1, s) {
     auto&& fromTableRefs = selectStmt->getFromList().getTableRefList();
     BOOST_REQUIRE_EQUAL(fromTableRefs.size(), size_t(1));
     // below is a pointer compare, not value compare; verify they point at the same object.
-    BOOST_REQUIRE_EQUAL(selColRef->getTableRef().get(), fromTableRefList[0].get());
+    BOOST_REQUIRE_EQUAL(*selColRef->getTableRef(), *fromTableRefList[0]);
 
     // verify there is 1 value expr in the order by list, and that it is the same as the ValueExpr in the select list.
     std::vector<std::shared_ptr<query::ValueExpr>> orderByValExprList;
     selectStmt->getOrderBy().findValueExprs(orderByValExprList);
     BOOST_REQUIRE_EQUAL(orderByValExprList.size(), size_t(1));
-    BOOST_REQUIRE_EQUAL(selValExprList[0].get(), orderByValExprList[0].get());
+    BOOST_REQUIRE_EQUAL(*selValExprList[0], *orderByValExprList[0]);
 }
 
 
@@ -194,7 +194,7 @@ BOOST_AUTO_TEST_CASE(PluginRewrite_2) {
     BOOST_REQUIRE_EQUAL(fromTableRefs.size(), size_t(2));
     // verify all 3 of the select val expr tables now point to the one from table 'v'.
     for (int i = 0; i<3; ++i) {
-        BOOST_REQUIRE_EQUAL(selValExprList[i]->getColumnRef()->getTableRef(), fromTableRefs[0]);
+        BOOST_REQUIRE_EQUAL(*selValExprList[i]->getColumnRef()->getTableRef(), *fromTableRefs[0]);
     }
 
     std::vector<std::shared_ptr<query::ValueExpr>> whereValExprList;
