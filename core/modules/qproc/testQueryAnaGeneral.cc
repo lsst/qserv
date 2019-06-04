@@ -216,10 +216,10 @@ BOOST_AUTO_TEST_CASE(Triple) {
         "0.024 > scisql_angSep(o1.ra_Test,o1.decl_Test,o2.ra_Test,o2.decl_Test) and "
         "Source.objectIdSourceTest=o2.objectIdObjTest;";
     std::string expected =
-        "SELECT * FROM Subchunks_LSST_100.Object_100_%S\007S% AS o1,Subchunks_LSST_100.Object_100_%S\007S% AS o2,LSST.Source_100 AS`LSST.Source`"
-        "WHERE o1.id!=o2.id AND "
-        "0.024>scisql_angSep(o1.ra_Test,o1.decl_Test,o2.ra_Test,o2.decl_Test) AND "
-        "`LSST.Source`.objectIdSourceTest=o2.objectIdObjTest";
+        "SELECT * FROM Subchunks_LSST_100.Object_100_%S\007S% AS `o1`,Subchunks_LSST_100.Object_100_%S\007S% AS `o2`,LSST.Source_100 AS `LSST.Source` "
+        "WHERE `o1`.id!=`o2`.id AND "
+        "0.024>scisql_angSep(`o1`.ra_Test,`o1`.decl_Test,`o2`.ra_Test,`o2`.decl_Test) AND "
+        "`LSST.Source`.objectIdSourceTest=`o2`.objectIdObjTest";
     std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, stmt);
     std::shared_ptr<QueryContext> context = qs->dbgGetContext();
     //SelectStmt const& ss = qs->getStmt();
@@ -248,13 +248,11 @@ BOOST_AUTO_TEST_CASE(ObjectSourceJoin) {
     std::string stmt = "select * from LSST.Object o, Source s WHERE "
         "qserv_areaspec_box(2,2,3,3) AND o.objectIdObjTest = s.objectIdSourceTest;";
     std::string expected = "SELECT * "
-        "FROM LSST.Object_100 AS o,LSST.Source_100 AS s "
-        "WHERE scisql_s2PtInBox(o.ra_Test,o.decl_Test,2,2,3,3)=1 "
-        "AND scisql_s2PtInBox(s.raObjectTest,s.declObjectTest,2,2,3,3)=1 "
-        "AND o.objectIdObjTest=s.objectIdSourceTest";
-
+    "FROM LSST.Object_100 AS `o`,LSST.Source_100 AS `s` "
+    "WHERE scisql_s2PtInBox(`o`.ra_Test,`o`.decl_Test,2,2,3,3)=1 "
+    "AND scisql_s2PtInBox(`s`.raObjectTest,`s`.declObjectTest,2,2,3,3)=1 "
+    "AND `o`.objectIdObjTest=`s`.objectIdSourceTest";
     std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, stmt);
-
     std::shared_ptr<QueryContext> context = qs->dbgGetContext();
     BOOST_CHECK(context);
     BOOST_CHECK_EQUAL(context->dominantDb, std::string("LSST"));
@@ -283,11 +281,10 @@ BOOST_AUTO_TEST_CASE(ObjectSelfJoin) {
 BOOST_AUTO_TEST_CASE(ObjectSelfJoinQualified) {
     std::string stmt = "select count(*) from LSST.Object as o1, LSST.Object as o2 "
         "WHERE o1.objectIdObjTest = o2.objectIdObjTest and o1.iFlux > 0.4 and o2.gFlux > 0.4;";
-    std::string expected = "SELECT count(*) AS QS1_COUNT "
-        "FROM LSST.Object_100 AS o1,LSST.Object_100 AS o2 "
-        "WHERE o1.objectIdObjTest=o2.objectIdObjTest AND o1.iFlux>0.4 AND o2.gFlux>0.4";
+    std::string expected = "SELECT count(*) AS `QS1_COUNT` "
+    "FROM LSST.Object_100 AS `o1`,LSST.Object_100 AS `o2` "
+    "WHERE `o1`.objectIdObjTest=`o2`.objectIdObjTest AND `o1`.iFlux>0.4 AND `o2`.gFlux>0.4";
     std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, stmt);
-
     std::shared_ptr<QueryContext> context = qs->dbgGetContext();
     BOOST_CHECK(context);
     BOOST_CHECK_EQUAL(context->dominantDb, std::string("LSST"));
@@ -304,11 +301,10 @@ BOOST_AUTO_TEST_CASE(ObjectSelfJoinWithAs) {
     std::string stmt = "select o1.objectId, o2.objectI2, scisql_angSep(o1.ra_PS,o1.decl_PS,o2.ra_PS,o2.decl_PS) AS distance "
         "from LSST.Object as o1, LSST.Object as o2 "
         "where o1.foo <> o2.foo and o1.objectIdObjTest = o2.objectIdObjTest;";
-    std::string expected = "SELECT o1.objectId AS`o1.objectId`,o2.objectI2 AS`o2.objectI2`,"
-        "scisql_angSep(o1.ra_PS,o1.decl_PS,o2.ra_PS,o2.decl_PS) AS distance "
-        "FROM LSST.Object_100 AS o1,LSST.Object_100 AS o2 "
-        "WHERE o1.foo<>o2.foo AND o1.objectIdObjTest=o2.objectIdObjTest";
-
+    std::string expected = "SELECT `o1`.objectId AS `o1.objectId`,`o2`.objectI2 AS `o2.objectI2`,"
+        "scisql_angSep(`o1`.ra_PS,`o1`.decl_PS,`o2`.ra_PS,`o2`.decl_PS) AS `distance` "
+        "FROM LSST.Object_100 AS `o1`,LSST.Object_100 AS `o2` "
+        "WHERE `o1`.foo<>`o2`.foo AND `o1`.objectIdObjTest=`o2`.objectIdObjTest";
     std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, stmt);
     std::shared_ptr<QueryContext> context = qs->dbgGetContext();
     BOOST_CHECK(context);
