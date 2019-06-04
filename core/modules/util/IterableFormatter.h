@@ -132,6 +132,12 @@ private:
     static void _item_fmt(std::ostream& os, std::shared_ptr<T> const& item) {
         (nullptr == item) ? os << "nullptr" : os << *item;
     }
+    // specialization for pointer; allows the container to contain `pointers`s. If the pointer is null,
+    // "nullptr" will be printed.
+    template <typename T>
+    static void _item_fmt(std::ostream& os, T* item) {
+        (nullptr == item) ? os << "nullptr" : os << *item;
+    }
     // specialization for string
     static void _item_fmt(std::ostream& os, std::string const& item) { os << '"' << item << '"'; }
     static void _item_fmt(std::ostream& os, char const* item) { os << '"' << item << '"'; }
