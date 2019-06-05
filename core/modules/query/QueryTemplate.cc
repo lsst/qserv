@@ -69,7 +69,10 @@ public:
         std::stringstream ss;
         if (!db.empty()) { ss << db << "."; }
         if (!table.empty()) { ss << table << "."; }
+        bool addQuotes = column.find(".") != std::string::npos;
+        if (addQuotes) { ss << "`"; }
         ss << column;
+        if (addQuotes) { ss << "`"; }
         return ss.str();
     }
     virtual bool isDynamic() const { return true; }
