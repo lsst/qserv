@@ -41,7 +41,6 @@
 #include <vector>
 
 // Local headers
-#include "query/DbTablePair.h"
 #include "query/QueryTemplate.h"
 
 
@@ -94,8 +93,6 @@ public:
 
     bool isSimple() const { return _joinRefs.empty(); }
     JoinRefPtrVector const& getJoins() const { return _joinRefs; }
-    /// Get all the db+table names used by this TableRef and all of its joins.
-    void getRelatedDbTableInfo(std::vector<DbTablePair>& dbTablePairs) const;
 
     /**
      * @brief Verify the table is set and set a database if one is not set. Recurses to all join refs.

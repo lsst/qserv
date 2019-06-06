@@ -52,7 +52,6 @@
 #include "query/BetweenPredicate.h"
 #include "query/ColumnRef.h"
 #include "query/CompPredicate.h"
-#include "query/DbTablePair.h"
 #include "query/FromList.h"
 #include "query/FuncExpr.h"
 #include "query/InPredicate.h"

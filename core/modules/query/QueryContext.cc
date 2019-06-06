@@ -198,7 +198,6 @@ std::string QueryContext::columnToTablesMapToString() const {
 std::vector<std::string> QueryContext::getTableSchema(std::string const& dbName,
                                                       std::string const& tableName) {
     // Get the table schema from the local database.
-    DbTablePair dTPair(dbName, tableName);
     std::vector<std::string> colNames;
     sql::SqlConnection sqlConn{mysqlSchemaConfig};
 

@@ -41,7 +41,6 @@
 #include "mysql/MySqlConfig.h"
 #include "proto/ScanTableInfo.h"
 #include "qana/QueryMapping.h"
-#include "query/DbTablePair.h"
 #include "query/FromList.h"
 #include "query/ValueExpr.h"
 #include "global/stringTypes.h"
