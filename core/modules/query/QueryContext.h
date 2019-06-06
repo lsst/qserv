@@ -93,8 +93,8 @@ public:
     bool addUsedTableRef(std::shared_ptr<query::TableRef> const& tableRef);
 
     // Get a TableRef from the list of tables used by this query that matches the pased in TableRef.
-    std::shared_ptr<query::TableRef> getTableRefMatch const (
-            std::shared_ptr<query::TableRef> const& tableRef) const;
+    std::shared_ptr<query::TableRef> getTableRefMatch(
+        std::shared_ptr<query::TableRef> const& tableRef) const;
 
     // Get a TableRef from the list of tables used by this query that matches the pased in ColumnRef; the
     // column name must exist in the returned table, and the passed-in table must be a subset of or an
@@ -158,11 +158,23 @@ public:
         return queryMapping.get() && queryMapping->hasSubChunks(); }
 
 private:
-    // stores the names of columns that are in each table that is used in the FROM statement.
+
+    // Comparison function for _columnToTablesMap to make the key string compare case insensitive.
     struct ColumnToTableLessThan {
         bool operator()(std::string const& lhs, std::string const& rhs) const;
     };
-    std::map<std::string, DbTableSet, ColumnToTableLessThan> _columnToTablesMap;
+
+    // Comparison function for the TableRefSet that goes into the _columnToTablesMap, to compare the TableRef
+    // objects, not the pointers that own them.
+    struct TableRefSetLessThan {
+        bool operator()(std::shared_ptr<query::TableRef const> const& lhs,
+                        std::shared_ptr<query::TableRef const> const& rhs) const;
+    };
+
+    typedef std::set<std::shared_ptr<query::TableRef>, TableRefSetLessThan> TableRefSet;
+
+    // stores the names of columns that are in each table that is used in the FROM statement.
+    std::map<std::string, TableRefSet, ColumnToTableLessThan> _columnToTablesMap;
 
     std::vector<std::shared_ptr<query::TableRef>> _usedTableRefs; ///< TableRefs from the FROM list
     std::vector<std::shared_ptr<query::ValueExpr>> _usedValueExprs; ///< ValueExprs from the SELECT list

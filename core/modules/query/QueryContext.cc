@@ -78,8 +78,8 @@ bool QueryContext::addUsedTableRef(std::shared_ptr<query::TableRef> const& table
 }
 
 
-std::shared_ptr<query::TableRef> QueryContext::getTableRefMatch const(
-        std::shared_ptr<query::TableRef const> const& tableRef) {
+std::shared_ptr<query::TableRef> QueryContext::getTableRefMatch(
+        std::shared_ptr<query::TableRef> const& tableRef) const {
     if (nullptr == tableRef) {
         return nullptr;
     }
@@ -100,23 +100,16 @@ std::shared_ptr<query::TableRef> QueryContext::getTableRefMatch const(
 
 
 std::vector<std::shared_ptr<query::TableRef>>
-QueryContext::getTableRefMatches(std::shared_ptr<query::ColumnRef const> const& columnRef) const {
+QueryContext::getTableRefMatches(std::shared_ptr<query::ColumnRef> const& columnRef) const {
     auto mapItr = _columnToTablesMap.find(columnRef->getColumn());
     if (_columnToTablesMap.end() == mapItr)
         return std::vector<std::shared_ptr<query::TableRef>>();
-
-    std::vector<std::shared_ptr<query::TableRef>> tablesWithColumn;
-    // make a TableRef for each DbTablePair in the map that matches the column, so we can test it/them.
-    for (auto const& dbTablePair : mapItr->second) {
-        tablesWithColumn.emplace_back(std::make_shared<query::TableRef>(dbTablePair.db, dbTablePair.table, ""));
-    }
-
     std::vector<std::shared_ptr<query::TableRef>> retTableRefs;
-    for (auto&& tableWithColumn : tablesWithColumn) {
-        if (columnRef->getTableRef()->isSubsetOf(*tableWithColumn)) {
-            retTableRefs.push_back(tableWithColumn);
-        } else if (columnRef->getTableRef()->isAliasedBy(*tableWithColumn)) {
-            retTableRefs.push_back(tableWithColumn);
+    for (auto&& tableRef : mapItr->second) {
+        if (columnRef->getTableRef()->isSubsetOf(*tableRef)) {
+            retTableRefs.push_back(tableRef);
+        } else if (columnRef->getTableRef()->isAliasedBy(*tableRef)) {
+            retTableRefs.push_back(tableRef);
         }
     }
     return retTableRefs;
@@ -159,17 +152,21 @@ void QueryContext::collectTopLevelTableSchema(FromList& fromList) {
 
 
 void QueryContext::collectTopLevelTableSchema(std::shared_ptr<query::TableRef> const& tableRef) {
-    DbTablePair dbTblPair(tableRef->getDb(), tableRef->getTable()); // DbTablePair has comparisons defined.
-    if (dbTblPair.db.empty()) dbTblPair.db = defaultDb;
-    LOGS(_log, LOG_LVL_DEBUG, "db=" << dbTblPair.db << " table=" << dbTblPair.table);
-    if (!dbTblPair.db.empty() && !dbTblPair.table.empty()) {
+
+    std::string db = tableRef->getDb();
+    if (db.empty()) db = defaultDb;
+    std::string table = tableRef->getTable();
+    LOGS(_log, LOG_LVL_DEBUG, "db=" << db << " table=" << table);
+    if (not db.empty() && not table.empty()) {
         // Get the columns in the table from the DB schema and put them in the tableColumnMap.
-        auto columns = getTableSchema(dbTblPair.db, dbTblPair.table);
+        auto columns = getTableSchema(db, table);
         if (!columns.empty()) {
             for (auto const& col : columns) {
-                LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__ << "adding " << dbTblPair << " for column:" << col);
-                DbTableSet& st = _columnToTablesMap[col];
-                st.insert(dbTblPair);
+                // note that we don't copy the join into the new table ref; keep the new TableRef "simple".
+                auto addTableRef = std::make_shared<query::TableRef>(db, table, tableRef->getAlias());
+                LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__ << "adding " << *addTableRef << " for column:" << col);
+                auto& tableRefSet = _columnToTablesMap[col];
+                tableRefSet.insert(addTableRef);
             }
         }
     }
@@ -183,16 +180,16 @@ void QueryContext::collectTopLevelTableSchema(std::shared_ptr<query::TableRef> c
 
 
 std::string QueryContext::columnToTablesMapToString() const {
-    std::string str;
+    std::ostringstream os;
     for (auto const& elem : _columnToTablesMap) {
-        str += elem.first + "( "; // column name
-        DbTableSet const& dbTblSet = elem.second;
-        for (auto const& dbTbl : dbTblSet) {
-            str += dbTbl.db + "." + dbTbl.table + " ";
+        os << elem.first <<  "( "; // column name
+        auto const& tableRefSet = elem.second;
+        for (auto const& tableRef : tableRefSet) {
+            os << *tableRef;
         }
-        str += ") ";
+        os << ") ";
     }
-    return str;
+    return os.str();
 }
 
 
@@ -233,5 +230,15 @@ bool QueryContext::ColumnToTableLessThan::operator()(std::string const& lhs, std
     std::transform(r.begin(), r.end(), r.begin(), [](unsigned char c){ return tolower(c); });
     return l < r;
 }
+
+
+bool QueryContext::TableRefSetLessThan::operator()(std::shared_ptr<query::TableRef const> const& lhs,
+        std::shared_ptr<query::TableRef const> const& rhs) const {
+    if (nullptr == lhs || nullptr == rhs) {
+        throw std::runtime_error("nullptr in TableRefSetLessThan");
+    }
+    return *lhs < *rhs;
+}
+
 
 }}} // namespace lsst::qserv::query
