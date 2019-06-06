@@ -110,6 +110,8 @@ public:
     bool operator!=(const ColumnRef& rhs) const { return false == (*this == rhs); }
     bool operator<(const ColumnRef& rhs) const;
 
+    std::string sqlFragment() const;
+
 private:
     // The TableRef in a ColumnRef should always be "simple" (have no joins). Right now this is enforced
     // simply because the only way a TableRef is set here is in the implementation of this class.

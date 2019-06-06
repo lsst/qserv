@@ -85,8 +85,6 @@ public:
     std::string userName{"default"}; ///< unused, but reserved.
 
     mysql::MySqlConfig const mysqlSchemaConfig; ///< Used to connect to a database with the schema.
-    std::map<std::string, DbTableSet> columnToTablesMap;
-
 
     proto::ScanInfo scanInfo; // Tables scanned (for shared scans)
 
@@ -95,8 +93,15 @@ public:
     bool addUsedTableRef(std::shared_ptr<query::TableRef> const& tableRef);
 
     // Get a TableRef from the list of tables used by this query that matches the pased in TableRef.
-    std::shared_ptr<query::TableRef> getTableRefMatch(
-            std::shared_ptr<query::TableRef const> const& tableRef);
+    std::shared_ptr<query::TableRef> getTableRefMatch const (
+            std::shared_ptr<query::TableRef> const& tableRef) const;
+
+    // Get a TableRef from the list of tables used by this query that matches the pased in ColumnRef; the
+    // column name must exist in the returned table, and the passed-in table must be a subset of or an
+    // alias-equivalent (where the db is empty, and the table name is the same as the alias name of the
+    // returned table)
+    std::vector<std::shared_ptr<query::TableRef>> getTableRefMatches(
+        std::shared_ptr<query::ColumnRef> const& columnRef) const;
 
     /**
      * @brief Add a ValueExpr that is used in the SELECT list.
@@ -131,6 +136,9 @@ public:
     std::shared_ptr<RestrList> restrictors;
 
     void collectTopLevelTableSchema(FromList& fromList);
+    // todo pick a better name for this:
+    void collectTopLevelTableSchema(std::shared_ptr<query::TableRef> const& tableRef);
+
     std::string columnToTablesMapToString() const;
     std::vector<std::string> getTableSchema(std::string const& dbName, std::string const& tableName);
 
@@ -150,6 +158,12 @@ public:
         return queryMapping.get() && queryMapping->hasSubChunks(); }
 
 private:
+    // stores the names of columns that are in each table that is used in the FROM statement.
+    struct ColumnToTableLessThan {
+        bool operator()(std::string const& lhs, std::string const& rhs) const;
+    };
+    std::map<std::string, DbTableSet, ColumnToTableLessThan> _columnToTablesMap;
+
     std::vector<std::shared_ptr<query::TableRef>> _usedTableRefs; ///< TableRefs from the FROM list
     std::vector<std::shared_ptr<query::ValueExpr>> _usedValueExprs; ///< ValueExprs from the SELECT list
 };

@@ -198,6 +198,15 @@ bool ColumnRef::equal(ColumnRef const& rhs, bool useAlias) const {
 }
 
 
+std::string ColumnRef::sqlFragment() const {
+    QueryTemplate qt;
+    renderTo(qt);
+    std::ostringstream os;
+    os << qt;
+    return os.str();
+}
+
+
 bool ColumnRef::lessThan(ColumnRef const& rhs, bool useAlias) const {
     if (_tableRef->lessThan(*rhs._tableRef, useAlias)) {
         return true;

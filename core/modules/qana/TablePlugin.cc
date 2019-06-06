@@ -107,11 +107,17 @@ void matchTableRefs(lsst::qserv::query::QueryContext& context,
         std::vector<std::shared_ptr<lsst::qserv::query::ColumnRef>> columnRefs;
         valueExpr->findColumnRefs(columnRefs);
         for (auto& columnRef : columnRefs) {
-            auto tableRef = columnRef->getTableRef();
-            auto tableRefMatch = context.getTableRefMatch(tableRef);
-            if (nullptr != tableRefMatch) {
-                columnRef->setTable(tableRefMatch);
+            auto tableRefMatchVec = context.getTableRefMatches(columnRef);
+            // todo I think there are cases where it's ok to find 0 matches.
+            // it also may be ok to find more than 1, and just use the first? TBD.
+            if (tableRefMatchVec.size() != 1) {
+                std::ostringstream os;
+                os << "Could not find a single table ref match for " << *columnRef <<
+                    ", found:" << lsst::qserv::util::printable(tableRefMatchVec);
+                throw std::logic_error(os.str());
             }
+            LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__ << " replacing tableRef in " << *columnRef << " with " << *tableRefMatchVec[0]);
+            columnRef->setTable(tableRefMatchVec[0]);
         }
     }
 }
@@ -153,35 +159,24 @@ TablePlugin::applyLogical(query::SelectStmt& stmt,
         }
     }
 
-    // make sure the TableRefs in the from list are all completetly populated (db AND table)
     query::TableRefList& fromListTableRefs = fromList.getTableRefList();
-    for (auto&& tableRef : fromListTableRefs) {
-        tableRef->verifyPopulated(context.defaultDb);
-    }
 
-    // update the dominant db in the context ("dominant" is not the same as the default db)
-    if (fromListTableRefs.size() > 0) {
-        context.dominantDb = fromListTableRefs[0]->getDb();
-        _dominantDb = context.dominantDb;
-    }
-
-    // Add aliases to all table references in the from-list (if
-    // they don't exist already) and then patch the other clauses so
-    // that they refer to the aliases.
+    // Add aliases to all table references in the from-list (if they don't exist already) and then patch the
+    // other clauses so that they refer to the aliases.
     //
-    // The purpose of this is to confine table name references to the
-    // from-list so that the later table-name substitution is confined
-    // to modifying the from-list.
+    // The purpose of this is to confine table name references to the from-list so that the later table-name
+    // substitution is confined to modifying the from-list.
     //
-    // Note also that this must happen after the default db context
-    // has been filled in, or alias lookups will be incorrect.
-
+    // Note also that this must happen after the default db context has been filled in, or alias lookups will
+    // be incorrect. <- NPTODO is this true? What alias lookups will be incorrect?
     std::function<void(query::TableRef::Ptr)> aliasSetter = [&] (query::TableRef::Ptr tableRef) {
         if (nullptr == tableRef) {
             return;
         }
         if (not tableRef->hasAlias()) {
-            tableRef->setAlias(tableRef->getDb() + "." + tableRef->getTable());
+            tableRef->setAlias(tableRef->hasDb() ?
+                                    tableRef->getDb() + "." + tableRef->getTable() :
+                                    tableRef->getTable());
         }
         if (not context.addUsedTableRef(tableRef)) {
             throw std::logic_error("could not set alias for " + tableRef->sqlFragment());
@@ -192,6 +187,17 @@ TablePlugin::applyLogical(query::SelectStmt& stmt,
         }
     };
     std::for_each(fromListTableRefs.begin(), fromListTableRefs.end(), aliasSetter);
+
+    // make sure the TableRefs in the from list are all completetly populated (db AND table)
+    for (auto&& tableRef : fromListTableRefs) {
+        tableRef->verifyPopulated(context.defaultDb);
+    }
+
+    // update the dominant db in the context ("dominant" is not the same as the default db)
+    if (fromListTableRefs.size() > 0) {
+        context.dominantDb = fromListTableRefs[0]->getDb();
+        _dominantDb = context.dominantDb;
+    }
 
     matchTableRefs(context, *stmt.getSelectList().getValueExprList());
 
