@@ -197,26 +197,11 @@ std::string QueryContext::columnToTablesMapToString() const {
 /// used to map column names to particular tables.
 std::vector<std::string> QueryContext::getTableSchema(std::string const& dbName,
                                                       std::string const& tableName) {
-    // Get the table schema from the local database.
     std::vector<std::string> colNames;
     sql::SqlConnection sqlConn{mysqlSchemaConfig};
-
-    // SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS
-    // WHERE table_name = 'tbl_name' AND table_schema = 'db_name'
-    std::string sql("SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS ");
-    sql += "WHERE table_name = '" + tableName + "' " +
-           "AND table_schema = '" + dbName + "'";
-    sql::SqlResults results;
     sql::SqlErrorObject errObj;
-    if (not sqlConn.runQuery(sql, results, errObj)) {
-        LOGS(_log, LOG_LVL_WARN, "getTableSchema query failed: " << sql);
-        return colNames;
-    }
-
-    int j = 0;
-    for (auto const& row : results) {
-        colNames.emplace_back(row[0].first, row[0].second);
-        ++j;
+    if (not sqlConn.listColumns(colNames, errObj, dbName, tableName)) {
+        LOGS(_log, LOG_LVL_ERROR, "getTableSchema query failed.");
     }
     return colNames;
 }

@@ -387,6 +387,38 @@ SqlConnection::listTables(std::vector<std::string>& v,
     return results.extractFirstColumn(v, errObj);
 }
 
+bool
+SqlConnection::listColumns(std::vector<std::string>& columns,
+                            SqlErrorObject& errObj,
+                            std::string const& dbName,
+                            std::string const& tableName) {
+    columns.clear();
+    if (!connectToDb(errObj))
+        return false;
+    if (!dbExists(dbName, errObj)) {
+        errObj.addErrMsg("Can't list columns for db " + dbName + "." + tableName +
+                " because the database does not exist.");
+        return false;
+    }
+    if (!tableExists(tableName, errObj, dbName)) {
+        errObj.addErrMsg("Can't list columns for db " + dbName + "." + tableName +
+                " because the table does not exist.");
+        return false;
+    }
+    std::string sql("SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS "
+                    "WHERE table_name = '" + tableName + "' " +
+                    "AND table_schema = '" + dbName + "'");
+    sql::SqlResults results;
+    if (not runQuery(sql, results, errObj)) {
+        LOGS(_log, LOG_LVL_WARN, "listColumns query failed: " << sql);
+        return false;
+    }
+    for (auto const& row : results) {
+        columns.emplace_back(row[0].first, row[0].second);
+    }
+    return true;
+}
+
 std::string
 SqlConnection::getActiveDbName() const {
     return _connection->getConfig().dbName;
