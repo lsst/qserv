@@ -94,6 +94,7 @@
 #include "query/ColumnRef.h"
 #include "query/FromList.h"
 #include "query/JoinRef.h"
+#include "query/QueryTemplate.h"
 #include "query/SelectList.h"
 #include "query/SelectStmt.h"
 #include "query/ValueExpr.h"
@@ -227,18 +228,36 @@ std::string UserQuerySelect::getResultQuery() const {
         } else {
             // add a column that describes the top-level ValueExpr
             auto newValueExpr = std::make_shared<query::ValueExpr>();
-            auto newColumnRef = query::ColumnRef::newShared("", "", valueExpr->getAlias());
-            auto newValueFactor = query::ValueFactor::newColumnRefFactor(newColumnRef);
-            newValueExpr->addValueFactor(newValueFactor);
-            if (valueExpr->isColumnRef()) {
-                if (not valueExpr->getAliasIsUserDefined()) {
-                    newValueExpr->setAlias(valueExpr->getColumnRef()->getColumn());
-                }
+            // If the value is a column ref and there was not a user defined alias then the TablePlugin will
+            // have assigned an alias that included the table name. We don't want that table name to appear
+            // in the results in that case, so just assign the column.
+            // Otherwise, take the alias.
+            if (valueExpr->isColumnRef() && not valueExpr->getAliasIsUserDefined()) {
+                auto newColumnRef = query::ColumnRef::newShared("", "", valueExpr->getAlias());
+                auto newValueFactor = query::ValueFactor::newColumnRefFactor(newColumnRef);
+                newValueExpr->setAlias(valueExpr->getColumnRef()->getColumn());
+                newValueExpr->addValueFactor(newValueFactor);
+            } else {
+                auto newColumnRef = query::ColumnRef::newShared("", "", "`" + valueExpr->getAlias() + "`");
+                auto newValueFactor = query::ValueFactor::newColumnRefFactor(newColumnRef);
+                newValueExpr->setAlias(valueExpr->getAlias());
+                newValueExpr->addValueFactor(newValueFactor);
             }
             selectList->addValueExpr(newValueExpr);
         }
     }
-    return "SELECT " + selectList->getGenerated() + " FROM " + getResultDb() + "." + getResultTableName();
+
+    // The SELECT list needs to define aliases in the result query, so that the columns we are selecting from
+    // the result table that may be mangled by internal handling of the query are restored to the column name
+    // that the user expects, by way of the alias defined here.
+    query::QueryTemplate qt;
+    qt.setAliasMode(query::QueryTemplate::DEFINE);
+    selectList->renderTo(qt);
+
+    std::string resultQuery =  "SELECT " + qt.sqlFragment() + " FROM " + getResultDb() + "."
+        + getResultTableName();
+    LOGS(_log, LOG_LVL_DEBUG, "made result query:" << resultQuery);
+    return resultQuery;
 }
 
 

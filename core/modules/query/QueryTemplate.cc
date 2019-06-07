@@ -69,7 +69,11 @@ public:
         std::stringstream ss;
         if (!db.empty()) { ss << db << "."; }
         if (!table.empty()) { ss << table << "."; }
-        bool addQuotes = column.find(".") != std::string::npos;
+        // If the column has a dot in it, and does not already have quote character(s) in it, then do quote
+        // it. (This check could be made more exact by checking if the first and last characters are
+        // backticks, but since any backtick in the column should be the first and last character, and any
+        // that is not would be nonsensical, I don't think it matters or is worth the complexity.)
+        bool addQuotes = column.find(".") != std::string::npos && column.find("`") == std::string::npos;
         if (addQuotes) { ss << "`"; }
         ss << column;
         if (addQuotes) { ss << "`"; }

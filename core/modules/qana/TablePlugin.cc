@@ -93,7 +93,8 @@ void matchValueExprs(lsst::qserv::query::QueryContext& context, CLAUSE_T & claus
 // Change the contents of the ValueExprs to use the TableRef objects that are stored in the context, instead
 // of allowing these ValueExprs to own their own unique TableRef objects.
 void matchTableRefs(lsst::qserv::query::QueryContext& context,
-                    lsst::qserv::query::ValueExprPtrVector& valueExprs) {
+                    lsst::qserv::query::ValueExprPtrVector& valueExprs,
+                    bool matchIsRequired) {
     for (auto&& valueExpr : valueExprs) {
         if (valueExpr->isStar()) {
             auto valueFactor = valueExpr->getFactor();
@@ -110,23 +111,26 @@ void matchTableRefs(lsst::qserv::query::QueryContext& context,
             auto tableRefMatchVec = context.getTableRefMatches(columnRef);
             // todo I think there are cases where it's ok to find 0 matches.
             // it also may be ok to find more than 1, and just use the first? TBD.
-            if (tableRefMatchVec.size() != 1) {
-                std::ostringstream os;
-                os << "Could not find a single table ref match for " << *columnRef <<
-                    ", found:" << lsst::qserv::util::printable(tableRefMatchVec);
-                throw std::logic_error(os.str());
+            if (tableRefMatchVec.size() == 0) {
+                if (matchIsRequired) {
+                    std::ostringstream os;
+                    os << "Could not find a single table ref match for " << *columnRef <<
+                        ", found:" << lsst::qserv::util::printable(tableRefMatchVec);
+                    throw std::logic_error(os.str());
+                }
+            } else {
+                LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__ << " replacing tableRef in " << *columnRef << " with " << *tableRefMatchVec[0]);
+                columnRef->setTable(tableRefMatchVec[0]);
             }
-            LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__ << " replacing tableRef in " << *columnRef << " with " << *tableRefMatchVec[0]);
-            columnRef->setTable(tableRefMatchVec[0]);
         }
     }
 }
 
 template <typename CLAUSE_T>
-void matchTableRefs(lsst::qserv::query::QueryContext& context, CLAUSE_T & clause) {
+void matchTableRefs(lsst::qserv::query::QueryContext& context, CLAUSE_T & clause, bool matchIsRequired) {
     lsst::qserv::query::ValueExprPtrVector valueExprs;
     clause.findValueExprs(valueExprs);
-    matchTableRefs(context, valueExprs);
+    matchTableRefs(context, valueExprs, matchIsRequired);
 }
 
 } // namespace
@@ -199,22 +203,22 @@ TablePlugin::applyLogical(query::SelectStmt& stmt,
         _dominantDb = context.dominantDb;
     }
 
-    matchTableRefs(context, *stmt.getSelectList().getValueExprList());
+    matchTableRefs(context, *stmt.getSelectList().getValueExprList(), true);
 
     if (stmt.hasOrderBy()) {
-        matchTableRefs(context, stmt.getOrderBy());
+        matchTableRefs(context, stmt.getOrderBy(), false);
         matchValueExprs(context, stmt.getOrderBy());
     }
     if (stmt.hasWhereClause()) {
-        matchTableRefs(context, stmt.getWhereClause());
+        matchTableRefs(context, stmt.getWhereClause(), false);
         matchValueExprs(context, stmt.getWhereClause());
     }
     if (stmt.hasGroupBy()) {
-        matchTableRefs(context, stmt.getGroupBy());
+        matchTableRefs(context, stmt.getGroupBy(), false);
         matchValueExprs(context, stmt.getGroupBy());
     }
     if (stmt.hasHaving()) {
-        matchTableRefs(context, stmt.getHaving());
+        matchTableRefs(context, stmt.getHaving(), false);
         matchValueExprs(context, stmt.getHaving());
     }
 
@@ -228,7 +232,7 @@ TablePlugin::applyLogical(query::SelectStmt& stmt,
                 // so only patch on clauses.
                 auto&& onBoolTerm = joinSpec->getOn();
                 if (onBoolTerm) {
-                    matchTableRefs(context, *onBoolTerm);
+                    matchTableRefs(context, *onBoolTerm, false);
                     matchValueExprs(context, *onBoolTerm);
                 }
             }
