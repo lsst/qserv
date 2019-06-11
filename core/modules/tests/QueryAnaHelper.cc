@@ -79,6 +79,9 @@ std::shared_ptr<QuerySession> QueryAnaHelper::buildQuerySession(QuerySession::Te
         return querySession;
     }
     querySession->analyzeQuery(stmt, stmtIR);
+    if (querySession->getError() != "") {
+        throw std::runtime_error("querySession error:" + querySession->getError());
+    }
 
     if (LOG_CHECK_LVL(_log, LOG_LVL_DEBUG)) {
         std::shared_ptr<ConstraintVector> cvRaw(querySession->getConstraints());

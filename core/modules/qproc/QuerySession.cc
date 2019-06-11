@@ -290,7 +290,7 @@ void QuerySession::finalize() {
 
 
 QuerySession::QuerySession(Test& t)
-    : _css(t.css), _defaultDb(t.defaultDb) {
+    : _css(t.css), _defaultDb(t.defaultDb), _mysqlSchemaConfig(t.mysqlSchemaConfig) {
     _initContext();
 }
 
