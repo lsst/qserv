@@ -44,6 +44,8 @@
 #include "query/TestFactory.h"
 #include "query/ValueFactor.h"
 #include "query/WhereClause.h"
+#include "sql/MockSql.h"
+#include "sql/SqlConnection.h"
 #include "util/IterableFormatter.h"
 
 // Boost unit test header
@@ -54,8 +56,29 @@
 using namespace lsst::qserv;
 using lsst::qserv::query::TestFactory;
 
+
+class SqlConnectionForTest : public sql::MockSql {
+public:
+    bool listColumns(std::vector<std::string>& columns,
+                     lsst::qserv::sql::SqlErrorObject&,
+                     std::string const& dbName,
+                     std::string const& tableName) override{
+        // The QueryContext gets all the columns in each table used by the query and stores this information
+        // for lookup later. For this test this class stubs the SqlConnection object and this names the
+        // columns that are used, from the Object table, in the unit tests in this file.
+        if (tableName == "Object") {
+            columns.push_back("objectId");
+            columns.push_back("ra_PS");
+            columns.push_back("decl_PS");
+        }
+        return true;
+    }
+};
+
+
 struct TestFixture {
-    TestFixture(void) {
+    TestFixture(void) :
+            schemaCfg(std::make_shared<SqlConnectionForTest>()) {
         std::string kvMapPath = "./core/modules/qana/testPlugins.kvmap"; // (from testPlugins was: FIXME ??)
         std::ifstream stream(kvMapPath);
         css = lsst::qserv::css::CssAccess::createFromStream(stream, ".");
@@ -99,23 +122,23 @@ struct TestData {
              std::string const& table_,
              std::string const& tableAlias_)
     : stmt(stmt_)
-    , db(db_)
-    , table(table_)
-    , tableAlias(tableAlias_)
+    , expectedDb(db_)
+    , expectedTable(table_)
+    , expectedTableAlias(tableAlias_)
     {}
 
     std::string stmt;
-    std::string db;
-    std::string table;
-    std::string tableAlias;
+    std::string expectedDb;
+    std::string expectedTable;
+    std::string expectedTableAlias;
 };
 
 std::ostream& operator<<(std::ostream& os, TestData const& testData) {
     os << "TestData(";
     os << "stmt:" << testData.stmt;
-    os << "db:" << testData.db;
-    os << "table:" << testData.table;
-    os << "tableAlias:" << testData.tableAlias;
+    os << "expected db:" << testData.expectedDb;
+    os << "expected table:" << testData.expectedTable;
+    os << "expected tableAlias:" << testData.expectedTableAlias;
     os << ")";
     return os;
 }
@@ -150,13 +173,14 @@ static const std::vector<TestData> statements_1 {
 // same as the one in the SELECT list, and that the ValueExpr in the SELECT list is the same as the one
 // in the ORDER BY clause.
 BOOST_DATA_TEST_CASE(PluginRewrite_1, statements_1, s) {
+
     auto&& selectStmt = makeStmtAndRunLogical(s.stmt, css, schemaCfg);
 
     auto&& fromTableRefList = selectStmt->getFromList().getTableRefList();
     BOOST_REQUIRE_EQUAL(fromTableRefList.size(), size_t(1));
-    BOOST_REQUIRE_EQUAL(fromTableRefList[0]->getDb(), s.db);
-    BOOST_REQUIRE_EQUAL(fromTableRefList[0]->getTable(), s.table);
-    BOOST_REQUIRE_EQUAL(fromTableRefList[0]->getAlias(), s.tableAlias);
+    BOOST_REQUIRE_EQUAL(fromTableRefList[0]->getDb(), s.expectedDb);
+    BOOST_REQUIRE_EQUAL(fromTableRefList[0]->getTable(), s.expectedTable);
+    BOOST_REQUIRE_EQUAL(fromTableRefList[0]->getAlias(), s.expectedTableAlias);
 
     // verify there is 1 value expr in the select list, and that it's a ColumnRef.
     auto&& selValExprList = *selectStmt->getSelectList().getValueExprList();
@@ -166,7 +190,6 @@ BOOST_DATA_TEST_CASE(PluginRewrite_1, statements_1, s) {
     auto&& selColRef = selValExprList[0]->getFactor()->getColumnRef();
     auto&& fromTableRefs = selectStmt->getFromList().getTableRefList();
     BOOST_REQUIRE_EQUAL(fromTableRefs.size(), size_t(1));
-    // below is a pointer compare, not value compare; verify they point at the same object.
     BOOST_REQUIRE_EQUAL(*selColRef->getTableRef(), *fromTableRefList[0]);
 
     // verify there is 1 value expr in the order by list, and that it is the same as the ValueExpr in the select list.

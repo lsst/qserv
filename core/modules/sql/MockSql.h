@@ -74,6 +74,12 @@ public:
                             std::string const& prefixed="",
                             std::string const& dbName="") {
         return false; }
+    virtual bool listColumns(std::vector<std::string>&,
+                            SqlErrorObject&,
+                            std::string const& dbName,
+                            std::string const& tableName) {
+
+        return false; }
 
     virtual std::string getActiveDbName() const { return std::string(); }
 

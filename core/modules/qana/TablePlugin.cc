@@ -172,7 +172,13 @@ TablePlugin::applyLogical(query::SelectStmt& stmt,
     // substitution is confined to modifying the from-list.
     //
     // Note also that this must happen after the default db context has been filled in, or alias lookups will
-    // be incorrect. <- NPTODO is this true? What alias lookups will be incorrect?
+    // be incorrect.
+
+    // make sure the TableRefs in the from list are all completetly populated (db AND table)
+    for (auto&& tableRef : fromListTableRefs) {
+        tableRef->verifyPopulated(context.defaultDb);
+    }
+
     std::function<void(query::TableRef::Ptr)> aliasSetter = [&] (query::TableRef::Ptr tableRef) {
         if (nullptr == tableRef) {
             return;
@@ -182,6 +188,7 @@ TablePlugin::applyLogical(query::SelectStmt& stmt,
                                     tableRef->getDb() + "." + tableRef->getTable() :
                                     tableRef->getTable());
         }
+        LOGS(_log, LOG_LVL_DEBUG, "adding used table ref:" << *tableRef);
         if (not context.addUsedTableRef(tableRef)) {
             throw std::logic_error("could not set alias for " + tableRef->sqlFragment());
         }
@@ -191,11 +198,6 @@ TablePlugin::applyLogical(query::SelectStmt& stmt,
         }
     };
     std::for_each(fromListTableRefs.begin(), fromListTableRefs.end(), aliasSetter);
-
-    // make sure the TableRefs in the from list are all completetly populated (db AND table)
-    for (auto&& tableRef : fromListTableRefs) {
-        tableRef->verifyPopulated(context.defaultDb);
-    }
 
     // update the dominant db in the context ("dominant" is not the same as the default db)
     if (fromListTableRefs.size() > 0) {

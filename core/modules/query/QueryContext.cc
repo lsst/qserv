@@ -105,7 +105,11 @@ QueryContext::getTableRefMatches(std::shared_ptr<query::ColumnRef> const& column
     if (_columnToTablesMap.end() == mapItr)
         return std::vector<std::shared_ptr<query::TableRef>>();
     std::vector<std::shared_ptr<query::TableRef>> retTableRefs;
-    for (auto&& tableRef : mapItr->second) {
+    for (auto tableRef : mapItr->second) {
+        auto&& tableRefMatch = getTableRefMatch(tableRef);
+        if (tableRefMatch != nullptr) {
+            tableRef = tableRefMatch;
+        }
         if (columnRef->getTableRef()->isSubsetOf(*tableRef)) {
             retTableRefs.push_back(tableRef);
         } else if (columnRef->getTableRef()->isAliasedBy(*tableRef)) {
@@ -198,9 +202,9 @@ std::string QueryContext::columnToTablesMapToString() const {
 std::vector<std::string> QueryContext::getTableSchema(std::string const& dbName,
                                                       std::string const& tableName) {
     std::vector<std::string> colNames;
-    sql::SqlConnection sqlConn{mysqlSchemaConfig};
+    auto sqlConn = sql::SqlConnection::create(mysqlSchemaConfig);
     sql::SqlErrorObject errObj;
-    if (not sqlConn.listColumns(colNames, errObj, dbName, tableName)) {
+    if (not sqlConn->listColumns(colNames, errObj, dbName, tableName)) {
         LOGS(_log, LOG_LVL_ERROR, "getTableSchema query failed.");
     }
     return colNames;

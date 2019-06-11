@@ -25,7 +25,15 @@
 #define LSST_QSERV_MYSQL_MYSQLCONFIG_H
 
 // System headers
+#include <memory>
 #include <string>
+
+namespace lsst {
+namespace qserv {
+namespace sql {
+    class SqlConnection;
+}}}
+
 
 namespace lsst {
 namespace qserv {
@@ -78,6 +86,11 @@ public:
                 std::string const& socket, std::string const& db = "",
                 size_t maxtablesize = 0);
 
+    /**
+     * Create MySqlConfig instance with an SqlConnection that should be used instead of creating a new
+     * connection. Used to implement custom behavior for unit tests.
+     */
+    MySqlConfig(std::shared_ptr<sql::SqlConnection> sqlConnection) : _sqlConnection(sqlConnection) {}
 
     /** Overload output operator for current class
      *
@@ -101,6 +114,14 @@ public:
     std::string dbName;
     size_t maxTableSizeMB;
 
+    /**
+     * Get the connection object to use if one was provided.
+     * This is useful for unit testing.
+     */
+    std::shared_ptr<sql::SqlConnection> getConnection() const;
+
+private:
+    std::shared_ptr<sql::SqlConnection> _sqlConnection;
 };
 
 }}} // namespace lsst::qserv::mysql

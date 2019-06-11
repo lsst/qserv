@@ -81,6 +81,10 @@ private:
 /// class SqlConnection : Class for interacting with a MySQL database.
 class SqlConnection {
 public:
+
+    // Make a new SqlConnection object based on the passed-in config.
+    static std::shared_ptr<SqlConnection> create(mysql::MySqlConfig const& mysqlConfig);
+
     SqlConnection();
     SqlConnection(mysql::MySqlConfig const& sc, bool useThreadMgmt=false);
     virtual ~SqlConnection();

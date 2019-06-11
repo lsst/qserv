@@ -113,6 +113,13 @@ SqlResultIter::_setup(mysql::MySqlConfig const& sqlConfig,
 ////////////////////////////////////////////////////////////////////////
 // class SqlConnection
 ////////////////////////////////////////////////////////////////////////
+std::shared_ptr<SqlConnection> SqlConnection::create(mysql::MySqlConfig const& mysqlConfig) {
+    if (mysqlConfig.getConnection() != nullptr)
+        return mysqlConfig.getConnection();
+    return std::make_shared<SqlConnection>(mysqlConfig);
+}
+
+
 SqlConnection::SqlConnection()
     : _connection() {
 }
