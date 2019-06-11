@@ -59,6 +59,7 @@
 #include "global/intTypes.h"
 #include "proto/WorkerResponse.h"
 #include "proto/ProtoImporter.h"
+#include "qproc/DatabaseModels.h"
 #include "query/SelectStmt.h"
 #include "rproc/ProtoRowBuffer.h"
 #include "sql/Schema.h"
@@ -105,9 +106,11 @@ namespace rproc {
 ////////////////////////////////////////////////////////////////////////
 // InfileMerger public
 ////////////////////////////////////////////////////////////////////////
-InfileMerger::InfileMerger(InfileMergerConfig const& c)
+InfileMerger::InfileMerger(InfileMergerConfig const& c,
+                           std::shared_ptr<qproc::DatabaseModels> const& dm)
     : _config(c),
       _mysqlConn(_config.mySqlConfig),
+      _databaseModels(dm),
       _jobIdColName(JOB_ID_BASE_NAME) {
     _fixupTargetName();
     _maxResultTableSizeMB = _config.mySqlConfig.maxTableSizeMB;
@@ -353,7 +356,10 @@ bool InfileMerger::makeResultsTableForQuery(query::SelectStmt const& stmt, std::
     sql::SqlResults results;
     sql::SqlErrorObject getSchemaErrObj;
     std::string query = stmt.getQueryTemplate().sqlFragment();
+    /* &&&
     bool ok = _applySqlLocal(query, results, getSchemaErrObj); // &&& really should not be local, needs to be shared
+    */
+    bool ok = _databaseModels->applySql(query, results, getSchemaErrObj);
     if (not ok) {
         LOGS(_log, LOG_LVL_ERROR, "Failed to get schema:" << getSchemaErrObj.errMsg());
         errMsg = getSchemaErrObj.errMsg();

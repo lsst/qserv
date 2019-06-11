@@ -206,7 +206,8 @@ UserQueryFactory::newUserQuery(std::string const& aQuery,
                                                  qdispPool, _impl->queryStatsData);
             infileMergerConfig = std::make_shared<rproc::InfileMergerConfig>(_impl->mysqlResultConfig); // &&& This either need access information for master.localdomain, or the schema reading needs to be moved out of infilemerger.
         }
-        auto uq = std::make_shared<UserQuerySelect>(qs, messageStore, executive, infileMergerConfig,
+        auto uq = std::make_shared<UserQuerySelect>(qs, messageStore, executive, _impl->databaseModels,
+                                                    infileMergerConfig,
                                                     _impl->secondaryIndex, _impl->queryMetadata,
                                                     _impl->queryStatsData, _impl->qMetaCzarId,
                                                     qdispPool, errorExtra, async);
@@ -264,7 +265,8 @@ UserQueryFactory::Impl::Impl(czar::CzarConfig const& czarConfig)
     executiveConfig = std::make_shared<qdisp::Executive::Config>(
                           czarConfig.getXrootdFrontendUrl(),
                           czarConfig.getQMetaSecondsBetweenChunkUpdates());
-    secondaryIndex = std::make_shared<qproc::SecondaryIndex>(mysqlResultConfig); // &&& likely wrong, should be shared
+    //secondaryIndex = std::make_shared<qproc::SecondaryIndex>(mysqlResultConfig); // &&& likely wrong, table is in qservMeta
+    secondaryIndex = std::make_shared<qproc::SecondaryIndex>(czarConfig.getMySqlQmetaConfig()); // &&& correct?
     databaseModels = qproc::DatabaseModels::create(czarConfig.getCssConfigMap()); // &&& should probably have its own config
 
     // make one dedicated connection for results database

@@ -42,6 +42,7 @@ docker run --detach=true \
     --privileged \
     --cap-add sys_admin \
     --cap-add sys_ptrace \
+    -v /home/jgates/qserv/data-qserv:/qserv/data/qserv \
     -e "QSERV_MASTER=$MASTER" --name "$MASTER" -h "${MASTER}" "$MASTER_SHARED_IMAGE"
 MASTER_IP=$(docker inspect -f '{{ .NetworkSettings.IPAddress }}' $MASTER)
 HOSTFILE="${HOSTFILE}$MASTER_IP  master.localdomain
@@ -53,6 +54,7 @@ docker run --detach=true \
     --privileged \
     --cap-add sys_admin \
     --cap-add sys_ptrace \
+    -v /home/jgates/qserv/data-qserv:/qserv/data/qserv \
     -e "QSERV_MASTER=${i}" --name "$i" -h "${i}" "$MASTER_MULTI_IMAGE"
 done
 

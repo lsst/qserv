@@ -47,23 +47,26 @@
 namespace lsst {
 namespace qserv {
 namespace mysql {
-    class MySqlConfig;
+class MySqlConfig;
 }
 namespace proto {
-    class ProtoHeader;
-    class Result;
-    struct WorkerResponse;
+class ProtoHeader;
+class Result;
+struct WorkerResponse;
 }
 namespace qdisp {
-    class MessageStore;
+class MessageStore;
+}
+namespace qproc {
+class DatabaseModels;
 }
 namespace query {
-    class SelectStmt;
+class SelectStmt;
 }
 namespace sql {
-    class Schema;
-    class SqlConnection;
-    class SqlResults;
+class Schema;
+class SqlConnection;
+class SqlResults;
 }
 }} // End of forward declarations
 
@@ -164,7 +167,8 @@ private:
 /// At present, Result messages are not chained.
 class InfileMerger {
 public:
-    explicit InfileMerger(InfileMergerConfig const& c);
+    explicit InfileMerger(InfileMergerConfig const& c,
+                          std::shared_ptr<qproc::DatabaseModels> const& dm);
     ~InfileMerger();
 
     /// Create the shared thread pool and/or change its size.
@@ -245,6 +249,8 @@ private:
 
     std::mutex _mysqlMutex;
     lsst::qserv::mysql::LocalInfile::Mgr _infileMgr;
+
+    std::shared_ptr<qproc::DatabaseModels> _databaseModels; ///< Used to create result table.
 
     std::mutex _queryIdStrMtx; ///< protects _queryIdStr
     std::atomic<bool> _queryIdStrSet{false};

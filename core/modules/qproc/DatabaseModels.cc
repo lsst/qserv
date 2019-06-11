@@ -32,6 +32,7 @@
 
 // Qserv headers
 #include "mysql/MySqlConfig.h"
+#include "util/ConfigStore.h"
 #include "util/Issue.h"
 
 using namespace std;
@@ -44,21 +45,41 @@ namespace lsst {
 namespace qserv {
 namespace qproc {
 
-DatabaseModels::Ptr DatabaseModels::create(map<string, string> const& cssConfigMap) {
-    /// Use the CSS config for now. Need to copy it and strip out the database name.
-    mysql::MySqlConfig mySqlConfig(cssConfigMap["username"],
-            cssConfigMap["password"],
-            cssConfigMap["hostname"],
-            cssConfigMap["port"],
-            cssConfigMap["socket"],
-            ""); // would have been database
+DatabaseModels::Ptr DatabaseModels::create(map<string, string> const& configMap) {
+    util::ConfigStore cfgStore(configMap);
+    /// Use the CSS config for now. The CSS database is not used but sql::SqlConnection wont work without one.
+    mysql::MySqlConfig mySqlConfig(cfgStore.get("username"),
+                                   cfgStore.get("password"),
+                                   cfgStore.get("hostname"),
+                                   cfgStore.getInt("port"),
+                                   cfgStore.get("socket"),
+                                   cfgStore.get("db"));
 
-    auto dbModels = make_shared<DatabaseModels>(mySqlConfig);
+
+    Ptr dbModels(new DatabaseModels(mySqlConfig));
     return dbModels;
 }
 
 
 DatabaseModels::DatabaseModels(mysql::MySqlConfig const& mySqlConfig)
     : _conn(mySqlConfig) {}
+
+
+bool DatabaseModels::applySql(std::string const& sql, sql::SqlResults& results, sql::SqlErrorObject& errObj) {
+    std::lock_guard<std::mutex> lg(_sqlMutex);
+
+    if (not _conn.connectToDb(errObj)) {
+        LOGS(_log, LOG_LVL_ERROR, "DatabaseModels could not connect " << errObj.printErrMsg());
+        return false;
+    }
+    if (not _conn.runQuery(sql, results, errObj)) {
+        LOGS(_log, LOG_LVL_ERROR, "DatabaseModels applySql error: " << errObj.printErrMsg());
+        return false;
+    }
+    LOGS(_log, LOG_LVL_DEBUG, "DatabaseModels query success: " << sql);
+    return true;
+}
+
+
 
 }}} // namespace lsst::qserv::qproc

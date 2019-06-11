@@ -25,6 +25,7 @@
 // System headers
 #include <map>
 #include <memory>
+#include <mutex>
 #include <string>
 #include <vector>
 
@@ -55,14 +56,20 @@ public:
     DatabaseModels() = delete;
     DatabaseModels(DatabaseModels const&) = delete;
     DatabaseModels& operator=(DatabaseModels const&) = delete;
-    virtual ~DatabaseModels();
+
+    virtual ~DatabaseModels() = default;
 
     static Ptr create(std::map<std::string, std::string> const& config);
+
+    bool applySql(std::string const& sql, sql::SqlResults& results, sql::SqlErrorObject& errObj);
 
 private:
     explicit DatabaseModels(mysql::MySqlConfig const& mySqlConfig);
 
+    bool _sqlConnect(sql::SqlErrorObject& errObj);
+
     sql::SqlConnection _conn;
+    std:: mutex _sqlMutex; ///< protects _conn
 };
 
 }}} // namespace lsst::qserv::qproc
