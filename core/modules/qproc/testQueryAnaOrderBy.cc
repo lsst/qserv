@@ -63,36 +63,9 @@ using boost::assign::map_list_of;
 using lsst::qserv::parser::SelectParser;
 using lsst::qserv::qproc::QuerySession;
 using lsst::qserv::query::SelectStmt;
+using lsst::qserv::sql::MockSql;
 using lsst::qserv::tests::QueryAnaFixture;
 using lsst::qserv::tests::QueryAnaHelper;
-
-
-class SqlConnectionForTest : public lsst::qserv::sql::MockSql {
-public:
-    typedef std::map<std::string, std::vector<std::string>> DbColumns;
-
-    SqlConnectionForTest(DbColumns const& dbColumns) : _dbColumns(dbColumns) {}
-
-    bool listColumns(std::vector<std::string>& columns,
-                     lsst::qserv::sql::SqlErrorObject&,
-                     std::string const& dbName,
-                     std::string const& tableName) override{
-        // The QueryContext gets all the columns in each table used by the query and stores this information
-        // for lookup later. For this test this class stubs the SqlConnection object and this names the
-        // columns that are used, from the Object table, in the unit tests in this file.
-        auto dbColumnsItr = _dbColumns.find(tableName);
-        if (dbColumnsItr == _dbColumns.end()) {
-            return false;
-        }
-        for (auto const& column : dbColumnsItr->second) {
-            columns.push_back(column);
-        }
-        return true;
-    }
-
-private:
-    DbColumns _dbColumns;
-};
 
 
 inline void check(QuerySession::Test qsTest, QueryAnaHelper queryAnaHelper,
@@ -117,7 +90,7 @@ BOOST_AUTO_TEST_CASE(OrderBy) {
     std::string expectedParallel = "SELECT `LSST.Source`.objectId AS `objectId`,`LSST.Source`.taiMidPoint AS `taiMidPoint` FROM LSST.Source_100 AS `LSST.Source`";
     std::string expectedMerge = "";
     std::string expectedProxyOrderBy = "ORDER BY `objectId` ASC";
-    qsTest.mysqlSchemaConfig = lsst::qserv::mysql::MySqlConfig(std::make_shared<SqlConnectionForTest>(
+    qsTest.mysqlSchemaConfig = lsst::qserv::mysql::MySqlConfig(std::make_shared<MockSql>(
         map_list_of("Source", list_of("objectId")("taiMidPoint"))));
     check(qsTest, queryAnaHelper, stmt, expectedParallel, expectedMerge, expectedProxyOrderBy);
 }
@@ -127,7 +100,7 @@ BOOST_AUTO_TEST_CASE(OrderByNotChunked) {
     std::string expectedParallel = "SELECT * FROM LSST.Filter AS `LSST.Filter`";
     std::string expectedMerge = "";
     std::string expectedProxyOrderBy = "ORDER BY `LSST.Filter`.filterId";
-    qsTest.mysqlSchemaConfig = lsst::qserv::mysql::MySqlConfig(std::make_shared<SqlConnectionForTest>(
+    qsTest.mysqlSchemaConfig = lsst::qserv::mysql::MySqlConfig(std::make_shared<MockSql>(
         map_list_of("Filter", list_of("filterId"))));
     check(qsTest, queryAnaHelper, stmt, expectedParallel, expectedMerge, expectedProxyOrderBy);
 }
@@ -139,7 +112,7 @@ BOOST_AUTO_TEST_CASE(OrderByTwoField) {
     std::string expectedParallel = "SELECT `LSST.Source`.objectId AS `objectId`,`LSST.Source`.taiMidPoint AS `taiMidPoint` FROM LSST.Source_100 AS `LSST.Source`";
     std::string expectedMerge = "";
     std::string expectedProxyOrderBy = "ORDER BY `objectId`, `taiMidPoint` ASC";
-    qsTest.mysqlSchemaConfig = lsst::qserv::mysql::MySqlConfig(std::make_shared<SqlConnectionForTest>(
+    qsTest.mysqlSchemaConfig = lsst::qserv::mysql::MySqlConfig(std::make_shared<MockSql>(
         map_list_of("Source", list_of("objectId")("taiMidPoint"))));
     check(qsTest, queryAnaHelper, stmt, expectedParallel, expectedMerge, expectedProxyOrderBy);
 }
@@ -151,7 +124,7 @@ BOOST_AUTO_TEST_CASE(OrderByThreeField) {
     std::string expectedParallel = "SELECT * FROM LSST.Source_100 AS `LSST.Source`";
     std::string expectedMerge = "";
     std::string expectedProxyOrderBy = "ORDER BY `LSST.Source`.objectId, `LSST.Source`.taiMidPoint, `LSST.Source`.xFlux DESC";
-    qsTest.mysqlSchemaConfig = lsst::qserv::mysql::MySqlConfig(std::make_shared<SqlConnectionForTest>(
+    qsTest.mysqlSchemaConfig = lsst::qserv::mysql::MySqlConfig(std::make_shared<MockSql>(
         map_list_of("Source", list_of("objectId")("taiMidPoint")("xFlux"))));
     check(qsTest, queryAnaHelper, stmt, expectedParallel, expectedMerge, expectedProxyOrderBy);
 }
@@ -166,7 +139,7 @@ BOOST_AUTO_TEST_CASE(OrderByAggregate) {
                                    "GROUP BY `objectId`";
     std::string expectedMerge = "SELECT objectId AS `objectId`,(SUM(QS2_SUM)/SUM(QS1_COUNT)) AS `AVG(taiMidPoint)` GROUP BY `objectId`";
     std::string expectedProxyOrderBy = "ORDER BY `objectId` ASC";
-    qsTest.mysqlSchemaConfig = lsst::qserv::mysql::MySqlConfig(std::make_shared<SqlConnectionForTest>(
+    qsTest.mysqlSchemaConfig = lsst::qserv::mysql::MySqlConfig(std::make_shared<MockSql>(
         map_list_of("Source", list_of("objectId")("taiMidPoint"))));
     check(qsTest, queryAnaHelper, stmt, expectedParallel, expectedMerge, expectedProxyOrderBy);
 }
@@ -179,7 +152,7 @@ BOOST_AUTO_TEST_CASE(OrderByAggregateNotChunked) {
     // FIXME merge query is not useful here, see DM-3166
     std::string expectedMerge = "SELECT filterId AS `filterId`,SUM(QS1_SUM) AS `SUM(photClam)` GROUP BY `filterId`";
     std::string expectedProxyOrderBy = "ORDER BY `filterId`";
-    qsTest.mysqlSchemaConfig = lsst::qserv::mysql::MySqlConfig(std::make_shared<SqlConnectionForTest>(
+    qsTest.mysqlSchemaConfig = lsst::qserv::mysql::MySqlConfig(std::make_shared<MockSql>(
         map_list_of("Filter", list_of("filterId")("photClam"))));
     check(qsTest, queryAnaHelper, stmt, expectedParallel, expectedMerge, expectedProxyOrderBy);
 }
@@ -193,7 +166,7 @@ BOOST_AUTO_TEST_CASE(OrderByLimit) {
     std::string expectedMerge =
             "SELECT objectId AS `objectId`,taiMidPoint AS `taiMidPoint` ORDER BY `objectId` ASC LIMIT 5";
     std::string expectedProxyOrderBy = "ORDER BY `objectId` ASC";
-    qsTest.mysqlSchemaConfig = lsst::qserv::mysql::MySqlConfig(std::make_shared<SqlConnectionForTest>(
+    qsTest.mysqlSchemaConfig = lsst::qserv::mysql::MySqlConfig(std::make_shared<MockSql>(
         map_list_of("Source", list_of("objectId")("taiMidPoint"))));
     check(qsTest, queryAnaHelper, stmt, expectedParallel, expectedMerge, expectedProxyOrderBy);
 }
@@ -209,7 +182,7 @@ BOOST_AUTO_TEST_CASE(OrderByLimitNotChunked) { // Test flipped syntax in DM-661
     std::string expectedProxyOrderBy = "ORDER BY `LSST.Science_Ccd_Exposure`.field";
     // TODO: commented out test that is supposed to fail but it does not currently
     // check(qsTest, queryAnaHelper, bad, expectedParallel, expectedMerge, expectedProxyOrderBy);
-    qsTest.mysqlSchemaConfig = lsst::qserv::mysql::MySqlConfig(std::make_shared<SqlConnectionForTest>(
+    qsTest.mysqlSchemaConfig = lsst::qserv::mysql::MySqlConfig(std::make_shared<MockSql>(
         map_list_of("Science_Ccd_Exposure", list_of("run")("field"))));
     check(qsTest, queryAnaHelper, good, expectedParallel, expectedMerge, expectedProxyOrderBy);
 }
@@ -227,7 +200,7 @@ BOOST_AUTO_TEST_CASE(OrderByAggregateLimit) {
                                 "GROUP BY `objectId` "
                                 "ORDER BY `objectId` ASC LIMIT 2";
     std::string expectedProxyOrderBy = "ORDER BY `objectId` ASC";
-    qsTest.mysqlSchemaConfig = lsst::qserv::mysql::MySqlConfig(std::make_shared<SqlConnectionForTest>(
+    qsTest.mysqlSchemaConfig = lsst::qserv::mysql::MySqlConfig(std::make_shared<MockSql>(
         map_list_of("Source", list_of("objectId")("taiMidPoint"))));
     check(qsTest, queryAnaHelper, stmt, expectedParallel, expectedMerge, expectedProxyOrderBy);
 }
@@ -242,7 +215,7 @@ BOOST_AUTO_TEST_CASE(OrderByAggregateNotChunkedLimit) {
     // FIXME merge query is not useful here, see DM-3166
     std::string expectedMerge = "SELECT filterId AS `filterId`,SUM(QS1_SUM) AS `SUM(photClam)` GROUP BY `filterId` ORDER BY `filterId` LIMIT 3";
     std::string expectedProxyOrderBy = "ORDER BY `filterId`";
-    qsTest.mysqlSchemaConfig = lsst::qserv::mysql::MySqlConfig(std::make_shared<SqlConnectionForTest>(
+    qsTest.mysqlSchemaConfig = lsst::qserv::mysql::MySqlConfig(std::make_shared<MockSql>(
         map_list_of("Filter", list_of("filterId")("photClam"))));
     check(qsTest, queryAnaHelper, stmt, expectedParallel, expectedMerge, expectedProxyOrderBy);
 }

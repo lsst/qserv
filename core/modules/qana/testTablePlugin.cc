@@ -31,6 +31,9 @@
 #include <list>
 #include <vector>
 
+// Third-party headers
+#include "boost/assign/list_of.hpp"
+
 // Qserv headers
 #include "ccontrol/UserQueryFactory.h"
 #include "css/CssAccess.h"
@@ -54,31 +57,14 @@
 #include "boost/test/included/unit_test.hpp"
 
 using namespace lsst::qserv;
+using boost::assign::list_of;
+using boost::assign::map_list_of;
 using lsst::qserv::query::TestFactory;
-
-
-class SqlConnectionForTest : public sql::MockSql {
-public:
-    bool listColumns(std::vector<std::string>& columns,
-                     lsst::qserv::sql::SqlErrorObject&,
-                     std::string const& dbName,
-                     std::string const& tableName) override{
-        // The QueryContext gets all the columns in each table used by the query and stores this information
-        // for lookup later. For this test this class stubs the SqlConnection object and this names the
-        // columns that are used, from the Object table, in the unit tests in this file.
-        if (tableName == "Object") {
-            columns.push_back("objectId");
-            columns.push_back("ra_PS");
-            columns.push_back("decl_PS");
-        }
-        return true;
-    }
-};
 
 
 struct TestFixture {
     TestFixture(void) :
-            schemaCfg(std::make_shared<SqlConnectionForTest>()) {
+            schemaCfg(std::make_shared<sql::MockSql>(map_list_of("Object", list_of("objectId")("ra_PS")("decl_PS")))) {
         std::string kvMapPath = "./core/modules/qana/testPlugins.kvmap"; // (from testPlugins was: FIXME ??)
         std::ifstream stream(kvMapPath);
         css = lsst::qserv::css::CssAccess::createFromStream(stream, ".");

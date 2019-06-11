@@ -33,6 +33,10 @@ class MockSql : public SqlConnection {
 public:
     MockSql() {}
     ~MockSql() {}
+
+    typedef std::map<std::string, std::vector<std::string>> DbColumns;
+    MockSql(DbColumns const& dbColumns) : _dbColumns(dbColumns) {}
+
     virtual void reset(mysql::MySqlConfig const& sc, bool useThreadMgmt=false) {}
     virtual bool connectToDb(SqlErrorObject&) { return false; }
     virtual bool selectDb(std::string const& dbName, SqlErrorObject&) {
@@ -74,12 +78,21 @@ public:
                             std::string const& prefixed="",
                             std::string const& dbName="") {
         return false; }
-    virtual bool listColumns(std::vector<std::string>&,
+    virtual bool listColumns(std::vector<std::string>& columns,
                             SqlErrorObject&,
                             std::string const& dbName,
                             std::string const& tableName) {
-
-        return false; }
+        // The QueryContext gets all the columns in each table used by the query and stores this information
+        // for lookup later. Here we return a list of column names for a table.
+        auto dbColumnsItr = _dbColumns.find(tableName);
+        if (dbColumnsItr == _dbColumns.end()) {
+            return false;
+        }
+        for (auto const& column : dbColumnsItr->second) {
+            columns.push_back(column);
+        }
+        return true;
+    }
 
     virtual std::string getActiveDbName() const { return std::string(); }
 
@@ -102,6 +115,7 @@ public:
     };
 
 private:
+    DbColumns _dbColumns;
 }; // class MockSql
 
 }}} // lsst::qserv::sql
