@@ -39,12 +39,6 @@
 
 namespace lsst {
 namespace qserv {
-/* &&&
-namespace mysql {
-class MySqlConfig;
-}
-*/
-
 namespace qproc {
 
 /// This class allows access to model versions of the databases kept in qserv. The models

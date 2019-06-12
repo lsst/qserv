@@ -77,7 +77,7 @@ CzarConfig::CzarConfig(util::ConfigStore const& configStore)
                         configStore.get("qmeta.passwd"),
                         configStore.get("qmeta.host"),
                         configStore.getInt("qmeta.port", 3306),
-                        configStore.get("qmeta.unix_socket"), // &&&
+                        configStore.get("qmeta.unix_socket"),
                         configStore.get("qmeta.db", "qservMeta")),
       _mySqlQstatusDataConfig(configStore.get("qstatus.user", "qsmaster"),
                               configStore.get("qstatus.passwd"),
