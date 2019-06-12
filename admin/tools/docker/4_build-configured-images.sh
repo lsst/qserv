@@ -89,6 +89,47 @@ if [ "$PUSH_TO_HUB" = "true" ]; then
     printf "Image %s pushed successfully\n" "$TAG"
 fi
 
+# Build the master-multi image
+
+awk \
+-v NODE_TYPE="-c" \
+-v DOCKER_IMAGE="$DOCKER_IMAGE" \
+-v COMMENT_ON_WORKER="" \
+'{gsub(/<NODE_TYPE>/, NODE_TYPE);
+  gsub(/<DOCKER_IMAGE>/, DOCKER_IMAGE);
+  gsub(/<COMMENT_ON_WORKER>/, COMMENT_ON_WORKER);
+  print}' "$DOCKERDIR/Dockerfile.tpl" > "$DOCKERFILE"
+
+TAG="${DOCKER_IMAGE}_master_multi"
+printf "Building master image %s from %s\n" "$TAG" "$DOCKERDIR"
+docker build --tag="$TAG" "$DOCKERDIR"
+printf "Image %s built successfully\n" "$TAG"
+
+if [ "$PUSH_TO_HUB" = "true" ]; then
+    docker push "$TAG"
+    printf "Image %s pushed successfully\n" "$TAG"
+fi
+
+# Build the master-shared image
+
+awk \
+-v NODE_TYPE="-s" \
+-v DOCKER_IMAGE="$DOCKER_IMAGE" \
+-v COMMENT_ON_WORKER="" \
+'{gsub(/<NODE_TYPE>/, NODE_TYPE);
+  gsub(/<DOCKER_IMAGE>/, DOCKER_IMAGE);
+  gsub(/<COMMENT_ON_WORKER>/, COMMENT_ON_WORKER);
+  print}' "$DOCKERDIR/Dockerfile.tpl" > "$DOCKERFILE"
+
+TAG="${DOCKER_IMAGE}_master_shared"
+printf "Building master image %s from %s\n" "$TAG" "$DOCKERDIR"
+docker build --tag="$TAG" "$DOCKERDIR"
+printf "Image %s built successfully\n" "$TAG"
+
+if [ "$PUSH_TO_HUB" = "true" ]; then
+    docker push "$TAG"
+    printf "Image %s pushed successfully\n" "$TAG"
+fi
 
 # Build the worker image
 

@@ -183,7 +183,7 @@ std::string QuerySession::getProxyOrderBy() const {
 }
 
 void QuerySession::addChunk(ChunkSpec const& cs) {
-    LOGS(_log, LOG_LVL_DEBUG, "Add chunk: " << cs);
+    LOGS(_log, LOG_LVL_TRACE, "Add chunk: " << cs);
     _context->chunkCount += 1;
     _chunks.push_back(cs);
 }

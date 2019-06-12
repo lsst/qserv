@@ -297,6 +297,8 @@ class Templater(object):
                 'MYSQLD_SOCK': config['mysqld']['socket'],
                 'MYSQLD_USER_MONITOR': config['mysqld']['user_monitor'],
                 'MYSQLD_USER_QSERV': config['mysqld']['user_qserv'],
+                'MYSQLDSHARED_HOST': config['mysqld_shared']['host'],
+                'MYSQLDSHARED_PORT': config['mysqld_shared']['port'],
                 'MYSQL_DIR': config['mysqld']['base_dir'],
                 'MYSQLPROXY_DIR': config['mysql_proxy']['base_dir'],
                 'MYSQLPROXY_PORT': config['mysql_proxy']['port'],

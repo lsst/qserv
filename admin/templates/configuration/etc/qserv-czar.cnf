@@ -9,12 +9,15 @@ xrootd={{XROOTD_MANAGER_HOST}}:{{XROOTD_PORT}}
 
 [css]
 technology = mysql
-hostname =
-port =
+# &&& hostname =
+# &&& port =
 username = {{MYSQLD_USER_QSERV}}
 password =
 database = qservCssData
-socket = {{MYSQLD_SOCK}}
+# &&& needs shared MYSQL
+# &&& socket = {{MYSQLD_SOCK}}
+hostname = {{MYSQLDSHARED_HOST}}
+port = {{MYSQLDSHARED_PORT}}
 
 [resultdb]
 passwd =
@@ -30,10 +33,12 @@ maxtablesize_mb = 5100
 [qmeta]
 passwd =
 db = qservMeta
-unix_socket = {{MYSQLD_SOCK}}
-host =
+# &&& needs shared MYSQL - how to deal with single node using unix_socket
+# &&& unix_socket = {{MYSQLD_SOCK}}
+host = {{MYSQLDSHARED_HOST}}
 user = {{MYSQLD_USER_QSERV}}
-port = 0
+# &&& port = 0
+port = {{MYSQLDSHARED_PORT}}
 
 # database connection for QStatusData
 # Using qmeta for now. May move this qservResult or make its own instance
@@ -42,10 +47,13 @@ port = 0
 passwd =
 #db = qservStatusData
 db = qservMeta
-unix_socket = {{MYSQLD_SOCK}}
-host =
+# &&& needs shared MYSQL  - how to deal with single node using unix_socket
+# &&& unix_socket = {{MYSQLD_SOCK}}
+# &&& host =
 user = {{MYSQLD_USER_QSERV}}
-port = 0
+# &&& port = 0
+host = {{MYSQLDSHARED_HOST}}
+port = {{MYSQLDSHARED_PORT}}
 
 [partitioner]
 # emptyChunkPath is used to check existence of empty_$DBNAME.txt

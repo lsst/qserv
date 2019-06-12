@@ -201,7 +201,7 @@ def createDb():
         # grant full access to non-privileged account
         cmd = "GRANT ALL PRIVILEGES ON {0}.* TO '{1}'@'{2}'"
         user = Config.instance().dbUser
-        hostnames = ['localhost']
+        hostnames = ['localhost', '%%']
         for host in hostnames:
             try:
                 dbConn.execute(cmd.format(dbName, user, host))

@@ -55,6 +55,7 @@
 #include "qmeta/QMetaMysql.h"
 #include "qmeta/QMetaSelect.h"
 #include "qmeta/QStatusMysql.h"
+#include "qproc/DatabaseModels.h"
 #include "qproc/QuerySession.h"
 #include "qproc/SecondaryIndex.h"
 #include "query/FromList.h"
@@ -83,6 +84,7 @@ public:
     std::shared_ptr<css::CssAccess> css;
     mysql::MySqlConfig const mysqlResultConfig;
     std::shared_ptr<qproc::SecondaryIndex> secondaryIndex;
+    std::shared_ptr<qproc::DatabaseModels> databaseModels;
     std::shared_ptr<qmeta::QMeta> queryMetadata;
     std::shared_ptr<qmeta::QStatus> queryStatsData;
     std::shared_ptr<qmeta::QMetaSelect> qMetaSelect;
@@ -204,7 +206,8 @@ UserQueryFactory::newUserQuery(std::string const& aQuery,
                                                  qdispPool, _impl->queryStatsData);
             infileMergerConfig = std::make_shared<rproc::InfileMergerConfig>(_impl->mysqlResultConfig);
         }
-        auto uq = std::make_shared<UserQuerySelect>(qs, messageStore, executive, infileMergerConfig,
+        auto uq = std::make_shared<UserQuerySelect>(qs, messageStore, executive, _impl->databaseModels,
+                                                    infileMergerConfig,
                                                     _impl->secondaryIndex, _impl->queryMetadata,
                                                     _impl->queryStatsData, _impl->qMetaCzarId,
                                                     qdispPool, errorExtra, async);
@@ -262,7 +265,8 @@ UserQueryFactory::Impl::Impl(czar::CzarConfig const& czarConfig)
     executiveConfig = std::make_shared<qdisp::Executive::Config>(
                           czarConfig.getXrootdFrontendUrl(),
                           czarConfig.getQMetaSecondsBetweenChunkUpdates());
-    secondaryIndex = std::make_shared<qproc::SecondaryIndex>(mysqlResultConfig);
+    secondaryIndex = std::make_shared<qproc::SecondaryIndex>(czarConfig.getMySqlQmetaConfig());
+    databaseModels = qproc::DatabaseModels::create(czarConfig.getCssConfigMap()); // &&& should probably have its own config
 
     // make one dedicated connection for results database
     resultDbConn.reset(new sql::SqlConnection(mysqlResultConfig));
