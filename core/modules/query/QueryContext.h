@@ -139,7 +139,6 @@ public:
     void collectTopLevelTableSchema(std::shared_ptr<query::TableRef> const& tableRef);
 
     std::string columnToTablesMapToString() const;
-    std::vector<std::string> getTableSchema(std::string const& dbName, std::string const& tableName);
 
     int chunkCount{0}; //< -1: all, 0: none, N: #chunks
 
@@ -157,6 +156,8 @@ public:
         return queryMapping.get() && queryMapping->hasSubChunks(); }
 
 private:
+
+    std::vector<std::string> _getTableSchema(std::string const& dbName, std::string const& tableName);
 
     // Comparison function for _columnToTablesMap to make the key string compare case insensitive.
     struct ColumnToTableLessThan {

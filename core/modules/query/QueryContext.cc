@@ -163,7 +163,7 @@ void QueryContext::collectTopLevelTableSchema(std::shared_ptr<query::TableRef> c
     LOGS(_log, LOG_LVL_DEBUG, "db=" << db << " table=" << table);
     if (not db.empty() && not table.empty()) {
         // Get the columns in the table from the DB schema and put them in the tableColumnMap.
-        auto columns = getTableSchema(db, table);
+        auto columns = _getTableSchema(db, table);
         if (!columns.empty()) {
             for (auto const& col : columns) {
                 // note that we don't copy the join into the new table ref; keep the new TableRef "simple".
@@ -199,14 +199,12 @@ std::string QueryContext::columnToTablesMapToString() const {
 
 /// Get the table schema from the mysqlSchemaConfig database. Primarily, this is
 /// used to map column names to particular tables.
-std::vector<std::string> QueryContext::getTableSchema(std::string const& dbName,
+std::vector<std::string> QueryContext::_getTableSchema(std::string const& dbName,
                                                       std::string const& tableName) {
     std::vector<std::string> colNames;
     auto sqlConn = sql::SqlConnection::create(mysqlSchemaConfig);
     sql::SqlErrorObject errObj;
-    if (not sqlConn->listColumns(colNames, errObj, dbName, tableName)) {
-        LOGS(_log, LOG_LVL_ERROR, "getTableSchema query failed.");
-    }
+    sqlConn->listColumns(colNames, errObj, dbName, tableName);
     return colNames;
 }
 
