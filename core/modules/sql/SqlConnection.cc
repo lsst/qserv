@@ -36,6 +36,7 @@
 
 // Qserv headers
 #include "mysql/MySqlConnection.h"
+#include "sql/SqlException.h"
 #include "sql/SqlResults.h"
 
 namespace {
@@ -394,23 +395,26 @@ SqlConnection::listTables(std::vector<std::string>& v,
     return results.extractFirstColumn(v, errObj);
 }
 
-bool
+void
 SqlConnection::listColumns(std::vector<std::string>& columns,
                             SqlErrorObject& errObj,
                             std::string const& dbName,
                             std::string const& tableName) {
     columns.clear();
-    if (!connectToDb(errObj))
-        return false;
+    if (!connectToDb(errObj)) {
+        throw SqlException(lsst::qserv::util::Issue::Context(__FILE__, __LINE__, __func__),
+                           "connectToDb in listColumns query failed.");
+    }
     if (!dbExists(dbName, errObj)) {
         errObj.addErrMsg("Can't list columns for db " + dbName + "." + tableName +
                 " because the database does not exist.");
-        return false;
+        throw NoSuchDb(lsst::qserv::util::Issue::Context(__FILE__, __LINE__, __func__), dbName);
     }
     if (!tableExists(tableName, errObj, dbName)) {
         errObj.addErrMsg("Can't list columns for db " + dbName + "." + tableName +
                 " because the table does not exist.");
-        return false;
+        throw NoSuchTable(lsst::qserv::util::Issue::Context(__FILE__, __LINE__, __func__),
+                                   dbName, tableName);
     }
     std::string sql("SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS "
                     "WHERE table_name = '" + tableName + "' " +
@@ -418,12 +422,12 @@ SqlConnection::listColumns(std::vector<std::string>& columns,
     sql::SqlResults results;
     if (not runQuery(sql, results, errObj)) {
         LOGS(_log, LOG_LVL_WARN, "listColumns query failed: " << sql);
-        return false;
+        throw SqlException(lsst::qserv::util::Issue::Context(__FILE__, __LINE__, __func__),
+                           "listColumns query failed: " + sql);
     }
     for (auto const& row : results) {
         columns.emplace_back(row[0].first, row[0].second);
     }
-    return true;
 }
 
 std::string

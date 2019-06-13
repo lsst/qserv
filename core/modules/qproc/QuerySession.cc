@@ -72,6 +72,7 @@
 #include "query/SelectStmt.h"
 #include "query/SelectList.h"
 #include "query/typedefs.h"
+#include "sql/SqlException.h"
 #include "util/IterableFormatter.h"
 
 
@@ -152,6 +153,10 @@ void QuerySession::analyzeQuery(std::string const& sql, std::shared_ptr<query::S
     } catch(css::NoSuchDb& e) {
         _error = std::string("NoSuchDb:") + e.what();
     } catch(css::NoSuchTable& e) {
+        _error = std::string("NoSuchTable:") + e.what();
+    } catch(sql::NoSuchDb& e) {
+        _error = std::string("NoSuchDb:") + e.what();
+    } catch(sql::NoSuchTable& e) {
         _error = std::string("NoSuchTable:") + e.what();
     } catch(Bug& b) {
         _error = std::string("Qserv bug:") + b.what();

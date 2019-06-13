@@ -118,7 +118,7 @@ public:
                             SqlErrorObject&,
                             std::string const& prefixed="",
                             std::string const& dbName="");
-    virtual bool listColumns(std::vector<std::string>&,
+    virtual void listColumns(std::vector<std::string>&,
                             SqlErrorObject&,
                             std::string const& dbName,
                             std::string const& tableName);
