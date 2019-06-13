@@ -212,7 +212,7 @@ TablePlugin::applyLogical(query::SelectStmt& stmt,
         matchValueExprs(context, stmt.getOrderBy());
     }
     if (stmt.hasWhereClause()) {
-        matchTableRefs(context, stmt.getWhereClause(), false);
+        matchTableRefs(context, stmt.getWhereClause(), true);
         matchValueExprs(context, stmt.getWhereClause());
     }
     if (stmt.hasGroupBy()) {
