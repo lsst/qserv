@@ -48,6 +48,7 @@
 #include "boost/test/included/unit_test.hpp"
 
 // Qserv headers
+#include "mysql/MySqlConfig.h"
 #include "parser/ParseException.h"
 #include "parser/SelectParser.h"
 #include "qdisp/ChunkMeta.h"
@@ -55,9 +56,11 @@
 #include "query/QsRestrictor.h"
 #include "query/QueryContext.h"
 #include "query/SelectStmt.h"
+#include "sql/MockSql.h"
 #include "tests/QueryAnaFixture.h"
 
 
+using lsst::qserv::mysql::MySqlConfig;
 using lsst::qserv::parser::SelectParser;
 using lsst::qserv::qproc::ChunkQuerySpec;
 using lsst::qserv::qproc::ChunkSpec;
@@ -66,6 +69,7 @@ using lsst::qserv::query::QsRestrictor;
 using lsst::qserv::query::QueryContext;
 using lsst::qserv::query::SelectStmt;
 using lsst::qserv::StringPair;
+using lsst::qserv::sql::MockSql;
 using lsst::qserv::tests::QueryAnaFixture;
 
 namespace {
@@ -82,6 +86,8 @@ BOOST_AUTO_TEST_CASE(TrivialSub) {
     std::string stmt = "SELECT * FROM Object WHERE someField > 5.0;";
     std::string expected = "SELECT * FROM LSST.Object_100 AS `LSST.Object` WHERE `LSST.Object`.someField>5.0";
     BOOST_CHECK(qsTest.css);
+    MockSql::DbColumns dbColums = {{"Object", {"someField"}}};
+    qsTest.mysqlSchemaConfig = MySqlConfig(std::make_shared<MockSql>(dbColums));
     std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, stmt);
     std::shared_ptr<QueryContext> context = qs->dbgGetContext();
     SelectStmt const& ss = qs->getStmt();
@@ -95,17 +101,25 @@ BOOST_AUTO_TEST_CASE(TrivialSub) {
     std::string parallel = queryAnaHelper.buildFirstParallelQuery();
     BOOST_CHECK_EQUAL(expected, parallel);
 }
+
+
 BOOST_AUTO_TEST_CASE(NoContext) {
     std::string stmt = "SELECT * FROM LSST.Object WHERE someField > 5.0;";
     std::string expected = "SELECT * FROM LSST.Object_100 AS QST_1_ WHERE someField>5.0";
     qsTest.defaultDb = "";
+    MockSql::DbColumns dbColums = {{"Object", {"someField"}}};
+    qsTest.mysqlSchemaConfig = MySqlConfig(std::make_shared<MockSql>(dbColums));
     std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, stmt);
     std::shared_ptr<QueryContext> context = qs->dbgGetContext();
     //SelectStmt const& ss = qs->getStmt();
 }
+
+
 BOOST_AUTO_TEST_CASE(NoSub) {
     std::string stmt = "SELECT * FROM Filter WHERE filterId=4;";
     std::string goodRes = "SELECT * FROM LSST.Filter AS `LSST.Filter` WHERE `LSST.Filter`.filterId=4";
+    MockSql::DbColumns dbColums = {{"Filter", {"filterId"}}};
+    qsTest.mysqlSchemaConfig = MySqlConfig(std::make_shared<MockSql>(dbColums));
     std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, stmt);
     std::shared_ptr<QueryContext> context = qs->dbgGetContext();
     SelectStmt const& ss = qs->getStmt();
@@ -119,9 +133,12 @@ BOOST_AUTO_TEST_CASE(NoSub) {
     BOOST_CHECK_EQUAL(goodRes, parallel);
 }
 
+
 BOOST_AUTO_TEST_CASE(Limit) {
     std::string stmt = "select * from LSST.Object WHERE ra_PS BETWEEN 150 AND 150.2 and decl_PS between 1.6 and 1.7 limit 2;";
 
+    MockSql::DbColumns dbColums = {{"Object", {"ra_PS", "decl_PS"}}};
+    qsTest.mysqlSchemaConfig = MySqlConfig(std::make_shared<MockSql>(dbColums));
     std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, stmt);
     std::shared_ptr<QueryContext> context = qs->dbgGetContext();
     SelectStmt const& ss = qs->getStmt();
@@ -135,9 +152,12 @@ BOOST_AUTO_TEST_CASE(Limit) {
     BOOST_CHECK_EQUAL(ss.getLimit(), 2);
 }
 
+
 BOOST_AUTO_TEST_CASE(OrderBy) {
     std::string stmt = "select * from LSST.Object WHERE ra_PS BETWEEN 150 AND 150.2 and decl_PS between 1.6 and 1.7 ORDER BY objectId;";
 
+    MockSql::DbColumns dbColums = {{"Object", {"ra_PS", "decl_PS"}}};
+    qsTest.mysqlSchemaConfig = MySqlConfig(std::make_shared<MockSql>(dbColums));
     std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, stmt);
     std::shared_ptr<QueryContext> context = qs->dbgGetContext();
     SelectStmt const& ss = qs->getStmt();
@@ -148,8 +168,11 @@ BOOST_AUTO_TEST_CASE(OrderBy) {
     //OrderByClause const& oc = ss->getOrderBy();
 }
 
+
 BOOST_AUTO_TEST_CASE(RestrictorBox) {
     std::string stmt = "select * from Object where qserv_areaspec_box(0,0,1,1);";
+    MockSql::DbColumns dbColums;
+    qsTest.mysqlSchemaConfig = MySqlConfig(std::make_shared<MockSql>(dbColums));
     std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, stmt);
     std::shared_ptr<QueryContext> context = qs->dbgGetContext();
     BOOST_CHECK(context);
@@ -165,6 +188,7 @@ BOOST_AUTO_TEST_CASE(RestrictorBox) {
     BOOST_CHECK(!context->hasSubChunks());
 }
 
+
 BOOST_AUTO_TEST_CASE(RestrictorNeighborCount) {
     std::string stmt = "select count(*) from Object as o1, Object as o2 "
         "where qserv_areaspec_box(6,6,7,7) AND rFlux_PS<0.005 AND scisql_angSep(o1.ra_Test,o1.decl_Test,o2.ra_Test,o2.decl_Test) < 0.001;";
@@ -175,6 +199,9 @@ BOOST_AUTO_TEST_CASE(RestrictorNeighborCount) {
     std::string expected_100_subchunk_overlap =
         "SELECT count(*) AS `QS1_COUNT` FROM Subchunks_LSST_100.Object_100_%S\007S% AS `o1`,Subchunks_LSST_100.ObjectFullOverlap_100_%S\007S% AS `o2` "
         "WHERE scisql_s2PtInBox(`o1`.ra_Test,`o1`.decl_Test,6,6,7,7)=1 AND scisql_s2PtInBox(`o2`.ra_Test,`o2`.decl_Test,6,6,7,7)=1 AND `o1`.rFlux_PS<0.005 AND scisql_angSep(`o1`.ra_Test,`o1`.decl_Test,`o2`.ra_Test,`o2`.decl_Test)<0.001";
+
+    MockSql::DbColumns dbColums = {{"Object", {"rFlux_PS", "ra_Test", "decl_Test"}}};
+    qsTest.mysqlSchemaConfig = MySqlConfig(std::make_shared<MockSql>(dbColums));
     std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, stmt);
 
     std::shared_ptr<QueryContext> context = qs->dbgGetContext();
@@ -209,6 +236,7 @@ BOOST_AUTO_TEST_CASE(RestrictorNeighborCount) {
     BOOST_CHECK_EQUAL(first->subChunkIds[2], 100020);
 }
 
+
 BOOST_AUTO_TEST_CASE(Triple) {
     std::string stmt =
         "select * from LSST.Object as o1, LSST.Object as o2, LSST.Source "
@@ -220,6 +248,9 @@ BOOST_AUTO_TEST_CASE(Triple) {
         "WHERE `o1`.id!=`o2`.id AND "
         "0.024>scisql_angSep(`o1`.ra_Test,`o1`.decl_Test,`o2`.ra_Test,`o2`.decl_Test) AND "
         "`LSST.Source`.objectIdSourceTest=`o2`.objectIdObjTest";
+
+    MockSql::DbColumns dbColums = {{"Object", {"id", "ra_Test", "decl_Test"}}, {"Source", {"objectIdSourceTest"}}};
+    qsTest.mysqlSchemaConfig = MySqlConfig(std::make_shared<MockSql>(dbColums));
     std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, stmt);
     std::shared_ptr<QueryContext> context = qs->dbgGetContext();
     //SelectStmt const& ss = qs->getStmt();
@@ -233,16 +264,20 @@ BOOST_AUTO_TEST_CASE(Triple) {
     BOOST_CHECK_EQUAL(first->subChunkIds[2], 100020);
 }
 
+
 BOOST_AUTO_TEST_CASE(BadDbAccess) {
     std::string stmt = "select count(*) from Bad.Object as o1, Object o2 where qserv_areaspec_box(6,6,7,7) AND o1.ra_PS between 6 and 7 and o1.decl_PS between 6 and 7 ;";
     char expectedErr[] = "AnalysisError:Invalid db/table:Bad.Object";
 
-    std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, stmt);
+    MockSql::DbColumns dbColums;
+    qsTest.mysqlSchemaConfig = MySqlConfig(std::make_shared<MockSql>(dbColums));
+    std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, stmt, true);
     BOOST_CHECK_EQUAL(qs->getError(), expectedErr);
     std::shared_ptr<QueryContext> context = qs->dbgGetContext();
     BOOST_CHECK(context);
     BOOST_CHECK_EQUAL(context->dominantDb, std::string("Bad"));
 }
+
 
 BOOST_AUTO_TEST_CASE(ObjectSourceJoin) {
     std::string stmt = "select * from LSST.Object o, Source s WHERE "
@@ -268,6 +303,7 @@ BOOST_AUTO_TEST_CASE(ObjectSourceJoin) {
     BOOST_CHECK_EQUAL(actual, expected);
 }
 
+
 BOOST_AUTO_TEST_CASE(ObjectSelfJoin) {
     std::string stmt = "select count(*) from Object as o1, Object as o2;";
     std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, stmt);
@@ -277,6 +313,7 @@ BOOST_AUTO_TEST_CASE(ObjectSelfJoin) {
     BOOST_CHECK_EQUAL(context->dominantDb, std::string("LSST"));
     BOOST_CHECK(!context->restrictors);
 }
+
 
 BOOST_AUTO_TEST_CASE(ObjectSelfJoinQualified) {
     std::string stmt = "select count(*) from LSST.Object as o1, LSST.Object as o2 "
@@ -295,6 +332,7 @@ BOOST_AUTO_TEST_CASE(ObjectSelfJoinQualified) {
     std::string actual = queryAnaHelper.buildFirstParallelQuery();
     BOOST_CHECK_EQUAL(actual, expected);
 }
+
 
 BOOST_AUTO_TEST_CASE(ObjectSelfJoinWithAs) {
     // AS alias in column select, <> operator
@@ -355,6 +393,7 @@ BOOST_AUTO_TEST_CASE(ObjectSelfJoinDistance) {
     BOOST_CHECK_EQUAL(actual, expected);
 }
 
+
 BOOST_AUTO_TEST_CASE(SelfJoinAliased) {
     // o2.ra_PS and o2.ra_PS_Sigma have to be aliased in order to produce
     // a result that can't be stored in a table as-is.
@@ -372,6 +411,7 @@ BOOST_AUTO_TEST_CASE(SelfJoinAliased) {
     BOOST_CHECK(!context->restrictors);
     BOOST_CHECK(!context->needsMerge);
 }
+
 
 BOOST_AUTO_TEST_CASE(AliasHandling) {
     std::string stmt = "select o1.ra_PS, o1.ra_PS_Sigma, s.dummy, Exposure.exposureTime "
@@ -393,6 +433,7 @@ BOOST_AUTO_TEST_CASE(AliasHandling) {
     BOOST_CHECK_EQUAL(actual, expected);
 }
 
+
 BOOST_AUTO_TEST_CASE(SpatialRestr) {
     std::string stmt = "select count(*) from Object where qserv_areaspec_box(359.1, 3.16, 359.2,3.17);";
     std::string expected = "SELECT count(*) AS `QS1_COUNT` "
@@ -409,6 +450,7 @@ BOOST_AUTO_TEST_CASE(SpatialRestr) {
     std::string actual = queryAnaHelper.buildFirstParallelQuery();
     BOOST_CHECK_EQUAL(actual, expected);
 }
+
 
 BOOST_AUTO_TEST_CASE(SpatialRestr2) { // Redundant?
     std::string stmt = "select count(*) from LSST.Object where qserv_areaspec_box(359.1, 3.16, 359.2,3.17);";
@@ -427,6 +469,7 @@ BOOST_AUTO_TEST_CASE(SpatialRestr2) { // Redundant?
     BOOST_CHECK_EQUAL(actual, expected);
 }
 
+
 BOOST_AUTO_TEST_CASE(ChunkDensityFail) {
     // Should fail since leading _ is disallowed.
     std::string stmt =
@@ -439,6 +482,7 @@ BOOST_AUTO_TEST_CASE(ChunkDensityFail) {
     // Remaining session state is undefined after unknown antlr error.
 }
 
+
 BOOST_AUTO_TEST_CASE(ChunkDensity) {
     std::string stmt = " SELECT count(*) AS n, AVG(ra_PS), AVG(decl_PS), x_chunkId FROM Object GROUP BY x_chunkId;";
     std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, stmt);
@@ -450,6 +494,7 @@ BOOST_AUTO_TEST_CASE(ChunkDensity) {
     BOOST_CHECK(!context->hasSubChunks());
     BOOST_CHECK(context->needsMerge);
 }
+
 
 BOOST_AUTO_TEST_CASE(AltDbName) {
     std::string stmt = "select count(*) from Object where qserv_areaspec_box(359.1, 3.16, 359.2, 3.17);";
@@ -483,6 +528,7 @@ BOOST_AUTO_TEST_CASE(NonpartitionedTable) {
     BOOST_CHECK(!context->needsMerge);
 }
 
+
 BOOST_AUTO_TEST_CASE(CountQuery) {
     std::string stmt = "SELECT count(*) from Object;";
     std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, stmt);
@@ -494,6 +540,7 @@ BOOST_AUTO_TEST_CASE(CountQuery) {
     BOOST_CHECK(!context->hasSubChunks());
     BOOST_CHECK(context->needsMerge);
 }
+
 
 BOOST_AUTO_TEST_CASE(CountQuery2) {
     std::string stmt = "SELECT count(*) from LSST.Source;";
@@ -515,6 +562,7 @@ BOOST_AUTO_TEST_CASE(CountQuery2) {
     BOOST_CHECK_EQUAL(first->queries.size(), 1U);
     BOOST_CHECK_EQUAL(first->queries[0], expected_100);
 }
+
 
 BOOST_AUTO_TEST_CASE(SimpleScan) {
     std::string stmt[] = {
@@ -539,6 +587,7 @@ BOOST_AUTO_TEST_CASE(SimpleScan) {
     }
 }
 
+
 BOOST_AUTO_TEST_CASE(UnpartLimit) {
     std::string stmt = "SELECT * from Science_Ccd_Exposure limit 3;";
     std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, stmt);
@@ -552,6 +601,7 @@ BOOST_AUTO_TEST_CASE(UnpartLimit) {
     // BOOST_CHECK(!spr->getHasAggregate());
 }
 
+
 BOOST_AUTO_TEST_CASE(Subquery) { // ticket #2053
     std::string stmt = "SELECT subQueryColumn FROM (SELECT * FROM Object WHERE filterId=4) WHERE rFlux_PS > 0.3;";
     SelectParser::Ptr p;
@@ -559,11 +609,13 @@ BOOST_AUTO_TEST_CASE(Subquery) { // ticket #2053
    // Expected failure: Subqueries are unsupported.
 }
 
+
 BOOST_AUTO_TEST_CASE(FromParen) { // Extra paren. Not supported by our grammar.
     std::string stmt = "SELECT * FROM (Object) WHERE rFlux_PS > 0.3;";
     SelectParser::Ptr p;
     BOOST_CHECK_THROW(p = queryAnaHelper.getParser(stmt), lsst::qserv::parser::ParseException);
 }
+
 
 BOOST_AUTO_TEST_CASE(NewParser) {
     char stmts[][128] = {
@@ -584,6 +636,8 @@ BOOST_AUTO_TEST_CASE(NewParser) {
         SelectParser::Ptr p = queryAnaHelper.getParser(stmt);
     }
  }
+
+
 BOOST_AUTO_TEST_CASE(Mods) {
     char stmts[][128] = {
         "SELECT * from Object order by ra_PS limit 3;",
@@ -597,10 +651,13 @@ BOOST_AUTO_TEST_CASE(Mods) {
     }
  }
 
+
 BOOST_AUTO_TEST_CASE(CountNew) {
     std::string stmt = "SELECT count(*), sum(Source.flux), flux2, Source.flux3 from Source where qserv_areaspec_box(0,0,1,1) and flux4=2 and Source.flux5=3;";
     queryAnaHelper.buildQuerySession(qsTest, stmt);
 }
+
+
 BOOST_AUTO_TEST_CASE(FluxMag) {
     std::string stmt = "SELECT count(*) FROM Object"
         " WHERE  qserv_areaspec_box(1,3,2,4) AND"
@@ -608,15 +665,18 @@ BOOST_AUTO_TEST_CASE(FluxMag) {
     queryAnaHelper.buildQuerySession(qsTest, stmt);
 }
 
+
 BOOST_AUTO_TEST_CASE(ArithTwoOp) {
     std::string stmt = "SELECT f(one)/f2(two) FROM  Object where qserv_areaspec_box(0,0,1,1);";
     queryAnaHelper.buildQuerySession(qsTest, stmt);
 }
 
+
 BOOST_AUTO_TEST_CASE(FancyArith) {
     std::string stmt = "SELECT (1+f(one))/f2(two) FROM  Object where qserv_areaspec_box(0,0,1,1);";
     queryAnaHelper.buildQuerySession(qsTest, stmt);
 }
+
 
 BOOST_AUTO_TEST_CASE(Petasky1) {
     // An example slow query from French Petasky colleagues
@@ -624,6 +684,7 @@ BOOST_AUTO_TEST_CASE(Petasky1) {
         " FROM Source GROUP BY objectId HAVING  c > 1000 LIMIT 10;";
     queryAnaHelper.buildQuerySession(qsTest, stmt);
 }
+
 
 BOOST_AUTO_TEST_CASE(Expression) {
     // A query with some expressions
@@ -639,6 +700,7 @@ BOOST_AUTO_TEST_CASE(Expression) {
         "AND scisql_fluxToAbMag(zFlux_PS)-scisql_fluxToAbMag(yFlux_PS) >=-0.40;";
     queryAnaHelper.buildQuerySession(qsTest, stmt);
 }
+
 
 BOOST_AUTO_TEST_CASE(dm646) {
     // non-chunked query
@@ -658,6 +720,7 @@ BOOST_AUTO_TEST_CASE(dm646) {
     BOOST_CHECK_EQUAL(queries[0], expected);
     BOOST_CHECK_EQUAL(queries[1], expectedMerge);
 }
+
 
 BOOST_AUTO_TEST_CASE(dm681) {
     // Stricter sql_stmt grammer rules: reject trailing garbage
@@ -681,6 +744,7 @@ BOOST_AUTO_TEST_CASE(dm681) {
     qs = queryAnaHelper.buildQuerySession(qsTest, stmt);
     BOOST_CHECK_EQUAL(qs->getError(), expectedErr);
 }
+
 
 BOOST_AUTO_TEST_CASE(FuncExprPred) {
     // DM-1784: Nested ValueExpr in function calls.
@@ -706,6 +770,7 @@ BOOST_AUTO_TEST_CASE(FuncExprPred) {
     BOOST_CHECK_EQUAL(queries[0], expected);
 }
 
+
 BOOST_AUTO_TEST_SUITE_END()
 ////////////////////////////////////////////////////////////////////////
 
@@ -728,6 +793,7 @@ BOOST_AUTO_TEST_CASE(MatchTableWithoutWhere) {
     BOOST_CHECK_EQUAL(actual, expected);
 }
 
+
 BOOST_AUTO_TEST_CASE(MatchTableWithWhere) {
     std::string stmt = "SELECT * FROM RefObjMatch WHERE "
                        "foo!=bar AND baz<3.14159;";
@@ -738,6 +804,7 @@ BOOST_AUTO_TEST_CASE(MatchTableWithWhere) {
     std::string actual = queryAnaHelper.buildFirstParallelQuery(false);
     BOOST_CHECK_EQUAL(actual, expected);
 }
+
 
 BOOST_AUTO_TEST_SUITE_END()
 ////////////////////////////////////////////////////////////////////////
@@ -752,6 +819,8 @@ BOOST_AUTO_TEST_CASE(Garbled) {
             "FROM LSST.Science_Ccd_Exposure AS sce WHERE sce.field=535 AND sce.camcol LIKE '%' \"");
 
 }
+
+
 BOOST_AUTO_TEST_SUITE_END()
 ////////////////////////////////////////////////////////////////////////
 BOOST_FIXTURE_TEST_SUITE(EquiJoin, QueryAnaFixture)
@@ -765,6 +834,7 @@ BOOST_AUTO_TEST_CASE(FreeIndex) {
     auto queries = queryAnaHelper.getInternalQueries(qsTest, stmt);
     BOOST_CHECK_EQUAL(queries[0], expected);
 }
+
 
 BOOST_AUTO_TEST_CASE(SpecIndexUsing) {
     // Equi-join syntax, not supported yet
@@ -780,6 +850,7 @@ BOOST_AUTO_TEST_CASE(SpecIndexUsing) {
     BOOST_CHECK_EQUAL(queries[0], expected);
 }
 
+
 BOOST_AUTO_TEST_CASE(SpecIndexOn) {
     std::string stmt = "SELECT s.ra, s.decl, o.foo "
         "FROM Object o "
@@ -794,6 +865,7 @@ BOOST_AUTO_TEST_CASE(SpecIndexOn) {
     auto queries = queryAnaHelper.getInternalQueries(qsTest, stmt);
     BOOST_CHECK_EQUAL(queries[0], expected);
 }
+
 
 BOOST_AUTO_TEST_SUITE_END()
 
@@ -822,6 +894,7 @@ BOOST_AUTO_TEST_CASE(NoSpec) {
     BOOST_CHECK(i == e);
 }
 
+
 BOOST_AUTO_TEST_CASE(Cross) {
     std::string stmt = "SELECT * "
         "FROM Source s1 CROSS JOIN Source s2 "
@@ -829,12 +902,15 @@ BOOST_AUTO_TEST_CASE(Cross) {
     auto qs = queryAnaHelper.buildQuerySession(qsTest, stmt);
     BOOST_CHECK_EQUAL(qs->getError(), NOT_EVALUABLE_MSG);
 }
+
+
 BOOST_AUTO_TEST_CASE(Using) {
     // Equi-join syntax, non-partitioned
     std::string stmt = "SELECT * "
         "FROM Filter f JOIN Science_Ccd_Exposure USING(exposureId);";
     queryAnaHelper.buildQuerySession(qsTest, stmt);
 }
+
 
 BOOST_AUTO_TEST_SUITE_END()
 
@@ -860,6 +936,7 @@ BOOST_AUTO_TEST_CASE(Case01_0002) {
                                   params, params+4);
 }
 
+
 BOOST_AUTO_TEST_CASE(Case01_0003) {
     std::string stmt = "SELECT s.ra, s.decl, o.raRange, o.declRange "
         "FROM   Object o "
@@ -872,6 +949,7 @@ BOOST_AUTO_TEST_CASE(Case01_0003) {
     BOOST_CHECK(context->hasChunks());
     BOOST_CHECK(!context->hasSubChunks());
 }
+
 
 BOOST_AUTO_TEST_CASE(Case01_0012) {
     // This is ticket #2048, actually a proxy problem.
@@ -893,6 +971,7 @@ BOOST_AUTO_TEST_CASE(Case01_0012) {
     // Optional parens may be confusing the parser.
 }
 
+
 BOOST_AUTO_TEST_CASE(Case01_1012) {
     // This is unsupported by the SQL92 grammar, which rejects
     // expressions in ORDER BY because it follows SQL92. Consider
@@ -902,6 +981,7 @@ BOOST_AUTO_TEST_CASE(Case01_1012) {
     BOOST_CHECK_EQUAL(qs->getError(),
             "ParseException:Error parsing query, near \"ABS(iE1_SG)\", qserv does not support functions in ORDER BY.");
 }
+
 
 BOOST_AUTO_TEST_CASE(Case01_1013) {
     // This is unsupported in SQL92, so the parser rejects
@@ -938,6 +1018,7 @@ BOOST_AUTO_TEST_CASE(Case01_1030) {
     // "JOIN" syntax, "ORDER BY" with "ASC"
 }
 
+
 BOOST_AUTO_TEST_CASE(Case01_1052) {
     std::string stmt = "SELECT DISTINCT rFlux_PS FROM Object;";
     std::string expected = "SELECT DISTINCT rFlux_PS FROM LSST.%$#Object%$#;";
@@ -957,6 +1038,7 @@ BOOST_AUTO_TEST_CASE(Case01_1052) {
     // DISTINCT syntax (simplified from 1052)
     // not currently supported? (parser or aggregator)
 }
+
 
 BOOST_AUTO_TEST_CASE(Case01_1081) {
     // The original statement uses "LEFT JOIN SimRefObject"
@@ -1000,6 +1082,7 @@ BOOST_AUTO_TEST_CASE(Case01_1081) {
     BOOST_CHECK_EQUAL(first->subChunkIds[2], 100020);
 }
 
+
 BOOST_AUTO_TEST_CASE(Case01_1083) {
     std::string stmt = "select objectId, sro.*, (sro.refObjectId-1)/2%pow(2,10), typeId "
         "from Source s join RefObjMatch rom using (objectId) "
@@ -1020,6 +1103,7 @@ BOOST_AUTO_TEST_CASE(Case01_1083) {
 -    BOOST_CHECK(!spr->getHasAggregate());
 #endif
 }
+
 
 BOOST_AUTO_TEST_CASE(Case01_2001) {
     std::string stmt = "SELECT objectId, "
@@ -1044,6 +1128,7 @@ BOOST_AUTO_TEST_CASE(Case01_2001) {
 #endif
 }
 
+
 BOOST_AUTO_TEST_CASE(Case01_2004) {
     // simplified to test only:
     // 1) aggregation with aliasing in column spec,
@@ -1057,6 +1142,7 @@ BOOST_AUTO_TEST_CASE(Case01_2004) {
     auto qs = queryAnaHelper.buildQuerySession(qsTest, stmt);
     BOOST_CHECK_EQUAL(qs->getError(), expectedErr);
 }
+
 
 BOOST_AUTO_TEST_CASE(Case01_2006) {
     std::string stmt = "SELECT scisql_fluxToAbMag(uFlux_PS) "
@@ -1072,6 +1158,7 @@ BOOST_AUTO_TEST_CASE(Case01_2006) {
     //std::cout << "--SAMPLING--" << spr->queryAnaHelper.getParseresult() << "\n";
     // % op in WHERE clause
 }
+
 
 BOOST_AUTO_TEST_SUITE_END()
 

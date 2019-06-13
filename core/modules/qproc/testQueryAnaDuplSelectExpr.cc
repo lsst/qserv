@@ -50,18 +50,22 @@
 #include "lsst/log/Log.h"
 
 // Qserv headers
+#include "mysql/MySqlConfig.h"
 #include "parser/SelectParser.h"
 #include "qana/DuplSelectExprPlugin.h"
 #include "query/QueryContext.h"
+#include "sql/MockSql.h"
 #include "tests/QueryAnaFixture.h"
 #include "util/Error.h"
 #include "util/MultiError.h"
 
 
+using lsst::qserv::mysql::MySqlConfig;
 using lsst::qserv::parser::SelectParser;
 using lsst::qserv::qana::DuplSelectExprPlugin;
 using lsst::qserv::qproc::QuerySession;
 using lsst::qserv::query::QueryContext;
+using lsst::qserv::sql::MockSql;
 using lsst::qserv::tests::QueryAnaFixture;
 using lsst::qserv::util::Error;
 using lsst::qserv::util::ErrorCode;
@@ -96,7 +100,9 @@ BOOST_AUTO_TEST_CASE(Alias) {
 
     std::string expected_err_msg = build_exception_msg("2", "f1", " 1 2");
 
-    std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, sql);
+    MockSql::DbColumns dbColumns = {{"Object", {"pm_declErr", "chunkId", "bMagF"}}};
+    qsTest.mysqlSchemaConfig = MySqlConfig(std::make_shared<MockSql>(dbColumns));
+    std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, sql, true);
     BOOST_CHECK_EQUAL(qs->getError(), expected_err_msg);
     std::shared_ptr<QueryContext> context = qs->dbgGetContext();
     BOOST_CHECK(context);
@@ -107,7 +113,7 @@ BOOST_AUTO_TEST_CASE(CaseInsensitive) {
 
     std::string expected_err_msg = build_exception_msg("2", "chunkid", " 1 2");
 
-    std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, sql);
+    std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, sql, true);
     BOOST_CHECK_EQUAL(qs->getError(), expected_err_msg);
     std::shared_ptr<QueryContext> context = qs->dbgGetContext();
     BOOST_CHECK(context);
@@ -117,8 +123,9 @@ BOOST_AUTO_TEST_CASE(Function) {
     std::string sql = "select sum(pm_declErr), chunkId as f1, chunkId AS f1, avg(pm_declErr) from LSST.Object where bMagF > 20.0 GROUP BY chunkId;";
 
     std::string expected_err_msg = build_exception_msg("2", "f1", " 2 3");
-
-    std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, sql);
+    MockSql::DbColumns dbColumns = {{"Object", {"pm_declErr", "chunkId", "bMagF"}}};
+    qsTest.mysqlSchemaConfig = MySqlConfig(std::make_shared<MockSql>(dbColumns));
+    std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, sql, true);
     BOOST_CHECK_EQUAL(qs->getError(), expected_err_msg);
     std::shared_ptr<QueryContext> context = qs->dbgGetContext();
     BOOST_CHECK(context);
@@ -126,10 +133,12 @@ BOOST_AUTO_TEST_CASE(Function) {
 
 BOOST_AUTO_TEST_CASE(Simple) {
     std::string sql = "select pm_declErr, chunkId, ra_Test from LSST.Object where bMagF > 20.0 GROUP BY chunkId;";
-
-     std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, sql);
-     std::shared_ptr<QueryContext> context = qs->dbgGetContext();
-     BOOST_CHECK(context);
+    std::string expected_err_msg = build_exception_msg("2", "f1", " 2 3");
+    MockSql::DbColumns dbColumns = {{"Object", {"pm_declErr", "chunkId", "ra_Test", "bMagF"}}};
+    qsTest.mysqlSchemaConfig = MySqlConfig(std::make_shared<MockSql>(dbColumns));
+    std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, sql);
+    std::shared_ptr<QueryContext> context = qs->dbgGetContext();
+    BOOST_CHECK(context);
 }
 
 BOOST_AUTO_TEST_CASE(SameNameDifferentTable) {
@@ -140,7 +149,7 @@ BOOST_AUTO_TEST_CASE(SameNameDifferentTable) {
 
     std::string expected_err_msg = build_exception_msg("2", "objectid", " 1 2");
 
-     std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, sql);
+     std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, sql, true);
      BOOST_CHECK_EQUAL(qs->getError(), expected_err_msg);
      std::shared_ptr<QueryContext> context = qs->dbgGetContext();
      BOOST_CHECK(context);

@@ -60,7 +60,7 @@ struct QueryAnaHelper {
     *  @param expectedErr:   expected error message
     */
     std::shared_ptr<qproc::QuerySession> buildQuerySession(qproc::QuerySession::Test qsTest,
-            std::string const & stmt);
+            std::string const & stmt, bool expectError=false);
 
     /**
     *  @brief Compute the first parallel query which will be send on

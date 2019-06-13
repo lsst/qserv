@@ -71,7 +71,8 @@ SelectParser::Ptr QueryAnaHelper::getParser(std::string const & stmt) {
 }
 
 std::shared_ptr<QuerySession> QueryAnaHelper::buildQuerySession(QuerySession::Test qsTest,
-                                                                std::string const & stmt) {
+                                                                std::string const & stmt,
+                                                                bool expectError) {
 
     querySession = std::make_shared<QuerySession>(qsTest);
     auto stmtIR = querySession->parseQuery(stmt);
@@ -79,7 +80,7 @@ std::shared_ptr<QuerySession> QueryAnaHelper::buildQuerySession(QuerySession::Te
         return querySession;
     }
     querySession->analyzeQuery(stmt, stmtIR);
-    if (querySession->getError() != "") {
+    if (not expectError && querySession->getError() != "") {
         throw std::runtime_error("querySession error:" + querySession->getError());
     }
 

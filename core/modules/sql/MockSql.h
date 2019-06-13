@@ -35,7 +35,7 @@ public:
     ~MockSql() {}
 
     typedef std::map<std::string, std::vector<std::string>> DbColumns;
-    MockSql(DbColumns const& dbColumns) : _dbColumns(dbColumns) {}
+    MockSql(DbColumns dbColumns) : _dbColumns(dbColumns) {}
 
     virtual void reset(mysql::MySqlConfig const& sc, bool useThreadMgmt=false) {}
     virtual bool connectToDb(SqlErrorObject&) { return false; }
