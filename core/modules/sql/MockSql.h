@@ -23,8 +23,12 @@
 #ifndef LSST_QSERV_SQL_MOCKSQL_H
 #define LSST_QSERV_SQL_MOCKSQL_H
 
+#include <memory>
+
 // Local headers
 #include "sql/SqlConnection.h"
+#include "sql/SqlException.h"
+
 
 namespace lsst {
 namespace qserv {
@@ -34,8 +38,15 @@ public:
     MockSql() {}
     ~MockSql() {}
 
-    typedef std::map<std::string, std::vector<std::string>> DbColumns;
+    typedef std::map<std::string, std::map<std::string, std::vector<std::string>>> DbTableColumns;
+
     MockSql(DbColumns dbColumns) : _dbColumns(dbColumns) {}
+
+    static std::shared_ptr<MockSql> MakeMockSql(DbTableColumns dbTableColumns) {
+        auto mockSql = std::make_shared<MockSql>();
+        mockSql->_dbTableColumns = dbTableColumns;
+        return mockSql;
+    }
 
     virtual void reset(mysql::MySqlConfig const& sc, bool useThreadMgmt=false) {}
     virtual bool connectToDb(SqlErrorObject&) { return false; }
@@ -78,20 +89,42 @@ public:
                             std::string const& prefixed="",
                             std::string const& dbName="") {
         return false; }
-    virtual bool listColumns(std::vector<std::string>& columns,
+    virtual void listColumns(std::vector<std::string>& columns,
                             SqlErrorObject&,
                             std::string const& dbName,
                             std::string const& tableName) {
         // The QueryContext gets all the columns in each table used by the query and stores this information
         // for lookup later. Here we return a list of column names for a table.
+
+        if (not _dbTableColumns.empty()) {
+            auto tableItr = _dbTableColumns.find(dbName);
+            if (tableItr == _dbTableColumns.end()) {
+                throw sql::NoSuchDb(lsst::qserv::util::Issue::Context(__FILE__, __LINE__, __func__), dbName);
+            }
+            auto columnsItr = tableItr->second.find(tableName);
+            if (columnsItr == tableItr->second.end()) {
+                throw sql::NoSuchTable(lsst::qserv::util::Issue::Context(__FILE__, __LINE__, __func__),
+                        dbName, tableName);
+            }
+            for (auto const& column : columnsItr->second) {
+                columns.push_back(column);
+            }
+            return;
+        }
+
+        // TODO FIX COMMENT
+        // There is no test for db name right now; the users of this class do not provide a db name, just a
+        // table name and the columns it would/should contain. If database name testing needs to be done it
+        // would need to get added here for testing.
+
         auto dbColumnsItr = _dbColumns.find(tableName);
         if (dbColumnsItr == _dbColumns.end()) {
-            return false;
+            throw sql::NoSuchTable(lsst::qserv::util::Issue::Context(__FILE__, __LINE__, __func__),
+                    "(unused)" + dbName, tableName);
         }
         for (auto const& column : dbColumnsItr->second) {
             columns.push_back(column);
         }
-        return true;
     }
 
     virtual std::string getActiveDbName() const { return std::string(); }
@@ -116,6 +149,7 @@ public:
 
 private:
     DbColumns _dbColumns;
+    DbTableColumns _dbTableColumns;
 }; // class MockSql
 
 }}} // lsst::qserv::sql
