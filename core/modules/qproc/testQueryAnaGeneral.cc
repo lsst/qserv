@@ -953,6 +953,8 @@ BOOST_AUTO_TEST_CASE(NoSpec) {
     std::string expected = "SELECT `s1`.foo AS `s1.foo`,`s2`.foo AS `s2_foo` "
         "FROM LSST.Source_100 AS `s1` NATURAL LEFT OUTER JOIN LSST.Source_100 AS `s2` "
         "WHERE `s1`.bar=`s2`.bar";
+    MockSql::DbTableColumns dbTableColumns = {{"LSST", {{"Source", {"foo", "bar"}}}}};
+    qsTest.mysqlSchemaConfig = MySqlConfig(std::make_shared<MockSql>(dbTableColumns));
     std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, stmt);
     qs->addChunk(ChunkSpec::makeFake(100,true));
     auto i = qs->cQueryBegin();
@@ -974,6 +976,8 @@ BOOST_AUTO_TEST_CASE(Cross) {
     std::string stmt = "SELECT * "
         "FROM Source s1 CROSS JOIN Source s2 "
         "WHERE s1.bar = s2.bar;";
+    MockSql::DbTableColumns dbTableColumns = {{"LSST", {{"Source", {"bar"}}}}};
+    qsTest.mysqlSchemaConfig = MySqlConfig(std::make_shared<MockSql>(dbTableColumns));
     auto qs = queryAnaHelper.buildQuerySession(qsTest, stmt, true);
     BOOST_CHECK_EQUAL(qs->getError(), NOT_EVALUABLE_MSG);
 }
@@ -983,6 +987,9 @@ BOOST_AUTO_TEST_CASE(Using) {
     // Equi-join syntax, non-partitioned
     std::string stmt = "SELECT * "
         "FROM Filter f JOIN Science_Ccd_Exposure USING(exposureId);";
+    MockSql::DbTableColumns dbTableColumns = {{"LSST", {{"Filter", {}},
+                                                        {"Science_Ccd_Exposure", {}}}}};
+    qsTest.mysqlSchemaConfig = MySqlConfig(std::make_shared<MockSql>(dbTableColumns));
     queryAnaHelper.buildQuerySession(qsTest, stmt);
 }
 
@@ -997,6 +1004,8 @@ BOOST_FIXTURE_TEST_SUITE(Case01Parse, QueryAnaFixture)
 BOOST_AUTO_TEST_CASE(Case01_0002) {
     std::string stmt = "SELECT * FROM Object WHERE objectIdObjTest = 430213989000;";
     //std::string expected = "SELECT * FROM LSST.%$#Object%$# WHERE objectId=430213989000;";
+    MockSql::DbTableColumns dbTableColumns = {{"LSST", {{"Object", {"objectIdObjTest"}}}}};
+    qsTest.mysqlSchemaConfig = MySqlConfig(std::make_shared<MockSql>(dbTableColumns));
     std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, stmt);
     std::shared_ptr<QueryContext> context = qs->dbgGetContext();
     BOOST_CHECK(context);
@@ -1018,6 +1027,9 @@ BOOST_AUTO_TEST_CASE(Case01_0003) {
         "JOIN   Source2 s USING (objectIdObjTest) "
         "WHERE  o.objectIdObjTest = 390034570102582 "
         "AND    o.latestObsTime = s.taiMidPoint;";
+    MockSql::DbTableColumns dbTableColumns = {{"LSST", {{"Object", {"raRange", "declRange", "objectIdObjTest", "latestObsTime"}},
+                                                        {"Source2", {"ra", "decl", "taiMidPoint"}}}}};
+    qsTest.mysqlSchemaConfig = MySqlConfig(std::make_shared<MockSql>(dbTableColumns));
     std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, stmt);
     std::shared_ptr<QueryContext> context = qs->dbgGetContext();
     BOOST_CHECK(context);
@@ -1034,6 +1046,8 @@ BOOST_AUTO_TEST_CASE(Case01_0012) {
         "WHERE (sce.visit = 887404831) "
         "AND (sce.raftName = '3,3') "
         "AND (sce.ccdName LIKE '%')";
+    MockSql::DbTableColumns dbTableColumns = {{"LSST", {{"Science_Ccd_Exposure", {"filterId", "filterName", "visit", "raftName", "ccdName"}}}}};
+    qsTest.mysqlSchemaConfig = MySqlConfig(std::make_shared<MockSql>(dbTableColumns));
     std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, stmt);
     std::shared_ptr<QueryContext> context = qs->dbgGetContext();
     BOOST_CHECK(context);
@@ -1052,6 +1066,8 @@ BOOST_AUTO_TEST_CASE(Case01_1012) {
     // expressions in ORDER BY because it follows SQL92. Consider
     // patching the grammar to support this.
     std::string stmt = "SELECT objectId, iE1_SG, ABS(iE1_SG) FROM Object WHERE iE1_SG between -0.1 and 0.1 ORDER BY ABS(iE1_SG);";
+    MockSql::DbTableColumns dbTableColumns = {{"LSST", {{"Object", {"objectId", "iE1_SG"}}}}};
+    qsTest.mysqlSchemaConfig = MySqlConfig(std::make_shared<MockSql>(dbTableColumns));
     auto qs = queryAnaHelper.buildQuerySession(qsTest, stmt);
     BOOST_CHECK_EQUAL(qs->getError(),
             "ParseException:Error parsing query, near \"ABS(iE1_SG)\", qserv does not support functions in ORDER BY.");
@@ -1063,6 +1079,8 @@ BOOST_AUTO_TEST_CASE(Case01_1013) {
     // expressions in ORDER BY because it uses a SQL92 grammar. Consider
     // patching the grammar to support this.
     std::string stmt = "SELECT objectId, ROUND(iE1_SG, 3), ROUND(ABS(iE1_SG), 3) FROM Object WHERE iE1_SG between -0.1 and 0.1 ORDER BY ROUND(ABS(iE1_SG), 3);";
+    MockSql::DbTableColumns dbTableColumns = {{"LSST", {{"Object", {"objectId", "iE1_SG"}}}}};
+    qsTest.mysqlSchemaConfig = MySqlConfig(std::make_shared<MockSql>(dbTableColumns));
     auto qs = queryAnaHelper.buildQuerySession(qsTest, stmt);
     BOOST_CHECK_EQUAL(qs->getError(), "ParseException:Error parsing query, near \"ROUND(ABS(iE1_SG), 3)\", qserv does not support functions in ORDER BY.");
 }
@@ -1078,6 +1096,10 @@ BOOST_AUTO_TEST_CASE(Case01_1030) {
         "ORDER BY objectId, taiMidPoint ASC;";
     // Besides the bugs mentioned above, this query is also not evaluable
     // because the Source and Object director column name is not objectId...
+    MockSql::DbTableColumns dbTableColumns = {{"LSST", {{"Object", {"objectId"}},
+                                                        {"Source", {"objectId", "filterId", "taiMidPoint", "psfFlux"}},
+                                                        {"Filter", {"filterId", "filterName"}}}}};
+    qsTest.mysqlSchemaConfig = MySqlConfig(std::make_shared<MockSql>(dbTableColumns));
     auto qs = queryAnaHelper.buildQuerySession(qsTest, stmt, true);
     BOOST_CHECK_EQUAL(qs->getError(), NOT_EVALUABLE_MSG);
 #if 0    // FIXME
@@ -1097,6 +1119,8 @@ BOOST_AUTO_TEST_CASE(Case01_1030) {
 BOOST_AUTO_TEST_CASE(Case01_1052) {
     std::string stmt = "SELECT DISTINCT rFlux_PS FROM Object;";
     std::string expected = "SELECT DISTINCT rFlux_PS FROM LSST.%$#Object%$#;";
+    MockSql::DbTableColumns dbTableColumns = {{"LSST", {{"Object", {"rFlux_PS"}}}}};
+    qsTest.mysqlSchemaConfig = MySqlConfig(std::make_shared<MockSql>(dbTableColumns));
     queryAnaHelper.buildQuerySession(qsTest, stmt);
 #if 0 // FIXME
     SqlParseRunner::Ptr spr = getRunner(stmt);
@@ -1133,6 +1157,10 @@ BOOST_AUTO_TEST_CASE(Case01_1081) {
         "INNER JOIN LSST.RefObjMatch_100 AS `o2t` ON `o`.objectIdObjTest=`o2t`.objectId "
         "INNER JOIN Subchunks_LSST_100.SimRefObjectFullOverlap_100_%S\007S% AS `t` ON `o2t`.refObjectId=`t`.refObjectId "
         "WHERE `o`.closestToObj=1 OR `o`.closestToObj IS NULL";
+    MockSql::DbTableColumns dbTableColumns = {{"LSST", {{"Object", {"objectIdObjTest", "closestToObj"}},
+                                                        {"RefObjMatch", {"objectId", "refObjectId"}},
+                                                        {"SimRefObject", {"refObjectId"}}}}};
+    qsTest.mysqlSchemaConfig = MySqlConfig(std::make_shared<MockSql>(dbTableColumns));
     std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, stmt);
     std::shared_ptr<QueryContext> context = qs->dbgGetContext();
     BOOST_CHECK(context);
@@ -1162,7 +1190,11 @@ BOOST_AUTO_TEST_CASE(Case01_1083) {
     std::string stmt = "select objectId, sro.*, (sro.refObjectId-1)/2%pow(2,10), typeId "
         "from Source s join RefObjMatch rom using (objectId) "
         "join SimRefObject sro using (refObjectId) where isStar =1 limit 10;";
-    auto querySession = queryAnaHelper.buildQuerySession(qsTest, stmt);
+    MockSql::DbTableColumns dbTableColumns = {{"LSST", {{"Source", {"objectId"}},
+                                                        {"RefObjMatch", {"typeId"}},
+                                                        {"SimRefObject", {"refObjectId", "isStar"}}}}};
+    qsTest.mysqlSchemaConfig = MySqlConfig(std::make_shared<MockSql>(dbTableColumns));
+    auto querySession = queryAnaHelper.buildQuerySession(qsTest, stmt, true);
     // I don't actaully know if this is the correct error, but it used to be that this query doesn't parse
     // at all and after adding parser features it *does* parse, and then causes this analysis error. I'm
     // modifying the test to check for this error to at least verify consistent behavior. When we do more
@@ -1192,6 +1224,8 @@ BOOST_AUTO_TEST_CASE(Case01_2001) {
 "< (0.08 + 0.42 * (scisql_fluxToAbMag(gFlux_PS)-scisql_fluxToAbMag(rFlux_PS) - 0.96)) "
         " OR scisql_fluxToAbMag(gFlux_PS)-scisql_fluxToAbMag(rFlux_PS) > 1.26 ) "
         "AND    scisql_fluxToAbMag(iFlux_PS)-scisql_fluxToAbMag(zFlux_PS) < 0.8;";
+    MockSql::DbTableColumns dbTableColumns = {{"LSST", {{"Object", {"objectId", "ra_PS", "decl_PS", "uFlux_PS", "gFlux_PS", "rFlux_PS", "iFlux_PS", "zFlux_PS", "yFlux_PS"}}}}};
+    qsTest.mysqlSchemaConfig = MySqlConfig(std::make_shared<MockSql>(dbTableColumns));
     queryAnaHelper.buildQuerySession(qsTest, stmt);
 #if 0 // FIXME
     SqlParseRunner::Ptr spr = getRunner(stmt);
@@ -1222,6 +1256,8 @@ BOOST_AUTO_TEST_CASE(Case01_2004) {
 BOOST_AUTO_TEST_CASE(Case01_2006) {
     std::string stmt = "SELECT scisql_fluxToAbMag(uFlux_PS) "
         "FROM   Object WHERE  (objectId % 100 ) = 40;";
+    MockSql::DbTableColumns dbTableColumns = {{"LSST", {{"Object", {"objectId", "uFlux_PS"}}}}};
+    qsTest.mysqlSchemaConfig = MySqlConfig(std::make_shared<MockSql>(dbTableColumns));
     auto qs = queryAnaHelper.buildQuerySession(qsTest, stmt);
 #if 0 // FIXME
     SqlParseRunner::Ptr spr = getRunner(stmt);

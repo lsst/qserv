@@ -61,7 +61,7 @@ using lsst::qserv::query::TestFactory;
 
 struct TestFixture {
     TestFixture(void) {
-        sql::MockSql::DbTableColumns dbTableColumns = {{"LSST", {{"Object", {"objectId", "ra_PS", "decl_PS"}}}}};
+        sql::MockSql::DbTableColumns dbTableColumns = {{"Somedb", {{"Object", {"objectId", "ra_PS", "decl_PS", "rFlux_PS_Sigma"}}}}};
         schemaCfg = mysql::MySqlConfig(std::make_shared<sql::MockSql>(dbTableColumns));
         std::string kvMapPath = "./core/modules/qana/testPlugins.kvmap"; // (from testPlugins was: FIXME ??)
         std::ifstream stream(kvMapPath);
