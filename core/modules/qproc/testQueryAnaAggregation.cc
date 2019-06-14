@@ -35,7 +35,6 @@
 #include <string>
 
 // Third-party headers
-#include "boost/assign/list_of.hpp"
 
 // Boost unit test header
 #define BOOST_TEST_MODULE QueryAnaAggregation
@@ -52,8 +51,6 @@
 #include "sql/MockSql.h"
 #include "tests/QueryAnaFixture.h"
 
-using boost::assign::list_of;
-using boost::assign::map_list_of;
 using lsst::qserv::mysql::MySqlConfig;
 using lsst::qserv::parser::SelectParser;
 using lsst::qserv::qproc::QuerySession;
@@ -76,8 +73,8 @@ BOOST_AUTO_TEST_CASE(Aggregate) {
                          "FROM LSST.Object_100 AS `LSST.Object` "
                          "WHERE `LSST.Object`.bMagF>20.0 "
                          "GROUP BY `chunkId`";
-    qsTest.mysqlSchemaConfig = MySqlConfig(std::make_shared<MockSql>(
-        map_list_of("Object", list_of("pm_declErr")("chunkId")("bMagF2")("bMagF"))));
+    MockSql::DbTableColumns dbTableColumns = {{"LSST", {{"Object", {"pm_declErr", "chunkId", "bMagF2", "bMagF"}}}}};
+    qsTest.mysqlSchemaConfig = MySqlConfig(std::make_shared<MockSql>(dbTableColumns));
     queryAnaHelper.buildQuerySession(qsTest, stmt);
     auto& qs = queryAnaHelper.querySession;
     std::shared_ptr<QueryContext> context = qs->dbgGetContext();
@@ -97,8 +94,9 @@ BOOST_AUTO_TEST_CASE(Aggregate) {
 BOOST_AUTO_TEST_CASE(Avg) {
     std::string stmt = "select chunkId, avg(bMagF2) bmf2 from LSST.Object where bMagF > 20.0;";
     std::string expPar = "SELECT `LSST.Object`.chunkId AS `chunkId`,COUNT(`LSST.Object`.bMagF2) AS `QS1_COUNT`,SUM(`LSST.Object`.bMagF2) AS `QS2_SUM` FROM LSST.Object_100 AS `LSST.Object` WHERE `LSST.Object`.bMagF>20.0";
-    qsTest.mysqlSchemaConfig = MySqlConfig(std::make_shared<MockSql>(
-        map_list_of("Object", list_of("chunkId")("bMagF2")("bMagF"))));
+    MockSql::DbTableColumns dbTableColumns = {{"LSST", {{"Object", {"chunkId", "bMagF2", "bMagF"}}}}};
+    qsTest.mysqlSchemaConfig = MySqlConfig(std::make_shared<MockSql>(dbTableColumns));
+
     std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, stmt);
     std::shared_ptr<QueryContext> context = qs->dbgGetContext();
 

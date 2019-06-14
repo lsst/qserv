@@ -37,7 +37,6 @@
 #include <vector>
 
 // Third-party headers
-#include "boost/assign/list_of.hpp"
 
 // Boost unit test header
 #define BOOST_TEST_MODULE QueryAnaBetween
@@ -54,8 +53,6 @@
 #include "sql/MockSql.h"
 #include "tests/QueryAnaFixture.h"
 
-using boost::assign::list_of;
-using boost::assign::map_list_of;
 using lsst::qserv::mysql::MySqlConfig;
 using lsst::qserv::parser::SelectParser;
 using lsst::qserv::qproc::ChunkQuerySpec;
@@ -72,8 +69,8 @@ BOOST_FIXTURE_TEST_SUITE(OrderBy, QueryAnaFixture)
 
 BOOST_AUTO_TEST_CASE(SecondaryIndex) {
     std::string stmt = "select * from Object where objectIdObjTest between 386942193651347 and 386942193651349;";
-    qsTest.mysqlSchemaConfig = MySqlConfig(std::make_shared<MockSql>(
-        map_list_of("Object", list_of("objectIdObjTest"))));
+    MockSql::DbTableColumns dbTableColumns = {{"LSST", {{"Object", {"objectIdObjTest"}}}}};
+    qsTest.mysqlSchemaConfig = MySqlConfig(std::make_shared<MockSql>(dbTableColumns));
     std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, stmt);
     std::shared_ptr<QueryContext> context = qs->dbgGetContext();
     BOOST_CHECK(context);
@@ -90,8 +87,8 @@ BOOST_AUTO_TEST_CASE(SecondaryIndex) {
 
 BOOST_AUTO_TEST_CASE(NoSecondaryIndex) {
     std::string stmt = "select * from Object where someField between 386942193651347 and 386942193651349;";
-    qsTest.mysqlSchemaConfig = MySqlConfig(std::make_shared<MockSql>(
-        map_list_of("Object", list_of("someField"))));
+    MockSql::DbTableColumns dbTableColumns = {{"LSST", {{"Object", {"someField"}}}}};
+    qsTest.mysqlSchemaConfig = MySqlConfig(std::make_shared<MockSql>(dbTableColumns));
     std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, stmt);
     std::shared_ptr<QueryContext> context = qs->dbgGetContext();
     BOOST_CHECK(context);
@@ -104,8 +101,8 @@ BOOST_AUTO_TEST_CASE(DoubleSecondaryIndexRestrictor) {
     // std::string stmt = "select * from Object where objectIdObjTest between 38 and 40 OR objectIdObjTest IN (10, 30, 70);"
     // but this doesn't work: see DM-4017
     std::string stmt = "select * from Object where objectIdObjTest between 38 and 40 and objectIdObjTest IN (10, 30, 70);";
-    MockSql::DbColumns dbColums = {{"Object", {"objectIdObjTest"}}};
-    qsTest.mysqlSchemaConfig = MySqlConfig(std::make_shared<MockSql>(dbColums));
+    MockSql::DbTableColumns dbTableColumns = {{"LSST", {{"Object", {"objectIdObjTest"}}}}};
+    qsTest.mysqlSchemaConfig = MySqlConfig(std::make_shared<MockSql>(dbTableColumns));
     std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, stmt);
     std::shared_ptr<QueryContext> context = qs->dbgGetContext();
     BOOST_CHECK(context);
@@ -132,8 +129,9 @@ BOOST_AUTO_TEST_CASE(DoubleSecondaryIndexRestrictorCartesian) {
     // std::string stmt = "select * from Object where objectIdObjTest between 38 and 40 OR objectIdObjTest IN (10, 30, 70);"
     // but this doesn't work: see DM-4017
     std::string stmt = "select * from Object o, Source s where o.objectIdObjTest between 38 and 40 AND s.objectIdSourceTest IN (10, 30, 70);";
-    qsTest.mysqlSchemaConfig = MySqlConfig(std::make_shared<MockSql>(
-        map_list_of("Object", list_of("objectIdObjTest"))("Source", list_of("objectIdSourceTest"))));
+    MockSql::DbTableColumns dbTableColumns = {{"LSST", {{"Object", {"objectIdObjTest"}},
+                                                        {"Source", {"objectIdSourceTest"}}}}};
+    qsTest.mysqlSchemaConfig = MySqlConfig(std::make_shared<MockSql>(dbTableColumns));
     std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, stmt, true);
     std::shared_ptr<QueryContext> context = qs->dbgGetContext();
     BOOST_CHECK(context);

@@ -37,7 +37,6 @@
 #include <vector>
 
 // Third-party headers
-#include "boost/assign/list_of.hpp"
 
 // Boost unit test header
 #define BOOST_TEST_MODULE QueryAnaIn
@@ -54,8 +53,6 @@
 #include "sql/MockSql.h"
 #include "tests/QueryAnaFixture.h"
 
-using boost::assign::list_of;
-using boost::assign::map_list_of;
 using lsst::qserv::mysql::MySqlConfig;
 using lsst::qserv::parser::SelectParser;
 using lsst::qserv::qproc::ChunkQuerySpec;
@@ -72,8 +69,8 @@ BOOST_FIXTURE_TEST_SUITE(OrderBy, QueryAnaFixture)
 
 BOOST_AUTO_TEST_CASE(SecondaryIndex) {
     std::string stmt = "select * from Object where objectIdObjTest in (2,3145,9999);";
-    qsTest.mysqlSchemaConfig = MySqlConfig(std::make_shared<MockSql>(
-        map_list_of("Object", list_of("objectIdObjTest"))));
+    MockSql::DbTableColumns dbTableColumns = {{"LSST", {{"Object", {"objectIdObjTest"}}}}};
+    qsTest.mysqlSchemaConfig = MySqlConfig(std::make_shared<MockSql>(dbTableColumns));
     std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, stmt);
     std::shared_ptr<QueryContext> context = qs->dbgGetContext();
     BOOST_CHECK(context);
@@ -90,8 +87,8 @@ BOOST_AUTO_TEST_CASE(SecondaryIndex) {
 
 BOOST_AUTO_TEST_CASE(CountIn) {
     std::string stmt = "select COUNT(*) AS N FROM Source WHERE objectId IN(386950783579546, 386942193651348);";
-    qsTest.mysqlSchemaConfig = MySqlConfig(std::make_shared<MockSql>(
-        map_list_of("Source", list_of("objectId"))));
+    MockSql::DbTableColumns dbTableColumns = {{"LSST", {{"Source", {"objectId"}}}}};
+    qsTest.mysqlSchemaConfig = MySqlConfig(std::make_shared<MockSql>(dbTableColumns));
     std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, stmt);
     std::string expectedParallel = "SELECT COUNT(*) AS `QS1_COUNT` FROM LSST.Source_100 AS `LSST.Source` "
                                    "WHERE `LSST.Source`.objectId IN(386950783579546,386942193651348)";
@@ -113,8 +110,8 @@ BOOST_AUTO_TEST_CASE(CountIn) {
 
 BOOST_AUTO_TEST_CASE(RestrictorObjectIdAlias) {
     std::string stmt = "select * from Object as o1 where objectIdObjTest IN (2,3145,9999);";
-    qsTest.mysqlSchemaConfig = MySqlConfig(std::make_shared<MockSql>(
-        map_list_of("Object", list_of("objectIdObjTest"))));
+    MockSql::DbTableColumns dbTableColumns = {{"LSST", {{"Object", {"objectIdObjTest"}}}}};
+    qsTest.mysqlSchemaConfig = MySqlConfig(std::make_shared<MockSql>(dbTableColumns));
     std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, stmt);
     std::shared_ptr<QueryContext> context = qs->dbgGetContext();
     BOOST_CHECK(context);

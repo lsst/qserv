@@ -90,6 +90,28 @@ void matchValueExprs(lsst::qserv::query::QueryContext& context, CLAUSE_T & claus
 }
 
 
+void matchTableRefs(lsst::qserv::query::QueryContext& context,
+                    std::vector<std::shared_ptr<lsst::qserv::query::ColumnRef>>& columnRefs,
+                    bool matchIsRequired) {
+    for (auto& columnRef : columnRefs) {
+        auto tableRefMatchVec = context.getTableRefMatches(columnRef);
+        // todo I think there are cases where it's ok to find 0 matches.
+        // it also may be ok to find more than 1, and just use the first? TBD.
+        if (tableRefMatchVec.size() == 0) {
+            if (matchIsRequired) {
+                std::ostringstream os;
+                os << "Could not find a single table ref match for " << *columnRef <<
+                    ", found:" << lsst::qserv::util::printable(tableRefMatchVec);
+                throw std::logic_error(os.str());
+            }
+        } else {
+            LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__ << " replacing tableRef in " << *columnRef << " with " << *tableRefMatchVec[0]);
+            columnRef->setTable(tableRefMatchVec[0]);
+        }
+    }
+}
+
+
 // Change the contents of the ValueExprs to use the TableRef objects that are stored in the context, instead
 // of allowing these ValueExprs to own their own unique TableRef objects.
 void matchTableRefs(lsst::qserv::query::QueryContext& context,
@@ -107,24 +129,10 @@ void matchTableRefs(lsst::qserv::query::QueryContext& context,
         // Otherwise, get all the contained column refs and handle them.
         std::vector<std::shared_ptr<lsst::qserv::query::ColumnRef>> columnRefs;
         valueExpr->findColumnRefs(columnRefs);
-        for (auto& columnRef : columnRefs) {
-            auto tableRefMatchVec = context.getTableRefMatches(columnRef);
-            // todo I think there are cases where it's ok to find 0 matches.
-            // it also may be ok to find more than 1, and just use the first? TBD.
-            if (tableRefMatchVec.size() == 0) {
-                if (matchIsRequired) {
-                    std::ostringstream os;
-                    os << "Could not find a single table ref match for " << *columnRef <<
-                        ", found:" << lsst::qserv::util::printable(tableRefMatchVec);
-                    throw std::logic_error(os.str());
-                }
-            } else {
-                LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__ << " replacing tableRef in " << *columnRef << " with " << *tableRefMatchVec[0]);
-                columnRef->setTable(tableRefMatchVec[0]);
-            }
-        }
+        matchTableRefs(context, columnRefs, matchIsRequired);
     }
 }
+
 
 template <typename CLAUSE_T>
 void matchTableRefs(lsst::qserv::query::QueryContext& context, CLAUSE_T & clause, bool matchIsRequired) {
@@ -132,6 +140,7 @@ void matchTableRefs(lsst::qserv::query::QueryContext& context, CLAUSE_T & clause
     clause.findValueExprs(valueExprs);
     matchTableRefs(context, valueExprs, matchIsRequired);
 }
+
 
 } // namespace
 
@@ -195,6 +204,11 @@ TablePlugin::applyLogical(query::SelectStmt& stmt,
         // If the TableRef being added does have JoinRefs, add those to the list of used TableRefs.
         for (auto&& joinRef : tableRef->getJoins()) {
             aliasSetter(joinRef->getRight());
+            if (joinRef->getSpec() != nullptr && joinRef->getSpec()->getOn() != nullptr) {
+                std::vector<std::shared_ptr<query::ColumnRef>> columnRefs;
+                joinRef->getSpec()->getOn()->findColumnRefs(columnRefs);
+                matchTableRefs(context, columnRefs, true);
+            }
         }
     };
     std::for_each(fromListTableRefs.begin(), fromListTableRefs.end(), aliasSetter);

@@ -72,6 +72,7 @@ public:
     std::string const& getTableAlias() const;
 
     std::shared_ptr<TableRef const> getTableRef() const;
+    std::shared_ptr<TableRef> getTableRef();
 
     void setDb(std::string const& db);
     void setTable(std::string const& table);

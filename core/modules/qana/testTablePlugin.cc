@@ -32,7 +32,6 @@
 #include <vector>
 
 // Third-party headers
-#include "boost/assign/list_of.hpp"
 
 // Qserv headers
 #include "ccontrol/UserQueryFactory.h"
@@ -57,14 +56,13 @@
 #include "boost/test/included/unit_test.hpp"
 
 using namespace lsst::qserv;
-using boost::assign::list_of;
-using boost::assign::map_list_of;
 using lsst::qserv::query::TestFactory;
 
 
 struct TestFixture {
-    TestFixture(void) :
-            schemaCfg(std::make_shared<sql::MockSql>(map_list_of("Object", list_of("objectId")("ra_PS")("decl_PS")))) {
+    TestFixture(void) {
+        sql::MockSql::DbTableColumns dbTableColumns = {{"LSST", {{"Object", {"objectId", "ra_PS", "decl_PS"}}}}};
+        schemaCfg = mysql::MySqlConfig(std::make_shared<sql::MockSql>(dbTableColumns));
         std::string kvMapPath = "./core/modules/qana/testPlugins.kvmap"; // (from testPlugins was: FIXME ??)
         std::ifstream stream(kvMapPath);
         css = lsst::qserv::css::CssAccess::createFromStream(stream, ".");

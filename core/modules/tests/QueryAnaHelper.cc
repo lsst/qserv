@@ -81,7 +81,7 @@ std::shared_ptr<QuerySession> QueryAnaHelper::buildQuerySession(QuerySession::Te
     }
     querySession->analyzeQuery(stmt, stmtIR);
     if (not expectError && querySession->getError() != "") {
-        throw std::runtime_error("querySession error:" + querySession->getError());
+        throw std::runtime_error("unexpected QuerySession error: " + querySession->getError());
     }
 
     if (LOG_CHECK_LVL(_log, LOG_LVL_DEBUG)) {
