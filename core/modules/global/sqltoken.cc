@@ -82,8 +82,8 @@ sqlShouldSeparate(std::string const& s, int last, int next) {
         || ((next == '%') && lastAlnum) // asdf%
         || ((last == '_') && nextAlnum) // _asdf
         || ((next == '_') && lastAlnum) // asdf_
-        || ((last == '`') && nextAlnum) // _asdf
-        || ((next == '`') && lastAlnum) // asdf_
+        || ((last == '`') && nextAlnum) // `asdf
+        || ((next == '`') && lastAlnum) // asdf`
         ;
 }
 
