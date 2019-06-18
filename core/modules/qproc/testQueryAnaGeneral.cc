@@ -105,7 +105,6 @@ BOOST_AUTO_TEST_CASE(TrivialSub) {
 
 BOOST_AUTO_TEST_CASE(NoContext) {
     std::string stmt = "SELECT * FROM LSST.Object WHERE someField > 5.0;";
-    std::string expected = "SELECT * FROM LSST.Object_100 AS QST_1_ WHERE someField>5.0";
     qsTest.defaultDb = "";
     MockSql::DbTableColumns dbTableColumns = {{"LSST", {{"Object", {"someField"}}}}};
     qsTest.mysqlSchemaConfig = MySqlConfig(std::make_shared<MockSql>(dbTableColumns));
@@ -154,7 +153,7 @@ BOOST_AUTO_TEST_CASE(Limit) {
 
 
 BOOST_AUTO_TEST_CASE(OrderBy) {
-    std::string stmt = "select * from LSST.Object WHERE ra_PS BETWEEN 150 AND 150.2 and decl_PS between 1.6 and 1.7 ORDER BY objectId;";
+    std::string stmt = "select objectId from LSST.Object WHERE ra_PS BETWEEN 150 AND 150.2 and decl_PS between 1.6 and 1.7 ORDER BY objectId;";
 
     MockSql::DbTableColumns dbTableColumns = {{"LSST", {{"Object", {"ra_PS", "decl_PS", "objectId"}}}}};
     qsTest.mysqlSchemaConfig = MySqlConfig(std::make_shared<MockSql>(dbTableColumns));
@@ -678,8 +677,8 @@ BOOST_AUTO_TEST_CASE(NewParser) {
 
 BOOST_AUTO_TEST_CASE(Mods) {
     char stmts[][128] = {
-        "SELECT * from Object order by ra_PS limit 3;",
-        "SELECT run FROM LSST.Science_Ccd_Exposure order by field limit 2;",
+        "SELECT ra_PS from Object order by ra_PS limit 3;",
+        "SELECT run, field FROM LSST.Science_Ccd_Exposure order by field limit 2;",
         "SELECT count(*) from Science_Ccd_Exposure group by visit;",
         "select count(*) from Object group by flags having count(*) > 3;"
     };
