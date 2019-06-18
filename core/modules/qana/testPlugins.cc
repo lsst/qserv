@@ -123,24 +123,6 @@ bool columnRefPtrComparisonPredicate(query::ColumnRef::Ptr lhs, query::ColumnRef
 }
 
 
-BOOST_DATA_TEST_CASE(OrderBy, QUERIES, query) {
-    auto parser = parser::SelectParser::newInstance(query.query);
-    try {
-        parser->setup();
-    } catch(parser::ParseException const& e) {
-        BOOST_TEST_MESSAGE("parse exception: " << e.what());
-    }
-    auto selectStatement = parser->getSelectStmt();
-    auto validOrderByColumns = qana::PostPlugin::getValidOrderByColumns(*selectStatement);
-    BOOST_REQUIRE_MESSAGE(std::equal(validOrderByColumns.begin(), validOrderByColumns.end(),
-            query.expectedColumns.begin(), query.expectedColumns.end(),
-            columnRefPtrComparisonPredicate),
-            "for statement:\"" << query.query << "\"" <<
-            ", available order by columns:" << util::printable(validOrderByColumns) <<
-            " do not match expected order by colums:" << util::printable(query.expectedColumns));
-}
-
-
 static const std::vector<OrderByQueryAndExpectedColumns> ORDER_BY_QUERIES = {
         OrderByQueryAndExpectedColumns("SELECT foo ORDER BY bar",
                 {std::make_shared<query::ColumnRef>("", "", "bar")}),
@@ -151,23 +133,6 @@ static const std::vector<OrderByQueryAndExpectedColumns> ORDER_BY_QUERIES = {
         OrderByQueryAndExpectedColumns("SELECT foo.bar.baz from my_table ORDER BY foo.bar.baz",
                 {std::make_shared<query::ColumnRef>("foo", "bar", "baz")})
 };
-
-BOOST_DATA_TEST_CASE(UsedOrderBy, ORDER_BY_QUERIES, query) {
-    auto parser = parser::SelectParser::newInstance(query.query);
-    try {
-        parser->setup();
-    } catch(parser::ParseException const& e) {
-        BOOST_TEST_MESSAGE("parse exception: " << e.what());
-    }
-    auto selectStatement = parser->getSelectStmt();
-    auto usedOrderByColumns = qana::PostPlugin::getUsedOrderByColumns(*selectStatement);
-    BOOST_REQUIRE_MESSAGE(std::equal(usedOrderByColumns.begin(), usedOrderByColumns.end(),
-            query.expectedColumns.begin(), query.expectedColumns.end(),
-            columnRefPtrComparisonPredicate),
-            "for statement:\"" << query.query << "\"" <<
-            ", ORDER BY used columns:" << util::printable(usedOrderByColumns) <<
-            " do not match expected ORDER BY colums:" << util::printable(query.expectedColumns));
-}
 
 
 struct ColumnDifferenceData {
@@ -187,130 +152,6 @@ std::ostream& operator<<(std::ostream& os, ColumnDifferenceData const& self) {
     return os;
 }
 
-static const std::vector<ColumnDifferenceData> COLUMN_REF_DIFFERENCE_QUERIES = {
-    ColumnDifferenceData(
-        {   // available:
-            std::make_shared<query::ColumnRef>("db", "table", "aliasA", "columnA"),
-            std::make_shared<query::ColumnRef>("db", "table", "aliasB", "columnB"),
-            std::make_shared<query::ColumnRef>("db", "table", "aliasC", "columnC"),
-        },
-        {   // required:
-            std::make_shared<query::ColumnRef>("db", "table", "aliasA", "columnA"),
-            std::make_shared<query::ColumnRef>("db", "table", "aliasB", "columnB"),
-        },
-        true
-    ),
-    ColumnDifferenceData(
-        {   // available:
-            std::make_shared<query::ColumnRef>("db", "table", "aliasA", "columnA"),
-            std::make_shared<query::ColumnRef>("db", "table", "aliasB", "columnB"),
-        },
-        {   // required:
-            std::make_shared<query::ColumnRef>("db", "table", "aliasA", "columnA"),
-            std::make_shared<query::ColumnRef>("db", "table", "aliasB", "columnB"),
-            std::make_shared<query::ColumnRef>("db", "table", "aliasC", "columnC"),
-        },
-        false
-    ),
-    ColumnDifferenceData(
-        {   // available:
-            std::make_shared<query::ColumnRef>("db", "table", "aliasA", "columnA"),
-            std::make_shared<query::ColumnRef>("db", "table", "aliasB", "columnB"),
-            std::make_shared<query::ColumnRef>("db", "table", "aliasC", "columnC"),
-        },
-        {   // required:
-            std::make_shared<query::ColumnRef>("db", "table", "aliasA", "columnA"),
-            std::make_shared<query::ColumnRef>("db", "table", "aliasB", "columnB"),
-            std::make_shared<query::ColumnRef>("db", "table", "aliasC", "columnC"),
-        },
-        true
-    ),
-    ColumnDifferenceData(
-        {   // available:
-            std::make_shared<query::ColumnRef>("db", "table", "aliasA", "columnA"),
-        },
-        {   // required:
-            std::make_shared<query::ColumnRef>("db", "table", "aliasA", "columnA"),
-        },
-        true
-    ),
-    ColumnDifferenceData(
-        {   // available:
-            std::make_shared<query::ColumnRef>("db", "table", "aliasA", "columnA"),
-        },
-        {   // required:
-            std::make_shared<query::ColumnRef>("db", "table", "aliasA", "columnA"),
-            std::make_shared<query::ColumnRef>("db", "table", "aliasA", "columnA"),
-        },
-        true
-    ),
-    ColumnDifferenceData(
-        {   // available:
-            std::make_shared<query::ColumnRef>("db", "table", "aliasA", "columnA"),
-            std::make_shared<query::ColumnRef>("db", "table", "aliasA", "columnA"),
-        },
-        {   // required:
-            std::make_shared<query::ColumnRef>("db", "table", "aliasA", "columnA"),
-        },
-        true
-    ),
-    ColumnDifferenceData(
-        {   // available:
-            std::make_shared<query::ColumnRef>("db", "table", "aliasA", "columnA"),
-            std::make_shared<query::ColumnRef>("db", "table", "aliasB", "columnB"),
-        },
-        {   // required:
-            std::make_shared<query::ColumnRef>("db", "table", "aliasA", "columnA"),
-        },
-        true
-    ),
-    // ColumnDifferenceData(
-    //     {   // available:
-    //         std::make_shared<query::ColumnRef>("", "foo", "bar"),
-    //         std::make_shared<query::ColumnRef>("", "", "baz"),
-    //     },
-    //     {   // required:
-    //         std::make_shared<query::ColumnRef>("", "", "bar"),
-    //     },
-    //     true
-    // ),
-    // ColumnDifferenceData(
-    //     {   // available:
-    //         std::make_shared<query::ColumnRef>("", "foo", "bar"),
-    //         std::make_shared<query::ColumnRef>("", "baz", "bar"),
-    //     },
-    //     {   // required:
-    //         std::make_shared<query::ColumnRef>("", "", "bar"),
-    //     },
-    //     false
-    // ),
-    // ColumnDifferenceData(
-    //     {   // available:
-    //         std::make_shared<query::ColumnRef>("", "", "foo"),
-    //         std::make_shared<query::ColumnRef>("", "", "bar"),
-    //     },
-    //     {   // required:
-    //         std::make_shared<query::ColumnRef>("", "baz", "foo"),
-    //     },
-    //     false // since we don't know if the select foo comes from the baz table or not.
-    // )
-};
-
-
-BOOST_DATA_TEST_CASE(ColumnRefVecDifference, COLUMN_REF_DIFFERENCE_QUERIES, columns) {
-    query::ColumnRef::Vector missing;
-    bool verified = qana::PostPlugin::verifyColumnsForOrderBy(columns.available, columns.required, missing);
-    if (columns.pass) {
-        BOOST_REQUIRE_MESSAGE(
-                verified,
-                    "available columns did not satisfy required columns:" << columns <<
-                    ", missing:" << util::printable(missing));
-    } else {
-        BOOST_REQUIRE_MESSAGE(
-                false == verified,
-                    "available columns should not satisfy required columns:" << columns);
-    }
-}
 
 BOOST_AUTO_TEST_CASE(Exceptions) {
     // Should throw an Analysis error, because columnref is invalid.

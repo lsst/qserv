@@ -103,25 +103,6 @@ PostPlugin::applyPhysical(QueryPlugin::Plan& plan,
         }
     }
 
-    // // For query results to be ordered, the columns and/or aliases used by the ORDER BY statement must also
-    // // be present in the SELECT statement. Only unqualified column names in the SELECT statement and that are
-    // // *not* in a function or expression may be used by the ORDER BY statement. For example, things like
-    // // ABS(col), t.col,  and col * 5 must be aliased if they will be used by the ORDER BY statement.
-    // //
-    // // This block creates a list of column names & aliases in the select list that may be used by the
-    // // ORDER BY statement.
-    // if (_orderBy) {
-    //     auto validSelectColumns = getValidOrderByColumns(plan.stmtOriginal);
-    //     auto orderByColumns = getUsedOrderByColumns(plan.stmtOriginal);
-    //     LOGS(_log, LOG_LVL_DEBUG, "selectColumns:" << util::printable(validSelectColumns) <<
-    //             ", orderByColumns:" << util::printable(orderByColumns));
-    //     query::ColumnRef::Vector missingColumns;
-    //     if (false == verifyColumnsForOrderBy(validSelectColumns, orderByColumns, missingColumns)) {
-    //         throw AnalysisError("ORDER BY No match for " + toString(util::printable(missingColumns)) +
-    //                 " in SELECT columns:" + toString(util::printable(validSelectColumns)));
-    //     }
-    // }
-
     if (context.needsMerge) {
         // Prepare merge statement.
         // If empty select in merger, create one with *
@@ -137,91 +118,5 @@ PostPlugin::applyPhysical(QueryPlugin::Plan& plan,
     }
 }
 
-
-query::ColumnRef::Vector PostPlugin::getValidOrderByColumns(query::SelectStmt const & selectStatement) {
-
-    std::shared_ptr<query::ValueExprPtrVector> selectValueExprList =
-            selectStatement.getSelectList().getValueExprList();
-
-    query::ColumnRef::Vector validSelectCols;
-    LOGS(_log, LOG_LVL_DEBUG, "finding columns usable by ORDER BY from SELECT valueExprs:"
-            << util::printable(*selectValueExprList));
-    for (auto const & selValExpr : *selectValueExprList) {
-        std::string alias = selValExpr->getAlias();
-        // If the SELECT column has an alias, the ORDER BY statement must use the alias.
-        if (!alias.empty()) {
-            validSelectCols.push_back(std::make_shared<query::ColumnRef>("", "", alias));
-        } else {
-            // if the ValueExpr is not of type COLUMN, getColumnRef will return nullptr;
-            auto const & selColumnRef = selValExpr->getColumnRef();
-            if (nullptr == selColumnRef) {
-                continue;
-            }
-            validSelectCols.push_back(selColumnRef);
-        }
-    }
-    LOGS(_log, LOG_LVL_DEBUG, "valid colNames=" << util::printable(validSelectCols));
-    return validSelectCols;
-}
-
-
-query::ColumnRef::Vector PostPlugin::getUsedOrderByColumns(query::SelectStmt const & selectStatement) {
-    // For each element in the ORDER BY clause, see if it matches one item in validSelectCol
-    query::ColumnRef::Vector usedColumns;
-    auto ordByTerms = selectStatement.getOrderBy().getTerms();
-    for (auto const & ordByTerm : *ordByTerms) {
-        auto const & expr = ordByTerm.getExpr();
-        query::ColumnRef::Vector orderByColumnRefVec;
-        expr->findColumnRefs(orderByColumnRefVec);
-        usedColumns.insert(usedColumns.end(), orderByColumnRefVec.begin(), orderByColumnRefVec.end());
-    }
-    return usedColumns;
-}
-
-
-bool PostPlugin::verifyColumnsForOrderBy(query::ColumnRef::Vector const & available,
-        query::ColumnRef::Vector const & required, query::ColumnRef::Vector & missing) {
-    missing.clear();
-
-    auto columnRefCompare = [](query::ColumnRef::Ptr const& lhs, query::ColumnRef::Ptr const& rhs)
-        {
-            if (not lhs->isComplete() || not rhs->isComplete()) {
-                throw std::runtime_error("both column refs must be completely populated.");
-            }
-            return *lhs < *rhs;
-        };
-    typedef std::set<query::ColumnRef::Ptr, decltype(columnRefCompare)> columnRefSet;
-
-    // convert `available` and `required` to sets:
-    columnRefSet availableSet(available.begin(), available.end(), columnRefCompare);
-    columnRefSet requiredSet(required.begin(), required.end(), columnRefCompare);
-
-    // create a list of missing columns, where for a column in `required` there is not an exact match in
-    // `available`.
-    std::set_difference(requiredSet.begin(), requiredSet.end(), availableSet.begin(), availableSet.end(),
-            std::inserter(missing, missing.end()), columnRefCompare);
-
-    auto mItr = missing.rbegin();
-    while (mItr != missing.rend()) {
-        // make a set of ColumnRef from available that can match missing
-        // if set size is 1, that is a usable match and we use that.
-        // else (0 or >1) then we don't have a discrete match and we don't have a usable match.
-        columnRefSet usable(columnRefCompare);
-        for (auto&& a : available) {
-            if ((*mItr)->isSubsetOf(a)) {
-                usable.insert(a);
-            }
-        }
-        // increment, and erase if usable.size is 1. (We increment and then erase because we are using a
-        // reverse iterator (to preserve the validity of the iterators in the `missing` vector), and
-        // increment-then-erase via iterator base is how you remove an item using a reverse iterator.)
-        ++mItr;
-        if (usable.size() == 1) {
-            missing.erase(mItr.base());
-        }
-    }
-
-    return missing.empty();
-}
 
 }}} // namespace lsst::qserv::qana
