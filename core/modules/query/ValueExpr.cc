@@ -337,6 +337,16 @@ ValueExprPtr ValueExpr::clone() const {
 bool ValueExpr::isSubsetOf(ValueExpr const& valueExpr) const {
     if (not _alias.empty() && _alias != valueExpr._alias)
         return false;
+    // A ValueExpr may have been built as a ColumnRef with no table, or table alias, only the column defined,
+    // in which case this column might be the alias of another ValueExpr. (For example in the following:
+    // "SELECT AVG(foo) as f ORDER BY f", the ValueExpr for "f" in the OrderBy clause f will be constructed
+    // as a column ref like so: ColumnRef("", "", "f"), and in this case that ValueExpr is a subset of the
+    // ValueExpr in the SelectList.
+
+    // todo unittestme
+    if (isColumnRef() && getColumnRef()->isColumnOnly() && getColumnRef()->getColumn() == valueExpr._alias) {
+        return true;
+    }
     return util::isSubsetOf(_factorOps, valueExpr._factorOps);
 }
 

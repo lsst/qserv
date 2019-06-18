@@ -207,6 +207,15 @@ BOOST_DATA_TEST_CASE(ColumnRefLessThan, COLUMN_REF_LESS_THAN, columns) {
 }
 
 
+BOOST_AUTO_TEST_CASE(ColumnOnly) {
+    BOOST_REQUIRE_EQUAL(query::ColumnRef("", "", "", "column").isColumnOnly(), true);
+    BOOST_REQUIRE_EQUAL(query::ColumnRef("", "", "alias", "column").isColumnOnly(), false);
+    BOOST_REQUIRE_EQUAL(query::ColumnRef("", "table", "", "column").isColumnOnly(), false);
+    BOOST_REQUIRE_EQUAL(query::ColumnRef("db", "table", "", "column").isColumnOnly(), false);
+    BOOST_REQUIRE_EQUAL(query::ColumnRef("db", "table", "alias", "column").isColumnOnly(), false);
+}
+
+
 BOOST_AUTO_TEST_CASE(ColumnRefEqual) {
     // everything the same, check via alias
     BOOST_REQUIRE_EQUAL(query::ColumnRef("db", "table", "alais", "column").equal(

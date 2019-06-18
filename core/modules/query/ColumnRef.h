@@ -80,6 +80,9 @@ public:
     void setColumn(std::string const& column);
     void set(std::string const& db, std::string const& table, std::string const& column);
 
+    // return true if only the column parameter is set; the db, table, and table alias are empty.
+    bool isColumnOnly() const;
+
     friend std::ostream& operator<<(std::ostream& os, ColumnRef const& cr);
     friend std::ostream& operator<<(std::ostream& os, ColumnRef const* cr);
     void renderTo(QueryTemplate& qt) const;

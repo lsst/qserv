@@ -156,7 +156,7 @@ BOOST_AUTO_TEST_CASE(Limit) {
 BOOST_AUTO_TEST_CASE(OrderBy) {
     std::string stmt = "select * from LSST.Object WHERE ra_PS BETWEEN 150 AND 150.2 and decl_PS between 1.6 and 1.7 ORDER BY objectId;";
 
-    MockSql::DbTableColumns dbTableColumns = {{"LSST", {{"Object", {"ra_PS", "decl_PS"}}}}};
+    MockSql::DbTableColumns dbTableColumns = {{"LSST", {{"Object", {"ra_PS", "decl_PS", "objectId"}}}}};
     qsTest.mysqlSchemaConfig = MySqlConfig(std::make_shared<MockSql>(dbTableColumns));
     std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, stmt);
     std::shared_ptr<QueryContext> context = qs->dbgGetContext();

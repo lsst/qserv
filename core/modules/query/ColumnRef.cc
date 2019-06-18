@@ -164,6 +164,14 @@ bool ColumnRef::isSubsetOf(const ColumnRef::Ptr & rhs) const {
 }
 
 
+bool ColumnRef::isColumnOnly() const {
+    if (_tableRef->hasDb() || _tableRef->hasTable() || _tableRef->hasAlias()) {
+        return false;
+    }
+    return true;
+}
+
+
 bool ColumnRef::isSubsetOf(ColumnRef const& rhs) const {
     if (not _tableRef->isSubsetOf(*rhs._tableRef)) {
         return false;

@@ -78,13 +78,20 @@ namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.qana.TablePlugin");
 
 template <typename CLAUSE_T>
-void matchValueExprs(lsst::qserv::query::QueryContext& context, CLAUSE_T & clause) {
+void matchValueExprs(lsst::qserv::query::QueryContext& context, CLAUSE_T & clause, bool matchIsRequired) {
     lsst::qserv::query::ValueExprPtrRefVector valueExprRefs;
     clause.findValueExprRefs(valueExprRefs);
     for (auto&& valueExprRef : valueExprRefs) {
         auto&& valueExprMatch = context.getValueExprMatch(valueExprRef.get());
         if (nullptr != valueExprMatch) {
+            LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__ << " replacing valueExpr " << *valueExprRef.get() <<
+                    " in " << clause <<
+                    " with " << *valueExprMatch);
             valueExprRef.get() = valueExprMatch;
+        } else if (matchIsRequired) {
+            std::ostringstream os;
+            os << "Could not find a value expr match for " << *valueExprRef.get();
+            throw std::logic_error(os.str());
         }
     }
 }
@@ -169,6 +176,7 @@ TablePlugin::applyLogical(query::SelectStmt& stmt,
             }
         } else {
             valueExpr->setAliasIsUserDefined(true);
+            context.addUsedValueExpr(valueExpr);
         }
     }
 
@@ -223,19 +231,19 @@ TablePlugin::applyLogical(query::SelectStmt& stmt,
 
     if (stmt.hasOrderBy()) {
         matchTableRefs(context, stmt.getOrderBy(), false);
-        matchValueExprs(context, stmt.getOrderBy());
+        matchValueExprs(context, stmt.getOrderBy(), true);
     }
     if (stmt.hasWhereClause()) {
         matchTableRefs(context, stmt.getWhereClause(), true);
-        matchValueExprs(context, stmt.getWhereClause());
+        matchValueExprs(context, stmt.getWhereClause(), false);
     }
     if (stmt.hasGroupBy()) {
         matchTableRefs(context, stmt.getGroupBy(), false);
-        matchValueExprs(context, stmt.getGroupBy());
+        matchValueExprs(context, stmt.getGroupBy(), false);
     }
     if (stmt.hasHaving()) {
         matchTableRefs(context, stmt.getHaving(), false);
-        matchValueExprs(context, stmt.getHaving());
+        matchValueExprs(context, stmt.getHaving(), false);
     }
 
     LOGS(_log, LOG_LVL_TRACE, "OnClauses of Join:");
@@ -249,7 +257,7 @@ TablePlugin::applyLogical(query::SelectStmt& stmt,
                 auto&& onBoolTerm = joinSpec->getOn();
                 if (onBoolTerm) {
                     matchTableRefs(context, *onBoolTerm, false);
-                    matchValueExprs(context, *onBoolTerm);
+                    matchValueExprs(context, *onBoolTerm, false);
                 }
             }
         }
