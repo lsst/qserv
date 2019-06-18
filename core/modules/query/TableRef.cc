@@ -172,22 +172,6 @@ bool TableRef::operator<(const TableRef& rhs) const {
 }
 
 
-bool TableRef::lessThan(TableRef const& rhs, bool useAlias) const {
-    if (useAlias) {
-        return _alias < rhs._alias;
-    }
-    return std::tie(_db, _table) < std::tie(rhs._db, rhs._table);
-}
-
-
-bool TableRef::equal(TableRef const& rhs, bool useAlias) const {
-    if (useAlias) {
-        return _alias == rhs._alias;
-    }
-    return std::tie(_db, _table) == std::tie(rhs._db, rhs._table);
-}
-
-
 std::ostream& operator<<(std::ostream& os, TableRef const& ref) {
     os << "TableRef(";
     os << "\"" << ref._db << "\"";

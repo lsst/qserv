@@ -157,13 +157,6 @@ public:
 
     bool operator<(const TableRef& rhs) const;
 
-    // Compare this TableRef to rhs and return true if it is less than the other. If useAlias is true this
-    // will use the alias and igore the db and table.
-    // That is, "x.y AS a" will be less than "a.b as b" because a < b.
-    bool lessThan(TableRef const& rhs, bool useAlias) const;
-
-    bool equal(TableRef const& rhs, bool useAlias) const;
-
     TableRef::Ptr clone() const;
 
     class render;

@@ -175,66 +175,12 @@ BOOST_DATA_TEST_CASE(ColumnRefSubset, COLUMN_REF_MATCHES, columns) {
 }
 
 
-static const std::vector<TestColumnsAlias> COLUMN_REF_LESS_THAN = {
-    TestColumnsAlias("",   "",      "", "foo",      "",   "",      "", "foo", false, false),  // equal
-    TestColumnsAlias("",   "table", "", "foo",      "",   "table", "", "foo", false, false),  // equal
-    TestColumnsAlias("db", "table", "", "foo",      "db", "table", "", "foo", false, false),  // equal
-
-    TestColumnsAlias("",   "",      "a", "foo",      "",   "",      "b", "foo", false, true),  // alias less than
-    TestColumnsAlias("",   "table", "a", "foo",      "",   "table", "b", "foo", false, true),  //
-    TestColumnsAlias("db", "table", "a", "foo",      "db", "table", "b", "foo", false, true),  //
-    TestColumnsAlias("",   "",      "b", "foo",      "",   "",      "a", "foo", false, false), // alias greater than
-    TestColumnsAlias("",   "table", "b", "foo",      "",   "table", "a", "foo", false, false), //
-    TestColumnsAlias("db", "table", "b", "foo",      "db", "table", "a", "foo", false, false), //
-
-    TestColumnsAlias("",   "a",     "b",  "c",      "",   "b",      "a", "a",   true, false),   // table less than, alias greater
-    TestColumnsAlias("",   "b",     "a",  "a",      "",   "a",      "b",  "c",  false, true),   // table greater than, alias less
-
-    TestColumnsAlias("a",   "e",     "b",  "c",      "b",   "e",      "a", "a",   true, false),   // db less than, alias greater
-    TestColumnsAlias("b",   "e",     "a", "a",       "a",   "d",      "b",  "c",  false, true), // db greater than, alias less
-
-};
-
-
-BOOST_DATA_TEST_CASE(ColumnRefLessThan, COLUMN_REF_LESS_THAN, columns) {
-    // check a < b
-    BOOST_REQUIRE_MESSAGE(columns.pass == columns.a->lessThan(*columns.b, false),
-            columns.a << " without alias " <<
-            (columns.pass ? "should " : "should NOT ") << "be less than " << columns.b);
-    BOOST_REQUIRE_MESSAGE(columns.aliasPass == columns.a->lessThan(*columns.b, true),
-            columns.a << " with alias " <<
-            (columns.aliasPass ? "should " : "should NOT ") << "be less than " << columns.b);
-}
-
-
 BOOST_AUTO_TEST_CASE(ColumnOnly) {
     BOOST_REQUIRE_EQUAL(query::ColumnRef("", "", "", "column").isColumnOnly(), true);
     BOOST_REQUIRE_EQUAL(query::ColumnRef("", "", "alias", "column").isColumnOnly(), false);
     BOOST_REQUIRE_EQUAL(query::ColumnRef("", "table", "", "column").isColumnOnly(), false);
     BOOST_REQUIRE_EQUAL(query::ColumnRef("db", "table", "", "column").isColumnOnly(), false);
     BOOST_REQUIRE_EQUAL(query::ColumnRef("db", "table", "alias", "column").isColumnOnly(), false);
-}
-
-
-BOOST_AUTO_TEST_CASE(ColumnRefEqual) {
-    // everything the same, check via alias
-    BOOST_REQUIRE_EQUAL(query::ColumnRef("db", "table", "alais", "column").equal(
-                        query::ColumnRef("db", "table", "alais", "column"), true), true);
-    // everything the same, check via db & table
-    BOOST_REQUIRE_EQUAL(query::ColumnRef("db", "table", "alais", "column").equal(
-                        query::ColumnRef("db", "table", "alais", "column"), false), true);
-    // different db and table, check via alias
-    BOOST_REQUIRE_EQUAL(query::ColumnRef("db", "table", "alais", "column").equal(
-                        query::ColumnRef("",   "",      "alais", "column"), true), true);
-    // different db and table, check via db & table
-    BOOST_REQUIRE_EQUAL(query::ColumnRef("db", "table", "alais", "column").equal(
-                        query::ColumnRef("",   "",      "alais", "column"), false), false);
-    // different alias, check via alias
-    BOOST_REQUIRE_EQUAL(query::ColumnRef("db", "table", "a", "column").equal(
-                        query::ColumnRef("db", "table", "alais", "column"), true), false);
-    // different alias, check via db & table
-    BOOST_REQUIRE_EQUAL(query::ColumnRef("db", "table", "a", "column").equal(
-                        query::ColumnRef("db", "table", "alais", "column"), false), true);
 }
 
 

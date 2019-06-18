@@ -203,30 +203,12 @@ bool ColumnRef::isComplete() const {
 }
 
 
-bool ColumnRef::equal(ColumnRef const& rhs, bool useAlias) const {
-    return _tableRef->equal(*rhs._tableRef, useAlias);
-    if (_column != rhs._column) {
-        return false;
-    }
-}
-
-
 std::string ColumnRef::sqlFragment() const {
     QueryTemplate qt;
     renderTo(qt);
     std::ostringstream os;
     os << qt;
     return os.str();
-}
-
-
-bool ColumnRef::lessThan(ColumnRef const& rhs, bool useAlias) const {
-    if (_tableRef->lessThan(*rhs._tableRef, useAlias)) {
-        return true;
-    } else if (rhs._tableRef->lessThan(*_tableRef, useAlias)) {
-        return false;
-    }
-    return _column < rhs._column;
 }
 
 

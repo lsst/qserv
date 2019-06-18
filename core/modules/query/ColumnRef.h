@@ -104,12 +104,6 @@ public:
     // Return true if all the fields are populated, false if a field (like the database field) is empty.
     bool isComplete() const;
 
-    // Compare this ColumnRef to rhs and return true if it is less than the other.
-    // This will consider the alias, so if this == rhs by the alias it will return false.
-    // That is, "db.table.col AS a" will be equal to "a.col"
-    bool lessThan(ColumnRef const& rhs, bool useAlias) const;
-    bool equal(ColumnRef const& rhs, bool useAlias) const;
-
     bool operator==(const ColumnRef& rhs) const;
     bool operator!=(const ColumnRef& rhs) const { return false == (*this == rhs); }
     bool operator<(const ColumnRef& rhs) const;
