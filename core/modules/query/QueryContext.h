@@ -150,8 +150,16 @@ public:
     std::shared_ptr<qana::QueryMapping> queryMapping;
     std::shared_ptr<RestrList> restrictors;
 
+    /**
+     * @brief Get and cache database schema information for all the tables in the passed-in FROM list.
+     */
     void collectTopLevelTableSchema(FromList& fromList);
-    // todo pick a better name for this:
+
+    /**
+     * @brief Get and cache database schema information for all the tables in the passed-in TableRef.
+     *
+     * Will include any joined TableRefs.
+     */
     void collectTopLevelTableSchema(std::shared_ptr<query::TableRef> const& tableRef);
 
     std::string columnToTablesMapToString() const;
