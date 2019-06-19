@@ -87,19 +87,35 @@ public:
 
     proto::ScanInfo scanInfo; // Tables scanned (for shared scans)
 
-    // Add a TableRef to the list of tables used by this query.
-    // This typically contains the TableRefs from the FROM list.
+    /**
+     * @brief Add a TableRef to the list of tables used by this query.
+     *
+     * Typical use for a SELECT statement would populate this with the TableRefs from the FROM list.
+     */
     bool addUsedTableRef(std::shared_ptr<query::TableRef> const& tableRef);
 
-    // Get a TableRef from the list of tables used by this query that matches the pased in TableRef.
+    /**
+     * @brief Get a complete TableRef used by the query that matches the pased-in TableRef.
+     *
+     * The passed in TableRef may be a subset or an alias of the returned TableRef.
+     *
+     * This does not do any verification that the database or table actually exist in the database instance,
+     * but they must have been added via addUsedTableRef, which would typically indicate that they at least
+     * exist in the FROM list of the query being processed.
+     */
     std::shared_ptr<query::TableRef> getTableRefMatch(
         std::shared_ptr<query::TableRef> const& tableRef) const;
 
-    // Get a TableRef from the list of tables used by this query that matches the pased in ColumnRef; the
-    // column name must exist in the returned table, and the passed-in table must be a subset of or an
-    // alias-equivalent (where the db is empty, and the table name is the same as the alias name of the
-    // returned table)
-    std::vector<std::shared_ptr<query::TableRef>> getTableRefMatches(
+    /**
+     * @brief Get complete a TableRef from the list of tables used by this query that matches the pased-in
+     *        ColumnRef.
+     *
+     * This will verify that the column exists in the table specified by the ColumnRef.
+     *
+     * The table and database as indicated by the ColumnRef may be a subset or an alias of the TableRef
+     * in the returned ColumnRef.
+     */
+    std::shared_ptr<query::TableRef> getTableRefMatch(
         std::shared_ptr<query::ColumnRef> const& columnRef) const;
 
     /**

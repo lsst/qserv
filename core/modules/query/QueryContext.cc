@@ -99,24 +99,23 @@ std::shared_ptr<query::TableRef> QueryContext::getTableRefMatch(
 }
 
 
-std::vector<std::shared_ptr<query::TableRef>>
-QueryContext::getTableRefMatches(std::shared_ptr<query::ColumnRef> const& columnRef) const {
+std::shared_ptr<query::TableRef>
+QueryContext::getTableRefMatch(std::shared_ptr<query::ColumnRef> const& columnRef) const {
     auto mapItr = _columnToTablesMap.find(columnRef->getColumn());
     if (_columnToTablesMap.end() == mapItr)
-        return std::vector<std::shared_ptr<query::TableRef>>();
-    std::vector<std::shared_ptr<query::TableRef>> retTableRefs;
+        return nullptr;
     for (auto tableRef : mapItr->second) {
         auto&& tableRefMatch = getTableRefMatch(tableRef);
         if (tableRefMatch != nullptr) {
             tableRef = tableRefMatch;
         }
         if (columnRef->getTableRef()->isSubsetOf(*tableRef)) {
-            retTableRefs.push_back(tableRef);
+            return tableRef;
         } else if (columnRef->getTableRef()->isAliasedBy(*tableRef)) {
-            retTableRefs.push_back(tableRef);
+            return tableRef;
         }
     }
-    return retTableRefs;
+    return nullptr;
 }
 
 

@@ -101,19 +101,16 @@ void matchTableRefs(lsst::qserv::query::QueryContext& context,
                     std::vector<std::shared_ptr<lsst::qserv::query::ColumnRef>>& columnRefs,
                     bool matchIsRequired) {
     for (auto& columnRef : columnRefs) {
-        auto tableRefMatchVec = context.getTableRefMatches(columnRef);
-        // todo I think there are cases where it's ok to find 0 matches.
-        // it also may be ok to find more than 1, and just use the first? TBD.
-        if (tableRefMatchVec.size() == 0) {
+        auto tableRefMatch = context.getTableRefMatch(columnRef);
+        if (nullptr == tableRefMatch) {
             if (matchIsRequired) {
                 std::ostringstream os;
-                os << "Could not find a single table ref match for " << *columnRef <<
-                    ", found:" << lsst::qserv::util::printable(tableRefMatchVec);
+                os << "Could not find a table ref match for " << *columnRef;
                 throw std::logic_error(os.str());
             }
         } else {
-            LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__ << " replacing tableRef in " << *columnRef << " with " << *tableRefMatchVec[0]);
-            columnRef->setTable(tableRefMatchVec[0]);
+            LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__ << " replacing tableRef in " << *columnRef << " with " << *tableRefMatch);
+            columnRef->setTable(tableRefMatch);
         }
     }
 }
