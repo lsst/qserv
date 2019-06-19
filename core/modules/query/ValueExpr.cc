@@ -52,6 +52,7 @@
 #include "qana/CheckAggregation.h"
 #include "query/FuncExpr.h"
 #include "query/QueryTemplate.h"
+#include "query/SubsetHelper.h"
 #include "query/ValueFactor.h"
 #include "util/IterableFormatter.h"
 #include "util/PointerCompare.h"
@@ -346,7 +347,7 @@ bool ValueExpr::isSubsetOf(ValueExpr const& valueExpr) const {
     if (isColumnRef() && getColumnRef()->isColumnOnly() && getColumnRef()->getColumn() == valueExpr._alias) {
         return true;
     }
-    return util::isSubsetOf(_factorOps, valueExpr._factorOps);
+    return query::isSubsetOf(_factorOps, valueExpr._factorOps);
 }
 
 

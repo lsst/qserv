@@ -40,6 +40,7 @@
 // Qserv headers
 #include "query/ColumnRef.h"
 #include "query/QueryTemplate.h"
+#include "query/SubsetHelper.h"
 #include "query/ValueExpr.h"
 #include "query/ValueFactor.h"
 #include "util/IterableFormatter.h"
@@ -119,7 +120,7 @@ FuncExpr::clone() const {
 bool FuncExpr::isSubsetOf(FuncExpr const& rhs) const {
     if (_name != rhs._name)
         return false;
-    return util::isSubsetOf(params, rhs.params);
+    return query::isSubsetOf(params, rhs.params);
 }
 
 
