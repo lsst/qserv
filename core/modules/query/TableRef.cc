@@ -121,6 +121,12 @@ bool TableRef::hasAlias() const{
 
 
 bool TableRef::isSubsetOf(TableRef const& rhs) const {
+    if (not isSimple() || not rhs.isSimple()) {
+        // We can investigate adding support for this if needed but I don't think it will be.
+        // I think it would also be worth considering if it would be a better abstraction if we removed
+        // the JoinRef from TableRef and making the JoinRef contain the joined TableRefs.
+        throw std::logic_error("TableRef does not support isSubsetOf with joins.");
+    }
     // if the _table is empty, the _db must be empty
     if (not hasTable() && hasDb()) {
         return false;

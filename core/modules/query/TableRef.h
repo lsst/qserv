@@ -104,9 +104,6 @@ public:
      */
     void verifyPopulated(std::string const& defaultDb=std::string());
 
-    // nptodo this doesn't really work with the TableRef subclass (which has JoinRefs)
-    // maybe there needs to be another subclass TableRefWithoutJoin or something more
-    // elegant
     /**
      * @brief Find out if this TableRef is the same as another TableRef, where the database & column fields
      *        in this table ref may not be populated.
@@ -114,6 +111,9 @@ public:
      * For example, if the database is not populated in this it is ignored during comparison.
      * It is required that if the database is populated that the Table also be populated.
      * If the alias is populated it is included in the check.
+     *
+     * This only works with simple TableRefs (i.e. TableRefs without JOINs), throws a logic_error if this is
+     * called on or with a not-simple TableRef.
      *
      * @return true if the populated fields of this match the populated fields of rhs *and* if database is
      *         populated that table is populated as well.
