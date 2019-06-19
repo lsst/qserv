@@ -343,7 +343,6 @@ bool ValueExpr::isSubsetOf(ValueExpr const& valueExpr) const {
     // as a column ref like so: ColumnRef("", "", "f"), and in this case that ValueExpr is a subset of the
     // ValueExpr in the SelectList.
 
-    // todo unittestme
     if (isColumnRef() && getColumnRef()->isColumnOnly() && getColumnRef()->getColumn() == valueExpr._alias) {
         return true;
     }
