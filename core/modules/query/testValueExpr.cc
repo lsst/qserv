@@ -38,6 +38,7 @@
 
 // Qserv headers
 #include "query/ValueExpr.h"
+#include "query/QueryTemplate.h"
 
 // Boost unit test header
 #define BOOST_TEST_MODULE ValueExpr
@@ -52,12 +53,50 @@ BOOST_AUTO_TEST_SUITE(Suite)
 
 
 BOOST_AUTO_TEST_CASE(subsetOf) {
-  auto aliasInColumn = ValueExpr::newColumnExpr("", "", "", "alias");
-  auto fullValue = ValueExpr::newColumnExpr("db", "table", "tableAlias", "column");
-  fullValue->setAlias("alias");
-  BOOST_REQUIRE_EQUAL(aliasInColumn->isSubsetOf(*fullValue), true);
+    auto aliasInColumn = ValueExpr::newColumnExpr("", "", "", "alias");
+    auto fullValue = ValueExpr::newColumnExpr("db", "table", "tableAlias", "column");
+    fullValue->setAlias("alias");
+    BOOST_REQUIRE_EQUAL(aliasInColumn->isSubsetOf(*fullValue), true);
 }
 
+
+BOOST_AUTO_TEST_CASE(render) {
+    auto valueExpr = ValueExpr::newColumnExpr("db", "table", "tableAlias", "column");
+    valueExpr->setAlias("alias");
+
+    auto getRendered = [](std::shared_ptr<ValueExpr> const& valueExpr,
+                          QueryTemplate::AliasMode aliasMode,
+                          QueryTemplate::AliasMode tableAliasMode) -> std::string {
+        QueryTemplate qt;
+        qt.setAliasMode(aliasMode);
+        qt.setTableAliasMode(tableAliasMode);
+        ValueExpr::render render(qt, false);
+        render.applyToQT(valueExpr);
+        std::ostringstream os;
+        os << qt;
+        return os.str();
+    };
+
+    // UseValueAlias
+    // DefineValueUseTableAliases
+    // DefineValueDontUseTableAliases
+    // DefineTableAlias // illegal to render ValueExpr in this mode
+    // NoValueUseTableAliases
+    // NoAliases
+
+    //                                       ValueExpr alias        TableRef alias
+    BOOST_CHECK_EQUAL(getRendered(valueExpr, QueryTemplate::USE,    -),      "`alias`");
+
+    BOOST_CHECK_EQUAL(getRendered(valueExpr, QueryTemplate::DEFINE, QueryTemplate::USE),      "`tableAlias`.column AS `alias`");
+    BOOST_CHECK_EQUAL(getRendered(valueExpr, QueryTemplate::DEFINE, QueryTemplate::DONT_USE), "db.table.column AS `alias`");
+
+    BOOST_CHECK_EQUAL(getRendered(valueExpr, -, QueryTemplate::DEFINE), "`tableAlias`");
+    // DEFINE, DEFINE is nonsensical. WTD?
+
+    BOOST_CHECK_EQUAL(getRendered(valueExpr, QueryTemplate::DONT_USE, QueryTemplate::DONT_USE), "db.table.column");
+    BOOST_CHECK_EQUAL(getRendered(valueExpr, QueryTemplate::DONT_USE, QueryTemplate::USE), "`tableAlias`.column");
+
+}
 
 
 

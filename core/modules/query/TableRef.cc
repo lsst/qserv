@@ -229,7 +229,7 @@ std::string TableRef::sqlFragment() const {
 
 
 void TableRef::putTemplate(QueryTemplate& qt) const {
-    auto aliasMode = qt.getAliasMode();
+    auto aliasMode = qt.getTableAliasMode();
     if (QueryTemplate::USE == aliasMode) {
         if (hasAlias()) {
             qt.append("`" + _alias + "`");

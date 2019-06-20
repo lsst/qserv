@@ -56,34 +56,32 @@ namespace query {
 
 class ColumnEntry : public QueryTemplate::Entry {
 public:
-    ColumnEntry(ColumnRef const& cr, QueryTemplate::AliasMode aliasMode) {
-        if (QueryTemplate::AliasMode::DEFINE == aliasMode || not cr.getTableRef()->hasAlias()) {
-            db = cr.getDb();
-            table = cr.getTable();
-        } else {
-            table = "`" + cr.getTableRef()->getAlias() + "`";
+    ColumnEntry(ColumnRef const& cr, QueryTemplate::AliasMode tableAliasMode) {
+        std::ostringstream os;
+        auto tableRef = cr.getTableRef();
+        if (nullptr != tableRef) {
+            QueryTemplate qt;
+            qt.setTableAliasMode(tableAliasMode);
+            TableRef::render render(qt);
+            render.applyToQT(*tableRef);
+            os << qt;
+            if (os.tellp() > 0) { // if the tableRef wrote anything...
+                os << ".";
+            }
         }
-        column = cr.getColumn();
+        auto column = cr.getColumn();
+        bool addQuotes = column.find(".") != std::string::npos && column.find("`") == std::string::npos;
+        if (addQuotes) { os << "`"; }
+        os << column;
+        if (addQuotes) { os << "`"; }
+        val = os.str();
     }
     virtual std::string getValue() const {
-        std::stringstream ss;
-        if (!db.empty()) { ss << db << "."; }
-        if (!table.empty()) { ss << table << "."; }
-        // If the column has a dot in it, and does not already have quote character(s) in it, then do quote
-        // it. (This check could be made more exact by checking if the first and last characters are
-        // backticks, but since any backtick in the column should be the first and last character, and any
-        // that is not would be nonsensical, I don't think it matters or is worth the complexity.)
-        bool addQuotes = column.find(".") != std::string::npos && column.find("`") == std::string::npos;
-        if (addQuotes) { ss << "`"; }
-        ss << column;
-        if (addQuotes) { ss << "`"; }
-        return ss.str();
+        return val;
     }
     virtual bool isDynamic() const { return true; }
 
-    std::string db;
-    std::string table;
-    std::string column;
+    std::string val;
 };
 
 
@@ -139,7 +137,7 @@ void QueryTemplate::append(std::string const& s) {
 
 
 void QueryTemplate::append(ColumnRef const& cr) {
-    std::shared_ptr<Entry> e = std::make_shared<ColumnEntry>(cr, getAliasMode());
+    std::shared_ptr<Entry> e = std::make_shared<ColumnEntry>(cr, getTableAliasMode());
     _entries.push_back(e);
 }
 
@@ -169,10 +167,19 @@ void QueryTemplate::setAliasMode(AliasMode aliasMode) {
 }
 
 
+void QueryTemplate::setTableAliasMode(AliasMode tableAliasMode) {
+    _tableAliasMode = tableAliasMode;
+}
+
+
 QueryTemplate::AliasMode QueryTemplate::getAliasMode() const {
     return _aliasMode;
 }
 
+
+QueryTemplate::AliasMode QueryTemplate::getTableAliasMode() const {
+    return _tableAliasMode;
+}
 
 
 }}} // namespace lsst::qserv::query

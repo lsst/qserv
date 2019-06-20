@@ -147,6 +147,8 @@ public:
      */
     void setAliasMode(AliasMode aliasMode);
 
+    void setTableAliasMode(AliasMode tableAliasMode);
+
     /**
      * @brief Get the AliasMode
      *
@@ -155,6 +157,8 @@ public:
      * @return AliasMode
      */
     AliasMode getAliasMode() const;
+
+    AliasMode getTableAliasMode() const;
 
     std::string generate(EntryMapping const& em) const;
     void clear();
@@ -169,6 +173,7 @@ public:
 private:
     EntryPtrVector _entries;
     AliasMode _aliasMode{DEFINE};
+    AliasMode _tableAliasMode{DEFINE};
 };
 
 

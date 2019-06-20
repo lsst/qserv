@@ -252,6 +252,7 @@ std::string UserQuerySelect::getResultQuery() const {
     // that the user expects, by way of the alias defined here.
     query::QueryTemplate qt;
     qt.setAliasMode(query::QueryTemplate::DEFINE);
+    qt.setTableAliasMode(query::QueryTemplate::USE);
     selectList->renderTo(qt);
 
     std::string resultQuery =  "SELECT " + qt.sqlFragment() + " FROM " + getResultDb() + "."
