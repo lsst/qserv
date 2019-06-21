@@ -41,6 +41,7 @@
 // Local headers
 #include "query/ColumnRef.h"
 #include "query/typedefs.h"
+#include "query/QueryTemplate.h"
 #include "util/PointerCompare.h"
 
 
@@ -183,7 +184,7 @@ public:
      * @param aliasOnly if this ValueExpr has an alias and this is true then only the alias
      * @return std::string
      */
-    std::string sqlFragment(bool preferAlias) const;
+    std::string sqlFragment(QueryTemplate::SetAliasMode aliasMode) const;
 
     ValueExprPtr clone() const;
     friend std::ostream& operator<<(std::ostream& os, ValueExpr const& ve);

@@ -66,6 +66,7 @@
 #include "query/QueryContext.h"
 #include "query/SelectList.h"
 #include "query/SelectStmt.h"
+#include "query/QueryTemplate.h"
 #include "query/TableRef.h"
 #include "query/typedefs.h"
 #include "query/ValueExpr.h"
@@ -168,7 +169,7 @@ TablePlugin::applyLogical(query::SelectStmt& stmt,
     for (auto& valueExpr : *(stmt.getSelectList().getValueExprList())) {
         if (not valueExpr->hasAlias()) {
             if (not valueExpr->isStar()) {
-                valueExpr->setAlias(valueExpr->sqlFragment(false));
+                valueExpr->setAlias(valueExpr->sqlFragment(query::QueryTemplate::NO_ALIAS));
                 context.addUsedValueExpr(valueExpr);
             }
         } else {

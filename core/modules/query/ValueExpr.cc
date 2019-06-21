@@ -355,10 +355,10 @@ bool ValueExpr::isSubsetOf(ValueExpr const& valueExpr) const {
  *
  * @return a string representation of the object
  */
-std::string ValueExpr::sqlFragment(bool preferAlias) const {
+std::string ValueExpr::sqlFragment(QueryTemplate::SetAliasMode aliasMode) const {
     // Reuse QueryTemplate-based rendering
     QueryTemplate qt;
-    qt.setAliasMode(preferAlias ? QueryTemplate::USE : QueryTemplate::DEFINE);
+    qt.setAliasMode(aliasMode);
     ValueExpr::render render(qt, false);
     render.applyToQT(this);
     std::ostringstream os;
@@ -388,7 +388,7 @@ std::ostream& operator<<(std::ostream& os, ValueExpr const* ve) {
 void ValueExpr::render::applyToQT(ValueExpr const& ve) {
 
     if (_needsComma && _count++ > 0) { _qt.append(","); }
-    if (_qt.getAliasMode() == QueryTemplate::USE && ve.hasAlias()) {
+    if (_qt.getValueExprAliasMode() == QueryTemplate::USE && ve.hasAlias()) {
         _qt.append("`" + ve._alias + "`");
         return;
     }
@@ -396,8 +396,8 @@ void ValueExpr::render::applyToQT(ValueExpr const& ve) {
 
     // If we are defining this ValueExpr's alias, we still must USE the alias of any contained ValueFactor.
     // If the mode is DONT_USE then we can leave it as is.
-    if (_qt.getAliasMode() == QueryTemplate::DEFINE) {
-        _qt.setAliasMode(QueryTemplate::USE);
+    if (_qt.getAliasMode() == QueryTemplate::DEFINE_VALUE_ALIAS_USE_TABLE_ALIAS) {
+        _qt.setAliasMode(QueryTemplate::USE_ALIAS);
     }
 
     ValueFactor::render render(_qt);
@@ -436,7 +436,7 @@ void ValueExpr::render::applyToQT(ValueExpr const& ve) {
         _qt.append(")");
     }
     _qt.setAliasMode(previousAliasMode);
-    if (_qt.getAliasMode() == QueryTemplate::DEFINE) {
+    if (_qt.getValueExprAliasMode() == QueryTemplate::DEFINE) {
         if (!ve._alias.empty()) { _qt.append("AS"); _qt.append("`" + ve._alias + "`"); }
     }
 }

@@ -56,12 +56,12 @@ namespace query {
 
 class ColumnEntry : public QueryTemplate::Entry {
 public:
-    ColumnEntry(ColumnRef const& cr, QueryTemplate::AliasMode tableAliasMode) {
+    ColumnEntry(ColumnRef const& cr, QueryTemplate::SetAliasMode aliasMode) {
         std::ostringstream os;
         auto tableRef = cr.getTableRef();
         if (nullptr != tableRef) {
             QueryTemplate qt;
-            qt.setTableAliasMode(tableAliasMode);
+            qt.setAliasMode(aliasMode);
             TableRef::render render(qt);
             render.applyToQT(*tableRef);
             os << qt;
@@ -137,7 +137,7 @@ void QueryTemplate::append(std::string const& s) {
 
 
 void QueryTemplate::append(ColumnRef const& cr) {
-    std::shared_ptr<Entry> e = std::make_shared<ColumnEntry>(cr, getTableAliasMode());
+    std::shared_ptr<Entry> e = std::make_shared<ColumnEntry>(cr, getAliasMode());
     _entries.push_back(e);
 }
 
@@ -162,23 +162,63 @@ QueryTemplate::clear() {
 }
 
 
-void QueryTemplate::setAliasMode(AliasMode aliasMode) {
+void QueryTemplate::setAliasMode(SetAliasMode aliasMode) {
     _aliasMode = aliasMode;
 }
 
 
-void QueryTemplate::setTableAliasMode(AliasMode tableAliasMode) {
-    _tableAliasMode = tableAliasMode;
-}
-
-
-QueryTemplate::AliasMode QueryTemplate::getAliasMode() const {
+QueryTemplate::SetAliasMode QueryTemplate::getAliasMode() const {
     return _aliasMode;
 }
 
 
-QueryTemplate::AliasMode QueryTemplate::getTableAliasMode() const {
-    return _tableAliasMode;
+QueryTemplate::GetAliasMode QueryTemplate::getValueExprAliasMode() const {
+    switch (_aliasMode) {
+        default:
+            throw std::runtime_error("Unhandled alias mode.");
+
+        case NO_ALIAS:
+            return DONT_USE;
+
+        case USE_ALIAS:
+            return USE;
+
+        case DEFINE_TABLE_ALIAS:
+            throw std::runtime_error("can't print a ValueExpr while defining its table alias.");
+
+        case DEFINE_VALUE_ALIAS_USE_TABLE_ALIAS:
+            return DEFINE;
+
+        case NO_VALUE_ALIAS_USE_TABLE_ALIAS:
+            return DONT_USE;
+    }
+    throw std::runtime_error("Unexpected function exit.");
+    return DONT_USE; // should never get here but to satisfy the compiler.
+}
+
+
+QueryTemplate::GetAliasMode QueryTemplate::getTableAliasMode() const {
+    switch (_aliasMode) {
+        default:
+            throw std::runtime_error("Unhandled alias mode.");
+
+        case NO_ALIAS:
+            return DONT_USE;
+
+        case USE_ALIAS:
+            return USE;
+
+        case DEFINE_TABLE_ALIAS:
+            return DEFINE;
+
+        case DEFINE_VALUE_ALIAS_USE_TABLE_ALIAS:
+            return USE;
+
+        case NO_VALUE_ALIAS_USE_TABLE_ALIAS:
+            return USE;
+    }
+    throw std::runtime_error("Unexpected function exit.");
+    return DONT_USE; // should never get here but to satisfy the compiler.
 }
 
 

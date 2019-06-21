@@ -60,16 +60,11 @@ BOOST_AUTO_TEST_CASE(subsetOf) {
 }
 
 
-BOOST_AUTO_TEST_CASE(render) {
-    auto valueExpr = ValueExpr::newColumnExpr("db", "table", "tableAlias", "column");
-    valueExpr->setAlias("alias");
-
+BOOST_AUTO_TEST_CASE(renderValueExpr) {
     auto getRendered = [](std::shared_ptr<ValueExpr> const& valueExpr,
-                          QueryTemplate::AliasMode aliasMode,
-                          QueryTemplate::AliasMode tableAliasMode) -> std::string {
+                          QueryTemplate::SetAliasMode aliasMode) -> std::string {
         QueryTemplate qt;
         qt.setAliasMode(aliasMode);
-        qt.setTableAliasMode(tableAliasMode);
         ValueExpr::render render(qt, false);
         render.applyToQT(valueExpr);
         std::ostringstream os;
@@ -77,25 +72,49 @@ BOOST_AUTO_TEST_CASE(render) {
         return os.str();
     };
 
-    // UseValueAlias
-    // DefineValueUseTableAliases
-    // DefineValueDontUseTableAliases
-    // DefineTableAlias // illegal to render ValueExpr in this mode
-    // NoValueUseTableAliases
-    // NoAliases
+    auto valueExpr = ValueExpr::newColumnExpr("db", "table", "tableAlias", "column");
+    valueExpr->setAlias("alias");
+    BOOST_CHECK_EQUAL(getRendered(valueExpr, QueryTemplate::NO_ALIAS), "db.table.column");
+    BOOST_CHECK_EQUAL(getRendered(valueExpr, QueryTemplate::USE_ALIAS), "`alias`");
+    BOOST_CHECK_EQUAL(getRendered(valueExpr, QueryTemplate::DEFINE_VALUE_ALIAS_USE_TABLE_ALIAS), "`tableAlias`.column AS `alias`");
+    BOOST_CHECK_EQUAL(getRendered(valueExpr, QueryTemplate::NO_VALUE_ALIAS_USE_TABLE_ALIAS), "`tableAlias`.column");
+    BOOST_CHECK_THROW(getRendered(valueExpr, QueryTemplate::DEFINE_TABLE_ALIAS), std::runtime_error); // can't define table alias using a ValueExpr
 
-    //                                       ValueExpr alias        TableRef alias
-    BOOST_CHECK_EQUAL(getRendered(valueExpr, QueryTemplate::USE,    -),      "`alias`");
+    // no ValueExpr alias
+    valueExpr = ValueExpr::newColumnExpr("db", "table", "tableAlias", "column");
+    BOOST_CHECK_EQUAL(getRendered(valueExpr, QueryTemplate::NO_ALIAS), "db.table.column");
+    BOOST_CHECK_EQUAL(getRendered(valueExpr, QueryTemplate::USE_ALIAS), "`tableAlias`.column");
+    BOOST_CHECK_EQUAL(getRendered(valueExpr, QueryTemplate::DEFINE_VALUE_ALIAS_USE_TABLE_ALIAS), "`tableAlias`.column");
+    BOOST_CHECK_EQUAL(getRendered(valueExpr, QueryTemplate::NO_VALUE_ALIAS_USE_TABLE_ALIAS), "`tableAlias`.column");
 
-    BOOST_CHECK_EQUAL(getRendered(valueExpr, QueryTemplate::DEFINE, QueryTemplate::USE),      "`tableAlias`.column AS `alias`");
-    BOOST_CHECK_EQUAL(getRendered(valueExpr, QueryTemplate::DEFINE, QueryTemplate::DONT_USE), "db.table.column AS `alias`");
+    // no TableRef alias
+    valueExpr = ValueExpr::newColumnExpr("db", "table", "", "column"); // no table alias
+    valueExpr->setAlias("alias");
+    BOOST_CHECK_EQUAL(getRendered(valueExpr, QueryTemplate::NO_ALIAS), "db.table.column");
+    BOOST_CHECK_EQUAL(getRendered(valueExpr, QueryTemplate::USE_ALIAS), "`alias`");
+    BOOST_CHECK_EQUAL(getRendered(valueExpr, QueryTemplate::DEFINE_VALUE_ALIAS_USE_TABLE_ALIAS), "db.table.column AS `alias`");
+    BOOST_CHECK_EQUAL(getRendered(valueExpr, QueryTemplate::NO_VALUE_ALIAS_USE_TABLE_ALIAS), "db.table.column");
 
-    BOOST_CHECK_EQUAL(getRendered(valueExpr, -, QueryTemplate::DEFINE), "`tableAlias`");
-    // DEFINE, DEFINE is nonsensical. WTD?
+    // no ValueExpr or TableRef alias
+    valueExpr = ValueExpr::newColumnExpr("db", "table", "", "column");
+    BOOST_CHECK_EQUAL(getRendered(valueExpr, QueryTemplate::NO_ALIAS), "db.table.column");
+    BOOST_CHECK_EQUAL(getRendered(valueExpr, QueryTemplate::USE_ALIAS), "db.table.column");
+    BOOST_CHECK_EQUAL(getRendered(valueExpr, QueryTemplate::DEFINE_VALUE_ALIAS_USE_TABLE_ALIAS), "db.table.column");
+    BOOST_CHECK_EQUAL(getRendered(valueExpr, QueryTemplate::NO_VALUE_ALIAS_USE_TABLE_ALIAS), "db.table.column");
 
-    BOOST_CHECK_EQUAL(getRendered(valueExpr, QueryTemplate::DONT_USE, QueryTemplate::DONT_USE), "db.table.column");
-    BOOST_CHECK_EQUAL(getRendered(valueExpr, QueryTemplate::DONT_USE, QueryTemplate::USE), "`tableAlias`.column");
+    // no ValueExpr, TableRef alias, or database
+    valueExpr = ValueExpr::newColumnExpr("", "table", "", "column");
+    BOOST_CHECK_EQUAL(getRendered(valueExpr, QueryTemplate::NO_ALIAS), "table.column");
+    BOOST_CHECK_EQUAL(getRendered(valueExpr, QueryTemplate::USE_ALIAS), "table.column");
+    BOOST_CHECK_EQUAL(getRendered(valueExpr, QueryTemplate::DEFINE_VALUE_ALIAS_USE_TABLE_ALIAS), "table.column");
+    BOOST_CHECK_EQUAL(getRendered(valueExpr, QueryTemplate::NO_VALUE_ALIAS_USE_TABLE_ALIAS), "table.column");
 
+    // no ValueExpr, TableRef alias, database, or table
+    valueExpr = ValueExpr::newColumnExpr("", "", "", "column");
+    BOOST_CHECK_EQUAL(getRendered(valueExpr, QueryTemplate::NO_ALIAS), "column");
+    BOOST_CHECK_EQUAL(getRendered(valueExpr, QueryTemplate::USE_ALIAS), "column");
+    BOOST_CHECK_EQUAL(getRendered(valueExpr, QueryTemplate::DEFINE_VALUE_ALIAS_USE_TABLE_ALIAS), "column");
+    BOOST_CHECK_EQUAL(getRendered(valueExpr, QueryTemplate::NO_VALUE_ALIAS_USE_TABLE_ALIAS), "column");
 }
 
 

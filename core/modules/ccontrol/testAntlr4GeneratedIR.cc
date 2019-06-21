@@ -3628,7 +3628,9 @@ BOOST_DATA_TEST_CASE(antlr4_test, ANTLR4_TEST_QUERIES, queryInfo) {
     BOOST_REQUIRE_MESSAGE(*selectStatement == *compareStatement, "parser-generated statement:" << *selectStatement <<
         "does not match compare statement:" << *compareStatement);
     // verify the selectStatement converted back to sql is the same as the original query:
-    BOOST_REQUIRE_EQUAL(selectStatement->getQueryTemplate().sqlFragment(),
+    std::string serializedQuery;
+    BOOST_REQUIRE_NO_THROW(serializedQuery = selectStatement->getQueryTemplate().sqlFragment());
+    BOOST_REQUIRE_EQUAL(serializedQuery,
              (queryInfo.serializedQuery != "" ? queryInfo.serializedQuery : queryInfo.query));
 }
 
