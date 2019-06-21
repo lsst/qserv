@@ -274,7 +274,7 @@ BOOST_AUTO_TEST_CASE(BadDbAccess) {
     // "NoSuchDb:No such database: Bad [in function listColumns at core/modules/sql/MockSql.h:104"
     // but it's not important to check the file or line number - we just need to check the general error info
     // is correct.
-    char expectedErr[] = "NoSuchDb:No such database: Bad";
+    char expectedErr[] = "NoSuchDb(sql):No such database: Bad";
     BOOST_CHECK(qs->getError().find(expectedErr) != std::string::npos);
 }
 

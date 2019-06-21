@@ -151,13 +151,13 @@ void QuerySession::analyzeQuery(std::string const& sql, std::shared_ptr<query::S
     } catch(qana::AnalysisError& e) {
         _error = std::string("AnalysisError:") + e.what();
     } catch(css::NoSuchDb& e) {
-        _error = std::string("NoSuchDb:") + e.what();
+        _error = std::string("NoSuchDb(css):") + e.what();
     } catch(css::NoSuchTable& e) {
-        _error = std::string("NoSuchTable:") + e.what();
+        _error = std::string("NoSuchTable(css):") + e.what();
     } catch(sql::NoSuchDb& e) {
-        _error = std::string("NoSuchDb:") + e.what();
+        _error = std::string("NoSuchDb(sql):") + e.what();
     } catch(sql::NoSuchTable& e) {
-        _error = std::string("NoSuchTable:") + e.what();
+        _error = std::string("NoSuchTable(sql):") + e.what();
     } catch(Bug& b) {
         _error = std::string("Qserv bug:") + b.what();
     } catch(std::exception const& e) {
