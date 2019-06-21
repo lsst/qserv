@@ -219,29 +219,21 @@ std::string UserQuerySelect::getResultQuery() const {
             query::SelectStmt starStmt(useSelectList, _qSession->getStmt().getFromList().clone());
             auto schema = _infileMerger->getSchemaForQueryResults(starStmt, errMsg);
             for (auto const& column : schema.columns) {
-                auto newColumnRef = query::ColumnRef::newShared("", "", column.name);
-                auto newValueFactor = query::ValueFactor::newColumnRefFactor(newColumnRef);
-                auto newValueExpr = std::make_shared<query::ValueExpr>();
-                newValueExpr->addValueFactor(newValueFactor);
-                selectList->addValueExpr(newValueExpr);
+                selectList->addValueExpr(query::ValueExpr::newColumnExpr("", "", "", column.name));
             }
         } else {
-            // add a column that describes the top-level ValueExpr
-            auto newValueExpr = std::make_shared<query::ValueExpr>();
-            // If the value is a column ref and there was not a user defined alias then the TablePlugin will
+            // Add a column that describes the top-level ValueExpr.
+            // If the value is a column ref _and_ there was not a user defined alias, then the TablePlugin will
             // have assigned an alias that included the table name. We don't want that table name to appear
             // in the results in that case, so just assign the column.
-            // Otherwise, take the alias.
+            // Otherwise, use the alias.
+            std::shared_ptr<query::ValueExpr> newValueExpr;
             if (valueExpr->isColumnRef() && not valueExpr->getAliasIsUserDefined()) {
-                auto newColumnRef = query::ColumnRef::newShared("", "", valueExpr->getAlias());
-                auto newValueFactor = query::ValueFactor::newColumnRefFactor(newColumnRef);
+                newValueExpr = query::ValueExpr::newColumnExpr("", "", "", valueExpr->getAlias());
                 newValueExpr->setAlias(valueExpr->getColumnRef()->getColumn());
-                newValueExpr->addValueFactor(newValueFactor);
             } else {
-                auto newColumnRef = query::ColumnRef::newShared("", "", "`" + valueExpr->getAlias() + "`");
-                auto newValueFactor = query::ValueFactor::newColumnRefFactor(newColumnRef);
+                newValueExpr = query::ValueExpr::newColumnExpr("", "", "", "`" + valueExpr->getAlias() + "`");
                 newValueExpr->setAlias(valueExpr->getAlias());
-                newValueExpr->addValueFactor(newValueFactor);
             }
             selectList->addValueExpr(newValueExpr);
         }
