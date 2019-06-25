@@ -38,7 +38,7 @@
 #include "sql/SqlResults.h"
 
 namespace {
-LOG_LOGGER _log = LOG_GET("lsst.qserv.ccontrol.UserQueryProcessList");
+LOG_LOGGER _log = LOG_GET("lsst.qserv.ccontrol.UserQueryAsyncResult");
 }
 
 namespace lsst {
