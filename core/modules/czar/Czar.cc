@@ -169,7 +169,7 @@ Czar::submitQuery(std::string const& query,
         return result;
     }
 
-    auto resultQuery = uq->getResultQuery();
+    auto resultQuery = uq->getResultQuery() + " " + uq->getProxyOrderBy();
 
     // spawn background thread to wait until query finishes to unlock,
     // note that lambda stores copies of uq and msgTable.
@@ -221,11 +221,6 @@ Czar::submitQuery(std::string const& query,
         if (not resultQuery.empty()) {
             result.resultTable = resultDb + "." + uq->getResultTableName();
             result.resultQuery = resultQuery;
-            auto&& orderBy = uq->getProxyOrderBy();
-            if (not orderBy.empty()) {
-                result.resultQuery += ' ';
-                result.resultQuery += orderBy;
-            }
         }
     }
     LOGS(_log, LOG_LVL_DEBUG, queryIdStr << " returning result to proxy: resultTable="
