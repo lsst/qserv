@@ -234,7 +234,12 @@ void UserQueryProcessList::submit() {
 }
 
 std::string UserQueryProcessList::getResultQuery() const {
-    return "SELECT * FROM " + getResultDb() + "." + getResultTableName();
+    std::string ret = "SELECT * FROM " + getResultDb() + "." + getResultTableName();
+    std::string orderBy = _getResultOrderBy();
+    if (not orderBy.empty()) {
+        ret += " ORDER BY " + orderBy;
+    }
+    return ret;
 }
 
 // Block until a submit()'ed query completes.

@@ -203,8 +203,8 @@ void UserQuerySelect::kill() {
 
 
 std::string
-UserQuerySelect::getProxyOrderBy() const {
-    return _qSession->getProxyOrderBy();
+UserQuerySelect::_getResultOrderBy() const {
+    return _qSession->getResultOrderBy();
 }
 
 
@@ -248,6 +248,10 @@ std::string UserQuerySelect::getResultQuery() const {
 
     std::string resultQuery =  "SELECT " + qt.sqlFragment() + " FROM " + getResultDb() + "."
         + getResultTableName();
+    std::string orderBy = _getResultOrderBy();
+    if (not orderBy.empty()) {
+        resultQuery += " " + orderBy;
+    }
     LOGS(_log, LOG_LVL_DEBUG, "made result query:" << resultQuery);
     return resultQuery;
 }
@@ -523,14 +527,13 @@ void UserQuerySelect::qMetaRegister(std::string const& resultLocation, std::stri
     if (mergeStmt) {
         qMerge = mergeStmt->getQueryTemplate().sqlFragment();
     }
-    std::string proxyOrderBy = _qSession->getProxyOrderBy();
     _resultLoc = resultLocation;
     if (_resultLoc.empty()) {
         // Special token #QID# is replaced with query ID later.
         _resultLoc = "table:result_#QID#";
     }
     qmeta::QInfo qInfo(qType, _qMetaCzarId, user, _qSession->getOriginal(),
-                       qTemplate, qMerge, proxyOrderBy, _resultLoc, msgTableName);
+                       qTemplate, qMerge, "", _resultLoc, msgTableName);
 
     // find all table names used by statement (which appear in FROM ... [JOIN ...])
     qmeta::QMeta::TableNames tableNames;

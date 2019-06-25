@@ -126,7 +126,7 @@ std::vector<std::string> QueryAnaHelper::getInternalQueries(
     }
     queries.push_back(sql);
 
-    sql = querySession->getProxyOrderBy();
+    sql = querySession->getResultOrderBy();
     queries.push_back(sql);
 
     return queries;

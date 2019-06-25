@@ -131,9 +131,6 @@ public:
     /// @return Result location for this query, can be empty
     std::string getResultLocation() const override { return _resultLoc; }
 
-    /// @return ORDER BY part of SELECT statement to be executed by proxy
-    std::string getProxyOrderBy() const override;
-
     /// @return get the SELECT statement to be executed by proxy
     std::string getResultQuery() const override;
 
@@ -156,6 +153,9 @@ public:
     void saveResultQuery(std::string const& resultQuery) override;
 
 private:
+    /// @return ORDER BY part of SELECT statement that gets executed by the proxy
+    std::string _getResultOrderBy() const;
+
     void _discardMerger();
     void _qMetaUpdateStatus(qmeta::QInfo::QStatus qStatus);
     void _qMetaAddChunks(std::vector<int> const& chunks);

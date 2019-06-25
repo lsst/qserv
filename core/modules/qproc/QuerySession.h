@@ -114,7 +114,7 @@ public:
      */
     std::shared_ptr<query::SelectStmt> const& getPreFlightStmt() const { return _stmtPreFlight; }
 
-    /** @brief Return the ORDER BY clause to run on mysql-proxy at result retrieval.
+    /** @brief Return the ORDER BY clause to be used in the result query statement.
      *
      *  Indeed, MySQL results order is undefined with simple "SELECT *" clause.
      *  This parameter is set during query analysis.
@@ -122,7 +122,7 @@ public:
      *  @return: a string containing a SQL "ORDER BY" clause, or an empty string if this clause doesn't exists
      *  @see QuerySession::analyzeQuery()
      */
-    std::string getProxyOrderBy() const;
+    std::string getResultOrderBy() const;
 
     /// Dominant database is the database that will be used for query
     /// dispatch. This is distinct from the default database, which is what is

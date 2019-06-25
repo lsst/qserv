@@ -91,10 +91,6 @@ public:
     /// @return Result location for this query, can be empty
     virtual std::string getResultLocation() const { return std::string(); }
 
-    /// @return ORDER BY part of SELECT statement to be executed by proxy
-    virtual std::string getProxyOrderBy() const { return std::string(); }
-
-
     /// @return this query's QueryId.
     virtual QueryId getQueryId() const { return QueryId(0); }
 

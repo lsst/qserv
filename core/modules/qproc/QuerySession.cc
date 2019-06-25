@@ -144,7 +144,7 @@ void QuerySession::analyzeQuery(std::string const& sql, std::shared_ptr<query::S
         _applyConcretePlugins();
 
         LOGS(_log, LOG_LVL_DEBUG, "Query Plugins applied:\n " << *this);
-        LOGS(_log, LOG_LVL_TRACE, "ORDER BY clause for mysql-proxy: " << getProxyOrderBy());
+        LOGS(_log, LOG_LVL_TRACE, "ORDER BY clause for result query: " << getResultOrderBy());
 
     } catch(QueryProcessingBug& b) {
         _error = std::string("QuerySession bug:") + b.what();
@@ -207,15 +207,15 @@ std::shared_ptr<query::ConstraintVector> QuerySession::getConstraints() const {
 }
 
 
-// return the ORDER BY clause to run on mysql-proxy at result retrieval
-std::string QuerySession::getProxyOrderBy() const {
+std::string QuerySession::getResultOrderBy() const {
     std::string orderBy;
     if (_stmt->hasOrderBy()) {
         orderBy = _stmt->getOrderBy().sqlFragment();
     }
-    LOGS(_log, LOG_LVL_TRACE, "getProxyOrderBy: " << orderBy);
+    LOGS(_log, LOG_LVL_TRACE, "getResultOrderBy: " << orderBy);
     return orderBy;
 }
+
 
 void QuerySession::addChunk(ChunkSpec const& cs) {
     LOGS(_log, LOG_LVL_DEBUG, "Add chunk: " << cs);

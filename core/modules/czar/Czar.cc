@@ -169,7 +169,7 @@ Czar::submitQuery(std::string const& query,
         return result;
     }
 
-    auto resultQuery = uq->getResultQuery() + " " + uq->getProxyOrderBy();
+    auto resultQuery = uq->getResultQuery();
 
     // spawn background thread to wait until query finishes to unlock,
     // note that lambda stores copies of uq and msgTable.

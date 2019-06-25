@@ -119,12 +119,12 @@ public:
     /// @return Result location for this query, can be empty
     std::string getResultLocation() const override { return "table:" + _resultTableName; }
 
-    /// @return ORDER BY part of SELECT statement to be executed by proxy
-    std::string getProxyOrderBy() const override { return _orderBy; }
-
+    /// @return get the SELECT statement to be executed by proxy
     std::string getResultQuery() const override;
 
 private:
+    /// @return ORDER BY part of SELECT statement that gets executed by the proxy
+    std::string _getResultOrderBy() const { return _orderBy; }
 
     sql::SqlConnection* _resultDbConn;
     std::shared_ptr<qmeta::QMetaSelect> _qMetaSelect;
