@@ -41,7 +41,6 @@ CREATE TABLE IF NOT EXISTS `QInfo` (
   `query` TEXT NOT NULL COMMENT 'Original query text as was submitted by client.',
   `qTemplate` TEXT NOT NULL COMMENT 'Query template, string used to build final per-chunk query.',
   `qMerge` TEXT NULL COMMENT 'Merge (or aggregate) query to be executed on results table, result of this query is stored in merge table. If NULL then it is equivalent to SELECT *.',
-  `proxyOrderBy` TEXT NULL COMMENT 'ORDER BY clause for proxy-side SELECT statement executed on results table.',
   `status` ENUM('EXECUTING', 'COMPLETED', 'FAILED', 'ABORTED') NOT NULL DEFAULT 'EXECUTING' COMMENT 'Status of query processing.',
   `submitted` TIMESTAMP NOT NULL DEFAULT  CURRENT_TIMESTAMP COMMENT 'Time when query was submitted (received from client)',
   `completed` TIMESTAMP NULL COMMENT 'Time when query processing is completed - either the results were collected into czar-side result table or failure is detected.',
