@@ -533,7 +533,7 @@ void UserQuerySelect::qMetaRegister(std::string const& resultLocation, std::stri
         _resultLoc = "table:result_#QID#";
     }
     qmeta::QInfo qInfo(qType, _qMetaCzarId, user, _qSession->getOriginal(),
-                       qTemplate, qMerge, "", _resultLoc, msgTableName);
+                       qTemplate, qMerge, _resultLoc, msgTableName);
 
     // find all table names used by statement (which appear in FROM ... [JOIN ...])
     qmeta::QMeta::TableNames tableNames;

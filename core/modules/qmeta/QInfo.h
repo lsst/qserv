@@ -75,7 +75,6 @@ public:
      *  @param qText:  Original query text as given by user.
      *  @param qTemplate:  Query template used to build per-chunk queries.
      *  @param qMerge: Aggregate query to be executed on results table, possibly empty.
-     *  @param qProxyOrderBy: ORDER BY clause for proxy-side SELECT statement, possibly empty.
      *  @param resultLoc: Location of the query result.
      *  @param msgTableName: Name of the message table.
      *  @param qStatus: Query processing status.
@@ -85,7 +84,7 @@ public:
      */
     QInfo(QType qType, CzarId czarId, std::string const& user,
           std::string const& qText, std::string const& qTemplate,
-          std::string const& qMerge, std::string const& qProxyOrderBy,
+          std::string const& qMerge,
           std::string const& resultLoc, std::string const& msgTableName,
           QStatus qStatus = EXECUTING,
           std::time_t submitted = std::time_t(0),
@@ -93,10 +92,11 @@ public:
           std::time_t returned = std::time_t(0))
         : _qType(qType), _qStatus(qStatus), _czarId(czarId), _user(user),
           _qText(qText), _qTemplate(qTemplate), _qMerge(qMerge),
-          _qProxyOrderBy(qProxyOrderBy), _resultLoc(resultLoc),
+          _resultLoc(resultLoc),
           _msgTableName(msgTableName), _submitted(submitted),
           _completed(completed), _returned(returned)
     {}
+
 
     /// Returns query type
     QType queryType() const { return _qType; }
@@ -118,9 +118,6 @@ public:
 
     /// Returns query for result (aggregate) which may be empty
     std::string const& mergeQuery() const { return _qMerge; }
-
-    /// Returns query executed by proxy (which may be empty)
-    std::string const& proxyOrderBy() const { return _qProxyOrderBy; }
 
     /// Returns location of query result
     std::string const& resultLocation() const { return _resultLoc; }
