@@ -357,8 +357,7 @@ bool ValueExpr::isSubsetOf(ValueExpr const& valueExpr) const {
  */
 std::string ValueExpr::sqlFragment(QueryTemplate::SetAliasMode aliasMode) const {
     // Reuse QueryTemplate-based rendering
-    QueryTemplate qt;
-    qt.setAliasMode(aliasMode);
+    QueryTemplate qt(aliasMode);
     ValueExpr::render render(qt, false);
     render.applyToQT(this);
     std::ostringstream os;

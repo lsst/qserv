@@ -60,8 +60,7 @@ public:
         std::ostringstream os;
         auto tableRef = cr.getTableRef();
         if (nullptr != tableRef) {
-            QueryTemplate qt;
-            qt.setAliasMode(aliasMode);
+            QueryTemplate qt(aliasMode);
             TableRef::render render(qt);
             render.applyToQT(*tableRef);
             os << qt;

@@ -108,7 +108,24 @@ public:
         virtual Entry::Ptr mapEntry(Entry const& e) const = 0;
     };
 
+    enum SetAliasMode {
+        NO_ALIAS,                           // e.g. "db.table.val"
+        USE_ALIAS,                          // e.g. "myValue" (or "`alias`.val" if no value alias, or "db.table.col" if
+                                            // no value or table alias).
+        DEFINE_TABLE_ALIAS,                 // e.g. "db.table AS myTable" - it is illegal to render ValueExpr in this mode
+        DEFINE_VALUE_ALIAS_USE_TABLE_ALIAS, // e.g. "`alias`.val AS myValue"
+        NO_VALUE_ALIAS_USE_TABLE_ALIAS,     // e.g. "`myTable`.val"
+    };
+
+    enum GetAliasMode {
+        DEFINE,  // DEFINE should print out the table or column name followed by AS and the alias name.
+        USE,     // USE should only print out the alias.
+        DONT_USE // DONT USE should only print out the table or column name.
+    };
+
     QueryTemplate() {}
+
+    QueryTemplate(SetAliasMode aliasMode) : _aliasMode(aliasMode) {}
 
     void append(std::string const& s);
     void append(ColumnRef const& cr);
@@ -133,19 +150,6 @@ public:
      */
     friend std::ostream& operator<<(std::ostream& os, QueryTemplate const& queryTemplate);
 
-    enum SetAliasMode {
-        NO_ALIAS,                      // e.g. "db.table.val"
-        USE_ALIAS,                      // e.g. "myValue" (or "`alias`.val" if no value alias, or "db.table.col" if
-                                       // no value or table alias).
-        DEFINE_TABLE_ALIAS,              // e.g. "db.table AS myTable" - it is illegal to render ValueExpr in this mode
-        DEFINE_VALUE_ALIAS_USE_TABLE_ALIAS, // e.g. "`alias`.val AS myValue"
-        NO_VALUE_ALIAS_USE_TABLE_ALIAS,     // e.g. "`myTable`.val"
-    };
-
-    // DEFINE should print out the table or column name followed by AS and the alias name
-    // USE should only print out the alias
-    // DONT USE should only print out the table or column name.
-    enum GetAliasMode { DEFINE, USE, DONT_USE };
 
     /**
      * @brief Set a flag indicating if aliases should be defined or used.

@@ -63,8 +63,7 @@ BOOST_AUTO_TEST_CASE(subsetOf) {
 BOOST_AUTO_TEST_CASE(renderValueExpr) {
     auto getRendered = [](std::shared_ptr<ValueExpr> const& valueExpr,
                           QueryTemplate::SetAliasMode aliasMode) -> std::string {
-        QueryTemplate qt;
-        qt.setAliasMode(aliasMode);
+        QueryTemplate qt(aliasMode);
         ValueExpr::render render(qt, false);
         render.applyToQT(valueExpr);
         std::ostringstream os;

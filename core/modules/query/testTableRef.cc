@@ -145,8 +145,7 @@ BOOST_DATA_TEST_CASE(TableRefAliasedBy, TABLE_REF_ALIASED_BY_TEST_DATA, tables) 
 BOOST_AUTO_TEST_CASE(renderTableRef) {
     auto getRendered = [](std::shared_ptr<TableRef> const& tableRef,
                           QueryTemplate::SetAliasMode aliasMode) -> std::string {
-        QueryTemplate qt;
-        qt.setAliasMode(aliasMode);
+        QueryTemplate qt(aliasMode);
         TableRef::render render(qt);
         render.applyToQT(tableRef);
         std::ostringstream os;
