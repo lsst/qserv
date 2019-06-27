@@ -149,23 +149,14 @@ Czar::submitQuery(std::string const& query,
     ccontrol::UserQuery::Ptr uq;
     {
         std::lock_guard<std::mutex> lock(_mutex);
-        uq = _uqFactory->newUserQuery(query, defaultDb, getQdispPool(), userQueryId, msgTableName);
+        uq = _uqFactory->newUserQuery(query, defaultDb, getQdispPool(), userQueryId, msgTableName, resultDb);
     }
     auto queryIdStr = uq->getQueryIdString();
-    uq->setResultDb(resultDb);
 
     // check for errors
     auto error = uq->getError();
     if (not error.empty()) {
         result.errorMessage = queryIdStr + " Failed to instantiate query: " + error;
-        return result;
-    }
-
-    // create the result table
-    try {
-        uq->setupMerger();
-    } catch (std::exception const& exc) {
-        result.errorMessage = exc.what();
         return result;
     }
 
@@ -215,7 +206,6 @@ Czar::submitQuery(std::string const& query,
             // respond with info about the results table.
             result.resultQuery = "SELECT * FROM " + resultTableName;
         }
-        uq->saveResultQuery(resultQuery);
     } else {
         result.messageTable = lockName;
         if (not resultQuery.empty()) {

@@ -86,6 +86,7 @@ public:
           std::string const& qText, std::string const& qTemplate,
           std::string const& qMerge,
           std::string const& resultLoc, std::string const& msgTableName,
+          std::string const& resultQuery,
           QStatus qStatus = EXECUTING,
           std::time_t submitted = std::time_t(0),
           std::time_t completed = std::time_t(0),
@@ -93,7 +94,7 @@ public:
         : _qType(qType), _qStatus(qStatus), _czarId(czarId), _user(user),
           _qText(qText), _qTemplate(qTemplate), _qMerge(qMerge),
           _resultLoc(resultLoc),
-          _msgTableName(msgTableName), _submitted(submitted),
+          _msgTableName(msgTableName), _resultQuery(resultQuery), _submitted(submitted),
           _completed(completed), _returned(returned)
     {}
 
@@ -125,6 +126,9 @@ public:
     /// Returns message table name
     std::string const& msgTableName() const { return _msgTableName; }
 
+    /// Returns the query to get results, used by mysql-proxy.
+    std::string const& resultQuery() const { return _resultQuery; }
+
     /// Return time when query was submitted
     std::time_t submitted() const { return _submitted; }
 
@@ -151,6 +155,7 @@ private:
     std::string _qProxyOrderBy; // ORDER BY clause for proxy-side SELECT statement, possibly empty.
     std::string _resultLoc; // Location of query result, e.g. table:result_12345
     std::string _msgTableName; // Name of the message table for this query
+    std::string _resultQuery; // The query for qserv-proxy to execute to get results.
     std::time_t _submitted; // Time when query was submitted (seconds since epoch).
     std::time_t _completed; // Time when query finished execution, 0 if not finished.
     std::time_t _returned;  // Time when query result was sent to client, 0 if not sent yet.

@@ -68,10 +68,10 @@ PYBIND11_MODULE(qmetaLib, mod) {
         .def(py::init<QInfo::QType, CzarId, std::string const&,
                 std::string const&, std::string const&,
                 std::string const&, std::string const&,
-                std::string const&,
+                std::string const&, std::string const&,
                 QInfo::QStatus, std::time_t, std::time_t, std::time_t>(),
                 "qType"_a, "czarId"_a, "user"_a, "qText"_a, "qTemplate"_a,
-                "qMerge"_a, "resultLoc"_a, "msgTableName"_a,
+                "qMerge"_a, "resultLoc"_a, "msgTableName"_a, "resultQuery"_a,
                 "qStatus"_a=QInfo::EXECUTING, "submitted"_a=std::time_t(0),
                 "completed"_a=std::time_t(0), "returned"_a=std::time_t())
         .def("queryType", &QInfo::queryType)
@@ -83,6 +83,7 @@ PYBIND11_MODULE(qmetaLib, mod) {
         .def("mergeQuery", &QInfo::mergeQuery)
         .def("resultLocation", &QInfo::resultLocation)
         .def("msgTableName", &QInfo::msgTableName)
+        .def("resultQuery", &QInfo::resultQuery)
         .def("submitted", &QInfo::submitted)
         .def("completed", &QInfo::completed)
         .def("returned", &QInfo::returned)

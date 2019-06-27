@@ -212,7 +212,7 @@ std::string UserQueryAsyncResult::getResultLocation() const {
 
 
 std::string UserQueryAsyncResult::getResultQuery() const {
-    return _qMeta->getResultQuery(_queryId);
+    return _qInfo.resultQuery();
 }
 
 

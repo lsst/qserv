@@ -631,7 +631,7 @@ QMetaMysql::getQueryInfo(QueryId queryId) {
     // run query
     sql::SqlErrorObject errObj;
     sql::SqlResults results;
-    std::string query = "SELECT qType, czarId, user, query, qTemplate, qMerge, status,"
+    std::string query = "SELECT qType, czarId, user, query, qTemplate, qMerge, resultQuery, status,"
             " UNIX_TIMESTAMP(submitted), UNIX_TIMESTAMP(completed), UNIX_TIMESTAMP(returned), "
             " messageTable, resultLocation"
             " FROM QInfo WHERE queryId = ";
@@ -659,12 +659,13 @@ QMetaMysql::getQueryInfo(QueryId queryId) {
     std::string rQuery(row[3].first);
     std::string qTemplate(row[4].first);
     std::string qMerge(row[5].first ? row[5].first : "");
-    QInfo::QStatus qStatus = ::string2status(row[6].first);
-    std::time_t submitted(row[7].first ? boost::lexical_cast<std::time_t>(row[7].first) : std::time_t(0));
-    std::time_t completed(row[8].first ? boost::lexical_cast<std::time_t>(row[8].first) : std::time_t(0));
-    std::time_t returned(row[9].first ? boost::lexical_cast<std::time_t>(row[9].first) : std::time_t(0));
-    std::string messageTable(row[10].first ? row[10].first : "");
-    std::string resultLocation(row[11].first ? row[11].first : "");
+    std::string resultQuery(row[6].first);
+    QInfo::QStatus qStatus = ::string2status(row[7].first);
+    std::time_t submitted(row[8].first ? boost::lexical_cast<std::time_t>(row[8].first) : std::time_t(0));
+    std::time_t completed(row[9].first ? boost::lexical_cast<std::time_t>(row[9].first) : std::time_t(0));
+    std::time_t returned(row[10].first ? boost::lexical_cast<std::time_t>(row[10].first) : std::time_t(0));
+    std::string messageTable(row[11].first ? row[11].first : "");
+    std::string resultLocation(row[12].first ? row[12].first : "");
     // result location may contain #QID# token to be replaced with query ID
     boost::replace_all(resultLocation, "#QID#", std::to_string(queryId));
 
@@ -678,7 +679,7 @@ QMetaMysql::getQueryInfo(QueryId queryId) {
     trans.commit();
 
     return QInfo(qType, czarId, user, rQuery, qTemplate, qMerge,
-                 resultLocation, messageTable, qStatus, submitted, completed, returned);
+                 resultLocation, messageTable, resultQuery, qStatus, submitted, completed, returned);
 }
 
 // Get queries which use specified database.
@@ -839,40 +840,6 @@ void QMetaMysql::saveResultQuery(QueryId queryId, std::string const& query) {
     }
 
     trans.commit();
-}
-
-
-std::string QMetaMysql::getResultQuery(QueryId queryId) {
-    std::lock_guard<std::mutex> sync(_dbMutex);
-
-    QMetaTransaction trans(_conn);
-
-    // run query
-    sql::SqlErrorObject errObj;
-    sql::SqlResults results;
-    std::string query = "SELECT resultQuery FROM QInfo WHERE queryId = " +
-        boost::lexical_cast<std::string>(queryId);
-    LOGS(_log, LOG_LVL_DEBUG, "Executing query: " << query);
-    if (not _conn.runQuery(query, results, errObj)) {
-        LOGS(_log, LOG_LVL_ERROR, "SQL query failed: " << query);
-        throw SqlError(ERR_LOC, errObj);
-    }
-
-    // check number of rows updated, expect exactly one
-    if (results.getAffectedRows() == 0) {
-        throw QueryIdError(ERR_LOC, queryId);
-    }
-    // get results of the query
-    std::vector<std::string> ids;
-    std::string queryStr;
-    if (not results.extractFirstValue(queryStr, errObj)) {
-        LOGS(_log, LOG_LVL_ERROR, "Failed to extract query string from query result");
-        throw SqlError(ERR_LOC, errObj);
-    }
-
-    trans.commit();
-
-    return queryStr;
 }
 
 

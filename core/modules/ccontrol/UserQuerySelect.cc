@@ -166,12 +166,13 @@ UserQuerySelect::UserQuerySelect(std::shared_ptr<qproc::QuerySession> const& qs,
                                  qmeta::CzarId czarId,
                                  std::shared_ptr<qdisp::QdispPool> const& qdispPool,
                                  std::string const& errorExtra,
-                                 bool async)
+                                 bool async,
+                                 std::string const& resultDb)
     :  _qSession(qs), _messageStore(messageStore), _executive(executive),
        _infileMergerConfig(infileMergerConfig), _secondaryIndex(secondaryIndex),
        _queryMetadata(queryMetadata), _queryStatsData(queryStatsData),
        _qMetaCzarId(czarId), _qdispPool(qdispPool),
-       _errorExtra(errorExtra), _async(async) {
+       _errorExtra(errorExtra), _resultDb(resultDb), _async(async) {
 }
 
 std::string UserQuerySelect::getError() const {
@@ -246,7 +247,7 @@ std::string UserQuerySelect::getResultQuery() const {
     qt.setAliasMode(query::QueryTemplate::DEFINE_VALUE_ALIAS_USE_TABLE_ALIAS);
     selectList->renderTo(qt);
 
-    std::string resultQuery =  "SELECT " + qt.sqlFragment() + " FROM " + getResultDb() + "."
+    std::string resultQuery =  "SELECT " + qt.sqlFragment() + " FROM " + _resultDb + "."
         + getResultTableName();
     std::string orderBy = _getResultOrderBy();
     if (not orderBy.empty()) {
@@ -445,14 +446,17 @@ void UserQuerySelect::setupMerger() {
     auto&& preFlightStmt = _qSession->getPreFlightStmt();
     if (preFlightStmt == nullptr) {
         _qMetaUpdateStatus(qmeta::QInfo::FAILED);
-        throw UserQueryError(getQueryIdString() +
-            "Could not create results table for query (no worker queries).");
+        _errorExtra = "Could not create results table for query (no worker queries).";
+        return;
     }
-    std::string errMsg;
-    if (not _infileMerger->makeResultsTableForQuery(*preFlightStmt, errMsg)) {
+    if (not _infileMerger->makeResultsTableForQuery(*preFlightStmt, _errorExtra)) {
         _qMetaUpdateStatus(qmeta::QInfo::FAILED);
-        throw UserQueryError(getQueryIdString() + errMsg);
     }
+}
+
+
+void UserQuerySelect::saveResultQuery() {
+    _queryMetadata->saveResultQuery(_qMetaQueryId, getResultQuery());
 }
 
 void UserQuerySelect::setupChunking() {
@@ -533,7 +537,7 @@ void UserQuerySelect::qMetaRegister(std::string const& resultLocation, std::stri
         _resultLoc = "table:result_#QID#";
     }
     qmeta::QInfo qInfo(qType, _qMetaCzarId, user, _qSession->getOriginal(),
-                       qTemplate, qMerge, _resultLoc, msgTableName);
+                       qTemplate, qMerge, _resultLoc, msgTableName, "");
 
     // find all table names used by statement (which appear in FROM ... [JOIN ...])
     qmeta::QMeta::TableNames tableNames;
@@ -592,11 +596,6 @@ void UserQuerySelect::qMetaRegister(std::string const& resultLocation, std::stri
             throw UserQueryError(getQueryIdString() + _errorExtra);
         }
     }
-}
-
-
-void UserQuerySelect::saveResultQuery(std::string const& resultQuery) {
-    _queryMetadata->saveResultQuery(_qMetaQueryId, resultQuery);
 }
 
 

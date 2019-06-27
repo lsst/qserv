@@ -115,7 +115,8 @@ UserQueryFactory::newUserQuery(std::string const& aQuery,
                                std::string const& defaultDb,
                                qdisp::QdispPool::Ptr const& qdispPool,
                                std::string const& userQueryId,
-                               std::string const& msgTableName) {
+                               std::string const& msgTableName,
+                               std::string const& resultDb) {
 
     // result location could potentially be specified by SUBMIT command, for now
     // we keep it empty which means that UserQuerySelect uses default result table.
@@ -171,7 +172,7 @@ UserQueryFactory::newUserQuery(std::string const& aQuery,
                 LOGS(_log, LOG_LVL_DEBUG, "SELECT query is a PROCESSLIST");
                 try {
                     return std::make_shared<UserQueryProcessList>(stmt, _impl->resultDbConn.get(),
-                            _impl->qMetaSelect, _impl->qMetaCzarId, userQueryId);
+                            _impl->qMetaSelect, _impl->qMetaCzarId, userQueryId, resultDb);
                 } catch(std::exception const& exc) {
                     return std::make_shared<UserQueryInvalid>(exc.what());
                 }
@@ -207,10 +208,12 @@ UserQueryFactory::newUserQuery(std::string const& aQuery,
         auto uq = std::make_shared<UserQuerySelect>(qs, messageStore, executive, infileMergerConfig,
                                                     _impl->secondaryIndex, _impl->queryMetadata,
                                                     _impl->queryStatsData, _impl->qMetaCzarId,
-                                                    qdispPool, errorExtra, async);
+                                                    qdispPool, errorExtra, async, resultDb);
         if (sessionValid) {
             uq->qMetaRegister(resultLocation, msgTableName);
             uq->setupChunking();
+            uq->setupMerger();
+            uq->saveResultQuery();
         }
         return uq;
     } else if (UserQueryType::isSelectResult(query, userJobId)) {
@@ -245,7 +248,7 @@ UserQueryFactory::newUserQuery(std::string const& aQuery,
         LOGS(_log, LOG_LVL_DEBUG, "make UserQueryProcessList: full=" << (full ? 'y' : 'n'));
         try {
             return std::make_shared<UserQueryProcessList>(full, _impl->resultDbConn.get(),
-                    _impl->qMetaSelect, _impl->qMetaCzarId, userQueryId);
+                    _impl->qMetaSelect, _impl->qMetaCzarId, userQueryId, resultDb);
         } catch(std::exception const& exc) {
             return std::make_shared<UserQueryInvalid>(exc.what());
         }

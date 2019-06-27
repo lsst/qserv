@@ -259,17 +259,6 @@ public:
      */
     void saveResultQuery(QueryId queryId, std::string const& query) override;
 
-    /**
-     * @brief Get the result query from metadata, to give to the proxy when fetching results from an async
-     *        query.
-     *
-     *  This method will throw if query ID is not known.
-     *
-     * @param queryId: Query ID, non-negative number.
-     * @query the query string
-     */
-     std::string getResultQuery(QueryId queryId) override;
-
 protected:
 
     ///  Check that all necessary tables exist

@@ -90,7 +90,8 @@ public:
                     qmeta::CzarId czarId,
                     std::shared_ptr<qdisp::QdispPool> const& qdispPool,
                     std::string const& errorExtra,
-                    bool async);
+                    bool async,
+                    std::string const& resultDb);
 
     UserQuerySelect(UserQuerySelect const&) = delete;
     UserQuerySelect& operator=(UserQuerySelect const&) = delete;
@@ -147,10 +148,10 @@ public:
     /// set up the merge table (stores results from workers)
     /// @throw UserQueryError if the merge table can't be set up (maybe the user query is not valid?). The
     /// exception's what() message will be returned to the user.
-    void setupMerger() override;
+    void setupMerger();
 
-    /// Save the result query in metadata, to give to the proxy when fetching results from an async query.
-    void saveResultQuery(std::string const& resultQuery) override;
+    /// save the result query in the query metadata
+    void saveResultQuery();
 
 private:
     /// @return ORDER BY part of SELECT statement that gets executed by the proxy
@@ -180,6 +181,7 @@ private:
     std::string _errorExtra;    ///< Additional error information
     std::string _resultTable;   ///< Result table name
     std::string _resultLoc;     ///< Result location
+    std::string _resultDb;      ///< Result database (todo is this the same as resultLoc??)
     bool _async;                ///< true for async query
 };
 

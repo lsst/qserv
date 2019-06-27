@@ -70,7 +70,8 @@ public:
             sql::SqlConnection* resultDbConn,
             std::shared_ptr<qmeta::QMetaSelect> const& qMetaSelect,
             qmeta::CzarId qMetaCzarId,
-            std::string const& userQueryId);
+            std::string const& userQueryId,
+            std::string const& resultDb);
 
     /**
      *  Constructor for "SHOW [FULL] PROCESSLIST".
@@ -85,7 +86,8 @@ public:
             sql::SqlConnection* resultDbConn,
             std::shared_ptr<qmeta::QMetaSelect> const& qMetaSelect,
             qmeta::CzarId qMetaCzarId,
-            std::string const& userQueryId);
+            std::string const& userQueryId,
+            std::string const& resultDb);
 
     UserQueryProcessList(UserQueryProcessList const&) = delete;
     UserQueryProcessList& operator=(UserQueryProcessList const&) = delete;
@@ -134,6 +136,7 @@ private:
     std::string _resultTableName;
     std::string _query;            ///< query to execute on QMeta database
     std::string _orderBy;
+    std::string _resultDb;
 
 };
 

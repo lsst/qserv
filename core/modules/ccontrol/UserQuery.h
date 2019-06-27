@@ -103,26 +103,8 @@ public:
     /// @return True if query is async query
     virtual bool isAsync() const { return false; }
 
-    /// set up the merge table (stores results from workers)
-    /// @throw UserQueryError if the merge table can't be set up (maybe the user query is not valid?). The
-    /// exception's what() message will be returned to the user.
-    virtual void setupMerger() {}
-
-    /// Save the result query in metadata, to give to the proxy when fetching results from an async query.
-    virtual void saveResultQuery(std::string const& resultQuery) {}
-
     /// @return get the SELECT statement to be executed by proxy
     virtual std::string getResultQuery() const { return std::string(); }
-
-    /// Set the result db name
-    virtual void setResultDb(std::string const& resultDbName) { _resultDb = resultDbName; }
-
-    /// Get the name of the result database
-    virtual std::string getResultDb() const { return _resultDb; }
-
-
-private:
-    std::string _resultDb;
 };
 
 }}} // namespace lsst::qserv:ccontrol
