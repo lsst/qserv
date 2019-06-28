@@ -38,7 +38,9 @@
 // Qserv headers
 #include "query/ColumnRef.h"
 #include "query/JoinRef.h"
+#include "sql/SqlConfig.h"
 #include "sql/SqlConnection.h"
+#include "sql/SqlConnectionFactory.h"
 #include "sql/SqlResults.h"
 
 
@@ -201,7 +203,9 @@ std::string QueryContext::columnToTablesMapToString() const {
 std::vector<std::string> QueryContext::_getTableSchema(std::string const& dbName,
                                                       std::string const& tableName) {
     std::vector<std::string> colNames;
-    auto sqlConn = sql::SqlConnection::create(mysqlSchemaConfig);
+    sql::SqlConfig cfg;
+    cfg.mySqlConfig = mysqlSchemaConfig;
+    auto sqlConn = sql::SqlConnectionFactory::make(cfg);
     sql::SqlErrorObject errObj;
     sqlConn->listColumns(colNames, errObj, dbName, tableName);
     return colNames;
