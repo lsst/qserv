@@ -32,6 +32,9 @@
 // Forward declarations
 namespace lsst {
 namespace qserv {
+namespace mysql {
+    class MySqlConfig;
+}
 namespace sql {
     class SqlConnection;
     class SqlConfig;
@@ -44,7 +47,18 @@ namespace sql {
 
 class SqlConnectionFactory {
 public:
+    /**
+     * @brief Make a new SqlConnection object from an SqlConfig
+     */
     static std::shared_ptr<SqlConnection> make(SqlConfig const& cfg);
+
+    /**
+     * @brief Make a new SqlConnection object from a mysql::MySqlConfig
+     *
+     * This is deprecated and should not be added to new code, callers should prefer the function that takes
+     * an SqlConfig.
+     */
+    static std::shared_ptr<SqlConnection> make(mysql::MySqlConfig const& cfg);
 };
 
 

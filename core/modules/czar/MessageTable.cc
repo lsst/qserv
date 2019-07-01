@@ -37,6 +37,7 @@
 #include "czar/CzarErrors.h"
 #include "qdisp/MessageStore.h"
 #include "sql/SqlConnection.h"
+#include "sql/SqlConnectionFactory.h"
 
 namespace {
 
@@ -68,7 +69,7 @@ namespace czar {
 MessageTable::MessageTable(std::string const& tableName,
                            mysql::MySqlConfig const& resultConfig)
     : _tableName(tableName),
-      _sqlConn(std::make_shared<sql::SqlConnection>(resultConfig)) {
+      _sqlConn(sql::SqlConnectionFactory::make(resultConfig)) {
 }
 
 // Create the table, do not lock

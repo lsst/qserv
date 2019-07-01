@@ -37,8 +37,11 @@
 // Qserv headers
 #include "global/constants.h"
 #include "sql/SqlConnection.h"
+#include "sql/SqlConnectionFactory.h"
 
+using lsst::qserv::sql::SqlConfig;
 using lsst::qserv::sql::SqlConnection;
+using lsst::qserv::sql::SqlConnectionFactory;
 using lsst::qserv::sql::SqlErrorObject;
 using lsst::qserv::sql::SqlResultIter;
 using lsst::qserv::wpublish::ChunkInventory;
@@ -177,16 +180,16 @@ ChunkInventory::ChunkInventory(ChunkInventory::ExistMap const& existMap,
 
 void ChunkInventory::init(string const& name, mysql::MySqlConfig const& mySqlConfig) {
     _name = name;
-    SqlConnection sc(mySqlConfig, true);
-    _init(sc);
+    auto sc = SqlConnectionFactory::make(mySqlConfig);
+    _init(*sc);
 }
 
 
 void ChunkInventory::rebuild(string const& name, mysql::MySqlConfig const& mySqlConfig) {
     _name = name;
-    SqlConnection sc(mySqlConfig, true);
-    _rebuild(sc);
-    _init(sc);
+    auto sc = SqlConnectionFactory::make(mySqlConfig);
+    _rebuild(*sc);
+    _init(*sc);
 }
 
 
@@ -209,12 +212,12 @@ void ChunkInventory::add(string const& db, int chunk, mysql::MySqlConfig const& 
 
     LOGS(_log, LOG_LVL_DEBUG, "ChunkInventory::add()  db: " << db << ", chunk: " << chunk);
 
-    SqlConnection sc(mySqlConfig, true);
+    auto sc = SqlConnectionFactory::make(mySqlConfig);
 
     // Validate parameters of the request
 
     deque<string> dbs;
-    ::fetchDbs(_name, sc, dbs);
+    ::fetchDbs(_name, *sc, dbs);
 
     if (find(dbs.begin(), dbs.end(), db) == dbs.end()) {
         string const error = "ChunkInventory::add()  invalid database: " + db;
@@ -230,7 +233,7 @@ void ChunkInventory::add(string const& db, int chunk, mysql::MySqlConfig const& 
         LOGS(_log, LOG_LVL_DEBUG, "Launching query:\n" << query);
 
         SqlErrorObject seo;
-        if (not sc.runQuery(query, seo)) {
+        if (not sc->runQuery(query, seo)) {
             string const error = "ChunkInventory failed to add a chunk, error: " + seo.printErrMsg();
             LOGS(_log, LOG_LVL_ERROR, error);
             throw QueryError(error);
@@ -273,13 +276,13 @@ void ChunkInventory::remove(string const& db, int chunk, mysql::MySqlConfig cons
         "DELETE FROM qservw_" + _name + ".Chunks WHERE db='" + db + "' AND chunk=" + to_string(chunk)
     };
 
-    SqlConnection sc(mySqlConfig, true);
+    auto sc = SqlConnectionFactory::make(mySqlConfig);
 
     for (auto const& query: queries) {
         LOGS(_log, LOG_LVL_DEBUG, "Launching query:\n" << query);
 
         SqlErrorObject seo;
-        if (not sc.runQuery(query, seo)) {
+        if (not sc->runQuery(query, seo)) {
             string const error = "ChunkInventory failed to remove a chunk, error: " + seo.printErrMsg();
             LOGS(_log, LOG_LVL_ERROR, error);
             throw QueryError(error);

@@ -64,6 +64,7 @@
 #include "rproc/ProtoRowBuffer.h"
 #include "sql/Schema.h"
 #include "sql/SqlConnection.h"
+#include "sql/SqlConnectionFactory.h"
 #include "sql/SqlResults.h"
 #include "sql/SqlErrorObject.h"
 #include "sql/statement.h"
@@ -466,7 +467,7 @@ bool InfileMerger::_applySqlLocal(std::string const& sql, sql::SqlResults& resul
 
 bool InfileMerger::_sqlConnect(sql::SqlErrorObject& errObj) {
     if (_sqlConn == nullptr) {
-        _sqlConn = std::make_shared<sql::SqlConnection>(_config.mySqlConfig, true);
+        _sqlConn = sql::SqlConnectionFactory::make(_config.mySqlConfig);
         if (not _sqlConn->connectToDb(errObj)) {
             _error = util::Error(errObj.errNo(), "Error connecting to db: " + errObj.printErrMsg(),
                            util::ErrorCode::MYSQLCONNECT);

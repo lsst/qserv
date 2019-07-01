@@ -41,7 +41,15 @@
 // Local headers
 #include "css/KvInterface.h"
 #include "mysql/MySqlConfig.h"
-#include "sql/SqlConnection.h"
+
+
+// Forward declarations
+namespace lsst {
+namespace qserv {
+namespace sql {
+    class SqlConnection;
+}}}
+
 
 namespace lsst {
 namespace qserv {
@@ -135,7 +143,7 @@ private:
      */
     std::string _escapeSqlString(std::string const& str);
 
-    sql::SqlConnection _conn;
+    std::shared_ptr<sql::SqlConnection> _conn;
     bool _readOnly;
 };
 

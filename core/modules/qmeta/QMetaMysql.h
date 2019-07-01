@@ -30,7 +30,15 @@
 // Qserv headers
 #include "mysql/MySqlConfig.h"
 #include "qmeta/QMeta.h"
-#include "sql/SqlConnection.h"
+
+
+// Forward declarations
+namespace lsst {
+namespace qserv {
+namespace sql {
+    class SqlConnection;
+}}}
+
 
 namespace lsst {
 namespace qserv {
@@ -266,7 +274,7 @@ protected:
 
 private:
 
-    sql::SqlConnection _conn;
+    std::shared_ptr<sql::SqlConnection> _conn;
     std::mutex _dbMutex;    ///< Synchronizes access to certain DB operations
 
 };

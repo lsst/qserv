@@ -22,7 +22,7 @@
  */
 
 // Class header
-#include "sql/SqlConnection.h"
+#include "sql/MySqlConnection.h"
 
 // System headers
 #include <cstdio>
@@ -54,26 +54,28 @@ populateErrorObject(lsst::qserv::mysql::MySqlConnection& m,
     }
 }
 
-LOG_LOGGER _log = LOG_GET("lsst.qserv.sql.SqlConnection");
+LOG_LOGGER _log = LOG_GET("lsst.qserv.sql.MySqlConnection");
 
 } // anonymous namespace
+
 
 namespace lsst {
 namespace qserv {
 namespace sql {
 
+
 ////////////////////////////////////////////////////////////////////////
-// class SqlResultIter
+// class MySqlResultIter
 ////////////////////////////////////////////////////////////////////////
-SqlResultIter::SqlResultIter(mysql::MySqlConfig const& sqlConfig,
-                             std::string const& query) {
+MySqlResultIter::MySqlResultIter(mysql::MySqlConfig const& sqlConfig,
+                                 std::string const& query) {
     if (!_setup(sqlConfig, query)) { return; }
     // if not error, prime the iterator
     ++(*this);
 }
 
-SqlResultIter&
-SqlResultIter::operator++() {
+
+SqlResultIter& MySqlResultIter::operator++() {
     MYSQL_RES* result = _connection->getResult();
     if (!_columnCount) {
         _columnCount = mysql_num_fields(result);
@@ -86,18 +88,18 @@ SqlResultIter::operator++() {
         return *this;
     }
     std::copy(row, row + _columnCount, _current.begin());
-    return *this; // FIXME
+    return *this;
 }
 
-bool
-SqlResultIter::done() const {
+
+bool MySqlResultIter::done() const {
     // done if result is null, because connection has freed its result.
     return !_connection->getResult();
 }
 
-bool
-SqlResultIter::_setup(mysql::MySqlConfig const& sqlConfig,
-                      std::string const& query) {
+
+bool MySqlResultIter::_setup(mysql::MySqlConfig const& sqlConfig,
+                             std::string const& query) {
     _columnCount = 0;
     _connection = std::make_shared<mysql::MySqlConnection>(sqlConfig);
     if (!_connection->connect()) {
@@ -111,35 +113,32 @@ SqlResultIter::_setup(mysql::MySqlConfig const& sqlConfig,
     return true;
 }
 
+
 ////////////////////////////////////////////////////////////////////////
 // class SqlConnection
 ////////////////////////////////////////////////////////////////////////
-std::shared_ptr<SqlConnection> SqlConnection::create(mysql::MySqlConfig const& mysqlConfig) {
-    if (mysqlConfig.getConnection() != nullptr)
-        return mysqlConfig.getConnection();
-    return std::make_shared<SqlConnection>(mysqlConfig);
-}
 
-
-SqlConnection::SqlConnection()
+MySqlConnection::MySqlConnection()
     : _connection() {
 }
 
-SqlConnection::SqlConnection(mysql::MySqlConfig const& sc, bool)
+
+MySqlConnection::MySqlConnection(mysql::MySqlConfig const& sc, bool)
     : _connection(std::make_shared<mysql::MySqlConnection>(sc)) {
 }
 
-void
-SqlConnection::reset(mysql::MySqlConfig const& sc, bool) {
+
+void MySqlConnection::reset(mysql::MySqlConfig const& sc, bool) {
     _connection = std::make_shared<mysql::MySqlConnection>(sc);
 }
 
-SqlConnection::~SqlConnection() {
+
+MySqlConnection::~MySqlConnection() {
     _connection.reset();
 }
 
-bool
-SqlConnection::connectToDb(SqlErrorObject& errObj) {
+
+bool MySqlConnection::connectToDb(SqlErrorObject& errObj) {
     if (_connection->connected()) {
         int rc = mysql_ping(_connection->getMySql());
         if (rc == 0) return true;
@@ -157,8 +156,8 @@ SqlConnection::connectToDb(SqlErrorObject& errObj) {
     return true;
 }
 
-bool
-SqlConnection::selectDb(std::string const& dbName, SqlErrorObject& errObj) {
+
+bool MySqlConnection::selectDb(std::string const& dbName, SqlErrorObject& errObj) {
     if (!connectToDb(errObj)) return false;
     if (_connection->getConfig().dbName == dbName) {
         return true; // nothing to do
@@ -174,11 +173,11 @@ SqlConnection::selectDb(std::string const& dbName, SqlErrorObject& errObj) {
     return true;
 }
 
-bool
-SqlConnection::runQuery(char const* query,
-                        int qSize,
-                        SqlResults& results,
-                        SqlErrorObject& errObj) {
+
+bool MySqlConnection::runQuery(char const* query,
+                               int qSize,
+                               SqlResults& results,
+                               SqlErrorObject& errObj) {
     std::string queryPiece(query, qSize);
     if (!connectToDb(errObj)) {
         LOGS(_log, LOG_LVL_ERROR, "runQuery failed connectToDb: " << queryPiece);
@@ -211,36 +210,33 @@ SqlConnection::runQuery(char const* query,
     return true;
 }
 
-bool
-SqlConnection::runQuery(char const* query, int qSize, SqlErrorObject& errObj) {
+
+bool MySqlConnection::runQuery(char const* query, int qSize, SqlErrorObject& errObj) {
     SqlResults results(true); // true - discard results immediately
     return runQuery(query, qSize, results, errObj);
 }
 
-bool
-SqlConnection::runQuery(std::string const query,
-                        SqlResults& results,
-                        SqlErrorObject& errObj) {
+
+bool MySqlConnection::runQuery(std::string const query,
+                             SqlResults& results,
+                             SqlErrorObject& errObj) {
     return runQuery(query.data(), query.size(), results, errObj);
 }
 
-bool
-SqlConnection::runQuery(std::string const query,
-                        SqlErrorObject& errObj) {
+bool MySqlConnection::runQuery(std::string const query,
+                               SqlErrorObject& errObj) {
     SqlResults results(true); // true - discard results immediately
     return runQuery(query.data(), query.size(), results, errObj);
 }
 
+
 /// with runQueryIter SqlConnection is busy until SqlResultIter is closed
-std::shared_ptr<SqlResultIter>
-SqlConnection::getQueryIter(std::string const& query) {
-    std::shared_ptr<SqlResultIter> i =
-            std::make_shared<SqlResultIter>(_connection->getConfig(), query);
-    return i; // Can't defer to iterator without thread mgmt.
+std::shared_ptr<SqlResultIter> MySqlConnection::getQueryIter(std::string const& query) {
+    return std::make_shared<MySqlResultIter>(_connection->getConfig(), query);
 }
 
-bool
-SqlConnection::dbExists(std::string const& dbName, SqlErrorObject& errObj) {
+
+bool MySqlConnection::dbExists(std::string const& dbName, SqlErrorObject& errObj) {
     if (!connectToDb(errObj)) return false;
     std::string sql = "SELECT COUNT(*) FROM information_schema.schemata ";
     sql += "WHERE schema_name = '";
@@ -257,10 +253,10 @@ SqlConnection::dbExists(std::string const& dbName, SqlErrorObject& errObj) {
     return s[0] == '1';
 }
 
-bool
-SqlConnection::createDb(std::string const& dbName,
-                        SqlErrorObject& errObj,
-                        bool failIfExists) {
+
+bool MySqlConnection::createDb(std::string const& dbName,
+                               SqlErrorObject& errObj,
+                               bool failIfExists) {
     if (!connectToDb(errObj)) return false;
     if (dbExists(dbName, errObj)) {
         if (failIfExists) {
@@ -278,20 +274,20 @@ SqlConnection::createDb(std::string const& dbName,
     return true;
 }
 
-bool
-SqlConnection::createDbAndSelect(std::string const& dbName,
-                                 SqlErrorObject& errObj,
-                                 bool failIfExists) {
+
+bool MySqlConnection::createDbAndSelect(std::string const& dbName,
+                                      SqlErrorObject& errObj,
+                                      bool failIfExists) {
     if ( ! createDb(dbName, errObj, failIfExists) ) {
         return false;
     }
     return selectDb(dbName, errObj);
 }
 
-bool
-SqlConnection::dropDb(std::string const& dbName,
-                      SqlErrorObject& errObj,
-                      bool failIfDoesNotExist) {
+
+bool MySqlConnection::dropDb(std::string const& dbName,
+                             SqlErrorObject& errObj,
+                             bool failIfDoesNotExist) {
     if (!connectToDb(errObj)) return false;
     if (!dbExists(dbName, errObj)) {
         if ( errObj.isSet() ) { return false; } // Can't check existence.
@@ -312,10 +308,10 @@ SqlConnection::dropDb(std::string const& dbName,
     return true;
 }
 
-bool
-SqlConnection::tableExists(std::string const& tableName,
-                           SqlErrorObject& errObj,
-                           std::string const& dbName) {
+
+bool MySqlConnection::tableExists(std::string const& tableName,
+                                SqlErrorObject& errObj,
+                                std::string const& dbName) {
     if (!connectToDb(errObj)) return false;
     std::string dbName_;
     if ( ! dbName.empty() ) {
@@ -344,11 +340,10 @@ SqlConnection::tableExists(std::string const& tableName,
     return s[0] == '1';
 }
 
-bool
-SqlConnection::dropTable(std::string const& tableName,
-                         SqlErrorObject& errObj,
-                         bool failIfDoesNotExist,
-                         std::string const& dbName) {
+bool MySqlConnection::dropTable(std::string const& tableName,
+                                SqlErrorObject& errObj,
+                                bool failIfDoesNotExist,
+                                std::string const& dbName) {
     if (!connectToDb(errObj)) return false;
     if ( getActiveDbName().empty() ) {
         return errObj.addErrMsg("Can't drop table, db not selected");
@@ -368,11 +363,11 @@ SqlConnection::dropTable(std::string const& tableName,
     return true;
 }
 
-bool
-SqlConnection::listTables(std::vector<std::string>& v,
-                          SqlErrorObject& errObj,
-                          std::string const& prefixed,
-                          std::string const& dbName) {
+
+bool MySqlConnection::listTables(std::vector<std::string>& v,
+                                 SqlErrorObject& errObj,
+                                 std::string const& prefixed,
+                                 std::string const& dbName) {
     v.clear();
     if (!connectToDb(errObj)) return false;
     std::string _dbName = (dbName == "" ? getActiveDbName() : dbName);
@@ -395,11 +390,11 @@ SqlConnection::listTables(std::vector<std::string>& v,
     return results.extractFirstColumn(v, errObj);
 }
 
-void
-SqlConnection::listColumns(std::vector<std::string>& columns,
-                            SqlErrorObject& errObj,
-                            std::string const& dbName,
-                            std::string const& tableName) {
+
+void MySqlConnection::listColumns(std::vector<std::string>& columns,
+                                  SqlErrorObject& errObj,
+                                  std::string const& dbName,
+                                  std::string const& tableName) {
     columns.clear();
     if (!connectToDb(errObj)) {
         throw SqlException(lsst::qserv::util::Issue::Context(__FILE__, __LINE__, __func__),
@@ -430,22 +425,22 @@ SqlConnection::listColumns(std::vector<std::string>& columns,
     }
 }
 
-std::string
-SqlConnection::getActiveDbName() const {
+
+std::string MySqlConnection::getActiveDbName() const {
     return _connection->getConfig().dbName;
 }
 
+
 // Returns the value generated for an AUTO_INCREMENT column
 // by the previous INSERT or UPDATE statement.
-unsigned long long
-SqlConnection::getInsertId() const
+unsigned long long MySqlConnection::getInsertId() const
 {
     return mysql_insert_id(_connection->getMySql());
 }
 
+
 // Escape string for use inside SQL statements.
-std::string
-SqlConnection::escapeString(std::string const& rawString) const
+std::string MySqlConnection::escapeString(std::string const& rawString) const
 {
     std::string result;
     // mysql doc says output buffer must be inputLength*2+1
@@ -459,9 +454,9 @@ SqlConnection::escapeString(std::string const& rawString) const
     return result;
 }
 
+
 // Escape string for use inside SQL statements. Will connect if needed.
-bool
-SqlConnection::escapeString(std::string const& rawString, std::string& escapedString, SqlErrorObject& errObj) {
+bool MySqlConnection::escapeString(std::string const& rawString, std::string& escapedString, SqlErrorObject& errObj) {
     if (not connectToDb(errObj)) {
         return false;
     }
@@ -484,13 +479,8 @@ SqlConnection::escapeString(std::string const& rawString, std::string& escapedSt
 }
 
 
-////////////////////////////////////////////////////////////////////////
-// private
-////////////////////////////////////////////////////////////////////////
-
-bool
-SqlConnection::_setErrorObject(SqlErrorObject& errObj,
-                               std::string const& extraMsg) {
+bool MySqlConnection::_setErrorObject(SqlErrorObject& errObj,
+                                      std::string const& extraMsg) {
     assert(_connection.get());
     populateErrorObject(*_connection, errObj);
     if ( ! extraMsg.empty() ) {

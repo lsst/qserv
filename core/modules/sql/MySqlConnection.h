@@ -44,7 +44,6 @@
 #include "sql/SqlConnection.h"
 #include "sql/SqlErrorObject.h"
 
-
 // Forward declarations
 namespace lsst {
 namespace qserv {
@@ -53,6 +52,7 @@ namespace mysql {
 }
 namespace sql {
     class MySqlConnection;
+    class SqlConnectionFactory;
     class SqlResults;
 }}}
 
@@ -144,14 +144,14 @@ public:
      *  Returns the value generated for an AUTO_INCREMENT column
      *  by the previous INSERT or UPDATE statement.
      */
-    unsigned long long getInsertId() const;
+    unsigned long long getInsertId() const override;
 
     /**
      *  Escape string for use inside SQL statements.
      *  @return an escaped string, or an empty string if the connection can not be established
      *  @note the connection MUST be connected before using this method
      */
-    std::string escapeString(std::string const& rawString) const;
+    std::string escapeString(std::string const& rawString) const override;
 
     /**
      * Escape string for use inside SQL statements.
@@ -159,17 +159,15 @@ public:
      * @note this method will attempt to connect if the connection is not already estabilshed.
      */
     bool escapeString(std::string const& rawString, std::string& escapedString,
-            SqlErrorObject& errObj);
+            SqlErrorObject& errObj) override;
 
 private:
-    // Required to use the factory class to create new instances.
+    friend class MySqlResultIter;
+    friend class sql::SqlConnectionFactory;
+
+    // Private constructors; use SqlConnectionFactory to create new instances.
     MySqlConnection();
     MySqlConnection(mysql::MySqlConfig const& sc, bool useThreadMgmt=false);
-    // Make a new SqlConnection object based on the passed-in config.
-    static std::shared_ptr<SqlConnection> create(mysql::MySqlConfig const& mysqlConfig);
-
-    friend class MySqlResultIter;
-    friend class SqlConnectionFactory;
 
     bool _init(SqlErrorObject&);
     bool _connect(SqlErrorObject&);

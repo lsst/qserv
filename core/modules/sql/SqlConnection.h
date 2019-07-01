@@ -58,29 +58,25 @@ namespace sql {
 
 class SqlResultIter {
 public:
-    SqlResultIter() = default;
-
-    virtual ~SqlResultIter() {}
+    virtual ~SqlResultIter() = default;
 
     virtual SqlErrorObject& getErrorObject() = 0;
 
     virtual StringVector const& operator*() const = 0;
 
-    virtual SqlResultIter& operator++(); // pre-increment iterator advance.
+    virtual SqlResultIter& operator++() = 0; // pre-increment iterator advance.
 
-    virtual bool done() const; // Would like to relax LSST standard 3-4 for iterator classes
+    virtual bool done() const = 0; // Would like to relax LSST standard 3-4 for iterator classes
+
+protected:
+    SqlResultIter() = default;
 };
 
 
 /// class SqlConnection : Class for interacting with a MySQL database.
 class SqlConnection {
 public:
-
-    SqlConnection() = default;
-
-    SqlConnection(mysql::MySqlConfig const& sc, bool useThreadMgmt=false) = 0;
-
-    virtual ~SqlConnection() = 0;
+    virtual ~SqlConnection() {};
 
     virtual void reset(mysql::MySqlConfig const& sc, bool useThreadMgmt=false) = 0;
 
@@ -135,22 +131,25 @@ public:
      *  Returns the value generated for an AUTO_INCREMENT column
      *  by the previous INSERT or UPDATE statement.
      */
-    unsigned long long getInsertId() const = 0;
+    virtual unsigned long long getInsertId() const = 0;
 
     /**
      *  Escape string for use inside SQL statements.
      *  @return an escaped string, or an empty string if the connection can not be established
      *  @note the connection MUST be connected before using this method
      */
-    std::string escapeString(std::string const& rawString) const = 0;
+    virtual std::string escapeString(std::string const& rawString) const = 0;
 
     /**
      * Escape string for use inside SQL statements.
      * @return true if the escaped string could be created.
      * @note this method will attempt to connect if the connection is not already estabilshed.
      */
-    bool escapeString(std::string const& rawString, std::string& escapedString,
-            SqlErrorObject& errObj) = 0;
+    virtual bool escapeString(std::string const& rawString, std::string& escapedString,
+                              SqlErrorObject& errObj) = 0;
+
+protected:
+    SqlConnection() = default;
 };
 
 }}}

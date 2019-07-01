@@ -48,6 +48,7 @@
 #include "qproc/ChunkSpec.h"
 #include "query/Constraint.h"
 #include "sql/SqlConnection.h"
+#include "sql/SqlConnectionFactory.h"
 #include "util/IterableFormatter.h"
 
 namespace {
@@ -73,7 +74,7 @@ public:
 class MySqlBackend : public SecondaryIndex::Backend {
 public:
     MySqlBackend(mysql::MySqlConfig const& c)
-        : _sqlConnection(c, true) {
+        : _sqlConnection(sql::SqlConnectionFactory::make(c)) {
     }
 
     ChunkSpecVector lookup(query::ConstraintVector const& cv) override {
@@ -165,7 +166,7 @@ private:
             }
             std::string const& par3 = *(iter++);
             std::string const& par4 = *iter;
-            sql += (query_type == QueryType::BETWEEN ? " BETWEEN " : " NOT BETWEEN "); 
+            sql += (query_type == QueryType::BETWEEN ? " BETWEEN " : " NOT BETWEEN ");
             sql += par3 + " AND " + par4;
         }
 
@@ -202,7 +203,7 @@ private:
         // chunkId_x1, [subChunkId_y1, subChunkId_y2, ...]
         // chunkId_xi, [subChunkId_yj, ..., subChunkId_yk]
         // chunkId_xm, [subChunkId_yl, ..., subChunkId_yn]
-        for(std::shared_ptr<sql::SqlResultIter> results = _sqlConnection.getQueryIter(sql);
+        for(std::shared_ptr<sql::SqlResultIter> results = _sqlConnection->getQueryIter(sql);
             not results->done();
             ++(*results)) {
             StringVector const& row = **results;
@@ -218,7 +219,7 @@ private:
         }
     }
 
-    sql::SqlConnection _sqlConnection;
+    std::shared_ptr<sql::SqlConnection> _sqlConnection;
 };
 
 class FakeBackend : public SecondaryIndex::Backend {

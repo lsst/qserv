@@ -21,11 +21,12 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-
 // Class header
 #include "SqlConnectionFactory.h"
 
 // Qserv headers
+#include "mysql/MySqlConfig.h"
+#include "sql/MySqlConnection.h"
 #include "sql/SqlConfig.h"
 #include "sql/SqlConnection.h"
 
@@ -36,8 +37,14 @@ namespace sql {
 
 
 std::shared_ptr<SqlConnection> SqlConnectionFactory::make(SqlConfig const& cfg) {
-    return SqlConnection::create(cfg.mySqlConfig);
+    return std::shared_ptr<sql::MySqlConnection>(new sql::MySqlConnection(cfg.mySqlConfig));
 }
+
+
+std::shared_ptr<SqlConnection> SqlConnectionFactory::make(mysql::MySqlConfig const& cfg) {
+    return make(SqlConfig(cfg));
+}
+
 
 
 }}} // namespace lsst::qserv::sql

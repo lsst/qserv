@@ -38,6 +38,10 @@ namespace sql {
 
 class SqlConfig {
 public:
+    SqlConfig() = default;
+
+    SqlConfig(mysql::MySqlConfig const& cfg) : mySqlConfig(cfg) {}
+
     mysql::MySqlConfig mySqlConfig;
 };
 

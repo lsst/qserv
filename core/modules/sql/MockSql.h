@@ -119,10 +119,10 @@ public:
             _end = end;
         }
         virtual ~Iter() {}
-        virtual SqlErrorObject& getErrorObject() { return _errObj; }
-        virtual StringVector const& operator*() const { return *_cursor; }
-        virtual SqlResultIter& operator++() { ++_cursor; return *this; }
-        virtual bool done() const { return _cursor == _end; }
+        SqlErrorObject& getErrorObject() override { return _errObj; }
+        StringVector const& operator*() const override { return *_cursor; }
+        SqlResultIter& operator++() override { ++_cursor; return *this; }
+        bool done() const override { return _cursor == _end; }
 
         SqlErrorObject _errObj;
         TupleListIter _cursor;

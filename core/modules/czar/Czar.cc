@@ -42,6 +42,7 @@
 #include "czar/MessageTable.h"
 #include "rproc/InfileMerger.h"
 #include "sql/SqlConnection.h"
+#include "sql/SqlConnectionFactory.h"
 #include "util/IterableFormatter.h"
 #include "XrdSsi/XrdSsiProvider.hh"
 
@@ -340,12 +341,12 @@ Czar::_makeAsyncResult(std::string const& asyncResultTable,
                        QueryId queryId,
                        std::string const& resultLoc) {
 
-    sql::SqlConnection sqlConn(_czarConfig.getMySqlResultConfig());
+    auto sqlConn = sql::SqlConnectionFactory::make(_czarConfig.getMySqlResultConfig());
     LOGS(_log, LOG_LVL_DEBUG, "creating async result table " << asyncResultTable);
 
     sql::SqlErrorObject sqlErr;
     std::string resultLocEscaped;
-    if (not sqlConn.escapeString(resultLoc, resultLocEscaped,sqlErr)) {
+    if (not sqlConn->escapeString(resultLoc, resultLocEscaped,sqlErr)) {
         SqlError exc(ERR_LOC, "Failure in escapString", sqlErr);
         LOGS(_log, LOG_LVL_ERROR, exc.message());
         throw exc;
@@ -354,7 +355,7 @@ Czar::_makeAsyncResult(std::string const& asyncResultTable,
     std::string query = (boost::format(::createAsyncResultTmpl)
                     % asyncResultTable % queryId % resultLocEscaped).str();
 
-    if (not sqlConn.runQuery(query, sqlErr)) {
+    if (not sqlConn->runQuery(query, sqlErr)) {
         SqlError exc(ERR_LOC, "Failure creating async result table", sqlErr);
         LOGS(_log, LOG_LVL_ERROR, exc.message());
         throw exc;

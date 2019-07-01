@@ -61,6 +61,8 @@
 #include "query/SelectStmt.h"
 #include "rproc/InfileMerger.h"
 #include "sql/SqlConnection.h"
+#include "sql/SqlConnectionFactory.h"
+
 
 namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.ccontrol.UserQueryFactory");
@@ -86,7 +88,7 @@ public:
     std::shared_ptr<qmeta::QMeta> queryMetadata;
     std::shared_ptr<qmeta::QStatus> queryStatsData;
     std::shared_ptr<qmeta::QMetaSelect> qMetaSelect;
-    std::unique_ptr<sql::SqlConnection> resultDbConn;
+    std::shared_ptr<sql::SqlConnection> resultDbConn;
     qmeta::CzarId qMetaCzarId = {0};   ///< Czar ID in QMeta database
 };
 
@@ -268,7 +270,7 @@ UserQueryFactory::Impl::Impl(czar::CzarConfig const& czarConfig)
     secondaryIndex = std::make_shared<qproc::SecondaryIndex>(mysqlResultConfig);
 
     // make one dedicated connection for results database
-    resultDbConn.reset(new sql::SqlConnection(mysqlResultConfig));
+    resultDbConn = sql::SqlConnectionFactory::make(mysqlResultConfig);
 
     queryMetadata = std::make_shared<qmeta::QMetaMysql>(czarConfig.getMySqlQmetaConfig());
     qMetaSelect = std::make_shared<qmeta::QMetaSelect>(czarConfig.getMySqlQmetaConfig());
