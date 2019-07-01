@@ -17,6 +17,9 @@
 # You should have received a copy of the LSST License Statement and
 # the GNU General Public License along with this program.  If not,
 # see <http://www.lsstcorp.org/LegalNotices/>.
+from __future__ import absolute_import, division, print_function
+
+from pip._vendor.distlib import database
 
 """
 Module defining DataLoader class and related methods.
@@ -25,7 +28,7 @@ DataLoader class is used to simplify data loading procedure.
 
 @author  Andy Salnikov, SLAC
 """
-from __future__ import absolute_import, division, print_function
+
 
 # --------------------------------
 #  Imports of standard modules --
@@ -220,6 +223,9 @@ class DataLoader(object):
         if self.css is not None:
             self._updateCss(database, table)
 
+        # Make a table of empty chunks
+        self._makeEmptyChunksTable(database)
+        
         # optionally make emptyChunks file
         self._makeEmptyChunks()
 
@@ -725,6 +731,49 @@ class DataLoader(object):
         i = schema.find('(')
         return schema[i:]
 
+    def _makeEmptyChunksTable(self, database):
+        """
+        Generate empty chunks table in qservMeta, should be called after loading is complete.
+        """
+    
+        # only makes sense for true partitioned tables
+        if not self.partitioned:
+            self._log.info('Table is not partitioned, will not make empty chunks table for ' + database)
+            return
+        
+        if self.indexDb is None:
+            self._log.info('No indexDb, nowhere to put empty chunks table for ' + database)
+            return
+        
+        # Get a unique name for the EmptyChunks table
+        tableName = database + "_EmptyChunks" 
+        
+        # Delete the existing empty chunks table
+        self.czarWmgr.dropTable(self.indexDb, tableName, dropChunks=False, mustExist=False)
+        
+        # make a table for the empty chunks
+        schema = "CREATE TABLE {table} (chunkId INT NOT NULL PRIMARY KEY)"
+        schema += " ENGINE = INNODB"
+        schema = schema.format(table=tableName)
+        self.czarWmgr.createTable(self.indexDb, tableName, schema=schema)
+        
+        # max possible number of chunks
+        nStripes = int(self.partOptions['part.num-stripes'])
+        maxChunks = 2 * nStripes ** 2
+
+        self._log.info('Making empty chunk list (max.chunk=%d)', maxChunks)
+                
+        # dump it into a in-memory file, loadData expects binary mode
+        data = BytesIO()
+        for chunk in range(maxChunks):
+            if chunk not in self.chunks:
+                data.write(b"%d\n" % chunk)
+        data.seek(0)
+
+        # send that file to czar
+        self.czarWmgr.loadData(self.indexDb, tableName, data)
+
+                
     def _makeEmptyChunks(self):
         """
         Generate empty chunks file, should be called after loading is complete.
@@ -755,7 +804,7 @@ class DataLoader(object):
         out = open(self.emptyChunks, 'w')
         for chunk in range(maxChunks):
             if chunk not in self.chunks:
-                print(chunk, file=out)
+                print(chunk, file=out)            
 
     def _makeIndex(self, database, table):
         """
