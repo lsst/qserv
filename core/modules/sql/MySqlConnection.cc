@@ -422,6 +422,8 @@ std::vector<std::string> MySqlConnection::listColumns(std::string const& dbName,
     }
     std::vector<std::string> columns;
     for (auto const& row : results) {
+        // The type of `first` is const char *, `second` is the length. `row` is an SqlResults_Iterator, see
+        // the declaration in sql/SqlResults.h.
         columns.emplace_back(row[0].first, row[0].second);
     }
     return columns;
