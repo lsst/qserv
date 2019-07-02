@@ -109,12 +109,11 @@ public:
         // for lookup later. Here we return a list of column names for a table.
         auto tableItr = _dbTableColumns.find(dbName);
         if (tableItr == _dbTableColumns.end()) {
-            throw sql::NoSuchDb(lsst::qserv::util::Issue::Context(__FILE__, __LINE__, __func__), dbName);
+            throw sql::NoSuchDb(ERR_LOC, dbName);
         }
         auto columnsItr = tableItr->second.find(tableName);
         if (columnsItr == tableItr->second.end()) {
-            throw sql::NoSuchTable(lsst::qserv::util::Issue::Context(__FILE__, __LINE__, __func__),
-                    dbName, tableName);
+            throw sql::NoSuchTable(ERR_LOC, dbName, tableName);
         }
         std::vector<std::string> columns;
         for (auto const& column : columnsItr->second) {

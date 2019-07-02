@@ -396,23 +396,20 @@ std::vector<std::string> MySqlConnection::listColumns(std::string const& dbName,
                                                       std::string const& tableName) {
     SqlErrorObject errObj;
     if (!connectToDb(errObj)) {
-        throw SqlException(lsst::qserv::util::Issue::Context(__FILE__, __LINE__, __func__),
-                           "connectToDb in listColumns query failed.");
+        throw SqlException(ERR_LOC, "connectToDb in listColumns query failed.");
     }
     if (!dbExists(dbName, errObj)) {
-        throw NoSuchDb(lsst::qserv::util::Issue::Context(__FILE__, __LINE__, __func__), dbName);
+        throw NoSuchDb(ERR_LOC, dbName);
     }
     if (!tableExists(tableName, errObj, dbName)) {
-        throw NoSuchTable(lsst::qserv::util::Issue::Context(__FILE__, __LINE__, __func__), dbName,
-                          tableName);
+        throw NoSuchTable(ERR_LOC, dbName, tableName);
     }
     std::string sql("SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS "
                     "WHERE table_name = '" + tableName + "' " +
                     "AND table_schema = '" + dbName + "'");
     sql::SqlResults results;
     if (not runQuery(sql, results, errObj)) {
-        throw SqlException(lsst::qserv::util::Issue::Context(__FILE__, __LINE__, __func__),
-                           "listColumns query failed: " + sql);
+        throw SqlException(ERR_LOC, "listColumns query failed: " + sql);
     }
     std::vector<std::string> columns;
     for (auto const& row : results) {
