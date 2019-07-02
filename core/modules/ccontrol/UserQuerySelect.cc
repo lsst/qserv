@@ -210,7 +210,7 @@ UserQuerySelect::_getResultOrderBy() const {
 
 
 std::string UserQuerySelect::getResultQuery() const {
-    auto selectList = std::make_shared<query::SelectList>();
+    query::SelectList selectList;
     auto const& valueExprList = *_qSession->getStmt().getSelectList().getValueExprList();
     for (auto const& valueExpr : valueExprList) {
         if (valueExpr->isStar()) {
@@ -220,7 +220,7 @@ std::string UserQuerySelect::getResultQuery() const {
             query::SelectStmt starStmt(useSelectList, _qSession->getStmt().getFromList().clone());
             auto schema = _infileMerger->getSchemaForQueryResults(starStmt, errMsg);
             for (auto const& column : schema.columns) {
-                selectList->addValueExpr(query::ValueExpr::newColumnExpr(column.name));
+                selectList.addValueExpr(query::ValueExpr::newColumnExpr(column.name));
             }
         } else {
             // Add a column that describes the top-level ValueExpr.
@@ -236,7 +236,7 @@ std::string UserQuerySelect::getResultQuery() const {
                 newValueExpr = query::ValueExpr::newColumnExpr("`" + valueExpr->getAlias() + "`");
                 newValueExpr->setAlias(valueExpr->getAlias());
             }
-            selectList->addValueExpr(newValueExpr);
+            selectList.addValueExpr(newValueExpr);
         }
     }
 
@@ -244,7 +244,7 @@ std::string UserQuerySelect::getResultQuery() const {
     // the result table that may be mangled by internal handling of the query are restored to the column name
     // that the user expects, by way of the alias defined here.
     query::QueryTemplate qt(query::QueryTemplate::DEFINE_VALUE_ALIAS_USE_TABLE_ALIAS);
-    selectList->renderTo(qt);
+    selectList.renderTo(qt);
 
     std::string resultQuery =  "SELECT " + qt.sqlFragment() + " FROM " + _resultDb + "."
         + getResultTableName();
