@@ -202,11 +202,8 @@ std::string QueryContext::columnToTablesMapToString() const {
 /// used to map column names to particular tables.
 std::vector<std::string> QueryContext::_getTableSchema(std::string const& dbName,
                                                       std::string const& tableName) {
-    std::vector<std::string> colNames;
     auto sqlConn = sql::SqlConnectionFactory::make(sqlConfig);
-    sql::SqlErrorObject errObj;
-    sqlConn->listColumns(colNames, errObj, dbName, tableName);
-    return colNames;
+    return sqlConn->listColumns(dbName, tableName);
 }
 
 

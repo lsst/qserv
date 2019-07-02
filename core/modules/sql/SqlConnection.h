@@ -120,10 +120,18 @@ public:
                             std::string const& prefixed="",
                             std::string const& dbName="") = 0;
 
-    virtual void listColumns(std::vector<std::string>&,
-                            SqlErrorObject&,
-                            std::string const& dbName,
-                            std::string const& tableName) = 0;
+    /**
+     * @brief Get the names of the columns in the given db and table
+     *
+     * @throws NoSuchDb, NoSuchTable, if the database or table do not exist, or an SqlException for other
+     *         failures.
+     *
+     * @param dbName The name of the database to look in.
+     * @param tableName The name of the table to look in.
+     * @return std::vector<std::string> The column names.
+     */
+    virtual std::vector<std::string> listColumns(std::string const& dbName,
+                                                 std::string const& tableName) = 0;
 
     virtual std::string getActiveDbName() const = 0;
 

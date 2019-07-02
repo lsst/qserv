@@ -93,8 +93,18 @@ public:
         return false;
     }
 
-    void listColumns(std::vector<std::string>& columns, SqlErrorObject&, std::string const& dbName,
-                     std::string const& tableName) override {
+    /**
+     * @brief Get the names of the columns in the given db and table
+     *
+     * @throws NoSuchDb, NoSuchTable, if the database or table do not exist, or an SqlException for other
+     *         failures.
+     *
+     * @param dbName The name of the database to look in.
+     * @param tableName The name of the table to look in.
+     * @return std::vector<std::string> The column names.
+     */
+    std::vector<std::string> listColumns(std::string const& dbName,
+                                         std::string const& tableName) override {
         // The QueryContext gets all the columns in each table used by the query and stores this information
         // for lookup later. Here we return a list of column names for a table.
         auto tableItr = _dbTableColumns.find(dbName);
@@ -106,9 +116,11 @@ public:
             throw sql::NoSuchTable(lsst::qserv::util::Issue::Context(__FILE__, __LINE__, __func__),
                     dbName, tableName);
         }
+        std::vector<std::string> columns;
         for (auto const& column : columnsItr->second) {
             columns.push_back(column);
         }
+        return columns;
     }
 
     std::string getActiveDbName() const override { return std::string(); }
