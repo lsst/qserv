@@ -38,8 +38,12 @@ namespace query {
 
 
 void CompPredicate::findColumnRefs(std::vector<std::shared_ptr<ColumnRef>>& vector) const {
-    if (left) left->findColumnRefs(vector);
-    if (right) right->findColumnRefs(vector);
+    if (left) {
+        left->findColumnRefs(vector);
+    }
+    if (right) {
+        right->findColumnRefs(vector);
+    }
 }
 
 

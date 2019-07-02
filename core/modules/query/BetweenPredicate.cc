@@ -37,9 +37,15 @@ namespace query {
 
 
 void BetweenPredicate::findColumnRefs(std::vector<std::shared_ptr<ColumnRef>>& vector) const {
-    if (value) value->findColumnRefs(vector);
-    if (minValue) minValue->findColumnRefs(vector);
-    if (maxValue) maxValue->findColumnRefs(vector);
+    if (value) {
+        value->findColumnRefs(vector);
+    }
+    if (minValue) {
+        minValue->findColumnRefs(vector);
+    }
+    if (maxValue) {
+        maxValue->findColumnRefs(vector);
+    }
 }
 
 

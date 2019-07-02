@@ -37,8 +37,12 @@ namespace query {
 
 
 void LikePredicate::findColumnRefs(std::vector<std::shared_ptr<ColumnRef>>& vector) const {
-    if (value != nullptr) value->findColumnRefs(vector);
-    if (charValue != nullptr) charValue->findColumnRefs(vector);
+    if (value != nullptr) {
+        value->findColumnRefs(vector);
+    }
+    if (charValue != nullptr) {
+        charValue->findColumnRefs(vector);
+    }
 }
 
 

@@ -52,7 +52,9 @@ struct valueExprCopy {
 
 
 void InPredicate::findColumnRefs(std::vector<std::shared_ptr<ColumnRef>>& vector) const {
-    if (value) { value->findColumnRefs(vector); }
+    if (value) {
+        value->findColumnRefs(vector);
+    }
     for(auto&& valueExpr : cands) {
         valueExpr->findColumnRefs(vector);
     }

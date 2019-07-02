@@ -84,7 +84,9 @@ void BoolTermFactor::findValueExprRefs(ValueExprPtrRefVector& vector) {
 
 
 void BoolTermFactor::findColumnRefs(ColumnRef::Vector& vector) const {
-    if (_term) { _term->findColumnRefs(vector); }
+    if (_term) {
+        _term->findColumnRefs(vector);
+    }
 }
 
 

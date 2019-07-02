@@ -40,7 +40,9 @@ namespace query {
 
 
 void NullPredicate::findColumnRefs(std::vector<std::shared_ptr<ColumnRef>>& vector) const {
-    if (value) { value->findColumnRefs(vector); }
+    if (value) {
+        value->findColumnRefs(vector);
+    }
 }
 
 
