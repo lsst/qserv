@@ -33,6 +33,7 @@
 
 // Qserv headers
 #include "sql/SqlConnection.h"
+#include "sql/SqlConnectionFactory.h"
 #include "sql/SqlErrorObject.h"
 #include "sql/SqlResults.h"
 
@@ -65,18 +66,18 @@ struct TestDBGuard {
         // need config without database name
         MySqlConfig sqlConfigLocal = sqlConfig;
         sqlConfigLocal.dbName = "";
-        SqlConnection sqlConn(sqlConfigLocal);
+        auto sqlConn = SqlConnectionFactory::make(sqlConfigLocal);
 
         SqlErrorObject errObj;
 
         // create database
-        sqlConn.createDb(DB_NAME, errObj);
+        sqlConn->createDb(DB_NAME, errObj);
     }
 
     ~TestDBGuard() {
-        SqlConnection sqlConn(sqlConfig);
+        auto sqlConn = SqlConnectionFactory::make(sqlConfig);
         SqlErrorObject errObj;
-        sqlConn.dropDb(sqlConfig.dbName, errObj);
+        sqlConn->dropDb(sqlConfig.dbName, errObj);
     }
 
     MySqlConfig sqlConfig;
@@ -85,22 +86,22 @@ struct TestDBGuard {
 }
 
 struct PerTestFixture {
-    PerTestFixture() : sqlConn(testDB.sqlConfig) {
+    PerTestFixture() : sqlConn(SqlConnectionFactory::make(testDB.sqlConfig)) {
 
         // create table (must be InnoDB)
         std::string query = "CREATE TABLE " FULL_TABLE_NAME " (X INT, Y INT) ENGINE=InnoDB";
         SqlErrorObject errObj;
-        sqlConn.runQuery(query, errObj);
+        sqlConn->runQuery(query, errObj);
     }
     ~PerTestFixture() {
         // drop table
         std::string query = "DROP TABLE " FULL_TABLE_NAME;
         SqlErrorObject errObj;
-        sqlConn.runQuery(query, errObj);
+        sqlConn->runQuery(query, errObj);
     }
 
     static TestDBGuard testDB;
-    SqlConnection sqlConn;
+    std::shared_ptr<SqlConnection> sqlConn;
 };
 
 TestDBGuard PerTestFixture::testDB;
@@ -114,13 +115,13 @@ BOOST_AUTO_TEST_CASE(riiaTest) {
     for (int i = 0; i != 3; ++ i){
         SqlErrorObject errObj;
 
-        SqlTransaction trans(sqlConn, errObj);
+        SqlTransaction trans(*sqlConn, errObj);
         BOOST_CHECK(not errObj.isSet());
 
         std::string i_str = boost::lexical_cast<std::string>(i);
         std::string j_str = boost::lexical_cast<std::string>(i*100);
         std::string query = "INSERT INTO " FULL_TABLE_NAME " (X, Y) VALUES(" + i_str + ", " + j_str + ")";
-        BOOST_CHECK(sqlConn.runQuery(query, errObj));
+        BOOST_CHECK(sqlConn->runQuery(query, errObj));
 
         BOOST_CHECK(trans.isActive());
     }
@@ -128,12 +129,12 @@ BOOST_AUTO_TEST_CASE(riiaTest) {
     {
         SqlErrorObject errObj;
 
-        SqlTransaction trans(sqlConn, errObj);
+        SqlTransaction trans(*sqlConn, errObj);
         BOOST_CHECK(not errObj.isSet());
 
         std::string query = "SELECT COUNT(*) FROM " FULL_TABLE_NAME;
         SqlResults sqlRes;
-        BOOST_CHECK(sqlConn.runQuery(query, sqlRes, errObj));
+        BOOST_CHECK(sqlConn->runQuery(query, sqlRes, errObj));
         std::vector<std::string> rows;
         BOOST_CHECK(sqlRes.extractFirstColumn(rows, errObj));
         BOOST_CHECK_EQUAL(rows.size(), 1U);
@@ -149,13 +150,13 @@ BOOST_AUTO_TEST_CASE(commitTest) {
     for (int i = 0; i != 3; ++ i){
         SqlErrorObject errObj;
 
-        SqlTransaction trans(sqlConn, errObj);
+        SqlTransaction trans(*sqlConn, errObj);
         BOOST_CHECK(not errObj.isSet());
 
         std::string i_str = boost::lexical_cast<std::string>(i);
         std::string j_str = boost::lexical_cast<std::string>(i*100);
         std::string query = "INSERT INTO " FULL_TABLE_NAME " (X, Y) VALUES(" + i_str + ", " + j_str + ")";
-        BOOST_CHECK(sqlConn.runQuery(query, errObj));
+        BOOST_CHECK(sqlConn->runQuery(query, errObj));
 
         BOOST_CHECK(trans.isActive());
         BOOST_CHECK(trans.commit(errObj));
@@ -165,12 +166,12 @@ BOOST_AUTO_TEST_CASE(commitTest) {
     {
         SqlErrorObject errObj;
 
-        SqlTransaction trans(sqlConn, errObj);
+        SqlTransaction trans(*sqlConn, errObj);
         BOOST_CHECK(not errObj.isSet());
 
         std::string query = "SELECT COUNT(*) FROM " FULL_TABLE_NAME;
         SqlResults sqlRes;
-        BOOST_CHECK(sqlConn.runQuery(query, sqlRes, errObj));
+        BOOST_CHECK(sqlConn->runQuery(query, sqlRes, errObj));
         std::vector<std::string> rows;
         BOOST_CHECK(sqlRes.extractFirstColumn(rows, errObj));
         BOOST_CHECK_EQUAL(rows.size(), 1U);
@@ -186,13 +187,13 @@ BOOST_AUTO_TEST_CASE(abortTest) {
     for (int i = 0; i != 3; ++ i){
         SqlErrorObject errObj;
 
-        SqlTransaction trans(sqlConn, errObj);
+        SqlTransaction trans(*sqlConn, errObj);
         BOOST_CHECK(not errObj.isSet());
 
         std::string i_str = boost::lexical_cast<std::string>(i);
         std::string j_str = boost::lexical_cast<std::string>(i*100);
         std::string query = "INSERT INTO " FULL_TABLE_NAME " (X, Y) VALUES(" + i_str + ", " + j_str + ")";
-        BOOST_CHECK(sqlConn.runQuery(query, errObj));
+        BOOST_CHECK(sqlConn->runQuery(query, errObj));
 
         BOOST_CHECK(trans.isActive());
         BOOST_CHECK(trans.abort(errObj));
@@ -202,12 +203,12 @@ BOOST_AUTO_TEST_CASE(abortTest) {
     {
         SqlErrorObject errObj;
 
-        SqlTransaction trans(sqlConn, errObj);
+        SqlTransaction trans(*sqlConn, errObj);
         BOOST_CHECK(not errObj.isSet());
 
         std::string query = "SELECT COUNT(*) FROM " FULL_TABLE_NAME;
         SqlResults sqlRes;
-        BOOST_CHECK(sqlConn.runQuery(query, sqlRes, errObj));
+        BOOST_CHECK(sqlConn->runQuery(query, sqlRes, errObj));
         std::vector<std::string> rows;
         BOOST_CHECK(sqlRes.extractFirstColumn(rows, errObj));
         BOOST_CHECK_EQUAL(rows.size(), 1U);
@@ -223,13 +224,13 @@ BOOST_AUTO_TEST_CASE(mixedTest) {
     for (int i = 0; i != 10; ++ i){
         SqlErrorObject errObj;
 
-        SqlTransaction trans(sqlConn, errObj);
+        SqlTransaction trans(*sqlConn, errObj);
         BOOST_CHECK(not errObj.isSet());
 
         std::string i_str = boost::lexical_cast<std::string>(i);
         std::string j_str = boost::lexical_cast<std::string>(i*100);
         std::string query = "INSERT INTO " FULL_TABLE_NAME " (X, Y) VALUES(" + i_str + ", " + j_str + ")";
-        BOOST_CHECK(sqlConn.runQuery(query, errObj));
+        BOOST_CHECK(sqlConn->runQuery(query, errObj));
 
         BOOST_CHECK(trans.isActive());
         if (i % 2) {
@@ -243,12 +244,12 @@ BOOST_AUTO_TEST_CASE(mixedTest) {
     {
         SqlErrorObject errObj;
 
-        SqlTransaction trans(sqlConn, errObj);
+        SqlTransaction trans(*sqlConn, errObj);
         BOOST_CHECK(not errObj.isSet());
 
         std::string query = "SELECT COUNT(*) FROM " FULL_TABLE_NAME;
         SqlResults sqlRes;
-        BOOST_CHECK(sqlConn.runQuery(query, sqlRes, errObj));
+        BOOST_CHECK(sqlConn->runQuery(query, sqlRes, errObj));
         std::vector<std::string> rows;
         BOOST_CHECK(sqlRes.extractFirstColumn(rows, errObj));
         BOOST_CHECK_EQUAL(rows.size(), 1U);

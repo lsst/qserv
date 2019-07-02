@@ -203,9 +203,7 @@ std::string QueryContext::columnToTablesMapToString() const {
 std::vector<std::string> QueryContext::_getTableSchema(std::string const& dbName,
                                                       std::string const& tableName) {
     std::vector<std::string> colNames;
-    sql::SqlConfig cfg;
-    cfg.mySqlConfig = mysqlSchemaConfig;
-    auto sqlConn = sql::SqlConnectionFactory::make(cfg);
+    auto sqlConn = sql::SqlConnectionFactory::make(sqlConfig);
     sql::SqlErrorObject errObj;
     sqlConn->listColumns(colNames, errObj, dbName, tableName);
     return colNames;

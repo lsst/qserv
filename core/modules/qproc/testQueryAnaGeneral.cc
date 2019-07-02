@@ -56,7 +56,7 @@
 #include "query/QsRestrictor.h"
 #include "query/QueryContext.h"
 #include "query/SelectStmt.h"
-#include "sql/MockSql.h"
+#include "sql/SqlConfig.h"
 #include "tests/QueryAnaFixture.h"
 
 
@@ -69,7 +69,7 @@ using lsst::qserv::query::QsRestrictor;
 using lsst::qserv::query::QueryContext;
 using lsst::qserv::query::SelectStmt;
 using lsst::qserv::StringPair;
-using lsst::qserv::sql::MockSql;
+using lsst::qserv::sql::SqlConfig;
 using lsst::qserv::tests::QueryAnaFixture;
 
 namespace {
@@ -86,8 +86,7 @@ BOOST_AUTO_TEST_CASE(TrivialSub) {
     std::string stmt = "SELECT * FROM Object WHERE someField > 5.0;";
     std::string expected = "SELECT * FROM LSST.Object_100 AS `LSST.Object` WHERE `LSST.Object`.someField>5.0";
     BOOST_CHECK(qsTest.css);
-    MockSql::DbTableColumns dbTableColumns = {{"LSST", {{"Object", {"someField"}}}}};
-    qsTest.mysqlSchemaConfig = MySqlConfig(std::make_shared<MockSql>(dbTableColumns));
+    qsTest.sqlConfig = SqlConfig(SqlConfig::MockDbTableColumns({{"LSST", {{"Object", {"someField"}}}}}));
     std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, stmt);
     std::shared_ptr<QueryContext> context = qs->dbgGetContext();
     SelectStmt const& ss = qs->getStmt();
@@ -106,8 +105,7 @@ BOOST_AUTO_TEST_CASE(TrivialSub) {
 BOOST_AUTO_TEST_CASE(NoContext) {
     std::string stmt = "SELECT * FROM LSST.Object WHERE someField > 5.0;";
     qsTest.defaultDb = "";
-    MockSql::DbTableColumns dbTableColumns = {{"LSST", {{"Object", {"someField"}}}}};
-    qsTest.mysqlSchemaConfig = MySqlConfig(std::make_shared<MockSql>(dbTableColumns));
+    qsTest.sqlConfig = SqlConfig(SqlConfig::MockDbTableColumns({{"LSST", {{"Object", {"someField"}}}}}));
     std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, stmt);
     std::shared_ptr<QueryContext> context = qs->dbgGetContext();
     //SelectStmt const& ss = qs->getStmt();
@@ -117,8 +115,7 @@ BOOST_AUTO_TEST_CASE(NoContext) {
 BOOST_AUTO_TEST_CASE(NoSub) {
     std::string stmt = "SELECT * FROM Filter WHERE filterId=4;";
     std::string goodRes = "SELECT * FROM LSST.Filter AS `LSST.Filter` WHERE `LSST.Filter`.filterId=4";
-    MockSql::DbTableColumns dbTableColumns = {{"LSST", {{"Filter", {"filterId"}}}}};
-    qsTest.mysqlSchemaConfig = MySqlConfig(std::make_shared<MockSql>(dbTableColumns));
+    qsTest.sqlConfig = SqlConfig(SqlConfig::MockDbTableColumns({{"LSST", {{"Filter", {"filterId"}}}}}));
     std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, stmt);
     std::shared_ptr<QueryContext> context = qs->dbgGetContext();
     SelectStmt const& ss = qs->getStmt();
@@ -136,8 +133,7 @@ BOOST_AUTO_TEST_CASE(NoSub) {
 BOOST_AUTO_TEST_CASE(Limit) {
     std::string stmt = "select * from LSST.Object WHERE ra_PS BETWEEN 150 AND 150.2 and decl_PS between 1.6 and 1.7 limit 2;";
 
-    MockSql::DbTableColumns dbTableColumns = {{"LSST", {{"Object", {"ra_PS", "decl_PS"}}}}};
-    qsTest.mysqlSchemaConfig = MySqlConfig(std::make_shared<MockSql>(dbTableColumns));
+    qsTest.sqlConfig = SqlConfig(SqlConfig::MockDbTableColumns({{"LSST", {{"Object", {"ra_PS", "decl_PS"}}}}}));
     std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, stmt);
     std::shared_ptr<QueryContext> context = qs->dbgGetContext();
     SelectStmt const& ss = qs->getStmt();
@@ -155,8 +151,7 @@ BOOST_AUTO_TEST_CASE(Limit) {
 BOOST_AUTO_TEST_CASE(OrderBy) {
     std::string stmt = "select objectId from LSST.Object WHERE ra_PS BETWEEN 150 AND 150.2 and decl_PS between 1.6 and 1.7 ORDER BY objectId;";
 
-    MockSql::DbTableColumns dbTableColumns = {{"LSST", {{"Object", {"ra_PS", "decl_PS", "objectId"}}}}};
-    qsTest.mysqlSchemaConfig = MySqlConfig(std::make_shared<MockSql>(dbTableColumns));
+    qsTest.sqlConfig = SqlConfig(SqlConfig::MockDbTableColumns({{"LSST", {{"Object", {"ra_PS", "decl_PS", "objectId"}}}}}));
     std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, stmt);
     std::shared_ptr<QueryContext> context = qs->dbgGetContext();
     SelectStmt const& ss = qs->getStmt();
@@ -170,8 +165,7 @@ BOOST_AUTO_TEST_CASE(OrderBy) {
 
 BOOST_AUTO_TEST_CASE(RestrictorBox) {
     std::string stmt = "select * from Object where qserv_areaspec_box(0,0,1,1);";
-    MockSql::DbTableColumns dbTableColumns = {{"LSST", {{"Object", {}}}}};
-    qsTest.mysqlSchemaConfig = MySqlConfig(std::make_shared<MockSql>(dbTableColumns));
+    qsTest.sqlConfig = SqlConfig(SqlConfig::MockDbTableColumns({{"LSST", {{"Object", {}}}}}));
     std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, stmt);
     std::shared_ptr<QueryContext> context = qs->dbgGetContext();
     BOOST_CHECK(context);
@@ -199,8 +193,7 @@ BOOST_AUTO_TEST_CASE(RestrictorNeighborCount) {
         "SELECT count(*) AS `QS1_COUNT` FROM Subchunks_LSST_100.Object_100_%S\007S% AS `o1`,Subchunks_LSST_100.ObjectFullOverlap_100_%S\007S% AS `o2` "
         "WHERE scisql_s2PtInBox(`o1`.ra_Test,`o1`.decl_Test,6,6,7,7)=1 AND scisql_s2PtInBox(`o2`.ra_Test,`o2`.decl_Test,6,6,7,7)=1 AND `o1`.rFlux_PS<0.005 AND scisql_angSep(`o1`.ra_Test,`o1`.decl_Test,`o2`.ra_Test,`o2`.decl_Test)<0.001";
 
-    MockSql::DbTableColumns dbTableColumns = {{"LSST", {{"Object", {"rFlux_PS", "ra_Test", "decl_Test"}}}}};
-    qsTest.mysqlSchemaConfig = MySqlConfig(std::make_shared<MockSql>(dbTableColumns));
+    qsTest.sqlConfig = SqlConfig(SqlConfig::MockDbTableColumns({{"LSST", {{"Object", {"rFlux_PS", "ra_Test", "decl_Test"}}}}}));
     std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, stmt);
 
     std::shared_ptr<QueryContext> context = qs->dbgGetContext();
@@ -248,9 +241,8 @@ BOOST_AUTO_TEST_CASE(Triple) {
         "0.024>scisql_angSep(`o1`.ra_Test,`o1`.decl_Test,`o2`.ra_Test,`o2`.decl_Test) AND "
         "`LSST.Source`.objectIdSourceTest=`o2`.objectIdObjTest";
 
-    MockSql::DbTableColumns dbTableColumns = {{"LSST", {{"Object", {"id", "ra_Test", "decl_Test", "objectIdObjTest"}},
-                                   {"Source", {"objectIdSourceTest"}}}}};
-    qsTest.mysqlSchemaConfig = MySqlConfig(std::make_shared<MockSql>(dbTableColumns));
+    qsTest.sqlConfig = SqlConfig(SqlConfig::MockDbTableColumns({{"LSST", {{"Object", {"id", "ra_Test", "decl_Test", "objectIdObjTest"}},
+                                   {"Source", {"objectIdSourceTest"}}}}}));
     std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, stmt);
     std::shared_ptr<QueryContext> context = qs->dbgGetContext();
     //SelectStmt const& ss = qs->getStmt();
@@ -267,8 +259,7 @@ BOOST_AUTO_TEST_CASE(Triple) {
 
 BOOST_AUTO_TEST_CASE(BadDbAccess) {
     std::string stmt = "select count(*) from Bad.Object as o1, Object o2 where qserv_areaspec_box(6,6,7,7) AND o1.ra_PS between 6 and 7 and o1.decl_PS between 6 and 7 ;";
-    MockSql::DbTableColumns dbTableColumns = {{"LSST", {{"Object", {"ra_PS", "decl_PS"}}}}};
-    qsTest.mysqlSchemaConfig = MySqlConfig(std::make_shared<MockSql>(dbTableColumns));
+    qsTest.sqlConfig = SqlConfig(SqlConfig::MockDbTableColumns({{"LSST", {{"Object", {"ra_PS", "decl_PS"}}}}}));
     std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, stmt, true);
     // the actual error will contain more than this, it will be similar to the following:
     // "NoSuchDb:No such database: Bad [in function listColumns at core/modules/sql/MockSql.h:104"
@@ -287,9 +278,8 @@ BOOST_AUTO_TEST_CASE(ObjectSourceJoin) {
     "WHERE scisql_s2PtInBox(`o`.ra_Test,`o`.decl_Test,2,2,3,3)=1 "
     "AND scisql_s2PtInBox(`s`.raObjectTest,`s`.declObjectTest,2,2,3,3)=1 "
     "AND `o`.objectIdObjTest=`s`.objectIdSourceTest";
-    MockSql::DbTableColumns dbTableColumns = {{"LSST", {{"Object", {"objectIdObjTest"}},
-                                   {"Source", {"objectIdSourceTest"}}}}};
-    qsTest.mysqlSchemaConfig = MySqlConfig(std::make_shared<MockSql>(dbTableColumns));
+    qsTest.sqlConfig = SqlConfig(SqlConfig::MockDbTableColumns({{"LSST", {{"Object", {"objectIdObjTest"}},
+                                   {"Source", {"objectIdSourceTest"}}}}}));
     std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, stmt);
     std::shared_ptr<QueryContext> context = qs->dbgGetContext();
     BOOST_CHECK(context);
@@ -309,8 +299,7 @@ BOOST_AUTO_TEST_CASE(ObjectSourceJoin) {
 
 BOOST_AUTO_TEST_CASE(ObjectSelfJoin) {
     std::string stmt = "select count(*) from Object as o1, Object as o2;";
-    MockSql::DbTableColumns dbTableColumns = {{"LSST", {{"Object", {}}}}};
-    qsTest.mysqlSchemaConfig = MySqlConfig(std::make_shared<MockSql>(dbTableColumns));
+    qsTest.sqlConfig = SqlConfig(SqlConfig::MockDbTableColumns({{"LSST", {{"Object", {}}}}}));
     std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, stmt, true);
     BOOST_CHECK_EQUAL(qs->getError(), NOT_EVALUABLE_MSG);
     std::shared_ptr<QueryContext> context = qs->dbgGetContext();
@@ -326,8 +315,7 @@ BOOST_AUTO_TEST_CASE(ObjectSelfJoinQualified) {
     std::string expected = "SELECT count(*) AS `QS1_COUNT` "
     "FROM LSST.Object_100 AS `o1`,LSST.Object_100 AS `o2` "
     "WHERE `o1`.objectIdObjTest=`o2`.objectIdObjTest AND `o1`.iFlux>0.4 AND `o2`.gFlux>0.4";
-    MockSql::DbTableColumns dbTableColumns = {{"LSST", {{"Object", {"iFlux", "gFlux", "objectIdObjTest"}}}}};
-    qsTest.mysqlSchemaConfig = MySqlConfig(std::make_shared<MockSql>(dbTableColumns));
+    qsTest.sqlConfig = SqlConfig(SqlConfig::MockDbTableColumns({{"LSST", {{"Object", {"iFlux", "gFlux", "objectIdObjTest"}}}}}));
     std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, stmt);
     std::shared_ptr<QueryContext> context = qs->dbgGetContext();
     BOOST_CHECK(context);
@@ -350,8 +338,7 @@ BOOST_AUTO_TEST_CASE(ObjectSelfJoinWithAs) {
         "scisql_angSep(`o1`.ra_PS,`o1`.decl_PS,`o2`.ra_PS,`o2`.decl_PS) AS `distance` "
         "FROM LSST.Object_100 AS `o1`,LSST.Object_100 AS `o2` "
         "WHERE `o1`.foo<>`o2`.foo AND `o1`.objectIdObjTest=`o2`.objectIdObjTest";
-    MockSql::DbTableColumns dbTableColumns = {{"LSST", {{"Object", {"objectId", "objectI2", "ra_PS", "decl_PS", "foo", "objectIdObjTest"}}}}};
-    qsTest.mysqlSchemaConfig = MySqlConfig(std::make_shared<MockSql>(dbTableColumns));
+    qsTest.sqlConfig = SqlConfig(SqlConfig::MockDbTableColumns({{"LSST", {{"Object", {"objectId", "objectI2", "ra_PS", "decl_PS", "foo", "objectIdObjTest"}}}}}));
     std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, stmt);
     std::shared_ptr<QueryContext> context = qs->dbgGetContext();
     BOOST_CHECK(context);
@@ -390,8 +377,7 @@ BOOST_AUTO_TEST_CASE(ObjectSelfJoinDistance) {
         "WHERE scisql_s2PtInBox(`o1`.ra_Test,`o1`.decl_Test,5.5,5.5,6.1,6.1)=1 "
         "AND scisql_s2PtInBox(`o2`.ra_Test,`o2`.decl_Test,5.5,5.5,6.1,6.1)=1 "
         "AND scisql_angSep(`o1`.ra_Test,`o1`.decl_Test,`o2`.ra_Test,`o2`.decl_Test)<0.02";
-    MockSql::DbTableColumns dbTableColumns = {{"LSST", {{"Object", {"ra_Test", "decl_Test"}}}}};
-    qsTest.mysqlSchemaConfig = MySqlConfig(std::make_shared<MockSql>(dbTableColumns));
+    qsTest.sqlConfig = SqlConfig(SqlConfig::MockDbTableColumns({{"LSST", {{"Object", {"ra_Test", "decl_Test"}}}}}));
     std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, stmt);
     std::shared_ptr<QueryContext> context = qs->dbgGetContext();
     BOOST_CHECK(context);
@@ -414,8 +400,7 @@ BOOST_AUTO_TEST_CASE(SelfJoinAliased) {
        "select o1.ra_PS, o1.ra_PS_Sigma, o2.ra_PS ra_PS2, o2.ra_PS_Sigma ra_PS_Sigma2 "
        "from Object o1, Object o2 "
        "where o1.ra_PS_Sigma < 4e-7 and o2.ra_PS_Sigma < 4e-7;";
-    MockSql::DbTableColumns dbTableColumns = {{"LSST", {{"Object", {"ra_PS", "ra_PS_Sigma"}}}}};
-    qsTest.mysqlSchemaConfig = MySqlConfig(std::make_shared<MockSql>(dbTableColumns));
+    qsTest.sqlConfig = SqlConfig(SqlConfig::MockDbTableColumns({{"LSST", {{"Object", {"ra_PS", "ra_PS_Sigma"}}}}}));
     std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, stmt, true);
     BOOST_CHECK_EQUAL(qs->getError(), NOT_EVALUABLE_MSG);
     std::shared_ptr<QueryContext> context = qs->dbgGetContext();
@@ -434,10 +419,9 @@ BOOST_AUTO_TEST_CASE(AliasHandling) {
         "`s`.dummy AS `s.dummy`,`LSST.Exposure`.exposureTime AS `Exposure.exposureTime` "
         "FROM LSST.Object_100 AS `o1`,LSST.Source_100 AS `s`,LSST.Exposure AS `LSST.Exposure` "
         "WHERE `o1`.objectIdObjTest=`s`.objectIdSourceTest AND `LSST.Exposure`.id=`o1`.exposureId";
-    MockSql::DbTableColumns dbTableColumns = {{"LSST", {{"Object", {"ra_PS", "ra_PS_Sigma", "objectIdObjTest", "exposureId"}},
+    qsTest.sqlConfig = SqlConfig(SqlConfig::MockDbTableColumns({{"LSST", {{"Object", {"ra_PS", "ra_PS_Sigma", "objectIdObjTest", "exposureId"}},
                                    {"Source", {"dummy", "objectIdSourceTest"}},
-                                   {"Exposure", {"exposureTime", "id"}}}}};
-    qsTest.mysqlSchemaConfig = MySqlConfig(std::make_shared<MockSql>(dbTableColumns));
+                                   {"Exposure", {"exposureTime", "id"}}}}}));
     std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, stmt);
     std::shared_ptr<QueryContext> context = qs->dbgGetContext();
     BOOST_CHECK(context);
@@ -456,8 +440,7 @@ BOOST_AUTO_TEST_CASE(SpatialRestr) {
     std::string expected = "SELECT count(*) AS `QS1_COUNT` "
         "FROM LSST.Object_100 AS `LSST.Object` "
         "WHERE scisql_s2PtInBox(`LSST.Object`.ra_Test,`LSST.Object`.decl_Test,359.1,3.16,359.2,3.17)=1";
-    MockSql::DbTableColumns dbTableColumns = {{"LSST", {{"Object", {}}}}};
-    qsTest.mysqlSchemaConfig = MySqlConfig(std::make_shared<MockSql>(dbTableColumns));
+    qsTest.sqlConfig = SqlConfig(SqlConfig::MockDbTableColumns({{"LSST", {{"Object", {}}}}}));
     std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, stmt);
     std::shared_ptr<QueryContext> context = qs->dbgGetContext();
     BOOST_CHECK(context);
@@ -476,8 +459,7 @@ BOOST_AUTO_TEST_CASE(SpatialRestr2) { // Redundant?
     std::string expected = "SELECT count(*) AS `QS1_COUNT` "
         "FROM LSST.Object_100 AS `LSST.Object` "
         "WHERE scisql_s2PtInBox(`LSST.Object`.ra_Test,`LSST.Object`.decl_Test,359.1,3.16,359.2,3.17)=1";
-    MockSql::DbTableColumns dbTableColumns = {{"LSST", {{"Object", {}}}}};
-    qsTest.mysqlSchemaConfig = MySqlConfig(std::make_shared<MockSql>(dbTableColumns));
+    qsTest.sqlConfig = SqlConfig(SqlConfig::MockDbTableColumns({{"LSST", {{"Object", {}}}}}));
     std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, stmt);
     std::shared_ptr<QueryContext> context = qs->dbgGetContext();
     BOOST_CHECK(context);
@@ -497,8 +479,7 @@ BOOST_AUTO_TEST_CASE(ChunkDensityFail) {
             " SELECT count(*) AS n, AVG(ra_PS), AVG(decl_PS), _chunkId FROM Object GROUP BY _chunkId;";
     char const expectedErr[] = "ParseException:Error parsing query, near \"_chunkId\", Identifiers in Qserv "
             "may not start with an underscore.";
-    MockSql::DbTableColumns dbTableColumns = {{"LSST", {{"Object", {"ra_PS", "decl_PS", "_chunkId"}}}}};
-    qsTest.mysqlSchemaConfig = MySqlConfig(std::make_shared<MockSql>(dbTableColumns));
+    qsTest.sqlConfig = SqlConfig(SqlConfig::MockDbTableColumns({{"LSST", {{"Object", {"ra_PS", "decl_PS", "_chunkId"}}}}}));
     std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, stmt);
     BOOST_CHECK_EQUAL(qs->getError(), expectedErr);
     // Remaining session state is undefined after unknown antlr error.
@@ -507,8 +488,7 @@ BOOST_AUTO_TEST_CASE(ChunkDensityFail) {
 
 BOOST_AUTO_TEST_CASE(ChunkDensity) {
     std::string stmt = " SELECT count(*) AS n, AVG(ra_PS), AVG(decl_PS), x_chunkId FROM Object GROUP BY x_chunkId;";
-    MockSql::DbTableColumns dbTableColumns = {{"LSST", {{"Object", {"ra_PS", "decl_PS", "x_chunkId"}}}}};
-    qsTest.mysqlSchemaConfig = MySqlConfig(std::make_shared<MockSql>(dbTableColumns));
+    qsTest.sqlConfig = SqlConfig(SqlConfig::MockDbTableColumns({{"LSST", {{"Object", {"ra_PS", "decl_PS", "x_chunkId"}}}}}));
     std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, stmt);
     std::shared_ptr<QueryContext> context = qs->dbgGetContext();
     BOOST_CHECK(context);
@@ -527,8 +507,7 @@ BOOST_AUTO_TEST_CASE(AltDbName) {
         "WHERE scisql_s2PtInBox(`rplante_PT1_2_u_pt12prod_im3000_qserv.Object`.ra,"
                                "`rplante_PT1_2_u_pt12prod_im3000_qserv.Object`.decl,359.1,3.16,359.2,3.17)=1";
     qsTest.defaultDb ="rplante_PT1_2_u_pt12prod_im3000_qserv";
-    MockSql::DbTableColumns dbTableColumns = {{"rplante_PT1_2_u_pt12prod_im3000_qserv", {{"Object", {}}}}};
-    qsTest.mysqlSchemaConfig = MySqlConfig(std::make_shared<MockSql>(dbTableColumns));
+    qsTest.sqlConfig = SqlConfig(SqlConfig::MockDbTableColumns({{"rplante_PT1_2_u_pt12prod_im3000_qserv", {{"Object", {}}}}}));
     std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, stmt);
     std::shared_ptr<QueryContext> context = qs->dbgGetContext();
     BOOST_CHECK(context);
@@ -544,8 +523,7 @@ BOOST_AUTO_TEST_CASE(AltDbName) {
 // Ticket 2048
 BOOST_AUTO_TEST_CASE(NonpartitionedTable) {
     std::string stmt = "SELECT offset, mjdRef, drift FROM LeapSeconds where offset = 10";
-    MockSql::DbTableColumns dbTableColumns = {{"LSST", {{"LeapSeconds", {"offset", "mjdRef", "drift"}}}}};
-    qsTest.mysqlSchemaConfig = MySqlConfig(std::make_shared<MockSql>(dbTableColumns));
+    qsTest.sqlConfig = SqlConfig(SqlConfig::MockDbTableColumns({{"LSST", {{"LeapSeconds", {"offset", "mjdRef", "drift"}}}}}));
     std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, stmt);
     std::shared_ptr<QueryContext> context = qs->dbgGetContext();
     BOOST_CHECK(context);
@@ -559,8 +537,7 @@ BOOST_AUTO_TEST_CASE(NonpartitionedTable) {
 
 BOOST_AUTO_TEST_CASE(CountQuery) {
     std::string stmt = "SELECT count(*) from Object;";
-    MockSql::DbTableColumns dbTableColumns = {{"LSST", {{"Object", {}}}}};
-    qsTest.mysqlSchemaConfig = MySqlConfig(std::make_shared<MockSql>(dbTableColumns));
+    qsTest.sqlConfig = SqlConfig(SqlConfig::MockDbTableColumns({{"LSST", {{"Object", {}}}}}));
     std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, stmt);
     std::shared_ptr<QueryContext> context = qs->dbgGetContext();
     BOOST_CHECK(context);
@@ -576,8 +553,7 @@ BOOST_AUTO_TEST_CASE(CountQuery2) {
     std::string stmt = "SELECT count(*) from LSST.Source;";
     std::string expected_100 = "SELECT count(*) AS `QS1_COUNT` FROM LSST.Source_100 AS `LSST.Source`";
 
-    MockSql::DbTableColumns dbTableColumns = {{"LSST", {{"Source", {}}}}};
-    qsTest.mysqlSchemaConfig = MySqlConfig(std::make_shared<MockSql>(dbTableColumns));
+    qsTest.sqlConfig = SqlConfig(SqlConfig::MockDbTableColumns({{"LSST", {{"Source", {}}}}}));
     std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, stmt);
 
     std::shared_ptr<QueryContext> context = qs->dbgGetContext();
@@ -604,8 +580,7 @@ BOOST_AUTO_TEST_CASE(SimpleScan) {
     };
     int const num=3;
 
-    MockSql::DbTableColumns dbTableColumns = {{"LSST", {{"Object", {"iFlux", "rFlux", "iRadius_SG"}}}}};
-    qsTest.mysqlSchemaConfig = MySqlConfig(std::make_shared<MockSql>(dbTableColumns));
+    qsTest.sqlConfig = SqlConfig(SqlConfig::MockDbTableColumns({{"LSST", {{"Object", {"iFlux", "rFlux", "iRadius_SG"}}}}}));
     for(int i=0; i < num; ++i) {
         std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, stmt[i]);
 
@@ -625,8 +600,7 @@ BOOST_AUTO_TEST_CASE(SimpleScan) {
 
 BOOST_AUTO_TEST_CASE(UnpartLimit) {
     std::string stmt = "SELECT * from Science_Ccd_Exposure limit 3;";
-    MockSql::DbTableColumns dbTableColumns = {{"LSST", {{"Science_Ccd_Exposure", {}}}}};
-    qsTest.mysqlSchemaConfig = MySqlConfig(std::make_shared<MockSql>(dbTableColumns));
+    qsTest.sqlConfig = SqlConfig(SqlConfig::MockDbTableColumns({{"LSST", {{"Science_Ccd_Exposure", {}}}}}));
     std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, stmt);
 
     std::shared_ptr<QueryContext> context = qs->dbgGetContext();
@@ -682,9 +656,8 @@ BOOST_AUTO_TEST_CASE(Mods) {
         "SELECT count(*) from Science_Ccd_Exposure group by visit;",
         "select count(*) from Object group by flags having count(*) > 3;"
     };
-    MockSql::DbTableColumns dbTableColumns = {{"LSST", {{"Object", {"ra_PS", "flags"}},
-                                                        {"Science_Ccd_Exposure", {"run", "field", "visit"}}}}};
-    qsTest.mysqlSchemaConfig = MySqlConfig(std::make_shared<MockSql>(dbTableColumns));
+    qsTest.sqlConfig = SqlConfig(SqlConfig::MockDbTableColumns({{"LSST", {{"Object", {"ra_PS", "flags"}},
+                                                        {"Science_Ccd_Exposure", {"run", "field", "visit"}}}}}));
     for(int i=0; i < 4; ++i) {
         std::string stmt = stmts[i];
         queryAnaHelper.buildQuerySession(qsTest, stmt);
@@ -694,8 +667,7 @@ BOOST_AUTO_TEST_CASE(Mods) {
 
 BOOST_AUTO_TEST_CASE(CountNew) {
     std::string stmt = "SELECT count(*), sum(Source.flux), flux2, Source.flux3 from Source where qserv_areaspec_box(0,0,1,1) and flux4=2 and Source.flux5=3;";
-    MockSql::DbTableColumns dbTableColumns = {{"LSST", {{"Source", {"flux", "flux2", "flux3", "flux4", "flux5"}}}}};
-    qsTest.mysqlSchemaConfig = MySqlConfig(std::make_shared<MockSql>(dbTableColumns));
+    qsTest.sqlConfig = SqlConfig(SqlConfig::MockDbTableColumns({{"LSST", {{"Source", {"flux", "flux2", "flux3", "flux4", "flux5"}}}}}));
     queryAnaHelper.buildQuerySession(qsTest, stmt);
 }
 
@@ -704,24 +676,21 @@ BOOST_AUTO_TEST_CASE(FluxMag) {
     std::string stmt = "SELECT count(*) FROM Object"
         " WHERE  qserv_areaspec_box(1,3,2,4) AND"
         "  scisql_fluxToAbMag(zFlux_PS) BETWEEN 21 AND 21.5;";
-    MockSql::DbTableColumns dbTableColumns = {{"LSST", {{"Object", {"zFlux_PS"}}}}};
-    qsTest.mysqlSchemaConfig = MySqlConfig(std::make_shared<MockSql>(dbTableColumns));
+    qsTest.sqlConfig = SqlConfig(SqlConfig::MockDbTableColumns({{"LSST", {{"Object", {"zFlux_PS"}}}}}));
     queryAnaHelper.buildQuerySession(qsTest, stmt);
 }
 
 
 BOOST_AUTO_TEST_CASE(ArithTwoOp) {
     std::string stmt = "SELECT f(one)/f2(two) FROM  Object where qserv_areaspec_box(0,0,1,1);";
-    MockSql::DbTableColumns dbTableColumns = {{"LSST", {{"Object", {"one", "two"}}}}};
-    qsTest.mysqlSchemaConfig = MySqlConfig(std::make_shared<MockSql>(dbTableColumns));
+    qsTest.sqlConfig = SqlConfig(SqlConfig::MockDbTableColumns({{"LSST", {{"Object", {"one", "two"}}}}}));
     queryAnaHelper.buildQuerySession(qsTest, stmt);
 }
 
 
 BOOST_AUTO_TEST_CASE(FancyArith) {
     std::string stmt = "SELECT (1+f(one))/f2(two) FROM  Object where qserv_areaspec_box(0,0,1,1);";
-    MockSql::DbTableColumns dbTableColumns = {{"LSST", {{"Object", {"one", "two"}}}}};
-    qsTest.mysqlSchemaConfig = MySqlConfig(std::make_shared<MockSql>(dbTableColumns));
+    qsTest.sqlConfig = SqlConfig(SqlConfig::MockDbTableColumns({{"LSST", {{"Object", {"one", "two"}}}}}));
     queryAnaHelper.buildQuerySession(qsTest, stmt);
 }
 
@@ -730,8 +699,7 @@ BOOST_AUTO_TEST_CASE(Petasky1) {
     // An example slow query from French Petasky colleagues
     std::string stmt = "SELECT objectId as id, COUNT(sourceId) AS c"
         " FROM Source GROUP BY objectId HAVING  c > 1000 LIMIT 10;";
-    MockSql::DbTableColumns dbTableColumns = {{"LSST", {{"Source", {"objectId", "sourceId"}}}}};
-    qsTest.mysqlSchemaConfig = MySqlConfig(std::make_shared<MockSql>(dbTableColumns));
+    qsTest.sqlConfig = SqlConfig(SqlConfig::MockDbTableColumns({{"LSST", {{"Source", {"objectId", "sourceId"}}}}}));
     queryAnaHelper.buildQuerySession(qsTest, stmt);
 }
 
@@ -748,8 +716,7 @@ BOOST_AUTO_TEST_CASE(Expression) {
         "AND scisql_fluxToAbMag(rFlux_PS)-scisql_fluxToAbMag(iFlux_PS) >=-0.27 "
         "AND scisql_fluxToAbMag(iFlux_PS)-scisql_fluxToAbMag(zFlux_PS) >=-0.35 "
         "AND scisql_fluxToAbMag(zFlux_PS)-scisql_fluxToAbMag(yFlux_PS) >=-0.40;";
-    MockSql::DbTableColumns dbTableColumns = {{"LSST", {{"Object", {"uFlux_PS", "gFlux_PS", "rFlux_PS", "iFlux_PS", "zFlux_PS", "yFlux_PS"}}}}};
-    qsTest.mysqlSchemaConfig = MySqlConfig(std::make_shared<MockSql>(dbTableColumns));
+    qsTest.sqlConfig = SqlConfig(SqlConfig::MockDbTableColumns({{"LSST", {{"Object", {"uFlux_PS", "gFlux_PS", "rFlux_PS", "iFlux_PS", "zFlux_PS", "yFlux_PS"}}}}}));
     queryAnaHelper.buildQuerySession(qsTest, stmt);
 }
 
@@ -760,9 +727,8 @@ BOOST_AUTO_TEST_CASE(dm646) {
     std::string expected = "SELECT DISTINCT `f`.foo AS `foo` FROM LSST.Filter AS `f`";
     // FIXME: non-chunked query shouldn't require merge operation, see DM-3165
     std::string expectedMerge = "SELECT DISTINCT foo AS `foo`";
-    MockSql::DbTableColumns dbTableColumns = {{"LSST", {{"Filter", {"foo"}},
-                                                        {"Object", {"zNumObs"}}}}};
-    qsTest.mysqlSchemaConfig = MySqlConfig(std::make_shared<MockSql>(dbTableColumns));
+    qsTest.sqlConfig = SqlConfig(SqlConfig::MockDbTableColumns({{"LSST", {{"Filter", {"foo"}},
+                                                        {"Object", {"zNumObs"}}}}}));
     auto queries = queryAnaHelper.getInternalQueries(qsTest, stmt);
     BOOST_CHECK_EQUAL(queries[0], expected);
     BOOST_CHECK_EQUAL(queries[1], expectedMerge);
@@ -783,8 +749,7 @@ BOOST_AUTO_TEST_CASE(dm681) {
     std::string stmt2 = "SELECT foo FROM Filter f limit 5;";
     std::string stmt3 = "SELECT foo FROM Filter f limit 5;; ";
     std::string expected = "SELECT `f`.foo AS `foo` FROM LSST.Filter AS `f` LIMIT 5";
-    MockSql::DbTableColumns dbTableColumns = {{"LSST", {{"Filter", {"foo"}}}}};
-    qsTest.mysqlSchemaConfig = MySqlConfig(std::make_shared<MockSql>(dbTableColumns));
+    qsTest.sqlConfig = SqlConfig(SqlConfig::MockDbTableColumns({{"LSST", {{"Filter", {"foo"}}}}}));
     auto queries = queryAnaHelper.getInternalQueries(qsTest, stmt);
     BOOST_CHECK_EQUAL(queries[0], expected);
     queries = queryAnaHelper.getInternalQueries(qsTest, stmt2);
@@ -811,8 +776,7 @@ BOOST_AUTO_TEST_CASE(FuncExprPred) {
     std::string expected = "SELECT `o1`.objectId AS `o1.objectId` "
         "FROM LSST.Object_100 AS `o1` "
         "WHERE ABS((scisql_fluxToAbMag(`o1`.gFlux_PS)-scisql_fluxToAbMag(`o1`.rFlux_PS))-(scisql_fluxToAbMag(`o1`.gFlux_PS)-scisql_fluxToAbMag(`o1`.rFlux_PS)))<1";
-    MockSql::DbTableColumns dbTableColumns = {{"LSST", {{"Object", {"objectId", "gFlux_PS", "rFlux_PS"}}}}};
-    qsTest.mysqlSchemaConfig = MySqlConfig(std::make_shared<MockSql>(dbTableColumns));
+    qsTest.sqlConfig = SqlConfig(SqlConfig::MockDbTableColumns({{"LSST", {{"Object", {"objectId", "gFlux_PS", "rFlux_PS"}}}}}));
     auto queries = queryAnaHelper.getInternalQueries(qsTest, stmt);
     BOOST_CHECK_EQUAL(queries[0], expected);
     stmt = "SELECT  o1.objectId, o2.objectId objectId2 "
@@ -825,8 +789,7 @@ BOOST_AUTO_TEST_CASE(FuncExprPred) {
         "WHERE scisql_angSep(`o1`.ra_Test,`o1`.decl_Test,`o2`.ra_Test,`o2`.decl_Test)<0.00001 "
         "AND `o1`.objectId<>`o2`.objectId AND "
         "ABS((scisql_fluxToAbMag(`o1`.gFlux_PS)-scisql_fluxToAbMag(`o1`.rFlux_PS))-(scisql_fluxToAbMag(`o2`.gFlux_PS)-scisql_fluxToAbMag(`o2`.rFlux_PS)))<1";
-    dbTableColumns = {{"LSST", {{"Object", {"objectId", "ra_Test", "decl_Test", "gFlux_PS", "rFlux_PS"}}}}};
-    qsTest.mysqlSchemaConfig = MySqlConfig(std::make_shared<MockSql>(dbTableColumns));
+    qsTest.sqlConfig = SqlConfig(SqlConfig::MockDbTableColumns({{"LSST", {{"Object", {"objectId", "ra_Test", "decl_Test", "gFlux_PS", "rFlux_PS"}}}}}));
     queries = queryAnaHelper.getInternalQueries(qsTest, stmt);
     BOOST_CHECK_EQUAL(queries[0], expected);
 }
@@ -841,8 +804,7 @@ BOOST_AUTO_TEST_CASE(MatchTableWithoutWhere) {
     std::string stmt = "SELECT * FROM RefObjMatch;";
     std::string expected = "SELECT * FROM LSST.RefObjMatch_100 AS `LSST.RefObjMatch` WHERE "
                            "(refObjectId IS NULL OR flags<>2)";
-    MockSql::DbTableColumns dbTableColumns = {{"LSST", {{"RefObjMatch", {}}}}};
-    qsTest.mysqlSchemaConfig = MySqlConfig(std::make_shared<MockSql>(dbTableColumns));
+    qsTest.sqlConfig = SqlConfig(SqlConfig::MockDbTableColumns({{"LSST", {{"RefObjMatch", {}}}}}));
     std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, stmt);
     std::shared_ptr<QueryContext> context = qs->dbgGetContext();
     SelectStmt const& ss = qs->getStmt();
@@ -863,8 +825,8 @@ BOOST_AUTO_TEST_CASE(MatchTableWithWhere) {
     std::string expected = "SELECT * FROM LSST.RefObjMatch_100 AS `LSST.RefObjMatch` WHERE "
                            "(refObjectId IS NULL OR flags<>2) "
                            "AND `LSST.RefObjMatch`.foo!=`LSST.RefObjMatch`.bar AND `LSST.RefObjMatch`.baz<3.14159";
-    MockSql::DbTableColumns dbTableColumns = {{"LSST", {{"RefObjMatch", {"foo", "bar", "baz"}}}}};
-    qsTest.mysqlSchemaConfig = MySqlConfig(std::make_shared<MockSql>(dbTableColumns));
+    qsTest.sqlConfig = SqlConfig(SqlConfig::MockDbTableColumns({{"LSST", {{"RefObjMatch", {"foo", "bar", "baz"}}}}}));
+
     std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, stmt);
     std::string actual = queryAnaHelper.buildFirstParallelQuery(false);
     BOOST_CHECK_EQUAL(actual, expected);
@@ -896,9 +858,8 @@ BOOST_AUTO_TEST_CASE(FreeIndex) {
     std::string expected = "SELECT `s`.ra AS `s.ra`,`s`.decl AS `s.decl`,`o`.foo AS `o.foo` "
         "FROM LSST.Source_100 AS `s`,LSST.Object_100 AS `o` "
         "WHERE `s`.objectIdSourceTest=`o`.objectIdObjTest AND `o`.objectIdObjTest=430209694171136";
-    MockSql::DbTableColumns dbTableColumns = {{"LSST", {{"Object", {"foo", "objectIdObjTest"}},
-                                                        {"Source", {"ra", "decl", "objectIdSourceTest"}}}}};
-    qsTest.mysqlSchemaConfig = MySqlConfig(std::make_shared<MockSql>(dbTableColumns));
+    qsTest.sqlConfig = SqlConfig(SqlConfig::MockDbTableColumns({{"LSST", {{"Object", {"foo", "objectIdObjTest"}},
+                                                        {"Source", {"ra", "decl", "objectIdSourceTest"}}}}}));
     auto queries = queryAnaHelper.getInternalQueries(qsTest, stmt);
     BOOST_CHECK_EQUAL(queries[0], expected);
 }
@@ -914,9 +875,8 @@ BOOST_AUTO_TEST_CASE(SpecIndexUsing) {
         "JOIN LSST.Source2_100 AS `s` USING(objectIdObjTest) "
         "JOIN LSST.Source2_100 AS `s2` USING(objectIdObjTest) "
         "WHERE `o`.objectId=430209694171136";
-    MockSql::DbTableColumns dbTableColumns = {{"LSST", {{"Object", {"foo", "objectId"}},
-                                                        {"Source2", {"ra", "decl"}}}}};
-    qsTest.mysqlSchemaConfig = MySqlConfig(std::make_shared<MockSql>(dbTableColumns));
+    qsTest.sqlConfig = SqlConfig(SqlConfig::MockDbTableColumns({{"LSST", {{"Object", {"foo", "objectId"}},
+                                                        {"Source2", {"ra", "decl"}}}}}));
     auto queries = queryAnaHelper.getInternalQueries(qsTest, stmt);
     BOOST_CHECK_EQUAL(queries[0], expected);
 }
@@ -933,9 +893,8 @@ BOOST_AUTO_TEST_CASE(SpecIndexOn) {
         "JOIN LSST.Source_100 AS `s` ON `s`.objectIdSourceTest=`o`.objectIdObjTest "
         "JOIN LSST.Source_100 AS `s2` ON `s`.objectIdSourceTest=`s2`.objectIdSourceTest "
         "WHERE `o`.objectId=430209694171136";
-    MockSql::DbTableColumns dbTableColumns = {{"LSST", {{"Object", {"foo", "objectId", "objectIdObjTest"}},
-                                                        {"Source", {"ra", "decl", "objectIdSourceTest"}}}}};
-    qsTest.mysqlSchemaConfig = MySqlConfig(std::make_shared<MockSql>(dbTableColumns));
+    qsTest.sqlConfig = SqlConfig(SqlConfig::MockDbTableColumns({{"LSST", {{"Object", {"foo", "objectId", "objectIdObjTest"}},
+                                                        {"Source", {"ra", "decl", "objectIdSourceTest"}}}}}));
     auto queries = queryAnaHelper.getInternalQueries(qsTest, stmt);
     BOOST_CHECK_EQUAL(queries[0], expected);
 }
@@ -952,8 +911,7 @@ BOOST_AUTO_TEST_CASE(NoSpec) {
     std::string expected = "SELECT `s1`.foo AS `s1.foo`,`s2`.foo AS `s2_foo` "
         "FROM LSST.Source_100 AS `s1` NATURAL LEFT OUTER JOIN LSST.Source_100 AS `s2` "
         "WHERE `s1`.bar=`s2`.bar";
-    MockSql::DbTableColumns dbTableColumns = {{"LSST", {{"Source", {"foo", "bar"}}}}};
-    qsTest.mysqlSchemaConfig = MySqlConfig(std::make_shared<MockSql>(dbTableColumns));
+    qsTest.sqlConfig = SqlConfig(SqlConfig::MockDbTableColumns({{"LSST", {{"Source", {"foo", "bar"}}}}}));
     std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, stmt);
     qs->addChunk(ChunkSpec::makeFake(100,true));
     auto i = qs->cQueryBegin();
@@ -975,8 +933,7 @@ BOOST_AUTO_TEST_CASE(Cross) {
     std::string stmt = "SELECT * "
         "FROM Source s1 CROSS JOIN Source s2 "
         "WHERE s1.bar = s2.bar;";
-    MockSql::DbTableColumns dbTableColumns = {{"LSST", {{"Source", {"bar"}}}}};
-    qsTest.mysqlSchemaConfig = MySqlConfig(std::make_shared<MockSql>(dbTableColumns));
+    qsTest.sqlConfig = SqlConfig(SqlConfig::MockDbTableColumns({{"LSST", {{"Source", {"bar"}}}}}));
     auto qs = queryAnaHelper.buildQuerySession(qsTest, stmt, true);
     BOOST_CHECK_EQUAL(qs->getError(), NOT_EVALUABLE_MSG);
 }
@@ -986,9 +943,8 @@ BOOST_AUTO_TEST_CASE(Using) {
     // Equi-join syntax, non-partitioned
     std::string stmt = "SELECT * "
         "FROM Filter f JOIN Science_Ccd_Exposure USING(exposureId);";
-    MockSql::DbTableColumns dbTableColumns = {{"LSST", {{"Filter", {}},
-                                                        {"Science_Ccd_Exposure", {}}}}};
-    qsTest.mysqlSchemaConfig = MySqlConfig(std::make_shared<MockSql>(dbTableColumns));
+    qsTest.sqlConfig = SqlConfig(SqlConfig::MockDbTableColumns({{"LSST", {{"Filter", {}},
+                                                        {"Science_Ccd_Exposure", {}}}}}));
     queryAnaHelper.buildQuerySession(qsTest, stmt);
 }
 
@@ -1003,8 +959,7 @@ BOOST_FIXTURE_TEST_SUITE(Case01Parse, QueryAnaFixture)
 BOOST_AUTO_TEST_CASE(Case01_0002) {
     std::string stmt = "SELECT * FROM Object WHERE objectIdObjTest = 430213989000;";
     //std::string expected = "SELECT * FROM LSST.%$#Object%$# WHERE objectId=430213989000;";
-    MockSql::DbTableColumns dbTableColumns = {{"LSST", {{"Object", {"objectIdObjTest"}}}}};
-    qsTest.mysqlSchemaConfig = MySqlConfig(std::make_shared<MockSql>(dbTableColumns));
+    qsTest.sqlConfig = SqlConfig(SqlConfig::MockDbTableColumns({{"LSST", {{"Object", {"objectIdObjTest"}}}}}));
     std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, stmt);
     std::shared_ptr<QueryContext> context = qs->dbgGetContext();
     BOOST_CHECK(context);
@@ -1026,9 +981,8 @@ BOOST_AUTO_TEST_CASE(Case01_0003) {
         "JOIN   Source2 s USING (objectIdObjTest) "
         "WHERE  o.objectIdObjTest = 390034570102582 "
         "AND    o.latestObsTime = s.taiMidPoint;";
-    MockSql::DbTableColumns dbTableColumns = {{"LSST", {{"Object", {"raRange", "declRange", "objectIdObjTest", "latestObsTime"}},
-                                                        {"Source2", {"ra", "decl", "taiMidPoint"}}}}};
-    qsTest.mysqlSchemaConfig = MySqlConfig(std::make_shared<MockSql>(dbTableColumns));
+    qsTest.sqlConfig = SqlConfig(SqlConfig::MockDbTableColumns({{"LSST", {{"Object", {"raRange", "declRange", "objectIdObjTest", "latestObsTime"}},
+                                                        {"Source2", {"ra", "decl", "taiMidPoint"}}}}}));
     std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, stmt);
     std::shared_ptr<QueryContext> context = qs->dbgGetContext();
     BOOST_CHECK(context);
@@ -1045,8 +999,7 @@ BOOST_AUTO_TEST_CASE(Case01_0012) {
         "WHERE (sce.visit = 887404831) "
         "AND (sce.raftName = '3,3') "
         "AND (sce.ccdName LIKE '%')";
-    MockSql::DbTableColumns dbTableColumns = {{"LSST", {{"Science_Ccd_Exposure", {"filterId", "filterName", "visit", "raftName", "ccdName"}}}}};
-    qsTest.mysqlSchemaConfig = MySqlConfig(std::make_shared<MockSql>(dbTableColumns));
+    qsTest.sqlConfig = SqlConfig(SqlConfig::MockDbTableColumns({{"LSST", {{"Science_Ccd_Exposure", {"filterId", "filterName", "visit", "raftName", "ccdName"}}}}}));
     std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, stmt);
     std::shared_ptr<QueryContext> context = qs->dbgGetContext();
     BOOST_CHECK(context);
@@ -1065,8 +1018,7 @@ BOOST_AUTO_TEST_CASE(Case01_1012) {
     // expressions in ORDER BY because it follows SQL92. Consider
     // patching the grammar to support this.
     std::string stmt = "SELECT objectId, iE1_SG, ABS(iE1_SG) FROM Object WHERE iE1_SG between -0.1 and 0.1 ORDER BY ABS(iE1_SG);";
-    MockSql::DbTableColumns dbTableColumns = {{"LSST", {{"Object", {"objectId", "iE1_SG"}}}}};
-    qsTest.mysqlSchemaConfig = MySqlConfig(std::make_shared<MockSql>(dbTableColumns));
+    qsTest.sqlConfig = SqlConfig(SqlConfig::MockDbTableColumns({{"LSST", {{"Object", {"objectId", "iE1_SG"}}}}}));
     auto qs = queryAnaHelper.buildQuerySession(qsTest, stmt);
     BOOST_CHECK_EQUAL(qs->getError(),
             "ParseException:Error parsing query, near \"ABS(iE1_SG)\", qserv does not support functions in ORDER BY.");
@@ -1078,8 +1030,7 @@ BOOST_AUTO_TEST_CASE(Case01_1013) {
     // expressions in ORDER BY because it uses a SQL92 grammar. Consider
     // patching the grammar to support this.
     std::string stmt = "SELECT objectId, ROUND(iE1_SG, 3), ROUND(ABS(iE1_SG), 3) FROM Object WHERE iE1_SG between -0.1 and 0.1 ORDER BY ROUND(ABS(iE1_SG), 3);";
-    MockSql::DbTableColumns dbTableColumns = {{"LSST", {{"Object", {"objectId", "iE1_SG"}}}}};
-    qsTest.mysqlSchemaConfig = MySqlConfig(std::make_shared<MockSql>(dbTableColumns));
+    qsTest.sqlConfig = SqlConfig(SqlConfig::MockDbTableColumns({{"LSST", {{"Object", {"objectId", "iE1_SG"}}}}}));
     auto qs = queryAnaHelper.buildQuerySession(qsTest, stmt);
     BOOST_CHECK_EQUAL(qs->getError(), "ParseException:Error parsing query, near \"ROUND(ABS(iE1_SG), 3)\", qserv does not support functions in ORDER BY.");
 }
@@ -1095,10 +1046,9 @@ BOOST_AUTO_TEST_CASE(Case01_1030) {
         "ORDER BY objectId, taiMidPoint ASC;";
     // Besides the bugs mentioned above, this query is also not evaluable
     // because the Source and Object director column name is not objectId...
-    MockSql::DbTableColumns dbTableColumns = {{"LSST", {{"Object", {"objectId"}},
+    qsTest.sqlConfig = SqlConfig(SqlConfig::MockDbTableColumns({{"LSST", {{"Object", {"objectId"}},
                                                         {"Source", {"objectId", "filterId", "taiMidPoint", "psfFlux"}},
-                                                        {"Filter", {"filterId", "filterName"}}}}};
-    qsTest.mysqlSchemaConfig = MySqlConfig(std::make_shared<MockSql>(dbTableColumns));
+                                                        {"Filter", {"filterId", "filterName"}}}}}));
     auto qs = queryAnaHelper.buildQuerySession(qsTest, stmt, true);
     BOOST_CHECK_EQUAL(qs->getError(), NOT_EVALUABLE_MSG);
 #if 0    // FIXME
@@ -1118,8 +1068,7 @@ BOOST_AUTO_TEST_CASE(Case01_1030) {
 BOOST_AUTO_TEST_CASE(Case01_1052) {
     std::string stmt = "SELECT DISTINCT rFlux_PS FROM Object;";
     std::string expected = "SELECT DISTINCT rFlux_PS FROM LSST.%$#Object%$#;";
-    MockSql::DbTableColumns dbTableColumns = {{"LSST", {{"Object", {"rFlux_PS"}}}}};
-    qsTest.mysqlSchemaConfig = MySqlConfig(std::make_shared<MockSql>(dbTableColumns));
+    qsTest.sqlConfig = SqlConfig(SqlConfig::MockDbTableColumns({{"LSST", {{"Object", {"rFlux_PS"}}}}}));
     queryAnaHelper.buildQuerySession(qsTest, stmt);
 #if 0 // FIXME
     SqlParseRunner::Ptr spr = getRunner(stmt);
@@ -1156,10 +1105,9 @@ BOOST_AUTO_TEST_CASE(Case01_1081) {
         "INNER JOIN LSST.RefObjMatch_100 AS `o2t` ON `o`.objectIdObjTest=`o2t`.objectId "
         "INNER JOIN Subchunks_LSST_100.SimRefObjectFullOverlap_100_%S\007S% AS `t` ON `o2t`.refObjectId=`t`.refObjectId "
         "WHERE `o`.closestToObj=1 OR `o`.closestToObj IS NULL";
-    MockSql::DbTableColumns dbTableColumns = {{"LSST", {{"Object", {"objectIdObjTest", "closestToObj"}},
+    qsTest.sqlConfig = SqlConfig(SqlConfig::MockDbTableColumns({{"LSST", {{"Object", {"objectIdObjTest", "closestToObj"}},
                                                         {"RefObjMatch", {"objectId", "refObjectId"}},
-                                                        {"SimRefObject", {"refObjectId"}}}}};
-    qsTest.mysqlSchemaConfig = MySqlConfig(std::make_shared<MockSql>(dbTableColumns));
+                                                        {"SimRefObject", {"refObjectId"}}}}}));
     std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, stmt);
     std::shared_ptr<QueryContext> context = qs->dbgGetContext();
     BOOST_CHECK(context);
@@ -1189,10 +1137,9 @@ BOOST_AUTO_TEST_CASE(Case01_1083) {
     std::string stmt = "select objectId, sro.*, (sro.refObjectId-1)/2%pow(2,10), typeId "
         "from Source s join RefObjMatch rom using (objectId) "
         "join SimRefObject sro using (refObjectId) where isStar =1 limit 10;";
-    MockSql::DbTableColumns dbTableColumns = {{"LSST", {{"Source", {"objectId"}},
+    qsTest.sqlConfig = SqlConfig(SqlConfig::MockDbTableColumns({{"LSST", {{"Source", {"objectId"}},
                                                         {"RefObjMatch", {"typeId"}},
-                                                        {"SimRefObject", {"refObjectId", "isStar"}}}}};
-    qsTest.mysqlSchemaConfig = MySqlConfig(std::make_shared<MockSql>(dbTableColumns));
+                                                        {"SimRefObject", {"refObjectId", "isStar"}}}}}));
     auto querySession = queryAnaHelper.buildQuerySession(qsTest, stmt, true);
     // I don't actaully know if this is the correct error, but it used to be that this query doesn't parse
     // at all and after adding parser features it *does* parse, and then causes this analysis error. I'm
@@ -1223,8 +1170,7 @@ BOOST_AUTO_TEST_CASE(Case01_2001) {
 "< (0.08 + 0.42 * (scisql_fluxToAbMag(gFlux_PS)-scisql_fluxToAbMag(rFlux_PS) - 0.96)) "
         " OR scisql_fluxToAbMag(gFlux_PS)-scisql_fluxToAbMag(rFlux_PS) > 1.26 ) "
         "AND    scisql_fluxToAbMag(iFlux_PS)-scisql_fluxToAbMag(zFlux_PS) < 0.8;";
-    MockSql::DbTableColumns dbTableColumns = {{"LSST", {{"Object", {"objectId", "ra_PS", "decl_PS", "uFlux_PS", "gFlux_PS", "rFlux_PS", "iFlux_PS", "zFlux_PS", "yFlux_PS"}}}}};
-    qsTest.mysqlSchemaConfig = MySqlConfig(std::make_shared<MockSql>(dbTableColumns));
+    qsTest.sqlConfig = SqlConfig(SqlConfig::MockDbTableColumns({{"LSST", {{"Object", {"objectId", "ra_PS", "decl_PS", "uFlux_PS", "gFlux_PS", "rFlux_PS", "iFlux_PS", "zFlux_PS", "yFlux_PS"}}}}}));
     queryAnaHelper.buildQuerySession(qsTest, stmt);
 #if 0 // FIXME
     SqlParseRunner::Ptr spr = getRunner(stmt);
@@ -1255,8 +1201,7 @@ BOOST_AUTO_TEST_CASE(Case01_2004) {
 BOOST_AUTO_TEST_CASE(Case01_2006) {
     std::string stmt = "SELECT scisql_fluxToAbMag(uFlux_PS) "
         "FROM   Object WHERE  (objectId % 100 ) = 40;";
-    MockSql::DbTableColumns dbTableColumns = {{"LSST", {{"Object", {"objectId", "uFlux_PS"}}}}};
-    qsTest.mysqlSchemaConfig = MySqlConfig(std::make_shared<MockSql>(dbTableColumns));
+    qsTest.sqlConfig = SqlConfig(SqlConfig::MockDbTableColumns({{"LSST", {{"Object", {"objectId", "uFlux_PS"}}}}}));
     auto qs = queryAnaHelper.buildQuerySession(qsTest, stmt);
 #if 0 // FIXME
     SqlParseRunner::Ptr spr = getRunner(stmt);

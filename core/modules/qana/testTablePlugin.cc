@@ -36,7 +36,6 @@
 // Qserv headers
 #include "ccontrol/UserQueryFactory.h"
 #include "css/CssAccess.h"
-#include "mysql/MySqlConfig.h"
 #include "parser/SelectParser.h"
 #include "qana/TablePlugin.h"
 #include "query/OrderByClause.h"
@@ -46,7 +45,7 @@
 #include "query/TestFactory.h"
 #include "query/ValueFactor.h"
 #include "query/WhereClause.h"
-#include "sql/MockSql.h"
+#include "sql/SqlConfig.h"
 #include "sql/SqlConnection.h"
 #include "util/IterableFormatter.h"
 
@@ -60,9 +59,8 @@ using lsst::qserv::query::TestFactory;
 
 
 struct TestFixture {
-    TestFixture(void) {
-        sql::MockSql::DbTableColumns dbTableColumns = {{"Somedb", {{"Object", {"objectId", "ra_PS", "decl_PS", "rFlux_PS_Sigma"}}}}};
-        schemaCfg = mysql::MySqlConfig(std::make_shared<sql::MockSql>(dbTableColumns));
+    TestFixture(void) : schemaCfg(sql::SqlConfig(sql::SqlConfig::MockDbTableColumns(
+            {{"Somedb", {{"Object", {"objectId", "ra_PS", "decl_PS", "rFlux_PS_Sigma"}}}}}))) {
         std::string kvMapPath = "./core/modules/qana/testPlugins.kvmap"; // (from testPlugins was: FIXME ??)
         std::ifstream stream(kvMapPath);
         css = lsst::qserv::css::CssAccess::createFromStream(stream, ".");
@@ -71,7 +69,7 @@ struct TestFixture {
     ~TestFixture(void) {}
 
     std::shared_ptr<lsst::qserv::css::CssAccess> css;
-    lsst::qserv::mysql::MySqlConfig schemaCfg;
+    sql::SqlConfig schemaCfg;
 };
 
 
@@ -79,7 +77,7 @@ BOOST_FIXTURE_TEST_SUITE(Suite, TestFixture)
 
 
 query::SelectStmt::Ptr makeStmtAndRunLogical(std::string query,
-        std::shared_ptr<lsst::qserv::css::CssAccess> css, lsst::qserv::mysql::MySqlConfig schemaCfg) {
+        std::shared_ptr<lsst::qserv::css::CssAccess> css, sql::SqlConfig schemaCfg) {
     query::SelectStmt::Ptr selectStmt;
     BOOST_REQUIRE_NO_THROW(selectStmt = parser::SelectParser::makeSelectStmt(query));
     BOOST_REQUIRE(selectStmt != nullptr);

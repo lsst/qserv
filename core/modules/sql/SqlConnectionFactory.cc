@@ -26,6 +26,7 @@
 
 // Qserv headers
 #include "mysql/MySqlConfig.h"
+#include "sql/MockSql.h"
 #include "sql/MySqlConnection.h"
 #include "sql/SqlConfig.h"
 #include "sql/SqlConnection.h"
@@ -37,6 +38,9 @@ namespace sql {
 
 
 std::shared_ptr<SqlConnection> SqlConnectionFactory::make(SqlConfig const& cfg) {
+    if (SqlConfig::MOCK == cfg.type) {
+        return std::make_shared<MockSql>(cfg.dbTableColumns);
+    }
     return std::shared_ptr<sql::MySqlConnection>(new sql::MySqlConnection(cfg.mySqlConfig));
 }
 

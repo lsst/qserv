@@ -38,11 +38,11 @@
 
 // Local headers
 #include "css/CssAccess.h"
-#include "mysql/MySqlConfig.h"
 #include "proto/ScanTableInfo.h"
 #include "qana/QueryMapping.h"
 #include "query/FromList.h"
 #include "query/ValueExpr.h"
+#include "sql/SqlConfig.h"
 #include "global/stringTypes.h"
 
 
@@ -74,8 +74,8 @@ public:
     typedef std::shared_ptr<QueryContext> Ptr;
 
     QueryContext(std::string const& defDb, std::shared_ptr<css::CssAccess> const& cssPtr,
-                 mysql::MySqlConfig const& mysqlSchemaCfg)
-        : css(cssPtr), defaultDb(defDb), mysqlSchemaConfig(mysqlSchemaCfg) {}
+                 sql::SqlConfig const& sqlCfg)
+        : css(cssPtr), defaultDb(defDb), sqlConfig(sqlCfg) {}
     typedef std::vector<std::shared_ptr<QsRestrictor> > RestrList;
 
     std::shared_ptr<css::CssAccess> css;  ///< interface to CSS
@@ -83,7 +83,7 @@ public:
     std::string dominantDb; ///< "dominant" database for this query
     std::string userName{"default"}; ///< unused, but reserved.
 
-    mysql::MySqlConfig const mysqlSchemaConfig; ///< Used to connect to a database with the schema.
+    sql::SqlConfig const sqlConfig; ///< Used to connect to a database with the schema.
 
     proto::ScanInfo scanInfo; // Tables scanned (for shared scans)
 

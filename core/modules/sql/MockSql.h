@@ -47,51 +47,54 @@ public:
 
     MockSql(DbTableColumns const& dbTableColumns) : _dbTableColumns(dbTableColumns) {}
 
-    virtual void reset(mysql::MySqlConfig const& sc, bool useThreadMgmt=false) {}
-    virtual bool connectToDb(SqlErrorObject&) { return false; }
-    virtual bool selectDb(std::string const& dbName, SqlErrorObject&) {
-        return false; }
-    virtual bool runQuery(char const* query, int qSize,
-                          SqlResults& results, SqlErrorObject&) {
-        return false; }
-    virtual bool runQuery(char const* query, int qSize, SqlErrorObject&) {
-        return false; }
-    virtual bool runQuery(std::string const query, SqlResults&,
-                          SqlErrorObject&) {
-        return false; }
-    virtual std::shared_ptr<SqlResultIter> getQueryIter(std::string const& query);
-    virtual bool runQuery(std::string const query, SqlErrorObject&) {
-        return false; }
-    virtual bool dbExists(std::string const& dbName, SqlErrorObject&) {
-        return false; }
-    virtual bool createDb(std::string const& dbName, SqlErrorObject&,
-                          bool failIfExists=true) {
-        return false; }
-    virtual bool createDbAndSelect(std::string const& dbName,
-                                   SqlErrorObject&,
-                                   bool failIfExists=true) {
-        return false; }
-    virtual bool dropDb(std::string const& dbName, SqlErrorObject&,
-                        bool failIfDoesNotExist=true) {
-        return false; }
-    virtual bool tableExists(std::string const& tableName,
-                             SqlErrorObject&,
-                             std::string const& dbName="") {
-        return false; }
-    virtual bool dropTable(std::string const& tableName,
-                           SqlErrorObject&,
-                           bool failIfDoesNotExist=true,
-                           std::string const& dbName="") {
-        return false; }
-    virtual bool listTables(std::vector<std::string>&,
-                            SqlErrorObject&,
-                            std::string const& prefixed="",
-                            std::string const& dbName="") {
-        return false; }
-    virtual void listColumns(std::vector<std::string>& columns,
-                            SqlErrorObject&,
-                            std::string const& dbName,
-                            std::string const& tableName) {
+    void reset(mysql::MySqlConfig const& sc) override {}
+
+    bool connectToDb(SqlErrorObject&) override { return false; }
+
+    bool selectDb(std::string const& dbName, SqlErrorObject&) override { return false; }
+
+    bool runQuery(char const* query, int qSize, SqlResults& results, SqlErrorObject&) override {
+        return false;
+    }
+
+    bool runQuery(char const* query, int qSize, SqlErrorObject&) override { return false; }
+
+    bool runQuery(std::string const query, SqlResults&, SqlErrorObject&) override { return false; }
+
+    std::shared_ptr<SqlResultIter> getQueryIter(std::string const& query) override;
+
+    bool runQuery(std::string const query, SqlErrorObject&) override { return false; }
+
+    bool dbExists(std::string const& dbName, SqlErrorObject&) override { return false; }
+
+    bool createDb(std::string const& dbName, SqlErrorObject&, bool failIfExists=true) override {
+        return false;
+    }
+
+    bool createDbAndSelect(std::string const& dbName, SqlErrorObject&, bool failIfExists=true) override {
+        return false;
+    }
+
+    bool dropDb(std::string const& dbName, SqlErrorObject&, bool failIfDoesNotExist=true) override {
+        return false;
+    }
+
+    bool tableExists(std::string const& tableName, SqlErrorObject&, std::string const& dbName="") override {
+        return false;
+    }
+
+    bool dropTable(std::string const& tableName, SqlErrorObject&, bool failIfDoesNotExist=true,
+                   std::string const& dbName="") override {
+        return false;
+    }
+
+    bool listTables(std::vector<std::string>&, SqlErrorObject&, std::string const& prefixed="",
+                    std::string const& dbName="") override {
+        return false;
+    }
+
+    void listColumns(std::vector<std::string>& columns, SqlErrorObject&, std::string const& dbName,
+                     std::string const& tableName) override {
         // The QueryContext gets all the columns in each table used by the query and stores this information
         // for lookup later. Here we return a list of column names for a table.
         auto tableItr = _dbTableColumns.find(dbName);
@@ -106,10 +109,9 @@ public:
         for (auto const& column : columnsItr->second) {
             columns.push_back(column);
         }
-        return;
     }
 
-    virtual std::string getActiveDbName() const { return std::string(); }
+    std::string getActiveDbName() const override { return std::string(); }
 
     template <class TupleListIter>
     struct Iter : public SqlResultIter {
@@ -128,6 +130,13 @@ public:
         TupleListIter _cursor;
         TupleListIter _end;
     };
+
+    unsigned long long getInsertId() const override;
+
+    std::string escapeString(std::string const& rawString) const override;
+
+    bool escapeString(std::string const& rawString, std::string& escapedString,
+                      SqlErrorObject& errObj) override;
 
 private:
     DbTableColumns _dbTableColumns;

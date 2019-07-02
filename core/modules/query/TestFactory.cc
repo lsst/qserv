@@ -54,7 +54,7 @@ std::string TestFactory::getDefaultUserName() {
 
 
 std::shared_ptr<QueryContext>
-TestFactory::newContext(std::shared_ptr<css::CssAccess> css, mysql::MySqlConfig const& schemaCfg) {
+TestFactory::newContext(std::shared_ptr<css::CssAccess> css, sql::SqlConfig const& schemaCfg) {
     std::shared_ptr<QueryContext> context = std::make_shared<QueryContext>("NoDb", css, schemaCfg);
     context->defaultDb = getDefaultDbName();
     context->userName = getDefaultUserName();

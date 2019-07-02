@@ -42,7 +42,6 @@
 // Qserv headers
 #include "css/CssAccess.h"
 #include "global/intTypes.h"
-#include "mysql/MySqlConfig.h"
 #include "parser/SelectParser.h"
 #include "qana/QueryPlugin.h"
 #include "qproc/ChunkQuerySpec.h"
@@ -50,6 +49,7 @@
 #include "query/Constraint.h"
 #include "query/QueryTemplate.h"
 #include "query/typedefs.h"
+#include "sql/SqlConfig.h"
 
 
 // Forward declarations
@@ -76,13 +76,13 @@ public:
     typedef std::shared_ptr<QuerySession> Ptr;
 
     // null constructor should only be used by parser unit tests.
-    QuerySession() = default;
+    QuerySession() : _sqlConfig(sql::SqlConfig::MOCK) {};
 
     QuerySession(std::shared_ptr<css::CssAccess> css,
-                 mysql::MySqlConfig const& mysqlSchemaConfig,
+                 sql::SqlConfig const& sqlConfig,
                  std::string const& defaultDb)
         : _css(css), _defaultDb(defaultDb),
-          _mysqlSchemaConfig(mysqlSchemaConfig) {}
+          _sqlConfig(sqlConfig) {}
 
     std::shared_ptr<query::SelectStmt> parseQuery(std::string const & statement);
 
@@ -149,10 +149,16 @@ public:
 
     // For test harnesses.
     struct Test {
+        Test() : cfgNum(0), defaultDb("LSST"), sqlConfig(sql::SqlConfig(sql::SqlConfig::MOCK)) {}
+        Test(int cfgNum_,
+             std::shared_ptr<css::CssAccess> css_,
+             std::string defaultDb_,
+             sql::SqlConfig const& sqlConfig_)
+             : cfgNum(cfgNum_), css(css_), defaultDb(defaultDb_), sqlConfig(sqlConfig_) {}
         int cfgNum;
         std::shared_ptr<css::CssAccess> css;
         std::string defaultDb;
-        mysql::MySqlConfig mysqlSchemaConfig;
+        sql::SqlConfig sqlConfig;
     };
     explicit QuerySession(Test& t); ///< Debug constructor
     std::shared_ptr<query::QueryContext> dbgGetContext() { return _context; }
@@ -192,7 +198,7 @@ private:
     std::string _original; ///< Original user query
     std::shared_ptr<query::QueryContext> _context; ///< Analysis context
     std::shared_ptr<query::SelectStmt> _stmt; ///< Logical query statement
-    mysql::MySqlConfig const _mysqlSchemaConfig; ///< Configuration for getting schema information.
+    sql::SqlConfig const _sqlConfig; ///< Configuration for getting schema information.
 
     /// Group of parallel statements (not a sequence)
     /**

@@ -38,11 +38,29 @@ namespace sql {
 
 class SqlConfig {
 public:
-    SqlConfig() = default;
 
-    SqlConfig(mysql::MySqlConfig const& cfg) : mySqlConfig(cfg) {}
+    enum Type { MYSQL, MOCK };
 
+    typedef std::map<std::string, std::map<std::string, std::vector<std::string>>> MockDbTableColumns;
+
+    SqlConfig(mysql::MySqlConfig const& cfg) : mySqlConfig(cfg), type(MYSQL) {}
+
+    SqlConfig(MockDbTableColumns const& columnInfo) : dbTableColumns(columnInfo), type(MOCK) {}
+
+    SqlConfig(Type type) : type(type) {}
+
+    /// config for a MySqlConnection, for use if type == MYSQL
     mysql::MySqlConfig mySqlConfig;
+
+    /// config for a MockSql connection, for use if type == MOCK
+    // MockDbTableColumns are used when configuring a MockSql.
+    // These should get replaced by an sqlite database, when we have an SqliteConnection class.
+    MockDbTableColumns dbTableColumns;
+
+    Type type;
+
+private:
+    SqlConfig() = default;
 };
 
 

@@ -295,13 +295,13 @@ void QuerySession::finalize() {
 
 
 QuerySession::QuerySession(Test& t)
-    : _css(t.css), _defaultDb(t.defaultDb), _mysqlSchemaConfig(t.mysqlSchemaConfig) {
+    : _css(t.css), _defaultDb(t.defaultDb), _sqlConfig(t.sqlConfig) {
     _initContext();
 }
 
 
 void QuerySession::_initContext() {
-    _context = std::make_shared<query::QueryContext>(_defaultDb, _css, _mysqlSchemaConfig);
+    _context = std::make_shared<query::QueryContext>(_defaultDb, _css, _sqlConfig);
 }
 
 

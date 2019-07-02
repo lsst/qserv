@@ -48,7 +48,7 @@
 #include "qproc/QuerySession.h"
 #include "query/QueryContext.h"
 #include "query/SelectStmt.h"
-#include "sql/MockSql.h"
+#include "sql/SqlConfig.h"
 #include "tests/QueryAnaFixture.h"
 
 using lsst::qserv::mysql::MySqlConfig;
@@ -56,8 +56,10 @@ using lsst::qserv::parser::SelectParser;
 using lsst::qserv::qproc::QuerySession;
 using lsst::qserv::query::SelectStmt;
 using lsst::qserv::query::QueryContext;
-using lsst::qserv::sql::MockSql;
+using lsst::qserv::sql::SqlConfig;
 using lsst::qserv::tests::QueryAnaFixture;
+
+
 ////////////////////////////////////////////////////////////////////////
 // CppParser basic tests
 ////////////////////////////////////////////////////////////////////////
@@ -73,8 +75,8 @@ BOOST_AUTO_TEST_CASE(Aggregate) {
                          "FROM LSST.Object_100 AS `LSST.Object` "
                          "WHERE `LSST.Object`.bMagF>20.0 "
                          "GROUP BY `chunkId`";
-    MockSql::DbTableColumns dbTableColumns = {{"LSST", {{"Object", {"pm_declErr", "chunkId", "bMagF2", "bMagF"}}}}};
-    qsTest.mysqlSchemaConfig = MySqlConfig(std::make_shared<MockSql>(dbTableColumns));
+    qsTest.sqlConfig = SqlConfig(
+        SqlConfig::MockDbTableColumns({{"LSST", {{"Object", {"pm_declErr", "chunkId", "bMagF2", "bMagF"}}}}}));
     queryAnaHelper.buildQuerySession(qsTest, stmt);
     auto& qs = queryAnaHelper.querySession;
     std::shared_ptr<QueryContext> context = qs->dbgGetContext();
@@ -94,9 +96,8 @@ BOOST_AUTO_TEST_CASE(Aggregate) {
 BOOST_AUTO_TEST_CASE(Avg) {
     std::string stmt = "select chunkId, avg(bMagF2) bmf2 from LSST.Object where bMagF > 20.0;";
     std::string expPar = "SELECT `LSST.Object`.chunkId AS `chunkId`,COUNT(`LSST.Object`.bMagF2) AS `QS1_COUNT`,SUM(`LSST.Object`.bMagF2) AS `QS2_SUM` FROM LSST.Object_100 AS `LSST.Object` WHERE `LSST.Object`.bMagF>20.0";
-    MockSql::DbTableColumns dbTableColumns = {{"LSST", {{"Object", {"chunkId", "bMagF2", "bMagF"}}}}};
-    qsTest.mysqlSchemaConfig = MySqlConfig(std::make_shared<MockSql>(dbTableColumns));
-
+    qsTest.sqlConfig = SqlConfig(
+        SqlConfig::MockDbTableColumns({{"LSST", {{"Object", {"chunkId", "bMagF2", "bMagF"}}}}}));
     std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, stmt);
     std::shared_ptr<QueryContext> context = qs->dbgGetContext();
 
