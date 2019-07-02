@@ -123,12 +123,12 @@ MySqlConnection::MySqlConnection()
 }
 
 
-MySqlConnection::MySqlConnection(mysql::MySqlConfig const& sc, bool)
+MySqlConnection::MySqlConnection(mysql::MySqlConfig const& sc)
     : _connection(std::make_shared<mysql::MySqlConnection>(sc)) {
 }
 
 
-void MySqlConnection::reset(mysql::MySqlConfig const& sc, bool) {
+void MySqlConnection::reset(mysql::MySqlConfig const& sc) {
     _connection = std::make_shared<mysql::MySqlConnection>(sc);
 }
 

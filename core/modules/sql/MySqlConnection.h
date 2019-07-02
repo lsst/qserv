@@ -87,7 +87,7 @@ class MySqlConnection : public SqlConnection {
 public:
     virtual ~MySqlConnection();
 
-    void reset(mysql::MySqlConfig const& sc, bool useThreadMgmt=false) override;
+    void reset(mysql::MySqlConfig const& sc) override;
 
     bool connectToDb(SqlErrorObject&) override;
 
@@ -167,7 +167,7 @@ private:
 
     // Private constructors; use SqlConnectionFactory to create new instances.
     MySqlConnection();
-    MySqlConnection(mysql::MySqlConfig const& sc, bool useThreadMgmt=false);
+    MySqlConnection(mysql::MySqlConfig const& sc);
 
     bool _init(SqlErrorObject&);
     bool _connect(SqlErrorObject&);

@@ -78,7 +78,7 @@ class SqlConnection {
 public:
     virtual ~SqlConnection() {};
 
-    virtual void reset(mysql::MySqlConfig const& sc, bool useThreadMgmt=false) = 0;
+    virtual void reset(mysql::MySqlConfig const& sc) = 0;
 
     virtual bool connectToDb(SqlErrorObject&) = 0;
 
