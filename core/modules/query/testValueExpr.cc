@@ -53,7 +53,7 @@ BOOST_AUTO_TEST_SUITE(Suite)
 
 
 BOOST_AUTO_TEST_CASE(subsetOf) {
-    auto aliasInColumn = ValueExpr::newColumnExpr("", "", "", "alias");
+    auto aliasInColumn = ValueExpr::newColumnExpr("alias");
     auto fullValue = ValueExpr::newColumnExpr("db", "table", "tableAlias", "column");
     fullValue->setAlias("alias");
     BOOST_REQUIRE_EQUAL(aliasInColumn->isSubsetOf(*fullValue), true);
@@ -109,7 +109,7 @@ BOOST_AUTO_TEST_CASE(renderValueExpr) {
     BOOST_CHECK_EQUAL(getRendered(valueExpr, QueryTemplate::NO_VALUE_ALIAS_USE_TABLE_ALIAS), "table.column");
 
     // no ValueExpr, TableRef alias, database, or table
-    valueExpr = ValueExpr::newColumnExpr("", "", "", "column");
+    valueExpr = ValueExpr::newColumnExpr("column");
     BOOST_CHECK_EQUAL(getRendered(valueExpr, QueryTemplate::NO_ALIAS), "column");
     BOOST_CHECK_EQUAL(getRendered(valueExpr, QueryTemplate::USE_ALIAS), "column");
     BOOST_CHECK_EQUAL(getRendered(valueExpr, QueryTemplate::DEFINE_VALUE_ALIAS_USE_TABLE_ALIAS), "column");

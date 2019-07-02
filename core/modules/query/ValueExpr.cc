@@ -148,6 +148,12 @@ ValueExprPtr ValueExpr::newColumnExpr(std::string const& db, std::string const& 
 }
 
 
+ValueExprPtr ValueExpr::newColumnExpr(std::string const& column) {
+    return newSimple(
+        query::ValueFactor::newColumnRefFactor(
+            std::make_shared<query::ColumnRef>(column)));
+}
+
 ////////////////////////////////////////////////////////////////////////
 // ValueExpr
 ////////////////////////////////////////////////////////////////////////

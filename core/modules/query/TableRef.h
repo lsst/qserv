@@ -72,6 +72,8 @@ public:
     typedef std::shared_ptr<TableRef> Ptr;
     typedef std::shared_ptr<TableRef const> ConstPtr;
 
+    TableRef();
+
     TableRef(std::string const& db, std::string const& table, std::string const& alias);
 
     ~TableRef() = default;

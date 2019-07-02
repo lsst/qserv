@@ -191,8 +191,20 @@ public:
     friend std::ostream& operator<<(std::ostream& os, ValueExpr const* ve);
 
     static ValueExprPtr newSimple(std::shared_ptr<ValueFactor> vt);
+
+    /**
+     * @brief Make a new ValueExpr object that contains a ColumnRef with the specified values for db, table,
+     *        table alias, and column.
+     */
     static ValueExprPtr newColumnExpr(std::string const& db, std::string const& table,
                                       std::string const& alias, std::string const& column);
+
+    /**
+     * @brief Make a new ValueExpr object that contains a ColumnRef with just the specified column name value
+     *
+     * The TableRef values (db, table, table alias) will be empty strings.
+     */
+    static ValueExprPtr newColumnExpr(std::string const& column);
 
     class render;
     friend class render;

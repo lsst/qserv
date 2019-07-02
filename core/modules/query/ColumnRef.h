@@ -57,6 +57,7 @@ public:
     typedef std::shared_ptr<ColumnRef>  Ptr;
     typedef std::vector<Ptr> Vector;
 
+    ColumnRef(std::string column_);
     ColumnRef(std::string db_, std::string table_, std::string column_);
     ColumnRef(std::string db_, std::string table_, std::string tableAlias_, std::string column_);
     ColumnRef(std::shared_ptr<TableRef> const& table, std::string const& column);

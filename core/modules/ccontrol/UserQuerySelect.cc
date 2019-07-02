@@ -220,7 +220,7 @@ std::string UserQuerySelect::getResultQuery() const {
             query::SelectStmt starStmt(useSelectList, _qSession->getStmt().getFromList().clone());
             auto schema = _infileMerger->getSchemaForQueryResults(starStmt, errMsg);
             for (auto const& column : schema.columns) {
-                selectList->addValueExpr(query::ValueExpr::newColumnExpr("", "", "", column.name));
+                selectList->addValueExpr(query::ValueExpr::newColumnExpr(column.name));
             }
         } else {
             // Add a column that describes the top-level ValueExpr.
@@ -230,10 +230,10 @@ std::string UserQuerySelect::getResultQuery() const {
             // Otherwise, use the alias.
             std::shared_ptr<query::ValueExpr> newValueExpr;
             if (valueExpr->isColumnRef() && not valueExpr->getAliasIsUserDefined()) {
-                newValueExpr = query::ValueExpr::newColumnExpr("", "", "", valueExpr->getAlias());
+                newValueExpr = query::ValueExpr::newColumnExpr(valueExpr->getAlias());
                 newValueExpr->setAlias(valueExpr->getColumnRef()->getColumn());
             } else {
-                newValueExpr = query::ValueExpr::newColumnExpr("", "", "", "`" + valueExpr->getAlias() + "`");
+                newValueExpr = query::ValueExpr::newColumnExpr("`" + valueExpr->getAlias() + "`");
                 newValueExpr->setAlias(valueExpr->getAlias());
             }
             selectList->addValueExpr(newValueExpr);

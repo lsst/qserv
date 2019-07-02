@@ -75,6 +75,11 @@ std::ostream& operator<<(std::ostream& os, ColumnRef const* cr) {
 }
 
 
+ColumnRef::ColumnRef(std::string column_)
+    : _tableRef(std::make_shared<TableRef>()), _column(column_) {
+}
+
+
 ColumnRef::ColumnRef(std::string db_, std::string table_, std::string column_)
     : _tableRef(std::make_shared<TableRef>(db_, table_, "")), _column(column_) {
 }

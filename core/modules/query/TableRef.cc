@@ -64,6 +64,10 @@ namespace qserv {
 namespace query {
 
 
+TableRef::TableRef()
+{}
+
+
 TableRef::TableRef(std::string const& db, std::string const& table, std::string const& alias)
         : _db(db), _table(table), _alias(alias) {
 }
