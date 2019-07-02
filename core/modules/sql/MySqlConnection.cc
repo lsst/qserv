@@ -391,7 +391,6 @@ bool MySqlConnection::listTables(std::vector<std::string>& v,
 }
 
 
-
 std::vector<std::string> MySqlConnection::listColumns(std::string const& dbName,
                                                       std::string const& tableName) {
     SqlErrorObject errObj;
@@ -399,9 +398,19 @@ std::vector<std::string> MySqlConnection::listColumns(std::string const& dbName,
         throw SqlException(ERR_LOC, "connectToDb in listColumns query failed.");
     }
     if (!dbExists(dbName, errObj)) {
+        if (errObj.isSet()) {
+            // If the error object is set then a failure occured running the query.
+            throw SqlException(ERR_LOC, errObj.errMsg());
+        }
+        // If the error object was not set and the fucntion returned false then the database does not exit.
         throw NoSuchDb(ERR_LOC, dbName);
     }
     if (!tableExists(tableName, errObj, dbName)) {
+        if (errObj.isSet()) {
+            // If the error object is set then a failure occured running the query.
+            throw SqlException(ERR_LOC, errObj.errMsg());
+        }
+        // If the error object was not set and the fucntion returned false then the table does not exit.
         throw NoSuchTable(ERR_LOC, dbName, tableName);
     }
     std::string sql("SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS "
