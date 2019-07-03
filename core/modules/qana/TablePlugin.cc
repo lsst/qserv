@@ -129,12 +129,12 @@ void matchTableRefs(lsst::qserv::query::QueryContext& context,
             if (nullptr != tableRefMatch) {
                 valueFactor->setStar(tableRefMatch);
             }
-            continue;
+        } else {
+            // Otherwise, get all the contained column refs and handle them.
+            std::vector<std::shared_ptr<lsst::qserv::query::ColumnRef>> columnRefs;
+            valueExpr->findColumnRefs(columnRefs);
+            matchTableRefs(context, columnRefs, matchIsRequired);
         }
-        // Otherwise, get all the contained column refs and handle them.
-        std::vector<std::shared_ptr<lsst::qserv::query::ColumnRef>> columnRefs;
-        valueExpr->findColumnRefs(columnRefs);
-        matchTableRefs(context, columnRefs, matchIsRequired);
     }
 }
 
