@@ -36,6 +36,9 @@
 #include <iostream>
 #include <tuple>
 
+// Third-party headers
+#include "boost/lexical_cast.hpp"
+
 // LSST headers
 #include "lsst/log/Log.h"
 
@@ -211,9 +214,7 @@ bool ColumnRef::isComplete() const {
 std::string ColumnRef::sqlFragment() const {
     QueryTemplate qt;
     renderTo(qt);
-    std::ostringstream os;
-    os << qt;
-    return os.str();
+    return boost::lexical_cast<std::string>(qt);
 }
 
 

@@ -37,6 +37,9 @@
 #include <sstream>
 #include <stdexcept>
 
+// Third-party headers
+#include "boost/lexical_cast.hpp"
+
 // LSST headers
 #include "lsst/log/Log.h"
 
@@ -226,9 +229,7 @@ std::string TableRef::sqlFragment() const {
     QueryTemplate qt;
     TableRef::render render(qt);
     render.applyToQT(*this);
-    std::ostringstream os;
-    os << qt;
-    return os.str();
+    return boost::lexical_cast<std::string>(qt);
 }
 
 
