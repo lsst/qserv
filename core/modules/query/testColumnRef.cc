@@ -118,10 +118,6 @@ static const std::vector<TestColumns> COLUMN_REF_MATCHES = {
     TestColumns("foo", "bar", "baz",    "foo", "bar", "bar", false), // mismatch: column
     TestColumns("foo", "bar", "baz",    "foo", "foo", "baz", false), // mismatch: table
     TestColumns("foo", "bar", "baz",    "bar", "bar", "baz", false), // mismatch: db
-    TestColumns("foo", "",    "baz",    "foo", "bar", "baz", false), // mismatch: db populated but table not
-    TestColumns("foo", "bar", "baz",    "foo", "",    "baz", false), // mismatch: db populated but table not
-    TestColumns("foo", "bar", "",       "foo", "bar", "baz", false), // mismatch: column not populated
-    TestColumns("foo", "bar", "baz",    "foo", "bar", "",    false), // mismatch: column not populated
     TestColumns("foo", "bar", "baz",    "",    "",    "baz", false), // mismatch: can't match db or table
     TestColumns("foo", "bar", "baz",    "",    "bar", "baz", false), // mismatch: can't match db
     TestColumns("",    "",    "baz",    "foo", "bar", "baz", true),  // match
@@ -146,20 +142,12 @@ static const std::vector<TestColumns> COLUMN_REF_MATCHES = {
     TestColumns("",    "foo", "a", "bar",    "",    "foo", "b", "bar", false),  // mismatch: alias
     TestColumns("",    "foo", "" , "bar",    "",    "foo", "" , "foo", false), // mismatch: column
     TestColumns("",    "foo", "a", "bar",    "",    "foo", "b", "foo", false), // mismatch: column
-    TestColumns("foo", "",    "" , "baz",    "foo", "bar", "" , "baz", false), // mismatch: db populated but table not
-    TestColumns("foo", "",    "a", "baz",    "foo", "bar", "b", "baz", false), // mismatch: db populated but table not
-    TestColumns("foo", "bar", "" , "",       "foo", "bar", "" , "baz", false), // mismatch: column not populated
-    TestColumns("foo", "bar", "a", "",       "foo", "bar", "b", "baz", false), // mismatch: column not populated
     TestColumns("foo", "bar", "" , "baz",    "",    "",    "" , "baz", false), // mismatch: can't match db or table
     TestColumns("foo", "bar", "a", "baz",    "",    "",    "b", "baz", false), // mismatch: can't match db or table
     TestColumns("foo", "bar", "" , "baz",    "",    "bar", "" , "baz", false), // mismatch: can't match db
     TestColumns("foo", "bar", "a", "baz",    "",    "bar", "b", "baz", false), // mismatch: can't match db
     TestColumns("foo", "bar", "" , "baz",    "bar", "bar", "" , "baz", false), // mismatch: db
     TestColumns("foo", "bar", "a", "baz",    "bar", "bar", "b", "baz", false), // mismatch: db
-    TestColumns("foo", "bar", "" , "baz",    "foo", "",    "" , "baz", false), // mismatch: db populated but table not
-    TestColumns("foo", "bar", "a", "baz",    "foo", "",    "b", "baz", false), // mismatch: db populated but table not
-    TestColumns("foo", "bar", "" , "baz",    "foo", "bar", "" , "",    false), // mismatch: column not populated
-    TestColumns("foo", "bar", "a", "baz",    "foo", "bar", "b", "",    false), // mismatch: column not populated
     TestColumns("foo", "bar", "" , "baz",    "foo", "bar", "" , "bar", false), // mismatch: column
     TestColumns("foo", "bar", "a", "baz",    "foo", "bar", "b", "bar", false), // mismatch: column
     TestColumns("foo", "bar", "" , "baz",    "foo", "bar", "" , "baz", true),  // match
@@ -204,5 +192,33 @@ BOOST_AUTO_TEST_CASE(ColumnRefComplete) {
         query::ColumnRef("db", "table", "alias", "column").isComplete(),
         true);
 }
+
+
+BOOST_AUTO_TEST_CASE(ctorTableWithEmptyColumn) {
+    BOOST_REQUIRE_THROW(query::ColumnRef tableRef("", "table", ""), std::logic_error);
+}
+
+
+BOOST_AUTO_TEST_CASE(ctorDbWithEmptyTableWithColumn) {
+    BOOST_REQUIRE_THROW(query::ColumnRef tableRef("db", "", "column"), std::logic_error);
+}
+
+
+BOOST_AUTO_TEST_CASE(ctorDbWithTableWithEmptyColumn) {
+    BOOST_REQUIRE_THROW(query::ColumnRef tableRef("db", "table", ""), std::logic_error);
+}
+
+
+BOOST_AUTO_TEST_CASE(setEmptyTableWithDb) {
+    query::ColumnRef columnRef("db", "table", "column");
+    BOOST_REQUIRE_THROW(columnRef.setTable(""), std::logic_error);
+}
+
+
+BOOST_AUTO_TEST_CASE(setEmptyColumnWithTable) {
+    query::ColumnRef columnRef("db", "table", "colum");
+    BOOST_REQUIRE_THROW(columnRef.setColumn(""), std::logic_error);
+}
+
 
 BOOST_AUTO_TEST_SUITE_END()

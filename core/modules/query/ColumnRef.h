@@ -53,7 +53,12 @@ namespace qserv {
 namespace query {
 
 
-/// ColumnRef is an abstract value class holding a parsed single _column ref
+/// ColumnRef is an abstract value class holding a parsed single _column ref.
+/// Note when setting database, table, and column:
+// 1. if db is populated, table must be also.
+// 2. if table is populated, column must be also.
+// Attempting to set db when table is empty, or attempting to make column empty when table is populated will
+// result in a logic_error being thrown.
 class ColumnRef {
 public:
     typedef std::shared_ptr<ColumnRef>  Ptr;
@@ -81,7 +86,6 @@ public:
     void setTable(std::string const& table);
     void setTable(std::shared_ptr<TableRef> const& tableRef);
     void setColumn(std::string const& column);
-    void set(std::string const& db, std::string const& table, std::string const& column);
 
     // return true if only the column parameter is set; the db, table, and table alias are empty.
     bool isColumnOnly() const;
@@ -96,9 +100,6 @@ public:
     // Only considers populated member variables, e.g. if the database is not populated in this or in rhs it
     // is ignored during comparison, except if e.g. the database is populated but the table is not (or the
     // table is but the column is not) this will return false.
-    // This function requires that the the column field be populated, and requires that less significant
-    // fields be populated if more significant fields are populated, e.g. if the database is populated, the
-    // table (and the column) must be populated.
     bool isSubsetOf(const ColumnRef::Ptr & rhs) const;
     bool isSubsetOf(ColumnRef const& rhs) const;
 
@@ -114,6 +115,11 @@ public:
     std::string sqlFragment() const;
 
 private:
+    // make sure the current value of the tableRef and column meet stated requirements:
+    // 1. if db is populated, table must be also.
+    // 2. if table is populated, column must be also.
+    void _verify() const;
+
     // The TableRef in a ColumnRef should always be "simple" (have no joins). Right now this is enforced
     // simply because the only way a TableRef is set here is in the implementation of this class.
     std::shared_ptr<TableRef> _tableRef;

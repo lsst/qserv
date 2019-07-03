@@ -80,33 +80,39 @@ std::ostream& operator<<(std::ostream& os, ColumnRef const* cr) {
 
 ColumnRef::ColumnRef(std::string column_)
     : _tableRef(std::make_shared<TableRef>()), _column(column_) {
+    _verify();
 }
 
 
 ColumnRef::ColumnRef(std::string db_, std::string table_, std::string column_)
-    : _tableRef(std::make_shared<TableRef>(db_, table_, "")), _column(column_) {
+        : _tableRef(std::make_shared<TableRef>(db_, table_, "")), _column(column_) {
+    _verify();
 }
 
 
 ColumnRef::ColumnRef(std::string db_, std::string table_, std::string tableAlias_, std::string column_)
     : _tableRef(std::make_shared<TableRef>(db_, table_, tableAlias_)), _column(column_) {
+    _verify();
 }
 
 
 ColumnRef::ColumnRef(std::shared_ptr<TableRef> const& table, std::string const& column)
     : _tableRef(table), _column(column) {
+    _verify();
 }
 
 
 void ColumnRef::setDb(std::string const& db) {
     LOGS(_log, LOG_LVL_TRACE, *this << "; set db:" << db);
     _tableRef->setDb(db);
+    _verify();
 }
 
 
 void ColumnRef::setTable(std::string const& table) {
     LOGS(_log, LOG_LVL_TRACE, *this << "; set table:" << table);
     _tableRef->setTable(table);
+    _verify();
 }
 
 
@@ -116,19 +122,14 @@ void ColumnRef::setTable(std::shared_ptr<TableRef> const& tableRef) {
         throw std::logic_error("The TableRef used by a ColumnRef must not have any joins.");
     }
     _tableRef = tableRef;
+    _verify();
 }
 
 
 void ColumnRef::setColumn(std::string const& column) {
     LOGS(_log, LOG_LVL_TRACE, *this << "; set column:" << column);
     _column = column;
-}
-
-
-void ColumnRef::set(std::string const& db, std::string const& table, std::string const& column) {
-    setDb(db);
-    setTable(table);
-    setColumn(column);
+    _verify();
 }
 
 
@@ -155,7 +156,7 @@ bool ColumnRef::isSubsetOf(ColumnRef const& rhs) const {
         return false;
     }
 
-    // the columns can not be empty
+    // the columns of a subset can not be empty
     if (_column.empty() || rhs._column.empty()) {
         return false;
     }
@@ -196,6 +197,15 @@ bool ColumnRef::operator==(const ColumnRef& rhs) const {
 bool ColumnRef::operator<(const ColumnRef& rhs) const {
     return std::tie(*_tableRef, _column) < std::tie(*rhs._tableRef, rhs._column);
 }
+
+
+void ColumnRef::_verify() const {
+    // table verification is performed when setting the db & table
+    if (_tableRef->hasTable() && _column.empty()) {
+        throw std::logic_error("Column can not be empty when table is populated.");
+    }
+}
+
 
 
 }}} // namespace lsst::qserv::query

@@ -183,4 +183,21 @@ BOOST_AUTO_TEST_CASE(renderTableRef) {
 }
 
 
+BOOST_AUTO_TEST_CASE(setDbWithoutTable) {
+    TableRef tableRef;
+    BOOST_REQUIRE_THROW(tableRef.setDb("db"), std::logic_error);
+}
+
+
+BOOST_AUTO_TEST_CASE(setEmptyTableWithDb) {
+    TableRef tableRef("db", "table", "");
+    BOOST_REQUIRE_THROW(tableRef.setTable(""), std::logic_error);
+}
+
+
+BOOST_AUTO_TEST_CASE(setEmptyTableInCtorWithDb) {
+    BOOST_REQUIRE_THROW(TableRef tableRef("db", "", ""), std::logic_error);
+}
+
+
 BOOST_AUTO_TEST_SUITE_END()

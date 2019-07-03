@@ -162,7 +162,10 @@ public:
     TableRef::Ptr clone() const;
 
     class render;
+
 private:
+    void _verify() const;
+
     std::string _db;
     std::string _table;
     std::string _alias;

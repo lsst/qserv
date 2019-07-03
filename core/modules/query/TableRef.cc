@@ -73,6 +73,7 @@ TableRef::TableRef()
 
 TableRef::TableRef(std::string const& db, std::string const& table, std::string const& alias)
         : _db(db), _table(table), _alias(alias) {
+    _verify();
 }
 
 
@@ -85,15 +86,14 @@ void TableRef::setAlias(std::string const& alias) {
 void TableRef::setDb(std::string const& db) {
     LOGS(_log, LOG_LVL_TRACE, *this << "; set db:" << db);
     _db = db;
+    _verify();
 }
 
 
 void TableRef::setTable(std::string const& table) {
     LOGS(_log, LOG_LVL_TRACE, *this << "; set table:" << table);
-    if (table.empty()) {
-        throw std::logic_error("TableRef::setTable - table can not be empty");
-    }
     _table = table;
+    _verify();
 }
 
 
@@ -300,5 +300,11 @@ bool TableRef::operator==(TableRef const& rhs) const {
     return util::vectorPtrCompare<JoinRef>(_joinRefs, rhs._joinRefs);
 }
 
+
+void TableRef::_verify() const {
+    if (_table.empty() && hasDb()) {
+        throw std::logic_error("Table can not be empty when database is populated.");
+    }
+}
 
 }}} // Namespace lsst::qserv::query
