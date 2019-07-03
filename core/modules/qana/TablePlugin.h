@@ -27,6 +27,14 @@
 #include "qana/QueryPlugin.h"
 
 
+// Forward declarations
+namespace lsst {
+namespace qserv {
+namespace query {
+    class TableRef;
+}}}
+
+
 namespace lsst {
 namespace qserv {
 namespace qana {
@@ -52,6 +60,8 @@ public:
     std::string name() const override { return "TablePlugin"; }
 
 private:
+    void _setAlias(std::shared_ptr<query::TableRef> const& tableRef, query::QueryContext& context);
+
     int _rewriteTables(SelectStmtPtrVector& outList,
                        query::SelectStmt& in,
                        query::QueryContext& context,

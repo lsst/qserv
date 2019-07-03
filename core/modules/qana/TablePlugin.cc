@@ -194,30 +194,8 @@ TablePlugin::applyLogical(query::SelectStmt& stmt,
         tableRef->verifyPopulated(context.defaultDb);
     }
 
-    std::function<void(query::TableRef::Ptr)> aliasSetter = [&] (query::TableRef::Ptr tableRef) {
-        if (nullptr == tableRef) {
-            return;
-        }
-        if (not tableRef->hasAlias()) {
-            tableRef->setAlias(tableRef->hasDb() ?
-                                    tableRef->getDb() + "." + tableRef->getTable() :
-                                    tableRef->getTable());
-        }
-        LOGS(_log, LOG_LVL_DEBUG, "adding used table ref:" << *tableRef);
-        if (not context.addUsedTableRef(tableRef)) {
-            throw std::logic_error("could not set alias for " + tableRef->sqlFragment());
-        }
-        // If the TableRef being added does have JoinRefs, add those to the list of used TableRefs.
-        for (auto&& joinRef : tableRef->getJoins()) {
-            aliasSetter(joinRef->getRight());
-            if (joinRef->getSpec() != nullptr && joinRef->getSpec()->getOn() != nullptr) {
-                std::vector<std::shared_ptr<query::ColumnRef>> columnRefs;
-                joinRef->getSpec()->getOn()->findColumnRefs(columnRefs);
-                matchTableRefs(context, columnRefs, true);
-            }
-        }
-    };
-    std::for_each(fromListTableRefs.begin(), fromListTableRefs.end(), aliasSetter);
+    std::for_each(fromListTableRefs.begin(), fromListTableRefs.end(),
+        [&](query::TableRef::Ptr const& tableRef) { _setAlias(tableRef, context); });
 
     // update the dominant db in the context ("dominant" is not the same as the default db)
     if (fromListTableRefs.size() > 0) {
@@ -287,5 +265,30 @@ TablePlugin::applyPhysical(QueryPlugin::Plan& p,
     p.dominantDb = _dominantDb;
     p.stmtParallel.swap(newList);
 }
+
+
+void TablePlugin::_setAlias(std::shared_ptr<query::TableRef> const& tableRef, query::QueryContext& context) {
+    if (nullptr == tableRef) {
+        return;
+    }
+    if (not tableRef->hasAlias()) {
+        tableRef->setAlias(tableRef->hasDb() ?
+                           tableRef->getDb() + "." + tableRef->getTable() :
+                           tableRef->getTable());
+    }
+    LOGS(_log, LOG_LVL_DEBUG, "adding used table ref:" << *tableRef);
+    if (not context.addUsedTableRef(tableRef)) {
+        throw std::logic_error("could not set alias for " + tableRef->sqlFragment());
+    }
+    // If the TableRef being added does have JoinRefs, add those to the list of used TableRefs.
+    for (auto&& joinRef : tableRef->getJoins()) {
+        _setAlias(joinRef->getRight(), context);
+        if (joinRef->getSpec() != nullptr && joinRef->getSpec()->getOn() != nullptr) {
+            std::vector<std::shared_ptr<query::ColumnRef>> columnRefs;
+            joinRef->getSpec()->getOn()->findColumnRefs(columnRefs);
+            matchTableRefs(context, columnRefs, true);
+        }
+    }
+};
 
 }}} // namespace lsst::qserv::qana
