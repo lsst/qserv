@@ -165,7 +165,7 @@ class CommandParser(object):
             'UPDATE': self._parseUpdate
         }
         config = cssConfig.configFromUrl(connInfo)
-        self._css = css.CssAccess.createFromConfig(config, "", read_only)
+        self._css = css.CssAccess.createFromConfig(config, read_only)
         self._supportedCommands = """
   Supported commands:
     CREATE DATABASE <dbName> <configFile>;

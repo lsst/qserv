@@ -29,8 +29,8 @@
 #include "lsst/log/Log.h"
 
 // Qserv headers
-#include "css/CssAccess.h"
-#include "css/EmptyChunks.h"
+#include "qmeta/QMeta.h"
+#include "qmeta/EmptyChunks.h"
 #include "qdisp/MessageStore.h"
 #include "sql/SqlConnection.h"
 #include "sql/SqlErrorObject.h"
@@ -44,10 +44,10 @@ namespace qserv {
 namespace ccontrol {
 
 // Constructor
-UserQueryFlushChunksCache::UserQueryFlushChunksCache(std::shared_ptr<css::CssAccess> const& css,
+UserQueryFlushChunksCache::UserQueryFlushChunksCache(std::shared_ptr<qmeta::QMeta> const& qmeta,
                                                      std::string const& dbName,
                                                      sql::SqlConnection* resultDbConn)
-    : _css(css), _dbName(dbName), _resultDbConn(resultDbConn),
+    : _qmeta(qmeta), _dbName(dbName), _resultDbConn(resultDbConn),
       _qState(UNKNOWN), _messageStore(std::make_shared<qdisp::MessageStore>()) {
 }
 
@@ -65,7 +65,7 @@ void UserQueryFlushChunksCache::submit() {
     LOGS(_log, LOG_LVL_INFO, "Flushing empty chunks for db: " << _dbName);
 
     // reset empty chunk cache , this does not throw
-    _css->getEmptyChunks().clearCache(_dbName);
+    _qmeta->emptyChunksClearCache(_dbName);
 
     _qState = SUCCESS;
 }

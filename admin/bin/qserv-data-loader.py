@@ -227,7 +227,7 @@ class Loader(object):
         if self.args.cssConn:
             logger.debug('connecting to css: %s', self.args.cssConn)
             config = cssConfig.configFromUrl(self.args.cssConn)
-            css_inst = css.CssAccess.createFromConfig(config, "")
+            css_inst = css.CssAccess.createFromConfig(config)
 
         # connect to all worker servers
         workerWmgrMap = {}

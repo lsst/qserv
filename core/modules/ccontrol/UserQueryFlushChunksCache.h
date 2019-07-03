@@ -33,8 +33,8 @@
 // Forward decl
 namespace lsst {
 namespace qserv {
-namespace css {
-class CssAccess;
+namespace qmeta {
+class QMeta;
 }
 namespace sql {
 class SqlConnection;
@@ -56,11 +56,11 @@ class UserQueryFlushChunksCache : public UserQuery {
 public:
 
     /**
-     *  @param css:           CSS interface
+     *  @param qmeta:         QMeta interface
      *  @param dbName:        Name of the database where table is
      *  @param resultDbConn:  Connection to results database
      */
-    UserQueryFlushChunksCache(std::shared_ptr<css::CssAccess> const& css,
+    UserQueryFlushChunksCache(std::shared_ptr<qmeta::QMeta> const& qmeta,
                               std::string const& dbName,
                               sql::SqlConnection* resultDbConn);
 
@@ -94,7 +94,7 @@ protected:
 
 private:
 
-    std::shared_ptr<css::CssAccess> const _css;
+    std::shared_ptr<qmeta::QMeta> _qmeta;
     std::string const _dbName;
     sql::SqlConnection* _resultDbConn;
     QueryState _qState;

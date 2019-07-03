@@ -41,7 +41,7 @@ def _makeCss(data=None):
 
     # make an instance
     data = data or ""
-    instance = css.CssAccess.createFromData(data, "")
+    instance = css.CssAccess.createFromData(data)
 
     return instance
 

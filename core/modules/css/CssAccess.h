@@ -97,12 +97,10 @@ public:
      *  Neither keys nor values can contain newline or TAB.
      *
      *  @param data:  initial data to load into KV store
-     *  @param emptyChunkPath:  path to empty chunk list file
      *  @param readOnly:  if true then KV storage will be set read-only
      *                    after loading initial data.
      */
     static std::shared_ptr<CssAccess> createFromData(std::string const& data,
-                                                     std::string const& emptyChunkPath,
                                                      bool readOnly = false);
 
     /**
@@ -123,7 +121,6 @@ public:
      *       'database': database name
      *
      *  @param config:  configuration map
-     *  @param emptyChunkPath:  path to empty chunk list file
      *  @param readOnly:  if true then KV storage will be set read-only
      *                    after loading initial data.
      *
@@ -131,7 +128,6 @@ public:
      * @throws CssError: for all CSS errors
      */
     static std::shared_ptr<CssAccess> createFromConfig(std::map<std::string, std::string> const& config,
-                                                       std::string const& emptyChunkPath,
                                                        bool readOnly = false);
 
     /**
@@ -484,11 +480,6 @@ public:
                                                       std::string const& tableName);
 
     /**
-     * @brief Access empty chunk list.
-     */
-    EmptyChunks const& getEmptyChunks() const { return *_emptyChunks; }
-
-    /**
      *  Return underlying KvInterface instance.
      *
      *  This may be useful for testing, not much for regular clients.
@@ -499,7 +490,6 @@ protected:
 
     // Construct from KvInterface instance and empty chunk list instance
     CssAccess(std::shared_ptr<KvInterface> const& kvInterface,
-              std::shared_ptr<EmptyChunks> const& emptyChunks,
               std::string const& prefix = std::string());
 
     // Methods below are protected only for testing purposes so that one can
@@ -553,7 +543,6 @@ private:
 private:
 
     std::shared_ptr<KvInterface> _kvI;
-    std::shared_ptr<EmptyChunks> _emptyChunks;
     std::string _prefix;    // optional prefix, for isolating tests from production
     mutable bool _versionOk;   // True if version is checked (and is OK)
 };

@@ -47,7 +47,6 @@ namespace {
 int cfgNum = 0;
 std::string defaultDb = "LSST";
 std::string mapBuffer(testKvMap);
-std::string emptyChunkPath(".");
 
 }
 
@@ -57,12 +56,11 @@ namespace qserv {
 namespace tests {
 
 struct QueryAnaFixture {
-
-        // To learn how to dump the map, see qserv/core/css/KvInterfaceImplMem.cc
-        // Use admin/examples/testMap_generateMap
+    // To learn how to dump the map, see qserv/core/css/KvInterfaceImplMem.cc
+    // Use admin/examples/testMap_generateMap
 
     QueryAnaFixture()
-        : qsTest(cfgNum, css::CssAccess::createFromData(mapBuffer, emptyChunkPath), defaultDb,
+        : qsTest(cfgNum, css::CssAccess::createFromData(mapBuffer), defaultDb,
                  sql::SqlConfig(sql::SqlConfig::MOCK)) {
     };
 

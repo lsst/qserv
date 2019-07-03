@@ -133,9 +133,9 @@ PYBIND11_MODULE(cssLib, mod) {
 
     py::class_<CssAccess, std::shared_ptr<CssAccess>>(mod, "CssAccess")
         .def_static("createFromData", &CssAccess::createFromData,
-                "data"_a, "emptyChunkPath"_a, "readOnly"_a = false)
+                "data"_a, "readOnly"_a = false)
         .def_static("createFromConfig", &CssAccess::createFromConfig,
-                "config"_a, "emptyChunkPath"_a, "readOnly"_a = false)
+                "config"_a, "readOnly"_a = false)
         .def_static("cssVersion", &CssAccess::cssVersion)
         .def("getDbNames", &CssAccess::getDbNames)
         .def("getDbStatus", &CssAccess::getDbStatus)

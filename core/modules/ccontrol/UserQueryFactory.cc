@@ -185,6 +185,7 @@ UserQueryFactory::newUserQuery(std::string const& aQuery,
 
         // Currently using the database for results to get schema information.
         auto qs = std::make_shared<qproc::QuerySession>(_impl->css,
+                                                        _impl->queryMetadata,
                                                         _impl->mysqlResultConfig,
                                                         defaultDb);
         try {
@@ -242,7 +243,7 @@ UserQueryFactory::newUserQuery(std::string const& aQuery,
         LOGS(_log, LOG_LVL_DEBUG, "make UserQueryDrop: db=" << dbName);
         return uq;
     } else if (UserQueryType::isFlushChunksCache(query, dbName)) {
-        auto uq = std::make_shared<UserQueryFlushChunksCache>(_impl->css, dbName,
+        auto uq = std::make_shared<UserQueryFlushChunksCache>(_impl->queryMetadata, dbName,
                                                               _impl->resultDbConn.get());
         LOGS(_log, LOG_LVL_DEBUG, "make UserQueryFlushChunksCache: " << dbName);
         return uq;
@@ -278,7 +279,8 @@ UserQueryFactory::Impl::Impl(czar::CzarConfig const& czarConfig)
     queryStatsData = std::make_shared<qmeta::QStatusMysql>(czarConfig.getMySqlQStatusDataConfig());
 
     // create CssAccess instance
-    css = css::CssAccess::createFromConfig(czarConfig.getCssConfigMap(), czarConfig.getEmptyChunkPath());
+    // &&& css = css::CssAccess::createFromConfig(czarConfig.getCssConfigMap(), czarConfig.getEmptyChunkPath());
+    css = css::CssAccess::createFromConfig(czarConfig.getCssConfigMap());
 }
 
 }}} // lsst::qserv::ccontrol

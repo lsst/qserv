@@ -22,7 +22,7 @@
  */
 
 // Class header
-#include "css/EmptyChunks.h"
+#include "qmeta/EmptyChunks.h"
 
 // System headers
 #include <algorithm>
@@ -37,69 +37,48 @@
 // Qserv headers
 #include "global/ConfigError.h"
 #include "global/stringUtil.h"
+#include "qmeta/Exceptions.h"
+#include "qmeta/QMeta.h"
 
 using lsst::qserv::ConfigError;
 using lsst::qserv::IntSet;
+
+using namespace std;
 
 namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.css.EmptyChunks");
 
-std::string
-makeFilename(std::string const& db) {
+string makeFilename(string const& db) {
     return "empty_" + lsst::qserv::sanitizeName(db) + ".txt";
 }
 
-void
-populate(std::string const& path,
-         std::string const& fallbackFile,
-         IntSet& s,
-         std::string const& db) {
-    std::string const best = path + "/" + makeFilename(db);
-    std::string fileName = best;
-    std::ifstream rawStream(best.c_str());
-    if (!rawStream.good()) { // On error, try using default filename
-        rawStream.close();
-        rawStream.open(fallbackFile.c_str());
-        fileName = fallbackFile;
-    }
-    LOGS(_log, LOG_LVL_DEBUG, "Reading empty chunks for db " << db << " from file " << fileName);
-    if (!rawStream.good()) {
-        throw ConfigError("No such empty chunks file: " + best
-                          + " or " + fallbackFile);
-    }
-    std::istream_iterator<int> chunkStream(rawStream);
-    std::istream_iterator<int> eos;
-    std::copy(chunkStream, eos, std::insert_iterator<IntSet>(s, s.begin()));
-}
 } // anonymous namespace
 
 namespace lsst {
 namespace qserv {
-namespace css {
+namespace qmeta {
 
-std::shared_ptr<IntSet const>
-EmptyChunks::getEmpty(std::string const& db) const {
-    std::lock_guard<std::mutex> lock(_setsMutex);
+shared_ptr<IntSet const> EmptyChunks::getEmpty(string const& db) {
+    LOGS(_log, LOG_LVL_WARN, "&&& getEmpty");
+    lock_guard<mutex> lock(_setsMutex);
     IntSetMap::const_iterator i = _sets.find(db);
     if (i != _sets.end()) {
         IntSetConstPtr readOnly = i->second;
         return readOnly;
     }
-    IntSetPtr newSet = std::make_shared<IntSet>();
+    IntSetPtr newSet = make_shared<IntSet>();
+    *newSet = _populate(db);
     _sets.insert(IntSetMap::value_type(db, newSet));
-    populate(_path, _fallbackFile, *newSet, db); // Populate reference
     return IntSetConstPtr(newSet);
 }
 
-bool
-EmptyChunks::isEmpty(std::string const& db, int chunk) const {
+bool EmptyChunks::isEmpty(string const& db, int chunk) {
     IntSetConstPtr s = getEmpty(db);
     return s->end() != s->find(chunk);
 }
 
-void
-EmptyChunks::clearCache(std::string const& db) const {
+void EmptyChunks::clearCache(string const& db) const {
     if (db.empty()) {
         LOGS(_log, LOG_LVL_DEBUG, "Clearing empty chunks cache for all databases");
         _sets.clear();
@@ -109,4 +88,41 @@ EmptyChunks::clearCache(std::string const& db) const {
     }
 }
 
+
+IntSet EmptyChunks::_populate(string const& db) {
+    // Try to open database table
+    LOGS(_log, LOG_LVL_WARN, "&&& _populate " << db);
+    IntSet s;
+    try {
+        s = _qmeta.getEmptyChunksFromDb(db);
+        return s;
+    } catch (QMetaError const& e) {
+        LOGS(_log, LOG_LVL_WARN, " failed to read empty chunks from table. Trying file. " +
+                                 db + " " + e.what());
+    }
+
+    // Since the table wasn't found, use the empty chunks file
+    // TODO: Once everything is using the table, this should be deleted and the error above should be thrown.
+    string const best = _path + "/" + makeFilename(db);
+    LOGS(_log, LOG_LVL_WARN, "&&& Trying path:" << _path << " emptyChunk file:" << best);
+    string fileName = best;
+    ifstream rawStream(best.c_str());
+    if (!rawStream.good()) { // On error, try using default filename
+        rawStream.close();
+        rawStream.open(_fallbackFile.c_str());
+        fileName = _fallbackFile;
+    }
+    LOGS(_log, LOG_LVL_DEBUG, "Reading empty chunks for db " << db << " from file " << fileName);
+    if (!rawStream.good()) {
+        string eMsg(string("No such empty chunks file: ") + best + " or " + _fallbackFile);
+        LOGS(_log, LOG_LVL_ERROR, eMsg);
+        throw ConfigError(ERR_LOC, eMsg);
+    }
+    istream_iterator<int> chunkStream(rawStream);
+    istream_iterator<int> eos;
+    copy(chunkStream, eos, insert_iterator<IntSet>(s, s.begin()));
+    return s;
+}
+
 }}} // namespace lsst::qserv::css
+

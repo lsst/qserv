@@ -30,6 +30,8 @@
 #include <vector>
 
 // Qserv headers
+#include "global/intTypes.h"
+#include "qmeta/EmptyChunks.h"
 #include "qmeta/QInfo.h"
 #include "qmeta/QStats.h"
 #include "qmeta/types.h"
@@ -285,10 +287,28 @@ public:
      */
     virtual void saveResultQuery(QueryId queryId, std::string const& query) = 0;
 
+    /**
+     * @return a set of empty chunks for database 'dbName'
+     * @throws QMetaError if the table cannot be opened.
+     */
+    virtual std::set<int> getEmptyChunksFromDb(std::string const& dbName) = 0;
+
+
+    virtual std::shared_ptr<IntSet const> getEmptyChunks(std::string const& dbName) {
+        return _emptyChunks.getEmpty(dbName);
+    }
+
+
+    virtual void emptyChunksClearCache(std::string const& dbName=std::string()) {
+        _emptyChunks.clearCache(dbName);
+    }
+
 protected:
 
     // Default constructor
-    QMeta() {}
+    QMeta() : _emptyChunks(*this) {}
+
+    EmptyChunks _emptyChunks;
 
 };
 

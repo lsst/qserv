@@ -48,7 +48,6 @@
 // Qserv headers
 #include "css/CssAccess.h"
 #include "css/CssError.h"
-#include "css/EmptyChunks.h"
 #include "global/constants.h"
 #include "global/stringTypes.h"
 #include "parser/ParseException.h"
@@ -64,6 +63,7 @@
 #include "qana/ScanTablePlugin.h"
 #include "qana/TablePlugin.h"
 #include "qana/WherePlugin.h"
+#include "qmeta/QMeta.h"
 #include "qproc/QueryProcessingBug.h"
 #include "query/Constraint.h"
 #include "query/SelectList.h"
@@ -264,8 +264,18 @@ QuerySession::getDbStriping() {
 
 std::shared_ptr<IntSet const>
 QuerySession::getEmptyChunks() {
+    LOGS(_log, LOG_LVL_WARN, "&&& QuerySession::getEmptyChunks");
     // FIXME: do we need to catch an exception here?
-    return _css->getEmptyChunks().getEmpty(_context->dominantDb);
+    if (_qmeta != nullptr) {
+        LOGS(_log, LOG_LVL_WARN, "&&& QuerySession::getEmptyChunks " << _context->dominantDb);
+        std::shared_ptr<IntSet const> result = _qmeta->getEmptyChunks(_context->dominantDb);
+        return result;
+    } else {
+        // TODO: This should only happen in unit tests, so need a QMeta child class for unit tests &&&
+        LOGS(_log, LOG_LVL_WARN, "&&& QuerySession::getEmptyChunks no _qmeta");
+        std::shared_ptr<IntSet const> res;
+        return res;
+    }
 }
 
 /// Returns the merge statment, if appropriate.
