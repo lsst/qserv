@@ -97,7 +97,7 @@ public:
     /**
      * @brief Get a complete TableRef used by the query that matches the pased-in TableRef.
      *
-     * The passed in TableRef may be a subset or an alias of the returned TableRef.
+     * The passed-in TableRef may be a subset or an alias of the returned TableRef.
      *
      * This does not do any verification that the database or table actually exist in the database instance,
      * but they must have been added via addUsedTableRef, which would typically indicate that they at least
