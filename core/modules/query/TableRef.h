@@ -78,9 +78,9 @@ public:
 
     ~TableRef() = default;
 
-    std::string const& getDb() const;
-    std::string const& getTable() const;
-    std::string const& getAlias() const;
+    std::string const& getDb() const { return _db; }
+    std::string const& getTable() const { return _table; }
+    std::string const& getAlias() const { return _alias; }
     JoinRefPtrVector& getJoins() { return _joinRefs; }
 
     void setDb(std::string const& db);
@@ -89,9 +89,9 @@ public:
     void addJoin(std::shared_ptr<JoinRef> r);
     void addJoins(const JoinRefPtrVector& r);
 
-    bool hasDb() const;
-    bool hasTable() const;
-    bool hasAlias() const;
+    bool hasDb() const { return not _db.empty(); }
+    bool hasTable() const { return not _table.empty(); }
+    bool hasAlias() const { return not _alias.empty(); }
 
     bool isSimple() const { return _joinRefs.empty(); }
     JoinRefPtrVector const& getJoins() const { return _joinRefs; }

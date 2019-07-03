@@ -36,13 +36,15 @@
 #include <string>
 #include <vector>
 
+// Qserv headers
+#include "query/TableRef.h"
+
 
 // Forward declarations
 namespace lsst {
 namespace qserv {
 namespace query {
     class QueryTemplate;
-    class TableRef;
 }}} // End of forward declarations
 
 
@@ -67,13 +69,13 @@ public:
         return std::make_shared<ColumnRef>(db_, table_, column_);
     }
 
-    std::string const& getDb() const;
-    std::string const& getTable() const;
-    std::string const& getColumn() const;
-    std::string const& getTableAlias() const;
+    std::string const& getDb() const { return _tableRef->getDb(); }
+    std::string const& getTable() const { return _tableRef->getTable(); }
+    std::string const& getColumn() const { return _column; }
+    std::string const& getTableAlias() const { return _tableRef->getAlias(); }
 
-    std::shared_ptr<TableRef const> getTableRef() const;
-    std::shared_ptr<TableRef> getTableRef();
+    std::shared_ptr<TableRef const> getTableRef() const { return _tableRef; }
+    std::shared_ptr<TableRef> getTableRef() { return _tableRef; }
 
     void setDb(std::string const& db);
     void setTable(std::string const& table);

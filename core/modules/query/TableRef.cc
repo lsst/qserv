@@ -76,21 +76,6 @@ TableRef::TableRef(std::string const& db, std::string const& table, std::string 
 }
 
 
-std::string const& TableRef::getDb() const {
-    return _db;
-}
-
-
-std::string const& TableRef::getTable() const {
-    return _table;
-}
-
-
-std::string const& TableRef::getAlias() const {
-    return _alias;
-}
-
-
 void TableRef::setAlias(std::string const& alias) {
     LOGS(_log, LOG_LVL_TRACE, *this << "; set alias:" << alias);
     _alias = alias;
@@ -109,21 +94,6 @@ void TableRef::setTable(std::string const& table) {
         throw std::logic_error("TableRef::setTable - table can not be empty");
     }
     _table = table;
-}
-
-
-bool TableRef::hasDb() const {
-    return not _db.empty();
-}
-
-
-bool TableRef::hasTable() const {
-    return not _table.empty();
-}
-
-
-bool TableRef::hasAlias() const{
-    return not _alias.empty();
 }
 
 

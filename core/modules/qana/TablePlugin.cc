@@ -289,6 +289,7 @@ void TablePlugin::_setAlias(std::shared_ptr<query::TableRef> const& tableRef, qu
             matchTableRefs(context, columnRefs, true);
         }
     }
-};
+}
+
 
 }}} // namespace lsst::qserv::qana

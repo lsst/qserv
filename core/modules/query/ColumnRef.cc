@@ -98,36 +98,6 @@ ColumnRef::ColumnRef(std::shared_ptr<TableRef> const& table, std::string const& 
 }
 
 
-std::string const& ColumnRef::getDb() const {
-    return _tableRef->getDb();
-}
-
-
-std::string const& ColumnRef::getTable() const {
-    return _tableRef->getTable();
-}
-
-
-std::string const& ColumnRef::getColumn() const {
-    return _column;
-}
-
-
-std::string const& ColumnRef::getTableAlias() const {
-    return _tableRef->getAlias();
-}
-
-
-std::shared_ptr<TableRef const> ColumnRef::getTableRef() const {
-    return _tableRef;
-}
-
-
-std::shared_ptr<TableRef> ColumnRef::getTableRef() {
-    return _tableRef;
-}
-
-
 void ColumnRef::setDb(std::string const& db) {
     LOGS(_log, LOG_LVL_TRACE, *this << "; set db:" << db);
     _tableRef->setDb(db);
