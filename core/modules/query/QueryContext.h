@@ -141,7 +141,7 @@ public:
      *                'aliased by' "foo.col".
      *
      * @param valExpr the expr to match
-     * @return std::shared_ptr<query::ValueExpr> that matching expr from the SELECT list, or nullptr
+     * @return std::shared_ptr<query::ValueExpr> match from the SELECT list, or nullptr
      */
     std::shared_ptr<query::ValueExpr> getValueExprMatch(
             std::shared_ptr<query::ValueExpr> const& valExpr) const;
