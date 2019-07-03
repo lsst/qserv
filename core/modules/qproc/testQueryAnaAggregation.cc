@@ -66,8 +66,8 @@ using lsst::qserv::tests::QueryAnaFixture;
 BOOST_FIXTURE_TEST_SUITE(Aggregate, QueryAnaFixture)
 
 BOOST_AUTO_TEST_CASE(Aggregate) {
-    std::string stmt = "select sum(pm_declErr),chunkId, avg(bMagF2) bmf2 from LSST.Object where bMagF > 20.0 GROUP BY chunkId;";
-
+    std::string stmt = "select sum(pm_declErr),chunkId, avg(bMagF2) bmf2 "
+                       "from LSST.Object where bMagF > 20.0 GROUP BY chunkId;";
     std::string expPar = "SELECT sum(`LSST.Object`.pm_declErr) AS `QS1_SUM`,"
                             "`LSST.Object`.chunkId AS `chunkId`,"
                             "COUNT(`LSST.Object`.bMagF2) AS `QS2_COUNT`,"
@@ -95,7 +95,11 @@ BOOST_AUTO_TEST_CASE(Aggregate) {
 
 BOOST_AUTO_TEST_CASE(Avg) {
     std::string stmt = "select chunkId, avg(bMagF2) bmf2 from LSST.Object where bMagF > 20.0;";
-    std::string expPar = "SELECT `LSST.Object`.chunkId AS `chunkId`,COUNT(`LSST.Object`.bMagF2) AS `QS1_COUNT`,SUM(`LSST.Object`.bMagF2) AS `QS2_SUM` FROM LSST.Object_100 AS `LSST.Object` WHERE `LSST.Object`.bMagF>20.0";
+    std::string expPar =    "SELECT `LSST.Object`.chunkId AS `chunkId`,"
+                                "COUNT(`LSST.Object`.bMagF2) AS `QS1_COUNT`,"
+                                "SUM(`LSST.Object`.bMagF2) AS `QS2_SUM` "
+                            "FROM LSST.Object_100 AS `LSST.Object` "
+                            "WHERE `LSST.Object`.bMagF>20.0";
     qsTest.sqlConfig = SqlConfig(
         SqlConfig::MockDbTableColumns({{"LSST", {{"Object", {"chunkId", "bMagF2", "bMagF"}}}}}));
     std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, stmt);
