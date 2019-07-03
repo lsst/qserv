@@ -107,7 +107,7 @@ public:
         std::shared_ptr<query::TableRef> const& tableRef) const;
 
     /**
-     * @brief Get complete a TableRef from the list of tables used by this query that matches the pased-in
+     * @brief Get complete TableRef from the list of tables used by this query that matches the pased-in
      *        ColumnRef.
      *
      * This will verify that the column exists in the table specified by the ColumnRef.
