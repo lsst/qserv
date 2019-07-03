@@ -135,10 +135,10 @@ public:
      *            column values.
      * 2. Alaised by: If the type of both ValueExprs is ColumnRef, then the 'table' value of the passed-in
      *                valueExpr might contain the alias name. E.g. for a user query
-     *                "SELECT foo.col from tbl.col AS foo", "foo.col" in the SELECT list uses an alias to
-     *                describe the same table as "tbl.col AS foo" in the FROM list, and the normalized
-     *                ValueExpr is "db.tbl.col AS foo", so "foo.col" will be said to be 'aliased by'
-     *                "db.tbl.col AS foo".
+     *                "SELECT foo.col from tbl AS foo", "foo.col" in the SELECT list uses an alias to
+     *                describe the same table as "tbl AS foo" in the FROM list. The normalized
+     *                ValueExpr in the SELECT list is "db.tbl.col", so "db.tbl.col" will be said to be
+     *                'aliased by' "foo.col".
      *
      * @param valExpr the expr to match
      * @return std::shared_ptr<query::ValueExpr> that matching expr from the SELECT list, or nullptr
