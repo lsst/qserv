@@ -68,25 +68,23 @@ struct TestFixture {
 
     ~TestFixture(void) {}
 
+    query::SelectStmt::Ptr makeStmtAndRunLogical(std::string query) {
+        query::SelectStmt::Ptr selectStmt;
+        BOOST_REQUIRE_NO_THROW(selectStmt = parser::SelectParser::makeSelectStmt(query));
+        BOOST_REQUIRE(selectStmt != nullptr);
+        query::TestFactory factory;
+        std::shared_ptr<query::QueryContext> queryContext = factory.newContext(css, schemaCfg);
+        auto&& tablePlugin = std::make_shared<qana::TablePlugin>();
+        tablePlugin->applyLogical(*selectStmt, *queryContext);
+        return selectStmt;
+    }
+
     std::shared_ptr<lsst::qserv::css::CssAccess> css;
     sql::SqlConfig schemaCfg;
 };
 
 
 BOOST_FIXTURE_TEST_SUITE(Suite, TestFixture)
-
-
-query::SelectStmt::Ptr makeStmtAndRunLogical(std::string query,
-        std::shared_ptr<lsst::qserv::css::CssAccess> css, sql::SqlConfig schemaCfg) {
-    query::SelectStmt::Ptr selectStmt;
-    BOOST_REQUIRE_NO_THROW(selectStmt = parser::SelectParser::makeSelectStmt(query));
-    BOOST_REQUIRE(selectStmt != nullptr);
-    query::TestFactory factory;
-    std::shared_ptr<query::QueryContext> queryContext = factory.newContext(css, schemaCfg);
-    auto&& tablePlugin = std::make_shared<qana::TablePlugin>();
-    tablePlugin->applyLogical(*selectStmt, *queryContext);
-    return selectStmt;
-}
 
 
 void REQUIRE_IS_COLUMN_REF(std::vector<std::shared_ptr<query::ValueExpr>> const& valueExprs, int count) {
@@ -156,7 +154,7 @@ static const std::vector<TestData> statements_1 {
 // in the ORDER BY clause.
 BOOST_DATA_TEST_CASE(PluginRewrite_1, statements_1, s) {
 
-    auto&& selectStmt = makeStmtAndRunLogical(s.stmt, css, schemaCfg);
+    auto&& selectStmt = makeStmtAndRunLogical(s.stmt);
 
     auto&& fromTableRefList = selectStmt->getFromList().getTableRefList();
     BOOST_REQUIRE_EQUAL(fromTableRefList.size(), size_t(1));
@@ -190,8 +188,7 @@ BOOST_AUTO_TEST_CASE(PluginRewrite_2) {
                "o.objectId != v.objectId AND "
                "scisql_angSep(v.ra_PS, v.decl_PS, o.ra_PS, o.decl_PS) < 0.016666 "
                "AND v.rFlux_PS_Sigma > 1e-32"
-        "ORDER BY v.objectId",
-        css, schemaCfg);
+        "ORDER BY v.objectId");
 
     auto&& selValExprList = *selectStmt->getSelectList().getValueExprList();
     REQUIRE_IS_COLUMN_REF(selValExprList, 3);
