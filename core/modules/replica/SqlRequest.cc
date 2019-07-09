@@ -169,7 +169,7 @@ void SqlBaseRequest::_send(util::Lock const& lock) {
 
 
 void SqlBaseRequest::_analyze(bool success,
-                          ProtocolResponseSql const& response) {
+                              ProtocolResponseSql const& response) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "  success=" << (success ? "true" : "false"));
 

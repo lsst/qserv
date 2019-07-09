@@ -1740,10 +1740,10 @@ void HttpProcessor::_endTransaction(qhttp::Request::Ptr const& req,
             // Drop the transaction-specific MySQL partition from the relevant tables
             bool const allWorkers = true;
             auto const job = AbortTransactionJob::create(id, allWorkers, controller());
-            logJobStartedEvent(AbortTransactionJob::typeName(), job, databaseInfo.family);
             job->start();
-            logJobFinishedEvent(AbortTransactionJob::typeName(), job, databaseInfo.family);
+            logJobStartedEvent(AbortTransactionJob::typeName(), job, databaseInfo.family);
             job->wait();
+            logJobFinishedEvent(AbortTransactionJob::typeName(), job, databaseInfo.family);
             result["data"] = job->getResultData().toJson();
         } else {
             // TODO: replicate MySQL partition associated with the transaction

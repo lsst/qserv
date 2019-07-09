@@ -88,6 +88,7 @@ void WorkerSqlRequest::setInfo(ProtocolResponseSql& response) const {
             response.set_has_result(       _response.has_result());
             *(response.mutable_fields()) = _response.fields();
             *(response.mutable_rows())   = _response.rows();
+            *(response.mutable_request())= _request;
             break;
         default:
             break;
