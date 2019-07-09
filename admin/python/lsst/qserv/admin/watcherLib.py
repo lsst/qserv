@@ -58,7 +58,7 @@ class WatcherCss(object):
         _LOG.debug('connecting to css: %s', config)
         if isinstance(config, basestring):
             config = cssConfig.configFromUrl(config)
-        self.css = css.CssAccess.createFromConfig(config)
+        self.css = css.CssAccess.createFromConfig(config, "")
         self.wmgrSecretFile = wmgrSecretFile
         self.czar = czar
 

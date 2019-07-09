@@ -58,9 +58,6 @@ namespace qserv {
 namespace css {
     class StripingParams;
 }
-namespace qmeta {
-    class QMeta;
-}
 namespace query {
     class SelectStmt;
     class QueryContext;
@@ -161,7 +158,6 @@ public:
              : cfgNum(cfgNum_), css(css_), defaultDb(defaultDb_), sqlConfig(sqlConfig_) {}
         int cfgNum;
         std::shared_ptr<css::CssAccess> css;
-        std::shared_ptr<qmeta::QMeta> qmeta;
         std::string defaultDb;
         sql::SqlConfig sqlConfig;
     };
@@ -199,7 +195,6 @@ private:
 
     // Fields
     std::shared_ptr<css::CssAccess> _css; ///< Metadata access
-    std::shared_ptr<qmeta::QMeta> _qmeta; ///< Metadata access
     std::string _defaultDb; ///< User db context
     std::string _original; ///< Original user query
     std::shared_ptr<query::QueryContext> _context; ///< Analysis context

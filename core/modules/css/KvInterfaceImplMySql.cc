@@ -59,7 +59,7 @@
 #include "sql/SqlConnection.h"
 #include "sql/SqlConnectionFactory.h"
 #include "sql/SqlResults.h"
-#include "sql/SqlTransaction.h"
+#include "sql/SqlTransactionScope.h"
 
 using std::map;
 using std::string;
@@ -85,7 +85,7 @@ using lsst::qserv::css::CssError;
 bool extractIntValueFromSqlResults(SqlResults* results, unsigned int* value) {
     // ideally results would be a sql::SqlResults const*, but extractFirstValue is non-const
     if (NULL == results || NULL == value) {
-        throw CssError("null inout variable");
+        throw CssError(ERR_LOC, "null inout variable");
     }
 
     std::string resStr;
@@ -116,63 +116,25 @@ namespace lsst {
 namespace qserv {
 namespace css {
 
-// this is copied more or less directly from QMetaTransaction. Refactor to shared location?
-// proper place is to port it into db module
-// https://github.com/LSST/db
-// right now it's python only.
-// create a ticket to make generalized code to be used between c++ and python
-class KvTransaction
-{
+class KvTransaction : public sql::SqlTransactionScope {
 public:
-    // Constructors
-    KvTransaction(sql::SqlConnection& conn)
-        : _errObj(), _trans(conn, _errObj) {
-        if (_errObj.isSet()) {
-            throw CssError(_errObj);
-        }
+    using Ptr = std::shared_ptr<KvTransaction>;
+
+    static Ptr create(sql::SqlConnection& conn) {
+        return sql::SqlTransactionScope::create<KvTransaction>(conn);
     }
 
-    // Destructor
-    ~KvTransaction() {
-        // instead of just destroying SqlTransaction instance we call abort and see
-        // if error happens. We cannot throw here but we can print a message.
-        if (_trans.isActive()) {
-            _trans.abort(_errObj);
-            if (_errObj.isSet()) {
-                LOGS(_log, LOG_LVL_ERROR, "Failed to abort transaction: mysql error: ("
-                     << _errObj.errNo() << ") " << _errObj.errMsg());
-            }
-        }
+    ~KvTransaction() override = default;
+
+    /// Override to throw an appropriate exception.
+    void throwException(util::Issue::Context const& ctx, std::string const& msg) override {
+        throw util::Issue(ctx, msg + " mysql(" +std::to_string(errObj.errNo()) + " " + errObj.errMsg() + ")");
     }
 
-    /// Explicitly commit transaction, throws SqlError for errors.
-    void commit() {
-        _trans.commit(_errObj);
-        if (_errObj.isSet()) {
-            LOGS(_log, LOG_LVL_ERROR, "Failed to commit transaction: mysql error: ("
-                 << _errObj.errNo() << ") " << _errObj.errMsg());
-            throw CssError(_errObj);
-        }
-    }
-
-    /// Explicitly abort transaction, throws SqlError for errors.
-    void abort() {
-        _trans.abort(_errObj);
-        if (_errObj.isSet()) {
-            LOGS(_log, LOG_LVL_ERROR, "Failed to abort transaction: mysql error: ("
-                 << _errObj.errNo() << ")" << _errObj.errMsg());
-            throw CssError(_errObj);
-        }
-    }
-
-    /// Query to find out if this represents an active transaction
-    bool isActive() const {
-        return _trans.isActive();
-    }
-
-private:
-    sql::SqlErrorObject _errObj; // this must be declared before _trans
-    sql::SqlTransaction _trans;
+    friend sql::SqlTransactionScope;
+protected:
+    /// Constructor - create with sql::SqlTransactionScope::create<KvTransaction>
+    KvTransaction(sql::SqlConnection& conn) : sql::SqlTransactionScope(conn) {}
 };
 
 
@@ -182,12 +144,13 @@ KvInterfaceImplMySql::KvInterfaceImplMySql(mysql::MySqlConfig const& mysqlConf, 
 
 
 void
-KvInterfaceImplMySql::_findParentId(std::string const& childKvKey, bool* hasParent, unsigned int* parentKvId, KvTransaction const& transaction) {
+KvInterfaceImplMySql::_findParentId(std::string const& childKvKey, bool* hasParent, unsigned int* parentKvId,
+                                    KvTransaction const& transaction) {
     if (not transaction.isActive()) {
-        throw CssError("A transaction must active here.");
+        throw CssError(ERR_LOC, "A transaction must active here.");
     }
     if (hasParent == NULL || parentKvId == NULL) {
-        throw CssError("null out-var ptr");
+        throw CssError(ERR_LOC, "null out-var ptr");
     }
 
     // acceptable childKvKey is "", "/child", "/child/child", but not "/"
@@ -202,7 +165,7 @@ KvInterfaceImplMySql::_findParentId(std::string const& childKvKey, bool* hasPare
     // It's easy enough to check for that condition here, so do a quick sanity check:
     if (childKvKey == "/" or 0 != childKvKey.find_first_of(KEY_PATH_DELIMITER)) {
         LOGS(_log, LOG_LVL_ERROR, "_findParentId - badly formatted childKvKey:" << childKvKey);
-        throw CssError("_findParentId - invalid childKvKey");
+        throw CssError(ERR_LOC, "_findParentId - invalid childKvKey");
     }
 
     size_t loc = childKvKey.find_last_of(KEY_PATH_DELIMITER);
@@ -212,7 +175,7 @@ KvInterfaceImplMySql::_findParentId(std::string const& childKvKey, bool* hasPare
     sql::SqlErrorObject errObj;
     if (not _conn->runQuery(query, results, errObj)) {
         LOGS(_log, LOG_LVL_ERROR, "_findParentId - query failed: " << query);
-        throw CssError(errObj);
+        throw CssError(ERR_LOC, errObj);
     } else {
         // If the key is not found then the parent does not exist; create it.
         if (not extractIntValueFromSqlResults(&results, parentKvId)) {
@@ -227,11 +190,12 @@ KvInterfaceImplMySql::_findParentId(std::string const& childKvKey, bool* hasPare
 std::string
 KvInterfaceImplMySql::create(std::string const& key, std::string const& value, bool unique) {
     if (_readOnly) {
-        throw ReadonlyCss();
+        throw ReadonlyCss(ERR_LOC);
     }
 
     // key is validated by _create
-    KvTransaction transaction(*_conn);
+    //KvTransaction transaction(*_conn);  // &&&
+    KvTransaction::Ptr transaction = KvTransaction::create(_conn);
 
     std::string path = norm_key(key);
     if (unique) {
@@ -254,7 +218,7 @@ KvInterfaceImplMySql::create(std::string const& key, std::string const& value, b
             std::stringstream ss;
             ss << "create - " << query << " failed with err: " << errObj.errMsg() << std::ends;
             LOGS(_log, LOG_LVL_ERROR, ss.str());
-            throw CssError(ss.str());
+            throw CssError(ERR_LOC, ss.str());
         }
 
         // look at results
@@ -276,7 +240,7 @@ KvInterfaceImplMySql::create(std::string const& key, std::string const& value, b
             str << std::setfill('0') << std::setw(10) << uniqueId;
             path = norm_key(key) + str.str();
             try {
-                _create(path, value, false, transaction);
+                _create(path, value, false, *transaction);
                 break;
             } catch (KeyExistsError const& exc) {
                 // exists already, try next
@@ -284,10 +248,10 @@ KvInterfaceImplMySql::create(std::string const& key, std::string const& value, b
         }
 
     } else {
-        _create(path, value, false, transaction);
+        _create(path, value, false, *transaction);
     }
 
-    transaction.commit();
+    transaction->commit();
     return path;
 }
 
@@ -295,7 +259,7 @@ KvInterfaceImplMySql::create(std::string const& key, std::string const& value, b
 unsigned int
 KvInterfaceImplMySql::_create(std::string const& key, std::string const& value, bool updateIfExists, KvTransaction const& transaction) {
     if (not transaction.isActive()) {
-        throw CssError("A transaction must active here.");
+        throw CssError(ERR_LOC, "A transaction must active here.");
     }
 
     _validateKey(key);
@@ -320,12 +284,12 @@ KvInterfaceImplMySql::_create(std::string const& key, std::string const& value, 
     if (not _conn->runQuery(query, errObj)) {
         switch (errObj.errNo()) {
         default:
-            throw CssError(errObj);
+            throw CssError(ERR_LOC, errObj);
             break;
 
         case ER_DUP_ENTRY:
             LOGS(_log, LOG_LVL_ERROR, "_create - SQL INSERT INTO failed: " << query);
-            throw KeyExistsError(errObj);
+            throw KeyExistsError(ERR_LOC, errObj);
             break;
         }
     }
@@ -339,19 +303,29 @@ KvInterfaceImplMySql::_create(std::string const& key, std::string const& value, 
 void
 KvInterfaceImplMySql::set(std::string const& key, std::string const& value) {
     if (_readOnly) {
-        throw ReadonlyCss();
+        throw ReadonlyCss(ERR_LOC);
     }
 
     // key is validated by _create
+<<<<<<< HEAD
     KvTransaction transaction(*_conn);
     _create(norm_key(key), value, true, transaction);
     transaction.commit();
+=======
+    KvTransaction::Ptr transaction = KvTransaction::create(_conn);
+    _create(norm_key(key), value, true, *transaction);
+    transaction->commit();
+>>>>>>> Added DbInterfaceMySql and SqlTemplateScope.
 }
 
 
 bool
 KvInterfaceImplMySql::exists(std::string const& key) {
+<<<<<<< HEAD
     KvTransaction transaction(*_conn);
+=======
+    KvTransaction::Ptr transaction = KvTransaction::create(_conn);
+>>>>>>> Added DbInterfaceMySql and SqlTemplateScope.
     std::string query = str(boost::format("SELECT COUNT(*) FROM kvData WHERE kvKey='%1%'") % _escapeSqlString(key));
     sql::SqlErrorObject errObj;
     sql::SqlResults results;
@@ -360,18 +334,18 @@ KvInterfaceImplMySql::exists(std::string const& key) {
         std::stringstream ss;
         ss << "exists - " << query << " failed with err: " << errObj.errMsg() << std::ends;
         LOGS(_log, LOG_LVL_ERROR, ss.str());
-        throw CssError(ss.str());
+        throw CssError(ERR_LOC, ss.str());
     }
 
     unsigned int count(0);
     if (not extractIntValueFromSqlResults(&results, &count)) {
-        throw CssError("failed to extract int value from query");
+        throw CssError(ERR_LOC, "failed to extract int value from query");
     }
 
     if (count > 1) {
-        throw CssError("multiple keys for key");
+        throw CssError(ERR_LOC, "multiple keys for key");
     }
-    transaction.commit();
+    transaction->commit();
     return 1 == count;
 }
 
@@ -394,7 +368,11 @@ KvInterfaceImplMySql::getMany(std::vector<std::string> const& keys) {
     query += ')';
 
     // run query
+<<<<<<< HEAD
     KvTransaction transaction(*_conn);
+=======
+    KvTransaction::Ptr transaction = KvTransaction::create(_conn);
+>>>>>>> Added DbInterfaceMySql and SqlTemplateScope.
     sql::SqlErrorObject errObj;
     sql::SqlResults results;
     LOGS(_log, LOG_LVL_DEBUG, "getMany - executing query: " << query);
@@ -402,7 +380,7 @@ KvInterfaceImplMySql::getMany(std::vector<std::string> const& keys) {
         std::stringstream ss;
         ss << "getMany - " << query << " failed with err: " << errObj.errMsg() << std::ends;
         LOGS(_log, LOG_LVL_ERROR, ss.str());
-        throw CssError(ss.str());
+        throw CssError(ERR_LOC, ss.str());
     }
 
     // copy results
@@ -415,7 +393,7 @@ KvInterfaceImplMySql::getMany(std::vector<std::string> const& keys) {
         res.insert(std::make_pair(key, val));
     }
 
-    transaction.commit();
+    transaction->commit();
     return res;
 }
 
@@ -425,9 +403,15 @@ KvInterfaceImplMySql::getChildren(std::string const& parentKey) {
 
     _validateKey(key);
     // get the children with a /fully/qualified/path
+<<<<<<< HEAD
     KvTransaction transaction(*_conn);
     std::vector<std::string> strVec = _getChildrenFullPath(key, transaction);
     transaction.commit();
+=======
+    KvTransaction::Ptr transaction = KvTransaction::create(_conn);
+    std::vector<std::string> strVec = _getChildrenFullPath(key, *transaction);
+    transaction->commit();
+>>>>>>> Added DbInterfaceMySql and SqlTemplateScope.
 
     // trim off the parent key, leaving only the last item in the path.
     for (std::vector<std::string>::iterator strItr = strVec.begin(); strItr != strVec.end(); ++strItr) {
@@ -450,11 +434,15 @@ KvInterfaceImplMySql::getChildrenValues(std::string const& parentKey) {
     _validateKey(key);
 
     // get the children with a /fully/qualified/path
+<<<<<<< HEAD
     KvTransaction transaction(*_conn);
+=======
+    KvTransaction::Ptr transaction = KvTransaction::create(_conn);
+>>>>>>> Added DbInterfaceMySql and SqlTemplateScope.
     unsigned int parentId;
-    if (not _getIdFromServer(key, &parentId, transaction)) {
+    if (not _getIdFromServer(key, &parentId, *transaction)) {
         if (not exists(key)) {
-            throw NoSuchKey(parentKey);
+            throw NoSuchKey(ERR_LOC, parentKey);
         }
     }
 
@@ -466,7 +454,7 @@ KvInterfaceImplMySql::getChildrenValues(std::string const& parentKey) {
         std::stringstream ss;
         ss << "getChildrenValues - " << query << " failed with err: "  << errObj.errMsg() << std::ends;
         LOGS(_log, LOG_LVL_ERROR, ss.str());
-        throw CssError(ss.str());
+        throw CssError(ERR_LOC, ss.str());
     }
 
     std::map<std::string, std::string> res;
@@ -489,7 +477,7 @@ KvInterfaceImplMySql::getChildrenValues(std::string const& parentKey) {
         res.insert(std::make_pair(key, val));
     }
 
-    transaction.commit();
+    transaction->commit();
 
     return res;
 }
@@ -498,13 +486,13 @@ KvInterfaceImplMySql::getChildrenValues(std::string const& parentKey) {
 std::vector<std::string>
 KvInterfaceImplMySql::_getChildrenFullPath(std::string const& parentKey, KvTransaction const& transaction) {
     if (not transaction.isActive()) {
-        throw CssError("A transaction must active here.");
+        throw CssError(ERR_LOC, "A transaction must active here.");
     }
     _validateKey(parentKey);
     unsigned int parentId;
     if (not _getIdFromServer(parentKey, &parentId, transaction)) {
         if (not exists(parentKey)) {
-            throw NoSuchKey(parentKey);
+            throw NoSuchKey(ERR_LOC, parentKey);
         }
     }
 
@@ -516,7 +504,7 @@ KvInterfaceImplMySql::_getChildrenFullPath(std::string const& parentKey, KvTrans
         std::stringstream ss;
         ss << "_getChildrenFullPath - " << query << " failed with err: " << errObj.errMsg() << std::ends;
         LOGS(_log, LOG_LVL_ERROR, ss.str());
-        throw CssError(ss.str());
+        throw CssError(ERR_LOC, ss.str());
     }
 
     errObj.reset();
@@ -526,7 +514,7 @@ KvInterfaceImplMySql::_getChildrenFullPath(std::string const& parentKey, KvTrans
         ss << "_getChildrenFullPath - failed to extract children from "
            << query << " failed with err: " << errObj.errMsg() << std::ends;
         LOGS(_log, LOG_LVL_ERROR, ss.str());
-        throw CssError(ss.str());
+        throw CssError(ERR_LOC, ss.str());
     }
 
     return strVec;
@@ -536,13 +524,19 @@ KvInterfaceImplMySql::_getChildrenFullPath(std::string const& parentKey, KvTrans
 void
 KvInterfaceImplMySql::deleteKey(std::string const& keyArg) {
     if (_readOnly) {
-        throw ReadonlyCss();
+        throw ReadonlyCss(ERR_LOC);
     }
 
     std::string key = norm_key(keyArg);
+<<<<<<< HEAD
     KvTransaction transaction(*_conn);
     _delete(key, transaction);
     transaction.commit();
+=======
+    KvTransaction::Ptr transaction = KvTransaction::create(_conn);
+    _delete(key, *transaction);
+    transaction->commit();
+>>>>>>> Added DbInterfaceMySql and SqlTemplateScope.
 }
 
 
@@ -552,7 +546,11 @@ std::string KvInterfaceImplMySql::dumpKV(std::string const& key) {
     std::string query = "SELECT kvKey, kvVal FROM kvData ORDER BY kvKey";
 
     // run query
+<<<<<<< HEAD
     KvTransaction transaction(*_conn);
+=======
+    KvTransaction::Ptr transaction = KvTransaction::create(_conn);
+>>>>>>> Added DbInterfaceMySql and SqlTemplateScope.
     sql::SqlErrorObject errObj;
     sql::SqlResults results;
     LOGS(_log, LOG_LVL_DEBUG, "dumpKV - executing query: " << query);
@@ -560,7 +558,7 @@ std::string KvInterfaceImplMySql::dumpKV(std::string const& key) {
         std::stringstream ss;
         ss << "dumpKV - " << query << " failed with err: " << errObj.errMsg() << std::ends;
         LOGS(_log, LOG_LVL_ERROR, ss.str());
-        throw CssError(ss.str());
+        throw CssError(ERR_LOC, ss.str());
     }
 
     // copy results into property tree
@@ -580,7 +578,7 @@ std::string KvInterfaceImplMySql::dumpKV(std::string const& key) {
         }
     }
 
-    transaction.commit();
+    transaction->commit();
 
     // format property tree into a string as JSON
     std::ostringstream str;
@@ -592,7 +590,7 @@ std::string KvInterfaceImplMySql::dumpKV(std::string const& key) {
 void
 KvInterfaceImplMySql::_delete(std::string const& key, KvTransaction const& transaction) {
     if (not transaction.isActive()) {
-        throw CssError("A transaction must active here.");
+        throw CssError(ERR_LOC, "A transaction must active here.");
     }
     _validateKey(key);
 
@@ -608,18 +606,18 @@ KvInterfaceImplMySql::_delete(std::string const& key, KvTransaction const& trans
     LOGS(_log, LOG_LVL_DEBUG, "deleteKey - executing query: " << query);
     if (not _conn->runQuery(query, resultsObj, errObj)) {
         LOGS(_log, LOG_LVL_ERROR, "deleteKey - " << query << " failed with err: " << errObj.errMsg());
-        throw CssError(errObj);
+        throw CssError(ERR_LOC, errObj);
     }
 
     // limit the row count to 1 - there should not be multiple rows for any key.
     auto affectedRows = resultsObj.getAffectedRows();
     if (affectedRows < 1) {
         LOGS(_log, LOG_LVL_ERROR, "deleteKey - failed (no such key) running query:" << query);
-        throw NoSuchKey(errObj);
+        throw NoSuchKey(ERR_LOC, errObj);
     } else if (affectedRows > 1) {
         LOGS(_log, LOG_LVL_ERROR, "deleteKey - failed (too many (" << affectedRows
              << ") rows deleted) running query: " << query);
-        throw CssError("deleteKey - unexpectedly deleted more than 1 row.");
+        throw CssError(ERR_LOC, "deleteKey - unexpectedly deleted more than 1 row.");
     }
 
 }
@@ -630,7 +628,11 @@ KvInterfaceImplMySql::_get(std::string const& keyArg, std::string const& default
 
     std::string key = norm_key(keyArg);
 
+<<<<<<< HEAD
     KvTransaction transaction(*_conn);
+=======
+    KvTransaction::Ptr transaction = KvTransaction::create(_conn);
+>>>>>>> Added DbInterfaceMySql and SqlTemplateScope.
 
     std::string val;
     sql::SqlErrorObject errObj;
@@ -638,27 +640,27 @@ KvInterfaceImplMySql::_get(std::string const& keyArg, std::string const& default
     sql::SqlResults results;
     if (not _conn->runQuery(query, results, errObj)) {
         LOGS(_log, LOG_LVL_ERROR, "_get - query failed: " << query);
-        throw CssError(errObj);
+        throw CssError(ERR_LOC, errObj);
     } else {
         errObj.reset();
         if (not results.extractFirstValue(val, errObj)) {
             if (throwIfKeyNotFound) {
                 LOGS(_log, LOG_LVL_ERROR, "_get - error extracting value: " << errObj.errMsg());
-                throw NoSuchKey(errObj);
+                throw NoSuchKey(ERR_LOC, errObj);
             } else {
                 val = defaultValue;
             }
         }
     }
 
-    transaction.commit();
+    transaction->commit();
     return val;
 }
 
 
 bool KvInterfaceImplMySql::_getIdFromServer(std::string const& key, unsigned int* id, KvTransaction const& transaction) {
     if (not transaction.isActive()) {
-        throw CssError("A transaction must active here.");
+        throw CssError(ERR_LOC, "A transaction must active here.");
     }
 
     std::string query = str(boost::format("SELECT kvId FROM kvData WHERE kvKey='%1%'") % _escapeSqlString(key));
@@ -666,7 +668,7 @@ bool KvInterfaceImplMySql::_getIdFromServer(std::string const& key, unsigned int
     sql::SqlErrorObject errObj;
     if (not _conn->runQuery(query, results, errObj)) {
         LOGS(_log, LOG_LVL_ERROR, "_getIdFromServer - query failed: " << query);
-        throw CssError(errObj);
+        throw CssError(ERR_LOC, errObj);
         return false;
     }
     errObj.reset();
@@ -692,7 +694,7 @@ void KvInterfaceImplMySql::_validateKey(std::string const& key) {
             key.find_first_of(KEY_PATH_DELIMITER) != 0 ||
             key.find_last_of(KEY_PATH_DELIMITER) == key.size()-1) {
         LOGS(_log, LOG_LVL_DEBUG, "create - rejecting key: " << key);
-        throw CssError("invalid key");
+        throw CssError(ERR_LOC, "invalid key");
     }
 }
 
@@ -702,8 +704,13 @@ std::string KvInterfaceImplMySql::_escapeSqlString(std::string const& str) {
 
     sql::SqlErrorObject errObj;
     std::string escapedStr;
+<<<<<<< HEAD
     if (not _conn->escapeString(str, escapedStr, errObj)) {
         throw CssError(errObj);
+=======
+    if (not _conn.escapeString(str, escapedStr, errObj)) {
+        throw CssError(ERR_LOC, errObj);
+>>>>>>> Added DbInterfaceMySql and SqlTemplateScope.
     }
     return escapedStr;
 }

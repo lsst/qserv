@@ -31,7 +31,6 @@
 
 // Qserv headers
 #include "global/intTypes.h"
-#include "qmeta/EmptyChunks.h"
 #include "qmeta/QInfo.h"
 #include "qmeta/QStats.h"
 #include "qmeta/types.h"
@@ -303,12 +302,10 @@ public:
         _emptyChunks.clearCache(dbName);
     }
 
+
 protected:
-
     // Default constructor
-    QMeta() : _emptyChunks(*this) {}
-
-    EmptyChunks _emptyChunks;
+    QMeta() {}
 
 };
 

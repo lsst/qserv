@@ -22,7 +22,7 @@
  */
 
 // Class header
-#include "qmeta/EmptyChunks.h"
+#include "css/EmptyChunks.h"
 
 // System headers
 #include <algorithm>
@@ -35,10 +35,11 @@
 #include "lsst/log/Log.h"
 
 // Qserv headers
+#include "css/DbInterfaceMySql.h"
+#include "css/CssError.h"
 #include "global/ConfigError.h"
 #include "global/stringUtil.h"
-#include "qmeta/Exceptions.h"
-#include "qmeta/QMeta.h"
+
 
 using lsst::qserv::ConfigError;
 using lsst::qserv::IntSet;
@@ -57,10 +58,9 @@ string makeFilename(string const& db) {
 
 namespace lsst {
 namespace qserv {
-namespace qmeta {
+namespace css {
 
 shared_ptr<IntSet const> EmptyChunks::getEmpty(string const& db) {
-    LOGS(_log, LOG_LVL_WARN, "&&& getEmpty");
     lock_guard<mutex> lock(_setsMutex);
     IntSetMap::const_iterator i = _sets.find(db);
     if (i != _sets.end()) {
@@ -91,12 +91,13 @@ void EmptyChunks::clearCache(string const& db) const {
 
 IntSet EmptyChunks::_populate(string const& db) {
     // Try to open database table
-    LOGS(_log, LOG_LVL_WARN, "&&& _populate " << db);
+    LOGS(_log, LOG_LVL_DEBUG, "populate " << db);
     IntSet s;
     try {
-        s = _qmeta.getEmptyChunksFromDb(db);
+        if (_dbI == nullptr) throw CssError(ERR_LOC, "database==nullptr");
+        s = _dbI->getEmptyChunks(db);
         return s;
-    } catch (QMetaError const& e) {
+    } catch (CssError const& e) {
         LOGS(_log, LOG_LVL_WARN, " failed to read empty chunks from table. Trying file. " +
                                  db + " " + e.what());
     }
@@ -104,7 +105,7 @@ IntSet EmptyChunks::_populate(string const& db) {
     // Since the table wasn't found, use the empty chunks file
     // TODO: Once everything is using the table, this should be deleted and the error above should be thrown.
     string const best = _path + "/" + makeFilename(db);
-    LOGS(_log, LOG_LVL_WARN, "&&& Trying path:" << _path << " emptyChunk file:" << best);
+    LOGS(_log, LOG_LVL_WARN, "Trying path:" << _path << " emptyChunk file:" << best);
     string fileName = best;
     ifstream rawStream(best.c_str());
     if (!rawStream.good()) { // On error, try using default filename
@@ -116,13 +117,14 @@ IntSet EmptyChunks::_populate(string const& db) {
     if (!rawStream.good()) {
         string eMsg(string("No such empty chunks file: ") + best + " or " + _fallbackFile);
         LOGS(_log, LOG_LVL_ERROR, eMsg);
-        throw ConfigError(ERR_LOC, eMsg);
+        throw CssError(ERR_LOC, eMsg);
     }
     istream_iterator<int> chunkStream(rawStream);
     istream_iterator<int> eos;
     copy(chunkStream, eos, insert_iterator<IntSet>(s, s.begin()));
     return s;
 }
+
 
 }}} // namespace lsst::qserv::css
 

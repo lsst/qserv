@@ -25,6 +25,7 @@
 // System headers
 #include <map>
 #include <memory>
+#include <set>
 #include <string>
 #include <vector>
 
@@ -45,6 +46,7 @@ namespace qserv {
 namespace css {
 
 class EmptyChunks;
+class DbInterfaceMySql;
 class KvInterface;
 
 /// @addtogroup css
@@ -97,10 +99,12 @@ public:
      *  Neither keys nor values can contain newline or TAB.
      *
      *  @param data:  initial data to load into KV store
+     *  @param emptyChunkPath:  path to empty chunk list file
      *  @param readOnly:  if true then KV storage will be set read-only
      *                    after loading initial data.
      */
     static std::shared_ptr<CssAccess> createFromData(std::string const& data,
+                                                     std::string const& emptyChunkPath,
                                                      bool readOnly = false);
 
     /**
@@ -121,6 +125,7 @@ public:
      *       'database': database name
      *
      *  @param config:  configuration map
+     *  @param emptyChunkPath:  path to empty chunk list file
      *  @param readOnly:  if true then KV storage will be set read-only
      *                    after loading initial data.
      *
@@ -128,6 +133,7 @@ public:
      * @throws CssError: for all CSS errors
      */
     static std::shared_ptr<CssAccess> createFromConfig(std::map<std::string, std::string> const& config,
+                                                       std::string const& emptyChunkPath,
                                                        bool readOnly = false);
 
     /**
@@ -486,11 +492,28 @@ public:
      */
     std::shared_ptr<KvInterface> getKvI() { return _kvI; }
 
+    /**
+     * @return a pointer to empty chunks cache.
+     */
+    std::shared_ptr<EmptyChunks> getEmptyChunks() { return _emptyChunks; }
+
+    /**
+     * @return the name of the empty chunks table for the given database name.
+     */
+    std::string getEmptyChunksTableName(std::string const& dbName);
+
+    /**
+     * @return the create table schema for the empty chunks table for 'dbName'.
+     */
+    std::string getEmptyChunksSchema(std::string const& dbName);
+
 protected:
 
-    // Construct from KvInterface instance and empty chunk list instance
+    // Construct from Key-value and database instances.
     CssAccess(std::shared_ptr<KvInterface> const& kvInterface,
-              std::string const& prefix = std::string());
+              std::shared_ptr<DbInterfaceMySql> const& dbI,
+              std::string const& emptyChunkPath,
+              std::string const& prefix);
 
     // Methods below are protected only for testing purposes so that one can
     // subclass CssAccess and expose these methods for testing
@@ -543,8 +566,10 @@ private:
 private:
 
     std::shared_ptr<KvInterface> _kvI;
+    std::shared_ptr<DbInterfaceMySql> _dbI;
     std::string _prefix;    // optional prefix, for isolating tests from production
     mutable bool _versionOk;   // True if version is checked (and is OK)
+    std::shared_ptr<EmptyChunks> _emptyChunks; ///< Cache of empty chunks.
 };
 
 }}} // namespace lsst::qserv::css

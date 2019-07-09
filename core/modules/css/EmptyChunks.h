@@ -30,8 +30,8 @@
   * @Author Daniel L. Wang, SLAC
   */
 
-#ifndef LSST_QSERV_QMETA_EMPTYCHUNKS_H
-#define LSST_QSERV_QMETA_EMPTYCHUNKS_H
+#ifndef LSST_QSERV_CSS_EMPTYCHUNKS_H
+#define LSST_QSERV_CSS_EMPTYCHUNKS_H
 
 // System headers
 #include <map>
@@ -44,9 +44,9 @@
 
 namespace lsst {
 namespace qserv {
-namespace qmeta {
+namespace css {
 
-class QMeta;
+class DbInterfaceMySql;
 
 /// High-level empty-chunk-tracking class. Tracks empty chunks
 /// per-database. In the future, we will likely migrate to a
@@ -55,17 +55,18 @@ class QMeta;
 /// group may be extremely sparse).
 class EmptyChunks {
 public:
-    EmptyChunks(QMeta& qmeta,
+    /// Doing anything with _css inside the constructor would be dangerous.
+    EmptyChunks(std::shared_ptr<DbInterfaceMySql> const& dbI,
                 std::string const& path=".",
                 std::string const& fallbackFile="emptyChunks.txt")
-        : _qmeta(qmeta), _path(path), _fallbackFile(fallbackFile) {}
+        : _dbI(dbI), _path(path), _fallbackFile(fallbackFile) {}
 
     EmptyChunks() = delete;
     EmptyChunks(EmptyChunks const&) = delete;
     EmptyChunks(EmptyChunks&&) = delete;
     EmptyChunks& operator=(EmptyChunks const&) = delete;
 
-    virtual ~EmptyChunks() = default;
+    ~EmptyChunks() = default;
 
     // accessors
 
@@ -85,18 +86,12 @@ private:
     typedef std::shared_ptr<IntSet> IntSetPtr;
     typedef std::shared_ptr<IntSet const> IntSetConstPtr;
 
-    /// Fill 's' with all the empty chunks for database 'db'.
-    /* &&&
-    void _populate(std::string const& path,
-                   std::string const& fallbackFile,
-                   IntSet& s,
-                   std::string const& db);
-    */
+    /// @return all the empty chunks for database 'db'.
     IntSet _populate(std::string const& db);
 
 
     typedef std::map<std::string, IntSetPtr> IntSetMap;
-    QMeta& _qmeta; ///< allow access to empty chunks table.
+    std::shared_ptr<DbInterfaceMySql> _dbI; ///< allow access to empty chunks table.
     std::string _path; ///< Search path for empty chunks files
     std::string _fallbackFile; ///< Fallback path for empty chunks
     mutable IntSetMap _sets; ///< Container for empty chunks sets (cache)
@@ -105,4 +100,4 @@ private:
 
 }}} // namespace lsst::qserv::css
 
-#endif // LSST_QSERV_QMETA_EMPTYCHUNKS_H
+#endif // LSST_QSERV_CSS_EMPTYCHUNKS_H

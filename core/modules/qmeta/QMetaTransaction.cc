@@ -41,44 +41,8 @@ namespace lsst {
 namespace qserv {
 namespace qmeta {
 
-// Constructors
-QMetaTransaction::QMetaTransaction(sql::SqlConnection& conn)
-    : _errObj(), _trans(conn, _errObj) {
-    if (_errObj.isSet()) {
-        throw SqlError(ERR_LOC, _errObj);
-    }
-}
-
-// Destructor
-QMetaTransaction::~QMetaTransaction() {
-    // instead of just destroying SqlTransaction instance we call abort and see
-    // if error happens. We cannot throw here but we can print a message.
-    if (_trans.isActive()) {
-        if (not _trans.abort(_errObj)) {
-            LOGS(_log, LOG_LVL_ERROR, "Failed to abort transaction: mysql error: ("
-                 << _errObj.errNo() << ") " << _errObj.errMsg());
-        }
-    }
-}
-
-/// Explicitly commit transaction, throws SqlError for errors.
-void
-QMetaTransaction::commit() {
-    if (not _trans.commit(_errObj)) {
-        LOGS(_log, LOG_LVL_ERROR, "Failed to commit transaction: mysql error: ("
-             << _errObj.errNo() << ") " << _errObj.errMsg());
-        throw SqlError(ERR_LOC, _errObj);
-    }
-}
-
-/// Explicitly abort transaction, throws SqlError for errors.
-void
-QMetaTransaction::abort() {
-    if (not _trans.abort(_errObj)) {
-        LOGS(_log, LOG_LVL_ERROR, "Failed to abort transaction: mysql error: ("
-             << _errObj.errNo() << ")" << _errObj.errMsg());
-        throw SqlError(ERR_LOC, _errObj);
-    }
+void QMetaTransaction::throwException(util::Issue::Context const& ctx, std::string const& msg) {
+    throw SqlError(ctx, errObj);
 }
 
 }}} // namespace lsst::qserv::qmeta

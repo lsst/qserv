@@ -17,9 +17,7 @@
 # You should have received a copy of the LSST License Statement and
 # the GNU General Public License along with this program.  If not,
 # see <http://www.lsstcorp.org/LegalNotices/>.
-from __future__ import absolute_import, division, print_function
 
-from pip._vendor.distlib import database
 
 """
 Module defining DataLoader class and related methods.
@@ -84,7 +82,7 @@ class DataLoader(object):
     def __init__(self, configFiles, czarWmgr, workerWmgrMap={}, chunksDir="./loader_chunks",
                  chunkPrefix='chunk', keepChunks=False, skipPart=False, oneTable=False,
                  css=None, cssClear=False, indexDb='qservMeta', tmpDir=None,
-                 emptyChunks=None, deleteTables=False, loggerName=None):
+                 emptyChunks=None, deleteTables=False, loggerName=None, cssDb='qservCssData'):
         """
         Constructor parses all arguments and prepares for execution.
 
@@ -103,6 +101,7 @@ class DataLoader(object):
                              create chunk tables.
         @param css:          Instance of CssAccess class, None if CSS operations are disabled.
         @param cssClear:     If true then CSS info for a table will be deleted first.
+        @param cssDb:		 Name of the database where CSS tables are kept.
         @param indexDb:      Name of  database for object indices, index is generated for director
                              table when it is partitioned, use empty string to disable index.
         @param tmpDir:       Temporary directory to store uncompressed files. If None then directory
@@ -127,6 +126,7 @@ class DataLoader(object):
         self.oneTable = oneTable
         self.css = css
         self.cssClear = cssClear
+        self.cssDb = cssDb
         self.indexDb = None if oneTable else indexDb
         self.emptyChunks = emptyChunks
         self.deleteTables = deleteTables
@@ -738,24 +738,27 @@ class DataLoader(object):
     
         # only makes sense for true partitioned tables
         if not self.partitioned:
-            self._log.info('Table is not partitioned, will not make empty chunks table for ' + database)
+            self._log.info('Table is not partitioned, will not make empty chunks table for %s', database)
             return
         
-        if self.indexDb is None:
-            self._log.info('No indexDb, nowhere to put empty chunks table for ' + database)
+        if self.cssDb is None:
+            self._log.info('No cssDb, nowhere to put empty chunks table for %s', database)
             return
         
-        # Get a unique name for the EmptyChunks table
-        tableName = database + "_EmptyChunks" 
+       
+        # Get a unique name for the EmptyChunks table.
+        if self.css is None:
+            self._log.info('No css, cannot create name for EmptyChunks table for %s', database)
+            return
+
+        tableName = self.css.getEmptyChunksTableName(database) 
         
         # Delete the existing empty chunks table
-        self.czarWmgr.dropTable(self.indexDb, tableName, dropChunks=False, mustExist=False)
+        self.czarWmgr.dropTable(self.cssDb, tableName, dropChunks=False, mustExist=False)
         
         # make a table for the empty chunks
-        schema = "CREATE TABLE {table} (chunkId INT NOT NULL PRIMARY KEY)"
-        schema += " ENGINE = INNODB"
-        schema = schema.format(table=tableName)
-        self.czarWmgr.createTable(self.indexDb, tableName, schema=schema)
+        schema = self.css.getEmptyChunksSchema(database);
+        self.czarWmgr.createTable(self.cssDb, tableName, schema=schema)
         
         # max possible number of chunks
         nStripes = int(self.partOptions['part.num-stripes'])
@@ -771,7 +774,7 @@ class DataLoader(object):
         data.seek(0)
 
         # send that file to czar
-        self.czarWmgr.loadData(self.indexDb, tableName, data)
+        self.czarWmgr.loadData(self.cssDb, tableName, data)
 
                 
     def _makeEmptyChunks(self):
@@ -804,7 +807,7 @@ class DataLoader(object):
         out = open(self.emptyChunks, 'w')
         for chunk in range(maxChunks):
             if chunk not in self.chunks:
-                print(chunk, file=out)            
+                print(chunk, file=out)
 
     def _makeIndex(self, database, table):
         """

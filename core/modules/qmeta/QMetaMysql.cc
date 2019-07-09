@@ -93,7 +93,11 @@ namespace qmeta {
 
 // Constructors
 QMetaMysql::QMetaMysql(mysql::MySqlConfig const& mysqlConf)
+<<<<<<< HEAD
   : QMeta(), _conn(sql::SqlConnectionFactory::make(mysqlConf)) {
+=======
+  : _conn(mysqlConf) {
+>>>>>>> Added DbInterfaceMySql and SqlTemplateScope.
     // Check that database is in consistent state
     _checkDb();
 }
@@ -813,7 +817,8 @@ QMetaMysql::_checkDb() {
 }
 
 
-std::set<int> QMetaMysql::getEmptyChunksFromDb(std::string const& dbName) {
+
+std::set<int> QMetaMysql::getEmptyChunksFromDb(std::string const& dbName) { // &&&
     std::string funcName("getEmptyChunksFromDb");
     std::lock_guard<std::mutex> sync(_dbMutex);
 

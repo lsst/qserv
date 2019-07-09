@@ -133,9 +133,9 @@ PYBIND11_MODULE(cssLib, mod) {
 
     py::class_<CssAccess, std::shared_ptr<CssAccess>>(mod, "CssAccess")
         .def_static("createFromData", &CssAccess::createFromData,
-                "data"_a, "readOnly"_a = false)
+                "data"_a, "emptyChunkPath"_a, "readOnly"_a = false)
         .def_static("createFromConfig", &CssAccess::createFromConfig,
-                "config"_a, "readOnly"_a = false)
+                "config"_a, "emptyChunkPath"_a, "readOnly"_a = false)
         .def_static("cssVersion", &CssAccess::cssVersion)
         .def("getDbNames", &CssAccess::getDbNames)
         .def("getDbStatus", &CssAccess::getDbStatus)
@@ -170,6 +170,8 @@ PYBIND11_MODULE(cssLib, mod) {
         // getEmptyChunks is intentionally skipped, not used by Python code
         //.def("getEmptyChunks", &CssAccess::getEmptyChunks)
         .def("getKvI", &CssAccess::getKvI)
+        .def("getEmptyChunksTableName", &CssAccess::getEmptyChunksTableName)
+        .def("getEmptyChunksSchema", &CssAccess::getEmptyChunksSchema)
         ;
 
     static py::exception<CssError> CssError(mod, "CssError");
