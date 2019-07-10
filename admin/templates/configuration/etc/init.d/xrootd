@@ -65,6 +65,17 @@ pid_file_name() {
     echo $pidfile
 }
 
+# Environment variables can vary from on container session to another and making them 
+# reliably consistent is difficult. Instead, use ".pid" version if that file exists,
+# otherwise use the ".mangr.pid" file version.
+pid_file_name_check() {
+    local pf=${PID_DIR}/$1.pid
+    if [ ! -f "$pf" ]; then
+        pf=${PID_DIR}/$1.mangr.pid
+    fi
+    echo $pf
+}
+
 start_service() {
 
     local prog
@@ -95,7 +106,7 @@ stop_service() {
 
     prog=${1##*/}
 
-    pidfile=$(pid_file_name $prog)
+    pidfile=$(pid_file_name_check $prog)
     lockfile=${QSERV_RUN_DIR}/var/lock/subsys/${prog}
 
     stop -p $pidfile -l $lockfile $prog
@@ -130,7 +141,7 @@ status_all () {
 	for service in $XRD_SERVICES
 	do
         DAEMON="${XROOTD_DIR}/bin/${service}"
-		pidfile=$(pid_file_name $service)
+		pidfile=$(pid_file_name_check $service)
 		status_of_proc -p $pidfile "$DAEMON" "$service" || ret_val=1
 	done
 	return "$ret_val"
