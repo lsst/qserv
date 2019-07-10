@@ -250,7 +250,11 @@ void AbortTransactionJob::notify(util::Lock const& lock) {
 void AbortTransactionJob::_onRequestFinish(SqlDeleteTablePartitionRequest::Ptr const& request) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__
-         << "  worker=" << request->worker());
+         << "  worker=" << request->worker()
+         << " _requests.size()=" << _requests.size()
+         << " _numLaunched=" << _numLaunched
+         << " _numFinished=" << _numFinished
+         << " _numSuccess=" << _numSuccess);
 
     if (state() == State::FINISHED) return;
 
@@ -265,6 +269,10 @@ void AbortTransactionJob::_onRequestFinish(SqlDeleteTablePartitionRequest::Ptr c
     if (0 == _submitNextBatch(lock, 1)) {
 
         if (_numFinished == _numLaunched) {
+
+            LOGS(_log, LOG_LVL_DEBUG, context() << __func__
+                 << "  worker=" << request->worker()
+                 << " _requests.size()=" << _requests.size());
 
             // Harvest results from all jobs (regardless of their completion status)
             // and be done.
@@ -308,7 +316,7 @@ size_t AbortTransactionJob::_submitNextBatch(util::Lock const& lock,
                 candidateWorker = worker;
             }
         }
-        if (candidateWorker.empty()) return 0;  // the input queue is empty
+        if (candidateWorker.empty()) return batchSize;  // no more entries in the input queue
         
         string const table = _worker2tables[candidateWorker].front();
         _worker2tables[candidateWorker].pop_front();
