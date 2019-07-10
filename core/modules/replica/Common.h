@@ -30,6 +30,7 @@
 
 // System headers
 #include <list>
+#include <ostream>
 #include <string>
 #include <tuple>
 
@@ -218,7 +219,12 @@ public:
     SqlRequestParams() = default;
 
     explicit SqlRequestParams(ProtocolRequestSql const& request);
+
+    std::string type2str() const;
 };
+
+
+std::ostream& operator<<(std::ostream& os, SqlRequestParams const& params);
 
 }}} // namespace lsst::qserv::replica
 

@@ -270,6 +270,9 @@ void AbortTransactionJob::_onRequestFinish(SqlDeleteTablePartitionRequest::Ptr c
             // and be done.
 
             for (auto&& ptr: _requests) {
+                LOGS(_log, LOG_LVL_DEBUG, context() << __func__
+                     << " requestId=" << ptr->id()
+                     << " targetRequestParams=" << ptr->targetRequestParams());
                 auto const table = ptr->targetRequestParams().table;
                 _resultData.completed [ptr->worker()][table] = ptr->extendedState() == Request::SUCCESS;
                 _resultData.resultSets[ptr->worker()][table] = ptr->responseData();

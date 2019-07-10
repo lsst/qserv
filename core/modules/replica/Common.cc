@@ -29,8 +29,10 @@
 #include "boost/uuid/uuid.hpp"
 #include "boost/uuid/uuid_generators.hpp"
 #include "boost/uuid/uuid_io.hpp"
+#include "nlohmann/json.hpp"
 
 using namespace std;
+using namespace nlohmann;
 
 namespace lsst {
 namespace qserv {
@@ -229,6 +231,57 @@ SqlRequestParams::SqlRequestParams(ProtocolRequestSql const& request)
         auto const& column = request.columns(index);
         columns.emplace_back(column.name(), column.type());
     }
+}
+
+
+string SqlRequestParams::type2str() const {
+    switch (type) {
+        case QUERY:                     return "QUERY";
+        case CREATE_DATABASE:           return "CREATE_DATABASE";
+        case DROP_DATABASE:             return "DROP_DATABASE";
+        case ENABLE_DATABASE:           return "ENABLE_DATABASE";
+        case DISABLE_DATABASE:          return "DISABLE_DATABASE";
+        case CREATE_TABLE:              return "CREATE_TABLE";
+        case DROP_TABLE:                return "DROP_TABLE";
+        case REMOVE_TABLE_PARTITIONING: return "REMOVE_TABLE_PARTITIONING";
+        case DROP_TABLE_PARTITION:      return "DROP_TABLE_PARTITION";
+        default:
+            throw runtime_error(
+                    "SqlRequestParams::" + string(__func__) +
+                    "  unsupported request type");
+    }
+}
+
+
+ostream& operator<<(ostream& os, SqlRequestParams const& params) {
+
+    // Make the output to look like a serialized JSON object to allow parsing
+    // log files using standard tools.
+
+    json objParams;
+    objParams["type"] = params.type2str();
+    objParams["maxRows"] = params.maxRows;
+    objParams["query"] = params.query;
+    objParams["user"] = params.user;
+    objParams["password"] = "******";
+    objParams["database"] = params.database;
+    objParams["table"] = params.table;
+    objParams["engine"] = params.engine;
+    objParams["partitionByColumn"] = params.partitionByColumn;
+    objParams["transactionId"] = params.transactionId;
+
+    json objParamsColumns;
+    for (auto&& itr: params.columns) {
+        objParamsColumns["name"] = itr.first;
+        objParamsColumns["type"] = itr.second;
+    }
+    objParams["columns"] = objParamsColumns;
+
+    json obj;
+    obj["SqlRequestParams"] = objParams;
+
+    os << obj.dump();
+    return os;
 }
 
 }}} // namespace lsst::qserv::replica
