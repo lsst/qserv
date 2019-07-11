@@ -2028,10 +2028,10 @@ void HttpProcessor::_addTable(qhttp::Request::Ptr const& req,
             allWorkers,
             controller()
         );
-        logJobStartedEvent(SqlCreateTableJob::typeName(), job, databaseInfo.family);
         job->start();
-        logJobFinishedEvent(SqlCreateTableJob::typeName(), job, databaseInfo.family);
+        logJobStartedEvent(SqlCreateTableJob::typeName(), job, databaseInfo.family);
         job->wait();
+        logJobFinishedEvent(SqlCreateTableJob::typeName(), job, databaseInfo.family);
 
         string error;
         auto const& resultData = job->getResultData();
