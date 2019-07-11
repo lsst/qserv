@@ -615,7 +615,21 @@ void Connection::_connectOnce() {
     // Set session attributes
 
     vector<string> queries;
-    queries.push_back("SET SESSION SQL_MODE='ANSI'");
+
+    // The change is related to the following bug in MariaDB before 10.2.8:
+    //    https://jira.mariadb.org/browse/MDEV-16792
+    //
+    // This bug causes problems with partitioned tables if partitions are created
+    // with SQL_MODE='ANSI'. This mode sets 'ANSI_QUOTES` (double quotes for identifiers).
+    // Details are in:
+    //   https://dev.mysql.com/doc/refman/5.7/en/sql-mode.html#sqlmode_ansi_quotes
+    //
+    // The problem is seen in clients which aren't setting this mode. Hence a workaround
+    // is to either keep this mode here or to set that mode in all clients (Qserv).
+    // The current solution is to disable this:
+    //
+    //   queries.push_back("SET SESSION SQL_MODE='ANSI'");
+
     queries.push_back("SET SESSION AUTOCOMMIT=0");
     //
     // TODO: Reconsider this because it won't work in the modern versions
