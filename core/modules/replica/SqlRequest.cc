@@ -617,7 +617,7 @@ SqlGrantAccessRequest::SqlGrantAccessRequest(
         _onFinish(onFinish) {
 
     // Finish initializing the request body's content
-    requestBody.set_type(ProtocolRequestSql::DISABLE_DATABASE);
+    requestBody.set_type(ProtocolRequestSql::GRANT_ACCESS);
     requestBody.set_database(database);
     requestBody.set_user(user);
 }

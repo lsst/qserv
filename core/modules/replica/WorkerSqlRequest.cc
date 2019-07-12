@@ -190,6 +190,9 @@ database::mysql::Connection::Ptr WorkerSqlRequest::_connector() const {
 
 string WorkerSqlRequest::_query(database::mysql::Connection::Ptr const& conn) const {
 
+    auto const config = serviceProvider()->config();
+    auto const workerInfo = config->workerInfo(worker());    
+
     string const qservDbsTable = conn->sqlId("qservw_worker") + "." + conn->sqlId("Dbs");
     string const databaseTable = conn->sqlId(_request.database()) + "." + conn->sqlId(_request.table());
 
@@ -214,8 +217,21 @@ string WorkerSqlRequest::_query(database::mysql::Connection::Ptr const& conn) co
                    " WHERE "      + conn->sqlEqual("db", _request.database());
 
         case ProtocolRequestSql::GRANT_ACCESS:
-            return "GRANT ALL ON " + conn->sqlId(_request.database()) + "." + conn->sqlId("*") +
-                   " TO " + conn->sqlValue(_request.user()) + "@" + conn->sqlValue((workerInfo.dbHost);
+
+            // ATTENTION: MySQL/MariaDB exhibits a somewhat unexpected behavior when putting
+            // the usual MySQL identifier quotes around symbol '*' for table names, like in
+            // this example:
+            //   GRANT ALL ON 'db'.*
+            // The server will result in adding an entry to table:
+            //   mysql.tables_priv
+            // Instead of (as expected):
+            //   mysql.db;
+            // Hence removing quotes from '*' an commenting the following statement:
+            //   return "GRANT ALL ON " + conn->sqlId(_request.database()) + "." + conn->sqlId("*") +
+            //          " TO " + conn->sqlValue(_request.user()) + "@" + conn->sqlValue(workerInfo.dbHost);
+
+            return "GRANT ALL ON " + conn->sqlId(_request.database()) + ".* TO " +
+                   conn->sqlValue(_request.user()) + "@" + conn->sqlValue(workerInfo.dbHost);
 
         case ProtocolRequestSql::CREATE_TABLE: {
             string query = "CREATE TABLE IF NOT EXISTS " + databaseTable + " (";

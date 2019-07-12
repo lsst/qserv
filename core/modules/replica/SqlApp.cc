@@ -161,7 +161,7 @@ SqlApp::SqlApp(int argc, char* argv[])
     grantAccessCmd.required(
         "user",
         "The name of a user to be affected by the operation.",
-        _user
+        _mysqlUser
     );
 
     auto& createTableCmd = parser().command("CREATE_TABLE");
@@ -263,7 +263,7 @@ int SqlApp::runImpl() {
     } else if(_command == "DISABLE_DATABASE") {
         job = SqlDisableDbJob::create(_database, _allWorkers, controller);
     } else if(_command == "GRANT_ACCESS") {
-        job = SqlGrantAccessJob::create(_database, _user, _allWorkers, controller);
+        job = SqlGrantAccessJob::create(_database, _mysqlUser, _allWorkers, controller);
     } else if(_command == "CREATE_TABLE") {
         job = SqlCreateTableJob::create(_database, _table, _engine, _partitionByColumn,
                                         SqlSchemaUtils::readFromTextFile(_schemaFile),

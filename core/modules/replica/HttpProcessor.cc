@@ -1887,7 +1887,7 @@ void HttpProcessor::_publishDatabase(qhttp::Request::Ptr const& req,
             }
         }
 
-        // TODO: (re-)build the secondary index. Should we rather do this as
+        // TODO: (re-)build the secondary index. Should we rather do this
         // in a separate REST call?
 
         // TODO: create database & tables entries in the Qserv master database
@@ -1907,9 +1907,9 @@ void HttpProcessor::_publishDatabase(qhttp::Request::Ptr const& req,
             controller()
         );
         job->start();
-        logJobStartedEvent(SqlCreateDbJob::typeName(), job, databaseInfo.family);
+        logJobStartedEvent(SqlGrantAccessJob::typeName(), job, databaseInfo.family);
         job->wait();
-        logJobFinishedEvent(SqlCreateDbJob::typeName(), job, databaseInfo.family);
+        logJobFinishedEvent(SqlGrantAccessJob::typeName(), job, databaseInfo.family);
 
         string error;
         auto const& resultData = job->getResultData();
