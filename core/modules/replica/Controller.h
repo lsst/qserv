@@ -64,6 +64,7 @@ namespace replica {
     class SqlDeleteDbRequest;
     class SqlEnableDbRequest;
     class SqlDisableDbRequest;
+    class SqlGrantAccessRequest;
     class SqlCreateTableRequest;
     class SqlDeleteTableRequest;
     class SqlRemoveTablePartitionsRequest;
@@ -74,6 +75,7 @@ namespace replica {
     typedef std::shared_ptr<SqlDeleteDbRequest>              SqlDeleteDbRequestPtr;
     typedef std::shared_ptr<SqlEnableDbRequest>              SqlEnableDbRequestPtr;
     typedef std::shared_ptr<SqlDisableDbRequest>             SqlDisableDbRequestPtr;
+    typedef std::shared_ptr<SqlGrantAccessRequest>           SqlGrantAccessRequestPtr;
     typedef std::shared_ptr<SqlCreateTableRequest>           SqlCreateTableRequestPtr;
     typedef std::shared_ptr<SqlDeleteTableRequest>           SqlDeleteTableRequestPtr;
     typedef std::shared_ptr<SqlRemoveTablePartitionsRequest> SqlRemoveTablePartitionsRequestPtr;
@@ -98,6 +100,7 @@ namespace replica {
     using StopSqlDeleteDbRequest    = StopRequest<StopSqlRequestPolicy>;
     using StopSqlEnableDbRequest    = StopRequest<StopSqlRequestPolicy>;
     using StopSqlDisableDbRequest   = StopRequest<StopSqlRequestPolicy>;
+    using StopSqlGrantAccessRequest = StopRequest<StopSqlRequestPolicy>;
     using StopSqlCreateTableRequest = StopRequest<StopSqlRequestPolicy>;
     using StopSqlDeleteTableRequest = StopRequest<StopSqlRequestPolicy>;
     using StopSqlRemoveTablePartitionsRequest = StopRequest<StopSqlRequestPolicy>;
@@ -113,6 +116,7 @@ namespace replica {
     typedef std::shared_ptr<StopSqlDeleteDbRequest>    StopSqlDeleteDbRequestPtr;
     typedef std::shared_ptr<StopSqlEnableDbRequest>    StopSqlEnableDbRequestPtr;
     typedef std::shared_ptr<StopSqlDisableDbRequest>   StopSqlDisableDbRequestPtr;
+    typedef std::shared_ptr<StopSqlGrantAccessRequest> StopSqlGrantAccessRequestPtr;
     typedef std::shared_ptr<StopSqlCreateTableRequest> StopSqlCreateTableRequestPtr;
     typedef std::shared_ptr<StopSqlDeleteTableRequest> StopSqlDeleteTableRequestPtr;
     typedef std::shared_ptr<StopSqlRemoveTablePartitionsRequest> StopSqlRemoveTablePartitionsRequestPtr;
@@ -137,6 +141,7 @@ namespace replica {
     using StatusSqlDeleteDbRequest    = StatusRequest<StatusSqlRequestPolicy>;
     using StatusSqlEnableDbRequest    = StatusRequest<StatusSqlRequestPolicy>;
     using StatusSqlDisableDbRequest   = StatusRequest<StatusSqlRequestPolicy>;
+    using StatusSqlGrantAccessRequest = StatusRequest<StatusSqlRequestPolicy>;
     using StatusSqlCreateTableRequest = StatusRequest<StatusSqlRequestPolicy>;
     using StatusSqlDeleteTableRequest = StatusRequest<StatusSqlRequestPolicy>;
     using StatusSqlRemoveTablePartitionsRequest = StatusRequest<StatusSqlRequestPolicy>;
@@ -152,6 +157,7 @@ namespace replica {
     typedef std::shared_ptr<StatusSqlDeleteDbRequest>    StatusSqlDeleteDbRequestPtr;
     typedef std::shared_ptr<StatusSqlEnableDbRequest>    StatusSqlEnableDbRequestPtr;
     typedef std::shared_ptr<StatusSqlDisableDbRequest>   StatusSqlDisableDbRequestPtr;
+    typedef std::shared_ptr<StatusSqlGrantAccessRequest> StatusSqlGrantAccessRequestPtr;
     typedef std::shared_ptr<StatusSqlCreateTableRequest> StatusSqlCreateTableRequestPtr;
     typedef std::shared_ptr<StatusSqlDeleteTableRequest> StatusSqlDeleteTableRequestPtr;
     typedef std::shared_ptr<StatusSqlRemoveTablePartitionsRequest> StatusSqlRemoveTablePartitionsRequestPtr;
@@ -334,6 +340,16 @@ public:
             std::string const& workerName,
             std::string const& database,
             std::function<void(SqlDisableDbRequestPtr)> const& onFinish=nullptr,
+            int priority=0,
+            bool keepTracking=true,
+            std::string const& jobId="",
+            unsigned int requestExpirationIvalSec=0);
+
+    SqlGrantAccessRequestPtr sqlGrantAccess(
+            std::string const& workerName,
+            std::string const& database,
+            std::string const& user,
+            std::function<void(SqlGrantAccessRequestPtr)> const& onFinish=nullptr,
             int priority=0,
             bool keepTracking=true,
             std::string const& jobId="",

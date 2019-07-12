@@ -71,6 +71,7 @@ SqlApp::SqlApp(int argc, char* argv[])
         "command",
         {"QUERY",
          "CREATE_DATABASE", "DELETE_DATABASE", "ENABLE_DATABASE", "DISABLE_DATABASE",
+         "GRANT_ACCESS",
          "CREATE_TABLE", "DELETE_TABLE", "REMOVE_TABLE_PARTITIONS", "DELETE_TABLE_PARTITION"},
         _command
     );
@@ -149,6 +150,18 @@ SqlApp::SqlApp(int argc, char* argv[])
         "database",
         "The name of a database to be disable at Qserv workers.",
         _database
+    );
+
+    auto& grantAccessCmd = parser().command("GRANT_ACCESS");
+    grantAccessCmd.required(
+        "database",
+        "The name of a database to be accessed.",
+        _database
+    );
+    grantAccessCmd.required(
+        "user",
+        "The name of a user to be affected by the operation.",
+        _user
     );
 
     auto& createTableCmd = parser().command("CREATE_TABLE");
@@ -249,6 +262,8 @@ int SqlApp::runImpl() {
         job = SqlEnableDbJob::create(_database, _allWorkers, controller);
     } else if(_command == "DISABLE_DATABASE") {
         job = SqlDisableDbJob::create(_database, _allWorkers, controller);
+    } else if(_command == "GRANT_ACCESS") {
+        job = SqlGrantAccessJob::create(_database, _user, _allWorkers, controller);
     } else if(_command == "CREATE_TABLE") {
         job = SqlCreateTableJob::create(_database, _table, _engine, _partitionByColumn,
                                         SqlSchemaUtils::readFromTextFile(_schemaFile),

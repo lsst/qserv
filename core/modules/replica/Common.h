@@ -195,6 +195,7 @@ public:
         DROP_DATABASE,
         ENABLE_DATABASE,
         DISABLE_DATABASE,
+        GRANT_ACCESS,
         CREATE_TABLE,
         DROP_TABLE,
         REMOVE_TABLE_PARTITIONING,

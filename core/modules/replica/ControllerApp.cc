@@ -138,6 +138,7 @@ ControllerApp::ControllerApp(int argc, char* argv[])
             "SQL_DELETE_DATABASE",
             "SQL_ENABLE_DATABASE",
             "SQL_DISABLE_DATABASE",
+            "SQL_GRANT_ACCESS",
             "SQL_CREATE_TABLE",
             "SQL_DELETE_TABLE",
             "SQL_REMOVE_TABLE_PARTITIONS",
@@ -345,6 +346,18 @@ ControllerApp::ControllerApp(int argc, char* argv[])
         _sqlDatabase
     );
 
+    auto& grantAccessCmd = parser().command("SQL_GRANT_ACCESS");
+    grantAccessCmd.required(
+        "database",
+        "The name of a database to be accessed.",
+        _sqlDatabase
+    );
+    grantAccessCmd.required(
+        "user",
+        "The name of a user to be affected by the operation.",
+        _sqlUser
+    );
+
     auto& sqlCreateTableCmd = parser().command("SQL_CREATE_TABLE");
     sqlCreateTableCmd.required(
         "database",
@@ -431,12 +444,13 @@ ControllerApp::ControllerApp(int argc, char* argv[])
         "The type of a request affected by the operation. Supported types:"
         " REPLICATE, DELETE, FIND, FIND_ALL, ECHO, SQL_QUERY, SQL_CREATE_DATABASE"
         " SQL_DELETE_DATABASE, SQL_ENABLE_DATABASE, SQL_DISABLE_DATABASE"
+        " SQL_GRANT_ACCESS"
         " SQL_CREATE_TABLE, SQL_DELETE_TABLE, SQL_REMOVE_TABLE_PARTITIONS,"
         "  SQL_DELETE_TABLE_PARTITION.",
         _affectedRequest,
        {"REPLICATE", "DELETE", "FIND", "FIND_ALL", "ECHO", "SQL_QUERY",
         "SQL_CREATE_DATABASE", "SQL_DELETE_DATABASE", "SQL_ENABLE_DATABASE",
-        "SQL_DISABLE_DATABASE", "SQL_CREATE_TABLE", "SQL_DELETE_TABLE",
+        "SQL_DISABLE_DATABASE", "SQL_GRANT_ACCESS", "SQL_CREATE_TABLE", "SQL_DELETE_TABLE",
         "SQL_REMOVE_TABLE_PARTITIONS", "SQL_DELETE_TABLE_PARTITION"});
 
     statusCmd.required(
@@ -456,12 +470,13 @@ ControllerApp::ControllerApp(int argc, char* argv[])
         "The type of a request affected by the operation. Supported types:"
         " REPLICATE, DELETE, FIND, FIND_ALL, ECHO, SQL_QUERY, SQL_CREATE_DATABASE"
         " SQL_DELETE_DATABASE, SQL_ENABLE_DATABASE, SQL_DISABLE_DATABASE"
+        " SQL_GRANT_ACCESS"
         " SQL_CREATE_TABLE, SQL_DELETE_TABLE, SQL_REMOVE_TABLE_PARTITIONS,"
         " SQL_DELETE_TABLE_PARTITION.",
         _affectedRequest,
        {"REPLICATE", "DELETE", "FIND", "FIND_ALL", "ECHO", "SQL_QUERY",
         "SQL_CREATE_DATABASE", "SQL_DELETE_DATABASE", "SQL_ENABLE_DATABASE",
-        "SQL_DISABLE_DATABASE", "SQL_CREATE_TABLE", "SQL_DELETE_TABLE",
+        "SQL_DISABLE_DATABASE", "SQL_GRANT_ACCESS", "SQL_CREATE_TABLE", "SQL_DELETE_TABLE",
         "SQL_REMOVE_TABLE_PARTITIONS", "SQL_DELETE_TABLE_PARTITION"});
 
     stopCmd.required(
@@ -613,6 +628,19 @@ int ControllerApp::runImpl() {
             _workerName,
             _sqlDatabase,
             [&] (SqlDisableDbRequest::Ptr const& ptr_) {
+                ::printRequest(ptr_,
+                               ptr_->responseData(),
+                               ptr_->performance(),
+                               _sqlPageSize);
+            },
+            _priority,
+            not _doNotTrackRequest);
+    } else if ("SQL_GRANT_ACCESS" == _request) {
+        ptr = controller->sqlGrantAccess(
+            _workerName,
+            _sqlDatabase,
+            _sqlUser,
+            [&] (SqlGrantAccessRequest::Ptr const& ptr_) {
                 ::printRequest(ptr_,
                                ptr_->responseData(),
                                ptr_->performance(),
@@ -782,6 +810,18 @@ int ControllerApp::runImpl() {
                     ::printRequestExtra<StatusSqlDisableDbRequest>(ptr_);
                 },
                 not _doNotTrackRequest);
+        } else if ("SQL_GRANT_ACCESS" == _affectedRequest) {
+            ptr = controller->statusById<StatusSqlGrantAccessRequest>(
+                _workerName,
+                _affectedRequestId,
+                [&] (StatusSqlGrantAccessRequest::Ptr const& ptr_) {
+                    ::printRequest(ptr_,
+                                   ptr_->responseData(),
+                                   ptr_->performance(),
+                                   _sqlPageSize);
+                    ::printRequestExtra<StatusSqlGrantAccessRequest>(ptr_);
+                },
+                not _doNotTrackRequest);
         } else if ("SQL_CREATE_TABLE" == _affectedRequest) {
             ptr = controller->statusById<StatusSqlCreateTableRequest>(
                 _workerName,
@@ -937,6 +977,18 @@ int ControllerApp::runImpl() {
                                    ptr_->performance(),
                                    _sqlPageSize);
                     ::printRequestExtra<StopSqlDisableDbRequest>(ptr_);
+                },
+                not _doNotTrackRequest);
+        } else if ("SQL_GRANT_ACCESS" == _affectedRequest) {
+            ptr = controller->stopById<StopSqlGrantAccessRequest>(
+                _workerName,
+                _affectedRequestId,
+                [&] (StopSqlGrantAccessRequest::Ptr const& ptr_) {
+                    ::printRequest(ptr_,
+                                   ptr_->responseData(),
+                                   ptr_->performance(),
+                                   _sqlPageSize);
+                    ::printRequestExtra<StopSqlGrantAccessRequest>(ptr_);
                 },
                 not _doNotTrackRequest);
         } else if ("SQL_CREATE_TABLE" == _affectedRequest) {

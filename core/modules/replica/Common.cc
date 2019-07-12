@@ -209,6 +209,7 @@ SqlRequestParams::SqlRequestParams(ProtocolRequestSql const& request)
         case ProtocolRequestSql::DROP_DATABASE:             type = DROP_DATABASE; break;
         case ProtocolRequestSql::ENABLE_DATABASE:           type = ENABLE_DATABASE; break;
         case ProtocolRequestSql::DISABLE_DATABASE:          type = DISABLE_DATABASE; break;
+        case ProtocolRequestSql::GRANT_ACCESS:              type = GRANT_ACCESS; break;
         case ProtocolRequestSql::CREATE_TABLE:              type = CREATE_TABLE; break;
         case ProtocolRequestSql::DROP_TABLE:                type = DROP_TABLE; break;
         case ProtocolRequestSql::REMOVE_TABLE_PARTITIONING: type = REMOVE_TABLE_PARTITIONING; break;
@@ -241,6 +242,7 @@ string SqlRequestParams::type2str() const {
         case DROP_DATABASE:             return "DROP_DATABASE";
         case ENABLE_DATABASE:           return "ENABLE_DATABASE";
         case DISABLE_DATABASE:          return "DISABLE_DATABASE";
+        case GRANT_ACCESS:              return "GRANT_ACCESS";
         case CREATE_TABLE:              return "CREATE_TABLE";
         case DROP_TABLE:                return "DROP_TABLE";
         case REMOVE_TABLE_PARTITIONING: return "REMOVE_TABLE_PARTITIONING";

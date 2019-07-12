@@ -594,6 +594,90 @@ void SqlDisableDbJob::notify(util::Lock const& lock) {
 }
 
 
+string SqlGrantAccessJob::typeName() { return "SqlGrantAccessJob"; }
+
+
+SqlGrantAccessJob::Ptr SqlGrantAccessJob::create(
+        string const& database,
+        string const& user,
+        bool allWorkers,
+        Controller::Ptr const& controller,
+        string const& parentJobId,
+        CallbackType const& onFinish,
+        Job::Options const& options) {
+
+    return Ptr(new SqlGrantAccessJob(
+        database,
+        user,
+        allWorkers,
+        controller,
+        parentJobId,
+        onFinish,
+        options
+    ));
+}
+
+
+SqlGrantAccessJob::SqlGrantAccessJob(string const& database,
+                                     string const& user,
+                                     bool allWorkers,
+                                     Controller::Ptr const& controller,
+                                     string const& parentJobId,
+                                     CallbackType const& onFinish,
+                                     Job::Options const& options)
+    :   SqlBaseJob(0 /* maxRows */,
+                   allWorkers,
+                   controller,
+                   parentJobId,
+                   options),
+        _database(database),
+        _onFinish(onFinish) {
+}
+
+
+list<pair<string,string>> SqlGrantAccessJob::extendedPersistentState() const {
+    list<pair<string,string>> result;
+    result.emplace_back("database", database());
+    result.emplace_back("all_workers", string(allWorkers() ? "1" : "0"));
+    return result;
+}
+
+SqlBaseRequest::Ptr SqlGrantAccessJob::launchRequest(util::Lock const& lock,
+                                                     string const& worker) {
+    auto const self = shared_from_base<SqlGrantAccessJob>();
+    return controller()->sqlGrantAccess(
+        worker,
+        database(),
+        user(),
+        [self] (SqlGrantAccessRequest::Ptr const& request) {
+            self->onRequestFinish(request);
+        },
+        options(lock).priority,
+        true,   /* keepTracking*/
+        id()    /* jobId */
+    );
+}
+
+
+void SqlGrantAccessJob::stopRequest(util::Lock const& lock,
+                                    SqlBaseRequest::Ptr const& request) {
+    controller()->stopById<StopSqlGrantAccessRequest>(
+        request->worker(),
+        request->id(),
+        nullptr,    /* onFinish */
+        options(lock).priority,
+        true,       /* keepTracking */
+        id()        /* jobId */
+    );
+}
+
+
+void SqlGrantAccessJob::notify(util::Lock const& lock) {
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "[" << typeName() << "]");
+    notifyDefaultImpl<SqlGrantAccessJob>(lock, _onFinish);
+}
+
+
 string SqlCreateTableJob::typeName() { return "SqlCreateTableJob"; }
 
 

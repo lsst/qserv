@@ -451,6 +451,7 @@ typedef StatusRequest<StatusSqlRequestPolicy>         StatusSqlCreateDbRequest;
 typedef StatusRequest<StatusSqlRequestPolicy>         StatusSqlDeleteDbRequest;
 typedef StatusRequest<StatusSqlRequestPolicy>         StatusSqlEnableDbRequest;
 typedef StatusRequest<StatusSqlRequestPolicy>         StatusSqlDisableDbRequest;
+typedef StatusRequest<StatusSqlRequestPolicy>         StatusSqlGrantAccessRequest;
 typedef StatusRequest<StatusSqlRequestPolicy>         StatusSqlCreateTableRequest;
 typedef StatusRequest<StatusSqlRequestPolicy>         StatusSqlDeleteTableRequest;
 typedef StatusRequest<StatusSqlRequestPolicy>         StatusSqlRemoveTablePartitionsRequest;

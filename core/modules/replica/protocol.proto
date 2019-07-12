@@ -186,10 +186,11 @@ message ProtocolRequestSql {
         DROP_DATABASE = 2;
         ENABLE_DATABASE = 3;    // in Qserv
         DISABLE_DATABASE = 4;   // in Qserv
-        CREATE_TABLE = 5;
-        DROP_TABLE = 6;
-        REMOVE_TABLE_PARTITIONING = 7;
-        DROP_TABLE_PARTITION = 8;
+        GRANT_ACCESS = 5;
+        CREATE_TABLE = 6;
+        DROP_TABLE = 7;
+        REMOVE_TABLE_PARTITIONING = 8;
+        DROP_TABLE_PARTITION = 9;
     }
     required Type type = 2;
 

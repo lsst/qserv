@@ -1867,23 +1867,71 @@ void HttpProcessor::_publishDatabase(qhttp::Request::Ptr const& req,
     _debug(__func__);
 
     try {
+        auto const databaseServices = controller()->serviceProvider()->databaseServices();
         auto const config = controller()->serviceProvider()->config();
-        auto const database = ::getRequiredQueryParamStr(req->query, "database");
 
+        auto const database = ::getRequiredQueryParamStr(req->query, "database");
         _debug(string(__func__) + " database=" + database);
 
-        if (config->databaseInfo(database).isPublished) {
+        auto const databaseInfo = config->databaseInfo(database);
+        if (databaseInfo.isPublished) {
             _sendError(resp, __func__, "the database is already published");
             return;
         }
-           
+
+        // Scan super-transactions to make sure none is still open
+        for (auto&& t: databaseServices->transactions(databaseInfo.name)) {
+            if (t.state == "STARTED") {
+                _sendError(resp, __func__, "database has uncommitted transactions");
+                return;
+            }
+        }
+
         // TODO: (re-)build the secondary index. Should we rather do this as
         // in a separate REST call?
 
         // TODO: create database & tables entries in the Qserv master database
+        // Use a direct connector to the database, 'root' account and the password
+        // supplied via the Configuration
 
-        // TODO: grant SELECT authorizations for the new database to Qserv
+        ;
+
+        // Grant SELECT authorizations for the new database to Qserv
         // MySQL account(s) at all workers and the master(s)
+        
+        bool const allWorkers = true;
+        auto const job = SqlGrantAccessJob::create(
+            databaseInfo.name,
+            config->qservMasterDatabaseUser(),
+            allWorkers,
+            controller()
+        );
+        job->start();
+        logJobStartedEvent(SqlCreateDbJob::typeName(), job, databaseInfo.family);
+        job->wait();
+        logJobFinishedEvent(SqlCreateDbJob::typeName(), job, databaseInfo.family);
+
+        string error;
+        auto const& resultData = job->getResultData();
+        for (auto&& itr: resultData.resultSets) {
+            auto&& worker = itr.first;
+            auto&& resultSet = itr.second;
+            bool const succeeded = resultData.workers.at(worker);
+            if (not succeeded) {
+                error += "grant access to a database failed on worker: " + worker + ",  error: " +
+                         resultSet.error + " ";
+            }
+        }
+        if (not error.empty()) {
+            _sendError(resp, __func__, error);
+            return;
+        }
+
+        // TODO: Grant SELECT authorizations for the new database on master
+        // Use a direct connector to the database, 'root' account and the password
+        // supplied via the Configuration
+
+        ;
 
         // TODO: register the database at CSS
 

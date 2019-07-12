@@ -213,6 +213,10 @@ string WorkerSqlRequest::_query(database::mysql::Connection::Ptr const& conn) co
             return "DELETE FROM " + qservDbsTable +
                    " WHERE "      + conn->sqlEqual("db", _request.database());
 
+        case ProtocolRequestSql::GRANT_ACCESS:
+            return "GRANT ALL ON " + conn->sqlId(_request.database()) + "." + conn->sqlId("*") +
+                   " TO " + conn->sqlValue(_request.user()) + "@" + conn->sqlValue((workerInfo.dbHost);
+
         case ProtocolRequestSql::CREATE_TABLE: {
             string query = "CREATE TABLE IF NOT EXISTS " + databaseTable + " (";
             for (int index = 0, num_columns = _request.columns_size(); index < num_columns; ++index) {

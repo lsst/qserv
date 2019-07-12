@@ -353,6 +353,32 @@ SqlDisableDbRequest::Ptr Controller::sqlDisableDb(
 }
 
 
+SqlGrantAccessRequest::Ptr Controller::sqlGrantAccess(
+        string const& workerName,
+        string const& database,
+        string const& user,
+        SqlGrantAccessRequest::CallbackType const& onFinish,
+        int priority,
+        bool keepTracking,
+        string const& jobId,
+        unsigned int requestExpirationIvalSec) {
+
+    LOGS(_log, LOG_LVL_DEBUG, _context(__func__));
+
+    return _submit<SqlGrantAccessRequest,
+                   decltype(database),
+                   decltype(user)>(
+        workerName,
+        database,
+        user,
+        onFinish,
+        priority,
+        keepTracking,
+        jobId,
+        requestExpirationIvalSec);
+}
+
+
 SqlCreateTableRequest::Ptr Controller::sqlCreateTable(
         string const& workerName,
         string const& database,

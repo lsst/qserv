@@ -438,6 +438,7 @@ typedef StopRequest<StopSqlRequestPolicy>         StopSqlCreateDbRequest;
 typedef StopRequest<StopSqlRequestPolicy>         StopSqlDeleteDbRequest;
 typedef StopRequest<StopSqlRequestPolicy>         StopSqlEnableDbRequest;
 typedef StopRequest<StopSqlRequestPolicy>         StopSqlDisableDbRequest;
+typedef StopRequest<StopSqlRequestPolicy>         StopSqlGrantAccessRequest;
 typedef StopRequest<StopSqlRequestPolicy>         StopSqlCreateTableRequest;
 typedef StopRequest<StopSqlRequestPolicy>         StopSqlDeleteTableRequest;
 typedef StopRequest<StopSqlRequestPolicy>         StopSqlRemoveTablePartitionsRequest;
