@@ -1,6 +1,6 @@
 /*
  * LSST Data Management System
- * Copyright 2017 AURA/LSST.
+ * Copyright 2017, 2019 AURA/LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -20,8 +20,8 @@
  * see <https://www.lsstcorp.org/LegalNotices/>.
  */
 
-#ifndef LSST_QSERV_QHTTP_CIUTILS_H
-#define LSST_QSERV_QHTTP_CIUTILS_H
+#ifndef LSST_QSERV_UTIL_CIUTILS_H
+#define LSST_QSERV_UTIL_CIUTILS_H
 
 // System headers
 #include <functional>
@@ -33,7 +33,7 @@
 
 namespace lsst {
 namespace qserv {
-namespace qhttp {
+namespace util {
 
 //----- Case-insensitive hash and comparison functionals for std::string,
 //      can be used for instantiation of case-insensitive standard containers.
@@ -50,6 +50,6 @@ struct ci_pred {
     }
 };
 
-}}}  // namespace lsst::qserv::qhttp
+}}}  // namespace lsst::qserv::util
 
-#endif // LSST_QSERV_QHTTP_CIUTILS_H
+#endif // LSST_QSERV_UTIL_CIUTILS_H
