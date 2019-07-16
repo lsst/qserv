@@ -75,13 +75,31 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.qana.QservRestrictorPlugin");
 enum RestrictorType { SECONDARY_INDEX_IN =1, SECONDARY_INDEX_NOT_IN,
     SECONDARY_INDEX_BETWEEN, SECONDARY_INDEX_NOT_BETWEEN};
 
+
 } // anonymous namespace
 
 namespace lsst {
 namespace qserv {
 namespace qana {
 
+
+struct RestrictorEntry {
+
+    RestrictorEntry(std::string const& alias_,
+                    StringPair const& chunkColumns_,
+                    std::string const& secIndexColumn_)
+        : alias(alias_),
+          chunkColumns(chunkColumns_),
+          secIndexColumn(secIndexColumn_)
+        {}
+    std::string alias;
+    StringPair chunkColumns;
+    std::string secIndexColumn;
+};
+
+
 typedef std::pair<std::string, std::string> StringPair;
+typedef std::deque<RestrictorEntry> RestrictoryEntryList;
 
 
 query::ColumnRef::Vector resolveAsColumnRef(query::QueryContext& context, query::ValueExprPtr vexpr) {
@@ -117,6 +135,7 @@ inline bool isValidLiteral(query::ValueExprPtr p) {
     return p && !p->copyAsLiteral().empty();
 }
 
+
 struct validateLiteral {
     validateLiteral(bool& isValid_) : isValid(isValid_) {}
     inline void operator()(query::ValueExprPtr p) {
@@ -125,11 +144,13 @@ struct validateLiteral {
     bool& isValid;
 };
 
+
 struct extractLiteral {
     inline std::string operator()(query::ValueExprPtr p) {
         return p->copyAsLiteral();
     }
 };
+
 
 /**  Create a QsRestrictor from the column ref and the set of specified values or NULL if one of the values is a non-literal.
  *
@@ -214,6 +235,7 @@ query::QsRestrictor::Ptr newRestrictor(
     return restrictor;
 }
 
+
 /**  Create QSRestrictors which will use secondary index
  *
  *   @param context:  Context used to analyze SQL query, allow to compute
@@ -231,7 +253,6 @@ query::QsRestrictor::PtrVector getSecIndexRestrictors(query::QueryContext& conte
         auto factor = std::dynamic_pointer_cast<query::BoolFactor>(term);
         if (!factor) continue;
         for (auto factorTerm : factor->_terms) {
-
             query::ColumnRef::Vector columnRefs;
             query::QsRestrictor::Ptr restrictor;
 
@@ -317,6 +338,7 @@ query::PassListTerm::Ptr newPassList(C& c) {
     return p;
 }
 
+
 query::InPredicate::Ptr
 newInPred(std::string const& aliasTable,
           std::string const& secIndexColumn,
@@ -336,6 +358,7 @@ newInPred(std::string const& aliasTable,
     }
     return p;
 }
+
 
 template <typename C>
 query::FuncExpr::Ptr newFuncExpr(char const fName[],
@@ -360,14 +383,12 @@ query::FuncExpr::Ptr newFuncExpr(char const fName[],
 }
 
 
-typedef std::deque<RestrictorEntry> RestrictorEntries;
-
 class getTable : public query::TableRef::Func {
 public:
 
-    getTable(css::CssAccess& css, RestrictorEntries& entries)
+    getTable(css::CssAccess& css, RestrictoryEntryList& chunkedTables)
         : _css(css),
-          _entries(entries) {}
+          _chunkedTables(chunkedTables) {}
 
     void operator()(query::TableRef::Ptr t) {
         // FIXME: Modify so we can use TableRef::apply()
@@ -401,7 +422,7 @@ public:
         RestrictorEntry se(alias,
                            StringPair(pCols[0], pCols[1]),
                            pCols[2]);
-        _entries.push_back(se);
+        _chunkedTables.push_back(se);
         query::JoinRefPtrVector& joinRefs = t.getJoins();
         typedef query::JoinRefPtrVector::iterator Iter;
         for (Iter i=joinRefs.begin(), e=joinRefs.end(); i != e; ++i) {
@@ -409,7 +430,7 @@ public:
         }
     }
     css::CssAccess& _css;
-    RestrictorEntries& _entries;
+    RestrictoryEntryList& _chunkedTables;
 };
 
 
@@ -517,51 +538,49 @@ QservRestrictorPlugin::applyLogical(query::SelectStmt& stmt,
     // rewrite in the context of whatever chunked tables exist in the
     // FROM list.
 
-    // First, get a list of the chunked tables.
-    query::FromList& fList = stmt.getFromList();
-    query::TableRefList& tList = fList.getTableRefList();
-    RestrictorEntries entries;
     if (!context.css) {
-        throw AnalysisBug("Missing metadata in context");
+        throw AnalysisBug("Missing metadata in context.");
     }
-    getTable gt(*context.css, entries);
-    std::for_each(tList.begin(), tList.end(), gt);
 
+    // If there's no where clause then there's no need to do any work here.
     if (!stmt.hasWhereClause()) { return; }
+
+    // Get a list of the chunked tables (as a list of RestrictorEntry).
+    query::TableRefList& tList = stmt.getFromList().getTableRefList();
+    RestrictoryEntryList chunkedTables;
+    getTable gt(*context.css, chunkedTables);
+    std::for_each(tList.begin(), tList.end(), gt);
+    // Now, chunkedTables is populated with a RestrictorEntry for each table in the FROM list that is
+    // chunked.
 
     // Prepare to patch the WHERE clause
     query::WhereClause& whereClause = stmt.getWhereClause();
 
-    query::AndTerm::Ptr originalAnd(whereClause.getRootAndTerm());
-    query::QueryContext::RestrList ctxRestrictors;
-
     // Now handle the explicit restrictors
+    query::QueryContext::RestrList ctxRestrictors;
     auto whereClauseRestrictors = whereClause.getRestrs();
-    if (whereClauseRestrictors && not whereClauseRestrictors->empty()) {
-
-        // At least one table should exist in the restrictor entries
-        if (entries.empty()) {
-            throw AnalysisError("Spatial restrictor w/o partitioned table");
+    if (whereClauseRestrictors != nullptr && not whereClauseRestrictors->empty()) {
+        // At least one table should exist in the restrictor chunkedTables
+        if (chunkedTables.empty()) {
+            throw AnalysisError("Spatial restrictor without partitioned table.");
         }
-
         auto newTerm = std::make_shared<query::AndTerm>();
         // spatial restrictions
         // Now, for each of the qserv restrictors:
-        for (auto const& restrictor : *whereClauseRestrictors) {
-            // for each restrictor entry
-            // generate a restrictor condition.
-            for (auto const& entry : entries) {
-                newTerm->_terms.push_back(_makeCondition(restrictor, entry));
+        for (auto const& qsRestrictor : *whereClauseRestrictors) {
+            // generate a restrictor condition for each restrictor entry:
+            for (auto const& chunkedTable : chunkedTables) {
+                newTerm->_terms.push_back(_makeCondition(qsRestrictor, chunkedTable));
             }
-            // Save restrictor in QueryContext.
-            ctxRestrictors.push_back(restrictor);
+            // Save qsRestrictor in QueryContext.
+            ctxRestrictors.push_back(qsRestrictor);
         }
-
         whereClause.prependAndTerm(newTerm);
     }
     whereClause.resetRestrs();
 
     // Merge in the implicit (i.e. secondary index) restrictors
+    query::AndTerm::Ptr originalAnd(whereClause.getRootAndTerm());
     query::QsRestrictor::PtrVector const& secIndexPreds = getSecIndexRestrictors(context, originalAnd);
     ctxRestrictors.insert(ctxRestrictors.end(), secIndexPreds.begin(), secIndexPreds.end());
 
@@ -578,7 +597,7 @@ QservRestrictorPlugin::applyPhysical(QueryPlugin::Plan& p,
 
 query::BoolTerm::Ptr
 QservRestrictorPlugin::_makeCondition(
-             std::shared_ptr<query::QsRestrictor> const restr,
+             std::shared_ptr<const query::QsRestrictor> const restr,
              RestrictorEntry const& restrictorEntry) {
     Restriction r(*restr);
     return r.generate(restrictorEntry);
