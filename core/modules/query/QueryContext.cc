@@ -207,15 +207,6 @@ std::vector<std::string> QueryContext::_getTableSchema(std::string const& dbName
 }
 
 
-bool QueryContext::ColumnToTableLessThan::operator()(std::string const& lhs, std::string const& rhs) const {
-    std::string l(lhs);
-    std::string r(rhs);
-    std::transform(l.begin(), l.end(), l.begin(), [](unsigned char c){ return tolower(c); });
-    std::transform(r.begin(), r.end(), r.begin(), [](unsigned char c){ return tolower(c); });
-    return l < r;
-}
-
-
 bool QueryContext::TableRefSetLessThan::operator()(std::shared_ptr<query::TableRef const> const& lhs,
         std::shared_ptr<query::TableRef const> const& rhs) const {
     if (nullptr == lhs || nullptr == rhs) {

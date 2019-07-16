@@ -34,6 +34,7 @@
 // System headers
 #include <memory>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 // Local headers
@@ -43,6 +44,7 @@
 #include "query/FromList.h"
 #include "query/ValueExpr.h"
 #include "sql/SqlConfig.h"
+#include "util/CIUtils.h"
 #include "global/stringTypes.h"
 
 
@@ -183,11 +185,6 @@ private:
 
     std::vector<std::string> _getTableSchema(std::string const& dbName, std::string const& tableName);
 
-    // Comparison function for _columnToTablesMap to make the key string compare case insensitive.
-    struct ColumnToTableLessThan {
-        bool operator()(std::string const& lhs, std::string const& rhs) const;
-    };
-
     // Comparison function for the TableRefSet that goes into the _columnToTablesMap, to compare the TableRef
     // objects, not the pointers that own them.
     struct TableRefSetLessThan {
@@ -198,7 +195,7 @@ private:
     typedef std::set<std::shared_ptr<query::TableRef>, TableRefSetLessThan> TableRefSet;
 
     // stores the names of columns that are in each table that is used in the FROM statement.
-    std::map<std::string, TableRefSet, ColumnToTableLessThan> _columnToTablesMap;
+    std::unordered_map<std::string, TableRefSet, util::ci_hash, util::ci_pred> _columnToTablesMap;
 
     std::vector<std::shared_ptr<query::TableRef>> _usedTableRefs; ///< TableRefs from the FROM list
     std::vector<std::shared_ptr<query::ValueExpr>> _usedValueExprs; ///< ValueExprs from the SELECT list
