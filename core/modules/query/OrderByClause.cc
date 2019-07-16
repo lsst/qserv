@@ -104,7 +104,7 @@ OrderByTerm::renderTo(QueryTemplate& qt) const {
 
 std::string OrderByTerm::sqlFragment() const {
     std::string str;
-    str += _expr->sqlFragment();
+    str += _expr->sqlFragment(QueryTemplate::USE_ALIAS);
     if (!_collate.empty()) {
         str += " COLLATE " + _collate;
     }
@@ -197,6 +197,13 @@ std::shared_ptr<OrderByClause> OrderByClause::copySyntax() {
 
 
 void OrderByClause::findValueExprs(ValueExprPtrVector& list) const {
+    for (auto&& orderByTerm : *_terms) {
+        list.push_back(orderByTerm.getExpr());
+    }
+}
+
+
+void OrderByClause::findValueExprRefs(ValueExprPtrRefVector& list) {
     for (auto&& orderByTerm : *_terms) {
         list.push_back(orderByTerm.getExpr());
     }

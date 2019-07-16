@@ -30,7 +30,15 @@
 // Qserv headers
 #include "mysql/MySqlConfig.h"
 #include "qmeta/QMeta.h"
-#include "sql/SqlConnection.h"
+
+
+// Forward declarations
+namespace lsst {
+namespace qserv {
+namespace sql {
+    class SqlConnection;
+}}}
+
 
 namespace lsst {
 namespace qserv {
@@ -248,6 +256,17 @@ public:
     virtual std::vector<QueryId> getQueriesForTable(std::string const& dbName,
                                                     std::string const& tableName) override;
 
+    /**
+     * @brief Save the result query in metadata, to give to the proxy when fetching results from an async
+     *        query.
+     *
+     *  This method will throw if query ID is not known.
+     *
+     * @param queryId: Query ID, non-negative number.
+     * @param query : string, the query.
+     */
+    void saveResultQuery(QueryId queryId, std::string const& query) override;
+
 protected:
 
     ///  Check that all necessary tables exist
@@ -255,7 +274,7 @@ protected:
 
 private:
 
-    sql::SqlConnection _conn;
+    std::shared_ptr<sql::SqlConnection> _conn;
     std::mutex _dbMutex;    ///< Synchronizes access to certain DB operations
 
 };

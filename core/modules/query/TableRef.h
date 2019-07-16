@@ -41,7 +41,6 @@
 #include <vector>
 
 // Local headers
-#include "query/DbTablePair.h"
 #include "query/QueryTemplate.h"
 
 
@@ -71,31 +70,73 @@ typedef std::vector<std::shared_ptr<JoinRef> > JoinRefPtrVector;
 class TableRef {
 public:
     typedef std::shared_ptr<TableRef> Ptr;
-    typedef std::shared_ptr<TableRef const> CPtr;
+    typedef std::shared_ptr<TableRef const> ConstPtr;
 
-    TableRef(std::string const& db_, std::string const& table_,
-               std::string const& alias_)
-        : _alias(alias_), _db(db_), _table(table_)  {
-        if(table_.empty()) { throw std::logic_error("TableRef without table"); }
-    }
-    virtual ~TableRef() {}
+    TableRef();
 
-    std::ostream& putStream(std::ostream& os) const;
-    void putTemplate(QueryTemplate& qt) const;
+    TableRef(std::string const& db, std::string const& table, std::string const& alias);
 
-    bool isSimple() const { return _joinRefs.empty(); }
+    ~TableRef() = default;
+
     std::string const& getDb() const { return _db; }
     std::string const& getTable() const { return _table; }
     std::string const& getAlias() const { return _alias; }
-    JoinRefPtrVector const& getJoins() const { return _joinRefs; }
+    JoinRefPtrVector& getJoins() { return _joinRefs; }
 
-    // Modifiers
-    void setAlias(std::string const& alias);
     void setDb(std::string const& db);
     void setTable(std::string const& table);
-    JoinRefPtrVector& getJoins() { return _joinRefs; }
+    void setAlias(std::string const& alias);
     void addJoin(std::shared_ptr<JoinRef> r);
     void addJoins(const JoinRefPtrVector& r);
+
+    bool hasDb() const { return not _db.empty(); }
+    bool hasTable() const { return not _table.empty(); }
+    bool hasAlias() const { return not _alias.empty(); }
+
+    bool isSimple() const { return _joinRefs.empty(); }
+    JoinRefPtrVector const& getJoins() const { return _joinRefs; }
+
+    /**
+     * @brief Verify the table is set and set a database if one is not set. Recurses to all join refs.
+     *
+     * @throws If an empty string is passed for default then this will throw if the value is not set in the
+     *         instance.
+     *
+     * @param defaultDb the default database to assign, or an empty string for no default.
+     */
+    void verifyPopulated(std::string const& defaultDb=std::string());
+
+    /**
+     * @brief Find out if this TableRef is the same as another TableRef, where the database & column fields
+     *        in this table ref may not be populated.
+     *
+     * For example, if the database is not populated in this it is ignored during comparison.
+     * It is required that if the database is populated that the Table also be populated.
+     * If the alias is populated it is included in the check.
+     *
+     * This only works with simple TableRefs (i.e. TableRefs without JOINs), throws a logic_error if this is
+     * called on or with a not-simple TableRef.
+     *
+     * @return true if the populated fields of this match the populated fields of rhs *and* if database is
+     *         populated that table is populated as well.
+     * @return false if populated fields of this do not match popualted fields of rhs or if database is
+     *         populated but table is not.
+     */
+    bool isSubsetOf(TableRef const& rhs) const;
+
+    /**
+     * @brief Find out if this TableRef is using the alias of another TableRef
+     *
+     * If only the table is populated in this object and it matches the alias of the other object then this
+     * object is the same as, the alias of, the other object.
+     *
+     * @param rhs
+     * @return bool
+     */
+    bool isAliasedBy(TableRef const& rhs) const;
+
+    // return true if all the fields are populated, false if a field (like the database field) is empty.
+    bool isComplete() const;
 
     class Func {
     public:
@@ -110,29 +151,28 @@ public:
     void apply(Func& f);
     void apply(FuncC& f) const;
 
-    /**
-     * @brief Verify the table is set and set a database if one is not set. Recurses to all join refs.
-     *
-     * @throws If an empty string is passed for default then this will throw if the value is not set in the
-     *         instance.
-     *
-     * @param defaultDb the default database to assign, or an empty string for no default.
-     */
-    void verifyPopulated(std::string const& defaultDb=std::string());
+    std::ostream& putStream(std::ostream& os) const;
+    void putTemplate(QueryTemplate& qt) const;
+    std::string sqlFragment() const;
+
+    bool operator==(TableRef const& rhs) const;
+
+    bool operator<(const TableRef& rhs) const;
 
     TableRef::Ptr clone() const;
 
-    bool operator==(const TableRef& rhs) const;
-
     class render;
-private:
-    friend std::ostream& operator<<(std::ostream& os, TableRef const& refN);
-    friend std::ostream& operator<<(std::ostream& os, TableRef const* refN);
 
-    std::string _alias;
+private:
+    void _verify() const;
+
     std::string _db;
     std::string _table;
+    std::string _alias;
     JoinRefPtrVector _joinRefs;
+
+    friend std::ostream& operator<<(std::ostream& os, TableRef const& refN);
+    friend std::ostream& operator<<(std::ostream& os, TableRef const* refN);
 };
 
 

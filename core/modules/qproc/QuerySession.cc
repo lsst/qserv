@@ -66,16 +66,45 @@
 #include "qana/WherePlugin.h"
 #include "qproc/QueryProcessingBug.h"
 #include "query/Constraint.h"
+#include "query/SelectList.h"
 #include "query/QsRestrictor.h"
 #include "query/QueryContext.h"
 #include "query/SelectStmt.h"
 #include "query/SelectList.h"
 #include "query/typedefs.h"
+#include "sql/SqlException.h"
 #include "util/IterableFormatter.h"
+
 
 namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.qproc.QuerySession");
+
+std::string printParallel(lsst::qserv::query::SelectStmtPtrVector const& p) {
+    std::string ret;
+    for (auto&& selectStmtPtr : p) {
+        ret += "        ";
+        ret += selectStmtPtr->getQueryTemplate().sqlFragment();
+        ret += "\n";
+    }
+    return ret;
 }
+
+#define LOG_STATEMENTS(LEVEL, PRETEXT) \
+LOGS(_log, LEVEL, '\n' \
+    << "  " << PRETEXT << '\n' \
+    << "    stmt:" \
+        << (_stmt != nullptr ? _stmt->getQueryTemplate().sqlFragment() : "nullptr") << '\n' \
+    << "    stmtParallel:" << '\n' \
+        << printParallel(_stmtParallel) \
+    << "    stmtPreFlight:" \
+        << (_stmtPreFlight != nullptr ? _stmtPreFlight->getQueryTemplate().sqlFragment() : "nullptr") \
+        << '\n' \
+    << "    stmtMerge:" \
+        << (_stmtMerge != nullptr ? _stmtMerge->getQueryTemplate().sqlFragment() : "nullptr") \
+        << '\n' \
+    << "    needsMerge:" << (needsMerge() ? "true" : "false"));
+}
+
 
 namespace lsst {
 namespace qserv {
@@ -115,16 +144,20 @@ void QuerySession::analyzeQuery(std::string const& sql, std::shared_ptr<query::S
         _applyConcretePlugins();
 
         LOGS(_log, LOG_LVL_DEBUG, "Query Plugins applied:\n " << *this);
-        LOGS(_log, LOG_LVL_TRACE, "ORDER BY clause for mysql-proxy: " << getProxyOrderBy());
+        LOGS(_log, LOG_LVL_TRACE, "ORDER BY clause for result query: " << getResultOrderBy());
 
     } catch(QueryProcessingBug& b) {
         _error = std::string("QuerySession bug:") + b.what();
     } catch(qana::AnalysisError& e) {
         _error = std::string("AnalysisError:") + e.what();
     } catch(css::NoSuchDb& e) {
-        _error = std::string("NoSuchDb:") + e.what();
+        _error = std::string("NoSuchDb(css):") + e.what();
     } catch(css::NoSuchTable& e) {
-        _error = std::string("NoSuchTable:") + e.what();
+        _error = std::string("NoSuchTable(css):") + e.what();
+    } catch(sql::NoSuchDb& e) {
+        _error = std::string("NoSuchDb(sql):") + e.what();
+    } catch(sql::NoSuchTable& e) {
+        _error = std::string("NoSuchTable(sql):") + e.what();
     } catch(Bug& b) {
         _error = std::string("Qserv bug:") + b.what();
     } catch(std::exception const& e) {
@@ -173,14 +206,16 @@ std::shared_ptr<query::ConstraintVector> QuerySession::getConstraints() const {
     return cv;
 }
 
-// return the ORDER BY clause to run on mysql-proxy at result retrieval
-std::string QuerySession::getProxyOrderBy() const {
+
+std::string QuerySession::getResultOrderBy() const {
     std::string orderBy;
     if (_stmt->hasOrderBy()) {
         orderBy = _stmt->getOrderBy().sqlFragment();
     }
+    LOGS(_log, LOG_LVL_TRACE, "getResultOrderBy: " << orderBy);
     return orderBy;
 }
+
 
 void QuerySession::addChunk(ChunkSpec const& cs) {
     LOGS(_log, LOG_LVL_DEBUG, "Add chunk: " << cs);
@@ -260,13 +295,13 @@ void QuerySession::finalize() {
 
 
 QuerySession::QuerySession(Test& t)
-    : _css(t.css), _defaultDb(t.defaultDb) {
+    : _css(t.css), _defaultDb(t.defaultDb), _sqlConfig(t.sqlConfig) {
     _initContext();
 }
 
 
 void QuerySession::_initContext() {
-    _context = std::make_shared<query::QueryContext>(_defaultDb, _css, _mysqlSchemaConfig);
+    _context = std::make_shared<query::QueryContext>(_defaultDb, _css, _sqlConfig);
 }
 
 
@@ -288,12 +323,12 @@ void QuerySession::_preparePlugins() {
     }
 }
 
+
 void QuerySession::_applyLogicPlugins() {
     QueryPluginPtrVector::iterator i;
-    for(i=_plugins->begin(); i != _plugins->end(); ++i) {
-        LOGS(_log, LOG_LVL_TRACE, "applyLogical BEGIN: " << (**i).name());
-        (**i).applyLogical(*_stmt, *_context);
-        LOGS(_log, LOG_LVL_TRACE, "applyLogical END: " << (**i).name());
+    for (auto&& plugin : *_plugins) {
+        plugin->applyLogical(*_stmt, *_context);
+        LOG_STATEMENTS(LOG_LVL_TRACE, "applied logical:" << plugin->name());
     }
 }
 
@@ -326,16 +361,17 @@ void QuerySession::_generateConcrete() {
     LOGS(_log, LOG_LVL_TRACE, "Merge statement initialized with: \""
          << _stmtMerge->getQueryTemplate() << "\"");
 
+    LOG_STATEMENTS(LOG_LVL_TRACE, "did generateConcrete:");
     // TableMerger needs to be integrated into this design.
 }
 
+
+
 void QuerySession::_applyConcretePlugins() {
     qana::QueryPlugin::Plan p(*_stmt, _stmtParallel, _stmtPreFlight, *_stmtMerge, _hasMerge);
-    QueryPluginPtrVector::iterator i;
-    for(i=_plugins->begin(); i != _plugins->end(); ++i) {
-        LOGS(_log, LOG_LVL_TRACE, "applyPhysical BEGIN: " << (**i).name());
-        (**i).applyPhysical(p, *_context);
-        LOGS(_log, LOG_LVL_TRACE, "applyPhysical END: " << (**i).name());
+    for (auto&& plugin : *_plugins) {
+        plugin->applyPhysical(p, *_context);
+        LOG_STATEMENTS(LOG_LVL_TRACE, "did applyConcretePlugins:" << plugin->name());
     }
 }
 

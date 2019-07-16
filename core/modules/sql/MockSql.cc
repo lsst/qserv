@@ -44,5 +44,25 @@ MockSql::getQueryIter(std::string const& query) {
     return iter;
 }
 
+
+unsigned long long MockSql::getInsertId() const {
+    throw std::runtime_error("MockSql::getInsertId is not supported.");
+    return 0;
+}
+
+
+std::string MockSql::escapeString(std::string const& rawString) const {
+    throw std::runtime_error("MockSql::escapeString is not supported.");
+    return std::string();
+}
+
+
+bool MockSql::escapeString(std::string const& rawString, std::string& escapedString,
+                            SqlErrorObject& errObj) {
+    throw std::runtime_error("MockSql::escapeString is not supported.");
+    return false;
+}
+
+
 } // namespace sql
 }} // namespace lsst::qserv

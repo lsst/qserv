@@ -59,10 +59,12 @@
 #include "global/intTypes.h"
 #include "proto/WorkerResponse.h"
 #include "proto/ProtoImporter.h"
+#include "query/ColumnRef.h"
 #include "query/SelectStmt.h"
 #include "rproc/ProtoRowBuffer.h"
 #include "sql/Schema.h"
 #include "sql/SqlConnection.h"
+#include "sql/SqlConnectionFactory.h"
 #include "sql/SqlResults.h"
 #include "sql/SqlErrorObject.h"
 #include "sql/statement.h"
@@ -348,8 +350,7 @@ int InfileMerger::makeJobIdAttempt(int jobId, int attemptCount) {
 }
 
 
-bool InfileMerger::makeResultsTableForQuery(query::SelectStmt const& stmt, std::string& errMsg) {
-    // run query
+sql::Schema InfileMerger::getSchemaForQueryResults(query::SelectStmt const& stmt, std::string& errMsg) {
     sql::SqlResults results;
     sql::SqlErrorObject getSchemaErrObj;
     std::string query = stmt.getQueryTemplate().sqlFragment();
@@ -357,17 +358,25 @@ bool InfileMerger::makeResultsTableForQuery(query::SelectStmt const& stmt, std::
     if (not ok) {
         LOGS(_log, LOG_LVL_ERROR, "Failed to get schema:" << getSchemaErrObj.errMsg());
         errMsg = getSchemaErrObj.errMsg();
-        return false;
+        return sql::Schema();
     }
-
     sql::SqlErrorObject errObj;
-    auto schema = results.makeSchema(errObj);
     if (errObj.isSet()) {
         LOGS(_log, LOG_LVL_ERROR, "failed to extract schema from result: " << errObj.errMsg());
         errMsg = errObj.errMsg();
+        return sql::Schema();
+    }
+    auto schema = results.makeSchema(errObj);
+    LOGS(_log, LOG_LVL_DEBUG, "InfileMerger extracted schema: " << schema);
+    return schema;
+}
+
+
+bool InfileMerger::makeResultsTableForQuery(query::SelectStmt const& stmt, std::string& errMsg) {
+    auto schema = getSchemaForQueryResults(stmt, errMsg);
+    if (schema.columns.empty()) {
         return false;
     }
-    LOGS(_log, LOG_LVL_DEBUG, "InfileMerger extracted schema: " << schema);
 
     _addJobIdColumnToSchema(schema);
 
@@ -458,7 +467,7 @@ bool InfileMerger::_applySqlLocal(std::string const& sql, sql::SqlResults& resul
 
 bool InfileMerger::_sqlConnect(sql::SqlErrorObject& errObj) {
     if (_sqlConn == nullptr) {
-        _sqlConn = std::make_shared<sql::SqlConnection>(_config.mySqlConfig, true);
+        _sqlConn = sql::SqlConnectionFactory::make(_config.mySqlConfig);
         if (not _sqlConn->connectToDb(errObj)) {
             _error = util::Error(errObj.errNo(), "Error connecting to db: " + errObj.printErrMsg(),
                            util::ErrorCode::MYSQLCONNECT);

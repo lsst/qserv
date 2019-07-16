@@ -67,12 +67,14 @@ UserQueryProcessList::UserQueryProcessList(std::shared_ptr<query::SelectStmt> co
         sql::SqlConnection* resultDbConn,
         std::shared_ptr<qmeta::QMetaSelect> const& qMetaSelect,
         qmeta::CzarId qMetaCzarId,
-        std::string const& userQueryId)
+        std::string const& userQueryId,
+        std::string const& resultDb)
     : _resultDbConn(resultDbConn),
       _qMetaSelect(qMetaSelect),
       _qMetaCzarId(qMetaCzarId),
       _messageStore(std::make_shared<qdisp::MessageStore>()),
-      _resultTableName(::g_nextResultTableId(userQueryId)) {
+      _resultTableName(::g_nextResultTableId(userQueryId)),
+      _resultDb(resultDb) {
 
     // The SQL statement should be mostly OK alredy but we need to change
     // table name, instead of INFORMATION_SCHEMA.PROCESSLIST we use special
@@ -104,12 +106,14 @@ UserQueryProcessList::UserQueryProcessList(bool full,
         sql::SqlConnection* resultDbConn,
         std::shared_ptr<qmeta::QMetaSelect> const& qMetaSelect,
         qmeta::CzarId qMetaCzarId,
-        std::string const& userQueryId)
+        std::string const& userQueryId,
+        std::string const& resultDb)
     : _resultDbConn(resultDbConn),
       _qMetaSelect(qMetaSelect),
       _qMetaCzarId(qMetaCzarId),
       _messageStore(std::make_shared<qdisp::MessageStore>()),
-      _resultTableName(::g_nextResultTableId(userQueryId)) {
+      _resultTableName(::g_nextResultTableId(userQueryId)),
+      _resultDb(resultDb) {
 
     // use ShowProcessList view with completion statistics.
     _query = "SELECT Id, User, Host, db, Command, Time, State, ";
@@ -231,6 +235,15 @@ void UserQueryProcessList::submit() {
     }
 
     _qState = SUCCESS;
+}
+
+std::string UserQueryProcessList::getResultQuery() const {
+    std::string ret = "SELECT * FROM " + _resultDb + "." + getResultTableName();
+    std::string orderBy = _getResultOrderBy();
+    if (not orderBy.empty()) {
+        ret += " ORDER BY " + orderBy;
+    }
+    return ret;
 }
 
 // Block until a submit()'ed query completes.

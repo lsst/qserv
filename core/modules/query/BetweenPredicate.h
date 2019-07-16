@@ -62,6 +62,8 @@ public:
 
     void findValueExprs(std::vector<std::shared_ptr<ValueExpr>>& vector) const override;
 
+    void findValueExprRefs(ValueExprPtrRefVector& vector) override;
+
     void findColumnRefs(std::vector<std::shared_ptr<ColumnRef>>& vector) const override;
 
     std::ostream& putStream(std::ostream& os) const override;

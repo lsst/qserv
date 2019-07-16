@@ -51,21 +51,27 @@
 #include "lsst/log/Log.h"
 
 // Qserv headers
+#include "mysql/MySqlConfig.h"
 #include "parser/SelectParser.h"
 #include "query/SelectStmt.h"
+#include "sql/SqlConfig.h"
 #include "tests/QueryAnaFixture.h"
 
+using lsst::qserv::mysql::MySqlConfig;
 using lsst::qserv::parser::SelectParser;
 using lsst::qserv::qproc::QuerySession;
 using lsst::qserv::query::SelectStmt;
+using lsst::qserv::sql::SqlConfig;
 using lsst::qserv::tests::QueryAnaFixture;
 using lsst::qserv::tests::QueryAnaHelper;
+
 
 inline void check(QuerySession::Test qsTest, QueryAnaHelper queryAnaHelper,
                   std::string stmt, std::string expectedParallel,
                   std::string expectedMerge, std::string expectedProxyOrderBy) {
     std::vector<std::string> expectedQueries = { expectedParallel, expectedMerge, expectedProxyOrderBy };
-    auto queries = queryAnaHelper.getInternalQueries(qsTest, stmt);
+    std::vector<std::string> queries;
+    BOOST_REQUIRE_NO_THROW(queries = queryAnaHelper.getInternalQueries(qsTest, stmt));
     BOOST_CHECK_EQUAL_COLLECTIONS(queries.begin(), queries.end(),
                                   expectedQueries.begin(), expectedQueries.end());
 }
@@ -79,17 +85,19 @@ BOOST_AUTO_TEST_CASE(OrderBy) {
     std::string stmt = "SELECT objectId, taiMidPoint "
         "FROM Source "
         "ORDER BY objectId ASC";
-    std::string expectedParallel = "SELECT objectId,taiMidPoint FROM LSST.Source_100 AS QST_1_";
+    std::string expectedParallel = "SELECT `LSST.Source`.objectId AS `objectId`,`LSST.Source`.taiMidPoint AS `taiMidPoint` FROM LSST.Source_100 AS `LSST.Source`";
     std::string expectedMerge = "";
-    std::string expectedProxyOrderBy = "ORDER BY objectId ASC";
+    std::string expectedProxyOrderBy = "ORDER BY `objectId` ASC";
+    qsTest.sqlConfig = SqlConfig(SqlConfig::MockDbTableColumns({{"LSST", {{"Source", {"objectId", "taiMidPoint"}}}}}));
     check(qsTest, queryAnaHelper, stmt, expectedParallel, expectedMerge, expectedProxyOrderBy);
 }
 
 BOOST_AUTO_TEST_CASE(OrderByNotChunked) {
-    std::string stmt = "SELECT * FROM Filter ORDER BY filterId";
-    std::string expectedParallel = "SELECT * FROM LSST.Filter AS QST_1_";
+    std::string stmt = "SELECT filterId FROM Filter ORDER BY filterId";
+    std::string expectedParallel = "SELECT `LSST.Filter`.filterId AS `filterId` FROM LSST.Filter AS `LSST.Filter`";
     std::string expectedMerge = "";
-    std::string expectedProxyOrderBy = "ORDER BY filterId";
+    std::string expectedProxyOrderBy = "ORDER BY `filterId`";
+    qsTest.sqlConfig = SqlConfig(SqlConfig::MockDbTableColumns({{"LSST", {{"Filter", {"filterId"}}}}}));
     check(qsTest, queryAnaHelper, stmt, expectedParallel, expectedMerge, expectedProxyOrderBy);
 }
 
@@ -97,19 +105,23 @@ BOOST_AUTO_TEST_CASE(OrderByTwoField) {
     std::string stmt = "SELECT objectId, taiMidPoint "
         "FROM Source "
         "ORDER BY objectId, taiMidPoint ASC";
-    std::string expectedParallel = "SELECT objectId,taiMidPoint FROM LSST.Source_100 AS QST_1_";
+    std::string expectedParallel = "SELECT `LSST.Source`.objectId AS `objectId`,`LSST.Source`.taiMidPoint AS `taiMidPoint` FROM LSST.Source_100 AS `LSST.Source`";
     std::string expectedMerge = "";
-    std::string expectedProxyOrderBy = "ORDER BY objectId, taiMidPoint ASC";
+    std::string expectedProxyOrderBy = "ORDER BY `objectId`, `taiMidPoint` ASC";
+    qsTest.sqlConfig = SqlConfig(SqlConfig::MockDbTableColumns({{"LSST", {{"Source", {"objectId", "taiMidPoint"}}}}}));
     check(qsTest, queryAnaHelper, stmt, expectedParallel, expectedMerge, expectedProxyOrderBy);
 }
 
 BOOST_AUTO_TEST_CASE(OrderByThreeField) {
-    std::string stmt = "SELECT * "
+    std::string stmt = "SELECT objectId, taiMidPoint, xFlux "
         "FROM Source "
         "ORDER BY objectId, taiMidPoint, xFlux DESC";
-    std::string expectedParallel = "SELECT * FROM LSST.Source_100 AS QST_1_";
+    std::string expectedParallel = "SELECT `LSST.Source`.objectId AS `objectId`,"
+                                   "`LSST.Source`.taiMidPoint AS `taiMidPoint`,`LSST.Source`.xFlux AS `xFlux` "
+                                   "FROM LSST.Source_100 AS `LSST.Source`";
     std::string expectedMerge = "";
-    std::string expectedProxyOrderBy = "ORDER BY objectId, taiMidPoint, xFlux DESC";
+    std::string expectedProxyOrderBy = "ORDER BY `objectId`, `taiMidPoint`, `xFlux` DESC";
+    qsTest.sqlConfig = SqlConfig(SqlConfig::MockDbTableColumns({{"LSST", {{"Source", {"objectId", "taiMidPoint", "xFlux"}}}}}));
     check(qsTest, queryAnaHelper, stmt, expectedParallel, expectedMerge, expectedProxyOrderBy);
 }
 
@@ -118,11 +130,12 @@ BOOST_AUTO_TEST_CASE(OrderByAggregate) {
         "FROM Source "
         "GROUP BY objectId "
         "ORDER BY objectId ASC";
-    std::string expectedParallel = "SELECT objectId,COUNT(taiMidPoint) AS QS1_COUNT,SUM(taiMidPoint) AS QS2_SUM "
-                                   "FROM LSST.Source_100 AS QST_1_ "
-                                   "GROUP BY objectId";
-    std::string expectedMerge = "SELECT objectId,(SUM(QS2_SUM)/SUM(QS1_COUNT)) GROUP BY objectId";
-    std::string expectedProxyOrderBy = "ORDER BY objectId ASC";
+    std::string expectedParallel = "SELECT `LSST.Source`.objectId AS `objectId`,COUNT(`LSST.Source`.taiMidPoint) AS `QS1_COUNT`,SUM(`LSST.Source`.taiMidPoint) AS `QS2_SUM` "
+                                   "FROM LSST.Source_100 AS `LSST.Source` "
+                                   "GROUP BY `objectId`";
+    std::string expectedMerge = "SELECT objectId AS `objectId`,(SUM(QS2_SUM)/SUM(QS1_COUNT)) AS `AVG(taiMidPoint)` GROUP BY `objectId`";
+    std::string expectedProxyOrderBy = "ORDER BY `objectId` ASC";
+    qsTest.sqlConfig = SqlConfig(SqlConfig::MockDbTableColumns({{"LSST", {{"Source", {"objectId", "taiMidPoint"}}}}}));
     check(qsTest, queryAnaHelper, stmt, expectedParallel, expectedMerge, expectedProxyOrderBy);
 }
 
@@ -130,10 +143,11 @@ BOOST_AUTO_TEST_CASE(OrderByAggregateNotChunked) {
     std::string stmt =
             "SELECT filterId, SUM(photClam) FROM Filter GROUP BY filterId ORDER BY filterId";
     std::string expectedParallel =
-            "SELECT filterId,SUM(photClam) AS QS1_SUM FROM LSST.Filter AS QST_1_ GROUP BY filterId";
+            "SELECT `LSST.Filter`.filterId AS `filterId`,SUM(`LSST.Filter`.photClam) AS `QS1_SUM` FROM LSST.Filter AS `LSST.Filter` GROUP BY `filterId`";
     // FIXME merge query is not useful here, see DM-3166
-    std::string expectedMerge = "SELECT filterId,SUM(QS1_SUM) GROUP BY filterId";
-    std::string expectedProxyOrderBy = "ORDER BY filterId";
+    std::string expectedMerge = "SELECT filterId AS `filterId`,SUM(QS1_SUM) AS `SUM(photClam)` GROUP BY `filterId`";
+    std::string expectedProxyOrderBy = "ORDER BY `filterId`";
+    qsTest.sqlConfig = SqlConfig(SqlConfig::MockDbTableColumns({{"LSST", {{"Filter", {"filterId", "photClam"}}}}}));
     check(qsTest, queryAnaHelper, stmt, expectedParallel, expectedMerge, expectedProxyOrderBy);
 }
 
@@ -142,21 +156,26 @@ BOOST_AUTO_TEST_CASE(OrderByLimit) {
             "FROM Source "
             "ORDER BY objectId ASC LIMIT 5";
     std::string expectedParallel =
-            "SELECT objectId,taiMidPoint FROM LSST.Source_100 AS QST_1_ ORDER BY objectId ASC LIMIT 5";
+            "SELECT `LSST.Source`.objectId AS `objectId`,`LSST.Source`.taiMidPoint AS `taiMidPoint` FROM LSST.Source_100 AS `LSST.Source` ORDER BY `objectId` ASC LIMIT 5";
     std::string expectedMerge =
-            "SELECT objectId,taiMidPoint ORDER BY objectId ASC LIMIT 5";
-    std::string expectedProxyOrderBy = "ORDER BY objectId ASC";
+            "SELECT objectId AS `objectId`,taiMidPoint AS `taiMidPoint` ORDER BY `objectId` ASC LIMIT 5";
+    std::string expectedProxyOrderBy = "ORDER BY `objectId` ASC";
+    qsTest.sqlConfig = SqlConfig(SqlConfig::MockDbTableColumns({{"LSST", {{"Source", {"objectId", "taiMidPoint"}}}}}));
     check(qsTest, queryAnaHelper, stmt, expectedParallel, expectedMerge, expectedProxyOrderBy);
 }
 
 BOOST_AUTO_TEST_CASE(OrderByLimitNotChunked) { // Test flipped syntax in DM-661
-    std::string bad = "SELECT run FROM LSST.Science_Ccd_Exposure limit 2 order by field";
-    std::string good = "SELECT run FROM LSST.Science_Ccd_Exposure order by field limit 2";
-    std::string expectedParallel = "SELECT run FROM LSST.Science_Ccd_Exposure AS QST_1_ ORDER BY field LIMIT 2";
+    std::string bad =  "SELECT run, field FROM LSST.Science_Ccd_Exposure limit 2 order by field";
+    std::string good = "SELECT run, field FROM LSST.Science_Ccd_Exposure order by field limit 2";
+    std::string expectedParallel = "SELECT `LSST.Science_Ccd_Exposure`.run AS `run`,`LSST.Science_Ccd_Exposure`.field AS `field` "
+                                   "FROM LSST.Science_Ccd_Exposure AS `LSST.Science_Ccd_Exposure` "
+                                   "ORDER BY `field` "
+                                   "LIMIT 2";
     std::string expectedMerge = "";
-    std::string expectedProxyOrderBy = "ORDER BY field";
+    std::string expectedProxyOrderBy = "ORDER BY `field`";
     // TODO: commented out test that is supposed to fail but it does not currently
     // check(qsTest, queryAnaHelper, bad, expectedParallel, expectedMerge, expectedProxyOrderBy);
+    qsTest.sqlConfig = SqlConfig(SqlConfig::MockDbTableColumns({{"LSST", {{"Science_Ccd_Exposure", {"run", "field"}}}}}));
     check(qsTest, queryAnaHelper, good, expectedParallel, expectedMerge, expectedProxyOrderBy);
 }
 
@@ -165,24 +184,29 @@ BOOST_AUTO_TEST_CASE(OrderByAggregateLimit) {
         "FROM Source "
         "GROUP BY objectId "
         "ORDER BY objectId ASC LIMIT 2";
-    std::string expectedParallel = "SELECT objectId,COUNT(taiMidPoint) AS QS1_COUNT,SUM(taiMidPoint) AS QS2_SUM "
-                                   "FROM LSST.Source_100 AS QST_1_ "
-                                   "GROUP BY objectId "
-                                   "ORDER BY objectId ASC LIMIT 2";
-    std::string expectedMerge = "SELECT objectId,(SUM(QS2_SUM)/SUM(QS1_COUNT)) GROUP BY objectId "
-                                "ORDER BY objectId ASC LIMIT 2";
-    std::string expectedProxyOrderBy = "ORDER BY objectId ASC";
+    std::string expectedParallel = "SELECT `LSST.Source`.objectId AS `objectId`,COUNT(`LSST.Source`.taiMidPoint) AS `QS1_COUNT`,SUM(`LSST.Source`.taiMidPoint) AS `QS2_SUM` "
+                                   "FROM LSST.Source_100 AS `LSST.Source` "
+                                   "GROUP BY `objectId` "
+                                   "ORDER BY `objectId` ASC LIMIT 2";
+    std::string expectedMerge = "SELECT objectId AS `objectId`,(SUM(QS2_SUM)/SUM(QS1_COUNT)) AS `AVG(taiMidPoint)` "
+                                "GROUP BY `objectId` "
+                                "ORDER BY `objectId` ASC LIMIT 2";
+    std::string expectedProxyOrderBy = "ORDER BY `objectId` ASC";
+    qsTest.sqlConfig = SqlConfig(SqlConfig::MockDbTableColumns({{"LSST", {{"Source", {"objectId", "taiMidPoint"}}}}}));
     check(qsTest, queryAnaHelper, stmt, expectedParallel, expectedMerge, expectedProxyOrderBy);
 }
 
 BOOST_AUTO_TEST_CASE(OrderByAggregateNotChunkedLimit) {
     std::string stmt = "SELECT filterId, SUM(photClam) FROM Filter GROUP BY filterId ORDER BY filterId LIMIT 3";
-    std::string expectedParallel = "SELECT filterId,SUM(photClam) AS QS1_SUM FROM LSST.Filter AS QST_1_ "
-                                   "GROUP BY filterId "
-                                   "ORDER BY filterId LIMIT 3";
+    std::string expectedParallel = "SELECT `LSST.Filter`.filterId AS `filterId`,SUM(`LSST.Filter`.photClam) AS `QS1_SUM` "
+                                   "FROM LSST.Filter AS `LSST.Filter` "
+                                   "GROUP BY `filterId` "
+                                   "ORDER BY `filterId` "
+                                   "LIMIT 3";
     // FIXME merge query is not useful here, see DM-3166
-    std::string expectedMerge = "SELECT filterId,SUM(QS1_SUM) GROUP BY filterId ORDER BY filterId LIMIT 3";
-    std::string expectedProxyOrderBy = "ORDER BY filterId";
+    std::string expectedMerge = "SELECT filterId AS `filterId`,SUM(QS1_SUM) AS `SUM(photClam)` GROUP BY `filterId` ORDER BY `filterId` LIMIT 3";
+    std::string expectedProxyOrderBy = "ORDER BY `filterId`";
+    qsTest.sqlConfig = SqlConfig(SqlConfig::MockDbTableColumns({{"LSST", {{"Filter", {"filterId", "photClam"}}}}}));
     check(qsTest, queryAnaHelper, stmt, expectedParallel, expectedMerge, expectedProxyOrderBy);
 }
 

@@ -35,6 +35,8 @@
 // Qserv headers
 #include "global/DbTable.h"
 #include "sql/SqlConnection.h"
+#include "sql/SqlConfig.h"
+#include "sql/SqlConnectionFactory.h"
 #include "sql/SqlErrorObject.h"
 
 // Forward declarations
@@ -75,7 +77,7 @@ public:
     using Ptr=std::shared_ptr<SQLBackend>;
 
     SQLBackend(mysql::MySqlConfig const& mc)
-        : _sqlConn(mc), _uid(getpid()) {
+        : _sqlConn(sql::SqlConnectionFactory::make(sql::SqlConfig(mc))), _uid(getpid()) {
         _memLockAcquire();
     }
 
@@ -114,7 +116,7 @@ protected:
     /// Exit the program immediately to reduce minimize possible problems.
     void _exitDueToConflict(const std::string& msg);
 
-    sql::SqlConnection _sqlConn;
+    std::shared_ptr<sql::SqlConnection> _sqlConn;
 
     // Memory lock table members.
     std::atomic<bool> _lockConflict{false};

@@ -34,7 +34,7 @@
 #include "boost/asio.hpp"
 
 // Local headers
-#include "qhttp/CIUtils.h"
+#include "util/CIUtils.h"
 
 namespace lsst {
 namespace qserv {
@@ -63,7 +63,7 @@ public:
 
     std::string path;                                                      // path portion of URL
     std::unordered_map<std::string, std::string> query;                    // parsed URL query parameters
-    std::unordered_map<std::string, std::string, ci_hash, ci_pred> header; // parsed HTTP headers
+    std::unordered_map<std::string, std::string, util::ci_hash, util::ci_pred> header; // parsed HTTP headers
     std::unordered_map<std::string, std::string> params;                   // captured URL path elements
 
     //----- Body content for this request

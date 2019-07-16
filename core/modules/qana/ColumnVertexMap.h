@@ -84,12 +84,8 @@ public:
         std::vector<Vertex*> vertices; // unowned
 
         Entry() {}
-        Entry(ColumnRefConstPtr const& c, Vertex* t) :
-            cr(c), vertices(1, t) {}
-        void swap(Entry& e) {
-            cr.swap(e.cr);
-            vertices.swap(e.vertices);
-        }
+        Entry(ColumnRefConstPtr const& c, Vertex* t);
+        void swap(Entry& e);
         bool isAmbiguous() const { return vertices.empty(); }
         void markAmbiguous() { vertices.clear(); }
     };
@@ -137,6 +133,8 @@ public:
         ColumnVertexMap const& m) const;
 
 private:
+    friend std::ostream& operator<<(std::ostream& os, ColumnVertexMap const& cvm);
+
     std::vector<Entry> _entries; // sorted
 
     // Not implemented
@@ -148,20 +146,14 @@ private:
 };
 
 
+std::ostream& operator<<(std::ostream& os, ColumnVertexMap::Entry const& e);
+
+
 /// `ColumnRefLt` is a less-than comparison functor for column references
 /// and ColumnVertexMap::Entry objects.
 struct ColumnRefLt {
-    bool operator()(query::ColumnRef const& a,
-                    query::ColumnRef const& b) const {
-        int c = a.getColumn().compare(b.getColumn());
-        if (c == 0) {
-            c = a.getTable().compare(b.getTable());
-            if (c == 0) {
-                c = a.getDb().compare(b.getDb());
-            }
-        }
-        return c < 0;
-    }
+    bool operator()(query::ColumnRef const& a, query::ColumnRef const& b) const;
+
     bool operator()(ColumnVertexMap::Entry const& a,
                     ColumnVertexMap::Entry const& b) const {
         return (*this)(*a.cr, *b.cr);
@@ -185,10 +177,8 @@ struct ColumnRefLt {
 /// ColumnRefLt, meaning that two objects are equal iff neither is less than
 /// the other according to ColumnRefLt.
 struct ColumnRefEq {
-    bool operator()(query::ColumnRef const& a,
-                    query::ColumnRef const& b) const {
-        return a.getColumn() == b.getColumn() && a.getTable() == b.getTable() && a.getDb() == b.getDb();
-    }
+    bool operator()(query::ColumnRef const& a, query::ColumnRef const& b) const;
+
     bool operator()(ColumnVertexMap::Entry const& a,
                     ColumnVertexMap::Entry const& b) const {
         return (*this)(*a.cr, *b.cr);

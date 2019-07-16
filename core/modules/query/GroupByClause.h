@@ -101,6 +101,7 @@ public:
     std::shared_ptr<GroupByClause> copySyntax();
 
     void findValueExprs(ValueExprPtrVector& list) const;
+    void findValueExprRefs(ValueExprPtrRefVector& list);
 
     bool operator==(const GroupByClause& rhs) const;
 

@@ -134,6 +134,7 @@ struct Compare
     }
 };
 
+
 }}} // namespace lsst::qserv::util
 
 #endif // LSST_QSERV_UTIL_POINTER_COMPARE_H

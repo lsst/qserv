@@ -71,7 +71,8 @@ SelectParser::Ptr QueryAnaHelper::getParser(std::string const & stmt) {
 }
 
 std::shared_ptr<QuerySession> QueryAnaHelper::buildQuerySession(QuerySession::Test qsTest,
-                                                                std::string const & stmt) {
+                                                                std::string const & stmt,
+                                                                bool expectError) {
 
     querySession = std::make_shared<QuerySession>(qsTest);
     auto stmtIR = querySession->parseQuery(stmt);
@@ -79,6 +80,9 @@ std::shared_ptr<QuerySession> QueryAnaHelper::buildQuerySession(QuerySession::Te
         return querySession;
     }
     querySession->analyzeQuery(stmt, stmtIR);
+    if (not expectError && querySession->getError() != "") {
+        throw std::runtime_error("unexpected QuerySession error: " + querySession->getError());
+    }
 
     if (LOG_CHECK_LVL(_log, LOG_LVL_DEBUG)) {
         std::shared_ptr<ConstraintVector> cvRaw(querySession->getConstraints());
@@ -122,7 +126,7 @@ std::vector<std::string> QueryAnaHelper::getInternalQueries(
     }
     queries.push_back(sql);
 
-    sql = querySession->getProxyOrderBy();
+    sql = querySession->getResultOrderBy();
     queries.push_back(sql);
 
     return queries;

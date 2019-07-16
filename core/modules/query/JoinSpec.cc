@@ -74,6 +74,7 @@ void JoinSpec::putTemplate(QueryTemplate& qt) const {
     if (isInconsistent(*this)) {
         throw std::logic_error("Inconsistent JoinSpec with ON and USING");
     }
+    qt.setAliasMode(QueryTemplate::NO_VALUE_ALIAS_USE_TABLE_ALIAS);
     if (_onTerm) {
         qt.append("ON");
         _onTerm->renderTo(qt);

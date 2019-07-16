@@ -67,6 +67,7 @@ public:
     std::shared_ptr<HavingClause> clone() const;
     std::shared_ptr<HavingClause> copySyntax();
     void findValueExprs(ValueExprPtrVector& list) const;
+    void findValueExprRefs(ValueExprPtrRefVector& list);
 
     bool operator==(const HavingClause& rhs) const;
 

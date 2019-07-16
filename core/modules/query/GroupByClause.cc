@@ -142,6 +142,13 @@ void GroupByClause::findValueExprs(ValueExprPtrVector& list) const {
 }
 
 
+void GroupByClause::findValueExprRefs(ValueExprPtrRefVector& list) {
+    for (auto&& groupByTerm : *_terms) {
+        list.push_back(groupByTerm.getExpr());
+    }
+}
+
+
 bool GroupByClause::operator==(const GroupByClause& rhs) const {
     return util::ptrDequeCompare<GroupByTerm>(_terms, rhs._terms);
 }

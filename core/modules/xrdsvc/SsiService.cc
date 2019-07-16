@@ -43,6 +43,7 @@
 #include "memman/MemManNone.h"
 #include "mysql/MySqlConnection.h"
 #include "sql/SqlConnection.h"
+#include "sql/SqlConnectionFactory.h"
 #include "wbase/Base.h"
 #include "wconfig/WorkerConfig.h"
 #include "wconfig/WorkerConfigError.h"
@@ -88,7 +89,7 @@ SsiService::SsiService(XrdSsiLogger* log, wconfig::WorkerConfig const& workerCon
     if (cfgMemMan  == "MemManReal") {
         // Default to 1 gigabyte
         uint64_t memManSize = workerConfig.getMemManSizeMb()*1000000;
-        LOGS(_log, LOG_LVL_DEBUG, "Using MemManReal with memManSizeMb=" << workerConfig.getMemManSizeMb() 
+        LOGS(_log, LOG_LVL_DEBUG, "Using MemManReal with memManSizeMb=" << workerConfig.getMemManSizeMb()
             << " location=" <<  workerConfig.getMemManLocation());
         memMan = std::shared_ptr<memman::MemMan>(memman::MemMan::create(memManSize, workerConfig.getMemManLocation()));
     } else if (cfgMemMan == "MemManNone"){
@@ -169,7 +170,7 @@ void SsiService::_initInventory() {
         LOGS(_log, LOG_LVL_FATAL, "dbName must be empty to prevent accidental context");
         throw std::runtime_error("dbName must be empty to prevent accidental context");
     }
-    auto conn = std::make_shared<sql::SqlConnection>(_mySqlConfig, true);
+    auto conn = sql::SqlConnectionFactory::make(_mySqlConfig);
     assert(conn);
     _chunkInventory = std::make_shared<wpublish::ChunkInventory>(x.getName(), conn);
     std::ostringstream os;

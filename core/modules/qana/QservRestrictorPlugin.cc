@@ -52,7 +52,6 @@
 #include "query/BetweenPredicate.h"
 #include "query/ColumnRef.h"
 #include "query/CompPredicate.h"
-#include "query/DbTablePair.h"
 #include "query/FromList.h"
 #include "query/FuncExpr.h"
 #include "query/InPredicate.h"
@@ -84,24 +83,12 @@ namespace qana {
 
 typedef std::pair<std::string, std::string> StringPair;
 
-/// Returns a list of column references.
-/// This class will usually check the list if any can be used
-/// to restrict the query to a subset of worker nodes via the secondary index.
-/// If there is ambiguity in the possible table that a column belongs to,
-/// the SQL statement should cause an error when tried on the local database,
-/// so that check can be skipped.
-///
+
 query::ColumnRef::Vector resolveAsColumnRef(query::QueryContext& context, query::ValueExprPtr vexpr) {
     query::ColumnRef::Vector columnRefs;
-    query::ColumnRef::Ptr cr = vexpr->copyAsColumnRef();
-    if (!cr) {
-        return columnRefs;
-    }
-    std::string column = cr->getColumn();
-    query::DbTableSet set = context.resolve(cr);
-    for (auto const& dbTblPair : set) {
-        columnRefs.push_back(std::make_shared<query::ColumnRef>(dbTblPair.db, dbTblPair.table, column));
-    }
+    auto columnRef = vexpr->copyAsColumnRef();
+    if (nullptr != columnRef)
+        columnRefs.push_back(columnRef);
     return columnRefs;
 }
 
@@ -359,12 +346,10 @@ query::FuncExpr::Ptr newFuncExpr(char const fName[],
     fe->setName(UDF_PREFIX + fName);
     fe->params.push_back(
           query::ValueExpr::newSimple(query::ValueFactor::newColumnRefFactor(
-                  std::make_shared<query::ColumnRef>(
-                          "", tableAlias, chunkColumns.first))));
+                std::make_shared<query::ColumnRef>("", "", tableAlias, chunkColumns.first))));
     fe->params.push_back(
           query::ValueExpr::newSimple(query::ValueFactor::newColumnRefFactor(
-                  std::make_shared<query::ColumnRef>(
-                          "", tableAlias, chunkColumns.second))));
+                std::make_shared<query::ColumnRef>("", "", tableAlias, chunkColumns.second))));
 
     typename C::const_iterator i;
     for (i = c.begin(); i != c.end(); ++i) {

@@ -112,6 +112,7 @@ public:
     void addTerm(const OrderByTerm& term) { _terms->push_back(term); }
 
     void findValueExprs(ValueExprPtrVector& list) const;
+    void findValueExprRefs(ValueExprPtrRefVector& list);
 
     bool operator==(const OrderByClause& rhs) const;
 

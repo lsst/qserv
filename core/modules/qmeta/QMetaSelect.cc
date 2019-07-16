@@ -32,7 +32,8 @@
 
 // Qserv headers
 #include "Exceptions.h"
-
+#include "sql/SqlConnection.h"
+#include "sql/SqlConnectionFactory.h"
 
 namespace {
 
@@ -46,7 +47,7 @@ namespace qmeta {
 
 // Constructors
 QMetaSelect::QMetaSelect(mysql::MySqlConfig const& mysqlConf)
-  : _conn(mysqlConf) {
+  : _conn(sql::SqlConnectionFactory::make(mysqlConf)) {
 }
 
 // Destructor
@@ -60,7 +61,7 @@ QMetaSelect::select(std::string const& query) {
     sql::SqlErrorObject errObj;
     std::unique_ptr<sql::SqlResults> results(new sql::SqlResults);
     LOGS(_log, LOG_LVL_DEBUG, "Executing query: " << query);
-    if (not _conn.runQuery(query, *results, errObj)) {
+    if (not _conn->runQuery(query, *results, errObj)) {
         LOGS(_log, LOG_LVL_ERROR, "SQL query failed: " << query);
         throw SqlError(ERR_LOC, errObj);
     }

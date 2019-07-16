@@ -41,20 +41,29 @@
 #include "tests/testKvMap.h"
 #include "tests/QueryAnaHelper.h"
 
+
+namespace {
+
+int cfgNum = 0;
+std::string defaultDb = "LSST";
+std::string mapBuffer(testKvMap);
+std::string emptyChunkPath(".");
+
+}
+
+
 namespace lsst {
 namespace qserv {
 namespace tests {
 
 struct QueryAnaFixture {
 
-    QueryAnaFixture() {
-        qsTest.cfgNum = 0;
-        qsTest.defaultDb = "LSST";
         // To learn how to dump the map, see qserv/core/css/KvInterfaceImplMem.cc
         // Use admin/examples/testMap_generateMap
-        std::string mapBuffer(testKvMap);
-        std::string emptyChunkPath(".");
-        qsTest.css = css::CssAccess::createFromData(mapBuffer, emptyChunkPath);
+
+    QueryAnaFixture()
+        : qsTest(cfgNum, css::CssAccess::createFromData(mapBuffer, emptyChunkPath), defaultDb,
+                 sql::SqlConfig(sql::SqlConfig::MOCK)) {
     };
 
     qproc::QuerySession::Test qsTest;

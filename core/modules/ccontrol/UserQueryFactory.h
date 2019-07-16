@@ -74,7 +74,8 @@ public:
                                 std::string const& defaultDb,
                                 qdisp::QdispPool::Ptr const& qdispPool,
                                 std::string const& userQueryId,
-                                std::string const& msgTableName);
+                                std::string const& msgTableName,
+                                std::string const& resultDb);
 
 private:
     class Impl;

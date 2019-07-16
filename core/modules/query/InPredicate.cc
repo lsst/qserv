@@ -52,7 +52,9 @@ struct valueExprCopy {
 
 
 void InPredicate::findColumnRefs(std::vector<std::shared_ptr<ColumnRef>>& vector) const {
-    if (value) { value->findColumnRefs(vector); }
+    if (value) {
+        value->findColumnRefs(vector);
+    }
     for(auto&& valueExpr : cands) {
         valueExpr->findColumnRefs(vector);
     }
@@ -79,6 +81,12 @@ void InPredicate::renderTo(QueryTemplate& qt) const {
 
 
 void InPredicate::findValueExprs(std::vector<std::shared_ptr<ValueExpr>>& vector) const {
+    vector.push_back(value);
+    vector.insert(vector.end(), cands.begin(), cands.end());
+}
+
+
+void InPredicate::findValueExprRefs(ValueExprPtrRefVector& vector) {
     vector.push_back(value);
     vector.insert(vector.end(), cands.begin(), cands.end());
 }

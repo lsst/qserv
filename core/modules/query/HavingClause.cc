@@ -103,6 +103,11 @@ HavingClause::findValueExprs(ValueExprPtrVector& list) const {
 }
 
 
+void HavingClause::findValueExprRefs(ValueExprPtrRefVector& list) {
+    if (_tree) { _tree->findValueExprRefs(list); }
+}
+
+
 bool HavingClause::operator==(const HavingClause& rhs) const {
     return util::ptrCompare<BoolTerm>(_tree, rhs._tree);
 }

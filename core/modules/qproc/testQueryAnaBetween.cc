@@ -46,16 +46,20 @@
 #include "lsst/log/Log.h"
 
 // Qserv headers
+#include "mysql/MySqlConfig.h"
 #include "parser/SelectParser.h"
 #include "query/QsRestrictor.h"
 #include "query/QueryContext.h"
+#include "sql/SqlConfig.h"
 #include "tests/QueryAnaFixture.h"
 
+using lsst::qserv::mysql::MySqlConfig;
 using lsst::qserv::parser::SelectParser;
 using lsst::qserv::qproc::ChunkQuerySpec;
 using lsst::qserv::qproc::QuerySession;
 using lsst::qserv::query::QsRestrictor;
 using lsst::qserv::query::QueryContext;
+using lsst::qserv::sql::SqlConfig;
 using lsst::qserv::tests::QueryAnaFixture;
 
 ////////////////////////////////////////////////////////////////////////
@@ -65,6 +69,7 @@ BOOST_FIXTURE_TEST_SUITE(OrderBy, QueryAnaFixture)
 
 BOOST_AUTO_TEST_CASE(SecondaryIndex) {
     std::string stmt = "select * from Object where objectIdObjTest between 386942193651347 and 386942193651349;";
+    qsTest.sqlConfig = SqlConfig(SqlConfig::MockDbTableColumns({{"LSST", {{"Object", {"objectIdObjTest"}}}}}));
     std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, stmt);
     std::shared_ptr<QueryContext> context = qs->dbgGetContext();
     BOOST_CHECK(context);
@@ -81,6 +86,7 @@ BOOST_AUTO_TEST_CASE(SecondaryIndex) {
 
 BOOST_AUTO_TEST_CASE(NoSecondaryIndex) {
     std::string stmt = "select * from Object where someField between 386942193651347 and 386942193651349;";
+    qsTest.sqlConfig = SqlConfig(SqlConfig::MockDbTableColumns({{"LSST", {{"Object", {"someField"}}}}}));
     std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, stmt);
     std::shared_ptr<QueryContext> context = qs->dbgGetContext();
     BOOST_CHECK(context);
@@ -93,6 +99,7 @@ BOOST_AUTO_TEST_CASE(DoubleSecondaryIndexRestrictor) {
     // std::string stmt = "select * from Object where objectIdObjTest between 38 and 40 OR objectIdObjTest IN (10, 30, 70);"
     // but this doesn't work: see DM-4017
     std::string stmt = "select * from Object where objectIdObjTest between 38 and 40 and objectIdObjTest IN (10, 30, 70);";
+    qsTest.sqlConfig = SqlConfig(SqlConfig::MockDbTableColumns({{"LSST", {{"Object", {"objectIdObjTest"}}}}}));
     std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, stmt);
     std::shared_ptr<QueryContext> context = qs->dbgGetContext();
     BOOST_CHECK(context);
@@ -118,8 +125,12 @@ BOOST_AUTO_TEST_CASE(DoubleSecondaryIndexRestrictorCartesian) {
     // FIXME: next query should be also supported:
     // std::string stmt = "select * from Object where objectIdObjTest between 38 and 40 OR objectIdObjTest IN (10, 30, 70);"
     // but this doesn't work: see DM-4017
-    std::string stmt = "select * from Object o, Source s where o.objectIdObjTest between 38 and 40 AND s.objectIdSourceTest IN (10, 30, 70);";
-    std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, stmt);
+    std::string stmt = "select * from Object o, Source s "
+                       "where o.objectIdObjTest between 38 and 40 AND s.objectIdSourceTest IN (10, 30, 70);";
+    qsTest.sqlConfig = SqlConfig(SqlConfig::MockDbTableColumns(
+        {{"LSST", {{"Object", {"objectIdObjTest"}},
+                   {"Source", {"objectIdSourceTest"}}}}}));
+    std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, stmt, true);
     std::shared_ptr<QueryContext> context = qs->dbgGetContext();
     BOOST_CHECK(context);
     BOOST_CHECK_EQUAL(context->dominantDb, std::string("LSST"));

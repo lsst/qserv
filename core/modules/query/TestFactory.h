@@ -31,7 +31,7 @@
 
 // Qserv headers
 #include "global/stringTypes.h"
-#include "mysql/MySqlConfig.h"
+#include "sql/SqlConfig.h"
 
 
 // Forward declarations
@@ -56,9 +56,13 @@ class TestFactory {
 public:
     TestFactory() {}
     std::shared_ptr<QueryContext> newContext(
-            std::shared_ptr<css::CssAccess> css, mysql::MySqlConfig const& schemaCfg);
+            std::shared_ptr<css::CssAccess> css, sql::SqlConfig const& schemaCfg);
     std::shared_ptr<SelectStmt> newSimpleStmt();
     std::shared_ptr<SelectStmt> newDuplSelectExprStmt();
+
+    static std::string getDefaultDbName();
+    static std::string getDefaultUserName();
+
 private:
     static void addSelectField(std::shared_ptr<SelectStmt> const& stmt, StringVector const& fields);
     static void addFrom(std::shared_ptr<SelectStmt> const& stmt);

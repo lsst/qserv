@@ -36,15 +36,21 @@
 #include <iostream>
 #include <tuple>
 
+// Third-party headers
+#include "boost/lexical_cast.hpp"
+
 // LSST headers
 #include "lsst/log/Log.h"
 
 // Qserv headers
 #include "query/QueryTemplate.h"
+#include "query/TableRef.h"
 
 
 namespace {
-    LOG_LOGGER _log = LOG_GET("lsst.qserv.query.ColumnRef");
+
+LOG_LOGGER _log = LOG_GET("lsst.qserv.query.ColumnRef");
+
 }
 
 
@@ -55,8 +61,7 @@ namespace query {
 
 std::ostream& operator<<(std::ostream& os, ColumnRef const& cr) {
     os << "ColumnRef(";
-    os << "\"" << cr._db << "\"";
-    os << ", \"" << cr._table << "\"";
+    os << "\"" << *cr._tableRef << "\"";
     os << ", \"" << cr._column << "\"";
     os << ")";
     return os;
@@ -73,21 +78,58 @@ std::ostream& operator<<(std::ostream& os, ColumnRef const* cr) {
 }
 
 
+ColumnRef::ColumnRef(std::string column_)
+    : _tableRef(std::make_shared<TableRef>()), _column(column_) {
+    _verify();
+}
+
+
+ColumnRef::ColumnRef(std::string db_, std::string table_, std::string column_)
+        : _tableRef(std::make_shared<TableRef>(db_, table_, "")), _column(column_) {
+    _verify();
+}
+
+
+ColumnRef::ColumnRef(std::string db_, std::string table_, std::string tableAlias_, std::string column_)
+    : _tableRef(std::make_shared<TableRef>(db_, table_, tableAlias_)), _column(column_) {
+    _verify();
+}
+
+
+ColumnRef::ColumnRef(std::shared_ptr<TableRef> const& table, std::string const& column)
+    : _tableRef(table), _column(column) {
+    _verify();
+}
+
+
 void ColumnRef::setDb(std::string const& db) {
     LOGS(_log, LOG_LVL_TRACE, *this << "; set db:" << db);
-    _db = db;
+    _tableRef->setDb(db);
+    _verify();
 }
 
 
 void ColumnRef::setTable(std::string const& table) {
     LOGS(_log, LOG_LVL_TRACE, *this << "; set table:" << table);
-    _table = table;
+    _tableRef->setTable(table);
+    _verify();
+}
+
+
+void ColumnRef::setTable(std::shared_ptr<TableRef> const& tableRef) {
+    LOGS(_log, LOG_LVL_TRACE, *this << "; set table:" << *tableRef);
+    if (not tableRef->isSimple()) {
+        throw std::logic_error("The TableRef used by a ColumnRef must not have any joins.");
+    }
+    _tableRef = tableRef;
+    _verify();
 }
 
 
 void ColumnRef::setColumn(std::string const& column) {
     LOGS(_log, LOG_LVL_TRACE, *this << "; set column:" << column);
     _column = column;
+    _verify();
 }
 
 
@@ -97,43 +139,73 @@ void ColumnRef::renderTo(QueryTemplate& qt) const {
 
 
 bool ColumnRef::isSubsetOf(const ColumnRef::Ptr & rhs) const {
-    // the columns can not be empty
-    if (_column.empty() || rhs->_column.empty()) {
-        return false;
-    }
-    // if the _table is empty, the _db must be empty
-    if (_table.empty() && !_db.empty()) {
-        return false;
-    }
-    if (rhs->_table.empty() && !rhs->_db.empty()) {
-        return false;
-    }
+    return isSubsetOf(*rhs);
+}
 
-    if (!_db.empty()) {
-        if (_db != rhs->_db) {
-            return false;
-        }
-    }
-    if (!_table.empty()) {
-        if (_table != rhs->_table) {
-            return false;
-        }
-    }
-    if (_column != rhs->_column) {
+
+bool ColumnRef::isColumnOnly() const {
+    if (_tableRef->hasDb() || _tableRef->hasTable() || _tableRef->hasAlias()) {
         return false;
     }
     return true;
 }
 
 
+bool ColumnRef::isSubsetOf(ColumnRef const& rhs) const {
+    if (not _tableRef->isSubsetOf(*rhs._tableRef)) {
+        return false;
+    }
+
+    // the columns of a subset can not be empty
+    if (_column.empty() || rhs._column.empty()) {
+        return false;
+    }
+    if (_column != rhs._column) {
+        return false;
+    }
+    return true;
+}
+
+
+bool ColumnRef::isAliasedBy(ColumnRef const& rhs) const {
+    if (_column != rhs._column) {
+        return false;
+    }
+    return _tableRef->isAliasedBy(*rhs._tableRef);
+}
+
+
+bool ColumnRef::isComplete() const {
+    if (_column.empty()) // should not be possible, but for completeness we check it.
+        return false;
+    return _tableRef->isComplete();
+}
+
+
+std::string ColumnRef::sqlFragment() const {
+    QueryTemplate qt;
+    renderTo(qt);
+    return boost::lexical_cast<std::string>(qt);
+}
+
+
 bool ColumnRef::operator==(const ColumnRef& rhs) const {
-    return std::tie(_db, _table, _column) == std::tie(rhs._db, rhs._table, rhs._column);
+    return std::tie(*_tableRef, _column) == std::tie(*rhs._tableRef, rhs._column);
 }
 
 
 bool ColumnRef::operator<(const ColumnRef& rhs) const {
-    return std::tie(_db, _table, _column) < std::tie(rhs._db, rhs._table, rhs._column);
+    return std::tie(*_tableRef, _column) < std::tie(*rhs._tableRef, rhs._column);
 }
+
+
+void ColumnRef::_verify() const {
+    // table verification is performed when setting the db & table
+    if (_tableRef->hasTable() && _column.empty()) {
+        throw std::logic_error("Column can not be empty when table is populated.");
+    }
+}
+
 
 
 }}} // namespace lsst::qserv::query

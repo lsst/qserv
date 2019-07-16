@@ -42,7 +42,6 @@
 // Qserv headers
 #include "css/CssAccess.h"
 #include "global/intTypes.h"
-#include "mysql/MySqlConfig.h"
 #include "parser/SelectParser.h"
 #include "qana/QueryPlugin.h"
 #include "qproc/ChunkQuerySpec.h"
@@ -50,6 +49,7 @@
 #include "query/Constraint.h"
 #include "query/QueryTemplate.h"
 #include "query/typedefs.h"
+#include "sql/SqlConfig.h"
 
 
 // Forward declarations
@@ -76,13 +76,13 @@ public:
     typedef std::shared_ptr<QuerySession> Ptr;
 
     // null constructor should only be used by parser unit tests.
-    QuerySession() = default;
+    QuerySession() : _sqlConfig(sql::SqlConfig::MOCK) {};
 
     QuerySession(std::shared_ptr<css::CssAccess> css,
-                 mysql::MySqlConfig const& mysqlSchemaConfig,
+                 sql::SqlConfig const& sqlConfig,
                  std::string const& defaultDb)
         : _css(css), _defaultDb(defaultDb),
-          _mysqlSchemaConfig(mysqlSchemaConfig) {}
+          _sqlConfig(sqlConfig) {}
 
     std::shared_ptr<query::SelectStmt> parseQuery(std::string const & statement);
 
@@ -114,7 +114,7 @@ public:
      */
     std::shared_ptr<query::SelectStmt> const& getPreFlightStmt() const { return _stmtPreFlight; }
 
-    /** @brief Return the ORDER BY clause to run on mysql-proxy at result retrieval.
+    /** @brief Return the ORDER BY clause to be used in the result query statement.
      *
      *  Indeed, MySQL results order is undefined with simple "SELECT *" clause.
      *  This parameter is set during query analysis.
@@ -122,7 +122,7 @@ public:
      *  @return: a string containing a SQL "ORDER BY" clause, or an empty string if this clause doesn't exists
      *  @see QuerySession::analyzeQuery()
      */
-    std::string getProxyOrderBy() const;
+    std::string getResultOrderBy() const;
 
     /// Dominant database is the database that will be used for query
     /// dispatch. This is distinct from the default database, which is what is
@@ -149,9 +149,16 @@ public:
 
     // For test harnesses.
     struct Test {
+        Test() : cfgNum(0), defaultDb("LSST"), sqlConfig(sql::SqlConfig(sql::SqlConfig::MOCK)) {}
+        Test(int cfgNum_,
+             std::shared_ptr<css::CssAccess> css_,
+             std::string defaultDb_,
+             sql::SqlConfig const& sqlConfig_)
+             : cfgNum(cfgNum_), css(css_), defaultDb(defaultDb_), sqlConfig(sqlConfig_) {}
         int cfgNum;
         std::shared_ptr<css::CssAccess> css;
         std::string defaultDb;
+        sql::SqlConfig sqlConfig;
     };
     explicit QuerySession(Test& t); ///< Debug constructor
     std::shared_ptr<query::QueryContext> dbgGetContext() { return _context; }
@@ -191,7 +198,7 @@ private:
     std::string _original; ///< Original user query
     std::shared_ptr<query::QueryContext> _context; ///< Analysis context
     std::shared_ptr<query::SelectStmt> _stmt; ///< Logical query statement
-    mysql::MySqlConfig const _mysqlSchemaConfig; ///< Configuration for getting schema information.
+    sql::SqlConfig const _sqlConfig; ///< Configuration for getting schema information.
 
     /// Group of parallel statements (not a sequence)
     /**
@@ -229,6 +236,7 @@ private:
     *
     */
     query::SelectStmtPtr _stmtMerge;
+
     bool _hasMerge{false};
     bool _isDummy{false}; ///< Use dummy chunk, disabling subchunks or any real chunks
     std::string _tmpTable;

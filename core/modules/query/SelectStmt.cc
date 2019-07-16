@@ -103,9 +103,13 @@ SelectStmt::getQueryTemplate() const {
     if (_hasDistinct) {
         selectQuant += " DISTINCT";
     }
+    qt.setAliasMode(QueryTemplate::DEFINE_VALUE_ALIAS_USE_TABLE_ALIAS);
     renderTemplate(qt, selectQuant.c_str(), _selectList);
+    qt.setAliasMode(QueryTemplate::DEFINE_TABLE_ALIAS);
     renderTemplate(qt, "FROM", _fromList);
+    qt.setAliasMode(QueryTemplate::NO_VALUE_ALIAS_USE_TABLE_ALIAS); // column aliases are not allowed in the WHERE clause.
     renderTemplate(qt, "WHERE", _whereClause);
+    qt.setAliasMode(QueryTemplate::USE_ALIAS);
     renderTemplate(qt, "GROUP BY", _groupBy);
     renderTemplate(qt, "HAVING", _having);
     renderTemplate(qt, "ORDER BY", _orderBy);

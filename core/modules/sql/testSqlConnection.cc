@@ -21,8 +21,6 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-// Class header
-#include "SqlConnection.h"
 
 // System headers
 #include <iostream>
@@ -32,16 +30,20 @@
 // Third-party headers
 
 // Qserv headers
+#include "SqlConnection.h"
+#include "SqlConnectionFactory.h"
 #include "SqlResults.h"
 
 // Boost unit test header
 #define BOOST_TEST_MODULE SqlConnection_1
 #include "boost/test/included/unit_test.hpp"
 
+
 namespace test = boost::test_tools;
 
 using lsst::qserv::mysql::MySqlConfig;
 using lsst::qserv::sql::SqlConnection;
+using lsst::qserv::sql::SqlConnectionFactory;
 using lsst::qserv::sql::SqlErrorObject;
 using lsst::qserv::sql::SqlResultIter;
 using lsst::qserv::sql::SqlResults;
@@ -54,15 +56,17 @@ inline std::string makeCreateTable(std::string const& t) {
     ss <<  "CREATE TABLE " << t << " (o1 int)";
     return ss.str();
 }
+
 inline std::string makeShowTables(std::string const& dbName=std::string()) {
     std::stringstream ss;
     ss <<  "SHOW TABLES ";
     if (!dbName.empty()) { ss << "IN " << dbName; }
     return ss.str();
 }
+
 class createIntTable {
 public:
-    createIntTable(SqlConnection* sqlConn_,
+    createIntTable(std::shared_ptr<SqlConnection> const& sqlConn_,
                    SqlErrorObject& errObj_)
         : sqlConn(sqlConn_), errObj(errObj_) {}
 
@@ -72,9 +76,11 @@ public:
             BOOST_FAIL(errObj.printErrMsg());
         }
     }
-    SqlConnection* sqlConn;
+    std::shared_ptr<SqlConnection> sqlConn;
     SqlErrorObject& errObj;
 };
+
+
 } // anonymous namespace
 
 struct PerTestFixture {
@@ -89,7 +95,7 @@ struct PerTestFixture {
             std::cout << "Enter mysql socket: ";
             std::cin >> sqlConfig.socket;
         }
-        sqlConn = std::make_shared<SqlConnection>(sqlConfig);
+        sqlConn = SqlConnectionFactory::make(sqlConfig);
     }
     ~PerTestFixture () {}
     std::shared_ptr<SqlConnection> sqlConn;
@@ -188,7 +194,7 @@ BOOST_AUTO_TEST_CASE(ListTables) {
 
     // create tables
     std::for_each(tList, tList + tListLen,
-                  createIntTable(sqlConn.get(), errObj));
+                  createIntTable(sqlConn, errObj));
 
     // try creating exiting table, should fail
     if ( sqlConn->runQuery(makeCreateTable(tList[0]), errObj) ) {
@@ -226,7 +232,7 @@ BOOST_AUTO_TEST_CASE(ListTables) {
 }
 
 BOOST_AUTO_TEST_CASE(UnbufferedQuery) {
-    sqlConn = std::make_shared<SqlConnection>(sqlConfig, true);
+    sqlConn = SqlConnectionFactory::make(sqlConfig);
     // Setup for "list tables"
     std::string dbN = "one_xysdfed34d";
     std::string tList[] = {
@@ -243,7 +249,7 @@ BOOST_AUTO_TEST_CASE(UnbufferedQuery) {
 
     // create tables
     std::for_each(tList, tList + tListLen,
-                  createIntTable(sqlConn.get(), errObj));
+                  createIntTable(sqlConn, errObj));
 
     std::shared_ptr<SqlResultIter> ri;
     ri = sqlConn->getQueryIter(makeShowTables());
@@ -262,7 +268,7 @@ BOOST_AUTO_TEST_CASE(UnbufferedQuery) {
 }
 
 BOOST_AUTO_TEST_CASE(RowIter) {
-    sqlConn = std::make_shared<SqlConnection>(sqlConfig, true);
+    sqlConn = SqlConnectionFactory::make(sqlConfig);
     std::string dbN = "one_xysdfed34d";
 
     SqlErrorObject errObj;

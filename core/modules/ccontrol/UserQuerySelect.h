@@ -47,32 +47,33 @@
 #include "qproc/ChunkSpec.h"
 #include "query/Constraint.h"
 
-// Forward decl
+
+// Forward declarations
 namespace lsst {
 namespace qserv {
 namespace qdisp {
-class Executive;
-class MessageStore;
+    class Executive;
+    class MessageStore;
+    class QdispPool;
 }
 namespace qmeta {
-class QMeta;
+    class QMeta;
 }
 namespace qproc {
-class QuerySession;
-class SecondaryIndex;
+    class QuerySession;
+    class SecondaryIndex;
+}
+namespace query {
+    class ColumnRef;
 }
 namespace rproc {
-class InfileMerger;
-class InfileMergerConfig;
-}}}
+    class InfileMerger;
+    class InfileMergerConfig;
+}}} // End of forward declarations
+
 
 namespace lsst {
 namespace qserv {
-
-namespace qdisp {
-class QdispPool;
-}
-
 namespace ccontrol {
 
 /// UserQuerySelect : implementation of the UserQuery for regular SELECT statements.
@@ -89,7 +90,8 @@ public:
                     qmeta::CzarId czarId,
                     std::shared_ptr<qdisp::QdispPool> const& qdispPool,
                     std::string const& errorExtra,
-                    bool async);
+                    bool async,
+                    std::string const& resultDb);
 
     UserQuerySelect(UserQuerySelect const&) = delete;
     UserQuerySelect& operator=(UserQuerySelect const&) = delete;
@@ -130,8 +132,8 @@ public:
     /// @return Result location for this query, can be empty
     std::string getResultLocation() const override { return _resultLoc; }
 
-    /// @return ORDER BY part of SELECT statement to be executed by proxy
-    std::string getProxyOrderBy() const override;
+    /// @return get the SELECT statement to be executed by proxy
+    std::string getResultQuery() const override;
 
     std::string getQueryIdString() const override;
 
@@ -146,9 +148,15 @@ public:
     /// set up the merge table (stores results from workers)
     /// @throw UserQueryError if the merge table can't be set up (maybe the user query is not valid?). The
     /// exception's what() message will be returned to the user.
-    void setupMerger() override;
+    void setupMerger();
+
+    /// save the result query in the query metadata
+    void saveResultQuery();
 
 private:
+    /// @return ORDER BY part of SELECT statement that gets executed by the proxy
+    std::string _getResultOrderBy() const;
+
     void _discardMerger();
     void _qMetaUpdateStatus(qmeta::QInfo::QStatus qStatus);
     void _qMetaAddChunks(std::vector<int> const& chunks);
@@ -173,6 +181,7 @@ private:
     std::string _errorExtra;    ///< Additional error information
     std::string _resultTable;   ///< Result table name
     std::string _resultLoc;     ///< Result location
+    std::string _resultDb;      ///< Result database (todo is this the same as resultLoc??)
     bool _async;                ///< true for async query
 };
 

@@ -40,7 +40,9 @@ namespace query {
 
 
 void NullPredicate::findColumnRefs(std::vector<std::shared_ptr<ColumnRef>>& vector) const {
-    if (value) { value->findColumnRefs(vector); }
+    if (value) {
+        value->findColumnRefs(vector);
+    }
 }
 
 
@@ -59,6 +61,11 @@ void NullPredicate::renderTo(QueryTemplate& qt) const {
 
 
 void NullPredicate::findValueExprs(std::vector<std::shared_ptr<ValueExpr>>& vector) const {
+    vector.push_back(value);
+}
+
+
+void NullPredicate::findValueExprRefs(ValueExprPtrRefVector& vector) {
     vector.push_back(value);
 }
 

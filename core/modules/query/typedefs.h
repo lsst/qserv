@@ -47,7 +47,7 @@ class ValueExpr;
 typedef std::shared_ptr<ValueExpr> ValueExprPtr;
 typedef std::vector<ValueExprPtr> ValueExprPtrVector;
 typedef ValueExprPtrVector::const_iterator ValueExprPtrVectorConstIter;
-
+typedef std::vector<std::reference_wrapper<ValueExprPtr>> ValueExprPtrRefVector;
 
 class SelectStmt;
 typedef std::shared_ptr<SelectStmt> SelectStmtPtr;

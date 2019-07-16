@@ -91,10 +91,16 @@
 #include "qproc/IndexMap.h"
 #include "qproc/QuerySession.h"
 #include "qproc/TaskMsgFactory.h"
+#include "query/ColumnRef.h"
 #include "query/FromList.h"
 #include "query/JoinRef.h"
+#include "query/QueryTemplate.h"
+#include "query/SelectList.h"
 #include "query/SelectStmt.h"
+#include "query/ValueExpr.h"
+#include "query/ValueFactor.h"
 #include "rproc/InfileMerger.h"
+#include "sql/Schema.h"
 #include "util/IterableFormatter.h"
 #include "util/ThreadPriority.h"
 
@@ -160,12 +166,13 @@ UserQuerySelect::UserQuerySelect(std::shared_ptr<qproc::QuerySession> const& qs,
                                  qmeta::CzarId czarId,
                                  std::shared_ptr<qdisp::QdispPool> const& qdispPool,
                                  std::string const& errorExtra,
-                                 bool async)
+                                 bool async,
+                                 std::string const& resultDb)
     :  _qSession(qs), _messageStore(messageStore), _executive(executive),
        _infileMergerConfig(infileMergerConfig), _secondaryIndex(secondaryIndex),
        _queryMetadata(queryMetadata), _queryStatsData(queryStatsData),
        _qMetaCzarId(czarId), _qdispPool(qdispPool),
-       _errorExtra(errorExtra), _async(async) {
+       _errorExtra(errorExtra), _resultDb(resultDb), _async(async) {
 }
 
 std::string UserQuerySelect::getError() const {
@@ -197,8 +204,56 @@ void UserQuerySelect::kill() {
 
 
 std::string
-UserQuerySelect::getProxyOrderBy() const {
-    return _qSession->getProxyOrderBy();
+UserQuerySelect::_getResultOrderBy() const {
+    return _qSession->getResultOrderBy();
+}
+
+
+std::string UserQuerySelect::getResultQuery() const {
+    query::SelectList selectList;
+    auto const& valueExprList = *_qSession->getStmt().getSelectList().getValueExprList();
+    for (auto const& valueExpr : valueExprList) {
+        if (valueExpr->isStar()) {
+            std::string errMsg;
+            auto useSelectList = std::make_shared<query::SelectList>();
+            useSelectList->addValueExpr(valueExpr);
+            query::SelectStmt starStmt(useSelectList, _qSession->getStmt().getFromList().clone());
+            auto schema = _infileMerger->getSchemaForQueryResults(starStmt, errMsg);
+            for (auto const& column : schema.columns) {
+                selectList.addValueExpr(query::ValueExpr::newColumnExpr(column.name));
+            }
+        } else {
+            // Add a column that describes the top-level ValueExpr.
+            // If the value is a column ref _and_ there was not a user defined alias, then the TablePlugin will
+            // have assigned an alias that included the table name. We don't want that table name to appear
+            // in the results in that case, so just assign the column.
+            // Otherwise, use the alias.
+            std::shared_ptr<query::ValueExpr> newValueExpr;
+            if (valueExpr->isColumnRef() && not valueExpr->getAliasIsUserDefined()) {
+                newValueExpr = query::ValueExpr::newColumnExpr(valueExpr->getAlias());
+                newValueExpr->setAlias(valueExpr->getColumnRef()->getColumn());
+            } else {
+                newValueExpr = query::ValueExpr::newColumnExpr("`" + valueExpr->getAlias() + "`");
+                newValueExpr->setAlias(valueExpr->getAlias());
+            }
+            selectList.addValueExpr(newValueExpr);
+        }
+    }
+
+    // The SELECT list needs to define aliases in the result query, so that the columns we are selecting from
+    // the result table that may be mangled by internal handling of the query are restored to the column name
+    // that the user expects, by way of the alias defined here.
+    query::QueryTemplate qt(query::QueryTemplate::DEFINE_VALUE_ALIAS_USE_TABLE_ALIAS);
+    selectList.renderTo(qt);
+
+    std::string resultQuery =  "SELECT " + qt.sqlFragment() + " FROM " + _resultDb + "."
+        + getResultTableName();
+    std::string orderBy = _getResultOrderBy();
+    if (not orderBy.empty()) {
+        resultQuery += " " + orderBy;
+    }
+    LOGS(_log, LOG_LVL_DEBUG, "made result query:" << resultQuery);
+    return resultQuery;
 }
 
 
@@ -390,14 +445,17 @@ void UserQuerySelect::setupMerger() {
     auto&& preFlightStmt = _qSession->getPreFlightStmt();
     if (preFlightStmt == nullptr) {
         _qMetaUpdateStatus(qmeta::QInfo::FAILED);
-        throw UserQueryError(getQueryIdString() +
-            "Could not create results table for query (no worker queries).");
+        _errorExtra = "Could not create results table for query (no worker queries).";
+        return;
     }
-    std::string errMsg;
-    if (not _infileMerger->makeResultsTableForQuery(*preFlightStmt, errMsg)) {
+    if (not _infileMerger->makeResultsTableForQuery(*preFlightStmt, _errorExtra)) {
         _qMetaUpdateStatus(qmeta::QInfo::FAILED);
-        throw UserQueryError(getQueryIdString() + errMsg);
     }
+}
+
+
+void UserQuerySelect::saveResultQuery() {
+    _queryMetadata->saveResultQuery(_qMetaQueryId, getResultQuery());
 }
 
 void UserQuerySelect::setupChunking() {
@@ -472,14 +530,13 @@ void UserQuerySelect::qMetaRegister(std::string const& resultLocation, std::stri
     if (mergeStmt) {
         qMerge = mergeStmt->getQueryTemplate().sqlFragment();
     }
-    std::string proxyOrderBy = _qSession->getProxyOrderBy();
     _resultLoc = resultLocation;
     if (_resultLoc.empty()) {
         // Special token #QID# is replaced with query ID later.
         _resultLoc = "table:result_#QID#";
     }
     qmeta::QInfo qInfo(qType, _qMetaCzarId, user, _qSession->getOriginal(),
-                       qTemplate, qMerge, proxyOrderBy, _resultLoc, msgTableName);
+                       qTemplate, qMerge, _resultLoc, msgTableName, "");
 
     // find all table names used by statement (which appear in FROM ... [JOIN ...])
     qmeta::QMeta::TableNames tableNames;
@@ -539,6 +596,7 @@ void UserQuerySelect::qMetaRegister(std::string const& resultLocation, std::stri
         }
     }
 }
+
 
 // update query status in QMeta
 void UserQuerySelect::_qMetaUpdateStatus(qmeta::QInfo::QStatus qStatus)

@@ -31,18 +31,40 @@
 #include <algorithm>
 #include <utility>
 
+// LSST headers
+#include "lsst/log/Log.h"
+
 // Qserv headers
 #include "qana/QueryNotEvaluableError.h"
 #include "qana/RelationGraph.h"
-
+#include "query/ColumnRef.h"
 #include "query/QueryTemplate.h"
+#include "util/IterableFormatter.h"
+
+
+namespace {
+    LOG_LOGGER _log = LOG_GET("lsst.qserv.qana.ColumnVertexMap");
+}
 
 
 namespace lsst {
 namespace qserv {
 namespace qana {
 
+
+ColumnVertexMap::Entry::Entry(ColumnRefConstPtr const& c, Vertex* t) :
+    cr(c), vertices(1, t) {
+}
+
+
+void ColumnVertexMap::Entry::swap(Entry& e) {
+    cr.swap(e.cr);
+    vertices.swap(e.vertices);
+}
+
+
 ColumnVertexMap::ColumnVertexMap(Vertex& v) {
+    LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__);
     std::vector<ColumnRefConstPtr> c = v.info->makeColumnRefs(v.tr.getAlias());
     _init(v, c.begin(), c.end());
 }
@@ -70,6 +92,8 @@ void ColumnVertexMap::fuse(ColumnVertexMap& m,
                            bool natural,
                            std::vector<std::string> const& cols)
 {
+    LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__ << " " << m << ", natural:" << natural <<
+        ", cols:" << util::printable(cols) << " into this:" << *this);
     typedef std::vector<Entry>::iterator EntryIter;
     typedef std::vector<std::string>::const_iterator StringIter;
 
@@ -98,8 +122,8 @@ void ColumnVertexMap::fuse(ColumnVertexMap& m,
             if (eq(*cur, *i)) {
                 // Found an entry with the same column reference as the
                 // currrent entry
-                if (!cur->cr->getTable().empty() || (!natural &&
-                    std::find(firstCol, endCol, cur->cr->getColumn()) == endCol)) {
+                if (not cur->cr->getTableAlias().empty() ||
+                    (not natural && std::find(firstCol, endCol, cur->cr->getColumn()) == endCol)) {
                     // The column reference is qualified or is not a natural
                     // join or using column, so mark it as ambiguous.
                     cur->markAmbiguous();
@@ -129,6 +153,7 @@ void ColumnVertexMap::fuse(ColumnVertexMap& m,
 std::vector<std::string> const ColumnVertexMap::computeCommonColumns(
     ColumnVertexMap const& m) const
 {
+    LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__);
     typedef std::vector<Entry>::const_iterator EntryIter;
     std::vector<std::string> cols;
     // The entries for this map and m are both sorted, so we can find
@@ -158,6 +183,35 @@ std::vector<std::string> const ColumnVertexMap::computeCommonColumns(
         }
     }
     return cols;
+}
+
+
+std::ostream& operator<<(std::ostream& os, ColumnVertexMap::Entry const& e) {
+    os << "Entry(" << *e.cr << util::printable(e.vertices) << ")";
+    return os;
+}
+
+
+std::ostream& operator<<(std::ostream& os, ColumnVertexMap const& cvm) {
+    os << "ColumnVertexMap(" << util::printable(cvm._entries) << ")";
+    return os;
+}
+
+
+bool ColumnRefLt::operator()(query::ColumnRef const& a,
+                             query::ColumnRef const& b) const {
+    int c = a.getColumn().compare(b.getColumn());
+    if (c == 0) {
+        c = a.getTableAlias().compare(b.getTableAlias());
+    }
+    return c < 0;
+}
+
+
+bool ColumnRefEq::operator()(query::ColumnRef const& a,
+                             query::ColumnRef const& b) const {
+    return a.getTableAlias() == b.getTableAlias() &&
+           a.getColumn() == b.getColumn();
 }
 
 }}} // namespace lsst::qserv::qana

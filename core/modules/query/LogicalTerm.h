@@ -64,6 +64,9 @@ public:
     /// Get a vector of the ValueExprs this contains.
     void findValueExprs(std::vector<std::shared_ptr<ValueExpr>>& vector) const override;
 
+    /// Get a vector of pointers to the ValueExprs this contains.
+    void findValueExprRefs(ValueExprPtrRefVector& vector);
+
     /// Get a vector of the ColumnRefs this contains.
     void findColumnRefs(std::vector<std::shared_ptr<ColumnRef>>& vector) const override;
 

@@ -44,7 +44,7 @@
 namespace lsst {
 namespace qserv {
 namespace qdisp {
-class MessageStore;
+    class MessageStore;
 }}}
 
 namespace lsst {
@@ -91,9 +91,6 @@ public:
     /// @return Result location for this query, can be empty
     virtual std::string getResultLocation() const { return std::string(); }
 
-    /// @return ORDER BY part of SELECT statement to be executed by proxy
-    virtual std::string getProxyOrderBy() const { return std::string(); }
-
     /// @return this query's QueryId.
     virtual QueryId getQueryId() const { return QueryId(0); }
 
@@ -106,10 +103,8 @@ public:
     /// @return True if query is async query
     virtual bool isAsync() const { return false; }
 
-    /// set up the merge table (stores results from workers)
-    /// @throw UserQueryError if the merge table can't be set up (maybe the user query is not valid?). The
-    /// exception's what() message will be returned to the user.
-    virtual void setupMerger() {}
+    /// @return get the SELECT statement to be executed by proxy
+    virtual std::string getResultQuery() const { return std::string(); }
 };
 
 }}} // namespace lsst::qserv:ccontrol

@@ -64,9 +64,10 @@ typedef std::shared_ptr<ValueFactor> ValueFactorPtr;
 /// logical (i.e. a column name) or physical (a constant number or value).
 class ValueFactor {
 public:
-    enum Type { COLUMNREF, FUNCTION, AGGFUNC, STAR, CONST, EXPR };
+    enum Type { NONE, COLUMNREF, FUNCTION, AGGFUNC, STAR, CONST, EXPR };
     static std::string getTypeString(Type t) {
         switch(t) {
+        case NONE:      return "NONE";
         case COLUMNREF: return "COLUMNREF";
         case FUNCTION:  return "FUNCTION";
         case AGGFUNC:   return "AGGFUNC";
@@ -88,17 +89,19 @@ public:
     // Construct a "const" (string value) ValueFactor.
     ValueFactor(std::string const& constVal);
 
-    // May need non-const, otherwise, need new construction
     std::shared_ptr<ColumnRef const> getColumnRef() const { return _columnRef; }
     std::shared_ptr<ColumnRef> getColumnRef() { return _columnRef; }
     std::shared_ptr<FuncExpr const> getFuncExpr() const { return _funcExpr; }
     std::shared_ptr<FuncExpr> getFuncExpr() { return _funcExpr; }
     std::shared_ptr<ValueExpr const> getExpr() const { return _valueExpr; }
     std::shared_ptr<ValueExpr> getExpr() { return _valueExpr; }
+    std::shared_ptr<TableRef const> getTableStar() const { return _tableStar; }
+    std::shared_ptr<TableRef> getTableStar() { return _tableStar; }
     Type getType() const { return _type; }
 
     std::string const& getConstVal() const { return _constVal; }
     void setConstVal(std::string const& a) { _constVal = a; }
+    bool isConstVal() const { return not _constVal.empty(); }
 
     void findColumnRefs(ColumnRef::Vector& vector) const;
 
@@ -121,15 +124,31 @@ public:
 
     bool operator==(const ValueFactor& rhs) const;
 
+    /// Assign a new ValueExpr to this object, any previous parameters will be cleared.
+    void set(std::shared_ptr<ValueExpr> const& valueExpr);
+
+    /// Assign this object to be STAR value, optionally with a TableRef qualification. A
+    /// Any previous parameters will be cleared.
+    void setStar(std::shared_ptr<TableRef> const& tableRef);
+
+    // determine if this object is the same as or a less complete description of the passed in object.
+    bool isSubsetOf(ValueFactor const& rhs) const;
+
 private:
-    Type _type;
-    std::shared_ptr<ColumnRef> _columnRef;
-    std::shared_ptr<FuncExpr> _funcExpr;
-    std::shared_ptr<ValueExpr> _valueExpr;
-    std::string _constVal;  // formerly named "tablestar"
-                            // seems to often contain a string representation of a number. Can also contain
-                            // `*` (presumably as in `SELECT *`. It would probably be good to factor it so
-                            // so that `constVal` is exclusivly a string number and `*` is a different field.
+
+    /// Clear this object - drop all its parameters
+    void _reset();
+
+    Type _type{NONE};
+    std::shared_ptr<ColumnRef> _columnRef; //< the value when _type == COLUMNREF
+    std::shared_ptr<FuncExpr> _funcExpr; //< the value when _type == FUNCTION or AGGFUNC
+    std::shared_ptr<ValueExpr> _valueExpr; //< the value when _type == EXPR
+    std::string _constVal; //< the value when _type == CONST
+    // when _type == STAR, _tableStar can be null or can contain table info for a table-qualified value
+    // e.g. "Object.*". Qserv does not currently allow a database in this expression and the database field
+    // must be empty.
+    std::shared_ptr<TableRef> _tableStar;
+
 };
 
 

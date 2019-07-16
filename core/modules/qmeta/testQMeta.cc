@@ -37,6 +37,7 @@
 #include "QMetaMysql.h"
 #include "QStatusMysql.h"
 #include "sql/SqlConnection.h"
+#include "sql/SqlConnectionFactory.h"
 #include "sql/SqlErrorObject.h"
 
 // Local headers
@@ -49,6 +50,7 @@
 using lsst::qserv::mysql::MySqlConfig;
 using namespace lsst::qserv::qmeta;
 using lsst::qserv::sql::SqlConnection;
+using lsst::qserv::sql::SqlConnectionFactory;
 using lsst::qserv::sql::SqlErrorObject;
 
 namespace {
@@ -77,19 +79,19 @@ struct TestDBGuard {
         // need config without database name
         MySqlConfig sqlConfigLocal = sqlConfig;
         sqlConfigLocal.dbName = "";
-        SqlConnection sqlConn(sqlConfigLocal);
+        auto sqlConn = SqlConnectionFactory::make(sqlConfigLocal);
 
         SqlErrorObject errObj;
-        sqlConn.runQuery(buffer, errObj);
+        sqlConn->runQuery(buffer, errObj);
         if (errObj.isSet()) {
             throw SqlError(ERR_LOC, errObj);
         }
     }
 
     ~TestDBGuard() {
-        SqlConnection sqlConn(sqlConfig);
+        auto sqlConn = SqlConnectionFactory::make(sqlConfig);
         SqlErrorObject errObj;
-        sqlConn.dropDb(sqlConfig.dbName, errObj);
+        sqlConn->dropDb(sqlConfig.dbName, errObj);
     }
 
     MySqlConfig sqlConfig;
@@ -101,7 +103,7 @@ struct TestDBGuard {
 struct PerTestFixture {
     PerTestFixture() {
         qMeta = std::make_shared<QMetaMysql>(testDB.sqlConfig);
-        sqlConn = std::make_shared<SqlConnection>(testDB.sqlConfig);
+        sqlConn = SqlConnectionFactory::make(testDB.sqlConfig);
     }
 
     static TestDBGuard testDB;
@@ -147,7 +149,7 @@ BOOST_AUTO_TEST_CASE(messWithQueries) {
 
     // resister one query
     QInfo qinfo(QInfo::SYNC, cid1, "user1", "SELECT * from Object", "SELECT * from Object_{}",
-                "SELECT Merge ' query", "SELECT Proxy query", "result_#QID#", "message_12345");
+                "SELECT Merge ' query", "result_#QID#", "message_12345", "SELECT obj FROM result_#QID#");
     QMeta::TableNames tables(1, std::make_pair("TestDB", "Object"));
     lsst::qserv::QueryId qid1 = qMeta->registerQuery(qinfo, tables);
     BOOST_CHECK(qid1 != 0U);
@@ -161,8 +163,8 @@ BOOST_AUTO_TEST_CASE(messWithQueries) {
     BOOST_CHECK_EQUAL(qinfo1.queryText(), qinfo.queryText());
     BOOST_CHECK_EQUAL(qinfo1.queryTemplate(), qinfo.queryTemplate());
     BOOST_CHECK_EQUAL(qinfo1.mergeQuery(), qinfo.mergeQuery());
-    BOOST_CHECK_EQUAL(qinfo1.proxyOrderBy(), qinfo.proxyOrderBy());
     BOOST_CHECK_EQUAL(qinfo1.msgTableName(), qinfo.msgTableName());
+    BOOST_CHECK_EQUAL(qinfo1.resultQuery(), qinfo.resultQuery());
     BOOST_CHECK_EQUAL(qinfo1.resultLocation(), "result_" + std::to_string(qid1));
     BOOST_CHECK(qinfo1.submitted() != std::time_t(0));
     BOOST_CHECK_EQUAL(qinfo1.completed(), std::time_t(0));
@@ -383,7 +385,7 @@ BOOST_AUTO_TEST_CASE(messWithChunks) {
 BOOST_AUTO_TEST_CASE(messWithQueryStats) {
     LOGS(_log, LOG_LVL_WARN, "messWithQueryStats connect");
     std::shared_ptr<QStatus> qStatus = std::make_shared<QStatusMysql>(testDB.sqlConfig);
-    sqlConn = std::make_shared<SqlConnection>(testDB.sqlConfig);
+    sqlConn = SqlConnectionFactory::make(testDB.sqlConfig);
     CzarId qid1 = 7; // just need a number.
 
     int totalChunks = 99;

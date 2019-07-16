@@ -76,7 +76,7 @@ public:
     bool isNatural() const { return _isNatural; }
     Type getJoinType() const { return _joinType; }
 
-    TableRef::CPtr getRight() const { return _right; }
+    TableRef::ConstPtr getRight() const { return _right; }
     TableRef::Ptr getRight() { return _right; }
 
     std::shared_ptr<JoinSpec const> getSpec() const { return _spec; }

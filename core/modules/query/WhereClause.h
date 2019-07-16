@@ -40,6 +40,8 @@
 #include <stack>
 #include <vector>
 
+// Qserv headers
+#include "query/typedefs.h"
 
 // Forward declarations
 namespace lsst {
@@ -98,6 +100,7 @@ public:
     std::shared_ptr<WhereClause> copySyntax();
 
     void findValueExprs(std::vector<std::shared_ptr<ValueExpr>>& list) const;
+    void findValueExprRefs(ValueExprPtrRefVector& list);
 
     void resetRestrs();
     void prependAndTerm(std::shared_ptr<BoolTerm> t);

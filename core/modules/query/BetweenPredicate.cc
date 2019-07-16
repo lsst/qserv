@@ -37,9 +37,15 @@ namespace query {
 
 
 void BetweenPredicate::findColumnRefs(std::vector<std::shared_ptr<ColumnRef>>& vector) const {
-    if (value) value->findColumnRefs(vector);
-    if (minValue) minValue->findColumnRefs(vector);
-    if (maxValue) maxValue->findColumnRefs(vector);
+    if (value) {
+        value->findColumnRefs(vector);
+    }
+    if (minValue) {
+        minValue->findColumnRefs(vector);
+    }
+    if (maxValue) {
+        maxValue->findColumnRefs(vector);
+    }
 }
 
 
@@ -60,6 +66,13 @@ void BetweenPredicate::renderTo(QueryTemplate& qt) const {
 
 
 void BetweenPredicate::findValueExprs(std::vector<std::shared_ptr<ValueExpr>>& vector) const {
+    vector.push_back(value);
+    vector.push_back(minValue);
+    vector.push_back(maxValue);
+}
+
+
+void BetweenPredicate::findValueExprRefs(ValueExprPtrRefVector& vector) {
     vector.push_back(value);
     vector.push_back(minValue);
     vector.push_back(maxValue);

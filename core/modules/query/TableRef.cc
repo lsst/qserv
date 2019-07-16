@@ -35,6 +35,10 @@
 // System headers
 #include <algorithm>
 #include <sstream>
+#include <stdexcept>
+
+// Third-party headers
+#include "boost/lexical_cast.hpp"
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -63,9 +67,94 @@ namespace qserv {
 namespace query {
 
 
-////////////////////////////////////////////////////////////////////////
-// TableRef
-////////////////////////////////////////////////////////////////////////
+TableRef::TableRef()
+{}
+
+
+TableRef::TableRef(std::string const& db, std::string const& table, std::string const& alias)
+        : _db(db), _table(table), _alias(alias) {
+    _verify();
+}
+
+
+void TableRef::setAlias(std::string const& alias) {
+    LOGS(_log, LOG_LVL_TRACE, *this << "; set alias:" << alias);
+    _alias = alias;
+}
+
+
+void TableRef::setDb(std::string const& db) {
+    LOGS(_log, LOG_LVL_TRACE, *this << "; set db:" << db);
+    _db = db;
+    _verify();
+}
+
+
+void TableRef::setTable(std::string const& table) {
+    LOGS(_log, LOG_LVL_TRACE, *this << "; set table:" << table);
+    _table = table;
+    _verify();
+}
+
+
+bool TableRef::isSubsetOf(TableRef const& rhs) const {
+    if (not isSimple() || not rhs.isSimple()) {
+        // We can investigate adding support for this if needed but I don't think it will be.
+        // I think it would also be worth considering if it would be a better abstraction if we removed
+        // the JoinRef from TableRef and making the JoinRef contain the joined TableRefs.
+        throw std::logic_error("TableRef does not support isSubsetOf with joins.");
+    }
+    // if the _table is empty, the _db must be empty
+    if (not hasTable() && hasDb()) {
+        return false;
+    }
+    if (not rhs.hasTable() && rhs.hasDb()) {
+        return false;
+    }
+
+    if (hasAlias() && getAlias() != rhs.getAlias()) {
+        return false;
+    }
+    if (hasDb() && getDb() != rhs.getDb()) {
+        return false;
+    }
+    if (hasTable() && getTable() != rhs.getTable()) {
+        return false;
+    }
+    return true;
+}
+
+
+bool TableRef::isAliasedBy(TableRef const& rhs) const {
+    if (hasTable() && not hasDb() && not hasAlias()) {
+        if (_table == rhs._alias)
+            return true;
+    }
+    return false;
+}
+
+
+bool TableRef::isComplete() const {
+    if (_table.empty())
+        return false;
+    if (_db.empty())
+        return false;
+    if (_alias.empty())
+        return false;
+    for (auto&& joinRef : _joinRefs) {
+        if (not joinRef->getRight()->isComplete()) {
+            return false;
+        }
+    }
+    return true;
+}
+
+
+bool TableRef::operator<(const TableRef& rhs) const {
+    return std::tie(_db, _table, _alias) < std::tie(rhs._db, rhs._table, rhs._alias);
+}
+
+
 std::ostream& operator<<(std::ostream& os, TableRef const& ref) {
     os << "TableRef(";
     os << "\"" << ref._db << "\"";
@@ -88,28 +177,6 @@ std::ostream& operator<<(std::ostream& os, TableRef const* ref) {
     return os;
 }
 
-
-void TableRef::setAlias(std::string const& alias) {
-    LOGS(_log, LOG_LVL_TRACE, *this << "; set alias:" << alias);
-    _alias = alias;
-}
-
-
-void TableRef::setDb(std::string const& db) {
-    LOGS(_log, LOG_LVL_TRACE, *this << "; set db:" << db);
-    _db = db;
-}
-
-
-void TableRef::setTable(std::string const& table) {
-    LOGS(_log, LOG_LVL_TRACE, *this << "; set table:" << table);
-    if (table.empty()) {
-        throw std::logic_error("TableRef::setTable - table can not be empty");
-    }
-    _table = table;
-}
-
-
 void TableRef::render::applyToQT(TableRef const& ref) {
     if (_count++ > 0) _qt.append(",");
     ref.putTemplate(_qt);
@@ -128,15 +195,38 @@ std::ostream& TableRef::putStream(std::ostream& os) const {
 }
 
 
+std::string TableRef::sqlFragment() const {
+    QueryTemplate qt;
+    TableRef::render render(qt);
+    render.applyToQT(*this);
+    return boost::lexical_cast<std::string>(qt);
+}
+
+
 void TableRef::putTemplate(QueryTemplate& qt) const {
-    if (!_db.empty()) {
-        qt.append(_db); // Use TableEntry?
-        qt.append(".");
+    auto aliasMode = qt.getTableAliasMode();
+    if (QueryTemplate::USE == aliasMode) {
+        if (hasAlias()) {
+            qt.append("`" + _alias + "`");
+        } else {
+            if (!_db.empty()) {
+                qt.append(_db);
+                qt.append(".");
+            }
+            qt.append(_table);
+        }
+    } else { // DEFINE or DONT_USE
+        if (!_db.empty()) {
+            qt.append(_db);
+            qt.append(".");
+        }
+        qt.append(_table);
     }
-    qt.append(_table);
-    if (!_alias.empty()) {
-        qt.append("AS");
-        qt.append(_alias);
+    if (QueryTemplate::DEFINE == aliasMode) {
+        if (hasAlias()) {
+            qt.append("AS");
+            qt.append("`" + _alias + "`");
+        }
     }
     typedef JoinRefPtrVector::const_iterator Iter;
     for(Iter i=_joinRefs.begin(), e=_joinRefs.end(); i != e; ++i) {
@@ -204,12 +294,17 @@ TableRef::Ptr TableRef::clone() const {
 }
 
 
-bool TableRef::operator==(const TableRef& rhs) const {
-    return _alias == rhs._alias &&
-           _db == rhs._db &&
-           _table == rhs._table &&
-           util::vectorPtrCompare<JoinRef>(_joinRefs, rhs._joinRefs);
+bool TableRef::operator==(TableRef const& rhs) const {
+    if (std::tie(_db, _table, _alias) != std::tie(rhs._db, rhs._table, rhs._alias))
+        return false;
+    return util::vectorPtrCompare<JoinRef>(_joinRefs, rhs._joinRefs);
 }
 
+
+void TableRef::_verify() const {
+    if (_table.empty() && hasDb()) {
+        throw std::logic_error("Table can not be empty when database is populated.");
+    }
+}
 
 }}} // Namespace lsst::qserv::query

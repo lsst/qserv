@@ -540,6 +540,9 @@ struct Edge {
 };
 
 
+std::ostream& operator<<(std::ostream& out, Edge const& edge);
+
+
 /// A `Vertex` corresponds to an in-query partitioned table reference. A
 /// reference to the underlying table metadata and a list of edges (join
 /// predicates/constraints) that involve the table reference are bundled
@@ -599,6 +602,9 @@ struct Vertex {
 };
 
 
+std::ostream& operator<<(std::ostream& out, Vertex const& vertex);
+
+
 /// A relation graph consists of a list of vertices, representing the
 /// partitioned table references of a query, linked by an edge for each join
 /// predicate that can be used to infer the partition of rows in one table
@@ -628,10 +634,7 @@ public:
     void rewrite(SelectStmtPtrVector& outputs,
                  QueryMapping& mapping);
 
-    void swap(RelationGraph& g) {
-        _vertices.swap(g._vertices);
-        _map.swap(g._map);
-    }
+    void swap(RelationGraph& g);
 
 private:
     std::list<Vertex> _vertices;

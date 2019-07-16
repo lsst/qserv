@@ -49,6 +49,7 @@
 #include "query/SelectStmt.h"
 #include "query/ValueExpr.h"
 #include "query/typedefs.h"
+#include "query/QueryTemplate.h"
 #include "util/Error.h"
 #include "util/IterableFormatter.h"
 #include "util/MultiError.h"
@@ -137,7 +138,7 @@ DuplSelectExprPlugin::getDuplicateSelectErrors(query::SelectStmt const& stmt) co
         } else if (ve.isColumnRef()) {
             name = ve.getColumnRef()->getColumn();
         } else {
-            name = ve.sqlFragment();
+            name = ve.sqlFragment(query::QueryTemplate::DEFINE_VALUE_ALIAS_USE_TABLE_ALIAS);
         }
         boost::algorithm::to_lower(name);
         selectExprNormalizedNames.push_back(name);

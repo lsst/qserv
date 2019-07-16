@@ -64,9 +64,6 @@ public:
 
     bool isJoin() const;
 
-    /// @return a list of DbTablePairs that contain the Db and Tables used in the from list
-    std::vector<DbTablePair> computeResolverTables() const;
-
     /// @return a flattened string representation.
     std::string getGenerated();
     void renderTo(QueryTemplate& qt) const;

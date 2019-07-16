@@ -38,8 +38,12 @@ namespace query {
 
 
 void CompPredicate::findColumnRefs(std::vector<std::shared_ptr<ColumnRef>>& vector) const {
-    if (left) left->findColumnRefs(vector);
-    if (right) right->findColumnRefs(vector);
+    if (left) {
+        left->findColumnRefs(vector);
+    }
+    if (right) {
+        right->findColumnRefs(vector);
+    }
 }
 
 
@@ -88,6 +92,12 @@ void CompPredicate::renderTo(QueryTemplate& qt) const {
 
 
 void CompPredicate::findValueExprs(std::vector<std::shared_ptr<ValueExpr>>& vector) const {
+    vector.push_back(left);
+    vector.push_back(right);
+}
+
+
+void CompPredicate::findValueExprRefs(ValueExprPtrRefVector& vector) {
     vector.push_back(left);
     vector.push_back(right);
 }

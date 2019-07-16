@@ -46,16 +46,20 @@
 #include "lsst/log/Log.h"
 
 // Qserv headers
+#include "mysql/MySqlConfig.h"
 #include "parser/SelectParser.h"
 #include "query/QsRestrictor.h"
 #include "query/QueryContext.h"
+#include "sql/SqlConfig.h"
 #include "tests/QueryAnaFixture.h"
 
+using lsst::qserv::mysql::MySqlConfig;
 using lsst::qserv::parser::SelectParser;
 using lsst::qserv::qproc::ChunkQuerySpec;
 using lsst::qserv::qproc::QuerySession;
 using lsst::qserv::query::QsRestrictor;
 using lsst::qserv::query::QueryContext;
+using lsst::qserv::sql::SqlConfig;
 using lsst::qserv::tests::QueryAnaFixture;
 
 ////////////////////////////////////////////////////////////////////////
@@ -65,6 +69,7 @@ BOOST_FIXTURE_TEST_SUITE(OrderBy, QueryAnaFixture)
 
 BOOST_AUTO_TEST_CASE(SecondaryIndex) {
     std::string stmt = "select * from Object where objectIdObjTest in (2,3145,9999);";
+    qsTest.sqlConfig = SqlConfig(SqlConfig::MockDbTableColumns({{"LSST", {{"Object", {"objectIdObjTest"}}}}}));
     std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, stmt);
     std::shared_ptr<QueryContext> context = qs->dbgGetContext();
     BOOST_CHECK(context);
@@ -81,10 +86,11 @@ BOOST_AUTO_TEST_CASE(SecondaryIndex) {
 
 BOOST_AUTO_TEST_CASE(CountIn) {
     std::string stmt = "select COUNT(*) AS N FROM Source WHERE objectId IN(386950783579546, 386942193651348);";
+    qsTest.sqlConfig = SqlConfig(SqlConfig::MockDbTableColumns({{"LSST", {{"Source", {"objectId"}}}}}));
     std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, stmt);
-    std::string expectedParallel = "SELECT COUNT(*) AS QS1_COUNT FROM LSST.Source_100 AS QST_1_ "
-                                   "WHERE objectId IN(386950783579546,386942193651348)";
-    std::string expectedMerge = "SELECT SUM(QS1_COUNT) AS N";
+    std::string expectedParallel = "SELECT COUNT(*) AS `QS1_COUNT` FROM LSST.Source_100 AS `LSST.Source` "
+                                   "WHERE `LSST.Source`.objectId IN(386950783579546,386942193651348)";
+    std::string expectedMerge = "SELECT SUM(QS1_COUNT) AS `N`";
     auto queries = queryAnaHelper.getInternalQueries(qsTest, stmt);
     BOOST_CHECK_EQUAL(queries[0], expectedParallel);
     BOOST_CHECK_EQUAL(queries[1], expectedMerge);
@@ -102,6 +108,7 @@ BOOST_AUTO_TEST_CASE(CountIn) {
 
 BOOST_AUTO_TEST_CASE(RestrictorObjectIdAlias) {
     std::string stmt = "select * from Object as o1 where objectIdObjTest IN (2,3145,9999);";
+    qsTest.sqlConfig = SqlConfig(SqlConfig::MockDbTableColumns({{"LSST", {{"Object", {"objectIdObjTest"}}}}}));
     std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, stmt);
     std::shared_ptr<QueryContext> context = qs->dbgGetContext();
     BOOST_CHECK(context);

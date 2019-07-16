@@ -34,6 +34,8 @@
 // Third-party headers
 #include "boost/iterator_adaptors.hpp"
 
+// Qserv headers
+#include "query/typedefs.h"
 
 // Forward declarations
 namespace lsst {
@@ -72,6 +74,9 @@ public:
 
     /// Get a vector of the ValueExprs this contains.
     virtual void findValueExprs(std::vector<std::shared_ptr<ValueExpr>>& vector) const = 0;
+
+    /// Get a vector of references to pointers to the ValueExprs this contains.
+    virtual void findValueExprRefs(ValueExprPtrRefVector& vector) = 0;
 
     /// Get a vector of the ColumnRefs this contains.
     virtual void findColumnRefs(std::vector<std::shared_ptr<ColumnRef>>& vector) const = 0;

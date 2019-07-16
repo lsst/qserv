@@ -71,7 +71,7 @@ bool SQLBackend::load(ScTableVector const& v, sql::SqlErrorObject& err) {
             % i->dbTable.db % i->dbTable.table % SUB_CHUNK_COLUMN
                 % i->chunkId % i->subChunkId).str();
 
-        if (!_sqlConn.runQuery(create, err)) {
+        if (!_sqlConn->runQuery(create, err)) {
             _discard(v.begin(), i);
             return false;
         }
@@ -99,7 +99,7 @@ void SQLBackend::_discard(ScTableVector::const_iterator begin,
         std::string discard = (boost::format(lsst::qserv::wbase::CLEANUP_SUBCHUNK_SCRIPT)
                 % i->dbTable.db % i->dbTable.table % i->chunkId % i->subChunkId).str();
         sql::SqlErrorObject err;
-        if (!_sqlConn.runQuery(discard, err)) {
+        if (!_sqlConn->runQuery(discard, err)) {
             throw err;
         }
     }
@@ -109,7 +109,7 @@ void SQLBackend::_discard(ScTableVector::const_iterator begin,
 void SQLBackend::_execLockSql(std::string const& query) {
     LOGS(_log, LOG_LVL_DEBUG, "execLockSql " << query);
     sql::SqlErrorObject err;
-    if (!_sqlConn.runQuery(query, err)) {
+    if (!_sqlConn->runQuery(query, err)) {
         _exitDueToConflict("Lock failed, exiting. query=" + query + " err=" + err.printErrMsg());
     }
 }
@@ -119,7 +119,7 @@ SQLBackend::LockStatus SQLBackend::_memLockStatus() {
     std::string sql = "SELECT uid FROM " + _lockDbTbl + " WHERE keyId = 1";
     sql::SqlResults results;
     sql::SqlErrorObject err;
-    if (!_sqlConn.runQuery(sql, results, err)) {
+    if (!_sqlConn->runQuery(sql, results, err)) {
         // Assuming UNLOCKED should be safe as either it must be LOCKED_OURS to continue
         // or we are about to try to lock. Failure to lock will cause the program to exit.
         LOGS(_log, LOG_LVL_WARN, "memLockStatus query failed, assuming UNLOCKED. " << sql << " err=" << err.printErrMsg());
@@ -168,7 +168,7 @@ void SQLBackend::_memLockAcquire() {
     sql = "SHOW DATABASES LIKE '" + subChunkPrefix + "%'";
     sql::SqlResults results;
     sql::SqlErrorObject err;
-    if (!_sqlConn.runQuery(sql, results, err)) {
+    if (!_sqlConn->runQuery(sql, results, err)) {
         _exitDueToConflict("SQLBackend query failed, exiting. " + sql + " err=" + err.printErrMsg());
     }
     std::vector<std::string> databases;

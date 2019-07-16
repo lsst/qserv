@@ -45,6 +45,9 @@
 #include <sstream>
 #include <stdexcept>
 
+// Third-party headers
+#include "boost/lexical_cast.hpp"
+
 // LSST headers
 #include "lsst/log/Log.h"
 
@@ -52,8 +55,10 @@
 #include "qana/CheckAggregation.h"
 #include "query/FuncExpr.h"
 #include "query/QueryTemplate.h"
+#include "query/SubsetHelper.h"
 #include "query/ValueFactor.h"
 #include "util/IterableFormatter.h"
+#include "util/PointerCompare.h"
 
 
 namespace {
@@ -117,6 +122,13 @@ bool ValueExpr::FactorOp::operator==(const FactorOp& rhs) const {
 }
 
 
+bool ValueExpr::FactorOp::isSubsetOf(FactorOp const& rhs) const {
+    if (op != rhs.op)
+        return false;
+    return factor->isSubsetOf(*rhs.factor);
+}
+
+
 ////////////////////////////////////////////////////////////////////////
 // ValueExpr statics
 ////////////////////////////////////////////////////////////////////////
@@ -130,6 +142,20 @@ ValueExprPtr ValueExpr::newSimple(std::shared_ptr<ValueFactor> vt)  {
     return ve;
 }
 
+
+ValueExprPtr ValueExpr::newColumnExpr(std::string const& db, std::string const& table,
+                                  std::string const& alias, std::string const& column) {
+    return newSimple(
+        query::ValueFactor::newColumnRefFactor(
+            std::make_shared<query::ColumnRef>(db, table, alias, column)));
+}
+
+
+ValueExprPtr ValueExpr::newColumnExpr(std::string const& column) {
+    return newSimple(
+        query::ValueFactor::newColumnRefFactor(
+            std::make_shared<query::ColumnRef>(column)));
+}
 
 ////////////////////////////////////////////////////////////////////////
 // ValueExpr
@@ -274,6 +300,14 @@ std::shared_ptr<ValueFactor const> ValueExpr::getFactor() const {
 }
 
 
+std::shared_ptr<ValueFactor> ValueExpr::getFactor() {
+    if (_factorOps.empty()) {
+        throw std::logic_error("ValueExpr::getFactor no factors");
+    }
+    return _factorOps.front().factor;
+}
+
+
 /// @return true if holding a single ValueFactor
 bool ValueExpr::isColumnRef() const {
     if (_factorOps.size() == 1) {
@@ -310,18 +344,32 @@ ValueExprPtr ValueExpr::clone() const {
 }
 
 
+bool ValueExpr::isSubsetOf(ValueExpr const& valueExpr) const {
+    if (not _alias.empty() && _alias != valueExpr._alias)
+        return false;
+    // A ValueExpr may have been built as a ColumnRef with no table, or table alias, only the column defined,
+    // in which case this column might be the alias of another ValueExpr. (For example in the following:
+    // "SELECT AVG(foo) as f ORDER BY f", the ValueExpr for "f" in the OrderBy clause f will be constructed
+    // as a column ref like so: ColumnRef("", "", "f"), and in this case that ValueExpr is a subset of the
+    // ValueExpr in the SelectList.
+
+    if (isColumnRef() && getColumnRef()->isColumnOnly() && getColumnRef()->getColumn() == valueExpr._alias) {
+        return true;
+    }
+    return query::isSubsetOf(_factorOps, valueExpr._factorOps);
+}
+
+
 /** Return a string representation of the object
  *
  * @return a string representation of the object
  */
-std::string ValueExpr::sqlFragment() const {
+std::string ValueExpr::sqlFragment(QueryTemplate::SetAliasMode aliasMode) const {
     // Reuse QueryTemplate-based rendering
-    QueryTemplate qt;
+    QueryTemplate qt(aliasMode);
     ValueExpr::render render(qt, false);
     render.applyToQT(this);
-    std::ostringstream os;
-    os << qt;
-    return os.str();
+    return boost::lexical_cast<std::string>(qt);
 }
 
 
@@ -344,8 +392,22 @@ std::ostream& operator<<(std::ostream& os, ValueExpr const* ve) {
 // ValueExpr::render
 ////////////////////////////////////////////////////////////////////////
 void ValueExpr::render::applyToQT(ValueExpr const& ve) {
+
     if (_needsComma && _count++ > 0) { _qt.append(","); }
+    if (_qt.getValueExprAliasMode() == QueryTemplate::USE && ve.hasAlias()) {
+        _qt.append("`" + ve._alias + "`");
+        return;
+    }
+    auto previousAliasMode = _qt.getAliasMode();
+
+    // If we are defining this ValueExpr's alias, we still must USE the alias of any contained ValueFactor.
+    // If the mode is DONT_USE then we can leave it as is.
+    if (_qt.getAliasMode() == QueryTemplate::DEFINE_VALUE_ALIAS_USE_TABLE_ALIAS) {
+        _qt.setAliasMode(QueryTemplate::USE_ALIAS);
+    }
+
     ValueFactor::render render(_qt);
+
     bool needsClose = false;
     if (!_isProtected && ve._factorOps.size() > 1) { // Need opening parenthesis
         _qt.append("(");
@@ -379,14 +441,30 @@ void ValueExpr::render::applyToQT(ValueExpr const& ve) {
     if (needsClose) { // Need closing parenthesis
         _qt.append(")");
     }
-    if (!ve._alias.empty()) { _qt.append("AS"); _qt.append(ve._alias); }
+    _qt.setAliasMode(previousAliasMode);
+    if (_qt.getValueExprAliasMode() == QueryTemplate::DEFINE) {
+        if (!ve._alias.empty()) { _qt.append("AS"); _qt.append("`" + ve._alias + "`"); }
+    }
 }
 
 
 bool ValueExpr::operator==(const ValueExpr& rhs) const {
-    return (_alias == rhs._alias &&
-            _factorOps == rhs._factorOps);
+    return (_alias == rhs._alias && compareValue(rhs));
 }
+
+
+bool ValueExpr::compareValue(const ValueExpr& rhs) const {
+    return _factorOps == rhs._factorOps;
+}
+
+
+bool ValueExpr::isConstVal() const {
+    if (_factorOps.size() == 1 && _factorOps[0].factor->isConstVal()) {
+        return true;
+    }
+    return false;
+}
+
 
 
 // Miscellaneous

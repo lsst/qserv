@@ -34,6 +34,9 @@
 
 // Third-party headers
 
+// LSST headers
+#include "lsst/log/Log.h"
+
 // Qserv headers
 #include "css/CssAccess.h"
 #include "qana/InvalidTableError.h"
@@ -41,6 +44,8 @@
 #include "query/QueryContext.h"
 
 namespace {
+    LOG_LOGGER _log = LOG_GET("lsst.qserv.qana.TableInfoPool");
+
 /// `TableInfoLt` is a less-than comparison functor for non-null `TableInfo`
 /// pointers.
 struct TableInfoLt {
@@ -66,6 +71,7 @@ TableInfoPool::get(std::string const& db, std::string const& table) {
     std::unique_ptr<TableInfo const> t(new TableInfo(db, table, TableInfo::DIRECTOR));
     auto range = std::equal_range(_pool.begin(), _pool.end(), t, TableInfoLt());
     if (range.first != range.second) {
+        LOGS(_log, LOG_LVL_DEBUG, "get returning " << *range.first->get() << " for db:" << db << ", table:" << table);
         return range.first->get();
     }
 
@@ -74,6 +80,7 @@ TableInfoPool::get(std::string const& db, std::string const& table) {
     int const chunkLevel = partParam.chunkLevel();
     // unpartitioned table
     if (chunkLevel == 0) {
+        LOGS(_log, LOG_LVL_DEBUG, "get returning nullptr for unchunked table db:" << db << ", table:" << table);
         return nullptr;
     }
     // match table
@@ -103,7 +110,9 @@ TableInfoPool::get(std::string const& db, std::string const& table) {
                                     " relates two director tables with"
                                     " different partitionings!");
         }
-        return _insert(std::move(infoPtr));
+        auto ret = _insert(std::move(infoPtr));
+        LOGS(_log, LOG_LVL_DEBUG, "get returning " << *ret << " for db:" << db << ", table:" << table);
+        return ret;
     }
     std::string const& dirTable = partParam.dirTable;
     // director table
@@ -129,7 +138,9 @@ TableInfoPool::get(std::string const& db, std::string const& table) {
         infoPtr->lon = v[0];
         infoPtr->lat = v[1];
         infoPtr->partitioningId = dbStriping.partitioningId;
-        return _insert(std::move(infoPtr));
+        auto ret = _insert(std::move(infoPtr));
+        LOGS(_log, LOG_LVL_DEBUG, "get returning " << *ret << " for db:" << db << ", table:" << table);
+        return ret;
     }
     // child table
     if (chunkLevel != 1) {
@@ -149,7 +160,9 @@ TableInfoPool::get(std::string const& db, std::string const& table) {
                                 " does not contain a director column name!");
     }
 
-    return _insert(std::move(infoPtr));
+    auto ret = _insert(std::move(infoPtr));
+    LOGS(_log, LOG_LVL_DEBUG, "get returning " << *ret << " for db:" << db << ", table:" << table);
+    return ret;
 }
 
 TableInfo const*

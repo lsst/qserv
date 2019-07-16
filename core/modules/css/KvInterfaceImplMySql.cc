@@ -56,6 +56,8 @@
 
 // Qserv headers
 #include "css/CssError.h"
+#include "sql/SqlConnection.h"
+#include "sql/SqlConnectionFactory.h"
 #include "sql/SqlResults.h"
 #include "sql/SqlTransaction.h"
 
@@ -175,7 +177,7 @@ private:
 
 
 KvInterfaceImplMySql::KvInterfaceImplMySql(mysql::MySqlConfig const& mysqlConf, bool readOnly)
-: _conn(mysqlConf), _readOnly(readOnly) {
+: _conn(sql::SqlConnectionFactory::make(mysqlConf)), _readOnly(readOnly) {
 }
 
 
@@ -208,7 +210,7 @@ KvInterfaceImplMySql::_findParentId(std::string const& childKvKey, bool* hasPare
     std::string query = str(boost::format("SELECT kvId FROM kvData WHERE kvKey='%1%'") % _escapeSqlString(parentKey));
     sql::SqlResults results;
     sql::SqlErrorObject errObj;
-    if (not _conn.runQuery(query, results, errObj)) {
+    if (not _conn->runQuery(query, results, errObj)) {
         LOGS(_log, LOG_LVL_ERROR, "_findParentId - query failed: " << query);
         throw CssError(errObj);
     } else {
@@ -229,7 +231,7 @@ KvInterfaceImplMySql::create(std::string const& key, std::string const& value, b
     }
 
     // key is validated by _create
-    KvTransaction transaction(_conn);
+    KvTransaction transaction(*_conn);
 
     std::string path = norm_key(key);
     if (unique) {
@@ -248,7 +250,7 @@ KvInterfaceImplMySql::create(std::string const& key, std::string const& value, b
         sql::SqlErrorObject errObj;
         sql::SqlResults results;
         LOGS(_log, LOG_LVL_DEBUG, "create - executing query: " << query);
-        if (not _conn.runQuery(query, results, errObj)) {
+        if (not _conn->runQuery(query, results, errObj)) {
             std::stringstream ss;
             ss << "create - " << query << " failed with err: " << errObj.errMsg() << std::ends;
             LOGS(_log, LOG_LVL_ERROR, ss.str());
@@ -315,7 +317,7 @@ KvInterfaceImplMySql::_create(std::string const& key, std::string const& value, 
     }
     std::string query = fmQuery.str();
     sql::SqlErrorObject errObj;
-    if (not _conn.runQuery(query, errObj)) {
+    if (not _conn->runQuery(query, errObj)) {
         switch (errObj.errNo()) {
         default:
             throw CssError(errObj);
@@ -328,7 +330,7 @@ KvInterfaceImplMySql::_create(std::string const& key, std::string const& value, 
         }
     }
 
-    unsigned int kvId = _conn.getInsertId();
+    unsigned int kvId = _conn->getInsertId();
     LOGS(_log, LOG_LVL_DEBUG, "_create - executed query: " << query << ", kvId is:" << kvId);
     return kvId;
 }
@@ -341,7 +343,7 @@ KvInterfaceImplMySql::set(std::string const& key, std::string const& value) {
     }
 
     // key is validated by _create
-    KvTransaction transaction(_conn);
+    KvTransaction transaction(*_conn);
     _create(norm_key(key), value, true, transaction);
     transaction.commit();
 }
@@ -349,12 +351,12 @@ KvInterfaceImplMySql::set(std::string const& key, std::string const& value) {
 
 bool
 KvInterfaceImplMySql::exists(std::string const& key) {
-    KvTransaction transaction(_conn);
+    KvTransaction transaction(*_conn);
     std::string query = str(boost::format("SELECT COUNT(*) FROM kvData WHERE kvKey='%1%'") % _escapeSqlString(key));
     sql::SqlErrorObject errObj;
     sql::SqlResults results;
     LOGS(_log, LOG_LVL_DEBUG, "exists - executing query: " << query);
-    if (not _conn.runQuery(query, results, errObj)) {
+    if (not _conn->runQuery(query, results, errObj)) {
         std::stringstream ss;
         ss << "exists - " << query << " failed with err: " << errObj.errMsg() << std::ends;
         LOGS(_log, LOG_LVL_ERROR, ss.str());
@@ -392,11 +394,11 @@ KvInterfaceImplMySql::getMany(std::vector<std::string> const& keys) {
     query += ')';
 
     // run query
-    KvTransaction transaction(_conn);
+    KvTransaction transaction(*_conn);
     sql::SqlErrorObject errObj;
     sql::SqlResults results;
     LOGS(_log, LOG_LVL_DEBUG, "getMany - executing query: " << query);
-    if (not _conn.runQuery(query, results, errObj)) {
+    if (not _conn->runQuery(query, results, errObj)) {
         std::stringstream ss;
         ss << "getMany - " << query << " failed with err: " << errObj.errMsg() << std::ends;
         LOGS(_log, LOG_LVL_ERROR, ss.str());
@@ -423,7 +425,7 @@ KvInterfaceImplMySql::getChildren(std::string const& parentKey) {
 
     _validateKey(key);
     // get the children with a /fully/qualified/path
-    KvTransaction transaction(_conn);
+    KvTransaction transaction(*_conn);
     std::vector<std::string> strVec = _getChildrenFullPath(key, transaction);
     transaction.commit();
 
@@ -448,7 +450,7 @@ KvInterfaceImplMySql::getChildrenValues(std::string const& parentKey) {
     _validateKey(key);
 
     // get the children with a /fully/qualified/path
-    KvTransaction transaction(_conn);
+    KvTransaction transaction(*_conn);
     unsigned int parentId;
     if (not _getIdFromServer(key, &parentId, transaction)) {
         if (not exists(key)) {
@@ -460,7 +462,7 @@ KvInterfaceImplMySql::getChildrenValues(std::string const& parentKey) {
     sql::SqlErrorObject errObj;
     sql::SqlResults results;
     LOGS(_log, LOG_LVL_DEBUG, "getChildrenValues - executing query: " << query);
-    if (not _conn.runQuery(query, results, errObj)) {
+    if (not _conn->runQuery(query, results, errObj)) {
         std::stringstream ss;
         ss << "getChildrenValues - " << query << " failed with err: "  << errObj.errMsg() << std::ends;
         LOGS(_log, LOG_LVL_ERROR, ss.str());
@@ -510,7 +512,7 @@ KvInterfaceImplMySql::_getChildrenFullPath(std::string const& parentKey, KvTrans
     sql::SqlErrorObject errObj;
     sql::SqlResults results;
     LOGS(_log, LOG_LVL_DEBUG, "_getChildrenFullPath - executing query: " << query);
-    if (not _conn.runQuery(query, results, errObj)) {
+    if (not _conn->runQuery(query, results, errObj)) {
         std::stringstream ss;
         ss << "_getChildrenFullPath - " << query << " failed with err: " << errObj.errMsg() << std::ends;
         LOGS(_log, LOG_LVL_ERROR, ss.str());
@@ -538,7 +540,7 @@ KvInterfaceImplMySql::deleteKey(std::string const& keyArg) {
     }
 
     std::string key = norm_key(keyArg);
-    KvTransaction transaction(_conn);
+    KvTransaction transaction(*_conn);
     _delete(key, transaction);
     transaction.commit();
 }
@@ -550,11 +552,11 @@ std::string KvInterfaceImplMySql::dumpKV(std::string const& key) {
     std::string query = "SELECT kvKey, kvVal FROM kvData ORDER BY kvKey";
 
     // run query
-    KvTransaction transaction(_conn);
+    KvTransaction transaction(*_conn);
     sql::SqlErrorObject errObj;
     sql::SqlResults results;
     LOGS(_log, LOG_LVL_DEBUG, "dumpKV - executing query: " << query);
-    if (not _conn.runQuery(query, results, errObj)) {
+    if (not _conn->runQuery(query, results, errObj)) {
         std::stringstream ss;
         ss << "dumpKV - " << query << " failed with err: " << errObj.errMsg() << std::ends;
         LOGS(_log, LOG_LVL_ERROR, ss.str());
@@ -604,7 +606,7 @@ KvInterfaceImplMySql::_delete(std::string const& key, KvTransaction const& trans
     sql::SqlErrorObject errObj;
     sql::SqlResults resultsObj;
     LOGS(_log, LOG_LVL_DEBUG, "deleteKey - executing query: " << query);
-    if (not _conn.runQuery(query, resultsObj, errObj)) {
+    if (not _conn->runQuery(query, resultsObj, errObj)) {
         LOGS(_log, LOG_LVL_ERROR, "deleteKey - " << query << " failed with err: " << errObj.errMsg());
         throw CssError(errObj);
     }
@@ -628,13 +630,13 @@ KvInterfaceImplMySql::_get(std::string const& keyArg, std::string const& default
 
     std::string key = norm_key(keyArg);
 
-    KvTransaction transaction(_conn);
+    KvTransaction transaction(*_conn);
 
     std::string val;
     sql::SqlErrorObject errObj;
     std::string query = str(boost::format("SELECT kvVal FROM kvData WHERE kvKey='%1%'") % _escapeSqlString(key));
     sql::SqlResults results;
-    if (not _conn.runQuery(query, results, errObj)) {
+    if (not _conn->runQuery(query, results, errObj)) {
         LOGS(_log, LOG_LVL_ERROR, "_get - query failed: " << query);
         throw CssError(errObj);
     } else {
@@ -662,7 +664,7 @@ bool KvInterfaceImplMySql::_getIdFromServer(std::string const& key, unsigned int
     std::string query = str(boost::format("SELECT kvId FROM kvData WHERE kvKey='%1%'") % _escapeSqlString(key));
     sql::SqlResults results;
     sql::SqlErrorObject errObj;
-    if (not _conn.runQuery(query, results, errObj)) {
+    if (not _conn->runQuery(query, results, errObj)) {
         LOGS(_log, LOG_LVL_ERROR, "_getIdFromServer - query failed: " << query);
         throw CssError(errObj);
         return false;
@@ -700,7 +702,7 @@ std::string KvInterfaceImplMySql::_escapeSqlString(std::string const& str) {
 
     sql::SqlErrorObject errObj;
     std::string escapedStr;
-    if (not _conn.escapeString(str, escapedStr, errObj)) {
+    if (not _conn->escapeString(str, escapedStr, errObj)) {
         throw CssError(errObj);
     }
     return escapedStr;

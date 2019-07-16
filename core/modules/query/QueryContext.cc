@@ -37,7 +37,10 @@
 
 // Qserv headers
 #include "query/ColumnRef.h"
+#include "query/JoinRef.h"
+#include "sql/SqlConfig.h"
 #include "sql/SqlConnection.h"
+#include "sql/SqlConnectionFactory.h"
 #include "sql/SqlResults.h"
 
 
@@ -52,151 +55,164 @@ namespace qserv {
 namespace query {
 
 
+bool QueryContext::addUsedTableRef(std::shared_ptr<query::TableRef> const& tableRef) {
+    if (nullptr == tableRef) {
+        return false;
+    }
+    // TableRefs added from the FROM list can have JoinRefs, which are nonsensical anywhere but in the FROM
+    // list. To prevent these from leaking into other parts of the statement, copy the TableRef but omit the
+    // JoinRefs.
+    auto addTableRef = std::make_shared<query::TableRef>(
+            tableRef->getDb(), tableRef->getTable(), tableRef->getAlias());
+    for (auto const& usedTableRef : _usedTableRefs) {
+        // If the TableRef is already represented in the list (fully & exactly - but without joins) then just
+        // return true.
+        if (*usedTableRef == *addTableRef) {
+            return true;
+        }
+        // At a minimum, make sure we aren't accepting a second tableRef with different db or table but the same alias
+        if (usedTableRef->getAlias() == addTableRef->getAlias()) {
+            return false;
+        }
+    }
+    _usedTableRefs.push_back(addTableRef);
+    return true;
+}
+
+
+std::shared_ptr<query::TableRef> QueryContext::getTableRefMatch(
+        std::shared_ptr<query::TableRef> const& tableRef) const {
+    if (nullptr == tableRef) {
+        return nullptr;
+    }
+    // This should not be used with TableRefs that contain a join.
+    if (not tableRef->isSimple()) {
+        return nullptr;
+    }
+    for (auto&& usedTableRef : _usedTableRefs) {
+        if (tableRef->isSubsetOf(*usedTableRef)) {
+            return usedTableRef;
+        }
+        if (tableRef->isAliasedBy(*usedTableRef)) {
+            return usedTableRef;
+        }
+    }
+    return nullptr;
+}
+
+
+std::shared_ptr<query::TableRef>
+QueryContext::getTableRefMatch(std::shared_ptr<query::ColumnRef> const& columnRef) const {
+    auto mapItr = _columnToTablesMap.find(columnRef->getColumn());
+    if (_columnToTablesMap.end() == mapItr)
+        return nullptr;
+    for (auto tableRef : mapItr->second) {
+        auto&& tableRefMatch = getTableRefMatch(tableRef);
+        if (tableRefMatch != nullptr) {
+            tableRef = tableRefMatch;
+        }
+        if (columnRef->getTableRef()->isSubsetOf(*tableRef)) {
+            return tableRef;
+        } else if (columnRef->getTableRef()->isAliasedBy(*tableRef)) {
+            return tableRef;
+        }
+    }
+    return nullptr;
+}
+
+
+void QueryContext::addUsedValueExpr(std::shared_ptr<query::ValueExpr> const& valueExpr) {
+    _usedValueExprs.push_back(valueExpr);
+}
+
+
+std::shared_ptr<query::ValueExpr>
+QueryContext::getValueExprMatch(std::shared_ptr<query::ValueExpr> const& valExpr) const {
+    for (auto&& usedValExpr : _usedValueExprs) {
+        if (valExpr->isSubsetOf(*usedValExpr)) {
+            return usedValExpr;
+        }
+        if (valExpr->isColumnRef() && usedValExpr->isColumnRef()) {
+            if (valExpr->getColumnRef()->isAliasedBy(*usedValExpr->getColumnRef())) {
+                return usedValExpr;
+            }
+        }
+    }
+    return nullptr;
+}
+
+
+
 /// Get the table schema for the tables mentioned in the SQL 'FROM' statement.
 /// This should be adequate and possibly desirable as this information is being used
 /// to restrict queries to particular nodes via the secondary index. Sub-queries are not
 /// supported and even if they were, it could be difficult to determine if a restriction
 /// in a sub-query would be a valid restriction on the entire query.
 void QueryContext::collectTopLevelTableSchema(FromList& fromList) {
-    columnToTablesMap.clear();
-    for (TableRef::Ptr tblRefPtr : fromList.getTableRefList()) {
-        DbTablePair dbTblPair(tblRefPtr->getDb(), tblRefPtr->getTable()); // DbTablePair has comparisons defined.
-        if (dbTblPair.db.empty()) dbTblPair.db = defaultDb;
-        LOGS(_log, LOG_LVL_DEBUG, "db=" << dbTblPair.db << " table=" << dbTblPair.table);
-        if (!dbTblPair.db.empty() && !dbTblPair.table.empty()) {
-            // Get the columns in the table from the DB schema and put them in the tableColumnMap.
-            auto columns = getTableSchema(dbTblPair.db, dbTblPair.table);
-            if (!columns.empty()) {
-                for (auto const& col : columns) {
-                    DbTableSet& st = columnToTablesMap[col];
-                    st.insert(dbTblPair);
-                }
+    _columnToTablesMap.clear();
+    for (TableRef::Ptr tableRef : fromList.getTableRefList()) {
+        collectTopLevelTableSchema(tableRef);
+    }
+}
+
+
+void QueryContext::collectTopLevelTableSchema(std::shared_ptr<query::TableRef> const& tableRef) {
+
+    std::string db = tableRef->getDb();
+    if (db.empty()) db = defaultDb;
+    std::string table = tableRef->getTable();
+    LOGS(_log, LOG_LVL_DEBUG, "db=" << db << " table=" << table);
+    if (not db.empty() && not table.empty()) {
+        // Get the columns in the table from the DB schema and put them in the tableColumnMap.
+        auto columns = _getTableSchema(db, table);
+        if (!columns.empty()) {
+            for (auto const& col : columns) {
+                // note that we don't copy the join into the new table ref; keep the new TableRef "simple".
+                auto addTableRef = std::make_shared<query::TableRef>(db, table, tableRef->getAlias());
+                LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__ << "adding " << *addTableRef << " for column:" << col);
+                auto& tableRefSet = _columnToTablesMap[col];
+                tableRefSet.insert(addTableRef);
             }
+        }
+    }
+    for (auto const& joinRef : tableRef->getJoins()) {
+        auto const& rightTableRef = joinRef->getRight();
+        if (rightTableRef != nullptr) {
+            collectTopLevelTableSchema(rightTableRef);
         }
     }
 }
 
 
 std::string QueryContext::columnToTablesMapToString() const {
-    std::string str;
-    for (auto const& elem : columnToTablesMap) {
-        str += elem.first + "( "; // column name
-        DbTableSet const& dbTblSet = elem.second;
-        for (auto const& dbTbl : dbTblSet) {
-            str += dbTbl.db + "." + dbTbl.table + " ";
+    std::ostringstream os;
+    for (auto const& elem : _columnToTablesMap) {
+        os << elem.first <<  "( "; // column name
+        auto const& tableRefSet = elem.second;
+        for (auto const& tableRef : tableRefSet) {
+            os << *tableRef;
         }
-        str += ") ";
+        os << ") ";
     }
-    return str;
+    return os.str();
 }
 
 
 /// Get the table schema from the mysqlSchemaConfig database. Primarily, this is
 /// used to map column names to particular tables.
-std::vector<std::string> QueryContext::getTableSchema(std::string const& dbName,
+std::vector<std::string> QueryContext::_getTableSchema(std::string const& dbName,
                                                       std::string const& tableName) {
-    // Get the table schema from the local database.
-    DbTablePair dTPair(dbName, tableName);
-    std::vector<std::string> colNames;
-    sql::SqlConnection sqlConn{mysqlSchemaConfig};
-
-    // SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS
-    // WHERE table_name = 'tbl_name' AND table_schema = 'db_name'
-    std::string sql("SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS ");
-    sql += "WHERE table_name = '" + tableName + "' " +
-           "AND table_schema = '" + dbName + "'";
-    sql::SqlResults results;
-    sql::SqlErrorObject errObj;
-    if (not sqlConn.runQuery(sql, results, errObj)) {
-        LOGS(_log, LOG_LVL_WARN, "getTableSchema query failed: " << sql);
-        return colNames;
-    }
-
-    int j = 0;
-    for (auto const& row : results) {
-        colNames.emplace_back(row[0].first, row[0].second);
-        ++j;
-    }
-    return colNames;
+    auto sqlConn = sql::SqlConnectionFactory::make(sqlConfig);
+    return sqlConn->listColumns(dbName, tableName);
 }
 
 
-/// Resolve a column ref to a set of concrete (db,table).
-/// In most cases this returns a set with a single element. It is possible that a non-fully qualified
-/// column could exist in more than one table.
-/// @return a set of concrete (db,table), based on current context.
-DbTableSet QueryContext::resolve(std::shared_ptr<ColumnRef> cr) {
-    DbTableSet dbTableSet;
-    if (!cr) { return dbTableSet; }
-
-    // If alias, retrieve real reference.
-    if (cr->getDb().empty() && !cr->getTable().empty()) {
-        DbTablePair concrete = tableAliases.get(cr->getTable());
-        if (!concrete.empty()) {
-            if (concrete.db.empty()) {
-                concrete.db = defaultDb;
-            }
-            dbTableSet.insert(concrete);
-            return dbTableSet;
-        }
+bool QueryContext::TableRefSetLessThan::operator()(std::shared_ptr<query::TableRef const> const& lhs,
+        std::shared_ptr<query::TableRef const> const& rhs) const {
+    if (nullptr == lhs || nullptr == rhs) {
+        throw std::runtime_error("nullptr in TableRefSetLessThan");
     }
-    // Set default db and table.
-    DbTablePair p;
-    if (cr->getTable().empty()) { // No db or table.
-        if (columnToTablesMap.empty()) {
-            // This should only be the case if all of the table names in the from statement were invalid
-            // or no connection to the database could be made (in which case there would be other errors
-            // during normal operation).
-            p = resolverTables[0];
-            LOGS(_log, LOG_LVL_WARN,
-                 "columnToTablesMap was empty, using first resolverTable. " << p.db << "." << p.table);
-        } else {
-            // Check the column name against the schema for the entries
-            // on the columnToTablesMap, and choose the matching entry.
-            // It is possible that the column exists in more than one table.
-            if (LOG_CHECK_LVL(_log, LOG_LVL_DEBUG)) {
-                LOGS(_log, LOG_LVL_DEBUG, "columnToTablesMap=" << columnToTablesMapToString());
-            }
-            std::string column = cr->getColumn();
-            if (!column.empty()) {
-                auto iter = columnToTablesMap.find(column);
-                if (iter != columnToTablesMap.end()) {
-                    auto const& dTSet = iter->second;
-                    for (auto const& dT : dTSet) {
-                        dbTableSet.insert(dT);
-                        LOGS(_log, LOG_LVL_DEBUG, "cr->getTable().empty column=" << column
-                             << " adding " << dT.db << "." << dT.table);
-                    }
-                }
-            }
-            return dbTableSet;
-        }
-    } else if (cr->getDb().empty()) { // Table, but not alias.
-        // Match against resolver stack
-        DbTableVector::const_iterator i=resolverTables.begin(), e=resolverTables.end();
-        for(; i != e; ++i) {
-            if (i->table == cr->getTable()) {
-                p = *i;
-                break;
-            }
-        }
-        LOGS(_log, LOG_LVL_TRACE, "resolve found=" << (i != e) << " db.empty p=" << p.db << "." << p.table);
-        if (i == e) return dbTableSet; // No resolution.
-    } else { // both table and db exist, so return them
-        DbTablePair dtp(cr->getDb(), cr->getTable());
-        dbTableSet.insert(dtp);
-        return dbTableSet;
-    }
-    if (p.db.empty()) {
-        // Fill partially-resolved empty db with user db context
-        p.db = defaultDb;
-    }
-    LOGS(_log, LOG_LVL_TRACE, "resolve p=" << p.db << "." << p.table);
-    {
-        DbTablePair dtp(p.db, p.table);
-        dbTableSet.insert(dtp);
-    }
-    return dbTableSet;
+    return *lhs < *rhs;
 }
 
 

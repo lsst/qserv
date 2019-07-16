@@ -36,11 +36,13 @@
 
 // Qserv headers
 #include "ccontrol/ConfigMap.h"
+#include "ccontrol/UserQuerySelect.h"
 #include "ccontrol/UserQueryType.h"
 #include "czar/CzarErrors.h"
 #include "czar/MessageTable.h"
 #include "rproc/InfileMerger.h"
 #include "sql/SqlConnection.h"
+#include "sql/SqlConnectionFactory.h"
 #include "util/IterableFormatter.h"
 #include "XrdSsi/XrdSsiProvider.hh"
 
@@ -148,7 +150,7 @@ Czar::submitQuery(std::string const& query,
     ccontrol::UserQuery::Ptr uq;
     {
         std::lock_guard<std::mutex> lock(_mutex);
-        uq = _uqFactory->newUserQuery(query, defaultDb, getQdispPool(), userQueryId, msgTableName);
+        uq = _uqFactory->newUserQuery(query, defaultDb, getQdispPool(), userQueryId, msgTableName, resultDb);
     }
     auto queryIdStr = uq->getQueryIdString();
 
@@ -159,13 +161,7 @@ Czar::submitQuery(std::string const& query,
         return result;
     }
 
-    // create the result table
-    try {
-        uq->setupMerger();
-    } catch (std::exception const& exc) {
-        result.errorMessage = exc.what();
-        return result;
-    }
+    auto resultQuery = uq->getResultQuery();
 
     // spawn background thread to wait until query finishes to unlock,
     // note that lambda stores copies of uq and msgTable.
@@ -208,18 +204,14 @@ Czar::submitQuery(std::string const& query,
         result.resultTable = resultTableName;
         result.messageTable = asyncLockName;
         if (not resultTableName.empty()) {
-            result.resultQuery = std::string("SELECT * FROM ") + resultTableName;
+            // respond with info about the results table.
+            result.resultQuery = "SELECT * FROM " + resultTableName;
         }
     } else {
         result.messageTable = lockName;
-        if (not uq->getResultTableName().empty()) {
+        if (not resultQuery.empty()) {
             result.resultTable = resultDb + "." + uq->getResultTableName();
-            result.resultQuery = std::string("SELECT * FROM ") + result.resultTable;
-            auto&& orderBy = uq->getProxyOrderBy();
-            if (not orderBy.empty()) {
-                result.resultQuery += ' ';
-                result.resultQuery += orderBy;
-            }
+            result.resultQuery = resultQuery;
         }
     }
     LOGS(_log, LOG_LVL_DEBUG, queryIdStr << " returning result to proxy: resultTable="
@@ -349,12 +341,12 @@ Czar::_makeAsyncResult(std::string const& asyncResultTable,
                        QueryId queryId,
                        std::string const& resultLoc) {
 
-    sql::SqlConnection sqlConn(_czarConfig.getMySqlResultConfig());
+    auto sqlConn = sql::SqlConnectionFactory::make(_czarConfig.getMySqlResultConfig());
     LOGS(_log, LOG_LVL_DEBUG, "creating async result table " << asyncResultTable);
 
     sql::SqlErrorObject sqlErr;
     std::string resultLocEscaped;
-    if (not sqlConn.escapeString(resultLoc, resultLocEscaped,sqlErr)) {
+    if (not sqlConn->escapeString(resultLoc, resultLocEscaped,sqlErr)) {
         SqlError exc(ERR_LOC, "Failure in escapString", sqlErr);
         LOGS(_log, LOG_LVL_ERROR, exc.message());
         throw exc;
@@ -363,7 +355,7 @@ Czar::_makeAsyncResult(std::string const& asyncResultTable,
     std::string query = (boost::format(::createAsyncResultTmpl)
                     % asyncResultTable % queryId % resultLocEscaped).str();
 
-    if (not sqlConn.runQuery(query, sqlErr)) {
+    if (not sqlConn->runQuery(query, sqlErr)) {
         SqlError exc(ERR_LOC, "Failure creating async result table", sqlErr);
         LOGS(_log, LOG_LVL_ERROR, exc.message());
         throw exc;

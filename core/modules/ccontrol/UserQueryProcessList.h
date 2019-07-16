@@ -70,7 +70,8 @@ public:
             sql::SqlConnection* resultDbConn,
             std::shared_ptr<qmeta::QMetaSelect> const& qMetaSelect,
             qmeta::CzarId qMetaCzarId,
-            std::string const& userQueryId);
+            std::string const& userQueryId,
+            std::string const& resultDb);
 
     /**
      *  Constructor for "SHOW [FULL] PROCESSLIST".
@@ -85,7 +86,8 @@ public:
             sql::SqlConnection* resultDbConn,
             std::shared_ptr<qmeta::QMetaSelect> const& qMetaSelect,
             qmeta::CzarId qMetaCzarId,
-            std::string const& userQueryId);
+            std::string const& userQueryId,
+            std::string const& resultDb);
 
     UserQueryProcessList(UserQueryProcessList const&) = delete;
     UserQueryProcessList& operator=(UserQueryProcessList const&) = delete;
@@ -119,10 +121,12 @@ public:
     /// @return Result location for this query, can be empty
     std::string getResultLocation() const override { return "table:" + _resultTableName; }
 
-    /// @return ORDER BY part of SELECT statement to be executed by proxy
-    std::string getProxyOrderBy() const override { return _orderBy; }
+    /// @return get the SELECT statement to be executed by proxy
+    std::string getResultQuery() const override;
 
 private:
+    /// @return ORDER BY part of SELECT statement that gets executed by the proxy
+    std::string _getResultOrderBy() const { return _orderBy; }
 
     sql::SqlConnection* _resultDbConn;
     std::shared_ptr<qmeta::QMetaSelect> _qMetaSelect;
@@ -132,6 +136,7 @@ private:
     std::string _resultTableName;
     std::string _query;            ///< query to execute on QMeta database
     std::string _orderBy;
+    std::string _resultDb;
 
 };
 

@@ -1,6 +1,7 @@
+// -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2017 AURA/LSST.
+ * Copyright 2019 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -17,39 +18,37 @@
  *
  * You should have received a copy of the LSST License Statement and
  * the GNU General Public License along with this program.  If not,
- * see <https://www.lsstcorp.org/LegalNotices/>.
+ * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-#ifndef LSST_QSERV_QHTTP_CIUTILS_H
-#define LSST_QSERV_QHTTP_CIUTILS_H
+// Class header
+#include "SqlConnectionFactory.h"
 
-// System headers
-#include <functional>
-#include <string>
-#include <string.h>
+// Qserv headers
+#include "mysql/MySqlConfig.h"
+#include "sql/MockSql.h"
+#include "sql/MySqlConnection.h"
+#include "sql/SqlConfig.h"
+#include "sql/SqlConnection.h"
 
-// Third party headers
-#include <boost/algorithm/string.hpp>
 
 namespace lsst {
 namespace qserv {
-namespace qhttp {
+namespace sql {
 
-//----- Case-insensitive hash and comparison functionals for std::string,
-//      can be used for instantiation of case-insensitive standard containers.
 
-struct ci_hash {
-    size_t operator()(std::string const& key) const {
-        return std::hash<std::string>()(boost::to_lower_copy(key));
+std::shared_ptr<SqlConnection> SqlConnectionFactory::make(SqlConfig const& cfg) {
+    if (SqlConfig::MOCK == cfg.type) {
+        return std::make_shared<MockSql>(cfg.dbTableColumns);
     }
-};
+    return std::shared_ptr<sql::MySqlConnection>(new sql::MySqlConnection(cfg.mySqlConfig));
+}
 
-struct ci_pred {
-    bool operator()(std::string const& lhs, std::string const& rhs) const {
-        return boost::iequals(lhs, rhs);
-    }
-};
 
-}}}  // namespace lsst::qserv::qhttp
+std::shared_ptr<SqlConnection> SqlConnectionFactory::make(mysql::MySqlConfig const& cfg) {
+    return make(SqlConfig(cfg));
+}
 
-#endif // LSST_QSERV_QHTTP_CIUTILS_H
+
+
+}}} // namespace lsst::qserv::sql

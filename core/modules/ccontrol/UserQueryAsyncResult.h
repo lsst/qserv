@@ -109,8 +109,8 @@ public:
     /// @return Result location for this query, can be empty
     std::string getResultLocation() const override;
 
-    /// @return ORDER BY part of SELECT statement to be executed by proxy
-    std::string getProxyOrderBy() const override;
+    /// @return get the SELECT statement, to be executed by proxy, from metadata
+    std::string getResultQuery() const override;
 
 protected:
 

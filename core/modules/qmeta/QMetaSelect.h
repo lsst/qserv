@@ -30,8 +30,8 @@
 
 // Qserv headers
 #include "mysql/MySqlConfig.h"
-#include "sql/SqlConnection.h"
 #include "sql/SqlResults.h"
+
 
 namespace lsst {
 namespace qserv {
@@ -79,7 +79,7 @@ public:
 
 protected:
 
-    sql::SqlConnection _conn;
+    std::shared_ptr<sql::SqlConnection> _conn;
 
 };
 

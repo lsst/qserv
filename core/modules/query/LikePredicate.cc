@@ -37,8 +37,12 @@ namespace query {
 
 
 void LikePredicate::findColumnRefs(std::vector<std::shared_ptr<ColumnRef>>& vector) const {
-    if (value) value->findColumnRefs(vector);
-    if (charValue) charValue->findColumnRefs(vector);
+    if (value != nullptr) {
+        value->findColumnRefs(vector);
+    }
+    if (charValue != nullptr) {
+        charValue->findColumnRefs(vector);
+    }
 }
 
 
@@ -57,6 +61,12 @@ void LikePredicate::renderTo(QueryTemplate& qt) const {
 
 
 void LikePredicate::findValueExprs(std::vector<std::shared_ptr<ValueExpr>>& vector) const {
+    vector.push_back(value);
+    vector.push_back(charValue);
+}
+
+
+void LikePredicate::findValueExprRefs(ValueExprPtrRefVector& vector) {
     vector.push_back(value);
     vector.push_back(charValue);
 }

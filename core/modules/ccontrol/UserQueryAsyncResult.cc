@@ -38,7 +38,7 @@
 #include "sql/SqlResults.h"
 
 namespace {
-LOG_LOGGER _log = LOG_GET("lsst.qserv.ccontrol.UserQueryProcessList");
+LOG_LOGGER _log = LOG_GET("lsst.qserv.ccontrol.UserQueryAsyncResult");
 }
 
 namespace lsst {
@@ -53,6 +53,7 @@ UserQueryAsyncResult::UserQueryAsyncResult(QueryId queryId,
     : UserQuery(),
       _queryId(queryId),
       _qMetaCzarId(qMetaCzarId),
+      _qMeta(qMeta),
       _resultDbConn(resultDbConn),
       _messageStore(std::make_shared<qdisp::MessageStore>()) {
 
@@ -209,8 +210,10 @@ std::string UserQueryAsyncResult::getResultLocation() const {
     return "table:" + getResultTableName();
 }
 
-std::string UserQueryAsyncResult::getProxyOrderBy() const {
-    return _qInfo.proxyOrderBy();
+
+std::string UserQueryAsyncResult::getResultQuery() const {
+    return _qInfo.resultQuery();
 }
+
 
 }}} // namespace lsst::qserv::ccontrol

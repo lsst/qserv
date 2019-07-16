@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2013-2015 LSST Corporation.
+ * Copyright 2013-2019 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -34,16 +34,17 @@
 // System headers
 #include <memory>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 // Local headers
 #include "css/CssAccess.h"
-#include "mysql/MySqlConfig.h"
 #include "proto/ScanTableInfo.h"
 #include "qana/QueryMapping.h"
-#include "query/DbTablePair.h"
 #include "query/FromList.h"
-#include "query/TableAlias.h"
+#include "query/ValueExpr.h"
+#include "sql/SqlConfig.h"
+#include "util/CIUtils.h"
 #include "global/stringTypes.h"
 
 
@@ -53,6 +54,7 @@ namespace qserv {
 namespace query {
     class ColumnRef;
     class QsRestrictor;
+    class TableRef;
 }}} // End of forward declarations
 
 
@@ -74,8 +76,8 @@ public:
     typedef std::shared_ptr<QueryContext> Ptr;
 
     QueryContext(std::string const& defDb, std::shared_ptr<css::CssAccess> const& cssPtr,
-                 mysql::MySqlConfig const& mysqlSchemaCfg)
-        : css(cssPtr), defaultDb(defDb), mysqlSchemaConfig(mysqlSchemaCfg) {}
+                 sql::SqlConfig const& sqlCfg)
+        : css(cssPtr), defaultDb(defDb), sqlConfig(sqlCfg) {}
     typedef std::vector<std::shared_ptr<QsRestrictor> > RestrList;
 
     std::shared_ptr<css::CssAccess> css;  ///< interface to CSS
@@ -83,26 +85,86 @@ public:
     std::string dominantDb; ///< "dominant" database for this query
     std::string userName{"default"}; ///< unused, but reserved.
 
-    // contains the tables (db.table, where db may be an empty string) that are used in the FROM list.
-    std::vector<DbTablePair> resolverTables; ///< Implicit column resolution context.
-
-    mysql::MySqlConfig const mysqlSchemaConfig; ///< Used to connect to a database with the schema.
-    std::map<std::string, DbTableSet> columnToTablesMap;
-
+    sql::SqlConfig const sqlConfig; ///< Used to connect to a database with the schema.
 
     proto::ScanInfo scanInfo; // Tables scanned (for shared scans)
 
-    // Table aliasing
-    TableAlias tableAliases;
-    TableAliasReverse tableAliasReverses;
+    /**
+     * @brief Add a TableRef to the list of tables used by this query.
+     *
+     * Typical use for a SELECT statement would populate this with the TableRefs from the FROM list.
+     */
+    bool addUsedTableRef(std::shared_ptr<query::TableRef> const& tableRef);
+
+    /**
+     * @brief Get a complete TableRef used by the query that matches the pased-in TableRef.
+     *
+     * The passed-in TableRef may be a subset or an alias of the returned TableRef.
+     *
+     * This does not do any verification that the database or table actually exist in the database instance,
+     * but they must have been added via addUsedTableRef, which would typically indicate that they at least
+     * exist in the FROM list of the query being processed.
+     */
+    std::shared_ptr<query::TableRef> getTableRefMatch(
+        std::shared_ptr<query::TableRef> const& tableRef) const;
+
+    /**
+     * @brief Get complete TableRef from the list of tables used by this query that matches the pased-in
+     *        ColumnRef.
+     *
+     * This will verify that the column exists in the table specified by the ColumnRef.
+     *
+     * The table and database as indicated by the ColumnRef may be a subset or an alias of the TableRef
+     * in the returned ColumnRef.
+     */
+    std::shared_ptr<query::TableRef> getTableRefMatch(
+        std::shared_ptr<query::ColumnRef> const& columnRef) const;
+
+    /**
+     * @brief Add a ValueExpr that is used in the SELECT list.
+     */
+    void addUsedValueExpr(std::shared_ptr<query::ValueExpr> const& valueExpr);
+
+    /**
+     * @brief Get a ValueExpr from the list of ValueExprs used in the SELECT list that matches a given
+     *        ValueExpr.
+     *
+     * This checks for two kinds of "match":
+     * 1. Subset: Where the passed-in valueExpr partially or completely matches a valueExpr in the list.
+     *            For example, "col" is a subset of "db.table.col". So is "table.col", and "db.table.col".
+     *            However, if the alias of the passed-in ValueExpr is populated and does not match the alias
+     *            of a valueExpr in the list, those two may not be a subset regardless of db, table, and
+     *            column values.
+     * 2. Alaised by: If the type of both ValueExprs is ColumnRef, then the 'table' value of the passed-in
+     *                valueExpr might contain the alias name. E.g. for a user query
+     *                "SELECT foo.col from tbl AS foo", "foo.col" in the SELECT list uses an alias to
+     *                describe the same table as "tbl AS foo" in the FROM list. The normalized
+     *                ValueExpr in the SELECT list is "db.tbl.col", so "db.tbl.col" will be said to be
+     *                'aliased by' "foo.col".
+     *
+     * @param valExpr the expr to match
+     * @return std::shared_ptr<query::ValueExpr> match from the SELECT list, or nullptr
+     */
+    std::shared_ptr<query::ValueExpr> getValueExprMatch(
+            std::shared_ptr<query::ValueExpr> const& valExpr) const;
 
     // Owned QueryMapping and query restrictors
     std::shared_ptr<qana::QueryMapping> queryMapping;
     std::shared_ptr<RestrList> restrictors;
 
+    /**
+     * @brief Get and cache database schema information for all the tables in the passed-in FROM list.
+     */
     void collectTopLevelTableSchema(FromList& fromList);
+
+    /**
+     * @brief Get and cache database schema information for all the tables in the passed-in TableRef.
+     *
+     * Will include any joined TableRefs.
+     */
+    void collectTopLevelTableSchema(std::shared_ptr<query::TableRef> const& tableRef);
+
     std::string columnToTablesMapToString() const;
-    std::vector<std::string> getTableSchema(std::string const& dbName, std::string const& tableName);
 
     int chunkCount{0}; //< -1: all, 0: none, N: #chunks
 
@@ -118,7 +180,25 @@ public:
         return queryMapping.get() && queryMapping->hasChunks(); }
     bool hasSubChunks() const {
         return queryMapping.get() && queryMapping->hasSubChunks(); }
-    DbTableSet resolve(std::shared_ptr<ColumnRef> cr);
+
+private:
+
+    std::vector<std::string> _getTableSchema(std::string const& dbName, std::string const& tableName);
+
+    // Comparison function for the TableRefSet that goes into the _columnToTablesMap, to compare the TableRef
+    // objects, not the pointers that own them.
+    struct TableRefSetLessThan {
+        bool operator()(std::shared_ptr<query::TableRef const> const& lhs,
+                        std::shared_ptr<query::TableRef const> const& rhs) const;
+    };
+
+    typedef std::set<std::shared_ptr<query::TableRef>, TableRefSetLessThan> TableRefSet;
+
+    // stores the names of columns that are in each table that is used in the FROM statement.
+    std::unordered_map<std::string, TableRefSet, util::ci_hash, util::ci_pred> _columnToTablesMap;
+
+    std::vector<std::shared_ptr<query::TableRef>> _usedTableRefs; ///< TableRefs from the FROM list
+    std::vector<std::shared_ptr<query::ValueExpr>> _usedValueExprs; ///< ValueExprs from the SELECT list
 };
 
 

@@ -101,15 +101,6 @@ public:
         virtual std::string getValue() const { return s; }
         std::string s;
     };
-    class TableEntry : public Entry {
-    public:
-        TableEntry(std::string const& db_, std::string const& table_)
-            : db(db_), table(table_) {}
-        virtual std::string getValue() const;
-        virtual bool isDynamic() const { return true; }
-        std::string db;
-        std::string table;
-    };
     /// An abstract mapping from entry to entry
     class EntryMapping {
     public:
@@ -117,7 +108,24 @@ public:
         virtual Entry::Ptr mapEntry(Entry const& e) const = 0;
     };
 
+    enum SetAliasMode {
+        NO_ALIAS,                           // e.g. "db.table.val"
+        USE_ALIAS,                          // e.g. "myValue" (or "`alias`.val" if no value alias, or "db.table.col" if
+                                            // no value or table alias).
+        DEFINE_TABLE_ALIAS,                 // e.g. "db.table AS myTable" - it is illegal to render ValueExpr in this mode
+        DEFINE_VALUE_ALIAS_USE_TABLE_ALIAS, // e.g. "`alias`.val AS myValue"
+        NO_VALUE_ALIAS_USE_TABLE_ALIAS,     // e.g. "`myTable`.val"
+    };
+
+    enum GetAliasMode {
+        DEFINE,  // DEFINE should print out the table or column name followed by AS and the alias name.
+        USE,     // USE should only print out the alias.
+        DONT_USE // DONT USE should only print out the table or column name.
+    };
+
     QueryTemplate() {}
+
+    QueryTemplate(SetAliasMode aliasMode) : _aliasMode(aliasMode) {}
 
     void append(std::string const& s);
     void append(ColumnRef const& cr);
@@ -142,6 +150,36 @@ public:
      */
     friend std::ostream& operator<<(std::ostream& os, QueryTemplate const& queryTemplate);
 
+
+    /**
+     * @brief Set a flag indicating if aliases should be defined or used.
+     */
+    void setAliasMode(SetAliasMode aliasMode);
+
+    /**
+     * @brief Get the alias mode.
+     *
+     * Useful to get the alias mode, if it needs to be set in another QueryTemplate instsance.
+     */
+    SetAliasMode getAliasMode() const;
+
+    /**
+     * @brief Get the AliasMode for ValueExprs.
+     *
+     * There is an assumption that this will only get called when trying to print a ValueExpr. There is a
+     * case where it does not make sense to be printing a ValueExpr; when the mode is DEFINE_TABLE_ALIAS,
+     * which is used when printing the FROM list. (e.g. "db.table AS myTable" never goes with any kind of
+     * value expressed in a ValueExpr).
+     *
+     * @throws runtime_error if called while the aliasMode (set via setAliasMode) is DEFINE_TABLE_ALIAS.
+     */
+    GetAliasMode getValueExprAliasMode() const;
+
+    /**
+     * @brief Get the AliasMode for TableRefs
+     */
+    GetAliasMode getTableAliasMode() const;
+
     std::string generate(EntryMapping const& em) const;
     void clear();
 
@@ -154,6 +192,7 @@ public:
 
 private:
     EntryPtrVector _entries;
+    SetAliasMode _aliasMode{USE_ALIAS};
 };
 
 

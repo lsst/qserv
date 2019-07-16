@@ -63,11 +63,13 @@
 #include "css/KvInterfaceImplMySql.h"
 #include "mysql/MySqlConfig.h"
 #include "sql/SqlConnection.h"
+#include "sql/SqlConnectionFactory.h"
 #include "sql/SqlErrorObject.h"
 
 using lsst::qserv::css::KvInterfaceImplMySql;
 using lsst::qserv::mysql::MySqlConfig;
 using lsst::qserv::sql::SqlConnection;
+using lsst::qserv::sql::SqlConnectionFactory;
 using lsst::qserv::sql::SqlErrorObject;
 
 namespace {
@@ -112,19 +114,19 @@ struct TestDBGuard {
         MySqlConfig sqlConfigLocal = sqlConfig;
         sqlConfigLocal.dbName = "";
         std::cout << "config:" << sqlConfigLocal << std::endl;
-        SqlConnection sqlConn(sqlConfigLocal);
+        auto sqlConn = SqlConnectionFactory::make(sqlConfigLocal);
 
         SqlErrorObject errObj;
-        sqlConn.runQuery(buffer, errObj);
+        sqlConn->runQuery(buffer, errObj);
         if (not errObj.isSet()) {
            connected = true;
         }
     }
 
     ~TestDBGuard() {
-        SqlConnection sqlConn(sqlConfig);
+        auto sqlConn = SqlConnectionFactory::make(sqlConfig);
         SqlErrorObject errObj;
-        sqlConn.dropDb(sqlConfig.dbName, errObj);
+        sqlConn->dropDb(sqlConfig.dbName, errObj);
     }
 
     MySqlConfig sqlConfig;
@@ -137,7 +139,7 @@ struct PerTestFixture
 {
     PerTestFixture() {
         kvInterface = std::make_shared<KvInterfaceImplMySql>(testDB.sqlConfig);
-        sqlConn = std::make_shared<SqlConnection>(testDB.sqlConfig);
+        sqlConn = SqlConnectionFactory::make(testDB.sqlConfig);
     }
 
     bool isConnected() const { return testDB.connected; }
