@@ -44,19 +44,7 @@ namespace qserv {
 namespace qana {
 
 
-struct RestrictorEntry {
-
-    RestrictorEntry(std::string const& alias_,
-                    StringPair const& chunkColumns_,
-                    std::string const& secIndexColumn_)
-        : alias(alias_),
-          chunkColumns(chunkColumns_),
-          secIndexColumn(secIndexColumn_)
-        {}
-    std::string alias;
-    StringPair chunkColumns;
-    std::string secIndexColumn;
-};
+class RestrictorEntry;
 
 
 /// QservRestrictorPlugin replaces a qserv restrictor spec with directives
@@ -80,7 +68,7 @@ public:
     std::string name() const override { return "QservRestrictorPlugin"; }
 
 private:
-    std::shared_ptr<query::BoolTerm> _makeCondition(std::shared_ptr<query::QsRestrictor> const restr,
+    std::shared_ptr<query::BoolTerm> _makeCondition(std::shared_ptr<const query::QsRestrictor> const restr,
                                                     RestrictorEntry const& restrictorEntry);
 };
 
