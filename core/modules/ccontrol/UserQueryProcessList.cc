@@ -127,7 +127,7 @@ UserQueryProcessList::UserQueryProcessList(bool full,
     _query += " WHERE CzarId = " + std::to_string(qMetaCzarId) + " AND "
             "(Completed IS NULL OR Completed > NOW() - INTERVAL 3 DAY)";
 
-    _orderBy = "ORDER BY Submitted";
+    _orderBy = "Submitted";
 }
 
 std::string UserQueryProcessList::getError() const {
