@@ -350,51 +350,42 @@ int InfileMerger::makeJobIdAttempt(int jobId, int attemptCount) {
 }
 
 
-sql::Schema InfileMerger::getSchemaForQueryResults(query::SelectStmt const& stmt, std::string& errMsg) {
+bool InfileMerger::getSchemaForQueryResults(query::SelectStmt const& stmt, sql::Schema& schema) {
     sql::SqlResults results;
     sql::SqlErrorObject getSchemaErrObj;
     std::string query = stmt.getQueryTemplate().sqlFragment();
     bool ok = _applySqlLocal(query, results, getSchemaErrObj);
     if (not ok) {
         LOGS(_log, LOG_LVL_ERROR, "Failed to get schema:" << getSchemaErrObj.errMsg());
-        errMsg = getSchemaErrObj.errMsg();
-        return sql::Schema();
+        _error = InfileMergerError(util::ErrorCode::INTERNAL, "Failed to get schema: " + getSchemaErrObj.errMsg());
+        return false;
     }
     sql::SqlErrorObject errObj;
     if (errObj.isSet()) {
-        LOGS(_log, LOG_LVL_ERROR, "failed to extract schema from result: " << errObj.errMsg());
-        errMsg = errObj.errMsg();
-        return sql::Schema();
+        LOGS(_log, LOG_LVL_ERROR, "Failed to extract schema from result: " << errObj.errMsg());
+        _error = InfileMergerError(util::ErrorCode::INTERNAL, "Failed to extract schema from result: " + errObj.errMsg());
+        return false;
     }
-    auto schema = results.makeSchema(errObj);
+    schema = results.makeSchema(errObj);
     LOGS(_log, LOG_LVL_DEBUG, "InfileMerger extracted schema: " << schema);
-    return schema;
+    return true;
 }
 
 
-bool InfileMerger::makeResultsTableForQuery(query::SelectStmt const& stmt, std::string& errMsg) {
-    auto schema = getSchemaForQueryResults(stmt, errMsg);
-    if (schema.columns.empty()) {
+bool InfileMerger::makeResultsTableForQuery(query::SelectStmt const& stmt) {
+    sql::Schema schema;
+    if (not getSchemaForQueryResults(stmt, schema)) {
         return false;
     }
-
     _addJobIdColumnToSchema(schema);
-
     std::string createStmt = sql::formCreateTable(_mergeTable, schema);
-
-    // As we are not prepared to handle failures in LOAD DATA, it makes sense to use faster non-transactional
-    // engine
-    createStmt += " ENGINE=MyISAM";
-
-    LOGS(_log, LOG_LVL_DEBUG, _getQueryIdStr() << "InfileMerger query prepared: " << createStmt);
-
+    LOGS(_log, LOG_LVL_DEBUG, _getQueryIdStr() << "InfileMerger make results table query: " << createStmt);
     if (not _applySqlLocal(createStmt, "makeResultsTableForQuery")) {
         _error = InfileMergerError(util::ErrorCode::CREATE_TABLE, "Error creating table:" + _mergeTable);
         _isFinished = true; // Cannot continue.
         LOGS(_log, LOG_LVL_ERROR, _getQueryIdStr() << "InfileMerger sql error: " << _error.getMsg());
         return false;
     }
-
     return true;
 }
 
