@@ -78,6 +78,10 @@
 namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.qana.TablePlugin");
 
+
+#define MYSQL_FIELD_MAX_LEN 64
+
+
 template <typename CLAUSE_T>
 void matchValueExprs(lsst::qserv::query::QueryContext& context, CLAUSE_T & clause, bool matchIsRequired) {
     lsst::qserv::query::ValueExprPtrRefVector valueExprRefs;
@@ -169,7 +173,11 @@ TablePlugin::applyLogical(query::SelectStmt& stmt,
     for (auto& valueExpr : *(stmt.getSelectList().getValueExprList())) {
         if (not valueExpr->hasAlias()) {
             if (not valueExpr->isStar()) {
-                valueExpr->setAlias(valueExpr->sqlFragment(query::QueryTemplate::NO_ALIAS));
+                auto alias = valueExpr->sqlFragment(query::QueryTemplate::NO_ALIAS);
+                if (alias.size() > MYSQL_FIELD_MAX_LEN) {
+                    alias = _getNextValueExprAlias();
+                }
+                valueExpr->setAlias(alias);
                 context.addUsedValueExpr(valueExpr);
             }
         } else {
@@ -267,14 +275,28 @@ TablePlugin::applyPhysical(QueryPlugin::Plan& p,
 }
 
 
+std::string TablePlugin::_getNextValueExprAlias() {
+    return "valueExprAlias_" + std::to_string(_nextValueExprAlias++);
+}
+
+
+std::string TablePlugin::_getNextTableRefAlias() {
+    return "tableRefAlias_" + std::to_string(_nextTableRefAlias++);
+}
+
+
 void TablePlugin::_setAlias(std::shared_ptr<query::TableRef> const& tableRef, query::QueryContext& context) {
     if (nullptr == tableRef) {
         return;
     }
     if (not tableRef->hasAlias()) {
-        tableRef->setAlias(tableRef->hasDb() ?
-                           tableRef->getDb() + "." + tableRef->getTable() :
-                           tableRef->getTable());
+        std::string alias = tableRef->hasDb() ?
+                tableRef->getDb() + "." + tableRef->getTable() :
+                tableRef->getTable();
+        if (alias.size() > MYSQL_FIELD_MAX_LEN) {
+            alias = _getNextTableRefAlias();
+        }
+        tableRef->setAlias(alias);
     }
     LOGS(_log, LOG_LVL_DEBUG, "adding used table ref:" << *tableRef);
     if (not context.addUsedTableRef(tableRef)) {

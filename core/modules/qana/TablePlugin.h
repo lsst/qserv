@@ -48,7 +48,7 @@ public:
     // Types
     typedef std::shared_ptr<TablePlugin> Ptr;
 
-    TablePlugin() {}
+    TablePlugin() : _nextValueExprAlias(0), _nextTableRefAlias(0) {}
     virtual ~TablePlugin() {}
 
     void prepare() override {}
@@ -60,6 +60,9 @@ public:
     std::string name() const override { return "TablePlugin"; }
 
 private:
+    std::string _getNextValueExprAlias();
+    std::string _getNextTableRefAlias();
+
     void _setAlias(std::shared_ptr<query::TableRef> const& tableRef, query::QueryContext& context);
 
     int _rewriteTables(SelectStmtPtrVector& outList,
@@ -67,6 +70,8 @@ private:
                        query::QueryContext& context,
                        std::shared_ptr<qana::QueryMapping>& mapping);
 
+    unsigned int _nextValueExprAlias;
+    unsigned int _nextTableRefAlias;
     std::string _dominantDb;
 };
 

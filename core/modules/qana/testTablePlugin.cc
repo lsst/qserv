@@ -59,8 +59,11 @@ using lsst::qserv::query::TestFactory;
 
 
 struct TestFixture {
-    TestFixture(void) : schemaCfg(sql::SqlConfig(sql::SqlConfig::MockDbTableColumns(
-            {{"Somedb", {{"Object", {"objectId", "ra_PS", "decl_PS", "rFlux_PS_Sigma"}}}}}))) {
+    TestFixture(void)
+            : schemaCfg(sql::SqlConfig(sql::SqlConfig::MockDbTableColumns(
+            {{"Somedb", {{"Object", {"objectId", "ra_PS", "decl_PS", "rFlux_PS_Sigma"}}}},
+             {"Very_Long_Database_Name_So_That_It_And_The", {{"Table_are_65_char_long", {"ColumnName"}}}},
+             {"Long_Db_Name_So_That_It_And_The", {{"TandC_are_65_char_long", {"ColumnName"}}}}}))) {
         std::string kvMapPath = "./core/modules/qana/testPlugins.kvmap"; // (from testPlugins was: FIXME ??)
         std::ifstream stream(kvMapPath);
         css = lsst::qserv::css::CssAccess::createFromStream(stream, ".");
@@ -146,6 +149,12 @@ static const std::vector<TestData> statements_1 {
              TestFactory::getDefaultDbName(), "Object", "o"),
     TestData("SELECT        objectId FROM Object o ORDER BY Object.objectId",
              TestFactory::getDefaultDbName(), "Object", "o"),
+
+    TestData("SELECT ColumnName FROM "
+                 "Very_Long_Database_Name_So_That_It_And_The.Table_are_65_char_long " // 65 chars long; 1 more than the limit in TablePlugin::MYSQL_FIELD_MAX_LEN
+                 "ORDER BY ColumnName",
+             "Very_Long_Database_Name_So_That_It_And_The", "Table_are_65_char_long", "tableRefAlias_0"),
+
 };
 
 
@@ -205,6 +214,16 @@ BOOST_AUTO_TEST_CASE(PluginRewrite_2) {
     std::vector<std::shared_ptr<query::ValueExpr>> orderByValExprList;
     selectStmt->getOrderBy().findValueExprs(orderByValExprList);
     BOOST_TEST_MESSAGE("ORDER BY:" << util::printable(orderByValExprList));
+}
+
+
+BOOST_AUTO_TEST_CASE(LongValueExpr) {
+    // Select list item is 65 chars long; 1 more than the limit in TablePlugin::MYSQL_FIELD_MAX_LEN
+    std::string stmt = "SELECT Long_Db_Name_So_That_It_And_The.TandC_are_65_char_long.ColumnName "
+                       "FROM Long_Db_Name_So_That_It_And_The.TandC_are_65_char_long";
+    auto selectStmt = makeStmtAndRunLogical(stmt);
+    BOOST_REQUIRE_EQUAL((*selectStmt->getSelectList().getValueExprList())[0]->getAlias(), "valueExprAlias_0");
+
 }
 
 
