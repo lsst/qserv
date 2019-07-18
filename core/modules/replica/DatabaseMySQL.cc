@@ -575,6 +575,10 @@ void Connection::_connectOnce() {
         throw Error(context + "mysql_init failed");
     }
 
+    // Only allow TCP/IP, no UNIX sockets for now
+    enum mysql_protocol_type prot_type= MYSQL_PROTOCOL_TCP;
+    mysql_optionsv(_mysql, MYSQL_OPT_PROTOCOL,(void*)&prot_type);
+
     // Make a connection attempt
 
     if (nullptr == mysql_real_connect(
