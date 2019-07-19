@@ -82,6 +82,9 @@ public:
         QueryTemplate& qt;
     };
 
+    std::string const& getName() const { return _name; }
+    StringVector const& getParameters() const { return _params; }
+
     bool operator==(const QsRestrictor& rhs) const;
 
     friend std::ostream& operator<<(std::ostream& os, QsRestrictor const& q);

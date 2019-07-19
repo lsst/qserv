@@ -185,24 +185,19 @@ bool QuerySession::hasChunks() const {
 
 
 std::shared_ptr<query::ConstraintVector> QuerySession::getConstraints() const {
-    std::shared_ptr<query::ConstraintVector> cv;
-    auto qsRestrictors = _context->restrictors; // this is a pointer to a vector of pointer to QsRestrictor
+    std::shared_ptr<query::ConstraintVector> constraints;
+    auto qsRestrictors = _context->restrictors; // qsRestrictors is a pointer to a vector of pointer to QsRestrictor
     if (qsRestrictors != nullptr) {
-        cv = std::make_shared<query::ConstraintVector>(qsRestrictors->size());
-        LOGS(_log, LOG_LVL_TRACE, "Size of query::QsRestrictor::PtrVector: " << qsRestrictors->size());
+        constraints = std::make_shared<query::ConstraintVector>();
         for(auto&& qsRestrictor : *qsRestrictors) {
-            query::Constraint constraint;
-            constraint.name = qsRestrictor->_name;
-            for(auto&& parameterStr : qsRestrictor->_params) {
-                constraint.params.push_back(parameterStr);
-            }
-            cv->push_back(constraint);
+            query::Constraint constraint(qsRestrictor->getName(), qsRestrictor->getParameters() );
+            constraints->push_back(constraint);
         }
-        LOGS(_log, LOG_LVL_TRACE, "Constraints: " << util::printable(*cv));
+        LOGS(_log, LOG_LVL_TRACE, "Constraints: " << util::printable(*constraints));
     } else {
         LOGS(_log, LOG_LVL_TRACE, "No constraints.");
     }
-    return cv;
+    return constraints;
 }
 
 

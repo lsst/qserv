@@ -45,6 +45,12 @@ namespace query {
 /// A detected qserv constraint for C++ to Python
 class Constraint {
 public:
+    Constraint() = default;
+
+    Constraint(std::string const& name_, std::vector<std::string> const& params_)
+            : name(name_), params(params_) {
+    }
+
     std::string name;
     std::vector<std::string> params;
     std::string paramsGet(int i) const {
