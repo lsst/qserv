@@ -168,6 +168,9 @@ private:
     bool _forceQservSync;
     bool _permanentDelete;
 
+    /// A password for the MySQL 'root' account of the Qserv master database
+    std::string _qservDbRootPassword;
+
     /// This flag will be raised by any thread if a non-recoverable
     /// catastrophic failure will be detected.
     OneWayFailer _isFailed;

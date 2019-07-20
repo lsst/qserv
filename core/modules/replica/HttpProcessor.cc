@@ -38,6 +38,7 @@
 #include "nlohmann/json.hpp"
 
 // Qserv headers
+#include "css/CssAccess.h"
 #include "global/intTypes.h"
 #include "replica/AbortTransactionJob.h"
 #include "replica/ChunkNumber.h"
@@ -1558,7 +1559,7 @@ json HttpProcessor::_getQueries(json& workerInfo) const {
         config->qservMasterDatabaseHost(),
         config->qservMasterDatabasePort(),
         config->qservMasterDatabaseUser(),
-        config->qservMasterDatabasePassword(),
+        Configuration::qservMasterDatabasePassword(),
         "qservMeta"
     );
     auto const conn = database::mysql::Connection::open(connectionParams);
@@ -1890,10 +1891,6 @@ void HttpProcessor::_publishDatabase(qhttp::Request::Ptr const& req,
         // TODO: (re-)build the secondary index. Should we rather do this
         // in a separate REST call?
 
-        // TODO: create database & tables entries in the Qserv master database
-        // Use a direct connector to the database, 'root' account and the password
-        // supplied via the Configuration
-
         ;
 
         // Grant SELECT authorizations for the new database to Qserv
@@ -1927,25 +1924,25 @@ void HttpProcessor::_publishDatabase(qhttp::Request::Ptr const& req,
             return;
         }
 
-        // TODO: Grant SELECT authorizations for the new database on master
-        // Use a direct connector to the database, 'root' account and the password
-        // supplied via the Configuration
-
-        ;
-
-        // TODO: register the database at CSS
 
         // TODO: enable this database in Qserv workers by adding an entry
         // to table 'qservw_worker.Dbs'
 
+        ;
+
         // TODO: ask Replication workers to reload their Configurations so that
         // they recognized the new database as the published one. This step should
         // be probably done after publishing the database.
-        //
+        
+        ;
+
         // NOTE: the rest should be taken care of by the Replication system.
         // This includes registering chunks in the persistent store of the Replication
         // system, synchronizing with Qserv workers, fixing, re-balancing,
         // replicating, etc.
+
+        // Finalize setting the database in Qserv master
+        _publishDatabaseInMaster(databaseInfo);
 
         ControllerEvent event;
         event.status = "PUBLISH DATABASE";
@@ -2329,6 +2326,131 @@ void HttpProcessor::_buildEmptyChunksList(qhttp::Request::Ptr const& req,
     }
 }
 
+
+
+void HttpProcessor::_publishDatabaseInMaster(DatabaseInfo const& databaseInfo) const {
+
+    auto const config = controller()->serviceProvider()->config();
+    auto const databaseFamilyInfo = config->databaseFamilyInfo(databaseInfo.name);
+
+    // Connect to the master database as user "root"
+
+    database::mysql::ConnectionParams const connectionParams(
+        config->qservMasterDatabaseHost(),
+        config->qservMasterDatabasePort(),
+        "root",
+        Configuration::qservMasterDatabasePassword(),
+        ""
+    );
+    auto const conn = database::mysql::Connection::open(connectionParams);
+
+    // SQL statements to be executed
+    vector<string> statements;
+
+    // Statements for creating the database & table entries
+    
+    statements.push_back(
+        "CREATE DATABASE IF NOT EXISTS " + conn->sqlId(databaseInfo.name)
+    );
+    for (auto const& table: databaseInfo.tables()) {
+        string sql = "CREATE TABLE IF NOT EXISTS " + conn->sqlId(databaseInfo.name) +
+                "." + conn->sqlId(table)) + " (";
+        bool first = true;
+        for (auto const& coldef: databaseInfo.columns.at(table)) {
+            if (first) {
+                first = false;
+            } else {
+                sql += ",";
+            }
+            sql += conn->sqlId(coldef.first) + " " + coldef.second;
+        }
+        statements.push_back(sql);
+    }
+
+    // Statements for granting SELECT authorizations for the new database
+    // to the Qserv account.
+
+    statements.push_back(
+        "GRANT ALL ON " + conn->sqlId(databaseInfo.name) + ".* TO " +
+        conn->sqlValue(config->qservMasterDatabaseUser()) + "@" +
+        conn->sqlValue(config->qservMasterDatabaseHost());
+
+    // Register the database, tables and the partitioning scheme at CSS
+
+    map<string, string> cssConfig;
+    cssConfig["hostname"] = config->qservMasterDatabaseHost(),
+    cssConfig["port"]     = to_string(config->qservMasterDatabasePort());
+    cssConfig["username"] = "root";
+    cssConfig["password"] = Configuration::qservMasterDatabasePassword();
+    cssConfig["database"] = "qservCssData";
+
+    auto const cssAccess = css::CssAccess::createFromConfig(cssConfig,
+                                                            config->controllerEmptyChunksDir());
+
+    if (not cssAccess->containsDb(databaseInfo.name)) {
+
+        // TODO: add the 'overlap' to the DatabaseFamily and to the database
+        // creation REST API. Also, extend the schema of the Replication system's
+        // configuration.
+
+        double overlap = 0.016670;
+
+        // TODO: Scan existing databases and find an existing one which belongs to
+        // the same family. Use it as a template.
+
+        void createDbLike(std::string const& dbName,
+                          std::string const& templateDbName);
+
+        // TODO: If none exists then pull scan CSS nodes to find keys which look
+        // like these:
+        //
+        //   '/PARTITIONING/_0000000030'
+        //   '/PARTITIONING/_0000000030/.packed.json'
+        //
+        // If any found then find the maximum and generate the next number
+        // in the sequence:
+        //
+        //    31
+        //
+        // This number will be assumed as the new identifier.
+        //
+        // If none was found then start the series with the identifier for the partitioned
+        // databases:
+        //
+        //    1
+        //
+        // NOTE: an alternative (and, perhaps, a more reliable/less intrusive)
+        // approach would be to extend CssAccess to return all known
+        // identifiers (as numbers).
+
+        int partitioningId = 1;
+
+        css::StripingParams const stripingParams(
+                databaseFamilyInfo.numStripes,
+                databaseFamilyInfo.numSubStripes,
+                partitioningId,
+                overlap
+        );
+        string const storageClass = "L2";
+        string const releaseStatus = "RELEASED";
+        cssAccess->createDb(databaseInfo.name, stripingParams, storageClass, releaseStatus);
+    }
+
+    // TODO: scan for existing tables known to CSS and fill in blanks (in case if
+    // this is not the first time this algorithm is running,
+
+    auto const cssTables = cssAccess->getTableNames(databaseInfo.name);
+    
+    // That's a better approach
+    bool containsTable(std::string const& dbName, std::string const& tableName, bool readyOnly=true) const;
+
+        void createTable(std::string const& dbName,
+                     std::string const& tableName,
+                     std::string const& schema,
+                     PartTableParams const& partParams,
+                     ScanTableParams const& scanParams);
+
+}
 
 void HttpProcessor::_sendError(qhttp::Response::Ptr const& resp,
                                string const& func,

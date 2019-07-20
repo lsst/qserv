@@ -38,7 +38,11 @@
 #include "lsst/log/Log.h"
 
 // Forward declarations
-class ControllerEvent;
+namespace lsst {
+namespace qserv {
+namespace replica {
+    class DatabaseInfo;
+}}} // Forward declarations
 
 // This header declarations
 namespace lsst {
@@ -327,6 +331,18 @@ private:
      * @return descriptions of the queries
      */
     nlohmann::json _getQueries(nlohmann::json& workerInfo) const;
+
+    /**
+     * Publish database in the Qserv master database. This involves the following
+     * steps:
+     * - creating database entry
+     * - creating empty tables (with the proper) schema at the database
+     * - registering database, tables and their partitioning parameters in CSS
+     * - granting MySQL privileges for the Qserv account to access the database and tables
+     *
+     * @param databaseName  the name of a database to be published
+     */
+    void _publishDatabaseInMaster(DatabaseInfo const& databaseInfo) const;
 
     /**
      * Report a error condition and send a error message back to a requester

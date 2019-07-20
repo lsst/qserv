@@ -281,7 +281,7 @@ size_t       const Configuration::defaultDatabaseServicesPoolSize     = 1;
 string       const Configuration::defaultQservMasterDatabaseHost      = "localhost";
 uint16_t     const Configuration::defaultQservMasterDatabasePort      = 3306;
 string       const Configuration::defaultQservMasterDatabaseUser      = FileUtils::getEffectiveUser();
-string       const Configuration::defaultQservMasterDatabasePassword  = "";
+string             Configuration::_qservMasterDatabasePassword        = "";
 string       const Configuration::defaultQservMasterDatabaseName      = "qservMeta";
 size_t       const Configuration::defaultQservMasterDatabaseServicesPoolSize = 1;
 string             Configuration::_qservWorkerDatabasePassword        = "";
@@ -343,7 +343,6 @@ Configuration::Configuration()
         _qservMasterDatabaseHost    (defaultQservMasterDatabaseHost),
         _qservMasterDatabasePort    (defaultQservMasterDatabasePort),
         _qservMasterDatabaseUser    (defaultQservMasterDatabaseUser),
-        _qservMasterDatabasePassword(defaultQservMasterDatabasePassword),
         _qservMasterDatabaseName    (defaultQservMasterDatabaseName),
         _qservMasterDatabaseServicesPoolSize(defaultQservMasterDatabaseServicesPoolSize) {
 }
@@ -504,6 +503,13 @@ DatabaseInfo Configuration::databaseInfo(string const& name) const {
                 "Configuration::" + string(__func__) + "  unknown database: '" + name + "'");
     }
     return itr->second;
+}
+
+
+string Configuration::setQservMasterDatabasePassword(string const& newPassword) {
+    string result = newPassword;
+    swap(result, _qservMasterDatabasePassword);
+    return result;
 }
 
 

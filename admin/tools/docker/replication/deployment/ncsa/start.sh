@@ -115,7 +115,8 @@ if [ -n "${MASTER_CONTROLLER}" ]; then
         -e "CONFIG=${CONFIG}" \
         -e "OPT_MALLOC_CONF=${OPT_MALLOC_CONF}" \
         -e "OPT_LD_PRELOAD=${OPT_LD_PRELOAD}" \
+        -e "QSERV_MASTER_DB_PASSWORD=${QSERV_MASTER_DB_PASSWORD}" \
         --name "${MASTER_CONTAINER_NAME}" \
         "${REPLICATION_IMAGE_TAG}" \
-        bash -c \''cd ${WORK_DIR}; MALLOC_CONF=${OPT_MALLOC_CONF} LD_PRELOAD=${OPT_LD_PRELOAD} /qserv/bin/${TOOL} ${PARAMETERS} --config=${CONFIG} --debug >& ${LOG_DIR}/${TOOL}.log'\'
+        bash -c \''cd ${WORK_DIR}; MALLOC_CONF=${OPT_MALLOC_CONF} LD_PRELOAD=${OPT_LD_PRELOAD} /qserv/bin/${TOOL} ${PARAMETERS} --config=${CONFIG} --qserv-db-password="${QSERV_MASTER_DB_PASSWORD}" --debug >& ${LOG_DIR}/${TOOL}.log'\'
 fi

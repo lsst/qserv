@@ -390,7 +390,18 @@ public:
     std::string const& qservMasterDatabaseUser() const { return _qservMasterDatabaseUser; }
 
     /// @return the database password
-    std::string const& qservMasterDatabasePassword() const { return _qservMasterDatabasePassword; }
+    static std::string const& qservMasterDatabasePassword() { return _qservMasterDatabasePassword; }
+
+    /**
+     * Set the new password
+     * 
+     * @param newPassword
+     *   new password to be set
+     * 
+     * @return
+     *   the previous value of the password
+     */
+    static std::string setQservMasterDatabasePassword(std::string const& newPassword);
 
     /// @return the name of a database to be set upon the connection
     std::string const& qservMasterDatabaseName() const { return _qservMasterDatabaseName; }
@@ -1198,7 +1209,6 @@ protected:
     static std::string  const defaultQservMasterDatabaseHost;
     static uint16_t     const defaultQservMasterDatabasePort;
     static std::string  const defaultQservMasterDatabaseUser;
-    static std::string  const defaultQservMasterDatabasePassword;
     static std::string  const defaultQservMasterDatabaseName;
     static size_t       const defaultQservMasterDatabaseServicesPoolSize;
     static bool               defaultDatabaseAllowReconnect;        // read-write
@@ -1379,7 +1389,7 @@ protected:
     std::string _qservMasterDatabaseHost;
     uint16_t    _qservMasterDatabasePort;
     std::string _qservMasterDatabaseUser;
-    std::string _qservMasterDatabasePassword;
+    static std::string _qservMasterDatabasePassword;
     std::string _qservMasterDatabaseName;
     size_t      _qservMasterDatabaseServicesPoolSize;
 

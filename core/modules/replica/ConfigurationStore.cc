@@ -584,7 +584,6 @@ void ConfigurationStore::_loadConfiguration(util::ConfigStore const& configStore
     ::parseKeyVal(configStore, "database.qserv_master_host",               _qservMasterDatabaseHost,             defaultQservMasterDatabaseHost);
     ::parseKeyVal(configStore, "database.qserv_master_port",               _qservMasterDatabasePort,             defaultQservMasterDatabasePort);
     ::parseKeyVal(configStore, "database.qserv_master_user",               _qservMasterDatabaseUser,             defaultQservMasterDatabaseUser);
-    ::parseKeyVal(configStore, "database.qserv_master_password",           _qservMasterDatabasePassword,         defaultQservMasterDatabasePassword);
     ::parseKeyVal(configStore, "database.qserv_master_name",               _qservMasterDatabaseName,             defaultQservMasterDatabaseName);
     ::parseKeyVal(configStore, "database.qserv_master_services_pool_size", _qservMasterDatabaseServicesPoolSize, defaultQservMasterDatabaseServicesPoolSize);
 
