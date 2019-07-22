@@ -83,6 +83,18 @@ public:
     std::shared_ptr<std::vector<std::shared_ptr<QsRestrictor>> const> getRestrs() const {
         return _restrs;
     }
+
+    /**
+     * @brief Determine if there are any QsRestrictors in the WHERE clause.
+     *
+     * If there are restrictors, this guarantees that getRestrs() will return a valid pointer to a vector
+     * that has one or more objects.
+     *
+     * @return true if there are restrictors.
+     * @return false if there are not restrictors.
+     */
+    bool hasRestrs() const { return nullptr != _restrs && not _restrs->empty(); }
+
     std::shared_ptr<OrTerm>& getRootTerm() { return _rootOrTerm; }
 
     // Set the root term of the where clause. If `term` is an OrTerm, this will be the root term. If not then

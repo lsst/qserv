@@ -64,6 +64,7 @@
 #include "query/ValueFactor.h"
 #include "query/ValueExpr.h"
 #include "query/WhereClause.h"
+#include "util/IterableFormatter.h"
 
 
 namespace { // File-scope helpers
@@ -534,6 +535,7 @@ private:
 void
 QservRestrictorPlugin::applyLogical(query::SelectStmt& stmt,
                                     query::QueryContext& context) {
+
     // Idea: For each of the qserv restrictors in the WHERE clause,
     // rewrite in the context of whatever chunked tables exist in the
     // FROM list.
@@ -545,49 +547,19 @@ QservRestrictorPlugin::applyLogical(query::SelectStmt& stmt,
     // If there's no where clause then there's no need to do any work here.
     if (!stmt.hasWhereClause()) { return; }
 
-    // Get a list of the chunked tables (as a list of RestrictorEntry).
-    query::TableRefList& tList = stmt.getFromList().getTableRefList();
-    RestrictoryEntryList chunkedTables;
-    getTable gt(*context.css, chunkedTables);
-    std::for_each(tList.begin(), tList.end(), gt);
-    // Now, chunkedTables is populated with a RestrictorEntry for each table in the FROM list that is
-    // chunked.
-
     // Prepare to patch the WHERE clause
     query::WhereClause& whereClause = stmt.getWhereClause();
 
-    // Now handle the explicit restrictors
-    query::QueryContext::RestrList ctxRestrictors;
-    auto whereClauseRestrictors = whereClause.getRestrs();
-    if (whereClauseRestrictors != nullptr && not whereClauseRestrictors->empty()) {
-        // At least one table should exist in the restrictor chunkedTables
-        if (chunkedTables.empty()) {
-            throw AnalysisError("Spatial restrictor without partitioned table.");
-        }
-        auto newTerm = std::make_shared<query::AndTerm>();
-        // spatial restrictions
-        // Now, for each of the qserv restrictors:
-        for (auto const& qsRestrictor : *whereClauseRestrictors) {
-            // generate a restrictor condition for each restrictor entry:
-            for (auto const& chunkedTable : chunkedTables) {
-                newTerm->_terms.push_back(_makeCondition(qsRestrictor, chunkedTable));
-            }
-            // Save qsRestrictor in QueryContext.
-            ctxRestrictors.push_back(qsRestrictor);
-        }
-        whereClause.prependAndTerm(newTerm);
+    if (whereClause.hasRestrs()) {
+        _handleQsRestrictors(stmt, context);
     }
-    whereClause.resetRestrs();
 
     // Merge in the implicit (i.e. secondary index) restrictors
     query::AndTerm::Ptr originalAnd(whereClause.getRootAndTerm());
     query::QsRestrictor::PtrVector const& secIndexPreds = getSecIndexRestrictors(context, originalAnd);
-    ctxRestrictors.insert(ctxRestrictors.end(), secIndexPreds.begin(), secIndexPreds.end());
-
-    if (not ctxRestrictors.empty()) {
-        context.restrictors = std::make_shared<query::QueryContext::RestrList>(ctxRestrictors);
-    }
+    context.addRestrictors(secIndexPreds);
 }
+
 
 void
 QservRestrictorPlugin::applyPhysical(QueryPlugin::Plan& p,
@@ -601,6 +573,45 @@ QservRestrictorPlugin::_makeCondition(
              RestrictorEntry const& restrictorEntry) {
     Restriction r(*restr);
     return r.generate(restrictorEntry);
+}
+
+
+void QservRestrictorPlugin::_handleQsRestrictors(query::SelectStmt& stmt,
+                                                 query::QueryContext& context) {
+    // Get a list of the chunked tables (as a list of RestrictorEntry).
+    auto& whereClause = stmt.getWhereClause();
+    auto const& tableList = stmt.getFromList().getTableRefList();
+    RestrictoryEntryList chunkedTables;
+    getTable gt(*context.css, chunkedTables);
+    std::for_each(tableList.begin(), tableList.end(), gt);
+    // Now, chunkedTables is populated with a RestrictorEntry for each table in the FROM list that is
+    // chunked.
+
+    // Now handle the explicit restrictors
+    query::QueryContext::RestrList ctxRestrictors;
+    auto whereClauseRestrictors = whereClause.getRestrs();
+    // At least one table should exist in the restrictor chunkedTables
+    if (chunkedTables.empty()) {
+        throw AnalysisError("Spatial restrictor without partitioned table.");
+    }
+    auto newTerm = std::make_shared<query::AndTerm>();
+    // add scisql spatial restrictions
+    // Now, for each of the qserv restrictors:
+    for (auto const& qsRestrictor : *whereClauseRestrictors) {
+        // generate a restrictor condition for each restrictor entry:
+        for (auto const& chunkedTable : chunkedTables) {
+            newTerm->_terms.push_back(_makeCondition(qsRestrictor, chunkedTable));
+        }
+        // Save qsRestrictor in QueryContext.
+        ctxRestrictors.push_back(qsRestrictor);
+    }
+    LOGS(_log, LOG_LVL_TRACE, "for restrictors: " << util::printable(*whereClauseRestrictors) <<
+                              " adding: " << newTerm);
+    whereClause.prependAndTerm(newTerm);
+    whereClause.resetRestrs();
+    if (not ctxRestrictors.empty()) {
+        context.addRestrictors(ctxRestrictors);
+    }
 }
 
 }}} // namespace lsst::qserv::qana

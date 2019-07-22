@@ -142,6 +142,18 @@ QueryContext::getValueExprMatch(std::shared_ptr<query::ValueExpr> const& valExpr
 }
 
 
+void QueryContext::addRestrictors(RestrList const& restrictors_) {
+    if (restrictors_.empty()) {
+        return;
+    }
+    if (nullptr == restrictors) {
+        restrictors = std::make_shared<QueryContext::RestrList>(restrictors_);
+    } else {
+        restrictors->reserve(restrictors->size() + restrictors_.size());
+        restrictors->insert(restrictors->end(), restrictors_.begin(), restrictors_.end());
+    }
+}
+
 
 /// Get the table schema for the tables mentioned in the SQL 'FROM' statement.
 /// This should be adequate and possibly desirable as this information is being used

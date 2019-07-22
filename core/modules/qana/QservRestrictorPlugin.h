@@ -70,6 +70,21 @@ public:
 private:
     std::shared_ptr<query::BoolTerm> _makeCondition(std::shared_ptr<const query::QsRestrictor> const restr,
                                                     RestrictorEntry const& restrictorEntry);
+
+    /**
+     * @brief Finds the qserv area restrictors in the where clause, adds the restrictor to the query context,
+     *        and adds a scisql area restrictor to the where clause.
+     *
+     * Adding the qserv area restrictors to the context limits the chunks to which the query is sent.
+     *
+     * Adding the scisql function limits the searched area wihin the chunk(s).
+     *
+     * @param selectStmt The SELECT statement to process restrictors for.
+     * @param context The query context to be updated.
+     */
+    void _handleQsRestrictors(query::SelectStmt& stmt, query::QueryContext& context);
+
+    void _handleSecondaryIndex();
 };
 
 
