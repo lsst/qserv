@@ -554,10 +554,7 @@ QservRestrictorPlugin::applyLogical(query::SelectStmt& stmt,
         _handleQsRestrictors(stmt, context);
     }
 
-    // Merge in the implicit (i.e. secondary index) restrictors
-    query::AndTerm::Ptr originalAnd(whereClause.getRootAndTerm());
-    query::QsRestrictor::PtrVector const& secIndexPreds = getSecIndexRestrictors(context, originalAnd);
-    context.addRestrictors(secIndexPreds);
+    _handleSecondaryIndex(whereClause, context);
 }
 
 
@@ -612,6 +609,14 @@ void QservRestrictorPlugin::_handleQsRestrictors(query::SelectStmt& stmt,
     if (not ctxRestrictors.empty()) {
         context.addRestrictors(ctxRestrictors);
     }
+}
+
+
+void QservRestrictorPlugin::_handleSecondaryIndex(query::WhereClause& whereClause, query::QueryContext& context) {
+    // Merge in the implicit (i.e. secondary index) restrictors
+    query::AndTerm::Ptr originalAnd(whereClause.getRootAndTerm());
+    query::QsRestrictor::PtrVector const& secIndexPreds = getSecIndexRestrictors(context, originalAnd);
+    context.addRestrictors(secIndexPreds);
 }
 
 }}} // namespace lsst::qserv::qana

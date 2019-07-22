@@ -36,6 +36,7 @@ namespace query {
     class QsRestrictor;
     class QueryContext;
     class SelectStmt;
+    class WhereClause;
 }}} // end forward declarations
 
 
@@ -84,7 +85,14 @@ private:
      */
     void _handleQsRestrictors(query::SelectStmt& stmt, query::QueryContext& context);
 
-    void _handleSecondaryIndex();
+    /**
+     * @brief Looks in the WHERE clause for use of columns from chunked tables where chunk restrictions can
+     *        be added, and adds qserv restrictor functions if any are found.
+     *
+     * @param whereClause The WHERE clause of the SELECT statement.
+     * @param context The context to add the restrictor functions to.
+     */
+    void _handleSecondaryIndex(query::WhereClause& whereClause, query::QueryContext& context);
 };
 
 
