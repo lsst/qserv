@@ -67,7 +67,7 @@ public:
     std::set<int> getEmptyChunks(std::string const& dbName);
 
 private:
-    sql::SqlConnection _conn;
+    std::shared_ptr<sql::SqlConnection> _conn;
     std::mutex _dbMutex;    ///< Synchronizes access to certain DB operations
 
 };

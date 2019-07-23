@@ -60,7 +60,7 @@ struct QueryAnaFixture {
     // Use admin/examples/testMap_generateMap
 
     QueryAnaFixture()
-        : qsTest(cfgNum, css::CssAccess::createFromData(mapBuffer), defaultDb,
+        : qsTest(cfgNum, css::CssAccess::createFromData(mapBuffer, "."), defaultDb,
                  sql::SqlConfig(sql::SqlConfig::MOCK)) {
     };
 

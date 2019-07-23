@@ -42,6 +42,7 @@ namespace qserv {
 namespace qmeta {
 
 void QMetaTransaction::throwException(util::Issue::Context const& ctx, std::string const& msg) {
+    LOGS(_log, LOG_LVL_WARN, " QMetaTransaction::throwException " + msg);
     throw SqlError(ctx, errObj);
 }
 

@@ -47,12 +47,19 @@ namespace qmeta {
  */
 class QMetaTransaction : public sql::SqlTransactionScope  {
 public:
+    using Ptr = std::shared_ptr<QMetaTransaction>;
 
-    QMetaTransaction(sql::SqlConnection& conn) : sql::SqlTransactionScope(conn) {}
+    static Ptr create(sql::SqlConnection& conn) {
+        return sql::SqlTransactionScope::create<QMetaTransaction>(conn);
+    }
 
     ~QMetaTransaction() override {};
 
     void throwException(util::Issue::Context const& ctx, std::string const& msg) override;
+
+    friend sql::SqlTransactionScope;
+private:
+    QMetaTransaction(sql::SqlConnection& conn) : sql::SqlTransactionScope(conn) {}
 
 };
 

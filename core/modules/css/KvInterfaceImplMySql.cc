@@ -194,8 +194,7 @@ KvInterfaceImplMySql::create(std::string const& key, std::string const& value, b
     }
 
     // key is validated by _create
-    //KvTransaction transaction(*_conn);  // &&&
-    KvTransaction::Ptr transaction = KvTransaction::create(_conn);
+    auto transaction = KvTransaction::create(*_conn);
 
     std::string path = norm_key(key);
     if (unique) {
@@ -307,25 +306,15 @@ KvInterfaceImplMySql::set(std::string const& key, std::string const& value) {
     }
 
     // key is validated by _create
-<<<<<<< HEAD
-    KvTransaction transaction(*_conn);
-    _create(norm_key(key), value, true, transaction);
-    transaction.commit();
-=======
-    KvTransaction::Ptr transaction = KvTransaction::create(_conn);
+    auto transaction = KvTransaction::create(*_conn);
     _create(norm_key(key), value, true, *transaction);
     transaction->commit();
->>>>>>> Added DbInterfaceMySql and SqlTemplateScope.
 }
 
 
 bool
 KvInterfaceImplMySql::exists(std::string const& key) {
-<<<<<<< HEAD
-    KvTransaction transaction(*_conn);
-=======
-    KvTransaction::Ptr transaction = KvTransaction::create(_conn);
->>>>>>> Added DbInterfaceMySql and SqlTemplateScope.
+    auto transaction = KvTransaction::create(*_conn);
     std::string query = str(boost::format("SELECT COUNT(*) FROM kvData WHERE kvKey='%1%'") % _escapeSqlString(key));
     sql::SqlErrorObject errObj;
     sql::SqlResults results;
@@ -368,11 +357,7 @@ KvInterfaceImplMySql::getMany(std::vector<std::string> const& keys) {
     query += ')';
 
     // run query
-<<<<<<< HEAD
-    KvTransaction transaction(*_conn);
-=======
-    KvTransaction::Ptr transaction = KvTransaction::create(_conn);
->>>>>>> Added DbInterfaceMySql and SqlTemplateScope.
+    auto transaction = KvTransaction::create(*_conn);
     sql::SqlErrorObject errObj;
     sql::SqlResults results;
     LOGS(_log, LOG_LVL_DEBUG, "getMany - executing query: " << query);
@@ -403,15 +388,9 @@ KvInterfaceImplMySql::getChildren(std::string const& parentKey) {
 
     _validateKey(key);
     // get the children with a /fully/qualified/path
-<<<<<<< HEAD
-    KvTransaction transaction(*_conn);
-    std::vector<std::string> strVec = _getChildrenFullPath(key, transaction);
-    transaction.commit();
-=======
-    KvTransaction::Ptr transaction = KvTransaction::create(_conn);
+    auto transaction = KvTransaction::create(*_conn);
     std::vector<std::string> strVec = _getChildrenFullPath(key, *transaction);
     transaction->commit();
->>>>>>> Added DbInterfaceMySql and SqlTemplateScope.
 
     // trim off the parent key, leaving only the last item in the path.
     for (std::vector<std::string>::iterator strItr = strVec.begin(); strItr != strVec.end(); ++strItr) {
@@ -434,11 +413,7 @@ KvInterfaceImplMySql::getChildrenValues(std::string const& parentKey) {
     _validateKey(key);
 
     // get the children with a /fully/qualified/path
-<<<<<<< HEAD
-    KvTransaction transaction(*_conn);
-=======
-    KvTransaction::Ptr transaction = KvTransaction::create(_conn);
->>>>>>> Added DbInterfaceMySql and SqlTemplateScope.
+    auto transaction = KvTransaction::create(*_conn);
     unsigned int parentId;
     if (not _getIdFromServer(key, &parentId, *transaction)) {
         if (not exists(key)) {
@@ -528,15 +503,10 @@ KvInterfaceImplMySql::deleteKey(std::string const& keyArg) {
     }
 
     std::string key = norm_key(keyArg);
-<<<<<<< HEAD
-    KvTransaction transaction(*_conn);
-    _delete(key, transaction);
-    transaction.commit();
-=======
-    KvTransaction::Ptr transaction = KvTransaction::create(_conn);
+
+    auto transaction = KvTransaction::create(*_conn);
     _delete(key, *transaction);
     transaction->commit();
->>>>>>> Added DbInterfaceMySql and SqlTemplateScope.
 }
 
 
@@ -546,11 +516,7 @@ std::string KvInterfaceImplMySql::dumpKV(std::string const& key) {
     std::string query = "SELECT kvKey, kvVal FROM kvData ORDER BY kvKey";
 
     // run query
-<<<<<<< HEAD
-    KvTransaction transaction(*_conn);
-=======
-    KvTransaction::Ptr transaction = KvTransaction::create(_conn);
->>>>>>> Added DbInterfaceMySql and SqlTemplateScope.
+    KvTransaction::Ptr transaction = KvTransaction::create(*_conn);
     sql::SqlErrorObject errObj;
     sql::SqlResults results;
     LOGS(_log, LOG_LVL_DEBUG, "dumpKV - executing query: " << query);
@@ -627,12 +593,7 @@ std::string
 KvInterfaceImplMySql::_get(std::string const& keyArg, std::string const& defaultValue, bool throwIfKeyNotFound) {
 
     std::string key = norm_key(keyArg);
-
-<<<<<<< HEAD
-    KvTransaction transaction(*_conn);
-=======
-    KvTransaction::Ptr transaction = KvTransaction::create(_conn);
->>>>>>> Added DbInterfaceMySql and SqlTemplateScope.
+    auto transaction = KvTransaction::create(*_conn);
 
     std::string val;
     sql::SqlErrorObject errObj;
@@ -704,13 +665,8 @@ std::string KvInterfaceImplMySql::_escapeSqlString(std::string const& str) {
 
     sql::SqlErrorObject errObj;
     std::string escapedStr;
-<<<<<<< HEAD
     if (not _conn->escapeString(str, escapedStr, errObj)) {
-        throw CssError(errObj);
-=======
-    if (not _conn.escapeString(str, escapedStr, errObj)) {
         throw CssError(ERR_LOC, errObj);
->>>>>>> Added DbInterfaceMySql and SqlTemplateScope.
     }
     return escapedStr;
 }

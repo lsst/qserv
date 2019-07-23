@@ -36,10 +36,15 @@ namespace lsst {
 namespace qserv {
 namespace sql {
 
-/// A standard way to use SqlTransaction.
+/// An RAII class for handling transactions.
+// All child classes should call SqlTransactionScope::create<T> to make
+// new instances and have private or protected constructors.
 // throwException can be overridden to throw a desired exception.
 class SqlTransactionScope  {
 public:
+    /// Always create new instances of children using this function so that verify() is called.
+    /// This function allows virtual functions to be safely called to check on the object
+    /// immediately after the object has been created.
     template <class T>
     static std::shared_ptr<T> create(sql::SqlConnection& conn) {
         std::shared_ptr<T> transScope(new T(conn));

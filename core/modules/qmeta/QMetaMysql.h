@@ -257,12 +257,6 @@ public:
                                             std::string const& tableName) override;
 
     /**
-     * @return a set of empty chunks for database 'dbName'
-     * @throws QMetaError if the table cannot be opened.
-     */
-    std::set<int> getEmptyChunksFromDb(std::string const& dbName) override;
-
-    /**
      * @brief Save the result query in metadata, to give to the proxy when fetching results from an async
      *        query.
      *
