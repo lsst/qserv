@@ -38,7 +38,8 @@ namespace sql {
 
 /// An RAII class for handling transactions.
 // All child classes should call SqlTransactionScope::create<T> to make
-// new instances and have private or protected constructors.
+// new instances and have private or protected constructors. Children will
+// probably need to make this class their friend.
 // throwException can be overridden to throw a desired exception.
 class SqlTransactionScope  {
 public:

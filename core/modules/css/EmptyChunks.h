@@ -91,7 +91,7 @@ private:
 
 
     typedef std::map<std::string, IntSetPtr> IntSetMap;
-    std::shared_ptr<DbInterfaceMySql> _dbI; ///< allow access to empty chunks table.
+    std::shared_ptr<DbInterfaceMySql> const _dbI; ///< allow access to empty chunks table.
     std::string _path; ///< Search path for empty chunks files
     std::string _fallbackFile; ///< Fallback path for empty chunks
     mutable IntSetMap _sets; ///< Container for empty chunks sets (cache)

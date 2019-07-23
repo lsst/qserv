@@ -30,6 +30,7 @@
 // System headers
 #include <mutex>
 #include <set>
+#include <string>
 
 // Third-party headers
 
@@ -47,7 +48,7 @@ class DbInterfaceMySql {
 public:
 
     /// @param mysqlConf: Configuration object for mysql connection
-    DbInterfaceMySql(mysql::MySqlConfig const& mysqlConf);
+    explicit DbInterfaceMySql(mysql::MySqlConfig const& mysqlConf);
 
     DbInterfaceMySql(DbInterfaceMySql const&) = delete;
     DbInterfaceMySql& operator=(DbInterfaceMySql const&) = delete;

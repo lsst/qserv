@@ -35,8 +35,8 @@
 #include "lsst/log/Log.h"
 
 // Qserv headers
-#include "css/DbInterfaceMySql.h"
 #include "css/CssError.h"
+#include "css/DbInterfaceMySql.h"
 #include "global/ConfigError.h"
 #include "global/stringUtil.h"
 
