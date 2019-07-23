@@ -308,7 +308,17 @@ std::shared_ptr<ValueFactor> ValueExpr::getFactor() {
 }
 
 
-/// @return true if holding a single ValueFactor
+std::shared_ptr<FuncExpr const> ValueExpr::getFunction() const {
+    if (_factorOps.size() == 1) {
+        ValueFactor const& factor = *_factorOps.front().factor;
+        if (factor.getType() == ValueFactor::FUNCTION) {
+            return factor.getFuncExpr();
+        }
+    }
+    return nullptr;
+}
+
+
 bool ValueExpr::isColumnRef() const {
     if (_factorOps.size() == 1) {
         ValueFactor const& factor = *_factorOps.front().factor;
@@ -321,13 +331,7 @@ bool ValueExpr::isColumnRef() const {
 
 
 bool ValueExpr::isFunction() const {
-    if (_factorOps.size() == 1) {
-        ValueFactor const& factor = *_factorOps.front().factor;
-        if (factor.getType() == ValueFactor::FUNCTION) {
-            return true;
-        }
-    }
-    return false;
+    return getFunction() != nullptr;
 }
 
 

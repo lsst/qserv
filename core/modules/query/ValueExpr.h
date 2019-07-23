@@ -49,6 +49,7 @@
 namespace lsst {
 namespace qserv {
 namespace query {
+    class FuncExpr;
     class QueryTemplate;
     class TableRef;
     class ValueFactor;
@@ -149,6 +150,12 @@ public:
      */
     std::shared_ptr<ValueFactor const> getFactor() const;
     std::shared_ptr<ValueFactor> getFactor();
+
+    /**
+     * @return A shared pointer to a FuncExpr if there is one factor and it is a FuncExpr. Otherwise returns
+     *         nullptr.
+     */
+    std::shared_ptr<FuncExpr const> getFunction() const;
 
     /**
      * @brief Check if this ValueExpr represents a star factor.

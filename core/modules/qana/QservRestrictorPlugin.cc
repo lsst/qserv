@@ -237,6 +237,9 @@ query::QsRestrictor::Ptr newRestrictor(
 }
 
 
+
+
+
 /**  Create QSRestrictors which will use secondary index
  *
  *   @param context:  Context used to analyze SQL query, allow to compute
@@ -552,6 +555,8 @@ QservRestrictorPlugin::applyLogical(query::SelectStmt& stmt,
 
     if (whereClause.hasRestrs()) {
         _handleQsRestrictors(stmt, context);
+    } else {
+        _handleScisqlRestrictors(stmt, context);
     }
 
     _handleSecondaryIndex(whereClause, context);
@@ -612,11 +617,64 @@ void QservRestrictorPlugin::_handleQsRestrictors(query::SelectStmt& stmt,
 }
 
 
-void QservRestrictorPlugin::_handleSecondaryIndex(query::WhereClause& whereClause, query::QueryContext& context) {
+void QservRestrictorPlugin::_handleSecondaryIndex(query::WhereClause& whereClause,
+                                                  query::QueryContext& context) {
     // Merge in the implicit (i.e. secondary index) restrictors
     query::AndTerm::Ptr originalAnd(whereClause.getRootAndTerm());
     query::QsRestrictor::PtrVector const& secIndexPreds = getSecIndexRestrictors(context, originalAnd);
     context.addRestrictors(secIndexPreds);
 }
+
+
+bool QservRestrictorPlugin::_isScisqlAreaFunc(query::ValueExpr const& valueExpr) {
+    if (not valueExpr.isFunction()) return false;
+    auto&& funcExpr = valueExpr.getFunction();
+    if (funcExpr->getName().find("scisql_s2Pt") != 0) return false;
+    return true;
+}
+
+
+std::shared_ptr<const query::FuncExpr> QservRestrictorPlugin::_extractSingleScisqlAreaFunc(
+        query::WhereClause const& whereClause) {
+    auto topLevelAnd = whereClause.getRootAndTerm();
+    std::shared_ptr<const query::FuncExpr> scisqlFunc;
+    if (nullptr == topLevelAnd) return nullptr;
+    for (auto const& boolTerm : topLevelAnd->_terms) {
+        auto boolFactor = std::dynamic_pointer_cast<const query::BoolFactor>(boolTerm);
+        if (nullptr == boolFactor) continue;
+        for (auto boolFactorTerm : boolFactor->_terms) {
+            auto compPredicate = std::dynamic_pointer_cast<const query::CompPredicate>(boolFactorTerm);
+            if (nullptr == compPredicate) continue;
+            if (compPredicate->op != query::CompPredicate::EQUALS_OP) continue;
+            for (auto const& valueExpr: {compPredicate->left, compPredicate->right})
+            if (_isScisqlAreaFunc(*valueExpr)) {
+                if (scisqlFunc != nullptr) {
+                    return nullptr;
+                }
+                scisqlFunc = valueExpr->getFunction();
+            }
+        }
+    }
+    return scisqlFunc;
+}
+
+
+void QservRestrictorPlugin::_handleScisqlRestrictors(query::SelectStmt& stmt, query::QueryContext& context) {
+    auto& whereClause = stmt.getWhereClause();
+    if (whereClause.hasRestrs()) {
+        // It's possible we could support this but current specification says we should only add a qserv area
+        // restrictor if there is not already one in the WHERE clause.
+        throw AnalysisBug("_handleScisqlRestrictors should not be called if the WHERE clause already "
+                          "contains restrictors.");
+    }
+
+    // Get the scisql functions from the top-level AND, if there is 0 or more than 1 then return.
+    auto scisqlFunc = _extractSingleScisqlAreaFunc(whereClause);
+
+    // determine if the columns in the scisql function are chunked; if they are not then return.
+
+    // translate the function to a qserv area restrictor and add it to the context.
+}
+
 
 }}} // namespace lsst::qserv::qana

@@ -33,6 +33,7 @@ namespace lsst {
 namespace qserv {
 namespace query {
     class BoolTerm;
+    class FuncExpr;
     class QsRestrictor;
     class QueryContext;
     class SelectStmt;
@@ -93,6 +94,41 @@ private:
      * @param context The context to add the restrictor functions to.
      */
     void _handleSecondaryIndex(query::WhereClause& whereClause, query::QueryContext& context);
+
+    /**
+     * @brief Looks for scisql area restrictors in the WHERE clause and if there is exactly one in the
+     *        top-level AND it adds a qserv area restictor to the query context.
+     *
+     * This should not be called if there is already a qserv area restrictor in the WHERE clause.
+     *
+     * @param selectStmt The SELECT statement to process restrictors for.
+     * @param context The query context to be updated.
+     */
+    void _handleScisqlRestrictors(query::SelectStmt& stmt, query::QueryContext& context);
+
+    /**
+     * @brief Determine if the given ValueExpr represents a func that is one of the scisql functions that
+     *        starts with `scisql_s2PtIn` that represents an area restrictor.
+     *
+     * This is a helper function for _handleScisqlRestrictors.
+     *
+     * @param valueExpr The ValueExpr to check.
+     * @return true if the ValueExpr is a function and starts with `scisql_s2PtIn` else false.
+     */
+    static bool _isScisqlAreaFunc(query::ValueExpr const& valueExpr);
+
+    /**
+     * @brief If there is exactly one scisql area restrictor in the top level AND of the where clause,
+     *        return it.
+     *
+     * @param whereClause The WHERE clause to look in.
+     * @return std::shared_ptr<const query::FuncExpr> The scisql area restrictor functio FuncExpr if there
+     *         was exactly one, else nullptr.
+     */
+    static std::shared_ptr<const query::FuncExpr> _extractSingleScisqlAreaFunc(
+            query::WhereClause const& whereClause);
+
+
 };
 
 
