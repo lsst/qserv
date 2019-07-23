@@ -69,6 +69,8 @@
 
 namespace { // File-scope helpers
 
+using namespace lsst::qserv;
+
 std::string const UDF_PREFIX = "scisql_";
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.qana.QservRestrictorPlugin");
@@ -77,13 +79,7 @@ enum RestrictorType { SECONDARY_INDEX_IN =1, SECONDARY_INDEX_NOT_IN,
     SECONDARY_INDEX_BETWEEN, SECONDARY_INDEX_NOT_BETWEEN};
 
 
-} // anonymous namespace
-
-namespace lsst {
-namespace qserv {
-namespace qana {
-
-
+/// RestrictorEntry is a class to contain information about chunked tables.
 struct RestrictorEntry {
 
     RestrictorEntry(std::string const& alias_,
@@ -93,7 +89,7 @@ struct RestrictorEntry {
           chunkColumns(chunkColumns_),
           secIndexColumn(secIndexColumn_)
         {}
-    std::string alias;
+    std::string alias; //< The alias of the chunked table.
     StringPair chunkColumns;
     std::string secIndexColumn;
 };
@@ -103,7 +99,268 @@ typedef std::pair<std::string, std::string> StringPair;
 typedef std::deque<RestrictorEntry> RestrictoryEntryList;
 
 
-query::ColumnRef::Vector resolveAsColumnRef(query::QueryContext& context, query::ValueExprPtr vexpr) {
+class getTable : public query::TableRef::Func {
+public:
+
+    getTable(css::CssAccess& css, RestrictoryEntryList& chunkedTables)
+        : _css(css),
+          _chunkedTables(chunkedTables) {}
+
+    void operator()(query::TableRef::Ptr t) {
+        // FIXME: Modify so we can use TableRef::apply()
+        if (!t) {
+            throw qana::AnalysisBug("NULL TableRefN::Ptr");
+        }
+        (*this)(*t);
+    }
+    virtual void operator()(query::TableRef& t) {
+        std::string const& db = t.getDb();
+        std::string const& table = t.getTable();
+
+        if (db.empty()
+           || !_css.containsDb(db)
+           || !_css.containsTable(db, table)) {
+            throw qana::AnalysisError("Invalid db/table:" + db + "." + table);
+        }
+        css::PartTableParams const& partParam = _css.getPartTableParams(db, table);
+        // Is table chunked?
+        if (!partParam.isChunked()) {
+            return; // Do nothing for non-chunked tables
+        }
+        // Now save an entry for WHERE clause processing.
+        std::string alias = t.getAlias();
+        if (alias.empty()) {
+            // For now, only accept aliased tablerefs (should have
+            // been done earlier)
+            throw qana::AnalysisBug("Unexpected unaliased table reference");
+        }
+        std::vector<std::string> pCols = partParam.partitionCols();
+        RestrictorEntry se(alias,
+                           StringPair(pCols[0], pCols[1]),
+                           pCols[2]);
+        _chunkedTables.push_back(se);
+        query::JoinRefPtrVector& joinRefs = t.getJoins();
+        typedef query::JoinRefPtrVector::iterator Iter;
+        for (Iter i=joinRefs.begin(), e=joinRefs.end(); i != e; ++i) {
+            (*this)((**i).getRight());
+        }
+    }
+    css::CssAccess& _css;
+    RestrictoryEntryList& _chunkedTables;
+};
+
+
+template <typename C>
+query::FuncExpr::Ptr newFuncExpr(char const fName[],
+                                 std::string const& tableAlias,
+                                 StringPair const& chunkColumns,
+                                 C& c) {
+    query::FuncExpr::Ptr fe = std::make_shared<query::FuncExpr>();
+    fe->setName(UDF_PREFIX + fName);
+    fe->params.push_back(
+          query::ValueExpr::newSimple(query::ValueFactor::newColumnRefFactor(
+                std::make_shared<query::ColumnRef>("", "", tableAlias, chunkColumns.first))));
+    fe->params.push_back(
+          query::ValueExpr::newSimple(query::ValueFactor::newColumnRefFactor(
+                std::make_shared<query::ColumnRef>("", "", tableAlias, chunkColumns.second))));
+
+    typename C::const_iterator i;
+    for (i = c.begin(); i != c.end(); ++i) {
+        fe->params.push_back(
+          query::ValueExpr::newSimple(query::ValueFactor::newConstFactor(*i)));
+    }
+    return fe;
+}
+
+
+/// Restriction generates WHERE clause terms from restriction specs.
+/// Borrowed from older parsing framework.
+class Restriction {
+public:
+    Restriction(query::QsRestrictor const& r)
+        : _name(r._name) {
+        _setGenerator(r);
+    }
+
+    query::BoolFactor::Ptr generate(RestrictorEntry const& e) {
+        return (*_generator)(e);
+    }
+
+    class Generator {
+    public:
+        virtual ~Generator() {}
+        virtual query::BoolFactor::Ptr operator()(RestrictorEntry const& e) = 0;
+    };
+
+private:
+    class AreaGenerator : public Generator {
+    public:
+        AreaGenerator(char const* fName_, int paramCount_,
+                      StringVector const& params_)
+            :  fName(fName_), paramCount(paramCount_), params(params_) {
+            if (paramCount_ == USE_STRING) {
+                // Convert param list to one quoted string.
+                // This bundles a variable-sized list into a single
+                // parameter to work with the MySQL UDF facility.
+            }
+        }
+
+        virtual query::BoolFactor::Ptr operator()(RestrictorEntry const& e) {
+            query::BoolFactor::Ptr newFactor =
+                    std::make_shared<query::BoolFactor>();
+            query::BoolFactorTerm::PtrVector& terms = newFactor->_terms;
+            query::CompPredicate::Ptr cp =
+                    std::make_shared<query::CompPredicate>();
+            std::shared_ptr<query::FuncExpr> fe =
+                newFuncExpr(fName, e.alias, e.chunkColumns, params);
+            cp->left =
+                query::ValueExpr::newSimple(query::ValueFactor::newFuncFactor(fe));
+            cp->op = query::CompPredicate::EQUALS_OP;
+            cp->right = query::ValueExpr::newSimple(
+                           query::ValueFactor::newConstFactor("1"));
+            terms.push_back(cp);
+            return newFactor;
+        }
+
+        char const* const fName;
+        int const paramCount;
+        StringVector const& params;
+        static const int USE_STRING = -999;
+    };
+
+    void _setGenerator(query::QsRestrictor const& r) {
+        if (r._name == "qserv_areaspec_box") {
+            _generator = std::make_shared<AreaGenerator>("s2PtInBox",
+                                                         4,
+                                                         r._params
+                                                         );
+        } else if (r._name == "qserv_areaspec_circle") {
+            _generator = std::make_shared<AreaGenerator>("s2PtInCircle",
+                                                         3,
+                                                         r._params
+                                                         );
+        } else if (r._name == "qserv_areaspec_ellipse") {
+            _generator = std::make_shared<AreaGenerator>("s2PtInEllipse",
+                                                         5,
+                                                         r._params
+                                                         );
+        } else if (r._name == "qserv_areaspec_poly") {
+            const int use_string = AreaGenerator::USE_STRING;
+            _generator = std::make_shared<AreaGenerator>("s2PtInCPoly",
+                                                         use_string,
+                                                         r._params
+                                                         );
+        } else {
+            throw qana::AnalysisBug("Unmatched restriction spec: " + _name);
+        }
+    }
+    std::string _name;
+    std::vector<double> _params;
+    std::shared_ptr<Generator> _generator;
+};
+
+
+query::BoolTerm::Ptr makeCondition(std::shared_ptr<const query::QsRestrictor> const restr,
+                                   RestrictorEntry const& restrictorEntry) {
+    Restriction r(*restr);
+    return r.generate(restrictorEntry);
+}
+
+
+/**
+ * @brief Determine if the given ValueExpr represents a func that is one of the scisql functions that
+ *        starts with `scisql_s2PtIn` that represents an area restrictor.
+ *
+ * This is a helper function for handleScisqlRestrictors.
+ *
+ * @param valueExpr The ValueExpr to check.
+ * @return true if the ValueExpr is a function and starts with `scisql_s2PtIn` else false.
+ */
+bool isScisqlAreaFunc(query::ValueExpr const& valueExpr) {
+    if (not valueExpr.isFunction()) return false;
+    auto&& funcExpr = valueExpr.getFunction();
+    if (funcExpr->getName().find("scisql_s2Pt") != 0) return false;
+    return true;
+}
+
+
+/**
+ * @brief If there is exactly one scisql area restrictor in the top level AND of the where clause,
+ *        return it.
+ *
+ * @param whereClause The WHERE clause to look in.
+ * @return std::shared_ptr<const query::FuncExpr> The scisql area restrictor functio FuncExpr if there
+ *         was exactly one, else nullptr.
+ */
+std::shared_ptr<const query::FuncExpr> extractSingleScisqlAreaFunc(query::WhereClause const& whereClause) {
+    auto topLevelAnd = whereClause.getRootAndTerm();
+    std::shared_ptr<const query::FuncExpr> scisqlFunc;
+    if (nullptr == topLevelAnd) return nullptr;
+    for (auto const& boolTerm : topLevelAnd->_terms) {
+        auto boolFactor = std::dynamic_pointer_cast<const query::BoolFactor>(boolTerm);
+        if (nullptr == boolFactor) continue;
+        for (auto boolFactorTerm : boolFactor->_terms) {
+            auto compPredicate = std::dynamic_pointer_cast<const query::CompPredicate>(boolFactorTerm);
+            if (nullptr == compPredicate) continue;
+            if (compPredicate->op != query::CompPredicate::EQUALS_OP) continue;
+            for (auto const& valueExpr: {compPredicate->left, compPredicate->right})
+            if (isScisqlAreaFunc(*valueExpr)) {
+                if (scisqlFunc != nullptr) {
+                    return nullptr;
+                }
+                scisqlFunc = valueExpr->getFunction();
+            }
+        }
+    }
+    return scisqlFunc;
+}
+
+
+/**
+ * @brief Add scisql restrictors for each QsRestrictor.
+ *
+ * This handles the case where a qserv areaspec function was passed into the WHERE clause by the user,
+ * it adds scisql restrictor functions corresponding to the qserv area restrictor that is applied as a
+ * result of the areaspec function.
+ *
+ * @param restrictors The qserv area restrictors to add scisql area restrictors for.
+ * @param whereClause The query's WHERE clause, to which scisql area restrictors will be added.
+ * @param fromList The query's FROM list, it is consulted to find the chunked tables.
+ * @param context The query context.
+ */
+void addScisqlRestrictors(std::vector<std::shared_ptr<query::QsRestrictor>> const& restrictors,
+                           query::FromList const& fromList,
+                           query::WhereClause& whereClause,
+                           query::QueryContext& context) {
+    if (restrictors.empty()) return;
+
+    auto const& tableList = fromList.getTableRefList();
+    RestrictoryEntryList chunkedTables;
+    getTable gt(*context.css, chunkedTables);
+    std::for_each(tableList.begin(), tableList.end(), gt);
+    // chunkedTables is now populated with a RestrictorEntry for each table in the FROM list that is chunked.
+    if (chunkedTables.empty()) {
+        throw qana::AnalysisError("Spatial restrictor without partitioned table.");
+    }
+
+    auto newTerm = std::make_shared<query::AndTerm>();
+    // Add scisql spatial restrictions: for each of the qserv restrictors, generate a scisql restrictor
+    // condition for each chunked table.
+    for (auto const& qsRestrictor : restrictors) {
+        for (auto const& chunkedTable : chunkedTables) {
+            newTerm->_terms.push_back(makeCondition(qsRestrictor, chunkedTable));
+        }
+    }
+    LOGS(_log, LOG_LVL_TRACE, "for restrictors: " << util::printable(restrictors) <<
+                              " adding: " << newTerm);
+    whereClause.prependAndTerm(newTerm);
+}
+
+
+/**
+ * @brief Make a vector of ColumnRef derived from the given ValueExpr.
+ */
+query::ColumnRef::Vector resolveAsColumnRef(query::ValueExprPtr vexpr) {
     query::ColumnRef::Vector columnRefs;
     auto columnRef = vexpr->copyAsColumnRef();
     if (nullptr != columnRef)
@@ -112,7 +369,9 @@ query::ColumnRef::Vector resolveAsColumnRef(query::QueryContext& context, query:
 }
 
 
-/// @return true if cr represents a valid secondary index column.
+/**
+ * @brief Find out if the given ColumnRef represents a valid secondary index column.
+ */
 bool
 lookupSecIndex(query::QueryContext& context,
                std::shared_ptr<query::ColumnRef> cr) {
@@ -121,7 +380,7 @@ lookupSecIndex(query::QueryContext& context,
     if ((!cr) || !context.css) { return false; }
     if (!context.css->containsDb(cr->getDb())
        || !context.css->containsTable(cr->getDb(), cr->getTable())) {
-        throw AnalysisError("Invalid db/table:" + cr->getDb() + "." + cr->getTable());
+        throw qana::AnalysisError("Invalid db/table:" + cr->getDb() + "." + cr->getTable());
     }
     if (cr->getColumn().empty()) {
         return false;
@@ -130,27 +389,6 @@ lookupSecIndex(query::QueryContext& context,
         cr->getDb(), cr->getTable()).secIndexColNames();
     return std::find(sics.begin(), sics.end(), cr->getColumn()) != sics.end();
 }
-
-
-inline bool isValidLiteral(query::ValueExprPtr p) {
-    return p && !p->copyAsLiteral().empty();
-}
-
-
-struct validateLiteral {
-    validateLiteral(bool& isValid_) : isValid(isValid_) {}
-    inline void operator()(query::ValueExprPtr p) {
-        isValid = isValid && isValidLiteral(p);
-    }
-    bool& isValid;
-};
-
-
-struct extractLiteral {
-    inline std::string operator()(query::ValueExprPtr p) {
-        return p->copyAsLiteral();
-    }
-};
 
 
 /**  Create a QsRestrictor from the column ref and the set of specified values or NULL if one of the values is a non-literal.
@@ -168,7 +406,8 @@ query::QsRestrictor::Ptr newRestrictor(
 {
     // Extract the literals, bailing out if we see a non-literal
     bool isValid = true;
-    std::for_each(values.begin(), values.end(), validateLiteral(isValid));
+    std::for_each(values.begin(), values.end(),
+        [&](query::ValueExprPtr p) { isValid = isValid && p != nullptr && not p->copyAsLiteral().empty(); });
     if (!isValid) {
         return query::QsRestrictor::Ptr();
     }
@@ -231,13 +470,11 @@ query::QsRestrictor::Ptr newRestrictor(
         restrictor->_params.push_back(cr->getTable());
         restrictor->_params.push_back(cr->getColumn());
     }
-    std::transform(values.begin(), values.end(),
-                   std::back_inserter(restrictor->_params), extractLiteral());
+
+    std::transform(values.begin(), values.end(), std::back_inserter(restrictor->_params),
+        [](query::ValueExprPtr p) -> std::string { return p->copyAsLiteral(); });
     return restrictor;
 }
-
-
-
 
 
 /**  Create QSRestrictors which will use secondary index
@@ -266,7 +503,7 @@ query::QsRestrictor::PtrVector getSecIndexRestrictors(query::QueryContext& conte
             // IN predicate
             LOGS(_log, LOG_LVL_TRACE, "Check for SECONDARY_INDEX_IN restrictor");
             if (auto const inPredicate = std::dynamic_pointer_cast<query::InPredicate>(factorTerm)) {
-                columnRefs = resolveAsColumnRef(context, inPredicate->value);
+                columnRefs = resolveAsColumnRef(inPredicate->value);
                 for (query::ColumnRef::Ptr const& column_ref : columnRefs) {
                     if (lookupSecIndex(context, column_ref)) {
                         auto restrictorType = inPredicate->hasNot ? SECONDARY_INDEX_NOT_IN : SECONDARY_INDEX_IN;
@@ -281,9 +518,9 @@ query::QsRestrictor::PtrVector getSecIndexRestrictors(query::QueryContext& conte
                 query::ValueExprPtr literalValue;
 
                 // If the left side doesn't match any columns, check the right side.
-                columnRefs = resolveAsColumnRef(context, compPredicate->left);
+                columnRefs = resolveAsColumnRef(compPredicate->left);
                 if (columnRefs.empty()) {
-                    columnRefs = resolveAsColumnRef(context, compPredicate->right);
+                    columnRefs = resolveAsColumnRef(compPredicate->right);
                     literalValue = compPredicate->left;
                 } else {
                     literalValue = compPredicate->right;
@@ -304,7 +541,7 @@ query::QsRestrictor::PtrVector getSecIndexRestrictors(query::QueryContext& conte
                        std::dynamic_pointer_cast<query::BetweenPredicate>(factorTerm)) {
                 // BETWEEN predicate
                 LOGS(_log, LOG_LVL_TRACE, "Check for SECONDARY_INDEX_BETWEEN restrictor");
-                columnRefs = resolveAsColumnRef(context, betweenPredicate->value);
+                columnRefs = resolveAsColumnRef(betweenPredicate->value);
                 for (query::ColumnRef::Ptr const& column_ref : columnRefs) {
                     if (lookupSecIndex(context, column_ref)) {
                         query::ValueExprPtrVector cands;
@@ -330,206 +567,53 @@ query::QsRestrictor::PtrVector getSecIndexRestrictors(query::QueryContext& conte
 }
 
 
-query::PassTerm::Ptr newPass(std::string const& s) {
-    query::PassTerm::Ptr p = std::make_shared<query::PassTerm>();
-    p->_text = s;
-    return p;
-}
-template <typename C>
-query::PassListTerm::Ptr newPassList(C& c) {
-    query::PassListTerm::Ptr p = std::make_shared<query::PassListTerm>();
-    p->_terms.insert(p->_terms.begin(), c.begin(), c.end());
-    return p;
-}
-
-
-query::InPredicate::Ptr
-newInPred(std::string const& aliasTable,
-          std::string const& secIndexColumn,
-          std::vector<std::string> const& params) {
-    query::InPredicate::Ptr p = std::make_shared<query::InPredicate>();
-    std::shared_ptr<query::ColumnRef> cr =
-               std::make_shared<query::ColumnRef>(
-                       "", aliasTable, secIndexColumn);
-    p->value =
-        query::ValueExpr::newSimple(query::ValueFactor::newColumnRefFactor(cr));
-
-    typedef std::vector<std::string>::const_iterator Iter;
-    for (Iter i=params.begin(), e=params.end(); i != e; ++i) {
-        query::ValueExprPtr vep;
-        vep = query::ValueExpr::newSimple(query::ValueFactor::newConstFactor(*i));
-        p->cands.push_back(vep);
-    }
-    return p;
+/**
+ * @brief Looks in the WHERE clause for use of columns from chunked tables where chunk restrictions can
+ *        be added, and adds qserv restrictor functions if any are found.
+ *
+ * @param whereClause The WHERE clause of the SELECT statement.
+ * @param context The context to add the restrictor functions to.
+ */
+void handleSecondaryIndex(query::WhereClause& whereClause, query::QueryContext& context) {
+    // Merge in the implicit (i.e. secondary index) restrictors
+    query::AndTerm::Ptr originalAnd(whereClause.getRootAndTerm());
+    query::QsRestrictor::PtrVector const& secIndexPreds = getSecIndexRestrictors(context, originalAnd);
+    context.addRestrictors(secIndexPreds);
 }
 
 
-template <typename C>
-query::FuncExpr::Ptr newFuncExpr(char const fName[],
-                                 std::string const& tableAlias,
-                                 StringPair const& chunkColumns,
-                                 C& c) {
-    query::FuncExpr::Ptr fe = std::make_shared<query::FuncExpr>();
-    fe->setName(UDF_PREFIX + fName);
-    fe->params.push_back(
-          query::ValueExpr::newSimple(query::ValueFactor::newColumnRefFactor(
-                std::make_shared<query::ColumnRef>("", "", tableAlias, chunkColumns.first))));
-    fe->params.push_back(
-          query::ValueExpr::newSimple(query::ValueFactor::newColumnRefFactor(
-                std::make_shared<query::ColumnRef>("", "", tableAlias, chunkColumns.second))));
-
-    typename C::const_iterator i;
-    for (i = c.begin(); i != c.end(); ++i) {
-        fe->params.push_back(
-          query::ValueExpr::newSimple(query::ValueFactor::newConstFactor(*i)));
+/**
+ * @brief Looks for scisql area restrictors in the WHERE clause and if there is exactly one in the
+ *        top-level AND it adds a qserv area restictor to the query context.
+ *
+ * This should not be called if there is already a qserv area restrictor in the WHERE clause.
+ *
+ * @param selectStmt The SELECT statement to process restrictors for.
+ * @param context The query context to be updated.
+ */
+void handleScisqlRestrictors(query::SelectStmt& stmt, query::QueryContext& context) {
+    auto& whereClause = stmt.getWhereClause();
+    if (whereClause.hasRestrs()) {
+        // It's possible we could support this but current specification says we should only add a qserv area
+        // restrictor if there is not already one in the WHERE clause.
+        throw qana::AnalysisBug("handleScisqlRestrictors should not be called if the WHERE clause already "
+                                "contains restrictors.");
     }
-    return fe;
+
+    // Get the scisql functions from the top-level AND, if there is 0 or more than 1 then return.
+    auto scisqlFunc = extractSingleScisqlAreaFunc(whereClause);
+
+    // determine if the columns in the scisql function are chunked; if they are not then return.
+
+    // translate the function to a qserv area restrictor and add it to the context.
 }
 
 
-class getTable : public query::TableRef::Func {
-public:
+} // anonymous namespace
 
-    getTable(css::CssAccess& css, RestrictoryEntryList& chunkedTables)
-        : _css(css),
-          _chunkedTables(chunkedTables) {}
-
-    void operator()(query::TableRef::Ptr t) {
-        // FIXME: Modify so we can use TableRef::apply()
-        if (!t) {
-            throw AnalysisBug("NULL TableRefN::Ptr");
-        }
-        (*this)(*t);
-    }
-    virtual void operator()(query::TableRef& t) {
-        std::string const& db = t.getDb();
-        std::string const& table = t.getTable();
-
-        if (db.empty()
-           || !_css.containsDb(db)
-           || !_css.containsTable(db, table)) {
-            throw AnalysisError("Invalid db/table:" + db + "." + table);
-        }
-        css::PartTableParams const& partParam = _css.getPartTableParams(db, table);
-        // Is table chunked?
-        if (!partParam.isChunked()) {
-            return; // Do nothing for non-chunked tables
-        }
-        // Now save an entry for WHERE clause processing.
-        std::string alias = t.getAlias();
-        if (alias.empty()) {
-            // For now, only accept aliased tablerefs (should have
-            // been done earlier)
-            throw AnalysisBug("Unexpected unaliased table reference");
-        }
-        std::vector<std::string> pCols = partParam.partitionCols();
-        RestrictorEntry se(alias,
-                           StringPair(pCols[0], pCols[1]),
-                           pCols[2]);
-        _chunkedTables.push_back(se);
-        query::JoinRefPtrVector& joinRefs = t.getJoins();
-        typedef query::JoinRefPtrVector::iterator Iter;
-        for (Iter i=joinRefs.begin(), e=joinRefs.end(); i != e; ++i) {
-            (*this)((**i).getRight());
-        }
-    }
-    css::CssAccess& _css;
-    RestrictoryEntryList& _chunkedTables;
-};
-
-
-////////////////////////////////////////////////////////////////////////
-// QservRestrictorPlugin::Restriction
-// Generates WHERE clause terms from restriction specs. Borrowed from
-// older parsing framework.
-////////////////////////////////////////////////////////////////////////
-class QservRestrictorPlugin::Restriction {
-public:
-    Restriction(query::QsRestrictor const& r)
-        : _name(r._name) {
-        _setGenerator(r);
-    }
-    query::BoolFactor::Ptr generate(RestrictorEntry const& e) {
-        return (*_generator)(e);
-    }
-
-    // std::string getUdfCallString(std::string const& tName,
-    //                              StringMap const& tableConfig) const {
-    //     if (_generator.get()) {
-    //         return (*_generator)(tName, tableConfig);
-    //     }
-    //     return std::string();
-    // }
-    class Generator {
-    public:
-        virtual ~Generator() {}
-        virtual query::BoolFactor::Ptr operator()(RestrictorEntry const& e) = 0;
-    };
-private:
-    class AreaGenerator : public Generator {
-    public:
-        AreaGenerator(char const* fName_, int paramCount_,
-                      StringVector const& params_)
-            :  fName(fName_), paramCount(paramCount_), params(params_) {
-            if (paramCount_ == USE_STRING) {
-                // Convert param list to one quoted string.
-                // This bundles a variable-sized list into a single
-                // parameter to work with the MySQL UDF facility.
-            }
-        }
-
-        virtual query::BoolFactor::Ptr operator()(RestrictorEntry const& e) {
-            query::BoolFactor::Ptr newFactor =
-                    std::make_shared<query::BoolFactor>();
-            query::BoolFactorTerm::PtrVector& terms = newFactor->_terms;
-            query::CompPredicate::Ptr cp =
-                    std::make_shared<query::CompPredicate>();
-            std::shared_ptr<query::FuncExpr> fe =
-                newFuncExpr(fName, e.alias, e.chunkColumns, params);
-            cp->left =
-                query::ValueExpr::newSimple(query::ValueFactor::newFuncFactor(fe));
-            cp->op = query::CompPredicate::EQUALS_OP;
-            cp->right = query::ValueExpr::newSimple(
-                           query::ValueFactor::newConstFactor("1"));
-            terms.push_back(cp);
-            return newFactor;
-        }
-        char const* const fName;
-        int const paramCount;
-        StringVector const& params;
-        static const int USE_STRING = -999;
-    };
-
-    void _setGenerator(query::QsRestrictor const& r) {
-        if (r._name == "qserv_areaspec_box") {
-            _generator = std::make_shared<AreaGenerator>("s2PtInBox",
-                                                         4,
-                                                         r._params
-                                                         );
-        } else if (r._name == "qserv_areaspec_circle") {
-            _generator = std::make_shared<AreaGenerator>("s2PtInCircle",
-                                                         3,
-                                                         r._params
-                                                         );
-        } else if (r._name == "qserv_areaspec_ellipse") {
-            _generator = std::make_shared<AreaGenerator>("s2PtInEllipse",
-                                                         5,
-                                                         r._params
-                                                         );
-        } else if (r._name == "qserv_areaspec_poly") {
-            const int use_string = AreaGenerator::USE_STRING;
-            _generator = std::make_shared<AreaGenerator>("s2PtInCPoly",
-                                                         use_string,
-                                                         r._params
-                                                         );
-        } else {
-            throw AnalysisBug("Unmatched restriction spec: " + _name);
-        }
-    }
-    std::string _name;
-    std::vector<double> _params;
-    std::shared_ptr<Generator> _generator;
-};
+namespace lsst {
+namespace qserv {
+namespace qana {
 
 
 ////////////////////////////////////////////////////////////////////////
@@ -554,126 +638,28 @@ QservRestrictorPlugin::applyLogical(query::SelectStmt& stmt,
     query::WhereClause& whereClause = stmt.getWhereClause();
 
     if (whereClause.hasRestrs()) {
-        _handleQsRestrictors(stmt, context);
+        // get where clause restrictors:
+        auto restrictors = whereClause.getRestrs();
+        // add restrictors to context:
+        if (restrictors != nullptr) {
+            context.addRestrictors(*restrictors);
+            whereClause.resetRestrs();
+            // make scisql functions for restrictors:
+            addScisqlRestrictors(*restrictors, stmt.getFromList(), whereClause, context);
+        }
     } else {
-        _handleScisqlRestrictors(stmt, context);
+        handleScisqlRestrictors(stmt, context);
+        // get scisql restrictors
+        // add restrictors to context
     }
 
-    _handleSecondaryIndex(whereClause, context);
+    handleSecondaryIndex(whereClause, context);
 }
 
 
-void
-QservRestrictorPlugin::applyPhysical(QueryPlugin::Plan& p,
-                                     query::QueryContext& context) {
+void QservRestrictorPlugin::applyPhysical(QueryPlugin::Plan& p,
+                                          query::QueryContext& context) {
     // Probably nothing is needed here...
-}
-
-query::BoolTerm::Ptr
-QservRestrictorPlugin::_makeCondition(
-             std::shared_ptr<const query::QsRestrictor> const restr,
-             RestrictorEntry const& restrictorEntry) {
-    Restriction r(*restr);
-    return r.generate(restrictorEntry);
-}
-
-
-void QservRestrictorPlugin::_handleQsRestrictors(query::SelectStmt& stmt,
-                                                 query::QueryContext& context) {
-    // Get a list of the chunked tables (as a list of RestrictorEntry).
-    auto& whereClause = stmt.getWhereClause();
-    auto const& tableList = stmt.getFromList().getTableRefList();
-    RestrictoryEntryList chunkedTables;
-    getTable gt(*context.css, chunkedTables);
-    std::for_each(tableList.begin(), tableList.end(), gt);
-    // Now, chunkedTables is populated with a RestrictorEntry for each table in the FROM list that is
-    // chunked.
-
-    // Now handle the explicit restrictors
-    query::QueryContext::RestrList ctxRestrictors;
-    auto whereClauseRestrictors = whereClause.getRestrs();
-    // At least one table should exist in the restrictor chunkedTables
-    if (chunkedTables.empty()) {
-        throw AnalysisError("Spatial restrictor without partitioned table.");
-    }
-    auto newTerm = std::make_shared<query::AndTerm>();
-    // add scisql spatial restrictions
-    // Now, for each of the qserv restrictors:
-    for (auto const& qsRestrictor : *whereClauseRestrictors) {
-        // generate a restrictor condition for each restrictor entry:
-        for (auto const& chunkedTable : chunkedTables) {
-            newTerm->_terms.push_back(_makeCondition(qsRestrictor, chunkedTable));
-        }
-        // Save qsRestrictor in QueryContext.
-        ctxRestrictors.push_back(qsRestrictor);
-    }
-    LOGS(_log, LOG_LVL_TRACE, "for restrictors: " << util::printable(*whereClauseRestrictors) <<
-                              " adding: " << newTerm);
-    whereClause.prependAndTerm(newTerm);
-    whereClause.resetRestrs();
-    if (not ctxRestrictors.empty()) {
-        context.addRestrictors(ctxRestrictors);
-    }
-}
-
-
-void QservRestrictorPlugin::_handleSecondaryIndex(query::WhereClause& whereClause,
-                                                  query::QueryContext& context) {
-    // Merge in the implicit (i.e. secondary index) restrictors
-    query::AndTerm::Ptr originalAnd(whereClause.getRootAndTerm());
-    query::QsRestrictor::PtrVector const& secIndexPreds = getSecIndexRestrictors(context, originalAnd);
-    context.addRestrictors(secIndexPreds);
-}
-
-
-bool QservRestrictorPlugin::_isScisqlAreaFunc(query::ValueExpr const& valueExpr) {
-    if (not valueExpr.isFunction()) return false;
-    auto&& funcExpr = valueExpr.getFunction();
-    if (funcExpr->getName().find("scisql_s2Pt") != 0) return false;
-    return true;
-}
-
-
-std::shared_ptr<const query::FuncExpr> QservRestrictorPlugin::_extractSingleScisqlAreaFunc(
-        query::WhereClause const& whereClause) {
-    auto topLevelAnd = whereClause.getRootAndTerm();
-    std::shared_ptr<const query::FuncExpr> scisqlFunc;
-    if (nullptr == topLevelAnd) return nullptr;
-    for (auto const& boolTerm : topLevelAnd->_terms) {
-        auto boolFactor = std::dynamic_pointer_cast<const query::BoolFactor>(boolTerm);
-        if (nullptr == boolFactor) continue;
-        for (auto boolFactorTerm : boolFactor->_terms) {
-            auto compPredicate = std::dynamic_pointer_cast<const query::CompPredicate>(boolFactorTerm);
-            if (nullptr == compPredicate) continue;
-            if (compPredicate->op != query::CompPredicate::EQUALS_OP) continue;
-            for (auto const& valueExpr: {compPredicate->left, compPredicate->right})
-            if (_isScisqlAreaFunc(*valueExpr)) {
-                if (scisqlFunc != nullptr) {
-                    return nullptr;
-                }
-                scisqlFunc = valueExpr->getFunction();
-            }
-        }
-    }
-    return scisqlFunc;
-}
-
-
-void QservRestrictorPlugin::_handleScisqlRestrictors(query::SelectStmt& stmt, query::QueryContext& context) {
-    auto& whereClause = stmt.getWhereClause();
-    if (whereClause.hasRestrs()) {
-        // It's possible we could support this but current specification says we should only add a qserv area
-        // restrictor if there is not already one in the WHERE clause.
-        throw AnalysisBug("_handleScisqlRestrictors should not be called if the WHERE clause already "
-                          "contains restrictors.");
-    }
-
-    // Get the scisql functions from the top-level AND, if there is 0 or more than 1 then return.
-    auto scisqlFunc = _extractSingleScisqlAreaFunc(whereClause);
-
-    // determine if the columns in the scisql function are chunked; if they are not then return.
-
-    // translate the function to a qserv area restrictor and add it to the context.
 }
 
 
