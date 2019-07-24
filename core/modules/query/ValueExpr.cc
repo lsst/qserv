@@ -308,6 +308,17 @@ std::shared_ptr<ValueFactor> ValueExpr::getFactor() {
 }
 
 
+std::string ValueExpr::getConstVal() const {
+    if (_factorOps.size()) {
+        ValueFactor const& factor = *_factorOps.front().factor;
+        if (factor.getType() == ValueFactor::CONST) {
+            return factor.getConstVal();
+        }
+    }
+    return std::string();
+}
+
+
 std::shared_ptr<FuncExpr const> ValueExpr::getFunction() const {
     if (_factorOps.size() == 1) {
         ValueFactor const& factor = *_factorOps.front().factor;
@@ -332,6 +343,14 @@ bool ValueExpr::isColumnRef() const {
 
 bool ValueExpr::isFunction() const {
     return getFunction() != nullptr;
+}
+
+
+bool ValueExpr::isConstVal() const {
+    if (_factorOps.size() == 1 && _factorOps[0].factor->isConstVal()) {
+        return true;
+    }
+    return false;
 }
 
 
@@ -460,15 +479,6 @@ bool ValueExpr::operator==(const ValueExpr& rhs) const {
 bool ValueExpr::compareValue(const ValueExpr& rhs) const {
     return _factorOps == rhs._factorOps;
 }
-
-
-bool ValueExpr::isConstVal() const {
-    if (_factorOps.size() == 1 && _factorOps[0].factor->isConstVal()) {
-        return true;
-    }
-    return false;
-}
-
 
 
 // Miscellaneous

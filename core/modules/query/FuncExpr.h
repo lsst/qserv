@@ -75,7 +75,7 @@ public:
     const std::string& getName() const;
 
     /// Get the function parameters.
-    ValueExprPtrVector getParams() const;
+    ValueExprPtrVector const& getParams() const { return params; }
 
     /// Construct a new FuncExpr like an existing one.
     static FuncExpr::Ptr newLike(FuncExpr const& src, std::string const& newName);

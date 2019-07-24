@@ -89,6 +89,10 @@ public:
 
     friend std::ostream& operator<<(std::ostream& os, QsRestrictor const& q);
 
+    void setName(std::string const& name) { _name = name; }
+
+    void addParameter(std::string const& parameter) { _params.push_back(parameter); }
+
     std::string _name;
     StringVector _params;
 };

@@ -316,6 +316,38 @@ std::shared_ptr<const query::FuncExpr> extractSingleScisqlAreaFunc(query::WhereC
 }
 
 
+std::shared_ptr<query::QsRestrictor> makeQsRestrictor(query::FuncExpr const& scisqlFunc) {
+    auto qsRestrictor = std::make_shared<query::QsRestrictor>();
+    int counter(0);
+    for (auto const& valueExpr : scisqlFunc.getParams()) {
+        if (counter++ < 2) {
+            // The first 2 parameters are the ra and decl columns to test; these get thrown away.
+            continue;
+        }
+        if (valueExpr->isConstVal()) {
+            qsRestrictor->addParameter(valueExpr->getConstVal());
+        } else {
+            // If any parameter in the scisql restrictor function is not a const value then we can't use it
+            // (for example, we don't support math functions in the area restrictor.)
+            // Give up & carry on.
+            return nullptr;
+        }
+    }
+    if (scisqlFunc.getName() == "scisql_s2PtInBox") {
+        qsRestrictor->setName("qserv_areaspec_box");
+    } else if (scisqlFunc.getName() == "scisql_s2PtInCircle") {
+        qsRestrictor->setName("qserv_areaspec_circle");
+    } else if (scisqlFunc.getName() == "scisql_s2PtInEllipse") {
+        qsRestrictor->setName("qserv_areaspec_ellipse");
+    } else if (scisqlFunc.getName() == "scisql_s2PtInCPoly") {
+        qsRestrictor->setName("qserv_areaspec_poly");
+    } else {
+        return nullptr;
+    }
+    return qsRestrictor;
+}
+
+
 /**
  * @brief Add scisql restrictors for each QsRestrictor.
  *
@@ -582,34 +614,8 @@ void handleSecondaryIndex(query::WhereClause& whereClause, query::QueryContext& 
 }
 
 
-/**
- * @brief Looks for scisql area restrictors in the WHERE clause and if there is exactly one in the
- *        top-level AND it adds a qserv area restictor to the query context.
- *
- * This should not be called if there is already a qserv area restrictor in the WHERE clause.
- *
- * @param selectStmt The SELECT statement to process restrictors for.
- * @param context The query context to be updated.
- */
-void handleScisqlRestrictors(query::SelectStmt& stmt, query::QueryContext& context) {
-    auto& whereClause = stmt.getWhereClause();
-    if (whereClause.hasRestrs()) {
-        // It's possible we could support this but current specification says we should only add a qserv area
-        // restrictor if there is not already one in the WHERE clause.
-        throw qana::AnalysisBug("handleScisqlRestrictors should not be called if the WHERE clause already "
-                                "contains restrictors.");
-    }
-
-    // Get the scisql functions from the top-level AND, if there is 0 or more than 1 then return.
-    auto scisqlFunc = extractSingleScisqlAreaFunc(whereClause);
-
-    // determine if the columns in the scisql function are chunked; if they are not then return.
-
-    // translate the function to a qserv area restrictor and add it to the context.
-}
-
-
 } // anonymous namespace
+
 
 namespace lsst {
 namespace qserv {
@@ -648,9 +654,16 @@ QservRestrictorPlugin::applyLogical(query::SelectStmt& stmt,
             addScisqlRestrictors(*restrictors, stmt.getFromList(), whereClause, context);
         }
     } else {
-        handleScisqlRestrictors(stmt, context);
-        // get scisql restrictors
-        // add restrictors to context
+        // Get scisql restrictor if there is exactly one of them
+        auto scisqlFunc = extractSingleScisqlAreaFunc(whereClause);
+        if (scisqlFunc != nullptr) {
+            // Attempt to convirt the scisql restrictor to a QsRestrictor. This will fail if any parameter in
+            // the scisql function is NOT a const val.
+            auto restrictor = makeQsRestrictor(*scisqlFunc);
+            if (restrictor != nullptr) {
+                context.addRestrictors({restrictor});
+            }
+        }
     }
 
     handleSecondaryIndex(whereClause, context);
