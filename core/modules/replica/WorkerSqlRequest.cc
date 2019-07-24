@@ -209,7 +209,10 @@ string WorkerSqlRequest::_query(database::mysql::Connection::Ptr const& conn) co
             return "DROP DATABASE IF EXISTS " + conn->sqlId(_request.database());
 
         case ProtocolRequestSql::ENABLE_DATABASE:
-            return "INSERT INTO " + qservDbsTable +
+
+            // Using REPLACE instead of INSERT to avoid hitting the DUPLICATE KEY error
+            // if such entry already exists in the table.
+            return "REPLACE INTO " + qservDbsTable +
                    " VALUES ("    + conn->sqlValue(_request.database()) + ")";
 
         case ProtocolRequestSql::DISABLE_DATABASE:

@@ -1104,6 +1104,15 @@ public:
      */
     ConnectionHandler() = default;
 
+    /**
+     * Construct with a connection
+     *
+     * @param conn_  connection to be watched and managed
+     */
+    explicit ConnectionHandler(Connection::Ptr const& conn_)
+        :   conn(conn_) {
+    }
+
     // Copy semantics is prohibited
 
     ConnectionHandler(ConnectionHandler const&) = delete;

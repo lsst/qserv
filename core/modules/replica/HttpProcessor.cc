@@ -23,6 +23,7 @@
 #include "replica/HttpProcessor.h"
 
 // System headers
+#include <algorithm>
 #include <functional>
 #include <iterator>
 #include <limits>
@@ -1780,18 +1781,26 @@ void HttpProcessor::_addDatabase(qhttp::Request::Ptr const& req,
 
         auto const numStripes    = body.required<unsigned int>("num_stripes");
         auto const numSubStripes = body.required<unsigned int>("num_sub_stripes");
+        auto const overlap       = body.required<double>("overlap");
 
         _debug(string(__func__) + " database="      + databaseInfo.name);
         _debug(string(__func__) + " numStripes="    + to_string(numStripes));
         _debug(string(__func__) + " numSubStripes=" + to_string(numSubStripes));
-        
+        _debug(string(__func__) + " overlap="       + to_string(overlap));
+
+        if (overlap < 0) {
+            _sendError(resp, __func__, "overlap can't have a negative value");
+            return;
+        }
+
         // Find an appropriate database family for the database. If none
         // found then create a new one named after the database.
 
         string familyName;
         for (auto&& candidateFamilyName: config->databaseFamilies()) {
             auto const familyInfo = config->databaseFamilyInfo(candidateFamilyName);
-            if ((familyInfo.numStripes == numStripes) and (familyInfo.numSubStripes == numSubStripes)) {
+            if ((familyInfo.numStripes == numStripes) and (familyInfo.numSubStripes == numSubStripes)
+                and (abs(familyInfo.overlap - overlap) <= numeric_limits<double>::epsilon())) {
                 familyName = candidateFamilyName;
             }
         }
@@ -1808,6 +1817,7 @@ void HttpProcessor::_addDatabase(qhttp::Request::Ptr const& req,
             familyInfo.replicationLevel = 1;
             familyInfo.numStripes = numStripes;
             familyInfo.numSubStripes = numSubStripes;
+            familyInfo.overlap = overlap;
             config->addDatabaseFamily(familyInfo);
         }
         
@@ -1868,10 +1878,11 @@ void HttpProcessor::_publishDatabase(qhttp::Request::Ptr const& req,
     _debug(__func__);
 
     try {
+        bool const allWorkers = true;
         auto const databaseServices = controller()->serviceProvider()->databaseServices();
         auto const config = controller()->serviceProvider()->config();
 
-        auto const database = ::getRequiredQueryParamStr(req->query, "database");
+        auto const database = req->params.at("name");
         _debug(string(__func__) + " database=" + database);
 
         auto const databaseInfo = config->databaseInfo(database);
@@ -1887,7 +1898,7 @@ void HttpProcessor::_publishDatabase(qhttp::Request::Ptr const& req,
                 return;
             }
         }
-
+        
         // TODO: (re-)build the secondary index. Should we rather do this
         // in a separate REST call?
 
@@ -1895,54 +1906,30 @@ void HttpProcessor::_publishDatabase(qhttp::Request::Ptr const& req,
 
         // Grant SELECT authorizations for the new database to Qserv
         // MySQL account(s) at all workers and the master(s)
-        
-        bool const allWorkers = true;
-        auto const job = SqlGrantAccessJob::create(
-            databaseInfo.name,
-            config->qservMasterDatabaseUser(),
-            allWorkers,
-            controller()
-        );
-        job->start();
-        logJobStartedEvent(SqlGrantAccessJob::typeName(), job, databaseInfo.family);
-        job->wait();
-        logJobFinishedEvent(SqlGrantAccessJob::typeName(), job, databaseInfo.family);
+        if (not _grantDatabaseAccess(resp, databaseInfo, allWorkers)) return;
 
-        string error;
-        auto const& resultData = job->getResultData();
-        for (auto&& itr: resultData.resultSets) {
-            auto&& worker = itr.first;
-            auto&& resultSet = itr.second;
-            bool const succeeded = resultData.workers.at(worker);
-            if (not succeeded) {
-                error += "grant access to a database failed on worker: " + worker + ",  error: " +
-                         resultSet.error + " ";
-            }
-        }
-        if (not error.empty()) {
-            _sendError(resp, __func__, error);
-            return;
-        }
-
-
-        // TODO: enable this database in Qserv workers by adding an entry
+        // Enable this database in Qserv workers by adding an entry
         // to table 'qservw_worker.Dbs'
+        if (not _enableDatabase(resp, databaseInfo, allWorkers)) return;
 
-        ;
+        // Consolidate MySQL-partitioned tables at workers
+        if (not _removeMySQLPartitions(resp, databaseInfo, allWorkers)) return;
 
         // TODO: ask Replication workers to reload their Configurations so that
-        // they recognized the new database as the published one. This step should
+        // they recognized the new state of the database. This step should
         // be probably done after publishing the database.
-        
-        ;
-
+        //
         // NOTE: the rest should be taken care of by the Replication system.
         // This includes registering chunks in the persistent store of the Replication
         // system, synchronizing with Qserv workers, fixing, re-balancing,
         // replicating, etc.
+        
+        ;
 
         // Finalize setting the database in Qserv master
         _publishDatabaseInMaster(databaseInfo);
+
+        // TODO: Rebuild the chunk list for Qserv? Perhaps within the above called method?
 
         ControllerEvent event;
         event.status = "PUBLISH DATABASE";
@@ -1979,6 +1966,8 @@ void HttpProcessor::_addTable(qhttp::Request::Ptr const& req,
         auto const directorKey   = body.optional<string>("director_key", "");
         auto const chunkIdKey    = body.optional<string>("chunk_id_key", "");
         auto const subChunkIdKey = body.optional<string>("sub_chunk_id_key", "");
+        auto const latitudeColName  = body.optional<string>("latitude_key",  "");
+        auto const longitudeColName = body.optional<string>("longitude_key", "");
 
         _debug(string(__func__) + " database="      + database);
         _debug(string(__func__) + " table="         + table);
@@ -1988,6 +1977,8 @@ void HttpProcessor::_addTable(qhttp::Request::Ptr const& req,
         _debug(string(__func__) + " directorKey="   + directorKey);
         _debug(string(__func__) + " chunkIdKey="    + chunkIdKey);
         _debug(string(__func__) + " subChunkIdKey=" + subChunkIdKey);
+        _debug(string(__func__) + " latitudeColName="  + latitudeColName);
+        _debug(string(__func__) + " longitudeColName=" + longitudeColName);
 
         // Make sure the database is known and it's not PUBLISHED yet
 
@@ -2100,7 +2091,8 @@ void HttpProcessor::_addTable(qhttp::Request::Ptr const& req,
         json result;
         result["database"] = config->addTable(
             database, table, isPartitioned, columns, isDirector,
-            directorKey, chunkIdKey, subChunkIdKey
+            directorKey, chunkIdKey, subChunkIdKey,
+            latitudeColName, longitudeColName
         ).toJson();
 
         _sendData(resp, result);
@@ -2327,130 +2319,282 @@ void HttpProcessor::_buildEmptyChunksList(qhttp::Request::Ptr const& req,
 }
 
 
+bool HttpProcessor::_grantDatabaseAccess(qhttp::Response::Ptr const& resp,
+                                         DatabaseInfo const& databaseInfo,
+                                         bool allWorkers) const {
+    _debug(__func__);
+
+    auto const config = controller()->serviceProvider()->config();
+    auto const job = SqlGrantAccessJob::create(
+        databaseInfo.name,
+        config->qservMasterDatabaseUser(),
+        allWorkers,
+        controller()
+    );
+    job->start();
+    logJobStartedEvent(SqlGrantAccessJob::typeName(), job, databaseInfo.family);
+    job->wait();
+    logJobFinishedEvent(SqlGrantAccessJob::typeName(), job, databaseInfo.family);
+
+    string error;
+    auto const& resultData = job->getResultData();
+    for (auto&& itr: resultData.resultSets) {
+        auto&& worker = itr.first;
+        auto&& resultSet = itr.second;
+        bool const succeeded = resultData.workers.at(worker);
+        if (not succeeded) {
+            error +=
+                    "grant access to a database failed on worker: " + worker +
+                    ",  error: " + resultSet.error + " ";
+        }
+    }
+    if (not error.empty()) {
+        _sendError(resp, __func__, error);
+        return false;
+    }
+    return true;
+}
+
+
+bool HttpProcessor::_enableDatabase(qhttp::Response::Ptr const& resp,
+                                    DatabaseInfo const& databaseInfo,
+                                    bool allWorkers) const {
+    _debug(__func__);
+
+    auto const config = controller()->serviceProvider()->config();
+    auto const job = SqlEnableDbJob::create(
+        databaseInfo.name,
+        allWorkers,
+        controller()
+    );
+    job->start();
+    logJobStartedEvent(SqlEnableDbJob::typeName(), job, databaseInfo.family);
+    job->wait();
+    logJobFinishedEvent(SqlEnableDbJob::typeName(), job, databaseInfo.family);
+
+    string error;
+    auto const& resultData = job->getResultData();
+    for (auto&& itr: resultData.resultSets) {
+        auto&& worker = itr.first;
+        auto&& resultSet = itr.second;
+        bool const succeeded = resultData.workers.at(worker);
+        if (not succeeded) {
+            error +=
+                    "enabling database failed on worker: " + worker + ",  error: " +
+                    resultSet.error + " ";
+        }
+    }
+    if (not error.empty()) {
+        _sendError(resp, __func__, error);
+        return false;
+    }
+    return true;
+}
+
+
+bool HttpProcessor::_removeMySQLPartitions(qhttp::Response::Ptr const& resp,
+                                           DatabaseInfo const& databaseInfo,
+                                           bool allWorkers) const {
+    _debug(__func__);
+
+    auto const config = controller()->serviceProvider()->config();
+
+    string error;
+    for (auto const table: databaseInfo.tables()) {
+        auto const job = SqlRemoveTablePartitionsJob::create(
+            databaseInfo.name,
+            table,
+            allWorkers,
+            controller()
+        );
+        job->start();
+        logJobStartedEvent(SqlRemoveTablePartitionsJob::typeName(), job, databaseInfo.family);
+        job->wait();
+        logJobFinishedEvent(SqlRemoveTablePartitionsJob::typeName(), job, databaseInfo.family);
+
+        auto const& resultData = job->getResultData();
+        for (auto&& itr: resultData.resultSets) {
+            auto&& worker = itr.first;
+            auto&& resultSet = itr.second;
+            bool const succeeded = resultData.workers.at(worker);
+            if (not succeeded) {
+                error +=
+                        "MySQL partitions removal failed on worker: " + worker +
+                        " for database: " + databaseInfo.name + " and table: " + table +
+                        ",  error: " + resultSet.error + " ";
+            }
+        }
+    }
+    if (not error.empty()) {
+        _sendError(resp, __func__, error);
+        return false;
+    }
+    return true;
+}
+
 
 void HttpProcessor::_publishDatabaseInMaster(DatabaseInfo const& databaseInfo) const {
 
     auto const config = controller()->serviceProvider()->config();
-    auto const databaseFamilyInfo = config->databaseFamilyInfo(databaseInfo.name);
+    auto const databaseFamilyInfo = config->databaseFamilyInfo(databaseInfo.family);
 
-    // Connect to the master database as user "root"
+    // Connect to the master database as user "root".
+    // Manage the new connection via the RAII-style handler to ensure the transaction
+    // is automatically rolled-back in case of exceptions.
 
-    database::mysql::ConnectionParams const connectionParams(
-        config->qservMasterDatabaseHost(),
-        config->qservMasterDatabasePort(),
-        "root",
-        Configuration::qservMasterDatabasePassword(),
-        ""
-    );
-    auto const conn = database::mysql::Connection::open(connectionParams);
+    {
+        database::mysql::ConnectionHandler const handler(
+            database::mysql::Connection::open(
+                database::mysql::ConnectionParams(
+                    config->qservMasterDatabaseHost(),
+                    config->qservMasterDatabasePort(),
+                    "root",
+                    Configuration::qservMasterDatabasePassword(),
+                    ""
+                )
+            )
+        );
 
-    // SQL statements to be executed
-    vector<string> statements;
+        // SQL statements to be executed
+        vector<string> statements;
 
-    // Statements for creating the database & table entries
-    
-    statements.push_back(
-        "CREATE DATABASE IF NOT EXISTS " + conn->sqlId(databaseInfo.name)
-    );
-    for (auto const& table: databaseInfo.tables()) {
-        string sql = "CREATE TABLE IF NOT EXISTS " + conn->sqlId(databaseInfo.name) +
-                "." + conn->sqlId(table)) + " (";
-        bool first = true;
-        for (auto const& coldef: databaseInfo.columns.at(table)) {
-            if (first) {
-                first = false;
-            } else {
-                sql += ",";
+        // Statements for creating the database & table entries
+
+        statements.push_back(
+            "CREATE DATABASE IF NOT EXISTS " + handler.conn->sqlId(databaseInfo.name)
+        );
+        for (auto const& table: databaseInfo.tables()) {
+            string sql = "CREATE TABLE IF NOT EXISTS " + handler.conn->sqlId(databaseInfo.name) +
+                    "." + handler.conn->sqlId(table) + " (";
+            bool first = true;
+            for (auto const& coldef: databaseInfo.columns.at(table)) {
+                if (first) {
+                    first = false;
+                } else {
+                    sql += ",";
+                }
+                sql += handler.conn->sqlId(coldef.first) + " " + coldef.second;
             }
-            sql += conn->sqlId(coldef.first) + " " + coldef.second;
+            sql += ") ENGINE=InnoDB";
+            statements.push_back(sql);
         }
-        statements.push_back(sql);
+
+        // Statements for granting SELECT authorizations for the new database
+        // to the Qserv account.
+
+        statements.push_back(
+            "GRANT ALL ON " + handler.conn->sqlId(databaseInfo.name) + ".* TO " +
+            handler.conn->sqlValue(config->qservMasterDatabaseUser()) + "@" +
+            handler.conn->sqlValue(config->qservMasterDatabaseHost()));
+
+        // Execute the statements
+        //
+        // TODO: switch to the more reliable way of executing queries
+        // which would also reconnect to the server.
+
+        handler.conn->begin();
+        for (auto const& query: statements) {
+            handler.conn->execute(query);
+        }
+        handler.conn->commit();
     }
-
-    // Statements for granting SELECT authorizations for the new database
-    // to the Qserv account.
-
-    statements.push_back(
-        "GRANT ALL ON " + conn->sqlId(databaseInfo.name) + ".* TO " +
-        conn->sqlValue(config->qservMasterDatabaseUser()) + "@" +
-        conn->sqlValue(config->qservMasterDatabaseHost());
 
     // Register the database, tables and the partitioning scheme at CSS
 
     map<string, string> cssConfig;
+    cssConfig["technology"] = "mysql";
     cssConfig["hostname"] = config->qservMasterDatabaseHost(),
-    cssConfig["port"]     = to_string(config->qservMasterDatabasePort());
+    cssConfig["port"] = to_string(config->qservMasterDatabasePort());
     cssConfig["username"] = "root";
     cssConfig["password"] = Configuration::qservMasterDatabasePassword();
     cssConfig["database"] = "qservCssData";
 
-    auto const cssAccess = css::CssAccess::createFromConfig(cssConfig,
-                                                            config->controllerEmptyChunksDir());
-
+    auto const cssAccess =
+            css::CssAccess::createFromConfig(cssConfig, config->controllerEmptyChunksDir());
     if (not cssAccess->containsDb(databaseInfo.name)) {
 
-        // TODO: add the 'overlap' to the DatabaseFamily and to the database
-        // creation REST API. Also, extend the schema of the Replication system's
-        // configuration.
+        // First, try to find another database within the same family which
+        // has already been published, and the one is found then use it
+        // as a template when registering the database in CSS.
+        //
+        // Otherwise, create a new database using an extended CSS API which
+        // will allocate a new partitioning identifier.
 
-        double overlap = 0.016670;
+        bool const allDatabases = false;
+        bool const isPublished = true;
+        auto const databases = config->databases(databaseFamilyInfo.name, allDatabases, isPublished);
+        if (not databases.empty()) {
+            auto const templateDatabase = databases.front();
+            cssAccess->createDbLike(databaseInfo.name, templateDatabase);
+        } else {
 
-        // TODO: Scan existing databases and find an existing one which belongs to
-        // the same family. Use it as a template.
+            // This parameter is not used by the current implementation of the CSS API.
+            // However, we should give it some meaningless value in case of the implementation
+            // will change. (Hopefully) this would trigger an exception.
+            int const unusedPartitioningId = -1;
 
-        void createDbLike(std::string const& dbName,
-                          std::string const& templateDbName);
-
-        // TODO: If none exists then pull scan CSS nodes to find keys which look
-        // like these:
-        //
-        //   '/PARTITIONING/_0000000030'
-        //   '/PARTITIONING/_0000000030/.packed.json'
-        //
-        // If any found then find the maximum and generate the next number
-        // in the sequence:
-        //
-        //    31
-        //
-        // This number will be assumed as the new identifier.
-        //
-        // If none was found then start the series with the identifier for the partitioned
-        // databases:
-        //
-        //    1
-        //
-        // NOTE: an alternative (and, perhaps, a more reliable/less intrusive)
-        // approach would be to extend CssAccess to return all known
-        // identifiers (as numbers).
-
-        int partitioningId = 1;
-
-        css::StripingParams const stripingParams(
-                databaseFamilyInfo.numStripes,
-                databaseFamilyInfo.numSubStripes,
-                partitioningId,
-                overlap
-        );
-        string const storageClass = "L2";
-        string const releaseStatus = "RELEASED";
-        cssAccess->createDb(databaseInfo.name, stripingParams, storageClass, releaseStatus);
+            css::StripingParams const stripingParams(
+                    databaseFamilyInfo.numStripes,
+                    databaseFamilyInfo.numSubStripes,
+                    unusedPartitioningId,
+                    databaseFamilyInfo.overlap
+            );
+            string const storageClass = "L2";
+            string const releaseStatus = "RELEASED";
+            cssAccess->createDb(databaseInfo.name, stripingParams, storageClass, releaseStatus);
+        }
     }
 
-    // TODO: scan for existing tables known to CSS and fill in blanks (in case if
-    // this is not the first time this algorithm is running,
-
-    auto const cssTables = cssAccess->getTableNames(databaseInfo.name);
+    // Register tables which still hasn't been registered in CSS
     
-    // That's a better approach
-    bool containsTable(std::string const& dbName, std::string const& tableName, bool readyOnly=true) const;
+    for (auto const& table: databaseInfo.regularTables) {
+        if (not cssAccess->containsTable(databaseInfo.name, table)) {
 
-        void createTable(std::string const& dbName,
-                     std::string const& tableName,
-                     std::string const& schema,
-                     PartTableParams const& partParams,
-                     ScanTableParams const& scanParams);
+            // Neither of those groups of parameters apply to the regular tables,
+            // so we're leaving them default constructed. 
+            css::PartTableParams const partParams;
+            css::ScanTableParams const scanParams;
 
+            cssAccess->createTable(
+                databaseInfo.name,
+                table,
+                databaseInfo.schema4css(table),
+                partParams,
+                scanParams
+            );
+        }
+    }
+    for (auto const& table: databaseInfo.partitionedTables) {
+        if (not cssAccess->containsTable(databaseInfo.name, table)) {
+
+            bool const isPartitioned = true;
+            bool const hasSubChunks = true;
+            css::PartTableParams const partParams(
+                databaseInfo.name,
+                databaseInfo.directorTable,
+                databaseInfo.directorTableKey,
+                databaseInfo.latitudeColName.at(table),
+                databaseInfo.longitudeColName.at(table),
+                databaseFamilyInfo.overlap,     /* same as for other tables of the database family*/
+                isPartitioned,
+                hasSubChunks
+            );
+
+            bool const lockInMem = true;
+            int const scanRating = 1;
+            css::ScanTableParams const scanParams(lockInMem, scanRating);
+
+            cssAccess->createTable(
+                databaseInfo.name,
+                table,
+                databaseInfo.schema4css(table),
+                partParams,
+                scanParams
+            );
+        }
+    }
 }
+
 
 void HttpProcessor::_sendError(qhttp::Response::Ptr const& resp,
                                string const& func,

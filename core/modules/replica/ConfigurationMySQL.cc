@@ -927,7 +927,9 @@ DatabaseInfo ConfigurationMySQL::addDatabase(DatabaseInfo const& info) {
                     "config_database",
                     info.name,
                     info.family,
-                    isNotPublished
+                    isNotPublished,
+                    info.chunkIdKey,
+                    info.subChunkIdKey
                 );
                 conn->commit();
             }
@@ -994,7 +996,7 @@ DatabaseInfo ConfigurationMySQL::publishDatabase(string const& name) {
                 conn->begin();
                 conn->executeSimpleUpdateQuery(
                     "config_database",
-                    conn->sqlEqual("name", name),
+                    conn->sqlEqual("database", name),
                     make_pair("is_published", 1));
                 conn->commit();
             }

@@ -133,6 +133,10 @@ public:
     std::map<std::string,                   // table name
              std::string> longitudeColName; // longitude (right ascension) column name
 
+    /// @return table schema in format which is suitable for CSS
+    /// @throws std::out_of_range if the table is unknown
+    std::string schema4css(std::string const& table) const;
+
     /// @return JSON representation of the object
     nlohmann::json toJson() const;
 };

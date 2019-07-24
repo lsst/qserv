@@ -340,7 +340,7 @@ public:
      * @return
      *   pointer to the created object
      */
-    static Ptr create(std::string const& qdatabase,
+    static Ptr create(std::string const& database,
                       bool allWorkers,
                       Controller::Ptr const& controller,
                       std::string const& parentJobId=std::string(),
@@ -435,7 +435,7 @@ public:
      * @return
      *   pointer to the created object
      */
-    static Ptr create(std::string const& qdatabase,
+    static Ptr create(std::string const& database,
                       bool allWorkers,
                       Controller::Ptr const& controller,
                       std::string const& parentJobId=std::string(),
@@ -530,7 +530,7 @@ public:
      * @return
      *   pointer to the created object
      */
-    static Ptr create(std::string const& qdatabase,
+    static Ptr create(std::string const& database,
                       bool allWorkers,
                       Controller::Ptr const& controller,
                       std::string const& parentJobId=std::string(),

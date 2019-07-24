@@ -332,6 +332,48 @@ private:
      */
     nlohmann::json _getQueries(nlohmann::json& workerInfo) const;
 
+
+    /**
+     * Grant SELECT authorizations for the new database to Qserv
+     * MySQL account(s) at workers
+     *
+     * @param resp          the HTTP response channel for reporting errors
+     * @param databaseInfo  database descriptor
+     * @param allWorkers    'true' if all workers should be involved into the operation
+     *
+     * @return 'false' if operation failed
+     */
+    bool _grantDatabaseAccess(qhttp::Response::Ptr const& resp,
+                              DatabaseInfo const& databaseInfo,
+                              bool allWorkers) const;
+
+    /**
+     * Enable this database in Qserv workers by adding an entry
+     * to table 'qservw_worker.Dbs' at workers.
+     *
+     * @param resp          the HTTP response channel for reporting errors
+     * @param databaseInfo  database descriptor
+     * @param allWorkers    'true' if all workers should be involved into the operation
+     *
+     * @return 'false' if operation failed
+     */
+    bool _enableDatabase(qhttp::Response::Ptr const& resp,
+                         DatabaseInfo const& databaseInfo,
+                         bool allWorkers) const;
+
+    /**
+     * Consolidate MySQL partitioned tables at workers by removing partitions.
+     *
+     * @param resp          the HTTP response channel for reporting errors
+     * @param databaseInfo  database descriptor
+     * @param allWorkers    'true' if all workers should be involved into the operation
+     *
+     * @return 'false' if operation failed
+     */
+    bool _removeMySQLPartitions(qhttp::Response::Ptr const& resp,
+                                DatabaseInfo const& databaseInfo,
+                                bool allWorkers) const;
+
     /**
      * Publish database in the Qserv master database. This involves the following
      * steps:
