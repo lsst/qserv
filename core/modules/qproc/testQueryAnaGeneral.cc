@@ -344,6 +344,34 @@ static const std::vector<ScisqlRestrictorTestCaseData> SCISQL_RESTRICTOR_TEST_CA
         "", // There should not be any qserv area restrictor, because there are 2 scisql_s2Pt... funcs in the
             // query.
         {}),
+    ScisqlRestrictorTestCaseData(
+        "select * from LSST.Object o, Source s "
+            "WHERE scisql_s2PtInBox(o.ra_Test, o.decl_Test, 2, 2, 3, 3, 4)=1 " // too many args to the scisql func
+            "AND o.objectIdObjTest = s.objectIdSourceTest;",
+        "SELECT * FROM LSST.Object_100 AS `o`,LSST.Source_100 AS `s` "
+            "WHERE scisql_s2PtInBox(`o`.ra_Test,`o`.decl_Test,2,2,3,3,4)=1 "
+            "AND `o`.objectIdObjTest=`s`.objectIdSourceTest",
+        "", // There should not be any qserv area restrictor, because there are 2 scisql_s2Pt... funcs in the
+            // query.
+        {}),
+    ScisqlRestrictorTestCaseData(
+        "select * from LSST.Object o, Source s "
+            "WHERE scisql_s2PtInCPoly(ra_Test, decl_Test, 70, 3, 75, 3.5)=1 " // too few args to the scisql func
+            "AND o.objectIdObjTest = s.objectIdSourceTest;",
+        "SELECT * FROM LSST.Object_100 AS `o`,LSST.Source_100 AS `s` "
+            "WHERE scisql_s2PtInCPoly(`o`.ra_Test,`o`.decl_Test,70,3,75,3.5)=1 "
+            "AND `o`.objectIdObjTest=`s`.objectIdSourceTest",
+        "", // There should not be any qserv area restrictor.
+        {}),
+    ScisqlRestrictorTestCaseData(
+        "select * from LSST.Object o, Source s "
+            "WHERE scisql_s2PtInCPoly(ra_Test, decl_Test, 70, 3, 75, 3.5, 70, 4, 70)=1 " // odd number of args to the scisql func
+            "AND o.objectIdObjTest = s.objectIdSourceTest;",
+        "SELECT * FROM LSST.Object_100 AS `o`,LSST.Source_100 AS `s` "
+            "WHERE scisql_s2PtInCPoly(`o`.ra_Test,`o`.decl_Test,70,3,75,3.5,70,4,70)=1 "
+            "AND `o`.objectIdObjTest=`s`.objectIdSourceTest",
+        "", // There should not be any qserv area restrictor.
+        {}),
 };
 
 

@@ -316,8 +316,29 @@ std::shared_ptr<const query::FuncExpr> extractSingleScisqlAreaFunc(query::WhereC
 }
 
 
+std::shared_ptr<query::QsRestrictor> makeQsRestrictor(std::string const& name,
+                                                      std::vector<std::string> const& parameters,
+                                                      unsigned int expectedParameterCount, bool isMinCount=false,
+                                                      bool countMustBeEven=false) {
+    if (not isMinCount && parameters.size() != expectedParameterCount) {
+        LOGS(_log, LOG_LVL_WARN, "Wrong number of parameters (" << parameters.size() << ") for " << name <<
+                " (should be " << expectedParameterCount << "), will not apply an area restrictor..");
+        return nullptr;
+    } else if (isMinCount && parameters.size() < expectedParameterCount) {
+        LOGS(_log, LOG_LVL_WARN, "Wrong number of parameters (" << parameters.size() << ") for " << name <<
+                " (should be at least " << expectedParameterCount << "), will not apply an area restrictor..");
+        return nullptr;
+    } else if (countMustBeEven && parameters.size() % 2 != 0) {
+        LOGS(_log, LOG_LVL_WARN, "Odd number of parameters (" << parameters.size() << ") for " << name <<
+                " (must be even), will not apply an area restrictor..");
+        return nullptr;
+    }
+    return std::make_shared<query::QsRestrictor>(name, parameters);
+}
+
+
 std::shared_ptr<query::QsRestrictor> makeQsRestrictor(query::FuncExpr const& scisqlFunc) {
-    auto qsRestrictor = std::make_shared<query::QsRestrictor>();
+    std::vector<std::string> parameters;
     int counter(0);
     for (auto const& valueExpr : scisqlFunc.getParams()) {
         if (counter++ < 2) {
@@ -325,7 +346,7 @@ std::shared_ptr<query::QsRestrictor> makeQsRestrictor(query::FuncExpr const& sci
             continue;
         }
         if (valueExpr->isConstVal()) {
-            qsRestrictor->addParameter(valueExpr->getConstVal());
+            parameters.push_back(valueExpr->getConstVal());
         } else {
             // If any parameter in the scisql restrictor function is not a const value then we can't use it
             // (for example, we don't support math functions in the area restrictor.)
@@ -334,17 +355,15 @@ std::shared_ptr<query::QsRestrictor> makeQsRestrictor(query::FuncExpr const& sci
         }
     }
     if (scisqlFunc.getName() == "scisql_s2PtInBox") {
-        qsRestrictor->setName("qserv_areaspec_box");
+        return makeQsRestrictor("qserv_areaspec_box", parameters, 4);
     } else if (scisqlFunc.getName() == "scisql_s2PtInCircle") {
-        qsRestrictor->setName("qserv_areaspec_circle");
+        return makeQsRestrictor("qserv_areaspec_circle", parameters, 3);
     } else if (scisqlFunc.getName() == "scisql_s2PtInEllipse") {
-        qsRestrictor->setName("qserv_areaspec_ellipse");
+        return makeQsRestrictor("qserv_areaspec_ellipse", parameters, 5);
     } else if (scisqlFunc.getName() == "scisql_s2PtInCPoly") {
-        qsRestrictor->setName("qserv_areaspec_poly");
-    } else {
-        return nullptr;
+        return makeQsRestrictor("qserv_areaspec_poly", parameters, 6, true, true);
     }
-    return qsRestrictor;
+    return nullptr;
 }
 
 
