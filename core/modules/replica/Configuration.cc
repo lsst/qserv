@@ -84,12 +84,18 @@ json DatabaseInfo::toJson() const {
     for (auto&& name: partitionedTables) {
         infoJson["tables"].push_back({
             {"name",           name},
-            {"is_partitioned", 1}});
+            {"is_partitioned", 1},
+            {"latitude_key",   latitudeColName.at(name)},
+            {"longitude_key",  longitudeColName.at(name)}
+        });
     }
     for (auto&& name: regularTables) {
         infoJson["tables"].push_back({
             {"name",           name},
-            {"is_partitioned", 0}});
+            {"is_partitioned", 0},
+            {"latitude_key",   ""},
+            {"longitude_key",  ""}
+        });
     }
     for (auto&& columnsEntry: columns) {
         string const& table = columnsEntry.first;
@@ -120,6 +126,7 @@ json DatabaseFamilyInfo::toJson() const {
     infoJson["min_replication_level"] = replicationLevel;
     infoJson["num_stripes"]           = numStripes;
     infoJson["num_sub_stripes"]       = numSubStripes;
+    infoJson["overlap"]               = overlap;
 
     return infoJson;
 }
@@ -150,7 +157,13 @@ ostream& operator <<(ostream& os, DatabaseInfo const& info) {
         << "name:'" << info.name << "',"
         << "family:'" << info.family << "',"
         << "isPublished:" << (int)info.isPublished << ","
-        << "partitionedTables:" << util::printable(info.partitionedTables) << ","
+        << "partitionedTables:[";
+    for (auto const& table: info.partitionedTables) {
+        os  << "(name:'" << table << "','"
+            << "latitudeColName:'"  << info.latitudeColName.at(table) << "','"
+            << "longitudeColName:'" << info.longitudeColName.at(table) << "'),";
+    }
+    os  << "],"
         << "regularTables:" << util::printable(info.regularTables)  << ","
         << "directorTable:" << info.directorTable << ","
         << "directorTableKey:" << info.directorTableKey << ","
@@ -165,7 +178,8 @@ ostream& operator <<(ostream& os, DatabaseFamilyInfo const& info) {
         << "name:'" << info.name << "',"
         << "replicationLevel:'" << info.replicationLevel << "',"
         << "numStripes:" << info.numStripes << ","
-        << "numSubStripes:" << info.numSubStripes << ")";
+        << "numSubStripes:" << info.numSubStripes << ","
+        << "overlap:" << info.overlap << ")";
     return os;
 }
 
@@ -693,7 +707,9 @@ void Configuration::validateTableParameters(
         bool isDirectorTable,
         string const& directorTableKey,
         string const& chunkIdKey,
-        string const& subChunkIdKey) const {
+        string const& subChunkIdKey,
+        string const& latitudeColName,
+        string const& longitudeColName) const {
 
     if (database.empty()) throw invalid_argument(context_ + "  the database name can't be empty");
     if (table.empty()) throw invalid_argument(context_ + "  the table name can't be empty");
@@ -729,6 +745,22 @@ void Configuration::validateTableParameters(
                         context_ + "  a value of parameter 'directorTableKey'"
                         " provided for the 'director' table '" + table + "' doesn't match any column"
                         " in the table schema");                
+            }
+            if (not latitudeColName.empty()) {
+                if (not columnInSchema(latitudeColName, columns)) {
+                    throw invalid_argument(
+                            context_ + "  a value '" + latitudeColName + "' of parameter 'latitudeColName'"
+                            " provided for the partitioned table '" + table + "' doesn't match any column"
+                            " in the table schema");                
+                }
+            }
+            if (not longitudeColName.empty()) {
+                if (not columnInSchema(longitudeColName, columns)) {
+                    throw invalid_argument(
+                            context_ + "  a value '" + longitudeColName + "' of parameter 'longitudeColName'"
+                            " provided for the partitioned table '" + table + "' doesn't match any column"
+                            " in the table schema");                
+                }
             }
         }
         map<string,string> const colDefs = {
@@ -767,7 +799,9 @@ DatabaseInfo Configuration::addTableTransient(
         bool isDirectorTable,
         string const& directorTableKey,
         string const& chunkIdKey,
-        string const& subChunkIdKey) {
+        string const& subChunkIdKey,
+        string const& latitudeColName,
+        string const& longitudeColName) {
 
     util::Lock lock(_mtx, context_ + " -> Configuration::" + string(__func__));
 
@@ -780,6 +814,8 @@ DatabaseInfo Configuration::addTableTransient(
         }
         info.chunkIdKey = chunkIdKey;
         info.subChunkIdKey = subChunkIdKey;
+        info.latitudeColName[table] = latitudeColName;
+        info.longitudeColName[table] = longitudeColName;
     } else {
         info.regularTables.push_back(table);
     }

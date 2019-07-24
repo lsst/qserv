@@ -293,6 +293,14 @@ private:
     /// stores identifiers of sub-chunks. Note that this option must be provided
     /// for the 'partitioned' tables.
     std::string _subChunkIdKey;
+
+    /// The name of an optional column in the 'partitioned' table representing
+    /// latitude (declination)
+    std::string _latitudeColName;
+
+    /// The name of an optional column in the 'partitioned' table representing
+    /// longitude (right ascension)
+    std::string _longitudeColName;
 };
 
 }}} // namespace lsst::qserv::replica

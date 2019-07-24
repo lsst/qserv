@@ -160,7 +160,8 @@ string ConfigurationMySQL::dump2init(Configuration::Ptr const& config) {
             << "'" << familyInfo.name << "',"
             <<        familyInfo.replicationLevel << ","
             <<        familyInfo.numStripes << ","
-            <<        familyInfo.numSubStripes
+            <<        familyInfo.numSubStripes << ","
+            <<        familyInfo.overlap
             << ");\n";
 
         bool const allDatabases = true;
@@ -798,6 +799,9 @@ DatabaseFamilyInfo ConfigurationMySQL::addDatabaseFamily(DatabaseFamilyInfo cons
     if (info.numSubStripes == 0) {
         throw invalid_argument(context_ + "  the number of sub-stripes level can't be 0");
     }
+    if (info.overlap < 0) {
+        throw invalid_argument(context_ + "  the overlap can't have a negative value");
+    }
 
     database::mysql::ConnectionHandler handler;
     try {
@@ -812,7 +816,8 @@ DatabaseFamilyInfo ConfigurationMySQL::addDatabaseFamily(DatabaseFamilyInfo cons
                     info.name,
                     info.replicationLevel,
                     info.numStripes,
-                    info.numSubStripes
+                    info.numSubStripes,
+                    info.overlap
                 );
                 conn->commit();
             }
@@ -827,6 +832,7 @@ DatabaseFamilyInfo ConfigurationMySQL::addDatabaseFamily(DatabaseFamilyInfo cons
             info.replicationLevel,
             info.numStripes,
             info.numSubStripes,
+            info.overlap,
             make_shared<ChunkNumberQservValidator>(
                 static_cast<int32_t>(info.numStripes),
                 static_cast<int32_t>(info.numSubStripes))
@@ -949,7 +955,9 @@ DatabaseInfo ConfigurationMySQL::addDatabase(DatabaseInfo const& info) {
             noDirectorTable,
             noDirectorTableKey,
             noChunkIdKey,
-            noSubChunkIdKey
+            noSubChunkIdKey,
+            map<string,string>(),
+            map<string,string>()
         };
         return _databaseInfo[info.name];
 
@@ -1057,12 +1065,19 @@ DatabaseInfo ConfigurationMySQL::addTable(
         bool isDirectorTable,
         string const& directorTableKey,
         string const& chunkIdKey,
-        string const& subChunkIdKey) {
+        string const& subChunkIdKey,
+        string const& latitudeColName,
+        string const& longitudeColName) {
 
     string const context_ = context() + __func__;
 
     LOGS(_log, LOG_LVL_DEBUG, context_ << "  database: " << database
-         << " table: " << table << " isPartitioned: " << (isPartitioned ? "true" : "false"));
+         << " table: " << table << " isPartitioned: " << (isPartitioned ? "true" : "false")
+         << " isDirectorTable: " << (isDirectorTable ? "true" : "false")
+         << " directorTableKey: " << directorTableKey << " chunkIdKey: " << chunkIdKey
+         << " subChunkIdKey: " << subChunkIdKey
+         << " latitudeColName: " << latitudeColName
+         << " longitudeColName:" << longitudeColName);
 
     validateTableParameters(
         context_,
@@ -1073,7 +1088,9 @@ DatabaseInfo ConfigurationMySQL::addTable(
         isDirectorTable,
         directorTableKey,
         chunkIdKey,
-        subChunkIdKey
+        subChunkIdKey,
+        latitudeColName,
+        longitudeColName
     );
 
     // Update the persistent state
@@ -1092,7 +1109,9 @@ DatabaseInfo ConfigurationMySQL::addTable(
                     table,
                     isPartitioned,
                     isDirectorTable,
-                    directorTableKey
+                    directorTableKey,
+                    latitudeColName,
+                    longitudeColName
                 );
                 int colPosition = 0;
                 for (auto&& coldef: columns) {
@@ -1127,7 +1146,9 @@ DatabaseInfo ConfigurationMySQL::addTable(
             isDirectorTable,
             directorTableKey,
             chunkIdKey,
-            subChunkIdKey);
+            subChunkIdKey,
+            latitudeColName,
+            longitudeColName);
 
     } catch (database::mysql::Error const& ex) {
         LOGS(_log, LOG_LVL_ERROR, context_ << "MySQL error: " << ex.what());
@@ -1332,6 +1353,7 @@ void ConfigurationMySQL::_loadConfigurationImpl(util::Lock const& lock,
         ::readMandatoryParameter(row, "min_replication_level", _databaseFamilyInfo[name].replicationLevel);
         ::readMandatoryParameter(row, "num_stripes",           _databaseFamilyInfo[name].numStripes);
         ::readMandatoryParameter(row, "num_sub_stripes",       _databaseFamilyInfo[name].numSubStripes);
+        ::readMandatoryParameter(row, "overlap",               _databaseFamilyInfo[name].overlap);
 
         _databaseFamilyInfo[name].chunkNumberValidator =
             make_shared<ChunkNumberQservValidator>(
@@ -1377,6 +1399,8 @@ void ConfigurationMySQL::_loadConfigurationImpl(util::Lock const& lock,
                 _databaseInfo[database].directorTable = table;
                 ::readMandatoryParameter(row, "director_key", _databaseInfo[database].directorTableKey);
             }
+            ::readMandatoryParameter(row, "latitude_key",  _databaseInfo[database].latitudeColName[table]);
+            ::readMandatoryParameter(row, "longitude_key", _databaseInfo[database].longitudeColName[table]);
         } else {
             _databaseInfo[database].regularTables.push_back(table);
         }

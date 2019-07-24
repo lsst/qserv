@@ -123,11 +123,15 @@ public:
     std::string directorTableKey;   /// The name of the primary key column in the "director" table.
 
     // Names of special columns of the partitioned tables.
-    //
-    // NOTE: all partitioned tables must have the same values of the keys.
 
-    std::string chunkIdKey;
-    std::string subChunkIdKey;
+    std::string chunkIdKey;     // same for all partitioned tables
+    std::string subChunkIdKey;  // same for all partitioned tables
+
+    std::map<std::string,                   // table name
+             std::string> latitudeColName;  // latitude (declination) column name
+
+    std::map<std::string,                   // table name
+             std::string> longitudeColName; // longitude (right ascension) column name
 
     /// @return JSON representation of the object
     nlohmann::json toJson() const;
@@ -146,6 +150,7 @@ public:
     size_t       replicationLevel = 0;  /// The minimum replication level desired (1..N)
     unsigned int numStripes = 0;        /// The number of stripes (from the CSS partitioning configuration)
     unsigned int numSubStripes = 0;     /// The number of sub-stripes (from the CSS partitioning configuration)
+    double       overlap = 0.;          /// The default overlap for tables that do not specify their own overlap
 
     std::shared_ptr<ChunkNumberValidator> chunkNumberValidator;     /// A validator for chunk numbers
 
@@ -716,6 +721,12 @@ public:
      *   This parameter applies to all "partitioned" tables, and if provided the column
      *   must be found among the names of columns in a value of parameter "columns".
      *
+     * @param latitudeColName
+     *   (optional) the name of a column which stores the latitude
+     *
+     * @param longitudeColName
+     *   (optional) the name of a column which stores the longitude
+     *
      * @return
      *    a database descriptor of the updated database
      *
@@ -732,7 +743,9 @@ public:
                                   bool isDirectorTable=false,
                                   std::string const& directorTableKey="objectId",
                                   std::string const& chunkIdKey="chunkId",
-                                  std::string const& subChunkIdKey="subChunkId") = 0;
+                                  std::string const& subChunkIdKey="subChunkId",
+                                  std::string const& latitudeColName=std::string(),
+                                  std::string const& longitudeColName=std::string()) = 0;
 
     /**
      * Delete an existing table
@@ -1320,7 +1333,9 @@ protected:
                                  bool isDirectorTable,
                                  std::string const& directorTableKey,
                                  std::string const& chunkIdKey,
-                                 std::string const& subChunkIdKey) const;
+                                 std::string const& subChunkIdKey,
+                                 std::string const& latitudeColName,
+                                 std::string const& longitudeColName) const;
 
     /**
      * Update the transient state of the database by adding a new table
@@ -1335,7 +1350,9 @@ protected:
                                    bool isDirectorTable,
                                    std::string const& directorTableKey,
                                    std::string const& chunkIdKey,
-                                   std::string const& subChunkIdKey);
+                                   std::string const& subChunkIdKey,
+                                   std::string const& latitudeColName,
+                                   std::string const& longitudeColName);
 
     /// To be used were thread safety is required
     mutable util::Mutex _mtx;

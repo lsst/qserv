@@ -115,6 +115,7 @@ CREATE TABLE IF NOT EXISTS `config_database_family` (
   `min_replication_level`  INT UNSIGNED  NOT NULL ,    -- minimum number of replicas per chunk
   `num_stripes`            INT UNSIGNED  NOT NULL ,
   `num_sub_stripes`        INT UNSIGNED  NOT NULL ,
+  `overlap`                DOUBLE        NOT NULL ,
 
   PRIMARY KEY (`name`)
 )
@@ -173,6 +174,8 @@ CREATE TABLE IF NOT EXISTS `config_database_table` (
   `is_director`    BOOLEAN NOT NULL ,
 
   `director_key`  VARCHAR(255) DEFAULT "" ,
+  `latitude_key`  VARCHAR(255) DEFAULT "" , -- Name for latitude (declination) column in this table
+  `longitude_key` VARCHAR(255) DEFAULT "" , -- Name for longitude (right ascension) column in this table
 
   PRIMARY KEY (`database`, `table`) ,
 

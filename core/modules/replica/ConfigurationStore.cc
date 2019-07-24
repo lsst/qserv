@@ -315,6 +315,9 @@ DatabaseFamilyInfo ConfigurationStore::addDatabaseFamily(DatabaseFamilyInfo cons
     if (info.numSubStripes == 0) {
         throw invalid_argument(_classMethodContext(__func__) + "  the number of sub-stripes level can't be 0");
     }
+    if (info.overlap < 0) {
+        throw invalid_argument(_classMethodContext(__func__) + "  the overlap can't be less than 0");
+    }
     if (_databaseFamilyInfo.end() != _databaseFamilyInfo.find(info.name)) {
         throw invalid_argument(_classMethodContext(__func__) + "  the family already exists");
     }
@@ -323,6 +326,7 @@ DatabaseFamilyInfo ConfigurationStore::addDatabaseFamily(DatabaseFamilyInfo cons
         info.replicationLevel,
         info.numStripes,
         info.numSubStripes,
+        info.overlap,
         make_shared<ChunkNumberQservValidator>(
             static_cast<int32_t>(info.numStripes),
             static_cast<int32_t>(info.numSubStripes))
@@ -398,7 +402,9 @@ DatabaseInfo ConfigurationStore::addDatabase(DatabaseInfo const& info) {
         noDirectorTable,
         noDirectorTableKey,
         noChunkIdKey,
-        noSubChunkIdKey
+        noSubChunkIdKey,
+        map<string,string>(),
+        map<string,string>()
     };
     return _databaseInfo[info.name];
 }
@@ -454,13 +460,17 @@ DatabaseInfo ConfigurationStore::addTable(
         bool isDirectorTable,
         string const& directorTableKey,
         string const& chunkIdKey,
-        string const& subChunkIdKey) {
+        string const& subChunkIdKey,
+        string const& latitudeColName,
+        string const& longitudeColName) {
 
     LOGS(_log, LOG_LVL_DEBUG, context(__func__) << "  database: " << database
          << " table: " << table << " isPartitioned: " << (isPartitioned ? "true" : "false")
          << " isDirectorTable: " << (isDirectorTable ? "true" : "false")
          << " directorTableKey: " << directorTableKey << " chunkIdKey: " << chunkIdKey
-         << " subChunkIdKey: " << subChunkIdKey);
+         << " subChunkIdKey: " << subChunkIdKey
+         << " latitudeColName: " << latitudeColName
+         << " longitudeColName:" << longitudeColName);
 
     validateTableParameters(
         _classMethodContext(__func__),
@@ -471,7 +481,9 @@ DatabaseInfo ConfigurationStore::addTable(
         isDirectorTable,
         directorTableKey,
         chunkIdKey,
-        subChunkIdKey
+        subChunkIdKey,
+        latitudeColName,
+        longitudeColName
     );
     
     // Update the transient state accordingly
@@ -484,7 +496,9 @@ DatabaseInfo ConfigurationStore::addTable(
         isDirectorTable,
         directorTableKey,
         chunkIdKey,
-        subChunkIdKey
+        subChunkIdKey,
+        latitudeColName,
+        longitudeColName
     );
 }
 
@@ -681,6 +695,11 @@ void ConfigurationStore::_loadConfiguration(util::ConfigStore const& configStore
         if (not _databaseFamilyInfo[name].numSubStripes) {
             _databaseFamilyInfo[name].numSubStripes= defaultNumSubStripes;
         }
+        ::parseKeyVal(configStore, section+".overlap", _databaseFamilyInfo[name].overlap,  0.0);
+        if (_databaseFamilyInfo[name].overlap < 0.) {
+            throw range_error(
+                    _classMethodContext(__func__) + "  overlap can't have a negative value");
+        }
         _databaseFamilyInfo[name].chunkNumberValidator =
             make_shared<ChunkNumberQservValidator>(
                     static_cast<int32_t>(_databaseFamilyInfo[name].numStripes),
@@ -719,6 +738,12 @@ void ConfigurationStore::_loadConfiguration(util::ConfigStore const& configStore
         _databaseInfo[name].directorTableKey = configStore.getRequired(section+".director_table_key");
         _databaseInfo[name].chunkIdKey = configStore.getRequired(section+".chunk_id_key");
         _databaseInfo[name].subChunkIdKey = configStore.getRequired(section+".sub_chunk_id_key");
+        
+        for (auto const& table: _databaseInfo[name].tables()) {
+            string const section = "table:" + name + "." + table;
+            _databaseInfo[name].latitudeColName[table] = configStore.getRequired(section+".latitude_key");
+            _databaseInfo[name].longitudeColName[table] = configStore.getRequired(section+".longitude_key");
+        }
     }
     dumpIntoLogger();
 }

@@ -153,6 +153,7 @@ string ConfigurationFile::dump2init(Configuration::Ptr const& config) {
             << "min_replication_level = " << info.replicationLevel << "\n"
             << "num_stripes           = " << info.numStripes << "\n"
             << "num_sub_stripes       = " << info.numSubStripes << "\n"
+            << "overlap               = " << info.overlap << "\n"
             << "\n";
     }
     for (auto&& database: config->databases(noSpecificFamily, allDatabases)) {
@@ -168,6 +169,20 @@ string ConfigurationFile::dump2init(Configuration::Ptr const& config) {
             << "chunk_id_key       = " << info.chunkIdKey << "\n"
             << "sub_chunk_id_key   = " << info.subChunkIdKey << "\n"
             << "\n";
+        for (auto&& table: info.partitionedTables) {
+            str << "[table:" << info.name << "." << table << "]\n"
+                << "\n"
+                << "latitude_key  = " << info.latitudeColName[table] << "\n"
+                << "longitude_key = " << info.longitudeColName[table] << "\n"
+                << "\n";
+        }
+        for (auto&& table: info.regularTables) {
+            str << "[table:" << info.name << "." << table << "]\n"
+                << "\n"
+                << "latitude_key  = \n"
+                << "longitude_key = \n"
+                << "\n";
+        }
     }
     return str.str();
 }

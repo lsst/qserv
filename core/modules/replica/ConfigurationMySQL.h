@@ -325,7 +325,9 @@ public:
                           bool isDirectorTable,
                           std::string const& directorTableKey,
                           std::string const& chunkIdKey,
-                          std::string const& subChunkIdKey) final;
+                          std::string const& subChunkIdKey,
+                          std::string const& latitudeColName,
+                          std::string const& longitudeColName) final;
 
     /// @see Configuration::deleteTable()
     DatabaseInfo deleteTable(std::string const& database,

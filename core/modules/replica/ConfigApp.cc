@@ -335,6 +335,11 @@ ConfigApp::ConfigApp(int argc, char* argv[])
         "The number of sub-stripes (from the CSS partitioning configuration).",
         _familyInfo.numSubStripes);
 
+    addFamilyCmd.required(
+        "overlap",
+        "The default overlap for tables that do not specify their own overlap.",
+        _familyInfo.overlap);
+
     // Command-specific parameters, options and flags
 
     parser().command("DELETE_DATABASE_FAMILY").required(
@@ -410,17 +415,28 @@ ConfigApp::ConfigApp(int argc, char* argv[])
     addTableCmd.option(
         "chunk-id-key",
         "The name of a column in the 'partitioned' table indicating a column which"
-        " is stores identifiers of chunks. Note that this option must be provided"
+        " stores identifiers of chunks. Note that this option must be provided"
         " for the 'partitioned' tables.",
         _chunkIdKey);
 
     addTableCmd.option(
         "sub-chunk-id-key",
         "The name of a column in the 'partitioned' table indicating a column which"
-        " is stores identifiers of sub-chunks. Note that this option must be provided"
+        " stores identifiers of sub-chunks. Note that this option must be provided"
         " for the 'partitioned' tables.",
         _subChunkIdKey);
 
+    addTableCmd.option(
+        "latitude-key",
+        "The name of a column in the 'partitioned' table indicating a column which"
+        " stores latitude (declination) of the object/sources. This parameter is optional.",
+        _latitudeColName);
+
+    addTableCmd.option(
+        "longitude-key",
+        "The name of a column in the 'partitioned' table indicating a column which"
+        " stores longitude (right ascension) of the object/sources. This parameter is optional.",
+        _longitudeColName);
 
     // Command-specific parameters, options and flags
 
@@ -1106,7 +1122,7 @@ int ConfigApp::_addTable() {
         list<pair<string,string>> noColumns;
         _config->addTable(_database, _table, _isPartitioned, noColumns,
                           _isDirector, _directorKey,
-                          _chunkIdKey, _subChunkIdKey);
+                          _chunkIdKey, _subChunkIdKey, _latitudeColName, _longitudeColName);
     } catch (exception const& ex) {
         LOGS(_log, LOG_LVL_ERROR, context << "operation failed, exception: " << ex.what());
         return 1;
