@@ -107,7 +107,7 @@ struct Fixture {
 BOOST_FIXTURE_TEST_SUITE(Suite, Fixture)
 
 BOOST_AUTO_TEST_CASE(Basic) {
-    EmptyChunks ec(dummyFile._path, dummyFile._fallback);
+    EmptyChunks ec(nullptr, dummyFile._path, dummyFile._fallback);
     auto s = ec.getEmpty("TestOne");
     BOOST_CHECK(s->find(3) != s->end());
     BOOST_CHECK(s->find(103) == s->end());

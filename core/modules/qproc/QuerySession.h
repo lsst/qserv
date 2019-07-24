@@ -84,6 +84,7 @@ public:
         : _css(css), _defaultDb(defaultDb),
           _sqlConfig(sqlConfig) {}
 
+
     std::shared_ptr<query::SelectStmt> parseQuery(std::string const & statement);
 
     std::string const& getOriginal() const { return _original; }

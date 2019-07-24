@@ -15,6 +15,8 @@
 #include "util/ConfigStore.h"
 #include "util/ConfigStoreError.h"
 
+using namespace std;
+
 namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.qmeta.QMeta");
@@ -25,12 +27,11 @@ namespace lsst {
 namespace qserv {
 namespace qmeta {
 
-std::shared_ptr<QMeta>
-QMeta::createFromConfig(std::map<std::string, std::string> const& config) {
+shared_ptr<QMeta> QMeta::createFromConfig(map<string, string> const& config) {
     LOGS(_log, LOG_LVL_DEBUG, "Create QMeta instance from config map");
 
     util::ConfigStore configStore(config);
-    std::string technology;
+    string technology;
 
     try {
         technology = configStore.getRequired("technology");
@@ -49,7 +50,7 @@ QMeta::createFromConfig(std::map<std::string, std::string> const& config) {
                configStore.get("database"));
 
                 LOGS(_log, LOG_LVL_DEBUG, "Create QMeta instance with mysql store");
-                return std::make_shared<QMetaMysql>(mysqlConfig);
+                return make_shared<QMetaMysql>(mysqlConfig);
         } catch (util::ConfigStoreError const& exc) {
             LOGS(_log, LOG_LVL_DEBUG, "Exception launched while creating MySQL configuration: " << exc.what());
             throw ConfigError(ERR_LOC, exc.what());
@@ -59,6 +60,5 @@ QMeta::createFromConfig(std::map<std::string, std::string> const& config) {
         throw ConfigError(ERR_LOC, "Unexpected value of \"technology\" key: " + technology);
     }
 }
-
 
 }}} // namespace lsst::qserv::qmeta

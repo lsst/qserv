@@ -30,6 +30,7 @@
 #include <vector>
 
 // Qserv headers
+#include "global/intTypes.h"
 #include "qmeta/QInfo.h"
 #include "qmeta/QStats.h"
 #include "qmeta/types.h"
@@ -286,7 +287,6 @@ public:
     virtual void saveResultQuery(QueryId queryId, std::string const& query) = 0;
 
 protected:
-
     // Default constructor
     QMeta() {}
 

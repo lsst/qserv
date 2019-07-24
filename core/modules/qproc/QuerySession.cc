@@ -265,7 +265,15 @@ QuerySession::getDbStriping() {
 std::shared_ptr<IntSet const>
 QuerySession::getEmptyChunks() {
     // FIXME: do we need to catch an exception here?
-    return _css->getEmptyChunks().getEmpty(_context->dominantDb);
+    if (_css != nullptr) {
+        LOGS(_log, LOG_LVL_DEBUG, "QuerySession::getEmptyChunks " << _context->dominantDb);
+        std::shared_ptr<IntSet const> result = _css->getEmptyChunks()->getEmpty(_context->dominantDb);
+        return result;
+    } else {
+        LOGS(_log, LOG_LVL_WARN, "QuerySession::getEmptyChunks no _css");
+        std::shared_ptr<IntSet const> res;
+        return res;
+    }
 }
 
 /// Returns the merge statment, if appropriate.

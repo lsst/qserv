@@ -178,4 +178,4 @@ class Config(object):
             # CSS disabled in config, return 409 (CONFLICT) code
             raise ExceptionResponse(409, "CSSDisabled",
                                     "CSS access is disabled by service configuration")
-        return css.CssAccess.createFromConfig(self.cssConfig, '')
+        return css.CssAccess.createFromConfig(self.cssConfig, "")

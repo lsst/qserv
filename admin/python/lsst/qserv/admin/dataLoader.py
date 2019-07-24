@@ -18,6 +18,7 @@
 # the GNU General Public License along with this program.  If not,
 # see <http://www.lsstcorp.org/LegalNotices/>.
 
+
 """
 Module defining DataLoader class and related methods.
 
@@ -25,7 +26,7 @@ DataLoader class is used to simplify data loading procedure.
 
 @author  Andy Salnikov, SLAC
 """
-from __future__ import absolute_import, division, print_function
+
 
 # --------------------------------
 #  Imports of standard modules --
@@ -81,7 +82,7 @@ class DataLoader(object):
     def __init__(self, configFiles, czarWmgr, workerWmgrMap={}, chunksDir="./loader_chunks",
                  chunkPrefix='chunk', keepChunks=False, skipPart=False, oneTable=False,
                  css=None, cssClear=False, indexDb='qservMeta', tmpDir=None,
-                 emptyChunks=None, deleteTables=False, loggerName=None):
+                 emptyChunks=None, deleteTables=False, loggerName=None, cssDb='qservCssData'):
         """
         Constructor parses all arguments and prepares for execution.
 
@@ -100,6 +101,7 @@ class DataLoader(object):
                              create chunk tables.
         @param css:          Instance of CssAccess class, None if CSS operations are disabled.
         @param cssClear:     If true then CSS info for a table will be deleted first.
+        @param cssDb:		 Name of the database where CSS tables are kept.
         @param indexDb:      Name of  database for object indices, index is generated for director
                              table when it is partitioned, use empty string to disable index.
         @param tmpDir:       Temporary directory to store uncompressed files. If None then directory
@@ -124,6 +126,7 @@ class DataLoader(object):
         self.oneTable = oneTable
         self.css = css
         self.cssClear = cssClear
+        self.cssDb = cssDb
         self.indexDb = None if oneTable else indexDb
         self.emptyChunks = emptyChunks
         self.deleteTables = deleteTables
@@ -220,6 +223,9 @@ class DataLoader(object):
         if self.css is not None:
             self._updateCss(database, table)
 
+        # Make a table of empty chunks
+        self._makeEmptyChunksTable(database)
+        
         # optionally make emptyChunks file
         self._makeEmptyChunks()
 
@@ -725,6 +731,52 @@ class DataLoader(object):
         i = schema.find('(')
         return schema[i:]
 
+    def _makeEmptyChunksTable(self, database):
+        """
+        Generate empty chunks table in qservMeta, should be called after loading is complete.
+        """
+    
+        # only makes sense for true partitioned tables
+        if not self.partitioned:
+            self._log.info('Table is not partitioned, will not make empty chunks table for %s', database)
+            return
+        
+        if self.cssDb is None:
+            self._log.info('No cssDb, nowhere to put empty chunks table for %s', database)
+            return
+        
+       
+        # Get a unique name for the EmptyChunks table.
+        if self.css is None:
+            self._log.info('No css, cannot create name for EmptyChunks table for %s', database)
+            return
+
+        tableName = self.css.getEmptyChunksTableName(database) 
+        
+        # Delete the existing empty chunks table
+        self.czarWmgr.dropTable(self.cssDb, tableName, dropChunks=False, mustExist=False)
+        
+        # make a table for the empty chunks
+        schema = self.css.getEmptyChunksSchema(database);
+        self.czarWmgr.createTable(self.cssDb, tableName, schema=schema)
+        
+        # max possible number of chunks
+        nStripes = int(self.partOptions['part.num-stripes'])
+        maxChunks = 2 * nStripes ** 2
+
+        self._log.info('Making empty chunk list (max.chunk=%d)', maxChunks)
+                
+        # dump it into a in-memory file, loadData expects binary mode
+        data = BytesIO()
+        for chunk in range(maxChunks):
+            if chunk not in self.chunks:
+                data.write(b"%d\n" % chunk)
+        data.seek(0)
+
+        # send that file to czar
+        self.czarWmgr.loadData(self.cssDb, tableName, data)
+
+                
     def _makeEmptyChunks(self):
         """
         Generate empty chunks file, should be called after loading is complete.

@@ -28,6 +28,7 @@
 // LSST headers
 #include "lsst/log/Log.h"
 
+
 // Qserv headers
 #include "css/CssAccess.h"
 #include "css/EmptyChunks.h"
@@ -65,9 +66,11 @@ void UserQueryFlushChunksCache::submit() {
     LOGS(_log, LOG_LVL_INFO, "Flushing empty chunks for db: " << _dbName);
 
     // reset empty chunk cache , this does not throw
-    _css->getEmptyChunks().clearCache(_dbName);
-
-    _qState = SUCCESS;
+    auto emptyChunks = _css->getEmptyChunks();
+    if (emptyChunks != nullptr) {
+        emptyChunks->clearCache(_dbName);
+        _qState = SUCCESS;
+    }
 }
 
 // Block until a submit()'ed query completes.

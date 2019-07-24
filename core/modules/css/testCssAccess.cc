@@ -22,7 +22,6 @@
 #include "css/constants.h"
 #include "css/CssAccess.h"
 #include "css/CssError.h"
-#include "css/EmptyChunks.h"
 #include "css/KvInterfaceImplMem.h"
 
 // Boost unit test header
@@ -144,7 +143,7 @@ shared_ptr<KvInterface> initKVI() {
 // Test fixure that instantiates a CSS with pre-loaded data
 class CssAccessFixture: public CssAccess {
 public:
-    CssAccessFixture() : CssAccess(initKVI(), make_shared<EmptyChunks>()) {}
+    CssAccessFixture() : CssAccess(initKVI(), nullptr, ".", "") {}
 
     ~CssAccessFixture() {}
 };

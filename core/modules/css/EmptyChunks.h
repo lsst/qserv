@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2015 AURA/LSST.
+ * Copyright 2015-2019 AURA/LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -46,6 +46,8 @@ namespace lsst {
 namespace qserv {
 namespace css {
 
+class DbInterfaceMySql;
+
 /// High-level empty-chunk-tracking class. Tracks empty chunks
 /// per-database. In the future, we will likely migrate to a
 /// per-partitioning-group scheme, at which point, we will re-think
@@ -53,17 +55,26 @@ namespace css {
 /// group may be extremely sparse).
 class EmptyChunks {
 public:
-    EmptyChunks(std::string const& path=".",
+    /// Doing anything with _css inside the constructor would be dangerous.
+    EmptyChunks(std::shared_ptr<DbInterfaceMySql> const& dbI,
+                std::string const& path=".",
                 std::string const& fallbackFile="emptyChunks.txt")
-        : _path(path), _fallbackFile(fallbackFile) {}
+        : _dbI(dbI), _path(path), _fallbackFile(fallbackFile) {}
+
+    EmptyChunks() = delete;
+    EmptyChunks(EmptyChunks const&) = delete;
+    EmptyChunks(EmptyChunks&&) = delete;
+    EmptyChunks& operator=(EmptyChunks const&) = delete;
+
+    ~EmptyChunks() = default;
 
     // accessors
 
     /// @return set of empty chunks for this db
-    std::shared_ptr<IntSet const> getEmpty(std::string const& db) const;
+    std::shared_ptr<IntSet const> getEmpty(std::string const& db);
 
     /// @return true if db/chunk is empty
-    bool isEmpty(std::string const& db, int chunk) const;
+    bool isEmpty(std::string const& db, int chunk);
 
     /// Clear cache for empty chunk list so that on next call to above methods
     /// empty chunk list is re-populated. If database name is empty then cache
@@ -71,12 +82,16 @@ public:
     void clearCache(std::string const& db=std::string()) const;
 
 private:
-
     // Convenience types
     typedef std::shared_ptr<IntSet> IntSetPtr;
     typedef std::shared_ptr<IntSet const> IntSetConstPtr;
 
+    /// @return all the empty chunks for database 'db'.
+    IntSet _populate(std::string const& db);
+
+
     typedef std::map<std::string, IntSetPtr> IntSetMap;
+    std::shared_ptr<DbInterfaceMySql> const _dbI; ///< allow access to empty chunks table.
     std::string _path; ///< Search path for empty chunks files
     std::string _fallbackFile; ///< Fallback path for empty chunks
     mutable IntSetMap _sets; ///< Container for empty chunks sets (cache)

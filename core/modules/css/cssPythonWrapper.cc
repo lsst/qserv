@@ -170,6 +170,8 @@ PYBIND11_MODULE(cssLib, mod) {
         // getEmptyChunks is intentionally skipped, not used by Python code
         //.def("getEmptyChunks", &CssAccess::getEmptyChunks)
         .def("getKvI", &CssAccess::getKvI)
+        .def("getEmptyChunksTableName", &CssAccess::getEmptyChunksTableName)
+        .def("getEmptyChunksSchema", &CssAccess::getEmptyChunksSchema)
         ;
 
     static py::exception<CssError> CssError(mod, "CssError");

@@ -28,7 +28,7 @@
 
 // Qserv headers
 #include "sql/SqlErrorObject.h"
-#include "sql/SqlTransaction.h"
+#include "sql/SqlTransactionScope.h"
 
 
 namespace lsst {
@@ -45,33 +45,21 @@ namespace qmeta {
  *  This wrapper generates exceptions when errors happen
  *  during calls to SqlTransaction instance.
  */
-
-class QMetaTransaction  {
+class QMetaTransaction : public sql::SqlTransactionScope  {
 public:
+    using Ptr = std::shared_ptr<QMetaTransaction>;
 
-    /// Constructor takes connection instance. It starts transaction.
-    /// trows exception if error happens.
-    QMetaTransaction(sql::SqlConnection& conn);
+    static Ptr create(sql::SqlConnection& conn) {
+        return sql::SqlTransactionScope::create<QMetaTransaction>(conn);
+    }
 
-    // Instances cannot be copied
-    QMetaTransaction(QMetaTransaction const&) = delete;
-    QMetaTransaction& operator=(QMetaTransaction const&) = delete;
+    ~QMetaTransaction() override {};
 
-    /// Destructor aborts transaction if it was not explicitly committed
-    /// or aborted. If error happens then no exception is generated
-    /// (destructors cannot throw).
-    ~QMetaTransaction();
+    void throwException(util::Issue::Context const& ctx, std::string const& msg) override;
 
-    /// Explicitly commit transaction, throws SqlError for errors.
-    void commit();
-
-    /// Explicitly abort transaction, throws SqlError for errors.
-    void abort();
-
+    friend sql::SqlTransactionScope;
 private:
-
-    sql::SqlErrorObject _errObj; // this must be declared before _trans
-    sql::SqlTransaction _trans;
+    QMetaTransaction(sql::SqlConnection& conn) : sql::SqlTransactionScope(conn) {}
 
 };
 

@@ -61,7 +61,7 @@ QStatusMysql::QStatusMysql(mysql::MySqlConfig const& mysqlConf)
 
 void QStatusMysql::queryStatsTmpRegister(QueryId queryId, int totalChunks) {
     lock_guard<mutex> sync(_dbMutex);
-    QMetaTransaction trans(*_conn);
+    auto trans = QMetaTransaction::create(*_conn);
     sql::SqlErrorObject errObj;
     string query = "INSERT INTO QStatsTmp (queryId, totalChunks, completedChunks, queryBegin, lastUpdate) "
                    "VALUES ( " + to_string(queryId) + ", " + to_string(totalChunks) +
@@ -74,13 +74,13 @@ void QStatusMysql::queryStatsTmpRegister(QueryId queryId, int totalChunks) {
         throw SqlError(ERR_LOC, errObj);
     }
 
-    trans.commit();
+    trans->commit();
 }
 
 
 void QStatusMysql::queryStatsTmpChunkUpdate(QueryId queryId, int completedChunks) {
     lock_guard<mutex> sync(_dbMutex);
-    QMetaTransaction trans(*_conn);
+    auto trans = QMetaTransaction::create(*_conn);
     sql::SqlErrorObject errObj;
     string query = "UPDATE QStatsTmp SET completedChunks = " + to_string(completedChunks) +
                     ", lastUpdate = NOW() WHERE queryId =" + to_string(queryId);
@@ -92,13 +92,13 @@ void QStatusMysql::queryStatsTmpChunkUpdate(QueryId queryId, int completedChunks
         throw SqlError(ERR_LOC, errObj);
     }
 
-    trans.commit();
+    trans->commit();
 }
 
 
 QStats QStatusMysql::queryStatsTmpGet(QueryId queryId) {
     lock_guard<mutex> sync(_dbMutex);
-    QMetaTransaction trans(*_conn);
+    auto trans = QMetaTransaction::create(*_conn);
     sql::SqlErrorObject errObj;
     sql::SqlResults results;
     string query = "SELECT queryId, totalChunks, completedChunks, "
@@ -125,14 +125,14 @@ QStats QStatusMysql::queryStatsTmpGet(QueryId queryId) {
     time_t begin        = boost::lexical_cast<time_t>(row[3].first);
     time_t lastUpdate   = boost::lexical_cast<time_t>(row[4].first);
 
-    trans.commit();
+    trans->commit();
     return QStats(qId, totalChunks, completedChunks, begin, lastUpdate);
 }
 
 
 void QStatusMysql::queryStatsTmpRemove(QueryId queryId) {
     lock_guard<mutex> sync(_dbMutex);
-    QMetaTransaction trans(*_conn);
+    auto trans = QMetaTransaction::create(*_conn);
     sql::SqlErrorObject errObj;
     string query = "DELETE FROM QStatsTmp WHERE queryId =" + to_string(queryId);
 
@@ -144,7 +144,7 @@ void QStatusMysql::queryStatsTmpRemove(QueryId queryId) {
         throw SqlError(ERR_LOC, errObj);
     }
 
-    trans.commit();
+    trans->commit();
 }
 
 }}} // namespace lsst::qserv::qmeta

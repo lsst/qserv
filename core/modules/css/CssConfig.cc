@@ -59,16 +59,16 @@ CssConfig::CssConfig(util::ConfigStore const& configStore)
     if (_technology.empty()) {
         std::string msg = "\"technology\" does not exist in configuration map";
         LOGS(_log, LOG_LVL_ERROR, msg);
-        throw ConfigError(msg);
+        throw ConfigError(ERR_LOC, msg);
     }
 
     if (not _data.empty() and  not _file.empty()) {
         std::string msg = "\"data\"  and \"file\" keys are mutually exclusive";
         LOGS(_log, LOG_LVL_ERROR, msg);
-        throw ConfigError(msg);
+        throw ConfigError(ERR_LOC, msg);
     }
 } catch (util::ConfigStoreError const& e) {
-    throw ConfigError(e.what());
+    throw ConfigError(ERR_LOC, e.what());
 }
 
 std::ostream& operator<<(std::ostream &out, CssConfig const& cssConfig) {

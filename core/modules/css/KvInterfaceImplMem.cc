@@ -111,7 +111,7 @@ KvInterfaceImplMem::create(string const& key, string const& value, bool unique) 
     LOGS(_log, LOG_LVL_DEBUG, "create(" << key << ", " << value << ", unique=" << int(unique));
 
     if (_readOnly) {
-        throw ReadonlyCss();
+        throw ReadonlyCss(ERR_LOC);
     }
 
     std::string path = norm_key(key);
@@ -126,7 +126,7 @@ KvInterfaceImplMem::create(string const& key, string const& value, bool unique) 
         } while (_kvMap.count(path));
     }
     if (exists(path)) {
-        throw KeyExistsError(path);
+        throw KeyExistsError(ERR_LOC, path);
     }
     // create all parents
     string parent = path;
@@ -146,7 +146,7 @@ KvInterfaceImplMem::set(string const& key, string const& value) {
     LOGS(_log, LOG_LVL_DEBUG, "set(" << key << ", " << value << ")");
 
     if (_readOnly) {
-        throw ReadonlyCss();
+        throw ReadonlyCss(ERR_LOC);
     }
 
     std::string path = norm_key(key);
@@ -191,7 +191,7 @@ KvInterfaceImplMem::_get(string const& key,
     std::string path = norm_key(key);
     if ( !exists(path) ) {
         if (throwIfKeyNotFound) {
-            throw NoSuchKey(path);
+            throw NoSuchKey(ERR_LOC, path);
         }
         return defaultValue;
     }
@@ -205,7 +205,7 @@ KvInterfaceImplMem::getChildren(string const& key) {
     LOGS(_log, LOG_LVL_DEBUG, "getChildren(), key: " << key);
     std::string path = norm_key(key);
     if ( ! exists(path) ) {
-        throw NoSuchKey(path);
+        throw NoSuchKey(ERR_LOC, path);
     }
     const string pfx(path + "/");
     vector<string> retV;
@@ -230,7 +230,7 @@ KvInterfaceImplMem::getChildrenValues(std::string const& key) {
     LOGS(_log, LOG_LVL_DEBUG, "getChildrenValues(), key: " << key);
     std::string path = norm_key(key);
     if ( ! exists(path) ) {
-        throw NoSuchKey(path);
+        throw NoSuchKey(ERR_LOC, path);
     }
     const string pfx(path + "/");
     std::map<std::string, std::string> retV;
@@ -254,14 +254,14 @@ KvInterfaceImplMem::deleteKey(string const& key) {
     LOGS(_log, LOG_LVL_DEBUG, "deleteKey(" << key << ")");
 
     if (_readOnly) {
-        throw ReadonlyCss();
+        throw ReadonlyCss(ERR_LOC);
     }
 
     std::string path = norm_key(key);
 
     auto iter = _kvMap.find(path);
     if (iter == _kvMap.end()) {
-        throw NoSuchKey(path);
+        throw NoSuchKey(ERR_LOC, path);
     }
     LOGS(_log, LOG_LVL_DEBUG, "deleteKey: erasing key " << path);
     _kvMap.erase(iter);
@@ -297,14 +297,14 @@ std::string KvInterfaceImplMem::dumpKV(std::string const& key) {
 
 void KvInterfaceImplMem::_init(std::istream& mapStream) {
     if (mapStream.fail()) {
-        throw ConnError();
+        throw ConnError(ERR_LOC);
     }
 
     ptree::ptree tree;
     try {
         ptree::read_json(mapStream, tree);
     } catch (ptree::json_parser_error const& exc) {
-        throw CssError("KvInterfaceImplMem - failed to parse JSON file");
+        throw CssError(ERR_LOC, "KvInterfaceImplMem - failed to parse JSON file");
     }
 
     for (auto&& pair: tree) {

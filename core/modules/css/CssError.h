@@ -39,6 +39,7 @@
 
 // Qserv headers
 #include "sql/SqlErrorObject.h"
+#include "util/Issue.h"
 
 namespace lsst {
 namespace qserv {
@@ -47,13 +48,13 @@ namespace css {
 /**
  * Base class for CSS run-time errors, represents a generic CSS run-time error.
  */
-class CssError : public std::runtime_error {
+class CssError : public util::Issue {
 public:
-    explicit CssError(std::string const& msg)
-        : std::runtime_error(msg) {}
+    explicit CssError(util::Issue::Context const& ctx, std::string const& msg)
+        : util::Issue(ctx, msg) {}
 
-    explicit CssError(sql::SqlErrorObject const& sqlErr)
-        : std::runtime_error("Error from mysql: ("
+    explicit CssError(util::Issue::Context const& ctx, sql::SqlErrorObject const& sqlErr)
+        : util::Issue(ctx, "Error from mysql: ("
                 + boost::lexical_cast<std::string>(sqlErr.errNo())
                 + ") "
                 + sqlErr.errMsg()) {}
@@ -67,8 +68,8 @@ public:
  */
 class NoSuchDb : public CssError {
 public:
-    explicit NoSuchDb(std::string const& dbName)
-        : CssError("Database '" + dbName + "' does not exist.") {}
+    explicit NoSuchDb(util::Issue::Context const& ctx, std::string const& dbName)
+        : CssError(ctx, "Database '" + dbName + "' does not exist.") {}
 
     virtual std::string typeName() const override { return "NoSuchDb"; }
 };
@@ -78,11 +79,11 @@ public:
  */
 class NoSuchKey : public CssError {
 public:
-    explicit NoSuchKey(std::string const& keyName)
-        : CssError("Key '" + keyName + "' does not exist.") {}
+    explicit NoSuchKey(util::Issue::Context const& ctx, std::string const& keyName)
+        : CssError(ctx, "Key '" + keyName + "' does not exist.") {}
 
-    explicit NoSuchKey(sql::SqlErrorObject const& sqlErr)
-        : CssError(sqlErr) {}
+    explicit NoSuchKey(util::Issue::Context const& ctx, sql::SqlErrorObject const& sqlErr)
+        : CssError(ctx, sqlErr) {}
 
     virtual std::string typeName() const override { return "NoSuchKey"; }
 };
@@ -92,8 +93,9 @@ public:
  */
 class NoSuchTable : public CssError {
 public:
-    explicit NoSuchTable(std::string const& dbName, std::string const& tableName)
-        : CssError("Table '" + dbName + "." + tableName + "' does not exist.") {}
+    explicit NoSuchTable(util::Issue::Context const& ctx,
+                         std::string const& dbName, std::string const& tableName)
+        : CssError(ctx, "Table '" + dbName + "." + tableName + "' does not exist.") {}
 
     virtual std::string typeName() const override { return "NoSuchTable"; }
 };
@@ -103,8 +105,8 @@ public:
  */
 class TableExists : public CssError {
 public:
-    explicit TableExists(std::string const& dbName, std::string const& tableName)
-        : CssError("Table '" + dbName + "." + tableName + "' already exists.") {}
+    explicit TableExists(util::Issue::Context const& ctx, std::string const& dbName, std::string const& tableName)
+        : CssError(ctx, "Table '" + dbName + "." + tableName + "' already exists.") {}
 
     virtual std::string typeName() const override { return "TableExists"; }
 };
@@ -114,8 +116,8 @@ public:
  */
 class AuthError : public CssError {
 public:
-    AuthError()
-        : CssError("Authorization failure.") {}
+    AuthError(util::Issue::Context const& ctx)
+        : CssError(ctx, "Authorization failure.") {}
 
     virtual std::string typeName() const override { return "AuthError"; }
 };
@@ -125,10 +127,10 @@ public:
  */
 class ConnError : public CssError {
 public:
-    ConnError()
-        : CssError("Failed to connect to persistent store.") {}
-    explicit ConnError(std::string const& reason)
-        : CssError("Failed to connect to persistent store. (" + reason + ")") {}
+    ConnError(util::Issue::Context const& ctx)
+        : CssError(ctx, "Failed to connect to persistent store.") {}
+    explicit ConnError(util::Issue::Context const& ctx, std::string const& reason)
+        : CssError(ctx, "Failed to connect to persistent store. (" + reason + ")") {}
 
     virtual std::string typeName() const override { return "ConnError"; }
 };
@@ -138,11 +140,11 @@ public:
  */
 class KeyExistsError : public CssError {
 public:
-    explicit KeyExistsError(std::string const& key)
-        : CssError("Key '" + key +"' already exists.") {}
+    explicit KeyExistsError(util::Issue::Context const& ctx, std::string const& key)
+        : CssError(ctx, "Key '" + key +"' already exists.") {}
 
-    explicit KeyExistsError(sql::SqlErrorObject const& sqlErr)
-        : CssError(sqlErr) {}
+    explicit KeyExistsError(util::Issue::Context const& ctx, sql::SqlErrorObject const& sqlErr)
+        : CssError(ctx, sqlErr) {}
 
     virtual std::string typeName() const override { return "KeyExistsError"; }
 };
@@ -152,8 +154,9 @@ public:
  */
 class KeyValueError : public CssError {
 public:
-    explicit KeyValueError(std::string const& key, std::string const& message)
-        : CssError("Key '" + key +"' value error: " + message) {}
+    explicit KeyValueError(util::Issue::Context const& ctx, std::string const& key,
+                           std::string const& message)
+        : CssError(ctx, "Key '" + key +"' value error: " + message) {}
 
     virtual std::string typeName() const override { return "KeyValueError"; }
 };
@@ -163,8 +166,9 @@ public:
  */
 class BadAllocError : public CssError {
 public:
-    BadAllocError(std::string const& key, std::string const& sizeTried)
-        : CssError("Can't allocate memory to get data for key'" + key +"'"
+    BadAllocError(util::Issue::Context const& ctx, std::string const& key,
+                  std::string const& sizeTried)
+        : CssError(ctx, "Can't allocate memory to get data for key'" + key +"'"
                    + ", tried allocating up to " + sizeTried + " bytes.") {}
 
     virtual std::string typeName() const override { return "BadAllocError"; }
@@ -175,8 +179,8 @@ public:
  */
 class VersionMissingError : public CssError {
 public:
-    explicit VersionMissingError(std::string const& key)
-        : CssError("Key for CSS version is not defined: '" + key +"'") {}
+    explicit VersionMissingError(util::Issue::Context const& ctx, std::string const& key)
+        : CssError(ctx, "Key for CSS version is not defined: '" + key +"'") {}
 
     virtual std::string typeName() const override { return "VersionMissingError"; }
 };
@@ -186,8 +190,9 @@ public:
  */
 class VersionMismatchError : public CssError {
 public:
-    VersionMismatchError(std::string const& expected, std::string const& actual)
-        : CssError("CSS version number mismatch: expected=" + expected +", actual=" + actual) {}
+    VersionMismatchError(util::Issue::Context const& ctx, std::string const& expected,
+                         std::string const& actual)
+        : CssError(ctx, "CSS version number mismatch: expected=" + expected +", actual=" + actual) {}
 
     virtual std::string typeName() const override { return "VersionMismatchError"; }
 };
@@ -197,8 +202,8 @@ public:
  */
 class ReadonlyCss : public CssError {
 public:
-    explicit ReadonlyCss()
-        : CssError("Attempt to modify read-only CSS.") {}
+    explicit ReadonlyCss(util::Issue::Context const& ctx)
+        : CssError(ctx, "Attempt to modify read-only CSS.") {}
 
     virtual std::string typeName() const override { return "ReadonlyCss"; }
 };
@@ -208,8 +213,8 @@ public:
  */
 class NoSuchNode : public CssError {
 public:
-    explicit NoSuchNode(std::string const& nodeName)
-        : CssError("Node '" + nodeName + "' does not exist.") {}
+    explicit NoSuchNode(util::Issue::Context const& ctx, std::string const& nodeName)
+        : CssError(ctx, "Node '" + nodeName + "' does not exist.") {}
 
     virtual std::string typeName() const override { return "NoSuchNode"; }
 };
@@ -219,8 +224,8 @@ public:
  */
 class NodeExists : public CssError {
 public:
-    explicit NodeExists(std::string const& nodeName)
-        : CssError("Node '" + nodeName + "' already exists.") {}
+    explicit NodeExists(util::Issue::Context const& ctx, std::string const& nodeName)
+        : CssError(ctx, "Node '" + nodeName + "' already exists.") {}
 
     virtual std::string typeName() const override { return "NodeExists"; }
 };
@@ -230,8 +235,8 @@ public:
  */
 class NodeInUse : public CssError {
 public:
-    explicit NodeInUse(std::string const& nodeName)
-        : CssError("Node '" + nodeName + "' is in use and cannot be deleted.") {}
+    explicit NodeInUse(util::Issue::Context const& ctx, std::string const& nodeName)
+        : CssError(ctx, "Node '" + nodeName + "' is in use and cannot be deleted.") {}
 
     virtual std::string typeName() const override { return "NodeInUse"; }
 };
@@ -241,8 +246,8 @@ public:
  */
 class ConfigError : public CssError {
 public:
-    explicit ConfigError(std::string const& msg)
-        : CssError("Invalid config: " + msg) {}
+    explicit ConfigError(util::Issue::Context const& ctx, std::string const& msg)
+        : CssError(ctx, "Invalid config: " + msg) {}
 
     virtual std::string typeName() const override { return "ConfigError"; }
 };

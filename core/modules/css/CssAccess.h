@@ -25,6 +25,7 @@
 // System headers
 #include <map>
 #include <memory>
+#include <set>
 #include <string>
 #include <vector>
 
@@ -45,6 +46,7 @@ namespace qserv {
 namespace css {
 
 class EmptyChunks;
+class DbInterfaceMySql;
 class KvInterface;
 
 /// @addtogroup css
@@ -484,23 +486,34 @@ public:
                                                       std::string const& tableName);
 
     /**
-     * @brief Access empty chunk list.
-     */
-    EmptyChunks const& getEmptyChunks() const { return *_emptyChunks; }
-
-    /**
      *  Return underlying KvInterface instance.
      *
      *  This may be useful for testing, not much for regular clients.
      */
     std::shared_ptr<KvInterface> getKvI() { return _kvI; }
 
+    /**
+     * @return a pointer to empty chunks cache.
+     */
+    std::shared_ptr<EmptyChunks> getEmptyChunks() { return _emptyChunks; }
+
+    /**
+     * @return the name of the empty chunks table for the given database name.
+     */
+    std::string getEmptyChunksTableName(std::string const& dbName);
+
+    /**
+     * @return the create table schema for the empty chunks table for 'dbName'.
+     */
+    std::string getEmptyChunksSchema(std::string const& dbName);
+
 protected:
 
-    // Construct from KvInterface instance and empty chunk list instance
+    // Construct from Key-value and database instances.
     CssAccess(std::shared_ptr<KvInterface> const& kvInterface,
-              std::shared_ptr<EmptyChunks> const& emptyChunks,
-              std::string const& prefix = std::string());
+              std::shared_ptr<DbInterfaceMySql> const& dbI,
+              std::string const& emptyChunkPath,
+              std::string const& prefix);
 
     // Methods below are protected only for testing purposes so that one can
     // subclass CssAccess and expose these methods for testing
@@ -553,9 +566,10 @@ private:
 private:
 
     std::shared_ptr<KvInterface> _kvI;
-    std::shared_ptr<EmptyChunks> _emptyChunks;
+    std::shared_ptr<DbInterfaceMySql> _dbI;
     std::string _prefix;    // optional prefix, for isolating tests from production
     mutable bool _versionOk;   // True if version is checked (and is OK)
+    std::shared_ptr<EmptyChunks> _emptyChunks; ///< Cache of empty chunks.
 };
 
 }}} // namespace lsst::qserv::css
