@@ -332,6 +332,18 @@ static const std::vector<ScisqlRestrictorTestCaseData> SCISQL_RESTRICTOR_TEST_CA
             "AND `o`.objectIdObjTest=`s`.objectIdSourceTest",
         "qserv_areaspec_poly",
         {"1.0", "3.0", "1.5", "2.0", "2.0", "4.0"}),
+    ScisqlRestrictorTestCaseData(
+        "select * from LSST.Object o, Source s "
+            "WHERE scisql_s2PtInBox(o.ra_Test, o.decl_Test, 2, 2, 3, 3)=1 "
+            "AND scisql_s2PtInBox(s.ra_Test, s.decl_Test, 2, 2, 3, 3)=1 "
+            "AND o.objectIdObjTest = s.objectIdSourceTest;",
+        "SELECT * FROM LSST.Object_100 AS `o`,LSST.Source_100 AS `s` "
+            "WHERE scisql_s2PtInBox(`o`.ra_Test,`o`.decl_Test,2,2,3,3)=1 "
+            "AND scisql_s2PtInBox(`s`.ra_Test,`s`.decl_Test,2,2,3,3)=1 "
+            "AND `o`.objectIdObjTest=`s`.objectIdSourceTest",
+        "", // There should not be any qserv area restrictor, because there are 2 scisql_s2Pt... funcs in the
+            // query.
+        {}),
 };
 
 
@@ -339,18 +351,20 @@ static const std::vector<ScisqlRestrictorTestCaseData> SCISQL_RESTRICTOR_TEST_CA
 BOOST_DATA_TEST_CASE(ObjectSourceJoin_ScisqlRestrictor, SCISQL_RESTRICTOR_TEST_CASE_DATA, queryData) {
     qsTest.sqlConfig = SqlConfig(SqlConfig::MockDbTableColumns(
         {{"LSST", {{"Object", {"objectIdObjTest", "ra_Test", "decl_Test"}},
-         {"Source", {"objectIdSourceTest"}}}}}));
+         {"Source", {"objectIdSourceTest", "ra_Test", "decl_Test"}}}}}));
     std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, queryData.stmt);
     std::shared_ptr<QueryContext> context = qs->dbgGetContext();
     BOOST_CHECK(context);
     BOOST_CHECK_EQUAL(context->dominantDb, std::string("LSST"));
-    BOOST_REQUIRE(context->restrictors);
-    BOOST_CHECK_EQUAL(context->restrictors->size(), 1U);
-    BOOST_REQUIRE(context->restrictors->front());
-    QsRestrictor& r = *context->restrictors->front();
-    BOOST_CHECK_EQUAL(r._name, queryData.expectedRestrictor);
-    BOOST_CHECK_EQUAL_COLLECTIONS(r._params.begin(), r._params.end(),
-                                  queryData.expectedParams.begin(), queryData.expectedParams.end());
+    if (not queryData.expectedRestrictor.empty()) {
+        BOOST_REQUIRE(context->restrictors);
+        BOOST_CHECK_EQUAL(context->restrictors->size(), 1U);
+        BOOST_REQUIRE(context->restrictors->front());
+        QsRestrictor& r = *context->restrictors->front();
+        BOOST_CHECK_EQUAL(r._name, queryData.expectedRestrictor);
+        BOOST_CHECK_EQUAL_COLLECTIONS(r._params.begin(), r._params.end(),
+                                    queryData.expectedParams.begin(), queryData.expectedParams.end());
+    }
     std::string actual = queryAnaHelper.buildFirstParallelQuery();
     BOOST_CHECK_EQUAL(actual, queryData.expectedStmt);
 }
