@@ -181,6 +181,12 @@ shared_ptr<query::ColumnRef> ColumnRef(string const& db, string const& table, st
 }
 
 
+/// Create a new ColumnRef with given TableRef and column name.
+shared_ptr<query::ColumnRef> ColumnRef(shared_ptr<query::TableRef> const& tableRef, string const& column) {
+    return make_shared<query::ColumnRef>(tableRef, column);
+}
+
+
 /// Create a new CompPredicate, comparising the `left` and `right` ValueExprPtrs, with an operator
 shared_ptr<query::CompPredicate> CompPredicate(shared_ptr<query::ValueExpr> const& left,
         query::CompPredicate::OpType op, shared_ptr<query::ValueExpr> const& right) {
@@ -3614,6 +3620,21 @@ static const vector<Antlr4TestQueries> ANTLR4_TEST_QUERIES = {
         "select * from Filter where NOT (filterId > 1 AND filterId < 6)",
         []() -> shared_ptr<query::SelectStmt> { return SelectStmt(SelectList(ValueExpr("", FactorOp(ValueFactor(STAR, ""), query::ValueExpr::NONE))), FromList(TableRef("", "Filter", "")), WhereClause(OrTerm(AndTerm(BoolFactor(IS_NOT, PassTerm("("), BoolTermFactor(AndTerm(BoolFactor(IS, CompPredicate(ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "", "filterId")), query::ValueExpr::NONE)), query::CompPredicate::GREATER_THAN_OP, ValueExpr("", FactorOp(ValueFactor("1"), query::ValueExpr::NONE)))), BoolFactor(IS, CompPredicate(ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "", "filterId")), query::ValueExpr::NONE)), query::CompPredicate::LESS_THAN_OP, ValueExpr("", FactorOp(ValueFactor("6"), query::ValueExpr::NONE)))))), PassTerm(")"))))), nullptr, nullptr, nullptr, 0, -1);},
         "SELECT * FROM Filter WHERE NOT(filterId>1 AND filterId<6)"
+    ),
+
+    // tests expression with alias in select list
+    Antlr4TestQueries(
+        "SELECT objectId - 1 AS o FROM Object",
+        []() -> shared_ptr<query::SelectStmt> { return
+            SelectStmt(
+                SelectList(
+                    ValueExpr("o",
+                        FactorOp(ValueFactor(ColumnRef(TableRef("", "", ""), "objectId")), query::ValueExpr::MINUS),
+                        FactorOp(ValueFactor("1"), query::ValueExpr::NONE))
+                    ),
+                FromList(TableRef("", "Object", "")), nullptr, nullptr, nullptr, nullptr, 0, -1)
+        ; },
+        "SELECT (objectId-1) AS `o` FROM Object"
     ),
 };
 

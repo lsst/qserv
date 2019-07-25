@@ -1984,7 +1984,7 @@ private:
 
 class SelectExpressionElementAdapter :
         public AdapterT<SelectExpressionElementCBH, QSMySqlParser::SelectExpressionElementContext>,
-        public PredicateExpressionCBH {
+        public PredicateExpressionCBH, public UidCBH {
 public:
     using AdapterT::AdapterT;
 
@@ -1999,6 +1999,10 @@ public:
         _valueExpr = valueExpr;
     }
 
+    void handleUid(string const & string) override {
+        _alias = string;
+    }
+
     void checkContext() const override {
         // optional:
         // AS();
@@ -2009,6 +2013,7 @@ public:
 
     void onExit() override {
         ASSERT_EXECUTION_CONDITION(nullptr != _valueExpr, "valueExpr must be set in SelectExpressionElementAdapter.", _ctx);
+        if (_valueExpr != nullptr && not _alias.empty()) _valueExpr->setAlias(_alias);
         lockedParent()->handleSelectExpressionElement(_valueExpr);
     }
 
@@ -2016,6 +2021,7 @@ public:
 
 private:
     shared_ptr<query::ValueExpr> _valueExpr;
+    string _alias;
 };
 
 
