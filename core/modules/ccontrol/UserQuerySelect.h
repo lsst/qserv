@@ -178,7 +178,7 @@ private:
     std::string _queryIdStr{QueryIdHelper::makeIdStr(0, true)};
     bool _killed{false};
     std::mutex _killMutex;
-    std::string _errorExtra;    ///< Additional error information
+    mutable std::string _errorExtra;    ///< Additional error information
     std::string _resultTable;   ///< Result table name
     std::string _resultLoc;     ///< Result location
     std::string _resultDb;      ///< Result database (todo is this the same as resultLoc??)

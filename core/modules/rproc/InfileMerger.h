@@ -191,11 +191,29 @@ public:
     bool scrubResults(int jobId, int attempt);
     int makeJobIdAttempt(int jobId, int attemptCount);
 
-    /// Make a schema that matches the results of the given query.
-    sql::Schema getSchemaForQueryResults(query::SelectStmt const& stmt, std::string& errMsg);
+    /**
+     * @brief Make a schema that matches the results of the given query.
+     *
+     * @param stmt The statement to make a schema for.
+     * @param schema The schema object to hold the schema.
+     * @return true If a schema was created.
+     * @return false If a schema was NOT created. Call InfileMerger::getError() to get specific information
+     *               about the failure.
+     */
+    bool getSchemaForQueryResults(query::SelectStmt const& stmt, sql::Schema& schema);
 
-    /// Make the results table for the given query.
-    bool makeResultsTableForQuery(query::SelectStmt const& stmt, std::string& errMsg);
+    /**
+     * @brief Make the results table for the given query.
+     *
+     * Calculates the schema of the results table for the given query, and makes the results table for that
+     * query.
+     *
+     * @param stmt The statment to make a results table for.
+     * @return true If the results table was created.
+     * @return false If the results table was NOT created. Call InfileMerger::getError() to get specific
+     *               information about the failure.
+     */
+    bool makeResultsTableForQuery(query::SelectStmt const& stmt);
 
 private:
     bool _applyMysql(std::string const& query);

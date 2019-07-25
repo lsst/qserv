@@ -214,11 +214,14 @@ std::string UserQuerySelect::getResultQuery() const {
     auto const& valueExprList = *_qSession->getStmt().getSelectList().getValueExprList();
     for (auto const& valueExpr : valueExprList) {
         if (valueExpr->isStar()) {
-            std::string errMsg;
             auto useSelectList = std::make_shared<query::SelectList>();
             useSelectList->addValueExpr(valueExpr);
             query::SelectStmt starStmt(useSelectList, _qSession->getStmt().getFromList().clone());
-            auto schema = _infileMerger->getSchemaForQueryResults(starStmt, errMsg);
+            sql::Schema schema;
+            if (not _infileMerger->getSchemaForQueryResults(starStmt, schema)) {
+                _errorExtra = "Internal error getting schema for query results:" +
+                    _infileMerger->getError().getMsg();
+            }
             for (auto const& column : schema.columns) {
                 selectList.addValueExpr(query::ValueExpr::newColumnExpr(column.name));
             }
@@ -448,7 +451,8 @@ void UserQuerySelect::setupMerger() {
         _errorExtra = "Could not create results table for query (no worker queries).";
         return;
     }
-    if (not _infileMerger->makeResultsTableForQuery(*preFlightStmt, _errorExtra)) {
+    if (not _infileMerger->makeResultsTableForQuery(*preFlightStmt)) {
+        _errorExtra = _infileMerger->getError().getMsg();
         _qMetaUpdateStatus(qmeta::QInfo::FAILED);
     }
 }
