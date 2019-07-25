@@ -267,7 +267,7 @@ public:
 
 class UidCBH : public BaseCBH {
 public:
-    virtual void handleUid(string const & string) = 0;
+    virtual void handleUid(string const & uidString) = 0;
 };
 
 
@@ -1165,8 +1165,8 @@ public:
         }
     }
 
-    void handleUid(string const & string) override {
-        _alias = string;
+    void handleUid(string const & uidString) override {
+        _alias = uidString;
     }
 
     void checkContext() const override {
@@ -1250,8 +1250,8 @@ class FullColumnNameAdapter :
 public:
     using AdapterT::AdapterT;
 
-    void handleUid(string const & string) override {
-        _strings.push_back(string);
+    void handleUid(string const & uidString) override {
+        _strings.push_back(uidString);
     }
 
     void handleDottedId(string const & dot_id) override {
@@ -1936,10 +1936,10 @@ class SelectFunctionElementAdapter :
 public:
     using AdapterT::AdapterT;
 
-    void handleUid(string const & string) override {
+    void handleUid(string const & uidString) override {
         // Uid is expected to be the aliasName in `functionCall AS aliasName` or `functionCall aliasName`
         ASSERT_EXECUTION_CONDITION(_asName.empty(), "Second call to handleUid.", _ctx);
-        _asName = string;
+        _asName = uidString;
     }
 
     void handleAggregateFunctionCall(shared_ptr<query::ValueFactor> const & valueFactor) override {
@@ -1999,8 +1999,8 @@ public:
         _valueExpr = valueExpr;
     }
 
-    void handleUid(string const & string) override {
-        _alias = string;
+    void handleUid(string const & uidString) override {
+        _alias = uidString;
     }
 
     void checkContext() const override {
@@ -2132,8 +2132,8 @@ public:
                 "Context check failure: exactly one of DOT_ID and uid should be non-null.", _ctx);
     }
 
-    void handleUid(string const & string) override {
-        _id = string;
+    void handleUid(string const & uidString) override {
+        _id = uidString;
     }
 
     void onExit() override {
@@ -2187,9 +2187,9 @@ public:
         _valueFactor = valueFactor;
     }
 
-    void handleUid(string const & string) override {
+    void handleUid(string const & uidString) override {
         ASSERT_EXECUTION_CONDITION(_alias.empty(), "handleUid should be called once.", _ctx);
-        _alias = string;
+        _alias = uidString;
     }
 
     void checkContext() const override {
@@ -2277,8 +2277,8 @@ class UidListAdapter :
 public:
     using AdapterT::AdapterT;
 
-    void handleUid(string const & string) override {
-        _strings.push_back(string);
+    void handleUid(string const & uidString) override {
+        _strings.push_back(uidString);
     }
 
     void checkContext() const override {
