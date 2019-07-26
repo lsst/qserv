@@ -99,10 +99,10 @@ typedef std::pair<std::string, std::string> StringPair;
 typedef std::deque<RestrictorEntry> RestrictoryEntryList;
 
 
-class getTable : public query::TableRef::Func {
+class GetTable : public query::TableRef::Func {
 public:
 
-    getTable(css::CssAccess& css, RestrictoryEntryList& chunkedTables)
+    GetTable(css::CssAccess& css, RestrictoryEntryList& chunkedTables)
         : _css(css),
           _chunkedTables(chunkedTables) {}
 
@@ -387,7 +387,7 @@ void addScisqlRestrictors(std::vector<std::shared_ptr<query::QsRestrictor>> cons
 
     auto const& tableList = fromList.getTableRefList();
     RestrictoryEntryList chunkedTables;
-    getTable gt(*context.css, chunkedTables);
+    GetTable gt(*context.css, chunkedTables);
     std::for_each(tableList.begin(), tableList.end(), gt);
     // chunkedTables is now populated with a RestrictorEntry for each table in the FROM list that is chunked.
     if (chunkedTables.empty()) {
