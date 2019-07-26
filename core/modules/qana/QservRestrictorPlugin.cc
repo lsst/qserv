@@ -299,12 +299,13 @@ std::shared_ptr<const query::FuncExpr> extractSingleScisqlAreaFunc(query::WhereC
             auto compPredicate = std::dynamic_pointer_cast<const query::CompPredicate>(boolFactorTerm);
             if (nullptr == compPredicate) continue;
             if (compPredicate->op != query::CompPredicate::EQUALS_OP) continue;
-            for (auto const& valueExpr: {compPredicate->left, compPredicate->right})
-            if (isScisqlAreaFunc(*valueExpr)) {
-                if (scisqlFunc != nullptr) {
-                    return nullptr;
+            for (auto const& valueExpr: {compPredicate->left, compPredicate->right}) {
+                if (isScisqlAreaFunc(*valueExpr)) {
+                    if (scisqlFunc != nullptr) {
+                        return nullptr;
+                    }
+                    scisqlFunc = valueExpr->getFunction();
                 }
-                scisqlFunc = valueExpr->getFunction();
             }
         }
     }
