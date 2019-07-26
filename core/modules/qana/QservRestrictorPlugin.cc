@@ -139,10 +139,8 @@ public:
                            StringPair(pCols[0], pCols[1]),
                            pCols[2]);
         _chunkedTables.push_back(se);
-        query::JoinRefPtrVector& joinRefs = t.getJoins();
-        typedef query::JoinRefPtrVector::iterator Iter;
-        for (Iter i=joinRefs.begin(), e=joinRefs.end(); i != e; ++i) {
-            (*this)((**i).getRight());
+        for (auto const& joinRef : t.getJoins()) {
+            (*this)(joinRef->getRight());
         }
     }
     css::CssAccess& _css;
