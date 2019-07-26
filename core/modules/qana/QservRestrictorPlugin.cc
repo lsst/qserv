@@ -161,11 +161,9 @@ query::FuncExpr::Ptr newFuncExpr(char const fName[],
     fe->params.push_back(
           query::ValueExpr::newSimple(query::ValueFactor::newColumnRefFactor(
                 std::make_shared<query::ColumnRef>("", "", tableAlias, chunkColumns.second))));
-
-    typename C::const_iterator i;
-    for (i = c.begin(); i != c.end(); ++i) {
+    for (auto const& i : c) {
         fe->params.push_back(
-          query::ValueExpr::newSimple(query::ValueFactor::newConstFactor(*i)));
+          query::ValueExpr::newSimple(query::ValueFactor::newConstFactor(i)));
     }
     return fe;
 }
