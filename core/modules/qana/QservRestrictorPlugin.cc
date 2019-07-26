@@ -182,13 +182,13 @@ public:
         return (*_generator)(e);
     }
 
+private:
     class Generator {
     public:
         virtual ~Generator() {}
         virtual query::BoolFactor::Ptr operator()(RestrictorEntry const& e) = 0;
     };
 
-private:
     class AreaGenerator : public Generator {
     public:
         AreaGenerator(char const* fName_, int paramCount_,
