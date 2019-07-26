@@ -89,9 +89,9 @@ struct RestrictorEntry {
           chunkColumns(chunkColumns_),
           secIndexColumn(secIndexColumn_)
         {}
-    std::string alias; //< The alias of the chunked table.
-    StringPair chunkColumns;
-    std::string secIndexColumn;
+    std::string const alias; //< The alias of the chunked table.
+    StringPair const chunkColumns;
+    std::string const secIndexColumn;
 };
 
 
@@ -250,7 +250,7 @@ private:
             throw qana::AnalysisBug("Unmatched restriction spec: " + _name);
         }
     }
-    std::string _name;
+    std::string const _name;
     std::vector<double> _params;
     std::shared_ptr<Generator> _generator;
 };
