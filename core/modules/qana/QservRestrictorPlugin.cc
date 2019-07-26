@@ -260,9 +260,9 @@ private:
 };
 
 
-query::BoolTerm::Ptr makeCondition(std::shared_ptr<const query::QsRestrictor> const restr,
+query::BoolTerm::Ptr makeCondition(query::QsRestrictor const& restr,
                                    RestrictorEntry const& restrictorEntry) {
-    Restriction r(*restr);
+    Restriction r(restr);
     return r.generate(restrictorEntry);
 }
 
@@ -399,7 +399,7 @@ void addScisqlRestrictors(std::vector<std::shared_ptr<query::QsRestrictor>> cons
     // condition for each chunked table.
     for (auto const& qsRestrictor : restrictors) {
         for (auto const& chunkedTable : chunkedTables) {
-            newTerm->_terms.push_back(makeCondition(qsRestrictor, chunkedTable));
+            newTerm->_terms.push_back(makeCondition(*qsRestrictor, chunkedTable));
         }
     }
     LOGS(_log, LOG_LVL_TRACE, "for restrictors: " << util::printable(restrictors) <<
