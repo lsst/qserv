@@ -2503,7 +2503,12 @@ void HttpProcessor::_publishDatabaseInMaster(DatabaseInfo const& databaseInfo) c
 
     map<string, string> cssConfig;
     cssConfig["technology"] = "mysql";
-    cssConfig["hostname"] = config->qservMasterDatabaseHost(),
+    // FIXME: Address translation because CSS MySQL connector doesn't set the TCP protocol
+    // option for 'localhost' and tries to connect via UNIX socket.
+    cssConfig["hostname"] =
+            config->qservMasterDatabaseHost() == "localhost" ?
+                "127.0.0.1" :
+                config->qservMasterDatabaseHost(),
     cssConfig["port"] = to_string(config->qservMasterDatabasePort());
     cssConfig["username"] = "root";
     cssConfig["password"] = Configuration::qservMasterDatabasePassword();
