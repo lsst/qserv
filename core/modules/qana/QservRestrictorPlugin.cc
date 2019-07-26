@@ -201,7 +201,7 @@ private:
             }
         }
 
-        virtual query::BoolFactor::Ptr operator()(RestrictorEntry const& e) {
+        query::BoolFactor::Ptr operator()(RestrictorEntry const& e) override {
             query::BoolFactor::Ptr newFactor =
                     std::make_shared<query::BoolFactor>();
             query::BoolFactorTerm::PtrVector& terms = newFactor->_terms;
