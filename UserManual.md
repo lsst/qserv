@@ -108,8 +108,8 @@ Spatial constraints in Qserv can be expressed using one of the functions we intr
     qserv_areaspec_ellipse(
         lon                  DOUBLE PRECISION,  # [deg]    Ellipse center longitude
         lat                  DOUBLE PRECISION,  # [deg]    Ellipse center latitude
-        semiMajorAxisAngle   DOUBLE PRECISION,  # [deg]    Semi-major axis length
-        semiMinorAxisAngle   DOUBLE PRECISION,  # [deg]    Semi-minor axis length
+        semiMajorAxisAngle   DOUBLE PRECISION,  # [arcsec] Semi-major axis length
+        semiMinorAxisAngle   DOUBLE PRECISION,  # [arcsec] Semi-minor axis length
         positionAngle        DOUBLE PRECISION   # [deg]    Ellipse position angle, east of north
     )
 
