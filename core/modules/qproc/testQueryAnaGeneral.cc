@@ -39,6 +39,7 @@
 #include <map>
 #include <sstream>
 #include <string>
+#include <vector>
 
 // Third-party headers
 #include "boost/algorithm/string.hpp"
@@ -46,6 +47,7 @@
 // Boost unit test header
 #define BOOST_TEST_MODULE QueryAnalysis
 #include "boost/test/included/unit_test.hpp"
+#include <boost/test/data/test_case.hpp>
 
 // Qserv headers
 #include "mysql/MySqlConfig.h"
@@ -267,6 +269,132 @@ BOOST_AUTO_TEST_CASE(BadDbAccess) {
     // is correct.
     char expectedErr[] = "NoSuchDb(sql):No such database: Bad";
     BOOST_CHECK(qs->getError().find(expectedErr) != std::string::npos);
+}
+
+
+struct ScisqlRestrictorTestCaseData {
+    ScisqlRestrictorTestCaseData(std::string const& stmt_,
+                                 std::string const& expectedStmt_,
+                                 std::string const& expectedRestrictor_,
+                                 std::vector<std::string> const& expectedParams_)
+            : stmt(stmt_), expectedStmt(expectedStmt_), expectedRestrictor(expectedRestrictor_),
+              expectedParams(expectedParams_) {}
+
+    std::string stmt;
+    std::string expectedStmt;
+    std::string expectedRestrictor;
+    std::vector<std::string> expectedParams;
+};
+
+
+std::ostream& operator<<(std::ostream& os, ScisqlRestrictorTestCaseData const& i) {
+    os << "ScisqlRestrictorTestCaseData(" << i.stmt << "...)";
+    return os;
+}
+
+
+static const std::vector<ScisqlRestrictorTestCaseData> SCISQL_RESTRICTOR_TEST_CASE_DATA = {
+    ScisqlRestrictorTestCaseData(
+        "select * from LSST.Object o, Source s "
+            "WHERE scisql_s2PtInBox(o.ra_Test, o.decl_Test, 2, 2, 3, 3)=1 "
+            "AND o.objectIdObjTest = s.objectIdSourceTest;",
+        "SELECT * FROM LSST.Object_100 AS `o`,LSST.Source_100 AS `s` "
+            "WHERE scisql_s2PtInBox(`o`.ra_Test,`o`.decl_Test,2,2,3,3)=1 "
+            "AND `o`.objectIdObjTest=`s`.objectIdSourceTest",
+        "qserv_areaspec_box",
+        {"2","2","3","3"}),
+    ScisqlRestrictorTestCaseData(
+        "select * from LSST.Object o, Source s "
+            "WHERE scisql_s2PtInCircle(o.ra_Test, o.decl_Test, 1, 1, 1.3) = 1 "
+            "AND o.objectIdObjTest = s.objectIdSourceTest;",
+        "SELECT * FROM LSST.Object_100 AS `o`,LSST.Source_100 AS `s` "
+            "WHERE scisql_s2PtInCircle(`o`.ra_Test,`o`.decl_Test,1,1,1.3)=1 "
+            "AND `o`.objectIdObjTest=`s`.objectIdSourceTest",
+        "qserv_areaspec_circle",
+        {"1","1","1.3"}),
+
+    ScisqlRestrictorTestCaseData(
+        "select * from LSST.Object o, Source s "
+            "WHERE scisql_s2PtInEllipse(ra_Test, decl_Test, 1.2, 3.2, 2500, 1500, 0.2) = 1 "
+            "AND o.objectIdObjTest = s.objectIdSourceTest;",
+        "SELECT * FROM LSST.Object_100 AS `o`,LSST.Source_100 AS `s` "
+            "WHERE scisql_s2PtInEllipse(`o`.ra_Test,`o`.decl_Test,1.2,3.2,2500,1500,0.2)=1 "
+            "AND `o`.objectIdObjTest=`s`.objectIdSourceTest",
+        "qserv_areaspec_ellipse",
+        {"1.2", "3.2", "2500", "1500", "0.2"}),
+
+    ScisqlRestrictorTestCaseData(
+        "select * from LSST.Object o, Source s "
+            "WHERE scisql_s2PtInCPoly(ra_Test, decl_Test, 1.0, 3.0, 1.5, 2.0, 2.0, 4.0) = 1 "
+            "AND o.objectIdObjTest = s.objectIdSourceTest;",
+        "SELECT * FROM LSST.Object_100 AS `o`,LSST.Source_100 AS `s` "
+            "WHERE scisql_s2PtInCPoly(`o`.ra_Test,`o`.decl_Test,1.0,3.0,1.5,2.0,2.0,4.0)=1 "
+            "AND `o`.objectIdObjTest=`s`.objectIdSourceTest",
+        "qserv_areaspec_poly",
+        {"1.0", "3.0", "1.5", "2.0", "2.0", "4.0"}),
+    ScisqlRestrictorTestCaseData(
+        "select * from LSST.Object o, Source s "
+            "WHERE scisql_s2PtInBox(o.ra_Test, o.decl_Test, 2, 2, 3, 3)=1 "
+            "AND scisql_s2PtInBox(s.ra_Test, s.decl_Test, 2, 2, 3, 3)=1 "
+            "AND o.objectIdObjTest = s.objectIdSourceTest;",
+        "SELECT * FROM LSST.Object_100 AS `o`,LSST.Source_100 AS `s` "
+            "WHERE scisql_s2PtInBox(`o`.ra_Test,`o`.decl_Test,2,2,3,3)=1 "
+            "AND scisql_s2PtInBox(`s`.ra_Test,`s`.decl_Test,2,2,3,3)=1 "
+            "AND `o`.objectIdObjTest=`s`.objectIdSourceTest",
+        "", // There should not be any qserv area restrictor, because there are 2 scisql_s2Pt... funcs in the
+            // query.
+        {}),
+    ScisqlRestrictorTestCaseData(
+        "select * from LSST.Object o, Source s "
+            "WHERE scisql_s2PtInBox(o.ra_Test, o.decl_Test, 2, 2, 3, 3, 4)=1 " // too many args to the scisql func
+            "AND o.objectIdObjTest = s.objectIdSourceTest;",
+        "SELECT * FROM LSST.Object_100 AS `o`,LSST.Source_100 AS `s` "
+            "WHERE scisql_s2PtInBox(`o`.ra_Test,`o`.decl_Test,2,2,3,3,4)=1 "
+            "AND `o`.objectIdObjTest=`s`.objectIdSourceTest",
+        "", // There should not be any qserv area restrictor, because there are 2 scisql_s2Pt... funcs in the
+            // query.
+        {}),
+    ScisqlRestrictorTestCaseData(
+        "select * from LSST.Object o, Source s "
+            "WHERE scisql_s2PtInCPoly(ra_Test, decl_Test, 70, 3, 75, 3.5)=1 " // too few args to the scisql func
+            "AND o.objectIdObjTest = s.objectIdSourceTest;",
+        "SELECT * FROM LSST.Object_100 AS `o`,LSST.Source_100 AS `s` "
+            "WHERE scisql_s2PtInCPoly(`o`.ra_Test,`o`.decl_Test,70,3,75,3.5)=1 "
+            "AND `o`.objectIdObjTest=`s`.objectIdSourceTest",
+        "", // There should not be any qserv area restrictor.
+        {}),
+    ScisqlRestrictorTestCaseData(
+        "select * from LSST.Object o, Source s "
+            "WHERE scisql_s2PtInCPoly(ra_Test, decl_Test, 70, 3, 75, 3.5, 70, 4, 70)=1 " // odd number of args to the scisql func
+            "AND o.objectIdObjTest = s.objectIdSourceTest;",
+        "SELECT * FROM LSST.Object_100 AS `o`,LSST.Source_100 AS `s` "
+            "WHERE scisql_s2PtInCPoly(`o`.ra_Test,`o`.decl_Test,70,3,75,3.5,70,4,70)=1 "
+            "AND `o`.objectIdObjTest=`s`.objectIdSourceTest",
+        "", // There should not be any qserv area restrictor.
+        {}),
+};
+
+
+// Test that scisql area restrictors are translated into qserv_area_restrictors properly.
+BOOST_DATA_TEST_CASE(ObjectSourceJoin_ScisqlRestrictor, SCISQL_RESTRICTOR_TEST_CASE_DATA, queryData) {
+    qsTest.sqlConfig = SqlConfig(SqlConfig::MockDbTableColumns(
+        {{"LSST", {{"Object", {"objectIdObjTest", "ra_Test", "decl_Test"}},
+         {"Source", {"objectIdSourceTest", "ra_Test", "decl_Test"}}}}}));
+    std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, queryData.stmt);
+    std::shared_ptr<QueryContext> context = qs->dbgGetContext();
+    BOOST_CHECK(context);
+    BOOST_CHECK_EQUAL(context->dominantDb, std::string("LSST"));
+    if (not queryData.expectedRestrictor.empty()) {
+        BOOST_REQUIRE(context->restrictors);
+        BOOST_CHECK_EQUAL(context->restrictors->size(), 1U);
+        BOOST_REQUIRE(context->restrictors->front());
+        QsRestrictor& r = *context->restrictors->front();
+        BOOST_CHECK_EQUAL(r._name, queryData.expectedRestrictor);
+        BOOST_CHECK_EQUAL_COLLECTIONS(r._params.begin(), r._params.end(),
+                                    queryData.expectedParams.begin(), queryData.expectedParams.end());
+    }
+    std::string actual = queryAnaHelper.buildFirstParallelQuery();
+    BOOST_CHECK_EQUAL(actual, queryData.expectedStmt);
 }
 
 

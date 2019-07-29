@@ -32,8 +32,6 @@
 namespace lsst {
 namespace qserv {
 namespace query {
-    class BoolTerm;
-    class QsRestrictor;
     class QueryContext;
     class SelectStmt;
 }}} // end forward declarations
@@ -44,21 +42,6 @@ namespace qserv {
 namespace qana {
 
 
-struct RestrictorEntry {
-
-    RestrictorEntry(std::string const& alias_,
-                    StringPair const& chunkColumns_,
-                    std::string const& secIndexColumn_)
-        : alias(alias_),
-          chunkColumns(chunkColumns_),
-          secIndexColumn(secIndexColumn_)
-        {}
-    std::string alias;
-    StringPair chunkColumns;
-    std::string secIndexColumn;
-};
-
-
 /// QservRestrictorPlugin replaces a qserv restrictor spec with directives
 /// that can be executed on a qserv mysqld. This plugin should be
 /// execute after aliases for tables have been generates, so that the
@@ -67,7 +50,6 @@ class QservRestrictorPlugin : public QueryPlugin {
 public:
     // Types
     typedef std::shared_ptr<QservRestrictorPlugin> Ptr;
-    class Restriction;
 
     virtual ~QservRestrictorPlugin() {}
 
@@ -78,10 +60,6 @@ public:
 
     /// Return the name of the plugin class for logging.
     std::string name() const override { return "QservRestrictorPlugin"; }
-
-private:
-    std::shared_ptr<query::BoolTerm> _makeCondition(std::shared_ptr<query::QsRestrictor> const restr,
-                                                    RestrictorEntry const& restrictorEntry);
 };
 
 

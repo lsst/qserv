@@ -49,6 +49,7 @@
 namespace lsst {
 namespace qserv {
 namespace query {
+    class FuncExpr;
     class QueryTemplate;
     class TableRef;
     class ValueFactor;
@@ -120,9 +121,6 @@ public:
 
     std::string copyAsLiteral() const;
 
-    /// @return true if this contains exactly one FactorOp and its `isConstVal` returns true.
-    bool isConstVal() const;
-
     template<typename T>
     T copyAsType(T const& defaultValue) const;
 
@@ -151,6 +149,20 @@ public:
     std::shared_ptr<ValueFactor> getFactor();
 
     /**
+     * @brief Get the ConstVal value of the ValueExpr.
+     *
+     * @return std::string If there is exactly one factor and it is a CONST factor, return the value,
+     *         otherwiser returns an empty string.
+     */
+    std::string getConstVal() const;
+
+    /**
+     * @return A shared pointer to a FuncExpr if there is one factor and it is a FuncExpr. Otherwise returns
+     *         nullptr.
+     */
+    std::shared_ptr<FuncExpr const> getFunction() const;
+
+    /**
      * @brief Check if this ValueExpr represents a star factor.
      *
      * @return true if there is exactly 1 factor, and it is a STAR factor.
@@ -170,6 +182,13 @@ public:
      * @return true if there is exactly 1 factor, and it is a FUNCTION factor.
      */
     bool isFunction() const;
+
+    /**
+     * @brief Check if this ValueExpr represents a const value.
+     *
+     * @return true if there is exactly 1 factor, and it is a CONST factor.
+     */
+    bool isConstVal() const;
 
     /**
      * @brief Check if this ValueExpr represents a single factor.

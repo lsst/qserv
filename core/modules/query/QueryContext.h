@@ -150,6 +150,15 @@ public:
 
     // Owned QueryMapping and query restrictors
     std::shared_ptr<qana::QueryMapping> queryMapping;
+
+    /**
+     * @brief Add restrictors to the local variable `restrictors`, making a new RestrList if `restrictors` is
+     *        a nullptr.
+     *
+     * @param newRestrictors The restrictors to add.
+     */
+    void addRestrictors(RestrList const& newRestrictors);
+
     std::shared_ptr<RestrList> restrictors;
 
     /**

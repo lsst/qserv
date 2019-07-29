@@ -72,6 +72,11 @@ namespace query {
 /// to the python layer to evaluate the geometry restriction.
 class QsRestrictor {
 public:
+    QsRestrictor() = default;
+
+    QsRestrictor(std::string const& name, std::vector<std::string> const& parameters)
+            : _name(name), _params(parameters) {}
+
     typedef std::shared_ptr<QsRestrictor> Ptr;
     typedef std::vector<Ptr> PtrVector;
 
@@ -82,9 +87,14 @@ public:
         QueryTemplate& qt;
     };
 
+    std::string const& getName() const { return _name; }
+    StringVector const& getParameters() const { return _params; }
+
     bool operator==(const QsRestrictor& rhs) const;
 
     friend std::ostream& operator<<(std::ostream& os, QsRestrictor const& q);
+
+    void setName(std::string const& name) { _name = name; }
 
     std::string _name;
     StringVector _params;

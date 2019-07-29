@@ -89,6 +89,7 @@ std::string printParallel(lsst::qserv::query::SelectStmtPtrVector const& p) {
     return ret;
 }
 
+
 #define LOG_STATEMENTS(LEVEL, PRETEXT) \
 LOGS(_log, LEVEL, '\n' \
     << "  " << PRETEXT << '\n' \
@@ -109,6 +110,7 @@ LOGS(_log, LEVEL, '\n' \
 namespace lsst {
 namespace qserv {
 namespace qproc {
+
 
 ////////////////////////////////////////////////////////////////////////
 // class QuerySession
@@ -165,6 +167,7 @@ void QuerySession::analyzeQuery(std::string const& sql, std::shared_ptr<query::S
     }
 }
 
+
 bool QuerySession::needsMerge() const {
     // Aggregate: having an aggregate fct spec in the select list.
     // Stmt itself knows whether aggregation is present. More
@@ -175,35 +178,26 @@ bool QuerySession::needsMerge() const {
     return _context->needsMerge;
 }
 
+
 bool QuerySession::hasChunks() const {
     return _context->hasChunks();
 }
 
-std::shared_ptr<query::ConstraintVector> QuerySession::getConstraints() const {
-    std::shared_ptr<query::ConstraintVector> cv;
-    std::shared_ptr<query::QsRestrictor::PtrVector const> p = _context->restrictors;
 
-    if (p.get()) {
-        cv = std::make_shared<query::ConstraintVector>(p->size());
-        LOGS(_log, LOG_LVL_TRACE, "Size of query::QsRestrictor::PtrVector: " << p->size());
-        int i=0;
-        query::QsRestrictor::PtrVector::const_iterator li;
-        for(li = p->begin(); li != p->end(); ++li) {
-            query::Constraint c;
-            query::QsRestrictor const& r = **li;
-            c.name = r._name;
-            StringVector::const_iterator si;
-            for(si = r._params.begin(); si != r._params.end(); ++si) {
-                c.params.push_back(*si);
-            }
-            (*cv)[i] = c;
-            ++i;
+std::shared_ptr<query::ConstraintVector> QuerySession::getConstraints() const {
+    std::shared_ptr<query::ConstraintVector> constraints;
+    auto qsRestrictors = _context->restrictors; // qsRestrictors is a pointer to a vector of pointer to QsRestrictor
+    if (qsRestrictors != nullptr) {
+        constraints = std::make_shared<query::ConstraintVector>();
+        for(auto&& qsRestrictor : *qsRestrictors) {
+            query::Constraint constraint(qsRestrictor->getName(), qsRestrictor->getParameters() );
+            constraints->push_back(constraint);
         }
-        LOGS(_log, LOG_LVL_TRACE, "Constraints: " << util::printable(*cv));
+        LOGS(_log, LOG_LVL_TRACE, "Constraints: " << util::printable(*constraints));
     } else {
         LOGS(_log, LOG_LVL_TRACE, "No constraints.");
     }
-    return cv;
+    return constraints;
 }
 
 
@@ -231,6 +225,7 @@ void QuerySession::setScanInteractive() {
     }
 }
 
+
 void QuerySession::setDummy() {
     _isDummy = true;
     // Clear out chunk counts and _chunks, and replace with dummy chunk.
@@ -241,6 +236,7 @@ void QuerySession::setDummy() {
     _chunks.push_back(ChunkSpec(DUMMY_CHUNK, v));
 }
 
+
 std::string const& QuerySession::getDominantDb() const {
     return _context->dominantDb; // parsed query's dominant db (via TablePlugin)
 }
@@ -249,18 +245,22 @@ bool QuerySession::containsDb(std::string const& dbName) const {
     return _context->containsDb(dbName);
 }
 
+
 bool QuerySession::containsTable(std::string const& dbName, std::string const& tableName) const {
     return _context->containsTable(dbName, tableName);
 }
+
 
 bool QuerySession::validateDominantDb() const {
     return _context->containsDb(_context->dominantDb);
 }
 
+
 css::StripingParams
 QuerySession::getDbStriping() {
     return _context->getDbStriping();
 }
+
 
 std::shared_ptr<IntSet const>
 QuerySession::getEmptyChunks() {
@@ -276,6 +276,7 @@ QuerySession::getEmptyChunks() {
     }
 }
 
+
 /// Returns the merge statment, if appropriate.
 /// If a post-execution merge fixup is not needed, return a NULL pointer.
 std::shared_ptr<query::SelectStmt>
@@ -286,6 +287,7 @@ QuerySession::getMergeStmt() const {
         return std::shared_ptr<query::SelectStmt>();
     }
 }
+
 
 void QuerySession::finalize() {
     if (_isFinal) {
@@ -340,6 +342,7 @@ void QuerySession::_applyLogicPlugins() {
     }
 }
 
+
 void QuerySession::_generateConcrete() {
     _hasMerge = false;
     _isDummy = false;
@@ -374,7 +377,6 @@ void QuerySession::_generateConcrete() {
 }
 
 
-
 void QuerySession::_applyConcretePlugins() {
     qana::QueryPlugin::Plan p(*_stmt, _stmtParallel, _stmtPreFlight, *_stmtMerge, _hasMerge);
     for (auto&& plugin : *_plugins) {
@@ -382,6 +384,7 @@ void QuerySession::_applyConcretePlugins() {
         LOG_STATEMENTS(LOG_LVL_TRACE, "did applyConcretePlugins:" << plugin->name());
     }
 }
+
 
 /// Some code useful for debugging.
 void QuerySession::print(std::ostream& os) const {
@@ -492,5 +495,6 @@ QuerySession::_buildFragment(query::QueryTemplate::Vect const& queryTemplates,
     }
     return first;
 }
+
 
 }}} // namespace lsst::qserv::qproc
