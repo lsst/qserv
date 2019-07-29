@@ -142,15 +142,15 @@ QueryContext::getValueExprMatch(std::shared_ptr<query::ValueExpr> const& valExpr
 }
 
 
-void QueryContext::addRestrictors(RestrList const& restrictors_) {
-    if (restrictors_.empty()) {
+void QueryContext::addRestrictors(RestrList const& newRestrictors) {
+    if (newRestrictors.empty()) {
         return;
     }
     if (nullptr == restrictors) {
-        restrictors = std::make_shared<QueryContext::RestrList>(restrictors_);
+        restrictors = std::make_shared<QueryContext::RestrList>(newRestrictors);
     } else {
-        restrictors->reserve(restrictors->size() + restrictors_.size());
-        restrictors->insert(restrictors->end(), restrictors_.begin(), restrictors_.end());
+        restrictors->reserve(restrictors->size() + newRestrictors.size());
+        restrictors->insert(restrictors->end(), newRestrictors.begin(), newRestrictors.end());
     }
 }
 

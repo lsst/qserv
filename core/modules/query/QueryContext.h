@@ -155,9 +155,9 @@ public:
      * @brief Add restrictors to the local variable `restrictors`, making a new RestrList if `restrictors` is
      *        a nullptr.
      *
-     * @param restrictors_ The restrictors to add.
+     * @param newRestrictors The restrictors to add.
      */
-    void addRestrictors(RestrList const& restrictors_);
+    void addRestrictors(RestrList const& newRestrictors);
 
     std::shared_ptr<RestrList> restrictors;
 
