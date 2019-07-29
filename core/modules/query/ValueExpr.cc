@@ -309,7 +309,7 @@ std::shared_ptr<ValueFactor> ValueExpr::getFactor() {
 
 
 std::string ValueExpr::getConstVal() const {
-    if (_factorOps.size()) {
+    if (_factorOps.size() == 1) {
         ValueFactor const& factor = *_factorOps.front().factor;
         if (factor.getType() == ValueFactor::CONST) {
             return factor.getConstVal();
