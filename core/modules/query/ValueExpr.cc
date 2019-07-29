@@ -347,10 +347,7 @@ bool ValueExpr::isFunction() const {
 
 
 bool ValueExpr::isConstVal() const {
-    if (_factorOps.size() == 1 && _factorOps[0].factor->isConstVal()) {
-        return true;
-    }
-    return false;
+    return _factorOps.size() == 1 && _factorOps[0].factor->isConstVal();
 }
 
 
