@@ -455,7 +455,8 @@ query::QsRestrictor::Ptr newRestrictor(
     // Extract the literals, bailing out if we see a non-literal
     bool isValid = true;
     std::for_each(values.begin(), values.end(),
-        [&](query::ValueExprPtr p) { isValid = isValid && p != nullptr && not p->copyAsLiteral().empty(); });
+        [&isValid](query::ValueExprPtr p) {
+            isValid = isValid && p != nullptr && not p->copyAsLiteral().empty(); });
     if (!isValid) {
         return query::QsRestrictor::Ptr();
     }
