@@ -75,9 +75,11 @@ std::string const UDF_PREFIX = "scisql_";
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.qana.QservRestrictorPlugin");
 
-enum RestrictorType { SECONDARY_INDEX_IN =1, SECONDARY_INDEX_NOT_IN,
-    SECONDARY_INDEX_BETWEEN, SECONDARY_INDEX_NOT_BETWEEN};
-
+// Restrictor Types:
+const char* SECONDARY_INDEX_IN = "sIndex";
+const char* SECONDARY_INDEX_NOT_IN = "sIndexNotIn";
+const char* SECONDARY_INDEX_BETWEEN = "sIndexBetween";
+const char* SECONDARY_INDEX_NOT_BETWEEN = "sIndexNotBetween";
 
 /// RestrictorEntry is a class to contain information about chunked tables.
 struct RestrictorEntry {
@@ -447,7 +449,7 @@ lookupSecIndex(query::QueryContext& context,
  *   @return:               A Qserv restrictor or NULL if at least one element in values is a non-literal.
  */
 query::QsRestrictor::Ptr newRestrictor(
-    RestrictorType restrictorType,
+    const char * restrictorName,
     query::QueryContext const& context,
     std::shared_ptr<query::ColumnRef> cr,
     query::ValueExprPtrVector const& values)
@@ -461,23 +463,9 @@ query::QsRestrictor::Ptr newRestrictor(
         return query::QsRestrictor::Ptr();
     }
 
-    // Build the QsRestrictor
-    query::QsRestrictor::Ptr restrictor = std::make_shared<query::QsRestrictor>();
-    if (restrictorType==SECONDARY_INDEX_IN) {
-        restrictor->_name = "sIndex";
-    }
-    if (restrictorType==SECONDARY_INDEX_NOT_IN) {
-        restrictor->_name = "sIndexNotIn";
-    }
-    else if (restrictorType==SECONDARY_INDEX_BETWEEN) {
-        restrictor->_name = "sIndexBetween";
-    }
-    else if (restrictorType==SECONDARY_INDEX_NOT_BETWEEN) {
-        restrictor->_name = "sIndexNotBetween";
-    }
-    // sIndex and sIndexBetween have parameters as follows:
-    // db, table, column, val1, val2, ...
+    // sIndex... restrictors have parameters as follows: db, table, column, val1, val2, ...
 
+    std::vector<std::string> parameters;
     css::PartTableParams const partParam = context.css->getPartTableParams(cr->getDb(), cr->getTable());
     // Get the director column name
     std::string dirCol = partParam.dirColName;
@@ -509,20 +497,21 @@ query::QsRestrictor::Ptr newRestrictor(
         LOGS(_log, LOG_LVL_DEBUG, "Restrictor dirDb " << dirDb << ", dirTable " << dirTable
              << ", dirCol " << dirCol << " as sIndex for " << cr->getDb() << "." << cr->getTable()
              << "." << cr->getColumn());
-        restrictor->_params.push_back(dirDb);
-        restrictor->_params.push_back(dirTable);
-        restrictor->_params.push_back(dirCol);
+        parameters.push_back(dirDb);
+        parameters.push_back(dirTable);
+        parameters.push_back(dirCol);
     } else {
         LOGS_DEBUG("Restrictor " << cr->getDb() << "." << cr->getTable() <<  "." << cr->getColumn()
                    << " as sIndex");
-        restrictor->_params.push_back(cr->getDb());
-        restrictor->_params.push_back(cr->getTable());
-        restrictor->_params.push_back(cr->getColumn());
+        parameters.push_back(cr->getDb());
+        parameters.push_back(cr->getTable());
+        parameters.push_back(cr->getColumn());
     }
 
-    std::transform(values.begin(), values.end(), std::back_inserter(restrictor->_params),
+    std::transform(values.begin(), values.end(), std::back_inserter(parameters),
         [](query::ValueExprPtr p) -> std::string { return p->copyAsLiteral(); });
-    return restrictor;
+
+    return std::make_shared<query::QsRestrictor>(restrictorName, std::move(parameters));
 }
 
 
