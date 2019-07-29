@@ -314,10 +314,9 @@ shared_ptr<query::PassTerm> PassTerm(string const& text) {
 
 template <typename...Targs>
 shared_ptr<query::QsRestrictor> QsRestrictor(string name, Targs... args) {
-    auto qsRestrictor = make_shared<query::QsRestrictor>();
-    pusher(qsRestrictor->_params, args...);
-    qsRestrictor->_name = name;
-    return qsRestrictor;
+    std::vector<std::string> parameters;
+    pusher(parameters, args...);
+    return make_shared<query::QsRestrictor>(name, std::move(parameters));
 }
 
 

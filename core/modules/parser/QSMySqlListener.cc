@@ -1029,12 +1029,12 @@ private:
         // This is a side effect of the current IR, where in most cases a constant string is represented as
         // a column name. But in a QservRestrictor (aka QservFunction) each par is simply represented by a
         // string.
-        auto restrictor = std::make_shared<query::QsRestrictor>();
+        std::vector<std::string> strParameters;
         for (auto const& valueFactor : parameters) {
             if (query::ValueFactor::CONST != valueFactor->getType()) {
                 throw std::logic_error("QServFunctionSpec args are (currently) expected as constVal.");
             }
-            restrictor->_params.push_back(valueFactor->getConstVal());
+            strParameters.push_back(valueFactor->getConstVal());
         }
 
         // Add case insensitive behavior in order to mimic MySQL functions/procedures
@@ -1044,7 +1044,7 @@ private:
                            insensitiveFunction.begin(), ::tolower);
             LOGS(_log, LOG_LVL_DEBUG, "Qserv restrictor changed to lower-case: " << insensitiveFunction);
         }
-        restrictor->_name = insensitiveFunction;
+        auto restrictor = std::make_shared<query::QsRestrictor>(insensitiveFunction, std::move(strParameters));
         _getWhereClause()->addQsRestrictor(restrictor);
     }
 
