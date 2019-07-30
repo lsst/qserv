@@ -1096,7 +1096,7 @@ BOOST_AUTO_TEST_CASE(Case01_0002) {
     BOOST_CHECK_EQUAL(context->restrictors->size(), 1U);
     BOOST_REQUIRE(context->restrictors->front());
     QsRestrictor& r = *context->restrictors->front();
-    BOOST_CHECK_EQUAL(r._name, "sIndex");
+    BOOST_CHECK_EQUAL(r._name, "sIndexEqual");
     char const* params[] = {"LSST","Object", "objectIdObjTest", "430213989000"};
     BOOST_CHECK_EQUAL_COLLECTIONS(r._params.begin(), r._params.end(),
                                   params, params+4);
