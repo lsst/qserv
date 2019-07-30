@@ -30,16 +30,29 @@
   * @author Daniel L. Wang, SLAC
   */
 
+// System headers
+#include <memory>
+
 // Qserv headers
 #include "css/StripingParams.h"
-#include "query/Constraint.h"
 #include "qproc/ChunkSpec.h"
+
+
+// forward declarations
+namespace lsst {
+namespace qserv {
+namespace qproc {
+    class SecondaryIndex;
+}
+namespace query {
+    class QsRestrictor;
+}}}
+
 
 namespace lsst {
 namespace qserv {
 namespace qproc {
 
-class SecondaryIndex;
 
 class IndexMap {
 public:
@@ -53,20 +66,19 @@ public:
      */
     ChunkSpecVector getAllChunks();
 
-    /**  Compute chunks coverage of spatial and secondary index constraints
+    /**  Compute chunks coverage of spatial and secondary index restrictors
      *
-     *   Index constraints are combined with OR, and spatial constraints are
-     *   combined with OR, but the cumulative index constraints are ANDed with
-     *   the cumulative spatial constraints.
+     *   Index restrictors are combined with OR, and spatial restrictors are
+     *   combined with OR, but the cumulative index restrictors are ANDed with
+     *   the cumulative spatial restrictors.
      *
-     *   @param cv: Constraints issued from SQL query
-     *   @returns:  list of chunk queried by all secondary index search and
-     *              spatial (i.e. UDF) constraints
+     *   @param restrictors: Restrictors issued from SQL query or added for secondary index columns.
+     *   @returns:  list of chunk queried by all secondary index search and spatial (i.e. UDF) restrictors.
      *
      *   FIXME: Index and spatial lookup composition is only supported using SQL "AND"
      *          operator for now. "OR" support has to be added, see DM-2888, DM-4017.
      */
-    ChunkSpecVector getChunks(query::ConstraintVector const& cv);
+    ChunkSpecVector getChunks(std::vector<std::shared_ptr<query::QsRestrictor>> const& restrictors);
 
     class PartitioningMap;
 private:

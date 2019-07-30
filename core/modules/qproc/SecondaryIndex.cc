@@ -46,7 +46,6 @@
 #include "global/constants.h"
 #include "global/stringUtil.h"
 #include "qproc/ChunkSpec.h"
-#include "query/Constraint.h"
 #include "sql/SqlConnection.h"
 #include "sql/SqlConnectionFactory.h"
 #include "util/IterableFormatter.h"
@@ -112,9 +111,8 @@ namespace qproc {
 class SecondaryIndex::Backend {
 public:
     virtual ~Backend() {}
-    /// Lookup an index constraint. Ignore constraints that are not "sIndex"
-    /// constraints.
-    virtual ChunkSpecVector lookup(query::ConstraintVector const& cv) = 0;
+    /// Lookup an index restrictor. Ignore restrictors that are not "sIndex" restrictors.
+    virtual ChunkSpecVector lookup(query::QsRestrictor::PtrVector const& restrictors) = 0;
 };
 
 class MySqlBackend : public SecondaryIndex::Backend {
@@ -123,44 +121,44 @@ public:
         : _sqlConnection(sql::SqlConnectionFactory::make(c)) {
     }
 
-    ChunkSpecVector lookup(query::ConstraintVector const& cv) override {
+    ChunkSpecVector lookup(query::QsRestrictor::PtrVector const& restrictors) override {
         ChunkSpecVector output;
         bool hasIndex = false;
-        for(auto const& constraint : cv) {
-            if (constraint.name == "sIndex"){
+        for(auto const& restrictor : restrictors) {
+            if (restrictor->_name == "sIndex"){
                 hasIndex = true;
-                _sqlLookup(output, constraint.params, IN);
-            } else if (constraint.name == "sIndexNotIn"){
+                _sqlLookup(output, restrictor->_params, IN);
+            } else if (restrictor->_name == "sIndexNotIn"){
                 hasIndex = true;
-                _sqlLookup(output, constraint.params, NOT_IN);
-            } else if (constraint.name == "sIndexBetween") {
+                _sqlLookup(output, restrictor->_params, NOT_IN);
+            } else if (restrictor->_name == "sIndexBetween") {
                 hasIndex = true;
-                _sqlLookup(output, constraint.params, BETWEEN);
-            } else if (constraint.name == "sIndexNotBetween") {
+                _sqlLookup(output, restrictor->_params, BETWEEN);
+            } else if (restrictor->_name == "sIndexNotBetween") {
                 hasIndex = true;
-                _sqlLookup(output, constraint.params, NOT_BETWEEN);
-            } else if (constraint.name == "sIndexEqual") {
+                _sqlLookup(output, restrictor->_params, NOT_BETWEEN);
+            } else if (restrictor->_name == "sIndexEqual") {
                 hasIndex = true;
-                _sqlLookup(output, constraint.params, EQUAL);
-            } else if (constraint.name == "sIndexNotEqual") {
+                _sqlLookup(output, restrictor->_params, EQUAL);
+            } else if (restrictor->_name == "sIndexNotEqual") {
                 hasIndex = true;
-                _sqlLookup(output, constraint.params, NOT_EQUAL);
-            } else if (constraint.name == "sIndexGreaterThan") {
+                _sqlLookup(output, restrictor->_params, NOT_EQUAL);
+            } else if (restrictor->_name == "sIndexGreaterThan") {
                 hasIndex = true;
-                _sqlLookup(output, constraint.params, GREATER_THAN);
-            } else if (constraint.name == "sIndexLessThan") {
+                _sqlLookup(output, restrictor->_params, GREATER_THAN);
+            } else if (restrictor->_name == "sIndexLessThan") {
                 hasIndex = true;
-                _sqlLookup(output, constraint.params, LESS_THAN);
-            } else if (constraint.name == "sIndexGreaterThanOrEqual") {
+                _sqlLookup(output, restrictor->_params, LESS_THAN);
+            } else if (restrictor->_name == "sIndexGreaterThanOrEqual") {
                 hasIndex = true;
-                _sqlLookup(output, constraint.params, GREATER_THAN_OR_EQUAL);
-            } else if (constraint.name == "sIndexLessThanOrEqual") {
+                _sqlLookup(output, restrictor->_params, GREATER_THAN_OR_EQUAL);
+            } else if (restrictor->_name == "sIndexLessThanOrEqual") {
                 hasIndex = true;
-                _sqlLookup(output, constraint.params, LESS_THAN_OR_EQUAL);
+                _sqlLookup(output, restrictor->_params, LESS_THAN_OR_EQUAL);
             }
         }
         if (!hasIndex) {
-            throw SecondaryIndex::NoIndexConstraint();
+            throw SecondaryIndex::NoIndexRestrictor();
         }
         normalize(output);
         return output;
@@ -294,9 +292,9 @@ private:
 class FakeBackend : public SecondaryIndex::Backend {
 public:
     FakeBackend() {}
-    virtual ChunkSpecVector lookup(query::ConstraintVector const& cv) {
+    virtual ChunkSpecVector lookup(query::QsRestrictor::PtrVector const& restrictors) {
         ChunkSpecVector dummy;
-        if (_hasSecondary(cv)) {
+        if (_hasSecondary(restrictors)) {
             for(int i=100; i < 103; ++i) {
                 int bogus[] = {1,2,3};
                 std::vector<int> subChunks(bogus, bogus+3);
@@ -307,11 +305,11 @@ public:
     }
 private:
     struct _checkIndex {
-        bool operator()(query::Constraint const& c) {
-            return (c.name == "sIndex" || c.name == "sIndexBetween"); }
+        bool operator()(std::shared_ptr<query::QsRestrictor> const& restrictor) {
+        return (restrictor->_name == "sIndex" || restrictor->_name == "sIndexBetween"); }
     };
-    bool _hasSecondary(query::ConstraintVector const& cv) {
-        return cv.end() != std::find_if(cv.begin(), cv.end(), _checkIndex());
+    bool _hasSecondary(query::QsRestrictor::PtrVector const& restrictors) {
+        return restrictors.end() != std::find_if(restrictors.begin(), restrictors.end(), _checkIndex());
     }
 };
 
@@ -323,9 +321,9 @@ SecondaryIndex::SecondaryIndex()
     : _backend(std::make_shared<FakeBackend>()) {
 }
 
-ChunkSpecVector SecondaryIndex::lookup(query::ConstraintVector const& cv) {
+ChunkSpecVector SecondaryIndex::lookup(query::QsRestrictor::PtrVector const& restrictors) {
     if (_backend) {
-        return _backend->lookup(cv);
+        return _backend->lookup(restrictors);
     } else {
         throw Bug("SecondaryIndex : no backend initialized");
     }

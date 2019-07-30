@@ -37,7 +37,7 @@
 // Qserv headers
 #include "mysql/MySqlConfig.h"
 #include "qproc/ChunkSpec.h"
-#include "query/Constraint.h"
+#include "query/QsRestrictor.h"
 
 namespace lsst {
 namespace qserv {
@@ -59,17 +59,17 @@ public:
      */
     SecondaryIndex();
 
-    /** Lookup an index constraint.
+    /** Lookup an index restriction.
      *
-     *  If no index constraint exists, throw a NoIndexConstraint exception.
-     *  Index constraints are combined with OR.
+     *  If no index restrictor exists, throw a NoIndexRestrictor exception.
+     *  Index restrictors are combined with OR.
      */
-    ChunkSpecVector lookup(query::ConstraintVector const& cv);
+    ChunkSpecVector lookup(query::QsRestrictor::PtrVector const& restrictors);
 
-    class NoIndexConstraint : public std::invalid_argument {
+    class NoIndexRestrictor : public std::invalid_argument {
     public:
-        NoIndexConstraint()
-            : std::invalid_argument("Missing index constraint")
+        NoIndexRestrictor()
+            : std::invalid_argument("Missing index restrictor")
             {}
     };
 

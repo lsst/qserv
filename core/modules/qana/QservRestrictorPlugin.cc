@@ -478,7 +478,7 @@ query::QsRestrictor::Ptr newRestrictor(
     if (cr->getColumn() == dirCol) {
         // cr may be a column in a child table, in which case we must figure
         // out the corresponding column in the child's director to properly
-        // generate a secondary index constraint.
+        // generate a secondary index restrictor.
         std::string dirDb = partParam.dirDb;
         std::string dirTable = partParam.dirTable;
         if (dirTable.empty()) {

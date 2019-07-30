@@ -46,7 +46,6 @@
 #include "qana/QueryPlugin.h"
 #include "qproc/ChunkQuerySpec.h"
 #include "qproc/ChunkSpec.h"
-#include "query/Constraint.h"
 #include "query/QueryTemplate.h"
 #include "query/typedefs.h"
 #include "sql/SqlConfig.h"
@@ -61,6 +60,7 @@ namespace css {
 namespace query {
     class SelectStmt;
     class QueryContext;
+    class QsRestrictor;
 }}} // End of forward declarations
 
 
@@ -100,7 +100,8 @@ public:
     bool needsMerge() const;
     bool hasChunks() const;
 
-    std::shared_ptr<query::ConstraintVector> getConstraints() const;
+
+    std::shared_ptr<std::vector<std::shared_ptr<query::QsRestrictor>>> getRestrictors() const;
     void addChunk(ChunkSpec const& cs);
     void setDummy();
 

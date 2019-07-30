@@ -31,8 +31,7 @@
   *
   * After constructing a UserQuery object ...
   *
-  * getConstraints() -- retrieve constraints of the user query to be passed to
-  * spatial region selection code in another layer.
+  * getRestrictors() -- retrieve restrictors to be passed to spatial region selection code in another layer.
   *
   * getDominantDb() -- retrieve the "dominantDb", that is, the database whose
   * partitioning will be used for chunking and dispatch.
@@ -44,7 +43,7 @@
   * getExecDesc() -- see how execution is progressing
   *
   * addChunk() -- Add a chunk number (and subchunks, as appropriate) to be
-  * dispatched during submit(). The czar uses getConstraints and getDbStriping
+  * dispatched during submit(). The czar uses getRestrictors and getDbStriping
   * to query a region selector over a chunk number generator and an emptychunks
   * list to compute the relevant chunk numbers.
   *
@@ -483,14 +482,14 @@ void UserQuerySelect::setupChunking() {
     // FIXME add operator<< for QuerySession
     LOGS(_log, LOG_LVL_TRACE, getQueryIdString() << " _qSession: " << _qSession);
     if (_qSession->hasChunks()) {
-        std::shared_ptr<query::ConstraintVector> constraints = _qSession->getConstraints();
+        auto restrictors = _qSession->getRestrictors();
         css::StripingParams partStriping = _qSession->getDbStriping();
 
         im = std::make_shared<qproc::IndexMap>(partStriping, _secondaryIndex);
         qproc::ChunkSpecVector csv;
-        if (constraints) {
-            csv = im->getChunks(*constraints);
-        } else { // Unconstrained: full-sky
+        if (restrictors != nullptr) {
+            csv = im->getChunks(*restrictors);
+        } else { // Unrestricted: full-sky
             csv = im->getAllChunks();
         }
 

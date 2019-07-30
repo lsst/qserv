@@ -45,7 +45,6 @@
 #include "qmeta/QStatus.h"
 #include "qmeta/types.h"
 #include "qproc/ChunkSpec.h"
-#include "query/Constraint.h"
 
 
 // Forward declarations

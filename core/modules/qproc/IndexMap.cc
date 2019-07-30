@@ -53,7 +53,6 @@
 #include "qproc/geomAdapter.h"
 #include "qproc/QueryProcessingError.h"
 #include "qproc/SecondaryIndex.h"
-#include "query/Constraint.h"
 #include "util/IterableFormatter.h"
 
 using lsst::qserv::StringVector;
@@ -120,15 +119,15 @@ static FuncMap funcMap;
 
 /*  Computes region covered by a given spherical geometry UDF call
  *
- *  @param c:   Constraint containing name and parameter of UDF call
- *  @return:    Pointer to Region covered by c, or nullptr if empty
+ *  @param restrictor: Restrictor containing name and parameter of UDF call
+ *  @return: Pointer to Region covered by restrictor, or nullptr if empty
  */
-std::shared_ptr<Region> getRegion(lsst::qserv::query::Constraint const& c) {
+std::shared_ptr<Region> getRegion(std::shared_ptr<lsst::qserv::query::QsRestrictor> const& restrictor) {
     std::shared_ptr<Region> covered_region = nullptr;
-    FuncMap::Map::const_iterator i = funcMap.fMap.find(c.name);
+    FuncMap::Map::const_iterator i = funcMap.fMap.find(restrictor->_name);
     if (i != funcMap.fMap.end()) {
-        LOGS(_log, LOG_LVL_TRACE, "Region for " << c << ": " << i->first);
-        covered_region = i->second(c.params);
+        LOGS(_log, LOG_LVL_TRACE, "Region for " << *restrictor << ": " << i->first);
+        covered_region = i->second(restrictor->_params);
     }
     return covered_region;
 }
@@ -219,8 +218,8 @@ ChunkSpecVector IndexMap::getAllChunks() {
     return _pm->getAllChunks();
 }
 
-//  Compute chunks coverage of spatial and secondary index constraints
-ChunkSpecVector IndexMap::getChunks(query::ConstraintVector const& cv) {
+//  Compute chunks coverage of spatial and secondary index restrictors
+ChunkSpecVector IndexMap::getChunks(std::vector<std::shared_ptr<query::QsRestrictor>> const& restrictors) {
 
     // Secondary Index lookups
     if (!_si) {
@@ -230,16 +229,16 @@ ChunkSpecVector IndexMap::getChunks(query::ConstraintVector const& cv) {
     bool hasIndex = true;
     bool hasRegion = true;
     try {
-        indexSpecs = _si->lookup(cv);
+        indexSpecs = _si->lookup(restrictors);
         LOGS(_log, LOG_LVL_TRACE, "Index specs: " << util::printable(indexSpecs));
-    } catch(SecondaryIndex::NoIndexConstraint& e) {
-        LOGS(_log, LOG_LVL_DEBUG, "No secondary index constraint");
-        hasIndex = false; // Ok if no index constraints
+    } catch(SecondaryIndex::NoIndexRestrictor& e) {
+        LOGS(_log, LOG_LVL_DEBUG, "No secondary index restrictor");
+        hasIndex = false; // Ok if no index restrictors.
     }
 
     // Spatial area lookups
     RegionPtrVector rv;
-    std::transform(cv.begin(), cv.end(), std::back_inserter(rv), getRegion);
+    std::transform(restrictors.begin(), restrictors.end(), std::back_inserter(rv), getRegion);
     SubChunksVector scv;
     try {
         scv = _pm->getIntersect(rv);

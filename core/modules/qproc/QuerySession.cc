@@ -65,7 +65,6 @@
 #include "qana/TablePlugin.h"
 #include "qana/WherePlugin.h"
 #include "qproc/QueryProcessingBug.h"
-#include "query/Constraint.h"
 #include "query/SelectList.h"
 #include "query/QsRestrictor.h"
 #include "query/QueryContext.h"
@@ -184,20 +183,8 @@ bool QuerySession::hasChunks() const {
 }
 
 
-std::shared_ptr<query::ConstraintVector> QuerySession::getConstraints() const {
-    std::shared_ptr<query::ConstraintVector> constraints;
-    auto qsRestrictors = _context->restrictors; // qsRestrictors is a pointer to a vector of pointer to QsRestrictor
-    if (qsRestrictors != nullptr) {
-        constraints = std::make_shared<query::ConstraintVector>();
-        for(auto&& qsRestrictor : *qsRestrictors) {
-            query::Constraint constraint(qsRestrictor->getName(), qsRestrictor->getParameters() );
-            constraints->push_back(constraint);
-        }
-        LOGS(_log, LOG_LVL_TRACE, "Constraints: " << util::printable(*constraints));
-    } else {
-        LOGS(_log, LOG_LVL_TRACE, "No constraints.");
-    }
-    return constraints;
+std::shared_ptr<std::vector<std::shared_ptr<query::QsRestrictor>>> QuerySession::getRestrictors() const {
+    return _context->restrictors;
 }
 
 

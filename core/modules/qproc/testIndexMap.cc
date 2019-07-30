@@ -45,7 +45,7 @@
 #include "global/intTypes.h"
 #include "qproc/ChunkSpec.h"
 #include "qproc/SecondaryIndex.h"
-#include "query/Constraint.h"
+#include "query/QsRestrictor.h"
 
 // Boost unit test header
 #define BOOST_TEST_MODULE IndexMap
@@ -54,11 +54,11 @@
 
 namespace test = boost::test_tools;
 
+using namespace lsst::qserv;
+
 using lsst::qserv::qproc::ChunkSpec;
 using lsst::qserv::qproc::ChunkSpecVector;
 using lsst::qserv::qproc::SecondaryIndex;
-using lsst::qserv::query::Constraint;
-using lsst::qserv::query::ConstraintVector;
 using lsst::qserv::IntVector;
 
 struct Fixture {
@@ -68,12 +68,6 @@ struct Fixture {
 
     ~Fixture(void) { };
 
-    Constraint makeConstraint(char const name[], int argc, char const** argv) {
-        Constraint c;
-        c.name = name;
-        c.params.assign(argv, argv + argc);
-        return c;
-    }
     SecondaryIndex si;
     // TODO: IndexMap with fake secondary index: see DM-4047
     // TODO: 2+ StripingParams sets.
@@ -85,37 +79,30 @@ struct Fixture {
 BOOST_FIXTURE_TEST_SUITE(Suite, Fixture)
 
 BOOST_AUTO_TEST_CASE(SecLookup) {
-    ConstraintVector cv;
-    int const size = 3;
-    char const* argv[size] = {"111", "112","113"};
-    cv.push_back(makeConstraint("sIndex", size, argv));
-
-    ChunkSpecVector csv = si.lookup(cv);
-
+    query::QsRestrictor::PtrVector restrictors;
+    std::vector<std::string> vals = {"111", "112","113"};
+    restrictors.push_back(std::make_shared<query::QsRestrictor>("sIndex", vals));
+    ChunkSpecVector csv = si.lookup(restrictors);
     std::cout << "SecLookup\n";
     std::copy(csv.begin(), csv.end(),
               std::ostream_iterator<ChunkSpec>(std::cout, ",\n"));
 }
 
 BOOST_AUTO_TEST_CASE(SecLookupMultipleObjectIdIN) {
-    ConstraintVector cv;
-    int const size=5;
-    char const* argv[size] = {"LSST", "Object", "objectId", "386950783579546", "386942193651348"};
-    cv.push_back(makeConstraint("sIndex", size, argv));
-
-    ChunkSpecVector csv = si.lookup(cv);
+    query::QsRestrictor::PtrVector restrictors;
+    std::vector<std::string> vals = {"LSST", "Object", "objectId", "386950783579546", "386942193651348"};
+    restrictors.push_back(std::make_shared<query::QsRestrictor>("sIndex", vals));
+    ChunkSpecVector csv = si.lookup(restrictors);
     std::cout << "SecLookupMultipleObjectIdIN\n";
     std::copy(csv.begin(), csv.end(),
               std::ostream_iterator<ChunkSpec>(std::cout, ",\n"));
 }
 
 BOOST_AUTO_TEST_CASE(SecLookupMultipleObjectIdBETWEEN) {
-    ConstraintVector cv;
-    int const size=5;
-    char const* argv[size] = {"LSST", "Object", "objectId", "386942193651348", "386950783579546"};
-    cv.push_back(makeConstraint("sIndexBetWeen", size, argv));
-
-    ChunkSpecVector csv = si.lookup(cv);
+    query::QsRestrictor::PtrVector restrictors;
+    std::vector<std::string> vals = {"LSST", "Object", "objectId", "386942193651348", "386950783579546"};
+    restrictors.push_back(std::make_shared<query::QsRestrictor>("sIndexBetWeen", vals));
+    ChunkSpecVector csv = si.lookup(restrictors);
     std::cout << "SecLookupMultipleObjectIdBETWEEN\n";
     std::copy(csv.begin(), csv.end(),
               std::ostream_iterator<ChunkSpec>(std::cout, ",\n"));
