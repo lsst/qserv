@@ -81,7 +81,7 @@ BOOST_FIXTURE_TEST_SUITE(Suite, Fixture)
 BOOST_AUTO_TEST_CASE(SecLookup) {
     query::QsRestrictor::PtrVector restrictors;
     std::vector<std::string> vals = {"111", "112","113"};
-    restrictors.push_back(std::make_shared<query::QsRestrictor>("sIndex", vals));
+    restrictors.push_back(std::make_shared<query::QsRestrictorFunction>("sIndex", vals));
     ChunkSpecVector csv = si.lookup(restrictors);
     std::cout << "SecLookup\n";
     std::copy(csv.begin(), csv.end(),
@@ -91,7 +91,7 @@ BOOST_AUTO_TEST_CASE(SecLookup) {
 BOOST_AUTO_TEST_CASE(SecLookupMultipleObjectIdIN) {
     query::QsRestrictor::PtrVector restrictors;
     std::vector<std::string> vals = {"LSST", "Object", "objectId", "386950783579546", "386942193651348"};
-    restrictors.push_back(std::make_shared<query::QsRestrictor>("sIndex", vals));
+    restrictors.push_back(std::make_shared<query::QsRestrictorFunction>("sIndex", vals));
     ChunkSpecVector csv = si.lookup(restrictors);
     std::cout << "SecLookupMultipleObjectIdIN\n";
     std::copy(csv.begin(), csv.end(),
@@ -101,7 +101,7 @@ BOOST_AUTO_TEST_CASE(SecLookupMultipleObjectIdIN) {
 BOOST_AUTO_TEST_CASE(SecLookupMultipleObjectIdBETWEEN) {
     query::QsRestrictor::PtrVector restrictors;
     std::vector<std::string> vals = {"LSST", "Object", "objectId", "386942193651348", "386950783579546"};
-    restrictors.push_back(std::make_shared<query::QsRestrictor>("sIndexBetWeen", vals));
+    restrictors.push_back(std::make_shared<query::QsRestrictorFunction>("sIndexBetWeen", vals));
     ChunkSpecVector csv = si.lookup(restrictors);
     std::cout << "SecLookupMultipleObjectIdBETWEEN\n";
     std::copy(csv.begin(), csv.end(),

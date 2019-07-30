@@ -58,6 +58,7 @@ using lsst::qserv::parser::SelectParser;
 using lsst::qserv::qproc::ChunkQuerySpec;
 using lsst::qserv::qproc::QuerySession;
 using lsst::qserv::query::QsRestrictor;
+using lsst::qserv::query::QsRestrictorFunction;
 using lsst::qserv::query::QueryContext;
 using lsst::qserv::sql::SqlConfig;
 using lsst::qserv::tests::QueryAnaFixture;
@@ -78,9 +79,11 @@ BOOST_AUTO_TEST_CASE(SecondaryIndex) {
     BOOST_CHECK_EQUAL(context->restrictors->size(), 1U);
     BOOST_REQUIRE(context->restrictors->front());
     QsRestrictor& r = *context->restrictors->front();
-    BOOST_CHECK_EQUAL(r._name, "sIndexBetween");
+    BOOST_CHECK_EQUAL(r.getName(), "sIndexBetween");
+    auto restrictorFunc = dynamic_cast<QsRestrictorFunction*>(&r);
+    BOOST_REQUIRE(restrictorFunc != nullptr);
     char const* params[] = {"LSST", "Object", "objectIdObjTest", "386942193651347", "386942193651349"};
-    BOOST_CHECK_EQUAL_COLLECTIONS(r._params.begin(), r._params.end(),
+    BOOST_CHECK_EQUAL_COLLECTIONS(restrictorFunc->getParameters().begin(), restrictorFunc->getParameters().end(),
                                   params, params+5);
 }
 
@@ -108,15 +111,19 @@ BOOST_AUTO_TEST_CASE(DoubleSecondaryIndexRestrictor) {
     BOOST_CHECK_EQUAL(context->restrictors->size(), 2U);
     BOOST_REQUIRE(context->restrictors->at(0));
     QsRestrictor& restrictor0 = *context->restrictors->at(0);
-    BOOST_CHECK_EQUAL(restrictor0._name, "sIndexBetween");
+    BOOST_CHECK_EQUAL(restrictor0.getName(), "sIndexBetween");
+    auto restrictorFunc0 = dynamic_cast<QsRestrictorFunction*>(&restrictor0);
+    BOOST_REQUIRE(restrictorFunc0 != nullptr);
     char const* params0[] = {"LSST", "Object", "objectIdObjTest", "38", "40"};
-    BOOST_CHECK_EQUAL_COLLECTIONS(restrictor0._params.begin(), restrictor0._params.end(),
+    BOOST_CHECK_EQUAL_COLLECTIONS(restrictorFunc0->getParameters().begin(), restrictorFunc0->getParameters().end(),
                                   params0, params0+5);
     BOOST_REQUIRE(context->restrictors->at(1));
     QsRestrictor& restrictor1 = *context->restrictors->at(1);
-    BOOST_CHECK_EQUAL(restrictor1._name, "sIndex");
+    BOOST_CHECK_EQUAL(restrictor1.getName(), "sIndex");
+    auto restrictorFunc1 = dynamic_cast<QsRestrictorFunction*>(&restrictor1);
+    BOOST_REQUIRE(restrictorFunc1 != nullptr);
     char const* params1[] = {"LSST", "Object", "objectIdObjTest", "10", "30", "70"};
-    BOOST_CHECK_EQUAL_COLLECTIONS(restrictor1._params.begin(), restrictor1._params.end(),
+    BOOST_CHECK_EQUAL_COLLECTIONS(restrictorFunc1->getParameters().begin(), restrictorFunc1->getParameters().end(),
                                   params1, params1+6);
 }
 
@@ -138,15 +145,19 @@ BOOST_AUTO_TEST_CASE(DoubleSecondaryIndexRestrictorCartesian) {
     BOOST_CHECK_EQUAL(context->restrictors->size(), 2U);
     BOOST_REQUIRE(context->restrictors->at(0));
     QsRestrictor& restrictor0 = *context->restrictors->at(0);
-    BOOST_CHECK_EQUAL(restrictor0._name, "sIndexBetween");
+    BOOST_CHECK_EQUAL(restrictor0.getName(), "sIndexBetween");
+    auto restrictorFunc0 = dynamic_cast<QsRestrictorFunction*>(&restrictor0);
+    BOOST_REQUIRE(restrictorFunc0 != nullptr);
     char const* params0[] = {"LSST", "Object", "objectIdObjTest", "38", "40"};
-    BOOST_CHECK_EQUAL_COLLECTIONS(restrictor0._params.begin(), restrictor0._params.end(),
+    BOOST_CHECK_EQUAL_COLLECTIONS(restrictorFunc0->getParameters().begin(), restrictorFunc0->getParameters().end(),
                                   params0, params0+5);
     BOOST_REQUIRE(context->restrictors->at(1));
     QsRestrictor& restrictor1 = *context->restrictors->at(1);
-    BOOST_CHECK_EQUAL(restrictor1._name, "sIndex");
+    BOOST_CHECK_EQUAL(restrictor1.getName(), "sIndex");
+    auto restrictorFunc1 = dynamic_cast<QsRestrictorFunction*>(&restrictor1);
+    BOOST_REQUIRE(restrictorFunc1 != nullptr);
     char const* params1[] = {"LSST", "Object", "objectIdObjTest", "10", "30", "70"};
-    BOOST_CHECK_EQUAL_COLLECTIONS(restrictor1._params.begin(), restrictor1._params.end(),
+    BOOST_CHECK_EQUAL_COLLECTIONS(restrictorFunc1->getParameters().begin(), restrictorFunc1->getParameters().end(),
                                   params1, params1+6);
 }
 

@@ -1044,7 +1044,7 @@ private:
                            insensitiveFunction.begin(), ::tolower);
             LOGS(_log, LOG_LVL_DEBUG, "Qserv restrictor changed to lower-case: " << insensitiveFunction);
         }
-        auto restrictor = std::make_shared<query::QsRestrictor>(insensitiveFunction, std::move(strParameters));
+        auto restrictor = std::make_shared<query::QsRestrictorFunction>(insensitiveFunction, std::move(strParameters));
         _getWhereClause()->addQsRestrictor(restrictor);
     }
 

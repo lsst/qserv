@@ -45,31 +45,44 @@ namespace query {
 
 
 std::ostream& operator<<(std::ostream& os, QsRestrictor const& q) {
-    os << "QsRestrictor(" << "\"" <<  q._name << "\"";
-    os << ", " << util::printable(q._params, "", "");
-    os << ")";
-    return os;
+    return q.dbgPrint(os);
 }
 
 
 bool QsRestrictor::operator==(const QsRestrictor& rhs) const {
-    return _name == rhs._name &&
-           _params == rhs._params;
+    return typeid(*this) == typeid(rhs) && isEqual(rhs);
 }
 
 
-void QsRestrictor::render::applyToQT(QsRestrictor::Ptr const& p) {
-    if (p != nullptr) {
-        qt.append(p->_name);
-        qt.append("(");
-        StringVector::const_iterator i;
-        int c=0;
-        for(i=p->_params.begin(); i != p->_params.end(); ++i) {
-            if (++c > 1) qt.append(",");
-            qt.append(*i);
+void QsRestrictorFunction::renderTo(QueryTemplate& qt) const {
+    qt.append(_name);
+    qt.append("(");
+    bool first = true;
+    for (auto const& parameter : _params) {
+        if (first) {
+            first = false;
+        } else {
+            qt.append(",");
         }
-        qt.append(")");
+        qt.append(parameter);
     }
+    qt.append(")");
+}
+
+
+bool QsRestrictorFunction::isEqual(const QsRestrictor& rhs) const {
+    auto rhsRestrictorFunc = static_cast<QsRestrictorFunction const&>(rhs);
+    if (_name != rhsRestrictorFunc._name) return false;
+    return _params == rhsRestrictorFunc._params;
+}
+
+
+std::ostream& QsRestrictorFunction::dbgPrint(std::ostream& os) const {
+    // todo this needs to change to QsRestrictorFunction
+    os << "QsRestrictor(" << "\"" <<  _name << "\"";
+    os << ", " << util::printable(_params, "", "");
+    os << ")";
+    return os;
 }
 
 

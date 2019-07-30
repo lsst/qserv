@@ -68,6 +68,7 @@ using lsst::qserv::qproc::ChunkQuerySpec;
 using lsst::qserv::qproc::ChunkSpec;
 using lsst::qserv::qproc::QuerySession;
 using lsst::qserv::query::QsRestrictor;
+using lsst::qserv::query::QsRestrictorFunction;
 using lsst::qserv::query::QueryContext;
 using lsst::qserv::query::SelectStmt;
 using lsst::qserv::StringPair;
@@ -175,9 +176,11 @@ BOOST_AUTO_TEST_CASE(RestrictorBox) {
     BOOST_CHECK_EQUAL(context->restrictors->size(), 1U);
     BOOST_REQUIRE(context->restrictors->front());
     QsRestrictor& r = *context->restrictors->front();
-    BOOST_CHECK_EQUAL(r._name, "qserv_areaspec_box");
+    BOOST_CHECK_EQUAL(r.getName(), "qserv_areaspec_box");
     char const* params[] = {"0","0","1","1"};
-    BOOST_CHECK_EQUAL_COLLECTIONS(r._params.begin(), r._params.end(),
+    auto restrictorFunc = dynamic_cast<QsRestrictorFunction*>(&r);
+    BOOST_REQUIRE(restrictorFunc != nullptr);
+    BOOST_CHECK_EQUAL_COLLECTIONS(restrictorFunc->getParameters().begin(), restrictorFunc->getParameters().end(),
                                   params, params+4);
     BOOST_CHECK(!context->needsMerge);
     BOOST_CHECK(!context->hasSubChunks());
@@ -205,9 +208,11 @@ BOOST_AUTO_TEST_CASE(RestrictorNeighborCount) {
     BOOST_CHECK_EQUAL(context->restrictors->size(), 1U);
     BOOST_REQUIRE(context->restrictors->front());
     QsRestrictor& r = *context->restrictors->front();
-    BOOST_CHECK_EQUAL(r._name, "qserv_areaspec_box");
+    BOOST_CHECK_EQUAL(r.getName(), "qserv_areaspec_box");
     char const* params[] = {"6","6","7","7"};
-    BOOST_CHECK_EQUAL_COLLECTIONS(r._params.begin(), r._params.end(),
+    auto restrictorFunc = dynamic_cast<QsRestrictorFunction*>(&r);
+    BOOST_REQUIRE(restrictorFunc != nullptr);
+    BOOST_CHECK_EQUAL_COLLECTIONS(restrictorFunc->getParameters().begin(), restrictorFunc->getParameters().end(),
                                   params, params+4);
 
     qs->addChunk(ChunkSpec::makeFake(100,true));
@@ -389,8 +394,10 @@ BOOST_DATA_TEST_CASE(ObjectSourceJoin_ScisqlRestrictor, SCISQL_RESTRICTOR_TEST_C
         BOOST_CHECK_EQUAL(context->restrictors->size(), 1U);
         BOOST_REQUIRE(context->restrictors->front());
         QsRestrictor& r = *context->restrictors->front();
-        BOOST_CHECK_EQUAL(r._name, queryData.expectedRestrictor);
-        BOOST_CHECK_EQUAL_COLLECTIONS(r._params.begin(), r._params.end(),
+        BOOST_CHECK_EQUAL(r.getName(), queryData.expectedRestrictor);
+        auto restrictorFunc = dynamic_cast<QsRestrictorFunction*>(&r);
+        BOOST_REQUIRE(restrictorFunc != nullptr);
+        BOOST_CHECK_EQUAL_COLLECTIONS(restrictorFunc->getParameters().begin(), restrictorFunc->getParameters().end(),
                                     queryData.expectedParams.begin(), queryData.expectedParams.end());
     }
     std::string actual = queryAnaHelper.buildFirstParallelQuery();
@@ -416,9 +423,11 @@ BOOST_AUTO_TEST_CASE(ObjectSourceJoin) {
     BOOST_CHECK_EQUAL(context->restrictors->size(), 1U);
     BOOST_REQUIRE(context->restrictors->front());
     QsRestrictor& r = *context->restrictors->front();
-    BOOST_CHECK_EQUAL(r._name, "qserv_areaspec_box");
+    BOOST_CHECK_EQUAL(r.getName(), "qserv_areaspec_box");
+    auto restrictorFunc = dynamic_cast<QsRestrictorFunction*>(&r);
+    BOOST_REQUIRE(restrictorFunc != nullptr);
     char const* params[] = {"2","2","3","3"};
-    BOOST_CHECK_EQUAL_COLLECTIONS(r._params.begin(), r._params.end(),
+    BOOST_CHECK_EQUAL_COLLECTIONS(restrictorFunc->getParameters().begin(), restrictorFunc->getParameters().end(),
                                   params, params+4);
     std::string actual = queryAnaHelper.buildFirstParallelQuery();
     BOOST_CHECK_EQUAL(actual, expected);
@@ -1096,9 +1105,11 @@ BOOST_AUTO_TEST_CASE(Case01_0002) {
     BOOST_CHECK_EQUAL(context->restrictors->size(), 1U);
     BOOST_REQUIRE(context->restrictors->front());
     QsRestrictor& r = *context->restrictors->front();
-    BOOST_CHECK_EQUAL(r._name, "sIndexEqual");
+    BOOST_CHECK_EQUAL(r.getName(), "sIndexEqual");
+    auto restrictorFunc = dynamic_cast<QsRestrictorFunction*>(&r);
+    BOOST_REQUIRE(restrictorFunc != nullptr);
     char const* params[] = {"LSST","Object", "objectIdObjTest", "430213989000"};
-    BOOST_CHECK_EQUAL_COLLECTIONS(r._params.begin(), r._params.end(),
+    BOOST_CHECK_EQUAL_COLLECTIONS(restrictorFunc->getParameters().begin(), restrictorFunc->getParameters().end(),
                                   params, params+4);
 }
 

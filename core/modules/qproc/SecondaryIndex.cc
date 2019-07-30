@@ -45,6 +45,7 @@
 #include "global/intTypes.h"
 #include "global/constants.h"
 #include "global/stringUtil.h"
+#include "query/QsRestrictor.h"
 #include "qproc/ChunkSpec.h"
 #include "sql/SqlConnection.h"
 #include "sql/SqlConnectionFactory.h"
@@ -124,37 +125,41 @@ public:
     ChunkSpecVector lookup(query::QsRestrictor::PtrVector const& restrictors) override {
         ChunkSpecVector output;
         bool hasIndex = false;
-        for(auto const& restrictor : restrictors) {
-            if (restrictor->_name == "sIndex"){
+        for(auto const& restrBase : restrictors) {
+            auto restrictor = std::dynamic_pointer_cast<query::QsRestrictorFunction>(restrBase);
+            if (nullptr == restrictor) {
+                continue;
+            }
+            if (restrictor->getName() == "sIndex"){
                 hasIndex = true;
-                _sqlLookup(output, restrictor->_params, IN);
-            } else if (restrictor->_name == "sIndexNotIn"){
+                _sqlLookup(output, restrictor->getParameters(), IN);
+            } else if (restrictor->getName() == "sIndexNotIn"){
                 hasIndex = true;
-                _sqlLookup(output, restrictor->_params, NOT_IN);
-            } else if (restrictor->_name == "sIndexBetween") {
+                _sqlLookup(output, restrictor->getParameters(), NOT_IN);
+            } else if (restrictor->getName() == "sIndexBetween") {
                 hasIndex = true;
-                _sqlLookup(output, restrictor->_params, BETWEEN);
-            } else if (restrictor->_name == "sIndexNotBetween") {
+                _sqlLookup(output, restrictor->getParameters(), BETWEEN);
+            } else if (restrictor->getName() == "sIndexNotBetween") {
                 hasIndex = true;
-                _sqlLookup(output, restrictor->_params, NOT_BETWEEN);
-            } else if (restrictor->_name == "sIndexEqual") {
+                _sqlLookup(output, restrictor->getParameters(), NOT_BETWEEN);
+            } else if (restrictor->getName() == "sIndexEqual") {
                 hasIndex = true;
-                _sqlLookup(output, restrictor->_params, EQUAL);
-            } else if (restrictor->_name == "sIndexNotEqual") {
+                _sqlLookup(output, restrictor->getParameters(), EQUAL);
+            } else if (restrictor->getName() == "sIndexNotEqual") {
                 hasIndex = true;
-                _sqlLookup(output, restrictor->_params, NOT_EQUAL);
-            } else if (restrictor->_name == "sIndexGreaterThan") {
+                _sqlLookup(output, restrictor->getParameters(), NOT_EQUAL);
+            } else if (restrictor->getName() == "sIndexGreaterThan") {
                 hasIndex = true;
-                _sqlLookup(output, restrictor->_params, GREATER_THAN);
-            } else if (restrictor->_name == "sIndexLessThan") {
+                _sqlLookup(output, restrictor->getParameters(), GREATER_THAN);
+            } else if (restrictor->getName() == "sIndexLessThan") {
                 hasIndex = true;
-                _sqlLookup(output, restrictor->_params, LESS_THAN);
-            } else if (restrictor->_name == "sIndexGreaterThanOrEqual") {
+                _sqlLookup(output, restrictor->getParameters(), LESS_THAN);
+            } else if (restrictor->getName() == "sIndexGreaterThanOrEqual") {
                 hasIndex = true;
-                _sqlLookup(output, restrictor->_params, GREATER_THAN_OR_EQUAL);
-            } else if (restrictor->_name == "sIndexLessThanOrEqual") {
+                _sqlLookup(output, restrictor->getParameters(), GREATER_THAN_OR_EQUAL);
+            } else if (restrictor->getName() == "sIndexLessThanOrEqual") {
                 hasIndex = true;
-                _sqlLookup(output, restrictor->_params, LESS_THAN_OR_EQUAL);
+                _sqlLookup(output, restrictor->getParameters(), LESS_THAN_OR_EQUAL);
             }
         }
         if (!hasIndex) {
@@ -306,7 +311,8 @@ public:
 private:
     struct _checkIndex {
         bool operator()(std::shared_ptr<query::QsRestrictor> const& restrictor) {
-        return (restrictor->_name == "sIndex" || restrictor->_name == "sIndexBetween"); }
+            return (restrictor->getName() == "sIndex" || restrictor->getName() == "sIndexBetween");
+        }
     };
     bool _hasSecondary(query::QsRestrictor::PtrVector const& restrictors) {
         return restrictors.end() != std::find_if(restrictors.begin(), restrictors.end(), _checkIndex());

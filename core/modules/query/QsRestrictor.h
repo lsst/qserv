@@ -68,32 +68,88 @@ namespace query {
 ///    | "qserv_areaspec_ellipse"^
 ///    | "qserv_areaspec_poly"^
 ///    | "qserv_areaspec_hull"^
-/// but may include other names. They are used to pass information back
-/// to the python layer to evaluate the geometry restriction.
+/// but may include other names.
 class QsRestrictor {
 public:
-    QsRestrictor() = default;
 
-    QsRestrictor(std::string const& name, std::vector<std::string> const& parameters)
-            : _name(name), _params(parameters) {}
+    QsRestrictor() = default;
 
     typedef std::shared_ptr<QsRestrictor> Ptr;
     typedef std::vector<Ptr> PtrVector;
 
-    class render {
-    public:
-        render(QueryTemplate& qt_) : qt(qt_) {}
-        void applyToQT(std::shared_ptr<QsRestrictor> const& p);
-        QueryTemplate& qt;
-    };
-
-    std::string const& getName() const { return _name; }
-    StringVector const& getParameters() const { return _params; }
-
     bool operator==(const QsRestrictor& rhs) const;
+
+    /**
+     * @brief Serialze this instance as SQL to the QueryTemplate.
+     */
+    virtual void renderTo(QueryTemplate& qt) const = 0;
+
+    /**
+     * @brief Get the function name.
+     *
+     * @return std::string const&
+     */
+    virtual std::string const& getName() const = 0;
+
+    /**
+     * @brief Serialize to the given ostream for debug output.
+     */
+    virtual std::ostream& dbgPrint(std::ostream& os) const = 0;
 
     friend std::ostream& operator<<(std::ostream& os, QsRestrictor const& q);
 
+protected:
+    /**
+     * @brief Test if this is equal with rhs.
+     *
+     * This is an overidable helper function for operator==, it should only be called by that function, or at
+     * least make sure that typeid(this) == typeid(rhs) before calling isEqual.
+     */
+    virtual bool isEqual(const QsRestrictor& rhs) const = 0;
+};
+
+
+class QsRestrictorFunction : public QsRestrictor {
+public:
+    QsRestrictorFunction() = default;
+
+    QsRestrictorFunction(std::string const& name, std::vector<std::string> const& parameters)
+            : _name(name), _params(parameters) {}
+
+    /**
+     * @brief Serialze this instance as SQL to the QueryTemplate.
+     */
+    void renderTo(QueryTemplate& qt) const override;
+
+    /**
+     * @brief Get the function name.
+     *
+     * @return std::string const&
+     */
+    std::string const& getName() const override { return _name; }
+
+    /**
+     * @brief Get the function parameters.
+     *
+     * @return StringVector const&
+     */
+    StringVector const& getParameters() const { return _params; }
+
+    /**
+     * @brief Serialize to the given ostream for debug output.
+     */
+    std::ostream& dbgPrint(std::ostream& os) const override;
+
+protected:
+    /**
+     * @brief Test if this and rhs are equal.
+
+     * This is an overidable helper function for operator==, it should only be called by that function, or at
+     * least make sure that typeid(this) == typeid(rhs) before calling isEqual.
+     */
+    bool isEqual(const QsRestrictor& rhs) const override;
+
+private:
     std::string const _name;
     StringVector const _params;
 };

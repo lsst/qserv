@@ -123,11 +123,15 @@ static FuncMap funcMap;
  *  @return: Pointer to Region covered by restrictor, or nullptr if empty
  */
 std::shared_ptr<Region> getRegion(std::shared_ptr<lsst::qserv::query::QsRestrictor> const& restrictor) {
+    auto restrictorFunc = std::dynamic_pointer_cast<lsst::qserv::query::QsRestrictorFunction>(restrictor);
+    if (nullptr == restrictorFunc) {
+        throw lsst::qserv::Bug("Unhandled restriction spec, only RestrictorFunc works right now: " + restrictor->getName());
+    }
     std::shared_ptr<Region> covered_region = nullptr;
-    FuncMap::Map::const_iterator i = funcMap.fMap.find(restrictor->_name);
+    FuncMap::Map::const_iterator i = funcMap.fMap.find(restrictorFunc->getName());
     if (i != funcMap.fMap.end()) {
         LOGS(_log, LOG_LVL_TRACE, "Region for " << *restrictor << ": " << i->first);
-        covered_region = i->second(restrictor->_params);
+        covered_region = i->second(restrictorFunc->getParameters());
     }
     return covered_region;
 }

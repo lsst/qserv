@@ -182,7 +182,7 @@ query::FuncExpr::Ptr newFuncExpr(char const fName[],
 class Restriction {
 public:
     Restriction(query::QsRestrictor const& r)
-        : _name(r._name) {
+        : _name(r.getName()) {
         _setGenerator(r);
     }
 
@@ -233,29 +233,33 @@ private:
     };
 
     void _setGenerator(query::QsRestrictor const& r) {
-        if (r._name == "qserv_areaspec_box") {
+        auto restrictorFunc = dynamic_cast<query::QsRestrictorFunction const * const>(&r);
+        if (nullptr == restrictorFunc) {
+            throw qana::AnalysisBug("Unhandled restriction spec, only RestrictorFunc works right now: " + r.getName());
+        }
+        if (restrictorFunc->getName() == "qserv_areaspec_box") {
             _generator = std::make_shared<AreaGenerator>("s2PtInBox",
                                                          4,
-                                                         r._params
+                                                         restrictorFunc->getParameters()
                                                          );
-        } else if (r._name == "qserv_areaspec_circle") {
+        } else if (restrictorFunc->getName() == "qserv_areaspec_circle") {
             _generator = std::make_shared<AreaGenerator>("s2PtInCircle",
                                                          3,
-                                                         r._params
+                                                         restrictorFunc->getParameters()
                                                          );
-        } else if (r._name == "qserv_areaspec_ellipse") {
+        } else if (restrictorFunc->getName() == "qserv_areaspec_ellipse") {
             _generator = std::make_shared<AreaGenerator>("s2PtInEllipse",
                                                          5,
-                                                         r._params
+                                                         restrictorFunc->getParameters()
                                                          );
-        } else if (r._name == "qserv_areaspec_poly") {
+        } else if (restrictorFunc->getName() == "qserv_areaspec_poly") {
             const int use_string = AreaGenerator::USE_STRING;
             _generator = std::make_shared<AreaGenerator>("s2PtInCPoly",
                                                          use_string,
-                                                         r._params
+                                                         restrictorFunc->getParameters()
                                                          );
         } else {
-            throw qana::AnalysisBug("Unmatched restriction spec: " + _name);
+            throw qana::AnalysisBug("Unmatched restriction spec: " + restrictorFunc->getName());
         }
     }
     std::string const _name;
@@ -338,7 +342,7 @@ std::shared_ptr<query::QsRestrictor> makeQsRestrictor(std::string const& name,
                 " (must be even), will not apply an area restrictor..");
         return nullptr;
     }
-    return std::make_shared<query::QsRestrictor>(name, parameters);
+    return std::make_shared<query::QsRestrictorFunction>(name, parameters);
 }
 
 
@@ -517,7 +521,7 @@ query::QsRestrictor::Ptr newRestrictor(
     std::transform(values.begin(), values.end(), std::back_inserter(parameters),
         [](query::ValueExprPtr p) -> std::string { return p->copyAsLiteral(); });
 
-    return std::make_shared<query::QsRestrictor>(restrictorName, std::move(parameters));
+    return std::make_shared<query::QsRestrictorFunction>(restrictorName, std::move(parameters));
 }
 
 

@@ -58,6 +58,7 @@ using lsst::qserv::parser::SelectParser;
 using lsst::qserv::qproc::ChunkQuerySpec;
 using lsst::qserv::qproc::QuerySession;
 using lsst::qserv::query::QsRestrictor;
+using lsst::qserv::query::QsRestrictorFunction;
 using lsst::qserv::query::QueryContext;
 using lsst::qserv::sql::SqlConfig;
 using lsst::qserv::tests::QueryAnaFixture;
@@ -78,9 +79,11 @@ BOOST_AUTO_TEST_CASE(SecondaryIndex) {
     BOOST_CHECK_EQUAL(context->restrictors->size(), 1U);
     BOOST_REQUIRE(context->restrictors->front());
     QsRestrictor& r = *context->restrictors->front();
-    BOOST_CHECK_EQUAL(r._name, "sIndex");
+    auto restrictorFunc = dynamic_cast<QsRestrictorFunction*>(&r);
+    BOOST_CHECK_EQUAL(r.getName(), "sIndex");
+    BOOST_REQUIRE(restrictorFunc != nullptr);
     char const* params[] = {"LSST", "Object", "objectIdObjTest", "2", "3145", "9999"};
-    BOOST_CHECK_EQUAL_COLLECTIONS(r._params.begin(), r._params.end(),
+    BOOST_CHECK_EQUAL_COLLECTIONS(restrictorFunc->getParameters().begin(), restrictorFunc->getParameters().end(),
                                   params, params+6);
 }
 
@@ -117,9 +120,11 @@ BOOST_AUTO_TEST_CASE(RestrictorObjectIdAlias) {
     BOOST_CHECK_EQUAL(context->restrictors->size(), 1U);
     BOOST_REQUIRE(context->restrictors->front());
     QsRestrictor& r = *context->restrictors->front();
-    BOOST_CHECK_EQUAL(r._name, "sIndex");
+    BOOST_CHECK_EQUAL(r.getName(), "sIndex");
+    auto restrictorFunc = dynamic_cast<QsRestrictorFunction*>(&r);
+    BOOST_REQUIRE(restrictorFunc != nullptr);
     char const* params[] = {"LSST","Object", "objectIdObjTest", "2","3145","9999"};
-    BOOST_CHECK_EQUAL_COLLECTIONS(r._params.begin(), r._params.end(),
+    BOOST_CHECK_EQUAL_COLLECTIONS(restrictorFunc->getParameters().begin(), restrictorFunc->getParameters().end(),
                                   params, params+6);
 }
 

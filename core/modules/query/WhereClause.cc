@@ -198,9 +198,8 @@ WhereClause::getGenerated() const {
 
 void WhereClause::renderTo(QueryTemplate& qt) const {
     if (_restrs != nullptr) {
-        QsRestrictor::render rend(qt);
-        for (auto& res : *_restrs) {
-            rend.applyToQT(res);
+        for (auto& restrictor : *_restrs) {
+            restrictor->renderTo(qt);
         }
     }
     if (nullptr != _rootOrTerm) {

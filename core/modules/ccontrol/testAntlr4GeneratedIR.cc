@@ -316,7 +316,7 @@ template <typename...Targs>
 shared_ptr<query::QsRestrictor> QsRestrictor(string name, Targs... args) {
     std::vector<std::string> parameters;
     pusher(parameters, args...);
-    return make_shared<query::QsRestrictor>(name, std::move(parameters));
+    return make_shared<query::QsRestrictorFunction>(name, std::move(parameters));
 }
 
 
