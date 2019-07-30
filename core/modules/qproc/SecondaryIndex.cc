@@ -126,39 +126,37 @@ public:
     ChunkSpecVector lookup(query::ConstraintVector const& cv) override {
         ChunkSpecVector output;
         bool hasIndex = false;
-        for(query::ConstraintVector::const_iterator i=cv.begin(), e=cv.end();
-            i != e;
-            ++i) {
-            if (i->name == "sIndex"){
+        for(auto const& constraint : cv) {
+            if (constraint.name == "sIndex"){
                 hasIndex = true;
-                _sqlLookup(output, i->params, IN);
-            } else if (i->name == "sIndexNotIn"){
+                _sqlLookup(output, constraint.params, IN);
+            } else if (constraint.name == "sIndexNotIn"){
                 hasIndex = true;
-                _sqlLookup(output, i->params, NOT_IN);
-            } else if (i->name == "sIndexBetween") {
+                _sqlLookup(output, constraint.params, NOT_IN);
+            } else if (constraint.name == "sIndexBetween") {
                 hasIndex = true;
-                _sqlLookup(output, i->params, BETWEEN);
-            } else if (i->name == "sIndexNotBetween") {
+                _sqlLookup(output, constraint.params, BETWEEN);
+            } else if (constraint.name == "sIndexNotBetween") {
                 hasIndex = true;
-                _sqlLookup(output, i->params, NOT_BETWEEN);
-            } else if (i->name == "sIndexEqual") {
+                _sqlLookup(output, constraint.params, NOT_BETWEEN);
+            } else if (constraint.name == "sIndexEqual") {
                 hasIndex = true;
-                _sqlLookup(output, i->params, EQUAL);
-            } else if (i->name == "sIndexNotEqual") {
+                _sqlLookup(output, constraint.params, EQUAL);
+            } else if (constraint.name == "sIndexNotEqual") {
                 hasIndex = true;
-                _sqlLookup(output, i->params, NOT_EQUAL);
-            } else if (i->name == "sIndexGreaterThan") {
+                _sqlLookup(output, constraint.params, NOT_EQUAL);
+            } else if (constraint.name == "sIndexGreaterThan") {
                 hasIndex = true;
-                _sqlLookup(output, i->params, GREATER_THAN);
-            } else if (i->name == "sIndexLessThan") {
+                _sqlLookup(output, constraint.params, GREATER_THAN);
+            } else if (constraint.name == "sIndexLessThan") {
                 hasIndex = true;
-                _sqlLookup(output, i->params, LESS_THAN);
-            } else if (i->name == "sIndexGreaterThanOrEqual") {
+                _sqlLookup(output, constraint.params, LESS_THAN);
+            } else if (constraint.name == "sIndexGreaterThanOrEqual") {
                 hasIndex = true;
-                _sqlLookup(output, i->params, GREATER_THAN_OR_EQUAL);
-            } else if (i->name == "sIndexLessThanOrEqual") {
+                _sqlLookup(output, constraint.params, GREATER_THAN_OR_EQUAL);
+            } else if (constraint.name == "sIndexLessThanOrEqual") {
                 hasIndex = true;
-                _sqlLookup(output, i->params, LESS_THAN_OR_EQUAL);
+                _sqlLookup(output, constraint.params, LESS_THAN_OR_EQUAL);
             }
         }
         if (!hasIndex) {
