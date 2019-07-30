@@ -55,7 +55,53 @@ namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.qproc.SecondaryIndex");
 
-enum QueryType { IN, NOT_IN, BETWEEN, NOT_BETWEEN };
+enum QueryType { IN, NOT_IN, BETWEEN, NOT_BETWEEN, EQUAL, NOT_EQUAL, LESS_THAN, GREATER_THAN,
+                 LESS_THAN_OR_EQUAL, GREATER_THAN_OR_EQUAL };
+
+/**
+ * @brief Get the sql string for the given query type.
+ *
+ * Includes the whitespace around the string value, simply because it was easier to use that way.
+ *
+ * @param queryType The query type to get the string for.
+ * @return std::string The sql string to use for the given query type.
+ */
+std::string toSqlStr(QueryType queryType) {
+    switch (queryType) {
+        case IN:
+            return " IN";
+
+        case NOT_IN:
+            return " NOT IN";
+
+        case BETWEEN:
+            return " BETWEEN ";
+
+        case NOT_BETWEEN:
+            return " NOT BETWEEN ";
+
+        case EQUAL:
+            return " = ";
+
+        case NOT_EQUAL:
+            return " != ";
+
+        case LESS_THAN:
+            return " < ";
+
+        case GREATER_THAN:
+            return " > ";
+
+        case LESS_THAN_OR_EQUAL:
+            return " <= ";
+
+        case GREATER_THAN_OR_EQUAL:
+            return " >= ";
+
+        default:
+            throw lsst::qserv::Bug("Unhandled QueryType: " + queryType);
+    }
+}
 
 } // anonymous namespace
 
@@ -95,6 +141,24 @@ public:
             } else if (i->name == "sIndexNotBetween") {
                 hasIndex = true;
                 _sqlLookup(output, i->params, NOT_BETWEEN);
+            } else if (i->name == "sIndexEqual") {
+                hasIndex = true;
+                _sqlLookup(output, i->params, EQUAL);
+            } else if (i->name == "sIndexNotEqual") {
+                hasIndex = true;
+                _sqlLookup(output, i->params, NOT_EQUAL);
+            } else if (i->name == "sIndexGreaterThan") {
+                hasIndex = true;
+                _sqlLookup(output, i->params, GREATER_THAN);
+            } else if (i->name == "sIndexLessThan") {
+                hasIndex = true;
+                _sqlLookup(output, i->params, LESS_THAN);
+            } else if (i->name == "sIndexGreaterThanOrEqual") {
+                hasIndex = true;
+                _sqlLookup(output, i->params, GREATER_THAN_OR_EQUAL);
+            } else if (i->name == "sIndexLessThanOrEqual") {
+                hasIndex = true;
+                _sqlLookup(output, i->params, LESS_THAN_OR_EQUAL);
             }
         }
         if (!hasIndex) {
@@ -158,16 +222,23 @@ private:
                 }
                 secondaryVals += *iter;
             }
-            sql += (query_type == QueryType::IN ? " IN" : " NOT IN");
-            sql += "(" + secondaryVals + ")";
+            sql += toSqlStr(query_type) + "(" + secondaryVals + ")";
         } else if (query_type == QueryType::BETWEEN || query_type == QueryType::NOT_BETWEEN) {
             if (params.size() != 5) {
                 throw Bug("Incorrect parameters for bounded secondary index lookup ");
             }
             std::string const& par3 = *(iter++);
             std::string const& par4 = *iter;
-            sql += (query_type == QueryType::BETWEEN ? " BETWEEN " : " NOT BETWEEN ");
-            sql += par3 + " AND " + par4;
+            sql += toSqlStr(query_type) + par3 + " AND " + par4;
+        } else if (query_type == EQUAL || query_type == NOT_EQUAL || query_type == LESS_THAN ||
+                   query_type == GREATER_THAN || query_type == LESS_THAN_OR_EQUAL ||
+                   query_type == GREATER_THAN_OR_EQUAL) {
+            if (params.size() != 4) {
+                throw Bug("Incorrect parameters for comparison secondary index lookup ");
+            }
+            // todo I'm going to be able to break this by putting the key column 2nd
+            std::string const& par3 = *iter;
+            sql += toSqlStr(query_type) + par3;
         }
 
         LOGS(_log, LOG_LVL_DEBUG, "secondary lookup sql:" << sql);

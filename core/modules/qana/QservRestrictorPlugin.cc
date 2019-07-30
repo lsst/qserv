@@ -80,6 +80,12 @@ const char* SECONDARY_INDEX_IN = "sIndex";
 const char* SECONDARY_INDEX_NOT_IN = "sIndexNotIn";
 const char* SECONDARY_INDEX_BETWEEN = "sIndexBetween";
 const char* SECONDARY_INDEX_NOT_BETWEEN = "sIndexNotBetween";
+const char* SECONDARY_INDEX_EQUAL = "sIndexEqual";
+const char* SECONDARY_INDEX_NOT_EQUAL = "sIndexNotEqual";
+const char* SECONDARY_INDEX_GREATER_THAN = "sIndexGreaterThan";
+const char* SECONDARY_INDEX_LESS_THAN = "sIndexLessThan";
+const char* SECONDARY_INDEX_GREATER_THAN_OR_EQUAL = "sIndexGreaterThanOrEqual";
+const char* SECONDARY_INDEX_LESS_THAN_OR_EQUAL = "sIndexLessThanOrEqual";
 
 /// RestrictorEntry is a class to contain information about chunked tables.
 struct RestrictorEntry {
@@ -515,6 +521,41 @@ query::QsRestrictor::Ptr newRestrictor(
 }
 
 
+/**
+ * @brief Get the locally defined restrictor type for a given CompPredicate operator.
+ */
+const char* getRestrictorType(query::CompPredicate::OpType op, bool invertSymbol) {
+    switch (op) {
+        case query::CompPredicate::EQUALS_OP:
+            return SECONDARY_INDEX_EQUAL;
+
+        case query::CompPredicate::NULL_SAFE_EQUALS_OP:
+            return SECONDARY_INDEX_EQUAL;
+
+        case query::CompPredicate::NOT_EQUALS_OP:
+            return SECONDARY_INDEX_NOT_EQUAL;
+
+        case query::CompPredicate::NOT_EQUALS_OP_ALT:
+            return SECONDARY_INDEX_NOT_EQUAL;
+
+        case query::CompPredicate::LESS_THAN_OP:
+            return invertSymbol ? SECONDARY_INDEX_GREATER_THAN_OR_EQUAL : SECONDARY_INDEX_LESS_THAN;
+
+        case query::CompPredicate::GREATER_THAN_OP:
+            return invertSymbol ? SECONDARY_INDEX_LESS_THAN_OR_EQUAL : SECONDARY_INDEX_GREATER_THAN;
+
+        case query::CompPredicate::LESS_THAN_OR_EQUALS_OP:
+            return invertSymbol ? SECONDARY_INDEX_GREATER_THAN_OR_EQUAL : SECONDARY_INDEX_LESS_THAN_OR_EQUAL;
+
+        case query::CompPredicate::GREATER_THAN_OR_EQUALS_OP:
+            return invertSymbol ? SECONDARY_INDEX_LESS_THAN_OR_EQUAL : SECONDARY_INDEX_GREATER_THAN_OR_EQUAL;
+
+        default:
+            throw qana::AnalysisBug("Unhandled OpType:" + op);
+    }
+}
+
+
 /**  Create QSRestrictors which will use secondary index
  *
  *   @param context:  Context used to analyze SQL query, allow to compute
@@ -552,14 +593,15 @@ query::QsRestrictor::PtrVector getSecIndexRestrictors(query::QueryContext& conte
                 }
             } else if (auto const compPredicate =
                        std::dynamic_pointer_cast<query::CompPredicate>(factorTerm)) {
-                // '=' predicate
                 query::ValueExprPtr literalValue;
 
                 // If the left side doesn't match any columns, check the right side.
                 columnRefs = resolveAsColumnRef(compPredicate->left);
+                bool invertSymbol = false;
                 if (columnRefs.empty()) {
                     columnRefs = resolveAsColumnRef(compPredicate->right);
                     literalValue = compPredicate->left;
+                    invertSymbol = true;
                 } else {
                     literalValue = compPredicate->right;
                 }
@@ -567,10 +609,12 @@ query::QsRestrictor::PtrVector getSecIndexRestrictors(query::QueryContext& conte
                 for (query::ColumnRef::Ptr const& column_ref : columnRefs) {
                     if (lookupSecIndex(context, column_ref)) {
                         query::ValueExprPtrVector cands(1, literalValue);
-                        restrictor = newRestrictor(SECONDARY_INDEX_IN, context, column_ref , cands);
+                        restrictor = newRestrictor(getRestrictorType(compPredicate->op, invertSymbol),
+                                                   context, column_ref, cands);
                         if (restrictor) {
-                            LOGS(_log, LOG_LVL_DEBUG, "Add SECONDARY_INDEX_IN restrictor: "
-                                    << *restrictor << " for '=' predicate");
+                            LOGS(_log, LOG_LVL_DEBUG,
+                                "Add SECONDARY_INDEX_IN restrictor: " << *restrictor << " for " <<
+                                query::CompPredicate::opTypeToStr(compPredicate->op) << " predicate");
                             break; // Only want one per column.
                         }
                     }
