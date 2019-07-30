@@ -88,20 +88,20 @@ list<pair<string,string>> SqlBaseJob::persistentLogData() const {
 
     for (auto&& itr: resultData.resultSets) {
         auto&& worker = itr.first;
-        auto&& resultSet = itr.second;
-
-        // ATTENTION: the 'error=' field is reported in the very end
-        // of the string to simplify parsing of the string should
-        // this be needed.
-
+        string workerResultSetStr;
+        auto&& workerResultSet = itr.second;
+        for (auto&& resultSet: workerResultSet) {
+            workerResultSetStr +=
+                "(char_set_name=" + resultSet.charSetName +
+                ",has_result=" + string(resultSet.hasResult ? "1" : "0") +
+                ",fields=" + to_string(resultSet.fields.size()) +
+                ",rows=" + to_string(resultSet.rows.size()) +
+                ",error=" + resultSet.error +
+                "),";
+        }
         result.emplace_back(
             "worker-stats",
-            "worker=" + worker +
-            " char_set_name=" + resultSet.charSetName +
-            " has_result="    + string(   resultSet.hasResult ? "1" : "0") +
-            " fields="        + to_string(resultSet.fields.size()) +
-            " rows="          + to_string(resultSet.rows.size()) +
-            " error="         +           resultSet.error
+            "worker=" + worker + ",result-set=" + workerResultSetStr
         );
     }
     return result;
@@ -117,8 +117,7 @@ void SqlBaseJob::startImpl(util::Lock const& lock) {
         controller()->serviceProvider()->config()->workers();
     
     for (auto&& worker: workerNames) {
-        _resultData.workers   [worker] = false;
-        _resultData.resultSets[worker] = SqlResultSet();
+        _resultData.resultSets[worker] = list<SqlResultSet>();
         _requests.push_back(launchRequest(lock, worker));
         _numLaunched++;
     }
@@ -161,17 +160,11 @@ void SqlBaseJob::onRequestFinish(SqlBaseRequest::Ptr const& request) {
 
     // Update stats, including the result sets since they may carry
     // MySQL-specific errors reported by failed queries.
-
-    bool const requestSucceeded =
-        request->extendedState() == Request::ExtendedState::SUCCESS;
-
-    _resultData.workers   [request->worker()] = requestSucceeded;
-    _resultData.resultSets[request->worker()] = request->responseData();
+    _resultData.resultSets[request->worker()].push_back(request->responseData());
 
     // Evaluate the completion condition
-
     _numFinished++;
-    if (requestSucceeded) _numSuccess++;
+    if (request->extendedState() == Request::ExtendedState::SUCCESS) _numSuccess++;
 
     if (_numFinished == _numLaunched) {
         finish(lock, _numSuccess == _numLaunched ? ExtendedState::SUCCESS :

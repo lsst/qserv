@@ -287,27 +287,27 @@ int SqlApp::runImpl() {
     auto const& resultData = job->getResultData();
     for (auto&& itr : resultData.resultSets) {
         auto&& worker = itr.first;
-        auto&& resultSet = itr.second;
+        auto&& workerResultSet = itr.second;
+        for (auto&& resultSet: workerResultSet) {
+            if (not resultSet.error.empty()) {
+                cout << "worker: " << worker << ",  error: " << resultSet.error << endl;
+                continue;
+            }
+            string const caption = "worker: " + worker + ",  performance [sec]: " +
+                                   to_string(resultSet.performanceSec);
+            if (shouldHaveResultSet) {
+                string const indent = "";
+                auto table = resultSet.toColumnTable(caption, indent);
 
-        bool const succeeded = resultData.workers.at(worker);
-        if (not succeeded) {
-            cout << "worker: " << worker << ",  error: " << resultSet.error << endl;
-            continue;
-        }
-        string const caption = "worker: " + worker + ",  performance [sec]: " +
-                               to_string(resultSet.performanceSec);
-        if (shouldHaveResultSet) {
-            string const indent = "";
-            auto table = resultSet.toColumnTable(caption, indent);
+                bool const topSeparator    = false;
+                bool const bottomSeparator = false;
+                bool const repeatedHeader  = false;
 
-            bool const topSeparator    = false;
-            bool const bottomSeparator = false;
-            bool const repeatedHeader  = false;
-
-            table.print(cout, topSeparator, bottomSeparator, _pageSize, repeatedHeader);
-            cout << "\n";
-        } else {
-            cout << caption << endl;
+                table.print(cout, topSeparator, bottomSeparator, _pageSize, repeatedHeader);
+                cout << "\n";
+            } else {
+                cout << caption << endl;
+            }
         }
     }
     return 0;

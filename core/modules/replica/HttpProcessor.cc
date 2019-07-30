@@ -1838,11 +1838,12 @@ void HttpProcessor::_addDatabase(qhttp::Request::Ptr const& req,
         auto const& resultData = job->getResultData();
         for (auto&& itr: resultData.resultSets) {
             auto&& worker = itr.first;
-            auto&& resultSet = itr.second;
-            bool const succeeded = resultData.workers.at(worker);
-            if (not succeeded) {
-                error += "database creation failed on worker: " + worker + ",  error: " +
-                         resultSet.error + " ";
+            auto&& workerResultSet = itr.second;
+            for (auto&& resultSet: workerResultSet) {
+                if (not resultSet.error.empty()) {
+                    error += "database creation failed on worker: " + worker + ",  error: " +
+                             resultSet.error + " ";
+                }
             }
         }
         if (not error.empty()) {
@@ -2073,12 +2074,12 @@ void HttpProcessor::_addTable(qhttp::Request::Ptr const& req,
         auto const& resultData = job->getResultData();
         for (auto&& itr: resultData.resultSets) {
             auto&& worker = itr.first;
-            auto&& resultSet = itr.second;
-
-            bool const succeeded = resultData.workers.at(worker);
-            if (not succeeded) {
-                error += "table creation failed on worker: " + worker + ",  error: " +
-                         resultSet.error + " ";
+            auto&& workerResultSet = itr.second;
+            for (auto&& resultSet: workerResultSet) {
+                if (not resultSet.error.empty()) {
+                    error += "table creation failed on worker: " + worker + ",  error: " +
+                             resultSet.error + " ";
+                }
             }
         }
         if (not error.empty()) {
@@ -2340,12 +2341,13 @@ bool HttpProcessor::_grantDatabaseAccess(qhttp::Response::Ptr const& resp,
     auto const& resultData = job->getResultData();
     for (auto&& itr: resultData.resultSets) {
         auto&& worker = itr.first;
-        auto&& resultSet = itr.second;
-        bool const succeeded = resultData.workers.at(worker);
-        if (not succeeded) {
-            error +=
-                    "grant access to a database failed on worker: " + worker +
-                    ",  error: " + resultSet.error + " ";
+        auto&& workerResultSet = itr.second;
+        for (auto&& resultSet: workerResultSet) {
+            if (not resultSet.error.empty()) {
+                error +=
+                        "grant access to a database failed on worker: " + worker +
+                        ",  error: " + resultSet.error + " ";
+            }
         }
     }
     if (not error.empty()) {
@@ -2376,12 +2378,13 @@ bool HttpProcessor::_enableDatabase(qhttp::Response::Ptr const& resp,
     auto const& resultData = job->getResultData();
     for (auto&& itr: resultData.resultSets) {
         auto&& worker = itr.first;
-        auto&& resultSet = itr.second;
-        bool const succeeded = resultData.workers.at(worker);
-        if (not succeeded) {
-            error +=
-                    "enabling database failed on worker: " + worker + ",  error: " +
-                    resultSet.error + " ";
+        auto&& workerResultSet = itr.second;
+        for (auto&& resultSet: workerResultSet) {
+            if (not resultSet.error.empty()) {
+                error +=
+                        "enabling database failed on worker: " + worker + ",  error: " +
+                        resultSet.error + " ";
+            }
         }
     }
     if (not error.empty()) {
@@ -2415,13 +2418,14 @@ bool HttpProcessor::_removeMySQLPartitions(qhttp::Response::Ptr const& resp,
         auto const& resultData = job->getResultData();
         for (auto&& itr: resultData.resultSets) {
             auto&& worker = itr.first;
-            auto&& resultSet = itr.second;
-            bool const succeeded = resultData.workers.at(worker);
-            if (not succeeded) {
-                error +=
-                        "MySQL partitions removal failed on worker: " + worker +
-                        " for database: " + databaseInfo.name + " and table: " + table +
-                        ",  error: " + resultSet.error + " ";
+            auto&& workerResultSet = itr.second;
+            for (auto&& resultSet: workerResultSet) {
+                if (not resultSet.error.empty()) {
+                    error +=
+                            "MySQL partitions removal failed on worker: " + worker +
+                            " for database: " + databaseInfo.name + " and table: " + table +
+                            ",  error: " + resultSet.error + " ";
+                }
             }
         }
     }

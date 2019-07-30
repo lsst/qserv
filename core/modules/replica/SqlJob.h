@@ -45,11 +45,9 @@ namespace replica {
  */
 struct SqlJobResult {
 
-    /// Per-worker flag indicating if the query has succeeded at the worker
-    std::map<std::string, bool> workers;
-
-    /// Result sets for the workers
-    std::map<std::string, SqlResultSet> resultSets;
+    /// Result sets for the workers. Note, that specific job types
+    /// may launch more than one request per worker.
+    std::map<std::string, std::list<SqlResultSet>> resultSets;
 };
 
 /**
@@ -1014,6 +1012,49 @@ private:
  * the same request for removing MySQL partitions from existing table from all
  * worker databases of a setup. Result sets are collected in the above defined
  * data structure.
+ * 
+ * Note, that the algorithm treats regular and partitioned tables quite differently.
+ * For the regular tables it will indeed broadcast exactly the same request
+ * (to the exact table specified as the corresponding parameter of the job)
+ * to all workers. The regular tables must be present at all workers.
+ * The partitioned (chunked) tables will be treated quite differently. First of
+ * all, the name of a table specified as a parameter of the class will be treated
+ * as a class of the tables, and a group of table-specific AND(!) chunk-specific
+ * requests will be generated for such table. For example, of the table name is:
+ *
+ *   'Object'
+ * 
+ * and the following table replicas existed for the table at a time of the request:
+ * 
+ *    worker | chunk
+ *   --------+-----------------------
+ *      A    |  123
+ *   --------+-----------------------
+ *      B    |  234
+ *   --------+-----------------------
+ *      C    |  234
+ *      D    |  345
+ *
+ * then the low-level requests will be sent for the following tables to
+ * the corresponding workers:
+ * 
+ *    worker | table
+ *   --------+-----------------------
+ *      A    | Object
+ *      A    | Object_123
+ *      A    | ObjectFullOverlap_123
+ *   --------+-----------------------
+ *      B    | Object
+ *      B    | Object_234
+ *      B    | ObjectFullOverlap_234
+ *   --------+-----------------------
+ *      C    | Object
+ *      C    | Object_234
+ *      C    | ObjectFullOverlap_234
+ *   --------+-----------------------
+ *      D    | Object
+ *      D    | Object_345
+ *      D    | ObjectFullOverlap_345
  */
 class SqlRemoveTablePartitionsJob : public SqlBaseJob  {
 public:

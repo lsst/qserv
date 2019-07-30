@@ -332,6 +332,7 @@ enum ProtocolStatusExt {
     MYSQL_ERROR   = 24;
     LARGE_RESULT  = 25;
     NO_SUCH_TABLE = 26;
+    NOT_PARTITIONED_TABLE = 27;
 }
 
 message ProtocolFileInfo {
