@@ -1068,6 +1068,10 @@ list<SqlBaseRequest::Ptr> SqlRemoveTablePartitionsJob::launchRequests(util::Lock
     // this worker.
     if (not _workers2tables.count(worker)) {
 
+        // This table must exist in both versions
+        _workers2tables[worker].push_back(table());
+
+        // Add chunk specific tables
         if (_isPartitioned) {
 
             // Locate all chunks registered on the worker. These chunks will be used
@@ -1081,12 +1085,9 @@ list<SqlBaseRequest::Ptr> SqlRemoveTablePartitionsJob::launchRequests(util::Lock
             );
             for (auto&& replica: replicas) {
                 auto const chunk = replica.chunk();
-                _workers2tables[worker].push_back(table());
                 _workers2tables[worker].push_back(table() + "_" + to_string(chunk));
                 _workers2tables[worker].push_back(table() + "FullOverlap_" + to_string(chunk));
             }
-        } else {
-            _workers2tables[worker].push_back(table());
         }
     }
 
