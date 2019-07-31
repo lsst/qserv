@@ -397,7 +397,7 @@ void IngestServerConnection::_loadDataIntoTable() {
     // when the CSV file will be residing. So, make proper adjustments to a configuration
     // of the Replication system, so that it would shared that temporary data directory.
     //
-    // All workers at NCSA PDAC have the following folder mounter RW into the container:
+    // All workers at NCSA PDAC have the following folder mounted RW into the container:
     //
     //   /qserv/data/
     //
@@ -415,16 +415,22 @@ void IngestServerConnection::_loadDataIntoTable() {
             _serviceProvider->config()->qservWorkerDatabasePassword(),
             ""
         ));
-        string const sqlDatabase   = conn->sqlId(_database);
-        string const sqlProtoTable = sqlDatabase + "." + conn->sqlId(_table);
-        string const sqlTable      = sqlDatabase + "." + conn->sqlId(_table +
-                                     (_isOverlap ? "FullOverlap_" : "_") + to_string(_chunk));
-        string const sqlPartition = conn->sqlId("p" + to_string(_transactionId));
+
+        string const sqlDatabase     = conn->sqlId(_database);
+        string const sqlProtoTable   = sqlDatabase + "." + conn->sqlId(_table);
+        string const sqlTable        = sqlDatabase + "." + conn->sqlId(_table + "_" + to_string(_chunk));
+        string const sqlOverlapTable = sqlDatabase + "." + conn->sqlId(_table + "FullOverlap_" + to_string(_chunk));
+        string const sqlPartition    = conn->sqlId("p" + to_string(_transactionId));
+
         vector<string> const statements = {
             "CREATE TABLE IF NOT EXISTS " + sqlTable + " LIKE " + sqlProtoTable,
             "ALTER TABLE " + sqlTable + " ADD PARTITION IF NOT EXISTS (PARTITION " + sqlPartition +
                 " VALUES IN (" + to_string(_transactionId) + "))",
-            "LOAD DATA INFILE " + conn->sqlValue(_fileName) + " INTO TABLE " + sqlTable +
+            "CREATE TABLE IF NOT EXISTS " + sqlOverlapTable + " LIKE " + sqlProtoTable,
+            "ALTER TABLE " + sqlOverlapTable + " ADD PARTITION IF NOT EXISTS (PARTITION " + sqlPartition +
+                " VALUES IN (" + to_string(_transactionId) + "))",
+            "LOAD DATA INFILE " + conn->sqlValue(_fileName) +
+                " INTO TABLE " + (_isOverlap ? sqlOverlapTable : sqlTable) +
                 " PARTITION (" + sqlPartition + ")" +
                 " FIELDS TERMINATED BY " + conn->sqlValue(string() + _columnSeparator)
         };
