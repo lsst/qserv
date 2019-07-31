@@ -23,6 +23,7 @@
 #include "replica/SqlJob.h"
 
 // System headers
+#include <algorithm>
 #include <stdexcept>
 
 // Qserv headers
@@ -116,16 +117,23 @@ void SqlBaseJob::startImpl(util::Lock const& lock) {
         controller()->serviceProvider()->config()->allWorkers() :
         controller()->serviceProvider()->config()->workers();
     
+    // Launch the initial batch of requests in the number which won't exceed
+    // the number of the service processing threads at each worker multiplied
+    // by the number of workers involved into the operation.
+
+    size_t const maxRequestsPerWorker =
+        controller()->serviceProvider()->config()->workerNumProcessingThreads();
+
     for (auto&& worker: workerNames) {
         _resultData.resultSets[worker] = list<SqlResultSet>();
-        _requests.push_back(launchRequest(lock, worker));
-        _numLaunched++;
+        auto const requests = launchRequests(lock, worker, maxRequestsPerWorker);
+        _requests.insert(_requests.cend(), requests.cbegin(), requests.cend());
     }
 
     // In case if no workers or database are present in the Configuration
     // at this time.
 
-    if (not _numLaunched) finish(lock, ExtendedState::SUCCESS);
+    if (_requests.size() == 0) finish(lock, ExtendedState::SUCCESS);
 }
 
 
@@ -158,17 +166,27 @@ void SqlBaseJob::onRequestFinish(SqlBaseRequest::Ptr const& request) {
 
     if (state() == State::FINISHED) return;
 
+    _numFinished++;
+
     // Update stats, including the result sets since they may carry
     // MySQL-specific errors reported by failed queries.
     _resultData.resultSets[request->worker()].push_back(request->responseData());
 
-    // Evaluate the completion condition
-    _numFinished++;
-    if (request->extendedState() == Request::ExtendedState::SUCCESS) _numSuccess++;
+    // Try submitting a replacement request for the same worker. If none
+    // would be launched then evaluate for the completion condition of the job.
 
-    if (_numFinished == _numLaunched) {
-        finish(lock, _numSuccess == _numLaunched ? ExtendedState::SUCCESS :
-                                                   ExtendedState::FAILED);
+    auto const requests = launchRequests(lock, request->worker());
+    if (_requests.cend() == _requests.insert(_requests.cend(), requests.cbegin(), requests.cend())) {
+        if (_requests.size() == _numFinished) {
+            size_t numSuccess = 0;
+            for (auto&& ptr: _requests) {
+                if (ptr->extendedState() == Request::ExtendedState::SUCCESS) {
+                    numSuccess++;
+                }
+            }
+            finish(lock, numSuccess == _numFinished ? ExtendedState::SUCCESS :
+                                                      ExtendedState::FAILED);
+        }
     }
 }
 
@@ -229,22 +247,35 @@ list<pair<string,string>> SqlQueryJob::extendedPersistentState() const {
     return result;
 }
 
-SqlBaseRequest::Ptr SqlQueryJob::launchRequest(util::Lock const& lock,
-                                               string const& worker) {
-    auto const self = shared_from_base<SqlQueryJob>();
-    return controller()->sqlQuery(
-        worker,
-        query(),
-        user(),
-        password(),
-        maxRows(),
-        [self] (SqlQueryRequest::Ptr const& request) {
-            self->onRequestFinish(request);
-        },
-        options(lock).priority,
-        true,   /* keepTracking*/
-        id()    /* jobId */
-    );
+
+list<SqlBaseRequest::Ptr> SqlQueryJob::launchRequests(util::Lock const& lock,
+                                                      string const& worker,
+                                                      size_t maxRequests) {
+
+    // Launch exactly one request per worker unless it was already
+    // launched earlier
+
+    list<SqlBaseRequest::Ptr> requests;
+    if (not _workers.count(worker) and maxRequests != 0) {
+        auto const self = shared_from_base<SqlQueryJob>();
+        requests.push_back(
+            controller()->sqlQuery(
+                worker,
+                query(),
+                user(),
+                password(),
+                maxRows(),
+                [self] (SqlQueryRequest::Ptr const& request) {
+                    self->onRequestFinish(request);
+                },
+                options(lock).priority,
+                true,   /* keepTracking*/
+                id()    /* jobId */
+            )
+        );
+        _workers.insert(worker);
+    }
+    return requests;
 }
 
 
@@ -312,19 +343,32 @@ list<pair<string,string>> SqlCreateDbJob::extendedPersistentState() const {
     return result;
 }
 
-SqlBaseRequest::Ptr SqlCreateDbJob::launchRequest(util::Lock const& lock,
-                                                  string const& worker) {
-    auto const self = shared_from_base<SqlCreateDbJob>();
-    return controller()->sqlCreateDb(
-        worker,
-        database(),
-        [self] (SqlCreateDbRequest::Ptr const& request) {
-            self->onRequestFinish(request);
-        },
-        options(lock).priority,
-        true,   /* keepTracking*/
-        id()    /* jobId */
-    );
+
+list<SqlBaseRequest::Ptr> SqlCreateDbJob::launchRequests(util::Lock const& lock,
+                                                         string const& worker,
+                                                         size_t maxRequests) {
+
+    // Launch exactly one request per worker unless it was already
+    // launched earlier
+
+    list<SqlBaseRequest::Ptr> requests;
+    if (not _workers.count(worker) and maxRequests != 0) {
+        auto const self = shared_from_base<SqlCreateDbJob>();
+        requests.push_back(
+            controller()->sqlCreateDb(
+                worker,
+                database(),
+                [self] (SqlCreateDbRequest::Ptr const& request) {
+                    self->onRequestFinish(request);
+                },
+                options(lock).priority,
+                true,   /* keepTracking*/
+                id()    /* jobId */
+            )
+        );
+        _workers.insert(worker);
+    }
+    return requests;
 }
 
 
@@ -392,19 +436,32 @@ list<pair<string,string>> SqlDeleteDbJob::extendedPersistentState() const {
     return result;
 }
 
-SqlBaseRequest::Ptr SqlDeleteDbJob::launchRequest(util::Lock const& lock,
-                                                  string const& worker) {
-    auto const self = shared_from_base<SqlDeleteDbJob>();
-    return controller()->sqlDeleteDb(
-        worker,
-        database(),
-        [self] (SqlDeleteDbRequest::Ptr const& request) {
-            self->onRequestFinish(request);
-        },
-        options(lock).priority,
-        true,   /* keepTracking*/
-        id()    /* jobId */
-    );
+
+list<SqlBaseRequest::Ptr> SqlDeleteDbJob::launchRequests(util::Lock const& lock,
+                                                         string const& worker,
+                                                         size_t maxRequests) {
+
+    // Launch exactly one request per worker unless it was already
+    // launched earlier
+
+    list<SqlBaseRequest::Ptr> requests;
+    if (not _workers.count(worker) and maxRequests != 0) {
+        auto const self = shared_from_base<SqlDeleteDbJob>();
+        requests.push_back(
+            controller()->sqlDeleteDb(
+                worker,
+                database(),
+                [self] (SqlDeleteDbRequest::Ptr const& request) {
+                    self->onRequestFinish(request);
+                },
+                options(lock).priority,
+                true,   /* keepTracking*/
+                id()    /* jobId */
+            )
+        );
+        _workers.insert(worker);
+    }
+    return requests;
 }
 
 
@@ -472,19 +529,32 @@ list<pair<string,string>> SqlEnableDbJob::extendedPersistentState() const {
     return result;
 }
 
-SqlBaseRequest::Ptr SqlEnableDbJob::launchRequest(util::Lock const& lock,
-                                                  string const& worker) {
-    auto const self = shared_from_base<SqlEnableDbJob>();
-    return controller()->sqlEnableDb(
-        worker,
-        database(),
-        [self] (SqlEnableDbRequest::Ptr const& request) {
-            self->onRequestFinish(request);
-        },
-        options(lock).priority,
-        true,   /* keepTracking*/
-        id()    /* jobId */
-    );
+
+list<SqlBaseRequest::Ptr> SqlEnableDbJob::launchRequests(util::Lock const& lock,
+                                                         string const& worker,
+                                                         size_t maxRequests) {
+
+    // Launch exactly one request per worker unless it was already
+    // launched earlier
+
+    list<SqlBaseRequest::Ptr> requests;
+    if (not _workers.count(worker) and maxRequests != 0) {
+        auto const self = shared_from_base<SqlEnableDbJob>();
+        requests.push_back(
+            controller()->sqlEnableDb(
+                worker,
+                database(),
+                [self] (SqlEnableDbRequest::Ptr const& request) {
+                    self->onRequestFinish(request);
+                },
+                options(lock).priority,
+                true,   /* keepTracking*/
+                id()    /* jobId */
+            )
+        );
+        _workers.insert(worker);
+    }
+    return requests;
 }
 
 
@@ -552,19 +622,32 @@ list<pair<string,string>> SqlDisableDbJob::extendedPersistentState() const {
     return result;
 }
 
-SqlBaseRequest::Ptr SqlDisableDbJob::launchRequest(util::Lock const& lock,
-                                                  string const& worker) {
-    auto const self = shared_from_base<SqlDisableDbJob>();
-    return controller()->sqlDisableDb(
-        worker,
-        database(),
-        [self] (SqlDisableDbRequest::Ptr const& request) {
-            self->onRequestFinish(request);
-        },
-        options(lock).priority,
-        true,   /* keepTracking*/
-        id()    /* jobId */
-    );
+
+list<SqlBaseRequest::Ptr> SqlDisableDbJob::launchRequests(util::Lock const& lock,
+                                                          string const& worker,
+                                                          size_t maxRequests) {
+
+    // Launch exactly one request per worker unless it was already
+    // launched earlier
+
+    list<SqlBaseRequest::Ptr> requests;
+    if (not _workers.count(worker) and maxRequests != 0) {
+        auto const self = shared_from_base<SqlDisableDbJob>();
+        requests.push_back(
+            controller()->sqlDisableDb(
+                worker,
+                database(),
+                [self] (SqlDisableDbRequest::Ptr const& request) {
+                    self->onRequestFinish(request);
+                },
+                options(lock).priority,
+                true,   /* keepTracking*/
+                id()    /* jobId */
+            )
+        );
+        _workers.insert(worker);
+    }
+    return requests;
 }
 
 
@@ -635,20 +718,33 @@ list<pair<string,string>> SqlGrantAccessJob::extendedPersistentState() const {
     return result;
 }
 
-SqlBaseRequest::Ptr SqlGrantAccessJob::launchRequest(util::Lock const& lock,
-                                                     string const& worker) {
-    auto const self = shared_from_base<SqlGrantAccessJob>();
-    return controller()->sqlGrantAccess(
-        worker,
-        database(),
-        user(),
-        [self] (SqlGrantAccessRequest::Ptr const& request) {
-            self->onRequestFinish(request);
-        },
-        options(lock).priority,
-        true,   /* keepTracking*/
-        id()    /* jobId */
-    );
+
+list<SqlBaseRequest::Ptr> SqlGrantAccessJob::launchRequests(util::Lock const& lock,
+                                                            string const& worker,
+                                                            size_t maxRequests) {
+
+    // Launch exactly one request per worker unless it was already
+    // launched earlier
+
+    list<SqlBaseRequest::Ptr> requests;
+    if (not _workers.count(worker) and maxRequests != 0) {
+        auto const self = shared_from_base<SqlGrantAccessJob>();
+        requests.push_back(
+            controller()->sqlGrantAccess(
+                worker,
+                database(),
+                user(),
+                [self] (SqlGrantAccessRequest::Ptr const& request) {
+                    self->onRequestFinish(request);
+                },
+                options(lock).priority,
+                true,   /* keepTracking*/
+                id()    /* jobId */
+            )
+        );
+        _workers.insert(worker);
+    }
+    return requests;
 }
 
 
@@ -739,23 +835,36 @@ list<pair<string,string>> SqlCreateTableJob::extendedPersistentState() const {
     return result;
 }
 
-SqlBaseRequest::Ptr SqlCreateTableJob::launchRequest(util::Lock const& lock,
-                                                     string const& worker) {
-    auto const self = shared_from_base<SqlCreateTableJob>();
-    return controller()->sqlCreateTable(
-        worker,
-        database(),
-        table(),
-        engine(),
-        partitionByColumn(),
-        columns(),
-        [self] (SqlCreateTableRequest::Ptr const& request) {
-            self->onRequestFinish(request);
-        },
-        options(lock).priority,
-        true,   /* keepTracking*/
-        id()    /* jobId */
-    );
+
+list<SqlBaseRequest::Ptr> SqlCreateTableJob::launchRequests(util::Lock const& lock,
+                                                            string const& worker,
+                                                            size_t maxRequests) {
+
+    // Launch exactly one request per worker unless it was already
+    // launched earlier
+
+    list<SqlBaseRequest::Ptr> requests;
+    if (not _workers.count(worker) and maxRequests != 0) {
+        auto const self = shared_from_base<SqlCreateTableJob>();
+        requests.push_back(
+            controller()->sqlCreateTable(
+                worker,
+                database(),
+                table(),
+                engine(),
+                partitionByColumn(),
+                columns(),
+                [self] (SqlCreateTableRequest::Ptr const& request) {
+                    self->onRequestFinish(request);
+                },
+                options(lock).priority,
+                true,   /* keepTracking*/
+                id()    /* jobId */
+            )
+        );
+        _workers.insert(worker);
+    }
+    return requests;
 }
 
 
@@ -831,20 +940,33 @@ list<pair<string,string>> SqlDeleteTableJob::extendedPersistentState() const {
     return result;
 }
 
-SqlBaseRequest::Ptr SqlDeleteTableJob::launchRequest(util::Lock const& lock,
-                                                     string const& worker) {
-    auto const self = shared_from_base<SqlDeleteTableJob>();
-    return controller()->sqlDeleteTable(
-        worker,
-        database(),
-        table(),
-        [self] (SqlDeleteTableRequest::Ptr const& request) {
-            self->onRequestFinish(request);
-        },
-        options(lock).priority,
-        true,   /* keepTracking*/
-        id()    /* jobId */
-    );
+
+list<SqlBaseRequest::Ptr> SqlDeleteTableJob::launchRequests(util::Lock const& lock,
+                                                            string const& worker,
+                                                            size_t maxRequests) {
+
+    // Launch exactly one request per worker unless it was already
+    // launched earlier
+
+    list<SqlBaseRequest::Ptr> requests;
+    if (not _workers.count(worker) and maxRequests != 0) {
+        auto const self = shared_from_base<SqlDeleteTableJob>();
+        requests.push_back(
+            controller()->sqlDeleteTable(
+                worker,
+                database(),
+                table(),
+                [self] (SqlDeleteTableRequest::Ptr const& request) {
+                    self->onRequestFinish(request);
+                },
+                options(lock).priority,
+                true,   /* keepTracking*/
+                id()    /* jobId */
+            )
+        );
+        _workers.insert(worker);
+    }
+    return requests;
 }
 
 
@@ -909,6 +1031,22 @@ SqlRemoveTablePartitionsJob::SqlRemoveTablePartitionsJob(
         _database(database),
         _table(table),
         _onFinish(onFinish) {
+
+    // Determine the type of the table
+    auto const info = controller->serviceProvider()->config()->databaseInfo(database);
+    if (find(info.partitionedTables.begin(),
+             info.partitionedTables.end(), table) != info.partitionedTables.end()) {
+        _isPartitioned = true;
+        return;
+    }
+
+    // And the following test is just to ensure the table name is valid
+    if (find(info.regularTables.begin(),
+             info.regularTables.end(), table) != info.regularTables.end()) return;
+
+    throw invalid_argument(
+            context() + string(__func__) + "  unknown <database>.<table> '" + database +
+            "'.'" + table + "'");
 }
 
 
@@ -920,20 +1058,60 @@ list<pair<string,string>> SqlRemoveTablePartitionsJob::extendedPersistentState()
     return result;
 }
 
-SqlBaseRequest::Ptr SqlRemoveTablePartitionsJob::launchRequest(util::Lock const& lock,
-                                                               string const& worker) {
+
+list<SqlBaseRequest::Ptr> SqlRemoveTablePartitionsJob::launchRequests(util::Lock const& lock,
+                                                                      string const& worker,
+                                                                      size_t maxRequests) {
+    list<SqlBaseRequest::Ptr> requests;
+
+    // Initialize worker's sub-collection if the first time seeing
+    // this worker.
+    if (not _workers2tables.count(worker)) {
+
+        if (_isPartitioned) {
+
+            // Locate all chunks registered on the worker. These chunks will be used
+            // to build names of the corresponding chunk-specific partitioned tables.
+
+            vector<ReplicaInfo> replicas;
+            controller()->serviceProvider()->databaseServices()->findWorkerReplicas(
+                replicas,
+                worker,
+                database()
+            );
+            for (auto&& replica: replicas) {
+                auto const chunk = replica.chunk();
+                _workers2tables[worker].push_back(table());
+                _workers2tables[worker].push_back(table() + "_" + to_string(chunk));
+                _workers2tables[worker].push_back(table() + "FullOverlap_" + to_string(chunk));
+            }
+        } else {
+            _workers2tables[worker].push_back(table());
+        }
+    }
+
+    // Launch up to (not to exceed) the specified number of requests for tables
+    // by pulling table names from the worker's sub-collection. NOte that used
+    // tables will get removed from the sub-collections.
+
     auto const self = shared_from_base<SqlRemoveTablePartitionsJob>();
-    return controller()->sqlRemoveTablePartitions(
-        worker,
-        database(),
-        table(),
-        [self] (SqlRemoveTablePartitionsRequest::Ptr const& request) {
-            self->onRequestFinish(request);
-        },
-        options(lock).priority,
-        true,   /* keepTracking*/
-        id()    /* jobId */
-    );
+    while (not _workers2tables[worker].empty() and requests.size() < maxRequests) {
+        requests.push_back(
+            controller()->sqlRemoveTablePartitions(
+                worker,
+                database(),
+                _workers2tables[worker].front(),
+                [self] (SqlRemoveTablePartitionsRequest::Ptr const& request) {
+                    self->onRequestFinish(request);
+                },
+                options(lock).priority,
+                true,   /* keepTracking*/
+                id()    /* jobId */
+            )
+        );
+        _workers2tables[worker].pop_front();
+    }
+    return requests;
 }
 
 
@@ -1014,21 +1192,34 @@ list<pair<string,string>> SqlDeleteTablePartitionJob::extendedPersistentState() 
     return result;
 }
 
-SqlBaseRequest::Ptr SqlDeleteTablePartitionJob::launchRequest(util::Lock const& lock,
-                                                              string const& worker) {
-    auto const self = shared_from_base<SqlDeleteTablePartitionJob>();
-    return controller()->sqlDeleteTablePartition(
-        worker,
-        database(),
-        table(),
-        transactionId(),
-        [self] (SqlDeleteTablePartitionRequest::Ptr const& request) {
-            self->onRequestFinish(request);
-        },
-        options(lock).priority,
-        true,   /* keepTracking*/
-        id()    /* jobId */
-    );
+
+list<SqlBaseRequest::Ptr> SqlDeleteTablePartitionJob::launchRequests(util::Lock const& lock,
+                                                                     string const& worker,
+                                                                     size_t maxRequests) {
+
+    // Launch exactly one request per worker unless it was already
+    // launched earlier
+
+    list<SqlBaseRequest::Ptr> requests;
+    if (not _workers.count(worker) and maxRequests != 0) {
+        auto const self = shared_from_base<SqlDeleteTablePartitionJob>();
+        requests.push_back(
+            controller()->sqlDeleteTablePartition(
+                worker,
+                database(),
+                table(),
+                transactionId(),
+                [self] (SqlDeleteTablePartitionRequest::Ptr const& request) {
+                    self->onRequestFinish(request);
+                },
+                options(lock).priority,
+                true,   /* keepTracking*/
+                id()    /* jobId */
+            )
+        );
+        _workers.insert(worker);
+    }
+    return requests;
 }
 
 

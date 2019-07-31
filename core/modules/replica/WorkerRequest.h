@@ -317,11 +317,11 @@ protected:
     /// to simulate request processing.
     unsigned int _durationMillisec;
 
+    /// Mutex guarding API calls where it's needed
+    mutable util::Mutex _mtx;
+
     /// Mutex guarding operations with the worker's data folder
     static util::Mutex _mtxDataFolderOperations;
-
-    /// Mutex guarding API calls where it's needed
-    static util::Mutex _mtx;
 };
 
 

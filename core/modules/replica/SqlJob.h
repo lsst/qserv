@@ -25,6 +25,7 @@
 #include <functional>
 #include <list>
 #include <map>
+#include <set>
 #include <string>
 #include <tuple>
 #include <vector>
@@ -144,9 +145,21 @@ protected:
     /**
      * This method lets a request type-specific subclass to launch requests
      * of the corresponding subtype.
+     *
+     * @param lock
+     *   on the mutex Job::_mtx to be acquired for protecting the object's state
+     *
+     * @param worker
+     *   the name of a worker the requests to be sent to
+     * 
+     * @param maxRequests
+     *   the maximum number of requests to be launched
+     *
+     * @return a collection of requests launched
      */
-    virtual SqlBaseRequest::Ptr launchRequest(util::Lock const& lock,
-                                              std::string const& worker) = 0;
+    virtual std::list<SqlBaseRequest::Ptr> launchRequests(util::Lock const& lock,
+                                                          std::string const& worker,
+                                                          size_t maxRequests=1) = 0;
 
     /**
      * This method lets a request type-specific subclass to stop requests
@@ -164,12 +177,9 @@ private:
     /// A collection of requests implementing the operation
     std::vector<SqlBaseRequest::Ptr> _requests;
 
-    // Request counters are used for tracking a condition for
-    // completing the job and for computing its final state.
-
-    size_t _numLaunched = 0;
+    /// This counter is used for tracking a condition for completing the job
+    /// before computing its final state.
     size_t _numFinished = 0;
-    size_t _numSuccess = 0;
 
     /// The result of the operation (gets updated as requests are finishing)
     SqlJobResult _resultData;
@@ -264,9 +274,10 @@ protected:
     /// @see Job::notify()
     void notify(util::Lock const& lock) final;
 
-    /// @see SqlBaseJob::launchRequest()
-    SqlBaseRequest::Ptr launchRequest(util::Lock const& lock,
-                                      std::string const& worker) final;
+    /// @see SqlBaseJob::launchRequests()
+    std::list<SqlBaseRequest::Ptr> launchRequests(util::Lock const& lock,
+                                                  std::string const& worker,
+                                                  size_t maxRequests) final;
 
     /// @see SqlBaseJob::stopRequest()
     void stopRequest(util::Lock const& lock,
@@ -291,6 +302,11 @@ private:
     std::string const _password;
 
     CallbackType _onFinish;     /// @note is reset when the job finishes
+
+    /// A registry of workers to mark those for which request has been sent.
+    /// The registry prevents duplicate requests because exactly one
+    /// such request is permitted to be sent to each worker.
+    std::set<std::string> _workers;
 };
 
 
@@ -364,9 +380,10 @@ protected:
     /// @see Job::notify()
     void notify(util::Lock const& lock) final;
 
-    /// @see SqlBaseJob::launchRequest()
-    SqlBaseRequest::Ptr launchRequest(util::Lock const& lock,
-                                      std::string const& worker) final;
+    /// @see SqlBaseJob::launchRequests()
+    std::list<SqlBaseRequest::Ptr> launchRequests(util::Lock const& lock,
+                                                  std::string const& worker,
+                                                  size_t maxRequests) final;
 
     /// @see SqlBaseJob::stopRequest()
     void stopRequest(util::Lock const& lock,
@@ -386,6 +403,11 @@ private:
     std::string const _database;
 
     CallbackType _onFinish;     /// @note is reset when the job finishes
+
+    /// A registry of workers to mark those for which request has been sent.
+    /// The registry prevents duplicate requests because exactly one
+    /// such request is permitted to be sent to each worker.
+    std::set<std::string> _workers;
 };
 
 
@@ -459,9 +481,10 @@ protected:
     /// @see Job::notify()
     void notify(util::Lock const& lock) final;
 
-    /// @see SqlBaseJob::launchRequest()
-    SqlBaseRequest::Ptr launchRequest(util::Lock const& lock,
-                                      std::string const& worker) final;
+    /// @see SqlBaseJob::launchRequests()
+    std::list<SqlBaseRequest::Ptr> launchRequests(util::Lock const& lock,
+                                                  std::string const& worker,
+                                                  size_t maxRequests) final;
 
     /// @see SqlBaseJob::stopRequest()
     void stopRequest(util::Lock const& lock,
@@ -481,6 +504,11 @@ private:
     std::string const _database;
 
     CallbackType _onFinish;     /// @note is reset when the job finishes
+
+    /// A registry of workers to mark those for which request has been sent.
+    /// The registry prevents duplicate requests because exactly one
+    /// such request is permitted to be sent to each worker.
+    std::set<std::string> _workers;
 };
 
 
@@ -554,9 +582,10 @@ protected:
     /// @see Job::notify()
     void notify(util::Lock const& lock) final;
 
-    /// @see SqlBaseJob::launchRequest()
-    SqlBaseRequest::Ptr launchRequest(util::Lock const& lock,
-                                      std::string const& worker) final;
+    /// @see SqlBaseJob::launchRequests()
+    std::list<SqlBaseRequest::Ptr> launchRequests(util::Lock const& lock,
+                                                  std::string const& worker,
+                                                  size_t maxRequests) final;
 
     /// @see SqlBaseJob::stopRequest()
     void stopRequest(util::Lock const& lock,
@@ -576,6 +605,11 @@ private:
     std::string const _database;
 
     CallbackType _onFinish;     /// @note is reset when the job finishes
+
+    /// A registry of workers to mark those for which request has been sent.
+    /// The registry prevents duplicate requests because exactly one
+    /// such request is permitted to be sent to each worker.
+    std::set<std::string> _workers;
 };
 
 
@@ -649,9 +683,10 @@ protected:
     /// @see Job::notify()
     void notify(util::Lock const& lock) final;
 
-    /// @see SqlBaseJob::launchRequest()
-    SqlBaseRequest::Ptr launchRequest(util::Lock const& lock,
-                                      std::string const& worker) final;
+    /// @see SqlBaseJob::launchRequests()
+    std::list<SqlBaseRequest::Ptr> launchRequests(util::Lock const& lock,
+                                                  std::string const& worker,
+                                                  size_t maxRequests) final;
 
     /// @see SqlBaseJob::stopRequest()
     void stopRequest(util::Lock const& lock,
@@ -671,6 +706,11 @@ private:
     std::string const _database;
 
     CallbackType _onFinish;     /// @note is reset when the job finishes
+
+    /// A registry of workers to mark those for which request has been sent.
+    /// The registry prevents duplicate requests because exactly one
+    /// such request is permitted to be sent to each worker.
+    std::set<std::string> _workers;
 };
 
 
@@ -749,9 +789,10 @@ protected:
     /// @see Job::notify()
     void notify(util::Lock const& lock) final;
 
-    /// @see SqlBaseJob::launchRequest()
-    SqlBaseRequest::Ptr launchRequest(util::Lock const& lock,
-                                      std::string const& worker) final;
+    /// @see SqlBaseJob::launchRequests()
+    std::list<SqlBaseRequest::Ptr> launchRequests(util::Lock const& lock,
+                                                  std::string const& worker,
+                                                  size_t maxRequests) final;
 
     /// @see SqlBaseJob::stopRequest()
     void stopRequest(util::Lock const& lock,
@@ -773,6 +814,11 @@ private:
     std::string const _user;
 
     CallbackType _onFinish;     /// @note is reset when the job finishes
+
+    /// A registry of workers to mark those for which request has been sent.
+    /// The registry prevents duplicate requests because exactly one
+    /// such request is permitted to be sent to each worker.
+    std::set<std::string> _workers;
 };
 
 
@@ -871,9 +917,10 @@ protected:
     /// @see Job::notify()
     void notify(util::Lock const& lock) final;
 
-    /// @see SqlBaseJob::launchRequest()
-    SqlBaseRequest::Ptr launchRequest(util::Lock const& lock,
-                                      std::string const& worker) final;
+    /// @see SqlBaseJob::launchRequests()
+    std::list<SqlBaseRequest::Ptr> launchRequests(util::Lock const& lock,
+                                                  std::string const& worker,
+                                                  size_t maxRequests) final;
 
     /// @see SqlBaseJob::stopRequest()
     void stopRequest(util::Lock const& lock,
@@ -902,6 +949,11 @@ private:
     std::list<std::pair<std::string, std::string>> const _columns;
 
     CallbackType _onFinish;     /// @note is reset when the job finishes
+
+    /// A registry of workers to mark those for which request has been sent.
+    /// The registry prevents duplicate requests because exactly one
+    /// such request is permitted to be sent to each worker.
+    std::set<std::string> _workers;
 };
 
 
@@ -980,9 +1032,10 @@ protected:
     /// @see Job::notify()
     void notify(util::Lock const& lock) final;
 
-    /// @see SqlBaseJob::launchRequest()
-    SqlBaseRequest::Ptr launchRequest(util::Lock const& lock,
-                                      std::string const& worker) final;
+    /// @see SqlBaseJob::launchRequests()
+    std::list<SqlBaseRequest::Ptr> launchRequests(util::Lock const& lock,
+                                                  std::string const& worker,
+                                                  size_t maxRequests) final;
 
     /// @see SqlBaseJob::stopRequest()
     void stopRequest(util::Lock const& lock,
@@ -1004,6 +1057,11 @@ private:
     std::string const _table;
 
     CallbackType _onFinish;     /// @note is reset when the job finishes
+
+    /// A registry of workers to mark those for which request has been sent.
+    /// The registry prevents duplicate requests because exactly one
+    /// such request is permitted to be sent to each worker.
+    std::set<std::string> _workers;
 };
 
 
@@ -1126,9 +1184,10 @@ protected:
     /// @see Job::notify()
     void notify(util::Lock const& lock) final;
 
-    /// @see SqlBaseJob::launchRequest()
-    SqlBaseRequest::Ptr launchRequest(util::Lock const& lock,
-                                      std::string const& worker) final;
+    /// @see SqlBaseJob::launchRequests()
+    std::list<SqlBaseRequest::Ptr> launchRequests(util::Lock const& lock,
+                                                  std::string const& worker,
+                                                  size_t maxRequests) final;
 
     /// @see SqlBaseJob::stopRequest()
     void stopRequest(util::Lock const& lock,
@@ -1150,6 +1209,26 @@ private:
     std::string const _table;
 
     CallbackType _onFinish;     /// @note is reset when the job finishes
+
+    /// Is set in the constructor by pulling table status from the Configuration
+    bool _isPartitioned = false;
+
+    /// A collection of per-worker tables for which the remote operations are
+    /// required. Each worker-specific sub-collections gets initialized
+    /// just once upon the very first request to the request launching method
+    /// in a context of the corresponding worker. Hence there are three states
+    /// of the sub-collections:
+    ///
+    /// - (initial) no worker key exists. At this state the algorithm would
+    ///   initialize the sub-collection if called at the request launching method
+    ///   for the first time in a context of the worker.
+    /// - (populated) will be used for making requests to the worker. Each time
+    ///   a request for a table is sent to the worker the table gets removed from
+    ///   from the sub-collection
+    /// - (empty) the worker key exists. This means no tables to be processed for
+    ///   by the worker exists. The tables have either been all processed, or
+    ///   the collection was made empty upon the initialization.
+    std::map<std::string, std::list<std::string>> _workers2tables;
 };
 
 
@@ -1238,9 +1317,10 @@ protected:
     /// @see Job::notify()
     void notify(util::Lock const& lock) final;
 
-    /// @see SqlBaseJob::launchRequest()
-    SqlBaseRequest::Ptr launchRequest(util::Lock const& lock,
-                                      std::string const& worker) final;
+    /// @see SqlBaseJob::launchRequests()
+    std::list<SqlBaseRequest::Ptr> launchRequests(util::Lock const& lock,
+                                                  std::string const& worker,
+                                                  size_t maxRequests) final;
 
     /// @see SqlBaseJob::stopRequest()
     void stopRequest(util::Lock const& lock,
@@ -1264,6 +1344,11 @@ private:
     uint32_t    const _transactionId;
 
     CallbackType _onFinish;     /// @note is reset when the job finishes
+
+    /// A registry of workers to mark those for which request has been sent.
+    /// The registry prevents duplicate requests because exactly one
+    /// such request is permitted to be sent to each worker.
+    std::set<std::string> _workers;
 };
 
 }}} // namespace lsst::qserv::replica
