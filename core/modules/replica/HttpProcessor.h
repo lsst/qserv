@@ -387,6 +387,17 @@ private:
     void _publishDatabaseInMaster(DatabaseInfo const& databaseInfo) const;
 
     /**
+     * (Re-)build the empty chunks list (table) for the specified database.
+     *
+     * @param database  the name of a database
+     * @param force     rebuild the file if 'true'
+     *
+     * @return pair of (empty chunk lists file name, number of chunks)
+     */
+    std::pair<std::string,size_t> _buildEmptyChunksListImpl(std::string const& database,
+                                                            bool force) const;
+
+    /**
      * Report a error condition and send a error message back to a requester
      * of a service.
      *

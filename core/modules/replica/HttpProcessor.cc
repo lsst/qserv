@@ -1930,8 +1930,6 @@ void HttpProcessor::_publishDatabase(qhttp::Request::Ptr const& req,
         // Finalize setting the database in Qserv master
         _publishDatabaseInMaster(databaseInfo);
 
-        // TODO: Rebuild the chunk list for Qserv? Perhaps within the above called method?
-
         ControllerEvent event;
         event.status = "PUBLISH DATABASE";
         event.kvInfo.emplace_back("database", database);
@@ -2255,9 +2253,6 @@ void HttpProcessor::_buildEmptyChunksList(qhttp::Request::Ptr const& req,
     _debug(__func__);
 
     try {
-        auto const databaseServices = controller()->serviceProvider()->databaseServices();
-        auto const config = controller()->serviceProvider()->config();
-
         ::HttpRequestBody body(req);
 
         string const database = body.required<string>("database");
@@ -2266,49 +2261,11 @@ void HttpProcessor::_buildEmptyChunksList(qhttp::Request::Ptr const& req,
         _debug(string(__func__) + " database=" + database);
         _debug(string(__func__) + " force=" + string(force ? "1" : "0"));
 
-        auto const databaseInfo = config->databaseInfo(database);
-        if (databaseInfo.isPublished) {
-            throw invalid_argument("database is already published");
-        }
-
-        bool const enabledWorkersOnly = true;
-        vector<unsigned int> chunks;
-        databaseServices->findDatabaseChunks(chunks, database, enabledWorkersOnly);
-
-        set<unsigned int> uniqueChunks;
-        for (auto chunk: chunks) uniqueChunks.insert(chunk);
-
-        auto const file = "empty_" + database + ".txt";
-        auto const filePath = fs::path(config->controllerEmptyChunksDir()) / file;
-
-        if (not force) {
-            boost::system::error_code ec;
-            fs::file_status const stat = fs::status(filePath, ec);
-            if (stat.type() == fs::status_error) {
-                throw runtime_error("failed to check the status of file: " + filePath.string());
-            }
-            if (fs::exists(stat)) {
-                throw runtime_error("'force' is required to overwrite existing file: " + filePath.string());
-            }
-        }
-
-        _debug(__func__, "creating/opening file: " + filePath.string());
-        ofstream ofs(filePath.string());
-        if (not ofs.good()) {
-            throw runtime_error("failed to create/open file: " + filePath.string());
-        }
-        unsigned int const maxChunkAllowed = 1000000;
-        for (unsigned int chunk = 0; chunk < maxChunkAllowed; ++chunk) {
-            if (not uniqueChunks.count(chunk)) {
-                ofs << chunk << "\n";
-            }
-        }
-        ofs.flush();
-        ofs.close();
+        auto const emptyListInfo = _buildEmptyChunksListImpl(database, force);
 
         json result;
-        result["file"] = file;
-        result["num_chunks"] = chunks.size();
+        result["file"] = emptyListInfo.first;
+        result["num_chunks"] = emptyListInfo.second;
 
         _sendData(resp, result);
 
@@ -2602,6 +2559,60 @@ void HttpProcessor::_publishDatabaseInMaster(DatabaseInfo const& databaseInfo) c
             );
         }
     }
+    
+    bool const forceRebuild = true;
+    _buildEmptyChunksListImpl(databaseInfo.name, forceRebuild);
+}
+
+
+pair<string,size_t> HttpProcessor::_buildEmptyChunksListImpl(string const& database,
+                                                             bool force) const {
+    _debug(__func__);
+
+    auto const databaseServices = controller()->serviceProvider()->databaseServices();
+    auto const config = controller()->serviceProvider()->config();
+
+    auto const databaseInfo = config->databaseInfo(database);
+    if (databaseInfo.isPublished) {
+        throw invalid_argument("database is already published");
+    }
+
+    bool const enabledWorkersOnly = true;
+    vector<unsigned int> chunks;
+    databaseServices->findDatabaseChunks(chunks, database, enabledWorkersOnly);
+
+    set<unsigned int> uniqueChunks;
+    for (auto chunk: chunks) uniqueChunks.insert(chunk);
+
+    auto const file = "empty_" + database + ".txt";
+    auto const filePath = fs::path(config->controllerEmptyChunksDir()) / file;
+
+    if (not force) {
+        boost::system::error_code ec;
+        fs::file_status const stat = fs::status(filePath, ec);
+        if (stat.type() == fs::status_error) {
+            throw runtime_error("failed to check the status of file: " + filePath.string());
+        }
+        if (fs::exists(stat)) {
+            throw runtime_error("'force' is required to overwrite existing file: " + filePath.string());
+        }
+    }
+
+    _debug(__func__, "creating/opening file: " + filePath.string());
+    ofstream ofs(filePath.string());
+    if (not ofs.good()) {
+        throw runtime_error("failed to create/open file: " + filePath.string());
+    }
+    unsigned int const maxChunkAllowed = 1000000;
+    for (unsigned int chunk = 0; chunk < maxChunkAllowed; ++chunk) {
+        if (not uniqueChunks.count(chunk)) {
+            ofs << chunk << "\n";
+        }
+    }
+    ofs.flush();
+    ofs.close();
+    
+    return make_pair(file, chunks.size());
 }
 
 
