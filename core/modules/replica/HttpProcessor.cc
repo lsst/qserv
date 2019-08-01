@@ -1557,9 +1557,10 @@ void HttpProcessor::_getQservManyUserQuery(qhttp::Request::Ptr const& req,
         // TODO: switch to the more reliable way of executing queries
         //       which would also reconnect to the server?
 
+        // NOTE: the roll-back for tis transaction will happen automatically. It will
+        // be done by the connection handler.
         handler.conn->begin();
         handler.conn->execute(query);
-        handler.conn->rollback();
 
         json resultQueries = json::array();
         if (handler.conn->hasResult()) {
