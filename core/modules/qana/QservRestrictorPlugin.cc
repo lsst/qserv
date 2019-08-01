@@ -432,9 +432,7 @@ query::ColumnRef::Vector resolveAsColumnRef(query::ValueExprPtr vexpr) {
 /**
  * @brief Find out if the given ColumnRef represents a valid secondary index column.
  */
-bool
-lookupSecIndex(query::QueryContext& context,
-               std::shared_ptr<query::ColumnRef> cr) {
+bool isSecIndexCol(query::QueryContext& context, std::shared_ptr<query::ColumnRef> cr) {
     // Match cr as a column ref against the secondary index column for a
     // database's partitioning strategy.
     if ((!cr) || !context.css) { return false; }
@@ -595,7 +593,7 @@ query::QsRestrictor::PtrVector getSecIndexRestrictors(query::QueryContext& conte
             if (auto const inPredicate = std::dynamic_pointer_cast<query::InPredicate>(factorTerm)) {
                 columnRefs = resolveAsColumnRef(inPredicate->value);
                 for (query::ColumnRef::Ptr const& column_ref : columnRefs) {
-                    if (lookupSecIndex(context, column_ref)) {
+                    if (isSecIndexCol(context, column_ref)) {
                         auto restrictorType = inPredicate->hasNot ? SECONDARY_INDEX_NOT_IN : SECONDARY_INDEX_IN;
                         restrictor = newRestrictor(restrictorType, context, column_ref, inPredicate->cands);
                         LOGS(_log, LOG_LVL_DEBUG, "Add SECONDARY_INDEX_IN restrictor: " << *restrictor);
@@ -618,7 +616,7 @@ query::QsRestrictor::PtrVector getSecIndexRestrictors(query::QueryContext& conte
                 }
 
                 for (query::ColumnRef::Ptr const& column_ref : columnRefs) {
-                    if (lookupSecIndex(context, column_ref)) {
+                    if (isSecIndexCol(context, column_ref)) {
                         query::ValueExprPtrVector cands(1, literalValue);
                         restrictor = newRestrictor(getRestrictorType(compPredicate->op, invertSymbol),
                                                    context, column_ref, cands);
@@ -636,7 +634,7 @@ query::QsRestrictor::PtrVector getSecIndexRestrictors(query::QueryContext& conte
                 LOGS(_log, LOG_LVL_TRACE, "Check for SECONDARY_INDEX_BETWEEN restrictor");
                 columnRefs = resolveAsColumnRef(betweenPredicate->value);
                 for (query::ColumnRef::Ptr const& column_ref : columnRefs) {
-                    if (lookupSecIndex(context, column_ref)) {
+                    if (isSecIndexCol(context, column_ref)) {
                         query::ValueExprPtrVector cands;
                         cands.push_back(betweenPredicate->minValue);
                         cands.push_back(betweenPredicate->maxValue);
