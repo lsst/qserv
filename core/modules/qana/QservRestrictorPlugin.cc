@@ -451,6 +451,47 @@ lookupSecIndex(query::QueryContext& context,
 }
 
 
+query::ColumnRef::Ptr getCorrespondingDirectorColumn(query::QueryContext const& context,
+                                                     query::ColumnRef::Ptr const& columnRef) {
+    auto const partitionTableParams = context.css->getPartTableParams(columnRef->getDb(),
+                                                                      columnRef->getTable());
+    // Get the director column name
+    std::string dirCol = partitionTableParams.dirColName;
+    if (columnRef->getColumn() == dirCol) {
+        // columnRef may be a column in a child table, in which case we must figure
+        // out the corresponding column in the child's director to properly
+        // generate a secondary index restrictor.
+        std::string dirDb = partitionTableParams.dirDb;
+        std::string dirTable = partitionTableParams.dirTable;
+        if (dirTable.empty()) {
+            dirTable = columnRef->getTable();
+            if (!dirDb.empty() && dirDb != columnRef->getDb()) {
+                LOGS(_log, LOG_LVL_ERROR, "dirTable missing, but dirDb is set inconsistently for "
+                     << columnRef->getDb() << "." << columnRef->getTable());
+                return nullptr;
+            }
+            dirDb = columnRef->getDb();
+        } else if (dirDb.empty()) {
+            dirDb = columnRef->getDb();
+        }
+        if (dirDb != columnRef->getDb() || dirTable != columnRef->getTable()) {
+            // Lookup the name of the director column in the director table
+            dirCol = context.css->getPartTableParams(dirDb, dirTable).dirColName;
+            if (dirCol.empty()) {
+                LOGS(_log, LOG_LVL_ERROR, "dirCol missing for " << dirDb << "." << dirTable);
+                return nullptr;
+            }
+        }
+        LOGS(_log, LOG_LVL_DEBUG, "Restrictor dirDb " << dirDb << ", dirTable " << dirTable
+             << ", dirCol " << dirCol << " as sIndex for " << columnRef->getDb() << "." << columnRef->getTable()
+             << "." << columnRef->getColumn());
+        return std::make_shared<query::ColumnRef>(dirDb, dirTable, dirCol);
+    }
+    LOGS_DEBUG("Restrictor " << columnRef << " as sIndex.");
+    return columnRef;
+}
+
+
 /**  Create a QsRestrictor from the column ref and the set of specified values or NULL if one of the values is a non-literal.
  *
  *   @param restrictorType: The type of restrictor, only secondary index restrictors are handled
@@ -470,54 +511,20 @@ query::QsRestrictor::Ptr newRestrictor(
         [&isValid](query::ValueExprPtr p) {
             isValid = isValid && p != nullptr && not p->copyAsLiteral().empty(); });
     if (!isValid) {
-        return query::QsRestrictor::Ptr();
+        return nullptr;
     }
 
     // sIndex... restrictors have parameters as follows: db, table, column, val1, val2, ...
-
-    std::vector<std::string> parameters;
-    css::PartTableParams const partParam = context.css->getPartTableParams(cr->getDb(), cr->getTable());
-    // Get the director column name
-    std::string dirCol = partParam.dirColName;
-    if (cr->getColumn() == dirCol) {
-        // cr may be a column in a child table, in which case we must figure
-        // out the corresponding column in the child's director to properly
-        // generate a secondary index restrictor.
-        std::string dirDb = partParam.dirDb;
-        std::string dirTable = partParam.dirTable;
-        if (dirTable.empty()) {
-            dirTable = cr->getTable();
-            if (!dirDb.empty() && dirDb != cr->getDb()) {
-                LOGS(_log, LOG_LVL_ERROR, "dirTable missing, but dirDb is set inconsistently for "
-                     << cr->getDb() << "." << cr->getTable());
-                return query::QsRestrictor::Ptr();
-            }
-            dirDb = cr->getDb();
-        } else if (dirDb.empty()) {
-            dirDb = cr->getDb();
-        }
-        if (dirDb != cr->getDb() || dirTable != cr->getTable()) {
-            // Lookup the name of the director column in the director table
-            dirCol = context.css->getPartTableParams(dirDb, dirTable).dirColName;
-            if (dirCol.empty()) {
-                LOGS(_log, LOG_LVL_ERROR, "dirCol missing for " << dirDb << "." << dirTable);
-                return query::QsRestrictor::Ptr();
-            }
-        }
-        LOGS(_log, LOG_LVL_DEBUG, "Restrictor dirDb " << dirDb << ", dirTable " << dirTable
-             << ", dirCol " << dirCol << " as sIndex for " << cr->getDb() << "." << cr->getTable()
-             << "." << cr->getColumn());
-        parameters.push_back(dirDb);
-        parameters.push_back(dirTable);
-        parameters.push_back(dirCol);
-    } else {
-        LOGS_DEBUG("Restrictor " << cr->getDb() << "." << cr->getTable() <<  "." << cr->getColumn()
-                   << " as sIndex");
-        parameters.push_back(cr->getDb());
-        parameters.push_back(cr->getTable());
-        parameters.push_back(cr->getColumn());
+    auto directorColumnRef = getCorrespondingDirectorColumn(context, cr);
+    if (nullptr == directorColumnRef) {
+        // At this point if we can't get a valid corresponding director column for the passed-in column ref
+        // then it's an error or unexpected behavior; check the logs for more information (see the impl of
+        // getCorrespondingDirectorColumn for more details). And return nullptr - we can't make a restrictor.
+        return nullptr;
     }
 
+    std::vector<std::string> parameters = {directorColumnRef->getDb(), directorColumnRef->getTable(),
+                                           directorColumnRef->getColumn()};
     std::transform(values.begin(), values.end(), std::back_inserter(parameters),
         [](query::ValueExprPtr p) -> std::string { return p->copyAsLiteral(); });
 
