@@ -416,6 +416,19 @@ string leastLoadedWorker(DatabaseServices::Ptr const& databaseServices,
     return worker;
 }
 
+
+template<typename T>
+void parseFieldIntoJson(string const& context,
+                        database::mysql::Row const& row,
+                        string const& column,
+                        json& obj) {
+    T val;
+    if (not row.get(column, val)) {
+        throw invalid_argument(context + " no column '" + column + "' found in the result set");
+    }
+    obj[column] = val;
+}
+
 }  // namespace
 
 
@@ -1513,7 +1526,61 @@ void HttpProcessor::_getQservManyUserQuery(qhttp::Request::Ptr const& req,
     _debug(__func__);
 
     try {
+        auto const config = controller()->serviceProvider()->config();
+
+        // Connect to the master database
+        // Manage the new connection via the RAII-style handler to ensure the transaction
+        // is automatically rolled-back in case of exceptions.
+
+        database::mysql::ConnectionHandler const handler(
+            database::mysql::Connection::open(
+                database::mysql::ConnectionParams(
+                    config->qservMasterDatabaseHost(),
+                    config->qservMasterDatabasePort(),
+                    "root",
+                    Configuration::qservMasterDatabasePassword(),
+                    "qservMeta"
+                )
+            )
+        );
+        string const query =
+            "SELECT " + handler.conn->sqlId("QStatsTmp") + ".*,"+
+            "UNIX_TIMESTAMP(" + handler.conn->sqlId("queryBegin") + ") AS " + handler.conn->sqlId("queryBegin_sec") + "," +
+            "UNIX_TIMESTAMP(" + handler.conn->sqlId("lastUpdate") + ") AS " + handler.conn->sqlId("lastUpdate_sec") + "," +
+            handler.conn->sqlId("QInfo") + "." + handler.conn->sqlId("query") +
+            " FROM " + handler.conn->sqlId("QStatsTmp") + "," + handler.conn->sqlId("QInfo") +
+            " WHERE " +
+            handler.conn->sqlId("QStatsTmp") + "." + handler.conn->sqlId("queryId") + "=" +
+            handler.conn->sqlId("QInfo")     + "." + handler.conn->sqlId("queryId") +
+            " ORDER BY " + handler.conn->sqlId("QStatsTmp") + "." + handler.conn->sqlId("queryBegin");
+
+        // TODO: switch to the more reliable way of executing queries
+        //       which would also reconnect to the server?
+
+        handler.conn->begin();
+        handler.conn->execute(query);
+        handler.conn->rollback();
+
+        json resultQueries = json::array();
+        if (handler.conn->hasResult()) {
+
+            database::mysql::Row row;
+            while (handler.conn->next(row)) {
+
+                json resultRow;
+                ::parseFieldIntoJson<QueryId>(__func__, row, "queryId",         resultRow);
+                ::parseFieldIntoJson<int>(    __func__, row, "totalChunks",     resultRow);
+                ::parseFieldIntoJson<int>(    __func__, row, "completedChunks", resultRow);
+                ::parseFieldIntoJson<string>( __func__, row, "queryBegin",      resultRow);
+                ::parseFieldIntoJson<string>( __func__, row, "lastUpdate",      resultRow);
+                ::parseFieldIntoJson<long>(   __func__, row, "queryBegin_sec",  resultRow);
+                ::parseFieldIntoJson<long>(   __func__, row, "lastUpdate_sec",  resultRow);
+                ::parseFieldIntoJson<string>( __func__, row, "query",           resultRow);
+                resultQueries.push_back(resultRow);
+            }
+        }
         json result;
+        result["queries"] = resultQueries;
         _sendData(resp, result);
 
     } catch (invalid_argument const& ex) {
@@ -1559,7 +1626,7 @@ json HttpProcessor::_getQueries(json& workerInfo) const {
     database::mysql::ConnectionParams const connectionParams(
         config->qservMasterDatabaseHost(),
         config->qservMasterDatabasePort(),
-        config->qservMasterDatabaseUser(),
+        "root",
         Configuration::qservMasterDatabasePassword(),
         "qservMeta"
     );
