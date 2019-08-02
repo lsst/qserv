@@ -55,6 +55,8 @@
 #include "parser/SelectParser.h"
 #include "qdisp/ChunkMeta.h"
 #include "qproc/QuerySession.h"
+#include "query/ColumnRef.h"
+#include "query/CompPredicate.h"
 #include "query/QsRestrictor.h"
 #include "query/QueryContext.h"
 #include "query/SelectStmt.h"
@@ -67,10 +69,12 @@ using lsst::qserv::parser::SelectParser;
 using lsst::qserv::qproc::ChunkQuerySpec;
 using lsst::qserv::qproc::ChunkSpec;
 using lsst::qserv::qproc::QuerySession;
+using lsst::qserv::query::ColumnRef;
 using lsst::qserv::query::QsRestrictor;
 using lsst::qserv::query::QsRestrictorFunction;
 using lsst::qserv::query::QueryContext;
 using lsst::qserv::query::SelectStmt;
+using lsst::qserv::query::SICompRestrictor;
 using lsst::qserv::StringPair;
 using lsst::qserv::sql::SqlConfig;
 using lsst::qserv::tests::QueryAnaFixture;
@@ -1105,12 +1109,17 @@ BOOST_AUTO_TEST_CASE(Case01_0002) {
     BOOST_CHECK_EQUAL(context->restrictors->size(), 1U);
     BOOST_REQUIRE(context->restrictors->front());
     QsRestrictor& r = *context->restrictors->front();
-    BOOST_CHECK_EQUAL(r.getName(), "sIndexEqual");
-    auto restrictorFunc = dynamic_cast<QsRestrictorFunction*>(&r);
+    BOOST_CHECK_EQUAL(r.getName(), "sIndexCompare");
+    auto restrictorFunc = dynamic_cast<SICompRestrictor*>(&r);
     BOOST_REQUIRE(restrictorFunc != nullptr);
-    char const* params[] = {"LSST","Object", "objectIdObjTest", "430213989000"};
-    BOOST_CHECK_EQUAL_COLLECTIONS(restrictorFunc->getParameters().begin(), restrictorFunc->getParameters().end(),
-                                  params, params+4);
+    auto secondaryIndexColumn = restrictorFunc->getSecondaryIndexColumn();
+    BOOST_REQUIRE(secondaryIndexColumn != nullptr);
+    BOOST_CHECK_EQUAL(*secondaryIndexColumn, ColumnRef("LSST","Object", "objectIdObjTest"));
+    auto compPredicate = restrictorFunc->getCompPredicate();
+    BOOST_REQUIRE(compPredicate != nullptr);
+    // the secondaryIndexColumn should have from from the left side of the comparison, check the const value
+    // of the right side:
+    BOOST_CHECK_EQUAL(compPredicate->right->getConstVal(), "430213989000");
 }
 
 

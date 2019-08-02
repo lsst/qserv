@@ -143,6 +143,15 @@ ValueExprPtr ValueExpr::newSimple(std::shared_ptr<ValueFactor> vt)  {
 }
 
 
+ValueExprPtr ValueExpr::newSimple(std::shared_ptr<ColumnRef> columnRef) {
+    if (nullptr == columnRef) {
+        throw std::invalid_argument("Unexpected NULL ColumnRef");
+    }
+    auto valueFactor = std::make_shared<ValueFactor>(columnRef);
+    return newSimple(valueFactor);
+}
+
+
 ValueExprPtr ValueExpr::newColumnExpr(std::string const& db, std::string const& table,
                                   std::string const& alias, std::string const& column) {
     return newSimple(

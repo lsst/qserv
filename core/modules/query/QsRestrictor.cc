@@ -35,13 +35,18 @@
 #include <iterator>
 
 // Qserv headers
+#include "query/CompPredicate.h"
 #include "query/QueryTemplate.h"
+#include "query/ValueExpr.h"
 #include "util/IterableFormatter.h"
 
 
 namespace lsst {
 namespace qserv {
 namespace query {
+
+
+std::string SICompRestrictor::_name = "sIndexCompare";
 
 
 std::ostream& operator<<(std::ostream& os, QsRestrictor const& q) {
@@ -83,6 +88,31 @@ std::ostream& QsRestrictorFunction::dbgPrint(std::ostream& os) const {
     os << ", " << util::printable(_params, "", "");
     os << ")";
     return os;
+}
+
+
+void SICompRestrictor::renderTo(QueryTemplate& qt) const {
+    _compPredicate->renderTo(qt);
+}
+
+
+bool SICompRestrictor::isEqual(const QsRestrictor& rhs) const {
+    auto rhsRestrictorFunc = static_cast<SICompRestrictor const&>(rhs);
+    if (_name != rhsRestrictorFunc._name) return false;
+    return _compPredicate == rhsRestrictorFunc._compPredicate;
+}
+
+
+std::ostream& SICompRestrictor::dbgPrint(std::ostream& os) const {
+    os << "SICompRestrictor(" << "\"" <<  _name << "\"";
+    os << ", " << *_compPredicate;
+    os << ")";
+    return os;
+}
+
+
+std::shared_ptr<query::ColumnRef const> SICompRestrictor::getSecondaryIndexColumn() const {
+    return _useLeft ? _compPredicate->left->getColumnRef() : _compPredicate->right->getColumnRef();
 }
 
 

@@ -25,6 +25,8 @@
 #ifndef LSST_QSERV_QUERY_COMPPREDICATE_H
 #define LSST_QSERV_QUERY_COMPPREDICATE_H
 
+// Third-party headers
+#include "boost/lexical_cast.hpp"
 
 // Local headers
 #include "query/Predicate.h"
@@ -77,9 +79,11 @@ public:
     void findColumnRefs(std::vector<std::shared_ptr<ColumnRef>>& vector) const override;
     std::ostream& putStream(std::ostream& os) const override;
     void renderTo(QueryTemplate& qt) const override;
+    std::string sqlFragment() const;
     BoolFactorTerm::Ptr clone() const override;
     BoolFactorTerm::Ptr copySyntax() const override { return clone(); }
     bool operator==(BoolFactorTerm const& rhs) const override;
+
 
     static OpType lookupOp(char const* op);
 

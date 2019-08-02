@@ -43,6 +43,8 @@
 namespace lsst {
 namespace qserv {
 namespace query {
+    class ColumnRef;
+    class CompPredicate;
     class QueryTemplate;
 }}} // End of forward declarations
 
@@ -152,6 +154,50 @@ protected:
 private:
     std::string const _name;
     StringVector const _params;
+};
+
+
+class SICompRestrictor : public QsRestrictor {
+public:
+    SICompRestrictor() = default;
+
+    SICompRestrictor(std::shared_ptr<query::CompPredicate> compPredicate, bool useLeft)
+            : _compPredicate(compPredicate), _useLeft(useLeft) {}
+
+    /**
+     * @brief Serialze this instance as SQL to the QueryTemplate.
+     */
+    void renderTo(QueryTemplate& qt) const override;
+
+    /**
+     * @brief Get the function name.
+     *
+     * @return std::string const&
+     */
+    std::string const& getName() const override { return _name; }
+
+    std::shared_ptr<query::CompPredicate> getCompPredicate() const { return _compPredicate; }
+
+    /**
+     * @brief Serialize to the given ostream for debug output.
+     */
+    std::ostream& dbgPrint(std::ostream& os) const override;
+
+    std::shared_ptr<query::ColumnRef const> getSecondaryIndexColumn() const;
+
+protected:
+    /**
+     * @brief Test if this and rhs are equal.
+
+     * This is an overidable helper function for operator==, it should only be called by that function, or at
+     * least make sure that typeid(this) == typeid(rhs) before calling isEqual.
+     */
+    bool isEqual(const QsRestrictor& rhs) const override;
+
+private:
+    std::shared_ptr<query::CompPredicate> _compPredicate; //< the comparison for this restrictor.
+    bool _useLeft; //< true if the secondary index column is on the left of the ComPredicate (false for right)
+    static std::string _name;
 };
 
 

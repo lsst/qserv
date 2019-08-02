@@ -206,6 +206,8 @@ public:
 
     static ValueExprPtr newSimple(std::shared_ptr<ValueFactor> vt);
 
+    static ValueExprPtr newSimple(std::shared_ptr<ColumnRef> columnRef);
+
     /**
      * @brief Make a new ValueExpr object that contains a ColumnRef with the specified values for db, table,
      *        table alias, and column.

@@ -45,6 +45,8 @@
 #include "global/intTypes.h"
 #include "global/constants.h"
 #include "global/stringUtil.h"
+#include "query/ColumnRef.h"
+#include "query/CompPredicate.h"
 #include "query/QsRestrictor.h"
 #include "qproc/ChunkSpec.h"
 #include "sql/SqlConnection.h"
@@ -55,8 +57,7 @@ namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.qproc.SecondaryIndex");
 
-enum QueryType { IN, NOT_IN, BETWEEN, NOT_BETWEEN, EQUAL, NOT_EQUAL, LESS_THAN, GREATER_THAN,
-                 LESS_THAN_OR_EQUAL, GREATER_THAN_OR_EQUAL };
+enum QueryType { IN, NOT_IN, BETWEEN, NOT_BETWEEN };
 
 /**
  * @brief Get the sql string for the given query type.
@@ -79,24 +80,6 @@ std::string toSqlStr(QueryType queryType) {
 
         case NOT_BETWEEN:
             return " NOT BETWEEN ";
-
-        case EQUAL:
-            return " = ";
-
-        case NOT_EQUAL:
-            return " != ";
-
-        case LESS_THAN:
-            return " < ";
-
-        case GREATER_THAN:
-            return " > ";
-
-        case LESS_THAN_OR_EQUAL:
-            return " <= ";
-
-        case GREATER_THAN_OR_EQUAL:
-            return " >= ";
 
         default:
             throw lsst::qserv::Bug("Unhandled QueryType: " + queryType);
@@ -126,6 +109,12 @@ public:
         ChunkSpecVector output;
         bool hasIndex = false;
         for(auto const& restrBase : restrictors) {
+            if (auto compRestr = std::dynamic_pointer_cast<query::SICompRestrictor>(restrBase)) {
+                // handle it
+                hasIndex = true;
+                _sqlLookup(output, compRestr);
+                continue;
+            }
             auto restrictor = std::dynamic_pointer_cast<query::QsRestrictorFunction>(restrBase);
             if (nullptr == restrictor) {
                 continue;
@@ -142,24 +131,6 @@ public:
             } else if (restrictor->getName() == "sIndexNotBetween") {
                 hasIndex = true;
                 _sqlLookup(output, restrictor->getParameters(), NOT_BETWEEN);
-            } else if (restrictor->getName() == "sIndexEqual") {
-                hasIndex = true;
-                _sqlLookup(output, restrictor->getParameters(), EQUAL);
-            } else if (restrictor->getName() == "sIndexNotEqual") {
-                hasIndex = true;
-                _sqlLookup(output, restrictor->getParameters(), NOT_EQUAL);
-            } else if (restrictor->getName() == "sIndexGreaterThan") {
-                hasIndex = true;
-                _sqlLookup(output, restrictor->getParameters(), GREATER_THAN);
-            } else if (restrictor->getName() == "sIndexLessThan") {
-                hasIndex = true;
-                _sqlLookup(output, restrictor->getParameters(), LESS_THAN);
-            } else if (restrictor->getName() == "sIndexGreaterThanOrEqual") {
-                hasIndex = true;
-                _sqlLookup(output, restrictor->getParameters(), GREATER_THAN_OR_EQUAL);
-            } else if (restrictor->getName() == "sIndexLessThanOrEqual") {
-                hasIndex = true;
-                _sqlLookup(output, restrictor->getParameters(), LESS_THAN_OR_EQUAL);
             }
         }
         if (!hasIndex) {
@@ -231,19 +202,24 @@ private:
             std::string const& par3 = *(iter++);
             std::string const& par4 = *iter;
             sql += toSqlStr(query_type) + par3 + " AND " + par4;
-        } else if (query_type == EQUAL || query_type == NOT_EQUAL || query_type == LESS_THAN ||
-                   query_type == GREATER_THAN || query_type == LESS_THAN_OR_EQUAL ||
-                   query_type == GREATER_THAN_OR_EQUAL) {
-            if (params.size() != 4) {
-                throw Bug("Incorrect parameters for comparison secondary index lookup ");
-            }
-            // todo I'm going to be able to break this by putting the key column 2nd
-            std::string const& par3 = *iter;
-            sql += toSqlStr(query_type) + par3;
         }
 
         LOGS(_log, LOG_LVL_DEBUG, "secondary lookup sql:" << sql);
         return sql;
+    }
+
+
+    void _sqlLookup(ChunkSpecVector& output,
+                    std::shared_ptr<query::SICompRestrictor> const& restr) {
+        auto const& secondaryIndexCol = restr->getSecondaryIndexColumn();
+        std::string index_table = _buildIndexTableName(secondaryIndexCol->getDb(),
+                                                       secondaryIndexCol->getTable());
+
+        std::string sql = "SELECT " + std::string(CHUNK_COLUMN) + ", " + std::string(SUB_CHUNK_COLUMN) +
+                          " FROM " + index_table +
+                          " WHERE " + restr->getCompPredicate()->sqlFragment();
+        LOGS(_log, LOG_LVL_DEBUG, "secondary lookup sql:" << sql);
+        _sqlLookup(output, sql);
     }
 
 
@@ -257,9 +233,12 @@ private:
      *                      to find chunk ids.
      */
     void _sqlLookup(ChunkSpecVector& output, StringVector const& params, QueryType const& query_type) {
-        IntVector ids;
+        _sqlLookup(output, _buildLookupQuery(params, query_type));
+    }
 
-        std::string sql = _buildLookupQuery(params, query_type);
+
+    void _sqlLookup(ChunkSpecVector& output, std::string sql) {
+
         std::map<int, Int32Vector> tmp;
 
         // Insert sql query result:

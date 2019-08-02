@@ -91,6 +91,13 @@ void CompPredicate::renderTo(QueryTemplate& qt) const {
 }
 
 
+std::string CompPredicate::sqlFragment() const {
+    QueryTemplate qt;
+    renderTo(qt);
+    return boost::lexical_cast<std::string>(qt);
+}
+
+
 void CompPredicate::findValueExprs(std::vector<std::shared_ptr<ValueExpr>>& vector) const {
     vector.push_back(left);
     vector.push_back(right);
