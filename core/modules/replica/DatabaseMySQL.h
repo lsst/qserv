@@ -310,88 +310,78 @@ public:
     std::string sqlId(std::string const& str) const { return "`" + str + "`"; }
 
     /**
-     * Return:
+     * Generate and return an SQL expression for a binary operator applied
+     * over a pair of a simple identifier and a value.
      *
-     *   `col` = <value>
+     * @param col  the name of a column on the LHS of the expression
+     * @param val  RHS value of the binary operation
+     * @param op   binary operator to be applied to both above
      *
-     * Where:
-     * - the column name will be surrounded by back ticks
-     * - values of string types will be escaped and surrounded by single quotes
+     * @return "<col> <binary operator> <value>" where column name will be
+     * surrounded by back ticks, and  values of string types will be escaped
+     * and surrounded by single quotes.
      */
     template <typename T>
-    std::string sqlEqual(std::string const& col,
-                         T const&           val) const {
+    std::string sqlBinaryOperator(std::string const& col,
+                                  T const&           val,
+                                  char const*        op) const {
         std::ostringstream ss;
-        ss << sqlId(col) << "=" << sqlValue(val);
+        ss << sqlId(col) << op << sqlValue(val);
         return ss.str();
+    }
+    
+    /**
+     * @return "<quoted-col> = <escaped-quoted-value>"
+     * @see Connection::sqlBinaryOperator()
+     */
+    template <typename T>
+    std::string sqlEqual(std::string const& col, T const& val) const {
+        return sqlBinaryOperator(col, val, "=");
     }
 
     /**
-     * Return:
-     *
-     *   `col` < <value>
-     *
-     * Where:
-     * - the column name will be surrounded by back ticks
-     * - values of string types will be escaped and surrounded by single quotes
+     * @return "<quoted-col> != <escaped-quoted-value>"
+     * @see Connection::sqlBinaryOperator()
      */
     template <typename T>
-    std::string sqlLess(std::string const& col,
-                        T const&           val) const {
-        std::ostringstream ss;
-        ss << sqlId(col) << "<" << sqlValue(val);
-        return ss.str();
+    std::string sqlNotEqual(std::string const& col, T const& val) const {
+        return sqlBinaryOperator(col, val, "!=");
     }
 
     /**
-     * Return:
-     *
-     *   `col` <= <value>
-     *
-     * Where:
-     * - the column name will be surrounded by back ticks
-     * - values of string types will be escaped and surrounded by single quotes
+     * @return "<quoted-col> < <escaped-quoted-value>"
+     * @see Connection::sqlBinaryOperator()
      */
     template <typename T>
-    std::string sqlLessOrEqual(std::string const& col,
-                               T const&           val) const {
-        std::ostringstream ss;
-        ss << sqlId(col) << "<" << sqlValue(val);
-        return ss.str();
+    std::string sqlLess(std::string const& col, T const& val) const {
+        return sqlBinaryOperator(col, val, "<");
     }
 
     /**
-     * Return:
-     *
-     *   `col` > <value>
-     *
-     * Where:
-     * - the column name will be surrounded by back ticks
-     * - values of string types will be escaped and surrounded by single quotes
+     * @return "<quoted-col> <= <escaped-quoted-value>"
+     * @see Connection::sqlBinaryOperator()
      */
     template <typename T>
-    std::string sqlGreater(std::string const& col,
-                           T const&           val) const {
-        std::ostringstream ss;
-        ss << sqlId(col) << ">" << sqlValue(val);
-        return ss.str();
+    std::string sqlLessOrEqual(std::string const& col, T const& val) const {
+        return sqlBinaryOperator(col, val, "<=");
     }
 
     /**
-     * Return:
-     *
-     *   `col` >= <value>
-     *
-     * Where:
-     * - the column name will be surrounded by back ticks
-     * - values of string types will be escaped and surrounded by single quotes
+     * @return "<quoted-col> > <escaped-quoted-value>"
+     * @see Connection::sqlBinaryOperator()
      */
     template <typename T>
-    std::string sqlGreaterOrEqual(std::string const& col,
-                                  T const&           val) const {
-        std::ostringstream ss;
-        ss << sqlId(col) << ">=" << sqlValue(val);
-        return ss.str();
+    std::string sqlGreater(std::string const& col, T const& val) const {
+        return sqlBinaryOperator(col, val, ">");
+    }
+
+    /**
+     * @return "<quoted-col> => <escaped-quoted-value>"
+     * @see Connection::sqlBinaryOperator()
+     */
+    template <typename T>
+    std::string sqlGreaterOrEqual(std::string const& col, T const& val) const {
+        return sqlBinaryOperator(col, val, ">=");
     }
 
     /// The base (the final function) to be called

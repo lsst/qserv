@@ -1528,11 +1528,16 @@ void HttpProcessor::_getQservManyUserQuery(qhttp::Request::Ptr const& req,
     try {
         auto const config = controller()->serviceProvider()->config();
 
+        unsigned int const limit4past = getQueryParamUInt(req->query, "limit4past", 0);
+        _debug(string(__func__) + " limit4past=" + to_string(limit4past));
+
+        json result;
+
         // Connect to the master database
         // Manage the new connection via the RAII-style handler to ensure the transaction
         // is automatically rolled-back in case of exceptions.
 
-        database::mysql::ConnectionHandler const handler(
+        database::mysql::ConnectionHandler const h(
             database::mysql::Connection::open(
                 database::mysql::ConnectionParams(
                     config->qservMasterDatabaseHost(),
@@ -1543,45 +1548,69 @@ void HttpProcessor::_getQservManyUserQuery(qhttp::Request::Ptr const& req,
                 )
             )
         );
-        string const query =
-            "SELECT " + handler.conn->sqlId("QStatsTmp") + ".*,"+
-            "UNIX_TIMESTAMP(" + handler.conn->sqlId("queryBegin") + ") AS " + handler.conn->sqlId("queryBegin_sec") + "," +
-            "UNIX_TIMESTAMP(" + handler.conn->sqlId("lastUpdate") + ") AS " + handler.conn->sqlId("lastUpdate_sec") + "," +
-            handler.conn->sqlId("QInfo") + "." + handler.conn->sqlId("query") +
-            " FROM " + handler.conn->sqlId("QStatsTmp") + "," + handler.conn->sqlId("QInfo") +
-            " WHERE " +
-            handler.conn->sqlId("QStatsTmp") + "." + handler.conn->sqlId("queryId") + "=" +
-            handler.conn->sqlId("QInfo")     + "." + handler.conn->sqlId("queryId") +
-            " ORDER BY " + handler.conn->sqlId("QStatsTmp") + "." + handler.conn->sqlId("queryBegin");
 
-        // TODO: switch to the more reliable way of executing queries
-        //       which would also reconnect to the server?
-
-        // NOTE: the roll-back for tis transaction will happen automatically. It will
+        // NOTE: the roll-back for this transaction will happen automatically. It will
         // be done by the connection handler.
-        handler.conn->begin();
-        handler.conn->execute(query);
-
-        json resultQueries = json::array();
-        if (handler.conn->hasResult()) {
-
+        h.conn->begin();
+        h.conn->execute(
+            "SELECT " + h.conn->sqlId("QStatsTmp") + ".*,"+
+            "UNIX_TIMESTAMP(" + h.conn->sqlId("queryBegin") + ") AS " + h.conn->sqlId("queryBegin_sec") + "," +
+            "UNIX_TIMESTAMP(" + h.conn->sqlId("lastUpdate") + ") AS " + h.conn->sqlId("lastUpdate_sec") + "," +
+            h.conn->sqlId("QInfo") + "." + h.conn->sqlId("query") +
+            " FROM " + h.conn->sqlId("QStatsTmp") + "," + h.conn->sqlId("QInfo") +
+            " WHERE " +
+            h.conn->sqlId("QStatsTmp") + "." + h.conn->sqlId("queryId") + "=" +
+            h.conn->sqlId("QInfo")     + "." + h.conn->sqlId("queryId") +
+            " ORDER BY " + h.conn->sqlId("QStatsTmp") + "." + h.conn->sqlId("queryBegin") + " DESC"
+        );
+        if (h.conn->hasResult()) {
             database::mysql::Row row;
-            while (handler.conn->next(row)) {
-
+            while (h.conn->next(row)) {
                 json resultRow;
-                ::parseFieldIntoJson<QueryId>(__func__, row, "queryId",         resultRow);
-                ::parseFieldIntoJson<int>(    __func__, row, "totalChunks",     resultRow);
+                ::parseFieldIntoJson<QueryId>(__func__, row, "queryId", resultRow);
+                ::parseFieldIntoJson<int>(    __func__, row, "totalChunks", resultRow);
                 ::parseFieldIntoJson<int>(    __func__, row, "completedChunks", resultRow);
-                ::parseFieldIntoJson<string>( __func__, row, "queryBegin",      resultRow);
-                ::parseFieldIntoJson<string>( __func__, row, "lastUpdate",      resultRow);
-                ::parseFieldIntoJson<long>(   __func__, row, "queryBegin_sec",  resultRow);
-                ::parseFieldIntoJson<long>(   __func__, row, "lastUpdate_sec",  resultRow);
-                ::parseFieldIntoJson<string>( __func__, row, "query",           resultRow);
-                resultQueries.push_back(resultRow);
+                ::parseFieldIntoJson<string>( __func__, row, "queryBegin", resultRow);
+                ::parseFieldIntoJson<string>( __func__, row, "lastUpdate", resultRow);
+                ::parseFieldIntoJson<long>(   __func__, row, "queryBegin_sec", resultRow);
+                ::parseFieldIntoJson<long>(   __func__, row, "lastUpdate_sec", resultRow);
+                ::parseFieldIntoJson<string>( __func__, row, "query", resultRow);
+                result["queries"].push_back(resultRow);
             }
         }
-        json result;
-        result["queries"] = resultQueries;
+        h.conn->execute(
+            "SELECT *,"
+            "UNIX_TIMESTAMP(" + h.conn->sqlId("submitted") + ") AS " + h.conn->sqlId("submitted_sec") + "," +
+            "UNIX_TIMESTAMP(" + h.conn->sqlId("completed") + ") AS " + h.conn->sqlId("completed_sec") +
+            " FROM "  + h.conn->sqlId("QInfo") +
+            " WHERE " + h.conn->sqlNotEqual("status", "EXECUTING") +
+            " ORDER BY " + h.conn->sqlId("submitted") + " DESC" +
+            (limit4past == 0 ? "" : " LIMIT " + to_string(limit4past))
+        );
+        if (h.conn->hasResult()) {
+            database::mysql::Row row;
+            while (h.conn->next(row)) {
+                json resultRow;
+                ::parseFieldIntoJson<QueryId>(__func__, row, "queryId", resultRow);
+                ::parseFieldIntoJson<string>( __func__, row, "qType", resultRow);
+                ::parseFieldIntoJson<int>(    __func__, row, "czarId", resultRow);
+                ::parseFieldIntoJson<string>( __func__, row, "user", resultRow);
+                ::parseFieldIntoJson<string>( __func__, row, "query", resultRow);
+                ::parseFieldIntoJson<string>( __func__, row, "qTemplate", resultRow);
+                ::parseFieldIntoJson<string>( __func__, row, "qMerge", resultRow);
+                ::parseFieldIntoJson<string>( __func__, row, "status", resultRow);
+                ::parseFieldIntoJson<string>( __func__, row, "submitted", resultRow);
+                ::parseFieldIntoJson<long>(   __func__, row, "submitted_sec", resultRow);
+                ::parseFieldIntoJson<string>( __func__, row, "completed", resultRow);
+                ::parseFieldIntoJson<long>(   __func__, row, "completed_sec", resultRow);
+                ::parseFieldIntoJson<string>( __func__, row, "returned", resultRow);
+                ::parseFieldIntoJson<long>(   __func__, row, "returned_sec", resultRow);
+                ::parseFieldIntoJson<string>( __func__, row, "messageTable", resultRow);
+                ::parseFieldIntoJson<string>( __func__, row, "resultLocation", resultRow);
+                ::parseFieldIntoJson<string>( __func__, row, "resultQuery", resultRow);
+                result["queries_past"].push_back(resultRow);
+            }
+        }
         _sendData(resp, result);
 
     } catch (invalid_argument const& ex) {
@@ -2472,7 +2501,7 @@ void HttpProcessor::_publishDatabaseInMaster(DatabaseInfo const& databaseInfo) c
     // is automatically rolled-back in case of exceptions.
 
     {
-        database::mysql::ConnectionHandler const handler(
+        database::mysql::ConnectionHandler const h(
             database::mysql::Connection::open(
                 database::mysql::ConnectionParams(
                     config->qservMasterDatabaseHost(),
@@ -2490,11 +2519,11 @@ void HttpProcessor::_publishDatabaseInMaster(DatabaseInfo const& databaseInfo) c
         // Statements for creating the database & table entries
 
         statements.push_back(
-            "CREATE DATABASE IF NOT EXISTS " + handler.conn->sqlId(databaseInfo.name)
+            "CREATE DATABASE IF NOT EXISTS " + h.conn->sqlId(databaseInfo.name)
         );
         for (auto const& table: databaseInfo.tables()) {
-            string sql = "CREATE TABLE IF NOT EXISTS " + handler.conn->sqlId(databaseInfo.name) +
-                    "." + handler.conn->sqlId(table) + " (";
+            string sql = "CREATE TABLE IF NOT EXISTS " + h.conn->sqlId(databaseInfo.name) +
+                    "." + h.conn->sqlId(table) + " (";
             bool first = true;
             for (auto const& coldef: databaseInfo.columns.at(table)) {
                 if (first) {
@@ -2502,7 +2531,7 @@ void HttpProcessor::_publishDatabaseInMaster(DatabaseInfo const& databaseInfo) c
                 } else {
                     sql += ",";
                 }
-                sql += handler.conn->sqlId(coldef.first) + " " + coldef.second;
+                sql += h.conn->sqlId(coldef.first) + " " + coldef.second;
             }
             sql += ") ENGINE=InnoDB";
             statements.push_back(sql);
@@ -2512,20 +2541,20 @@ void HttpProcessor::_publishDatabaseInMaster(DatabaseInfo const& databaseInfo) c
         // to the Qserv account.
 
         statements.push_back(
-            "GRANT ALL ON " + handler.conn->sqlId(databaseInfo.name) + ".* TO " +
-            handler.conn->sqlValue(config->qservMasterDatabaseUser()) + "@" +
-            handler.conn->sqlValue(config->qservMasterDatabaseHost()));
+            "GRANT ALL ON " + h.conn->sqlId(databaseInfo.name) + ".* TO " +
+            h.conn->sqlValue(config->qservMasterDatabaseUser()) + "@" +
+            h.conn->sqlValue(config->qservMasterDatabaseHost()));
 
         // Execute the statements
         //
         // TODO: switch to the more reliable way of executing queries
         // which would also reconnect to the server.
 
-        handler.conn->begin();
+        h.conn->begin();
         for (auto const& query: statements) {
-            handler.conn->execute(query);
+            h.conn->execute(query);
         }
-        handler.conn->commit();
+        h.conn->commit();
     }
 
     // Register the database, tables and the partitioning scheme at CSS
