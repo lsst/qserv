@@ -417,6 +417,17 @@ string leastLoadedWorker(DatabaseServices::Ptr const& databaseServices,
 }
 
 
+/**
+ * Extract a value of field from a result set and store it 
+ *
+ * @param context the context for error reporting
+ * @param row     the current row from the result set
+ * @param column  the name of a column
+ * @param obj     JSON object where to store the values
+ *
+ * @throws invalid_argument  if the column is not present in a result set
+ * or the value of the field is 'NULL'.
+ */
 template<typename T>
 void parseFieldIntoJson(string const& context,
                         database::mysql::Row const& row,
@@ -427,6 +438,23 @@ void parseFieldIntoJson(string const& context,
         throw invalid_argument(context + " no column '" + column + "' found in the result set");
     }
     obj[column] = val;
+}
+
+/**
+ * The complementary version of the above defined function which replaces
+ * 'NULL' found in a field with the specified default value.
+ */
+template<typename T>
+void parseFieldIntoJson(string const& context,
+                        database::mysql::Row const& row,
+                        string const& column,
+                        json& obj,
+                        T const& defaultValue) {
+    if (row.isNull(column)) {
+        obj[column] = defaultValue;
+        return;
+    }
+    parseFieldIntoJson<T>(context, row, column, obj);
 }
 
 }  // namespace
@@ -1528,10 +1556,12 @@ void HttpProcessor::_getQservManyUserQuery(qhttp::Request::Ptr const& req,
     try {
         auto const config = controller()->serviceProvider()->config();
 
-        unsigned int const limit4past = getQueryParamUInt(req->query, "limit4past", 0);
+        unsigned int const limit4past = getQueryParamUInt(req->query, "limit4past", 1);
         _debug(string(__func__) + " limit4past=" + to_string(limit4past));
 
         json result;
+        result["queries"] = json::array();
+        result["queries_past"] = json::array();
 
         // Connect to the master database
         // Manage the new connection via the RAII-style handler to ensure the transaction
@@ -1553,9 +1583,11 @@ void HttpProcessor::_getQservManyUserQuery(qhttp::Request::Ptr const& req,
         // be done by the connection handler.
         h.conn->begin();
         h.conn->execute(
-            "SELECT " + h.conn->sqlId("QStatsTmp") + ".*,"+
-            "UNIX_TIMESTAMP(" + h.conn->sqlId("queryBegin") + ") AS " + h.conn->sqlId("queryBegin_sec") + "," +
-            "UNIX_TIMESTAMP(" + h.conn->sqlId("lastUpdate") + ") AS " + h.conn->sqlId("lastUpdate_sec") + "," +
+            "SELECT " + h.conn->sqlId("QStatsTmp") + ".*,"
+            "UNIX_TIMESTAMP(" + h.conn->sqlId("queryBegin") + ") AS " + h.conn->sqlId("queryBegin_sec") + ","
+            "UNIX_TIMESTAMP(" + h.conn->sqlId("lastUpdate") + ") AS " + h.conn->sqlId("lastUpdate_sec") + ","
+            "NOW() AS "       + h.conn->sqlId("samplingTime") + ","
+            "UNIX_TIMESTAMP(NOW()) AS " + h.conn->sqlId("samplingTime_sec") + "," +
             h.conn->sqlId("QInfo") + "." + h.conn->sqlId("query") +
             " FROM " + h.conn->sqlId("QStatsTmp") + "," + h.conn->sqlId("QInfo") +
             " WHERE " +
@@ -1567,21 +1599,24 @@ void HttpProcessor::_getQservManyUserQuery(qhttp::Request::Ptr const& req,
             database::mysql::Row row;
             while (h.conn->next(row)) {
                 json resultRow;
-                ::parseFieldIntoJson<QueryId>(__func__, row, "queryId", resultRow);
-                ::parseFieldIntoJson<int>(    __func__, row, "totalChunks", resultRow);
-                ::parseFieldIntoJson<int>(    __func__, row, "completedChunks", resultRow);
-                ::parseFieldIntoJson<string>( __func__, row, "queryBegin", resultRow);
-                ::parseFieldIntoJson<string>( __func__, row, "lastUpdate", resultRow);
-                ::parseFieldIntoJson<long>(   __func__, row, "queryBegin_sec", resultRow);
-                ::parseFieldIntoJson<long>(   __func__, row, "lastUpdate_sec", resultRow);
-                ::parseFieldIntoJson<string>( __func__, row, "query", resultRow);
+                ::parseFieldIntoJson<QueryId>(__func__, row, "queryId",          resultRow);
+                ::parseFieldIntoJson<int>(    __func__, row, "totalChunks",      resultRow);
+                ::parseFieldIntoJson<int>(    __func__, row, "completedChunks",  resultRow);
+                ::parseFieldIntoJson<string>( __func__, row, "queryBegin",       resultRow);
+                ::parseFieldIntoJson<long>(   __func__, row, "queryBegin_sec",   resultRow);
+                ::parseFieldIntoJson<string>( __func__, row, "lastUpdate",       resultRow);
+                ::parseFieldIntoJson<long>(   __func__, row, "lastUpdate_sec",   resultRow);
+                ::parseFieldIntoJson<string>( __func__, row, "samplingTime",     resultRow);
+                ::parseFieldIntoJson<long>(   __func__, row, "samplingTime_sec", resultRow);
+                ::parseFieldIntoJson<string>( __func__, row, "query",            resultRow);
                 result["queries"].push_back(resultRow);
             }
         }
         h.conn->execute(
             "SELECT *,"
             "UNIX_TIMESTAMP(" + h.conn->sqlId("submitted") + ") AS " + h.conn->sqlId("submitted_sec") + "," +
-            "UNIX_TIMESTAMP(" + h.conn->sqlId("completed") + ") AS " + h.conn->sqlId("completed_sec") +
+            "UNIX_TIMESTAMP(" + h.conn->sqlId("completed") + ") AS " + h.conn->sqlId("completed_sec") + ","
+            "UNIX_TIMESTAMP(" + h.conn->sqlId("returned")  + ") AS " + h.conn->sqlId("returned_sec") +
             " FROM "  + h.conn->sqlId("QInfo") +
             " WHERE " + h.conn->sqlNotEqual("status", "EXECUTING") +
             " ORDER BY " + h.conn->sqlId("submitted") + " DESC" +
@@ -1591,23 +1626,23 @@ void HttpProcessor::_getQservManyUserQuery(qhttp::Request::Ptr const& req,
             database::mysql::Row row;
             while (h.conn->next(row)) {
                 json resultRow;
-                ::parseFieldIntoJson<QueryId>(__func__, row, "queryId", resultRow);
-                ::parseFieldIntoJson<string>( __func__, row, "qType", resultRow);
-                ::parseFieldIntoJson<int>(    __func__, row, "czarId", resultRow);
-                ::parseFieldIntoJson<string>( __func__, row, "user", resultRow);
-                ::parseFieldIntoJson<string>( __func__, row, "query", resultRow);
-                ::parseFieldIntoJson<string>( __func__, row, "qTemplate", resultRow);
-                ::parseFieldIntoJson<string>( __func__, row, "qMerge", resultRow);
-                ::parseFieldIntoJson<string>( __func__, row, "status", resultRow);
-                ::parseFieldIntoJson<string>( __func__, row, "submitted", resultRow);
-                ::parseFieldIntoJson<long>(   __func__, row, "submitted_sec", resultRow);
-                ::parseFieldIntoJson<string>( __func__, row, "completed", resultRow);
-                ::parseFieldIntoJson<long>(   __func__, row, "completed_sec", resultRow);
-                ::parseFieldIntoJson<string>( __func__, row, "returned", resultRow);
-                ::parseFieldIntoJson<long>(   __func__, row, "returned_sec", resultRow);
-                ::parseFieldIntoJson<string>( __func__, row, "messageTable", resultRow);
-                ::parseFieldIntoJson<string>( __func__, row, "resultLocation", resultRow);
-                ::parseFieldIntoJson<string>( __func__, row, "resultQuery", resultRow);
+                ::parseFieldIntoJson<QueryId>(__func__, row, "queryId",        resultRow);
+                ::parseFieldIntoJson<string>( __func__, row, "qType",          resultRow);
+                ::parseFieldIntoJson<int>(    __func__, row, "czarId",         resultRow);
+                ::parseFieldIntoJson<string>( __func__, row, "user",           resultRow);
+                ::parseFieldIntoJson<string>( __func__, row, "query",          resultRow);
+                ::parseFieldIntoJson<string>( __func__, row, "qTemplate",      resultRow);
+                ::parseFieldIntoJson<string>( __func__, row, "qMerge",         resultRow, "");
+                ::parseFieldIntoJson<string>( __func__, row, "status",         resultRow);
+                ::parseFieldIntoJson<string>( __func__, row, "submitted",      resultRow);
+                ::parseFieldIntoJson<long>(   __func__, row, "submitted_sec",  resultRow);
+                ::parseFieldIntoJson<string>( __func__, row, "completed",      resultRow, "");
+                ::parseFieldIntoJson<long>(   __func__, row, "completed_sec",  resultRow, 0);
+                ::parseFieldIntoJson<string>( __func__, row, "returned",       resultRow, "");
+                ::parseFieldIntoJson<long>(   __func__, row, "returned_sec",   resultRow, 0);
+                ::parseFieldIntoJson<string>( __func__, row, "messageTable",   resultRow, "");
+                ::parseFieldIntoJson<string>( __func__, row, "resultLocation", resultRow, "");
+                ::parseFieldIntoJson<string>( __func__, row, "resultQuery",    resultRow, "");
                 result["queries_past"].push_back(resultRow);
             }
         }
