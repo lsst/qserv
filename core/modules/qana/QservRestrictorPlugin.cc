@@ -507,7 +507,7 @@ query::QsRestrictor::Ptr newRestrictor(
     bool isValid = true;
     std::for_each(values.begin(), values.end(),
         [&isValid](query::ValueExprPtr p) {
-            isValid = isValid && p != nullptr && not p->copyAsLiteral().empty(); });
+            isValid = isValid && p != nullptr && p->isConstVal(); });
     if (!isValid) {
         return nullptr;
     }
@@ -524,7 +524,7 @@ query::QsRestrictor::Ptr newRestrictor(
     std::vector<std::string> parameters = {directorColumnRef->getDb(), directorColumnRef->getTable(),
                                            directorColumnRef->getColumn()};
     std::transform(values.begin(), values.end(), std::back_inserter(parameters),
-        [](query::ValueExprPtr p) -> std::string { return p->copyAsLiteral(); });
+        [](query::ValueExprPtr p) -> std::string { return p->getConstVal(); });
 
     return std::make_shared<query::QsRestrictorFunction>(restrictorName, std::move(parameters));
 }

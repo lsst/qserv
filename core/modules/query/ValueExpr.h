@@ -119,11 +119,6 @@ public:
 
     std::shared_ptr<ColumnRef> copyAsColumnRef() const;
 
-    std::string copyAsLiteral() const;
-
-    template<typename T>
-    T copyAsType(T const& defaultValue) const;
-
     void findColumnRefs(ColumnRef::Vector& vector) const;
 
     /*

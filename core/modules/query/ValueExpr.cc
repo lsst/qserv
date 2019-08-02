@@ -202,43 +202,6 @@ std::shared_ptr<ColumnRef> ValueExpr::copyAsColumnRef() const {
 }
 
 
-std::string ValueExpr::copyAsLiteral() const{
-    std::string s;
-    // Make sure there is only one factor.
-    if (_factorOps.empty() || (_factorOps.size() > 1)) { return s; }
-
-    std::shared_ptr<ValueFactor> factor = _factorOps.front().factor;
-    assert(factor);
-    if (factor->getType() != ValueFactor::CONST) { return s; }
-    return factor->getConstVal();
-}
-
-
-template<typename T>
-T ValueExpr::copyAsType(T const& defaultValue) const {
-    std::string literal = copyAsLiteral();
-    std::istringstream is(literal);
-    T value;
-    is >> value;
-    std::ostringstream os;
-    os << value;
-    if (os.str() != literal) {
-        return defaultValue;
-    }
-    return value;
-}
-
-
-template<>
-float ValueExpr::copyAsType<float>(float const& defaultValue) const;
-
-
-template<>
-double ValueExpr::copyAsType<double>(double const& defaultValue) const;
-
-
-template int ValueExpr::copyAsType<int>(int const&) const;
-
 
 void ValueExpr::findColumnRefs(ColumnRef::Vector& vector) const {
     for (const auto& factorOp : _factorOps){
