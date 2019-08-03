@@ -427,8 +427,11 @@ nlohmann::json BlendScheduler::statusToJson() {
     status["num_tasks_in_queue"] = getSize();
     status["num_tasks_in_flight"] = getInFlight();
     nlohmann::json schedulers = nlohmann::json::array();
-    for (auto&& sched: _schedulers) {
-        schedulers.push_back(sched->statusToJson());
+    {
+        lock_guard<mutex> lg(_schedMtx);
+        for (auto&& sched: _schedulers) {
+            schedulers.push_back(sched->statusToJson());
+        }
     }
     status["schedulers"] = schedulers;
     return status;
