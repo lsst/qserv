@@ -64,6 +64,7 @@ namespace qana {
 void
 ScanTablePlugin::applyLogical(query::SelectStmt& stmt,
                               query::QueryContext& context) {
+    LOGS(_log, LOG_LVL_DEBUG, "ScanTablePlugin::applyLogical");
     _scanInfo = _findScanTables(stmt, context);
     context.scanInfo = _scanInfo;
 }

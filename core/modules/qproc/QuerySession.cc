@@ -223,6 +223,7 @@ void QuerySession::setScanInteractive() {
     if (_context->chunkCount > _interactiveChunkLimit) {
         _scanInteractive = false;
     }
+    LOGS(_log, LOG_LVL_DEBUG, "Set scan interactive " << (_scanInteractive ? "true." : "false."));
 }
 
 

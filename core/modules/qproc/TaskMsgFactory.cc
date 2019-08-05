@@ -44,6 +44,7 @@
 #include "qproc/ChunkQuerySpec.h"
 #include "qproc/QueryProcessingBug.h"
 #include "util/common.h"
+#include "util/IterableFormatter.h"
 
 namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.qproc.TaskMsgFactory");
@@ -75,6 +76,11 @@ std::shared_ptr<proto::TaskMsg> TaskMsgFactory::_makeMsg(ChunkQuerySpec const& c
             db = sTbl.db;
         }
     }
+
+    LOGS(_log, LOG_LVL_DEBUG, "making message: " <<
+                              " scanpriority: " << chunkQuerySpec.scanInfo.scanRating <<
+                              " scaninteractive: " << chunkQuerySpec.scanInteractive <<
+                              " scantables:" << util::printable(chunkQuerySpec.scanInfo.infoTables));
 
     for(auto const& sTbl : chunkQuerySpec.scanInfo.infoTables) {
         lsst::qserv::proto::TaskMsg_ScanTable *msgScanTbl = taskMsg->add_scantable();

@@ -66,7 +66,7 @@ public:
     proto::ScanInfo scanInfo; ///< shared-scan candidates
     // Consider saving subChunkTable templates, and substituting the chunkIds
     // and subChunkIds into them on-the-fly.
-    bool scanInteractive{false};
+    const bool scanInteractive{false};
     DbTableSet subChunkTables;
     std::vector<int> subChunkIds;
     std::vector<std::string> queries;
