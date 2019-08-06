@@ -191,6 +191,8 @@ def _setEnvWithDependencies():
                       os.path.join("lib", "python"), PathVariable.PathAccept)),
         (PathVariable('NLOHMANN_DIR', 'nlohmann library install dir', _findPrefixFromName('JSON_NLOHMANN'),
                       PathVariable.PathIsDir)),
+        (PathVariable('PARTITION_DIR', 'partition library install dir', _findPrefixFromName('PARTITION'),
+                      PathVariable.PathIsDir)),
     )
     opts.Update(env)
 
@@ -241,6 +243,10 @@ def _setEnvWithDependencies():
          os.path.join(env['SPHGEOM_DIR'], "lib"), PathVariable.PathIsDir)),
         (PathVariable('NLOHMANN_INC', 'nlohmann include path',
          os.path.join(env['NLOHMANN_DIR'], "include"), PathVariable.PathIsDir)),
+        (PathVariable('PARTITION_INC', 'partition include path',
+         os.path.join(env['PARTITION_DIR'], "include"), PathVariable.PathIsDir)),
+        (PathVariable('PARTITION_LIB', 'partition libraries path',
+         os.path.join(env['PARTITION_DIR'], "lib"), PathVariable.PathIsDir)),
     )
     opts.Update(env)
 
