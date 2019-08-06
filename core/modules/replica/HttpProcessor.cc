@@ -54,6 +54,11 @@
 #include "replica/SqlJob.h"
 #include "replica/SqlRequest.h"
 
+// LSST headers
+#include "lsst/partition/Chunker.h"
+#include "lsst/partition/Geometry.h"
+#include "lsst/sphgeom/Chunker.h"
+
 
 using namespace std;
 using namespace std::placeholders;
@@ -1482,6 +1487,7 @@ void HttpProcessor::_getQservManyWorkersStatus(qhttp::Request::Ptr const& req,
         job->wait();
 
         json result;
+        set<int> chunks;
         auto&& status = job->qservStatus();
         for (auto&& entry: status.workers) {
             auto&& worker = entry.first;
@@ -1491,10 +1497,19 @@ void HttpProcessor::_getQservManyWorkersStatus(qhttp::Request::Ptr const& req,
                 result["status"][worker]["success"] = 1;
                 result["status"][worker]["info"] = info;
                 result["status"][worker]["queries"] = _getQueries(info);
+                auto&& schedulers = info["processor"]["queries"]["blend_scheduler"]["schedulers"];
+                for (auto&& scheduler: schedulers) {
+                    for (auto&& chunk2tasks: scheduler["chunk_to_num_tasks"]) {
+                        int const chunk = chunk2tasks[0];
+                        chunks.insert(chunk);
+                        _debug(__func__, "chunk: " + to_string(chunk));
+                    }
+                }
             } else {
                 result["status"][worker]["success"] = 0;
-            }        
+            }
         }
+        result["chunks"] = _chunkInfo(chunks);
         _sendData(resp, result);
 
     } catch (invalid_argument const& ex) {
@@ -2745,6 +2760,38 @@ pair<string,size_t> HttpProcessor::_buildEmptyChunksListImpl(string const& datab
     ofs.close();
     
     return make_pair(file, chunks.size());
+}
+
+
+json HttpProcessor::_chunkInfo(set<int> const& chunks) const {
+    json result;
+    auto const config = controller()->serviceProvider()->config();
+    for (auto&& familyName: config->databaseFamilies()) {
+        auto&& familyInfo = config->databaseFamilyInfo(familyName);
+        /*
+         * TODO: both versions of the 'Chunker' class need to be used due to non-overlapping
+         * functionality and the interface.  The one from the spherical geometry packages
+         * provides a simple interface for validating chunk numbers, meanwhile the other
+         * one allows to extract spatial parameters of chunks. This duality will be
+         * addressed later after migrating package 'partition' to use geometry utilities
+         * of package 'sphgeom'.
+         */
+        lsst::sphgeom::Chunker const sphgeomChunker(familyInfo.numStripes, familyInfo.numSubStripes);
+        lsst::partition::Chunker const partitionChunker(familyInfo.overlap, familyInfo.numStripes,
+                                                        familyInfo.numSubStripes);
+        for (auto&& chunk: chunks) {
+            if (sphgeomChunker.valid(chunk)) {
+                json chunkGeometry;
+                auto&& box = partitionChunker.getChunkBounds(chunk);
+                chunkGeometry["lat_min"] = box.getLatMin();
+                chunkGeometry["lat_max"] = box.getLatMax();
+                chunkGeometry["lon_min"] = box.getLonMin();
+                chunkGeometry["lon_max"] = box.getLonMax();
+                result[to_string(chunk)][familyInfo.name] = chunkGeometry;
+            }
+        }
+    }
+    return result;
 }
 
 

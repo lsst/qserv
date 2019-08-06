@@ -397,6 +397,13 @@ private:
     std::pair<std::string,size_t> _buildEmptyChunksListImpl(std::string const& database,
                                                             bool force) const;
 
+
+    /**
+     * @param chunks  collection of chunks numbers to be expanded
+     * @return descriptors of chunks (including their spatial geometry)
+     */
+    nlohmann::json _chunkInfo(std::set<int> const& chunks) const;
+
     /**
      * Report a error condition and send a error message back to a requester
      * of a service.
