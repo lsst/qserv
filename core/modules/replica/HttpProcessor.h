@@ -26,6 +26,9 @@
 #include <memory>
 #include <set>
 
+// Third party headers
+#include "nlohmann/json.hpp"
+
 // Qserv headers
 #include "qhttp/Server.h"
 #include "replica/DeleteWorkerTask.h"
@@ -104,6 +107,16 @@ private:
      */
     void _error(std::string const& msg) const;
     void _error(std::string const& context, std::string const& msg) const { _error(context + "  " + msg); }
+
+    /// @param database the name of a database
+    /// @return data statistics for the specified database
+    nlohmann::json _databaseStats(std::string const& database) const;
+
+    /**
+     * Process a request which returns data statistics on the catalogs served by Qserv.
+     */
+    void _getCatalogs(qhttp::Request::Ptr const& req,
+                      qhttp::Response::Ptr const& resp);
 
     /**
      * Process a request which return status of one worker.

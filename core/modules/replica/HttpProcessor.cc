@@ -36,7 +36,6 @@
 // Third party headers
 #include <boost/filesystem.hpp>
 #include <boost/lexical_cast.hpp>
-#include "nlohmann/json.hpp"
 
 // Qserv headers
 #include "css/CssAccess.h"
@@ -519,6 +518,7 @@ void HttpProcessor::_initialize() {
 
     controller()->serviceProvider()->httpServer()->addHandlers({
 
+        {"GET",    "/replication/v1/catalogs", bind(&HttpProcessor::_getCatalogs, self, _1, _2)},
         {"GET",    "/replication/v1/level", bind(&HttpProcessor::_getReplicationLevel, self, _1, _2)},
         {"GET",    "/replication/v1/worker", bind(&HttpProcessor::_listWorkerStatuses, self, _1, _2)},
         {"GET",    "/replication/v1/worker/:name", bind(&HttpProcessor::_getWorkerStatus, self, _1, _2)},
@@ -575,6 +575,62 @@ void HttpProcessor::_debug(string const& msg) const {
 
 void HttpProcessor::_error(string const& msg) const {
     LOGS(_log, LOG_LVL_ERROR, _context() << msg);
+}
+
+
+json HttpProcessor::_databaseStats(string const& database) const {
+
+    auto const config = controller()->serviceProvider()->config();
+    auto const databaseServices = controller()->serviceProvider()->databaseServices();
+
+    vector<ReplicaInfo> replicas;
+    databaseServices->findDatabaseReplicas(replicas, database);
+
+    json result;
+    result["chunks"]["unique"] = 123;
+    result["chunks"]["with_replicas"] = 246;
+    result["data"]["in_chunks"] = 2223;
+    result["data"]["in_overlaps"] = 122;
+    result["data"]["total"] = 2223 + 122;
+    for (auto&& table: config->databaseInfo(database).partitionedTables) {
+        result["tables"][table]["rows"]["in_chunks"] = 1345678;
+        result["tables"][table]["rows"]["in_overlaps"] = 34567;
+        result["tables"][table]["rows"]["total"] = 1345678 + 34567;
+        result["tables"][table]["data"]["unique"]["in_chunks"]["data"] = 56;
+        result["tables"][table]["data"]["unique"]["in_chunks"]["index"] = 22;
+        result["tables"][table]["data"]["unique"]["in_chunks"]["total"] = 56 + 22;
+        result["tables"][table]["data"]["unique"]["in_overlaps"]["data"] = 45;
+        result["tables"][table]["data"]["unique"]["in_overlaps"]["index"] = 0;
+        result["tables"][table]["data"]["unique"]["in_overlaps"]["total"] = 45 + 0;
+        result["tables"][table]["data"]["unique"]["total"] = 56 + 22 + 45 + 0;
+        result["tables"][table]["data"]["with_replicas"]["in_chunks"]["data"] = 189;
+        result["tables"][table]["data"]["with_replicas"]["in_chunks"]["index"] = 72;
+        result["tables"][table]["data"]["with_replicas"]["in_chunks"]["total"] = 189 + 72;
+        result["tables"][table]["data"]["with_replicas"]["in_overlaps"]["data"] = 90;
+        result["tables"][table]["data"]["with_replicas"]["in_overlaps"]["index"] = 1;
+        result["tables"][table]["data"]["with_replicas"]["in_overlaps"]["total"] = 90 + 1;
+        result["tables"][table]["data"]["with_replicas"]["total"] = 189 + 72 + 90 + 1;
+    }
+    return result;
+}
+
+
+void HttpProcessor::_getCatalogs(qhttp::Request::Ptr const& req,
+                                 qhttp::Response::Ptr const& resp) {
+    _debug(__func__);
+
+    try {
+        json result;
+        result["databases"] = json::object();
+
+        for (auto&& database: controller()->serviceProvider()->config()->databases()) {
+            result["databases"][database] = _databaseStats(database);
+        }
+        _sendData(resp, result);
+
+    } catch (exception const& ex) {
+        _sendError(resp, __func__, "operation failed due to: " + string(ex.what()));
+    }
 }
 
 
