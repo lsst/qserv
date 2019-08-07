@@ -66,17 +66,29 @@ getCircleFromParams(std::vector<double> const& params) {
     return std::make_shared<lsst::sphgeom::Circle>(lsst::sphgeom::UnitVector3d(center), a);
 }
 
+inline double arcsecToDegrees(double arcsec) {
+    return arcsec / 3600.; // there are 3600 arcsec in 1 degree.
+}
+
 inline std::shared_ptr<lsst::sphgeom::Ellipse>
 getEllipseFromParams(std::vector<double> const& params) {
-    // center lon, center lat, semi major axe angle (rad), semi minor axe angle (rad), orientation angle (rad)
+    // Per the Spatial Constraints section of the qserv user manual
+    //     (see https://github.com/lsst/qserv/blob/master/UserManual.md#spatial-constraints)
+    // For a qserv_areaspec_ellipse, the position of each parameter, the parameter, and its unit type
+    //     are as follows:
+    // 0 center lon (degrees)
+    // 1 center lat (degrees)
+    // 2 semi major axis angle (arcsec)
+    // 3 semi minor axis angle (arcsec)
+    // 4 orientation angle (degrees)
     if(params.size() != 5) {
         throw QueryProcessingError("Invalid number of parameters for ellipse");
     }
     lsst::sphgeom::UnitVector3d center(lsst::sphgeom::LonLat::fromDegrees(params[0], params[1]));
     return std::make_shared<lsst::sphgeom::Ellipse>(
         center,
-        lsst::sphgeom::Angle::fromDegrees(params[2]),
-        lsst::sphgeom::Angle::fromDegrees(params[3]),
+        lsst::sphgeom::Angle::fromDegrees(arcsecToDegrees(params[2])),
+        lsst::sphgeom::Angle::fromDegrees(arcsecToDegrees(params[3])),
         lsst::sphgeom::Angle::fromDegrees(params[4]));
 }
 
