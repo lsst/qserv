@@ -90,7 +90,15 @@ do
     CSS_INFO="${CSS_INFO}CREATE NODE worker${i} type=worker port=5012 host=worker${i}.$DNS_DOMAIN;
 "
 done
-docker exec "$MASTER" bash -c ". /qserv/stack/loadLSST.bash && \
+#docker exec "$MASTER" bash -c ". /qserv/stack/loadLSST.bash && \
+#    setup qserv_distrib -t qserv-dev && \
+#    echo \"$CSS_INFO\" | qserv-admin.py && \
+#    qserv-test-integration.py"
+
+for i in $CZARS;
+do
+docker exec "$i" bash -c ". /qserv/stack/loadLSST.bash && \
     setup qserv_distrib -t qserv-dev && \
     echo \"$CSS_INFO\" | qserv-admin.py && \
     qserv-test-integration.py"
+done
