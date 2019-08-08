@@ -59,6 +59,7 @@ namespace qmeta {
     class QMeta;
 }
 namespace qproc {
+    class DatabaseModels;
     class QuerySession;
     class SecondaryIndex;
 }
@@ -83,6 +84,7 @@ public:
     UserQuerySelect(std::shared_ptr<qproc::QuerySession> const& qs,
                     std::shared_ptr<qdisp::MessageStore> const& messageStore,
                     std::shared_ptr<qdisp::Executive> const& executive,
+                    std::shared_ptr<qproc::DatabaseModels> const& dbModels,
                     std::shared_ptr<rproc::InfileMergerConfig> const& infileMergerConfig,
                     std::shared_ptr<qproc::SecondaryIndex> const& secondaryIndex,
                     std::shared_ptr<qmeta::QMeta> const& queryMetadata,
@@ -167,6 +169,7 @@ private:
     std::shared_ptr<qproc::QuerySession> _qSession;
     std::shared_ptr<qdisp::MessageStore> _messageStore;
     std::shared_ptr<qdisp::Executive> _executive;
+    std::shared_ptr<qproc::DatabaseModels> _databaseModels;
     std::shared_ptr<rproc::InfileMergerConfig> _infileMergerConfig;
     std::shared_ptr<rproc::InfileMerger> _infileMerger;
     std::shared_ptr<qproc::SecondaryIndex> _secondaryIndex;

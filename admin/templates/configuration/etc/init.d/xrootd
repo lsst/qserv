@@ -22,7 +22,11 @@ DIR=$(cd "$(dirname "$0")"; pwd -P)
 NAME="xrootd"
 DAEMON=${NAME}
 
+echo "daemon $DAEMON  dir $DIR"
+
 source_sysconfig ${DIR}
+
+echo "node_t $NODE_TYPE  dir $DIR"
 
 # Check variables which are not controlled by application
 check_writable ${NAME} "QSERV_RUN_DIR"
@@ -61,17 +65,20 @@ export LSST_LOG_CONFIG="${QSERV_RUN_DIR}/etc/log4cxx.worker.properties"
 # takes single argument - program name
 pid_file_name() {
     local pidfile=${PID_DIR}/$1.pid
-    test "${1}${NODE_TYPE}" = "cmsdmaster" && pidfile=${PID_DIR}/$1.mangr.pid
+#    test "${1}${NODE_TYPE}" = "cmsdmaster" && pidfile=${PID_DIR}/$1.mangr.pid
     echo $pidfile
 }
 
+
+
+
 # Environment variables can vary from on container session to another and making them 
-# reliably consistent is difficult. Instead, use ".pid" version if that file exists,
-# otherwise use the ".mangr.pid" file version.
+# reliably consistent is difficult. Instead, use "mangr.pid" version if that file exists,
+# otherwise use the ".pid" file version.
 pid_file_name_check() {
-    local pf=${PID_DIR}/$1.pid
+    local pf=${PID_DIR}/$1.mangr.pid
     if [ ! -f "$pf" ]; then
-        pf=${PID_DIR}/$1.mangr.pid
+        pf=${PID_DIR}/$1.pid
     fi
     echo $pf
 }
@@ -82,7 +89,7 @@ start_service() {
 
     prog=${1##*/}
 
-    pidfile=$(pid_file_name $prog)
+    pidfile=$(pid_file_name_check $prog)
     lockfile=${QSERV_RUN_DIR}/var/lock/subsys/${prog}
     BINARY=${XROOTD_DIR}/bin/${prog}
     logfile=@libXrdSsiLog.so

@@ -56,6 +56,7 @@
 #include "qmeta/QMetaMysql.h"
 #include "qmeta/QMetaSelect.h"
 #include "qmeta/QStatusMysql.h"
+#include "qproc/DatabaseModels.h"
 #include "qproc/QuerySession.h"
 #include "qproc/SecondaryIndex.h"
 #include "query/FromList.h"
@@ -75,6 +76,7 @@ namespace qserv {
 namespace ccontrol {
 
 
+<<<<<<< HEAD
 std::shared_ptr<UserQuerySharedResources> makeUserQuerySharedResources(czar::CzarConfig const& czarConfig,
                                                                        std::string const& czarName) {
     return std::make_shared<UserQuerySharedResources>(
@@ -87,6 +89,26 @@ std::shared_ptr<UserQuerySharedResources> makeUserQuerySharedResources(czar::Cza
         sql::SqlConnectionFactory::make(czarConfig.getMySqlResultConfig()),
         czarName);
 }
+=======
+/// Implementation class (PIMPL-style) for UserQueryFactory.
+class UserQueryFactory::Impl {
+public:
+
+    Impl(czar::CzarConfig const& czarConfig);
+
+    /// State shared between UserQueries
+    qdisp::Executive::Config::Ptr executiveConfig;
+    std::shared_ptr<css::CssAccess> css;
+    mysql::MySqlConfig const mysqlResultConfig;
+    std::shared_ptr<qproc::SecondaryIndex> secondaryIndex;
+    std::shared_ptr<qproc::DatabaseModels> databaseModels;
+    std::shared_ptr<qmeta::QMeta> queryMetadata;
+    std::shared_ptr<qmeta::QStatus> queryStatsData;
+    std::shared_ptr<qmeta::QMetaSelect> qMetaSelect;
+    std::shared_ptr<sql::SqlConnection> resultDbConn;
+    qmeta::CzarId qMetaCzarId = {0};   ///< Czar ID in QMeta database
+};
+>>>>>>> Made changes to the code to use shared DB for getting schemas.
 
 
 ////////////////////////////////////////////////////////////////////////
@@ -204,10 +226,22 @@ UserQueryFactory::newUserQuery(std::string const& aQuery,
                                                  qdispPool, _userQuerySharedResources->queryStatsData);
             infileMergerConfig = std::make_shared<rproc::InfileMergerConfig>(_userQuerySharedResources->mysqlResultConfig);
         }
+/* &&&
         auto uq = std::make_shared<UserQuerySelect>(qs, messageStore, executive, infileMergerConfig,
                                                     _userQuerySharedResources->secondaryIndex, _userQuerySharedResources->queryMetadata,
                                                     _userQuerySharedResources->queryStatsData, _userQuerySharedResources->qMetaCzarId,
-                                                    qdispPool, errorExtra, async, resultDb);
+=======
+        auto uq = std::make_shared<UserQuerySelect>(qs, messageStore, executive, _impl->databaseModels,
+                                                    infileMergerConfig,
+                                                    _impl->secondaryIndex, _impl->queryMetadata,
+                                                    _impl->queryStatsData, _impl->qMetaCzarId,
+>>>>>>> Made changes to the code to use shared DB for getting schemas.
+*/
+        auto uq = std::make_shared<UserQuerySelect>(qs, messageStore, executive,
+                _userQuerySharedResources->databaseModels,
+                _userQuerySharedResources->secondaryIndex, _userQuerySharedResources->queryMetadata,
+                _userQuerySharedResources->queryStatsData, _userQuerySharedResources->qMetaCzarId,
+                qdispPool, errorExtra, async, resultDb);
         if (sessionValid) {
             uq->qMetaRegister(resultLocation, msgTableName);
             uq->setupChunking();
@@ -263,4 +297,29 @@ UserQueryFactory::newUserQuery(std::string const& aQuery,
 }
 
 
+<<<<<<< HEAD
+=======
+UserQueryFactory::Impl::Impl(czar::CzarConfig const& czarConfig)
+    : mysqlResultConfig(czarConfig.getMySqlResultConfig()) {
+
+    executiveConfig = std::make_shared<qdisp::Executive::Config>(
+                          czarConfig.getXrootdFrontendUrl(),
+                          czarConfig.getQMetaSecondsBetweenChunkUpdates());
+    // &&& secondaryIndex = std::make_shared<qproc::SecondaryIndex>(mysqlResultConfig);
+    secondaryIndex = std::make_shared<qproc::SecondaryIndex>(czarConfig.getMySqlQmetaConfig());
+    databaseModels = qproc::DatabaseModels::create(czarConfig.getCssConfigMap()); // &&& should probably have its own config
+
+    // make one dedicated connection for results database
+    resultDbConn = sql::SqlConnectionFactory::make(mysqlResultConfig);
+
+    queryMetadata = std::make_shared<qmeta::QMetaMysql>(czarConfig.getMySqlQmetaConfig());
+    qMetaSelect = std::make_shared<qmeta::QMetaSelect>(czarConfig.getMySqlQmetaConfig());
+
+    queryStatsData = std::make_shared<qmeta::QStatusMysql>(czarConfig.getMySqlQStatusDataConfig());
+
+    // create CssAccess instance
+    css = css::CssAccess::createFromConfig(czarConfig.getCssConfigMap(), czarConfig.getEmptyChunkPath());
+}
+
+>>>>>>> Made changes to the code to use shared DB for getting schemas.
 }}} // lsst::qserv::ccontrol
