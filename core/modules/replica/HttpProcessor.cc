@@ -578,40 +578,64 @@ void HttpProcessor::_error(string const& msg) const {
 }
 
 
-json HttpProcessor::_databaseStats(string const& database) const {
+json HttpProcessor::_databaseStats(string const& database, bool dummyReport) const {
 
     auto const config = controller()->serviceProvider()->config();
     auto const databaseServices = controller()->serviceProvider()->databaseServices();
 
+    vector<unsigned int> chunks;
+    if (not dummyReport) databaseServices->findDatabaseChunks(chunks, database);
+
     vector<ReplicaInfo> replicas;
-    databaseServices->findDatabaseReplicas(replicas, database);
+    if (not dummyReport) databaseServices->findDatabaseReplicas(replicas, database);
 
     json result;
-    result["chunks"]["unique"] = 123;
-    result["chunks"]["with_replicas"] = 246;
-    result["data"]["in_chunks"] = 2223;
-    result["data"]["in_overlaps"] = 122;
-    result["data"]["total"] = 2223 + 122;
+    result["chunks"]["unique"] = chunks.size();
+    result["chunks"]["with_replicas"] = replicas.size();
+
     for (auto&& table: config->databaseInfo(database).partitionedTables) {
-        result["tables"][table]["rows"]["in_chunks"] = 1345678;
-        result["tables"][table]["rows"]["in_overlaps"] = 34567;
-        result["tables"][table]["rows"]["total"] = 1345678 + 34567;
-        result["tables"][table]["data"]["unique"]["in_chunks"]["data"] = 56;
-        result["tables"][table]["data"]["unique"]["in_chunks"]["index"] = 22;
-        result["tables"][table]["data"]["unique"]["in_chunks"]["total"] = 56 + 22;
-        result["tables"][table]["data"]["unique"]["in_overlaps"]["data"] = 45;
-        result["tables"][table]["data"]["unique"]["in_overlaps"]["index"] = 0;
-        result["tables"][table]["data"]["unique"]["in_overlaps"]["total"] = 45 + 0;
-        result["tables"][table]["data"]["unique"]["total"] = 56 + 22 + 45 + 0;
-        result["tables"][table]["data"]["with_replicas"]["in_chunks"]["data"] = 189;
-        result["tables"][table]["data"]["with_replicas"]["in_chunks"]["index"] = 72;
-        result["tables"][table]["data"]["with_replicas"]["in_chunks"]["total"] = 189 + 72;
-        result["tables"][table]["data"]["with_replicas"]["in_overlaps"]["data"] = 90;
-        result["tables"][table]["data"]["with_replicas"]["in_overlaps"]["index"] = 1;
-        result["tables"][table]["data"]["with_replicas"]["in_overlaps"]["total"] = 90 + 1;
-        result["tables"][table]["data"]["with_replicas"]["total"] = 189 + 72 + 90 + 1;
+
+        size_t data_unique_in_chunks_data    = 0;
+        size_t data_unique_in_chunks_index   = 0;
+        size_t data_unique_in_overlaps_data  = 0;
+        size_t data_unique_in_overlaps_index = 0;
+        size_t data_with_replicas_in_chunks_data    = 0;
+        size_t data_with_replicas_in_chunks_index   = 0;
+        size_t data_with_replicas_in_overlaps_data  = 0;
+        size_t data_with_replicas_in_overlaps_index = 0;
+
+        for (auto&& replica: replicas) {
+            ;
+        }
+        result["tables"][table]["is_partitioned"] = 1;
+        result["tables"][table]["rows"]["in_chunks"]   = 0;
+        result["tables"][table]["rows"]["in_overlaps"] = 0;
+        result["tables"][table]["data"]["unique"]["in_chunks"]["data"]    = data_unique_in_chunks_data;
+        result["tables"][table]["data"]["unique"]["in_chunks"]["index"]   = data_unique_in_chunks_index;
+        result["tables"][table]["data"]["unique"]["in_overlaps"]["data"]  = data_unique_in_overlaps_data;
+        result["tables"][table]["data"]["unique"]["in_overlaps"]["index"] = data_unique_in_overlaps_index;
+        result["tables"][table]["data"]["with_replicas"]["in_chunks"]["data"]    = data_with_replicas_in_chunks_data;
+        result["tables"][table]["data"]["with_replicas"]["in_chunks"]["index"]   = data_with_replicas_in_chunks_index;
+        result["tables"][table]["data"]["with_replicas"]["in_overlaps"]["data"]  = data_with_replicas_in_overlaps_data;
+        result["tables"][table]["data"]["with_replicas"]["in_overlaps"]["index"] = data_with_replicas_in_overlaps_index;
     }
-    return result;
+    for (auto&& table: config->databaseInfo(database).regularTables) {
+
+        size_t data_unique_data  = 0;
+        size_t data_unique_index = 0;
+        size_t data_with_replicas_data  = 0;
+        size_t data_with_replicas_index = 0;
+
+        for (auto&& replica: replicas) {
+            ;
+        }
+        result["tables"][table]["is_partitioned"] = 0;
+        result["tables"][table]["rows"] = 0;
+        result["tables"][table]["data"]["unique"]["data"]  = data_unique_data;
+        result["tables"][table]["data"]["unique"]["index"] = data_unique_index;
+        result["tables"][table]["data"]["with_replicas"]["data"]  = data_with_replicas_data;
+        result["tables"][table]["data"]["with_replicas"]["index"] = data_with_replicas_index;
+    }    return result;
 }
 
 
@@ -619,14 +643,44 @@ void HttpProcessor::_getCatalogs(qhttp::Request::Ptr const& req,
                                  qhttp::Response::Ptr const& resp) {
     _debug(__func__);
 
+    util::Lock lock(_catalogsMtx, "HttpProcessor::" + string(__func__));
+
     try {
+
+        // Check if a cached report can be used
+
+        if (not _catalogsReport.is_null()) {
+
+            // Send what's available so far before evaluating the age of the cache
+            // to see if it needs to be upgraded in the background.
+            _sendData(resp, _catalogsReport);
+            uint64_t lastReportAgeMs = PerformanceUtils::now() - _catalogsReportTimeMs;
+            if (lastReportAgeMs < 60 * 60 * 1000) return;
+
+        } else {
+
+            // Send a dummy report for now, then upgrade the cache
+            bool const dummyReport = true;
+            json result;
+            for (auto&& database: controller()->serviceProvider()->config()->databases()) {
+                result["databases"][database] = _databaseStats(database, dummyReport);
+            }
+            _sendData(resp, result);
+        }
+
+        // Otherwise, get the fresh snapshot of the replica distributions
         json result;
         result["databases"] = json::object();
 
         for (auto&& database: controller()->serviceProvider()->config()->databases()) {
             result["databases"][database] = _databaseStats(database);
         }
-        _sendData(resp, result);
+
+        // Update the cache
+        _catalogsReport = result;
+        _catalogsReportTimeMs = PerformanceUtils::now();
+
+        _sendData(resp, _catalogsReport);
 
     } catch (exception const& ex) {
         _sendError(resp, __func__, "operation failed due to: " + string(ex.what()));
