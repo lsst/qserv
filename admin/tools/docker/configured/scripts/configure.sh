@@ -35,6 +35,8 @@ Usage: $(basename "$0") [options]
   Available options:
     -h          this message
     -m          configure Qserv master, instead of worker by default
+    -c          configure Qserv multi-czar instead of worker
+    -s          configure Qserv shared-czar instead of worker
 
   Configure a Qserv worker/master in a docker image,
   except Qserv master hostname parameter, set later at container execution.
@@ -44,12 +46,16 @@ EOD
 NODE_TYPE="worker"
 
 # get the options
-while getopts hm c ; do
-    case $c in
+while getopts ":hmcs" opt ; do
+    echo "Config option ${opt}"
+    case ${opt} in
             h) usage ; exit 0 ;;
             m) NODE_TYPE="master" ;;
+            c) NODE_TYPE="master-multi" ;;
+            s) NODE_TYPE="master-shared" ;;
             \?) usage ; exit 2 ;;
     esac
+    echo "Config option ${opt} node ${NODE_TYPE}"
 done
 shift "$((OPTIND-1))"
 
