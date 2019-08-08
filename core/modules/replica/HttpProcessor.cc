@@ -593,42 +593,72 @@ json HttpProcessor::_databaseStats(string const& database, bool dummyReport) con
     result["chunks"]["unique"] = chunks.size();
     result["chunks"]["with_replicas"] = replicas.size();
 
+    map<string, map<string, size_t>> stats;
     for (auto&& table: config->databaseInfo(database).partitionedTables) {
-
-        size_t data_unique_in_chunks_data    = 0;
-        size_t data_unique_in_chunks_index   = 0;
-        size_t data_unique_in_overlaps_data  = 0;
-        size_t data_unique_in_overlaps_index = 0;
-        size_t data_with_replicas_in_chunks_data    = 0;
-        size_t data_with_replicas_in_chunks_index   = 0;
-        size_t data_with_replicas_in_overlaps_data  = 0;
-        size_t data_with_replicas_in_overlaps_index = 0;
-
-        for (auto&& replica: replicas) {
-            ;
+        stats[table]["data_unique_in_chunks_data"] = 0;
+        stats[table]["data_unique_in_chunks_index"] = 0;
+        stats[table]["data_unique_in_overlaps_data"] = 0;
+        stats[table]["data_unique_in_overlaps_index"] = 0;
+        stats[table]["data_with_replicas_in_chunks_data"] = 0;
+        stats[table]["data_with_replicas_in_chunks_index"] = 0;
+        stats[table]["data_with_replicas_in_overlaps_data"] = 0;
+        stats[table]["data_with_replicas_in_overlaps_index"] = 0;
+    }
+    set<unsigned int> uniqueChunks;
+    for (auto&& replica: replicas) {
+        bool isUniqueChunk = false;
+        if (uniqueChunks.count(replica.chunk()) == 0) {
+            uniqueChunks.insert(replica.chunk());
+            isUniqueChunk = true;
         }
+        for (auto&& f: replica.fileInfo()) {
+            auto const table     = f.baseTable();
+            auto const isData    = f.isData();
+            auto const isIndex   = f.isIndex();
+            auto const isOverlap = f.isOverlap();
+            auto const size      = f.size;
+            if (isUniqueChunk) {
+                if (isData) {
+                    if (isOverlap) stats[table]["data_unique_in_overlaps_data"] += size;
+                    else           stats[table]["data_unique_in_chunks_data"]   += size;
+                }
+                if (isIndex) {
+                    if (isOverlap) stats[table]["data_unique_in_overlaps_index"] += size;
+                    else           stats[table]["data_unique_in_chunks_index"]   += size;
+                }
+            }
+            if (isData) {
+                if (isOverlap) stats[table]["data_with_replica_in_overlaps_data"] += size;
+                else           stats[table]["data_with_replica_in_chunks_data"]   += size;
+            }
+            if (isIndex) {
+                if (isOverlap) stats[table]["data_with_replica_in_overlaps_index"] += size;
+                else           stats[table]["data_with_replica_in_chunks_index"]   += size;
+            }            
+        }
+    }
+    for (auto&& table: config->databaseInfo(database).partitionedTables) {
         result["tables"][table]["is_partitioned"] = 1;
         result["tables"][table]["rows"]["in_chunks"]   = 0;
         result["tables"][table]["rows"]["in_overlaps"] = 0;
-        result["tables"][table]["data"]["unique"]["in_chunks"]["data"]    = data_unique_in_chunks_data;
-        result["tables"][table]["data"]["unique"]["in_chunks"]["index"]   = data_unique_in_chunks_index;
-        result["tables"][table]["data"]["unique"]["in_overlaps"]["data"]  = data_unique_in_overlaps_data;
-        result["tables"][table]["data"]["unique"]["in_overlaps"]["index"] = data_unique_in_overlaps_index;
-        result["tables"][table]["data"]["with_replicas"]["in_chunks"]["data"]    = data_with_replicas_in_chunks_data;
-        result["tables"][table]["data"]["with_replicas"]["in_chunks"]["index"]   = data_with_replicas_in_chunks_index;
-        result["tables"][table]["data"]["with_replicas"]["in_overlaps"]["data"]  = data_with_replicas_in_overlaps_data;
-        result["tables"][table]["data"]["with_replicas"]["in_overlaps"]["index"] = data_with_replicas_in_overlaps_index;
+        result["tables"][table]["data"]["unique"]["in_chunks"]["data"]    = stats[table]["data_unique_in_chunks_data"];
+        result["tables"][table]["data"]["unique"]["in_chunks"]["index"]   = stats[table]["data_unique_in_chunks_index"];
+        result["tables"][table]["data"]["unique"]["in_overlaps"]["data"]  = stats[table]["data_unique_in_overlaps_data"];
+        result["tables"][table]["data"]["unique"]["in_overlaps"]["index"] = stats[table]["data_unique_in_overlaps_index"];
+        result["tables"][table]["data"]["with_replicas"]["in_chunks"]["data"]    = stats[table]["data_with_replica_in_chunks_data"];
+        result["tables"][table]["data"]["with_replicas"]["in_chunks"]["index"]   = stats[table]["data_with_replica_in_chunks_index"];
+        result["tables"][table]["data"]["with_replicas"]["in_overlaps"]["data"]  = stats[table]["data_with_replica_in_overlaps_data"];
+        result["tables"][table]["data"]["with_replicas"]["in_overlaps"]["index"] = stats[table]["data_with_replica_in_overlaps_index"];
     }
     for (auto&& table: config->databaseInfo(database).regularTables) {
+
+        // TODO: implement this when the Replication system will support regular tables
 
         size_t data_unique_data  = 0;
         size_t data_unique_index = 0;
         size_t data_with_replicas_data  = 0;
         size_t data_with_replicas_index = 0;
 
-        for (auto&& replica: replicas) {
-            ;
-        }
         result["tables"][table]["is_partitioned"] = 0;
         result["tables"][table]["rows"] = 0;
         result["tables"][table]["data"]["unique"]["data"]  = data_unique_data;

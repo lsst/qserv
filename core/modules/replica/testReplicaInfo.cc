@@ -87,4 +87,69 @@ BOOST_AUTO_TEST_CASE(ReplicaInfoTest) {
     LOGS_INFO("ReplicaInfo test ends");
 }
 
+BOOST_AUTO_TEST_CASE(ReplicaInfoFileInfoTest) {
+
+    LOGS_INFO("ReplicaInfo::FileInfo test begins");
+
+    // Fields which aren't tested. They're only needed for constructing objects
+    // of the class which is being tested here.
+
+    uint64_t const size = 0;
+    time_t   const mtime = 0;
+    string   const cs;
+    uint64_t const beginTransferTime = 0;
+    uint64_t const endTransferTime = 0;
+    uint64_t const inSize = 0;
+
+    auto const makeFileInfo = [&](string const& name) -> ReplicaInfo::FileInfo {
+        return ReplicaInfo::FileInfo{
+            name, size, mtime, cs, beginTransferTime, endTransferTime, inSize
+        };
+    };
+    auto const a = makeFileInfo("A.MYD");
+    BOOST_CHECK_EQUAL(a.baseTable(), "A");
+    BOOST_CHECK(not a.isOverlap());
+    BOOST_CHECK(    a.isData());
+    BOOST_CHECK(not a.isIndex());
+
+    auto const b = makeFileInfo("B.MYI");
+    BOOST_CHECK_EQUAL(b.baseTable(), "B");
+    BOOST_CHECK(not b.isOverlap());
+    BOOST_CHECK(not b.isData());
+    BOOST_CHECK(    b.isIndex());
+
+    auto const c = makeFileInfo("C.frm");
+    BOOST_CHECK_EQUAL(c.baseTable(), "C");
+    BOOST_CHECK(not c.isOverlap());
+    BOOST_CHECK(not c.isData());
+    BOOST_CHECK(not c.isIndex());
+
+    auto const d = makeFileInfo("D_123.MYD");
+    BOOST_CHECK_EQUAL(d.baseTable(), "D");
+    BOOST_CHECK(not d.isOverlap());
+    BOOST_CHECK(    d.isData());
+    BOOST_CHECK(not d.isIndex());
+
+    auto const e = makeFileInfo("EFullOverlap_123.MYD");
+    BOOST_CHECK_EQUAL(e.baseTable(), "E");
+    BOOST_CHECK(    e.isOverlap());
+    BOOST_CHECK(    e.isData());
+    BOOST_CHECK(not e.isIndex());
+
+    auto const f = makeFileInfo("FullOverlap_123.MYD");
+    BOOST_CHECK_EQUAL(f.baseTable(), "FullOverlap");
+    BOOST_CHECK(not f.isOverlap());
+    BOOST_CHECK(    f.isData());
+    BOOST_CHECK(not f.isIndex());
+
+    auto const g = makeFileInfo("FullOverlap.MYD");
+    BOOST_CHECK_EQUAL(g.baseTable(), "FullOverlap");
+    BOOST_CHECK(not g.isOverlap());
+    BOOST_CHECK(    g.isData());
+    BOOST_CHECK(not g.isIndex());
+
+    LOGS_INFO("ReplicaInfo::FileInfo test ends");
+}
+
+
 BOOST_AUTO_TEST_SUITE_END()
