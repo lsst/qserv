@@ -22,11 +22,14 @@ DIR=$(cd "$(dirname "$0")"; pwd -P)
 NAME="xrootd"
 DAEMON=${NAME}
 
-echo "daemon $DAEMON  dir $DIR"
+XRLOG=/tmp/xrootd.init.log
+touch $XRLOG
+
+echo "daemon $DAEMON  dir $DIR" >> $XRLOG
 
 source_sysconfig ${DIR}
 
-echo "node_t $NODE_TYPE  dir $DIR"
+echo "node_t $NODE_TYPE  dir $DIR" >> $XRLOG
 
 # Check variables which are not controlled by application
 check_writable ${NAME} "QSERV_RUN_DIR"
@@ -34,8 +37,6 @@ check_writable ${NAME} "QSERV_PID_DIR"
 check_writable ${NAME} "QSERV_LOG_DIR"
 check_readable ${NAME} "XROOTD_DIR"
 
-XRLOG=/tmp/xrootd.init.log
-touch $XRLOG
 
 err_msg="Failure while starting ${NAME}:"
 if [ -z "${NODE_TYPE}" ]
@@ -72,7 +73,6 @@ pid_file_name() {
     test "${1}${NODE_TYPE}" = "cmsdmaster-shared" && pidfile=${PID_DIR}/$1.mangr.pid
     echo $pidfile
 }
-
 
 # Environment variables can vary from on container session to another and making them 
 # reliably consistent is difficult. Instead, use "mangr.pid" version if that file exists,

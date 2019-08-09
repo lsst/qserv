@@ -2,8 +2,6 @@
 [client]
 user     = {{MYSQLD_USER_QSERV}}
 # host/port and/or socket
-# &&& host     = {{MYSQLD_HOST}}
-# &&& port     = {{MYSQLD_PORT}}
 host     = {{MYSQLDSHARED_HOST}}
 port     = {{MYSQLDSHARED_PORT}}
 socket   = {{MYSQLD_SOCK}}

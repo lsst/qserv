@@ -92,13 +92,13 @@ fi
 # Build the master-multi image
 
 awk \
--v NODE_TYPE="-c" \
--v DOCKER_IMAGE="$DOCKER_IMAGE" \
--v COMMENT_ON_WORKER="" \
-'{gsub(/<NODE_TYPE>/, NODE_TYPE);
-  gsub(/<DOCKER_IMAGE>/, DOCKER_IMAGE);
-  gsub(/<COMMENT_ON_WORKER>/, COMMENT_ON_WORKER);
-  print}' "$DOCKERDIR/Dockerfile.tpl" > "$DOCKERFILE"
+    -v NODE_TYPE="-c" \
+    -v DOCKER_IMAGE="$DOCKER_IMAGE" \
+    -v COMMENT_ON_WORKER="" \
+    '{gsub(/<NODE_TYPE>/, NODE_TYPE);
+      gsub(/<DOCKER_IMAGE>/, DOCKER_IMAGE);
+      gsub(/<COMMENT_ON_WORKER>/, COMMENT_ON_WORKER);
+      print}' "$DOCKERDIR/Dockerfile.tpl" > "$DOCKERFILE"
 
 TAG="${DOCKER_IMAGE}_master_multi"
 printf "Building master image %s from %s\n" "$TAG" "$DOCKERDIR"
@@ -113,13 +113,13 @@ fi
 # Build the master-shared image
 
 awk \
--v NODE_TYPE="-s" \
--v DOCKER_IMAGE="$DOCKER_IMAGE" \
--v COMMENT_ON_WORKER="" \
-'{gsub(/<NODE_TYPE>/, NODE_TYPE);
-  gsub(/<DOCKER_IMAGE>/, DOCKER_IMAGE);
-  gsub(/<COMMENT_ON_WORKER>/, COMMENT_ON_WORKER);
-  print}' "$DOCKERDIR/Dockerfile.tpl" > "$DOCKERFILE"
+    -v NODE_TYPE="-s" \
+    -v DOCKER_IMAGE="$DOCKER_IMAGE" \
+    -v COMMENT_ON_WORKER="" \
+    '{gsub(/<NODE_TYPE>/, NODE_TYPE);
+      gsub(/<DOCKER_IMAGE>/, DOCKER_IMAGE);
+      gsub(/<COMMENT_ON_WORKER>/, COMMENT_ON_WORKER);
+      print}' "$DOCKERDIR/Dockerfile.tpl" > "$DOCKERFILE"
 
 TAG="${DOCKER_IMAGE}_master_shared"
 printf "Building master image %s from %s\n" "$TAG" "$DOCKERDIR"
@@ -134,13 +134,13 @@ fi
 # Build the worker image
 
 awk \
--v NODE_TYPE="" \
--v DOCKER_IMAGE="$DOCKER_IMAGE" \
--v COMMENT_ON_WORKER="# " \
-'{gsub(/<NODE_TYPE>/, NODE_TYPE);
-  gsub(/<DOCKER_IMAGE>/, DOCKER_IMAGE);
-  gsub(/<COMMENT_ON_WORKER>/, COMMENT_ON_WORKER);
-  print}' "$DOCKERDIR/Dockerfile.tpl" > "$DOCKERFILE"
+    -v NODE_TYPE="" \
+    -v DOCKER_IMAGE="$DOCKER_IMAGE" \
+    -v COMMENT_ON_WORKER="# " \
+    '{gsub(/<NODE_TYPE>/, NODE_TYPE);
+      gsub(/<DOCKER_IMAGE>/, DOCKER_IMAGE);
+      gsub(/<COMMENT_ON_WORKER>/, COMMENT_ON_WORKER);
+      print}' "$DOCKERDIR/Dockerfile.tpl" > "$DOCKERFILE"
 
 TAG="${DOCKER_IMAGE}_worker"
 printf "Building worker image %s from %s\n" "$TAG" "$DOCKERDIR"

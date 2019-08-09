@@ -26,6 +26,7 @@
 #include "query/TestFactory.h"
 
 // Qserv headers
+#include "qproc/DatabaseModels.h"
 #include "query/BoolFactor.h"
 #include "query/CompPredicate.h"
 #include "query/FromList.h"
@@ -55,7 +56,8 @@ std::string TestFactory::getDefaultUserName() {
 
 std::shared_ptr<QueryContext>
 TestFactory::newContext(std::shared_ptr<css::CssAccess> css, sql::SqlConfig const& schemaCfg) {
-    std::shared_ptr<QueryContext> context = std::make_shared<QueryContext>("NoDb", css, schemaCfg);
+    auto dbModels = qproc::DatabaseModels::create(schemaCfg);
+    std::shared_ptr<QueryContext> context = std::make_shared<QueryContext>("NoDb", css, dbModels);
     context->defaultDb = getDefaultDbName();
     context->userName = getDefaultUserName();
     return context;

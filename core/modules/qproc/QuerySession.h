@@ -45,6 +45,7 @@
 #include "qana/QueryPlugin.h"
 #include "qproc/ChunkQuerySpec.h"
 #include "qproc/ChunkSpec.h"
+#include "qproc/DatabaseModels.h"
 #include "query/QueryTemplate.h"
 #include "query/typedefs.h"
 #include "sql/SqlConfig.h"
@@ -74,14 +75,12 @@ public:
     typedef std::shared_ptr<QuerySession> Ptr;
 
     // null constructor should only be used by parser unit tests.
-    QuerySession() : _sqlConfig(sql::SqlConfig::MOCK) {};
+    QuerySession();
 
-    QuerySession(std::shared_ptr<css::CssAccess> css,
-                 sql::SqlConfig const& sqlConfig,
+    QuerySession(std::shared_ptr<css::CssAccess> const& css,
+                 qproc::DatabaseModels::Ptr const& dbModels,
                  std::string const& defaultDb)
-        : _css(css), _defaultDb(defaultDb),
-          _sqlConfig(sqlConfig) {}
-
+        : _css(css), _defaultDb(defaultDb), _databaseModels(dbModels) {}
 
     std::shared_ptr<query::SelectStmt> parseQuery(std::string const & statement);
 
@@ -204,9 +203,9 @@ private:
     std::shared_ptr<css::CssAccess> _css; ///< Metadata access
     std::string _defaultDb; ///< User db context
     std::string _original; ///< Original user query
+    std::shared_ptr<qproc::DatabaseModels> _databaseModels; ///< Source of schema information
     std::shared_ptr<query::QueryContext> _context; ///< Analysis context
     std::shared_ptr<query::SelectStmt> _stmt; ///< Logical query statement
-    sql::SqlConfig const _sqlConfig; ///< Configuration for getting schema information.
 
     /// Group of parallel statements (not a sequence)
     /**

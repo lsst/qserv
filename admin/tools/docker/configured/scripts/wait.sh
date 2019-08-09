@@ -37,8 +37,7 @@ do
 done
 
 # Wait for Qserv services to be up and running
-#while ! "$QSERV_RUN_DIR"/bin/qserv-status.sh > /dev/null
-while ! "$QSERV_RUN_DIR"/bin/qserv-status.sh
+while ! "$QSERV_RUN_DIR"/bin/qserv-status.sh > /dev/null
 do
     echo "Wait for Qserv to start on $(hostname)"
     sleep 2

@@ -1,5 +1,4 @@
 #!/bin/sh
-set -e
 
 # LSST Data Management System
 # Copyright 2014-2015 LSST Corporation.

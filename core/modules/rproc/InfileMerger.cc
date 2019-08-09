@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2014-2019 AURA/LSST.
+ * Copyright 2014-2019 LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -361,7 +361,6 @@ bool InfileMerger::getSchemaForQueryResults(query::SelectStmt const& stmt, sql::
     sql::SqlResults results;
     sql::SqlErrorObject getSchemaErrObj;
     std::string query = stmt.getQueryTemplate().sqlFragment();
-    // &&& bool ok = _applySqlLocal(query, results, getSchemaErrObj);
     bool ok = _databaseModels->applySql(query, results, getSchemaErrObj);
     if (not ok) {
         LOGS(_log, LOG_LVL_ERROR, "Failed to get schema:" << getSchemaErrObj.errMsg());

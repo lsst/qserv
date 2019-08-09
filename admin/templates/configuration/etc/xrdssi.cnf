@@ -2,7 +2,6 @@
 # Default values for parameters are commented
 
 [mysql]
-# &&&
 hostname = master.localdomain
 port = 3306
 

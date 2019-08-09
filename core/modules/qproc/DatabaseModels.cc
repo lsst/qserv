@@ -1,6 +1,6 @@
 /*
  * LSST Data Management System
- * Copyright 2019 AURA/LSST.
+ * Copyright 2019 LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -48,7 +48,7 @@ namespace qproc {
 
 DatabaseModels::Ptr DatabaseModels::create(map<string, string> const& configMap) {
     util::ConfigStore cfgStore(configMap);
-    /// Use the CSS config for now. The CSS database is not used but sql::SqlConnection wont work without one.
+    /// Use the CSS config for now. The CSS database is not used but sql::SqlConnection wants a database name.
     mysql::MySqlConfig mySqlConfig(cfgStore.get("username"),
                                    cfgStore.get("password"),
                                    cfgStore.get("hostname"),
@@ -62,12 +62,18 @@ DatabaseModels::Ptr DatabaseModels::create(map<string, string> const& configMap)
 }
 
 
-DatabaseModels::DatabaseModels(mysql::MySqlConfig const& mySqlConfig)
-    : _conn(sql::SqlConnectionFactory::make(mySqlConfig)) {}
+DatabaseModels::Ptr DatabaseModels::create(sql::SqlConfig const& cfg) {
+    Ptr dbModels(new DatabaseModels(cfg));
+    return dbModels;
+}
 
 
-bool DatabaseModels::applySql(std::string const& sql, sql::SqlResults& results, sql::SqlErrorObject& errObj) {
-    std::lock_guard<std::mutex> lg(_sqlMutex);
+DatabaseModels::DatabaseModels(sql::SqlConfig const& sqlConfig)
+    : _conn(sql::SqlConnectionFactory::make(sqlConfig)) {}
+
+
+bool DatabaseModels::applySql(string const& sql, sql::SqlResults& results, sql::SqlErrorObject& errObj) {
+    lock_guard<mutex> lg(_sqlMutex);
 
     if (not _conn->connectToDb(errObj)) {
         LOGS(_log, LOG_LVL_ERROR, "DatabaseModels could not connect " << errObj.printErrMsg());
@@ -82,5 +88,9 @@ bool DatabaseModels::applySql(std::string const& sql, sql::SqlResults& results, 
 }
 
 
+vector<string> DatabaseModels::listColumns(string const& dbName, string const& tableName) {
+    lock_guard<mutex> lg(_sqlMutex);
+    return _conn->listColumns(dbName, tableName);
+}
 
 }}} // namespace lsst::qserv::qproc

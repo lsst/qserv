@@ -1,6 +1,5 @@
 #!/bin/sh
 
-# @author  Fabrice Jammes, IN2P3/SLAC
 
 set -x
 set -e
@@ -16,7 +15,6 @@ usage() {
 
   Available options:
     -h          this message
-    -C          Rebuild the images from scratch
 
   Launch Qserv integration tests on one Docker host
 
@@ -42,7 +40,6 @@ docker run --detach=true \
     --privileged \
     --cap-add sys_admin \
     --cap-add sys_ptrace \
-    -v /home/jgates/qserv/data-qserv:/qserv/data/qserv \
     -v /home/jgates/work/qserv_testdata:/qserv/qserv_testdata \
     -e "QSERV_MASTER=$MASTER" --name "$MASTER" -h "${MASTER}" "$MASTER_SHARED_IMAGE"
 MASTER_IP=$(docker inspect -f '{{ .NetworkSettings.IPAddress }}' $MASTER)
@@ -55,7 +52,6 @@ docker run --detach=true \
     --privileged \
     --cap-add sys_admin \
     --cap-add sys_ptrace \
-    -v /home/jgates/qserv/data-qserv:/qserv/data/qserv \
     -e "QSERV_MASTER=${i}" --name "$i" -h "${i}" "$MASTER_MULTI_IMAGE"
     CZAR_IP=$(docker inspect -f '{{ .NetworkSettings.IPAddress }}' $i)
     HOSTFILE="${HOSTFILE}$CZAR_IP  $i
@@ -94,11 +90,7 @@ do
     CSS_INFO="${CSS_INFO}CREATE NODE worker${i} type=worker port=5012 host=worker${i}.$DNS_DOMAIN;
 "
 done
-#docker exec "$MASTER" bash -c ". /qserv/stack/loadLSST.bash && \
-#    setup qserv_distrib -t qserv-dev && \
-#    echo \"$CSS_INFO\" | qserv-admin.py && \
-#    setup -k -r /qserv/qserv_testdata -t qserv-dev && \
-#    qserv-test-integration.py"
+
 
 for i in $CZARS;
 do

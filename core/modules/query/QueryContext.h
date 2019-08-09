@@ -45,7 +45,6 @@
 #include "query/FromList.h"
 #include "query/typedefs.h"
 #include "query/ValueExpr.h"
-#include "sql/SqlConfig.h"
 #include "util/CIUtils.h"
 
 
@@ -57,6 +56,9 @@ namespace query {
     class ColumnRef;
     class SecIdxRestrictor;
     class TableRef;
+}
+namespace qproc {
+    class DatabaseModels;
 }}} // End of forward declarations
 
 
@@ -78,15 +80,16 @@ public:
     typedef std::shared_ptr<QueryContext> Ptr;
 
     QueryContext(std::string const& defDb, std::shared_ptr<css::CssAccess> const& cssPtr,
-                 sql::SqlConfig const& sqlCfg)
-        : css(cssPtr), defaultDb(defDb), sqlConfig(sqlCfg) {}
+            std::shared_ptr<qproc::DatabaseModels> const& dbModels)
+        : css(cssPtr), defaultDb(defDb), databaseModels(dbModels) {}
+
 
     std::shared_ptr<css::CssAccess> css;  ///< interface to CSS
     std::string defaultDb; ///< User session db context
     std::string dominantDb; ///< "dominant" database for this query
     std::string userName{"default"}; ///< unused, but reserved.
 
-    sql::SqlConfig const sqlConfig; ///< Used to connect to a database with the schema.
+    std::shared_ptr<qproc::DatabaseModels> databaseModels; ///< contains database schema information.
 
     proto::ScanInfo scanInfo; // Tables scanned (for shared scans)
 

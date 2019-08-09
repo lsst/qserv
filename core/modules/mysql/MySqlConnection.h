@@ -85,6 +85,8 @@ public:
     MySqlConfig const& getConfig() const { return *_sqlConfig; }
     bool selectDb(std::string const& dbName);
 
+    std::string dump();
+
 private:
     MYSQL* _connectHelper();
     static std::mutex _mysqlShared;

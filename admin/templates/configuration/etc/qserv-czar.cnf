@@ -9,13 +9,9 @@ xrootd={{XROOTD_MANAGER_HOST}}:{{XROOTD_PORT}}
 
 [css]
 technology = mysql
-# &&& hostname =
-# &&& port =
 username = {{MYSQLD_USER_QSERV}}
 password =
 database = qservCssData
-# &&& needs shared MYSQL
-# &&& socket = {{MYSQLD_SOCK}}
 hostname = {{MYSQLDSHARED_HOST}}
 port = {{MYSQLDSHARED_PORT}}
 
@@ -33,11 +29,8 @@ maxtablesize_mb = 5100
 [qmeta]
 passwd =
 db = qservMeta
-# &&& needs shared MYSQL - how to deal with single node using unix_socket
-# &&& unix_socket = {{MYSQLD_SOCK}}
 host = {{MYSQLDSHARED_HOST}}
 user = {{MYSQLD_USER_QSERV}}
-# &&& port = 0
 port = {{MYSQLDSHARED_PORT}}
 
 # database connection for QStatusData
@@ -47,11 +40,7 @@ port = {{MYSQLDSHARED_PORT}}
 passwd =
 #db = qservStatusData
 db = qservMeta
-# &&& needs shared MYSQL  - how to deal with single node using unix_socket
-# &&& unix_socket = {{MYSQLD_SOCK}}
-# &&& host =
 user = {{MYSQLD_USER_QSERV}}
-# &&& port = 0
 host = {{MYSQLDSHARED_HOST}}
 port = {{MYSQLDSHARED_PORT}}
 

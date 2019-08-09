@@ -203,8 +203,13 @@ UserQueryFactory::newUserQuery(std::string const& aQuery,
         // This is a regular SELECT for qserv
 
         // Currently using the database for results to get schema information.
+<<<<<<< HEAD
         auto qs = std::make_shared<qproc::QuerySession>(_userQuerySharedResources->css,
                                                         _userQuerySharedResources->mysqlResultConfig,
+=======
+        auto qs = std::make_shared<qproc::QuerySession>(_impl->css,
+                                                        _impl->databaseModels,
+>>>>>>> Modified query/qana to use DatabaseModels for schema information.
                                                         defaultDb);
         try {
             qs->analyzeQuery(query, stmt);
@@ -305,9 +310,8 @@ UserQueryFactory::Impl::Impl(czar::CzarConfig const& czarConfig)
     executiveConfig = std::make_shared<qdisp::Executive::Config>(
                           czarConfig.getXrootdFrontendUrl(),
                           czarConfig.getQMetaSecondsBetweenChunkUpdates());
-    // &&& secondaryIndex = std::make_shared<qproc::SecondaryIndex>(mysqlResultConfig);
     secondaryIndex = std::make_shared<qproc::SecondaryIndex>(czarConfig.getMySqlQmetaConfig());
-    databaseModels = qproc::DatabaseModels::create(czarConfig.getCssConfigMap()); // &&& should probably have its own config
+    databaseModels = qproc::DatabaseModels::create(czarConfig.getCssConfigMap()); // Sharing CSS config for now.
 
     // make one dedicated connection for results database
     resultDbConn = sql::SqlConnectionFactory::make(mysqlResultConfig);

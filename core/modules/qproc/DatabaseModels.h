@@ -1,6 +1,6 @@
 /*
  * LSST Data Management System
- * Copyright 2019 AURA/LSST.
+ * Copyright 2019 LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -34,6 +34,7 @@
 // LSST headers
 
 // Qserv headers
+#include "sql/SqlConfig.h"
 #include "sql/SqlConnection.h"
 
 
@@ -53,14 +54,21 @@ public:
 
     virtual ~DatabaseModels() = default;
 
+    /// @return a DatabaseModels object from config (see util::configStor)
     static Ptr create(std::map<std::string, std::string> const& config);
 
+    /// @return a DatabaseModels object from a sql::SqlConfig
+    static Ptr create(sql::SqlConfig const& cfg);
+
+    /// Apply a sql statement 'sql' to the database behind DatabaseModels, putting the result
+    /// in 'results' and errors in 'errObj'
     bool applySql(std::string const& sql, sql::SqlResults& results, sql::SqlErrorObject& errObj);
 
-private:
-    explicit DatabaseModels(mysql::MySqlConfig const& mySqlConfig);
+    /// @return a list of column names for 'tableName' in database 'dbName'.
+    std::vector<std::string> listColumns(std::string const& dbName, std::string const& tableName);
 
-    bool _sqlConnect(sql::SqlErrorObject& errObj);
+private:
+    explicit DatabaseModels(sql::SqlConfig const& sqlConfig);
 
     std::shared_ptr<sql::SqlConnection> _conn;
     std:: mutex _sqlMutex; ///< protects _conn
