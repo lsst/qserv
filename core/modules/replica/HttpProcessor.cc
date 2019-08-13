@@ -1616,8 +1616,8 @@ void HttpProcessor::_getQservManyWorkersStatus(qhttp::Request::Ptr const& req,
     _debug(__func__);
 
     try {
-        unsigned int const timeoutSec =
-            getQueryParamUInt(req->query, "timeout_sec", _workerResponseTimeoutSec);
+        unsigned int const timeoutSec = getQueryParamUInt(req->query, "timeout_sec", _workerResponseTimeoutSec);
+        bool const keepResources = getQueryParamUInt(req->query, "keep_resources", 0) != 0;
 
         _debug(string(__func__) + " timeout_sec=" + to_string(timeoutSec));
 
@@ -1627,6 +1627,7 @@ void HttpProcessor::_getQservManyWorkersStatus(qhttp::Request::Ptr const& req,
         job->wait();
 
         json result;
+        map<string, set<int>> schedulers2chunks;
         set<int> chunks;
         auto&& status = job->qservStatus();
         for (auto&& entry: status.workers) {
@@ -1634,21 +1635,33 @@ void HttpProcessor::_getQservManyWorkersStatus(qhttp::Request::Ptr const& req,
             bool success = entry.second;
             if (success) {
                 auto info = status.info.at(worker);
+                if (not keepResources) {
+                    info["resources"] = json::array();
+                }
                 result["status"][worker]["success"] = 1;
                 result["status"][worker]["info"] = info;
                 result["status"][worker]["queries"] = _getQueries(info);
                 auto&& schedulers = info["processor"]["queries"]["blend_scheduler"]["schedulers"];
                 for (auto&& scheduler: schedulers) {
+                    string const scheduerName = scheduler["name"];
                     for (auto&& chunk2tasks: scheduler["chunk_to_num_tasks"]) {
                         int const chunk = chunk2tasks[0];
+                        schedulers2chunks[scheduerName].insert(chunk);
                         chunks.insert(chunk);
-                        _debug(__func__, "chunk: " + to_string(chunk));
                     }
                 }
             } else {
                 result["status"][worker]["success"] = 0;
             }
         }
+        json resultSchedulers2chunks;
+        for (auto&& entry: schedulers2chunks) {
+            auto&& scheduerName = entry.first;
+            for (auto&& chunk: entry.second) {
+                resultSchedulers2chunks[scheduerName].push_back(chunk);
+            }
+        }
+        result["schedulers_to_chunks"] = resultSchedulers2chunks;
         result["chunks"] = _chunkInfo(chunks);
         _sendData(resp, result);
 
