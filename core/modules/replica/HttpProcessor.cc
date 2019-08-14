@@ -1948,16 +1948,34 @@ void HttpProcessor::_getTransactions(qhttp::Request::Ptr const& req,
 
 
     try {
+        auto const config = controller()->serviceProvider()->config();
         auto const databaseServices = controller()->serviceProvider()->databaseServices();
+
         auto const database = ::getQueryParamStr(req->query, "database");
 
         _debug(string(__func__) + " database=" + database);
 
+        vector<string> databases;
+        if (database.empty()) {
+            string const noSpecificFamily;
+            bool const allDatabases = false;
+            bool const isPublished = false;
+            databases = config->databases(noSpecificFamily, allDatabases, isPublished);
+        } else {
+            databases.push_back(database);
+        }
+
         json result;
-        result["transactions"] = json::array();
-        for (auto&& t: databaseServices->transactions(database)) {
-            result["transactions"].push_back(t.toJson());
-        }    
+        result["databases"] = json::object();
+        for (auto&& database: databases) {
+            for (auto&& transaction: databaseServices->transactions(database)) {
+                const bool allWorkers = true;
+                vector<unsigned int> chunks;
+                databaseServices->findDatabaseChunks(chunks, transaction.database, allWorkers);
+                result["databases"][transaction.database]["transactions"].push_back(transaction.toJson());
+                result["databases"][transaction.database]["num_chunks"] = chunks.size();
+            }
+        }
         _sendData(resp, result);
 
     } catch (invalid_argument const& ex) {
@@ -1978,9 +1996,16 @@ void HttpProcessor::_getTransaction(qhttp::Request::Ptr const& req,
 
         _debug(__func__, "id=" + to_string(id));
 
+        auto const transaction = databaseServices->transaction(id);
+
+        const bool allWorkers = true;
+        vector<unsigned int> chunks;
+        databaseServices->findDatabaseChunks(chunks, transaction.database, allWorkers);
+
         json result;
-        result["transaction"] = databaseServices->transaction(id).toJson();
-    
+        result["databases"][transaction.database]["transactions"].push_back(transaction.toJson());
+        result["databases"][transaction.database]["num_chunks"] = chunks.size();
+
         _sendData(resp, result);
 
     } catch (invalid_argument const& ex) {
@@ -2021,10 +2046,15 @@ void HttpProcessor::_beginTransaction(qhttp::Request::Ptr const& req,
             _sendError(resp, __func__, "the database is already published");
             return;
         }
-        auto const trans = databaseServices->beginTransaction(database);
+        auto const transaction = databaseServices->beginTransaction(database);
+
+        const bool allWorkers = true;
+        vector<unsigned int> chunks;
+        databaseServices->findDatabaseChunks(chunks, transaction.database, allWorkers);
 
         json result;
-        result["transaction"] = trans.toJson();
+        result["databases"][transaction.database]["transactions"].push_back(transaction.toJson());
+        result["databases"][transaction.database]["num_chunks"] = chunks.size();
 
         _sendData(resp, result);
         logBeginTransaction("SUCCESS");
@@ -2060,8 +2090,8 @@ void HttpProcessor::_endTransaction(qhttp::Request::Ptr const& req,
         logEvent(event);
     };
     try {
-        auto const databaseServices = controller()->serviceProvider()->databaseServices();
         auto const config = controller()->serviceProvider()->config();
+        auto const databaseServices = controller()->serviceProvider()->databaseServices();
 
         id = stoul(req->params.at("id"));
         abort = ::getRequiredQueryParamBool(req->query, "abort");
@@ -2069,12 +2099,17 @@ void HttpProcessor::_endTransaction(qhttp::Request::Ptr const& req,
         _debug(__func__, "id="    + to_string(id));
         _debug(__func__, "abort=" + to_string(abort ? 1 : 0));
 
-        auto const trans = databaseServices->endTransaction(id, abort);
-        auto const databaseInfo = config->databaseInfo(trans.database);
-        database = trans.database;
+        auto const transaction = databaseServices->endTransaction(id, abort);
+        auto const databaseInfo = config->databaseInfo(transaction.database);
+        database = transaction.database;
+
+        const bool allWorkers = true;
+        vector<unsigned int> chunks;
+        databaseServices->findDatabaseChunks(chunks, transaction.database, allWorkers);
 
         json result;
-        result["transaction"] = trans.toJson();
+        result["databases"][transaction.database]["transactions"].push_back(transaction.toJson());
+        result["databases"][transaction.database]["num_chunks"] = chunks.size();
 
         if (abort) {
             // Drop the transaction-specific MySQL partition from the relevant tables
