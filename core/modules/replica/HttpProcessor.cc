@@ -1724,8 +1724,37 @@ void HttpProcessor::_getQservManyUserQuery(qhttp::Request::Ptr const& req,
     try {
         auto const config = controller()->serviceProvider()->config();
 
+        unsigned int const timeoutSec = getQueryParamUInt(req->query, "timeout_sec", _workerResponseTimeoutSec);
         unsigned int const limit4past = getQueryParamUInt(req->query, "limit4past", 1);
+
+        _debug(string(__func__) + " timeout_sec=" + to_string(timeoutSec));
         _debug(string(__func__) + " limit4past=" + to_string(limit4past));
+
+        // Check which queries and in which schedulers are being executed
+        // by Qseev workers.
+
+        bool const allWorkers = true;
+        auto const job = QservStatusJob::create(timeoutSec, allWorkers, controller());
+        job->start();
+        job->wait();
+
+        map<QueryId, string> queryId2scheduler;
+        auto&& status = job->qservStatus();
+        for (auto&& entry: status.workers) {
+            auto&& worker = entry.first;
+            bool success = entry.second;
+            if (success) {
+                auto info = status.info.at(worker);
+                auto&& schedulers = info["processor"]["queries"]["blend_scheduler"]["schedulers"];
+                for (auto&& scheduler: schedulers) {
+                    string const scheduerName = scheduler["name"];
+                    for (auto&& queryId2count: scheduler["query_id_to_count"]) {
+                        QueryId const queryId = queryId2count[0];
+                        queryId2scheduler[queryId] = scheduerName;
+                    }
+                }
+            }
+        }
 
         json result;
         result["queries"] = json::array();
@@ -1777,6 +1806,15 @@ void HttpProcessor::_getQservManyUserQuery(qhttp::Request::Ptr const& req,
                 ::parseFieldIntoJson<string>( __func__, row, "samplingTime",     resultRow);
                 ::parseFieldIntoJson<long>(   __func__, row, "samplingTime_sec", resultRow);
                 ::parseFieldIntoJson<string>( __func__, row, "query",            resultRow);
+
+                // Optionally, add the name of corresponding worker scheduler
+                // if the one was already known for the query.
+
+                QueryId const queryId = resultRow["queryId"];
+                auto itr = queryId2scheduler.find(queryId);
+                if (itr != queryId2scheduler.end()) {
+                    resultRow["scheduler"] = itr->second;
+                }
                 result["queries"].push_back(resultRow);
             }
         }
