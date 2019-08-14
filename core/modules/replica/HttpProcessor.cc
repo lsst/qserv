@@ -1951,16 +1951,19 @@ void HttpProcessor::_getTransactions(qhttp::Request::Ptr const& req,
         auto const config = controller()->serviceProvider()->config();
         auto const databaseServices = controller()->serviceProvider()->databaseServices();
 
-        auto const database = ::getQueryParamStr(req->query, "database");
+        auto const database     = ::getQueryParamStr(req->query, "database");
+        auto const family       = ::getQueryParamStr(req->query, "family");
+        auto const allDatabases = ::getQueryParam(   req->query, "all_databases", 0) != 0;
+        auto const isPublished  = ::getQueryParam(   req->query, "is_published",  0) != 0;
 
         _debug(string(__func__) + " database=" + database);
+        _debug(string(__func__) + " family=" + family);
+        _debug(string(__func__) + " all_databases=" + string(allDatabases ? "1": "0"));
+        _debug(string(__func__) + " is_published=" + string(isPublished ? "1": "0"));
 
         vector<string> databases;
         if (database.empty()) {
-            string const noSpecificFamily;
-            bool const allDatabases = false;
-            bool const isPublished = false;
-            databases = config->databases(noSpecificFamily, allDatabases, isPublished);
+            databases = config->databases(family, allDatabases, isPublished);
         } else {
             databases.push_back(database);
         }
@@ -1968,12 +1971,17 @@ void HttpProcessor::_getTransactions(qhttp::Request::Ptr const& req,
         json result;
         result["databases"] = json::object();
         for (auto&& database: databases) {
+
+            const bool allWorkers = true;
+            vector<unsigned int> chunks;
+            databaseServices->findDatabaseChunks(chunks, database, allWorkers);
+
+            result["databases"][database]["info"] = config->databaseInfo(database).toJson();
+            result["databases"][database]["num_chunks"] = chunks.size();
+
+            result["databases"][database]["transactions"] = json::array();
             for (auto&& transaction: databaseServices->transactions(database)) {
-                const bool allWorkers = true;
-                vector<unsigned int> chunks;
-                databaseServices->findDatabaseChunks(chunks, transaction.database, allWorkers);
-                result["databases"][transaction.database]["transactions"].push_back(transaction.toJson());
-                result["databases"][transaction.database]["num_chunks"] = chunks.size();
+                result["databases"][database]["transactions"].push_back(transaction.toJson());
             }
         }
         _sendData(resp, result);
@@ -1991,6 +1999,7 @@ void HttpProcessor::_getTransaction(qhttp::Request::Ptr const& req,
     _debug(__func__);
 
     try {
+        auto const config = controller()->serviceProvider()->config();
         auto const databaseServices = controller()->serviceProvider()->databaseServices();
         auto const id = stoul(req->params.at("id"));
 
@@ -2003,6 +2012,7 @@ void HttpProcessor::_getTransaction(qhttp::Request::Ptr const& req,
         databaseServices->findDatabaseChunks(chunks, transaction.database, allWorkers);
 
         json result;
+        result["databases"][transaction.database]["info"] = config->databaseInfo(transaction.database).toJson();
         result["databases"][transaction.database]["transactions"].push_back(transaction.toJson());
         result["databases"][transaction.database]["num_chunks"] = chunks.size();
 
@@ -2053,6 +2063,7 @@ void HttpProcessor::_beginTransaction(qhttp::Request::Ptr const& req,
         databaseServices->findDatabaseChunks(chunks, transaction.database, allWorkers);
 
         json result;
+        result["databases"][transaction.database]["info"] = config->databaseInfo(transaction.database).toJson();
         result["databases"][transaction.database]["transactions"].push_back(transaction.toJson());
         result["databases"][transaction.database]["num_chunks"] = chunks.size();
 
@@ -2108,6 +2119,7 @@ void HttpProcessor::_endTransaction(qhttp::Request::Ptr const& req,
         databaseServices->findDatabaseChunks(chunks, transaction.database, allWorkers);
 
         json result;
+        result["databases"][transaction.database]["info"] = config->databaseInfo(transaction.database).toJson();
         result["databases"][transaction.database]["transactions"].push_back(transaction.toJson());
         result["databases"][transaction.database]["num_chunks"] = chunks.size();
 
