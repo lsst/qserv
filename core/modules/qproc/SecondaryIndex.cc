@@ -145,8 +145,7 @@ private:
     static std::string _buildIndexTableName(
         std::string const& db,
         std::string const& table) {
-        return (std::string(SEC_INDEX_DB) + "."
-                + sanitizeName(db) + "__" + sanitizeName(table));
+        return sanitizeName(db) + "__" + sanitizeName(table);
     }
 
     /**
@@ -180,7 +179,7 @@ private:
 
         std::string index_table = _buildIndexTableName(db, table);
         std::string sql = "SELECT " + std::string(CHUNK_COLUMN) + ", " + std::string(SUB_CHUNK_COLUMN) +
-                          " FROM " + index_table +
+                          " FROM " + SEC_INDEX_DB + "." + index_table +
                           " WHERE " + key_column;
         if (query_type == QueryType::IN || query_type == QueryType::NOT_IN) {
             std::string secondaryVals; // params[3] to end
@@ -214,7 +213,7 @@ private:
         auto const& secondaryIndexCol = restr->getSecondaryIndexColumn();
         std::string index_table = _buildIndexTableName(secondaryIndexCol->getDb(),
                                                        secondaryIndexCol->getTable());
-
+        restr->setSecondaryIndexTableRef(SEC_INDEX_DB, index_table);
         std::string sql = "SELECT " + std::string(CHUNK_COLUMN) + ", " + std::string(SUB_CHUNK_COLUMN) +
                           " FROM " + index_table +
                           " WHERE " + restr->getCompPredicate()->sqlFragment();

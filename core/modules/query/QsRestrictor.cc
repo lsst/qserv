@@ -116,4 +116,14 @@ std::shared_ptr<query::ColumnRef const> SICompRestrictor::getSecondaryIndexColum
 }
 
 
+void SICompRestrictor::setSecondaryIndexTableRef(std::string db, std::string table) {
+    auto tableRef = std::make_shared<query::TableRef>(db, table, std::string());
+    if (_useLeft) {
+        _compPredicate->left->getColumnRef()->setTable(tableRef);
+    } else {
+        _compPredicate->right->getColumnRef()->setTable(tableRef);
+    }
+}
+
+
 }}} // namespace lsst::qserv::query

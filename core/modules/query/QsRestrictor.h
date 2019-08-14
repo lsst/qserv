@@ -185,6 +185,11 @@ public:
 
     std::shared_ptr<query::ColumnRef const> getSecondaryIndexColumn() const;
 
+    /**
+     * @brief Set the TableRef in the secondary index ColumnRef.
+     */
+    void setSecondaryIndexTableRef(std::string db, std::string table);
+
 protected:
     /**
      * @brief Test if this and rhs are equal.
