@@ -190,6 +190,11 @@ public:
      */
     void setSecondaryIndexTableRef(std::string db, std::string table);
 
+    /**
+     * @brief make a deep copy of this object
+     */
+    std::shared_ptr<SICompRestrictor> clone() const;
+
 protected:
     /**
      * @brief Test if this and rhs are equal.

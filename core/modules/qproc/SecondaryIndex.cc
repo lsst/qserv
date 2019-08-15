@@ -113,24 +113,24 @@ public:
                 // handle it
                 hasIndex = true;
                 _sqlLookup(output, compRestr);
-                continue;
-            }
-            auto restrictor = std::dynamic_pointer_cast<query::QsRestrictorFunction>(restrBase);
-            if (nullptr == restrictor) {
-                continue;
-            }
-            if (restrictor->getName() == "sIndex"){
-                hasIndex = true;
-                _sqlLookup(output, restrictor->getParameters(), IN);
-            } else if (restrictor->getName() == "sIndexNotIn"){
-                hasIndex = true;
-                _sqlLookup(output, restrictor->getParameters(), NOT_IN);
-            } else if (restrictor->getName() == "sIndexBetween") {
-                hasIndex = true;
-                _sqlLookup(output, restrictor->getParameters(), BETWEEN);
-            } else if (restrictor->getName() == "sIndexNotBetween") {
-                hasIndex = true;
-                _sqlLookup(output, restrictor->getParameters(), NOT_BETWEEN);
+            } else {
+                auto restrictor = std::dynamic_pointer_cast<query::QsRestrictorFunction>(restrBase);
+                if (nullptr == restrictor) {
+                    continue;
+                }
+                if (restrictor->getName() == "sIndex"){
+                    hasIndex = true;
+                    _sqlLookup(output, restrictor->getParameters(), IN);
+                } else if (restrictor->getName() == "sIndexNotIn"){
+                    hasIndex = true;
+                    _sqlLookup(output, restrictor->getParameters(), NOT_IN);
+                } else if (restrictor->getName() == "sIndexBetween") {
+                    hasIndex = true;
+                    _sqlLookup(output, restrictor->getParameters(), BETWEEN);
+                } else if (restrictor->getName() == "sIndexNotBetween") {
+                    hasIndex = true;
+                    _sqlLookup(output, restrictor->getParameters(), NOT_BETWEEN);
+                }
             }
         }
         if (!hasIndex) {
@@ -210,13 +210,14 @@ private:
 
     void _sqlLookup(ChunkSpecVector& output,
                     std::shared_ptr<query::SICompRestrictor> const& restr) {
-        auto const& secondaryIndexCol = restr->getSecondaryIndexColumn();
+        auto siLookupRestr = restr->clone();
+        auto const& secondaryIndexCol = siLookupRestr->getSecondaryIndexColumn();
         std::string index_table = _buildIndexTableName(secondaryIndexCol->getDb(),
                                                        secondaryIndexCol->getTable());
-        restr->setSecondaryIndexTableRef(SEC_INDEX_DB, index_table);
+        siLookupRestr->setSecondaryIndexTableRef(SEC_INDEX_DB, index_table);
         std::string sql = "SELECT " + std::string(CHUNK_COLUMN) + ", " + std::string(SUB_CHUNK_COLUMN) +
-                          " FROM " + index_table +
-                          " WHERE " + restr->getCompPredicate()->sqlFragment();
+                          " FROM " + SEC_INDEX_DB + "." + index_table +
+                          " WHERE " + siLookupRestr->getCompPredicate()->sqlFragment();
         LOGS(_log, LOG_LVL_DEBUG, "secondary lookup sql:" << sql);
         _sqlLookup(output, sql);
     }

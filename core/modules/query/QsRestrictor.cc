@@ -126,4 +126,10 @@ void SICompRestrictor::setSecondaryIndexTableRef(std::string db, std::string tab
 }
 
 
+std::shared_ptr<SICompRestrictor> SICompRestrictor::clone() const {
+    return std::make_shared<SICompRestrictor>(
+        std::static_pointer_cast<query::CompPredicate>(_compPredicate->clone()), _useLeft);
+}
+
+
 }}} // namespace lsst::qserv::query
