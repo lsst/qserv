@@ -261,6 +261,7 @@ UserQueryFactory::newUserQuery(std::string const& aQuery,
     }
 }
 
+
 UserQueryFactory::Impl::Impl(czar::CzarConfig const& czarConfig)
     : mysqlResultConfig(czarConfig.getMySqlResultConfig()) {
 

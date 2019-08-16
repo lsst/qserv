@@ -176,24 +176,17 @@ public:
      */
     std::string const& getName() const override { return _name; }
 
-    std::shared_ptr<query::CompPredicate> getCompPredicate() const { return _compPredicate; }
-
     /**
      * @brief Serialize to the given ostream for debug output.
      */
     std::ostream& dbgPrint(std::ostream& os) const override;
 
-    std::shared_ptr<query::ColumnRef const> getSecondaryIndexColumn() const;
+    std::shared_ptr<query::ColumnRef const> getSecondaryIndexColumnRef() const;
 
-    /**
-     * @brief Set the TableRef in the secondary index ColumnRef.
-     */
-    void setSecondaryIndexTableRef(std::string db, std::string table);
+    std::string getSILookupQuery(std::string const& secondaryIndexDb, std::string const& secondaryIndexTable,
+                                 std::string const& chunkColumn, std::string const& subChunkColumn);
 
-    /**
-     * @brief make a deep copy of this object
-     */
-    std::shared_ptr<SICompRestrictor> clone() const;
+    std::shared_ptr<const query::CompPredicate> getCompPredicate() const { return _compPredicate; }
 
 protected:
     /**

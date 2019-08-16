@@ -1112,7 +1112,7 @@ BOOST_AUTO_TEST_CASE(Case01_0002) {
     BOOST_CHECK_EQUAL(r.getName(), "sIndexCompare");
     auto restrictorFunc = dynamic_cast<SICompRestrictor*>(&r);
     BOOST_REQUIRE(restrictorFunc != nullptr);
-    auto secondaryIndexColumn = restrictorFunc->getSecondaryIndexColumn();
+    auto secondaryIndexColumn = restrictorFunc->getSecondaryIndexColumnRef();
     BOOST_REQUIRE(secondaryIndexColumn != nullptr);
     BOOST_CHECK_EQUAL(*secondaryIndexColumn, ColumnRef("LSST","Object", "objectIdObjTest"));
     auto compPredicate = restrictorFunc->getCompPredicate();

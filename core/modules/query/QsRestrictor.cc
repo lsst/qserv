@@ -37,6 +37,8 @@
 // Qserv headers
 #include "query/CompPredicate.h"
 #include "query/QueryTemplate.h"
+#include "query/SelectList.h"
+#include "query/SelectStmt.h"
 #include "query/ValueExpr.h"
 #include "util/IterableFormatter.h"
 
@@ -111,25 +113,22 @@ std::ostream& SICompRestrictor::dbgPrint(std::ostream& os) const {
 }
 
 
-std::shared_ptr<query::ColumnRef const> SICompRestrictor::getSecondaryIndexColumn() const {
+std::shared_ptr<query::ColumnRef const> SICompRestrictor::getSecondaryIndexColumnRef() const {
     return _useLeft ? _compPredicate->left->getColumnRef() : _compPredicate->right->getColumnRef();
 }
 
 
-void SICompRestrictor::setSecondaryIndexTableRef(std::string db, std::string table) {
-    auto tableRef = std::make_shared<query::TableRef>(db, table, std::string());
-    if (_useLeft) {
-        _compPredicate->left->getColumnRef()->setTable(tableRef);
-    } else {
-        _compPredicate->right->getColumnRef()->setTable(tableRef);
-    }
+std::string SICompRestrictor::getSILookupQuery(std::string const& secondaryIndexDb,
+        std::string const& secondaryIndexTable, std::string const& chunkColumn,
+        std::string const& subChunkColumn) {
+    QueryTemplate columnRefQt;
+    columnRefQt.setUseColumnOnly(true);
+    _compPredicate->renderTo(columnRefQt);
+    return "SELECT " + chunkColumn + ", " + subChunkColumn +
+            " FROM " + secondaryIndexDb + "." + secondaryIndexTable +
+            " WHERE " + boost::lexical_cast<std::string>(columnRefQt);
 }
 
-
-std::shared_ptr<SICompRestrictor> SICompRestrictor::clone() const {
-    return std::make_shared<SICompRestrictor>(
-        std::static_pointer_cast<query::CompPredicate>(_compPredicate->clone()), _useLeft);
-}
 
 
 }}} // namespace lsst::qserv::query

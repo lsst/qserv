@@ -210,14 +210,10 @@ private:
 
     void _sqlLookup(ChunkSpecVector& output,
                     std::shared_ptr<query::SICompRestrictor> const& restr) {
-        auto siLookupRestr = restr->clone();
-        auto const& secondaryIndexCol = siLookupRestr->getSecondaryIndexColumn();
+        auto const& secondaryIndexCol = restr->getSecondaryIndexColumnRef();
         std::string index_table = _buildIndexTableName(secondaryIndexCol->getDb(),
                                                        secondaryIndexCol->getTable());
-        siLookupRestr->setSecondaryIndexTableRef(SEC_INDEX_DB, index_table);
-        std::string sql = "SELECT " + std::string(CHUNK_COLUMN) + ", " + std::string(SUB_CHUNK_COLUMN) +
-                          " FROM " + SEC_INDEX_DB + "." + index_table +
-                          " WHERE " + siLookupRestr->getCompPredicate()->sqlFragment();
+        auto sql = restr->getSILookupQuery(SEC_INDEX_DB, index_table, CHUNK_COLUMN, SUB_CHUNK_COLUMN);
         LOGS(_log, LOG_LVL_DEBUG, "secondary lookup sql:" << sql);
         _sqlLookup(output, sql);
     }
