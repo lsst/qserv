@@ -426,12 +426,12 @@ query::ColumnRef::Vector resolveAsColumnRef(query::ValueExprPtr vexpr) {
 /**
  * @brief Find out if the given ColumnRef represents a valid secondary index column.
  */
-bool isSecIndexCol(query::QueryContext& context, std::shared_ptr<query::ColumnRef> cr) {
+bool isSecIndexCol(query::QueryContext const& context, std::shared_ptr<query::ColumnRef> cr) {
     // Match cr as a column ref against the secondary index column for a
     // database's partitioning strategy.
-    if ((!cr) || !context.css) { return false; }
-    if (!context.css->containsDb(cr->getDb())
-       || !context.css->containsTable(cr->getDb(), cr->getTable())) {
+    if ((nullptr == cr) || nullptr == context.css) return false;
+    if (not context.css->containsDb(cr->getDb()) ||
+            not context.css->containsTable(cr->getDb(), cr->getTable())) {
         throw qana::AnalysisError("Invalid db/table:" + cr->getDb() + "." + cr->getTable());
     }
     if (cr->getColumn().empty()) {
@@ -445,6 +445,7 @@ bool isSecIndexCol(query::QueryContext& context, std::shared_ptr<query::ColumnRe
 
 query::ColumnRef::Ptr getCorrespondingDirectorColumn(query::QueryContext const& context,
                                                      query::ColumnRef::Ptr const& columnRef) {
+    if (nullptr == columnRef) return nullptr;
     auto const partitionTableParams = context.css->getPartTableParams(columnRef->getDb(),
                                                                       columnRef->getTable());
     // Get the director column name
@@ -524,6 +525,43 @@ query::QsRestrictor::Ptr newRestrictor(
 }
 
 
+/**
+ * @brief Make a Secondary Index comparison restrictor for the given comparison predicate, if one of the
+ *      columns in the comparison predicate is a director column.
+ *
+ * @param compPredicate
+ * @param context
+ * @return std::shared_ptr<query::SICompRestr> The restrictor that corresponds to the given predicate if one
+ *      of the columns is a director column, otherwise nullptr.
+ */
+std::shared_ptr<query::SICompRestrictor> makeSICompRestrictor(
+            query::CompPredicate const& compPredicate,
+            query::QueryContext const& context) {
+    if (compPredicate.right->isConstVal() && isSecIndexCol(context, compPredicate.left->getColumnRef())) {
+        auto dirCol = getCorrespondingDirectorColumn(context, compPredicate.left->getColumnRef());
+        if (nullptr == dirCol) {
+            LOGS(_log, LOG_LVL_ERROR, "Failed to get director column for " << compPredicate.left->getColumnRef());
+            return nullptr;
+        }
+        auto siCompPred = std::make_shared<query::CompPredicate>(query::ValueExpr::newSimple(dirCol),
+                                                                 compPredicate.op,
+                                                                 compPredicate.right);
+        return std::make_shared<query::SICompRestrictor>(siCompPred, true);
+    } else if (compPredicate.left->isConstVal() && isSecIndexCol(context, compPredicate.right->getColumnRef())) {
+        auto dirCol = getCorrespondingDirectorColumn(context, compPredicate.right->getColumnRef());
+        if (nullptr == dirCol) {
+            LOGS(_log, LOG_LVL_ERROR, "Failed to get director column for " << compPredicate.right->getColumnRef());
+            return nullptr;
+        }
+        auto siCompPred = std::make_shared<query::CompPredicate>(compPredicate.left,
+                                                                 compPredicate.op,
+                                                                 query::ValueExpr::newSimple(dirCol));
+        return std::make_shared<query::SICompRestrictor>(siCompPred, false);
+    }
+    return nullptr;
+}
+
+
 /**  Create QSRestrictors which will use secondary index
  *
  *   @param context:  Context used to analyze SQL query, allow to compute
@@ -561,23 +599,7 @@ query::QsRestrictor::PtrVector getSecIndexRestrictors(query::QueryContext& conte
                 }
             } else if (auto const compPredicate =
                        std::dynamic_pointer_cast<query::CompPredicate>(factorTerm)) {
-                query::CompPredicate::Ptr secIdxCompPredicate;
-                // TODO unduplicate these blocks:
-                if (isSecIndexCol(context, compPredicate->left->getColumnRef()) &&
-                    compPredicate->right->isConstVal()) {
-                    auto dirCol = getCorrespondingDirectorColumn(context, compPredicate->left->getColumnRef());
-                    if (nullptr == dirCol) continue; // this shoudln't happen - indicates an error with lookup. This wants better handling.
-                    secIdxCompPredicate = std::make_shared<query::CompPredicate>(
-                            query::ValueExpr::newSimple(dirCol), compPredicate->op, compPredicate->right);
-                    restrictor = std::make_shared<query::SICompRestrictor>(secIdxCompPredicate, true);
-                } else if (isSecIndexCol(context, compPredicate->right->getColumnRef()) &&
-                           compPredicate->left->isConstVal()) {
-                    auto dirCol = getCorrespondingDirectorColumn(context, compPredicate->right->getColumnRef());
-                    if (nullptr == dirCol) continue; // this shoudln't happen - indicates an error with lookup. This wants better handling.
-                    secIdxCompPredicate = std::make_shared<query::CompPredicate>(
-                            compPredicate->left, compPredicate->op, query::ValueExpr::newSimple(dirCol));
-                    restrictor = std::make_shared<query::SICompRestrictor>(secIdxCompPredicate, false);
-                }
+                restrictor = makeSICompRestrictor(*compPredicate, context);
                 if (nullptr != restrictor) {
                     LOGS(_log, LOG_LVL_DEBUG, "Add SECONDARY_INDEX_IN restrictor: " << *restrictor <<
                                               " for " << compPredicate);
