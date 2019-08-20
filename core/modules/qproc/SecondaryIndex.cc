@@ -57,40 +57,12 @@ namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.qproc.SecondaryIndex");
 
-enum QueryType { IN, NOT_IN, BETWEEN, NOT_BETWEEN };
-
-/**
- * @brief Get the sql string for the given query type.
- *
- * Includes the whitespace around the string value, simply because it was easier to use that way.
- *
- * @param queryType The query type to get the string for.
- * @return std::string The sql string to use for the given query type.
- */
-std::string toSqlStr(QueryType queryType) {
-    switch (queryType) {
-        case IN:
-            return " IN";
-
-        case NOT_IN:
-            return " NOT IN";
-
-        case BETWEEN:
-            return " BETWEEN ";
-
-        case NOT_BETWEEN:
-            return " NOT BETWEEN ";
-
-        default:
-            throw lsst::qserv::Bug("Unhandled QueryType: " + queryType);
-    }
-}
-
 } // anonymous namespace
 
 namespace lsst {
 namespace qserv {
 namespace qproc {
+
 
 class SecondaryIndex::Backend {
 public:
@@ -98,6 +70,7 @@ public:
     /// Lookup an index restrictor. Ignore restrictors that are not "sIndex" restrictors.
     virtual ChunkSpecVector lookup(query::QsRestrictor::PtrVector const& restrictors) = 0;
 };
+
 
 class MySqlBackend : public SecondaryIndex::Backend {
 public:
@@ -136,80 +109,6 @@ private:
         return sanitizeName(db) + "__" + sanitizeName(table);
     }
 
-    /**
-     *  Build sql query string to run against secondary index
-     *
-     *  @param params:  vector of string used to build the query,
-     *                  format is:
-     *                  [db, table, keyColumn, id_0, ..., id_n]
-     *                  where:
-     *                  - db.table is the director table,
-     *                  - keyColumn is its primary key,
-     *                  - id_x are keyColumn values
-     *
-     *  @param query_type: Type of the query launched against
-     *                     secondary index. Use IN or BETWEEN on object ids
-     *                     to find chunk ids.
-     *
-     *  @return:   the sql query string to run against secondary index in
-     *             order to get (chunks, subchunks) couples containing [id_0, ..., id_n]
-     */
-    static std::string _buildLookupQuery(
-        std::vector<std::string> const& params,
-        QueryType const& query_type) {
-
-        LOGS(_log, LOG_LVL_TRACE, "params: " << util::printable(params));
-
-        auto iter = params.begin();
-        std::string const& db = *(iter++); // params[0]
-        std::string const& table = *(iter++); // params[1]
-        std::string const& key_column = *(iter++); // params[2]
-
-        std::string index_table = _buildIndexTableName(db, table);
-        std::string sql = "SELECT " + std::string(CHUNK_COLUMN) + ", " + std::string(SUB_CHUNK_COLUMN) +
-                          " FROM " + SEC_INDEX_DB + "." + index_table +
-                          " WHERE " + key_column;
-        if (query_type == QueryType::IN || query_type == QueryType::NOT_IN) {
-            std::string secondaryVals; // params[3] to end
-            bool first = true;
-            // Do not use util::printable here. It adds unwanted characters.
-            for (; iter != params.end(); ++iter) {
-                if (first) {
-                    first = false;
-                } else {
-                    secondaryVals += ", ";
-                }
-                secondaryVals += *iter;
-            }
-            sql += toSqlStr(query_type) + "(" + secondaryVals + ")";
-        } else if (query_type == QueryType::BETWEEN || query_type == QueryType::NOT_BETWEEN) {
-            if (params.size() != 5) {
-                throw Bug("Incorrect parameters for bounded secondary index lookup ");
-            }
-            std::string const& par3 = *(iter++);
-            std::string const& par4 = *iter;
-            sql += toSqlStr(query_type) + par3 + " AND " + par4;
-        }
-
-        LOGS(_log, LOG_LVL_DEBUG, "secondary lookup sql:" << sql);
-        return sql;
-    }
-
-
-    /**
-     *  Add results from secondary index sql query to existing ChunkSpec vector
-     *
-     *  @param output:      existing ChunkSpec vector
-     *  @param params:      parameters used to query secondary index
-     *  @param query_type:  Type of the query launched against
-     *                      secondary index. Use IN or BETWEEN on object ids
-     *                      to find chunk ids.
-     */
-    void _sqlLookup(ChunkSpecVector& output, StringVector const& params, QueryType const& query_type) {
-        _sqlLookup(output, _buildLookupQuery(params, query_type));
-    }
-
-
     void _sqlLookup(ChunkSpecVector& output, std::string sql) {
 
         std::map<int, Int32Vector> tmp;
@@ -246,6 +145,7 @@ private:
     std::shared_ptr<sql::SqlConnection> _sqlConnection;
 };
 
+
 class FakeBackend : public SecondaryIndex::Backend {
 public:
     FakeBackend() {}
@@ -274,6 +174,7 @@ private:
     }
 };
 
+
 SecondaryIndex::SecondaryIndex(mysql::MySqlConfig const& c)
     : _backend(std::make_shared<MySqlBackend>(c)) {
 }
@@ -282,6 +183,7 @@ SecondaryIndex::SecondaryIndex()
     : _backend(std::make_shared<FakeBackend>()) {
 }
 
+
 ChunkSpecVector SecondaryIndex::lookup(query::QsRestrictor::PtrVector const& restrictors) {
     if (_backend) {
         return _backend->lookup(restrictors);
@@ -289,6 +191,7 @@ ChunkSpecVector SecondaryIndex::lookup(query::QsRestrictor::PtrVector const& res
         throw Bug("SecondaryIndex : no backend initialized");
     }
 }
+
 
 }}} // namespace lsst::qserv::qproc
 
