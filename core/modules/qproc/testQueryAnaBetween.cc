@@ -46,6 +46,7 @@
 #include "lsst/log/Log.h"
 
 // Qserv headers
+#include "global/constants.h"
 #include "mysql/MySqlConfig.h"
 #include "parser/SelectParser.h"
 #include "query/QsRestrictor.h"
@@ -59,6 +60,7 @@ using lsst::qserv::qproc::ChunkQuerySpec;
 using lsst::qserv::qproc::QuerySession;
 using lsst::qserv::query::QsRestrictor;
 using lsst::qserv::query::QsRestrictorFunction;
+using lsst::qserv::query::SIBetweenRestrictor;
 using lsst::qserv::query::QueryContext;
 using lsst::qserv::sql::SqlConfig;
 using lsst::qserv::tests::QueryAnaFixture;
@@ -67,6 +69,7 @@ using lsst::qserv::tests::QueryAnaFixture;
 // CppParser basic tests
 ////////////////////////////////////////////////////////////////////////
 BOOST_FIXTURE_TEST_SUITE(OrderBy, QueryAnaFixture)
+
 
 BOOST_AUTO_TEST_CASE(SecondaryIndex) {
     std::string stmt = "select * from Object where objectIdObjTest between 386942193651347 and 386942193651349;";
@@ -78,14 +81,16 @@ BOOST_AUTO_TEST_CASE(SecondaryIndex) {
     BOOST_REQUIRE(context->restrictors);
     BOOST_CHECK_EQUAL(context->restrictors->size(), 1U);
     BOOST_REQUIRE(context->restrictors->front());
-    QsRestrictor& r = *context->restrictors->front();
-    BOOST_CHECK_EQUAL(r.getName(), "sIndexBetween");
-    auto restrictorFunc = dynamic_cast<QsRestrictorFunction*>(&r);
-    BOOST_REQUIRE(restrictorFunc != nullptr);
-    char const* params[] = {"LSST", "Object", "objectIdObjTest", "386942193651347", "386942193651349"};
-    BOOST_CHECK_EQUAL_COLLECTIONS(restrictorFunc->getParameters().begin(), restrictorFunc->getParameters().end(),
-                                  params, params+5);
+    auto betweenRestr = std::dynamic_pointer_cast<SIBetweenRestrictor>(context->restrictors->front());
+    BOOST_REQUIRE(nullptr != betweenRestr);
+    BOOST_REQUIRE_EQUAL(betweenRestr->getSILookupQuery(lsst::qserv::SEC_INDEX_DB, "LSST__Object",
+                        lsst::qserv::CHUNK_COLUMN, lsst::qserv::SUB_CHUNK_COLUMN),
+        "SELECT " + std::string(lsst::qserv::CHUNK_COLUMN) + ", " +
+        std::string(lsst::qserv::SUB_CHUNK_COLUMN) +
+        " FROM " + std::string(lsst::qserv::SEC_INDEX_DB) +
+        ".LSST__Object WHERE objectIdObjTest BETWEEN 386942193651347 AND 386942193651349");
 }
+
 
 BOOST_AUTO_TEST_CASE(NoSecondaryIndex) {
     std::string stmt = "select * from Object where someField between 386942193651347 and 386942193651349;";
@@ -96,6 +101,7 @@ BOOST_AUTO_TEST_CASE(NoSecondaryIndex) {
     BOOST_CHECK_EQUAL(context->dominantDb, std::string("LSST"));
     BOOST_REQUIRE(not context->restrictors);
 }
+
 
 BOOST_AUTO_TEST_CASE(DoubleSecondaryIndexRestrictor) {
     // FIXME: next query should be also supported:
@@ -110,22 +116,23 @@ BOOST_AUTO_TEST_CASE(DoubleSecondaryIndexRestrictor) {
     BOOST_REQUIRE(context->restrictors);
     BOOST_CHECK_EQUAL(context->restrictors->size(), 2U);
     BOOST_REQUIRE(context->restrictors->at(0));
-    QsRestrictor& restrictor0 = *context->restrictors->at(0);
-    BOOST_CHECK_EQUAL(restrictor0.getName(), "sIndexBetween");
-    auto restrictorFunc0 = dynamic_cast<QsRestrictorFunction*>(&restrictor0);
-    BOOST_REQUIRE(restrictorFunc0 != nullptr);
-    char const* params0[] = {"LSST", "Object", "objectIdObjTest", "38", "40"};
-    BOOST_CHECK_EQUAL_COLLECTIONS(restrictorFunc0->getParameters().begin(), restrictorFunc0->getParameters().end(),
-                                  params0, params0+5);
+    auto betweenRestr = std::dynamic_pointer_cast<SIBetweenRestrictor>(context->restrictors->at(0));
+    BOOST_REQUIRE(betweenRestr != nullptr);
+    BOOST_REQUIRE_EQUAL(betweenRestr->getSILookupQuery(lsst::qserv::SEC_INDEX_DB, "LSST__Object",
+                        lsst::qserv::CHUNK_COLUMN, lsst::qserv::SUB_CHUNK_COLUMN),
+        "SELECT " + std::string(lsst::qserv::CHUNK_COLUMN) + ", " +
+        std::string(lsst::qserv::SUB_CHUNK_COLUMN) +
+        " FROM " + std::string(lsst::qserv::SEC_INDEX_DB) +
+        ".LSST__Object WHERE objectIdObjTest BETWEEN 38 AND 40");
     BOOST_REQUIRE(context->restrictors->at(1));
-    QsRestrictor& restrictor1 = *context->restrictors->at(1);
-    BOOST_CHECK_EQUAL(restrictor1.getName(), "sIndex");
-    auto restrictorFunc1 = dynamic_cast<QsRestrictorFunction*>(&restrictor1);
-    BOOST_REQUIRE(restrictorFunc1 != nullptr);
-    char const* params1[] = {"LSST", "Object", "objectIdObjTest", "10", "30", "70"};
-    BOOST_CHECK_EQUAL_COLLECTIONS(restrictorFunc1->getParameters().begin(), restrictorFunc1->getParameters().end(),
-                                  params1, params1+6);
+    auto restrictorFunc = std::dynamic_pointer_cast<QsRestrictorFunction>(context->restrictors->at(1));
+    BOOST_REQUIRE(restrictorFunc != nullptr);
+    BOOST_CHECK_EQUAL(restrictorFunc->getName(), "sIndex");
+    char const* params[] = {"LSST", "Object", "objectIdObjTest", "10", "30", "70"};
+    BOOST_CHECK_EQUAL_COLLECTIONS(restrictorFunc->getParameters().begin(), restrictorFunc->getParameters().end(),
+                                  params, params+6);
 }
+
 
 BOOST_AUTO_TEST_CASE(DoubleSecondaryIndexRestrictorCartesian) {
     // This query has no astronomical meaning, but add additional test for cartesian product
@@ -144,21 +151,21 @@ BOOST_AUTO_TEST_CASE(DoubleSecondaryIndexRestrictorCartesian) {
     BOOST_REQUIRE(context->restrictors);
     BOOST_CHECK_EQUAL(context->restrictors->size(), 2U);
     BOOST_REQUIRE(context->restrictors->at(0));
-    QsRestrictor& restrictor0 = *context->restrictors->at(0);
-    BOOST_CHECK_EQUAL(restrictor0.getName(), "sIndexBetween");
-    auto restrictorFunc0 = dynamic_cast<QsRestrictorFunction*>(&restrictor0);
-    BOOST_REQUIRE(restrictorFunc0 != nullptr);
-    char const* params0[] = {"LSST", "Object", "objectIdObjTest", "38", "40"};
-    BOOST_CHECK_EQUAL_COLLECTIONS(restrictorFunc0->getParameters().begin(), restrictorFunc0->getParameters().end(),
-                                  params0, params0+5);
+    auto betweenRestr = std::dynamic_pointer_cast<SIBetweenRestrictor>(context->restrictors->at(0));
+    BOOST_REQUIRE(betweenRestr != nullptr);
+    BOOST_REQUIRE_EQUAL(betweenRestr->getSILookupQuery(lsst::qserv::SEC_INDEX_DB, "LSST__Object",
+                        lsst::qserv::CHUNK_COLUMN, lsst::qserv::SUB_CHUNK_COLUMN),
+        "SELECT " + std::string(lsst::qserv::CHUNK_COLUMN) + ", " +
+        std::string(lsst::qserv::SUB_CHUNK_COLUMN) +
+        " FROM " + std::string(lsst::qserv::SEC_INDEX_DB) +
+        ".LSST__Object WHERE objectIdObjTest BETWEEN 38 AND 40");
     BOOST_REQUIRE(context->restrictors->at(1));
-    QsRestrictor& restrictor1 = *context->restrictors->at(1);
-    BOOST_CHECK_EQUAL(restrictor1.getName(), "sIndex");
-    auto restrictorFunc1 = dynamic_cast<QsRestrictorFunction*>(&restrictor1);
-    BOOST_REQUIRE(restrictorFunc1 != nullptr);
-    char const* params1[] = {"LSST", "Object", "objectIdObjTest", "10", "30", "70"};
-    BOOST_CHECK_EQUAL_COLLECTIONS(restrictorFunc1->getParameters().begin(), restrictorFunc1->getParameters().end(),
-                                  params1, params1+6);
+    auto restrictorFunc = std::dynamic_pointer_cast<QsRestrictorFunction>(context->restrictors->at(1));
+    BOOST_REQUIRE(restrictorFunc != nullptr);
+    BOOST_CHECK_EQUAL(restrictorFunc->getName(), "sIndex");
+    char const* params[] = {"LSST", "Object", "objectIdObjTest", "10", "30", "70"};
+    BOOST_CHECK_EQUAL_COLLECTIONS(restrictorFunc->getParameters().begin(), restrictorFunc->getParameters().end(),
+                                  params, params+6);
 }
 
 

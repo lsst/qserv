@@ -109,10 +109,16 @@ public:
         ChunkSpecVector output;
         bool hasIndex = false;
         for(auto const& restrBase : restrictors) {
-            if (auto compRestr = std::dynamic_pointer_cast<query::SICompRestrictor>(restrBase)) {
+            if (auto siRestr = std::dynamic_pointer_cast<query::SIRestrictor>(restrBase)) {
                 // handle it
                 hasIndex = true;
-                _sqlLookup(output, compRestr);
+                auto const& secondaryIndexCol = siRestr->getSecondaryIndexColumnRef();
+                std::string index_table = _buildIndexTableName(secondaryIndexCol->getDb(),
+                                                            secondaryIndexCol->getTable());
+                auto sql = siRestr->getSILookupQuery(SEC_INDEX_DB, index_table, CHUNK_COLUMN,
+                                                     SUB_CHUNK_COLUMN);
+                LOGS(_log, LOG_LVL_DEBUG, "secondary lookup sql:" << sql);
+                _sqlLookup(output, sql);
             } else {
                 auto restrictor = std::dynamic_pointer_cast<query::QsRestrictorFunction>(restrBase);
                 if (nullptr == restrictor) {
@@ -124,12 +130,6 @@ public:
                 } else if (restrictor->getName() == "sIndexNotIn"){
                     hasIndex = true;
                     _sqlLookup(output, restrictor->getParameters(), NOT_IN);
-                } else if (restrictor->getName() == "sIndexBetween") {
-                    hasIndex = true;
-                    _sqlLookup(output, restrictor->getParameters(), BETWEEN);
-                } else if (restrictor->getName() == "sIndexNotBetween") {
-                    hasIndex = true;
-                    _sqlLookup(output, restrictor->getParameters(), NOT_BETWEEN);
                 }
             }
         }
@@ -208,17 +208,6 @@ private:
     }
 
 
-    void _sqlLookup(ChunkSpecVector& output,
-                    std::shared_ptr<query::SICompRestrictor> const& restr) {
-        auto const& secondaryIndexCol = restr->getSecondaryIndexColumnRef();
-        std::string index_table = _buildIndexTableName(secondaryIndexCol->getDb(),
-                                                       secondaryIndexCol->getTable());
-        auto sql = restr->getSILookupQuery(SEC_INDEX_DB, index_table, CHUNK_COLUMN, SUB_CHUNK_COLUMN);
-        LOGS(_log, LOG_LVL_DEBUG, "secondary lookup sql:" << sql);
-        _sqlLookup(output, sql);
-    }
-
-
     /**
      *  Add results from secondary index sql query to existing ChunkSpec vector
      *
@@ -286,7 +275,13 @@ public:
 private:
     struct _checkIndex {
         bool operator()(std::shared_ptr<query::QsRestrictor> const& restrictor) {
-            return (restrictor->getName() == "sIndex" || restrictor->getName() == "sIndexBetween");
+            if (auto restrFunc = std::dynamic_pointer_cast<query::QsRestrictorFunction>(restrictor)) {
+                return (restrFunc->getName() == "sIndex" || restrFunc->getName() == "sIndexBetween");
+            }
+            if (auto restrFunc = std::dynamic_pointer_cast<query::SIRestrictor>(restrictor)) {
+                return true;
+            }
+            return false;
         }
     };
     bool _hasSecondary(query::QsRestrictor::PtrVector const& restrictors) {

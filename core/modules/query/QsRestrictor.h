@@ -43,6 +43,7 @@
 namespace lsst {
 namespace qserv {
 namespace query {
+    class BetweenPredicate;
     class ColumnRef;
     class CompPredicate;
     class QueryTemplate;
@@ -87,13 +88,6 @@ public:
     virtual void renderTo(QueryTemplate& qt) const = 0;
 
     /**
-     * @brief Get the function name.
-     *
-     * @return std::string const&
-     */
-    virtual std::string const& getName() const = 0;
-
-    /**
      * @brief Serialize to the given ostream for debug output.
      */
     virtual std::ostream& dbgPrint(std::ostream& os) const = 0;
@@ -128,7 +122,7 @@ public:
      *
      * @return std::string const&
      */
-    std::string const& getName() const override { return _name; }
+    std::string const& getName() const { return _name; }
 
     /**
      * @brief Get the function parameters.
@@ -157,7 +151,19 @@ private:
 };
 
 
-class SICompRestrictor : public QsRestrictor {
+class SIRestrictor : public QsRestrictor {
+public:
+    virtual std::shared_ptr<query::ColumnRef const> getSecondaryIndexColumnRef() const = 0;
+
+    virtual std::string getSILookupQuery(std::string const& secondaryIndexDb,
+                                         std::string const& secondaryIndexTable,
+                                         std::string const& chunkColumn,
+                                         std::string const& subChunkColumn) const = 0;
+
+};
+
+
+class SICompRestrictor : public SIRestrictor {
 public:
     SICompRestrictor() = default;
 
@@ -170,21 +176,14 @@ public:
     void renderTo(QueryTemplate& qt) const override;
 
     /**
-     * @brief Get the function name.
-     *
-     * @return std::string const&
-     */
-    std::string const& getName() const override { return _name; }
-
-    /**
      * @brief Serialize to the given ostream for debug output.
      */
     std::ostream& dbgPrint(std::ostream& os) const override;
 
-    std::shared_ptr<query::ColumnRef const> getSecondaryIndexColumnRef() const;
+    std::shared_ptr<query::ColumnRef const> getSecondaryIndexColumnRef() const override;
 
     std::string getSILookupQuery(std::string const& secondaryIndexDb, std::string const& secondaryIndexTable,
-                                 std::string const& chunkColumn, std::string const& subChunkColumn);
+                                 std::string const& chunkColumn, std::string const& subChunkColumn) const override;
 
     std::shared_ptr<const query::CompPredicate> getCompPredicate() const { return _compPredicate; }
 
@@ -200,10 +199,45 @@ protected:
 private:
     std::shared_ptr<query::CompPredicate> _compPredicate; //< the comparison for this restrictor.
     bool _useLeft; //< true if the secondary index column is on the left of the ComPredicate (false for right)
-    static std::string _name;
 };
 
 
+class SIBetweenRestrictor : public SIRestrictor {
+public:
+    SIBetweenRestrictor() = default;
+
+    SIBetweenRestrictor(std::shared_ptr<query::BetweenPredicate> betweenPredicate)
+            : _betweenPredicate(betweenPredicate) {}
+
+    /**
+     * @brief Serialze this instance as SQL to the QueryTemplate.
+     */
+    void renderTo(QueryTemplate& qt) const override;
+
+    /**
+     * @brief Serialize to the given ostream for debug output.
+     */
+    std::ostream& dbgPrint(std::ostream& os) const override;
+
+    std::shared_ptr<query::ColumnRef const> getSecondaryIndexColumnRef() const override;
+
+    std::string getSILookupQuery(std::string const& secondaryIndexDb, std::string const& secondaryIndexTable,
+                                 std::string const& chunkColumn, std::string const& subChunkColumn) const override;
+
+protected:
+    /**
+     * @brief Test if this is equal with rhs.
+     *
+     * This is an overidable helper function for operator==, it should only be called by that function, or at
+     * least make sure that typeid(this) == typeid(rhs) before calling isEqual.
+     */
+    bool isEqual(const QsRestrictor& rhs) const override;
+
+private:
+    // Currently the only place the secondary index column appears is in the `value` parameter of the
+    // BetweenPredicate.
+    std::shared_ptr<query::BetweenPredicate> _betweenPredicate;
+};
 }}} // namespace lsst::qserv::query
 
 #endif // LSST_QSERV_QUERY_QSRESTRICTOR_H

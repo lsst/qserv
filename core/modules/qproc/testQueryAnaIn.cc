@@ -68,6 +68,7 @@ using lsst::qserv::tests::QueryAnaFixture;
 ////////////////////////////////////////////////////////////////////////
 BOOST_FIXTURE_TEST_SUITE(OrderBy, QueryAnaFixture)
 
+
 BOOST_AUTO_TEST_CASE(SecondaryIndex) {
     std::string stmt = "select * from Object where objectIdObjTest in (2,3145,9999);";
     qsTest.sqlConfig = SqlConfig(SqlConfig::MockDbTableColumns({{"LSST", {{"Object", {"objectIdObjTest"}}}}}));
@@ -78,14 +79,14 @@ BOOST_AUTO_TEST_CASE(SecondaryIndex) {
     BOOST_REQUIRE(context->restrictors);
     BOOST_CHECK_EQUAL(context->restrictors->size(), 1U);
     BOOST_REQUIRE(context->restrictors->front());
-    QsRestrictor& r = *context->restrictors->front();
-    auto restrictorFunc = dynamic_cast<QsRestrictorFunction*>(&r);
-    BOOST_CHECK_EQUAL(r.getName(), "sIndex");
+    auto restrictorFunc = std::dynamic_pointer_cast<QsRestrictorFunction>(context->restrictors->front());
     BOOST_REQUIRE(restrictorFunc != nullptr);
+    BOOST_CHECK_EQUAL(restrictorFunc->getName(), "sIndex");
     char const* params[] = {"LSST", "Object", "objectIdObjTest", "2", "3145", "9999"};
     BOOST_CHECK_EQUAL_COLLECTIONS(restrictorFunc->getParameters().begin(), restrictorFunc->getParameters().end(),
                                   params, params+6);
 }
+
 
 BOOST_AUTO_TEST_CASE(CountIn) {
     std::string stmt = "select COUNT(*) AS N FROM Source WHERE objectId IN(386950783579546, 386942193651348);";
@@ -109,6 +110,7 @@ BOOST_AUTO_TEST_CASE(CountIn) {
     BOOST_CHECK(context->hasChunks());
 }
 
+
 BOOST_AUTO_TEST_CASE(RestrictorObjectIdAlias) {
     std::string stmt = "select * from Object as o1 where objectIdObjTest IN (2,3145,9999);";
     qsTest.sqlConfig = SqlConfig(SqlConfig::MockDbTableColumns({{"LSST", {{"Object", {"objectIdObjTest"}}}}}));
@@ -119,10 +121,9 @@ BOOST_AUTO_TEST_CASE(RestrictorObjectIdAlias) {
     BOOST_REQUIRE(context->restrictors);
     BOOST_CHECK_EQUAL(context->restrictors->size(), 1U);
     BOOST_REQUIRE(context->restrictors->front());
-    QsRestrictor& r = *context->restrictors->front();
-    BOOST_CHECK_EQUAL(r.getName(), "sIndex");
-    auto restrictorFunc = dynamic_cast<QsRestrictorFunction*>(&r);
+    auto restrictorFunc = std::dynamic_pointer_cast<QsRestrictorFunction>(context->restrictors->front());
     BOOST_REQUIRE(restrictorFunc != nullptr);
+    BOOST_CHECK_EQUAL(restrictorFunc->getName(), "sIndex");
     char const* params[] = {"LSST","Object", "objectIdObjTest", "2","3145","9999"};
     BOOST_CHECK_EQUAL_COLLECTIONS(restrictorFunc->getParameters().begin(), restrictorFunc->getParameters().end(),
                                   params, params+6);

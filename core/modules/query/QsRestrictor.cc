@@ -35,6 +35,7 @@
 #include <iterator>
 
 // Qserv headers
+#include "query/BetweenPredicate.h"
 #include "query/CompPredicate.h"
 #include "query/QueryTemplate.h"
 #include "query/SelectList.h"
@@ -46,9 +47,6 @@
 namespace lsst {
 namespace qserv {
 namespace query {
-
-
-std::string SICompRestrictor::_name = "sIndexCompare";
 
 
 std::ostream& operator<<(std::ostream& os, QsRestrictor const& q) {
@@ -99,16 +97,13 @@ void SICompRestrictor::renderTo(QueryTemplate& qt) const {
 
 
 bool SICompRestrictor::isEqual(const QsRestrictor& rhs) const {
-    auto rhsRestrictorFunc = static_cast<SICompRestrictor const&>(rhs);
-    if (_name != rhsRestrictorFunc._name) return false;
-    return _compPredicate == rhsRestrictorFunc._compPredicate;
+    auto rhsCompRestrictor = static_cast<SICompRestrictor const&>(rhs);
+    return *_compPredicate == *rhsCompRestrictor._compPredicate;
 }
 
 
 std::ostream& SICompRestrictor::dbgPrint(std::ostream& os) const {
-    os << "SICompRestrictor(" << "\"" <<  _name << "\"";
-    os << ", " << *_compPredicate;
-    os << ")";
+    os << "SICompRestrictor(" << *_compPredicate << ")";
     return os;
 }
 
@@ -120,7 +115,7 @@ std::shared_ptr<query::ColumnRef const> SICompRestrictor::getSecondaryIndexColum
 
 std::string SICompRestrictor::getSILookupQuery(std::string const& secondaryIndexDb,
         std::string const& secondaryIndexTable, std::string const& chunkColumn,
-        std::string const& subChunkColumn) {
+        std::string const& subChunkColumn) const {
     QueryTemplate columnRefQt;
     columnRefQt.setUseColumnOnly(true);
     _compPredicate->renderTo(columnRefQt);
@@ -129,6 +124,39 @@ std::string SICompRestrictor::getSILookupQuery(std::string const& secondaryIndex
             " WHERE " + boost::lexical_cast<std::string>(columnRefQt);
 }
 
+
+void SIBetweenRestrictor::renderTo(QueryTemplate& qt) const {
+    _betweenPredicate->renderTo(qt);
+}
+
+
+bool SIBetweenRestrictor::isEqual(const QsRestrictor& rhs) const {
+    auto rhsBetweenRestrictor = static_cast<SIBetweenRestrictor const&>(rhs);
+    return *_betweenPredicate == *rhsBetweenRestrictor._betweenPredicate;
+}
+
+
+std::ostream& SIBetweenRestrictor::dbgPrint(std::ostream& os) const {
+    os << "SIBetweenRestrictor(" << *_betweenPredicate << ")";
+    return os;
+}
+
+
+std::shared_ptr<query::ColumnRef const> SIBetweenRestrictor::getSecondaryIndexColumnRef() const {
+    return _betweenPredicate->value->getColumnRef();
+}
+
+
+std::string SIBetweenRestrictor::getSILookupQuery(std::string const& secondaryIndexDb,
+        std::string const& secondaryIndexTable, std::string const& chunkColumn,
+        std::string const& subChunkColumn) const {
+    QueryTemplate columnRefQt;
+    columnRefQt.setUseColumnOnly(true);
+    _betweenPredicate->renderTo(columnRefQt);
+    return "SELECT " + chunkColumn + ", " + subChunkColumn +
+            " FROM " + secondaryIndexDb + "." + secondaryIndexTable +
+            " WHERE " + boost::lexical_cast<std::string>(columnRefQt);
+}
 
 
 }}} // namespace lsst::qserv::query

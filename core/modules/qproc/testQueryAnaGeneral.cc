@@ -179,11 +179,10 @@ BOOST_AUTO_TEST_CASE(RestrictorBox) {
     BOOST_REQUIRE(context->restrictors);
     BOOST_CHECK_EQUAL(context->restrictors->size(), 1U);
     BOOST_REQUIRE(context->restrictors->front());
-    QsRestrictor& r = *context->restrictors->front();
-    BOOST_CHECK_EQUAL(r.getName(), "qserv_areaspec_box");
-    char const* params[] = {"0","0","1","1"};
-    auto restrictorFunc = dynamic_cast<QsRestrictorFunction*>(&r);
+    auto restrictorFunc = std::dynamic_pointer_cast<QsRestrictorFunction>(context->restrictors->front());
     BOOST_REQUIRE(restrictorFunc != nullptr);
+    BOOST_CHECK_EQUAL(restrictorFunc->getName(), "qserv_areaspec_box");
+    char const* params[] = {"0","0","1","1"};
     BOOST_CHECK_EQUAL_COLLECTIONS(restrictorFunc->getParameters().begin(), restrictorFunc->getParameters().end(),
                                   params, params+4);
     BOOST_CHECK(!context->needsMerge);
@@ -210,12 +209,10 @@ BOOST_AUTO_TEST_CASE(RestrictorNeighborCount) {
     BOOST_CHECK_EQUAL(context->dominantDb, std::string("LSST"));
     BOOST_REQUIRE(context->restrictors);
     BOOST_CHECK_EQUAL(context->restrictors->size(), 1U);
-    BOOST_REQUIRE(context->restrictors->front());
-    QsRestrictor& r = *context->restrictors->front();
-    BOOST_CHECK_EQUAL(r.getName(), "qserv_areaspec_box");
-    char const* params[] = {"6","6","7","7"};
-    auto restrictorFunc = dynamic_cast<QsRestrictorFunction*>(&r);
+    auto restrictorFunc = std::dynamic_pointer_cast<QsRestrictorFunction>(context->restrictors->front());
     BOOST_REQUIRE(restrictorFunc != nullptr);
+    BOOST_CHECK_EQUAL(restrictorFunc->getName(), "qserv_areaspec_box");
+    char const* params[] = {"6","6","7","7"};
     BOOST_CHECK_EQUAL_COLLECTIONS(restrictorFunc->getParameters().begin(), restrictorFunc->getParameters().end(),
                                   params, params+4);
 
@@ -396,11 +393,9 @@ BOOST_DATA_TEST_CASE(ObjectSourceJoin_ScisqlRestrictor, SCISQL_RESTRICTOR_TEST_C
     if (not queryData.expectedRestrictor.empty()) {
         BOOST_REQUIRE(context->restrictors);
         BOOST_CHECK_EQUAL(context->restrictors->size(), 1U);
-        BOOST_REQUIRE(context->restrictors->front());
-        QsRestrictor& r = *context->restrictors->front();
-        BOOST_CHECK_EQUAL(r.getName(), queryData.expectedRestrictor);
-        auto restrictorFunc = dynamic_cast<QsRestrictorFunction*>(&r);
+        auto restrictorFunc = std::dynamic_pointer_cast<QsRestrictorFunction>(context->restrictors->front());
         BOOST_REQUIRE(restrictorFunc != nullptr);
+        BOOST_CHECK_EQUAL(restrictorFunc->getName(), queryData.expectedRestrictor);
         BOOST_CHECK_EQUAL_COLLECTIONS(restrictorFunc->getParameters().begin(), restrictorFunc->getParameters().end(),
                                     queryData.expectedParams.begin(), queryData.expectedParams.end());
     }
@@ -426,10 +421,9 @@ BOOST_AUTO_TEST_CASE(ObjectSourceJoin) {
     BOOST_REQUIRE(context->restrictors);
     BOOST_CHECK_EQUAL(context->restrictors->size(), 1U);
     BOOST_REQUIRE(context->restrictors->front());
-    QsRestrictor& r = *context->restrictors->front();
-    BOOST_CHECK_EQUAL(r.getName(), "qserv_areaspec_box");
-    auto restrictorFunc = dynamic_cast<QsRestrictorFunction*>(&r);
+    auto restrictorFunc = std::dynamic_pointer_cast<QsRestrictorFunction>(context->restrictors->front());
     BOOST_REQUIRE(restrictorFunc != nullptr);
+    BOOST_CHECK_EQUAL(restrictorFunc->getName(), "qserv_areaspec_box");
     char const* params[] = {"2","2","3","3"};
     BOOST_CHECK_EQUAL_COLLECTIONS(restrictorFunc->getParameters().begin(), restrictorFunc->getParameters().end(),
                                   params, params+4);
@@ -1097,6 +1091,8 @@ BOOST_AUTO_TEST_SUITE_END()
 ////////////////////////////////////////////////////////////////////////
 
 BOOST_FIXTURE_TEST_SUITE(Case01Parse, QueryAnaFixture)
+
+
 BOOST_AUTO_TEST_CASE(Case01_0002) {
     std::string stmt = "SELECT * FROM Object WHERE objectIdObjTest = 430213989000;";
     //std::string expected = "SELECT * FROM LSST.%$#Object%$# WHERE objectId=430213989000;";
@@ -1108,14 +1104,12 @@ BOOST_AUTO_TEST_CASE(Case01_0002) {
     BOOST_REQUIRE(context->restrictors);
     BOOST_CHECK_EQUAL(context->restrictors->size(), 1U);
     BOOST_REQUIRE(context->restrictors->front());
-    QsRestrictor& r = *context->restrictors->front();
-    BOOST_CHECK_EQUAL(r.getName(), "sIndexCompare");
-    auto restrictorFunc = dynamic_cast<SICompRestrictor*>(&r);
-    BOOST_REQUIRE(restrictorFunc != nullptr);
-    auto secondaryIndexColumn = restrictorFunc->getSecondaryIndexColumnRef();
+    auto compRestr = std::dynamic_pointer_cast<SICompRestrictor>(context->restrictors->front());
+    BOOST_REQUIRE(compRestr != nullptr);
+    auto secondaryIndexColumn = compRestr->getSecondaryIndexColumnRef();
     BOOST_REQUIRE(secondaryIndexColumn != nullptr);
     BOOST_CHECK_EQUAL(*secondaryIndexColumn, ColumnRef("LSST","Object", "objectIdObjTest"));
-    auto compPredicate = restrictorFunc->getCompPredicate();
+    auto compPredicate = compRestr->getCompPredicate();
     BOOST_REQUIRE(compPredicate != nullptr);
     // the secondaryIndexColumn should have from from the left side of the comparison, check the const value
     // of the right side:

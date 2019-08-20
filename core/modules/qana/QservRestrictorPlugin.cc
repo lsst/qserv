@@ -78,8 +78,6 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.qana.QservRestrictorPlugin");
 // Restrictor Types:
 const char* SECONDARY_INDEX_IN = "sIndex";
 const char* SECONDARY_INDEX_NOT_IN = "sIndexNotIn";
-const char* SECONDARY_INDEX_BETWEEN = "sIndexBetween";
-const char* SECONDARY_INDEX_NOT_BETWEEN = "sIndexNotBetween";
 
 /// RestrictorEntry is a class to contain information about chunked tables.
 struct RestrictorEntry {
@@ -175,9 +173,9 @@ query::FuncExpr::Ptr newFuncExpr(char const fName[],
 /// Borrowed from older parsing framework.
 class Restriction {
 public:
-    Restriction(query::QsRestrictor const& r)
-        : _name(r.getName()) {
-        _setGenerator(r);
+    Restriction(query::QsRestrictorFunction const& restrictorFunc)
+        : _name(restrictorFunc.getName()) {
+        _setGenerator(restrictorFunc);
     }
 
     query::BoolFactor::Ptr generate(RestrictorEntry const& e) {
@@ -226,34 +224,30 @@ private:
         static const int USE_STRING = -999;
     };
 
-    void _setGenerator(query::QsRestrictor const& r) {
-        auto restrictorFunc = dynamic_cast<query::QsRestrictorFunction const * const>(&r);
-        if (nullptr == restrictorFunc) {
-            throw qana::AnalysisBug("Unhandled restriction spec, only RestrictorFunc works right now: " + r.getName());
-        }
-        if (restrictorFunc->getName() == "qserv_areaspec_box") {
+    void _setGenerator(query::QsRestrictorFunction const& restrictorFunc) {
+        if (restrictorFunc.getName() == "qserv_areaspec_box") {
             _generator = std::make_shared<AreaGenerator>("s2PtInBox",
                                                          4,
-                                                         restrictorFunc->getParameters()
+                                                         restrictorFunc.getParameters()
                                                          );
-        } else if (restrictorFunc->getName() == "qserv_areaspec_circle") {
+        } else if (restrictorFunc.getName() == "qserv_areaspec_circle") {
             _generator = std::make_shared<AreaGenerator>("s2PtInCircle",
                                                          3,
-                                                         restrictorFunc->getParameters()
+                                                         restrictorFunc.getParameters()
                                                          );
-        } else if (restrictorFunc->getName() == "qserv_areaspec_ellipse") {
+        } else if (restrictorFunc.getName() == "qserv_areaspec_ellipse") {
             _generator = std::make_shared<AreaGenerator>("s2PtInEllipse",
                                                          5,
-                                                         restrictorFunc->getParameters()
+                                                         restrictorFunc.getParameters()
                                                          );
-        } else if (restrictorFunc->getName() == "qserv_areaspec_poly") {
+        } else if (restrictorFunc.getName() == "qserv_areaspec_poly") {
             const int use_string = AreaGenerator::USE_STRING;
             _generator = std::make_shared<AreaGenerator>("s2PtInCPoly",
                                                          use_string,
-                                                         restrictorFunc->getParameters()
+                                                         restrictorFunc.getParameters()
                                                          );
         } else {
-            throw qana::AnalysisBug("Unmatched restriction spec: " + restrictorFunc->getName());
+            throw qana::AnalysisBug("Unmatched restriction spec: " + restrictorFunc.getName());
         }
     }
     std::string const _name;
@@ -262,9 +256,9 @@ private:
 };
 
 
-query::BoolTerm::Ptr makeCondition(query::QsRestrictor const& restr,
+query::BoolTerm::Ptr makeCondition(query::QsRestrictorFunction const& restrictorFunc,
                                    RestrictorEntry const& restrictorEntry) {
-    Restriction r(restr);
+    Restriction r(restrictorFunc);
     return r.generate(restrictorEntry);
 }
 
@@ -401,8 +395,10 @@ void addScisqlRestrictors(std::vector<std::shared_ptr<query::QsRestrictor>> cons
     // Add scisql spatial restrictions: for each of the qserv restrictors, generate a scisql restrictor
     // condition for each chunked table.
     for (auto const& qsRestrictor : restrictors) {
-        for (auto const& chunkedTable : chunkedTables) {
-            newTerm->_terms.push_back(makeCondition(*qsRestrictor, chunkedTable));
+        if (auto restrictorFunc = std::dynamic_pointer_cast<query::QsRestrictorFunction>(qsRestrictor)) {
+            for (auto const& chunkedTable : chunkedTables) {
+                newTerm->_terms.push_back(makeCondition(*restrictorFunc, chunkedTable));
+            }
         }
     }
     LOGS(_log, LOG_LVL_TRACE, "for restrictors: " << util::printable(restrictors) <<
@@ -526,7 +522,34 @@ query::QsRestrictor::Ptr newRestrictor(
 
 
 /**
- * @brief Make a Secondary Index comparison restrictor for the given comparison predicate, if one of the
+ * @brief Make a Secondary Index comparison restrictor for the given between predicate, if one of the
+ *      columns in the predicate is a director column.
+ *
+ * @param betweenPredicate
+ * @param context
+ * @return std::shared_ptr<query::SIBetweenRestr> The restrictor that corresponds to the given predicate if one
+ *      of the columns is a director column, otherwise nullptr.
+ */
+std::shared_ptr<query::SIBetweenRestrictor> makeSecondaryIndexRestrictor(
+            query::BetweenPredicate const& betweenPredicate,
+            query::QueryContext const& context) {
+    if (isSecIndexCol(context, betweenPredicate.value->getColumnRef())) {
+        auto dirCol = getCorrespondingDirectorColumn(context, betweenPredicate.value->getColumnRef());
+        if (nullptr == dirCol) {
+            LOGS(_log, LOG_LVL_ERROR, "Failed to get director column for " <<
+                betweenPredicate.value->getColumnRef());
+            return nullptr;
+        }
+        return std::make_shared<query::SIBetweenRestrictor>(std::make_shared<query::BetweenPredicate>(
+                query::ValueExpr::newSimple(dirCol), betweenPredicate.minValue,
+                betweenPredicate.maxValue, betweenPredicate.hasNot));
+    }
+    return nullptr;
+}
+
+
+/**
+ * @brief Make a Secondary Index 'between' restrictor for the given comparison predicate, if one of the
  *      columns in the comparison predicate is a director column.
  *
  * @param compPredicate
@@ -534,7 +557,7 @@ query::QsRestrictor::Ptr newRestrictor(
  * @return std::shared_ptr<query::SICompRestr> The restrictor that corresponds to the given predicate if one
  *      of the columns is a director column, otherwise nullptr.
  */
-std::shared_ptr<query::SICompRestrictor> makeSICompRestrictor(
+std::shared_ptr<query::SICompRestrictor> makeSecondaryIndexRestrictor(
             query::CompPredicate const& compPredicate,
             query::QueryContext const& context) {
     if (compPredicate.right->isConstVal() && isSecIndexCol(context, compPredicate.left->getColumnRef())) {
@@ -560,7 +583,6 @@ std::shared_ptr<query::SICompRestrictor> makeSICompRestrictor(
     }
     return nullptr;
 }
-
 
 /**  Create QSRestrictors which will use secondary index
  *
@@ -599,29 +621,18 @@ query::QsRestrictor::PtrVector getSecIndexRestrictors(query::QueryContext& conte
                 }
             } else if (auto const compPredicate =
                        std::dynamic_pointer_cast<query::CompPredicate>(factorTerm)) {
-                restrictor = makeSICompRestrictor(*compPredicate, context);
+                restrictor = makeSecondaryIndexRestrictor(*compPredicate, context);
                 if (nullptr != restrictor) {
-                    LOGS(_log, LOG_LVL_DEBUG, "Add SECONDARY_INDEX_IN restrictor: " << *restrictor <<
+                    LOGS(_log, LOG_LVL_DEBUG, "Add restrictor: " << *restrictor <<
                                               " for " << compPredicate);
                 }
             } else if (auto const betweenPredicate =
                        std::dynamic_pointer_cast<query::BetweenPredicate>(factorTerm)) {
-                // BETWEEN predicate
                 LOGS(_log, LOG_LVL_TRACE, "Check for SECONDARY_INDEX_BETWEEN restrictor");
-                columnRefs = resolveAsColumnRef(betweenPredicate->value);
-                for (query::ColumnRef::Ptr const& column_ref : columnRefs) {
-                    if (isSecIndexCol(context, column_ref)) {
-                        query::ValueExprPtrVector cands;
-                        cands.push_back(betweenPredicate->minValue);
-                        cands.push_back(betweenPredicate->maxValue);
-                        auto restrictorType = betweenPredicate->hasNot ? SECONDARY_INDEX_NOT_BETWEEN : SECONDARY_INDEX_BETWEEN;
-                        restrictor = newRestrictor(restrictorType, context, column_ref, cands);
-                        if (restrictor) {
-                            LOGS(_log, LOG_LVL_DEBUG, "Add SECONDARY_INDEX_BETWEEN restrictor: "
-                                                      << *restrictor);
-                            break; // Only want one per column.
-                        }
-                    }
+                restrictor = makeSecondaryIndexRestrictor(*betweenPredicate, context);
+                if (nullptr != restrictor) {
+                    LOGS(_log, LOG_LVL_DEBUG, "Add restrictor: " << *restrictor <<
+                                              " for " << betweenPredicate);
                 }
             }
 
