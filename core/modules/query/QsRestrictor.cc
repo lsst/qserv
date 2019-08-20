@@ -37,6 +37,7 @@
 // Qserv headers
 #include "query/BetweenPredicate.h"
 #include "query/CompPredicate.h"
+#include "query/InPredicate.h"
 #include "query/QueryTemplate.h"
 #include "query/SelectList.h"
 #include "query/SelectStmt.h"
@@ -76,7 +77,7 @@ void QsRestrictorFunction::renderTo(QueryTemplate& qt) const {
 
 
 bool QsRestrictorFunction::isEqual(const QsRestrictor& rhs) const {
-    auto rhsRestrictorFunc = static_cast<QsRestrictorFunction const&>(rhs);
+    auto rhsRestrictorFunc = dynamic_cast<QsRestrictorFunction const&>(rhs);
     if (_name != rhsRestrictorFunc._name) return false;
     return _params == rhsRestrictorFunc._params;
 }
@@ -97,7 +98,7 @@ void SICompRestrictor::renderTo(QueryTemplate& qt) const {
 
 
 bool SICompRestrictor::isEqual(const QsRestrictor& rhs) const {
-    auto rhsCompRestrictor = static_cast<SICompRestrictor const&>(rhs);
+    auto rhsCompRestrictor = dynamic_cast<SICompRestrictor const&>(rhs);
     return *_compPredicate == *rhsCompRestrictor._compPredicate;
 }
 
@@ -131,7 +132,7 @@ void SIBetweenRestrictor::renderTo(QueryTemplate& qt) const {
 
 
 bool SIBetweenRestrictor::isEqual(const QsRestrictor& rhs) const {
-    auto rhsBetweenRestrictor = static_cast<SIBetweenRestrictor const&>(rhs);
+    auto rhsBetweenRestrictor = dynamic_cast<SIBetweenRestrictor const&>(rhs);
     return *_betweenPredicate == *rhsBetweenRestrictor._betweenPredicate;
 }
 
@@ -158,5 +159,38 @@ std::string SIBetweenRestrictor::getSILookupQuery(std::string const& secondaryIn
             " WHERE " + boost::lexical_cast<std::string>(columnRefQt);
 }
 
+
+void SIInRestrictor::renderTo(QueryTemplate& qt) const {
+    _inPredicate->renderTo(qt);
+}
+
+
+bool SIInRestrictor::isEqual(const QsRestrictor& rhs) const {
+    auto rhsRestrictor = dynamic_cast<SIInRestrictor const&>(rhs);
+    return *_inPredicate == *rhsRestrictor._inPredicate;
+}
+
+
+std::ostream& SIInRestrictor::dbgPrint(std::ostream& os) const {
+    os << "SIInRestrictor(" << *_inPredicate << ")";
+    return os;
+}
+
+
+std::shared_ptr<query::ColumnRef const> SIInRestrictor::getSecondaryIndexColumnRef() const {
+    return _inPredicate->value->getColumnRef();
+}
+
+
+std::string SIInRestrictor::getSILookupQuery(std::string const& secondaryIndexDb,
+        std::string const& secondaryIndexTable, std::string const& chunkColumn,
+        std::string const& subChunkColumn) const {
+    QueryTemplate qt;
+    qt.setUseColumnOnly(true);
+    _inPredicate->renderTo(qt);
+    return "SELECT " + chunkColumn + ", " + subChunkColumn +
+            " FROM " + secondaryIndexDb + "." + secondaryIndexTable +
+            " WHERE " + boost::lexical_cast<std::string>(qt);
+}
 
 }}} // namespace lsst::qserv::query

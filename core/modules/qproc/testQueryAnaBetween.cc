@@ -59,8 +59,8 @@ using lsst::qserv::parser::SelectParser;
 using lsst::qserv::qproc::ChunkQuerySpec;
 using lsst::qserv::qproc::QuerySession;
 using lsst::qserv::query::QsRestrictor;
-using lsst::qserv::query::QsRestrictorFunction;
 using lsst::qserv::query::SIBetweenRestrictor;
+using lsst::qserv::query::SIInRestrictor;
 using lsst::qserv::query::QueryContext;
 using lsst::qserv::sql::SqlConfig;
 using lsst::qserv::tests::QueryAnaFixture;
@@ -125,12 +125,14 @@ BOOST_AUTO_TEST_CASE(DoubleSecondaryIndexRestrictor) {
         " FROM " + std::string(lsst::qserv::SEC_INDEX_DB) +
         ".LSST__Object WHERE objectIdObjTest BETWEEN 38 AND 40");
     BOOST_REQUIRE(context->restrictors->at(1));
-    auto restrictorFunc = std::dynamic_pointer_cast<QsRestrictorFunction>(context->restrictors->at(1));
-    BOOST_REQUIRE(restrictorFunc != nullptr);
-    BOOST_CHECK_EQUAL(restrictorFunc->getName(), "sIndex");
-    char const* params[] = {"LSST", "Object", "objectIdObjTest", "10", "30", "70"};
-    BOOST_CHECK_EQUAL_COLLECTIONS(restrictorFunc->getParameters().begin(), restrictorFunc->getParameters().end(),
-                                  params, params+6);
+    auto inRestrictor = std::dynamic_pointer_cast<SIInRestrictor>(context->restrictors->at(1));
+    BOOST_REQUIRE(inRestrictor != nullptr);
+    BOOST_REQUIRE_EQUAL(inRestrictor->getSILookupQuery(lsst::qserv::SEC_INDEX_DB, "LSST__Object",
+                        lsst::qserv::CHUNK_COLUMN, lsst::qserv::SUB_CHUNK_COLUMN),
+        "SELECT " + std::string(lsst::qserv::CHUNK_COLUMN) + ", " +
+        std::string(lsst::qserv::SUB_CHUNK_COLUMN) +
+        " FROM " + std::string(lsst::qserv::SEC_INDEX_DB) +
+        ".LSST__Object WHERE objectIdObjTest IN(10,30,70)");
 }
 
 
@@ -160,12 +162,14 @@ BOOST_AUTO_TEST_CASE(DoubleSecondaryIndexRestrictorCartesian) {
         " FROM " + std::string(lsst::qserv::SEC_INDEX_DB) +
         ".LSST__Object WHERE objectIdObjTest BETWEEN 38 AND 40");
     BOOST_REQUIRE(context->restrictors->at(1));
-    auto restrictorFunc = std::dynamic_pointer_cast<QsRestrictorFunction>(context->restrictors->at(1));
-    BOOST_REQUIRE(restrictorFunc != nullptr);
-    BOOST_CHECK_EQUAL(restrictorFunc->getName(), "sIndex");
-    char const* params[] = {"LSST", "Object", "objectIdObjTest", "10", "30", "70"};
-    BOOST_CHECK_EQUAL_COLLECTIONS(restrictorFunc->getParameters().begin(), restrictorFunc->getParameters().end(),
-                                  params, params+6);
+    auto inRestrictor = std::dynamic_pointer_cast<SIInRestrictor>(context->restrictors->at(1));
+    BOOST_REQUIRE(inRestrictor != nullptr);
+    BOOST_REQUIRE_EQUAL(inRestrictor->getSILookupQuery(lsst::qserv::SEC_INDEX_DB, "LSST__Object",
+                        lsst::qserv::CHUNK_COLUMN, lsst::qserv::SUB_CHUNK_COLUMN),
+        "SELECT " + std::string(lsst::qserv::CHUNK_COLUMN) + ", " +
+        std::string(lsst::qserv::SUB_CHUNK_COLUMN) +
+        " FROM " + std::string(lsst::qserv::SEC_INDEX_DB) +
+        ".LSST__Object WHERE objectIdObjTest IN(10,30,70)");
 }
 
 

@@ -119,18 +119,6 @@ public:
                                                      SUB_CHUNK_COLUMN);
                 LOGS(_log, LOG_LVL_DEBUG, "secondary lookup sql:" << sql);
                 _sqlLookup(output, sql);
-            } else {
-                auto restrictor = std::dynamic_pointer_cast<query::QsRestrictorFunction>(restrBase);
-                if (nullptr == restrictor) {
-                    continue;
-                }
-                if (restrictor->getName() == "sIndex"){
-                    hasIndex = true;
-                    _sqlLookup(output, restrictor->getParameters(), IN);
-                } else if (restrictor->getName() == "sIndexNotIn"){
-                    hasIndex = true;
-                    _sqlLookup(output, restrictor->getParameters(), NOT_IN);
-                }
             }
         }
         if (!hasIndex) {
@@ -275,9 +263,6 @@ public:
 private:
     struct _checkIndex {
         bool operator()(std::shared_ptr<query::QsRestrictor> const& restrictor) {
-            if (auto restrFunc = std::dynamic_pointer_cast<query::QsRestrictorFunction>(restrictor)) {
-                return (restrFunc->getName() == "sIndex" || restrFunc->getName() == "sIndexBetween");
-            }
             if (auto restrFunc = std::dynamic_pointer_cast<query::SIRestrictor>(restrictor)) {
                 return true;
             }

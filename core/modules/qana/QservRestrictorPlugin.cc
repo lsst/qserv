@@ -75,9 +75,6 @@ std::string const UDF_PREFIX = "scisql_";
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.qana.QservRestrictorPlugin");
 
-// Restrictor Types:
-const char* SECONDARY_INDEX_IN = "sIndex";
-const char* SECONDARY_INDEX_NOT_IN = "sIndexNotIn";
 
 /// RestrictorEntry is a class to contain information about chunked tables.
 struct RestrictorEntry {
@@ -408,18 +405,6 @@ void addScisqlRestrictors(std::vector<std::shared_ptr<query::QsRestrictor>> cons
 
 
 /**
- * @brief Make a vector of ColumnRef derived from the given ValueExpr.
- */
-query::ColumnRef::Vector resolveAsColumnRef(query::ValueExprPtr vexpr) {
-    query::ColumnRef::Vector columnRefs;
-    auto columnRef = vexpr->copyAsColumnRef();
-    if (nullptr != columnRef)
-        columnRefs.push_back(columnRef);
-    return columnRefs;
-}
-
-
-/**
  * @brief Find out if the given ColumnRef represents a valid secondary index column.
  */
 bool isSecIndexCol(query::QueryContext const& context, std::shared_ptr<query::ColumnRef> cr) {
@@ -481,43 +466,29 @@ query::ColumnRef::Ptr getCorrespondingDirectorColumn(query::QueryContext const& 
 }
 
 
-/**  Create a QsRestrictor from the column ref and the set of specified values or NULL if one of the values is a non-literal.
+/**
+ * @brief Make a Secondary Index comparison restrictor for the given 'in' predicate, if the value column
+ *      of the predicate is a director column.
  *
- *   @param restrictorType: The type of restrictor, only secondary index restrictors are handled
- *   @param context:        Context, used to get database schema informations
- *   @param cr:             Represent the column on which secondary index will be queried
- *   @return:               A Qserv restrictor or NULL if at least one element in values is a non-literal.
+ * @param inPredicate
+ * @param context
+ * @return std::shared_ptr<query::SIInRestrictor> The restrictor that corresponds to the given predicate if
+ *      the value column is a director column, otherwise nullptr.
  */
-query::QsRestrictor::Ptr newRestrictor(
-    const char * restrictorName,
-    query::QueryContext const& context,
-    std::shared_ptr<query::ColumnRef> cr,
-    query::ValueExprPtrVector const& values)
-{
-    // Extract the literals, bailing out if we see a non-literal
-    bool isValid = true;
-    std::for_each(values.begin(), values.end(),
-        [&isValid](query::ValueExprPtr p) {
-            isValid = isValid && p != nullptr && p->isConstVal(); });
-    if (!isValid) {
-        return nullptr;
+std::shared_ptr<query::SIInRestrictor> makeSecondaryIndexRestrictor(
+            query::InPredicate const& inPredicate,
+            query::QueryContext const& context) {
+    if (isSecIndexCol(context, inPredicate.value->getColumnRef())) {
+        auto dirCol = getCorrespondingDirectorColumn(context, inPredicate.value->getColumnRef());
+        if (nullptr == dirCol) {
+            LOGS(_log, LOG_LVL_ERROR, "Failed to get director column for " <<
+                inPredicate.value->getColumnRef());
+            return nullptr;
+        }
+        return std::make_shared<query::SIInRestrictor>(std::make_shared<query::InPredicate>(
+                query::ValueExpr::newSimple(dirCol), inPredicate.cands, inPredicate.hasNot));
     }
-
-    // sIndex... restrictors have parameters as follows: db, table, column, val1, val2, ...
-    auto directorColumnRef = getCorrespondingDirectorColumn(context, cr);
-    if (nullptr == directorColumnRef) {
-        // At this point if we can't get a valid corresponding director column for the passed-in column ref
-        // then it's an error or unexpected behavior; check the logs for more information (see the impl of
-        // getCorrespondingDirectorColumn for more details). And return nullptr - we can't make a restrictor.
-        return nullptr;
-    }
-
-    std::vector<std::string> parameters = {directorColumnRef->getDb(), directorColumnRef->getTable(),
-                                           directorColumnRef->getColumn()};
-    std::transform(values.begin(), values.end(), std::back_inserter(parameters),
-        [](query::ValueExprPtr p) -> std::string { return p->getConstVal(); });
-
-    return std::make_shared<query::QsRestrictorFunction>(restrictorName, std::move(parameters));
+    return nullptr;
 }
 
 
@@ -601,42 +572,19 @@ query::QsRestrictor::PtrVector getSecIndexRestrictors(query::QueryContext& conte
         auto factor = std::dynamic_pointer_cast<query::BoolFactor>(term);
         if (!factor) continue;
         for (auto factorTerm : factor->_terms) {
-            query::ColumnRef::Vector columnRefs;
             query::QsRestrictor::Ptr restrictor;
-
-            // Remark: computation below could be placed in a virtual *Predicate::newRestrictor() method
-            // but this is not obvious because it would move restrictor-related code outside of
-            // the current plugin.
-            // IN predicate
-            LOGS(_log, LOG_LVL_TRACE, "Check for SECONDARY_INDEX_IN restrictor");
-            if (auto const inPredicate = std::dynamic_pointer_cast<query::InPredicate>(factorTerm)) {
-                columnRefs = resolveAsColumnRef(inPredicate->value);
-                for (query::ColumnRef::Ptr const& column_ref : columnRefs) {
-                    if (isSecIndexCol(context, column_ref)) {
-                        auto restrictorType = inPredicate->hasNot ? SECONDARY_INDEX_NOT_IN : SECONDARY_INDEX_IN;
-                        restrictor = newRestrictor(restrictorType, context, column_ref, inPredicate->cands);
-                        LOGS(_log, LOG_LVL_DEBUG, "Add SECONDARY_INDEX_IN restrictor: " << *restrictor);
-                        break; // Only want one per column.
-                    }
-                }
+            if (auto const inPredicate =
+                    std::dynamic_pointer_cast<query::InPredicate>(factorTerm)) {
+                restrictor = makeSecondaryIndexRestrictor(*inPredicate, context);
             } else if (auto const compPredicate =
-                       std::dynamic_pointer_cast<query::CompPredicate>(factorTerm)) {
+                    std::dynamic_pointer_cast<query::CompPredicate>(factorTerm)) {
                 restrictor = makeSecondaryIndexRestrictor(*compPredicate, context);
-                if (nullptr != restrictor) {
-                    LOGS(_log, LOG_LVL_DEBUG, "Add restrictor: " << *restrictor <<
-                                              " for " << compPredicate);
-                }
             } else if (auto const betweenPredicate =
-                       std::dynamic_pointer_cast<query::BetweenPredicate>(factorTerm)) {
-                LOGS(_log, LOG_LVL_TRACE, "Check for SECONDARY_INDEX_BETWEEN restrictor");
+                    std::dynamic_pointer_cast<query::BetweenPredicate>(factorTerm)) {
                 restrictor = makeSecondaryIndexRestrictor(*betweenPredicate, context);
-                if (nullptr != restrictor) {
-                    LOGS(_log, LOG_LVL_DEBUG, "Add restrictor: " << *restrictor <<
-                                              " for " << betweenPredicate);
-                }
             }
-
             if (restrictor) {
+                LOGS(_log, LOG_LVL_DEBUG, "Add restrictor: " << *restrictor << " for " << factorTerm);
                 result.push_back(restrictor);
             }
         }

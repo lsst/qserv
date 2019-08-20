@@ -46,6 +46,7 @@ namespace query {
     class BetweenPredicate;
     class ColumnRef;
     class CompPredicate;
+    class InPredicate;
     class QueryTemplate;
 }}} // End of forward declarations
 
@@ -238,6 +239,45 @@ private:
     // BetweenPredicate.
     std::shared_ptr<query::BetweenPredicate> _betweenPredicate;
 };
+
+
+class SIInRestrictor : public SIRestrictor {
+public:
+    SIInRestrictor() = default;
+
+    SIInRestrictor(std::shared_ptr<query::InPredicate> inPredicate)
+            : _inPredicate(inPredicate) {}
+
+    /**
+     * @brief Serialze this instance as SQL to the QueryTemplate.
+     */
+    void renderTo(QueryTemplate& qt) const override;
+
+    /**
+     * @brief Serialize to the given ostream for debug output.
+     */
+    std::ostream& dbgPrint(std::ostream& os) const override;
+
+    std::shared_ptr<query::ColumnRef const> getSecondaryIndexColumnRef() const override;
+
+    std::string getSILookupQuery(std::string const& secondaryIndexDb, std::string const& secondaryIndexTable,
+                                 std::string const& chunkColumn, std::string const& subChunkColumn) const override;
+
+protected:
+    /**
+     * @brief Test if this and rhs are equal.
+
+     * This is an overidable helper function for operator==, it should only be called by that function, or at
+     * least make sure that typeid(this) == typeid(rhs) before calling isEqual.
+     */
+    bool isEqual(const QsRestrictor& rhs) const override;
+
+private:
+    std::shared_ptr<query::InPredicate> _inPredicate; //< the comparison for this restrictor.
+};
+
+
+
 }}} // namespace lsst::qserv::query
 
 #endif // LSST_QSERV_QUERY_QSRESTRICTOR_H
