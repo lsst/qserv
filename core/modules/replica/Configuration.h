@@ -223,6 +223,12 @@ public:
 
     virtual ~Configuration() = default;
 
+    /**
+     * Reload non-static parameters of the Configuration from the same source
+     * they were read before.
+     */
+    //virtual void reload() = 0;
+
     /// @return the configuration prefix
     virtual std::string prefix() const = 0;
 

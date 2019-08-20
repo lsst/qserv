@@ -34,8 +34,8 @@ namespace qserv {
 namespace replica {
 
 /**
- * Class AdminApp implements a Controller application for launching
- * worker management requests.
+ * Class AdminApp implements an application for launching
+ * worker management requests across select workers.
  */
 class AdminApp : public Application {
 
@@ -75,8 +75,8 @@ private:
     AdminApp(int argc, char* argv[]);
 
 
-    /// The name of an operation to execute
-    std::string _operation;
+    /// The name of a command to be executed
+    std::string _command;
 
     /// The flag which if set allows selecting all workers for the operation
     bool _allWorkers = false;
@@ -85,13 +85,7 @@ private:
     bool _dumpRequestInfo = false;
 
     /// The maximum timeout for the management requests
-    unsigned int _requestExpirationIvalSec = 10;
-
-    /// the flag triggering progress report when executing batches of requests
-    bool _progressReport = false;
-
-    /// the flag triggering detailed report on failed requests
-    bool _errorReport = false;
+    unsigned int _timeout = 10;
 
     /// Print vertical separator in tables
     bool _verticalSeparator = false;

@@ -575,6 +575,22 @@ ServiceDrainRequest::Ptr Controller::drainWorkerService(
 }
 
 
+ServiceReconfigRequest::Ptr Controller::reconfigWorkerService(
+        string const& workerName,
+        ServiceReconfigRequest::CallbackType const& onFinish,
+        string const& jobId,
+        unsigned int requestExpirationIvalSec) {
+
+    LOGS(_log, LOG_LVL_DEBUG, _context(__func__) << "  workerName: " << workerName);
+
+    return _submit<ServiceReconfigRequest>(
+        workerName,
+        onFinish,
+        jobId,
+        requestExpirationIvalSec);
+}
+
+
 size_t Controller::numActiveRequests() const {
     util::Lock lock(_mtx, _context(__func__));
     return _registry.size();
@@ -613,6 +629,13 @@ void Controller::_assertIsRunning() const {
     if (not serviceProvider()->isRunning()) {
         throw runtime_error("ServiceProvider::" + string(__func__) + "  not running");
     }
+}
+
+
+void Controller::_logManagementRequest(string const& requestName,
+                                       string const& workerName) {
+    LOGS(_log, LOG_LVL_DEBUG, _context(__func__) << "  workerName: " << workerName
+         << "  requestName: " << requestName);
 }
 
 }}} // namespace lsst::qserv::replica

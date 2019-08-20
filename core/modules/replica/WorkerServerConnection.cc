@@ -501,6 +501,21 @@ void WorkerServerConnection::_processServiceRequest(ProtocolRequestHeader& hdr) 
             _reply(hdr.id(), response);
             break;
         }
+        case ProtocolServiceRequestType::SERVICE_RECONFIG: {
+
+            _processor->reconfig();
+
+            const bool extendedReport = true;   // to return detailed info on all known
+                                                // replica-related requests
+            _processor->setServiceResponse(
+                  response,
+                  hdr.id(),
+                  ProtocolServiceResponse::SUCCESS,
+                  extendedReport);
+
+            _reply(hdr.id(), response);
+            break;
+        }
         default:
             throw logic_error(
                     "WorkerServerConnection::" + string(__func__) + "  unhandled request type: '" +

@@ -149,7 +149,8 @@ ControllerApp::ControllerApp(int argc, char* argv[])
             "SERVICE_RESUME",
             "SERVICE_STATUS",
             "SERVICE_REQUESTS",
-            "SERVICE_DRAIN"
+            "SERVICE_DRAIN",
+            "SERVICE_RECONFIG"
         },
         _request);
 
@@ -508,6 +509,10 @@ ControllerApp::ControllerApp(int argc, char* argv[])
     parser().command("SERVICE_DRAIN").description(
         "Drain all requests by stopping cancelling all ongoing requests"
         " and emptying all queues.");
+
+    parser().command("SERVICE_RECONFIG").description(
+        "Reload worker's Configuration. Requests known to a worker won't be affected"
+        " by the operation.");
 }
 
 
@@ -1070,6 +1075,12 @@ int ControllerApp::runImpl() {
         ptr = controller->drainWorkerService(
             _workerName,
             [] (ServiceDrainRequest::Ptr const& ptr_) {
+                ::printRequest<ServiceManagementRequestBase>(ptr_);
+            });
+    } else if ("SERVICE_RECONFIG" == _request) {
+        ptr = controller->reconfigWorkerService(
+            _workerName,
+            [] (ServiceReconfigRequest::Ptr const& ptr_) {
                 ::printRequest<ServiceManagementRequestBase>(ptr_);
             });
     } else {

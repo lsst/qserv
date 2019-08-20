@@ -168,6 +168,7 @@ namespace replica {
     class ServiceStatusRequestPolicy;
     class ServiceRequestsRequestPolicy;
     class ServiceDrainRequestPolicy;
+    class ServiceReconfigRequestPolicy;
 
     template <typename POLICY> class ServiceManagementRequest;
 
@@ -176,12 +177,14 @@ namespace replica {
     using ServiceStatusRequest   = ServiceManagementRequest<ServiceStatusRequestPolicy>;
     using ServiceRequestsRequest = ServiceManagementRequest<ServiceRequestsRequestPolicy>;
     using ServiceDrainRequest    = ServiceManagementRequest<ServiceDrainRequestPolicy>;
+    using ServiceReconfigRequest = ServiceManagementRequest<ServiceReconfigRequestPolicy>;
 
     typedef std::shared_ptr<ServiceSuspendRequest>  ServiceSuspendRequestPtr;
     typedef std::shared_ptr<ServiceResumeRequest>   ServiceResumeRequestPtr;
     typedef std::shared_ptr<ServiceStatusRequest>   ServiceStatusRequestPtr;
     typedef std::shared_ptr<ServiceRequestsRequest> ServiceRequestsRequestPtr;
     typedef std::shared_ptr<ServiceDrainRequest>    ServiceDrainRequestPtr;
+    typedef std::shared_ptr<ServiceReconfigRequest> ServiceReconfigRequestPtr;
 }}}  // Forward declarations
 
 // This header declarations
@@ -475,6 +478,42 @@ public:
             std::string const& jobId="",
             unsigned int requestExpirationIvalSec=0);
 
+    ServiceReconfigRequestPtr reconfigWorkerService(
+            std::string const& workerName,
+            std::function<void(ServiceReconfigRequestPtr)> const& onFinish=nullptr,
+            std::string const& jobId="",
+            unsigned int requestExpirationIvalSec=0);
+
+    /**
+     * Specialized version of the requests launcher for the worker service
+     * management requests. This is an alternative request launching method
+     * for the above defined operations. It allows upstream template specialization
+     * in those cases when a generic code is desired.
+     * 
+     * @see Controller::suspendWorkerService()
+     * @see Controller::resumeWorkerService()
+     * @see Controller::statusOfWorkerService()
+     * @see Controller::requestsOfWorkerService()
+     * @see Controller::drainWorkerService()
+     * @see Controller::reconfigWorkerService()
+     * @see Controller::_submit()
+     */
+    template <class REQUEST>
+    typename REQUEST::Ptr workerServiceRequest(
+            std::string const& workerName,
+            typename REQUEST::CallbackType const& onFinish=nullptr,
+            std::string const& jobId="",
+            unsigned int requestExpirationIvalSec=0) {
+
+        _logManagementRequest(REQUEST::Policy::requestName(), workerName);
+
+        return _submit<REQUEST>(
+                workerName,
+                onFinish,
+                jobId,
+                requestExpirationIvalSec);
+    }
+
     template <class REQUEST>
     void requestsOfType(std::vector<typename REQUEST::Ptr>& requests) const {
         util::Lock lock(_mtx, _context(__func__));
@@ -568,6 +607,12 @@ private:
     void _finish(std::string const& id);
 
     void _assertIsRunning() const;
+
+    /**
+     * Logger for the management requests
+     */
+    void _logManagementRequest(std::string const& requestName,
+                               std::string const& workerName);
 
     /**
      * A generic version of the request creation and submission

@@ -415,9 +415,7 @@ vector<string> Configuration::allWorkers() const {
 
 
 vector<string> Configuration::databaseFamilies() const {
-
     util::Lock lock(_mtx, context(__func__));
-
     vector<string> families;
     for (auto&& itr: _databaseFamilyInfo) {
         families.push_back(itr.first);
@@ -427,17 +425,13 @@ vector<string> Configuration::databaseFamilies() const {
 
 
 bool Configuration::isKnownDatabaseFamily(string const& name) const {
-
     util::Lock lock(_mtx, context(__func__));
-
     return _databaseFamilyInfo.count(name);
 }
 
 
 size_t Configuration::replicationLevel(string const& family) const {
-
     util::Lock lock(_mtx, context(__func__));
-
     auto const itr = _databaseFamilyInfo.find(family);
     if (itr == _databaseFamilyInfo.end()) {
         throw invalid_argument(
@@ -449,9 +443,7 @@ size_t Configuration::replicationLevel(string const& family) const {
 
 
 DatabaseFamilyInfo Configuration::databaseFamilyInfo(string const& name) const {
-
     util::Lock lock(_mtx, context(__func__));
-
     auto&& itr = _databaseFamilyInfo.find(name);
     if (itr == _databaseFamilyInfo.end()) {
         throw invalid_argument(
@@ -491,17 +483,13 @@ vector<string> Configuration::databases(string const& family,
 
 
 bool Configuration::isKnownWorker(string const& name) const {
-
     util::Lock lock(_mtx, context(__func__));
-
     return _workerInfo.count(name) > 0;
 }
 
 
 WorkerInfo Configuration::workerInfo(string const& name) const {
-
     util::Lock lock(_mtx, context(__func__));
-
     auto const itr = _workerInfo.find(name);
     if (itr == _workerInfo.end()) {
         throw invalid_argument(
@@ -512,17 +500,13 @@ WorkerInfo Configuration::workerInfo(string const& name) const {
 
 
 bool Configuration::isKnownDatabase(string const& name) const {
-
     util::Lock lock(_mtx, context(__func__));
-
     return _databaseInfo.count(name) > 0;
 }
 
 
 DatabaseInfo Configuration::databaseInfo(string const& name) const {
-
     util::Lock lock(_mtx, context(__func__));
-
     auto&& itr = _databaseInfo.find(name);
     if (itr == _databaseInfo.end()) {
         throw invalid_argument(

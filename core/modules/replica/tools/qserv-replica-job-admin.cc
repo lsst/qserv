@@ -35,7 +35,7 @@ using namespace lsst::qserv::replica;
 
 int main(int argc, char* argv[]) {
     try {
-        auto app = AdminApp::create(argc, argv);
+        auto const app = AdminApp::create(argc, argv);
         return app->run();
     } catch (exception const& ex) {
         cerr << "main()  the application failed, exception: " << ex.what() << endl;

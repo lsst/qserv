@@ -73,6 +73,7 @@ enum ProtocolServiceRequestType {
     SERVICE_STATUS   = 2;
     SERVICE_REQUESTS = 3;
     SERVICE_DRAIN    = 4;
+    SERVICE_RECONFIG = 5;
 }
 
 // Message header is sent next after the frame size request. A sender must

@@ -165,6 +165,9 @@ public:
     /// Drain (cancel) all queued and in-progress requests
     void drain();
 
+    /// Reload Configuration
+    void reconfig();
+
     /**
      * Enqueue the replication request for processing
      *

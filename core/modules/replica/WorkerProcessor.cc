@@ -206,6 +206,14 @@ void WorkerProcessor::drain() {
 }
 
 
+void WorkerProcessor::reconfig() {
+
+    LOGS(_log, LOG_LVL_DEBUG, _context(__func__));
+
+    util::Lock lock(_mtx, _context(__func__));
+}
+
+
 void WorkerProcessor::enqueueForReplication(
                             string const& id,
                             ProtocolRequestReplicate const& request,
