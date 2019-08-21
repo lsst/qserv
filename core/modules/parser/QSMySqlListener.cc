@@ -1039,12 +1039,26 @@ private:
 
         // Add case insensitive behavior in order to mimic MySQL functions/procedures
         std::string insensitiveFunction(function);
-        if (insensitiveFunction != "sIndex") {
-            std::transform(insensitiveFunction.begin(), insensitiveFunction.end(),
-                           insensitiveFunction.begin(), ::tolower);
-            LOGS(_log, LOG_LVL_DEBUG, "Qserv restrictor changed to lower-case: " << insensitiveFunction);
+        std::transform(insensitiveFunction.begin(), insensitiveFunction.end(),
+                        insensitiveFunction.begin(), ::tolower);
+        LOGS(_log, LOG_LVL_DEBUG, "Qserv restrictor changed to lower-case: " << insensitiveFunction);
+
+        std::shared_ptr<query::AreaRestrictor> restrictor;
+        try {
+            if (insensitiveFunction == "qserv_areaspec_box") {
+                restrictor = make_shared<query::AreaRestrictorBox>(strParameters);
+            } else if (insensitiveFunction == "qserv_areaspec_circle") {
+                restrictor = make_shared<query::AreaRestrictorCircle>(strParameters);
+            } else if (insensitiveFunction == "qserv_areaspec_ellipse") {
+                restrictor = make_shared<query::AreaRestrictorEllipse>(strParameters);
+            } else if (insensitiveFunction == "qserv_areaspec_poly") {
+                restrictor = make_shared<query::AreaRestrictorPoly>(strParameters);
+            } else {
+                throw adapter_execution_error("Unhandled restrictor function: " + function);
+            }
+        } catch (std::logic_error err) {
+            throw adapter_execution_error(err.what());
         }
-        auto restrictor = std::make_shared<query::QsRestrictorFunction>(insensitiveFunction, std::move(strParameters));
         _getWhereClause()->addQsRestrictor(restrictor);
     }
 

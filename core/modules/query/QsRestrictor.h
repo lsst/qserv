@@ -41,9 +41,13 @@
 
 // Forward declarations
 namespace lsst {
+namespace sphgeom {
+    class Region;
+}
 namespace qserv {
 namespace query {
     class BetweenPredicate;
+    class BoolFactor;
     class ColumnRef;
     class CompPredicate;
     class InPredicate;
@@ -106,12 +110,26 @@ protected:
 };
 
 
-class QsRestrictorFunction : public QsRestrictor {
+class AreaRestrictor : public QsRestrictor {
 public:
-    QsRestrictorFunction() = default;
+    AreaRestrictor() = default;
+    virtual ~AreaRestrictor() = default;
 
-    QsRestrictorFunction(std::string const& name, std::vector<std::string> const& parameters)
-            : _name(name), _params(parameters) {}
+    virtual std::shared_ptr<query::BoolFactor> asSciSqlFactor(std::string const& tableAlias,
+            std::pair<std::string, std::string> const& chunkColumns) const = 0;
+
+    virtual std::shared_ptr<sphgeom::Region> getRegion() const = 0;
+};
+
+
+class AreaRestrictorBox : public AreaRestrictor{
+public:
+    AreaRestrictorBox(std::string const& lonMinDegree,
+                      std::string const& latMinDegree,
+                      std::string const& lonMaxDegree,
+                      std::string const& latMaxDegree);
+
+    AreaRestrictorBox(std::vector<std::string> const& parameters);
 
     /**
      * @brief Serialze this instance as SQL to the QueryTemplate.
@@ -119,36 +137,153 @@ public:
     void renderTo(QueryTemplate& qt) const override;
 
     /**
-     * @brief Get the function name.
-     *
-     * @return std::string const&
-     */
-    std::string const& getName() const { return _name; }
-
-    /**
-     * @brief Get the function parameters.
-     *
-     * @return StringVector const&
-     */
-    StringVector const& getParameters() const { return _params; }
-
-    /**
      * @brief Serialize to the given ostream for debug output.
      */
     std::ostream& dbgPrint(std::ostream& os) const override;
 
+    std::shared_ptr<query::BoolFactor> asSciSqlFactor(std::string const& tableAlias,
+            std::pair<std::string, std::string> const& chunkColumns) const override;
+
+    std::shared_ptr<sphgeom::Region> getRegion() const override;
+
 protected:
     /**
-     * @brief Test if this and rhs are equal.
-
+     * @brief Test if this is equal with rhs.
+     *
      * This is an overidable helper function for operator==, it should only be called by that function, or at
      * least make sure that typeid(this) == typeid(rhs) before calling isEqual.
      */
     bool isEqual(const QsRestrictor& rhs) const override;
 
 private:
-    std::string const _name;
-    StringVector const _params;
+    std::string _lonMinDegree;
+    std::string _latMinDegree;
+    std::string _lonMaxDegree;
+    std::string _latMaxDegree;
+};
+
+
+class AreaRestrictorCircle : public AreaRestrictor{
+public:
+    AreaRestrictorCircle() = default;
+    virtual ~AreaRestrictorCircle() = default;
+
+    AreaRestrictorCircle(std::string const& centerLonDegree,
+                         std::string const& centerLatDegree,
+                         std::string const& radiusDegree);
+
+    AreaRestrictorCircle(std::vector<std::string> const& parameters);
+
+    /**
+     * @brief Serialze this instance as SQL to the QueryTemplate.
+     */
+    void renderTo(QueryTemplate& qt) const override;
+
+    /**
+     * @brief Serialize to the given ostream for debug output.
+     */
+    std::ostream& dbgPrint(std::ostream& os) const override;
+
+    std::shared_ptr<query::BoolFactor> asSciSqlFactor(std::string const& tableAlias,
+            std::pair<std::string, std::string> const& chunkColumns) const override;
+
+    std::shared_ptr<sphgeom::Region> getRegion() const override;
+
+protected:
+    /**
+     * @brief Test if this is equal with rhs.
+     *
+     * This is an overidable helper function for operator==, it should only be called by that function, or at
+     * least make sure that typeid(this) == typeid(rhs) before calling isEqual.
+     */
+    bool isEqual(const QsRestrictor& rhs) const override;
+
+private:
+    std::string _centerLonDegree;
+    std::string _centerLatDegree;
+    std::string _radiusDegree;
+};
+
+
+class AreaRestrictorEllipse : public AreaRestrictor{
+public:
+    AreaRestrictorEllipse() = default;
+    virtual ~AreaRestrictorEllipse() = default;
+
+    AreaRestrictorEllipse(std::string const& centerLonDegree,
+                          std::string const& centerLatDegree,
+                          std::string const& semiMajorAxisAngleArcsec,
+                          std::string const& semiMinorAxisAngleArcsec,
+                          std::string const& positionAngleDegree);
+
+    AreaRestrictorEllipse(std::vector<std::string> const& parameters);
+
+    /**
+     * @brief Serialze this instance as SQL to the QueryTemplate.
+     */
+    void renderTo(QueryTemplate& qt) const override;
+
+    /**
+     * @brief Serialize to the given ostream for debug output.
+     */
+    std::ostream& dbgPrint(std::ostream& os) const override;
+
+    std::shared_ptr<query::BoolFactor> asSciSqlFactor(std::string const& tableAlias,
+            std::pair<std::string, std::string> const& chunkColumns) const override;
+
+    std::shared_ptr<sphgeom::Region> getRegion() const override;
+
+protected:
+    /**
+     * @brief Test if this is equal with rhs.
+     *
+     * This is an overidable helper function for operator==, it should only be called by that function, or at
+     * least make sure that typeid(this) == typeid(rhs) before calling isEqual.
+     */
+    bool isEqual(const QsRestrictor& rhs) const override;
+
+private:
+    std::string _centerLonDegree;
+    std::string _centerLatDegree;
+    std::string _semiMajorAxisAngleArcsec;
+    std::string _semiMinorAxisAngleArcsec;
+    std::string _positionAngleDegree;
+};
+
+
+class AreaRestrictorPoly : public AreaRestrictor{
+public:
+    AreaRestrictorPoly() = default;
+    virtual ~AreaRestrictorPoly() = default;
+
+    AreaRestrictorPoly(std::vector<std::string> const& parameters);
+
+    /**
+     * @brief Serialze this instance as SQL to the QueryTemplate.
+     */
+    void renderTo(QueryTemplate& qt) const override;
+
+    /**
+     * @brief Serialize to the given ostream for debug output.
+     */
+    std::ostream& dbgPrint(std::ostream& os) const override;
+
+    std::shared_ptr<query::BoolFactor> asSciSqlFactor(std::string const& tableAlias,
+            std::pair<std::string, std::string> const& chunkColumns) const override;
+
+    std::shared_ptr<sphgeom::Region> getRegion() const override;
+
+protected:
+    /**
+     * @brief Test if this is equal with rhs.
+     *
+     * This is an overidable helper function for operator==, it should only be called by that function, or at
+     * least make sure that typeid(this) == typeid(rhs) before calling isEqual.
+     */
+    bool isEqual(const QsRestrictor& rhs) const override;
+
+private:
+    std::vector<std::string> _parameters;
 };
 
 

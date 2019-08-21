@@ -67,11 +67,11 @@
 #include "util/IterableFormatter.h"
 
 
-namespace { // File-scope helpers
+namespace {
+
 
 using namespace lsst::qserv;
 
-std::string const UDF_PREFIX = "scisql_";
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.qana.QservRestrictorPlugin");
 
@@ -145,121 +145,6 @@ public:
 };
 
 
-template <typename C>
-query::FuncExpr::Ptr newFuncExpr(char const fName[],
-                                 std::string const& tableAlias,
-                                 StringPair const& chunkColumns,
-                                 C& c) {
-    query::FuncExpr::Ptr fe = std::make_shared<query::FuncExpr>();
-    fe->setName(UDF_PREFIX + fName);
-    fe->params.push_back(
-          query::ValueExpr::newSimple(query::ValueFactor::newColumnRefFactor(
-                std::make_shared<query::ColumnRef>("", "", tableAlias, chunkColumns.first))));
-    fe->params.push_back(
-          query::ValueExpr::newSimple(query::ValueFactor::newColumnRefFactor(
-                std::make_shared<query::ColumnRef>("", "", tableAlias, chunkColumns.second))));
-    for (auto const& i : c) {
-        fe->params.push_back(
-          query::ValueExpr::newSimple(query::ValueFactor::newConstFactor(i)));
-    }
-    return fe;
-}
-
-
-/// Restriction generates WHERE clause terms from restriction specs.
-/// Borrowed from older parsing framework.
-class Restriction {
-public:
-    Restriction(query::QsRestrictorFunction const& restrictorFunc)
-        : _name(restrictorFunc.getName()) {
-        _setGenerator(restrictorFunc);
-    }
-
-    query::BoolFactor::Ptr generate(RestrictorEntry const& e) {
-        return (*_generator)(e);
-    }
-
-private:
-    class Generator {
-    public:
-        virtual ~Generator() {}
-        virtual query::BoolFactor::Ptr operator()(RestrictorEntry const& e) = 0;
-    };
-
-    class AreaGenerator : public Generator {
-    public:
-        AreaGenerator(char const* fName_, int paramCount_,
-                      StringVector const& params_)
-            :  fName(fName_), paramCount(paramCount_), params(params_) {
-            if (paramCount_ == USE_STRING) {
-                // Convert param list to one quoted string.
-                // This bundles a variable-sized list into a single
-                // parameter to work with the MySQL UDF facility.
-            }
-        }
-
-        query::BoolFactor::Ptr operator()(RestrictorEntry const& e) override {
-            query::BoolFactor::Ptr newFactor =
-                    std::make_shared<query::BoolFactor>();
-            query::BoolFactorTerm::PtrVector& terms = newFactor->_terms;
-            query::CompPredicate::Ptr cp =
-                    std::make_shared<query::CompPredicate>();
-            std::shared_ptr<query::FuncExpr> fe =
-                newFuncExpr(fName, e.alias, e.chunkColumns, params);
-            cp->left =
-                query::ValueExpr::newSimple(query::ValueFactor::newFuncFactor(fe));
-            cp->op = query::CompPredicate::EQUALS_OP;
-            cp->right = query::ValueExpr::newSimple(
-                           query::ValueFactor::newConstFactor("1"));
-            terms.push_back(cp);
-            return newFactor;
-        }
-
-        char const* const fName;
-        int const paramCount;
-        StringVector const& params;
-        static const int USE_STRING = -999;
-    };
-
-    void _setGenerator(query::QsRestrictorFunction const& restrictorFunc) {
-        if (restrictorFunc.getName() == "qserv_areaspec_box") {
-            _generator = std::make_shared<AreaGenerator>("s2PtInBox",
-                                                         4,
-                                                         restrictorFunc.getParameters()
-                                                         );
-        } else if (restrictorFunc.getName() == "qserv_areaspec_circle") {
-            _generator = std::make_shared<AreaGenerator>("s2PtInCircle",
-                                                         3,
-                                                         restrictorFunc.getParameters()
-                                                         );
-        } else if (restrictorFunc.getName() == "qserv_areaspec_ellipse") {
-            _generator = std::make_shared<AreaGenerator>("s2PtInEllipse",
-                                                         5,
-                                                         restrictorFunc.getParameters()
-                                                         );
-        } else if (restrictorFunc.getName() == "qserv_areaspec_poly") {
-            const int use_string = AreaGenerator::USE_STRING;
-            _generator = std::make_shared<AreaGenerator>("s2PtInCPoly",
-                                                         use_string,
-                                                         restrictorFunc.getParameters()
-                                                         );
-        } else {
-            throw qana::AnalysisBug("Unmatched restriction spec: " + restrictorFunc.getName());
-        }
-    }
-    std::string const _name;
-    std::vector<double> _params;
-    std::shared_ptr<Generator> _generator;
-};
-
-
-query::BoolTerm::Ptr makeCondition(query::QsRestrictorFunction const& restrictorFunc,
-                                   RestrictorEntry const& restrictorEntry) {
-    Restriction r(restrictorFunc);
-    return r.generate(restrictorEntry);
-}
-
-
 /**
  * @brief Determine if the given ValueExpr represents a func that is one of the scisql functions that
  *        starts with `scisql_s2PtIn` that represents an area restrictor.
@@ -310,27 +195,6 @@ std::shared_ptr<const query::FuncExpr> extractSingleScisqlAreaFunc(query::WhereC
 }
 
 
-std::shared_ptr<query::QsRestrictor> makeQsRestrictor(std::string const& name,
-                                                      std::vector<std::string> const& parameters,
-                                                      unsigned int expectedParameterCount, bool isMinCount=false,
-                                                      bool countMustBeEven=false) {
-    if (not isMinCount && parameters.size() != expectedParameterCount) {
-        LOGS(_log, LOG_LVL_WARN, "Wrong number of parameters (" << parameters.size() << ") for " << name <<
-                " (should be " << expectedParameterCount << "), will not apply an area restrictor..");
-        return nullptr;
-    } else if (isMinCount && parameters.size() < expectedParameterCount) {
-        LOGS(_log, LOG_LVL_WARN, "Wrong number of parameters (" << parameters.size() << ") for " << name <<
-                " (should be at least " << expectedParameterCount << "), will not apply an area restrictor..");
-        return nullptr;
-    } else if (countMustBeEven && parameters.size() % 2 != 0) {
-        LOGS(_log, LOG_LVL_WARN, "Odd number of parameters (" << parameters.size() << ") for " << name <<
-                " (must be even), will not apply an area restrictor..");
-        return nullptr;
-    }
-    return std::make_shared<query::QsRestrictorFunction>(name, parameters);
-}
-
-
 std::shared_ptr<query::QsRestrictor> makeQsRestrictor(query::FuncExpr const& scisqlFunc) {
     std::vector<std::string> parameters;
     int counter(0);
@@ -349,13 +213,13 @@ std::shared_ptr<query::QsRestrictor> makeQsRestrictor(query::FuncExpr const& sci
         }
     }
     if (scisqlFunc.getName() == "scisql_s2PtInBox") {
-        return makeQsRestrictor("qserv_areaspec_box", parameters, 4);
+        return std::make_shared<query::AreaRestrictorBox>(parameters);
     } else if (scisqlFunc.getName() == "scisql_s2PtInCircle") {
-        return makeQsRestrictor("qserv_areaspec_circle", parameters, 3);
+        return std::make_shared<query::AreaRestrictorCircle>(parameters);
     } else if (scisqlFunc.getName() == "scisql_s2PtInEllipse") {
-        return makeQsRestrictor("qserv_areaspec_ellipse", parameters, 5);
+        return std::make_shared<query::AreaRestrictorEllipse>(parameters);
     } else if (scisqlFunc.getName() == "scisql_s2PtInCPoly") {
-        return makeQsRestrictor("qserv_areaspec_poly", parameters, 6, true, true);
+        return std::make_shared<query::AreaRestrictorPoly>(parameters);
     }
     return nullptr;
 }
@@ -392,9 +256,10 @@ void addScisqlRestrictors(std::vector<std::shared_ptr<query::QsRestrictor>> cons
     // Add scisql spatial restrictions: for each of the qserv restrictors, generate a scisql restrictor
     // condition for each chunked table.
     for (auto const& qsRestrictor : restrictors) {
-        if (auto restrictorFunc = std::dynamic_pointer_cast<query::QsRestrictorFunction>(qsRestrictor)) {
+        if (auto areaRestrictor = std::dynamic_pointer_cast<query::AreaRestrictor>(qsRestrictor)) {
             for (auto const& chunkedTable : chunkedTables) {
-                newTerm->_terms.push_back(makeCondition(*restrictorFunc, chunkedTable));
+                newTerm->_terms.push_back(areaRestrictor->asSciSqlFactor(chunkedTable.alias,
+                                                                         chunkedTable.chunkColumns));
             }
         }
     }

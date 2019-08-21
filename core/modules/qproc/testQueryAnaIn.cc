@@ -58,8 +58,6 @@ using lsst::qserv::mysql::MySqlConfig;
 using lsst::qserv::parser::SelectParser;
 using lsst::qserv::qproc::ChunkQuerySpec;
 using lsst::qserv::qproc::QuerySession;
-using lsst::qserv::query::QsRestrictor;
-using lsst::qserv::query::QsRestrictorFunction;
 using lsst::qserv::query::QueryContext;
 using lsst::qserv::query::SIInRestrictor;
 using lsst::qserv::sql::SqlConfig;

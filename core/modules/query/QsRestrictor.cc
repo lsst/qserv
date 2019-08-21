@@ -35,14 +35,30 @@
 #include <iterator>
 
 // Qserv headers
+#include "qproc/geomAdapter.h"
 #include "query/BetweenPredicate.h"
+#include "query/BoolFactor.h"
 #include "query/CompPredicate.h"
+#include "query/FuncExpr.h"
 #include "query/InPredicate.h"
 #include "query/QueryTemplate.h"
 #include "query/SelectList.h"
 #include "query/SelectStmt.h"
 #include "query/ValueExpr.h"
+#include "query/ValueFactor.h"
 #include "util/IterableFormatter.h"
+
+namespace {
+
+template <typename T>
+std::vector<T> convertVec(std::vector<std::string> const& v) {
+    std::vector<T> out;
+    out.reserve(v.size());
+    std::transform(v.begin(), v.end(), std::back_inserter(out), boost::lexical_cast<T, std::string>);
+    return out;
+}
+
+}
 
 
 namespace lsst {
@@ -60,11 +76,247 @@ bool QsRestrictor::operator==(const QsRestrictor& rhs) const {
 }
 
 
-void QsRestrictorFunction::renderTo(QueryTemplate& qt) const {
-    qt.append(_name);
+AreaRestrictorBox::AreaRestrictorBox(std::string const& lonMinDegree, std::string const& latMinDegree,
+        std::string const& lonMaxDegree, std::string const& latMaxDegree)
+        : _lonMinDegree(lonMinDegree), _latMinDegree(latMinDegree), _lonMaxDegree(lonMaxDegree),
+          _latMaxDegree(latMaxDegree)
+{}
+
+
+AreaRestrictorBox::AreaRestrictorBox(std::vector<std::string> const& parameters) {
+    if (parameters.size() != 4) {
+        throw std::logic_error("qserv_areaspec_box requires 4 parameters.");
+    }
+    _lonMinDegree = parameters[0];
+    _latMinDegree = parameters[1];
+    _lonMaxDegree = parameters[2];
+    _latMaxDegree = parameters[3];
+}
+
+
+void AreaRestrictorBox::renderTo(QueryTemplate& qt) const {
+    qt.append("qserv_areaspec_box");
+    qt.append("(");
+    qt.append(_lonMinDegree);
+    qt.append(",");
+    qt.append(_latMinDegree);
+    qt.append(",");
+    qt.append(_lonMaxDegree);
+    qt.append(",");
+    qt.append(_latMaxDegree);
+    qt.append(")");
+}
+
+
+std::ostream& AreaRestrictorBox::dbgPrint(std::ostream& os) const {
+    QueryTemplate qt;
+    renderTo(qt);
+    os << qt;
+    return os;
+}
+
+
+bool AreaRestrictorBox::isEqual(const QsRestrictor& rhs) const {
+    auto rhsBox = static_cast<AreaRestrictorBox const&>(rhs);
+    return (_lonMinDegree == rhsBox._lonMinDegree &&
+            _latMinDegree == rhsBox._latMinDegree &&
+            _lonMaxDegree == rhsBox._lonMaxDegree &&
+            _latMaxDegree == rhsBox._latMaxDegree);
+}
+
+
+std::shared_ptr<query::BoolFactor> AreaRestrictorBox::asSciSqlFactor(std::string const& tableAlias,
+        std::pair<std::string, std::string> const& chunkColumns) const {
+    std::vector<std::shared_ptr<query::ValueExpr>> parameters = {
+        query::ValueExpr::newColumnExpr("","", tableAlias, chunkColumns.first),
+        query::ValueExpr::newColumnExpr("","", tableAlias, chunkColumns.second),
+        query::ValueExpr::newSimple(query::ValueFactor::newConstFactor(_lonMinDegree)),
+        query::ValueExpr::newSimple(query::ValueFactor::newConstFactor(_latMinDegree)),
+        query::ValueExpr::newSimple(query::ValueFactor::newConstFactor(_lonMaxDegree)),
+        query::ValueExpr::newSimple(query::ValueFactor::newConstFactor(_latMaxDegree))
+    };
+    auto func = std::make_shared<query::FuncExpr>("scisql_s2PtInBox", parameters);
+    auto compPred = std::make_shared<query::CompPredicate>(
+        query::ValueExpr::newSimple(query::ValueFactor::newFuncFactor(func)),
+        query::CompPredicate::EQUALS_OP,
+        query::ValueExpr::newSimple(query::ValueFactor::newConstFactor("1")));
+    return std::make_shared<query::BoolFactor>(compPred);
+}
+
+
+std::shared_ptr<sphgeom::Region> AreaRestrictorBox::getRegion() const {
+
+    return qproc::getBoxFromParams(convertVec<double>({_lonMinDegree, _latMinDegree,
+                                                       _lonMaxDegree, _latMaxDegree}));
+}
+
+
+AreaRestrictorCircle::AreaRestrictorCircle(std::string const& centerLonDegree,
+        std::string const& centerLatDegree, std::string const& radiusDegree)
+        : _centerLonDegree(centerLonDegree), _centerLatDegree(centerLatDegree), _radiusDegree(radiusDegree)
+{}
+
+
+AreaRestrictorCircle::AreaRestrictorCircle(std::vector<std::string> const& parameters) {
+    if (parameters.size() != 3) {
+        throw std::logic_error("qserv_areaspec_circle requires 3 parameters.");
+    }
+    _centerLonDegree = parameters[0];
+    _centerLatDegree = parameters[1];
+    _radiusDegree = parameters[2];
+}
+
+
+void AreaRestrictorCircle::renderTo(QueryTemplate& qt) const {
+    qt.append("qserv_areaspec_circle");
+    qt.append("(");
+    qt.append(_centerLonDegree);
+    qt.append(",");
+    qt.append(_centerLatDegree);
+    qt.append(",");
+    qt.append(_radiusDegree);
+    qt.append(")");
+}
+
+
+std::ostream& AreaRestrictorCircle::dbgPrint(std::ostream& os) const {
+    QueryTemplate qt;
+    renderTo(qt);
+    os << qt;
+    return os;
+}
+
+
+bool AreaRestrictorCircle::isEqual(const QsRestrictor& rhs) const {
+    auto rhsCircle = static_cast<AreaRestrictorCircle const&>(rhs);
+    return (_centerLatDegree == rhsCircle._centerLatDegree &&
+            _centerLonDegree == rhsCircle._centerLonDegree &&
+            _radiusDegree == rhsCircle._radiusDegree);
+}
+
+
+std::shared_ptr<query::BoolFactor> AreaRestrictorCircle::asSciSqlFactor(std::string const& tableAlias,
+        std::pair<std::string, std::string> const& chunkColumns) const {
+    std::vector<std::shared_ptr<query::ValueExpr>> parameters = {
+        query::ValueExpr::newColumnExpr("","", tableAlias, chunkColumns.first),
+        query::ValueExpr::newColumnExpr("","", tableAlias, chunkColumns.second),
+        query::ValueExpr::newSimple(query::ValueFactor::newConstFactor(_centerLonDegree)),
+        query::ValueExpr::newSimple(query::ValueFactor::newConstFactor(_centerLatDegree)),
+        query::ValueExpr::newSimple(query::ValueFactor::newConstFactor(_radiusDegree)),
+    };
+    auto func = std::make_shared<query::FuncExpr>("scisql_s2PtInCircle", parameters);
+    auto compPred = std::make_shared<query::CompPredicate>(
+        query::ValueExpr::newSimple(query::ValueFactor::newFuncFactor(func)),
+        query::CompPredicate::EQUALS_OP,
+        query::ValueExpr::newSimple(query::ValueFactor::newConstFactor("1")));
+    return std::make_shared<query::BoolFactor>(compPred);
+}
+
+
+std::shared_ptr<sphgeom::Region> AreaRestrictorCircle::getRegion() const {
+
+    return qproc::getCircleFromParams(convertVec<double>({_centerLonDegree, _centerLatDegree,
+                                                          _radiusDegree}));
+}
+
+
+AreaRestrictorEllipse::AreaRestrictorEllipse(std::string const& centerLonDegree,
+        std::string const& centerLatDegree, std::string const& semiMajorAxisAngleArcsec,
+        std::string const& semiMinorAxisAngleArcsec, std::string const& positionAngleDegree)
+        : _centerLonDegree(centerLonDegree),
+        _centerLatDegree(centerLatDegree),
+        _semiMajorAxisAngleArcsec(semiMajorAxisAngleArcsec),
+        _semiMinorAxisAngleArcsec(semiMinorAxisAngleArcsec),
+        _positionAngleDegree(positionAngleDegree)
+{}
+
+
+AreaRestrictorEllipse::AreaRestrictorEllipse(std::vector<std::string> const& parameters) {
+    if (parameters.size() != 5) {
+        throw std::logic_error("qserv_areaspec_ellipse requires 5 parameters.");
+    }
+    _centerLonDegree = parameters[0];
+    _centerLatDegree = parameters[1];
+    _semiMajorAxisAngleArcsec = parameters[2];
+    _semiMinorAxisAngleArcsec = parameters[3];
+    _positionAngleDegree = parameters[4];
+}
+
+
+void AreaRestrictorEllipse::renderTo(QueryTemplate& qt) const {
+    qt.append("qserv_areaspec_ellipse");
+    qt.append("(");
+    qt.append(_centerLonDegree);
+    qt.append(",");
+    qt.append(_centerLatDegree);
+    qt.append(",");
+    qt.append(_semiMajorAxisAngleArcsec);
+    qt.append(",");
+    qt.append(_semiMinorAxisAngleArcsec);
+    qt.append(",");
+    qt.append(_positionAngleDegree);
+    qt.append(")");
+}
+
+
+std::ostream& AreaRestrictorEllipse::dbgPrint(std::ostream& os) const {
+    QueryTemplate qt;
+    renderTo(qt);
+    os << qt;
+    return os;
+}
+
+
+bool AreaRestrictorEllipse::isEqual(const QsRestrictor& rhs) const {
+    auto rhsEllipse = static_cast<AreaRestrictorEllipse const&>(rhs);
+    return (_centerLonDegree == rhsEllipse._centerLonDegree &&
+            _centerLatDegree == rhsEllipse._centerLatDegree &&
+            _semiMajorAxisAngleArcsec == rhsEllipse._semiMajorAxisAngleArcsec &&
+            _semiMinorAxisAngleArcsec == rhsEllipse._semiMinorAxisAngleArcsec &&
+            _positionAngleDegree == rhsEllipse._positionAngleDegree);
+}
+
+
+std::shared_ptr<query::BoolFactor> AreaRestrictorEllipse::asSciSqlFactor(std::string const& tableAlias,
+        std::pair<std::string, std::string> const& chunkColumns) const {
+    std::vector<std::shared_ptr<query::ValueExpr>> parameters = {
+        query::ValueExpr::newColumnExpr("","", tableAlias, chunkColumns.first),
+        query::ValueExpr::newColumnExpr("","", tableAlias, chunkColumns.second),
+        query::ValueExpr::newSimple(query::ValueFactor::newConstFactor(_centerLonDegree)),
+        query::ValueExpr::newSimple(query::ValueFactor::newConstFactor(_centerLatDegree)),
+        query::ValueExpr::newSimple(query::ValueFactor::newConstFactor(_semiMajorAxisAngleArcsec)),
+        query::ValueExpr::newSimple(query::ValueFactor::newConstFactor(_semiMinorAxisAngleArcsec)),
+        query::ValueExpr::newSimple(query::ValueFactor::newConstFactor(_positionAngleDegree)),
+    };
+    auto func = std::make_shared<query::FuncExpr>("scisql_s2PtInEllipse", parameters);
+    auto compPred = std::make_shared<query::CompPredicate>(
+        query::ValueExpr::newSimple(query::ValueFactor::newFuncFactor(func)),
+        query::CompPredicate::EQUALS_OP,
+        query::ValueExpr::newSimple(query::ValueFactor::newConstFactor("1")));
+    return std::make_shared<query::BoolFactor>(compPred);
+}
+
+
+std::shared_ptr<sphgeom::Region> AreaRestrictorEllipse::getRegion() const {
+
+    return qproc::getEllipseFromParams(convertVec<double>({_centerLonDegree, _centerLatDegree,
+        _semiMajorAxisAngleArcsec, _semiMinorAxisAngleArcsec, _positionAngleDegree}));
+}
+
+
+AreaRestrictorPoly::AreaRestrictorPoly(std::vector<std::string> const& parameters)
+        : _parameters(parameters) {
+    if (_parameters.size() % 2 != 0) {
+        throw std::logic_error("AreaRestrictorPoly requires an even number of arguments.");
+    }
+}
+
+
+void AreaRestrictorPoly::renderTo(QueryTemplate& qt) const {
+    qt.append("qserv_areaspec_poly");
     qt.append("(");
     bool first = true;
-    for (auto const& parameter : _params) {
+    for (auto const& parameter : _parameters) {
         if (first) {
             first = false;
         } else {
@@ -76,19 +328,42 @@ void QsRestrictorFunction::renderTo(QueryTemplate& qt) const {
 }
 
 
-bool QsRestrictorFunction::isEqual(const QsRestrictor& rhs) const {
-    auto rhsRestrictorFunc = dynamic_cast<QsRestrictorFunction const&>(rhs);
-    if (_name != rhsRestrictorFunc._name) return false;
-    return _params == rhsRestrictorFunc._params;
+std::ostream& AreaRestrictorPoly::dbgPrint(std::ostream& os) const {
+    QueryTemplate qt;
+    renderTo(qt);
+    os << qt;
+    return os;
 }
 
 
-std::ostream& QsRestrictorFunction::dbgPrint(std::ostream& os) const {
-    // todo this needs to change to QsRestrictorFunction
-    os << "QsRestrictor(" << "\"" <<  _name << "\"";
-    os << ", " << util::printable(_params, "", "");
-    os << ")";
-    return os;
+bool AreaRestrictorPoly::isEqual(const QsRestrictor& rhs) const {
+    auto rhsPoly = static_cast<AreaRestrictorPoly const&>(rhs);
+    return (_parameters.size() == rhsPoly._parameters.size() &&
+            std::equal(_parameters.begin(), _parameters.end(), rhsPoly._parameters.begin()));
+}
+
+
+std::shared_ptr<query::BoolFactor> AreaRestrictorPoly::asSciSqlFactor(std::string const& tableAlias,
+        std::pair<std::string, std::string> const& chunkColumns) const {
+    std::vector<std::shared_ptr<query::ValueExpr>> parameters = {
+        query::ValueExpr::newColumnExpr("","", tableAlias, chunkColumns.first),
+        query::ValueExpr::newColumnExpr("","", tableAlias, chunkColumns.second),};
+    std::transform(_parameters.begin(), _parameters.end(), std::back_inserter(parameters),
+        [] (std::string const& parameter) -> std::shared_ptr<query::ValueExpr> {
+            return query::ValueExpr::newSimple(query::ValueFactor::newConstFactor(parameter));
+        });
+    auto func = std::make_shared<query::FuncExpr>("scisql_s2PtInPolly", parameters);
+    auto compPred = std::make_shared<query::CompPredicate>(
+        query::ValueExpr::newSimple(query::ValueFactor::newFuncFactor(func)),
+        query::CompPredicate::EQUALS_OP,
+        query::ValueExpr::newSimple(query::ValueFactor::newConstFactor("1")));
+    return std::make_shared<query::BoolFactor>(compPred);
+}
+
+
+std::shared_ptr<sphgeom::Region> AreaRestrictorPoly::getRegion() const {
+
+    return qproc::getConvexPolyFromParams(convertVec<double>(_parameters));
 }
 
 
@@ -98,7 +373,7 @@ void SICompRestrictor::renderTo(QueryTemplate& qt) const {
 
 
 bool SICompRestrictor::isEqual(const QsRestrictor& rhs) const {
-    auto rhsCompRestrictor = dynamic_cast<SICompRestrictor const&>(rhs);
+    auto rhsCompRestrictor = static_cast<SICompRestrictor const&>(rhs);
     return *_compPredicate == *rhsCompRestrictor._compPredicate;
 }
 
@@ -120,7 +395,7 @@ std::string SICompRestrictor::getSILookupQuery(std::string const& secondaryIndex
     QueryTemplate columnRefQt;
     columnRefQt.setUseColumnOnly(true);
     _compPredicate->renderTo(columnRefQt);
-    return "SELECT " + chunkColumn + ", " + subChunkColumn +
+    return "SELECT " + chunkColumn + "," + subChunkColumn +
             " FROM " + secondaryIndexDb + "." + secondaryIndexTable +
             " WHERE " + boost::lexical_cast<std::string>(columnRefQt);
 }
@@ -132,7 +407,7 @@ void SIBetweenRestrictor::renderTo(QueryTemplate& qt) const {
 
 
 bool SIBetweenRestrictor::isEqual(const QsRestrictor& rhs) const {
-    auto rhsBetweenRestrictor = dynamic_cast<SIBetweenRestrictor const&>(rhs);
+    auto rhsBetweenRestrictor = static_cast<SIBetweenRestrictor const&>(rhs);
     return *_betweenPredicate == *rhsBetweenRestrictor._betweenPredicate;
 }
 
@@ -154,7 +429,7 @@ std::string SIBetweenRestrictor::getSILookupQuery(std::string const& secondaryIn
     QueryTemplate columnRefQt;
     columnRefQt.setUseColumnOnly(true);
     _betweenPredicate->renderTo(columnRefQt);
-    return "SELECT " + chunkColumn + ", " + subChunkColumn +
+    return "SELECT " + chunkColumn + "," + subChunkColumn +
             " FROM " + secondaryIndexDb + "." + secondaryIndexTable +
             " WHERE " + boost::lexical_cast<std::string>(columnRefQt);
 }
@@ -166,7 +441,7 @@ void SIInRestrictor::renderTo(QueryTemplate& qt) const {
 
 
 bool SIInRestrictor::isEqual(const QsRestrictor& rhs) const {
-    auto rhsRestrictor = dynamic_cast<SIInRestrictor const&>(rhs);
+    auto rhsRestrictor = static_cast<SIInRestrictor const&>(rhs);
     return *_inPredicate == *rhsRestrictor._inPredicate;
 }
 
@@ -188,7 +463,7 @@ std::string SIInRestrictor::getSILookupQuery(std::string const& secondaryIndexDb
     QueryTemplate qt;
     qt.setUseColumnOnly(true);
     _inPredicate->renderTo(qt);
-    return "SELECT " + chunkColumn + ", " + subChunkColumn +
+    return "SELECT " + chunkColumn + "," + subChunkColumn +
             " FROM " + secondaryIndexDb + "." + secondaryIndexTable +
             " WHERE " + boost::lexical_cast<std::string>(qt);
 }

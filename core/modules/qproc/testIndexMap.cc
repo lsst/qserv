@@ -77,6 +77,7 @@ struct Fixture {
 // SecondaryIndex and IndexMap test suite
 ////////////////////////////////////////////////////////////////////////
 BOOST_FIXTURE_TEST_SUITE(Suite, Fixture)
+#if 0 // TODO
 
 BOOST_AUTO_TEST_CASE(SecLookup) {
     query::QsRestrictor::PtrVector restrictors;
@@ -108,7 +109,6 @@ BOOST_AUTO_TEST_CASE(SecLookupMultipleObjectIdBETWEEN) {
               std::ostream_iterator<ChunkSpec>(std::cout, ",\n"));
 }
 
-#if 0 // TODO
 BOOST_AUTO_TEST_CASE(IndLookupArea) {
     // Lookup area using IndexMap interface
 }
