@@ -67,12 +67,12 @@ namespace qserv {
 namespace query {
 
 
-std::ostream& operator<<(std::ostream& os, QsRestrictor const& q) {
+std::ostream& operator<<(std::ostream& os, AreaRestrictor const& q) {
     return q.dbgPrint(os);
 }
 
 
-bool QsRestrictor::operator==(const QsRestrictor& rhs) const {
+bool AreaRestrictor::operator==(const AreaRestrictor& rhs) const {
     return typeid(*this) == typeid(rhs) && isEqual(rhs);
 }
 
@@ -117,7 +117,7 @@ std::ostream& AreaRestrictorBox::dbgPrint(std::ostream& os) const {
 }
 
 
-bool AreaRestrictorBox::isEqual(const QsRestrictor& rhs) const {
+bool AreaRestrictorBox::isEqual(const AreaRestrictor& rhs) const {
     auto rhsBox = static_cast<AreaRestrictorBox const&>(rhs);
     return (_lonMinDegree == rhsBox._lonMinDegree &&
             _latMinDegree == rhsBox._latMinDegree &&
@@ -188,7 +188,7 @@ std::ostream& AreaRestrictorCircle::dbgPrint(std::ostream& os) const {
 }
 
 
-bool AreaRestrictorCircle::isEqual(const QsRestrictor& rhs) const {
+bool AreaRestrictorCircle::isEqual(const AreaRestrictor& rhs) const {
     auto rhsCircle = static_cast<AreaRestrictorCircle const&>(rhs);
     return (_centerLatDegree == rhsCircle._centerLatDegree &&
             _centerLonDegree == rhsCircle._centerLonDegree &&
@@ -268,7 +268,7 @@ std::ostream& AreaRestrictorEllipse::dbgPrint(std::ostream& os) const {
 }
 
 
-bool AreaRestrictorEllipse::isEqual(const QsRestrictor& rhs) const {
+bool AreaRestrictorEllipse::isEqual(const AreaRestrictor& rhs) const {
     auto rhsEllipse = static_cast<AreaRestrictorEllipse const&>(rhs);
     return (_centerLonDegree == rhsEllipse._centerLonDegree &&
             _centerLatDegree == rhsEllipse._centerLatDegree &&
@@ -337,7 +337,7 @@ std::ostream& AreaRestrictorPoly::dbgPrint(std::ostream& os) const {
 }
 
 
-bool AreaRestrictorPoly::isEqual(const QsRestrictor& rhs) const {
+bool AreaRestrictorPoly::isEqual(const AreaRestrictor& rhs) const {
     auto rhsPoly = static_cast<AreaRestrictorPoly const&>(rhs);
     return (_parameters.size() == rhsPoly._parameters.size() &&
             std::equal(_parameters.begin(), _parameters.end(), rhsPoly._parameters.begin()));
@@ -368,12 +368,22 @@ std::shared_ptr<sphgeom::Region> AreaRestrictorPoly::getRegion() const {
 }
 
 
+std::ostream& operator<<(std::ostream& os, SIRestrictor const& q) {
+    return q.dbgPrint(os);
+}
+
+
+bool SIRestrictor::operator==(const SIRestrictor& rhs) const {
+    return typeid(*this) == typeid(rhs) && isEqual(rhs);
+}
+
+
 void SICompRestrictor::renderTo(QueryTemplate& qt) const {
     _compPredicate->renderTo(qt);
 }
 
 
-bool SICompRestrictor::isEqual(const QsRestrictor& rhs) const {
+bool SICompRestrictor::isEqual(const SIRestrictor& rhs) const {
     auto rhsCompRestrictor = static_cast<SICompRestrictor const&>(rhs);
     return *_compPredicate == *rhsCompRestrictor._compPredicate;
 }
@@ -407,7 +417,7 @@ void SIBetweenRestrictor::renderTo(QueryTemplate& qt) const {
 }
 
 
-bool SIBetweenRestrictor::isEqual(const QsRestrictor& rhs) const {
+bool SIBetweenRestrictor::isEqual(const SIRestrictor& rhs) const {
     auto rhsBetweenRestrictor = static_cast<SIBetweenRestrictor const&>(rhs);
     return *_betweenPredicate == *rhsBetweenRestrictor._betweenPredicate;
 }
@@ -441,7 +451,7 @@ void SIInRestrictor::renderTo(QueryTemplate& qt) const {
 }
 
 
-bool SIInRestrictor::isEqual(const QsRestrictor& rhs) const {
+bool SIInRestrictor::isEqual(const SIRestrictor& rhs) const {
     auto rhsRestrictor = static_cast<SIInRestrictor const&>(rhs);
     return *_inPredicate == *rhsRestrictor._inPredicate;
 }

@@ -77,12 +77,14 @@ namespace query {
 ///    | "qserv_areaspec_poly"^
 ///    | "qserv_areaspec_hull"^
 /// but may include other names.
-class QsRestrictor {
+
+
+class AreaRestrictor {
 public:
+    AreaRestrictor() = default;
+    virtual ~AreaRestrictor() = default;
 
-    QsRestrictor() = default;
-
-    bool operator==(const QsRestrictor& rhs) const;
+    bool operator==(const AreaRestrictor& rhs) const;
 
     /**
      * @brief Serialze this instance as SQL to the QueryTemplate.
@@ -94,7 +96,12 @@ public:
      */
     virtual std::ostream& dbgPrint(std::ostream& os) const = 0;
 
-    friend std::ostream& operator<<(std::ostream& os, QsRestrictor const& q);
+    friend std::ostream& operator<<(std::ostream& os, AreaRestrictor const& q);
+
+    virtual std::shared_ptr<query::BoolFactor> asSciSqlFactor(std::string const& tableAlias,
+            std::pair<std::string, std::string> const& chunkColumns) const = 0;
+
+    virtual std::shared_ptr<sphgeom::Region> getRegion() const = 0;
 
 protected:
     /**
@@ -103,19 +110,7 @@ protected:
      * This is an overidable helper function for operator==, it should only be called by that function, or at
      * least make sure that typeid(this) == typeid(rhs) before calling isEqual.
      */
-    virtual bool isEqual(const QsRestrictor& rhs) const = 0;
-};
-
-
-class AreaRestrictor : public QsRestrictor {
-public:
-    AreaRestrictor() = default;
-    virtual ~AreaRestrictor() = default;
-
-    virtual std::shared_ptr<query::BoolFactor> asSciSqlFactor(std::string const& tableAlias,
-            std::pair<std::string, std::string> const& chunkColumns) const = 0;
-
-    virtual std::shared_ptr<sphgeom::Region> getRegion() const = 0;
+    virtual bool isEqual(const AreaRestrictor& rhs) const = 0;
 };
 
 
@@ -150,7 +145,7 @@ protected:
      * This is an overidable helper function for operator==, it should only be called by that function, or at
      * least make sure that typeid(this) == typeid(rhs) before calling isEqual.
      */
-    bool isEqual(const QsRestrictor& rhs) const override;
+    bool isEqual(const AreaRestrictor& rhs) const override;
 
 private:
     std::string _lonMinDegree;
@@ -192,7 +187,7 @@ protected:
      * This is an overidable helper function for operator==, it should only be called by that function, or at
      * least make sure that typeid(this) == typeid(rhs) before calling isEqual.
      */
-    bool isEqual(const QsRestrictor& rhs) const override;
+    bool isEqual(const AreaRestrictor& rhs) const override;
 
 private:
     std::string _centerLonDegree;
@@ -235,7 +230,7 @@ protected:
      * This is an overidable helper function for operator==, it should only be called by that function, or at
      * least make sure that typeid(this) == typeid(rhs) before calling isEqual.
      */
-    bool isEqual(const QsRestrictor& rhs) const override;
+    bool isEqual(const AreaRestrictor& rhs) const override;
 
 private:
     std::string _centerLonDegree;
@@ -274,15 +269,32 @@ protected:
      * This is an overidable helper function for operator==, it should only be called by that function, or at
      * least make sure that typeid(this) == typeid(rhs) before calling isEqual.
      */
-    bool isEqual(const QsRestrictor& rhs) const override;
+    bool isEqual(const AreaRestrictor& rhs) const override;
 
 private:
     std::vector<std::string> _parameters;
 };
 
 
-class SIRestrictor : public QsRestrictor {
+class SIRestrictor {
 public:
+    SIRestrictor() = default;
+    virtual ~SIRestrictor() = default;
+
+    bool operator==(const SIRestrictor& rhs) const;
+
+    /**
+     * @brief Serialze this instance as SQL to the QueryTemplate.
+     */
+    virtual void renderTo(QueryTemplate& qt) const = 0;
+
+    /**
+     * @brief Serialize to the given ostream for debug output.
+     */
+    virtual std::ostream& dbgPrint(std::ostream& os) const = 0;
+
+    friend std::ostream& operator<<(std::ostream& os, SIRestrictor const& q);
+
     virtual std::shared_ptr<query::ColumnRef const> getSecondaryIndexColumnRef() const = 0;
 
     virtual std::string getSILookupQuery(std::string const& secondaryIndexDb,
@@ -290,6 +302,14 @@ public:
                                          std::string const& chunkColumn,
                                          std::string const& subChunkColumn) const = 0;
 
+protected:
+    /**
+     * @brief Test if this is equal with rhs.
+     *
+     * This is an overidable helper function for operator==, it should only be called by that function, or at
+     * least make sure that typeid(this) == typeid(rhs) before calling isEqual.
+     */
+    virtual bool isEqual(const SIRestrictor& rhs) const = 0;
 };
 
 
@@ -324,7 +344,7 @@ protected:
      * This is an overidable helper function for operator==, it should only be called by that function, or at
      * least make sure that typeid(this) == typeid(rhs) before calling isEqual.
      */
-    bool isEqual(const QsRestrictor& rhs) const override;
+    bool isEqual(const SIRestrictor& rhs) const override;
 
 private:
     std::shared_ptr<query::CompPredicate> _compPredicate; //< the comparison for this restrictor.
@@ -361,7 +381,7 @@ protected:
      * This is an overidable helper function for operator==, it should only be called by that function, or at
      * least make sure that typeid(this) == typeid(rhs) before calling isEqual.
      */
-    bool isEqual(const QsRestrictor& rhs) const override;
+    bool isEqual(const SIRestrictor& rhs) const override;
 
 private:
     // Currently the only place the secondary index column appears is in the `value` parameter of the
@@ -399,7 +419,7 @@ protected:
      * This is an overidable helper function for operator==, it should only be called by that function, or at
      * least make sure that typeid(this) == typeid(rhs) before calling isEqual.
      */
-    bool isEqual(const QsRestrictor& rhs) const override;
+    bool isEqual(const SIRestrictor& rhs) const override;
 
 private:
     std::shared_ptr<query::InPredicate> _inPredicate; //< the comparison for this restrictor.
