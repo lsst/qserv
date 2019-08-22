@@ -207,10 +207,9 @@ void WorkerProcessor::drain() {
 
 
 void WorkerProcessor::reconfig() {
-
     LOGS(_log, LOG_LVL_DEBUG, _context(__func__));
-
     util::Lock lock(_mtx, _context(__func__));
+    _serviceProvider->config()->reload();
 }
 
 

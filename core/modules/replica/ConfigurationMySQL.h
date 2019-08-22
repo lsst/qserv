@@ -33,7 +33,7 @@
 #include <string>
 
 // Qserv headers
-#include "replica/Configuration.h"
+#include "replica/ConfigurationBase.h"
 #include "replica/DatabaseMySQL.h"
 
 // LSST headers
@@ -53,7 +53,7 @@ namespace replica {
   *   - sets default values for the optional parameters
   *   - caches parameters in memory
   */
-class ConfigurationMySQL : public Configuration {
+class ConfigurationMySQL : public ConfigurationBase {
 
 public:
 
@@ -71,7 +71,7 @@ public:
      * @return
      *   the text representation of the configuration
      */
-    static std::string dump2init(Configuration::Ptr const& config);
+    static std::string dump2init(ConfigurationIFace::Ptr const& config);
 
     // Default construction and copy semantics are prohibited
 
@@ -92,13 +92,10 @@ public:
 
     ~ConfigurationMySQL() final = default;
 
-    /// @see Configuration::prefix()
-    virtual std::string prefix() const final;
+    std::string prefix() const final;
 
-    /// @see Configuration::configUrl()
     std::string configUrl() const final;
 
-    /// @see Configuration::setRequestBufferSizeBytes()
     void setRequestBufferSizeBytes(size_t val) final {
         _set(_requestBufferSizeBytes,
              "common",
@@ -106,7 +103,6 @@ public:
              val);
     }
 
-    /// @see Configuration::setRetryTimeoutSec()
     void setRetryTimeoutSec(unsigned int val) final {
         _set(_retryTimeoutSec,
              "common",
@@ -114,7 +110,6 @@ public:
              val);
     }
 
-    /// @see Configuration::setControllerThreads()
     void setControllerThreads(size_t val) final {
         _set(_controllerThreads,
              "controller",
@@ -122,7 +117,6 @@ public:
              val);
     }
 
-    /// @see Configuration::setControllerHttpPort()
     void setControllerHttpPort(uint16_t val) final {
         _set(_controllerHttpPort,
              "controller",
@@ -130,7 +124,6 @@ public:
              val);
     }
 
-    /// @see Configuration::setControllerHttpThreads()
     void setControllerHttpThreads(size_t val) final {
         _set(_controllerHttpThreads,
              "controller",
@@ -138,7 +131,6 @@ public:
              val);
     }
 
-    /// @see Configuration::setControllerRequestTimeoutSec()
     void setControllerRequestTimeoutSec(unsigned int val) final {
         _set(_controllerRequestTimeoutSec,
              "controller",
@@ -146,7 +138,6 @@ public:
              val);
     }
 
-    /// @see Configuration::setJobTimeoutSec()
     void setJobTimeoutSec(unsigned int val) final {
         _set(_jobTimeoutSec,
              "controller",
@@ -154,7 +145,6 @@ public:
              val);
     }
 
-    /// @see Configuration::setJobHeartbeatTimeoutSec()
     void setJobHeartbeatTimeoutSec(unsigned int val) final {
         _set(_jobHeartbeatTimeoutSec,
              "controller",
@@ -163,7 +153,6 @@ public:
              true);
     }
 
-    /// @see Configuration::setXrootdAutoNotify()
     void setXrootdAutoNotify(bool val) final {
         _set(_xrootdAutoNotify,
              "xrootd",
@@ -171,7 +160,6 @@ public:
              val);
     }
 
-    /// @see Configuration::setXrootdHost()
     void setXrootdHost(std::string const& val) final {
         _set(_xrootdHost,
              "xrootd",
@@ -179,7 +167,6 @@ public:
              val);
     }
 
-    /// @see Configuration::setXrootdPort()
     void setXrootdPort(uint16_t val) final {
         _set(_xrootdPort,
              "xrootd",
@@ -187,7 +174,6 @@ public:
              val);
     }
 
-    /// @see Configuration::setXrootdTimeoutSec()
     void setXrootdTimeoutSec(unsigned int val) final {
         _set(_xrootdTimeoutSec,
              "xrootd",
@@ -195,7 +181,6 @@ public:
              val);
     }
 
-    /// @see Configuration::setDatabaseServicesPoolSize()
     void setDatabaseServicesPoolSize(size_t val) final {
         _set(_databaseServicesPoolSize,
              "database",
@@ -203,65 +188,49 @@ public:
              val);
     }
 
-    /// @see Configuration::addWorker()
     void addWorker(WorkerInfo const& workerInfo) final;
 
-    /// @see Configuration::deleteWorker()
     void deleteWorker(std::string const& name) final;
 
-    /// @see Configuration::disableWorker()
     WorkerInfo disableWorker(std::string const& name,
                              bool disable) final;
 
-    /// @see Configuration::setWorkerReadOnly()
     WorkerInfo setWorkerReadOnly(std::string const& name,
                                  bool readOnly) final;
 
-    /// @see Configuration::setWorkerSvcHost()
     WorkerInfo setWorkerSvcHost(std::string const& name,
                                 std::string const& host) final;
 
-    /// @see Configuration::setWorkerSvcPort()
     WorkerInfo setWorkerSvcPort(std::string const& name,
                                 uint16_t port) final;
 
-    /// @see Configuration::setWorkerFsPort()
     WorkerInfo setWorkerFsPort(std::string const& name,
                                uint16_t port) final;
 
-    /// @see Configuration::setWorkerFsHost()
     WorkerInfo setWorkerFsHost(std::string const& name,
                                std::string const& host) final;
 
-    /// @see Configuration::setWorkerDataDir()
     WorkerInfo setWorkerDataDir(std::string const& name,
                                 std::string const& dataDir) final;
 
-    /// @see Configuration::setWorkerDbHost()
     WorkerInfo setWorkerDbHost(std::string const& name,
                                std::string const& host)final;
 
-    /// @see Configuration::setWorkerDbPort()
     WorkerInfo setWorkerDbPort(std::string const& name,
                                uint16_t port) final;
 
-    /// @see Configuration::setWorkerDbUser()
     WorkerInfo setWorkerDbUser(std::string const& name,
                                std::string const& user) final;
 
-    /// @see Configuration::setWorkerLoaderHost()
     WorkerInfo setWorkerLoaderHost(std::string const& name,
                                    std::string const& host) final;
 
-    /// @see Configuration::setWorkerLoaderPort()
     WorkerInfo setWorkerLoaderPort(std::string const& name,
                                    uint16_t port) final;
 
-    /// @see Configuration::setWorkerLoaderTmpDir()
     WorkerInfo setWorkerLoaderTmpDir(std::string const& name,
                                      std::string const& tmpDir) final;
 
-    /// @see Configuration::setWorkerTechnology()
     void setWorkerTechnology(std::string const& val) final {
         _set(_workerTechnology,
              "worker",
@@ -269,7 +238,6 @@ public:
              val);
     }
 
-    /// @see Configuration::setWorkerNumProcessingThreads()
     void setWorkerNumProcessingThreads(size_t val) final {
         _set(_workerNumProcessingThreads,
              "worker",
@@ -277,7 +245,6 @@ public:
              val);
     }
 
-    /// @see Configuration::setFsNumProcessingThreads()
     void setFsNumProcessingThreads(size_t val) final {
         _set(_fsNumProcessingThreads,
              "worker",
@@ -285,14 +252,13 @@ public:
              val);
     }
 
-    /// @see Configuration::setWorkerFsBufferSizeBytes()
     void setWorkerFsBufferSizeBytes(size_t val) final {
         _set(_workerFsBufferSizeBytes,
              "worker",
              "fs_buf_size_bytes",
              val);
     }
-    /// @see Configuration::setLoaderNumProcessingThreads()
+
     void setLoaderNumProcessingThreads(size_t val) final {
         _set(_loaderNumProcessingThreads,
              "worker",
@@ -300,24 +266,16 @@ public:
              val);
     }
 
-
-    /// @see Configuration::addDatabaseFamily()
     DatabaseFamilyInfo addDatabaseFamily(DatabaseFamilyInfo const& info) final;
 
-    /// @see Configuration::deleteDatabaseFamily()
     void deleteDatabaseFamily(std::string const& name) final;
 
-
-    /// @see Configuration::addDatabase()
     DatabaseInfo addDatabase(DatabaseInfo const& info) final;
 
-    /// @see Configuration::publishDatabase()
     DatabaseInfo publishDatabase(std::string const& name) final;
 
-    /// @see Configuration::deleteDatabase()
     void deleteDatabase(std::string const& name) final;
 
-    /// @see Configuration::addTable()
     DatabaseInfo addTable(std::string const& database,
                           std::string const& table,
                           bool isPartitioned,
@@ -329,7 +287,6 @@ public:
                           std::string const& latitudeColName,
                           std::string const& longitudeColName) final;
 
-    /// @see Configuration::deleteTable()
     DatabaseInfo deleteTable(std::string const& database,
                              std::string const& table) final;
 
@@ -346,15 +303,9 @@ private:
 
     /**
      * The actual implementation of method _loadConfiguration.
-     *
-     * @param lock
-     *   the lock on a mutex required for the thread safety
-     *
-     * @param conn
-     *   the reference to the database connector
+     * @param conn  the reference to the database connector
      */
-    void _loadConfigurationImpl(util::Lock const& lock,
-                                database::mysql::Connection::Ptr const& conn);
+    void _loadConfigurationImpl(database::mysql::Connection::Ptr const& conn);
 
     /**
      * The setter method for numeric types
@@ -483,8 +434,7 @@ private:
      *   into the corresponding SQL sub-expression for updating the 'value' field
      * 
      * @param onSuccess
-     *   a function to be called upon successful completion of the update
-     *   while a lock on the internal state of the object is being held.
+     *   a function to be called upon successful completion of the update.
      *   This function is meant to be used to safely update a transient (cached)
      *   value of the corresponding configuration parameter.
      */

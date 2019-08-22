@@ -55,7 +55,7 @@ inline ostream& operator<<(ostream& os, vector<string> const& c) {
 }
 
 
-string ConfigurationFile::dump2init(Configuration::Ptr const& config) {
+string ConfigurationFile::dump2init(ConfigurationIFace::Ptr const& config) {
 
     using namespace std;
 

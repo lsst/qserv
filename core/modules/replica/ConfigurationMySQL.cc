@@ -93,7 +93,7 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
-string ConfigurationMySQL::dump2init(Configuration::Ptr const& config) {
+string ConfigurationMySQL::dump2init(ConfigurationIFace::Ptr const& config) {
 
     using namespace std;
 
@@ -193,7 +193,7 @@ string ConfigurationMySQL::dump2init(Configuration::Ptr const& config) {
 
 
 ConfigurationMySQL::ConfigurationMySQL(database::mysql::ConnectionParams const& connectionParams)
-    :   Configuration(),
+    :   ConfigurationBase(),
         _connectionParams(connectionParams),
         _log(LOG_GET("lsst.qserv.replica.ConfigurationMySQL")) {
 
@@ -242,9 +242,6 @@ void ConfigurationMySQL::addWorker(WorkerInfo const& info) {
         );
 
         // Then update the transient state
-
-        util::Lock lock(_mtx, context_);
-
         _workerInfo[info.name] = info;
 
     } catch (database::mysql::Error const& ex) {
@@ -276,9 +273,7 @@ void ConfigurationMySQL::deleteWorker(string const& name) {
 
         // Then update the transient state
 
-        util::Lock lock(_mtx, context_);
-
-        auto itr = safeFindWorker(lock, name, context_);
+        auto itr = safeFindWorker(name, context_);
         _workerInfo.erase(itr);
 
     } catch (database::mysql::Error const& ex) {
@@ -315,9 +310,7 @@ WorkerInfo ConfigurationMySQL::disableWorker(string const& name,
 
         // Then update the transient state
 
-        util::Lock lock(_mtx, context_);
-
-        auto itr = safeFindWorker(lock, name, context_);
+        auto itr = safeFindWorker(name, context_);
         itr->second.isEnabled = not disable;
 
     } catch (database::mysql::Error const& ex) {
@@ -355,9 +348,7 @@ WorkerInfo ConfigurationMySQL::setWorkerReadOnly(string const& name,
 
         // Then update the transient state
 
-        util::Lock lock(_mtx, context_);
-
-        auto itr = safeFindWorker(lock, name, context_);
+        auto itr = safeFindWorker(name, context_);
         itr->second.isReadOnly = readOnly;
 
     } catch (database::mysql::Error const& ex) {
@@ -393,9 +384,7 @@ WorkerInfo ConfigurationMySQL::setWorkerSvcHost(string const& name,
 
         // Then update the transient state 
 
-        util::Lock lock(_mtx, context_);
-
-        auto itr = safeFindWorker(lock, name, context_);
+        auto itr = safeFindWorker(name, context_);
         itr->second.svcHost = host;
 
     } catch (database::mysql::Error const& ex) {
@@ -431,9 +420,7 @@ WorkerInfo ConfigurationMySQL::setWorkerSvcPort(string const& name,
 
         // Then update the transient state 
 
-        util::Lock lock(_mtx, context_);
-
-        auto itr = safeFindWorker(lock, name, context_);
+        auto itr = safeFindWorker(name, context_);
         itr->second.svcPort = port;
 
     } catch (database::mysql::Error const& ex) {
@@ -469,9 +456,7 @@ WorkerInfo ConfigurationMySQL::setWorkerFsHost(string const& name,
 
         // Then update the transient state 
 
-        util::Lock lock(_mtx, context_);
-
-        auto itr = safeFindWorker(lock, name, context_);
+        auto itr = safeFindWorker(name, context_);
         itr->second.fsHost = host;
 
     } catch (database::mysql::Error const& ex) {
@@ -506,10 +491,8 @@ WorkerInfo ConfigurationMySQL::setWorkerFsPort(string const& name,
         );
 
         // Then update the transient state 
-
-        util::Lock lock(_mtx, context_);
     
-        auto itr = safeFindWorker(lock, name, context_);
+        auto itr = safeFindWorker(name, context_);
         itr->second.fsPort = port;
 
     } catch (database::mysql::Error const& ex) {
@@ -545,9 +528,7 @@ WorkerInfo ConfigurationMySQL::setWorkerDataDir(string const& name,
 
         // Then update the transient state 
 
-        util::Lock lock(_mtx, context_);
-
-        auto itr = safeFindWorker(lock, name, context_);
+        auto itr = safeFindWorker(name, context_);
         itr->second.dataDir = dataDir;
 
     } catch (database::mysql::Error const& ex) {
@@ -582,9 +563,7 @@ WorkerInfo ConfigurationMySQL::setWorkerDbHost(std::string const& name,
 
         // Then update the transient state 
 
-        util::Lock lock(_mtx, context_);
-
-        auto itr = safeFindWorker(lock, name, context_);
+        auto itr = safeFindWorker(name, context_);
         itr->second.dbHost = host;
 
     } catch (database::mysql::Error const& ex) {
@@ -618,10 +597,8 @@ WorkerInfo ConfigurationMySQL::setWorkerDbPort(std::string const& name,
         );
 
         // Then update the transient state 
-
-        util::Lock lock(_mtx, context_);
     
-        auto itr = safeFindWorker(lock, name, context_);
+        auto itr = safeFindWorker(name, context_);
         itr->second.dbPort = port;
 
     } catch (database::mysql::Error const& ex) {
@@ -656,9 +633,7 @@ WorkerInfo ConfigurationMySQL::setWorkerDbUser(std::string const& name,
 
         // Then update the transient state 
 
-        util::Lock lock(_mtx, context_);
-
-        auto itr = safeFindWorker(lock, name, context_);
+        auto itr = safeFindWorker(name, context_);
         itr->second.dbUser = user;
 
     } catch (database::mysql::Error const& ex) {
@@ -693,9 +668,7 @@ WorkerInfo ConfigurationMySQL::setWorkerLoaderHost(std::string const& name,
 
         // Then update the transient state 
 
-        util::Lock lock(_mtx, context_);
-
-        auto itr = safeFindWorker(lock, name, context_);
+        auto itr = safeFindWorker(name, context_);
         itr->second.loaderHost = host;
 
     } catch (database::mysql::Error const& ex) {
@@ -729,10 +702,8 @@ WorkerInfo ConfigurationMySQL::setWorkerLoaderPort(std::string const& name,
         );
 
         // Then update the transient state 
-
-        util::Lock lock(_mtx, context_);
     
-        auto itr = safeFindWorker(lock, name, context_);
+        auto itr = safeFindWorker(name, context_);
         itr->second.loaderPort = port;
 
     } catch (database::mysql::Error const& ex) {
@@ -768,9 +739,7 @@ WorkerInfo ConfigurationMySQL::setWorkerLoaderTmpDir(string const& name,
 
         // Then update the transient state 
 
-        util::Lock lock(_mtx, context_);
-
-        auto itr = safeFindWorker(lock, name, context_);
+        auto itr = safeFindWorker(name, context_);
         itr->second.loaderTmpDir = tmpDir;
 
     } catch (database::mysql::Error const& ex) {
@@ -825,8 +794,6 @@ DatabaseFamilyInfo ConfigurationMySQL::addDatabaseFamily(DatabaseFamilyInfo cons
 
         // Then update the transient state
 
-        util::Lock lock(_mtx, context_);
-
         _databaseFamilyInfo[info.name] = DatabaseFamilyInfo{
             info.name,
             info.replicationLevel,
@@ -876,9 +843,6 @@ void ConfigurationMySQL::deleteDatabaseFamily(string const& name) {
         //
         // NOTE: when updating the transient state do not check if the family is still there
         // because the transient state may not be consistent with the persistent one.
-
-        util::Lock lock(_mtx, context_);
-
         _databaseFamilyInfo.erase(name);
 
         // Find and delete the relevant databases
@@ -936,8 +900,6 @@ DatabaseInfo ConfigurationMySQL::addDatabase(DatabaseInfo const& info) {
         );
 
         // Then update the transient state
-
-        util::Lock lock(_mtx, context_);
 
         map<string,
             list<pair<string,string>>> const noTableColumns;
@@ -1004,9 +966,7 @@ DatabaseInfo ConfigurationMySQL::publishDatabase(string const& name) {
 
         // Then update the transient state 
 
-        util::Lock lock(_mtx, context_);
-
-        auto itr = safeFindDatabase(lock, name, context_);
+        auto itr = safeFindDatabase(name, context_);
         itr->second.isPublished = true;
 
     } catch (database::mysql::Error const& ex) {
@@ -1047,8 +1007,6 @@ void ConfigurationMySQL::deleteDatabase(string const& name) {
         //
         // NOTE: when updating the transient state do not check if the database is still there
         // because the transient state may not be consistent with the persistent one.
-
-        util::Lock lock(_mtx, context_);
 
         _databaseInfo.erase(name);
 
@@ -1193,8 +1151,6 @@ DatabaseInfo ConfigurationMySQL::deleteTable(string const& database,
         // NOTE: when updating the transient state do not check if the database is still there
         // because the transient state may not be consistent with the persistent one.
 
-        util::Lock lock(_mtx, context_);
-
         auto& info = _databaseInfo[database];
 
         auto pTableItr = find(info.partitionedTables.cbegin(),
@@ -1232,14 +1188,12 @@ void ConfigurationMySQL::_loadConfiguration() {
 
     LOGS(_log, LOG_LVL_DEBUG, context_);
 
-    util::Lock lock(_mtx, context_);
-
     database::mysql::ConnectionHandler handler;
     try {
         handler.conn = database::mysql::Connection::open(_connectionParams);
         handler.conn->execute(
-            [this, &lock](decltype(handler.conn) conn) {
-                this->_loadConfigurationImpl(lock, conn);
+            [this](decltype(handler.conn) conn) {
+                this->_loadConfigurationImpl(conn);
             }
         );
     } catch (database::mysql::Error const& ex) {
@@ -1249,20 +1203,19 @@ void ConfigurationMySQL::_loadConfiguration() {
 }
 
 
-void ConfigurationMySQL::_loadConfigurationImpl(util::Lock const& lock,
-                                                database::mysql::Connection::Ptr const& conn) {
+void ConfigurationMySQL::_loadConfigurationImpl(database::mysql::Connection::Ptr const& conn) {
 
     // The common parameters (if any defined) of the workers will be initialize
     // from table 'config' and be used as defaults when reading worker-specific
     // configurations from table 'config_worker'
 
-    uint16_t commonWorkerSvcPort = Configuration::defaultWorkerSvcPort;
-    uint16_t commonWorkerFsPort  = Configuration::defaultWorkerFsPort;
-    string   commonWorkerDataDir = Configuration::defaultDataDir;
-    uint16_t commonWorkerDbPort  = Configuration::defaultWorkerDbPort;
-    string   commonWorkerDbUser  = Configuration::defaultWorkerDbUser;
-    uint16_t commonWorkerLoaderPort   = Configuration::defaultWorkerLoaderPort;
-    string   commonWorkerLoaderTmpDir = Configuration::defaultWorkerLoaderTmpDir;
+    uint16_t commonWorkerSvcPort = ConfigurationBase::defaultWorkerSvcPort;
+    uint16_t commonWorkerFsPort  = ConfigurationBase::defaultWorkerFsPort;
+    string   commonWorkerDataDir = ConfigurationBase::defaultDataDir;
+    uint16_t commonWorkerDbPort  = ConfigurationBase::defaultWorkerDbPort;
+    string   commonWorkerDbUser  = ConfigurationBase::defaultWorkerDbUser;
+    uint16_t commonWorkerLoaderPort   = ConfigurationBase::defaultWorkerLoaderPort;
+    string   commonWorkerLoaderTmpDir = ConfigurationBase::defaultWorkerLoaderTmpDir;
 
     database::mysql::Row row;
 
@@ -1335,8 +1288,8 @@ void ConfigurationMySQL::_loadConfigurationImpl(util::Lock const& lock,
         ::readOptionalParameter( row, "loader_port",    info.loaderPort,   commonWorkerLoaderPort);
         ::readOptionalParameter( row, "loader_tmp_dir", info.loaderTmpDir, commonWorkerLoaderTmpDir);
 
-        Configuration::translateWorkerDir(info.dataDir, info.name);
-        Configuration::translateWorkerDir(info.loaderTmpDir, info.name);
+        ConfigurationBase::translateWorkerDir(info.dataDir, info.name);
+        ConfigurationBase::translateWorkerDir(info.loaderTmpDir, info.name);
 
         _workerInfo[info.name] = info;
     }
@@ -1476,8 +1429,6 @@ void ConfigurationMySQL::_setImp(string const& category,
                 conn->commit();
             }
         );
-
-        util::Lock lock(_mtx, context_);
         onSuccess();
 
     } catch (database::mysql::Error const& ex) {

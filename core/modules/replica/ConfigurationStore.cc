@@ -82,7 +82,7 @@ string ConfigurationStore::_classMethodContext(string const& func) {
 }
 
 ConfigurationStore::ConfigurationStore(util::ConfigStore const& configStore)
-    :   Configuration(),
+    :   ConfigurationBase(),
         _log(LOG_GET("lsst.qserv.replica.ConfigurationStore")) {
 
     _loadConfiguration(configStore);
@@ -90,8 +90,8 @@ ConfigurationStore::ConfigurationStore(util::ConfigStore const& configStore)
 
 
 void ConfigurationStore::addWorker(WorkerInfo const& info) {
+
     LOGS(_log, LOG_LVL_DEBUG, context(__func__) << "  name=" << info.name);
-    util::Lock lock(_mtx, context(__func__));
 
     auto itr = _workerInfo.find(info.name);
     if (_workerInfo.end() != itr) {
@@ -131,8 +131,7 @@ void ConfigurationStore::addWorker(WorkerInfo const& info) {
 void ConfigurationStore::deleteWorker(string const& name) {
     LOGS(_log, LOG_LVL_DEBUG, context(__func__) << "  name=" << name);
 
-    util::Lock lock(_mtx, context(__func__));
-    auto itr = safeFindWorker(lock, name, _classMethodContext(__func__));
+    auto itr = safeFindWorker(name, _classMethodContext(__func__));
     _workerInfo.erase(itr);
 }
 
@@ -142,8 +141,7 @@ WorkerInfo ConfigurationStore::disableWorker(string const& name,
     LOGS(_log, LOG_LVL_DEBUG, context(__func__) << "  name=" << name
          << " disable=" << (disable ? "true" : "false"));
 
-    util::Lock lock(_mtx, context(__func__));
-    auto itr = safeFindWorker(lock, name, _classMethodContext(__func__));
+    auto itr = safeFindWorker(name, _classMethodContext(__func__));
     itr->second.isEnabled = not disable;
 
     return itr->second;
@@ -155,8 +153,7 @@ WorkerInfo ConfigurationStore::setWorkerReadOnly(string const& name,
     LOGS(_log, LOG_LVL_DEBUG, context(__func__) << "  name=" << name
          << " readOnly=" << (readOnly ? "true" : "false"));
 
-    util::Lock lock(_mtx, context(__func__));
-    auto itr = safeFindWorker(lock, name, _classMethodContext(__func__));
+    auto itr = safeFindWorker(name, _classMethodContext(__func__));
     itr->second.isReadOnly = readOnly;
 
     return itr->second;
@@ -167,8 +164,7 @@ WorkerInfo ConfigurationStore::setWorkerSvcHost(string const& name,
                                                 string const& host) {
     LOGS(_log, LOG_LVL_DEBUG, context(__func__) << "  name=" << name << " host=" << host);
 
-    util::Lock lock(_mtx, context(__func__));
-    auto itr = safeFindWorker(lock, name, _classMethodContext(__func__));
+    auto itr = safeFindWorker(name, _classMethodContext(__func__));
     itr->second.svcHost = host;
 
     return itr->second;
@@ -179,8 +175,7 @@ WorkerInfo ConfigurationStore::setWorkerSvcPort(string const& name,
                                                 uint16_t port) {
     LOGS(_log, LOG_LVL_DEBUG, context(__func__) << "  name=" << name << " port=" << port);
 
-    util::Lock lock(_mtx, context(__func__));
-    auto itr = safeFindWorker(lock, name, _classMethodContext(__func__));
+    auto itr = safeFindWorker(name, _classMethodContext(__func__));
     itr->second.svcPort = port;
 
     return itr->second;
@@ -191,8 +186,7 @@ WorkerInfo ConfigurationStore::setWorkerFsHost(string const& name,
                                                string const& host) {
     LOGS(_log, LOG_LVL_DEBUG, context(__func__) << "  name=" << name << " host=" << host);
 
-    util::Lock lock(_mtx, context(__func__));
-    auto itr = safeFindWorker(lock, name, _classMethodContext(__func__));
+    auto itr = safeFindWorker(name, _classMethodContext(__func__));
     itr->second.fsHost = host;
 
     return itr->second;
@@ -203,8 +197,7 @@ WorkerInfo ConfigurationStore::setWorkerFsPort(string const& name,
                                                uint16_t port) {
     LOGS(_log, LOG_LVL_DEBUG, context(__func__) << "  name=" << name << " port=" << port);
 
-    util::Lock lock(_mtx, context(__func__));
-    auto itr = safeFindWorker(lock, name, _classMethodContext(__func__));
+    auto itr = safeFindWorker(name, _classMethodContext(__func__));
     itr->second.fsPort = port;
 
     return itr->second;
@@ -216,8 +209,7 @@ WorkerInfo ConfigurationStore::setWorkerDataDir(string const& name,
 
     LOGS(_log, LOG_LVL_DEBUG, context(__func__) << "  name=" << name << " dataDir=" << dataDir);
 
-    util::Lock lock(_mtx, context(__func__));
-    auto itr = safeFindWorker(lock, name, _classMethodContext(__func__));
+    auto itr = safeFindWorker(name, _classMethodContext(__func__));
     itr->second.dataDir = dataDir;
 
     return itr->second;
@@ -229,8 +221,7 @@ WorkerInfo ConfigurationStore::setWorkerDbHost(std::string const& name,
                                                std::string const& host) {
     LOGS(_log, LOG_LVL_DEBUG, context(__func__) << "  name=" << name << " host=" << host);
 
-    util::Lock lock(_mtx, context(__func__));
-    auto itr = safeFindWorker(lock, name, _classMethodContext(__func__));
+    auto itr = safeFindWorker(name, _classMethodContext(__func__));
     itr->second.dbHost = host;
     return itr->second;
 }
@@ -240,8 +231,7 @@ WorkerInfo ConfigurationStore::setWorkerDbPort(std::string const& name,
                                                uint16_t port) {
     LOGS(_log, LOG_LVL_DEBUG, context(__func__) << "  name=" << name << " port=" << port);
 
-    util::Lock lock(_mtx, context(__func__));
-    auto itr = safeFindWorker(lock, name, _classMethodContext(__func__));
+    auto itr = safeFindWorker(name, _classMethodContext(__func__));
     itr->second.dbPort = port;
     return itr->second;
 }
@@ -251,8 +241,7 @@ WorkerInfo ConfigurationStore::setWorkerDbUser(std::string const& name,
                                                std::string const& user)  {
     LOGS(_log, LOG_LVL_DEBUG, context(__func__) << "  name=" << name << " user=" << user);
 
-    util::Lock lock(_mtx, context(__func__));
-    auto itr = safeFindWorker(lock, name, _classMethodContext(__func__));
+    auto itr = safeFindWorker(name, _classMethodContext(__func__));
     itr->second.dbUser = user;
 
     return itr->second;
@@ -263,8 +252,7 @@ WorkerInfo ConfigurationStore::setWorkerLoaderHost(string const& name,
                                                    string const& host) {
     LOGS(_log, LOG_LVL_DEBUG, context(__func__) << "  name=" << name << " host=" << host);
 
-    util::Lock lock(_mtx, context(__func__));
-    auto itr = safeFindWorker(lock, name, _classMethodContext(__func__));
+    auto itr = safeFindWorker(name, _classMethodContext(__func__));
     itr->second.loaderHost = host;
 
     return itr->second;
@@ -275,8 +263,7 @@ WorkerInfo ConfigurationStore::setWorkerLoaderPort(string const& name,
                                                    uint16_t port) {
     LOGS(_log, LOG_LVL_DEBUG, context(__func__) << "  name=" << name << " port=" << port);
 
-    util::Lock lock(_mtx, context(__func__));
-    auto itr = safeFindWorker(lock, name, _classMethodContext(__func__));
+    auto itr = safeFindWorker(name, _classMethodContext(__func__));
     itr->second.loaderPort = port;
 
     return itr->second;
@@ -288,8 +275,7 @@ WorkerInfo ConfigurationStore::setWorkerLoaderTmpDir(string const& name,
 
     LOGS(_log, LOG_LVL_DEBUG, context(__func__) << "  name=" << name << " tmpDir=" << tmpDir);
 
-    util::Lock lock(_mtx, context(__func__));
-    auto itr = safeFindWorker(lock, name, _classMethodContext(__func__));
+    auto itr = safeFindWorker(name, _classMethodContext(__func__));
     itr->second.loaderTmpDir = tmpDir;
 
     return itr->second;
@@ -300,8 +286,6 @@ WorkerInfo ConfigurationStore::setWorkerLoaderTmpDir(string const& name,
 DatabaseFamilyInfo ConfigurationStore::addDatabaseFamily(DatabaseFamilyInfo const& info) {
 
     LOGS(_log, LOG_LVL_DEBUG, context(__func__) << "  familyInfo: " << info);
-
-    util::Lock lock(_mtx, context(__func__));
     
     if (info.name.empty()) {
         throw invalid_argument(_classMethodContext(__func__) + "  the family name can't be empty");
@@ -339,8 +323,6 @@ void ConfigurationStore::deleteDatabaseFamily(string const& name) {
 
     LOGS(_log, LOG_LVL_DEBUG, context(__func__) << "  name: " << name);
 
-    util::Lock lock(_mtx, context(__func__));
-
     if (name.empty()) {
         throw invalid_argument(_classMethodContext(__func__) + "  the family name can't be empty");
     }
@@ -366,8 +348,6 @@ void ConfigurationStore::deleteDatabaseFamily(string const& name) {
 DatabaseInfo ConfigurationStore::addDatabase(DatabaseInfo const& info) {
 
     LOGS(_log, LOG_LVL_DEBUG, context(__func__) << "  databaseInfo: " << info);
-
-    util::Lock lock(_mtx, context(__func__));
     
     if (info.name.empty()) {
         throw invalid_argument(_classMethodContext(__func__) + "  the database name can't be empty");
@@ -413,8 +393,6 @@ DatabaseInfo ConfigurationStore::addDatabase(DatabaseInfo const& info) {
 DatabaseInfo ConfigurationStore::publishDatabase(string const& name) {
 
     LOGS(_log, LOG_LVL_DEBUG, context(__func__) << "  name: " << name);
-
-    util::Lock lock(_mtx, context(__func__));
     
     if (name.empty()) {
         throw invalid_argument(_classMethodContext(__func__) + "  the database name can't be empty");
@@ -436,8 +414,6 @@ DatabaseInfo ConfigurationStore::publishDatabase(string const& name) {
 void ConfigurationStore::deleteDatabase(string const& name) {
 
     LOGS(_log, LOG_LVL_DEBUG, context(__func__) << "  name: " << name);
-
-    util::Lock lock(_mtx, context(__func__));
 
     if (name.empty()) {
         throw invalid_argument(_classMethodContext(__func__) + "  the database name can't be empty");
@@ -509,8 +485,6 @@ DatabaseInfo ConfigurationStore::deleteTable(string const& database,
     LOGS(_log, LOG_LVL_DEBUG, context(__func__) << "  database: " << database
          << " table: " << table);
 
-    util::Lock lock(_mtx, context(__func__));
-
     if (database.empty()) {
         throw invalid_argument(_classMethodContext(__func__) + "  the database name can't be empty");
     }
@@ -552,8 +526,6 @@ DatabaseInfo ConfigurationStore::deleteTable(string const& database,
 void ConfigurationStore::_loadConfiguration(util::ConfigStore const& configStore) {
 
     LOGS(_log, LOG_LVL_DEBUG, context(__func__));
-
-    util::Lock lock(_mtx, context(__func__));
 
     // Parse the list of worker names
 
@@ -660,8 +632,8 @@ void ConfigurationStore::_loadConfiguration(util::ConfigStore const& configStore
         ::parseKeyVal(configStore, section+".loader_port",    workerInfo.loaderPort,   commonWorkerLoaderPort);
         ::parseKeyVal(configStore, section+".loader_tmp_dir", workerInfo.loaderTmpDir, commonWorkerLoaderTmpDir);
 
-        Configuration::translateWorkerDir(workerInfo.dataDir, name);
-        Configuration::translateWorkerDir(workerInfo.loaderTmpDir, name);
+        ConfigurationBase::translateWorkerDir(workerInfo.dataDir, name);
+        ConfigurationBase::translateWorkerDir(workerInfo.loaderTmpDir, name);
     }
 
     // Parse mandatory database family-specific configuration sections
