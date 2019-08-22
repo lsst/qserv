@@ -352,7 +352,7 @@ std::shared_ptr<query::BoolFactor> AreaRestrictorPoly::asSciSqlFactor(std::strin
         [] (std::string const& parameter) -> std::shared_ptr<query::ValueExpr> {
             return query::ValueExpr::newSimple(query::ValueFactor::newConstFactor(parameter));
         });
-    auto func = std::make_shared<query::FuncExpr>("scisql_s2PtInPolly", parameters);
+    auto func = std::make_shared<query::FuncExpr>("scisql_s2PtInCPoly", parameters);
     auto compPred = std::make_shared<query::CompPredicate>(
         query::ValueExpr::newSimple(query::ValueFactor::newFuncFactor(func)),
         query::CompPredicate::EQUALS_OP,
