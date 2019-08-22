@@ -60,7 +60,6 @@ namespace css {
 namespace query {
     class SelectStmt;
     class QueryContext;
-    class QsRestrictor;
 }}} // End of forward declarations
 
 
@@ -100,8 +99,16 @@ public:
     bool needsMerge() const;
     bool hasChunks() const;
 
+    /**
+     * @brief Get the Area Restrictors
+     */
+    query::AreaRestrictorVecPtr getAreaRestrictors() const;
 
-    std::shared_ptr<std::vector<std::shared_ptr<query::QsRestrictor>>> getRestrictors() const;
+    /**
+     * @brief Get the Secondary Index Restrictors
+     */
+    query::SecIdxRestrictorVecPtr getSecIdxRestrictors() const;
+
     void addChunk(ChunkSpec const& cs);
     void setDummy();
 

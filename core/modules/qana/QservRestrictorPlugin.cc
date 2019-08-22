@@ -195,7 +195,7 @@ std::shared_ptr<const query::FuncExpr> extractSingleScisqlAreaFunc(query::WhereC
 }
 
 
-std::shared_ptr<query::QsRestrictor> makeQsRestrictor(query::FuncExpr const& scisqlFunc) {
+std::shared_ptr<query::AreaRestrictor> makeAreaRestrictor(query::FuncExpr const& scisqlFunc) {
     std::vector<std::string> parameters;
     int counter(0);
     for (auto const& valueExpr : scisqlFunc.getParams()) {
@@ -219,14 +219,14 @@ std::shared_ptr<query::QsRestrictor> makeQsRestrictor(query::FuncExpr const& sci
     } else if (scisqlFunc.getName() == "scisql_s2PtInEllipse") {
         return std::make_shared<query::AreaRestrictorEllipse>(parameters);
     } else if (scisqlFunc.getName() == "scisql_s2PtInCPoly") {
-        return std::make_shared<query::AreaRestrictorPoly>(parameters);
+        return std::make_shared<query::AreaRestrictorPoly>(std::move(parameters));
     }
     return nullptr;
 }
 
 
 /**
- * @brief Add scisql restrictors for each QsRestrictor.
+ * @brief Add scisql restrictors for each AreaRestrictor.
  *
  * This handles the case where a qserv areaspec function was passed into the WHERE clause by the user,
  * it adds scisql restrictor functions corresponding to the qserv area restrictor that is applied as a
@@ -237,11 +237,11 @@ std::shared_ptr<query::QsRestrictor> makeQsRestrictor(query::FuncExpr const& sci
  * @param fromList The query's FROM list, it is consulted to find the chunked tables.
  * @param context The query context.
  */
-void addScisqlRestrictors(std::vector<std::shared_ptr<query::QsRestrictor>> const& restrictors,
+void addScisqlRestrictors(std::vector<std::shared_ptr<query::AreaRestrictor>> const& areaRestrictors,
                            query::FromList const& fromList,
                            query::WhereClause& whereClause,
                            query::QueryContext& context) {
-    if (restrictors.empty()) return;
+    if (areaRestrictors.empty()) return;
 
     auto const& tableList = fromList.getTableRefList();
     RestrictoryEntryList chunkedTables;
@@ -255,15 +255,13 @@ void addScisqlRestrictors(std::vector<std::shared_ptr<query::QsRestrictor>> cons
     auto newTerm = std::make_shared<query::AndTerm>();
     // Add scisql spatial restrictions: for each of the qserv restrictors, generate a scisql restrictor
     // condition for each chunked table.
-    for (auto const& qsRestrictor : restrictors) {
-        if (auto areaRestrictor = std::dynamic_pointer_cast<query::AreaRestrictor>(qsRestrictor)) {
-            for (auto const& chunkedTable : chunkedTables) {
-                newTerm->_terms.push_back(areaRestrictor->asSciSqlFactor(chunkedTable.alias,
-                                                                         chunkedTable.chunkColumns));
-            }
+    for (auto const& areaRestrictor : areaRestrictors) {
+        for (auto const& chunkedTable : chunkedTables) {
+            newTerm->_terms.push_back(areaRestrictor->asSciSqlFactor(chunkedTable.alias,
+                                                                        chunkedTable.chunkColumns));
         }
     }
-    LOGS(_log, LOG_LVL_TRACE, "for restrictors: " << util::printable(restrictors) <<
+    LOGS(_log, LOG_LVL_TRACE, "for restrictors: " << util::printable(areaRestrictors) <<
                               " adding: " << newTerm);
     whereClause.prependAndTerm(newTerm);
 }
@@ -420,7 +418,7 @@ std::shared_ptr<query::SICompRestrictor> makeSecondaryIndexRestrictor(
     return nullptr;
 }
 
-/**  Create QSRestrictors which will use secondary index
+/**  Create SIRestrictors which will use secondary index
  *
  *   @param context:  Context used to analyze SQL query, allow to compute
  *                    column names and find if they are in secondary index.
@@ -428,16 +426,16 @@ std::shared_ptr<query::SICompRestrictor> makeSecondaryIndexRestrictor(
  *
  *   @return:         Qserv restrictors list
  */
-query::QsRestrictor::PtrVector getSecIndexRestrictors(query::QueryContext& context,
-                                                      query::AndTerm::Ptr andTerm) {
-    query::QsRestrictor::PtrVector result;
+std::vector<std::shared_ptr<query::SIRestrictor>> getSecIndexRestrictors(query::QueryContext& context,
+                                                                         query::AndTerm::Ptr andTerm) {
+    std::vector<std::shared_ptr<query::SIRestrictor>> result;
     if (not andTerm) return result;
 
     for (auto&& term : andTerm->_terms) {
         auto factor = std::dynamic_pointer_cast<query::BoolFactor>(term);
         if (!factor) continue;
         for (auto factorTerm : factor->_terms) {
-            query::QsRestrictor::Ptr restrictor;
+            std::shared_ptr<query::SIRestrictor> restrictor;
             if (auto const inPredicate =
                     std::dynamic_pointer_cast<query::InPredicate>(factorTerm)) {
                 restrictor = makeSecondaryIndexRestrictor(*inPredicate, context);
@@ -468,8 +466,8 @@ query::QsRestrictor::PtrVector getSecIndexRestrictors(query::QueryContext& conte
 void handleSecondaryIndex(query::WhereClause& whereClause, query::QueryContext& context) {
     // Merge in the implicit (i.e. secondary index) restrictors
     query::AndTerm::Ptr originalAnd(whereClause.getRootAndTerm());
-    query::QsRestrictor::PtrVector const& secIndexPreds = getSecIndexRestrictors(context, originalAnd);
-    context.addRestrictors(secIndexPreds);
+    auto const& secIndexPreds = getSecIndexRestrictors(context, originalAnd);
+    context.addSecondaryIndexRestrictors(secIndexPreds);
 }
 
 
@@ -507,7 +505,7 @@ QservRestrictorPlugin::applyLogical(query::SelectStmt& stmt,
         auto restrictors = whereClause.getRestrs();
         // add restrictors to context:
         if (restrictors != nullptr) {
-            context.addRestrictors(*restrictors);
+            context.addAreaRestrictors(*restrictors);
             whereClause.resetRestrs();
             // make scisql functions for restrictors:
             addScisqlRestrictors(*restrictors, stmt.getFromList(), whereClause, context);
@@ -516,12 +514,12 @@ QservRestrictorPlugin::applyLogical(query::SelectStmt& stmt,
         // Get scisql restrictor if there is exactly one of them
         auto scisqlFunc = extractSingleScisqlAreaFunc(whereClause);
         if (scisqlFunc != nullptr) {
-            // Attempt to convirt the scisql restrictor to a QsRestrictor. This will fail if any parameter in
+            // Attempt to convirt the scisql restrictor to an AreaRestrictor. This will fail if any parameter in
             // the scisql function is NOT a const val.
-            auto restrictor = makeQsRestrictor(*scisqlFunc);
-            if (restrictor != nullptr) {
-                LOGS(_log, LOG_LVL_DEBUG, "Adding scisql_s2Pt restrictor: " << *restrictor);
-                context.addRestrictors({restrictor});
+            auto areaRestrictor = makeAreaRestrictor(*scisqlFunc);
+            if (areaRestrictor != nullptr) {
+                LOGS(_log, LOG_LVL_DEBUG, "Adding restrictor: " << *areaRestrictor);
+                context.addAreaRestrictors({areaRestrictor});
             }
         }
     }

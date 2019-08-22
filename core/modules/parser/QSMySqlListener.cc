@@ -1059,7 +1059,7 @@ private:
         } catch (std::logic_error err) {
             throw adapter_execution_error(err.what());
         }
-        _getWhereClause()->addQsRestrictor(restrictor);
+        _getWhereClause()->addAreaRestrictor(restrictor);
     }
 
 

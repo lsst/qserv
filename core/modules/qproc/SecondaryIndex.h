@@ -38,6 +38,7 @@
 #include "mysql/MySqlConfig.h"
 #include "qproc/ChunkSpec.h"
 #include "query/QsRestrictor.h"
+#include "query/typedefs.h"
 
 namespace lsst {
 namespace qserv {
@@ -61,17 +62,9 @@ public:
 
     /** Lookup an index restriction.
      *
-     *  If no index restrictor exists, throw a NoIndexRestrictor exception.
      *  Index restrictors are combined with OR.
      */
-    ChunkSpecVector lookup(query::QsRestrictor::PtrVector const& restrictors);
-
-    class NoIndexRestrictor : public std::invalid_argument {
-    public:
-        NoIndexRestrictor()
-            : std::invalid_argument("Missing index restrictor")
-            {}
-    };
+    ChunkSpecVector lookup(query::SecIdxRestrictorVec const& restrictors);
 
     class Backend;
 private:

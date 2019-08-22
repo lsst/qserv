@@ -154,7 +154,8 @@ ChunkSpecVector IndexMap::getAllChunks() {
 }
 
 //  Compute chunks coverage of spatial and secondary index restrictors
-ChunkSpecVector IndexMap::getChunks(std::vector<std::shared_ptr<query::QsRestrictor>> const& restrictors) {
+ChunkSpecVector IndexMap::getChunks(query::AreaRestrictorVecPtr const& areaRestrictors,
+                                    query::SecIdxRestrictorVecPtr const& secIdxRestrictors) {
 
     // Secondary Index lookups
     if (!_si) {
@@ -163,18 +164,17 @@ ChunkSpecVector IndexMap::getChunks(std::vector<std::shared_ptr<query::QsRestric
     ChunkSpecVector indexSpecs;
     bool hasIndex = true;
     bool hasRegion = true;
-    try {
-        indexSpecs = _si->lookup(restrictors);
+    if (secIdxRestrictors != nullptr) {
+        indexSpecs = _si->lookup(*secIdxRestrictors);
         LOGS(_log, LOG_LVL_TRACE, "Index specs: " << util::printable(indexSpecs));
-    } catch(SecondaryIndex::NoIndexRestrictor& e) {
-        LOGS(_log, LOG_LVL_DEBUG, "No secondary index restrictor");
-        hasIndex = false; // Ok if no index restrictors.
+    } else {
+        hasIndex = false;
     }
 
     // Spatial area lookups
     RegionPtrVector rv;
-    for (auto const& restrictor : restrictors) {
-        if (auto const& areaRestrictor = std::dynamic_pointer_cast<query::AreaRestrictor>(restrictor)) {
+    if (areaRestrictors != nullptr) {
+        for (auto const& areaRestrictor : *areaRestrictors) {
             rv.push_back(areaRestrictor->getRegion());
         }
     }

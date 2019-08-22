@@ -82,9 +82,6 @@ public:
 
     QsRestrictor() = default;
 
-    typedef std::shared_ptr<QsRestrictor> Ptr;
-    typedef std::vector<Ptr> PtrVector;
-
     bool operator==(const QsRestrictor& rhs) const;
 
     /**
@@ -165,7 +162,6 @@ private:
 
 class AreaRestrictorCircle : public AreaRestrictor{
 public:
-    AreaRestrictorCircle() = default;
     virtual ~AreaRestrictorCircle() = default;
 
     AreaRestrictorCircle(std::string const& centerLonDegree,
@@ -207,7 +203,6 @@ private:
 
 class AreaRestrictorEllipse : public AreaRestrictor{
 public:
-    AreaRestrictorEllipse() = default;
     virtual ~AreaRestrictorEllipse() = default;
 
     AreaRestrictorEllipse(std::string const& centerLonDegree,
@@ -253,7 +248,6 @@ private:
 
 class AreaRestrictorPoly : public AreaRestrictor{
 public:
-    AreaRestrictorPoly() = default;
     virtual ~AreaRestrictorPoly() = default;
 
     AreaRestrictorPoly(std::vector<std::string> const& parameters);

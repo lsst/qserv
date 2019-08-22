@@ -68,7 +68,7 @@ class SecondaryIndex::Backend {
 public:
     virtual ~Backend() {}
     /// Lookup an index restrictor. Ignore restrictors that are not "sIndex" restrictors.
-    virtual ChunkSpecVector lookup(query::QsRestrictor::PtrVector const& restrictors) = 0;
+    virtual ChunkSpecVector lookup(query::SecIdxRestrictorVec const& restrictors) = 0;
 };
 
 
@@ -78,24 +78,17 @@ public:
         : _sqlConnection(sql::SqlConnectionFactory::make(c)) {
     }
 
-    ChunkSpecVector lookup(query::QsRestrictor::PtrVector const& restrictors) override {
+    ChunkSpecVector lookup(query::SecIdxRestrictorVec const& restrictors) override {
         ChunkSpecVector output;
-        bool hasIndex = false;
-        for(auto const& restrBase : restrictors) {
-            if (auto siRestr = std::dynamic_pointer_cast<query::SIRestrictor>(restrBase)) {
-                // handle it
-                hasIndex = true;
-                auto const& secondaryIndexCol = siRestr->getSecondaryIndexColumnRef();
-                std::string index_table = _buildIndexTableName(secondaryIndexCol->getDb(),
-                                                            secondaryIndexCol->getTable());
-                auto sql = siRestr->getSILookupQuery(SEC_INDEX_DB, index_table, CHUNK_COLUMN,
-                                                     SUB_CHUNK_COLUMN);
-                LOGS(_log, LOG_LVL_DEBUG, "secondary lookup sql:" << sql);
-                _sqlLookup(output, sql);
-            }
-        }
-        if (!hasIndex) {
-            throw SecondaryIndex::NoIndexRestrictor();
+        for(auto const& secIdxRestrictor : restrictors) {
+            // handle it
+            auto const& secondaryIndexCol = secIdxRestrictor->getSecondaryIndexColumnRef();
+            std::string index_table = _buildIndexTableName(secondaryIndexCol->getDb(),
+                                                           secondaryIndexCol->getTable());
+            auto sql = secIdxRestrictor->getSILookupQuery(SEC_INDEX_DB, index_table, CHUNK_COLUMN,
+                                                          SUB_CHUNK_COLUMN);
+            LOGS(_log, LOG_LVL_DEBUG, "secondary lookup sql:" << sql);
+            _sqlLookup(output, sql);
         }
         normalize(output);
         return output;
@@ -103,9 +96,7 @@ public:
 
 
 private:
-    static std::string _buildIndexTableName(
-        std::string const& db,
-        std::string const& table) {
+    static std::string _buildIndexTableName(std::string const& db, std::string const& table) {
         return sanitizeName(db) + "__" + sanitizeName(table);
     }
 
@@ -149,7 +140,7 @@ private:
 class FakeBackend : public SecondaryIndex::Backend {
 public:
     FakeBackend() {}
-    virtual ChunkSpecVector lookup(query::QsRestrictor::PtrVector const& restrictors) {
+    virtual ChunkSpecVector lookup(query::SecIdxRestrictorVec const& restrictors) {
         ChunkSpecVector dummy;
         if (_hasSecondary(restrictors)) {
             for(int i=100; i < 103; ++i) {
@@ -162,14 +153,11 @@ public:
     }
 private:
     struct _checkIndex {
-        bool operator()(std::shared_ptr<query::QsRestrictor> const& restrictor) {
-            if (auto restrFunc = std::dynamic_pointer_cast<query::SIRestrictor>(restrictor)) {
-                return true;
-            }
-            return false;
+        bool operator()(std::shared_ptr<query::SIRestrictor> const& restrictor) {
+            return true;
         }
     };
-    bool _hasSecondary(query::QsRestrictor::PtrVector const& restrictors) {
+    bool _hasSecondary(query::SecIdxRestrictorVec const& restrictors) {
         return restrictors.end() != std::find_if(restrictors.begin(), restrictors.end(), _checkIndex());
     }
 };
@@ -184,7 +172,7 @@ SecondaryIndex::SecondaryIndex()
 }
 
 
-ChunkSpecVector SecondaryIndex::lookup(query::QsRestrictor::PtrVector const& restrictors) {
+ChunkSpecVector SecondaryIndex::lookup(query::SecIdxRestrictorVec const& restrictors) {
     if (_backend) {
         return _backend->lookup(restrictors);
     } else {

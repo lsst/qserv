@@ -436,10 +436,10 @@ shared_ptr<query::ValueFactor> ValueFactor(shared_ptr<query::ValueExpr> valueExp
 
 /// Create a new WhereClause with a given OrTerm for its root term.
 shared_ptr<query::WhereClause> WhereClause(shared_ptr<query::OrTerm> const& orTerm,
-                                           shared_ptr<query::QsRestrictor> const& qsRestrictor=nullptr) {
-    auto restrictorVec = make_shared<vector<shared_ptr<query::QsRestrictor>>>();
-    if (nullptr != qsRestrictor) {
-        restrictorVec->push_back(qsRestrictor);
+                                           shared_ptr<query::AreaRestrictor> const& areaRestrictor=nullptr) {
+    auto restrictorVec = make_shared<query::AreaRestrictorVec>();
+    if (nullptr != areaRestrictor) {
+        restrictorVec->push_back(areaRestrictor);
     }
     return make_shared<query::WhereClause>(orTerm, restrictorVec);
 }

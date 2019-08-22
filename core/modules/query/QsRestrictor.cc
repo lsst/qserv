@@ -54,6 +54,7 @@ template <typename T>
 std::vector<T> convertVec(std::vector<std::string> const& v) {
     std::vector<T> out;
     out.reserve(v.size());
+    // todo add try/catch bad_lexical_cast here & rethrow the correct error type
     std::transform(v.begin(), v.end(), std::back_inserter(out), boost::lexical_cast<T, std::string>);
     return out;
 }
@@ -85,7 +86,7 @@ AreaRestrictorBox::AreaRestrictorBox(std::string const& lonMinDegree, std::strin
 
 AreaRestrictorBox::AreaRestrictorBox(std::vector<std::string> const& parameters) {
     if (parameters.size() != 4) {
-        throw std::logic_error("qserv_areaspec_box requires 4 parameters.");
+        throw std::logic_error("AreaRestrictorBox requires 4 parameters.");
     }
     _lonMinDegree = parameters[0];
     _latMinDegree = parameters[1];
@@ -395,7 +396,7 @@ std::string SICompRestrictor::getSILookupQuery(std::string const& secondaryIndex
     QueryTemplate columnRefQt;
     columnRefQt.setUseColumnOnly(true);
     _compPredicate->renderTo(columnRefQt);
-    return "SELECT " + chunkColumn + "," + subChunkColumn +
+    return "SELECT " + chunkColumn + ", " + subChunkColumn +
             " FROM " + secondaryIndexDb + "." + secondaryIndexTable +
             " WHERE " + boost::lexical_cast<std::string>(columnRefQt);
 }
@@ -429,7 +430,7 @@ std::string SIBetweenRestrictor::getSILookupQuery(std::string const& secondaryIn
     QueryTemplate columnRefQt;
     columnRefQt.setUseColumnOnly(true);
     _betweenPredicate->renderTo(columnRefQt);
-    return "SELECT " + chunkColumn + "," + subChunkColumn +
+    return "SELECT " + chunkColumn + ", " + subChunkColumn +
             " FROM " + secondaryIndexDb + "." + secondaryIndexTable +
             " WHERE " + boost::lexical_cast<std::string>(columnRefQt);
 }
@@ -463,7 +464,7 @@ std::string SIInRestrictor::getSILookupQuery(std::string const& secondaryIndexDb
     QueryTemplate qt;
     qt.setUseColumnOnly(true);
     _inPredicate->renderTo(qt);
-    return "SELECT " + chunkColumn + "," + subChunkColumn +
+    return "SELECT " + chunkColumn + ", " + subChunkColumn +
             " FROM " + secondaryIndexDb + "." + secondaryIndexTable +
             " WHERE " + boost::lexical_cast<std::string>(qt);
 }

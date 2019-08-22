@@ -142,15 +142,28 @@ QueryContext::getValueExprMatch(std::shared_ptr<query::ValueExpr> const& valExpr
 }
 
 
-void QueryContext::addRestrictors(RestrList const& newRestrictors) {
+void QueryContext::addAreaRestrictors(AreaRestrictorList const& newRestrictors) {
     if (newRestrictors.empty()) {
         return;
     }
-    if (nullptr == restrictors) {
-        restrictors = std::make_shared<QueryContext::RestrList>(newRestrictors);
+    if (nullptr == areaRestrictors) {
+        areaRestrictors = std::make_shared<QueryContext::AreaRestrictorList>(newRestrictors);
     } else {
-        restrictors->reserve(restrictors->size() + newRestrictors.size());
-        restrictors->insert(restrictors->end(), newRestrictors.begin(), newRestrictors.end());
+        areaRestrictors->reserve(areaRestrictors->size() + newRestrictors.size());
+        areaRestrictors->insert(areaRestrictors->end(), newRestrictors.begin(), newRestrictors.end());
+    }
+}
+
+
+void QueryContext::addSecondaryIndexRestrictors(SecondaryIndexRestrictorList const& newRestrictors) {
+    if (newRestrictors.empty()) {
+        return;
+    }
+    if (nullptr == secondaryIndexRestrictors) {
+        secondaryIndexRestrictors = std::make_shared<QueryContext::SecondaryIndexRestrictorList>(newRestrictors);
+    } else {
+        secondaryIndexRestrictors->reserve(secondaryIndexRestrictors->size() + newRestrictors.size());
+        secondaryIndexRestrictors->insert(secondaryIndexRestrictors->end(), newRestrictors.begin(), newRestrictors.end());
     }
 }
 

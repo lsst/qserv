@@ -482,13 +482,14 @@ void UserQuerySelect::setupChunking() {
     // FIXME add operator<< for QuerySession
     LOGS(_log, LOG_LVL_TRACE, getQueryIdString() << " _qSession: " << _qSession);
     if (_qSession->hasChunks()) {
-        auto restrictors = _qSession->getRestrictors();
+        auto areaRestrictors = _qSession->getAreaRestrictors();
+        auto secondaryIndexRestrictors = _qSession->getSecIdxRestrictors();
         css::StripingParams partStriping = _qSession->getDbStriping();
 
         im = std::make_shared<qproc::IndexMap>(partStriping, _secondaryIndex);
         qproc::ChunkSpecVector csv;
-        if (restrictors != nullptr) {
-            csv = im->getChunks(*restrictors);
+        if (areaRestrictors != nullptr || secondaryIndexRestrictors != nullptr) {
+            csv = im->getChunks(areaRestrictors, secondaryIndexRestrictors);
         } else { // Unrestricted: full-sky
             csv = im->getAllChunks();
         }

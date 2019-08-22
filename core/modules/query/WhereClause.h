@@ -23,8 +23,7 @@
 /**
   * @file
   *
-  * @brief WhereClause is a parsed SQL WHERE; QsRestrictor is a queryspec
-  * spatial restrictor.
+  * @brief WhereClause is a parsed SQL WHERE; AreaRestrictor a spatial restrictor.
   *
   * @author Daniel L. Wang, SLAC
   */
@@ -55,7 +54,7 @@ namespace query {
     class LogicalTerm;
     class AndTerm;
     class OrTerm;
-    class QsRestrictor;
+    class AreaRestrictor;
     class QueryTemplate;
     class ValueExpr;
 }}} // End of forward declarations
@@ -66,26 +65,26 @@ namespace qserv {
 namespace query {
 
 
-/// WhereClause is a SQL WHERE containing QsRestrictors and a BoolTerm tree.
+/// WhereClause is a SQL WHERE containing AreaRestrictors and a BoolTerm tree.
 class WhereClause {
 public:
     WhereClause() = default;
 
     // Construct a WhereClause that has the given OrTerm as its root term.
     WhereClause(std::shared_ptr<query::OrTerm> rootOrTerm,
-                std::shared_ptr<std::vector<std::shared_ptr<QsRestrictor>>> qsRestrictor=nullptr)
+                AreaRestrictorVecPtr areaRestrictor=nullptr)
             : _rootOrTerm(rootOrTerm)
-            , _restrs(qsRestrictor)
+            , _restrs(areaRestrictor)
     {}
 
     ~WhereClause() = default;
 
-    std::shared_ptr<std::vector<std::shared_ptr<QsRestrictor>> const> getRestrs() const {
+    AreaRestrictorVecPtr getRestrs() const {
         return _restrs;
     }
 
     /**
-     * @brief Determine if there are any QsRestrictors in the WHERE clause.
+     * @brief Determine if there are any AreaRestrictors in the WHERE clause.
      *
      * If there are restrictors, this guarantees that getRestrs() will return a valid pointer to a vector
      * that has one or more objects.
@@ -101,7 +100,7 @@ public:
     // an OrTerm that contains term will be the root term.
     void setRootTerm(std::shared_ptr<LogicalTerm> const& term);
 
-    void addQsRestrictor(std::shared_ptr<QsRestrictor> const& qsRestrictor);
+    void addAreaRestrictor(std::shared_ptr<AreaRestrictor> const& areaRestrictor);
 
     std::shared_ptr<std::vector<std::shared_ptr<ColumnRef>> const> getColumnRefs() const;
     std::shared_ptr<AndTerm> getRootAndTerm() const;
@@ -128,8 +127,8 @@ private:
     friend class parser::WhereFactory;
 
     std::shared_ptr<OrTerm> _rootOrTerm;
-    std::shared_ptr<std::vector<std::shared_ptr<QsRestrictor>>> _restrs {
-        std::make_shared<std::vector<std::shared_ptr<QsRestrictor>>>()
+    AreaRestrictorVecPtr _restrs {
+        std::make_shared<AreaRestrictorVec>()
     };
 };
 

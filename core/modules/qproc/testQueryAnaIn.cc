@@ -76,10 +76,10 @@ BOOST_AUTO_TEST_CASE(SecondaryIndex) {
     std::shared_ptr<QueryContext> context = qs->dbgGetContext();
     BOOST_CHECK(context);
     BOOST_CHECK_EQUAL(context->dominantDb, std::string("LSST"));
-    BOOST_REQUIRE(context->restrictors);
-    BOOST_CHECK_EQUAL(context->restrictors->size(), 1U);
-    BOOST_REQUIRE(context->restrictors->front());
-    auto inRestrictor = std::dynamic_pointer_cast<SIInRestrictor>(context->restrictors->front());
+    BOOST_REQUIRE(context->secondaryIndexRestrictors);
+    BOOST_CHECK_EQUAL(context->secondaryIndexRestrictors->size(), 1U);
+    BOOST_REQUIRE(context->secondaryIndexRestrictors->front());
+    auto inRestrictor = std::dynamic_pointer_cast<SIInRestrictor>(context->secondaryIndexRestrictors->front());
     BOOST_REQUIRE(inRestrictor != nullptr);
     BOOST_REQUIRE_EQUAL(inRestrictor->getSILookupQuery(lsst::qserv::SEC_INDEX_DB, "LSST__Object",
                         lsst::qserv::CHUNK_COLUMN, lsst::qserv::SUB_CHUNK_COLUMN),
@@ -120,10 +120,10 @@ BOOST_AUTO_TEST_CASE(RestrictorObjectIdAlias) {
     std::shared_ptr<QueryContext> context = qs->dbgGetContext();
     BOOST_CHECK(context);
     BOOST_CHECK_EQUAL(context->dominantDb, std::string("LSST"));
-    BOOST_REQUIRE(context->restrictors);
-    BOOST_CHECK_EQUAL(context->restrictors->size(), 1U);
-    BOOST_REQUIRE(context->restrictors->front());
-    auto inRestrictor = std::dynamic_pointer_cast<SIInRestrictor>(context->restrictors->front());
+    BOOST_REQUIRE(context->secondaryIndexRestrictors);
+    BOOST_CHECK_EQUAL(context->secondaryIndexRestrictors->size(), 1U);
+    BOOST_REQUIRE(context->secondaryIndexRestrictors->front());
+    auto inRestrictor = std::dynamic_pointer_cast<SIInRestrictor>(context->secondaryIndexRestrictors->front());
     BOOST_REQUIRE(inRestrictor != nullptr);
     BOOST_REQUIRE_EQUAL(inRestrictor->getSILookupQuery(lsst::qserv::SEC_INDEX_DB, "LSST__Object",
                         lsst::qserv::CHUNK_COLUMN, lsst::qserv::SUB_CHUNK_COLUMN),

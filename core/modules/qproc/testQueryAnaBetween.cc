@@ -58,7 +58,6 @@ using lsst::qserv::mysql::MySqlConfig;
 using lsst::qserv::parser::SelectParser;
 using lsst::qserv::qproc::ChunkQuerySpec;
 using lsst::qserv::qproc::QuerySession;
-using lsst::qserv::query::QsRestrictor;
 using lsst::qserv::query::SIBetweenRestrictor;
 using lsst::qserv::query::SIInRestrictor;
 using lsst::qserv::query::QueryContext;
@@ -78,10 +77,10 @@ BOOST_AUTO_TEST_CASE(SecondaryIndex) {
     std::shared_ptr<QueryContext> context = qs->dbgGetContext();
     BOOST_CHECK(context);
     BOOST_CHECK_EQUAL(context->dominantDb, std::string("LSST"));
-    BOOST_REQUIRE(context->restrictors);
-    BOOST_CHECK_EQUAL(context->restrictors->size(), 1U);
-    BOOST_REQUIRE(context->restrictors->front());
-    auto betweenRestr = std::dynamic_pointer_cast<SIBetweenRestrictor>(context->restrictors->front());
+    BOOST_REQUIRE(context->secondaryIndexRestrictors);
+    BOOST_CHECK_EQUAL(context->secondaryIndexRestrictors->size(), 1U);
+    BOOST_REQUIRE(context->secondaryIndexRestrictors->front());
+    auto betweenRestr = std::dynamic_pointer_cast<SIBetweenRestrictor>(context->secondaryIndexRestrictors->front());
     BOOST_REQUIRE(nullptr != betweenRestr);
     BOOST_REQUIRE_EQUAL(betweenRestr->getSILookupQuery(lsst::qserv::SEC_INDEX_DB, "LSST__Object",
                         lsst::qserv::CHUNK_COLUMN, lsst::qserv::SUB_CHUNK_COLUMN),
@@ -99,7 +98,7 @@ BOOST_AUTO_TEST_CASE(NoSecondaryIndex) {
     std::shared_ptr<QueryContext> context = qs->dbgGetContext();
     BOOST_CHECK(context);
     BOOST_CHECK_EQUAL(context->dominantDb, std::string("LSST"));
-    BOOST_REQUIRE(not context->restrictors);
+    BOOST_REQUIRE(not context->secondaryIndexRestrictors);
 }
 
 
@@ -113,10 +112,10 @@ BOOST_AUTO_TEST_CASE(DoubleSecondaryIndexRestrictor) {
     std::shared_ptr<QueryContext> context = qs->dbgGetContext();
     BOOST_CHECK(context);
     BOOST_CHECK_EQUAL(context->dominantDb, std::string("LSST"));
-    BOOST_REQUIRE(context->restrictors);
-    BOOST_CHECK_EQUAL(context->restrictors->size(), 2U);
-    BOOST_REQUIRE(context->restrictors->at(0));
-    auto betweenRestr = std::dynamic_pointer_cast<SIBetweenRestrictor>(context->restrictors->at(0));
+    BOOST_REQUIRE(context->secondaryIndexRestrictors);
+    BOOST_CHECK_EQUAL(context->secondaryIndexRestrictors->size(), 2U);
+    BOOST_REQUIRE(context->secondaryIndexRestrictors->at(0));
+    auto betweenRestr = std::dynamic_pointer_cast<SIBetweenRestrictor>(context->secondaryIndexRestrictors->at(0));
     BOOST_REQUIRE(betweenRestr != nullptr);
     BOOST_REQUIRE_EQUAL(betweenRestr->getSILookupQuery(lsst::qserv::SEC_INDEX_DB, "LSST__Object",
                         lsst::qserv::CHUNK_COLUMN, lsst::qserv::SUB_CHUNK_COLUMN),
@@ -124,8 +123,8 @@ BOOST_AUTO_TEST_CASE(DoubleSecondaryIndexRestrictor) {
         std::string(lsst::qserv::SUB_CHUNK_COLUMN) +
         " FROM " + std::string(lsst::qserv::SEC_INDEX_DB) +
         ".LSST__Object WHERE objectIdObjTest BETWEEN 38 AND 40");
-    BOOST_REQUIRE(context->restrictors->at(1));
-    auto inRestrictor = std::dynamic_pointer_cast<SIInRestrictor>(context->restrictors->at(1));
+    BOOST_REQUIRE(context->secondaryIndexRestrictors->at(1));
+    auto inRestrictor = std::dynamic_pointer_cast<SIInRestrictor>(context->secondaryIndexRestrictors->at(1));
     BOOST_REQUIRE(inRestrictor != nullptr);
     BOOST_REQUIRE_EQUAL(inRestrictor->getSILookupQuery(lsst::qserv::SEC_INDEX_DB, "LSST__Object",
                         lsst::qserv::CHUNK_COLUMN, lsst::qserv::SUB_CHUNK_COLUMN),
@@ -150,10 +149,10 @@ BOOST_AUTO_TEST_CASE(DoubleSecondaryIndexRestrictorCartesian) {
     std::shared_ptr<QueryContext> context = qs->dbgGetContext();
     BOOST_CHECK(context);
     BOOST_CHECK_EQUAL(context->dominantDb, std::string("LSST"));
-    BOOST_REQUIRE(context->restrictors);
-    BOOST_CHECK_EQUAL(context->restrictors->size(), 2U);
-    BOOST_REQUIRE(context->restrictors->at(0));
-    auto betweenRestr = std::dynamic_pointer_cast<SIBetweenRestrictor>(context->restrictors->at(0));
+    BOOST_REQUIRE(context->secondaryIndexRestrictors);
+    BOOST_CHECK_EQUAL(context->secondaryIndexRestrictors->size(), 2U);
+    BOOST_REQUIRE(context->secondaryIndexRestrictors->at(0));
+    auto betweenRestr = std::dynamic_pointer_cast<SIBetweenRestrictor>(context->secondaryIndexRestrictors->at(0));
     BOOST_REQUIRE(betweenRestr != nullptr);
     BOOST_REQUIRE_EQUAL(betweenRestr->getSILookupQuery(lsst::qserv::SEC_INDEX_DB, "LSST__Object",
                         lsst::qserv::CHUNK_COLUMN, lsst::qserv::SUB_CHUNK_COLUMN),
@@ -161,8 +160,8 @@ BOOST_AUTO_TEST_CASE(DoubleSecondaryIndexRestrictorCartesian) {
         std::string(lsst::qserv::SUB_CHUNK_COLUMN) +
         " FROM " + std::string(lsst::qserv::SEC_INDEX_DB) +
         ".LSST__Object WHERE objectIdObjTest BETWEEN 38 AND 40");
-    BOOST_REQUIRE(context->restrictors->at(1));
-    auto inRestrictor = std::dynamic_pointer_cast<SIInRestrictor>(context->restrictors->at(1));
+    BOOST_REQUIRE(context->secondaryIndexRestrictors->at(1));
+    auto inRestrictor = std::dynamic_pointer_cast<SIInRestrictor>(context->secondaryIndexRestrictors->at(1));
     BOOST_REQUIRE(inRestrictor != nullptr);
     BOOST_REQUIRE_EQUAL(inRestrictor->getSILookupQuery(lsst::qserv::SEC_INDEX_DB, "LSST__Object",
                         lsst::qserv::CHUNK_COLUMN, lsst::qserv::SUB_CHUNK_COLUMN),

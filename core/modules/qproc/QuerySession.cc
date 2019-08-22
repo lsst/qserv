@@ -183,8 +183,13 @@ bool QuerySession::hasChunks() const {
 }
 
 
-std::shared_ptr<std::vector<std::shared_ptr<query::QsRestrictor>>> QuerySession::getRestrictors() const {
-    return _context->restrictors;
+query::AreaRestrictorVecPtr QuerySession::getAreaRestrictors() const {
+    return _context->areaRestrictors;
+}
+
+
+query::SecIdxRestrictorVecPtr QuerySession::getSecIdxRestrictors() const {
+    return _context->secondaryIndexRestrictors;
 }
 
 

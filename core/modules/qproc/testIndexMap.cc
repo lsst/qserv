@@ -45,7 +45,11 @@
 #include "global/intTypes.h"
 #include "qproc/ChunkSpec.h"
 #include "qproc/SecondaryIndex.h"
+#include "query/InPredicate.h"
 #include "query/QsRestrictor.h"
+#include "query/ValueExpr.h"
+#include "query/ValueFactor.h"
+#include "util/IterableFormatter.h"
 
 // Boost unit test header
 #define BOOST_TEST_MODULE IndexMap
@@ -77,36 +81,24 @@ struct Fixture {
 // SecondaryIndex and IndexMap test suite
 ////////////////////////////////////////////////////////////////////////
 BOOST_FIXTURE_TEST_SUITE(Suite, Fixture)
-#if 0 // TODO
 
 BOOST_AUTO_TEST_CASE(SecLookup) {
-    query::QsRestrictor::PtrVector restrictors;
     std::vector<std::string> vals = {"111", "112","113"};
-    restrictors.push_back(std::make_shared<query::QsRestrictorFunction>("sIndex", vals));
-    ChunkSpecVector csv = si.lookup(restrictors);
-    std::cout << "SecLookup\n";
-    std::copy(csv.begin(), csv.end(),
-              std::ostream_iterator<ChunkSpec>(std::cout, ",\n"));
-}
-
-BOOST_AUTO_TEST_CASE(SecLookupMultipleObjectIdIN) {
-    query::QsRestrictor::PtrVector restrictors;
-    std::vector<std::string> vals = {"LSST", "Object", "objectId", "386950783579546", "386942193651348"};
-    restrictors.push_back(std::make_shared<query::QsRestrictorFunction>("sIndex", vals));
-    ChunkSpecVector csv = si.lookup(restrictors);
-    std::cout << "SecLookupMultipleObjectIdIN\n";
-    std::copy(csv.begin(), csv.end(),
-              std::ostream_iterator<ChunkSpec>(std::cout, ",\n"));
-}
-
-BOOST_AUTO_TEST_CASE(SecLookupMultipleObjectIdBETWEEN) {
-    query::QsRestrictor::PtrVector restrictors;
-    std::vector<std::string> vals = {"LSST", "Object", "objectId", "386942193651348", "386950783579546"};
-    restrictors.push_back(std::make_shared<query::QsRestrictorFunction>("sIndexBetWeen", vals));
-    ChunkSpecVector csv = si.lookup(restrictors);
-    std::cout << "SecLookupMultipleObjectIdBETWEEN\n";
-    std::copy(csv.begin(), csv.end(),
-              std::ostream_iterator<ChunkSpec>(std::cout, ",\n"));
+    std::vector<std::shared_ptr<query::ValueExpr>> inCandidates = {
+        query::ValueExpr::newSimple(query::ValueFactor::newConstFactor("386950783579546")),
+        query::ValueExpr::newSimple(query::ValueFactor::newConstFactor("386942193651348"))};
+    auto inPredicate = std::make_shared<query::InPredicate>(
+        query::ValueExpr::newColumnExpr("LSST", "Object", "", "objectId"),
+        inCandidates,
+        false);
+    ChunkSpecVector csv = si.lookup({std::make_shared<query::SIInRestrictor>(inPredicate)});
+    // Verify the values produced by the SecondaryIndex FakeBackend...
+    // (The only thing this really verifies is that a secondary index restrictor instance was passed in to
+    // the lookup function.)
+    BOOST_CHECK_EQUAL(csv.size(), 3u);
+    BOOST_CHECK_EQUAL(csv[0], ChunkSpec(100, {1, 2, 3}));
+    BOOST_CHECK_EQUAL(csv[1], ChunkSpec(101, {1, 2, 3}));
+    BOOST_CHECK_EQUAL(csv[2], ChunkSpec(102, {1, 2, 3}));
 }
 
 BOOST_AUTO_TEST_CASE(IndLookupArea) {
@@ -117,7 +109,5 @@ BOOST_AUTO_TEST_CASE(IndLookupPoint) {
     // Lookup specific fake points in the secondary index using IndexMap
     // interface.
 }
-
-#endif
 
 BOOST_AUTO_TEST_SUITE_END()
