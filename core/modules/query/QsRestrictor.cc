@@ -368,39 +368,39 @@ std::shared_ptr<sphgeom::Region> AreaRestrictorPoly::getRegion() const {
 }
 
 
-std::ostream& operator<<(std::ostream& os, SIRestrictor const& q) {
+std::ostream& operator<<(std::ostream& os, SecIdxRestrictor const& q) {
     return q.dbgPrint(os);
 }
 
 
-bool SIRestrictor::operator==(const SIRestrictor& rhs) const {
+bool SecIdxRestrictor::operator==(const SecIdxRestrictor& rhs) const {
     return typeid(*this) == typeid(rhs) && isEqual(rhs);
 }
 
 
-void SICompRestrictor::renderTo(QueryTemplate& qt) const {
+void SecIdxCompRestrictor::renderTo(QueryTemplate& qt) const {
     _compPredicate->renderTo(qt);
 }
 
 
-bool SICompRestrictor::isEqual(const SIRestrictor& rhs) const {
-    auto rhsCompRestrictor = static_cast<SICompRestrictor const&>(rhs);
+bool SecIdxCompRestrictor::isEqual(const SecIdxRestrictor& rhs) const {
+    auto rhsCompRestrictor = static_cast<SecIdxCompRestrictor const&>(rhs);
     return *_compPredicate == *rhsCompRestrictor._compPredicate;
 }
 
 
-std::ostream& SICompRestrictor::dbgPrint(std::ostream& os) const {
-    os << "SICompRestrictor(" << *_compPredicate << ")";
+std::ostream& SecIdxCompRestrictor::dbgPrint(std::ostream& os) const {
+    os << "SecIdxCompRestrictor(" << *_compPredicate << ")";
     return os;
 }
 
 
-std::shared_ptr<query::ColumnRef const> SICompRestrictor::getSecondaryIndexColumnRef() const {
+std::shared_ptr<query::ColumnRef const> SecIdxCompRestrictor::getSecIdxColumnRef() const {
     return _useLeft ? _compPredicate->left->getColumnRef() : _compPredicate->right->getColumnRef();
 }
 
 
-std::string SICompRestrictor::getSILookupQuery(std::string const& secondaryIndexDb,
+std::string SecIdxCompRestrictor::getSecIdxLookupQuery(std::string const& secondaryIndexDb,
         std::string const& secondaryIndexTable, std::string const& chunkColumn,
         std::string const& subChunkColumn) const {
     QueryTemplate columnRefQt;
@@ -412,29 +412,29 @@ std::string SICompRestrictor::getSILookupQuery(std::string const& secondaryIndex
 }
 
 
-void SIBetweenRestrictor::renderTo(QueryTemplate& qt) const {
+void SecIdxBetweenRestrictor::renderTo(QueryTemplate& qt) const {
     _betweenPredicate->renderTo(qt);
 }
 
 
-bool SIBetweenRestrictor::isEqual(const SIRestrictor& rhs) const {
-    auto rhsBetweenRestrictor = static_cast<SIBetweenRestrictor const&>(rhs);
+bool SecIdxBetweenRestrictor::isEqual(const SecIdxRestrictor& rhs) const {
+    auto rhsBetweenRestrictor = static_cast<SecIdxBetweenRestrictor const&>(rhs);
     return *_betweenPredicate == *rhsBetweenRestrictor._betweenPredicate;
 }
 
 
-std::ostream& SIBetweenRestrictor::dbgPrint(std::ostream& os) const {
-    os << "SIBetweenRestrictor(" << *_betweenPredicate << ")";
+std::ostream& SecIdxBetweenRestrictor::dbgPrint(std::ostream& os) const {
+    os << "SecIdxBetweenRestrictor(" << *_betweenPredicate << ")";
     return os;
 }
 
 
-std::shared_ptr<query::ColumnRef const> SIBetweenRestrictor::getSecondaryIndexColumnRef() const {
+std::shared_ptr<query::ColumnRef const> SecIdxBetweenRestrictor::getSecIdxColumnRef() const {
     return _betweenPredicate->value->getColumnRef();
 }
 
 
-std::string SIBetweenRestrictor::getSILookupQuery(std::string const& secondaryIndexDb,
+std::string SecIdxBetweenRestrictor::getSecIdxLookupQuery(std::string const& secondaryIndexDb,
         std::string const& secondaryIndexTable, std::string const& chunkColumn,
         std::string const& subChunkColumn) const {
     QueryTemplate columnRefQt;
@@ -446,29 +446,29 @@ std::string SIBetweenRestrictor::getSILookupQuery(std::string const& secondaryIn
 }
 
 
-void SIInRestrictor::renderTo(QueryTemplate& qt) const {
+void SecIdxInRestrictor::renderTo(QueryTemplate& qt) const {
     _inPredicate->renderTo(qt);
 }
 
 
-bool SIInRestrictor::isEqual(const SIRestrictor& rhs) const {
-    auto rhsRestrictor = static_cast<SIInRestrictor const&>(rhs);
+bool SecIdxInRestrictor::isEqual(const SecIdxRestrictor& rhs) const {
+    auto rhsRestrictor = static_cast<SecIdxInRestrictor const&>(rhs);
     return *_inPredicate == *rhsRestrictor._inPredicate;
 }
 
 
-std::ostream& SIInRestrictor::dbgPrint(std::ostream& os) const {
-    os << "SIInRestrictor(" << *_inPredicate << ")";
+std::ostream& SecIdxInRestrictor::dbgPrint(std::ostream& os) const {
+    os << "SecIdxInRestrictor(" << *_inPredicate << ")";
     return os;
 }
 
 
-std::shared_ptr<query::ColumnRef const> SIInRestrictor::getSecondaryIndexColumnRef() const {
+std::shared_ptr<query::ColumnRef const> SecIdxInRestrictor::getSecIdxColumnRef() const {
     return _inPredicate->value->getColumnRef();
 }
 
 
-std::string SIInRestrictor::getSILookupQuery(std::string const& secondaryIndexDb,
+std::string SecIdxInRestrictor::getSecIdxLookupQuery(std::string const& secondaryIndexDb,
         std::string const& secondaryIndexTable, std::string const& chunkColumn,
         std::string const& subChunkColumn) const {
     QueryTemplate qt;

@@ -189,7 +189,7 @@ query::AreaRestrictorVecPtr QuerySession::getAreaRestrictors() const {
 
 
 query::SecIdxRestrictorVecPtr QuerySession::getSecIdxRestrictors() const {
-    return _context->secondaryIndexRestrictors;
+    return _context->secIdxRestrictors;
 }
 
 

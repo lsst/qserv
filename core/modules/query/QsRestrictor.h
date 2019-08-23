@@ -276,12 +276,12 @@ private:
 };
 
 
-class SIRestrictor {
+class SecIdxRestrictor {
 public:
-    SIRestrictor() = default;
-    virtual ~SIRestrictor() = default;
+    SecIdxRestrictor() = default;
+    virtual ~SecIdxRestrictor() = default;
 
-    bool operator==(const SIRestrictor& rhs) const;
+    bool operator==(const SecIdxRestrictor& rhs) const;
 
     /**
      * @brief Serialze this instance as SQL to the QueryTemplate.
@@ -293,14 +293,14 @@ public:
      */
     virtual std::ostream& dbgPrint(std::ostream& os) const = 0;
 
-    friend std::ostream& operator<<(std::ostream& os, SIRestrictor const& q);
+    friend std::ostream& operator<<(std::ostream& os, SecIdxRestrictor const& q);
 
-    virtual std::shared_ptr<query::ColumnRef const> getSecondaryIndexColumnRef() const = 0;
+    virtual std::shared_ptr<query::ColumnRef const> getSecIdxColumnRef() const = 0;
 
-    virtual std::string getSILookupQuery(std::string const& secondaryIndexDb,
-                                         std::string const& secondaryIndexTable,
-                                         std::string const& chunkColumn,
-                                         std::string const& subChunkColumn) const = 0;
+    virtual std::string getSecIdxLookupQuery(std::string const& secondaryIndexDb,
+                                             std::string const& secondaryIndexTable,
+                                             std::string const& chunkColumn,
+                                             std::string const& subChunkColumn) const = 0;
 
 protected:
     /**
@@ -309,15 +309,15 @@ protected:
      * This is an overidable helper function for operator==, it should only be called by that function, or at
      * least make sure that typeid(this) == typeid(rhs) before calling isEqual.
      */
-    virtual bool isEqual(const SIRestrictor& rhs) const = 0;
+    virtual bool isEqual(const SecIdxRestrictor& rhs) const = 0;
 };
 
 
-class SICompRestrictor : public SIRestrictor {
+class SecIdxCompRestrictor : public SecIdxRestrictor {
 public:
-    SICompRestrictor() = default;
+    SecIdxCompRestrictor() = default;
 
-    SICompRestrictor(std::shared_ptr<query::CompPredicate> compPredicate, bool useLeft)
+    SecIdxCompRestrictor(std::shared_ptr<query::CompPredicate> compPredicate, bool useLeft)
             : _compPredicate(compPredicate), _useLeft(useLeft) {}
 
     /**
@@ -330,10 +330,12 @@ public:
      */
     std::ostream& dbgPrint(std::ostream& os) const override;
 
-    std::shared_ptr<query::ColumnRef const> getSecondaryIndexColumnRef() const override;
+    std::shared_ptr<query::ColumnRef const> getSecIdxColumnRef() const override;
 
-    std::string getSILookupQuery(std::string const& secondaryIndexDb, std::string const& secondaryIndexTable,
-                                 std::string const& chunkColumn, std::string const& subChunkColumn) const override;
+    std::string getSecIdxLookupQuery(std::string const& secondaryIndexDb,
+                                     std::string const& secondaryIndexTable,
+                                     std::string const& chunkColumn,
+                                     std::string const& subChunkColumn) const override;
 
     std::shared_ptr<const query::CompPredicate> getCompPredicate() const { return _compPredicate; }
 
@@ -344,7 +346,7 @@ protected:
      * This is an overidable helper function for operator==, it should only be called by that function, or at
      * least make sure that typeid(this) == typeid(rhs) before calling isEqual.
      */
-    bool isEqual(const SIRestrictor& rhs) const override;
+    bool isEqual(const SecIdxRestrictor& rhs) const override;
 
 private:
     std::shared_ptr<query::CompPredicate> _compPredicate; //< the comparison for this restrictor.
@@ -352,11 +354,11 @@ private:
 };
 
 
-class SIBetweenRestrictor : public SIRestrictor {
+class SecIdxBetweenRestrictor : public SecIdxRestrictor {
 public:
-    SIBetweenRestrictor() = default;
+    SecIdxBetweenRestrictor() = default;
 
-    SIBetweenRestrictor(std::shared_ptr<query::BetweenPredicate> betweenPredicate)
+    SecIdxBetweenRestrictor(std::shared_ptr<query::BetweenPredicate> betweenPredicate)
             : _betweenPredicate(betweenPredicate) {}
 
     /**
@@ -369,10 +371,12 @@ public:
      */
     std::ostream& dbgPrint(std::ostream& os) const override;
 
-    std::shared_ptr<query::ColumnRef const> getSecondaryIndexColumnRef() const override;
+    std::shared_ptr<query::ColumnRef const> getSecIdxColumnRef() const override;
 
-    std::string getSILookupQuery(std::string const& secondaryIndexDb, std::string const& secondaryIndexTable,
-                                 std::string const& chunkColumn, std::string const& subChunkColumn) const override;
+    std::string getSecIdxLookupQuery(std::string const& secondaryIndexDb,
+                                     std::string const& secondaryIndexTable,
+                                     std::string const& chunkColumn,
+                                     std::string const& subChunkColumn) const override;
 
 protected:
     /**
@@ -381,7 +385,7 @@ protected:
      * This is an overidable helper function for operator==, it should only be called by that function, or at
      * least make sure that typeid(this) == typeid(rhs) before calling isEqual.
      */
-    bool isEqual(const SIRestrictor& rhs) const override;
+    bool isEqual(const SecIdxRestrictor& rhs) const override;
 
 private:
     // Currently the only place the secondary index column appears is in the `value` parameter of the
@@ -390,11 +394,11 @@ private:
 };
 
 
-class SIInRestrictor : public SIRestrictor {
+class SecIdxInRestrictor : public SecIdxRestrictor {
 public:
-    SIInRestrictor() = default;
+    SecIdxInRestrictor() = default;
 
-    SIInRestrictor(std::shared_ptr<query::InPredicate> inPredicate)
+    SecIdxInRestrictor(std::shared_ptr<query::InPredicate> inPredicate)
             : _inPredicate(inPredicate) {}
 
     /**
@@ -407,10 +411,10 @@ public:
      */
     std::ostream& dbgPrint(std::ostream& os) const override;
 
-    std::shared_ptr<query::ColumnRef const> getSecondaryIndexColumnRef() const override;
+    std::shared_ptr<query::ColumnRef const> getSecIdxColumnRef() const override;
 
-    std::string getSILookupQuery(std::string const& secondaryIndexDb, std::string const& secondaryIndexTable,
-                                 std::string const& chunkColumn, std::string const& subChunkColumn) const override;
+    std::string getSecIdxLookupQuery(std::string const& secondaryIndexDb, std::string const& secondaryIndexTable,
+                                     std::string const& chunkColumn, std::string const& subChunkColumn) const override;
 
 protected:
     /**
@@ -419,7 +423,7 @@ protected:
      * This is an overidable helper function for operator==, it should only be called by that function, or at
      * least make sure that typeid(this) == typeid(rhs) before calling isEqual.
      */
-    bool isEqual(const SIRestrictor& rhs) const override;
+    bool isEqual(const SecIdxRestrictor& rhs) const override;
 
 private:
     std::shared_ptr<query::InPredicate> _inPredicate; //< the comparison for this restrictor.

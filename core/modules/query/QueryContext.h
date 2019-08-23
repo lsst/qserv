@@ -55,7 +55,7 @@ namespace qserv {
 namespace query {
     class ColumnRef;
     class AreaRestrictor;
-    class SIRestrictor;
+    class SecIdxRestrictor;
     class TableRef;
 }}} // End of forward declarations
 
@@ -80,9 +80,6 @@ public:
     QueryContext(std::string const& defDb, std::shared_ptr<css::CssAccess> const& cssPtr,
                  sql::SqlConfig const& sqlCfg)
         : css(cssPtr), defaultDb(defDb), sqlConfig(sqlCfg) {}
-
-    typedef std::vector<std::shared_ptr<query::AreaRestrictor>> AreaRestrictorList;
-    typedef std::vector<std::shared_ptr<query::SIRestrictor>> SecondaryIndexRestrictorList;
 
     std::shared_ptr<css::CssAccess> css;  ///< interface to CSS
     std::string defaultDb; ///< User session db context
@@ -162,10 +159,10 @@ public:
      * @param newRestrictors The restrictors to add.
      */
     void addAreaRestrictors(AreaRestrictorVec const& newRestrictors);
-    void addSecondaryIndexRestrictors(SecIdxRestrictorVec const& newRestrictors);
+    void addSecIdxRestrictors(SecIdxRestrictorVec const& newRestrictors);
 
-    std::shared_ptr<AreaRestrictorList> areaRestrictors;
-    std::shared_ptr<SecondaryIndexRestrictorList> secondaryIndexRestrictors;
+    AreaRestrictorVecPtr areaRestrictors;
+    SecIdxRestrictorVecPtr secIdxRestrictors;
 
     /**
      * @brief Get and cache database schema information for all the tables in the passed-in FROM list.

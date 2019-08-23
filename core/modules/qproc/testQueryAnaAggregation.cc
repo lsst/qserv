@@ -84,7 +84,7 @@ BOOST_AUTO_TEST_CASE(Aggregate) {
     BOOST_TEST_MESSAGE("produced stmt:" << qs->getStmt());
 
     BOOST_CHECK(context);
-    BOOST_CHECK(!context->secondaryIndexRestrictors);
+    BOOST_CHECK(!context->secIdxRestrictors);
     BOOST_CHECK(context->hasChunks());
     BOOST_CHECK(!context->hasSubChunks());
     BOOST_REQUIRE(ss.hasGroupBy());
@@ -106,7 +106,7 @@ BOOST_AUTO_TEST_CASE(Avg) {
     std::shared_ptr<QueryContext> context = qs->dbgGetContext();
 
     BOOST_CHECK(context);
-    BOOST_CHECK(!context->secondaryIndexRestrictors);
+    BOOST_CHECK(!context->secIdxRestrictors);
     BOOST_CHECK(context->hasChunks());
     BOOST_CHECK(!context->hasSubChunks());
 

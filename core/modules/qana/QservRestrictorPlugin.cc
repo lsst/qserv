@@ -335,10 +335,10 @@ query::ColumnRef::Ptr getCorrespondingDirectorColumn(query::QueryContext const& 
  *
  * @param inPredicate
  * @param context
- * @return std::shared_ptr<query::SIInRestrictor> The restrictor that corresponds to the given predicate if
+ * @return std::shared_ptr<query::SecIdxInRestrictor> The restrictor that corresponds to the given predicate if
  *      the value column is a director column, otherwise nullptr.
  */
-std::shared_ptr<query::SIInRestrictor> makeSecondaryIndexRestrictor(
+std::shared_ptr<query::SecIdxInRestrictor> makeSecondaryIndexRestrictor(
             query::InPredicate const& inPredicate,
             query::QueryContext const& context) {
     if (isSecIndexCol(context, inPredicate.value->getColumnRef())) {
@@ -348,7 +348,7 @@ std::shared_ptr<query::SIInRestrictor> makeSecondaryIndexRestrictor(
                 inPredicate.value->getColumnRef());
             return nullptr;
         }
-        return std::make_shared<query::SIInRestrictor>(std::make_shared<query::InPredicate>(
+        return std::make_shared<query::SecIdxInRestrictor>(std::make_shared<query::InPredicate>(
                 query::ValueExpr::newSimple(dirCol), inPredicate.cands, inPredicate.hasNot));
     }
     return nullptr;
@@ -364,7 +364,7 @@ std::shared_ptr<query::SIInRestrictor> makeSecondaryIndexRestrictor(
  * @return std::shared_ptr<query::SIBetweenRestr> The restrictor that corresponds to the given predicate if one
  *      of the columns is a director column, otherwise nullptr.
  */
-std::shared_ptr<query::SIBetweenRestrictor> makeSecondaryIndexRestrictor(
+std::shared_ptr<query::SecIdxBetweenRestrictor> makeSecondaryIndexRestrictor(
             query::BetweenPredicate const& betweenPredicate,
             query::QueryContext const& context) {
     if (isSecIndexCol(context, betweenPredicate.value->getColumnRef())) {
@@ -374,7 +374,7 @@ std::shared_ptr<query::SIBetweenRestrictor> makeSecondaryIndexRestrictor(
                 betweenPredicate.value->getColumnRef());
             return nullptr;
         }
-        return std::make_shared<query::SIBetweenRestrictor>(std::make_shared<query::BetweenPredicate>(
+        return std::make_shared<query::SecIdxBetweenRestrictor>(std::make_shared<query::BetweenPredicate>(
                 query::ValueExpr::newSimple(dirCol), betweenPredicate.minValue,
                 betweenPredicate.maxValue, betweenPredicate.hasNot));
     }
@@ -391,7 +391,7 @@ std::shared_ptr<query::SIBetweenRestrictor> makeSecondaryIndexRestrictor(
  * @return std::shared_ptr<query::SICompRestr> The restrictor that corresponds to the given predicate if one
  *      of the columns is a director column, otherwise nullptr.
  */
-std::shared_ptr<query::SICompRestrictor> makeSecondaryIndexRestrictor(
+std::shared_ptr<query::SecIdxCompRestrictor> makeSecondaryIndexRestrictor(
             query::CompPredicate const& compPredicate,
             query::QueryContext const& context) {
     if (compPredicate.right->isConstVal() && isSecIndexCol(context, compPredicate.left->getColumnRef())) {
@@ -403,7 +403,7 @@ std::shared_ptr<query::SICompRestrictor> makeSecondaryIndexRestrictor(
         auto siCompPred = std::make_shared<query::CompPredicate>(query::ValueExpr::newSimple(dirCol),
                                                                  compPredicate.op,
                                                                  compPredicate.right);
-        return std::make_shared<query::SICompRestrictor>(siCompPred, true);
+        return std::make_shared<query::SecIdxCompRestrictor>(siCompPred, true);
     } else if (compPredicate.left->isConstVal() && isSecIndexCol(context, compPredicate.right->getColumnRef())) {
         auto dirCol = getCorrespondingDirectorColumn(context, compPredicate.right->getColumnRef());
         if (nullptr == dirCol) {
@@ -413,7 +413,7 @@ std::shared_ptr<query::SICompRestrictor> makeSecondaryIndexRestrictor(
         auto siCompPred = std::make_shared<query::CompPredicate>(compPredicate.left,
                                                                  compPredicate.op,
                                                                  query::ValueExpr::newSimple(dirCol));
-        return std::make_shared<query::SICompRestrictor>(siCompPred, false);
+        return std::make_shared<query::SecIdxCompRestrictor>(siCompPred, false);
     }
     return nullptr;
 }
@@ -426,16 +426,16 @@ std::shared_ptr<query::SICompRestrictor> makeSecondaryIndexRestrictor(
  *
  *   @return:         Qserv restrictors list
  */
-std::vector<std::shared_ptr<query::SIRestrictor>> getSecIndexRestrictors(query::QueryContext& context,
-                                                                         query::AndTerm::Ptr andTerm) {
-    std::vector<std::shared_ptr<query::SIRestrictor>> result;
+std::vector<std::shared_ptr<query::SecIdxRestrictor>> getSecIndexRestrictors(query::QueryContext& context,
+                                                                             query::AndTerm::Ptr andTerm) {
+    std::vector<std::shared_ptr<query::SecIdxRestrictor>> result;
     if (not andTerm) return result;
 
     for (auto&& term : andTerm->_terms) {
         auto factor = std::dynamic_pointer_cast<query::BoolFactor>(term);
         if (!factor) continue;
         for (auto factorTerm : factor->_terms) {
-            std::shared_ptr<query::SIRestrictor> restrictor;
+            std::shared_ptr<query::SecIdxRestrictor> restrictor;
             if (auto const inPredicate =
                     std::dynamic_pointer_cast<query::InPredicate>(factorTerm)) {
                 restrictor = makeSecondaryIndexRestrictor(*inPredicate, context);
@@ -467,7 +467,7 @@ void handleSecondaryIndex(query::WhereClause& whereClause, query::QueryContext& 
     // Merge in the implicit (i.e. secondary index) restrictors
     query::AndTerm::Ptr originalAnd(whereClause.getRootAndTerm());
     auto const& secIndexPreds = getSecIndexRestrictors(context, originalAnd);
-    context.addSecondaryIndexRestrictors(secIndexPreds);
+    context.addSecIdxRestrictors(secIndexPreds);
 }
 
 

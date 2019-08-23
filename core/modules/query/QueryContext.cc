@@ -142,12 +142,12 @@ QueryContext::getValueExprMatch(std::shared_ptr<query::ValueExpr> const& valExpr
 }
 
 
-void QueryContext::addAreaRestrictors(AreaRestrictorList const& newRestrictors) {
+void QueryContext::addAreaRestrictors(AreaRestrictorVec const& newRestrictors) {
     if (newRestrictors.empty()) {
         return;
     }
     if (nullptr == areaRestrictors) {
-        areaRestrictors = std::make_shared<QueryContext::AreaRestrictorList>(newRestrictors);
+        areaRestrictors = std::make_shared<AreaRestrictorVec>(newRestrictors);
     } else {
         areaRestrictors->reserve(areaRestrictors->size() + newRestrictors.size());
         areaRestrictors->insert(areaRestrictors->end(), newRestrictors.begin(), newRestrictors.end());
@@ -155,15 +155,15 @@ void QueryContext::addAreaRestrictors(AreaRestrictorList const& newRestrictors) 
 }
 
 
-void QueryContext::addSecondaryIndexRestrictors(SecondaryIndexRestrictorList const& newRestrictors) {
+void QueryContext::addSecIdxRestrictors(SecIdxRestrictorVec const& newRestrictors) {
     if (newRestrictors.empty()) {
         return;
     }
-    if (nullptr == secondaryIndexRestrictors) {
-        secondaryIndexRestrictors = std::make_shared<QueryContext::SecondaryIndexRestrictorList>(newRestrictors);
+    if (nullptr == secIdxRestrictors) {
+        secIdxRestrictors = std::make_shared<SecIdxRestrictorVec>(newRestrictors);
     } else {
-        secondaryIndexRestrictors->reserve(secondaryIndexRestrictors->size() + newRestrictors.size());
-        secondaryIndexRestrictors->insert(secondaryIndexRestrictors->end(), newRestrictors.begin(), newRestrictors.end());
+        secIdxRestrictors->reserve(secIdxRestrictors->size() + newRestrictors.size());
+        secIdxRestrictors->insert(secIdxRestrictors->end(), newRestrictors.begin(), newRestrictors.end());
     }
 }
 

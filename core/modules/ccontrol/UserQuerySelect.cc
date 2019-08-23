@@ -483,13 +483,13 @@ void UserQuerySelect::setupChunking() {
     LOGS(_log, LOG_LVL_TRACE, getQueryIdString() << " _qSession: " << _qSession);
     if (_qSession->hasChunks()) {
         auto areaRestrictors = _qSession->getAreaRestrictors();
-        auto secondaryIndexRestrictors = _qSession->getSecIdxRestrictors();
+        auto secIdxRestrictors = _qSession->getSecIdxRestrictors();
         css::StripingParams partStriping = _qSession->getDbStriping();
 
         im = std::make_shared<qproc::IndexMap>(partStriping, _secondaryIndex);
         qproc::ChunkSpecVector csv;
-        if (areaRestrictors != nullptr || secondaryIndexRestrictors != nullptr) {
-            csv = im->getChunks(areaRestrictors, secondaryIndexRestrictors);
+        if (areaRestrictors != nullptr || secIdxRestrictors != nullptr) {
+            csv = im->getChunks(areaRestrictors, secIdxRestrictors);
         } else { // Unrestricted: full-sky
             csv = im->getAllChunks();
         }

@@ -91,7 +91,7 @@ BOOST_AUTO_TEST_CASE(SecLookup) {
         query::ValueExpr::newColumnExpr("LSST", "Object", "", "objectId"),
         inCandidates,
         false);
-    ChunkSpecVector csv = si.lookup({std::make_shared<query::SIInRestrictor>(inPredicate)});
+    ChunkSpecVector csv = si.lookup({std::make_shared<query::SecIdxInRestrictor>(inPredicate)});
     // Verify the values produced by the SecondaryIndex FakeBackend...
     // (The only thing this really verifies is that a secondary index restrictor instance was passed in to
     // the lookup function.)

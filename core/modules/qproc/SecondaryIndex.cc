@@ -82,11 +82,11 @@ public:
         ChunkSpecVector output;
         for(auto const& secIdxRestrictor : restrictors) {
             // handle it
-            auto const& secondaryIndexCol = secIdxRestrictor->getSecondaryIndexColumnRef();
+            auto const& secondaryIndexCol = secIdxRestrictor->getSecIdxColumnRef();
             std::string index_table = _buildIndexTableName(secondaryIndexCol->getDb(),
                                                            secondaryIndexCol->getTable());
-            auto sql = secIdxRestrictor->getSILookupQuery(SEC_INDEX_DB, index_table, CHUNK_COLUMN,
-                                                          SUB_CHUNK_COLUMN);
+            auto sql = secIdxRestrictor->getSecIdxLookupQuery(SEC_INDEX_DB, index_table, CHUNK_COLUMN,
+                                                              SUB_CHUNK_COLUMN);
             LOGS(_log, LOG_LVL_DEBUG, "secondary lookup sql:" << sql);
             _sqlLookup(output, sql);
         }
@@ -153,7 +153,7 @@ public:
     }
 private:
     struct _checkIndex {
-        bool operator()(std::shared_ptr<query::SIRestrictor> const& restrictor) {
+        bool operator()(std::shared_ptr<query::SecIdxRestrictor> const& restrictor) {
             return true;
         }
     };
