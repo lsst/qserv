@@ -213,14 +213,18 @@ std::shared_ptr<query::AreaRestrictor> makeAreaRestrictor(query::FuncExpr const&
             return nullptr;
         }
     }
-    if (scisqlFunc.getName() == "scisql_s2PtInBox") {
-        return std::make_shared<query::AreaRestrictorBox>(parameters);
-    } else if (scisqlFunc.getName() == "scisql_s2PtInCircle") {
-        return std::make_shared<query::AreaRestrictorCircle>(parameters);
-    } else if (scisqlFunc.getName() == "scisql_s2PtInEllipse") {
-        return std::make_shared<query::AreaRestrictorEllipse>(parameters);
-    } else if (scisqlFunc.getName() == "scisql_s2PtInCPoly") {
-        return std::make_shared<query::AreaRestrictorPoly>(std::move(parameters));
+    try {
+        if (scisqlFunc.getName() == "scisql_s2PtInBox") {
+            return std::make_shared<query::AreaRestrictorBox>(parameters);
+        } else if (scisqlFunc.getName() == "scisql_s2PtInCircle") {
+            return std::make_shared<query::AreaRestrictorCircle>(parameters);
+        } else if (scisqlFunc.getName() == "scisql_s2PtInEllipse") {
+            return std::make_shared<query::AreaRestrictorEllipse>(parameters);
+        } else if (scisqlFunc.getName() == "scisql_s2PtInCPoly") {
+            return std::make_shared<query::AreaRestrictorPoly>(std::move(parameters));
+        }
+    } catch (std::logic_error const& err) {
+        throw std::runtime_error("Wrong number of arguments for " + scisqlFunc.getName());
     }
     return nullptr;
 }

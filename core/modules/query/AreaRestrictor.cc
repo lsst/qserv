@@ -40,12 +40,16 @@
 
 namespace {
 
-template <typename T>
-std::vector<T> convertVec(std::vector<std::string> const& v) {
-    std::vector<T> out;
-    out.reserve(v.size());
-    // todo add try/catch bad_lexical_cast here & rethrow the correct error type
-    std::transform(v.begin(), v.end(), std::back_inserter(out), boost::lexical_cast<T, std::string>);
+std::vector<double> convertVec(std::vector<std::string> const& strVec) {
+    std::vector<double> out;
+    out.reserve(strVec.size());
+    for (auto const& str : strVec) {
+        try {
+            out.push_back(boost::lexical_cast<double, std::string>(str));
+        } catch (boost::bad_lexical_cast const& err)  {
+            throw std::invalid_argument("The argument " + str + " must be convertable to a number.");
+        }
+    }
     return out;
 }
 
@@ -70,11 +74,13 @@ bool AreaRestrictor::operator==(const AreaRestrictor& rhs) const {
 AreaRestrictorBox::AreaRestrictorBox(std::string const& lonMinDegree, std::string const& latMinDegree,
         std::string const& lonMaxDegree, std::string const& latMaxDegree)
         : _lonMinDegree(lonMinDegree), _latMinDegree(latMinDegree), _lonMaxDegree(lonMaxDegree),
-          _latMaxDegree(latMaxDegree)
+          _latMaxDegree(latMaxDegree),
+          _numericParams(convertVec({_lonMinDegree, _latMinDegree, _lonMaxDegree, _latMaxDegree}))
 {}
 
 
-AreaRestrictorBox::AreaRestrictorBox(std::vector<std::string> const& parameters) {
+AreaRestrictorBox::AreaRestrictorBox(std::vector<std::string> const& parameters)
+        : _numericParams(convertVec(parameters)) {
     if (parameters.size() != 4) {
         throw std::logic_error("AreaRestrictorBox requires 4 parameters.");
     }
@@ -136,19 +142,19 @@ std::shared_ptr<query::BoolFactor> AreaRestrictorBox::asSciSqlFactor(std::string
 
 
 std::shared_ptr<sphgeom::Region> AreaRestrictorBox::getRegion() const {
-
-    return qproc::getBoxFromParams(convertVec<double>({_lonMinDegree, _latMinDegree,
-                                                       _lonMaxDegree, _latMaxDegree}));
+    return qproc::getBoxFromParams(_numericParams);
 }
 
 
 AreaRestrictorCircle::AreaRestrictorCircle(std::string const& centerLonDegree,
         std::string const& centerLatDegree, std::string const& radiusDegree)
-        : _centerLonDegree(centerLonDegree), _centerLatDegree(centerLatDegree), _radiusDegree(radiusDegree)
+        : _centerLonDegree(centerLonDegree), _centerLatDegree(centerLatDegree), _radiusDegree(radiusDegree),
+          _numericParams(convertVec({centerLonDegree, centerLatDegree, radiusDegree}))
 {}
 
 
-AreaRestrictorCircle::AreaRestrictorCircle(std::vector<std::string> const& parameters) {
+AreaRestrictorCircle::AreaRestrictorCircle(std::vector<std::string> const& parameters)
+        : _numericParams(convertVec(parameters)) {
     if (parameters.size() != 3) {
         throw std::logic_error("qserv_areaspec_circle requires 3 parameters.");
     }
@@ -205,9 +211,7 @@ std::shared_ptr<query::BoolFactor> AreaRestrictorCircle::asSciSqlFactor(std::str
 
 
 std::shared_ptr<sphgeom::Region> AreaRestrictorCircle::getRegion() const {
-
-    return qproc::getCircleFromParams(convertVec<double>({_centerLonDegree, _centerLatDegree,
-                                                          _radiusDegree}));
+    return qproc::getCircleFromParams(_numericParams);
 }
 
 
@@ -218,11 +222,14 @@ AreaRestrictorEllipse::AreaRestrictorEllipse(std::string const& centerLonDegree,
         _centerLatDegree(centerLatDegree),
         _semiMajorAxisAngleArcsec(semiMajorAxisAngleArcsec),
         _semiMinorAxisAngleArcsec(semiMinorAxisAngleArcsec),
-        _positionAngleDegree(positionAngleDegree)
+        _positionAngleDegree(positionAngleDegree),
+        _numericParams(convertVec({_centerLonDegree, _centerLatDegree, _semiMajorAxisAngleArcsec,
+                                   _semiMinorAxisAngleArcsec, _positionAngleDegree}))
 {}
 
 
-AreaRestrictorEllipse::AreaRestrictorEllipse(std::vector<std::string> const& parameters) {
+AreaRestrictorEllipse::AreaRestrictorEllipse(std::vector<std::string> const& parameters)
+        : _numericParams(convertVec(parameters)) {
     if (parameters.size() != 5) {
         throw std::logic_error("qserv_areaspec_ellipse requires 5 parameters.");
     }
@@ -289,14 +296,12 @@ std::shared_ptr<query::BoolFactor> AreaRestrictorEllipse::asSciSqlFactor(std::st
 
 
 std::shared_ptr<sphgeom::Region> AreaRestrictorEllipse::getRegion() const {
-
-    return qproc::getEllipseFromParams(convertVec<double>({_centerLonDegree, _centerLatDegree,
-        _semiMajorAxisAngleArcsec, _semiMinorAxisAngleArcsec, _positionAngleDegree}));
+    return qproc::getEllipseFromParams(_numericParams);
 }
 
 
 AreaRestrictorPoly::AreaRestrictorPoly(std::vector<std::string> const& parameters)
-        : _parameters(parameters) {
+        : _parameters(parameters), _numericParams(convertVec(parameters)) {
     if (_parameters.size() % 2 != 0) {
         throw std::logic_error("AreaRestrictorPoly requires an even number of arguments.");
     }
@@ -353,8 +358,7 @@ std::shared_ptr<query::BoolFactor> AreaRestrictorPoly::asSciSqlFactor(std::strin
 
 
 std::shared_ptr<sphgeom::Region> AreaRestrictorPoly::getRegion() const {
-
-    return qproc::getConvexPolyFromParams(convertVec<double>(_parameters));
+    return qproc::getConvexPolyFromParams(_numericParams);
 }
 
 

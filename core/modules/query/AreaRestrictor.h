@@ -126,6 +126,7 @@ private:
     std::string _latMinDegree;
     std::string _lonMaxDegree;
     std::string _latMaxDegree;
+    std::vector<double> _numericParams;
 };
 
 
@@ -155,6 +156,7 @@ private:
     std::string _centerLonDegree;
     std::string _centerLatDegree;
     std::string _radiusDegree;
+    std::vector<double> _numericParams;
 };
 
 
@@ -188,6 +190,7 @@ private:
     std::string _semiMajorAxisAngleArcsec;
     std::string _semiMinorAxisAngleArcsec;
     std::string _positionAngleDegree;
+    std::vector<double> _numericParams;
 };
 
 
@@ -211,6 +214,7 @@ protected:
 
 private:
     std::vector<std::string> _parameters;
+    std::vector<double> _numericParams;
 };
 
 
