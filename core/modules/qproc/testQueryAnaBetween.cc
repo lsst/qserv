@@ -49,7 +49,7 @@
 #include "global/constants.h"
 #include "mysql/MySqlConfig.h"
 #include "parser/SelectParser.h"
-#include "query/QsRestrictor.h"
+#include "query/SecIdxRestrictor.h"
 #include "query/QueryContext.h"
 #include "sql/SqlConfig.h"
 #include "tests/QueryAnaFixture.h"

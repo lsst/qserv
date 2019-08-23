@@ -47,7 +47,7 @@
 #include "query/LogicalTerm.h"
 #include "query/OrTerm.h"
 #include "query/Predicate.h"
-#include "query/QsRestrictor.h"
+#include "query/AreaRestrictor.h"
 #include "query/QueryTemplate.h"
 #include "query/typedefs.h"
 #include "util/PointerCompare.h"

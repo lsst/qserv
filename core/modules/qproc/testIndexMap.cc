@@ -46,7 +46,7 @@
 #include "qproc/ChunkSpec.h"
 #include "qproc/SecondaryIndex.h"
 #include "query/InPredicate.h"
-#include "query/QsRestrictor.h"
+#include "query/SecIdxRestrictor.h"
 #include "query/ValueExpr.h"
 #include "query/ValueFactor.h"
 #include "util/IterableFormatter.h"

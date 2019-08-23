@@ -51,7 +51,8 @@
 #include "global/intTypes.h"
 #include "qproc/QueryProcessingError.h"
 #include "qproc/SecondaryIndex.h"
-#include "query/QsRestrictor.h"
+#include "query/AreaRestrictor.h"
+#include "query/SecIdxRestrictor.h"
 #include "util/IterableFormatter.h"
 
 

@@ -44,7 +44,6 @@
 #include "proto/ScanTableInfo.h"
 #include "query/ColumnRef.h"
 #include "query/FromList.h"
-#include "query/QsRestrictor.h"
 #include "query/QueryContext.h"
 #include "query/SelectList.h"
 #include "query/SelectStmt.h"

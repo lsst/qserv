@@ -43,7 +43,8 @@
 #include "parser/ParseException.h"
 #include "parser/SelectParser.h"
 #include "qproc/ChunkSpec.h"
-#include "query/QsRestrictor.h"
+#include "query/AreaRestrictor.h"
+#include "query/SecIdxRestrictor.h"
 #include "query/QueryTemplate.h"
 #include "query/SelectStmt.h"
 

@@ -49,7 +49,7 @@
 #include "query/OrderByClause.h"
 #include "query/OrTerm.h"
 #include "query/PassTerm.h"
-#include "query/QsRestrictor.h"
+#include "query/AreaRestrictor.h"
 #include "query/SelectList.h"
 #include "query/SelectStmt.h"
 #include "query/TableRef.h"

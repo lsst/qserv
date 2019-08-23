@@ -37,7 +37,6 @@
 // Qserv headers
 #include "mysql/MySqlConfig.h"
 #include "qproc/ChunkSpec.h"
-#include "query/QsRestrictor.h"
 #include "query/typedefs.h"
 
 namespace lsst {

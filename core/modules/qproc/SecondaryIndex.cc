@@ -47,7 +47,7 @@
 #include "global/stringUtil.h"
 #include "query/ColumnRef.h"
 #include "query/CompPredicate.h"
-#include "query/QsRestrictor.h"
+#include "query/SecIdxRestrictor.h"
 #include "qproc/ChunkSpec.h"
 #include "sql/SqlConnection.h"
 #include "sql/SqlConnectionFactory.h"

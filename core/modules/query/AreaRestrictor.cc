@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2013-2017 AURA/LSST.
+ * Copyright 2013-2019 AURA/LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -20,33 +20,23 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-/**
-  * @file
-  *
-  * @author Daniel L. Wang, SLAC
-  */
 
 
 // Class header
-#include "query/QsRestrictor.h"
+#include "query/AreaRestrictor.h"
 
 // System headers
 #include <iostream>
-#include <iterator>
 
 // Qserv headers
 #include "qproc/geomAdapter.h"
-#include "query/BetweenPredicate.h"
 #include "query/BoolFactor.h"
 #include "query/CompPredicate.h"
 #include "query/FuncExpr.h"
-#include "query/InPredicate.h"
 #include "query/QueryTemplate.h"
-#include "query/SelectList.h"
-#include "query/SelectStmt.h"
 #include "query/ValueExpr.h"
 #include "query/ValueFactor.h"
-#include "util/IterableFormatter.h"
+
 
 namespace {
 
@@ -367,116 +357,5 @@ std::shared_ptr<sphgeom::Region> AreaRestrictorPoly::getRegion() const {
     return qproc::getConvexPolyFromParams(convertVec<double>(_parameters));
 }
 
-
-std::ostream& operator<<(std::ostream& os, SecIdxRestrictor const& q) {
-    return q.dbgPrint(os);
-}
-
-
-bool SecIdxRestrictor::operator==(const SecIdxRestrictor& rhs) const {
-    return typeid(*this) == typeid(rhs) && isEqual(rhs);
-}
-
-
-void SecIdxCompRestrictor::renderTo(QueryTemplate& qt) const {
-    _compPredicate->renderTo(qt);
-}
-
-
-bool SecIdxCompRestrictor::isEqual(const SecIdxRestrictor& rhs) const {
-    auto rhsCompRestrictor = static_cast<SecIdxCompRestrictor const&>(rhs);
-    return *_compPredicate == *rhsCompRestrictor._compPredicate;
-}
-
-
-std::ostream& SecIdxCompRestrictor::dbgPrint(std::ostream& os) const {
-    os << "SecIdxCompRestrictor(" << *_compPredicate << ")";
-    return os;
-}
-
-
-std::shared_ptr<query::ColumnRef const> SecIdxCompRestrictor::getSecIdxColumnRef() const {
-    return _useLeft ? _compPredicate->left->getColumnRef() : _compPredicate->right->getColumnRef();
-}
-
-
-std::string SecIdxCompRestrictor::getSecIdxLookupQuery(std::string const& secondaryIndexDb,
-        std::string const& secondaryIndexTable, std::string const& chunkColumn,
-        std::string const& subChunkColumn) const {
-    QueryTemplate columnRefQt;
-    columnRefQt.setUseColumnOnly(true);
-    _compPredicate->renderTo(columnRefQt);
-    return "SELECT " + chunkColumn + ", " + subChunkColumn +
-            " FROM " + secondaryIndexDb + "." + secondaryIndexTable +
-            " WHERE " + boost::lexical_cast<std::string>(columnRefQt);
-}
-
-
-void SecIdxBetweenRestrictor::renderTo(QueryTemplate& qt) const {
-    _betweenPredicate->renderTo(qt);
-}
-
-
-bool SecIdxBetweenRestrictor::isEqual(const SecIdxRestrictor& rhs) const {
-    auto rhsBetweenRestrictor = static_cast<SecIdxBetweenRestrictor const&>(rhs);
-    return *_betweenPredicate == *rhsBetweenRestrictor._betweenPredicate;
-}
-
-
-std::ostream& SecIdxBetweenRestrictor::dbgPrint(std::ostream& os) const {
-    os << "SecIdxBetweenRestrictor(" << *_betweenPredicate << ")";
-    return os;
-}
-
-
-std::shared_ptr<query::ColumnRef const> SecIdxBetweenRestrictor::getSecIdxColumnRef() const {
-    return _betweenPredicate->value->getColumnRef();
-}
-
-
-std::string SecIdxBetweenRestrictor::getSecIdxLookupQuery(std::string const& secondaryIndexDb,
-        std::string const& secondaryIndexTable, std::string const& chunkColumn,
-        std::string const& subChunkColumn) const {
-    QueryTemplate columnRefQt;
-    columnRefQt.setUseColumnOnly(true);
-    _betweenPredicate->renderTo(columnRefQt);
-    return "SELECT " + chunkColumn + ", " + subChunkColumn +
-            " FROM " + secondaryIndexDb + "." + secondaryIndexTable +
-            " WHERE " + boost::lexical_cast<std::string>(columnRefQt);
-}
-
-
-void SecIdxInRestrictor::renderTo(QueryTemplate& qt) const {
-    _inPredicate->renderTo(qt);
-}
-
-
-bool SecIdxInRestrictor::isEqual(const SecIdxRestrictor& rhs) const {
-    auto rhsRestrictor = static_cast<SecIdxInRestrictor const&>(rhs);
-    return *_inPredicate == *rhsRestrictor._inPredicate;
-}
-
-
-std::ostream& SecIdxInRestrictor::dbgPrint(std::ostream& os) const {
-    os << "SecIdxInRestrictor(" << *_inPredicate << ")";
-    return os;
-}
-
-
-std::shared_ptr<query::ColumnRef const> SecIdxInRestrictor::getSecIdxColumnRef() const {
-    return _inPredicate->value->getColumnRef();
-}
-
-
-std::string SecIdxInRestrictor::getSecIdxLookupQuery(std::string const& secondaryIndexDb,
-        std::string const& secondaryIndexTable, std::string const& chunkColumn,
-        std::string const& subChunkColumn) const {
-    QueryTemplate qt;
-    qt.setUseColumnOnly(true);
-    _inPredicate->renderTo(qt);
-    return "SELECT " + chunkColumn + ", " + subChunkColumn +
-            " FROM " + secondaryIndexDb + "." + secondaryIndexTable +
-            " WHERE " + boost::lexical_cast<std::string>(qt);
-}
 
 }}} // namespace lsst::qserv::query
