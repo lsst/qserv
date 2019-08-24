@@ -145,7 +145,7 @@ public:
     
     std::string prefix() const final;
 
-    std::string configUrl() const final;
+    std::string configUrl(bool showPassword=false) const final;
 
     std::vector<std::string> workers(bool isEnabled=true,
                                      bool isReadOnly=false) const final;

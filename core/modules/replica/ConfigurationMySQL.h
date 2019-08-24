@@ -94,7 +94,7 @@ public:
 
     std::string prefix() const final;
 
-    std::string configUrl() const final;
+    std::string configUrl(bool showPassword=false) const final;
 
     void setRequestBufferSizeBytes(size_t val) final {
         _set(_requestBufferSizeBytes,

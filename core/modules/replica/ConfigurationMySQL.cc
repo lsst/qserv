@@ -206,8 +206,8 @@ string ConfigurationMySQL::prefix() const {
 }
 
 
-string ConfigurationMySQL::configUrl() const {
-    return _connectionParams.toString();
+string ConfigurationMySQL::configUrl(bool showPassword) const {
+    return _connectionParams.toString(showPassword);
 }
 
 

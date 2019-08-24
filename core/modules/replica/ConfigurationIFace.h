@@ -188,9 +188,10 @@ public:
      * Construct the original (minus security-related info) path to
      * the configuration source.
      *
+     * @oparam showPassword  if 'false' then hash a password in the result
      * @return the constructed path
      */
-    virtual std::string configUrl() const = 0;
+    virtual std::string configUrl(bool showPassword=false) const = 0;
 
     // ------------------------------------------------------------------------
     // -- Common configuration parameters of both the controller and workers --

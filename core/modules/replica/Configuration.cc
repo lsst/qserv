@@ -116,9 +116,9 @@ string Configuration::prefix() const {
 }
 
 
-string Configuration::configUrl() const {
+string Configuration::configUrl(bool showPassword) const {
     util::Lock lock(_mtx, context(__func__));
-    return _impl->configUrl();    
+    return _impl->configUrl(showPassword);    
 }
 
 vector<string> Configuration::workers(bool isEnabled, bool isReadOnly) const {

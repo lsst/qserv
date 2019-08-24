@@ -66,7 +66,7 @@ public:
 
     std::string prefix() const final { return "map"; }
 
-    std::string configUrl() const final { return prefix() + ":"; }
+    std::string configUrl(bool showPassword=false) const final { return prefix() + ":"; }
 };
 
 }}} // namespace lsst::qserv::replica

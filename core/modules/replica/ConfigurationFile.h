@@ -74,7 +74,7 @@ public:
 
     std::string prefix() const final { return "file"; }
 
-    std::string configUrl() const final { return prefix() + ":" + _configFile; }
+    std::string configUrl(bool showPassword=false) const final { return prefix() + ":" + _configFile; }
 
 private:
 
