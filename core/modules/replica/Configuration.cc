@@ -91,7 +91,10 @@ Configuration::Ptr Configuration::load(map<string, string> const& kvMap) {
 
 void Configuration::reload() {
     util::Lock lock(_mtx, context(__func__));
-    if (_impl->prefix() != "map") _impl = ConfigurationBase::load(_impl->configUrl());
+    if (_impl->prefix() != "map") {
+        bool const showPassword = true;
+        _impl = ConfigurationBase::load(_impl->configUrl(showPassword));
+    }
 }
 
 
