@@ -711,7 +711,7 @@ void ConfigurationStore::_loadConfiguration(util::ConfigStore const& configStore
         _databaseInfo[name].chunkIdKey = configStore.getRequired(section+".chunk_id_key");
         _databaseInfo[name].subChunkIdKey = configStore.getRequired(section+".sub_chunk_id_key");
         
-        for (auto const& table: _databaseInfo[name].tables()) {
+        for (auto const& table: _databaseInfo[name].partitionedTables) {
             string const section = "table:" + name + "." + table;
             _databaseInfo[name].latitudeColName[table] = configStore.getRequired(section+".latitude_key");
             _databaseInfo[name].longitudeColName[table] = configStore.getRequired(section+".longitude_key");

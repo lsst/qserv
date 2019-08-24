@@ -91,7 +91,7 @@ Configuration::Ptr Configuration::load(map<string, string> const& kvMap) {
 
 void Configuration::reload() {
     util::Lock lock(_mtx, context(__func__));
-    if (prefix() != "map") _impl = ConfigurationBase::load(_impl->configUrl());
+    if (_impl->prefix() != "map") _impl = ConfigurationBase::load(_impl->configUrl());
 }
 
 
@@ -103,7 +103,7 @@ void Configuration::reload(string const& configUrl) {
 
 void Configuration::reload(std::map<std::string, std::string> const& kvMap) {
     util::Lock lock(_mtx, context(__func__));
-    if (prefix() != "map") _impl = ConfigurationBase::load(kvMap);
+    if (_impl->prefix() != "map") _impl = ConfigurationBase::load(kvMap);
 }
 
     

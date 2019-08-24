@@ -129,54 +129,93 @@ BOOST_AUTO_TEST_CASE(ConfigurationTest) {
         {"database:db1.partitioned_tables", "Table11"},
         {"database:db1.regular_tables",     "MetaTable11"},
         {"database:db1.is_published",       "1"},
+        {"database:db1.director_table",     "Table11"},
+        {"database:db1.director_table_key", "id1"},
+        {"database:db1.chunk_id_key",       "chunkId1"},
+        {"database:db1.sub_chunk_id_key",   "subChunkId1"},
+        {"table:db1.Table11.latitude_key",  "decl11"},
+        {"table:db1.Table11.longitude_key", "ra11"},
 
         {"database:db2.family",             "production"},
         {"database:db2.partitioned_tables", "Table21 Table22"},
         {"database:db2.regular_tables",     "MetaTable21 MetaTable22"},
         {"database:db2.is_published",       "1"},
+        {"database:db2.director_table",     "Table21"},
+        {"database:db2.director_table_key", "id2"},
+        {"database:db2.chunk_id_key",       "chunkId2"},
+        {"database:db2.sub_chunk_id_key",   "subChunkId2"},
+        {"table:db2.Table21.latitude_key",  "decl21"},
+        {"table:db2.Table21.longitude_key", "ra21"},
+        {"table:db2.Table22.latitude_key",  "decl22"},
+        {"table:db2.Table22.longitude_key", "ra22"},
 
         {"database:db3.family",             "production"},
         {"database:db3.partitioned_tables", "Table31 Table32 Table33"},
         {"database:db3.regular_tables",     "MetaTable31 MetaTable32 MetaTable33"},
         {"database:db3.is_published",       "1"},
+        {"database:db3.director_table",     "Table31"},
+        {"database:db3.director_table_key", "id3"},
+        {"database:db3.chunk_id_key",       "chunkId3"},
+        {"database:db3.sub_chunk_id_key",   "subChunkId3"},
+        {"table:db3.Table31.latitude_key",  "decl31"},
+        {"table:db3.Table31.longitude_key", "ra31"},
+        {"table:db3.Table32.latitude_key",  "decl32"},
+        {"table:db3.Table32.longitude_key", "ra32"},
+        {"table:db3.Table33.latitude_key",  "decl33"},
+        {"table:db3.Table33.longitude_key", "ra33"},
 
         {"database:db4.family",             "test"},
         {"database:db4.partitioned_tables", "Table41 Table42"},
         {"database:db4.regular_tables",     ""},
         {"database:db4.is_published",       "1"},
+        {"database:db4.director_table",     "Table41"},
+        {"database:db4.director_table_key", "id4"},
+        {"database:db4.chunk_id_key",       "chunkId4"},
+        {"database:db4.sub_chunk_id_key",   "subChunkId4"},
+        {"table:db4.Table41.latitude_key",  "decl41"},
+        {"table:db4.Table41.longitude_key", "ra41"},
+        {"table:db4.Table42.latitude_key",  "decl42"},
+        {"table:db4.Table42.longitude_key", "ra42"},
 
         {"database:db5.family",             "test"},
         {"database:db5.partitioned_tables", "Table51"},
         {"database:db5.regular_tables",     ""},
         {"database:db5.is_published",       "1"},
+        {"database:db5.director_table",     "Table51"},
+        {"database:db5.director_table_key", "id5"},
+        {"database:db5.chunk_id_key",       "chunkId5"},
+        {"database:db5.sub_chunk_id_key",   "subChunkId5"},
+        {"table:db5.Table51.latitude_key",  "decl51"},
+        {"table:db5.Table51.longitude_key", "ra51"},
 
         {"database:db6.family",             "test"},
         {"database:db6.partitioned_tables", "Table61"},
         {"database:db6.regular_tables",     "MetaTable61"},  
-        {"database:db6.is_published",       "0"}
+        {"database:db6.is_published",       "0"},
+        {"database:db6.director_table",     "Table61"},
+        {"database:db6.director_table_key", "id6"},
+        {"database:db6.chunk_id_key",       "chunkId6"},
+        {"database:db6.sub_chunk_id_key",   "subChunkId6"},
+        {"table:db6.Table61.latitude_key",  "decl61"},
+        {"table:db6.Table61.longitude_key", "ra61"}
     };
 
     Configuration::Ptr config;
 
     BOOST_REQUIRE_NO_THROW({
-
         config = Configuration::load(kvMap);
         BOOST_CHECK(config != nullptr);
         BOOST_CHECK(config->configUrl() == "map:");
 
         LOGS_INFO(config->asString());
 
-       // ------------------------------------------------------------------------
-       // -- Common configuration parameters of both the controller and workers --
-       // ------------------------------------------------------------------------
-
         // Test default assumptions for optional parameters of the method
-
         vector<string> workers1 = config->workers();
         sort(workers1.begin(), workers1.end());
         BOOST_CHECK(workers1.size() == 1);
         BOOST_CHECK(workers1 == vector<string>({"worker-A"}));
 
+        // Test explicit selectors
         bool isEnabled  = true;
         bool isReadOnly = false;
 
@@ -186,7 +225,6 @@ BOOST_AUTO_TEST_CASE(ConfigurationTest) {
         BOOST_CHECK(workers2 == workers1);
 
         // Fetch names of all the read-only workers
-
         isEnabled  = true;
         isReadOnly = true;
 
@@ -196,22 +234,17 @@ BOOST_AUTO_TEST_CASE(ConfigurationTest) {
         BOOST_CHECK(workers3 == vector<string>({"worker-B"}));
 
         // Fetch names of all the disabled workers
-
         isEnabled  = false;
 
         vector<string> workers4 = config->workers(isEnabled);
         sort(workers4.begin(), workers4.end());
         BOOST_CHECK(workers4.size() == 1);
         BOOST_CHECK(workers4 == vector<string>({"worker-C"}));
-
-        // Protocol parameters
-
+    });
+    BOOST_REQUIRE_NO_THROW({
         BOOST_CHECK(config->requestBufferSizeBytes() == 8192);
         BOOST_CHECK(config->retryTimeoutSec()        == 1);
 
-        // --------------------------------------------------------
-        // -- Configuration parameters of the controller service --
-        // --------------------------------------------------------
 
         BOOST_CHECK(config->controllerThreads()           == 2);
         BOOST_CHECK(config->controllerHttpPort()          == 8080);
@@ -221,18 +254,10 @@ BOOST_AUTO_TEST_CASE(ConfigurationTest) {
         BOOST_CHECK(config->jobTimeoutSec()               == 200);
         BOOST_CHECK(config->jobHeartbeatTimeoutSec()      == 300);
 
-        // --------------------------------------------------------
-        // -- Qserv Worker Management Services  (via XRootD/SSI) --
-        // --------------------------------------------------------
-
         BOOST_CHECK(config->xrootdAutoNotify() == 0);
         BOOST_CHECK(config->xrootdHost()       == "xrootd.lsst.org");
         BOOST_CHECK(config->xrootdPort()       == 1104);
         BOOST_CHECK(config->xrootdTimeoutSec() == 400);
-
-        // -----------------------------------------------------------
-        // -- Configuration parameters related to database services --
-        // -----------------------------------------------------------
 
         BOOST_CHECK(config->databaseTechnology()       == "mysql");
         BOOST_CHECK(config->databaseHost()             == "mysql.lsst.org");
@@ -241,13 +266,8 @@ BOOST_AUTO_TEST_CASE(ConfigurationTest) {
         BOOST_CHECK(config->databasePassword()         == "changeme");
         BOOST_CHECK(config->databaseName()             == "qservReplica");
         BOOST_CHECK(config->databaseServicesPoolSize() == 2);
-
-        // ---------------------------------------------------
-        // -- Configuration parameters related to databases --
-        // ---------------------------------------------------
-    
-        // Database families
-
+    });
+    BOOST_REQUIRE_NO_THROW({
         vector<string> families = config->databaseFamilies();
         sort(families.begin(), families.end());
         BOOST_CHECK(families.size() == 2);
@@ -256,22 +276,26 @@ BOOST_AUTO_TEST_CASE(ConfigurationTest) {
         for (auto&& name: families) {
             BOOST_CHECK(config->isKnownDatabaseFamily(name));
         }
-
+    });
+    BOOST_REQUIRE_NO_THROW({
         DatabaseFamilyInfo const production = config->databaseFamilyInfo("production");
         BOOST_CHECK(production.name == "production");
         BOOST_CHECK(production.replicationLevel == 10);
         BOOST_CHECK(production.numStripes       == 11);
         BOOST_CHECK(production.numSubStripes    == 12);
- 
+    });
+    BOOST_REQUIRE_NO_THROW({ 
         DatabaseFamilyInfo const test = config->databaseFamilyInfo("test");
         BOOST_CHECK(test.name == "test");
         BOOST_CHECK(test.replicationLevel == 13);
         BOOST_CHECK(test.numStripes       == 14);
         BOOST_CHECK(test.numSubStripes    == 15);
-   
+    });
+    BOOST_REQUIRE_NO_THROW({
         BOOST_CHECK(config->replicationLevel("production") == 10);
         BOOST_CHECK(config->replicationLevel("test")       == 13);
-    
+    });
+    BOOST_REQUIRE_NO_THROW({
         DatabaseFamilyInfo newFamily;
         newFamily.name = "new";
         newFamily.replicationLevel = 300;
@@ -285,28 +309,30 @@ BOOST_AUTO_TEST_CASE(ConfigurationTest) {
         BOOST_CHECK(newFamilyAdded.replicationLevel == 300);
         BOOST_CHECK(newFamilyAdded.numStripes       == 301);
         BOOST_CHECK(newFamilyAdded.numSubStripes    == 302);
-
+    });
+    BOOST_REQUIRE_NO_THROW({
         config->deleteDatabaseFamily("new");
         BOOST_CHECK(not config->isKnownDatabaseFamily("new"));
-
-        // Databases
-
+    });
+    BOOST_REQUIRE_NO_THROW({
         vector<string> databases1 = config->databases();
         sort(databases1.begin(), databases1.end());
         BOOST_CHECK(databases1.size() == 5);
         BOOST_CHECK(databases1 == vector<string>({"db1", "db2", "db3", "db4", "db5"}));
-
+    });
+    BOOST_REQUIRE_NO_THROW({
         vector<string> databases2 = config->databases("production");
         sort(databases2.begin(), databases2.end());
         BOOST_CHECK(databases2.size() == 3);
         BOOST_CHECK(databases2 == vector<string>({"db1", "db2", "db3"}));
-
+    });
+    BOOST_REQUIRE_NO_THROW({
         vector<string> databases3 = config->databases("test");
         sort(databases3.begin(), databases3.end());
         BOOST_CHECK(databases3.size() == 2);
         BOOST_CHECK(databases3 == vector<string>({"db4", "db5"}));
-    
-
+    });
+    BOOST_REQUIRE_NO_THROW({
         bool allDatabases = false;
         bool isPublished = true;
         vector<string> databases4 = config->databases("test", allDatabases, isPublished);
@@ -341,13 +367,18 @@ BOOST_AUTO_TEST_CASE(ConfigurationTest) {
         for (auto&& name: vector<string>({"db1", "db2", "db3", "db4", "db5", "db6"})) {
             BOOST_CHECK(config->isKnownDatabase(name));  
         }
-
+    });
+    BOOST_REQUIRE_NO_THROW({
         vector<string> tables;
 
         DatabaseInfo const db1info = config->databaseInfo("db1");
         BOOST_CHECK(db1info.name   == "db1");
         BOOST_CHECK(db1info.family == "production");
         BOOST_CHECK(db1info.isPublished == true);
+        BOOST_CHECK(db1info.directorTable == "Table11");
+        BOOST_CHECK(db1info.directorTableKey == "id1");
+        BOOST_CHECK(db1info.chunkIdKey == "chunkId1");
+        BOOST_CHECK(db1info.subChunkIdKey == "subChunkId1");
 
         tables = db1info.partitionedTables;
         sort(tables.begin(), tables.end());
@@ -358,11 +389,18 @@ BOOST_AUTO_TEST_CASE(ConfigurationTest) {
         sort(tables.begin(), tables.end());
         BOOST_CHECK(tables.size() == 1);
         BOOST_CHECK(tables == vector<string>({"MetaTable11"}));
+    });
+    BOOST_REQUIRE_NO_THROW({
+        vector<string> tables;
 
         DatabaseInfo const db2info = config->databaseInfo("db2");
         BOOST_CHECK(db2info.name   == "db2");
         BOOST_CHECK(db2info.family == "production");
         BOOST_CHECK(db2info.isPublished == true);
+        BOOST_CHECK(db2info.directorTable == "Table21");
+        BOOST_CHECK(db2info.directorTableKey == "id2");
+        BOOST_CHECK(db2info.chunkIdKey == "chunkId2");
+        BOOST_CHECK(db2info.subChunkIdKey == "subChunkId2");
 
         tables = db2info.partitionedTables;
         sort(tables.begin(), tables.end());
@@ -373,11 +411,18 @@ BOOST_AUTO_TEST_CASE(ConfigurationTest) {
         sort(tables.begin(), tables.end());
         BOOST_CHECK(tables.size() == 2);
         BOOST_CHECK(tables == vector<string>({"MetaTable21", "MetaTable22"}));
+    });
+    BOOST_REQUIRE_NO_THROW({
+        vector<string> tables;
 
         DatabaseInfo const db3info = config->databaseInfo("db3");
         BOOST_CHECK(db3info.name   == "db3");
         BOOST_CHECK(db3info.family == "production");
         BOOST_CHECK(db3info.isPublished == true);
+        BOOST_CHECK(db3info.directorTable == "Table31");
+        BOOST_CHECK(db3info.directorTableKey == "id3");
+        BOOST_CHECK(db3info.chunkIdKey == "chunkId3");
+        BOOST_CHECK(db3info.subChunkIdKey == "subChunkId3");
 
         tables = db3info.partitionedTables;
         sort(tables.begin(), tables.end());
@@ -388,11 +433,18 @@ BOOST_AUTO_TEST_CASE(ConfigurationTest) {
         sort(tables.begin(), tables.end());
         BOOST_CHECK(tables.size() == 3);
         BOOST_CHECK(tables == vector<string>({"MetaTable31", "MetaTable32", "MetaTable33"}));
+    });
+    BOOST_REQUIRE_NO_THROW({
+        vector<string> tables;
 
         DatabaseInfo const db4info = config->databaseInfo("db4");
         BOOST_CHECK(db4info.name   == "db4");
         BOOST_CHECK(db4info.family == "test");
         BOOST_CHECK(db4info.isPublished == true);
+        BOOST_CHECK(db4info.directorTable == "Table41");
+        BOOST_CHECK(db4info.directorTableKey == "id4");
+        BOOST_CHECK(db4info.chunkIdKey == "chunkId4");
+        BOOST_CHECK(db4info.subChunkIdKey == "subChunkId4");
 
         tables = db4info.partitionedTables;
         sort(tables.begin(), tables.end());
@@ -401,11 +453,18 @@ BOOST_AUTO_TEST_CASE(ConfigurationTest) {
 
         tables = db4info.regularTables;
         BOOST_CHECK(tables.size() == 0);
+    });
+    BOOST_REQUIRE_NO_THROW({
+        vector<string> tables;
 
         DatabaseInfo const db5info = config->databaseInfo("db5");
         BOOST_CHECK(db5info.name   == "db5");
         BOOST_CHECK(db5info.family == "test");
         BOOST_CHECK(db5info.isPublished == true);
+        BOOST_CHECK(db5info.directorTable == "Table51");
+        BOOST_CHECK(db5info.directorTableKey == "id5");
+        BOOST_CHECK(db5info.chunkIdKey == "chunkId5");
+        BOOST_CHECK(db5info.subChunkIdKey == "subChunkId5");
 
         tables = db5info.partitionedTables;
         sort(tables.begin(), tables.end());
@@ -414,11 +473,18 @@ BOOST_AUTO_TEST_CASE(ConfigurationTest) {
 
         tables = db5info.regularTables;
         BOOST_CHECK(tables.size() == 0);
+    });
+    BOOST_REQUIRE_NO_THROW({
+        vector<string> tables;
 
         DatabaseInfo const db6info = config->databaseInfo("db6");
         BOOST_CHECK(db6info.name   == "db6");
         BOOST_CHECK(db6info.family == "test");
         BOOST_CHECK(db6info.isPublished == false);
+        BOOST_CHECK(db6info.directorTable == "Table61");
+        BOOST_CHECK(db6info.directorTableKey == "id6");
+        BOOST_CHECK(db6info.chunkIdKey == "chunkId6");
+        BOOST_CHECK(db6info.subChunkIdKey == "subChunkId6");
 
         tables = db6info.partitionedTables;
         sort(tables.begin(), tables.end());
@@ -428,58 +494,97 @@ BOOST_AUTO_TEST_CASE(ConfigurationTest) {
         tables = db6info.regularTables;
         BOOST_CHECK(tables.size() == 1);
         BOOST_CHECK(tables == vector<string>({"MetaTable61"}));
-
-        DatabaseInfo newDatabase;
-        newDatabase.name = "new";
-        newDatabase.family = "test";
-        newDatabase.isPublished = false;
+    });
+    BOOST_REQUIRE_NO_THROW({
+        DatabaseInfo info;
+        info.name = "new";
+        info.family = "test";
   
-        DatabaseInfo const newDatabaseCreated = config->addDatabase(newDatabase);
-        BOOST_CHECK(newDatabaseCreated.name   == "new");
-        BOOST_CHECK(newDatabaseCreated.family == "test");
-        BOOST_CHECK(newDatabaseCreated.isPublished == false);
-        BOOST_CHECK(newDatabaseCreated.partitionedTables.size() == 0);
-        BOOST_CHECK(newDatabaseCreated.regularTables.size() == 0);
+        DatabaseInfo const newInfo = config->addDatabase(info);
+        BOOST_CHECK(newInfo.name   == "new");
+        BOOST_CHECK(newInfo.family == "test");
+        BOOST_CHECK(newInfo.isPublished == false);
+        BOOST_CHECK(newInfo.partitionedTables.size() == 0);
+        BOOST_CHECK(newInfo.regularTables.size() == 0);
+        BOOST_CHECK(newInfo.directorTable == "");
+        BOOST_CHECK(newInfo.directorTableKey == "");
+        BOOST_CHECK(newInfo.chunkIdKey == "");
+        BOOST_CHECK(newInfo.subChunkIdKey == "");
 
-        BOOST_CHECK_THROW(config->addDatabase(newDatabase), invalid_argument);
+        BOOST_CHECK_THROW(config->addDatabase(newInfo), invalid_argument);
+    });
+    {
+        DatabaseInfo info;
+        info.name = "";
+        BOOST_CHECK_THROW(config->addDatabase(info), invalid_argument);
 
-        DatabaseInfo newDatabaseUpdated = config->publishDatabase("new");
-        BOOST_CHECK(newDatabaseUpdated.name == "new");
-        BOOST_CHECK(newDatabaseUpdated.family == "test");
-        BOOST_CHECK(newDatabaseUpdated.isPublished == true);
-        BOOST_CHECK(newDatabaseUpdated.partitionedTables.size() == 0);
-        BOOST_CHECK(newDatabaseUpdated.regularTables.size() == 0);
+        info.name   = "another";
+        info.family = "";
+        BOOST_CHECK_THROW(config->addDatabase(info), invalid_argument);
 
-        newDatabase.name = "";
-        BOOST_CHECK_THROW(config->addDatabase(newDatabase), invalid_argument);
+        info.family = "unknown";
+        BOOST_CHECK_THROW(config->addDatabase(info), invalid_argument);
 
-        newDatabase.name   = "another";
-        newDatabase.family = "";
-        BOOST_CHECK_THROW(config->addDatabase(newDatabase), invalid_argument);
-
-        newDatabase.family = "unknown";
-        BOOST_CHECK_THROW(config->addDatabase(newDatabase), invalid_argument);
-
-        newDatabaseUpdated = config->addTable("new", "T1", true);
-        BOOST_CHECK(newDatabaseUpdated.partitionedTables.size() == 1 and
-                    newDatabaseUpdated.partitionedTables[0] == "T1");
-        BOOST_CHECK_THROW(config->addTable("new", "T1", true), invalid_argument);
-
-        newDatabaseUpdated = config->addTable("new", "T2", false);
-        BOOST_CHECK(newDatabaseUpdated.regularTables.size() == 1 and
-                    newDatabaseUpdated.regularTables[0] == "T2");
-        BOOST_CHECK_THROW(config->addTable("new", "T2", false), invalid_argument);
-
+    }
+    {
+        list<pair<string,string>> coldefs;
+        coldefs.push_back({"chunkIdT1", "INT"});
+        coldefs.push_back({"subChunkIdT1", "INT"});
+        bool const isPartitioned = true;
+        bool const isDirectorTable = false;
+        string const directorTableKey;
+        DatabaseInfo info;
+        BOOST_REQUIRE_NO_THROW({
+            info = config->addTable("new", "T1", isPartitioned, coldefs, isDirectorTable, directorTableKey, "chunkIdT1", "subChunkIdT1");
+        });
+        BOOST_CHECK(info.partitionedTables.size() == 1 and
+                    info.partitionedTables[0] == "T1");
+    }
+    BOOST_CHECK_THROW(config->addTable("new", "T1", true), invalid_argument);
+    {
+        list<pair<string,string>> coldefs;
+        coldefs.push_back({"idT12", "VARCHAR(255)"});
+        coldefs.push_back({"chunkIdT1", "INT"});
+        coldefs.push_back({"subChunkIdT1", "INT"});
+        coldefs.push_back({"declT12", "DOUBLE"});
+        coldefs.push_back({"raT12", "DOUBLE"});
+        bool const isPartitioned = true;
+        bool const isDirectorTable = true;
+        string const directorTableKey = "idT12";
+        DatabaseInfo info;
+        BOOST_REQUIRE_NO_THROW({
+            info = config->addTable("new", "T12", isPartitioned, coldefs, isDirectorTable, directorTableKey,
+                    "chunkIdT1", "subChunkIdT1", "declT12", "raT12");
+        });
+        BOOST_CHECK(info.partitionedTables.size() == 2);
+    }
+    BOOST_CHECK_THROW(config->addTable("new", "T1", true), invalid_argument);
+    BOOST_REQUIRE_NO_THROW({
+        DatabaseInfo const info = config->addTable("new", "T2", false);
+        BOOST_CHECK(info.regularTables.size() == 1 and
+                    info.regularTables[0] == "T2");
+    });
+    BOOST_CHECK_THROW(config->addTable("new", "T2", false), invalid_argument);
+    BOOST_REQUIRE_NO_THROW({
+        DatabaseInfo const info = config->publishDatabase("new");
+        BOOST_CHECK(info.name == "new");
+        BOOST_CHECK(info.family == "test");
+        BOOST_CHECK(info.isPublished == true);
+        BOOST_CHECK(info.partitionedTables.size() == 0);
+        BOOST_CHECK(info.regularTables.size() == 0);
+    });
+    BOOST_REQUIRE_NO_THROW({
         config->deleteTable("new", "T1");
+        config->deleteTable("new", "T12");
         config->deleteTable("new", "T2");
-
         config->deleteDatabase("new");
-        BOOST_CHECK_THROW(config->deleteDatabase("new"), invalid_argument);
+    });
 
-        // -----------------------------------------------------
-        // -- Configuration parameters of the worker services --
-        // -----------------------------------------------------
-    
+    // Adding tables to the database after it's published isn't allowed
+    BOOST_CHECK_THROW(config->addTable("new", "T3", true), invalid_argument);
+
+    BOOST_CHECK_THROW(config->deleteDatabase("new"), invalid_argument);
+    BOOST_REQUIRE_NO_THROW({
         for (auto&& name: vector<string>({"worker-A", "worker-B", "worker-C"})) {
             BOOST_CHECK(config->isKnownWorker(name));
         }
