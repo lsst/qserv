@@ -69,11 +69,6 @@ public:
      */
     virtual void renderTo(QueryTemplate& qt) const = 0;
 
-    /**
-     * @brief Serialize to the given ostream for debug output.
-     */
-    virtual std::ostream& dbgPrint(std::ostream& os) const = 0;
-
     friend std::ostream& operator<<(std::ostream& os, SecIdxRestrictor const& q);
 
     virtual std::shared_ptr<query::ColumnRef const> getSecIdxColumnRef() const = 0;
@@ -82,6 +77,13 @@ public:
                                              std::string const& secondaryIndexTable,
                                              std::string const& chunkColumn,
                                              std::string const& subChunkColumn) const = 0;
+
+    /**
+     * @brief Get the sql string that this AreaRestrictor represents
+     *
+     * @return std::string
+     */
+    std::string sqlFragment() const;
 
 protected:
     /**
@@ -105,11 +107,6 @@ public:
      * @brief Serialze this instance as SQL to the QueryTemplate.
      */
     void renderTo(QueryTemplate& qt) const override;
-
-    /**
-     * @brief Serialize to the given ostream for debug output.
-     */
-    std::ostream& dbgPrint(std::ostream& os) const override;
 
     std::shared_ptr<query::ColumnRef const> getSecIdxColumnRef() const override;
 
@@ -147,11 +144,6 @@ public:
      */
     void renderTo(QueryTemplate& qt) const override;
 
-    /**
-     * @brief Serialize to the given ostream for debug output.
-     */
-    std::ostream& dbgPrint(std::ostream& os) const override;
-
     std::shared_ptr<query::ColumnRef const> getSecIdxColumnRef() const override;
 
     std::string getSecIdxLookupQuery(std::string const& secondaryIndexDb,
@@ -186,11 +178,6 @@ public:
      * @brief Serialze this instance as SQL to the QueryTemplate.
      */
     void renderTo(QueryTemplate& qt) const override;
-
-    /**
-     * @brief Serialize to the given ostream for debug output.
-     */
-    std::ostream& dbgPrint(std::ostream& os) const override;
 
     std::shared_ptr<query::ColumnRef const> getSecIdxColumnRef() const override;
 

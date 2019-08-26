@@ -42,7 +42,17 @@ namespace query {
 
 
 std::ostream& operator<<(std::ostream& os, SecIdxRestrictor const& q) {
-    return q.dbgPrint(os);
+    QueryTemplate qt;
+    q.renderTo(qt);
+    os << qt;
+    return os;
+}
+
+
+std::string SecIdxRestrictor::sqlFragment() const {
+    QueryTemplate qt;
+    renderTo(qt);
+    return boost::lexical_cast<std::string>(qt);
 }
 
 
@@ -59,12 +69,6 @@ void SecIdxCompRestrictor::renderTo(QueryTemplate& qt) const {
 bool SecIdxCompRestrictor::isEqual(const SecIdxRestrictor& rhs) const {
     auto rhsCompRestrictor = static_cast<SecIdxCompRestrictor const&>(rhs);
     return *_compPredicate == *rhsCompRestrictor._compPredicate;
-}
-
-
-std::ostream& SecIdxCompRestrictor::dbgPrint(std::ostream& os) const {
-    os << "SecIdxCompRestrictor(" << *_compPredicate << ")";
-    return os;
 }
 
 
@@ -96,12 +100,6 @@ bool SecIdxBetweenRestrictor::isEqual(const SecIdxRestrictor& rhs) const {
 }
 
 
-std::ostream& SecIdxBetweenRestrictor::dbgPrint(std::ostream& os) const {
-    os << "SecIdxBetweenRestrictor(" << *_betweenPredicate << ")";
-    return os;
-}
-
-
 std::shared_ptr<query::ColumnRef const> SecIdxBetweenRestrictor::getSecIdxColumnRef() const {
     return _betweenPredicate->value->getColumnRef();
 }
@@ -127,12 +125,6 @@ void SecIdxInRestrictor::renderTo(QueryTemplate& qt) const {
 bool SecIdxInRestrictor::isEqual(const SecIdxRestrictor& rhs) const {
     auto rhsRestrictor = static_cast<SecIdxInRestrictor const&>(rhs);
     return *_inPredicate == *rhsRestrictor._inPredicate;
-}
-
-
-std::ostream& SecIdxInRestrictor::dbgPrint(std::ostream& os) const {
-    os << "SecIdxInRestrictor(" << *_inPredicate << ")";
-    return os;
 }
 
 
