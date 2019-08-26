@@ -62,7 +62,15 @@ namespace query {
 
 
 std::ostream& operator<<(std::ostream& os, AreaRestrictor const& q) {
-    return q.dbgPrint(os);
+    os << q.sqlFragment();
+    return os;
+}
+
+
+std::string AreaRestrictor::sqlFragment() const {
+    QueryTemplate qt;
+    renderTo(qt);
+    return boost::lexical_cast<std::string>(qt);
 }
 
 
@@ -102,14 +110,6 @@ void AreaRestrictorBox::renderTo(QueryTemplate& qt) const {
     qt.append(",");
     qt.append(_latMaxDegree);
     qt.append(")");
-}
-
-
-std::ostream& AreaRestrictorBox::dbgPrint(std::ostream& os) const {
-    QueryTemplate qt;
-    renderTo(qt);
-    os << qt;
-    return os;
 }
 
 
@@ -173,14 +173,6 @@ void AreaRestrictorCircle::renderTo(QueryTemplate& qt) const {
     qt.append(",");
     qt.append(_radiusDegree);
     qt.append(")");
-}
-
-
-std::ostream& AreaRestrictorCircle::dbgPrint(std::ostream& os) const {
-    QueryTemplate qt;
-    renderTo(qt);
-    os << qt;
-    return os;
 }
 
 
@@ -257,14 +249,6 @@ void AreaRestrictorEllipse::renderTo(QueryTemplate& qt) const {
 }
 
 
-std::ostream& AreaRestrictorEllipse::dbgPrint(std::ostream& os) const {
-    QueryTemplate qt;
-    renderTo(qt);
-    os << qt;
-    return os;
-}
-
-
 bool AreaRestrictorEllipse::isEqual(const AreaRestrictor& rhs) const {
     auto rhsEllipse = static_cast<AreaRestrictorEllipse const&>(rhs);
     return (_centerLonDegree == rhsEllipse._centerLonDegree &&
@@ -321,14 +305,6 @@ void AreaRestrictorPoly::renderTo(QueryTemplate& qt) const {
         qt.append(parameter);
     }
     qt.append(")");
-}
-
-
-std::ostream& AreaRestrictorPoly::dbgPrint(std::ostream& os) const {
-    QueryTemplate qt;
-    renderTo(qt);
-    os << qt;
-    return os;
 }
 
 

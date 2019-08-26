@@ -64,11 +64,6 @@ public:
      */
     virtual void renderTo(QueryTemplate& qt) const = 0;
 
-    /**
-     * @brief Serialize to the given ostream for debug output.
-     */
-    virtual std::ostream& dbgPrint(std::ostream& os) const = 0;
-
     friend std::ostream& operator<<(std::ostream& os, AreaRestrictor const& q);
 
     /**
@@ -88,6 +83,13 @@ public:
      * @return std::shared_ptr<sphgeom::Region>
      */
     virtual std::shared_ptr<sphgeom::Region> getRegion() const = 0;
+
+    /**
+     * @brief Get the sql string that this AreaRestrictor represents
+     *
+     * @return std::string
+     */
+    std::string sqlFragment() const;
 
 protected:
     /**
@@ -110,8 +112,6 @@ public:
     AreaRestrictorBox(std::vector<std::string> const& parameters);
 
     void renderTo(QueryTemplate& qt) const override;
-
-    std::ostream& dbgPrint(std::ostream& os) const override;
 
     std::shared_ptr<query::BoolFactor> asSciSqlFactor(std::string const& tableAlias,
             std::pair<std::string, std::string> const& chunkColumns) const override;
@@ -141,8 +141,6 @@ public:
     AreaRestrictorCircle(std::vector<std::string> const& parameters);
 
     void renderTo(QueryTemplate& qt) const override;
-
-    std::ostream& dbgPrint(std::ostream& os) const override;
 
     std::shared_ptr<query::BoolFactor> asSciSqlFactor(std::string const& tableAlias,
             std::pair<std::string, std::string> const& chunkColumns) const override;
@@ -174,8 +172,6 @@ public:
 
     void renderTo(QueryTemplate& qt) const override;
 
-    std::ostream& dbgPrint(std::ostream& os) const override;
-
     std::shared_ptr<query::BoolFactor> asSciSqlFactor(std::string const& tableAlias,
             std::pair<std::string, std::string> const& chunkColumns) const override;
 
@@ -201,8 +197,6 @@ public:
     AreaRestrictorPoly(std::vector<std::string> const& parameters);
 
     void renderTo(QueryTemplate& qt) const override;
-
-    std::ostream& dbgPrint(std::ostream& os) const override;
 
     std::shared_ptr<query::BoolFactor> asSciSqlFactor(std::string const& tableAlias,
             std::pair<std::string, std::string> const& chunkColumns) const override;
