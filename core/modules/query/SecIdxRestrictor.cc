@@ -86,8 +86,8 @@ std::string SecIdxCompRestrictor::getSecIdxLookupQuery(std::string const& second
     QueryTemplate columnRefQt;
     columnRefQt.setUseColumnOnly(true);
     _compPredicate->renderTo(columnRefQt);
-    return "SELECT " + chunkColumn + ", " + subChunkColumn +
-            " FROM " + secondaryIndexDb + "." + secondaryIndexTable +
+    return "SELECT `" + chunkColumn + "`, `" + subChunkColumn + "`" +
+            " FROM `" + secondaryIndexDb + "`.`" + secondaryIndexTable + "`" +
             " WHERE " + boost::lexical_cast<std::string>(columnRefQt);
 }
 
@@ -114,8 +114,8 @@ std::string SecIdxBetweenRestrictor::getSecIdxLookupQuery(std::string const& sec
     QueryTemplate columnRefQt;
     columnRefQt.setUseColumnOnly(true);
     _betweenPredicate->renderTo(columnRefQt);
-    return "SELECT " + chunkColumn + ", " + subChunkColumn +
-            " FROM " + secondaryIndexDb + "." + secondaryIndexTable +
+    return "SELECT `" + chunkColumn + "`, `" + subChunkColumn + "`" +
+            " FROM `" + secondaryIndexDb + "`.`" + secondaryIndexTable + "`" +
             " WHERE " + boost::lexical_cast<std::string>(columnRefQt);
 }
 
@@ -142,8 +142,8 @@ std::string SecIdxInRestrictor::getSecIdxLookupQuery(std::string const& secondar
     QueryTemplate qt;
     qt.setUseColumnOnly(true);
     _inPredicate->renderTo(qt);
-    return "SELECT " + chunkColumn + ", " + subChunkColumn +
-            " FROM " + secondaryIndexDb + "." + secondaryIndexTable +
+    return "SELECT `" + chunkColumn + "`, `" + subChunkColumn + "`" +
+            " FROM `" + secondaryIndexDb + "`.`" + secondaryIndexTable + "`" +
             " WHERE " + boost::lexical_cast<std::string>(qt);
 }
 

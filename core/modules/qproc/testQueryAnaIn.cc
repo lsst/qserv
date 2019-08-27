@@ -83,10 +83,10 @@ BOOST_AUTO_TEST_CASE(SecondaryIndex) {
     BOOST_REQUIRE(inRestrictor != nullptr);
     BOOST_REQUIRE_EQUAL(inRestrictor->getSecIdxLookupQuery(lsst::qserv::SEC_INDEX_DB, "LSST__Object",
                         lsst::qserv::CHUNK_COLUMN, lsst::qserv::SUB_CHUNK_COLUMN),
-        "SELECT " + std::string(lsst::qserv::CHUNK_COLUMN) + ", " +
+        "SELECT `" + std::string(lsst::qserv::CHUNK_COLUMN) + "`, `" +
         std::string(lsst::qserv::SUB_CHUNK_COLUMN) +
-        " FROM " + std::string(lsst::qserv::SEC_INDEX_DB) +
-        ".LSST__Object WHERE objectIdObjTest IN(2,3145,9999)");
+        "` FROM `" + std::string(lsst::qserv::SEC_INDEX_DB) +
+        "`.`LSST__Object` WHERE objectIdObjTest IN(2,3145,9999)");
 }
 
 
@@ -127,10 +127,10 @@ BOOST_AUTO_TEST_CASE(RestrictorObjectIdAlias) {
     BOOST_REQUIRE(inRestrictor != nullptr);
     BOOST_REQUIRE_EQUAL(inRestrictor->getSecIdxLookupQuery(lsst::qserv::SEC_INDEX_DB, "LSST__Object",
                         lsst::qserv::CHUNK_COLUMN, lsst::qserv::SUB_CHUNK_COLUMN),
-        "SELECT " + std::string(lsst::qserv::CHUNK_COLUMN) + ", " +
+        "SELECT `" + std::string(lsst::qserv::CHUNK_COLUMN) + "`, `" +
         std::string(lsst::qserv::SUB_CHUNK_COLUMN) +
-        " FROM " + std::string(lsst::qserv::SEC_INDEX_DB) +
-        ".LSST__Object WHERE objectIdObjTest IN(2,3145,9999)");
+        "` FROM `" + std::string(lsst::qserv::SEC_INDEX_DB) +
+        "`.`LSST__Object` WHERE objectIdObjTest IN(2,3145,9999)");
 }
 
 BOOST_AUTO_TEST_SUITE_END()

@@ -57,8 +57,8 @@ BOOST_AUTO_TEST_CASE(SecIdxCompRestrictorTestLeft){
                                        true);
     BOOST_CHECK_EQUAL(restrictor.sqlFragment(), "db.tbl.objectId=123456");
     BOOST_CHECK_EQUAL(restrictor.getSecIdxLookupQuery("db", "tbl", "chunkColumn", "subChunkColumn"),
-                      "SELECT chunkColumn, subChunkColumn "
-                      "FROM db.tbl "
+                      "SELECT `chunkColumn`, `subChunkColumn` "
+                      "FROM `db`.`tbl` "
                       "WHERE objectId=123456");
     auto secIdxColRef = restrictor.getSecIdxColumnRef();
     BOOST_REQUIRE(secIdxColRef != nullptr);
@@ -74,8 +74,8 @@ BOOST_AUTO_TEST_CASE(SecIdxCompRestrictorTestRight){
                                        false);
     BOOST_CHECK_EQUAL(restrictor.sqlFragment(), "123456=db.tbl.objectId");
     BOOST_CHECK_EQUAL(restrictor.getSecIdxLookupQuery("db", "tbl", "chunkColumn", "subChunkColumn"),
-                      "SELECT chunkColumn, subChunkColumn "
-                      "FROM db.tbl "
+                      "SELECT `chunkColumn`, `subChunkColumn` "
+                      "FROM `db`.`tbl` "
                       "WHERE 123456=objectId");
     auto secIdxColRef = restrictor.getSecIdxColumnRef();
     BOOST_REQUIRE(secIdxColRef != nullptr);
@@ -91,8 +91,8 @@ BOOST_AUTO_TEST_CASE(SecIdxBetweenRestrictorTest) {
                                           false));
     BOOST_CHECK_EQUAL(restrictor.sqlFragment(), "db.tbl.objectId BETWEEN 0 AND 100000");
     BOOST_CHECK_EQUAL(restrictor.getSecIdxLookupQuery("db", "tbl", "chunkColumn", "subChunkColumn"),
-                      "SELECT chunkColumn, subChunkColumn "
-                      "FROM db.tbl "
+                      "SELECT `chunkColumn`, `subChunkColumn` "
+                      "FROM `db`.`tbl` "
                       "WHERE objectId BETWEEN 0 AND 100000");
     auto secIdxColRef = restrictor.getSecIdxColumnRef();
     BOOST_REQUIRE(secIdxColRef != nullptr);
@@ -111,8 +111,8 @@ BOOST_AUTO_TEST_CASE(SecIdxInRestrictorTest) {
                                      candidates, false));
     BOOST_CHECK_EQUAL(restrictor.sqlFragment(), "db.tbl.objectId IN(1,3,5,7,11)");
     BOOST_CHECK_EQUAL(restrictor.getSecIdxLookupQuery("db", "tbl", "chunkColumn", "subChunkColumn"),
-                      "SELECT chunkColumn, subChunkColumn "
-                      "FROM db.tbl "
+                      "SELECT `chunkColumn`, `subChunkColumn` "
+                      "FROM `db`.`tbl` "
                       "WHERE objectId IN(1,3,5,7,11)");
     auto secIdxColRef = restrictor.getSecIdxColumnRef();
     BOOST_REQUIRE(secIdxColRef != nullptr);
