@@ -279,7 +279,7 @@ void addScisqlRestrictors(std::vector<std::shared_ptr<query::AreaRestrictor>> co
 bool isSecIndexCol(query::QueryContext const& context, std::shared_ptr<query::ColumnRef> cr) {
     // Match cr as a column ref against the secondary index column for a
     // database's partitioning strategy.
-    if ((nullptr == cr) || nullptr == context.css) return false;
+    if (nullptr == cr || nullptr == context.css) return false;
     if (not context.css->containsDb(cr->getDb()) ||
             not context.css->containsTable(cr->getDb(), cr->getTable())) {
         throw qana::AnalysisError("Invalid db/table:" + cr->getDb() + "." + cr->getTable());
