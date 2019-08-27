@@ -40,6 +40,14 @@
 
 namespace {
 
+/**
+ * @brief Function to convert a vector of string to a vector of double.
+ *
+ * Throws std::invalid_argument if an item in the string vector can't be converted to a double.
+ *
+ * @param strVec
+ * @return std::vector<double>
+ */
 std::vector<double> convertVec(std::vector<std::string> const& strVec) {
     std::vector<double> out;
     out.reserve(strVec.size());
@@ -52,6 +60,29 @@ std::vector<double> convertVec(std::vector<std::string> const& strVec) {
     }
     return out;
 }
+
+
+/**
+ * @brief Function to extract a string reference from a location in a vector of string, that includes
+ *        checking for expected vector size and for valid index into the vector of string.
+ *
+ * @param stringVec the vector of string to look in.
+ * @param atLocation the item to extract from the vector.
+ * @param name the name to be used in the exception if there is a size or index error.
+ * @param requiredNumItems the exact number of items that should be in the stringVec.
+ * @return std::string const& the string at 'atLocation'
+ */
+std::string const& stringAt(std::vector<std::string> const& stringVec, unsigned int atLocation,
+                            std::string name, unsigned int requiredNumItems) {
+    if (stringVec.size() != requiredNumItems) {
+        throw std::logic_error(name + " requires 4 parameters.");
+    }
+    if (atLocation >= requiredNumItems) {
+        throw std::logic_error(name + " supports 4 parameters.");
+    }
+    return stringVec[atLocation];
+}
+
 
 }
 
@@ -74,7 +105,7 @@ std::string AreaRestrictor::sqlFragment() const {
 }
 
 
-bool AreaRestrictor::operator==(const AreaRestrictor& rhs) const {
+bool AreaRestrictor::operator==(AreaRestrictor const& rhs) const {
     return typeid(*this) == typeid(rhs) && isEqual(rhs);
 }
 
@@ -88,15 +119,12 @@ AreaRestrictorBox::AreaRestrictorBox(std::string const& lonMinDegree, std::strin
 
 
 AreaRestrictorBox::AreaRestrictorBox(std::vector<std::string> const& parameters)
-        : _numericParams(convertVec(parameters)) {
-    if (parameters.size() != 4) {
-        throw std::logic_error("AreaRestrictorBox requires 4 parameters.");
-    }
-    _lonMinDegree = parameters[0];
-    _latMinDegree = parameters[1];
-    _lonMaxDegree = parameters[2];
-    _latMaxDegree = parameters[3];
-}
+        : _lonMinDegree(stringAt(parameters, 0, "AreaRestrictorBox", 4)),
+          _latMinDegree(stringAt(parameters, 1, "AreaRestrictorBox", 4)),
+          _lonMaxDegree(stringAt(parameters, 2, "AreaRestrictorBox", 4)),
+          _latMaxDegree(stringAt(parameters, 3, "AreaRestrictorBox", 4)),
+          _numericParams(convertVec(parameters))
+{}
 
 
 void AreaRestrictorBox::renderTo(QueryTemplate& qt) const {
@@ -154,14 +182,11 @@ AreaRestrictorCircle::AreaRestrictorCircle(std::string const& centerLonDegree,
 
 
 AreaRestrictorCircle::AreaRestrictorCircle(std::vector<std::string> const& parameters)
-        : _numericParams(convertVec(parameters)) {
-    if (parameters.size() != 3) {
-        throw std::logic_error("qserv_areaspec_circle requires 3 parameters.");
-    }
-    _centerLonDegree = parameters[0];
-    _centerLatDegree = parameters[1];
-    _radiusDegree = parameters[2];
-}
+        : _centerLonDegree(stringAt(parameters, 0, "AreaRestrictorCircle", 3)),
+          _centerLatDegree(stringAt(parameters, 1, "AreaRestrictorCircle", 3)),
+          _radiusDegree(stringAt(parameters, 2, "AreaRestrictorCircle", 3)),
+          _numericParams(convertVec(parameters))
+{}
 
 
 void AreaRestrictorCircle::renderTo(QueryTemplate& qt) const {
@@ -221,16 +246,13 @@ AreaRestrictorEllipse::AreaRestrictorEllipse(std::string const& centerLonDegree,
 
 
 AreaRestrictorEllipse::AreaRestrictorEllipse(std::vector<std::string> const& parameters)
-        : _numericParams(convertVec(parameters)) {
-    if (parameters.size() != 5) {
-        throw std::logic_error("qserv_areaspec_ellipse requires 5 parameters.");
-    }
-    _centerLonDegree = parameters[0];
-    _centerLatDegree = parameters[1];
-    _semiMajorAxisAngleArcsec = parameters[2];
-    _semiMinorAxisAngleArcsec = parameters[3];
-    _positionAngleDegree = parameters[4];
-}
+        : _centerLonDegree(stringAt(parameters, 0, "AreaRestrictorEllipse", 5)),
+          _centerLatDegree(stringAt(parameters, 1, "AreaRestrictorEllipse", 5)),
+          _semiMajorAxisAngleArcsec(stringAt(parameters, 2, "AreaRestrictorEllipse", 5)),
+          _semiMinorAxisAngleArcsec(stringAt(parameters, 3, "AreaRestrictorEllipse", 5)),
+          _positionAngleDegree(stringAt(parameters, 4, "AreaRestrictorEllipse", 5)),
+          _numericParams(convertVec(parameters))
+{}
 
 
 void AreaRestrictorEllipse::renderTo(QueryTemplate& qt) const {

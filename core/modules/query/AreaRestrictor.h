@@ -54,10 +54,9 @@ namespace query {
 
 class AreaRestrictor {
 public:
-    AreaRestrictor() = default;
     virtual ~AreaRestrictor() = default;
 
-    bool operator==(const AreaRestrictor& rhs) const;
+    bool operator==(AreaRestrictor const& rhs) const;
 
     /**
      * @brief Serialze this instance as SQL to the QueryTemplate.
@@ -92,6 +91,8 @@ public:
     std::string sqlFragment() const;
 
 protected:
+    AreaRestrictor() = default;
+
     /**
      * @brief Test if this is equal with rhs.
      *
@@ -122,11 +123,11 @@ protected:
     bool isEqual(const AreaRestrictor& rhs) const override;
 
 private:
-    std::string _lonMinDegree;
-    std::string _latMinDegree;
-    std::string _lonMaxDegree;
-    std::string _latMaxDegree;
-    std::vector<double> _numericParams;
+    std::string const _lonMinDegree;
+    std::string const _latMinDegree;
+    std::string const _lonMaxDegree;
+    std::string const _latMaxDegree;
+    std::vector<double> const _numericParams;
 };
 
 
@@ -151,10 +152,10 @@ protected:
     bool isEqual(const AreaRestrictor& rhs) const override;
 
 private:
-    std::string _centerLonDegree;
-    std::string _centerLatDegree;
-    std::string _radiusDegree;
-    std::vector<double> _numericParams;
+    std::string const _centerLonDegree;
+    std::string const _centerLatDegree;
+    std::string const _radiusDegree;
+    std::vector<double> const _numericParams;
 };
 
 
@@ -181,12 +182,12 @@ protected:
     bool isEqual(const AreaRestrictor& rhs) const override;
 
 private:
-    std::string _centerLonDegree;
-    std::string _centerLatDegree;
-    std::string _semiMajorAxisAngleArcsec;
-    std::string _semiMinorAxisAngleArcsec;
-    std::string _positionAngleDegree;
-    std::vector<double> _numericParams;
+    std::string const _centerLonDegree;
+    std::string const _centerLatDegree;
+    std::string const _semiMajorAxisAngleArcsec;
+    std::string const _semiMinorAxisAngleArcsec;
+    std::string const _positionAngleDegree;
+    std::vector<double> const _numericParams;
 };
 
 
@@ -207,8 +208,8 @@ protected:
     bool isEqual(const AreaRestrictor& rhs) const override;
 
 private:
-    std::vector<std::string> _parameters;
-    std::vector<double> _numericParams;
+    std::vector<std::string> const _parameters;
+    std::vector<double> const _numericParams;
 };
 
 

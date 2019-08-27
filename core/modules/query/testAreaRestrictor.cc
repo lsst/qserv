@@ -66,14 +66,14 @@ BOOST_AUTO_TEST_CASE(EllipseRender) {
 }
 
 BOOST_AUTO_TEST_CASE(PolyRender) {
-    auto restrictor = AreaRestrictorPoly({"1", "2"});
-    BOOST_CHECK_EQUAL(restrictor.sqlFragment(), "qserv_areaspec_poly(1,2)");
-    restrictor = AreaRestrictorPoly({"1", "2", "3", "4"});
-    BOOST_CHECK_EQUAL(restrictor.sqlFragment(), "qserv_areaspec_poly(1,2,3,4)");
-    restrictor = AreaRestrictorPoly({"1", "2", "3", "4", "5", "6"});
-    BOOST_CHECK_EQUAL(restrictor.sqlFragment(), "qserv_areaspec_poly(1,2,3,4,5,6)");
-    restrictor = AreaRestrictorPoly({"1", "2", "3", "4", "5", "6", "7", "8"});
-    BOOST_CHECK_EQUAL(restrictor.sqlFragment(), "qserv_areaspec_poly(1,2,3,4,5,6,7,8)");
+    auto restrictor1 = AreaRestrictorPoly({"1", "2"});
+    BOOST_CHECK_EQUAL(restrictor1.sqlFragment(), "qserv_areaspec_poly(1,2)");
+    auto restrictor2 = AreaRestrictorPoly({"1", "2", "3", "4"});
+    BOOST_CHECK_EQUAL(restrictor2.sqlFragment(), "qserv_areaspec_poly(1,2,3,4)");
+    auto restrictor3 = AreaRestrictorPoly({"1", "2", "3", "4", "5", "6"});
+    BOOST_CHECK_EQUAL(restrictor3.sqlFragment(), "qserv_areaspec_poly(1,2,3,4,5,6)");
+    auto restrictor4 = AreaRestrictorPoly({"1", "2", "3", "4", "5", "6", "7", "8"});
+    BOOST_CHECK_EQUAL(restrictor4.sqlFragment(), "qserv_areaspec_poly(1,2,3,4,5,6,7,8)");
 }
 
 
