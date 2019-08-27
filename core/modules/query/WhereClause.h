@@ -127,9 +127,7 @@ private:
     friend class parser::WhereFactory;
 
     std::shared_ptr<OrTerm> _rootOrTerm;
-    AreaRestrictorVecPtr _restrs {
-        std::make_shared<AreaRestrictorVec>()
-    };
+    AreaRestrictorVecPtr _restrs { std::make_shared<AreaRestrictorVec>() };
 };
 
 
