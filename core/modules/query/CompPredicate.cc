@@ -22,8 +22,12 @@
  */
 
 
+
 // Class header
 #include "query/CompPredicate.h"
+
+// Third-party headers
+#include "boost/lexical_cast.hpp"
 
 // Qserv headers
 #include "ccontrol/UserQueryError.h"

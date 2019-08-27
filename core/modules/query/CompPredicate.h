@@ -25,8 +25,6 @@
 #ifndef LSST_QSERV_QUERY_COMPPREDICATE_H
 #define LSST_QSERV_QUERY_COMPPREDICATE_H
 
-// Third-party headers
-#include "boost/lexical_cast.hpp"
 
 // Local headers
 #include "query/Predicate.h"

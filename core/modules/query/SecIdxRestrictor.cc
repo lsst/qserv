@@ -28,6 +28,9 @@
 // System headers
 #include <iostream>
 
+// Third-party headers
+#include "boost/lexical_cast.hpp"
+
 // Qserv headers
 #include "query/BetweenPredicate.h"
 #include "query/CompPredicate.h"

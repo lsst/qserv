@@ -28,6 +28,9 @@
 // System headers
 #include <iostream>
 
+// Third-party headers
+#include "boost/lexical_cast.hpp"
+
 // Qserv headers
 #include "qproc/geomAdapter.h"
 #include "query/BoolFactor.h"
