@@ -215,11 +215,11 @@ std::shared_ptr<query::AreaRestrictor> makeAreaRestrictor(query::FuncExpr const&
     }
     try {
         if (scisqlFunc.getName() == "scisql_s2PtInBox") {
-            return std::make_shared<query::AreaRestrictorBox>(parameters);
+            return std::make_shared<query::AreaRestrictorBox>(std::move(parameters));
         } else if (scisqlFunc.getName() == "scisql_s2PtInCircle") {
-            return std::make_shared<query::AreaRestrictorCircle>(parameters);
+            return std::make_shared<query::AreaRestrictorCircle>(std::move(parameters));
         } else if (scisqlFunc.getName() == "scisql_s2PtInEllipse") {
-            return std::make_shared<query::AreaRestrictorEllipse>(parameters);
+            return std::make_shared<query::AreaRestrictorEllipse>(std::move(parameters));
         } else if (scisqlFunc.getName() == "scisql_s2PtInCPoly") {
             return std::make_shared<query::AreaRestrictorPoly>(std::move(parameters));
         }
