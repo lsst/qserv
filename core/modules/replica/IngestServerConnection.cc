@@ -212,6 +212,9 @@ void IngestServerConnection::_handshakeReceived(boost::system::error_code const&
         // are starting. Meanwhile the DatabaseServices never caches its products.
 
         DatabaseInfo const databaseInfo = _serviceProvider->config()->databaseInfo(_database);
+        if (databaseInfo.isPublished) {
+            throw invalid_argument("database '" + _database + "' is not in the UNPUBLISHED state");
+        }
 
         vector<ReplicaInfo> replicas;       // Chunk replicas at the current worker found
                                             // among the unpublished databases only
@@ -226,9 +229,6 @@ void IngestServerConnection::_handshakeReceived(boost::system::error_code const&
             allDatabases,
             isPublished
         );
-        if (replicas.empty()) {
-            throw invalid_argument("chunk " + to_string(_chunk) + " is not allocated to worker " + _workerName);
-        }
         bool databaseIsFound = false;
         for (auto&& replica: replicas) {
             if (replica.database() == _database) {
@@ -237,7 +237,9 @@ void IngestServerConnection::_handshakeReceived(boost::system::error_code const&
             }
         }
         if (not databaseIsFound) {
-            throw invalid_argument("database " + _database + " is not in the UNPUBLISHED state");
+            throw invalid_argument(
+                    "chunk " + to_string(_chunk) + " of the UNPUBLISHED database '" +
+                    databaseInfo.name + "' is not allocated to worker '" + _workerName + "'");
         }
                 
     } catch (DatabaseServicesNotFound const& ex) {
