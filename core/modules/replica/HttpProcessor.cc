@@ -50,6 +50,7 @@
 #include "replica/QservMgtServices.h"
 #include "replica/QservStatusJob.h"
 #include "replica/ReplicaInfo.h"
+#include "replica/ServiceManagementJob.h"
 #include "replica/SqlJob.h"
 #include "replica/SqlRequest.h"
 
@@ -467,6 +468,10 @@ void parseFieldIntoJson(string const& context,
 namespace lsst {
 namespace qserv {
 namespace replica {
+
+string const HttpProcessor::_partitionByColumn = "qserv_trans_id";
+string const HttpProcessor::_partitionByColumnType = "INT NOT NULL";
+
 
 HttpProcessor::Ptr HttpProcessor::create(
                         Controller::Ptr const& controller,
@@ -2052,18 +2057,21 @@ void HttpProcessor::_beginTransaction(qhttp::Request::Ptr const& req,
 
         _debug(__func__, "database=" + database);
 
-        if (config->databaseInfo(database).isPublished) {
+        auto const databaseInfo = config->databaseInfo(database);
+        if (databaseInfo.isPublished) {
             _sendError(resp, __func__, "the database is already published");
             return;
         }
-        auto const transaction = databaseServices->beginTransaction(database);
+        auto const transaction = databaseServices->beginTransaction(databaseInfo.name);
+
+        _addPartitionToSecondaryIndex(databaseInfo, transaction.id);
 
         const bool allWorkers = true;
         vector<unsigned int> chunks;
-        databaseServices->findDatabaseChunks(chunks, transaction.database, allWorkers);
+        databaseServices->findDatabaseChunks(chunks, databaseInfo.name, allWorkers);
 
         json result;
-        result["databases"][transaction.database]["info"] = config->databaseInfo(transaction.database).toJson();
+        result["databases"][transaction.database]["info"] = config->databaseInfo(databaseInfo.name).toJson();
         result["databases"][transaction.database]["transactions"].push_back(transaction.toJson());
         result["databases"][transaction.database]["num_chunks"] = chunks.size();
 
@@ -2124,14 +2132,19 @@ void HttpProcessor::_endTransaction(qhttp::Request::Ptr const& req,
         result["databases"][transaction.database]["num_chunks"] = chunks.size();
 
         if (abort) {
+
             // Drop the transaction-specific MySQL partition from the relevant tables
+
             bool const allWorkers = true;
-            auto const job = AbortTransactionJob::create(id, allWorkers, controller());
+            auto const job = AbortTransactionJob::create(transaction.id, allWorkers, controller());
             job->start();
             logJobStartedEvent(AbortTransactionJob::typeName(), job, databaseInfo.family);
             job->wait();
             logJobFinishedEvent(AbortTransactionJob::typeName(), job, databaseInfo.family);
             result["data"] = job->getResultData().toJson();
+
+            _removePartitionFromSecondaryIndex(databaseInfo, transaction.id);
+
         } else {
             // TODO: replicate MySQL partition associated with the transaction
             _error(__func__, "replication stage is not implemented");
@@ -2246,6 +2259,15 @@ void HttpProcessor::_addDatabase(qhttp::Request::Ptr const& req,
 
         databaseInfo = config->addDatabase(databaseInfo);
 
+        // Tell workers to reload their configurations
+
+        unsigned int const workerResponseTimeoutSec = 60;
+        error = _reconfigureWorkers(databaseInfo, allWorkers, workerResponseTimeoutSec);
+        if (not error.empty()) {
+            _sendError(resp, __func__, error);
+            return;
+        }
+
         json result;
         result["database"] = databaseInfo.toJson();
     
@@ -2269,7 +2291,10 @@ void HttpProcessor::_publishDatabase(qhttp::Request::Ptr const& req,
         auto const config = controller()->serviceProvider()->config();
 
         auto const database = req->params.at("name");
-        _debug(string(__func__) + " database=" + database);
+        bool const consolidate = ::getQueryParamBool(req->query, "consolidate_secondary_index", false);
+
+        _debug(__func__, "database=" + database);
+        _debug(__func__, "consolidate_secondary_index=" + to_string(consolidate ? 1 : 0));
 
         auto const databaseInfo = config->databaseInfo(database);
         if (databaseInfo.isPublished) {
@@ -2285,10 +2310,9 @@ void HttpProcessor::_publishDatabase(qhttp::Request::Ptr const& req,
             }
         }
         
-        // TODO: (re-)build the secondary index. Should we rather do this
-        // in a separate REST call?
-
-        ;
+        // ATTENTION: this operation may take a while if the table has
+        // a large number of entries
+        if (consolidate) _consolidateSecondaryIndex(databaseInfo);
 
         // Grant SELECT authorizations for the new database to Qserv
         // MySQL account(s) at all workers and the master(s)
@@ -2301,18 +2325,22 @@ void HttpProcessor::_publishDatabase(qhttp::Request::Ptr const& req,
         // Consolidate MySQL-partitioned tables at workers
         if (not _removeMySQLPartitions(resp, databaseInfo, allWorkers)) return;
 
-        // TODO: ask Replication workers to reload their Configurations so that
-        // they recognized the new state of the database. This step should
-        // be probably done after publishing the database.
+        // Tell workers to reload their configurations
+
+        unsigned int const workerResponseTimeoutSec = 60;
+        auto const error = _reconfigureWorkers(databaseInfo, allWorkers, workerResponseTimeoutSec);
+        if (not error.empty()) {
+            _sendError(resp, __func__, error);
+            return;
+        }
+
+        // Finalize setting the database in Qserv master
         //
         // NOTE: the rest should be taken care of by the Replication system.
         // This includes registering chunks in the persistent store of the Replication
         // system, synchronizing with Qserv workers, fixing, re-balancing,
         // replicating, etc.
-        
-        ;
 
-        // Finalize setting the database in Qserv master
         _publishDatabaseInMaster(databaseInfo);
 
         ControllerEvent event;
@@ -2396,8 +2424,7 @@ void HttpProcessor::_addTable(qhttp::Request::Ptr const& req,
 
         // The name of a special column for the super-transaction-based ingest.
         // Always insert this column as the very first one into the schema.
-        string const partitionByColumn = "qserv_trans_id";
-        columns.emplace_front(partitionByColumn, "INT NOT NULL");
+        columns.emplace_front(_partitionByColumn, _partitionByColumnType);
 
         for (auto&& coldef: schema) {
             if (not coldef.is_object()) {
@@ -2420,9 +2447,9 @@ void HttpProcessor::_addTable(qhttp::Request::Ptr const& req,
             }
             string colType = coldef["type"];
             
-            if (partitionByColumn == colName) {
+            if (_partitionByColumn == colName) {
                 _sendError(resp, __func__,
-                        "reserved column '" + partitionByColumn + "' is not allowed");
+                        "reserved column '" + _partitionByColumn + "' is not allowed");
                 return;
             }
             columns.emplace_back(colName, colType);
@@ -2443,7 +2470,7 @@ void HttpProcessor::_addTable(qhttp::Request::Ptr const& req,
             database,
             table,
             engine,
-            partitionByColumn,
+            _partitionByColumn,
             columns,
             allWorkers,
             controller()
@@ -2479,6 +2506,18 @@ void HttpProcessor::_addTable(qhttp::Request::Ptr const& req,
             latitudeColName, longitudeColName
         ).toJson();
 
+        // Create the secondary index table
+
+        if (isPartitioned and isDirector) _createSecondaryIndex(databaseInfo);
+
+        // Ask all workers to reload their configurations
+
+        unsigned int const workerResponseTimeoutSec = 60;
+        error = _reconfigureWorkers(databaseInfo, allWorkers, workerResponseTimeoutSec);
+        if (not error.empty()) {
+            _sendError(resp, __func__, error);
+            return;
+        }
         _sendData(resp, result);
 
     } catch (invalid_argument const& ex) {
@@ -3030,6 +3069,227 @@ json HttpProcessor::_chunkInfo(set<int> const& chunks) const {
         }
     }
     return result;
+}
+
+
+string HttpProcessor::_reconfigureWorkers(DatabaseInfo const& databaseInfo,
+                                          bool allWorkers,
+                                          unsigned int workerResponseTimeoutSec) const {
+
+    auto const job = ServiceReconfigJob::create(
+        allWorkers,
+        workerResponseTimeoutSec,
+        controller()
+    );
+    job->start();
+    logJobStartedEvent(ServiceReconfigJob::typeName(), job, databaseInfo.family);
+    job->wait();
+    logJobFinishedEvent(ServiceReconfigJob::typeName(), job, databaseInfo.family);
+
+    string error;
+    auto const& resultData = job->getResultData();
+    for (auto&& itr: resultData.workers) {
+        auto&& worker = itr.first;
+        auto&& success = itr.second;
+        if (not success) {
+            error += "reconfiguration failed on worker: " + worker + " ";
+        }
+    }
+    return error;
+}
+
+
+void HttpProcessor::_createSecondaryIndex(DatabaseInfo const& databaseInfo) const {
+
+    if (databaseInfo.directorTable.empty() or databaseInfo.directorTableKey.empty() or
+        databaseInfo.chunkIdKey.empty() or databaseInfo.subChunkIdKey.empty()) {
+        throw logic_error(
+                "director table has not been properly configured in database '" +
+                databaseInfo.name + "'");
+    }
+    if (0 == databaseInfo.columns.count(databaseInfo.directorTable)) {
+        throw logic_error(
+                "no schema found for director table '" + databaseInfo.directorTable +
+                "' of database '" + databaseInfo.name + "'");
+    }
+
+    // Find types of the secondary index table's columns
+
+    string directorTableKeyType;
+    string chunkIdKeyType;
+    string subChunkIdKeyType;
+
+    for (auto&& colDef: databaseInfo.columns.at(databaseInfo.directorTable)) {
+        auto&& colName = colDef.first;
+        auto&& colType = colDef.second;
+        if      (colName == databaseInfo.directorTableKey) directorTableKeyType = colType;
+        else if (colName == databaseInfo.chunkIdKey)       chunkIdKeyType = colType;
+        else if (colName == databaseInfo.subChunkIdKey)    subChunkIdKeyType = colType;
+    }
+    if (directorTableKeyType.empty() or chunkIdKeyType.empty() or subChunkIdKeyType.empty()) {
+        throw logic_error(
+                "column definitions for the Object identifier or chunk/sub-chunk identifier"
+                " columns are missing in the director table schema for table '" +
+                databaseInfo.directorTable + "' of database '" + databaseInfo.name + "'");
+    }
+    
+    // Manage the new connection via the RAII-style handler to ensure the transaction
+    // is automatically rolled-back in case of exceptions.
+
+    auto const config = controller()->serviceProvider()->config();
+    database::mysql::ConnectionHandler const h(
+        database::mysql::Connection::open(
+            database::mysql::ConnectionParams(
+                config->qservMasterDatabaseHost(),
+                config->qservMasterDatabasePort(),
+                "root",
+                Configuration::qservMasterDatabasePassword(),
+                "qservMeta"
+            )
+        )
+    );
+    string const query =
+        "CREATE TABLE IF NOT EXISTS " + h.conn->sqlId(databaseInfo.name + "__" + databaseInfo.directorTable) +
+        " (" + h.conn->sqlId(_partitionByColumn)            + " " + _partitionByColumnType + "," +
+               h.conn->sqlId(databaseInfo.directorTableKey) + " " + directorTableKeyType   + "," +
+               h.conn->sqlId(databaseInfo.chunkIdKey)       + " " + chunkIdKeyType         + "," +
+               h.conn->sqlId(databaseInfo.subChunkIdKey)    + " " + subChunkIdKeyType      + ","
+               " UNIQUE KEY (" + h.conn->sqlId(_partitionByColumn) + "," + h.conn->sqlId(databaseInfo.directorTableKey) + "),"
+               " KEY (" + h.conn->sqlId(databaseInfo.directorTableKey) + ")"
+        ") ENGINE=InnoDB PARTITION BY LIST (" + h.conn->sqlId(_partitionByColumn) +
+        ") (PARTITION `p0` VALUES IN (0) ENGINE=InnoDB)";
+
+    // Execute the statement
+    //
+    // TODO: switch to the more reliable way of executing queries
+    // which would also reconnect to the server.
+
+    _debug(__func__, query);
+
+    h.conn->begin();
+    h.conn->execute(query);
+    h.conn->commit();
+}
+
+
+void HttpProcessor::_addPartitionToSecondaryIndex(DatabaseInfo const& databaseInfo,
+                                                  uint32_t transactionId) const {
+    if (databaseInfo.directorTable.empty()) {
+        throw logic_error(
+                "director table has not been properly configured in database '" +
+                databaseInfo.name + "'");
+    }
+
+    // Manage the new connection via the RAII-style handler to ensure the transaction
+    // is automatically rolled-back in case of exceptions.
+
+    auto const config = controller()->serviceProvider()->config();
+    database::mysql::ConnectionHandler const h(
+        database::mysql::Connection::open(
+            database::mysql::ConnectionParams(
+                config->qservMasterDatabaseHost(),
+                config->qservMasterDatabasePort(),
+                "root",
+                Configuration::qservMasterDatabasePassword(),
+                "qservMeta"
+            )
+        )
+    );
+    string const query =
+        "ALTER TABLE " + h.conn->sqlId(databaseInfo.name + "__" + databaseInfo.directorTable) +
+        " ADD PARTITION (PARTITION `p" + to_string(transactionId) + "` VALUES IN (" + to_string(transactionId) +
+        ") ENGINE=InnoDB)";
+
+    // Execute the statement
+    //
+    // TODO: switch to the more reliable way of executing queries
+    // which would also reconnect to the server.
+
+    _debug(__func__, query);
+
+    h.conn->begin();
+    h.conn->execute(query);
+    h.conn->commit();
+}
+
+
+void HttpProcessor::_removePartitionFromSecondaryIndex(DatabaseInfo const& databaseInfo,
+                                                       uint32_t transactionId) const {
+    if (databaseInfo.directorTable.empty()) {
+        throw logic_error(
+                "director table has not been properly configured in database '" +
+                databaseInfo.name + "'");
+    }
+
+    // Manage the new connection via the RAII-style handler to ensure the transaction
+    // is automatically rolled-back in case of exceptions.
+
+    auto const config = controller()->serviceProvider()->config();
+    database::mysql::ConnectionHandler const h(
+        database::mysql::Connection::open(
+            database::mysql::ConnectionParams(
+                config->qservMasterDatabaseHost(),
+                config->qservMasterDatabasePort(),
+                "root",
+                Configuration::qservMasterDatabasePassword(),
+                "qservMeta"
+            )
+        )
+    );
+    string const query =
+        "ALTER TABLE " + h.conn->sqlId(databaseInfo.name + "__" + databaseInfo.directorTable) +
+        " DROP PARTITION `p" + to_string(transactionId) + "`";
+
+    // Execute the statement
+    //
+    // TODO: switch to the more reliable way of executing queries
+    // which would also reconnect to the server.
+
+    _debug(__func__, query);
+
+    h.conn->begin();
+    h.conn->execute(query);
+    h.conn->commit();
+}
+
+
+void HttpProcessor::_consolidateSecondaryIndex(DatabaseInfo const& databaseInfo) const {
+
+    if (databaseInfo.directorTable.empty()) {
+        throw logic_error(
+                "director table has not been properly configured in database '" +
+                databaseInfo.name + "'");
+    }
+
+    // Manage the new connection via the RAII-style handler to ensure the transaction
+    // is automatically rolled-back in case of exceptions.
+
+    auto const config = controller()->serviceProvider()->config();
+    database::mysql::ConnectionHandler const h(
+        database::mysql::Connection::open(
+            database::mysql::ConnectionParams(
+                config->qservMasterDatabaseHost(),
+                config->qservMasterDatabasePort(),
+                "root",
+                Configuration::qservMasterDatabasePassword(),
+                "qservMeta"
+            )
+        )
+    );
+    string const query =
+        "ALTER TABLE " + h.conn->sqlId(databaseInfo.name + "__" + databaseInfo.directorTable) +
+        " REMOVE PARTITIONING";
+
+    // Execute the statement
+    //
+    // TODO: switch to the more reliable way of executing queries
+    // which would also reconnect to the server.
+
+    _debug(__func__, query);
+
+    h.conn->begin();
+    h.conn->execute(query);
+    h.conn->commit();
 }
 
 

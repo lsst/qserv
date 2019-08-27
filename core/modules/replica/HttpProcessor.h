@@ -419,6 +419,60 @@ private:
     nlohmann::json _chunkInfo(std::set<int> const& chunks) const;
 
     /**
+     * This method will tell all (or a subset of) workers to reload cache Configuration
+     * parameters. The operation is needed after significant changes in the Replication
+     * system's configuration occur, such as creating new databases or tables.
+     * This is to implement an explicit model of making workers aware about changes
+     * in the mostly static state of the system.
+     *
+     * @param databaseInfo  defines a scope of the operation (used for status and error reporting)
+     * @param allWorkers  'true' if all workers are involved into the operation
+     * @param workerResponseTimeoutSec  do not wait longer than the specified number of seconds
+     * @return non-empty string to indicate a error
+     */
+    std::string _reconfigureWorkers(DatabaseInfo const& databaseInfo,
+                                    bool allWorkers,
+                                    unsigned int workerResponseTimeoutSec) const;
+
+    /**
+     * Create an empty "secondary index" table partitioned using MySQL partitions.
+     * The table will be configured with a single initial partition. More partitions
+     * corresponding to super-transactions open during catalog ingest sessions will
+     * be added later.
+     *
+     * @param databaseInfo  defines a scope of the operation
+     */
+    void _createSecondaryIndex(DatabaseInfo const& databaseInfo) const;
+
+    /**
+     * Extend an existing "secondary index" table by adding a MySQL partition
+     * corresponding to the specified transaction identifier.
+     *
+     * @param databaseInfo   defines a scope of the operation
+     * @param transactionId  unique identifier of a super-transaction
+     */
+    void _addPartitionToSecondaryIndex(DatabaseInfo const& databaseInfo,
+                                       uint32_t transactionId) const;
+
+   /**
+     * Shrink an existing "secondary index" table by removing a MySQL partition
+     * corresponding to the specified transaction identifier from the table.
+     *
+     * @param databaseInfo   defines a scope of the operation
+     * @param transactionId  unique identifier of a super-transaction
+     */
+    void _removePartitionFromSecondaryIndex(DatabaseInfo const& databaseInfo,
+                                            uint32_t transactionId) const;
+
+    /**
+     * Remove MySQL partitions from the "secondary index" table by turning it
+     * into a regular monolithic table.
+     * 
+     * @param databaseInfo   defines a scope of the operation
+     */
+    void _consolidateSecondaryIndex(DatabaseInfo const& databaseInfo) const;
+
+    /**
      * Report a error condition and send a error message back to a requester
      * of a service.
      *
@@ -444,6 +498,11 @@ private:
     void _sendData(qhttp::Response::Ptr const& resp,
                    nlohmann::json& result,
                    bool success=true);
+
+    // The name and a type of a special column for the super-transaction-based ingest
+
+    static std::string const _partitionByColumn;
+    static std::string const _partitionByColumnType;
 
     HealthMonitorTask::WorkerEvictCallbackType const _onWorkerEvict;
 
