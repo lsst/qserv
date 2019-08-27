@@ -27,11 +27,11 @@
 #include <vector>
 
 // Qserv headers
-#include "query/SecIdxRestrictor.h"
 #include "query/BetweenPredicate.h"
 #include "query/CompPredicate.h"
 #include "query/InPredicate.h"
 #include "query/QueryTemplate.h"
+#include "query/SecIdxRestrictor.h"
 #include "query/ValueExpr.h"
 #include "query/ValueFactor.h"
 

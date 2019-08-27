@@ -49,12 +49,12 @@ namespace parser {
     class WhereFactory;
 }
 namespace query {
+    class AndTerm;
+    class AreaRestrictor;
     class BoolTerm;
     class ColumnRef;
     class LogicalTerm;
-    class AndTerm;
     class OrTerm;
-    class AreaRestrictor;
     class QueryTemplate;
     class ValueExpr;
 }}} // End of forward declarations

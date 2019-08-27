@@ -39,6 +39,7 @@
 
 // Local headers
 #include "css/CssAccess.h"
+#include "global/stringTypes.h"
 #include "proto/ScanTableInfo.h"
 #include "qana/QueryMapping.h"
 #include "query/FromList.h"
@@ -46,15 +47,14 @@
 #include "query/ValueExpr.h"
 #include "sql/SqlConfig.h"
 #include "util/CIUtils.h"
-#include "global/stringTypes.h"
 
 
 // Forward declarations
 namespace lsst {
 namespace qserv {
 namespace query {
-    class ColumnRef;
     class AreaRestrictor;
+    class ColumnRef;
     class SecIdxRestrictor;
     class TableRef;
 }}} // End of forward declarations

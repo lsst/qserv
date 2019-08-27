@@ -44,8 +44,8 @@
 #include "parser/SelectParser.h"
 #include "qproc/ChunkSpec.h"
 #include "query/AreaRestrictor.h"
-#include "query/SecIdxRestrictor.h"
 #include "query/QueryTemplate.h"
+#include "query/SecIdxRestrictor.h"
 #include "query/SelectStmt.h"
 
 using lsst::qserv::parser::SelectParser;
