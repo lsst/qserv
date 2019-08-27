@@ -85,11 +85,11 @@ std::shared_ptr<QuerySession> QueryAnaHelper::buildQuerySession(QuerySession::Te
     }
 
     if (LOG_CHECK_LVL(_log, LOG_LVL_DEBUG)) {
-        auto areaRestrictors = querySession->getAreaRestrictors();
+        auto const areaRestrictors = querySession->getAreaRestrictors();
         if (areaRestrictors != nullptr) {
             LOGS(_log, LOG_LVL_DEBUG, util::printable(*areaRestrictors));
         }
-        auto secIdxRestrictors = querySession->getSecIdxRestrictors();
+        auto const secIdxRestrictors = querySession->getSecIdxRestrictors();
         if (secIdxRestrictors != nullptr) {
             LOGS(_log, LOG_LVL_DEBUG, util::printable(*secIdxRestrictors));
         }
