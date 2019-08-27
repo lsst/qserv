@@ -56,16 +56,18 @@ namespace query {
 
 class ColumnEntry : public QueryTemplate::Entry {
 public:
-    ColumnEntry(ColumnRef const& cr, QueryTemplate::SetAliasMode aliasMode) {
+    ColumnEntry(ColumnRef const& cr, QueryTemplate const& queryTemplate) {
         std::ostringstream os;
-        auto tableRef = cr.getTableRef();
-        if (nullptr != tableRef) {
-            QueryTemplate qt(aliasMode);
-            TableRef::render render(qt);
-            render.applyToQT(*tableRef);
-            os << qt;
-            if (os.tellp() > 0) { // if the tableRef wrote anything...
-                os << ".";
+        if (not queryTemplate.getUseColumnOnly()) {
+            auto tableRef = cr.getTableRef();
+            if (nullptr != tableRef) {
+                QueryTemplate qt(queryTemplate.getAliasMode());
+                TableRef::render render(qt);
+                render.applyToQT(*tableRef);
+                os << qt;
+                if (os.tellp() > 0) { // if the tableRef wrote anything...
+                    os << ".";
+                }
             }
         }
         auto column = cr.getColumn();
@@ -136,7 +138,7 @@ void QueryTemplate::append(std::string const& s) {
 
 
 void QueryTemplate::append(ColumnRef const& cr) {
-    std::shared_ptr<Entry> e = std::make_shared<ColumnEntry>(cr, getAliasMode());
+    std::shared_ptr<Entry> e = std::make_shared<ColumnEntry>(cr, *this);
     _entries.push_back(e);
 }
 

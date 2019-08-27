@@ -55,8 +55,11 @@
 #include "parser/SelectParser.h"
 #include "qdisp/ChunkMeta.h"
 #include "qproc/QuerySession.h"
-#include "query/QsRestrictor.h"
+#include "query/AreaRestrictor.h"
+#include "query/ColumnRef.h"
+#include "query/CompPredicate.h"
 #include "query/QueryContext.h"
+#include "query/SecIdxRestrictor.h"
 #include "query/SelectStmt.h"
 #include "sql/SqlConfig.h"
 #include "tests/QueryAnaFixture.h"
@@ -67,9 +70,15 @@ using lsst::qserv::parser::SelectParser;
 using lsst::qserv::qproc::ChunkQuerySpec;
 using lsst::qserv::qproc::ChunkSpec;
 using lsst::qserv::qproc::QuerySession;
-using lsst::qserv::query::QsRestrictor;
+using lsst::qserv::query::ColumnRef;
 using lsst::qserv::query::QueryContext;
 using lsst::qserv::query::SelectStmt;
+using lsst::qserv::query::SecIdxCompRestrictor;
+using lsst::qserv::query::AreaRestrictor;
+using lsst::qserv::query::AreaRestrictorBox;
+using lsst::qserv::query::AreaRestrictorCircle;
+using lsst::qserv::query::AreaRestrictorEllipse;
+using lsst::qserv::query::AreaRestrictorPoly;
 using lsst::qserv::StringPair;
 using lsst::qserv::sql::SqlConfig;
 using lsst::qserv::tests::QueryAnaFixture;
@@ -93,7 +102,7 @@ BOOST_AUTO_TEST_CASE(TrivialSub) {
     std::shared_ptr<QueryContext> context = qs->dbgGetContext();
     SelectStmt const& ss = qs->getStmt();
     BOOST_CHECK(context);
-    BOOST_CHECK(!context->restrictors);
+    BOOST_CHECK(!context->secIdxRestrictors);
     BOOST_CHECK(context->hasChunks());
     BOOST_CHECK(!context->hasSubChunks());
     BOOST_CHECK(!ss.hasGroupBy());
@@ -122,7 +131,8 @@ BOOST_AUTO_TEST_CASE(NoSub) {
     std::shared_ptr<QueryContext> context = qs->dbgGetContext();
     SelectStmt const& ss = qs->getStmt();
     BOOST_CHECK(context);
-    BOOST_CHECK(!context->restrictors);
+    BOOST_CHECK(!context->areaRestrictors);
+    BOOST_CHECK(!context->secIdxRestrictors);
     BOOST_CHECK(!context->hasChunks());
     BOOST_CHECK(!context->hasSubChunks());
     BOOST_CHECK(!ss.hasGroupBy());
@@ -140,10 +150,10 @@ BOOST_AUTO_TEST_CASE(Limit) {
     std::shared_ptr<QueryContext> context = qs->dbgGetContext();
     SelectStmt const& ss = qs->getStmt();
     BOOST_CHECK(context);
-    BOOST_CHECK(!context->restrictors);
-    if (context->restrictors) {
-        QsRestrictor& r = *context->restrictors->front();
-        std::cout << "front restr is " << r << "\n";
+    BOOST_CHECK(!context->secIdxRestrictors);
+    if (context->secIdxRestrictors) {
+        auto r = context->secIdxRestrictors->front();
+        std::cout << "front restr is " << *r << "\n";
     }
 
     BOOST_CHECK_EQUAL(ss.getLimit(), 2);
@@ -158,7 +168,7 @@ BOOST_AUTO_TEST_CASE(OrderBy) {
     std::shared_ptr<QueryContext> context = qs->dbgGetContext();
     SelectStmt const& ss = qs->getStmt();
     BOOST_CHECK(context);
-    BOOST_CHECK(!context->restrictors);
+    BOOST_CHECK(!context->secIdxRestrictors);
     BOOST_REQUIRE(ss.hasOrderBy());
     // TODO add testing of order-by clause
     //OrderByClause const& oc = ss->getOrderBy();
@@ -171,14 +181,12 @@ BOOST_AUTO_TEST_CASE(RestrictorBox) {
     std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, stmt);
     std::shared_ptr<QueryContext> context = qs->dbgGetContext();
     BOOST_CHECK(context);
-    BOOST_REQUIRE(context->restrictors);
-    BOOST_CHECK_EQUAL(context->restrictors->size(), 1U);
-    BOOST_REQUIRE(context->restrictors->front());
-    QsRestrictor& r = *context->restrictors->front();
-    BOOST_CHECK_EQUAL(r._name, "qserv_areaspec_box");
-    char const* params[] = {"0","0","1","1"};
-    BOOST_CHECK_EQUAL_COLLECTIONS(r._params.begin(), r._params.end(),
-                                  params, params+4);
+    BOOST_REQUIRE(context->areaRestrictors);
+    BOOST_CHECK_EQUAL(context->areaRestrictors->size(), 1U);
+    BOOST_REQUIRE(context->areaRestrictors->front());
+    auto restrictor = context->areaRestrictors->front();
+    BOOST_REQUIRE(restrictor);
+    BOOST_CHECK_EQUAL(*restrictor, AreaRestrictorBox("0","0","1","1"));
     BOOST_CHECK(!context->needsMerge);
     BOOST_CHECK(!context->hasSubChunks());
 }
@@ -201,15 +209,11 @@ BOOST_AUTO_TEST_CASE(RestrictorNeighborCount) {
     std::shared_ptr<QueryContext> context = qs->dbgGetContext();
     BOOST_CHECK(context);
     BOOST_CHECK_EQUAL(context->dominantDb, std::string("LSST"));
-    BOOST_REQUIRE(context->restrictors);
-    BOOST_CHECK_EQUAL(context->restrictors->size(), 1U);
-    BOOST_REQUIRE(context->restrictors->front());
-    QsRestrictor& r = *context->restrictors->front();
-    BOOST_CHECK_EQUAL(r._name, "qserv_areaspec_box");
-    char const* params[] = {"6","6","7","7"};
-    BOOST_CHECK_EQUAL_COLLECTIONS(r._params.begin(), r._params.end(),
-                                  params, params+4);
-
+    BOOST_REQUIRE(context->areaRestrictors);
+    BOOST_CHECK_EQUAL(context->areaRestrictors->size(), 1U);
+    auto restrictorFunc = context->areaRestrictors->front();
+    BOOST_REQUIRE(restrictorFunc != nullptr);
+    BOOST_CHECK_EQUAL(*restrictorFunc, AreaRestrictorBox("6","6","7","7"));
     qs->addChunk(ChunkSpec::makeFake(100,true));
     auto i = qs->cQueryBegin();
     auto e = qs->cQueryEnd();
@@ -275,15 +279,12 @@ BOOST_AUTO_TEST_CASE(BadDbAccess) {
 struct ScisqlRestrictorTestCaseData {
     ScisqlRestrictorTestCaseData(std::string const& stmt_,
                                  std::string const& expectedStmt_,
-                                 std::string const& expectedRestrictor_,
-                                 std::vector<std::string> const& expectedParams_)
-            : stmt(stmt_), expectedStmt(expectedStmt_), expectedRestrictor(expectedRestrictor_),
-              expectedParams(expectedParams_) {}
+                                 std::shared_ptr<AreaRestrictor> const& expectedRestrictor_)
+            : stmt(stmt_), expectedStmt(expectedStmt_), expectedRestrictor(expectedRestrictor_) {}
 
     std::string stmt;
     std::string expectedStmt;
-    std::string expectedRestrictor;
-    std::vector<std::string> expectedParams;
+    std::shared_ptr<AreaRestrictor> expectedRestrictor;
 };
 
 
@@ -291,6 +292,9 @@ std::ostream& operator<<(std::ostream& os, ScisqlRestrictorTestCaseData const& i
     os << "ScisqlRestrictorTestCaseData(" << i.stmt << "...)";
     return os;
 }
+
+
+std::vector<std::string> const polyArgs = {"1.0", "3.0", "1.5", "2.0", "2.0", "4.0"};
 
 
 static const std::vector<ScisqlRestrictorTestCaseData> SCISQL_RESTRICTOR_TEST_CASE_DATA = {
@@ -301,8 +305,8 @@ static const std::vector<ScisqlRestrictorTestCaseData> SCISQL_RESTRICTOR_TEST_CA
         "SELECT * FROM LSST.Object_100 AS `o`,LSST.Source_100 AS `s` "
             "WHERE scisql_s2PtInBox(`o`.ra_Test,`o`.decl_Test,2,2,3,3)=1 "
             "AND `o`.objectIdObjTest=`s`.objectIdSourceTest",
-        "qserv_areaspec_box",
-        {"2","2","3","3"}),
+        std::make_shared<AreaRestrictorBox>("2","2","3","3")),
+
     ScisqlRestrictorTestCaseData(
         "select * from LSST.Object o, Source s "
             "WHERE scisql_s2PtInCircle(o.ra_Test, o.decl_Test, 1, 1, 1.3) = 1 "
@@ -310,8 +314,7 @@ static const std::vector<ScisqlRestrictorTestCaseData> SCISQL_RESTRICTOR_TEST_CA
         "SELECT * FROM LSST.Object_100 AS `o`,LSST.Source_100 AS `s` "
             "WHERE scisql_s2PtInCircle(`o`.ra_Test,`o`.decl_Test,1,1,1.3)=1 "
             "AND `o`.objectIdObjTest=`s`.objectIdSourceTest",
-        "qserv_areaspec_circle",
-        {"1","1","1.3"}),
+        std::make_shared<AreaRestrictorCircle>("1","1","1.3")),
 
     ScisqlRestrictorTestCaseData(
         "select * from LSST.Object o, Source s "
@@ -320,8 +323,7 @@ static const std::vector<ScisqlRestrictorTestCaseData> SCISQL_RESTRICTOR_TEST_CA
         "SELECT * FROM LSST.Object_100 AS `o`,LSST.Source_100 AS `s` "
             "WHERE scisql_s2PtInEllipse(`o`.ra_Test,`o`.decl_Test,1.2,3.2,2500,1500,0.2)=1 "
             "AND `o`.objectIdObjTest=`s`.objectIdSourceTest",
-        "qserv_areaspec_ellipse",
-        {"1.2", "3.2", "2500", "1500", "0.2"}),
+        std::make_shared<AreaRestrictorEllipse>("1.2", "3.2", "2500", "1500", "0.2")),
 
     ScisqlRestrictorTestCaseData(
         "select * from LSST.Object o, Source s "
@@ -330,8 +332,8 @@ static const std::vector<ScisqlRestrictorTestCaseData> SCISQL_RESTRICTOR_TEST_CA
         "SELECT * FROM LSST.Object_100 AS `o`,LSST.Source_100 AS `s` "
             "WHERE scisql_s2PtInCPoly(`o`.ra_Test,`o`.decl_Test,1.0,3.0,1.5,2.0,2.0,4.0)=1 "
             "AND `o`.objectIdObjTest=`s`.objectIdSourceTest",
-        "qserv_areaspec_poly",
-        {"1.0", "3.0", "1.5", "2.0", "2.0", "4.0"}),
+        std::make_shared<AreaRestrictorPoly>(polyArgs)),
+
     ScisqlRestrictorTestCaseData(
         "select * from LSST.Object o, Source s "
             "WHERE scisql_s2PtInBox(o.ra_Test, o.decl_Test, 2, 2, 3, 3)=1 "
@@ -341,37 +343,8 @@ static const std::vector<ScisqlRestrictorTestCaseData> SCISQL_RESTRICTOR_TEST_CA
             "WHERE scisql_s2PtInBox(`o`.ra_Test,`o`.decl_Test,2,2,3,3)=1 "
             "AND scisql_s2PtInBox(`s`.ra_Test,`s`.decl_Test,2,2,3,3)=1 "
             "AND `o`.objectIdObjTest=`s`.objectIdSourceTest",
-        "", // There should not be any qserv area restrictor, because there are 2 scisql_s2Pt... funcs in the
-            // query.
-        {}),
-    ScisqlRestrictorTestCaseData(
-        "select * from LSST.Object o, Source s "
-            "WHERE scisql_s2PtInBox(o.ra_Test, o.decl_Test, 2, 2, 3, 3, 4)=1 " // too many args to the scisql func
-            "AND o.objectIdObjTest = s.objectIdSourceTest;",
-        "SELECT * FROM LSST.Object_100 AS `o`,LSST.Source_100 AS `s` "
-            "WHERE scisql_s2PtInBox(`o`.ra_Test,`o`.decl_Test,2,2,3,3,4)=1 "
-            "AND `o`.objectIdObjTest=`s`.objectIdSourceTest",
-        "", // There should not be any qserv area restrictor, because there are 2 scisql_s2Pt... funcs in the
-            // query.
-        {}),
-    ScisqlRestrictorTestCaseData(
-        "select * from LSST.Object o, Source s "
-            "WHERE scisql_s2PtInCPoly(ra_Test, decl_Test, 70, 3, 75, 3.5)=1 " // too few args to the scisql func
-            "AND o.objectIdObjTest = s.objectIdSourceTest;",
-        "SELECT * FROM LSST.Object_100 AS `o`,LSST.Source_100 AS `s` "
-            "WHERE scisql_s2PtInCPoly(`o`.ra_Test,`o`.decl_Test,70,3,75,3.5)=1 "
-            "AND `o`.objectIdObjTest=`s`.objectIdSourceTest",
-        "", // There should not be any qserv area restrictor.
-        {}),
-    ScisqlRestrictorTestCaseData(
-        "select * from LSST.Object o, Source s "
-            "WHERE scisql_s2PtInCPoly(ra_Test, decl_Test, 70, 3, 75, 3.5, 70, 4, 70)=1 " // odd number of args to the scisql func
-            "AND o.objectIdObjTest = s.objectIdSourceTest;",
-        "SELECT * FROM LSST.Object_100 AS `o`,LSST.Source_100 AS `s` "
-            "WHERE scisql_s2PtInCPoly(`o`.ra_Test,`o`.decl_Test,70,3,75,3.5,70,4,70)=1 "
-            "AND `o`.objectIdObjTest=`s`.objectIdSourceTest",
-        "", // There should not be any qserv area restrictor.
-        {}),
+        nullptr), // There should not be any qserv area restrictor, because there are 2 scisql_s2Pt... funcs
+                   // in the query.
 };
 
 
@@ -384,17 +357,33 @@ BOOST_DATA_TEST_CASE(ObjectSourceJoin_ScisqlRestrictor, SCISQL_RESTRICTOR_TEST_C
     std::shared_ptr<QueryContext> context = qs->dbgGetContext();
     BOOST_CHECK(context);
     BOOST_CHECK_EQUAL(context->dominantDb, std::string("LSST"));
-    if (not queryData.expectedRestrictor.empty()) {
-        BOOST_REQUIRE(context->restrictors);
-        BOOST_CHECK_EQUAL(context->restrictors->size(), 1U);
-        BOOST_REQUIRE(context->restrictors->front());
-        QsRestrictor& r = *context->restrictors->front();
-        BOOST_CHECK_EQUAL(r._name, queryData.expectedRestrictor);
-        BOOST_CHECK_EQUAL_COLLECTIONS(r._params.begin(), r._params.end(),
-                                    queryData.expectedParams.begin(), queryData.expectedParams.end());
+    if (nullptr != queryData.expectedRestrictor) {
+        BOOST_REQUIRE(context->areaRestrictors);
+        BOOST_CHECK_EQUAL(context->areaRestrictors->size(), 1U);
+        auto restrictorFunc = context->areaRestrictors->front();
+        BOOST_CHECK_EQUAL(*restrictorFunc, *queryData.expectedRestrictor);
+    } else {
+        BOOST_CHECK_EQUAL(nullptr, context->areaRestrictors);
     }
+    BOOST_CHECK_EQUAL(nullptr, context->secIdxRestrictors);
     std::string actual = queryAnaHelper.buildFirstParallelQuery();
     BOOST_CHECK_EQUAL(actual, queryData.expectedStmt);
+}
+
+
+BOOST_AUTO_TEST_CASE(ScisqlWrongNumberOfParameters) {
+    qsTest.sqlConfig = SqlConfig(SqlConfig::MockDbTableColumns(
+        {{"LSST", {{"Object", {"objectIdObjTest", "ra_Test", "decl_Test"}},
+         {"Source", {"objectIdSourceTest", "ra_Test", "decl_Test"}}}}}));
+    std::string stmt = "select * from LSST.Object o, Source s "
+            "WHERE scisql_s2PtInBox(o.ra_Test, o.decl_Test, 2, 2, 3, 3, 4)=1 " // too many args to the scisql func
+            "AND o.objectIdObjTest = s.objectIdSourceTest;";
+    BOOST_CHECK_THROW(queryAnaHelper.buildQuerySession(qsTest, stmt), std::runtime_error);
+
+    stmt = "select * from LSST.Object o, Source s "
+            "WHERE scisql_s2PtInCPoly(ra_Test, decl_Test, 70, 3, 75, 3.5, 70, 4, 70)=1 " // odd number of args to the scisql func
+            "AND o.objectIdObjTest = s.objectIdSourceTest;";
+    BOOST_CHECK_THROW(queryAnaHelper.buildQuerySession(qsTest, stmt), std::runtime_error);
 }
 
 
@@ -412,14 +401,12 @@ BOOST_AUTO_TEST_CASE(ObjectSourceJoin) {
     std::shared_ptr<QueryContext> context = qs->dbgGetContext();
     BOOST_CHECK(context);
     BOOST_CHECK_EQUAL(context->dominantDb, std::string("LSST"));
-    BOOST_REQUIRE(context->restrictors);
-    BOOST_CHECK_EQUAL(context->restrictors->size(), 1U);
-    BOOST_REQUIRE(context->restrictors->front());
-    QsRestrictor& r = *context->restrictors->front();
-    BOOST_CHECK_EQUAL(r._name, "qserv_areaspec_box");
-    char const* params[] = {"2","2","3","3"};
-    BOOST_CHECK_EQUAL_COLLECTIONS(r._params.begin(), r._params.end(),
-                                  params, params+4);
+    BOOST_REQUIRE(context->areaRestrictors);
+    BOOST_CHECK_EQUAL(context->areaRestrictors->size(), 1U);
+    BOOST_REQUIRE(context->areaRestrictors->front());
+    auto restrictorFunc = context->areaRestrictors->front();
+    BOOST_REQUIRE(restrictorFunc != nullptr);
+    BOOST_CHECK_EQUAL(*restrictorFunc, AreaRestrictorBox("2","2","3","3"));
     std::string actual = queryAnaHelper.buildFirstParallelQuery();
     BOOST_CHECK_EQUAL(actual, expected);
 }
@@ -433,7 +420,8 @@ BOOST_AUTO_TEST_CASE(ObjectSelfJoin) {
     std::shared_ptr<QueryContext> context = qs->dbgGetContext();
     BOOST_CHECK(context);
     BOOST_CHECK_EQUAL(context->dominantDb, std::string("LSST"));
-    BOOST_CHECK(!context->restrictors);
+    BOOST_CHECK(!context->areaRestrictors);
+    BOOST_CHECK(!context->secIdxRestrictors);
 }
 
 
@@ -448,7 +436,8 @@ BOOST_AUTO_TEST_CASE(ObjectSelfJoinQualified) {
     std::shared_ptr<QueryContext> context = qs->dbgGetContext();
     BOOST_CHECK(context);
     BOOST_CHECK_EQUAL(context->dominantDb, std::string("LSST"));
-    BOOST_CHECK(!context->restrictors);
+    BOOST_CHECK(nullptr == context->secIdxRestrictors);
+    BOOST_CHECK(nullptr == context->areaRestrictors);
     BOOST_CHECK(context->hasChunks());
     BOOST_CHECK(!context->hasSubChunks());
     BOOST_CHECK(context->needsMerge);
@@ -471,7 +460,8 @@ BOOST_AUTO_TEST_CASE(ObjectSelfJoinWithAs) {
     std::shared_ptr<QueryContext> context = qs->dbgGetContext();
     BOOST_CHECK(context);
     BOOST_CHECK_EQUAL(context->dominantDb, std::string("LSST"));
-    BOOST_CHECK(!context->restrictors);
+    BOOST_CHECK(!context->areaRestrictors);
+    BOOST_CHECK(!context->secIdxRestrictors);
     BOOST_CHECK(context->hasChunks());
     BOOST_CHECK(!context->hasSubChunks());
     BOOST_CHECK(!context->needsMerge);
@@ -510,7 +500,8 @@ BOOST_AUTO_TEST_CASE(ObjectSelfJoinDistance) {
     std::shared_ptr<QueryContext> context = qs->dbgGetContext();
     BOOST_CHECK(context);
     BOOST_CHECK_EQUAL(context->dominantDb, std::string("LSST"));
-    BOOST_CHECK(context->restrictors);
+    BOOST_CHECK(nullptr == context->secIdxRestrictors);
+    BOOST_CHECK(nullptr != context->areaRestrictors);
     BOOST_CHECK(context->hasChunks());
     BOOST_CHECK(context->hasSubChunks());
     BOOST_CHECK(context->needsMerge);
@@ -534,7 +525,8 @@ BOOST_AUTO_TEST_CASE(SelfJoinAliased) {
     std::shared_ptr<QueryContext> context = qs->dbgGetContext();
     BOOST_CHECK(context);
     BOOST_CHECK_EQUAL(context->dominantDb, std::string("LSST"));
-    BOOST_CHECK(!context->restrictors);
+    BOOST_CHECK(nullptr == context->secIdxRestrictors);
+    BOOST_CHECK(nullptr == context->areaRestrictors);
     BOOST_CHECK(!context->needsMerge);
 }
 
@@ -554,7 +546,8 @@ BOOST_AUTO_TEST_CASE(AliasHandling) {
     std::shared_ptr<QueryContext> context = qs->dbgGetContext();
     BOOST_CHECK(context);
     BOOST_CHECK_EQUAL(context->dominantDb, std::string("LSST"));
-    BOOST_CHECK(!context->restrictors);
+    BOOST_CHECK(nullptr == context->secIdxRestrictors);
+    BOOST_CHECK(nullptr == context->areaRestrictors);
     BOOST_CHECK(context->hasChunks());
     BOOST_CHECK(!context->hasSubChunks()); // Design question: do subchunks?
     BOOST_CHECK(!context->needsMerge);
@@ -573,7 +566,8 @@ BOOST_AUTO_TEST_CASE(SpatialRestr) {
     std::shared_ptr<QueryContext> context = qs->dbgGetContext();
     BOOST_CHECK(context);
     BOOST_CHECK_EQUAL(context->dominantDb, std::string("LSST"));
-    BOOST_CHECK(context->restrictors);
+    BOOST_CHECK(nullptr == context->secIdxRestrictors);
+    BOOST_CHECK(nullptr != context->areaRestrictors);
     BOOST_CHECK(context->hasChunks());
     BOOST_CHECK(!context->hasSubChunks());
     BOOST_CHECK(context->needsMerge);
@@ -592,7 +586,8 @@ BOOST_AUTO_TEST_CASE(SpatialRestr2) { // Redundant?
     std::shared_ptr<QueryContext> context = qs->dbgGetContext();
     BOOST_CHECK(context);
     BOOST_CHECK_EQUAL(context->dominantDb, std::string("LSST"));
-    BOOST_CHECK(context->restrictors);
+    BOOST_CHECK(nullptr == context->secIdxRestrictors);
+    BOOST_CHECK(nullptr != context->areaRestrictors);
     BOOST_CHECK(context->hasChunks());
     BOOST_CHECK(!context->hasSubChunks());
     BOOST_CHECK(context->needsMerge);
@@ -621,7 +616,8 @@ BOOST_AUTO_TEST_CASE(ChunkDensity) {
     std::shared_ptr<QueryContext> context = qs->dbgGetContext();
     BOOST_CHECK(context);
     BOOST_CHECK_EQUAL(context->dominantDb, std::string("LSST"));
-    BOOST_CHECK(!context->restrictors);
+    BOOST_CHECK(nullptr == context->secIdxRestrictors);
+    BOOST_CHECK(nullptr == context->areaRestrictors);
     BOOST_CHECK(context->hasChunks());
     BOOST_CHECK(!context->hasSubChunks());
     BOOST_CHECK(context->needsMerge);
@@ -640,7 +636,8 @@ BOOST_AUTO_TEST_CASE(AltDbName) {
     std::shared_ptr<QueryContext> context = qs->dbgGetContext();
     BOOST_CHECK(context);
     BOOST_CHECK_EQUAL(context->dominantDb, "rplante_PT1_2_u_pt12prod_im3000_qserv");
-    BOOST_CHECK(context->restrictors);
+    BOOST_CHECK(nullptr == context->secIdxRestrictors);
+    BOOST_CHECK(nullptr != context->areaRestrictors);
     BOOST_CHECK(context->hasChunks());
     BOOST_CHECK(!context->hasSubChunks());
     BOOST_CHECK(context->needsMerge);
@@ -656,7 +653,8 @@ BOOST_AUTO_TEST_CASE(NonpartitionedTable) {
     std::shared_ptr<QueryContext> context = qs->dbgGetContext();
     BOOST_CHECK(context);
     BOOST_CHECK_EQUAL(context->dominantDb, std::string("LSST"));
-    BOOST_CHECK(!context->restrictors);
+    BOOST_CHECK(nullptr == context->secIdxRestrictors);
+    BOOST_CHECK(nullptr == context->areaRestrictors);
     BOOST_CHECK(!context->hasChunks());
     BOOST_CHECK(!context->hasSubChunks());
     BOOST_CHECK(!context->needsMerge);
@@ -670,7 +668,8 @@ BOOST_AUTO_TEST_CASE(CountQuery) {
     std::shared_ptr<QueryContext> context = qs->dbgGetContext();
     BOOST_CHECK(context);
     BOOST_CHECK_EQUAL(context->dominantDb, std::string("LSST"));
-    BOOST_CHECK(!context->restrictors);
+    BOOST_CHECK(nullptr == context->secIdxRestrictors);
+    BOOST_CHECK(nullptr == context->areaRestrictors);
     BOOST_CHECK(context->hasChunks());
     BOOST_CHECK(!context->hasSubChunks());
     BOOST_CHECK(context->needsMerge);
@@ -687,7 +686,8 @@ BOOST_AUTO_TEST_CASE(CountQuery2) {
     std::shared_ptr<QueryContext> context = qs->dbgGetContext();
     BOOST_CHECK(context);
     BOOST_CHECK_EQUAL(context->dominantDb, std::string("LSST"));
-    BOOST_CHECK(!context->restrictors);
+    BOOST_CHECK(nullptr == context->secIdxRestrictors);
+    BOOST_CHECK(nullptr == context->areaRestrictors);
 
     qs->addChunk(ChunkSpec::makeFake(100,true));
     auto i = qs->cQueryBegin();
@@ -715,7 +715,8 @@ BOOST_AUTO_TEST_CASE(SimpleScan) {
         std::shared_ptr<QueryContext> context = qs->dbgGetContext();
         BOOST_CHECK(context);
         BOOST_CHECK_EQUAL(context->dominantDb, std::string("LSST"));
-        BOOST_CHECK(!context->restrictors);
+        BOOST_CHECK(nullptr == context->secIdxRestrictors);
+        BOOST_CHECK(nullptr == context->areaRestrictors);
         BOOST_CHECK_EQUAL(context->scanInfo.infoTables.size(), 1U);
         if (context->scanInfo.infoTables.size() >= 1) {
             auto p = context->scanInfo.infoTables.front();
@@ -734,7 +735,8 @@ BOOST_AUTO_TEST_CASE(UnpartLimit) {
     std::shared_ptr<QueryContext> context = qs->dbgGetContext();
     BOOST_CHECK(context);
     BOOST_CHECK_EQUAL(context->dominantDb, std::string("LSST"));
-    BOOST_CHECK(!context->restrictors);
+    BOOST_CHECK(nullptr == context->secIdxRestrictors);
+    BOOST_CHECK(nullptr == context->areaRestrictors);
     // BOOST_CHECK(!spr->getHasChunks());
     // BOOST_CHECK(!spr->getHasSubChunks());
     // BOOST_CHECK(!spr->getHasAggregate());
@@ -937,7 +939,8 @@ BOOST_AUTO_TEST_CASE(MatchTableWithoutWhere) {
     std::shared_ptr<QueryContext> context = qs->dbgGetContext();
     SelectStmt const& ss = qs->getStmt();
     BOOST_CHECK(context);
-    BOOST_CHECK(!context->restrictors);
+    BOOST_CHECK(nullptr == context->secIdxRestrictors);
+    BOOST_CHECK(nullptr == context->areaRestrictors);
     BOOST_CHECK(context->hasChunks());
     BOOST_CHECK(!context->hasSubChunks());
     BOOST_CHECK(!ss.hasGroupBy());
@@ -1084,6 +1087,8 @@ BOOST_AUTO_TEST_SUITE_END()
 ////////////////////////////////////////////////////////////////////////
 
 BOOST_FIXTURE_TEST_SUITE(Case01Parse, QueryAnaFixture)
+
+
 BOOST_AUTO_TEST_CASE(Case01_0002) {
     std::string stmt = "SELECT * FROM Object WHERE objectIdObjTest = 430213989000;";
     //std::string expected = "SELECT * FROM LSST.%$#Object%$# WHERE objectId=430213989000;";
@@ -1092,14 +1097,20 @@ BOOST_AUTO_TEST_CASE(Case01_0002) {
     std::shared_ptr<QueryContext> context = qs->dbgGetContext();
     BOOST_CHECK(context);
     BOOST_CHECK_EQUAL(context->dominantDb, std::string("LSST"));
-    BOOST_REQUIRE(context->restrictors);
-    BOOST_CHECK_EQUAL(context->restrictors->size(), 1U);
-    BOOST_REQUIRE(context->restrictors->front());
-    QsRestrictor& r = *context->restrictors->front();
-    BOOST_CHECK_EQUAL(r._name, "sIndex");
-    char const* params[] = {"LSST","Object", "objectIdObjTest", "430213989000"};
-    BOOST_CHECK_EQUAL_COLLECTIONS(r._params.begin(), r._params.end(),
-                                  params, params+4);
+    BOOST_CHECK(nullptr != context->secIdxRestrictors);
+    BOOST_CHECK(nullptr == context->areaRestrictors);
+    BOOST_CHECK_EQUAL(context->secIdxRestrictors->size(), 1U);
+    BOOST_REQUIRE(context->secIdxRestrictors->front());
+    auto compRestr = std::dynamic_pointer_cast<SecIdxCompRestrictor>(context->secIdxRestrictors->front());
+    BOOST_REQUIRE(compRestr != nullptr);
+    auto secondaryIndexColumn = compRestr->getSecIdxColumnRef();
+    BOOST_REQUIRE(secondaryIndexColumn != nullptr);
+    BOOST_CHECK_EQUAL(*secondaryIndexColumn, ColumnRef("LSST","Object", "objectIdObjTest"));
+    auto compPredicate = compRestr->getCompPredicate();
+    BOOST_REQUIRE(compPredicate != nullptr);
+    // the secondaryIndexColumn should have from from the left side of the comparison, check the const value
+    // of the right side:
+    BOOST_CHECK_EQUAL(compPredicate->right->getConstVal(), "430213989000");
 }
 
 
@@ -1240,7 +1251,8 @@ BOOST_AUTO_TEST_CASE(Case01_1081) {
     std::shared_ptr<QueryContext> context = qs->dbgGetContext();
     BOOST_CHECK(context);
     BOOST_CHECK_EQUAL(context->dominantDb, std::string("LSST"));
-    BOOST_CHECK(!context->restrictors);
+    BOOST_CHECK(nullptr == context->secIdxRestrictors);
+    BOOST_CHECK(nullptr == context->areaRestrictors);
     qs->addChunk(ChunkSpec::makeFake(100,true));
     auto i = qs->cQueryBegin();
     auto e = qs->cQueryEnd();

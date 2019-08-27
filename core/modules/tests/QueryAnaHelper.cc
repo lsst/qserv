@@ -43,7 +43,9 @@
 #include "parser/ParseException.h"
 #include "parser/SelectParser.h"
 #include "qproc/ChunkSpec.h"
+#include "query/AreaRestrictor.h"
 #include "query/QueryTemplate.h"
+#include "query/SecIdxRestrictor.h"
 #include "query/SelectStmt.h"
 
 using lsst::qserv::parser::SelectParser;
@@ -51,8 +53,6 @@ using lsst::qserv::qproc::ChunkQuerySpec;
 using lsst::qserv::qproc::ChunkSpec;
 using lsst::qserv::qproc::ChunkSpec;
 using lsst::qserv::qproc::QuerySession;
-using lsst::qserv::query::Constraint;
-using lsst::qserv::query::ConstraintVector;
 using lsst::qserv::query::SelectStmt;
 using lsst::qserv::util::printable;
 
@@ -85,9 +85,13 @@ std::shared_ptr<QuerySession> QueryAnaHelper::buildQuerySession(QuerySession::Te
     }
 
     if (LOG_CHECK_LVL(_log, LOG_LVL_DEBUG)) {
-        std::shared_ptr<ConstraintVector> cvRaw(querySession->getConstraints());
-        if (cvRaw) {
-            LOGS(_log, LOG_LVL_DEBUG, util::printable(*cvRaw));
+        auto const areaRestrictors = querySession->getAreaRestrictors();
+        if (areaRestrictors != nullptr) {
+            LOGS(_log, LOG_LVL_DEBUG, util::printable(*areaRestrictors));
+        }
+        auto const secIdxRestrictors = querySession->getSecIdxRestrictors();
+        if (secIdxRestrictors != nullptr) {
+            LOGS(_log, LOG_LVL_DEBUG, util::printable(*secIdxRestrictors));
         }
     }
     return querySession;

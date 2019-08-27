@@ -119,11 +119,6 @@ public:
 
     std::shared_ptr<ColumnRef> copyAsColumnRef() const;
 
-    std::string copyAsLiteral() const;
-
-    template<typename T>
-    T copyAsType(T const& defaultValue) const;
-
     void findColumnRefs(ColumnRef::Vector& vector) const;
 
     /*
@@ -210,6 +205,8 @@ public:
     friend std::ostream& operator<<(std::ostream& os, ValueExpr const* ve);
 
     static ValueExprPtr newSimple(std::shared_ptr<ValueFactor> vt);
+
+    static ValueExprPtr newSimple(std::shared_ptr<ColumnRef> columnRef);
 
     /**
      * @brief Make a new ValueExpr object that contains a ColumnRef with the specified values for db, table,

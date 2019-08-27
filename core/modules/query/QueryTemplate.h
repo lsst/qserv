@@ -180,6 +180,14 @@ public:
      */
     GetAliasMode getTableAliasMode() const;
 
+    /**
+     * @brief Set/get if ColumnRef should print the TableRef, or only the column name.
+     *
+     * @param columnOnly If true, ColumnRef will not print the TableRef.
+     */
+    void setUseColumnOnly(bool columnOnly) { _useColumnOnly = columnOnly; }
+    bool getUseColumnOnly() const { return _useColumnOnly; }
+
     std::string generate(EntryMapping const& em) const;
     void clear();
 
@@ -193,6 +201,7 @@ public:
 private:
     EntryPtrVector _entries;
     SetAliasMode _aliasMode{USE_ALIAS};
+    bool _useColumnOnly; // if true, ColumnRef won't print db or table, only column name.
 };
 
 

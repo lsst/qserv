@@ -56,7 +56,7 @@
 #include "query/NullPredicate.h"
 #include "query/OrTerm.h"
 #include "query/PassTerm.h"
-#include "query/QsRestrictor.h"
+#include "query/AreaRestrictor.h"
 #include "query/SelectList.h"
 #include "query/SelectStmt.h"
 #include "query/TableRef.h"
@@ -312,12 +312,33 @@ shared_ptr<query::PassTerm> PassTerm(string const& text) {
 }
 
 
-template <typename...Targs>
-shared_ptr<query::QsRestrictor> QsRestrictor(string name, Targs... args) {
-    auto qsRestrictor = make_shared<query::QsRestrictor>();
-    pusher(qsRestrictor->_params, args...);
-    qsRestrictor->_name = name;
-    return qsRestrictor;
+shared_ptr<query::AreaRestrictorBox> AreaRestrictorBox(std::string const& lonMinDegree,
+                                                       std::string const& latMinDegree,
+                                                       std::string const& lonMaxDegree,
+                                                       std::string const& latMaxDegree) {
+    return make_shared<query::AreaRestrictorBox>(lonMinDegree, latMinDegree, lonMaxDegree, latMaxDegree);
+}
+
+
+shared_ptr<query::AreaRestrictorCircle> AreaRestrictorCircle(std::string const& centerLonDegree,
+                                                             std::string const& centerLatDegree,
+                                                             std::string const& radiusDegree) {
+    return make_shared<query::AreaRestrictorCircle>(centerLonDegree, centerLatDegree, radiusDegree);
+}
+
+
+shared_ptr<query::AreaRestrictorEllipse> AreaRestrictorEllipse(std::string const& centerLonDegree,
+                                                               std::string const& centerLatDegree,
+                                                               std::string const& semiMajorAxisAngleArcsec,
+                                                               std::string const& semiMinorAxisAngleArcsec,
+                                                               std::string const& positionAngleDegree) {
+    return make_shared<query::AreaRestrictorEllipse>(centerLonDegree, centerLatDegree, semiMajorAxisAngleArcsec,
+                                                     semiMinorAxisAngleArcsec, positionAngleDegree);
+}
+
+
+shared_ptr<query::AreaRestrictorPoly> AreaRestrictorPoly(std::vector<std::string> const& parameters) {
+    return make_shared<query::AreaRestrictorPoly>(parameters);
 }
 
 
@@ -415,10 +436,10 @@ shared_ptr<query::ValueFactor> ValueFactor(shared_ptr<query::ValueExpr> valueExp
 
 /// Create a new WhereClause with a given OrTerm for its root term.
 shared_ptr<query::WhereClause> WhereClause(shared_ptr<query::OrTerm> const& orTerm,
-                                           shared_ptr<query::QsRestrictor> const& qsRestrictor=nullptr) {
-    auto restrictorVec = make_shared<vector<shared_ptr<query::QsRestrictor>>>();
-    if (nullptr != qsRestrictor) {
-        restrictorVec->push_back(qsRestrictor);
+                                           shared_ptr<query::AreaRestrictor> const& areaRestrictor=nullptr) {
+    auto restrictorVec = make_shared<query::AreaRestrictorVec>();
+    if (nullptr != areaRestrictor) {
+        restrictorVec->push_back(areaRestrictor);
     }
     return make_shared<query::WhereClause>(orTerm, restrictorVec);
 }
@@ -747,7 +768,7 @@ static const vector<Antlr4TestQueries> ANTLR4_TEST_QUERIES = {
             WhereClause(OrTerm(AndTerm(BoolFactor(IS, BetweenPredicate(ValueExpr("", FactorOp(ValueFactor(query::ValueFactor::FUNCTION, FuncExpr("scisql_fluxToAbMag", ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "", "zFlux_PS")), query::ValueExpr::NONE)))), query::ValueExpr::NONE)), BETWEEN, ValueExpr("", FactorOp(ValueFactor("20"), query::ValueExpr::NONE)),
                 ValueExpr("", FactorOp(ValueFactor("24"), query::ValueExpr::NONE)))), BoolFactor(IS, BetweenPredicate(ValueExpr("", FactorOp(ValueFactor(query::ValueFactor::FUNCTION, FuncExpr("scisql_fluxToAbMag", ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "", "gFlux_PS")), query::ValueExpr::NONE)))), query::ValueExpr::MINUS), FactorOp(ValueFactor(query::ValueFactor::FUNCTION, FuncExpr("scisql_fluxToAbMag", ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "", "rFlux_PS")), query::ValueExpr::NONE)))), query::ValueExpr::NONE)), BETWEEN, ValueExpr("", FactorOp(ValueFactor("0.1"), query::ValueExpr::NONE)),
                 ValueExpr("", FactorOp(ValueFactor("0.9"), query::ValueExpr::NONE)))), BoolFactor(IS, BetweenPredicate(ValueExpr("", FactorOp(ValueFactor(query::ValueFactor::FUNCTION, FuncExpr("scisql_fluxToAbMag", ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "", "iFlux_PS")), query::ValueExpr::NONE)))), query::ValueExpr::MINUS), FactorOp(ValueFactor(query::ValueFactor::FUNCTION, FuncExpr("scisql_fluxToAbMag", ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "", "zFlux_PS")), query::ValueExpr::NONE)))), query::ValueExpr::NONE)), BETWEEN, ValueExpr("", FactorOp(ValueFactor("0.1"), query::ValueExpr::NONE)),
-                ValueExpr("", FactorOp(ValueFactor("1.0"), query::ValueExpr::NONE)))))), QsRestrictor("qserv_areaspec_box", "0.1", "-6", "4", "6")), nullptr, nullptr, nullptr, 0, -1);},
+                ValueExpr("", FactorOp(ValueFactor("1.0"), query::ValueExpr::NONE)))))), AreaRestrictorBox("0.1", "-6", "4", "6")), nullptr, nullptr, nullptr, 0, -1);},
         "SELECT COUNT(*) AS `OBJ_COUNT` FROM Object WHERE qserv_areaspec_box(0.1,-6,4,6) scisql_fluxToAbMag(zFlux_PS) BETWEEN 20 AND 24 AND (scisql_fluxToAbMag(gFlux_PS)-scisql_fluxToAbMag(rFlux_PS)) BETWEEN 0.1 AND 0.9 AND (scisql_fluxToAbMag(iFlux_PS)-scisql_fluxToAbMag(zFlux_PS)) BETWEEN 0.1 AND 1.0"
     ),
     Antlr4TestQueries(
@@ -758,7 +779,7 @@ static const vector<Antlr4TestQueries> ANTLR4_TEST_QUERIES = {
             WhereClause(OrTerm(AndTerm(BoolFactor(IS, BetweenPredicate(ValueExpr("", FactorOp(ValueFactor(query::ValueFactor::FUNCTION, FuncExpr("scisql_fluxToAbMag", ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "", "zFlux_PS")), query::ValueExpr::NONE)))), query::ValueExpr::NONE)), BETWEEN, ValueExpr("", FactorOp(ValueFactor("20"), query::ValueExpr::NONE)),
                 ValueExpr("", FactorOp(ValueFactor("24"), query::ValueExpr::NONE)))), BoolFactor(IS, BetweenPredicate(ValueExpr("", FactorOp(ValueFactor(query::ValueFactor::FUNCTION, FuncExpr("scisql_fluxToAbMag", ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "", "gFlux_PS")), query::ValueExpr::NONE)))), query::ValueExpr::MINUS), FactorOp(ValueFactor(query::ValueFactor::FUNCTION, FuncExpr("scisql_fluxToAbMag", ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "", "rFlux_PS")), query::ValueExpr::NONE)))), query::ValueExpr::NONE)), BETWEEN, ValueExpr("", FactorOp(ValueFactor("0.1"), query::ValueExpr::NONE)),
                 ValueExpr("", FactorOp(ValueFactor("0.9"), query::ValueExpr::NONE)))), BoolFactor(IS, BetweenPredicate(ValueExpr("", FactorOp(ValueFactor(query::ValueFactor::FUNCTION, FuncExpr("scisql_fluxToAbMag", ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "", "iFlux_PS")), query::ValueExpr::NONE)))), query::ValueExpr::MINUS), FactorOp(ValueFactor(query::ValueFactor::FUNCTION, FuncExpr("scisql_fluxToAbMag", ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "", "zFlux_PS")), query::ValueExpr::NONE)))), query::ValueExpr::NONE)), BETWEEN, ValueExpr("", FactorOp(ValueFactor("0.1"), query::ValueExpr::NONE)),
-                ValueExpr("", FactorOp(ValueFactor("1.0"), query::ValueExpr::NONE)))))), QsRestrictor("qserv_areaspec_box", "0.1", "-6", "4", "6")), nullptr, nullptr, nullptr, 0, -1);},
+                ValueExpr("", FactorOp(ValueFactor("1.0"), query::ValueExpr::NONE)))))), AreaRestrictorBox("0.1", "-6", "4", "6")), nullptr, nullptr, nullptr, 0, -1);},
         "SELECT COUNT(*) FROM Object WHERE qserv_areaspec_box(0.1,-6,4,6) scisql_fluxToAbMag(zFlux_PS) BETWEEN 20 AND 24 AND (scisql_fluxToAbMag(gFlux_PS)-scisql_fluxToAbMag(rFlux_PS)) BETWEEN 0.1 AND 0.9 AND (scisql_fluxToAbMag(iFlux_PS)-scisql_fluxToAbMag(zFlux_PS)) BETWEEN 0.1 AND 1.0"
     ),
     Antlr4TestQueries(
@@ -769,7 +790,7 @@ static const vector<Antlr4TestQueries> ANTLR4_TEST_QUERIES = {
             WhereClause(OrTerm(AndTerm(BoolFactor(IS, BetweenPredicate(ValueExpr("", FactorOp(ValueFactor(query::ValueFactor::FUNCTION, FuncExpr("scisql_fluxToAbMag", ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "", "zFlux_PS")), query::ValueExpr::NONE)))), query::ValueExpr::NONE)), BETWEEN, ValueExpr("", FactorOp(ValueFactor("20"), query::ValueExpr::NONE)),
                 ValueExpr("", FactorOp(ValueFactor("24"), query::ValueExpr::NONE)))), BoolFactor(IS, BetweenPredicate(ValueExpr("", FactorOp(ValueFactor(query::ValueFactor::FUNCTION, FuncExpr("scisql_fluxToAbMag", ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "", "gFlux_PS")), query::ValueExpr::NONE)))), query::ValueExpr::MINUS), FactorOp(ValueFactor(query::ValueFactor::FUNCTION, FuncExpr("scisql_fluxToAbMag", ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "", "rFlux_PS")), query::ValueExpr::NONE)))), query::ValueExpr::NONE)), BETWEEN, ValueExpr("", FactorOp(ValueFactor("0.1"), query::ValueExpr::NONE)),
                 ValueExpr("", FactorOp(ValueFactor("0.2"), query::ValueExpr::NONE)))), BoolFactor(IS, BetweenPredicate(ValueExpr("", FactorOp(ValueFactor(query::ValueFactor::FUNCTION, FuncExpr("scisql_fluxToAbMag", ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "", "iFlux_PS")), query::ValueExpr::NONE)))), query::ValueExpr::MINUS), FactorOp(ValueFactor(query::ValueFactor::FUNCTION, FuncExpr("scisql_fluxToAbMag", ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "", "zFlux_PS")), query::ValueExpr::NONE)))), query::ValueExpr::NONE)), BETWEEN, ValueExpr("", FactorOp(ValueFactor("0.1"), query::ValueExpr::NONE)),
-                ValueExpr("", FactorOp(ValueFactor("0.2"), query::ValueExpr::NONE)))))), QsRestrictor("qserv_areaspec_box", "0", "-6", "4", "-5")), nullptr, nullptr, nullptr, 0, -1);},
+                ValueExpr("", FactorOp(ValueFactor("0.2"), query::ValueExpr::NONE)))))), AreaRestrictorBox("0", "-6", "4", "-5")), nullptr, nullptr, nullptr, 0, -1);},
         "SELECT COUNT(*) AS `OBJ_COUNT` FROM Object WHERE qserv_areaspec_box(0,-6,4,-5) scisql_fluxToAbMag(zFlux_PS) BETWEEN 20 AND 24 AND (scisql_fluxToAbMag(gFlux_PS)-scisql_fluxToAbMag(rFlux_PS)) BETWEEN 0.1 AND 0.2 AND (scisql_fluxToAbMag(iFlux_PS)-scisql_fluxToAbMag(zFlux_PS)) BETWEEN 0.1 AND 0.2"
     ),
     Antlr4TestQueries(
@@ -778,7 +799,7 @@ static const vector<Antlr4TestQueries> ANTLR4_TEST_QUERIES = {
             SelectList(ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "", "objectId")), query::ValueExpr::NONE)),
                 ValueExpr("ra", FactorOp(ValueFactor(query::ValueFactor::AGGFUNC, FuncExpr("AVG", ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "", "ra_PS")), query::ValueExpr::NONE)))), query::ValueExpr::NONE))),
             FromList(TableRef("", "Object", "")),
-            WhereClause(nullptr, QsRestrictor("qserv_areaspec_box", "0", "0", "3", "10")),
+            WhereClause(nullptr, AreaRestrictorBox("0", "0", "3", "10")),
             OrderByClause(OrderByTerm(ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "", "ra")), query::ValueExpr::NONE)), query::OrderByTerm::DEFAULT, "")),
             GroupByClause(GroupByTerm(ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "", "objectId")), query::ValueExpr::NONE)), "")), nullptr, 0, -1);},
         "SELECT objectId,AVG(ra_PS) AS `ra` FROM Object WHERE qserv_areaspec_box(0,0,3,10) GROUP BY objectId ORDER BY ra"
@@ -788,7 +809,7 @@ static const vector<Antlr4TestQueries> ANTLR4_TEST_QUERIES = {
         []() -> shared_ptr<query::SelectStmt> { return SelectStmt(
             SelectList(ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "", "objectId")), query::ValueExpr::NONE))),
             FromList(TableRef("", "Object", "")),
-            WhereClause(nullptr, QsRestrictor("qserv_areaspec_box", "0", "0", "3", "10")),
+            WhereClause(nullptr, AreaRestrictorBox("0", "0", "3", "10")),
             OrderByClause(OrderByTerm(ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "", "objectId")), query::ValueExpr::NONE)), query::OrderByTerm::DEFAULT, "")), nullptr, nullptr, 0, -1);},
         "SELECT objectId FROM Object WHERE qserv_areaspec_box(0,0,3,10) ORDER BY objectId"
     ),
@@ -810,7 +831,7 @@ static const vector<Antlr4TestQueries> ANTLR4_TEST_QUERIES = {
                 ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "", "taiMidPoint")), query::ValueExpr::NONE)),
                 ValueExpr("", FactorOp(ValueFactor(query::ValueFactor::FUNCTION, FuncExpr("scisql_fluxToAbMag", ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "", "psfFlux")), query::ValueExpr::NONE)))), query::ValueExpr::NONE))),
             FromList(TableRef("", "Source", "", JoinRef(TableRef("", "Object", ""), query::JoinRef::DEFAULT, NOT_NATURAL, JoinSpec(ColumnRef("", "", "objectId"), nullptr)), JoinRef(TableRef("", "Filter", ""), query::JoinRef::DEFAULT, NOT_NATURAL, JoinSpec(ColumnRef("", "", "filterId"), nullptr)))),
-            WhereClause(OrTerm(AndTerm(BoolFactor(IS, CompPredicate(ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "", "filterName")), query::ValueExpr::NONE)), query::CompPredicate::EQUALS_OP, ValueExpr("", FactorOp(ValueFactor("'g'"), query::ValueExpr::NONE)))))), QsRestrictor("qserv_areaspec_box", "355", "0", "360", "20")),
+            WhereClause(OrTerm(AndTerm(BoolFactor(IS, CompPredicate(ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "", "filterName")), query::ValueExpr::NONE)), query::CompPredicate::EQUALS_OP, ValueExpr("", FactorOp(ValueFactor("'g'"), query::ValueExpr::NONE)))))), AreaRestrictorBox("355", "0", "360", "20")),
             OrderByClause(OrderByTerm(ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "", "objectId")), query::ValueExpr::NONE)), query::OrderByTerm::DEFAULT, ""), OrderByTerm(ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "", "taiMidPoint")), query::ValueExpr::NONE)), query::OrderByTerm::ASC, "")), nullptr, nullptr, 0, -1);},
         "SELECT objectId,taiMidPoint,scisql_fluxToAbMag(psfFlux) FROM Source JOIN Object USING(objectId) JOIN Filter USING(filterId) WHERE qserv_areaspec_box(355,0,360,20) filterName='g' ORDER BY objectId, taiMidPoint ASC"
     ),
@@ -827,7 +848,7 @@ static const vector<Antlr4TestQueries> ANTLR4_TEST_QUERIES = {
             WhereClause(OrTerm(AndTerm(BoolFactor(IS, CompPredicate(ValueExpr("", FactorOp(ValueFactor(query::ValueFactor::FUNCTION, FuncExpr("scisql_angSep", ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "o1", "ra_PS")), query::ValueExpr::NONE)),
                 ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "o1", "decl_PS")), query::ValueExpr::NONE)),
                 ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "o2", "ra_PS")), query::ValueExpr::NONE)),
-                ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "o2", "decl_PS")), query::ValueExpr::NONE)))), query::ValueExpr::NONE)), query::CompPredicate::LESS_THAN_OP, ValueExpr("", FactorOp(ValueFactor("0.016"), query::ValueExpr::NONE)))), BoolFactor(IS, CompPredicate(ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "o1", "objectId")), query::ValueExpr::NONE)), query::CompPredicate::NOT_EQUALS_OP, ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "o2", "objectId")), query::ValueExpr::NONE)))))), QsRestrictor("qserv_areaspec_box", "0", "0", "0.2", "1")), nullptr, nullptr, nullptr, 0, -1);},
+                ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "o2", "decl_PS")), query::ValueExpr::NONE)))), query::ValueExpr::NONE)), query::CompPredicate::LESS_THAN_OP, ValueExpr("", FactorOp(ValueFactor("0.016"), query::ValueExpr::NONE)))), BoolFactor(IS, CompPredicate(ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "o1", "objectId")), query::ValueExpr::NONE)), query::CompPredicate::NOT_EQUALS_OP, ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "o2", "objectId")), query::ValueExpr::NONE)))))), AreaRestrictorBox("0", "0", "0.2", "1")), nullptr, nullptr, nullptr, 0, -1);},
         "SELECT o1.objectId AS `objId1`,o2.objectId AS `objId2`,scisql_angSep(o1.ra_PS,o1.decl_PS,o2.ra_PS,o2.decl_PS) AS `distance` FROM Object AS `o1`,Object AS `o2` WHERE qserv_areaspec_box(0,0,0.2,1) scisql_angSep(o1.ra_PS,o1.decl_PS,o2.ra_PS,o2.decl_PS)<0.016 AND o1.objectId<>o2.objectId"
     ),
     Antlr4TestQueries(
@@ -866,7 +887,7 @@ static const vector<Antlr4TestQueries> ANTLR4_TEST_QUERIES = {
         []() -> shared_ptr<query::SelectStmt> { return SelectStmt(
             SelectList(ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "", "objectId")), query::ValueExpr::NONE))),
             FromList(TableRef("", "Object", "")),
-            WhereClause(nullptr, QsRestrictor("qserv_areaspec_box", "0", "0", "3", "10")),
+            WhereClause(nullptr, AreaRestrictorBox("0", "0", "3", "10")),
             OrderByClause(OrderByTerm(ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "", "objectId")), query::ValueExpr::NONE)), query::OrderByTerm::DEFAULT, "")), nullptr, nullptr, 0, -1);},
         "SELECT objectId FROM Object WHERE qserv_areaspec_box(0,0,3,10) ORDER BY objectId"
     ),
@@ -917,7 +938,7 @@ static const vector<Antlr4TestQueries> ANTLR4_TEST_QUERIES = {
             WhereClause(OrTerm(AndTerm(BoolFactor(IS, BetweenPredicate(ValueExpr("", FactorOp(ValueFactor(query::ValueFactor::FUNCTION, FuncExpr("scisql_fluxToAbMag", ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "", "zFlux_PS")), query::ValueExpr::NONE)))), query::ValueExpr::NONE)), BETWEEN, ValueExpr("", FactorOp(ValueFactor("20"), query::ValueExpr::NONE)),
                 ValueExpr("", FactorOp(ValueFactor("24"), query::ValueExpr::NONE)))), BoolFactor(IS, BetweenPredicate(ValueExpr("", FactorOp(ValueFactor(query::ValueFactor::FUNCTION, FuncExpr("scisql_fluxToAbMag", ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "", "gFlux_PS")), query::ValueExpr::NONE)))), query::ValueExpr::MINUS), FactorOp(ValueFactor(query::ValueFactor::FUNCTION, FuncExpr("scisql_fluxToAbMag", ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "", "rFlux_PS")), query::ValueExpr::NONE)))), query::ValueExpr::NONE)), BETWEEN, ValueExpr("", FactorOp(ValueFactor("0.1"), query::ValueExpr::NONE)),
                 ValueExpr("", FactorOp(ValueFactor("0.9"), query::ValueExpr::NONE)))), BoolFactor(IS, BetweenPredicate(ValueExpr("", FactorOp(ValueFactor(query::ValueFactor::FUNCTION, FuncExpr("scisql_fluxToAbMag", ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "", "iFlux_PS")), query::ValueExpr::NONE)))), query::ValueExpr::MINUS), FactorOp(ValueFactor(query::ValueFactor::FUNCTION, FuncExpr("scisql_fluxToAbMag", ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "", "zFlux_PS")), query::ValueExpr::NONE)))), query::ValueExpr::NONE)), BETWEEN, ValueExpr("", FactorOp(ValueFactor("0.1"), query::ValueExpr::NONE)),
-                ValueExpr("", FactorOp(ValueFactor("1.0"), query::ValueExpr::NONE)))))), QsRestrictor("qserv_areaspec_box", "0.1", "-6", "4", "6")), nullptr, nullptr, nullptr, 0, -1);},
+                ValueExpr("", FactorOp(ValueFactor("1.0"), query::ValueExpr::NONE)))))), AreaRestrictorBox("0.1", "-6", "4", "6")), nullptr, nullptr, nullptr, 0, -1);},
         "SELECT COUNT(*) AS `OBJ_COUNT` FROM Object WHERE qserv_areaspec_box(0.1,-6,4,6) scisql_fluxToAbMag(zFlux_PS) BETWEEN 20 AND 24 AND (scisql_fluxToAbMag(gFlux_PS)-scisql_fluxToAbMag(rFlux_PS)) BETWEEN 0.1 AND 0.9 AND (scisql_fluxToAbMag(iFlux_PS)-scisql_fluxToAbMag(zFlux_PS)) BETWEEN 0.1 AND 1.0"
     ),
     Antlr4TestQueries(
@@ -928,7 +949,7 @@ static const vector<Antlr4TestQueries> ANTLR4_TEST_QUERIES = {
             WhereClause(OrTerm(AndTerm(BoolFactor(IS, BetweenPredicate(ValueExpr("", FactorOp(ValueFactor(query::ValueFactor::FUNCTION, FuncExpr("scisql_fluxToAbMag", ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "", "zFlux_PS")), query::ValueExpr::NONE)))), query::ValueExpr::NONE)), BETWEEN, ValueExpr("", FactorOp(ValueFactor("20"), query::ValueExpr::NONE)),
                 ValueExpr("", FactorOp(ValueFactor("24"), query::ValueExpr::NONE)))), BoolFactor(IS, BetweenPredicate(ValueExpr("", FactorOp(ValueFactor(query::ValueFactor::FUNCTION, FuncExpr("scisql_fluxToAbMag", ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "", "gFlux_PS")), query::ValueExpr::NONE)))), query::ValueExpr::MINUS), FactorOp(ValueFactor(query::ValueFactor::FUNCTION, FuncExpr("scisql_fluxToAbMag", ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "", "rFlux_PS")), query::ValueExpr::NONE)))), query::ValueExpr::NONE)), BETWEEN, ValueExpr("", FactorOp(ValueFactor("0.1"), query::ValueExpr::NONE)),
                 ValueExpr("", FactorOp(ValueFactor("0.6"), query::ValueExpr::NONE)))), BoolFactor(IS, BetweenPredicate(ValueExpr("", FactorOp(ValueFactor(query::ValueFactor::FUNCTION, FuncExpr("scisql_fluxToAbMag", ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "", "iFlux_PS")), query::ValueExpr::NONE)))), query::ValueExpr::MINUS), FactorOp(ValueFactor(query::ValueFactor::FUNCTION, FuncExpr("scisql_fluxToAbMag", ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "", "zFlux_PS")), query::ValueExpr::NONE)))), query::ValueExpr::NONE)), BETWEEN, ValueExpr("", FactorOp(ValueFactor("0.1"), query::ValueExpr::NONE)),
-                ValueExpr("", FactorOp(ValueFactor("0.6"), query::ValueExpr::NONE)))))), QsRestrictor("qserv_areaspec_circle", "1.2", "3.2", "0.5")), nullptr, nullptr, nullptr, 0, -1);},
+                ValueExpr("", FactorOp(ValueFactor("0.6"), query::ValueExpr::NONE)))))), AreaRestrictorCircle("1.2", "3.2", "0.5")), nullptr, nullptr, nullptr, 0, -1);},
         "SELECT COUNT(*) AS `OBJ_COUNT` FROM Object WHERE qserv_areaspec_circle(1.2,3.2,0.5) scisql_fluxToAbMag(zFlux_PS) BETWEEN 20 AND 24 AND (scisql_fluxToAbMag(gFlux_PS)-scisql_fluxToAbMag(rFlux_PS)) BETWEEN 0.1 AND 0.6 AND (scisql_fluxToAbMag(iFlux_PS)-scisql_fluxToAbMag(zFlux_PS)) BETWEEN 0.1 AND 0.6"
     ),
     Antlr4TestQueries(
@@ -939,7 +960,7 @@ static const vector<Antlr4TestQueries> ANTLR4_TEST_QUERIES = {
             WhereClause(OrTerm(AndTerm(BoolFactor(IS, BetweenPredicate(ValueExpr("", FactorOp(ValueFactor(query::ValueFactor::FUNCTION, FuncExpr("scisql_fluxToAbMag", ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "", "zFlux_PS")), query::ValueExpr::NONE)))), query::ValueExpr::NONE)), BETWEEN, ValueExpr("", FactorOp(ValueFactor("20"), query::ValueExpr::NONE)),
                 ValueExpr("", FactorOp(ValueFactor("24"), query::ValueExpr::NONE)))), BoolFactor(IS, BetweenPredicate(ValueExpr("", FactorOp(ValueFactor(query::ValueFactor::FUNCTION, FuncExpr("scisql_fluxToAbMag", ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "", "gFlux_PS")), query::ValueExpr::NONE)))), query::ValueExpr::MINUS), FactorOp(ValueFactor(query::ValueFactor::FUNCTION, FuncExpr("scisql_fluxToAbMag", ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "", "rFlux_PS")), query::ValueExpr::NONE)))), query::ValueExpr::NONE)), BETWEEN, ValueExpr("", FactorOp(ValueFactor("0.1"), query::ValueExpr::NONE)),
                 ValueExpr("", FactorOp(ValueFactor("0.6"), query::ValueExpr::NONE)))), BoolFactor(IS, BetweenPredicate(ValueExpr("", FactorOp(ValueFactor(query::ValueFactor::FUNCTION, FuncExpr("scisql_fluxToAbMag", ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "", "iFlux_PS")), query::ValueExpr::NONE)))), query::ValueExpr::MINUS), FactorOp(ValueFactor(query::ValueFactor::FUNCTION, FuncExpr("scisql_fluxToAbMag", ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "", "zFlux_PS")), query::ValueExpr::NONE)))), query::ValueExpr::NONE)), BETWEEN, ValueExpr("", FactorOp(ValueFactor("0.1"), query::ValueExpr::NONE)),
-                ValueExpr("", FactorOp(ValueFactor("0.6"), query::ValueExpr::NONE)))))), QsRestrictor("qserv_areaspec_ellipse", "1.2", "3.2", "6000", "5000", "0.2")), nullptr, nullptr, nullptr, 0, -1);},
+                ValueExpr("", FactorOp(ValueFactor("0.6"), query::ValueExpr::NONE)))))), AreaRestrictorEllipse("1.2", "3.2", "6000", "5000", "0.2")), nullptr, nullptr, nullptr, 0, -1);},
         "SELECT COUNT(*) AS `OBJ_COUNT` FROM Object WHERE qserv_areaspec_ellipse(1.2,3.2,6000,5000,0.2) scisql_fluxToAbMag(zFlux_PS) BETWEEN 20 AND 24 AND (scisql_fluxToAbMag(gFlux_PS)-scisql_fluxToAbMag(rFlux_PS)) BETWEEN 0.1 AND 0.6 AND (scisql_fluxToAbMag(iFlux_PS)-scisql_fluxToAbMag(zFlux_PS)) BETWEEN 0.1 AND 0.6"
     ),
     Antlr4TestQueries(
@@ -950,7 +971,7 @@ static const vector<Antlr4TestQueries> ANTLR4_TEST_QUERIES = {
             WhereClause(OrTerm(AndTerm(BoolFactor(IS, BetweenPredicate(ValueExpr("", FactorOp(ValueFactor(query::ValueFactor::FUNCTION, FuncExpr("scisql_fluxToAbMag", ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "", "zFlux_PS")), query::ValueExpr::NONE)))), query::ValueExpr::NONE)), BETWEEN, ValueExpr("", FactorOp(ValueFactor("20"), query::ValueExpr::NONE)),
                 ValueExpr("", FactorOp(ValueFactor("24"), query::ValueExpr::NONE)))), BoolFactor(IS, BetweenPredicate(ValueExpr("", FactorOp(ValueFactor(query::ValueFactor::FUNCTION, FuncExpr("scisql_fluxToAbMag", ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "", "gFlux_PS")), query::ValueExpr::NONE)))), query::ValueExpr::MINUS), FactorOp(ValueFactor(query::ValueFactor::FUNCTION, FuncExpr("scisql_fluxToAbMag", ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "", "rFlux_PS")), query::ValueExpr::NONE)))), query::ValueExpr::NONE)), BETWEEN, ValueExpr("", FactorOp(ValueFactor("0.1"), query::ValueExpr::NONE)),
                 ValueExpr("", FactorOp(ValueFactor("0.6"), query::ValueExpr::NONE)))), BoolFactor(IS, BetweenPredicate(ValueExpr("", FactorOp(ValueFactor(query::ValueFactor::FUNCTION, FuncExpr("scisql_fluxToAbMag", ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "", "iFlux_PS")), query::ValueExpr::NONE)))), query::ValueExpr::MINUS), FactorOp(ValueFactor(query::ValueFactor::FUNCTION, FuncExpr("scisql_fluxToAbMag", ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "", "zFlux_PS")), query::ValueExpr::NONE)))), query::ValueExpr::NONE)), BETWEEN, ValueExpr("", FactorOp(ValueFactor("0.1"), query::ValueExpr::NONE)),
-                ValueExpr("", FactorOp(ValueFactor("0.6"), query::ValueExpr::NONE)))))), QsRestrictor("qserv_areaspec_poly", "1.0", "3.0", "1.5", "2.0", "2.0", "4.0")), nullptr, nullptr, nullptr, 0, -1);},
+                ValueExpr("", FactorOp(ValueFactor("0.6"), query::ValueExpr::NONE)))))), AreaRestrictorPoly({"1.0", "3.0", "1.5", "2.0", "2.0", "4.0"})), nullptr, nullptr, nullptr, 0, -1);},
         "SELECT COUNT(*) AS `OBJ_COUNT` FROM Object WHERE qserv_areaspec_poly(1.0,3.0,1.5,2.0,2.0,4.0) scisql_fluxToAbMag(zFlux_PS) BETWEEN 20 AND 24 AND (scisql_fluxToAbMag(gFlux_PS)-scisql_fluxToAbMag(rFlux_PS)) BETWEEN 0.1 AND 0.6 AND (scisql_fluxToAbMag(iFlux_PS)-scisql_fluxToAbMag(zFlux_PS)) BETWEEN 0.1 AND 0.6"
     ),
     Antlr4TestQueries(
@@ -961,7 +982,7 @@ static const vector<Antlr4TestQueries> ANTLR4_TEST_QUERIES = {
             WhereClause(OrTerm(AndTerm(BoolFactor(IS, BetweenPredicate(ValueExpr("", FactorOp(ValueFactor(query::ValueFactor::FUNCTION, FuncExpr("scisql_fluxToAbMag", ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "", "zFlux_PS")), query::ValueExpr::NONE)))), query::ValueExpr::NONE)), BETWEEN, ValueExpr("", FactorOp(ValueFactor("20"), query::ValueExpr::NONE)),
                 ValueExpr("", FactorOp(ValueFactor("24"), query::ValueExpr::NONE)))), BoolFactor(IS, BetweenPredicate(ValueExpr("", FactorOp(ValueFactor(query::ValueFactor::FUNCTION, FuncExpr("scisql_fluxToAbMag", ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "", "gFlux_PS")), query::ValueExpr::NONE)))), query::ValueExpr::MINUS), FactorOp(ValueFactor(query::ValueFactor::FUNCTION, FuncExpr("scisql_fluxToAbMag", ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "", "rFlux_PS")), query::ValueExpr::NONE)))), query::ValueExpr::NONE)), BETWEEN, ValueExpr("", FactorOp(ValueFactor("0.1"), query::ValueExpr::NONE)),
                 ValueExpr("", FactorOp(ValueFactor("0.2"), query::ValueExpr::NONE)))), BoolFactor(IS, BetweenPredicate(ValueExpr("", FactorOp(ValueFactor(query::ValueFactor::FUNCTION, FuncExpr("scisql_fluxToAbMag", ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "", "iFlux_PS")), query::ValueExpr::NONE)))), query::ValueExpr::MINUS), FactorOp(ValueFactor(query::ValueFactor::FUNCTION, FuncExpr("scisql_fluxToAbMag", ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "", "zFlux_PS")), query::ValueExpr::NONE)))), query::ValueExpr::NONE)), BETWEEN, ValueExpr("", FactorOp(ValueFactor("0.1"), query::ValueExpr::NONE)),
-                ValueExpr("", FactorOp(ValueFactor("0.2"), query::ValueExpr::NONE)))))), QsRestrictor("qserv_areaspec_box", "0", "-6", "4", "-5")), nullptr, nullptr, nullptr, 0, -1);},
+                ValueExpr("", FactorOp(ValueFactor("0.2"), query::ValueExpr::NONE)))))), AreaRestrictorBox("0", "-6", "4", "-5")), nullptr, nullptr, nullptr, 0, -1);},
         "SELECT COUNT(*) AS `OBJ_COUNT` FROM Object WHERE qserv_areaspec_box(0,-6,4,-5) scisql_fluxToAbMag(zFlux_PS) BETWEEN 20 AND 24 AND (scisql_fluxToAbMag(gFlux_PS)-scisql_fluxToAbMag(rFlux_PS)) BETWEEN 0.1 AND 0.2 AND (scisql_fluxToAbMag(iFlux_PS)-scisql_fluxToAbMag(zFlux_PS)) BETWEEN 0.1 AND 0.2"
     ),
     Antlr4TestQueries(
@@ -971,7 +992,7 @@ static const vector<Antlr4TestQueries> ANTLR4_TEST_QUERIES = {
                 ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "", "ra_PS")), query::ValueExpr::NONE)),
                 ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "", "decl_PS")), query::ValueExpr::NONE))),
             FromList(TableRef("", "Object", "")),
-            WhereClause(nullptr, QsRestrictor("qserv_areaspec_box", "0", "0", "3", "10")),
+            WhereClause(nullptr, AreaRestrictorBox("0", "0", "3", "10")),
             OrderByClause(OrderByTerm(ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "", "objectId")), query::ValueExpr::NONE)), query::OrderByTerm::DEFAULT, ""), OrderByTerm(ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "", "ra_PS")), query::ValueExpr::NONE)), query::OrderByTerm::DEFAULT, ""), OrderByTerm(ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "", "decl_PS")), query::ValueExpr::NONE)), query::OrderByTerm::DEFAULT, "")), nullptr, nullptr, 0, -1);},
         "SELECT objectId,ra_PS,decl_PS FROM Object WHERE qserv_areaspec_box(0,0,3,10) ORDER BY objectId, ra_PS, decl_PS"
     ),
@@ -980,7 +1001,7 @@ static const vector<Antlr4TestQueries> ANTLR4_TEST_QUERIES = {
         []() -> shared_ptr<query::SelectStmt> { return SelectStmt(
             SelectList(ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "", "objectId")), query::ValueExpr::NONE))),
             FromList(TableRef("", "Object", "")),
-            WhereClause(nullptr, QsRestrictor("qserv_areaspec_circle", "1.5", "3", "1")),
+            WhereClause(nullptr, AreaRestrictorCircle("1.5", "3", "1")),
             OrderByClause(OrderByTerm(ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "", "objectId")), query::ValueExpr::NONE)), query::OrderByTerm::DEFAULT, "")), nullptr, nullptr, 0, -1);},
         "SELECT objectId FROM Object WHERE qserv_areaspec_circle(1.5,3,1) ORDER BY objectId"
     ),
@@ -989,7 +1010,7 @@ static const vector<Antlr4TestQueries> ANTLR4_TEST_QUERIES = {
         []() -> shared_ptr<query::SelectStmt> { return SelectStmt(
             SelectList(ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "", "objectId")), query::ValueExpr::NONE))),
             FromList(TableRef("", "Object", "")),
-            WhereClause(nullptr, QsRestrictor("qserv_areaspec_ellipse", "1.5", "3", "3500", "200", "0.5")),
+            WhereClause(nullptr, AreaRestrictorEllipse("1.5", "3", "3500", "200", "0.5")),
             OrderByClause(OrderByTerm(ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "", "objectId")), query::ValueExpr::NONE)), query::OrderByTerm::DEFAULT, "")), nullptr, nullptr, 0, -1);},
         "SELECT objectId FROM Object WHERE qserv_areaspec_ellipse(1.5,3,3500,200,0.5) ORDER BY objectId"
     ),
@@ -998,7 +1019,7 @@ static const vector<Antlr4TestQueries> ANTLR4_TEST_QUERIES = {
         []() -> shared_ptr<query::SelectStmt> { return SelectStmt(
             SelectList(ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "", "objectId")), query::ValueExpr::NONE))),
             FromList(TableRef("", "Object", "")),
-            WhereClause(nullptr, QsRestrictor("qserv_areaspec_poly", "0", "0", "3", "10", "0", "5", "3", "1")),
+            WhereClause(nullptr, AreaRestrictorPoly({"0", "0", "3", "10", "0", "5", "3", "1"})),
             OrderByClause(OrderByTerm(ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "", "objectId")), query::ValueExpr::NONE)), query::OrderByTerm::DEFAULT, "")), nullptr, nullptr, 0, -1);},
         "SELECT objectId FROM Object WHERE qserv_areaspec_poly(0,0,3,10,0,5,3,1) ORDER BY objectId"
     ),
@@ -1007,7 +1028,7 @@ static const vector<Antlr4TestQueries> ANTLR4_TEST_QUERIES = {
         []() -> shared_ptr<query::SelectStmt> { return SelectStmt(
             SelectList(ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "", "objectId")), query::ValueExpr::NONE))),
             FromList(TableRef("", "Object", "")),
-            WhereClause(nullptr, QsRestrictor("qserv_areaspec_box", "0", "0", "3", "10")),
+            WhereClause(nullptr, AreaRestrictorBox("0", "0", "3", "10")),
             OrderByClause(OrderByTerm(ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "", "objectId")), query::ValueExpr::NONE)), query::OrderByTerm::DEFAULT, "")), nullptr, nullptr, 0, -1);},
         "SELECT objectId FROM Object WHERE qserv_areaspec_box(0,0,3,10) ORDER BY objectId"
     ),
@@ -1024,7 +1045,7 @@ static const vector<Antlr4TestQueries> ANTLR4_TEST_QUERIES = {
             WhereClause(OrTerm(AndTerm(BoolFactor(IS, CompPredicate(ValueExpr("", FactorOp(ValueFactor(query::ValueFactor::FUNCTION, FuncExpr("scisql_angSep", ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "o1", "ra_PS")), query::ValueExpr::NONE)),
                 ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "o1", "decl_PS")), query::ValueExpr::NONE)),
                 ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "o2", "ra_PS")), query::ValueExpr::NONE)),
-                ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "o2", "decl_PS")), query::ValueExpr::NONE)))), query::ValueExpr::NONE)), query::CompPredicate::LESS_THAN_OP, ValueExpr("", FactorOp(ValueFactor("0.016"), query::ValueExpr::NONE)))), BoolFactor(IS, CompPredicate(ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "o1", "objectId")), query::ValueExpr::NONE)), query::CompPredicate::NOT_EQUALS_OP, ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "o2", "objectId")), query::ValueExpr::NONE)))))), QsRestrictor("qserv_areaspec_box", "1.2", "3.3", "1.3", "3.4")), nullptr, nullptr, nullptr, 0, -1);},
+                ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "o2", "decl_PS")), query::ValueExpr::NONE)))), query::ValueExpr::NONE)), query::CompPredicate::LESS_THAN_OP, ValueExpr("", FactorOp(ValueFactor("0.016"), query::ValueExpr::NONE)))), BoolFactor(IS, CompPredicate(ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "o1", "objectId")), query::ValueExpr::NONE)), query::CompPredicate::NOT_EQUALS_OP, ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "o2", "objectId")), query::ValueExpr::NONE)))))), AreaRestrictorBox("1.2", "3.3", "1.3", "3.4")), nullptr, nullptr, nullptr, 0, -1);},
         "SELECT o1.objectId AS `objId1`,o2.objectId AS `objId2`,scisql_angSep(o1.ra_PS,o1.decl_PS,o2.ra_PS,o2.decl_PS) AS `distance` FROM Object AS `o1`,Object AS `o2` WHERE qserv_areaspec_box(1.2,3.3,1.3,3.4) scisql_angSep(o1.ra_PS,o1.decl_PS,o2.ra_PS,o2.decl_PS)<0.016 AND o1.objectId<>o2.objectId"
     ),
     Antlr4TestQueries(
@@ -1562,7 +1583,7 @@ static const vector<Antlr4TestQueries> ANTLR4_TEST_QUERIES = {
             WhereClause(OrTerm(AndTerm(BoolFactor(IS, BetweenPredicate(ValueExpr("", FactorOp(ValueFactor(query::ValueFactor::FUNCTION, FuncExpr("scisql_fluxToAbMag", ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "", "zFlux_PS")), query::ValueExpr::NONE)))), query::ValueExpr::NONE)), BETWEEN, ValueExpr("", FactorOp(ValueFactor("20"), query::ValueExpr::NONE)),
                 ValueExpr("", FactorOp(ValueFactor("24"), query::ValueExpr::NONE)))), BoolFactor(IS, BetweenPredicate(ValueExpr("", FactorOp(ValueFactor(query::ValueFactor::FUNCTION, FuncExpr("scisql_fluxToAbMag", ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "", "gFlux_PS")), query::ValueExpr::NONE)))), query::ValueExpr::MINUS), FactorOp(ValueFactor(query::ValueFactor::FUNCTION, FuncExpr("scisql_fluxToAbMag", ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "", "rFlux_PS")), query::ValueExpr::NONE)))), query::ValueExpr::NONE)), BETWEEN, ValueExpr("", FactorOp(ValueFactor("0.1"), query::ValueExpr::NONE)),
                 ValueExpr("", FactorOp(ValueFactor("0.9"), query::ValueExpr::NONE)))), BoolFactor(IS, BetweenPredicate(ValueExpr("", FactorOp(ValueFactor(query::ValueFactor::FUNCTION, FuncExpr("scisql_fluxToAbMag", ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "", "iFlux_PS")), query::ValueExpr::NONE)))), query::ValueExpr::MINUS), FactorOp(ValueFactor(query::ValueFactor::FUNCTION, FuncExpr("scisql_fluxToAbMag", ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "", "zFlux_PS")), query::ValueExpr::NONE)))), query::ValueExpr::NONE)), BETWEEN, ValueExpr("", FactorOp(ValueFactor("0.1"), query::ValueExpr::NONE)),
-                ValueExpr("", FactorOp(ValueFactor("1.0"), query::ValueExpr::NONE)))))), QsRestrictor("qserv_areaspec_box", "70", "3", "75", "3.5")), nullptr, nullptr, nullptr, 0, -1);},
+                ValueExpr("", FactorOp(ValueFactor("1.0"), query::ValueExpr::NONE)))))), AreaRestrictorBox("70", "3", "75", "3.5")), nullptr, nullptr, nullptr, 0, -1);},
         "SELECT COUNT(*) AS `OBJ_COUNT` FROM Object WHERE qserv_areaspec_box(70,3,75,3.5) scisql_fluxToAbMag(zFlux_PS) BETWEEN 20 AND 24 AND (scisql_fluxToAbMag(gFlux_PS)-scisql_fluxToAbMag(rFlux_PS)) BETWEEN 0.1 AND 0.9 AND (scisql_fluxToAbMag(iFlux_PS)-scisql_fluxToAbMag(zFlux_PS)) BETWEEN 0.1 AND 1.0"
     ),
     Antlr4TestQueries(
@@ -1573,7 +1594,7 @@ static const vector<Antlr4TestQueries> ANTLR4_TEST_QUERIES = {
             WhereClause(OrTerm(AndTerm(BoolFactor(IS, BetweenPredicate(ValueExpr("", FactorOp(ValueFactor(query::ValueFactor::FUNCTION, FuncExpr("scisql_fluxToAbMag", ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "", "zFlux_PS")), query::ValueExpr::NONE)))), query::ValueExpr::NONE)), BETWEEN, ValueExpr("", FactorOp(ValueFactor("20"), query::ValueExpr::NONE)),
                 ValueExpr("", FactorOp(ValueFactor("24"), query::ValueExpr::NONE)))), BoolFactor(IS, BetweenPredicate(ValueExpr("", FactorOp(ValueFactor(query::ValueFactor::FUNCTION, FuncExpr("scisql_fluxToAbMag", ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "", "gFlux_PS")), query::ValueExpr::NONE)))), query::ValueExpr::MINUS), FactorOp(ValueFactor(query::ValueFactor::FUNCTION, FuncExpr("scisql_fluxToAbMag", ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "", "rFlux_PS")), query::ValueExpr::NONE)))), query::ValueExpr::NONE)), BETWEEN, ValueExpr("", FactorOp(ValueFactor("0.1"), query::ValueExpr::NONE)),
                 ValueExpr("", FactorOp(ValueFactor("0.9"), query::ValueExpr::NONE)))), BoolFactor(IS, BetweenPredicate(ValueExpr("", FactorOp(ValueFactor(query::ValueFactor::FUNCTION, FuncExpr("scisql_fluxToAbMag", ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "", "iFlux_PS")), query::ValueExpr::NONE)))), query::ValueExpr::MINUS), FactorOp(ValueFactor(query::ValueFactor::FUNCTION, FuncExpr("scisql_fluxToAbMag", ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "", "zFlux_PS")), query::ValueExpr::NONE)))), query::ValueExpr::NONE)), BETWEEN, ValueExpr("", FactorOp(ValueFactor("0.1"), query::ValueExpr::NONE)),
-                ValueExpr("", FactorOp(ValueFactor("1.0"), query::ValueExpr::NONE)))))), QsRestrictor("qserv_areaspec_circle", "72.5", "3.25", "0.6")), nullptr, nullptr, nullptr, 0, -1);},
+                ValueExpr("", FactorOp(ValueFactor("1.0"), query::ValueExpr::NONE)))))), AreaRestrictorCircle("72.5", "3.25", "0.6")), nullptr, nullptr, nullptr, 0, -1);},
         "SELECT COUNT(*) AS `OBJ_COUNT` FROM Object WHERE qserv_areaspec_circle(72.5,3.25,0.6) scisql_fluxToAbMag(zFlux_PS) BETWEEN 20 AND 24 AND (scisql_fluxToAbMag(gFlux_PS)-scisql_fluxToAbMag(rFlux_PS)) BETWEEN 0.1 AND 0.9 AND (scisql_fluxToAbMag(iFlux_PS)-scisql_fluxToAbMag(zFlux_PS)) BETWEEN 0.1 AND 1.0"
     ),
     Antlr4TestQueries(
@@ -1584,7 +1605,7 @@ static const vector<Antlr4TestQueries> ANTLR4_TEST_QUERIES = {
             WhereClause(OrTerm(AndTerm(BoolFactor(IS, BetweenPredicate(ValueExpr("", FactorOp(ValueFactor(query::ValueFactor::FUNCTION, FuncExpr("scisql_fluxToAbMag", ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "", "zFlux_PS")), query::ValueExpr::NONE)))), query::ValueExpr::NONE)), BETWEEN, ValueExpr("", FactorOp(ValueFactor("20"), query::ValueExpr::NONE)),
                 ValueExpr("", FactorOp(ValueFactor("24"), query::ValueExpr::NONE)))), BoolFactor(IS, BetweenPredicate(ValueExpr("", FactorOp(ValueFactor(query::ValueFactor::FUNCTION, FuncExpr("scisql_fluxToAbMag", ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "", "gFlux_PS")), query::ValueExpr::NONE)))), query::ValueExpr::MINUS), FactorOp(ValueFactor(query::ValueFactor::FUNCTION, FuncExpr("scisql_fluxToAbMag", ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "", "rFlux_PS")), query::ValueExpr::NONE)))), query::ValueExpr::NONE)), BETWEEN, ValueExpr("", FactorOp(ValueFactor("0.1"), query::ValueExpr::NONE)),
                 ValueExpr("", FactorOp(ValueFactor("0.9"), query::ValueExpr::NONE)))), BoolFactor(IS, BetweenPredicate(ValueExpr("", FactorOp(ValueFactor(query::ValueFactor::FUNCTION, FuncExpr("scisql_fluxToAbMag", ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "", "iFlux_PS")), query::ValueExpr::NONE)))), query::ValueExpr::MINUS), FactorOp(ValueFactor(query::ValueFactor::FUNCTION, FuncExpr("scisql_fluxToAbMag", ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "", "zFlux_PS")), query::ValueExpr::NONE)))), query::ValueExpr::NONE)), BETWEEN, ValueExpr("", FactorOp(ValueFactor("0.1"), query::ValueExpr::NONE)),
-                ValueExpr("", FactorOp(ValueFactor("1.0"), query::ValueExpr::NONE)))))), QsRestrictor("qserv_areaspec_ellipse", "72.5", "3.25", "6000", "1700", "0.2")), nullptr, nullptr, nullptr, 0, -1);},
+                ValueExpr("", FactorOp(ValueFactor("1.0"), query::ValueExpr::NONE)))))), AreaRestrictorEllipse("72.5", "3.25", "6000", "1700", "0.2")), nullptr, nullptr, nullptr, 0, -1);},
         "SELECT COUNT(*) AS `OBJ_COUNT` FROM Object WHERE qserv_areaspec_ellipse(72.5,3.25,6000,1700,0.2) scisql_fluxToAbMag(zFlux_PS) BETWEEN 20 AND 24 AND (scisql_fluxToAbMag(gFlux_PS)-scisql_fluxToAbMag(rFlux_PS)) BETWEEN 0.1 AND 0.9 AND (scisql_fluxToAbMag(iFlux_PS)-scisql_fluxToAbMag(zFlux_PS)) BETWEEN 0.1 AND 1.0"
     ),
     Antlr4TestQueries(
@@ -1595,7 +1616,7 @@ static const vector<Antlr4TestQueries> ANTLR4_TEST_QUERIES = {
             WhereClause(OrTerm(AndTerm(BoolFactor(IS, BetweenPredicate(ValueExpr("", FactorOp(ValueFactor(query::ValueFactor::FUNCTION, FuncExpr("scisql_fluxToAbMag", ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "", "zFlux_PS")), query::ValueExpr::NONE)))), query::ValueExpr::NONE)), BETWEEN, ValueExpr("", FactorOp(ValueFactor("20"), query::ValueExpr::NONE)),
                 ValueExpr("", FactorOp(ValueFactor("24"), query::ValueExpr::NONE)))), BoolFactor(IS, BetweenPredicate(ValueExpr("", FactorOp(ValueFactor(query::ValueFactor::FUNCTION, FuncExpr("scisql_fluxToAbMag", ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "", "gFlux_PS")), query::ValueExpr::NONE)))), query::ValueExpr::MINUS), FactorOp(ValueFactor(query::ValueFactor::FUNCTION, FuncExpr("scisql_fluxToAbMag", ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "", "rFlux_PS")), query::ValueExpr::NONE)))), query::ValueExpr::NONE)), BETWEEN, ValueExpr("", FactorOp(ValueFactor("0.1"), query::ValueExpr::NONE)),
                 ValueExpr("", FactorOp(ValueFactor("0.9"), query::ValueExpr::NONE)))), BoolFactor(IS, BetweenPredicate(ValueExpr("", FactorOp(ValueFactor(query::ValueFactor::FUNCTION, FuncExpr("scisql_fluxToAbMag", ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "", "iFlux_PS")), query::ValueExpr::NONE)))), query::ValueExpr::MINUS), FactorOp(ValueFactor(query::ValueFactor::FUNCTION, FuncExpr("scisql_fluxToAbMag", ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "", "zFlux_PS")), query::ValueExpr::NONE)))), query::ValueExpr::NONE)), BETWEEN, ValueExpr("", FactorOp(ValueFactor("0.1"), query::ValueExpr::NONE)),
-                ValueExpr("", FactorOp(ValueFactor("1.0"), query::ValueExpr::NONE)))))), QsRestrictor("qserv_areaspec_poly", "70", "3", "75", "3.5", "70", "4.0")), nullptr, nullptr, nullptr, 0, -1);},
+                ValueExpr("", FactorOp(ValueFactor("1.0"), query::ValueExpr::NONE)))))), AreaRestrictorPoly({"70", "3", "75", "3.5", "70", "4.0"})), nullptr, nullptr, nullptr, 0, -1);},
         "SELECT COUNT(*) AS `OBJ_COUNT` FROM Object WHERE qserv_areaspec_poly(70,3,75,3.5,70,4.0) scisql_fluxToAbMag(zFlux_PS) BETWEEN 20 AND 24 AND (scisql_fluxToAbMag(gFlux_PS)-scisql_fluxToAbMag(rFlux_PS)) BETWEEN 0.1 AND 0.9 AND (scisql_fluxToAbMag(iFlux_PS)-scisql_fluxToAbMag(zFlux_PS)) BETWEEN 0.1 AND 1.0"
     ),
     Antlr4TestQueries(
@@ -1606,7 +1627,7 @@ static const vector<Antlr4TestQueries> ANTLR4_TEST_QUERIES = {
             WhereClause(OrTerm(AndTerm(BoolFactor(IS, BetweenPredicate(ValueExpr("", FactorOp(ValueFactor(query::ValueFactor::FUNCTION, FuncExpr("scisql_fluxToAbMag", ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "", "zFlux_PS")), query::ValueExpr::NONE)))), query::ValueExpr::NONE)), BETWEEN, ValueExpr("", FactorOp(ValueFactor("20"), query::ValueExpr::NONE)),
                 ValueExpr("", FactorOp(ValueFactor("24"), query::ValueExpr::NONE)))), BoolFactor(IS, BetweenPredicate(ValueExpr("", FactorOp(ValueFactor(query::ValueFactor::FUNCTION, FuncExpr("scisql_fluxToAbMag", ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "", "gFlux_PS")), query::ValueExpr::NONE)))), query::ValueExpr::MINUS), FactorOp(ValueFactor(query::ValueFactor::FUNCTION, FuncExpr("scisql_fluxToAbMag", ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "", "rFlux_PS")), query::ValueExpr::NONE)))), query::ValueExpr::NONE)), BETWEEN, ValueExpr("", FactorOp(ValueFactor("0.1"), query::ValueExpr::NONE)),
                 ValueExpr("", FactorOp(ValueFactor("0.2"), query::ValueExpr::NONE)))), BoolFactor(IS, BetweenPredicate(ValueExpr("", FactorOp(ValueFactor(query::ValueFactor::FUNCTION, FuncExpr("scisql_fluxToAbMag", ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "", "iFlux_PS")), query::ValueExpr::NONE)))), query::ValueExpr::MINUS), FactorOp(ValueFactor(query::ValueFactor::FUNCTION, FuncExpr("scisql_fluxToAbMag", ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "", "zFlux_PS")), query::ValueExpr::NONE)))), query::ValueExpr::NONE)), BETWEEN, ValueExpr("", FactorOp(ValueFactor("0.1"), query::ValueExpr::NONE)),
-                ValueExpr("", FactorOp(ValueFactor("0.2"), query::ValueExpr::NONE)))))), QsRestrictor("qserv_areaspec_box", "0", "-6", "4", "-5")), nullptr, nullptr, nullptr, 0, -1);},
+                ValueExpr("", FactorOp(ValueFactor("0.2"), query::ValueExpr::NONE)))))), AreaRestrictorBox("0", "-6", "4", "-5")), nullptr, nullptr, nullptr, 0, -1);},
         "SELECT COUNT(*) AS `OBJ_COUNT` FROM Object WHERE qserv_areaspec_box(0,-6,4,-5) scisql_fluxToAbMag(zFlux_PS) BETWEEN 20 AND 24 AND (scisql_fluxToAbMag(gFlux_PS)-scisql_fluxToAbMag(rFlux_PS)) BETWEEN 0.1 AND 0.2 AND (scisql_fluxToAbMag(iFlux_PS)-scisql_fluxToAbMag(zFlux_PS)) BETWEEN 0.1 AND 0.2"
     ),
     Antlr4TestQueries(
@@ -1614,7 +1635,7 @@ static const vector<Antlr4TestQueries> ANTLR4_TEST_QUERIES = {
         []() -> shared_ptr<query::SelectStmt> { return SelectStmt(
             SelectList(ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "", "objectId")), query::ValueExpr::NONE))),
             FromList(TableRef("", "Object", "")),
-            WhereClause(nullptr, QsRestrictor("qserv_areaspec_box", "0", "0", "3", "10")),
+            WhereClause(nullptr, AreaRestrictorBox("0", "0", "3", "10")),
             OrderByClause(OrderByTerm(ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "", "objectId")), query::ValueExpr::NONE)), query::OrderByTerm::DEFAULT, "")), nullptr, nullptr, 0, -1);},
         "SELECT objectId FROM Object WHERE qserv_areaspec_box(0,0,3,10) ORDER BY objectId"
     ),
@@ -1858,7 +1879,7 @@ static const vector<Antlr4TestQueries> ANTLR4_TEST_QUERIES = {
         []() -> shared_ptr<query::SelectStmt> { return SelectStmt(
             SelectList(ValueExpr("", FactorOp(ValueFactor(STAR, ""), query::ValueExpr::NONE))),
             FromList(TableRef("", "Object", "")),
-            WhereClause(nullptr, QsRestrictor("qserv_areaspec_box", "0.", "1.", "0.", "1.")),
+            WhereClause(nullptr, AreaRestrictorBox("0.", "1.", "0.", "1.")),
             OrderByClause(OrderByTerm(ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "", "ra_PS")), query::ValueExpr::NONE)), query::OrderByTerm::DEFAULT, "")), nullptr, nullptr, 0, -1);},
         "SELECT * FROM Object WHERE qserv_areaspec_box(0.,1.,0.,1.) ORDER BY ra_PS"
     ),
@@ -1874,7 +1895,7 @@ static const vector<Antlr4TestQueries> ANTLR4_TEST_QUERIES = {
         []() -> shared_ptr<query::SelectStmt> { return SelectStmt(
             SelectList(ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "", "objectId")), query::ValueExpr::NONE))),
             FromList(TableRef("", "Object", "")),
-            WhereClause(nullptr, QsRestrictor("qserv_areaspec_box", "0.1", "-6", "4", "6")), nullptr, nullptr, nullptr, 0, 10);},
+            WhereClause(nullptr, AreaRestrictorBox("0.1", "-6", "4", "6")), nullptr, nullptr, nullptr, 0, 10);},
         "SELECT objectId FROM Object WHERE qserv_areaspec_box(0.1,-6,4,6) LIMIT 10"
     ),
     Antlr4TestQueries(
@@ -1882,7 +1903,7 @@ static const vector<Antlr4TestQueries> ANTLR4_TEST_QUERIES = {
         []() -> shared_ptr<query::SelectStmt> { return SelectStmt(
             SelectList(ValueExpr("", FactorOp(ValueFactor(query::ValueFactor::AGGFUNC, FuncExpr("COUNT", ValueExpr("", FactorOp(ValueFactor(STAR, ""), query::ValueExpr::NONE)))), query::ValueExpr::NONE))),
             FromList(TableRef("", "Object", "")),
-            WhereClause(nullptr, QsRestrictor("qserv_areaspec_box", "355", "0", "356", "1")), nullptr, nullptr, nullptr, 0, 10);},
+            WhereClause(nullptr, AreaRestrictorBox("355", "0", "356", "1")), nullptr, nullptr, nullptr, 0, 10);},
         "SELECT COUNT(*) FROM Object WHERE qserv_areaspec_box(355,0,356,1) LIMIT 10"
     ),
     Antlr4TestQueries(
@@ -1903,7 +1924,7 @@ static const vector<Antlr4TestQueries> ANTLR4_TEST_QUERIES = {
                 ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "", "taiMidPoint")), query::ValueExpr::NONE)),
                 ValueExpr("", FactorOp(ValueFactor(query::ValueFactor::FUNCTION, FuncExpr("scisql_fluxToAbMag", ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "", "psfFlux")), query::ValueExpr::NONE)))), query::ValueExpr::NONE))),
             FromList(TableRef("", "Source", "", JoinRef(TableRef("", "Object", ""), query::JoinRef::DEFAULT, NOT_NATURAL, JoinSpec(ColumnRef("", "", "objectId"), nullptr)), JoinRef(TableRef("", "Filter", ""), query::JoinRef::DEFAULT, NOT_NATURAL, JoinSpec(ColumnRef("", "", "filterId"), nullptr)))),
-            WhereClause(OrTerm(AndTerm(BoolFactor(IS, CompPredicate(ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "", "filterName")), query::ValueExpr::NONE)), query::CompPredicate::EQUALS_OP, ValueExpr("", FactorOp(ValueFactor("'g'"), query::ValueExpr::NONE)))))), QsRestrictor("qserv_areaspec_box", "355", "0", "360", "20")),
+            WhereClause(OrTerm(AndTerm(BoolFactor(IS, CompPredicate(ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "", "filterName")), query::ValueExpr::NONE)), query::CompPredicate::EQUALS_OP, ValueExpr("", FactorOp(ValueFactor("'g'"), query::ValueExpr::NONE)))))), AreaRestrictorBox("355", "0", "360", "20")),
             OrderByClause(OrderByTerm(ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "", "objectId")), query::ValueExpr::NONE)), query::OrderByTerm::DEFAULT, ""), OrderByTerm(ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "", "taiMidPoint")), query::ValueExpr::NONE)), query::OrderByTerm::ASC, "")), nullptr, nullptr, 0, -1);},
         "SELECT objectId,taiMidPoint,scisql_fluxToAbMag(psfFlux) FROM Source JOIN Object USING(objectId) JOIN Filter USING(filterId) WHERE qserv_areaspec_box(355,0,360,20) filterName='g' ORDER BY objectId, taiMidPoint ASC"
     ),
@@ -1959,7 +1980,7 @@ static const vector<Antlr4TestQueries> ANTLR4_TEST_QUERIES = {
         []() -> shared_ptr<query::SelectStmt> { return SelectStmt(
             SelectList(ValueExpr("", FactorOp(ValueFactor(STAR, ""), query::ValueExpr::NONE))),
             FromList(TableRef("", "Object", "")),
-            WhereClause(nullptr, QsRestrictor("qserv_areaspec_box", "1.28", "1.38", "3.18", "3.34")),
+            WhereClause(nullptr, AreaRestrictorBox("1.28", "1.38", "3.18", "3.34")),
             OrderByClause(OrderByTerm(ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "", "ra_PS")), query::ValueExpr::NONE)), query::OrderByTerm::DEFAULT, "")), nullptr, nullptr, 0, -1);},
         "SELECT * FROM Object WHERE qserv_areaspec_box(1.28,1.38,3.18,3.34) ORDER BY ra_PS"
     ),
@@ -2547,7 +2568,7 @@ static const vector<Antlr4TestQueries> ANTLR4_TEST_QUERIES = {
                     query::CompPredicate::NOT_EQUALS_OP,
                     ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "o2", "objectId")), query::ValueExpr::NONE))))
                 )),
-                QsRestrictor("qserv_areaspec_box", "0", "0", "0.2", "1")), nullptr, nullptr, nullptr, 0, -1);},
+                AreaRestrictorBox("0", "0", "0.2", "1")), nullptr, nullptr, nullptr, 0, -1);},
         "SELECT o1.objectId AS `objId1`,o2.objectId AS `objId2`,scisql_angSep(o1.ra_PS,o1.decl_PS,o2.ra_PS,o2.decl_PS) AS `distance` FROM Object AS `o1`,Object AS `o2` WHERE qserv_areaspec_box(0,0,0.2,1) scisql_angSep(o1.ra_PS,o1.decl_PS,o2.ra_PS,o2.decl_PS)<1 AND o1.objectId<>o2.objectId"
     ),
     Antlr4TestQueries(
@@ -2719,7 +2740,7 @@ static const vector<Antlr4TestQueries> ANTLR4_TEST_QUERIES = {
         []() -> shared_ptr<query::SelectStmt> { return SelectStmt(
             SelectList(ValueExpr("", FactorOp(ValueFactor(STAR, ""), query::ValueExpr::NONE))),
             FromList(TableRef("", "Object", "")),
-            WhereClause(nullptr, QsRestrictor("qserv_areaspec_box", "0", "0", "1", "1")), nullptr, nullptr, nullptr, 0, -1);},
+            WhereClause(nullptr, AreaRestrictorBox("0", "0", "1", "1")), nullptr, nullptr, nullptr, 0, -1);},
         "SELECT * FROM Object WHERE qserv_areaspec_box(0,0,1,1)"
     ),
     Antlr4TestQueries(
@@ -2730,7 +2751,7 @@ static const vector<Antlr4TestQueries> ANTLR4_TEST_QUERIES = {
             WhereClause(OrTerm(AndTerm(BoolFactor(IS, CompPredicate(ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "", "rFlux_PS")), query::ValueExpr::NONE)), query::CompPredicate::LESS_THAN_OP, ValueExpr("", FactorOp(ValueFactor("0.005"), query::ValueExpr::NONE)))), BoolFactor(IS, CompPredicate(ValueExpr("", FactorOp(ValueFactor(query::ValueFactor::FUNCTION, FuncExpr("scisql_angSep", ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "o1", "ra_Test")), query::ValueExpr::NONE)),
                 ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "o1", "decl_Test")), query::ValueExpr::NONE)),
                 ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "o2", "ra_Test")), query::ValueExpr::NONE)),
-                ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "o2", "decl_Test")), query::ValueExpr::NONE)))), query::ValueExpr::NONE)), query::CompPredicate::LESS_THAN_OP, ValueExpr("", FactorOp(ValueFactor("0.001"), query::ValueExpr::NONE)))))), QsRestrictor("qserv_areaspec_box", "6", "6", "7", "7")), nullptr, nullptr, nullptr, 0, -1);},
+                ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "o2", "decl_Test")), query::ValueExpr::NONE)))), query::ValueExpr::NONE)), query::CompPredicate::LESS_THAN_OP, ValueExpr("", FactorOp(ValueFactor("0.001"), query::ValueExpr::NONE)))))), AreaRestrictorBox("6", "6", "7", "7")), nullptr, nullptr, nullptr, 0, -1);},
         "SELECT count(*) FROM Object AS `o1`,Object AS `o2` WHERE qserv_areaspec_box(6,6,7,7) rFlux_PS<0.005 AND scisql_angSep(o1.ra_Test,o1.decl_Test,o2.ra_Test,o2.decl_Test)<0.001"
     ),
     Antlr4TestQueries(
@@ -2751,7 +2772,7 @@ static const vector<Antlr4TestQueries> ANTLR4_TEST_QUERIES = {
             FromList(TableRef("Bad", "Object", "o1"), TableRef("", "Object", "o2")),
             WhereClause(OrTerm(AndTerm(BoolFactor(IS, BetweenPredicate(ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "o1", "ra_PS")), query::ValueExpr::NONE)), BETWEEN, ValueExpr("", FactorOp(ValueFactor("6"), query::ValueExpr::NONE)),
                 ValueExpr("", FactorOp(ValueFactor("7"), query::ValueExpr::NONE)))), BoolFactor(IS, BetweenPredicate(ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "o1", "decl_PS")), query::ValueExpr::NONE)), BETWEEN, ValueExpr("", FactorOp(ValueFactor("6"), query::ValueExpr::NONE)),
-                ValueExpr("", FactorOp(ValueFactor("7"), query::ValueExpr::NONE)))))), QsRestrictor("qserv_areaspec_box", "6", "6", "7", "7")), nullptr, nullptr, nullptr, 0, -1);},
+                ValueExpr("", FactorOp(ValueFactor("7"), query::ValueExpr::NONE)))))), AreaRestrictorBox("6", "6", "7", "7")), nullptr, nullptr, nullptr, 0, -1);},
         "SELECT count(*) FROM Bad.Object AS `o1`,Object AS `o2` WHERE qserv_areaspec_box(6,6,7,7) o1.ra_PS BETWEEN 6 AND 7 AND o1.decl_PS BETWEEN 6 AND 7"
     ),
     Antlr4TestQueries(
@@ -2759,7 +2780,7 @@ static const vector<Antlr4TestQueries> ANTLR4_TEST_QUERIES = {
         []() -> shared_ptr<query::SelectStmt> { return SelectStmt(
             SelectList(ValueExpr("", FactorOp(ValueFactor(STAR, ""), query::ValueExpr::NONE))),
             FromList(TableRef("LSST", "Object", "o"), TableRef("", "Source", "s")),
-            WhereClause(OrTerm(AndTerm(BoolFactor(IS, CompPredicate(ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "o", "objectIdObjTest")), query::ValueExpr::NONE)), query::CompPredicate::EQUALS_OP, ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "s", "objectIdSourceTest")), query::ValueExpr::NONE)))))), QsRestrictor("qserv_areaspec_box", "2", "2", "3", "3")), nullptr, nullptr, nullptr, 0, -1);},
+            WhereClause(OrTerm(AndTerm(BoolFactor(IS, CompPredicate(ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "o", "objectIdObjTest")), query::ValueExpr::NONE)), query::CompPredicate::EQUALS_OP, ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "s", "objectIdSourceTest")), query::ValueExpr::NONE)))))), AreaRestrictorBox("2", "2", "3", "3")), nullptr, nullptr, nullptr, 0, -1);},
         "SELECT * FROM LSST.Object AS `o`,Source AS `s` WHERE qserv_areaspec_box(2,2,3,3) o.objectIdObjTest=s.objectIdSourceTest"
     ),
     Antlr4TestQueries(
@@ -2818,7 +2839,7 @@ static const vector<Antlr4TestQueries> ANTLR4_TEST_QUERIES = {
             WhereClause(OrTerm(AndTerm(BoolFactor(IS, CompPredicate(ValueExpr("", FactorOp(ValueFactor(query::ValueFactor::FUNCTION, FuncExpr("scisql_angSep", ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "o1", "ra_Test")), query::ValueExpr::NONE)),
                 ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "o1", "decl_Test")), query::ValueExpr::NONE)),
                 ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "o2", "ra_Test")), query::ValueExpr::NONE)),
-                ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "o2", "decl_Test")), query::ValueExpr::NONE)))), query::ValueExpr::NONE)), query::CompPredicate::LESS_THAN_OP, ValueExpr("", FactorOp(ValueFactor("0.02"), query::ValueExpr::NONE)))))), QsRestrictor("qserv_areaspec_box", "5.5", "5.5", "6.1", "6.1")), nullptr, nullptr, nullptr, 0, -1);},
+                ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "o2", "decl_Test")), query::ValueExpr::NONE)))), query::ValueExpr::NONE)), query::CompPredicate::LESS_THAN_OP, ValueExpr("", FactorOp(ValueFactor("0.02"), query::ValueExpr::NONE)))))), AreaRestrictorBox("5.5", "5.5", "6.1", "6.1")), nullptr, nullptr, nullptr, 0, -1);},
         "SELECT count(*) FROM LSST.Object AS `o1`,LSST.Object AS `o2` WHERE qserv_areaspec_box(5.5,5.5,6.1,6.1) scisql_angSep(o1.ra_Test,o1.decl_Test,o2.ra_Test,o2.decl_Test)<0.02"
     ),
     Antlr4TestQueries(
@@ -2848,7 +2869,7 @@ static const vector<Antlr4TestQueries> ANTLR4_TEST_QUERIES = {
         []() -> shared_ptr<query::SelectStmt> { return SelectStmt(
             SelectList(ValueExpr("", FactorOp(ValueFactor(query::ValueFactor::AGGFUNC, FuncExpr("count", ValueExpr("", FactorOp(ValueFactor(STAR, ""), query::ValueExpr::NONE)))), query::ValueExpr::NONE))),
             FromList(TableRef("", "Object", "")),
-            WhereClause(nullptr, QsRestrictor("qserv_areaspec_box", "359.1", "3.16", "359.2", "3.17")), nullptr, nullptr, nullptr, 0, -1);},
+            WhereClause(nullptr, AreaRestrictorBox("359.1", "3.16", "359.2", "3.17")), nullptr, nullptr, nullptr, 0, -1);},
         "SELECT count(*) FROM Object WHERE qserv_areaspec_box(359.1,3.16,359.2,3.17)"
     ),
     Antlr4TestQueries(
@@ -2856,7 +2877,7 @@ static const vector<Antlr4TestQueries> ANTLR4_TEST_QUERIES = {
         []() -> shared_ptr<query::SelectStmt> { return SelectStmt(
             SelectList(ValueExpr("", FactorOp(ValueFactor(query::ValueFactor::AGGFUNC, FuncExpr("count", ValueExpr("", FactorOp(ValueFactor(STAR, ""), query::ValueExpr::NONE)))), query::ValueExpr::NONE))),
             FromList(TableRef("LSST", "Object", "")),
-            WhereClause(nullptr, QsRestrictor("qserv_areaspec_box", "359.1", "3.16", "359.2", "3.17")), nullptr, nullptr, nullptr, 0, -1);},
+            WhereClause(nullptr, AreaRestrictorBox("359.1", "3.16", "359.2", "3.17")), nullptr, nullptr, nullptr, 0, -1);},
         "SELECT count(*) FROM LSST.Object WHERE qserv_areaspec_box(359.1,3.16,359.2,3.17)"
     ),
     Antlr4TestQueries(
@@ -2875,7 +2896,7 @@ static const vector<Antlr4TestQueries> ANTLR4_TEST_QUERIES = {
         []() -> shared_ptr<query::SelectStmt> { return SelectStmt(
             SelectList(ValueExpr("", FactorOp(ValueFactor(query::ValueFactor::AGGFUNC, FuncExpr("count", ValueExpr("", FactorOp(ValueFactor(STAR, ""), query::ValueExpr::NONE)))), query::ValueExpr::NONE))),
             FromList(TableRef("", "Object", "")),
-            WhereClause(nullptr, QsRestrictor("qserv_areaspec_box", "359.1", "3.16", "359.2", "3.17")), nullptr, nullptr, nullptr, 0, -1);},
+            WhereClause(nullptr, AreaRestrictorBox("359.1", "3.16", "359.2", "3.17")), nullptr, nullptr, nullptr, 0, -1);},
         "SELECT count(*) FROM Object WHERE qserv_areaspec_box(359.1,3.16,359.2,3.17)"
     ),
     Antlr4TestQueries(
@@ -3000,7 +3021,7 @@ static const vector<Antlr4TestQueries> ANTLR4_TEST_QUERIES = {
             SelectList(ValueExpr("", FactorOp(ValueFactor(query::ValueFactor::AGGFUNC, FuncExpr("count", ValueExpr("", FactorOp(ValueFactor(STAR, ""), query::ValueExpr::NONE)))), query::ValueExpr::NONE)),
                 ValueExpr("", FactorOp(ValueFactor(query::ValueFactor::AGGFUNC, FuncExpr("max", ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "", "iFlux_PS")), query::ValueExpr::NONE)))), query::ValueExpr::NONE))),
             FromList(TableRef("LSST", "Object", "")),
-            WhereClause(OrTerm(AndTerm(BoolFactor(IS, CompPredicate(ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "", "iFlux_PS")), query::ValueExpr::NONE)), query::CompPredicate::GREATER_THAN_OP, ValueExpr("", FactorOp(ValueFactor("100"), query::ValueExpr::NONE)))), BoolFactor(IS, CompPredicate(ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "", "col1")), query::ValueExpr::NONE)), query::CompPredicate::EQUALS_OP, ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "", "col2")), query::ValueExpr::NONE)))), BoolFactor(IS, CompPredicate(ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "", "col3")), query::ValueExpr::NONE)), query::CompPredicate::EQUALS_OP, ValueExpr("", FactorOp(ValueFactor("4"), query::ValueExpr::NONE)))))), QsRestrictor("qserv_areaspec_box", "0", "0", "1", "1")), nullptr, nullptr, nullptr, 0, -1);},
+            WhereClause(OrTerm(AndTerm(BoolFactor(IS, CompPredicate(ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "", "iFlux_PS")), query::ValueExpr::NONE)), query::CompPredicate::GREATER_THAN_OP, ValueExpr("", FactorOp(ValueFactor("100"), query::ValueExpr::NONE)))), BoolFactor(IS, CompPredicate(ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "", "col1")), query::ValueExpr::NONE)), query::CompPredicate::EQUALS_OP, ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "", "col2")), query::ValueExpr::NONE)))), BoolFactor(IS, CompPredicate(ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "", "col3")), query::ValueExpr::NONE)), query::CompPredicate::EQUALS_OP, ValueExpr("", FactorOp(ValueFactor("4"), query::ValueExpr::NONE)))))), AreaRestrictorBox("0", "0", "1", "1")), nullptr, nullptr, nullptr, 0, -1);},
         "SELECT count(*),max(iFlux_PS) FROM LSST.Object WHERE qserv_areaspec_box(0,0,1,1) iFlux_PS>100 AND col1=col2 AND col3=4"
     ),
     Antlr4TestQueries(
@@ -3044,7 +3065,7 @@ static const vector<Antlr4TestQueries> ANTLR4_TEST_QUERIES = {
                 ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "", "flux2")), query::ValueExpr::NONE)),
                 ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "Source", "flux3")), query::ValueExpr::NONE))),
             FromList(TableRef("", "Source", "")),
-            WhereClause(OrTerm(AndTerm(BoolFactor(IS, CompPredicate(ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "", "flux4")), query::ValueExpr::NONE)), query::CompPredicate::EQUALS_OP, ValueExpr("", FactorOp(ValueFactor("2"), query::ValueExpr::NONE)))), BoolFactor(IS, CompPredicate(ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "Source", "flux5")), query::ValueExpr::NONE)), query::CompPredicate::EQUALS_OP, ValueExpr("", FactorOp(ValueFactor("3"), query::ValueExpr::NONE)))))), QsRestrictor("qserv_areaspec_box", "0", "0", "1", "1")), nullptr, nullptr, nullptr, 0, -1);},
+            WhereClause(OrTerm(AndTerm(BoolFactor(IS, CompPredicate(ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "", "flux4")), query::ValueExpr::NONE)), query::CompPredicate::EQUALS_OP, ValueExpr("", FactorOp(ValueFactor("2"), query::ValueExpr::NONE)))), BoolFactor(IS, CompPredicate(ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "Source", "flux5")), query::ValueExpr::NONE)), query::CompPredicate::EQUALS_OP, ValueExpr("", FactorOp(ValueFactor("3"), query::ValueExpr::NONE)))))), AreaRestrictorBox("0", "0", "1", "1")), nullptr, nullptr, nullptr, 0, -1);},
         "SELECT count(*),sum(Source.flux),flux2,Source.flux3 FROM Source WHERE qserv_areaspec_box(0,0,1,1) flux4=2 AND Source.flux5=3"
     ),
     Antlr4TestQueries(
@@ -3053,7 +3074,7 @@ static const vector<Antlr4TestQueries> ANTLR4_TEST_QUERIES = {
             SelectList(ValueExpr("", FactorOp(ValueFactor(query::ValueFactor::AGGFUNC, FuncExpr("count", ValueExpr("", FactorOp(ValueFactor(STAR, ""), query::ValueExpr::NONE)))), query::ValueExpr::NONE))),
             FromList(TableRef("", "Object", "")),
             WhereClause(OrTerm(AndTerm(BoolFactor(IS, BetweenPredicate(ValueExpr("", FactorOp(ValueFactor(query::ValueFactor::FUNCTION, FuncExpr("scisql_fluxToAbMag", ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "", "zFlux_PS")), query::ValueExpr::NONE)))), query::ValueExpr::NONE)), BETWEEN, ValueExpr("", FactorOp(ValueFactor("21"), query::ValueExpr::NONE)),
-                ValueExpr("", FactorOp(ValueFactor("21.5"), query::ValueExpr::NONE)))))), QsRestrictor("qserv_areaspec_box", "1", "3", "2", "4")), nullptr, nullptr, nullptr, 0, -1);},
+                ValueExpr("", FactorOp(ValueFactor("21.5"), query::ValueExpr::NONE)))))), AreaRestrictorBox("1", "3", "2", "4")), nullptr, nullptr, nullptr, 0, -1);},
         "SELECT count(*) FROM Object WHERE qserv_areaspec_box(1,3,2,4) scisql_fluxToAbMag(zFlux_PS) BETWEEN 21 AND 21.5"
     ),
     Antlr4TestQueries(
@@ -3061,7 +3082,7 @@ static const vector<Antlr4TestQueries> ANTLR4_TEST_QUERIES = {
         []() -> shared_ptr<query::SelectStmt> { return SelectStmt(
             SelectList(ValueExpr("", FactorOp(ValueFactor(query::ValueFactor::FUNCTION, FuncExpr("f", ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "", "one")), query::ValueExpr::NONE)))), query::ValueExpr::DIVIDE), FactorOp(ValueFactor(query::ValueFactor::FUNCTION, FuncExpr("f2", ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "", "two")), query::ValueExpr::NONE)))), query::ValueExpr::NONE))),
             FromList(TableRef("", "Object", "")),
-            WhereClause(nullptr, QsRestrictor("qserv_areaspec_box", "0", "0", "1", "1")), nullptr, nullptr, nullptr, 0, -1);},
+            WhereClause(nullptr, AreaRestrictorBox("0", "0", "1", "1")), nullptr, nullptr, nullptr, 0, -1);},
         "SELECT (f(one)/f2(two)) FROM Object WHERE qserv_areaspec_box(0,0,1,1)"
     ),
     Antlr4TestQueries(
@@ -3069,7 +3090,7 @@ static const vector<Antlr4TestQueries> ANTLR4_TEST_QUERIES = {
         []() -> shared_ptr<query::SelectStmt> { return SelectStmt(
             SelectList(ValueExpr("", FactorOp(ValueFactor(ValueExpr("", FactorOp(ValueFactor("1"), query::ValueExpr::PLUS), FactorOp(ValueFactor(query::ValueFactor::FUNCTION, FuncExpr("f", ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "", "one")), query::ValueExpr::NONE)))), query::ValueExpr::NONE))), query::ValueExpr::DIVIDE), FactorOp(ValueFactor(query::ValueFactor::FUNCTION, FuncExpr("f2", ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "", "two")), query::ValueExpr::NONE)))), query::ValueExpr::NONE))),
             FromList(TableRef("", "Object", "")),
-            WhereClause(nullptr, QsRestrictor("qserv_areaspec_box", "0", "0", "1", "1")), nullptr, nullptr, nullptr, 0, -1);},
+            WhereClause(nullptr, AreaRestrictorBox("0", "0", "1", "1")), nullptr, nullptr, nullptr, 0, -1);},
         "SELECT ((1+f(one))/f2(two)) FROM Object WHERE qserv_areaspec_box(0,0,1,1)"
     ),
     Antlr4TestQueries(
@@ -3274,7 +3295,7 @@ static const vector<Antlr4TestQueries> ANTLR4_TEST_QUERIES = {
                 ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "", "taiMidPoint")), query::ValueExpr::NONE)),
                 ValueExpr("", FactorOp(ValueFactor(query::ValueFactor::FUNCTION, FuncExpr("scisql_fluxToAbMag", ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "", "psfFlux")), query::ValueExpr::NONE)))), query::ValueExpr::NONE))),
             FromList(TableRef("", "Source", "", JoinRef(TableRef("", "Object", ""), query::JoinRef::DEFAULT, NOT_NATURAL, JoinSpec(ColumnRef("", "", "objectId"), nullptr)), JoinRef(TableRef("", "Filter", ""), query::JoinRef::DEFAULT, NOT_NATURAL, JoinSpec(ColumnRef("", "", "filterId"), nullptr)))),
-            WhereClause(OrTerm(AndTerm(BoolFactor(IS, CompPredicate(ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "", "filterName")), query::ValueExpr::NONE)), query::CompPredicate::EQUALS_OP, ValueExpr("", FactorOp(ValueFactor("'g'"), query::ValueExpr::NONE)))))), QsRestrictor("qserv_areaspec_box", "355", "0", "360", "20")),
+            WhereClause(OrTerm(AndTerm(BoolFactor(IS, CompPredicate(ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "", "filterName")), query::ValueExpr::NONE)), query::CompPredicate::EQUALS_OP, ValueExpr("", FactorOp(ValueFactor("'g'"), query::ValueExpr::NONE)))))), AreaRestrictorBox("355", "0", "360", "20")),
             OrderByClause(OrderByTerm(ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "", "objectId")), query::ValueExpr::NONE)), query::OrderByTerm::DEFAULT, ""), OrderByTerm(ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "", "taiMidPoint")), query::ValueExpr::NONE)), query::OrderByTerm::ASC, "")), nullptr, nullptr, 0, -1);},
         "SELECT objectId,taiMidPoint,scisql_fluxToAbMag(psfFlux) FROM Source JOIN Object USING(objectId) JOIN Filter USING(filterId) WHERE qserv_areaspec_box(355,0,360,20) filterName='g' ORDER BY objectId, taiMidPoint ASC"
     ),

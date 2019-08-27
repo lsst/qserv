@@ -46,10 +46,11 @@
 #include "lsst/log/Log.h"
 
 // Qserv headers
+#include "global/constants.h"
 #include "mysql/MySqlConfig.h"
 #include "parser/SelectParser.h"
-#include "query/QsRestrictor.h"
 #include "query/QueryContext.h"
+#include "query/SecIdxRestrictor.h"
 #include "sql/SqlConfig.h"
 #include "tests/QueryAnaFixture.h"
 
@@ -57,8 +58,8 @@ using lsst::qserv::mysql::MySqlConfig;
 using lsst::qserv::parser::SelectParser;
 using lsst::qserv::qproc::ChunkQuerySpec;
 using lsst::qserv::qproc::QuerySession;
-using lsst::qserv::query::QsRestrictor;
 using lsst::qserv::query::QueryContext;
+using lsst::qserv::query::SecIdxInRestrictor;
 using lsst::qserv::sql::SqlConfig;
 using lsst::qserv::tests::QueryAnaFixture;
 
@@ -67,6 +68,7 @@ using lsst::qserv::tests::QueryAnaFixture;
 ////////////////////////////////////////////////////////////////////////
 BOOST_FIXTURE_TEST_SUITE(OrderBy, QueryAnaFixture)
 
+
 BOOST_AUTO_TEST_CASE(SecondaryIndex) {
     std::string stmt = "select * from Object where objectIdObjTest in (2,3145,9999);";
     qsTest.sqlConfig = SqlConfig(SqlConfig::MockDbTableColumns({{"LSST", {{"Object", {"objectIdObjTest"}}}}}));
@@ -74,15 +76,19 @@ BOOST_AUTO_TEST_CASE(SecondaryIndex) {
     std::shared_ptr<QueryContext> context = qs->dbgGetContext();
     BOOST_CHECK(context);
     BOOST_CHECK_EQUAL(context->dominantDb, std::string("LSST"));
-    BOOST_REQUIRE(context->restrictors);
-    BOOST_CHECK_EQUAL(context->restrictors->size(), 1U);
-    BOOST_REQUIRE(context->restrictors->front());
-    QsRestrictor& r = *context->restrictors->front();
-    BOOST_CHECK_EQUAL(r._name, "sIndex");
-    char const* params[] = {"LSST", "Object", "objectIdObjTest", "2", "3145", "9999"};
-    BOOST_CHECK_EQUAL_COLLECTIONS(r._params.begin(), r._params.end(),
-                                  params, params+6);
+    BOOST_REQUIRE(context->secIdxRestrictors);
+    BOOST_CHECK_EQUAL(context->secIdxRestrictors->size(), 1U);
+    BOOST_REQUIRE(context->secIdxRestrictors->front());
+    auto inRestrictor = std::dynamic_pointer_cast<SecIdxInRestrictor>(context->secIdxRestrictors->front());
+    BOOST_REQUIRE(inRestrictor != nullptr);
+    BOOST_REQUIRE_EQUAL(inRestrictor->getSecIdxLookupQuery(lsst::qserv::SEC_INDEX_DB, "LSST__Object",
+                        lsst::qserv::CHUNK_COLUMN, lsst::qserv::SUB_CHUNK_COLUMN),
+        "SELECT `" + std::string(lsst::qserv::CHUNK_COLUMN) + "`, `" +
+        std::string(lsst::qserv::SUB_CHUNK_COLUMN) +
+        "` FROM `" + std::string(lsst::qserv::SEC_INDEX_DB) +
+        "`.`LSST__Object` WHERE objectIdObjTest IN(2,3145,9999)");
 }
+
 
 BOOST_AUTO_TEST_CASE(CountIn) {
     std::string stmt = "select COUNT(*) AS N FROM Source WHERE objectId IN(386950783579546, 386942193651348);";
@@ -106,6 +112,7 @@ BOOST_AUTO_TEST_CASE(CountIn) {
     BOOST_CHECK(context->hasChunks());
 }
 
+
 BOOST_AUTO_TEST_CASE(RestrictorObjectIdAlias) {
     std::string stmt = "select * from Object as o1 where objectIdObjTest IN (2,3145,9999);";
     qsTest.sqlConfig = SqlConfig(SqlConfig::MockDbTableColumns({{"LSST", {{"Object", {"objectIdObjTest"}}}}}));
@@ -113,14 +120,17 @@ BOOST_AUTO_TEST_CASE(RestrictorObjectIdAlias) {
     std::shared_ptr<QueryContext> context = qs->dbgGetContext();
     BOOST_CHECK(context);
     BOOST_CHECK_EQUAL(context->dominantDb, std::string("LSST"));
-    BOOST_REQUIRE(context->restrictors);
-    BOOST_CHECK_EQUAL(context->restrictors->size(), 1U);
-    BOOST_REQUIRE(context->restrictors->front());
-    QsRestrictor& r = *context->restrictors->front();
-    BOOST_CHECK_EQUAL(r._name, "sIndex");
-    char const* params[] = {"LSST","Object", "objectIdObjTest", "2","3145","9999"};
-    BOOST_CHECK_EQUAL_COLLECTIONS(r._params.begin(), r._params.end(),
-                                  params, params+6);
+    BOOST_REQUIRE(context->secIdxRestrictors);
+    BOOST_CHECK_EQUAL(context->secIdxRestrictors->size(), 1U);
+    BOOST_REQUIRE(context->secIdxRestrictors->front());
+    auto inRestrictor = std::dynamic_pointer_cast<SecIdxInRestrictor>(context->secIdxRestrictors->front());
+    BOOST_REQUIRE(inRestrictor != nullptr);
+    BOOST_REQUIRE_EQUAL(inRestrictor->getSecIdxLookupQuery(lsst::qserv::SEC_INDEX_DB, "LSST__Object",
+                        lsst::qserv::CHUNK_COLUMN, lsst::qserv::SUB_CHUNK_COLUMN),
+        "SELECT `" + std::string(lsst::qserv::CHUNK_COLUMN) + "`, `" +
+        std::string(lsst::qserv::SUB_CHUNK_COLUMN) +
+        "` FROM `" + std::string(lsst::qserv::SEC_INDEX_DB) +
+        "`.`LSST__Object` WHERE objectIdObjTest IN(2,3145,9999)");
 }
 
 BOOST_AUTO_TEST_SUITE_END()

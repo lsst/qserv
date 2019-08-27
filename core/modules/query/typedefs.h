@@ -53,6 +53,13 @@ class SelectStmt;
 typedef std::shared_ptr<SelectStmt> SelectStmtPtr;
 typedef std::vector<std::shared_ptr<SelectStmt> > SelectStmtPtrVector;
 
+class AreaRestrictor;
+typedef std::vector<std::shared_ptr<AreaRestrictor>> AreaRestrictorVec;
+typedef std::shared_ptr<AreaRestrictorVec> AreaRestrictorVecPtr;
+
+class SecIdxRestrictor;
+typedef std::vector<std::shared_ptr<SecIdxRestrictor>> SecIdxRestrictorVec;
+typedef std::shared_ptr<SecIdxRestrictorVec> SecIdxRestrictorVecPtr;
 
 }}} // namespace lsst::qserv::query
 

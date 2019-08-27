@@ -49,89 +49,22 @@
 // Qserv headers
 #include "global/Bug.h"
 #include "global/intTypes.h"
-#include "global/stringTypes.h"
-#include "qproc/geomAdapter.h"
 #include "qproc/QueryProcessingError.h"
 #include "qproc/SecondaryIndex.h"
-#include "query/Constraint.h"
+#include "query/AreaRestrictor.h"
+#include "query/SecIdxRestrictor.h"
 #include "util/IterableFormatter.h"
 
-using lsst::qserv::StringVector;
+
 using lsst::sphgeom::Region;
-using lsst::sphgeom::Box;
-using lsst::sphgeom::Circle;
-using lsst::sphgeom::Ellipse;
-using lsst::sphgeom::ConvexPolygon;
 using lsst::sphgeom::SubChunks;
+
+
+namespace {
 
 typedef std::vector<SubChunks> SubChunksVector;
 
-namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.qproc.IndexMap");
-}
-
-namespace { // File-scope helpers
-template <typename T>
-std::vector<T> convertVec(StringVector const& v) {
-    std::vector<T> out;
-    out.reserve(v.size());
-    std::transform(v.begin(), v.end(), std::back_inserter(out),
-                   boost::lexical_cast<T, std::string>);
-    return out;
-}
-template <typename T>
-std::shared_ptr<Region> make(StringVector const& v) {
-    return std::shared_ptr<Region>(new T(convertVec<double>(v)));
-}
-template <>
-std::shared_ptr<Region> make<Box>(StringVector const& v) {
-    return lsst::qserv::qproc::getBoxFromParams(convertVec<double>(v));
-}
-template <>
-std::shared_ptr<Region> make<Circle>(StringVector const& v) {
-    return lsst::qserv::qproc::getCircleFromParams(convertVec<double>(v));
-}
-template <>
-std::shared_ptr<Region> make<Ellipse>(StringVector const& v) {
-    return lsst::qserv::qproc::getEllipseFromParams(convertVec<double>(v));
-}
-template <>
-std::shared_ptr<Region> make<ConvexPolygon>(StringVector const& v) {
-    return lsst::qserv::qproc::getConvexPolyFromParams(convertVec<double>(v));
-}
-
-typedef std::shared_ptr<Region>(*MakeFunc)(StringVector const& v);
-
-struct FuncMap {
-    FuncMap() {
-        fMap["box"] = make<Box>;
-        fMap["circle"] = make<Circle>;
-        fMap["ellipse"] = make<Ellipse>;
-        fMap["poly"] = make<ConvexPolygon>;
-        fMap["qserv_areaspec_box"] = make<Box>;
-        fMap["qserv_areaspec_circle"] = make<Circle>;
-        fMap["qserv_areaspec_ellipse"] = make<Ellipse>;
-        fMap["qserv_areaspec_poly"] = make<ConvexPolygon>;
-    }
-    typedef std::map<std::string, MakeFunc> Map;
-    Map fMap;
-};
-static FuncMap funcMap;
-
-/*  Computes region covered by a given spherical geometry UDF call
- *
- *  @param c:   Constraint containing name and parameter of UDF call
- *  @return:    Pointer to Region covered by c, or nullptr if empty
- */
-std::shared_ptr<Region> getRegion(lsst::qserv::query::Constraint const& c) {
-    std::shared_ptr<Region> covered_region = nullptr;
-    FuncMap::Map::const_iterator i = funcMap.fMap.find(c.name);
-    if (i != funcMap.fMap.end()) {
-        LOGS(_log, LOG_LVL_TRACE, "Region for " << c << ": " << i->first);
-        covered_region = i->second(c.params);
-    }
-    return covered_region;
-}
 
 lsst::qserv::qproc::ChunkSpec convertSgSubChunks(SubChunks const& sc) {
     lsst::qserv::qproc::ChunkSpec cs;
@@ -144,9 +77,12 @@ lsst::qserv::qproc::ChunkSpec convertSgSubChunks(SubChunks const& sc) {
 
 } // anonymous namespace
 
+
 namespace lsst {
 namespace qserv {
 namespace qproc {
+
+
 typedef std::vector<std::shared_ptr<Region> > RegionPtrVector;
 
 ////////////////////////////////////////////////////////////////////////
@@ -162,7 +98,6 @@ public:
     explicit PartitioningMap(css::StripingParams const& sp) {
         _chunker = std::make_shared<lsst::sphgeom::Chunker>(sp.stripes,
                                                             sp.subStripes);
-
     }
     /// @return un-canonicalized vector<SubChunks> of concatenated region
     /// results. Regions are assumed to be joined by implicit "OR" and not "AND"
@@ -219,8 +154,9 @@ ChunkSpecVector IndexMap::getAllChunks() {
     return _pm->getAllChunks();
 }
 
-//  Compute chunks coverage of spatial and secondary index constraints
-ChunkSpecVector IndexMap::getChunks(query::ConstraintVector const& cv) {
+//  Compute chunks coverage of spatial and secondary index restrictors
+ChunkSpecVector IndexMap::getChunks(query::AreaRestrictorVecPtr const& areaRestrictors,
+                                    query::SecIdxRestrictorVecPtr const& secIdxRestrictors) {
 
     // Secondary Index lookups
     if (!_si) {
@@ -229,17 +165,20 @@ ChunkSpecVector IndexMap::getChunks(query::ConstraintVector const& cv) {
     ChunkSpecVector indexSpecs;
     bool hasIndex = true;
     bool hasRegion = true;
-    try {
-        indexSpecs = _si->lookup(cv);
+    if (secIdxRestrictors != nullptr) {
+        indexSpecs = _si->lookup(*secIdxRestrictors);
         LOGS(_log, LOG_LVL_TRACE, "Index specs: " << util::printable(indexSpecs));
-    } catch(SecondaryIndex::NoIndexConstraint& e) {
-        LOGS(_log, LOG_LVL_DEBUG, "No secondary index constraint");
-        hasIndex = false; // Ok if no index constraints
+    } else {
+        hasIndex = false;
     }
 
     // Spatial area lookups
     RegionPtrVector rv;
-    std::transform(cv.begin(), cv.end(), std::back_inserter(rv), getRegion);
+    if (areaRestrictors != nullptr) {
+        for (auto const& areaRestrictor : *areaRestrictors) {
+            rv.push_back(areaRestrictor->getRegion());
+        }
+    }
     SubChunksVector scv;
     try {
         scv = _pm->getIntersect(rv);

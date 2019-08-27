@@ -46,7 +46,6 @@
 #include "qana/QueryPlugin.h"
 #include "qproc/ChunkQuerySpec.h"
 #include "qproc/ChunkSpec.h"
-#include "query/Constraint.h"
 #include "query/QueryTemplate.h"
 #include "query/typedefs.h"
 #include "sql/SqlConfig.h"
@@ -100,7 +99,16 @@ public:
     bool needsMerge() const;
     bool hasChunks() const;
 
-    std::shared_ptr<query::ConstraintVector> getConstraints() const;
+    /**
+     * @brief Get the Area Restrictors
+     */
+    query::AreaRestrictorVecPtr getAreaRestrictors() const;
+
+    /**
+     * @brief Get the Secondary Index Restrictors
+     */
+    query::SecIdxRestrictorVecPtr getSecIdxRestrictors() const;
+
     void addChunk(ChunkSpec const& cs);
     void setDummy();
 

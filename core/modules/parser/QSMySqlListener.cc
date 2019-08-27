@@ -49,7 +49,7 @@
 #include "query/OrderByClause.h"
 #include "query/OrTerm.h"
 #include "query/PassTerm.h"
-#include "query/QsRestrictor.h"
+#include "query/AreaRestrictor.h"
 #include "query/SelectList.h"
 #include "query/SelectStmt.h"
 #include "query/TableRef.h"
@@ -1029,23 +1029,37 @@ private:
         // This is a side effect of the current IR, where in most cases a constant string is represented as
         // a column name. But in a QservRestrictor (aka QservFunction) each par is simply represented by a
         // string.
-        auto restrictor = std::make_shared<query::QsRestrictor>();
+        std::vector<std::string> strParameters;
         for (auto const& valueFactor : parameters) {
             if (query::ValueFactor::CONST != valueFactor->getType()) {
                 throw std::logic_error("QServFunctionSpec args are (currently) expected as constVal.");
             }
-            restrictor->_params.push_back(valueFactor->getConstVal());
+            strParameters.push_back(valueFactor->getConstVal());
         }
 
         // Add case insensitive behavior in order to mimic MySQL functions/procedures
         std::string insensitiveFunction(function);
-        if (insensitiveFunction != "sIndex") {
-            std::transform(insensitiveFunction.begin(), insensitiveFunction.end(),
-                           insensitiveFunction.begin(), ::tolower);
-            LOGS(_log, LOG_LVL_DEBUG, "Qserv restrictor changed to lower-case: " << insensitiveFunction);
+        std::transform(insensitiveFunction.begin(), insensitiveFunction.end(),
+                        insensitiveFunction.begin(), ::tolower);
+        LOGS(_log, LOG_LVL_DEBUG, "Qserv restrictor changed to lower-case: " << insensitiveFunction);
+
+        std::shared_ptr<query::AreaRestrictor> restrictor;
+        try {
+            if (insensitiveFunction == "qserv_areaspec_box") {
+                restrictor = make_shared<query::AreaRestrictorBox>(strParameters);
+            } else if (insensitiveFunction == "qserv_areaspec_circle") {
+                restrictor = make_shared<query::AreaRestrictorCircle>(strParameters);
+            } else if (insensitiveFunction == "qserv_areaspec_ellipse") {
+                restrictor = make_shared<query::AreaRestrictorEllipse>(strParameters);
+            } else if (insensitiveFunction == "qserv_areaspec_poly") {
+                restrictor = make_shared<query::AreaRestrictorPoly>(strParameters);
+            } else {
+                throw adapter_execution_error("Unhandled restrictor function: " + function);
+            }
+        } catch (std::logic_error err) {
+            throw adapter_execution_error(err.what());
         }
-        restrictor->_name = insensitiveFunction;
-        _getWhereClause()->addQsRestrictor(restrictor);
+        _getWhereClause()->addAreaRestrictor(restrictor);
     }
 
 

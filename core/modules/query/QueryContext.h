@@ -39,21 +39,23 @@
 
 // Local headers
 #include "css/CssAccess.h"
+#include "global/stringTypes.h"
 #include "proto/ScanTableInfo.h"
 #include "qana/QueryMapping.h"
 #include "query/FromList.h"
+#include "query/typedefs.h"
 #include "query/ValueExpr.h"
 #include "sql/SqlConfig.h"
 #include "util/CIUtils.h"
-#include "global/stringTypes.h"
 
 
 // Forward declarations
 namespace lsst {
 namespace qserv {
 namespace query {
+    class AreaRestrictor;
     class ColumnRef;
-    class QsRestrictor;
+    class SecIdxRestrictor;
     class TableRef;
 }}} // End of forward declarations
 
@@ -78,7 +80,6 @@ public:
     QueryContext(std::string const& defDb, std::shared_ptr<css::CssAccess> const& cssPtr,
                  sql::SqlConfig const& sqlCfg)
         : css(cssPtr), defaultDb(defDb), sqlConfig(sqlCfg) {}
-    typedef std::vector<std::shared_ptr<QsRestrictor> > RestrList;
 
     std::shared_ptr<css::CssAccess> css;  ///< interface to CSS
     std::string defaultDb; ///< User session db context
@@ -157,9 +158,11 @@ public:
      *
      * @param newRestrictors The restrictors to add.
      */
-    void addRestrictors(RestrList const& newRestrictors);
+    void addAreaRestrictors(AreaRestrictorVec const& newRestrictors);
+    void addSecIdxRestrictors(SecIdxRestrictorVec const& newRestrictors);
 
-    std::shared_ptr<RestrList> restrictors;
+    AreaRestrictorVecPtr areaRestrictors;
+    SecIdxRestrictorVecPtr secIdxRestrictors;
 
     /**
      * @brief Get and cache database schema information for all the tables in the passed-in FROM list.

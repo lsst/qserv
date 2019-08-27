@@ -22,8 +22,12 @@
  */
 
 
+
 // Class header
 #include "query/CompPredicate.h"
+
+// Third-party headers
+#include "boost/lexical_cast.hpp"
 
 // Qserv headers
 #include "ccontrol/UserQueryError.h"
@@ -88,6 +92,13 @@ void CompPredicate::renderTo(QueryTemplate& qt) const {
     r.applyToQT(left);
     qt.append(opTypeToStr(op));
     r.applyToQT(right);
+}
+
+
+std::string CompPredicate::sqlFragment() const {
+    QueryTemplate qt;
+    renderTo(qt);
+    return boost::lexical_cast<std::string>(qt);
 }
 
 

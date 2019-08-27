@@ -41,14 +41,15 @@
 // Qserv headers
 #include "global/Bug.h"
 #include "query/AndTerm.h"
+#include "query/AreaRestrictor.h"
 #include "query/BoolTerm.h"
 #include "query/BoolFactor.h"
 #include "query/ColumnRef.h"
 #include "query/LogicalTerm.h"
 #include "query/OrTerm.h"
 #include "query/Predicate.h"
-#include "query/QsRestrictor.h"
 #include "query/QueryTemplate.h"
+#include "query/typedefs.h"
 #include "util/PointerCompare.h"
 #include "util/IterableFormatter.h"
 
@@ -116,8 +117,8 @@ void WhereClause::setRootTerm(std::shared_ptr<LogicalTerm> const& term) {
 }
 
 
-void WhereClause::addQsRestrictor(std::shared_ptr<QsRestrictor> const& qsRestrictor) {
-    _restrs->push_back(qsRestrictor);
+void WhereClause::addAreaRestrictor(std::shared_ptr<AreaRestrictor> const& areaRestrictor) {
+    _restrs->push_back(areaRestrictor);
 }
 
 
@@ -198,9 +199,8 @@ WhereClause::getGenerated() const {
 
 void WhereClause::renderTo(QueryTemplate& qt) const {
     if (_restrs != nullptr) {
-        QsRestrictor::render rend(qt);
-        for (auto& res : *_restrs) {
-            rend.applyToQT(res);
+        for (auto& restrictor : *_restrs) {
+            restrictor->renderTo(qt);
         }
     }
     if (nullptr != _rootOrTerm) {
@@ -217,7 +217,7 @@ std::shared_ptr<WhereClause> WhereClause::clone() const {
         newC->_rootOrTerm = _rootOrTerm->copy();
     }
     if (nullptr != _restrs) {
-        newC->_restrs = std::make_shared<QsRestrictor::PtrVector>(*_restrs);
+        newC->_restrs = std::make_shared<AreaRestrictorVec>(*_restrs);
     }
     // For the other fields, default-copied versions are okay.
     return newC;
@@ -250,13 +250,12 @@ std::shared_ptr<AndTerm> WhereClause::_addRootAndTerm() {
 
 bool WhereClause::operator==(WhereClause const& rhs) const {
     return (util::ptrCompare<BoolTerm>(_rootOrTerm, rhs._rootOrTerm) &&
-            util::ptrVectorPtrCompare<QsRestrictor>(_restrs, rhs._restrs));
+            util::ptrVectorPtrCompare<AreaRestrictor>(_restrs, rhs._restrs));
 }
 
 
-void
-WhereClause::resetRestrs() {
-    _restrs = std::make_shared<QsRestrictor::PtrVector>();
+void WhereClause::resetRestrs() {
+    _restrs = std::make_shared<AreaRestrictorVec>();
 }
 
 
