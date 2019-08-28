@@ -34,6 +34,9 @@ check_writable ${NAME} "QSERV_PID_DIR"
 check_writable ${NAME} "QSERV_LOG_DIR"
 check_readable ${NAME} "XROOTD_DIR"
 
+XRLOG=/tmp/xrootd.init.log
+touch $XRLOG
+
 err_msg="Failure while starting ${NAME}:"
 if [ -z "${NODE_TYPE}" ]
 then
@@ -65,11 +68,10 @@ export LSST_LOG_CONFIG="${QSERV_RUN_DIR}/etc/log4cxx.worker.properties"
 # takes single argument - program name
 pid_file_name() {
     local pidfile=${PID_DIR}/$1.pid
-#    test "${1}${NODE_TYPE}" = "cmsdmaster" && pidfile=${PID_DIR}/$1.mangr.pid
+    test "${1}${NODE_TYPE}" = "cmsdmaster" && pidfile=${PID_DIR}/$1.mangr.pid
+    test "${1}${NODE_TYPE}" = "cmsdmaster-shared" && pidfile=${PID_DIR}/$1.mangr.pid
     echo $pidfile
 }
-
-
 
 
 # Environment variables can vary from on container session to another and making them 
@@ -83,13 +85,19 @@ pid_file_name_check() {
     echo $pf
 }
 
+echo "node_type=$NODE_TYPE" >> $XRLOG
+echo "instance=$XROOTD_INSTANCE_NAME" >> $XRLOG
+echo "services=$XRD_SERVICES" >> $XRLOG
+echo "pid_dir=$PID_DIR" >> $XRLOG
+echo "log_dir=$LOG_DIR" >> $XRLOG
+
 start_service() {
 
     local prog
 
     prog=${1##*/}
 
-    pidfile=$(pid_file_name_check $prog)
+    pidfile=$(pid_file_name $prog)
     lockfile=${QSERV_RUN_DIR}/var/lock/subsys/${prog}
     BINARY=${XROOTD_DIR}/bin/${prog}
     logfile=@libXrdSsiLog.so
@@ -98,6 +106,9 @@ start_service() {
 
     console_logfile="${LOG_DIR}/xrootd.log"
     cmd="${BINARY} -c ${XROOTD_CONFIG} -l ${logfile} -n ${XROOTD_INSTANCE_NAME} -I v4  -+xrdssi ${XRDSSI_CONFIG} >>${console_logfile} 2>&1 &"
+    echo "pidfile=$pidfile"  >> $XRLOG
+    echo "lockfile=$lockfile"  >> $XRLOG
+    echo "cmd=$cmd" >> $XRLOG
     start -p ${pidfile} -l ${lockfile} ${prog} "${cmd}"
     ret=$?
     # xrootd modifies log file path, try to guess it here too for logging

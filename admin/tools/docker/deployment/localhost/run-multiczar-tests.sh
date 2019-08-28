@@ -43,6 +43,7 @@ docker run --detach=true \
     --cap-add sys_admin \
     --cap-add sys_ptrace \
     -v /home/jgates/qserv/data-qserv:/qserv/data/qserv \
+    -v /home/jgates/work/qserv_testdata:/qserv/qserv_testdata \
     -e "QSERV_MASTER=$MASTER" --name "$MASTER" -h "${MASTER}" "$MASTER_SHARED_IMAGE"
 MASTER_IP=$(docker inspect -f '{{ .NetworkSettings.IPAddress }}' $MASTER)
 HOSTFILE="${HOSTFILE}$MASTER_IP  master.localdomain
@@ -56,6 +57,9 @@ docker run --detach=true \
     --cap-add sys_ptrace \
     -v /home/jgates/qserv/data-qserv:/qserv/data/qserv \
     -e "QSERV_MASTER=${i}" --name "$i" -h "${i}" "$MASTER_MULTI_IMAGE"
+    CZAR_IP=$(docker inspect -f '{{ .NetworkSettings.IPAddress }}' $i)
+    HOSTFILE="${HOSTFILE}$CZAR_IP  $i
+"
 done
 
 for i in $WORKERS;
@@ -93,12 +97,15 @@ done
 #docker exec "$MASTER" bash -c ". /qserv/stack/loadLSST.bash && \
 #    setup qserv_distrib -t qserv-dev && \
 #    echo \"$CSS_INFO\" | qserv-admin.py && \
+#    setup -k -r /qserv/qserv_testdata -t qserv-dev && \
 #    qserv-test-integration.py"
 
 for i in $CZARS;
 do
-docker exec "$i" bash -c ". /qserv/stack/loadLSST.bash && \
+docker exec "$MASTER" bash -c ". /qserv/stack/loadLSST.bash && \
     setup qserv_distrib -t qserv-dev && \
     echo \"$CSS_INFO\" | qserv-admin.py && \
-    qserv-test-integration.py"
+    setup -k -r /qserv/qserv_testdata -t qserv-dev && \
+    qserv-test-integration.py -q $i"
 done
+
