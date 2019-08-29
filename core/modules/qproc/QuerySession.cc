@@ -354,7 +354,9 @@ void QuerySession::_generateConcrete() {
     // Needs to copy SelectList, since the parallel statement's
     // version will get updated by plugins. Plugins probably need
     // access to the original as a reference.
-    _stmtParallel.push_back(_stmt->clone());
+    auto parallelStmt = _stmt->clone();
+    parallelStmt->setHaving(nullptr);
+    _stmtParallel.push_back(parallelStmt);
     LOGS(_log, LOG_LVL_TRACE, "Paralell statement initialized with: \""
         << _stmtParallel[0]->getQueryTemplate() << "\"");
 
