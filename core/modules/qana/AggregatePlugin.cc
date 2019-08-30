@@ -175,14 +175,14 @@ AggregatePlugin::applyPhysical(QueryPlugin::Plan& plan,
     // Clear out select lists, since we are rewriting them.
     parallelList.getValueExprList()->clear();
     mergeList.getValueExprList()->clear();
-    query::AggOp::Mgr m; // Eventually, this can be shared?
+    query::AggOp::Mgr aggOpManager; // Eventually, this can be shared?
     convertAgg<query::ValueExprPtrVector> ca(*parallelList.getValueExprList(),
                                              *mergeList.getValueExprList(),
-                                             m);
+                                             aggOpManager);
     std::for_each(vlist->begin(), vlist->end(), ca);
     // Also need to operate on GROUP BY.
     // update context.
-    if (plan.stmtOriginal.getDistinct() || m.hasAggregate()) {
+    if (plan.stmtOriginal.getDistinct() || aggOpManager.hasAggregate()) {
         context.needsMerge = true;
     }
 
