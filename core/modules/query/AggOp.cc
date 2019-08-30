@@ -128,7 +128,6 @@ public:
     std::string accName;
 };
 
-
 /// AvgAggOp implements AVG (SUM-COUNT followed by SUM/SUM)
 class AvgAggOp : public AggOp {
 public:

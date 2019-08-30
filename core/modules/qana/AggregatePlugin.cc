@@ -71,8 +71,8 @@ template <class C>
 class convertAgg {
 public:
     typedef typename C::value_type T;
-    convertAgg(C& pList_, C& mList_, query::AggOp::Mgr& aMgr_)
-        : pList(pList_), mList(mList_), aMgr(aMgr_) {}
+    convertAgg(C& parallelList_, C& mergeList_, query::AggOp::Mgr& aMgr_)
+        : parallelList(parallelList_), mergeList(mergeList_), aMgr(aMgr_) {}
     void operator()(T const& e) {
         _makeRecord(*e);
     }
@@ -95,15 +95,15 @@ private:
             }
             query::ValueExprPtr par(e.clone());
             par->setAlias(interName);
-            pList.push_back(par);
+            parallelList.push_back(par);
 
             if (!interName.empty()) {
                 query::ValueExprPtr mer = newExprFromAlias(interName);
-                mList.push_back(mer);
+                mergeList.push_back(mer);
                 mer->setAlias(origAlias);
             } else {
                 // No intermediate name (e.g., *) --> passthrough
-                mList.push_back(e.clone());
+                mergeList.push_back(e.clone());
             }
             return;
         }
@@ -120,7 +120,7 @@ private:
             i != factorOps.end(); ++i) {
             query::ValueFactorPtr newFactor = i->factor->clone();
             if (newFactor->getType() != query::ValueFactor::AGGFUNC) {
-                pList.push_back(query::ValueExpr::newSimple(newFactor));
+                parallelList.push_back(query::ValueExpr::newSimple(newFactor));
             } else {
                 query::AggRecord r;
                 r.orig = newFactor;
@@ -132,7 +132,7 @@ private:
                 if (!p) {
                     throw std::logic_error("Couldn't process AggRecord");
                 }
-                pList.insert(pList.end(), p->parallel.begin(), p->parallel.end());
+                parallelList.insert(parallelList.end(), p->parallel.begin(), p->parallel.end());
                 query::ValueExpr::FactorOp m;
                 m.factor = p->merge;
                 m.op = i->op;
@@ -140,11 +140,11 @@ private:
             }
         }
         mergeExpr->setAlias(origAlias);
-        mList.push_back(mergeExpr);
+        mergeList.push_back(mergeExpr);
     }
 
-    C& pList;
-    C& mList;
+    C& parallelList;
+    C& mergeList;
     query::AggOp::Mgr& aMgr;
 };
 
@@ -164,8 +164,8 @@ AggregatePlugin::applyPhysical(QueryPlugin::Plan& plan,
     // that the select lists are the same for all statements. This is
     // not necessarily true, unless the plugin is placed early enough
     // to ensure that other fragmenting activity has not taken place yet.
-    query::SelectList& pList = plan.stmtParallel.front()->getSelectList();
-    query::SelectList& mList = plan.stmtMerge.getSelectList();
+    query::SelectList& parallelList = plan.stmtParallel.front()->getSelectList();
+    query::SelectList& mergeList = plan.stmtMerge.getSelectList();
     std::shared_ptr<query::ValueExprPtrVector> vlist;
     vlist = oList.getValueExprList();
     if (!vlist) {
@@ -173,11 +173,11 @@ AggregatePlugin::applyPhysical(QueryPlugin::Plan& plan,
     }
 
     // Clear out select lists, since we are rewriting them.
-    pList.getValueExprList()->clear();
-    mList.getValueExprList()->clear();
+    parallelList.getValueExprList()->clear();
+    mergeList.getValueExprList()->clear();
     query::AggOp::Mgr m; // Eventually, this can be shared?
-    convertAgg<query::ValueExprPtrVector> ca(*pList.getValueExprList(),
-                                             *mList.getValueExprList(),
+    convertAgg<query::ValueExprPtrVector> ca(*parallelList.getValueExprList(),
+                                             *mergeList.getValueExprList(),
                                              m);
     std::for_each(vlist->begin(), vlist->end(), ca);
     // Also need to operate on GROUP BY.
@@ -200,7 +200,7 @@ AggregatePlugin::applyPhysical(QueryPlugin::Plan& plan,
         // i.e. make the select lists of other statements in the parallel
         // portion the same.
         if (parallel_query != first) {
-            (*parallel_query)->setSelectList(pList.clone());
+            (*parallel_query)->setSelectList(parallelList.clone());
         }
     }
 }
