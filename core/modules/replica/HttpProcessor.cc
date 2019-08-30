@@ -2506,9 +2506,10 @@ void HttpProcessor::_addTable(qhttp::Request::Ptr const& req,
             latitudeColName, longitudeColName
         ).toJson();
 
-        // Create the secondary index table
+        // Create the secondary index table using an updated version of
+        // the database descriptor.
 
-        if (isPartitioned and isDirector) _createSecondaryIndex(databaseInfo);
+        if (isPartitioned and isDirector) _createSecondaryIndex(config->databaseInfo(database));
 
         // Ask all workers to reload their configurations
 
