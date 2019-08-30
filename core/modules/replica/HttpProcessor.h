@@ -319,6 +319,14 @@ private:
                           qhttp::Response::Ptr const& resp);
 
     /**
+     * Delete a database which is not yet published. All relevant data,
+     * including databases and tables at workers, the secondary index (if any)
+     * and Replication System's Configuration will be deleted s well.
+     */
+    void _deleteDatabase(qhttp::Request::Ptr const& req,
+                         qhttp::Response::Ptr const& resp);
+
+    /**
      * Register a database table for an ingest
      */
     void _addTable(qhttp::Request::Ptr const& req,
@@ -471,6 +479,13 @@ private:
      * @param databaseInfo   defines a scope of the operation
      */
     void _consolidateSecondaryIndex(DatabaseInfo const& databaseInfo) const;
+
+    /**
+     * Delete the "secondary index" table.
+     * 
+     * @param databaseInfo   defines a scope of the operation
+     */
+    void _deleteSecondaryIndex(DatabaseInfo const& databaseInfo) const;
 
     /**
      * Report a error condition and send a error message back to a requester

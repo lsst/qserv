@@ -555,6 +555,7 @@ void HttpProcessor::_initialize() {
         {"PUT",    "/ingest/v1/trans/:id", bind(&HttpProcessor::_endTransaction, self, _1, _2)},
         {"POST",   "/ingest/v1/database", bind(&HttpProcessor::_addDatabase, self, _1, _2)},
         {"PUT",    "/ingest/v1/database/:name", bind(&HttpProcessor::_publishDatabase, self, _1, _2)},
+        {"DELETE", "/ingest/v1/database/:name", bind(&HttpProcessor::_deleteDatabase, self, _1, _2)},
         {"POST",   "/ingest/v1/table", bind(&HttpProcessor::_addTable, self, _1, _2)},
         {"POST",   "/ingest/v1/chunk", bind(&HttpProcessor::_addChunk, self, _1, _2)},
         {"POST",   "/ingest/v1/chunk/empty", bind(&HttpProcessor::_buildEmptyChunksList, self, _1, _2)}
@@ -2291,10 +2292,10 @@ void HttpProcessor::_publishDatabase(qhttp::Request::Ptr const& req,
         auto const config = controller()->serviceProvider()->config();
 
         auto const database = req->params.at("name");
-        bool const consolidate = ::getQueryParamBool(req->query, "consolidate_secondary_index", false);
+        bool const consolidateSecondayIndex = ::getQueryParamBool(req->query, "consolidate_secondary_index", false);
 
         _debug(__func__, "database=" + database);
-        _debug(__func__, "consolidate_secondary_index=" + to_string(consolidate ? 1 : 0));
+        _debug(__func__, "consolidate_secondary_index=" + to_string(consolidateSecondayIndex ? 1 : 0));
 
         auto const databaseInfo = config->databaseInfo(database);
         if (databaseInfo.isPublished) {
@@ -2312,7 +2313,7 @@ void HttpProcessor::_publishDatabase(qhttp::Request::Ptr const& req,
         
         // ATTENTION: this operation may take a while if the table has
         // a large number of entries
-        if (consolidate) _consolidateSecondaryIndex(databaseInfo);
+        if (consolidateSecondayIndex) _consolidateSecondaryIndex(databaseInfo);
 
         // Grant SELECT authorizations for the new database to Qserv
         // MySQL account(s) at all workers and the master(s)
@@ -2351,6 +2352,75 @@ void HttpProcessor::_publishDatabase(qhttp::Request::Ptr const& req,
         json result;
         result["database"] = config->publishDatabase(database).toJson();
     
+        _sendData(resp, result);
+
+    } catch (invalid_argument const& ex) {
+        _sendError(resp, __func__, "invalid parameters of the request, ex: " + string(ex.what()));
+    } catch (exception const& ex) {
+        _sendError(resp, __func__, "operation failed due to: " + string(ex.what()));
+    }
+}
+
+
+void HttpProcessor::_deleteDatabase(qhttp::Request::Ptr const& req,
+                                    qhttp::Response::Ptr const& resp) {
+    _debug(__func__);
+
+    try {
+        auto const config = controller()->serviceProvider()->config();
+        bool const allWorkers = true;
+        auto const database = req->params.at("name");
+        bool const deleteSecondaryIndex = ::getQueryParamBool(req->query, "delete_secondary_index", false);
+
+        _debug(__func__, "database=" + database);
+        _debug(__func__, "delete_secondary_index=" + to_string(deleteSecondaryIndex ? 1 : 0));
+
+        auto const databaseInfo = config->databaseInfo(database);
+        if (databaseInfo.isPublished) {
+            _sendError(resp, __func__, "unable to delete the database which is already published");
+            return;
+        }
+
+        // Eliminate the secondary index
+        if (deleteSecondaryIndex) _deleteSecondaryIndex(databaseInfo);
+
+        // Delete database entries at workers
+        auto const job = SqlDeleteDbJob::create(databaseInfo.name, allWorkers, controller());
+        job->start();
+        logJobStartedEvent(SqlDeleteDbJob::typeName(), job, databaseInfo.family);
+        job->wait();
+        logJobFinishedEvent(SqlDeleteDbJob::typeName(), job, databaseInfo.family);
+
+        string error;
+        auto const& resultData = job->getResultData();
+        for (auto&& itr: resultData.resultSets) {
+            auto&& worker = itr.first;
+            auto&& workerResultSet = itr.second;
+            for (auto&& resultSet: workerResultSet) {
+                if (not resultSet.error.empty()) {
+                    error += "table creation failed on worker: " + worker + ",  error: " +
+                             resultSet.error + " ";
+                }
+            }
+        }
+        if (not error.empty()) {
+            _sendError(resp, __func__, error);
+            return;
+        }
+
+        // Remove database entry from the Configuration. This will also eliminate all
+        // dependent metadata, such as replicas info
+        config->deleteDatabase(databaseInfo.name);
+
+        // Ask all workers to reload their configurations
+        unsigned int const workerResponseTimeoutSec = 60;
+        error = _reconfigureWorkers(databaseInfo, allWorkers, workerResponseTimeoutSec);
+        if (not error.empty()) {
+            _sendError(resp, __func__, error);
+            return;
+        }
+
+        json result;
         _sendData(resp, result);
 
     } catch (invalid_argument const& ex) {
@@ -3149,8 +3219,14 @@ void HttpProcessor::_createSecondaryIndex(DatabaseInfo const& databaseInfo) cons
             )
         )
     );
-    string const query =
-        "CREATE TABLE IF NOT EXISTS " + h.conn->sqlId(databaseInfo.name + "__" + databaseInfo.directorTable) +
+    auto const escapedTableName = h.conn->sqlId(databaseInfo.name + "__" + databaseInfo.directorTable);
+
+    vector<string> queries;
+    queries.push_back(
+        "DROP TABLE IF EXISTS " + escapedTableName
+    );
+    queries.push_back(
+        "CREATE TABLE IF NOT EXISTS " + escapedTableName +
         " (" + h.conn->sqlId(_partitionByColumn)            + " " + _partitionByColumnType + "," +
                h.conn->sqlId(databaseInfo.directorTableKey) + " " + directorTableKeyType   + "," +
                h.conn->sqlId(databaseInfo.chunkIdKey)       + " " + chunkIdKeyType         + "," +
@@ -3158,18 +3234,21 @@ void HttpProcessor::_createSecondaryIndex(DatabaseInfo const& databaseInfo) cons
                " UNIQUE KEY (" + h.conn->sqlId(_partitionByColumn) + "," + h.conn->sqlId(databaseInfo.directorTableKey) + "),"
                " KEY (" + h.conn->sqlId(databaseInfo.directorTableKey) + ")"
         ") ENGINE=InnoDB PARTITION BY LIST (" + h.conn->sqlId(_partitionByColumn) +
-        ") (PARTITION `p0` VALUES IN (0) ENGINE=InnoDB)";
+        ") (PARTITION `p0` VALUES IN (0) ENGINE=InnoDB)"
+    );
 
     // Execute the statement
     //
     // TODO: switch to the more reliable way of executing queries
     // which would also reconnect to the server.
 
-    _debug(__func__, query);
+    for (auto&& query: queries) {
+        _debug(__func__, query);
 
-    h.conn->begin();
-    h.conn->execute(query);
-    h.conn->commit();
+        h.conn->begin();
+        h.conn->execute(query);
+        h.conn->commit();
+    }
 }
 
 
@@ -3280,6 +3359,45 @@ void HttpProcessor::_consolidateSecondaryIndex(DatabaseInfo const& databaseInfo)
     string const query =
         "ALTER TABLE " + h.conn->sqlId(databaseInfo.name + "__" + databaseInfo.directorTable) +
         " REMOVE PARTITIONING";
+
+    // Execute the statement
+    //
+    // TODO: switch to the more reliable way of executing queries
+    // which would also reconnect to the server.
+
+    _debug(__func__, query);
+
+    h.conn->begin();
+    h.conn->execute(query);
+    h.conn->commit();
+}
+
+
+void HttpProcessor::_deleteSecondaryIndex(DatabaseInfo const& databaseInfo) const {
+
+    if (databaseInfo.directorTable.empty()) {
+        throw logic_error(
+                "director table has not been properly configured in database '" +
+                databaseInfo.name + "'");
+    }
+
+    // Manage the new connection via the RAII-style handler to ensure the transaction
+    // is automatically rolled-back in case of exceptions.
+
+    auto const config = controller()->serviceProvider()->config();
+    database::mysql::ConnectionHandler const h(
+        database::mysql::Connection::open(
+            database::mysql::ConnectionParams(
+                config->qservMasterDatabaseHost(),
+                config->qservMasterDatabasePort(),
+                "root",
+                Configuration::qservMasterDatabasePassword(),
+                "qservMeta"
+            )
+        )
+    );
+    string const query =
+        "DROP TABLE IF EXISTS " + h.conn->sqlId(databaseInfo.name + "__" + databaseInfo.directorTable);
 
     // Execute the statement
     //
