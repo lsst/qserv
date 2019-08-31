@@ -54,6 +54,7 @@ enum ProtocolQueuedRequestType {
     REPLICA_FIND_ALL = 3;    // find all replicas and report their states
     TEST_ECHO        = 4;    // test the worker-side framework
     SQL              = 5;    // execute an SQL statement against the worker's database
+    INDEX            = 6;    // extract and return a collection of the "secondary index" data
 }
 
 // Request types for managing above defined requests
@@ -219,6 +220,21 @@ message ProtocolRequestSql {
 
     /// table schema
     repeated ProtocolRequestSqlColumn columns = 12;
+}
+
+// This request is always queued.
+// This message is sent once after the header for the 'INDEX' request types
+message ProtocolRequestIndex {
+
+    required int32  priority = 1;
+    required string database = 2;
+    required uint32 chunk    = 3;
+    required bool   has_transactions = 4;
+
+    // An identifier of a super-transaction corresponding to a MySQL partition
+    // to be inspected. This parameter is used only if the above defined
+    // 'has_transactions' is set to 'true'.
+    required uint32 transaction_id = 5;
 }
 
 // This request is sent to stop an on-going replication (if any is still in progress).
@@ -618,6 +634,49 @@ message ProtocolResponseSql {
 
     /// Parameters of the original request to which this response is related
     optional ProtocolRequestSql request = 10;
+}
+
+message ProtocolResponseIndex {
+
+    /// The completion status of the operation
+    required ProtocolStatus status = 1;
+
+    /// Extended status of this operation
+    optional ProtocolStatusExt status_ext = 2 [default = NONE];
+
+    /// The performance of this operation
+    required ProtocolPerformance performance = 3;
+
+    // ------------------------------------------------------------------
+    // The following optional fields are set upon a successful completion
+    // of the request
+    // ------------------------------------------------------------------
+
+    /// The performance of the target operation. This field represents
+    /// stats of the original request obtained by the request
+    /// management operations
+    optional ProtocolPerformance target_performance = 4;
+
+    /// MySQL-specific error
+    optional string error = 5 [default = ""];
+
+    /// Full content of the TSV/CSV file in which is lines has a set of fields
+    /// to be ingested into the secondary index at Qserv master. The number and
+    /// a schema of fields depends on a mode the request was made as well as on
+    /// a mode of the request. For consolidated (not MySQL partitioned tables)
+    /// each line of the file would be represented by the triplet:
+    ///
+    ///   <object-id> <chunk-id> <sub-chunk-id>
+    ///
+    /// An for the MySQL partitioned tables it would be the quadruplet:
+    ///
+    ///   <super-transaction-id> <object-id> <chunk-id> <sub-chunk-id>
+    ///
+    required bytes data = 6;
+
+    /// Parameters of the original request to which this response
+    /// is related
+    optional ProtocolRequestIndex request = 7;
 }
 
 /////////////////////////////////////////////////////////////////////////

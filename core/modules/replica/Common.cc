@@ -289,4 +289,13 @@ ostream& operator<<(ostream& os, SqlRequestParams const& params) {
     return os;
 }
 
+
+IndexRequestParams::IndexRequestParams(ProtocolRequestIndex const& request)
+    :   priority(request.priority()),
+        database(request.database()),
+        chunk(request.chunk()),
+        hasTransactions(request.has_transactions()),
+        transactionId(request.transaction_id()) {
+}
+
 }}} // namespace lsst::qserv::replica

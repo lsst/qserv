@@ -225,8 +225,24 @@ public:
     std::string type2str() const;
 };
 
-
 std::ostream& operator<<(std::ostream& os, SqlRequestParams const& params);
+
+/**
+ * Class IndexRequestParams represents parameters of requests extracting data
+ * to be loaded into the "secondary index".
+ */
+class IndexRequestParams {
+public:
+    int          priority = 0;
+    std::string  database;
+    unsigned int chunk = 0;
+    bool         hasTransactions = false;
+    unsigned int transactionId = 0;
+
+    IndexRequestParams() = default;
+
+    explicit IndexRequestParams(ProtocolRequestIndex const& request);
+};
 
 }}} // namespace lsst::qserv::replica
 
