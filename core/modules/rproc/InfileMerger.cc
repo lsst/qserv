@@ -272,6 +272,7 @@ bool InfileMerger::finalize() {
         // Using MyISAM as single thread writing with no need to recover from errors.
         std::string createMerge = "CREATE TABLE " + _config.targetTable
             + " ENGINE=MyISAM " + mergeSelect;
+        LOGS(_log, LOG_LVL_DEBUG, "Prepping merging w/" <<  *_config.mergeStmt);
         LOGS(_log, LOG_LVL_DEBUG, "Merging w/" << createMerge);
         finalizeOk = _applySqlLocal(createMerge, "createMerge");
 

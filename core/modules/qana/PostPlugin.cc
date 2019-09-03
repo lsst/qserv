@@ -84,6 +84,16 @@ PostPlugin::applyPhysical(QueryPlugin::Plan& plan,
     // merge statement (if one is not available)
     LOGS(_log, LOG_LVL_TRACE, "Apply physical");
 
+    // If the parallel statement has GROUP BY or HAVING then it must not have a LIMIT.
+    if (not plan.stmtParallel.empty()) {
+        auto parallelStmt = plan.stmtParallel.front();
+        if (parallelStmt->hasLimit() && (parallelStmt->hasGroupBy() || parallelStmt->hasHaving())) {
+            for (auto& pstmt : plan.stmtParallel) {
+                pstmt->setLimit(NOTSET);
+            }
+        }
+    }
+
     if (_limit != NOTSET) {
         // [ORDER BY ...] LIMIT ... is a special case which require sort on worker and sort/aggregation on czar
         if (context.hasChunks()) {

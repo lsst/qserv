@@ -365,7 +365,7 @@ void QuerySession::_generateConcrete() {
     // needed during merging and aggregation.
     _stmtMerge = _stmt->copyMerge();
     LOGS(_log, LOG_LVL_TRACE, "Merge statement initialized with: \""
-         << _stmtMerge->getQueryTemplate() << "\"");
+         << _stmtMerge->getQueryTemplate() << "\" " << *_stmtMerge);
 
     LOG_STATEMENTS(LOG_LVL_TRACE, "did generateConcrete:");
     // TableMerger needs to be integrated into this design.

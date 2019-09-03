@@ -71,11 +71,14 @@ public:
     , _collate(collate)
     {}
 
+    OrderByTerm(OrderByTerm const& rhs);
+
     ~OrderByTerm() {}
 
     std::string sqlFragment() const;
     std::shared_ptr<ValueExpr>& getExpr() { return _expr; }
     std::shared_ptr<ValueExpr> const& getExpr() const { return _expr; }
+    void setExpr(std::shared_ptr<ValueExpr> const& expr) { _expr = expr; }
     Order getOrder() const;
     void renderTo(QueryTemplate& qt) const;
 
@@ -98,6 +101,8 @@ public:
     typedef std::vector<OrderByTerm> OrderByTermVector;
 
     OrderByClause() : _terms(std::make_shared<OrderByTermVector>()) {}
+
+    OrderByClause(OrderByClause const& rhs);
 
     // Construct an OrderByClause that owns the given vector of OrderByTerm.
     OrderByClause(std::shared_ptr<OrderByTermVector> const& terms) : _terms(terms) {}
