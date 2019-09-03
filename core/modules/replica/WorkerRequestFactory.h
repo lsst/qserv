@@ -32,11 +32,13 @@
 namespace lsst {
 namespace qserv {
 namespace replica {
+    class ProtocolRequestIndex;
     class ProtocolRequestSql;
     class WorkerDeleteRequest;
     class WorkerEchoRequest;
     class WorkerFindAllRequest;
     class WorkerFindRequest;
+    class WorkerIndexRequest;
     class WorkerSqlRequest;
     class WorkerReplicationRequest;
 }}}  // Forward declarations
@@ -62,6 +64,7 @@ public:
     typedef std::shared_ptr<WorkerFindAllRequest>     WorkerFindAllRequestPtr;
     typedef std::shared_ptr<WorkerReplicationRequest> WorkerReplicationRequestPtr;
     typedef std::shared_ptr<WorkerSqlRequest>         WorkerSqlRequestPtr;
+    typedef std::shared_ptr<WorkerIndexRequest>       WorkerIndexRequestPtr;
 
     // The default constructor and copy semantics are prohibited
 
@@ -163,6 +166,19 @@ public:
             std::string const& id,
             ProtocolRequestSql const& request) const = 0;
  
+    /**
+     * Create an instance of a request extracting the "secondary index" data
+     *
+     * @see class WorkerIndexRequest
+     *
+     * @return
+     *   a pointer to the newly created object
+     */
+    virtual WorkerIndexRequestPtr createIndexRequest(
+            std::string const& worker,
+            std::string const& id,
+            ProtocolRequestIndex const& request) const = 0;
+
 protected:
 
     /**
@@ -315,6 +331,18 @@ public:
             ProtocolRequestSql const& request) const final {
 
         return _ptr->createSqlRequest(
+            worker,
+            id,
+            request);
+    }
+
+    /// @see WorkerReplicationRequestBase::createIndexRequest()
+    WorkerIndexRequestPtr createIndexRequest(
+            std::string const& worker,
+            std::string const& id,
+            ProtocolRequestIndex const& request) const final {
+
+        return _ptr->createIndexRequest(
             worker,
             id,
             request);

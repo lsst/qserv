@@ -55,6 +55,7 @@ enum ExtendedCompletionStatus {
     EXT_STATUS_INVALID_ID,      // an invalid request identifier
     EXT_STATUS_DUPLICATE,       // a duplicate request
     EXT_STATUS_FOLDER_STAT,     // failed to obtain fstat() for a folder
+    EXT_STATUS_FOLDER_CREATE,   // failed to create a folder
     EXT_STATUS_FILE_STAT,       // failed to obtain fstat() for a file
     EXT_STATUS_FILE_SIZE,       // failed to obtain a size of a file
     EXT_STATUS_FOLDER_READ,     // failed to read the contents of a folder

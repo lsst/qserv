@@ -33,6 +33,7 @@
 #include "replica/WorkerEchoRequest.h"
 #include "replica/WorkerFindAllRequest.h"
 #include "replica/WorkerFindRequest.h"
+#include "replica/WorkerIndexRequest.h"
 #include "replica/WorkerReplicationRequest.h"
 #include "replica/WorkerSqlRequest.h"
 
@@ -81,10 +82,10 @@ public:
 
     ~WorkerRequestFactoryTest() final = default;
 
-    /// @see WorkerReplicationRequestBase::technology
+    /// @see WorkerRequestFactoryBase::technology
     string technology() const final { return "TEST"; }
 
-    /// @see WorkerReplicationRequestBase::createReplicationRequest
+    /// @see WorkerRequestFactoryBase::createReplicationRequest
     WorkerReplicationRequestPtr createReplicationRequest(string const& worker,
                                                          string const& id,
                                                          int priority,
@@ -101,7 +102,7 @@ public:
             sourceWorker);
     }
 
-    /// @see WorkerReplicationRequestBase::createDeleteRequest
+    /// @see WorkerRequestFactoryBase::createDeleteRequest
     WorkerDeleteRequestPtr createDeleteRequest(string const& worker,
                                                string const& id,
                                                int priority,
@@ -116,7 +117,7 @@ public:
             chunk);
     }
 
-    /// @see WorkerReplicationRequestBase::createFindRequest
+    /// @see WorkerRequestFactoryBase::createFindRequest
     WorkerFindRequestPtr createFindRequest(string const& worker,
                                            string const& id,
                                            int priority,
@@ -133,7 +134,7 @@ public:
             computeCheckSum);
     }
 
-    /// @see WorkerReplicationRequestBase::createFindAllRequest
+    /// @see WorkerRequestFactoryBase::createFindAllRequest
     WorkerFindAllRequestPtr createFindAllRequest(string const& worker,
                                                  string const& id,
                                                  int priority,
@@ -146,7 +147,7 @@ public:
             database);
     }
 
-    /// @see WorkerReplicationRequestBase::createEchoRequest
+    /// @see WorkerRequestFactoryBase::createEchoRequest
     WorkerEchoRequestPtr createEchoRequest(string const& worker,
                                            string const& id,
                                            int priority,
@@ -161,11 +162,22 @@ public:
             delay);
     }
 
-    /// @see WorkerReplicationRequestBase::createSqlRequest
+    /// @see WorkerRequestFactoryBase::createSqlRequest
     WorkerSqlRequestPtr createSqlRequest(string const& worker,
                                          string const& id,
                                          ProtocolRequestSql const& request) const final {
         return WorkerSqlRequest::create(
+            _serviceProvider,
+            worker,
+            id,
+            request);
+    }
+
+    /// @see WorkerRequestFactoryBase::createIndexRequest
+    WorkerIndexRequestPtr createIndexRequest(string const& worker,
+                                             string const& id,
+                                             ProtocolRequestIndex const& request) const final {
+        return WorkerIndexRequest::create(
             _serviceProvider,
             worker,
             id,
@@ -198,10 +210,10 @@ public:
 
     ~WorkerRequestFactoryPOSIX() final = default;
 
-    /// @see WorkerReplicationRequestBase::technology
+    /// @see WorkerRequestFactoryBase::technology
     string technology() const final { return "POSIX"; }
 
-    /// @see WorkerReplicationRequestBase::createReplicationRequest
+    /// @see WorkerRequestFactoryBase::createReplicationRequest
     WorkerReplicationRequestPtr createReplicationRequest(string const& worker,
                                                          string const& id,
                                                          int priority,
@@ -218,7 +230,7 @@ public:
             sourceWorker);
     }
 
-    /// @see WorkerReplicationRequestBase::createDeleteRequest
+    /// @see WorkerRequestFactoryBase::createDeleteRequest
     WorkerDeleteRequestPtr createDeleteRequest(string const& worker,
                                                string const& id,
                                                int priority,
@@ -233,7 +245,7 @@ public:
             chunk);
     }
 
-    /// @see WorkerReplicationRequestBase::createFindRequest
+    /// @see WorkerRequestFactoryBase::createFindRequest
     WorkerFindRequestPtr createFindRequest(string const& worker,
                                            string const& id,
                                            int priority,
@@ -250,7 +262,7 @@ public:
             computeCheckSum);
     }
 
-    /// @see WorkerReplicationRequestBase::createFindAllRequest
+    /// @see WorkerRequestFactoryBase::createFindAllRequest
     WorkerFindAllRequestPtr createFindAllRequest(string const& worker,
                                                  string const& id,
                                                  int priority,
@@ -263,7 +275,7 @@ public:
             database);
     }
 
-    /// @see WorkerReplicationRequestBase::createEchoRequest
+    /// @see WorkerRequestFactoryBase::createEchoRequest
     WorkerEchoRequestPtr createEchoRequest(string const& worker,
                                            string const& id,
                                            int priority,
@@ -278,11 +290,22 @@ public:
             delay);
     }
 
-    /// @see WorkerReplicationRequestBase::createSqlRequest
+    /// @see WorkerRequestFactoryBase::createSqlRequest
     WorkerSqlRequestPtr createSqlRequest(string const& worker,
                                          string const& id,
                                          ProtocolRequestSql const& request) const final {
         return WorkerSqlRequestPOSIX::create(
+            _serviceProvider,
+            worker,
+            id,
+            request);
+    }
+
+    /// @see WorkerRequestFactoryBase::createIndexRequest
+    WorkerIndexRequestPtr createIndexRequest(string const& worker,
+                                             string const& id,
+                                             ProtocolRequestIndex const& request) const final {
+        return WorkerIndexRequestPOSIX::create(
             _serviceProvider,
             worker,
             id,
@@ -316,10 +339,10 @@ public:
 
     ~WorkerRequestFactoryFS() final = default;
 
-    /// @see WorkerReplicationRequestBase::technology
+    /// @see WorkerRequestFactoryBase::technology
     string technology() const final { return "FS"; }
 
-    /// @see WorkerReplicationRequestBase::createReplicationRequest
+    /// @see WorkerRequestFactoryBase::createReplicationRequest
     WorkerReplicationRequestPtr createReplicationRequest(string const& worker,
                                                          string const& id,
                                                          int priority,
@@ -336,7 +359,7 @@ public:
             sourceWorker);
     }
 
-    /// @see WorkerReplicationRequestBase::createDeleteRequest
+    /// @see WorkerRequestFactoryBase::createDeleteRequest
     WorkerDeleteRequestPtr createDeleteRequest(string const& worker,
                                                string const& id,
                                                int priority,
@@ -351,7 +374,7 @@ public:
             chunk);
     }
 
-    /// @see WorkerReplicationRequestBase::createFindRequest
+    /// @see WorkerRequestFactoryBase::createFindRequest
     WorkerFindRequestPtr createFindRequest(string const& worker,
                                            string const& id,
                                            int priority,
@@ -368,7 +391,7 @@ public:
             computeCheckSum);
     }
 
-    /// @see WorkerReplicationRequestBase::createFindAllRequest
+    /// @see WorkerRequestFactoryBase::createFindAllRequest
     WorkerFindAllRequestPtr createFindAllRequest(string const& worker,
                                                  string const& id,
                                                  int priority,
@@ -381,7 +404,7 @@ public:
             database);
     }
 
-    /// @see WorkerReplicationRequestBase::createEchoRequest
+    /// @see WorkerRequestFactoryBase::createEchoRequest
     WorkerEchoRequestPtr createEchoRequest(string const& worker,
                                            string const& id,
                                            int priority,
@@ -396,11 +419,22 @@ public:
             delay);
     }
 
-    /// @see WorkerReplicationRequestBase::createSqlRequest
+    /// @see WorkerRequestFactoryBase::createSqlRequest
     WorkerSqlRequestPtr createSqlRequest(string const& worker,
                                          string const& id,
                                          ProtocolRequestSql const& request) const final {
         return WorkerSqlRequestFS::create(
+            _serviceProvider,
+            worker,
+            id,
+            request);
+    }
+
+    /// @see WorkerRequestFactoryBase::createIndexRequest
+    WorkerIndexRequestPtr createIndexRequest(string const& worker,
+                                             string const& id,
+                                             ProtocolRequestIndex const& request) const final {
+        return WorkerIndexRequestFS::create(
             _serviceProvider,
             worker,
             id,

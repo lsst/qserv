@@ -45,6 +45,7 @@ string status2string(ExtendedCompletionStatus status) {
         case ExtendedCompletionStatus::EXT_STATUS_INVALID_ID:    return "EXT_STATUS_INVALID_ID";
         case ExtendedCompletionStatus::EXT_STATUS_DUPLICATE:     return "EXT_STATUS_DUPLICATE";
         case ExtendedCompletionStatus::EXT_STATUS_FOLDER_STAT:   return "EXT_STATUS_FOLDER_STAT";
+        case ExtendedCompletionStatus::EXT_STATUS_FOLDER_CREATE: return "EXT_STATUS_FOLDER_CREATE";
         case ExtendedCompletionStatus::EXT_STATUS_FILE_STAT:     return "EXT_STATUS_FILE_STAT";
         case ExtendedCompletionStatus::EXT_STATUS_FILE_SIZE:     return "EXT_STATUS_FILE_SIZE";
         case ExtendedCompletionStatus::EXT_STATUS_FOLDER_READ:   return "EXT_STATUS_FOLDER_READ";
@@ -82,6 +83,7 @@ ExtendedCompletionStatus translate(ProtocolStatusExt status) {
         case ProtocolStatusExt::INVALID_ID:    return ExtendedCompletionStatus::EXT_STATUS_INVALID_ID;
         case ProtocolStatusExt::DUPLICATE:     return ExtendedCompletionStatus::EXT_STATUS_DUPLICATE;
         case ProtocolStatusExt::FOLDER_STAT:   return ExtendedCompletionStatus::EXT_STATUS_FOLDER_STAT;
+        case ProtocolStatusExt::FOLDER_CREATE: return ExtendedCompletionStatus::EXT_STATUS_FOLDER_CREATE;
         case ProtocolStatusExt::FILE_STAT:     return ExtendedCompletionStatus::EXT_STATUS_FILE_STAT;
         case ProtocolStatusExt::FILE_SIZE:     return ExtendedCompletionStatus::EXT_STATUS_FILE_SIZE;
         case ProtocolStatusExt::FOLDER_READ:   return ExtendedCompletionStatus::EXT_STATUS_FOLDER_READ;
@@ -119,6 +121,7 @@ ProtocolStatusExt translate(ExtendedCompletionStatus status) {
         case ExtendedCompletionStatus::EXT_STATUS_INVALID_ID:    return ProtocolStatusExt::INVALID_ID;
         case ExtendedCompletionStatus::EXT_STATUS_DUPLICATE:     return ProtocolStatusExt::DUPLICATE;
         case ExtendedCompletionStatus::EXT_STATUS_FOLDER_STAT:   return ProtocolStatusExt::FOLDER_STAT;
+        case ExtendedCompletionStatus::EXT_STATUS_FOLDER_CREATE: return ProtocolStatusExt::FOLDER_CREATE;
         case ExtendedCompletionStatus::EXT_STATUS_FILE_STAT:     return ProtocolStatusExt::FILE_STAT;
         case ExtendedCompletionStatus::EXT_STATUS_FILE_SIZE:     return ProtocolStatusExt::FILE_SIZE;
         case ExtendedCompletionStatus::EXT_STATUS_FOLDER_READ:   return ProtocolStatusExt::FOLDER_READ;
