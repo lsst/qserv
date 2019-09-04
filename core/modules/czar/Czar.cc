@@ -40,6 +40,7 @@
 #include "ccontrol/UserQueryType.h"
 #include "czar/CzarErrors.h"
 #include "czar/MessageTable.h"
+#include "global/LogContext.h"
 #include "rproc/InfileMerger.h"
 #include "sql/SqlConnection.h"
 #include "sql/SqlConnectionFactory.h"
@@ -90,6 +91,9 @@ Czar::Czar(std::string const& configPath, std::string const& czarName)
         LOG_CONFIG(logConfig);
     }
 
+    // need to be done first as it add logging context for new threads
+    _uqFactory.reset(new ccontrol::UserQueryFactory(_czarConfig, _czarName));
+
     int largeResultConcurrent = _czarConfig.getLargeResultConcurrentMerges();
     // TODO:DM-10273 - remove largeResults from configuration
     LOGS(_log, LOG_LVL_INFO, "config largeResultConcurrent=" << largeResultConcurrent);
@@ -103,8 +107,6 @@ Czar::Czar(std::string const& configPath, std::string const& czarName)
 
     LOGS(_log, LOG_LVL_INFO, "Creating czar instance with name " << czarName);
     LOGS(_log, LOG_LVL_DEBUG, "Czar config: " << _czarConfig);
-
-    _uqFactory.reset(new ccontrol::UserQueryFactory(_czarConfig, _czarName));
 }
 
 SubmitResult
@@ -134,6 +136,9 @@ Czar::submitQuery(std::string const& query,
     std::string const msgTableName = "message_" + userQueryId;
     std::string const lockName = resultDb + "." + msgTableName;
 
+    // Add logging context with user query ID
+    LOG_MDC_SCOPE("TID", userQueryId);
+
     SubmitResult result;
 
     // instantiate message table manager
@@ -154,6 +159,9 @@ Czar::submitQuery(std::string const& query,
     }
     auto queryIdStr = uq->getQueryIdString();
 
+    // Add logging context with query ID
+    QSERV_LOGCONTEXT_QUERY(uq->getQueryId());
+
     // check for errors
     auto error = uq->getError();
     if (not error.empty()) {
@@ -166,6 +174,8 @@ Czar::submitQuery(std::string const& query,
     // spawn background thread to wait until query finishes to unlock,
     // note that lambda stores copies of uq and msgTable.
     auto finalizer = [uq, msgTable]() mutable {
+        // Add logging context with query ID
+        QSERV_LOGCONTEXT_QUERY(uq->getQueryId());
         LOGS(_log, LOG_LVL_DEBUG, uq->getQueryIdString() << " submitting new query");
         uq->submit();
         uq->join();

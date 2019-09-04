@@ -32,6 +32,7 @@
 #include "lsst/log/Log.h"
 
 // Qserv headers
+#include "global/LogContext.h"
 #include "qdisp/Executive.h"
 #include "qdisp/QueryRequest.h"
 
@@ -64,6 +65,7 @@ JobQuery::~JobQuery() {
  * @return - false if it can not setup the job or the maximum number of attempts has been reached.
  */
 bool JobQuery::runJob() {
+    QSERV_LOGCONTEXT_QUERY_JOB(getQueryId(), getIdInt());
     LOGS(_log, LOG_LVL_DEBUG, _idStr << " runJob " << *this);
     auto executive = _executive.lock();
     if (executive == nullptr) {
@@ -118,6 +120,7 @@ bool JobQuery::runJob() {
 
 /// Cancel response handling. Return true if this is the first time cancel has been called.
 bool JobQuery::cancel() {
+    QSERV_LOGCONTEXT_QUERY_JOB(getQueryId(), getIdInt());
     LOGS(_log, LOG_LVL_DEBUG, _idStr << " JobQuery::cancel()");
     if (_cancelled.exchange(true) == false) {
         std::lock_guard<std::recursive_mutex> lock(_rmutex);
@@ -158,6 +161,7 @@ bool JobQuery::cancel() {
 /// cancelling all the jobs that it makes a difference. If either the executive,
 /// or the job has cancelled, proceeding is probably not a good idea.
 bool JobQuery::isQueryCancelled() {
+    QSERV_LOGCONTEXT_QUERY_JOB(getQueryId(), getIdInt());
     auto exec = _executive.lock();
     if (exec == nullptr) {
         LOGS(_log, LOG_LVL_WARN, _idStr << " _executive == nullptr");

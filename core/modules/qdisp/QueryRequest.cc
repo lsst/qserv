@@ -42,6 +42,7 @@
 
 // Qserv headers
 #include "czar/Czar.h"
+#include "global/LogContext.h"
 #include "proto/ScanTableInfo.h"
 #include "qdisp/JobStatus.h"
 #include "qdisp/ResponseHandler.h"
@@ -63,10 +64,11 @@ public:
     typedef std::shared_ptr<AskForResponseDataCmd> Ptr;
     enum class State { STARTED0, DATAREADY1, DONE2 };
     AskForResponseDataCmd(QueryRequest::Ptr const& qr, JobQuery::Ptr const& jq)
-        : _qRequest(qr), _jQuery(jq), _idStr(jq->getIdStr()) {}
+        : _qRequest(qr), _jQuery(jq), _qid(jq->getQueryId()), _jobid(jq->getIdInt()), _idStr(jq->getIdStr()) {}
 
     void action(util::CmdData *data) override {
         // If everything is ok, call GetResponseData to have XrdSsi ask the worker for the data.
+        QSERV_LOGCONTEXT_QUERY_JOB(_qid, _jobid);
         util::Timer tWaiting;
         util::Timer tTotal;
         {
@@ -162,6 +164,8 @@ private:
 
     std::weak_ptr<QueryRequest> _qRequest;
     std::weak_ptr<JobQuery> _jQuery;
+    QueryId _qid;
+    int _jobid;
     std::string _idStr;
     mutable std::mutex _mtx;
     std::condition_variable _cv;
@@ -177,12 +181,16 @@ private:
 ////////////////////////////////////////////////////////////////////////
 QueryRequest::QueryRequest(JobQuery::Ptr const& jobQuery) :
   _jobQuery(jobQuery),
+  _qid(jobQuery->getQueryId()),
+  _jobid(jobQuery->getIdInt()),
   _jobIdStr(jobQuery->getIdStr()),
   _qdispPool(_jobQuery->getQdispPool()){
+    QSERV_LOGCONTEXT_QUERY_JOB(_qid, _jobid);
     LOGS(_log, LOG_LVL_DEBUG, _jobIdStr <<" New QueryRequest");
 }
 
 QueryRequest::~QueryRequest() {
+    QSERV_LOGCONTEXT_QUERY_JOB(_qid, _jobid);
     LOGS(_log, LOG_LVL_DEBUG, _jobIdStr << " ~QueryRequest");
     if (_askForResponseDataCmd != nullptr) {
         // This shouldn't really happen, but we really don't want to leave this blocking the pool.
@@ -197,6 +205,7 @@ QueryRequest::~QueryRequest() {
 
 // content of request data
 char* QueryRequest::GetRequest(int& requestLength) {
+    QSERV_LOGCONTEXT_QUERY_JOB(_qid, _jobid);
     std::lock_guard<std::mutex> lock(_finishStatusMutex);
     auto jq = _jobQuery;
     if (_finishStatus != ACTIVE || jq == nullptr) {
@@ -215,6 +224,7 @@ char* QueryRequest::GetRequest(int& requestLength) {
 // Callback function for XrdSsiRequest.
 //
 bool QueryRequest::ProcessResponse(XrdSsiErrInfo  const& eInfo, XrdSsiRespInfo const& rInfo) {
+    QSERV_LOGCONTEXT_QUERY_JOB(_qid, _jobid);
     LOGS(_log, LOG_LVL_DEBUG, _jobIdStr << "workerName=" << GetEndPoint() << " ProcessResponse");
     std::string errorDesc = _jobIdStr + " ";
     if (isQueryCancelled()) {
@@ -342,6 +352,7 @@ void QueryRequest::_setHoldState(HoldState state) {
 
 XrdSsiRequest::PRD_Xeq QueryRequest::ProcessResponseData(XrdSsiErrInfo const& eInfo,
                                                          char *buff, int blen, bool last) { // Step 7
+    QSERV_LOGCONTEXT_QUERY_JOB(_qid, _jobid);
     // buff is ignored here. It points to jq->getDescription()->respHandler()->_mBuf, which
     // is accessed directly by the respHandler. _mBuf is a member of MergingHandler.
     LOGS(_log, LOG_LVL_DEBUG, _jobIdStr << " ProcessResponseData with buflen=" << blen

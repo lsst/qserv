@@ -59,6 +59,7 @@
 // Qserv headers
 #include "ccontrol/msgCode.h"
 #include "global/Bug.h"
+#include "global/LogContext.h"
 #include "global/ResourceUnit.h"
 #include "qdisp/JobQuery.h"
 #include "qdisp/MessageStore.h"
@@ -141,6 +142,8 @@ JobQuery::Ptr Executive::add(JobDescription::Ptr const& jobDesc) {
         jobQuery = JobQuery::create(thisPtr, jobDesc, jobStatus, mcf, _id);
         jobQueryQSEA = std::chrono::system_clock::now(); // TEMPORARY-timing
 
+        QSERV_LOGCONTEXT_QUERY_JOB(jobQuery->getQueryId(), jobQuery->getIdInt());
+
         {
             std::lock_guard<std::recursive_mutex> lock(_cancelled.getMutex());
             cancelLockQSEA = std::chrono::system_clock::now(); // // TEMPORARY-timing
@@ -168,6 +171,9 @@ JobQuery::Ptr Executive::add(JobDescription::Ptr const& jobDesc) {
         }
         ++_requestCount;
     }
+
+    QSERV_LOGCONTEXT_QUERY_JOB(jobQuery->getQueryId(), jobQuery->getIdInt());
+
     std::string msg = "Executive::add " + jobQuery->getIdStr() + " with path=" + jobDesc->resource().path();
     LOGS(_log, LOG_LVL_DEBUG, msg);
     //_messageStore->addMessage(jobDesc.resource().chunk(), ccontrol::MSG_MGR_ADD, msg); TODO: maybe relocate.

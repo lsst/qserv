@@ -44,6 +44,7 @@
 
 // Qserv headers
 #include "global/Bug.h"
+#include "global/LogContext.h"
 #include "util/Timer.h"
 #include "wcontrol/Foreman.h"
 #include "wsched/BlendScheduler.h"
@@ -77,6 +78,7 @@ void ScanScheduler::commandStart(util::Command::Ptr const& cmd) {
         LOGS(_log, LOG_LVL_WARN, "ScanScheduler::commandStart cmd failed conversion " << getName());
         return;
     }
+    QSERV_LOGCONTEXT_QUERY_JOB(task->getQueryId(), task->getJobId());
     LOGS(_log, LOG_LVL_DEBUG, task->getIdStr() << " commandStart " << getName());
     // task was registered Inflight when getCmd() was called.
 }
@@ -88,6 +90,8 @@ void ScanScheduler::commandFinish(util::Command::Ptr const& cmd) {
         LOGS(_log, LOG_LVL_WARN, "ScanScheduler::commandFinish cmd failed conversion " << getName());
         return;
     }
+
+    QSERV_LOGCONTEXT_QUERY_JOB(t->getQueryId(), t->getJobId());
 
     _taskQueue->taskComplete(t); // does not need _mx protection.
     {
@@ -218,6 +222,7 @@ void ScanScheduler::queCmd(util::Command::Ptr const& cmd) {
         LOGS(_log, LOG_LVL_WARN, getName() << " queCmd could not be converted to Task or was nullptr");
         return;
     }
+    QSERV_LOGCONTEXT_QUERY_JOB(t->getQueryId(), t->getJobId());
     {
         std::lock_guard<std::mutex> lock(util::CommandQueue::_mx);
         auto uqCount = _incrCountForUserQuery(t->getQueryId());
@@ -238,6 +243,7 @@ void ScanScheduler::queCmd(util::Command::Ptr const& cmd) {
 /// it is finished (this allows the scheduler to move on), and its thread is removed
 /// from the thread pool (the thread pool creates a new thread to replace it).
 bool ScanScheduler::removeTask(wbase::Task::Ptr const& task, bool removeRunning) {
+    QSERV_LOGCONTEXT_QUERY_JOB(task->getQueryId(), task->getJobId());
     // Check if task is in the queue.
     // _taskQueue has its own mutex to protect this.
     auto rmTask = _taskQueue->removeTask(task);

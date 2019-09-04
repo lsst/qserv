@@ -79,6 +79,7 @@
 #include "ccontrol/TmpTableName.h"
 #include "ccontrol/UserQueryError.h"
 #include "global/constants.h"
+#include "global/LogContext.h"
 #include "global/MsgReceiver.h"
 #include "proto/worker.pb.h"
 #include "proto/ProtoImporter.h"
@@ -310,6 +311,8 @@ void UserQuerySelect::submit() {
                  &chunkSpec, &queryTemplates,
                  &chunks, &chunksMtx, &ttn,
                  &taskMsgFactory, &addTimeSum](util::CmdData*) {
+
+            QSERV_LOGCONTEXT_QUERY(_qMetaQueryId);
 
             auto startbuildQSJ = std::chrono::system_clock::now(); // TEMPORARY-timing
             qproc::ChunkQuerySpec::Ptr cs;
@@ -562,6 +565,8 @@ void UserQuerySelect::qMetaRegister(std::string const& resultLocation, std::stri
     // register query, save its ID
     _qMetaQueryId = _queryMetadata->registerQuery(qInfo, tableNames);
     _queryIdStr = QueryIdHelper::makeIdStr(_qMetaQueryId);
+    // Add logging context with query ID
+    QSERV_LOGCONTEXT_QUERY(_qMetaQueryId);
     LOGS(_log, LOG_LVL_DEBUG, getQueryIdString() << " UserQuery registered " << _qSession->getOriginal());
 
     // update #QID# with actual query ID

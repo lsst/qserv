@@ -44,6 +44,7 @@
 
 // Qserv headers
 #include "global/Bug.h"
+#include "global/LogContext.h"
 #include "proto/worker.pb.h"
 #include "util/EventThread.h"
 #include "util/Timer.h"
@@ -147,6 +148,9 @@ void BlendScheduler::queCmd(util::Command::Ptr const& cmd) {
         notify(true);
         return;
     }
+
+    QSERV_LOGCONTEXT_QUERY_JOB(task->getQueryId(), task->getJobId());
+
     if (task->msg == nullptr) {
         throw Bug("BlendScheduler::queCmd task with null message!");
     }
@@ -217,6 +221,8 @@ void BlendScheduler::commandStart(util::Command::Ptr const& cmd) {
         return;
     }
 
+    QSERV_LOGCONTEXT_QUERY_JOB(t->getQueryId(), t->getJobId());
+
     LOGS(_log, LOG_LVL_DEBUG, "BlendScheduler::commandStart " << t->getIdStr());
     wcontrol::Scheduler::Ptr s = dynamic_pointer_cast<wcontrol::Scheduler>(t->getTaskScheduler());
     if (s != nullptr) {
@@ -235,6 +241,9 @@ void BlendScheduler::commandFinish(util::Command::Ptr const& cmd) {
         LOGS(_log, LOG_LVL_WARN, "BlendScheduler::commandFinish cmd failed conversion");
         return;
     }
+
+    QSERV_LOGCONTEXT_QUERY_JOB(t->getQueryId(), t->getJobId());
+
     wcontrol::Scheduler::Ptr s = dynamic_pointer_cast<wcontrol::Scheduler>(t->getTaskScheduler());
     LOGS(_log, LOG_LVL_DEBUG, "BlendScheduler::commandFinish " << t->getIdStr());
     if (s != nullptr) {

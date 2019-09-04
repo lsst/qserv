@@ -52,6 +52,7 @@
 #include "global/constants.h"
 #include "global/DbTable.h"
 #include "global/debugUtil.h"
+#include "global/LogContext.h"
 #include "global/UnsupportedError.h"
 #include "mysql/MySqlConfig.h"
 #include "mysql/MySqlConnection.h"
@@ -131,6 +132,7 @@ util::TimerHistogram memWaitHisto("memWait Hist", {1, 5, 10, 20, 40});
 
 
 bool QueryRunner::runQuery() {
+    QSERV_LOGCONTEXT_QUERY_JOB(_task->getQueryId(), _task->getJobId());
     LOGS(_log, LOG_LVL_DEBUG, _task->getIdStr() << " QueryRunner::runQuery()");
 
     // Make certain our Task knows that this object is no longer in use when this function exits.
