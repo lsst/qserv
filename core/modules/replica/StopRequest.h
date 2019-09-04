@@ -50,6 +50,13 @@
 #include "replica/SqlResultSet.h"
 #include "replica/StopRequestBase.h"
 
+// Forward declarations
+namespace lsst {
+namespace qserv {
+namespace replica {
+    class IndexInfo;
+}}} // namespace lsst::qserv::replica
+
 // This header declarations
 namespace lsst {
 namespace qserv {
@@ -172,6 +179,31 @@ public:
     using ResponseMessageType     = ProtocolResponseEcho;
     using ResponseDataType        = std::string;
     using TargetRequestParamsType = EchoRequestParams;
+
+    static char const* requestName();
+
+    static ProtocolQueuedRequestType targetRequestType();
+
+    static void extractResponseData(ResponseMessageType const& msg,
+                                    ResponseDataType& data);
+
+    static void extractTargetRequestParams(ResponseMessageType const& msg,
+                                           TargetRequestParamsType& params);
+
+    template <class REQUEST_PTR>
+    static void saveReplicaInfo(REQUEST_PTR const& request) {
+        request->serviceProvider()->databaseServices()->updateRequestState(*request,
+                                                                           request->targetRequestId(),
+                                                                           request->targetPerformance());
+    }
+};
+
+class StopIndexRequestPolicy {
+public:
+
+    using ResponseMessageType     = ProtocolResponseIndex;
+    using ResponseDataType        = IndexInfo;
+    using TargetRequestParamsType = IndexRequestParams;
 
     static char const* requestName();
 
@@ -433,6 +465,7 @@ typedef StopRequest<StopDeleteRequestPolicy>      StopDeleteRequest;
 typedef StopRequest<StopFindRequestPolicy>        StopFindRequest;
 typedef StopRequest<StopFindAllRequestPolicy>     StopFindAllRequest;
 typedef StopRequest<StopEchoRequestPolicy>        StopEchoRequest;
+typedef StopRequest<StopIndexRequestPolicy>       StopIndexRequest;
 typedef StopRequest<StopSqlRequestPolicy>         StopSqlQueryRequest;
 typedef StopRequest<StopSqlRequestPolicy>         StopSqlCreateDbRequest;
 typedef StopRequest<StopSqlRequestPolicy>         StopSqlDeleteDbRequest;

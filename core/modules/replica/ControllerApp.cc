@@ -23,6 +23,7 @@
 #include "replica/ControllerApp.h"
 
 // System headers
+#include <fstream>
 #include <iostream>
 #include <stdexcept>
 
@@ -32,6 +33,7 @@
 #include "replica/EchoRequest.h"
 #include "replica/FindRequest.h"
 #include "replica/FindAllRequest.h"
+#include "replica/IndexRequest.h"
 #include "replica/ReplicationRequest.h"
 #include "replica/ServiceManagementRequest.h"
 #include "replica/ServiceProvider.h"
@@ -96,6 +98,42 @@ void printRequest(Request::Ptr const& request,
 }
 
 
+void printRequest(IndexRequest::Ptr const& request, string const& fileName) {
+    auto&& responseData = request->responseData();
+    cout << request->context() << "\n"
+         << "responseData.error: " << responseData.error << "\n"
+         << "performance:  " << request->performance() << endl;
+
+    if (fileName.empty()) cout << responseData.data;
+    else {
+        ofstream f(fileName);
+        if (not f.good()) {
+            cerr << "failed to open file: " << fileName << endl;
+            return;
+        }
+        f << responseData.data;
+    }
+}
+
+
+template <>
+void printRequest<StatusIndexRequest>(StatusIndexRequest::Ptr const& request) {
+    auto&& responseData = request->responseData();
+    cout << request->context() << "\n"
+         << "responseData.error: " << responseData.error << "\n"
+         << "performance:  " << request->performance() << endl;
+}
+
+
+template <>
+void printRequest<StopIndexRequest>(StopIndexRequest::Ptr const& request) {
+    auto&& responseData = request->responseData();
+    cout << request->context() << "\n"
+         << "responseData.error: " << responseData.error << "\n"
+         << "performance:  " << request->performance() << endl;
+}
+
+
 template <class T>
 void printRequestExtra(typename T::Ptr const& request) {
     cout << "targetPerformance: " << request->targetPerformance() << endl;
@@ -143,6 +181,7 @@ ControllerApp::ControllerApp(int argc, char* argv[])
             "SQL_DELETE_TABLE",
             "SQL_REMOVE_TABLE_PARTITIONS",
             "SQL_DELETE_TABLE_PARTITION",
+            "INDEX",
             "STATUS",
             "STOP",
             "SERVICE_SUSPEND",
@@ -433,10 +472,35 @@ ControllerApp::ControllerApp(int argc, char* argv[])
         _transactionId
     );
 
-    /// Request-specific parameters, options, flags
+    auto& indexCmd = parser().command("INDEX");
+    indexCmd.required(
+        "database",
+        "The name of an existing database where the table is residing.",
+        _sqlDatabase
+    );
+    indexCmd.required(
+        "chunk",
+        "The chunk number.",
+        _chunkNumber
+    );
+    indexCmd.option(
+        "transaction",
+        "An identifier of a super-transaction corresponding to a MySQL partition of the"
+        " 'director' table. If the option isn't used then the complete content of"
+        " the table will be scanned, and the scan won't include the super-transaction"
+        " column 'qserv_trans_id'.",
+        _transactionId
+    );
+    indexCmd.option(
+        "index-file",
+        "The name of a file where the 'secondary index' data will be written into"
+        " upon a successful completion of a request. If the option is not used then"
+        " the data will be printed onto the Standard Output Stream",
+        _indexFileName
+    );
+
 
     auto& statusCmd = parser().command("STATUS");
-
     statusCmd.description(
         "Ask a worker to return a status of a request.");
 
@@ -447,12 +511,14 @@ ControllerApp::ControllerApp(int argc, char* argv[])
         " SQL_DELETE_DATABASE, SQL_ENABLE_DATABASE, SQL_DISABLE_DATABASE"
         " SQL_GRANT_ACCESS"
         " SQL_CREATE_TABLE, SQL_DELETE_TABLE, SQL_REMOVE_TABLE_PARTITIONS,"
-        "  SQL_DELETE_TABLE_PARTITION.",
+        " SQL_DELETE_TABLE_PARTITION,"
+        " INDEX.",
         _affectedRequest,
        {"REPLICATE", "DELETE", "FIND", "FIND_ALL", "ECHO", "SQL_QUERY",
         "SQL_CREATE_DATABASE", "SQL_DELETE_DATABASE", "SQL_ENABLE_DATABASE",
         "SQL_DISABLE_DATABASE", "SQL_GRANT_ACCESS", "SQL_CREATE_TABLE", "SQL_DELETE_TABLE",
-        "SQL_REMOVE_TABLE_PARTITIONS", "SQL_DELETE_TABLE_PARTITION"});
+        "SQL_REMOVE_TABLE_PARTITIONS", "SQL_DELETE_TABLE_PARTITION",
+        "INDEX"});
 
     statusCmd.required(
         "id",
@@ -473,12 +539,14 @@ ControllerApp::ControllerApp(int argc, char* argv[])
         " SQL_DELETE_DATABASE, SQL_ENABLE_DATABASE, SQL_DISABLE_DATABASE"
         " SQL_GRANT_ACCESS"
         " SQL_CREATE_TABLE, SQL_DELETE_TABLE, SQL_REMOVE_TABLE_PARTITIONS,"
-        " SQL_DELETE_TABLE_PARTITION.",
+       " SQL_DELETE_TABLE_PARTITION,"
+        " INDEX.",
         _affectedRequest,
        {"REPLICATE", "DELETE", "FIND", "FIND_ALL", "ECHO", "SQL_QUERY",
         "SQL_CREATE_DATABASE", "SQL_DELETE_DATABASE", "SQL_ENABLE_DATABASE",
         "SQL_DISABLE_DATABASE", "SQL_GRANT_ACCESS", "SQL_CREATE_TABLE", "SQL_DELETE_TABLE",
-        "SQL_REMOVE_TABLE_PARTITIONS", "SQL_DELETE_TABLE_PARTITION"});
+        "SQL_REMOVE_TABLE_PARTITIONS", "SQL_DELETE_TABLE_PARTITION",
+        "INDEX"});
 
     stopCmd.required(
         "id",
@@ -574,6 +642,20 @@ int ControllerApp::runImpl() {
             _echoDelayMilliseconds,
             [] (EchoRequest::Ptr const& ptr_) {
                 ::printRequest<EchoRequest>(ptr_);
+            },
+            _priority,
+            not _doNotTrackRequest);
+    } else if ("INDEX" == _request) {
+        bool const hasTransactions = _transactionId != numeric_limits<uint32_t>::max();
+        ptr = controller->index(
+            _workerName,
+            _sqlDatabase,
+            _chunkNumber,
+            hasTransactions,
+            _transactionId,
+            [&] (IndexRequest::Ptr const& ptr_) {
+                ::printRequest(ptr_,
+                               _indexFileName);
             },
             _priority,
             not _doNotTrackRequest);
@@ -755,6 +837,15 @@ int ControllerApp::runImpl() {
                     ::printRequestExtra<StatusEchoRequest>(ptr_);
                 },
                 not _doNotTrackRequest);
+        } else if ("INDEX" == _affectedRequest) {
+            ptr = controller->statusById<StatusIndexRequest>(
+                _workerName,
+                _affectedRequestId,
+                [] (StatusIndexRequest::Ptr const& ptr_) {
+                    ::printRequest     <StatusIndexRequest>(ptr_);
+                    ::printRequestExtra<StatusIndexRequest>(ptr_);
+                },
+                not _doNotTrackRequest);
         } else if ("SQL_QUERY" == _affectedRequest) {
             ptr = controller->statusById<StatusSqlQueryRequest>(
                 _workerName,
@@ -875,6 +966,15 @@ int ControllerApp::runImpl() {
                     ::printRequestExtra<StatusSqlDeleteTablePartitionRequest>(ptr_);
                 },
                 not _doNotTrackRequest);
+        } else if ("INDEX" == _affectedRequest) {
+            ptr = controller->statusById<StatusIndexRequest>(
+                _workerName,
+                _affectedRequestId,
+                [] (StatusIndexRequest::Ptr const& ptr_) {
+                    ::printRequest     <StatusIndexRequest>(ptr_);
+                    ::printRequestExtra<StatusIndexRequest>(ptr_);
+                },
+                not _doNotTrackRequest);
         } else {
             throw logic_error(context + "unsupported request: " + _affectedRequest);
         }
@@ -922,6 +1022,15 @@ int ControllerApp::runImpl() {
                 [] (StopEchoRequest::Ptr const& ptr_) {
                     ::printRequest     <StopEchoRequest>(ptr_);
                     ::printRequestExtra<StopEchoRequest>(ptr_);
+                },
+                not _doNotTrackRequest);
+        } else if ("INDEX" == _affectedRequest) {
+            ptr = controller->stopById<StopIndexRequest>(
+                _workerName,
+                _affectedRequestId,
+                [] (StopIndexRequest::Ptr const& ptr_) {
+                    ::printRequest     <StopIndexRequest>(ptr_);
+                    ::printRequestExtra<StopIndexRequest>(ptr_);
                 },
                 not _doNotTrackRequest);
         } else if ("SQL_QUERY" == _affectedRequest) {

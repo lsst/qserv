@@ -37,6 +37,7 @@
 #include "replica/EchoRequest.h"
 #include "replica/FindRequest.h"
 #include "replica/FindAllRequest.h"
+#include "replica/IndexRequest.h"
 #include "replica/Messenger.h"
 #include "replica/Performance.h"
 #include "replica/ReplicationRequest.h"
@@ -221,6 +222,38 @@ EchoRequest::Ptr Controller::echo(
         workerName,
         data,
         delay,
+        onFinish,
+        priority,
+        keepTracking,
+        jobId,
+        requestExpirationIvalSec);
+}
+
+
+IndexRequest::Ptr Controller::index(
+        string const& workerName,
+        string const& database,
+        unsigned int chunk,
+        bool hasTransactions,
+        uint32_t transactionId,
+        IndexRequest::CallbackType const& onFinish,
+        int priority,
+        bool keepTracking,
+        std::string const& jobId,
+        unsigned int requestExpirationIvalSec) {
+ 
+    LOGS(_log, LOG_LVL_DEBUG, _context(__func__));
+
+    return _submit<IndexRequest,
+                   decltype(database),
+                   decltype(chunk),
+                   decltype(hasTransactions),
+                   decltype(transactionId)>(
+        workerName,
+        database,
+        chunk,
+        hasTransactions,
+        transactionId,
         onFinish,
         priority,
         keepTracking,

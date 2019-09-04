@@ -22,6 +22,9 @@
 // Class header
 #include "replica/StopRequest.h"
 
+// Qserv headers
+#include "replica/IndexRequest.h"
+
 using namespace std;
 
 namespace lsst {
@@ -166,6 +169,35 @@ void StopEchoRequestPolicy::extractResponseData(ResponseMessageType const& msg,
 
 void StopEchoRequestPolicy::extractTargetRequestParams(ResponseMessageType const& msg,
                                                        TargetRequestParamsType& params) {
+    if (msg.has_request()) {
+        params = TargetRequestParamsType(msg.request());
+    }
+}
+
+
+// -------------------------------------------
+// --------- StopIndexRequestPolicy ----------
+// -------------------------------------------
+
+char const* StopIndexRequestPolicy::requestName() {
+    return "REQUEST_STOP:INDEX";
+}
+
+
+ProtocolQueuedRequestType StopIndexRequestPolicy::targetRequestType() {
+    return ProtocolQueuedRequestType::TEST_ECHO;
+}
+
+
+void StopIndexRequestPolicy::extractResponseData(ResponseMessageType const& msg,
+                                                 ResponseDataType& data) {
+    data.error = msg.error();
+    data.data  = msg.data();
+}
+
+
+void StopIndexRequestPolicy::extractTargetRequestParams(ResponseMessageType const& msg,
+                                                        TargetRequestParamsType& params) {
     if (msg.has_request()) {
         params = TargetRequestParamsType(msg.request());
     }

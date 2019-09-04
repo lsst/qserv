@@ -22,6 +22,7 @@
 #define LSST_QSERV_REPLICA_CONTROLLERAPP_H
 
 // System headers
+#include <limits>
 #include <string>
 
 // Qserv headers
@@ -127,7 +128,7 @@ private:
     std::string _sqlPartitionByColumn;
 
     /// An identifier of a super-transaction
-    uint32_t _transactionId = 0;
+    uint32_t _transactionId = std::numeric_limits<uint32_t>::max();
 
     /// The optional limit for the total number of rows to be pulled from a result
     /// set when executing queries against the worker's database. The default value
@@ -158,6 +159,11 @@ private:
     /// Automatically compute and store in the database check/control sums of
     /// the replica's files.
     bool _computeCheckSum = false;
+
+    /// The name of a file where the 'secondary index' data will be written into
+    /// upon a successful completion of a request. If the option is not used then
+    /// the data will be printed onto the Standard Output Stream.
+    std::string _indexFileName;
 };
 
 }}} // namespace lsst::qserv::replica

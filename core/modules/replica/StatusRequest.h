@@ -49,6 +49,13 @@
 #include "replica/SqlResultSet.h"
 #include "replica/StatusRequestBase.h"
 
+// Forward declarations
+namespace lsst {
+namespace qserv {
+namespace replica {
+    class IndexInfo;
+}}} // namespace lsst::qserv::replica
+
 // This header declarations
 namespace lsst {
 namespace qserv {
@@ -171,6 +178,32 @@ public:
     using ResponseMessageType     = ProtocolResponseEcho;
     using ResponseDataType        = std::string;
     using TargetRequestParamsType = EchoRequestParams;
+
+    static char const* requestName();
+
+    static ProtocolQueuedRequestType targetRequestType();
+
+    static void extractResponseData(ResponseMessageType const& msg,
+                                    ResponseDataType& data);
+
+    static void extractTargetRequestParams(ResponseMessageType const& msg,
+                                           TargetRequestParamsType& params);
+
+    template <class REQUEST_PTR>
+    static void saveReplicaInfo(REQUEST_PTR const& request) {
+        request->serviceProvider()->databaseServices()->updateRequestState(*request,
+                                                                           request->targetRequestId(),
+                                                                           request->targetPerformance());
+    }
+};
+
+
+class StatusIndexRequestPolicy {
+public:
+
+    using ResponseMessageType     = ProtocolResponseIndex;
+    using ResponseDataType        = IndexInfo;
+    using TargetRequestParamsType = IndexRequestParams;
 
     static char const* requestName();
 
@@ -446,6 +479,7 @@ typedef StatusRequest<StatusDeleteRequestPolicy>      StatusDeleteRequest;
 typedef StatusRequest<StatusFindRequestPolicy>        StatusFindRequest;
 typedef StatusRequest<StatusFindAllRequestPolicy>     StatusFindAllRequest;
 typedef StatusRequest<StatusEchoRequestPolicy>        StatusEchoRequest;
+typedef StatusRequest<StatusIndexRequestPolicy>       StatusIndexRequest;
 typedef StatusRequest<StatusSqlRequestPolicy>         StatusSqlQueryRequest;
 typedef StatusRequest<StatusSqlRequestPolicy>         StatusSqlCreateDbRequest;
 typedef StatusRequest<StatusSqlRequestPolicy>         StatusSqlDeleteDbRequest;

@@ -22,6 +22,9 @@
 // Class header
 #include "replica/StatusRequest.h"
 
+// Qserv headers
+#include "replica/IndexRequest.h"
+
 using namespace std;
 
 namespace lsst {
@@ -165,6 +168,35 @@ void StatusEchoRequestPolicy::extractResponseData(ResponseMessageType const& msg
 
 void StatusEchoRequestPolicy::extractTargetRequestParams(ResponseMessageType const& msg,
                                                          TargetRequestParamsType& params) {
+    if (msg.has_request()) {
+        params = TargetRequestParamsType(msg.request());
+    }
+}
+
+
+// ---------------------------------------------
+// --------- StatusIndexRequestPolicy ----------
+// ---------------------------------------------
+
+char const* StatusIndexRequestPolicy::requestName() {
+    return "REQUEST_STATUS:INDEX";
+}
+
+
+ProtocolQueuedRequestType StatusIndexRequestPolicy::targetRequestType() {
+    return ProtocolQueuedRequestType::INDEX;
+}
+
+
+void StatusIndexRequestPolicy::extractResponseData(ResponseMessageType const& msg,
+                                                   ResponseDataType& data) {
+    data.error = msg.error();
+    data.data  = msg.data();
+}
+
+
+void StatusIndexRequestPolicy::extractTargetRequestParams(ResponseMessageType const& msg,
+                                                          TargetRequestParamsType& params) {
     if (msg.has_request()) {
         params = TargetRequestParamsType(msg.request());
     }
