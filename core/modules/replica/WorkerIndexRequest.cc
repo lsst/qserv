@@ -84,19 +84,8 @@ void WorkerIndexRequest::setInfo(ProtocolResponseIndex& response) const {
     util::Lock lock(_mtx, context(__func__));
 
     response.set_allocated_target_performance(performance().info().release());
-
-    // Carry over the result of the query only after the request
-    // has finished (or failed).
-    switch (status()) {
-        case STATUS_SUCCEEDED:
-            response.set_data(_data);
-            break;
-        case STATUS_FAILED:
-            response.set_error(_error);
-            break;
-        default:
-            break;
-    }
+    response.set_error(_error);
+    response.set_data(_data);
 }
 
 
@@ -258,7 +247,7 @@ string WorkerIndexRequest::_query(database::mysql::Connection::Ptr const& conn) 
         conn->sqlId(databaseInfo.directorTable + "_" + to_string(_request.chunk()));
 
     string const partitionRestrictorEscaped =
-        qservTransId.empty() ? string() : "PARTITION " + conn->sqlId("p" + to_string(_request.transaction_id()));
+        qservTransId.empty() ? string() : "PARTITION (" + conn->sqlId("p" + to_string(_request.transaction_id())) + ")";
 
     string const orderByEscaped =
         (qservTransId.empty() ? string() : conn->sqlId(qservTransId) + ",") +
