@@ -277,6 +277,17 @@ void WorkerServerConnection::_processQueuedRequest(ProtocolRequestHeader& hdr) {
             _reply(hdr.id(), response);
             break;
         }
+        case ProtocolQueuedRequestType::INDEX: {
+
+            // Read the request body
+            ProtocolRequestIndex request;
+            if (not ::readMessage(_socket, _bufferPtr, bytes, request)) return;
+
+            ProtocolResponseIndex response;
+            _processor->enqueueForIndex(hdr.id(), request, response);
+            _reply(hdr.id(), response);
+            break;
+        }
         case ProtocolQueuedRequestType::SQL: {
 
             // Read the request body
@@ -345,6 +356,12 @@ void WorkerServerConnection::_processManagementRequest(ProtocolRequestHeader& hd
                     _reply(hdr.id(), response);
                     break;
                 }
+                case ProtocolQueuedRequestType::INDEX: {
+                    ProtocolResponseIndex response;
+                    _processor->dequeueOrCancel(request, response);
+                    _reply(hdr.id(), response);
+                    break;
+                }
                 case ProtocolQueuedRequestType::SQL: {
                     ProtocolResponseSql response;
                     _processor->dequeueOrCancel(request, response);
@@ -392,6 +409,12 @@ void WorkerServerConnection::_processManagementRequest(ProtocolRequestHeader& hd
                 }
                 case ProtocolQueuedRequestType::TEST_ECHO: {
                     ProtocolResponseEcho response;
+                    _processor->checkStatus(request, response);
+                    _reply(hdr.id(), response);
+                    break;
+                }
+                case ProtocolQueuedRequestType::INDEX: {
+                    ProtocolResponseIndex response;
                     _processor->checkStatus(request, response);
                     _reply(hdr.id(), response);
                     break;
