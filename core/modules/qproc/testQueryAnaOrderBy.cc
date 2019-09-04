@@ -187,7 +187,7 @@ BOOST_AUTO_TEST_CASE(OrderByAggregateLimit) {
     std::string expectedParallel = "SELECT `LSST.Source`.objectId AS `objectId`,COUNT(`LSST.Source`.taiMidPoint) AS `QS1_COUNT`,SUM(`LSST.Source`.taiMidPoint) AS `QS2_SUM` "
                                    "FROM LSST.Source_100 AS `LSST.Source` "
                                    "GROUP BY `objectId` "
-                                   "ORDER BY `objectId` ASC LIMIT 2";
+                                   "ORDER BY `objectId` ASC";
     std::string expectedMerge = "SELECT objectId AS `objectId`,(SUM(QS2_SUM)/SUM(QS1_COUNT)) AS `AVG(taiMidPoint)` "
                                 "GROUP BY `objectId` "
                                 "ORDER BY `objectId` ASC LIMIT 2";
@@ -201,8 +201,7 @@ BOOST_AUTO_TEST_CASE(OrderByAggregateNotChunkedLimit) {
     std::string expectedParallel = "SELECT `LSST.Filter`.filterId AS `filterId`,SUM(`LSST.Filter`.photClam) AS `QS1_SUM` "
                                    "FROM LSST.Filter AS `LSST.Filter` "
                                    "GROUP BY `filterId` "
-                                   "ORDER BY `filterId` "
-                                   "LIMIT 3";
+                                   "ORDER BY `filterId`";
     // FIXME merge query is not useful here, see DM-3166
     std::string expectedMerge = "SELECT filterId AS `filterId`,SUM(QS1_SUM) AS `SUM(photClam)` GROUP BY `filterId` ORDER BY `filterId` LIMIT 3";
     std::string expectedProxyOrderBy = "ORDER BY `filterId`";
