@@ -82,12 +82,12 @@ PostPlugin::applyPhysical(QueryPlugin::Plan& plan,
                           query::QueryContext& context) {
     // Idea: If a limit is available in the user query, compose a
     // merge statement (if one is not available)
-    LOGS(_log, LOG_LVL_DEBUG, "Apply physical");
+    LOGS(_log, LOG_LVL_TRACE, "Apply physical");
 
     if (_limit != NOTSET) {
         // [ORDER BY ...] LIMIT ... is a special case which require sort on worker and sort/aggregation on czar
         if (context.hasChunks()) {
-             LOGS(_log, LOG_LVL_DEBUG, "Add merge operation");
+             LOGS(_log, LOG_LVL_TRACE, "Add merge operation");
              context.needsMerge = true;
          }
     } else if (_orderBy) {

@@ -1041,7 +1041,7 @@ private:
         std::string insensitiveFunction(function);
         std::transform(insensitiveFunction.begin(), insensitiveFunction.end(),
                         insensitiveFunction.begin(), ::tolower);
-        LOGS(_log, LOG_LVL_DEBUG, "Qserv restrictor changed to lower-case: " << insensitiveFunction);
+        LOGS(_log, LOG_LVL_TRACE, "Qserv restrictor changed to lower-case: " << insensitiveFunction);
 
         std::shared_ptr<query::AreaRestrictor> restrictor;
         try {
@@ -2004,7 +2004,6 @@ public:
 
     void handlePredicateExpression(shared_ptr<query::BoolTerm> const & boolTerm,
             antlr4::ParserRuleContext* childCtx) override {
-        LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__ << boolTerm);
         ASSERT_EXECUTION_CONDITION(false, "unexpected call to handlePredicateExpression(BoolTerm).", _ctx);
     }
 

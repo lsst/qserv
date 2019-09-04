@@ -145,7 +145,7 @@ void QuerySession::analyzeQuery(std::string const& sql, std::shared_ptr<query::S
         _generateConcrete();
         _applyConcretePlugins();
 
-        LOGS(_log, LOG_LVL_DEBUG, "Query Plugins applied:\n " << *this);
+        LOGS(_log, LOG_LVL_TRACE, "Query Plugins applied:\n " << *this);
         LOGS(_log, LOG_LVL_TRACE, "ORDER BY clause for result query: " << getResultOrderBy());
 
     } catch(QueryProcessingBug& b) {
@@ -205,7 +205,7 @@ std::string QuerySession::getResultOrderBy() const {
 
 
 void QuerySession::addChunk(ChunkSpec const& cs) {
-    LOGS(_log, LOG_LVL_DEBUG, "Add chunk: " << cs);
+    LOGS(_log, LOG_LVL_TRACE, "Add chunk: " << cs);
     _context->chunkCount += 1;
     _chunks.push_back(cs);
 }
@@ -259,7 +259,7 @@ std::shared_ptr<IntSet const>
 QuerySession::getEmptyChunks() {
     // FIXME: do we need to catch an exception here?
     if (_css != nullptr) {
-        LOGS(_log, LOG_LVL_DEBUG, "QuerySession::getEmptyChunks " << _context->dominantDb);
+        LOGS(_log, LOG_LVL_TRACE, "QuerySession::getEmptyChunks " << _context->dominantDb);
         std::shared_ptr<IntSet const> result = _css->getEmptyChunks()->getEmpty(_context->dominantDb);
         return result;
     } else {

@@ -57,7 +57,7 @@ void appendColumnRefs(std::string const& column,
     }
     refs.push_back(std::make_shared<lsst::qserv::query::ColumnRef>("", "", column));
     refs.push_back(std::make_shared<ColumnRef>("", "", tableAlias, column));
-    LOGS(_log, LOG_LVL_DEBUG, "did appendColumnRefs" << lsst::qserv::util::printable(refs));
+    LOGS(_log, LOG_LVL_TRACE, "did appendColumnRefs" << lsst::qserv::util::printable(refs));
 }
 
 } // anonymous namespace
@@ -137,7 +137,7 @@ bool DirTableInfo::isEqPredAdmissible(DirTableInfo const& t,
     bool aPK = (a == pk);
     bool bPK = (b == t.pk);
     bool admissible = (selfJoin && aPK && bPK);
-    LOGS(_log, LOG_LVL_DEBUG, "a admissible=" << admissible
+    LOGS(_log, LOG_LVL_TRACE, "a admissible=" << admissible
             << " selfJoin=" << selfJoin << " aPK=" << aPK << " bPK=" << bPK);
     return admissible;
 }
@@ -154,7 +154,7 @@ bool DirTableInfo::isEqPredAdmissible(ChildTableInfo const& t,
     bool aPK = (a == pk);
     bool bFK = (b == t.fk);
     bool admissible = (childsDirector && aPK && bFK);
-    LOGS(_log, LOG_LVL_DEBUG, "b admissible=" << admissible << " childsDirector=" << childsDirector
+    LOGS(_log, LOG_LVL_TRACE, "b admissible=" << admissible << " childsDirector=" << childsDirector
                            << " aPK=" << aPK << " bFK=" << bFK);
     return admissible;
 }
@@ -167,13 +167,13 @@ bool DirTableInfo::isEqPredAdmissible(MatchTableInfo const& t,
     // Equality predicates between director and match tables are not
     // admissible in the ON clauses of outer joins.
     if (outer) {
-        LOGS(_log, LOG_LVL_DEBUG, "admissible outer false");
+        LOGS(_log, LOG_LVL_TRACE, "admissible outer false");
         return false;
     }
     // Column a from this table must refer to the primary key for the
     // predicate to be admissible.
     if (a != pk) {
-        LOGS(_log, LOG_LVL_DEBUG, "admissible false a=" << a << " pk=" << pk);
+        LOGS(_log, LOG_LVL_TRACE, "admissible false a=" << a << " pk=" << pk);
         return false;
     }
     // For the predicate to be admissible, this table must be one of the
@@ -183,7 +183,7 @@ bool DirTableInfo::isEqPredAdmissible(MatchTableInfo const& t,
     bool directorB = (*this == *t.director.second);
     bool bFK = (b == t.fk.second);
     bool admissible = (directorA && aFK) || (directorB && bFK);
-    LOGS(_log, LOG_LVL_DEBUG, "c admissible=" << admissible
+    LOGS(_log, LOG_LVL_TRACE, "c admissible=" << admissible
                     << " directorA=" << directorA << " aFK=" << aFK
                     << " directorB=" << directorB << " bFK=" << bFK);
     return admissible;
@@ -201,7 +201,7 @@ bool ChildTableInfo::isEqPredAdmissible(ChildTableInfo const& t,
     bool aFK = (a == fk);
     bool bFK = (b == t.fk);
     bool admissible = sameDirector && aFK && bFK;
-    LOGS(_log, LOG_LVL_DEBUG, "d admissible=" << admissible
+    LOGS(_log, LOG_LVL_TRACE, "d admissible=" << admissible
                 << " sameDirector=" << sameDirector << " aFK=" << aFK << " bFK=" << bFK);
     return admissible;
 }
@@ -214,13 +214,13 @@ bool ChildTableInfo::isEqPredAdmissible(MatchTableInfo const& t,
     // Equality predicates between director and child tables are not
     // admissible in the ON clauses of outer joins.
     if (outer) {
-        LOGS(_log, LOG_LVL_DEBUG, "admissible outer false");
+        LOGS(_log, LOG_LVL_TRACE, "admissible outer false");
         return false;
     }
     // Column a from this table must refer to the foreign key for the
     // predicate to be admissible.
     if (a != fk) {
-        LOGS(_log, LOG_LVL_DEBUG, "admissible false a=" << a << " fk=" << fk);
+        LOGS(_log, LOG_LVL_TRACE, "admissible false a=" << a << " fk=" << fk);
         return false;
     }
     // For the predicate to be admissible, the director for this table must be
@@ -231,7 +231,7 @@ bool ChildTableInfo::isEqPredAdmissible(MatchTableInfo const& t,
     bool matchDirSecond = (*director == *t.director.second);
     bool fKSecond = (b == t.fk.second);
     bool admissible = (matchDirFirst && bFKFirst) || (matchDirSecond && fKSecond);
-    LOGS(_log, LOG_LVL_DEBUG, "e admissible=" << admissible
+    LOGS(_log, LOG_LVL_TRACE, "e admissible=" << admissible
             << " matchDirFirst=" << matchDirFirst << " bFKFirst=" << bFKFirst
             << " matchDirSecond=" << matchDirSecond << " fKSecond=" << fKSecond);
     return admissible;

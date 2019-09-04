@@ -73,7 +73,7 @@ ScanTablePlugin::applyFinal(query::QueryContext& context) {
     if (context.chunkCount < scanThreshold) {
         context.scanInfo.infoTables.clear();
         context.scanInfo.scanRating = 0;
-        LOGS(_log, LOG_LVL_DEBUG, "Squash scan tables: <" << scanThreshold << " chunks.");
+        LOGS(_log, LOG_LVL_TRACE, "Squash scan tables: <" << scanThreshold << " chunks.");
     }
 }
 
@@ -190,17 +190,17 @@ ScanTablePlugin::_findScanTables(query::SelectStmt& stmt,
     // plugin's applyFinal
     if (hasSelectColumnRef || hasSelectStar) {
         if (hasSecondaryKey) {
-            LOGS(_log, LOG_LVL_DEBUG, "**** Not a scan ****");
+            LOGS(_log, LOG_LVL_TRACE, "**** Not a scan ****");
             // Not a scan? Leave scanTables alone
         } else {
-            LOGS(_log, LOG_LVL_DEBUG, "**** SCAN (column ref, non-spatial-idx)****");
+            LOGS(_log, LOG_LVL_TRACE, "**** SCAN (column ref, non-spatial-idx)****");
             // Scan tables = all partitioned tables
             scanTables = filterPartitioned(stmt.getFromList().getTableRefList());
         }
     } else if (hasWhereColumnRef) {
         // No column ref in SELECT, still a scan for non-trivial WHERE
         // count(*): still a scan with a non-trivial where.
-        LOGS(_log, LOG_LVL_DEBUG, "**** SCAN (filter) ****");
+        LOGS(_log, LOG_LVL_TRACE, "**** SCAN (filter) ****");
         scanTables = filterPartitioned(stmt.getFromList().getTableRefList());
     }
 
@@ -215,7 +215,7 @@ ScanTablePlugin::_findScanTables(query::SelectStmt& stmt,
         scanInfo.infoTables.push_back(info);
         scanInfo.scanRating = std::max(scanInfo.scanRating, info.scanRating);
         scanInfo.scanRating = std::min(scanInfo.scanRating, static_cast<int>(proto::ScanInfo::SLOWEST));
-        LOGS(_log, LOG_LVL_DEBUG, "ScanInfo " << info.db << "." << info.table
+        LOGS(_log, LOG_LVL_TRACE, "ScanInfo " << info.db << "." << info.table
               << " lockInMemory=" << info.lockInMemory << " rating=" << info.scanRating);
     }
 

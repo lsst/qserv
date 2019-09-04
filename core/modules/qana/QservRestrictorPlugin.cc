@@ -325,7 +325,7 @@ query::ColumnRef::Ptr getCorrespondingDirectorColumn(query::QueryContext const& 
                 return nullptr;
             }
         }
-        LOGS(_log, LOG_LVL_DEBUG, "Restrictor dirDb " << dirDb << ", dirTable " << dirTable
+        LOGS(_log, LOG_LVL_TRACE, "Restrictor dirDb " << dirDb << ", dirTable " << dirTable
              << ", dirCol " << dirCol << " as sIndex for " << columnRef->getDb() << "." << columnRef->getTable()
              << "." << columnRef->getColumn());
         return std::make_shared<query::ColumnRef>(dirDb, dirTable, dirCol);
@@ -453,7 +453,7 @@ std::vector<std::shared_ptr<query::SecIdxRestrictor>> getSecIndexRestrictors(que
                 restrictor = makeSecondaryIndexRestrictor(*betweenPredicate, context);
             }
             if (restrictor) {
-                LOGS(_log, LOG_LVL_DEBUG, "Add restrictor: " << *restrictor << " for " << factorTerm);
+                LOGS(_log, LOG_LVL_TRACE, "Add restrictor: " << *restrictor << " for " << factorTerm);
                 result.push_back(restrictor);
             }
         }
@@ -524,7 +524,7 @@ QservRestrictorPlugin::applyLogical(query::SelectStmt& stmt,
             // the scisql function is NOT a const val.
             auto areaRestrictor = makeAreaRestrictor(*scisqlFunc);
             if (areaRestrictor != nullptr) {
-                LOGS(_log, LOG_LVL_DEBUG, "Adding restrictor: " << *areaRestrictor);
+                LOGS(_log, LOG_LVL_TRACE, "Adding restrictor: " << *areaRestrictor);
                 context.addAreaRestrictors({areaRestrictor});
             }
         }
