@@ -167,7 +167,6 @@ bool InfileMerger::merge(std::shared_ptr<proto::WorkerResponse> response) {
     }
     LOGS(_log, LOG_LVL_DEBUG,
          "Executing InfileMerger::merge("
-         << queryIdJobStr
          << " largeResult=" << response->result.largeresult()
          << " sizes=" << static_cast<short>(response->headerSize)
          << ", " << response->protoHeader.size()
@@ -194,7 +193,7 @@ bool InfileMerger::merge(std::shared_ptr<proto::WorkerResponse> response) {
     int resultJobId = makeJobIdAttempt(response->result.jobid(), response->result.attemptcount());
     ProtoRowBuffer::Ptr pRowBuffer = std::make_shared<ProtoRowBuffer>(response->result,
                                      resultJobId, _jobIdColName, _jobIdSqlType, _jobIdMysqlType);
-    std::string const virtFile = _infileMgr.prepareSrc(pRowBuffer, queryIdJobStr);
+    std::string const virtFile = _infileMgr.prepareSrc(pRowBuffer);
     std::string const infileStatement = sql::formLoadInfile(_mergeTable, virtFile);
     auto start = std::chrono::system_clock::now();
     // If the job attempt is invalid, exit without adding rows.
@@ -209,11 +208,11 @@ bool InfileMerger::merge(std::shared_ptr<proto::WorkerResponse> response) {
     _invalidJobAttemptMgr.decrConcurrentMergeCount();
     auto end = std::chrono::system_clock::now();
     auto mergeDur = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-    LOGS(_log, LOG_LVL_DEBUG, queryIdJobStr << " mergeDur=" << mergeDur.count());
+    LOGS(_log, LOG_LVL_DEBUG, "mergeDur=" << mergeDur.count());
     /// Check the size of the result table.
     if (_sizeCheckRowCount >= _checkSizeEveryXRows) {
         auto tSize = _getResultTableSizeMB();
-        LOGS(_log, LOG_LVL_DEBUG, queryIdJobStr << "checking ResultTableSize " << _mergeTable
+        LOGS(_log, LOG_LVL_DEBUG, "checking ResultTableSize " << _mergeTable
                                   << " " << tSize
                                   << " max=" << _maxResultTableSizeMB);
         _sizeCheckRowCount = 0;
@@ -379,11 +378,11 @@ bool InfileMerger::makeResultsTableForQuery(query::SelectStmt const& stmt) {
     }
     _addJobIdColumnToSchema(schema);
     std::string createStmt = sql::formCreateTable(_mergeTable, schema);
-    LOGS(_log, LOG_LVL_DEBUG, _getQueryIdStr() << "InfileMerger make results table query: " << createStmt);
+    LOGS(_log, LOG_LVL_DEBUG, "InfileMerger make results table query: " << createStmt);
     if (not _applySqlLocal(createStmt, "makeResultsTableForQuery")) {
         _error = InfileMergerError(util::ErrorCode::CREATE_TABLE, "Error creating table:" + _mergeTable);
         _isFinished = true; // Cannot continue.
-        LOGS(_log, LOG_LVL_ERROR, _getQueryIdStr() << "InfileMerger sql error: " << _error.getMsg());
+        LOGS(_log, LOG_LVL_ERROR, "InfileMerger sql error: " << _error.getMsg());
         return false;
     }
     return true;
@@ -488,22 +487,21 @@ size_t InfileMerger::_getResultTableSizeMB() {
     if (not _sqlConn->runQuery(tableSizeSql, results, errObj)) {
         _error = util::Error(errObj.errNo(), "error getting size sql: " + errObj.printErrMsg(),
                        util::ErrorCode::MYSQLEXEC);
-        LOGS(_log, LOG_LVL_ERROR, _getQueryIdStr() << "result table size error: " << _error.getMsg());
+        LOGS(_log, LOG_LVL_ERROR, "result table size error: " << _error.getMsg());
         return 0;
     }
 
     // There should only be 1 row
     auto iter = results.begin();
     if (iter == results.end()) {
-        LOGS(_log, LOG_LVL_ERROR, _getQueryIdStr() << " result table size no rows returned " << _mergeTable);
+        LOGS(_log, LOG_LVL_ERROR, "result table size no rows returned " << _mergeTable);
         return 0;
     }
     auto& row = *iter;
     std::string tbName = row[0].first;
     std::string tbSize = row[1].first;
     size_t sz = std::stoul(tbSize);
-    LOGS(_log, LOG_LVL_DEBUG,
-         _getQueryIdStr() << " ResultTableSizeMB tbl=" << tbName << " tbSize=" << tbSize);
+    LOGS(_log, LOG_LVL_DEBUG, "ResultTableSizeMB tbl=" << tbName << " tbSize=" << tbSize);
     return sz;
 }
 

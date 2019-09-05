@@ -165,8 +165,8 @@ std::string LocalInfile::Mgr::prepareSrc(MYSQL_RES* result) {
 }
 
 
-std::string LocalInfile::Mgr::prepareSrc(std::shared_ptr<RowBuffer> const& rowBuffer, std::string const& qId) {
-    LOGS(_log, LOG_LVL_DEBUG, qId << "rowBuffer=" << rowBuffer->dump());
+std::string LocalInfile::Mgr::prepareSrc(std::shared_ptr<RowBuffer> const& rowBuffer) {
+    LOGS(_log, LOG_LVL_DEBUG, "rowBuffer=" << rowBuffer->dump());
     return insertBuffer(rowBuffer);
 }
 

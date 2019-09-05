@@ -154,27 +154,27 @@ JobQuery::Ptr Executive::add(JobDescription::Ptr const& jobDesc) {
             }
 
             if (!_addJobToMap(jobQuery)) {
-                LOGS(_log, LOG_LVL_ERROR, "Executive ignoring duplicate job add " << jobQuery->getIdStr());
+                LOGS(_log, LOG_LVL_ERROR, "Executive ignoring duplicate job add");
                 return jobQuery;
             }
             addJobQSEA = std::chrono::system_clock::now(); // TEMPORARY-timing
 
             if (!_track(jobQuery->getIdInt(), jobQuery)) {
-                LOGS(_log, LOG_LVL_ERROR, "Executive ignoring duplicate track add" << jobQuery->getIdStr());
+                LOGS(_log, LOG_LVL_ERROR, "Executive ignoring duplicate track add");
                 return jobQuery;
             }
         }
         trackQSEA = std::chrono::system_clock::now(); // TEMPORARY-timing
 
         if (_empty.exchange(false)) {
-            LOGS(_log, LOG_LVL_DEBUG, "Flag _empty set to false by " << jobQuery->getIdStr());
+            LOGS(_log, LOG_LVL_DEBUG, "Flag _empty set to false");
         }
         ++_requestCount;
     }
 
     QSERV_LOGCONTEXT_QUERY_JOB(jobQuery->getQueryId(), jobQuery->getIdInt());
 
-    std::string msg = "Executive::add " + jobQuery->getIdStr() + " with path=" + jobDesc->resource().path();
+    std::string msg = "Executive::add with path=" + jobDesc->resource().path();
     LOGS(_log, LOG_LVL_DEBUG, msg);
     //_messageStore->addMessage(jobDesc.resource().chunk(), ccontrol::MSG_MGR_ADD, msg); TODO: maybe relocate.
     auto endQSEA = std::chrono::system_clock::now(); // TEMPORARY-timing
@@ -203,7 +203,7 @@ void Executive::queueJobStart(PriorityCommand::Ptr const& cmd) {
 
 
 void Executive::waitForAllJobsToStart() {
-    LOGS(_log, LOG_LVL_INFO, _idStr << " waitForAllJobsToStart");
+    LOGS(_log, LOG_LVL_INFO, "waitForAllJobsToStart");
     // Wait for each command to start.
     while (true) {
         bool empty = _jobStartCmdList.empty();
@@ -212,7 +212,7 @@ void Executive::waitForAllJobsToStart() {
         _jobStartCmdList.pop_front();
         cmd->waitComplete();
     }
-    LOGS(_log, LOG_LVL_INFO, _idStr << " waitForAllJobsToStart done");
+    LOGS(_log, LOG_LVL_INFO, "waitForAllJobsToStart done");
 }
 
 
@@ -296,8 +296,7 @@ bool Executive::join() {
 void Executive::markCompleted(int jobId, bool success) {
     ResponseHandler::Error err;
     std::string idStr = QueryIdHelper::makeIdStr(_id, jobId);
-    LOGS(_log, LOG_LVL_DEBUG, "Executive::markCompleted " << idStr
-            << " " << success);
+    LOGS(_log, LOG_LVL_DEBUG, "Executive::markCompleted " << success);
     if (!success) {
         {
             std::lock_guard<std::mutex> lock(_incompleteJobsMutex);
@@ -319,8 +318,8 @@ void Executive::markCompleted(int jobId, bool success) {
                 return;
             }
         }
-        LOGS(_log, LOG_LVL_WARN, "Executive: error executing " << idStr
-             << " " << err << " (status: " << err.getStatus() << ")");
+        LOGS(_log, LOG_LVL_WARN, "Executive: error executing "
+             << err << " (status: " << err.getStatus() << ")");
         {
             std::lock_guard<std::recursive_mutex> lockJobMap(_jobMapMtx);
             auto job = _jobMap[jobId];
@@ -337,7 +336,7 @@ void Executive::markCompleted(int jobId, bool success) {
     _unTrack(jobId);
     if (!success) {
         LOGS(_log, LOG_LVL_ERROR, "Executive: requesting squash, cause: "
-             << idStr << " failed (code=" << err.getCode() << " " << err.getMsg() << ")");
+             << " failed (code=" << err.getCode() << " " << err.getMsg() << ")");
         squash(); // ask to squash
     }
 }
@@ -346,11 +345,11 @@ void Executive::markCompleted(int jobId, bool success) {
 void Executive::squash() {
     bool alreadyCancelled = _cancelled.exchange(true);
     if (alreadyCancelled) {
-        LOGS(_log, LOG_LVL_DEBUG, getIdStr() << " Executive::squash() already cancelled! refusing.");
+        LOGS(_log, LOG_LVL_DEBUG, "Executive::squash() already cancelled! refusing.");
         return;
     }
 
-    LOGS(_log, LOG_LVL_DEBUG, getIdStr() << " Executive::squash Trying to cancel all queries...");
+    LOGS(_log, LOG_LVL_DEBUG, "Executive::squash Trying to cancel all queries...");
     std::deque<JobQuery::Ptr> jobsToCancel;
     {
         std::lock_guard<std::recursive_mutex> lockJobMap(_jobMapMtx);
@@ -362,7 +361,7 @@ void Executive::squash() {
     for (auto const& job : jobsToCancel) {
             job->cancel();
     }
-    LOGS_DEBUG(getIdStr() << " Executive::squash done");
+    LOGS(_log, LOG_LVL_DEBUG, "Executive::squash done");
 }
 
 int Executive::getNumInflight() {
@@ -416,12 +415,11 @@ void Executive::_setup() {
   *          false if this entry was previously in the map
   */
 bool Executive::_track(int jobId, std::shared_ptr<JobQuery> const& r) {
-    std::string idStr = QueryIdHelper::makeIdStr(_id, jobId);
     int size = -1;
     {
         std::lock_guard<std::mutex> lock(_incompleteJobsMutex);
         if (_incompleteJobs.find(jobId) != _incompleteJobs.end()) {
-            LOGS(_log, LOG_LVL_WARN, "Attempt for TRACKING " << idStr
+            LOGS(_log, LOG_LVL_WARN, "Attempt for TRACKING "
                  << " failed as jobId already found in incomplete jobs. "
                  << _getIncompleteJobsString(-1));
             return false;
@@ -429,7 +427,7 @@ bool Executive::_track(int jobId, std::shared_ptr<JobQuery> const& r) {
         _incompleteJobs[jobId] = r;
         size = _incompleteJobs.size();
     }
-    LOGS(_log, LOG_LVL_DEBUG, "Success TRACKING " << idStr << " size=" << size);
+    LOGS(_log, LOG_LVL_DEBUG, "Success TRACKING size=" << size);
     return true;
 }
 
@@ -452,8 +450,7 @@ void Executive::_unTrack(int jobId) {
         }
     }
     LOGS(_log, (untracked ? LOG_LVL_DEBUG : LOG_LVL_WARN),
-         "Executive UNTRACKING " << QueryIdHelper::makeIdStr(_id, jobId)
-             << " " << (untracked ? "success":"failed") << "::" << s);
+         "Executive UNTRACKING " << (untracked ? "success":"failed") << "::" << s);
     // Every time a chunk completes, consider sending an update to QMeta.
     // Important chunks to log: first, last, middle
     // limiting factors: no more than one update a minute (config)
@@ -547,7 +544,7 @@ void Executive::_waitAllUntilEmpty() {
                     _printState(os);
                     os << "\n";
                 }
-                os << _idStr << " Still " << count << " in flight.";
+                os << "Still " << count << " in flight.";
                 complainCount = 0;
                 lock.unlock(); // release the lock while we trigger logging.
                 LOGS(_log, LOG_LVL_DEBUG, os.str());

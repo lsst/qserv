@@ -183,7 +183,7 @@ std::string UserQuerySelect::getError() const {
 
 /// Attempt to kill in progress.
 void UserQuerySelect::kill() {
-    LOGS(_log, LOG_LVL_DEBUG, getQueryIdString() << " UserQuerySelect kill");
+    LOGS(_log, LOG_LVL_DEBUG, "UserQuerySelect kill");
     std::lock_guard<std::mutex> lock(_killMutex);
     if (!_killed) {
         _killed = true;
@@ -266,7 +266,7 @@ void UserQuerySelect::submit() {
 
     // Using the QuerySession, generate query specs (text, db, chunkId) and then
     // create query messages and send them to the async query manager.
-    LOGS(_log, LOG_LVL_DEBUG, getQueryIdString() << " UserQuerySelect beginning submission");
+    LOGS(_log, LOG_LVL_DEBUG, "UserQuerySelect beginning submission");
     assert(_infileMerger);
 
     auto taskMsgFactory = std::make_shared<qproc::TaskMsgFactory>(_qMetaQueryId);
@@ -297,7 +297,7 @@ void UserQuerySelect::submit() {
     try {
         _queryStatsData->queryStatsTmpRegister(_qMetaQueryId, _qSession->getChunksSize());
     } catch (qmeta::SqlError const& e) {
-        LOGS(_log, LOG_LVL_WARN, "Failed queryStatsTmpRegister " << getQueryIdString() << " " << e.what());
+        LOGS(_log, LOG_LVL_WARN, "Failed queryStatsTmpRegister " << e.what());
     }
 
     _executive->setScanInteractive(_qSession->getScanInteractive());
@@ -347,12 +347,12 @@ void UserQuerySelect::submit() {
         threadPriority.restoreOriginalValues();
     }
 
-    LOGS(_log, LOG_LVL_DEBUG, getQueryIdString() <<" total jobs in query=" << sequence);
+    LOGS(_log, LOG_LVL_DEBUG, "total jobs in query=" << sequence);
     _executive->waitForAllJobsToStart();
     auto endAllQSJ = std::chrono::system_clock::now(); // TEMPORARY-timing
     { // TEMPORARY-timing
         std::lock_guard<std::mutex> sumLock(_executive->sumMtx);
-        LOGS(_log, LOG_LVL_DEBUG, getQueryIdString() << "QSJ Total=" <<  timeDiff(startAllQSJ, endAllQSJ)
+        LOGS(_log, LOG_LVL_DEBUG, "QSJ Total=" <<  timeDiff(startAllQSJ, endAllQSJ)
              << "\nQSJ **sequence=" << sequence
              << "\nQSJ   addTimeSum      =" << addTimeSum
              << "\nQSJ     cancelLockQSEASum =" << _executive->cancelLockQSEASum
@@ -377,7 +377,7 @@ QueryState UserQuerySelect::join() {
     // Since all data are in, run final SQL commands like GROUP BY.
     if (!_infileMerger->finalize()) {
         successful = false;
-        LOGS(_log, LOG_LVL_ERROR, getQueryIdString() << " InfileMerger::finalize failed");
+        LOGS(_log, LOG_LVL_ERROR, "InfileMerger::finalize failed");
         // Error: 1105 SQLSTATE: HY000 (ER_UNKNOWN_ERROR) Message: Unknown error
         _messageStore->addMessage(-1, 1105, "Failure while merging result",
                 MessageSeverity::MSG_ERROR);
@@ -387,19 +387,19 @@ QueryState UserQuerySelect::join() {
     } catch (std::exception const& exc) {
         // exception here means error in qserv logic, we do not want to leak
         // it or expose it to user, just dump it to log
-        LOGS(_log, LOG_LVL_ERROR, getQueryIdString() << " exception from _discardMerger: "<< exc.what());
+        LOGS(_log, LOG_LVL_ERROR, "exception from _discardMerger: "<< exc.what());
     }
     if (successful) {
         _qMetaUpdateStatus(qmeta::QInfo::COMPLETED);
-        LOGS(_log, LOG_LVL_DEBUG, getQueryIdString() << " Joined everything (success)");
+        LOGS(_log, LOG_LVL_DEBUG, "Joined everything (success)");
         return SUCCESS;
     } else if (_killed) {
         // status is already set to ABORTED
-        LOGS(_log, LOG_LVL_ERROR, getQueryIdString() << " Joined everything (killed)");
+        LOGS(_log, LOG_LVL_ERROR, "Joined everything (killed)");
         return ERROR;
     } else {
         _qMetaUpdateStatus(qmeta::QInfo::FAILED);
-        LOGS(_log, LOG_LVL_ERROR, getQueryIdString() << " Joined everything (failure!)");
+        LOGS(_log, LOG_LVL_ERROR, "Joined everything (failure!)");
         return ERROR;
     }
 }
@@ -434,12 +434,12 @@ void UserQuerySelect::discard() {
         // Silence merger discarding errors, because this object is being released.
         // client no longer cares about merger errors.
     }
-    LOGS(_log, LOG_LVL_DEBUG, getQueryIdString() << " Discarded UserQuerySelect");
+    LOGS(_log, LOG_LVL_DEBUG, "Discarded UserQuerySelect");
 }
 
 /// Setup merger (for results handling and aggregation)
 void UserQuerySelect::setupMerger() {
-    LOGS(_log, LOG_LVL_TRACE, getQueryIdString() << " Setup merger");
+    LOGS(_log, LOG_LVL_TRACE, "Setup merger");
     _infileMergerConfig->targetTable = _resultTable;
     _infileMergerConfig->mergeStmt = _qSession->getMergeStmt();
     LOGS(_log, LOG_LVL_DEBUG, "setting mergeStmt:" <<
@@ -465,7 +465,7 @@ void UserQuerySelect::saveResultQuery() {
 }
 
 void UserQuerySelect::setupChunking() {
-    LOGS(_log, LOG_LVL_TRACE, getQueryIdString() << "Setup chunking");
+    LOGS(_log, LOG_LVL_TRACE, "Setup chunking");
     // Do not throw exceptions here, set _errorExtra .
     std::shared_ptr<qproc::IndexMap> im;
     std::string dominantDb = _qSession->getDominantDb();
@@ -479,11 +479,11 @@ void UserQuerySelect::setupChunking() {
         eSet = _qSession->getEmptyChunks();
         if (!eSet) {
             eSet = std::make_shared<IntSet>();
-            LOGS(_log, LOG_LVL_WARN, getQueryIdString() << " Missing empty chunks info for " << dominantDb);
+            LOGS(_log, LOG_LVL_WARN, "Missing empty chunks info for " << dominantDb);
         }
     }
     // FIXME add operator<< for QuerySession
-    LOGS(_log, LOG_LVL_TRACE, getQueryIdString() << " _qSession: " << _qSession);
+    LOGS(_log, LOG_LVL_TRACE, "_qSession: " << _qSession);
     if (_qSession->hasChunks()) {
         auto areaRestrictors = _qSession->getAreaRestrictors();
         auto secIdxRestrictors = _qSession->getSecIdxRestrictors();
@@ -497,7 +497,7 @@ void UserQuerySelect::setupChunking() {
             csv = im->getAllChunks();
         }
 
-        LOGS(_log, LOG_LVL_TRACE, getQueryIdString() << " Chunk specs: " << util::printable(csv));
+        LOGS(_log, LOG_LVL_TRACE, "Chunk specs: " << util::printable(csv));
         // Filter out empty chunks
         for(qproc::ChunkSpecVector::const_iterator i=csv.begin(), e=csv.end();
             i != e;
@@ -507,7 +507,7 @@ void UserQuerySelect::setupChunking() {
             }
         }
     } else {
-        LOGS(_log, LOG_LVL_TRACE, getQueryIdString() << " No chunks added, QuerySession will add dummy chunk");
+        LOGS(_log, LOG_LVL_TRACE, "No chunks added, QuerySession will add dummy chunk");
     }
     _qSession->setScanInteractive();
 }
@@ -567,7 +567,7 @@ void UserQuerySelect::qMetaRegister(std::string const& resultLocation, std::stri
     _queryIdStr = QueryIdHelper::makeIdStr(_qMetaQueryId);
     // Add logging context with query ID
     QSERV_LOGCONTEXT_QUERY(_qMetaQueryId);
-    LOGS(_log, LOG_LVL_DEBUG, getQueryIdString() << " UserQuery registered " << _qSession->getOriginal());
+    LOGS(_log, LOG_LVL_DEBUG, "UserQuery registered " << _qSession->getOriginal());
 
     // update #QID# with actual query ID
     boost::replace_all(_resultLoc, "#QID#", std::to_string(_qMetaQueryId));

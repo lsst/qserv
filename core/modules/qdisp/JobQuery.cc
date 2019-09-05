@@ -54,11 +54,11 @@ JobQuery::JobQuery(Executive::Ptr const& executive, JobDescription::Ptr const& j
           _qid(qid),
           _idStr(QueryIdHelper::makeIdStr(qid, getIdInt())) {
     _qdispPool = executive->getQdispPool();
-    LOGS(_log, LOG_LVL_DEBUG, "JobQuery " << _idStr << " desc=" << _jobDescription);
+    LOGS(_log, LOG_LVL_DEBUG, "JobQuery desc=" << _jobDescription);
 }
 
 JobQuery::~JobQuery() {
-    LOGS(_log, LOG_LVL_DEBUG, "~JobQuery " << _idStr);
+    LOGS(_log, LOG_LVL_DEBUG, "~JobQuery");
 }
 
 /** Attempt to run the job on a worker.
@@ -66,22 +66,22 @@ JobQuery::~JobQuery() {
  */
 bool JobQuery::runJob() {
     QSERV_LOGCONTEXT_QUERY_JOB(getQueryId(), getIdInt());
-    LOGS(_log, LOG_LVL_DEBUG, _idStr << " runJob " << *this);
+    LOGS(_log, LOG_LVL_DEBUG, " unJob " << *this);
     auto executive = _executive.lock();
     if (executive == nullptr) {
-        LOGS(_log, LOG_LVL_ERROR, _idStr << "runJob failed executive==nullptr");
+        LOGS(_log, LOG_LVL_ERROR, "runJob failed executive==nullptr");
         return false;
     }
     bool cancelled = executive->getCancelled();
     bool handlerReset = _jobDescription->respHandler()->reset();
     if (!cancelled && handlerReset) {
         auto criticalErr = [this, &executive](std::string const& msg) {
-            LOGS(_log, LOG_LVL_ERROR, _idStr << " " << msg << " "
+            LOGS(_log, LOG_LVL_ERROR, msg << " "
                  << _jobDescription << " Canceling user query!");
             executive->squash(); // This should kill all jobs in this user query.
         };
 
-        LOGS(_log, LOG_LVL_DEBUG, _idStr << " runJob checking attempt=" << _jobDescription->getAttemptCount());
+        LOGS(_log, LOG_LVL_DEBUG, "runJob checking attempt=" << _jobDescription->getAttemptCount());
         std::lock_guard<std::recursive_mutex> lock(_rmutex);
         if (_jobDescription->getAttemptCount() < _getMaxAttempts()) {
             bool okCount = _jobDescription->incrAttemptCountScrubResults();
@@ -94,7 +94,7 @@ bool JobQuery::runJob() {
                 return false;
             }
         } else {
-            LOGS(_log, LOG_LVL_DEBUG, _idStr << " runJob max retries");
+            LOGS(_log, LOG_LVL_DEBUG, "runJob max retries");
             criticalErr("hit maximum number of retries");
             return false;
         }
@@ -104,7 +104,7 @@ bool JobQuery::runJob() {
         // are trying to start this whole process. We also make sure we record
         // whether or not we are in SSI as cancellation handling differs.
         //
-        LOGS(_log, LOG_LVL_DEBUG, _idStr << " runJob calls StartQuery()");
+        LOGS(_log, LOG_LVL_DEBUG, "runJob calls StartQuery()");
         std::shared_ptr<JobQuery> jq(shared_from_this());
         _inSsi = true;
         if (executive->startQuery(jq)) {
@@ -113,7 +113,7 @@ bool JobQuery::runJob() {
         }
         _inSsi = false;
     }
-    LOGS(_log, LOG_LVL_WARN, _idStr << " runJob failed. cancelled=" << cancelled
+    LOGS(_log, LOG_LVL_WARN, "runJob failed. cancelled=" << cancelled
               << " reset=" << handlerReset);
     return false;
 }
@@ -121,24 +121,24 @@ bool JobQuery::runJob() {
 /// Cancel response handling. Return true if this is the first time cancel has been called.
 bool JobQuery::cancel() {
     QSERV_LOGCONTEXT_QUERY_JOB(getQueryId(), getIdInt());
-    LOGS(_log, LOG_LVL_DEBUG, _idStr << " JobQuery::cancel()");
+    LOGS(_log, LOG_LVL_DEBUG, "JobQuery::cancel()");
     if (_cancelled.exchange(true) == false) {
         std::lock_guard<std::recursive_mutex> lock(_rmutex);
         // If _inSsi is true then this query request has been passed to SSI and
         // _queryRequestPtr cannot be a nullptr. Cancellation is complicated.
         bool cancelled = false;
         if (_inSsi) {
-            LOGS(_log, LOG_LVL_DEBUG, _idStr << " cancel QueryRequest in progress");
+            LOGS(_log, LOG_LVL_DEBUG, "cancel QueryRequest in progress");
             if (_queryRequestPtr->cancel()) {
-                LOGS(_log, LOG_LVL_DEBUG, _idStr << " cancelled by QueryRequest");
+                LOGS(_log, LOG_LVL_DEBUG, "cancelled by QueryRequest");
                 cancelled = true;
             } else {
-                LOGS(_log, LOG_LVL_DEBUG, _idStr << " QueryRequest could not cancel");
+                LOGS(_log, LOG_LVL_DEBUG, "QueryRequest could not cancel");
             }
         }
         if (!cancelled) {
             std::ostringstream os;
-            os << _idStr <<" cancel QueryRequest=" << _queryRequestPtr ;
+            os << _idStr << " cancel QueryRequest=" << _queryRequestPtr ;
             LOGS(_log, LOG_LVL_DEBUG, os.str());
             getDescription()->respHandler()->errorFlush(os.str(), -1);
             auto executive = _executive.lock();
@@ -151,7 +151,7 @@ bool JobQuery::cancel() {
         _jobDescription->respHandler()->processCancel();
         return true;
     }
-    LOGS(_log, LOG_LVL_DEBUG, _idStr << " cancel, skipping, already cancelled.");
+    LOGS(_log, LOG_LVL_DEBUG, "cancel, skipping, already cancelled.");
     return false;
 }
 
@@ -164,7 +164,7 @@ bool JobQuery::isQueryCancelled() {
     QSERV_LOGCONTEXT_QUERY_JOB(getQueryId(), getIdInt());
     auto exec = _executive.lock();
     if (exec == nullptr) {
-        LOGS(_log, LOG_LVL_WARN, _idStr << " _executive == nullptr");
+        LOGS(_log, LOG_LVL_WARN, "_executive == nullptr");
         return true; // Safer to assume the worst.
     }
     return exec->getCancelled();
