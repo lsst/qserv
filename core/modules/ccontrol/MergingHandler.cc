@@ -132,11 +132,11 @@ bool MergingHandler::flush(int bLen, bool& last, bool& largeResult) {
             bool msgContinues = _response->result.continues();
             _state = MsgState::RESULT_RECV;
             if (msgContinues) {
-                LOGS(_log, LOG_LVL_DEBUG, "Message continues, waiting for next header.");
+                LOGS(_log, LOG_LVL_TRACE, "Message continues, waiting for next header.");
                 _state = MsgState::RESULT_EXTRA;
                 _mBuf.setTargetSize(proto::ProtoHeaderWrap::PROTO_HEADER_SIZE);
             } else {
-                LOGS(_log, LOG_LVL_DEBUG, "Message ends, setting last=true");
+                LOGS(_log, LOG_LVL_TRACE, "Message ends, setting last=true");
                 last = true;
             }
             LOGS(_log, LOG_LVL_DEBUG, "Flushed msgContinues=" << msgContinues
@@ -306,7 +306,7 @@ void MergeBuffer::setTargetSize(int sz) {
 
 
 void MergeBuffer::resizeToTargetSize() {
-    LOGS(_log, LOG_LVL_DEBUG, _id << " resizeToTargetSize targetSize=" << _targetSize);
+    LOGS(_log, LOG_LVL_TRACE, _id << " resizeToTargetSize targetSize=" << _targetSize);
     _resize(_targetSize);
 }
 

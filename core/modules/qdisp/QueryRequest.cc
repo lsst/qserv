@@ -89,7 +89,7 @@ public:
                 return;
             }
             std::vector<char>& buffer = jq->getDescription()->respHandler()->nextBuffer();
-            LOGS(_log, LOG_LVL_DEBUG, "AskForResp GetResponseData size=" << buffer.size());
+            LOGS(_log, LOG_LVL_TRACE, "AskForResp GetResponseData size=" << buffer.size());
             tWaiting.start();
             qr->GetResponseData(&buffer[0], buffer.size());
         }
@@ -102,7 +102,7 @@ public:
             _cv.wait(uLock, [this](){ return _state != State::STARTED0; });
             tWaiting.stop();
             // _mtx is locked at this point.
-            LOGS(_log, LOG_LVL_DEBUG, "AskForResp should be DATAREADY1 " << (int)_state);
+            LOGS(_log, LOG_LVL_TRACE, "AskForResp should be DATAREADY1 " << (int)_state);
             if (_state == State::DONE2) {
                 // There was a problem. End the stream associated
                 auto qr = _qRequest.lock();
@@ -185,12 +185,12 @@ QueryRequest::QueryRequest(JobQuery::Ptr const& jobQuery) :
   _jobIdStr(jobQuery->getIdStr()),
   _qdispPool(_jobQuery->getQdispPool()){
     QSERV_LOGCONTEXT_QUERY_JOB(_qid, _jobid);
-    LOGS(_log, LOG_LVL_DEBUG, "New QueryRequest");
+    LOGS(_log, LOG_LVL_TRACE, "New QueryRequest");
 }
 
 QueryRequest::~QueryRequest() {
     QSERV_LOGCONTEXT_QUERY_JOB(_qid, _jobid);
-    LOGS(_log, LOG_LVL_DEBUG, "~QueryRequest");
+    LOGS(_log, LOG_LVL_TRACE, "~QueryRequest");
     if (_askForResponseDataCmd != nullptr) {
         // This shouldn't really happen, but we really don't want to leave this blocking the pool.
         LOGS(_log, LOG_LVL_WARN, "~QueryRequest cleaning up _askForResponseDataCmd");
@@ -497,7 +497,7 @@ bool QueryRequest::isQueryRequestCancelled() {
 /// Cleanup pointers so this class can be deleted.
 /// This should only be called by _finish or _errorFinish.
 void QueryRequest::cleanup() {
-    LOGS(_log, LOG_LVL_DEBUG, "QueryRequest::cleanup()");
+    LOGS(_log, LOG_LVL_TRACE, "QueryRequest::cleanup()");
     {
         std::lock_guard<std::mutex> lock(_finishStatusMutex);
         if (_finishStatus == ACTIVE) {
@@ -570,7 +570,7 @@ bool QueryRequest::_errorFinish(bool shouldCancel) {
 /// a local shared pointer for this QueryRequest and/or its owner JobQuery.
 /// See QueryRequest::cleanup()
 void QueryRequest::_finish() {
-    LOGS(_log, LOG_LVL_DEBUG, "QueryRequest::_finish");
+    LOGS(_log, LOG_LVL_TRACE, "QueryRequest::_finish");
     {
         // Running _finish more than once would cause errors.
         std::lock_guard<std::mutex> lock(_finishStatusMutex);
