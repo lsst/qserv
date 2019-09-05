@@ -353,13 +353,13 @@ void UserQuerySelect::submit() {
     { // TEMPORARY-timing
         std::lock_guard<std::mutex> sumLock(_executive->sumMtx);
         LOGS(_log, LOG_LVL_DEBUG, "QSJ Total=" <<  timeDiff(startAllQSJ, endAllQSJ)
-             << "\nQSJ **sequence=" << sequence
-             << "\nQSJ   addTimeSum      =" << addTimeSum
-             << "\nQSJ     cancelLockQSEASum =" << _executive->cancelLockQSEASum
-             << "\nQSJ     jobQueryQSEASum   =" << _executive->jobQueryQSEASum
-             << "\nQSJ     addJobQSEASum     =" << _executive->addJobQSEASum
-             << "\nQSJ     trackQSEASum      =" << _executive->trackQSEASum
-             << "\nQSJ     endQSEASum        =" << _executive->endQSEASum );
+             << ", **sequence=" << sequence
+             << ", addTimeSum=" << addTimeSum
+             << ", cancelLockQSEASum=" << _executive->cancelLockQSEASum
+             << ", jobQueryQSEASum=" << _executive->jobQueryQSEASum
+             << ", addJobQSEASum=" << _executive->addJobQSEASum
+             << ", trackQSEASum=" << _executive->trackQSEASum
+             << ", endQSEASum=" << _executive->endQSEASum );
     }
 
     // we only care about per-chunk info for ASYNC queries

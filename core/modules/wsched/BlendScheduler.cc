@@ -421,7 +421,7 @@ void BlendScheduler::_logChunkStatus() {
         {
             lock_guard<mutex> lg(_schedMtx);
             for (auto const& sched : _schedulers) {
-                if (sched != nullptr) str += sched->chunkStatusStr() + "\n";
+                if (sched != nullptr) str += sched->chunkStatusStr() + " ";
             }
         }
         LOGS(_log, LOG_LVL_DEBUG, str);

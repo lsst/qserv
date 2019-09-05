@@ -386,7 +386,7 @@ void ChunkInventory::_rebuild(SqlConnection& sc) {
     };
 
     for (auto const& query: queries) {
-        LOGS(_log, LOG_LVL_DEBUG, "Launching query:\n" << query);
+        LOGS(_log, LOG_LVL_DEBUG, "Launching query: " << query);
 
         SqlErrorObject seo;
         if (not sc.runQuery(query, seo)) {
