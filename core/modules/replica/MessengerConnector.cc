@@ -171,10 +171,10 @@ bool MessengerConnector::exists(string const& id) const {
 
 void MessengerConnector::_sendImpl(MessageWrapperBase::Ptr const& ptr) {
 
+    util::Lock lock(_mtx, _context() + __func__);
+
     LOGS(_log, LOG_LVL_DEBUG, _context() << __func__
          << "  id: " << ptr->id() << " _requests.size: " << _requests.size());
-
-    util::Lock lock(_mtx, _context() + __func__);
 
     if (_find(lock, ptr->id()) != nullptr) {
         throw logic_error(
@@ -265,12 +265,12 @@ void MessengerConnector::_resolve(util::Lock const& lock) {
 void MessengerConnector::_resolved(boost::system::error_code const& ec,
                                    boost::asio::ip::tcp::resolver::iterator iter) {
 
-    LOGS(_log, LOG_LVL_DEBUG, _context() << __func__
-         << "  _currentRequest=" << (_currentRequest ? _currentRequest->id() : ""));
-
     if (_isAborted(ec)) return;
 
     util::Lock lock(_mtx, _context() + __func__);
+
+    LOGS(_log, LOG_LVL_DEBUG, _context() << __func__
+         << "  _currentRequest=" << (_currentRequest ? _currentRequest->id() : ""));
 
     if (ec.value() != 0) {
         _waitBeforeRestart(lock);
@@ -302,12 +302,12 @@ void MessengerConnector::_connect(util::Lock const& lock,
 void MessengerConnector::_connected(boost::system::error_code const& ec,
                                     boost::asio::ip::tcp::resolver::iterator iter) {
 
-    LOGS(_log, LOG_LVL_DEBUG, _context() << __func__
-         << "  _currentRequest=" << (_currentRequest ? _currentRequest->id() : ""));
-
     if (_isAborted(ec)) return;
 
     util::Lock lock(_mtx, _context() + __func__);
+
+    LOGS(_log, LOG_LVL_DEBUG, _context() << __func__
+         << "  _currentRequest=" << (_currentRequest ? _currentRequest->id() : ""));
 
     if (ec.value() != 0) {
         _waitBeforeRestart(lock);
@@ -338,13 +338,13 @@ void MessengerConnector::_waitBeforeRestart(util::Lock const& lock) {
 
 void MessengerConnector::_awakenForRestart(boost::system::error_code const& ec) {
 
-    LOGS(_log, LOG_LVL_DEBUG, _context() << __func__
-         << "  _currentRequest=" << (_currentRequest ? _currentRequest->id() : "")
-         << "  _requests.size=" << _requests.size());
-
     if (_isAborted(ec)) return;
 
     util::Lock lock(_mtx, _context() + __func__);
+
+    LOGS(_log, LOG_LVL_DEBUG, _context() << __func__
+         << "  _currentRequest=" << (_currentRequest ? _currentRequest->id() : "")
+         << "  _requests.size=" << _requests.size());
 
     if (_state != STATE_CONNECTING) return;
 
@@ -389,10 +389,10 @@ void MessengerConnector::_sendRequest(util::Lock const& lock) {
 void MessengerConnector::_requestSent(boost::system::error_code const& ec,
                                       size_t bytes_transferred) {
 
+    util::Lock lock(_mtx, _context() + __func__);
+
     LOGS(_log, LOG_LVL_DEBUG, _context() << __func__
          << "  _currentRequest=" << (_currentRequest ? _currentRequest->id() : ""));
-
-    util::Lock lock(_mtx, _context() + __func__);
 
     // Check if the request was cancelled while still in flight.
     // If that happens then _currentRequest should already be nullified
@@ -468,10 +468,6 @@ void MessengerConnector::_receiveResponse(util::Lock const& lock) {
 void MessengerConnector::_responseReceived(boost::system::error_code const& ec,
                                            size_t bytes_transferred) {
 
-    LOGS(_log, LOG_LVL_DEBUG, _context() << __func__
-         << "  _currentRequest=" << (_currentRequest ? _currentRequest->id() : "")
-         << " error_code=" << ec);
-
     // The notification if any should be happening outside the lock guard
     // to prevent deadlocks
     //
@@ -484,6 +480,10 @@ void MessengerConnector::_responseReceived(boost::system::error_code const& ec,
     MessageWrapperBase::Ptr request2notify;
     {
         util::Lock lock(_mtx, _context() + __func__);
+
+        LOGS(_log, LOG_LVL_DEBUG, _context() << __func__
+             << "  _currentRequest=" << (_currentRequest ? _currentRequest->id() : "")
+             << " error_code=" << ec);
 
         // Check if the request was cancelled while still in flight.
         // If that happens then _currentRequest should already be nullified
