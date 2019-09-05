@@ -201,7 +201,7 @@ public:
 private:
     EntryPtrVector _entries;
     SetAliasMode _aliasMode{USE_ALIAS};
-    bool _useColumnOnly; // if true, ColumnRef won't print db or table, only column name.
+    bool _useColumnOnly{false}; // if true, ColumnRef won't print db or table, only column name.
 };
 
 
