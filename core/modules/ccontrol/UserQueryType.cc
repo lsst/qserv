@@ -100,12 +100,12 @@ namespace ccontrol {
 /// Returns true if query is DROP DATABASE
 bool
 UserQueryType::isDropDb(std::string const& query, std::string& dbName) {
-    LOGS(_log, LOG_LVL_DEBUG, "isDropDb: " << query);
+    LOGS(_log, LOG_LVL_TRACE, "isDropDb: " << query);
     boost::smatch sm;
     bool match = boost::regex_match(query, sm, _dropDbRe);
     if (match) {
         dbName = sm.str(3);
-        LOGS(_log, LOG_LVL_DEBUG, "isDropDb: match: " << dbName);
+        LOGS(_log, LOG_LVL_TRACE, "isDropDb: match: " << dbName);
     }
     return match;
 }
@@ -113,13 +113,13 @@ UserQueryType::isDropDb(std::string const& query, std::string& dbName) {
 /// Returns true if query is DROP TABLE
 bool
 UserQueryType::isDropTable(std::string const& query, std::string& dbName, std::string& tableName) {
-    LOGS(_log, LOG_LVL_DEBUG, "isDropTable: " << query);
+    LOGS(_log, LOG_LVL_TRACE, "isDropTable: " << query);
     boost::smatch sm;
     bool match = boost::regex_match(query, sm, _dropTableRe);
     if (match) {
         dbName = sm.str(3);
         tableName = sm.str(5);
-        LOGS(_log, LOG_LVL_DEBUG, "isDropTable: match: " << dbName << "." << tableName);
+        LOGS(_log, LOG_LVL_TRACE, "isDropTable: match: " << dbName << "." << tableName);
     }
     return match;
 }
@@ -127,13 +127,13 @@ UserQueryType::isDropTable(std::string const& query, std::string& dbName, std::s
 /// Returns true if query is regular SELECT (not isSelectResult())
 bool
 UserQueryType::isSelect(std::string const& query) {
-    LOGS(_log, LOG_LVL_DEBUG, "isSelect: " << query);
+    LOGS(_log, LOG_LVL_TRACE, "isSelect: " << query);
     boost::smatch sm;
     bool match = boost::regex_match(query, sm, _selectRe);
     if (match) {
-        LOGS(_log, LOG_LVL_DEBUG, "isSelect: match");
+        LOGS(_log, LOG_LVL_TRACE, "isSelect: match");
         if (boost::regex_match(query, sm, _selectResultRe)) {
-            LOGS(_log, LOG_LVL_DEBUG, "isSelect: match select result");
+            LOGS(_log, LOG_LVL_TRACE, "isSelect: match select result");
             match = false;
         }
     }
@@ -143,12 +143,12 @@ UserQueryType::isSelect(std::string const& query) {
 /// Returns true if query is FLUSH QSERV_CHUNKS_CACHE [FOR database]
 bool
 UserQueryType::isFlushChunksCache(std::string const& query, std::string& dbName) {
-    LOGS(_log, LOG_LVL_DEBUG, "isFlushChunksCache: " << query);
+    LOGS(_log, LOG_LVL_TRACE, "isFlushChunksCache: " << query);
     boost::smatch sm;
     bool match = boost::regex_match(query, sm, _flushEmptyRe);
     if (match) {
         dbName = sm.str(3);
-        LOGS(_log, LOG_LVL_DEBUG, "isFlushChunksCache: match: " << dbName);
+        LOGS(_log, LOG_LVL_TRACE, "isFlushChunksCache: match: " << dbName);
     }
     return match;
 }
@@ -156,12 +156,12 @@ UserQueryType::isFlushChunksCache(std::string const& query, std::string& dbName)
 /// Returns true if query is SHOW [FULL] PROCESSLIST
 bool
 UserQueryType::isShowProcessList(std::string const& query, bool& full) {
-    LOGS(_log, LOG_LVL_DEBUG, "isShowProcessList: " << query);
+    LOGS(_log, LOG_LVL_TRACE, "isShowProcessList: " << query);
     boost::smatch sm;
     bool match = boost::regex_match(query, sm, _showProcessListRe);
     if (match) {
         full = sm.length(1) != 0;
-        LOGS(_log, LOG_LVL_DEBUG, "isShowProcessList: full: " << (full ? 'y' : 'n'));
+        LOGS(_log, LOG_LVL_TRACE, "isShowProcessList: full: " << (full ? 'y' : 'n'));
     }
     return match;
 }
@@ -176,12 +176,12 @@ UserQueryType::isProcessListTable(std::string const& dbName, std::string const& 
 /// Returns true if query is SUBMIT ...
 bool
 UserQueryType::isSubmit(std::string const& query, std::string& stripped) {
-     LOGS(_log, LOG_LVL_DEBUG, "isSubmit: " << query);
+     LOGS(_log, LOG_LVL_TRACE, "isSubmit: " << query);
      boost::smatch sm;
      bool match = boost::regex_match(query, sm, _submitRe);
      if (match) {
          stripped = sm.str(1);
-         LOGS(_log, LOG_LVL_DEBUG, "isSubmit: match: " << stripped);
+         LOGS(_log, LOG_LVL_TRACE, "isSubmit: match: " << stripped);
      }
      return match;
 }
@@ -189,12 +189,12 @@ UserQueryType::isSubmit(std::string const& query, std::string& stripped) {
 /// Returns true if query is SELECT * FROM QSERV_RESULT(...)
 bool
 UserQueryType::isSelectResult(std::string const& query, QueryId& queryId) {
-     LOGS(_log, LOG_LVL_DEBUG, "isSelectResult: " << query);
+     LOGS(_log, LOG_LVL_TRACE, "isSelectResult: " << query);
      boost::smatch sm;
      bool match = boost::regex_match(query, sm, _selectResultRe);
      if (match) {
          queryId = std::stoull(sm.str(1));
-         LOGS(_log, LOG_LVL_DEBUG, "isSelectResult: queryId: " << queryId);
+         LOGS(_log, LOG_LVL_TRACE, "isSelectResult: queryId: " << queryId);
      }
      return match;
 }
@@ -202,12 +202,12 @@ UserQueryType::isSelectResult(std::string const& query, QueryId& queryId) {
 // Returns true if query is KILL [QUERY|CONNECTION] NNN
 bool
 UserQueryType::isKill(std::string const& query, int& threadId) {
-    LOGS(_log, LOG_LVL_DEBUG, "isKill: " << query);
+    LOGS(_log, LOG_LVL_TRACE, "isKill: " << query);
     boost::smatch sm;
     bool match = boost::regex_match(query, sm, _killRe);
     if (match) {
         threadId = std::stoi(sm.str(1));
-        LOGS(_log, LOG_LVL_DEBUG, "isKill: threadId: " << threadId);
+        LOGS(_log, LOG_LVL_TRACE, "isKill: threadId: " << threadId);
     }
     return match;
 }
@@ -215,12 +215,12 @@ UserQueryType::isKill(std::string const& query, int& threadId) {
 // Returns true if query is CANCEL NNN
 bool
 UserQueryType::isCancel(std::string const& query, QueryId& queryId) {
-    LOGS(_log, LOG_LVL_DEBUG, "isCancel: " << query);
+    LOGS(_log, LOG_LVL_TRACE, "isCancel: " << query);
     boost::smatch sm;
     bool match = boost::regex_match(query, sm, _cancelRe);
     if (match) {
         queryId = std::stoull(sm.str(1));
-        LOGS(_log, LOG_LVL_DEBUG, "isCancel: queryId: " << queryId);
+        LOGS(_log, LOG_LVL_TRACE, "isCancel: queryId: " << queryId);
     }
     return match;
 }
