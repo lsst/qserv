@@ -97,6 +97,11 @@ public:
      */
     static bool isCancel(std::string const& query, QueryId& queryId);
 
+    /**
+     *  Returns true if query is CALL ...
+     */
+    static bool isCall(std::string const& query);
+
 };
 
 }}} // namespace lsst::qserv::ccontrol

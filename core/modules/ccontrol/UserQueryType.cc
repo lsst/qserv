@@ -105,6 +105,12 @@ boost::regex _cancelRe(R"(^cancel\s+(\d+)\s*$)",
 } // namespace
 
 
+// regex for CALL
+// Note that parens around whole string are not part of the regex but raw string literal
+boost::regex _callRe(R"(^call\s+.+$)",
+                       boost::regex::ECMAScript | boost::regex::icase | boost::regex::optimize);
+
+
 namespace lsst {
 namespace qserv {
 namespace ccontrol {
@@ -235,6 +241,13 @@ bool UserQueryType::isCancel(std::string const& query, QueryId& queryId) {
         LOGS(_log, LOG_LVL_TRACE, "isCancel: queryId: " << queryId);
     }
     return match;
+}
+
+
+bool UserQueryType::isCall(std::string const& query) {
+    LOGS(_log, LOG_LVL_TRACE, "isCall: " << query);
+    boost::smatch sm;
+    return boost::regex_match(query, sm, _callRe);
 }
 
 
