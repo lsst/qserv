@@ -71,7 +71,7 @@ TableInfoPool::get(std::string const& db, std::string const& table) {
     std::unique_ptr<TableInfo const> t(new TableInfo(db, table, TableInfo::DIRECTOR));
     auto range = std::equal_range(_pool.begin(), _pool.end(), t, TableInfoLt());
     if (range.first != range.second) {
-        LOGS(_log, LOG_LVL_DEBUG, "get returning " << *range.first->get() << " for db:" << db << ", table:" << table);
+        LOGS(_log, LOG_LVL_TRACE, "get returning " << *range.first->get() << " for db:" << db << ", table:" << table);
         return range.first->get();
     }
 
@@ -80,7 +80,7 @@ TableInfoPool::get(std::string const& db, std::string const& table) {
     int const chunkLevel = partParam.chunkLevel();
     // unpartitioned table
     if (chunkLevel == 0) {
-        LOGS(_log, LOG_LVL_DEBUG, "get returning nullptr for unchunked table db:" << db << ", table:" << table);
+        LOGS(_log, LOG_LVL_TRACE, "get returning nullptr for unchunked table db:" << db << ", table:" << table);
         return nullptr;
     }
     // match table
@@ -111,7 +111,7 @@ TableInfoPool::get(std::string const& db, std::string const& table) {
                                     " different partitionings!");
         }
         auto ret = _insert(std::move(infoPtr));
-        LOGS(_log, LOG_LVL_DEBUG, "get returning " << *ret << " for db:" << db << ", table:" << table);
+        LOGS(_log, LOG_LVL_TRACE, "get returning " << *ret << " for db:" << db << ", table:" << table);
         return ret;
     }
     std::string const& dirTable = partParam.dirTable;
@@ -139,7 +139,7 @@ TableInfoPool::get(std::string const& db, std::string const& table) {
         infoPtr->lat = v[1];
         infoPtr->partitioningId = dbStriping.partitioningId;
         auto ret = _insert(std::move(infoPtr));
-        LOGS(_log, LOG_LVL_DEBUG, "get returning " << *ret << " for db:" << db << ", table:" << table);
+        LOGS(_log, LOG_LVL_TRACE, "get returning " << *ret << " for db:" << db << ", table:" << table);
         return ret;
     }
     // child table
@@ -161,7 +161,7 @@ TableInfoPool::get(std::string const& db, std::string const& table) {
     }
 
     auto ret = _insert(std::move(infoPtr));
-    LOGS(_log, LOG_LVL_DEBUG, "get returning " << *ret << " for db:" << db << ", table:" << table);
+    LOGS(_log, LOG_LVL_TRACE, "get returning " << *ret << " for db:" << db << ", table:" << table);
     return ret;
 }
 

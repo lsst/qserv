@@ -89,7 +89,7 @@ void matchValueExprs(lsst::qserv::query::QueryContext& context, CLAUSE_T & claus
     for (auto&& valueExprRef : valueExprRefs) {
         auto&& valueExprMatch = context.getValueExprMatch(valueExprRef.get());
         if (nullptr != valueExprMatch) {
-            LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__ << " replacing valueExpr " << *valueExprRef.get() <<
+            LOGS(_log, LOG_LVL_TRACE, __FUNCTION__ << " replacing valueExpr " << *valueExprRef.get() <<
                     " in " << clause <<
                     " with " << *valueExprMatch);
             valueExprRef.get() = valueExprMatch;
@@ -114,7 +114,7 @@ void matchTableRefs(lsst::qserv::query::QueryContext& context,
                 throw std::logic_error(os.str());
             }
         } else {
-            LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__ << " replacing tableRef in " << *columnRef << " with " << *tableRefMatch);
+            LOGS(_log, LOG_LVL_TRACE, __FUNCTION__ << " replacing tableRef in " << *columnRef << " with " << *tableRefMatch);
             columnRef->setTable(tableRefMatch);
         }
     }
@@ -300,7 +300,7 @@ void TablePlugin::_setAlias(std::shared_ptr<query::TableRef> const& tableRef, qu
         }
         tableRef->setAlias(alias);
     }
-    LOGS(_log, LOG_LVL_DEBUG, "adding used table ref:" << *tableRef);
+    LOGS(_log, LOG_LVL_TRACE, "adding used table ref:" << *tableRef);
     if (not context.addUsedTableRef(tableRef)) {
         throw std::logic_error("could not set alias for " + tableRef->sqlFragment());
     }

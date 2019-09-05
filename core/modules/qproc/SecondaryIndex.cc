@@ -87,7 +87,7 @@ public:
                                                            secondaryIndexCol->getTable());
             auto sql = secIdxRestrictor->getSecIdxLookupQuery(SEC_INDEX_DB, index_table, CHUNK_COLUMN,
                                                               SUB_CHUNK_COLUMN);
-            LOGS(_log, LOG_LVL_DEBUG, "secondary lookup sql:" << sql);
+            LOGS(_log, LOG_LVL_TRACE, "secondary lookup sql:" << sql);
             _sqlLookup(output, sql);
         }
         normalize(output);

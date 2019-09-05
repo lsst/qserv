@@ -186,7 +186,7 @@ void QueryContext::collectTopLevelTableSchema(std::shared_ptr<query::TableRef> c
     std::string db = tableRef->getDb();
     if (db.empty()) db = defaultDb;
     std::string table = tableRef->getTable();
-    LOGS(_log, LOG_LVL_DEBUG, "db=" << db << " table=" << table);
+    LOGS(_log, LOG_LVL_TRACE, "db=" << db << " table=" << table);
     if (not db.empty() && not table.empty()) {
         // Get the columns in the table from the DB schema and put them in the tableColumnMap.
         auto columns = _getTableSchema(db, table);
@@ -194,7 +194,7 @@ void QueryContext::collectTopLevelTableSchema(std::shared_ptr<query::TableRef> c
             for (auto const& col : columns) {
                 // note that we don't copy the join into the new table ref; keep the new TableRef "simple".
                 auto addTableRef = std::make_shared<query::TableRef>(db, table, tableRef->getAlias());
-                LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__ << "adding " << *addTableRef << " for column:" << col);
+                LOGS(_log, LOG_LVL_TRACE, __FUNCTION__ << "adding " << *addTableRef << " for column:" << col);
                 auto& tableRefSet = _columnToTablesMap[col];
                 tableRefSet.insert(addTableRef);
             }

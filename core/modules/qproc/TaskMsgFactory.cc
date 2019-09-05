@@ -91,9 +91,9 @@ std::shared_ptr<proto::TaskMsg> TaskMsgFactory::_makeMsg(ChunkQuerySpec const& c
     if (chunkQuerySpec.nextFragment.get()) {
         ChunkQuerySpec const* sPtr = &chunkQuerySpec;
         while(sPtr) {
-            LOGS(_log, LOG_LVL_DEBUG, "nextFragment");
+            LOGS(_log, LOG_LVL_TRACE, "nextFragment");
             for(unsigned int t=0;t<(sPtr->queries).size();t++){
-                LOGS(_log, LOG_LVL_DEBUG, (sPtr->queries).at(t));
+                LOGS(_log, LOG_LVL_TRACE, (sPtr->queries).at(t));
             }
             // Linked fragments will not have valid subChunkTables vectors,
             // So, we reuse the root fragment's vector.
@@ -102,9 +102,9 @@ std::shared_ptr<proto::TaskMsg> TaskMsgFactory::_makeMsg(ChunkQuerySpec const& c
             sPtr = sPtr->nextFragment.get();
         }
     } else {
-        LOGS(_log, LOG_LVL_DEBUG, "no nextFragment");
+        LOGS(_log, LOG_LVL_TRACE, "no nextFragment");
         for(unsigned int t=0;t<(chunkQuerySpec.queries).size();t++){
-            LOGS(_log, LOG_LVL_DEBUG, (chunkQuerySpec.queries).at(t));
+            LOGS(_log, LOG_LVL_TRACE, (chunkQuerySpec.queries).at(t));
         }
         _addFragment(*taskMsg, resultTable, chunkQuerySpec.subChunkTables,
                      chunkQuerySpec.subChunkIds, chunkQuerySpec.queries);
@@ -131,7 +131,7 @@ void TaskMsgFactory::_addFragment(proto::TaskMsg& taskMsg, std::string const& re
          proto::TaskMsg_Subchunk_DbTbl* dbTbl = sc.add_dbtbl();
          dbTbl->set_db(tbl.db);
          dbTbl->set_tbl(tbl.table);
-         LOGS(_log, LOG_LVL_DEBUG, "added dbtbl=" << tbl.db << "." << tbl.table);
+         LOGS(_log, LOG_LVL_TRACE, "added dbtbl=" << tbl.db << "." << tbl.table);
      }
 
      for(auto& subChunkId : subChunkIds) {

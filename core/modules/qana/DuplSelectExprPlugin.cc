@@ -73,7 +73,7 @@ util::MultiError DuplSelectExprPlugin::getDuplicateAndPosition(StringVector cons
 
     util::MultiError multiError;
 
-    LOGS(_log, LOG_LVL_DEBUG, "Looking for duplicate fields in: " << util::printable(v));
+    LOGS(_log, LOG_LVL_TRACE, "Looking for duplicate fields in: " << util::printable(v));
 
     MultiMap mm;
     int pos;
@@ -101,12 +101,12 @@ util::MultiError DuplSelectExprPlugin::getDuplicateAndPosition(StringVector cons
         }
     }
 
-    if (LOG_CHECK_LVL(_log, LOG_LVL_DEBUG)) {
+    if (LOG_CHECK_LVL(_log, LOG_LVL_TRACE)) {
           std::string msg;
           if (!multiError.empty()) {
-              LOGS(_log, LOG_LVL_DEBUG,  "Duplicate select fields found:\n" << multiError);
+              LOGS(_log, LOG_LVL_TRACE,  "Duplicate select fields found:\n" << multiError);
           } else {
-              LOGS(_log, LOG_LVL_DEBUG,  "No duplicate select field.");
+              LOGS(_log, LOG_LVL_TRACE,  "No duplicate select field.");
           }
     }
     return multiError;
@@ -118,8 +118,8 @@ DuplSelectExprPlugin::getDuplicateSelectErrors(query::SelectStmt const& stmt) co
     query::SelectList const& selectList = stmt.getSelectList();
     query::ValueExprPtrVector valueExprList = *(selectList.getValueExprList());
 
-    if (LOG_CHECK_LVL(_log, LOG_LVL_DEBUG)) {
-        LOGS(_log, LOG_LVL_DEBUG, "Input stmt:\n" << selectList);
+    if (LOG_CHECK_LVL(_log, LOG_LVL_TRACE)) {
+        LOGS(_log, LOG_LVL_TRACE, "Input stmt:\n" << selectList);
     }
 
     StringVector selectExprNormalizedNames;
