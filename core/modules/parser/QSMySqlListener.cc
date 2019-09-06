@@ -1659,6 +1659,7 @@ public:
     }
 
     void checkContext() const override {
+        ASSERT_EXECUTION_CONDITION(_ctx->QSERV_MANAGER() != nullptr, "Only CALL QSERV_MANAGER is supported.", _ctx);
     }
 
     void onExit() override {
