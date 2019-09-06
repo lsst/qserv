@@ -84,7 +84,7 @@ private:
 
 class Antlr4Parser : public AntlrParser, public ListenerDebugHelper, public std::enable_shared_from_this<Antlr4Parser> {
 public:
-    static std::shared_ptr<Antlr4Parser> create(std::string const & q, ccontrol::UserQueryConfig const * const queryConfig=nullptr);
+    static std::shared_ptr<Antlr4Parser> create(std::string const & q, ccontrol::UserQueryConfig const* queryConfig=nullptr);
 
     void setup() override;
 
@@ -101,10 +101,10 @@ public:
     std::string getStatementString() const override;
 
 private:
-    Antlr4Parser(std::string const& q, ccontrol::UserQueryConfig const * const queryConfig);
+    Antlr4Parser(std::string const& q, ccontrol::UserQueryConfig const* queryConfig);
 
     std::string _statement;
-    ccontrol::UserQueryConfig const * const _queryConfig;
+    ccontrol::UserQueryConfig const* _queryConfig;
     std::shared_ptr<parser::QSMySqlListener> _listener;
 };
 

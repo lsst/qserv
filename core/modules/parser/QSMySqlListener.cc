@@ -705,7 +705,7 @@ protected:
     string getTokens() const { return qsMySqlListener->getTokens(); }
     string getStatementString() const { return qsMySqlListener->getStatementString(); }
 
-    ccontrol::UserQueryConfig const * const getQueryConfig() const { return qsMySqlListener->getQueryConfig(); }
+    ccontrol::UserQueryConfig const* getQueryConfig() const { return qsMySqlListener->getQueryConfig(); }
 
 private:
     // Mostly the QSMySqlListener is not used by adapters. It is needed to get the adapter stack list for
@@ -3485,7 +3485,7 @@ public:
 
 
 QSMySqlListener::QSMySqlListener(shared_ptr<ListenerDebugHelper> const & listenerDebugHelper,
-                                 ccontrol::UserQueryConfig const * const queryConfig)
+                                 ccontrol::UserQueryConfig const* queryConfig)
     : _listenerDebugHelper(listenerDebugHelper), _queryConfig(queryConfig)
 {}
 
