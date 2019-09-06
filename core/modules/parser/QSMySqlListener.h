@@ -23,10 +23,12 @@
 #ifndef LSST_QSERV_PARSER_MYSQLLISTENER_H
 #define LSST_QSERV_PARSER_MYSQLLISTENER_H
 
+
 #include <memory>
 #include <stack>
 
 #include "parser/QSMySqlParser.h" // included for contexts. They *could* be forward declared.
+#include "parser/ListenerDebugHelper.h"
 #include "parser/QSMySqlParserBaseListener.h"
 
 
@@ -40,16 +42,8 @@ namespace query{
     class SelectStmt;
 }
 namespace parser {
-
-class Adapter;
-class RootAdapter;
-
-class ListenerDebugHelper {
-public:
-    virtual std::string getStringTree() const = 0;
-    virtual std::string getTokens() const = 0;
-    virtual std::string getStatementString() const = 0;
-};
+    class Adapter;
+    class RootAdapter;
 
 
 class QSMySqlListener : public QSMySqlParserListener {
