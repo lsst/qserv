@@ -40,6 +40,8 @@ QSERV_AREASPEC_ELLIPSE:             Q S E R V '_' A R E A S P E C '_' E L L I P 
 QSERV_AREASPEC_POLY:                Q S E R V '_' A R E A S P E C '_' P O L Y;
 QSERV_AREASPEC_HULL:                Q S E R V '_' A R E A S P E C '_' H U L L;
 
+// Qserv CALL Built-in Procedure Names:
+QSERV_MANAGER: Q S E R V '_' M A N A G E R;
 
 // Keywords
 // Common Keywords
