@@ -1649,19 +1649,27 @@ public:
 
 
 class CallStatementAdapter :
-        public AdapterT<CallStatementCBH, QSMySqlParser::CallStatementContext> {
+        public AdapterT<CallStatementCBH, QSMySqlParser::CallStatementContext>,
+        public FullIdCBH {
 public:
     using AdapterT::AdapterT;
+
+    void handleFullId(vector<string> const & uidlist) override {
+        uids = uidlist;
+    }
 
     void checkContext() const override {
     }
 
     void onExit() override {
+        LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__ <<
+                " call statement uids: " << util::printable(uids));
     }
 
     string name() const override { return getTypeName(this); }
 
 private:
+    vector<string> uids;
 };
 
 
