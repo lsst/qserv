@@ -12,7 +12,7 @@ callStatement
       )?
     | CALL QSERV_MANAGER
       (
-        '(' (constants | expressions)? ')'
+        '(' constant ')'
       )?
     ;
 

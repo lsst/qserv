@@ -55,7 +55,7 @@ namespace ccontrol {
 class UserQueryQservManager : public UserQuery {
 public:
 
-    UserQueryQservManager(UserQueryConfig const& queryConfig, std::vector<std::string> const& args);
+    UserQueryQservManager(UserQueryConfig const& queryConfig, std::string const& value);
 
     virtual ~UserQueryQservManager() {}
 
@@ -77,7 +77,7 @@ public:
     void discard() override {}
 
     // Delegate objects
-    std::shared_ptr<qdisp::MessageStore> getMessageStore() override { return nullptr; }
+    std::shared_ptr<qdisp::MessageStore> getMessageStore() override { return _messageStore; }
 
     virtual std::string getResultLocation() const { return std::string(); }
 

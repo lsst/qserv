@@ -47,17 +47,13 @@ namespace ccontrol {
 
 
 UserQueryQservManager::UserQueryQservManager(UserQueryConfig const& queryConfig,
-                                             std::vector<std::string> const& args)
-        : _resultTableName("qserv_manager_" + queryConfig.userQueryId),
-          _messageStore(std::make_shared<qdisp::MessageStore>()), // TODO I don't understand how this is hooked up to anything. Is it just an interface for log?
+                                             std::string const& value)
+        : _value(value),
+          _resultTableName("qserv_manager_" + queryConfig.userQueryId),
+          _messageStore(std::make_shared<qdisp::MessageStore>()),
           _resultDbConn(queryConfig.resultDbConn),
           _resultDb(queryConfig.resultDb)
-{
-    if (args.size() != 1) {
-        throw UserQueryError("Expected exactly one argument to CALL QSERV_MANAGER");
-    }
-    _value = args[0];
-}
+{}
 
 
 void UserQueryQservManager::submit() {
