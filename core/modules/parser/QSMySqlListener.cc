@@ -75,19 +75,19 @@ namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.parser.QSMySqlListener");
 
-std::string getQueryString(antlr4::ParserRuleContext* ctx) {
+string getQueryString(antlr4::ParserRuleContext* ctx) {
     return ctx->getStart()->getInputStream()->getText(
            antlr4::misc::Interval(ctx->getStart()->getStartIndex(), ctx->getStop()->getStopIndex()));
 }
 
 template <typename T>
-std::string getTypeName() {
+string getTypeName() {
     int status;
     return abi::__cxa_demangle(typeid(T).name(),0,0,&status);
 }
 
 template <typename T>
-std::string getTypeName(T obj) {
+string getTypeName(T obj) {
     int status;
     return abi::__cxa_demangle(typeid(obj).name(),0,0,&status);
 }
@@ -162,7 +162,7 @@ LOGS(_log, LOG_LVL_TRACE, name() << __FUNCTION__ << " " << CALLBACK_INFO);
 //
 // CONDITION: boolean statement
 //      The condition that is being asserted. True passes, false logs and throws.
-// MESSAGE_STRING: std::string
+// MESSAGE_STRING: string
 //      A message for the log, it is not included in the exception.
 // CTX: an antlr4::ParserRuleContext* (or derived class)
 //      The antlr4 context that is used to get the segment of the query that is currently being
@@ -636,16 +636,16 @@ public:
     virtual string name() const = 0;
 
     // used to get a string that reprsents the current stack of adapters, comma delimited.
-    virtual std::string adapterStackToString() const = 0;
+    virtual string adapterStackToString() const = 0;
 
     // gets the antlr4 string representation of the parsed tree, nested in parenthesis.
-    virtual std::string getStringTree() const = 0;
+    virtual string getStringTree() const = 0;
 
     // gets the antlr4 string representation of the tokenization of the query.
-    virtual std::string getTokens() const = 0;
+    virtual string getTokens() const = 0;
 
     // get the sql statement
-    virtual std::string getStatementString() const = 0;
+    virtual string getStatementString() const = 0;
 
     // A function to fail in the case of a not-supported query segment. This should be called with a helpful
     // user-visible error message, e.g. "qserv does not support column names in select statements" (although
@@ -697,10 +697,10 @@ protected:
 
     // Used for error messages, uses the QSMySqlListener to get a list of the names of the adapters in the
     // adapter stack,
-    std::string adapterStackToString() const { return qsMySqlListener->adapterStackToString(); }
-    std::string getStringTree() const { return qsMySqlListener->getStringTree(); }
-    std::string getTokens() const { return qsMySqlListener->getTokens(); }
-    std::string getStatementString() const { return qsMySqlListener->getStatementString(); }
+    string adapterStackToString() const { return qsMySqlListener->adapterStackToString(); }
+    string getStringTree() const { return qsMySqlListener->getStringTree(); }
+    string getTokens() const { return qsMySqlListener->getTokens(); }
+    string getStatementString() const { return qsMySqlListener->getStatementString(); }
 
 private:
     // Mostly the QSMySqlListener is not used by adapters. It is needed to get the adapter stack list for
@@ -746,10 +746,10 @@ public:
 
     string name() const override { return getTypeName(this); }
 
-    std::string adapterStackToString() const override { return qsMySqlListener->adapterStackToString(); }
-    std::string getStringTree() const override { return qsMySqlListener->getStringTree(); }
-    std::string getTokens() const override { return qsMySqlListener->getTokens(); }
-    std::string getStatementString() const override { return qsMySqlListener->getStatementString(); }
+    string adapterStackToString() const override { return qsMySqlListener->adapterStackToString(); }
+    string getStringTree() const override { return qsMySqlListener->getStringTree(); }
+    string getTokens() const override { return qsMySqlListener->getTokens(); }
+    string getStatementString() const override { return qsMySqlListener->getStatementString(); }
 
 private:
     shared_ptr<query::SelectStmt> _selectStatement;
@@ -945,7 +945,7 @@ private:
                 query::ValueFactor::newStarFactor("")));
     }
 
-    void _addSelectAggFunction(std::shared_ptr<query::ValueExpr> const& func) const {
+    void _addSelectAggFunction(shared_ptr<query::ValueExpr> const& func) const {
         _selectList->addValueExpr(func);
     }
 
@@ -1031,27 +1031,27 @@ public:
     string name() const override { return getTypeName(this); }
 
 private:
-    void _addQservRestrictor(const std::string& function,
-                             const std::vector<std::shared_ptr<query::ValueFactor>>& parameters) {
+    void _addQservRestrictor(const string& function,
+                             const vector<shared_ptr<query::ValueFactor>>& parameters) {
         // Here we extract the args from a vector of ValueFactor::ColumnRef
         // This is a side effect of the current IR, where in most cases a constant string is represented as
         // a column name. But in a QservRestrictor (aka QservFunction) each par is simply represented by a
         // string.
-        std::vector<std::string> strParameters;
+        vector<string> strParameters;
         for (auto const& valueFactor : parameters) {
             if (query::ValueFactor::CONST != valueFactor->getType()) {
-                throw std::logic_error("QServFunctionSpec args are (currently) expected as constVal.");
+                throw logic_error("QServFunctionSpec args are (currently) expected as constVal.");
             }
             strParameters.push_back(valueFactor->getConstVal());
         }
 
         // Add case insensitive behavior in order to mimic MySQL functions/procedures
-        std::string insensitiveFunction(function);
-        std::transform(insensitiveFunction.begin(), insensitiveFunction.end(),
+        string insensitiveFunction(function);
+        transform(insensitiveFunction.begin(), insensitiveFunction.end(),
                         insensitiveFunction.begin(), ::tolower);
         LOGS(_log, LOG_LVL_TRACE, "Qserv restrictor changed to lower-case: " << insensitiveFunction);
 
-        std::shared_ptr<query::AreaRestrictor> restrictor;
+        shared_ptr<query::AreaRestrictor> restrictor;
         try {
             if (insensitiveFunction == "qserv_areaspec_box") {
                 restrictor = make_shared<query::AreaRestrictorBox>(strParameters);
@@ -1064,7 +1064,7 @@ private:
             } else {
                 throw adapter_execution_error("Unhandled restrictor function: " + function);
             }
-        } catch (std::logic_error err) {
+        } catch (logic_error err) {
             throw adapter_execution_error(err.what());
         }
         _getWhereClause()->addAreaRestrictor(restrictor);
@@ -1084,7 +1084,7 @@ private:
             ASSERT_EXECUTION_CONDITION(nullptr == _havingClause, "The having clause should only be set once.", _ctx);
             auto andTerm = make_shared<query::AndTerm>(boolTerm);
             auto orTerm = make_shared<query::OrTerm>(andTerm);
-            _havingClause = std::make_shared<query::HavingClause>(orTerm);
+            _havingClause = make_shared<query::HavingClause>(orTerm);
         } else {
             ASSERT_EXECUTION_CONDITION(false, "This predicate expression is not yet supported.", _ctx);
         }
@@ -1289,15 +1289,15 @@ public:
         switch(_strings.size()) {
         case 1:
             // only 1 value is set in strings; it is the column name.
-            columnRef = std::make_shared<query::ColumnRef>("", "", _strings[0]);
+            columnRef = make_shared<query::ColumnRef>("", "", _strings[0]);
             break;
         case 2:
             // 2 values are set in strings; they are table and column name.
-            columnRef = std::make_shared<query::ColumnRef>("", _strings[0], _strings[1]);
+            columnRef = make_shared<query::ColumnRef>("", _strings[0], _strings[1]);
             break;
         case 3:
             // 3 values are set in strings; they are database name, table name, and column name.
-            columnRef = std::make_shared<query::ColumnRef>(_strings[0], _strings[1], _strings[2]);
+            columnRef = make_shared<query::ColumnRef>(_strings[0], _strings[1], _strings[2]);
             break;
         default:
             ASSERT_EXECUTION_CONDITION(false, "Unhandled number of strings.", _ctx);
@@ -2015,7 +2015,7 @@ public:
     void onExit() override {
         ASSERT_EXECUTION_CONDITION(nullptr != _functionValueFactor,
                 "function value factor not populated.", _ctx);
-        auto valueExpr = std::make_shared<query::ValueExpr>();
+        auto valueExpr = make_shared<query::ValueExpr>();
         valueExpr->addValueFactor(_functionValueFactor);
         valueExpr->setAlias(_asName);
         lockedParent()->handleSelectFunctionElement(valueExpr);
@@ -2549,11 +2549,11 @@ public:
         if (_ctx->COUNT() && _ctx->starArg) {
             string table;
             auto starFactor = query::ValueFactor::newStarFactor(table);
-            auto starParExpr = std::make_shared<query::ValueExpr>();
+            auto starParExpr = make_shared<query::ValueExpr>();
             starParExpr->addValueFactor(starFactor);
             funcExpr = query::FuncExpr::newArg1(_ctx->COUNT()->getText(), starParExpr);
         } else if (_ctx->AVG() || _ctx->MAX() || _ctx->MIN() || _ctx->SUM() || _ctx->COUNT() ) {
-            auto param = std::make_shared<query::ValueExpr>();
+            auto param = make_shared<query::ValueExpr>();
             ASSERT_EXECUTION_CONDITION(nullptr != _valueFactor, "ValueFactor must be populated.", _ctx);
             param->addValueFactor(_valueFactor);
             antlr4::tree::TerminalNode * terminalNode;
@@ -2884,7 +2884,7 @@ public:
     void onExit() override {
         ASSERT_EXECUTION_CONDITION(false == _expressions.empty() && _predicate != nullptr,
                 "InPredicateAdapter was not fully populated.", _ctx);
-        auto inPredicate = std::make_shared<query::InPredicate>(_predicate, _expressions, _ctx->NOT() != nullptr);
+        auto inPredicate = make_shared<query::InPredicate>(_predicate, _expressions, _ctx->NOT() != nullptr);
         lockedParent()->handleInPredicate(inPredicate);
     }
 
@@ -3300,7 +3300,7 @@ public:
         ASSERT_EXECUTION_CONDITION(nullptr != _left && nullptr != _right && true == _didSetOp,
                 "Not all values were populated, left:" << _left << ", right:" << right << ", didSetOp:" <<
                 _didSetOp, _ctx);
-        auto valueExpr = std::make_shared<query::ValueExpr>();
+        auto valueExpr = make_shared<query::ValueExpr>();
         valueExpr->addValueFactor(_left);
         auto valueExprOp = _translateOperator(_operator);
         valueExpr->addOp(valueExprOp);
@@ -3458,7 +3458,7 @@ public:
 /// QSMySqlListener impl
 
 
-QSMySqlListener::QSMySqlListener(std::shared_ptr<ListenerDebugHelper> const & listenerDebugHelper)
+QSMySqlListener::QSMySqlListener(shared_ptr<ListenerDebugHelper> const & listenerDebugHelper)
     : _listenerDebugHelper(listenerDebugHelper)
 {}
 
@@ -3468,7 +3468,7 @@ shared_ptr<query::SelectStmt> QSMySqlListener::getSelectStatement() const {
 }
 
 
-std::shared_ptr<ccontrol::UserQuery> QSMySqlListener::getUserQuery() const {
+shared_ptr<ccontrol::UserQuery> QSMySqlListener::getUserQuery() const {
     return nullptr; // TODO
 }
 
@@ -3535,7 +3535,7 @@ void QSMySqlListener::exitRoot(QSMySqlParser::RootContext* ctx) {
 }
 
 
-std::string QSMySqlListener::getStringTree() const {
+string QSMySqlListener::getStringTree() const {
     auto ldh = _listenerDebugHelper.lock();
     if (ldh != nullptr) {
         return ldh->getStringTree();
@@ -3543,7 +3543,7 @@ std::string QSMySqlListener::getStringTree() const {
     return "unexpected null listener debug helper.";
 }
 
-std::string QSMySqlListener::getTokens() const {
+string QSMySqlListener::getTokens() const {
     auto ldh = _listenerDebugHelper.lock();
     if (ldh != nullptr) {
         return ldh->getTokens();
@@ -3551,7 +3551,7 @@ std::string QSMySqlListener::getTokens() const {
     return "unexpected null listener debug helper.";
 }
 
-std::string QSMySqlListener::getStatementString() const {
+string QSMySqlListener::getStatementString() const {
     auto ldh = _listenerDebugHelper.lock();
     if (ldh != nullptr) {
         return ldh->getStatementString();
