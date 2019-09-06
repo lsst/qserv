@@ -28,11 +28,14 @@
 
 // System headers
 #include <memory>
+#include <string>
+#include <vector>
 
 // Third-party headers
 
 // Qserv headers
 #include "ccontrol/UserQuery.h"
+#include "ccontrol/UserQueryError.h"
 #include "ccontrol/QueryState.h"
 #include "global/intTypes.h"
 
@@ -52,7 +55,7 @@ namespace ccontrol {
 class UserQueryQservManager : public UserQuery {
 public:
 
-    UserQueryQservManager(UserQueryConfig const& queryConfig);
+    UserQueryQservManager(UserQueryConfig const& queryConfig, std::vector<std::string> const& args);
 
     virtual ~UserQueryQservManager() {}
 
@@ -75,6 +78,9 @@ public:
 
     // Delegate objects
     std::shared_ptr<qdisp::MessageStore> getMessageStore() override { return nullptr; }
+
+private:
+    std::vector<std::string> _args;
 };
 
 }}} // namespace lsst::qserv:ccontrol
