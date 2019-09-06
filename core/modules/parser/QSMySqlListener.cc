@@ -1676,12 +1676,12 @@ public:
 
 class CallStatementAdapter :
         public AdapterT<CallStatementCBH, QSMySqlParser::CallStatementContext>,
-        public FullIdCBH {
+        public ConstantCBH {
 public:
     using AdapterT::AdapterT;
 
-    void handleFullId(vector<string> const & uidlist) override {
-        uids = uidlist;
+    void handleConstant(string const & val) override {
+        value = val;
     }
 
     void checkContext() const override {
@@ -1690,13 +1690,13 @@ public:
 
     void onExit() override {
         ASSERT_EXECUTION_CONDITION(getQueryConfig() != nullptr, "UserQueryQservManager requires a valid query config.", _ctx);
-        lockedParent()->handleCallStatement(make_shared<ccontrol::UserQueryQservManager>(*getQueryConfig(), uids));
+        lockedParent()->handleCallStatement(make_shared<ccontrol::UserQueryQservManager>(*getQueryConfig(), value));
     }
 
     string name() const override { return getTypeName(this); }
 
 private:
-    vector<string> uids;
+    string value;
 };
 
 
