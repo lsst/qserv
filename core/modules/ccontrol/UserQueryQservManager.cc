@@ -29,7 +29,15 @@ namespace lsst {
 namespace qserv {
 namespace ccontrol {
 
-UserQueryQservManager::UserQueryQservManager(UserQueryConfig const& queryConfig) {}
+
+UserQueryQservManager::UserQueryQservManager(UserQueryConfig const& queryConfig,
+                                             std::vector<std::string> const& args)
+        : _args(args)
+{
+    if (_args.size() > 1) {
+        throw UserQueryError("Expected exactly one argument to CALL QSERV_MANAGER");
+    }
+}
 
 
 }}} // lsst::qserv::ccontrol

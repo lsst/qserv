@@ -1690,7 +1690,7 @@ public:
 
     void onExit() override {
         ASSERT_EXECUTION_CONDITION(getQueryConfig() != nullptr, "UserQueryQservManager requires a valid query config.", _ctx);
-        lockedParent()->handleCallStatement(make_shared<ccontrol::UserQueryQservManager>(*getQueryConfig()));
+        lockedParent()->handleCallStatement(make_shared<ccontrol::UserQueryQservManager>(*getQueryConfig(), uids));
     }
 
     string name() const override { return getTypeName(this); }
