@@ -199,6 +199,7 @@ public:
 class DmlStatementCBH : public BaseCBH {
 public:
     virtual void handleDmlStatement(shared_ptr<query::SelectStmt> const & selectStatement) = 0;
+    virtual void handleDmlStatement(shared_ptr<ccontrol::UserQuery> const & userQuery) = 0;
 };
 
 
@@ -309,7 +310,7 @@ public:
 
 class CallStatementCBH : public BaseCBH {
 public:
-//    virtual void handleCallStatement(...) = 0;
+    virtual void handleCallStatement(std::shared_ptr<ccontrol::UserQuery> const & userQuery) = 0;
 };
 
 
@@ -726,6 +727,10 @@ public:
         _selectStatement = selectStatement;
     }
 
+    void handleDmlStatement(shared_ptr<ccontrol::UserQuery> const & userQuery) override {
+        _userQuery = userQuery;
+    }
+
     void checkContext() const override {
         // check for required tokens:
         ASSERT_EXECUTION_CONDITION(_ctx->EOF() != nullptr,
@@ -741,7 +746,8 @@ public:
     }
 
     void onExit() override {
-        ASSERT_EXECUTION_CONDITION(_selectStatement != nullptr, "Could not parse query.", _ctx);
+        ASSERT_EXECUTION_CONDITION(_selectStatement != nullptr || _userQuery != nullptr,
+                                   "Could not parse query.", _ctx);
     }
 
     string name() const override { return getTypeName(this); }
@@ -753,6 +759,7 @@ public:
 
 private:
     shared_ptr<query::SelectStmt> _selectStatement;
+    shared_ptr<ccontrol::UserQuery> _userQuery;
     QSMySqlParser::RootContext* _ctx;
     QSMySqlListener const * qsMySqlListener;
 };
@@ -766,7 +773,15 @@ public:
     using AdapterT::AdapterT;
 
     void handleSelectStatement(shared_ptr<query::SelectStmt> const & selectStatement) override {
+        ASSERT_EXECUTION_CONDITION(_selectStatement == nullptr && _userQuery == nullptr,
+                                   "DmlStatementAdapter should be called exactly once.", _ctx);
         _selectStatement = selectStatement;
+    }
+
+    void handleCallStatement(std::shared_ptr<ccontrol::UserQuery> const & userQuery) override {
+        ASSERT_EXECUTION_CONDITION(_selectStatement == nullptr && _userQuery == nullptr,
+                                   "DmlStatementAdapter should be called exactly once.", _ctx);
+        _userQuery = userQuery;
     }
 
     void checkContext() const override {
@@ -774,13 +789,18 @@ public:
     }
 
     void onExit() override {
-        lockedParent()->handleDmlStatement(_selectStatement);
+        if (_selectStatement != nullptr) {
+            lockedParent()->handleDmlStatement(_selectStatement);
+        } else {
+            lockedParent()->handleDmlStatement(_userQuery);
+        }
     }
 
     string name () const override { return getTypeName(this); }
 
 private:
     shared_ptr<query::SelectStmt> _selectStatement;
+    shared_ptr<ccontrol::UserQuery> _userQuery;
 };
 
 
