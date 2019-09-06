@@ -31,6 +31,7 @@
 
 #include "lsst/log/Log.h"
 
+#include "ccontrol/UserQueryQservManager.h"
 #include "parser/ParseException.h"
 #include "query/AndTerm.h"
 #include "query/BetweenPredicate.h"
@@ -1683,8 +1684,7 @@ public:
     }
 
     void onExit() override {
-        LOGS(_log, LOG_LVL_DEBUG, __FUNCTION__ <<
-                " call statement uids: " << util::printable(uids));
+        lockedParent()->handleCallStatement(make_shared<ccontrol::UserQueryQservManager>());
     }
 
     string name() const override { return getTypeName(this); }
