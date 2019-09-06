@@ -54,7 +54,7 @@ JobQuery::JobQuery(Executive::Ptr const& executive, JobDescription::Ptr const& j
           _qid(qid),
           _idStr(QueryIdHelper::makeIdStr(qid, getIdInt())) {
     _qdispPool = executive->getQdispPool();
-    LOGS(_log, LOG_LVL_DEBUG, "JobQuery desc=" << _jobDescription);
+    LOGS(_log, LOG_LVL_TRACE, "JobQuery desc=" << _jobDescription);
 }
 
 JobQuery::~JobQuery() {
@@ -66,7 +66,7 @@ JobQuery::~JobQuery() {
  */
 bool JobQuery::runJob() {
     QSERV_LOGCONTEXT_QUERY_JOB(getQueryId(), getIdInt());
-    LOGS(_log, LOG_LVL_DEBUG, " unJob " << *this);
+    LOGS(_log, LOG_LVL_DEBUG, " runJob " << *this);
     auto executive = _executive.lock();
     if (executive == nullptr) {
         LOGS(_log, LOG_LVL_ERROR, "runJob failed executive==nullptr");
@@ -104,7 +104,7 @@ bool JobQuery::runJob() {
         // are trying to start this whole process. We also make sure we record
         // whether or not we are in SSI as cancellation handling differs.
         //
-        LOGS(_log, LOG_LVL_DEBUG, "runJob calls StartQuery()");
+        LOGS(_log, LOG_LVL_TRACE, "runJob calls StartQuery()");
         std::shared_ptr<JobQuery> jq(shared_from_this());
         _inSsi = true;
         if (executive->startQuery(jq)) {
@@ -151,7 +151,7 @@ bool JobQuery::cancel() {
         _jobDescription->respHandler()->processCancel();
         return true;
     }
-    LOGS(_log, LOG_LVL_DEBUG, "cancel, skipping, already cancelled.");
+    LOGS(_log, LOG_LVL_TRACE, "cancel, skipping, already cancelled.");
     return false;
 }
 

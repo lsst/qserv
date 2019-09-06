@@ -268,7 +268,7 @@ bool Executive::join() {
     struct successF {
         static bool f(Executive::JobMap::value_type const& entry) {
             JobStatus::Info const& esI = entry.second->getStatus()->getInfo();
-            LOGS(_log, LOG_LVL_DEBUG, "entry state:" << (void*)entry.second.get() << " " << esI);
+            LOGS(_log, LOG_LVL_TRACE, "entry state:" << (void*)entry.second.get() << " " << esI);
             return (esI.state == JobStatus::RESPONSE_DONE) || (esI.state == JobStatus::COMPLETE);
         }
     };
@@ -349,7 +349,7 @@ void Executive::squash() {
         return;
     }
 
-    LOGS(_log, LOG_LVL_DEBUG, "Executive::squash Trying to cancel all queries...");
+    LOGS(_log, LOG_LVL_INFO, "Executive::squash Trying to cancel all queries...");
     std::deque<JobQuery::Ptr> jobsToCancel;
     {
         std::lock_guard<std::recursive_mutex> lockJobMap(_jobMapMtx);
@@ -530,7 +530,7 @@ void Executive::_waitAllUntilEmpty() {
     std::unique_lock<std::mutex> lock(_incompleteJobsMutex);
     int lastCount = -1;
     int count;
-    int moreDetailThreshold = 5;
+    int moreDetailThreshold = 10;
     int complainCount = 0;
     const std::chrono::seconds statePrintDelay(5);
     while(!_incompleteJobs.empty()) {

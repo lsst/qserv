@@ -287,7 +287,7 @@ bool InfileMerger::finalize() {
         bool cleanupOk = true;
 #endif
         if (!cleanupOk) {
-            LOGS(_log, LOG_LVL_DEBUG, "Failure cleaning up table " << _mergeTable);
+            LOGS(_log, LOG_LVL_WARN, "Failure cleaning up table " << _mergeTable);
         }
     } else {
         // Remove jobId and attemptCount information from the result table.
@@ -477,7 +477,7 @@ size_t InfileMerger::_getResultTableSizeMB() {
                              + "FROM information_schema.TABLES "
                              + "WHERE table_schema = '" + _config.mySqlConfig.dbName
                              + "' AND table_name = '" + _mergeTable + "'";
-    LOGS(_log, LOG_LVL_DEBUG, "Checking ResultTableSize " << tableSizeSql);
+    LOGS(_log, LOG_LVL_TRACE, "Checking ResultTableSize " << tableSizeSql);
     std::lock_guard<std::mutex> m(_sqlMutex);
     sql::SqlErrorObject errObj;
     sql::SqlResults results;
@@ -487,7 +487,7 @@ size_t InfileMerger::_getResultTableSizeMB() {
     if (not _sqlConn->runQuery(tableSizeSql, results, errObj)) {
         _error = util::Error(errObj.errNo(), "error getting size sql: " + errObj.printErrMsg(),
                        util::ErrorCode::MYSQLEXEC);
-        LOGS(_log, LOG_LVL_ERROR, "result table size error: " << _error.getMsg());
+        LOGS(_log, LOG_LVL_ERROR, "result table size error: " << _error.getMsg() << tableSizeSql);
         return 0;
     }
 

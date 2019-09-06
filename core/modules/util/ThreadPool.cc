@@ -52,12 +52,12 @@ PoolEventThread::Ptr PoolEventThread::newPoolEventThread(std::shared_ptr<ThreadP
 
 PoolEventThread::PoolEventThread(std::shared_ptr<ThreadPool> const& threadPool, CommandQueue::Ptr const& q)
 : EventThread(q), _threadPool(threadPool) {
-    LOGS(_log, LOG_LVL_DEBUG, "PoolEventThread::PoolEventThread() " << this);
+    LOGS(_log, LOG_LVL_TRACE, "PoolEventThread::PoolEventThread() " << this);
 }
 
 
 PoolEventThread::~PoolEventThread() {
-    LOGS(_log, LOG_LVL_DEBUG, "PoolEventThread::~PoolEventThread() " << this
+    LOGS(_log, LOG_LVL_TRACE, "PoolEventThread::~PoolEventThread() " << this
          << " _threadPool.use_count=" << _threadPool.use_count());
 }
 
@@ -219,7 +219,7 @@ void ThreadPool::_resize() {
     std::lock_guard<std::mutex> lock(_poolMutex);
     auto target = getTargetThrdCount();
     while (target > _pool.size()) {
-        LOGS(_log, LOG_LVL_DEBUG, "ThreadPool::_resize creating new PoolEventThread");
+        LOGS(_log, LOG_LVL_TRACE, "ThreadPool::_resize creating new PoolEventThread");
         auto t = PoolEventThread::newPoolEventThread(shared_from_this(), _q);
         _pool.push_back(t);
         t->run();
@@ -236,7 +236,7 @@ void ThreadPool::_resize() {
             LOGS(_log, LOG_LVL_WARN, "ThreadPool::_resize thrd == nullptr");
         }
     }
-    LOGS(_log, LOG_LVL_DEBUG, "_resize target=" << target << " size=" << _pool.size());
+    LOGS(_log, LOG_LVL_TRACE, "_resize target=" << target << " size=" << _pool.size());
     {
         std::unique_lock<std::mutex> countlock(_countMutex);
         _countCV.notify_all();

@@ -52,7 +52,7 @@ std::string ProtoHeaderWrap::wrap(std::string& protoHeaderString) {
     while (msgBuf.size() < PROTO_HEADER_SIZE) {
         msgBuf +='0'; // pad the buffer
     }
-    LOGS(_log, LOG_LVL_DEBUG, "msgBuf size=" << msgBuf.size() << " --> " << util::prettyCharList(msgBuf, 5));
+    LOGS(_log, LOG_LVL_TRACE, "msgBuf size=" << msgBuf.size() << " --> " << util::prettyCharList(msgBuf, 5));
     return msgBuf;
 }
 
@@ -62,7 +62,7 @@ bool ProtoHeaderWrap::unwrap(std::shared_ptr<WorkerResponse>& response, std::vec
             response->protoHeader, &buffer[1], response->headerSize)) {
         return false;
     }
-    LOGS(_log, LOG_LVL_DEBUG, "buffer size=" << buffer.size() << " --> " << util::prettyCharList(buffer, 5));
+    LOGS(_log, LOG_LVL_TRACE, "buffer size=" << buffer.size() << " --> " << util::prettyCharList(buffer, 5));
     return true;
 }
 
