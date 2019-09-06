@@ -21,4 +21,15 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
+
 #include "ccontrol/UserQueryQservManager.h"
+
+
+namespace lsst {
+namespace qserv {
+namespace ccontrol {
+
+UserQueryQservManager::UserQueryQservManager(UserQueryConfig const& queryConfig) {}
+
+
+}}} // lsst::qserv::ccontrol

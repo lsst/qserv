@@ -31,6 +31,7 @@
 
 #include "lsst/log/Log.h"
 
+#include "ccontrol/UserQuery.h"
 #include "ccontrol/UserQueryQservManager.h"
 #include "parser/ParseException.h"
 #include "query/AndTerm.h"
@@ -703,6 +704,8 @@ protected:
     string getStringTree() const { return qsMySqlListener->getStringTree(); }
     string getTokens() const { return qsMySqlListener->getTokens(); }
     string getStatementString() const { return qsMySqlListener->getStatementString(); }
+
+    ccontrol::UserQueryConfig const * const getQueryConfig() const { return qsMySqlListener->getQueryConfig(); }
 
 private:
     // Mostly the QSMySqlListener is not used by adapters. It is needed to get the adapter stack list for
@@ -1686,7 +1689,8 @@ public:
     }
 
     void onExit() override {
-        lockedParent()->handleCallStatement(make_shared<ccontrol::UserQueryQservManager>());
+        ASSERT_EXECUTION_CONDITION(getQueryConfig() != nullptr, "UserQueryQservManager requires a valid query config.", _ctx);
+        lockedParent()->handleCallStatement(make_shared<ccontrol::UserQueryQservManager>(*getQueryConfig()));
     }
 
     string name() const override { return getTypeName(this); }
@@ -3480,8 +3484,9 @@ public:
 /// QSMySqlListener impl
 
 
-QSMySqlListener::QSMySqlListener(shared_ptr<ListenerDebugHelper> const & listenerDebugHelper)
-    : _listenerDebugHelper(listenerDebugHelper)
+QSMySqlListener::QSMySqlListener(shared_ptr<ListenerDebugHelper> const & listenerDebugHelper,
+                                 ccontrol::UserQueryConfig const * const queryConfig)
+    : _listenerDebugHelper(listenerDebugHelper), _queryConfig(queryConfig)
 {}
 
 
