@@ -78,7 +78,9 @@ struct UserQueryConfig {
                     std::shared_ptr<qmeta::QStatus> queryStatsData_,
                     std::shared_ptr<qmeta::QMetaSelect> qMetaSelect_,
                     std::shared_ptr<sql::SqlConnection> resultDbConn_,
-                    qmeta::CzarId const& qMetaCzarId_)
+                    qmeta::CzarId const& qMetaCzarId_,
+                    std::string const& userQueryId_,
+                    std::string const& resultDb_)
             : css(css_),
               mysqlResultConfig(mysqlResultConfig_),
               secondaryIndex(secondaryIndex_),
@@ -86,7 +88,9 @@ struct UserQueryConfig {
               queryStatsData(queryStatsData_),
               qMetaSelect(qMetaSelect_),
               resultDbConn(resultDbConn_),
-              qMetaCzarId(qMetaCzarId_)
+              qMetaCzarId(qMetaCzarId_),
+              userQueryId(userQueryId_),
+              resultDb(resultDb_)
     {}
 
     std::shared_ptr<css::CssAccess> css;
@@ -97,6 +101,8 @@ struct UserQueryConfig {
     std::shared_ptr<qmeta::QMetaSelect> qMetaSelect;
     std::shared_ptr<sql::SqlConnection> resultDbConn;
     qmeta::CzarId const& qMetaCzarId;   ///< Czar ID in QMeta database
+    std::string const& userQueryId;
+    std::string const& resultDb;
 };
 
 

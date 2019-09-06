@@ -64,11 +64,11 @@ public:
     std::string getError() const override { return std::string(); }
 
     /// Begin execution of the query over all ChunkSpecs added so far.
-    void submit() override {}
+    void submit() override;
 
     /// Wait until the query has completed execution.
     /// @return the final execution state.
-    QueryState join() override { return UNKNOWN; }
+    QueryState join() override { return _qState; }
 
     /// Stop a query in progress (for immediate shutdowns)
     void kill() override {}
@@ -79,8 +79,19 @@ public:
     // Delegate objects
     std::shared_ptr<qdisp::MessageStore> getMessageStore() override { return nullptr; }
 
+    virtual std::string getResultLocation() const { return std::string(); }
+
+    /// @return get the SELECT statement to be executed by proxy
+    virtual std::string getResultQuery() const;
+
+
 private:
-    std::vector<std::string> _args;
+    std::string _value;
+    std::string _resultTableName;
+    std::shared_ptr<qdisp::MessageStore> _messageStore;
+    std::shared_ptr<sql::SqlConnection> _resultDbConn;
+    QueryState _qState{UNKNOWN};
+    std::string _resultDb;
 };
 
 }}} // namespace lsst::qserv:ccontrol
