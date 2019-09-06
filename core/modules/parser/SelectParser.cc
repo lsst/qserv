@@ -193,7 +193,7 @@ private:
 
 
 std::shared_ptr<Antlr4Parser> Antlr4Parser::create(std::string const & q,
-                                                   ccontrol::UserQueryConfig const * const queryConfig) {
+                                                   ccontrol::UserQueryConfig const* queryConfig) {
     return std::shared_ptr<Antlr4Parser>(new Antlr4Parser(q, queryConfig));
 }
 
@@ -263,7 +263,7 @@ std::string Antlr4Parser::getStatementString() const {
 }
 
 
-Antlr4Parser::Antlr4Parser(std::string const& q, ccontrol::UserQueryConfig const * const queryConfig)
+Antlr4Parser::Antlr4Parser(std::string const& q, ccontrol::UserQueryConfig const* queryConfig)
     : _statement(q), _queryConfig(queryConfig)
 {}
 
