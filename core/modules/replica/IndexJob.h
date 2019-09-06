@@ -69,6 +69,22 @@ public:
     /// @return the unique name distinguishing this class from other types of jobs
     static std::string typeName();
 
+    /// Possible destinations where the harvested data would go
+    enum Destination {
+        DISCARD,    // do nothing with the data
+        FILE,       // write all data into a file
+        FOLDER,     // write each chunk's data as a separate file at a folder
+        TABLE       // write into the specified or standard "secondary index" table
+    };
+
+    /// @return the string representation for a value of the Destination option
+    static std::string toString(Destination destination);
+
+    /// @return a value of the enumerator Destination parsed from the input string
+    /// @throw invalid_argument if the input value doen't match any known option of
+    ///        the enumerator type
+    static Destination fromString(std::string const& str);
+
     /**
      * Static factory method is needed to prevent issue with the lifespan
      * and memory management of instances created otherwise (as values or via
@@ -92,6 +108,19 @@ public:
      *   is set to 'false' then only 'ENABLED' workers which are not in
      *   the 'READ-ONLY' state will be involved into the operation.
      *
+     * @param destination
+     *   possible destinations for the harvested data
+     * 
+     * @param destinationPath
+     *   depending on a value of the previous parameter 'destination', a value
+     *   of this parameter could be either either the name of a file, the name
+     *   of an existing folder, or the name of a table. For the FILE destination
+     *   the empty destination path will trigger dumping the data onto the Standard
+     *   Output Stream. For the FOLDER option the current working directory will
+     *   be assumed. And for the TABLE option the empty value would imply
+     *   the standard "secondary index" table of the database. A non-empty value
+     *   for the table would imply the name of a specific (non-standard) table.
+     *
      * @param controller
      *   is needed launching requests and accessing the Configuration
      *
@@ -105,6 +134,8 @@ public:
                       bool hasTransactions,
                       uint32_t transactionId,
                       bool allWorkers,
+                      Destination destination,
+                      std::string const& destinationPath,
                       Controller::Ptr const& controller,
                       std::string const& parentJobId=std::string(),
                       CallbackType const& onFinish=nullptr,
@@ -124,6 +155,8 @@ public:
     bool        const& hasTransactions() const { return _hasTransactions; }
     uint32_t    const& transactionId()   const { return _transactionId; }
     bool               allWorkers()      const { return _allWorkers; }
+    Destination        destination()     const { return _destination; }
+    std::string const& destinationPath() const { return _destinationPath; }
 
     /**
      * Return the combined result of the operation
@@ -158,6 +191,8 @@ private:
              bool hasTransactions,
              uint32_t transactionId,
              bool allWorkers,
+             Destination destination,
+             std::string const& destinationPath,
              Controller::Ptr const& controller,
              std::string const& parentJobId,
              CallbackType const& onFinish,
@@ -208,6 +243,8 @@ private:
     bool        const _hasTransactions;
     uint32_t    const _transactionId;
     bool        const _allWorkers;
+    Destination const _destination;
+    std::string const _destinationPath;
 
     CallbackType _onFinish;     /// @note is reset when the job finishes
 

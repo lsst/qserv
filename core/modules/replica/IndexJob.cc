@@ -24,6 +24,7 @@
 
 // System headers
 #include <algorithm>
+#include <fstream>
 #include <iostream>
 #include <limits>
 #include <stdexcept>
@@ -60,10 +61,36 @@ Job::Options const& IndexJob::defaultOptions() {
 }
 
 
+string IndexJob::toString(Destination destination) {
+    switch (destination) {
+        case DISCARD: return "DISCARD";
+        case FILE:    return "FILE";
+        case FOLDER:  return "FOLDER";
+        case TABLE:   return "TABLE";
+        default:
+            throw range_error(
+                    typeName() + "::" + string(__func__) + "  unhandled value of the parameter");
+    }
+}
+
+
+IndexJob::Destination IndexJob::fromString(string const& str) {
+    if (str == "DISCARD") return Destination::DISCARD;
+    if (str == "FILE")    return Destination::FILE;
+    if (str == "FOLDER")  return Destination::FOLDER;
+    if (str == "TABLE")   return Destination::TABLE;
+    throw invalid_argument(
+            typeName() + "::" + string(__func__) + "  input value '" + str +
+            "' doesn't match any known option of the enumerator");
+}
+
+
 IndexJob::Ptr IndexJob::create(string const& database,
                                bool hasTransactions,
                                uint32_t transactionId,
                                bool allWorkers,
+                               Destination destination,
+                               string const& destinationPath,
                                Controller::Ptr const& controller,
                                string const& parentJobId,
                                CallbackType const& onFinish,
@@ -73,6 +100,8 @@ IndexJob::Ptr IndexJob::create(string const& database,
         hasTransactions,
         transactionId,
         allWorkers,
+        destination,
+        destinationPath,
         controller,
         parentJobId,
         onFinish,
@@ -85,6 +114,8 @@ IndexJob::IndexJob(string const& database,
                    bool hasTransactions,
                    uint32_t transactionId,
                    bool allWorkers,
+                   Destination destination,
+                   string const& destinationPath,
                    Controller::Ptr const& controller,
                    string const& parentJobId,
                    CallbackType const& onFinish,
@@ -94,6 +125,8 @@ IndexJob::IndexJob(string const& database,
         _hasTransactions(hasTransactions),
         _transactionId(transactionId),
         _allWorkers(allWorkers),
+        _destination(destination),
+        _destinationPath(destinationPath),
         _onFinish(onFinish) {
 }
 
@@ -105,7 +138,7 @@ IndexJobResult const& IndexJob::getResultData() const {
     if (state() == State::FINISHED) return _resultData;
 
     throw logic_error(
-            "IndexJob::" + string(__func__) +
+            typeName() + "::" + string(__func__) +
             "  the method can't be called while the job hasn't finished");
 }
 
@@ -116,6 +149,8 @@ list<std::pair<string,string>> IndexJob::extendedPersistentState() const {
     result.emplace_back("has_transactions", string(hasTransactions() ? "1" : "0"));
     result.emplace_back("transaction_id", to_string(transactionId()));
     result.emplace_back("all_workers", string(allWorkers() ? "1" : "0"));
+    result.emplace_back("destination", toString(destination()));
+    result.emplace_back("destination_path", destinationPath());
     return result;
 }
 
@@ -280,7 +315,14 @@ void IndexJob::_onRequestFinish(IndexRequest::Ptr const& request) {
     // the request object. Note that we HAVE TO erase completed requests since they
     // may carry a significant amount of data.
 
-    _processRequestData(lock, request);
+    try {
+        _processRequestData(lock, request);
+    } catch (exception const& ex) {
+        LOGS(_log, LOG_LVL_DEBUG, context() << __func__
+             << "  failed when processing data of the request, ex: " << ex.what());
+        finish(lock, ExtendedState::FAILED);
+        return;
+    }
     _requests.erase(request->id());
     
     // Try submitting a replacement request for the same worker. If none
@@ -305,8 +347,44 @@ void IndexJob::_processRequestData(util::Lock const& lock,
 
     if (request->extendedState() != Request::SUCCESS) return;
 
-    // TODO: this is just a test to be replaced this with a meaningful code.
-    cout << request->responseData().data;
+    switch (_destination) {
+        case DISCARD: break;
+        case FILE: {
+            if (_destinationPath.empty()) {
+                cout << request->responseData().data;
+            } else {
+                ofstream f(_destinationPath, ios::app);
+                if (not f.good()) {
+                    throw runtime_error(
+                            typeName() + "::" + string(__func__) +
+                            "  failed to open/create for append file: " + _destinationPath);
+                }
+                f << request->responseData().data;
+                f.close();
+            }
+        }
+        case FOLDER: {
+            string const filePath =
+                (_destinationPath.empty() ? "." : _destinationPath) + "/" +
+                database() + "_" + to_string(request->chunk()) + ".tsv";
+            ofstream f(filePath);
+            if (not f.good()) {
+                throw runtime_error(
+                        typeName() + "::" + string(__func__) +
+                        "  failed to open/create file: " + filePath);
+            }
+            f << request->responseData().data;
+            f.close();
+        }
+        case TABLE: {
+            LOGS(_log, LOG_LVL_DEBUG, context() << __func__
+                 << "  unsupported destination: " + toString(_destination));
+        }
+        default:
+            throw range_error(
+                    typeName() + "::" + string(__func__) +
+                    "  unhandled value of the parameter");
+    }
 }
 
 
