@@ -35,12 +35,16 @@
 #include <memory>
 #include <sstream>
 
-// Local headers
+// Qserv headers
+#include "parser/ListenerDebugHelper.h"
 #include "util/common.h"
 
 // Forward declarations
 namespace lsst {
 namespace qserv {
+namespace ccontrol {
+    class UserQuery;
+}
 namespace parser {
     class AntlrParser; // Internally-defined in SelectParser.cc
 }
@@ -90,6 +94,7 @@ private:
     std::shared_ptr<query::SelectStmt> _selectStmt;
     std::shared_ptr<AntlrParser> _aParser;
 };
+
 
 }}} // namespace lsst::qserv::parser
 

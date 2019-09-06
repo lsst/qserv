@@ -89,6 +89,11 @@ namespace qserv {
 namespace parser {
 
 
+
+
+
+
+
 ////////////////////////////////////////////////////////////////////////
 // AntlrParser -- Antlr parsing complex
 ////////////////////////////////////////////////////////////////////////
@@ -97,62 +102,96 @@ public:
     virtual ~AntlrParser() {}
     virtual void setup() = 0;
     virtual void run() = 0;
-    virtual query::SelectStmt::Ptr getStatement() = 0;
+    virtual std::shared_ptr<query::SelectStmt> getStatement() = 0;
 
 protected:
     enum State {
         INIT, SETUP_DONE, RUN_DONE
     };
-    std::string stateString(State s) {
-        switch (s) {
-            default:
-                return "??";
+    std::string stateString(State s);
 
-            case INIT:
-                return "INIT";
-
-            case SETUP_DONE:
-                return "SETUP_DONE";
-
-            case RUN_DONE:
-                return "RUN_DONE";
-        }
-    }
-
-    void changeState(State to) {
-        switch (_state) {
-            default:
-                throw ParseException("Parse error(INTERNAL): unhandled state transition value: "
-                        + std::to_string(_state));
-
-            case INIT:
-                if (SETUP_DONE != to) {
-                    throw ParseException("Parse error(INTERNAL):invalid state transition from INIT to "
-                            + stateString(to));
-                }
-                _state = SETUP_DONE;
-                break;
-
-            case SETUP_DONE:
-                if (RUN_DONE != to) {
-                    throw ParseException("Parse error(INTERNAL):invalid state transition from SETUP_DONE to "
-                            + stateString(to));
-                }
-                _state = RUN_DONE;
-                break;
-
-            case RUN_DONE:
-                // there are no valid transitions from RUN_DONE
-                throw ParseException("Parse error(INTERNAL):invalid state transition from RUN_DONE to "
-                        + stateString(to));
-        }
-    }
+    void changeState(State to);
 
     bool runTransitionDone() const { return _state == RUN_DONE; }
 
 private:
     State _state {INIT};
 };
+
+
+class Antlr4Parser : public AntlrParser, public ListenerDebugHelper, public std::enable_shared_from_this<Antlr4Parser> {
+public:
+    static std::shared_ptr<Antlr4Parser> create(std::string const & q);
+
+    void setup() override;
+
+    void run() override;
+
+    std::shared_ptr<query::SelectStmt> getStatement() override;
+
+    std::string getStringTree() const override;
+
+    std::string getTokens() const override;
+
+    std::string getStatementString() const override;
+
+private:
+    Antlr4Parser(std::string const& q);
+
+    std::string _statement;
+    std::shared_ptr<parser::QSMySqlListener> _listener;
+};
+
+
+
+////////////////////////////////////////////////////////////////////////
+// AntlrParser -- Antlr parsing complex
+////////////////////////////////////////////////////////////////////////
+std::string AntlrParser::stateString(State s) {
+    switch (s) {
+        default:
+            return "??";
+
+        case INIT:
+            return "INIT";
+
+        case SETUP_DONE:
+            return "SETUP_DONE";
+
+        case RUN_DONE:
+            return "RUN_DONE";
+    }
+}
+
+
+void AntlrParser::changeState(State to) {
+    switch (_state) {
+        default:
+            throw ParseException("Parse error(INTERNAL): unhandled state transition value: "
+                    + std::to_string(_state));
+
+        case INIT:
+            if (SETUP_DONE != to) {
+                throw ParseException("Parse error(INTERNAL):invalid state transition from INIT to "
+                        + stateString(to));
+            }
+            _state = SETUP_DONE;
+            break;
+
+        case SETUP_DONE:
+            if (RUN_DONE != to) {
+                throw ParseException("Parse error(INTERNAL):invalid state transition from SETUP_DONE to "
+                        + stateString(to));
+            }
+            _state = RUN_DONE;
+            break;
+
+        case RUN_DONE:
+            // there are no valid transitions from RUN_DONE
+            throw ParseException("Parse error(INTERNAL):invalid state transition from RUN_DONE to "
+                    + stateString(to));
+    }
+}
 
 
 class Antlr4ErrorStrategy : public antlr4::DefaultErrorStrategy {
@@ -206,74 +245,74 @@ private:
 };
 
 
-class Antlr4Parser : public AntlrParser, public ListenerDebugHelper, public std::enable_shared_from_this<Antlr4Parser> {
-public:
 
-    static std::shared_ptr<Antlr4Parser> create(std::string const & q) {
-        return std::shared_ptr<Antlr4Parser>(new Antlr4Parser(q));
-    }
+std::shared_ptr<Antlr4Parser> Antlr4Parser::create(std::string const & q) {
+    return std::shared_ptr<Antlr4Parser>(new Antlr4Parser(q));
+}
 
-    void setup() override {
-        changeState(SETUP_DONE);
-        _listener = std::make_shared<parser::QSMySqlListener>(
-                std::static_pointer_cast<ListenerDebugHelper>(shared_from_this()));
-    }
 
-    void run() override {
-        changeState(RUN_DONE);
-        using namespace antlr4;
-        ANTLRInputStream input(_statement);
-        NonRecoveringQSMySqlLexer lexer(&input, _statement);
-        CommonTokenStream tokens(&lexer);
-        tokens.fill();
-        LOGS(_log, LOG_LVL_TRACE, "Parsed tokens:" << util::printable(getTokenPairs(tokens, lexer)));
-        QSMySqlParser parser(&tokens);
-        parser.setErrorHandler(std::make_shared<Antlr4ErrorStrategy>(_statement));
-        tree::ParseTree *tree = parser.root();
-        tree::ParseTreeWalker walker;
-        walker.walk(_listener.get(), tree);
-    }
+void Antlr4Parser::setup() {
+    changeState(SETUP_DONE);
+    _listener = std::make_shared<parser::QSMySqlListener>(
+            std::static_pointer_cast<ListenerDebugHelper>(shared_from_this()));
+}
 
-    query::SelectStmt::Ptr getStatement() override {
-        return _listener->getSelectStatement();
-    }
 
-    // TODO these funcs can probably be written with less code duplication
-    // and also without stringstream
-    std::string getStringTree() const override {
-        using namespace antlr4;
-        ANTLRInputStream input(_statement);
-        QSMySqlLexer lexer(&input);
-        CommonTokenStream tokens(&lexer);
-        tokens.fill();
-        QSMySqlParser parser(&tokens);
-        tree::ParseTree *tree = parser.root();
-        return tree->toStringTree(&parser);
-    }
+void Antlr4Parser::run() {
+    changeState(RUN_DONE);
+    using namespace antlr4;
+    ANTLRInputStream input(_statement);
+    NonRecoveringQSMySqlLexer lexer(&input, _statement);
+    CommonTokenStream tokens(&lexer);
+    tokens.fill();
+    LOGS(_log, LOG_LVL_TRACE, "Parsed tokens:" << util::printable(getTokenPairs(tokens, lexer)));
+    QSMySqlParser parser(&tokens);
+    parser.setErrorHandler(std::make_shared<Antlr4ErrorStrategy>(_statement));
+    tree::ParseTree *tree = parser.root();
+    tree::ParseTreeWalker walker;
+    walker.walk(_listener.get(), tree);
+}
 
-    std::string getTokens() const override {
-        using namespace antlr4;
-        ANTLRInputStream input(_statement);
-        QSMySqlLexer lexer(&input);
-        CommonTokenStream tokens(&lexer);
-        tokens.fill();
-        std::ostringstream t;
-        t << util::printable(getTokenPairs(tokens, lexer));
-        return t.str();
-    }
 
-    std::string getStatementString() const override {
-        return _statement;
-    }
+query::SelectStmt::Ptr Antlr4Parser::getStatement() {
+    return _listener->getSelectStatement();
+}
 
-private:
-    Antlr4Parser(std::string const& q)
-        : _statement(q)
-    {}
 
-    std::string _statement;
-    std::shared_ptr<parser::QSMySqlListener> _listener;
-};
+// TODO these funcs can probably be written with less code duplication
+// and also without stringstream
+std::string Antlr4Parser::getStringTree() const {
+    using namespace antlr4;
+    ANTLRInputStream input(_statement);
+    QSMySqlLexer lexer(&input);
+    CommonTokenStream tokens(&lexer);
+    tokens.fill();
+    QSMySqlParser parser(&tokens);
+    tree::ParseTree *tree = parser.root();
+    return tree->toStringTree(&parser);
+}
+
+
+std::string Antlr4Parser::getTokens() const {
+    using namespace antlr4;
+    ANTLRInputStream input(_statement);
+    QSMySqlLexer lexer(&input);
+    CommonTokenStream tokens(&lexer);
+    tokens.fill();
+    std::ostringstream t;
+    t << util::printable(getTokenPairs(tokens, lexer));
+    return t.str();
+}
+
+
+std::string Antlr4Parser::getStatementString() const {
+    return _statement;
+}
+
+
+Antlr4Parser::Antlr4Parser(std::string const& q)
+    : _statement(q)
+{}
 
 
 ////////////////////////////////////////////////////////////////////////
