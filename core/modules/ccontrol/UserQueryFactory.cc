@@ -259,7 +259,8 @@ UserQueryFactory::newUserQuery(std::string const& aQuery,
     } else if (UserQueryType::isCall(query)) {
         UserQueryConfig queryConfig(_impl->css, _impl->mysqlResultConfig,
                                     _impl->secondaryIndex, _impl->queryMetadata, _impl->queryStatsData,
-                                    _impl->qMetaSelect, _impl->resultDbConn, _impl->qMetaCzarId);
+                                    _impl->qMetaSelect, _impl->resultDbConn, _impl->qMetaCzarId, userQueryId,
+                                    resultDb);
         auto parser = parser::Antlr4Parser::create(query, &queryConfig);
         parser->setup();
         parser->run();
