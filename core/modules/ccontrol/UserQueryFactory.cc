@@ -147,8 +147,6 @@ UserQueryFactory::newUserQuery(std::string const& aQuery,
     bool full = false;
     QueryId userJobId = 0;
 
-
-
     if (UserQueryType::isSelect(query)) {
         // Processing regular select query
         bool sessionValid = true;
@@ -259,7 +257,10 @@ UserQueryFactory::newUserQuery(std::string const& aQuery,
             return std::make_shared<UserQueryInvalid>(exc.what());
         }
     } else if (UserQueryType::isCall(query)) {
-        auto parser = parser::Antlr4Parser::create(query);
+        UserQueryConfig queryConfig(_impl->css, _impl->mysqlResultConfig,
+                                    _impl->secondaryIndex, _impl->queryMetadata, _impl->queryStatsData,
+                                    _impl->qMetaSelect, _impl->resultDbConn, _impl->qMetaCzarId);
+        auto parser = parser::Antlr4Parser::create(query, &queryConfig);
         parser->setup();
         parser->run();
         return parser->getUserQuery();

@@ -52,6 +52,8 @@ namespace ccontrol {
 class UserQueryQservManager : public UserQuery {
 public:
 
+    UserQueryQservManager(UserQueryConfig const& queryConfig);
+
     virtual ~UserQueryQservManager() {}
 
     /// @return a non-empty string describing the current error state

@@ -46,6 +46,7 @@
 #include "boost/bind.hpp"
 
 // Qserv headers
+#include "ccontrol/UserQuery.h"
 #include "global/Bug.h"
 #include "parser/ParseException.h"
 #include "query/SelectStmt.h"
@@ -191,15 +192,17 @@ private:
 
 
 
-std::shared_ptr<Antlr4Parser> Antlr4Parser::create(std::string const & q) {
-    return std::shared_ptr<Antlr4Parser>(new Antlr4Parser(q));
+std::shared_ptr<Antlr4Parser> Antlr4Parser::create(std::string const & q,
+                                                   ccontrol::UserQueryConfig const * const queryConfig) {
+    return std::shared_ptr<Antlr4Parser>(new Antlr4Parser(q, queryConfig));
 }
 
 
 void Antlr4Parser::setup() {
     changeState(SETUP_DONE);
     _listener = std::make_shared<parser::QSMySqlListener>(
-            std::static_pointer_cast<ListenerDebugHelper>(shared_from_this()));
+            std::static_pointer_cast<ListenerDebugHelper>(shared_from_this()),
+            _queryConfig);
 }
 
 
@@ -260,8 +263,8 @@ std::string Antlr4Parser::getStatementString() const {
 }
 
 
-Antlr4Parser::Antlr4Parser(std::string const& q)
-    : _statement(q)
+Antlr4Parser::Antlr4Parser(std::string const& q, ccontrol::UserQueryConfig const * const queryConfig)
+    : _statement(q), _queryConfig(queryConfig)
 {}
 
 
