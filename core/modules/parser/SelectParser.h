@@ -47,6 +47,7 @@ namespace ccontrol {
 }
 namespace parser {
     class AntlrParser; // Internally-defined in SelectParser.cc
+    class QSMySqlListener;
 }
 namespace query {
     class SelectStmt;
@@ -56,6 +57,55 @@ namespace query {
 namespace lsst {
 namespace qserv {
 namespace parser {
+
+
+class AntlrParser {
+public:
+    virtual ~AntlrParser() {}
+    virtual void setup() = 0;
+    virtual void run() = 0;
+    virtual std::shared_ptr<query::SelectStmt> getStatement() = 0;
+
+protected:
+    enum State {
+        INIT, SETUP_DONE, RUN_DONE
+    };
+    std::string stateString(State s);
+
+    void changeState(State to);
+
+    bool runTransitionDone() const { return _state == RUN_DONE; }
+
+private:
+    State _state {INIT};
+};
+
+
+class Antlr4Parser : public AntlrParser, public ListenerDebugHelper, public std::enable_shared_from_this<Antlr4Parser> {
+public:
+    static std::shared_ptr<Antlr4Parser> create(std::string const & q);
+
+    void setup() override;
+
+    void run() override;
+
+    std::shared_ptr<query::SelectStmt> getStatement() override;
+
+    std::shared_ptr<ccontrol::UserQuery> getUserQuery();
+
+    std::string getStringTree() const override;
+
+    std::string getTokens() const override;
+
+    std::string getStatementString() const override;
+
+private:
+    Antlr4Parser(std::string const& q);
+
+    std::string _statement;
+    std::shared_ptr<parser::QSMySqlListener> _listener;
+};
+
 
 /// class SelectParser - drives the ANTLR-generated SQL parser for a
 /// SELECT statement. Attaches some simple handlers that populate a

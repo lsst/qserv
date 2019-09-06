@@ -28,6 +28,7 @@
 #include <string>
 #include <vector>
 
+
 #include "lsst/log/Log.h"
 
 #include "parser/ParseException.h"
@@ -303,6 +304,12 @@ public:
 class ComparisonOperatorCBH : public BaseCBH {
 public:
     virtual void handleComparisonOperator(string const & text) = 0;
+};
+
+
+class CallStatementCBH : public BaseCBH {
+public:
+//    virtual void handleCallStatement(...) = 0;
 };
 
 
@@ -753,7 +760,8 @@ private:
 
 class DmlStatementAdapter :
         public AdapterT<DmlStatementCBH, QSMySqlParser::DmlStatementContext>,
-        public SimpleSelectCBH {
+        public SimpleSelectCBH,
+        public CallStatementCBH {
 public:
     using AdapterT::AdapterT;
 
@@ -1639,6 +1647,22 @@ public:
     string name() const override { return getTypeName(this); }
 };
 
+
+class CallStatementAdapter :
+        public AdapterT<CallStatementCBH, QSMySqlParser::CallStatementContext> {
+public:
+    using AdapterT::AdapterT;
+
+    void checkContext() const override {
+    }
+
+    void onExit() override {
+    }
+
+    string name() const override { return getTypeName(this); }
+
+private:
+};
 
 
 class OrderByClauseAdapter :
@@ -3435,6 +3459,11 @@ shared_ptr<query::SelectStmt> QSMySqlListener::getSelectStatement() const {
 }
 
 
+std::shared_ptr<ccontrol::UserQuery> QSMySqlListener::getUserQuery() const {
+    return nullptr; // TODO
+}
+
+
 // Create and push an Adapter onto the context stack, using the current top of the stack as a callback handler
 // for the new Adapter. Returns the new Adapter.
 template<typename ParentCBH, typename ChildAdapter, typename Context>
@@ -3747,7 +3776,7 @@ UNHANDLED(DropView)
 UNHANDLED(RenameTable)
 UNHANDLED(RenameTableClause)
 UNHANDLED(TruncateTable)
-UNHANDLED(CallStatement)
+ENTER_EXIT_PARENT(CallStatement)
 UNHANDLED(DeleteStatement)
 UNHANDLED(DoStatement)
 UNHANDLED(HandlerStatement)

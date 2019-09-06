@@ -258,6 +258,11 @@ UserQueryFactory::newUserQuery(std::string const& aQuery,
         } catch(std::exception const& exc) {
             return std::make_shared<UserQueryInvalid>(exc.what());
         }
+    } else if (UserQueryType::isCall(query)) {
+        auto parser = parser::Antlr4Parser::create(query);
+        parser->setup();
+        parser->run();
+        return parser->getUserQuery();
     } else {
         // something that we don't recognize
         auto uq = std::make_shared<UserQueryInvalid>("Invalid or unsupported query: " + query);
