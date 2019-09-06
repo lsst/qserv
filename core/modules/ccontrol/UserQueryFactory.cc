@@ -109,6 +109,10 @@ UserQueryFactory::UserQueryFactory(czar::CzarConfig const& czarConfig,
     // to avoid confusion. Note that when/if clean czar restart is implemented
     // we'll need a new logic to restart query processing.
     _impl->queryMetadata->cleanup(_impl->qMetaCzarId);
+
+    // Add logging context with czar ID
+    qmeta::CzarId qMetaCzarId = _impl->qMetaCzarId;
+    LOG_MDC_INIT([qMetaCzarId]() { LOG_MDC("CZID", std::to_string(qMetaCzarId)); });
 }
 
 

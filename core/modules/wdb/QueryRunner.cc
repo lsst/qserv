@@ -52,6 +52,7 @@
 #include "global/constants.h"
 #include "global/DbTable.h"
 #include "global/debugUtil.h"
+#include "global/LogContext.h"
 #include "global/UnsupportedError.h"
 #include "mysql/MySqlConfig.h"
 #include "mysql/MySqlConnection.h"
@@ -110,7 +111,7 @@ bool QueryRunner::_initConnection() {
     _mysqlConn.reset(new mysql::MySqlConnection(localMySqlConfig));
 
     if (not _mysqlConn->connect()) {
-        LOGS(_log, LOG_LVL_ERROR, _task->getIdStr() << " Unable to connect to MySQL: " << localMySqlConfig);
+        LOGS(_log, LOG_LVL_ERROR, "Unable to connect to MySQL: " << localMySqlConfig);
         util::Error error(-1, "Unable to connect to MySQL; " + localMySqlConfig.toString());
         _multiError.push_back(error);
         return false;
@@ -131,7 +132,8 @@ util::TimerHistogram memWaitHisto("memWait Hist", {1, 5, 10, 20, 40});
 
 
 bool QueryRunner::runQuery() {
-    LOGS(_log, LOG_LVL_DEBUG, _task->getIdStr() << " QueryRunner::runQuery()");
+    QSERV_LOGCONTEXT_QUERY_JOB(_task->getQueryId(), _task->getJobId());
+    LOGS(_log, LOG_LVL_DEBUG, "QueryRunner::runQuery()");
 
     // Make certain our Task knows that this object is no longer in use when this function exits.
     class Release {
@@ -145,7 +147,7 @@ bool QueryRunner::runQuery() {
     Release release(_task, this);
 
     if (_task->getCancelled()) {
-        LOGS(_log, LOG_LVL_DEBUG, _task->getIdStr() << " runQuery, task was cancelled before it started.");
+        LOGS(_log, LOG_LVL_DEBUG, "runQuery, task was cancelled before it started.");
         return false;
     }
 
@@ -158,12 +160,12 @@ bool QueryRunner::runQuery() {
     LOGS(_log, LOG_LVL_INFO, logMsg);
 
     if (_task->getCancelled()) {
-        LOGS(_log, LOG_LVL_DEBUG, _task->getIdStr() << " runQuery, task was cancelled after locking tables.");
+        LOGS(_log, LOG_LVL_DEBUG, "runQuery, task was cancelled after locking tables.");
         return false;
     }
 
     _setDb();
-    LOGS(_log, LOG_LVL_DEBUG,  _task->getIdStr() << " Exec in flight for Db=" << _dbName);
+    LOGS(_log, LOG_LVL_DEBUG,  "Exec in flight for Db=" << _dbName);
     bool connOk = _initConnection();
     if (!connOk) {
         // Transmit the mysql connection error to the czar, which should trigger a re-try.
@@ -185,7 +187,7 @@ bool QueryRunner::runQuery() {
     } else {
         throw UnsupportedError(_task->getIdStr() + " QueryRunner: Expected protocol > 1 in TaskMsg");
     }
-    LOGS(_log, LOG_LVL_DEBUG, _task->getIdStr() << " QueryRunner::runQuery() END");
+    LOGS(_log, LOG_LVL_DEBUG, "QueryRunner::runQuery() END");
     return false;
 }
 
@@ -257,7 +259,7 @@ bool QueryRunner::_fillRows(MYSQL_RES* result, int numFields, uint& rowCount, si
                 LOGS_ERROR("Message single row too large to send using protobuffer");
                 return false;
             }
-            LOGS(_log, LOG_LVL_DEBUG, _task->getIdStr() << " Large message size=" << tSize
+            LOGS(_log, LOG_LVL_DEBUG, "Large message size=" << tSize
                  << ", splitting message rowCount=" << rowCount);
             _transmit(false, rowCount, tSize);
             rowCount = 0;
@@ -288,7 +290,7 @@ util::TimerHistogram transmitHisto("transmit Hist", {0.1, 1, 5, 10, 20, 40});
 /// If 'last' is true, this is the last message in the result set
 /// and flags are set accordingly.
 void QueryRunner::_transmit(bool last, uint rowCount, size_t tSize) {
-    LOGS(_log, LOG_LVL_DEBUG, _task->getIdStr() << " _transmit last=" << last
+    LOGS(_log, LOG_LVL_DEBUG, "_transmit last=" << last
          << " rowCount=" << rowCount << " tSize=" << tSize);
     std::string resultString;
     _result->set_queryid(_task->getQueryId());
@@ -308,7 +310,7 @@ void QueryRunner::_transmit(bool last, uint rowCount, size_t tSize) {
     _result.reset(); // don't need it anymore and a new one will be made when needed..
 
     _transmitHeader(resultString);
-    LOGS(_log, LOG_LVL_DEBUG, "_transmit last=" << last << " " << _task->getIdStr()
+    LOGS(_log, LOG_LVL_DEBUG, "_transmit last=" << last
          << " resultString=" << util::prettyCharList(resultString, 5));
 
     if (!_cancelled) {
@@ -326,14 +328,14 @@ void QueryRunner::_sendBuf(xrdsvc::StreamBuffer::Ptr& streamBuf, bool last,
                            util::TimerHistogram& histo, std::string const& note) {
     bool sent = _task->sendChannel->sendStream(streamBuf, last);
     if (!sent) {
-        LOGS(_log, LOG_LVL_ERROR, _task->getIdStr() << " Failed to transmit " << note << "!");
+        LOGS(_log, LOG_LVL_ERROR, "Failed to transmit " << note << "!");
         _cancelled = true;
     } else {
         util::Timer t;
         t.start();
-        LOGS(_log, LOG_LVL_DEBUG, _task->getIdStr() << " _sendbuf wait start");
+        LOGS(_log, LOG_LVL_DEBUG, "_sendbuf wait start");
         streamBuf->waitForDoneWithThis(); // Block until this buffer has been sent.
-        LOGS(_log, LOG_LVL_DEBUG, _task->getIdStr() << " _sendbuf wait end");
+        LOGS(_log, LOG_LVL_DEBUG, "_sendbuf wait end");
         t.stop();
         auto logMsg = histo.addTime(t.getElapsed(), _task->getIdStr());
         LOGS(_log, LOG_LVL_DEBUG, logMsg);
@@ -364,7 +366,7 @@ void QueryRunner::_transmitHeader(std::string& msg) {
         xrdsvc::StreamBuffer::Ptr streamBuf(xrdsvc::StreamBuffer::createWithMove(msgBuf)); // invalidates msgBuf
         _sendBuf(streamBuf, false, transHeaderHisto, "header");
     } else {
-        LOGS(_log, LOG_LVL_DEBUG, _task->getIdStr() << " _transmitHeader cancelled");
+        LOGS(_log, LOG_LVL_DEBUG, "_transmitHeader cancelled");
     }
 }
 
@@ -452,8 +454,7 @@ bool QueryRunner::_dispatchChannel() {
                 sqlTimer.start();
                 MYSQL_RES* res = _primeResult(query); // This runs the SQL query.
                 sqlTimer.stop();
-                LOGS(_log, LOG_LVL_DEBUG, _task->getIdStr() << " fragment time=" << sqlTimer.getElapsed()
-                                                            << " query=" << query);
+                LOGS(_log, LOG_LVL_DEBUG, " fragment time=" << sqlTimer.getElapsed() << " query=" << query);
                 if (!res) {
                     erred = true;
                     continue;

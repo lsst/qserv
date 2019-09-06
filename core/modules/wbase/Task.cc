@@ -109,7 +109,7 @@ Task::Task(Task::TaskMsgPtr const& t, SendChannel::Ptr const& sc)
     timestr[0] = '\0';
 
     allIds.add(std::to_string(_qId) + "_" + std::to_string(_jId));
-    LOGS(_log, LOG_LVL_DEBUG, "Task(...) " << _idStr << " this=" << this << " : " << allIds);
+    LOGS(_log, LOG_LVL_DEBUG, "Task(...) " << "this=" << this << " : " << allIds);
 
     // Determine which major tables this task will use.
     int const size = msg->scantable_size();
@@ -123,7 +123,7 @@ Task::Task(Task::TaskMsgPtr const& t, SendChannel::Ptr const& sc)
 
 Task::~Task() {
     allIds.remove(std::to_string(_qId) + "_" + std::to_string(_jId));
-    LOGS(_log, LOG_LVL_DEBUG, "~Task() " << _idStr << ": " << allIds);
+    LOGS(_log, LOG_LVL_DEBUG, "~Task() : " << allIds);
 }
 
 
@@ -205,7 +205,7 @@ std::chrono::milliseconds Task::finished(std::chrono::system_clock::time_point c
     if (duration.count() < 1) {
         duration = std::chrono::milliseconds{1};
     }
-    LOGS(_log, LOG_LVL_DEBUG, _idStr << " processing millisecs=" << duration.count());
+    LOGS(_log, LOG_LVL_DEBUG, "processing millisecs=" << duration.count());
     return duration;
 }
 
@@ -234,11 +234,11 @@ void Task::waitForMemMan() {
     if (_memMan != nullptr) {
         if (_memMan->lock(_memHandle, true)) {
             int errorCode = (errno == EAGAIN ? ENOMEM : errno);
-            LOGS(_log, LOG_LVL_WARN, _idStr << " mlock err=" << errorCode <<
+            LOGS(_log, LOG_LVL_WARN, "mlock err=" << errorCode <<
                     " " <<_memMan->getStatistics().logString() <<
                     " " << _memMan->getStatus(_memHandle).logString());
         }
-        LOGS(_log, LOG_LVL_DEBUG, _idStr << " waitForMemMan " <<_memMan->getStatistics().logString() <<
+        LOGS(_log, LOG_LVL_DEBUG, "waitForMemMan " <<_memMan->getStatistics().logString() <<
                                   " " << _memMan->getStatus(_memHandle).logString());
     }
     _safeToMoveRunning = true;

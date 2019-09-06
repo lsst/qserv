@@ -145,7 +145,7 @@ void QuerySession::analyzeQuery(std::string const& sql, std::shared_ptr<query::S
         _generateConcrete();
         _applyConcretePlugins();
 
-        LOGS(_log, LOG_LVL_TRACE, "Query Plugins applied:\n " << *this);
+        LOGS(_log, LOG_LVL_TRACE, "Query Plugins applied: " << *this);
         LOGS(_log, LOG_LVL_TRACE, "ORDER BY clause for result query: " << getResultOrderBy());
 
     } catch(QueryProcessingBug& b) {
@@ -391,17 +391,17 @@ void QuerySession::print(std::ostream& os) const {
     if (_stmtMerge != nullptr) {
          mer = _stmtMerge->getQueryTemplate();
     }
-    os << "QuerySession description:\n";
-    os << "  original: " << this->_original << "\n";
-    os << "  has chunks: " << this->hasChunks() << "\n";
-    os << "  chunks: " << util::printable(this->_chunks) << "\n";
-    os << "  needs merge: " << this->needsMerge() << "\n";
-    os << "  1st parallel statement: " << par << "\n";
-    os << "  merge statement: " << mer << "\n";
+    os << "QuerySession description:";
+    os << "  original: \"" << this->_original << "\"";
+    os << "  has chunks: " << this->hasChunks();
+    os << "  chunks: " << util::printable(this->_chunks);
+    os << "  needs merge: " << this->needsMerge();
+    os << "  1st parallel statement: \"" << par << "\"";
+    os << "  merge statement: \"" << mer << "\"";
     os << "  scanRating:" << _context->scanInfo.scanRating;
     for (auto const& tbl : _context->scanInfo.infoTables) {
         os << "  ScanTable: " << tbl.db << "." << tbl.table
-           << " lock=" << tbl.lockInMemory << " rating=" << tbl.scanRating << "\n";
+           << " lock=" << tbl.lockInMemory << " rating=" << tbl.scanRating;
     }
 }
 

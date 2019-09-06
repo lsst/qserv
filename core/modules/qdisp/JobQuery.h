@@ -63,6 +63,7 @@ public:
     virtual ~JobQuery();
     virtual bool runJob();
 
+    QueryId getQueryId() const {return _qid; }
     int getIdInt() const { return _jobDescription->id(); }
     std::string const& getIdStr() const { return _idStr; }
     JobDescription::Ptr getDescription() { return _jobDescription; }

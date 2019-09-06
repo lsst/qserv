@@ -44,6 +44,7 @@
 
 // Qserv headers
 #include "global/Bug.h"
+#include "global/LogContext.h"
 #include "proto/worker.pb.h"
 #include "util/EventThread.h"
 #include "util/Timer.h"
@@ -147,10 +148,13 @@ void BlendScheduler::queCmd(util::Command::Ptr const& cmd) {
         notify(true);
         return;
     }
+
+    QSERV_LOGCONTEXT_QUERY_JOB(task->getQueryId(), task->getJobId());
+
     if (task->msg == nullptr) {
         throw Bug("BlendScheduler::queCmd task with null message!");
     }
-    LOGS(_log, LOG_LVL_DEBUG, "BlendScheduler::queCmd " << task->getIdStr());
+    LOGS(_log, LOG_LVL_DEBUG, "BlendScheduler::queCmd");
 
     util::LockGuardTimed guard(util::CommandQueue::_mx, "BlendScheduler::queCmd b");
     // Check for scan tables
@@ -196,14 +200,14 @@ void BlendScheduler::queCmd(util::Command::Ptr const& cmd) {
         if (s == nullptr) {
             // Task wasn't assigned with a scheduler, assuming it is terribly slow.
             // Assign it to the slowest scheduler so it does the least damage to other queries.
-            LOGS_WARN(task->getIdStr() << " Task had unexpected scanRating="
+            LOGS_WARN("Task had unexpected scanRating="
                       << scanPriority << " adding to scanSnail");
             s = _scanSnail;
         }
     }
     task->setTaskScheduler(s);
 
-    LOGS(_log, LOG_LVL_DEBUG, "Blend queCmd " << task->getIdStr());
+    LOGS(_log, LOG_LVL_DEBUG, "Blend queCmd");
     s->queCmd(task);
     _queries->queuedTask(task);
     _infoChanged = true;
@@ -217,12 +221,14 @@ void BlendScheduler::commandStart(util::Command::Ptr const& cmd) {
         return;
     }
 
-    LOGS(_log, LOG_LVL_DEBUG, "BlendScheduler::commandStart " << t->getIdStr());
+    QSERV_LOGCONTEXT_QUERY_JOB(t->getQueryId(), t->getJobId());
+
+    LOGS(_log, LOG_LVL_DEBUG, "BlendScheduler::commandStart");
     wcontrol::Scheduler::Ptr s = dynamic_pointer_cast<wcontrol::Scheduler>(t->getTaskScheduler());
     if (s != nullptr) {
         s->commandStart(t);
     } else {
-        LOGS(_log, LOG_LVL_ERROR, "BlendScheduler::commandStart scheduler not found " << t ->getIdStr());
+        LOGS(_log, LOG_LVL_ERROR, "BlendScheduler::commandStart scheduler not found");
     }
 
     _queries->startedTask(t);
@@ -235,12 +241,15 @@ void BlendScheduler::commandFinish(util::Command::Ptr const& cmd) {
         LOGS(_log, LOG_LVL_WARN, "BlendScheduler::commandFinish cmd failed conversion");
         return;
     }
+
+    QSERV_LOGCONTEXT_QUERY_JOB(t->getQueryId(), t->getJobId());
+
     wcontrol::Scheduler::Ptr s = dynamic_pointer_cast<wcontrol::Scheduler>(t->getTaskScheduler());
-    LOGS(_log, LOG_LVL_DEBUG, "BlendScheduler::commandFinish " << t->getIdStr());
+    LOGS(_log, LOG_LVL_DEBUG, "BlendScheduler::commandFinish");
     if (s != nullptr) {
         s->commandFinish(t);
     } else {
-        LOGS(_log, LOG_LVL_ERROR, "BlendScheduler::commandFinish scheduler not found " << t->getIdStr());
+        LOGS(_log, LOG_LVL_ERROR, "BlendScheduler::commandFinish scheduler not found");
     }
     _infoChanged = true;
     _logChunkStatus();
@@ -412,7 +421,7 @@ void BlendScheduler::_logChunkStatus() {
         {
             lock_guard<mutex> lg(_schedMtx);
             for (auto const& sched : _schedulers) {
-                if (sched != nullptr) str += sched->chunkStatusStr() + "\n";
+                if (sched != nullptr) str += sched->chunkStatusStr() + " ";
             }
         }
         LOGS(_log, LOG_LVL_DEBUG, str);
@@ -470,7 +479,7 @@ int BlendScheduler::moveUserQuery(QueryId qId, SchedulerBase::Ptr const& source,
     // not tasks that were running.
     for (auto const& task : taskList) {
         // Change the scheduler to the new scheduler as normally this is done in BlendScheduler::queCmd
-        LOGS(_log, LOG_LVL_DEBUG, task->getIdStr() << " moving to " << destination->getName());
+        LOGS(_log, LOG_LVL_DEBUG, "moving to " << destination->getName());
         task->setTaskScheduler(destination);
         destination->queCmd(task);
         ++count;

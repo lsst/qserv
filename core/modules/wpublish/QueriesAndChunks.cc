@@ -207,8 +207,7 @@ void QueriesAndChunks::removeDead() {
         while (iter != _deadQueries.end()) {
             auto const& statPtr = iter->second;
             if (statPtr->isDead(_deadAfter, now)) {
-                LOGS(_log, LOG_LVL_DEBUG, QueryIdHelper::makeIdStr(statPtr->_queryId)
-                     << " QueriesAndChunks::removeDead added to list");
+                LOGS(_log, LOG_LVL_DEBUG, "QueriesAndChunks::removeDead added to list");
                 dList.push_back(statPtr);
                 iter = _deadQueries.erase(iter);
             } else {
@@ -230,7 +229,7 @@ void QueriesAndChunks::removeDead(QueryStatistics::Ptr const& queryStats) {
     unique_lock<mutex> gS(queryStats->_qStatsMtx);
     QueryId qId = queryStats->_queryId;
     gS.unlock();
-    LOGS(_log, LOG_LVL_DEBUG, QueryIdHelper::makeIdStr(qId) << " Queries::removeDead");
+    LOGS(_log, LOG_LVL_DEBUG, "Queries::removeDead");
 
     lock_guard<mutex> gQ(_queryStatsMtx);
     _queryStats.erase(qId);
@@ -301,8 +300,7 @@ void QueriesAndChunks::examineAll() {
             string const& slowestTable = begin->db + ":" + begin->table;
             auto iterTbl = scanTblSums.find(slowestTable);
             if (iterTbl != scanTblSums.end()) {
-                LOGS(_log, LOG_LVL_DEBUG, "examineAll " << slowestTable
-                                       << " chunkId=" << task->getChunkId());
+                LOGS(_log, LOG_LVL_DEBUG, "examineAll " << slowestTable << " chunkId=" << task->getChunkId());
                 ScanTableSums& tblSums = iterTbl->second;
                 auto iterChunk = tblSums.chunkPercentages.find(task->getChunkId());
                 if (iterChunk != tblSums.chunkPercentages.end()) {
@@ -394,28 +392,26 @@ QueriesAndChunks::ScanTableSumsMap QueriesAndChunks::_calcScanTableSums() {
 /// scheduler in an attempt to keep a single user query from jamming up a scheduler.
 void QueriesAndChunks::_bootTask(QueryStatistics::Ptr const& uq, wbase::Task::Ptr const& task,
                                      wsched::SchedulerBase::Ptr const& sched) {
-    LOGS(_log, LOG_LVL_INFO, task->getIdStr() << " taking too long, booting from " << sched->getName());
+    LOGS(_log, LOG_LVL_INFO, "taking too long, booting from " << sched->getName());
     sched->removeTask(task, true);
     uq->_tasksBooted += 1;
 
     auto bSched = _blendSched.lock();
     if (bSched == nullptr) {
-        LOGS(_log, LOG_LVL_WARN, task->getIdStr()
-                             << " blendSched undefined, can't check user query");
+        LOGS(_log, LOG_LVL_WARN, "blendSched undefined, can't check user query");
         return;
     }
     if (bSched->isScanSnail(sched)) {
         // If it's already on the snail scan, it has already been booted from another scan.
         if (uq->_tasksBooted > _maxTasksBooted + 1) {
-            LOGS(_log, LOG_LVL_WARN, task->getIdStr() <<
+            LOGS(_log, LOG_LVL_WARN,
                  "User Query taking excessive amount of time on snail scan and should be cancelled");
             // TODO: Add code to send message back to czar to cancel this user query.
         }
     } else {
         // Disabled as too aggressive and vulnerable to bad statistics. DM-11526
         if (false && uq->_tasksBooted > _maxTasksBooted) {
-            LOGS(_log, LOG_LVL_INFO, task->getIdStr()
-                 << " entire UserQuery booting from " << sched->getName()
+            LOGS(_log, LOG_LVL_INFO, "entire UserQuery booting from " << sched->getName()
                  << " tasksBooted=" << uq->_tasksBooted
                  << " maxTasksBooted=" << _maxTasksBooted);
             uq->_queryBooted = true;
@@ -483,7 +479,7 @@ QueriesAndChunks::removeQueryFrom(QueryId const& qId, wsched::SchedulerBase::Ptr
     unique_lock<mutex> lock(_queryStatsMtx);
     auto query = _queryStats.find(qId);
     if (query == _queryStats.end()) {
-        LOGS(_log, LOG_LVL_DEBUG, QueryIdHelper::makeIdStr(qId) << " was not found by removeQueryFrom");
+        LOGS(_log, LOG_LVL_DEBUG, "was not found by removeQueryFrom");
         return removedList;
     }
     lock.unlock();

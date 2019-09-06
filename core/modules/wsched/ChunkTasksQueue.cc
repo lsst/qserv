@@ -299,8 +299,7 @@ void ChunkTasks::queTask(wbase::Task::Ptr const& a) {
         state = "ACTIVE";
     }
     LOGS(_log, LOG_LVL_DEBUG,
-         "ChunkTasks queue "
-         << a->getIdStr()
+         "ChunkTasks queue"
          << " chunkId=" << _chunkId
          << " state=" << state
          << " active.sz=" << _activeTasks._tasks.size()

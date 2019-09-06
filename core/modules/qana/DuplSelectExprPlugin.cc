@@ -119,7 +119,7 @@ DuplSelectExprPlugin::getDuplicateSelectErrors(query::SelectStmt const& stmt) co
     query::ValueExprPtrVector valueExprList = *(selectList.getValueExprList());
 
     if (LOG_CHECK_LVL(_log, LOG_LVL_TRACE)) {
-        LOGS(_log, LOG_LVL_TRACE, "Input stmt:\n" << selectList);
+        LOGS(_log, LOG_LVL_TRACE, "Input stmt: " << selectList);
     }
 
     StringVector selectExprNormalizedNames;

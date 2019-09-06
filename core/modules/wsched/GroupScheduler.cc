@@ -42,6 +42,7 @@
 
 // Qserv headers
 #include "global/Bug.h"
+#include "global/LogContext.h"
 #include "proto/worker.pb.h"
 
 namespace {
@@ -102,6 +103,7 @@ void GroupScheduler::queCmd(util::Command::Ptr const& cmd) {
         LOGS(_log, LOG_LVL_WARN, getName() << " queCmd could not be converted to Task or was nullptr");
         return;
     }
+    QSERV_LOGCONTEXT_QUERY_JOB(t->getQueryId(), t->getJobId());
     std::lock_guard<std::mutex> lock(util::CommandQueue::_mx);
     // Start at the front of the queue looking for a group to accept the task.
     bool queued = false;
@@ -117,8 +119,7 @@ void GroupScheduler::queCmd(util::Command::Ptr const& cmd) {
         _queue.push_back(group);
     }
     auto uqCount = _incrCountForUserQuery(t->getQueryId());
-    LOGS(_log, LOG_LVL_WARN, getName() << " queCmd " << t->getIdStr()
-         << " uqCount=" << uqCount);
+    LOGS(_log, LOG_LVL_WARN, getName() << " queCmd uqCount=" << uqCount);
     util::CommandQueue::_cv.notify_all();
 }
 

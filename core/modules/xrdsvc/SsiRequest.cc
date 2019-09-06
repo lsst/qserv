@@ -35,6 +35,7 @@
 #include "lsst/log/Log.h"
 
 // Qserv headers
+#include "global/LogContext.h"
 #include "global/ResourceUnit.h"
 #include "proto/FrameBuffer.h"
 #include "proto/worker.pb.h"
@@ -121,6 +122,8 @@ void SsiRequest::execute(XrdSsiRequest& req) {
                             " chunkId=" + std::to_string(ru.chunk()));
                 return;
             }
+
+            QSERV_LOGCONTEXT_QUERY_JOB(taskMsg->queryid(), taskMsg->jobid());
 
             if (!taskMsg->has_db() || !taskMsg->has_chunkid()
                 || (ru.db()    != taskMsg->db())
