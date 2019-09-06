@@ -85,10 +85,13 @@ public:
     IndexRequestParams const& targetRequestParams() const { return _targetRequestParams; }
 
     /**
-     * Return a reference to a result of the completed request.
+     * @return a reference to a result of the completed request
      *
-     * Note that this operation will return a sensible result only if the operation
-     * finishes with status FINISHED::SUCCESS
+     * @note the method must be called on requests which are in the FINISHED
+     * state only. Otherwise the resulting structure may be in the undefined state.
+     *
+     * @note the structure returned by this operation may carry a meaningful
+     * MySQL error code if the worker-side data extraction failed.
      */
     IndexInfo const& responseData() const;
 
