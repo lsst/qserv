@@ -724,6 +724,8 @@ public:
 
     shared_ptr<query::SelectStmt> const & getSelectStatement() { return _selectStatement; }
 
+    shared_ptr<ccontrol::UserQuery> const & getUserQuery() { return _userQuery; }
+
     void handleDmlStatement(shared_ptr<query::SelectStmt> const & selectStatement) override {
         _selectStatement = selectStatement;
     }
@@ -3489,7 +3491,7 @@ shared_ptr<query::SelectStmt> QSMySqlListener::getSelectStatement() const {
 
 
 shared_ptr<ccontrol::UserQuery> QSMySqlListener::getUserQuery() const {
-    return nullptr; // TODO
+    return _rootAdapter->getUserQuery();
 }
 
 
