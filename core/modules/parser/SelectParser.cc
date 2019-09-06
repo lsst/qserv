@@ -89,61 +89,6 @@ namespace qserv {
 namespace parser {
 
 
-
-
-
-
-
-////////////////////////////////////////////////////////////////////////
-// AntlrParser -- Antlr parsing complex
-////////////////////////////////////////////////////////////////////////
-class AntlrParser {
-public:
-    virtual ~AntlrParser() {}
-    virtual void setup() = 0;
-    virtual void run() = 0;
-    virtual std::shared_ptr<query::SelectStmt> getStatement() = 0;
-
-protected:
-    enum State {
-        INIT, SETUP_DONE, RUN_DONE
-    };
-    std::string stateString(State s);
-
-    void changeState(State to);
-
-    bool runTransitionDone() const { return _state == RUN_DONE; }
-
-private:
-    State _state {INIT};
-};
-
-
-class Antlr4Parser : public AntlrParser, public ListenerDebugHelper, public std::enable_shared_from_this<Antlr4Parser> {
-public:
-    static std::shared_ptr<Antlr4Parser> create(std::string const & q);
-
-    void setup() override;
-
-    void run() override;
-
-    std::shared_ptr<query::SelectStmt> getStatement() override;
-
-    std::string getStringTree() const override;
-
-    std::string getTokens() const override;
-
-    std::string getStatementString() const override;
-
-private:
-    Antlr4Parser(std::string const& q);
-
-    std::string _statement;
-    std::shared_ptr<parser::QSMySqlListener> _listener;
-};
-
-
-
 ////////////////////////////////////////////////////////////////////////
 // AntlrParser -- Antlr parsing complex
 ////////////////////////////////////////////////////////////////////////
@@ -276,6 +221,11 @@ void Antlr4Parser::run() {
 
 query::SelectStmt::Ptr Antlr4Parser::getStatement() {
     return _listener->getSelectStatement();
+}
+
+
+std::shared_ptr<ccontrol::UserQuery> Antlr4Parser::getUserQuery() {
+    return _listener->getUserQuery();
 }
 
 
