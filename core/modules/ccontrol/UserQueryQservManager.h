@@ -79,7 +79,7 @@ public:
     // Delegate objects
     std::shared_ptr<qdisp::MessageStore> getMessageStore() override { return _messageStore; }
 
-    virtual std::string getResultLocation() const { return std::string(); }
+    std::string getResultLocation() const override { return "table:" + _resultTableName; }
 
     /// @return get the SELECT statement to be executed by proxy
     virtual std::string getResultQuery() const;
