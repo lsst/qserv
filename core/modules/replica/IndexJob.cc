@@ -348,7 +348,9 @@ void IndexJob::_processRequestData(util::Lock const& lock,
     if (request->extendedState() != Request::SUCCESS) return;
 
     switch (_destination) {
-        case DISCARD: break;
+        case DISCARD: {
+            break;
+        }
         case FILE: {
             if (_destinationPath.empty()) {
                 cout << request->responseData().data;
@@ -362,6 +364,7 @@ void IndexJob::_processRequestData(util::Lock const& lock,
                 f << request->responseData().data;
                 f.close();
             }
+            break;
         }
         case FOLDER: {
             string const filePath =
@@ -375,10 +378,12 @@ void IndexJob::_processRequestData(util::Lock const& lock,
             }
             f << request->responseData().data;
             f.close();
+            break;
         }
         case TABLE: {
             LOGS(_log, LOG_LVL_DEBUG, context() << __func__
                  << "  unsupported destination: " + toString(_destination));
+            break;
         }
         default:
             throw range_error(
