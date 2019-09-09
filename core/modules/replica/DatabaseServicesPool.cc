@@ -200,14 +200,16 @@ void DatabaseServicesPool::findWorkerReplicas(vector<ReplicaInfo>& replicas,
                                               string const& worker,
                                               string const& database,
                                               bool allDatabases,
-                                              bool isPublished) {
+                                              bool isPublished,
+                                              bool includeFileInfo) {
 
     ServiceAllocator service(shared_from_base<DatabaseServicesPool>());
     service()->findWorkerReplicas(replicas,
                                   worker,
                                   database,
                                   allDatabases,
-                                  isPublished);
+                                  isPublished,
+                                  includeFileInfo);
 }
 
 

@@ -115,7 +115,8 @@ public:
                             std::string const& worker,
                             std::string const& database,
                             bool allDatabases,
-                            bool isPublished) final;
+                            bool isPublished,
+                            bool includeFileInfo) final;
 
     uint64_t numWorkerReplicas(std::string const& worker,
                                std::string const& database,

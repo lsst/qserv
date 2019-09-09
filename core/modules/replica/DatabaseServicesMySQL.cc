@@ -800,7 +800,8 @@ void DatabaseServicesMySQL::findWorkerReplicas(vector<ReplicaInfo>& replicas,
                                                string const& worker,
                                                string const& database,
                                                bool allDatabases,
-                                               bool isPublished) {
+                                               bool isPublished,
+                                               bool includeFileInfo) {
 
     string const context = "DatabaseServicesMySQL::" + string(__func__) +
         " worker=" + worker + " database=" + database +
@@ -819,7 +820,8 @@ void DatabaseServicesMySQL::findWorkerReplicas(vector<ReplicaInfo>& replicas,
                     worker,
                     database,
                     allDatabases,
-                    isPublished);
+                    isPublished,
+                    includeFileInfo);
                 conn->rollback();
             }
         );
@@ -884,7 +886,8 @@ void DatabaseServicesMySQL::_findWorkerReplicasImpl(util::Lock const& lock,
                                                     string const& worker,
                                                     string const& database,
                                                     bool allDatabases,
-                                                    bool isPublished) {
+                                                    bool isPublished,
+                                                    bool includeFileInfo) {
     string const context =
         "DatabaseServicesMySQL::" + string(__func__) +
         " worker=" + worker + " database=" + database +
@@ -912,7 +915,7 @@ void DatabaseServicesMySQL::_findWorkerReplicasImpl(util::Lock const& lock,
         }
         query += _conn->sqlEqual("database", database);
     }
-    _findReplicasImpl(lock, replicas, query);
+    _findReplicasImpl(lock, replicas, query, includeFileInfo);
 
     LOGS(_log, LOG_LVL_DEBUG, context << "** DONE ** replicas.size(): " << replicas.size());
 }
@@ -2085,7 +2088,8 @@ vector<TransactionInfo> DatabaseServicesMySQL::_findTransactionsImpl(util::Lock 
 
 void DatabaseServicesMySQL::_findReplicasImpl(util::Lock const& lock,
                                               vector<ReplicaInfo>& replicas,
-                                              string const& query) {
+                                              string const& query,
+                                              bool includeFileInfo) {
 
     string const context =
         "DatabaseServicesMySQL::" + string(__func__) + "(replicas,query) ";
@@ -2132,8 +2136,8 @@ void DatabaseServicesMySQL::_findReplicasImpl(util::Lock const& lock,
         
         // Extract files for each replica using identifiers of the replicas
         // update replicas in the dictionary.
-        _findReplicaFilesImpl(lock, id2replica);
-        
+        if (includeFileInfo) _findReplicaFilesImpl(lock, id2replica);
+
         // Copy replicas from the dictionary into the output collection
         for (auto&& entry: id2replica) {
             replicas.push_back(entry.second);

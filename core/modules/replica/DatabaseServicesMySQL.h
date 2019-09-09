@@ -120,7 +120,8 @@ public:
                             std::string const& worker,
                             std::string const& database,
                             bool allDatabases,
-                            bool isPublished) final;
+                            bool isPublished,
+                            bool includeFileInfo) final;
 
     /// @see DatabaseServices::numWorkerReplicas()
     uint64_t numWorkerReplicas(std::string const& worker,
@@ -235,13 +236,17 @@ private:
      * @param isPublished
      *   (optional) flag which is used if flag 'all' is set to 'false'
      *   to narrow a collection of databases included into the search.
+     * 
+     * @param includeFileInfo
+     *   if set to 'true' then file info will also be added to each replica
      */
     void _findWorkerReplicasImpl(util::Lock const& lock,
                                  std::vector<ReplicaInfo>& replicas,
                                  std::string const& worker,
                                  std::string const& database=std::string(),
                                  bool allDatabases=false,
-                                 bool isPublished=true);
+                                 bool isPublished=true,
+                                 bool includeFileInfo=true);
 
     /**
      * Actual implementation of the replica update algorithm.
@@ -309,10 +314,14 @@ private:
      *
      * @param query
      *   SQL query against the corresponding table
+     * 
+     * @param includeFileInfo
+     *   if set to 'true' then file info will also be added to each replica
      */
     void _findReplicasImpl(util::Lock const& lock,
                            std::vector<ReplicaInfo>& replicas,
-                           std::string const& query);
+                           std::string const& query,
+                           bool includeFileInfo=true);
 
     /**
      * Fetch files for the replicas

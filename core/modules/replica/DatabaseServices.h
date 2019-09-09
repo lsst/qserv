@@ -484,6 +484,9 @@ public:
      * @param isPublished
      *   (optional) flag which is used if flag 'all' is set to 'false'
      *   to narrow a collection of databases included into the search.
+     * 
+     * @param includeFileInfo
+     *   if set to 'true' then file info will also be added to each replica
      *
      * @throw std::invalid_argument
      *   if the worker is unknown or its name is empty, or if the database
@@ -493,7 +496,8 @@ public:
                                     std::string const& worker,
                                     std::string const& database=std::string(),
                                     bool allDatabases=false,
-                                    bool isPublished=true) = 0;
+                                    bool isPublished=true,
+                                    bool includeFileInfo=true) = 0;
 
     /**
      * Find the number of replicas for the specified worker and a database (or all

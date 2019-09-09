@@ -197,13 +197,20 @@ void IndexJob::startImpl(util::Lock const& lock) {
     // The first step is to find workers which store replicas of each
     // chunk to be processed by the job.
 
+    bool const unusedAllDatabases = false;  // is still required by the method's contract
+    bool const unusedIsPublished = true;    // is still required by the method's contract
+    bool const includeFileInfo = false;     // to speed up the query as we don't need file info
+
     map<unsigned int, list<string>> chunk2workers;
     for (auto&& worker: workerNames) {
         vector<ReplicaInfo> replicas;
         controller()->serviceProvider()->databaseServices()->findWorkerReplicas(
             replicas,
             worker,
-            database()
+            database(),
+            unusedAllDatabases,
+            unusedIsPublished,
+            includeFileInfo
         );
         for (auto&& replica: replicas) {
             chunk2workers[replica.chunk()].push_back(replica.worker());
