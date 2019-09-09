@@ -43,6 +43,7 @@
 #include "qana/CheckAggregation.h"
 #include "query/AggOp.h"
 #include "query/FuncExpr.h"
+#include "query/OrderByClause.h"
 #include "query/QueryContext.h"
 #include "query/QueryTemplate.h"
 #include "query/SelectList.h"
@@ -59,6 +60,7 @@ namespace lsst {
 namespace qserv {
 namespace qana {
 
+
 inline query::ValueExprPtr
 newExprFromAlias(std::string const& alias) {
     std::shared_ptr<query::ColumnRef> cr = std::make_shared<query::ColumnRef>("", "", alias);
@@ -66,13 +68,15 @@ newExprFromAlias(std::string const& alias) {
     vf = query::ValueFactor::newColumnRefFactor(cr);
     return query::ValueExpr::newSimple(vf);
 }
-/// convertAgg build records for merge expressions from parallel expressions
+
+
+/// ConvertAgg build records for merge expressions from parallel expressions
 template <class C>
-class convertAgg {
+class ConvertAgg {
 public:
     typedef typename C::value_type T;
-    convertAgg(C& pList_, C& mList_, query::AggOp::Mgr& aMgr_)
-        : pList(pList_), mList(mList_), aMgr(aMgr_) {}
+    ConvertAgg(C& parallelList_, C& mergeList_, query::AggOp::Mgr& aMgr_)
+        : parallelList(parallelList_), mergeList(mergeList_), aMgr(aMgr_) {}
     void operator()(T const& e) {
         _makeRecord(*e);
     }
@@ -95,15 +99,15 @@ private:
             }
             query::ValueExprPtr par(e.clone());
             par->setAlias(interName);
-            pList.push_back(par);
+            parallelList.push_back(par);
 
             if (!interName.empty()) {
                 query::ValueExprPtr mer = newExprFromAlias(interName);
-                mList.push_back(mer);
+                mergeList.push_back(mer);
                 mer->setAlias(origAlias);
             } else {
                 // No intermediate name (e.g., *) --> passthrough
-                mList.push_back(e.clone());
+                mergeList.push_back(e.clone());
             }
             return;
         }
@@ -120,7 +124,7 @@ private:
             i != factorOps.end(); ++i) {
             query::ValueFactorPtr newFactor = i->factor->clone();
             if (newFactor->getType() != query::ValueFactor::AGGFUNC) {
-                pList.push_back(query::ValueExpr::newSimple(newFactor));
+                parallelList.push_back(query::ValueExpr::newSimple(newFactor));
             } else {
                 query::AggRecord r;
                 r.orig = newFactor;
@@ -132,7 +136,7 @@ private:
                 if (!p) {
                     throw std::logic_error("Couldn't process AggRecord");
                 }
-                pList.insert(pList.end(), p->parallel.begin(), p->parallel.end());
+                parallelList.insert(parallelList.end(), p->parallel.begin(), p->parallel.end());
                 query::ValueExpr::FactorOp m;
                 m.factor = p->merge;
                 m.op = i->op;
@@ -140,11 +144,11 @@ private:
             }
         }
         mergeExpr->setAlias(origAlias);
-        mList.push_back(mergeExpr);
+        mergeList.push_back(mergeExpr);
     }
 
-    C& pList;
-    C& mList;
+    C& parallelList;
+    C& mergeList;
     query::AggOp::Mgr& aMgr;
 };
 
@@ -155,53 +159,61 @@ private:
 void
 AggregatePlugin::applyPhysical(QueryPlugin::Plan& plan,
                                query::QueryContext&  context) {
-    // For each entry in original's SelectList, modify the SelectList
-    // for the parallel and merge versions.
+    // For each entry in original's SelectList, modify the SelectList for the parallel and merge versions.
     // Set hasMerge to true if aggregation is detected.
-    query::SelectList& oList = plan.stmtOriginal.getSelectList();
-
-    // Get the first out of the parallel statement select list. Assume
-    // that the select lists are the same for all statements. This is
-    // not necessarily true, unless the plugin is placed early enough
-    // to ensure that other fragmenting activity has not taken place yet.
-    query::SelectList& pList = plan.stmtParallel.front()->getSelectList();
-    query::SelectList& mList = plan.stmtMerge.getSelectList();
-    std::shared_ptr<query::ValueExprPtrVector> vlist;
-    vlist = oList.getValueExprList();
-    if (!vlist) {
+    auto origSelectValueExprs = plan.stmtOriginal.getSelectList().getValueExprList();
+    if (nullptr == origSelectValueExprs) {
         throw std::invalid_argument("No select list in original SelectStmt");
     }
 
-    // Clear out select lists, since we are rewriting them.
-    pList.getValueExprList()->clear();
-    mList.getValueExprList()->clear();
-    query::AggOp::Mgr m; // Eventually, this can be shared?
-    convertAgg<query::ValueExprPtrVector> ca(*pList.getValueExprList(),
-                                             *mList.getValueExprList(),
-                                             m);
-    std::for_each(vlist->begin(), vlist->end(), ca);
+    // Make a single new parallelSelectList and a single new mergeSelectList for all the parallel statements.
+    // This assumes that the select lists are te same for all statements, which is only true if this plugin
+    // is executed early enough to ensure that other fragmenting activity has not yet taken place.
+    query::SelectList parallelSelectList;
+    auto mergeSelectList = std::make_shared<query::SelectList>();
+    query::AggOp::Mgr aggOpManager; // Eventually, this can be shared?
+    ConvertAgg<query::ValueExprPtrVector> ca(*parallelSelectList.getValueExprList(),
+                                             *mergeSelectList->getValueExprList(),
+                                             aggOpManager);
+    std::for_each(origSelectValueExprs->begin(), origSelectValueExprs->end(), ca);
     // Also need to operate on GROUP BY.
+
+    plan.stmtMerge.setSelectList(mergeSelectList);
+
     // update context.
-    if (plan.stmtOriginal.getDistinct() || m.hasAggregate()) {
+    if (plan.stmtOriginal.getDistinct() || aggOpManager.hasAggregate()) {
         context.needsMerge = true;
     }
 
-    std::shared_ptr<query::OrderByClause> _nullptr;
-
-    for(auto first=plan.stmtParallel.begin(), parallel_query=first, end=plan.stmtParallel.end();
-        parallel_query != end; ++parallel_query) {
-
-        // Strip ORDER BY from parallel queries if merging.
-        if (context.needsMerge && not plan.stmtOriginal.hasLimit()) {
-            (*parallel_query)->setOrderBy(_nullptr);
+    // If we are merging *and* there is not a LIMIT on the query then we can remove the ORDER BY clause from
+    // the select statment (by leaving it null). Otherwise we need to keep the ORDER BY clause, we will use
+    // the one from the first parallel stmt (if it has an ORDER BY clause). But, we must check to see if it
+    // contains any aliased colums that were removed from the select list, in which case the order by clause
+    // must not use that alias.
+    std::shared_ptr<query::OrderByClause> newOrderBy;
+    if ((not context.needsMerge or plan.stmtOriginal.hasLimit()) &&
+            plan.stmtParallel.front()->hasOrderBy()) {
+        newOrderBy = plan.stmtParallel.front()->getOrderBy().clone();
+        for (auto& orderByTerm : *newOrderBy->getTerms()) {
+            bool orderByIsInSelect = false;
+            for (auto const& selectListValueExpr : *parallelSelectList.getValueExprList()) {
+                if (*orderByTerm.getExpr() == *selectListValueExpr) {
+                    // The order by value expr still exists in the select list; we can keep it as is.
+                    orderByIsInSelect = true;
+                    break;
+                }
+            }
+            if (not orderByIsInSelect) {
+                // The order by value expr no longer exists in the select list; it must not use any
+                // predefined alias.
+                orderByTerm.getExpr()->setAlias("");
+            }
         }
+    }
 
-        // Deep-copy select list of first parallel query to all other parallel queries
-        // i.e. make the select lists of other statements in the parallel
-        // portion the same.
-        if (parallel_query != first) {
-            (*parallel_query)->setSelectList(pList.clone());
-        }
+    for (auto & parallel_query : plan.stmtParallel) {
+        parallel_query->setOrderBy(newOrderBy);
+        parallel_query->setSelectList(parallelSelectList.clone());
     }
 }
 

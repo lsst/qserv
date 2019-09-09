@@ -37,7 +37,9 @@
 #include <string>
 
 // Qserv headers
+#include "query/FuncExpr.h"
 #include "query/ValueExpr.h"
+#include "query/ValueFactor.h"
 #include "query/QueryTemplate.h"
 
 // Boost unit test header
@@ -114,6 +116,18 @@ BOOST_AUTO_TEST_CASE(renderValueExpr) {
     BOOST_CHECK_EQUAL(getRendered(valueExpr, QueryTemplate::USE_ALIAS), "column");
     BOOST_CHECK_EQUAL(getRendered(valueExpr, QueryTemplate::DEFINE_VALUE_ALIAS_USE_TABLE_ALIAS), "column");
     BOOST_CHECK_EQUAL(getRendered(valueExpr, QueryTemplate::NO_VALUE_ALIAS_USE_TABLE_ALIAS), "column");
+}
+
+
+BOOST_AUTO_TEST_CASE(clone) {
+    ValueExpr valueExpr;
+    valueExpr.addValueFactor(ValueFactor::newAggFactor(FuncExpr::newArg1("MAX", "raFlux")));
+    valueExpr.addOp(ValueExpr::MINUS);
+    valueExpr.addValueFactor(ValueFactor::newAggFactor(FuncExpr::newArg1("MIN", "raFlux")));
+    valueExpr.setAlias("flx");
+    auto clonedValueExpr = valueExpr.clone();
+    BOOST_CHECK_EQUAL(*clonedValueExpr, valueExpr);
+    BOOST_CHECK(clonedValueExpr.get() != &valueExpr);
 }
 
 

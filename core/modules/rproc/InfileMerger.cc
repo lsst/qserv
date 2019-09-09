@@ -121,7 +121,7 @@ InfileMerger::InfileMerger(InfileMergerConfig const& c)
     // about every 50,000 rows.
     _sizeCheckRowCount = -100*(_maxResultTableSizeMB);  //  100 = 1,000,000/10,000
     _checkSizeEveryXRows = 10*_maxResultTableSizeMB;
-    LOGS(_log, LOG_LVL_DEBUG, "InfileMerger maxResultTableSizeMB=" << _maxResultTableSizeMB
+    LOGS(_log, LOG_LVL_TRACE, "InfileMerger maxResultTableSizeMB=" << _maxResultTableSizeMB
                               << " sizeCheckRowCount=" << _sizeCheckRowCount
                               << " checkSizeEveryXRows=" << _checkSizeEveryXRows);
     if (_config.mergeStmt) {
@@ -165,7 +165,7 @@ bool InfileMerger::merge(std::shared_ptr<proto::WorkerResponse> response) {
     if (!_queryIdStrSet) {
         _setQueryIdStr(QueryIdHelper::makeIdStr(response->result.queryid()));
     }
-    LOGS(_log, LOG_LVL_DEBUG,
+    LOGS(_log, LOG_LVL_TRACE,
          "Executing InfileMerger::merge("
          << " largeResult=" << response->result.largeresult()
          << " sizes=" << static_cast<short>(response->headerSize)
@@ -208,11 +208,11 @@ bool InfileMerger::merge(std::shared_ptr<proto::WorkerResponse> response) {
     _invalidJobAttemptMgr.decrConcurrentMergeCount();
     auto end = std::chrono::system_clock::now();
     auto mergeDur = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-    LOGS(_log, LOG_LVL_DEBUG, "mergeDur=" << mergeDur.count());
+    LOGS(_log, LOG_LVL_TRACE, "mergeDur=" << mergeDur.count());
     /// Check the size of the result table.
     if (_sizeCheckRowCount >= _checkSizeEveryXRows) {
         auto tSize = _getResultTableSizeMB();
-        LOGS(_log, LOG_LVL_DEBUG, "checking ResultTableSize " << _mergeTable
+        LOGS(_log, LOG_LVL_TRACE, "checking ResultTableSize " << _mergeTable
                                   << " " << tSize
                                   << " max=" << _maxResultTableSizeMB);
         _sizeCheckRowCount = 0;
@@ -272,13 +272,14 @@ bool InfileMerger::finalize() {
         // Using MyISAM as single thread writing with no need to recover from errors.
         std::string createMerge = "CREATE TABLE " + _config.targetTable
             + " ENGINE=MyISAM " + mergeSelect;
+        LOGS(_log, LOG_LVL_TRACE, "Prepping merging w/" <<  *_config.mergeStmt);
         LOGS(_log, LOG_LVL_DEBUG, "Merging w/" << createMerge);
         finalizeOk = _applySqlLocal(createMerge, "createMerge");
 
         // Cleanup merge table.
         sql::SqlErrorObject eObj;
         // Don't report failure on not exist
-        LOGS(_log, LOG_LVL_DEBUG, "Cleaning up " << _mergeTable);
+        LOGS(_log, LOG_LVL_TRACE, "Cleaning up " << _mergeTable);
 #if 1 // Set to 0 when we want to retain mergeTables for debugging.
         bool cleanupOk = _sqlConn->dropTable(_mergeTable, eObj,
                                              false,
@@ -294,10 +295,10 @@ bool InfileMerger::finalize() {
         // Returning a view could be faster, but is more complicated.
         std::string sqlDropCol = std::string("ALTER TABLE ") + _mergeTable
                                + " DROP COLUMN " +  _jobIdColName;
-        LOGS(_log, LOG_LVL_DEBUG, "Removing w/" << sqlDropCol);
+        LOGS(_log, LOG_LVL_TRACE, "Removing w/" << sqlDropCol);
         finalizeOk = _applySqlLocal(sqlDropCol, "dropCol Removing");
     }
-    LOGS(_log, LOG_LVL_DEBUG, "Merged " << _mergeTable << " into " << _config.targetTable);
+    LOGS(_log, LOG_LVL_TRACE, "Merged " << _mergeTable << " into " << _config.targetTable);
     _isFinished = true;
     return finalizeOk;
 }
@@ -366,7 +367,7 @@ bool InfileMerger::getSchemaForQueryResults(query::SelectStmt const& stmt, sql::
         return false;
     }
     schema = results.makeSchema(errObj);
-    LOGS(_log, LOG_LVL_DEBUG, "InfileMerger extracted schema: " << schema);
+    LOGS(_log, LOG_LVL_TRACE, "InfileMerger extracted schema: " << schema);
     return true;
 }
 
@@ -378,7 +379,7 @@ bool InfileMerger::makeResultsTableForQuery(query::SelectStmt const& stmt) {
     }
     _addJobIdColumnToSchema(schema);
     std::string createStmt = sql::formCreateTable(_mergeTable, schema);
-    LOGS(_log, LOG_LVL_DEBUG, "InfileMerger make results table query: " << createStmt);
+    LOGS(_log, LOG_LVL_TRACE, "InfileMerger make results table query: " << createStmt);
     if (not _applySqlLocal(createStmt, "makeResultsTableForQuery")) {
         _error = InfileMergerError(util::ErrorCode::CREATE_TABLE, "Error creating table:" + _mergeTable);
         _isFinished = true; // Cannot continue.
@@ -418,7 +419,7 @@ bool InfileMerger::_applySqlLocal(std::string const& sql, std::string const& log
     auto begin = std::chrono::system_clock::now();
     bool success = _applySqlLocal(sql, results);
     auto end = std::chrono::system_clock::now();
-    LOGS(_log, LOG_LVL_DEBUG, logMsg << " success=" << success
+    LOGS(_log, LOG_LVL_TRACE, logMsg << " success=" << success
          << " microseconds="
          << std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count());
     return success;
@@ -450,7 +451,7 @@ bool InfileMerger::_applySqlLocal(std::string const& sql, sql::SqlResults& resul
         LOGS(_log, LOG_LVL_ERROR, "InfileMerger error: " << _error.getMsg());
         return false;
     }
-    LOGS(_log, LOG_LVL_DEBUG, "InfileMerger query success: " << sql);
+    LOGS(_log, LOG_LVL_TRACE, "InfileMerger query success: " << sql);
     return true;
 }
 
@@ -465,7 +466,7 @@ bool InfileMerger::_sqlConnect(sql::SqlErrorObject& errObj) {
             LOGS(_log, LOG_LVL_ERROR, "InfileMerger error: " << _error.getMsg());
             return false;
         }
-        LOGS(_log, LOG_LVL_DEBUG, "InfileMerger " << (void*) this << " connected to db");
+        LOGS(_log, LOG_LVL_TRACE, "InfileMerger " << (void*) this << " connected to db");
     }
     return true;
 }
@@ -501,7 +502,7 @@ size_t InfileMerger::_getResultTableSizeMB() {
     std::string tbName = row[0].first;
     std::string tbSize = row[1].first;
     size_t sz = std::stoul(tbSize);
-    LOGS(_log, LOG_LVL_DEBUG, "ResultTableSizeMB tbl=" << tbName << " tbSize=" << tbSize);
+    LOGS(_log, LOG_LVL_TRACE, "ResultTableSizeMB tbl=" << tbName << " tbSize=" << tbSize);
     return sz;
 }
 

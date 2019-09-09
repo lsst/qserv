@@ -87,6 +87,11 @@ public:
 ////////////////////////////////////////////////////////////////////////
 // OrderByTerm
 ////////////////////////////////////////////////////////////////////////
+OrderByTerm::OrderByTerm(OrderByTerm const& rhs)
+        : _expr(rhs._expr->clone()), _order(rhs._order), _collate(rhs._collate)
+{}
+
+
 void
 OrderByTerm::renderTo(QueryTemplate& qt) const {
     ValueExpr::render r(qt, true);
@@ -143,6 +148,15 @@ bool OrderByTerm::operator==(const OrderByTerm& rhs) const {
 ////////////////////////////////////////////////////////////////////////
 // OrderByClause
 ////////////////////////////////////////////////////////////////////////
+OrderByClause::OrderByClause(OrderByClause const& rhs) {
+    if (rhs._terms != nullptr) {
+        _terms = std::make_shared<OrderByTermVector>(*rhs._terms);
+    } else {
+        _terms = std::make_shared<OrderByTermVector>();
+    }
+}
+
+
 std::ostream&
 operator<<(std::ostream& os, OrderByClause const& clause) {
     os << "OrderByClause(" << util::ptrPrintable(clause._terms, "", "") << ")";
@@ -187,7 +201,7 @@ OrderByClause::renderTo(QueryTemplate& qt) const {
 
 
 std::shared_ptr<OrderByClause> OrderByClause::clone() const {
-    return std::make_shared<OrderByClause>(*this); // FIXME
+    return std::make_shared<OrderByClause>(*this);
 }
 
 

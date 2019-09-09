@@ -357,7 +357,7 @@ void QuerySession::_generateConcrete() {
     auto parallelStmt = _stmt->clone();
     parallelStmt->setHaving(nullptr);
     _stmtParallel.push_back(parallelStmt);
-    LOGS(_log, LOG_LVL_TRACE, "Paralell statement initialized with: \""
+    LOGS(_log, LOG_LVL_TRACE, "Parallel statement initialized with: \""
         << _stmtParallel[0]->getQueryTemplate() << "\"");
 
     // Copy SelectList and Mods, but not FROM, and perhaps not
@@ -365,7 +365,7 @@ void QuerySession::_generateConcrete() {
     // needed during merging and aggregation.
     _stmtMerge = _stmt->copyMerge();
     LOGS(_log, LOG_LVL_TRACE, "Merge statement initialized with: \""
-         << _stmtMerge->getQueryTemplate() << "\"");
+         << _stmtMerge->getQueryTemplate() << "\" " << *_stmtMerge);
 
     LOG_STATEMENTS(LOG_LVL_TRACE, "did generateConcrete:");
     // TableMerger needs to be integrated into this design.
