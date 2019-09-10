@@ -835,7 +835,7 @@ WorkerRequest::Ptr WorkerProcessor::_fetchNextForProcessing(
     // For generating random intervals within the maximum range of seconds
     // requested by a client.
 
-    util::BlockPost blockPost(0, timeoutMilliseconds);
+    util::BlockPost blockPost(0, min(10U, timeoutMilliseconds));
 
     unsigned int totalElapsedTime = 0;
     while (totalElapsedTime < timeoutMilliseconds) {

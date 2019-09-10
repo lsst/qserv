@@ -777,19 +777,19 @@ ConnectionHandler::ConnectionHandler(Connection::Ptr const& conn_)
 
 
 ConnectionHandler::ConnectionHandler(ConnectionPool::Ptr const& pool)
-    :   conn(_pool->allocate()),
+    :   conn(pool->allocate()),
         _pool(pool) {
 }
 
 
 ConnectionHandler::~ConnectionHandler() {
+    string const context = "ConnectionHandler::" + string(__func__) + "  ";
     try {
         if ((nullptr != conn) and conn->inTransaction()) {
             conn->rollback();
         }
     } catch (exception const& ex) {
-        if (nullptr != _pool) _pool->release(conn);
-        throw ex;
+        LOGS(_log, LOG_LVL_ERROR, context << "ex: " << ex.what());
     }
     if (nullptr != _pool) _pool->release(conn);
 }
