@@ -26,6 +26,7 @@
 #include <thread>
 
 // Qserv headers
+#include "replica/DatabaseMySQL.h"
 #include "replica/FileServer.h"
 #include "replica/WorkerRequestFactory.h"
 #include "replica/WorkerServer.h"
@@ -78,16 +79,48 @@ WorkerAllApp::WorkerAllApp(int argc, char* argv[])
         "enable-file-server",
         "Also launch a dedicatedfFile server for each worker.",
         _enableFileServer);
+
+    parser().option(
+        "qserv-db-password",
+        "A password for the MySQL account of the Qserv worker database. The account"
+        " name is found in the Configuration.",
+        _qservDbPassword);
 }
 
 
 int WorkerAllApp::runImpl() {
 
-    WorkerRequestFactory requestFactory(serviceProvider());
+    // Set the database password
+    Configuration::setQservWorkerDatabasePassword(_qservDbPassword);
+
+    // Pre-create a set of the worker request factories and keep it here to ensure
+    // its lifetime.
+    auto workers = _allWorkers ?
+        serviceProvider()->config()->allWorkers() :
+        serviceProvider()->config()->workers();
+
+    map<string, shared_ptr<WorkerRequestFactory>> workerRequestFactory;
+    for (auto&& workerName: workers) {
+
+        // Configure the factory with a pool of persistent connectors to
+        // the Qserv worker MySQL service.
+        auto const workerInfo = serviceProvider()->config()->workerInfo(workerName);
+        auto const connectionPool = database::mysql::ConnectionPool::create(
+            database::mysql::ConnectionParams(
+                workerInfo.dbHost,
+                workerInfo.dbPort,
+                workerInfo.dbUser,
+                serviceProvider()->config()->qservWorkerDatabasePassword(),
+                ""
+            ),
+            serviceProvider()->config()->databaseServicesPoolSize()
+        );
+        workerRequestFactory[workerName] = make_shared<WorkerRequestFactory>(serviceProvider(), connectionPool);
+    }
 
     // Run the worker servers
 
-    _runAllWorkers(requestFactory);
+    _runAllWorkers(workerRequestFactory);
 
     // Then block the calling thread forever.
     util::BlockPost blockPost(1000, 5000);
@@ -98,14 +131,12 @@ int WorkerAllApp::runImpl() {
 }
 
 
-void WorkerAllApp::_runAllWorkers(WorkerRequestFactory& requestFactory) {
+void WorkerAllApp::_runAllWorkers(map<string, shared_ptr<WorkerRequestFactory>>& workerRequestFactory) {
 
-    auto workers = _allWorkers ?
-        serviceProvider()->config()->allWorkers() :
-        serviceProvider()->config()->workers();
+    for (auto&& itr: workerRequestFactory) {
+        auto&& workerName = itr.first;
+        auto&& requestFactory = *(itr.second);
 
-    for (auto&& workerName: workers) {
-        
         // Create the request processing server and run it within a dedicated thread
         // because it's the blocking operation for the launching thread.
 

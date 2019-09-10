@@ -53,11 +53,13 @@ namespace qserv {
 namespace replica {
 
 WorkerIndexRequest::Ptr WorkerIndexRequest::create(ServiceProvider::Ptr const& serviceProvider,
+                                                   ConnectionPoolPtr const& connectionPool,
                                                    string const& worker,
                                                    string const& id,
                                                    ProtocolRequestIndex const& request) {
     return WorkerIndexRequest::Ptr(
         new WorkerIndexRequest(serviceProvider,
+                               connectionPool,
                                worker,
                                id,
                                request));
@@ -65,6 +67,7 @@ WorkerIndexRequest::Ptr WorkerIndexRequest::create(ServiceProvider::Ptr const& s
 
 
 WorkerIndexRequest::WorkerIndexRequest(ServiceProvider::Ptr const& serviceProvider,
+                                       ConnectionPoolPtr const& connectionPool,
                                        string const& worker,
                                        string const& id,
                                        ProtocolRequestIndex const& request)
@@ -73,6 +76,7 @@ WorkerIndexRequest::WorkerIndexRequest(ServiceProvider::Ptr const& serviceProvid
                       "INDEX",
                       id,
                       request.priority()),
+        _connectionPool(connectionPool),
         _request(request) {
 }
 
@@ -135,19 +139,7 @@ bool WorkerIndexRequest::execute() {
         // Connect to the worker database
         // Manage the new connection via the RAII-style handler to ensure the transaction
         // is automatically rolled-back in case of exceptions.
-
-        database::mysql::ConnectionHandler const h(
-            database::mysql::Connection::open(
-                database::mysql::ConnectionParams(
-                    workerInfo.dbHost,
-                    workerInfo.dbPort,
-                    workerInfo.dbUser,
-                    config->qservWorkerDatabasePassword(),
-                    ""
-                )
-            )
-        );
-
+        database::mysql::ConnectionHandler const h(_connectionPool);
 
         // A scope of the query depends on parameters of the request
 

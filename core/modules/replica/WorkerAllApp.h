@@ -22,6 +22,7 @@
 #define LSST_QSERV_REPLICA_WORKERALLAPP_H
 
 // System headers
+#include <map>
 #include <memory>
 
 // Qserv headers
@@ -91,10 +92,10 @@ private:
      * Launch all worker servers in dedicated detached threads. Also run
      * one extra thread per each worked for the 'hearbeat' monitoring.
      * 
-     * @param requestFactory
-     *   The factory for the worker requests
+     * @param workerRequestFactory
+     *   A collection of the factories tuned for specific workers
      */
-    void _runAllWorkers(WorkerRequestFactory& requestFactory);
+    void _runAllWorkers(std::map<std::string, std::shared_ptr<WorkerRequestFactory>>& workerRequestFactory);
 
     /// Logger stream
     LOG_LOGGER _log;
@@ -105,6 +106,10 @@ private:
 
         /// Also run (if 'true') embedded file servers)
     bool _enableFileServer = false;
+    
+    /// A password for the MySQL account of the Qserv worker database.
+    /// The account name is found in the Configuration.",
+    std::string _qservDbPassword;
 };
 
 }}} // namespace lsst::qserv::replica

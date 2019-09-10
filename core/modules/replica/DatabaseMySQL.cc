@@ -688,4 +688,110 @@ void Connection::_assertTransaction(bool inTransaction) const {
     }
 }
 
+
+ConnectionPool::Ptr ConnectionPool::create(ConnectionParams const& params,
+                                           size_t maxConnections) {
+    return Ptr(new ConnectionPool(params, maxConnections));
+}
+
+
+ConnectionPool::ConnectionPool(ConnectionParams const& params, size_t maxConnections)
+    :   _params(params),
+        _maxConnections(maxConnections) {
+}
+
+
+Connection::Ptr ConnectionPool::allocate() {
+
+    string const context = "ConnectionPool::" + string(__func__) + "  ";
+
+    LOGS(_log, LOG_LVL_DEBUG, context);
+
+    unique_lock<mutex> lock(_mtx);
+
+    // Open a new connection and return it right away if the limit hasn't
+    // been reached yet.
+    //
+    // TODO: the factory method called below may put a calling thread
+    // in the blocking state while the (database) service becomes available.
+    // This will prevent operations with the pool by other threads. Investigate
+    // a non-blocking algorithm.
+
+    if (_availableConnections.size() + _usedConnections.size() < _maxConnections) {
+        auto conn = Connection::open(_params);
+        _usedConnections.push_back(conn);
+        return conn;
+    }
+
+    // Otherwise grab an existing one (which may require to wait before
+    // it would become available).
+
+    auto const self = shared_from_this();
+    _available.wait(lock, [self]() {
+        return not self->_availableConnections.empty();
+    });
+    Connection::Ptr conn = _availableConnections.front();
+    _availableConnections.pop_front();
+    _usedConnections.push_back(conn);
+
+    return conn;
+}
+
+
+void ConnectionPool::release(Connection::Ptr const& conn) {
+
+    string const context = "ConnectionPool::" + string(__func__) + "  ";
+
+    LOGS(_log, LOG_LVL_DEBUG, context);
+
+    unique_lock<mutex> lock(_mtx);
+
+    // Move it between queues.
+
+    size_t numRemoved = 0;
+    _usedConnections.remove_if(
+        [&numRemoved, &conn] (Connection::Ptr const& ptr) {
+            if (ptr == conn) {
+                numRemoved++;
+                return true;
+            }
+            return false;
+        }
+    );
+    if (1 != numRemoved) {
+        throw logic_error(context + "inappropriate use of the method");
+    }
+    _availableConnections.push_back(conn);
+
+    // Notify one client (if any) waiting for a service
+
+    lock.unlock();
+    _available.notify_one();
+}
+
+
+
+ConnectionHandler::ConnectionHandler(Connection::Ptr const& conn_)
+    :   conn(conn_) {
+}
+
+
+ConnectionHandler::ConnectionHandler(ConnectionPool::Ptr const& pool)
+    :   conn(_pool->allocate()),
+        _pool(pool) {
+}
+
+
+ConnectionHandler::~ConnectionHandler() {
+    try {
+        if ((nullptr != conn) and conn->inTransaction()) {
+            conn->rollback();
+        }
+    } catch (exception const& ex) {
+        if (nullptr != _pool) _pool->release(conn);
+        throw ex;
+    }
+    if (nullptr != _pool) _pool->release(conn);
+}
+
 }}}}} // namespace lsst::qserv::replica::database::mysql

@@ -41,7 +41,10 @@ namespace replica {
     class WorkerIndexRequest;
     class WorkerSqlRequest;
     class WorkerReplicationRequest;
-}}}  // Forward declarations
+namespace database {
+namespace mysql {
+    class ConnectionPool;
+}}}}}  // Forward declarations
 
 // This header declarations
 namespace lsst {
@@ -57,6 +60,8 @@ class WorkerRequestFactoryBase {
 public:
 
     // Pointers to specific request types
+
+    typedef std::shared_ptr<database::mysql::ConnectionPool> ConnectionPoolPtr;
 
     typedef std::shared_ptr<WorkerDeleteRequest>      WorkerDeleteRequestPtr;
     typedef std::shared_ptr<WorkerEchoRequest>        WorkerEchoRequestPtr;
@@ -186,12 +191,17 @@ protected:
      *
      * @param serviceProvider
      *   a provider of various services
+     * 
+     * @param connectionPool
+     *   a pool of persistent database connections
      */
-    explicit WorkerRequestFactoryBase(ServiceProvider::Ptr const& serviceProvider);
+    WorkerRequestFactoryBase(ServiceProvider::Ptr const& serviceProvider,
+                             ConnectionPoolPtr const& connectionPool);
 
 protected:
 
     ServiceProvider::Ptr const _serviceProvider;
+    ConnectionPoolPtr const _connectionPool;
 };
 
 
@@ -231,11 +241,15 @@ public:
      * @param serviceProvider
      *   provider of various services (including configurations)
      *
+     * @param connectionPool
+     *   a pool of persistent database connections
+     *
      * @param technology
      *   (optional) the name of a technology
      */
-    explicit WorkerRequestFactory(ServiceProvider::Ptr const& serviceProvider,
-                                  std::string const& technology=std::string());
+    WorkerRequestFactory(ServiceProvider::Ptr const& serviceProvider,
+                         ConnectionPoolPtr const& connectionPool,
+                         std::string const& technology=std::string());
 
     ~WorkerRequestFactory() final { delete _ptr; }
 

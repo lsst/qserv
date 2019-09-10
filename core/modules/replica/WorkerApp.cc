@@ -26,6 +26,7 @@
 #include <thread>
 
 // Qserv headers
+#include "replica/DatabaseMySQL.h"
 #include "replica/FileServer.h"
 #include "replica/ServiceProvider.h"
 #include "replica/WorkerProcessor.h"
@@ -88,7 +89,19 @@ int WorkerApp::runImpl() {
     // Set the database password
     Configuration::setQservWorkerDatabasePassword(_qservDbPassword);
 
-    WorkerRequestFactory requestFactory(serviceProvider());
+    // Configure the factory with a pool of persistent connectors
+    auto const workerInfo = serviceProvider()->config()->workerInfo(_worker);
+    auto const connectionPool = database::mysql::ConnectionPool::create(
+        database::mysql::ConnectionParams(
+            workerInfo.dbHost,
+            workerInfo.dbPort,
+            workerInfo.dbUser,
+            serviceProvider()->config()->qservWorkerDatabasePassword(),
+            ""
+        ),
+        serviceProvider()->config()->databaseServicesPoolSize()
+    );
+    WorkerRequestFactory requestFactory(serviceProvider(), connectionPool);
 
     auto const reqProcSvr = WorkerServer::create(serviceProvider(), requestFactory, _worker);
     thread reqProcSvrThread([reqProcSvr] () {

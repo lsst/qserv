@@ -35,6 +35,7 @@ namespace replica {
 namespace database {
 namespace mysql {
     class Connection;
+    class ConnectionPool;
 }}}}} // Forward declaration
 
 // This header declarations
@@ -54,6 +55,9 @@ public:
     /// Pointer to self
     typedef std::shared_ptr<WorkerIndexRequest> Ptr;
 
+    /// Forward declaration for the connection pool
+    typedef std::shared_ptr<database::mysql::ConnectionPool> ConnectionPoolPtr;
+
     /**
      * Static factory method is needed to prevent issue with the lifespan
      * and memory management of instances created otherwise (as values or via
@@ -62,6 +66,9 @@ public:
      * @param serviceProvider
      *   provider is needed to access the Configuration of a setup
      *   and for validating the input parameters
+     *
+     * @param connectionPool
+     *   a pool of persistent database connections
      *
      * @param worker
      *   the name of a worker. The name must match the worker which
@@ -77,6 +84,7 @@ public:
      *   pointer to the created object
      */
     static Ptr create(ServiceProvider::Ptr const& serviceProvider,
+                      ConnectionPoolPtr const& connectionPool,
                       std::string const& worker,
                       std::string const& id,
                       ProtocolRequestIndex const& request);
@@ -107,9 +115,10 @@ private:
 
     /// @see WorkerIndexRequest::create()
     WorkerIndexRequest(ServiceProvider::Ptr const& serviceProvider,
-                     std::string const& worker,
-                     std::string const& id,
-                     ProtocolRequestIndex const& request);
+                       ConnectionPoolPtr const& connectionPool,
+                       std::string const& worker,
+                       std::string const& id,
+                       ProtocolRequestIndex const& request);
 
 
     /**
@@ -137,6 +146,7 @@ private:
 
     // Input parameters
 
+    ConnectionPoolPtr const _connectionPool;
     ProtocolRequestIndex const _request;
 
     /// Cached error to be sent to a client
