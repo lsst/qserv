@@ -151,10 +151,16 @@ def run_command(cmd_args, stdin_file=None, stdout=None, stderr=None,
     cmd_str = ' '.join(cmd_args)
     _LOG.log(loglevel, "Run shell command: {0}".format(cmd_str))
 
+    open_files = []
+    def close_files(files) :
+        for f in files:
+            f.close()
+
     sin = None
     if stdin_file:
         _LOG.log(loglevel, "stdin file: %r" % stdin_file)
         sin = open(stdin_file, "r")
+        open_files.append(sin)
 
     sout = None
     if stdout == sys.stdout:
@@ -162,6 +168,7 @@ def run_command(cmd_args, stdin_file=None, stdout=None, stderr=None,
     elif stdout:
         _LOG.log(loglevel, "stdout file: %r" % stdout)
         sout = open(stdout, "w")
+        open_files.append(sout)
     else:
         sout = subprocess.PIPE
 
@@ -171,6 +178,7 @@ def run_command(cmd_args, stdin_file=None, stdout=None, stderr=None,
     elif stderr:
         _LOG.log(loglevel, "stderr file: %r" % stderr)
         serr = open(stderr, "w")
+        open_files.append(serr)
     else:
         serr = subprocess.PIPE
 
@@ -186,16 +194,20 @@ def run_command(cmd_args, stdin_file=None, stdout=None, stderr=None,
         if stderrdata != None and len(stderrdata) > 0:
             _LOG.info("\tstderr :\n--\n%s--", stderrdata.decode(errors='replace'))
 
+        close_files(open_files)
+
         if process.returncode != 0:
             _LOG.fatal(
                 "Error code returned by command : {0} ".format(cmd_str))
             sys.exit(1)
 
     except OSError as e:
+        close_files(open_files)
         _LOG.fatal("Error: %r while running command: %r" %
                    (e, cmd_str))
         sys.exit(1)
     except ValueError as e:
+        close_files(open_files)
         _LOG.fatal("Invalid parameter: %r for command: %r" %
                    (e, cmd_str))
         sys.exit(1)
