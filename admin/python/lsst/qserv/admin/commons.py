@@ -74,7 +74,7 @@ def read_config(config_file):
         _LOG.fatal("qserv configuration file not found: %r" % config_file)
         exit(1)
 
-    parser = configparser.SafeConfigParser()
+    parser = configparser.ConfigParser()
     # TODO: add unicode support for passwords: see DM-5985
     parser.read(config_file)
 
