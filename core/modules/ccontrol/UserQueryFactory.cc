@@ -256,7 +256,7 @@ UserQueryFactory::newUserQuery(std::string const& aQuery,
         } catch(std::exception const& exc) {
             return std::make_shared<UserQueryInvalid>(exc.what());
         }
-    } else if (UserQueryType::isCall(query)) {
+    } else if (UserQueryType::isCall(query) || UserQueryType::isShow(query)) {
         UserQueryConfig queryConfig(_impl->css, _impl->mysqlResultConfig,
                                     _impl->secondaryIndex, _impl->queryMetadata, _impl->queryStatsData,
                                     _impl->qMetaSelect, _impl->resultDbConn, _impl->qMetaCzarId, userQueryId,

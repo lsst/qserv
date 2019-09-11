@@ -32,6 +32,7 @@
 #include "lsst/log/Log.h"
 
 #include "ccontrol/UserQuery.h"
+#include "ccontrol/UserQueryShow.h"
 #include "ccontrol/UserQueryQservManager.h"
 #include "parser/ParseException.h"
 #include "query/AndTerm.h"
@@ -310,6 +311,12 @@ public:
 };
 
 
+class AdministrationStatementCBH : public BaseCBH {
+public:
+    virtual void handleAdministrationStatement(shared_ptr<ccontrol::UserQuery> const & userQuery) = 0;
+};
+
+
 class CallStatementCBH : public BaseCBH {
 public:
     virtual void handleCallStatement(std::shared_ptr<ccontrol::UserQuery> const & userQuery) = 0;
@@ -373,6 +380,20 @@ public:
 class LimitClauseCBH: public BaseCBH {
 public:
     virtual void handleLimitClause(int limit) = 0;
+};
+
+
+class ShowObjectFilterCBH: public BaseCBH {
+public:
+    virtual void handleShowObjectFilter(shared_ptr<ccontrol::UserQuery> const & userQuery) = 0;
+};
+
+
+class ShowCommonEntityCBH: public BaseCBH {
+public:
+    enum Entity { DATABASES };
+
+    virtual void handleShowCommonEntity(Entity entity) = 0;
 };
 
 
@@ -718,7 +739,8 @@ private:
 
 class RootAdapter :
         public Adapter,
-        public DmlStatementCBH {
+        public DmlStatementCBH,
+        public AdministrationStatementCBH {
 public:
     RootAdapter()
     : _ctx(nullptr)
@@ -734,6 +756,10 @@ public:
     }
 
     void handleDmlStatement(shared_ptr<ccontrol::UserQuery> const & userQuery) override {
+        _userQuery = userQuery;
+    }
+
+    void handleAdministrationStatement(shared_ptr<ccontrol::UserQuery> const & userQuery) override {
         _userQuery = userQuery;
     }
 
@@ -1674,6 +1700,57 @@ public:
 };
 
 
+class AdministrationStatementAdapter :
+        public AdapterT<AdministrationStatementCBH, QSMySqlParser::AdministrationStatementContext>,
+        public ShowObjectFilterCBH {
+public:
+    using AdapterT::AdapterT;
+
+    void handleShowObjectFilter(shared_ptr<ccontrol::UserQuery> const & userQuery) override {
+        _userQuery = userQuery;
+    }
+
+    void checkContext() const override {
+        assertNotSupported(__FUNCTION__,
+            nullptr == _ctx->alterUser() &&
+            nullptr == _ctx->createUser() &&
+            nullptr == _ctx->dropUser() &&
+            nullptr == _ctx->grantStatement() &&
+            nullptr == _ctx->grantProxy() &&
+            nullptr == _ctx->renameUser() &&
+            nullptr == _ctx->revokeStatement() &&
+            nullptr == _ctx->revokeProxy() &&
+            nullptr == _ctx->analyzeTable() &&
+            nullptr == _ctx->checkTable() &&
+            nullptr == _ctx->checksumTable() &&
+            nullptr == _ctx->optimizeTable() &&
+            nullptr == _ctx->repairTable() &&
+            nullptr == _ctx->createUdfunction() &&
+            nullptr == _ctx->installPlugin() &&
+            nullptr == _ctx->uninstallPlugin() &&
+            nullptr == _ctx->setStatement() &&
+            nullptr != _ctx->showStatement() &&
+            nullptr == _ctx->binlogStatement() &&
+            nullptr == _ctx->cacheIndexStatement() &&
+            nullptr == _ctx->flushStatement() &&
+            nullptr == _ctx->killStatement() &&
+            nullptr == _ctx->loadIndexIntoCache() &&
+            nullptr == _ctx->resetStatement() &&
+            nullptr == _ctx->shutdownStatement(),
+            "Only SHOW administration statement is supported.", _ctx);
+    }
+
+    void onExit() override {
+        lockedParent()->handleAdministrationStatement(_userQuery);
+    }
+
+    string name() const override { return getTypeName(this); }
+
+private:
+    std::shared_ptr<ccontrol::UserQuery> _userQuery;
+};
+
+
 class CallStatementAdapter :
         public AdapterT<CallStatementCBH, QSMySqlParser::CallStatementContext>,
         public ConstantCBH {
@@ -2158,6 +2235,63 @@ public:
     string name() const override { return getTypeName(this); }
 };
 
+
+class ShowObjectFilterAdapter :
+        public AdapterT<ShowObjectFilterCBH, QSMySqlParser::ShowObjectFilterContext>,
+        public ShowCommonEntityCBH {
+public:
+    using AdapterT::AdapterT;
+
+    void checkContext() const override {
+        assertNotSupported(__FUNCTION__, _ctx->showFilter() == nullptr,
+                "LIKE and WHERE on SHOW are not supported.", _ctx);
+    }
+
+    void handleShowCommonEntity(Entity entity) override {
+        _entity = entity;
+    }
+
+    void onExit() override {
+        ASSERT_EXECUTION_CONDITION(getQueryConfig() != nullptr, "UserQueryShow requires a valid query config.", _ctx);
+        lockedParent()->handleShowObjectFilter(make_shared<ccontrol::UserQueryShow>(
+            *getQueryConfig(), ccontrol::UserQueryShow::DATABASES));
+    }
+
+    string name() const override { return getTypeName(this); }
+
+private:
+    ShowCommonEntityCBH::Entity _entity;
+};
+
+
+class ShowCommonEntityAdapter :
+        public AdapterT<ShowCommonEntityCBH, QSMySqlParser::ShowCommonEntityContext> {
+public:
+    using AdapterT::AdapterT;
+
+    void checkContext() const override {
+        if (_ctx->DATABASES() == nullptr ||
+                _ctx->CHARACTER() != nullptr ||
+                _ctx->SET() != nullptr ||
+                _ctx->COLLATION() != nullptr ||
+                _ctx->SCHEMAS() != nullptr ||
+                _ctx->FUNCTION() != nullptr ||
+                _ctx->STATUS() != nullptr ||
+                _ctx->PROCEDURE() != nullptr ||
+                _ctx->VARIABLES() != nullptr ||
+                _ctx->GLOBAL() != nullptr ||
+                _ctx->SESSION() != nullptr) {
+            assertNotSupported(__FUNCTION__, false, "Only DATABASES is supported.", _ctx);
+        }
+
+    }
+
+    void onExit() override {
+        lockedParent()->handleShowCommonEntity(ShowCommonEntityCBH::DATABASES);
+    }
+
+    string name() const override { return getTypeName(this); }
+};
 
 
 class SimpleIdAdapter :
@@ -3640,7 +3774,7 @@ UNHANDLED(TransactionStatement)
 UNHANDLED(ReplicationStatement)
 UNHANDLED(PreparedStatement)
 UNHANDLED(CompoundStatement)
-UNHANDLED(AdministrationStatement)
+ENTER_EXIT_PARENT(AdministrationStatement)
 UNHANDLED(UtilityStatement)
 UNHANDLED(CreateDatabase)
 UNHANDLED(CreateEvent)
@@ -3996,7 +4130,7 @@ UNHANDLED(SetTransaction)
 UNHANDLED(SetAutocommit)
 UNHANDLED(ShowMasterLogs)
 UNHANDLED(ShowLogEvents)
-UNHANDLED(ShowObjectFilter)
+ENTER_EXIT_PARENT(ShowObjectFilter)
 UNHANDLED(ShowColumns)
 UNHANDLED(ShowCreateDb)
 UNHANDLED(ShowCreateFullIdObject)
@@ -4013,7 +4147,7 @@ UNHANDLED(ShowOpenTables)
 UNHANDLED(ShowProfile)
 UNHANDLED(ShowSlaveStatus)
 UNHANDLED(VariableClause)
-UNHANDLED(ShowCommonEntity)
+ENTER_EXIT_PARENT(ShowCommonEntity)
 UNHANDLED(ShowFilter)
 UNHANDLED(ShowGlobalInfoClause)
 UNHANDLED(ShowSchemaEntity)

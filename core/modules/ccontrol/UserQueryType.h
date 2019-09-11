@@ -102,6 +102,10 @@ public:
      */
     static bool isCall(std::string const& query);
 
+    /**
+     *  Returns true if query is SHOW ...
+     */
+    static bool isShow(std::string const& query);
 };
 
 }}} // namespace lsst::qserv::ccontrol
