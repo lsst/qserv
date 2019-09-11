@@ -33,6 +33,7 @@ try:
     import configparser
 except ImportError:
     import ConfigParser as configparser  # python2
+import contextlib
 import logging
 import os
 import re
@@ -151,63 +152,52 @@ def run_command(cmd_args, stdin_file=None, stdout=None, stderr=None,
     cmd_str = ' '.join(cmd_args)
     _LOG.log(loglevel, "Run shell command: {0}".format(cmd_str))
 
-    open_files = []
-    def close_files(files) :
-        for f in files:
-            f.close()
+    with contextlib.ExitStack() as stack:
+        sin = None
+        if stdin_file:
+            _LOG.log(loglevel, "stdin file: %r" % stdin_file)
+            sin = stack.enter_context(open(stdin_file, "r"))
 
-    sin = None
-    if stdin_file:
-        _LOG.log(loglevel, "stdin file: %r" % stdin_file)
-        sin = open(stdin_file, "r")
-        open_files.append(sin)
+        sout = None
+        if stdout == sys.stdout:
+            sout = sys.stdout
+        elif stdout:
+            _LOG.log(loglevel, "stdout file: %r" % stdout)
+            sout = stack.enter_context(open(stdout, "w"))
+        else:
+            sout = subprocess.PIPE
 
-    sout = None
-    if stdout == sys.stdout:
-        sout = sys.stdout
-    elif stdout:
-        _LOG.log(loglevel, "stdout file: %r" % stdout)
-        sout = open(stdout, "w")
-        open_files.append(sout)
-    else:
-        sout = subprocess.PIPE
+        serr = None
+        if stderr == sys.stderr:
+            serr = sys.stderr
+        elif stderr:
+            _LOG.log(loglevel, "stderr file: %r" % stderr)
+            serr = stack.enter_context(open(stderr, "w"))
+        else:
+            serr = subprocess.PIPE
 
-    serr = None
-    if stderr == sys.stderr:
-        serr = sys.stderr
-    elif stderr:
-        _LOG.log(loglevel, "stderr file: %r" % stderr)
-        serr = open(stderr, "w")
-        open_files.append(serr)
-    else:
-        serr = subprocess.PIPE
+        try:
+            process = subprocess.Popen(
+                cmd_args, stdin=sin, stdout=sout, stderr=serr
+            )
 
-    try:
-        process = subprocess.Popen(
-            cmd_args, stdin=sin, stdout=sout, stderr=serr
-        )
+            (stdoutdata, stderrdata) = process.communicate()
 
-        (stdoutdata, stderrdata) = process.communicate()
+            if stdoutdata != None and len(stdoutdata) > 0:
+                _LOG.info("\tstdout :\n--\n%s--", stdoutdata.decode(errors='replace'))
+            if stderrdata != None and len(stderrdata) > 0:
+                _LOG.info("\tstderr :\n--\n%s--", stderrdata.decode(errors='replace'))
 
-        if stdoutdata != None and len(stdoutdata) > 0:
-            _LOG.info("\tstdout :\n--\n%s--", stdoutdata.decode(errors='replace'))
-        if stderrdata != None and len(stderrdata) > 0:
-            _LOG.info("\tstderr :\n--\n%s--", stderrdata.decode(errors='replace'))
+            if process.returncode != 0:
+                _LOG.fatal(
+                    "Error code returned by command : {0} ".format(cmd_str))
+                sys.exit(1)
 
-        close_files(open_files)
-
-        if process.returncode != 0:
-            _LOG.fatal(
-                "Error code returned by command : {0} ".format(cmd_str))
+        except OSError as e:
+            _LOG.fatal("Error: %r while running command: %r" %
+                    (e, cmd_str))
             sys.exit(1)
-
-    except OSError as e:
-        close_files(open_files)
-        _LOG.fatal("Error: %r while running command: %r" %
-                   (e, cmd_str))
-        sys.exit(1)
-    except ValueError as e:
-        close_files(open_files)
-        _LOG.fatal("Invalid parameter: %r for command: %r" %
-                   (e, cmd_str))
-        sys.exit(1)
+        except ValueError as e:
+            _LOG.fatal("Invalid parameter: %r for command: %r" %
+                    (e, cmd_str))
+            sys.exit(1)
