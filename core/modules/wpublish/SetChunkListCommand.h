@@ -25,6 +25,7 @@
 
 // System headers
 #include <memory>
+#include <set>
 #include <string>
 #include <vector>
 
@@ -73,6 +74,7 @@ public:
      * @param resourceMonitor  counters of resources which are being used
      * @param mySqlConfig      database connection parameters
      * @param chunks           collection of chunks to replace the current one
+     * @param databases        limit a scope of the operation to databases of this collection
      * @param force            force chunks removal even if chunks are in use
      */
     SetChunkListCommand(std::shared_ptr<wbase::SendChannel> const& sendChannel,
@@ -80,6 +82,7 @@ public:
                         std::shared_ptr<ResourceMonitor> const& resourceMonitor,
                         mysql::MySqlConfig const& mySqlConfig,
                         std::vector<Chunk> const& chunks,
+                        std::vector<std::string> const& databases,
                         bool force);
 
     ~SetChunkListCommand() override = default;
@@ -111,11 +114,12 @@ private:
 
     // Parameters of the object
 
-    std::shared_ptr<ChunkInventory> _chunkInventory;
-    std::shared_ptr<ResourceMonitor> _resourceMonitor;
-    mysql::MySqlConfig _mySqlConfig;
-    std::vector<Chunk> _chunks;
-    bool _force;
+    std::shared_ptr<ChunkInventory> const _chunkInventory;
+    std::shared_ptr<ResourceMonitor> const _resourceMonitor;
+    mysql::MySqlConfig const _mySqlConfig;
+    std::vector<Chunk> const _chunks;
+    std::set<std::string> _databases;
+    bool const _force;
 };
 
 }}} // namespace lsst::qserv::wpublish

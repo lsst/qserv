@@ -184,13 +184,15 @@ int QservWorkerApp::runImpl() {
     } else if (_command == "SET_REPLICAS") {
 
         QservReplicaCollection replicas;
-        _readInFile(replicas);
+        vector<string> databases;
+        _readInFile(replicas, databases);
 
         cout << "replicas read: " << replicas.size() << endl;
 
         auto const request = serviceProvider()->qservMgtServices()->setReplicas(
             _workerName,
             replicas,
+            databases,
             _forceRemove,
             string(),
             [this] (SetReplicasQservMgtRequest::Ptr const& request) {
@@ -235,9 +237,13 @@ int QservWorkerApp::runImpl() {
 }
 
 
-void QservWorkerApp::_readInFile(QservReplicaCollection& replicas) const {
+void QservWorkerApp::_readInFile(QservReplicaCollection& replicas,
+                                 vector<string>& databases) const {
 
     replicas.clear();
+    databases.clear();
+
+    set<string> uniqueDatabaseNames;
 
     ifstream infile(_inFileName);
     if (not infile.good()) {
@@ -259,7 +265,7 @@ void QservWorkerApp::_readInFile(QservReplicaCollection& replicas) const {
                     "  failed to parse file: " + _inFileName +
                     ", illegal <database>::<chunk> pair: '" + databaseAndChunk + "'");
         }
-        unsigned int const chunk    = (unsigned int)(stoul(databaseAndChunk.substr(pos + 1)));
+        unsigned int const chunk = (unsigned int)(stoul(databaseAndChunk.substr(pos + 1)));
         string  const database = databaseAndChunk.substr(0, pos);
 
         replicas.emplace_back(
@@ -269,6 +275,10 @@ void QservWorkerApp::_readInFile(QservReplicaCollection& replicas) const {
                 0   /* useCount (UNUSED) */
             }
         );
+        uniqueDatabaseNames.insert(database);
+    }
+    for (auto&& database: uniqueDatabaseNames) {
+        databases.push_back(database);
     }
 }
 

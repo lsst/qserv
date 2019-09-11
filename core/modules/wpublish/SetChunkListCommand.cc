@@ -55,6 +55,7 @@ SetChunkListCommand::SetChunkListCommand(shared_ptr<wbase::SendChannel> const& s
                                          shared_ptr<ResourceMonitor> const& resourceMonitor,
                                          mysql::MySqlConfig const& mySqlConfig,
                                          vector<SetChunkListCommand::Chunk> const& chunks,
+                                         vector<string> const& databases,
                                          bool force)
     :   wbase::WorkerCommand(sendChannel),
         _chunkInventory(chunkInventory),
@@ -62,6 +63,9 @@ SetChunkListCommand::SetChunkListCommand(shared_ptr<wbase::SendChannel> const& s
         _mySqlConfig(mySqlConfig),
         _chunks(chunks),
         _force(force) {
+    for (auto&& database: databases) {
+        _databases.insert(database);
+    }
 }
 
 
@@ -69,7 +73,11 @@ void SetChunkListCommand::_setChunks(proto::WorkerCommandSetChunkListR& reply,
                                      ChunkInventory::ExistMap const& prevExistMap) {
 
     for (auto const& entry: prevExistMap) {
+
         string const& database = entry.first;
+
+        // Exclude databases which are not in a scope of this command
+        if (0 == _databases.count(database)) continue;
 
         for (int chunk: entry.second) {
             proto::WorkerCommandChunk* ptr = reply.add_chunks();
@@ -127,6 +135,8 @@ void SetChunkListCommand::run() {
     if (not _force) {
         for (auto const& entry: toBeRemovedExistMap) {
             string const& database = entry.first;
+            // Exclude databases which are not in a scope of this command
+            if (0 == _databases.count(database)) continue;
             for (auto chunk: entry.second) {
                 if (_resourceMonitor->count(chunk, database)) {
                     _reportError(proto::WorkerCommandSetChunkListR::IN_USE,
@@ -145,6 +155,8 @@ void SetChunkListCommand::run() {
 
     for (auto const& entry: toBeRemovedExistMap) {
         string const& database = entry.first;
+        // Exclude databases which are not in a scope of this command
+        if (0 == _databases.count(database)) continue;
 
         for (auto chunk: entry.second) {
 
@@ -184,6 +196,8 @@ void SetChunkListCommand::run() {
     }
     for (auto const& entry: toBeAddedExistMap) {
         string const& database = entry.first;
+        // Exclude databases which are not in a scope of this command
+        if (0 == _databases.count(database)) continue;
 
         for (auto chunk: entry.second) {
 

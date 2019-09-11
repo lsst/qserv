@@ -221,6 +221,9 @@ public:
      * @param newReplicas
      *   collection of new replicas (NOTE: useCount field is ignored)
      *
+     * @param databases
+     *   limit a scope of the operation to databases of this collection
+     *
      * @param force
      *   proceed with the operation even if some replicas affected by
      *   the operation are in use.
@@ -244,6 +247,7 @@ public:
     SetReplicasQservMgtRequest::Ptr setReplicas(
             std::string const& worker,
             QservReplicaCollection const& newReplicas,
+            std::vector<std::string> const& databases,
             bool force=false,
             std::string const& jobId="",
             SetReplicasQservMgtRequest::CallbackType const& onFinish=nullptr,

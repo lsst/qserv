@@ -2,6 +2,7 @@
 #include <fstream>
 #include <iostream>
 #include <iomanip>
+#include <set>
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -61,9 +62,13 @@ bool printReport;
  *
  * @param chunk - collection to be initialize
  */
-void readInFile(wpublish::SetChunkListQservRequest::ChunkCollection& chunks) {
+void readInFile(wpublish::SetChunkListQservRequest::ChunkCollection& chunks,
+                vector<string>& databases) {
 
     chunks.clear();
+    databases.clear();
+
+    set<string> uniqueDatabaseNames;
 
     ifstream infile(inFileName);
     if (not infile.good()) {
@@ -83,7 +88,7 @@ void readInFile(wpublish::SetChunkListQservRequest::ChunkCollection& chunks) {
                 "failed to parse file: " + inFileName + ", illegal <database>::<chunk> pair: '" +
                 databaseAndChunk + "'");
         }
-        unsigned long const chunk    = stoul(databaseAndChunk.substr(pos + 1));
+        unsigned long const chunk = stoul(databaseAndChunk.substr(pos + 1));
         string   const database = databaseAndChunk.substr(0, pos);
         chunks.emplace_back(
             wpublish::SetChunkListQservRequest::Chunk{
@@ -92,6 +97,10 @@ void readInFile(wpublish::SetChunkListQservRequest::ChunkCollection& chunks) {
                 0   /* use_count (UNUSED) */
             }
         );
+        uniqueDatabaseNames.insert(database);
+    }
+    for (auto&& database: uniqueDatabaseNames) {
+        databases.push_back(database);
     }
 }
 
@@ -133,10 +142,12 @@ int test() {
         } else if ("SET_CHUNK_LIST" == operation) {
 
             wpublish::SetChunkListQservRequest::ChunkCollection chunks;
-            readInFile(chunks);
+            vector<string> databases;
+            readInFile(chunks, databases);
 
             request = wpublish::SetChunkListQservRequest::create(
                 chunks,
+                databases,
                 force,
                 [&finished] (wpublish::SetChunkListQservRequest::Status status,
                              string const& error,

@@ -89,8 +89,13 @@ private:
      *
      * @param replicas
      *   collection to be initialized
+     * 
+     * @param databases
+     *   collection of unique database names found in the input files. The collection
+     *   will be populated upon a successful completion of the method.
      */
-    void _readInFile(QservReplicaCollection& replicas) const;
+    void _readInFile(QservReplicaCollection& replicas,
+                     std::vector<std::string>& databases) const;
 
     /**
       * Print a collection of replicas

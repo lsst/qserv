@@ -194,23 +194,11 @@ void Job::start() {
 
     // Allow the job to be fully accomplished right away
 
-    if (state() == State::FINISHED) {
-
-        notify(lock);
-
-        // Unblock threads (if any) waiting on the synchronization call
-        // to method Job::wait()
-
-        _finished = true;
-        _onFinishCv.notify_all();
-        return;
-    }
+    if (state() == State::FINISHED) return;
 
     // Otherwise, the only other state which is allowed here is this
 
-    _assertState(lock,
-                 State::IN_PROGRESS,
-                 context() + __func__);
+    setState(lock, State::IN_PROGRESS);
 }
 
 
@@ -218,10 +206,10 @@ void Job::wait() {
  
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
-    if (state() == State::FINISHED) return;
+    if (_finished) return;
 
     unique_lock<mutex> onFinishLock(_onFinishMtx);
-    _onFinishCv.wait(onFinishLock, [&] { return _finished; });
+    _onFinishCv.wait(onFinishLock, [&] { return _finished.load(); });
 }
 
 

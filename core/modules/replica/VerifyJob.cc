@@ -254,7 +254,7 @@ void VerifyJob::startImpl(util::Lock const& lock) {
         LOGS(_log, LOG_LVL_ERROR, context() << __func__
              << "  ** no replicas found in the database **");
 
-        setState(lock, State::FINISHED, ExtendedState::FAILED);
+        finish(lock, ExtendedState::FAILED);
         return;
     }
     for (ReplicaInfo const& replica: replicas) {
@@ -273,7 +273,6 @@ void VerifyJob::startImpl(util::Lock const& lock) {
         _replicas[request->id()] = replica;
         _requests[request->id()] = request;
     }
-    setState(lock, State::IN_PROGRESS);
 }
 
 

@@ -182,9 +182,7 @@ void MoveReplicaJob::startImpl(util::Lock const& lock) {
              << " source worker: '" << sourceWorker() << "'"
              << " destination worker: '" << destinationWorker() << "'");
 
-        setState(lock,
-                 State::FINISHED,
-                 ExtendedState::CONFIG_ERROR);
+        finish(lock, ExtendedState::CONFIG_ERROR);
         return;
     }
 
@@ -207,8 +205,6 @@ void MoveReplicaJob::startImpl(util::Lock const& lock) {
         options(lock)   // inherit from the current job
     );
     _createReplicaJob->start();
-
-    setState(lock, State::IN_PROGRESS);
 }
 
 

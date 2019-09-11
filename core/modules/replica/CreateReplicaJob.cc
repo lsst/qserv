@@ -175,9 +175,7 @@ void CreateReplicaJob::startImpl(util::Lock const& lock) {
              << " source worker: '"      << sourceWorker() << "'"
              << " destination worker: '" << destinationWorker() << "'");
 
-        setState(lock,
-                 State::FINISHED,
-                 ExtendedState::CONFIG_ERROR);
+        finish(lock, ExtendedState::CONFIG_ERROR);
         return;
     }
 
@@ -210,9 +208,7 @@ void CreateReplicaJob::startImpl(util::Lock const& lock) {
              << " databaseFamily: " << databaseFamily()
              << " exception: " << ex.what());
 
-        setState(lock,
-                 State::FINISHED,
-                 ExtendedState::FAILED);
+        finish(lock, ExtendedState::FAILED);
         return;
     }
     if (destinationReplicas.size()) {
@@ -222,9 +218,7 @@ void CreateReplicaJob::startImpl(util::Lock const& lock) {
              << " destinationWorker: " << destinationWorker()
              << " databaseFamily: " << databaseFamily());
 
-        setState(lock,
-                 State::FINISHED,
-                 ExtendedState::FAILED);
+        finish(lock, ExtendedState::FAILED);
         return;
     }
 
@@ -265,9 +259,7 @@ void CreateReplicaJob::startImpl(util::Lock const& lock) {
              << " databaseFamily: " << databaseFamily()
              << " exception: " << ex.what());
 
-        setState(lock,
-                 State::FINISHED,
-                 ExtendedState::FAILED);
+        finish(lock, ExtendedState::FAILED);
         return;
     }
     if (not sourceReplicas.size()) {
@@ -276,9 +268,7 @@ void CreateReplicaJob::startImpl(util::Lock const& lock) {
              << " chunk: "  << chunk()
              << " worker: " << sourceWorker());
 
-        setState(lock,
-                 State::FINISHED,
-                 ExtendedState::FAILED);
+        finish(lock, ExtendedState::FAILED);
         return;
     }
 
@@ -308,8 +298,6 @@ void CreateReplicaJob::startImpl(util::Lock const& lock) {
             )
         );
     }
-    setState(lock,
-             State::IN_PROGRESS);
 }
 
 

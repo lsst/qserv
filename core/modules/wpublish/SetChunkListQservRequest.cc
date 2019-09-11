@@ -69,10 +69,12 @@ string SetChunkListQservRequest::status2str(Status status) {
 
 SetChunkListQservRequest::Ptr SetChunkListQservRequest::create(
                                 SetChunkListQservRequest::ChunkCollection const& chunks,
+                                vector<string> const& databases,
                                 bool force,
                                 SetChunkListQservRequest::CallbackType onFinish) {
     return SetChunkListQservRequest::Ptr(new SetChunkListQservRequest(
         chunks,
+        databases,
         force,
         onFinish
     ));
@@ -81,9 +83,11 @@ SetChunkListQservRequest::Ptr SetChunkListQservRequest::create(
 
 SetChunkListQservRequest::SetChunkListQservRequest(
                                 SetChunkListQservRequest::ChunkCollection const& chunks,
+                                vector<string> const& databases,
                                 bool force,
                                 SetChunkListQservRequest::CallbackType onFinish)
     :   _chunks(chunks),
+        _databases(databases),
         _force(force),
         _onFinish(onFinish) {
 
@@ -107,6 +111,9 @@ void SetChunkListQservRequest::onRequest(proto::FrameBuffer& buf) {
         proto::WorkerCommandChunk* ptr = message.add_chunks();
         ptr->set_db(chunkEntry.database);
         ptr->set_chunk(chunkEntry.chunk);
+    }
+    for(auto&& database: _databases) {
+        message.add_databases(database);
     }
     message.set_force(_force);
     buf.serialize(message);

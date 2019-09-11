@@ -157,8 +157,7 @@ void QservStatusJob::startImpl(util::Lock const& lock) {
     
     // Finish right away if no workers were configured yet
 
-    if (0 == _numStarted) setState(lock, State::FINISHED, ExtendedState::SUCCESS);
-    else                  setState(lock, State::IN_PROGRESS);
+    if (0 == _numStarted) finish(lock, ExtendedState::SUCCESS);
 }
 
 

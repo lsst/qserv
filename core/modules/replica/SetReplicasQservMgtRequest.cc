@@ -24,6 +24,7 @@
 
 // System headers
 #include <set>
+#include <sstream>
 #include <stdexcept>
 
 // Third party headers
@@ -35,6 +36,7 @@
 #include "lsst/log/Log.h"
 #include "replica/Configuration.h"
 #include "replica/ServiceProvider.h"
+#include "util/IterableFormatter.h"
 
 using namespace std;
 
@@ -52,12 +54,14 @@ SetReplicasQservMgtRequest::Ptr SetReplicasQservMgtRequest::create(
                                         ServiceProvider::Ptr const& serviceProvider,
                                         string const& worker,
                                         QservReplicaCollection const& newReplicas,
+                                        vector<string> const& databases,
                                         bool force,
                                         SetReplicasQservMgtRequest::CallbackType const& onFinish) {
     return SetReplicasQservMgtRequest::Ptr(
         new SetReplicasQservMgtRequest(serviceProvider,
                                        worker,
                                        newReplicas,
+                                       databases,
                                        force,
                                        onFinish));
 }
@@ -67,12 +71,14 @@ SetReplicasQservMgtRequest::SetReplicasQservMgtRequest(
                                 ServiceProvider::Ptr const& serviceProvider,
                                 string const& worker,
                                 QservReplicaCollection const& newReplicas,
+                                vector<string> const& databases,
                                 bool force,
                                 SetReplicasQservMgtRequest::CallbackType const& onFinish)
     :   QservMgtRequest(serviceProvider,
                         "QSERV_SET_REPLICAS",
                         worker),
         _newReplicas(newReplicas),
+        _databases(databases),
         _force(force),
         _onFinish(onFinish),
         _qservRequest(nullptr) {
@@ -92,6 +98,9 @@ QservReplicaCollection const& SetReplicasQservMgtRequest::replicas() const {
 list<pair<string,string>> SetReplicasQservMgtRequest::extendedPersistentState() const {
     list<pair<string,string>> result;
     result.emplace_back("num_replicas", to_string(newReplicas().size()));
+    ostringstream databasesStream;
+    databasesStream << util::printable(_databases, "", "", " ");
+    result.emplace_back("databases", databasesStream.str());
     result.emplace_back("force", force() ? "1" : "0");
     return result;
 }
@@ -130,6 +139,7 @@ void SetReplicasQservMgtRequest::startImpl(util::Lock const& lock) {
 
     _qservRequest = wpublish::SetChunkListQservRequest::create(
         chunks,
+        _databases,
         force(),
         [request] (wpublish::SetChunkListQservRequest::Status status,
                    string const& error,
