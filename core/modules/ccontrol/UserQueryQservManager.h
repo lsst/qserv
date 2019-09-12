@@ -35,6 +35,7 @@
 
 // Qserv headers
 #include "ccontrol/UserQuery.h"
+#include "ccontrol/UserQueryResources.h"
 #include "ccontrol/UserQueryError.h"
 #include "ccontrol/QueryState.h"
 #include "global/intTypes.h"
@@ -55,7 +56,7 @@ namespace ccontrol {
 class UserQueryQservManager : public UserQuery {
 public:
 
-    UserQueryQservManager(UserQueryConfig const& queryConfig, std::string const& value);
+    UserQueryQservManager(std::shared_ptr<UserQueryResources> const& queryResources, std::string const& value);
 
     virtual ~UserQueryQservManager() {}
 

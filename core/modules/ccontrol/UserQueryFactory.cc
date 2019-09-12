@@ -42,6 +42,7 @@
 #include "ccontrol/UserQueryFlushChunksCache.h"
 #include "ccontrol/UserQueryInvalid.h"
 #include "ccontrol/UserQueryProcessList.h"
+#include "ccontrol/UserQueryResources.h"
 #include "ccontrol/UserQuerySelect.h"
 #include "ccontrol/UserQueryType.h"
 #include "css/CssAccess.h"
@@ -74,44 +75,38 @@ namespace qserv {
 namespace ccontrol {
 
 
-/// Implementation class (PIMPL-style) for UserQueryFactory.
-class UserQueryFactory::Impl {
-public:
-
-    Impl(czar::CzarConfig const& czarConfig);
-
-    /// State shared between UserQueries
-    qdisp::Executive::Config::Ptr executiveConfig;
-    std::shared_ptr<css::CssAccess> css;
-    mysql::MySqlConfig const mysqlResultConfig;
-    std::shared_ptr<qproc::SecondaryIndex> secondaryIndex;
-    std::shared_ptr<qmeta::QMeta> queryMetadata;
-    std::shared_ptr<qmeta::QStatus> queryStatsData;
-    std::shared_ptr<qmeta::QMetaSelect> qMetaSelect;
-    std::shared_ptr<sql::SqlConnection> resultDbConn;
-    qmeta::CzarId qMetaCzarId = {0};   ///< Czar ID in QMeta database
-};
+std::shared_ptr<UserQuerySharedResources> makeUserQuerySharedResources(czar::CzarConfig const& czarConfig,
+                                                                       std::string const& czarName) {
+    return std::make_shared<UserQuerySharedResources>(
+        css::CssAccess::createFromConfig(czarConfig.getCssConfigMap(), czarConfig.getEmptyChunkPath()),
+        czarConfig.getMySqlResultConfig(),
+        std::make_shared<qproc::SecondaryIndex>(czarConfig.getMySqlResultConfig()),
+        std::make_shared<qmeta::QMetaMysql>(czarConfig.getMySqlQmetaConfig()),
+        std::make_shared<qmeta::QStatusMysql>(czarConfig.getMySqlQStatusDataConfig()),
+        std::make_shared<qmeta::QMetaSelect>(czarConfig.getMySqlQmetaConfig()),
+        sql::SqlConnectionFactory::make(czarConfig.getMySqlResultConfig()),
+        czarName);
+}
 
 
 ////////////////////////////////////////////////////////////////////////
 UserQueryFactory::UserQueryFactory(czar::CzarConfig const& czarConfig,
                                    std::string const& czarName)
-    :  _impl(std::make_shared<Impl>(czarConfig)) {
+        :  _userQuerySharedResources(makeUserQuerySharedResources(czarConfig, czarName)) {
 
     ::putenv((char*)"XRDDEBUG=1");
 
-    // register czar in QMeta
-    // TODO: check that czar with the same name is not active already?
-    _impl->qMetaCzarId = _impl->queryMetadata->registerCzar(czarName);
+    _executiveConfig = std::make_shared<qdisp::Executive::Config>(
+            czarConfig.getXrootdFrontendUrl(), czarConfig.getQMetaSecondsBetweenChunkUpdates());
 
     // When czar crashes/exits while some queries are still in flight they
     // are left in EXECUTING state in QMeta. We want to cleanup that state
     // to avoid confusion. Note that when/if clean czar restart is implemented
     // we'll need a new logic to restart query processing.
-    _impl->queryMetadata->cleanup(_impl->qMetaCzarId);
+    _userQuerySharedResources->queryMetadata->cleanup(_userQuerySharedResources->qMetaCzarId);
 
     // Add logging context with czar ID
-    qmeta::CzarId qMetaCzarId = _impl->qMetaCzarId;
+    qmeta::CzarId qMetaCzarId = _userQuerySharedResources->qMetaCzarId;
     LOG_MDC_INIT([qMetaCzarId]() { LOG_MDC("CZID", std::to_string(qMetaCzarId)); });
 }
 
@@ -175,8 +170,8 @@ UserQueryFactory::newUserQuery(std::string const& aQuery,
                 }
                 LOGS(_log, LOG_LVL_DEBUG, "SELECT query is a PROCESSLIST");
                 try {
-                    return std::make_shared<UserQueryProcessList>(stmt, _impl->resultDbConn.get(),
-                            _impl->qMetaSelect, _impl->qMetaCzarId, userQueryId, resultDb);
+                    return std::make_shared<UserQueryProcessList>(stmt, _userQuerySharedResources->resultDbConn.get(),
+                            _userQuerySharedResources->qMetaSelect, _userQuerySharedResources->qMetaCzarId, userQueryId, resultDb);
                 } catch(std::exception const& exc) {
                     return std::make_shared<UserQueryInvalid>(exc.what());
                 }
@@ -186,8 +181,8 @@ UserQueryFactory::newUserQuery(std::string const& aQuery,
         // This is a regular SELECT for qserv
 
         // Currently using the database for results to get schema information.
-        auto qs = std::make_shared<qproc::QuerySession>(_impl->css,
-                                                        _impl->mysqlResultConfig,
+        auto qs = std::make_shared<qproc::QuerySession>(_userQuerySharedResources->css,
+                                                        _userQuerySharedResources->mysqlResultConfig,
                                                         defaultDb);
         try {
             qs->analyzeQuery(query, stmt);
@@ -205,13 +200,13 @@ UserQueryFactory::newUserQuery(std::string const& aQuery,
         std::shared_ptr<qdisp::Executive> executive;
         std::shared_ptr<rproc::InfileMergerConfig> infileMergerConfig;
         if (sessionValid) {
-            executive = qdisp::Executive::create(*_impl->executiveConfig, messageStore,
-                                                 qdispPool, _impl->queryStatsData);
-            infileMergerConfig = std::make_shared<rproc::InfileMergerConfig>(_impl->mysqlResultConfig);
+            executive = qdisp::Executive::create(*_executiveConfig, messageStore,
+                                                 qdispPool, _userQuerySharedResources->queryStatsData);
+            infileMergerConfig = std::make_shared<rproc::InfileMergerConfig>(_userQuerySharedResources->mysqlResultConfig);
         }
         auto uq = std::make_shared<UserQuerySelect>(qs, messageStore, executive, infileMergerConfig,
-                                                    _impl->secondaryIndex, _impl->queryMetadata,
-                                                    _impl->queryStatsData, _impl->qMetaCzarId,
+                                                    _userQuerySharedResources->secondaryIndex, _userQuerySharedResources->queryMetadata,
+                                                    _userQuerySharedResources->queryStatsData, _userQuerySharedResources->qMetaCzarId,
                                                     qdispPool, errorExtra, async, resultDb);
         if (sessionValid) {
             uq->qMetaRegister(resultLocation, msgTableName);
@@ -221,9 +216,9 @@ UserQueryFactory::newUserQuery(std::string const& aQuery,
         }
         return uq;
     } else if (UserQueryType::isSelectResult(query, userJobId)) {
-        auto uq = std::make_shared<UserQueryAsyncResult>(userJobId, _impl->qMetaCzarId,
-                                                         _impl->queryMetadata,
-                                                         _impl->resultDbConn.get());
+        auto uq = std::make_shared<UserQueryAsyncResult>(userJobId, _userQuerySharedResources->qMetaCzarId,
+                                                         _userQuerySharedResources->queryMetadata,
+                                                         _userQuerySharedResources->resultDbConn.get());
         LOGS(_log, LOG_LVL_DEBUG, "make UserQueryAsyncResult: userJobId=" << userJobId);
         return uq;
     } else if (UserQueryType::isDropTable(query, dbName, tableName)) {
@@ -231,37 +226,33 @@ UserQueryFactory::newUserQuery(std::string const& aQuery,
         if (dbName.empty()) {
             dbName = defaultDb;
         }
-        auto uq = std::make_shared<UserQueryDrop>(_impl->css, dbName, tableName,
-                                                  _impl->resultDbConn.get(),
-                                                  _impl->queryMetadata, _impl->qMetaCzarId);
+        auto uq = std::make_shared<UserQueryDrop>(_userQuerySharedResources->css, dbName, tableName,
+                                                  _userQuerySharedResources->resultDbConn.get(),
+                                                  _userQuerySharedResources->queryMetadata, _userQuerySharedResources->qMetaCzarId);
         LOGS(_log, LOG_LVL_DEBUG, "make UserQueryDrop: " << dbName << "." << tableName);
         return uq;
     } else if (UserQueryType::isDropDb(query, dbName)) {
         // processing DROP DATABASE
-        auto uq = std::make_shared<UserQueryDrop>(_impl->css, dbName, std::string(),
-                                                  _impl->resultDbConn.get(),
-                                                  _impl->queryMetadata, _impl->qMetaCzarId);
+        auto uq = std::make_shared<UserQueryDrop>(_userQuerySharedResources->css, dbName, std::string(),
+                                                  _userQuerySharedResources->resultDbConn.get(),
+                                                  _userQuerySharedResources->queryMetadata, _userQuerySharedResources->qMetaCzarId);
         LOGS(_log, LOG_LVL_DEBUG, "make UserQueryDrop: db=" << dbName);
         return uq;
     } else if (UserQueryType::isFlushChunksCache(query, dbName)) {
-        auto uq = std::make_shared<UserQueryFlushChunksCache>(_impl->css, dbName,
-                                                              _impl->resultDbConn.get());
+        auto uq = std::make_shared<UserQueryFlushChunksCache>(_userQuerySharedResources->css, dbName,
+                                                              _userQuerySharedResources->resultDbConn.get());
         LOGS(_log, LOG_LVL_DEBUG, "make UserQueryFlushChunksCache: " << dbName);
         return uq;
     } else if (UserQueryType::isShowProcessList(query, full)) {
         LOGS(_log, LOG_LVL_DEBUG, "make UserQueryProcessList: full=" << (full ? 'y' : 'n'));
         try {
-            return std::make_shared<UserQueryProcessList>(full, _impl->resultDbConn.get(),
-                    _impl->qMetaSelect, _impl->qMetaCzarId, userQueryId, resultDb);
+            return std::make_shared<UserQueryProcessList>(full, _userQuerySharedResources->resultDbConn.get(),
+                    _userQuerySharedResources->qMetaSelect, _userQuerySharedResources->qMetaCzarId, userQueryId, resultDb);
         } catch(std::exception const& exc) {
             return std::make_shared<UserQueryInvalid>(exc.what());
         }
     } else if (UserQueryType::isCall(query)) {
-        UserQueryConfig queryConfig(_impl->css, _impl->mysqlResultConfig,
-                                    _impl->secondaryIndex, _impl->queryMetadata, _impl->queryStatsData,
-                                    _impl->qMetaSelect, _impl->resultDbConn, _impl->qMetaCzarId, userQueryId,
-                                    resultDb);
-        auto parser = parser::Antlr4Parser::create(query, &queryConfig);
+        auto parser = parser::Antlr4Parser::create(query, _userQuerySharedResources->makeUserQueryResources(userQueryId, resultDb));
         parser->setup();
         parser->run();
         return parser->getUserQuery();
@@ -272,25 +263,5 @@ UserQueryFactory::newUserQuery(std::string const& aQuery,
     }
 }
 
-
-UserQueryFactory::Impl::Impl(czar::CzarConfig const& czarConfig)
-    : mysqlResultConfig(czarConfig.getMySqlResultConfig()) {
-
-    executiveConfig = std::make_shared<qdisp::Executive::Config>(
-                          czarConfig.getXrootdFrontendUrl(),
-                          czarConfig.getQMetaSecondsBetweenChunkUpdates());
-    secondaryIndex = std::make_shared<qproc::SecondaryIndex>(mysqlResultConfig);
-
-    // make one dedicated connection for results database
-    resultDbConn = sql::SqlConnectionFactory::make(mysqlResultConfig);
-
-    queryMetadata = std::make_shared<qmeta::QMetaMysql>(czarConfig.getMySqlQmetaConfig());
-    qMetaSelect = std::make_shared<qmeta::QMetaSelect>(czarConfig.getMySqlQmetaConfig());
-
-    queryStatsData = std::make_shared<qmeta::QStatusMysql>(czarConfig.getMySqlQStatusDataConfig());
-
-    // create CssAccess instance
-    css = css::CssAccess::createFromConfig(czarConfig.getCssConfigMap(), czarConfig.getEmptyChunkPath());
-}
 
 }}} // lsst::qserv::ccontrol

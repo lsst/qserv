@@ -46,13 +46,13 @@ namespace qserv {
 namespace ccontrol {
 
 
-UserQueryQservManager::UserQueryQservManager(UserQueryConfig const& queryConfig,
+UserQueryQservManager::UserQueryQservManager(std::shared_ptr<UserQueryResources> const& queryResources,
                                              std::string const& value)
         : _value(value),
-          _resultTableName("qserv_manager_" + queryConfig.userQueryId),
+          _resultTableName("qserv_manager_" + queryResources->userQueryId),
           _messageStore(std::make_shared<qdisp::MessageStore>()),
-          _resultDbConn(queryConfig.resultDbConn),
-          _resultDb(queryConfig.resultDb)
+          _resultDbConn(queryResources->resultDbConn),
+          _resultDb(queryResources->resultDb)
 {}
 
 

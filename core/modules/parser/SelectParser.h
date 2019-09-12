@@ -44,7 +44,7 @@ namespace lsst {
 namespace qserv {
 namespace ccontrol {
     class UserQuery;
-    class UserQueryConfig;
+    class UserQueryResources;
 }
 namespace parser {
     class AntlrParser; // Internally-defined in SelectParser.cc
@@ -84,7 +84,7 @@ private:
 
 class Antlr4Parser : public AntlrParser, public ListenerDebugHelper, public std::enable_shared_from_this<Antlr4Parser> {
 public:
-    static std::shared_ptr<Antlr4Parser> create(std::string const & q, ccontrol::UserQueryConfig const* queryConfig=nullptr);
+    static std::shared_ptr<Antlr4Parser> create(std::string const & q, std::shared_ptr<ccontrol::UserQueryResources> queryResources);
 
     void setup() override;
 
@@ -101,10 +101,10 @@ public:
     std::string getStatementString() const override;
 
 private:
-    Antlr4Parser(std::string const& q, ccontrol::UserQueryConfig const* queryConfig);
+    Antlr4Parser(std::string const& q, std::shared_ptr<ccontrol::UserQueryResources> const& queryResources);
 
     std::string _statement;
-    ccontrol::UserQueryConfig const* _queryConfig;
+    std::shared_ptr<ccontrol::UserQueryResources> _queryResources;
     std::shared_ptr<parser::QSMySqlListener> _listener;
 };
 

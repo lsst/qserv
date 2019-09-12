@@ -193,8 +193,8 @@ private:
 
 
 std::shared_ptr<Antlr4Parser> Antlr4Parser::create(std::string const & q,
-                                                   ccontrol::UserQueryConfig const* queryConfig) {
-    return std::shared_ptr<Antlr4Parser>(new Antlr4Parser(q, queryConfig));
+                                                   std::shared_ptr<ccontrol::UserQueryResources> queryResources) {
+    return std::shared_ptr<Antlr4Parser>(new Antlr4Parser(q, queryResources));
 }
 
 
@@ -202,7 +202,7 @@ void Antlr4Parser::setup() {
     changeState(SETUP_DONE);
     _listener = std::make_shared<parser::QSMySqlListener>(
             std::static_pointer_cast<ListenerDebugHelper>(shared_from_this()),
-            _queryConfig);
+            _queryResources);
 }
 
 
@@ -263,8 +263,9 @@ std::string Antlr4Parser::getStatementString() const {
 }
 
 
-Antlr4Parser::Antlr4Parser(std::string const& q, ccontrol::UserQueryConfig const* queryConfig)
-    : _statement(q), _queryConfig(queryConfig)
+Antlr4Parser::Antlr4Parser(std::string const& q,
+                           std::shared_ptr<ccontrol::UserQueryResources> const& queryResources)
+    : _statement(q), _queryResources(queryResources)
 {}
 
 
@@ -287,7 +288,7 @@ std::shared_ptr<query::SelectStmt> SelectParser::makeSelectStmt(std::string cons
 
 SelectParser::SelectParser(std::string const& statement)
     :_statement(statement) {
-    _aParser = Antlr4Parser::create(_statement);
+    _aParser = Antlr4Parser::create(_statement, nullptr);
 }
 
 

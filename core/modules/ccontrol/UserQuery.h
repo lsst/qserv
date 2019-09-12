@@ -44,66 +44,14 @@
 // Forward decl
 namespace lsst {
 namespace qserv {
-namespace css {
-    class CssAccess;
-}
-namespace mysql {
-    class MySqlConfig;
-}
 namespace qdisp {
     class MessageStore;
-}
-namespace qmeta {
-    class QMeta;
-    class QStatus;
-    class QMetaSelect;
-}
-namespace qproc {
-    class SecondaryIndex;
-}
-namespace sql {
-    class SqlConnection;
 }}}
+
 
 namespace lsst {
 namespace qserv {
 namespace ccontrol {
-
-
-struct UserQueryConfig {
-    UserQueryConfig(std::shared_ptr<css::CssAccess> css_,
-                    mysql::MySqlConfig const& mysqlResultConfig_,
-                    std::shared_ptr<qproc::SecondaryIndex> secondaryIndex_,
-                    std::shared_ptr<qmeta::QMeta> queryMetadata_,
-                    std::shared_ptr<qmeta::QStatus> queryStatsData_,
-                    std::shared_ptr<qmeta::QMetaSelect> qMetaSelect_,
-                    std::shared_ptr<sql::SqlConnection> resultDbConn_,
-                    qmeta::CzarId const& qMetaCzarId_,
-                    std::string const& userQueryId_,
-                    std::string const& resultDb_)
-            : css(css_),
-              mysqlResultConfig(mysqlResultConfig_),
-              secondaryIndex(secondaryIndex_),
-              queryMetadata(queryMetadata_),
-              queryStatsData(queryStatsData_),
-              qMetaSelect(qMetaSelect_),
-              resultDbConn(resultDbConn_),
-              qMetaCzarId(qMetaCzarId_),
-              userQueryId(userQueryId_),
-              resultDb(resultDb_)
-    {}
-
-    std::shared_ptr<css::CssAccess> css;
-    mysql::MySqlConfig const& mysqlResultConfig;
-    std::shared_ptr<qproc::SecondaryIndex> secondaryIndex;
-    std::shared_ptr<qmeta::QMeta> queryMetadata;
-    std::shared_ptr<qmeta::QStatus> queryStatsData;
-    std::shared_ptr<qmeta::QMetaSelect> qMetaSelect;
-    std::shared_ptr<sql::SqlConnection> resultDbConn;
-    qmeta::CzarId const& qMetaCzarId;   ///< Czar ID in QMeta database
-    std::string const& userQueryId;
-    std::string const& resultDb;
-};
 
 
 /// UserQuery : interface for user query data. Not thread-safe, although

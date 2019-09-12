@@ -705,7 +705,7 @@ protected:
     string getTokens() const { return qsMySqlListener->getTokens(); }
     string getStatementString() const { return qsMySqlListener->getStatementString(); }
 
-    ccontrol::UserQueryConfig const* getQueryConfig() const { return qsMySqlListener->getQueryConfig(); }
+    std::shared_ptr<ccontrol::UserQueryResources> getQueryResources() const { return qsMySqlListener->getQueryResources(); }
 
 private:
     // Mostly the QSMySqlListener is not used by adapters. It is needed to get the adapter stack list for
@@ -1689,8 +1689,8 @@ public:
     }
 
     void onExit() override {
-        ASSERT_EXECUTION_CONDITION(getQueryConfig() != nullptr, "UserQueryQservManager requires a valid query config.", _ctx);
-        lockedParent()->handleCallStatement(make_shared<ccontrol::UserQueryQservManager>(*getQueryConfig(), value));
+        ASSERT_EXECUTION_CONDITION(getQueryResources() != nullptr, "UserQueryQservManager requires a valid query config.", _ctx);
+        lockedParent()->handleCallStatement(make_shared<ccontrol::UserQueryQservManager>(getQueryResources(), value));
     }
 
     string name() const override { return getTypeName(this); }
@@ -3485,8 +3485,8 @@ public:
 
 
 QSMySqlListener::QSMySqlListener(shared_ptr<ListenerDebugHelper> const & listenerDebugHelper,
-                                 ccontrol::UserQueryConfig const* queryConfig)
-    : _listenerDebugHelper(listenerDebugHelper), _queryConfig(queryConfig)
+                                 shared_ptr<ccontrol::UserQueryResources> queryResources)
+    : _listenerDebugHelper(listenerDebugHelper), _queryResources(queryResources)
 {}
 
 
