@@ -96,7 +96,7 @@ UserQueryFactory::UserQueryFactory(czar::CzarConfig const& czarConfig,
 
     ::putenv((char*)"XRDDEBUG=1");
 
-    _executiveConfig = std::make_shared<qdisp::Executive::Config>(
+    _executiveConfig = std::make_shared<qdisp::ExecutiveConfig>(
             czarConfig.getXrootdFrontendUrl(), czarConfig.getQMetaSecondsBetweenChunkUpdates());
 
     // When czar crashes/exits while some queries are still in flight they

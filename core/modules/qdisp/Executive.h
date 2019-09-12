@@ -62,6 +62,17 @@ class JobQuery;
 class LargeResultMgr;
 class MessageStore;
 
+struct ExecutiveConfig {
+    typedef std::shared_ptr<ExecutiveConfig> Ptr;
+    ExecutiveConfig(std::string const& serviceUrl_, int secsBetweenChunkUpdates_)
+        : serviceUrl(serviceUrl_), secondsBetweenChunkUpdates(secsBetweenChunkUpdates_) {}
+    ExecutiveConfig(int,int) : serviceUrl(getMockStr()) {}
+
+    std::string serviceUrl; ///< XrdSsi service URL, e.g. localhost:1094
+    int secondsBetweenChunkUpdates; ///< Seconds between QMeta chunk updates.
+    static std::string getMockStr() { return "Mock"; }
+};
+
 
 /// class Executive manages the execution of jobs for a UserQuery, while
 /// maintaining minimal information about the jobs themselves.
@@ -70,21 +81,10 @@ public:
     typedef std::shared_ptr<Executive> Ptr;
     typedef std::unordered_map<int, std::shared_ptr<JobQuery>> JobMap;
 
-    struct Config {
-        typedef std::shared_ptr<Config> Ptr;
-        Config(std::string const& serviceUrl_, int secsBetweenChunkUpdates_)
-            : serviceUrl(serviceUrl_), secondsBetweenChunkUpdates(secsBetweenChunkUpdates_) {}
-        Config(int,int) : serviceUrl(getMockStr()) {}
-
-        std::string serviceUrl; ///< XrdSsi service URL, e.g. localhost:1094
-        int secondsBetweenChunkUpdates; ///< Seconds between QMeta chunk updates.
-        static std::string getMockStr() {return "Mock";};
-    };
-
     /// Construct an Executive.
-    /// If c->serviceUrl == Config::getMockStr(), then use XrdSsiServiceMock
+    /// If c->serviceUrl == ExecutiveConfig::getMockStr(), then use XrdSsiServiceMock
     /// instead of a real XrdSsiService
-    static Executive::Ptr create(Config const& c, std::shared_ptr<MessageStore> const& ms,
+    static Executive::Ptr create(ExecutiveConfig const& c, std::shared_ptr<MessageStore> const& ms,
                 std::shared_ptr<QdispPool> const& qdispPool, std::shared_ptr<qmeta::QStatus> const& qMeta);
 
     ~Executive();
@@ -141,7 +141,7 @@ public:
     int endQSEASum{0}; // TEMPORARY-timing
 
 private:
-    Executive(Config const& c, std::shared_ptr<MessageStore> const& ms,
+    Executive(ExecutiveConfig const& c, std::shared_ptr<MessageStore> const& ms,
               std::shared_ptr<QdispPool> const& qdispPool, std::shared_ptr<qmeta::QStatus> const& qStatus);
 
     void _setup();
@@ -158,7 +158,7 @@ private:
     // for debugging
     void _printState(std::ostream& os);
 
-    Config _config; ///< Personal copy of config
+    ExecutiveConfig _config; ///< Personal copy of config
     std::atomic<bool> _empty{true};
     std::shared_ptr<MessageStore> _messageStore; ///< MessageStore for logging
     XrdSsiService* _xrdSsiService; ///< RPC interface

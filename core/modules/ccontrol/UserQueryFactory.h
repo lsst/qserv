@@ -40,7 +40,6 @@
 
 // Local headers
 #include "global/stringTypes.h"
-#include "qdisp/Executive.h"
 #include "qdisp/QdispPool.h"
 
 
@@ -54,7 +53,7 @@ namespace czar {
     class CzarConfig;
 }
 namespace qdisp {
-    class Executive;
+    class ExecutiveConfig;
 }
 namespace query {
     class SelectStmt;
@@ -91,7 +90,7 @@ public:
 
 private:
     std::shared_ptr<UserQuerySharedResources> _userQuerySharedResources;
-    std::shared_ptr<qdisp::Executive::Config> _executiveConfig;
+    std::shared_ptr<qdisp::ExecutiveConfig> _executiveConfig;
 };
 
 }}} // namespace lsst::qserv:control
