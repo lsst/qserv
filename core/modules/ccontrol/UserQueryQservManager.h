@@ -53,12 +53,13 @@ namespace qserv {
 namespace ccontrol {
 
 
+// UserQueryQservManager is for handling queries with the form `CALL QSERV_MANAGER("...")`
 class UserQueryQservManager : public UserQuery {
 public:
 
     UserQueryQservManager(std::shared_ptr<UserQueryResources> const& queryResources, std::string const& value);
 
-    virtual ~UserQueryQservManager() {}
+    ~UserQueryQservManager() override = default;
 
     /// @return a non-empty string describing the current error state
     /// Returns an empty string if no errors have been detected.
@@ -84,7 +85,6 @@ public:
 
     /// @return get the SELECT statement to be executed by proxy
     virtual std::string getResultQuery() const;
-
 
 private:
     std::string _value;
