@@ -21,7 +21,7 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-#include "parser/QSMySqlListener.h"
+#include "ccontrol/QSMySqlListener.h"
 
 #include <cxxabi.h>
 #include <sstream>
@@ -69,13 +69,12 @@ using namespace std;
 namespace lsst {
 namespace qserv {
     using query::ValueExprPtr;
-}
-}
+}}
 
 
 namespace {
 
-LOG_LOGGER _log = LOG_GET("lsst.qserv.parser.QSMySqlListener");
+LOG_LOGGER _log = LOG_GET("lsst.qserv.ccontrol.QSMySqlListener");
 
 string getQueryString(antlr4::ParserRuleContext* ctx) {
     return ctx->getStart()->getInputStream()->getText(
@@ -119,7 +118,7 @@ void QSMySqlListener::exit##NAME(QSMySqlParser::NAME##Context* ctx) { \
 #define UNHANDLED(NAME) \
 void QSMySqlListener::enter##NAME(QSMySqlParser::NAME##Context* ctx) { \
     LOGS(_log, LOG_LVL_ERROR, __FUNCTION__ << " is UNHANDLED for '" << getQueryString(ctx) << "'"); \
-    throw adapter_order_error("qserv can not parse query, near \"" + getQueryString(ctx) + "\""); \
+    throw parser::adapter_order_error("qserv can not parse query, near \"" + getQueryString(ctx) + "\""); \
 } \
 \
 void QSMySqlListener::exit##NAME(QSMySqlParser::NAME##Context* ctx) {}\
@@ -182,13 +181,14 @@ if (not (CONDITION)) { \
     msg << ", string tree:" << getStringTree(); \
     msg << ", tokens:" << getTokens(); \
     LOGS(_log, LOG_LVL_ERROR, msg.str()); \
-    throw adapter_execution_error("Error parsing query, near \"" + queryString + "\""); \
+    throw parser::adapter_execution_error("Error parsing query, near \"" + queryString + "\""); \
 } \
 
 
 namespace lsst {
 namespace qserv {
-namespace parser {
+namespace ccontrol {
+
 
 /// Callback Handler classes
 
@@ -676,7 +676,7 @@ public:
         msg << ", string tree:" << getStringTree();
         msg << ", tokens:" << getTokens();
         LOGS(_log, LOG_LVL_ERROR, msg.str());
-        throw adapter_execution_error(
+        throw parser::adapter_execution_error(
                 "Error parsing query, near \"" + getQueryString(ctx) + "\", " + message);
     }
 };
@@ -1088,10 +1088,10 @@ private:
             } else if (insensitiveFunction == "qserv_areaspec_poly") {
                 restrictor = make_shared<query::AreaRestrictorPoly>(strParameters);
             } else {
-                throw adapter_execution_error("Unhandled restrictor function: " + function);
+                throw parser::adapter_execution_error("Unhandled restrictor function: " + function);
             }
         } catch (logic_error err) {
-            throw adapter_execution_error(err.what());
+            throw parser::adapter_execution_error(err.what());
         }
         _getWhereClause()->addAreaRestrictor(restrictor);
     }
@@ -3607,7 +3607,7 @@ void QSMySqlListener::assertExecutionCondition(string const& function, bool cond
     msg << ", string tree:" << getStringTree();
     msg << ", tokens:" << getTokens();
     LOGS(_log, LOG_LVL_ERROR, msg.str());
-    throw adapter_execution_error("Error parsing query, near \"" + queryString + "\"");
+    throw parser::adapter_execution_error("Error parsing query, near \"" + queryString + "\"");
 }
 
 IGNORED(SqlStatements)
@@ -4135,4 +4135,4 @@ UNHANDLED(DataTypeBase)
 IGNORED_WARN(KeywordsCanBeId, "Keyword reused as ID") // todo emit a warning?
 ENTER_EXIT_PARENT(FunctionNameBase)
 
-}}} // namespace lsst::qserv::parser
+}}} // namespace lsst::qserv::ccontrol

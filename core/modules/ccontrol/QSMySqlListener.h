@@ -20,15 +20,15 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_PARSER_MYSQLLISTENER_H
-#define LSST_QSERV_PARSER_MYSQLLISTENER_H
+#ifndef LSST_QSERV_CCONTROL_MYSQLLISTENER_H
+#define LSST_QSERV_CCONTROL_MYSQLLISTENER_H
 
 
 #include <memory>
 #include <stack>
 
+#include "ccontrol/ListenerDebugHelper.h"
 #include "parser/QSMySqlParser.h" // included for contexts. They *could* be forward declared.
-#include "parser/ListenerDebugHelper.h"
 #include "parser/QSMySqlParserBaseListener.h"
 
 
@@ -40,15 +40,19 @@ class ParserRuleContext;
 namespace lsst {
 namespace qserv {
 namespace ccontrol {
+    class Adapter;
+    class RootAdapter;
     class UserQuery;
     class UserQueryResources;
 }
 namespace query{
     class SelectStmt;
-}
-namespace parser {
-    class Adapter;
-    class RootAdapter;
+}}}
+
+
+namespace lsst {
+namespace qserv {
+namespace ccontrol {
 
 
 class QSMySqlListener : public QSMySqlParserListener {
@@ -1683,6 +1687,6 @@ private:
     std::shared_ptr<ccontrol::UserQueryResources> _queryResources;
 };
 
-}}} // namespace lsst::qserv::parser
+}}} // namespace lsst::qserv::ccontrol
 
-#endif // LSST_QSERV_PARSER_MYSQLLISTENER_H
+#endif // LSST_QSERV_CCONTROL_MYSQLLISTENER_H

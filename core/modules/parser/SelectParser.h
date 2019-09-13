@@ -36,19 +36,19 @@
 #include <sstream>
 
 // Qserv headers
-#include "parser/ListenerDebugHelper.h"
+#include "ccontrol/ListenerDebugHelper.h"
 #include "util/common.h"
 
 // Forward declarations
 namespace lsst {
 namespace qserv {
 namespace ccontrol {
+    class QSMySqlListener;
     class UserQuery;
     class UserQueryResources;
 }
 namespace parser {
     class AntlrParser; // Internally-defined in SelectParser.cc
-    class QSMySqlListener;
 }
 namespace query {
     class SelectStmt;
@@ -82,7 +82,7 @@ private:
 };
 
 
-class Antlr4Parser : public AntlrParser, public ListenerDebugHelper, public std::enable_shared_from_this<Antlr4Parser> {
+class Antlr4Parser : public AntlrParser, public ccontrol::ListenerDebugHelper, public std::enable_shared_from_this<Antlr4Parser> {
 public:
     static std::shared_ptr<Antlr4Parser> create(std::string const & q, std::shared_ptr<ccontrol::UserQueryResources> queryResources);
 
@@ -105,7 +105,7 @@ private:
 
     std::string _statement;
     std::shared_ptr<ccontrol::UserQueryResources> _queryResources;
-    std::shared_ptr<parser::QSMySqlListener> _listener;
+    std::shared_ptr<ccontrol::QSMySqlListener> _listener;
 };
 
 

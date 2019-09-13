@@ -20,8 +20,8 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_PARSER_LISTENERDEBUGHELPER_H
-#define LSST_QSERV_PARSER_LISTENERDEBUGHELPER_H
+#ifndef LSST_QSERV_CCONTROL_LISTENERDEBUGHELPER_H
+#define LSST_QSERV_CCONTROL_LISTENERDEBUGHELPER_H
 
 
 #include <string>
@@ -29,7 +29,7 @@
 
 namespace lsst {
 namespace qserv {
-namespace parser {
+namespace ccontrol {
 
 
 class ListenerDebugHelper {

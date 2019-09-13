@@ -39,6 +39,7 @@
 // System headers
 #include <cstdio>
 #include <functional>
+#include <memory>
 #include <strings.h>
 #include <vector>
 
@@ -55,9 +56,10 @@
 // these must be included before Log.h because they have a function called LOGS
 // that conflicts with the LOGS macro defined in Log.h
 #include "antlr4-runtime.h"
+#include "ccontrol/QSMySqlListener.h"
 #include "parser/QSMySqlLexer.h"
 #include "parser/QSMySqlParser.h"
-#include "parser/QSMySqlListener.h"
+#include "parser/QSMySqlParserListener.h"
 
 // must come after QSMySqlLexer & Parser because of namespace collision
 #include "lsst/log/Log.h"
@@ -200,8 +202,8 @@ std::shared_ptr<Antlr4Parser> Antlr4Parser::create(std::string const & q,
 
 void Antlr4Parser::setup() {
     changeState(SETUP_DONE);
-    _listener = std::make_shared<parser::QSMySqlListener>(
-            std::static_pointer_cast<ListenerDebugHelper>(shared_from_this()),
+    _listener = std::make_shared<ccontrol::QSMySqlListener>(
+            std::static_pointer_cast<ccontrol::ListenerDebugHelper>(shared_from_this()),
             _queryResources);
 }
 
@@ -218,7 +220,8 @@ void Antlr4Parser::run() {
     parser.setErrorHandler(std::make_shared<Antlr4ErrorStrategy>(_statement));
     tree::ParseTree *tree = parser.root();
     tree::ParseTreeWalker walker;
-    walker.walk(_listener.get(), tree);
+    antlr4::tree::ParseTreeListener* listener = _listener.get();
+    walker.walk(listener, tree);
 }
 
 
