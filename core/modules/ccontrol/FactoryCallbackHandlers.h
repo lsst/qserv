@@ -27,6 +27,14 @@
 #include <vector>
 
 
+#ifndef LSST_QSERV_CCONTROL_FACTORYCALLBACKHANDLERS
+#define LSST_QSERV_CCONTROL_FACTORYCALLBACKHANDLERS
+
+
+namespace antlr4 {
+    class ParserRuleContext;
+}
+
 namespace lsst {
 namespace qserv {
 namespace ccontrol {
@@ -477,3 +485,6 @@ public:
 
 
 }}} // lsst::qserv::ccontrol
+
+
+#endif // LSST_QSERV_CCONTROL_FACTORYCALLBACKHANDLERS
