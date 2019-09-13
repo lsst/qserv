@@ -360,6 +360,10 @@ public:
     /// @return the number of concurrent connections to the database service
     virtual size_t qservMasterDatabaseServicesPoolSize() const = 0;
 
+    /// @return a path for exchanging data with master's MySQL service
+    /// in the 'LOAD DATA INFILE' and similar queries.
+    virtual std::string qservMasterDatabaseTmpDir() const = 0;
+
     // ------------------------------------------------------
     // -- Parameters of the Qserv worker database services --
     // ------------------------------------------------------

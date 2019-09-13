@@ -1246,6 +1246,7 @@ void ConfigurationMySQL::_loadConfigurationImpl(database::mysql::Connection::Ptr
         ::tryParameter(row, "database", "qserv_master_name",     _qservMasterDatabaseName) or
 
         ::tryParameter(row, "database", "qserv_master_services_pool_size", _qservMasterDatabaseServicesPoolSize) or
+        ::tryParameter(row, "database", "qserv_master_tmp_dir",  _qservMasterDatabaseName) or
 
         ::tryParameter(row, "xrootd", "auto_notify",         _xrootdAutoNotify) or
         ::tryParameter(row, "xrootd", "host",                _xrootdHost) or

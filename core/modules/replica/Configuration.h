@@ -205,6 +205,7 @@ public:
     std::string qservMasterDatabaseUser() const final;
     std::string qservMasterDatabaseName() const final;
     size_t      qservMasterDatabaseServicesPoolSize() const final;
+    std::string qservMasterDatabaseTmpDir() const final;
 
     std::vector<std::string> databaseFamilies() const final;
 

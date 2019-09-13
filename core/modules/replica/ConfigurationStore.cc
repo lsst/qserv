@@ -572,6 +572,7 @@ void ConfigurationStore::_loadConfiguration(util::ConfigStore const& configStore
     ::parseKeyVal(configStore, "database.qserv_master_user",               _qservMasterDatabaseUser,             defaultQservMasterDatabaseUser);
     ::parseKeyVal(configStore, "database.qserv_master_name",               _qservMasterDatabaseName,             defaultQservMasterDatabaseName);
     ::parseKeyVal(configStore, "database.qserv_master_services_pool_size", _qservMasterDatabaseServicesPoolSize, defaultQservMasterDatabaseServicesPoolSize);
+    ::parseKeyVal(configStore, "database.qserv_master_tmp_dir",            _qservMasterDatabaseTmpDir,           defaultQservMasterDatabaseTmpDir);
 
     ::parseKeyVal(configStore, "xrootd.auto_notify",         _xrootdAutoNotify, defaultXrootdAutoNotify);
     ::parseKeyVal(configStore, "xrootd.host",                _xrootdHost,       defaultXrootdHost);

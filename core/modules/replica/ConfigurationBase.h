@@ -137,6 +137,7 @@ public:
     std::string qservMasterDatabaseUser() const final { return _qservMasterDatabaseUser; }
     std::string qservMasterDatabaseName() const final { return _qservMasterDatabaseName; }
     size_t      qservMasterDatabaseServicesPoolSize() const final { return _qservMasterDatabaseServicesPoolSize; }
+    std::string qservMasterDatabaseTmpDir() const final { return _qservMasterDatabaseTmpDir; }
 
     std::vector<std::string> databaseFamilies() const final;
 
@@ -216,6 +217,7 @@ protected:
     static std::string  const defaultQservMasterDatabaseUser;
     static std::string  const defaultQservMasterDatabaseName;
     static size_t       const defaultQservMasterDatabaseServicesPoolSize;
+    static std::string  const defaultQservMasterDatabaseTmpDir;
     static size_t       const defaultReplicationLevel;
     static unsigned int const defaultNumStripes;
     static unsigned int const defaultNumSubStripes;
@@ -372,6 +374,7 @@ protected:
     std::string _qservMasterDatabaseUser;
     std::string _qservMasterDatabaseName;
     size_t      _qservMasterDatabaseServicesPoolSize;
+    std::string _qservMasterDatabaseTmpDir;
 };
 
 }}} // namespace lsst::qserv::replica

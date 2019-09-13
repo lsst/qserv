@@ -622,6 +622,10 @@ void ConfigApp::_dumpGeneralAsTable(string const& indent) const {
     value.      push_back(_general.qservMasterDatabaseServicesPoolSize.str(_config));
     description.push_back(_general.qservMasterDatabaseServicesPoolSize.description);
 
+    parameter.  push_back(_general.qservMasterDatabaseTmpDir.key);
+    value.      push_back(_general.qservMasterDatabaseTmpDir.str(_config));
+    description.push_back(_general.qservMasterDatabaseTmpDir.description);
+
     parameter.  push_back(_general.workerTechnology.key);
     value.      push_back(_general.workerTechnology.str(_config));
     description.push_back(_general.workerTechnology.description);

@@ -361,6 +361,12 @@ size_t Configuration::qservMasterDatabaseServicesPoolSize() const {
 }
 
 
+string Configuration::qservMasterDatabaseTmpDir() const {
+    util::Lock lock(_mtx, context(__func__));
+    return _impl->qservMasterDatabaseTmpDir();
+}
+
+
 vector<string> Configuration::databaseFamilies() const {
     util::Lock lock(_mtx, context(__func__));
     return _impl->databaseFamilies();

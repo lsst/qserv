@@ -92,6 +92,7 @@ uint16_t     const ConfigurationBase::defaultQservMasterDatabasePort      = 3306
 string       const ConfigurationBase::defaultQservMasterDatabaseUser      = FileUtils::getEffectiveUser();
 string       const ConfigurationBase::defaultQservMasterDatabaseName      = "qservMeta";
 size_t       const ConfigurationBase::defaultQservMasterDatabaseServicesPoolSize = 1;
+string       const ConfigurationBase::defaultQservMasterDatabaseTmpDir    = "/qserv/data/injest";
 size_t       const ConfigurationBase::defaultReplicationLevel             = 1;
 unsigned int const ConfigurationBase::defaultNumStripes                   = 340;
 unsigned int const ConfigurationBase::defaultNumSubStripes                = 12;
@@ -178,7 +179,8 @@ ConfigurationBase::ConfigurationBase()
         _qservMasterDatabasePort    (defaultQservMasterDatabasePort),
         _qservMasterDatabaseUser    (defaultQservMasterDatabaseUser),
         _qservMasterDatabaseName    (defaultQservMasterDatabaseName),
-        _qservMasterDatabaseServicesPoolSize(defaultQservMasterDatabaseServicesPoolSize) {
+        _qservMasterDatabaseServicesPoolSize(defaultQservMasterDatabaseServicesPoolSize),
+        _qservMasterDatabaseTmpDir  (defaultQservMasterDatabaseTmpDir) {
 }
 
 
@@ -349,6 +351,7 @@ string ConfigurationBase::asString() const {
     ss << context() << "defaultQservMasterDatabaseUser:             " << defaultQservMasterDatabaseUser << "\n";
     ss << context() << "defaultQservMasterDatabaseName:             " << defaultQservMasterDatabaseName << "\n";
     ss << context() << "defaultQservMasterDatabaseServicesPoolSize: " << defaultQservMasterDatabaseServicesPoolSize << "\n";
+    ss << context() << "defaultQservMasterDatabaseTmpDir:           " << defaultQservMasterDatabaseTmpDir << "\n";
     ss << context() << "defaultReplicationLevel:              " << defaultReplicationLevel << "\n";
     ss << context() << "defaultNumStripes:                    " << defaultNumStripes << "\n";
     ss << context() << "defaultNumSubStripes:                 " << defaultNumSubStripes << "\n";
@@ -381,6 +384,8 @@ string ConfigurationBase::asString() const {
     ss << context() << "_qservMasterDatabaseUser:             " << _qservMasterDatabaseUser << "\n";
     ss << context() << "_qservMasterDatabaseName:             " << _qservMasterDatabaseName << "\n";
     ss << context() << "_qservMasterDatabaseServicesPoolSize: " << _qservMasterDatabaseServicesPoolSize << "\n";
+    ss << context() << "_qservMasterDatabaseTmpDir:           " << _qservMasterDatabaseTmpDir << "\n";
+
     for (auto&& elem: _workerInfo) {
         ss << context() << elem.second << "\n";
     }

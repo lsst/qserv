@@ -29,6 +29,7 @@ INSERT INTO `config` VALUES ('database', 'qserv_master_port',                   
 INSERT INTO `config` VALUES ('database', 'qserv_master_user',                'qsmaster');
 INSERT INTO `config` VALUES ('database', 'qserv_master_name',               'qservMeta');
 INSERT INTO `config` VALUES ('database', 'qserv_master_services_pool_size',         '4');
+INSERT INTO `config` VALUES ('database', 'qserv_master_tmp_dir',   '/qserv/data/injest');
 
 -- Connection parameters for the Qserv Management Services
 

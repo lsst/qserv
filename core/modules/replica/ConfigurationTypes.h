@@ -457,6 +457,17 @@ struct ConfigurationGeneralParams {
     } qservMasterDatabaseServicesPoolSize;
 
     struct {
+        std::string const key         = "QSERV_MASTER_TMP_DIR";
+        std::string const description = "The temporary folder for exchanging data with the Qserv Master database service.";
+
+        bool const updatable = false;
+
+        std::string get(Configuration::Ptr const& config) const { return config->qservMasterDatabaseTmpDir(); }
+        std::string str(Configuration::Ptr const& config) const { return get(config); }
+
+    } qservMasterDatabaseTmpDir;
+
+    struct {
 
         std::string const key         = "WORKER_TECHNOLOGY";
         std::string const description = "The name of a technology for implementing requests.";

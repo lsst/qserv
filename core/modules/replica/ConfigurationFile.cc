@@ -97,6 +97,13 @@ string ConfigurationFile::dump2init(ConfigurationIFace::Ptr const& config) {
         << "password           = " << "" << "\n"
         << "name               = " << config->databaseName() << "\n"
         << "services_pool_size = " << config->databaseServicesPoolSize() << "\n"
+        << "qserv_master_host  = " << config->qservMasterDatabaseHost() << "\n"
+        << "qserv_master_port  = " << config->qservMasterDatabasePort() << "\n"
+        << "qserv_master_user  = " << config->qservMasterDatabaseUser() << "\n"
+        << "qserv_master_name  = " << config->qservMasterDatabaseName() << "\n"
+        << "qserv_master_services_pool_size = " << config->qservMasterDatabaseServicesPoolSize() << "\n"
+        << "qserv_master_tmp_dir = " << config->qservMasterDatabaseTmpDir() << "\n"
+
         << "\n";
 
     str << "[xrootd]\n"
