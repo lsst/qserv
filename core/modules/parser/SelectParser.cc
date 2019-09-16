@@ -284,7 +284,6 @@ SelectParser::Ptr SelectParser::newInstance(std::string const& statement) {
 
 std::shared_ptr<query::SelectStmt> SelectParser::makeSelectStmt(std::string const& statement) {
     auto parser = newInstance(statement);
-    parser->setup();
     return parser->getSelectStmt();
 }
 
@@ -292,14 +291,14 @@ std::shared_ptr<query::SelectStmt> SelectParser::makeSelectStmt(std::string cons
 SelectParser::SelectParser(std::string const& statement)
     :_statement(statement) {
     _aParser = Antlr4Parser::create(_statement, nullptr);
-}
-
-
-void SelectParser::setup() {
     _aParser->setup();
     _aParser->run();
-    _selectStmt = _aParser->getStatement();
-    LOGS(_log, LOG_LVL_TRACE, "Generated intermediate representation:" << *_selectStmt);
 }
+
+
+std::shared_ptr<query::SelectStmt> SelectParser::getSelectStmt() {
+    return _aParser->getStatement();
+}
+
 
 }}} // namespace lsst::qserv::parser

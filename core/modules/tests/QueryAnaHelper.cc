@@ -66,7 +66,6 @@ namespace tests {
 
 SelectParser::Ptr QueryAnaHelper::getParser(std::string const & stmt) {
     auto p = SelectParser::newInstance(stmt);
-    p->setup();
     return p;
 }
 

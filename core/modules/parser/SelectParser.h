@@ -130,14 +130,10 @@ public:
     /// This function calls SelectParser::setup; so it may throw any exception thrown by that function.
     static std::shared_ptr<query::SelectStmt> makeSelectStmt(std::string const& statement);
 
-    /// Setup the parser and parse into a SelectStmt
-    /// May throw a ParseException (including adapter_order_error and adapter_execution_error)
-    void setup();
-
     // @return Original select statement
     std::string const& getStatement() const { return _statement; }
 
-    std::shared_ptr<query::SelectStmt> getSelectStmt() { return _selectStmt; }
+    std::shared_ptr<query::SelectStmt> getSelectStmt();
 
 private:
     SelectParser(std::string const& statement);

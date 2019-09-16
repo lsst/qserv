@@ -118,9 +118,9 @@ namespace qproc {
 
 
 std::shared_ptr<query::SelectStmt> QuerySession::parseQuery(std::string const & statement) {
-    auto parser = parser::SelectParser::newInstance(statement);
+    parser::SelectParser::Ptr parser;
     try {
-        parser->setup();
+        parser = parser::SelectParser::newInstance(statement);
     } catch(parser::ParseException const& e) {
         LOGS(_log, LOG_LVL_DEBUG, "parse exception: " << e.what());
         _original = statement;
