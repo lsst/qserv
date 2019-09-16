@@ -42,7 +42,6 @@
 // Qserv headers
 #include "css/CssAccess.h"
 #include "global/intTypes.h"
-#include "parser/SelectParser.h"
 #include "qana/QueryPlugin.h"
 #include "qproc/ChunkQuerySpec.h"
 #include "qproc/ChunkSpec.h"

@@ -51,7 +51,6 @@
 
 // Qserv headers
 #include "mysql/MySqlConfig.h"
-#include "parser/SelectParser.h"
 #include "qana/DuplSelectExprPlugin.h"
 #include "query/QueryContext.h"
 #include "sql/SqlConfig.h"
@@ -61,7 +60,6 @@
 
 
 using lsst::qserv::mysql::MySqlConfig;
-using lsst::qserv::parser::SelectParser;
 using lsst::qserv::qana::DuplSelectExprPlugin;
 using lsst::qserv::qproc::QuerySession;
 using lsst::qserv::query::QueryContext;
