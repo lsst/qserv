@@ -92,56 +92,6 @@ namespace qserv {
 namespace parser {
 
 
-////////////////////////////////////////////////////////////////////////
-// AntlrParser -- Antlr parsing complex
-////////////////////////////////////////////////////////////////////////
-std::string AntlrParser::stateString(State s) {
-    switch (s) {
-        default:
-            return "??";
-
-        case INIT:
-            return "INIT";
-
-        case SETUP_DONE:
-            return "SETUP_DONE";
-
-        case RUN_DONE:
-            return "RUN_DONE";
-    }
-}
-
-
-void AntlrParser::changeState(State to) {
-    switch (_state) {
-        default:
-            throw ParseException("Parse error(INTERNAL): unhandled state transition value: "
-                    + std::to_string(_state));
-
-        case INIT:
-            if (SETUP_DONE != to) {
-                throw ParseException("Parse error(INTERNAL):invalid state transition from INIT to "
-                        + stateString(to));
-            }
-            _state = SETUP_DONE;
-            break;
-
-        case SETUP_DONE:
-            if (RUN_DONE != to) {
-                throw ParseException("Parse error(INTERNAL):invalid state transition from SETUP_DONE to "
-                        + stateString(to));
-            }
-            _state = RUN_DONE;
-            break;
-
-        case RUN_DONE:
-            // there are no valid transitions from RUN_DONE
-            throw ParseException("Parse error(INTERNAL):invalid state transition from RUN_DONE to "
-                    + stateString(to));
-    }
-}
-
-
 class Antlr4ErrorStrategy : public antlr4::DefaultErrorStrategy {
 public:
     explicit Antlr4ErrorStrategy(std::string const& statement) : _statement(statement) {}
@@ -201,7 +151,6 @@ std::shared_ptr<Antlr4Parser> Antlr4Parser::create(std::string const & q,
 
 
 void Antlr4Parser::setup() {
-    changeState(SETUP_DONE);
     _listener = std::make_shared<ccontrol::QSMySqlListener>(
             std::static_pointer_cast<ccontrol::ListenerDebugHelper>(shared_from_this()),
             _queryResources);
@@ -209,7 +158,6 @@ void Antlr4Parser::setup() {
 
 
 void Antlr4Parser::run() {
-    changeState(RUN_DONE);
     using namespace antlr4;
     ANTLRInputStream input(_statement);
     NonRecoveringQSMySqlLexer lexer(&input, _statement);

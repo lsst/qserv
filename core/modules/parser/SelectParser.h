@@ -66,19 +66,6 @@ public:
     virtual void setup() = 0;
     virtual void run() = 0;
     virtual std::shared_ptr<query::SelectStmt> getStatement() = 0;
-
-protected:
-    enum State {
-        INIT, SETUP_DONE, RUN_DONE
-    };
-    std::string stateString(State s);
-
-    void changeState(State to);
-
-    bool runTransitionDone() const { return _state == RUN_DONE; }
-
-private:
-    State _state {INIT};
 };
 
 
