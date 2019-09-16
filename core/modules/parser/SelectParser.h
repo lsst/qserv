@@ -59,24 +59,6 @@ namespace qserv {
 namespace parser {
 
 
-class Antlr4Parser {
-public:
-    Antlr4Parser(std::string const& q, std::shared_ptr<ccontrol::UserQueryResources> const& queryResources);
-
-    void run();
-
-    std::shared_ptr<query::SelectStmt> getStatement();
-
-    std::shared_ptr<ccontrol::UserQuery> getUserQuery();
-
-private:
-
-    std::string _statement;
-    std::shared_ptr<ccontrol::UserQueryResources> _queryResources;
-    std::shared_ptr<ccontrol::QSMySqlListener> _listener;
-};
-
-
 /// class SelectParser - drives the ANTLR-generated SQL parser for a
 /// SELECT statement. Attaches some simple handlers that populate a
 /// corresponding data structure, which can then be processed and
@@ -89,6 +71,8 @@ class SelectParser {
 public:
     SelectParser(std::string const& statement);
 
+    SelectParser(std::string const& statement, std::shared_ptr<ccontrol::UserQueryResources> const& queryResources);
+
     typedef std::shared_ptr<SelectParser> Ptr;
 
     /// Convenience function to get a SelectStatement.
@@ -99,6 +83,8 @@ public:
     std::string const& getStatement() const { return _statement; }
 
     std::shared_ptr<query::SelectStmt> getSelectStmt();
+
+    std::shared_ptr<ccontrol::UserQuery> getUserQuery();
 
 private:
 

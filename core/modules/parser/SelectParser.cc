@@ -77,6 +77,24 @@ namespace qserv {
 namespace parser {
 
 
+class Antlr4Parser {
+public:
+    Antlr4Parser(std::string const& q, std::shared_ptr<ccontrol::UserQueryResources> const& queryResources);
+
+    void run();
+
+    std::shared_ptr<query::SelectStmt> getStatement();
+
+    std::shared_ptr<ccontrol::UserQuery> getUserQuery();
+
+private:
+
+    std::string _statement;
+    std::shared_ptr<ccontrol::UserQueryResources> _queryResources;
+    std::shared_ptr<ccontrol::QSMySqlListener> _listener;
+};
+
+
 class Antlr4ErrorStrategy : public antlr4::DefaultErrorStrategy {
 public:
     explicit Antlr4ErrorStrategy(std::string const& statement) : _statement(statement) {}
@@ -179,8 +197,21 @@ SelectParser::SelectParser(std::string const& statement)
 }
 
 
+SelectParser::SelectParser(std::string const& statement,
+                           std::shared_ptr<ccontrol::UserQueryResources> const& queryResources)
+    :_statement(statement) {
+    _aParser = std::make_shared<parser::Antlr4Parser>(_statement, queryResources);
+    _aParser->run();
+}
+
+
 std::shared_ptr<query::SelectStmt> SelectParser::getSelectStmt() {
     return _aParser->getStatement();
+}
+
+
+std::shared_ptr<ccontrol::UserQuery> SelectParser::getUserQuery() {
+    return _aParser->getUserQuery();
 }
 
 
