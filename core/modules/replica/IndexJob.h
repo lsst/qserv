@@ -25,6 +25,7 @@
 #include <functional>
 #include <list>
 #include <map>
+#include <memory>
 #include <string>
 #include <tuple>
 #include <vector>
@@ -32,6 +33,15 @@
 // Qserv headers
 #include "replica/Job.h"
 #include "replica/IndexRequest.h"
+
+// Forward declarations
+namespace lsst {
+namespace qserv {
+namespace replica {
+namespace database {
+namespace mysql {
+    class Connection;
+}}}}}
 
 // This header declarations
 namespace lsst {
@@ -147,7 +157,9 @@ public:
     IndexJob(IndexJob const&) = delete;
     IndexJob& operator=(IndexJob const&) = delete;
 
-    ~IndexJob() final = default;
+    /// Non-trivial destructor is needed to abort an ongoing transaction
+    /// if needed.
+    ~IndexJob() final;
 
     // Trivial get methods
 
@@ -235,6 +247,16 @@ private:
     std::list<IndexRequest::Ptr> _launchRequests(util::Lock const& lock,
                                                  std::string const& worker,
                                                  size_t maxRequests=1);
+
+    /**
+     * Roll back a database transaction should the one be still open
+     * for destination TABLE. The method won't have any effect for other
+     * scenarios.
+     *
+     * @param func  the name of a method/function to report errors
+     */
+    void _rollbackTransaction(std::string const& func);
+
 private:
 
     // Input parameters
@@ -254,10 +276,12 @@ private:
     /// A collection of the in-flight requests (request id is the key) 
     std::map<std::string, IndexRequest::Ptr> _requests;
 
-    // These counters are used for tracking a condition for completing the job
-    /// before computing its final state.
-    size_t _numFinished = 0;
-    size_t _numSuccess = 0;
+    /// Database connector is initialized for Destination::TABLE upon arrival
+    /// of the very first batch of data. A separate transaction is started 
+    /// to load each bunch of data received from workers. The transaction (if
+    /// any is still open) is automatically aborted by the destructor or
+    /// the request cancellation.
+    std::shared_ptr<database::mysql::Connection> _conn;
 
     /// The result of the operation (gets updated as requests are finishing)
     IndexJobResult _resultData;

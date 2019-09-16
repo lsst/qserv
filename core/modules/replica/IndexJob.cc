@@ -29,8 +29,12 @@
 #include <limits>
 #include <stdexcept>
 
+// Third party headers
+#include <boost/filesystem.hpp>
+
 // Qserv headers
 #include "replica/Configuration.h"
+#include "replica/DatabaseMySQL.h"
 #include "replica/ServiceProvider.h"
 #include "replica/StopRequest.h"
 
@@ -38,6 +42,7 @@
 #include "lsst/log/Log.h"
 
 using namespace std;
+namespace fs = boost::filesystem;
 
 namespace {
 
@@ -128,6 +133,11 @@ IndexJob::IndexJob(string const& database,
         _destination(destination),
         _destinationPath(destinationPath),
         _onFinish(onFinish) {
+}
+
+
+IndexJob::~IndexJob() {
+    _rollbackTransaction(__func__);
 }
 
 
@@ -298,8 +308,7 @@ void IndexJob::cancelImpl(util::Lock const& lock) {
         }
     }
     _requests.clear();
-    _numFinished = 0;
-    _numSuccess  = 0;
+    _rollbackTransaction(__func__);
 }
 
 
@@ -311,6 +320,10 @@ void IndexJob::notify(util::Lock const& lock) {
 
 void IndexJob::_onRequestFinish(IndexRequest::Ptr const& request) {
 
+    // NOTE: this algorithm assumes "zero tolerance" to failures - any failure
+    // in executing requests or processing data of the requests would result in
+    // the job termination.
+
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "  worker=" << request->worker());
 
     if (state() == State::FINISHED) return;
@@ -319,44 +332,46 @@ void IndexJob::_onRequestFinish(IndexRequest::Ptr const& request) {
 
     if (state() == State::FINISHED) return;
 
-    _numFinished++;
-    if (request->extendedState() == Request::SUCCESS) _numSuccess++;
-
-    // Update stats and save result at the specified destination before discarding
-    // the request object. Note that we HAVE TO erase completed requests since they
-    // may carry a significant amount of data.
-
-    try {
-        _processRequestData(lock, request);
-    } catch (exception const& ex) {
-        LOGS(_log, LOG_LVL_DEBUG, context() << __func__
-             << "  failed when processing data of the request, ex: " << ex.what());
+    if (request->extendedState() != Request::SUCCESS) {
+        _resultData.error[request->worker()][request->chunk()] = request->responseData().error;
+        _rollbackTransaction(__func__);
         finish(lock, ExtendedState::FAILED);
         return;
     }
-    _requests.erase(request->id());
-    
-    // Try submitting a replacement request for the same worker. If none
-    // would be launched then evaluate for the completion condition of the job.
+
+    // Submit a replacement request for the same worker BEFORE processing
+    // results of the current one. This little optimization is meant to keep
+    // workers busy in case of a non-negligible latency in processing data of
+    // requests.
 
     for (auto&& ptr: _launchRequests(lock, request->worker())) {
         _requests[ptr->id()] = ptr;
     }
-    if (_requests.size() == 0) {
-        finish(lock, _numSuccess == _numFinished ? ExtendedState::SUCCESS :
-                                                   ExtendedState::FAILED);
+
+    // Removing request from the list before processing its data is fine as
+    // we still have a shared pointer passed into this method. Note that
+    // we need to erase completed requests from memory since they may carry
+    // a significant amount of data.
+
+    _requests.erase(request->id());
+    try {
+        _processRequestData(lock, request);
+    } catch (exception const& ex) {
+        string const error = "request data processing failed, ex: " + string(ex.what());
+        LOGS(_log, LOG_LVL_ERROR, context() << __func__ << "  " << error);
+        _resultData.error[request->worker()][request->chunk()] = error;
+        _rollbackTransaction(__func__);
+        finish(lock, ExtendedState::FAILED);
+        return;
     }
+    
+    // Evaluate for the completion condition of the job.
+    if (_requests.size() == 0) finish(lock, ExtendedState::SUCCESS);
 }
 
 
 void IndexJob::_processRequestData(util::Lock const& lock,
                                    IndexRequest::Ptr const& request) {
-
-    // Unconditionally update stats which may include the MySQL-specific errors
-    // reported by the failed queries.
-    _resultData.error[request->worker()][request->chunk()] = request->responseData().error;
-
-    if (request->extendedState() != Request::SUCCESS) return;
 
     switch (_destination) {
         case DISCARD: {
@@ -392,14 +407,70 @@ void IndexJob::_processRequestData(util::Lock const& lock,
             break;
         }
         case TABLE: {
-            LOGS(_log, LOG_LVL_DEBUG, context() << __func__
-                 << "  unsupported destination: " + toString(_destination));
+
+            auto const config = controller()->serviceProvider()->config();
+
+            // ATTENTION: all exceptions which may be potentially thrown are
+            // supposed to be intercepted by a caller of the current method
+            // and be used for error reporting.
+
+            // Dump the data into a temporary file from where it would be loaded
+            // into the MySQL table. Note that the file must be readable by
+            // the MySQL service.
+            //
+            // TODO: consider using the named pipe (FIFO)
+
+            string const filePath =
+                config->qservMasterDatabaseTmpDir() + "/" + database() + "_" +
+                to_string(request->chunk()) +
+                (_hasTransactions ? "_p" + to_string(_transactionId) : "");
+
+            ofstream f(filePath);
+            if (not f.good()) {
+                throw runtime_error(
+                        typeName() + "::" + string(__func__) +
+                        "  failed to open/create file: " + filePath);
+            }
+            f << request->responseData().data;
+            f.close();
+
+            // Open the database connection if this is the first batch of data
+            if (nullptr == _conn) {
+                _conn = database::mysql::Connection::open(
+                    database::mysql::ConnectionParams(
+                        config->qservMasterDatabaseHost(),
+                        config->qservMasterDatabasePort(),
+                        "root",
+                        Configuration::qservMasterDatabasePassword(),
+                        "qservMeta"
+                    )
+                );
+            }
+            string const query =
+                "LOAD DATA INFILE " + _conn->sqlValue(filePath) +
+                " INTO TABLE " + _conn->sqlId(_destinationPath) +
+                (_hasTransactions ? " PARTITION " + _conn->sqlId("p" + to_string(_transactionId)) : "");
+
+            _conn->execute([&](decltype(_conn) conn) {
+                conn->begin();
+                conn->execute(query);
+                conn->commit();
+            });
+            
+            // Make the best attempt to get rid of the temporary file. Ignore any errors
+            // for now. Just report them.
+            boost::system::error_code ec;
+            fs::remove(fs::path(filePath), ec);
+            if (ec.value() != 0) {
+                LOGS(_log, LOG_LVL_ERROR, context() << "::" << __func__ << "  "
+                     << "failed to remove the temporary file '" << filePath);
+            }
             break;
         }
         default:
             throw range_error(
                     typeName() + "::" + string(__func__) +
-                    "  unhandled value of the parameter");
+                    "  unsupported destination: " + toString(_destination));
     }
 }
 
@@ -439,5 +510,16 @@ list<IndexRequest::Ptr> IndexJob::_launchRequests(util::Lock const& lock,
     }
     return requests;
 }
+
+
+void IndexJob::_rollbackTransaction(string const& func) {
+    try {
+        if ((nullptr != _conn) and _conn->inTransaction()) _conn->rollback(); 
+    } catch (exception const& ex) {
+        LOGS(_log, LOG_LVL_ERROR, context() << func
+             << "  transaction rollback failed, ex: " << ex.what());
+    }
+}
+
 
 }}} // namespace lsst::qserv::replica
