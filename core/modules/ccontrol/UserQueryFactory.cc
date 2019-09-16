@@ -252,7 +252,8 @@ UserQueryFactory::newUserQuery(std::string const& aQuery,
             return std::make_shared<UserQueryInvalid>(exc.what());
         }
     } else if (UserQueryType::isCall(query)) {
-        auto parser = parser::Antlr4Parser::create(query, _userQuerySharedResources->makeUserQueryResources(userQueryId, resultDb));
+        auto parser = std::make_shared<parser::Antlr4Parser>(query,
+            _userQuerySharedResources->makeUserQueryResources(userQueryId, resultDb));
         parser->run();
         return parser->getUserQuery();
     } else {

@@ -61,7 +61,7 @@ namespace parser {
 
 class Antlr4Parser {
 public:
-    static std::shared_ptr<Antlr4Parser> create(std::string const & q, std::shared_ptr<ccontrol::UserQueryResources> queryResources);
+    Antlr4Parser(std::string const& q, std::shared_ptr<ccontrol::UserQueryResources> const& queryResources);
 
     void run();
 
@@ -70,7 +70,6 @@ public:
     std::shared_ptr<ccontrol::UserQuery> getUserQuery();
 
 private:
-    Antlr4Parser(std::string const& q, std::shared_ptr<ccontrol::UserQueryResources> const& queryResources);
 
     std::string _statement;
     std::shared_ptr<ccontrol::UserQueryResources> _queryResources;

@@ -128,13 +128,6 @@ private:
 };
 
 
-
-std::shared_ptr<Antlr4Parser> Antlr4Parser::create(std::string const & q,
-                                                   std::shared_ptr<ccontrol::UserQueryResources> queryResources) {
-    return std::shared_ptr<Antlr4Parser>(new Antlr4Parser(q, queryResources));
-}
-
-
 void Antlr4Parser::run() {
     _listener = std::make_shared<ccontrol::QSMySqlListener>(_statement, _queryResources);
     using namespace antlr4;
@@ -181,7 +174,7 @@ std::shared_ptr<query::SelectStmt> SelectParser::makeSelectStmt(std::string cons
 
 SelectParser::SelectParser(std::string const& statement)
     :_statement(statement) {
-    _aParser = Antlr4Parser::create(_statement, nullptr);
+    _aParser = std::make_shared<parser::Antlr4Parser>(_statement, nullptr);
     _aParser->run();
 }
 
