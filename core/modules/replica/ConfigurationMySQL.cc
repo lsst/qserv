@@ -113,6 +113,8 @@ string ConfigurationMySQL::dump2init(ConfigurationIFace::Ptr const& config) {
     ::configInsert(str, "controller", "job_heartbeat_sec",          config->jobHeartbeatTimeoutSec());
     ::configInsert(str, "controller", "empty_chunks_dir",           config->controllerEmptyChunksDir());
     ::configInsert(str, "database",   "services_pool_size",         config->databaseServicesPoolSize());
+    ::configInsert(str, "database",   "qserv_master_services_pool_size", config->qservMasterDatabaseServicesPoolSize());
+    ::configInsert(str, "database",   "qserv_master_tmp_dir",       config->qservMasterDatabaseTmpDir());
     ::configInsert(str, "xrootd",     "auto_notify",                config->xrootdAutoNotify() ? 1 : 0);
     ::configInsert(str, "xrootd",     "host",                       config->xrootdHost());
     ::configInsert(str, "xrootd",     "port",                       config->xrootdPort());
@@ -1246,7 +1248,7 @@ void ConfigurationMySQL::_loadConfigurationImpl(database::mysql::Connection::Ptr
         ::tryParameter(row, "database", "qserv_master_name",     _qservMasterDatabaseName) or
 
         ::tryParameter(row, "database", "qserv_master_services_pool_size", _qservMasterDatabaseServicesPoolSize) or
-        ::tryParameter(row, "database", "qserv_master_tmp_dir",  _qservMasterDatabaseName) or
+        ::tryParameter(row, "database", "qserv_master_tmp_dir",  _qservMasterDatabaseTmpDir) or
 
         ::tryParameter(row, "xrootd", "auto_notify",         _xrootdAutoNotify) or
         ::tryParameter(row, "xrootd", "host",                _xrootdHost) or

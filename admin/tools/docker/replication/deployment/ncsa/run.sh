@@ -53,6 +53,7 @@ docker run \
     -v /etc/passwd:/etc/passwd:ro \
     -v ${CONFIG_DIR}:/qserv/replication/config:ro \
     -v ${WORK_DIR}:/qserv/work \
+    -v "${QSERV_DATA_DIR}/ingest:${QSERV_DATA_DIR}/ingest" \
     -e "TOOL=${TOOL}" \
     -e "PARAMETERS=${PARAMETERS}" \
     -e "LSST_LOG_CONFIG=${LSST_LOG_CONFIG}" \

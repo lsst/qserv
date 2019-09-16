@@ -105,6 +105,7 @@ if [ -n "${MASTER_CONTROLLER}" ]; then
         -v /etc/passwd:/etc/passwd:ro \
         -v ${WORK_DIR}:${WORK_DIR} \
         -v "${QSERV_DATA_DIR}/qserv:${QSERV_DATA_DIR}/qserv" \
+        -v "${QSERV_DATA_DIR}/ingest:${QSERV_DATA_DIR}/ingest" \
         -v ${CONFIG_DIR}:/qserv/replication/config:ro \
         -v ${LOG_DIR}:${LOG_DIR} \
         -e "TOOL=qserv-replica-master-http" \
