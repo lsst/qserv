@@ -66,23 +66,8 @@
 
 
 namespace {
-LOG_LOGGER _log = LOG_GET("lsst.qserv.parser.SelectParser");
 
-// For the current query, this returns a list where each pair contains a bit of the string from the query
-// and how antlr4 tokenized that bit of string. It is useful for debugging problems where antlr4 did not
-// parse a query as expected, in the case where the string was not tokenized as expected.
-typedef std::vector<std::pair<std::string, std::string>> VecPairStr;
-VecPairStr getTokenPairs(antlr4::CommonTokenStream & tokens, QSMySqlLexer & lexer) {
-    VecPairStr ret;
-    for (auto&& t : tokens.getTokens()) {
-        std::string name = lexer.getVocabulary().getSymbolicName(t->getType());
-        if (name.empty()) {
-            name = lexer.getVocabulary().getLiteralName(t->getType());
-        }
-        ret.push_back(make_pair(std::move(name), t->getText()));
-    }
-    return ret;
-}
+LOG_LOGGER _log = LOG_GET("lsst.qserv.parser.SelectParser");
 
 }
 
@@ -151,15 +136,13 @@ std::shared_ptr<Antlr4Parser> Antlr4Parser::create(std::string const & q,
 
 
 void Antlr4Parser::run() {
-    _listener = std::make_shared<ccontrol::QSMySqlListener>(
-            std::static_pointer_cast<ccontrol::ListenerDebugHelper>(shared_from_this()),
-            _queryResources);
+    _listener = std::make_shared<ccontrol::QSMySqlListener>(_statement, _queryResources);
     using namespace antlr4;
     ANTLRInputStream input(_statement);
     NonRecoveringQSMySqlLexer lexer(&input, _statement);
     CommonTokenStream tokens(&lexer);
     tokens.fill();
-    LOGS(_log, LOG_LVL_TRACE, "Parsed tokens:" << util::printable(getTokenPairs(tokens, lexer)));
+//    LOGS(_log, LOG_LVL_TRACE, "Parsed tokens:" << util::printable(getTokenPairs(tokens, lexer)));
     QSMySqlParser parser(&tokens);
     parser.setErrorHandler(std::make_shared<Antlr4ErrorStrategy>(_statement));
     tree::ParseTree *tree = parser.root();
@@ -176,37 +159,6 @@ query::SelectStmt::Ptr Antlr4Parser::getStatement() {
 
 std::shared_ptr<ccontrol::UserQuery> Antlr4Parser::getUserQuery() {
     return _listener->getUserQuery();
-}
-
-
-// TODO these funcs can probably be written with less code duplication
-// and also without stringstream
-std::string Antlr4Parser::getStringTree() const {
-    using namespace antlr4;
-    ANTLRInputStream input(_statement);
-    QSMySqlLexer lexer(&input);
-    CommonTokenStream tokens(&lexer);
-    tokens.fill();
-    QSMySqlParser parser(&tokens);
-    tree::ParseTree *tree = parser.root();
-    return tree->toStringTree(&parser);
-}
-
-
-std::string Antlr4Parser::getTokens() const {
-    using namespace antlr4;
-    ANTLRInputStream input(_statement);
-    QSMySqlLexer lexer(&input);
-    CommonTokenStream tokens(&lexer);
-    tokens.fill();
-    std::ostringstream t;
-    t << util::printable(getTokenPairs(tokens, lexer));
-    return t.str();
-}
-
-
-std::string Antlr4Parser::getStatementString() const {
-    return _statement;
 }
 
 

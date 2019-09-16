@@ -51,6 +51,24 @@ namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.ccontrol.QSMySqlListener");
 
+
+// For the current query, this returns a list where each pair contains a bit of the string from the query
+// and how antlr4 tokenized that bit of string. It is useful for debugging problems where antlr4 did not
+// parse a query as expected, in the case where the string was not tokenized as expected.
+typedef std::vector<std::pair<std::string, std::string>> VecPairStr;
+VecPairStr getTokenPairs(antlr4::CommonTokenStream & tokens, QSMySqlLexer & lexer) {
+    VecPairStr ret;
+    for (auto&& t : tokens.getTokens()) {
+        std::string name = lexer.getVocabulary().getSymbolicName(t->getType());
+        if (name.empty()) {
+            name = lexer.getVocabulary().getLiteralName(t->getType());
+        }
+        ret.push_back(make_pair(std::move(name), t->getText()));
+    }
+    return ret;
+}
+
+
 } // end namespace
 
 
@@ -144,9 +162,9 @@ namespace ccontrol {
 /// QSMySqlListener impl
 
 
-QSMySqlListener::QSMySqlListener(shared_ptr<ListenerDebugHelper> const & listenerDebugHelper,
+QSMySqlListener::QSMySqlListener(std::string const& statement,
                                  shared_ptr<ccontrol::UserQueryResources> queryResources)
-    : _listenerDebugHelper(listenerDebugHelper), _queryResources(queryResources)
+    : _statement(statement), _queryResources(queryResources)
 {}
 
 
@@ -223,28 +241,33 @@ void QSMySqlListener::exitRoot(QSMySqlParser::RootContext* ctx) {
 
 
 string QSMySqlListener::getStringTree() const {
-    auto ldh = _listenerDebugHelper.lock();
-    if (ldh != nullptr) {
-        return ldh->getStringTree();
-    }
-    return "unexpected null listener debug helper.";
+    using namespace antlr4;
+    ANTLRInputStream input(_statement);
+    QSMySqlLexer lexer(&input);
+    CommonTokenStream tokens(&lexer);
+    tokens.fill();
+    QSMySqlParser parser(&tokens);
+    tree::ParseTree *tree = parser.root();
+    return tree->toStringTree(&parser);
 }
+
 
 string QSMySqlListener::getTokens() const {
-    auto ldh = _listenerDebugHelper.lock();
-    if (ldh != nullptr) {
-        return ldh->getTokens();
-    }
-    return "unexpected null listener debug helper.";
+    using namespace antlr4;
+    ANTLRInputStream input(_statement);
+    QSMySqlLexer lexer(&input);
+    CommonTokenStream tokens(&lexer);
+    tokens.fill();
+    std::ostringstream t;
+    t << util::printable(getTokenPairs(tokens, lexer));
+    return t.str();
 }
 
+
 string QSMySqlListener::getStatementString() const {
-    auto ldh = _listenerDebugHelper.lock();
-    if (ldh != nullptr) {
-        return ldh->getStatementString();
-    }
-    return "unexpected null listener debug helper.";
+    return _statement;
 }
+
 
 void QSMySqlListener::assertExecutionCondition(string const& function, bool condition, string const& message,
         antlr4::ParserRuleContext* ctx) const {
@@ -256,12 +279,7 @@ void QSMySqlListener::assertExecutionCondition(string const& function, bool cond
     msg << "Execution condition assertion failure:";
     msg << "QSMySqlListener::" << function;
     msg << " messsage:\"" << message << "\"";
-    auto listenerDebugHelper = _listenerDebugHelper.lock();
-    if (nullptr == listenerDebugHelper) {
-        msg << ", in query:" << "could not lock debug helper to get query string";
-    } else {
-        msg << ", in query:" << getStatementString();
-    }
+    msg << ", in query:" << _statement;
     msg << ", in or around query segment: '" << queryString << "'";
     msg << ", with adapter stack:" << adapterStackToString();
     msg << ", string tree:" << getStringTree();
@@ -269,6 +287,7 @@ void QSMySqlListener::assertExecutionCondition(string const& function, bool cond
     LOGS(_log, LOG_LVL_ERROR, msg.str());
     throw parser::adapter_execution_error("Error parsing query, near \"" + queryString + "\"");
 }
+
 
 IGNORED(SqlStatements)
 IGNORED(SqlStatement)

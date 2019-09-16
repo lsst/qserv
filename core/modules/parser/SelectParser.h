@@ -36,7 +36,6 @@
 #include <sstream>
 
 // Qserv headers
-#include "ccontrol/ListenerDebugHelper.h"
 #include "util/common.h"
 
 // Forward declarations
@@ -60,7 +59,7 @@ namespace qserv {
 namespace parser {
 
 
-class Antlr4Parser : public ccontrol::ListenerDebugHelper, public std::enable_shared_from_this<Antlr4Parser> {
+class Antlr4Parser {
 public:
     static std::shared_ptr<Antlr4Parser> create(std::string const & q, std::shared_ptr<ccontrol::UserQueryResources> queryResources);
 
@@ -69,12 +68,6 @@ public:
     std::shared_ptr<query::SelectStmt> getStatement();
 
     std::shared_ptr<ccontrol::UserQuery> getUserQuery();
-
-    std::string getStringTree() const override;
-
-    std::string getTokens() const override;
-
-    std::string getStatementString() const override;
 
 private:
     Antlr4Parser(std::string const& q, std::shared_ptr<ccontrol::UserQueryResources> const& queryResources);

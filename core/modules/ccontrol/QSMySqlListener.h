@@ -27,7 +27,6 @@
 #include <memory>
 #include <stack>
 
-#include "ccontrol/ListenerDebugHelper.h"
 #include "parser/QSMySqlParser.h" // included for contexts. They *could* be forward declared.
 #include "parser/QSMySqlParserBaseListener.h"
 
@@ -57,7 +56,7 @@ namespace ccontrol {
 
 class QSMySqlListener : public QSMySqlParserListener {
 public:
-    QSMySqlListener(std::shared_ptr<ListenerDebugHelper> const & listenerDebugHelper,
+    QSMySqlListener(std::string const& statement,
                     std::shared_ptr<ccontrol::UserQueryResources> queryResources);
     virtual ~QSMySqlListener() {}
 
@@ -81,6 +80,8 @@ public:
     std::shared_ptr<ccontrol::UserQueryResources> getQueryResources() const { return _queryResources; }
 
 protected:
+
+
 
     virtual void enterRoot(QSMySqlParser::RootContext * /*ctx*/) override;
     virtual void exitRoot(QSMySqlParser::RootContext * /*ctx*/) override;
@@ -1682,8 +1683,7 @@ private:
     template<typename ChildAdapter>
     std::shared_ptr<ChildAdapter> adapterStackTop() const;
 
-    std::weak_ptr<ListenerDebugHelper> _listenerDebugHelper;
-
+    std::string _statement;
     std::shared_ptr<ccontrol::UserQueryResources> _queryResources;
 };
 
