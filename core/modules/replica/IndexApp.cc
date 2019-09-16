@@ -101,6 +101,11 @@ IndexApp::IndexApp(int argc, char* argv[])
         _allWorkers);
 
     parser().option(
+        "qserv-db-password",
+        "A password for the MySQL 'root' account of the Qserv master database.",
+        _qservDbRootPassword);
+
+    parser().option(
         "worker-response-timeout",
         "Maximum timeout (seconds) to wait before the index data extraction requests sent"
         " to workers will finish. Setting this timeout to some reasonably low number would"
@@ -128,6 +133,8 @@ IndexApp::IndexApp(int argc, char* argv[])
 
 int IndexApp::runImpl() {
 
+    Configuration::setQservMasterDatabasePassword(_qservDbRootPassword);
+
     auto controller = Controller::create(serviceProvider());
 
     // Limit execution timeout for requests if such limit was provided
@@ -137,7 +144,7 @@ int IndexApp::runImpl() {
 
     auto const job = IndexJob::create(
         _database,
-        _allWorkers,
+        _transactionId != numeric_limits<uint32_t>::max(),
         _transactionId,
         _allWorkers,
         IndexJob::fromString(_destination),

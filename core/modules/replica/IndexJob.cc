@@ -448,8 +448,7 @@ void IndexJob::_processRequestData(util::Lock const& lock,
             }
             string const query =
                 "LOAD DATA INFILE " + _conn->sqlValue(filePath) +
-                " INTO TABLE " + _conn->sqlId(_destinationPath) +
-                (_hasTransactions ? " PARTITION " + _conn->sqlId("p" + to_string(_transactionId)) : "");
+                " INTO TABLE " + _conn->sqlId(_destinationPath);
 
             _conn->execute([&](decltype(_conn) conn) {
                 conn->begin();

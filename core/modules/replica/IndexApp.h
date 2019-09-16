@@ -87,6 +87,9 @@ private:
     /// the destination type).
     std::string _destinationPath;
 
+    /// A password for the MySQL 'root' account of the Qserv master database
+    std::string _qservDbRootPassword;
+
     /// The flag which if set allows selecting all workers for the operation
     bool _allWorkers = false;
 
