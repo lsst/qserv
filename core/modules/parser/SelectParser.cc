@@ -150,14 +150,10 @@ std::shared_ptr<Antlr4Parser> Antlr4Parser::create(std::string const & q,
 }
 
 
-void Antlr4Parser::setup() {
+void Antlr4Parser::run() {
     _listener = std::make_shared<ccontrol::QSMySqlListener>(
             std::static_pointer_cast<ccontrol::ListenerDebugHelper>(shared_from_this()),
             _queryResources);
-}
-
-
-void Antlr4Parser::run() {
     using namespace antlr4;
     ANTLRInputStream input(_statement);
     NonRecoveringQSMySqlLexer lexer(&input, _statement);
@@ -234,7 +230,6 @@ std::shared_ptr<query::SelectStmt> SelectParser::makeSelectStmt(std::string cons
 SelectParser::SelectParser(std::string const& statement)
     :_statement(statement) {
     _aParser = Antlr4Parser::create(_statement, nullptr);
-    _aParser->setup();
     _aParser->run();
 }
 

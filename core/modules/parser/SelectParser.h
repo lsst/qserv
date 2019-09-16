@@ -64,8 +64,6 @@ class Antlr4Parser : public ccontrol::ListenerDebugHelper, public std::enable_sh
 public:
     static std::shared_ptr<Antlr4Parser> create(std::string const & q, std::shared_ptr<ccontrol::UserQueryResources> queryResources);
 
-    void setup();
-
     void run();
 
     std::shared_ptr<query::SelectStmt> getStatement();
