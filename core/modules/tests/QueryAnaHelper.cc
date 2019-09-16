@@ -65,7 +65,7 @@ namespace qserv {
 namespace tests {
 
 SelectParser::Ptr QueryAnaHelper::getParser(std::string const & stmt) {
-    auto p = SelectParser::newInstance(stmt);
+    auto p = std::make_shared<parser::SelectParser>(stmt);
     return p;
 }
 

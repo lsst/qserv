@@ -119,12 +119,9 @@ private:
 /// representation, without any furhter analysis or annotation.
 class SelectParser {
 public:
-    typedef std::shared_ptr<SelectParser> Ptr;
+    SelectParser(std::string const& statement);
 
-    /// Create a new instance of the SelectParser, that will use the specified parser code (using version 2
-    /// or version 4) to parse the statement.
-    /// Does not throw.
-    static Ptr newInstance(std::string const& statement);
+    typedef std::shared_ptr<SelectParser> Ptr;
 
     /// Convenience function to get a SelectStatement.
     /// This function calls SelectParser::setup; so it may throw any exception thrown by that function.
@@ -136,7 +133,6 @@ public:
     std::shared_ptr<query::SelectStmt> getSelectStmt();
 
 private:
-    SelectParser(std::string const& statement);
 
     std::string const _statement;
     std::shared_ptr<query::SelectStmt> _selectStmt;

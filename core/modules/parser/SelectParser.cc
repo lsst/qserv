@@ -277,13 +277,8 @@ Antlr4Parser::Antlr4Parser(std::string const& q,
 ////////////////////////////////////////////////////////////////////////
 
 
-SelectParser::Ptr SelectParser::newInstance(std::string const& statement) {
-    return std::shared_ptr<SelectParser>(new SelectParser(statement));
-}
-
-
 std::shared_ptr<query::SelectStmt> SelectParser::makeSelectStmt(std::string const& statement) {
-    auto parser = newInstance(statement);
+    auto parser = std::make_shared<parser::SelectParser>(statement);
     return parser->getSelectStmt();
 }
 

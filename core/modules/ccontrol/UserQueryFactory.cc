@@ -151,7 +151,7 @@ UserQueryFactory::newUserQuery(std::string const& aQuery,
 
         parser::SelectParser::Ptr parser;
         try {
-            parser = parser::SelectParser::newInstance(query);
+            parser = std::make_shared<parser::SelectParser>(query);
         } catch (parser::ParseException& e) {
             return std::make_shared<UserQueryInvalid>(std::string("ParseException:") + e.what());
         }
