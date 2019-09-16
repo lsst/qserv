@@ -48,7 +48,7 @@ namespace ccontrol {
     class UserQueryResources;
 }
 namespace parser {
-    class AntlrParser; // Internally-defined in SelectParser.cc
+    class Antlr4Parser; // Internally-defined in SelectParser.cc
 }
 namespace query {
     class SelectStmt;
@@ -60,24 +60,15 @@ namespace qserv {
 namespace parser {
 
 
-class AntlrParser {
-public:
-    virtual ~AntlrParser() {}
-    virtual void setup() = 0;
-    virtual void run() = 0;
-    virtual std::shared_ptr<query::SelectStmt> getStatement() = 0;
-};
-
-
-class Antlr4Parser : public AntlrParser, public ccontrol::ListenerDebugHelper, public std::enable_shared_from_this<Antlr4Parser> {
+class Antlr4Parser : public ccontrol::ListenerDebugHelper, public std::enable_shared_from_this<Antlr4Parser> {
 public:
     static std::shared_ptr<Antlr4Parser> create(std::string const & q, std::shared_ptr<ccontrol::UserQueryResources> queryResources);
 
-    void setup() override;
+    void setup();
 
-    void run() override;
+    void run();
 
-    std::shared_ptr<query::SelectStmt> getStatement() override;
+    std::shared_ptr<query::SelectStmt> getStatement();
 
     std::shared_ptr<ccontrol::UserQuery> getUserQuery();
 
@@ -123,7 +114,7 @@ private:
 
     std::string const _statement;
     std::shared_ptr<query::SelectStmt> _selectStmt;
-    std::shared_ptr<AntlrParser> _aParser;
+    std::shared_ptr<Antlr4Parser> _aParser;
 };
 
 
