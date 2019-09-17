@@ -608,7 +608,7 @@ private:
             } else {
                 throw parser::adapter_execution_error("Unhandled restrictor function: " + function);
             }
-        } catch (std::logic_error err) {
+        } catch (std::logic_error const& err) {
             throw parser::adapter_execution_error(err.what());
         }
         _getWhereClause()->addAreaRestrictor(restrictor);
