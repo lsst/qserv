@@ -46,8 +46,8 @@
 #include "lsst/log/Log.h"
 
 // Qserv headers
-#include "ccontrol/FactoryHelpers.h"
 #include "ccontrol/ParseAdaptersCBH.h"
+#include "ccontrol/ParseHelpers.h"
 #include "ccontrol/ParserListener.h"
 #include "ccontrol/UserQueryQservManager.h"
 #include "parser/ParseException.h"
