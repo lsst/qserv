@@ -91,7 +91,7 @@ public:
     std::string getResultQuery() const override;
 
 private:
-    std::string _value;
+    std::string const _value;
     std::string _resultTableName;
     std::shared_ptr<qdisp::MessageStore> _messageStore;
     std::shared_ptr<sql::SqlConnection> _resultDbConn;
