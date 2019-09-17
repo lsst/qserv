@@ -84,7 +84,7 @@ public:
     std::string getResultLocation() const override { return "table:" + _resultTableName; }
 
     /// @return get the SELECT statement to be executed by proxy
-    virtual std::string getResultQuery() const;
+    std::string getResultQuery() const override;
 
 private:
     std::string _value;
