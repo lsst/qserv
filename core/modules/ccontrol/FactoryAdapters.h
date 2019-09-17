@@ -79,10 +79,11 @@ namespace qserv {
 namespace ccontrol {
 
 
-// Adapter is the base class that represents a node in the antlr4 syntax tree. There is a one-to-one
-// relationship between types of adapter subclass and each variation of enter/exit functions that are the
-// result of the grammar defined in QSMySqlParser.g4 and the enter/exit functions that the antlr4 code generater
-// creates in MySqlParserBaseListener.
+// Adapter is the base class for factory classes that exist at nodes in the antlr4 parse tree. (The idea
+// behind the name "Adapter" is that each Adapter subclass "adapts" the parameters of the parse tree node to
+// a Qserv Intermediate Representation object instance).  There is a  one-to-one relationship between types
+// of Adapter subclass and each variation of enter/exit functions that are in MySqlParserBaseListener, which
+// are the result of the grammar defined in QSMySqlParser.g4
 class Adapter {
 public:
 
