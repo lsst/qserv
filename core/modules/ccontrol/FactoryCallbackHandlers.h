@@ -68,7 +68,12 @@ namespace qserv {
 namespace ccontrol {
 
 
-/// Callback Handler classes
+// Callback Handler (CBH) classes define the interface of a 'parent' ParseAdapter node that may be called
+// by the child node. This allows the child to call the parent with Qserv Intermediate Representation (IR)
+// object instance(s) that it or its children created. The result is that as the listener finishes walking
+// parts of the parse tree, the IR migrates 'up' to the root Adapter node, and results in a complete IR
+// hierarchy that represents the given SQL statement.
+
 
 class BaseCBH {
 public:
