@@ -26,20 +26,26 @@
 #define LSST_QSERV_CCONTROL_PARSEADAPTERS
 
 
+// System headers
 #include <memory>
 #include <sstream>
 #include <ostream>
 #include <string>
 
-// these must be included before Log.h because they have a function called LOGS
-// that conflicts with the LOGS macro defined in Log.h
+// Third-party headers
+#include <boost/algorithm/string/case_conv.hpp>
+
+// These antlr-related files must be included before Log.h because antlr4 has a function called LOGS that
+// conflicts with the LOGS macro defined in Log.h
 #include "antlr4-runtime.h"
 #include "parser/QSMySqlLexer.h"
 #include "parser/QSMySqlParser.h"
 #include "parser/QSMySqlParserListener.h"
 
+// LSST headers
 #include "lsst/log/Log.h"
 
+// Qserv headers
 #include "ccontrol/FactoryHelpers.h"
 #include "ccontrol/ParseAdaptersCBH.h"
 #include "ccontrol/ParserListener.h"
@@ -586,9 +592,7 @@ private:
         }
 
         // Add case insensitive behavior in order to mimic MySQL functions/procedures
-        std::string insensitiveFunction(function);
-        transform(insensitiveFunction.begin(), insensitiveFunction.end(),
-                        insensitiveFunction.begin(), ::tolower);
+        std::string insensitiveFunction = boost::algorithm::to_lower_copy(function);
         LOGS(_log, LOG_LVL_TRACE, "Qserv restrictor changed to lower-case: " << insensitiveFunction);
 
         std::shared_ptr<query::AreaRestrictor> restrictor;
