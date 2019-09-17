@@ -35,8 +35,8 @@
 
 // Qserv headers
 #include "ccontrol/UserQuery.h"
-#include "ccontrol/UserQueryResources.h"
 #include "ccontrol/UserQueryError.h"
+#include "ccontrol/UserQueryResources.h"
 #include "ccontrol/QueryState.h"
 #include "global/intTypes.h"
 
