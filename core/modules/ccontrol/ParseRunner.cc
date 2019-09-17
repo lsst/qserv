@@ -34,7 +34,7 @@
 // these must be included before Log.h because they have a function called LOGS
 // that conflicts with the LOGS macro defined in Log.h
 #include "antlr4-runtime.h"
-#include "ccontrol/QSMySqlListener.h"
+#include "ccontrol/ParserListener.h"
 #include "parser/QSMySqlLexer.h"
 #include "parser/QSMySqlParser.h"
 
@@ -126,13 +126,13 @@ ParseRunner::ParseRunner(std::string const& statement,
 
 
 void ParseRunner::run() {
-    _listener = std::make_shared<QSMySqlListener>(_statement, _queryResources);
+    _listener = std::make_shared<ParserListener>(_statement, _queryResources);
     using namespace antlr4;
     ANTLRInputStream input(_statement);
     NonRecoveringQSMySqlLexer lexer(&input, _statement);
     CommonTokenStream tokens(&lexer);
     tokens.fill();
-    LOGS(_log, LOG_LVL_TRACE, "Parsed tokens:" << util::printable(QSMySqlListener::getTokenPairs(tokens, lexer)));
+    LOGS(_log, LOG_LVL_TRACE, "Parsed tokens:" << util::printable(ParserListener::getTokenPairs(tokens, lexer)));
     QSMySqlParser parser(&tokens);
     parser.setErrorHandler(std::make_shared<Antlr4ErrorStrategy>(_statement));
     tree::ParseTree *tree = parser.root();

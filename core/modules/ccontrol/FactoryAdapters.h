@@ -42,7 +42,7 @@
 
 #include "ccontrol/FactoryCallbackHandlers.h"
 #include "ccontrol/FactoryHelpers.h"
-#include "ccontrol/QSMySqlListener.h"
+#include "ccontrol/ParserListener.h"
 #include "ccontrol/UserQueryQservManager.h"
 #include "parser/ParseException.h"
 #include "query/AndTerm.h"
@@ -198,8 +198,8 @@ protected:
 template <typename CBH, typename CTX>
 class AdapterT : public Adapter {
 public:
-    AdapterT(std::shared_ptr<CBH> const& parent, CTX * ctx, QSMySqlListener const * const listener)
-    : _ctx(ctx), qsMySqlListener(listener), _parent(parent) {}
+    AdapterT(std::shared_ptr<CBH> const& parent, CTX * ctx, ParserListener const * const listener)
+    : _ctx(ctx), parserListener(listener), _parent(parent) {}
 
 protected:
     std::shared_ptr<CBH> lockedParent() {
@@ -211,19 +211,19 @@ protected:
 
     CTX* _ctx;
 
-    // Used for error messages, uses the QSMySqlListener to get a list of the names of the adapters in the
+    // Used for error messages, uses the ParserListener to get a list of the names of the adapters in the
     // adapter stack,
-    std::string adapterStackToString() const { return qsMySqlListener->adapterStackToString(); }
-    std::string getStringTree() const { return qsMySqlListener->getStringTree(); }
-    std::string getTokens() const { return qsMySqlListener->getTokens(); }
-    std::string getStatementString() const { return qsMySqlListener->getStatementString(); }
+    std::string adapterStackToString() const { return parserListener->adapterStackToString(); }
+    std::string getStringTree() const { return parserListener->getStringTree(); }
+    std::string getTokens() const { return parserListener->getTokens(); }
+    std::string getStatementString() const { return parserListener->getStatementString(); }
 
-    std::shared_ptr<ccontrol::UserQueryResources> getQueryResources() const { return qsMySqlListener->getQueryResources(); }
+    std::shared_ptr<ccontrol::UserQueryResources> getQueryResources() const { return parserListener->getQueryResources(); }
 
 private:
-    // Mostly the QSMySqlListener is not used by adapters. It is needed to get the adapter stack list for
+    // Mostly the ParserListener is not used by adapters. It is needed to get the adapter stack list for
     // error messages.
-    QSMySqlListener const * const qsMySqlListener;
+    ParserListener const * const parserListener;
 
     std::weak_ptr<CBH> _parent;
 };
@@ -235,7 +235,7 @@ class RootAdapter :
 public:
     RootAdapter()
     : _ctx(nullptr)
-    , qsMySqlListener(nullptr)
+    , parserListener(nullptr)
     {}
 
     std::shared_ptr<query::SelectStmt> const& getSelectStatement() { return _selectStatement; }
@@ -258,10 +258,10 @@ public:
         // MINUSMINUS (ignored, it indicates a comment)
     }
 
-    virtual void onEnter(QSMySqlParser::RootContext* ctx, QSMySqlListener const * const listener) {
+    virtual void onEnter(QSMySqlParser::RootContext* ctx, ParserListener const * const listener) {
         _ctx = ctx;
         checkContext();
-        qsMySqlListener = listener;
+        parserListener = listener;
     }
 
     void onExit() override {
@@ -271,16 +271,16 @@ public:
 
     std::string name() const override { return getTypeName(this); }
 
-    std::string adapterStackToString() const override { return qsMySqlListener->adapterStackToString(); }
-    std::string getStringTree() const override { return qsMySqlListener->getStringTree(); }
-    std::string getTokens() const override { return qsMySqlListener->getTokens(); }
-    std::string getStatementString() const override { return qsMySqlListener->getStatementString(); }
+    std::string adapterStackToString() const override { return parserListener->adapterStackToString(); }
+    std::string getStringTree() const override { return parserListener->getStringTree(); }
+    std::string getTokens() const override { return parserListener->getTokens(); }
+    std::string getStatementString() const override { return parserListener->getStatementString(); }
 
 private:
     std::shared_ptr<query::SelectStmt> _selectStatement;
     std::shared_ptr<ccontrol::UserQuery> _userQuery;
     QSMySqlParser::RootContext* _ctx;
-    QSMySqlListener const * qsMySqlListener;
+    ParserListener const * parserListener;
 };
 
 

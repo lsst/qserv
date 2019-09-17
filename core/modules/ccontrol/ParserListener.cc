@@ -21,7 +21,7 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-#include "ccontrol/QSMySqlListener.h"
+#include "ccontrol/ParserListener.h"
 
 #include <sstream>
 #include <string>
@@ -49,21 +49,21 @@ using namespace std;
 
 namespace {
 
-LOG_LOGGER _log = LOG_GET("lsst.qserv.ccontrol.QSMySqlListener");
+LOG_LOGGER _log = LOG_GET("lsst.qserv.ccontrol.ParserListener");
 
 } // end namespace
 
 
 // This macro creates the enterXXX and exitXXX function definitions, for functions declared in
-// QSMySqlListener.h; the enter function pushes the adapter onto the stack (with parent from top of the
+// ParserListener.h; the enter function pushes the adapter onto the stack (with parent from top of the
 // stack), and the exit function pops the adapter from the top of the stack.
 #define ENTER_EXIT_PARENT(NAME) \
-void QSMySqlListener::enter##NAME(QSMySqlParser::NAME##Context* ctx) { \
+void ParserListener::enter##NAME(QSMySqlParser::NAME##Context* ctx) { \
     LOGS(_log, LOG_LVL_TRACE, __FUNCTION__ << " '" << getQueryString(ctx) << "'"); \
     pushAdapterStack<NAME##CBH, NAME##Adapter, QSMySqlParser::NAME##Context>(ctx); \
 } \
 \
-void QSMySqlListener::exit##NAME(QSMySqlParser::NAME##Context* ctx) { \
+void ParserListener::exit##NAME(QSMySqlParser::NAME##Context* ctx) { \
     LOGS(_log, LOG_LVL_TRACE, __FUNCTION__); \
     popAdapterStack<NAME##Adapter>(ctx); \
 } \
@@ -74,23 +74,23 @@ void QSMySqlListener::exit##NAME(QSMySqlParser::NAME##Context* ctx) { \
 // function throws an adapter_order_error so that if the grammar element is unexpectedly entered the query
 // parsing will abort.
 #define UNHANDLED(NAME) \
-void QSMySqlListener::enter##NAME(QSMySqlParser::NAME##Context* ctx) { \
+void ParserListener::enter##NAME(QSMySqlParser::NAME##Context* ctx) { \
     LOGS(_log, LOG_LVL_ERROR, __FUNCTION__ << " is UNHANDLED for '" << getQueryString(ctx) << "'"); \
     throw parser::adapter_order_error("qserv can not parse query, near \"" + getQueryString(ctx) + "\""); \
 } \
 \
-void QSMySqlListener::exit##NAME(QSMySqlParser::NAME##Context* ctx) {}\
+void ParserListener::exit##NAME(QSMySqlParser::NAME##Context* ctx) {}\
 
 
 // This macro creates the enterXXX and exitXXX function definitions similar to ENTER_EXIT_PARENT but does not
 // push (or pop) an adapter on the stack. Other adapters are expected to handle the grammar element as may be
 // appropraite.
 #define IGNORED(NAME) \
-void QSMySqlListener::enter##NAME(QSMySqlParser::NAME##Context* ctx) { \
+void ParserListener::enter##NAME(QSMySqlParser::NAME##Context* ctx) { \
     LOGS(_log, LOG_LVL_TRACE, __FUNCTION__ << " is IGNORED"); \
 } \
 \
-void QSMySqlListener::exit##NAME(QSMySqlParser::NAME##Context* ctx) {\
+void ParserListener::exit##NAME(QSMySqlParser::NAME##Context* ctx) {\
     LOGS(_log, LOG_LVL_TRACE, __FUNCTION__ << " is IGNORED"); \
 } \
 
@@ -98,12 +98,12 @@ void QSMySqlListener::exit##NAME(QSMySqlParser::NAME##Context* ctx) {\
 // This macro is similar to IGNORED, but allows the enter message to log a specific warning message when it is
 // called.
 #define IGNORED_WARN(NAME, WARNING) \
-void QSMySqlListener::enter##NAME(QSMySqlParser::NAME##Context* ctx) { \
+void ParserListener::enter##NAME(QSMySqlParser::NAME##Context* ctx) { \
     LOGS(_log, LOG_LVL_WARN, \
             __FUNCTION__ << " is IGNORED, in '" << getQueryString(ctx) << "' warning:" << WARNING); \
 } \
 \
-void QSMySqlListener::exit##NAME(QSMySqlParser::NAME##Context* ctx) {\
+void ParserListener::exit##NAME(QSMySqlParser::NAME##Context* ctx) {\
     LOGS(_log, LOG_LVL_TRACE, \
         __FUNCTION__ << " is IGNORED, see warning in enter-function log entry, above."); \
 } \
@@ -141,7 +141,7 @@ namespace qserv {
 namespace ccontrol {
 
 
-QSMySqlListener::VecPairStr QSMySqlListener::getTokenPairs(antlr4::CommonTokenStream& tokens,
+ParserListener::VecPairStr ParserListener::getTokenPairs(antlr4::CommonTokenStream& tokens,
                                                            QSMySqlLexer const& lexer) {
     VecPairStr ret;
     for (auto const& t : tokens.getTokens()) {
@@ -155,18 +155,18 @@ QSMySqlListener::VecPairStr QSMySqlListener::getTokenPairs(antlr4::CommonTokenSt
 }
 
 
-QSMySqlListener::QSMySqlListener(std::string const& statement,
+ParserListener::ParserListener(std::string const& statement,
                                  shared_ptr<ccontrol::UserQueryResources> queryResources)
     : _statement(statement), _queryResources(queryResources)
 {}
 
 
-shared_ptr<query::SelectStmt> QSMySqlListener::getSelectStatement() const {
+shared_ptr<query::SelectStmt> ParserListener::getSelectStatement() const {
     return _rootAdapter->getSelectStatement();
 }
 
 
-shared_ptr<ccontrol::UserQuery> QSMySqlListener::getUserQuery() const {
+shared_ptr<ccontrol::UserQuery> ParserListener::getUserQuery() const {
     return _rootAdapter->getUserQuery();
 }
 
@@ -174,7 +174,7 @@ shared_ptr<ccontrol::UserQuery> QSMySqlListener::getUserQuery() const {
 // Create and push an Adapter onto the context stack, using the current top of the stack as a callback handler
 // for the new Adapter. Returns the new Adapter.
 template<typename ParentCBH, typename ChildAdapter, typename Context>
-shared_ptr<ChildAdapter> QSMySqlListener::pushAdapterStack(Context* ctx) {
+shared_ptr<ChildAdapter> ParserListener::pushAdapterStack(Context* ctx) {
     auto p = dynamic_pointer_cast<ParentCBH>(_adapterStack.back());
     ASSERT_EXECUTION_CONDITION(p != nullptr,
             "can't acquire expected Adapter `" +
@@ -190,7 +190,7 @@ shared_ptr<ChildAdapter> QSMySqlListener::pushAdapterStack(Context* ctx) {
 
 
 template<typename ChildAdapter>
-void QSMySqlListener::popAdapterStack(antlr4::ParserRuleContext* ctx) {
+void ParserListener::popAdapterStack(antlr4::ParserRuleContext* ctx) {
     shared_ptr<Adapter> adapterPtr = _adapterStack.back();
     adapterPtr->onExit();
     _adapterStack.pop_back();
@@ -208,7 +208,7 @@ void QSMySqlListener::popAdapterStack(antlr4::ParserRuleContext* ctx) {
 }
 
 
-string QSMySqlListener::adapterStackToString() const {
+string ParserListener::adapterStackToString() const {
     string ret;
     for (auto&& adapter : _adapterStack) {
         ret += adapter->name() + ", ";
@@ -216,10 +216,10 @@ string QSMySqlListener::adapterStackToString() const {
     return ret;
 }
 
-// QSMySqlListener class methods
+// ParserListener class methods
 
 
-void QSMySqlListener::enterRoot(QSMySqlParser::RootContext* ctx) {
+void ParserListener::enterRoot(QSMySqlParser::RootContext* ctx) {
     ASSERT_EXECUTION_CONDITION(_adapterStack.empty(),
             "RootAdatper should be the first entry on the stack.", ctx);
     _rootAdapter = make_shared<RootAdapter>();
@@ -228,12 +228,12 @@ void QSMySqlListener::enterRoot(QSMySqlParser::RootContext* ctx) {
 }
 
 
-void QSMySqlListener::exitRoot(QSMySqlParser::RootContext* ctx) {
+void ParserListener::exitRoot(QSMySqlParser::RootContext* ctx) {
     popAdapterStack<RootAdapter>(ctx);
 }
 
 
-string QSMySqlListener::getStringTree() const {
+string ParserListener::getStringTree() const {
     using namespace antlr4;
     ANTLRInputStream input(_statement);
     QSMySqlLexer lexer(&input);
@@ -245,7 +245,7 @@ string QSMySqlListener::getStringTree() const {
 }
 
 
-string QSMySqlListener::getTokens() const {
+string ParserListener::getTokens() const {
     using namespace antlr4;
     ANTLRInputStream input(_statement);
     QSMySqlLexer lexer(&input);
@@ -257,12 +257,12 @@ string QSMySqlListener::getTokens() const {
 }
 
 
-string QSMySqlListener::getStatementString() const {
+string ParserListener::getStatementString() const {
     return _statement;
 }
 
 
-void QSMySqlListener::assertExecutionCondition(string const& function, bool condition, string const& message,
+void ParserListener::assertExecutionCondition(string const& function, bool condition, string const& message,
         antlr4::ParserRuleContext* ctx) const {
     if (true == condition) {
         return;
@@ -270,7 +270,7 @@ void QSMySqlListener::assertExecutionCondition(string const& function, bool cond
     std::ostringstream msg;
     auto queryString = getQueryString(ctx);
     msg << "Execution condition assertion failure:";
-    msg << "QSMySqlListener::" << function;
+    msg << "ParserListener::" << function;
     msg << " messsage:\"" << message << "\"";
     msg << ", in query:" << _statement;
     msg << ", in or around query segment: '" << queryString << "'";
