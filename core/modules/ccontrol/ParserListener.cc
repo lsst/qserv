@@ -36,10 +36,10 @@
 
 #include "lsst/log/Log.h"
 
+#include "ccontrol/FactoryHelpers.h"
+#include "ccontrol/FactoryHelpers.h"
 #include "ccontrol/ParseAdapters.h"
-#include "ccontrol/FactoryHelpers.h"
-#include "ccontrol/FactoryCallbackHandlers.h"
-#include "ccontrol/FactoryHelpers.h"
+#include "ccontrol/ParseAdaptersCBH.h"
 #include "ccontrol/UserQuery.h"
 #include "parser/ParseException.h"
 

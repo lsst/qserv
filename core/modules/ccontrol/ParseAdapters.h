@@ -40,8 +40,8 @@
 
 #include "lsst/log/Log.h"
 
-#include "ccontrol/FactoryCallbackHandlers.h"
 #include "ccontrol/FactoryHelpers.h"
+#include "ccontrol/ParseAdaptersCBH.h"
 #include "ccontrol/ParserListener.h"
 #include "ccontrol/UserQueryQservManager.h"
 #include "parser/ParseException.h"
