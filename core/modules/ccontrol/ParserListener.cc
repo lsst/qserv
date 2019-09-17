@@ -36,7 +36,7 @@
 
 #include "lsst/log/Log.h"
 
-#include "ccontrol/FactoryAdapters.h"
+#include "ccontrol/ParseAdapters.h"
 #include "ccontrol/FactoryHelpers.h"
 #include "ccontrol/FactoryCallbackHandlers.h"
 #include "ccontrol/FactoryHelpers.h"

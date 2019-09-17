@@ -22,13 +22,13 @@
  */
 
 
-#include "ccontrol/FactoryAdapters.h"
+#include "ccontrol/ParseAdapters.h"
 
 
 namespace lsst {
 namespace qserv {
 namespace ccontrol {
 
-LOG_LOGGER Adapter::_log = LOG_GET("lsst.qserv.ccontrol.FactoryAdapters");
+LOG_LOGGER Adapter::_log = LOG_GET("lsst.qserv.ccontrol.ParseAdapters");
 
 }}} // lsst::qserv::ccontrol
