@@ -61,6 +61,10 @@ public:
 
     ~UserQueryQservManager() override = default;
 
+    UserQueryQservManager(UserQueryQservManager const&) = delete;
+
+    UserQueryQservManager& operator=(UserQueryQservManager const&) = delete;
+
     /// @return a non-empty string describing the current error state
     /// Returns an empty string if no errors have been detected.
     std::string getError() const override { return std::string(); }
