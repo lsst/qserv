@@ -243,6 +243,9 @@ void Connection::_processLastError(string const& context,
         case ER_PARTITION_MGMT_ON_NONPARTITIONED:
             throw NotPartitionedTable(msg);
 
+        case ER_UNKNOWN_PARTITION:
+            throw NoSuchPartition(msg);
+
         case ER_ABORTING_CONNECTION:
         case ER_NEW_ABORTING_CONNECTION:
 

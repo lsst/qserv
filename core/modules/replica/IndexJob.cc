@@ -322,7 +322,12 @@ void IndexJob::_onRequestFinish(IndexRequest::Ptr const& request) {
 
     // NOTE: this algorithm assumes "zero tolerance" to failures - any failure
     // in executing requests or processing data of the requests would result in
-    // the job termination.
+    // the job termination. The only exception from this rule is a scenario
+    // when a target chunk table won't have a partition. This may be expected
+    // for some chunk tables because they may not have contributions in a context
+    // of the given super-transaction.
+    //
+    // TODO: reconsider this algorithm.
 
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "  worker=" << request->worker());
 
@@ -332,11 +337,18 @@ void IndexJob::_onRequestFinish(IndexRequest::Ptr const& request) {
 
     if (state() == State::FINISHED) return;
 
+    bool hasData = true;
     if (request->extendedState() != Request::SUCCESS) {
-        _resultData.error[request->worker()][request->chunk()] = request->responseData().error;
-        _rollbackTransaction(__func__);
-        finish(lock, ExtendedState::FAILED);
-        return;
+        if (request->extendedServerStatus() == EXT_STATUS_NO_SUCH_PARTITION) {
+            // OK to proceed. We just don't have any contribution into the
+            // partition.
+            hasData = false;
+        } else {
+            _resultData.error[request->worker()][request->chunk()] = request->responseData().error;
+            _rollbackTransaction(__func__);
+            finish(lock, ExtendedState::FAILED);
+            return;
+        }
     }
 
     // Submit a replacement request for the same worker BEFORE processing
@@ -354,15 +366,17 @@ void IndexJob::_onRequestFinish(IndexRequest::Ptr const& request) {
     // a significant amount of data.
 
     _requests.erase(request->id());
-    try {
-        _processRequestData(lock, request);
-    } catch (exception const& ex) {
-        string const error = "request data processing failed, ex: " + string(ex.what());
-        LOGS(_log, LOG_LVL_ERROR, context() << __func__ << "  " << error);
-        _resultData.error[request->worker()][request->chunk()] = error;
-        _rollbackTransaction(__func__);
-        finish(lock, ExtendedState::FAILED);
-        return;
+    if (hasData) {
+        try {
+            _processRequestData(lock, request);
+        } catch (exception const& ex) {
+            string const error = "request data processing failed, ex: " + string(ex.what());
+            LOGS(_log, LOG_LVL_ERROR, context() << __func__ << "  " << error);
+            _resultData.error[request->worker()][request->chunk()] = error;
+            _rollbackTransaction(__func__);
+            finish(lock, ExtendedState::FAILED);
+            return;
+        }
     }
     
     // Evaluate for the completion condition of the job.

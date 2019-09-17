@@ -175,9 +175,9 @@ int IndexApp::runImpl() {
         "  ",
         _verticalSeparator
     );
-    table.addColumn("worker",      columnWorker, util::ColumnTablePrinter::LEFT);
-    table.addColumn("chunk",       columnChunk);
-    table.addColumn("MySQL error", columnError, util::ColumnTablePrinter::LEFT);
+    table.addColumn("worker", columnWorker, util::ColumnTablePrinter::LEFT);
+    table.addColumn("chunk",  columnChunk);
+    table.addColumn("error",  columnError, util::ColumnTablePrinter::LEFT);
 
     cout << "\n";
     table.print(cout, false, false, _pageSize, _pageSize != 0);

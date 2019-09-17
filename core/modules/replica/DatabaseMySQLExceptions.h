@@ -171,6 +171,24 @@ public:
 
 
 /**
+ * Instances of this exception class are thrown on queries attempting to select
+ * data from a non-existing partitions of a partitioned table:
+ * 
+ *   @code
+ *   SELECT * FROM <database>.<table> PARTITION (<partition>);
+ *   @code
+ * 
+ * Some application may choose to explicitly identify and process this type
+ * of failures.
+ */
+class NoSuchPartition : public Error {
+public:
+    /// @param what  reason for the exception
+    explicit NoSuchPartition(std::string const& what) : Error(what) {}
+};
+
+
+/**
  * Instances of this exception class are thrown on failed attempts
  * to interpret the contents of the result set.
  */

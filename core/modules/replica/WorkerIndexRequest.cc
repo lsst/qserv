@@ -162,6 +162,10 @@ bool WorkerIndexRequest::execute() {
         LOGS(_log, LOG_LVL_ERROR, context(__func__) << "  MySQL error: " << ex.what());
         _error = ex.what();
         setStatus(lock, STATUS_FAILED, EXT_STATUS_NOT_PARTITIONED_TABLE);
+    } catch(database::mysql::NoSuchPartition const& ex) {
+        LOGS(_log, LOG_LVL_ERROR, context(__func__) << "  MySQL error: " << ex.what());
+        _error = ex.what();
+        setStatus(lock, STATUS_FAILED, EXT_STATUS_NO_SUCH_PARTITION);
     } catch(database::mysql::Error const& ex) {
         LOGS(_log, LOG_LVL_ERROR, context(__func__) << "  MySQL error: " << ex.what());
         _error = ex.what();

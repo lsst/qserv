@@ -69,6 +69,7 @@ string status2string(ExtendedCompletionStatus status) {
         case ExtendedCompletionStatus::EXT_STATUS_LARGE_RESULT:  return "EXT_STATUS_LARGE_RESULT";
         case ExtendedCompletionStatus::EXT_STATUS_NO_SUCH_TABLE: return "EXT_STATUS_NO_SUCH_TABLE";
         case ExtendedCompletionStatus::EXT_STATUS_NOT_PARTITIONED_TABLE: return "EXT_STATUS_NOT_PARTITIONED_TABLE";
+        case ExtendedCompletionStatus::EXT_STATUS_NO_SUCH_PARTITION:     return "EXT_STATUS_NO_SUCH_PARTITION";
     }
     throw logic_error(
             "Common::" + string(__func__) + "(ExtendedCompletionStatus) - unhandled status: " +
@@ -107,6 +108,7 @@ ExtendedCompletionStatus translate(ProtocolStatusExt status) {
         case ProtocolStatusExt::LARGE_RESULT:  return ExtendedCompletionStatus::EXT_STATUS_LARGE_RESULT;
         case ProtocolStatusExt::NO_SUCH_TABLE: return ExtendedCompletionStatus::EXT_STATUS_NO_SUCH_TABLE;
         case ProtocolStatusExt::NOT_PARTITIONED_TABLE: return ExtendedCompletionStatus::EXT_STATUS_NOT_PARTITIONED_TABLE;
+        case ProtocolStatusExt::NO_SUCH_PARTITION:     return ExtendedCompletionStatus::EXT_STATUS_NO_SUCH_PARTITION;
     }
     throw logic_error(
                 "Common::" + string(__func__) + "(ProtocolStatusExt) - unhandled status: " +
@@ -145,6 +147,7 @@ ProtocolStatusExt translate(ExtendedCompletionStatus status) {
         case ExtendedCompletionStatus::EXT_STATUS_LARGE_RESULT:  return ProtocolStatusExt::LARGE_RESULT;
         case ExtendedCompletionStatus::EXT_STATUS_NO_SUCH_TABLE: return ProtocolStatusExt::NO_SUCH_TABLE;
         case ExtendedCompletionStatus::EXT_STATUS_NOT_PARTITIONED_TABLE: return ProtocolStatusExt::NOT_PARTITIONED_TABLE;
+        case ExtendedCompletionStatus::EXT_STATUS_NO_SUCH_PARTITION:     return ProtocolStatusExt::NO_SUCH_PARTITION;
     }
     throw logic_error(
                 "Common::" + string(__func__) + "(ExtendedCompletionStatus) - unhandled status: " +

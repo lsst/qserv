@@ -78,7 +78,8 @@ enum ExtendedCompletionStatus {
     EXT_STATUS_MYSQL_ERROR,     // MySQL operation failed
     EXT_STATUS_LARGE_RESULT,    // result exceeds a limit set in a request
     EXT_STATUS_NO_SUCH_TABLE,   // a reason why a MySQL operation failed 
-    EXT_STATUS_NOT_PARTITIONED_TABLE    // why a MySQL operation for removing partitions failed
+    EXT_STATUS_NOT_PARTITIONED_TABLE,   // why a MySQL operation for removing partitions failed
+    EXT_STATUS_NO_SUCH_PARTITION        // why a MySQL operation for for selecting data from a table failed
 };
 
 /// Return the string representation of the extended status
