@@ -35,7 +35,7 @@
 namespace lsst {
 namespace qserv {
 namespace ccontrol {
-    class ParserListener;
+    class ParseListener;
     class UserQuery;
     class UserQueryResources;
 }
@@ -111,7 +111,7 @@ private:
 
     std::string const _statement;
     std::shared_ptr<UserQueryResources> _queryResources;
-    std::shared_ptr<ParserListener> _listener;
+    std::shared_ptr<ParseListener> _listener;
 };
 
 

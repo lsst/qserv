@@ -48,7 +48,7 @@
 // Qserv headers
 #include "ccontrol/ParseAdaptersCBH.h"
 #include "ccontrol/ParseHelpers.h"
-#include "ccontrol/ParserListener.h"
+#include "ccontrol/ParseListener.h"
 #include "ccontrol/UserQueryQservManager.h"
 #include "parser/ParseException.h"
 #include "query/AndTerm.h"
@@ -205,7 +205,7 @@ protected:
 template <typename CBH, typename CTX>
 class AdapterT : public Adapter {
 public:
-    AdapterT(std::shared_ptr<CBH> const& parent, CTX * ctx, ParserListener const * const listener)
+    AdapterT(std::shared_ptr<CBH> const& parent, CTX * ctx, ParseListener const * const listener)
     : _ctx(ctx), _parserListener(listener), _parent(parent) {}
 
 protected:
@@ -228,9 +228,9 @@ protected:
     std::shared_ptr<ccontrol::UserQueryResources> getQueryResources() const { return _parserListener->getQueryResources(); }
 
 private:
-    // Mostly the ParserListener is not used by adapters. It is needed to get the adapter stack list for
+    // Mostly the ParseListener is not used by adapters. It is needed to get the adapter stack list for
     // error messages.
-    ParserListener const * const _parserListener;
+    ParseListener const * const _parserListener;
 
     std::weak_ptr<CBH> _parent;
 };
@@ -265,7 +265,7 @@ public:
         // MINUSMINUS (ignored, it indicates a comment)
     }
 
-    virtual void onEnter(QSMySqlParser::RootContext* ctx, ParserListener const * const listener) {
+    virtual void onEnter(QSMySqlParser::RootContext* ctx, ParseListener const * const listener) {
         _ctx = ctx;
         checkContext();
         _parserListener = listener;
@@ -287,7 +287,7 @@ private:
     std::shared_ptr<query::SelectStmt> _selectStatement;
     std::shared_ptr<ccontrol::UserQuery> _userQuery;
     QSMySqlParser::RootContext* _ctx;
-    ParserListener const * _parserListener;
+    ParseListener const * _parserListener;
 };
 
 
