@@ -246,8 +246,7 @@ bool UserQueryType::isCancel(std::string const& query, QueryId& queryId) {
 
 bool UserQueryType::isCall(std::string const& query) {
     LOGS(_log, LOG_LVL_TRACE, "isCall: " << query);
-    boost::smatch sm;
-    return boost::regex_match(query, sm, _callRe);
+    return boost::regex_match(query, _callRe);
 }
 
 
