@@ -77,24 +77,6 @@ namespace qserv {
 namespace parser {
 
 
-class Antlr4Parser {
-public:
-    Antlr4Parser(std::string const& q, std::shared_ptr<ccontrol::UserQueryResources> const& queryResources);
-
-    void run();
-
-    std::shared_ptr<query::SelectStmt> getStatement();
-
-    std::shared_ptr<ccontrol::UserQuery> getUserQuery();
-
-private:
-
-    std::string _statement;
-    std::shared_ptr<ccontrol::UserQueryResources> _queryResources;
-    std::shared_ptr<ccontrol::QSMySqlListener> _listener;
-};
-
-
 class Antlr4ErrorStrategy : public antlr4::DefaultErrorStrategy {
 public:
     explicit Antlr4ErrorStrategy(std::string const& statement) : _statement(statement) {}
@@ -146,7 +128,26 @@ private:
 };
 
 
-void Antlr4Parser::run() {
+std::shared_ptr<query::SelectStmt> SelectParser::makeSelectStmt(std::string const& statement) {
+    auto parser = std::make_shared<parser::SelectParser>(statement);
+    return parser->getSelectStmt();
+}
+
+
+SelectParser::SelectParser(std::string const& statement)
+    :_statement(statement) {
+    run();
+}
+
+
+SelectParser::SelectParser(std::string const& statement,
+                           std::shared_ptr<ccontrol::UserQueryResources> const& queryResources)
+    :_statement(statement), _queryResources(queryResources) {
+    run();
+}
+
+
+void SelectParser::run() {
     _listener = std::make_shared<ccontrol::QSMySqlListener>(_statement, _queryResources);
     using namespace antlr4;
     ANTLRInputStream input(_statement);
@@ -163,55 +164,13 @@ void Antlr4Parser::run() {
 }
 
 
-query::SelectStmt::Ptr Antlr4Parser::getStatement() {
+std::shared_ptr<query::SelectStmt> SelectParser::getSelectStmt() {
     return _listener->getSelectStatement();
 }
 
 
-std::shared_ptr<ccontrol::UserQuery> Antlr4Parser::getUserQuery() {
-    return _listener->getUserQuery();
-}
-
-
-Antlr4Parser::Antlr4Parser(std::string const& q,
-                           std::shared_ptr<ccontrol::UserQueryResources> const& queryResources)
-    : _statement(q), _queryResources(queryResources)
-{}
-
-
-////////////////////////////////////////////////////////////////////////
-// class SelectParser
-////////////////////////////////////////////////////////////////////////
-
-
-std::shared_ptr<query::SelectStmt> SelectParser::makeSelectStmt(std::string const& statement) {
-    auto parser = std::make_shared<parser::SelectParser>(statement);
-    return parser->getSelectStmt();
-}
-
-
-SelectParser::SelectParser(std::string const& statement)
-    :_statement(statement) {
-    _aParser = std::make_shared<parser::Antlr4Parser>(_statement, nullptr);
-    _aParser->run();
-}
-
-
-SelectParser::SelectParser(std::string const& statement,
-                           std::shared_ptr<ccontrol::UserQueryResources> const& queryResources)
-    :_statement(statement) {
-    _aParser = std::make_shared<parser::Antlr4Parser>(_statement, queryResources);
-    _aParser->run();
-}
-
-
-std::shared_ptr<query::SelectStmt> SelectParser::getSelectStmt() {
-    return _aParser->getStatement();
-}
-
-
 std::shared_ptr<ccontrol::UserQuery> SelectParser::getUserQuery() {
-    return _aParser->getUserQuery();
+    return _listener->getUserQuery();
 }
 
 

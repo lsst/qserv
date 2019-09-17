@@ -46,9 +46,6 @@ namespace ccontrol {
     class UserQuery;
     class UserQueryResources;
 }
-namespace parser {
-    class Antlr4Parser; // Internally-defined in SelectParser.cc
-}
 namespace query {
     class SelectStmt;
 }}} // End of forward declarations
@@ -87,10 +84,12 @@ public:
     std::shared_ptr<ccontrol::UserQuery> getUserQuery();
 
 private:
+    void run();
 
     std::string const _statement;
-    std::shared_ptr<query::SelectStmt> _selectStmt;
-    std::shared_ptr<Antlr4Parser> _aParser;
+    std::shared_ptr<ccontrol::UserQueryResources> _queryResources;
+    std::shared_ptr<ccontrol::QSMySqlListener> _listener;
+
 };
 
 
