@@ -65,7 +65,7 @@ namespace ccontrol {
 /**
  * UserQueryResources owns the Czar resources that are useful to & shared among UserQuery instances.
  */
-class   UserQuerySharedResources {
+class UserQuerySharedResources {
 
 public:
     UserQuerySharedResources(std::shared_ptr<css::CssAccess> css_,
@@ -101,7 +101,10 @@ public:
     std::shared_ptr<UserQueryResources> makeUserQueryResources(std::string const& userQueryId, std::string const& resultDb);
 };
 
-
+/**
+ * UserQueryResources owns the parameters specific to a single UserQuery and contains the shared resources
+ * that are useful to & shared among UserQuery instances.
+ */
 class UserQueryResources : public UserQuerySharedResources {
 public:
 
