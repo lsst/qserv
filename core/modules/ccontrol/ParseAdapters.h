@@ -206,7 +206,7 @@ template <typename CBH, typename CTX>
 class AdapterT : public Adapter {
 public:
     AdapterT(std::shared_ptr<CBH> const& parent, CTX * ctx, ParserListener const * const listener)
-    : _ctx(ctx), parserListener(listener), _parent(parent) {}
+    : _ctx(ctx), _parserListener(listener), _parent(parent) {}
 
 protected:
     std::shared_ptr<CBH> lockedParent() {
@@ -218,19 +218,19 @@ protected:
 
     CTX* _ctx;
 
-    // Used for error messages, uses the ParserListener to get a list of the names of the adapters in the
+    // Used for error messages, uses the _parserListener to get a list of the names of the adapters in the
     // adapter stack,
-    std::string adapterStackToString() const { return parserListener->adapterStackToString(); }
-    std::string getStringTree() const { return parserListener->getStringTree(); }
-    std::string getTokens() const { return parserListener->getTokens(); }
-    std::string getStatementString() const { return parserListener->getStatementString(); }
+    std::string adapterStackToString() const { return _parserListener->adapterStackToString(); }
+    std::string getStringTree() const { return _parserListener->getStringTree(); }
+    std::string getTokens() const { return _parserListener->getTokens(); }
+    std::string getStatementString() const { return _parserListener->getStatementString(); }
 
-    std::shared_ptr<ccontrol::UserQueryResources> getQueryResources() const { return parserListener->getQueryResources(); }
+    std::shared_ptr<ccontrol::UserQueryResources> getQueryResources() const { return _parserListener->getQueryResources(); }
 
 private:
     // Mostly the ParserListener is not used by adapters. It is needed to get the adapter stack list for
     // error messages.
-    ParserListener const * const parserListener;
+    ParserListener const * const _parserListener;
 
     std::weak_ptr<CBH> _parent;
 };
@@ -242,7 +242,7 @@ class RootAdapter :
 public:
     RootAdapter()
     : _ctx(nullptr)
-    , parserListener(nullptr)
+    , _parserListener(nullptr)
     {}
 
     std::shared_ptr<query::SelectStmt> const& getSelectStatement() { return _selectStatement; }
@@ -268,7 +268,7 @@ public:
     virtual void onEnter(QSMySqlParser::RootContext* ctx, ParserListener const * const listener) {
         _ctx = ctx;
         checkContext();
-        parserListener = listener;
+        _parserListener = listener;
     }
 
     void onExit() override {
@@ -278,16 +278,16 @@ public:
 
     std::string name() const override { return getTypeName(this); }
 
-    std::string adapterStackToString() const override { return parserListener->adapterStackToString(); }
-    std::string getStringTree() const override { return parserListener->getStringTree(); }
-    std::string getTokens() const override { return parserListener->getTokens(); }
-    std::string getStatementString() const override { return parserListener->getStatementString(); }
+    std::string adapterStackToString() const override { return _parserListener->adapterStackToString(); }
+    std::string getStringTree() const override { return _parserListener->getStringTree(); }
+    std::string getTokens() const override { return _parserListener->getTokens(); }
+    std::string getStatementString() const override { return _parserListener->getStatementString(); }
 
 private:
     std::shared_ptr<query::SelectStmt> _selectStatement;
     std::shared_ptr<ccontrol::UserQuery> _userQuery;
     QSMySqlParser::RootContext* _ctx;
-    ParserListener const * parserListener;
+    ParserListener const * _parserListener;
 };
 
 
@@ -1199,7 +1199,7 @@ public:
     using AdapterT::AdapterT;
 
     void handleConstant(std::string const& val) override {
-        value = val;
+        _value = val;
     }
 
     void checkContext() const override {
@@ -1208,13 +1208,13 @@ public:
 
     void onExit() override {
         assert_execution_condition(getQueryResources() != nullptr, "UserQueryQservManager requires a valid query config.", _ctx);
-        lockedParent()->handleCallStatement(std::make_shared<ccontrol::UserQueryQservManager>(getQueryResources(), value));
+        lockedParent()->handleCallStatement(std::make_shared<ccontrol::UserQueryQservManager>(getQueryResources(), _value));
     }
 
     std::string name() const override { return getTypeName(this); }
 
 private:
-    std::string value;
+    std::string _value;
 };
 
 
@@ -1253,13 +1253,13 @@ public:
 
     void onEnter() override {
         if (_ctx->ASC() == nullptr && _ctx->DESC() != nullptr) {
-            orderBy = query::OrderByTerm::DESC;
+            _orderBy = query::OrderByTerm::DESC;
         } else if (_ctx->ASC() != nullptr && _ctx->DESC() == nullptr) {
-            orderBy = query::OrderByTerm::ASC;
+            _orderBy = query::OrderByTerm::ASC;
         } else if (_ctx->ASC() != nullptr && _ctx->DESC() != nullptr) {
             assert_execution_condition(false, "having both ASC and DESC is unhandled.", _ctx);
         }
-        // note that query::OrderByTerm::DEFAULT is the default value of orderBy
+        // note that query::OrderByTerm::DEFAULT is the default value of _orderBy
     }
 
     void handlePredicateExpression(std::shared_ptr<query::BoolTerm> const& boolTerm,
@@ -1282,14 +1282,14 @@ public:
     }
 
     void onExit() override {
-        query::OrderByTerm orderByTerm(_valueExpr, orderBy, "");
+        query::OrderByTerm orderByTerm(_valueExpr, _orderBy, "");
         lockedParent()->handleOrderByExpression(orderByTerm);
     }
 
     std::string name() const override { return getTypeName(this); }
 
 private:
-    query::OrderByTerm::Order orderBy {query::OrderByTerm::DEFAULT};
+    query::OrderByTerm::Order _orderBy {query::OrderByTerm::DEFAULT};
     std::shared_ptr<query::ValueExpr> _valueExpr;
 };
 
