@@ -46,6 +46,7 @@
 #include "replica/Controller.h"
 #include "replica/DatabaseMySQL.h"
 #include "replica/DatabaseServices.h"
+#include "replica/IndexJob.h"
 #include "replica/Performance.h"
 #include "replica/QservMgtServices.h"
 #include "replica/QservStatusJob.h"
@@ -1978,7 +1979,7 @@ void HttpProcessor::_getTransactions(qhttp::Request::Ptr const& req,
         result["databases"] = json::object();
         for (auto&& database: databases) {
 
-            const bool allWorkers = true;
+            bool const allWorkers = true;
             vector<unsigned int> chunks;
             databaseServices->findDatabaseChunks(chunks, database, allWorkers);
 
@@ -2013,7 +2014,7 @@ void HttpProcessor::_getTransaction(qhttp::Request::Ptr const& req,
 
         auto const transaction = databaseServices->transaction(id);
 
-        const bool allWorkers = true;
+        bool const allWorkers = true;
         vector<unsigned int> chunks;
         databaseServices->findDatabaseChunks(chunks, transaction.database, allWorkers);
 
@@ -2067,7 +2068,7 @@ void HttpProcessor::_beginTransaction(qhttp::Request::Ptr const& req,
 
         _addPartitionToSecondaryIndex(databaseInfo, transaction.id);
 
-        const bool allWorkers = true;
+        bool const allWorkers = true;
         vector<unsigned int> chunks;
         databaseServices->findDatabaseChunks(chunks, databaseInfo.name, allWorkers);
 
@@ -2098,6 +2099,7 @@ void HttpProcessor::_endTransaction(qhttp::Request::Ptr const& req,
     uint32_t id = 0;
     string database;
     bool abort = false;
+    bool buildSecondaryIndex = false;
 
     auto const logEndTransaction = [&](string const& status, string const& msg=string()) {
         ControllerEvent event;
@@ -2106,6 +2108,7 @@ void HttpProcessor::_endTransaction(qhttp::Request::Ptr const& req,
         event.kvInfo.emplace_back("id", to_string(id));
         event.kvInfo.emplace_back("database", database);
         event.kvInfo.emplace_back("abort", abort ? "true" : "false");
+        event.kvInfo.emplace_back("build-secondary-index", buildSecondaryIndex ? "true" : "false");
         if (not msg.empty()) event.kvInfo.emplace_back("error", msg);
         logEvent(event);
     };
@@ -2115,15 +2118,17 @@ void HttpProcessor::_endTransaction(qhttp::Request::Ptr const& req,
 
         id = stoul(req->params.at("id"));
         abort = ::getRequiredQueryParamBool(req->query, "abort");
+        buildSecondaryIndex = ::getQueryParamBool(req->query, "build-secondary-index");
 
         _debug(__func__, "id="    + to_string(id));
         _debug(__func__, "abort=" + to_string(abort ? 1 : 0));
+        _debug(__func__, "build-secondary-index=" + to_string(abort ? 1 : 0));
 
         auto const transaction = databaseServices->endTransaction(id, abort);
         auto const databaseInfo = config->databaseInfo(transaction.database);
         database = transaction.database;
 
-        const bool allWorkers = true;
+        bool const allWorkers = true;
         vector<unsigned int> chunks;
         databaseServices->findDatabaseChunks(chunks, transaction.database, allWorkers);
 
@@ -2131,12 +2136,11 @@ void HttpProcessor::_endTransaction(qhttp::Request::Ptr const& req,
         result["databases"][transaction.database]["info"] = config->databaseInfo(transaction.database).toJson();
         result["databases"][transaction.database]["transactions"].push_back(transaction.toJson());
         result["databases"][transaction.database]["num_chunks"] = chunks.size();
+        result["secondary-index-build-success"] = 0;
 
         if (abort) {
 
             // Drop the transaction-specific MySQL partition from the relevant tables
-
-            bool const allWorkers = true;
             auto const job = AbortTransactionJob::create(transaction.id, allWorkers, controller());
             job->start();
             logJobStartedEvent(AbortTransactionJob::typeName(), job, databaseInfo.family);
@@ -2147,10 +2151,31 @@ void HttpProcessor::_endTransaction(qhttp::Request::Ptr const& req,
             _removePartitionFromSecondaryIndex(databaseInfo, transaction.id);
 
         } else {
+
+            // Make the best attempt to build a layer at the "secondary index"
+            // if requested.
+            if (buildSecondaryIndex) {
+                bool const hasTransactions = true;
+                string const destinationPath = transaction.database + "__" + databaseInfo.directorTable;
+                auto const job = IndexJob::create(
+                    transaction.database,
+                    hasTransactions,
+                    transaction.id,
+                    allWorkers,
+                    IndexJob::TABLE,
+                    destinationPath,
+                    controller()
+                );
+                job->start();
+                logJobStartedEvent(IndexJob::typeName(), job, databaseInfo.family);
+                job->wait();
+                logJobFinishedEvent(IndexJob::typeName(), job, databaseInfo.family);
+                result["secondary-index-build-success"] = job->extendedState() == Job::SUCCESS ? 1 : 0;
+            }
+
             // TODO: replicate MySQL partition associated with the transaction
             _error(__func__, "replication stage is not implemented");
         }
-
         _sendData(resp, result);
         logEndTransaction("SUCCESS");
 
