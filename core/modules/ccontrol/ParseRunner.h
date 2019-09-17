@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2012-2015 LSST Corporation.
+ * Copyright 2012-2019 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -20,16 +20,9 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_PARSER_SELECTPARSER_H
-#define LSST_QSERV_PARSER_SELECTPARSER_H
-/**
-  * @file
-  *
-  * @brief SelectParser operates the ANTLR generated parsers on raw SELECT
-  * statements.
-  *
-  * @author Daniel L. Wang, SLAC
-  */
+#ifndef LSST_QSERV_PARSER_PARSERUNNER_H
+#define LSST_QSERV_PARSER_PARSERUNNER_H
+
 
 // System headers
 #include <memory>
@@ -53,46 +46,75 @@ namespace query {
 
 namespace lsst {
 namespace qserv {
-namespace parser {
+namespace ccontrol {
 
 
-/// class SelectParser - drives the ANTLR-generated SQL parser for a
-/// SELECT statement. Attaches some simple handlers that populate a
-/// corresponding data structure, which can then be processed and
-/// evaluated to determine query generation and dispatch.
-///
-/// SelectParser is the spiritual successor to the original SqlParseRunner, but
-/// is much simpler because it is only responsible for creating a parsed query
-/// representation, without any furhter analysis or annotation.
-class SelectParser {
+/// ParseRunner drives the antlr4-based SQL parser.
+class ParseRunner {
 public:
-    SelectParser(std::string const& statement);
 
-    SelectParser(std::string const& statement, std::shared_ptr<ccontrol::UserQueryResources> const& queryResources);
+    /**
+     * @brief Construct a new Parse Runner object. Runs the parse.
+     *
+     * @param statement The sql statement to parse
+     *
+     * @throws parser::ParseException if the query can not be parsed.
+     */
+    ParseRunner(std::string const& statement);
 
-    typedef std::shared_ptr<SelectParser> Ptr;
+    /**
+     * @brief Construct a new Parse Runner object
+     *
+     * @param statement The sql statement to parse
+     * @param queryResources Resources that may be used to construct a UserQuery.
+     *
+     * @throws parser::ParseException if the query can not be parsed.
+     */
+    ParseRunner(std::string const& statement, std::shared_ptr<UserQueryResources> const& queryResources);
 
-    /// Convenience function to get a SelectStatement.
-    /// This function calls SelectParser::setup; so it may throw any exception thrown by that function.
+    typedef std::shared_ptr<ParseRunner> Ptr;
+
+    /**
+     * @brief Convenience function to get a SelectStatement.
+     *
+     * This calls the ParseRunner constructor, so it may throw if the constructor throws.
+     *
+     * @param statement The sql statement to parse.
+     * @return std::shared_ptr<query::SelectStmt> the SelectStmt generated using the given statement.
+     */
     static std::shared_ptr<query::SelectStmt> makeSelectStmt(std::string const& statement);
 
-    // @return Original select statement
+    /**
+     * @brief Get the original select statement.
+     */
     std::string const& getStatement() const { return _statement; }
 
+    /**
+     * @brief Get the SelectStmt object if one was created.
+     *
+     * @return std::shared_ptr<query::SelectStmt> a pointer to the generated SelectStmt, or nullptr.
+     */
     std::shared_ptr<query::SelectStmt> getSelectStmt();
 
-    std::shared_ptr<ccontrol::UserQuery> getUserQuery();
+    /**
+     * @brief Get the User Query object if one was created.
+     *
+     * @return std::shared_ptr<UserQuery> a pointer to the generated UserQuery or nullptr.
+     */
+    std::shared_ptr<UserQuery> getUserQuery();
 
 private:
+    /**
+     * @brief Execute the parse.
+     */
     void run();
 
     std::string const _statement;
-    std::shared_ptr<ccontrol::UserQueryResources> _queryResources;
-    std::shared_ptr<ccontrol::QSMySqlListener> _listener;
-
+    std::shared_ptr<UserQueryResources> _queryResources;
+    std::shared_ptr<QSMySqlListener> _listener;
 };
 
 
-}}} // namespace lsst::qserv::parser
+}}} // namespace lsst::qserv::ccontrol
 
-#endif // LSST_QSERV_PARSER_SELECTPARSER_H
+#endif // LSST_QSERV_PARSER_PARSERUNNER_H

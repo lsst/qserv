@@ -50,9 +50,9 @@
 #include <boost/test/data/test_case.hpp>
 
 // Qserv headers
+#include "ccontrol/ParseRunner.h"
 #include "mysql/MySqlConfig.h"
 #include "parser/ParseException.h"
-#include "parser/SelectParser.h"
 #include "qdisp/ChunkMeta.h"
 #include "qproc/QuerySession.h"
 #include "query/AreaRestrictor.h"
@@ -65,8 +65,8 @@
 #include "tests/QueryAnaFixture.h"
 
 
+using lsst::qserv::ccontrol::ParseRunner;
 using lsst::qserv::mysql::MySqlConfig;
-using lsst::qserv::parser::SelectParser;
 using lsst::qserv::qproc::ChunkQuerySpec;
 using lsst::qserv::qproc::ChunkSpec;
 using lsst::qserv::qproc::QuerySession;
@@ -745,7 +745,7 @@ BOOST_AUTO_TEST_CASE(UnpartLimit) {
 
 BOOST_AUTO_TEST_CASE(Subquery) { // ticket #2053
     std::string stmt = "SELECT subQueryColumn FROM (SELECT * FROM Object WHERE filterId=4) WHERE rFlux_PS > 0.3;";
-    SelectParser::Ptr p;
+    ParseRunner::Ptr p;
     BOOST_CHECK_THROW(p = queryAnaHelper.getParser(stmt), lsst::qserv::parser::ParseException);
    // Expected failure: Subqueries are unsupported.
 }
@@ -753,7 +753,7 @@ BOOST_AUTO_TEST_CASE(Subquery) { // ticket #2053
 
 BOOST_AUTO_TEST_CASE(FromParen) { // Extra paren. Not supported by our grammar.
     std::string stmt = "SELECT * FROM (Object) WHERE rFlux_PS > 0.3;";
-    SelectParser::Ptr p;
+    ParseRunner::Ptr p;
     BOOST_CHECK_THROW(p = queryAnaHelper.getParser(stmt), lsst::qserv::parser::ParseException);
 }
 
@@ -774,7 +774,7 @@ BOOST_AUTO_TEST_CASE(NewParser) {
     for(int i=0; i < 8; ++i) {
         std::string stmt = stmts[i];
         BOOST_TEST_MESSAGE("----" << stmt << "----");
-        SelectParser::Ptr p = queryAnaHelper.getParser(stmt);
+        ParseRunner::Ptr p = queryAnaHelper.getParser(stmt);
     }
  }
 

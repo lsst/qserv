@@ -36,7 +36,7 @@
 #include <string>
 
 // Qserv headers
-#include "parser/SelectParser.h"
+#include "ccontrol/ParseRunner.h"
 #include "qproc/QuerySession.h"
 #include "util/IterableFormatter.h"
 
@@ -49,7 +49,7 @@ namespace tests {
 */
 struct QueryAnaHelper {
 
-    static parser::SelectParser::Ptr getParser(const std::string& stmt);
+    static ccontrol::ParseRunner::Ptr getParser(const std::string& stmt);
 
     /**
     *  @brief Prepare the query session used to process SQL queries

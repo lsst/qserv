@@ -32,6 +32,7 @@
 
 
 namespace antlr4 {
+class CommonTokenStream;
 class ParserRuleContext;
 }
 
@@ -48,6 +49,8 @@ namespace query{
     class SelectStmt;
 }}}
 
+// QSMySqlLexer is an antlr4-generated file; not in a namespace.
+class QSMySqlLexer;
 
 namespace lsst {
 namespace qserv {
@@ -79,9 +82,14 @@ public:
     // Get the UserQueryResources, used by some UserQuery subclass constructors.
     std::shared_ptr<ccontrol::UserQueryResources> getQueryResources() const { return _queryResources; }
 
+    typedef std::vector<std::pair<std::string, std::string>> VecPairStr;
+
+    // For the current query, this returns a list where each pair contains a bit of the string from the query
+    // and how antlr4 tokenized that bit of string. It is useful for debugging problems where antlr4 did not
+    // parse a query as expected, in the case where the string was not tokenized as expected.
+    static VecPairStr getTokenPairs(antlr4::CommonTokenStream& tokens, QSMySqlLexer const& lexer);
+
 protected:
-
-
 
     virtual void enterRoot(QSMySqlParser::RootContext * /*ctx*/) override;
     virtual void exitRoot(QSMySqlParser::RootContext * /*ctx*/) override;

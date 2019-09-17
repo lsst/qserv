@@ -51,24 +51,6 @@ namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.ccontrol.QSMySqlListener");
 
-
-// For the current query, this returns a list where each pair contains a bit of the string from the query
-// and how antlr4 tokenized that bit of string. It is useful for debugging problems where antlr4 did not
-// parse a query as expected, in the case where the string was not tokenized as expected.
-typedef std::vector<std::pair<std::string, std::string>> VecPairStr;
-VecPairStr getTokenPairs(antlr4::CommonTokenStream & tokens, QSMySqlLexer & lexer) {
-    VecPairStr ret;
-    for (auto&& t : tokens.getTokens()) {
-        std::string name = lexer.getVocabulary().getSymbolicName(t->getType());
-        if (name.empty()) {
-            name = lexer.getVocabulary().getLiteralName(t->getType());
-        }
-        ret.push_back(make_pair(std::move(name), t->getText()));
-    }
-    return ret;
-}
-
-
 } // end namespace
 
 
@@ -159,7 +141,18 @@ namespace qserv {
 namespace ccontrol {
 
 
-/// QSMySqlListener impl
+QSMySqlListener::VecPairStr QSMySqlListener::getTokenPairs(antlr4::CommonTokenStream& tokens,
+                                                           QSMySqlLexer const& lexer) {
+    VecPairStr ret;
+    for (auto const& t : tokens.getTokens()) {
+        std::string name = lexer.getVocabulary().getSymbolicName(t->getType());
+        if (name.empty()) {
+            name = lexer.getVocabulary().getLiteralName(t->getType());
+        }
+        ret.push_back(make_pair(std::move(name), t->getText()));
+    }
+    return ret;
+}
 
 
 QSMySqlListener::QSMySqlListener(std::string const& statement,

@@ -37,6 +37,7 @@
 // Qserv headers
 #include "ccontrol/ConfigError.h"
 #include "ccontrol/ConfigMap.h"
+#include "ccontrol/ParseRunner.h"
 #include "ccontrol/UserQueryAsyncResult.h"
 #include "ccontrol/UserQueryDrop.h"
 #include "ccontrol/UserQueryFlushChunksCache.h"
@@ -50,7 +51,6 @@
 #include "czar/CzarConfig.h"
 #include "mysql/MySqlConfig.h"
 #include "parser/ParseException.h"
-#include "parser/SelectParser.h"
 #include "qdisp/Executive.h"
 #include "qdisp/MessageStore.h"
 #include "qmeta/QMetaMysql.h"
@@ -149,9 +149,9 @@ UserQueryFactory::newUserQuery(std::string const& aQuery,
 
         // Parse SELECT
 
-        parser::SelectParser::Ptr parser;
+        ParseRunner::Ptr parser;
         try {
-            parser = std::make_shared<parser::SelectParser>(query);
+            parser = std::make_shared<ParseRunner>(query);
         } catch (parser::ParseException& e) {
             return std::make_shared<UserQueryInvalid>(std::string("ParseException:") + e.what());
         }
@@ -252,7 +252,7 @@ UserQueryFactory::newUserQuery(std::string const& aQuery,
             return std::make_shared<UserQueryInvalid>(exc.what());
         }
     } else if (UserQueryType::isCall(query)) {
-        auto parser = std::make_shared<parser::SelectParser>(query,
+        auto parser = std::make_shared<ParseRunner>(query,
             _userQuerySharedResources->makeUserQueryResources(userQueryId, resultDb));
         return parser->getUserQuery();
     } else {

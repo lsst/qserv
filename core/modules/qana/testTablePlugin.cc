@@ -34,9 +34,9 @@
 // Third-party headers
 
 // Qserv headers
+#include "ccontrol/ParseRunner.h"
 #include "ccontrol/UserQueryFactory.h"
 #include "css/CssAccess.h"
-#include "parser/SelectParser.h"
 #include "qana/TablePlugin.h"
 #include "query/OrderByClause.h"
 #include "query/SelectList.h"
@@ -73,7 +73,7 @@ struct TestFixture {
 
     query::SelectStmt::Ptr makeStmtAndRunLogical(std::string query) {
         query::SelectStmt::Ptr selectStmt;
-        BOOST_REQUIRE_NO_THROW(selectStmt = parser::SelectParser::makeSelectStmt(query));
+        BOOST_REQUIRE_NO_THROW(selectStmt = ccontrol::ParseRunner::makeSelectStmt(query));
         BOOST_REQUIRE(selectStmt != nullptr);
         query::TestFactory factory;
         std::shared_ptr<query::QueryContext> queryContext = factory.newContext(css, schemaCfg);
