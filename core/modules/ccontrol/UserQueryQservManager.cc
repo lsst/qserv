@@ -75,14 +75,9 @@ void UserQueryQservManager::submit() {
     std::vector<std::string> resColumns({"response"}); // this must match the schema in the CREATE TABLE statement above.
     sql::SqlBulkInsert bulkInsert(_resultDbConn.get(), _resultTableName, resColumns);
     std::vector<std::string> values = { _value };
-    if (!bulkInsert.addRow(values, errObj)) {
-        LOGS(_log, LOG_LVL_ERROR, "error updating result table: " << errObj.errMsg());
-        std::string message = "Internal failure, error updating result table: " + errObj.errMsg();
-        _messageStore->addMessage(-1, 1051, message, MessageSeverity::MSG_ERROR);
-        _qState = ERROR;
-        return;
-    }
-    if (!bulkInsert.flush(errObj)) {
+    bool success = bulkInsert.addRow(values, errObj);
+    if (success) success = bulkInsert.flush(errObj);
+    if (not success) {
         LOGS(_log, LOG_LVL_ERROR, "error updating result table: " << errObj.errMsg());
         std::string message = "Internal failure, error updating result table: " + errObj.errMsg();
         _messageStore->addMessage(-1, 1051, message, MessageSeverity::MSG_ERROR);
