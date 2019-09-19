@@ -131,7 +131,9 @@ BOOST_AUTO_TEST_CASE(OrderByAggregate) {
     std::string expectedParallel = "SELECT `LSST.Source`.objectId AS `objectId`,COUNT(`LSST.Source`.taiMidPoint) AS `QS1_COUNT`,SUM(`LSST.Source`.taiMidPoint) AS `QS2_SUM` "
                                    "FROM LSST.Source_100 AS `LSST.Source` "
                                    "GROUP BY `objectId`";
-    std::string expectedMerge = "SELECT objectId AS `objectId`,(SUM(QS2_SUM)/SUM(QS1_COUNT)) AS `AVG(taiMidPoint)` GROUP BY `objectId`";
+    std::string expectedMerge = "SELECT objectId AS `objectId`,(SUM(QS2_SUM)/SUM(QS1_COUNT)) AS `AVG(taiMidPoint)` "
+                                "FROM LSST.Source AS `LSST.Source` "
+                                "GROUP BY `objectId`";
     std::string expectedProxyOrderBy = "ORDER BY `objectId` ASC";
     qsTest.sqlConfig = SqlConfig(SqlConfig::MockDbTableColumns({{"LSST", {{"Source", {"objectId", "taiMidPoint"}}}}}));
     check(qsTest, queryAnaHelper, stmt, expectedParallel, expectedMerge, expectedProxyOrderBy);
@@ -143,7 +145,9 @@ BOOST_AUTO_TEST_CASE(OrderByAggregateNotChunked) {
     std::string expectedParallel =
             "SELECT `LSST.Filter`.filterId AS `filterId`,SUM(`LSST.Filter`.photClam) AS `QS1_SUM` FROM LSST.Filter AS `LSST.Filter` GROUP BY `filterId`";
     // FIXME merge query is not useful here, see DM-3166
-    std::string expectedMerge = "SELECT filterId AS `filterId`,SUM(QS1_SUM) AS `SUM(photClam)` GROUP BY `filterId`";
+    std::string expectedMerge = "SELECT filterId AS `filterId`,SUM(QS1_SUM) AS `SUM(photClam)` "
+                                "FROM LSST.Filter AS `LSST.Filter` "
+                                "GROUP BY `filterId`";
     std::string expectedProxyOrderBy = "ORDER BY `filterId`";
     qsTest.sqlConfig = SqlConfig(SqlConfig::MockDbTableColumns({{"LSST", {{"Filter", {"filterId", "photClam"}}}}}));
     check(qsTest, queryAnaHelper, stmt, expectedParallel, expectedMerge, expectedProxyOrderBy);
@@ -156,7 +160,9 @@ BOOST_AUTO_TEST_CASE(OrderByLimit) {
     std::string expectedParallel =
             "SELECT `LSST.Source`.objectId AS `objectId`,`LSST.Source`.taiMidPoint AS `taiMidPoint` FROM LSST.Source_100 AS `LSST.Source` ORDER BY `objectId` ASC LIMIT 5";
     std::string expectedMerge =
-            "SELECT objectId AS `objectId`,taiMidPoint AS `taiMidPoint` ORDER BY `objectId` ASC LIMIT 5";
+            "SELECT objectId AS `objectId`,taiMidPoint AS `taiMidPoint` "
+            "FROM LSST.Source AS `LSST.Source` "
+            "ORDER BY `objectId` ASC LIMIT 5";
     std::string expectedProxyOrderBy = "ORDER BY `objectId` ASC";
     qsTest.sqlConfig = SqlConfig(SqlConfig::MockDbTableColumns({{"LSST", {{"Source", {"objectId", "taiMidPoint"}}}}}));
     check(qsTest, queryAnaHelper, stmt, expectedParallel, expectedMerge, expectedProxyOrderBy);
@@ -187,6 +193,7 @@ BOOST_AUTO_TEST_CASE(OrderByAggregateLimit) {
                                    "GROUP BY `objectId` "
                                    "ORDER BY `objectId` ASC";
     std::string expectedMerge = "SELECT objectId AS `objectId`,(SUM(QS2_SUM)/SUM(QS1_COUNT)) AS `AVG(taiMidPoint)` "
+                                "FROM LSST.Source AS `LSST.Source` "
                                 "GROUP BY `objectId` "
                                 "ORDER BY `objectId` ASC LIMIT 2";
     std::string expectedProxyOrderBy = "ORDER BY `objectId` ASC";
@@ -201,7 +208,9 @@ BOOST_AUTO_TEST_CASE(OrderByAggregateNotChunkedLimit) {
                                    "GROUP BY `filterId` "
                                    "ORDER BY `filterId`";
     // FIXME merge query is not useful here, see DM-3166
-    std::string expectedMerge = "SELECT filterId AS `filterId`,SUM(QS1_SUM) AS `SUM(photClam)` GROUP BY `filterId` ORDER BY `filterId` LIMIT 3";
+    std::string expectedMerge = "SELECT filterId AS `filterId`,SUM(QS1_SUM) AS `SUM(photClam)` "
+                                "FROM LSST.Filter AS `LSST.Filter` "
+                                "GROUP BY `filterId` ORDER BY `filterId` LIMIT 3";
     std::string expectedProxyOrderBy = "ORDER BY `filterId`";
     qsTest.sqlConfig = SqlConfig(SqlConfig::MockDbTableColumns({{"LSST", {{"Filter", {"filterId", "photClam"}}}}}));
     check(qsTest, queryAnaHelper, stmt, expectedParallel, expectedMerge, expectedProxyOrderBy);
