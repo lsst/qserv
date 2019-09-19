@@ -64,6 +64,7 @@ namespace qproc {
 }
 namespace query {
     class ColumnRef;
+    class SelectStmt;
 }
 namespace rproc {
     class InfileMerger;
@@ -155,6 +156,8 @@ public:
 private:
     /// @return ORDER BY part of SELECT statement that gets executed by the proxy
     std::string _getResultOrderBy() const;
+
+    void _expandSelectStarInMergeStatment(std::shared_ptr<query::SelectStmt> const& mergeStmt);
 
     void _discardMerger();
     void _qMetaUpdateStatus(qmeta::QInfo::QStatus qStatus);

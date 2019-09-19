@@ -457,6 +457,42 @@ void UserQuerySelect::setupMerger() {
         _errorExtra = _infileMerger->getError().getMsg();
         _qMetaUpdateStatus(qmeta::QInfo::FAILED);
     }
+
+    _expandSelectStarInMergeStatment(_infileMergerConfig->mergeStmt);
+
+    _infileMerger->setMergeStmtFromList(_infileMergerConfig->mergeStmt);
+}
+
+
+void UserQuerySelect::_expandSelectStarInMergeStatment(std::shared_ptr<query::SelectStmt> const& mergeStmt) {
+    if (nullptr != mergeStmt) {
+        auto& selectList = *(mergeStmt->getSelectList().getValueExprList());
+        for (auto valueExprItr = selectList.begin(); valueExprItr != selectList.end(); ++valueExprItr) {
+            auto& valueExpr = *valueExprItr;
+            if (valueExpr->isStar()) {
+                auto valueExprVec = std::make_shared<query::ValueExprPtrVector>();
+                valueExprVec->push_back(valueExpr);
+                auto starStmt = query::SelectStmt(std::make_shared<query::SelectList>(valueExprVec),
+                                                  mergeStmt->getFromListPtr());
+                sql::Schema schema;
+                if (not _infileMerger->getSchemaForQueryResults(starStmt, schema)) {
+                    throw UserQueryError(getQueryIdString() + " Couldn't get schema for merge query.");
+                }
+                // Only use the column names retured by the SELECT* (not the database or table name) because
+                // when performing the merge the columns will be in the merge table (not the table that was
+                // originally queried).
+                query::ValueExprPtrVector starColumns;
+                for (auto const& column : schema.columns) {
+                    starColumns.push_back(query::ValueExpr::newColumnExpr("", "", "", column.name));
+                }
+                valueExprItr = selectList.insert(valueExprItr, starColumns.begin(), starColumns.end());
+                std::advance(valueExprItr, starColumns.size());
+                // erase the STAR ValueExpr becasue it's been replaced with named columns.
+                valueExprItr = selectList.erase(valueExprItr);
+                if (valueExprItr == selectList.end()) break;
+            }
+        }
+    }
 }
 
 

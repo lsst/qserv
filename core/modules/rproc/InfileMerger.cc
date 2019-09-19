@@ -124,9 +124,6 @@ InfileMerger::InfileMerger(InfileMergerConfig const& c)
     LOGS(_log, LOG_LVL_TRACE, "InfileMerger maxResultTableSizeMB=" << _maxResultTableSizeMB
                               << " sizeCheckRowCount=" << _sizeCheckRowCount
                               << " checkSizeEveryXRows=" << _checkSizeEveryXRows);
-    if (_config.mergeStmt) {
-        _config.mergeStmt->setFromListAsTable(_mergeTable);
-    }
 
     _invalidJobAttemptMgr.setDeleteFunc([this](InvalidJobAttemptMgr::jASetType const& jobAttempts) -> bool {
         return _deleteInvalidRows(jobAttempts);
@@ -347,6 +344,13 @@ int InfileMerger::makeJobIdAttempt(int jobId, int attemptCount) {
     }
     jobIdAttempt += attemptCount;
     return jobIdAttempt;
+}
+
+
+void InfileMerger::setMergeStmtFromList(std::shared_ptr<query::SelectStmt> const& mergeStmt) const {
+    if (mergeStmt != nullptr) {
+        mergeStmt->setFromListAsTable(_mergeTable);
+    }
 }
 
 

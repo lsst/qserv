@@ -106,6 +106,7 @@ public:
 
     FromList const& getFromList() const { return *_fromList; }
     FromList& getFromList() { return *_fromList; }
+    std::shared_ptr<FromList> getFromListPtr() { return _fromList; }
     void setFromList(std::shared_ptr<FromList> f) { _fromList = f; }
     void setFromListAsTable(std::string const& t);
 
