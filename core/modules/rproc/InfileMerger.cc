@@ -381,7 +381,7 @@ bool InfileMerger::makeResultsTableForQuery(query::SelectStmt const& stmt) {
     std::string createStmt = sql::formCreateTable(_mergeTable, schema);
     LOGS(_log, LOG_LVL_TRACE, "InfileMerger make results table query: " << createStmt);
     if (not _applySqlLocal(createStmt, "makeResultsTableForQuery")) {
-        _error = InfileMergerError(util::ErrorCode::CREATE_TABLE, "Error creating table:" + _mergeTable);
+        _error = InfileMergerError(util::ErrorCode::CREATE_TABLE, "Error creating table:" + _mergeTable + ": " + _error.getMsg());
         _isFinished = true; // Cannot continue.
         LOGS(_log, LOG_LVL_ERROR, "InfileMerger sql error: " << _error.getMsg());
         return false;
