@@ -76,13 +76,13 @@ inline void renderTemplate(lsst::qserv::query::QueryTemplate& qt,
 template <typename T>
 inline void
 cloneIf(std::shared_ptr<T>& dest, std::shared_ptr<T> source) {
-    if (source.get()) dest = source->clone();
+    if (source != nullptr) dest = source->clone();
 }
 
 template <typename T>
 inline void
 copySyntaxIf(std::shared_ptr<T>& dest, std::shared_ptr<T> source) {
-    if (source.get()) dest = source->copySyntax();
+    if (source != nullptr) dest = source->copySyntax();
 }
 
 } // namespace
