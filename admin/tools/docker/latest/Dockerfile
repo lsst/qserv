@@ -1,13 +1,13 @@
-FROM lsstsqre/centos:7-stackbase-devtoolset-6
+FROM lsstsqre/centos:7-stackbase-devtoolset-8
 LABEL maintainer="Fabrice Jammes <fabrice.jammes@in2p3.fr>"
 
 RUN sh -c "echo \"BUILD ID: $(date '+%Y%m%d_%H%M%S')\" > /BUILD_ID"
 
 # Provide newer git for newinstall and eupspkg
 #
-RUN yum install -y rh-git29 && \
+RUN yum install -y rh-git218 && \
     yum clean all && \
-    echo ". /opt/rh/rh-git29/enable" > "/etc/profile.d/rh-git29.sh"
+    echo ". /opt/rh/rh-git218/enable" > "/etc/profile.d/rh-git218.sh"
 
 # Install Qserv prerequisites
 #
