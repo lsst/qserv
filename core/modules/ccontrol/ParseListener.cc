@@ -155,7 +155,7 @@ ParseListener::VecPairStr ParseListener::getTokenPairs(antlr4::CommonTokenStream
 
 
 ParseListener::ParseListener(std::string const& statement,
-                                 shared_ptr<ccontrol::UserQueryResources> queryResources)
+                             shared_ptr<ccontrol::UserQueryResources> const& queryResources)
     : _statement(statement), _queryResources(queryResources)
 {}
 
