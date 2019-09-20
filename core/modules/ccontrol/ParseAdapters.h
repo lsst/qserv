@@ -33,7 +33,7 @@
 #include <string>
 
 // Third-party headers
-#include <boost/algorithm/string/case_conv.hpp>
+#include <boost/algorithm/string/predicate.hpp>
 
 // These antlr-related files must be included before Log.h because antlr4 has a function called LOGS that
 // conflicts with the LOGS macro defined in Log.h
@@ -590,19 +590,15 @@ private:
             strParameters.push_back(valueFactor->getConstVal());
         }
 
-        // Add case insensitive behavior in order to mimic MySQL functions/procedures
-        std::string insensitiveFunction = boost::algorithm::to_lower_copy(function);
-        LOGS(_log, LOG_LVL_TRACE, "Qserv restrictor changed to lower-case: " << insensitiveFunction);
-
         std::shared_ptr<query::AreaRestrictor> restrictor;
         try {
-            if (insensitiveFunction == "qserv_areaspec_box") {
+            if (boost::algorithm::iequals("qserv_areaspec_box", function)) {
                 restrictor = std::make_shared<query::AreaRestrictorBox>(strParameters);
-            } else if (insensitiveFunction == "qserv_areaspec_circle") {
+            } else if (boost::algorithm::iequals("qserv_areaspec_circle", function)) {
                 restrictor = std::make_shared<query::AreaRestrictorCircle>(strParameters);
-            } else if (insensitiveFunction == "qserv_areaspec_ellipse") {
+            } else if (boost::algorithm::iequals("qserv_areaspec_ellipse", function)) {
                 restrictor = std::make_shared<query::AreaRestrictorEllipse>(strParameters);
-            } else if (insensitiveFunction == "qserv_areaspec_poly") {
+            } else if (boost::algorithm::iequals("qserv_areaspec_poly", function)) {
                 restrictor = std::make_shared<query::AreaRestrictorPoly>(strParameters);
             } else {
                 throw parser::adapter_execution_error("Unhandled restrictor function: " + function);
