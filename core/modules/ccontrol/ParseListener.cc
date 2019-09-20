@@ -260,25 +260,6 @@ string ParseListener::getStatementString() const {
 }
 
 
-void ParseListener::assertExecutionCondition(string const& function, bool condition, string const& message,
-        antlr4::ParserRuleContext* ctx) const {
-    if (true == condition) {
-        return;
-    }
-    auto queryString = getQueryString(ctx);
-    LOGS(_log, LOG_LVL_ERROR,
-        "Execution condition assertion failure:"
-        << "ParseListener::" << function
-        << " messsage:\"" << message << "\""
-        << ", in query:" << _statement
-        << ", in or around query segment: '" << queryString << "'"
-        << ", with adapter stack:" << adapterStackToString()
-        << ", string tree:" << getStringTree()
-        << ", tokens:" << getTokens());
-    throw parser::adapter_execution_error("Error parsing query, near \"" + queryString + "\"");
-}
-
-
 IGNORED(SqlStatements)
 IGNORED(SqlStatement)
 IGNORED(EmptyStatement)
