@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2019 AURA/LSST.
+ * Copyright 2019 LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
