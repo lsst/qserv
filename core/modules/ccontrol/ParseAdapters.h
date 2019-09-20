@@ -612,7 +612,7 @@ private:
 
     void _addBoolTerm(std::shared_ptr<query::BoolTerm> const& boolTerm, antlr4::ParserRuleContext* childCtx) {
         if (_ctx->whereExpr == childCtx) {
-            std::shared_ptr<query::AndTerm> andTerm = std::make_shared<query::AndTerm>(boolTerm);
+            auto andTerm = std::make_shared<query::AndTerm>(boolTerm);
             auto rootTerm = std::dynamic_pointer_cast<query::LogicalTerm>(_getWhereClause()->getRootTerm());
             if (nullptr == rootTerm) {
                 rootTerm = std::make_shared<query::OrTerm>();
