@@ -120,17 +120,16 @@ void ParseListener::exit##NAME(QSMySqlParser::NAME##Context* ctx) {\
 //      processed.
 #define ASSERT_EXECUTION_CONDITION(CONDITION, MESSAGE_STRING, CTX) \
 if (not (CONDITION)) { \
-    std::ostringstream msg; \
     auto queryString = getQueryString(CTX); \
-    msg << "Execution condition assertion failure:"; \
-    msg << getTypeName(this) << "::" << __FUNCTION__; \
-    msg << " messsage:\"" << MESSAGE_STRING << "\""; \
-    msg << ", in query:" << getStatementString(); \
-    msg << ", in or around query segment: '" << queryString << "'"; \
-    msg << ", with adapter stack:" << adapterStackToString(); \
-    msg << ", string tree:" << getStringTree(); \
-    msg << ", tokens:" << getTokens(); \
-    LOGS(_log, LOG_LVL_ERROR, msg.str()); \
+    LOGS(_log, LOG_LVL_ERROR, \
+        "Execution condition assertion failure:" \
+        << getTypeName(this) << "::" << __FUNCTION__ \
+        << " messsage:\"" << MESSAGE_STRING << "\"" \
+        << ", in query:" << getStatementString() \
+        << ", in or around query segment: '" << queryString << "'" \
+        << ", with adapter stack:" << adapterStackToString() \
+        << ", string tree:" << getStringTree() \
+        << ", tokens:" << getTokens()); \
     throw parser::adapter_execution_error("Error parsing query, near \"" + queryString + "\""); \
 } \
 
