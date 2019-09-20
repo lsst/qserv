@@ -856,7 +856,7 @@ BOOST_AUTO_TEST_CASE(dm646) {
     std::string stmt = "SELECT DISTINCT foo FROM Filter f;";
     std::string expected = "SELECT DISTINCT `f`.foo AS `foo` FROM LSST.Filter AS `f`";
     // FIXME: non-chunked query shouldn't require merge operation, see DM-3165
-    std::string expectedMerge = "SELECT DISTINCT foo AS `foo`";
+    std::string expectedMerge = "SELECT DISTINCT foo AS `foo` FROM LSST.Filter AS `f`";
     qsTest.sqlConfig = SqlConfig(SqlConfig::MockDbTableColumns({{"LSST", {{"Filter", {"foo"}},
                                                         {"Object", {"zNumObs"}}}}}));
     auto queries = queryAnaHelper.getInternalQueries(qsTest, stmt);
@@ -866,7 +866,7 @@ BOOST_AUTO_TEST_CASE(dm646) {
     // chunked query
     stmt = "SELECT DISTINCT zNumObs FROM Object;";
     expected = "SELECT DISTINCT `LSST.Object`.zNumObs AS `zNumObs` FROM LSST.Object_100 AS `LSST.Object`";
-    expectedMerge = "SELECT DISTINCT zNumObs AS `zNumObs`";
+    expectedMerge = "SELECT DISTINCT zNumObs AS `zNumObs` FROM LSST.Object AS `LSST.Object`";
     queries = queryAnaHelper.getInternalQueries(qsTest, stmt);
     BOOST_CHECK_EQUAL(queries[0], expected);
     BOOST_CHECK_EQUAL(queries[1], expectedMerge);
