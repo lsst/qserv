@@ -118,13 +118,13 @@ public:
 
     virtual std::string name() const = 0;
 
-    // used to get a std::string that reprsents the current stack of adapters, comma delimited.
+    // used to get a string that reprsents the current stack of adapters, comma delimited.
     virtual std::string adapterStackToString() const = 0;
 
-    // gets the antlr4 std::string representation of the parsed tree, nested in parenthesis.
+    // gets the antlr4 string representation of the parsed tree, nested in parenthesis.
     virtual std::string getStringTree() const = 0;
 
-    // gets the antlr4 std::string representation of the tokenization of the query.
+    // gets the antlr4 string representation of the tokenization of the query.
     virtual std::string getTokens() const = 0;
 
     // get the sql statement
@@ -579,10 +579,10 @@ public:
 private:
     void _addQservRestrictor(const std::string& function,
                              const std::vector<std::shared_ptr<query::ValueFactor>>& parameters) {
-        // Here we extract the args from a std::vector of ValueFactor::ColumnRef
-        // This is a side effect of the current IR, where in most cases a constant std::string is represented as
+        // Here we extract the args from a vector of ValueFactor::ColumnRef
+        // This is a side effect of the current IR, where in most cases a constant string is represented as
         // a column name. But in a QservRestrictor (aka QservFunction) each par is simply represented by a
-        // std::string.
+        // string.
         std::vector<std::string> strParameters;
         for (auto const& valueFactor : parameters) {
             if (query::ValueFactor::CONST != valueFactor->getType()) {
@@ -1656,7 +1656,7 @@ public:
     void checkContext() const override {
         // we use checkContext here to verify that `limit` is set and `offset` is not set. Since they both
         // have decimalLiteral values and we ignore DecimalLiteral (and just extract the value directly where
-        // it is used (at least for now), we verify that the size of the decimalLiteral std::vector is exactly
+        // it is used (at least for now), we verify that the size of the decimalLiteral vector is exactly
         // one.
 
         // required:
@@ -1817,7 +1817,7 @@ public:
     }
 
     void onExit() override {
-        // Fetching the std::string from a Uid shortcuts a large part of the syntax tree defined under Uid
+        // Fetching the string from a Uid shortcuts a large part of the syntax tree defined under Uid
         // (see QSMySqlParser.g4). If Adapters for any nodes in the tree below Uid are implemented then
         // it will have to be handled and this shortcut may not be taken.
         if (_val.empty()) {
@@ -2743,8 +2743,8 @@ public:
         // the first call will be a MathExpressionAtom callback which populates _valueExpr, and later calls
         // will be ValueFactor callbacks. If that's NOT the case and a second MathExpressionAtom callback
         // might happen, or a ValueFactor callback might happen before a MathExpressionAtom callback then
-        // this algorithm may have to be rewritten; this funciton may need to pass a std::vector of ValueFactors
-        // as the callback argument, instead of a ValueExpr that contains a std::vector of ValueFactors.
+        // this algorithm may have to be rewritten; this funciton may need to pass a vector of ValueFactors
+        // as the callback argument, instead of a ValueExpr that contains a vector of ValueFactors.
         assert_execution_condition(nullptr == _valueExpr, "expected _valueExpr to be null.", _ctx);
         _valueExpr = valueExpr;
     }
