@@ -75,7 +75,7 @@ void ParseListener::exit##NAME(QSMySqlParser::NAME##Context* ctx) { \
 #define UNHANDLED(NAME) \
 void ParseListener::enter##NAME(QSMySqlParser::NAME##Context* ctx) { \
     LOGS(_log, LOG_LVL_ERROR, __FUNCTION__ << " is UNHANDLED for '" << getQueryString(ctx) << "'"); \
-    throw parser::adapter_order_error("qserv can not parse query, near \"" + getQueryString(ctx) + "\""); \
+    throw parser::adapter_order_error("qserv can not parse query, near \"" + getQueryString(ctx) + '"'); \
 } \
 \
 void ParseListener::exit##NAME(QSMySqlParser::NAME##Context* ctx) {}\
@@ -124,13 +124,13 @@ if (not (CONDITION)) { \
     LOGS(_log, LOG_LVL_ERROR, \
         "Execution condition assertion failure:" \
         << getTypeName(this) << "::" << __FUNCTION__ \
-        << " messsage:\"" << MESSAGE_STRING << "\"" \
+        << " messsage:\"" << MESSAGE_STRING << '"' \
         << ", in query:" << getStatementString() \
         << ", in or around query segment: '" << queryString << "'" \
         << ", with adapter stack:" << adapterStackToString() \
         << ", string tree:" << getStringTree() \
         << ", tokens:" << getTokens()); \
-    throw parser::adapter_execution_error("Error parsing query, near \"" + queryString + "\""); \
+    throw parser::adapter_execution_error("Error parsing query, near \"" + queryString + '"'); \
 } \
 
 

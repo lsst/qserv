@@ -151,7 +151,7 @@ public:
         std::ostringstream msg;
         msg << "Not supported error:";
         msg << getTypeName(this) << "::" << function;
-        msg << " messsage:\"" << message << "\"";
+        msg << " messsage:\"" << message << '"';
         msg << ", in query:" << getStatementString();
         msg << ", std::string tree:" << getStringTree();
         msg << ", tokens:" << getTokens();
@@ -178,14 +178,14 @@ protected:
             auto queryString = getQueryString(ctx);
             msg << "Execution condition assertion failure:";
             msg << getTypeName(this) << "::"; // TODO: pass in: << __FUNCTION__;
-            msg << " messsage:\"" << messageString << "\"";
+            msg << " messsage:\"" << messageString << '"';
             msg << ", in query:" << getStatementString();
             msg << ", in or around query segment: '" << queryString << "'";
             msg << ", with adapter stack:" << adapterStackToString();
             msg << ", string tree:" << getStringTree();
             msg << ", tokens:" << getTokens();
             LOGS(_log, LOG_LVL_ERROR, msg.str());
-            throw parser::adapter_execution_error("Error parsing query, near \"" + queryString + "\"");
+            throw parser::adapter_execution_error("Error parsing query, near \"" + queryString + '"');
         }
     }
 

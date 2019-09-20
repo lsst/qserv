@@ -58,15 +58,13 @@ private:
     void recover(antlr4::Parser *recognizer, std::exception_ptr e) override {
         LOGS(_log, LOG_LVL_ERROR, __FUNCTION__ <<
                 " antlr4 could not make a parse tree out of the input statement:" << _statement);
-        throw lsst::qserv::parser::ParseException(std::string("Failed to instantiate query: \"") + _statement +
-                std::string("\""));
+        throw lsst::qserv::parser::ParseException(std::string("Failed to instantiate query: \"") + _statement + '"');
     }
 
     antlr4::Token* recoverInline(antlr4::Parser *recognizer) override {
         LOGS(_log, LOG_LVL_ERROR, __FUNCTION__ <<
                 " antlr4 could not make a parse tree out of the input statement:" << _statement);
-        throw lsst::qserv::parser::ParseException(std::string("Failed to instantiate query: \"") + _statement +
-                std::string("\""));
+        throw lsst::qserv::parser::ParseException(std::string("Failed to instantiate query: \"") + _statement + '"');
     }
 
     void sync(antlr4::Parser *recognizer) override {
@@ -90,8 +88,8 @@ private:
     virtual void recover(const antlr4::LexerNoViableAltException &e) {
         LOGS(_log, LOG_LVL_ERROR, __FUNCTION__ <<
                 "antlr4 could not tokenize the input statement:" << _statement);
-        throw lsst::qserv::parser::ParseException(std::string("Failed to instantiate query: \"") + _statement +
-                std::string("\""));
+        throw lsst::qserv::parser::ParseException(std::string("Failed to instantiate query: \"") + _statement
+            + '"');
     }
 
     std::string const& _statement;
