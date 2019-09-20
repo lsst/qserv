@@ -1172,8 +1172,8 @@ public:
     using AdapterT::AdapterT;
 
     void checkContext() const override {
-        const static std::vector<std::string> supportedOps {"=", "<", ">", "<>", "!=", ">=", "<=", "<=>"};
-        if (supportedOps.end() == find(supportedOps.begin(), supportedOps.end(), _ctx->getText())) {
+        static const char* supportedOps[] {"=", "<", ">", "<>", "!=", ">=", "<=", "<=>"};
+        if (std::end(supportedOps) == find(std::begin(supportedOps), std::end(supportedOps), _ctx->getText())) {
             assertNotSupported(__FUNCTION__, false,
                     "Unsupported comparison operator: " + _ctx->getText(), _ctx);
         }
