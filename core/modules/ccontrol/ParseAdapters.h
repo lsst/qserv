@@ -162,16 +162,15 @@ public:
 
 
 protected:
-    // assert that condition is true, otherwise log a message & throw an adapter_execution_error with the
-    // text of the query string that the context represents.
-    //
-    // CONDITION: boolean statement
-    //      The condition that is being asserted. True passes, false logs and throws.
-    // MESSAGE_STRING: string
-    //      A message for the log, it is not included in the exception.
-    // CTX: an antlr4::ParserRuleContext* (or derived class)
-    //      The antlr4 context that is used to get the segment of the query that is currently being
-    //      processed.
+    /**
+     * @brief assert that condition is true, otherwise log a message & throw an adapter_execution_error with
+     * the text of the query string that the context represents.
+     *
+     * @param condition The condition that is being asserted. True passes, false logs and throws.
+     * @param messageString A message for the log, it is not included in the exception.
+     * @param ctx The antlr4 context that is used to get the segment of the query that is currently being
+     *        processed.
+     */
     void assert_execution_condition(bool condition, std::string const& messageString,
                                     antlr4::ParserRuleContext* ctx) const {
         if (not (condition)) {
