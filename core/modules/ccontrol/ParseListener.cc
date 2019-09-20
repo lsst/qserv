@@ -265,17 +265,16 @@ void ParseListener::assertExecutionCondition(string const& function, bool condit
     if (true == condition) {
         return;
     }
-    std::ostringstream msg;
     auto queryString = getQueryString(ctx);
-    msg << "Execution condition assertion failure:";
-    msg << "ParseListener::" << function;
-    msg << " messsage:\"" << message << "\"";
-    msg << ", in query:" << _statement;
-    msg << ", in or around query segment: '" << queryString << "'";
-    msg << ", with adapter stack:" << adapterStackToString();
-    msg << ", string tree:" << getStringTree();
-    msg << ", tokens:" << getTokens();
-    LOGS(_log, LOG_LVL_ERROR, msg.str());
+    LOGS(_log, LOG_LVL_ERROR,
+        "Execution condition assertion failure:"
+        << "ParseListener::" << function
+        << " messsage:\"" << message << "\""
+        << ", in query:" << _statement
+        << ", in or around query segment: '" << queryString << "'"
+        << ", with adapter stack:" << adapterStackToString()
+        << ", string tree:" << getStringTree()
+        << ", tokens:" << getTokens());
     throw parser::adapter_execution_error("Error parsing query, near \"" + queryString + "\"");
 }
 
