@@ -43,23 +43,30 @@
 #include "boost/test/included/unit_test.hpp"
 
 // Qserv headers
-#include "mysql/MySqlConfig.h"
+#include "css/CssAccess.h"
+#include "qproc/QuerySession.h"
+#include "query/SelectStmt.h"
 #include "sql/SqlConfig.h"
-#include "tests/QueryAnaFixture.h"
-
-using lsst::qserv::mysql::MySqlConfig;
-using lsst::qserv::sql::SqlConfig;
-using lsst::qserv::tests::QueryAnaFixture;
+#include "tests/QueryAnaHelper.h"
+#include "tests/testKvMap.h"
 
 
-BOOST_FIXTURE_TEST_SUITE(OrderBy, QueryAnaFixture)
+namespace {
+    const std::string defaultDb = "LSST";
+}
+
+
+using namespace lsst::qserv;
+
+
+BOOST_AUTO_TEST_SUITE(OrderBy)
 
 struct Data {
     Data(std::string const& stmt_,
          std::string const& expectedParallel_,
          std::string const& expectedMerge_,
          std::string const& expectedProxyOrderBy_,
-         SqlConfig const& sqlConfig_)
+         sql::SqlConfig const& sqlConfig_)
         : stmt(stmt_), expectedParallel(expectedParallel_), expectedMerge(expectedMerge_),
           expectedProxyOrderBy(expectedProxyOrderBy_), sqlConfig(sqlConfig_)
     {}
@@ -68,7 +75,7 @@ struct Data {
     std::string expectedParallel;
     std::string expectedMerge;
     std::string expectedProxyOrderBy;
-    SqlConfig sqlConfig;
+    sql::SqlConfig sqlConfig;
 };
 
 
@@ -89,14 +96,14 @@ static const std::vector<Data> DATA = {
         "SELECT `LSST.Source`.objectId AS `objectId`,`LSST.Source`.taiMidPoint AS `taiMidPoint` FROM LSST.Source_100 AS `LSST.Source`",
         "",
         "ORDER BY `objectId` ASC",
-        SqlConfig(SqlConfig::MockDbTableColumns({{"LSST", {{"Source", {"objectId", "taiMidPoint"}}}}}))),
+        sql::SqlConfig(sql::SqlConfig::MockDbTableColumns({{defaultDb, {{"Source", {"objectId", "taiMidPoint"}}}}}))),
     // Order by not chunked:
 
     Data("SELECT filterId FROM Filter ORDER BY filterId",
         "SELECT `LSST.Filter`.filterId AS `filterId` FROM LSST.Filter AS `LSST.Filter`",
         "",
         "ORDER BY `filterId`",
-        SqlConfig(SqlConfig::MockDbTableColumns({{"LSST", {{"Filter", {"filterId"}}}}}))),
+        sql::SqlConfig(sql::SqlConfig::MockDbTableColumns({{defaultDb, {{"Filter", {"filterId"}}}}}))),
 
     // OrderByTwoField
     Data("SELECT objectId, taiMidPoint "
@@ -105,7 +112,7 @@ static const std::vector<Data> DATA = {
         "SELECT `LSST.Source`.objectId AS `objectId`,`LSST.Source`.taiMidPoint AS `taiMidPoint` FROM LSST.Source_100 AS `LSST.Source`",
         "",
         "ORDER BY `objectId`, `taiMidPoint` ASC",
-        SqlConfig(SqlConfig::MockDbTableColumns({{"LSST", {{"Source", {"objectId", "taiMidPoint"}}}}}))),
+        sql::SqlConfig(sql::SqlConfig::MockDbTableColumns({{defaultDb, {{"Source", {"objectId", "taiMidPoint"}}}}}))),
 
     // OrderByThreeField
     Data("SELECT objectId, taiMidPoint, xFlux "
@@ -116,7 +123,7 @@ static const std::vector<Data> DATA = {
             "FROM LSST.Source_100 AS `LSST.Source`",
         "",
         "ORDER BY `objectId`, `taiMidPoint`, `xFlux` DESC",
-        SqlConfig(SqlConfig::MockDbTableColumns({{"LSST", {{"Source", {"objectId", "taiMidPoint", "xFlux"}}}}}))),
+        sql::SqlConfig(sql::SqlConfig::MockDbTableColumns({{defaultDb, {{"Source", {"objectId", "taiMidPoint", "xFlux"}}}}}))),
 
     // OrderByAggregate
     Data("SELECT objectId, AVG(taiMidPoint) "
@@ -130,7 +137,7 @@ static const std::vector<Data> DATA = {
             "FROM LSST.Source AS `LSST.Source` "
             "GROUP BY `objectId`",
         "ORDER BY `objectId` ASC",
-        SqlConfig(SqlConfig::MockDbTableColumns({{"LSST", {{"Source", {"objectId", "taiMidPoint"}}}}}))),
+        sql::SqlConfig(sql::SqlConfig::MockDbTableColumns({{defaultDb, {{"Source", {"objectId", "taiMidPoint"}}}}}))),
 
     // OrderByAggregateNotChunked)
     Data("SELECT filterId, SUM(photClam) FROM Filter GROUP BY filterId ORDER BY filterId",
@@ -140,7 +147,7 @@ static const std::vector<Data> DATA = {
             "FROM LSST.Filter AS `LSST.Filter` "
             "GROUP BY `filterId`",
         "ORDER BY `filterId`",
-        SqlConfig(SqlConfig::MockDbTableColumns({{"LSST", {{"Filter", {"filterId", "photClam"}}}}}))),
+        sql::SqlConfig(sql::SqlConfig::MockDbTableColumns({{defaultDb, {{"Filter", {"filterId", "photClam"}}}}}))),
 
     // OrderByLimit
     Data( "SELECT objectId, taiMidPoint "
@@ -151,7 +158,7 @@ static const std::vector<Data> DATA = {
             "FROM LSST.Source AS `LSST.Source` "
             "ORDER BY `objectId` ASC LIMIT 5",
         "ORDER BY `objectId` ASC",
-        SqlConfig(SqlConfig::MockDbTableColumns({{"LSST", {{"Source", {"objectId", "taiMidPoint"}}}}}))),
+        sql::SqlConfig(sql::SqlConfig::MockDbTableColumns({{defaultDb, {{"Source", {"objectId", "taiMidPoint"}}}}}))),
 
     // OrderByLimitNotChunked
         Data("SELECT run, field FROM LSST.Science_Ccd_Exposure order by field limit 2",
@@ -161,7 +168,7 @@ static const std::vector<Data> DATA = {
                 "LIMIT 2",
             "",
             "ORDER BY `field`",
-            SqlConfig(SqlConfig::MockDbTableColumns({{"LSST", {{"Science_Ccd_Exposure", {"run", "field"}}}}}))),
+            sql::SqlConfig(sql::SqlConfig::MockDbTableColumns({{defaultDb, {{"Science_Ccd_Exposure", {"run", "field"}}}}}))),
 
     // OrderByAggregateLimit
         Data( "SELECT objectId, AVG(taiMidPoint) "
@@ -177,7 +184,7 @@ static const std::vector<Data> DATA = {
             "GROUP BY `objectId` "
             "ORDER BY `objectId` ASC LIMIT 2",
         "ORDER BY `objectId` ASC",
-        SqlConfig(SqlConfig::MockDbTableColumns({{"LSST", {{"Source", {"objectId", "taiMidPoint"}}}}}))),
+        sql::SqlConfig(sql::SqlConfig::MockDbTableColumns({{defaultDb, {{"Source", {"objectId", "taiMidPoint"}}}}}))),
 
     // OrderByAggregateNotChunkedLimit
     Data("SELECT filterId, SUM(photClam) FROM Filter GROUP BY filterId ORDER BY filterId LIMIT 3",
@@ -190,19 +197,31 @@ static const std::vector<Data> DATA = {
             "FROM LSST.Filter AS `LSST.Filter` "
             "GROUP BY `filterId` ORDER BY `filterId` LIMIT 3",
         "ORDER BY `filterId`",
-        SqlConfig(SqlConfig::MockDbTableColumns({{"LSST", {{"Filter", {"filterId", "photClam"}}}}}))),
+        sql::SqlConfig(sql::SqlConfig::MockDbTableColumns({{defaultDb, {{"Filter", {"filterId", "photClam"}}}}}))),
 };
 
 
 BOOST_DATA_TEST_CASE(OrderByTest, DATA, data) {
-    std::vector<std::string> expectedQueries = {
-        data.expectedParallel,
-        data.expectedMerge,
-        data.expectedProxyOrderBy };
+    qproc::QuerySession::Test qsTest(0, // "Config number". I don't know its purpose; it has always been 0.
+                                     css::CssAccess::createFromData(testKvMap, "."),
+                                     defaultDb,
+                                     data.sqlConfig);
     std::vector<std::string> queries;
-    qsTest.sqlConfig = data.sqlConfig;
-    BOOST_REQUIRE_NO_THROW(queries = queryAnaHelper.getInternalQueries(qsTest, data.stmt));
-    BOOST_CHECK_EQUAL_COLLECTIONS(queries.begin(), queries.end(), expectedQueries.begin(), expectedQueries.end());
+    tests::QueryAnaHelper queryAnaHelper;
+    auto querySession = queryAnaHelper.buildQuerySession(qsTest, data.stmt);
+
+    BOOST_REQUIRE_NO_THROW(
+        BOOST_CHECK_EQUAL(queryAnaHelper.buildFirstParallelQuery(), data.expectedParallel));
+
+    if (querySession->needsMerge()) {
+        BOOST_CHECK_EQUAL(querySession->getMergeStmt()->getQueryTemplate().sqlFragment(), data.expectedMerge);
+    }
+    else {
+        BOOST_CHECK_EQUAL(data.expectedMerge.empty(), true);
+        BOOST_CHECK_EQUAL(querySession->getMergeStmt(), nullptr);
+    }
+
+    BOOST_CHECK_EQUAL(querySession->getResultOrderBy(), data.expectedProxyOrderBy);
 }
 
 BOOST_AUTO_TEST_SUITE_END()
