@@ -22,13 +22,13 @@
  */
 
 
+#ifndef LSST_QSERV_CCONTROL_PARSEADAPTERSCBH
+#define LSST_QSERV_CCONTROL_PARSEADAPTERSCBH
+
+
 #include <memory>
 #include <string>
 #include <vector>
-
-
-#ifndef LSST_QSERV_CCONTROL_PARSEADAPTERSCBH
-#define LSST_QSERV_CCONTROL_PARSEADAPTERSCBH
 
 
 namespace antlr4 {
