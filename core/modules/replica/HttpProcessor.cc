@@ -40,12 +40,19 @@
 // Qserv headers
 #include "css/CssAccess.h"
 #include "global/intTypes.h"
+#include "qhttp/Server.h"
 #include "replica/AbortTransactionJob.h"
 #include "replica/ChunkNumber.h"
 #include "replica/ConfigurationTypes.h"
 #include "replica/Controller.h"
 #include "replica/DatabaseMySQL.h"
 #include "replica/DatabaseServices.h"
+#include "replica/HttpCatalogsModule.h"
+#include "replica/HttpControllerModule.h"
+#include "replica/HttpRequestQuery.h"
+#include "replica/HttpReplicationLevelsModule.h"
+#include "replica/HttpRequestBody.h"
+#include "replica/HttpWorkerStatusModule.h"
 #include "replica/IndexJob.h"
 #include "replica/Performance.h"
 #include "replica/QservMgtServices.h"
@@ -71,239 +78,6 @@ using namespace lsst::qserv::replica;
 namespace {
 
 string const taskName = "HTTP-PROCESSOR";
-
-/**
- * Extract a value of an optional parameter of a query (string value)
- * 
- * @param query
- *   parameters of the HTTP request
- * 
- * @param name
- *   the name of a parameter to look for
- * 
- * @param defaultValue
- *   the default value to be returned if no parameter was found
- * 
- * @return
- *   the found value or the default value
- */
-string getQueryParamStr(unordered_map<string,string> const& query,
-                        string const& param,
-                        string const& defaultValue=string()) {
-    auto&& itr = query.find(param);
-    if (itr == query.end()) return defaultValue;
-    return itr->second;
-}
-
-
-/**
- * Safe version of the above defined method which requires that
- * the parameter was provided and it had a valid value.
- *
- * @see getQueryParamStr
- */
-string getRequiredQueryParamStr(unordered_map<string,string> const& query,
-                                string const& param) {
-    auto const val = getQueryParamStr(query, param);
-    if (val.empty()) {
-        throw invalid_argument(
-                string(__func__) + " parameter '" + param + "' is missing or has an invalid value");
-    }
-    return val;
-}
-
-
-/**
- * Extract a value of an optional parameter of a query (unsigned 16-bit)
- * 
- * @param query
- *   parameters of the HTTP request
- * 
- * @param name
- *   the name of a parameter to look for
- * 
- * @param defaultValue
- *   the default value to be returned if no parameter was found
- * 
- * @return
- *   the found value or the default value
- */
-uint16_t getQueryParamUInt16(unordered_map<string,string> const& query,
-                             string const& param,
-                             uint16_t defaultValue=0) {
-    auto&& itr = query.find(param);
-    if (itr == query.end()) return defaultValue;
-    unsigned long val = stoul(itr->second);
-    if (val >= numeric_limits<uint16_t>::max()) {
-        throw out_of_range(
-                "HttpProcessor::" + string(__func__) + " value of parameter: " + param +
-                " exceeds allowed limit for type 'uint16_t'");
-    }
-    return static_cast<uint16_t>(val);
-}
-
-
-/**
- * Safe version of the above defined method which requires that
- * the parameter was provided and it had a valid value.
- *
- * @see getQueryParamUInt16
- */
-uint16_t getRequiredQueryParamUInt16(unordered_map<string,string> const& query,
-                                     string const& param) {
-    auto const val = getQueryParamUInt16(query, param, 0);
-    if (val == 0) {
-        throw invalid_argument(
-                string(__func__) + " parameter '" + param + "' is missing or has an invalid value");
-    }
-    return val;
-}
-
-
-/**
- * Extract a value of an optional parameter of a query (unsigned 64-bit)
- * 
- * @param query
- *   parameters of the HTTP request
- * 
- * @param name
- *   the name of a parameter to look for
- * 
- * @param defaultValue
- *   the default value to be returned if no parameter was found
- * 
- * @return
- *   the found value or the default value
- */
-uint64_t getQueryParam(unordered_map<string,string> const& query,
-                       string const& param,
-                       uint64_t defaultValue=0) {
-    auto&& itr = query.find(param);
-    if (itr == query.end()) return defaultValue;
-    return stoull(itr->second);
-}
-
-
-/**
- * Safe version of the above defined method which requires that
- * the parameter was provided and it had a valid value.
- *
- * @see getQueryParam
- */
-uint64_t getRequiredQueryParam(unordered_map<string,string> const& query,
-                               string const& param) {
-    auto const val = getQueryParam(query, param, 0);
-    if (val == 0) {
-        throw invalid_argument(
-                string(__func__) + " parameter '" + param + "' is missing or has an invalid value");
-    }
-    return val;
-}
-
-
-/**
- * Extract a value of an optional parameter of a query (unsigned int)
- * 
- * @param query
- *   parameters of the HTTP request
- * 
- * @param name
- *   the name of a parameter to look for
- * 
- * @param defaultValue
- *   the default value to be returned if no parameter was found
- * 
- * @return
- *   the found value or the default value
- */
-unsigned int getRequiredQueryParamUInt(unordered_map<string,string> const& query,
-                                       string const& param) {
-    auto&& itr = query.find(param);
-    if (itr == query.end()) {
-        throw invalid_argument("mandatory parameter '" + param + "' is missing");
-    }
-    unsigned long val = stoul(itr->second);
-    if (val > numeric_limits<unsigned int>::max()) {
-        throw out_of_range(
-                "HttpProcessor::" + string(__func__) + " value of parameter: " + param +
-                " exceeds allowed limit for type 'unsigned int'");
-    }
-    return static_cast<unsigned int>(val);
-}
-
-
-/**
- * Extract a value of an optional parameter of a query (int)
- * 
- * @param query
- *   parameters of the HTTP request
- * 
- * @param name
- *   the name of a parameter to look for
- * 
- * @param defaultValue
- *   the default value to be returned if no parameter was found
- * 
- * @return
- *   the found value or the default value
- */
-int getQueryParamInt(unordered_map<string,string> const& query,
-                     string const& param,
-                     int defaultValue=-1) {
-    auto&& itr = query.find(param);
-    if (itr == query.end()) return defaultValue;
-    return stoi(itr->second);
-}
-
-unsigned int getQueryParamUInt(unordered_map<string,string> const& query,
-                               string const& param,
-                               unsigned int defaultValue=0) {
-    auto&& itr = query.find(param);
-    if (itr == query.end()) return defaultValue;
-    return stoul(itr->second);
-}
-
-
-/**
- * Safe version of the above defined method which requires that
- * the parameter was provided and it had a valid value.
- * 
- * @see getQueryParamInt
- */
-bool getRequiredQueryParamBool(unordered_map<string,string> const& query,
-                               string const& param) {
-    auto const val = getQueryParamInt(query, param);
-    if (val < 0) {
-        throw invalid_argument(
-                string(__func__) + " parameter '" + param + "' is missing or has an invalid value");
-    }
-    return val != 0;
-}
-
-
-/**
- * Extract a value of an optional parameter of a query (boolean value)
- * 
- * @param query
- *   parameters of the HTTP request
- * 
- * @param name
- *   the name of a parameter to look for
- * 
- * @param defaultValue
- *   the default value to be returned if no parameter was found
- * 
- * @return
- *   the found value or the default value
- */
-bool getQueryParamBool(unordered_map<string,string> const& query,
-                       string const& param,
-                       bool defaultValue=false) {
-    auto&& itr = query.find(param);
-    if (itr == query.end()) return defaultValue;
-    return not (itr->second.empty() or (itr->second == "0"));
-}
-
 
 /**
  * Inspect parameters of the request's query to see if the specified parameter
@@ -340,63 +114,6 @@ bool saveConfigParameter(T& struct_,
     return false;
 }
 
-
-/**
- * Helper class HttpRequestBody parses a body of an HTTP request
- * which has the following header:
- * 
- *   Content-Type: application/json
- * 
- * Exceptions may be thrown by the constructor of the class if
- * the request has an unexpected content type, or if its payload
- * is not a proper JSON object.
- */
-class HttpRequestBody {
-public:
-
-    /// parsed body of the request
-    json objJson;
-
-    /**
-     * The constructor will parse and evaluate a body of an HTTP request
-     * and populate the 'kv' dictionary. Exceptions may be thrown in
-     * the following scenarios:
-     *
-     * - the required HTTP header is not found in the request
-     * - the body doesn't have a valid JSON string (unless the body is empty)
-     * 
-     * @param req
-     *   the request to be parsed
-     */
-    explicit HttpRequestBody(qhttp::Request::Ptr const& req) {
-
-        string const contentType = req->header["Content-Type"];
-        string const requiredContentType = "application/json";
-        if (contentType != requiredContentType) {
-            throw invalid_argument(
-                    "unsupported content type: '" + contentType + "' instead of: '" +
-                    requiredContentType + "'");
-        }
-        req->content >> objJson;
-        if (objJson.is_null() or objJson.is_object()) return;
-        throw invalid_argument(
-                "invalid format of the request body. A simple JSON object was expected");
-    }
-
-    template <typename T>
-    T required(string const& name) const {
-        if (objJson.find(name) != objJson.end()) return objJson[name];
-        throw invalid_argument(
-                "HttpRequestBody::" + string(__func__) + "<T> required parameter " + name +
-                " is missing in the request body");
-    }
-
-    template <typename T>
-    T optional(string const& name, T const& defaultValue) const {
-        if (objJson.find(name) != objJson.end()) return objJson[name];
-        return defaultValue;
-    }
-};
 
 /**
  * @return the name of a worker which has the least number of replicas
@@ -506,6 +223,36 @@ HttpProcessor::HttpProcessor(Controller::Ptr const& controller,
         _onWorkerEvict(onWorkerEvict),
         _workerResponseTimeoutSec(workerResponseTimeoutSec),
         _healthMonitorTask(healthMonitorTask),
+        _catalogsModule(
+            HttpCatalogsModule::create(
+                controller,
+                taskName,
+                workerResponseTimeoutSec
+            )
+        ),
+        _replicationLevelsModule(
+            HttpReplicationLevelsModule::create(
+                controller,
+                taskName,
+                workerResponseTimeoutSec,
+                healthMonitorTask
+            )
+        ),
+        _workerStatusModule(
+            HttpWorkerStatusModule::create(
+                controller,
+                taskName,
+                workerResponseTimeoutSec,
+                healthMonitorTask
+            )
+        ),
+        _controllersModule(
+            HttpControllerModule::create(
+                controller,
+                taskName,
+                workerResponseTimeoutSec
+            )
+        ),
         _log(LOG_GET("lsst.qserv.replica.HttpProcessor")) {
 }
 
@@ -523,13 +270,36 @@ void HttpProcessor::_initialize() {
     auto self = shared_from_this();
 
     controller()->serviceProvider()->httpServer()->addHandlers({
-
-        {"GET",    "/replication/v1/catalogs", bind(&HttpProcessor::_getCatalogs, self, _1, _2)},
-        {"GET",    "/replication/v1/level", bind(&HttpProcessor::_getReplicationLevel, self, _1, _2)},
-        {"GET",    "/replication/v1/worker", bind(&HttpProcessor::_listWorkerStatuses, self, _1, _2)},
-        {"GET",    "/replication/v1/worker/:name", bind(&HttpProcessor::_getWorkerStatus, self, _1, _2)},
-        {"GET",    "/replication/v1/controller", bind(&HttpProcessor::_listControllers, self, _1, _2)},
-        {"GET",    "/replication/v1/controller/:id", bind(&HttpProcessor::_getControllerInfo, self, _1, _2)},
+        {"GET", "/replication/v1/catalogs",
+            [&](qhttp::Request::Ptr  const& req,
+                qhttp::Response::Ptr const& resp) {
+                _catalogsModule->execute(req, resp);
+            }
+        },
+        {"GET", "/replication/v1/level",
+            [&](qhttp::Request::Ptr  const& req,
+                qhttp::Response::Ptr const& resp) {
+                _replicationLevelsModule->execute(req, resp);
+            }
+        },
+        {"GET", "/replication/v1/worker",
+            [&](qhttp::Request::Ptr  const& req,
+                qhttp::Response::Ptr const& resp) {
+                _workerStatusModule->execute(req, resp);
+            }
+        },
+        {"GET", "/replication/v1/controller",
+            [&](qhttp::Request::Ptr  const& req,
+                qhttp::Response::Ptr const& resp) {
+                _controllersModule->execute(req, resp);
+            }
+        },
+        {"GET", "/replication/v1/controller/:id",
+            [&](qhttp::Request::Ptr  const& req,
+                qhttp::Response::Ptr const& resp) {
+                _controllersModule->execute(req, resp, "SELECT-ONE-BY-ID");
+            }
+        },
         {"GET",    "/replication/v1/request", bind(&HttpProcessor::_listRequests, self, _1, _2)},
         {"GET",    "/replication/v1/request/:id", bind(&HttpProcessor::_getRequestInfo, self, _1, _2)},
         {"GET",    "/replication/v1/job", bind(&HttpProcessor::_listJobs, self, _1, _2)},
@@ -585,502 +355,6 @@ void HttpProcessor::_error(string const& msg) const {
 }
 
 
-json HttpProcessor::_databaseStats(string const& database, bool dummyReport) const {
-
-    auto const config = controller()->serviceProvider()->config();
-    auto const databaseServices = controller()->serviceProvider()->databaseServices();
-
-    vector<unsigned int> chunks;
-    if (not dummyReport) databaseServices->findDatabaseChunks(chunks, database);
-
-    vector<ReplicaInfo> replicas;
-    if (not dummyReport) databaseServices->findDatabaseReplicas(replicas, database);
-
-    json result;
-    result["chunks"]["unique"] = chunks.size();
-    result["chunks"]["with_replicas"] = replicas.size();
-
-    map<string, map<string, size_t>> stats;
-    for (auto&& table: config->databaseInfo(database).partitionedTables) {
-        stats[table]["data_unique_in_chunks_data"] = 0;
-        stats[table]["data_unique_in_chunks_index"] = 0;
-        stats[table]["data_unique_in_overlaps_data"] = 0;
-        stats[table]["data_unique_in_overlaps_index"] = 0;
-        stats[table]["data_with_replicas_in_chunks_data"] = 0;
-        stats[table]["data_with_replicas_in_chunks_index"] = 0;
-        stats[table]["data_with_replicas_in_overlaps_data"] = 0;
-        stats[table]["data_with_replicas_in_overlaps_index"] = 0;
-    }
-    set<unsigned int> uniqueChunks;
-    for (auto&& replica: replicas) {
-        bool isUniqueChunk = false;
-        if (uniqueChunks.count(replica.chunk()) == 0) {
-            uniqueChunks.insert(replica.chunk());
-            isUniqueChunk = true;
-        }
-        for (auto&& f: replica.fileInfo()) {
-            auto const table     = f.baseTable();
-            auto const isData    = f.isData();
-            auto const isIndex   = f.isIndex();
-            auto const isOverlap = f.isOverlap();
-            auto const size      = f.size;
-            if (isUniqueChunk) {
-                if (isData) {
-                    if (isOverlap) stats[table]["data_unique_in_overlaps_data"] += size;
-                    else           stats[table]["data_unique_in_chunks_data"]   += size;
-                }
-                if (isIndex) {
-                    if (isOverlap) stats[table]["data_unique_in_overlaps_index"] += size;
-                    else           stats[table]["data_unique_in_chunks_index"]   += size;
-                }
-            }
-            if (isData) {
-                if (isOverlap) stats[table]["data_with_replica_in_overlaps_data"] += size;
-                else           stats[table]["data_with_replica_in_chunks_data"]   += size;
-            }
-            if (isIndex) {
-                if (isOverlap) stats[table]["data_with_replica_in_overlaps_index"] += size;
-                else           stats[table]["data_with_replica_in_chunks_index"]   += size;
-            }            
-        }
-    }
-    for (auto&& table: config->databaseInfo(database).partitionedTables) {
-        result["tables"][table]["is_partitioned"] = 1;
-        result["tables"][table]["rows"]["in_chunks"]   = 0;
-        result["tables"][table]["rows"]["in_overlaps"] = 0;
-        result["tables"][table]["data"]["unique"]["in_chunks"]["data"]    = stats[table]["data_unique_in_chunks_data"];
-        result["tables"][table]["data"]["unique"]["in_chunks"]["index"]   = stats[table]["data_unique_in_chunks_index"];
-        result["tables"][table]["data"]["unique"]["in_overlaps"]["data"]  = stats[table]["data_unique_in_overlaps_data"];
-        result["tables"][table]["data"]["unique"]["in_overlaps"]["index"] = stats[table]["data_unique_in_overlaps_index"];
-        result["tables"][table]["data"]["with_replicas"]["in_chunks"]["data"]    = stats[table]["data_with_replica_in_chunks_data"];
-        result["tables"][table]["data"]["with_replicas"]["in_chunks"]["index"]   = stats[table]["data_with_replica_in_chunks_index"];
-        result["tables"][table]["data"]["with_replicas"]["in_overlaps"]["data"]  = stats[table]["data_with_replica_in_overlaps_data"];
-        result["tables"][table]["data"]["with_replicas"]["in_overlaps"]["index"] = stats[table]["data_with_replica_in_overlaps_index"];
-    }
-    for (auto&& table: config->databaseInfo(database).regularTables) {
-
-        // TODO: implement this when the Replication system will support regular tables
-
-        size_t data_unique_data  = 0;
-        size_t data_unique_index = 0;
-        size_t data_with_replicas_data  = 0;
-        size_t data_with_replicas_index = 0;
-
-        result["tables"][table]["is_partitioned"] = 0;
-        result["tables"][table]["rows"] = 0;
-        result["tables"][table]["data"]["unique"]["data"]  = data_unique_data;
-        result["tables"][table]["data"]["unique"]["index"] = data_unique_index;
-        result["tables"][table]["data"]["with_replicas"]["data"]  = data_with_replicas_data;
-        result["tables"][table]["data"]["with_replicas"]["index"] = data_with_replicas_index;
-    }    return result;
-}
-
-
-void HttpProcessor::_getCatalogs(qhttp::Request::Ptr const& req,
-                                 qhttp::Response::Ptr const& resp) {
-    _debug(__func__);
-
-    util::Lock lock(_catalogsMtx, "HttpProcessor::" + string(__func__));
-
-    try {
-
-        // Check if a cached report can be used
-
-        if (not _catalogsReport.is_null()) {
-
-            // Send what's available so far before evaluating the age of the cache
-            // to see if it needs to be upgraded in the background.
-            _sendData(resp, _catalogsReport);
-            uint64_t lastReportAgeMs = PerformanceUtils::now() - _catalogsReportTimeMs;
-            if (lastReportAgeMs < 60 * 60 * 1000) return;
-
-        } else {
-
-            // Send a dummy report for now, then upgrade the cache
-            bool const dummyReport = true;
-            json result;
-            for (auto&& database: controller()->serviceProvider()->config()->databases()) {
-                result["databases"][database] = _databaseStats(database, dummyReport);
-            }
-            _sendData(resp, result);
-        }
-
-        // Otherwise, get the fresh snapshot of the replica distributions
-        json result;
-        result["databases"] = json::object();
-
-        for (auto&& database: controller()->serviceProvider()->config()->databases()) {
-            result["databases"][database] = _databaseStats(database);
-        }
-
-        // Update the cache
-        _catalogsReport = result;
-        _catalogsReportTimeMs = PerformanceUtils::now();
-
-        _sendData(resp, _catalogsReport);
-
-    } catch (exception const& ex) {
-        _sendError(resp, __func__, "operation failed due to: " + string(ex.what()));
-    }
-}
-
-
-void HttpProcessor::_getReplicationLevel(qhttp::Request::Ptr const& req,
-                                         qhttp::Response::Ptr const& resp) {
-    _debug(__func__);
-
-    util::Lock lock(_replicationLevelMtx, "HttpProcessor::" + string(__func__));
-
-    // Check if a cached report can be used
-    //
-    // TODO: add a cache control parameter to the class's constructor
-
-    if (not _replicationLevelReport.is_null()) {
-        uint64_t lastReportAgeMs = PerformanceUtils::now() - _replicationLevelReportTimeMs;
-        if (lastReportAgeMs < 240 * 1000) {
-            _sendData(resp, _replicationLevelReport);
-            return;
-        }
-    }
-
-    // Otherwise, get the fresh snapshot of the replica distributions
-
-    try {
-
-        auto const config = controller()->serviceProvider()->config();
-
-        HealthMonitorTask::WorkerResponseDelay const delays =
-            _healthMonitorTask->workerResponseDelay();
-
-        vector<string> disabledQservWorkers;
-        vector<string> disabledReplicationWorkers;
-        for (auto&& entry: delays) {
-            auto&& worker =  entry.first;
-
-            unsigned int const qservProbeDelaySec = entry.second.at("qserv");
-            if (qservProbeDelaySec > 0) {
-                disabledQservWorkers.push_back(worker);
-            }
-            unsigned int const replicationSystemProbeDelaySec = entry.second.at("replication");
-            if (replicationSystemProbeDelaySec > 0) {
-                disabledReplicationWorkers.push_back(worker);
-            }
-        }
-
-        json result;
-        for (auto&& family: config->databaseFamilies()) {
-
-            size_t const replicationLevel = config->databaseFamilyInfo(family).replicationLevel;
-            result["families"][family]["level"] = replicationLevel;
-
-            for (auto&& database: config->databases(family)) {
-                _debug(string(__func__) + "  database=" + database);
-
-                // Get observed replication levels for workers which are on-line
-                // as well as for the whole cluster (if there in-active workers).
-
-                auto const onlineQservLevels =
-                    controller()->serviceProvider()->databaseServices()->actualReplicationLevel(
-                        database,
-                        disabledQservWorkers);
-
-                auto const allQservLevels = disabledQservWorkers.empty() ?
-                    onlineQservLevels : 
-                    controller()->serviceProvider()->databaseServices()->actualReplicationLevel(
-                        database);
-
-                auto const onLineReplicationSystemLevels =
-                    controller()->serviceProvider()->databaseServices()->actualReplicationLevel(
-                        database,
-                        disabledReplicationWorkers);
-
-                auto const allReplicationSystemLevels = disabledReplicationWorkers.empty() ?
-                    onLineReplicationSystemLevels :
-                    controller()->serviceProvider()->databaseServices()->actualReplicationLevel(
-                        database);
-
-                // Get the numbers of 'orphan' chunks in each context. These chunks (if any)
-                // will be associated with the replication level 0. Also note, that these
-                // chunks will be contributing into the total number of chunks when computing
-                // the percentage of each replication level.
-
-                size_t const numOrphanQservChunks = disabledQservWorkers.empty() ?
-                    0 :
-                    controller()->serviceProvider()->databaseServices()->numOrphanChunks(
-                        database,
-                        disabledQservWorkers);
-
-                size_t const numOrphanReplicationSystemChunks = disabledReplicationWorkers.empty() ?
-                    0 :
-                    controller()->serviceProvider()->databaseServices()->numOrphanChunks(
-                        database,
-                        disabledReplicationWorkers);
-
-                // The maximum level is needed to initialize result with zeros for
-                // a contiguous range of levels [0,maxObservedLevel]. The non-empty
-                // cells will be filled from the above captured reports.
-                //
-                // Also, while doing so compute the total number of chunks in each context.
-
-                unsigned int maxObservedLevel = 0;
-
-                size_t numOnlineQservChunks = numOrphanQservChunks;
-                for (auto&& entry: onlineQservLevels) {
-                    maxObservedLevel = max(maxObservedLevel, entry.first);
-                    numOnlineQservChunks += entry.second;
-                }
-
-                size_t numAllQservChunks = 0;
-                for (auto&& entry: allQservLevels) {
-                    maxObservedLevel = max(maxObservedLevel, entry.first);
-                    numAllQservChunks += entry.second;
-                }
-
-                size_t numOnlineReplicationSystemChunks = numOrphanReplicationSystemChunks;
-                for (auto&& entry: onLineReplicationSystemLevels) {
-                    maxObservedLevel = max(maxObservedLevel, entry.first);
-                    numOnlineReplicationSystemChunks += entry.second;
-                }
-
-                size_t numAllReplicationSystemChunks = 0;
-                for (auto&& entry: allReplicationSystemLevels) {
-                    maxObservedLevel = max(maxObservedLevel, entry.first);
-                    numAllReplicationSystemChunks += entry.second;
-                }
-
-                // Pre-initialize the database-specific result with zeroes for all
-                // levels in the range of [0,maxObservedLevel]
-
-                json databaseJson;
-
-                for (int level = maxObservedLevel; level >= 0; --level) {
-                    databaseJson["levels"][level]["qserv"      ]["online"]["num_chunks"] = 0;
-                    databaseJson["levels"][level]["qserv"      ]["online"]["percent"   ] = 0.;
-                    databaseJson["levels"][level]["qserv"      ]["all"   ]["num_chunks"] = 0;
-                    databaseJson["levels"][level]["qserv"      ]["all"   ]["percent"   ] = 0.;
-                    databaseJson["levels"][level]["replication"]["online"]["num_chunks"] = 0;
-                    databaseJson["levels"][level]["replication"]["online"]["percent"   ] = 0.;
-                    databaseJson["levels"][level]["replication"]["all"   ]["num_chunks"] = 0;
-                    databaseJson["levels"][level]["replication"]["all"   ]["percent"   ] = 0.;
-                }
-
-                // Fill-in non-blank areas
-
-                for (auto&& entry: onlineQservLevels) {
-                    unsigned int const level = entry.first;
-                    size_t const numChunks = entry.second;
-                    double const percent = numOnlineQservChunks == 0
-                            ? 0. : 100. * numChunks / numOnlineQservChunks;
-                    databaseJson["levels"][level]["qserv"]["online"]["num_chunks"] = numChunks;
-                    databaseJson["levels"][level]["qserv"]["online"]["percent"   ] = percent;
-                }
-                for (auto&& entry: allQservLevels) {
-                    unsigned int const level = entry.first;
-                    size_t const numChunks = entry.second;
-                    double const percent = numAllQservChunks == 0
-                            ? 0. : 100. * numChunks / numAllQservChunks;
-                    databaseJson["levels"][level]["qserv"]["all"]["num_chunks"] = numChunks;
-                    databaseJson["levels"][level]["qserv"]["all"]["percent"   ] = percent;
-                }
-                for (auto&& entry: onLineReplicationSystemLevels) {
-                    unsigned int const level = entry.first;
-                    size_t const numChunks = entry.second;
-                    double const percent = numOnlineReplicationSystemChunks == 0
-                            ? 0. : 100. * numChunks / numOnlineReplicationSystemChunks;
-                    databaseJson["levels"][level]["replication"]["online"]["num_chunks"] = numChunks;
-                    databaseJson["levels"][level]["replication"]["online"]["percent"   ] = percent;
-                }
-                for (auto&& entry: allReplicationSystemLevels) {
-                    unsigned int const level = entry.first;
-                    size_t const numChunks = entry.second;
-                    double const percent = numAllReplicationSystemChunks == 0
-                            ? 0. : 100. * numChunks / numAllReplicationSystemChunks;
-                    databaseJson["levels"][level]["replication"]["all"]["num_chunks"] = numChunks;
-                    databaseJson["levels"][level]["replication"]["all"]["percent"   ] = percent;
-                }
-                {
-                    double const percent = numAllQservChunks == 0
-                            ? 0 : 100. * numOrphanQservChunks / numAllQservChunks;
-                    databaseJson["levels"][0]["qserv"]["online"]["num_chunks"] = numOrphanQservChunks;
-                    databaseJson["levels"][0]["qserv"]["online"]["percent"   ] = percent;
-                }
-                {
-                    double const percent = numAllReplicationSystemChunks == 0
-                            ? 0 : 100. * numOrphanReplicationSystemChunks / numAllReplicationSystemChunks;
-                    databaseJson["levels"][0]["replication"]["online"]["num_chunks"] = numOrphanReplicationSystemChunks;
-                    databaseJson["levels"][0]["replication"]["online"]["percent"   ] = percent;
-                }
-                result["families"][family]["databases"][database] = databaseJson;
-            }
-        }
-
-        // Update the cache
-        _replicationLevelReport = result;
-        _replicationLevelReportTimeMs = PerformanceUtils::now();
-
-        _sendData(resp, _replicationLevelReport);
-
-    } catch (exception const& ex) {
-        _sendError(resp, __func__, "operation failed due to: " + string(ex.what()));
-    }
-}
-
-
-void HttpProcessor::_listWorkerStatuses(qhttp::Request::Ptr const& req,
-                                        qhttp::Response::Ptr const& resp) {
-    _debug(__func__);
-
-    try {
-        HealthMonitorTask::WorkerResponseDelay delays =
-            _healthMonitorTask->workerResponseDelay();
-
-        json workersJson = json::array();
-        for (auto&& worker: controller()->serviceProvider()->config()->allWorkers()) {
-
-            json workerJson;
-
-            workerJson["worker"] = worker;
-
-            WorkerInfo const info =
-                controller()->serviceProvider()->config()->workerInfo(worker);
-
-            uint64_t const numReplicas =
-                controller()->serviceProvider()->databaseServices()->numWorkerReplicas(worker);
-
-            workerJson["replication"]["num_replicas"] = numReplicas;
-            workerJson["replication"]["isEnabled"]    = info.isEnabled  ? 1 : 0;
-            workerJson["replication"]["isReadOnly"]   = info.isReadOnly ? 1 : 0;
-
-            auto itr = delays.find(worker);
-            if (delays.end() != itr) {
-                workerJson["replication"]["probe_delay_s"] = itr->second["replication"];
-                workerJson["qserv"      ]["probe_delay_s"] = itr->second["qserv"];
-            } else {
-                workerJson["replication"]["probe_delay_s"] = 0;
-                workerJson["qserv"      ]["probe_delay_s"] = 0;
-            }
-            workersJson.push_back(workerJson);
-        }
-        json result;
-        result["workers"] = workersJson;
-
-        _sendData(resp, result);
-
-    } catch (invalid_argument const& ex) {
-        _sendError(resp, __func__, "invalid parameters of the request, ex: " + string(ex.what()));
-    } catch (exception const& ex) {
-        _sendError(resp, __func__, "operation failed due to: " + string(ex.what()));
-    }
-}
-
-
-void HttpProcessor::_getWorkerStatus(qhttp::Request::Ptr const& req,
-                                     qhttp::Response::Ptr const& resp) {
-    _debug(__func__);
-    resp->sendStatus(404);
-}
-
-
-void HttpProcessor::_listControllers(qhttp::Request::Ptr const& req,
-                                     qhttp::Response::Ptr const& resp) {
-    _debug(__func__);
-
-    try {
-
-        // Extract optional parameters of the query
-
-        uint64_t const fromTimeStamp = ::getQueryParam(req->query, "from");
-        uint64_t const toTimeStamp   = ::getQueryParam(req->query, "to", numeric_limits<uint64_t>::max());
-        size_t   const maxEntries    = ::getQueryParam(req->query, "max_entries");
-
-        _debug(string(__func__) + " from="        + to_string(fromTimeStamp));
-        _debug(string(__func__) + " to="          + to_string(toTimeStamp));
-        _debug(string(__func__) + " max_entries=" + to_string(maxEntries));
-
-        // Just descriptions of the Controllers. No persistent logs in this
-        // report.
-
-        json controllersJson;
-
-        auto const controllers =
-            controller()->serviceProvider()->databaseServices()->controllers(
-                fromTimeStamp,
-                toTimeStamp,
-                maxEntries);
-
-        for (auto&& info: controllers) {
-            bool const isCurrent = info.id == controller()->identity().id;
-            controllersJson.push_back(info.toJson(isCurrent));
-        }
-
-        json result;
-        result["controllers"] = controllersJson;
-
-        _sendData(resp, result);
-
-    } catch (invalid_argument const& ex) {
-        _sendError(resp, __func__, "invalid parameters of the request, ex: " + string(ex.what()));
-    } catch (exception const& ex) {
-        _sendError(resp, __func__, "operation failed due to: " + string(ex.what()));
-    }
-}
-
-
-void HttpProcessor::_getControllerInfo(qhttp::Request::Ptr const& req,
-                                       qhttp::Response::Ptr const& resp) {
-    _debug(__func__);
-
-    try {
-        auto const id = req->params.at("id");
-
-        // Extract optional parameters of the query
-
-        bool     const log           = ::getQueryParamBool(req->query, "log");
-        uint64_t const fromTimeStamp = ::getQueryParam(    req->query, "log_from");
-        uint64_t const toTimeStamp   = ::getQueryParam(    req->query, "log_to", numeric_limits<uint64_t>::max());
-        size_t   const maxEvents     = ::getQueryParam(    req->query, "log_max_events");
-
-        _debug(string(__func__) + " log="            +    string(log ? "1" : "0"));
-        _debug(string(__func__) + " log_from="       + to_string(fromTimeStamp));
-        _debug(string(__func__) + " log_to="         + to_string(toTimeStamp));
-        _debug(string(__func__) + " log_max_events=" + to_string(maxEvents));
-
-        // General description of the Controller
-
-        auto const dbSvc = controller()->serviceProvider()->databaseServices();
-        auto const controllerInfo = dbSvc->controller(id);
-
-        bool const isCurrent = controllerInfo.id == controller()->identity().id;
-
-        json result;
-        result["controller"] = controllerInfo.toJson(isCurrent);
-
-        // Pull the Controller log data if requested
-        json jsonLog = json::array();
-        if (log) {
-            auto const events =
-                dbSvc->readControllerEvents(
-                    id,
-                    fromTimeStamp,
-                    toTimeStamp,
-                    maxEvents);
-            for (auto&& event: events) {
-                jsonLog.push_back(event.toJson());
-            }
-        }
-        result["log"] = jsonLog;
-        _sendData(resp, result);
-
-    } catch (DatabaseServicesNotFound const& ex) {
-        _sendError(resp, __func__, "no such controller found");
-    } catch (invalid_argument const& ex) {
-        _sendError(resp, __func__, "invalid parameters of the request, ex: " + string(ex.what()));
-    } catch (exception const& ex) {
-        _sendError(resp, __func__, "operation failed due to: " + string(ex.what()));
-    }
-}
-
-
 void HttpProcessor::_listRequests(qhttp::Request::Ptr const& req,
                                   qhttp::Response::Ptr const& resp) {
     _debug(__func__);
@@ -1089,10 +363,11 @@ void HttpProcessor::_listRequests(qhttp::Request::Ptr const& req,
 
         // Extract optional parameters of the query
 
-        string   const jobId         = ::getQueryParamStr(req->query, "job_id");
-        uint64_t const fromTimeStamp = ::getQueryParam   (req->query, "from");
-        uint64_t const toTimeStamp   = ::getQueryParam   (req->query, "to", numeric_limits<uint64_t>::max());
-        size_t   const maxEntries    = ::getQueryParam   (req->query, "max_entries");
+        HttpRequestQuery const query(req->query);
+        string   const jobId         = query.optionalString("job_id");
+        uint64_t const fromTimeStamp = query.optionalUInt64("from");
+        uint64_t const toTimeStamp   = query.optionalUInt64("to", numeric_limits<uint64_t>::max());
+        size_t   const maxEntries    = query.optionalUInt64("max_entries");
 
         _debug(string(__func__) + " job_id="      +           jobId);
         _debug(string(__func__) + " from="        + to_string(fromTimeStamp));
@@ -1155,11 +430,12 @@ void HttpProcessor::_listJobs(qhttp::Request::Ptr const& req,
 
         // Extract optional parameters of the query
 
-        string   const controllerId  = ::getQueryParamStr(req->query, "controller_id");
-        string   const parentJobId   = ::getQueryParamStr(req->query, "parent_job_id");
-        uint64_t const fromTimeStamp = ::getQueryParam   (req->query, "from");
-        uint64_t const toTimeStamp   = ::getQueryParam   (req->query, "to", numeric_limits<uint64_t>::max());
-        size_t   const maxEntries    = ::getQueryParam   (req->query, "max_entries");
+        HttpRequestQuery const query(req->query);
+        string   const controllerId  = query.optionalString("controller_id");
+        string   const parentJobId   = query.optionalString("parent_job_id");
+        uint64_t const fromTimeStamp = query.optionalUInt64("from");
+        uint64_t const toTimeStamp   = query.optionalUInt64("to", numeric_limits<uint64_t>::max());
+        size_t   const maxEntries    = query.optionalUInt64("max_entries");
 
         _debug(string(__func__) + " controller_id=" +           controllerId);
         _debug(string(__func__) + " parent_job_id=" +           parentJobId);
@@ -1294,13 +570,14 @@ void HttpProcessor::_updateWorkerConfig(qhttp::Request::Ptr const& req,
         // are expected to be replaced by actual values provided by a client in
         // parameters found in the query.
 
-        string   const svcHost    = ::getQueryParamStr   (req->query, "svc_host");
-        uint16_t const svcPort    = ::getQueryParamUInt16(req->query, "svc_port");
-        string   const fsHost     = ::getQueryParamStr   (req->query, "fs_host");
-        uint16_t const fsPort     = ::getQueryParamUInt16(req->query, "fs_port");
-        string   const dataDir    = ::getQueryParamStr   (req->query, "data_dir");
-        int      const isEnabled  = ::getQueryParamInt   (req->query, "is_enabled");
-        int      const isReadOnly = ::getQueryParamInt   (req->query, "is_read_only");
+        HttpRequestQuery const query(req->query);
+        string   const svcHost    = query.optionalString("svc_host");
+        uint16_t const svcPort    = query.optionalUInt16("svc_port");
+        string   const fsHost     = query.optionalString("fs_host");
+        uint16_t const fsPort     = query.optionalUInt16("fs_port");
+        string   const dataDir    = query.optionalString("data_dir");
+        int      const isEnabled  = query.optionalInt(   "is_enabled");
+        int      const isReadOnly = query.optionalInt(   "is_read_only");
 
         _debug(string(__func__) + " svc_host="     +           svcHost);
         _debug(string(__func__) + " svc_port="     + to_string(svcPort));
@@ -1366,16 +643,17 @@ void HttpProcessor::_addWorkerConfig(qhttp::Request::Ptr const& req,
 
     try {
         auto const config = controller()->serviceProvider()->config();
-        
+
         WorkerInfo info;
-        info.name       = ::getRequiredQueryParamStr   (req->query, "name");
-        info.svcHost    = ::getRequiredQueryParamStr   (req->query, "svc_host");
-        info.svcPort    = ::getRequiredQueryParamUInt16(req->query, "svc_port");
-        info.fsHost     = ::getRequiredQueryParamStr   (req->query, "fs_host");
-        info.fsPort     = ::getRequiredQueryParamUInt16(req->query, "fs_port");
-        info.dataDir    = ::getRequiredQueryParamStr   (req->query, "data_dir");
-        info.isEnabled  = ::getRequiredQueryParamBool  (req->query, "is_enabled");
-        info.isReadOnly = ::getRequiredQueryParamBool  (req->query, "is_read_only");
+        HttpRequestQuery const query(req->query);
+        info.name       = query.requiredString("name");
+        info.svcHost    = query.requiredString("svc_host");
+        info.svcPort    = query.requiredUInt16("svc_port");
+        info.fsHost     = query.requiredString("fs_host");
+        info.fsPort     = query.requiredUInt16("fs_port");
+        info.dataDir    = query.requiredString("data_dir");
+        info.isEnabled  = query.requiredBool(  "is_enabled");
+        info.isReadOnly = query.requiredBool(  "is_read_only");
 
         _debug(string(__func__) + " name="         +           info.name);
         _debug(string(__func__) + " svc_host="     +           info.svcHost);
@@ -1430,12 +708,13 @@ void HttpProcessor::_addFamilyConfig(qhttp::Request::Ptr const& req,
 
     try {
         auto const config = controller()->serviceProvider()->config();
-        
+
+        HttpRequestQuery const query(req->query);
         DatabaseFamilyInfo info;
-        info.name             = ::getRequiredQueryParamStr( req->query, "name");
-        info.replicationLevel = ::getRequiredQueryParam(    req->query, "replication_level");
-        info.numStripes       = ::getRequiredQueryParamUInt(req->query, "num_stripes");
-        info.numSubStripes    = ::getRequiredQueryParamUInt(req->query, "num_sub_stripes");
+        info.name             = query.requiredString("name");
+        info.replicationLevel = query.requiredUInt64("replication_level");
+        info.numStripes       = query.requiredUInt(  "num_stripes");
+        info.numSubStripes    = query.requiredUInt(  "num_sub_stripes");
 
         _debug(string(__func__) + " name="              +           info.name);
         _debug(string(__func__) + " replication_level=" + to_string(info.replicationLevel));
@@ -1499,9 +778,10 @@ void HttpProcessor::_addDatabaseConfig(qhttp::Request::Ptr const& req,
     try {
         auto const config = controller()->serviceProvider()->config();
         
+        HttpRequestQuery const query(req->query);
         DatabaseInfo info;
-        info.name   = ::getRequiredQueryParamStr(req->query, "name");
-        info.family = ::getRequiredQueryParamStr(req->query, "family");
+        info.name   = query.requiredString("name");
+        info.family = query.requiredString("family");
 
         _debug(string(__func__) + " name="   + info.name);
         _debug(string(__func__) + " family=" + info.family);
@@ -1528,7 +808,9 @@ void HttpProcessor::_deleteTableConfig(qhttp::Request::Ptr const& req,
     try {
         auto const config = controller()->serviceProvider()->config();
         auto const table = req->params.at("name");
-        auto const database = ::getRequiredQueryParamStr(req->query, "database");
+
+        HttpRequestQuery const query(req->query);
+        auto const database = query.requiredString("database");
 
         config->deleteTable(database, table);
 
@@ -1551,10 +833,11 @@ void HttpProcessor::_addTableConfig(qhttp::Request::Ptr const& req,
 
     try {
         auto const config = controller()->serviceProvider()->config();
-        
-        auto const table         = ::getRequiredQueryParamStr( req->query, "name");
-        auto const database      = ::getRequiredQueryParamStr( req->query, "database");
-        auto const isPartitioned = ::getRequiredQueryParamBool(req->query, "is_partitioned");
+
+        HttpRequestQuery const query(req->query);
+        auto const table         = query.requiredString("name");
+        auto const database      = query.requiredString("database");
+        auto const isPartitioned = query.requiredBool(  "is_partitioned");
 
         _debug(string(__func__) + " name="           + table);
         _debug(string(__func__) + " database="       + database);
@@ -1583,8 +866,7 @@ void HttpProcessor::_sqlQuery(qhttp::Request::Ptr const& req,
 
         // All parameters must be provided via the body of the request
 
-        ::HttpRequestBody body(req);
-
+        HttpRequestBody body(req);
         auto const worker   = body.required<string>("worker");
         auto const query    = body.required<string>("query");
         auto const user     = body.required<string>("user");
@@ -1623,8 +905,9 @@ void HttpProcessor::_getQservManyWorkersStatus(qhttp::Request::Ptr const& req,
     _debug(__func__);
 
     try {
-        unsigned int const timeoutSec = getQueryParamUInt(req->query, "timeout_sec", _workerResponseTimeoutSec);
-        bool const keepResources = getQueryParamUInt(req->query, "keep_resources", 0) != 0;
+        HttpRequestQuery const query(req->query);
+        unsigned int const timeoutSec    = query.optionalUInt("timeout_sec",    _workerResponseTimeoutSec);
+        bool         const keepResources = query.optionalUInt("keep_resources", 0) != 0;
 
         _debug(string(__func__) + " timeout_sec=" + to_string(timeoutSec));
 
@@ -1685,13 +968,13 @@ void HttpProcessor::_getQservWorkerStatus(qhttp::Request::Ptr const& req,
     _debug(__func__);
 
     try {
-        unsigned int const timeoutSec =
-            getQueryParamUInt(req->query, "timeout_sec", _workerResponseTimeoutSec);
-
         auto const worker = req->params.at("name");
 
-        _debug(string(__func__) + " timeout_sec=" + to_string(timeoutSec));
+        HttpRequestQuery const query(req->query);
+        unsigned int const timeoutSec = query.optionalUInt("timeout_sec", _workerResponseTimeoutSec);
+
         _debug(string(__func__) + " worker=" + worker);
+        _debug(string(__func__) + " timeout_sec=" + to_string(timeoutSec));
 
         string const noParentJobId;
         GetStatusQservMgtRequest::CallbackType const onFinish = nullptr;
@@ -1731,8 +1014,9 @@ void HttpProcessor::_getQservManyUserQuery(qhttp::Request::Ptr const& req,
     try {
         auto const config = controller()->serviceProvider()->config();
 
-        unsigned int const timeoutSec = getQueryParamUInt(req->query, "timeout_sec", _workerResponseTimeoutSec);
-        unsigned int const limit4past = getQueryParamUInt(req->query, "limit4past", 1);
+        HttpRequestQuery const query(req->query);
+        unsigned int const timeoutSec = query.optionalUInt("timeout_sec", _workerResponseTimeoutSec);
+        unsigned int const limit4past = query.optionalUInt("limit4past", 1);
 
         _debug(string(__func__) + " timeout_sec=" + to_string(timeoutSec));
         _debug(string(__func__) + " limit4past=" + to_string(limit4past));
@@ -1958,10 +1242,11 @@ void HttpProcessor::_getTransactions(qhttp::Request::Ptr const& req,
         auto const config = controller()->serviceProvider()->config();
         auto const databaseServices = controller()->serviceProvider()->databaseServices();
 
-        auto const database     = ::getQueryParamStr(req->query, "database");
-        auto const family       = ::getQueryParamStr(req->query, "family");
-        auto const allDatabases = ::getQueryParam(   req->query, "all_databases", 0) != 0;
-        auto const isPublished  = ::getQueryParam(   req->query, "is_published",  0) != 0;
+        HttpRequestQuery const query(req->query);
+        auto const database     = query.optionalString("database");
+        auto const family       = query.optionalString("family");
+        auto const allDatabases = query.optionalUInt64("all_databases", 0) != 0;
+        auto const isPublished  = query.optionalUInt64("is_published",  0) != 0;
 
         _debug(string(__func__) + " database=" + database);
         _debug(string(__func__) + " family=" + family);
@@ -2053,7 +1338,7 @@ void HttpProcessor::_beginTransaction(qhttp::Request::Ptr const& req,
         auto const config = controller()->serviceProvider()->config();
         auto const databaseServices = controller()->serviceProvider()->databaseServices();
 
-        ::HttpRequestBody body(req);
+        HttpRequestBody body(req);
 
         auto const database = body.required<string>("database");
 
@@ -2117,8 +1402,10 @@ void HttpProcessor::_endTransaction(qhttp::Request::Ptr const& req,
         auto const databaseServices = controller()->serviceProvider()->databaseServices();
 
         id = stoul(req->params.at("id"));
-        abort = ::getRequiredQueryParamBool(req->query, "abort");
-        buildSecondaryIndex = ::getQueryParamBool(req->query, "build-secondary-index");
+
+        HttpRequestQuery const query(req->query);
+        abort               = query.requiredBool("abort");
+        buildSecondaryIndex = query.optionalBool("build-secondary-index");
 
         _debug(__func__, "id="    + to_string(id));
         _debug(__func__, "abort=" + to_string(abort ? 1 : 0));
@@ -2198,7 +1485,7 @@ void HttpProcessor::_addDatabase(qhttp::Request::Ptr const& req,
     try {
         auto const config = controller()->serviceProvider()->config();
 
-        ::HttpRequestBody body(req);
+        HttpRequestBody body(req);
 
         DatabaseInfo databaseInfo;
         databaseInfo.name = body.required<string>("database");
@@ -2317,7 +1604,9 @@ void HttpProcessor::_publishDatabase(qhttp::Request::Ptr const& req,
         auto const config = controller()->serviceProvider()->config();
 
         auto const database = req->params.at("name");
-        bool const consolidateSecondayIndex = ::getQueryParamBool(req->query, "consolidate_secondary_index", false);
+
+        HttpRequestQuery const query(req->query);
+        bool const consolidateSecondayIndex = query.optionalBool("consolidate_secondary_index", false);
 
         _debug(__func__, "database=" + database);
         _debug(__func__, "consolidate_secondary_index=" + to_string(consolidateSecondayIndex ? 1 : 0));
@@ -2395,7 +1684,9 @@ void HttpProcessor::_deleteDatabase(qhttp::Request::Ptr const& req,
         auto const config = controller()->serviceProvider()->config();
         bool const allWorkers = true;
         auto const database = req->params.at("name");
-        bool const deleteSecondaryIndex = ::getQueryParamBool(req->query, "delete_secondary_index", false);
+
+        HttpRequestQuery const query(req->query);
+        bool const deleteSecondaryIndex = query.optionalBool("delete_secondary_index", false);
 
         _debug(__func__, "database=" + database);
         _debug(__func__, "delete_secondary_index=" + to_string(deleteSecondaryIndex ? 1 : 0));
@@ -2463,7 +1754,7 @@ void HttpProcessor::_addTable(qhttp::Request::Ptr const& req,
     try {
         auto const config = controller()->serviceProvider()->config();
 
-        ::HttpRequestBody body(req);
+        HttpRequestBody body(req);
 
         auto const database      = body.required<string>("database");
         auto const table         = body.required<string>("table");
@@ -2630,7 +1921,7 @@ void HttpProcessor::_addChunk(qhttp::Request::Ptr const& req,
 
     try {
 
-        ::HttpRequestBody body(req);
+        HttpRequestBody body(req);
 
         uint32_t const transactionId = body.required<uint32_t>("transaction_id");
         unsigned int const chunk = body.required<unsigned int>("chunk");
@@ -2773,7 +2064,7 @@ void HttpProcessor::_buildEmptyChunksList(qhttp::Request::Ptr const& req,
     _debug(__func__);
 
     try {
-        ::HttpRequestBody body(req);
+        HttpRequestBody body(req);
 
         string const database = body.required<string>("database");
         bool const force = (bool)body.optional<int>("force", 0);

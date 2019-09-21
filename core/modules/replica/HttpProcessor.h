@@ -44,6 +44,7 @@
 namespace lsst {
 namespace qserv {
 namespace replica {
+    class HttpModule;
     class DatabaseInfo;
 }}} // Forward declarations
 
@@ -107,35 +108,6 @@ private:
      */
     void _error(std::string const& msg) const;
     void _error(std::string const& context, std::string const& msg) const { _error(context + "  " + msg); }
-
-    /// @param database the name of a database
-    /// @params dummyReport if 'true' then return a report with all zeroes for known databases and tables
-    /// @return data statistics for the specified database
-    nlohmann::json _databaseStats(std::string const& database, bool dummyReport=false) const;
-
-    /**
-     * Process a request which returns data statistics on the catalogs served by Qserv.
-     */
-    void _getCatalogs(qhttp::Request::Ptr const& req,
-                      qhttp::Response::Ptr const& resp);
-
-    /**
-     * Process a request which return status of one worker.
-     */
-    void _getWorkerStatus(qhttp::Request::Ptr const& req,
-                          qhttp::Response::Ptr const& resp);
-
-    /**
-     * Process a request which return the status of the replicas.
-     */
-    void _getReplicationLevel(qhttp::Request::Ptr const& req,
-                              qhttp::Response::Ptr const& resp);
-
-    /**
-     * Process a request which return status of all workers.
-     */
-    void _listWorkerStatuses(qhttp::Request::Ptr const& req,
-                             qhttp::Response::Ptr const& resp);
 
     /**
      * Process a request which return info on known Replication Controllers
@@ -529,18 +501,12 @@ private:
 
     HealthMonitorTask::Ptr const& _healthMonitorTask;
 
-    /// The cached state of the last catalog stats report
-    nlohmann::json _catalogsReport = nlohmann::json::object();
-    
-    /// The cached state of the last replication levels report
-    nlohmann::json _replicationLevelReport = nlohmann::json::object();
-    
-    uint64_t _catalogsReportTimeMs = 0;         /// The time of the last cached report
-    uint64_t _replicationLevelReportTimeMs = 0; /// The time of the last cached report
-
-    util::Mutex _catalogsMtx;           /// Protects the catalog stats cache
-    util::Mutex _replicationLevelMtx;   /// Protects the replication level cache
     util::Mutex _ingestManagementMtx;   /// Synchronized access to the Ingest management operations
+
+    std::shared_ptr<HttpModule> const _catalogsModule;
+    std::shared_ptr<HttpModule> const _replicationLevelsModule;
+    std::shared_ptr<HttpModule> const _workerStatusModule;
+    std::shared_ptr<HttpModule> const _controllersModule;
 
     LOG_LOGGER _log;
 };
