@@ -18,8 +18,8 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_HTTPCONTROLLERMODULE_H
-#define LSST_QSERV_HTTPCONTROLLERMODULE_H
+#ifndef LSST_QSERV_HTTPREQUESTSMODULE_H
+#define LSST_QSERV_HTTPREQUESTSMODULE_H
 
 // System headers
 #include <memory>
@@ -37,43 +37,50 @@ namespace qserv {
 namespace replica {
 
 /**
- * Class HttpControllerModule implements a handler for the worker
- * status requests.
+ * Class HttpRequestsModule implements a handler for pulling info on
+ * the Replication system's Requests.
  */
-class HttpControllerModule: public HttpModule {
+class HttpRequestsModule: public HttpModule {
 public:
 
-    typedef std::shared_ptr<HttpControllerModule> Ptr;
+    typedef std::shared_ptr<HttpRequestsModule> Ptr;
 
     static Ptr create(Controller::Ptr const& controller,
                       std::string const& taskName,
                       unsigned int workerResponseTimeoutSec);
 
-    HttpControllerModule() = delete;
-    HttpControllerModule(HttpControllerModule const&) = delete;
-    HttpControllerModule& operator=(HttpControllerModule const&) = delete;
+    HttpRequestsModule() = delete;
+    HttpRequestsModule(HttpRequestsModule const&) = delete;
+    HttpRequestsModule& operator=(HttpRequestsModule const&) = delete;
 
-    ~HttpControllerModule() final = default;
+    ~HttpRequestsModule() final = default;
 
 protected:
 
+    /**
+     * @note supported values for parameter 'subModuleName' are
+     * the empty string (for pulling info on all known Requests),
+     * or 'SELECT-ONE-BY-ID' for a single request.
+     *
+     * @throws std::invalid_argument for unknown values of parameter 'subModuleName'
+     */
     void executeImpl(qhttp::Request::Ptr const& req,
                      qhttp::Response::Ptr const& resp,
                      std::string const& subModuleName) final;
 
 private:
 
-    HttpControllerModule(Controller::Ptr const& controller,
+    HttpRequestsModule(Controller::Ptr const& controller,
                          std::string const& taskName,
                          unsigned int workerResponseTimeoutSec);
 
-    void _controllers(qhttp::Request::Ptr const& req,
-                         qhttp::Response::Ptr const& resp);
+    void _requests(qhttp::Request::Ptr const& req,
+                   qhttp::Response::Ptr const& resp);
 
-    void _oneController(qhttp::Request::Ptr const& req,
-                        qhttp::Response::Ptr const& resp);
+    void _oneRequest(qhttp::Request::Ptr const& req,
+                     qhttp::Response::Ptr const& resp);
 };
     
 }}} // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_HTTPCONTROLLERMODULE_H
+#endif // LSST_QSERV_HTTPREQUESTSMODULE_H

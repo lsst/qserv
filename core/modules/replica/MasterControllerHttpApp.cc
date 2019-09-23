@@ -210,13 +210,8 @@ int MasterControllerHttpApp::runImpl() {
 
     _httpProcessor = HttpProcessor::create(
         _controller,
-        [self] (string const& worker2evict) {
-            self->_evict(worker2evict);
-        },
         _workerResponseTimeoutSec,
-        _healthMonitorTask,
-        _replicationTask,
-        _deleteWorkerTask
+        _healthMonitorTask
     );
 
     // Keep running before a catastrophic failure is reported by any

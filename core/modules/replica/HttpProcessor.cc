@@ -48,8 +48,11 @@
 #include "replica/DatabaseMySQL.h"
 #include "replica/DatabaseServices.h"
 #include "replica/HttpCatalogsModule.h"
-#include "replica/HttpControllerModule.h"
+#include "replica/HttpConfigurationModule.h"
+#include "replica/HttpControllersModule.h"
+#include "replica/HttpJobsModule.h"
 #include "replica/HttpRequestQuery.h"
+#include "replica/HttpRequestsModule.h"
 #include "replica/HttpReplicationLevelsModule.h"
 #include "replica/HttpRequestBody.h"
 #include "replica/HttpWorkerStatusModule.h"
@@ -78,41 +81,6 @@ using namespace lsst::qserv::replica;
 namespace {
 
 string const taskName = "HTTP-PROCESSOR";
-
-/**
- * Inspect parameters of the request's query to see if the specified parameter
- * is one of those. And if so then extract its value, convert it into an appropriate
- * type and save in the Configuration.
- * 
- * @param struct_
- *   helper type specific to the Configuration parameter
- * 
- * @param query
- *   parameters of the HTTP request
- * 
- * @param config
- *   pointer to the Configuration service
- * 
- * @param logger
- *   the logger function to report  to the Configuration service
- *
- * @return
- *   'true' f the parameter was found and saved
- */
-template<typename T>
-bool saveConfigParameter(T& struct_,
-                         unordered_map<string,string> const& query,
-                         Configuration::Ptr const& config,
-                         function<void(string const&)> const& logger) {
-    auto const itr = query.find(struct_.key);
-    if (itr != query.end()) {
-        struct_.value = boost::lexical_cast<decltype(struct_.value)>(itr->second);
-        struct_.save(config);
-        logger("updated " + struct_.key + "=" + itr->second);
-        return true;
-    }
-    return false;
-}
 
 
 /**
@@ -193,19 +161,13 @@ string const HttpProcessor::_partitionByColumnType = "INT NOT NULL";
 
 HttpProcessor::Ptr HttpProcessor::create(
                         Controller::Ptr const& controller,
-                        HealthMonitorTask::WorkerEvictCallbackType const& onWorkerEvict,
                         unsigned int workerResponseTimeoutSec,
-                        HealthMonitorTask::Ptr const& healthMonitorTask,
-                        ReplicationTask::Ptr const& replicationTask,
-                        DeleteWorkerTask::Ptr const& deleteWorkerTask) {
+                        HealthMonitorTask::Ptr const& healthMonitorTask) {
 
     auto ptr = Ptr(new HttpProcessor(
         controller,
-        onWorkerEvict,
         workerResponseTimeoutSec,
-        healthMonitorTask,
-        replicationTask,
-        deleteWorkerTask
+        healthMonitorTask
     ));
     ptr->_initialize();
     return ptr;
@@ -213,16 +175,11 @@ HttpProcessor::Ptr HttpProcessor::create(
 
 
 HttpProcessor::HttpProcessor(Controller::Ptr const& controller,
-                             HealthMonitorTask::WorkerEvictCallbackType const& onWorkerEvict,
                              unsigned int workerResponseTimeoutSec,
-                             HealthMonitorTask::Ptr const& healthMonitorTask,
-                             ReplicationTask::Ptr const& replicationTask,
-                             DeleteWorkerTask::Ptr const& deleteWorkerTask)
+                             HealthMonitorTask::Ptr const& healthMonitorTask)
     :   EventLogger(controller,
                     taskName),
-        _onWorkerEvict(onWorkerEvict),
         _workerResponseTimeoutSec(workerResponseTimeoutSec),
-        _healthMonitorTask(healthMonitorTask),
         _catalogsModule(
             HttpCatalogsModule::create(
                 controller,
@@ -247,7 +204,28 @@ HttpProcessor::HttpProcessor(Controller::Ptr const& controller,
             )
         ),
         _controllersModule(
-            HttpControllerModule::create(
+            HttpControllersModule::create(
+                controller,
+                taskName,
+                workerResponseTimeoutSec
+            )
+        ),
+        _requestsModule(
+            HttpRequestsModule::create(
+                controller,
+                taskName,
+                workerResponseTimeoutSec
+            )
+        ),
+        _jobsModule(
+            HttpJobsModule::create(
+                controller,
+                taskName,
+                workerResponseTimeoutSec
+            )
+        ),
+        _configurationModule(
+            HttpConfigurationModule::create(
                 controller,
                 taskName,
                 workerResponseTimeoutSec
@@ -300,26 +278,105 @@ void HttpProcessor::_initialize() {
                 _controllersModule->execute(req, resp, "SELECT-ONE-BY-ID");
             }
         },
-        {"GET",    "/replication/v1/request", bind(&HttpProcessor::_listRequests, self, _1, _2)},
-        {"GET",    "/replication/v1/request/:id", bind(&HttpProcessor::_getRequestInfo, self, _1, _2)},
-        {"GET",    "/replication/v1/job", bind(&HttpProcessor::_listJobs, self, _1, _2)},
-        {"GET",    "/replication/v1/job/:id", bind(&HttpProcessor::_getJobInfo, self, _1, _2)},
-        {"GET",    "/replication/v1/config", bind(&HttpProcessor::_getConfig, self, _1, _2)},
-        {"PUT",    "/replication/v1/config/general", bind(&HttpProcessor::_updateGeneralConfig, self, _1, _2)},
-        {"PUT",    "/replication/v1/config/worker/:name", bind(&HttpProcessor::_updateWorkerConfig, self, _1, _2)},
-        {"DELETE", "/replication/v1/config/worker/:name", bind(&HttpProcessor::_deleteWorkerConfig, self, _1, _2)},
-        {"POST",   "/replication/v1/config/worker", bind(&HttpProcessor::_addWorkerConfig, self, _1, _2)},
-        {"DELETE", "/replication/v1/config/family/:name", bind(&HttpProcessor::_deleteFamilyConfig,   self, _1, _2)},
-        {"POST",   "/replication/v1/config/family", bind(&HttpProcessor::_addFamilyConfig, self, _1, _2)},
-        {"DELETE", "/replication/v1/config/database/:name", bind(&HttpProcessor::_deleteDatabaseConfig, self, _1, _2)},
-        {"POST",   "/replication/v1/config/database", bind(&HttpProcessor::_addDatabaseConfig, self, _1, _2)},
-        {"DELETE", "/replication/v1/config/table/:name", bind(&HttpProcessor::_deleteTableConfig, self, _1, _2)},
-        {"POST",   "/replication/v1/config/table", bind(&HttpProcessor::_addTableConfig, self, _1, _2)},
+        {"GET", "/replication/v1/request",
+            [&](qhttp::Request::Ptr  const& req,
+                qhttp::Response::Ptr const& resp) {
+                _requestsModule->execute(req, resp);
+            }
+        },
+        {"GET", "/replication/v1/request/:id",
+            [&](qhttp::Request::Ptr  const& req,
+                qhttp::Response::Ptr const& resp) {
+                _requestsModule->execute(req, resp, "SELECT-ONE-BY-ID");
+            }
+        },
+        {"GET", "/replication/v1/job",
+            [&](qhttp::Request::Ptr  const& req,
+                qhttp::Response::Ptr const& resp) {
+                _jobsModule->execute(req, resp);
+            }
+        },
+        {"GET", "/replication/v1/job/:id",
+            [&](qhttp::Request::Ptr  const& req,
+                qhttp::Response::Ptr const& resp) {
+                _jobsModule->execute(req, resp, "SELECT-ONE-BY-ID");
+            }
+        },
+        {"GET", "/replication/v1/config",
+            [&](qhttp::Request::Ptr  const& req,
+                qhttp::Response::Ptr const& resp) {
+                _configurationModule->execute(req, resp);
+            }
+        },
+        {"PUT", "/replication/v1/config/general",
+            [&](qhttp::Request::Ptr  const& req,
+                qhttp::Response::Ptr const& resp) {
+                _configurationModule->execute(req, resp, "UPDATE-GENERAL");
+            }
+        },
+        {"PUT", "/replication/v1/config/worker/:name",
+            [&](qhttp::Request::Ptr  const& req,
+                qhttp::Response::Ptr const& resp) {
+                _configurationModule->execute(req, resp, "UPDATE-WORKER");
+            }
+        },
+
+        {"DELETE", "/replication/v1/config/worker/:name",
+            [&](qhttp::Request::Ptr  const& req,
+                qhttp::Response::Ptr const& resp) {
+                _configurationModule->execute(req, resp, "DELETE-WORKER");
+            }
+        },
+        {"POST", "/replication/v1/config/worker",
+            [&](qhttp::Request::Ptr  const& req,
+                qhttp::Response::Ptr const& resp) {
+                _configurationModule->execute(req, resp, "ADD-WORKER");
+            }
+        },
+        {"DELETE", "/replication/v1/config/family/:name",
+            [&](qhttp::Request::Ptr  const& req,
+                qhttp::Response::Ptr const& resp) {
+                _configurationModule->execute(req, resp, "DELETE-DATABASE-FAMILY");
+            }
+        },
+        {"POST", "/replication/v1/config/family",
+            [&](qhttp::Request::Ptr  const& req,
+                qhttp::Response::Ptr const& resp) {
+                _configurationModule->execute(req, resp, "ADD-DATABASE-FAMILY");
+            }
+        },
+        {"DELETE", "/replication/v1/config/database/:name",
+            [&](qhttp::Request::Ptr  const& req,
+                qhttp::Response::Ptr const& resp) {
+                _configurationModule->execute(req, resp, "DELETE-DATABASE");
+            }
+        },
+        {"POST", "/replication/v1/config/database",
+            [&](qhttp::Request::Ptr  const& req,
+                qhttp::Response::Ptr const& resp) {
+                _configurationModule->execute(req, resp, "ADD-DATABASE");
+            }
+        },
+        {"DELETE", "/replication/v1/config/table/:name",
+            [&](qhttp::Request::Ptr  const& req,
+                qhttp::Response::Ptr const& resp) {
+                _configurationModule->execute(req, resp, "DELETE-TABLE");
+            }
+        },
+        {"POST", "/replication/v1/config/table",
+            [&](qhttp::Request::Ptr  const& req,
+                qhttp::Response::Ptr const& resp) {
+                _configurationModule->execute(req, resp, "ADD-TABLE");
+            }
+        },
+
         {"POST",   "/replication/v1/sql/query", bind(&HttpProcessor::_sqlQuery, self, _1, _2)},
+
         {"GET",    "/replication/v1/qserv/worker/status", bind(&HttpProcessor::_getQservManyWorkersStatus, self, _1, _2)},
         {"GET",    "/replication/v1/qserv/worker/status/:name", bind(&HttpProcessor::_getQservWorkerStatus, self, _1, _2)},
         {"GET",    "/replication/v1/qserv/master/query", bind(&HttpProcessor::_getQservManyUserQuery, self, _1, _2)},
         {"GET",    "/replication/v1/qserv/master/query/:id", bind(&HttpProcessor::_getQservUserQuery, self, _1, _2)},
+
         {"GET",    "/ingest/v1/trans", bind(&HttpProcessor::_getTransactions, self, _1, _2)},
         {"GET",    "/ingest/v1/trans/:id", bind(&HttpProcessor::_getTransaction, self, _1, _2)},
         {"POST",   "/ingest/v1/trans", bind(&HttpProcessor::_beginTransaction, self, _1, _2)},
@@ -352,509 +409,6 @@ void HttpProcessor::_debug(string const& msg) const {
 
 void HttpProcessor::_error(string const& msg) const {
     LOGS(_log, LOG_LVL_ERROR, _context() << msg);
-}
-
-
-void HttpProcessor::_listRequests(qhttp::Request::Ptr const& req,
-                                  qhttp::Response::Ptr const& resp) {
-    _debug(__func__);
-
-    try {
-
-        // Extract optional parameters of the query
-
-        HttpRequestQuery const query(req->query);
-        string   const jobId         = query.optionalString("job_id");
-        uint64_t const fromTimeStamp = query.optionalUInt64("from");
-        uint64_t const toTimeStamp   = query.optionalUInt64("to", numeric_limits<uint64_t>::max());
-        size_t   const maxEntries    = query.optionalUInt64("max_entries");
-
-        _debug(string(__func__) + " job_id="      +           jobId);
-        _debug(string(__func__) + " from="        + to_string(fromTimeStamp));
-        _debug(string(__func__) + " to="          + to_string(toTimeStamp));
-        _debug(string(__func__) + " max_entries=" + to_string(maxEntries));
-
-        // Pull descriptions of the Requests
-
-        auto const requests =
-            controller()->serviceProvider()->databaseServices()->requests(
-                jobId,
-                fromTimeStamp,
-                toTimeStamp,
-                maxEntries);
-
-        json requestsJson;
-        for (auto&& info: requests) {
-            requestsJson.push_back(info.toJson());
-        }
-        json result;
-        result["requests"] = requestsJson;
-
-        _sendData(resp, result);
-
-    } catch (invalid_argument const& ex) {
-        _sendError(resp, __func__, "invalid parameters of the request, ex: " + string(ex.what()));
-    } catch (exception const& ex) {
-        _sendError(resp, __func__, "operation failed due to: " + string(ex.what()));
-    }
-}
-
-
-void HttpProcessor::_getRequestInfo(qhttp::Request::Ptr const& req,
-                                    qhttp::Response::Ptr const& resp) {
-    _debug(__func__);
-
-    try {
-        auto const id = req->params.at("id");
-
-        json result;
-        result["request"] = controller()->serviceProvider()->databaseServices()->request(id).toJson();
-
-        _sendData(resp, result);
-
-    } catch (DatabaseServicesNotFound const& ex) {
-        _sendError(resp, __func__, "no such request found");
-    } catch (invalid_argument const& ex) {
-        _sendError(resp, __func__, "invalid parameters of the request, ex: " + string(ex.what()));
-    } catch (exception const& ex) {
-        _sendError(resp, __func__, "operation failed due to: " + string(ex.what()));
-    }
-}
-
-
-void HttpProcessor::_listJobs(qhttp::Request::Ptr const& req,
-                              qhttp::Response::Ptr const& resp) {
-    _debug(__func__);
-
-    try {
-
-        // Extract optional parameters of the query
-
-        HttpRequestQuery const query(req->query);
-        string   const controllerId  = query.optionalString("controller_id");
-        string   const parentJobId   = query.optionalString("parent_job_id");
-        uint64_t const fromTimeStamp = query.optionalUInt64("from");
-        uint64_t const toTimeStamp   = query.optionalUInt64("to", numeric_limits<uint64_t>::max());
-        size_t   const maxEntries    = query.optionalUInt64("max_entries");
-
-        _debug(string(__func__) + " controller_id=" +           controllerId);
-        _debug(string(__func__) + " parent_job_id=" +           parentJobId);
-        _debug(string(__func__) + " from="          + to_string(fromTimeStamp));
-        _debug(string(__func__) + " to="            + to_string(toTimeStamp));
-        _debug(string(__func__) + " max_entries="   + to_string(maxEntries));
-
-        // Pull descriptions of the Jobs
-
-
-        auto const jobs =
-            controller()->serviceProvider()->databaseServices()->jobs(
-                controllerId,
-                parentJobId,
-                fromTimeStamp,
-                toTimeStamp,
-                maxEntries);
-
-        json jobsJson;
-        for (auto&& info: jobs) {
-            jobsJson.push_back(info.toJson());
-        }
-        json result;
-        result["jobs"] = jobsJson;
-
-        _sendData(resp, result);
-
-    } catch (invalid_argument const& ex) {
-        _sendError(resp, __func__, "invalid parameters of the request, ex: " + string(ex.what()));
-    } catch (exception const& ex) {
-        _sendError(resp, __func__, "operation failed due to: " + string(ex.what()));
-    }
-}
-
-
-void HttpProcessor::_getJobInfo(qhttp::Request::Ptr const& req,
-                                qhttp::Response::Ptr const& resp) {
-    _debug(__func__);
-
-    try {
-        auto const id = req->params.at("id");
-
-        json result;
-        result["job"] = controller()->serviceProvider()->databaseServices()->job(id).toJson();
-
-        _sendData(resp, result);
-
-    } catch (DatabaseServicesNotFound const& ex) {
-        _sendError(resp, __func__, "no such job found");
-    } catch (invalid_argument const& ex) {
-        _sendError(resp, __func__, "invalid parameters of the request, ex: " + string(ex.what()));
-    } catch (exception const& ex) {
-        _sendError(resp, __func__, "operation failed due to: " + string(ex.what()));
-    }
-}
-
-
-void HttpProcessor::_getConfig(qhttp::Request::Ptr const& req,
-                               qhttp::Response::Ptr const& resp) {
-    _debug(__func__);
-
-    try {
-        auto const config  = controller()->serviceProvider()->config();
-
-        json result;
-        result["config"] = Configuration::toJson(config);
-
-        _sendData(resp, result);
-
-    } catch (invalid_argument const& ex) {
-        _sendError(resp, __func__, "invalid parameters of the request, ex: " + string(ex.what()));
-    } catch (exception const& ex) {
-        _sendError(resp, __func__, "operation failed due to: " + string(ex.what()));
-    }
-}
-
-
-void HttpProcessor::_updateGeneralConfig(qhttp::Request::Ptr const& req,
-                                         qhttp::Response::Ptr const& resp) {
-    _debug(__func__);
-
-    try {
-
-        ConfigurationGeneralParams general;
-
-        auto   const config  = controller()->serviceProvider()->config();
-        string const context = __func__;
-        auto   const logger  = [this, context](string const& msg) {
-            this->_debug(context + " " + msg);
-        };
-        ::saveConfigParameter(general.requestBufferSizeBytes,      req->query, config, logger);
-        ::saveConfigParameter(general.retryTimeoutSec,             req->query, config, logger);
-        ::saveConfigParameter(general.controllerThreads,           req->query, config, logger);
-        ::saveConfigParameter(general.controllerHttpPort,          req->query, config, logger);
-        ::saveConfigParameter(general.controllerHttpThreads,       req->query, config, logger);
-        ::saveConfigParameter(general.controllerRequestTimeoutSec, req->query, config, logger);
-        ::saveConfigParameter(general.jobTimeoutSec,               req->query, config, logger);
-        ::saveConfigParameter(general.jobHeartbeatTimeoutSec,      req->query, config, logger);
-        ::saveConfigParameter(general.xrootdAutoNotify,            req->query, config, logger);
-        ::saveConfigParameter(general.xrootdHost,                  req->query, config, logger);
-        ::saveConfigParameter(general.xrootdPort,                  req->query, config, logger);
-        ::saveConfigParameter(general.xrootdTimeoutSec,            req->query, config, logger);
-        ::saveConfigParameter(general.databaseServicesPoolSize,    req->query, config, logger);
-        ::saveConfigParameter(general.workerTechnology,            req->query, config, logger);
-        ::saveConfigParameter(general.workerNumProcessingThreads,  req->query, config, logger);
-        ::saveConfigParameter(general.fsNumProcessingThreads,      req->query, config, logger);
-        ::saveConfigParameter(general.workerFsBufferSizeBytes,     req->query, config, logger);
-
-        json result;
-        result["config"] = Configuration::toJson(config);
-        _sendData(resp, result);
-
-    } catch (boost::bad_lexical_cast const& ex) {
-        _sendError(resp, __func__, "invalid value of a configuration parameter: " + string(ex.what()));
-    } catch (invalid_argument const& ex) {
-        _sendError(resp, __func__, "invalid parameters of the request, ex: " + string(ex.what()));
-    } catch (exception const& ex) {
-        _sendError(resp, __func__, "operation failed due to: " + string(ex.what()));
-    }
-}
-
-
-void HttpProcessor::_updateWorkerConfig(qhttp::Request::Ptr const& req,
-                                        qhttp::Response::Ptr const& resp) {
-    _debug(__func__);
-
-    try {
-        auto const config = controller()->serviceProvider()->config();
-        auto const worker = req->params.at("name");
-
-        // Get optional parameters of the query. Note the default values which
-        // are expected to be replaced by actual values provided by a client in
-        // parameters found in the query.
-
-        HttpRequestQuery const query(req->query);
-        string   const svcHost    = query.optionalString("svc_host");
-        uint16_t const svcPort    = query.optionalUInt16("svc_port");
-        string   const fsHost     = query.optionalString("fs_host");
-        uint16_t const fsPort     = query.optionalUInt16("fs_port");
-        string   const dataDir    = query.optionalString("data_dir");
-        int      const isEnabled  = query.optionalInt(   "is_enabled");
-        int      const isReadOnly = query.optionalInt(   "is_read_only");
-
-        _debug(string(__func__) + " svc_host="     +           svcHost);
-        _debug(string(__func__) + " svc_port="     + to_string(svcPort));
-        _debug(string(__func__) + " fs_host="      +           fsHost);
-        _debug(string(__func__) + " fs_port="      + to_string(fsPort));
-        _debug(string(__func__) + " data_dir="     +           dataDir);
-        _debug(string(__func__) + " is_enabled="   + to_string(isEnabled));
-        _debug(string(__func__) + " is_read_only=" + to_string(isReadOnly));
-
-
-        if (not  svcHost.empty()) config->setWorkerSvcHost(worker, svcHost);
-        if (0 != svcPort)         config->setWorkerSvcPort(worker, svcPort);
-        if (not  fsHost.empty())  config->setWorkerFsHost( worker, fsHost);
-        if (0 != fsPort)          config->setWorkerFsPort( worker, fsPort);
-        if (not  dataDir.empty()) config->setWorkerDataDir(worker, dataDir);
-
-        if (isEnabled >= 0) {
-            if (isEnabled != 0) config->disableWorker(worker, true);
-            if (isEnabled == 0) config->disableWorker(worker, false);
-        }
-        if (isReadOnly >= 0) {
-            if (isReadOnly != 0) config->setWorkerReadOnly(worker, true);
-            if (isReadOnly == 0) config->setWorkerReadOnly(worker, false);
-        }
-        json result;
-        result["config"] = Configuration::toJson(config);
-
-        _sendData(resp, result);
-
-    } catch (invalid_argument const& ex) {
-        _sendError(resp, __func__, "invalid parameters of the request, ex: " + string(ex.what()));
-    } catch (exception const& ex) {
-        _sendError(resp, __func__, "operation failed due to: " + string(ex.what()));
-    }
-}
-
-
-void HttpProcessor::_deleteWorkerConfig(qhttp::Request::Ptr const& req,
-                                        qhttp::Response::Ptr const& resp) {
-    _debug(__func__);
-
-    try {
-        auto const config = controller()->serviceProvider()->config();
-        auto const worker = req->params.at("name");
-
-        config->deleteWorker(worker);
-        json result;
-        result["config"] = Configuration::toJson(config);
-
-        _sendData(resp, result);
-
-    } catch (invalid_argument const& ex) {
-        _sendError(resp, __func__, "invalid parameters of the request, ex: " + string(ex.what()));
-    } catch (exception const& ex) {
-        _sendError(resp, __func__, "operation failed due to: " + string(ex.what()));
-    }
-}
-
-
-void HttpProcessor::_addWorkerConfig(qhttp::Request::Ptr const& req,
-                                     qhttp::Response::Ptr const& resp) {
-    _debug(__func__);
-
-    try {
-        auto const config = controller()->serviceProvider()->config();
-
-        WorkerInfo info;
-        HttpRequestQuery const query(req->query);
-        info.name       = query.requiredString("name");
-        info.svcHost    = query.requiredString("svc_host");
-        info.svcPort    = query.requiredUInt16("svc_port");
-        info.fsHost     = query.requiredString("fs_host");
-        info.fsPort     = query.requiredUInt16("fs_port");
-        info.dataDir    = query.requiredString("data_dir");
-        info.isEnabled  = query.requiredBool(  "is_enabled");
-        info.isReadOnly = query.requiredBool(  "is_read_only");
-
-        _debug(string(__func__) + " name="         +           info.name);
-        _debug(string(__func__) + " svc_host="     +           info.svcHost);
-        _debug(string(__func__) + " svc_port="     + to_string(info.svcPort));
-        _debug(string(__func__) + " fs_host="      +           info.fsHost);
-        _debug(string(__func__) + " fs_port="      + to_string(info.fsPort));
-        _debug(string(__func__) + " data_dir="     +           info.dataDir);        
-        _debug(string(__func__) + " is_enabled="   + to_string(info.isEnabled  ? 1 : 0));
-        _debug(string(__func__) + " is_read_only=" + to_string(info.isReadOnly ? 1 : 0));
-
-        config->addWorker(info);
-
-        json result;
-        result["config"] = Configuration::toJson(config);
-
-        _sendData(resp, result);
-
-    } catch (invalid_argument const& ex) {
-        _sendError(resp, __func__, "invalid parameters of the request, ex: " + string(ex.what()));
-    } catch (exception const& ex) {
-        _sendError(resp, __func__, "operation failed due to: " + string(ex.what()));
-    }
-}
-
-
-void HttpProcessor::_deleteFamilyConfig(qhttp::Request::Ptr const& req,
-                                        qhttp::Response::Ptr const& resp) {
-    _debug(__func__);
-
-    try {
-        auto const config = controller()->serviceProvider()->config();
-        auto const family = req->params.at("name");
-
-        config->deleteDatabaseFamily(family);
-
-        json result;
-        result["config"] = Configuration::toJson(config);
-
-        _sendData(resp, result);
-
-    } catch (invalid_argument const& ex) {
-        _sendError(resp, __func__, "invalid parameters of the request, ex: " + string(ex.what()));
-    } catch (exception const& ex) {
-        _sendError(resp, __func__, "operation failed due to: " + string(ex.what()));
-    }
-}
-
-
-void HttpProcessor::_addFamilyConfig(qhttp::Request::Ptr const& req,
-                                     qhttp::Response::Ptr const& resp) {
-    _debug(__func__);
-
-    try {
-        auto const config = controller()->serviceProvider()->config();
-
-        HttpRequestQuery const query(req->query);
-        DatabaseFamilyInfo info;
-        info.name             = query.requiredString("name");
-        info.replicationLevel = query.requiredUInt64("replication_level");
-        info.numStripes       = query.requiredUInt(  "num_stripes");
-        info.numSubStripes    = query.requiredUInt(  "num_sub_stripes");
-
-        _debug(string(__func__) + " name="              +           info.name);
-        _debug(string(__func__) + " replication_level=" + to_string(info.replicationLevel));
-        _debug(string(__func__) + " num_stripes="       + to_string(info.numStripes));
-        _debug(string(__func__) + " num_sub_stripes="   + to_string(info.numSubStripes));
-
-        if (0 == info.replicationLevel) {
-            _sendError(resp, __func__, "'replication_level' can't be equal to 0");
-            return;
-        }
-        if (0 == info.numStripes) {
-            _sendError(resp, __func__, "'num_stripes' can't be equal to 0");
-            return;
-        }
-        if (0 == info.numSubStripes) {
-            _sendError(resp, __func__, "'num_sub_stripes' can't be equal to 0");
-            return;
-        }
-        config->addDatabaseFamily(info);
-
-        json result;
-        result["config"] = Configuration::toJson(config);
-
-        _sendData(resp, result);
-
-    } catch (invalid_argument const& ex) {
-        _sendError(resp, __func__, "invalid parameters of the request, ex: " + string(ex.what()));
-    } catch (exception const& ex) {
-        _sendError(resp, __func__, "operation failed due to: " + string(ex.what()));
-    }
-}
-
-
-void HttpProcessor::_deleteDatabaseConfig(qhttp::Request::Ptr const& req,
-                                          qhttp::Response::Ptr const& resp) {
-    _debug(__func__);
-
-    try {
-        auto const config = controller()->serviceProvider()->config();
-        auto const database = req->params.at("name");
-
-        config->deleteDatabase(database);
-
-        json result;
-        result["config"] = Configuration::toJson(config);
-
-        _sendData(resp, result);
-
-    } catch (invalid_argument const& ex) {
-        _sendError(resp, __func__, "invalid parameters of the request, ex: " + string(ex.what()));
-    } catch (exception const& ex) {
-        _sendError(resp, __func__, "operation failed due to: " + string(ex.what()));
-    }
-}
-
-
-void HttpProcessor::_addDatabaseConfig(qhttp::Request::Ptr const& req,
-                                       qhttp::Response::Ptr const& resp) {
-    _debug(__func__);
-
-    try {
-        auto const config = controller()->serviceProvider()->config();
-        
-        HttpRequestQuery const query(req->query);
-        DatabaseInfo info;
-        info.name   = query.requiredString("name");
-        info.family = query.requiredString("family");
-
-        _debug(string(__func__) + " name="   + info.name);
-        _debug(string(__func__) + " family=" + info.family);
-
-        config->addDatabase(info);
-
-        json result;
-        result["config"] = Configuration::toJson(config);
-
-        _sendData(resp, result);
-
-    } catch (invalid_argument const& ex) {
-        _sendError(resp, __func__, "invalid parameters of the request, ex: " + string(ex.what()));
-    } catch (exception const& ex) {
-        _sendError(resp, __func__, "operation failed due to: " + string(ex.what()));
-    }
-}
-
-
-void HttpProcessor::_deleteTableConfig(qhttp::Request::Ptr const& req,
-                                       qhttp::Response::Ptr const& resp) {
-    _debug(__func__);
-
-    try {
-        auto const config = controller()->serviceProvider()->config();
-        auto const table = req->params.at("name");
-
-        HttpRequestQuery const query(req->query);
-        auto const database = query.requiredString("database");
-
-        config->deleteTable(database, table);
-
-        json result;
-        result["config"] = Configuration::toJson(config);
-
-        _sendData(resp, result);
-
-    } catch (invalid_argument const& ex) {
-        _sendError(resp, __func__, "invalid parameters of the request, ex: " + string(ex.what()));
-    } catch (exception const& ex) {
-        _sendError(resp, __func__, "operation failed due to: " + string(ex.what()));
-    }
-}
-
-
-void HttpProcessor::_addTableConfig(qhttp::Request::Ptr const& req,
-                                    qhttp::Response::Ptr const& resp) {
-    _debug(__func__);
-
-    try {
-        auto const config = controller()->serviceProvider()->config();
-
-        HttpRequestQuery const query(req->query);
-        auto const table         = query.requiredString("name");
-        auto const database      = query.requiredString("database");
-        auto const isPartitioned = query.requiredBool(  "is_partitioned");
-
-        _debug(string(__func__) + " name="           + table);
-        _debug(string(__func__) + " database="       + database);
-        _debug(string(__func__) + " is_partitioned=" + to_string(isPartitioned ? 1 : 0));
-
-        config->addTable(database, table, isPartitioned);
-
-        json result;
-        result["config"] = Configuration::toJson(config);
-
-        _sendData(resp, result);
-
-    } catch (invalid_argument const& ex) {
-        _sendError(resp, __func__, "invalid parameters of the request, ex: " + string(ex.what()));
-    } catch (exception const& ex) {
-        _sendError(resp, __func__, "operation failed due to: " + string(ex.what()));
-    }
 }
 
 

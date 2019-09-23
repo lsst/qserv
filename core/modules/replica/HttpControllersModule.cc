@@ -20,7 +20,7 @@
  */
 
 // Class header
-#include "replica/HttpControllerModule.h"
+#include "replica/HttpControllersModule.h"
 
 // System headers
 #include <stdexcept>
@@ -37,10 +37,10 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
-HttpControllerModule::Ptr HttpControllerModule::create(Controller::Ptr const& controller,
-                                                       string const& taskName,
-                                                       unsigned int workerResponseTimeoutSec) {
-    return Ptr(new HttpControllerModule(
+HttpControllersModule::Ptr HttpControllersModule::create(Controller::Ptr const& controller,
+                                                         string const& taskName,
+                                                         unsigned int workerResponseTimeoutSec) {
+    return Ptr(new HttpControllersModule(
         controller,
         taskName,
         workerResponseTimeoutSec
@@ -48,18 +48,18 @@ HttpControllerModule::Ptr HttpControllerModule::create(Controller::Ptr const& co
 }
 
 
-HttpControllerModule::HttpControllerModule(Controller::Ptr const& controller,
-                                           string const& taskName,
-                                           unsigned int workerResponseTimeoutSec)
+HttpControllersModule::HttpControllersModule(Controller::Ptr const& controller,
+                                             string const& taskName,
+                                             unsigned int workerResponseTimeoutSec)
     :   HttpModule(controller,
                    taskName,
                    workerResponseTimeoutSec) {
 }
 
 
-void HttpControllerModule::executeImpl(qhttp::Request::Ptr const& req,
-                                       qhttp::Response::Ptr const& resp,
-                                       string const& subModuleName) {
+void HttpControllersModule::executeImpl(qhttp::Request::Ptr const& req,
+                                        qhttp::Response::Ptr const& resp,
+                                        string const& subModuleName) {
 
     if      (subModuleName.empty()) _controllers(req, resp);
     else if (subModuleName == "SELECT-ONE-BY-ID") _oneController(req, resp);
@@ -71,7 +71,7 @@ void HttpControllerModule::executeImpl(qhttp::Request::Ptr const& req,
 }
 
 
-void HttpControllerModule::_controllers(qhttp::Request::Ptr const& req,
+void HttpControllersModule::_controllers(qhttp::Request::Ptr const& req,
                                         qhttp::Response::Ptr const& resp) {
     debug(__func__);
 
@@ -107,8 +107,8 @@ void HttpControllerModule::_controllers(qhttp::Request::Ptr const& req,
 }
 
 
-void HttpControllerModule::_oneController(qhttp::Request::Ptr const& req,
-                                          qhttp::Response::Ptr const& resp) {
+void HttpControllersModule::_oneController(qhttp::Request::Ptr const& req,
+                                           qhttp::Response::Ptr const& resp) {
     debug(__func__);
 
     auto const id = req->params.at("id");
