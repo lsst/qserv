@@ -24,26 +24,16 @@
 // System headers
 #include <functional>
 #include <memory>
-#include <set>
-
-// Third party headers
-#include "nlohmann/json.hpp"
 
 // Qserv headers
-#include "qhttp/Server.h"
 #include "replica/EventLogger.h"
 #include "replica/HealthMonitorTask.h"
-#include "util/Mutex.h"
-
-// LSST headers
-#include "lsst/log/Log.h"
 
 // Forward declarations
 namespace lsst {
 namespace qserv {
 namespace replica {
     class HttpModule;
-    class DatabaseInfo;
 }}} // Forward declarations
 
 // This header declarations
@@ -54,7 +44,8 @@ namespace replica {
 /**
  * Class HttpProcessor processes requests from the built-in HTTP server.
  * The constructor of the class will register requests handlers an start
- * the server.
+ * the server. Request handlers are provided by various modules instantiated
+ * by this class.
  */
 class HttpProcessor:
         public EventLogger,
@@ -81,300 +72,6 @@ private:
 
     void _initialize();
 
-    std::string _context() const;
-
-    /**
-     * Log a message into the Logger's LOG_LVL_INFO stream
-     */
-    void _info(std::string const& msg) const;
-    void _info(std::string const& context, std::string const& msg) const { _info(context + "  " + msg); }
-
-    /**
-     * Log a message into the Logger's LOG_LVL_DEBUG stream
-     */
-    void _debug(std::string const& msg) const;
-    void _debug(std::string const& context, std::string const& msg) const { _debug(context + "  " + msg); }
-
-    /**
-     * Log a message into the Logger's LOG_LVL_ERROR stream
-     */
-    void _error(std::string const& msg) const;
-    void _error(std::string const& context, std::string const& msg) const { _error(context + "  " + msg); }
-
-    /**
-     * Process a request for executing a query against a worker database.
-     * A result set of the query will be returned for those query types which
-     * have the one upon a successful completion of a request.
-     */
-    void _sqlQuery(qhttp::Request::Ptr const& req,
-                   qhttp::Response::Ptr const& resp);
-
-    /**
-     * Process a request for extracting various status info from Qserv workers
-     * (all of them or a subset of those as per parameters of a request).
-     */
-    void _getQservManyWorkersStatus(qhttp::Request::Ptr const& req,
-                                    qhttp::Response::Ptr const& resp);
-
-    /**
-     * Process a request for extracting various status info from one Qserv worker.
-     */
-    void _getQservWorkerStatus(qhttp::Request::Ptr const& req,
-                               qhttp::Response::Ptr const& resp);
-
-    /**
-     * Process a request for extracting a status on user queries launched to Qserv
-     */
-    void _getQservManyUserQuery(qhttp::Request::Ptr const& req,
-                                qhttp::Response::Ptr const& resp);
-
-    /**
-     * Process a request for extracting a status on a specific user query launched to Qserv
-     */
-    void _getQservUserQuery(qhttp::Request::Ptr const& req,
-                            qhttp::Response::Ptr const& resp);
-
-    /**
-     * Get info on super-transactions
-     */
-    void _getTransactions(qhttp::Request::Ptr const& req,
-                          qhttp::Response::Ptr const& resp);
-
-    /**
-     * Get info on the current/latest super-transaction
-     */
-    void _getTransaction(qhttp::Request::Ptr const& req,
-                         qhttp::Response::Ptr const& resp);
-
-    /**
-     * Crate and start a super-transaction
-     */
-    void _beginTransaction(qhttp::Request::Ptr const& req,
-                           qhttp::Response::Ptr const& resp);
-
-    /**
-     * Commit or rollback a super-transaction
-     */
-    void _endTransaction(qhttp::Request::Ptr const& req,
-                         qhttp::Response::Ptr const& resp);
-
-    /**
-     * Register a database for an ingest
-     */
-    void _addDatabase(qhttp::Request::Ptr const& req,
-                      qhttp::Response::Ptr const& resp);
-
-    /**
-     * Publish a database whose data were ingested earlier
-     */
-    void _publishDatabase(qhttp::Request::Ptr const& req,
-                          qhttp::Response::Ptr const& resp);
-
-    /**
-     * Delete a database which is not yet published. All relevant data,
-     * including databases and tables at workers, the secondary index (if any)
-     * and Replication System's Configuration will be deleted s well.
-     */
-    void _deleteDatabase(qhttp::Request::Ptr const& req,
-                         qhttp::Response::Ptr const& resp);
-
-    /**
-     * Register a database table for an ingest
-     */
-    void _addTable(qhttp::Request::Ptr const& req,
-                   qhttp::Response::Ptr const& resp);
-
-    /**
-     * Register (if it's not register yet) a chunk for ingest.
-     * Return connection parameters to an end-point service where chunk
-     * data will need to be ingested.
-     */
-    void _addChunk(qhttp::Request::Ptr const& req,
-                   qhttp::Response::Ptr const& resp);
-
-    /**
-     * (Re-)build the "empty chunks list" for a database.
-     */
-    void _buildEmptyChunksList(qhttp::Request::Ptr const& req,
-                               qhttp::Response::Ptr const& resp);
-
-    /**
-     * Find descriptions of queries
-     *
-     * @param workerInfo  worker info object to be inspected to extract identifier)s of queries
-     * @return descriptions of the queries
-     */
-    nlohmann::json _getQueries(nlohmann::json& workerInfo) const;
-
-
-    /**
-     * Grant SELECT authorizations for the new database to Qserv
-     * MySQL account(s) at workers
-     *
-     * @param resp          the HTTP response channel for reporting errors
-     * @param databaseInfo  database descriptor
-     * @param allWorkers    'true' if all workers should be involved into the operation
-     *
-     * @return 'false' if operation failed
-     */
-    bool _grantDatabaseAccess(qhttp::Response::Ptr const& resp,
-                              DatabaseInfo const& databaseInfo,
-                              bool allWorkers) const;
-
-    /**
-     * Enable this database in Qserv workers by adding an entry
-     * to table 'qservw_worker.Dbs' at workers.
-     *
-     * @param resp          the HTTP response channel for reporting errors
-     * @param databaseInfo  database descriptor
-     * @param allWorkers    'true' if all workers should be involved into the operation
-     *
-     * @return 'false' if operation failed
-     */
-    bool _enableDatabase(qhttp::Response::Ptr const& resp,
-                         DatabaseInfo const& databaseInfo,
-                         bool allWorkers) const;
-
-    /**
-     * Consolidate MySQL partitioned tables at workers by removing partitions.
-     *
-     * @param resp          the HTTP response channel for reporting errors
-     * @param databaseInfo  database descriptor
-     * @param allWorkers    'true' if all workers should be involved into the operation
-     *
-     * @return 'false' if operation failed
-     */
-    bool _removeMySQLPartitions(qhttp::Response::Ptr const& resp,
-                                DatabaseInfo const& databaseInfo,
-                                bool allWorkers) const;
-
-    /**
-     * Publish database in the Qserv master database. This involves the following
-     * steps:
-     * - creating database entry
-     * - creating empty tables (with the proper) schema at the database
-     * - registering database, tables and their partitioning parameters in CSS
-     * - granting MySQL privileges for the Qserv account to access the database and tables
-     *
-     * @param databaseName  the name of a database to be published
-     */
-    void _publishDatabaseInMaster(DatabaseInfo const& databaseInfo) const;
-
-    /**
-     * (Re-)build the empty chunks list (table) for the specified database.
-     *
-     * @param database  the name of a database
-     * @param force     rebuild the file if 'true'
-     *
-     * @return pair of (empty chunk lists file name, number of chunks)
-     */
-    std::pair<std::string,size_t> _buildEmptyChunksListImpl(std::string const& database,
-                                                            bool force) const;
-
-
-    /**
-     * @param chunks  collection of chunks numbers to be expanded
-     * @return descriptors of chunks (including their spatial geometry)
-     */
-    nlohmann::json _chunkInfo(std::set<int> const& chunks) const;
-
-    /**
-     * This method will tell all (or a subset of) workers to reload cache Configuration
-     * parameters. The operation is needed after significant changes in the Replication
-     * system's configuration occur, such as creating new databases or tables.
-     * This is to implement an explicit model of making workers aware about changes
-     * in the mostly static state of the system.
-     *
-     * @param databaseInfo  defines a scope of the operation (used for status and error reporting)
-     * @param allWorkers  'true' if all workers are involved into the operation
-     * @param workerResponseTimeoutSec  do not wait longer than the specified number of seconds
-     * @return non-empty string to indicate a error
-     */
-    std::string _reconfigureWorkers(DatabaseInfo const& databaseInfo,
-                                    bool allWorkers,
-                                    unsigned int workerResponseTimeoutSec) const;
-
-    /**
-     * Create an empty "secondary index" table partitioned using MySQL partitions.
-     * The table will be configured with a single initial partition. More partitions
-     * corresponding to super-transactions open during catalog ingest sessions will
-     * be added later.
-     *
-     * @param databaseInfo  defines a scope of the operation
-     */
-    void _createSecondaryIndex(DatabaseInfo const& databaseInfo) const;
-
-    /**
-     * Extend an existing "secondary index" table by adding a MySQL partition
-     * corresponding to the specified transaction identifier.
-     *
-     * @param databaseInfo   defines a scope of the operation
-     * @param transactionId  unique identifier of a super-transaction
-     */
-    void _addPartitionToSecondaryIndex(DatabaseInfo const& databaseInfo,
-                                       uint32_t transactionId) const;
-
-   /**
-     * Shrink an existing "secondary index" table by removing a MySQL partition
-     * corresponding to the specified transaction identifier from the table.
-     *
-     * @param databaseInfo   defines a scope of the operation
-     * @param transactionId  unique identifier of a super-transaction
-     */
-    void _removePartitionFromSecondaryIndex(DatabaseInfo const& databaseInfo,
-                                            uint32_t transactionId) const;
-
-    /**
-     * Remove MySQL partitions from the "secondary index" table by turning it
-     * into a regular monolithic table.
-     * 
-     * @param databaseInfo   defines a scope of the operation
-     */
-    void _consolidateSecondaryIndex(DatabaseInfo const& databaseInfo) const;
-
-    /**
-     * Delete the "secondary index" table.
-     * 
-     * @param databaseInfo   defines a scope of the operation
-     */
-    void _deleteSecondaryIndex(DatabaseInfo const& databaseInfo) const;
-
-    /**
-     * Report a error condition and send a error message back to a requester
-     * of a service.
-     *
-     * @param resp   the HTTP response channel
-     * @param func   the name of a context from which the operation was initiated
-     * @param error  error condition to be reported
-     */
-    void _sendError(qhttp::Response::Ptr const& resp,
-                    std::string const& func,
-                    std::string const& error) const;
-
-    /**
-     * Report a result back to a requester of a service upon its successful
-     * completion.
-     *
-     * @param resp    the HTTP response channel
-     * @param result  JSON object to be sent back
-     * @param success (optional) flag indicating if the operation was successful.
-     *                Note, that the method will still send a result regardless of
-     *                a value of the flag. The result object may provide more specific
-     *                info on a reason of a failure (if not success)
-     */
-    void _sendData(qhttp::Response::Ptr const& resp,
-                   nlohmann::json& result,
-                   bool success=true);
-
-    // The name and a type of a special column for the super-transaction-based ingest
-
-    static std::string const _partitionByColumn;
-    static std::string const _partitionByColumnType;
-
-    unsigned int const _workerResponseTimeoutSec;
-
-    util::Mutex _ingestManagementMtx;   /// Synchronized access to the Ingest management operations
-
     std::shared_ptr<HttpModule> const _catalogsModule;
     std::shared_ptr<HttpModule> const _replicationLevelsModule;
     std::shared_ptr<HttpModule> const _workerStatusModule;
@@ -382,8 +79,9 @@ private:
     std::shared_ptr<HttpModule> const _requestsModule;
     std::shared_ptr<HttpModule> const _jobsModule;
     std::shared_ptr<HttpModule> const _configurationModule;
-
-LOG_LOGGER _log;
+    std::shared_ptr<HttpModule> const _qservMonitorModule;
+    std::shared_ptr<HttpModule> const _qservSqlModule;
+    std::shared_ptr<HttpModule> const _ingestModule;
 };
     
 }}} // namespace lsst::qserv::replica
