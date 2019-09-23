@@ -31,3 +31,4 @@ _build.sh
 _build.tags
 nbproject/
 .vscode/
+core/modules/parser/.antlr

@@ -4,6 +4,18 @@ import MySqlParser;
 
 options { tokenVocab=QSMySqlLexer; }
 
+// adds QSERV_MANAGER built-in procedure name:
+callStatement
+    : CALL fullId
+      (
+        '(' (constants | expressions)? ')'
+      )?
+    | CALL QSERV_MANAGER
+      (
+        '(' constant ')'
+      )?
+    ;
+
 // adds `MINUS?` before REAL_LITERAL
 constant
     : stringLiteral | decimalLiteral

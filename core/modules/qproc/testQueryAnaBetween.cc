@@ -48,14 +48,12 @@
 // Qserv headers
 #include "global/constants.h"
 #include "mysql/MySqlConfig.h"
-#include "parser/SelectParser.h"
 #include "query/SecIdxRestrictor.h"
 #include "query/QueryContext.h"
 #include "sql/SqlConfig.h"
 #include "tests/QueryAnaFixture.h"
 
 using lsst::qserv::mysql::MySqlConfig;
-using lsst::qserv::parser::SelectParser;
 using lsst::qserv::qproc::ChunkQuerySpec;
 using lsst::qserv::qproc::QuerySession;
 using lsst::qserv::query::SecIdxBetweenRestrictor;

@@ -38,7 +38,6 @@
 #include "css/CssAccess.h"
 #include "mysql/MySqlConfig.h"
 #include "parser/ParseException.h"
-#include "parser/SelectParser.h"
 #include "qana/AnalysisError.h"
 #include "qana/DuplSelectExprPlugin.h"
 #include "qana/PostPlugin.h"

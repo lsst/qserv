@@ -38,21 +38,32 @@
 // Third-party headers
 #include "boost/utility.hpp"
 
-#include "qdisp/QdispPool.h"
 // Local headers
-#include "ccontrol/UserQuery.h"
 #include "global/stringTypes.h"
+#include "qdisp/QdispPool.h"
+
 
 namespace lsst {
 namespace qserv {
-namespace query {
-class SelectStmt;
+namespace ccontrol {
+    class UserQuery;
+    class UserQuerySharedResources;
 }
 namespace czar {
-class CzarConfig;
+    class CzarConfig;
 }
+namespace qdisp {
+    class ExecutiveConfig;
+}
+namespace query {
+    class SelectStmt;
+}}}
 
+
+namespace lsst {
+namespace qserv {
 namespace ccontrol {
+
 
 ///  UserQueryFactory breaks construction of user queries into two phases:
 ///  creation/configuration of the factory and construction of the
@@ -70,16 +81,16 @@ public:
     /// @param userQueryId:  Unique string identifying query
     /// @param msgTableName: Name of the message table without database name.
     /// @return new UserQuery object
-    UserQuery::Ptr newUserQuery(std::string const& query,
-                                std::string const& defaultDb,
-                                qdisp::QdispPool::Ptr const& qdispPool,
-                                std::string const& userQueryId,
-                                std::string const& msgTableName,
-                                std::string const& resultDb);
+    std::shared_ptr<UserQuery> newUserQuery(std::string const& query,
+                               std::string const& defaultDb,
+                               qdisp::QdispPool::Ptr const& qdispPool,
+                               std::string const& userQueryId,
+                               std::string const& msgTableName,
+                               std::string const& resultDb);
 
 private:
-    class Impl;
-    std::shared_ptr<Impl> _impl;
+    std::shared_ptr<UserQuerySharedResources> _userQuerySharedResources;
+    std::shared_ptr<qdisp::ExecutiveConfig> _executiveConfig;
 };
 
 }}} // namespace lsst::qserv:control

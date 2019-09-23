@@ -93,7 +93,7 @@ namespace qdisp {
 ////////////////////////////////////////////////////////////////////////
 // class Executive implementation
 ////////////////////////////////////////////////////////////////////////
-Executive::Executive(Config const& c, std::shared_ptr<MessageStore> const& ms,
+Executive::Executive(ExecutiveConfig const& c, std::shared_ptr<MessageStore> const& ms,
                      std::shared_ptr<QdispPool> const& qdispPool,
                      std::shared_ptr<qmeta::QStatus> const& qStatus)
     : _config(c), _messageStore(ms), _qdispPool(qdispPool), _qMeta(qStatus) {
@@ -108,7 +108,7 @@ Executive::~Executive() {
 }
 
 
-Executive::Ptr Executive::create(Config const& c, std::shared_ptr<MessageStore> const& ms,
+Executive::Ptr Executive::create(ExecutiveConfig const& c, std::shared_ptr<MessageStore> const& ms,
                                  std::shared_ptr<QdispPool> const& qdispPool,
                                  std::shared_ptr<qmeta::QStatus> const& qMeta) {
     Executive::Ptr exec{new Executive(c, ms, qdispPool, qMeta)}; // make_shared dislikes private constructor.

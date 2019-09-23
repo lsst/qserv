@@ -39,6 +39,7 @@
 // Qserv headers
 #include "ccontrol/QueryState.h"
 #include "global/intTypes.h"
+#include "qmeta/types.h"
 
 // Forward decl
 namespace lsst {
@@ -47,9 +48,11 @@ namespace qdisp {
     class MessageStore;
 }}}
 
+
 namespace lsst {
 namespace qserv {
 namespace ccontrol {
+
 
 /// UserQuery : interface for user query data. Not thread-safe, although
 /// its delegates are thread-safe as appropriate.

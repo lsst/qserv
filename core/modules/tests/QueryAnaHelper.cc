@@ -40,15 +40,15 @@
 #include "lsst/log/Log.h"
 
 // Qserv headers
+#include "ccontrol/ParseRunner.h"
 #include "parser/ParseException.h"
-#include "parser/SelectParser.h"
 #include "qproc/ChunkSpec.h"
 #include "query/AreaRestrictor.h"
 #include "query/QueryTemplate.h"
 #include "query/SecIdxRestrictor.h"
 #include "query/SelectStmt.h"
 
-using lsst::qserv::parser::SelectParser;
+using lsst::qserv::ccontrol::ParseRunner;
 using lsst::qserv::qproc::ChunkQuerySpec;
 using lsst::qserv::qproc::ChunkSpec;
 using lsst::qserv::qproc::ChunkSpec;
@@ -64,9 +64,8 @@ namespace lsst {
 namespace qserv {
 namespace tests {
 
-SelectParser::Ptr QueryAnaHelper::getParser(std::string const & stmt) {
-    auto p = SelectParser::newInstance(stmt);
-    p->setup();
+ParseRunner::Ptr QueryAnaHelper::getParser(std::string const & stmt) {
+    auto p = std::make_shared<ParseRunner>(stmt);
     return p;
 }
 

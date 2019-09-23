@@ -37,7 +37,6 @@
 // Qserv headers
 #include "ccontrol/UserQueryType.h"
 #include "parser/ParseException.h"
-#include "parser/SelectParser.h"
 #include "qproc/QuerySession.h"
 #include "query/AndTerm.h"
 #include "query/BetweenPredicate.h"

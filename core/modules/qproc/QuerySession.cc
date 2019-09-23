@@ -46,13 +46,13 @@
 #include "lsst/log/Log.h"
 
 // Qserv headers
+#include "ccontrol/ParseRunner.h"
 #include "css/CssAccess.h"
 #include "css/CssError.h"
 #include "css/EmptyChunks.h"
 #include "global/constants.h"
 #include "global/stringTypes.h"
 #include "parser/ParseException.h"
-#include "parser/SelectParser.h"
 #include "qana/AggregatePlugin.h"
 #include "qana/AnalysisError.h"
 #include "qana/DuplSelectExprPlugin.h"
@@ -118,9 +118,9 @@ namespace qproc {
 
 
 std::shared_ptr<query::SelectStmt> QuerySession::parseQuery(std::string const & statement) {
-    auto parser = parser::SelectParser::newInstance(statement);
+    ccontrol::ParseRunner::Ptr parser;
     try {
-        parser->setup();
+        parser = std::make_shared<ccontrol::ParseRunner>(statement);
     } catch(parser::ParseException const& e) {
         LOGS(_log, LOG_LVL_DEBUG, "parse exception: " << e.what());
         _original = statement;

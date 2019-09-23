@@ -44,7 +44,6 @@
 
 // Qserv headers
 #include "mysql/MySqlConfig.h"
-#include "parser/SelectParser.h"
 #include "qproc/QuerySession.h"
 #include "query/QueryContext.h"
 #include "query/SelectStmt.h"
@@ -52,7 +51,6 @@
 #include "tests/QueryAnaFixture.h"
 
 using lsst::qserv::mysql::MySqlConfig;
-using lsst::qserv::parser::SelectParser;
 using lsst::qserv::qproc::QuerySession;
 using lsst::qserv::query::SelectStmt;
 using lsst::qserv::query::QueryContext;
