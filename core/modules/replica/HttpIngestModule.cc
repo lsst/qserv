@@ -225,7 +225,6 @@ void HttpIngestModule::_beginTransaction(qhttp::Request::Ptr const& req,
         auto const databaseServices = controller()->serviceProvider()->databaseServices();
 
         HttpRequestBody body(req);
-
         auto const database = body.required<string>("database");
 
         debug(__func__, "database=" + database);
@@ -252,12 +251,10 @@ void HttpIngestModule::_beginTransaction(qhttp::Request::Ptr const& req,
         logBeginTransaction("SUCCESS");
 
     } catch (invalid_argument const& ex) {
-        auto const msg = "invalid parameters of the request, ex: " + string(ex.what());
-        logBeginTransaction("FAILED", msg);
+        logBeginTransaction("FAILED", "invalid parameters of the request, ex: " + string(ex.what()));
         throw;
     } catch (exception const& ex) {
-        auto const msg = "operation failed due to: " + string(ex.what());
-        logBeginTransaction("FAILED", msg);
+        logBeginTransaction("FAILED", "operation failed due to: " + string(ex.what()));
         throw;
     }
 }
@@ -357,12 +354,10 @@ void HttpIngestModule::_endTransaction(qhttp::Request::Ptr const& req,
         logEndTransaction("SUCCESS");
 
     } catch (invalid_argument const& ex) {
-        auto const msg = "invalid parameters of the request, ex: " + string(ex.what());
-        logEndTransaction("FAILED", msg);
+        logEndTransaction("FAILED", "invalid parameters of the request, ex: " + string(ex.what()));
         throw;
     } catch (exception const& ex) {
-        auto const msg = "operation failed due to: " + string(ex.what());
-        logEndTransaction("FAILED", msg);
+        logEndTransaction("FAILED", "operation failed due to: " + string(ex.what()));
         throw;
     }
 }
@@ -375,7 +370,6 @@ void HttpIngestModule::_addDatabase(qhttp::Request::Ptr const& req,
     auto const config = controller()->serviceProvider()->config();
 
     HttpRequestBody body(req);
-
     DatabaseInfo databaseInfo;
     databaseInfo.name = body.required<string>("database");
 
@@ -616,7 +610,6 @@ void HttpIngestModule::_addTable(qhttp::Request::Ptr const& req,
     auto const config = controller()->serviceProvider()->config();
 
     HttpRequestBody body(req);
-
     auto const database      = body.required<string>("database");
     auto const table         = body.required<string>("table");
     auto const isPartitioned = (bool)body.required<int>("is_partitioned");
@@ -1088,16 +1081,13 @@ void HttpIngestModule::_publishDatabaseInMaster(DatabaseInfo const& databaseInfo
             h.conn->sqlValue(config->qservMasterDatabaseUser()) + "@" +
             h.conn->sqlValue(config->qservMasterDatabaseHost()));
 
-        // Execute the statements
-        //
-        // TODO: switch to the more reliable way of executing queries
-        // which would also reconnect to the server.
-
-        h.conn->begin();
-        for (auto const& query: statements) {
-            h.conn->execute(query);
-        }
-        h.conn->commit();
+        h.conn->execute([&statements](decltype(h.conn) conn) {
+            conn->begin();
+            for (auto const& query: statements) {
+                conn->execute(query);
+            }
+            conn->commit();
+        });
     }
 
     // Register the database, tables and the partitioning scheme at CSS
@@ -1339,18 +1329,13 @@ void HttpIngestModule::_createSecondaryIndex(DatabaseInfo const& databaseInfo) c
         ") (PARTITION `p0` VALUES IN (0) ENGINE=InnoDB)"
     );
 
-    // Execute the statement
-    //
-    // TODO: switch to the more reliable way of executing queries
-    // which would also reconnect to the server.
-
-    for (auto&& query: queries) {
-        debug(__func__, query);
-
-        h.conn->begin();
-        h.conn->execute(query);
-        h.conn->commit();
-    }
+    h.conn->execute([&queries](decltype(h.conn) conn) {
+        conn->begin();
+        for (auto&& query: queries) {
+            conn->execute(query);
+        }
+        conn->commit();
+    });
 }
 
 
@@ -1371,16 +1356,13 @@ void HttpIngestModule::_addPartitionToSecondaryIndex(DatabaseInfo const& databas
         " ADD PARTITION (PARTITION `p" + to_string(transactionId) + "` VALUES IN (" + to_string(transactionId) +
         ") ENGINE=InnoDB)";
 
-    // Execute the statement
-    //
-    // TODO: switch to the more reliable way of executing queries
-    // which would also reconnect to the server.
-
     debug(__func__, query);
 
-    h.conn->begin();
-    h.conn->execute(query);
-    h.conn->commit();
+    h.conn->execute([&query](decltype(h.conn) conn) {
+        conn->begin();
+        conn->execute(query);
+        conn->commit();
+    });
 }
 
 
@@ -1400,16 +1382,13 @@ void HttpIngestModule::_removePartitionFromSecondaryIndex(DatabaseInfo const& da
         "ALTER TABLE " + h.conn->sqlId(databaseInfo.name + "__" + databaseInfo.directorTable) +
         " DROP PARTITION `p" + to_string(transactionId) + "`";
 
-    // Execute the statement
-    //
-    // TODO: switch to the more reliable way of executing queries
-    // which would also reconnect to the server.
-
     debug(__func__, query);
 
-    h.conn->begin();
-    h.conn->execute(query);
-    h.conn->commit();
+    h.conn->execute([&query](decltype(h.conn) conn) {
+        conn->begin();
+        conn->execute(query);
+        conn->commit();
+    });
 }
 
 
@@ -1429,16 +1408,13 @@ void HttpIngestModule::_consolidateSecondaryIndex(DatabaseInfo const& databaseIn
         "ALTER TABLE " + h.conn->sqlId(databaseInfo.name + "__" + databaseInfo.directorTable) +
         " REMOVE PARTITIONING";
 
-    // Execute the statement
-    //
-    // TODO: switch to the more reliable way of executing queries
-    // which would also reconnect to the server.
-
     debug(__func__, query);
 
-    h.conn->begin();
-    h.conn->execute(query);
-    h.conn->commit();
+    h.conn->execute([&query](decltype(h.conn) conn) {
+        conn->begin();
+        conn->execute(query);
+        conn->commit();
+    });
 }
 
 
@@ -1457,16 +1433,13 @@ void HttpIngestModule::_deleteSecondaryIndex(DatabaseInfo const& databaseInfo) c
     string const query =
         "DROP TABLE IF EXISTS " + h.conn->sqlId(databaseInfo.name + "__" + databaseInfo.directorTable);
 
-    // Execute the statement
-    //
-    // TODO: switch to the more reliable way of executing queries
-    // which would also reconnect to the server.
-
     debug(__func__, query);
 
-    h.conn->begin();
-    h.conn->execute(query);
-    h.conn->commit();
+    h.conn->execute([&query](decltype(h.conn) conn) {
+        conn->begin();
+        conn->execute(query);
+        conn->commit();
+    });
 }
 
 
