@@ -535,7 +535,6 @@ void UserQuerySelect::setupChunking() {
             csv = im->getAllChunks();
         }
 
-        LOGS(_log, LOG_LVL_TRACE, "Chunk specs: " << util::printable(csv));
         // Filter out empty chunks
         for(qproc::ChunkSpecVector::const_iterator i=csv.begin(), e=csv.end();
             i != e;
