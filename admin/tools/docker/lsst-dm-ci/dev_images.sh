@@ -8,6 +8,7 @@ set -e
 
 DIR=$(cd "$(dirname "$0")"; pwd -P)
 
-# Build container iamge for Qserv development version
-"$DIR"/../1_build-image.sh -C
-"$DIR"/../4_build-configured-images.sh
+# Build container image for Qserv development version
+# i.e. tagged "qserv-dev"
+"$DIR"/../1_build-deps.sh -C
+"$DIR"/../3_build-configured-images.sh

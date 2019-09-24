@@ -24,12 +24,11 @@
 
 # @author  Fabrice Jammes, IN2P3/SLAC
 
-set -e
+set -eux
 
 DIR=$(cd "$(dirname "$0")"; pwd -P)
 . "$DIR/conf.sh"
 
-DOCKER_IMAGE="$DOCKER_REPO:dev"
 PUSH_TO_HUB="true"
 
 usage() {
@@ -38,7 +37,8 @@ Usage: $(basename "$0") [options]
 
 Available options:
   -h          this message
-  -i image    Docker image to be used as input, default to $DOCKER_IMAGE
+  -i image    Docker image containing Qserv dependencies to be used as input,
+              default to content of $DEPS_TAG_FILE
   -L          Do not push image to Docker Hub
 
 Create docker images containing Qserv master and worker instances,
@@ -46,12 +46,13 @@ use an existing Qserv Docker image as input.
 
 EOD
 }
+QSERV_IMAGE=""
 
 # Get the options
 while getopts hi:L c ; do
     case $c in
         h) usage ; exit 0 ;;
-        i) DOCKER_IMAGE="$OPTARG" ;;
+        i) QSERV_IMAGE="$OPTARG" ;;
         L) PUSH_TO_HUB="false" ;;
         \?) usage ; exit 2 ;;
     esac
@@ -63,14 +64,23 @@ if [ $# -ne 0 ] ; then
     exit 2
 fi
 
+if [ -z "$QSERV_IMAGE" ]; then
+    echo "Qserv image not provided, switching to locally build image"
+    if [ ! -f "$DEPS_TAG_FILE" ]
+    then
+        >&2 echo "ERROR: local build not available, use -i option to provide a source Qserv image"
+        exit 1
+    fi
+    QSERV_IMAGE=$(cat $DEPS_TAG_FILE)
+fi
 
 makeDockerfile() {
     awk \
         -v NODE_TYPE=${NODETYPE} \
-        -v DOCKER_IMAGE=${DOCKER_IMAGE} \
+        -v QSERV_IMAGE=${QSERV_IMAGE} \
         -v COMMENT_ON_WORKER=${COMMENTONWORKER} \
         '{gsub(/<NODE_TYPE>/, NODE_TYPE);
-         gsub(/<DOCKER_IMAGE>/, DOCKER_IMAGE);
+         gsub(/<QSERV_IMAGE>/, QSERV_IMAGE);
          gsub(/<COMMENT_ON_WORKER>/, COMMENT_ON_WORKER);
          print}' "$DOCKERDIR/Dockerfile.tpl" > "$DOCKERFILE"
          
@@ -85,7 +95,6 @@ makeDockerfile() {
     
 }
 
-
 DOCKERDIR="$DIR/configured"
 DOCKERFILE="$DOCKERDIR/Dockerfile"
 
@@ -96,7 +105,7 @@ DOCKERFILE="$DOCKERDIR/Dockerfile"
 NODETYPE="-m"
 COMMENTONWORKER=""
 TARGET="master"
-TAG="${DOCKER_IMAGE}_master"
+TAG="${QSERV_IMAGE}_master"
 makeDockerfile
 
 
@@ -104,7 +113,7 @@ makeDockerfile
 NODETYPE="-c"
 COMMENTONWORKER=""
 TARGET="master_multi"
-TAG="${DOCKER_IMAGE}_master_multi"
+TAG="${QSERV_IMAGE}_master_multi"
 makeDockerfile
 
 
@@ -112,12 +121,12 @@ makeDockerfile
 NODETYPE="-s"
 COMMENTONWORKER=""
 TARGET="master_shared"
-TAG="${DOCKER_IMAGE}_master_shared"
+TAG="${QSERV_IMAGE}_master_shared"
 makeDockerfile
 
 # Build the worker image
 NODETYPE=""
 COMMENTONWORKER="# "
 TARGET="worker"
-TAG="${DOCKER_IMAGE}_worker"
+TAG="${QSERV_IMAGE}_worker"
 makeDockerfile

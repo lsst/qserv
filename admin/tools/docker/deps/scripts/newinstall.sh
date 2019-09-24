@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # LSST Data Management System
-# Copyright 2014 LSST Corporation.
+# Copyright 2014-2015 LSST Corporation.
 #
 # This product includes software developed by the
 # LSST Project (http://www.lsst.org/).
@@ -20,20 +20,20 @@
 # the GNU General Public License along with this program.  If not,
 # see <http://www.lsstcorp.org/LegalNotices/>.
 
-#
-# Run mono-node test against setup Qserv version 
-#
-# Launch commands below before running this script:
-# . /qserv/stack/loadLSST.bash
-# setup qserv_distrib -t <EUPS_TAG>
 
+# Initialize configuration for Qserv
 
-# @author  Fabrice Jammes, IN2P3
+# @author  Fabrice Jammes, IN2P3/SLAC
+
 
 set -e
+set -x
 
-QSERV_RUN_DIR=$HOME/qserv-run/mono-$(qserv-version.sh)
-qserv-configure.py --all --force -R $QSERV_RUN_DIR
-$QSERV_RUN_DIR/bin/qserv-start.sh
-qserv-test-integration.py
-$QSERV_RUN_DIR/bin/qserv-stop.sh
+DIR=$(cd "$(dirname "$0")"; pwd -P)
+. "$DIR"/env.sh
+
+mkdir /home/qserv/.conda
+mkdir "$STACK_DIR"
+cd "$STACK_DIR"
+curl -OL https://raw.githubusercontent.com/lsst/lsst/master/scripts/newinstall.sh
+bash newinstall.sh -bt

@@ -49,7 +49,7 @@ In order to push produced Docker images to Docker Hub, prefix
 
    # Code need to be pushed on github
    cd ${SRC_DIR}/qserv/admin/tools/docker
-   3_build-git-image.sh -R <git-tag/branch> -T <docker-image-name>
+   2_build-git-image.sh -R <git-tag/branch> -T <docker-image-name>
    # Current Qserv version will have eups tag named qserv-dev
 
 Create Qserv master and worker images from a given Qserv version:

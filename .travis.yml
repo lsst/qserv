@@ -1,3 +1,5 @@
+dist: bionic
+
 # whitelist
 branches:
   only:
@@ -14,7 +16,7 @@ language: c++
 before_install:
   # Set up parameters for containers deployment
   - cp ./admin/tools/docker/deployment/travis/env.sh ./admin/tools/docker/deployment/localhost/env.sh
-  # While running 3_build-git-image.sh [option] <local-path>, <local-path> has to contain a git repository
+  # While running 2_build-git-image.sh [option] <local-path>, <local-path> has to contain a git repository
   # whose current commit is a branch HEAD
   - git checkout -b travis
   - export IMAGE="qserv/qserv:$(git rev-parse --short HEAD)"
@@ -26,12 +28,16 @@ before_install:
   # files
   - chmod o+w .
 
+#install:
+# Will not work because travis-ci free plan does not allow builds longer than 50
+# minutes
+#  - echo "Building image with Qserv dependencies" 
+#  - travis_wait 120 ./admin/tools/docker/1_build-deps.sh
+
 script:
-  # Only message in 'script' section are displayer, meesage below have to be there
+  # Only message in 'script' section are displayer, message below has to be there
   - echo "Building and testing $IMAGE (alias $BRANCH_IMAGE) and related master and worker images"
-  # Retrieve current qserv dependencies
-  - docker pull qserv/qserv:dev
-  - ./admin/tools/docker/3_build-git-image.sh -F -L -T "$IMAGE" "$PWD" && ./admin/tools/docker/4_build-configured-images.sh -L -i "$IMAGE" && ./admin/tools/docker/deployment/localhost/run-multinode-tests.sh
+  - ./admin/tools/docker/2_build-git-image.sh -F -L -T "$IMAGE" "$PWD" && ./admin/tools/docker/3_build-configured-images.sh -L -i "$IMAGE" && ./admin/tools/docker/deployment/localhost/run-multinode-tests.sh
 
 notifications:
   slack:

@@ -27,13 +27,14 @@
 
 # @author  Fabrice Jammes, IN2P3/SLAC
 
-set -e
+set -eux
 
 DIR=$(cd "$(dirname "$0")"; pwd -P)
 . "$DIR/conf.sh"
 
-EUPS_TAG='qserv-dev'
 TAG="$DOCKER_REPO:dev"
+
+CACHE_OPT=''
 
 usage() {
   cat << EOD
@@ -44,7 +45,11 @@ usage() {
     -C          Rebuild the images from scratch
     -h          This message
 
-    Create Docker image from 'qserv-dev' eups tag.
+    Create a container image for Qserv and dependencies
+    using 'qserv-dev' eups tag.
+
+    Write container image tag in $DEPS_TAG_FILE, in order to allow
+    lsst-dm-ci to build Qserv configured images from this container image.
 
 EOD
 }
@@ -65,41 +70,19 @@ if [ $# -ne 0 ] ; then
     exit 2
 fi
 
-DEPS_DIR=$(readlink -f "$DIR/../../bootstrap")
-
-if [ ! -d "$DEPS_DIR" ] ; then
-	printf "ERROR: incorrect dependencies directory (value: $DEPS_DIR)"
-    usage
-    exit 3
-fi
-
-DOCKERDIR="$DIR/latest"
-
-# strip trailing slash
-DEPS_DIR=$(echo "$DEPS_DIR" | sed 's%\(.*[^/]\)/*%\1%')
-
-# WARN:
-# Scripts used by Dockerfile:
-# - must be located under the same root path than the Dockerfile,
-# - must not be symlinks
-# - git can't store physical links
-# So, copy it from templates to SCRIPT_DIR directory
-SCRIPT_DIR="$DOCKERDIR/scripts"
-
-TPL_DEPS_SCRIPT="$DEPS_DIR/qserv-install-deps-rhel7.sh"
-
-printf "Add physical link to dependencies install script: %s\n" "$TPL_DEPS_SCRIPT"
-ln -f "$TPL_DEPS_SCRIPT" "$SCRIPT_DIR/install-deps.sh"
+DOCKERDIR="$DIR/deps"
 
 # Build the image
-printf "Building image %s from %s, using eups tag %s\n" \
-    "$TAG" "$DOCKERDIR" "$EUPS_TAG"
-docker build $CACHE_OPT --build-arg EUPS_TAG="$EUPS_TAG" --tag="$TAG" "$DOCKERDIR"
+DEPS_TAG="$DOCKER_REPO:${DEPS_TAG_PREFIX}_$(date -u '+%Y%m%d_%H%M')"
+printf "Building image %s from %s, using eups tag 'qserv-dev'\n" \
+    "$DEPS_TAG" "$DOCKERDIR"
+docker build $CACHE_OPT --build-arg DEPS_TAG=$DEPS_TAG --tag="$TAG" "$DOCKERDIR"
 
 docker push "$TAG"
 
-DATE_TAG="$DOCKER_REPO:$(date '+%Y%m%d_%H%M%S')"
-docker tag "$TAG" "$DATE_TAG"
-docker push "$DATE_TAG"
+docker tag "$TAG" "$DEPS_TAG"
+docker push "$DEPS_TAG"
 
-printf "Image %s built successfully\n" "$TAG"
+printf "Image %s built successfully\n" "$DEPS_TAG"
+
+echo "$DEPS_TAG" > "$DEPS_TAG_FILE"
