@@ -246,7 +246,6 @@ private:
 
     bool _hasMerge{false};
     bool _isDummy{false}; ///< Use dummy chunk, disabling subchunks or any real chunks
-    std::string _tmpTable;
     std::string _resultTable;
     std::string _error;
     int _isFinal{0}; ///< Has query analysis/optimization completed?
