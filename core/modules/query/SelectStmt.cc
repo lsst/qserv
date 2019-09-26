@@ -53,6 +53,7 @@
 #include "query/HavingClause.h"
 #include "query/OrderByClause.h"
 #include "query/SelectList.h"
+#include "query/ValueFactor.h"
 #include "query/WhereClause.h"
 #include "util/IterableFormatter.h"
 #include "util/PointerCompare.h"
@@ -62,6 +63,8 @@
 // anonymous
 ////////////////////////////////////////////////////////////////////////
 namespace {
+
+LOG_LOGGER _log = LOG_GET("lsst.qserv.query.SelectStmt");
 
 template <typename T>
 inline void renderTemplate(lsst::qserv::query::QueryTemplate& qt,

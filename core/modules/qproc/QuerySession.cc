@@ -66,6 +66,7 @@
 #include "qana/WherePlugin.h"
 #include "qproc/DatabaseModels.h"
 #include "qproc/QueryProcessingBug.h"
+#include "qproc/QueryProcessingError.h"
 #include "query/AreaRestrictor.h"
 #include "query/QueryContext.h"
 #include "query/SecIdxRestrictor.h"
@@ -196,12 +197,17 @@ query::SecIdxRestrictorVecPtr QuerySession::getSecIdxRestrictors() const {
 
 
 std::string QuerySession::getResultOrderBy() const {
-    std::string orderBy;
-    if (_stmt->hasOrderBy()) {
-        orderBy = _stmt->getOrderBy().sqlFragment();
+    if (not _stmt->hasOrderBy()) return std::string();
+    // Since we get the ORDER BY statement from the primary SelectStmt, the db and table will not match the
+    // result table db and table name. So we elimiate those from the ValueExprs in the result ORDER BY and
+    // use only the alias or column name in the ORDER BY statement.
+    auto orderBy = _stmt->getOrderBy().clone();
+    std::vector<std::shared_ptr<query::ValueExpr>> valueExprs;
+    orderBy->findValueExprs(valueExprs);
+    for (auto& valueExpr : valueExprs) {
+        valueExpr->setToAliasOnly();
     }
-    LOGS(_log, LOG_LVL_TRACE, "getResultOrderBy: " << orderBy);
-    return orderBy;
+    return orderBy->sqlFragment();
 }
 
 
@@ -370,11 +376,7 @@ void QuerySession::_generateConcrete() {
     LOGS(_log, LOG_LVL_TRACE, "Parallel statement initialized with: \""
         << _stmtParallel[0]->getQueryTemplate() << "\"");
 
-    _stmtMerge = _stmt->clone();
-    _stmtMerge->setWhereClause(nullptr);
-    // The WHERE clause is not needed in the merge.
-    // Right now don't reset the FROM clause: it won't be used in the final merge query (it gets replaced by
-    // the merge table name), but it is sometimes needed, e.g. for expanding SELECT * into individual column names.
+    _initMergeStatement();
 
     LOGS(_log, LOG_LVL_TRACE, "Merge statement initialized with: \""
          << _stmtMerge->getQueryTemplate() << "\" " << *_stmtMerge);
@@ -501,6 +503,34 @@ QuerySession::_buildFragment(query::QueryTemplate::Vect const& queryTemplates,
         f.next();
     }
     return first;
+}
+
+
+void QuerySession::_initMergeStatement() {
+    _stmtMerge = _stmt->clone();
+    _stmtMerge->setWhereClause(nullptr);
+    // - The WHERE clause is not needed in the merge.
+    // - The final ORDER BY must be performed by final query on result table which is executed by
+    //   mysql-proxy. But it's needed in the merge if there is a LIMIT clause. So, removing ORDER BY from the
+    //   merge statement when possible is handled in qana::PostPlugin.
+    // - The FROM clause won't be used in the final merge query (it gets replaced by the merge table name)
+    //   but it is needed downstream in some cases, e.g. for expanding SELECT * into individual column names.
+
+    // Remove any table, db, and alias from the ORDER BY ValueExprs. This should allow the merge stmt
+    // to run in most cases (all? needs study). It would be preferable to figure out the *right* table/db/alias
+    // and plug that in. I don't think it can be done here. TBD where that would be.
+    if (_stmtMerge->hasOrderBy()) {
+        query::ValueExprPtrVector valueExprs;
+        _stmtMerge->getOrderBy().findValueExprs(valueExprs);
+        LOGS(_log, LOG_LVL_TRACE, "setting ValueExprs to alias only: " << util::printable(valueExprs));
+        for (auto& valueExpr : valueExprs) {
+            if (not valueExpr->isColumnRef()) {
+                throw QueryProcessingError(
+                    "ORDER BY only supports columns and expressions with aliases from SELECT list.");
+            }
+            valueExpr->setToAliasOnly();
+        }
+    }
 }
 
 

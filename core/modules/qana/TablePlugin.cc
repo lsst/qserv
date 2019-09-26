@@ -215,7 +215,11 @@ TablePlugin::applyLogical(query::SelectStmt& stmt,
 
     if (stmt.hasOrderBy()) {
         matchTableRefs(context, stmt.getOrderBy(), false);
-        matchValueExprs(context, stmt.getOrderBy(), true);
+        // The columns in the ORDER BY statement do not have to have a match in the select list, yet.
+        // This allows a query like `SELECT * ... ORDER BY col`, where col exists in the table (and so this
+        // is a valid query) but is not yet explicitly named. The existance of the ORDER BY columns will be
+        // verified later.
+        matchValueExprs(context, stmt.getOrderBy(), false);
     }
     if (stmt.hasWhereClause()) {
         matchTableRefs(context, stmt.getWhereClause(), true);

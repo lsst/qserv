@@ -238,10 +238,10 @@ std::string UserQuerySelect::getResultQuery() const {
             std::shared_ptr<query::ValueExpr> newValueExpr;
             if (valueExpr->isColumnRef() && not valueExpr->getAliasIsUserDefined()) {
                 newValueExpr = query::ValueExpr::newColumnExpr(valueExpr->getAlias());
-                newValueExpr->setAlias(valueExpr->getColumnRef()->getColumn());
+                newValueExpr->setAlias(valueExpr->getColumnRef()->getColumn(), false);
             } else {
                 newValueExpr = query::ValueExpr::newColumnExpr("`" + valueExpr->getAlias() + "`");
-                newValueExpr->setAlias(valueExpr->getAlias());
+                newValueExpr->setAlias(valueExpr->getAlias(), true);
             }
             selectList.addValueExpr(newValueExpr);
         }
@@ -462,32 +462,33 @@ void UserQuerySelect::setupMerger() {
         _qMetaUpdateStatus(qmeta::QInfo::FAILED);
     }
 
-    _expandSelectStarInMergeStatment(_infileMergerConfig->mergeStmt);
+    _expandSelectStarInMergeStatment();
+
+    _verifyColumnsInMergeStatement();
 
     _infileMerger->setMergeStmtFromList(_infileMergerConfig->mergeStmt);
 }
 
 
-void UserQuerySelect::_expandSelectStarInMergeStatment(std::shared_ptr<query::SelectStmt> const& mergeStmt) {
-    if (nullptr != mergeStmt) {
-        auto& selectList = *(mergeStmt->getSelectList().getValueExprList());
+void UserQuerySelect::_expandSelectStarInMergeStatment() {
+    if (_infileMergerConfig->mergeStmt) {
+        auto& selectList = *(_infileMergerConfig->mergeStmt->getSelectList().getValueExprList());
         for (auto valueExprItr = selectList.begin(); valueExprItr != selectList.end(); ++valueExprItr) {
             auto& valueExpr = *valueExprItr;
             if (valueExpr->isStar()) {
                 auto valueExprVec = std::make_shared<query::ValueExprPtrVector>();
                 valueExprVec->push_back(valueExpr);
                 auto starStmt = query::SelectStmt(std::make_shared<query::SelectList>(valueExprVec),
-                                                  mergeStmt->getFromListPtr());
+                                                  _infileMergerConfig->mergeStmt->getFromListPtr());
                 sql::Schema schema;
                 if (not _infileMerger->getSchemaForQueryResults(starStmt, schema)) {
                     throw UserQueryError(getQueryIdString() + " Couldn't get schema for merge query.");
                 }
-                // Only use the column names retured by the SELECT* (not the database or table name) because
-                // when performing the merge the columns will be in the merge table (not the table that was
-                // originally queried).
                 query::ValueExprPtrVector starColumns;
                 for (auto const& column : schema.columns) {
-                    starColumns.push_back(query::ValueExpr::newColumnExpr("", "", "", column.name));
+                    auto starColValExpr = query::ValueExpr::newColumnExpr("", column.table, "", column.name);
+                    starColValExpr->setAlias(column.name, false);
+                    starColumns.push_back(starColValExpr);
                 }
                 valueExprItr = selectList.insert(valueExprItr, starColumns.begin(), starColumns.end());
                 std::advance(valueExprItr, starColumns.size());
@@ -500,9 +501,34 @@ void UserQuerySelect::_expandSelectStarInMergeStatment(std::shared_ptr<query::Se
 }
 
 
+void UserQuerySelect::_verifyColumnsInMergeStatement() {
+    if (_infileMergerConfig->mergeStmt != nullptr && _infileMergerConfig->mergeStmt->hasOrderBy()) {
+        query::ValueExprPtrVector valueExprs;
+        _infileMergerConfig->mergeStmt->getOrderBy().findValueExprs(valueExprs);
+
+        // Check ORDER BY
+        // TODO provide checking for other clauses that might need to be checked.
+        for (auto& orderByVE : valueExprs) {
+            bool match = false;
+            for (auto& selectListVE : *(_infileMergerConfig->mergeStmt->getSelectList().getValueExprList())) {
+                if (orderByVE->isSubsetOf(*selectListVE)) {
+                    match = true;
+                    break;
+                }
+            }
+            if (not match) {
+                throw UserQueryError(getQueryIdString() + " ORDER BY item not in SELECT list.");
+            }
+            match = false;
+        }
+    }
+}
+
+
 void UserQuerySelect::saveResultQuery() {
     _queryMetadata->saveResultQuery(_qMetaQueryId, getResultQuery());
 }
+
 
 void UserQuerySelect::setupChunking() {
     LOGS(_log, LOG_LVL_TRACE, "Setup chunking");

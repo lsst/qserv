@@ -199,6 +199,13 @@ private:
     std::shared_ptr<ChunkQuerySpec> _buildFragment(query::QueryTemplate::Vect const& queryTemplates,
                                                    ChunkSpecFragmenter& f) const;
 
+    /**
+     * @brief Initialize the merge statement with its initial values.
+     *
+     * It will be modified downstream by other plugins and processing code.
+     */
+    void _initMergeStatement();
+
     // Fields
     std::shared_ptr<css::CssAccess> _css; ///< Metadata access
     std::string _defaultDb; ///< User db context

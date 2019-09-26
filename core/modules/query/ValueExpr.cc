@@ -208,6 +208,14 @@ void ValueExpr::setAlias(std::string const& alias) {
 }
 
 
+void ValueExpr::setAlias(std::string const& alias, bool aliasIsUserDefined) {
+    LOGS(_log, LOG_LVL_TRACE, *this << "; set alias:" << alias << ", aliasIsUserDefined: " <<
+                              aliasIsUserDefined);
+    _alias = alias;
+    _aliasIsUserDefined = aliasIsUserDefined;
+}
+
+
 std::shared_ptr<ColumnRef> ValueExpr::copyAsColumnRef() const {
     std::shared_ptr<ColumnRef> cr;
     if (_factorOps.size() != 1) { return cr; } // Empty or Not a single ColumnRef
@@ -347,14 +355,20 @@ ValueExprPtr ValueExpr::clone() const {
 
 
 bool ValueExpr::isSubsetOf(ValueExpr const& valueExpr) const {
-    if (not _alias.empty() && _alias != valueExpr._alias)
-        return false;
+    if (not _alias.empty() && _alias != valueExpr._alias) return false;
+
     // A ValueExpr may have been built as a ColumnRef with no table, or table alias, only the column defined,
     // in which case this column might be the alias of another ValueExpr. (For example in the following:
     // "SELECT AVG(foo) as f ORDER BY f", the ValueExpr for "f" in the OrderBy clause f will be constructed
     // as a column ref like so: ColumnRef("", "", "f"), and in this case that ValueExpr is a subset of the
     // ValueExpr in the SelectList.
 
+    // If this ValueExpr contains no factor ops (well, one factor op whose type is NONE) then it is
+    // alias-only. If that's the case (and since we are this far we know the aliases match) then this *is* a
+    // subset of the other ValueExpr.
+    if (_factorOps.size() == 1 && _factorOps[0].factor->getType() == ValueFactor::NONE) {
+        return true;
+    }
     if (isColumnRef() && getColumnRef()->isColumnOnly() && getColumnRef()->getColumn() == valueExpr._alias) {
         return true;
     }
@@ -457,6 +471,18 @@ bool ValueExpr::operator==(const ValueExpr& rhs) const {
 
 bool ValueExpr::compareValue(const ValueExpr& rhs) const {
     return _factorOps == rhs._factorOps;
+}
+
+
+void ValueExpr::setToAliasOnly() {
+    if (_alias.empty()) {
+        if (isColumnRef()) {
+            _alias = getColumnRef()->getColumn();
+        } else {
+            throw std::logic_error("Currently can only set alias-only on Column ValueExrs.");
+        }
+    }
+    _factorOps =  { ValueExpr::FactorOp(std::make_shared<ValueFactor>()) };
 }
 
 

@@ -91,8 +91,28 @@ public:
 
     bool addOp(query::ValueExpr::Op op);
 
+    /**
+     * @brief Get the Alias of the ValueExpr
+     */
     std::string const& getAlias() const { return _alias; }
+
+    /**
+     * @brief Set the Alias of the ValueExpr
+     *
+     * The state of the member variable `aliasIsUserDefined` will not be changed.
+     */
     void setAlias(std::string const& alias);
+
+    /**
+     * @brief Set the Alias of the ValueExpr, and indicate if the alias is user defined or not.
+     *
+     * The state of the member variable `aliasIsUserDefined` will be changed.
+     */
+    void setAlias(std::string const& alias, bool aliasIsUserDefined);
+
+    /**
+     * @brief Query if an alias is defined for this ValueExpr.
+     */
     bool hasAlias() const { return not _alias.empty(); }
 
     /**
@@ -240,6 +260,8 @@ public:
 
     // determine if this object is the same as or a less complete description of the passed in object.
     bool isSubsetOf(ValueExpr const& valueExpr) const;
+
+    void setToAliasOnly();
 
 private:
     std::string _alias;

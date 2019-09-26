@@ -159,7 +159,20 @@ private:
     /// @return ORDER BY part of SELECT statement that gets executed by the proxy
     std::string _getResultOrderBy() const;
 
-    void _expandSelectStarInMergeStatment(std::shared_ptr<query::SelectStmt> const& mergeStmt);
+    /**
+     * @brief Operates on _infileMergerConfig.mergeStmt.
+     *        In the merge statement expand SELECT * to named columns (if there is a SELECT *).
+     */
+    void _expandSelectStarInMergeStatment();
+
+    /**
+     * @brief Operates on _infileMergerConfig.mergeStmt.
+     *        Verifies that the columns used by clauses in the merge statement are represented in the select
+     *        list.
+     *
+     * @throws UserQueryError if there is a column in the statement that is not in the select list.
+     */
+    void _verifyColumnsInMergeStatement();
 
     void _discardMerger();
     void _qMetaUpdateStatus(qmeta::QInfo::QStatus qStatus);
