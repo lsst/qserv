@@ -213,7 +213,7 @@ public:
      *        table alias, and column.
      */
     static ValueExprPtr newColumnExpr(std::string const& db, std::string const& table,
-                                      std::string const& alias, std::string const& column);
+                                      std::string const& tableAlias, std::string const& column);
 
     /**
      * @brief Make a new ValueExpr object that contains a ColumnRef with just the specified column name value
