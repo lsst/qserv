@@ -124,20 +124,6 @@ SelectStmt::getQueryTemplate() const {
 }
 
 
-/// getPostTemplate() is specialized to the needs of generating a
-/// "post" string for the aggregating table merger MergeFixup
-/// object. Hopefully, we will port the merger to use the merging
-/// statement more as-is (just patching the FROM part).
-QueryTemplate
-SelectStmt::getPostTemplate() const {
-    QueryTemplate qt;
-    renderTemplate(qt, "GROUP BY", _groupBy);
-    renderTemplate(qt, "HAVING", _having);
-    renderTemplate(qt, "ORDER BY", _orderBy);
-    return qt;
-}
-
-
 std::shared_ptr<WhereClause const>
 SelectStmt::getWhere() const {
     return _whereClause;

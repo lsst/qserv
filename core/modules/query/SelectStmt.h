@@ -83,7 +83,6 @@ public:
 
     std::shared_ptr<WhereClause const> getWhere() const;
     QueryTemplate getQueryTemplate() const;
-    QueryTemplate getPostTemplate() const;
     std::shared_ptr<SelectStmt> clone() const;
 
     /**
