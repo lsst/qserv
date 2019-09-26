@@ -94,7 +94,8 @@ public:
     }
     // for final result, and imported result
     mysql::MySqlConfig const mySqlConfig;
-    std::string targetTable;
+    std::string resultTable;
+    std::string mergeTable;
     std::shared_ptr<query::SelectStmt> mergeStmt;
 };
 
@@ -183,8 +184,6 @@ public:
 
     /// @return error details if finalize() returns false
     InfileMergerError const& getError() const { return _error; }
-    /// @return final target table name  storing results after post processing
-    std::string getTargetTable() const {return _config.targetTable; }
     /// Finalize a "merge" and perform postprocessing
     bool finalize();
     /// Check if the object has completed all processing.
@@ -237,6 +236,11 @@ private:
     void _setQueryIdStr(std::string const& qIdStr);
     void _fixupTargetName();
 
+    /**
+     * @brief Query if a merge step is required before the result table contains the correct data.
+     */
+    bool _needsMerge() const { return _config.mergeStmt != nullptr; }
+
     bool _setupConnection() {
         if (_mysqlConn.connect()) {
             _infileMgr.attach(_mysqlConn.getMySql());
@@ -247,7 +251,7 @@ private:
 
     InfileMergerConfig _config; ///< Configuration
     std::shared_ptr<sql::SqlConnection> _sqlConn; ///< SQL connection
-    std::string _mergeTable; ///< Table for result loading
+    std::string _table; ///< Table for result loading
     InfileMergerError _error; ///< Error state
     bool _isFinished{false}; ///< Completed?
     std::mutex _sqlMutex; ///< Protection for SQL connection

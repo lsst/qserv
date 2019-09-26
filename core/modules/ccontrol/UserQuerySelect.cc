@@ -441,11 +441,16 @@ void UserQuerySelect::discard() {
     LOGS(_log, LOG_LVL_DEBUG, "Discarded UserQuerySelect");
 }
 
+
 /// Setup merger (for results handling and aggregation)
 void UserQuerySelect::setupMerger() {
     LOGS(_log, LOG_LVL_TRACE, "Setup merger");
-    _infileMergerConfig->targetTable = _resultTable;
+    _infileMergerConfig->resultTable = _resultTable;
     _infileMergerConfig->mergeStmt = _qSession->getMergeStmt();
+    if (_infileMergerConfig->mergeStmt != nullptr) {
+        _mergeTable = _resultTable + "_m";
+        _infileMergerConfig->mergeTable = _mergeTable;
+    }
     LOGS(_log, LOG_LVL_DEBUG, "setting mergeStmt:" <<
         (_infileMergerConfig->mergeStmt != nullptr ?
             _infileMergerConfig->mergeStmt->getQueryTemplate().sqlFragment() : "nullptr"));

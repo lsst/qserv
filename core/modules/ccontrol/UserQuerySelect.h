@@ -198,6 +198,7 @@ private:
     std::mutex _killMutex;
     mutable std::string _errorExtra;    ///< Additional error information
     std::string _resultTable;   ///< Result table name
+    std::string _mergeTable;    ///< Merge table name (if merge is needed)
     std::string _resultLoc;     ///< Result location
     std::string _resultDb;      ///< Result database (todo is this the same as resultLoc??)
     bool _async;                ///< true for async query
