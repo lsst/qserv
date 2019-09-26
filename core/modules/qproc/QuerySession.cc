@@ -370,10 +370,12 @@ void QuerySession::_generateConcrete() {
     LOGS(_log, LOG_LVL_TRACE, "Parallel statement initialized with: \""
         << _stmtParallel[0]->getQueryTemplate() << "\"");
 
-    // Copy SelectList and Mods, but not FROM, and perhaps not
-    // WHERE(???). Conceptually, we want to copy the parts that are
-    // needed during merging and aggregation.
-    _stmtMerge = _stmt->copyMerge();
+    _stmtMerge = _stmt->clone();
+    _stmtMerge->setWhereClause(nullptr);
+    // The WHERE clause is not needed in the merge.
+    // Right now don't reset the FROM clause: it won't be used in the final merge query (it gets replaced by
+    // the merge table name), but it is sometimes needed, e.g. for expanding SELECT * into individual column names.
+
     LOGS(_log, LOG_LVL_TRACE, "Merge statement initialized with: \""
          << _stmtMerge->getQueryTemplate() << "\" " << *_stmtMerge);
 

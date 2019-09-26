@@ -146,29 +146,6 @@ SelectStmt::clone() const {
 }
 
 
-// reate a merge statement for current object
-std::shared_ptr<SelectStmt>
-SelectStmt::copyMerge() const {
-    std::shared_ptr<SelectStmt> newS = std::make_shared<SelectStmt>(*this);
-    copySyntaxIf(newS->_selectList, _selectList);
-    // Final sort has to be performed by final query on result table, launched by mysql-proxy.
-    // This forces the final result to be in the right order (simple SELECT *
-    // does not guarantee the order.
-    // That's why ORDER BY is only required in merge query if there is a LIMIT clause.
-    // This optimization is handled in qana::PostPlugin for now.
-    copySyntaxIf(newS->_orderBy, _orderBy);
-    copySyntaxIf(newS->_groupBy, _groupBy);
-    copySyntaxIf(newS->_having, _having);
-    // The FROM list won't be used in the final merge query (it gets replaced by the merge table name), but
-    // it is sometimes needed for e.g. expanding SELECT * into individual column names.
-    copySyntaxIf(newS->_fromList, _fromList);
-    // Eliminate the parts that don't matter, e.g., the where clause
-    newS->_whereClause.reset();
-    assert(_hasDistinct == newS->_hasDistinct);
-    return newS;
-}
-
-
 void SelectStmt::setFromListAsTable(std::string const& t) {
     TableRefListPtr tr = std::make_shared<TableRefList>();
     tr->push_back(std::make_shared<TableRef>("", t, ""));
