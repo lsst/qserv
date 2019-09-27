@@ -102,6 +102,11 @@ ColumnRef::ColumnRef(std::shared_ptr<TableRef> const& table, std::string const& 
 }
 
 
+ColumnRef::Ptr ColumnRef::clone() const {
+    return std::make_shared<ColumnRef>(_tableRef->clone(), _column);
+}
+
+
 void ColumnRef::setDb(std::string const& db) {
     LOGS(_log, LOG_LVL_TRACE, *this << "; set db:" << db);
     _tableRef->setDb(db);

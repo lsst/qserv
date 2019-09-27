@@ -68,11 +68,17 @@ public:
     ColumnRef(std::string db_, std::string table_, std::string column_);
     ColumnRef(std::string db_, std::string table_, std::string tableAlias_, std::string column_);
     ColumnRef(std::shared_ptr<TableRef> const& table, std::string const& column);
+
+    // Copying is disallowed unless/until really needed; use `clone` or `copySyntax`
+    ColumnRef(ColumnRef const& rhs) = delete;
+
     static Ptr newShared(std::string const& db_,
                          std::string const& table_,
                          std::string const& column_) {
         return std::make_shared<ColumnRef>(db_, table_, column_);
     }
+
+    Ptr clone() const;
 
     std::string const& getDb() const { return _tableRef->getDb(); }
     std::string const& getTable() const { return _tableRef->getTable(); }

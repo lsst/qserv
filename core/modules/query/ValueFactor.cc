@@ -77,7 +77,7 @@ ValueFactor::ValueFactor(std::shared_ptr<FuncExpr> const& funcExpr)
 
 
 ValueFactorPtr ValueFactor::newColumnRefFactor(std::shared_ptr<ColumnRef const> cr) {
-    return std::make_shared<ValueFactor>(std::make_shared<ColumnRef>(*cr));
+    return std::make_shared<ValueFactor>(cr->clone());
 }
 
 
@@ -147,7 +147,7 @@ ValueFactorPtr ValueFactor::clone() const{
     ValueFactorPtr expr = std::make_shared<ValueFactor>(*this);
     // Clone refs.
     if (_columnRef.get()) {
-        expr->_columnRef = std::make_shared<ColumnRef>(*_columnRef);
+        expr->_columnRef = _columnRef->clone();
     }
     if (_funcExpr.get()) {
         expr->_funcExpr = _funcExpr->clone();

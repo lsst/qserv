@@ -215,7 +215,7 @@ std::shared_ptr<ColumnRef> ValueExpr::copyAsColumnRef() const {
     assert(factor);
     cr = factor->getColumnRef();
     if (cr) {
-        cr = std::make_shared<ColumnRef>(*cr);  // Make a copy
+        cr = cr->clone();
     }
     return cr;
 }

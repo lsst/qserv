@@ -94,8 +94,7 @@ JoinSpec::Ptr JoinSpec::clone() const {
         throw std::logic_error("Can't clone JoinSpec with ON and USING");
     }
     if (_usingColumn) {
-        std::shared_ptr<ColumnRef> col = std::make_shared<ColumnRef>(*_usingColumn);
-        return std::make_shared<JoinSpec>(col);
+        return std::make_shared<JoinSpec>(_usingColumn->clone());
     } else {
         return std::make_shared<JoinSpec>(_onTerm->copySyntax());
     }
