@@ -50,6 +50,9 @@
 // Forward declarations
 namespace lsst {
 namespace qserv {
+namespace mysql {
+    class MySqlConfig;
+}
 namespace qdisp {
     class Executive;
     class MessageStore;
@@ -69,7 +72,6 @@ namespace query {
 }
 namespace rproc {
     class InfileMerger;
-    class InfileMergerConfig;
 }}} // End of forward declarations
 
 
@@ -85,7 +87,7 @@ public:
                     std::shared_ptr<qdisp::MessageStore> const& messageStore,
                     std::shared_ptr<qdisp::Executive> const& executive,
                     std::shared_ptr<qproc::DatabaseModels> const& dbModels,
-                    std::shared_ptr<rproc::InfileMergerConfig> const& infileMergerConfig,
+                    mysql::MySqlConfig const& mySqlConfig,
                     std::shared_ptr<qproc::SecondaryIndex> const& secondaryIndex,
                     std::shared_ptr<qmeta::QMeta> const& queryMetadata,
                     std::shared_ptr<qmeta::QStatus> const& queryStatsData,
@@ -160,13 +162,13 @@ private:
     std::string _getResultOrderBy() const;
 
     /**
-     * @brief Operates on _infileMergerConfig.mergeStmt.
+     * @brief Operates on _mergeStmt.
      *        In the merge statement expand SELECT * to named columns (if there is a SELECT *).
      */
     void _expandSelectStarInMergeStatment();
 
     /**
-     * @brief Operates on _infileMergerConfig.mergeStmt.
+     * @brief Operates on _mergeStmt.
      *        Verifies that the columns used by clauses in the merge statement are represented in the select
      *        list.
      *
@@ -183,7 +185,7 @@ private:
     std::shared_ptr<qdisp::MessageStore> _messageStore;
     std::shared_ptr<qdisp::Executive> _executive;
     std::shared_ptr<qproc::DatabaseModels> _databaseModels;
-    std::shared_ptr<rproc::InfileMergerConfig> _infileMergerConfig;
+    mysql::MySqlConfig const& _mySqlConfig; ///< Config for the mysql connection to database;
     std::shared_ptr<rproc::InfileMerger> _infileMerger;
     std::shared_ptr<qproc::SecondaryIndex> _secondaryIndex;
     std::shared_ptr<qmeta::QMeta> _queryMetadata;
@@ -197,6 +199,7 @@ private:
     bool _killed{false};
     std::mutex _killMutex;
     mutable std::string _errorExtra;    ///< Additional error information
+    std::shared_ptr<query::SelectStmt> _mergeStmt; ///< The SELECT statement for the merge table (if needed)
     std::string _resultTable;   ///< Result table name
     std::string _mergeTable;    ///< Merge table name (if merge is needed)
     std::string _resultLoc;     ///< Result location

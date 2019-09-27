@@ -160,7 +160,7 @@ UserQuerySelect::UserQuerySelect(std::shared_ptr<qproc::QuerySession> const& qs,
                                  std::shared_ptr<qdisp::MessageStore> const& messageStore,
                                  std::shared_ptr<qdisp::Executive> const& executive,
                                  std::shared_ptr<qproc::DatabaseModels> const& dbModels,
-                                 std::shared_ptr<rproc::InfileMergerConfig> const& infileMergerConfig,
+                                 mysql::MySqlConfig const& mySqlConfig,
                                  std::shared_ptr<qproc::SecondaryIndex> const& secondaryIndex,
                                  std::shared_ptr<qmeta::QMeta> const& queryMetadata,
                                  std::shared_ptr<qmeta::QStatus> const& queryStatsData,
@@ -170,8 +170,7 @@ UserQuerySelect::UserQuerySelect(std::shared_ptr<qproc::QuerySession> const& qs,
                                  bool async,
                                  std::string const& resultDb)
     :  _qSession(qs), _messageStore(messageStore), _executive(executive),
-       _databaseModels(dbModels), _infileMergerConfig(infileMergerConfig),
-       _secondaryIndex(secondaryIndex),
+       _databaseModels(dbModels), _mySqlConfig(mySqlConfig), _secondaryIndex(secondaryIndex),
        _queryMetadata(queryMetadata), _queryStatsData(queryStatsData),
        _qMetaCzarId(czarId), _qdispPool(qdispPool),
        _errorExtra(errorExtra), _resultDb(resultDb), _async(async) {
@@ -410,7 +409,6 @@ QueryState UserQuerySelect::join() {
 
 /// Release resources held by the merger
 void UserQuerySelect::_discardMerger() {
-    _infileMergerConfig.reset();
     if (_infileMerger && !_infileMerger->isFinished()) {
         throw UserQueryError(getQueryIdString() + " merger unfinished, cannot discard");
     }
@@ -445,16 +443,14 @@ void UserQuerySelect::discard() {
 /// Setup merger (for results handling and aggregation)
 void UserQuerySelect::setupMerger() {
     LOGS(_log, LOG_LVL_TRACE, "Setup merger");
-    _infileMergerConfig->resultTable = _resultTable;
-    _infileMergerConfig->mergeStmt = _qSession->getMergeStmt();
-    if (_infileMergerConfig->mergeStmt != nullptr) {
+    _mergeStmt = _qSession->getMergeStmt();
+    if (_mergeStmt != nullptr) {
         _mergeTable = _resultTable + "_m";
-        _infileMergerConfig->mergeTable = _mergeTable;
     }
     LOGS(_log, LOG_LVL_DEBUG, "setting mergeStmt:" <<
-        (_infileMergerConfig->mergeStmt != nullptr ?
-            _infileMergerConfig->mergeStmt->getQueryTemplate().sqlFragment() : "nullptr"));
-    _infileMerger = std::make_shared<rproc::InfileMerger>(*_infileMergerConfig, _databaseModels);
+        (_mergeStmt != nullptr ? _mergeStmt->getQueryTemplate().sqlFragment() : "nullptr"));
+    _infileMerger = std::make_shared<rproc::InfileMerger>(_mySqlConfig, _resultTable, _mergeTable,
+                                                          _mergeStmt, _databaseModels);
 
     auto&& preFlightStmt = _qSession->getPreFlightStmt();
     if (preFlightStmt == nullptr) {
@@ -471,20 +467,21 @@ void UserQuerySelect::setupMerger() {
 
     _verifyColumnsInMergeStatement();
 
-    _infileMerger->setMergeStmtFromList(_infileMergerConfig->mergeStmt);
+    // todo is this call needed? does something change from when _mergeStmt was passed into the infileMerger ctor?
+    _infileMerger->setMergeStmtFromList(_mergeStmt);
 }
 
 
 void UserQuerySelect::_expandSelectStarInMergeStatment() {
-    if (_infileMergerConfig->mergeStmt) {
-        auto& selectList = *(_infileMergerConfig->mergeStmt->getSelectList().getValueExprList());
+    if (_mergeStmt != nullptr) {
+        auto& selectList = *(_mergeStmt->getSelectList().getValueExprList());
         for (auto valueExprItr = selectList.begin(); valueExprItr != selectList.end(); ++valueExprItr) {
             auto& valueExpr = *valueExprItr;
             if (valueExpr->isStar()) {
                 auto valueExprVec = std::make_shared<query::ValueExprPtrVector>();
                 valueExprVec->push_back(valueExpr);
                 auto starStmt = query::SelectStmt(std::make_shared<query::SelectList>(valueExprVec),
-                                                  _infileMergerConfig->mergeStmt->getFromListPtr());
+                                                  _mergeStmt->getFromListPtr());
                 sql::Schema schema;
                 if (not _infileMerger->getSchemaForQueryResults(starStmt, schema)) {
                     throw UserQueryError(getQueryIdString() + " Couldn't get schema for merge query.");
@@ -507,15 +504,15 @@ void UserQuerySelect::_expandSelectStarInMergeStatment() {
 
 
 void UserQuerySelect::_verifyColumnsInMergeStatement() {
-    if (_infileMergerConfig->mergeStmt != nullptr && _infileMergerConfig->mergeStmt->hasOrderBy()) {
+    if (_mergeStmt != nullptr && _mergeStmt->hasOrderBy()) {
         query::ValueExprPtrVector valueExprs;
-        _infileMergerConfig->mergeStmt->getOrderBy().findValueExprs(valueExprs);
+        _mergeStmt->getOrderBy().findValueExprs(valueExprs);
 
         // Check ORDER BY
         // TODO provide checking for other clauses that might need to be checked.
         for (auto& orderByVE : valueExprs) {
             bool match = false;
-            for (auto& selectListVE : *(_infileMergerConfig->mergeStmt->getSelectList().getValueExprList())) {
+            for (auto& selectListVE : *(_mergeStmt->getSelectList().getValueExprList())) {
                 if (orderByVE->isSubsetOf(*selectListVE)) {
                     match = true;
                     break;

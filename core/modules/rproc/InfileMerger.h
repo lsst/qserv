@@ -20,14 +20,11 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
+
+
 #ifndef LSST_QSERV_RPROC_INFILEMERGER_H
 #define LSST_QSERV_RPROC_INFILEMERGER_H
-/// InfileMerger.h declares:
-///
-/// struct InfileMergerError
-/// class InfileMergerConfig
-/// class InfileMerger
-/// (see individual class documentation for more information)
+
 
 // System headers
 #include <memory>
@@ -42,6 +39,7 @@
 #include "sql/SqlConnection.h"
 #include "util/Error.h"
 #include "util/EventThread.h"
+
 
 // Forward declarations
 namespace lsst {
@@ -75,6 +73,7 @@ namespace lsst {
 namespace qserv {
 namespace rproc {
 
+
 /** \typedef InfileMergerError Store InfileMerger error code.
  *
  * \note:
@@ -83,21 +82,6 @@ namespace rproc {
  *
  * */
 typedef util::Error InfileMergerError;
-
-/// class InfileMergerConfig - value class for configuring a InfileMerger
-class InfileMergerConfig {
-public:
-    InfileMergerConfig() {}
-    InfileMergerConfig(mysql::MySqlConfig const& mySqlConfig)
-        :  mySqlConfig(mySqlConfig)
-    {
-    }
-    // for final result, and imported result
-    mysql::MySqlConfig const mySqlConfig;
-    std::string resultTable;
-    std::string mergeTable;
-    std::shared_ptr<query::SelectStmt> mergeStmt;
-};
 
 
 /// This class is used to remove invalid rows from cancelled job attempts.
@@ -154,9 +138,9 @@ private:
     deleteFuncType _deleteFunc;
 };
 
+
 /// InfileMerger is a row-based merger that imports rows from result messages
-/// and inserts them into a MySQL table, as specified during construction by
-/// InfileMergerConfig.
+/// and inserts them into a MySQL table.
 ///
 /// To use, construct a configured instance, then call merge() to kick off the
 /// merging process, and finalize() to wait for outstanding merging processes
@@ -168,7 +152,12 @@ private:
 /// At present, Result messages are not chained.
 class InfileMerger {
 public:
-    explicit InfileMerger(InfileMergerConfig const& c, std::shared_ptr<qproc::DatabaseModels> const& dm);
+    explicit InfileMerger(mysql::MySqlConfig const& mySqlConfig,
+                          std::string const& resultTable,
+                          std::string const& mergeTable,
+                          std::shared_ptr<query::SelectStmt> const& mergeStmt,
+                          std::shared_ptr<qproc::DatabaseModels> const& dm);
+
     ~InfileMerger();
 
     /// Create the shared thread pool and/or change its size.
@@ -239,7 +228,7 @@ private:
     /**
      * @brief Query if a merge step is required before the result table contains the correct data.
      */
-    bool _needsMerge() const { return _config.mergeStmt != nullptr; }
+    bool _needsMerge() const { return _mergeStmt != nullptr; }
 
     bool _setupConnection() {
         if (_mysqlConn.connect()) {
@@ -249,7 +238,10 @@ private:
         return false;
     }
 
-    InfileMergerConfig _config; ///< Configuration
+    mysql::MySqlConfig const& _mySqlConfig; ///< Configuration for the database connection.
+    std::string _resultTable; ///< The name of the result table to create & use.
+    std::string _mergeTable; ///< The name of the merge table, if one is needed, to create & use.
+    std::shared_ptr<query::SelectStmt> _mergeStmt; ///< The SELECT statement for the merge (if merge is needed).
     std::shared_ptr<sql::SqlConnection> _sqlConn; ///< SQL connection
     std::string _table; ///< Table for result loading
     InfileMergerError _error; ///< Error state

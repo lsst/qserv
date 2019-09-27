@@ -203,20 +203,15 @@ UserQueryFactory::newUserQuery(std::string const& aQuery,
 
         auto messageStore = std::make_shared<qdisp::MessageStore>();
         std::shared_ptr<qdisp::Executive> executive;
-        std::shared_ptr<rproc::InfileMergerConfig> infileMergerConfig;
         if (sessionValid) {
             executive = qdisp::Executive::create(*_executiveConfig, messageStore,
                                                  qdispPool, _userQuerySharedResources->queryStatsData);
-            infileMergerConfig = std::make_shared<rproc::InfileMergerConfig>(
-                    _userQuerySharedResources->mysqlResultConfig);
         }
-
-        auto uq = std::make_shared<UserQuerySelect>(qs, messageStore, executive,
-                _userQuerySharedResources->databaseModels,
-                infileMergerConfig,
-                _userQuerySharedResources->secondaryIndex, _userQuerySharedResources->queryMetadata,
-                _userQuerySharedResources->queryStatsData, _userQuerySharedResources->qMetaCzarId,
-                qdispPool, errorExtra, async, resultDb);
+        auto uq = std::make_shared<UserQuerySelect>(qs, messageStore, executive, _userQuerySharedResources->databaseModels,
+                                                    _userQuerySharedResources->mysqlResultConfig,
+                                                    _userQuerySharedResources->secondaryIndex, _userQuerySharedResources->queryMetadata,
+                                                    _userQuerySharedResources->queryStatsData, _userQuerySharedResources->qMetaCzarId,
+                                                    qdispPool, errorExtra, async, resultDb);
         if (sessionValid) {
             uq->qMetaRegister(resultLocation, msgTableName);
             uq->setupChunking();

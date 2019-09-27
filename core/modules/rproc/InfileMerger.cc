@@ -78,7 +78,6 @@ namespace { // File-scope helpers
 LOG_LOGGER _log = LOG_GET("lsst.qserv.rproc.InfileMerger");
 
 using lsst::qserv::mysql::MySqlConfig;
-using lsst::qserv::rproc::InfileMergerConfig;
 using lsst::qserv::rproc::InfileMergerError;
 using lsst::qserv::util::ErrorCode;
 
@@ -95,14 +94,20 @@ namespace rproc {
 ////////////////////////////////////////////////////////////////////////
 // InfileMerger public
 ////////////////////////////////////////////////////////////////////////
-InfileMerger::InfileMerger(InfileMergerConfig const& c,
+InfileMerger::InfileMerger(mysql::MySqlConfig const& mySqlConfig,
+                           std::string const& resultTable,
+                           std::string const& mergeTable,
+                           std::shared_ptr<query::SelectStmt> const& mergeStmt,
                            std::shared_ptr<qproc::DatabaseModels> const& dm)
-    : _config(c),
-      _mysqlConn(_config.mySqlConfig),
+    : _mySqlConfig(mySqlConfig),
+      _resultTable(resultTable),
+      _mergeTable(mergeTable),
+      _mergeStmt(mergeStmt),
+      _mysqlConn(_mySqlConfig),
       _databaseModels(dm),
       _jobIdColName(JOB_ID_BASE_NAME) {
     _fixupTargetName();
-    _maxResultTableSizeMB = _config.mySqlConfig.maxTableSizeMB;
+    _maxResultTableSizeMB = _mySqlConfig.maxTableSizeMB;
 
     // Assume worst case of 10,000 bytes per row, what's the earliest row to test?
     // Subtract that from the count so the first check doesn't happen for a while.
@@ -255,11 +260,11 @@ bool InfileMerger::finalize() {
     }
     if (_needsMerge()) {
         // Aggregation needed: Do the aggregation.
-        std::string mergeSelect = _config.mergeStmt->getQueryTemplate().sqlFragment();
+        std::string mergeSelect = _mergeStmt->getQueryTemplate().sqlFragment();
         // Using MyISAM as single thread writing with no need to recover from errors.
-        std::string createMerge = "CREATE TABLE " + _config.resultTable
+        std::string createMerge = "CREATE TABLE " + _resultTable
             + " ENGINE=MyISAM " + mergeSelect;
-        LOGS(_log, LOG_LVL_TRACE, "Prepping merging w/" <<  *_config.mergeStmt);
+        LOGS(_log, LOG_LVL_TRACE, "Prepping merging w/" <<  *_mergeStmt);
         LOGS(_log, LOG_LVL_DEBUG, "Merging w/" << createMerge);
         finalizeOk = _applySqlLocal(createMerge, "createMerge");
 
@@ -270,7 +275,7 @@ bool InfileMerger::finalize() {
 #if 1 // Set to 0 when we want to retain mergeTables for debugging.
         bool cleanupOk = _sqlConn->dropTable(_table, eObj,
                                              false,
-                                             _config.mySqlConfig.dbName);
+                                             _mySqlConfig.dbName);
 #else
         bool cleanupOk = true;
 #endif
@@ -285,7 +290,7 @@ bool InfileMerger::finalize() {
         LOGS(_log, LOG_LVL_TRACE, "Removing w/" << sqlDropCol);
         finalizeOk = _applySqlLocal(sqlDropCol, "dropCol Removing");
     }
-    LOGS(_log, LOG_LVL_TRACE, "Merged " << _table << " into " << _config.resultTable);
+    LOGS(_log, LOG_LVL_TRACE, "Merged " << _table << " into " << _resultTable);
     _isFinished = true;
     return finalizeOk;
 }
@@ -452,7 +457,7 @@ bool InfileMerger::_applySqlLocal(std::string const& sql, sql::SqlResults& resul
 
 bool InfileMerger::_sqlConnect(sql::SqlErrorObject& errObj) {
     if (_sqlConn == nullptr) {
-        _sqlConn = sql::SqlConnectionFactory::make(_config.mySqlConfig);
+        _sqlConn = sql::SqlConnectionFactory::make(_mySqlConfig);
         if (not _sqlConn->connectToDb(errObj)) {
             _error = util::Error(errObj.errNo(), "Error connecting to db: " + errObj.printErrMsg(),
                            util::ErrorCode::MYSQLCONNECT);
@@ -470,7 +475,7 @@ size_t InfileMerger::_getResultTableSizeMB() {
     std::string tableSizeSql = std::string("SELECT table_name, ")
                              + "round(((data_length + index_length) / 1048576), 2) as 'MB' "
                              + "FROM information_schema.TABLES "
-                             + "WHERE table_schema = '" + _config.mySqlConfig.dbName
+                             + "WHERE table_schema = '" + _mySqlConfig.dbName
                              + "' AND table_name = '" + _table + "'";
     LOGS(_log, LOG_LVL_TRACE, "Checking ResultTableSize " << tableSizeSql);
     std::lock_guard<std::mutex> m(_sqlMutex);
@@ -539,10 +544,10 @@ bool InfileMerger::_verifySession(int sessionId) {
 /// Choose the appropriate target name, depending on whether post-processing is
 /// needed on the result rows.
 void InfileMerger::_fixupTargetName() {
-    if (_config.mergeStmt != nullptr) {
-        _table = _config.mergeTable;
+    if (_mergeStmt != nullptr) {
+        _table = _mergeTable;
     } else {
-        _table = _config.resultTable;
+        _table = _resultTable;
     }
 }
 
