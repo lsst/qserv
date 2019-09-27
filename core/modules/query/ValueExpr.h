@@ -244,7 +244,7 @@ public:
 private:
     std::string _alias;
     FactorOpVector _factorOps;
-    bool _aliasIsUserDefined; /// true if the alias was defined by the user in the select statement.
+    bool _aliasIsUserDefined = false; /// true if the alias was defined by the user in the select statement.
 };
 
 
