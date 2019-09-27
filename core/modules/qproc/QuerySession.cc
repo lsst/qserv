@@ -515,22 +515,6 @@ void QuerySession::_initMergeStatement() {
     //   merge statement when possible is handled in qana::PostPlugin.
     // - The FROM clause won't be used in the final merge query (it gets replaced by the merge table name)
     //   but it is needed downstream in some cases, e.g. for expanding SELECT * into individual column names.
-
-    // Remove any table, db, and alias from the ORDER BY ValueExprs. This should allow the merge stmt
-    // to run in most cases (all? needs study). It would be preferable to figure out the *right* table/db/alias
-    // and plug that in. I don't think it can be done here. TBD where that would be.
-    if (_stmtMerge->hasOrderBy()) {
-        query::ValueExprPtrVector valueExprs;
-        _stmtMerge->getOrderBy().findValueExprs(valueExprs);
-        LOGS(_log, LOG_LVL_TRACE, "setting ValueExprs to alias only: " << util::printable(valueExprs));
-        for (auto& valueExpr : valueExprs) {
-            if (not valueExpr->isColumnRef()) {
-                throw QueryProcessingError(
-                    "ORDER BY only supports columns and expressions with aliases from SELECT list.");
-            }
-            valueExpr->setToAliasOnly();
-        }
-    }
 }
 
 

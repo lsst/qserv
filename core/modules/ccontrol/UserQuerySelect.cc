@@ -444,14 +444,52 @@ void UserQuerySelect::discard() {
 void UserQuerySelect::setupMerger() {
     LOGS(_log, LOG_LVL_TRACE, "Setup merger");
     _mergeStmt = _qSession->getMergeStmt();
+    // At this point _mergeStmt is either null (if no merge is needed) or is a clone of the original select
+    // statement, ColumnRefs will still have the db and table name of the original query and will need
+    // adjusting to refer to the merge table.
     if (_mergeStmt != nullptr) {
         _mergeTable = _resultTable + "_m";
+        _mergeStmt->setFromListAsTable(_mergeTable);
+        // Adjust the db & table used by components of the merge stmt to refer to the merge table:
+        for (auto& valueExpr : *_mergeStmt->getSelectList().getValueExprList()) {
+            std::vector<std::shared_ptr<lsst::qserv::query::ColumnRef>> columnRefs;
+            valueExpr->findColumnRefs(columnRefs);
+            for (auto& columnRef : columnRefs) {
+                columnRef->setTable(_mergeTable);
+                columnRef->setDb(_mySqlConfig.dbName);
+                columnRef->getTableRef()->setAlias("");
+                // Don't reset the ValueExpr alias; the result query will be selecting the column that
+                // matches the existing alias.
+            }
+        }
+        // Adjust the columns in the merge statment's ORDER BY clause to refer to the merge table. (This may
+        // need to be done for other clauses in the merge statement too, and can be factored accordingly.
+        // Currently it's not needed, possibly because of lack of verification and also ValueExpr aliasing
+        // may be hiding any ColumnRefs with incorrect db & table information).
+        // Also remove the contents of the ValueExpr; any expression for ORDER BY must be predeclared and
+        // aliased in the SELECT list. The existence of the alias will be verified in
+        // _verifyColumnsInMergeStatement.
+        if (_mergeStmt->hasOrderBy()) {
+            query::ValueExprPtrVector valueExprs;
+            _mergeStmt->getOrderBy().findValueExprs(valueExprs);
+            LOGS(_log, LOG_LVL_TRACE, "setting ValueExprs to alias only: " << util::printable(valueExprs));
+            for (auto& valueExpr : valueExprs) {
+                if (valueExpr->isColumnRef()) {
+                    auto columnRef = valueExpr->getColumnRef();
+                    columnRef->setTable(_mergeTable);
+                    columnRef->setDb(_mySqlConfig.dbName);
+                    columnRef->getTableRef()->setAlias("");
+                    valueExpr->setAlias("");
+                } else {
+                    valueExpr->setToAliasOnly();
+                }
+            }
+        }
     }
     LOGS(_log, LOG_LVL_DEBUG, "setting mergeStmt:" <<
         (_mergeStmt != nullptr ? _mergeStmt->getQueryTemplate().sqlFragment() : "nullptr"));
     _infileMerger = std::make_shared<rproc::InfileMerger>(_mySqlConfig, _resultTable, _mergeTable,
                                                           _mergeStmt, _databaseModels);
-
     auto&& preFlightStmt = _qSession->getPreFlightStmt();
     if (preFlightStmt == nullptr) {
         _qMetaUpdateStatus(qmeta::QInfo::FAILED);
@@ -467,8 +505,8 @@ void UserQuerySelect::setupMerger() {
 
     _verifyColumnsInMergeStatement();
 
-    // todo is this call needed? does something change from when _mergeStmt was passed into the infileMerger ctor?
-    _infileMerger->setMergeStmtFromList(_mergeStmt);
+    LOGS(_log, LOG_LVL_DEBUG, "setting mergeStmt:" <<
+        (_mergeStmt != nullptr ? _mergeStmt->getQueryTemplate().sqlFragment() : "nullptr"));
 }
 
 

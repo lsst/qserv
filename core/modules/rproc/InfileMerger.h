@@ -182,8 +182,6 @@ public:
     bool scrubResults(int jobId, int attempt);
     int makeJobIdAttempt(int jobId, int attemptCount);
 
-    void setMergeStmtFromList(std::shared_ptr<query::SelectStmt> const& mergeStmt) const;
-
     /**
      * @brief Make a schema that matches the results of the given query.
      *

@@ -342,13 +342,6 @@ int InfileMerger::makeJobIdAttempt(int jobId, int attemptCount) {
 }
 
 
-void InfileMerger::setMergeStmtFromList(std::shared_ptr<query::SelectStmt> const& mergeStmt) const {
-    if (mergeStmt != nullptr) {
-        mergeStmt->setFromListAsTable(_table);
-    }
-}
-
-
 bool InfileMerger::getSchemaForQueryResults(query::SelectStmt const& stmt, sql::Schema& schema) {
     sql::SqlResults results;
     sql::SqlErrorObject getSchemaErrObj;
