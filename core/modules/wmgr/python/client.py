@@ -264,6 +264,10 @@ class WmgrClient(object):
         # read secret file
         if secretFile:
             user, passwd = self.readSecret(secretFile)
+        # &&& delete block
+        self.sFile = secretFile
+        self.user = user
+        self.pw = passwd
 
         self.host = host
         if self.host == 'localhost':

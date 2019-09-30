@@ -33,6 +33,7 @@
 // Qserv headers
 #include "mysql/MySqlConfig.h"
 #include "sql/SqlConnectionFactory.h"
+#include "sql/SqlException.h"
 #include "util/ConfigStore.h"
 #include "util/Issue.h"
 
@@ -46,8 +47,9 @@ namespace lsst {
 namespace qserv {
 namespace qproc {
 
-DatabaseModels::Ptr DatabaseModels::create(map<string, string> const& configMap) {
-    util::ConfigStore cfgStore(configMap);
+DatabaseModels::Ptr DatabaseModels::create(std::map<std::string, std::string> const& cfgMapMaster,
+                                           sql::SqlConfig const& sqlCfgLocal) {
+    util::ConfigStore cfgStore(cfgMapMaster);
     /// Use the CSS config for now. The CSS database is not used but sql::SqlConnection wants a database name.
     mysql::MySqlConfig mySqlConfig(cfgStore.get("username"),
                                    cfgStore.get("password"),
@@ -57,30 +59,33 @@ DatabaseModels::Ptr DatabaseModels::create(map<string, string> const& configMap)
                                    cfgStore.get("db"));
 
 
-    Ptr dbModels(new DatabaseModels(mySqlConfig));
+    Ptr dbModels(new DatabaseModels(mySqlConfig, sqlCfgLocal));
     return dbModels;
 }
 
 
-DatabaseModels::Ptr DatabaseModels::create(sql::SqlConfig const& cfg) {
-    Ptr dbModels(new DatabaseModels(cfg));
+DatabaseModels::Ptr DatabaseModels::create(sql::SqlConfig const& sqlCfgMaster,
+                                           sql::SqlConfig const& sqlCfgLocal) {
+    Ptr dbModels(new DatabaseModels(sqlCfgMaster, sqlCfgLocal));
     return dbModels;
 }
 
 
-DatabaseModels::DatabaseModels(sql::SqlConfig const& sqlConfig)
-    : _conn(sql::SqlConnectionFactory::make(sqlConfig)) {}
+DatabaseModels::DatabaseModels(sql::SqlConfig const& sqlCfgMaster, sql::SqlConfig const& sqlCfgLocal)
+    : _sqlConnMaster(sql::SqlConnectionFactory::make(sqlCfgMaster)),
+      _sqlConnLocal(sql::SqlConnectionFactory::make(sqlCfgLocal)) {}
 
 
 bool DatabaseModels::applySql(string const& sql, sql::SqlResults& results, sql::SqlErrorObject& errObj) {
     lock_guard<mutex> lg(_sqlMutex);
 
-    if (not _conn->connectToDb(errObj)) {
+    if (not _sqlConnLocal->connectToDb(errObj)) {
         LOGS(_log, LOG_LVL_ERROR, "DatabaseModels could not connect " << errObj.printErrMsg());
         return false;
     }
-    if (not _conn->runQuery(sql, results, errObj)) {
+    if (not _sqlConnLocal->runQuery(sql, results, errObj)) {
         LOGS(_log, LOG_LVL_ERROR, "DatabaseModels applySql error: " << errObj.printErrMsg());
+        // TODO: connect to master and check for the database
         return false;
     }
     LOGS(_log, LOG_LVL_DEBUG, "DatabaseModels query success: " << sql);
@@ -89,8 +94,15 @@ bool DatabaseModels::applySql(string const& sql, sql::SqlResults& results, sql::
 
 
 vector<string> DatabaseModels::listColumns(string const& dbName, string const& tableName) {
-    lock_guard<mutex> lg(_sqlMutex);
-    return _conn->listColumns(dbName, tableName);
+    try {
+        lock_guard<mutex> lg(_sqlMutex);
+        return _sqlConnLocal->listColumns(dbName, tableName);
+    } catch (sql::SqlException const& ex) {
+        LOGS(_log, LOG_LVL_WARN, "listColumn failure " << ex.what());
+        lock_guard<mutex> lg(_sqlMutex);
+        /// TODO: instead of returning results from master, update local tables.
+        return _sqlConnMaster->listColumns(dbName, tableName);
+    }
 }
 
 }}} // namespace lsst::qserv::qproc

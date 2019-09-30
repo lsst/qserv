@@ -56,7 +56,7 @@ std::string TestFactory::getDefaultUserName() {
 
 std::shared_ptr<QueryContext>
 TestFactory::newContext(std::shared_ptr<css::CssAccess> css, sql::SqlConfig const& schemaCfg) {
-    auto dbModels = qproc::DatabaseModels::create(schemaCfg);
+    auto dbModels = qproc::DatabaseModels::create(schemaCfg, schemaCfg);
     std::shared_ptr<QueryContext> context = std::make_shared<QueryContext>("NoDb", css, dbModels);
     context->defaultDb = getDefaultDbName();
     context->userName = getDefaultUserName();

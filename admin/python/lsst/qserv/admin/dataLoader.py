@@ -1,5 +1,5 @@
 # LSST Data Management System
-# Copyright 2014-2016 AURA/LSST.
+# Copyright 2014-2019 LSST.
 #
 # This product includes software developed by the
 # LSST Project (http://www.lsst.org/).
@@ -82,12 +82,15 @@ class DataLoader(object):
     def __init__(self, configFiles, czarWmgr, workerWmgrMap={}, chunksDir="./loader_chunks",
                  chunkPrefix='chunk', keepChunks=False, skipPart=False, oneTable=False,
                  css=None, cssClear=False, indexDb='qservMeta', tmpDir=None,
-                 emptyChunks=None, deleteTables=False, loggerName=None, cssDb='qservCssData'):
+                 emptyChunks=None, deleteTables=False, loggerName=None, cssDb='qservCssData',
+                 czarWmgrList=[]):
         """
         Constructor parses all arguments and prepares for execution.
 
         @param configFiles:  Sequence of the files defining all partitioning options.
-        @param czarWmgr:     WmgrClient instance for czar node.
+        @param czarWmgr:     WmgrClient instance for czar/master node.
+        @param czarWmgrList: list of WmgrClients for czars to be updated with 
+                             new database.
         @param workerWmgrMap: Dictionary mapping worker host name to corresponding
                              WmgrClient instance. May be empty, in which case czar
                              server will be used for all data.
@@ -117,6 +120,7 @@ class DataLoader(object):
 
         self.configFiles = configFiles
         self.czarWmgr = czarWmgr
+        self.czarWmgrList = czarWmgrList.copy()
         self.workerWmgrMap = workerWmgrMap.copy()
         self.chunksDir = chunksDir
         self.tmpDir = tmpDir
@@ -455,15 +459,21 @@ class DataLoader(object):
         """
         Returns a list of wmgr "connections", for each conection there is a
         tuple (name, connection) where name is something like "czar" or
-        "worker lsst-dbdev2". If czar connection is included then it
-        is always first in the list.
+        "worker lsst-dbdev2". If czar/master connection is included then it
+        is always first in the list, followed by 
+        non-master czars, "czarSimple", and then workers.
 
-        @param useCzar:     if True then include czar in the list
+        @param useCzar:     if True then include czar/master and all other 
+                            czars in the list
         @param useWorkers:  if True then include all workers in the list
         """
         res = []
         if useCzar:
+            # czar/master
             res += [("czar", self.czarWmgr)]
+            # This needs to be done for listed czars as well as the master.
+            for cWmgr in self.czarWmgrList:
+                res += [("czarSimple", cWmgr)]
         if useWorkers:
             for worker, wmgr in self.workerWmgrMap.items():
                 res += [('worker ' + worker, wmgr)]

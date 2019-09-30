@@ -332,3 +332,4 @@ check_writable() {
     fi
     check_permissions "w" "$1" "$2"
 }
+

@@ -43,7 +43,19 @@ namespace qserv {
 namespace qproc {
 
 /// This class allows access to model versions of the databases kept in qserv. The models
-/// are empty databases that have the same schema as the databases in qserv and the models are not sharded.
+/// are empty databases that have the same schema as the databases in qserv and the models
+/// are not sharded.
+/// TODO: The local models may be out of date or nonexistent, in which case they need to be
+/// updated from the master and periodically periodically check the master for updates.
+/// TODO: Instead of allowing generic queries (via applySql), use canned queries to get specific
+/// information, like listColumns()
+/// TODO: Make sure DatabaseModels is used in every call to just get database/table information.
+/// TODO: Add integration tests.
+///           -Test updating by having the loader send update messages to listed czars.
+///           -Test lazy updates by having a czar started before loading but not on the
+///            update list and run integration tests on it.
+///           -Test startup updates by starting a czar after everything has been loaded
+///            and then run integration tests on it.
 class DatabaseModels {
 public:
     using Ptr = std::shared_ptr<DatabaseModels>;
@@ -55,10 +67,11 @@ public:
     virtual ~DatabaseModels() = default;
 
     /// @return a DatabaseModels object from config (see util::configStor)
-    static Ptr create(std::map<std::string, std::string> const& config);
+    static Ptr create(std::map<std::string, std::string> const& cfgMapMaster,
+                      sql::SqlConfig const& sqlCfglLocal);
 
     /// @return a DatabaseModels object from a sql::SqlConfig
-    static Ptr create(sql::SqlConfig const& cfg);
+    static Ptr create(sql::SqlConfig const& sqlCfgMaster, sql::SqlConfig const& sqlCfgLocal);
 
     /// Apply a sql statement 'sql' to the database behind DatabaseModels, putting the result
     /// in 'results' and errors in 'errObj'
@@ -68,10 +81,11 @@ public:
     std::vector<std::string> listColumns(std::string const& dbName, std::string const& tableName);
 
 private:
-    explicit DatabaseModels(sql::SqlConfig const& sqlConfig);
+    explicit DatabaseModels(sql::SqlConfig const& sqlCfgMaster, sql::SqlConfig const& sqlCfgLocal);
 
-    std::shared_ptr<sql::SqlConnection> _conn;
-    std:: mutex _sqlMutex; ///< protects _conn
+    std::shared_ptr<sql::SqlConnection> _sqlConnMaster;
+    std::shared_ptr<sql::SqlConnection> _sqlConnLocal;
+    std:: mutex _sqlMutex; ///< protects _sqlConnMaster, _sqlConnLocal
 };
 
 }}} // namespace lsst::qserv::qproc

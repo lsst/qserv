@@ -301,14 +301,14 @@ void QuerySession::finalize() {
 QuerySession::QuerySession(Test& t)
     : _css(t.css), _defaultDb(t.defaultDb) {
     sql::SqlConfig sqlConfig(t.sqlConfig);
-    _databaseModels = DatabaseModels::create(sqlConfig);
+    _databaseModels = DatabaseModels::create(sqlConfig, sqlConfig);
     _initContext();
 }
 
 
 QuerySession::QuerySession() {
     sql::SqlConfig sqlConfig(sql::SqlConfig::MOCK);
-    _databaseModels = DatabaseModels::create(sqlConfig);
+    _databaseModels = DatabaseModels::create(sqlConfig, sqlConfig);
 }
 
 

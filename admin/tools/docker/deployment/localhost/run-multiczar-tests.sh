@@ -91,6 +91,11 @@ do
 "
 done
 
+CZARARGS=""
+for i in $CZARS;
+do
+    CZARARGS="$CZARARGS -z ${i}"
+done
 
 for i in $CZARS;
 do
@@ -98,6 +103,6 @@ docker exec "$MASTER" bash -c ". /qserv/stack/loadLSST.bash && \
     setup qserv_distrib -t qserv-dev && \
     echo \"$CSS_INFO\" | qserv-admin.py && \
     setup -k -r /qserv/qserv_testdata -t qserv-dev && \
-    qserv-test-integration.py -q $i"
+    qserv-test-integration.py ${CZARARGS} -q $i"
 done
 

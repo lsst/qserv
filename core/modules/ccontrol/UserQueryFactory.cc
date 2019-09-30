@@ -311,7 +311,8 @@ UserQueryFactory::Impl::Impl(czar::CzarConfig const& czarConfig)
                           czarConfig.getXrootdFrontendUrl(),
                           czarConfig.getQMetaSecondsBetweenChunkUpdates());
     secondaryIndex = std::make_shared<qproc::SecondaryIndex>(czarConfig.getMySqlQmetaConfig());
-    databaseModels = qproc::DatabaseModels::create(czarConfig.getCssConfigMap()); // Sharing CSS config for now.
+    databaseModels = qproc::DatabaseModels::create(czarConfig.getCssConfigMap(),
+                                                   czarConfig.getMySqlResultConfig()); // Sharing CSS config for now.
 
     // make one dedicated connection for results database
     resultDbConn = sql::SqlConnectionFactory::make(mysqlResultConfig);
