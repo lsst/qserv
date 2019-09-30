@@ -237,6 +237,15 @@ void Connection::_processLastError(string const& context,
         case ER_DUP_ENTRY:
             throw DuplicateKeyError(msg);
 
+        case  ER_NO_SUCH_TABLE:
+            throw NoSuchTable(msg);
+
+        case ER_PARTITION_MGMT_ON_NONPARTITIONED:
+            throw NotPartitionedTable(msg);
+
+        case ER_UNKNOWN_PARTITION:
+            throw NoSuchPartition(msg);
+
         case ER_ABORTING_CONNECTION:
         case ER_NEW_ABORTING_CONNECTION:
 
@@ -572,6 +581,10 @@ void Connection::_connectOnce() {
         throw Error(context + "mysql_init failed");
     }
 
+    // Only allow TCP/IP, no UNIX sockets for now
+    enum mysql_protocol_type prot_type= MYSQL_PROTOCOL_TCP;
+    mysql_optionsv(_mysql, MYSQL_OPT_PROTOCOL,(void*)&prot_type);
+
     // Make a connection attempt
 
     if (nullptr == mysql_real_connect(
@@ -612,7 +625,21 @@ void Connection::_connectOnce() {
     // Set session attributes
 
     vector<string> queries;
-    queries.push_back("SET SESSION SQL_MODE='ANSI'");
+
+    // The change is related to the following bug in MariaDB before 10.2.8:
+    //    https://jira.mariadb.org/browse/MDEV-16792
+    //
+    // This bug causes problems with partitioned tables if partitions are created
+    // with SQL_MODE='ANSI'. This mode sets 'ANSI_QUOTES` (double quotes for identifiers).
+    // Details are in:
+    //   https://dev.mysql.com/doc/refman/5.7/en/sql-mode.html#sqlmode_ansi_quotes
+    //
+    // The problem is seen in clients which aren't setting this mode. Hence a workaround
+    // is to either keep this mode here or to set that mode in all clients (Qserv).
+    // The current solution is to disable this:
+    //
+    //   queries.push_back("SET SESSION SQL_MODE='ANSI'");
+
     queries.push_back("SET SESSION AUTOCOMMIT=0");
     //
     // TODO: Reconsider this because it won't work in the modern versions
@@ -662,6 +689,112 @@ void Connection::_assertTransaction(bool inTransaction) const {
                 context + "the transaction is" +
                 string( _inTransaction ? " " : " not") + " active");
     }
+}
+
+
+ConnectionPool::Ptr ConnectionPool::create(ConnectionParams const& params,
+                                           size_t maxConnections) {
+    return Ptr(new ConnectionPool(params, maxConnections));
+}
+
+
+ConnectionPool::ConnectionPool(ConnectionParams const& params, size_t maxConnections)
+    :   _params(params),
+        _maxConnections(maxConnections) {
+}
+
+
+Connection::Ptr ConnectionPool::allocate() {
+
+    string const context = "ConnectionPool::" + string(__func__) + "  ";
+
+    LOGS(_log, LOG_LVL_DEBUG, context);
+
+    unique_lock<mutex> lock(_mtx);
+
+    // Open a new connection and return it right away if the limit hasn't
+    // been reached yet.
+    //
+    // TODO: the factory method called below may put a calling thread
+    // in the blocking state while the (database) service becomes available.
+    // This will prevent operations with the pool by other threads. Investigate
+    // a non-blocking algorithm.
+
+    if (_availableConnections.size() + _usedConnections.size() < _maxConnections) {
+        auto conn = Connection::open(_params);
+        _usedConnections.push_back(conn);
+        return conn;
+    }
+
+    // Otherwise grab an existing one (which may require to wait before
+    // it would become available).
+
+    auto const self = shared_from_this();
+    _available.wait(lock, [self]() {
+        return not self->_availableConnections.empty();
+    });
+    Connection::Ptr conn = _availableConnections.front();
+    _availableConnections.pop_front();
+    _usedConnections.push_back(conn);
+
+    return conn;
+}
+
+
+void ConnectionPool::release(Connection::Ptr const& conn) {
+
+    string const context = "ConnectionPool::" + string(__func__) + "  ";
+
+    LOGS(_log, LOG_LVL_DEBUG, context);
+
+    unique_lock<mutex> lock(_mtx);
+
+    // Move it between queues.
+
+    size_t numRemoved = 0;
+    _usedConnections.remove_if(
+        [&numRemoved, &conn] (Connection::Ptr const& ptr) {
+            if (ptr == conn) {
+                numRemoved++;
+                return true;
+            }
+            return false;
+        }
+    );
+    if (1 != numRemoved) {
+        throw logic_error(context + "inappropriate use of the method");
+    }
+    _availableConnections.push_back(conn);
+
+    // Notify one client (if any) waiting for a service
+
+    lock.unlock();
+    _available.notify_one();
+}
+
+
+
+ConnectionHandler::ConnectionHandler(Connection::Ptr const& conn_)
+    :   conn(conn_) {
+}
+
+
+ConnectionHandler::ConnectionHandler(ConnectionPool::Ptr const& pool)
+    :   conn(pool->allocate()),
+        _pool(pool) {
+}
+
+
+ConnectionHandler::~ConnectionHandler() {
+    string const context = "ConnectionHandler::" + string(__func__) + "  ";
+    try {
+        if ((nullptr != conn) and conn->inTransaction()) {
+            conn->rollback();
+        }
+    } catch (exception const& ex) {
+        LOGS(_log, LOG_LVL_ERROR, context << "ex: " << ex.what());
+    }
+    if (nullptr != _pool) _pool->release(conn);
 }
 
 }}}}} // namespace lsst::qserv::replica::database::mysql

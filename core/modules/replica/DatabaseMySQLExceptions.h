@@ -55,14 +55,8 @@ namespace mysql {
  */
 class Error : public std::runtime_error {
 public:
-
-    /**
-     * @param what
-     *   reason for the exception
-     */
-    explicit Error(std::string const& what)
-        :   std::runtime_error(what) {
-    }
+    /// @param what  reason for the exception
+    explicit Error(std::string const& what) : std::runtime_error(what) {}
 };
 
 
@@ -71,14 +65,8 @@ public:
  */
 class ConnectError : public Error {
 public:
-
-    /**
-     * @param what
-     *   reason for the exception
-     */
-    explicit ConnectError(std::string const& what)
-        :   Error(what) {
-    }
+    /// @param what  reason for the exception
+    explicit ConnectError(std::string const& what) : Error(what) {}
 };
 
 /**
@@ -87,13 +75,9 @@ public:
  */
 class ConnectTimeout : public Error {
 public:
-
     /**
-     * @param what
-     *   reason for the exception
-     *
-     * @param timeoutSec
-     *   a value of the timeout which expired
+     * @param what        reason for the exception
+     * @param timeoutSec  a value of the timeout which expired
      */
     ConnectTimeout(std::string const& what,
                    unsigned int timeoutSec)
@@ -115,13 +99,9 @@ private:
  */
 class MaxReconnectsExceeded : public Error {
 public:
-
     /**
-     * @param what
-     *   reason for the exception
-     *
-     * @param maxReconnects
-     *   the number of reconnects which was set as a limit
+     * @param what           reason for the exception
+     * @param maxReconnects  the number of reconnects which was set as a limit
      */
     MaxReconnectsExceeded(std::string const& what,
                           unsigned int maxReconnects)
@@ -145,14 +125,8 @@ private:
  */
 class Reconnected : public Error {
 public:
-
-    /**
-     * @param what
-     *   reason for the exception
-     */
-    explicit Reconnected(std::string const& what)
-        :   Error(what) {
-    }
+    /// @param what  reason for the exception
+    explicit Reconnected(std::string const& what) : Error(what) {}
 };
 
 
@@ -162,14 +136,55 @@ public:
  */
 class DuplicateKeyError : public Error {
 public:
+    /// @param what  reason for the exception
+    explicit DuplicateKeyError(std::string const& what) : Error(what) {}
+};
 
-    /**
-     * @param what
-     *   reason for the exception
-     */
-    explicit DuplicateKeyError(std::string const& what)
-        :   Error(what) {
-    }
+
+/**
+ * Instances of this exception class are thrown on queries involving non-existing
+ * tables.
+ */
+class NoSuchTable : public Error {
+public:
+    /// @param what  reason for the exception
+    explicit NoSuchTable(std::string const& what) : Error(what) {}
+};
+
+
+/**
+ * Instances of this exception class are thrown on a specific query which
+ * attempts to remove all partitions from a non-partitioned table:
+ * 
+ *   @code
+ *   ALTER TABLE <database>.<table> REMOVE PARTITIONING;
+ *   @code
+ * 
+ * Some application may choose to explicitly identify and process this type
+ * of failures.
+ */
+class NotPartitionedTable : public Error {
+public:
+    /// @param what  reason for the exception
+    explicit NotPartitionedTable(std::string const& what) : Error(what) {}
+};
+
+
+/**
+ * Instances of this exception class are thrown on queries attempting to select
+ * data from a non-existing partitions of a partitioned table:
+ * 
+ *   @code
+ *   SELECT * FROM <database>.<table> PARTITION (<partition>);
+ *   @code
+ * 
+ * Some application may choose to explicitly identify and process this type
+ * of failures.
+ */
+class NoSuchPartition : public Error {
+public:
+    /// @param what  reason for the exception
+    explicit NoSuchPartition(std::string const& what) : Error(what) {}
 };
 
 
@@ -179,14 +194,8 @@ public:
  */
 class InvalidTypeError : public Error {
 public:
-
-    /**
-     * @param what
-     *   reason for the exception
-     */
-    explicit InvalidTypeError(std::string const& what)
-        :   Error(what) {
-    }
+    /// @param what  reason for the exception
+    explicit InvalidTypeError(std::string const& what) : Error(what) {}
 };
 
 
@@ -196,14 +205,8 @@ public:
  */
 class EmptyResultSetError : public Error {
 public:
-
-    /**
-     * @param what
-     *   reason for the exception
-     */
-    explicit EmptyResultSetError(std::string const& what)
-        :   Error(what) {
-    }
+    /// @param what  reason for the exception
+    explicit EmptyResultSetError(std::string const& what) : Error(what) {}
 };
 
 

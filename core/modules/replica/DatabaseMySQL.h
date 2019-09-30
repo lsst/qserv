@@ -38,11 +38,14 @@
 
 // System headers
 #include <atomic>
+#include <condition_variable>
 #include <cstddef>
 #include <cstdint>
 #include <functional>
+#include <list>
 #include <map>
 #include <memory>
+#include <mutex>
 #include <sstream>
 #include <string>
 #include <vector>
@@ -54,6 +57,7 @@
 #include "replica/DatabaseMySQLExceptions.h"
 #include "replica/DatabaseMySQLTypes.h"
 #include "replica/DatabaseMySQLRow.h"
+#include "util/Mutex.h"
 
 // Forward declarations
 namespace lsst {
@@ -310,88 +314,78 @@ public:
     std::string sqlId(std::string const& str) const { return "`" + str + "`"; }
 
     /**
-     * Return:
+     * Generate and return an SQL expression for a binary operator applied
+     * over a pair of a simple identifier and a value.
      *
-     *   `col` = <value>
+     * @param col  the name of a column on the LHS of the expression
+     * @param val  RHS value of the binary operation
+     * @param op   binary operator to be applied to both above
      *
-     * Where:
-     * - the column name will be surrounded by back ticks
-     * - values of string types will be escaped and surrounded by single quotes
+     * @return "<col> <binary operator> <value>" where column name will be
+     * surrounded by back ticks, and  values of string types will be escaped
+     * and surrounded by single quotes.
      */
     template <typename T>
-    std::string sqlEqual(std::string const& col,
-                         T const&           val) const {
+    std::string sqlBinaryOperator(std::string const& col,
+                                  T const&           val,
+                                  char const*        op) const {
         std::ostringstream ss;
-        ss << sqlId(col) << "=" << sqlValue(val);
+        ss << sqlId(col) << op << sqlValue(val);
         return ss.str();
+    }
+    
+    /**
+     * @return "<quoted-col> = <escaped-quoted-value>"
+     * @see Connection::sqlBinaryOperator()
+     */
+    template <typename T>
+    std::string sqlEqual(std::string const& col, T const& val) const {
+        return sqlBinaryOperator(col, val, "=");
     }
 
     /**
-     * Return:
-     *
-     *   `col` < <value>
-     *
-     * Where:
-     * - the column name will be surrounded by back ticks
-     * - values of string types will be escaped and surrounded by single quotes
+     * @return "<quoted-col> != <escaped-quoted-value>"
+     * @see Connection::sqlBinaryOperator()
      */
     template <typename T>
-    std::string sqlLess(std::string const& col,
-                        T const&           val) const {
-        std::ostringstream ss;
-        ss << sqlId(col) << "<" << sqlValue(val);
-        return ss.str();
+    std::string sqlNotEqual(std::string const& col, T const& val) const {
+        return sqlBinaryOperator(col, val, "!=");
     }
 
     /**
-     * Return:
-     *
-     *   `col` <= <value>
-     *
-     * Where:
-     * - the column name will be surrounded by back ticks
-     * - values of string types will be escaped and surrounded by single quotes
+     * @return "<quoted-col> < <escaped-quoted-value>"
+     * @see Connection::sqlBinaryOperator()
      */
     template <typename T>
-    std::string sqlLessOrEqual(std::string const& col,
-                               T const&           val) const {
-        std::ostringstream ss;
-        ss << sqlId(col) << "<" << sqlValue(val);
-        return ss.str();
+    std::string sqlLess(std::string const& col, T const& val) const {
+        return sqlBinaryOperator(col, val, "<");
     }
 
     /**
-     * Return:
-     *
-     *   `col` > <value>
-     *
-     * Where:
-     * - the column name will be surrounded by back ticks
-     * - values of string types will be escaped and surrounded by single quotes
+     * @return "<quoted-col> <= <escaped-quoted-value>"
+     * @see Connection::sqlBinaryOperator()
      */
     template <typename T>
-    std::string sqlGreater(std::string const& col,
-                           T const&           val) const {
-        std::ostringstream ss;
-        ss << sqlId(col) << ">" << sqlValue(val);
-        return ss.str();
+    std::string sqlLessOrEqual(std::string const& col, T const& val) const {
+        return sqlBinaryOperator(col, val, "<=");
     }
 
     /**
-     * Return:
-     *
-     *   `col` >= <value>
-     *
-     * Where:
-     * - the column name will be surrounded by back ticks
-     * - values of string types will be escaped and surrounded by single quotes
+     * @return "<quoted-col> > <escaped-quoted-value>"
+     * @see Connection::sqlBinaryOperator()
      */
     template <typename T>
-    std::string sqlGreaterOrEqual(std::string const& col,
-                                  T const&           val) const {
-        std::ostringstream ss;
-        ss << sqlId(col) << ">=" << sqlValue(val);
-        return ss.str();
+    std::string sqlGreater(std::string const& col, T const& val) const {
+        return sqlBinaryOperator(col, val, ">");
+    }
+
+    /**
+     * @return "<quoted-col> => <escaped-quoted-value>"
+     * @see Connection::sqlBinaryOperator()
+     */
+    template <typename T>
+    std::string sqlGreaterOrEqual(std::string const& col, T const& val) const {
+        return sqlBinaryOperator(col, val, ">=");
     }
 
     /// The base (the final function) to be called
@@ -1089,6 +1083,90 @@ private:
 };
 
 
+/**
+ * Class ConnectionPool manages a pool of the similarly configured persistent
+ * database connection. The number of connections is determined by the corresponding
+ * Configuration parameter. Connections will be added to the pool (up to that limit)
+ * on demand. This ensures that the class constructor is not blocking in case if
+ * (or while) the corresponding MySQL/MariaDB service is not responding.
+ * 
+ * @note this class is meant to be used indirectly by passing its instances
+ * to the constructor of class ConnectionHandler.
+ *
+ * @see class ConnectionHandler
+ */
+class ConnectionPool: public std::enable_shared_from_this<ConnectionPool> {
+
+public:
+
+    /// The pointer type for instances of the class
+    typedef std::shared_ptr<ConnectionPool> Ptr;
+
+    /**
+     * The static factory object creates a pool and sets the maximum number
+     * of connections.
+     * 
+     * @note this is a non-blocking method. In particular, No connection attempts
+     * will be made by this method.
+     *
+     * @param params  parameters of the connections
+     * @param maxConnections  the maximum number of connections managed by the pool
+     * @return smart pointer to the newly created object
+     */
+    static Ptr create(ConnectionParams const& params,
+                      size_t maxConnections);
+
+    // Copy semantics and the default construction is prohibited
+
+    ConnectionPool() = delete;
+    ConnectionPool(ConnectionPool const&) = delete;
+    ConnectionPool& operator=(ConnectionPool const&) = delete;
+
+    /**
+     * Allocate (and open a new if required/possible) connection
+     *
+     * @note the requester must return the service back after it's no longer needed.
+     * @return pointer to the allocated connector
+     * @see ConnectionPool::release()
+     */
+    Connection::Ptr allocate();
+
+    /**
+     * Return a connection object back into the pool of the available ones.
+     *
+     * @param conn  connection object to be returned back
+     * @throws std::logic_error if the object was not previously allocated
+     * @see ConnectionPool::allocate()
+     */
+    void release(Connection::Ptr const& conn);
+
+private:
+
+    ConnectionPool(ConnectionParams const& params,
+                   size_t maxConnections);
+
+    // Input parameters
+
+    ConnectionParams const _params;
+    size_t const _maxConnections;
+
+    /// Connection objects which are available
+    std::list<Connection::Ptr> _availableConnections;
+
+    /// Connection objects which are in use
+    std::list<Connection::Ptr> _usedConnections;
+
+    /// The mutex for enforcing thread safety of the class's public API and
+    /// internal operations. The mutex is locked by methods ConnectionPool::allocate()
+    /// and ConnectionPool::release() when moving connection objects between
+    /// the lists (defined above).
+     mutable std::mutex _mtx;
+
+    /// The condition variable for notifying client threads waiting for the next
+    /// available connection.
+    std::condition_variable _available;
+};
+
 
 /**
  * Class ConnectionHandler implements the RAII method of handling database
@@ -1104,6 +1182,21 @@ public:
      */
     ConnectionHandler() = default;
 
+    /**
+     * Construct with a connection
+     *
+     * @param conn_  connection to be watched and managed
+     */
+    explicit ConnectionHandler(Connection::Ptr const& conn_);
+
+    /**
+     * Construct with a pointer to a connection pool for allocating
+     * a connection. The connection will get released by the destructor.
+     *
+     * @param pool  connection pool to acquire persistent connections
+     */
+    explicit ConnectionHandler(ConnectionPool::Ptr const& pool);
+
     // Copy semantics is prohibited
 
     ConnectionHandler(ConnectionHandler const&) = delete;
@@ -1113,14 +1206,15 @@ public:
      * The destructor will rollback a transaction if any was started at
      * a presence of a connection.
      */
-    ~ConnectionHandler() {
-        if ((nullptr != conn) and conn->inTransaction()) {
-            conn->rollback();
-        }
-    }
+    ~ConnectionHandler();
 
     /// The smart reference to the connector object (if any))
     Connection::Ptr conn;
+
+private:
+
+    /// The smart reference to the connector pool object (if any))
+    ConnectionPool::Ptr _pool;
 };
 
 
