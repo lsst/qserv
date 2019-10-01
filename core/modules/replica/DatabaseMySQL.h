@@ -1095,7 +1095,7 @@ private:
  *
  * @see class ConnectionHandler
  */
-class ConnectionPool: public std::enable_shared_from_this<ConnectionPool> {
+class ConnectionPool {
 
 public:
 

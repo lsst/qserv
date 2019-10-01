@@ -582,7 +582,7 @@ void Connection::_connectOnce() {
     }
 
     // Only allow TCP/IP, no UNIX sockets for now
-    enum mysql_protocol_type prot_type= MYSQL_PROTOCOL_TCP;
+    enum mysql_protocol_type prot_type = MYSQL_PROTOCOL_TCP;
     mysql_optionsv(_mysql, MYSQL_OPT_PROTOCOL,(void*)&prot_type);
 
     // Make a connection attempt
@@ -712,27 +712,29 @@ Connection::Ptr ConnectionPool::allocate() {
 
     unique_lock<mutex> lock(_mtx);
 
-    // Open a new connection and return it right away if the limit hasn't
-    // been reached yet.
-    //
-    // TODO: the factory method called below may put a calling thread
-    // in the blocking state while the (database) service becomes available.
-    // This will prevent operations with the pool by other threads. Investigate
-    // a non-blocking algorithm.
+    if (_availableConnections.empty()) {
 
-    if (_availableConnections.size() + _usedConnections.size() < _maxConnections) {
-        auto conn = Connection::open(_params);
-        _usedConnections.push_back(conn);
-        return conn;
+        // Open a new connection and return it right away if the limit hasn't
+        // been reached yet.
+        //
+        // TODO: the factory method called below may put a calling thread
+        // in the blocking state while the (database) service becomes available.
+        // This will prevent operations with the pool by other threads. Investigate
+        // a non-blocking algorithm.
+
+        if (_availableConnections.size() + _usedConnections.size() < _maxConnections) {
+            auto conn = Connection::open(_params);
+            _usedConnections.push_back(conn);
+            return conn;
+        }
+
+        // Otherwise grab an existing one (which may require to wait before
+        // it would become available).
+
+        _available.wait(lock, [&]() {
+            return not _availableConnections.empty();
+        });
     }
-
-    // Otherwise grab an existing one (which may require to wait before
-    // it would become available).
-
-    auto const self = shared_from_this();
-    _available.wait(lock, [self]() {
-        return not self->_availableConnections.empty();
-    });
     Connection::Ptr conn = _availableConnections.front();
     _availableConnections.pop_front();
     _usedConnections.push_back(conn);
@@ -771,7 +773,6 @@ void ConnectionPool::release(Connection::Ptr const& conn) {
     lock.unlock();
     _available.notify_one();
 }
-
 
 
 ConnectionHandler::ConnectionHandler(Connection::Ptr const& conn_)
