@@ -116,8 +116,9 @@ ConnectionParams ConnectionParams::parse(string const& params,
 }
 
 
-string ConnectionParams::toString() const {
-    return string("mysql://") + user + ":xxxxxx@" + host + ":" + to_string(port) + "/" + database;
+string ConnectionParams::toString(bool showPassword) const {
+    return string("mysql://") + user + ":" + (showPassword ? password : string("xxxxxx")) + "@" +
+           host + ":" + to_string(port) + "/" + database;
 }
 
 

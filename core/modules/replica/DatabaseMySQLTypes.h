@@ -123,12 +123,14 @@ struct ConnectionParams {
                      std::string const& database_);
 
     /**
+     * @param showPassword  if 'false' then hash a password in the result
+     *
      * @return
-     *   a string representation of all (but the password) parameters.
+     *   a string representation of all (but the password unless requested) parameters.
      *   The result will be formatted similarly to the one expected by
      *   the non-default constructor of the class.
      */
-    std::string toString() const;
+    std::string toString(bool showPassword=false) const;
 };
 
 /// Overloaded operator for serializing ConnectionParams instances
