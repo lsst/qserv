@@ -187,6 +187,14 @@ private:
     int _addDatabase();
 
     /**
+     * Publish an existing database
+     *
+     * @return
+     *   a status code to be returned to the shell
+     */
+    int _publishDatabase();
+
+    /**
      * Delete an existing database
      *
      * @return
@@ -267,6 +275,32 @@ private:
 
     /// 'false' for the regular tables, 'true' for the partitioned ones
     bool _isPartitioned = false;
+
+    /// The flag indicating (if present) that this is a 'director' table of the database.
+    /// Note that this flag only applies to the partitioned tables.
+    bool _isDirector = false;
+
+    /// The name of a column in the 'director' table of the database.
+    /// Note that this option must be provided for the 'director' tables.
+    std::string _directorKey;
+
+    /// The name of a column in the 'partitioned' table indicating a column which
+    /// stores identifiers of chunks. Note that this option must be provided
+    /// for the 'partitioned' tables.
+    std::string _chunkIdKey;
+
+    /// The name of a column in the 'partitioned' table indicating a column which
+    /// stores identifiers of sub-chunks. Note that this option must be provided
+    /// for the 'partitioned' tables.
+    std::string _subChunkIdKey;
+
+    /// The name of an optional column in the 'partitioned' table representing
+    /// latitude (declination)
+    std::string _latitudeColName;
+
+    /// The name of an optional column in the 'partitioned' table representing
+    /// longitude (right ascension)
+    std::string _longitudeColName;
 };
 
 }}} // namespace lsst::qserv::replica

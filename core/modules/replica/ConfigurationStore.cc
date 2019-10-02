@@ -82,7 +82,7 @@ string ConfigurationStore::_classMethodContext(string const& func) {
 }
 
 ConfigurationStore::ConfigurationStore(util::ConfigStore const& configStore)
-    :   Configuration(),
+    :   ConfigurationBase(),
         _log(LOG_GET("lsst.qserv.replica.ConfigurationStore")) {
 
     _loadConfiguration(configStore);
@@ -90,8 +90,8 @@ ConfigurationStore::ConfigurationStore(util::ConfigStore const& configStore)
 
 
 void ConfigurationStore::addWorker(WorkerInfo const& info) {
+
     LOGS(_log, LOG_LVL_DEBUG, context(__func__) << "  name=" << info.name);
-    util::Lock lock(_mtx, context(__func__));
 
     auto itr = _workerInfo.find(info.name);
     if (_workerInfo.end() != itr) {
@@ -131,8 +131,7 @@ void ConfigurationStore::addWorker(WorkerInfo const& info) {
 void ConfigurationStore::deleteWorker(string const& name) {
     LOGS(_log, LOG_LVL_DEBUG, context(__func__) << "  name=" << name);
 
-    util::Lock lock(_mtx, context(__func__));
-    auto itr = safeFindWorker(lock, name, _classMethodContext(__func__));
+    auto itr = safeFindWorker(name, _classMethodContext(__func__));
     _workerInfo.erase(itr);
 }
 
@@ -142,8 +141,7 @@ WorkerInfo ConfigurationStore::disableWorker(string const& name,
     LOGS(_log, LOG_LVL_DEBUG, context(__func__) << "  name=" << name
          << " disable=" << (disable ? "true" : "false"));
 
-    util::Lock lock(_mtx, context(__func__));
-    auto itr = safeFindWorker(lock, name, _classMethodContext(__func__));
+    auto itr = safeFindWorker(name, _classMethodContext(__func__));
     itr->second.isEnabled = not disable;
 
     return itr->second;
@@ -155,8 +153,7 @@ WorkerInfo ConfigurationStore::setWorkerReadOnly(string const& name,
     LOGS(_log, LOG_LVL_DEBUG, context(__func__) << "  name=" << name
          << " readOnly=" << (readOnly ? "true" : "false"));
 
-    util::Lock lock(_mtx, context(__func__));
-    auto itr = safeFindWorker(lock, name, _classMethodContext(__func__));
+    auto itr = safeFindWorker(name, _classMethodContext(__func__));
     itr->second.isReadOnly = readOnly;
 
     return itr->second;
@@ -167,8 +164,7 @@ WorkerInfo ConfigurationStore::setWorkerSvcHost(string const& name,
                                                 string const& host) {
     LOGS(_log, LOG_LVL_DEBUG, context(__func__) << "  name=" << name << " host=" << host);
 
-    util::Lock lock(_mtx, context(__func__));
-    auto itr = safeFindWorker(lock, name, _classMethodContext(__func__));
+    auto itr = safeFindWorker(name, _classMethodContext(__func__));
     itr->second.svcHost = host;
 
     return itr->second;
@@ -179,8 +175,7 @@ WorkerInfo ConfigurationStore::setWorkerSvcPort(string const& name,
                                                 uint16_t port) {
     LOGS(_log, LOG_LVL_DEBUG, context(__func__) << "  name=" << name << " port=" << port);
 
-    util::Lock lock(_mtx, context(__func__));
-    auto itr = safeFindWorker(lock, name, _classMethodContext(__func__));
+    auto itr = safeFindWorker(name, _classMethodContext(__func__));
     itr->second.svcPort = port;
 
     return itr->second;
@@ -191,8 +186,7 @@ WorkerInfo ConfigurationStore::setWorkerFsHost(string const& name,
                                                string const& host) {
     LOGS(_log, LOG_LVL_DEBUG, context(__func__) << "  name=" << name << " host=" << host);
 
-    util::Lock lock(_mtx, context(__func__));
-    auto itr = safeFindWorker(lock, name, _classMethodContext(__func__));
+    auto itr = safeFindWorker(name, _classMethodContext(__func__));
     itr->second.fsHost = host;
 
     return itr->second;
@@ -203,8 +197,7 @@ WorkerInfo ConfigurationStore::setWorkerFsPort(string const& name,
                                                uint16_t port) {
     LOGS(_log, LOG_LVL_DEBUG, context(__func__) << "  name=" << name << " port=" << port);
 
-    util::Lock lock(_mtx, context(__func__));
-    auto itr = safeFindWorker(lock, name, _classMethodContext(__func__));
+    auto itr = safeFindWorker(name, _classMethodContext(__func__));
     itr->second.fsPort = port;
 
     return itr->second;
@@ -216,8 +209,7 @@ WorkerInfo ConfigurationStore::setWorkerDataDir(string const& name,
 
     LOGS(_log, LOG_LVL_DEBUG, context(__func__) << "  name=" << name << " dataDir=" << dataDir);
 
-    util::Lock lock(_mtx, context(__func__));
-    auto itr = safeFindWorker(lock, name, _classMethodContext(__func__));
+    auto itr = safeFindWorker(name, _classMethodContext(__func__));
     itr->second.dataDir = dataDir;
 
     return itr->second;
@@ -229,8 +221,7 @@ WorkerInfo ConfigurationStore::setWorkerDbHost(std::string const& name,
                                                std::string const& host) {
     LOGS(_log, LOG_LVL_DEBUG, context(__func__) << "  name=" << name << " host=" << host);
 
-    util::Lock lock(_mtx, context(__func__));
-    auto itr = safeFindWorker(lock, name, _classMethodContext(__func__));
+    auto itr = safeFindWorker(name, _classMethodContext(__func__));
     itr->second.dbHost = host;
     return itr->second;
 }
@@ -240,8 +231,7 @@ WorkerInfo ConfigurationStore::setWorkerDbPort(std::string const& name,
                                                uint16_t port) {
     LOGS(_log, LOG_LVL_DEBUG, context(__func__) << "  name=" << name << " port=" << port);
 
-    util::Lock lock(_mtx, context(__func__));
-    auto itr = safeFindWorker(lock, name, _classMethodContext(__func__));
+    auto itr = safeFindWorker(name, _classMethodContext(__func__));
     itr->second.dbPort = port;
     return itr->second;
 }
@@ -251,19 +241,51 @@ WorkerInfo ConfigurationStore::setWorkerDbUser(std::string const& name,
                                                std::string const& user)  {
     LOGS(_log, LOG_LVL_DEBUG, context(__func__) << "  name=" << name << " user=" << user);
 
-    util::Lock lock(_mtx, context(__func__));
-    auto itr = safeFindWorker(lock, name, _classMethodContext(__func__));
+    auto itr = safeFindWorker(name, _classMethodContext(__func__));
     itr->second.dbUser = user;
 
     return itr->second;
 }
 
 
+WorkerInfo ConfigurationStore::setWorkerLoaderHost(string const& name,
+                                                   string const& host) {
+    LOGS(_log, LOG_LVL_DEBUG, context(__func__) << "  name=" << name << " host=" << host);
+
+    auto itr = safeFindWorker(name, _classMethodContext(__func__));
+    itr->second.loaderHost = host;
+
+    return itr->second;
+}
+
+
+WorkerInfo ConfigurationStore::setWorkerLoaderPort(string const& name,
+                                                   uint16_t port) {
+    LOGS(_log, LOG_LVL_DEBUG, context(__func__) << "  name=" << name << " port=" << port);
+
+    auto itr = safeFindWorker(name, _classMethodContext(__func__));
+    itr->second.loaderPort = port;
+
+    return itr->second;
+}
+
+
+WorkerInfo ConfigurationStore::setWorkerLoaderTmpDir(string const& name,
+                                                     string const& tmpDir) {
+
+    LOGS(_log, LOG_LVL_DEBUG, context(__func__) << "  name=" << name << " tmpDir=" << tmpDir);
+
+    auto itr = safeFindWorker(name, _classMethodContext(__func__));
+    itr->second.loaderTmpDir = tmpDir;
+
+    return itr->second;
+
+}
+
+
 DatabaseFamilyInfo ConfigurationStore::addDatabaseFamily(DatabaseFamilyInfo const& info) {
 
     LOGS(_log, LOG_LVL_DEBUG, context(__func__) << "  familyInfo: " << info);
-
-    util::Lock lock(_mtx, context(__func__));
     
     if (info.name.empty()) {
         throw invalid_argument(_classMethodContext(__func__) + "  the family name can't be empty");
@@ -277,6 +299,9 @@ DatabaseFamilyInfo ConfigurationStore::addDatabaseFamily(DatabaseFamilyInfo cons
     if (info.numSubStripes == 0) {
         throw invalid_argument(_classMethodContext(__func__) + "  the number of sub-stripes level can't be 0");
     }
+    if (info.overlap < 0) {
+        throw invalid_argument(_classMethodContext(__func__) + "  the overlap can't be less than 0");
+    }
     if (_databaseFamilyInfo.end() != _databaseFamilyInfo.find(info.name)) {
         throw invalid_argument(_classMethodContext(__func__) + "  the family already exists");
     }
@@ -285,6 +310,7 @@ DatabaseFamilyInfo ConfigurationStore::addDatabaseFamily(DatabaseFamilyInfo cons
         info.replicationLevel,
         info.numStripes,
         info.numSubStripes,
+        info.overlap,
         make_shared<ChunkNumberQservValidator>(
             static_cast<int32_t>(info.numStripes),
             static_cast<int32_t>(info.numSubStripes))
@@ -296,8 +322,6 @@ DatabaseFamilyInfo ConfigurationStore::addDatabaseFamily(DatabaseFamilyInfo cons
 void ConfigurationStore::deleteDatabaseFamily(string const& name) {
 
     LOGS(_log, LOG_LVL_DEBUG, context(__func__) << "  name: " << name);
-
-    util::Lock lock(_mtx, context(__func__));
 
     if (name.empty()) {
         throw invalid_argument(_classMethodContext(__func__) + "  the family name can't be empty");
@@ -324,8 +348,6 @@ void ConfigurationStore::deleteDatabaseFamily(string const& name) {
 DatabaseInfo ConfigurationStore::addDatabase(DatabaseInfo const& info) {
 
     LOGS(_log, LOG_LVL_DEBUG, context(__func__) << "  databaseInfo: " << info);
-
-    util::Lock lock(_mtx, context(__func__));
     
     if (info.name.empty()) {
         throw invalid_argument(_classMethodContext(__func__) + "  the database name can't be empty");
@@ -339,21 +361,59 @@ DatabaseInfo ConfigurationStore::addDatabase(DatabaseInfo const& info) {
     if (_databaseInfo.find(info.name) != _databaseInfo.end()) {
         throw invalid_argument(_classMethodContext(__func__) + "  database already exists");
     }
+
+    auto const isNotPublished = 0;
+
+    map<string,
+        list<pair<string,string>>> const noTableColumns;
+
+    string const noDirectorTable;
+    string const noDirectorTableKey;
+    string const noChunkIdKey;
+    string const noSubChunkIdKey;
+
     _databaseInfo[info.name] = DatabaseInfo{
         info.name,
         info.family,
+        isNotPublished,
         {},
-        {}
+        {},
+        noTableColumns,
+        noDirectorTable,
+        noDirectorTableKey,
+        noChunkIdKey,
+        noSubChunkIdKey,
+        map<string,string>(),
+        map<string,string>()
     };
     return _databaseInfo[info.name];
+}
+
+
+DatabaseInfo ConfigurationStore::publishDatabase(string const& name) {
+
+    LOGS(_log, LOG_LVL_DEBUG, context(__func__) << "  name: " << name);
+    
+    if (name.empty()) {
+        throw invalid_argument(_classMethodContext(__func__) + "  the database name can't be empty");
+    }
+    auto itr = _databaseInfo.find(name);
+    if (itr == _databaseInfo.end()) {
+        throw invalid_argument(_classMethodContext(__func__) + "  database is unknown");
+    }
+    if (itr->second.isPublished) {
+        throw logic_error(_classMethodContext(__func__) + "  database is already published");
+    }
+    itr->second.isPublished = true;
+
+    return itr->second;
+
 }
 
 
 void ConfigurationStore::deleteDatabase(string const& name) {
 
     LOGS(_log, LOG_LVL_DEBUG, context(__func__) << "  name: " << name);
-
-    util::Lock lock(_mtx, context(__func__));
 
     if (name.empty()) {
         throw invalid_argument(_classMethodContext(__func__) + "  the database name can't be empty");
@@ -368,47 +428,54 @@ void ConfigurationStore::deleteDatabase(string const& name) {
 }
 
 
-DatabaseInfo ConfigurationStore::addTable(string const& database,
-                                          string const& table,
-                                          bool isPartitioned) {
+DatabaseInfo ConfigurationStore::addTable(
+        string const& database,
+        string const& table,
+        bool isPartitioned,
+        list<pair<string,string>> const& columns,
+        bool isDirectorTable,
+        string const& directorTableKey,
+        string const& chunkIdKey,
+        string const& subChunkIdKey,
+        string const& latitudeColName,
+        string const& longitudeColName) {
 
     LOGS(_log, LOG_LVL_DEBUG, context(__func__) << "  database: " << database
-         << " table: " << table << " isPartitioned: " << (isPartitioned ? "true" : "false"));
+         << " table: " << table << " isPartitioned: " << (isPartitioned ? "true" : "false")
+         << " isDirectorTable: " << (isDirectorTable ? "true" : "false")
+         << " directorTableKey: " << directorTableKey << " chunkIdKey: " << chunkIdKey
+         << " subChunkIdKey: " << subChunkIdKey
+         << " latitudeColName: " << latitudeColName
+         << " longitudeColName:" << longitudeColName);
 
-    util::Lock lock(_mtx, context(__func__));
-
-    if (database.empty()) {
-        throw invalid_argument(_classMethodContext(__func__) + "  the database name can't be empty");
-    }
-    if (table.empty()) {
-        throw invalid_argument(_classMethodContext(__func__) + "  the table name can't be empty");
-    }
-
-    // Find the database
-    auto itr = _databaseInfo.find(database);
-    if (itr == _databaseInfo.end()) {
-        throw invalid_argument(_classMethodContext(__func__) + "  unknown database");
-    }
-    DatabaseInfo& info = itr->second;
-
-    // Find the table
-    if (find(info.partitionedTables.cbegin(),
-             info.partitionedTables.cend(),
-             table) != info.partitionedTables.cend() or
-        find(info.regularTables.cbegin(), 
-             info.regularTables.cend(),
-             table) != info.regularTables.cend()) {
-
-        throw invalid_argument(_classMethodContext(__func__) + "  table already exists");
-    }
-
-    // Insert the table into the corresponding collection
-    if (isPartitioned) {
-        info.partitionedTables.push_back(table);
-    } else {
-        info.regularTables.push_back(table);
-    }
-    return info;
+    validateTableParameters(
+        _classMethodContext(__func__),
+        database,
+        table,
+        isPartitioned,
+        columns,
+        isDirectorTable,
+        directorTableKey,
+        chunkIdKey,
+        subChunkIdKey,
+        latitudeColName,
+        longitudeColName
+    );
+    
+    // Update the transient state accordingly
+    return addTableTransient(
+        _classMethodContext(__func__),
+        database,
+        table,
+        isPartitioned,
+        columns,
+        isDirectorTable,
+        directorTableKey,
+        chunkIdKey,
+        subChunkIdKey,
+        latitudeColName,
+        longitudeColName
+    );
 }
 
 
@@ -417,8 +484,6 @@ DatabaseInfo ConfigurationStore::deleteTable(string const& database,
 
     LOGS(_log, LOG_LVL_DEBUG, context(__func__) << "  database: " << database
          << " table: " << table);
-
-    util::Lock lock(_mtx, context(__func__));
 
     if (database.empty()) {
         throw invalid_argument(_classMethodContext(__func__) + "  the database name can't be empty");
@@ -439,24 +504,28 @@ DatabaseInfo ConfigurationStore::deleteTable(string const& database,
                           table);
     if (pTableItr != info.partitionedTables.cend()) {
         info.partitionedTables.erase(pTableItr);
-        return info;
     }
     auto rTableItr = find(info.regularTables.cbegin(),
                           info.regularTables.cend(),
                           table);
     if (rTableItr != info.regularTables.cend()) {
         info.regularTables.erase(rTableItr);
-        return info;
     }
-    throw invalid_argument(_classMethodContext(__func__) + "  unknown table");
+    if (info.directorTable == table) {
+        info.directorTable = string();
+        info.directorTableKey = string();
+    }
+    if (info.partitionedTables.size() == 0) {
+        info.chunkIdKey = string();
+        info.subChunkIdKey = string();
+    }
+    return info;
 }
 
 
 void ConfigurationStore::_loadConfiguration(util::ConfigStore const& configStore) {
 
     LOGS(_log, LOG_LVL_DEBUG, context(__func__));
-
-    util::Lock lock(_mtx, context(__func__));
 
     // Parse the list of worker names
 
@@ -486,6 +555,7 @@ void ConfigurationStore::_loadConfiguration(util::ConfigStore const& configStore
     ::parseKeyVal(configStore, "controller.http_server_port",    _controllerHttpPort,          defaultControllerHttpPort);
     ::parseKeyVal(configStore, "controller.http_server_threads", _controllerHttpThreads,       defaultControllerHttpThreads);
     ::parseKeyVal(configStore, "controller.request_timeout_sec", _controllerRequestTimeoutSec, defaultControllerRequestTimeoutSec);
+    ::parseKeyVal(configStore, "controller.empty_chunks_dir",    _controllerEmptyChunksDir,    defaultControllerEmptyChunksDir);
     ::parseKeyVal(configStore, "controller.job_timeout_sec",     _jobTimeoutSec,               defaultJobTimeoutSec);
     ::parseKeyVal(configStore, "controller.job_heartbeat_sec",   _jobHeartbeatTimeoutSec,      defaultJobHeartbeatTimeoutSec);
 
@@ -500,9 +570,9 @@ void ConfigurationStore::_loadConfiguration(util::ConfigStore const& configStore
     ::parseKeyVal(configStore, "database.qserv_master_host",               _qservMasterDatabaseHost,             defaultQservMasterDatabaseHost);
     ::parseKeyVal(configStore, "database.qserv_master_port",               _qservMasterDatabasePort,             defaultQservMasterDatabasePort);
     ::parseKeyVal(configStore, "database.qserv_master_user",               _qservMasterDatabaseUser,             defaultQservMasterDatabaseUser);
-    ::parseKeyVal(configStore, "database.qserv_master_password",           _qservMasterDatabasePassword,         defaultQservMasterDatabasePassword);
     ::parseKeyVal(configStore, "database.qserv_master_name",               _qservMasterDatabaseName,             defaultQservMasterDatabaseName);
     ::parseKeyVal(configStore, "database.qserv_master_services_pool_size", _qservMasterDatabaseServicesPoolSize, defaultQservMasterDatabaseServicesPoolSize);
+    ::parseKeyVal(configStore, "database.qserv_master_tmp_dir",            _qservMasterDatabaseTmpDir,           defaultQservMasterDatabaseTmpDir);
 
     ::parseKeyVal(configStore, "xrootd.auto_notify",         _xrootdAutoNotify, defaultXrootdAutoNotify);
     ::parseKeyVal(configStore, "xrootd.host",                _xrootdHost,       defaultXrootdHost);
@@ -513,6 +583,7 @@ void ConfigurationStore::_loadConfiguration(util::ConfigStore const& configStore
     ::parseKeyVal(configStore, "worker.num_svc_processing_threads", _workerNumProcessingThreads,   defaultWorkerNumProcessingThreads);
     ::parseKeyVal(configStore, "worker.num_fs_processing_threads",  _fsNumProcessingThreads,       defaultFsNumProcessingThreads);
     ::parseKeyVal(configStore, "worker.fs_buf_size_bytes",          _workerFsBufferSizeBytes,      defaultWorkerFsBufferSizeBytes);
+    ::parseKeyVal(configStore, "worker.num_loader_processing_threads", _loaderNumProcessingThreads, defaultLoaderNumProcessingThreads);
 
 
     // Optional common parameters for workers
@@ -522,12 +593,16 @@ void ConfigurationStore::_loadConfiguration(util::ConfigStore const& configStore
     string   commonDataDir;
     uint16_t commonWorkerDbPort;
     string   commonWorkerDbUser;
+    uint16_t commonWorkerLoaderPort;
+    string   commonWorkerLoaderTmpDir;
 
     ::parseKeyVal(configStore, "worker.svc_port",    commonWorkerSvcPort,    defaultWorkerSvcPort);
     ::parseKeyVal(configStore, "worker.fs_port",     commonWorkerFsPort,     defaultWorkerFsPort);
     ::parseKeyVal(configStore, "worker.data_dir",    commonDataDir,          defaultDataDir);
     ::parseKeyVal(configStore, "worker.db_port",     commonWorkerDbPort,     defaultWorkerDbPort);
     ::parseKeyVal(configStore, "worker.db_user",     commonWorkerDbUser,     defaultWorkerDbUser);
+    ::parseKeyVal(configStore, "worker.loader_port",    commonWorkerLoaderPort,   defaultWorkerLoaderPort);
+    ::parseKeyVal(configStore, "worker.loader_tmp_dir", commonWorkerLoaderTmpDir, defaultWorkerLoaderTmpDir);
 
     // Parse optional worker-specific configuration sections. Assume default
     // or (previously parsed) common values if a whole section or individual
@@ -554,8 +629,12 @@ void ConfigurationStore::_loadConfiguration(util::ConfigStore const& configStore
         ::parseKeyVal(configStore, section+".db_host",      workerInfo.dbHost,     defaultWorkerDbHost);
         ::parseKeyVal(configStore, section+".db_port",      workerInfo.dbPort,     commonWorkerDbPort);
         ::parseKeyVal(configStore, section+".db_user",      workerInfo.dbUser,     commonWorkerDbUser);
+        ::parseKeyVal(configStore, section+".loader_host",    workerInfo.loaderHost,   defaultWorkerLoaderHost);
+        ::parseKeyVal(configStore, section+".loader_port",    workerInfo.loaderPort,   commonWorkerLoaderPort);
+        ::parseKeyVal(configStore, section+".loader_tmp_dir", workerInfo.loaderTmpDir, commonWorkerLoaderTmpDir);
 
-        Configuration::translateDataDir(workerInfo.dataDir, name);
+        ConfigurationBase::translateWorkerDir(workerInfo.dataDir, name);
+        ConfigurationBase::translateWorkerDir(workerInfo.loaderTmpDir, name);
     }
 
     // Parse mandatory database family-specific configuration sections
@@ -589,6 +668,11 @@ void ConfigurationStore::_loadConfiguration(util::ConfigStore const& configStore
         if (not _databaseFamilyInfo[name].numSubStripes) {
             _databaseFamilyInfo[name].numSubStripes= defaultNumSubStripes;
         }
+        ::parseKeyVal(configStore, section+".overlap", _databaseFamilyInfo[name].overlap,  0.0);
+        if (_databaseFamilyInfo[name].overlap < 0.) {
+            throw range_error(
+                    _classMethodContext(__func__) + "  overlap can't have a negative value");
+        }
         _databaseFamilyInfo[name].chunkNumberValidator =
             make_shared<ChunkNumberQservValidator>(
                     static_cast<int32_t>(_databaseFamilyInfo[name].numStripes),
@@ -607,6 +691,7 @@ void ConfigurationStore::_loadConfiguration(util::ConfigStore const& configStore
         }
         _databaseInfo[name].name = name;
         _databaseInfo[name].family = configStore.getRequired(section+".family");
+        ::parseKeyVal(configStore, section+".is_published", _databaseInfo[name].isPublished, false);
         if (not _databaseFamilyInfo.count(_databaseInfo[name].family)) {
             throw range_error(
                     _classMethodContext(__func__) + "  unknown database family: '" +
@@ -621,6 +706,16 @@ void ConfigurationStore::_loadConfiguration(util::ConfigStore const& configStore
             istringstream ss(configStore.getRequired(section+".regular_tables"));
             istream_iterator<string> begin(ss), end;
             _databaseInfo[name].regularTables = vector<string>(begin, end);
+        }
+        _databaseInfo[name].directorTable = configStore.getRequired(section+".director_table");
+        _databaseInfo[name].directorTableKey = configStore.getRequired(section+".director_table_key");
+        _databaseInfo[name].chunkIdKey = configStore.getRequired(section+".chunk_id_key");
+        _databaseInfo[name].subChunkIdKey = configStore.getRequired(section+".sub_chunk_id_key");
+        
+        for (auto const& table: _databaseInfo[name].partitionedTables) {
+            string const section = "table:" + name + "." + table;
+            _databaseInfo[name].latitudeColName[table] = configStore.getRequired(section+".latitude_key");
+            _databaseInfo[name].longitudeColName[table] = configStore.getRequired(section+".longitude_key");
         }
     }
     dumpIntoLogger();

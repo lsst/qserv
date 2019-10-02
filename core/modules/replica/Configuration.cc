@@ -22,18 +22,12 @@
 // Class header
 #include "replica/Configuration.h"
 
-// System headers
-#include <set>
-#include <stdexcept>
-
 // Qserv headers
+#include "replica/ConfigurationBase.h"
+#include "replica/ConfigurationTypes.h"
+
+// LSST headers
 #include "lsst/log/Log.h"
-#include "replica/ChunkNumber.h"
-#include "replica/ConfigurationFile.h"
-#include "replica/ConfigurationMap.h"
-#include "replica/ConfigurationMySQL.h"
-#include "replica/FileUtils.h"
-#include "util/IterableFormatter.h"
 
 using namespace std;
 using json = nlohmann::json;
@@ -48,512 +42,592 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
-json WorkerInfo::toJson() const {
+json Configuration::toJson(Configuration::Ptr const& config) {
 
-    json infoJson;
+    json configJson;
 
-    infoJson["name"]         = name;
-    infoJson["is_enabled"]   = isEnabled  ? 1 : 0;
-    infoJson["is_read_only"] = isReadOnly ? 1 : 0;
-    infoJson["svc_host"]     = svcHost;
-    infoJson["svc_port"]     = svcPort;
-    infoJson["fs_host"]      = fsHost;
-    infoJson["fs_port"]      = fsPort;
-    infoJson["data_dir"]     = dataDir;
-    infoJson["db_host"]      = dbHost;
-    infoJson["db_port"]      = dbPort;
-    infoJson["db_user"]      = dbUser;
+    // General parameters
 
-    return infoJson;
-}
+    ConfigurationGeneralParams general;
+    configJson["general"] = general.toJson(config);
 
+    // Workers
 
-json DatabaseInfo::toJson() const {
-
-    json infoJson;
-
-    infoJson["name"] = name;
-
-    for (auto&& name: partitionedTables) {
-        infoJson["tables"].push_back({
-            {"name",           name},
-            {"is_partitioned", 1}});
+    json workersJson;
+    for (auto&& worker: config->allWorkers()) {
+        auto const wi = config->workerInfo(worker);
+        workersJson.push_back(wi.toJson());
     }
-    for (auto&& name: regularTables) {
-        infoJson["tables"].push_back({
-            {"name",           name},
-            {"is_partitioned", 0}});
+    configJson["workers"] = workersJson;
+
+    // Database families, databases, and tables
+
+    json familiesJson;
+    for (auto&& family: config->databaseFamilies()) {
+        auto const fi = config->databaseFamilyInfo(family);
+        json familyJson = fi.toJson();
+        bool const allDatabases = true;
+        for (auto&& database: config->databases(family, allDatabases)) {
+            auto const di = config->databaseInfo(database);
+            familyJson["databases"].push_back(di.toJson());
+        }
+        familiesJson.push_back(familyJson);
     }
-    return infoJson;
-}
+    configJson["families"] = familiesJson;
 
-
-json DatabaseFamilyInfo::toJson() const {
-
-    json infoJson;
-
-    infoJson["name"]                  = name;
-    infoJson["min_replication_level"] = replicationLevel;
-    infoJson["num_stripes"]           = numStripes;
-    infoJson["num_sub_stripes"]       = numSubStripes;
-
-    return infoJson;
-}
-
-
-ostream& operator <<(ostream& os, WorkerInfo const& info) {
-    os  << "WorkerInfo ("
-        << "name:'"      <<      info.name       << "',"
-        << "isEnabled:"  << (int)info.isEnabled  << ","
-        << "isReadOnly:" << (int)info.isReadOnly << ","
-        << "svcHost:'"   <<      info.svcHost    << "',"
-        << "svcPort:"    <<      info.svcPort    << ","
-        << "fsHost:'"    <<      info.fsHost     << "',"
-        << "fsPort:"     <<      info.fsPort     << ","
-        << "dataDir:'"   <<      info.dataDir    << "',"
-        << "dbHost:'"    <<      info.dbHost     << "',"
-        << "dbPort:"     <<      info.dbPort     << ","
-        << "dbUser:'"    <<      info.dbUser     << "')";
-    return os;
-}
-
-
-ostream& operator <<(ostream& os, DatabaseInfo const& info) {
-    os  << "DatabaseInfo ("
-        << "name:'" << info.name << "',"
-        << "family:'" << info.family << "',"
-        << "partitionedTables:" << util::printable(info.partitionedTables) << ","
-        << "regularTables:" << util::printable(info.regularTables) << ")";
-    return os;
-}
-
-
-ostream& operator <<(ostream& os, DatabaseFamilyInfo const& info) {
-    os  << "DatabaseFamilyInfo ("
-        << "name:'" << info.name << "',"
-        << "replicationLevel:'" << info.replicationLevel << "',"
-        << "numStripes:" << info.numStripes << ","
-        << "numSubStripes:" << info.numSubStripes << ")";
-    return os;
+    return configJson;
 }
 
 
 Configuration::Ptr Configuration::load(string const& configUrl) {
-
-    string::size_type const pos = configUrl.find(':');
-    if (pos != string::npos) {
-
-        string const prefix = configUrl.substr(0, pos);
-        string const suffix = configUrl.substr(pos+1);
-
-        if ("file"  == prefix) {
-            return make_shared<ConfigurationFile>(suffix);
-
-        } else if ("mysql" == prefix) {
-            return make_shared<ConfigurationMySQL>(
-                database::mysql::ConnectionParams::parse(
-                    configUrl,
-                    Configuration::defaultDatabaseHost,
-                    Configuration::defaultDatabasePort,
-                    Configuration::defaultDatabaseUser,
-                    Configuration::defaultDatabasePassword
-                )
-            );
-        }
-    }
-    throw invalid_argument(
-            "Configuration::" + string(__func__) + "  configUrl must start with 'file:' or 'mysql:'");
+    return Ptr(new Configuration(ConfigurationBase::load(configUrl)));
 }
 
 
 Configuration::Ptr Configuration::load(map<string, string> const& kvMap) {
-    return make_shared<ConfigurationMap>(kvMap);
+    return Ptr(new Configuration(ConfigurationBase::load(kvMap)));
 }
 
 
-// Set some reasonable defaults
-
-size_t       const Configuration::defaultRequestBufferSizeBytes       = 1024;
-unsigned int const Configuration::defaultRetryTimeoutSec              = 1;
-size_t       const Configuration::defaultControllerThreads            = 1;
-uint16_t     const Configuration::defaultControllerHttpPort           = 80;
-size_t       const Configuration::defaultControllerHttpThreads        = 1;
-unsigned int const Configuration::defaultControllerRequestTimeoutSec  = 3600;
-unsigned int const Configuration::defaultJobTimeoutSec                = 6000;
-unsigned int const Configuration::defaultJobHeartbeatTimeoutSec       = 60;
-bool         const Configuration::defaultXrootdAutoNotify             = false;
-string       const Configuration::defaultXrootdHost                   = "localhost";
-uint16_t     const Configuration::defaultXrootdPort                   = 1094;
-unsigned int const Configuration::defaultXrootdTimeoutSec             = 3600;
-string       const Configuration::defaultWorkerTechnology             = "TEST";
-size_t       const Configuration::defaultWorkerNumProcessingThreads   = 1;
-size_t       const Configuration::defaultFsNumProcessingThreads       = 1;
-size_t       const Configuration::defaultWorkerFsBufferSizeBytes      = 1048576;
-string       const Configuration::defaultWorkerSvcHost                = "localhost";
-uint16_t     const Configuration::defaultWorkerSvcPort                = 50000;
-string       const Configuration::defaultWorkerFsHost                 = "localhost";
-uint16_t     const Configuration::defaultWorkerFsPort                 = 50001;
-string       const Configuration::defaultDataDir                      = "{worker}";
-string       const Configuration::defaultWorkerDbHost                 = "localhost";
-uint16_t     const Configuration::defaultWorkerDbPort                 = 3306;
-string       const Configuration::defaultWorkerDbUser                 = FileUtils::getEffectiveUser();
-string       const Configuration::defaultDatabaseTechnology           = "mysql";
-string       const Configuration::defaultDatabaseHost                 = "localhost";
-uint16_t     const Configuration::defaultDatabasePort                 = 3306;
-string       const Configuration::defaultDatabaseUser                 = FileUtils::getEffectiveUser();
-string       const Configuration::defaultDatabasePassword             = "";
-string       const Configuration::defaultDatabaseName                 = "qservReplica";
-size_t       const Configuration::defaultDatabaseServicesPoolSize     = 1;
-string       const Configuration::defaultQservMasterDatabaseHost      = "localhost";
-uint16_t     const Configuration::defaultQservMasterDatabasePort      = 3306;
-string       const Configuration::defaultQservMasterDatabaseUser      = FileUtils::getEffectiveUser();
-string       const Configuration::defaultQservMasterDatabasePassword  = "";
-string       const Configuration::defaultQservMasterDatabaseName      = "qservMeta";
-size_t       const Configuration::defaultQservMasterDatabaseServicesPoolSize = 1;
-bool               Configuration::defaultDatabaseAllowReconnect       = true;
-unsigned int       Configuration::defaultDatabaseConnectTimeoutSec    = 3600;
-unsigned int       Configuration::defaultDatabaseMaxReconnects        = 1;
-unsigned int       Configuration::defaultDatabaseTransactionTimeoutSec= 3600;
-size_t       const Configuration::defaultReplicationLevel             = 1;
-unsigned int const Configuration::defaultNumStripes                   = 340;
-unsigned int const Configuration::defaultNumSubStripes                = 12;
-
-
-void Configuration::translateDataDir(string& dataDir,
-                                     string const& workerName) {
-
-    string::size_type const leftPos = dataDir.find('{');
-    if (leftPos == string::npos) return;
-
-    string::size_type const rightPos = dataDir.find('}');
-    if (rightPos == string::npos) return;
-
-    if (rightPos <= leftPos) {
-        throw invalid_argument(
-                "Configuration::" + string(__func__) + "  invalid template in the data directory path: '" +
-                dataDir + "'");
-    }
-    if (dataDir.substr (leftPos, rightPos - leftPos + 1) == "{worker}") {
-        dataDir.replace(leftPos, rightPos - leftPos + 1, workerName);
-    }
-}
-
-
-Configuration::Configuration()
-    :   _requestBufferSizeBytes     (defaultRequestBufferSizeBytes),
-        _retryTimeoutSec            (defaultRetryTimeoutSec),
-        _controllerThreads          (defaultControllerThreads),
-        _controllerHttpPort         (defaultControllerHttpPort),
-        _controllerHttpThreads      (defaultControllerHttpThreads),
-        _controllerRequestTimeoutSec(defaultControllerRequestTimeoutSec),
-        _jobTimeoutSec              (defaultJobTimeoutSec),
-        _jobHeartbeatTimeoutSec     (defaultJobHeartbeatTimeoutSec),
-        _xrootdAutoNotify           (defaultXrootdAutoNotify),
-        _xrootdHost                 (defaultXrootdHost),
-        _xrootdPort                 (defaultXrootdPort),
-        _xrootdTimeoutSec           (defaultXrootdTimeoutSec),
-        _workerTechnology           (defaultWorkerTechnology),
-        _workerNumProcessingThreads (defaultWorkerNumProcessingThreads),
-        _fsNumProcessingThreads     (defaultFsNumProcessingThreads),
-        _workerFsBufferSizeBytes    (defaultWorkerFsBufferSizeBytes),
-        _databaseTechnology         (defaultDatabaseTechnology),
-        _databaseHost               (defaultDatabaseHost),
-        _databasePort               (defaultDatabasePort),
-        _databaseUser               (defaultDatabaseUser),
-        _databasePassword           (defaultDatabasePassword),
-        _databaseName               (defaultDatabaseName),
-        _databaseServicesPoolSize   (defaultDatabaseServicesPoolSize),
-        _qservMasterDatabaseHost    (defaultQservMasterDatabaseHost),
-        _qservMasterDatabasePort    (defaultQservMasterDatabasePort),
-        _qservMasterDatabaseUser    (defaultQservMasterDatabaseUser),
-        _qservMasterDatabasePassword(defaultQservMasterDatabasePassword),
-        _qservMasterDatabaseName    (defaultQservMasterDatabaseName),
-        _qservMasterDatabaseServicesPoolSize(defaultQservMasterDatabaseServicesPoolSize) {
-}
-
-
-string Configuration::context(string const& func) const {
-    string const str = "CONFIG   " + func;
-    return str;
-}
-
-
-vector<string> Configuration::workers(bool isEnabled,
-                                      bool isReadOnly) const {
-
+void Configuration::reload() {
     util::Lock lock(_mtx, context(__func__));
-
-    vector<string> names;
-    for (auto&& entry: _workerInfo) {
-        auto const& name = entry.first;
-        auto const& info = entry.second;
-        if (isEnabled) {
-            if (info.isEnabled and (isReadOnly == info.isReadOnly)) {
-                names.push_back(name);
-            }
-        } else {
-            if (not info.isEnabled) {
-                names.push_back(name);
-            }
-        }
+    if (_impl->prefix() != "map") {
+        bool const showPassword = true;
+        _impl = ConfigurationBase::load(_impl->configUrl(showPassword));
     }
-    return names;
+}
+
+
+void Configuration::reload(string const& configUrl) {
+    util::Lock lock(_mtx, context(__func__));
+    _impl = ConfigurationBase::load(configUrl);
+}
+
+
+void Configuration::reload(std::map<std::string, std::string> const& kvMap) {
+    util::Lock lock(_mtx, context(__func__));
+    if (_impl->prefix() != "map") _impl = ConfigurationBase::load(kvMap);
+}
+
+    
+string Configuration::prefix() const {
+    util::Lock lock(_mtx, context(__func__));
+    return _impl->prefix();
+}
+
+
+string Configuration::configUrl(bool showPassword) const {
+    util::Lock lock(_mtx, context(__func__));
+    return _impl->configUrl(showPassword);    
+}
+
+vector<string> Configuration::workers(bool isEnabled, bool isReadOnly) const {
+    util::Lock lock(_mtx, context(__func__));
+    return _impl->workers(isEnabled, isReadOnly);
 }
 
 
 vector<string> Configuration::allWorkers() const {
     util::Lock lock(_mtx, context(__func__));
-    vector<string> names;
-    for (auto&& entry: _workerInfo) {
-        auto const& name = entry.first;
-        names.push_back(name);
-    }
-    return names;
+    return _impl->allWorkers();
+}
+
+
+size_t Configuration::requestBufferSizeBytes() const {
+    util::Lock lock(_mtx, context(__func__));
+    return _impl->requestBufferSizeBytes();
+}
+
+
+void Configuration::setRequestBufferSizeBytes(size_t val) {
+    util::Lock lock(_mtx, context(__func__));
+    _impl->setRequestBufferSizeBytes(val);
+}
+
+
+unsigned int Configuration::retryTimeoutSec() const {
+    util::Lock lock(_mtx, context(__func__));
+    return _impl->retryTimeoutSec();
+}
+
+
+void Configuration::setRetryTimeoutSec(unsigned int val) {
+    util::Lock lock(_mtx, context(__func__));
+    _impl->setRetryTimeoutSec(val);
+}
+
+
+size_t Configuration::controllerThreads() const {
+    util::Lock lock(_mtx, context(__func__));
+    return _impl->controllerThreads();
+}
+
+
+void Configuration::setControllerThreads(size_t val) {
+    util::Lock lock(_mtx, context(__func__));
+    _impl->setControllerThreads(val);
+}
+
+
+uint16_t Configuration::controllerHttpPort() const {
+    util::Lock lock(_mtx, context(__func__));
+    return _impl->controllerHttpPort();
+}
+
+
+void Configuration::setControllerHttpPort(uint16_t val) {
+    util::Lock lock(_mtx, context(__func__));
+    _impl->setControllerHttpPort(val);
+}
+
+
+size_t Configuration::controllerHttpThreads() const {
+    util::Lock lock(_mtx, context(__func__));
+    return _impl->controllerHttpThreads();
+}
+
+
+void Configuration::setControllerHttpThreads(size_t val) {
+    util::Lock lock(_mtx, context(__func__));
+    _impl->setControllerHttpThreads(val);
+}
+
+
+unsigned int Configuration::controllerRequestTimeoutSec() const {
+    util::Lock lock(_mtx, context(__func__));
+    return _impl->controllerRequestTimeoutSec();
+}
+
+
+string Configuration::controllerEmptyChunksDir() const {
+    util::Lock lock(_mtx, context(__func__));
+    return _impl->controllerEmptyChunksDir();
+}
+
+
+void Configuration::setControllerRequestTimeoutSec(unsigned int val) {
+    util::Lock lock(_mtx, context(__func__));
+    _impl->setControllerRequestTimeoutSec(val);
+}
+
+
+unsigned int Configuration::jobTimeoutSec() const {
+    util::Lock lock(_mtx, context(__func__));
+    return _impl->jobTimeoutSec();
+}
+
+
+void Configuration::setJobTimeoutSec(unsigned int val) {
+    util::Lock lock(_mtx, context(__func__));
+    _impl->setJobTimeoutSec(val);
+}
+
+
+unsigned int Configuration::jobHeartbeatTimeoutSec() const {
+    util::Lock lock(_mtx, context(__func__));
+    return _impl->jobHeartbeatTimeoutSec();
+}
+
+
+void Configuration::setJobHeartbeatTimeoutSec(unsigned int val) {
+    util::Lock lock(_mtx, context(__func__));
+    _impl->setJobHeartbeatTimeoutSec(val);
+}
+
+
+bool Configuration::xrootdAutoNotify() const {
+    util::Lock lock(_mtx, context(__func__));
+    return _impl->xrootdAutoNotify();
+}
+
+
+void Configuration::setXrootdAutoNotify(bool val) {
+    util::Lock lock(_mtx, context(__func__));
+    _impl->setXrootdAutoNotify(val);
+}
+
+
+string Configuration::xrootdHost() const {
+    util::Lock lock(_mtx, context(__func__));
+    return _impl->xrootdHost();
+}
+
+
+void Configuration::setXrootdHost(string const& val) {
+    util::Lock lock(_mtx, context(__func__));
+    _impl->setXrootdHost(val);
+}
+
+
+uint16_t Configuration::xrootdPort() const {
+    util::Lock lock(_mtx, context(__func__));
+    return _impl->xrootdPort();
+}
+
+
+void Configuration::setXrootdPort(uint16_t val) {
+    util::Lock lock(_mtx, context(__func__));
+    _impl->setXrootdPort(val);
+}
+
+
+unsigned int Configuration::xrootdTimeoutSec() const {
+    util::Lock lock(_mtx, context(__func__));
+    return _impl->xrootdTimeoutSec();
+}
+
+
+void Configuration::setXrootdTimeoutSec(unsigned int val) {
+    util::Lock lock(_mtx, context(__func__));
+    _impl->setXrootdTimeoutSec(val);
+}
+
+
+string Configuration::databaseTechnology() const {
+    util::Lock lock(_mtx, context(__func__));
+    return _impl->databaseTechnology();
+}
+
+
+string Configuration::databaseHost() const {
+    util::Lock lock(_mtx, context(__func__));
+    return _impl->databaseHost();
+}
+
+
+uint16_t Configuration::databasePort() const {
+    util::Lock lock(_mtx, context(__func__));
+    return _impl->databasePort();
+}
+
+
+string Configuration::databaseUser() const {
+    util::Lock lock(_mtx, context(__func__));
+    return _impl->databaseUser();
+}
+
+
+string Configuration::databasePassword() const {
+    util::Lock lock(_mtx, context(__func__));
+    return _impl->databasePassword();
+}
+
+
+string Configuration::databaseName() const {
+    util::Lock lock(_mtx, context(__func__));
+    return _impl->databaseName();
+}
+
+
+size_t Configuration::databaseServicesPoolSize() const {
+    util::Lock lock(_mtx, context(__func__));
+    return _impl->databaseServicesPoolSize();
+}
+
+
+void Configuration::setDatabaseServicesPoolSize(size_t val) {
+    util::Lock lock(_mtx, context(__func__));
+    _impl->setDatabaseServicesPoolSize(val);
+}
+
+
+string Configuration::qservMasterDatabaseHost() const {
+    util::Lock lock(_mtx, context(__func__));
+    return _impl->qservMasterDatabaseHost();
+}
+
+
+uint16_t Configuration::qservMasterDatabasePort() const {
+    util::Lock lock(_mtx, context(__func__));
+    return _impl->qservMasterDatabasePort();
+}
+
+
+string Configuration::qservMasterDatabaseUser() const {
+    util::Lock lock(_mtx, context(__func__));
+    return _impl->qservMasterDatabaseUser();
+}
+
+
+string Configuration::qservMasterDatabaseName() const {
+    util::Lock lock(_mtx, context(__func__));
+    return _impl->qservMasterDatabaseName();
+}
+
+
+size_t Configuration::qservMasterDatabaseServicesPoolSize() const {
+    util::Lock lock(_mtx, context(__func__));
+    return _impl->qservMasterDatabaseServicesPoolSize();
+}
+
+
+string Configuration::qservMasterDatabaseTmpDir() const {
+    util::Lock lock(_mtx, context(__func__));
+    return _impl->qservMasterDatabaseTmpDir();
 }
 
 
 vector<string> Configuration::databaseFamilies() const {
-
     util::Lock lock(_mtx, context(__func__));
-
-    vector<string> families;
-    for (auto&& itr: _databaseFamilyInfo) {
-        families.push_back(itr.first);
-    }
-    return families;
+    return _impl->databaseFamilies();
 }
 
 
 bool Configuration::isKnownDatabaseFamily(string const& name) const {
-
     util::Lock lock(_mtx, context(__func__));
-
-    return _databaseFamilyInfo.count(name);
-}
-
-
-size_t Configuration::replicationLevel(string const& family) const {
-
-    util::Lock lock(_mtx, context(__func__));
-
-    auto const itr = _databaseFamilyInfo.find(family);
-    if (itr == _databaseFamilyInfo.end()) {
-        throw invalid_argument(
-                "Configuration::" + string(__func__) + "  unknown database family: '" +
-                family + "'");
-    }
-    return itr->second.replicationLevel;
+    return _impl->isKnownDatabaseFamily(name);
 }
 
 
 DatabaseFamilyInfo Configuration::databaseFamilyInfo(string const& name) const {
-
     util::Lock lock(_mtx, context(__func__));
-
-    auto&& itr = _databaseFamilyInfo.find(name);
-    if (itr == _databaseFamilyInfo.end()) {
-        throw invalid_argument(
-                "Configuration::" + string(__func__) + "  unknown database family: '" + name + "'");
-    }
-    return itr->second;
+    return _impl->databaseFamilyInfo(name);
 }
 
 
-vector<string> Configuration::databases(string const& family) const {
-
-    util::Lock lock(_mtx, context() + string(__func__) + "(family)");
-
-    if (not family.empty() and not _databaseFamilyInfo.count(family)) {
-        throw invalid_argument(
-                "Configuration::" + string(__func__) + "  unknown database family: '" +
-                family + "'");
-    }
-    vector<string> names;
-    for (auto&& entry: _databaseInfo) {
-        if (not family.empty() and (family != entry.second.family)) {
-            continue;
-        }
-        names.push_back(entry.first);
-    }
-    return names;
+DatabaseFamilyInfo Configuration::addDatabaseFamily(DatabaseFamilyInfo const& info) {
+    util::Lock lock(_mtx, context(__func__));
+    return _impl->addDatabaseFamily(info);
 }
 
 
-bool Configuration::isKnownWorker(string const& name) const {
-
+void Configuration::deleteDatabaseFamily(string const& name) {
     util::Lock lock(_mtx, context(__func__));
-
-    return _workerInfo.count(name) > 0;
+    _impl->deleteDatabaseFamily(name);
 }
 
 
-WorkerInfo Configuration::workerInfo(string const& name) const {
-
+size_t Configuration::replicationLevel(string const& family) const {
     util::Lock lock(_mtx, context(__func__));
+    return _impl->replicationLevel(family);
+}
 
-    auto const itr = _workerInfo.find(name);
-    if (itr == _workerInfo.end()) {
-        throw invalid_argument(
-                "Configuration::" + string(__func__) + "  unknown worker: '" + name + "'");
-    }
-    return itr->second;
+
+vector<string> Configuration::databases(string const& family, bool allDatabases, bool isPublished) const {
+    util::Lock lock(_mtx, context(__func__));
+    return _impl->databases(family, allDatabases, isPublished);
 }
 
 
 bool Configuration::isKnownDatabase(string const& name) const {
-
     util::Lock lock(_mtx, context(__func__));
-
-    return _databaseInfo.count(name) > 0;
+    return _impl->isKnownDatabase(name);
 }
 
 
 DatabaseInfo Configuration::databaseInfo(string const& name) const {
-
     util::Lock lock(_mtx, context(__func__));
-
-    auto&& itr = _databaseInfo.find(name);
-    if (itr == _databaseInfo.end()) {
-        throw invalid_argument(
-                "Configuration::" + string(__func__) + "  unknown database: '" + name + "'");
-    }
-    return itr->second;
+    return _impl->databaseInfo(name);
 }
 
 
-bool Configuration::setDatabaseAllowReconnect(bool value) {
-    swap(value, defaultDatabaseAllowReconnect);
-    return value;
+DatabaseInfo Configuration::addDatabase(DatabaseInfo const& info) {
+    util::Lock lock(_mtx, context(__func__));
+    return _impl->addDatabase(info);
 }
 
 
-unsigned int Configuration::setDatabaseConnectTimeoutSec(unsigned int value) {
-    if (0 == value) {
-        throw invalid_argument(
-                "Configuration::" + string(__func__) + "  0 is not allowed as a value");
-    }
-    swap(value, defaultDatabaseConnectTimeoutSec);
-    return value;
+DatabaseInfo Configuration::publishDatabase(string const& name) {
+    util::Lock lock(_mtx, context(__func__));
+    return _impl->publishDatabase(name);
 }
 
 
-unsigned int Configuration::setDatabaseMaxReconnects(unsigned int value) {
-    if (0 == value) {
-        throw invalid_argument(
-                "Configuration::" + string(__func__) + "  0 is not allowed as a value");
-    }
-    swap(value, defaultDatabaseMaxReconnects);
-    return value;
+void Configuration::deleteDatabase(string const& name) {
+    util::Lock lock(_mtx, context(__func__));
+    _impl->deleteDatabase(name);
 }
 
 
-unsigned int Configuration::setDatabaseTransactionTimeoutSec(unsigned int value) {
-    if (0 == value) {
-        throw invalid_argument(
-                "Configuration::" + string(__func__) + "  0 is not allowed as a value");
-    }
-    swap(value, defaultDatabaseTransactionTimeoutSec);
-    return value;
+DatabaseInfo Configuration::addTable(string const& database, string const& table, bool isPartitioned,
+                                     list<pair<string,string>> const& columns, bool isDirectorTable,
+                                     string const& directorTableKey, string const& chunkIdKey,
+                                     string const& subChunkIdKey, string const& latitudeColName,
+                                     string const& longitudeColName) {
+    util::Lock lock(_mtx, context(__func__));
+    return _impl->addTable(database, table, isPartitioned, columns,
+                           isDirectorTable, directorTableKey,
+                           chunkIdKey, subChunkIdKey, latitudeColName, longitudeColName);
+}
+
+
+DatabaseInfo Configuration::deleteTable(string const& database, string const& table) {
+    util::Lock lock(_mtx, context(__func__));
+    return _impl->deleteTable(database, table);
+}
+
+
+bool Configuration::isKnownWorker(string const& name) const {
+    util::Lock lock(_mtx, context(__func__));
+    return _impl->isKnownWorker(name);
+}
+
+
+WorkerInfo Configuration::workerInfo(string const& name) const {
+    util::Lock lock(_mtx, context(__func__));
+    return _impl->workerInfo(name);
+}
+
+
+string Configuration::workerTechnology() const {
+    util::Lock lock(_mtx, context(__func__));
+    return _impl->workerTechnology();
+}
+
+
+void Configuration::setWorkerTechnology(string const& val) {
+    util::Lock lock(_mtx, context(__func__));
+    _impl->setWorkerTechnology(val);
+}
+
+
+void Configuration::addWorker(WorkerInfo const& info) {
+    util::Lock lock(_mtx, context(__func__));
+    return _impl->addWorker(info);
+}
+
+
+void Configuration::deleteWorker(string const& name) {
+    util::Lock lock(_mtx, context(__func__));
+    return _impl->deleteWorker(name);
+}
+
+
+WorkerInfo Configuration::disableWorker(string const& name, bool disable) {
+    util::Lock lock(_mtx, context(__func__));
+    return _impl->disableWorker(name, disable);
+}
+
+
+WorkerInfo Configuration::setWorkerReadOnly(string const& name, bool readOnly) {
+    util::Lock lock(_mtx, context(__func__));
+    return _impl->setWorkerReadOnly(name, readOnly);
+}
+
+
+WorkerInfo Configuration::setWorkerSvcHost(string const& name, string const& host) {
+    util::Lock lock(_mtx, context(__func__));
+    return _impl->setWorkerSvcHost(name, host);
+}
+
+
+WorkerInfo Configuration::setWorkerSvcPort(string const& name, uint16_t port) {
+    util::Lock lock(_mtx, context(__func__));
+    return _impl->setWorkerSvcPort(name, port);
+}
+
+
+WorkerInfo Configuration::setWorkerFsHost(string const& name, string const& host) {
+    util::Lock lock(_mtx, context(__func__));
+    return _impl->setWorkerFsHost(name, host);
+}
+
+
+WorkerInfo Configuration::setWorkerFsPort(string const& name, uint16_t port) {
+    util::Lock lock(_mtx, context(__func__));
+    return _impl->setWorkerFsPort(name, port);
+}
+
+
+WorkerInfo Configuration::setWorkerDataDir(string const& name, string const& dataDir) {
+    util::Lock lock(_mtx, context(__func__));
+    return _impl->setWorkerDataDir(name, dataDir);
+}
+
+
+WorkerInfo Configuration::setWorkerDbHost(string const& name, string const& host) {
+    util::Lock lock(_mtx, context(__func__));
+    return _impl->setWorkerDbHost(name, host);
+}
+
+
+WorkerInfo Configuration::setWorkerDbPort(string const& name, uint16_t port) {
+    util::Lock lock(_mtx, context(__func__));
+    return _impl->setWorkerDbPort(name, port);
+}
+
+
+WorkerInfo Configuration::setWorkerDbUser(string const& name, string const& user) {
+    util::Lock lock(_mtx, context(__func__));
+    return _impl->setWorkerDbUser(name, user);
+}
+
+
+WorkerInfo Configuration::setWorkerLoaderHost(string const& name, string const& host) {
+    util::Lock lock(_mtx, context(__func__));
+    return _impl->setWorkerLoaderHost(name, host);
+}
+
+
+WorkerInfo Configuration::setWorkerLoaderPort(string const& name, uint16_t port) {
+    util::Lock lock(_mtx, context(__func__));
+    return _impl->setWorkerLoaderPort(name, port);
+}
+
+
+WorkerInfo Configuration::setWorkerLoaderTmpDir(string const& name, string const& tmpDir) {
+    util::Lock lock(_mtx, context(__func__));
+    return _impl->setWorkerLoaderTmpDir(name, tmpDir);
+}
+
+
+size_t Configuration::workerNumProcessingThreads() const {
+    util::Lock lock(_mtx, context(__func__));
+    return _impl->workerNumProcessingThreads();
+}
+
+
+void Configuration::setWorkerNumProcessingThreads(size_t val) {
+    util::Lock lock(_mtx, context(__func__));
+    _impl->setWorkerNumProcessingThreads(val);
+}
+
+
+size_t Configuration::fsNumProcessingThreads() const {
+    util::Lock lock(_mtx, context(__func__));
+    return _impl->fsNumProcessingThreads();
+}
+
+
+void Configuration::setFsNumProcessingThreads(size_t val) {
+    util::Lock lock(_mtx, context(__func__));
+    _impl->setFsNumProcessingThreads(val);
+}
+
+
+size_t Configuration::workerFsBufferSizeBytes() const {
+    util::Lock lock(_mtx, context(__func__));
+    return _impl->workerFsBufferSizeBytes();
+}
+
+
+void Configuration::setWorkerFsBufferSizeBytes(size_t val) {
+    util::Lock lock(_mtx, context(__func__));
+    _impl->setWorkerFsBufferSizeBytes(val);
+}
+
+
+size_t Configuration::loaderNumProcessingThreads() const {
+    util::Lock lock(_mtx, context(__func__));
+    return _impl->loaderNumProcessingThreads();
+}
+
+
+void Configuration::setLoaderNumProcessingThreads(size_t val) {
+    util::Lock lock(_mtx, context(__func__));
+    _impl->setLoaderNumProcessingThreads(val);
 }
 
 
 void Configuration::dumpIntoLogger() const {
-    LOGS(_log, LOG_LVL_DEBUG, asString());
+    util::Lock lock(_mtx, context(__func__));
+    _impl->dumpIntoLogger();
 }
 
 
 string Configuration::asString() const {
-
-    ostringstream ss;
-    ss << context() << "defaultRequestBufferSizeBytes:        " << defaultRequestBufferSizeBytes << "\n";
-    ss << context() << "defaultRetryTimeoutSec:               " << defaultRetryTimeoutSec << "\n";
-    ss << context() << "defaultControllerThreads:             " << defaultControllerThreads << "\n";
-    ss << context() << "defaultControllerHttpPort:            " << defaultControllerHttpPort << "\n";
-    ss << context() << "defaultControllerHttpThreads:         " << defaultControllerHttpThreads << "\n";
-    ss << context() << "defaultControllerRequestTimeoutSec:   " << defaultControllerRequestTimeoutSec << "\n";
-    ss << context() << "defaultJobTimeoutSec:                 " << defaultJobTimeoutSec << "\n";
-    ss << context() << "defaultJobHeartbeatTimeoutSec:        " << defaultJobHeartbeatTimeoutSec << "\n";
-    ss << context() << "defaultXrootdAutoNotify:              " << (defaultXrootdAutoNotify ? "1" : "0") << "\n";
-    ss << context() << "defaultXrootdHost:                    " << defaultXrootdHost << "\n";
-    ss << context() << "defaultXrootdPort:                    " << defaultXrootdPort << "\n";
-    ss << context() << "defaultXrootdTimeoutSec:              " << defaultXrootdTimeoutSec << "\n";
-    ss << context() << "defaultWorkerTechnology:              " << defaultWorkerTechnology << "\n";
-    ss << context() << "defaultWorkerNumProcessingThreads:    " << defaultWorkerNumProcessingThreads << "\n";
-    ss << context() << "defaultFsNumProcessingThreads:        " << defaultFsNumProcessingThreads << "\n";
-    ss << context() << "defaultWorkerFsBufferSizeBytes:       " << defaultWorkerFsBufferSizeBytes << "\n";
-    ss << context() << "defaultWorkerSvcHost:                 " << defaultWorkerSvcHost << "\n";
-    ss << context() << "defaultWorkerSvcPort:                 " << defaultWorkerSvcPort << "\n";
-    ss << context() << "defaultWorkerFsHost:                  " << defaultWorkerFsHost << "\n";
-    ss << context() << "defaultWorkerFsPort:                  " << defaultWorkerFsPort << "\n";
-    ss << context() << "defaultDataDir:                       " << defaultDataDir << "\n";
-    ss << context() << "defaultWorkerDbHost:                  " << defaultWorkerDbHost << "\n";
-    ss << context() << "defaultWorkerDbPort:                  " << defaultWorkerDbPort << "\n";
-    ss << context() << "defaultWorkerDbUser:                  " << defaultWorkerDbUser << "\n";
-    ss << context() << "defaultDatabaseTechnology:            " << defaultDatabaseTechnology << "\n";
-    ss << context() << "defaultDatabaseHost:                  " << defaultDatabaseHost << "\n";
-    ss << context() << "defaultDatabasePort:                  " << defaultDatabasePort << "\n";
-    ss << context() << "defaultDatabaseUser:                  " << defaultDatabaseUser << "\n";
-    ss << context() << "defaultDatabaseName:                  " << defaultDatabaseName << "\n";
-    ss << context() << "defaultDatabaseServicesPoolSize:      " << defaultDatabaseServicesPoolSize << "\n";
-    ss << context() << "defaultQservMasterDatabaseHost:             " << defaultQservMasterDatabaseHost << "\n";
-    ss << context() << "defaultQservMasterDatabasePort:             " << defaultQservMasterDatabasePort << "\n";
-    ss << context() << "defaultQservMasterDatabaseUser:             " << defaultQservMasterDatabaseUser << "\n";
-    ss << context() << "defaultQservMasterDatabaseName:             " << defaultQservMasterDatabaseName << "\n";
-    ss << context() << "defaultQservMasterDatabaseServicesPoolSize: " << defaultQservMasterDatabaseServicesPoolSize << "\n";
-    ss << context() << "defaultDatabaseAllowReconnect:        " << (defaultDatabaseAllowReconnect ? "1" : "0") << "\n";
-    ss << context() << "defaultDatabaseConnectTimeoutSec:     " << defaultDatabaseConnectTimeoutSec << "\n";
-    ss << context() << "defaultDatabaseMaxReconnects:         " << defaultDatabaseMaxReconnects << "\n";
-    ss << context() << "defaultDatabaseTransactionTimeoutSec: " << defaultDatabaseTransactionTimeoutSec << "\n";
-    ss << context() << "defaultReplicationLevel:              " << defaultReplicationLevel << "\n";
-    ss << context() << "defaultNumStripes:                    " << defaultNumStripes << "\n";
-    ss << context() << "defaultNumSubStripes:                 " << defaultNumSubStripes << "\n";
-    ss << context() << "_requestBufferSizeBytes:              " << _requestBufferSizeBytes << "\n";
-    ss << context() << "_retryTimeoutSec:                     " << _retryTimeoutSec << "\n";
-    ss << context() << "_controllerThreads:                   " << _controllerThreads << "\n";
-    ss << context() << "_controllerHttpPort:                  " << _controllerHttpPort << "\n";
-    ss << context() << "_controllerHttpThreads:               " << _controllerHttpThreads << "\n";
-    ss << context() << "_controllerRequestTimeoutSec:         " << _controllerRequestTimeoutSec << "\n";
-    ss << context() << "_jobTimeoutSec:                       " << _jobTimeoutSec << "\n";
-    ss << context() << "_jobHeartbeatTimeoutSec:              " << _jobHeartbeatTimeoutSec << "\n";
-    ss << context() << "_xrootdAutoNotify:                    " << (_xrootdAutoNotify ? "1" : "0") << "\n";
-    ss << context() << "_xrootdHost:                          " << _xrootdHost << "\n";
-    ss << context() << "_xrootdPort:                          " << _xrootdPort << "\n";
-    ss << context() << "_xrootdTimeoutSec:                    " << _xrootdTimeoutSec << "\n";
-    ss << context() << "_workerTechnology:                    " << _workerTechnology << "\n";
-    ss << context() << "_workerNumProcessingThreads:          " << _workerNumProcessingThreads << "\n";
-    ss << context() << "_fsNumProcessingThreads:              " << _fsNumProcessingThreads << "\n";
-    ss << context() << "_workerFsBufferSizeBytes:             " << _workerFsBufferSizeBytes << "\n";
-    ss << context() << "_databaseTechnology:                  " << _databaseTechnology << "\n";
-    ss << context() << "_databaseHost:                        " << _databaseHost << "\n";
-    ss << context() << "_databasePort:                        " << _databasePort << "\n";
-    ss << context() << "_databaseUser:                        " << _databaseUser << "\n";
-    ss << context() << "_databaseName:                        " << _databaseName << "\n";
-    ss << context() << "_databaseServicesPoolSize:            " << _databaseServicesPoolSize << "\n";
-    ss << context() << "_qservMasterDatabaseHost:             " << _qservMasterDatabaseHost << "\n";
-    ss << context() << "_qservMasterDatabasePort:             " << _qservMasterDatabasePort << "\n";
-    ss << context() << "_qservMasterDatabaseUser:             " << _qservMasterDatabaseUser << "\n";
-    ss << context() << "_qservMasterDatabaseName:             " << _qservMasterDatabaseName << "\n";
-    ss << context() << "_qservMasterDatabaseServicesPoolSize: " << _qservMasterDatabaseServicesPoolSize << "\n";
-    for (auto&& elem: _workerInfo) {
-        ss << context() << elem.second << "\n";
-    }
-    for (auto&& elem: _databaseInfo) {
-        ss << context() << elem.second << "\n";
-    }
-    for (auto&& elem: _databaseFamilyInfo) {
-        ss << context()
-             << "databaseFamilyInfo["<< elem.first << "]: " << elem.second << "\n";
-    }
-    return ss.str();
-}
-
-
-map<string, WorkerInfo>::iterator Configuration::safeFindWorker(util::Lock const& lock,
-                                                                string const& name,
-                                                                string const& context) {
-    auto itr = _workerInfo.find(name);
-    if (_workerInfo.end() != itr) return itr;
-    throw invalid_argument(context + "  no such worker: " + name);
+    util::Lock lock(_mtx, context(__func__));
+    return _impl->asString();
 }
 
 }}} // namespace lsst::qserv::replica

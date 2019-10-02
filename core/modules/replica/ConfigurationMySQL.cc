@@ -93,7 +93,7 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
-string ConfigurationMySQL::dump2init(Configuration::Ptr const& config) {
+string ConfigurationMySQL::dump2init(ConfigurationIFace::Ptr const& config) {
 
     using namespace std;
 
@@ -111,7 +111,10 @@ string ConfigurationMySQL::dump2init(Configuration::Ptr const& config) {
     ::configInsert(str, "controller", "request_timeout_sec",        config->controllerRequestTimeoutSec());
     ::configInsert(str, "controller", "job_timeout_sec",            config->jobTimeoutSec());
     ::configInsert(str, "controller", "job_heartbeat_sec",          config->jobHeartbeatTimeoutSec());
+    ::configInsert(str, "controller", "empty_chunks_dir",           config->controllerEmptyChunksDir());
     ::configInsert(str, "database",   "services_pool_size",         config->databaseServicesPoolSize());
+    ::configInsert(str, "database",   "qserv_master_services_pool_size", config->qservMasterDatabaseServicesPoolSize());
+    ::configInsert(str, "database",   "qserv_master_tmp_dir",       config->qservMasterDatabaseTmpDir());
     ::configInsert(str, "xrootd",     "auto_notify",                config->xrootdAutoNotify() ? 1 : 0);
     ::configInsert(str, "xrootd",     "host",                       config->xrootdHost());
     ::configInsert(str, "xrootd",     "port",                       config->xrootdPort());
@@ -120,6 +123,7 @@ string ConfigurationMySQL::dump2init(Configuration::Ptr const& config) {
     ::configInsert(str, "worker",     "num_svc_processing_threads", config->workerNumProcessingThreads());
     ::configInsert(str, "worker",     "num_fs_processing_threads",  config->fsNumProcessingThreads());
     ::configInsert(str, "worker",     "fs_buf_size_bytes",          config->workerFsBufferSizeBytes());
+    ::configInsert(str, "worker",     "num_loader_processing_threads", config->loaderNumProcessingThreads());
     ::configInsert(str, "worker",     "svc_host",                   defaultWorkerSvcHost);
     ::configInsert(str, "worker",     "svc_port",                   defaultWorkerSvcPort);
     ::configInsert(str, "worker",     "fs_host",                    defaultWorkerFsHost);
@@ -128,6 +132,9 @@ string ConfigurationMySQL::dump2init(Configuration::Ptr const& config) {
     ::configInsert(str, "worker",     "db_host",                    defaultWorkerDbHost);
     ::configInsert(str, "worker",     "db_port",                    defaultWorkerDbPort);
     ::configInsert(str, "worker",     "db_user",                    defaultWorkerDbUser);
+    ::configInsert(str, "worker",     "loader_host",                defaultWorkerLoaderHost);
+    ::configInsert(str, "worker",     "loader_port",                defaultWorkerLoaderPort);
+    ::configInsert(str, "worker",     "loader_tmp_dir",             defaultWorkerLoaderTmpDir);
 
     for (auto&& worker: config->allWorkers()) {
         auto&& info = config->workerInfo(worker);
@@ -142,7 +149,10 @@ string ConfigurationMySQL::dump2init(Configuration::Ptr const& config) {
             << "'" <<  info.dataDir << "',"
             << "'" <<  info.dbHost  << "',"
             <<         info.dbPort  << ","
-            << "'" <<  info.dbUser  << "'"
+            << "'" <<  info.dbUser  << "',"
+            << "'" <<  info.loaderHost   << "',"
+            <<         info.loaderPort   << ","
+            << "'" <<  info.loaderTmpDir << "'"
             << ");\n";
     }
     for (auto&& family: config->databaseFamilies()) {
@@ -152,22 +162,31 @@ string ConfigurationMySQL::dump2init(Configuration::Ptr const& config) {
             << "'" << familyInfo.name << "',"
             <<        familyInfo.replicationLevel << ","
             <<        familyInfo.numStripes << ","
-            <<        familyInfo.numSubStripes
+            <<        familyInfo.numSubStripes << ","
+            <<        familyInfo.overlap
             << ");\n";
 
-        for (auto&& database: config->databases(familyInfo.name)) {
+        bool const allDatabases = true;
+        for (auto&& database: config->databases(familyInfo.name, allDatabases)) {
             auto&& databaseInfo = config->databaseInfo(database);
 
             str << "INSERT INTO `config_database` VALUES ("
-                << "'" << databaseInfo.name << "','" << databaseInfo.family << "');\n";
+                << "'" << databaseInfo.name << "','" << databaseInfo.family
+                << "'," << databaseInfo.isPublished
+                << "','" << databaseInfo.chunkIdKey << "','" << databaseInfo.subChunkIdKey << "');\n";
 
             for (auto&& table: databaseInfo.partitionedTables) {
-                str << "INSERT INTO `config_database_table` VALUES ("
-                    << "'" << databaseInfo.name << "','" << table << "',1);\n";
+                if (table == databaseInfo.directorTable) {
+                    str << "INSERT INTO `config_database_table` VALUES ("
+                        << "'" << databaseInfo.name << "','" << table << "',1,1,'" << databaseInfo.directorTableKey << "');\n";
+                } else {
+                    str << "INSERT INTO `config_database_table` VALUES ("
+                        << "'" << databaseInfo.name << "','" << table << "',1,0,'');\n";
+                }
             }
             for (auto&& table: databaseInfo.regularTables) {
                 str << "INSERT INTO `config_database_table` VALUES ("
-                    << "'" << databaseInfo.name << "','" << table << "',0);\n";
+                    << "'" << databaseInfo.name << "','" << table << "',0,0,'');\n";
             }
         }
     }
@@ -176,7 +195,7 @@ string ConfigurationMySQL::dump2init(Configuration::Ptr const& config) {
 
 
 ConfigurationMySQL::ConfigurationMySQL(database::mysql::ConnectionParams const& connectionParams)
-    :   Configuration(),
+    :   ConfigurationBase(),
         _connectionParams(connectionParams),
         _log(LOG_GET("lsst.qserv.replica.ConfigurationMySQL")) {
 
@@ -189,8 +208,8 @@ string ConfigurationMySQL::prefix() const {
 }
 
 
-string ConfigurationMySQL::configUrl() const {
-    return _connectionParams.toString();
+string ConfigurationMySQL::configUrl(bool showPassword) const {
+    return _connectionParams.toString(showPassword);
 }
 
 
@@ -225,9 +244,6 @@ void ConfigurationMySQL::addWorker(WorkerInfo const& info) {
         );
 
         // Then update the transient state
-
-        util::Lock lock(_mtx, context_);
-
         _workerInfo[info.name] = info;
 
     } catch (database::mysql::Error const& ex) {
@@ -259,9 +275,7 @@ void ConfigurationMySQL::deleteWorker(string const& name) {
 
         // Then update the transient state
 
-        util::Lock lock(_mtx, context_);
-
-        auto itr = safeFindWorker(lock, name, context_);
+        auto itr = safeFindWorker(name, context_);
         _workerInfo.erase(itr);
 
     } catch (database::mysql::Error const& ex) {
@@ -298,9 +312,7 @@ WorkerInfo ConfigurationMySQL::disableWorker(string const& name,
 
         // Then update the transient state
 
-        util::Lock lock(_mtx, context_);
-
-        auto itr = safeFindWorker(lock, name, context_);
+        auto itr = safeFindWorker(name, context_);
         itr->second.isEnabled = not disable;
 
     } catch (database::mysql::Error const& ex) {
@@ -338,9 +350,7 @@ WorkerInfo ConfigurationMySQL::setWorkerReadOnly(string const& name,
 
         // Then update the transient state
 
-        util::Lock lock(_mtx, context_);
-
-        auto itr = safeFindWorker(lock, name, context_);
+        auto itr = safeFindWorker(name, context_);
         itr->second.isReadOnly = readOnly;
 
     } catch (database::mysql::Error const& ex) {
@@ -376,9 +386,7 @@ WorkerInfo ConfigurationMySQL::setWorkerSvcHost(string const& name,
 
         // Then update the transient state 
 
-        util::Lock lock(_mtx, context_);
-
-        auto itr = safeFindWorker(lock, name, context_);
+        auto itr = safeFindWorker(name, context_);
         itr->second.svcHost = host;
 
     } catch (database::mysql::Error const& ex) {
@@ -414,9 +422,7 @@ WorkerInfo ConfigurationMySQL::setWorkerSvcPort(string const& name,
 
         // Then update the transient state 
 
-        util::Lock lock(_mtx, context_);
-
-        auto itr = safeFindWorker(lock, name, context_);
+        auto itr = safeFindWorker(name, context_);
         itr->second.svcPort = port;
 
     } catch (database::mysql::Error const& ex) {
@@ -452,9 +458,7 @@ WorkerInfo ConfigurationMySQL::setWorkerFsHost(string const& name,
 
         // Then update the transient state 
 
-        util::Lock lock(_mtx, context_);
-
-        auto itr = safeFindWorker(lock, name, context_);
+        auto itr = safeFindWorker(name, context_);
         itr->second.fsHost = host;
 
     } catch (database::mysql::Error const& ex) {
@@ -489,10 +493,8 @@ WorkerInfo ConfigurationMySQL::setWorkerFsPort(string const& name,
         );
 
         // Then update the transient state 
-
-        util::Lock lock(_mtx, context_);
     
-        auto itr = safeFindWorker(lock, name, context_);
+        auto itr = safeFindWorker(name, context_);
         itr->second.fsPort = port;
 
     } catch (database::mysql::Error const& ex) {
@@ -528,9 +530,7 @@ WorkerInfo ConfigurationMySQL::setWorkerDataDir(string const& name,
 
         // Then update the transient state 
 
-        util::Lock lock(_mtx, context_);
-
-        auto itr = safeFindWorker(lock, name, context_);
+        auto itr = safeFindWorker(name, context_);
         itr->second.dataDir = dataDir;
 
     } catch (database::mysql::Error const& ex) {
@@ -565,9 +565,7 @@ WorkerInfo ConfigurationMySQL::setWorkerDbHost(std::string const& name,
 
         // Then update the transient state 
 
-        util::Lock lock(_mtx, context_);
-
-        auto itr = safeFindWorker(lock, name, context_);
+        auto itr = safeFindWorker(name, context_);
         itr->second.dbHost = host;
 
     } catch (database::mysql::Error const& ex) {
@@ -601,10 +599,8 @@ WorkerInfo ConfigurationMySQL::setWorkerDbPort(std::string const& name,
         );
 
         // Then update the transient state 
-
-        util::Lock lock(_mtx, context_);
     
-        auto itr = safeFindWorker(lock, name, context_);
+        auto itr = safeFindWorker(name, context_);
         itr->second.dbPort = port;
 
     } catch (database::mysql::Error const& ex) {
@@ -639,10 +635,114 @@ WorkerInfo ConfigurationMySQL::setWorkerDbUser(std::string const& name,
 
         // Then update the transient state 
 
-        util::Lock lock(_mtx, context_);
-
-        auto itr = safeFindWorker(lock, name, context_);
+        auto itr = safeFindWorker(name, context_);
         itr->second.dbUser = user;
+
+    } catch (database::mysql::Error const& ex) {
+        LOGS(_log, LOG_LVL_ERROR, context_ << "MySQL error: " << ex.what());
+        throw;
+    }
+    return workerInfo(name);
+}
+
+
+WorkerInfo ConfigurationMySQL::setWorkerLoaderHost(std::string const& name,
+                                                   std::string const& host) {
+    string const context_ = context() + __func__;
+
+    LOGS(_log, LOG_LVL_DEBUG, context_ << "  name=" << name << " host=" << host);
+
+    database::mysql::ConnectionHandler handler;
+    try {
+
+        // First update the database
+        handler.conn = database::mysql::Connection::open(_connectionParams);
+        handler.conn->execute(
+            [&name,&host](decltype(handler.conn) conn) {
+                conn->begin();
+                conn->executeSimpleUpdateQuery(
+                    "config_worker",
+                    conn->sqlEqual("name", name),
+                    make_pair("loader_host", host));
+                conn->commit();
+            }
+        );
+
+        // Then update the transient state 
+
+        auto itr = safeFindWorker(name, context_);
+        itr->second.loaderHost = host;
+
+    } catch (database::mysql::Error const& ex) {
+        LOGS(_log, LOG_LVL_ERROR, context_ << "MySQL error: " << ex.what());
+        throw;
+    }
+    return workerInfo(name);
+}
+
+
+WorkerInfo ConfigurationMySQL::setWorkerLoaderPort(std::string const& name,
+                                                   uint16_t port) {
+    string const context_ = context() + __func__;
+
+    LOGS(_log, LOG_LVL_DEBUG, context_ << "  name=" << name << " port=" << port);
+
+    database::mysql::ConnectionHandler handler;
+    try {
+
+        // First update the database
+        handler.conn = database::mysql::Connection::open(_connectionParams);
+        handler.conn->execute(
+            [&name,port](decltype(handler.conn) conn) {
+                conn->begin();
+                conn->executeSimpleUpdateQuery(
+                    "config_worker",
+                    conn->sqlEqual("name", name),
+                    make_pair("loader_port", port));
+                conn->commit();
+            }
+        );
+
+        // Then update the transient state 
+    
+        auto itr = safeFindWorker(name, context_);
+        itr->second.loaderPort = port;
+
+    } catch (database::mysql::Error const& ex) {
+        LOGS(_log, LOG_LVL_ERROR, context_ << "MySQL error: " << ex.what());
+        throw;
+    }
+    return workerInfo(name);
+}
+
+
+WorkerInfo ConfigurationMySQL::setWorkerLoaderTmpDir(string const& name,
+                                                     string const& tmpDir) {
+
+    string const context_ = context() + __func__;
+
+    LOGS(_log, LOG_LVL_DEBUG, context_ << "  name=" << name << " dataDir=" << tmpDir);
+
+    database::mysql::ConnectionHandler handler;
+    try {
+
+        // First update the database
+        handler.conn = database::mysql::Connection::open(_connectionParams);
+        handler.conn->execute(
+            [&name,&tmpDir](decltype(handler.conn) conn) {
+                conn->begin();
+                conn->executeSimpleUpdateQuery(
+                    "config_worker",
+                    conn->sqlEqual("name", name),
+                    make_pair("loader_tmp_dir", tmpDir));
+                conn->commit();
+            }
+        );
+
+        // Then update the transient state 
+
+        auto itr = safeFindWorker(name, context_);
+        itr->second.loaderTmpDir = tmpDir;
 
     } catch (database::mysql::Error const& ex) {
         LOGS(_log, LOG_LVL_ERROR, context_ << "MySQL error: " << ex.what());
@@ -670,6 +770,9 @@ DatabaseFamilyInfo ConfigurationMySQL::addDatabaseFamily(DatabaseFamilyInfo cons
     if (info.numSubStripes == 0) {
         throw invalid_argument(context_ + "  the number of sub-stripes level can't be 0");
     }
+    if (info.overlap < 0) {
+        throw invalid_argument(context_ + "  the overlap can't have a negative value");
+    }
 
     database::mysql::ConnectionHandler handler;
     try {
@@ -684,7 +787,8 @@ DatabaseFamilyInfo ConfigurationMySQL::addDatabaseFamily(DatabaseFamilyInfo cons
                     info.name,
                     info.replicationLevel,
                     info.numStripes,
-                    info.numSubStripes
+                    info.numSubStripes,
+                    info.overlap
                 );
                 conn->commit();
             }
@@ -692,13 +796,12 @@ DatabaseFamilyInfo ConfigurationMySQL::addDatabaseFamily(DatabaseFamilyInfo cons
 
         // Then update the transient state
 
-        util::Lock lock(_mtx, context_);
-
         _databaseFamilyInfo[info.name] = DatabaseFamilyInfo{
             info.name,
             info.replicationLevel,
             info.numStripes,
             info.numSubStripes,
+            info.overlap,
             make_shared<ChunkNumberQservValidator>(
                 static_cast<int32_t>(info.numStripes),
                 static_cast<int32_t>(info.numSubStripes))
@@ -742,9 +845,6 @@ void ConfigurationMySQL::deleteDatabaseFamily(string const& name) {
         //
         // NOTE: when updating the transient state do not check if the family is still there
         // because the transient state may not be consistent with the persistent one.
-
-        util::Lock lock(_mtx, context_);
-
         _databaseFamilyInfo.erase(name);
 
         // Find and delete the relevant databases
@@ -782,15 +882,20 @@ DatabaseInfo ConfigurationMySQL::addDatabase(DatabaseInfo const& info) {
     database::mysql::ConnectionHandler handler;
     try {
 
+        auto const isNotPublished = 0;
+
         // First update the database
         handler.conn = database::mysql::Connection::open(_connectionParams);
         handler.conn->execute(
-            [&info](decltype(handler.conn) conn) {
+            [&](decltype(handler.conn) conn) {
                 conn->begin();
                 conn->executeInsertQuery(
                     "config_database",
                     info.name,
-                    info.family
+                    info.family,
+                    isNotPublished,
+                    info.chunkIdKey,
+                    info.subChunkIdKey
                 );
                 conn->commit();
             }
@@ -798,13 +903,27 @@ DatabaseInfo ConfigurationMySQL::addDatabase(DatabaseInfo const& info) {
 
         // Then update the transient state
 
-        util::Lock lock(_mtx, context_);
+        map<string,
+            list<pair<string,string>>> const noTableColumns;
+
+        string const noDirectorTable;
+        string const noDirectorTableKey;
+        string const noChunkIdKey;
+        string const noSubChunkIdKey;
 
         _databaseInfo[info.name] = DatabaseInfo{
             info.name,
             info.family,
+            isNotPublished,
             {},
-            {}
+            {},
+            noTableColumns,
+            noDirectorTable,
+            noDirectorTableKey,
+            noChunkIdKey,
+            noSubChunkIdKey,
+            map<string,string>(),
+            map<string,string>()
         };
         return _databaseInfo[info.name];
 
@@ -812,6 +931,51 @@ DatabaseInfo ConfigurationMySQL::addDatabase(DatabaseInfo const& info) {
         LOGS(_log, LOG_LVL_ERROR, context_ << "MySQL error: " << ex.what());
         throw;
     }
+}
+
+
+DatabaseInfo ConfigurationMySQL::publishDatabase(string const& name) {
+
+    string const context_ = context() + __func__;
+
+    LOGS(_log, LOG_LVL_DEBUG, context_ << "  name: " << name);
+
+    if (name.empty()) {
+        throw invalid_argument(context_ + "  the database name can't be empty");
+    }
+    if (not isKnownDatabase(name)) {
+        throw invalid_argument(context_ + "  unknown database: '" + name + "'");
+    }
+    if (databaseInfo(name).isPublished) {
+        throw logic_error(context_ + "  database is already published");
+    }
+
+    database::mysql::ConnectionHandler handler;
+    try {
+
+        // First update the database
+        handler.conn = database::mysql::Connection::open(_connectionParams);
+        handler.conn->execute(
+            [&name](decltype(handler.conn) conn) {
+                conn->begin();
+                conn->executeSimpleUpdateQuery(
+                    "config_database",
+                    conn->sqlEqual("database", name),
+                    make_pair("is_published", 1));
+                conn->commit();
+            }
+        );
+
+        // Then update the transient state 
+
+        auto itr = safeFindDatabase(name, context_);
+        itr->second.isPublished = true;
+
+    } catch (database::mysql::Error const& ex) {
+        LOGS(_log, LOG_LVL_ERROR, context_ << "MySQL error: " << ex.what());
+        throw;
+    }
+    return databaseInfo(name);
 }
 
 
@@ -846,8 +1010,6 @@ void ConfigurationMySQL::deleteDatabase(string const& name) {
         // NOTE: when updating the transient state do not check if the database is still there
         // because the transient state may not be consistent with the persistent one.
 
-        util::Lock lock(_mtx, context_);
-
         _databaseInfo.erase(name);
 
     } catch (database::mysql::Error const& ex) {
@@ -857,24 +1019,43 @@ void ConfigurationMySQL::deleteDatabase(string const& name) {
 }
 
 
-DatabaseInfo ConfigurationMySQL::addTable(string const& database,
-                                          string const& table,
-                                          bool isPartitioned) {
+DatabaseInfo ConfigurationMySQL::addTable(
+        string const& database,
+        string const& table,
+        bool isPartitioned,
+        list<pair<string,string>> const& columns,
+        bool isDirectorTable,
+        string const& directorTableKey,
+        string const& chunkIdKey,
+        string const& subChunkIdKey,
+        string const& latitudeColName,
+        string const& longitudeColName) {
 
     string const context_ = context() + __func__;
 
     LOGS(_log, LOG_LVL_DEBUG, context_ << "  database: " << database
-         << " table: " << table << " isPartitioned: " << (isPartitioned ? "true" : "false"));
+         << " table: " << table << " isPartitioned: " << (isPartitioned ? "true" : "false")
+         << " isDirectorTable: " << (isDirectorTable ? "true" : "false")
+         << " directorTableKey: " << directorTableKey << " chunkIdKey: " << chunkIdKey
+         << " subChunkIdKey: " << subChunkIdKey
+         << " latitudeColName: " << latitudeColName
+         << " longitudeColName:" << longitudeColName);
 
-    if (database.empty()) {
-        throw invalid_argument(context_ + "  the database name can't be empty");
-    }
-    if (table.empty()) {
-        throw invalid_argument(context_ + "  the table name can't be empty");
-    }
-    if (not isKnownDatabase(database)) {
-        throw invalid_argument(context_ + "  unknown database");
-    }
+    validateTableParameters(
+        context_,
+        database,
+        table,
+        isPartitioned,
+        columns,
+        isDirectorTable,
+        directorTableKey,
+        chunkIdKey,
+        subChunkIdKey,
+        latitudeColName,
+        longitudeColName
+    );
+
+    // Update the persistent state
 
     database::mysql::ConnectionHandler handler;
     try {
@@ -882,29 +1063,54 @@ DatabaseInfo ConfigurationMySQL::addTable(string const& database,
         // First update the database
         handler.conn = database::mysql::Connection::open(_connectionParams);
         handler.conn->execute(
-            [&database,&table,isPartitioned](decltype(handler.conn) conn) {
+            [&](decltype(handler.conn) conn) {
                 conn->begin();
                 conn->executeInsertQuery(
                     "config_database_table",
                     database,
                     table,
-                    isPartitioned
+                    isPartitioned,
+                    isDirectorTable,
+                    directorTableKey,
+                    latitudeColName,
+                    longitudeColName
                 );
+                int colPosition = 0;
+                for (auto&& coldef: columns) {
+                    conn->executeInsertQuery(
+                        "config_database_table_schema",
+                        database,
+                        table,
+                        colPosition++,  // column position
+                        coldef.first,   // column name
+                        coldef.second   // column type
+                    );
+                }
+                if (isPartitioned) {
+                    conn->executeSimpleUpdateQuery(
+                        "config_database",
+                        conn->sqlEqual("database", database),
+                        make_pair("chunk_id_key", chunkIdKey),
+                        make_pair("sub_chunk_id_key", subChunkIdKey)
+                    );
+                }
                 conn->commit();
             }
         );
 
-        // Then update the transient state
-
-        util::Lock lock(_mtx, context_);
-
-        auto& info = _databaseInfo[database];
-        if (isPartitioned) {
-            info.partitionedTables.push_back(table);
-        } else {
-            info.regularTables.push_back(table);
-        }
-        return info;
+        // Update the transient state accordingly
+        return addTableTransient(
+            context_,
+            database,
+            table,
+            isPartitioned,
+            columns,
+            isDirectorTable,
+            directorTableKey,
+            chunkIdKey,
+            subChunkIdKey,
+            latitudeColName,
+            longitudeColName);
 
     } catch (database::mysql::Error const& ex) {
         LOGS(_log, LOG_LVL_ERROR, context_ << "MySQL error: " << ex.what());
@@ -921,15 +1127,9 @@ DatabaseInfo ConfigurationMySQL::deleteTable(string const& database,
     LOGS(_log, LOG_LVL_DEBUG, context_ << "  database: " << database
          << " table: " << table);
 
-    if (database.empty()) {
-        throw invalid_argument(context_ + "  the database name can't be empty");
-    }
-    if (table.empty()) {
-        throw invalid_argument(context_ + "  the table name can't be empty");
-    }
-    if (not isKnownDatabase(database)) {
-        throw invalid_argument(context_ + "  unknown database");
-    }
+    if (database.empty()) throw invalid_argument(context_ + "  the database name can't be empty");
+    if (table.empty())  throw invalid_argument(context_ + "  the table name can't be empty");
+    if (not isKnownDatabase(database)) throw invalid_argument(context_ + "  unknown database");
 
     database::mysql::ConnectionHandler handler;
     try {
@@ -953,8 +1153,6 @@ DatabaseInfo ConfigurationMySQL::deleteTable(string const& database,
         // NOTE: when updating the transient state do not check if the database is still there
         // because the transient state may not be consistent with the persistent one.
 
-        util::Lock lock(_mtx, context_);
-
         auto& info = _databaseInfo[database];
 
         auto pTableItr = find(info.partitionedTables.cbegin(),
@@ -968,6 +1166,14 @@ DatabaseInfo ConfigurationMySQL::deleteTable(string const& database,
                               table);
         if (rTableItr != info.regularTables.cend()) {
             info.regularTables.erase(rTableItr);
+        }
+        if (info.directorTable == table) {
+            info.directorTable = string();
+            info.directorTableKey = string();
+        }
+        if (info.partitionedTables.size() == 0) {
+            info.chunkIdKey = string();
+            info.subChunkIdKey = string();
         }
         return info;
 
@@ -984,14 +1190,12 @@ void ConfigurationMySQL::_loadConfiguration() {
 
     LOGS(_log, LOG_LVL_DEBUG, context_);
 
-    util::Lock lock(_mtx, context_);
-
     database::mysql::ConnectionHandler handler;
     try {
         handler.conn = database::mysql::Connection::open(_connectionParams);
         handler.conn->execute(
-            [this, &lock](decltype(handler.conn) conn) {
-                this->_loadConfigurationImpl(lock, conn);
+            [this](decltype(handler.conn) conn) {
+                this->_loadConfigurationImpl(conn);
             }
         );
     } catch (database::mysql::Error const& ex) {
@@ -1001,18 +1205,19 @@ void ConfigurationMySQL::_loadConfiguration() {
 }
 
 
-void ConfigurationMySQL::_loadConfigurationImpl(util::Lock const& lock,
-                                                database::mysql::Connection::Ptr const& conn) {
+void ConfigurationMySQL::_loadConfigurationImpl(database::mysql::Connection::Ptr const& conn) {
 
     // The common parameters (if any defined) of the workers will be initialize
     // from table 'config' and be used as defaults when reading worker-specific
     // configurations from table 'config_worker'
 
-    uint16_t commonWorkerSvcPort = Configuration::defaultWorkerSvcPort;
-    uint16_t commonWorkerFsPort  = Configuration::defaultWorkerFsPort;
-    string   commonWorkerDataDir = Configuration::defaultDataDir;
-    uint16_t commonWorkerDbPort  = Configuration::defaultWorkerDbPort;
-    string   commonWorkerDbUser  = Configuration::defaultWorkerDbUser;
+    uint16_t commonWorkerSvcPort = ConfigurationBase::defaultWorkerSvcPort;
+    uint16_t commonWorkerFsPort  = ConfigurationBase::defaultWorkerFsPort;
+    string   commonWorkerDataDir = ConfigurationBase::defaultDataDir;
+    uint16_t commonWorkerDbPort  = ConfigurationBase::defaultWorkerDbPort;
+    string   commonWorkerDbUser  = ConfigurationBase::defaultWorkerDbUser;
+    uint16_t commonWorkerLoaderPort   = ConfigurationBase::defaultWorkerLoaderPort;
+    string   commonWorkerLoaderTmpDir = ConfigurationBase::defaultWorkerLoaderTmpDir;
 
     database::mysql::Row row;
 
@@ -1033,16 +1238,17 @@ void ConfigurationMySQL::_loadConfigurationImpl(util::Lock const& lock,
         ::tryParameter(row, "controller", "request_timeout_sec", _controllerRequestTimeoutSec) or
         ::tryParameter(row, "controller", "job_timeout_sec",     _jobTimeoutSec) or
         ::tryParameter(row, "controller", "job_heartbeat_sec",   _jobHeartbeatTimeoutSec) or
+        ::tryParameter(row, "controller", "empty_chunks_dir",    _controllerEmptyChunksDir) or
 
         ::tryParameter(row, "database", "services_pool_size", _databaseServicesPoolSize) or
 
         ::tryParameter(row, "database", "qserv_master_host",     _qservMasterDatabaseHost) or
         ::tryParameter(row, "database", "qserv_master_port",     _qservMasterDatabasePort) or
         ::tryParameter(row, "database", "qserv_master_user",     _qservMasterDatabaseUser) or
-        ::tryParameter(row, "database", "qserv_master_password", _qservMasterDatabasePassword) or
         ::tryParameter(row, "database", "qserv_master_name",     _qservMasterDatabaseName) or
 
         ::tryParameter(row, "database", "qserv_master_services_pool_size", _qservMasterDatabaseServicesPoolSize) or
+        ::tryParameter(row, "database", "qserv_master_tmp_dir",  _qservMasterDatabaseTmpDir) or
 
         ::tryParameter(row, "xrootd", "auto_notify",         _xrootdAutoNotify) or
         ::tryParameter(row, "xrootd", "host",                _xrootdHost) or
@@ -1056,8 +1262,11 @@ void ConfigurationMySQL::_loadConfigurationImpl(util::Lock const& lock,
         ::tryParameter(row, "worker", "svc_port",                   commonWorkerSvcPort)  or
         ::tryParameter(row, "worker", "fs_port",                    commonWorkerFsPort) or
         ::tryParameter(row, "worker", "data_dir",                   commonWorkerDataDir) or
-        ::tryParameter(row, "worker", "db_port",                    commonWorkerDbPort);
-        ::tryParameter(row, "worker", "db_user",                    commonWorkerDbUser);
+        ::tryParameter(row, "worker", "db_port",                    commonWorkerDbPort) or
+        ::tryParameter(row, "worker", "db_user",                    commonWorkerDbUser) or
+        ::tryParameter(row, "worker", "loader_port",                   commonWorkerLoaderPort) or
+        ::tryParameter(row, "worker", "loader_tmp_dir",                commonWorkerLoaderTmpDir) or
+        ::tryParameter(row, "worker", "num_loader_processing_threads", _loaderNumProcessingThreads);
     }
 
     // Read worker-specific configurations and construct WorkerInfo.
@@ -1078,15 +1287,19 @@ void ConfigurationMySQL::_loadConfigurationImpl(util::Lock const& lock,
         ::readMandatoryParameter(row, "db_host",      info.dbHost);
         ::readOptionalParameter( row, "db_port",      info.dbPort,     commonWorkerDbPort);
         ::readOptionalParameter( row, "db_user",      info.dbUser,     commonWorkerDbUser);
+        ::readMandatoryParameter(row, "loader_host",    info.loaderHost);
+        ::readOptionalParameter( row, "loader_port",    info.loaderPort,   commonWorkerLoaderPort);
+        ::readOptionalParameter( row, "loader_tmp_dir", info.loaderTmpDir, commonWorkerLoaderTmpDir);
 
-        Configuration::translateDataDir(info.dataDir, info.name);
+        ConfigurationBase::translateWorkerDir(info.dataDir, info.name);
+        ConfigurationBase::translateWorkerDir(info.loaderTmpDir, info.name);
 
         _workerInfo[info.name] = info;
     }
 
     // Read database family-specific configurations and construct DatabaseFamilyInfo
 
-    conn->execute("SELECT * FROM " + conn->sqlId ("config_database_family"));
+    conn->execute("SELECT * FROM " + conn->sqlId("config_database_family"));
 
     while (conn->next(row)) {
 
@@ -1098,6 +1311,7 @@ void ConfigurationMySQL::_loadConfigurationImpl(util::Lock const& lock,
         ::readMandatoryParameter(row, "min_replication_level", _databaseFamilyInfo[name].replicationLevel);
         ::readMandatoryParameter(row, "num_stripes",           _databaseFamilyInfo[name].numStripes);
         ::readMandatoryParameter(row, "num_sub_stripes",       _databaseFamilyInfo[name].numSubStripes);
+        ::readMandatoryParameter(row, "overlap",               _databaseFamilyInfo[name].overlap);
 
         _databaseFamilyInfo[name].chunkNumberValidator =
             make_shared<ChunkNumberQservValidator>(
@@ -1116,6 +1330,9 @@ void ConfigurationMySQL::_loadConfigurationImpl(util::Lock const& lock,
         _databaseInfo[database].name = database;
 
         ::readMandatoryParameter(row, "family_name", _databaseInfo[database].family);
+        ::readMandatoryParameter(row, "is_published", _databaseInfo[database].isPublished);
+        ::readMandatoryParameter(row, "chunk_id_key", _databaseInfo[database].chunkIdKey);
+        ::readMandatoryParameter(row, "sub_chunk_id_key", _databaseInfo[database].subChunkIdKey);
     }
 
     // Read database-specific table definitions and extend the corresponding DatabaseInfo.
@@ -1132,9 +1349,50 @@ void ConfigurationMySQL::_loadConfigurationImpl(util::Lock const& lock,
 
         bool isPartitioned;
         ::readMandatoryParameter(row, "is_partitioned", isPartitioned);
+        if (isPartitioned) {
+            _databaseInfo[database].partitionedTables.push_back(table);
+            bool isDirector;
+            ::readMandatoryParameter(row, "is_director", isDirector);
+            if (isDirector) {
+                _databaseInfo[database].directorTable = table;
+                ::readMandatoryParameter(row, "director_key", _databaseInfo[database].directorTableKey);
+            }
+            ::readMandatoryParameter(row, "latitude_key",  _databaseInfo[database].latitudeColName[table]);
+            ::readMandatoryParameter(row, "longitude_key", _databaseInfo[database].longitudeColName[table]);
+        } else {
+            _databaseInfo[database].regularTables.push_back(table);
+        }
+    }
+    
+    // Read schema for each table (if available)
+    
+    for (auto&& databaseEntry: _databaseInfo) {
+        auto const& database = databaseEntry.first;
+        auto& info = databaseEntry.second;
 
-        if (isPartitioned) _databaseInfo[database].partitionedTables.push_back(table);
-        else               _databaseInfo[database].regularTables.push_back(table);
+        // A join collection of all tables
+        vector<string> tables;
+        tables.insert(tables.end(), info.partitionedTables.begin(), info.partitionedTables.end());
+        tables.insert(tables.end(), info.regularTables.begin(), info.regularTables.end());
+
+        for (auto&& table: tables) {
+            auto& tableColumns = info.columns[table];
+
+            conn->execute(
+                "SELECT "     + conn->sqlId("col_name") + "," + conn->sqlId("col_type") +
+                "  FROM "     + conn->sqlId("config_database_table_schema") +
+                "  WHERE "    + conn->sqlId("database")     + "=" + conn->sqlValue(database) +
+                "    AND "    + conn->sqlId("table")        + "=" + conn->sqlValue(table) +
+                "  ORDER BY " + conn->sqlId("col_position") + " ASC");
+
+            string colName;
+            string colType;
+            while (conn->next(row)) {
+                ::readMandatoryParameter(row, "col_name", colName);
+                ::readMandatoryParameter(row, "col_type", colType);
+                tableColumns.emplace_back(colName, colType);
+            }
+        }
     }
 
     // Values of these parameters are predetermined by the connection
@@ -1174,8 +1432,6 @@ void ConfigurationMySQL::_setImp(string const& category,
                 conn->commit();
             }
         );
-
-        util::Lock lock(_mtx, context_);
         onSuccess();
 
     } catch (database::mysql::Error const& ex) {

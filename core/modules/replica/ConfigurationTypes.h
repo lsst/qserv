@@ -178,6 +178,19 @@ struct ConfigurationGeneralParams {
 
     struct {
 
+        std::string const key         = "CONTR_EMPTY_CHUNKS_DIR";
+        std::string const description = "A path to a folder where Qserv master stores its empty chunk lists.";
+        std::string       value;
+
+        bool const updatable = false;
+
+        std::string  get(Configuration::Ptr const& config) const { return config->controllerEmptyChunksDir(); }
+        std::string  str(Configuration::Ptr const& config) const { return get(config); }
+
+    } controllerEmptyChunksDir;
+
+    struct {
+
         std::string const key         = "CONTR_JOB_TIMEOUT_SEC";
         std::string const description = "default timeout for completing jobs";
         unsigned int      value;
@@ -444,6 +457,17 @@ struct ConfigurationGeneralParams {
     } qservMasterDatabaseServicesPoolSize;
 
     struct {
+        std::string const key         = "QSERV_MASTER_TMP_DIR";
+        std::string const description = "The temporary folder for exchanging data with the Qserv Master database service.";
+
+        bool const updatable = false;
+
+        std::string get(Configuration::Ptr const& config) const { return config->qservMasterDatabaseTmpDir(); }
+        std::string str(Configuration::Ptr const& config) const { return get(config); }
+
+    } qservMasterDatabaseTmpDir;
+
+    struct {
 
         std::string const key         = "WORKER_TECHNOLOGY";
         std::string const description = "The name of a technology for implementing requests.";
@@ -509,6 +533,23 @@ struct ConfigurationGeneralParams {
 
     } workerFsBufferSizeBytes;
 
+    struct {
+
+        std::string const key         = "WORKER_LOADER_NUM_PROC_THREADS";
+        std::string const description = "The number of request processing threads in each worker's"
+                                        " catalog ingest server.";
+        size_t            value;
+
+        bool const updatable = true;
+
+        void save(Configuration::Ptr const& config) {
+            if (value != 0) config->setLoaderNumProcessingThreads(value);
+        }
+        size_t      get(Configuration::Ptr const& config) const { return config->loaderNumProcessingThreads(); }
+        std::string str(Configuration::Ptr const& config) const { return std::to_string(get(config)); }
+
+    } loaderNumProcessingThreads;
+    
     /**
      * Pull general parameters from the Configuration and put them into
      * a JSON array.

@@ -55,7 +55,7 @@ inline ostream& operator<<(ostream& os, vector<string> const& c) {
 }
 
 
-string ConfigurationFile::dump2init(Configuration::Ptr const& config) {
+string ConfigurationFile::dump2init(ConfigurationIFace::Ptr const& config) {
 
     using namespace std;
 
@@ -65,11 +65,14 @@ string ConfigurationFile::dump2init(Configuration::Ptr const& config) {
     }
     ostringstream str;
 
+    string const noSpecificFamily;
+    bool const allDatabases = true;
+
     str << "[common]\n"
         << "\n"
         << "workers                    = " << config->allWorkers() << "\n"
         << "database_families          = " << config->databaseFamilies() << "\n"
-        << "databases                  = " << config->databases() << "\n"
+        << "databases                  = " << config->databases(noSpecificFamily, allDatabases) << "\n"
         << "request_buf_size_bytes     = " << config->requestBufferSizeBytes() << "\n"
         << "request_retry_interval_sec = " << config->retryTimeoutSec() << "\n"
         << "\n";
@@ -80,6 +83,7 @@ string ConfigurationFile::dump2init(Configuration::Ptr const& config) {
         << "http_server_port    = " << config->controllerHttpPort() << "\n"
         << "http_server_threads = " << config->controllerHttpThreads() << "\n"
         << "request_timeout_sec = " << config->controllerRequestTimeoutSec() << "\n"
+        << "empty_chunks_dir    = " << config->controllerEmptyChunksDir() << "\n"
         << "job_timeout_sec     = " << config->jobTimeoutSec() << "\n"
         << "job_heartbeat_sec   = " << config->jobHeartbeatTimeoutSec() << "\n"
         << "\n";
@@ -93,6 +97,13 @@ string ConfigurationFile::dump2init(Configuration::Ptr const& config) {
         << "password           = " << "" << "\n"
         << "name               = " << config->databaseName() << "\n"
         << "services_pool_size = " << config->databaseServicesPoolSize() << "\n"
+        << "qserv_master_host  = " << config->qservMasterDatabaseHost() << "\n"
+        << "qserv_master_port  = " << config->qservMasterDatabasePort() << "\n"
+        << "qserv_master_user  = " << config->qservMasterDatabaseUser() << "\n"
+        << "qserv_master_name  = " << config->qservMasterDatabaseName() << "\n"
+        << "qserv_master_services_pool_size = " << config->qservMasterDatabaseServicesPoolSize() << "\n"
+        << "qserv_master_tmp_dir = " << config->qservMasterDatabaseTmpDir() << "\n"
+
         << "\n";
 
     str << "[xrootd]\n"
@@ -109,6 +120,7 @@ string ConfigurationFile::dump2init(Configuration::Ptr const& config) {
         << "num_svc_processing_threads = " << config->workerNumProcessingThreads() << "\n"
         << "num_fs_processing_threads  = " << config->fsNumProcessingThreads() << "\n"
         << "fs_buf_size_bytes          = " << config->workerFsBufferSizeBytes() << "\n"
+        << "num_loader_processing_threads = " << config->loaderNumProcessingThreads() << "\n"
         << "svc_host                   = " << defaultWorkerSvcHost << "\n"
         << "svc_port                   = " << defaultWorkerSvcPort << "\n"
         << "fs_host                    = " << defaultWorkerFsHost << "\n"
@@ -117,6 +129,9 @@ string ConfigurationFile::dump2init(Configuration::Ptr const& config) {
         << "db_host                    = " << defaultWorkerDbHost << "\n"
         << "db_port                    = " << defaultWorkerDbPort << "\n"
         << "db_user                    = " << defaultWorkerDbUser << "\n"
+        << "loader_host                = " << defaultWorkerLoaderHost << "\n"
+        << "loader_port                = " << defaultWorkerLoaderPort << "\n"
+        << "loader_tmp_dir             = " << defaultWorkerLoaderTmpDir << "\n"
         << "\n";
 
     for (auto&& worker: config->allWorkers()) {
@@ -133,6 +148,9 @@ string ConfigurationFile::dump2init(Configuration::Ptr const& config) {
             << "db_host      = " << info.dbHost << "\n"
             << "db_port      = " << info.dbPort << "\n"
             << "db_user      = " << info.dbUser << "\n"
+            << "loader_host    = " << info.loaderHost << "\n"
+            << "loader_port    = " << info.loaderPort << "\n"
+            << "loader_tmp_dir = " << info.loaderTmpDir << "\n"
             << "\n";
     }
     for (auto&& family: config->databaseFamilies()) {
@@ -142,16 +160,36 @@ string ConfigurationFile::dump2init(Configuration::Ptr const& config) {
             << "min_replication_level = " << info.replicationLevel << "\n"
             << "num_stripes           = " << info.numStripes << "\n"
             << "num_sub_stripes       = " << info.numSubStripes << "\n"
+            << "overlap               = " << info.overlap << "\n"
             << "\n";
     }
-    for (auto&& database: config->databases()) {
+    for (auto&& database: config->databases(noSpecificFamily, allDatabases)) {
         auto&& info = config->databaseInfo(database);
         str << "[database:" << info.name << "]\n"
             << "\n"
             << "family             = " << info.family << "\n"
+            << "is_published       = " << (info.isPublished ? "1" : "0") << "\n"
             << "partitioned_tables = " << info.partitionedTables << "\n"
             << "regular_tables     = " << info.regularTables << "\n"
+            << "director_table     = " << info.directorTable << "\n"
+            << "director_table_key = " << info.directorTableKey << "\n"
+            << "chunk_id_key       = " << info.chunkIdKey << "\n"
+            << "sub_chunk_id_key   = " << info.subChunkIdKey << "\n"
             << "\n";
+        for (auto&& table: info.partitionedTables) {
+            str << "[table:" << info.name << "." << table << "]\n"
+                << "\n"
+                << "latitude_key  = " << info.latitudeColName[table] << "\n"
+                << "longitude_key = " << info.longitudeColName[table] << "\n"
+                << "\n";
+        }
+        for (auto&& table: info.regularTables) {
+            str << "[table:" << info.name << "." << table << "]\n"
+                << "\n"
+                << "latitude_key  = \n"
+                << "longitude_key = \n"
+                << "\n";
+        }
     }
     return str.str();
 }
