@@ -75,109 +75,112 @@ public:
 
     ~DatabaseServicesPool() override = default;
 
-    /// @see DatabaseServices::saveState()
     void saveState(ControllerIdentity const& identity,
                    uint64_t startTime) final;
 
-    /// @see DatabaseServices::saveState()
     void saveState(Job const& job,
                    Job::Options const& options) final;
 
-    /// @see DatabaseServices::updateHeartbeatTime()
-     void updateHeartbeatTime(Job const& job) final;
+    void updateHeartbeatTime(Job const& job) final;
 
-    /// @see DatabaseServices::saveState()
     void saveState(QservMgtRequest const& request,
                    Performance const& performance,
                    std::string const& serverError) final;
 
-    /// @see DatabaseServices::saveState()
     void saveState(Request const& request,
                    Performance const& performance) final;
 
-    /// @see DatabaseServices::updateRequestState()
     void updateRequestState(Request const& request,
                             std::string const& targetRequestId,
                             Performance const& targetRequestPerformance) final;
 
-    /// @see DatabaseServices::saveReplicaInfo()
     void saveReplicaInfo(ReplicaInfo const& info) final;
 
-    /// @see DatabaseServices::saveReplicaInfoCollection()
     void saveReplicaInfoCollection(std::string const& worker,
                                    std::string const& database,
                                    ReplicaInfoCollection const& newReplicaInfoCollection) final;
 
-    /// @see DatabaseServices::findOldestReplica()
     void findOldestReplicas(std::vector<ReplicaInfo>& replicas,
                             size_t maxReplicas,
-                            bool enabledWorkersOnly) final;
+                            bool enabledWorkersOnly,
+                            bool allDatabases,
+                            bool isPublished) final;
 
-    /// @see DatabaseServices::findReplicas()
     void findReplicas(std::vector<ReplicaInfo>& replicas,
                       unsigned int chunk,
                       std::string const& database,
                       bool enabledWorkersOnly) final;
 
-    /// @see DatabaseServices::findWorkerReplicas()
     void findWorkerReplicas(std::vector<ReplicaInfo>& replicas,
                             std::string const& worker,
-                            std::string const& database) final;
+                            std::string const& database,
+                            bool allDatabases,
+                            bool isPublished,
+                            bool includeFileInfo) final;
 
-    /// @see DatabaseServices::numWorkerReplicas()
     uint64_t numWorkerReplicas(std::string const& worker,
-                               std::string const& database=std::string()) final;
+                               std::string const& database,
+                               bool allDatabases,
+                               bool isPublished) final;
 
-    /// @see DatabaseServices::findWorkerReplicas()
     void findWorkerReplicas(std::vector<ReplicaInfo>& replicas,
                             unsigned int chunk,
                             std::string const& worker,
-                            std::string const& databaseFamily) final;
+                            std::string const& databaseFamily,
+                            bool allDatabases,
+                            bool isPublished) final;
 
-    /// @see DatabaseServices::actualReplicationLevel()
+    void findDatabaseReplicas(std::vector<ReplicaInfo>& replicas,
+                              std::string const& database,
+                              bool enabledWorkersOnly) final;
+
+    void findDatabaseChunks(std::vector<unsigned int>& chunks,
+                            std::string const& database,
+                            bool enabledWorkersOnly) final;
+
     std::map<unsigned int, size_t> actualReplicationLevel(
                                         std::string const& database,
                                         std::vector<std::string> const& workersToExclude) final;
 
-    /// @see DatabaseServices::numOrphanChunks()
     size_t numOrphanChunks(std::string const& database,
                            std::vector<std::string> const& uniqueOnWorkers) final;
 
-    /// @see DatabaseServices::logControllerEvent()
     void logControllerEvent(ControllerEvent const& event) final;
 
-    /// @see DatabaseServices::readControllerEvents()
     std::list<ControllerEvent> readControllerEvents(std::string const& controllerId,
                                                     uint64_t fromTimeStamp,
                                                     uint64_t toTimeStamp,
                                                     size_t maxEntries) final;
 
-    /// @see DatabaseServices::controller()
     ControllerInfo controller(std::string const& id) final;
 
-    /// @see DatabaseServices::controllers()
     std::list<ControllerInfo> controllers(uint64_t fromTimeStamp,
                                           uint64_t toTimeStamp,
                                           size_t maxEntries) final;
 
-    /// @see DatabaseServices::controller()
     RequestInfo request(std::string const& id) final;
 
-    /// @see DatabaseServices::requests()
     std::list<RequestInfo> requests(std::string const& jobId,
                                     uint64_t fromTimeStamp,
                                     uint64_t toTimeStamp,
                                     size_t maxEntries) final;
 
-    /// @see DatabaseServices::job()
     JobInfo job(std::string const& id) final;
 
-    /// @see DatabaseServices::jobs()
     std::list<JobInfo> jobs(std::string const& controllerId,
                             std::string const& parentJobId,
                             uint64_t fromTimeStamp,
                             uint64_t toTimeStamp,
                             size_t maxEntries) final;
+
+    TransactionInfo transaction(uint32_t id) final;
+
+    std::vector<TransactionInfo> transactions(std::string const& databaseName=std::string()) final;
+
+    TransactionInfo beginTransaction(std::string const& databaseName) final;
+
+    TransactionInfo endTransaction(uint32_t id,
+                                   bool abort=false) final;
 
 private:
     /**

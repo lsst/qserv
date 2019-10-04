@@ -142,6 +142,20 @@ json JobInfo::toJson() const {
 }
 
 
+json TransactionInfo::toJson() const {
+
+    json info;
+
+    info["id"]         = id;
+    info["database"]   = database;
+    info["state"]      = state;
+    info["begin_time"] = beginTime;
+    info["end_time"]   = endTime;
+
+    return info;
+}
+
+
 DatabaseServices::Ptr DatabaseServices::create(Configuration::Ptr const& configuration) {
 
     // If the configuration is pulled from a database then *try*

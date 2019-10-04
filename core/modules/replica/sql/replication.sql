@@ -503,6 +503,36 @@ CREATE TABLE IF NOT EXISTS `controller_log_ext` (
 )
 ENGINE = InnoDB;
 
+
+-- -----------------------------------------------------
+-- Table `transaction`
+-- -----------------------------------------------------
+--
+-- This table registers "super-transactions" used by the Ingest
+--
+DROP TABLE IF EXISTS `transaction` ;
+
+CREATE TABLE IF NOT EXISTS `transaction` (
+
+  `id` MEDIUMINT UNSIGNED NOT NULL AUTO_INCREMENT ,
+
+  `database` VARCHAR(255) NOT NULL ,
+  `state`    VARCHAR(255) NOT NULL ,
+
+  `begin_time` BIGINT UNSIGNED NOT NULL ,
+  `end_time`   BIGINT UNSIGNED DEFAULT 0 ,
+
+  PRIMARY KEY (`id`,`database`) ,
+
+  CONSTRAINT `transaction_fk_1`
+    FOREIGN KEY (`database` )
+    REFERENCES `config_database` (`database`)
+    ON DELETE CASCADE
+    ON UPDATE CASCADE
+)
+ENGINE = InnoDB;
+
+
 SET SQL_MODE=@OLD_SQL_MODE ;
 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS ;
 SET UNIQUE_CHECKS=@OLD_UNIQUE_CHECKS ;

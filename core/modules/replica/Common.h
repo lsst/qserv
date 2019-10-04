@@ -29,7 +29,10 @@
  */
 
 // System headers
+#include <list>
+#include <ostream>
 #include <string>
+#include <tuple>
 
 // Qserv headers
 #include "replica/protocol.pb.h"
@@ -52,6 +55,7 @@ enum ExtendedCompletionStatus {
     EXT_STATUS_INVALID_ID,      // an invalid request identifier
     EXT_STATUS_DUPLICATE,       // a duplicate request
     EXT_STATUS_FOLDER_STAT,     // failed to obtain fstat() for a folder
+    EXT_STATUS_FOLDER_CREATE,   // failed to create a folder
     EXT_STATUS_FILE_STAT,       // failed to obtain fstat() for a file
     EXT_STATUS_FILE_SIZE,       // failed to obtain a size of a file
     EXT_STATUS_FOLDER_READ,     // failed to read the contents of a folder
@@ -72,7 +76,10 @@ enum ExtendedCompletionStatus {
     EXT_STATUS_NO_SPACE,        // no space left on a device as required by an operation
     EXT_STATUS_FILE_MTIME,      // get/set 'mtime' operation failed
     EXT_STATUS_MYSQL_ERROR,     // MySQL operation failed
-    EXT_STATUS_LARGE_RESULT     // result exceeds a limit set in a request
+    EXT_STATUS_LARGE_RESULT,    // result exceeds a limit set in a request
+    EXT_STATUS_NO_SUCH_TABLE,   // a reason why a MySQL operation failed 
+    EXT_STATUS_NOT_PARTITIONED_TABLE,   // why a MySQL operation for removing partitions failed
+    EXT_STATUS_NO_SUCH_PARTITION        // why a MySQL operation for for selecting data from a table failed
 };
 
 /// Return the string representation of the extended status
@@ -103,11 +110,11 @@ private:
 };
 
 /**
- * Structure ReplicationRequestParams encapsulates parameters of the replica
+ * Class ReplicationRequestParams encapsulates parameters of the replica
  * creation requests.
  */
-struct ReplicationRequestParams {
-
+class ReplicationRequestParams {
+public:
     int          priority = 0;
     std::string  database;
     unsigned int chunk = 0;
@@ -115,15 +122,15 @@ struct ReplicationRequestParams {
 
     ReplicationRequestParams() = default;
 
-    explicit ReplicationRequestParams(ProtocolRequestReplicate const& message);
+    explicit ReplicationRequestParams(ProtocolRequestReplicate const& request);
 };
 
 /**
- * Structure DeleteRequestParams represents parameters of the replica
+ * Class DeleteRequestParams represents parameters of the replica
  * deletion requests.
  */
-struct DeleteRequestParams {
-
+class DeleteRequestParams {
+public:
     int          priority = 0;
     std::string  database;
     unsigned int chunk = 0;
@@ -131,67 +138,112 @@ struct DeleteRequestParams {
 
     DeleteRequestParams() = default;
 
-    explicit DeleteRequestParams(ProtocolRequestDelete const& message);
+    explicit DeleteRequestParams(ProtocolRequestDelete const& request);
 };
 
 /**
- * Structure FindRequestParams represents parameters of a single replica
+ * Class FindRequestParams represents parameters of a single replica
  * lookup (finding) requests.
  */
-struct FindRequestParams {
-
+class FindRequestParams {
+public:
     int          priority = 0;
     std::string  database;
     unsigned int chunk = 0;
 
     FindRequestParams() = default;
 
-    explicit FindRequestParams(ProtocolRequestFind const& message);
+    explicit FindRequestParams(ProtocolRequestFind const& request);
 };
 
 /**
- * Structure FindAllRequestParams represents parameters of the replica
+ * Class FindAllRequestParams represents parameters of the replica
  * group (depends on a scope of the corresponding request) lookup (finding)
  * requests.
  */
-struct FindAllRequestParams {
-
+class FindAllRequestParams {
+public:
     int          priority = 0;
     std::string  database;
 
     FindAllRequestParams() = default;
 
-    explicit FindAllRequestParams(ProtocolRequestFindAll const& message);
+    explicit FindAllRequestParams(ProtocolRequestFindAll const& request);
 };
 
 /**
- * Structure EchoRequestParams represents parameters of the echo requests.
+ * Class EchoRequestParams represents parameters of the echo requests.
  */
-struct EchoRequestParams {
-
+class EchoRequestParams {
+public:
     int          priority = 0;
     std::string  data;
     uint64_t     delay = 0;
 
     EchoRequestParams() = default;
 
-    explicit EchoRequestParams(ProtocolRequestEcho const& message);
+    explicit EchoRequestParams(ProtocolRequestEcho const& request);
 };
 
 /**
- * Structure SqlRequestParams represents parameters of the SQL requests.
+ * Class SqlRequestParams represents parameters of the SQL requests.
  */
-struct SqlRequestParams {
+class SqlRequestParams {
+public:
+    int priority = 0;
 
-    int          priority = 0;
-    std::string  query;
-    std::string  user;
-    std::string  password;
-    uint64_t     maxRows = 0;
+    enum Type {
+        QUERY,
+        CREATE_DATABASE,
+        DROP_DATABASE,
+        ENABLE_DATABASE,
+        DISABLE_DATABASE,
+        GRANT_ACCESS,
+        CREATE_TABLE,
+        DROP_TABLE,
+        REMOVE_TABLE_PARTITIONING,
+        DROP_TABLE_PARTITION
+    };
+    Type type = QUERY;
+
+    uint64_t maxRows = 0;
+
+    std::string query;
+    std::string user;
+    std::string password;
+    std::string database;
+    std::string table;
+    std::string engine;
+    std::string partitionByColumn;
+
+    uint32_t transactionId = 0;
+
+    std::list<std::pair<std::string, std::string>> columns;
 
     SqlRequestParams() = default;
 
-    explicit SqlRequestParams(ProtocolRequestSql const& message);
+    explicit SqlRequestParams(ProtocolRequestSql const& request);
+
+    std::string type2str() const;
+};
+
+std::ostream& operator<<(std::ostream& os, SqlRequestParams const& params);
+
+/**
+ * Class IndexRequestParams represents parameters of requests extracting data
+ * to be loaded into the "secondary index".
+ */
+class IndexRequestParams {
+public:
+    int          priority = 0;
+    std::string  database;
+    unsigned int chunk = 0;
+    bool         hasTransactions = false;
+    unsigned int transactionId = 0;
+
+    IndexRequestParams() = default;
+
+    explicit IndexRequestParams(ProtocolRequestIndex const& request);
 };
 
 }}} // namespace lsst::qserv::replica
