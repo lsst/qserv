@@ -64,19 +64,6 @@ public:
     void track() const;
 
     /**
-     * Cancel all outstanding requests
-     *
-     * ATTENTION: by default this operation will *NOT* contact worker
-     * services to stop on-going or queued requests unless the optional
-     * flag 'propagateToServers' is set to 'true'.
-     *
-     * @param propagateToServers - propagate operation to servers (depends
-     *                             on a request type as not all requests
-     *                             can be canceled)
-     */
-    void cancel(bool propagateToServers=false);
-
-    /**
      * The method will reset the tracker to the initial (empty) state. Please,
      * make sure there are no outstanding requests which may be still executing.
      *

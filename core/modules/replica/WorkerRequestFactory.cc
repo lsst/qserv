@@ -26,15 +26,19 @@
 #include <stdexcept>
 
 // Qserv headers
-#include "lsst/log/Log.h"
+#include "replica/DatabaseMySQL.h"
 #include "replica/Configuration.h"
 #include "replica/ServiceProvider.h"
 #include "replica/WorkerDeleteRequest.h"
 #include "replica/WorkerEchoRequest.h"
 #include "replica/WorkerFindAllRequest.h"
 #include "replica/WorkerFindRequest.h"
+#include "replica/WorkerIndexRequest.h"
 #include "replica/WorkerReplicationRequest.h"
 #include "replica/WorkerSqlRequest.h"
+
+// LSST headers
+#include "lsst/log/Log.h"
 
 using namespace std;
 
@@ -52,8 +56,11 @@ namespace replica {
 ///////////////////// WorkerRequestFactoryBase ////////////////////
 ///////////////////////////////////////////////////////////////////
 
-WorkerRequestFactoryBase::WorkerRequestFactoryBase(ServiceProvider::Ptr const& serviceProvider)
-    :   _serviceProvider(serviceProvider) {
+WorkerRequestFactoryBase::WorkerRequestFactoryBase(
+                            ServiceProvider::Ptr const& serviceProvider,
+                            database::mysql::ConnectionPool::Ptr const& connectionPool)
+    :   _serviceProvider(serviceProvider),
+        _connectionPool(connectionPool) {
 }
 
 
@@ -75,16 +82,18 @@ public:
     WorkerRequestFactoryTest(WorkerRequestFactoryTest const&) = delete;
     WorkerRequestFactoryTest& operator=(WorkerRequestFactoryTest const&) = delete;
 
-    WorkerRequestFactoryTest(ServiceProvider::Ptr const& serviceProvider)
-        :   WorkerRequestFactoryBase(serviceProvider) {
+    WorkerRequestFactoryTest(ServiceProvider::Ptr const& serviceProvider,
+                             database::mysql::ConnectionPool::Ptr const& connectionPool)
+        :   WorkerRequestFactoryBase(serviceProvider,
+                                     connectionPool) {
     }
 
     ~WorkerRequestFactoryTest() final = default;
 
-    /// @see WorkerReplicationRequestBase::technology
+    /// @see WorkerRequestFactoryBase::technology
     string technology() const final { return "TEST"; }
 
-    /// @see WorkerReplicationRequestBase::createReplicationRequest
+    /// @see WorkerRequestFactoryBase::createReplicationRequest
     WorkerReplicationRequestPtr createReplicationRequest(string const& worker,
                                                          string const& id,
                                                          int priority,
@@ -101,7 +110,7 @@ public:
             sourceWorker);
     }
 
-    /// @see WorkerReplicationRequestBase::createDeleteRequest
+    /// @see WorkerRequestFactoryBase::createDeleteRequest
     WorkerDeleteRequestPtr createDeleteRequest(string const& worker,
                                                string const& id,
                                                int priority,
@@ -116,7 +125,7 @@ public:
             chunk);
     }
 
-    /// @see WorkerReplicationRequestBase::createFindRequest
+    /// @see WorkerRequestFactoryBase::createFindRequest
     WorkerFindRequestPtr createFindRequest(string const& worker,
                                            string const& id,
                                            int priority,
@@ -133,7 +142,7 @@ public:
             computeCheckSum);
     }
 
-    /// @see WorkerReplicationRequestBase::createFindAllRequest
+    /// @see WorkerRequestFactoryBase::createFindAllRequest
     WorkerFindAllRequestPtr createFindAllRequest(string const& worker,
                                                  string const& id,
                                                  int priority,
@@ -146,7 +155,7 @@ public:
             database);
     }
 
-    /// @see WorkerReplicationRequestBase::createEchoRequest
+    /// @see WorkerRequestFactoryBase::createEchoRequest
     WorkerEchoRequestPtr createEchoRequest(string const& worker,
                                            string const& id,
                                            int priority,
@@ -161,23 +170,27 @@ public:
             delay);
     }
 
-    /// @see WorkerReplicationRequestBase::createSqlRequest
+    /// @see WorkerRequestFactoryBase::createSqlRequest
     WorkerSqlRequestPtr createSqlRequest(string const& worker,
                                          string const& id,
-                                         int priority,
-                                         string const& query,
-                                         string const& user,
-                                         string const& password,
-                                         size_t maxRows) const final {
+                                         ProtocolRequestSql const& request) const final {
         return WorkerSqlRequest::create(
             _serviceProvider,
             worker,
             id,
-            priority,
-            query,
-            user,
-            password,
-            maxRows);
+            request);
+    }
+
+    /// @see WorkerRequestFactoryBase::createIndexRequest
+    WorkerIndexRequestPtr createIndexRequest(string const& worker,
+                                             string const& id,
+                                             ProtocolRequestIndex const& request) const final {
+        return WorkerIndexRequest::create(
+            _serviceProvider,
+            _connectionPool,
+            worker,
+            id,
+            request);
     }
 };
 
@@ -200,16 +213,18 @@ public:
     WorkerRequestFactoryPOSIX(WorkerRequestFactoryPOSIX const&) = delete;
     WorkerRequestFactoryPOSIX& operator=(WorkerRequestFactoryPOSIX const&) = delete;
 
-    WorkerRequestFactoryPOSIX(ServiceProvider::Ptr const& serviceProvider)
-        :   WorkerRequestFactoryBase(serviceProvider) {
+    WorkerRequestFactoryPOSIX(ServiceProvider::Ptr const& serviceProvider,
+                              database::mysql::ConnectionPool::Ptr const& connectionPool)
+        :   WorkerRequestFactoryBase(serviceProvider,
+                                     connectionPool) {
     }
 
     ~WorkerRequestFactoryPOSIX() final = default;
 
-    /// @see WorkerReplicationRequestBase::technology
+    /// @see WorkerRequestFactoryBase::technology
     string technology() const final { return "POSIX"; }
 
-    /// @see WorkerReplicationRequestBase::createReplicationRequest
+    /// @see WorkerRequestFactoryBase::createReplicationRequest
     WorkerReplicationRequestPtr createReplicationRequest(string const& worker,
                                                          string const& id,
                                                          int priority,
@@ -226,7 +241,7 @@ public:
             sourceWorker);
     }
 
-    /// @see WorkerReplicationRequestBase::createDeleteRequest
+    /// @see WorkerRequestFactoryBase::createDeleteRequest
     WorkerDeleteRequestPtr createDeleteRequest(string const& worker,
                                                string const& id,
                                                int priority,
@@ -241,7 +256,7 @@ public:
             chunk);
     }
 
-    /// @see WorkerReplicationRequestBase::createFindRequest
+    /// @see WorkerRequestFactoryBase::createFindRequest
     WorkerFindRequestPtr createFindRequest(string const& worker,
                                            string const& id,
                                            int priority,
@@ -258,7 +273,7 @@ public:
             computeCheckSum);
     }
 
-    /// @see WorkerReplicationRequestBase::createFindAllRequest
+    /// @see WorkerRequestFactoryBase::createFindAllRequest
     WorkerFindAllRequestPtr createFindAllRequest(string const& worker,
                                                  string const& id,
                                                  int priority,
@@ -271,7 +286,7 @@ public:
             database);
     }
 
-    /// @see WorkerReplicationRequestBase::createEchoRequest
+    /// @see WorkerRequestFactoryBase::createEchoRequest
     WorkerEchoRequestPtr createEchoRequest(string const& worker,
                                            string const& id,
                                            int priority,
@@ -286,23 +301,27 @@ public:
             delay);
     }
 
-    /// @see WorkerReplicationRequestBase::createSqlRequest
+    /// @see WorkerRequestFactoryBase::createSqlRequest
     WorkerSqlRequestPtr createSqlRequest(string const& worker,
                                          string const& id,
-                                         int priority,
-                                         string const& query,
-                                         string const& user,
-                                         string const& password,
-                                         size_t maxRows) const final {
+                                         ProtocolRequestSql const& request) const final {
         return WorkerSqlRequestPOSIX::create(
             _serviceProvider,
             worker,
             id,
-            priority,
-            query,
-            user,
-            password,
-            maxRows);
+            request);
+    }
+
+    /// @see WorkerRequestFactoryBase::createIndexRequest
+    WorkerIndexRequestPtr createIndexRequest(string const& worker,
+                                             string const& id,
+                                             ProtocolRequestIndex const& request) const final {
+        return WorkerIndexRequestPOSIX::create(
+            _serviceProvider,
+            _connectionPool,
+            worker,
+            id,
+            request);
     }
 };
 
@@ -326,16 +345,18 @@ public:
     WorkerRequestFactoryFS(WorkerRequestFactoryFS const&) = delete;
     WorkerRequestFactoryFS& operator=(WorkerRequestFactoryFS const&) = delete;
 
-    WorkerRequestFactoryFS(ServiceProvider::Ptr const& serviceProvider)
-        :   WorkerRequestFactoryBase(serviceProvider) {
+    WorkerRequestFactoryFS(ServiceProvider::Ptr const& serviceProvider,
+                           database::mysql::ConnectionPool::Ptr const& connectionPool)
+        :   WorkerRequestFactoryBase(serviceProvider,
+                                     connectionPool) {
     }
 
     ~WorkerRequestFactoryFS() final = default;
 
-    /// @see WorkerReplicationRequestBase::technology
+    /// @see WorkerRequestFactoryBase::technology
     string technology() const final { return "FS"; }
 
-    /// @see WorkerReplicationRequestBase::createReplicationRequest
+    /// @see WorkerRequestFactoryBase::createReplicationRequest
     WorkerReplicationRequestPtr createReplicationRequest(string const& worker,
                                                          string const& id,
                                                          int priority,
@@ -352,7 +373,7 @@ public:
             sourceWorker);
     }
 
-    /// @see WorkerReplicationRequestBase::createDeleteRequest
+    /// @see WorkerRequestFactoryBase::createDeleteRequest
     WorkerDeleteRequestPtr createDeleteRequest(string const& worker,
                                                string const& id,
                                                int priority,
@@ -367,7 +388,7 @@ public:
             chunk);
     }
 
-    /// @see WorkerReplicationRequestBase::createFindRequest
+    /// @see WorkerRequestFactoryBase::createFindRequest
     WorkerFindRequestPtr createFindRequest(string const& worker,
                                            string const& id,
                                            int priority,
@@ -384,7 +405,7 @@ public:
             computeCheckSum);
     }
 
-    /// @see WorkerReplicationRequestBase::createFindAllRequest
+    /// @see WorkerRequestFactoryBase::createFindAllRequest
     WorkerFindAllRequestPtr createFindAllRequest(string const& worker,
                                                  string const& id,
                                                  int priority,
@@ -397,7 +418,7 @@ public:
             database);
     }
 
-    /// @see WorkerReplicationRequestBase::createEchoRequest
+    /// @see WorkerRequestFactoryBase::createEchoRequest
     WorkerEchoRequestPtr createEchoRequest(string const& worker,
                                            string const& id,
                                            int priority,
@@ -412,23 +433,27 @@ public:
             delay);
     }
 
-    /// @see WorkerReplicationRequestBase::createSqlRequest
+    /// @see WorkerRequestFactoryBase::createSqlRequest
     WorkerSqlRequestPtr createSqlRequest(string const& worker,
                                          string const& id,
-                                         int priority,
-                                         string const& query,
-                                         string const& user,
-                                         string const& password,
-                                         size_t maxRows) const final {
+                                         ProtocolRequestSql const& request) const final {
         return WorkerSqlRequestFS::create(
             _serviceProvider,
             worker,
             id,
-            priority,
-            query,
-            user,
-            password,
-            maxRows);
+            request);
+    }
+
+    /// @see WorkerRequestFactoryBase::createIndexRequest
+    WorkerIndexRequestPtr createIndexRequest(string const& worker,
+                                             string const& id,
+                                             ProtocolRequestIndex const& request) const final {
+        return WorkerIndexRequestFS::create(
+            _serviceProvider,
+            _connectionPool,
+            worker,
+            id,
+            request);
     }
 };
 
@@ -438,15 +463,17 @@ public:
 ///////////////////////////////////////////////////////////////
 
 WorkerRequestFactory::WorkerRequestFactory(ServiceProvider::Ptr const& serviceProvider,
+                                           database::mysql::ConnectionPool::Ptr const& connectionPool,
                                            string const& technology)
-    :   WorkerRequestFactoryBase(serviceProvider) {
+    :   WorkerRequestFactoryBase(serviceProvider,
+                                 connectionPool) {
 
     string const finalTechnology =
         technology.empty() ? serviceProvider->config()->workerTechnology() : technology;
 
-    if      (finalTechnology == "TEST")  _ptr = new WorkerRequestFactoryTest( serviceProvider);
-    else if (finalTechnology == "POSIX") _ptr = new WorkerRequestFactoryPOSIX(serviceProvider);
-    else if (finalTechnology == "FS")    _ptr = new WorkerRequestFactoryFS(   serviceProvider);
+    if      (finalTechnology == "TEST")  _ptr = new WorkerRequestFactoryTest( serviceProvider, connectionPool);
+    else if (finalTechnology == "POSIX") _ptr = new WorkerRequestFactoryPOSIX(serviceProvider, connectionPool);
+    else if (finalTechnology == "FS")    _ptr = new WorkerRequestFactoryFS(   serviceProvider, connectionPool);
     else {
         throw invalid_argument(
                 "WorkerRequestFactory::" + string(__func__) +

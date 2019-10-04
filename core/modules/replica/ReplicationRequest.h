@@ -111,6 +111,9 @@ public:
      * @param chunk
      *   the number of a chunk to replicate (implies all relevant tables)
      *
+     * @param allowDuplicate
+     *   follow a previously made request if the current one duplicates it
+     *
      * @param onFinish
      *   an optional callback function to be called upon a completion of the request.
      *
@@ -119,9 +122,6 @@ public:
      *
      * @param keepTracking
      *   keep tracking the request before it finishes or fails
-     *
-     * @param allowDuplicate
-     *   follow a previously made request if the current one duplicates it
      *
      * @param messenger
      *   worker messaging service
@@ -135,10 +135,10 @@ public:
                       std::string const& sourceWorker,
                       std::string const& database,
                       unsigned int chunk,
+                      bool allowDuplicate,
                       CallbackType const& onFinish,
                       int priority,
                       bool keepTracking,
-                      bool allowDuplicate,
                       std::shared_ptr<Messenger> const& messenger);
 
     /// @see Request::extendedPersistentState()
@@ -164,10 +164,10 @@ private:
                        std::string const& sourceWorker,
                        std::string const& database,
                        unsigned int  chunk,
+                       bool allowDuplicate,
                        CallbackType const& onFinish,
                        int priority,
                        bool keepTracking,
-                       bool allowDuplicate,
                        std::shared_ptr<Messenger> const& messenger);
 
     /**
@@ -201,7 +201,6 @@ private:
      */
     void _analyze(bool success,
                   ProtocolResponseReplicate const& message);
-
 
     // Input parameters
 

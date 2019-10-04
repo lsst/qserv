@@ -91,7 +91,7 @@ public:
 
     // Trivial getter methods
 
-    ServiceProvider::Ptr const& serviceProvider() { return _serviceProvider; }
+    ServiceProvider::Ptr const& serviceProvider() const { return _serviceProvider; }
 
     std::string const& worker() const { return _worker; }
 
@@ -317,11 +317,11 @@ protected:
     /// to simulate request processing.
     unsigned int _durationMillisec;
 
+    /// Mutex guarding API calls where it's needed
+    mutable util::Mutex _mtx;
+
     /// Mutex guarding operations with the worker's data folder
     static util::Mutex _mtxDataFolderOperations;
-
-    /// Mutex guarding API calls where it's needed
-    static util::Mutex _mtx;
 };
 
 

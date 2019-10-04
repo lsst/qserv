@@ -23,6 +23,7 @@
 #include "replica/Request.h"
 
 // System headers
+#include <algorithm>
 #include <stdexcept>
 
 // Third party headers
@@ -147,6 +148,13 @@ string Request::context() const {
 
 string const& Request::remoteId() const {
     return _duplicateRequestId.empty() ? _id : _duplicateRequestId;
+}
+
+
+unsigned int Request::nextTimeIvalMsec() {
+    auto result = _currentTimeIvalMsec;
+    _currentTimeIvalMsec = min(2 * _currentTimeIvalMsec, 1000 * timerIvalSec());
+    return result;
 }
 
 

@@ -165,6 +165,9 @@ public:
     /// Drain (cancel) all queued and in-progress requests
     void drain();
 
+    /// Reload Configuration
+    void reconfig();
+
     /**
      * Enqueue the replication request for processing
      *
@@ -251,7 +254,7 @@ public:
                         ProtocolResponseEcho& response);
 
     /**
-     * Enqueue a request for querying the workr database
+     * Enqueue a request for querying the worker database
      *
      * @param id
      *   an identifier of a request
@@ -266,6 +269,24 @@ public:
     void enqueueForSql(std::string const& id,
                        ProtocolRequestSql const& request,
                        ProtocolResponseSql& response);
+
+    /**
+     * Enqueue a request for extracting the "secondary index" data from
+     * the director tables.
+     *
+     * @param id
+     *   an identifier of a request
+     *
+     * @param request
+     *   the Protobuf object received from a client
+     *
+     * @param response
+     *   the Protobuf object to be initialized and ready to be sent back
+     *   to the client
+     */
+    void enqueueForIndex(std::string const& id,
+                         ProtocolRequestIndex const& request,
+                         ProtocolResponseIndex& response);
 
     /**
      * Set default values to protocol response which has 3 mandatory fields:
@@ -557,6 +578,22 @@ private:
      */
     void _setInfo(WorkerRequest::Ptr const& request,
                   ProtocolResponseSql& response);
+
+    /**
+     * Extract the result set (if the query has succeeded) and put
+     * it into the response object.
+     *
+     * @param request
+     *   finished request
+     *
+     * @param response
+     *   Google Protobuf object to be initialized
+     *
+     * @throws std::logic_error
+     *   if the dynamic type of the request won't match expectations
+     */
+    void _setInfo(WorkerRequest::Ptr const& request,
+                  ProtocolResponseIndex& response);
 
     /**
      * Fill in the information object for the specified request based on its

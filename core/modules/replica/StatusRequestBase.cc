@@ -52,13 +52,14 @@ StatusRequestBase::StatusRequestBase(ServiceProvider::Ptr const& serviceProvider
                                      string const& worker,
                                      string const& targetRequestId,
                                      ProtocolQueuedRequestType targetRequestType,
+                                     int priority,
                                      bool keepTracking,
                                      shared_ptr<Messenger> const& messenger)
     :   RequestMessenger(serviceProvider,
                          io_service,
                          requestTypeName,
                          worker,
-                         0,    /* priority */
+                         priority,
                          keepTracking,
                          false /* allowDuplicate */,
                          messenger),

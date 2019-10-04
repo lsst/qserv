@@ -58,10 +58,10 @@ ReplicationRequest::Ptr ReplicationRequest::create(
                             string const& sourceWorker,
                             string const& database,
                             unsigned int chunk,
+                            bool allowDuplicate,
                             CallbackType const& onFinish,
                             int priority,
                             bool keepTracking,
-                            bool allowDuplicate,
                             shared_ptr<Messenger> const& messenger) {
     return ReplicationRequest::Ptr(
         new ReplicationRequest(
@@ -71,10 +71,10 @@ ReplicationRequest::Ptr ReplicationRequest::create(
             sourceWorker,
             database,
             chunk,
+            allowDuplicate,
             onFinish,
             priority,
             keepTracking,
-            allowDuplicate,
             messenger));
 }
 
@@ -86,10 +86,10 @@ ReplicationRequest::ReplicationRequest(
                         string const& sourceWorker,
                         string const& database,
                         unsigned int chunk,
+                        bool allowDuplicate,
                         CallbackType const& onFinish,
                         int priority,
                         bool keepTracking,
-                        bool allowDuplicate,
                         shared_ptr<Messenger> const& messenger)
     :   RequestMessenger(
             serviceProvider,
@@ -146,7 +146,7 @@ void ReplicationRequest::_wait(util::Lock const& lock) {
 
     // Always need to set the interval before launching the timer.
 
-    timer().expires_from_now(boost::posix_time::seconds(timerIvalSec()));
+    timer().expires_from_now(boost::posix_time::milliseconds(nextTimeIvalMsec()));
     timer().async_wait(
         boost::bind(
             &ReplicationRequest::_awaken,

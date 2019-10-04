@@ -291,7 +291,7 @@ protected:
             bool keepTracking,
             bool allowDuplicate);
 
-    /// Return shared pointer of the desired subclass (no dynamic type checking)
+    /// @return a shared pointer of the desired subclass (no dynamic type checking)
     template <class T>
     std::shared_ptr<T> shared_from_base() {
         return std::static_pointer_cast<T>(shared_from_this());
@@ -311,6 +311,32 @@ protected:
 
     /// @return suggested interval (seconds) between retries in communications with workers
     unsigned int timerIvalSec() const { return _timerIvalSec; }
+
+    /**
+     * This method allows requests to implements an adaptive tracking algorithm
+     * for following request status on worker nodes. Once the first message
+     * is sent to a worker the request tracking timer is launched with
+     * the initial value of the interval (stored in the data
+     * member Request::_currentTimeIvalMsec).
+     * Each subsequent activation of the timer is made with an interval which is
+     * twice as long as the previous one until a limit set in the base class
+     * member is reached:
+     *
+     * @see Request::timerIvalSec()
+     *
+     * After that the above mentioned (fixed) interval will always be used
+     * untill the request finishes or fails (or gets cancelled, expires, etc.)
+     *
+     * This algorithm addresses three problems:
+     * - it allows nearly real-time response for quick requests
+     * - it prevents flooding in the network
+     * - it doesn't cause an excessive use of resources on either ends of
+     *   the Replication system
+     *
+     * @return
+     *   the next value of the delay expressed in milliseconds
+     */
+    unsigned int nextTimeIvalMsec();
 
     /**
      * @param lock
@@ -592,6 +618,9 @@ private:
     /// from a configuration.
     unsigned int                _timerIvalSec;
     boost::asio::deadline_timer _timer;
+
+    /// @see Request::nextTimeIvalMsec()
+    unsigned int _currentTimeIvalMsec = 10;
 
     /// This timer is used (if configured) to limit the total run time
     /// of a request. The timer starts when the request is started. And it's
