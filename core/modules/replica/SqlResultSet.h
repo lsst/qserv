@@ -41,19 +41,15 @@ namespace qserv {
 namespace replica {
 
 /**
- * Structure SqlResultSet represents a result set received from a remote worker
+ * Class SqlResultSet represents a result set received from a remote worker
  * service upon a successful completion of a query against the worker database.
  */
-struct SqlResultSet {
+class SqlResultSet {
+public:
 
-    /// Optional error code received from a server
-    std::string error;
-
-    /// Of the connection
-    std::string charSetName;
-
-    /// The request produced a result set
-    bool hasResult = false;
+    std::string error;          /// is set if a error code received from a server
+    std::string charSetName;    /// of the connection
+    bool hasResult = false;     /// 'true' if the request produced a result set
 
     /// Structure Field stores a content captured from MYSQL_FIELD
     struct Field {
@@ -73,7 +69,7 @@ struct SqlResultSet {
         /// The default c-tor is required at a presence of the explicit one
         Field() = default;
 
-        /// @return string representatio of the type
+        /// @return string representation of the type
         std::string type2string() const;
 
         /**
@@ -135,12 +131,7 @@ struct SqlResultSet {
      */
     void set(ProtocolResponseSql const& message);
 
-    /**
-     * Translate the structure into JSON
-     *
-     * @return
-     *   JSON array
-     */
+    /// @return  JSON representation of the object
     nlohmann::json toJson() const;
 
     /**

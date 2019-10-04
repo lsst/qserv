@@ -105,7 +105,9 @@ public:
     /// @see DatabaseServices::findOldestReplica()
     void findOldestReplicas(std::vector<ReplicaInfo>& replicas,
                             size_t maxReplicas,
-                            bool enabledWorkersOnly) final;
+                            bool enabledWorkersOnly,
+                            bool allDatabases,
+                            bool isPublished) final;
 
     /// @see DatabaseServices::findReplicas()
     void findReplicas(std::vector<ReplicaInfo>& replicas,
@@ -116,17 +118,34 @@ public:
     /// @see DatabaseServices::findWorkerReplicas()
     void findWorkerReplicas(std::vector<ReplicaInfo>& replicas,
                             std::string const& worker,
-                            std::string const& database) final;
+                            std::string const& database,
+                            bool allDatabases,
+                            bool isPublished,
+                            bool includeFileInfo) final;
 
     /// @see DatabaseServices::numWorkerReplicas()
     uint64_t numWorkerReplicas(std::string const& worker,
-                               std::string const& database=std::string()) final;
+                               std::string const& database,
+                               bool allDatabases,
+                               bool isPublished) final;
 
     /// @see DatabaseServices::findWorkerReplicas()
     void findWorkerReplicas(std::vector<ReplicaInfo>& replicas,
                             unsigned int chunk,
                             std::string const& worker,
-                            std::string const& databaseFamily) final;
+                            std::string const& databaseFamily,
+                            bool allDatabases,
+                            bool isPublished) final;
+
+    /// @see DatabaseServices::findDatabaseReplicas()
+    void findDatabaseReplicas(std::vector<ReplicaInfo>& replicas,
+                              std::string const& database,
+                              bool enabledWorkersOnly) final;
+
+    /// @see DatabaseServices::findDatabaseChunks()
+    void findDatabaseChunks(std::vector<unsigned int>& chunks,
+                            std::string const& database,
+                            bool enabledWorkersOnly) final;
 
     /// @see DatabaseServices::actualReplicationLevel()
     std::map<unsigned int, size_t> actualReplicationLevel(
@@ -173,7 +192,21 @@ public:
                             uint64_t toTimeStamp,
                             size_t maxEntries) final;
 
+
+    // Operations with super-transactions
+
+    TransactionInfo transaction(uint32_t id) final;
+
+    std::vector<TransactionInfo> transactions(std::string const& databaseName=std::string()) final;
+
+    TransactionInfo beginTransaction(std::string const& databaseName) final;
+
+    TransactionInfo endTransaction(uint32_t id,
+                                   bool abort=false) final;
+
 private:
+
+    std::string _context(std::string const& func=std::string()) const;
 
     /**
      * Thread unsafe implementation of the corresponding public method.
@@ -191,12 +224,29 @@ private:
      *   worker name (as per the request)
      *
      * @param database
-     *   database name (as per the request)
+     *   (optional) database name (as per the request)
+     *
+     * @param allDatabases
+     *   (optional) flag which if set to 'true' will include into the search all
+     *   known database entries regardless of their PUBLISHED status. Otherwise
+     *   a subset of databases as determined by the second flag 'isPublished'
+     *   will get assumed. Note, this flag is used only if a value of
+     *   parameter 'database' is empty.
+     * 
+     * @param isPublished
+     *   (optional) flag which is used if flag 'all' is set to 'false'
+     *   to narrow a collection of databases included into the search.
+     * 
+     * @param includeFileInfo
+     *   if set to 'true' then file info will also be added to each replica
      */
     void _findWorkerReplicasImpl(util::Lock const& lock,
                                  std::vector<ReplicaInfo>& replicas,
                                  std::string const& worker,
-                                 std::string const& database);
+                                 std::string const& database=std::string(),
+                                 bool allDatabases=false,
+                                 bool isPublished=true,
+                                 bool includeFileInfo=true);
 
     /**
      * Actual implementation of the replica update algorithm.
@@ -264,10 +314,14 @@ private:
      *
      * @param query
      *   SQL query against the corresponding table
+     * 
+     * @param includeFileInfo
+     *   if set to 'true' then file info will also be added to each replica
      */
     void _findReplicasImpl(util::Lock const& lock,
                            std::vector<ReplicaInfo>& replicas,
-                           std::string const& query);
+                           std::string const& query,
+                           bool includeFileInfo=true);
 
     /**
      * Fetch files for the replicas
@@ -277,20 +331,30 @@ private:
      *   this method
      *
      * @param id2replica
-     *   input collection of incomplete replicas
-     *
-     * @param replicas
-     *   output collection of complete replicas
+     *   input/output collection of incomplete replicas to be extended with
+     *   files (if any found)
      */
     void _findReplicaFilesImpl(util::Lock const& lock,
-                               std::map<uint64_t, ReplicaInfo> const& id2replica,
-                               std::vector<ReplicaInfo>& replicas);
+                               std::map<uint64_t, ReplicaInfo>& id2replica);
 
     /**
-     * Implement the corresponding public method
+     * Fetch replicas satisfying the specified query
      *
-     * @see DatabaseServicesMySQL::logControllerEvent()
+     * @param lock
+     *   a lock on DatabaseServicesMySQL::_mtx must be acquired before calling
+     *   this method
+     *
+     * @param chunks
+     *   collection of chunks to be returned
+     *
+     * @param query
+     *   SQL query against the corresponding table
      */
+    void _findChunksImpl(util::Lock const& lock,
+                         std::vector<unsigned int>& chunks,
+                         std::string const& query);
+
+    /// @see DatabaseServicesMySQL::logControllerEvent()
     void _logControllerEvent(util::Lock const& lock,
                              ControllerEvent const& event);
 
@@ -301,62 +365,45 @@ private:
                                                      uint64_t toTimeStamp,
                                                      size_t maxEntries);
 
-    /**
-     * Implement the corresponding public method
-     *
-     * @see DatabaseServicesMySQL::controller()
-     */
+    /// @see DatabaseServicesMySQL::controller()
     ControllerInfo _controller(util::Lock const& lock,
                                std::string const& id);
 
-    /**
-     * Implement the corresponding public method
-     *
-     * @see DatabaseServicesMySQL::controllers()
-     */
+    /// @see DatabaseServicesMySQL::controllers()
     std::list<ControllerInfo> _controllers(util::Lock const& lock,
                                            uint64_t fromTimeStamp,
                                            uint64_t toTimeStamp,
                                            size_t maxEntries);
 
-    /**
-     * Implement the corresponding public method
-     *
-     * @see DatabaseServicesMySQL::request()
-     */
+    /// @see DatabaseServicesMySQL::request()
     RequestInfo _request(util::Lock const& lock,
                          std::string const& id);
 
-    /**
-     * Implement the corresponding public method
-     *
-     * @see DatabaseServicesMySQL::requests()
-     */
+    /// @see DatabaseServicesMySQL::requests()
     std::list<RequestInfo> _requests(util::Lock const& lock,
                                      std::string const& jobId,
                                      uint64_t fromTimeStamp,
                                      uint64_t toTimeStamp,
                                      size_t maxEntries);
 
-    /**
-     * Implement the corresponding public method
-     *
-     * @see DatabaseServicesMySQL::job()
-     */
+    /// @see DatabaseServicesMySQL::job()
     JobInfo _job(util::Lock const& lock,
                  std::string const& id);
 
-    /**
-     * Implement the corresponding public method
-     *
-     * @see DatabaseServicesMySQL::jobs()
-     */
+    /// @see DatabaseServicesMySQL::jobs()
     std::list<JobInfo> _jobs(util::Lock const& lock,
                              std::string const& controllerId,
                              std::string const& parentJobId,
                              uint64_t fromTimeStamp,
                              uint64_t toTimeStamp,
                              size_t maxEntries);
+
+    /// @see DatabaseServicesMySQL::findTransaction()
+    TransactionInfo _findTransactionImpl(util::Lock const& lock,
+                                         std::string const& predicate);
+
+    std::vector<TransactionInfo> _findTransactionsImpl(util::Lock const& lock,
+                                                       std::string const& predicate);
 
     // Input parameters
 

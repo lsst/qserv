@@ -23,6 +23,7 @@
 #include "replica/ControllerApp.h"
 
 // System headers
+#include <fstream>
 #include <iostream>
 #include <stdexcept>
 
@@ -32,10 +33,12 @@
 #include "replica/EchoRequest.h"
 #include "replica/FindRequest.h"
 #include "replica/FindAllRequest.h"
+#include "replica/IndexRequest.h"
 #include "replica/ReplicationRequest.h"
 #include "replica/ServiceManagementRequest.h"
 #include "replica/ServiceProvider.h"
 #include "replica/SqlRequest.h"
+#include "replica/SqlSchemaUtils.h"
 #include "replica/StatusRequest.h"
 #include "replica/StopRequest.h"
 #include "util/BlockPost.h"
@@ -95,6 +98,42 @@ void printRequest(Request::Ptr const& request,
 }
 
 
+void printRequest(IndexRequest::Ptr const& request, string const& fileName) {
+    auto&& responseData = request->responseData();
+    cout << request->context() << "\n"
+         << "responseData.error: " << responseData.error << "\n"
+         << "performance:  " << request->performance() << endl;
+
+    if (fileName.empty()) cout << responseData.data;
+    else {
+        ofstream f(fileName);
+        if (not f.good()) {
+            cerr << "failed to open file: " << fileName << endl;
+            return;
+        }
+        f << responseData.data;
+    }
+}
+
+
+template <>
+void printRequest<StatusIndexRequest>(StatusIndexRequest::Ptr const& request) {
+    auto&& responseData = request->responseData();
+    cout << request->context() << "\n"
+         << "responseData.error: " << responseData.error << "\n"
+         << "performance:  " << request->performance() << endl;
+}
+
+
+template <>
+void printRequest<StopIndexRequest>(StopIndexRequest::Ptr const& request) {
+    auto&& responseData = request->responseData();
+    cout << request->context() << "\n"
+         << "responseData.error: " << responseData.error << "\n"
+         << "performance:  " << request->performance() << endl;
+}
+
+
 template <class T>
 void printRequestExtra(typename T::Ptr const& request) {
     cout << "targetPerformance: " << request->targetPerformance() << endl;
@@ -132,14 +171,25 @@ ControllerApp::ControllerApp(int argc, char* argv[])
             "FIND",
             "FIND_ALL",
             "ECHO",
-            "SQL",
+            "SQL_QUERY",
+            "SQL_CREATE_DATABASE",
+            "SQL_DELETE_DATABASE",
+            "SQL_ENABLE_DATABASE",
+            "SQL_DISABLE_DATABASE",
+            "SQL_GRANT_ACCESS",
+            "SQL_CREATE_TABLE",
+            "SQL_DELETE_TABLE",
+            "SQL_REMOVE_TABLE_PARTITIONS",
+            "SQL_DELETE_TABLE_PARTITION",
+            "INDEX",
             "STATUS",
             "STOP",
             "SERVICE_SUSPEND",
             "SERVICE_RESUME",
             "SERVICE_STATUS",
             "SERVICE_REQUESTS",
-            "SERVICE_DRAIN"
+            "SERVICE_DRAIN",
+            "SERVICE_RECONFIG"
         },
         _request);
 
@@ -274,53 +324,201 @@ ControllerApp::ControllerApp(int argc, char* argv[])
 
     /// Request-specific parameters, options, flags
 
-    auto& sqlCmd = parser().command("SQL");
+    auto& sqlQueryCmd = parser().command("SQL_QUERY");
 
-    sqlCmd.description(
+    sqlQueryCmd.description(
         "Ask a worker service to execute a query against its database, get a result"
         " set (if any) back and print it as a table");
 
-    sqlCmd.required(
+    sqlQueryCmd.required(
         "query",
         "The query to be executed by a worker against its database.",
         _sqlQuery);
 
-    sqlCmd.required(
+    sqlQueryCmd.required(
         "user",
         "The name of a user for establishing a connection with the worker's database.",
         _sqlUser);
 
-    sqlCmd.required(
+    sqlQueryCmd.required(
         "password",
         "A password which is used along with the user name for establishing a connection"
         " with the worker's database.",
         _sqlPassword);
 
-    sqlCmd.option(
+    sqlQueryCmd.option(
         "max-rows",
         "The optional cap on a number of rows to be extracted by a worker from a result"
         " set. If a value of the parameter is set to 0 then no explicit limit will be"
         " be enforced.",
         _sqlMaxRows);
 
-    sqlCmd.option(
+    sqlQueryCmd.option(
         "tables-page-size",
         "The number of rows in the table of a query result set (0 means no pages).",
         _sqlPageSize);
 
-    /// Request-specific parameters, options, flags
+    auto& sqlCreateDbCmd = parser().command("SQL_CREATE_DATABASE");
+    sqlCreateDbCmd.required(
+        "database",
+        "The name of a database to be created.",
+        _sqlDatabase
+    );
+
+    auto& sqlDeleteDbCmd = parser().command("SQL_DELETE_DATABASE");
+    sqlDeleteDbCmd.required(
+        "database",
+        "The name of a database to be deleted.",
+        _sqlDatabase
+    );
+
+    auto& sqlEnableDbCmd = parser().command("SQL_ENABLE_DATABASE");
+    sqlEnableDbCmd.required(
+        "database",
+        "The name of a database to be enabled at Qserv workers.",
+        _sqlDatabase
+    );
+
+    auto& sqlDisableDbCmd = parser().command("SQL_DISABLE_DATABASE");
+    sqlDisableDbCmd.required(
+        "database",
+        "The name of a database to be disable at Qserv workers.",
+        _sqlDatabase
+    );
+
+    auto& grantAccessCmd = parser().command("SQL_GRANT_ACCESS");
+    grantAccessCmd.required(
+        "database",
+        "The name of a database to be accessed.",
+        _sqlDatabase
+    );
+    grantAccessCmd.required(
+        "user",
+        "The name of a user to be affected by the operation.",
+        _sqlUser
+    );
+
+    auto& sqlCreateTableCmd = parser().command("SQL_CREATE_TABLE");
+    sqlCreateTableCmd.required(
+        "database",
+        "The name of an existing database where the table will be created.",
+        _sqlDatabase
+    );
+    sqlCreateTableCmd.required(
+        "table",
+        "The name of a table to be created.",
+        _sqlTable
+    );
+    sqlCreateTableCmd.required(
+        "engine",
+        "The name of a MySQL engine for the new table",
+        _sqlEngine
+    );
+    sqlCreateTableCmd.required(
+        "schema-file",
+        "The name of a file where column definitions of the table schema will be"
+        " read from. If symbol '-' is passed instead of the file name then column"
+        " definitions will be read from the Standard Input File. The file is required"
+        " to have the following format: <column-name> <type>",
+        _sqlSchemaFile
+    );
+    sqlCreateTableCmd.option(
+        "partition-by-column",
+        "The name of a column which is used for creating the table based on"
+        " the MySQL partitioning mechanism,",
+        _sqlPartitionByColumn
+    );
+
+    auto& sqlDeleteTableCmd = parser().command("SQL_DELETE_TABLE");
+    sqlDeleteTableCmd.required(
+        "database",
+        "The name of an existing database where the table is residing.",
+        _sqlDatabase
+    );
+    sqlDeleteTableCmd.required(
+        "table",
+        "The name of an existing table to be deleted.",
+        _sqlTable
+    );
+
+    auto& sqlRemoveTablePartitionsCmd = parser().command("SQL_REMOVE_TABLE_PARTITIONS");
+    sqlRemoveTablePartitionsCmd.required(
+        "database",
+        "The name of an existing database where the table is residing.",
+        _sqlDatabase
+    );
+    sqlRemoveTablePartitionsCmd.required(
+        "table",
+        "The name of an existing table to be affected by the operation.",
+        _sqlTable
+    );
+
+    auto& sqlDeleteTablePartitionCmd = parser().command("SQL_DELETE_TABLE_PARTITION");
+    sqlDeleteTablePartitionCmd.required(
+        "database",
+        "The name of an existing database where the table is residing.",
+        _sqlDatabase
+    );
+    sqlDeleteTablePartitionCmd.required(
+        "table",
+        "The name of an existing table to be affected by the operation.",
+        _sqlTable
+    );
+    sqlDeleteTablePartitionCmd.required(
+        "transaction",
+        "An identifier of a super-transaction corresponding to a partition"
+        " to be dropped from the table. The transaction must exist, and it"
+        " should be in the ABORTED state.",
+        _transactionId
+    );
+
+    auto& indexCmd = parser().command("INDEX");
+    indexCmd.required(
+        "database",
+        "The name of an existing database where the table is residing.",
+        _sqlDatabase
+    );
+    indexCmd.required(
+        "chunk",
+        "The chunk number.",
+        _chunkNumber
+    );
+    indexCmd.option(
+        "transaction",
+        "An identifier of a super-transaction corresponding to a MySQL partition of the"
+        " 'director' table. If the option isn't used then the complete content of"
+        " the table will be scanned, and the scan won't include the super-transaction"
+        " column 'qserv_trans_id'.",
+        _transactionId
+    );
+    indexCmd.option(
+        "index-file",
+        "The name of a file where the 'secondary index' data will be written into"
+        " upon a successful completion of a request. If the option is not used then"
+        " the data will be printed onto the Standard Output Stream",
+        _indexFileName
+    );
+
 
     auto& statusCmd = parser().command("STATUS");
-
     statusCmd.description(
         "Ask a worker to return a status of a request.");
 
     statusCmd.required(
         "affected-request",
         "The type of a request affected by the operation. Supported types:"
-        " REPLICATE, DELETE, FIND, FIND_ALL, ECHO, SQL.",
+        " REPLICATE, DELETE, FIND, FIND_ALL, ECHO, SQL_QUERY, SQL_CREATE_DATABASE"
+        " SQL_DELETE_DATABASE, SQL_ENABLE_DATABASE, SQL_DISABLE_DATABASE"
+        " SQL_GRANT_ACCESS"
+        " SQL_CREATE_TABLE, SQL_DELETE_TABLE, SQL_REMOVE_TABLE_PARTITIONS,"
+        " SQL_DELETE_TABLE_PARTITION,"
+        " INDEX.",
         _affectedRequest,
-       {"REPLICATE", "DELETE", "FIND", "FIND_ALL", "ECHO", "SQL"});
+       {"REPLICATE", "DELETE", "FIND", "FIND_ALL", "ECHO", "SQL_QUERY",
+        "SQL_CREATE_DATABASE", "SQL_DELETE_DATABASE", "SQL_ENABLE_DATABASE",
+        "SQL_DISABLE_DATABASE", "SQL_GRANT_ACCESS", "SQL_CREATE_TABLE", "SQL_DELETE_TABLE",
+        "SQL_REMOVE_TABLE_PARTITIONS", "SQL_DELETE_TABLE_PARTITION",
+        "INDEX"});
 
     statusCmd.required(
         "id",
@@ -337,9 +535,18 @@ ControllerApp::ControllerApp(int argc, char* argv[])
     stopCmd.required(
         "affected-request",
         "The type of a request affected by the operation. Supported types:"
-        " REPLICATE, DELETE, FIND, FIND_ALL, ECHO, SQL.",
+        " REPLICATE, DELETE, FIND, FIND_ALL, ECHO, SQL_QUERY, SQL_CREATE_DATABASE"
+        " SQL_DELETE_DATABASE, SQL_ENABLE_DATABASE, SQL_DISABLE_DATABASE"
+        " SQL_GRANT_ACCESS"
+        " SQL_CREATE_TABLE, SQL_DELETE_TABLE, SQL_REMOVE_TABLE_PARTITIONS,"
+       " SQL_DELETE_TABLE_PARTITION,"
+        " INDEX.",
         _affectedRequest,
-       {"REPLICATE", "DELETE", "FIND", "FIND_ALL", "ECHO", "SQL"});
+       {"REPLICATE", "DELETE", "FIND", "FIND_ALL", "ECHO", "SQL_QUERY",
+        "SQL_CREATE_DATABASE", "SQL_DELETE_DATABASE", "SQL_ENABLE_DATABASE",
+        "SQL_DISABLE_DATABASE", "SQL_GRANT_ACCESS", "SQL_CREATE_TABLE", "SQL_DELETE_TABLE",
+        "SQL_REMOVE_TABLE_PARTITIONS", "SQL_DELETE_TABLE_PARTITION",
+        "INDEX"});
 
     stopCmd.required(
         "id",
@@ -370,6 +577,10 @@ ControllerApp::ControllerApp(int argc, char* argv[])
     parser().command("SERVICE_DRAIN").description(
         "Drain all requests by stopping cancelling all ongoing requests"
         " and emptying all queues.");
+
+    parser().command("SERVICE_RECONFIG").description(
+        "Reload worker's Configuration. Requests known to a worker won't be affected"
+        " by the operation.");
 }
 
 
@@ -434,14 +645,145 @@ int ControllerApp::runImpl() {
             },
             _priority,
             not _doNotTrackRequest);
-    } else if ("SQL" == _request) {
-        ptr = controller->sql(
+    } else if ("INDEX" == _request) {
+        bool const hasTransactions = _transactionId != numeric_limits<uint32_t>::max();
+        ptr = controller->index(
+            _workerName,
+            _sqlDatabase,
+            _chunkNumber,
+            hasTransactions,
+            _transactionId,
+            [&] (IndexRequest::Ptr const& ptr_) {
+                ::printRequest(ptr_,
+                               _indexFileName);
+            },
+            _priority,
+            not _doNotTrackRequest);
+    } else if ("SQL_QUERY" == _request) {
+        ptr = controller->sqlQuery(
             _workerName,
             _sqlQuery,
             _sqlUser,
             _sqlPassword,
             _sqlMaxRows,
-            [&] (SqlRequest::Ptr const& ptr_) {
+            [&] (SqlQueryRequest::Ptr const& ptr_) {
+                ::printRequest(ptr_,
+                               ptr_->responseData(),
+                               ptr_->performance(),
+                               _sqlPageSize);
+            },
+            _priority,
+            not _doNotTrackRequest);
+    } else if ("SQL_CREATE_DATABASE" == _request) {
+        ptr = controller->sqlCreateDb(
+            _workerName,
+            _sqlDatabase,
+            [&] (SqlCreateDbRequest::Ptr const& ptr_) {
+                ::printRequest(ptr_,
+                               ptr_->responseData(),
+                               ptr_->performance(),
+                               _sqlPageSize);
+            },
+            _priority,
+            not _doNotTrackRequest);
+    } else if ("SQL_DELETE_DATABASE" == _request) {
+        ptr = controller->sqlDeleteDb(
+            _workerName,
+            _sqlDatabase,
+            [&] (SqlDeleteDbRequest::Ptr const& ptr_) {
+                ::printRequest(ptr_,
+                               ptr_->responseData(),
+                               ptr_->performance(),
+                               _sqlPageSize);
+            },
+            _priority,
+            not _doNotTrackRequest);
+    } else if ("SQL_ENABLE_DATABASE" == _request) {
+        ptr = controller->sqlEnableDb(
+            _workerName,
+            _sqlDatabase,
+            [&] (SqlEnableDbRequest::Ptr const& ptr_) {
+                ::printRequest(ptr_,
+                               ptr_->responseData(),
+                               ptr_->performance(),
+                               _sqlPageSize);
+            },
+            _priority,
+            not _doNotTrackRequest);
+    } else if ("SQL_DISABLE_DATABASE" == _request) {
+        ptr = controller->sqlDisableDb(
+            _workerName,
+            _sqlDatabase,
+            [&] (SqlDisableDbRequest::Ptr const& ptr_) {
+                ::printRequest(ptr_,
+                               ptr_->responseData(),
+                               ptr_->performance(),
+                               _sqlPageSize);
+            },
+            _priority,
+            not _doNotTrackRequest);
+    } else if ("SQL_GRANT_ACCESS" == _request) {
+        ptr = controller->sqlGrantAccess(
+            _workerName,
+            _sqlDatabase,
+            _sqlUser,
+            [&] (SqlGrantAccessRequest::Ptr const& ptr_) {
+                ::printRequest(ptr_,
+                               ptr_->responseData(),
+                               ptr_->performance(),
+                               _sqlPageSize);
+            },
+            _priority,
+            not _doNotTrackRequest);
+    } else if ("SQL_CREATE_TABLE" == _request) {
+        ptr = controller->sqlCreateTable(
+            _workerName,
+            _sqlDatabase,
+            _sqlTable,
+            _sqlEngine,
+            _sqlPartitionByColumn,
+            SqlSchemaUtils::readFromTextFile(_sqlSchemaFile),
+            [&] (SqlCreateTableRequest::Ptr const& ptr_) {
+                ::printRequest(ptr_,
+                               ptr_->responseData(),
+                               ptr_->performance(),
+                               _sqlPageSize);
+            },
+            _priority,
+            not _doNotTrackRequest);
+    } else if ("SQL_DELETE_TABLE" == _request) {
+        ptr = controller->sqlDeleteTable(
+            _workerName,
+            _sqlDatabase,
+            _sqlTable,
+            [&] (SqlDeleteTableRequest::Ptr const& ptr_) {
+                ::printRequest(ptr_,
+                               ptr_->responseData(),
+                               ptr_->performance(),
+                               _sqlPageSize);
+            },
+            _priority,
+            not _doNotTrackRequest);
+    } else if ("SQL_REMOVE_TABLE_PARTITIONS" == _request) {
+        ptr = controller->sqlRemoveTablePartitions(
+            _workerName,
+            _sqlDatabase,
+            _sqlTable,
+            [&] (SqlRemoveTablePartitionsRequest::Ptr const& ptr_) {
+                ::printRequest(ptr_,
+                               ptr_->responseData(),
+                               ptr_->performance(),
+                               _sqlPageSize);
+            },
+            _priority,
+            not _doNotTrackRequest);
+    } else if ("SQL_DELETE_TABLE_PARTITION" == _request) {
+        ptr = controller->sqlDeleteTablePartition(
+            _workerName,
+            _sqlDatabase,
+            _sqlTable,
+            _transactionId,
+            [&] (SqlDeleteTablePartitionRequest::Ptr const& ptr_) {
                 ::printRequest(ptr_,
                                ptr_->responseData(),
                                ptr_->performance(),
@@ -451,7 +793,7 @@ int ControllerApp::runImpl() {
             not _doNotTrackRequest);
     } else if ("STATUS" == _request) {
         if ("REPLICATE"  == _affectedRequest) {
-            ptr = controller->statusOfReplication(
+            ptr = controller->statusById<StatusReplicationRequest>(
                 _workerName,
                 _affectedRequestId,
                 [] (StatusReplicationRequest::Ptr const& ptr_) {
@@ -460,7 +802,7 @@ int ControllerApp::runImpl() {
                 },
                 not _doNotTrackRequest);
         } else if ("DELETE"  == _affectedRequest) {
-            ptr = controller->statusOfDelete(
+            ptr = controller->statusById<StatusDeleteRequest>(
                 _workerName,
                 _affectedRequestId,
                 [] (StatusDeleteRequest::Ptr const& ptr_) {
@@ -469,7 +811,7 @@ int ControllerApp::runImpl() {
                 },
                 not _doNotTrackRequest);
         } else if ("FIND"  == _affectedRequest) {
-            ptr = controller->statusOfFind(
+            ptr = controller->statusById<StatusFindRequest>(
                 _workerName,
                 _affectedRequestId,
                 [] (StatusFindRequest::Ptr const& ptr_) {
@@ -478,7 +820,7 @@ int ControllerApp::runImpl() {
                 },
                 not _doNotTrackRequest);
         } else if ("FIND_ALL"  == _affectedRequest) {
-            ptr = controller->statusOfFindAll(
+            ptr = controller->statusById<StatusFindAllRequest>(
                 _workerName,
                 _affectedRequestId,
                 [] (StatusFindAllRequest::Ptr const& ptr_) {
@@ -487,7 +829,7 @@ int ControllerApp::runImpl() {
                 },
                 not _doNotTrackRequest);
         } else if ("ECHO" == _affectedRequest) {
-            ptr = controller->statusOfEcho(
+            ptr = controller->statusById<StatusEchoRequest>(
                 _workerName,
                 _affectedRequestId,
                 [] (StatusEchoRequest::Ptr const& ptr_) {
@@ -495,16 +837,142 @@ int ControllerApp::runImpl() {
                     ::printRequestExtra<StatusEchoRequest>(ptr_);
                 },
                 not _doNotTrackRequest);
-        } else if ("SQL" == _affectedRequest) {
-            ptr = controller->statusOfSql(
+        } else if ("INDEX" == _affectedRequest) {
+            ptr = controller->statusById<StatusIndexRequest>(
                 _workerName,
                 _affectedRequestId,
-                [&] (StatusSqlRequest::Ptr const& ptr_) {
+                [] (StatusIndexRequest::Ptr const& ptr_) {
+                    ::printRequest     <StatusIndexRequest>(ptr_);
+                    ::printRequestExtra<StatusIndexRequest>(ptr_);
+                },
+                not _doNotTrackRequest);
+        } else if ("SQL_QUERY" == _affectedRequest) {
+            ptr = controller->statusById<StatusSqlQueryRequest>(
+                _workerName,
+                _affectedRequestId,
+                [&] (StatusSqlQueryRequest::Ptr const& ptr_) {
                     ::printRequest(ptr_,
                                    ptr_->responseData(),
                                    ptr_->performance(),
                                    _sqlPageSize);
-                    ::printRequestExtra<StatusSqlRequest>(ptr_);
+                    ::printRequestExtra<StatusSqlQueryRequest>(ptr_);
+                },
+                not _doNotTrackRequest);
+        } else if ("SQL_CREATE_DATABASE" == _affectedRequest) {
+            ptr = controller->statusById<StatusSqlCreateDbRequest>(
+                _workerName,
+                _affectedRequestId,
+                [&] (StatusSqlCreateDbRequest::Ptr const& ptr_) {
+                    ::printRequest(ptr_,
+                                   ptr_->responseData(),
+                                   ptr_->performance(),
+                                   _sqlPageSize);
+                    ::printRequestExtra<StatusSqlCreateDbRequest>(ptr_);
+                },
+                not _doNotTrackRequest);
+        } else if ("SQL_DELETE_DATABASE" == _affectedRequest) {
+            ptr = controller->statusById<StatusSqlDeleteDbRequest>(
+                _workerName,
+                _affectedRequestId,
+                [&] (StatusSqlDeleteDbRequest::Ptr const& ptr_) {
+                    ::printRequest(ptr_,
+                                   ptr_->responseData(),
+                                   ptr_->performance(),
+                                   _sqlPageSize);
+                    ::printRequestExtra<StatusSqlDeleteDbRequest>(ptr_);
+                },
+                not _doNotTrackRequest);
+        } else if ("SQL_ENABLE_DATABASE" == _affectedRequest) {
+            ptr = controller->statusById<StatusSqlEnableDbRequest>(
+                _workerName,
+                _affectedRequestId,
+                [&] (StatusSqlEnableDbRequest::Ptr const& ptr_) {
+                    ::printRequest(ptr_,
+                                   ptr_->responseData(),
+                                   ptr_->performance(),
+                                   _sqlPageSize);
+                    ::printRequestExtra<StatusSqlEnableDbRequest>(ptr_);
+                },
+                not _doNotTrackRequest);
+        } else if ("SQL_DISABLE_DATABASE" == _affectedRequest) {
+            ptr = controller->statusById<StatusSqlDisableDbRequest>(
+                _workerName,
+                _affectedRequestId,
+                [&] (StatusSqlDisableDbRequest::Ptr const& ptr_) {
+                    ::printRequest(ptr_,
+                                   ptr_->responseData(),
+                                   ptr_->performance(),
+                                   _sqlPageSize);
+                    ::printRequestExtra<StatusSqlDisableDbRequest>(ptr_);
+                },
+                not _doNotTrackRequest);
+        } else if ("SQL_GRANT_ACCESS" == _affectedRequest) {
+            ptr = controller->statusById<StatusSqlGrantAccessRequest>(
+                _workerName,
+                _affectedRequestId,
+                [&] (StatusSqlGrantAccessRequest::Ptr const& ptr_) {
+                    ::printRequest(ptr_,
+                                   ptr_->responseData(),
+                                   ptr_->performance(),
+                                   _sqlPageSize);
+                    ::printRequestExtra<StatusSqlGrantAccessRequest>(ptr_);
+                },
+                not _doNotTrackRequest);
+        } else if ("SQL_CREATE_TABLE" == _affectedRequest) {
+            ptr = controller->statusById<StatusSqlCreateTableRequest>(
+                _workerName,
+                _affectedRequestId,
+                [&] (StatusSqlCreateTableRequest::Ptr const& ptr_) {
+                    ::printRequest(ptr_,
+                                   ptr_->responseData(),
+                                   ptr_->performance(),
+                                   _sqlPageSize);
+                    ::printRequestExtra<StatusSqlCreateTableRequest>(ptr_);
+                },
+                not _doNotTrackRequest);
+        } else if ("SQL_DELETE_TABLE" == _affectedRequest) {
+            ptr = controller->statusById<StatusSqlDeleteTableRequest>(
+                _workerName,
+                _affectedRequestId,
+                [&] (StatusSqlDeleteTableRequest::Ptr const& ptr_) {
+                    ::printRequest(ptr_,
+                                   ptr_->responseData(),
+                                   ptr_->performance(),
+                                   _sqlPageSize);
+                    ::printRequestExtra<StatusSqlDeleteTableRequest>(ptr_);
+                },
+                not _doNotTrackRequest);
+        } else if ("SQL_REMOVE_TABLE_PARTITIONS" == _affectedRequest) {
+            ptr = controller->statusById<StatusSqlRemoveTablePartitionsRequest>(
+                _workerName,
+                _affectedRequestId,
+                [&] (StatusSqlRemoveTablePartitionsRequest::Ptr const& ptr_) {
+                    ::printRequest(ptr_,
+                                   ptr_->responseData(),
+                                   ptr_->performance(),
+                                   _sqlPageSize);
+                    ::printRequestExtra<StatusSqlRemoveTablePartitionsRequest>(ptr_);
+                },
+                not _doNotTrackRequest);
+        } else if ("SQL_DELETE_TABLE_PARTITION" == _affectedRequest) {
+            ptr = controller->statusById<StatusSqlDeleteTablePartitionRequest>(
+                _workerName,
+                _affectedRequestId,
+                [&] (StatusSqlDeleteTablePartitionRequest::Ptr const& ptr_) {
+                    ::printRequest(ptr_,
+                                   ptr_->responseData(),
+                                   ptr_->performance(),
+                                   _sqlPageSize);
+                    ::printRequestExtra<StatusSqlDeleteTablePartitionRequest>(ptr_);
+                },
+                not _doNotTrackRequest);
+        } else if ("INDEX" == _affectedRequest) {
+            ptr = controller->statusById<StatusIndexRequest>(
+                _workerName,
+                _affectedRequestId,
+                [] (StatusIndexRequest::Ptr const& ptr_) {
+                    ::printRequest     <StatusIndexRequest>(ptr_);
+                    ::printRequestExtra<StatusIndexRequest>(ptr_);
                 },
                 not _doNotTrackRequest);
         } else {
@@ -512,7 +980,7 @@ int ControllerApp::runImpl() {
         }
     } else if ("STOP" == _request) {
         if ("REPLICATE" == _affectedRequest) {
-            ptr = controller->stopReplication(
+            ptr = controller->stopById<StopReplicationRequest>(
                 _workerName,
                 _affectedRequestId,
                 [] (StopReplicationRequest::Ptr const& ptr_) {
@@ -521,7 +989,7 @@ int ControllerApp::runImpl() {
                 },
                 not _doNotTrackRequest);
         } else if ("DELETE" == _affectedRequest) {
-            ptr = controller->stopReplicaDelete(
+            ptr = controller->stopById<StopDeleteRequest>(
                 _workerName,
                 _affectedRequestId,
                 [] (StopDeleteRequest::Ptr const& ptr_) {
@@ -530,7 +998,7 @@ int ControllerApp::runImpl() {
                 },
                 not _doNotTrackRequest);
         } else if ("FIND" == _affectedRequest) {
-            ptr = controller->stopReplicaFind(
+            ptr = controller->stopById<StopFindRequest>(
                 _workerName,
                 _affectedRequestId,
                 [] (StopFindRequest::Ptr const& ptr_) {
@@ -539,7 +1007,7 @@ int ControllerApp::runImpl() {
                 },
                 not _doNotTrackRequest);
         } else if ("FIND_ALL" == _affectedRequest) {
-            ptr = controller->stopReplicaFindAll(
+            ptr = controller->stopById<StopFindAllRequest>(
                 _workerName,
                 _affectedRequestId,
                 [] (StopFindAllRequest::Ptr const& ptr_) {
@@ -548,7 +1016,7 @@ int ControllerApp::runImpl() {
                 },
                 not _doNotTrackRequest);
         } else if ("ECHO" == _affectedRequest) {
-            ptr = controller->stopEcho(
+            ptr = controller->stopById<StopEchoRequest>(
                 _workerName,
                 _affectedRequestId,
                 [] (StopEchoRequest::Ptr const& ptr_) {
@@ -556,16 +1024,133 @@ int ControllerApp::runImpl() {
                     ::printRequestExtra<StopEchoRequest>(ptr_);
                 },
                 not _doNotTrackRequest);
-        } else if ("SQL" == _affectedRequest) {
-            ptr = controller->stopSql(
+        } else if ("INDEX" == _affectedRequest) {
+            ptr = controller->stopById<StopIndexRequest>(
                 _workerName,
                 _affectedRequestId,
-                [&] (StopSqlRequest::Ptr const& ptr_) {
+                [] (StopIndexRequest::Ptr const& ptr_) {
+                    ::printRequest     <StopIndexRequest>(ptr_);
+                    ::printRequestExtra<StopIndexRequest>(ptr_);
+                },
+                not _doNotTrackRequest);
+        } else if ("SQL_QUERY" == _affectedRequest) {
+            ptr = controller->stopById<StopSqlQueryRequest>(
+                _workerName,
+                _affectedRequestId,
+                [&] (StopSqlQueryRequest::Ptr const& ptr_) {
                     ::printRequest(ptr_,
                                    ptr_->responseData(),
                                    ptr_->performance(),
                                    _sqlPageSize);
-                    ::printRequestExtra<StopSqlRequest>(ptr_);
+                    ::printRequestExtra<StopSqlQueryRequest>(ptr_);
+                },
+                not _doNotTrackRequest);
+        } else if ("SQL_CREATE_DATABASE" == _affectedRequest) {
+            ptr = controller->stopById<StopSqlCreateDbRequest>(
+                _workerName,
+                _affectedRequestId,
+                [&] (StopSqlCreateDbRequest::Ptr const& ptr_) {
+                    ::printRequest(ptr_,
+                                   ptr_->responseData(),
+                                   ptr_->performance(),
+                                   _sqlPageSize);
+                    ::printRequestExtra<StopSqlCreateDbRequest>(ptr_);
+                },
+                not _doNotTrackRequest);
+        } else if ("SQL_DELETE_DATABASE" == _affectedRequest) {
+            ptr = controller->stopById<StopSqlDeleteDbRequest>(
+                _workerName,
+                _affectedRequestId,
+                [&] (StopSqlDeleteDbRequest::Ptr const& ptr_) {
+                    ::printRequest(ptr_,
+                                   ptr_->responseData(),
+                                   ptr_->performance(),
+                                   _sqlPageSize);
+                    ::printRequestExtra<StopSqlDeleteDbRequest>(ptr_);
+                },
+                not _doNotTrackRequest);
+        } else if ("SQL_ENABLE_DATABASE" == _affectedRequest) {
+            ptr = controller->stopById<StopSqlEnableDbRequest>(
+                _workerName,
+                _affectedRequestId,
+                [&] (StopSqlEnableDbRequest::Ptr const& ptr_) {
+                    ::printRequest(ptr_,
+                                   ptr_->responseData(),
+                                   ptr_->performance(),
+                                   _sqlPageSize);
+                    ::printRequestExtra<StopSqlEnableDbRequest>(ptr_);
+                },
+                not _doNotTrackRequest);
+        } else if ("SQL_DISABLE_DATABASE" == _affectedRequest) {
+            ptr = controller->stopById<StopSqlDisableDbRequest>(
+                _workerName,
+                _affectedRequestId,
+                [&] (StopSqlDisableDbRequest::Ptr const& ptr_) {
+                    ::printRequest(ptr_,
+                                   ptr_->responseData(),
+                                   ptr_->performance(),
+                                   _sqlPageSize);
+                    ::printRequestExtra<StopSqlDisableDbRequest>(ptr_);
+                },
+                not _doNotTrackRequest);
+        } else if ("SQL_GRANT_ACCESS" == _affectedRequest) {
+            ptr = controller->stopById<StopSqlGrantAccessRequest>(
+                _workerName,
+                _affectedRequestId,
+                [&] (StopSqlGrantAccessRequest::Ptr const& ptr_) {
+                    ::printRequest(ptr_,
+                                   ptr_->responseData(),
+                                   ptr_->performance(),
+                                   _sqlPageSize);
+                    ::printRequestExtra<StopSqlGrantAccessRequest>(ptr_);
+                },
+                not _doNotTrackRequest);
+        } else if ("SQL_CREATE_TABLE" == _affectedRequest) {
+            ptr = controller->stopById<StopSqlCreateTableRequest>(
+                _workerName,
+                _affectedRequestId,
+                [&] (StopSqlCreateTableRequest::Ptr const& ptr_) {
+                    ::printRequest(ptr_,
+                                   ptr_->responseData(),
+                                   ptr_->performance(),
+                                   _sqlPageSize);
+                    ::printRequestExtra<StopSqlCreateTableRequest>(ptr_);
+                },
+                not _doNotTrackRequest);
+        } else if ("SQL_DELETE_TABLE" == _affectedRequest) {
+            ptr = controller->stopById<StopSqlDeleteTableRequest>(
+                _workerName,
+                _affectedRequestId,
+                [&] (StopSqlDeleteTableRequest::Ptr const& ptr_) {
+                    ::printRequest(ptr_,
+                                   ptr_->responseData(),
+                                   ptr_->performance(),
+                                   _sqlPageSize);
+                    ::printRequestExtra<StopSqlDeleteTableRequest>(ptr_);
+                },
+                not _doNotTrackRequest);
+        } else if ("SQL_REMOVE_TABLE_PARTITIONS" == _affectedRequest) {
+            ptr = controller->stopById<StopSqlRemoveTablePartitionsRequest>(
+                _workerName,
+                _affectedRequestId,
+                [&] (StopSqlRemoveTablePartitionsRequest::Ptr const& ptr_) {
+                    ::printRequest(ptr_,
+                                   ptr_->responseData(),
+                                   ptr_->performance(),
+                                   _sqlPageSize);
+                    ::printRequestExtra<StopSqlRemoveTablePartitionsRequest>(ptr_);
+                },
+                not _doNotTrackRequest);
+        } else if ("SQL_DELETE_TABLE_PARTITION" == _affectedRequest) {
+            ptr = controller->stopById<StopSqlDeleteTablePartitionRequest>(
+                _workerName,
+                _affectedRequestId,
+                [&] (StopSqlDeleteTablePartitionRequest::Ptr const& ptr_) {
+                    ::printRequest(ptr_,
+                                   ptr_->responseData(),
+                                   ptr_->performance(),
+                                   _sqlPageSize);
+                    ::printRequestExtra<StopSqlDeleteTablePartitionRequest>(ptr_);
                 },
                 not _doNotTrackRequest);
         } else {
@@ -599,6 +1184,12 @@ int ControllerApp::runImpl() {
         ptr = controller->drainWorkerService(
             _workerName,
             [] (ServiceDrainRequest::Ptr const& ptr_) {
+                ::printRequest<ServiceManagementRequestBase>(ptr_);
+            });
+    } else if ("SERVICE_RECONFIG" == _request) {
+        ptr = controller->reconfigWorkerService(
+            _workerName,
+            [] (ServiceReconfigRequest::Ptr const& ptr_) {
                 ::printRequest<ServiceManagementRequestBase>(ptr_);
             });
     } else {
