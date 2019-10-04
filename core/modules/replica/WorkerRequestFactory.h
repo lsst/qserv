@@ -32,13 +32,19 @@
 namespace lsst {
 namespace qserv {
 namespace replica {
+    class ProtocolRequestIndex;
+    class ProtocolRequestSql;
     class WorkerDeleteRequest;
     class WorkerEchoRequest;
     class WorkerFindAllRequest;
     class WorkerFindRequest;
+    class WorkerIndexRequest;
     class WorkerSqlRequest;
     class WorkerReplicationRequest;
-}}}  // Forward declarations
+namespace database {
+namespace mysql {
+    class ConnectionPool;
+}}}}}  // Forward declarations
 
 // This header declarations
 namespace lsst {
@@ -55,12 +61,15 @@ public:
 
     // Pointers to specific request types
 
+    typedef std::shared_ptr<database::mysql::ConnectionPool> ConnectionPoolPtr;
+
     typedef std::shared_ptr<WorkerDeleteRequest>      WorkerDeleteRequestPtr;
     typedef std::shared_ptr<WorkerEchoRequest>        WorkerEchoRequestPtr;
     typedef std::shared_ptr<WorkerFindRequest>        WorkerFindRequestPtr;
     typedef std::shared_ptr<WorkerFindAllRequest>     WorkerFindAllRequestPtr;
     typedef std::shared_ptr<WorkerReplicationRequest> WorkerReplicationRequestPtr;
     typedef std::shared_ptr<WorkerSqlRequest>         WorkerSqlRequestPtr;
+    typedef std::shared_ptr<WorkerIndexRequest>       WorkerIndexRequestPtr;
 
     // The default constructor and copy semantics are prohibited
 
@@ -160,12 +169,21 @@ public:
     virtual WorkerSqlRequestPtr createSqlRequest(
             std::string const& worker,
             std::string const& id,
-            int priority,
-            std::string const& query,
-            std::string const& user,
-            std::string const& password,
-            size_t maxRows) const = 0;
+            ProtocolRequestSql const& request) const = 0;
  
+    /**
+     * Create an instance of a request extracting the "secondary index" data
+     *
+     * @see class WorkerIndexRequest
+     *
+     * @return
+     *   a pointer to the newly created object
+     */
+    virtual WorkerIndexRequestPtr createIndexRequest(
+            std::string const& worker,
+            std::string const& id,
+            ProtocolRequestIndex const& request) const = 0;
+
 protected:
 
     /**
@@ -173,12 +191,17 @@ protected:
      *
      * @param serviceProvider
      *   a provider of various services
+     * 
+     * @param connectionPool
+     *   a pool of persistent database connections
      */
-    explicit WorkerRequestFactoryBase(ServiceProvider::Ptr const& serviceProvider);
+    WorkerRequestFactoryBase(ServiceProvider::Ptr const& serviceProvider,
+                             ConnectionPoolPtr const& connectionPool);
 
 protected:
 
     ServiceProvider::Ptr const _serviceProvider;
+    ConnectionPoolPtr const _connectionPool;
 };
 
 
@@ -218,11 +241,15 @@ public:
      * @param serviceProvider
      *   provider of various services (including configurations)
      *
+     * @param connectionPool
+     *   a pool of persistent database connections
+     *
      * @param technology
      *   (optional) the name of a technology
      */
-    explicit WorkerRequestFactory(ServiceProvider::Ptr const& serviceProvider,
-                                  std::string const& technology=std::string());
+    WorkerRequestFactory(ServiceProvider::Ptr const& serviceProvider,
+                         ConnectionPoolPtr const& connectionPool,
+                         std::string const& technology=std::string());
 
     ~WorkerRequestFactory() final { delete _ptr; }
 
@@ -315,20 +342,24 @@ public:
     WorkerSqlRequestPtr createSqlRequest(
             std::string const& worker,
             std::string const& id,
-            int priority,
-            std::string const& query,
-            std::string const& user,
-            std::string const& password,
-            size_t maxRows) const final {
+            ProtocolRequestSql const& request) const final {
 
         return _ptr->createSqlRequest(
             worker,
             id,
-            priority,
-            query,
-            user,
-            password,
-            maxRows);
+            request);
+    }
+
+    /// @see WorkerReplicationRequestBase::createIndexRequest()
+    WorkerIndexRequestPtr createIndexRequest(
+            std::string const& worker,
+            std::string const& id,
+            ProtocolRequestIndex const& request) const final {
+
+        return _ptr->createIndexRequest(
+            worker,
+            id,
+            request);
     }
 
 protected:

@@ -39,6 +39,7 @@
 #include "replica/WorkerReplicationRequest.h"
 #include "replica/WorkerRequestFactory.h"
 #include "replica/WorkerSqlRequest.h"
+#include "replica/WorkerIndexRequest.h"
 #include "util/BlockPost.h"
 
 using namespace std;
@@ -203,6 +204,13 @@ void WorkerProcessor::drain() {
     for (auto&& ptr: _inProgressRequests) ids.push_back(ptr->id());
 
     for (auto&& id: ids) _dequeueOrCancelImpl(lock, id);
+}
+
+
+void WorkerProcessor::reconfig() {
+    LOGS(_log, LOG_LVL_DEBUG, _context(__func__));
+    util::Lock lock(_mtx, _context(__func__));
+    _serviceProvider->config()->reload();
 }
 
 
@@ -467,11 +475,47 @@ void WorkerProcessor::enqueueForSql(std::string const& id,
         auto const ptr = _requestFactory.createSqlRequest(
             _worker,
             id,
-            request.priority(),
-            request.query(),
-            request.user(),
-            request.password(),
-            request.max_rows()
+            request
+        );
+        _newRequests.push(ptr);
+    
+        response.set_status(ProtocolStatus::QUEUED);
+        response.set_status_ext(ProtocolStatusExt::NONE);
+        response.set_allocated_performance(ptr->performance().info().release());
+    
+        _setInfo(ptr, response);
+
+    } catch (invalid_argument const& ec) {
+        LOGS(_log, LOG_LVL_ERROR, _context(__func__) << "  " << ec.what());
+
+        setDefaultResponse(response,
+                           ProtocolStatus::BAD,
+                           ProtocolStatusExt::INVALID_PARAM);
+    }
+}
+
+
+void WorkerProcessor::enqueueForIndex(string const& id,
+                                      ProtocolRequestIndex const& request,
+                                      ProtocolResponseIndex& response) {
+
+    LOGS(_log, LOG_LVL_DEBUG, _context(__func__)
+        << "  id: "    << id
+        << "  db: "    << request.database()
+        << "  chunk: " << request.chunk()
+        << "  has_transactions: " << (request.has_transactions() ? "true" : "false")
+        << "  transaction_id: "   << request.transaction_id());
+
+    util::Lock lock(_mtx, _context(__func__));
+
+    // The code below may catch exceptions if other parameters of the request
+    // won't pass further validation against the present configuration of the request
+    // processing service.
+    try {
+        auto const ptr = _requestFactory.createIndexRequest(
+            _worker,
+            id,
+            request
         );
         _newRequests.push(ptr);
     
@@ -747,6 +791,8 @@ void WorkerProcessor::_setServiceResponseInfo(
         info->set_queued_type(ProtocolQueuedRequestType::TEST_ECHO);
     } else if (nullptr != dynamic_pointer_cast<WorkerSqlRequest>(request)) {
         info->set_queued_type(ProtocolQueuedRequestType::SQL);
+    } else if (nullptr != dynamic_pointer_cast<WorkerIndexRequest>(request)) {
+        info->set_queued_type(ProtocolQueuedRequestType::INDEX);
     } else {
         throw logic_error(
                 _classMethodContext(__func__) +
@@ -789,7 +835,7 @@ WorkerRequest::Ptr WorkerProcessor::_fetchNextForProcessing(
     // For generating random intervals within the maximum range of seconds
     // requested by a client.
 
-    util::BlockPost blockPost(0, timeoutMilliseconds);
+    util::BlockPost blockPost(0, min(10U, timeoutMilliseconds));
 
     unsigned int totalElapsedTime = 0;
     while (totalElapsedTime < timeoutMilliseconds) {
@@ -955,6 +1001,19 @@ void WorkerProcessor::_setInfo(WorkerRequest::Ptr const& request,
     if (not ptr) {
         throw logic_error(
                 _classMethodContext(__func__) + "(WorkerSqlRequest)"
+                "  incorrect dynamic type of request id: " + request->id());
+    }
+    ptr->setInfo(response);
+}
+
+
+void WorkerProcessor::_setInfo(WorkerRequest::Ptr const& request,
+                               ProtocolResponseIndex& response) {
+
+    auto ptr = dynamic_pointer_cast<WorkerIndexRequest>(request);
+    if (not ptr) {
+        throw logic_error(
+                _classMethodContext(__func__) + "(WorkerIndexRequest)"
                 "  incorrect dynamic type of request id: " + request->id());
     }
     ptr->setInfo(response);

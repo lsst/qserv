@@ -93,6 +93,9 @@ protected:
      *   the sub-type of the replication request (if applies for the general
      *   type above)
      *
+     * @param priority
+     *   priority level of the request
+     *
      * @param keepTracking
      *   keep tracking the request before it finishes or fails
      *
@@ -100,13 +103,14 @@ protected:
      *   an interface for communicating with workers
      */
     StopRequestBase(ServiceProvider::Ptr const& serviceProvider,
-                     boost::asio::io_service& io_service,
-                     char const* requestName,
-                     std::string const& worker,
-                     std::string const& targetRequestId,
-                     ProtocolQueuedRequestType targetRequestType,
-                     bool keepTracking,
-                     std::shared_ptr<Messenger> const& messenger);
+                    boost::asio::io_service& io_service,
+                    char const* requestName,
+                    std::string const& worker,
+                    std::string const& targetRequestId,
+                    ProtocolQueuedRequestType targetRequestType,
+                    int priority,
+                    bool keepTracking,
+                    std::shared_ptr<Messenger> const& messenger);
 
     /// @see Request::startImpl()
     void startImpl(util::Lock const& lock) final;

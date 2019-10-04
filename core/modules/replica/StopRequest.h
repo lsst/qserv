@@ -50,6 +50,13 @@
 #include "replica/SqlResultSet.h"
 #include "replica/StopRequestBase.h"
 
+// Forward declarations
+namespace lsst {
+namespace qserv {
+namespace replica {
+    class IndexInfo;
+}}} // namespace lsst::qserv::replica
+
 // This header declarations
 namespace lsst {
 namespace qserv {
@@ -191,6 +198,31 @@ public:
     }
 };
 
+class StopIndexRequestPolicy {
+public:
+
+    using ResponseMessageType     = ProtocolResponseIndex;
+    using ResponseDataType        = IndexInfo;
+    using TargetRequestParamsType = IndexRequestParams;
+
+    static char const* requestName();
+
+    static ProtocolQueuedRequestType targetRequestType();
+
+    static void extractResponseData(ResponseMessageType const& msg,
+                                    ResponseDataType& data);
+
+    static void extractTargetRequestParams(ResponseMessageType const& msg,
+                                           TargetRequestParamsType& params);
+
+    template <class REQUEST_PTR>
+    static void saveReplicaInfo(REQUEST_PTR const& request) {
+        request->serviceProvider()->databaseServices()->updateRequestState(*request,
+                                                                           request->targetRequestId(),
+                                                                           request->targetPerformance());
+    }
+};
+
 class StopSqlRequestPolicy {
 public:
 
@@ -277,6 +309,9 @@ public:
      *   an optional callback function to be called upon a completion of
      *   the request.
      *
+     * @param priority
+     *   priority level of the request
+     *
      * @param keepTracking
      *   keep tracking the request before it finishes or fails
      *
@@ -291,6 +326,7 @@ public:
                       std::string const& worker,
                       std::string const& targetRequestId,
                       CallbackType const& onFinish,
+                      int priority,
                       bool keepTracking,
                       std::shared_ptr<Messenger> const& messenger) {
         return StopRequest<POLICY>::Ptr(
@@ -302,6 +338,7 @@ public:
                 targetRequestId,
                 POLICY::targetRequestType(),
                 onFinish,
+                priority,
                 keepTracking,
                 messenger));
     }
@@ -349,6 +386,7 @@ private:
                 std::string const& targetRequestId,
                 ProtocolQueuedRequestType targetRequestType,
                 CallbackType const& onFinish,
+                int priority,
                 bool keepTracking,
                 std::shared_ptr<Messenger> const& messenger)
         :   StopRequestBase(serviceProvider,
@@ -357,6 +395,7 @@ private:
                             worker,
                             targetRequestId,
                             targetRequestType,
+                            priority,
                             keepTracking,
                             messenger),
             _onFinish(onFinish) {
@@ -426,7 +465,17 @@ typedef StopRequest<StopDeleteRequestPolicy>      StopDeleteRequest;
 typedef StopRequest<StopFindRequestPolicy>        StopFindRequest;
 typedef StopRequest<StopFindAllRequestPolicy>     StopFindAllRequest;
 typedef StopRequest<StopEchoRequestPolicy>        StopEchoRequest;
-typedef StopRequest<StopSqlRequestPolicy>         StopSqlRequest;
+typedef StopRequest<StopIndexRequestPolicy>       StopIndexRequest;
+typedef StopRequest<StopSqlRequestPolicy>         StopSqlQueryRequest;
+typedef StopRequest<StopSqlRequestPolicy>         StopSqlCreateDbRequest;
+typedef StopRequest<StopSqlRequestPolicy>         StopSqlDeleteDbRequest;
+typedef StopRequest<StopSqlRequestPolicy>         StopSqlEnableDbRequest;
+typedef StopRequest<StopSqlRequestPolicy>         StopSqlDisableDbRequest;
+typedef StopRequest<StopSqlRequestPolicy>         StopSqlGrantAccessRequest;
+typedef StopRequest<StopSqlRequestPolicy>         StopSqlCreateTableRequest;
+typedef StopRequest<StopSqlRequestPolicy>         StopSqlDeleteTableRequest;
+typedef StopRequest<StopSqlRequestPolicy>         StopSqlRemoveTablePartitionsRequest;
+typedef StopRequest<StopSqlRequestPolicy>         StopSqlDeleteTablePartitionRequest;
 
 }}} // namespace lsst::qserv::replica
 

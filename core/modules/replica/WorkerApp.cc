@@ -26,6 +26,7 @@
 #include <thread>
 
 // Qserv headers
+#include "replica/DatabaseMySQL.h"
 #include "replica/FileServer.h"
 #include "replica/ServiceProvider.h"
 #include "replica/WorkerProcessor.h"
@@ -62,7 +63,8 @@ WorkerApp::WorkerApp(int argc, char* argv[])
             true    /* boostProtobufVersionCheck */,
             true    /* enableServiceProvider */
         ),
-        _log(LOG_GET("lsst.qserv.replica.WorkerApp")) {
+        _log(LOG_GET("lsst.qserv.replica.WorkerApp")),
+        _qservDbPassword(Configuration::qservWorkerDatabasePassword()) {
 
     // Configure the command line parser
 
@@ -70,6 +72,13 @@ WorkerApp::WorkerApp(int argc, char* argv[])
         "worker",
         "The name of a worker.",
         _worker);
+
+    parser().option(
+        "qserv-db-password",
+        "A password for the MySQL account of the Qserv worker database. The account"
+        " name is found in the Configuration.",
+        _qservDbPassword
+    );
 }
 
 
@@ -77,7 +86,22 @@ int WorkerApp::runImpl() {
 
     string const context = "WorkerApp::" + string(__func__) + "  ";
 
-    WorkerRequestFactory requestFactory(serviceProvider());
+    // Set the database password
+    Configuration::setQservWorkerDatabasePassword(_qservDbPassword);
+
+    // Configure the factory with a pool of persistent connectors
+    auto const workerInfo = serviceProvider()->config()->workerInfo(_worker);
+    auto const connectionPool = database::mysql::ConnectionPool::create(
+        database::mysql::ConnectionParams(
+            workerInfo.dbHost,
+            workerInfo.dbPort,
+            workerInfo.dbUser,
+            serviceProvider()->config()->qservWorkerDatabasePassword(),
+            ""
+        ),
+        serviceProvider()->config()->databaseServicesPoolSize()
+    );
+    WorkerRequestFactory requestFactory(serviceProvider(), connectionPool);
 
     auto const reqProcSvr = WorkerServer::create(serviceProvider(), requestFactory, _worker);
     thread reqProcSvrThread([reqProcSvr] () {

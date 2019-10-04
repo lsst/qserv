@@ -49,6 +49,13 @@
 #include "replica/SqlResultSet.h"
 #include "replica/StatusRequestBase.h"
 
+// Forward declarations
+namespace lsst {
+namespace qserv {
+namespace replica {
+    class IndexInfo;
+}}} // namespace lsst::qserv::replica
+
 // This header declarations
 namespace lsst {
 namespace qserv {
@@ -191,6 +198,32 @@ public:
 };
 
 
+class StatusIndexRequestPolicy {
+public:
+
+    using ResponseMessageType     = ProtocolResponseIndex;
+    using ResponseDataType        = IndexInfo;
+    using TargetRequestParamsType = IndexRequestParams;
+
+    static char const* requestName();
+
+    static ProtocolQueuedRequestType targetRequestType();
+
+    static void extractResponseData(ResponseMessageType const& msg,
+                                    ResponseDataType& data);
+
+    static void extractTargetRequestParams(ResponseMessageType const& msg,
+                                           TargetRequestParamsType& params);
+
+    template <class REQUEST_PTR>
+    static void saveReplicaInfo(REQUEST_PTR const& request) {
+        request->serviceProvider()->databaseServices()->updateRequestState(*request,
+                                                                           request->targetRequestId(),
+                                                                           request->targetPerformance());
+    }
+};
+
+
 class StatusSqlRequestPolicy {
 public:
 
@@ -275,6 +308,9 @@ public:
      *   an optional callback function to be called upon a completion of
      *   the request.
      *
+     * @param priority
+     *   priority level of the request
+     *
      * @param keepTracking
      *   keep tracking the request before it finishes or fails
      *
@@ -289,6 +325,7 @@ public:
                       std::string const& worker,
                       std::string const& targetRequestId,
                       CallbackType const& onFinish,
+                      int priority,
                       bool keepTracking,
                       std::shared_ptr<Messenger> const& messenger) {
 
@@ -301,6 +338,7 @@ public:
                 targetRequestId,
                 POLICY::targetRequestType(),
                 onFinish,
+                priority,
                 keepTracking,
                 messenger));
     }
@@ -362,6 +400,7 @@ private:
                   std::string const& targetRequestId,
                   ProtocolQueuedRequestType targetRequestType,
                   CallbackType const& onFinish,
+                  int priority,
                   bool keepTracking,
                   std::shared_ptr<Messenger> const& messenger)
         :   StatusRequestBase(serviceProvider,
@@ -370,6 +409,7 @@ private:
                               worker,
                               targetRequestId,
                               targetRequestType,
+                              priority,
                               keepTracking,
                               messenger),
             _onFinish(onFinish) {
@@ -439,7 +479,17 @@ typedef StatusRequest<StatusDeleteRequestPolicy>      StatusDeleteRequest;
 typedef StatusRequest<StatusFindRequestPolicy>        StatusFindRequest;
 typedef StatusRequest<StatusFindAllRequestPolicy>     StatusFindAllRequest;
 typedef StatusRequest<StatusEchoRequestPolicy>        StatusEchoRequest;
-typedef StatusRequest<StatusSqlRequestPolicy>         StatusSqlRequest;
+typedef StatusRequest<StatusIndexRequestPolicy>       StatusIndexRequest;
+typedef StatusRequest<StatusSqlRequestPolicy>         StatusSqlQueryRequest;
+typedef StatusRequest<StatusSqlRequestPolicy>         StatusSqlCreateDbRequest;
+typedef StatusRequest<StatusSqlRequestPolicy>         StatusSqlDeleteDbRequest;
+typedef StatusRequest<StatusSqlRequestPolicy>         StatusSqlEnableDbRequest;
+typedef StatusRequest<StatusSqlRequestPolicy>         StatusSqlDisableDbRequest;
+typedef StatusRequest<StatusSqlRequestPolicy>         StatusSqlGrantAccessRequest;
+typedef StatusRequest<StatusSqlRequestPolicy>         StatusSqlCreateTableRequest;
+typedef StatusRequest<StatusSqlRequestPolicy>         StatusSqlDeleteTableRequest;
+typedef StatusRequest<StatusSqlRequestPolicy>         StatusSqlRemoveTablePartitionsRequest;
+typedef StatusRequest<StatusSqlRequestPolicy>         StatusSqlDeleteTablePartitionRequest;
 
 }}} // namespace lsst::qserv::replica
 

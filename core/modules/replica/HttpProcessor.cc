@@ -1336,7 +1336,7 @@ void HttpProcessor::_sqlQuery(qhttp::Request::Ptr const& req,
         _debug(string(__func__) + " user="     + user);
         _debug(string(__func__) + " maxRows="  + to_string(maxRows));
 
-        auto const request = controller()->sql(
+        auto const request = controller()->sqlQuery(
             worker,
             query,
             user,

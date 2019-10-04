@@ -91,6 +91,12 @@ public:
     static ProtocolServiceRequestType requestType();
 };
 
+class ServiceReconfigRequestPolicy {
+public:
+    static char const* requestName();
+    static ProtocolServiceRequestType requestType();
+};
+
 /**
   * Generic class ServiceManagementRequest extends its base class
   * to allow further policy-based customization of specific requests.
@@ -99,6 +105,9 @@ template <typename POLICY>
 class ServiceManagementRequest : public ServiceManagementRequestBase {
 
 public:
+
+    /// Inject tye into a namespace of the class
+    typedef POLICY Policy;
 
     /// The pointer type for instances of the class
     typedef std::shared_ptr<ServiceManagementRequest<POLICY>> Ptr;
@@ -190,6 +199,7 @@ typedef ServiceManagementRequest<ServiceResumeRequestPolicy>   ServiceResumeRequ
 typedef ServiceManagementRequest<ServiceStatusRequestPolicy>   ServiceStatusRequest;
 typedef ServiceManagementRequest<ServiceRequestsRequestPolicy> ServiceRequestsRequest;
 typedef ServiceManagementRequest<ServiceDrainRequestPolicy>    ServiceDrainRequest;
+typedef ServiceManagementRequest<ServiceReconfigRequestPolicy> ServiceReconfigRequest;
 
 }}} // namespace lsst::qserv::replica
 

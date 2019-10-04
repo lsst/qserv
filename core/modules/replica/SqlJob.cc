@@ -28,6 +28,7 @@
 // Qserv headers
 #include "replica/Configuration.h"
 #include "replica/ServiceProvider.h"
+#include "replica/StopRequest.h"
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -164,13 +165,13 @@ void SqlJob::startImpl(util::Lock const& lock) {
         _resultData.workers   [worker] = false;
         _resultData.resultSets[worker] = SqlResultSet();
         _requests.push_back(
-            controller()->sql(
+            controller()->sqlQuery(
                 worker,
                 query(),
                 user(),
                 password(),
                 maxRows(),
-                [self] (SqlRequest::Ptr request) {
+                [self] (SqlQueryRequest::Ptr request) {
                     self->_onRequestFinish(request);
                 },
                 options(lock).priority,
@@ -202,10 +203,11 @@ void SqlJob::cancelImpl(util::Lock const& lock) {
     for (auto&& ptr : _requests) {
         ptr->cancel();
         if (ptr->state() != Request::State::FINISHED)
-            controller()->stopSql(
+            controller()->stopById<StopSqlQueryRequest>(
                 ptr->worker(),
                 ptr->id(),
                 nullptr,    /* onFinish */
+                options(lock).priority,
                 true,       /* keepTracking */
                 id()        /* jobId */);
     }
@@ -221,7 +223,7 @@ void SqlJob::notify(util::Lock const& lock) {
 }
 
 
-void SqlJob::_onRequestFinish(SqlRequest::Ptr const& request) {
+void SqlJob::_onRequestFinish(SqlQueryRequest::Ptr const& request) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "  worker=" << request->worker());
 

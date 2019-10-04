@@ -191,7 +191,7 @@ private:
      * The callback function to be invoked on a completion of requests
      * targeting workers.
      */
-    void _onRequestFinish(SqlRequest::Ptr const& request);
+    void _onRequestFinish(SqlQueryRequest::Ptr const& request);
 
 
     // Input parameters
@@ -204,7 +204,7 @@ private:
     CallbackType       _onFinish;       /// @note is reset when the job finishes
 
     /// A collection of requests implementing the operation
-    std::vector<SqlRequest::Ptr> _requests;
+    std::vector<SqlQueryRequest::Ptr> _requests;
 
     // Request counters are used for tracking a condition for
     // completing the job and for computing its final state.

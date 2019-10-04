@@ -53,7 +53,6 @@ namespace qserv {
 namespace replica {
 
 util::Mutex WorkerRequest::_mtxDataFolderOperations;
-util::Mutex WorkerRequest::_mtx;
 
 
 string WorkerRequest::status2string(CompletionStatus status) {
