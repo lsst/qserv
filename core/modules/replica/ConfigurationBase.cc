@@ -440,8 +440,8 @@ void ConfigurationBase::validateTableParameters(
         list<pair<string,string>> const& columns,
         bool isDirectorTable,
         string const& directorTableKey,
-        string const& chunkIdKey,
-        string const& subChunkIdKey,
+        string const& chunkIdColName,
+        string const& subChunkIdColName,
         string const& latitudeColName,
         string const& longitudeColName) const {
 
@@ -498,8 +498,8 @@ void ConfigurationBase::validateTableParameters(
             }
         }
         map<string,string> const colDefs = {
-            {"chunkIdKey",    chunkIdKey},
-            {"subChunkIdKey", subChunkIdKey}
+            {"chunkIdColName",    chunkIdColName},
+            {"subChunkIdColName", subChunkIdColName}
         };
         for (auto&& entry: colDefs) {
             string const& role = entry.first;
@@ -532,8 +532,8 @@ DatabaseInfo ConfigurationBase::addTableTransient(
         list<pair<string,string>> const& columns,
         bool isDirectorTable,
         string const& directorTableKey,
-        string const& chunkIdKey,
-        string const& subChunkIdKey,
+        string const& chunkIdColName,
+        string const& subChunkIdColName,
         string const& latitudeColName,
         string const& longitudeColName) {
 
@@ -544,8 +544,8 @@ DatabaseInfo ConfigurationBase::addTableTransient(
             info.directorTable = table;
             info.directorTableKey = directorTableKey;
         }
-        info.chunkIdKey = chunkIdKey;
-        info.subChunkIdKey = subChunkIdKey;
+        info.chunkIdColName = chunkIdColName;
+        info.subChunkIdColName = subChunkIdColName;
         info.latitudeColName[table] = latitudeColName;
         info.longitudeColName[table] = longitudeColName;
     } else {

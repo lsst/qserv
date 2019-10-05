@@ -435,16 +435,16 @@ DatabaseInfo ConfigurationStore::addTable(
         list<pair<string,string>> const& columns,
         bool isDirectorTable,
         string const& directorTableKey,
-        string const& chunkIdKey,
-        string const& subChunkIdKey,
+        string const& chunkIdColName,
+        string const& subChunkIdColName,
         string const& latitudeColName,
         string const& longitudeColName) {
 
     LOGS(_log, LOG_LVL_DEBUG, context(__func__) << "  database: " << database
          << " table: " << table << " isPartitioned: " << (isPartitioned ? "true" : "false")
          << " isDirectorTable: " << (isDirectorTable ? "true" : "false")
-         << " directorTableKey: " << directorTableKey << " chunkIdKey: " << chunkIdKey
-         << " subChunkIdKey: " << subChunkIdKey
+         << " directorTableKey: " << directorTableKey << " chunkIdColName: " << chunkIdColName
+         << " subChunkIdColName: " << subChunkIdColName
          << " latitudeColName: " << latitudeColName
          << " longitudeColName:" << longitudeColName);
 
@@ -456,8 +456,8 @@ DatabaseInfo ConfigurationStore::addTable(
         columns,
         isDirectorTable,
         directorTableKey,
-        chunkIdKey,
-        subChunkIdKey,
+        chunkIdColName,
+        subChunkIdColName,
         latitudeColName,
         longitudeColName
     );
@@ -471,8 +471,8 @@ DatabaseInfo ConfigurationStore::addTable(
         columns,
         isDirectorTable,
         directorTableKey,
-        chunkIdKey,
-        subChunkIdKey,
+        chunkIdColName,
+        subChunkIdColName,
         latitudeColName,
         longitudeColName
     );
@@ -516,8 +516,8 @@ DatabaseInfo ConfigurationStore::deleteTable(string const& database,
         info.directorTableKey = string();
     }
     if (info.partitionedTables.size() == 0) {
-        info.chunkIdKey = string();
-        info.subChunkIdKey = string();
+        info.chunkIdColName = string();
+        info.subChunkIdColName = string();
     }
     return info;
 }
@@ -709,8 +709,8 @@ void ConfigurationStore::_loadConfiguration(util::ConfigStore const& configStore
         }
         _databaseInfo[name].directorTable = configStore.getRequired(section+".director_table");
         _databaseInfo[name].directorTableKey = configStore.getRequired(section+".director_table_key");
-        _databaseInfo[name].chunkIdKey = configStore.getRequired(section+".chunk_id_key");
-        _databaseInfo[name].subChunkIdKey = configStore.getRequired(section+".sub_chunk_id_key");
+        _databaseInfo[name].chunkIdColName = configStore.getRequired(section+".chunk_id_key");
+        _databaseInfo[name].subChunkIdColName = configStore.getRequired(section+".sub_chunk_id_key");
         
         for (auto const& table: _databaseInfo[name].partitionedTables) {
             string const section = "table:" + name + "." + table;

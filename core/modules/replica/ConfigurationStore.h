@@ -167,8 +167,8 @@ public:
                           std::list<std::pair<std::string,std::string>> const& columns,
                           bool isDirectorTable,
                           std::string const& directorTableKey,
-                          std::string const& chunkIdKey,
-                          std::string const& subChunkIdKey,
+                          std::string const& chunkIdColName,
+                          std::string const& subChunkIdColName,
                           std::string const& latitudeColName,
                           std::string const& longitudeColName) final;
 

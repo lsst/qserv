@@ -377,8 +377,8 @@ BOOST_AUTO_TEST_CASE(ConfigurationTest) {
         BOOST_CHECK(db1info.isPublished == true);
         BOOST_CHECK(db1info.directorTable == "Table11");
         BOOST_CHECK(db1info.directorTableKey == "id1");
-        BOOST_CHECK(db1info.chunkIdKey == "chunkId1");
-        BOOST_CHECK(db1info.subChunkIdKey == "subChunkId1");
+        BOOST_CHECK(db1info.chunkIdColName == "chunkId1");
+        BOOST_CHECK(db1info.subChunkIdColName == "subChunkId1");
 
         tables = db1info.partitionedTables;
         sort(tables.begin(), tables.end());
@@ -399,8 +399,8 @@ BOOST_AUTO_TEST_CASE(ConfigurationTest) {
         BOOST_CHECK(db2info.isPublished == true);
         BOOST_CHECK(db2info.directorTable == "Table21");
         BOOST_CHECK(db2info.directorTableKey == "id2");
-        BOOST_CHECK(db2info.chunkIdKey == "chunkId2");
-        BOOST_CHECK(db2info.subChunkIdKey == "subChunkId2");
+        BOOST_CHECK(db2info.chunkIdColName == "chunkId2");
+        BOOST_CHECK(db2info.subChunkIdColName == "subChunkId2");
 
         tables = db2info.partitionedTables;
         sort(tables.begin(), tables.end());
@@ -421,8 +421,8 @@ BOOST_AUTO_TEST_CASE(ConfigurationTest) {
         BOOST_CHECK(db3info.isPublished == true);
         BOOST_CHECK(db3info.directorTable == "Table31");
         BOOST_CHECK(db3info.directorTableKey == "id3");
-        BOOST_CHECK(db3info.chunkIdKey == "chunkId3");
-        BOOST_CHECK(db3info.subChunkIdKey == "subChunkId3");
+        BOOST_CHECK(db3info.chunkIdColName == "chunkId3");
+        BOOST_CHECK(db3info.subChunkIdColName == "subChunkId3");
 
         tables = db3info.partitionedTables;
         sort(tables.begin(), tables.end());
@@ -443,8 +443,8 @@ BOOST_AUTO_TEST_CASE(ConfigurationTest) {
         BOOST_CHECK(db4info.isPublished == true);
         BOOST_CHECK(db4info.directorTable == "Table41");
         BOOST_CHECK(db4info.directorTableKey == "id4");
-        BOOST_CHECK(db4info.chunkIdKey == "chunkId4");
-        BOOST_CHECK(db4info.subChunkIdKey == "subChunkId4");
+        BOOST_CHECK(db4info.chunkIdColName == "chunkId4");
+        BOOST_CHECK(db4info.subChunkIdColName == "subChunkId4");
 
         tables = db4info.partitionedTables;
         sort(tables.begin(), tables.end());
@@ -463,8 +463,8 @@ BOOST_AUTO_TEST_CASE(ConfigurationTest) {
         BOOST_CHECK(db5info.isPublished == true);
         BOOST_CHECK(db5info.directorTable == "Table51");
         BOOST_CHECK(db5info.directorTableKey == "id5");
-        BOOST_CHECK(db5info.chunkIdKey == "chunkId5");
-        BOOST_CHECK(db5info.subChunkIdKey == "subChunkId5");
+        BOOST_CHECK(db5info.chunkIdColName == "chunkId5");
+        BOOST_CHECK(db5info.subChunkIdColName == "subChunkId5");
 
         tables = db5info.partitionedTables;
         sort(tables.begin(), tables.end());
@@ -483,8 +483,8 @@ BOOST_AUTO_TEST_CASE(ConfigurationTest) {
         BOOST_CHECK(db6info.isPublished == false);
         BOOST_CHECK(db6info.directorTable == "Table61");
         BOOST_CHECK(db6info.directorTableKey == "id6");
-        BOOST_CHECK(db6info.chunkIdKey == "chunkId6");
-        BOOST_CHECK(db6info.subChunkIdKey == "subChunkId6");
+        BOOST_CHECK(db6info.chunkIdColName == "chunkId6");
+        BOOST_CHECK(db6info.subChunkIdColName == "subChunkId6");
 
         tables = db6info.partitionedTables;
         sort(tables.begin(), tables.end());
@@ -508,8 +508,8 @@ BOOST_AUTO_TEST_CASE(ConfigurationTest) {
         BOOST_CHECK(newInfo.regularTables.size() == 0);
         BOOST_CHECK(newInfo.directorTable == "");
         BOOST_CHECK(newInfo.directorTableKey == "");
-        BOOST_CHECK(newInfo.chunkIdKey == "");
-        BOOST_CHECK(newInfo.subChunkIdKey == "");
+        BOOST_CHECK(newInfo.chunkIdColName == "");
+        BOOST_CHECK(newInfo.subChunkIdColName == "");
 
         BOOST_CHECK_THROW(config->addDatabase(newInfo), invalid_argument);
     });

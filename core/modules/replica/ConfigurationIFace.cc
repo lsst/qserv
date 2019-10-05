@@ -22,10 +22,6 @@
 // Class header
 #include "replica/ConfigurationIFace.h"
 
-// System headers
-#include <algorithm>
-#include <stdexcept>
-
 // Qserv headers
 #include "util/IterableFormatter.h"
 
@@ -118,8 +114,8 @@ json DatabaseInfo::toJson() const {
     }
     infoJson["director_table"] = directorTable;
     infoJson["director_table_key"] = directorTableKey;
-    infoJson["chunk_id_key"] = chunkIdKey;
-    infoJson["sub_chunk_id_key"] = subChunkIdKey;
+    infoJson["chunk_id_key"] = chunkIdColName;
+    infoJson["sub_chunk_id_key"] = subChunkIdColName;
 
     return infoJson;
 }
@@ -174,8 +170,8 @@ ostream& operator <<(ostream& os, DatabaseInfo const& info) {
         << "regularTables:" << util::printable(info.regularTables)  << ","
         << "directorTable:" << info.directorTable << ","
         << "directorTableKey:" << info.directorTableKey << ","
-        << "chunkIdKey:" << info.chunkIdKey << ","
-        << "subChunkIdKey:" << info.subChunkIdKey << ")";
+        << "chunkIdColName:" << info.chunkIdColName << ","
+        << "subChunkIdColName:" << info.subChunkIdColName << ")";
     return os;
 }
 
@@ -188,66 +184,6 @@ ostream& operator <<(ostream& os, DatabaseFamilyInfo const& info) {
         << "numSubStripes:" << info.numSubStripes << ","
         << "overlap:" << info.overlap << ")";
     return os;
-}
-
-
-// These parameters are allowed to be changed, and they are set globally
-// for an application (process).
-bool         ConfigurationIFace::_databaseAllowReconnect        = true;
-unsigned int ConfigurationIFace::_databaseConnectTimeoutSec     = 3600;
-unsigned int ConfigurationIFace::_databaseMaxReconnects         = 1;
-unsigned int ConfigurationIFace::_databaseTransactionTimeoutSec = 3600;
-string       ConfigurationIFace::_qservMasterDatabasePassword   = "";
-string       ConfigurationIFace::_qservWorkerDatabasePassword   = "";
-
-
-string ConfigurationIFace::setQservMasterDatabasePassword(string const& newPassword) {
-    string result = newPassword;
-    swap(result, _qservMasterDatabasePassword);
-    return result;
-}
-
-
-string ConfigurationIFace::setQservWorkerDatabasePassword(string const& newPassword) {
-    string result = newPassword;
-    swap(result, _qservWorkerDatabasePassword);
-    return result;
-}
-
-
-bool ConfigurationIFace::setDatabaseAllowReconnect(bool value) {
-    swap(value, _databaseAllowReconnect);
-    return value;
-}
-
-
-unsigned int ConfigurationIFace::setDatabaseConnectTimeoutSec(unsigned int value) {
-    if (0 == value) {
-        throw invalid_argument(
-                "ConfigurationIFace::" + string(__func__) + "  0 is not allowed as a value");
-    }
-    swap(value, _databaseConnectTimeoutSec);
-    return value;
-}
-
-
-unsigned int ConfigurationIFace::setDatabaseMaxReconnects(unsigned int value) {
-    if (0 == value) {
-        throw invalid_argument(
-                "ConfigurationIFace::" + string(__func__) + "  0 is not allowed as a value");
-    }
-    swap(value, _databaseMaxReconnects);
-    return value;
-}
-
-
-unsigned int ConfigurationIFace::setDatabaseTransactionTimeoutSec(unsigned int value) {
-    if (0 == value) {
-        throw invalid_argument(
-                "ConfigurationIFace::" + string(__func__) + "  0 is not allowed as a value");
-    }
-    swap(value, _databaseTransactionTimeoutSec);
-    return value;
 }
 
 

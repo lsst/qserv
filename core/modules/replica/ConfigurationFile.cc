@@ -173,8 +173,8 @@ string ConfigurationFile::dump2init(ConfigurationIFace::Ptr const& config) {
             << "regular_tables     = " << info.regularTables << "\n"
             << "director_table     = " << info.directorTable << "\n"
             << "director_table_key = " << info.directorTableKey << "\n"
-            << "chunk_id_key       = " << info.chunkIdKey << "\n"
-            << "sub_chunk_id_key   = " << info.subChunkIdKey << "\n"
+            << "chunk_id_key       = " << info.chunkIdColName << "\n"
+            << "sub_chunk_id_key   = " << info.subChunkIdColName << "\n"
             << "\n";
         for (auto&& table: info.partitionedTables) {
             str << "[table:" << info.name << "." << table << "]\n"

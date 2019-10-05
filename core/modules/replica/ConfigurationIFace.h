@@ -62,7 +62,7 @@ public:
     std::string name;           /// The logical name of a worker
 
     bool isEnabled  = true;     /// The worker is allowed to participate in the replication operations
-    bool isReadOnly = false;    /// The worker can only server as a source of replicas.
+    bool isReadOnly = false;    /// The worker can only serve as a source of replicas.
                                 /// New replicas can't be placed on it.
 
     std::string svcHost;        /// The host name (or IP address) of the worker service
@@ -112,7 +112,7 @@ public:
 
     /// @return the names of all tables
     std::vector<std::string> tables() const {
-        std::vector<std::string> result(partitionedTables.begin(), partitionedTables.end());
+        std::vector<std::string> result = partitionedTables;
         result.insert(result.begin(), regularTables.begin(), regularTables.end());
         return result;
     }
@@ -122,8 +122,8 @@ public:
 
     // Names of special columns of the partitioned tables.
 
-    std::string chunkIdKey;     // same for all partitioned tables
-    std::string subChunkIdKey;  // same for all partitioned tables
+    std::string chunkIdColName;     // same for all partitioned tables
+    std::string subChunkIdColName;  // same for all partitioned tables
 
     std::map<std::string,                   // table name
              std::string> latitudeColName;  // latitude (declination) column name
@@ -149,10 +149,10 @@ class DatabaseFamilyInfo {
 public:
 
     std::string  name;                  /// The name of a database family
-    size_t       replicationLevel = 0;  /// The minimum replication level desired (1..N)
+    size_t       replicationLevel = 0;  /// The minimum replication level
     unsigned int numStripes = 0;        /// The number of stripes (from the CSS partitioning configuration)
     unsigned int numSubStripes = 0;     /// The number of sub-stripes (from the CSS partitioning configuration)
-    double       overlap = 0.;          /// The default overlap for tables that do not specify their own overlap
+    double       overlap = 0.;          /// The default overlap (radians) for tables that do not specify their own overlap
 
     std::shared_ptr<ChunkNumberValidator> chunkNumberValidator;     /// A validator for chunk numbers
 
@@ -164,7 +164,7 @@ std::ostream& operator <<(std::ostream& os, DatabaseFamilyInfo const& info);
 
 
 /**
-  * Class ConfigurationIFace is a very base base class for a family of concrete classes
+  * Class ConfigurationIFace is an interface for a family of concrete classes
   * providing configuration services for the components of the Replication
   * system.
   */
@@ -198,15 +198,23 @@ public:
     // ------------------------------------------------------------------------
 
     /**
+     * Return the names of known workers as per the selection criteria.
+     * 
      * @param isEnabled
      *   select workers which are allowed to participate in the
-     *   replication operations.
+     *   replication operations. If a value of the parameter is set
+     *   to 'true' then the next flag 'isReadOnly' (depending on its state)
+     *   would put further restrictions on the selected subset.
+     *   Workers which are not 'enabled' are still known to the Replication
+     *   system.
      *
      * @param isReadOnly
-     *   a subclass of the 'enabled' workers which can only serve as
-     *   a source of replicas. No replica modification (creation or
-     *   deletion) operations would be allowed against those workers.
-     *   NOTE: this filter only matters for the 'enabled' workers.
+     *   this flag will be considered only if 'isEnabled' is set to 'true'.
+     *   The flag narrows down a subset of the 'enabled' workers which are
+     *   either the read-only sources (if 'isReadOnly' is set to true')
+     *   or the read-write replica sources/destinations.
+     *   NOTE: no replica modification (creation or deletion) operations
+     *   would be allowed against worker in the read-only state.
      *
      * @return
      *   the names of known workers which have the specified properties
@@ -345,15 +353,6 @@ public:
     /// @return the name of a database user
     virtual std::string qservMasterDatabaseUser() const = 0;
 
-    /// @return the database password
-    static std::string const& qservMasterDatabasePassword() { return _qservMasterDatabasePassword; }
-
-    /**
-     * @param newPassword new password to be set
-     * @return the previous value of the password
-     */
-    static std::string setQservMasterDatabasePassword(std::string const& newPassword);
-
     /// @return the name of a database to be set upon the connection
     virtual std::string qservMasterDatabaseName() const = 0;
 
@@ -363,103 +362,6 @@ public:
     /// @return a path for exchanging data with master's MySQL service
     /// in the 'LOAD DATA INFILE' and similar queries.
     virtual std::string qservMasterDatabaseTmpDir() const = 0;
-
-    // ------------------------------------------------------
-    // -- Parameters of the Qserv worker database services --
-    // ------------------------------------------------------
-
-    /**
-     * This method is used by the workers when they need to connect directly
-     * to the corresponding MySQL/MariaDB service of the Qserv worker.
-     *
-     * @return the current password for the worker databases
-     */
-    static std::string qservWorkerDatabasePassword() { return _qservWorkerDatabasePassword; }
-
-    /**
-     * @param newPassword new password to be set
-     * @return the previous value of the password
-     */
-    static std::string setQservWorkerDatabasePassword(std::string const& newPassword);
-
-    // --------------------------------------------------
-    // -- Global parameters of the database connectors --
-    // --------------------------------------------------
-
-    /// @return the default mode for database reconnects.
-    static bool databaseAllowReconnect() { return _databaseAllowReconnect; }
-
-    /**
-     * Change the default value of a parameter defining a policy for handling
-     * automatic reconnects to a database server. Setting 'true' will enable
-     * reconnects.
-     *
-     * @param value  new value of the parameter
-     * @return the previous value
-     */
-    static bool setDatabaseAllowReconnect(bool value);
-
-    /// @return the default timeout for connecting to database servers
-    static unsigned int databaseConnectTimeoutSec() { return _databaseConnectTimeoutSec; }
-
-    /**
-     * Change the default value of a parameter specifying delays between automatic
-     * reconnects (should those be enabled by the corresponding policy).
-     *
-     * @param value
-     *   new value of the parameter (must be strictly greater than 0)
-     *
-     * @return
-     *   the previous value
-     *
-     * @throws std::invalid_argument
-     *   if the new value of the parameter is 0
-     */
-    static unsigned int setDatabaseConnectTimeoutSec(unsigned int value);
-
-    /**
-     * @return the default number of a maximum number of attempts to execute
-     * a query due to database connection failures and subsequent reconnects.
-     */
-    static unsigned int databaseMaxReconnects() { return _databaseMaxReconnects; }
-
-    /**
-     * Change the default value of a parameter specifying the maximum number
-     * of attempts to execute a query due to database connection failures and
-     * subsequent reconnects (should they be enabled by the corresponding policy).
-     *
-     * @param value
-     *   new value of the parameter (must be strictly greater than 0)
-     *
-     * @return
-     *   the previous value
-     *
-     * @throws std::invalid_argument
-     *   if the new value of the parameter is 0
-     */
-    static unsigned int setDatabaseMaxReconnects(unsigned int value);
-
-    /**
-     * @return
-     *   the default timeout for executing transactions at a presence
-     *   of server reconnects.
-     */
-    static unsigned int databaseTransactionTimeoutSec() { return _databaseTransactionTimeoutSec; }
-
-    /**
-     * Change the default value of a parameter specifying a timeout for executing
-     * transactions at a presence of server reconnects.
-     *
-     * @param value
-     *   new value of the parameter (must be strictly greater than 0)
-     *
-     * @return
-     *   the previous value
-     *
-     * @throws std::invalid_argument
-     *   if the new value of the parameter is 0
-     */
-    static unsigned int setDatabaseTransactionTimeoutSec(unsigned int value);
 
     // ---------------------------------------------------
     // -- Configuration parameters related to databases --
@@ -648,12 +550,12 @@ public:
      *   applies to the director tables only. And if provided (and allowed) the column
      *   must be found among the names of columns in a value of parameter "columns".
      * 
-     * @param chunkIdKey
+     * @param chunkIdColName
      *   (optional) the name of a column which stores identifiers of "chunks",
      *   This parameter applies to all "partitioned" tables, and if provided the column
      *   must be found among the names of columns in a value of parameter "columns".
      * 
-     * @param subChunkIdKey
+     * @param subChunkIdColName
      *   (optional) the name of a column which stores identifiers of "sub-chunks",
      *   This parameter applies to all "partitioned" tables, and if provided the column
      *   must be found among the names of columns in a value of parameter "columns".
@@ -679,8 +581,8 @@ public:
                                         std::list<std::pair<std::string,std::string>>(),
                                   bool isDirectorTable=false,
                                   std::string const& directorTableKey="objectId",
-                                  std::string const& chunkIdKey="chunkId",
-                                  std::string const& subChunkIdKey="subChunkId",
+                                  std::string const& chunkIdColName="chunkId",
+                                  std::string const& subChunkIdColName="subChunkId",
                                   std::string const& latitudeColName=std::string(),
                                   std::string const& longitudeColName=std::string()) = 0;
 
@@ -1122,17 +1024,6 @@ protected:
      *   the context string for debugging and diagnostic printouts
      */
     std::string context(std::string const& func=std::string()) const;
-
-private:
-
-    // Global parameters of the database connectors (read-write)
-
-    static bool         _databaseAllowReconnect;
-    static unsigned int _databaseConnectTimeoutSec;
-    static unsigned int _databaseMaxReconnects;
-    static unsigned int _databaseTransactionTimeoutSec;
-    static std::string  _qservMasterDatabasePassword;
-    static std::string  _qservWorkerDatabasePassword;
 };
 
 }}} // namespace lsst::qserv::replica

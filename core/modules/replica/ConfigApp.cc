@@ -417,14 +417,14 @@ ConfigApp::ConfigApp(int argc, char* argv[])
         "The name of a column in the 'partitioned' table indicating a column which"
         " stores identifiers of chunks. Note that this option must be provided"
         " for the 'partitioned' tables.",
-        _chunkIdKey);
+        _chunkIdColName);
 
     addTableCmd.option(
         "sub-chunk-id-key",
         "The name of a column in the 'partitioned' table indicating a column which"
         " stores identifiers of sub-chunks. Note that this option must be provided"
         " for the 'partitioned' tables.",
-        _subChunkIdKey);
+        _subChunkIdColName);
 
     addTableCmd.option(
         "latitude-key",
@@ -756,8 +756,8 @@ void ConfigApp::_dumpDatabasesAsTable(string const& indent) const {
     vector<string> isPartitioned;
     vector<string> isDirector;
     vector<string> directorKey;
-    vector<string> chunkIdKey;
-    vector<string> subChunkIdKey;
+    vector<string> chunkIdColName;
+    vector<string> subChunkIdColName;
 
     string const noSpecificFamily;
     bool const allDatabases = true;
@@ -776,8 +776,8 @@ void ConfigApp::_dumpDatabasesAsTable(string const& indent) const {
                 isDirector .push_back("no");
                 directorKey.push_back("");
             }
-            chunkIdKey   .push_back(di.chunkIdKey);
-            subChunkIdKey.push_back(di.subChunkIdKey);
+            chunkIdColName   .push_back(di.chunkIdColName);
+            subChunkIdColName.push_back(di.subChunkIdColName);
         }
         for (auto& table: di.regularTables) {
             familyName   .push_back(di.family);
@@ -787,8 +787,8 @@ void ConfigApp::_dumpDatabasesAsTable(string const& indent) const {
             isPartitioned.push_back("no");
             isDirector   .push_back("no");
             directorKey  .push_back("");
-            chunkIdKey   .push_back("");
-            subChunkIdKey.push_back("");
+            chunkIdColName   .push_back("");
+            subChunkIdColName.push_back("");
         }
         if (di.partitionedTables.empty() and di.regularTables.empty()) {
             familyName   .push_back(di.family);
@@ -798,8 +798,8 @@ void ConfigApp::_dumpDatabasesAsTable(string const& indent) const {
             isPartitioned.push_back("n/a");
             isDirector   .push_back("n/a");
             directorKey  .push_back("n/a");
-            chunkIdKey   .push_back("n/a");
-            subChunkIdKey.push_back("n/a");
+            chunkIdColName   .push_back("n/a");
+            subChunkIdColName.push_back("n/a");
         }
     }
 
@@ -812,8 +812,8 @@ void ConfigApp::_dumpDatabasesAsTable(string const& indent) const {
     table.addColumn(":partitioned", isPartitioned);
     table.addColumn(":director",     isDirector);
     table.addColumn(":director-key", directorKey);
-    table.addColumn(":chunk-id-key",     chunkIdKey);
-    table.addColumn(":sub-chunk-id-key", subChunkIdKey);
+    table.addColumn(":chunk-id-key",     chunkIdColName);
+    table.addColumn(":sub-chunk-id-key", subChunkIdColName);
 
     table.print(cout, false, false);
 }
@@ -1126,7 +1126,7 @@ int ConfigApp::_addTable() {
         list<pair<string,string>> noColumns;
         _config->addTable(_database, _table, _isPartitioned, noColumns,
                           _isDirector, _directorKey,
-                          _chunkIdKey, _subChunkIdKey, _latitudeColName, _longitudeColName);
+                          _chunkIdColName, _subChunkIdColName, _latitudeColName, _longitudeColName);
     } catch (exception const& ex) {
         LOGS(_log, LOG_LVL_ERROR, context << "operation failed, exception: " << ex.what());
         return 1;

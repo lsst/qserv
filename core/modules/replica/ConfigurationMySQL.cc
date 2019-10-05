@@ -173,7 +173,7 @@ string ConfigurationMySQL::dump2init(ConfigurationIFace::Ptr const& config) {
             str << "INSERT INTO `config_database` VALUES ("
                 << "'" << databaseInfo.name << "','" << databaseInfo.family
                 << "'," << databaseInfo.isPublished
-                << "','" << databaseInfo.chunkIdKey << "','" << databaseInfo.subChunkIdKey << "');\n";
+                << "','" << databaseInfo.chunkIdColName << "','" << databaseInfo.subChunkIdColName << "');\n";
 
             for (auto&& table: databaseInfo.partitionedTables) {
                 if (table == databaseInfo.directorTable) {
@@ -894,8 +894,8 @@ DatabaseInfo ConfigurationMySQL::addDatabase(DatabaseInfo const& info) {
                     info.name,
                     info.family,
                     isNotPublished,
-                    info.chunkIdKey,
-                    info.subChunkIdKey
+                    info.chunkIdColName,
+                    info.subChunkIdColName
                 );
                 conn->commit();
             }
@@ -1026,8 +1026,8 @@ DatabaseInfo ConfigurationMySQL::addTable(
         list<pair<string,string>> const& columns,
         bool isDirectorTable,
         string const& directorTableKey,
-        string const& chunkIdKey,
-        string const& subChunkIdKey,
+        string const& chunkIdColName,
+        string const& subChunkIdColName,
         string const& latitudeColName,
         string const& longitudeColName) {
 
@@ -1036,8 +1036,8 @@ DatabaseInfo ConfigurationMySQL::addTable(
     LOGS(_log, LOG_LVL_DEBUG, context_ << "  database: " << database
          << " table: " << table << " isPartitioned: " << (isPartitioned ? "true" : "false")
          << " isDirectorTable: " << (isDirectorTable ? "true" : "false")
-         << " directorTableKey: " << directorTableKey << " chunkIdKey: " << chunkIdKey
-         << " subChunkIdKey: " << subChunkIdKey
+         << " directorTableKey: " << directorTableKey << " chunkIdColName: " << chunkIdColName
+         << " subChunkIdColName: " << subChunkIdColName
          << " latitudeColName: " << latitudeColName
          << " longitudeColName:" << longitudeColName);
 
@@ -1049,8 +1049,8 @@ DatabaseInfo ConfigurationMySQL::addTable(
         columns,
         isDirectorTable,
         directorTableKey,
-        chunkIdKey,
-        subChunkIdKey,
+        chunkIdColName,
+        subChunkIdColName,
         latitudeColName,
         longitudeColName
     );
@@ -1090,8 +1090,8 @@ DatabaseInfo ConfigurationMySQL::addTable(
                     conn->executeSimpleUpdateQuery(
                         "config_database",
                         conn->sqlEqual("database", database),
-                        make_pair("chunk_id_key", chunkIdKey),
-                        make_pair("sub_chunk_id_key", subChunkIdKey)
+                        make_pair("chunk_id_key", chunkIdColName),
+                        make_pair("sub_chunk_id_key", subChunkIdColName)
                     );
                 }
                 conn->commit();
@@ -1107,8 +1107,8 @@ DatabaseInfo ConfigurationMySQL::addTable(
             columns,
             isDirectorTable,
             directorTableKey,
-            chunkIdKey,
-            subChunkIdKey,
+            chunkIdColName,
+            subChunkIdColName,
             latitudeColName,
             longitudeColName);
 
@@ -1172,8 +1172,8 @@ DatabaseInfo ConfigurationMySQL::deleteTable(string const& database,
             info.directorTableKey = string();
         }
         if (info.partitionedTables.size() == 0) {
-            info.chunkIdKey = string();
-            info.subChunkIdKey = string();
+            info.chunkIdColName = string();
+            info.subChunkIdColName = string();
         }
         return info;
 
@@ -1331,8 +1331,8 @@ void ConfigurationMySQL::_loadConfigurationImpl(database::mysql::Connection::Ptr
 
         ::readMandatoryParameter(row, "family_name", _databaseInfo[database].family);
         ::readMandatoryParameter(row, "is_published", _databaseInfo[database].isPublished);
-        ::readMandatoryParameter(row, "chunk_id_key", _databaseInfo[database].chunkIdKey);
-        ::readMandatoryParameter(row, "sub_chunk_id_key", _databaseInfo[database].subChunkIdKey);
+        ::readMandatoryParameter(row, "chunk_id_key", _databaseInfo[database].chunkIdColName);
+        ::readMandatoryParameter(row, "sub_chunk_id_key", _databaseInfo[database].subChunkIdColName);
     }
 
     // Read database-specific table definitions and extend the corresponding DatabaseInfo.

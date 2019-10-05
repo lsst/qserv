@@ -237,8 +237,8 @@ public:
                                   std::list<std::pair<std::string,std::string>>(),
                             bool isDirectorTable=false,
                             std::string const& directorTableKey="objectId",
-                            std::string const& chunkIdKey="chunkId",
-                            std::string const& subChunkIdKey="subChunkId",
+                            std::string const& chunkIdColName="chunkId",
+                            std::string const& subChunkIdColName="subChunkId",
                             std::string const& latitudeColName=std::string(),
                             std::string const& longitudeColName=std::string()) final;
 
@@ -286,6 +286,117 @@ public:
 
     void dumpIntoLogger() const final;
 
+    // --------------------------------------------------------------
+    // -- (lobal) parameters of the Qserv worker database services --
+    // --------------------------------------------------------------
+
+    /// @return the database password
+    static std::string const& qservMasterDatabasePassword() { return _qservMasterDatabasePassword; }
+
+    /**
+     * @param newPassword new password to be set
+     * @return the previous value of the password
+     */
+    static std::string setQservMasterDatabasePassword(std::string const& newPassword);
+
+    // ------------------------------------------------------------
+    // -- Gloal parameters of the Qserv worker database services --
+    // ------------------------------------------------------------
+
+    /**
+     * This method is used by the workers when they need to connect directly
+     * to the corresponding MySQL/MariaDB service of the Qserv worker.
+     *
+     * @return the current password for the worker databases
+     */
+    static std::string qservWorkerDatabasePassword() { return _qservWorkerDatabasePassword; }
+
+    /**
+     * @param newPassword new password to be set
+     * @return the previous value of the password
+     */
+    static std::string setQservWorkerDatabasePassword(std::string const& newPassword);
+
+    // --------------------------------------------------
+    // -- Global parameters of the database connectors --
+    // --------------------------------------------------
+
+    /// @return the default mode for database reconnects.
+    static bool databaseAllowReconnect() { return _databaseAllowReconnect; }
+
+    /**
+     * Change the default value of a parameter defining a policy for handling
+     * automatic reconnects to a database server. Setting 'true' will enable
+     * reconnects.
+     *
+     * @param value  new value of the parameter
+     * @return the previous value
+     */
+    static bool setDatabaseAllowReconnect(bool value);
+
+    /// @return the default timeout for connecting to database servers
+    static unsigned int databaseConnectTimeoutSec() { return _databaseConnectTimeoutSec; }
+
+    /**
+     * Change the default value of a parameter specifying delays between automatic
+     * reconnects (should those be enabled by the corresponding policy).
+     *
+     * @param value
+     *   new value of the parameter (must be strictly greater than 0)
+     *
+     * @return
+     *   the previous value
+     *
+     * @throws std::invalid_argument
+     *   if the new value of the parameter is 0
+     */
+    static unsigned int setDatabaseConnectTimeoutSec(unsigned int value);
+
+    /**
+     * @return the default number of a maximum number of attempts to execute
+     * a query due to database connection failures and subsequent reconnects.
+     */
+    static unsigned int databaseMaxReconnects() { return _databaseMaxReconnects; }
+
+    /**
+     * Change the default value of a parameter specifying the maximum number
+     * of attempts to execute a query due to database connection failures and
+     * subsequent reconnects (should they be enabled by the corresponding policy).
+     *
+     * @param value
+     *   new value of the parameter (must be strictly greater than 0)
+     *
+     * @return
+     *   the previous value
+     *
+     * @throws std::invalid_argument
+     *   if the new value of the parameter is 0
+     */
+    static unsigned int setDatabaseMaxReconnects(unsigned int value);
+
+    /**
+     * @return
+     *   the default timeout for executing transactions at a presence
+     *   of server reconnects.
+     */
+    static unsigned int databaseTransactionTimeoutSec() { return _databaseTransactionTimeoutSec; }
+
+    /**
+     * Change the default value of a parameter specifying a timeout for executing
+     * transactions at a presence of server reconnects.
+     *
+     * @param value
+     *   new value of the parameter (must be strictly greater than 0)
+     *
+     * @return
+     *   the previous value
+     *
+     * @throws std::invalid_argument
+     *   if the new value of the parameter is 0
+     */
+    static unsigned int setDatabaseTransactionTimeoutSec(unsigned int value);
+
+
 protected:
 
     /**
@@ -294,11 +405,22 @@ protected:
      */
     Configuration(ConfigurationIFace::Ptr const& impl) : _impl(impl) {}
 
-    /// For implementing synchronized 
+private:
+
+    /// For implementing synchronized methods
     mutable util::Mutex _mtx;
 
     /// The actual implementation of the forwarded methods
     ConfigurationIFace::Ptr _impl;
+
+    // Global parameters of the database connectors (read-write)
+
+    static bool         _databaseAllowReconnect;
+    static unsigned int _databaseConnectTimeoutSec;
+    static unsigned int _databaseMaxReconnects;
+    static unsigned int _databaseTransactionTimeoutSec;
+    static std::string  _qservMasterDatabasePassword;
+    static std::string  _qservWorkerDatabasePassword;
 };
 
 }}} // namespace lsst::qserv::replica

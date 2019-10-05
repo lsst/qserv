@@ -22,6 +22,10 @@
 // Class header
 #include "replica/Configuration.h"
 
+// System headers
+#include <algorithm>
+#include <stdexcept>
+
 // Qserv headers
 #include "replica/ConfigurationBase.h"
 #include "replica/ConfigurationTypes.h"
@@ -41,6 +45,66 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.Configuration");
 namespace lsst {
 namespace qserv {
 namespace replica {
+
+    // These parameters are allowed to be changed, and they are set globally
+// for an application (process).
+bool         Configuration::_databaseAllowReconnect        = true;
+unsigned int Configuration::_databaseConnectTimeoutSec     = 3600;
+unsigned int Configuration::_databaseMaxReconnects         = 1;
+unsigned int Configuration::_databaseTransactionTimeoutSec = 3600;
+string       Configuration::_qservMasterDatabasePassword   = "";
+string       Configuration::_qservWorkerDatabasePassword   = "";
+
+
+string Configuration::setQservMasterDatabasePassword(string const& newPassword) {
+    string result = newPassword;
+    swap(result, _qservMasterDatabasePassword);
+    return result;
+}
+
+
+string Configuration::setQservWorkerDatabasePassword(string const& newPassword) {
+    string result = newPassword;
+    swap(result, _qservWorkerDatabasePassword);
+    return result;
+}
+
+
+bool Configuration::setDatabaseAllowReconnect(bool value) {
+    swap(value, _databaseAllowReconnect);
+    return value;
+}
+
+
+unsigned int Configuration::setDatabaseConnectTimeoutSec(unsigned int value) {
+    if (0 == value) {
+        throw invalid_argument(
+                "Configuration::" + string(__func__) + "  0 is not allowed as a value");
+    }
+    swap(value, _databaseConnectTimeoutSec);
+    return value;
+}
+
+
+unsigned int Configuration::setDatabaseMaxReconnects(unsigned int value) {
+    if (0 == value) {
+        throw invalid_argument(
+                "Configuration::" + string(__func__) + "  0 is not allowed as a value");
+    }
+    swap(value, _databaseMaxReconnects);
+    return value;
+}
+
+
+unsigned int Configuration::setDatabaseTransactionTimeoutSec(unsigned int value) {
+    if (0 == value) {
+        throw invalid_argument(
+                "Configuration::" + string(__func__) + "  0 is not allowed as a value");
+    }
+    swap(value, _databaseTransactionTimeoutSec);
+    return value;
+}
+
 
 json Configuration::toJson(Configuration::Ptr const& config) {
 
@@ -441,13 +505,13 @@ void Configuration::deleteDatabase(string const& name) {
 
 DatabaseInfo Configuration::addTable(string const& database, string const& table, bool isPartitioned,
                                      list<pair<string,string>> const& columns, bool isDirectorTable,
-                                     string const& directorTableKey, string const& chunkIdKey,
-                                     string const& subChunkIdKey, string const& latitudeColName,
+                                     string const& directorTableKey, string const& chunkIdColName,
+                                     string const& subChunkIdColName, string const& latitudeColName,
                                      string const& longitudeColName) {
     util::Lock lock(_mtx, context(__func__));
     return _impl->addTable(database, table, isPartitioned, columns,
                            isDirectorTable, directorTableKey,
-                           chunkIdKey, subChunkIdKey, latitudeColName, longitudeColName);
+                           chunkIdColName, subChunkIdColName, latitudeColName, longitudeColName);
 }
 
 
