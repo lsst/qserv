@@ -53,7 +53,7 @@ public:
      * @return
      *   the text representation of the configuration
      */
-    static std::string dump2init(Configuration::Ptr const& config);
+    static std::string dump2init(ConfigurationIFace::Ptr const& config);
 
     // Default construction and copy semantics are prohibited
 
@@ -72,11 +72,9 @@ public:
 
     ~ConfigurationFile() final = default;
 
-    /// @see Configuration::prefix()
-    virtual std::string prefix() const final { return "file"; }
+    std::string prefix() const final { return "file"; }
 
-    /// @see Configuration::configUrl()
-    std::string configUrl() const final { return prefix() + ":" + _configFile; }
+    std::string configUrl(bool showPassword=false) const final { return prefix() + ":" + _configFile; }
 
 private:
 

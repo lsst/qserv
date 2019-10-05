@@ -55,11 +55,18 @@ CREATE TABLE IF NOT EXISTS `config_worker` (
   `db_port`      SMALLINT UNSIGNED  DEFAULT NULL ,  -- override for the global default
   `db_user`      VARCHAR(255)       DEFAULT NULL ,  -- override for the global default
 
+  -- Ingest service
+
+  `loader_host`    VARCHAR(255)       NOT NULL ,        -- the host name on which the worker's ingest server runs
+  `loader_port`    SMALLINT UNSIGNED  DEFAULT NULL ,    -- override for the global default
+  `loader_tmp_dir` VARCHAR(255)       DEFAULT NULL ,    -- a file system path to the temporary folder
+
   PRIMARY KEY (`name`) ,
 
   UNIQUE  KEY (`svc_host`, `svc_port`) ,
   UNIQUE  KEY (`fs_host`,  `fs_port`) ,
-  UNIQUE  KEY (`db_host`,  `db_port`)
+  UNIQUE  KEY (`db_host`,  `db_port`) ,
+  UNIQUE  KEY (`loader_host`, `loader_port`)
 )
 ENGINE = InnoDB;
 
@@ -108,6 +115,7 @@ CREATE TABLE IF NOT EXISTS `config_database_family` (
   `min_replication_level`  INT UNSIGNED  NOT NULL ,    -- minimum number of replicas per chunk
   `num_stripes`            INT UNSIGNED  NOT NULL ,
   `num_sub_stripes`        INT UNSIGNED  NOT NULL ,
+  `overlap`                DOUBLE        NOT NULL ,
 
   PRIMARY KEY (`name`)
 )
@@ -129,6 +137,11 @@ CREATE TABLE IF NOT EXISTS `config_database` (
 
   `database`     VARCHAR(255)  NOT NULL ,
   `family_name`  VARCHAR(255)  NOT NULL ,
+
+  `is_published` BOOLEAN DEFAULT TRUE ,
+
+  `chunk_id_key`     VARCHAR(255)  DEFAULT "" ,
+  `sub_chunk_id_key` VARCHAR(255)  DEFAULT "" ,
 
   -- Each database is allowed to belong to one family only
   --
@@ -158,12 +171,46 @@ CREATE TABLE IF NOT EXISTS `config_database_table` (
   `table`     VARCHAR(255)  NOT NULL ,
 
   `is_partitioned` BOOLEAN NOT NULL ,
+  `is_director`    BOOLEAN NOT NULL ,
+
+  `director_key`  VARCHAR(255) DEFAULT "" ,
+  `latitude_key`  VARCHAR(255) DEFAULT "" , -- Name for latitude (declination) column in this table
+  `longitude_key` VARCHAR(255) DEFAULT "" , -- Name for longitude (right ascension) column in this table
 
   PRIMARY KEY (`database`, `table`) ,
 
   CONSTRAINT `config_database_table_fk_1`
     FOREIGN KEY (`database` )
     REFERENCES `config_database` (`database` )
+    ON DELETE CASCADE
+    ON UPDATE CASCADE
+)
+ENGINE = InnoDB;
+
+
+-- -----------------------------------------------------
+-- Table `config_database_table_schema`
+-- -----------------------------------------------------
+--
+-- Database tables
+
+DROP TABLE IF EXISTS `config_database_table_schema` ;
+
+CREATE TABLE IF NOT EXISTS `config_database_table_schema` (
+
+  `database`  VARCHAR(255)  NOT NULL ,
+  `table`     VARCHAR(255)  NOT NULL ,
+
+  `col_position` INT NOT NULL ,             -- for preserving an order of columns in the table
+  `col_name`     VARCHAR(255)  NOT NULL ,
+  `col_type`     VARCHAR(255)  NOT NULL ,
+
+  UNIQUE KEY (`database`, `table`, `col_position`) ,
+  UNIQUE KEY (`database`, `table`, `col_name`) ,
+
+  CONSTRAINT `config_database_table_schema_fk_1`
+    FOREIGN KEY (`database`, `table`)
+    REFERENCES `config_database_table` (`database`, `table`)
     ON DELETE CASCADE
     ON UPDATE CASCADE
 )

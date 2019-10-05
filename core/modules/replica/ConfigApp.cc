@@ -89,7 +89,7 @@ ConfigApp::ConfigApp(int argc, char* argv[])
          "UPDATE_GENERAL",
          "UPDATE_WORKER", "ADD_WORKER", "DELETE_WORKER",
          "ADD_DATABASE_FAMILY", "DELETE_DATABASE_FAMILY",
-         "ADD_DATABASE", "DELETE_DATABASE",
+         "ADD_DATABASE", "PUBLISH_DATABASE", "DELETE_DATABASE",
          "ADD_TABLE", "DELETE_TABLE"
         },
         _command);
@@ -192,6 +192,21 @@ ConfigApp::ConfigApp(int argc, char* argv[])
         ", turn it int the read-write mode if 0.",
         _workerReadOnly);
 
+    updateWorkerCmd.option(
+        "worker-loader-host",
+        "The new DNS name or an IP address where the worker's Catalog Ingest service runs.",
+        _workerInfo.loaderHost);
+
+    updateWorkerCmd.option(
+        "worker-loader-port",
+        "The port number of the worker's Catalog Ingest service.",
+        _workerInfo.loaderPort);
+
+    updateWorkerCmd.option(
+        "worker-loader-tmp-dir",
+        "The name of a user account for a temporary folder of the worker's Catalog Ingest service.",
+        _workerInfo.loaderTmpDir);
+
     // Command-specific parameters, options and flags
 
     auto&& addWorkerCmd = parser().command("ADD_WORKER");
@@ -236,6 +251,36 @@ ConfigApp::ConfigApp(int argc, char* argv[])
         "Set to '0' if the worker is NOT turned into the read-only mode upon creation.",
         _workerInfo.isReadOnly);
 
+    addWorkerCmd.required(
+        "db-host",
+        "The DNS name or an IP address where the worker's Database Service runs.",
+        _workerInfo.dbHost);
+
+    addWorkerCmd.required(
+        "db-port",
+        "The port number of the worker's Database Service.",
+        _workerInfo.dbPort);
+
+    addWorkerCmd.required(
+        "db-user",
+        "The name of the MySQL user for the worker's Database Service",
+        _workerInfo.dbUser);
+
+    addWorkerCmd.required(
+        "loader-host",
+        "The DNS name or an IP address where the worker's Catalog Ingest Server runs.",
+        _workerInfo.loaderHost);
+
+    addWorkerCmd.required(
+        "loader-port",
+        "The port number of the worker's Catalog Ingest Server.",
+        _workerInfo.loaderPort);
+
+    addWorkerCmd.required(
+        "loader-tmp-dir",
+        "The temporay directory of the worker's Ingest Service",
+        _workerInfo.loaderTmpDir);
+
     // Command-specific parameters, options and flags
 
     parser().command("DELETE_WORKER").required(
@@ -264,6 +309,7 @@ ConfigApp::ConfigApp(int argc, char* argv[])
     ::addCommandOption(updateGeneralCmd, _general.workerNumProcessingThreads);
     ::addCommandOption(updateGeneralCmd, _general.fsNumProcessingThreads);
     ::addCommandOption(updateGeneralCmd, _general.workerFsBufferSizeBytes);
+    ::addCommandOption(updateGeneralCmd, _general.loaderNumProcessingThreads);
 
     // Command-specific parameters, options and flags
 
@@ -289,6 +335,11 @@ ConfigApp::ConfigApp(int argc, char* argv[])
         "The number of sub-stripes (from the CSS partitioning configuration).",
         _familyInfo.numSubStripes);
 
+    addFamilyCmd.required(
+        "overlap",
+        "The default overlap for tables that do not specify their own overlap.",
+        _familyInfo.overlap);
+
     // Command-specific parameters, options and flags
 
     parser().command("DELETE_DATABASE_FAMILY").required(
@@ -311,6 +362,16 @@ ConfigApp::ConfigApp(int argc, char* argv[])
         "family",
         "The name of an existing family the new database will join.",
         _databaseInfo.family);
+
+    
+    // Command-specific parameters, options and flags
+
+    auto&& publishDatabaseCmd = parser().command("PUBLISH_DATABASE");
+
+    publishDatabaseCmd.required(
+        "name",
+        "The name of an existing database.",
+        _databaseInfo.name);
 
     // Command-specific parameters, options and flags
 
@@ -338,6 +399,44 @@ ConfigApp::ConfigApp(int argc, char* argv[])
         "partitioned",
         "The flag indicating (if present) that a table is partitioned.",
         _isPartitioned);
+
+    addTableCmd.flag(
+        "director",
+        "The flag indicating (if present) that this is a 'director' table of the database"
+        " Note that this flag only applies to the partitioned tables.",
+        _isDirector);
+
+    addTableCmd.option(
+        "director-key",
+        "The name of a column in the 'director' table of the database."
+        " Note that this option must be provided for the 'director' tables.",
+        _directorKey);
+
+    addTableCmd.option(
+        "chunk-id-key",
+        "The name of a column in the 'partitioned' table indicating a column which"
+        " stores identifiers of chunks. Note that this option must be provided"
+        " for the 'partitioned' tables.",
+        _chunkIdColName);
+
+    addTableCmd.option(
+        "sub-chunk-id-key",
+        "The name of a column in the 'partitioned' table indicating a column which"
+        " stores identifiers of sub-chunks. Note that this option must be provided"
+        " for the 'partitioned' tables.",
+        _subChunkIdColName);
+
+    addTableCmd.option(
+        "latitude-key",
+        "The name of a column in the 'partitioned' table indicating a column which"
+        " stores latitude (declination) of the object/sources. This parameter is optional.",
+        _latitudeColName);
+
+    addTableCmd.option(
+        "longitude-key",
+        "The name of a column in the 'partitioned' table indicating a column which"
+        " stores longitude (right ascension) of the object/sources. This parameter is optional.",
+        _longitudeColName);
 
     // Command-specific parameters, options and flags
 
@@ -371,6 +470,7 @@ int ConfigApp::runImpl() {
     if (_command == "ADD_DATABASE_FAMILY")    return _addFamily();
     if (_command == "DELETE_DATABASE_FAMILY") return _deleteFamily();
     if (_command == "ADD_DATABASE")           return _addDatabase();
+    if (_command == "PUBLISH_DATABASE")       return _publishDatabase();
     if (_command == "DELETE_DATABASE")        return _deleteDatabase();
     if (_command == "ADD_TABLE")              return _addTable();
     if (_command == "DELETE_TABLE"   )        return _deleteTable();
@@ -440,6 +540,10 @@ void ConfigApp::_dumpGeneralAsTable(string const& indent) const {
     parameter.  push_back(_general.controllerRequestTimeoutSec.key);
     value.      push_back(_general.controllerRequestTimeoutSec.str(_config));
     description.push_back(_general.controllerRequestTimeoutSec.description);
+
+    parameter.  push_back(_general.controllerEmptyChunksDir.key);
+    value.      push_back(_general.controllerEmptyChunksDir.str(_config));
+    description.push_back(_general.controllerEmptyChunksDir.description);
 
     parameter.  push_back(_general.jobTimeoutSec.key);
     value.      push_back(_general.jobTimeoutSec.str(_config));
@@ -518,6 +622,10 @@ void ConfigApp::_dumpGeneralAsTable(string const& indent) const {
     value.      push_back(_general.qservMasterDatabaseServicesPoolSize.str(_config));
     description.push_back(_general.qservMasterDatabaseServicesPoolSize.description);
 
+    parameter.  push_back(_general.qservMasterDatabaseTmpDir.key);
+    value.      push_back(_general.qservMasterDatabaseTmpDir.str(_config));
+    description.push_back(_general.qservMasterDatabaseTmpDir.description);
+
     parameter.  push_back(_general.workerTechnology.key);
     value.      push_back(_general.workerTechnology.str(_config));
     description.push_back(_general.workerTechnology.description);
@@ -534,11 +642,15 @@ void ConfigApp::_dumpGeneralAsTable(string const& indent) const {
     value.      push_back(_general.workerFsBufferSizeBytes.str(_config));
     description.push_back(_general.workerFsBufferSizeBytes.description);
 
+    parameter.  push_back(_general.loaderNumProcessingThreads.key);
+    value.      push_back(_general.loaderNumProcessingThreads.str(_config));
+    description.push_back(_general.loaderNumProcessingThreads.description);
+
     util::ColumnTablePrinter table("GENERAL PARAMETERS:", indent, _verticalSeparator);
 
-    table.addColumn("parameter",   parameter,   util::ColumnTablePrinter::Alignment::LEFT);
+    table.addColumn("parameter",   parameter,   util::ColumnTablePrinter::LEFT);
     table.addColumn("value",       value);
-    table.addColumn("description", description, util::ColumnTablePrinter::Alignment::LEFT);
+    table.addColumn("description", description, util::ColumnTablePrinter::LEFT);
 
     table.print(cout, false, false);
 }
@@ -552,43 +664,52 @@ void ConfigApp::_dumpWorkersAsTable(string const& indent) const {
     vector<string> name;
     vector<string> isEnabled;
     vector<string> isReadOnly;
+    vector<string> dataDir;
     vector<string> svcHost;
     vector<string> svcPort;
     vector<string> fsHost;
     vector<string> fsPort;
-    vector<string> dataDir;
     vector<string> dbHost;
     vector<string> dbPort;
     vector<string> dbUser;
+    vector<string> loaderHost;
+    vector<string> loaderPort;
+    vector<string> loaderTmpDir;
 
     for (auto&& worker: _config->allWorkers()) {
         auto const wi = _config->workerInfo(worker);
-        name       .push_back(wi.name);
-        isEnabled  .push_back(wi.isEnabled  ? "yes" : "no");
-        isReadOnly .push_back(wi.isReadOnly ? "yes" : "no");
-        svcHost    .push_back(wi.svcHost);
-        svcPort    .push_back(to_string(wi.svcPort));
-        fsHost     .push_back(wi.fsHost);
-        fsPort     .push_back(to_string(wi.fsPort));
-        dbHost     .push_back(wi.dbHost);
-        dbPort     .push_back(to_string(wi.dbPort));
-        dbUser     .push_back(wi.dbUser);
-        dataDir    .push_back(wi.dataDir);
+        name.push_back(wi.name);
+        isEnabled.push_back(wi.isEnabled  ? "yes" : "no");
+        isReadOnly.push_back(wi.isReadOnly ? "yes" : "no");
+        dataDir.push_back(wi.dataDir);
+        svcHost.push_back(wi.svcHost);
+        svcPort.push_back(to_string(wi.svcPort));
+        fsHost.push_back(wi.fsHost);
+        fsPort.push_back(to_string(wi.fsPort));
+        dbHost.push_back(wi.dbHost);
+        dbPort.push_back(to_string(wi.dbPort));
+        dbUser.push_back(wi.dbUser);
+        loaderHost.push_back(wi.loaderHost);
+        loaderPort.push_back(to_string(wi.loaderPort));
+        loaderTmpDir.push_back(wi.loaderTmpDir);
     }
 
     util::ColumnTablePrinter table("WORKERS:", indent, _verticalSeparator);
 
-    table.addColumn("name",               name,        util::ColumnTablePrinter::Alignment::LEFT);
-    table.addColumn("enabled",            isEnabled);
-    table.addColumn("read-only",          isReadOnly);
-    table.addColumn("Replication server", svcHost,     util::ColumnTablePrinter::Alignment::LEFT);
-    table.addColumn(":port",              svcPort);
-    table.addColumn("File server",        fsHost,      util::ColumnTablePrinter::Alignment::LEFT);
-    table.addColumn(":port",              fsPort);
-    table.addColumn("Database server",    dbHost,      util::ColumnTablePrinter::Alignment::LEFT);
-    table.addColumn(":port",              dbPort);
-    table.addColumn(":user",              dbUser,      util::ColumnTablePrinter::Alignment::LEFT);
-    table.addColumn("Data directory",     dataDir,     util::ColumnTablePrinter::Alignment::LEFT);
+    table.addColumn("name", name, util::ColumnTablePrinter::LEFT);
+    table.addColumn("enabled", isEnabled);
+    table.addColumn("read-only", isReadOnly);
+    table.addColumn("Data directory", dataDir, util::ColumnTablePrinter::LEFT);
+    table.addColumn("Replication server", svcHost, util::ColumnTablePrinter::LEFT);
+    table.addColumn(":port", svcPort);
+    table.addColumn("File server", fsHost, util::ColumnTablePrinter::LEFT);
+    table.addColumn(":port", fsPort);
+    table.addColumn("Database server", dbHost, util::ColumnTablePrinter::LEFT);
+    table.addColumn(":port", dbPort);
+    table.addColumn(":user", dbUser, util::ColumnTablePrinter::LEFT);
+    table.addColumn("Ingest server", loaderHost, util::ColumnTablePrinter::LEFT);
+    table.addColumn(":port", loaderPort);
+    table.addColumn(":tmp", loaderTmpDir, util::ColumnTablePrinter::LEFT);
 
     table.print(cout, false, false);
 }
@@ -614,7 +735,7 @@ void ConfigApp::_dumpFamiliesAsTable(string const& indent) const {
 
     util::ColumnTablePrinter table("DATABASE FAMILIES:", indent, _verticalSeparator);
 
-    table.addColumn("name", name, util::ColumnTablePrinter::Alignment::LEFT);
+    table.addColumn("name", name, util::ColumnTablePrinter::LEFT);
     table.addColumn("replication level", replicationLevel);
     table.addColumn("stripes", numStripes);
     table.addColumn("sub-stripes", numSubStripes);
@@ -630,37 +751,69 @@ void ConfigApp::_dumpDatabasesAsTable(string const& indent) const {
 
     vector<string> familyName;
     vector<string> databaseName;
+    vector<string> isPublished;
     vector<string> tableName;
     vector<string> isPartitioned;
+    vector<string> isDirector;
+    vector<string> directorKey;
+    vector<string> chunkIdColName;
+    vector<string> subChunkIdColName;
 
-    for (auto&& database: _config->databases()) {
+    string const noSpecificFamily;
+    bool const allDatabases = true;
+    for (auto&& database: _config->databases(noSpecificFamily, allDatabases)) {
         auto const di = _config->databaseInfo(database);
         for (auto& table: di.partitionedTables) {
-            familyName    .push_back(di.family);
+            familyName   .push_back(di.family);
             databaseName .push_back(di.name);
+            isPublished  .push_back(di.isPublished ? "yes" : "no");
             tableName    .push_back(table);
             isPartitioned.push_back("yes");
+            if (table == di.directorTable) {
+                isDirector .push_back("yes");
+                directorKey.push_back(di.directorTableKey);
+            } else {
+                isDirector .push_back("no");
+                directorKey.push_back("");
+            }
+            chunkIdColName   .push_back(di.chunkIdColName);
+            subChunkIdColName.push_back(di.subChunkIdColName);
         }
         for (auto& table: di.regularTables) {
             familyName   .push_back(di.family);
             databaseName .push_back(di.name);
+            isPublished  .push_back(di.isPublished ? "yes" : "no");
             tableName    .push_back(table);
             isPartitioned.push_back("no");
+            isDirector   .push_back("no");
+            directorKey  .push_back("");
+            chunkIdColName   .push_back("");
+            subChunkIdColName.push_back("");
         }
         if (di.partitionedTables.empty() and di.regularTables.empty()) {
             familyName   .push_back(di.family);
             databaseName .push_back(di.name);
+            isPublished  .push_back(di.isPublished ? "yes" : "no");
             tableName    .push_back("<no tables>");
             isPartitioned.push_back("n/a");
+            isDirector   .push_back("n/a");
+            directorKey  .push_back("n/a");
+            chunkIdColName   .push_back("n/a");
+            subChunkIdColName.push_back("n/a");
         }
     }
 
     util::ColumnTablePrinter table("DATABASES & TABLES:", indent, _verticalSeparator);
 
-    table.addColumn("family",      familyName,   util::ColumnTablePrinter::Alignment::LEFT);
-    table.addColumn("database",    databaseName, util::ColumnTablePrinter::Alignment::LEFT);
-    table.addColumn("table",       tableName,    util::ColumnTablePrinter::Alignment::LEFT);
-    table.addColumn("partitioned", isPartitioned);
+    table.addColumn("family",       familyName,   util::ColumnTablePrinter::LEFT);
+    table.addColumn("database",     databaseName, util::ColumnTablePrinter::LEFT);
+    table.addColumn(":published",   isPublished);
+    table.addColumn("table",        tableName,    util::ColumnTablePrinter::LEFT);
+    table.addColumn(":partitioned", isPartitioned);
+    table.addColumn(":director",     isDirector);
+    table.addColumn(":director-key", directorKey);
+    table.addColumn(":chunk-id-key",     chunkIdColName);
+    table.addColumn(":sub-chunk-id-key", subChunkIdColName);
 
     table.print(cout, false, false);
 }
@@ -757,7 +910,6 @@ int ConfigApp::_updateWorker() const {
             _config->setWorkerDataDir(_workerInfo.name,
                                       _workerInfo.dataDir);
         }
-
         if (not _workerInfo.dbHost.empty()
             and _workerInfo.dbHost != info.dbHost) {
 
@@ -787,6 +939,24 @@ int ConfigApp::_updateWorker() const {
         }
         if (_workerReadOnly == 0 and info.isReadOnly) {
             _config->setWorkerReadOnly(_workerInfo.name, false);
+        }
+        if (not _workerInfo.loaderHost.empty()
+            and _workerInfo.loaderHost != info.loaderHost) {
+
+            _config->setWorkerLoaderHost(_workerInfo.name,
+                                         _workerInfo.loaderHost);
+        }
+        if (_workerInfo.loaderPort != 0 and
+            _workerInfo.loaderPort != info.loaderPort) {
+
+            _config->setWorkerLoaderPort(_workerInfo.name,
+                                         _workerInfo.loaderPort);
+        }
+        if (not _workerInfo.loaderTmpDir.empty()
+            and _workerInfo.loaderTmpDir != _workerInfo.loaderTmpDir) {
+
+            _config->setWorkerLoaderTmpDir(_workerInfo.name,
+                                           _workerInfo.loaderTmpDir);
         }
     } catch (exception const& ex) {
         LOGS(_log, LOG_LVL_ERROR, context << "operation failed, exception: " << ex.what());
@@ -904,6 +1074,24 @@ int ConfigApp::_addDatabase() {
 }
 
 
+int ConfigApp::_publishDatabase() {
+
+    string const context = "ConfigApp::" + string(__func__) + "  ";
+    
+    if (_databaseInfo.name.empty()) {
+        LOGS(_log, LOG_LVL_ERROR, context << "the database name can't be empty");
+        return 1;
+    }
+    try {
+        _config->publishDatabase(_databaseInfo.name);
+    } catch (exception const& ex) {
+        LOGS(_log, LOG_LVL_ERROR, context << "operation failed, exception: " << ex.what());
+        return 1;
+    }
+    return 0;
+}
+
+
 int ConfigApp::_deleteDatabase() {
 
     string const context = "ConfigApp::" + string(__func__) + "  ";
@@ -935,7 +1123,10 @@ int ConfigApp::_addTable() {
         return 1;
     }
     try {
-        _config->addTable(_database, _table, _isPartitioned);
+        list<pair<string,string>> noColumns;
+        _config->addTable(_database, _table, _isPartitioned, noColumns,
+                          _isDirector, _directorKey,
+                          _chunkIdColName, _subChunkIdColName, _latitudeColName, _longitudeColName);
     } catch (exception const& ex) {
         LOGS(_log, LOG_LVL_ERROR, context << "operation failed, exception: " << ex.what());
         return 1;
