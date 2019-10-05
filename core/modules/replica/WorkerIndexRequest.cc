@@ -194,7 +194,7 @@ string WorkerIndexRequest::_query(database::mysql::Connection::Ptr const& conn) 
     auto const databaseInfo = config->databaseInfo(_request.database());
 
     if (databaseInfo.directorTable.empty() or databaseInfo.directorTableKey.empty() or
-        databaseInfo.chunkIdKey.empty() or databaseInfo.subChunkIdKey.empty()) {
+        databaseInfo.chunkIdColName.empty() or databaseInfo.subChunkIdColName.empty()) {
         throw invalid_argument(
                 "director table has not been properly configured in database '" +
                 databaseInfo.name + "'");
@@ -210,21 +210,21 @@ string WorkerIndexRequest::_query(database::mysql::Connection::Ptr const& conn) 
     string const qservTransId = _request.has_transactions() ? "qserv_trans_id" : string();
     string qservTransIdType;
     string directorTableKeyType;
-    string chunkIdKeyType;
-    string subChunkIdKeyType;
+    string chunkIdColNameType;
+    string subChunkIdColNameType;
 
     for (auto&& colDef: databaseInfo.columns.at(databaseInfo.directorTable)) {
         auto&& colName = colDef.first;
         auto&& colType = colDef.second;
         if      (not qservTransId.empty() and colName == qservTransId) qservTransIdType = colType;
         else if (colName == databaseInfo.directorTableKey) directorTableKeyType = colType;
-        else if (colName == databaseInfo.chunkIdKey) chunkIdKeyType = colType;
-        else if (colName == databaseInfo.subChunkIdKey) subChunkIdKeyType = colType;
+        else if (colName == databaseInfo.chunkIdColName) chunkIdColNameType = colType;
+        else if (colName == databaseInfo.subChunkIdColName) subChunkIdColNameType = colType;
     }
     if ((not qservTransId.empty() and qservTransIdType.empty()) or
         directorTableKeyType.empty() or
-        chunkIdKeyType.empty() or
-        subChunkIdKeyType.empty()) {
+        chunkIdColNameType.empty() or
+        subChunkIdColNameType.empty()) {
 
         throw invalid_argument(
                 "column definitions for the Object identifier or chunk/sub-chunk identifier"
@@ -235,8 +235,8 @@ string WorkerIndexRequest::_query(database::mysql::Connection::Ptr const& conn) 
     string const columnsEscaped =
         (qservTransId.empty() ? string() : conn->sqlId(qservTransId) + ",") +
         conn->sqlId(databaseInfo.directorTableKey) + "," +
-        conn->sqlId(databaseInfo.chunkIdKey) + "," +
-        conn->sqlId(databaseInfo.subChunkIdKey);
+        conn->sqlId(databaseInfo.chunkIdColName) + "," +
+        conn->sqlId(databaseInfo.subChunkIdColName);
 
     string const databaseTableEscaped =
         conn->sqlId(databaseInfo.name) + "." +
