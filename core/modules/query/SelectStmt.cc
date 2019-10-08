@@ -76,13 +76,13 @@ inline void renderTemplate(lsst::qserv::query::QueryTemplate& qt,
 template <typename T>
 inline void
 cloneIf(std::shared_ptr<T>& dest, std::shared_ptr<T> source) {
-    if (source.get()) dest = source->clone();
+    if (source != nullptr) dest = source->clone();
 }
 
 template <typename T>
 inline void
 copySyntaxIf(std::shared_ptr<T>& dest, std::shared_ptr<T> source) {
-    if (source.get()) dest = source->copySyntax();
+    if (source != nullptr) dest = source->copySyntax();
 }
 
 } // namespace
@@ -173,9 +173,11 @@ SelectStmt::copyMerge() const {
     copySyntaxIf(newS->_orderBy, _orderBy);
     copySyntaxIf(newS->_groupBy, _groupBy);
     copySyntaxIf(newS->_having, _having);
+    // The FROM list won't be used in the final merge query (it gets replaced by the merge table name), but
+    // it is sometimes needed for e.g. expanding SELECT * into individual column names.
+    copySyntaxIf(newS->_fromList, _fromList);
     // Eliminate the parts that don't matter, e.g., the where clause
     newS->_whereClause.reset();
-    newS->_fromList.reset();
     assert(_hasDistinct == newS->_hasDistinct);
     return newS;
 }

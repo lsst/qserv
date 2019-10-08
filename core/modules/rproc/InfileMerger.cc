@@ -124,9 +124,6 @@ InfileMerger::InfileMerger(InfileMergerConfig const& c)
     LOGS(_log, LOG_LVL_TRACE, "InfileMerger maxResultTableSizeMB=" << _maxResultTableSizeMB
                               << " sizeCheckRowCount=" << _sizeCheckRowCount
                               << " checkSizeEveryXRows=" << _checkSizeEveryXRows);
-    if (_config.mergeStmt) {
-        _config.mergeStmt->setFromListAsTable(_mergeTable);
-    }
 
     _invalidJobAttemptMgr.setDeleteFunc([this](InvalidJobAttemptMgr::jASetType const& jobAttempts) -> bool {
         return _deleteInvalidRows(jobAttempts);
@@ -350,6 +347,13 @@ int InfileMerger::makeJobIdAttempt(int jobId, int attemptCount) {
 }
 
 
+void InfileMerger::setMergeStmtFromList(std::shared_ptr<query::SelectStmt> const& mergeStmt) const {
+    if (mergeStmt != nullptr) {
+        mergeStmt->setFromListAsTable(_mergeTable);
+    }
+}
+
+
 bool InfileMerger::getSchemaForQueryResults(query::SelectStmt const& stmt, sql::Schema& schema) {
     sql::SqlResults results;
     sql::SqlErrorObject getSchemaErrObj;
@@ -381,7 +385,7 @@ bool InfileMerger::makeResultsTableForQuery(query::SelectStmt const& stmt) {
     std::string createStmt = sql::formCreateTable(_mergeTable, schema);
     LOGS(_log, LOG_LVL_TRACE, "InfileMerger make results table query: " << createStmt);
     if (not _applySqlLocal(createStmt, "makeResultsTableForQuery")) {
-        _error = InfileMergerError(util::ErrorCode::CREATE_TABLE, "Error creating table:" + _mergeTable);
+        _error = InfileMergerError(util::ErrorCode::CREATE_TABLE, "Error creating table:" + _mergeTable + ": " + _error.getMsg());
         _isFinished = true; // Cannot continue.
         LOGS(_log, LOG_LVL_ERROR, "InfileMerger sql error: " << _error.getMsg());
         return false;
