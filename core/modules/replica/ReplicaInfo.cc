@@ -65,11 +65,54 @@ void setInfoImpl(ReplicaInfo const& ri,
         fileInfo->set_in_size(fi.inSize);
     }
 }
+
 }  // namespace
 
 namespace lsst {
 namespace qserv {
 namespace replica {
+
+const size_t ReplicaInfo::FileInfo::_extSize = string(".MYD").size();
+const size_t ReplicaInfo::FileInfo::_overlapSize = string("FullOverlap").size();
+
+
+string ReplicaInfo::FileInfo::baseTable() const {
+
+    // IMPLEMENTATION NOTE: the algorithm implemented below is believed to be
+    // more efficient than others based on the C++ Regular Expression library.
+    // It also works for both regular and partitioned tables.
+
+    string const noChunkNoExt = _removeChunkAndExt();
+    if (noChunkNoExt.size() <= _overlapSize) {
+        // no room for overlap, or the table name is "FullOverlap" which is also legit
+        return noChunkNoExt;
+    }
+    if (noChunkNoExt.substr(noChunkNoExt.size() - _overlapSize) == "FullOverlap") {
+        // the overlap marker removed
+        return noChunkNoExt.substr(0, noChunkNoExt.size() - _overlapSize);
+    }
+    // NO overlap marker in the table name
+    return noChunkNoExt;
+}
+
+
+bool ReplicaInfo::FileInfo::isOverlap() const {
+    string const noChunkNoExt = _removeChunkAndExt();
+    return noChunkNoExt.size() > _overlapSize and
+           noChunkNoExt.substr(noChunkNoExt.size() - _overlapSize) == "FullOverlap";
+}
+
+
+string ReplicaInfo::FileInfo::_removeChunkAndExt() const {
+    auto const underscorePos = name.find_last_of('_');
+    if (underscorePos == string::npos) {
+        // not a chunk table, extension removed
+        return name.substr(0, name.size() - _extSize);
+    } else {
+        // the chunk table, both chunk number and extension removed
+        return name.substr(0, underscorePos);
+    }
+}
 
 
 string ReplicaInfo::status2string(Status status) {
