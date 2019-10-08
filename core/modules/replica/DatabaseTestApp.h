@@ -92,6 +92,12 @@ private:
     /// The name of a database family
     std::string _databaseFamilyName;
 
+    /// Report all databases regardless if they're PUBLISHED or not
+    bool _allDatabases = false;
+
+    /// Report a subset of PUBLISHED databases only
+    bool _isPublished = false;
+
     /// The number of rows in the table of replicas (0 means no pages)
     size_t _pageSize = 20;
 };

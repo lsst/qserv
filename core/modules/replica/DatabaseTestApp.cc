@@ -125,6 +125,7 @@ DatabaseTestApp::DatabaseTestApp(int argc, char* argv[])
     parser().commands(
         "operation",
         {"CONFIGURATION",
+         "DATABASES",
          "FIND_OLDEST_REPLICAS",
          "FIND_REPLICAS",
          "FIND_WORKER_REPLICAS_1",
@@ -143,6 +144,33 @@ DatabaseTestApp::DatabaseTestApp(int argc, char* argv[])
 
         command.description(
             "Dump the current configuration of the Replication system.");
+    }
+    {
+        auto& command = parser().command("DATABASES");
+
+        command.description(
+            "Get a list of databases for a given selection criteria from Configuration."
+            " If flags --all and --published are not used then the command will report"
+            " a subset of databases (for a given family or all families) which are not"
+            " yet PUBLISHED.");
+        command.option(
+            "database-family",
+            "The name of a database family. This option will narrow a scope of the operation"
+            " to the specified family only. Otherwise databases of all known families will"
+            " be considered.",
+            _databaseFamilyName);
+        command.flag(
+            "all",
+            "Report all known databases in the specified family (if the one was provided)"
+            " or all families regardless if they are PUBLISHED or not. If this flag is not"
+            " used then a subset of databases in question is determined by a presence of"
+            " flag --published",
+            _allDatabases);
+        command.flag(
+            "published",
+            "Report a subset of PUBLISHED databases in the specified family (if the one was provided)"
+            " or all families. This flag is used only if flag --all is not used.",
+            _isPublished);
     }
     {
         auto& command = parser().command("FIND_OLDEST_REPLICAS");
@@ -237,6 +265,18 @@ DatabaseTestApp::DatabaseTestApp(int argc, char* argv[])
             "database-family",
             "The name of a database family.",
             _databaseFamilyName);
+        command.flag(
+            "all",
+            "Report all known databases in the specified family (if the one was provided)"
+            " or all families regardless if they are PUBLISHED or not. If this flag is not"
+            " used then a subset of databases in question is determined by a presence of"
+            " flag --published",
+            _allDatabases);
+        command.flag(
+            "published",
+            "Report a subset of PUBLISHED databases in the specified family (if the one was provided)"
+            " or all families. This flag is used only if flag --all is not used.",
+            _isPublished);
     }
 }
 
@@ -245,6 +285,15 @@ int DatabaseTestApp::runImpl() {
 
     if ("CONFIGURATION" == _operation) {
         cout << serviceProvider()->config()->asString() << endl;
+    } else if ("DATABASES" == _operation) {
+        auto const databases = serviceProvider()->config()->databases(
+            _databaseFamilyName,
+            _allDatabases,
+            _isPublished);
+        for (auto&& database: databases) {
+            cout << database << "\n";
+        }
+        cout << endl;
     } else {
         vector<ReplicaInfo> replicas;
 
@@ -283,7 +332,9 @@ int DatabaseTestApp::runImpl() {
                 replicas,
                 _chunk,
                 _workerName,
-                _databaseFamilyName
+                _databaseFamilyName,
+                _allDatabases,
+                _isPublished
             );
         } else {
             throw logic_error(string(__func__) + ": unsupported operation: " + _operation);
