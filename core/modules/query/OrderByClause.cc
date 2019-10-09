@@ -42,6 +42,7 @@
 
 // Qserv headers
 #include "query/QueryTemplate.h"
+#include "query/ColumnRef.h"
 #include "query/ValueExpr.h"
 #include "util/PointerCompare.h"
 #include "util/IterableFormatter.h"
@@ -221,6 +222,19 @@ void OrderByClause::findValueExprRefs(ValueExprPtrRefVector& list) {
     for (auto&& orderByTerm : *_terms) {
         list.push_back(orderByTerm.getExpr());
     }
+}
+
+
+void OrderByClause::findColumnRefs(std::vector<std::shared_ptr<ColumnRef>>& columns) const {
+    std::for_each(_terms->begin(), _terms->end(),
+        [&columns] (OrderByTerm const& term) { term.getExpr()->findColumnRefs(columns); });
+}
+
+
+std::vector<std::shared_ptr<ColumnRef>> OrderByClause::findColumnRefs() const {
+    std::vector<std::shared_ptr<ColumnRef>> columns;
+    findColumnRefs(columns);
+    return columns;
 }
 
 

@@ -122,6 +122,11 @@ void ColumnRef::setTable(std::string const& table) {
 }
 
 
+void ColumnRef::resetTable() {
+    LOGS(_log, LOG_LVL_TRACE, *this << "; reset table");
+    _tableRef = std::make_shared<query::TableRef>();
+}
+
 void ColumnRef::setTable(std::shared_ptr<TableRef> const& tableRef) {
     LOGS(_log, LOG_LVL_TRACE, *this << "; set table:" << *tableRef);
     if (not tableRef->isSimple()) {

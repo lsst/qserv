@@ -91,9 +91,20 @@ public:
     std::shared_ptr<TableRef const> getTableRef() const { return _tableRef; }
     std::shared_ptr<TableRef> getTableRef() { return _tableRef; }
 
+    // Set the database name.
     void setDb(std::string const& db);
+
+    // Set the table name.
     void setTable(std::string const& table);
+
+    // Set the db, table, and table alias name (as indicated in the passed in TableRef).
     void setTable(std::shared_ptr<TableRef> const& tableRef);
+
+    // Reset the contained TableRef object, effectively remove the db, table, and table alias names, as well
+    // as any JOIN that the TableRef may contain.
+    void resetTable();
+
+    // Set the column name.
     void setColumn(std::string const& column);
 
     // return true if only the column parameter is set; the db, table, and table alias are empty.

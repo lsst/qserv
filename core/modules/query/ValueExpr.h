@@ -267,8 +267,6 @@ public:
     // determine if this object is the same as or a less complete description of the passed in object.
     bool isSubsetOf(sql::ColSchema const& columnSchema) const;
 
-    void setToAliasOnly();
-
 private:
     std::string _alias;
     FactorOpVector _factorOps;

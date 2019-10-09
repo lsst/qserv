@@ -46,6 +46,7 @@
 namespace lsst {
 namespace qserv {
 namespace query {
+    class ColumnRef;
     class QueryTemplate;
 }}}
 
@@ -102,6 +103,10 @@ public:
 
     void findValueExprs(ValueExprPtrVector& list) const;
     void findValueExprRefs(ValueExprPtrRefVector& list);
+
+    // Get a vector of all the ColumnRefs contined within this object.
+    void findColumnRefs(std::vector<std::shared_ptr<ColumnRef>>& columns) const;
+    std::vector<std::shared_ptr<ColumnRef>> findColumnRefs() const;
 
     bool operator==(const GroupByClause& rhs) const;
 

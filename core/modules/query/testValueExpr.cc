@@ -131,12 +131,4 @@ BOOST_AUTO_TEST_CASE(clone) {
 }
 
 
-BOOST_AUTO_TEST_CASE(aliasOnly) {
-    auto valueExpr = ValueExpr::newColumnExpr("db", "table", "", "column");
-    valueExpr->setToAliasOnly();
-    BOOST_CHECK_EQUAL("column", valueExpr->getAlias());
-    BOOST_CHECK_EQUAL(false, valueExpr->isColumnRef());
-}
-
-
 BOOST_AUTO_TEST_SUITE_END()

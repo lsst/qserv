@@ -163,19 +163,44 @@ private:
 
     /**
      * @brief Operates on _mergeStmt.
-     *        In the merge statement expand SELECT * to named columns (if there is a SELECT *).
+     *        Looks for columns used in the merge statement and when it finds one that is not present in the
+     *        merge table it sets the _errorExtra parameter with a user-friendly message.
+     *
+     *        This is intended to be called when a call to InfileMerger::validateMergeStmt fails, to create
+     *        a sensible error message to return to the user.
      */
-    void _expandSelectStarInMergeStatment();
+    void _reportInvalidColumnInMergeStatement(std::string const& errMsg);
 
     /**
-     * @brief Operates on _mergeStmt.
-     *        Verifies that the columns used by clauses in the merge statement are represented in the select
-     *        list.
+     * @brief Operates on the pre-flight statement (from QuerySession).
+     *        Looks for columns used in the statement and when it finds one that is not present in the
+     *        merge table it sets the _errorExtra parameter with a user-friendly message.
      *
-     * @throws UserQueryError if there is a column in the statement that is not in the select list.
+     *        This is intended to be called, when a call executing the prflight statement (to get the result
+     *        table schema) fails, to create a sensible error message to return to the user.
      */
-    void _verifyColumnsInMergeStatement();
+    void _reportInvalidColumnInPreflightStatement(std::string const& errMsg);
 
+    /**
+     * @brief Find the first invalid column in the given select statement, using the given schemaStmt to
+     *        get the table schema to validate against. Report a helpful error message to the caller via
+     *        _errorExtra and more complete error information to the log.
+     *
+     * @param inStmt The statement that has an invalid column.
+     * @param schemaStmt The statement to get the schema information with the valid columnd data.
+     * @param whichStmt For the log, names the statement that the failure is in (usually, 'merge' or
+     *                  'preflight' etc)
+     * @param originalErrMsg The error message that was returned when an attempt was made to run `inStmt`.
+     *                       The message will not be clear to the user because it will refer to
+     *                       Qserv-internal tables, and may have been rewritten by Qserv before execution,
+     *                       but will be logged for inspection.
+     */
+    void _reportInvalidColumns(std::shared_ptr<query::SelectStmt> const& inStmt,
+                               std::shared_ptr<query::SelectStmt> const& schemaStmt,
+                               std::string const& whichStmt,
+                               std::string const& originalErrMsg) const;
+
+private:
     void _discardMerger();
     void _qMetaUpdateStatus(qmeta::QInfo::QStatus qStatus);
     void _qMetaAddChunks(std::vector<int> const& chunks);

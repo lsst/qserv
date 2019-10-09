@@ -364,6 +364,16 @@ bool InfileMerger::getSchemaForQueryResults(query::SelectStmt const& stmt, sql::
 }
 
 
+bool InfileMerger::validateMergeStmt(std::string& errMsg) {
+    if (_mergeStmt == nullptr) return true;
+    sql::SqlResults results(true);
+    sql::SqlErrorObject errObj;
+    bool success = _applySqlLocal(_mergeStmt->getQueryTemplate().sqlFragment(), results, errObj);
+    if (not success) errMsg = errObj.errMsg();
+    return success;
+}
+
+
 bool InfileMerger::makeResultsTableForQuery(query::SelectStmt const& stmt) {
     sql::Schema schema;
     if (not getSchemaForQueryResults(stmt, schema)) {

@@ -40,6 +40,7 @@
 // Qserv headers
 #include "query/BoolTerm.h"
 #include "query/QueryTemplate.h"
+#include "query/ValueExpr.h"
 #include "util/PointerCompare.h"
 
 
@@ -105,6 +106,21 @@ HavingClause::findValueExprs(ValueExprPtrVector& list) const {
 
 void HavingClause::findValueExprRefs(ValueExprPtrRefVector& list) {
     if (_tree) { _tree->findValueExprRefs(list); }
+}
+
+
+void HavingClause::findColumnRefs(std::vector<std::shared_ptr<ColumnRef>>& columns) const {
+    ValueExprPtrVector valueExprs;
+    findValueExprs(valueExprs);
+    std::for_each(valueExprs.begin(), valueExprs.end(),
+        [&columns] (ValueExprPtr const& valueExpr) {valueExpr->findColumnRefs(columns); });
+}
+
+
+std::vector<std::shared_ptr<ColumnRef>> HavingClause::findColumnRefs() const {
+    std::vector<std::shared_ptr<ColumnRef>> columns;
+    findColumnRefs(columns);
+    return columns;
 }
 
 

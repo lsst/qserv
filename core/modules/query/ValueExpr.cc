@@ -492,18 +492,6 @@ bool ValueExpr::compareValue(const ValueExpr& rhs) const {
 }
 
 
-void ValueExpr::setToAliasOnly() {
-    if (_alias.empty()) {
-        if (isColumnRef()) {
-            _alias = getColumnRef()->getColumn();
-        } else {
-            throw std::logic_error("Currently can only set alias-only on Column ValueExrs.");
-        }
-    }
-    _factorOps =  { ValueExpr::FactorOp(std::make_shared<ValueFactor>()) };
-}
-
-
 // Miscellaneous
 struct _copyValueExpr {
     ValueExprPtr operator()(ValueExprPtr const& p) {

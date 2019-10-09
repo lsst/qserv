@@ -264,8 +264,7 @@ TablePlugin::applyPhysical(QueryPlugin::Plan& p,
 
     if ((not p.stmtParallel.empty()) && p.stmtParallel.front() != nullptr) {
         auto stmt = p.stmtParallel.front();
-        p.stmtPreFlight = std::make_shared<query::SelectStmt>(stmt->getSelectList().clone(),
-                                                              stmt->getFromList().clone());
+        p.stmtPreFlight = stmt->clone();
         LOGS(_log, LOG_LVL_TRACE, "set local worker query:" << p.stmtPreFlight->getQueryTemplate().sqlFragment());
     }
 

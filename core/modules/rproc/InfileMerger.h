@@ -194,6 +194,25 @@ public:
     bool getSchemaForQueryResults(query::SelectStmt const& stmt, sql::Schema& schema);
 
     /**
+     * @brief Verify the merge statement can be executed against the merge table.
+     *
+     * This function should be executed before sending queries to workers to make sure in advance that we
+     * will be able to finish processing the query after workers have done their work.
+     *
+     * This should catch any cases where columns needed by the merge statement's select list or clauses are
+     * not specified as needed in the worker queries, which will results in them being missing from the merge
+     * table, which would cause the merge query to fail.
+     *
+     * Because any error message returned from the merge query does not contain details that are useful to a
+     * Qserv user, further interrogation is necessary to deliver information about a failure case to tell
+     * the user anything useful, for example what column is missing.
+     *
+     * @param errMsg the error message about why executing the merge statement failed (if it did fail).
+     * @return bool indicates if the merge statement ran successfully (true) or not (false).
+     */
+    bool validateMergeStmt(std::string& errMsg);
+
+    /**
      * @brief Make the results table for the given query.
      *
      * Calculates the schema of the results table for the given query, and makes the results table for that

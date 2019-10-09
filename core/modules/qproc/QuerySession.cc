@@ -202,11 +202,9 @@ std::string QuerySession::getResultOrderBy() const {
     // result table db and table name. So we elimiate those from the ValueExprs in the result ORDER BY and
     // use only the alias or column name in the ORDER BY statement.
     auto orderBy = _stmt->getOrderBy().clone();
-    std::vector<std::shared_ptr<query::ValueExpr>> valueExprs;
-    orderBy->findValueExprs(valueExprs);
-    for (auto& valueExpr : valueExprs) {
-        valueExpr->setToAliasOnly();
-    }
+    query::ColumnRef::Vector columnRefs;
+    orderBy->findColumnRefs(columnRefs);
+    std::for_each(columnRefs.begin(), columnRefs.end(), [] (auto& columnRef) { columnRef->resetTable(); });
     return orderBy->sqlFragment();
 }
 

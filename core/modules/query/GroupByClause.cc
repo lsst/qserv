@@ -149,6 +149,19 @@ void GroupByClause::findValueExprRefs(ValueExprPtrRefVector& list) {
 }
 
 
+void GroupByClause::findColumnRefs(std::vector<std::shared_ptr<ColumnRef>>& columns) const {
+    std::for_each(_terms->begin(), _terms->end(),
+        [&columns] (GroupByTerm& term) { term.getExpr()->findColumnRefs(columns); });
+}
+
+
+std::vector<std::shared_ptr<ColumnRef>> GroupByClause::findColumnRefs() const {
+    std::vector<std::shared_ptr<ColumnRef>> columns;
+    findColumnRefs(columns);
+    return columns;
+}
+
+
 bool GroupByClause::operator==(const GroupByClause& rhs) const {
     return util::ptrDequeCompare<GroupByTerm>(_terms, rhs._terms);
 }

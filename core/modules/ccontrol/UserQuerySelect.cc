@@ -76,11 +76,14 @@
 
 // Qserv headers
 #include "ccontrol/MergingHandler.h"
+#include "ccontrol/ParseRunner.h"
 #include "ccontrol/TmpTableName.h"
+#include "ccontrol/ValidateQuery.h"
 #include "ccontrol/UserQueryError.h"
 #include "global/constants.h"
 #include "global/LogContext.h"
 #include "global/MsgReceiver.h"
+#include "parser/ParseException.h"
 #include "proto/worker.pb.h"
 #include "proto/ProtoImporter.h"
 #include "qdisp/Executive.h"
@@ -94,6 +97,7 @@
 #include "query/ColumnRef.h"
 #include "query/FromList.h"
 #include "query/JoinRef.h"
+#include "query/OrderByClause.h"
 #include "query/QueryTemplate.h"
 #include "query/SelectList.h"
 #include "query/SelectStmt.h"
@@ -462,27 +466,24 @@ void UserQuerySelect::setupMerger() {
                 // matches the existing alias.
             }
         }
-        // Adjust the columns in the merge statment's ORDER BY clause to refer to the merge table. (This may
-        // need to be done for other clauses in the merge statement too, and can be factored accordingly.
-        // Currently it's not needed, possibly because of lack of verification and also ValueExpr aliasing
-        // may be hiding any ColumnRefs with incorrect db & table information).
-        // Also remove the contents of the ValueExpr; any expression for ORDER BY must be predeclared and
-        // aliased in the SELECT list. The existence of the alias will be verified in
-        // _verifyColumnsInMergeStatement.
+
+        // Adjust the columns in the merge statment's clauses to *not* refer to the original table; once
+        // the columns are in the merge table there shouldn't be any ambiguiuty about what table they refer
+        // to - there's only one table. So just remove the table info, leaving only the column name.
+
         if (_mergeStmt->hasOrderBy()) {
-            query::ValueExprPtrVector valueExprs;
-            _mergeStmt->getOrderBy().findValueExprs(valueExprs);
-            LOGS(_log, LOG_LVL_TRACE, "setting ValueExprs to alias only: " << util::printable(valueExprs));
-            for (auto& valueExpr : valueExprs) {
-                if (valueExpr->isColumnRef()) {
-                    auto columnRef = valueExpr->getColumnRef();
-                    columnRef->setTable(_mergeTable);
-                    columnRef->setDb(_mySqlConfig.dbName);
-                    columnRef->getTableRef()->setAlias("");
-                    valueExpr->setAlias("");
-                } else {
-                    valueExpr->setToAliasOnly();
-                }
+            for (auto& columnRef : _mergeStmt->getOrderBy().findColumnRefs()) {
+                columnRef->resetTable();
+            }
+        }
+        if (_mergeStmt->hasGroupBy()) {
+            for (auto& columnRef : _mergeStmt->getGroupBy().findColumnRefs()) {
+                columnRef->resetTable();
+            }
+        }
+        if (_mergeStmt->hasHaving()) {
+            for (auto& columnRef : _mergeStmt->getHaving().findColumnRefs()) {
+                columnRef->resetTable();
             }
         }
     }
@@ -497,70 +498,56 @@ void UserQuerySelect::setupMerger() {
         return;
     }
     if (not _infileMerger->makeResultsTableForQuery(*preFlightStmt)) {
-        _errorExtra = _infileMerger->getError().getMsg();
+        _reportInvalidColumnInPreflightStatement(_infileMerger->getError().getMsg());
         _qMetaUpdateStatus(qmeta::QInfo::FAILED);
+        return;
     }
 
-    _expandSelectStarInMergeStatment();
+    if (_mergeStmt != nullptr) LOGS(_log, LOG_LVL_TRACE, "mergeStmt before verify:" << *_mergeStmt);
 
-    _verifyColumnsInMergeStatement();
+    std::string errMsg;
+    if (not _infileMerger->validateMergeStmt(errMsg)) {
+        _reportInvalidColumnInMergeStatement(errMsg);
+        _qMetaUpdateStatus(qmeta::QInfo::FAILED);
+        return;
+    }
 
-    LOGS(_log, LOG_LVL_DEBUG, "setting mergeStmt:" <<
+    LOGS(_log, LOG_LVL_TRACE, "setting mergeStmt:" <<
         (_mergeStmt != nullptr ? _mergeStmt->getQueryTemplate().sqlFragment() : "nullptr"));
 }
 
 
-void UserQuerySelect::_expandSelectStarInMergeStatment() {
-    if (_mergeStmt != nullptr) {
-        auto& selectList = *(_mergeStmt->getSelectList().getValueExprList());
-        for (auto valueExprItr = selectList.begin(); valueExprItr != selectList.end(); ++valueExprItr) {
-            auto& valueExpr = *valueExprItr;
-            if (valueExpr->isStar()) {
-                auto valueExprVec = std::make_shared<query::ValueExprPtrVector>();
-                valueExprVec->push_back(valueExpr);
-                auto starStmt = query::SelectStmt(std::make_shared<query::SelectList>(valueExprVec),
-                                                  _mergeStmt->getFromListPtr());
-                sql::Schema schema;
-                if (not _infileMerger->getSchemaForQueryResults(starStmt, schema)) {
-                    throw UserQueryError(getQueryIdString() + " Couldn't get schema for merge query.");
-                }
-                query::ValueExprPtrVector starColumns;
-                for (auto const& column : schema.columns) {
-                    auto starColValExpr = query::ValueExpr::newColumnExpr("", column.table, "", column.name);
-                    starColValExpr->setAlias(column.name, false);
-                    starColumns.push_back(starColValExpr);
-                }
-                valueExprItr = selectList.insert(valueExprItr, starColumns.begin(), starColumns.end());
-                std::advance(valueExprItr, starColumns.size());
-                // erase the STAR ValueExpr becasue it's been replaced with named columns.
-                valueExprItr = selectList.erase(valueExprItr);
-                if (valueExprItr == selectList.end()) break;
-            }
-        }
+void UserQuerySelect::_reportInvalidColumnInMergeStatement(std::string const& errMsg) {
+    if (nullptr == _mergeStmt) return;
+    std::shared_ptr<query::SelectStmt> schemaStmt;
+    try {
+        schemaStmt = ParseRunner::makeSelectStmt("SELECT * FROM " + _mergeTable);
+    } catch (parser::ParseException& e) {
+        throw UserQueryError(std::string("UNEXPECTED ParseException: ") + e.what());
     }
+    _reportInvalidColumns(_mergeStmt, schemaStmt, "Merge", errMsg);
 }
 
 
-void UserQuerySelect::_verifyColumnsInMergeStatement() {
-    if (_mergeStmt != nullptr && _mergeStmt->hasOrderBy()) {
-        query::ValueExprPtrVector valueExprs;
-        _mergeStmt->getOrderBy().findValueExprs(valueExprs);
+void UserQuerySelect::_reportInvalidColumnInPreflightStatement(std::string const& errMsg) {
+    auto schemaStmt = ParseRunner::makeSelectStmt("SELECT * FROM replaceme");
+    schemaStmt->setFromList(_qSession->getPreFlightStmt()->getFromList().clone());
+    _reportInvalidColumns(_qSession->getPreFlightStmt(), schemaStmt, "Preflight", errMsg);
+}
 
-        // Check ORDER BY
-        // TODO provide checking for other clauses that might need to be checked.
-        for (auto& orderByVE : valueExprs) {
-            bool match = false;
-            for (auto& selectListVE : *(_mergeStmt->getSelectList().getValueExprList())) {
-                if (orderByVE->isSubsetOf(*selectListVE)) {
-                    match = true;
-                    break;
-                }
-            }
-            if (not match) {
-                throw UserQueryError(getQueryIdString() + " ORDER BY item not in SELECT list.");
-            }
-            match = false;
-        }
+
+void UserQuerySelect::_reportInvalidColumns(std::shared_ptr<query::SelectStmt> const& inStmt,
+                                            std::shared_ptr<query::SelectStmt> const& schemaStmt,
+                                            std::string const& whichStmt,
+                                            std::string const& originalErrMsg) const {
+    sql::Schema schema;
+    _infileMerger->getSchemaForQueryResults(*schemaStmt, schema);
+    std::string errMsg;
+    bool success = validateQuery(inStmt, schema, errMsg);
+    if (not success) {
+        _errorExtra = errMsg;
+        LOGS(_log, LOG_LVL_DEBUG, "[" + whichStmt + "] " << errMsg << " for query " << inStmt <<
+                " with schema " << schema << ", statement query error: " << originalErrMsg);
     }
 }
 
