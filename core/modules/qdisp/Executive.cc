@@ -400,7 +400,7 @@ void Executive::_setup() {
     }
     if (!_xrdSsiService) {
         LOGS(_log, LOG_LVL_DEBUG, _id << " Error obtaining XrdSsiService in Executive: "
-             <<  getErrorText(eInfo));
+             "serviceUrl=" << _config.serviceUrl << " " <<  getErrorText(eInfo));
     }
     assert(_xrdSsiService);
 }
