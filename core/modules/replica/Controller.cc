@@ -100,7 +100,7 @@ ReplicationRequest::Ptr Controller::replicate(
         string const& jobId,
         unsigned int requestExpirationIvalSec) {
 
-    LOGS(_log, LOG_LVL_DEBUG, _context(__func__));
+    LOGS(_log, LOG_LVL_TRACE, _context(__func__));
 
     return _submit<ReplicationRequest,
                    decltype(sourceWorkerName),
@@ -131,7 +131,7 @@ DeleteRequest::Ptr Controller::deleteReplica(
         string const& jobId,
         unsigned int requestExpirationIvalSec) {
 
-    LOGS(_log, LOG_LVL_DEBUG, _context(__func__));
+    LOGS(_log, LOG_LVL_TRACE, _context(__func__));
 
     return _submit<DeleteRequest,
                    decltype(database),
@@ -160,7 +160,7 @@ FindRequest::Ptr Controller::findReplica(
         string const& jobId,
         unsigned int requestExpirationIvalSec) {
 
-    LOGS(_log, LOG_LVL_DEBUG, _context(__func__));
+    LOGS(_log, LOG_LVL_TRACE, _context(__func__));
 
     return _submit<FindRequest,
                    decltype(database),
@@ -188,7 +188,7 @@ FindAllRequest::Ptr Controller::findAllReplicas(
         string const& jobId,
         unsigned int requestExpirationIvalSec) {
 
-    LOGS(_log, LOG_LVL_DEBUG, _context(__func__));
+    LOGS(_log, LOG_LVL_TRACE, _context(__func__));
 
     return _submit<FindAllRequest,
                    decltype(database),
@@ -214,7 +214,7 @@ EchoRequest::Ptr Controller::echo(
         string const& jobId,
         unsigned int requestExpirationIvalSec) {
 
-    LOGS(_log, LOG_LVL_DEBUG, _context(__func__));
+    LOGS(_log, LOG_LVL_TRACE, _context(__func__));
 
     return _submit<EchoRequest,
                    decltype(data),
@@ -242,7 +242,7 @@ IndexRequest::Ptr Controller::index(
         std::string const& jobId,
         unsigned int requestExpirationIvalSec) {
  
-    LOGS(_log, LOG_LVL_DEBUG, _context(__func__));
+    LOGS(_log, LOG_LVL_TRACE, _context(__func__));
 
     return _submit<IndexRequest,
                    decltype(database),
@@ -274,7 +274,7 @@ SqlQueryRequest::Ptr Controller::sqlQuery(
         string const& jobId,
         unsigned int requestExpirationIvalSec) {
 
-    LOGS(_log, LOG_LVL_DEBUG, _context(__func__));
+    LOGS(_log, LOG_LVL_TRACE, _context(__func__));
 
     return _submit<SqlQueryRequest,
                    decltype(query),
@@ -303,7 +303,7 @@ SqlCreateDbRequest::Ptr Controller::sqlCreateDb(
         string const& jobId,
         unsigned int requestExpirationIvalSec) {
 
-    LOGS(_log, LOG_LVL_DEBUG, _context(__func__));
+    LOGS(_log, LOG_LVL_TRACE, _context(__func__));
 
     return _submit<SqlCreateDbRequest,
                    decltype(database)>(
@@ -326,7 +326,7 @@ SqlDeleteDbRequest::Ptr Controller::sqlDeleteDb(
         string const& jobId,
         unsigned int requestExpirationIvalSec) {
 
-    LOGS(_log, LOG_LVL_DEBUG, _context(__func__));
+    LOGS(_log, LOG_LVL_TRACE, _context(__func__));
 
     return _submit<SqlDeleteDbRequest,
                    decltype(database)>(
@@ -349,7 +349,7 @@ SqlEnableDbRequest::Ptr Controller::sqlEnableDb(
         string const& jobId,
         unsigned int requestExpirationIvalSec) {
 
-    LOGS(_log, LOG_LVL_DEBUG, _context(__func__));
+    LOGS(_log, LOG_LVL_TRACE, _context(__func__));
 
     return _submit<SqlEnableDbRequest,
                    decltype(database)>(
@@ -372,7 +372,7 @@ SqlDisableDbRequest::Ptr Controller::sqlDisableDb(
         string const& jobId,
         unsigned int requestExpirationIvalSec) {
 
-    LOGS(_log, LOG_LVL_DEBUG, _context(__func__));
+    LOGS(_log, LOG_LVL_TRACE, _context(__func__));
 
     return _submit<SqlDisableDbRequest,
                    decltype(database)>(
@@ -396,7 +396,7 @@ SqlGrantAccessRequest::Ptr Controller::sqlGrantAccess(
         string const& jobId,
         unsigned int requestExpirationIvalSec) {
 
-    LOGS(_log, LOG_LVL_DEBUG, _context(__func__));
+    LOGS(_log, LOG_LVL_TRACE, _context(__func__));
 
     return _submit<SqlGrantAccessRequest,
                    decltype(database),
@@ -425,7 +425,7 @@ SqlCreateTableRequest::Ptr Controller::sqlCreateTable(
         string const& jobId,
         unsigned int requestExpirationIvalSec) {
 
-    LOGS(_log, LOG_LVL_DEBUG, _context(__func__));
+    LOGS(_log, LOG_LVL_TRACE, _context(__func__));
 
     return _submit<SqlCreateTableRequest,
                    decltype(database),
@@ -457,7 +457,7 @@ SqlDeleteTableRequest::Ptr Controller::sqlDeleteTable(
         string const& jobId,
         unsigned int requestExpirationIvalSec) {
 
-    LOGS(_log, LOG_LVL_DEBUG, _context(__func__));
+    LOGS(_log, LOG_LVL_TRACE, _context(__func__));
 
     return _submit<SqlDeleteTableRequest,
                    decltype(database),
@@ -483,7 +483,7 @@ SqlRemoveTablePartitionsRequest::Ptr Controller::sqlRemoveTablePartitions(
         string const& jobId,
         unsigned int requestExpirationIvalSec) {
 
-    LOGS(_log, LOG_LVL_DEBUG, _context(__func__));
+    LOGS(_log, LOG_LVL_TRACE, _context(__func__));
 
     return _submit<SqlRemoveTablePartitionsRequest,
                    decltype(database),
@@ -510,7 +510,7 @@ SqlDeleteTablePartitionRequest::Ptr Controller::sqlDeleteTablePartition(
         string const& jobId,
         unsigned int requestExpirationIvalSec) {
 
-    LOGS(_log, LOG_LVL_DEBUG, _context(__func__));
+    LOGS(_log, LOG_LVL_TRACE, _context(__func__));
 
     return _submit<SqlDeleteTablePartitionRequest,
                    decltype(database),
@@ -534,7 +534,7 @@ ServiceSuspendRequest::Ptr Controller::suspendWorkerService(
         string const& jobId,
         unsigned int requestExpirationIvalSec) {
 
-    LOGS(_log, LOG_LVL_DEBUG, _context(__func__) << "  workerName: " << workerName);
+    LOGS(_log, LOG_LVL_TRACE, _context(__func__) << "  workerName: " << workerName);
 
     return _submit<ServiceSuspendRequest>(
         workerName,
@@ -550,7 +550,7 @@ ServiceResumeRequest::Ptr Controller::resumeWorkerService(
         string const& jobId,
         unsigned int requestExpirationIvalSec) {
 
-    LOGS(_log, LOG_LVL_DEBUG, _context(__func__) << "  workerName: " << workerName);
+    LOGS(_log, LOG_LVL_TRACE, _context(__func__) << "  workerName: " << workerName);
 
     return _submit<ServiceResumeRequest>(
         workerName,
@@ -566,7 +566,7 @@ ServiceStatusRequest::Ptr Controller::statusOfWorkerService(
         string const& jobId,
         unsigned int requestExpirationIvalSec) {
 
-    LOGS(_log, LOG_LVL_DEBUG, _context(__func__) << "  workerName: " << workerName);
+    LOGS(_log, LOG_LVL_TRACE, _context(__func__) << "  workerName: " << workerName);
 
     return _submit<ServiceStatusRequest>(
         workerName,
@@ -582,7 +582,7 @@ ServiceRequestsRequest::Ptr Controller::requestsOfWorkerService(
         string const& jobId,
         unsigned int requestExpirationIvalSec) {
 
-    LOGS(_log, LOG_LVL_DEBUG, _context(__func__) + "  workerName: " << workerName);
+    LOGS(_log, LOG_LVL_TRACE, _context(__func__) + "  workerName: " << workerName);
 
     return _submit<ServiceRequestsRequest>(
         workerName,
@@ -598,7 +598,7 @@ ServiceDrainRequest::Ptr Controller::drainWorkerService(
         string const& jobId,
         unsigned int requestExpirationIvalSec) {
 
-    LOGS(_log, LOG_LVL_DEBUG, _context(__func__) << "  workerName: " << workerName);
+    LOGS(_log, LOG_LVL_TRACE, _context(__func__) << "  workerName: " << workerName);
 
     return _submit<ServiceDrainRequest>(
         workerName,
@@ -614,7 +614,7 @@ ServiceReconfigRequest::Ptr Controller::reconfigWorkerService(
         string const& jobId,
         unsigned int requestExpirationIvalSec) {
 
-    LOGS(_log, LOG_LVL_DEBUG, _context(__func__) << "  workerName: " << workerName);
+    LOGS(_log, LOG_LVL_TRACE, _context(__func__) << "  workerName: " << workerName);
 
     return _submit<ServiceReconfigRequest>(
         workerName,
@@ -631,7 +631,7 @@ size_t Controller::numActiveRequests() const {
 
 
 void Controller::_debug(string const& func, string const& msg) const {
-    LOGS(_log, LOG_LVL_DEBUG, _context(func) << "  " << msg);
+    LOGS(_log, LOG_LVL_TRACE, _context(func) << "  " << msg);
 }
 
 
@@ -667,7 +667,7 @@ void Controller::_assertIsRunning() const {
 
 void Controller::_logManagementRequest(string const& requestName,
                                        string const& workerName) {
-    LOGS(_log, LOG_LVL_DEBUG, _context(__func__) << "  workerName: " << workerName
+    LOGS(_log, LOG_LVL_TRACE, _context(__func__) << "  workerName: " << workerName
          << "  requestName: " << requestName);
 }
 

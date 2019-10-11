@@ -45,24 +45,10 @@ namespace replica {
 
     class ReplicationRequest;
     class DeleteRequest;
-
-    typedef std::shared_ptr<ReplicationRequest> ReplicationRequestPtr;
-    typedef std::shared_ptr<DeleteRequest>      DeleteRequestPtr;
-
     class FindRequest;
     class FindAllRequest;
-
-    typedef std::shared_ptr<FindRequest>    FindRequestPtr;
-    typedef std::shared_ptr<FindAllRequest> FindAllRequestPtr;
-
     class EchoRequest;
-
-    typedef std::shared_ptr<EchoRequest> EchoRequestPtr;
-
     class IndexRequest;
-
-    typedef std::shared_ptr<IndexRequest> IndexRequestPtr;
-
     class SqlQueryRequest;
     class SqlCreateDbRequest;
     class SqlDeleteDbRequest;
@@ -74,6 +60,12 @@ namespace replica {
     class SqlRemoveTablePartitionsRequest;
     class SqlDeleteTablePartitionRequest;
 
+    typedef std::shared_ptr<ReplicationRequest> ReplicationRequestPtr;
+    typedef std::shared_ptr<DeleteRequest>      DeleteRequestPtr;
+    typedef std::shared_ptr<FindRequest>    FindRequestPtr;
+    typedef std::shared_ptr<FindAllRequest> FindAllRequestPtr;
+    typedef std::shared_ptr<EchoRequest> EchoRequestPtr;
+    typedef std::shared_ptr<IndexRequest> IndexRequestPtr;
     typedef std::shared_ptr<SqlQueryRequest>                 SqlQueryRequestPtr;
     typedef std::shared_ptr<SqlCreateDbRequest>              SqlCreateDbRequestPtr;
     typedef std::shared_ptr<SqlDeleteDbRequest>              SqlDeleteDbRequestPtr;
