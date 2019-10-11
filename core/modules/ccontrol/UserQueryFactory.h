@@ -55,6 +55,9 @@ namespace czar {
 namespace qdisp {
     class ExecutiveConfig;
 }
+namespace qproc {
+    class DatabaseModels;
+}
 namespace query {
     class SelectStmt;
 }}}
@@ -73,6 +76,7 @@ class UserQueryFactory : private boost::noncopyable {
 public:
 
     UserQueryFactory(czar::CzarConfig const& czarConfig,
+                     std::shared_ptr<qproc::DatabaseModels> const& dbModels,
                      std::string const& czarName);
 
     /// @param query:        Query text

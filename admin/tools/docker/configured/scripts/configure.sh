@@ -47,7 +47,6 @@ NODE_TYPE="worker"
 
 # get the options
 while getopts ":hmcs" opt ; do
-    echo "Config option ${opt}"
     case ${opt} in
             h) usage ; exit 0 ;;
             m) NODE_TYPE="master" ;;
@@ -55,7 +54,6 @@ while getopts ":hmcs" opt ; do
             s) NODE_TYPE="master-shared" ;;
             \?) usage ; exit 2 ;;
     esac
-    echo "Config option ${opt} node ${NODE_TYPE}"
 done
 shift "$((OPTIND-1))"
 

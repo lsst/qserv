@@ -45,6 +45,8 @@ namespace qproc {
 /// This class allows access to model versions of the databases kept in qserv. The models
 /// are empty databases that have the same schema as the databases in qserv and the models
 /// are not sharded.
+/// There should only be one instance of this class as multiple instances trying to keep
+/// a single resource in sync will cause issues.
 /// TODO: The local models may be out of date or nonexistent, in which case they need to be
 /// updated from the master and periodically periodically check the master for updates.
 /// TODO: Instead of allowing generic queries (via applySql), use canned queries to get specific
@@ -66,7 +68,9 @@ public:
 
     virtual ~DatabaseModels() = default;
 
-    /// @return a DatabaseModels object from config (see util::configStor)
+    /// @return a DatabaseModels object from cfgMapMaster and sqlCfgLocal
+    /// cfgMapMaster is produced by util::configStore and describes the master.
+    /// sqlCfgLocal defines the connection to the local database.
     static Ptr create(std::map<std::string, std::string> const& cfgMapMaster,
                       sql::SqlConfig const& sqlCfglLocal);
 

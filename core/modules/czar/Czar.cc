@@ -41,6 +41,7 @@
 #include "czar/CzarErrors.h"
 #include "czar/MessageTable.h"
 #include "global/LogContext.h"
+#include "qproc/DatabaseModels.h"
 #include "rproc/InfileMerger.h"
 #include "sql/SqlConnection.h"
 #include "sql/SqlConnectionFactory.h"
@@ -91,8 +92,11 @@ Czar::Czar(std::string const& configPath, std::string const& czarName)
         LOG_CONFIG(logConfig);
     }
 
+    auto databaseModels = qproc::DatabaseModels::create(_czarConfig.getCssConfigMap(),
+                                                        _czarConfig.getMySqlResultConfig());
+
     // need to be done first as it add logging context for new threads
-    _uqFactory.reset(new ccontrol::UserQueryFactory(_czarConfig, _czarName));
+    _uqFactory.reset(new ccontrol::UserQueryFactory(_czarConfig, databaseModels, _czarName));
 
     int largeResultConcurrent = _czarConfig.getLargeResultConcurrentMerges();
     // TODO:DM-10273 - remove largeResults from configuration

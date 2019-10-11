@@ -308,6 +308,7 @@ QuerySession::QuerySession(Test& t)
 
 QuerySession::QuerySession() {
     sql::SqlConfig sqlConfig(sql::SqlConfig::MOCK);
+    /// For this testing, the local sql instance is also the master.
     _databaseModels = DatabaseModels::create(sqlConfig, sqlConfig);
 }
 

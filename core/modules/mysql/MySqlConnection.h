@@ -85,6 +85,7 @@ public:
     MySqlConfig const& getConfig() const { return *_sqlConfig; }
     bool selectDb(std::string const& dbName);
 
+    /// @return a string suitable for logging.
     std::string dump();
 
 private:

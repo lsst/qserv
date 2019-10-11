@@ -83,7 +83,7 @@ class DataLoader(object):
                  chunkPrefix='chunk', keepChunks=False, skipPart=False, oneTable=False,
                  css=None, cssClear=False, indexDb='qservMeta', tmpDir=None,
                  emptyChunks=None, deleteTables=False, loggerName=None, cssDb='qservCssData',
-                 czarWmgrList=[]):
+                 czarWmgrList=None):
         """
         Constructor parses all arguments and prepares for execution.
 
@@ -120,6 +120,8 @@ class DataLoader(object):
 
         self.configFiles = configFiles
         self.czarWmgr = czarWmgr
+        if czarWmgrList is None:
+            czarWmgrList = []
         self.czarWmgrList = czarWmgrList.copy()
         self.workerWmgrMap = workerWmgrMap.copy()
         self.chunksDir = chunksDir

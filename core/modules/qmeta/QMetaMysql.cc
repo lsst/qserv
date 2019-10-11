@@ -142,7 +142,6 @@ QMetaMysql::getCzarID(std::string const& name) {
     }
 }
 
-
 // Register new czar, return czar ID.
 CzarId
 QMetaMysql::registerCzar(std::string const& name) {

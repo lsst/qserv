@@ -189,7 +189,7 @@ class Loader(object):
                             'Input can be empty, e.g. in case of defining SQL view instead of '
                             'regular table.')
         parser.add_argument('-z', '--czar', action='append', dest='czars',
-                            help='Name of czar where should be informed of new database. Repeatable.')
+                            help='Name of czar which should be informed of new database. Repeatable.')
 
         # parse all arguments
         self.args = parser.parse_args()
