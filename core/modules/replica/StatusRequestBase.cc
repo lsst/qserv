@@ -23,6 +23,7 @@
 #include "replica/StatusRequestBase.h"
 
 // System headers
+#include <sstream>
 #include <stdexcept>
 
 // Third party headers
@@ -65,6 +66,14 @@ StatusRequestBase::StatusRequestBase(ServiceProvider::Ptr const& serviceProvider
                          messenger),
         _targetRequestId(targetRequestId),
         _targetRequestType(targetRequestType) {
+}
+
+
+string StatusRequestBase::toString(bool extended) const {
+    ostringstream oss(Request::toString(extended));
+    oss << "  targetRequestId: " << targetRequestId() << "\n"
+        << "  targetPerformance: " << targetPerformance() << "\n";
+    return oss.str();
 }
 
 

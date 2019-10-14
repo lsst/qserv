@@ -24,6 +24,7 @@
 // System headers
 #include <functional>
 #include <memory>
+#include <ostream>
 #include <string>
 
 // Qserv headers
@@ -49,7 +50,16 @@ namespace replica {
 struct IndexInfo {
     std::string error;  /// MySQL error (if any)
     std::string data;   /// Index data to be loaded into the "secondary index" (if success)
+
+    /**
+     * Print index data into a file.
+     *
+     * @param fileName  the name or a file or 'std::cout' if it's empty
+     */
+    void print(std::string const& fileName=std::string()) const;
 };
+
+std::ostream& operator<<(std::ostream& os, IndexInfo const& info);
 
 /**
  * Class IndexRequest extracts and returns data to be loaded into

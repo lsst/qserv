@@ -91,6 +91,14 @@ public:
     /// @see Request::extendedPersistentState()
     std::list<std::pair<std::string,std::string>> extendedPersistentState() const final;
 
+    /**
+     * Make an extended print of the request which would include a result set.
+     * The method will also make a call to Request::defaultPrinter().
+     * 
+     * @param ptr  an object to be printed
+     */
+    static void extendedPrinter(Ptr const& ptr);
+
 protected:
 
     /**
@@ -152,10 +160,11 @@ private:
      * @param lock
      *   a lock on Request::_mtx must be acquired before calling this method
      */
-    void _wait(util::Lock const& lock);
+    void _waitAsync(util::Lock const& lock);
 
     /**
-     * Callback handler for the asynchronous operation
+     * Callback handler for the asynchronous operation. This method gets called
+     * when a timer started by method _waitAsync
      *
      * @param ec
      *   error code to be checked
@@ -171,7 +180,7 @@ private:
     void _send(util::Lock const& lock);
 
     /**
-     * Process the completion of the requested operation
+     * Analyze the completion status of the requested operation
      *
      * @param success
      *   'true' indicates a successful response from a worker

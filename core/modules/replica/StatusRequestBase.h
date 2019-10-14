@@ -62,6 +62,8 @@ public:
     /// @return the performance info of the target operation (if available)
     Performance const& targetPerformance() const { return _targetPerformance; }
 
+    std::string toString(bool extended = false) const override;
+
 protected:
 
     /**

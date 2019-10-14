@@ -35,6 +35,7 @@
 // System headers
 #include <functional>
 #include <future>
+#include <iostream>
 #include <memory>
 #include <string>
 
@@ -341,6 +342,17 @@ public:
                 priority,
                 keepTracking,
                 messenger));
+    }
+
+    /**
+     * Make an extended print of the request which would include a result set.
+     * The method will also make a call to Request::defaultPrinter().
+     * 
+     * @param ptr  an object to be printed
+     */
+    static void extendedPrinter(Ptr const& ptr) {
+        Request::defaultPrinter(ptr);
+        std::cout << ptr->responseData() << std::endl;
     }
 
 protected:

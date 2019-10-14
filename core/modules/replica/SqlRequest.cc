@@ -24,6 +24,7 @@
 
 // System headers
 #include <stdexcept>
+#include <iostream>
 
 // Third party headers
 #include <boost/bind.hpp>
@@ -47,6 +48,29 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.SqlRequest");
 namespace lsst {
 namespace qserv {
 namespace replica {
+
+void SqlBaseRequest::extendedPrinter(Ptr const& ptr) {
+
+    Request::defaultPrinter(ptr);
+
+    auto&& resultSet = ptr->responseData();
+    if (resultSet.hasResult) {
+
+        string const caption = "RESULT SET";
+        string const indent  = "";
+
+        auto const table = resultSet.toColumnTable(caption, indent);
+
+        bool const topSeparator    = false;
+        bool const bottomSeparator = false;
+        bool const repeatedHeader  = false;
+
+        size_t const pageSize = 0;
+
+        table.print(cout, topSeparator, bottomSeparator, pageSize, repeatedHeader);
+    }
+}
+
 
 SqlBaseRequest::SqlBaseRequest(
         ServiceProvider::Ptr const& serviceProvider,
@@ -100,7 +124,7 @@ void SqlBaseRequest::startImpl(util::Lock const& lock) {
 }
 
 
-void SqlBaseRequest::_wait(util::Lock const& lock) {
+void SqlBaseRequest::_waitAsync(util::Lock const& lock) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
@@ -223,17 +247,17 @@ void SqlBaseRequest::_analyze(bool success,
             break;
 
         case ProtocolStatus::QUEUED:
-            if (keepTracking()) _wait(lock);
+            if (keepTracking()) _waitAsync(lock);
             else                finish(lock, SERVER_QUEUED);
             break;
 
         case ProtocolStatus::IN_PROGRESS:
-            if (keepTracking()) _wait(lock);
+            if (keepTracking()) _waitAsync(lock);
             else                finish(lock, SERVER_IN_PROGRESS);
             break;
 
         case ProtocolStatus::IS_CANCELLING:
-            if (keepTracking()) _wait(lock);
+            if (keepTracking()) _waitAsync(lock);
             else                finish(lock, SERVER_IS_CANCELLING);
             break;
 

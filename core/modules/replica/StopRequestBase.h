@@ -66,6 +66,8 @@ public:
     /// @see Request::extendedPersistentState()
     std::list<std::pair<std::string,std::string>> extendedPersistentState() const override;
 
+    std::string toString(bool extended = false) const override;
+
 protected:
 
     /**

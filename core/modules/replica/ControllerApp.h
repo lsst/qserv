@@ -27,6 +27,8 @@
 
 // Qserv headers
 #include "replica/Application.h"
+#include "replica/Controller.h"
+#include "replica/Request.h"
 
 // This header declarations
 namespace lsst {
@@ -74,9 +76,23 @@ private:
     /// @see ControllerApp::create()
     ControllerApp(int argc, char* argv[]);
 
+    void _configureParser();
+    void _configureParserCommandREPLICATE();
+    void _configureParserCommandDELETE();
+    void _configureParserCommandFIND();
+    void _configureParserCommandFINDALL();
+    void _configureParserCommandECHO();
+    void _configureParserCommandSQL();
+    void _configureParserCommandINDEX();
+    void _configureParserCommandSTATUS();
+    void _configureParserCommandSTOP();
+    void _configureParserCommandSERVICE();
+
+    Request::Ptr _launchStatusRequest(Controller::Ptr const& controller) const;
+    Request::Ptr _launchStopRequest(Controller::Ptr const& controller) const;
 
     /// The type of a request
-    std::string _request;
+    std::string _requestType;
 
     /// The type of a request affected by the STATUS and STOP requests
     std::string _affectedRequest;
@@ -124,7 +140,7 @@ private:
     /// The name of a file where to read table schema from
     std::string _sqlSchemaFile;
 
-    /// The name of the PK for the MySQL partitioned tables
+    /// The name of the PRIMARY KEY for the MySQL partitioned tables
     std::string _sqlPartitionByColumn;
 
     /// An identifier of a super-transaction

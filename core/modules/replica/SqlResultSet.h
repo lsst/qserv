@@ -147,6 +147,8 @@ public:
                                            bool verticalSeparator=true) const;
 };
 
+std::ostream& operator<<(std::ostream& os, SqlResultSet const& info);
+
 }}} // namespace lsst::qserv::replica
 
 #endif // LSST_QSERV_REPLICA_SQLRESULTSET_H

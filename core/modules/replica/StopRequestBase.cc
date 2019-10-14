@@ -23,6 +23,7 @@
 #include "replica/StopRequestBase.h"
 
 // System headers
+#include <sstream>
 #include <stdexcept>
 
 // Third party headers
@@ -67,6 +68,14 @@ StopRequestBase::StopRequestBase(ServiceProvider::Ptr const& serviceProvider,
                          messenger),
         _targetRequestId(targetRequestId),
         _targetRequestType(targetRequestType) {
+}
+
+
+string StopRequestBase::toString(bool extended) const {
+    ostringstream oss(Request::toString(extended));
+    oss << "  targetRequestId: " << targetRequestId() << "\n"
+        << "  targetPerformance: " << targetPerformance() << "\n";
+    return oss.str();
 }
 
 

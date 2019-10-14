@@ -23,7 +23,8 @@
 #include "replica/IndexRequest.h"
 
 // System headers
-#include <future>
+#include <fstream>
+#include <iostream>
 #include <stdexcept>
 
 // Third party headers
@@ -49,6 +50,28 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.IndexRequest");
 namespace lsst {
 namespace qserv {
 namespace replica {
+
+void IndexInfo::print(string const& fileName) const {
+    if (fileName.empty()) {
+        cout << data;
+        return;
+    }
+    ofstream file(fileName);
+    if (not file.good()) {
+        LOGS(_log, LOG_LVL_DEBUG, "IndexInfo::" << __func__ << " "
+            << "failed to open the file: " << fileName);
+        return;
+    }
+    file << data;
+}
+
+
+ostream& operator<<(ostream& os, IndexInfo const& info) {
+    os << "IndexInfo {error:'" << info.error << "',"
+       << "data.length:" << info.data.size() << "}";
+    return os;
+}
+
 
 IndexRequest::Ptr IndexRequest::create(ServiceProvider::Ptr const& serviceProvider,
                                        boost::asio::io_service& io_service,

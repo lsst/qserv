@@ -26,6 +26,7 @@
 #include <condition_variable>
 #include <map>
 #include <memory>
+#include <iostream>
 #include <string>
 
 // Third party headers
@@ -246,10 +247,39 @@ public:
      * @note
      *   This method will be called only if the previously defined
      *   method Request::savePersistentState() has a non-trivial
-     *   implementation by a subclass.
+     *   implementation by a subclass. Also, this method is supposed to
+     *   be "lock-free" as it returns extended parameters of sub-classes
+     *   which (he parameters) are set by constructors of the classes.
      */
     virtual std::list<std::pair<std::string,std::string>> extendedPersistentState() const {
         return std::list<std::pair<std::string,std::string>>();
+    }
+
+    /**
+     * Dump requests into the string representation. The output of the method
+     * would be used in various reports. This class's implementation of the
+     * method would include (as minimum):
+     * - the combined (base, extended, and extended server state) of the object
+     * - the performance
+     * - (optionally, if 'extended' is set to true) the key/value pairs of
+     *   the extended persistent state
+     * 
+     * Subclasses may extend the implementation of the method
+     *
+     * @param extended  if 'true' then include the key/value pairs of
+     * the extended persistent state
+     *
+     * @return the string representation of the request object
+     */
+    virtual std::string toString(bool extended = false) const;
+
+    void print(std::ostream& os = std::cout,
+               bool extended = false) const {
+        os << toString(extended);
+    }
+
+    static void defaultPrinter(Ptr const& ptr) {
+        ptr->print(std::cout, true);
     }
 
 protected:
@@ -313,7 +343,7 @@ protected:
     unsigned int timerIvalSec() const { return _timerIvalSec; }
 
     /**
-     * This method allows requests to implements an adaptive tracking algorithm
+     * This method allows requests to implement an adaptive tracking algorithm
      * for following request status on worker nodes. Once the first message
      * is sent to a worker the request tracking timer is launched with
      * the initial value of the interval (stored in the data
