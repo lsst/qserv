@@ -60,8 +60,9 @@ SqlJob::SqlJob(uint64_t maxRows,
                bool allWorkers,
                Controller::Ptr const& controller,
                string const& parentJobId,
+               std::string const& jobName,
                Job::Options const& options)
-    :   Job(controller, parentJobId, "SQL", options),
+    :   Job(controller, parentJobId, jobName, options),
         _maxRows(maxRows),
         _allWorkers(allWorkers) {
 }
@@ -227,10 +228,11 @@ SqlQueryJob::SqlQueryJob(string const& query,
                          CallbackType const& onFinish,
                          Job::Options const& options)
     :   SqlJob(maxRows,
-                   allWorkers,
-                   controller,
-                   parentJobId,
-                   options),
+               allWorkers,
+               controller,
+               parentJobId,
+               "SQL_QUERY",
+               options),
         _query(query),
         _user(user),
         _password(password),
@@ -326,11 +328,12 @@ SqlCreateDbJob::SqlCreateDbJob(string const& database,
                                string const& parentJobId,
                                CallbackType const& onFinish,
                                Job::Options const& options)
-    :   SqlJob(0 /* maxRows */,
-                   allWorkers,
-                   controller,
-                   parentJobId,
-                   options),
+    :   SqlJob(0,
+               allWorkers,
+               controller,
+               parentJobId,
+               "SQL_CREATE_DATABASE",
+               options),
         _database(database),
         _onFinish(onFinish) {
 }
@@ -419,11 +422,12 @@ SqlDeleteDbJob::SqlDeleteDbJob(string const& database,
                                string const& parentJobId,
                                CallbackType const& onFinish,
                                Job::Options const& options)
-    :   SqlJob(0 /* maxRows */,
-                   allWorkers,
-                   controller,
-                   parentJobId,
-                   options),
+    :   SqlJob(0,
+               allWorkers,
+               controller,
+               parentJobId,
+               "SQL_DROP_DATABASE",
+               options),
         _database(database),
         _onFinish(onFinish) {
 }
@@ -512,11 +516,12 @@ SqlEnableDbJob::SqlEnableDbJob(string const& database,
                                string const& parentJobId,
                                CallbackType const& onFinish,
                                Job::Options const& options)
-    :   SqlJob(0 /* maxRows */,
-                   allWorkers,
-                   controller,
-                   parentJobId,
-                   options),
+    :   SqlJob(0,
+               allWorkers,
+               controller,
+               parentJobId,
+               "SQL_ENABLE_DATABASE",
+               options),
         _database(database),
         _onFinish(onFinish) {
 }
@@ -605,11 +610,12 @@ SqlDisableDbJob::SqlDisableDbJob(string const& database,
                                  string const& parentJobId,
                                  CallbackType const& onFinish,
                                  Job::Options const& options)
-    :   SqlJob(0 /* maxRows */,
-                   allWorkers,
-                   controller,
-                   parentJobId,
-                   options),
+    :   SqlJob(0,
+               allWorkers,
+               controller,
+               parentJobId,
+               "SQL_DISABLE_DATABASE",
+               options),
         _database(database),
         _onFinish(onFinish) {
 }
@@ -701,11 +707,12 @@ SqlGrantAccessJob::SqlGrantAccessJob(string const& database,
                                      string const& parentJobId,
                                      CallbackType const& onFinish,
                                      Job::Options const& options)
-    :   SqlJob(0 /* maxRows */,
-                   allWorkers,
-                   controller,
-                   parentJobId,
-                   options),
+    :   SqlJob(0,
+               allWorkers,
+               controller,
+               parentJobId,
+               "SQL_GRANT_ACCESS",
+               options),
         _database(database),
         _onFinish(onFinish) {
 }
@@ -808,13 +815,12 @@ SqlCreateTableJob::SqlCreateTableJob(
         string const& parentJobId,
         CallbackType const& onFinish,
         Job::Options const& options)
-    :   SqlJob(
-            0,          /* maxRows */
-            allWorkers,
-            controller,
-            parentJobId,
-            options
-        ),
+    :   SqlJob(0,
+               allWorkers,
+               controller,
+               parentJobId,
+               "SQL_CREATE_TABLE",
+               options),
         _database(database),
         _table(table),
         _engine(engine),
@@ -919,13 +925,12 @@ SqlDeleteTableJob::SqlDeleteTableJob(
         string const& parentJobId,
         CallbackType const& onFinish,
         Job::Options const& options)
-    :   SqlJob(
-            0,          /* maxRows */
-            allWorkers,
-            controller,
-            parentJobId,
-            options
-        ),
+    :   SqlJob(0,
+               allWorkers,
+               controller,
+               parentJobId,
+               "SQL_DROP_TABLE",
+               options),
         _database(database),
         _table(table),
         _onFinish(onFinish) {
@@ -1021,13 +1026,12 @@ SqlRemoveTablePartitionsJob::SqlRemoveTablePartitionsJob(
         string const& parentJobId,
         CallbackType const& onFinish,
         Job::Options const& options)
-    :   SqlJob(
-            0,          /* maxRows */
-            allWorkers,
-            controller,
-            parentJobId,
-            options
-        ),
+    :   SqlJob(0,
+               allWorkers,
+               controller,
+               parentJobId,
+               "SQL_REMOVE_TABLE_PARTITIONING",
+               options),
         _database(database),
         _table(table),
         _onFinish(onFinish) {
@@ -1170,13 +1174,12 @@ SqlDeleteTablePartitionJob::SqlDeleteTablePartitionJob(
         string const& parentJobId,
         CallbackType const& onFinish,
         Job::Options const& options)
-    :   SqlJob(
-            0,          /* maxRows */
-            allWorkers,
-            controller,
-            parentJobId,
-            options
-        ),
+    :   SqlJob(0,
+               allWorkers,
+               controller,
+               parentJobId,
+               "SQL_DROP_TABLE_PARTITION",
+               options),
         _database(database),
         _table(table),
         _transactionId(transactionId),

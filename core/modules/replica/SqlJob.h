@@ -130,6 +130,9 @@ protected:
      * @param parentJobId
      *   (optional) identifier of a parent job
      *
+     * @param jobName
+     *   the name of a job in the persistent state of the Replication system
+     *
      * @param options
      *   (optional) defines the job priority, etc.
      */
@@ -137,6 +140,7 @@ protected:
            bool allWorkers,
            Controller::Ptr const& controller,
            std::string const& parentJobId,
+           std::string const& jobName,
            Job::Options const& options);
 
     /// @see Job::startImpl()
