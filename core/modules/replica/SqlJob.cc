@@ -46,7 +46,7 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
-Job::Options const& SqlBaseJob::defaultOptions() {
+Job::Options const& SqlJob::defaultOptions() {
     static Job::Options const options{
         2,      /* priority */
         false,  /* exclusive */
@@ -56,30 +56,30 @@ Job::Options const& SqlBaseJob::defaultOptions() {
 }
 
 
-SqlBaseJob::SqlBaseJob(uint64_t maxRows,
-                       bool allWorkers,
-                       Controller::Ptr const& controller,
-                       string const& parentJobId,
-                       Job::Options const& options)
+SqlJob::SqlJob(uint64_t maxRows,
+               bool allWorkers,
+               Controller::Ptr const& controller,
+               string const& parentJobId,
+               Job::Options const& options)
     :   Job(controller, parentJobId, "SQL", options),
         _maxRows(maxRows),
         _allWorkers(allWorkers) {
 }
 
 
-SqlJobResult const& SqlBaseJob::getResultData() const {
+SqlJobResult const& SqlJob::getResultData() const {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     if (state() == State::FINISHED) return _resultData;
 
     throw logic_error(
-            "SqlBaseJob::" + string(__func__) +
+            "SqlJob::" + string(__func__) +
             "  the method can't be called while the job hasn't finished");
 }
 
 
-list<pair<string,string>> SqlBaseJob::persistentLogData() const {
+list<pair<string,string>> SqlJob::persistentLogData() const {
 
     list<pair<string,string>> result;
 
@@ -109,7 +109,7 @@ list<pair<string,string>> SqlBaseJob::persistentLogData() const {
 }
 
 
-void SqlBaseJob::startImpl(util::Lock const& lock) {
+void SqlJob::startImpl(util::Lock const& lock) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
@@ -137,7 +137,7 @@ void SqlBaseJob::startImpl(util::Lock const& lock) {
 }
 
 
-void SqlBaseJob::cancelImpl(util::Lock const& lock) {
+void SqlJob::cancelImpl(util::Lock const& lock) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
@@ -156,7 +156,7 @@ void SqlBaseJob::cancelImpl(util::Lock const& lock) {
 }
 
 
-void SqlBaseJob::onRequestFinish(SqlBaseRequest::Ptr const& request) {
+void SqlJob::onRequestFinish(SqlRequest::Ptr const& request) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "  worker=" << request->worker());
 
@@ -226,7 +226,7 @@ SqlQueryJob::SqlQueryJob(string const& query,
                          string const& parentJobId,
                          CallbackType const& onFinish,
                          Job::Options const& options)
-    :   SqlBaseJob(maxRows,
+    :   SqlJob(maxRows,
                    allWorkers,
                    controller,
                    parentJobId,
@@ -248,14 +248,14 @@ list<pair<string,string>> SqlQueryJob::extendedPersistentState() const {
 }
 
 
-list<SqlBaseRequest::Ptr> SqlQueryJob::launchRequests(util::Lock const& lock,
-                                                      string const& worker,
-                                                      size_t maxRequests) {
+list<SqlRequest::Ptr> SqlQueryJob::launchRequests(util::Lock const& lock,
+                                                  string const& worker,
+                                                  size_t maxRequests) {
 
     // Launch exactly one request per worker unless it was already
     // launched earlier
 
-    list<SqlBaseRequest::Ptr> requests;
+    list<SqlRequest::Ptr> requests;
     if (not _workers.count(worker) and maxRequests != 0) {
         auto const self = shared_from_base<SqlQueryJob>();
         requests.push_back(
@@ -280,7 +280,7 @@ list<SqlBaseRequest::Ptr> SqlQueryJob::launchRequests(util::Lock const& lock,
 
 
 void SqlQueryJob::stopRequest(util::Lock const& lock,
-                              SqlBaseRequest::Ptr const& request) {
+                              SqlRequest::Ptr const& request) {
     controller()->stopById<StopSqlQueryRequest>(
         request->worker(),
         request->id(),
@@ -326,7 +326,7 @@ SqlCreateDbJob::SqlCreateDbJob(string const& database,
                                string const& parentJobId,
                                CallbackType const& onFinish,
                                Job::Options const& options)
-    :   SqlBaseJob(0 /* maxRows */,
+    :   SqlJob(0 /* maxRows */,
                    allWorkers,
                    controller,
                    parentJobId,
@@ -344,14 +344,14 @@ list<pair<string,string>> SqlCreateDbJob::extendedPersistentState() const {
 }
 
 
-list<SqlBaseRequest::Ptr> SqlCreateDbJob::launchRequests(util::Lock const& lock,
-                                                         string const& worker,
-                                                         size_t maxRequests) {
+list<SqlRequest::Ptr> SqlCreateDbJob::launchRequests(util::Lock const& lock,
+                                                     string const& worker,
+                                                     size_t maxRequests) {
 
     // Launch exactly one request per worker unless it was already
     // launched earlier
 
-    list<SqlBaseRequest::Ptr> requests;
+    list<SqlRequest::Ptr> requests;
     if (not _workers.count(worker) and maxRequests != 0) {
         auto const self = shared_from_base<SqlCreateDbJob>();
         requests.push_back(
@@ -373,7 +373,7 @@ list<SqlBaseRequest::Ptr> SqlCreateDbJob::launchRequests(util::Lock const& lock,
 
 
 void SqlCreateDbJob::stopRequest(util::Lock const& lock,
-                                 SqlBaseRequest::Ptr const& request) {
+                                 SqlRequest::Ptr const& request) {
     controller()->stopById<StopSqlCreateDbRequest>(
         request->worker(),
         request->id(),
@@ -419,7 +419,7 @@ SqlDeleteDbJob::SqlDeleteDbJob(string const& database,
                                string const& parentJobId,
                                CallbackType const& onFinish,
                                Job::Options const& options)
-    :   SqlBaseJob(0 /* maxRows */,
+    :   SqlJob(0 /* maxRows */,
                    allWorkers,
                    controller,
                    parentJobId,
@@ -437,14 +437,14 @@ list<pair<string,string>> SqlDeleteDbJob::extendedPersistentState() const {
 }
 
 
-list<SqlBaseRequest::Ptr> SqlDeleteDbJob::launchRequests(util::Lock const& lock,
-                                                         string const& worker,
-                                                         size_t maxRequests) {
+list<SqlRequest::Ptr> SqlDeleteDbJob::launchRequests(util::Lock const& lock,
+                                                     string const& worker,
+                                                     size_t maxRequests) {
 
     // Launch exactly one request per worker unless it was already
     // launched earlier
 
-    list<SqlBaseRequest::Ptr> requests;
+    list<SqlRequest::Ptr> requests;
     if (not _workers.count(worker) and maxRequests != 0) {
         auto const self = shared_from_base<SqlDeleteDbJob>();
         requests.push_back(
@@ -466,7 +466,7 @@ list<SqlBaseRequest::Ptr> SqlDeleteDbJob::launchRequests(util::Lock const& lock,
 
 
 void SqlDeleteDbJob::stopRequest(util::Lock const& lock,
-                                 SqlBaseRequest::Ptr const& request) {
+                                 SqlRequest::Ptr const& request) {
     controller()->stopById<StopSqlDeleteDbRequest>(
         request->worker(),
         request->id(),
@@ -512,7 +512,7 @@ SqlEnableDbJob::SqlEnableDbJob(string const& database,
                                string const& parentJobId,
                                CallbackType const& onFinish,
                                Job::Options const& options)
-    :   SqlBaseJob(0 /* maxRows */,
+    :   SqlJob(0 /* maxRows */,
                    allWorkers,
                    controller,
                    parentJobId,
@@ -530,14 +530,14 @@ list<pair<string,string>> SqlEnableDbJob::extendedPersistentState() const {
 }
 
 
-list<SqlBaseRequest::Ptr> SqlEnableDbJob::launchRequests(util::Lock const& lock,
-                                                         string const& worker,
-                                                         size_t maxRequests) {
+list<SqlRequest::Ptr> SqlEnableDbJob::launchRequests(util::Lock const& lock,
+                                                     string const& worker,
+                                                     size_t maxRequests) {
 
     // Launch exactly one request per worker unless it was already
     // launched earlier
 
-    list<SqlBaseRequest::Ptr> requests;
+    list<SqlRequest::Ptr> requests;
     if (not _workers.count(worker) and maxRequests != 0) {
         auto const self = shared_from_base<SqlEnableDbJob>();
         requests.push_back(
@@ -559,7 +559,7 @@ list<SqlBaseRequest::Ptr> SqlEnableDbJob::launchRequests(util::Lock const& lock,
 
 
 void SqlEnableDbJob::stopRequest(util::Lock const& lock,
-                                 SqlBaseRequest::Ptr const& request) {
+                                 SqlRequest::Ptr const& request) {
     controller()->stopById<StopSqlEnableDbRequest>(
         request->worker(),
         request->id(),
@@ -605,7 +605,7 @@ SqlDisableDbJob::SqlDisableDbJob(string const& database,
                                  string const& parentJobId,
                                  CallbackType const& onFinish,
                                  Job::Options const& options)
-    :   SqlBaseJob(0 /* maxRows */,
+    :   SqlJob(0 /* maxRows */,
                    allWorkers,
                    controller,
                    parentJobId,
@@ -623,14 +623,14 @@ list<pair<string,string>> SqlDisableDbJob::extendedPersistentState() const {
 }
 
 
-list<SqlBaseRequest::Ptr> SqlDisableDbJob::launchRequests(util::Lock const& lock,
-                                                          string const& worker,
-                                                          size_t maxRequests) {
+list<SqlRequest::Ptr> SqlDisableDbJob::launchRequests(util::Lock const& lock,
+                                                      string const& worker,
+                                                      size_t maxRequests) {
 
     // Launch exactly one request per worker unless it was already
     // launched earlier
 
-    list<SqlBaseRequest::Ptr> requests;
+    list<SqlRequest::Ptr> requests;
     if (not _workers.count(worker) and maxRequests != 0) {
         auto const self = shared_from_base<SqlDisableDbJob>();
         requests.push_back(
@@ -652,7 +652,7 @@ list<SqlBaseRequest::Ptr> SqlDisableDbJob::launchRequests(util::Lock const& lock
 
 
 void SqlDisableDbJob::stopRequest(util::Lock const& lock,
-                                 SqlBaseRequest::Ptr const& request) {
+                                  SqlRequest::Ptr const& request) {
     controller()->stopById<StopSqlDisableDbRequest>(
         request->worker(),
         request->id(),
@@ -701,7 +701,7 @@ SqlGrantAccessJob::SqlGrantAccessJob(string const& database,
                                      string const& parentJobId,
                                      CallbackType const& onFinish,
                                      Job::Options const& options)
-    :   SqlBaseJob(0 /* maxRows */,
+    :   SqlJob(0 /* maxRows */,
                    allWorkers,
                    controller,
                    parentJobId,
@@ -719,14 +719,14 @@ list<pair<string,string>> SqlGrantAccessJob::extendedPersistentState() const {
 }
 
 
-list<SqlBaseRequest::Ptr> SqlGrantAccessJob::launchRequests(util::Lock const& lock,
-                                                            string const& worker,
-                                                            size_t maxRequests) {
+list<SqlRequest::Ptr> SqlGrantAccessJob::launchRequests(util::Lock const& lock,
+                                                        string const& worker,
+                                                        size_t maxRequests) {
 
     // Launch exactly one request per worker unless it was already
     // launched earlier
 
-    list<SqlBaseRequest::Ptr> requests;
+    list<SqlRequest::Ptr> requests;
     if (not _workers.count(worker) and maxRequests != 0) {
         auto const self = shared_from_base<SqlGrantAccessJob>();
         requests.push_back(
@@ -749,7 +749,7 @@ list<SqlBaseRequest::Ptr> SqlGrantAccessJob::launchRequests(util::Lock const& lo
 
 
 void SqlGrantAccessJob::stopRequest(util::Lock const& lock,
-                                    SqlBaseRequest::Ptr const& request) {
+                                    SqlRequest::Ptr const& request) {
     controller()->stopById<StopSqlGrantAccessRequest>(
         request->worker(),
         request->id(),
@@ -808,7 +808,7 @@ SqlCreateTableJob::SqlCreateTableJob(
         string const& parentJobId,
         CallbackType const& onFinish,
         Job::Options const& options)
-    :   SqlBaseJob(
+    :   SqlJob(
             0,          /* maxRows */
             allWorkers,
             controller,
@@ -836,14 +836,14 @@ list<pair<string,string>> SqlCreateTableJob::extendedPersistentState() const {
 }
 
 
-list<SqlBaseRequest::Ptr> SqlCreateTableJob::launchRequests(util::Lock const& lock,
-                                                            string const& worker,
-                                                            size_t maxRequests) {
+list<SqlRequest::Ptr> SqlCreateTableJob::launchRequests(util::Lock const& lock,
+                                                        string const& worker,
+                                                        size_t maxRequests) {
 
     // Launch exactly one request per worker unless it was already
     // launched earlier
 
-    list<SqlBaseRequest::Ptr> requests;
+    list<SqlRequest::Ptr> requests;
     if (not _workers.count(worker) and maxRequests != 0) {
         auto const self = shared_from_base<SqlCreateTableJob>();
         requests.push_back(
@@ -869,7 +869,7 @@ list<SqlBaseRequest::Ptr> SqlCreateTableJob::launchRequests(util::Lock const& lo
 
 
 void SqlCreateTableJob::stopRequest(util::Lock const& lock,
-                                    SqlBaseRequest::Ptr const& request) {
+                                    SqlRequest::Ptr const& request) {
     controller()->stopById<StopSqlCreateTableRequest>(
         request->worker(),
         request->id(),
@@ -919,7 +919,7 @@ SqlDeleteTableJob::SqlDeleteTableJob(
         string const& parentJobId,
         CallbackType const& onFinish,
         Job::Options const& options)
-    :   SqlBaseJob(
+    :   SqlJob(
             0,          /* maxRows */
             allWorkers,
             controller,
@@ -941,14 +941,14 @@ list<pair<string,string>> SqlDeleteTableJob::extendedPersistentState() const {
 }
 
 
-list<SqlBaseRequest::Ptr> SqlDeleteTableJob::launchRequests(util::Lock const& lock,
-                                                            string const& worker,
-                                                            size_t maxRequests) {
+list<SqlRequest::Ptr> SqlDeleteTableJob::launchRequests(util::Lock const& lock,
+                                                        string const& worker,
+                                                        size_t maxRequests) {
 
     // Launch exactly one request per worker unless it was already
     // launched earlier
 
-    list<SqlBaseRequest::Ptr> requests;
+    list<SqlRequest::Ptr> requests;
     if (not _workers.count(worker) and maxRequests != 0) {
         auto const self = shared_from_base<SqlDeleteTableJob>();
         requests.push_back(
@@ -971,7 +971,7 @@ list<SqlBaseRequest::Ptr> SqlDeleteTableJob::launchRequests(util::Lock const& lo
 
 
 void SqlDeleteTableJob::stopRequest(util::Lock const& lock,
-                                    SqlBaseRequest::Ptr const& request) {
+                                    SqlRequest::Ptr const& request) {
     controller()->stopById<StopSqlDeleteTableRequest>(
         request->worker(),
         request->id(),
@@ -1021,7 +1021,7 @@ SqlRemoveTablePartitionsJob::SqlRemoveTablePartitionsJob(
         string const& parentJobId,
         CallbackType const& onFinish,
         Job::Options const& options)
-    :   SqlBaseJob(
+    :   SqlJob(
             0,          /* maxRows */
             allWorkers,
             controller,
@@ -1059,10 +1059,10 @@ list<pair<string,string>> SqlRemoveTablePartitionsJob::extendedPersistentState()
 }
 
 
-list<SqlBaseRequest::Ptr> SqlRemoveTablePartitionsJob::launchRequests(util::Lock const& lock,
-                                                                      string const& worker,
-                                                                      size_t maxRequests) {
-    list<SqlBaseRequest::Ptr> requests;
+list<SqlRequest::Ptr> SqlRemoveTablePartitionsJob::launchRequests(util::Lock const& lock,
+                                                                  string const& worker,
+                                                                  size_t maxRequests) {
+    list<SqlRequest::Ptr> requests;
 
     // Initialize worker's sub-collection if the first time seeing
     // this worker.
@@ -1117,7 +1117,7 @@ list<SqlBaseRequest::Ptr> SqlRemoveTablePartitionsJob::launchRequests(util::Lock
 
 
 void SqlRemoveTablePartitionsJob::stopRequest(util::Lock const& lock,
-                                              SqlBaseRequest::Ptr const& request) {
+                                              SqlRequest::Ptr const& request) {
     controller()->stopById<StopSqlRemoveTablePartitionsRequest>(
         request->worker(),
         request->id(),
@@ -1170,7 +1170,7 @@ SqlDeleteTablePartitionJob::SqlDeleteTablePartitionJob(
         string const& parentJobId,
         CallbackType const& onFinish,
         Job::Options const& options)
-    :   SqlBaseJob(
+    :   SqlJob(
             0,          /* maxRows */
             allWorkers,
             controller,
@@ -1194,14 +1194,14 @@ list<pair<string,string>> SqlDeleteTablePartitionJob::extendedPersistentState() 
 }
 
 
-list<SqlBaseRequest::Ptr> SqlDeleteTablePartitionJob::launchRequests(util::Lock const& lock,
-                                                                     string const& worker,
-                                                                     size_t maxRequests) {
+list<SqlRequest::Ptr> SqlDeleteTablePartitionJob::launchRequests(util::Lock const& lock,
+                                                                 string const& worker,
+                                                                 size_t maxRequests) {
 
     // Launch exactly one request per worker unless it was already
     // launched earlier
 
-    list<SqlBaseRequest::Ptr> requests;
+    list<SqlRequest::Ptr> requests;
     if (not _workers.count(worker) and maxRequests != 0) {
         auto const self = shared_from_base<SqlDeleteTablePartitionJob>();
         requests.push_back(
@@ -1225,7 +1225,7 @@ list<SqlBaseRequest::Ptr> SqlDeleteTablePartitionJob::launchRequests(util::Lock 
 
 
 void SqlDeleteTablePartitionJob::stopRequest(util::Lock const& lock,
-                                             SqlBaseRequest::Ptr const& request) {
+                                             SqlRequest::Ptr const& request) {
     controller()->stopById<StopSqlDeleteTablePartitionRequest>(
         request->worker(),
         request->id(),

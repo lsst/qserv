@@ -61,25 +61,25 @@ struct SqlJobResult {
 };
 
 /**
- * Class SqlBaseJob is a base class for a family of jobs which broadcast the same
+ * Class SqlJob is a base class for a family of jobs which broadcast the same
  * query to all worker databases of a setup. Result sets are collected in the above
  * defined data structure.
  */
-class SqlBaseJob : public Job  {
+class SqlJob : public Job {
 public:
     /// The pointer type for instances of the class
-    typedef std::shared_ptr<SqlBaseJob> Ptr;
+    typedef std::shared_ptr<SqlJob> Ptr;
 
     /// @return default options object for this type of a request
     static Job::Options const& defaultOptions();
 
     // Default construction and copy semantics are prohibited
 
-    SqlBaseJob() = delete;
-    SqlBaseJob(SqlBaseJob const&) = delete;
-    SqlBaseJob& operator=(SqlBaseJob const&) = delete;
+    SqlJob() = delete;
+    SqlJob(SqlJob const&) = delete;
+    SqlJob& operator=(SqlJob const&) = delete;
 
-    ~SqlBaseJob() override = default;
+    ~SqlJob() override = default;
 
     // Trivial get methods
 
@@ -133,11 +133,11 @@ protected:
      * @param options
      *   (optional) defines the job priority, etc.
      */
-    SqlBaseJob(uint64_t maxRows,
-               bool allWorkers,
-               Controller::Ptr const& controller,
-               std::string const& parentJobId,
-               Job::Options const& options);
+    SqlJob(uint64_t maxRows,
+           bool allWorkers,
+           Controller::Ptr const& controller,
+           std::string const& parentJobId,
+           Job::Options const& options);
 
     /// @see Job::startImpl()
     void startImpl(util::Lock const& lock) final;
@@ -149,7 +149,7 @@ protected:
      * The callback function to be invoked on a completion of requests
      * targeting workers.
      */
-    void onRequestFinish(SqlBaseRequest::Ptr const& request);
+    void onRequestFinish(SqlRequest::Ptr const& request);
 
     /**
      * This method lets a request type-specific subclass to launch requests
@@ -166,16 +166,16 @@ protected:
      *
      * @return a collection of requests launched
      */
-    virtual std::list<SqlBaseRequest::Ptr> launchRequests(util::Lock const& lock,
-                                                          std::string const& worker,
-                                                          size_t maxRequests=1) = 0;
+    virtual std::list<SqlRequest::Ptr> launchRequests(util::Lock const& lock,
+                                                      std::string const& worker,
+                                                      size_t maxRequests=1) = 0;
 
     /**
      * This method lets a request type-specific subclass to stop requests
      * of the corresponding subtype.
      */
     virtual void stopRequest(util::Lock const& lock,
-                             SqlBaseRequest::Ptr const& request) = 0;
+                             SqlRequest::Ptr const& request) = 0;
 
 private:
     // Input parameters
@@ -184,7 +184,7 @@ private:
     bool     const _allWorkers;
 
     /// A collection of requests implementing the operation
-    std::vector<SqlBaseRequest::Ptr> _requests;
+    std::vector<SqlRequest::Ptr> _requests;
 
     /// This counter is used for tracking a condition for completing the job
     /// before computing its final state.
@@ -200,7 +200,7 @@ private:
  * worker databases of a setup. Result sets are collected in the above defined
  * data structure.
  */
-class SqlQueryJob : public SqlBaseJob  {
+class SqlQueryJob : public SqlJob  {
 public:
     /// The pointer type for instances of the class
     typedef std::shared_ptr<SqlQueryJob> Ptr;
@@ -283,14 +283,14 @@ protected:
     /// @see Job::notify()
     void notify(util::Lock const& lock) final;
 
-    /// @see SqlBaseJob::launchRequests()
-    std::list<SqlBaseRequest::Ptr> launchRequests(util::Lock const& lock,
-                                                  std::string const& worker,
-                                                  size_t maxRequests) final;
+    /// @see SqlJob::launchRequests()
+    std::list<SqlRequest::Ptr> launchRequests(util::Lock const& lock,
+                                              std::string const& worker,
+                                              size_t maxRequests) final;
 
-    /// @see SqlBaseJob::stopRequest()
+    /// @see SqlJob::stopRequest()
     void stopRequest(util::Lock const& lock,
-                     SqlBaseRequest::Ptr const& request) final;
+                     SqlRequest::Ptr const& request) final;
 
 private:
     /// @see SqlQueryJob::create()
@@ -324,7 +324,7 @@ private:
  * for creating a new database to all worker databases of a setup. Result sets
  * are collected in the above defined data structure.
  */
-class SqlCreateDbJob : public SqlBaseJob  {
+class SqlCreateDbJob : public SqlJob  {
 public:
     /// The pointer type for instances of the class
     typedef std::shared_ptr<SqlCreateDbJob> Ptr;
@@ -389,14 +389,14 @@ protected:
     /// @see Job::notify()
     void notify(util::Lock const& lock) final;
 
-    /// @see SqlBaseJob::launchRequests()
-    std::list<SqlBaseRequest::Ptr> launchRequests(util::Lock const& lock,
-                                                  std::string const& worker,
-                                                  size_t maxRequests) final;
+    /// @see SqlJob::launchRequests()
+    std::list<SqlRequest::Ptr> launchRequests(util::Lock const& lock,
+                                              std::string const& worker,
+                                              size_t maxRequests) final;
 
-    /// @see SqlBaseJob::stopRequest()
+    /// @see SqlJob::stopRequest()
     void stopRequest(util::Lock const& lock,
-                     SqlBaseRequest::Ptr const& request) final;
+                     SqlRequest::Ptr const& request) final;
 
 private:
     /// @see SqlCreateDbJob::create()
@@ -425,7 +425,7 @@ private:
  * for deleting an existing database from all worker databases of a setup. Result sets
  * are collected in the above defined data structure.
  */
-class SqlDeleteDbJob : public SqlBaseJob  {
+class SqlDeleteDbJob : public SqlJob  {
 public:
     /// The pointer type for instances of the class
     typedef std::shared_ptr<SqlDeleteDbJob> Ptr;
@@ -490,14 +490,14 @@ protected:
     /// @see Job::notify()
     void notify(util::Lock const& lock) final;
 
-    /// @see SqlBaseJob::launchRequests()
-    std::list<SqlBaseRequest::Ptr> launchRequests(util::Lock const& lock,
-                                                  std::string const& worker,
-                                                  size_t maxRequests) final;
+    /// @see SqlJob::launchRequests()
+    std::list<SqlRequest::Ptr> launchRequests(util::Lock const& lock,
+                                              std::string const& worker,
+                                              size_t maxRequests) final;
 
-    /// @see SqlBaseJob::stopRequest()
+    /// @see SqlJob::stopRequest()
     void stopRequest(util::Lock const& lock,
-                     SqlBaseRequest::Ptr const& request) final;
+                     SqlRequest::Ptr const& request) final;
 
 private:
     /// @see SqlDeleteDbJob::create()
@@ -526,7 +526,7 @@ private:
  * for enabling an existing database at all Qserv workers of a setup. Result sets
  * are collected in the above defined data structure.
  */
-class SqlEnableDbJob : public SqlBaseJob  {
+class SqlEnableDbJob : public SqlJob  {
 public:
     /// The pointer type for instances of the class
     typedef std::shared_ptr<SqlEnableDbJob> Ptr;
@@ -591,14 +591,14 @@ protected:
     /// @see Job::notify()
     void notify(util::Lock const& lock) final;
 
-    /// @see SqlBaseJob::launchRequests()
-    std::list<SqlBaseRequest::Ptr> launchRequests(util::Lock const& lock,
-                                                  std::string const& worker,
-                                                  size_t maxRequests) final;
+    /// @see SqlJob::launchRequests()
+    std::list<SqlRequest::Ptr> launchRequests(util::Lock const& lock,
+                                              std::string const& worker,
+                                              size_t maxRequests) final;
 
-    /// @see SqlBaseJob::stopRequest()
+    /// @see SqlJob::stopRequest()
     void stopRequest(util::Lock const& lock,
-                     SqlBaseRequest::Ptr const& request) final;
+                     SqlRequest::Ptr const& request) final;
 
 private:
     /// @see SqlEnableDbJob::create()
@@ -627,7 +627,7 @@ private:
  * for disabling an existing database at all Qserv workers of a setup. Result sets
  * are collected in the above defined data structure.
  */
-class SqlDisableDbJob : public SqlBaseJob  {
+class SqlDisableDbJob : public SqlJob  {
 public:
     /// The pointer type for instances of the class
     typedef std::shared_ptr<SqlDisableDbJob> Ptr;
@@ -692,14 +692,14 @@ protected:
     /// @see Job::notify()
     void notify(util::Lock const& lock) final;
 
-    /// @see SqlBaseJob::launchRequests()
-    std::list<SqlBaseRequest::Ptr> launchRequests(util::Lock const& lock,
-                                                  std::string const& worker,
-                                                  size_t maxRequests) final;
+    /// @see SqlJob::launchRequests()
+    std::list<SqlRequest::Ptr> launchRequests(util::Lock const& lock,
+                                              std::string const& worker,
+                                              size_t maxRequests) final;
 
-    /// @see SqlBaseJob::stopRequest()
+    /// @see SqlJob::stopRequest()
     void stopRequest(util::Lock const& lock,
-                     SqlBaseRequest::Ptr const& request) final;
+                     SqlRequest::Ptr const& request) final;
 
 private:
     /// @see SqlDisableDbJob::create()
@@ -728,7 +728,7 @@ private:
  * for granting access to an existing database at all Qserv workers of a setup.
  * Result sets are collected in the above defined data structure.
  */
-class SqlGrantAccessJob : public SqlBaseJob  {
+class SqlGrantAccessJob : public SqlJob  {
 public:
     /// The pointer type for instances of the class
     typedef std::shared_ptr<SqlGrantAccessJob> Ptr;
@@ -798,14 +798,14 @@ protected:
     /// @see Job::notify()
     void notify(util::Lock const& lock) final;
 
-    /// @see SqlBaseJob::launchRequests()
-    std::list<SqlBaseRequest::Ptr> launchRequests(util::Lock const& lock,
-                                                  std::string const& worker,
-                                                  size_t maxRequests) final;
+    /// @see SqlJob::launchRequests()
+    std::list<SqlRequest::Ptr> launchRequests(util::Lock const& lock,
+                                              std::string const& worker,
+                                              size_t maxRequests) final;
 
-    /// @see SqlBaseJob::stopRequest()
+    /// @see SqlJob::stopRequest()
     void stopRequest(util::Lock const& lock,
-                     SqlBaseRequest::Ptr const& request) final;
+                     SqlRequest::Ptr const& request) final;
 
 private:
     /// @see SqlGrantAccessJob::create()
@@ -836,7 +836,7 @@ private:
  * for creating a new table to all worker databases of a setup. Result sets
  * are collected in the above defined data structure.
  */
-class SqlCreateTableJob : public SqlBaseJob  {
+class SqlCreateTableJob : public SqlJob  {
 public:
     /// The pointer type for instances of the class
     typedef std::shared_ptr<SqlCreateTableJob> Ptr;
@@ -926,14 +926,14 @@ protected:
     /// @see Job::notify()
     void notify(util::Lock const& lock) final;
 
-    /// @see SqlBaseJob::launchRequests()
-    std::list<SqlBaseRequest::Ptr> launchRequests(util::Lock const& lock,
-                                                  std::string const& worker,
-                                                  size_t maxRequests) final;
+    /// @see SqlJob::launchRequests()
+    std::list<SqlRequest::Ptr> launchRequests(util::Lock const& lock,
+                                              std::string const& worker,
+                                              size_t maxRequests) final;
 
-    /// @see SqlBaseJob::stopRequest()
+    /// @see SqlJob::stopRequest()
     void stopRequest(util::Lock const& lock,
-                     SqlBaseRequest::Ptr const& request) final;
+                     SqlRequest::Ptr const& request) final;
 
 private:
     /// @see SqlCreateTableJob::create()
@@ -971,7 +971,7 @@ private:
  * for deleting an existing table from all worker databases of a setup. Result sets
  * are collected in the above defined data structure.
  */
-class SqlDeleteTableJob : public SqlBaseJob  {
+class SqlDeleteTableJob : public SqlJob  {
 public:
     /// The pointer type for instances of the class
     typedef std::shared_ptr<SqlDeleteTableJob> Ptr;
@@ -1041,14 +1041,14 @@ protected:
     /// @see Job::notify()
     void notify(util::Lock const& lock) final;
 
-    /// @see SqlBaseJob::launchRequests()
-    std::list<SqlBaseRequest::Ptr> launchRequests(util::Lock const& lock,
-                                                  std::string const& worker,
-                                                  size_t maxRequests) final;
+    /// @see SqlJob::launchRequests()
+    std::list<SqlRequest::Ptr> launchRequests(util::Lock const& lock,
+                                              std::string const& worker,
+                                              size_t maxRequests) final;
 
-    /// @see SqlBaseJob::stopRequest()
+    /// @see SqlJob::stopRequest()
     void stopRequest(util::Lock const& lock,
-                     SqlBaseRequest::Ptr const& request) final;
+                     SqlRequest::Ptr const& request) final;
 
 private:
     /// @see SqlDeleteTableJob::create()
@@ -1123,7 +1123,7 @@ private:
  *      D    | Object_345
  *      D    | ObjectFullOverlap_345
  */
-class SqlRemoveTablePartitionsJob : public SqlBaseJob  {
+class SqlRemoveTablePartitionsJob : public SqlJob  {
 public:
     /// The pointer type for instances of the class
     typedef std::shared_ptr<SqlRemoveTablePartitionsJob> Ptr;
@@ -1193,14 +1193,14 @@ protected:
     /// @see Job::notify()
     void notify(util::Lock const& lock) final;
 
-    /// @see SqlBaseJob::launchRequests()
-    std::list<SqlBaseRequest::Ptr> launchRequests(util::Lock const& lock,
-                                                  std::string const& worker,
-                                                  size_t maxRequests) final;
+    /// @see SqlJob::launchRequests()
+    std::list<SqlRequest::Ptr> launchRequests(util::Lock const& lock,
+                                              std::string const& worker,
+                                              size_t maxRequests) final;
 
-    /// @see SqlBaseJob::stopRequest()
+    /// @see SqlJob::stopRequest()
     void stopRequest(util::Lock const& lock,
-                     SqlBaseRequest::Ptr const& request) final;
+                     SqlRequest::Ptr const& request) final;
 
 private:
     /// @see SqlRemoveTablePartitionsJob::create()
@@ -1247,7 +1247,7 @@ private:
  * super-transaction from existing table from all worker databases of a setup.
  * Result sets are collected in the above defined data structure.
  */
-class SqlDeleteTablePartitionJob : public SqlBaseJob  {
+class SqlDeleteTablePartitionJob : public SqlJob  {
 public:
     /// The pointer type for instances of the class
     typedef std::shared_ptr<SqlDeleteTablePartitionJob> Ptr;
@@ -1326,14 +1326,14 @@ protected:
     /// @see Job::notify()
     void notify(util::Lock const& lock) final;
 
-    /// @see SqlBaseJob::launchRequests()
-    std::list<SqlBaseRequest::Ptr> launchRequests(util::Lock const& lock,
-                                                  std::string const& worker,
-                                                  size_t maxRequests) final;
+    /// @see SqlJob::launchRequests()
+    std::list<SqlRequest::Ptr> launchRequests(util::Lock const& lock,
+                                              std::string const& worker,
+                                              size_t maxRequests) final;
 
-    /// @see SqlBaseJob::stopRequest()
+    /// @see SqlJob::stopRequest()
     void stopRequest(util::Lock const& lock,
-                     SqlBaseRequest::Ptr const& request) final;
+                     SqlRequest::Ptr const& request) final;
 
 private:
     /// @see SqlDeleteTablePartitionJob::create()

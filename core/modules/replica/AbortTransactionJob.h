@@ -36,7 +36,7 @@
 #include "replica/Configuration.h"
 #include "replica/DatabaseServices.h"
 #include "replica/Job.h"
-#include "replica/SqlRequest.h"
+#include "replica/SqlDeleteTablePartitionRequest.h"
 #include "replica/SqlResultSet.h"
 
 // This header declarations
