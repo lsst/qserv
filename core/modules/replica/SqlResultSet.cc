@@ -207,4 +207,15 @@ util::ColumnTablePrinter SqlResultSet::toColumnTable(string const& caption,
     return table;
 }
 
+
+ostream& operator<<(ostream& os, SqlResultSet const& info) {
+    os << "SqlResultSet {error:'" << info.error << "',"
+       << "charSetName:'" << info.charSetName << "',"
+       << "hasResult:" << (info.hasResult ? 1 : 0) << ","
+       << "fields.size:" << info.fields.size() << ","
+       << "rows.size:" << info.rows.size() << ","
+       << "performanceSec:" << info.performanceSec << "}";
+    return os;
+}
+
 }}} // namespace lsst::qserv::replica

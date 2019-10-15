@@ -32,10 +32,6 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
-///////////////////////////////////////////
-//          RequestTrackerBase           //
-///////////////////////////////////////////
-
 RequestTrackerBase::RequestTrackerBase(ostream& os,
                                        bool progressReport,
                                        bool errorReport)
@@ -77,55 +73,6 @@ void RequestTrackerBase::track() const {
 }
 
 
-void RequestTrackerBase::cancel(bool propagateToServers) {
-
-    auto onFinish     = nullptr;
-    bool keepTracking = false;
-
-    for (auto&& ptr: getRequests()) {
-
-        if (ptr->state() != Request::State::FINISHED) {
-            ptr->cancel();
-
-            if (propagateToServers) {
-                if (auto controller = ptr->controller()) {
-
-                    if (ptr->type()  == "REPLICA_CREATE") {
-                        controller->stopReplication(
-                            ptr->worker(),
-                            ptr->id(),
-                            onFinish,
-                            keepTracking
-                        );
-                    } else if (ptr->type()  == "REPLICA_DELETE") {
-                        controller->stopReplicaDelete(
-                            ptr->worker(),
-                            ptr->id(),
-                            onFinish,
-                            keepTracking
-                        );
-                    } else if (ptr->type()  == "REPLICA_FIND") {
-                        controller->stopReplicaFind(
-                            ptr->worker(),
-                            ptr->id(),
-                            onFinish,
-                            keepTracking
-                        );
-                    } else if (ptr->type()  == "REPLICA_FIND_ALL") {
-                        controller->stopReplicaFindAll(
-                            ptr->worker(),
-                            ptr->id(),
-                            onFinish,
-                            keepTracking
-                        );
-                    }
-                }
-            }
-        }
-    }
-}
-
-
 void RequestTrackerBase::reset () {
     size_t const numOutstanding = RequestTrackerBase::_numLaunched -
                                   RequestTrackerBase::_numFinished;
@@ -142,10 +89,6 @@ void RequestTrackerBase::reset () {
     RequestTrackerBase::_numSuccess  = 0;
 }
 
-
-//////////////////////////////////////////
-//          AnyRequestTracker           //
-//////////////////////////////////////////
 
 AnyRequestTracker::AnyRequestTracker(ostream& os,
                                      bool progressReport,

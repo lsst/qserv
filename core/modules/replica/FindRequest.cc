@@ -56,9 +56,9 @@ FindRequest::Ptr FindRequest::create(ServiceProvider::Ptr const& serviceProvider
                                      string const& worker,
                                      string const& database,
                                      unsigned int chunk,
+                                     bool computeCheckSum,
                                      CallbackType const& onFinish,
                                      int priority,
-                                     bool computeCheckSum,
                                      bool keepTracking,
                                      shared_ptr<Messenger> const& messenger) {
     return FindRequest::Ptr(
@@ -67,9 +67,9 @@ FindRequest::Ptr FindRequest::create(ServiceProvider::Ptr const& serviceProvider
                         worker,
                         database,
                         chunk,
+                        computeCheckSum,
                         onFinish,
                         priority,
-                        computeCheckSum,
                         keepTracking,
                         messenger));
 }
@@ -80,9 +80,9 @@ FindRequest::FindRequest(ServiceProvider::Ptr const& serviceProvider,
                            string const& worker,
                            string const& database,
                            unsigned int chunk,
+                           bool computeCheckSum,
                            CallbackType const& onFinish,
                            int priority,
-                           bool computeCheckSum,
                            bool keepTracking,
                            shared_ptr<Messenger> const& messenger)
     :   RequestMessenger(serviceProvider,
@@ -145,7 +145,7 @@ void FindRequest::_wait(util::Lock const& lock) {
 
     // Always need to set the interval before launching the timer.
 
-    timer().expires_from_now(boost::posix_time::seconds(timerIvalSec()));
+    timer().expires_from_now(boost::posix_time::milliseconds(nextTimeIvalMsec()));
     timer().async_wait(
         boost::bind(
             &FindRequest::_awaken,

@@ -77,4 +77,14 @@ ProtocolServiceRequestType ServiceDrainRequestPolicy::requestType() {
     return ProtocolServiceRequestType::SERVICE_DRAIN;
 }
 
+
+char const* ServiceReconfigRequestPolicy::requestName() {
+    return "SERVICE_RECONFIG";
+}
+
+
+ProtocolServiceRequestType ServiceReconfigRequestPolicy::requestType() {
+    return ProtocolServiceRequestType::SERVICE_RECONFIG;
+}
+
 }}} // namespace lsst::qserv::replica

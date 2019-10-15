@@ -24,6 +24,7 @@
 
 // System headers
 #include <stdexcept>
+#include <iostream>
 
 // Third party headers
 #include <boost/bind.hpp>
@@ -48,56 +49,69 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
-SqlRequest::Ptr SqlRequest::create(ServiceProvider::Ptr const& serviceProvider,
-                                   boost::asio::io_service& io_service,
-                                   string const& worker,
-                                   std::string const& query,
-                                   std::string const& user,
-                                   std::string const& password,
-                                   uint64_t maxRows,
-                                   CallbackType const& onFinish,
-                                   int priority,
-                                   bool keepTracking,
-                                   shared_ptr<Messenger> const& messenger) {
-    return SqlRequest::Ptr(
-        new SqlRequest(serviceProvider,
-                       io_service,
-                       worker,
-                       query,
-                       user,
-                       password,
-                       maxRows,
-                       onFinish,
-                       priority,
-                       keepTracking,
-                       messenger));
+void SqlRequest::extendedPrinter(Ptr const& ptr) {
+
+    Request::defaultPrinter(ptr);
+
+    auto&& resultSet = ptr->responseData();
+    if (resultSet.hasResult) {
+
+        string const caption = "RESULT SET";
+        string const indent  = "";
+
+        auto const table = resultSet.toColumnTable(caption, indent);
+
+        bool const topSeparator    = false;
+        bool const bottomSeparator = false;
+        bool const repeatedHeader  = false;
+
+        size_t const pageSize = 0;
+
+        table.print(cout, topSeparator, bottomSeparator, pageSize, repeatedHeader);
+    }
 }
 
 
-SqlRequest::SqlRequest(ServiceProvider::Ptr const& serviceProvider,
-                         boost::asio::io_service& io_service,
-                         string const& worker,
-                         std::string const& query,
-                         std::string const& user,
-                         std::string const& password,
-                         uint64_t maxRows,
-                         CallbackType const& onFinish,
-                         int  priority,
-                         bool keepTracking,
-                         shared_ptr<Messenger> const& messenger)
-    :   RequestMessenger(serviceProvider,
-                         io_service,
-                         "SQL",
-                         worker,
-                         priority,
-                         keepTracking,
-                         false /* allowDuplicate */,
-                         messenger),
-        _query(query),
-        _user(user),
-        _password(password),
-        _maxRows(maxRows),
-        _onFinish(onFinish) {
+SqlRequest::SqlRequest(
+        ServiceProvider::Ptr const& serviceProvider,
+        boost::asio::io_service& io_service,
+        std::string const& requestName,
+        string const& worker,
+        uint64_t maxRows,
+        int  priority,
+        bool keepTracking,
+        shared_ptr<Messenger> const& messenger)
+    :   RequestMessenger(
+            serviceProvider,
+            io_service,
+            requestName,
+            worker,
+            priority,
+            keepTracking,
+            false /* allowDuplicate */,
+            messenger
+        ) {
+
+    // Partial initialization of the request body's content. Other members
+    // will be set in the request type-specific subclasses.
+    requestBody.set_priority(priority);
+    requestBody.set_max_rows(maxRows);
+}
+
+
+list<pair<string,string>> SqlRequest::extendedPersistentState() const {
+    list<pair<string,string>> result;
+    result.emplace_back("type", ProtocolRequestSql_Type_Name(requestBody.type()));
+    result.emplace_back("max_rows", to_string(requestBody.max_rows()));
+    result.emplace_back("query", requestBody.query());
+    result.emplace_back("user", requestBody.user());
+    result.emplace_back("database", requestBody.database());
+    result.emplace_back("table", requestBody.table());
+    result.emplace_back("engine", requestBody.engine());
+    result.emplace_back("partition_by_column", requestBody.partition_by_column());
+    result.emplace_back("transaction_id", to_string(requestBody.transaction_id()));
+    result.emplace_back("num_columns", to_string(requestBody.columns_size()));
+    return result;
 }
 
 
@@ -108,11 +122,9 @@ SqlResultSet const& SqlRequest::responseData() const {
 
 void SqlRequest::startImpl(util::Lock const& lock) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << __func__
-         << "  worker: " << worker() << " query: " << query() << " user: " << user()
-         << " maxRows: " << maxRows());
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
-    // Serialize the Request message header and the request itself into
+    // Serialize the Request message header and the request body into
     // the network buffer.
 
     buffer()->resize();
@@ -123,21 +135,13 @@ void SqlRequest::startImpl(util::Lock const& lock) {
     hdr.set_queued_type(ProtocolQueuedRequestType::SQL);
 
     buffer()->serialize(hdr);
-
-    ProtocolRequestSql message;
-    message.set_priority(priority());
-    message.set_query(query());
-    message.set_user(user());
-    message.set_password(password());
-    message.set_max_rows(maxRows());
-
-    buffer()->serialize(message);
+    buffer()->serialize(requestBody);
 
     _send(lock);
 }
 
 
-void SqlRequest::_wait(util::Lock const& lock) {
+void SqlRequest::_waitAsync(util::Lock const& lock) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
@@ -166,7 +170,7 @@ void SqlRequest::_awaken(boost::system::error_code const& ec) {
 
     if (state() == State::FINISHED) return;
 
-    // Serialize the Status message header and the request itself into
+    // Serialize the Status message header and the status request's body into
     // the network buffer.
 
     buffer()->resize();
@@ -178,11 +182,11 @@ void SqlRequest::_awaken(boost::system::error_code const& ec) {
 
     buffer()->serialize(hdr);
 
-    ProtocolRequestStatus message;
-    message.set_id(id());
-    message.set_queued_type(ProtocolQueuedRequestType::SQL);
+    ProtocolRequestStatus statusRequestBody;
+    statusRequestBody.set_id(id());
+    statusRequestBody.set_queued_type(ProtocolQueuedRequestType::SQL);
 
-    buffer()->serialize(message);
+    buffer()->serialize(statusRequestBody);
 
     _send(lock);
 }
@@ -198,19 +202,15 @@ void SqlRequest::_send(util::Lock const& lock) {
         worker(),
         id(),
         buffer(),
-        [self] (string const& id,
-                bool success,
-                ProtocolResponseSql const& response) {
-
-            self->_analyze(success,
-                           response);
+        [self] (string const& id, bool success, ProtocolResponseSql const& response) {
+            self->_analyze(success, response);
         }
     );
 }
 
 
 void SqlRequest::_analyze(bool success,
-                          ProtocolResponseSql const& message) {
+                              ProtocolResponseSql const& response) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "  success=" << (success ? "true" : "false"));
 
@@ -233,48 +233,48 @@ void SqlRequest::_analyze(bool success,
 
     // Always use  the latest status reported by the remote server
 
-    setExtendedServerStatus(lock, replica::translate(message.status_ext()));
+    setExtendedServerStatus(lock, replica::translate(response.status_ext()));
 
     // Performance counters are updated from either of two sources,
     // depending on the availability of the 'target' performance counters
     // filled in by the 'STATUS' queries. If the later is not available
     // then fallback to the one of the current request.
 
-    if (message.has_target_performance()) {
-        mutablePerformance().update(message.target_performance());
+    if (response.has_target_performance()) {
+        mutablePerformance().update(response.target_performance());
     } else {
-        mutablePerformance().update(message.performance());
+        mutablePerformance().update(response.performance());
     }
 
     // Always extract extended data regardless of the completion status
     // reported by the worker service.
 
-    _responseData.set(message);
+    _responseData.set(response);
     _responseData.performanceSec =
         (PerformanceUtils::now() - performance(lock).c_create_time) / 1000.;
 
     // Extract target request type-specific parameters from the response
-    if (message.has_request()) {
-        _targetRequestParams = SqlRequestParams(message.request());
+    if (response.has_request()) {
+        _targetRequestParams = SqlRequestParams(response.request());
     }
-    switch (message.status()) {
+    switch (response.status()) {
 
         case ProtocolStatus::SUCCESS:
             finish(lock, SUCCESS);
             break;
 
         case ProtocolStatus::QUEUED:
-            if (keepTracking()) _wait(lock);
+            if (keepTracking()) _waitAsync(lock);
             else                finish(lock, SERVER_QUEUED);
             break;
 
         case ProtocolStatus::IN_PROGRESS:
-            if (keepTracking()) _wait(lock);
+            if (keepTracking()) _waitAsync(lock);
             else                finish(lock, SERVER_IN_PROGRESS);
             break;
 
         case ProtocolStatus::IS_CANCELLING:
-            if (keepTracking()) _wait(lock);
+            if (keepTracking()) _waitAsync(lock);
             else                finish(lock, SERVER_IS_CANCELLING);
             break;
 
@@ -293,38 +293,14 @@ void SqlRequest::_analyze(bool success,
         default:
             throw logic_error(
                     "SqlRequest::" + string(__func__) + "  unknown status '" +
-                    ProtocolStatus_Name(message.status()) + "' received from server");
+                    ProtocolStatus_Name(response.status()) + "' received from server");
     }
-}
-
-
-void SqlRequest::notify(util::Lock const& lock) {
-
-    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
-
-    notifyDefaultImpl<SqlRequest>(lock, _onFinish);
 }
 
 
 void SqlRequest::savePersistentState(util::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
     controller()->serviceProvider()->databaseServices()->saveState(*this, performance(lock));
-}
-
-
-list<pair<string,string>> SqlRequest::extendedPersistentState() const {
-    list<pair<string,string>> result;
-    result.emplace_back("query",    query());
-    result.emplace_back("user",     user());
-    result.emplace_back("max_rows", to_string(maxRows()));
-    return result;
-}
-
-
-unsigned int SqlRequest::nextTimeIvalMsec() {
-    auto result = _currentTimeIvalMsec;
-    _currentTimeIvalMsec = min( 2 * _currentTimeIvalMsec, 1000 * timerIvalSec());
-    return result;
 }
 
 }}} // namespace lsst::qserv::replica

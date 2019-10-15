@@ -22,10 +22,13 @@
 #define LSST_QSERV_REPLICA_CONTROLLERAPP_H
 
 // System headers
+#include <limits>
 #include <string>
 
 // Qserv headers
 #include "replica/Application.h"
+#include "replica/Controller.h"
+#include "replica/Request.h"
 
 // This header declarations
 namespace lsst {
@@ -73,9 +76,23 @@ private:
     /// @see ControllerApp::create()
     ControllerApp(int argc, char* argv[]);
 
+    void _configureParser();
+    void _configureParserCommandREPLICATE();
+    void _configureParserCommandDELETE();
+    void _configureParserCommandFIND();
+    void _configureParserCommandFINDALL();
+    void _configureParserCommandECHO();
+    void _configureParserCommandSQL();
+    void _configureParserCommandINDEX();
+    void _configureParserCommandSTATUS();
+    void _configureParserCommandSTOP();
+    void _configureParserCommandSERVICE();
+
+    Request::Ptr _launchStatusRequest(Controller::Ptr const& controller) const;
+    Request::Ptr _launchStopRequest(Controller::Ptr const& controller) const;
 
     /// The type of a request
-    std::string _request;
+    std::string _requestType;
 
     /// The type of a request affected by the STATUS and STOP requests
     std::string _affectedRequest;
@@ -111,6 +128,24 @@ private:
     /// A database password for establishing a connection with the worker's database
     std::string _sqlPassword;
 
+    /// The name of a database 
+    std::string _sqlDatabase;
+
+    /// The name of a table 
+    std::string _sqlTable;
+
+    /// The name of a MySQL engine for tables to be created
+    std::string _sqlEngine;
+
+    /// The name of a file where to read table schema from
+    std::string _sqlSchemaFile;
+
+    /// The name of the PRIMARY KEY for the MySQL partitioned tables
+    std::string _sqlPartitionByColumn;
+
+    /// An identifier of a super-transaction
+    uint32_t _transactionId = std::numeric_limits<uint32_t>::max();
+
     /// The optional limit for the total number of rows to be pulled from a result
     /// set when executing queries against the worker's database. The default value
     /// of 0 won't enforce any such limit.
@@ -140,6 +175,11 @@ private:
     /// Automatically compute and store in the database check/control sums of
     /// the replica's files.
     bool _computeCheckSum = false;
+
+    /// The name of a file where the 'secondary index' data will be written into
+    /// upon a successful completion of a request. If the option is not used then
+    /// the data will be printed onto the Standard Output Stream.
+    std::string _indexFileName;
 };
 
 }}} // namespace lsst::qserv::replica

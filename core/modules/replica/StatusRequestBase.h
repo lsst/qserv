@@ -62,6 +62,8 @@ public:
     /// @return the performance info of the target operation (if available)
     Performance const& targetPerformance() const { return _targetPerformance; }
 
+    std::string toString(bool extended = false) const override;
+
 protected:
 
     /**
@@ -86,6 +88,9 @@ protected:
      * @param targetRequestType
      *   type of a request affected by the operation
      *
+     * @param priority
+     *   priority level of the request
+     *
      * @param keepTracking
      *   keep tracking the request before it finishes or fails
      * 
@@ -98,6 +103,7 @@ protected:
                       std::string const& worker,
                       std::string const& targetRequestId,
                       ProtocolQueuedRequestType targetRequestType,
+                      int priority,
                       bool keepTracking,
                       std::shared_ptr<Messenger> const& messenger);
 

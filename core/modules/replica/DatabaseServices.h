@@ -42,7 +42,7 @@ namespace lsst {
 namespace qserv {
 namespace replica {
     class Configuration;
-    struct ControllerIdentity;
+    class ControllerIdentity;
     class QservMgtRequest;
     class Performance;
     class Request;
@@ -78,197 +78,150 @@ public :
 
 
 /**
- * Data structure ControllerEvent encapsulating various info on events logged
+ * Class ControllerEvent encapsulating various info on events logged
  * by Controllers. These objects are retrieved from the persistent logs.
  * 
  * @see DatabaseServices::logControllerEvent
  * @see DatabaseServices::readControllerEvents
  */
-struct ControllerEvent {
+class ControllerEvent {
+public:
 
-    /// A unique identifier of the event in the persistent log. Note, that
-    /// a value of this field is retrieved from the database. 
-    uint32_t id = 0;
+    uint32_t id = 0;    /// A unique identifier of the event in the persistent log.
+                        /// Note, that a value of this field is retrieved from the database. 
 
-    /// Unique identifier of the Controller instance
-    std::string controllerId;
+    std::string controllerId;   /// Unique identifier of the Controller instance
+    uint64_t    timeStamp = 0;  /// 64-bit timestamp (ms) of the event
 
-    /// 64-bit timestamp (nanoseconds) of the event
-    uint64_t timeStamp = 0;
+    std::string task;       /// The name of a Controller task defining a scope of the operation
+    std::string operation;  /// The name of an operation (request, job, other action)
+    std::string status;     /// The optional status of the operation
+    std::string requestId;  /// The optional identifier of a request
+    std::string jobId;      /// The optional identifier of a job
 
-    /// The name of a Controller task defining a scope of the operation
-    std::string task;
+    std::list<std::pair<std::string, std::string>> kvInfo;  /// The optional collection (key-value pairs)
+                                                            /// of the event-specific data
 
-    /// The name of an operation (request, job, other action)
-    std::string operation;
-
-    /// The optional status of the operation
-    std::string status;
-
-    /// The optional identifier of a request
-    std::string requestId;
-
-    /// The optional identifier of a job
-    std::string jobId;
-
-    /// The optional collection (key-value pairs) of the event-specific data
-    std::list<std::pair<std::string, std::string>> kvInfo;
-
-    /**
-     * @return JSON representation of the event
-     */
+    /// @return JSON representation of the object
     nlohmann::json toJson() const;
 };
 
 
 /**
- * Data structure ControllerInfo encapsulates a persistent state of the Controller
+ * Class ControllerInfo encapsulates a persistent state of the Controller
  * object fetched from the database.
  */
-struct ControllerInfo {
+class ControllerInfo {
+public:
 
-    /// Unique identifier of the Controller instance
-    std::string id;
+    std::string id; /// Unique identifier of the Controller instance
 
-    /// 64-bit timestamp (nanoseconds) for its start time
-    uint64_t started = 0;
+    uint64_t started = 0;   /// 64-bit timestamp (ms) for its start time
 
-    /// The name of a host where the Controller was run
-    std::string hostname;
+    std::string hostname;   /// The name of a host where the Controller was run
 
-    /// the PID of the Controller's process
-    int pid = 0;
+    int pid = 0;    /// the PID of the Controller's process
 
     /**
-     * Translate the structure into a JSON object
+     * Translate an instance into a JSON object
      *
      * @param isCurrent
      *   (optional) flag which will set an extra property 'current' to the desired
      *    state (as defined by the value of the flag)
      *
      * @return
-     *   JSON representation of the structure
+     *   JSON representation of the object
      */
     nlohmann::json toJson(bool isCurrent=false) const;
 };
 
 
 /**
- * Data structure RequestInfo encapsulates a persistent state of the Request (its
+ * Class RequestInfo encapsulates a persistent state of the Request (its
  * subclasses) objects fetched from the database.
  */
-struct RequestInfo {
+class RequestInfo {
+public:
+    
+    std::string id;     /// Unique identifier of the Request instance
+    std::string jobId;  /// Unique identifier of the parent Job instance
+    std::string name;   /// The name (actually - its specific type) of the request
+    std::string worker; /// The name of a worker where the request was sent
 
-    /// Unique identifier of the Request instance
-    std::string id;
+    int priority = 0;   /// The priority level
 
-    /// Unique identifier of the parent Job instance
-    std::string jobId;
+    std::string state;          /// The primary state
+    std::string extendedState;  /// The secondary state
+    std::string serverStatus;   /// The optional status of the request obtained from the corresponding
+                                /// worker service after the request was (or was attempted to be) executed.
 
-    /// The name (actually - its specific type) of the request
-    std::string name;
+    // Timestamps recorded during the lifetime of the request
 
-    /// The name of a worker where the request was sent
-    std::string worker;
-
-    /// The priority level
-    int priority;
-
-    /// The primary state
-    std::string state;
-
-    /// The secondary state
-    std::string extendedState;
-
-    /// The optional status of the request obtained from the corresponding worker
-    /// service after the request was (or was attempted to be) executed.
-    std::string serverStatus;
-
-    /// The timestamp (nanoseconds) when the request was created by Controller
     uint64_t controllerCreateTime = 0;
-    
-    /// The timestamp (nanoseconds) when the request was started by Controller
     uint64_t controllerStartTime = 0;
-    
-    /// The timestamp (nanoseconds) when the request was declared as FINISHED by Controller
     uint64_t controllerFinishTime = 0;
-
-    /// The timestamp (nanoseconds) when the request was received by the corresponding worker
     uint64_t workerReceiveTime = 0;
-    
-    /// The timestamp (nanoseconds) when the request was started by the corresponding worker
     uint64_t workerStartTime = 0;
-    
-    /// The timestamp (nanoseconds) when the request was declared as FINISHED by
-    /// the corresponding worker
     uint64_t workerFinishTime = 0;
     
     /// The optional collection (key-value pairs) of extended attributes
     std::list<std::pair<std::string, std::string>> kvInfo;
 
-    /**
-     * Translate the structure into a JSON object
-     *
-     * @return
-     *   JSON representation of the structure
-     */
+    /// @return JSON representation of the object
     nlohmann::json toJson() const;
 };
 
 
 /**
- * Data structure JobInfo encapsulates a persistent state of the Job (its
+ * Class JobInfo encapsulates a persistent state of the Job (its
  * subclasses) objects fetched from the database.
  */
-struct JobInfo {
+class JobInfo {
+public:
 
-    /// Unique identifier of the Job instance
-    std::string id;
+    std::string id;             /// Unique identifier of the Job instance
+    std::string controllerId;   /// Unique identifier of the parent Controller instance)
+    std::string parentJobId;    /// Unique identifier of the parent Job instance
+    std::string type;           /// The type name of the job
+    std::string state;          /// The primary state
+    std::string extendedState;  /// The secondary state
 
-    /// Unique identifier of the parent Controller instance)
-    std::string controllerId;
+    uint64_t beginTime = 0;     /// The timestamp (ms) when the job started
+    uint64_t endTime = 0;       /// The timestamp (ms) when the job finished
+    uint64_t heartbeatTime = 0; /// The optional timestamp (ms) when the job refreshed its state as "still alive"
 
-    /// Unique identifier of the parent Job instance
-    std::string parentJobId;
+    int priority = 0;   /// The priority level
 
-    /// The type name of the job
-    std::string type;
+    bool exclusive = false; /// The scheduling parameter of the job allowing it to run w/o
+                            /// interfering with other jobs in relevant execution contexts
 
-    /// The primary state
-    std::string state;
+    bool preemptable = true;    /// The scheduling parameter allowing the job to be cancelled
+                                /// by job schedulers if needed
 
-    /// The secondary state
-    std::string extendedState;
+    std::list<std::pair<std::string, std::string>> kvInfo;  /// The optional collection (key-value pairs)
+                                                            /// of extended attributes
 
-    /// The timestamp (nanoseconds) when the job started
-    uint64_t beginTime = 0;
-    
-    /// The timestamp (nanoseconds) when the job finished
-    uint64_t endTime = 0;
+    /// @return JSON representation of the object
+    nlohmann::json toJson() const;
+};
 
-    /// The optional timestamp (nanoseconds) when the job refreshed its state as "still alive"
-    uint64_t heartbeatTime = 0;
 
-    /// The priority level
-    int priority = 0;
+/**
+ * Class TransactionInfo encapsulates a persistent state of
+ * the "super-transaction" objects fetched from the database.
+ */
+class TransactionInfo {
+public:
 
-    /// The scheduling parameter of the job allowing it to run w/o interfering
-    /// with other jobs in relevant execution contexts
-    bool exclusive = false;
+    uint32_t id = 0;    /// Its unique identifier
 
-    /// The scheduling parameter allowing the job to be cancelled by job
-    /// schedulers if needed
-    bool preemptable = true;
+    std::string database;   /// The name of a database
+    std::string state;      /// Its state
 
-    /// The optional collection (key-value pairs) of extended attributes
-    std::list<std::pair<std::string, std::string>> kvInfo;
+    uint64_t beginTime = 0; /// The timestamp (milliseconds) when it started
+    uint64_t endTime = 0;   /// The timestamp (milliseconds) when it was committed/aborted
 
-    /**
-     * Translate the structure into a JSON object
-     *
-     * @return
-     *   JSON representation of the structure
-     */
+    /// @return JSON representation of the object
     nlohmann::json toJson() const;
 };
 
@@ -285,7 +238,6 @@ struct JobInfo {
   * below.
   */
 class DatabaseServices : public std::enable_shared_from_this<DatabaseServices> {
-
 public:
 
     /// The pointer type for instances of the class
@@ -315,7 +267,7 @@ public:
      * just once for a particular instance of the Controller.
      *
      * @param identity
-     *   a data structure encapsulating a unique identity of
+     *   an object encapsulating a unique identity of
      *   the Controller instance.
      *
      * @param startTime
@@ -434,6 +386,9 @@ public:
      *
      * @param infoCollection
      *   collection of replicas
+     *
+     * @throw std::invalid_argument
+     *   if the database is unknown or empty
      */
     virtual void saveReplicaInfoCollection(std::string const& worker,
                                            std::string const& database,
@@ -445,31 +400,41 @@ public:
      * if any found.
      *
      * @note
-     *   No assumption on a new status of the replica object
-     *   passed into the method should be made if the operation fails
-     *   (returns 'false').
+     *   no assumption on a new status of the replica collection
+     *   passed into the method should be made if the operation fails.
      *
      * @param replica
      *   reference to an object to be initialized
      *
      * @param maxReplicas
-     *   maximum number of replicas to be returned
+     *   (optional) maximum number of replicas to be returned
      *
      * @param enabledWorkersOnly
      *   (optional) if set to 'true' then only consider known
      *   workers which are enabled in the Configuration
+     *
+     * @param allDatabases
+     *   (optional) flag which if set to 'true' will include into the search all
+     *   known database entries regardless of their PUBLISHED status. Otherwise
+     *   a subset of databases as determined by the second flag 'isPublished'
+     *   will get assumed.
+     * 
+     * @param isPublished
+     *   (optional) flag which is used if flag 'all' is set to 'false'
+     *   to narrow a collection of databases included into the search.
      */
     virtual void findOldestReplicas(std::vector<ReplicaInfo>& replicas,
                                     size_t maxReplicas=1,
-                                    bool enabledWorkersOnly=true) = 0;
+                                    bool enabledWorkersOnly=true,
+                                    bool allDatabases=false,
+                                    bool isPublished=true) = 0;
 
     /**
      * Find all replicas for the specified chunk and the database.
      *
      * @note
      *   no assumption on a new status of the replica collection
-     *   passed into the method should be made if the operation fails
-     *   (returns 'false').
+     *   passed into the method should be made if the operation fails.
      *
      * @param replicas
      *   collection of replicas (if any found)
@@ -496,8 +461,9 @@ public:
      * Find all replicas for the specified worker and a database (or all
      * databases if no specific one is requested).
      *
-     * ATTENTION: no assumption on a new status of the replica collection
-     * passed into the method should be made if the operation fails.
+     * @note
+     *   No assumption on a new status of the replica collection
+     *   passed into the method should be made if the operation fails.
      *
      * @param replicas
      *   collection of replicas (if any found)
@@ -508,26 +474,55 @@ public:
      * @param database
      *   (optional) database name
      *
+     * @param allDatabases
+     *   (optional) flag which if set to 'true' will include into the search all
+     *   known database entries regardless of their PUBLISHED status. Otherwise
+     *   a subset of databases as determined by the second flag 'isPublished'
+     *   will get assumed. Note that this flag is used only if no specific database
+     *   name is provided as a value of the previous parameter 'database'.
+     * 
+     * @param isPublished
+     *   (optional) flag which is used if flag 'all' is set to 'false'
+     *   to narrow a collection of databases included into the search.
+     * 
+     * @param includeFileInfo
+     *   if set to 'true' then file info will also be added to each replica
+     *
      * @throw std::invalid_argument
      *   if the worker is unknown or its name is empty, or if the database
      *   family is unknown (if provided)
      */
     virtual void findWorkerReplicas(std::vector<ReplicaInfo>& replicas,
                                     std::string const& worker,
-                                    std::string const& database=std::string()) = 0;
+                                    std::string const& database=std::string(),
+                                    bool allDatabases=false,
+                                    bool isPublished=true,
+                                    bool includeFileInfo=true) = 0;
 
     /**
      * Find the number of replicas for the specified worker and a database (or all
      * databases if no specific one is requested).
      *
-     * ATTENTION: no assumption on a new status of the replica collection
-     * passed into the method should be made if the operation fails.
+     * @note
+     *   No assumption on a new status of the replica collection
+     *   passed into the method should be made if the operation fails.
      *
      * @param worker
      *   worker name
      *
      * @param database
      *   (optional) database name
+     *
+     * @param allDatabases
+     *   (optional) flag which if set to 'true' will include into the search all
+     *   known database entries regardless of their PUBLISHED status. Otherwise
+     *   a subset of databases as determined by the second flag 'isPublished'
+     *   will get assumed. Note that this flag is used only if no specific database
+     *   name is provided as a value of the previous parameter 'database'.
+     * 
+     * @param isPublished
+     *   (optional) flag which is used if flag 'all' is set to 'false'
+     *   to narrow a collection of databases included into the search.
      *
      * @return
      *   the number of replicas
@@ -537,15 +532,16 @@ public:
      *   family is unknown (if provided)
      */
     virtual uint64_t numWorkerReplicas(std::string const& worker,
-                                       std::string const& database=std::string()) = 0;
+                                       std::string const& database=std::string(),
+                                       bool allDatabases=false,
+                                       bool isPublished=true) = 0;
 
     /**
      * Find all replicas for the specified chunk on a worker.
      *
      * @note
      *   no assumption on a new status of the replica collection
-     *   passed into the method should be made if the operation fails
-     *   (returns 'false').
+     *   passed into the method should be made if the operation fails.
      *
      * @param replicas
      *   collection of replicas (if any found)
@@ -559,6 +555,16 @@ public:
      * @param databaseFamily
      *   (optional) database family name
      *
+     * @param allDatabases
+     *   (optional) flag which if set to 'true' will include into the search all
+     *   known database entries regardless of their PUBLISHED status. Otherwise
+     *   a subset of databases as determined by the second flag 'isPublished'
+     *   will get assumed.
+     * 
+     * @param isPublished
+     *   (optional) flag which is used if flag 'all' is set to 'false'
+     *   to narrow a collection of databases included into the search.
+     *
      * @throw std::invalid_argument
      *   if the worker is unknown or its name is empty,
      *   or if the database family is unknown (if provided)
@@ -566,7 +572,57 @@ public:
     virtual void findWorkerReplicas(std::vector<ReplicaInfo>& replicas,
                                     unsigned int chunk,
                                     std::string const& worker,
-                                    std::string const& databaseFamily=std::string()) = 0;
+                                    std::string const& databaseFamily=std::string(),
+                                    bool allDatabases=false,
+                                    bool isPublished=true) = 0;
+
+    /**
+     * Find all replicas for the specified the database.
+     *
+     * @note
+     *   no assumption on a new status of the replica collection
+     *   passed into the method should be made if the operation fails.
+     *
+     * @param replicas
+     *   collection of replicas (if any found)
+     *
+     * @param database
+     *   the name of a database limiting a scope of the lookup operation
+     *
+     * @param enabledWorkersOnly
+     *   (optional) if set to 'true' then only consider known
+     *   workers which are enabled in the Configuration
+     *
+     * @throw std::invalid_argument
+     *   if the database is unknown or empty
+     */
+    virtual void findDatabaseReplicas(std::vector<ReplicaInfo>& replicas,
+                                      std::string const& database,
+                                      bool enabledWorkersOnly=true) = 0;
+
+    /**
+     * Find all unique chunk numbers for the specified the database.
+     *
+     * @note
+     *   no assumption on a new status of the chunks collection
+     *   passed into the method should be made if the operation fails.
+     *
+     * @param chunks
+     *   collection of chunk numbers (if any found)
+     *
+     * @param database
+     *   the name of a database limiting a scope of the lookup operation
+     *
+     * @param enabledWorkersOnly
+     *   (optional) if set to 'true' then only consider known
+     *   workers which are enabled in the Configuration
+     *
+     * @throw std::invalid_argument
+     *   if the database is unknown or empty
+     */
+    virtual void findDatabaseChunks(std::vector<unsigned int>& chunks,
+                                    std::string const& database,
+                                    bool enabledWorkersOnly=true) = 0;
 
     /**
      * @return
@@ -772,6 +828,25 @@ public:
                                     uint64_t toTimeStamp=std::numeric_limits<uint64_t>::max(),
                                     size_t maxEntries=0) = 0;
 
+    /// @return a description of a super-transaction
+    /// @throws DatabaseServicesNotFound if no such transaction found
+    virtual TransactionInfo transaction(uint32_t id) = 0;
+
+    /// @return a collection of super-transactions (all of them or for the specified database only)
+    /// @throws std::invalid_argument if database name is not valid
+    virtual std::vector<TransactionInfo> transactions(std::string const& databaseName=std::string()) = 0;
+
+    /// @return a descriptor for the new super-transaction
+    /// @throws std::invalid_argument if database name is not valid
+    /// @throws std::logic_error if super-transactions are not allowed for the database
+    virtual TransactionInfo beginTransaction(std::string const& databaseName) = 0;
+
+    /// @return an updated descriptor of the (committed or aborted) super-transaction 
+    /// @throws DatabaseServicesNotFound if no such transaction found
+    /// @throws std::logic_error if the transaction has already ended
+    virtual TransactionInfo endTransaction(uint32_t id,
+                                           bool abort=false) = 0;
+    
 protected:
 
     DatabaseServices() = default;

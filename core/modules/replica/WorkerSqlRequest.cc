@@ -48,40 +48,25 @@ namespace replica {
 WorkerSqlRequest::Ptr WorkerSqlRequest::create(ServiceProvider::Ptr const& serviceProvider,
                                                string const& worker,
                                                string const& id,
-                                               int priority,
-                                               std::string const& query,
-                                               std::string const& user,
-                                               std::string const& password,
-                                               size_t maxRows) {
+                                               ProtocolRequestSql const& request) {
     return WorkerSqlRequest::Ptr(
         new WorkerSqlRequest(serviceProvider,
                              worker,
                              id,
-                             priority,
-                             query,
-                             user,
-                             password,
-                             maxRows));
+                             request));
 }
 
 
 WorkerSqlRequest::WorkerSqlRequest(ServiceProvider::Ptr const& serviceProvider,
                                    string const& worker,
                                    string const& id,
-                                   int priority,
-                                   std::string const& query,
-                                   std::string const& user,
-                                   std::string const& password,
-                                   size_t maxRows)
+                                   ProtocolRequestSql const& request)
     :   WorkerRequest(serviceProvider,
                       worker,
                       "SQL",
                       id,
-                      priority),
-        _query(query),
-        _user(user),
-        _password(password),
-        _maxRows(maxRows) {
+                      request.priority()),
+        _request(request) {
 }
 
 
@@ -103,6 +88,7 @@ void WorkerSqlRequest::setInfo(ProtocolResponseSql& response) const {
             response.set_has_result(       _response.has_result());
             *(response.mutable_fields()) = _response.fields();
             *(response.mutable_rows())   = _response.rows();
+            *(response.mutable_request())= _request;
             break;
         default:
             break;
@@ -118,13 +104,11 @@ bool WorkerSqlRequest::execute() {
 
     switch (status()) {
 
-        case STATUS_IN_PROGRESS:
-            break;
+        case STATUS_IN_PROGRESS: break;
 
         case STATUS_IS_CANCELLING:
 
             // Abort the operation right away
-
             setStatus(lock, STATUS_CANCELLED);
             throw WorkerRequestCancelled();
 
@@ -136,23 +120,27 @@ bool WorkerSqlRequest::execute() {
 
     database::mysql::Connection::Ptr conn;
     try {
-        auto const workerInfo = serviceProvider()->config()->workerInfo(worker());
-        conn = database::mysql::Connection::open(
-            database::mysql::ConnectionParams(
-                workerInfo.dbHost,
-                workerInfo.dbPort,
-                user(),
-                password(),
-                ""));
-
         auto self = shared_from_base<WorkerSqlRequest>();
+        conn = _connector();
         conn->execute([self](decltype(conn) const& conn_) {
             conn_->begin();
-            conn_->execute(self->query());
+            conn_->execute(self->_query(conn_));
             self->_setResponse(conn_);
             conn_->commit();
         });
         setStatus(lock, STATUS_SUCCEEDED);
+
+    } catch(database::mysql::NoSuchTable const& ex) {
+
+        LOGS(_log, LOG_LVL_ERROR, context(__func__) << "  MySQL error: " << ex.what());
+        _response.set_error(ex.what());
+        setStatus(lock, STATUS_FAILED, EXT_STATUS_NO_SUCH_TABLE);
+
+    } catch(database::mysql::NotPartitionedTable const& ex) {
+
+        LOGS(_log, LOG_LVL_ERROR, context(__func__) << "  MySQL error: " << ex.what());
+        _response.set_error(ex.what());
+        setStatus(lock, STATUS_FAILED, EXT_STATUS_NOT_PARTITIONED_TABLE);
 
     } catch(database::mysql::Error const& ex) {
 
@@ -162,8 +150,8 @@ bool WorkerSqlRequest::execute() {
 
     } catch (invalid_argument const& ex) {
 
-        LOGS(_log, LOG_LVL_ERROR, context(__func__) << "  no such worker: " << worker());
-        _response.set_error("No such worker in the Configuration, worker: " + worker());
+        LOGS(_log, LOG_LVL_ERROR, context(__func__) << "  exception: " << ex.what());
+        _response.set_error(ex.what());
         setStatus(lock, STATUS_FAILED, EXT_STATUS_INVALID_PARAM);
 
     } catch (out_of_range const& ex) {
@@ -184,6 +172,113 @@ bool WorkerSqlRequest::execute() {
 }
 
 
+database::mysql::Connection::Ptr WorkerSqlRequest::_connector() const {
+
+    // A choice of credential for connecting to the database service depends
+    // on a type of the request. For the sake of greater security, arbitrary
+    // queries require a client to explicitly provide the credentials.
+    // Otherwise, using credentials from the worker's configuration.
+
+    auto const config = serviceProvider()->config();
+    auto const workerInfo = config->workerInfo(worker());    
+    bool const clientCredentials = _request.type() == ProtocolRequestSql::QUERY;
+    return database::mysql::Connection::open(
+        database::mysql::ConnectionParams(
+            workerInfo.dbHost,
+            workerInfo.dbPort,
+            clientCredentials ? _request.user() : workerInfo.dbUser,
+            clientCredentials ? _request.password() : config->qservWorkerDatabasePassword(),
+            ""
+        )
+    );
+}
+
+
+string WorkerSqlRequest::_query(database::mysql::Connection::Ptr const& conn) const {
+
+    auto const config = serviceProvider()->config();
+    auto const workerInfo = config->workerInfo(worker());    
+
+    string const qservDbsTable = conn->sqlId("qservw_worker") + "." + conn->sqlId("Dbs");
+    string const databaseTable = conn->sqlId(_request.database()) + "." + conn->sqlId(_request.table());
+
+    auto const requestType = _request.type();
+    switch (requestType) {
+
+        case ProtocolRequestSql::QUERY:
+            return _request.query();
+
+        case ProtocolRequestSql::CREATE_DATABASE:
+            return "CREATE DATABASE IF NOT EXISTS " + conn->sqlId(_request.database());
+
+        case ProtocolRequestSql::DROP_DATABASE:
+            return "DROP DATABASE IF EXISTS " + conn->sqlId(_request.database());
+
+        case ProtocolRequestSql::ENABLE_DATABASE:
+
+            // Using REPLACE instead of INSERT to avoid hitting the DUPLICATE KEY error
+            // if such entry already exists in the table.
+            return "REPLACE INTO " + qservDbsTable +
+                   " VALUES ("    + conn->sqlValue(_request.database()) + ")";
+
+        case ProtocolRequestSql::DISABLE_DATABASE:
+            return "DELETE FROM " + qservDbsTable +
+                   " WHERE "      + conn->sqlEqual("db", _request.database());
+
+        case ProtocolRequestSql::GRANT_ACCESS:
+
+            // ATTENTION: MySQL/MariaDB exhibits a somewhat unexpected behavior when putting
+            // the usual MySQL identifier quotes around symbol '*' for table names, like in
+            // this example:
+            //   GRANT ALL ON 'db'.*
+            // The server will result in adding an entry to table:
+            //   mysql.tables_priv
+            // Instead of (as expected):
+            //   mysql.db;
+            // Hence removing quotes from '*' an commenting the following statement:
+            //   return "GRANT ALL ON " + conn->sqlId(_request.database()) + "." + conn->sqlId("*") +
+            //          " TO " + conn->sqlValue(_request.user()) + "@" + conn->sqlValue(workerInfo.dbHost);
+
+            return "GRANT ALL ON " + conn->sqlId(_request.database()) + ".* TO " +
+                   conn->sqlValue(_request.user()) + "@" + conn->sqlValue(workerInfo.dbHost);
+
+        case ProtocolRequestSql::CREATE_TABLE: {
+            string query = "CREATE TABLE IF NOT EXISTS " + databaseTable + " (";
+            for (int index = 0, num_columns = _request.columns_size(); index < num_columns; ++index) {
+                auto const column = _request.columns(index);
+                query += conn->sqlId(column.name()) + " " + column.type();
+                if (index != num_columns - 1) query += ",";
+            }
+            query += ") ENGINE=" + _request.engine();
+
+            // If MySQL partitioning was requested for the table then automatically
+            // create the initial partition 'p0' corresponding to value '0'
+            // of the key which is used for partitioning.
+            string const partitionByColumn = _request.partition_by_column();
+            if (not partitionByColumn.empty()) {
+                query += " PARTITION BY LIST (" + conn->sqlId(partitionByColumn) +
+                         ") (PARTITION `p0` VALUES IN (0) ENGINE = " + _request.engine() + ")";
+            }
+            return query;
+        }
+        case ProtocolRequestSql::DROP_TABLE:
+            return "DROP TABLE IF EXISTS " + databaseTable;
+
+        case ProtocolRequestSql::REMOVE_TABLE_PARTITIONING:
+            return "ALTER TABLE " + databaseTable + " REMOVE PARTITIONING";
+
+        case ProtocolRequestSql::DROP_TABLE_PARTITION:
+            return "ALTER TABLE " + databaseTable + " DROP PARTITION IF EXISTS " +
+                   conn->sqlId("p" + to_string(_request.transaction_id()));
+
+        default:
+            throw invalid_argument(
+                    "WorkerSqlRequest::" + string(__func__) +
+                    "  unsupported request type: " + ProtocolRequestSql_Type_Name(requestType));
+    }
+}
+
+
 void WorkerSqlRequest::_setResponse(database::mysql::Connection::Ptr const& conn) {
 
     LOGS(_log, LOG_LVL_DEBUG, context(__func__));
@@ -198,11 +293,11 @@ void WorkerSqlRequest::_setResponse(database::mysql::Connection::Ptr const& conn
         size_t numRowsProcessed = 0;
         database::mysql::Row row;
         while (conn->next(row)) {
-            if (_maxRows != 0) {
-                if (numRowsProcessed >= _maxRows) {
+            if (_request.max_rows() != 0) {
+                if (numRowsProcessed >= _request.max_rows()) {
                     throw out_of_range(
-                            "WorkerSqlRequest::" + context(__func__) + "  maxRows=" +
-                            to_string(_maxRows) + " limit exceeded");
+                            "WorkerSqlRequest::" + context(__func__) + "  max_rows=" +
+                            to_string(_request.max_rows()) + " limit exceeded");
                 }
                 ++numRowsProcessed;
             }

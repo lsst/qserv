@@ -37,12 +37,22 @@
 #include "replica/EchoRequest.h"
 #include "replica/FindRequest.h"
 #include "replica/FindAllRequest.h"
+#include "replica/IndexRequest.h"
 #include "replica/Messenger.h"
 #include "replica/Performance.h"
 #include "replica/ReplicationRequest.h"
 #include "replica/ServiceManagementRequest.h"
 #include "replica/ServiceProvider.h"
-#include "replica/SqlRequest.h"
+#include "replica/SqlQueryRequest.h"
+#include "replica/SqlCreateDbRequest.h"
+#include "replica/SqlCreateTableRequest.h"
+#include "replica/SqlDeleteDbRequest.h"
+#include "replica/SqlDeleteTablePartitionRequest.h"
+#include "replica/SqlDeleteTableRequest.h"
+#include "replica/SqlDisableDbRequest.h"
+#include "replica/SqlEnableDbRequest.h"
+#include "replica/SqlGrantAccessRequest.h"
+#include "replica/SqlRemoveTablePartitionsRequest.h"
 #include "replica/StatusRequest.h"
 #include "replica/StopRequest.h"
 
@@ -57,150 +67,6 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.Controller");
 namespace lsst {
 namespace qserv {
 namespace replica {
-
-template <class  T>
-struct RequestWrapperImpl : Controller::RequestWrapper {
-
-    void notify() override {
-
-        if (nullptr != _onFinish) {
-
-            // Clearing the stored callback after finishing the up-stream notification
-            // has two purposes:
-            //
-            // 1. it guaranties (exactly) one time notification
-            // 2. it breaks the up-stream dependency on a caller object if a shared
-            //    pointer to the object was mentioned as the lambda-function's closure
-
-            auto onFinish = move(_onFinish);
-            _onFinish = nullptr;
-            onFinish(_request);
-        }
-    }
-
-    RequestWrapperImpl(typename T::Ptr const& request,
-                       typename T::CallbackType const& onFinish)
-        :   Controller::RequestWrapper(),
-            _request(request),
-            _onFinish(onFinish) {
-    }
-
-    ~RequestWrapperImpl() override = default;
-
-    shared_ptr<Request> request() const override {
-        return _request;
-    }
-
-private:
-
-    typename T::Ptr          _request;
-    typename T::CallbackType _onFinish;
-};
-
-
-/**
- * The utility class implementing operations on behalf of certain
- * methods of class Controller.
- *
- * THREAD SAFETY NOTE: Methods implemented within the class are NOT thread-safe.
- *                     They must be called from the thread-safe code only.
- */
-class ControllerImpl {
-
-public:
-
-    ControllerImpl() = default;
-
-    ControllerImpl(ControllerImpl const&) = delete;
-    ControllerImpl& operator=(ControllerImpl const&) = delete;
-
-    ~ControllerImpl() = default;
-
-    /**
-     * Generic method for managing requests such as stopping an outstanding
-     * request or obtaining an updated status of a request.
-     */
-    template <class REQUEST_TYPE>
-    static typename REQUEST_TYPE::Ptr requestManagementOperation(
-            Controller::Ptr const& controller,
-            string const& jobId,
-            string const& workerName,
-            string const& targetRequestId,
-            typename REQUEST_TYPE::CallbackType const& onFinish,
-            bool  keepTracking,
-            typename Messenger::Ptr const& messenger,
-            unsigned int requestExpirationIvalSec) {
-
-        controller->_assertIsRunning();
-
-        typename REQUEST_TYPE::Ptr request =
-            REQUEST_TYPE::create(
-                controller->serviceProvider(),
-                controller->serviceProvider()->io_service(),
-                workerName,
-                targetRequestId,
-                [controller] (typename REQUEST_TYPE::Ptr request) {
-                    controller->_finish(request->id());
-                },
-                keepTracking,
-                messenger
-            );
-
-        // Register the request (along with its callback) by its unique
-        // identifier in the local registry. Once it's complete it'll
-        // be automatically removed from the Registry.
-
-        (controller->_registry)[request->id()] =
-            make_shared<RequestWrapperImpl<REQUEST_TYPE>>(request, onFinish);
-
-        // Initiate the request
-
-        request->start(controller, jobId, requestExpirationIvalSec);
-
-        return request;
-    }
-
-   /**
-     * Generic method for launching worker service management requests such as suspending,
-     * resuming or inspecting a status of the worker-side replication service.
-     */
-    template <class REQUEST_TYPE>
-    static typename REQUEST_TYPE::Ptr serviceManagementOperation(
-            Controller::Ptr const& controller,
-            string const& jobId,
-            string const& workerName,
-            typename REQUEST_TYPE::CallbackType const& onFinish,
-            typename Messenger::Ptr const& messenger,
-            unsigned int requestExpirationIvalSec) {
-
-        controller->_assertIsRunning();
-
-        typename REQUEST_TYPE::Ptr request =
-            REQUEST_TYPE::create(
-                controller->serviceProvider(),
-                controller->serviceProvider()->io_service(),
-                workerName,
-                [controller] (typename REQUEST_TYPE::Ptr request) {
-                    controller->_finish(request->id());
-                },
-                messenger
-            );
-
-        // Register the request (along with its callback) by its unique
-        // identifier in the local registry. Once it's complete it'll
-        // be automatically removed from the Registry.
-
-        (controller->_registry)[request->id()] =
-            make_shared<RequestWrapperImpl<REQUEST_TYPE>>(request, onFinish);
-
-        // Initiate the request
-
-        request->start(controller, jobId, requestExpirationIvalSec);
-
-        return request;
-    }
-};
-
 
 ostream& operator <<(ostream& os, ControllerIdentity const& identity) {
     os  << "ControllerIdentity(id=" << identity.id << ",host=" << identity.host << ",pid=" << identity.pid << ")";
@@ -232,681 +98,537 @@ string Controller::_context(string const& func) const {
 
 
 ReplicationRequest::Ptr Controller::replicate(
-                                string const& workerName,
-                                string const& sourceWorkerName,
-                                string const& database,
-                                unsigned int chunk,
-                                ReplicationRequest::CallbackType const& onFinish,
-                                int  priority,
-                                bool keepTracking,
-                                bool allowDuplicate,
-                                string const& jobId,
-                                unsigned int requestExpirationIvalSec) {
+        string const& workerName,
+        string const& sourceWorkerName,
+        string const& database,
+        unsigned int chunk,
+        ReplicationRequest::CallbackType const& onFinish,
+        int priority,
+        bool keepTracking,
+        bool allowDuplicate,
+        string const& jobId,
+        unsigned int requestExpirationIvalSec) {
 
-    LOGS(_log, LOG_LVL_DEBUG, _context(__func__));
+    LOGS(_log, LOG_LVL_TRACE, _context(__func__));
 
-    util::Lock lock(_mtx, _context(__func__));
-
-    _assertIsRunning();
-
-    Controller::Ptr controller = shared_from_this();
-
-    auto const request = ReplicationRequest::create(
-        serviceProvider(),
-        serviceProvider()->io_service(),
+    return _submit<ReplicationRequest,
+                   decltype(sourceWorkerName),
+                   decltype(database),
+                   decltype(chunk),
+                   decltype(allowDuplicate)>(
         workerName,
         sourceWorkerName,
         database,
         chunk,
-        [controller] (ReplicationRequest::Ptr request) {
-            controller->_finish(request->id());
-        },
+        allowDuplicate,
+        onFinish,
         priority,
         keepTracking,
-        allowDuplicate,
-        serviceProvider()->messenger()
-    );
-
-    // Register the request (along with its callback) by its unique
-    // identifier in the local registry. Once it's complete it'll
-    // be automatically removed from the Registry.
-
-    _registry[request->id()] =
-        make_shared<RequestWrapperImpl<ReplicationRequest>>(request, onFinish);
-
-    // Initiate the request
-
-    request->start(controller, jobId, requestExpirationIvalSec);
-
-    return request;
+        jobId,
+        requestExpirationIvalSec);
 }
 
 
 DeleteRequest::Ptr Controller::deleteReplica(
-                            string const& workerName,
-                            string const& database,
-                            unsigned int chunk,
-                            DeleteRequest::CallbackType const& onFinish,
-                            int  priority,
-                            bool keepTracking,
-                            bool allowDuplicate,
-                            string const& jobId,
-                            unsigned int requestExpirationIvalSec) {
+        string const& workerName,
+        string const& database,
+        unsigned int chunk,
+        DeleteRequest::CallbackType const& onFinish,
+        int  priority,
+        bool keepTracking,
+        bool allowDuplicate,
+        string const& jobId,
+        unsigned int requestExpirationIvalSec) {
 
-    LOGS(_log, LOG_LVL_DEBUG, _context(__func__));
+    LOGS(_log, LOG_LVL_TRACE, _context(__func__));
 
-    util::Lock lock(_mtx, _context(__func__));
-
-    _assertIsRunning();
-
-    Controller::Ptr controller = shared_from_this();
-
-    auto const request = DeleteRequest::create(
-        serviceProvider(),
-        serviceProvider()->io_service(),
+    return _submit<DeleteRequest,
+                   decltype(database),
+                   decltype(chunk),
+                   decltype(allowDuplicate)>(
         workerName,
         database,
         chunk,
-        [controller] (DeleteRequest::Ptr request) {
-            controller->_finish(request->id());
-        },
+        allowDuplicate,
+        onFinish,
         priority,
         keepTracking,
-        allowDuplicate,
-        serviceProvider()->messenger()
-    );
-
-    // Register the request (along with its callback) by its unique
-    // identifier in the local registry. Once it's complete it'll
-    // be automatically removed from the Registry.
-
-    _registry[request->id()] =
-        make_shared<RequestWrapperImpl<DeleteRequest>>(request, onFinish);
-
-    // Initiate the request
-
-    request->start(controller, jobId, requestExpirationIvalSec);
-
-    return request;
+        jobId,
+        requestExpirationIvalSec);
 }
 
 
 FindRequest::Ptr Controller::findReplica(
-                        string const& workerName,
-                        string const& database,
-                        unsigned int chunk,
-                        FindRequest::CallbackType const& onFinish,
-                        int  priority,
-                        bool computeCheckSum,
-                        bool keepTracking,
-                        string const& jobId,
-                        unsigned int requestExpirationIvalSec) {
+        string const& workerName,
+        string const& database,
+        unsigned int chunk,
+        FindRequest::CallbackType const& onFinish,
+        int  priority,
+        bool computeCheckSum,
+        bool keepTracking,
+        string const& jobId,
+        unsigned int requestExpirationIvalSec) {
 
-    LOGS(_log, LOG_LVL_DEBUG, _context(__func__));
+    LOGS(_log, LOG_LVL_TRACE, _context(__func__));
 
-    util::Lock lock(_mtx, _context(__func__));
-
-    _assertIsRunning();
-
-    Controller::Ptr controller = shared_from_this();
-
-    auto const request = FindRequest::create(
-        serviceProvider(),
-        serviceProvider()->io_service(),
+    return _submit<FindRequest,
+                   decltype(database),
+                   decltype(chunk),
+                   decltype(computeCheckSum)>(
         workerName,
         database,
         chunk,
-        [controller] (FindRequest::Ptr request) {
-            controller->_finish(request->id());
-        },
-        priority,
         computeCheckSum,
+        onFinish,
+        priority,
         keepTracking,
-        serviceProvider()->messenger()
-    );
-
-    // Register the request (along with its callback) by its unique
-    // identifier in the local registry. Once it's complete it'll
-    // be automatically removed from the Registry.
-
-    _registry[request->id()] =
-        make_shared<RequestWrapperImpl<FindRequest>>(request, onFinish);
-
-    // Initiate the request
-
-    request->start(controller, jobId, requestExpirationIvalSec);
-
-    return request;
+        jobId,
+        requestExpirationIvalSec);
 }
 
 
 FindAllRequest::Ptr Controller::findAllReplicas(
-                            string const& workerName,
-                            string const& database,
-                            bool saveReplicaInfo,
-                            FindAllRequest::CallbackType const& onFinish,
-                            int  priority,
-                            bool keepTracking,
-                            string const& jobId,
-                            unsigned int requestExpirationIvalSec) {
+        string const& workerName,
+        string const& database,
+        bool saveReplicaInfo,
+        FindAllRequest::CallbackType const& onFinish,
+        int  priority,
+        bool keepTracking,
+        string const& jobId,
+        unsigned int requestExpirationIvalSec) {
 
-    LOGS(_log, LOG_LVL_DEBUG, _context(__func__));
+    LOGS(_log, LOG_LVL_TRACE, _context(__func__));
 
-    util::Lock lock(_mtx, _context(__func__));
-
-    _assertIsRunning();
-
-    Controller::Ptr controller = shared_from_this();
-
-    auto const request = FindAllRequest::create(
-        serviceProvider(),
-        serviceProvider()->io_service(),
+    return _submit<FindAllRequest,
+                   decltype(database),
+                   decltype(saveReplicaInfo)>(
         workerName,
         database,
         saveReplicaInfo,
-        [controller] (FindAllRequest::Ptr request) {
-            controller->_finish(request->id());
-        },
+        onFinish,
         priority,
         keepTracking,
-        serviceProvider()->messenger()
-    );
-
-    // Register the request (along with its callback) by its unique
-    // identifier in the local registry. Once it's complete it'll
-    // be automatically removed from the Registry.
-
-    _registry[request->id()] =
-        make_shared<RequestWrapperImpl<FindAllRequest>>(request, onFinish);
-
-    // Initiate the request
-
-    request->start(controller, jobId, requestExpirationIvalSec);
-
-    return request;
+        jobId,
+        requestExpirationIvalSec);
 }
 
 
-EchoRequest::Ptr Controller::echo(string const& workerName,
-                                  string const& data,
-                                  uint64_t delay,
-                                  EchoRequestCallbackType const& onFinish,
-                                  int priority,
-                                  bool keepTracking,
-                                  string const& jobId,
-                                  unsigned int requestExpirationIvalSec) {
+EchoRequest::Ptr Controller::echo(
+        string const& workerName,
+        string const& data,
+        uint64_t delay,
+        EchoRequest::CallbackType const& onFinish,
+        int priority,
+        bool keepTracking,
+        string const& jobId,
+        unsigned int requestExpirationIvalSec) {
 
-    LOGS(_log, LOG_LVL_DEBUG, _context(__func__));
+    LOGS(_log, LOG_LVL_TRACE, _context(__func__));
 
-    util::Lock lock(_mtx, _context(__func__));
-
-    _assertIsRunning();
-
-    Controller::Ptr controller = shared_from_this();
-
-    auto const request = EchoRequest::create(
-        serviceProvider(),
-        serviceProvider()->io_service(),
+    return _submit<EchoRequest,
+                   decltype(data),
+                   decltype(delay)>(
         workerName,
         data,
         delay,
-        [controller] (EchoRequest::Ptr request) {
-            controller->_finish(request->id());
-        },
+        onFinish,
         priority,
         keepTracking,
-        serviceProvider()->messenger()
-    );
-
-    // Register the request (along with its callback) by its unique
-    // identifier in the local registry. Once it's complete it'll
-    // be automatically removed from the Registry.
-
-    _registry[request->id()] =
-        make_shared<RequestWrapperImpl<EchoRequest>>(request, onFinish);
-
-    // Initiate the request
-
-    request->start(controller, jobId, requestExpirationIvalSec);
-
-    return request;
+        jobId,
+        requestExpirationIvalSec);
 }
 
 
-SqlRequest::Ptr Controller::sql(std::string const& workerName,
-                                std::string const& query,
-                                std::string const& user,
-                                std::string const& password,
-                                uint64_t maxRows,
-                                SqlRequestCallbackType const& onFinish,
-                                int  priority,
-                                bool keepTracking,
-                                std::string const& jobId,
-                                unsigned int requestExpirationIvalSec) {
+IndexRequest::Ptr Controller::index(
+        string const& workerName,
+        string const& database,
+        unsigned int chunk,
+        bool hasTransactions,
+        uint32_t transactionId,
+        IndexRequest::CallbackType const& onFinish,
+        int priority,
+        bool keepTracking,
+        std::string const& jobId,
+        unsigned int requestExpirationIvalSec) {
+ 
+    LOGS(_log, LOG_LVL_TRACE, _context(__func__));
 
-    LOGS(_log, LOG_LVL_DEBUG, _context(__func__));
+    return _submit<IndexRequest,
+                   decltype(database),
+                   decltype(chunk),
+                   decltype(hasTransactions),
+                   decltype(transactionId)>(
+        workerName,
+        database,
+        chunk,
+        hasTransactions,
+        transactionId,
+        onFinish,
+        priority,
+        keepTracking,
+        jobId,
+        requestExpirationIvalSec);
+}
 
-    util::Lock lock(_mtx, _context(__func__));
 
-    _assertIsRunning();
+SqlQueryRequest::Ptr Controller::sqlQuery(
+        string const& workerName,
+        string const& query,
+        string const& user,
+        string const& password,
+        uint64_t maxRows,
+        SqlQueryRequest::CallbackType const& onFinish,
+        int priority,
+        bool keepTracking,
+        string const& jobId,
+        unsigned int requestExpirationIvalSec) {
 
-    Controller::Ptr controller = shared_from_this();
+    LOGS(_log, LOG_LVL_TRACE, _context(__func__));
 
-    auto const request = SqlRequest::create(
-        serviceProvider(),
-        serviceProvider()->io_service(),
+    return _submit<SqlQueryRequest,
+                   decltype(query),
+                   decltype(user),
+                   decltype(password),
+                   decltype(maxRows)>(
         workerName,
         query,
         user,
         password,
         maxRows,
-        [controller] (SqlRequest::Ptr request) {
-            controller->_finish(request->id());
-        },
+        onFinish,
         priority,
         keepTracking,
-        serviceProvider()->messenger()
-    );
-
-    // Register the request (along with its callback) by its unique
-    // identifier in the local registry. Once it's complete it'll
-    // be automatically removed from the Registry.
-
-    _registry[request->id()] =
-        make_shared<RequestWrapperImpl<SqlRequest>>(request, onFinish);
-
-    // Initiate the request
-
-    request->start(controller, jobId, requestExpirationIvalSec);
-
-    return request;
-}
-
-
-StopReplicationRequest::Ptr Controller::stopReplication(
-                                    string const& workerName,
-                                    string const& targetRequestId,
-                                    StopReplicationRequest::CallbackType const& onFinish,
-                                    bool keepTracking,
-                                    string const& jobId,
-                                    unsigned int requestExpirationIvalSec) {
-
-    LOGS(_log, LOG_LVL_DEBUG, _context(__func__) << "  targetRequestId = " << targetRequestId);
-
-    util::Lock lock(_mtx, _context(__func__));
-
-    return ControllerImpl::requestManagementOperation<StopReplicationRequest>(
-        shared_from_this(),
         jobId,
-        workerName,
-        targetRequestId,
-        onFinish,
-        keepTracking,
-        serviceProvider()->messenger(),
         requestExpirationIvalSec);
 }
 
 
-StopDeleteRequest::Ptr Controller::stopReplicaDelete(
-                                string const& workerName,
-                                string const& targetRequestId,
-                                StopDeleteRequest::CallbackType const& onFinish,
-                                bool keepTracking,
-                                string const& jobId,
-                                unsigned int requestExpirationIvalSec) {
+SqlCreateDbRequest::Ptr Controller::sqlCreateDb(
+        string const& workerName,
+        string const& database,
+        SqlCreateDbRequest::CallbackType const& onFinish,
+        int priority,
+        bool keepTracking,
+        string const& jobId,
+        unsigned int requestExpirationIvalSec) {
 
-    LOGS(_log, LOG_LVL_DEBUG, _context(__func__) << "  targetRequestId = " << targetRequestId);
+    LOGS(_log, LOG_LVL_TRACE, _context(__func__));
 
-    util::Lock lock(_mtx, _context(__func__));
-
-    return ControllerImpl::requestManagementOperation<StopDeleteRequest>(
-        shared_from_this(),
-        jobId,
+    return _submit<SqlCreateDbRequest,
+                   decltype(database)>(
         workerName,
-        targetRequestId,
+        database,
         onFinish,
+        priority,
         keepTracking,
-        serviceProvider()->messenger(),
+        jobId,
         requestExpirationIvalSec);
 }
 
 
-StopFindRequest::Ptr Controller::stopReplicaFind(
-                            string const& workerName,
-                            string const& targetRequestId,
-                            StopFindRequest::CallbackType const& onFinish,
-                            bool keepTracking,
-                            string const& jobId,
-                            unsigned int requestExpirationIvalSec) {
+SqlDeleteDbRequest::Ptr Controller::sqlDeleteDb(
+        string const& workerName,
+        string const& database,
+        SqlDeleteDbRequest::CallbackType const& onFinish,
+        int priority,
+        bool keepTracking,
+        string const& jobId,
+        unsigned int requestExpirationIvalSec) {
 
-    LOGS(_log, LOG_LVL_DEBUG, _context(__func__) << "  targetRequestId = " << targetRequestId);
+    LOGS(_log, LOG_LVL_TRACE, _context(__func__));
 
-    util::Lock lock(_mtx, _context(__func__));
-
-    return ControllerImpl::requestManagementOperation<StopFindRequest>(
-        shared_from_this(),
-        jobId,
+    return _submit<SqlDeleteDbRequest,
+                   decltype(database)>(
         workerName,
-        targetRequestId,
+        database,
         onFinish,
+        priority,
         keepTracking,
-        serviceProvider()->messenger(),
+        jobId,
         requestExpirationIvalSec);
 }
 
 
-StopFindAllRequest::Ptr Controller::stopReplicaFindAll(
-                                string const& workerName,
-                                string const& targetRequestId,
-                                StopFindAllRequest::CallbackType const& onFinish,
-                                bool keepTracking,
-                                string const& jobId,
-                                unsigned int requestExpirationIvalSec) {
+SqlEnableDbRequest::Ptr Controller::sqlEnableDb(
+        string const& workerName,
+        string const& database,
+        SqlEnableDbRequest::CallbackType const& onFinish,
+        int priority,
+        bool keepTracking,
+        string const& jobId,
+        unsigned int requestExpirationIvalSec) {
 
-    LOGS(_log, LOG_LVL_DEBUG, _context(__func__) << "  targetRequestId = " << targetRequestId);
+    LOGS(_log, LOG_LVL_TRACE, _context(__func__));
 
-    util::Lock lock(_mtx, _context(__func__));
-
-    return ControllerImpl::requestManagementOperation<StopFindAllRequest>(
-        shared_from_this(),
-        jobId,
+    return _submit<SqlEnableDbRequest,
+                   decltype(database)>(
         workerName,
-        targetRequestId,
+        database,
         onFinish,
+        priority,
         keepTracking,
-        serviceProvider()->messenger(),
+        jobId,
         requestExpirationIvalSec);
 }
 
 
-StopEchoRequest::Ptr Controller::stopEcho(
-                                    string const& workerName,
-                                    string const& targetRequestId,
-                                    StopEchoRequestCallbackType const& onFinish,
-                                    bool keepTracking,
-                                    string const& jobId,
-                                    unsigned int requestExpirationIvalSec) {
+SqlDisableDbRequest::Ptr Controller::sqlDisableDb(
+        string const& workerName,
+        string const& database,
+        SqlDisableDbRequest::CallbackType const& onFinish,
+        int priority,
+        bool keepTracking,
+        string const& jobId,
+        unsigned int requestExpirationIvalSec) {
 
-    LOGS(_log, LOG_LVL_DEBUG, _context(__func__) << "  targetRequestId = " << targetRequestId);
+    LOGS(_log, LOG_LVL_TRACE, _context(__func__));
 
-    util::Lock lock(_mtx, _context(__func__));
-
-    return ControllerImpl::requestManagementOperation<StopEchoRequest>(
-        shared_from_this(),
-        jobId,
+    return _submit<SqlDisableDbRequest,
+                   decltype(database)>(
         workerName,
-        targetRequestId,
+        database,
         onFinish,
+        priority,
         keepTracking,
-        serviceProvider()->messenger(),
+        jobId,
         requestExpirationIvalSec);
 }
 
 
-StopSqlRequest::Ptr Controller::stopSql(
-                                    string const& workerName,
-                                    string const& targetRequestId,
-                                    StopSqlRequestCallbackType const& onFinish,
-                                    bool keepTracking,
-                                    string const& jobId,
-                                    unsigned int requestExpirationIvalSec) {
+SqlGrantAccessRequest::Ptr Controller::sqlGrantAccess(
+        string const& workerName,
+        string const& database,
+        string const& user,
+        SqlGrantAccessRequest::CallbackType const& onFinish,
+        int priority,
+        bool keepTracking,
+        string const& jobId,
+        unsigned int requestExpirationIvalSec) {
 
-    LOGS(_log, LOG_LVL_DEBUG, _context(__func__) << "  targetRequestId = " << targetRequestId);
+    LOGS(_log, LOG_LVL_TRACE, _context(__func__));
 
-    util::Lock lock(_mtx, _context(__func__));
-
-    return ControllerImpl::requestManagementOperation<StopSqlRequest>(
-        shared_from_this(),
-        jobId,
+    return _submit<SqlGrantAccessRequest,
+                   decltype(database),
+                   decltype(user)>(
         workerName,
-        targetRequestId,
+        database,
+        user,
         onFinish,
+        priority,
         keepTracking,
-        serviceProvider()->messenger(),
+        jobId,
         requestExpirationIvalSec);
 }
 
 
-StatusReplicationRequest::Ptr Controller::statusOfReplication(
-                                        string const& workerName,
-                                        string const& targetRequestId,
-                                        StatusReplicationRequest::CallbackType const& onFinish,
-                                        bool keepTracking,
-                                        string const& jobId,
-                                        unsigned int requestExpirationIvalSec) {
+SqlCreateTableRequest::Ptr Controller::sqlCreateTable(
+        string const& workerName,
+        string const& database,
+        string const& table,
+        string const& engine,
+        string const& partitionByColumn,
+        list<pair<string, string>> const& columns,
+        SqlCreateTableRequest::CallbackType const& onFinish,
+        int priority,
+        bool keepTracking,
+        string const& jobId,
+        unsigned int requestExpirationIvalSec) {
 
-    LOGS(_log, LOG_LVL_DEBUG, _context(__func__) << "  targetRequestId = " << targetRequestId);
+    LOGS(_log, LOG_LVL_TRACE, _context(__func__));
 
-    util::Lock lock(_mtx, _context(__func__));
-
-    return ControllerImpl::requestManagementOperation<StatusReplicationRequest>(
-        shared_from_this(),
-        jobId,
+    return _submit<SqlCreateTableRequest,
+                   decltype(database),
+                   decltype(table),
+                   decltype(engine),
+                   decltype(partitionByColumn),
+                   decltype(columns)>(
         workerName,
-        targetRequestId,
+        database,
+        table,
+        engine,
+        partitionByColumn,
+        columns,
         onFinish,
+        priority,
         keepTracking,
-        serviceProvider()->messenger(),
+        jobId,
         requestExpirationIvalSec);
 }
 
 
-StatusDeleteRequest::Ptr Controller::statusOfDelete(
-                                    string const& workerName,
-                                    string const& targetRequestId,
-                                    StatusDeleteRequest::CallbackType const& onFinish,
-                                    bool keepTracking,
-                                    string const& jobId,
-                                    unsigned int requestExpirationIvalSec) {
+SqlDeleteTableRequest::Ptr Controller::sqlDeleteTable(
+        string const& workerName,
+        string const& database,
+        string const& table,
+        SqlDeleteTableRequest::CallbackType const& onFinish,
+        int priority,
+        bool keepTracking,
+        string const& jobId,
+        unsigned int requestExpirationIvalSec) {
 
-    LOGS(_log, LOG_LVL_DEBUG, _context(__func__) << "  targetRequestId = " << targetRequestId);
+    LOGS(_log, LOG_LVL_TRACE, _context(__func__));
 
-    util::Lock lock(_mtx, _context(__func__));
-
-    return ControllerImpl::requestManagementOperation<StatusDeleteRequest>(
-        shared_from_this(),
-        jobId,
+    return _submit<SqlDeleteTableRequest,
+                   decltype(database),
+                   decltype(table)>(
         workerName,
-        targetRequestId,
+        database,
+        table,
         onFinish,
+        priority,
         keepTracking,
-        serviceProvider()->messenger(),
+        jobId,
         requestExpirationIvalSec);
 }
 
 
-StatusFindRequest::Ptr Controller::statusOfFind(
-                                string const& workerName,
-                                string const& targetRequestId,
-                                StatusFindRequest::CallbackType const& onFinish,
-                                bool keepTracking,
-                                string const& jobId,
-                                unsigned int requestExpirationIvalSec) {
+SqlRemoveTablePartitionsRequest::Ptr Controller::sqlRemoveTablePartitions(
+        string const& workerName,
+        string const& database,
+        string const& table,
+        SqlRemoveTablePartitionsRequest::CallbackType const& onFinish,
+        int priority,
+        bool keepTracking,
+        string const& jobId,
+        unsigned int requestExpirationIvalSec) {
 
-    LOGS(_log, LOG_LVL_DEBUG, _context(__func__) << "  targetRequestId = " << targetRequestId);
+    LOGS(_log, LOG_LVL_TRACE, _context(__func__));
 
-    util::Lock lock(_mtx, _context(__func__));
-
-    return ControllerImpl::requestManagementOperation<StatusFindRequest>(
-        shared_from_this(),
-        jobId,
+    return _submit<SqlRemoveTablePartitionsRequest,
+                   decltype(database),
+                   decltype(table)>(
         workerName,
-        targetRequestId,
+        database,
+        table,
         onFinish,
+        priority,
         keepTracking,
-        serviceProvider()->messenger(),
+        jobId,
         requestExpirationIvalSec);
 }
 
 
-StatusFindAllRequest::Ptr Controller::statusOfFindAll(
-                                    string const& workerName,
-                                    string const& targetRequestId,
-                                    StatusFindAllRequest::CallbackType const& onFinish,
-                                    bool keepTracking,
-                                    string const& jobId,
-                                    unsigned int requestExpirationIvalSec) {
+SqlDeleteTablePartitionRequest::Ptr Controller::sqlDeleteTablePartition(
+        string const& workerName,
+        string const& database,
+        string const& table,
+        uint32_t transactionId,
+        SqlDeleteTablePartitionRequest::CallbackType const& onFinish,
+        int priority,
+        bool keepTracking,
+        string const& jobId,
+        unsigned int requestExpirationIvalSec) {
 
-    LOGS(_log, LOG_LVL_DEBUG, _context(__func__) << "  targetRequestId = " << targetRequestId);
+    LOGS(_log, LOG_LVL_TRACE, _context(__func__));
 
-    util::Lock lock(_mtx, _context(__func__));
-
-    return ControllerImpl::requestManagementOperation<StatusFindAllRequest>(
-        shared_from_this(),
-        jobId,
+    return _submit<SqlDeleteTablePartitionRequest,
+                   decltype(database),
+                   decltype(table),
+                   decltype(transactionId)>(
         workerName,
-        targetRequestId,
+        database,
+        table,
+        transactionId,
         onFinish,
+        priority,
         keepTracking,
-        serviceProvider()->messenger(),
-        requestExpirationIvalSec);
-}
-
-
-StatusEchoRequest::Ptr Controller::statusOfEcho(
-                                    string const& workerName,
-                                    string const& targetRequestId,
-                                    StatusEchoRequest::CallbackType const& onFinish,
-                                    bool keepTracking,
-                                    string const& jobId,
-                                    unsigned int requestExpirationIvalSec) {
-
-    LOGS(_log, LOG_LVL_DEBUG, _context(__func__) << "  targetRequestId = " << targetRequestId);
-
-    util::Lock lock(_mtx, _context(__func__));
-
-    return ControllerImpl::requestManagementOperation<StatusEchoRequest>(
-        shared_from_this(),
         jobId,
-        workerName,
-        targetRequestId,
-        onFinish,
-        keepTracking,
-        serviceProvider()->messenger(),
-        requestExpirationIvalSec);
-}
-
-
-StatusSqlRequest::Ptr Controller::statusOfSql(
-                                    string const& workerName,
-                                    string const& targetRequestId,
-                                    StatusSqlRequest::CallbackType const& onFinish,
-                                    bool keepTracking,
-                                    string const& jobId,
-                                    unsigned int requestExpirationIvalSec) {
-
-    LOGS(_log, LOG_LVL_DEBUG, _context(__func__) << "  targetRequestId = " << targetRequestId);
-
-    util::Lock lock(_mtx, _context(__func__));
-
-    return ControllerImpl::requestManagementOperation<StatusSqlRequest>(
-        shared_from_this(),
-        jobId,
-        workerName,
-        targetRequestId,
-        onFinish,
-        keepTracking,
-        serviceProvider()->messenger(),
         requestExpirationIvalSec);
 }
 
 
 ServiceSuspendRequest::Ptr Controller::suspendWorkerService(
-                                    string const& workerName,
-                                    ServiceSuspendRequest::CallbackType const& onFinish,
-                                    string const& jobId,
-                                    unsigned int requestExpirationIvalSec) {
+        string const& workerName,
+        ServiceSuspendRequest::CallbackType const& onFinish,
+        string const& jobId,
+        unsigned int requestExpirationIvalSec) {
 
-    LOGS(_log, LOG_LVL_DEBUG, _context(__func__) << "  workerName: " << workerName);
+    LOGS(_log, LOG_LVL_TRACE, _context(__func__) << "  workerName: " << workerName);
 
-    util::Lock lock(_mtx, _context(__func__));
-
-    return ControllerImpl::serviceManagementOperation<ServiceSuspendRequest>(
-        shared_from_this(),
-        jobId,
+    return _submit<ServiceSuspendRequest>(
         workerName,
         onFinish,
-        serviceProvider()->messenger(),
+        jobId,
         requestExpirationIvalSec);
 }
 
 
 ServiceResumeRequest::Ptr Controller::resumeWorkerService(
-                                    string const& workerName,
-                                    ServiceResumeRequest::CallbackType const& onFinish,
-                                    string const& jobId,
-                                    unsigned int requestExpirationIvalSec) {
+        string const& workerName,
+        ServiceResumeRequest::CallbackType const& onFinish,
+        string const& jobId,
+        unsigned int requestExpirationIvalSec) {
 
-    LOGS(_log, LOG_LVL_DEBUG, _context(__func__) << "  workerName: " << workerName);
+    LOGS(_log, LOG_LVL_TRACE, _context(__func__) << "  workerName: " << workerName);
 
-    util::Lock lock(_mtx, _context(__func__));
-
-    return ControllerImpl::serviceManagementOperation<ServiceResumeRequest>(
-        shared_from_this(),
-        jobId,
+    return _submit<ServiceResumeRequest>(
         workerName,
         onFinish,
-        serviceProvider()->messenger(),
+        jobId,
         requestExpirationIvalSec);
 }
 
 
 ServiceStatusRequest::Ptr Controller::statusOfWorkerService(
-                                    string const& workerName,
-                                    ServiceStatusRequest::CallbackType const& onFinish,
-                                    string const& jobId,
-                                    unsigned int requestExpirationIvalSec) {
+        string const& workerName,
+        ServiceStatusRequest::CallbackType const& onFinish,
+        string const& jobId,
+        unsigned int requestExpirationIvalSec) {
 
-    LOGS(_log, LOG_LVL_DEBUG, _context(__func__) << "  workerName: " << workerName);
+    LOGS(_log, LOG_LVL_TRACE, _context(__func__) << "  workerName: " << workerName);
 
-    util::Lock lock(_mtx, _context(__func__));
-
-    return ControllerImpl::serviceManagementOperation<ServiceStatusRequest>(
-        shared_from_this(),
-        jobId,
+    return _submit<ServiceStatusRequest>(
         workerName,
         onFinish,
-        serviceProvider()->messenger(),
+        jobId,
         requestExpirationIvalSec);
 }
 
 
 ServiceRequestsRequest::Ptr Controller::requestsOfWorkerService(
-                                    string const& workerName,
-                                    ServiceRequestsRequest::CallbackType const& onFinish,
-                                    string const& jobId,
-                                    unsigned int requestExpirationIvalSec) {
+        string const& workerName,
+        ServiceRequestsRequest::CallbackType const& onFinish,
+        string const& jobId,
+        unsigned int requestExpirationIvalSec) {
 
-    LOGS(_log, LOG_LVL_DEBUG, _context(__func__) + "  workerName: " << workerName);
+    LOGS(_log, LOG_LVL_TRACE, _context(__func__) + "  workerName: " << workerName);
 
-    util::Lock lock(_mtx, _context(__func__));
-
-    return ControllerImpl::serviceManagementOperation<ServiceRequestsRequest>(
-        shared_from_this(),
-        jobId,
+    return _submit<ServiceRequestsRequest>(
         workerName,
         onFinish,
-        serviceProvider()->messenger(),
+        jobId,
         requestExpirationIvalSec);
 }
 
 
 ServiceDrainRequest::Ptr Controller::drainWorkerService(
-                                    string const& workerName,
-                                    ServiceDrainRequest::CallbackType const& onFinish,
-                                    string const& jobId,
-                                    unsigned int requestExpirationIvalSec) {
+        string const& workerName,
+        ServiceDrainRequest::CallbackType const& onFinish,
+        string const& jobId,
+        unsigned int requestExpirationIvalSec) {
 
-    LOGS(_log, LOG_LVL_DEBUG, _context(__func__) << "  workerName: " << workerName);
+    LOGS(_log, LOG_LVL_TRACE, _context(__func__) << "  workerName: " << workerName);
 
-    util::Lock lock(_mtx, _context(__func__));
-
-    return ControllerImpl::serviceManagementOperation<ServiceDrainRequest>(
-        shared_from_this(),
-        jobId,
+    return _submit<ServiceDrainRequest>(
         workerName,
         onFinish,
-        serviceProvider()->messenger(),
+        jobId,
+        requestExpirationIvalSec);
+}
+
+
+ServiceReconfigRequest::Ptr Controller::reconfigWorkerService(
+        string const& workerName,
+        ServiceReconfigRequest::CallbackType const& onFinish,
+        string const& jobId,
+        unsigned int requestExpirationIvalSec) {
+
+    LOGS(_log, LOG_LVL_TRACE, _context(__func__) << "  workerName: " << workerName);
+
+    return _submit<ServiceReconfigRequest>(
+        workerName,
+        onFinish,
+        jobId,
         requestExpirationIvalSec);
 }
 
@@ -914,6 +636,11 @@ ServiceDrainRequest::Ptr Controller::drainWorkerService(
 size_t Controller::numActiveRequests() const {
     util::Lock lock(_mtx, _context(__func__));
     return _registry.size();
+}
+
+
+void Controller::_debug(string const& func, string const& msg) const {
+    LOGS(_log, LOG_LVL_TRACE, _context(func) << "  " << msg);
 }
 
 
@@ -944,6 +671,13 @@ void Controller::_assertIsRunning() const {
     if (not serviceProvider()->isRunning()) {
         throw runtime_error("ServiceProvider::" + string(__func__) + "  not running");
     }
+}
+
+
+void Controller::_logManagementRequest(string const& requestName,
+                                       string const& workerName) {
+    LOGS(_log, LOG_LVL_TRACE, _context(__func__) << "  workerName: " << workerName
+         << "  requestName: " << requestName);
 }
 
 }}} // namespace lsst::qserv::replica

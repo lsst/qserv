@@ -23,6 +23,8 @@
 #include "replica/Request.h"
 
 // System headers
+#include <algorithm>
+#include <sstream>
 #include <stdexcept>
 
 // Third party headers
@@ -150,6 +152,13 @@ string const& Request::remoteId() const {
 }
 
 
+unsigned int Request::nextTimeIvalMsec() {
+    auto result = _currentTimeIvalMsec;
+    _currentTimeIvalMsec = min(2 * _currentTimeIvalMsec, 1000 * timerIvalSec());
+    return result;
+}
+
+
 Performance Request::performance() const {
     util::Lock lock(_mtx, context() + __func__);
     return performance(lock);
@@ -158,6 +167,24 @@ Performance Request::performance() const {
 
 Performance Request::performance(util::Lock const& lock) const {
     return _performance;
+}
+
+
+string Request::toString(bool extended) const {
+    ostringstream oss;
+    oss << context() << "\n"
+        << "  worker: " << worker() << "\n"
+        << "  priority: " << priority() << "\n"
+        << "  keepTracking: " << (keepTracking() ? "1" : "0") << "\n"
+        << "  allowDuplicate: " << (allowDuplicate() ? "1" : "0") << "\n"
+        << "  remoteId: " << remoteId() << "\n"
+        << "  performance: " << performance() << "\n";
+    if (extended) {
+        for (auto&& kv: extendedPersistentState()) {
+            oss << "  " << kv.first << ": " << kv.second << "\n";
+        }
+    }
+    return oss.str();
 }
 
 

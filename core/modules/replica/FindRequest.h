@@ -105,15 +105,15 @@ public:
      * @param chunk
      *   the number of a chunk to find (implies all relevant tables)
      *
+     * @param computeCheckSum
+     *   tell a worker server to compute check/control sum on each file
+     *
      * @param onFinish
      *   an optional callback function to be called upon a completion of
      *   the request.
      *
      * @param priority
      *   a priority level of the request
-     *
-     * @param computeCheckSum
-     *   tell a worker server to compute check/control sum on each file
      *
      * @param keepTracking
      *   keep tracking the request before it finishes or fails
@@ -128,10 +128,10 @@ public:
                       boost::asio::io_service& io_service,
                       std::string const& worker,
                       std::string const& database,
-                      unsigned int  chunk,
-                      CallbackType const& onFinish,
-                      int  priority,
+                      unsigned int chunk,
                       bool computeCheckSum,
+                      CallbackType const& onFinish,
+                      int priority,
                       bool keepTracking,
                       std::shared_ptr<Messenger> const& messenger);
 
@@ -155,10 +155,10 @@ private:
                 boost::asio::io_service& io_service,
                 std::string const& worker,
                 std::string const& database,
-                unsigned int  chunk,
-                CallbackType const& onFinish,
-                int  priority,
+                unsigned int chunk,
                 bool computeCheckSum,
+                CallbackType const& onFinish,
+                int priority,
                 bool keepTracking,
                 std::shared_ptr<Messenger> const& messenger);
 

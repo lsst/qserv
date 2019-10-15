@@ -54,6 +54,7 @@ enum ProtocolQueuedRequestType {
     REPLICA_FIND_ALL = 3;    // find all replicas and report their states
     TEST_ECHO        = 4;    // test the worker-side framework
     SQL              = 5;    // execute an SQL statement against the worker's database
+    INDEX            = 6;    // extract and return a collection of the "secondary index" data
 }
 
 // Request types for managing above defined requests
@@ -73,6 +74,7 @@ enum ProtocolServiceRequestType {
     SERVICE_STATUS   = 2;
     SERVICE_REQUESTS = 3;
     SERVICE_DRAIN    = 4;
+    SERVICE_RECONFIG = 5;
 }
 
 // Message header is sent next after the frame size request. A sender must
@@ -168,25 +170,71 @@ message ProtocolRequestEcho {
     optional uint64 delay = 3 [default = 0];
 }
 
+// This message is used in the table schema definitions
+message ProtocolRequestSqlColumn {
+    required string name = 1;
+    required string type = 2;
+}
+
 // This request is always queued.
-// This message is sent once after the header.
+// This message is sent once after the header for the 'SQL' request types
 message ProtocolRequestSql {
 
     required int32 priority = 1;
 
-    /// The query to be executed
-    required string query = 2;
-
-    /// The name of a database user authorized in a context of the query
-    required string user = 3;
-
-    /// Database password for the user account
-    required string password = 4;
+    enum Type {
+        QUERY = 0;
+        CREATE_DATABASE = 1;
+        DROP_DATABASE = 2;
+        ENABLE_DATABASE = 3;    // in Qserv
+        DISABLE_DATABASE = 4;   // in Qserv
+        GRANT_ACCESS = 5;
+        CREATE_TABLE = 6;
+        DROP_TABLE = 7;
+        REMOVE_TABLE_PARTITIONING = 8;
+        DROP_TABLE_PARTITION = 9;
+    }
+    required Type type = 6;
 
     /// A limit for the maximum number of rows to be returned by a request.
     /// If the limit is exceeded then extended error code ProtocolStatusExt::LARGE_RESULT
     /// will be returned to a caller.
     required uint64 max_rows = 5;
+
+    // Variable parameters of request types. Note, that a specific request would
+    // only use a subset of those as needed.
+
+    optional string query    = 2 [default = ""];    /// The query to be executed
+    optional string user     = 3 [default = ""];    /// The name of a database user authorized in
+                                                    /// a context of the query.
+    optional string password = 4 [default = ""];    /// Database password for the user account
+    optional string database = 7 [default = ""];    /// The name of a database
+    optional string table    = 8 [default = ""];    /// The name of a table
+    optional string engine   = 9 [default = ""];    /// The name of an MySQL engine
+
+    /// The name of a column (if any) which will be used as a key for MySQL partitions
+    optional string partition_by_column = 10 [default = ""];
+
+    optional uint32 transaction_id = 11 [default = 0];  /// An identifier of a super-transaction which
+                                                        /// corresponds to a MySQL partition to be removed
+
+    /// table schema
+    repeated ProtocolRequestSqlColumn columns = 12;
+}
+
+// This request is always queued.
+// This message is sent once after the header for the 'INDEX' request types
+message ProtocolRequestIndex {
+
+    required int32  priority = 1;
+    required string database = 2;
+    required uint32 chunk    = 3;
+    required bool   has_transactions = 4;
+
+    // An identifier of a super-transaction corresponding to a MySQL partition
+    // to be inspected. This parameter is used only if the above defined
+    // 'has_transactions' is set to 'true'.
+    required uint32 transaction_id = 5;
 }
 
 // This request is sent to stop an on-going replication (if any is still in progress).
@@ -279,27 +327,31 @@ enum ProtocolStatusExt {
     INVALID_ID    = 2;
     DUPLICATE     = 3;
     FOLDER_STAT   = 4;
-    FILE_STAT     = 5;
-    FILE_SIZE     = 6;
-    FOLDER_READ   = 7;
-    FILE_READ     = 8;
-    FILE_ROPEN    = 9;
-    FILE_CREATE   = 10;
-    FILE_OPEN     = 11;
-    FILE_RESIZE   = 12;
-    FILE_WRITE    = 13;
-    FILE_COPY     = 14;
-    FILE_DELETE   = 15;
-    FILE_RENAME   = 16;
-    FILE_EXISTS   = 17;
-    SPACE_REQ     = 18;
-    NO_FOLDER     = 19;
-    NO_FILE       = 20;
-    NO_ACCESS     = 21;
-    NO_SPACE      = 22;
-    FILE_MTIME    = 23;
-    MYSQL_ERROR   = 24;
-    LARGE_RESULT  = 25;
+    FOLDER_CREATE = 5;
+    FILE_STAT     = 6;
+    FILE_SIZE     = 7;
+    FOLDER_READ   = 8;
+    FILE_READ     = 9;
+    FILE_ROPEN    = 10;
+    FILE_CREATE   = 11;
+    FILE_OPEN     = 12;
+    FILE_RESIZE   = 13;
+    FILE_WRITE    = 14;
+    FILE_COPY     = 15;
+    FILE_DELETE   = 16;
+    FILE_RENAME   = 17;
+    FILE_EXISTS   = 18;
+    SPACE_REQ     = 19;
+    NO_FOLDER     = 20;
+    NO_FILE       = 21;
+    NO_ACCESS     = 22;
+    NO_SPACE      = 23;
+    FILE_MTIME    = 24;
+    MYSQL_ERROR   = 25;
+    LARGE_RESULT  = 26;
+    NO_SUCH_TABLE = 27;
+    NOT_PARTITIONED_TABLE = 28;
+    NO_SUCH_PARTITION = 29;
 }
 
 message ProtocolFileInfo {
@@ -584,6 +636,49 @@ message ProtocolResponseSql {
 
     /// Parameters of the original request to which this response is related
     optional ProtocolRequestSql request = 10;
+}
+
+message ProtocolResponseIndex {
+
+    /// The completion status of the operation
+    required ProtocolStatus status = 1;
+
+    /// Extended status of this operation
+    optional ProtocolStatusExt status_ext = 2 [default = NONE];
+
+    /// The performance of this operation
+    required ProtocolPerformance performance = 3;
+
+    // ------------------------------------------------------------------
+    // The following optional fields are set upon a successful completion
+    // of the request
+    // ------------------------------------------------------------------
+
+    /// The performance of the target operation. This field represents
+    /// stats of the original request obtained by the request
+    /// management operations
+    optional ProtocolPerformance target_performance = 4;
+
+    /// MySQL-specific error
+    optional string error = 5 [default = ""];
+
+    /// Full content of the TSV/CSV file in which is lines has a set of fields
+    /// to be ingested into the secondary index at Qserv master. The number and
+    /// a schema of fields depends on a mode the request was made as well as on
+    /// a mode of the request. For consolidated (not MySQL partitioned tables)
+    /// each line of the file would be represented by the triplet:
+    ///
+    ///   <object-id> <chunk-id> <sub-chunk-id>
+    ///
+    /// An for the MySQL partitioned tables it would be the quadruplet:
+    ///
+    ///   <super-transaction-id> <object-id> <chunk-id> <sub-chunk-id>
+    ///
+    required bytes data = 6;
+
+    /// Parameters of the original request to which this response
+    /// is related
+    optional ProtocolRequestIndex request = 7;
 }
 
 /////////////////////////////////////////////////////////////////////////

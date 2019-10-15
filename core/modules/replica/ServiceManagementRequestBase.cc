@@ -149,6 +149,12 @@ ostream& operator<<(ostream& os, ServiceState const& ss) {
 }
 
 
+void ServiceManagementRequestBase::extendedPrinter(Ptr const& ptr) {
+    Request::defaultPrinter(ptr);
+    cout << ptr->getServiceState();
+}
+
+
 ServiceState const& ServiceManagementRequestBase::getServiceState() const {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
