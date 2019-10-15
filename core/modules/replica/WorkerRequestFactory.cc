@@ -57,8 +57,8 @@ namespace replica {
 ///////////////////////////////////////////////////////////////////
 
 WorkerRequestFactoryBase::WorkerRequestFactoryBase(
-                            ServiceProvider::Ptr const& serviceProvider,
-                            database::mysql::ConnectionPool::Ptr const& connectionPool)
+            ServiceProvider::Ptr const& serviceProvider,
+            database::mysql::ConnectionPool::Ptr const& connectionPool)
     :   _serviceProvider(serviceProvider),
         _connectionPool(connectionPool) {
 }

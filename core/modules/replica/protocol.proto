@@ -194,20 +194,20 @@ message ProtocolRequestSql {
         REMOVE_TABLE_PARTITIONING = 8;
         DROP_TABLE_PARTITION = 9;
     }
-    required Type type = 2;
+    required Type type = 6;
 
     /// A limit for the maximum number of rows to be returned by a request.
     /// If the limit is exceeded then extended error code ProtocolStatusExt::LARGE_RESULT
     /// will be returned to a caller.
-    required uint64 max_rows = 3;
+    required uint64 max_rows = 5;
 
     // Variable parameters of request types. Note, that a specific request would
     // only use a subset of those as needed.
 
-    optional string query    = 4 [default = ""];    /// The query to be executed
-    optional string user     = 5 [default = ""];    /// The name of a database user authorized in
+    optional string query    = 2 [default = ""];    /// The query to be executed
+    optional string user     = 3 [default = ""];    /// The name of a database user authorized in
                                                     /// a context of the query.
-    optional string password = 6 [default = ""];    /// Database password for the user account
+    optional string password = 4 [default = ""];    /// Database password for the user account
     optional string database = 7 [default = ""];    /// The name of a database
     optional string table    = 8 [default = ""];    /// The name of a table
     optional string engine   = 9 [default = ""];    /// The name of an MySQL engine
