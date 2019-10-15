@@ -74,13 +74,11 @@ SqlApp::SqlApp(int argc, char* argv[])
          "GRANT_ACCESS",
          "CREATE_TABLE", "DELETE_TABLE", "REMOVE_TABLE_PARTITIONS", "DELETE_TABLE_PARTITION"},
         _command
-    );
-    parser().flag(
+    ).flag(
         "all-workers",
         "The flag for selecting all workers regardless of their status (DISABLED or READ-ONLY).",
         _allWorkers
-    );
-    parser().option(
+    ).option(
         "worker-response-timeout",
         "Maximum timeout (seconds) to wait before queries would finish."
         " Setting this timeout to some reasonably low number would prevent the application from"
@@ -88,33 +86,30 @@ SqlApp::SqlApp(int argc, char* argv[])
         " in case if some workers were down. The parameter applies to operations with"
         " the Replication workers.",
         _timeoutSec
-    );
-    parser().option(
+    ).option(
         "tables-page-size",
         "The number of rows in the table of replicas (0 means no pages).",
         _pageSize
     );
 
-    auto& queryCmd = parser().command("QUERY");
-    queryCmd.required(
+    parser().command(
+        "QUERY"
+    ).required(
         "user",
         "Worker-side MySQL user account for executing the query.",
         _mysqlUser
-    );
-    queryCmd.required(
+    ).required(
         "password",
         "Password for the MySQL account.",
         _mysqlPassword
-    );
-    queryCmd.required(
+    ).required(
         "query",
         "The query to be executed on all select workers. If '-' is used instead of"
         " the query then the query will be read from the Standard Input stream."
         " NOTE: in the current implementation of the tool only a single query is"
         " expected in either form of the query input.",
         _query
-    );
-    queryCmd.option(
+    ).option(
         "max-rows",
         "The maximum number of rows to be pulled from result set at workers"
         " when processing queries. NOTE: This parameter has nothing to do with"
@@ -124,113 +119,113 @@ SqlApp::SqlApp(int argc, char* argv[])
         _maxRows
     );
 
-    auto& createDbCmd = parser().command("CREATE_DATABASE");
-    createDbCmd.required(
+    parser().command(
+        "CREATE_DATABASE"
+    ).required(
         "database",
         "The name of a database to be created.",
         _database
     );
 
-    auto& deleteDbCmd = parser().command("DELETE_DATABASE");
-    deleteDbCmd.required(
+    parser().command(
+        "DELETE_DATABASE"
+    ).required(
         "database",
         "The name of a database to be deleted.",
         _database
     );
 
-    auto& enableDbCmd = parser().command("ENABLE_DATABASE");
-    enableDbCmd.required(
+    parser().command(
+        "ENABLE_DATABASE"
+    ).required(
         "database",
         "The name of a database to be enabled at Qserv workers.",
         _database
     );
 
-    auto& disableDbCmd = parser().command("DISABLE_DATABASE");
-    disableDbCmd.required(
+    parser().command(
+        "DISABLE_DATABASE"
+    ).required(
         "database",
         "The name of a database to be disable at Qserv workers.",
         _database
     );
 
-    auto& grantAccessCmd = parser().command("GRANT_ACCESS");
-    grantAccessCmd.required(
+    parser().command(
+        "GRANT_ACCESS"
+    ).required(
         "database",
         "The name of a database to be accessed.",
         _database
-    );
-    grantAccessCmd.required(
+    ).required(
         "user",
         "The name of a user to be affected by the operation.",
         _mysqlUser
     );
 
-    auto& createTableCmd = parser().command("CREATE_TABLE");
-    createTableCmd.required(
+    parser().command(
+        "CREATE_TABLE"
+    ).required(
         "database",
         "The name of an existing database where the table will be created.",
         _database
-    );
-    createTableCmd.required(
+    ).required(
         "table",
         "The name of a table to be created.",
         _table
-    );
-    createTableCmd.required(
+    ).required(
         "engine",
         "The name of a MySQL engine for the new table",
         _engine
-    );
-    createTableCmd.required(
+    ).required(
         "schema-file",
         "The name of a file where column definitions of the table schema will be"
         " read from. If symbol '-' is passed instead of the file name then column"
         " definitions will be read from the Standard Input File. The file is required"
         " to have the following format: <column-name> <type>",
         _schemaFile
-    );
-    createTableCmd.option(
+    ).option(
         "partition-by-column",
         "The name of a column which is used for creating the table based on"
         " the MySQL partitioning mechanism,",
         _partitionByColumn
     );
 
-    auto& deleteTableCmd = parser().command("DELETE_TABLE");
-    deleteTableCmd.required(
+    parser().command(
+        "DELETE_TABLE"
+    ).required(
         "database",
         "The name of an existing database where the table is residing.",
         _database
-    );
-    deleteTableCmd.required(
+    ).required(
         "table",
         "The name of an existing table to be deleted.",
         _table
     );
 
-    auto& removeTablePartitionsCmd = parser().command("REMOVE_TABLE_PARTITIONS");
-    removeTablePartitionsCmd.required(
+    parser().command(
+        "REMOVE_TABLE_PARTITIONS"
+    ).required(
         "database",
         "The name of an existing database where the table is residing.",
         _database
-    );
-    removeTablePartitionsCmd.required(
+    ).required(
         "table",
         "The name of an existing table to be affected by the operation.",
         _table
     );
 
-    auto& deleteTablePartitionCmd = parser().command("DELETE_TABLE_PARTITION");
-    deleteTablePartitionCmd.required(
+    parser().command(
+        "DELETE_TABLE_PARTITION"
+    ).required(
         "database",
         "The name of an existing database where the table is residing.",
         _database
-    );
-    deleteTablePartitionCmd.required(
+    ).required(
         "table",
         "The name of an existing table to be affected by the operation.",
         _table
-    );
-    deleteTablePartitionCmd.required(
+    ).required(
         "transaction",
         "An identifier of a super-transaction corresponding to a partition"
         " to be dropped from the table. The transaction must exist, and it"
@@ -248,7 +243,7 @@ int SqlApp::runImpl() {
     }
 
     auto const controller = Controller::create(serviceProvider());
-    SqlBaseJob::Ptr job;
+    SqlJob::Ptr job;
     bool shouldHaveResultSet = false;
     if (_command == "QUERY") {
         shouldHaveResultSet = true;
