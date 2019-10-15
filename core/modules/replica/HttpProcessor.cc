@@ -43,7 +43,16 @@
 #include "replica/Performance.h"
 #include "replica/QservMgtServices.h"
 #include "replica/QservStatusJob.h"
-#include "replica/SqlRequest.h"
+#include "replica/SqlCreateDbRequest.h"
+#include "replica/SqlCreateTableRequest.h"
+#include "replica/SqlDeleteDbRequest.h"
+#include "replica/SqlDeleteTablePartitionRequest.h"
+#include "replica/SqlDeleteTableRequest.h"
+#include "replica/SqlDisableDbRequest.h"
+#include "replica/SqlEnableDbRequest.h"
+#include "replica/SqlGrantAccessRequest.h"
+#include "replica/SqlQueryRequest.h"
+#include "replica/SqlRemoveTablePartitionsRequest.h"
 
 
 using namespace std;

@@ -49,7 +49,7 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
-void SqlBaseRequest::extendedPrinter(Ptr const& ptr) {
+void SqlRequest::extendedPrinter(Ptr const& ptr) {
 
     Request::defaultPrinter(ptr);
 
@@ -72,9 +72,10 @@ void SqlBaseRequest::extendedPrinter(Ptr const& ptr) {
 }
 
 
-SqlBaseRequest::SqlBaseRequest(
+SqlRequest::SqlRequest(
         ServiceProvider::Ptr const& serviceProvider,
         boost::asio::io_service& io_service,
+        std::string const& requestName,
         string const& worker,
         uint64_t maxRows,
         int  priority,
@@ -83,7 +84,7 @@ SqlBaseRequest::SqlBaseRequest(
     :   RequestMessenger(
             serviceProvider,
             io_service,
-            "SQL",
+            requestName,
             worker,
             priority,
             keepTracking,
@@ -98,12 +99,28 @@ SqlBaseRequest::SqlBaseRequest(
 }
 
 
-SqlResultSet const& SqlBaseRequest::responseData() const {
+list<pair<string,string>> SqlRequest::extendedPersistentState() const {
+    list<pair<string,string>> result;
+    result.emplace_back("type", ProtocolRequestSql_Type_Name(requestBody.type()));
+    result.emplace_back("max_rows", to_string(requestBody.max_rows()));
+    result.emplace_back("query", requestBody.query());
+    result.emplace_back("user", requestBody.user());
+    result.emplace_back("database", requestBody.database());
+    result.emplace_back("table", requestBody.table());
+    result.emplace_back("engine", requestBody.engine());
+    result.emplace_back("partition_by_column", requestBody.partition_by_column());
+    result.emplace_back("transaction_id", to_string(requestBody.transaction_id()));
+    result.emplace_back("num_columns", to_string(requestBody.columns_size()));
+    return result;
+}
+
+
+SqlResultSet const& SqlRequest::responseData() const {
     return _responseData;
 }
 
 
-void SqlBaseRequest::startImpl(util::Lock const& lock) {
+void SqlRequest::startImpl(util::Lock const& lock) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
@@ -124,7 +141,7 @@ void SqlBaseRequest::startImpl(util::Lock const& lock) {
 }
 
 
-void SqlBaseRequest::_waitAsync(util::Lock const& lock) {
+void SqlRequest::_waitAsync(util::Lock const& lock) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
@@ -133,15 +150,15 @@ void SqlBaseRequest::_waitAsync(util::Lock const& lock) {
     timer().expires_from_now(boost::posix_time::milliseconds(nextTimeIvalMsec()));
     timer().async_wait(
         boost::bind(
-            &SqlBaseRequest::_awaken,
-            shared_from_base<SqlBaseRequest>(),
+            &SqlRequest::_awaken,
+            shared_from_base<SqlRequest>(),
             boost::asio::placeholders::error
         )
     );
 }
 
 
-void SqlBaseRequest::_awaken(boost::system::error_code const& ec) {
+void SqlRequest::_awaken(boost::system::error_code const& ec) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
@@ -175,11 +192,11 @@ void SqlBaseRequest::_awaken(boost::system::error_code const& ec) {
 }
 
 
-void SqlBaseRequest::_send(util::Lock const& lock) {
+void SqlRequest::_send(util::Lock const& lock) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
-    auto self = shared_from_base<SqlBaseRequest>();
+    auto self = shared_from_base<SqlRequest>();
 
     messenger()->send<ProtocolResponseSql>(
         worker(),
@@ -192,7 +209,7 @@ void SqlBaseRequest::_send(util::Lock const& lock) {
 }
 
 
-void SqlBaseRequest::_analyze(bool success,
+void SqlRequest::_analyze(bool success,
                               ProtocolResponseSql const& response) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "  success=" << (success ? "true" : "false"));
@@ -275,652 +292,15 @@ void SqlBaseRequest::_analyze(bool success,
 
         default:
             throw logic_error(
-                    "SqlBaseRequest::" + string(__func__) + "  unknown status '" +
+                    "SqlRequest::" + string(__func__) + "  unknown status '" +
                     ProtocolStatus_Name(response.status()) + "' received from server");
     }
 }
 
 
-void SqlBaseRequest::savePersistentState(util::Lock const& lock) {
+void SqlRequest::savePersistentState(util::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
     controller()->serviceProvider()->databaseServices()->saveState(*this, performance(lock));
-}
-
-
-list<pair<string,string>> SqlBaseRequest::extendedPersistentState() const {
-    list<pair<string,string>> result;
-    result.emplace_back("type", ProtocolRequestSql_Type_Name(requestBody.type()));
-    result.emplace_back("max_rows", to_string(requestBody.max_rows()));
-    result.emplace_back("query", requestBody.query());
-    result.emplace_back("user", requestBody.user());
-    result.emplace_back("database", requestBody.database());
-    result.emplace_back("table", requestBody.table());
-    result.emplace_back("engine", requestBody.engine());
-    result.emplace_back("partition_by_column", requestBody.partition_by_column());
-    result.emplace_back("transaction_id", to_string(requestBody.transaction_id()));
-    result.emplace_back("num_columns", to_string(requestBody.columns_size()));
-    return result;
-}
-
-
-SqlQueryRequest::Ptr SqlQueryRequest::create(
-        ServiceProvider::Ptr const& serviceProvider,
-        boost::asio::io_service& io_service,
-        string const& worker,
-        std::string const& query,
-        std::string const& user,
-        std::string const& password,
-        uint64_t maxRows,
-        CallbackType const& onFinish,
-        int priority,
-        bool keepTracking,
-        shared_ptr<Messenger> const& messenger) {
-
-    return Ptr(new SqlQueryRequest(
-        serviceProvider,
-        io_service,
-        worker,
-        query,
-        user,
-        password,
-        maxRows,
-        onFinish,
-        priority,
-        keepTracking,
-        messenger
-    ));
-}
-
-
-SqlQueryRequest::SqlQueryRequest(
-        ServiceProvider::Ptr const& serviceProvider,
-        boost::asio::io_service& io_service,
-        string const& worker,
-        std::string const& query,
-        std::string const& user,
-        std::string const& password,
-        uint64_t maxRows,
-        CallbackType const& onFinish,
-        int priority,
-        bool keepTracking,
-        shared_ptr<Messenger> const& messenger)
-    :   SqlBaseRequest(
-            serviceProvider,
-            io_service,
-            worker,
-            maxRows,
-            priority,
-            keepTracking,
-            messenger
-        ),
-        _onFinish(onFinish) {
-
-    // Finish initializing the request body's content
-    requestBody.set_type(ProtocolRequestSql::QUERY);
-    requestBody.set_query(query);
-    requestBody.set_user(user);
-    requestBody.set_password(password);
-}
-
-
-void SqlQueryRequest::notify(util::Lock const& lock) {
-
-    LOGS(_log, LOG_LVL_DEBUG, context() << __func__ <<
-        "[" << ProtocolRequestSql_Type_Name(requestBody.type()) << "]");
-
-    notifyDefaultImpl<SqlQueryRequest>(lock, _onFinish);
-}
-
-
-SqlCreateDbRequest::Ptr SqlCreateDbRequest::create(
-        ServiceProvider::Ptr const& serviceProvider,
-        boost::asio::io_service& io_service,
-        string const& worker,
-        std::string const& database,
-        CallbackType const& onFinish,
-        int priority,
-        bool keepTracking,
-        shared_ptr<Messenger> const& messenger) {
-
-    return Ptr(new SqlCreateDbRequest(
-        serviceProvider,
-        io_service,
-        worker,
-        database,
-        onFinish,
-        priority,
-        keepTracking,
-        messenger
-    ));
-}
-
-
-SqlCreateDbRequest::SqlCreateDbRequest(
-        ServiceProvider::Ptr const& serviceProvider,
-        boost::asio::io_service& io_service,
-        string const& worker,
-        std::string const& database,
-        CallbackType const& onFinish,
-        int priority,
-        bool keepTracking,
-        shared_ptr<Messenger> const& messenger)
-    :   SqlBaseRequest(serviceProvider,
-                       io_service,
-                       worker,
-                       0 /* maxRows */,
-                       priority,
-                       keepTracking,
-                       messenger),
-        _onFinish(onFinish) {
-
-    // Finish initializing the request body's content
-    requestBody.set_type(ProtocolRequestSql::CREATE_DATABASE);
-    requestBody.set_database(database);
-}
-
-
-void SqlCreateDbRequest::notify(util::Lock const& lock) {
-
-    LOGS(_log, LOG_LVL_DEBUG, context() << __func__ <<
-        "[" << ProtocolRequestSql_Type_Name(requestBody.type()) << "]");
-
-    notifyDefaultImpl<SqlCreateDbRequest>(lock, _onFinish);
-}
-
-
-SqlDeleteDbRequest::Ptr SqlDeleteDbRequest::create(
-        ServiceProvider::Ptr const& serviceProvider,
-        boost::asio::io_service& io_service,
-        string const& worker,
-        std::string const& database,
-        CallbackType const& onFinish,
-        int priority,
-        bool keepTracking,
-        shared_ptr<Messenger> const& messenger) {
-
-    return Ptr(new SqlDeleteDbRequest(
-        serviceProvider,
-        io_service,
-        worker,
-        database,
-        onFinish,
-        priority,
-        keepTracking,
-        messenger
-    ));
-}
-
-
-SqlDeleteDbRequest::SqlDeleteDbRequest(
-        ServiceProvider::Ptr const& serviceProvider,
-        boost::asio::io_service& io_service,
-        string const& worker,
-        std::string const& database,
-        CallbackType const& onFinish,
-        int priority,
-        bool keepTracking,
-        shared_ptr<Messenger> const& messenger)
-    :   SqlBaseRequest(serviceProvider,
-                       io_service,
-                       worker,
-                       0 /* maxRows */,
-                       priority,
-                       keepTracking,
-                       messenger),
-        _onFinish(onFinish) {
-
-    // Finish initializing the request body's content
-    requestBody.set_type(ProtocolRequestSql::DROP_DATABASE);
-    requestBody.set_database(database);
-}
-
-
-void SqlDeleteDbRequest::notify(util::Lock const& lock) {
-
-    LOGS(_log, LOG_LVL_DEBUG, context() << __func__ <<
-        "[" << ProtocolRequestSql_Type_Name(requestBody.type()) << "]");
-
-    notifyDefaultImpl<SqlDeleteDbRequest>(lock, _onFinish);
-}
-
-
-SqlEnableDbRequest::Ptr SqlEnableDbRequest::create(
-        ServiceProvider::Ptr const& serviceProvider,
-        boost::asio::io_service& io_service,
-        string const& worker,
-        std::string const& database,
-        CallbackType const& onFinish,
-        int priority,
-        bool keepTracking,
-        shared_ptr<Messenger> const& messenger) {
-
-    return Ptr(new SqlEnableDbRequest(
-        serviceProvider,
-        io_service,
-        worker,
-        database,
-        onFinish,
-        priority,
-        keepTracking,
-        messenger
-    ));
-}
-
-
-SqlEnableDbRequest::SqlEnableDbRequest(
-        ServiceProvider::Ptr const& serviceProvider,
-        boost::asio::io_service& io_service,
-        string const& worker,
-        std::string const& database,
-        CallbackType const& onFinish,
-        int priority,
-        bool keepTracking,
-        shared_ptr<Messenger> const& messenger)
-    :   SqlBaseRequest(serviceProvider,
-                       io_service,
-                       worker,
-                       0 /* maxRows */,
-                       priority,
-                       keepTracking,
-                       messenger),
-        _onFinish(onFinish) {
-
-    // Finish initializing the request body's content
-    requestBody.set_type(ProtocolRequestSql::ENABLE_DATABASE);
-    requestBody.set_database(database);
-}
-
-
-void SqlEnableDbRequest::notify(util::Lock const& lock) {
-
-    LOGS(_log, LOG_LVL_DEBUG, context() << __func__ <<
-        "[" << ProtocolRequestSql_Type_Name(requestBody.type()) << "]");
-
-    notifyDefaultImpl<SqlEnableDbRequest>(lock, _onFinish);
-}
-
-
-SqlDisableDbRequest::Ptr SqlDisableDbRequest::create(
-        ServiceProvider::Ptr const& serviceProvider,
-        boost::asio::io_service& io_service,
-        string const& worker,
-        std::string const& database,
-        CallbackType const& onFinish,
-        int priority,
-        bool keepTracking,
-        shared_ptr<Messenger> const& messenger) {
-
-    return Ptr(new SqlDisableDbRequest(
-        serviceProvider,
-        io_service,
-        worker,
-        database,
-        onFinish,
-        priority,
-        keepTracking,
-        messenger
-    ));
-}
-
-
-SqlDisableDbRequest::SqlDisableDbRequest(
-        ServiceProvider::Ptr const& serviceProvider,
-        boost::asio::io_service& io_service,
-        string const& worker,
-        std::string const& database,
-        CallbackType const& onFinish,
-        int priority,
-        bool keepTracking,
-        shared_ptr<Messenger> const& messenger)
-    :   SqlBaseRequest(serviceProvider,
-                       io_service,
-                       worker,
-                       0 /* maxRows */,
-                       priority,
-                       keepTracking,
-                       messenger),
-        _onFinish(onFinish) {
-
-    // Finish initializing the request body's content
-    requestBody.set_type(ProtocolRequestSql::DISABLE_DATABASE);
-    requestBody.set_database(database);
-}
-
-
-void SqlDisableDbRequest::notify(util::Lock const& lock) {
-
-    LOGS(_log, LOG_LVL_DEBUG, context() << __func__ <<
-        "[" << ProtocolRequestSql_Type_Name(requestBody.type()) << "]");
-
-    notifyDefaultImpl<SqlDisableDbRequest>(lock, _onFinish);
-}
-
-
-SqlGrantAccessRequest::Ptr SqlGrantAccessRequest::create(
-        ServiceProvider::Ptr const& serviceProvider,
-        boost::asio::io_service& io_service,
-        string const& worker,
-        std::string const& database,
-        std::string const& user,
-        CallbackType const& onFinish,
-        int priority,
-        bool keepTracking,
-        shared_ptr<Messenger> const& messenger) {
-
-    return Ptr(new SqlGrantAccessRequest(
-        serviceProvider,
-        io_service,
-        worker,
-        database,
-        user,
-        onFinish,
-        priority,
-        keepTracking,
-        messenger
-    ));
-}
-
-
-SqlGrantAccessRequest::SqlGrantAccessRequest(
-        ServiceProvider::Ptr const& serviceProvider,
-        boost::asio::io_service& io_service,
-        string const& worker,
-        std::string const& database,
-        std::string const& user,
-        CallbackType const& onFinish,
-        int priority,
-        bool keepTracking,
-        shared_ptr<Messenger> const& messenger)
-    :   SqlBaseRequest(serviceProvider,
-                       io_service,
-                       worker,
-                       0 /* maxRows */,
-                       priority,
-                       keepTracking,
-                       messenger),
-        _onFinish(onFinish) {
-
-    // Finish initializing the request body's content
-    requestBody.set_type(ProtocolRequestSql::GRANT_ACCESS);
-    requestBody.set_database(database);
-    requestBody.set_user(user);
-}
-
-
-void SqlGrantAccessRequest::notify(util::Lock const& lock) {
-
-    LOGS(_log, LOG_LVL_DEBUG, context() << __func__ <<
-        "[" << ProtocolRequestSql_Type_Name(requestBody.type()) << "]");
-
-    notifyDefaultImpl<SqlGrantAccessRequest>(lock, _onFinish);
-}
-
-
-SqlCreateTableRequest::Ptr SqlCreateTableRequest::create(
-        ServiceProvider::Ptr const& serviceProvider,
-        boost::asio::io_service& io_service,
-        string const& worker,
-        std::string const& database,
-        std::string const& table,
-        std::string const& engine,
-        string const& partitionByColumn,
-        std::list<std::pair<std::string, std::string>> const& columns,
-        CallbackType const& onFinish,
-        int priority,
-        bool keepTracking,
-        shared_ptr<Messenger> const& messenger) {
-
-    return Ptr(new SqlCreateTableRequest(
-        serviceProvider,
-        io_service,
-        worker,
-        database,
-        table,
-        engine,
-        partitionByColumn,
-        columns,
-        onFinish,
-        priority,
-        keepTracking,
-        messenger
-    ));
-}
-
-
-SqlCreateTableRequest::SqlCreateTableRequest(
-        ServiceProvider::Ptr const& serviceProvider,
-        boost::asio::io_service& io_service,
-        string const& worker,
-        std::string const& database,
-        std::string const& table,
-        std::string const& engine,
-        string const& partitionByColumn,
-        std::list<std::pair<std::string, std::string>> const& columns,
-        CallbackType const& onFinish,
-        int priority,
-        bool keepTracking,
-        shared_ptr<Messenger> const& messenger)
-    :   SqlBaseRequest(
-            serviceProvider,
-            io_service,
-            worker,
-            0,          /* maxRows */
-            priority,
-            keepTracking,
-            messenger
-        ),
-        _onFinish(onFinish) {
-
-    // Finish initializing the request body's content
-    requestBody.set_type(ProtocolRequestSql::CREATE_TABLE);
-    requestBody.set_database(database);
-    requestBody.set_table(table);
-    requestBody.set_engine(engine);
-    requestBody.set_partition_by_column(partitionByColumn);
-    for (auto&& column: columns) {
-        auto out = requestBody.add_columns();
-        out->set_name(column.first);
-        out->set_type(column.second);
-    }
-}
-
-
-void SqlCreateTableRequest::notify(util::Lock const& lock) {
-
-    LOGS(_log, LOG_LVL_DEBUG, context() << __func__ <<
-        "[" << ProtocolRequestSql_Type_Name(requestBody.type()) << "]");
-
-    notifyDefaultImpl<SqlCreateTableRequest>(lock, _onFinish);
-}
-
-
-SqlDeleteTableRequest::Ptr SqlDeleteTableRequest::create(
-        ServiceProvider::Ptr const& serviceProvider,
-        boost::asio::io_service& io_service,
-        string const& worker,
-        std::string const& database,
-        std::string const& table,
-        CallbackType const& onFinish,
-        int priority,
-        bool keepTracking,
-        shared_ptr<Messenger> const& messenger) {
-
-    return Ptr(new SqlDeleteTableRequest(
-        serviceProvider,
-        io_service,
-        worker,
-        database,
-        table,
-        onFinish,
-        priority,
-        keepTracking,
-        messenger
-    ));
-}
-
-
-SqlDeleteTableRequest::SqlDeleteTableRequest(
-        ServiceProvider::Ptr const& serviceProvider,
-        boost::asio::io_service& io_service,
-        string const& worker,
-        std::string const& database,
-        std::string const& table,
-        CallbackType const& onFinish,
-        int priority,
-        bool keepTracking,
-        shared_ptr<Messenger> const& messenger)
-    :   SqlBaseRequest(
-            serviceProvider,
-            io_service,
-            worker,
-            0,          /* maxRows */
-            priority,
-            keepTracking,
-            messenger
-        ),
-        _onFinish(onFinish) {
-
-    // Finish initializing the request body's content
-    requestBody.set_type(ProtocolRequestSql::DROP_TABLE);
-    requestBody.set_database(database);
-    requestBody.set_table(table);
-}
-
-
-void SqlDeleteTableRequest::notify(util::Lock const& lock) {
-
-    LOGS(_log, LOG_LVL_DEBUG, context() << __func__ <<
-        "[" << ProtocolRequestSql_Type_Name(requestBody.type()) << "]");
-
-    notifyDefaultImpl<SqlDeleteTableRequest>(lock, _onFinish);
-}
-
-
-SqlRemoveTablePartitionsRequest::Ptr SqlRemoveTablePartitionsRequest::create(
-        ServiceProvider::Ptr const& serviceProvider,
-        boost::asio::io_service& io_service,
-        string const& worker,
-        std::string const& database,
-        std::string const& table,
-        CallbackType const& onFinish,
-        int priority,
-        bool keepTracking,
-        shared_ptr<Messenger> const& messenger) {
-
-    return Ptr(new SqlRemoveTablePartitionsRequest(
-        serviceProvider,
-        io_service,
-        worker,
-        database,
-        table,
-        onFinish,
-        priority,
-        keepTracking,
-        messenger
-    ));
-}
-
-
-SqlRemoveTablePartitionsRequest::SqlRemoveTablePartitionsRequest(
-        ServiceProvider::Ptr const& serviceProvider,
-        boost::asio::io_service& io_service,
-        string const& worker,
-        std::string const& database,
-        std::string const& table,
-        CallbackType const& onFinish,
-        int priority,
-        bool keepTracking,
-        shared_ptr<Messenger> const& messenger)
-    :   SqlBaseRequest(
-            serviceProvider,
-            io_service,
-            worker,
-            0,          /* maxRows */
-            priority,
-            keepTracking,
-            messenger
-        ),
-        _onFinish(onFinish) {
-
-    // Finish initializing the request body's content
-    requestBody.set_type(ProtocolRequestSql::REMOVE_TABLE_PARTITIONING);
-    requestBody.set_database(database);
-    requestBody.set_table(table);
-}
-
-
-void SqlRemoveTablePartitionsRequest::notify(util::Lock const& lock) {
-
-    LOGS(_log, LOG_LVL_DEBUG, context() << __func__ <<
-        "[" << ProtocolRequestSql_Type_Name(requestBody.type()) << "]");
-
-    notifyDefaultImpl<SqlRemoveTablePartitionsRequest>(lock, _onFinish);
-}
-
-
-SqlDeleteTablePartitionRequest::Ptr SqlDeleteTablePartitionRequest::create(
-        ServiceProvider::Ptr const& serviceProvider,
-        boost::asio::io_service& io_service,
-        string const& worker,
-        std::string const& database,
-        std::string const& table,
-        uint32_t transactionId,
-        CallbackType const& onFinish,
-        int priority,
-        bool keepTracking,
-        shared_ptr<Messenger> const& messenger) {
-
-    return Ptr(new SqlDeleteTablePartitionRequest(
-        serviceProvider,
-        io_service,
-        worker,
-        database,
-        table,
-        transactionId,
-        onFinish,
-        priority,
-        keepTracking,
-        messenger
-    ));
-}
-
-
-SqlDeleteTablePartitionRequest::SqlDeleteTablePartitionRequest(
-        ServiceProvider::Ptr const& serviceProvider,
-        boost::asio::io_service& io_service,
-        string const& worker,
-        std::string const& database,
-        std::string const& table,
-        uint32_t transactionId,
-        CallbackType const& onFinish,
-        int priority,
-        bool keepTracking,
-        shared_ptr<Messenger> const& messenger)
-    :   SqlBaseRequest(
-            serviceProvider,
-            io_service,
-            worker,
-            0,          /* maxRows */
-            priority,
-            keepTracking,
-            messenger
-        ),
-        _onFinish(onFinish) {
-
-    // Finish initializing the request body's content
-    requestBody.set_type(ProtocolRequestSql::DROP_TABLE_PARTITION);
-    requestBody.set_database(database);
-    requestBody.set_table(table);
-    requestBody.set_transaction_id(transactionId);
-}
-
-
-void SqlDeleteTablePartitionRequest::notify(util::Lock const& lock) {
-
-    LOGS(_log, LOG_LVL_DEBUG, context() << __func__ <<
-        "[" << ProtocolRequestSql_Type_Name(requestBody.type()) << "]");
-
-    notifyDefaultImpl<SqlDeleteTablePartitionRequest>(lock, _onFinish);
 }
 
 }}} // namespace lsst::qserv::replica

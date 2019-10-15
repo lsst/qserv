@@ -36,7 +36,16 @@
 #include "replica/ReplicationRequest.h"
 #include "replica/ServiceManagementRequest.h"
 #include "replica/ServiceProvider.h"
-#include "replica/SqlRequest.h"
+#include "replica/SqlCreateDbRequest.h"
+#include "replica/SqlCreateTableRequest.h"
+#include "replica/SqlDeleteDbRequest.h"
+#include "replica/SqlDeleteTablePartitionRequest.h"
+#include "replica/SqlDeleteTableRequest.h"
+#include "replica/SqlDisableDbRequest.h"
+#include "replica/SqlEnableDbRequest.h"
+#include "replica/SqlGrantAccessRequest.h"
+#include "replica/SqlQueryRequest.h"
+#include "replica/SqlRemoveTablePartitionsRequest.h"
 #include "replica/SqlSchemaUtils.h"
 #include "replica/StatusRequest.h"
 #include "replica/StopRequest.h"
@@ -638,7 +647,7 @@ int ControllerApp::runImpl() {
 
         request = controller->sqlQuery(
             _workerName, _sqlQuery, _sqlUser, _sqlPassword, _sqlMaxRows,
-            SqlBaseRequest::extendedPrinter,
+            SqlRequest::extendedPrinter,
             _priority, not _doNotTrackRequest
         );
 
@@ -646,7 +655,7 @@ int ControllerApp::runImpl() {
 
         request = controller->sqlCreateDb(
             _workerName, _sqlDatabase,
-            SqlBaseRequest::extendedPrinter,
+            SqlRequest::extendedPrinter,
             _priority, not _doNotTrackRequest
         );
 
@@ -654,7 +663,7 @@ int ControllerApp::runImpl() {
 
         request = controller->sqlDeleteDb(
             _workerName, _sqlDatabase,
-            SqlBaseRequest::extendedPrinter,
+            SqlRequest::extendedPrinter,
             _priority, not _doNotTrackRequest
         );
 
@@ -662,7 +671,7 @@ int ControllerApp::runImpl() {
 
         request = controller->sqlEnableDb(
             _workerName, _sqlDatabase,
-            SqlBaseRequest::extendedPrinter,
+            SqlRequest::extendedPrinter,
             _priority, not _doNotTrackRequest
         );
 
@@ -670,7 +679,7 @@ int ControllerApp::runImpl() {
 
         request = controller->sqlDisableDb(
             _workerName, _sqlDatabase,
-            SqlBaseRequest::extendedPrinter,
+            SqlRequest::extendedPrinter,
             _priority, not _doNotTrackRequest
         );
 
@@ -678,7 +687,7 @@ int ControllerApp::runImpl() {
 
         request = controller->sqlGrantAccess(
             _workerName, _sqlDatabase, _sqlUser,
-            SqlBaseRequest::extendedPrinter,
+            SqlRequest::extendedPrinter,
             _priority, not _doNotTrackRequest
         );
 
@@ -687,7 +696,7 @@ int ControllerApp::runImpl() {
         request = controller->sqlCreateTable(
             _workerName, _sqlDatabase, _sqlTable, _sqlEngine, _sqlPartitionByColumn,
             SqlSchemaUtils::readFromTextFile(_sqlSchemaFile),
-            SqlBaseRequest::extendedPrinter,
+            SqlRequest::extendedPrinter,
             _priority, not _doNotTrackRequest
         );
 
@@ -695,7 +704,7 @@ int ControllerApp::runImpl() {
 
         request = controller->sqlDeleteTable(
             _workerName, _sqlDatabase, _sqlTable,
-            SqlBaseRequest::extendedPrinter,
+            SqlRequest::extendedPrinter,
             _priority, not _doNotTrackRequest
         );
 
@@ -703,7 +712,7 @@ int ControllerApp::runImpl() {
 
         request = controller->sqlRemoveTablePartitions(
             _workerName, _sqlDatabase, _sqlTable,
-            SqlBaseRequest::extendedPrinter,
+            SqlRequest::extendedPrinter,
             _priority, not _doNotTrackRequest
         );
 
@@ -711,7 +720,7 @@ int ControllerApp::runImpl() {
 
         request = controller->sqlDeleteTablePartition(
             _workerName, _sqlDatabase, _sqlTable, _transactionId,
-            SqlBaseRequest::extendedPrinter,
+            SqlRequest::extendedPrinter,
             _priority, not _doNotTrackRequest
         );
 
