@@ -31,7 +31,17 @@
 // Qserv headers
 #include "replica/Configuration.h"
 #include "replica/Controller.h"
+#include "replica/SqlCreateDbJob.h"
+#include "replica/SqlCreateTableJob.h"
+#include "replica/SqlDeleteDbJob.h"
+#include "replica/SqlDeleteTableJob.h"
+#include "replica/SqlDeleteTablePartitionJob.h"
+#include "replica/SqlDisableDbJob.h"
+#include "replica/SqlEnableDbJob.h"
+#include "replica/SqlGrantAccessJob.h"
 #include "replica/SqlJob.h"
+#include "replica/SqlQueryJob.h"
+#include "replica/SqlRemoveTablePartitionsJob.h"
 #include "replica/SqlResultSet.h"
 #include "replica/SqlSchemaUtils.h"
 
