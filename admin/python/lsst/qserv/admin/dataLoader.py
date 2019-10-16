@@ -151,7 +151,7 @@ class DataLoader(object):
         #    pre-partitioned data must exist already and we skip calling partitioner
 
         # is table partitioned (or pre-partitioned)?
-        self.partitioned = self.partOptions.partitioned
+        self.partitioned = self.partOptions.partitioned and not (self.oneTable and self.skipPart)
 
         # do we need to run partitioner?
         self.callPartitioner = self.partitioned and not self.skipPart
@@ -225,7 +225,7 @@ class DataLoader(object):
 
         # Make a table of empty chunks
         self._makeEmptyChunksTable(database)
-        
+
         # optionally make emptyChunks file
         self._makeEmptyChunks()
 
@@ -735,37 +735,37 @@ class DataLoader(object):
         """
         Generate empty chunks table in qservMeta, should be called after loading is complete.
         """
-    
+
         # only makes sense for true partitioned tables
         if not self.partitioned:
             self._log.info('Table is not partitioned, will not make empty chunks table for %s', database)
             return
-        
+
         if self.cssDb is None:
             self._log.info('No cssDb, nowhere to put empty chunks table for %s', database)
             return
-        
-       
+
+
         # Get a unique name for the EmptyChunks table.
         if self.css is None:
             self._log.info('No css, cannot create name for EmptyChunks table for %s', database)
             return
 
-        tableName = self.css.getEmptyChunksTableName(database) 
-        
+        tableName = self.css.getEmptyChunksTableName(database)
+
         # Delete the existing empty chunks table
         self.czarWmgr.dropTable(self.cssDb, tableName, dropChunks=False, mustExist=False)
-        
+
         # make a table for the empty chunks
         schema = self.css.getEmptyChunksSchema(database);
         self.czarWmgr.createTable(self.cssDb, tableName, schema=schema)
-        
+
         # max possible number of chunks
         nStripes = int(self.partOptions['part.num-stripes'])
         maxChunks = 2 * nStripes ** 2
 
         self._log.info('Making empty chunk list (max.chunk=%d)', maxChunks)
-                
+
         # dump it into a in-memory file, loadData expects binary mode
         data = BytesIO()
         for chunk in range(maxChunks):
@@ -776,7 +776,7 @@ class DataLoader(object):
         # send that file to czar
         self.czarWmgr.loadData(self.cssDb, tableName, data)
 
-                
+
     def _makeEmptyChunks(self):
         """
         Generate empty chunks file, should be called after loading is complete.
