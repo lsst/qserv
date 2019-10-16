@@ -151,7 +151,7 @@ class DataLoader(object):
         #    pre-partitioned data must exist already and we skip calling partitioner
 
         # is table partitioned (or pre-partitioned)?
-        self.partitioned = self.partOptions.partitioned
+        self.partitioned = self.partOptions.partitioned and not (self.oneTable and self.skipPart)
 
         # do we need to run partitioner?
         self.callPartitioner = self.partitioned and not self.skipPart
