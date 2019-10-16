@@ -225,7 +225,9 @@ std::string UserQuerySelect::getResultQuery() const {
                     _infileMerger->getError().getMsg();
             }
             for (auto const& column : schema.columns) {
-                selectList.addValueExpr(query::ValueExpr::newColumnExpr(column.name));
+                if (column.name != CHUNK_COLUMN && column.name != SUB_CHUNK_COLUMN) {
+                    selectList.addValueExpr(query::ValueExpr::newColumnExpr(column.name));
+                }
             }
         } else {
             // Add a column that describes the top-level ValueExpr.
