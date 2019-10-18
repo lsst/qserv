@@ -146,9 +146,9 @@ bool MySqlConnection::connectToDb(SqlErrorObject& errObj) {
         _connection->closeMySqlConn();
     }
 
-    LOGS(_log, LOG_LVL_DEBUG, "connectToDb trying to connect");
+    LOGS(_log, LOG_LVL_DEBUG, "connectToDb trying to connect " << _connection->dump());
     if (!_connection->connect()) {
-        LOGS(_log, LOG_LVL_ERROR, "connectToDb failed to connect!");
+        LOGS(_log, LOG_LVL_ERROR, "connectToDb failed to connect! " << _connection->dump());
         _setErrorObject(errObj);
         return false;
     }

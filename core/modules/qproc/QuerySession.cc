@@ -64,6 +64,7 @@
 #include "qana/ScanTablePlugin.h"
 #include "qana/TablePlugin.h"
 #include "qana/WherePlugin.h"
+#include "qproc/DatabaseModels.h"
 #include "qproc/QueryProcessingBug.h"
 #include "query/AreaRestrictor.h"
 #include "query/QueryContext.h"
@@ -298,13 +299,22 @@ void QuerySession::finalize() {
 
 
 QuerySession::QuerySession(Test& t)
-    : _css(t.css), _defaultDb(t.defaultDb), _sqlConfig(t.sqlConfig) {
+    : _css(t.css), _defaultDb(t.defaultDb) {
+    sql::SqlConfig sqlConfig(t.sqlConfig);
+    _databaseModels = DatabaseModels::create(sqlConfig, sqlConfig);
     _initContext();
 }
 
 
+QuerySession::QuerySession() {
+    sql::SqlConfig sqlConfig(sql::SqlConfig::MOCK);
+    /// For this testing, the local sql instance is also the master.
+    _databaseModels = DatabaseModels::create(sqlConfig, sqlConfig);
+}
+
+
 void QuerySession::_initContext() {
-    _context = std::make_shared<query::QueryContext>(_defaultDb, _css, _sqlConfig);
+    _context = std::make_shared<query::QueryContext>(_defaultDb, _css, _databaseModels);
 }
 
 

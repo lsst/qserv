@@ -29,6 +29,13 @@ set -e
 
 QSERV_RUN_DIR=/qserv/run
 
+# Wait for configure script to run.
+while [ ! -f "$QSERV_RUN_DIR"/configure_done ]
+do
+    echo "Wait for configure to finish on $(hostname)"
+    sleep 2
+done
+
 # Wait for Qserv services to be up and running
 while ! "$QSERV_RUN_DIR"/bin/qserv-status.sh > /dev/null
 do

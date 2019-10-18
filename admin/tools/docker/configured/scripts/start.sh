@@ -62,7 +62,8 @@ then
           print}' /tmp/qserv-meta.conf.orig > "$QSERV_RUN_DIR/qserv-meta.conf"
     bash -c ". /qserv/stack/loadLSST.bash && setup qserv -t qserv-dev && \
              qserv-configure.py --qserv-run-dir '$QSERV_RUN_DIR' \
-                                --qserv-custom-dir '$QSERV_CUSTOM_DIR' --etc"
+                                --qserv-custom-dir '$QSERV_CUSTOM_DIR' --etc \
+             && touch '$QSERV_RUN_DIR'/configure_done"
 else
     echo "ERROR: \$QSERV_MASTER is unset"
     exit 1
@@ -70,5 +71,12 @@ fi
 
 # TODO: wmgr.secret should be retrieved at container execution time
 cp $QSERV_RUN_DIR/etc/wmgr.secret.example $QSERV_RUN_DIR/etc/wmgr.secret
+
+# Wait for configure script to run.
+while [ ! -f "$QSERV_RUN_DIR"/configure_done ]
+do
+    echo "start.sh - wait for configure to finish on $(hostname)"
+    sleep 1
+done
 
 "$QSERV_RUN_DIR"/bin/qserv-start.sh && tail -f /dev/null

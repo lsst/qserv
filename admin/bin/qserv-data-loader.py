@@ -188,6 +188,8 @@ class Loader(object):
                             help='Input data files (CSV or anything that partitioner accepts). '
                             'Input can be empty, e.g. in case of defining SQL view instead of '
                             'regular table.')
+        parser.add_argument('-z', '--czar', action='append', dest='czars',
+                            help='Name of czar which should be informed of new database. Repeatable.')
 
         # parse all arguments
         self.args = parser.parse_args()
@@ -219,8 +221,16 @@ class Loader(object):
                   logging.DEBUG: lsst.log.DEBUG}
         lsst.log.setLevel('', levels.get(logger.level, lsst.log.DEBUG))
 
-        # connect to czar server
+        # connect to czar/master server
         czarWmgr = WmgrClient(self.args.czarHost, self.args.czarPort, secretFile=self.args.secret)
+        
+        # Connect to listed czars
+        czarWmgrList = []
+        if self.args.czars is not None:
+            for czar in self.args.czars:
+                cWmgr = WmgrClient(czar, self.args.czarPort, secretFile=self.args.secret)
+                czarWmgrList.append(cWmgr)
+        logger.debug("czarWmgrList=%s", czarWmgrList)
 
         # instantiate CSS interface
         css_inst = None
@@ -237,6 +247,7 @@ class Loader(object):
         # instantiate loader
         self.loader = DataLoader(self.args.configFiles,
                                  czarWmgr,
+                                 czarWmgrList=czarWmgrList,
                                  workerWmgrMap=workerWmgrMap,
                                  chunksDir=self.args.chunksDir,
                                  keepChunks=self.args.keepChunks,

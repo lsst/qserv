@@ -2,9 +2,7 @@
 # proxy-address = :4040
 proxy-address = :{{MYSQLPROXY_PORT}}
 
-# proxy-backend-addresses = 127.0.0.1:3306
-# TODO : is it usefull for multi node ?
-proxy-backend-addresses = {{MYSQLD_HOST}}:{{MYSQLD_PORT}}
+proxy-backend-addresses = 127.0.0.1:3306
 
 log-file={{QSERV_LOG_DIR}}/mysql-proxy.log
 log-level=debug

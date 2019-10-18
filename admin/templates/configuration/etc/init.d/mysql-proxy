@@ -34,6 +34,15 @@ check_writable ${NAME} "QSERV_LOG_DIR"
 check_readable ${NAME} "LUA_DIR"
 check_readable ${NAME} "QSERV_DIR"
 
+prime_qserv() {
+    # This query is expected to fail but it causes the proxy to load the qserv czar and start it.
+    # This is important as qserv-czar cannot register itself until this happens.
+    # It also reduces the amount of time needed to answer the first query to a czar significantly.
+    # TODO: See if changing the proxy to load qserv when it starts instead of waiting for a query
+    #       is reasonable and appropriate.
+    ${MYSQL_DIR}/bin/mysql -uqsmaster -P4040 -h127.0.0.1 -e "SELECT dummyCol FROM dummyDb.dummyTb LIMIT 1"
+}
+
 # These parameters should be in mysql-proxy configuration file
 err_msg="Failure while starting ${NAME}:"
 if [ -z "${QSERV_UNIX_USER}" ]; then
@@ -77,6 +86,7 @@ start_cmd() {
     start -p $pidfile -l $lockfile $NAME "${cmd}"
     ret=$?
     [ $ret -eq 0 ] || echo "See startup logfile : ${logfile}"
+    prime_qserv
     return $ret
 }
 

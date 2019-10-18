@@ -63,50 +63,61 @@ if [ $# -ne 0 ] ; then
     exit 2
 fi
 
-# Build the master image
+
+makeDockerfile() {
+    awk \
+        -v NODE_TYPE=${NODETYPE} \
+        -v DOCKER_IMAGE=${DOCKER_IMAGE} \
+        -v COMMENT_ON_WORKER=${COMMENTONWORKER} \
+        '{gsub(/<NODE_TYPE>/, NODE_TYPE);
+         gsub(/<DOCKER_IMAGE>/, DOCKER_IMAGE);
+         gsub(/<COMMENT_ON_WORKER>/, COMMENT_ON_WORKER);
+         print}' "$DOCKERDIR/Dockerfile.tpl" > "$DOCKERFILE"
+         
+    printf "Building %s image %s from %s\n" "$TARGET" "$TAG" "$DOCKERDIR"
+    docker build --tag="$TAG" "$DOCKERDIR"
+    printf "Image %s built successfully\n" "$TAG"
+    
+    if [ "$PUSH_TO_HUB" = "true" ]; then
+        docker push "$TAG"
+        printf "Image %s pushed successfully\n" "$TAG"
+    fi
+    
+}
+
 
 DOCKERDIR="$DIR/configured"
 DOCKERFILE="$DOCKERDIR/Dockerfile"
 
 # Templating is required here
 # docker build --build-arg=[] is too restrictive
-awk \
--v NODE_TYPE="-m" \
--v DOCKER_IMAGE="$DOCKER_IMAGE" \
--v COMMENT_ON_WORKER="" \
-'{gsub(/<NODE_TYPE>/, NODE_TYPE);
-  gsub(/<DOCKER_IMAGE>/, DOCKER_IMAGE);
-  gsub(/<COMMENT_ON_WORKER>/, COMMENT_ON_WORKER);
-  print}' "$DOCKERDIR/Dockerfile.tpl" > "$DOCKERFILE"
 
+# Build the master image
+NODETYPE="-m"
+COMMENTONWORKER=""
+TARGET="master"
 TAG="${DOCKER_IMAGE}_master"
-printf "Building master image %s from %s\n" "$TAG" "$DOCKERDIR"
-docker build --tag="$TAG" "$DOCKERDIR"
-printf "Image %s built successfully\n" "$TAG"
+makeDockerfile
 
-if [ "$PUSH_TO_HUB" = "true" ]; then
-    docker push "$TAG"
-    printf "Image %s pushed successfully\n" "$TAG"
-fi
 
+# Build the master-multi image
+NODETYPE="-c"
+COMMENTONWORKER=""
+TARGET="master_multi"
+TAG="${DOCKER_IMAGE}_master_multi"
+makeDockerfile
+
+
+# Build the master-shared image
+NODETYPE="-s"
+COMMENTONWORKER=""
+TARGET="master_shared"
+TAG="${DOCKER_IMAGE}_master_shared"
+makeDockerfile
 
 # Build the worker image
-
-awk \
--v NODE_TYPE="" \
--v DOCKER_IMAGE="$DOCKER_IMAGE" \
--v COMMENT_ON_WORKER="# " \
-'{gsub(/<NODE_TYPE>/, NODE_TYPE);
-  gsub(/<DOCKER_IMAGE>/, DOCKER_IMAGE);
-  gsub(/<COMMENT_ON_WORKER>/, COMMENT_ON_WORKER);
-  print}' "$DOCKERDIR/Dockerfile.tpl" > "$DOCKERFILE"
-
+NODETYPE=""
+COMMENTONWORKER="# "
+TARGET="worker"
 TAG="${DOCKER_IMAGE}_worker"
-printf "Building worker image %s from %s\n" "$TAG" "$DOCKERDIR"
-docker build --tag="$TAG" "$DOCKERDIR"
-printf "Image %s built successfully\n" "$TAG"
-
-if [ "$PUSH_TO_HUB" = "true" ]; then
-    docker push "$TAG"
-    printf "Image %s pushed successfully\n" "$TAG"
-fi
+makeDockerfile

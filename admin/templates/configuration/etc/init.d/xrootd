@@ -22,13 +22,21 @@ DIR=$(cd "$(dirname "$0")"; pwd -P)
 NAME="xrootd"
 DAEMON=${NAME}
 
+XRLOG=/tmp/xrootd.init.log
+touch $XRLOG
+
+echo "daemon $DAEMON  dir $DIR" >> $XRLOG
+
 source_sysconfig ${DIR}
+
+echo "node_t $NODE_TYPE  dir $DIR" >> $XRLOG
 
 # Check variables which are not controlled by application
 check_writable ${NAME} "QSERV_RUN_DIR"
 check_writable ${NAME} "QSERV_PID_DIR"
 check_writable ${NAME} "QSERV_LOG_DIR"
 check_readable ${NAME} "XROOTD_DIR"
+
 
 err_msg="Failure while starting ${NAME}:"
 if [ -z "${NODE_TYPE}" ]
@@ -62,19 +70,26 @@ export LSST_LOG_CONFIG="${QSERV_RUN_DIR}/etc/log4cxx.worker.properties"
 pid_file_name() {
     local pidfile=${PID_DIR}/$1.pid
     test "${1}${NODE_TYPE}" = "cmsdmaster" && pidfile=${PID_DIR}/$1.mangr.pid
+    test "${1}${NODE_TYPE}" = "cmsdmaster-shared" && pidfile=${PID_DIR}/$1.mangr.pid
     echo $pidfile
 }
 
 # Environment variables can vary from on container session to another and making them 
-# reliably consistent is difficult. Instead, use ".pid" version if that file exists,
-# otherwise use the ".mangr.pid" file version.
+# reliably consistent is difficult. Instead, use "mangr.pid" version if that file exists,
+# otherwise use the ".pid" file version.
 pid_file_name_check() {
-    local pf=${PID_DIR}/$1.pid
+    local pf=${PID_DIR}/$1.mangr.pid
     if [ ! -f "$pf" ]; then
-        pf=${PID_DIR}/$1.mangr.pid
+        pf=${PID_DIR}/$1.pid
     fi
     echo $pf
 }
+
+echo "node_type=$NODE_TYPE" >> $XRLOG
+echo "instance=$XROOTD_INSTANCE_NAME" >> $XRLOG
+echo "services=$XRD_SERVICES" >> $XRLOG
+echo "pid_dir=$PID_DIR" >> $XRLOG
+echo "log_dir=$LOG_DIR" >> $XRLOG
 
 start_service() {
 
@@ -91,6 +106,9 @@ start_service() {
 
     console_logfile="${LOG_DIR}/xrootd.log"
     cmd="${BINARY} -c ${XROOTD_CONFIG} -l ${logfile} -n ${XROOTD_INSTANCE_NAME} -I v4  -+xrdssi ${XRDSSI_CONFIG} >>${console_logfile} 2>&1 &"
+    echo "pidfile=$pidfile"  >> $XRLOG
+    echo "lockfile=$lockfile"  >> $XRLOG
+    echo "cmd=$cmd" >> $XRLOG
     start -p ${pidfile} -l ${lockfile} ${prog} "${cmd}"
     ret=$?
     # xrootd modifies log file path, try to guess it here too for logging

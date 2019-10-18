@@ -36,6 +36,7 @@
 #include "lsst/log/Log.h"
 
 // Qserv headers
+#include "qproc/DatabaseModels.h"
 #include "query/ColumnRef.h"
 #include "query/JoinRef.h"
 #include "sql/SqlConfig.h"
@@ -223,12 +224,11 @@ std::string QueryContext::columnToTablesMapToString() const {
 }
 
 
-/// Get the table schema from the mysqlSchemaConfig database. Primarily, this is
+/// Get the table schema from the databaseModels. Primarily, this is
 /// used to map column names to particular tables.
 std::vector<std::string> QueryContext::_getTableSchema(std::string const& dbName,
-                                                      std::string const& tableName) {
-    auto sqlConn = sql::SqlConnectionFactory::make(sqlConfig);
-    return sqlConn->listColumns(dbName, tableName);
+                                                       std::string const& tableName) {
+    return databaseModels->listColumns(dbName, tableName);
 }
 
 

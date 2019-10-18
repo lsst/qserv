@@ -16,6 +16,13 @@ if named master
     all.role manager
 
 ############################
+# if: multi-czar shared master
+############################
+else if named master-shared
+
+     all.role manager
+
+############################
 # else: server nodes
 ############################
 else

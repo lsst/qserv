@@ -102,6 +102,8 @@ void Foreman::processTask(std::shared_ptr<wbase::Task> const& task) {
             auto qr = wdb::QueryRunner::newQueryRunner(task, _chunkResourceMgr, _mySqlConfig);
             qr->runQuery();
         }
+        // Transmission is done, but 'task' contains statistics that are still useful.
+        task->sendChannel.reset(); // Frees its xrdsvc::SsiRequest object.
     };
 
     task->setFunc(func);

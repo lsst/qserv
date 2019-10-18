@@ -1,5 +1,5 @@
 # LSST Data Management System
-# Copyright 2015 AURA/LSST.
+# Copyright 2015-2019 LSST.
 #
 # This product includes software developed by the
 # LSST Project (http://www.lsst.org/).
@@ -262,8 +262,12 @@ class Templater(object):
 
             if config['qserv']['node_type'] == 'mono':
                 comment_mono_node = '#MONO-NODE# '
+                qservMaster = '127.0.0.1'
+                mysqldSharedHost = '127.0.0.1'
             else:
                 comment_mono_node = ''
+                qservMaster = config['qserv']['master']
+                mysqldSharedHost = config['mysqld_shared']['host']
 
             scisql_dir = os.environ.get('SCISQL_DIR')
             if scisql_dir is None:
@@ -297,6 +301,8 @@ class Templater(object):
                 'MYSQLD_SOCK': config['mysqld']['socket'],
                 'MYSQLD_USER_MONITOR': config['mysqld']['user_monitor'],
                 'MYSQLD_USER_QSERV': config['mysqld']['user_qserv'],
+                'MYSQLDSHARED_HOST': mysqldSharedHost,
+                'MYSQLDSHARED_PORT': config['mysqld_shared']['port'],
                 'MYSQL_DIR': config['mysqld']['base_dir'],
                 'MYSQLPROXY_DIR': config['mysql_proxy']['base_dir'],
                 'MYSQLPROXY_PORT': config['mysql_proxy']['port'],
@@ -307,7 +313,7 @@ class Templater(object):
                 'QSERV_DATA_DIR': config['qserv']['qserv_data_dir'],
                 'QSERV_DIR': config['qserv']['base_dir'],
                 'QSERV_LOG_DIR': config['qserv']['log_dir'],
-                'QSERV_MASTER': config['qserv']['master'],
+                'QSERV_MASTER': qservMaster,
                 'QSERV_META_CONFIG_FILE': config['qserv']['meta_config_file'],
                 'QSERV_PID_DIR': os.path.join(config['qserv']['qserv_run_dir'], "var", "run"),
                 'QSERV_RUN_DIR': config['qserv']['qserv_run_dir'],
@@ -320,7 +326,7 @@ class Templater(object):
                 'WMGR_USER_NAME': random_string(string.ascii_letters + string.digits, 12),
                 'XROOTD_ADMIN_DIR': os.path.join(config['qserv']['qserv_run_dir'], 'tmp'),
                 'XROOTD_DIR': config['xrootd']['base_dir'],
-                'XROOTD_MANAGER_HOST': config['qserv']['master'],
+                'XROOTD_MANAGER_HOST': qservMaster,
                 'XROOTD_PORT': config['xrootd']['xrootd_port'],
             }
 

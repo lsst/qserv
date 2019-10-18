@@ -38,6 +38,7 @@ UserQuerySharedResources::UserQuerySharedResources(std::shared_ptr<css::CssAcces
                                                    std::shared_ptr<qmeta::QStatus> queryStatsData_,
                                                    std::shared_ptr<qmeta::QMetaSelect> qMetaSelect_,
                                                    std::shared_ptr<sql::SqlConnection> resultDbConn_,
+                                                   std::shared_ptr<qproc::DatabaseModels> const& dbModels_,
                                                    std::string const& czarName)
         : css(css_),
         mysqlResultConfig(mysqlResultConfig_),
@@ -45,7 +46,9 @@ UserQuerySharedResources::UserQuerySharedResources(std::shared_ptr<css::CssAcces
         queryMetadata(queryMetadata_),
         queryStatsData(queryStatsData_),
         qMetaSelect(qMetaSelect_),
-        resultDbConn(resultDbConn_)
+        resultDbConn(resultDbConn_),
+        databaseModels(dbModels_)
+
 {
     // register czar in QMeta
     // TODO: check that czar with the same name is not active already?

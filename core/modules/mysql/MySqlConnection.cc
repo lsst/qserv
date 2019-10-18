@@ -30,6 +30,7 @@
 
 // System headers
 #include <cstddef>
+#include <sstream>
 
 // Third-party headers
 
@@ -230,6 +231,17 @@ MYSQL* MySqlConnection::_connectHelper() {
         return c;
     }
     return m;
+}
+
+
+std::string MySqlConnection::dump() {
+    std::ostringstream os;
+    os << "hostN=" << _sqlConfig->hostname <<
+          " sock=" << _sqlConfig->socket <<
+          " uname=" << _sqlConfig->username <<
+          " dbN=" << _sqlConfig->dbName <<
+          " port=" << _sqlConfig->port;
+    return os.str();
 }
 
 }}} // namespace lsst::qserv::mysql

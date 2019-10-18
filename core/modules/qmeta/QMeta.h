@@ -86,7 +86,7 @@ public:
     virtual ~QMeta() {}
 
     /**
-     *  @brief Return czar ID given czar "name".
+     *  @brief Return czar ID given czar "name"
      *
      *  Negative number is returned if czar does not exist.
      *

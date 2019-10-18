@@ -50,6 +50,7 @@ namespace qmeta {
     class QMetaSelect;
 }
 namespace qproc {
+    class DatabaseModels;
     class SecondaryIndex;
 }
 namespace sql {
@@ -75,6 +76,7 @@ public:
                              std::shared_ptr<qmeta::QStatus> queryStatsData_,
                              std::shared_ptr<qmeta::QMetaSelect> qMetaSelect_,
                              std::shared_ptr<sql::SqlConnection> resultDbConn_,
+                             std::shared_ptr<qproc::DatabaseModels> const& databaseModels_,
                              std::string const& czarName);
 
     UserQuerySharedResources(UserQuerySharedResources const& rhs) = default;
@@ -87,6 +89,7 @@ public:
     std::shared_ptr<qmeta::QStatus> queryStatsData;
     std::shared_ptr<qmeta::QMetaSelect> qMetaSelect;
     std::shared_ptr<sql::SqlConnection> resultDbConn;
+    std::shared_ptr<qproc::DatabaseModels> databaseModels;
     qmeta::CzarId qMetaCzarId;   ///< Czar ID in QMeta database
 
     /**

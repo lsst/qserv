@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2014-2016 AURA/LSST.
+ * Copyright 2014-2019 LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -59,6 +59,7 @@
 #include "global/intTypes.h"
 #include "proto/WorkerResponse.h"
 #include "proto/ProtoImporter.h"
+#include "qproc/DatabaseModels.h"
 #include "query/ColumnRef.h"
 #include "query/SelectStmt.h"
 #include "rproc/ProtoRowBuffer.h"
@@ -107,9 +108,11 @@ namespace rproc {
 ////////////////////////////////////////////////////////////////////////
 // InfileMerger public
 ////////////////////////////////////////////////////////////////////////
-InfileMerger::InfileMerger(InfileMergerConfig const& c)
+InfileMerger::InfileMerger(InfileMergerConfig const& c,
+                           std::shared_ptr<qproc::DatabaseModels> const& dm)
     : _config(c),
       _mysqlConn(_config.mySqlConfig),
+      _databaseModels(dm),
       _jobIdColName(JOB_ID_BASE_NAME) {
     _fixupTargetName();
     _maxResultTableSizeMB = _config.mySqlConfig.maxTableSizeMB;
@@ -358,7 +361,7 @@ bool InfileMerger::getSchemaForQueryResults(query::SelectStmt const& stmt, sql::
     sql::SqlResults results;
     sql::SqlErrorObject getSchemaErrObj;
     std::string query = stmt.getQueryTemplate().sqlFragment();
-    bool ok = _applySqlLocal(query, results, getSchemaErrObj);
+    bool ok = _databaseModels->applySql(query, results, getSchemaErrObj);
     if (not ok) {
         LOGS(_log, LOG_LVL_ERROR, "Failed to get schema:" << getSchemaErrObj.errMsg());
         _error = InfileMergerError(util::ErrorCode::INTERNAL, "Failed to get schema: " + getSchemaErrObj.errMsg());

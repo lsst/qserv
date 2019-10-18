@@ -2,9 +2,8 @@
 # Default values for parameters are commented
 
 [mysql]
-
-# hostname =
-# port =
+hostname = {{QSERV_MASTER}}
+port = 3306
 
 # Username for mysql connections
 username = {{MYSQLD_USER_QSERV}}
