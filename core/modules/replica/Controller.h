@@ -27,6 +27,7 @@
  */
 
 // System headers
+#include <cstdint>
 #include <functional>
 #include <map>
 #include <memory>

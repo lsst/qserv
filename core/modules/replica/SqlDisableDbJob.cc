@@ -124,14 +124,7 @@ list<SqlRequest::Ptr> SqlDisableDbJob::launchRequests(util::Lock const& lock,
 
 void SqlDisableDbJob::stopRequest(util::Lock const& lock,
                                   SqlRequest::Ptr const& request) {
-    controller()->stopById<StopSqlDisableDbRequest>(
-        request->worker(),
-        request->id(),
-        nullptr,    /* onFinish */
-        options(lock).priority,
-        true,       /* keepTracking */
-        id()        /* jobId */
-    );
+    stopRequestDefaultImpl<StopSqlDisableDbRequest>(lock, request);
 }
 
 

@@ -29,6 +29,7 @@
 
 // System headers
 #include <chrono>
+#include <cstdint>
 #include <memory>
 #include <ostream>
 #include <string>

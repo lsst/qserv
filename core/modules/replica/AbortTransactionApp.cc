@@ -50,9 +50,7 @@ namespace qserv {
 namespace replica {
 
 AbortTransactionApp::Ptr AbortTransactionApp::create(int argc, char* argv[]) {
-    return Ptr(
-        new AbortTransactionApp(argc, argv)
-    );
+    return Ptr(new AbortTransactionApp(argc, argv));
 }
 
 
@@ -70,13 +68,12 @@ AbortTransactionApp::AbortTransactionApp(int argc, char* argv[])
     parser().required(
         "transaction",
         "The identifier of a super-transaction which must be in the ABORTED state."
-        " And a database which is associated with the transaction should not be PUBLISHED yet",
+        " A database which is associated with the transaction should not be PUBLISHED yet.",
         _transactionId);
 
     parser().flag(
         "all-workers",
-        "The flag will include all known workers (not just ENABLED) into"
-        " the operation.",
+        "The flag will include all known workers (not just ENABLED) into the operation.",
         _allWorkers);
 }
 

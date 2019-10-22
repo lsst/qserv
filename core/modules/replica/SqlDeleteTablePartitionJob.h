@@ -22,6 +22,7 @@
 #define LSST_QSERV_REPLICA_SQLDELETETABLEPARTITIONJOB_H
 
 // System headers
+#include <cstdint>
 #include <functional>
 #include <list>
 #include <set>

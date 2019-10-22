@@ -29,6 +29,7 @@
  */
 
 // System headers
+#include <cstdint>
 #include <list>
 #include <ostream>
 #include <string>

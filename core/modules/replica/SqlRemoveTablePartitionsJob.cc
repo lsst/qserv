@@ -149,7 +149,7 @@ list<SqlRequest::Ptr> SqlRemoveTablePartitionsJob::launchRequests(util::Lock con
     }
 
     // Launch up to (not to exceed) the specified number of requests for tables
-    // by pulling table names from the worker's sub-collection. NOte that used
+    // by pulling table names from the worker's sub-collection. Note that used
     // tables will get removed from the sub-collections.
 
     auto const self = shared_from_base<SqlRemoveTablePartitionsJob>();
@@ -175,14 +175,7 @@ list<SqlRequest::Ptr> SqlRemoveTablePartitionsJob::launchRequests(util::Lock con
 
 void SqlRemoveTablePartitionsJob::stopRequest(util::Lock const& lock,
                                               SqlRequest::Ptr const& request) {
-    controller()->stopById<StopSqlRemoveTablePartitionsRequest>(
-        request->worker(),
-        request->id(),
-        nullptr,    /* onFinish */
-        options(lock).priority,
-        true,       /* keepTracking */
-        id()        /* jobId */
-    );
+    stopRequestDefaultImpl<StopSqlRemoveTablePartitionsRequest>(lock, request);
 }
 
 

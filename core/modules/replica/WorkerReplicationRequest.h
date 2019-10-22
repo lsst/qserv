@@ -23,6 +23,7 @@
 
 // System headers
 #include <cstdio>
+#include <cstdint>
 #include <ctime>
 #include <map>
 #include <string>

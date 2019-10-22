@@ -138,14 +138,7 @@ list<SqlRequest::Ptr> SqlQueryJob::launchRequests(util::Lock const& lock,
 
 void SqlQueryJob::stopRequest(util::Lock const& lock,
                               SqlRequest::Ptr const& request) {
-    controller()->stopById<StopSqlQueryRequest>(
-        request->worker(),
-        request->id(),
-        nullptr,    /* onFinish */
-        options(lock).priority,
-        true,       /* keepTracking */
-        id()        /* jobId */
-    );
+    stopRequestDefaultImpl<StopSqlQueryRequest>(lock, request);
 }
 
 

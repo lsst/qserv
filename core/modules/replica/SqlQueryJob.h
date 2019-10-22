@@ -22,6 +22,7 @@
 #define LSST_QSERV_REPLICA_SQLQUERYJOB_H
 
 // System headers
+#include <cstdint>
 #include <functional>
 #include <list>
 #include <set>
@@ -68,8 +69,8 @@ public:
      *
      * @param maxRows
      *   (optional) limit for the maximum number of rows to be returned with the request.
-     *   Laving the default value of the parameter to 0 will result in not imposing any
-     *   explicit restrictions on a size of the result set. NOte that other, resource-defined
+     *   Leaving the default value of the parameter to 0 will result in not imposing any
+     *   explicit restrictions on a size of the result set. Note that other, resource-defined
      *   restrictions will still apply. The later includes the maximum size of the Google Protobuf
      *   objects, the amount of available memory, etc.
      *

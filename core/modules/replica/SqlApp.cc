@@ -86,7 +86,9 @@ SqlApp::SqlApp(int argc, char* argv[])
         _command
     ).flag(
         "all-workers",
-        "The flag for selecting all workers regardless of their status (DISABLED or READ-ONLY).",
+        "The flag for selecting all workers regardless of their status (DISABLED or READ-ONLY)."
+        " If the flag was not specified then ENABLED workers in the READ-WRITE state will"
+        " be assumed.",
         _allWorkers
     ).option(
         "worker-response-timeout",
@@ -157,7 +159,7 @@ SqlApp::SqlApp(int argc, char* argv[])
         "DISABLE_DATABASE"
     ).required(
         "database",
-        "The name of a database to be disable at Qserv workers.",
+        "The name of a database to be disabled at Qserv workers.",
         _database
     );
 

@@ -218,7 +218,7 @@ public:
     ServiceManagementJob(ServiceManagementJob const&) = delete;
     ServiceManagementJob& operator=(ServiceManagementJob const&) = delete;
 
-    ~ServiceManagementJob() override = default;
+    ~ServiceManagementJob() final = default;
 
 protected:
 

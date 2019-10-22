@@ -124,14 +124,7 @@ list<SqlRequest::Ptr> SqlCreateDbJob::launchRequests(util::Lock const& lock,
 
 void SqlCreateDbJob::stopRequest(util::Lock const& lock,
                                  SqlRequest::Ptr const& request) {
-    controller()->stopById<StopSqlCreateDbRequest>(
-        request->worker(),
-        request->id(),
-        nullptr,    /* onFinish */
-        options(lock).priority,
-        true,       /* keepTracking */
-        id()        /* jobId */
-    );
+    stopRequestDefaultImpl<StopSqlCreateDbRequest>(lock, request);
 }
 
 

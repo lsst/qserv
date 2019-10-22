@@ -33,6 +33,7 @@
 #include <boost/filesystem.hpp>
 
 // Qserv headers
+#include "global/constants.h"
 #include "replica/Configuration.h"
 #include "replica/DatabaseMySQL.h"
 #include "replica/ServiceProvider.h"
@@ -72,10 +73,9 @@ string IndexJob::toString(Destination destination) {
         case FILE:    return "FILE";
         case FOLDER:  return "FOLDER";
         case TABLE:   return "TABLE";
-        default:
-            throw range_error(
-                    typeName() + "::" + string(__func__) + "  unhandled value of the parameter");
     }
+    throw range_error(
+            typeName() + "::" + string(__func__) + "  unhandled value of the parameter");
 }
 
 
@@ -196,7 +196,7 @@ void IndexJob::startImpl(util::Lock const& lock) {
         controller()->serviceProvider()->config()->workers();
 
     // Initialize a collection of chunks grouped by workers, in a way which
-    // would make a best attempt to keep requests equally (as much as that's possible)
+    // would make an attempt to keep requests equally (as much as that's possible)
     // balanced between the workers.
     //
     // Note, that the algorithm considers a possibility that chunks may have
@@ -253,7 +253,7 @@ void IndexJob::startImpl(util::Lock const& lock) {
         if (worker.empty()) {
             throw logic_error(context() + string(__func__) + ":  internal bug");
         }
-        _chunks[worker].push_back(chunk);
+        _chunks[worker].push(chunk);
     }
 
     // Launch the initial batch of requests in the number which won't exceed
@@ -387,22 +387,27 @@ void IndexJob::_onRequestFinish(IndexRequest::Ptr const& request) {
 void IndexJob::_processRequestData(util::Lock const& lock,
                                    IndexRequest::Ptr const& request) {
 
-    switch (_destination) {
-        case DISCARD: {
-            break;
+    auto const writeIntoFile = [](string const& fileName,
+                                  ios::openmode mode,
+                                  string const& data) {
+        ofstream f(fileName, mode);
+        if (not f.good()) {
+            throw runtime_error(
+                    typeName() + "::_processRequestData"  +
+                    "  failed to open/create/append file: " + fileName);
         }
+        f << data;
+        f.close();
+    };
+    switch (_destination) {
+
+        case DISCARD: break;
+
         case FILE: {
             if (_destinationPath.empty()) {
                 cout << request->responseData().data;
             } else {
-                ofstream f(_destinationPath, ios::app);
-                if (not f.good()) {
-                    throw runtime_error(
-                            typeName() + "::" + string(__func__) +
-                            "  failed to open/create for append file: " + _destinationPath);
-                }
-                f << request->responseData().data;
-                f.close();
+                writeIntoFile(_destinationPath, ios::app, request->responseData().data);
             }
             break;
         }
@@ -410,14 +415,7 @@ void IndexJob::_processRequestData(util::Lock const& lock,
             string const filePath =
                 (_destinationPath.empty() ? "." : _destinationPath) + "/" +
                 database() + "_" + to_string(request->chunk()) + ".tsv";
-            ofstream f(filePath);
-            if (not f.good()) {
-                throw runtime_error(
-                        typeName() + "::" + string(__func__) +
-                        "  failed to open/create file: " + filePath);
-            }
-            f << request->responseData().data;
-            f.close();
+            writeIntoFile(filePath, ios::out|ios::trunc, request->responseData().data);
             break;
         }
         case TABLE: {
@@ -438,15 +436,7 @@ void IndexJob::_processRequestData(util::Lock const& lock,
                 config->qservMasterDatabaseTmpDir() + "/" + database() + "_" +
                 to_string(request->chunk()) +
                 (_hasTransactions ? "_p" + to_string(_transactionId) : "");
-
-            ofstream f(filePath);
-            if (not f.good()) {
-                throw runtime_error(
-                        typeName() + "::" + string(__func__) +
-                        "  failed to open/create file: " + filePath);
-            }
-            f << request->responseData().data;
-            f.close();
+            writeIntoFile(filePath, ios::out|ios::trunc, request->responseData().data);
 
             // Open the database connection if this is the first batch of data
             if (nullptr == _conn) {
@@ -456,7 +446,7 @@ void IndexJob::_processRequestData(util::Lock const& lock,
                         config->qservMasterDatabasePort(),
                         "root",
                         Configuration::qservMasterDatabasePassword(),
-                        "qservMeta"
+                        lsst::qserv::SEC_INDEX_DB
                     )
                 );
             }
@@ -503,7 +493,7 @@ list<IndexRequest::Ptr> IndexJob::_launchRequests(util::Lock const& lock,
     while (_chunks[worker].size() > 0 and requests.size() < maxRequests) {
 
         auto const chunk = _chunks[worker].front();
-        _chunks[worker].pop_front();
+        _chunks[worker].pop();
 
         requests.push_back(
             controller()->index(

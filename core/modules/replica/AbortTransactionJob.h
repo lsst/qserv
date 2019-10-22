@@ -22,6 +22,7 @@
 #define LSST_QSERV_REPLICA_ABORTTRANSACTIONJOB_H
 
 // System headers
+#include <cstdint>
 #include <functional>
 #include <list>
 #include <map>
@@ -70,7 +71,7 @@ public:
  * requests for removing MySQL partitions corresponding to a given
  * super-transaction. The algorithm is designed to work for all types
  * of tables (regular or partitioned) across a select (sub-)set of worker
- * databases. Result sets are collected in the above defined data structure.
+ * databases. Result sets are collected into structure AbortTransactionJobResult.
  * 
  * An implementation of the job will limit the number of the concurrent
  * in-flight requests to avoid overloading a host where the job issuing
@@ -96,7 +97,7 @@ public:
      * Static factory method is needed to prevent issue with the lifespan
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
-
+     *
      * @param transactionId
      *   an identifier of a super-transaction corresponding to a MySQL partition
      *   to be dropped. The transaction must exist, and it should be in

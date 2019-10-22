@@ -27,6 +27,7 @@
  */
 
 // System headers
+#include <cstdint>
 #include <string>
 
 // Third party headers

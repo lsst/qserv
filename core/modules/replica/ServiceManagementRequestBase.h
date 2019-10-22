@@ -22,6 +22,7 @@
 #define LSST_QSERV_REPLICA_SERVICEMANAGEMENTREQUESTBASE_H
 
 // System headers
+#include <cstdint>
 #include <memory>
 #include <ostream>
 #include <string>

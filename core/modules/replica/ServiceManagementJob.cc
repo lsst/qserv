@@ -23,6 +23,7 @@
 #include "replica/ServiceManagementJob.h"
 
 // System headers
+#include <algorithm>
 #include <stdexcept>
 
 // Qserv headers
@@ -122,7 +123,7 @@ void ServiceManagementBaseJob::onRequestFinish(ServiceManagementRequestBase::Ptr
 
     if (state() == State::FINISHED) return;
 
-    util::Lock lock(_mtx, context() + "" + string(__func__) + "[" + request->id() + "]");
+    util::Lock lock(_mtx, context() + string(__func__) + "[" + request->id() + "]");
 
     if (state() == State::FINISHED) return;
 
@@ -135,10 +136,12 @@ void ServiceManagementBaseJob::onRequestFinish(ServiceManagementRequestBase::Ptr
 
     // Check for the completion condition of the job
     if (_requests.size() == _numFinished) {
-        size_t numSucceeded = 0;
-        for (auto&& ptr: _requests) {
-            if (ptr->extendedState() == Request::ExtendedState::SUCCESS) numSucceeded++;
-        }
+        size_t const numSucceeded = count_if(
+            _requests.begin(), _requests.end(),
+            [](ServiceManagementRequestBase::Ptr const& ptr) {
+                return ptr->extendedState() == Request::ExtendedState::SUCCESS;
+            }
+        );
         finish(lock, numSucceeded == _numFinished ? ExtendedState::SUCCESS :
                                                     ExtendedState::FAILED);
     }

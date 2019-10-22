@@ -79,11 +79,6 @@ TransactionsApp::TransactionsApp(int argc, char* argv[])
         "The number of rows in the table of a query result set (0 means no pages).",
         _sqlPageSize);
 
-    parser().flag(
-        "abort",
-        "Abort the transaction rather than normally end it.",
-        _abort);
-
     auto& findCmd = parser().command("FIND");
 
     findCmd.description(

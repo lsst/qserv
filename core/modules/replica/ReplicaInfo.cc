@@ -78,8 +78,8 @@ const size_t ReplicaInfo::FileInfo::_overlapSize = string("FullOverlap").size();
 
 string ReplicaInfo::FileInfo::baseTable() const {
 
-    // IMPLEMENTATION NOTE: the algorithm implemented below is believed to be
-    // more efficient than others based on the C++ Regular Expression library.
+    // IMPLEMENTATION NOTE: the algorithm implemented below is more
+    // efficient than others based on the C++ Regular Expression library.
     // It also works for both regular and partitioned tables.
 
     string const noChunkNoExt = _removeChunkAndExt();
@@ -99,7 +99,7 @@ string ReplicaInfo::FileInfo::baseTable() const {
 bool ReplicaInfo::FileInfo::isOverlap() const {
     string const noChunkNoExt = _removeChunkAndExt();
     return noChunkNoExt.size() > _overlapSize and
-           noChunkNoExt.substr(noChunkNoExt.size() - _overlapSize) == "FullOverlap";
+           0 == noChunkNoExt.compare(noChunkNoExt.size() - _overlapSize, _overlapSize, "FullOverlap");
 }
 
 

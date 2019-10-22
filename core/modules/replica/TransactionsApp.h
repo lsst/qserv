@@ -22,6 +22,7 @@
 #define LSST_QSERV_REPLICA_TRANSACTIONAPP_H
 
 // System headers
+#include <cstdint>
 #include <string>
 
 // Qserv headers

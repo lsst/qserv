@@ -124,14 +124,7 @@ list<SqlRequest::Ptr> SqlDeleteDbJob::launchRequests(util::Lock const& lock,
 
 void SqlDeleteDbJob::stopRequest(util::Lock const& lock,
                                  SqlRequest::Ptr const& request) {
-    controller()->stopById<StopSqlDeleteDbRequest>(
-        request->worker(),
-        request->id(),
-        nullptr,    /* onFinish */
-        options(lock).priority,
-        true,       /* keepTracking */
-        id()        /* jobId */
-    );
+    stopRequestDefaultImpl<StopSqlDeleteDbRequest>(lock, request);
 }
 
 

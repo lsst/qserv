@@ -137,14 +137,7 @@ list<SqlRequest::Ptr> SqlDeleteTablePartitionJob::launchRequests(util::Lock cons
 
 void SqlDeleteTablePartitionJob::stopRequest(util::Lock const& lock,
                                              SqlRequest::Ptr const& request) {
-    controller()->stopById<StopSqlDeleteTablePartitionRequest>(
-        request->worker(),
-        request->id(),
-        nullptr,    /* onFinish */
-        options(lock).priority,
-        true,       /* keepTracking */
-        id()        /* jobId */
-    );
+    stopRequestDefaultImpl<StopSqlDeleteTablePartitionRequest>(lock, request);
 }
 
 

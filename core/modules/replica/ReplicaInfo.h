@@ -28,6 +28,7 @@
  */
 
 // System headers
+#include <cstdint>
 #include <ctime>
 #include <map>
 #include <memory>

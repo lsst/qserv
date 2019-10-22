@@ -39,8 +39,7 @@ namespace replica {
 /**
  * Class SqlRemoveTablePartitionsJob represents a tool which will broadcast
  * the same request for removing MySQL partitions from existing table from all
- * worker databases of a setup. Result sets are collected in the above defined
- * data structure.
+ * worker databases of a setup.
  * 
  * Note, that the algorithm treats regular and partitioned tables quite differently.
  * For the regular tables it will indeed broadcast exactly the same request
@@ -49,7 +48,7 @@ namespace replica {
  * The partitioned (chunked) tables will be treated quite differently. First of
  * all, the name of a table specified as a parameter of the class will be treated
  * as a class of the tables, and a group of table-specific AND(!) chunk-specific
- * requests will be generated for such table. For example, of the table name is:
+ * requests will be generated for such table. For example, if the table name is:
  *
  *   'Object'
  * 

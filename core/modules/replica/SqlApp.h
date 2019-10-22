@@ -21,6 +21,9 @@
 #ifndef LSST_QSERV_REPLICA_SQLAPP_H
 #define LSST_QSERV_REPLICA_SQLAPP_H
 
+// System headers
+#include <cstdint>
+
 // Qserv headers
 #include "replica/Application.h"
 

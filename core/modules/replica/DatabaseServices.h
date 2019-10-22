@@ -22,6 +22,7 @@
 #define LSST_QSERV_REPLICA_DATABASESERVICES_H
 
 // System headers
+#include <cstdint>
 #include <limits>
 #include <list>
 #include <map>

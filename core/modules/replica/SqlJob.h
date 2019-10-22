@@ -22,6 +22,7 @@
 #define LSST_QSERV_REPLICA_SQLJOB_H
 
 // System headers
+#include <cstdint>
 #include <functional>
 #include <list>
 #include <map>
@@ -29,6 +30,7 @@
 #include <tuple>
 
 // Qserv headers
+#include "replica/Controller.h"
 #include "replica/Job.h"
 #include "replica/SqlRequest.h"
 #include "replica/SqlResultSet.h"
@@ -97,14 +99,10 @@ public:
 
 protected:
     /**
-     * Static factory method is needed to prevent issue with the lifespan
-     * and memory management of instances created otherwise (as values or via
-     * low-level pointers).
-     *
      * @param maxRows
      *   (optional) limit for the maximum number of rows to be returned with the request.
-     *   Laving the default value of the parameter to 0 will result in not imposing any
-     *   explicit restrictions on a size of the result set. NOte that other, resource-defined
+     *   Leaving the default value of the parameter to 0 will result in not imposing any
+     *   explicit restrictions on a size of the result set. Note that other, resource-defined
      *   restrictions will still apply. The later includes the maximum size of the Google Protobuf
      *   objects, the amount of available memory, etc.
      *
@@ -169,6 +167,24 @@ protected:
      */
     virtual void stopRequest(util::Lock const& lock,
                              SqlRequest::Ptr const& request) = 0;
+
+    /**
+     * This method is called by subclass-specific implementations of
+     * the virtual method SqlJob::stopRequest in order to reduce code
+     * duplication.
+     */
+    template<class REQUEST>
+    void stopRequestDefaultImpl(util::Lock const& lock,
+                                SqlRequest::Ptr const& request) const {
+        controller()->stopById<REQUEST>(
+            request->worker(),
+            request->id(),
+            nullptr,    /* onFinish */
+            options(lock).priority,
+            true,       /* keepTracking */
+            id()        /* jobId */
+        );
+    }
 
 private:
     // Input parameters

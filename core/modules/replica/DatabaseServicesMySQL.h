@@ -29,6 +29,7 @@
  */
 
 // System headers
+#include <cstdint>
 #include <vector>
 
 // Qserv headers

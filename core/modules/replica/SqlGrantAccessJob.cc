@@ -128,14 +128,7 @@ list<SqlRequest::Ptr> SqlGrantAccessJob::launchRequests(util::Lock const& lock,
 
 void SqlGrantAccessJob::stopRequest(util::Lock const& lock,
                                     SqlRequest::Ptr const& request) {
-    controller()->stopById<StopSqlGrantAccessRequest>(
-        request->worker(),
-        request->id(),
-        nullptr,    /* onFinish */
-        options(lock).priority,
-        true,       /* keepTracking */
-        id()        /* jobId */
-    );
+    stopRequestDefaultImpl<StopSqlGrantAccessRequest>(lock, request);
 }
 
 

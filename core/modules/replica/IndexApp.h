@@ -22,6 +22,7 @@
 #define LSST_QSERV_REPLICA_INDEXAPP_H
 
 // System headers
+#include <cstdint>
 #include <string>
 
 // Qserv headers
@@ -46,7 +47,7 @@ public:
 
     /**
      * The factory method is the only way of creating objects of this class
-     * because of the very base class's inheritance from 'enable_shared_from_this'.
+     * because of the base class' inheritance from 'enable_shared_from_this'.
      *
      * @param argc
      *   the number of command-line arguments
@@ -62,7 +63,7 @@ public:
     IndexApp(IndexApp const&)=delete;
     IndexApp& operator=(IndexApp const&)=delete;
 
-    ~IndexApp() override=default;
+    ~IndexApp() final=default;
 
 protected:
 
@@ -80,7 +81,8 @@ private:
     /// A unique identifier of a super-transaction (not used if its value stays default)
     uint32_t _transactionId = std::numeric_limits<uint32_t>::max();
 
-    /// The destination type of the harvested data
+    /// The destination type of the harvested data. Allowed values here
+    /// are: "DISCARD", "FILE", "FOLDER", "TABLE.
     std::string _destination = "DISCARD";
 
     /// The optional parameter for a specific destination (depends

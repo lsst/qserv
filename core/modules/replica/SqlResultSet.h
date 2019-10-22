@@ -22,6 +22,7 @@
 #define LSST_QSERV_REPLICA_SQLRESULTSET_H
 
 // System headers
+#include <cstdint>
 #include <list>
 #include <memory>
 #include <string>

@@ -28,6 +28,7 @@
 #include <stdexcept>
 
 // Qserv headers
+#include "global/constants.h"
 #include "replica/ConfigurationFile.h"
 #include "replica/ConfigurationMap.h"
 #include "replica/ConfigurationMySQL.h"
@@ -90,7 +91,7 @@ size_t       const ConfigurationBase::defaultDatabaseServicesPoolSize     = 1;
 string       const ConfigurationBase::defaultQservMasterDatabaseHost      = "localhost";
 uint16_t     const ConfigurationBase::defaultQservMasterDatabasePort      = 3306;
 string       const ConfigurationBase::defaultQservMasterDatabaseUser      = FileUtils::getEffectiveUser();
-string       const ConfigurationBase::defaultQservMasterDatabaseName      = "qservMeta";
+string       const ConfigurationBase::defaultQservMasterDatabaseName      = lsst::qserv::SEC_INDEX_DB;
 size_t       const ConfigurationBase::defaultQservMasterDatabaseServicesPoolSize = 1;
 string       const ConfigurationBase::defaultQservMasterDatabaseTmpDir    = "/qserv/data/ingest";
 size_t       const ConfigurationBase::defaultReplicationLevel             = 1;

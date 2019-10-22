@@ -177,7 +177,8 @@ void SqlJob::onRequestFinish(SqlRequest::Ptr const& request) {
     // would be launched then evaluate for the completion condition of the job.
 
     auto const requests = launchRequests(lock, request->worker());
-    if (_requests.cend() == _requests.insert(_requests.cend(), requests.cbegin(), requests.cend())) {
+    auto itr = _requests.insert(_requests.cend(), requests.cbegin(), requests.cend());
+    if (_requests.cend() == itr) {
         if (_requests.size() == _numFinished) {
             size_t numSuccess = 0;
             for (auto&& ptr: _requests) {

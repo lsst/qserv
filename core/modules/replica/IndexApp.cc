@@ -115,7 +115,7 @@ IndexApp::IndexApp(int argc, char* argv[])
 
     parser().flag(
         "detailed-report",
-        "The flag triggering detailed report on the harvested 'scondary 'index' data."
+        "The flag triggering detailed report on the harvested 'secondary index' data."
         " The report will also include MySQL errors (f any) for each chunk.",
         _detailedReport);
 

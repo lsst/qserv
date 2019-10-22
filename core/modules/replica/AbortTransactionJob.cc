@@ -54,7 +54,6 @@ json AbortTransactionJobResult::toJson() const {
     result["error"    ] = json::object();
     for (auto&& workerEntry: resultSets) {
         auto&& worker = workerEntry.first;
-        LOGS(_log, LOG_LVL_DEBUG, context << "worker=" << worker);
         result["completed"][worker] = json::object();
         result["error"    ][worker] = json::object();
         for (auto&& tableEntry: workerEntry.second) {
@@ -62,9 +61,6 @@ json AbortTransactionJobResult::toJson() const {
             auto&& resultSet = tableEntry.second;
             result["completed"][worker][table] = completed.at(worker).at(table) ? 1 : 0;
             result["error"    ][worker][table] = resultSet.error;
-            LOGS(_log, LOG_LVL_DEBUG, context << "table=" << table
-                 << " completed=" << (completed.at(worker).at(table) ? 1 : 0)
-                 << " result-set=" << resultSet.error);
         }
     }
     return result;
@@ -128,13 +124,13 @@ AbortTransactionJob::AbortTransactionJob(uint32_t transactionId,
 
 AbortTransactionJobResult const& AbortTransactionJob::getResultData() const {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
+    LOGS(_log, LOG_LVL_TRACE, context() << __func__);
 
     if (state() == State::FINISHED) return _resultData;
 
     throw logic_error(
             "AbortTransactionJob::" + string(__func__) +
-            "  the method can't be called while the job hasn't finished");
+            "  the method can't be called until the job hasn't finished");
 }
 
 
@@ -158,7 +154,7 @@ list<pair<string,string>> AbortTransactionJob::persistentLogData() const {
                 "status",
                 "worker=" + worker +
                 " table=" + table +
-                " completed=" + to_string(_resultData.completed.at(worker).at(table) ? 1 : 0) +
+                " completed=" + string(_resultData.completed.at(worker).at(table) ? "1" : "0") +
                 " error=" + _resultData.resultSets.at(worker).at(table).error
             );
         }
@@ -172,7 +168,7 @@ void AbortTransactionJob::startImpl(util::Lock const& lock) {
     string const context_ =
         context() + string(__func__) + " transactionId=" + to_string(_transactionId) + " ";
 
-    LOGS(_log, LOG_LVL_DEBUG, context_);
+    LOGS(_log, LOG_LVL_TRACE, context_);
 
     // Verify the current state of the transaction
 
@@ -230,9 +226,7 @@ void AbortTransactionJob::startImpl(util::Lock const& lock) {
 
 
 void AbortTransactionJob::cancelImpl(util::Lock const& lock) {
-
-    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
-
+    LOGS(_log, LOG_LVL_TRACE, context() << __func__);
     for (auto&& request: _requests) {
         request->cancel();
     }
@@ -241,7 +235,7 @@ void AbortTransactionJob::cancelImpl(util::Lock const& lock) {
 
 void AbortTransactionJob::notify(util::Lock const& lock) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
+    LOGS(_log, LOG_LVL_TRACE, context() << __func__);
 
     notifyDefaultImpl<AbortTransactionJob>(lock, _onFinish);
 }
@@ -249,12 +243,8 @@ void AbortTransactionJob::notify(util::Lock const& lock) {
 
 void AbortTransactionJob::_onRequestFinish(SqlDeleteTablePartitionRequest::Ptr const& request) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << __func__
-         << "  worker=" << request->worker()
-         << " _requests.size()=" << _requests.size()
-         << " _numLaunched=" << _numLaunched
-         << " _numFinished=" << _numFinished
-         << " _numSuccess=" << _numSuccess);
+    LOGS(_log, LOG_LVL_TRACE, context() << __func__
+         << "  worker=" << request->worker() << " id=" << request->id());
 
     if (state() == State::FINISHED) return;
 
@@ -267,20 +257,12 @@ void AbortTransactionJob::_onRequestFinish(SqlDeleteTablePartitionRequest::Ptr c
 
     // Replace the finished job with a new one unless the input set is empty
     if (0 == _submitNextBatch(lock, 1)) {
-
         if (_numFinished == _numLaunched) {
-
-            LOGS(_log, LOG_LVL_DEBUG, context() << __func__
-                 << "  worker=" << request->worker()
-                 << " _requests.size()=" << _requests.size());
 
             // Harvest results from all jobs (regardless of their completion status)
             // and be done.
 
             for (auto&& ptr: _requests) {
-                LOGS(_log, LOG_LVL_DEBUG, context() << __func__
-                     << " requestId=" << ptr->id()
-                     << " targetRequestParams=" << ptr->targetRequestParams());
                 auto const table = ptr->targetRequestParams().table;
                 _resultData.completed [ptr->worker()][table] = ptr->extendedState() == Request::SUCCESS;
                 _resultData.resultSets[ptr->worker()][table] = ptr->responseData();

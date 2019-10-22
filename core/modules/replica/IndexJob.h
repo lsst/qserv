@@ -22,10 +22,12 @@
 #define LSST_QSERV_REPLICA_INDEXJOB_H
 
 // System headers
+#include <cstdint>
 #include <functional>
 #include <list>
 #include <map>
 #include <memory>
+#include <queue>
 #include <string>
 #include <tuple>
 #include <vector>
@@ -60,7 +62,7 @@ struct IndexJobResult {
 };
 
 /**
- * Class IndexJob is a base class for a family of jobs which broadcast
+ * Class IndexJob is a class for a family of jobs which broadcast
  * the "secondary index" retrieval requests for the relevant chunks to
  * the workers. Results are either dumped into the specified folder or
  * directly loaded into the "secondary index" of a database.
@@ -91,7 +93,7 @@ public:
     static std::string toString(Destination destination);
 
     /// @return a value of the enumerator Destination parsed from the input string
-    /// @throw invalid_argument if the input value doen't match any known option of
+    /// @throw invalid_argument if the input value doesn't match any known option of
     ///        the enumerator type
     static Destination fromString(std::string const& str);
 
@@ -119,7 +121,7 @@ public:
      *   the 'READ-ONLY' state will be involved into the operation.
      *
      * @param destination
-     *   possible destinations for the harvested data
+     *   a destination for the harvested data
      * 
      * @param destinationPath
      *   depending on a value of the previous parameter 'destination', a value
@@ -136,6 +138,9 @@ public:
      *
      * @param parentJobId
      *   (optional) identifier of a parent job
+     *
+     * @param onFinish
+     *   (optional) a function to be called upon a completion of the job
      *
      * @param options
      *   (optional) defines the job priority, etc.
@@ -164,8 +169,8 @@ public:
     // Trivial get methods
 
     std::string const& database()        const { return _database; }
-    bool        const& hasTransactions() const { return _hasTransactions; }
-    uint32_t    const& transactionId()   const { return _transactionId; }
+    bool               hasTransactions() const { return _hasTransactions; }
+    uint32_t           transactionId()   const { return _transactionId; }
     bool               allWorkers()      const { return _allWorkers; }
     Destination        destination()     const { return _destination; }
     std::string const& destinationPath() const { return _destinationPath; }
@@ -182,7 +187,7 @@ public:
      *   the data structure to be filled upon the completion of the job.
      *
      * @throws std::logic_error
-     *   if the job didn't finished at a time when the method was called
+     *   if the job didn't finish at a time when the method was called
      */
     IndexJobResult const& getResultData() const;
 
@@ -230,7 +235,7 @@ private:
                              IndexRequest::Ptr const& request);
 
     /**
-     * Lunch a batch of requests with a total number not to exceed the specified
+     * Launch a batch of requests with a total number not to exceed the specified
      * limit.
      *
      * @param lock
@@ -271,7 +276,7 @@ private:
     CallbackType _onFinish;     /// @note is reset when the job finishes
 
     /// A collection of chunks to be processed at specific workers
-    std::map<std::string, std::list<unsigned int>> _chunks;
+    std::map<std::string, std::queue<unsigned int>> _chunks;
 
     /// A collection of the in-flight requests (request id is the key) 
     std::map<std::string, IndexRequest::Ptr> _requests;
