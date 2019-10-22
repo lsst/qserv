@@ -216,6 +216,14 @@ public:
                                       std::string const& tableAlias, std::string const& column);
 
     /**
+     * @brief Make a new ValueExpr object with a given alias, that contains a ColumnRef with the specified
+     *        values for db, table, table alias, and column.
+     */
+    static ValueExprPtr newColumnExpr(std::string const& valueExprAlias, std::string const& db,
+                                      std::string const& table, std::string const& tableAlias,
+                                      std::string const& column);
+
+    /**
      * @brief Make a new ValueExpr object that contains a ColumnRef with just the specified column name value
      *
      * The TableRef values (db, table, table alias) will be empty strings.

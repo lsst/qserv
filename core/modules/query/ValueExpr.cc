@@ -160,6 +160,16 @@ ValueExprPtr ValueExpr::newColumnExpr(std::string const& db, std::string const& 
 }
 
 
+ValueExprPtr ValueExpr::newColumnExpr(std::string const& valueExprAlias, std::string const& db,
+                                      std::string const& table, std::string const& tableAlias,
+                                      std::string const& column) {
+    auto ve =  newSimple(query::ValueFactor::newColumnRefFactor(
+                         std::make_shared<query::ColumnRef>(db, table, tableAlias, column)));
+    ve->setAlias(valueExprAlias);
+    return ve;
+}
+
+
 ValueExprPtr ValueExpr::newColumnExpr(std::string const& column) {
     return newSimple(
         query::ValueFactor::newColumnRefFactor(
