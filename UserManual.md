@@ -211,7 +211,7 @@ E.g., don't try to express it as "WHERE objectId != 1", or WHERE objectId > 123 
 Note, we expect to allow decomposing objectId into bitfields (e.g., for sampling) in the future. See [DM-2889](https://jira.lsstcorp.org/browse/DM-2889).
 
 
-### Column(s) used in ORDER BY must appear in SELECT
+### Column(s) used in ORDER BY (without SELECT *) must appear in SELECT
 
 At the moment we require columns used in ORDER BY to be listed in SELECT. Example of an invalid query:
 
@@ -219,6 +219,9 @@ At the moment we require columns used in ORDER BY to be listed in SELECT. Exampl
     FROM   T
     ORDER BY y
 
+Qserv does allow ORDER BY columns when using `SELECT *`, for example the following is allowed:
+
+    SELECT * FROM T ORDER BY y
 
 ### Expressions/functions in ORDER BY clauses are not allowed
 
