@@ -43,9 +43,8 @@ namespace replica {
 
 /**
  * Class HttpProcessor processes requests from the built-in HTTP server.
- * The constructor of the class will register requests handlers an start
- * the server. Request handlers are provided by various modules instantiated
- * by this class.
+ * The constructor of the class will register modules to which the incoming
+ * requests will be forwarded for handling.
  */
 class HttpProcessor:
         public EventLogger,

@@ -46,7 +46,12 @@
 #include "replica/ReplicaInfo.h"
 #include "replica/ServiceManagementJob.h"
 #include "replica/ServiceProvider.h"
-#include "replica/SqlJob.h"
+#include "replica/SqlCreateDbJob.h"
+#include "replica/SqlCreateTableJob.h"
+#include "replica/SqlDeleteDbJob.h"
+#include "replica/SqlGrantAccessJob.h"
+#include "replica/SqlEnableDbJob.h"
+#include "replica/SqlRemoveTablePartitionsJob.h"
 
 using namespace std;
 using json = nlohmann::json;

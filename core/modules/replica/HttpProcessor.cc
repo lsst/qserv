@@ -67,35 +67,27 @@ HttpProcessor::HttpProcessor(Controller::Ptr const& controller,
                              HealthMonitorTask::Ptr const& healthMonitorTask)
     :   EventLogger(controller, taskName),
         _catalogsModule(HttpCatalogsModule::create(
-            controller, taskName, workerResponseTimeoutSec
-        )),
+            controller, taskName, workerResponseTimeoutSec)),
         _replicationLevelsModule(HttpReplicationLevelsModule::create(
-            controller, taskName, workerResponseTimeoutSec, healthMonitorTask
-        )),
+            controller, taskName, workerResponseTimeoutSec,
+            healthMonitorTask)),
         _workerStatusModule(HttpWorkerStatusModule::create(
-            controller, taskName, workerResponseTimeoutSec, healthMonitorTask
-        )),
+            controller, taskName, workerResponseTimeoutSec,
+            healthMonitorTask)),
         _controllersModule(HttpControllersModule::create(
-            controller, taskName, workerResponseTimeoutSec
-        )),
+            controller, taskName, workerResponseTimeoutSec)),
         _requestsModule(HttpRequestsModule::create(
-            controller, taskName, workerResponseTimeoutSec
-        )),
+            controller, taskName, workerResponseTimeoutSec)),
         _jobsModule(HttpJobsModule::create(
-            controller, taskName, workerResponseTimeoutSec
-        )),
+            controller, taskName, workerResponseTimeoutSec)),
         _configurationModule(HttpConfigurationModule::create(
-            controller, taskName, workerResponseTimeoutSec
-        )),
+            controller, taskName, workerResponseTimeoutSec)),
         _qservMonitorModule(HttpQservMonitorModule::create(
-            controller, taskName, workerResponseTimeoutSec
-        )),
+            controller, taskName, workerResponseTimeoutSec)),
         _qservSqlModule(HttpQservSqlModule::create(
-            controller, taskName, workerResponseTimeoutSec
-        )),
+            controller, taskName, workerResponseTimeoutSec)),
         _ingestModule(HttpIngestModule::create(
-            controller, taskName, workerResponseTimeoutSec
-        )) {
+            controller, taskName, workerResponseTimeoutSec)) {
 }
 
 

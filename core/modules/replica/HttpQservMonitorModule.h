@@ -91,7 +91,7 @@ private:
      * Qserv worker.
      */
     void _worker(qhttp::Request::Ptr const& req,
-                               qhttp::Response::Ptr const& resp);
+                 qhttp::Response::Ptr const& resp);
 
     /**
      * Process a request for extracting a status on select user queries

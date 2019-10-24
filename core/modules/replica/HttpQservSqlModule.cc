@@ -27,7 +27,7 @@
 
 // Qserv headers
 #include "replica/HttpRequestBody.h"
-#include "replica/SqlRequest.h"
+#include "replica/SqlQueryRequest.h"
 
 using namespace std;
 using json = nlohmann::json;

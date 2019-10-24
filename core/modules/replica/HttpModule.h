@@ -118,7 +118,6 @@ protected:
                   nlohmann::json& result,
                   bool success=true);
 
-
     /**
      * To implement a subclass-specific request processing.
      * 
