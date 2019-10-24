@@ -28,8 +28,11 @@
  */
 
 // System headers
-#include <iostream>
+#include <chrono>
+#include <cstdint>
 #include <memory>
+#include <ostream>
+#include <string>
 
 // Forward declarations
 namespace lsst {
@@ -49,7 +52,10 @@ namespace replica {
 struct PerformanceUtils {
 
     /// @return the current time in milliseconds since Epoch
-    static uint64_t now();    
+    static uint64_t now();
+    
+    /// @return a human-readable timestamp in a format 'YYYY-MM-DD HH:MM:SS.mmm'
+    static std::string toDateTimeString(std::chrono::milliseconds const& millisecondsSinceEpoch);
 };
 
 /**

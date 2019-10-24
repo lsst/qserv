@@ -22,6 +22,7 @@
 #define LSST_QSERV_REPLICA_FILEREADAPP_H
 
 // System headers
+#include <cstdint>
 #include <memory>
 #include <string>
 #include <vector>

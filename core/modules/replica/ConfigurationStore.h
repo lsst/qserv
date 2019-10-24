@@ -27,6 +27,7 @@
  */
 
 // System headers
+#include <cstdint>
 #include <stdexcept>
 #include <string>
 

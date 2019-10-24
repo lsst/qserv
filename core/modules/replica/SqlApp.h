@@ -21,6 +21,9 @@
 #ifndef LSST_QSERV_REPLICA_SQLAPP_H
 #define LSST_QSERV_REPLICA_SQLAPP_H
 
+// System headers
+#include <cstdint>
+
 // Qserv headers
 #include "replica/Application.h"
 
@@ -30,8 +33,8 @@ namespace qserv {
 namespace replica {
 
 /**
- * Class SqlApp implements a tool which executes the same query
- * against worker databases of select workers. Result sets
+ * Class SqlApp implements a tool which executes the same SQL
+ * statement against worker databases of select workers. Result sets
  * will be reported upon a completion of the application.
  */
 class SqlApp : public Application {
@@ -59,9 +62,18 @@ private:
 
     SqlApp(int argc, char* argv[]);
 
+    std::string _command;
     std::string _mysqlUser;
     std::string _mysqlPassword;
     std::string _query;
+    std::string _database;
+    std::string _table;
+    std::string _engine;
+    std::string _schemaFile;
+    std::string _partitionByColumn;     
+
+    uint32_t _transactionId = 0;    /// An identifier of a super-transaction corresponding to
+                                    /// to a MySQL partition.
 
     uint64_t _maxRows = 10000;  /// the "hard" limit for the result set extractor.
                                 /// This is not the same as SQL's 'LIMIT <num-rows>'.

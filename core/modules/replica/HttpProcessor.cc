@@ -35,6 +35,7 @@
 #include <boost/lexical_cast.hpp>
 
 // Qserv headers
+#include "global/constants.h"
 #include "global/intTypes.h"
 #include "replica/ConfigurationTypes.h"
 #include "replica/Controller.h"
@@ -1561,7 +1562,7 @@ json HttpProcessor::_getQueries(json& workerInfo) const {
             config->qservMasterDatabasePort(),
             config->qservMasterDatabaseUser(),
             config->qservMasterDatabasePassword(),
-            "qservMeta"
+            lsst::qserv::SEC_INDEX_DB
         );
         auto const conn = database::mysql::Connection::open(connectionParams);
         

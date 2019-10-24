@@ -22,24 +22,17 @@
 #define LSST_QSERV_REPLICA_SQLJOB_H
 
 // System headers
+#include <cstdint>
 #include <functional>
 #include <list>
 #include <map>
 #include <string>
-#include <vector>
+#include <tuple>
 
 // Qserv headers
+#include "replica/Controller.h"
 #include "replica/Job.h"
-#include "replica/SqlCreateDbRequest.h"
-#include "replica/SqlCreateTableRequest.h"
-#include "replica/SqlDeleteDbRequest.h"
-#include "replica/SqlDeleteTablePartitionRequest.h"
-#include "replica/SqlDeleteTableRequest.h"
-#include "replica/SqlDisableDbRequest.h"
-#include "replica/SqlEnableDbRequest.h"
-#include "replica/SqlGrantAccessRequest.h"
-#include "replica/SqlQueryRequest.h"
-#include "replica/SqlRemoveTablePartitionsRequest.h"
+#include "replica/SqlRequest.h"
 #include "replica/SqlResultSet.h"
 
 // This header declarations
@@ -53,84 +46,23 @@ namespace replica {
  */
 struct SqlJobResult {
 
-    /// Per-worker flag indicating if the query has succeeded at the worker
-    std::map<std::string, bool> workers;
-
-    /// Result sets for the workers
-    std::map<std::string, SqlResultSet> resultSets;
+    /// Result sets for the workers. Note, that specific job types
+    /// may launch more than one request per worker.
+    std::map<std::string, std::list<SqlResultSet>> resultSets;
 };
 
 /**
- * Class SqlJob represents a tool which will broadcast the same query to all
- * worker databases of a setup. Result sets are collected in the above defined
- * data structure.
+ * Class SqlJob is a base class for a family of jobs which broadcast the same
+ * query to all worker databases of a setup. Result sets are collected in the above
+ * defined data structure.
  */
-class SqlJob : public Job  {
-
+class SqlJob : public Job {
 public:
-
     /// The pointer type for instances of the class
     typedef std::shared_ptr<SqlJob> Ptr;
 
-    /// The function type for notifications on the completion of the request
-    typedef std::function<void(Ptr)> CallbackType;
-
     /// @return default options object for this type of a request
     static Job::Options const& defaultOptions();
-
-    /// @return the unique name distinguishing this class from other types of jobs
-    static std::string typeName();
-
-    /**
-     * Static factory method is needed to prevent issue with the lifespan
-     * and memory management of instances created otherwise (as values or via
-     * low-level pointers).
-     *
-     * @param query
-     *   the query to be executed on all workers
-     *
-     * @param user
-     *   the name of a database account for connecting to the database service
-     *
-     * @param password
-     *   a database for connecting to the database service
-     *
-     * @param maxRows
-     *   (optional) limit for the maximum number of rows to be returned with the request.
-     *   Laving the default value of the parameter to 0 will result in not imposing any
-     *   explicit restrictions on a size of the result set. NOte that other, resource-defined
-     *   restrictions will still apply. The later includes the maximum size of the Google Protobuf
-     *   objects, the amount of available memory, etc.
-     *
-     * @param allWorkers
-     *   engage all known workers regardless of their status. If the flag
-     *   is set to 'false' then only 'ENABLED' workers which are not in
-     *   the 'READ-ONLY' state will be involved into the operation.
-     *
-     * @param controller
-     *   is needed launching requests and accessing the Configuration
-     *
-     * @param parentJobId
-     *   (optional) identifier of a parent job
-     *
-     * @param onFinish
-     *   (optional) callback function to be called upon a completion of the job
-     *
-     * @param options
-     *   (optional) defines the job priority, etc.
-     *
-     * @return
-     *   pointer to the created object
-     */
-    static Ptr create(std::string const& query,
-                      std::string const& user,
-                      std::string const& password,
-                      uint64_t maxRows,
-                      bool allWorkers,
-                      Controller::Ptr const& controller,
-                      std::string const& parentJobId=std::string(),
-                      CallbackType const& onFinish=nullptr,
-                      Job::Options const& options=defaultOptions());
 
     // Default construction and copy semantics are prohibited
 
@@ -138,13 +70,9 @@ public:
     SqlJob(SqlJob const&) = delete;
     SqlJob& operator=(SqlJob const&) = delete;
 
-    ~SqlJob() final = default;
+    ~SqlJob() override = default;
 
     // Trivial get methods
-
-    std::string const& query()    const { return _query; }
-    std::string const& user()     const { return _user; }
-    std::string const& password() const { return _password; }
 
     uint64_t maxRows() const { return _maxRows; }
 
@@ -166,13 +94,41 @@ public:
      */
     SqlJobResult const& getResultData() const;
 
-    /// @see Job::extendedPersistentState()
-    std::list<std::pair<std::string,std::string>> extendedPersistentState() const final;
-
     /// @see Job::persistentLogData()
     std::list<std::pair<std::string,std::string>> persistentLogData() const final;
 
 protected:
+    /**
+     * @param maxRows
+     *   (optional) limit for the maximum number of rows to be returned with the request.
+     *   Leaving the default value of the parameter to 0 will result in not imposing any
+     *   explicit restrictions on a size of the result set. Note that other, resource-defined
+     *   restrictions will still apply. The later includes the maximum size of the Google Protobuf
+     *   objects, the amount of available memory, etc.
+     *
+     * @param allWorkers
+     *   engage all known workers regardless of their status. If the flag
+     *   is set to 'false' then only 'ENABLED' workers which are not in
+     *   the 'READ-ONLY' state will be involved into the operation.
+     *
+     * @param controller
+     *   is needed launching requests and accessing the Configuration
+     *
+     * @param parentJobId
+     *   (optional) identifier of a parent job
+     *
+     * @param jobName
+     *   the name of a job in the persistent state of the Replication system
+     *
+     * @param options
+     *   (optional) defines the job priority, etc.
+     */
+    SqlJob(uint64_t maxRows,
+           bool allWorkers,
+           Controller::Ptr const& controller,
+           std::string const& parentJobId,
+           std::string const& jobName,
+           Job::Options const& options);
 
     /// @see Job::startImpl()
     void startImpl(util::Lock const& lock) final;
@@ -180,47 +136,68 @@ protected:
     /// @see Job::cancelImpl()
     void cancelImpl(util::Lock const& lock) final;
 
-    /// @see Job::notify()
-    void notify(util::Lock const& lock) final;
-
-private:
-
-    /// @see SqlJob::create()
-    SqlJob(std::string const& query,
-           std::string const& user,
-           std::string const& password,
-           uint64_t maxRows,
-           bool allWorkers,
-           Controller::Ptr const& controller,
-           std::string const& parentJobId,
-           CallbackType const& onFinish,
-           Job::Options const& options);
-
     /**
      * The callback function to be invoked on a completion of requests
      * targeting workers.
      */
-    void _onRequestFinish(SqlQueryRequest::Ptr const& request);
+    void onRequestFinish(SqlRequest::Ptr const& request);
 
+    /**
+     * This method lets a request type-specific subclass to launch requests
+     * of the corresponding subtype.
+     *
+     * @param lock
+     *   on the mutex Job::_mtx to be acquired for protecting the object's state
+     *
+     * @param worker
+     *   the name of a worker the requests to be sent to
+     * 
+     * @param maxRequests
+     *   the maximum number of requests to be launched
+     *
+     * @return a collection of requests launched
+     */
+    virtual std::list<SqlRequest::Ptr> launchRequests(util::Lock const& lock,
+                                                      std::string const& worker,
+                                                      size_t maxRequests=1) = 0;
 
+    /**
+     * This method lets a request type-specific subclass to stop requests
+     * of the corresponding subtype.
+     */
+    virtual void stopRequest(util::Lock const& lock,
+                             SqlRequest::Ptr const& request) = 0;
+
+    /**
+     * This method is called by subclass-specific implementations of
+     * the virtual method SqlJob::stopRequest in order to reduce code
+     * duplication.
+     */
+    template<class REQUEST>
+    void stopRequestDefaultImpl(util::Lock const& lock,
+                                SqlRequest::Ptr const& request) const {
+        controller()->stopById<REQUEST>(
+            request->worker(),
+            request->id(),
+            nullptr,    /* onFinish */
+            options(lock).priority,
+            true,       /* keepTracking */
+            id()        /* jobId */
+        );
+    }
+
+private:
     // Input parameters
 
-    std::string  const _query;
-    std::string  const _user;
-    std::string  const _password;
-    uint64_t     const _maxRows;
-    bool         const _allWorkers;
-    CallbackType       _onFinish;       /// @note is reset when the job finishes
+    uint64_t const _maxRows;
+    bool     const _allWorkers;
 
     /// A collection of requests implementing the operation
-    std::vector<SqlQueryRequest::Ptr> _requests;
+    std::vector<SqlRequest::Ptr> _requests;
 
-    // Request counters are used for tracking a condition for
-    // completing the job and for computing its final state.
-
-    size_t _numLaunched = 0;
+    /// This counter is used for tracking a condition for completing the job
+    /// before computing its final state.
     size_t _numFinished = 0;
-    size_t _numSuccess = 0;
 
     /// The result of the operation (gets updated as requests are finishing)
     SqlJobResult _resultData;

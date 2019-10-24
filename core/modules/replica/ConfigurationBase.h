@@ -28,6 +28,7 @@
  */
 
 // System headers
+#include <cstdint>
 #include <iosfwd>
 #include <list>
 #include <map>

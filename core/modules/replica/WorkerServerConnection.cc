@@ -277,6 +277,17 @@ void WorkerServerConnection::_processQueuedRequest(ProtocolRequestHeader& hdr) {
             _reply(hdr.id(), response);
             break;
         }
+        case ProtocolQueuedRequestType::INDEX: {
+
+            // Read the request body
+            ProtocolRequestIndex request;
+            if (not ::readMessage(_socket, _bufferPtr, bytes, request)) return;
+
+            ProtocolResponseIndex response;
+            _processor->enqueueForIndex(hdr.id(), request, response);
+            _reply(hdr.id(), response);
+            break;
+        }
         case ProtocolQueuedRequestType::SQL: {
 
             // Read the request body
@@ -345,6 +356,12 @@ void WorkerServerConnection::_processManagementRequest(ProtocolRequestHeader& hd
                     _reply(hdr.id(), response);
                     break;
                 }
+                case ProtocolQueuedRequestType::INDEX: {
+                    ProtocolResponseIndex response;
+                    _processor->dequeueOrCancel(request, response);
+                    _reply(hdr.id(), response);
+                    break;
+                }
                 case ProtocolQueuedRequestType::SQL: {
                     ProtocolResponseSql response;
                     _processor->dequeueOrCancel(request, response);
@@ -392,6 +409,12 @@ void WorkerServerConnection::_processManagementRequest(ProtocolRequestHeader& hd
                 }
                 case ProtocolQueuedRequestType::TEST_ECHO: {
                     ProtocolResponseEcho response;
+                    _processor->checkStatus(request, response);
+                    _reply(hdr.id(), response);
+                    break;
+                }
+                case ProtocolQueuedRequestType::INDEX: {
+                    ProtocolResponseIndex response;
                     _processor->checkStatus(request, response);
                     _reply(hdr.id(), response);
                     break;
@@ -489,6 +512,21 @@ void WorkerServerConnection::_processServiceRequest(ProtocolRequestHeader& hdr) 
         case ProtocolServiceRequestType::SERVICE_DRAIN: {
 
             _processor->drain();
+
+            const bool extendedReport = true;   // to return detailed info on all known
+                                                // replica-related requests
+            _processor->setServiceResponse(
+                  response,
+                  hdr.id(),
+                  ProtocolServiceResponse::SUCCESS,
+                  extendedReport);
+
+            _reply(hdr.id(), response);
+            break;
+        }
+        case ProtocolServiceRequestType::SERVICE_RECONFIG: {
+
+            _processor->reconfig();
 
             const bool extendedReport = true;   // to return detailed info on all known
                                                 // replica-related requests

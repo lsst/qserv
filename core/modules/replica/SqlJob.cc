@@ -23,6 +23,7 @@
 #include "replica/SqlJob.h"
 
 // System headers
+#include <algorithm>
 #include <stdexcept>
 
 // Qserv headers
@@ -45,9 +46,6 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
-string SqlJob::typeName() { return "SqlJob"; }
-
-
 Job::Options const& SqlJob::defaultOptions() {
     static Job::Options const options{
         2,      /* priority */
@@ -58,44 +56,15 @@ Job::Options const& SqlJob::defaultOptions() {
 }
 
 
-SqlJob::Ptr SqlJob::create(string const& query,
-                           string const& user,
-                           string const& password,
-                           uint64_t maxRows,
-                           bool allWorkers,
-                           Controller::Ptr const& controller,
-                           string const& parentJobId,
-                           CallbackType const& onFinish,
-                           Job::Options const& options) {
-    return SqlJob::Ptr(
-        new SqlJob(query,
-                   user,
-                   password,
-                   maxRows,
-                   allWorkers,
-                   controller,
-                   parentJobId,
-                   onFinish,
-                   options));
-}
-
-
-SqlJob::SqlJob(string const& query,
-               string const& user,
-               string const& password,
-               uint64_t maxRows,
+SqlJob::SqlJob(uint64_t maxRows,
                bool allWorkers,
                Controller::Ptr const& controller,
                string const& parentJobId,
-               CallbackType const& onFinish,
+               std::string const& jobName,
                Job::Options const& options)
-    :   Job(controller, parentJobId, "SQL", options),
-        _query     (query),
-        _user      (user),
-        _password  (password),
-        _maxRows   (maxRows),
-        _allWorkers(allWorkers),
-        _onFinish  (onFinish) {
+    :   Job(controller, parentJobId, jobName, options),
+        _maxRows(maxRows),
+        _allWorkers(allWorkers) {
 }
 
 
@@ -111,16 +80,6 @@ SqlJobResult const& SqlJob::getResultData() const {
 }
 
 
-list<pair<string,string>> SqlJob::extendedPersistentState() const {
-    list<pair<string,string>> result;
-    result.emplace_back("query",                 query());
-    result.emplace_back("user",                  user());
-    result.emplace_back("max_rows",    to_string(maxRows()));
-    result.emplace_back("all_workers",    string(allWorkers() ? "1" : "0"));
-    return result;
-}
-
-
 list<pair<string,string>> SqlJob::persistentLogData() const {
 
     list<pair<string,string>> result;
@@ -131,20 +90,20 @@ list<pair<string,string>> SqlJob::persistentLogData() const {
 
     for (auto&& itr: resultData.resultSets) {
         auto&& worker = itr.first;
-        auto&& resultSet = itr.second;
-
-        // ATTENTION: the 'error=' field is reported in the very end
-        // of the string to simplify parsing of the string should
-        // this be needed.
-
+        string workerResultSetStr;
+        auto&& workerResultSet = itr.second;
+        for (auto&& resultSet: workerResultSet) {
+            workerResultSetStr +=
+                "(char_set_name=" + resultSet.charSetName +
+                ",has_result=" + string(resultSet.hasResult ? "1" : "0") +
+                ",fields=" + to_string(resultSet.fields.size()) +
+                ",rows=" + to_string(resultSet.rows.size()) +
+                ",error=" + resultSet.error +
+                "),";
+        }
         result.emplace_back(
             "worker-stats",
-            "worker=" + worker +
-            " char_set_name=" + resultSet.charSetName +
-            " has_result="    + string(   resultSet.hasResult ? "1" : "0") +
-            " fields="        + to_string(resultSet.fields.size()) +
-            " rows="          + to_string(resultSet.rows.size()) +
-            " error="         +           resultSet.error
+            "worker=" + worker + ",result-set=" + workerResultSetStr
         );
     }
     return result;
@@ -155,37 +114,27 @@ void SqlJob::startImpl(util::Lock const& lock) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
-    auto const self = shared_from_base<SqlJob>();
-
     auto const workerNames = allWorkers() ?
         controller()->serviceProvider()->config()->allWorkers() :
         controller()->serviceProvider()->config()->workers();
     
-    for (auto&& worker : workerNames) {
-        _resultData.workers   [worker] = false;
-        _resultData.resultSets[worker] = SqlResultSet();
-        _requests.push_back(
-            controller()->sqlQuery(
-                worker,
-                query(),
-                user(),
-                password(),
-                maxRows(),
-                [self] (SqlQueryRequest::Ptr request) {
-                    self->_onRequestFinish(request);
-                },
-                options(lock).priority,
-                true,   /* keepTracking*/
-                id()    /* jobId */
-            )
-        );
-        _numLaunched++;
+    // Launch the initial batch of requests in the number which won't exceed
+    // the number of the service processing threads at each worker multiplied
+    // by the number of workers involved into the operation.
+
+    size_t const maxRequestsPerWorker =
+        controller()->serviceProvider()->config()->workerNumProcessingThreads();
+
+    for (auto&& worker: workerNames) {
+        _resultData.resultSets[worker] = list<SqlResultSet>();
+        auto const requests = launchRequests(lock, worker, maxRequestsPerWorker);
+        _requests.insert(_requests.cend(), requests.cbegin(), requests.cend());
     }
 
     // In case if no workers or database are present in the Configuration
     // at this time.
 
-    if (not _numLaunched) finish(lock, ExtendedState::SUCCESS);
+    if (_requests.size() == 0) finish(lock, ExtendedState::SUCCESS);
 }
 
 
@@ -200,30 +149,15 @@ void SqlJob::cancelImpl(util::Lock const& lock) {
     // job the request cancellation should be also followed (where it makes a sense)
     // by stopping the request at corresponding worker service.
 
-    for (auto&& ptr : _requests) {
+    for (auto&& ptr: _requests) {
         ptr->cancel();
-        if (ptr->state() != Request::State::FINISHED)
-            controller()->stopById<StopSqlQueryRequest>(
-                ptr->worker(),
-                ptr->id(),
-                nullptr,    /* onFinish */
-                options(lock).priority,
-                true,       /* keepTracking */
-                id()        /* jobId */);
+        if (ptr->state() != Request::State::FINISHED) stopRequest(lock, ptr);
     }
     _requests.clear();
 }
 
 
-void SqlJob::notify(util::Lock const& lock) {
-
-    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
-
-    notifyDefaultImpl<SqlJob>(lock, _onFinish);
-}
-
-
-void SqlJob::_onRequestFinish(SqlQueryRequest::Ptr const& request) {
+void SqlJob::onRequestFinish(SqlRequest::Ptr const& request) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "  worker=" << request->worker());
 
@@ -233,23 +167,28 @@ void SqlJob::_onRequestFinish(SqlQueryRequest::Ptr const& request) {
 
     if (state() == State::FINISHED) return;
 
+    _numFinished++;
+
     // Update stats, including the result sets since they may carry
     // MySQL-specific errors reported by failed queries.
+    _resultData.resultSets[request->worker()].push_back(request->responseData());
 
-    bool const requestSucceeded =
-        request->extendedState() == Request::ExtendedState::SUCCESS;
+    // Try submitting a replacement request for the same worker. If none
+    // would be launched then evaluate for the completion condition of the job.
 
-    _resultData.workers   [request->worker()] = requestSucceeded;
-    _resultData.resultSets[request->worker()] = request->responseData();
-
-    // Evaluate the completion condition
-
-    _numFinished++;
-    if (requestSucceeded) _numSuccess++;
-
-    if (_numFinished == _numLaunched) {
-        finish(lock, _numSuccess == _numLaunched ? ExtendedState::SUCCESS :
-                                                   ExtendedState::FAILED);
+    auto const requests = launchRequests(lock, request->worker());
+    auto itr = _requests.insert(_requests.cend(), requests.cbegin(), requests.cend());
+    if (_requests.cend() == itr) {
+        if (_requests.size() == _numFinished) {
+            size_t numSuccess = 0;
+            for (auto&& ptr: _requests) {
+                if (ptr->extendedState() == Request::ExtendedState::SUCCESS) {
+                    numSuccess++;
+                }
+            }
+            finish(lock, numSuccess == _numFinished ? ExtendedState::SUCCESS :
+                                                      ExtendedState::FAILED);
+        }
     }
 }
 

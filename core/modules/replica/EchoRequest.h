@@ -22,6 +22,7 @@
 #define LSST_QSERV_REPLICA_ECHOREQUEST_H
 
 // System headers
+#include <cstdint>
 #include <functional>
 #include <memory>
 #include <string>

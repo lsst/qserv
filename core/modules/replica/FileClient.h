@@ -27,6 +27,7 @@
  */
 
 // System headers
+#include <cstdint>
 #include <ctime>
 #include <memory>
 #include <stdexcept>

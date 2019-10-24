@@ -22,6 +22,7 @@
 #define LSST_QSERV_HTTPPROCESSOR_H
 
 // System headers
+#include <cstdint>
 #include <functional>
 #include <memory>
 #include <set>

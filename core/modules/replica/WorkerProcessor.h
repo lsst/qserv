@@ -23,6 +23,7 @@
 
 // System headers
 #include <algorithm>
+#include <cstdint>
 #include <list>
 #include <memory>
 #include <queue>

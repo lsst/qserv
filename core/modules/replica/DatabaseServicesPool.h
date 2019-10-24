@@ -29,6 +29,7 @@
 
 // System headers
 #include <condition_variable>
+#include <cstdint>
 #include <mutex>
 #include <list>
 

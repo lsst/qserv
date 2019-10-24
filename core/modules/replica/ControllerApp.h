@@ -22,6 +22,7 @@
 #define LSST_QSERV_REPLICA_CONTROLLERAPP_H
 
 // System headers
+#include <cstdint>
 #include <limits>
 #include <string>
 

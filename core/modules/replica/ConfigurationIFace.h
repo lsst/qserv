@@ -29,6 +29,7 @@
  */
 
 // System headers
+#include <cstdint>
 #include <iosfwd>
 #include <list>
 #include <map>
@@ -40,6 +41,9 @@
 // Third party headers
 #include "nlohmann/json.hpp"
 
+
+// Qserv headers
+#include "global/constants.h"
 
 // Forward declarations
 namespace lsst {
@@ -581,8 +585,8 @@ public:
                                         std::list<std::pair<std::string,std::string>>(),
                                   bool isDirectorTable=false,
                                   std::string const& directorTableKey="objectId",
-                                  std::string const& chunkIdColName="chunkId",
-                                  std::string const& subChunkIdColName="subChunkId",
+                                  std::string const& chunkIdColName=lsst::qserv::CHUNK_COLUMN,
+                                  std::string const& subChunkIdColName=lsst::qserv::SUB_CHUNK_COLUMN,
                                   std::string const& latitudeColName=std::string(),
                                   std::string const& longitudeColName=std::string()) = 0;
 

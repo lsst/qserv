@@ -28,6 +28,7 @@
  */
 
 // System headers
+#include <cstdint>
 #include <ctime>
 #include <map>
 #include <memory>
@@ -57,10 +58,10 @@ namespace replica {
   * the same Protobuf type.
   */
 class ReplicaInfo {
-
 public:
 
-    struct FileInfo {
+    class FileInfo {
+    public:
 
         std::string name;       /// The short name
         uint64_t size = 0;      /// The current (or final) size (bytes)
@@ -83,6 +84,26 @@ public:
         bool operator!=(FileInfo const& other) const {
             return not operator==(other);
         }
+
+        /// @return the base name of a partitioned table (regardless if this is an overlap)
+        std::string baseTable() const;
+
+        /// @return 'true' if this file stores an overlap of a partition
+        bool isOverlap() const;
+
+        // @return 'true' if this is the data file
+        bool isData() const { return name.substr(name.size() - 4, 4) == ".MYD"; }
+
+        // @return 'true' if this is the index file
+        bool isIndex() const { return name.substr(name.size() - 4, 4) == ".MYI"; }
+
+    private:
+
+        /// @return table name with chunk (if any) and file extension removed
+        std::string _removeChunkAndExt() const;
+
+        static const size_t _extSize;       /// the size of the MYISAM tables file extensions
+        static const size_t _overlapSize;   /// the size of the "FullOverlap" marker in table names
     };
     typedef std::vector<FileInfo> FileInfoCollection;
 

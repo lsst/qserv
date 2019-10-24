@@ -23,6 +23,7 @@
 
 // System headers
 #include <atomic>
+#include <cstdint>
 #include <functional>
 #include <set>
 
