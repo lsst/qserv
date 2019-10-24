@@ -45,6 +45,9 @@ namespace lsst {
 namespace qserv {
 namespace query {
     class QueryTemplate;
+}
+namespace sql {
+    class ColSchema;
 }}} // End of forward declarations
 
 
@@ -108,6 +111,10 @@ public:
     // table is but the column is not) this will return false.
     bool isSubsetOf(const ColumnRef::Ptr & rhs) const;
     bool isSubsetOf(ColumnRef const& rhs) const;
+
+    // determine if this object is the same as or a less complete description of the passed in object.
+    bool isSubsetOf(sql::ColSchema const& columnSchema) const;
+
 
     bool isAliasedBy(ColumnRef const& rhs) const;
 

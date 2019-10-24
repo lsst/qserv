@@ -51,6 +51,9 @@ namespace query {
     class QueryTemplate;
     class JoinSpec;
     class JoinRef;
+}
+namespace sql {
+    class ColSchema;
 }}} // End of forward declarations
 
 
@@ -123,6 +126,9 @@ public:
      *         populated but table is not.
      */
     bool isSubsetOf(TableRef const& rhs) const;
+
+    // determine if this object is the same as or a less complete description of the passed in object.
+    bool isSubsetOf(sql::ColSchema const& columnSchema) const;
 
     /**
      * @brief Find out if this TableRef is using the alias of another TableRef

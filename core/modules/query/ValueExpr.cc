@@ -57,6 +57,7 @@
 #include "query/QueryTemplate.h"
 #include "query/SubsetHelper.h"
 #include "query/ValueFactor.h"
+#include "sql/Schema.h"
 #include "util/IterableFormatter.h"
 #include "util/PointerCompare.h"
 
@@ -127,6 +128,11 @@ bool ValueExpr::FactorOp::isSubsetOf(FactorOp const& rhs) const {
         return false;
     return factor->isSubsetOf(*rhs.factor);
 }
+
+
+// bool ValueExpr::FactorOp::isSubsetOf(sql::ColSchema const& columnSchema) const {
+//     return factor->isSubsetOf(columnSchema);
+// }
 
 
 ////////////////////////////////////////////////////////////////////////
@@ -373,6 +379,18 @@ bool ValueExpr::isSubsetOf(ValueExpr const& valueExpr) const {
         return true;
     }
     return query::isSubsetOf(_factorOps, valueExpr._factorOps);
+}
+
+
+bool ValueExpr::isSubsetOf(sql::ColSchema const& columnSchema) const {
+    if (not _alias.empty() && _alias != columnSchema.name) return false;
+    if (_factorOps.size() == 1 && _factorOps[0].factor->getType() == ValueFactor::NONE) {
+        return true;
+    }
+    if (isColumnRef()) {
+        return getColumnRef()->isSubsetOf(columnSchema);
+    }
+    return false;
 }
 
 

@@ -39,7 +39,14 @@ namespace qserv {
 namespace sql {
 
 /// Type information for a single column
-struct ColType {
+class ColType {
+public:
+    ColType() = default;
+
+    ColType(std::string const& sqlType_, int mysqlType_)
+        : sqlType(sqlType_),
+          mysqlType(mysqlType_)
+    {}
 
     std::string sqlType; ///< Typespec to use in CREATE TABLE
     int mysqlType; ///< Internal MYSQL type code
@@ -51,7 +58,18 @@ inline std::ostream& operator<<(std::ostream& os, ColType const& ct) {
 }
 
 /// Schema for a single column
-struct ColSchema {
+class ColSchema {
+public:
+    ColSchema() = default;
+
+    ColSchema(std::string const& table_,
+              std::string const& name_,
+              ColType const& colType_)
+        : table(table_),
+          name(name_),
+          colType(colType_)
+    {}
+
     std::string table; ///< Table name
     std::string name; ///< Column name
     ColType colType; ///< Column type
@@ -71,7 +89,12 @@ inline std::ostream& operator<<(std::ostream& os, ColSchema const& cs) {
 /// A SQL Table schema.
 /// If we end up needing additional characteristics, such as ENGINE or KEY or
 /// INDEX, we would add those fields to this struct.
-struct Schema {
+class Schema {
+public:
+    Schema() = default;
+
+    Schema(ColSchemaVector const& columns_) : columns(columns_) {}
+
     ColSchemaVector columns;
 };
 

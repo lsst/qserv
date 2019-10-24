@@ -53,6 +53,9 @@ namespace query {
     class QueryTemplate;
     class TableRef;
     class ValueFactor;
+}
+namespace sql{
+    class ColSchema;
 }}} // End of forward declarations
 
 
@@ -260,6 +263,9 @@ public:
 
     // determine if this object is the same as or a less complete description of the passed in object.
     bool isSubsetOf(ValueExpr const& valueExpr) const;
+
+    // determine if this object is the same as or a less complete description of the passed in object.
+    bool isSubsetOf(sql::ColSchema const& columnSchema) const;
 
     void setToAliasOnly();
 

@@ -38,13 +38,14 @@
 
 // Qserv headers
 #include "query/TableRef.h"
+#include "sql/Schema.h"
 
 // Boost unit test header
 #define BOOST_TEST_MODULE TableRef
 #include "boost/test/data/test_case.hpp"
 #include "boost/test/included/unit_test.hpp"
 
-
+using namespace lsst::qserv;
 using namespace lsst::qserv::query;
 
 
@@ -77,6 +78,9 @@ BOOST_AUTO_TEST_CASE(verifyPopulated_dbIsSetIgnoreDefault) {
     BOOST_REQUIRE_EQUAL(tableRef, expectedTableRef);
 }
 
+////////////////////////////////////////
+// TableRefSubset test infrastructure //
+////////////////////////////////////////
 
 struct TestTableRefs {
     TestTableRefs(std::shared_ptr<TableRef> const& TRa, std::shared_ptr<TableRef> const& TRb, bool p)
@@ -125,6 +129,58 @@ BOOST_DATA_TEST_CASE(TableRefSubset, TABLE_REF_SUBSET_TEST_DATA, tables) {
     BOOST_REQUIRE_MESSAGE(tables.pass == tables.a->isSubsetOf(*tables.b), tables.a <<
             (tables.pass ? "should " : "should NOT ") << "be a subset of " << tables.b);
 }
+
+
+/////////////////////////////////////////////////////
+// TableRefSubset of ColSchema test infrastructure //
+/////////////////////////////////////////////////////
+
+struct TestTableRefColSchema {
+    TestTableRefColSchema(std::shared_ptr<TableRef> const& tableRef_, sql::ColSchema colSchema_, bool p)
+    : tableRef(tableRef_), colSchema(colSchema_), pass(p)  {}
+
+    TestTableRefColSchema(std::string aDb, std::string aTable, std::string aAlias,
+                          std::string bTable, std::string bName,
+                          bool p)
+    : tableRef(std::make_shared<TableRef>(aDb, aTable, aAlias))
+    , colSchema(bTable, bName, sql::ColType("unused", -1))
+    , pass(p)
+    {}
+
+    std::shared_ptr<TableRef> tableRef;
+    sql::ColSchema colSchema;
+    bool pass; // if the test should pass;
+};
+
+std::ostream& operator<<(std::ostream& os, TestTableRefColSchema const& self) {
+    os << "TestTableRefColSchema(";
+    os << "tableRef:" << self.tableRef;
+    os << ", colSchema:" << self.colSchema;
+    os << ", expected match" << self.pass;
+    os << ")";
+    return os;
+}
+
+static const std::vector<TestTableRefColSchema> TABLE_REF_SCHEMA_SUBSET_TEST_DATA = {
+    // vary the table name
+    TestTableRefColSchema("db", "table",  "", "table",  "column", true),  // match
+    TestTableRefColSchema("db", "table",  "", "table1", "column", false),  // table mismatch
+    TestTableRefColSchema("db", "table1", "", "table",  "column", false),  // table mismatch
+
+    TestTableRefColSchema("db", "table", "tableAlias", "tableAlias", "column", true),  // match via table alias
+
+    TestTableRefColSchema("db", "table", "tableAlias", "table", "column", true),  // match even though table alias is different
+
+    TestTableRefColSchema("", "", "",         "table", "column", true),  // match even though table alias is different
+};
+
+BOOST_DATA_TEST_CASE(TableRefColSchemaSubset, TABLE_REF_SCHEMA_SUBSET_TEST_DATA, tables) {
+    BOOST_REQUIRE_MESSAGE(tables.pass == tables.tableRef->isSubsetOf(tables.colSchema), tables.tableRef <<
+            (tables.pass ? "should " : "should NOT ") << "be a subset of " << tables.colSchema);
+}
+
+
+////////////////////////////////////////
 
 
 static const std::vector<TestTableRefs> TABLE_REF_ALIASED_BY_TEST_DATA = {

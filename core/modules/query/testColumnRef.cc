@@ -38,6 +38,7 @@
 // Qserv headers
 #include "query/ColumnRef.h"
 #include "query/TableRef.h"
+#include "sql/Schema.h"
 
 // Boost unit test header
 #define BOOST_TEST_MODULE ColumnRef
@@ -58,6 +59,9 @@ std::shared_ptr<query::ColumnRef> makeColumnWithTable(std::string const& db, std
         std::make_shared<query::TableRef>(db, table, tableAlias), column);
 }
 
+/////////////////
+// TestColumns //
+/////////////////
 
 struct TestColumns {
     TestColumns(query::ColumnRef::Ptr CRa, query::ColumnRef::Ptr CRb, bool p)
@@ -160,6 +164,51 @@ static const std::vector<TestColumns> COLUMN_REF_MATCHES = {
 BOOST_DATA_TEST_CASE(ColumnRefSubset, COLUMN_REF_MATCHES, columns) {
     BOOST_REQUIRE_MESSAGE(columns.pass == columns.a->isSubsetOf(columns.b), columns.a <<
             (columns.pass ? "should " : "should NOT ") << "be a subset of " << columns.b);
+}
+
+//////////////////////////////////
+// Test ColumnRef and ColSchema //
+//////////////////////////////////
+
+struct TestColumnRefColumnSchema {
+    TestColumnRefColumnSchema(std::string db, std::string table, std::string tableAlias, std::string column,
+                              std::string schemaTable, std::string schemaColumn,
+                              bool p)
+    : columnRef(std::make_shared<query::ColumnRef>(db, table, tableAlias, column))
+    , colSchema(schemaTable, schemaColumn, sql::ColType("unused", -1))
+    , pass(p)
+    {}
+
+    std::shared_ptr<query::ColumnRef> columnRef;
+    sql::ColSchema colSchema;
+    bool pass; // if the test should pass;
+};
+
+
+std::ostream& operator<<(std::ostream& os, TestColumnRefColumnSchema const& self) {
+    os << "TestColumnRefColumnSchema(";
+    os << "columnRef:" << self.columnRef;
+    os << ", colSchema:" << self.colSchema;
+    os << ", expected match" << self.pass;
+    os << ")";
+    return os;
+}
+
+
+static const std::vector<TestColumnRefColumnSchema> COLUMN_REF_SCHEMA_MATCHES = {
+    TestColumnRefColumnSchema("",    "",         "",              "column",    "table",      "column", true),
+    TestColumnRefColumnSchema("",    "table",    "",              "column",    "table",      "column", true),
+    TestColumnRefColumnSchema("",    "",         "table",         "column",    "table",      "column", true),
+    TestColumnRefColumnSchema("",    "table",    "tableAlias",    "column",    "table",      "column", true),
+    TestColumnRefColumnSchema("",    "table",    "tableAlias",    "column",    "tableAlias", "column", true),
+    TestColumnRefColumnSchema("",    "table",    "tableAlias",    "column1",   "table",      "column", false),
+    TestColumnRefColumnSchema("",    "table",    "tableAlias",    "column",    "table",      "column1", false),
+};
+
+
+BOOST_DATA_TEST_CASE(ColumnRefSchemaSubset, COLUMN_REF_SCHEMA_MATCHES, columns) {
+    BOOST_REQUIRE_MESSAGE(columns.pass == columns.columnRef->isSubsetOf(columns.colSchema), columns.columnRef <<
+            (columns.pass ? "should " : "should NOT ") << "be a subset of " << columns.colSchema);
 }
 
 

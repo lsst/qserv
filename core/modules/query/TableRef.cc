@@ -46,6 +46,7 @@
 // Qserv headers
 #include "query/JoinRef.h"
 #include "query/JoinSpec.h"
+#include "sql/Schema.h"
 #include "util/IterableFormatter.h"
 #include "util/PointerCompare.h"
 
@@ -122,6 +123,30 @@ bool TableRef::isSubsetOf(TableRef const& rhs) const {
         return false;
     }
     return true;
+}
+
+
+bool TableRef::isSubsetOf(sql::ColSchema const& columnSchema) const {
+    if (not isSimple()) {
+        // We can investigate adding support for this if needed but I don't think it will be.
+        // I think it would also be worth considering if it would be a better abstraction if we removed
+        // the JoinRef from TableRef and making the JoinRef contain the joined TableRefs.
+        throw std::logic_error("TableRef does not support isSubsetOf with joins.");
+    }
+    // if the _table is empty, the _db must be empty
+    if (not hasTable() && hasDb()) {
+        return false;
+    }
+
+    // Schema currently does not have a 'table' field.
+
+    // The schema table must match either the TableRef's table alias or table name.
+    if ((hasAlias() && getAlias() == columnSchema.table) ||
+        (hasTable() && getTable() == columnSchema.table) ||
+        (not hasTable() && not hasAlias())) {
+        return true;
+    }
+    return false;
 }
 
 

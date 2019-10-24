@@ -45,6 +45,7 @@
 // Qserv headers
 #include "query/QueryTemplate.h"
 #include "query/TableRef.h"
+#include "sql/Schema.h"
 
 
 namespace {
@@ -169,6 +170,16 @@ bool ColumnRef::isSubsetOf(ColumnRef const& rhs) const {
         return false;
     }
     return true;
+}
+
+
+bool ColumnRef::isSubsetOf(sql::ColSchema const& columnSchema) const {
+    if (not _tableRef->isSubsetOf(columnSchema)) {
+        return false;
+    }
+    // The columns of a subset can not be empty; test one before comparing the two.
+    if (_column.empty()) return false;
+    return _column == columnSchema.name;
 }
 
 
