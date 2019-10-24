@@ -22,23 +22,19 @@
 #define LSST_QSERV_HTTPPROCESSOR_H
 
 // System headers
-#include <cstdint>
 #include <functional>
 #include <memory>
-#include <set>
-
-// Third party headers
-#include "nlohmann/json.hpp"
 
 // Qserv headers
-#include "qhttp/Server.h"
-#include "replica/DeleteWorkerTask.h"
+#include "replica/EventLogger.h"
 #include "replica/HealthMonitorTask.h"
-#include "replica/ReplicationTask.h"
-#include "util/Mutex.h"
 
-// LSST headers
-#include "lsst/log/Log.h"
+// Forward declarations
+namespace lsst {
+namespace qserv {
+namespace replica {
+    class HttpModule;
+}}} // Forward declarations
 
 // This header declarations
 namespace lsst {
@@ -48,10 +44,12 @@ namespace replica {
 /**
  * Class HttpProcessor processes requests from the built-in HTTP server.
  * The constructor of the class will register requests handlers an start
- * the server.
+ * the server. Request handlers are provided by various modules instantiated
+ * by this class.
  */
-class HttpProcessor : public std::enable_shared_from_this<HttpProcessor> {
-
+class HttpProcessor:
+        public EventLogger,
+        public std::enable_shared_from_this<HttpProcessor> {
 public:
 
     typedef std::shared_ptr<HttpProcessor> Ptr;
@@ -63,237 +61,27 @@ public:
     ~HttpProcessor();
 
     static Ptr create(Controller::Ptr const& controller,
-                      HealthMonitorTask::WorkerEvictCallbackType const& onWorkerEvict,
                       unsigned int workerResponseTimeoutSec,
-                      HealthMonitorTask::Ptr const& healthMonitorTask,
-                      ReplicationTask::Ptr const& replicationTask,
-                      DeleteWorkerTask::Ptr const& deleteWorkerTask);
-
-    Controller::Ptr const controller() const { return _controller; }
+                      HealthMonitorTask::Ptr const& healthMonitorTask);
 
 private:
 
     HttpProcessor(Controller::Ptr const& controller,
-                  HealthMonitorTask::WorkerEvictCallbackType const& onWorkerEvict,
                   unsigned int workerResponseTimeoutSec,
-                  HealthMonitorTask::Ptr const& healthMonitorTask,
-                  ReplicationTask::Ptr const& replicationTask,
-                  DeleteWorkerTask::Ptr const& deleteWorkerTask);
+                  HealthMonitorTask::Ptr const& healthMonitorTask);
 
     void _initialize();
 
-    std::string _context() const;
-
-    /**
-     * Log a message into the Logger's LOG_LVL_INFO stream
-     */
-    void _info(std::string const& msg) const;
-
-    /**
-     * Log a message into the Logger's LOG_LVL_DEBUG stream
-     */
-    void _debug(std::string const& msg) const;
-
-    /**
-     * Log a message into the Logger's LOG_LVL_ERROR stream
-     */
-    void _error(std::string const& msg) const;
-
-    /**
-     * Process a request which return status of one worker.
-     */
-    void _getWorkerStatus(qhttp::Request::Ptr const& req,
-                          qhttp::Response::Ptr const& resp);
-
-    /**
-     * Process a request which return the status of the replicas.
-     */
-    void _getReplicationLevel(qhttp::Request::Ptr const& req,
-                              qhttp::Response::Ptr const& resp);
-
-    /**
-     * Process a request which return status of all workers.
-     */
-    void _listWorkerStatuses(qhttp::Request::Ptr const& req,
-                             qhttp::Response::Ptr const& resp);
-
-    /**
-     * Process a request which return info on known Replication Controllers
-     */
-    void _listControllers(qhttp::Request::Ptr const& req,
-                          qhttp::Response::Ptr const& resp);
-
-    /**
-     * Process a request which return info on the specified Replication Controller
-     */
-    void _getControllerInfo(qhttp::Request::Ptr const& req,
-                            qhttp::Response::Ptr const& resp);
-
-    /**
-     * Process a request which return info on known Replication Requests
-     */
-    void _listRequests(qhttp::Request::Ptr const& req,
-                       qhttp::Response::Ptr const& resp);
-
-    /**
-     * Process a request which return info on the specified Replication Request
-     */
-    void _getRequestInfo(qhttp::Request::Ptr const& req,
-                         qhttp::Response::Ptr const& resp);
-
-    /**
-     * Process a request which return info on known Replication Jobs
-     */
-    void _listJobs(qhttp::Request::Ptr const& req,
-                   qhttp::Response::Ptr const& resp);
-
-    /**
-     * Process a request which return info on the specified Replication Job
-     */
-    void _getJobInfo(qhttp::Request::Ptr const& req,
-                     qhttp::Response::Ptr const& resp);
-
-    /**
-     * Process a request which return the Configuration of the Replication system
-     */
-    void _getConfig(qhttp::Request::Ptr const& req,
-                    qhttp::Response::Ptr const& resp);
-
-    /**
-     * Process a request which updates the Configuration of the Replication system
-     * and reports back its new state.
-     */
-    void _updateGeneralConfig(qhttp::Request::Ptr const& req,
-                              qhttp::Response::Ptr const& resp);
-
-    /**
-     * Process a request which updates parameters of an existing worker in the Configuration
-     * of the Replication system and reports back the new state of the system
-     */
-    void _updateWorkerConfig(qhttp::Request::Ptr const& req,
-                             qhttp::Response::Ptr const& resp);
-
-    /**
-     * Process a request which removes an existing worker from the Configuration
-     * of the Replication system and reports back the new state of the system
-     */
-    void _deleteWorkerConfig(qhttp::Request::Ptr const& req,
-                             qhttp::Response::Ptr const& resp);
-
-    /**
-     * Process a request which adds a new worker into the Configuration
-     * of the Replication system and reports back the new state of the system
-     */
-    void _addWorkerConfig(qhttp::Request::Ptr const& req,
-                          qhttp::Response::Ptr const& resp);
-
-    /**
-     * Process a request which removes an existing database family from the Configuration
-     * of the Replication system and reports back the new state of the system
-     */
-    void _deleteFamilyConfig(qhttp::Request::Ptr const& req,
-                             qhttp::Response::Ptr const& resp);
-
-    /**
-     * Process a request which adds a new database family into the Configuration
-     * of the Replication system and reports back the new state of the system
-     */
-    void _addFamilyConfig(qhttp::Request::Ptr const& req,
-                          qhttp::Response::Ptr const& resp);
-
-    /**
-     * Process a request which removes an existing database from the Configuration
-     * of the Replication system and reports back the new state of the system
-     */
-    void _deleteDatabaseConfig(qhttp::Request::Ptr const& req,
-                               qhttp::Response::Ptr const& resp);
-
-    /**
-     * Process a request which adds a new database into the Configuration
-     * of the Replication system and reports back the new state of the system
-     */
-    void _addDatabaseConfig(qhttp::Request::Ptr const& req,
-                            qhttp::Response::Ptr const& resp);
-
-    /**
-     * Process a request which removes an existing table from the Configuration
-     * of the Replication system and reports back the new state of the system
-     */
-    void _deleteTableConfig(qhttp::Request::Ptr const& req,
-                            qhttp::Response::Ptr const& resp);
-
-    /**
-     * Process a request which adds a new database table into the Configuration
-     * of the Replication system and reports back the new state of the system
-     */
-    void _addTableConfig(qhttp::Request::Ptr const& req,
-                         qhttp::Response::Ptr const& resp);
-
-    /**
-     * Process a request for executing a query against a worker database.
-     * A result set of the query will be returned for those query types which
-     * have the one upon a successful completion of a request.
-     */
-    void _sqlQuery(qhttp::Request::Ptr const& req,
-                   qhttp::Response::Ptr const& resp);
-
-    /**
-     * Process a request for extracting various status info from Qserv workers
-     * (all of them or a subset of those as per parameters of a request).
-     */
-    void _getQservManyWorkersStatus(qhttp::Request::Ptr const& req,
-                                    qhttp::Response::Ptr const& resp);
-
-    /**
-     * Process a request for extracting various status info from one Qserv worker.
-     */
-    void _getQservWorkerStatus(qhttp::Request::Ptr const& req,
-                               qhttp::Response::Ptr const& resp);
-
-    /**
-     * Process a request for extracting a status on user queries launched to Qserv
-     */
-    void _getQservManyUserQuery(qhttp::Request::Ptr const& req,
-                                qhttp::Response::Ptr const& resp);
-
-    /**
-     * Process a request for extracting a status on a specific user query launched to Qserv
-     */
-    void _getQservUserQuery(qhttp::Request::Ptr const& req,
-                            qhttp::Response::Ptr const& resp);
-
-    /**
-     * Pull the current Configuration and translate it into a JSON object
-     */
-    nlohmann::json _configToJson() const;
-
-    /**
-     * Find descriptions of queries
-     *
-     * @param workerInfo  worker info object to be inspected to extract identifier)s of queries
-     * @return descriptions of the queries
-     */
-    nlohmann::json _getQueries(nlohmann::json& workerInfo) const;
-
-    Controller::Ptr const _controller;
-
-    HealthMonitorTask::WorkerEvictCallbackType const _onWorkerEvict;
-
-    unsigned int const _workerResponseTimeoutSec;
-
-                      // References(!) to smart pointers to the tasks which can be managed
-    // by this class. References to the pointers are used to avoid increasing
-    // the reference counters to the pointed objects.
-
-    HealthMonitorTask::Ptr const& _healthMonitorTask;
-
-    std::string _replicationLevelReport; /// The cached state of the last replication levels report
-    
-    uint64_t _replicationLevelReportTimeMs = 0; /// The time of the last cached report
-
-    util::Mutex _replicationLevelMtx; /// Protects the replication level cache
-
-    LOG_LOGGER _log;
+    std::shared_ptr<HttpModule> const _catalogsModule;
+    std::shared_ptr<HttpModule> const _replicationLevelsModule;
+    std::shared_ptr<HttpModule> const _workerStatusModule;
+    std::shared_ptr<HttpModule> const _controllersModule;
+    std::shared_ptr<HttpModule> const _requestsModule;
+    std::shared_ptr<HttpModule> const _jobsModule;
+    std::shared_ptr<HttpModule> const _configurationModule;
+    std::shared_ptr<HttpModule> const _qservMonitorModule;
+    std::shared_ptr<HttpModule> const _qservSqlModule;
+    std::shared_ptr<HttpModule> const _ingestModule;
 };
     
 }}} // namespace lsst::qserv::replica
