@@ -96,18 +96,29 @@ void HttpConfigurationModule::executeImpl(qhttp::Request::Ptr const& req,
                                           qhttp::Response::Ptr const& resp,
                                           string const& subModuleName) {
 
-    if      (subModuleName.empty()) _get(req, resp);
-    else if (subModuleName == "UPDATE-GENERAL") _updateGeneral(req, resp);
-    else if (subModuleName == "UPDATE-WORKER") _updateWorker(req, resp);
-    else if (subModuleName == "DELETE-WORKER") _deleteWorker(req, resp);
-    else if (subModuleName == "ADD-WORKER") _addWorker(req, resp);
-    else if (subModuleName == "DELETE-DATABASE-FAMILY") _deleteFamily(req, resp);
-    else if (subModuleName == "ADD-DATABASE-FAMILY") _addFamily(req, resp);
-    else if (subModuleName == "DELETE-DATABASE") _deleteDatabase(req, resp);
-    else if (subModuleName == "ADD-DATABASE") _addDatabase(req, resp);
-    else if (subModuleName == "DELETE-TABLE") _deleteTable(req, resp);
-    else if (subModuleName == "ADD-TABLE") _addTable(req, resp);
-    else {
+    if (subModuleName.empty()) {
+        _get(req, resp);
+    } else if (subModuleName == "UPDATE-GENERAL") {
+        _updateGeneral(req, resp);
+    } else if (subModuleName == "UPDATE-WORKER") {
+        _updateWorker(req, resp);
+    } else if (subModuleName == "DELETE-WORKER") {
+        _deleteWorker(req, resp);
+    } else if (subModuleName == "ADD-WORKER") {
+        _addWorker(req, resp);
+    } else if (subModuleName == "DELETE-DATABASE-FAMILY") {
+        _deleteFamily(req, resp);
+    } else if (subModuleName == "ADD-DATABASE-FAMILY") {
+        _addFamily(req, resp);
+    } else if (subModuleName == "DELETE-DATABASE") {
+        _deleteDatabase(req, resp);
+    } else if (subModuleName == "ADD-DATABASE") {
+        _addDatabase(req, resp);
+    } else if (subModuleName == "DELETE-TABLE") {
+        _deleteTable(req, resp);
+    } else if (subModuleName == "ADD-TABLE") {
+        _addTable(req, resp);
+    } else {
         throw invalid_argument(
                 context() + "::" + string(__func__) +
                 "  unsupported sub-module: '" + subModuleName + "'");

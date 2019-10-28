@@ -263,7 +263,7 @@ void HttpReplicationLevelsModule::executeImpl(qhttp::Request::Ptr const& req,
         }
     }
 
-    // Update the cache before sending th eresponse
+    // Update the cache before sending the response
 
     _replicationLevelReport = result;
     _replicationLevelReportTimeMs = PerformanceUtils::now();

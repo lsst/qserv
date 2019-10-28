@@ -61,9 +61,11 @@ void HttpRequestsModule::executeImpl(qhttp::Request::Ptr const& req,
                                      qhttp::Response::Ptr const& resp,
                                      string const& subModuleName) {
 
-    if      (subModuleName.empty()) _requests(req, resp);
-    else if (subModuleName == "SELECT-ONE-BY-ID") _oneRequest(req, resp);
-    else {
+    if (subModuleName.empty()) {
+        _requests(req, resp);
+    } else if (subModuleName == "SELECT-ONE-BY-ID") {
+        _oneRequest(req, resp);
+    } else {
         throw invalid_argument(
                 context() + "::" + string(__func__) +
                 "  unsupported sub-module: '" + subModuleName + "'");

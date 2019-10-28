@@ -117,17 +117,27 @@ void HttpIngestModule::executeImpl(qhttp::Request::Ptr const& req,
                                    qhttp::Response::Ptr const& resp,
                                    string const& subModuleName) {
 
-    if      (subModuleName == "TRANSACTIONS")             _getTransactions(req, resp);
-    else if (subModuleName == "SELECT-TRANSACTION-BY-ID") _getTransaction(req, resp);
-    else if (subModuleName == "BEGIN-TRANSACTION")        _beginTransaction(req, resp);
-    else if (subModuleName == "END-TRANSACTION")          _endTransaction(req, resp);
-    else if (subModuleName == "ADD-DATABASE")             _addDatabase(req, resp);
-    else if (subModuleName == "PUBLISH-DATABASE")         _publishDatabase(req, resp);
-    else if (subModuleName == "DELETE-DATABASE")          _deleteDatabase(req, resp);
-    else if (subModuleName == "ADD-TABLE")                _addTable(req, resp);
-    else if (subModuleName == "ADD-CHUNK")                _addChunk(req, resp);
-    else if (subModuleName == "BUILD-CHUNK-LIST")         _buildEmptyChunksList(req, resp);
-    else {
+    if (subModuleName == "TRANSACTIONS") {
+        _getTransactions(req, resp);
+    } else if (subModuleName == "SELECT-TRANSACTION-BY-ID") {
+        _getTransaction(req, resp);
+    } else if (subModuleName == "BEGIN-TRANSACTION") {
+        _beginTransaction(req, resp);
+    } else if (subModuleName == "END-TRANSACTION") {
+        _endTransaction(req, resp);
+    } else if (subModuleName == "ADD-DATABASE") {
+        _addDatabase(req, resp);
+    } else if (subModuleName == "PUBLISH-DATABASE") {
+         _publishDatabase(req, resp);
+    } else if (subModuleName == "DELETE-DATABASE") {
+         _deleteDatabase(req, resp);
+    } else if (subModuleName == "ADD-TABLE") {
+         _addTable(req, resp);
+    } else if (subModuleName == "ADD-CHUNK") {
+         _addChunk(req, resp);
+    } else if (subModuleName == "BUILD-CHUNK-LIST") {
+         _buildEmptyChunksList(req, resp);
+    } else {
         throw invalid_argument(
                 context() + "::" + string(__func__) +
                 "  unsupported sub-module: '" + subModuleName + "'");

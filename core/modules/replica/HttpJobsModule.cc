@@ -61,9 +61,11 @@ void HttpJobsModule::executeImpl(qhttp::Request::Ptr const& req,
                                  qhttp::Response::Ptr const& resp,
                                  string const& subModuleName) {
 
-    if      (subModuleName.empty()) _jobs(req, resp);
-    else if (subModuleName == "SELECT-ONE-BY-ID") _oneJob(req, resp);
-    else {
+    if (subModuleName.empty()) {
+        _jobs(req, resp);
+    } else if (subModuleName == "SELECT-ONE-BY-ID") {
+        _oneJob(req, resp);
+    } else {
         throw invalid_argument(
                 context() + "::" + string(__func__) +
                 "  unsupported sub-module: '" + subModuleName + "'");

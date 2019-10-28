@@ -121,11 +121,15 @@ void HttpQservMonitorModule::executeImpl(qhttp::Request::Ptr const& req,
                                          qhttp::Response::Ptr const& resp,
                                          string const& subModuleName) {
 
-    if      (subModuleName == "WORKERS")               _workers(req, resp);
-    else if (subModuleName == "SELECT-WORKER-BY-NAME") _worker(req, resp);
-    else if (subModuleName == "QUERIES")               _userQueries(req, resp);
-    else if (subModuleName == "SELECT-QUERY-BY-ID")    _userQuery(req, resp);
-    else {
+    if (subModuleName == "WORKERS") {
+        _workers(req, resp);
+    } else if (subModuleName == "SELECT-WORKER-BY-NAME") {
+        _worker(req, resp);
+    } else if (subModuleName == "QUERIES") {
+        _userQueries(req, resp);
+    } else if (subModuleName == "SELECT-QUERY-BY-ID") {
+        _userQuery(req, resp);
+    } else {
         throw invalid_argument(
                 context() + "::" + string(__func__) +
                 "  unsupported sub-module: '" + subModuleName + "'");
