@@ -73,11 +73,7 @@ private:
 
     // Input parameters
 
-    /// A reference to the smart pointer is used to avoid increasing
-    /// the reference counter to the pointed object and to avoid the circular
-    /// dependency which would prevent object destruction.
-    /// TODO: consider the weak pointer?
-    HealthMonitorTask::Ptr const& _healthMonitorTask;
+    std::weak_ptr<HealthMonitorTask> const _healthMonitorTask;
 
     /// The cached state of the last replication levels report
     nlohmann::json _replicationLevelReport = nlohmann::json::object();

@@ -92,7 +92,14 @@ void HttpReplicationLevelsModule::executeImpl(qhttp::Request::Ptr const& req,
     // Otherwise, get the fresh snapshot of the replica distributions
 
     auto const config = controller()->serviceProvider()->config();
-    auto const delays = _healthMonitorTask->workerResponseDelay();
+
+    auto const healthMonitorTask = _healthMonitorTask.lock();
+    if (nullptr == healthMonitorTask) {
+        string const msg = "no access to the Health Monitor Task. The service may be shutting down.";
+        error(__func__, msg);
+        throw runtime_error("HttpReplicationLevelsModule::" + string(__func__) + "  " + msg);
+    }
+    auto const delays = healthMonitorTask->workerResponseDelay();
 
     vector<string> disabledQservWorkers;
     vector<string> disabledReplicationWorkers;

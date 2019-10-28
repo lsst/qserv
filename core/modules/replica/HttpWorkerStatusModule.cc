@@ -67,7 +67,13 @@ void HttpWorkerStatusModule::executeImpl(qhttp::Request::Ptr const& req,
                                          string const& subModuleName) {
     debug(__func__);
 
-    auto const delays = _healthMonitorTask->workerResponseDelay();
+    auto const healthMonitorTask = _healthMonitorTask.lock();
+    if (nullptr == healthMonitorTask) {
+        string const msg = "no access to the Health Monitor Task. The service may be shutting down.";
+        error(__func__, msg);
+        throw runtime_error("HttpWorkerStatusModule::" + string(__func__) + "  " + msg);
+    }
+    auto const delays = healthMonitorTask->workerResponseDelay();
 
     json workersJson = json::array();
     for (auto&& worker: controller()->serviceProvider()->config()->allWorkers()) {

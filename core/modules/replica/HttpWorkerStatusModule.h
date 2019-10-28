@@ -72,11 +72,7 @@ private:
 
     // Input parameters
 
-    /// A reference to the smart pointer is used to avoid increasing
-    /// the reference counter to the pointed object and to avoid the circular
-    /// dependency which would prevent object destruction.
-    /// TODO: consider the weak pointer?
-    HealthMonitorTask::Ptr const& _healthMonitorTask;
+    std::weak_ptr<HealthMonitorTask> const _healthMonitorTask;
 };
     
 }}} // namespace lsst::qserv::replica
