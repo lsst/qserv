@@ -38,8 +38,8 @@ namespace qserv {
 namespace replica {
 
 /**
- * Class HttpModule is a base class for requests processing modules an HTTP server
- * built into the Master Replication Controller.
+ * Class HttpModule is a base class for requests processing modules
+ * of an HTTP server built into the Master Replication Controller.
  */
 class HttpModule:
         public EventLogger,
@@ -55,9 +55,11 @@ public:
     virtual ~HttpModule() = default;
 
     /**
-     * Invokes a subclass-specific request processing. Also does an optional
-     * (if any) processing of exceptions thrown by the subclass-specific
-     * processors. These error conditions will be reported to as errors to callers.
+     * Invokes a subclass-specific request processing provided by implementations
+     * of the pure virtual method HttpModule::executeImpl(). The current method
+     * would also do an optional processing of exceptions thrown by the subclass-specific
+     * implementations of method HttpModule::executeImpl(). These error conditions will
+     * be reported to as errors to callers.
      * 
      * @param req  the HTTP request
      * @param resp  the HTTP response channel
