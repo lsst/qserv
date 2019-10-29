@@ -144,7 +144,13 @@ def run_command(cmd_args, stdin_file=None, stdout=None, stderr=None,
     @stdin    can be a filename, or None
     @stdout   can be sys.stdout, a filename, or None
               which redirect to current processus output
-    @stderr   same as stdout
+    @stderr   can be sys.stderr, a filename, or None
+              which redirect to current processus output.
+              If stderr is None then a process returning not-zero will
+              cause this script to log a fatal error and exit(1).
+              If stderr is *not* None then it is assumed that the
+              caller is interested in error information, and this
+              script will not log a fatal messge or exit with error.
     @loglevel print stdin, stdout and stderr if current module logger
               verbosity is greater than loglevel
     """
@@ -188,7 +194,7 @@ def run_command(cmd_args, stdin_file=None, stdout=None, stderr=None,
             if stderrdata != None and len(stderrdata) > 0:
                 _LOG.info("\tstderr :\n--\n%s--", stderrdata.decode(errors='replace'))
 
-            if process.returncode != 0:
+            if process.returncode != 0 and not stderr:
                 _LOG.fatal(
                     "Error code returned by command : {0} ".format(cmd_str))
                 sys.exit(1)
