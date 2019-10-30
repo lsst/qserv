@@ -84,13 +84,16 @@ private:
                             std::string const& taskName,
                             unsigned int workerResponseTimeoutSec);
 
+    /**
+     * Return the current Configuration of the system.
+     */
     void _get(qhttp::Request::Ptr const& req,
               qhttp::Response::Ptr const& resp);
 
-   /**
-    * Process a request which updates the Configuration of the Replication
-    * system and reports back its new state.
-    */
+    /**
+     * Process a request which updates the Configuration of the Replication
+     * system and reports back its new state.
+     */
     void _updateGeneral(qhttp::Request::Ptr const& req,
                         qhttp::Response::Ptr const& resp);
 

@@ -47,6 +47,7 @@
 
 using namespace std;
 using json = nlohmann::json;
+using namespace lsst::qserv;
 using namespace lsst::qserv::replica;
 
 namespace {
@@ -90,6 +91,34 @@ void parseFieldIntoJson(string const& context,
         return;
     }
     parseFieldIntoJson<T>(context, row, column, obj);
+}
+
+/**
+ * Extract rows selected from table qservMeta.QInfo into a JSON object.
+ */
+void extractQInfo(database::mysql::Connection::Ptr const& conn,
+                  json& result) {
+
+    if (not conn->hasResult()) return;
+
+    database::mysql::Row row;
+    while (conn->next(row)) {
+
+        QueryId queryId;
+        if (not row.get("queryId", queryId)) continue;
+        
+        string query, status, submitted, completed;
+        row.get("query",     query);
+        row.get("status",    status);
+        row.get("submitted", submitted);
+        row.get("completed", completed);
+
+        string const queryIdStr = to_string(queryId);
+        result[queryIdStr]["query"]     = query;
+        result[queryIdStr]["status"]    = status;
+        result[queryIdStr]["submitted"] = submitted;
+        result[queryIdStr]["completed"] = completed;
+    }
 }
 }
 
@@ -412,34 +441,12 @@ json HttpQservMonitorModule::_getQueries(json& workerInfo) const {
     // Extract descriptions of those queries from qservMeta
 
     json result;
-
     if (not qids.empty()) {
         h.conn->execute([&](decltype(h.conn) conn) {
             conn->begin();
-            conn->execute(
-                "SELECT * FROM " + conn->sqlId("QInfo") + "  WHERE " + conn->sqlIn("queryId", qids)
-            );
-            if (conn->hasResult()) {
-
-                database::mysql::Row row;
-                while (conn->next(row)) {
-
-                    QueryId queryId;
-                    if (not row.get("queryId", queryId)) continue;
-
-                    string query, status, submitted, completed;
-                    row.get("query",     query);
-                    row.get("status",    status);
-                    row.get("submitted", submitted);
-                    row.get("completed", completed);
-
-                    string const queryIdStr = to_string(queryId);
-                    result[queryIdStr]["query"]     = query;
-                    result[queryIdStr]["status"]    = status;
-                    result[queryIdStr]["submitted"] = submitted;
-                    result[queryIdStr]["completed"] = completed;
-                }
-            }
+            conn->execute("SELECT * FROM " + h.conn->sqlId("QInfo") +
+                          " WHERE " + h.conn->sqlIn("queryId", qids));
+            ::extractQInfo(conn, result);
             conn->commit();
         });
     }

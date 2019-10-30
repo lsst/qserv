@@ -120,14 +120,15 @@ json HttpCatalogsModule::_databaseStats(string const& database, bool dummyReport
 
     map<string, map<string, size_t>> stats;
     for (auto&& table: config->databaseInfo(database).partitionedTables) {
-        stats[table]["data_unique_in_chunks_data"] = 0;
-        stats[table]["data_unique_in_chunks_index"] = 0;
-        stats[table]["data_unique_in_overlaps_data"] = 0;
-        stats[table]["data_unique_in_overlaps_index"] = 0;
-        stats[table]["data_with_replicas_in_chunks_data"] = 0;
-        stats[table]["data_with_replicas_in_chunks_index"] = 0;
-        stats[table]["data_with_replicas_in_overlaps_data"] = 0;
-        stats[table]["data_with_replicas_in_overlaps_index"] = 0;
+        auto&& statsTable = stats[table];
+        statsTable["data_unique_in_chunks_data"] = 0;
+        statsTable["data_unique_in_chunks_index"] = 0;
+        statsTable["data_unique_in_overlaps_data"] = 0;
+        statsTable["data_unique_in_overlaps_index"] = 0;
+        statsTable["data_with_replicas_in_chunks_data"] = 0;
+        statsTable["data_with_replicas_in_chunks_index"] = 0;
+        statsTable["data_with_replicas_in_overlaps_data"] = 0;
+        statsTable["data_with_replicas_in_overlaps_index"] = 0;
     }
     set<unsigned int> uniqueChunks;
     for (auto&& replica: replicas) {
@@ -142,38 +143,41 @@ json HttpCatalogsModule::_databaseStats(string const& database, bool dummyReport
             auto const isIndex   = f.isIndex();
             auto const isOverlap = f.isOverlap();
             auto const size      = f.size;
+            auto&& statsTable = stats[table];
             if (isUniqueChunk) {
                 if (isData) {
-                    if (isOverlap) stats[table]["data_unique_in_overlaps_data"] += size;
-                    else           stats[table]["data_unique_in_chunks_data"]   += size;
+                    if (isOverlap) statsTable["data_unique_in_overlaps_data"] += size;
+                    else           statsTable["data_unique_in_chunks_data"]   += size;
                 }
                 if (isIndex) {
-                    if (isOverlap) stats[table]["data_unique_in_overlaps_index"] += size;
-                    else           stats[table]["data_unique_in_chunks_index"]   += size;
+                    if (isOverlap) statsTable["data_unique_in_overlaps_index"] += size;
+                    else           statsTable["data_unique_in_chunks_index"]   += size;
                 }
             }
             if (isData) {
-                if (isOverlap) stats[table]["data_with_replica_in_overlaps_data"] += size;
-                else           stats[table]["data_with_replica_in_chunks_data"]   += size;
+                if (isOverlap) statsTable["data_with_replica_in_overlaps_data"] += size;
+                else           statsTable["data_with_replica_in_chunks_data"]   += size;
             }
             if (isIndex) {
-                if (isOverlap) stats[table]["data_with_replica_in_overlaps_index"] += size;
-                else           stats[table]["data_with_replica_in_chunks_index"]   += size;
+                if (isOverlap) statsTable["data_with_replica_in_overlaps_index"] += size;
+                else           statsTable["data_with_replica_in_chunks_index"]   += size;
             }            
         }
     }
     for (auto&& table: config->databaseInfo(database).partitionedTables) {
-        result["tables"][table]["is_partitioned"] = 1;
-        result["tables"][table]["rows"]["in_chunks"]   = 0;
-        result["tables"][table]["rows"]["in_overlaps"] = 0;
-        result["tables"][table]["data"]["unique"]["in_chunks"]["data"]    = stats[table]["data_unique_in_chunks_data"];
-        result["tables"][table]["data"]["unique"]["in_chunks"]["index"]   = stats[table]["data_unique_in_chunks_index"];
-        result["tables"][table]["data"]["unique"]["in_overlaps"]["data"]  = stats[table]["data_unique_in_overlaps_data"];
-        result["tables"][table]["data"]["unique"]["in_overlaps"]["index"] = stats[table]["data_unique_in_overlaps_index"];
-        result["tables"][table]["data"]["with_replicas"]["in_chunks"]["data"]    = stats[table]["data_with_replica_in_chunks_data"];
-        result["tables"][table]["data"]["with_replicas"]["in_chunks"]["index"]   = stats[table]["data_with_replica_in_chunks_index"];
-        result["tables"][table]["data"]["with_replicas"]["in_overlaps"]["data"]  = stats[table]["data_with_replica_in_overlaps_data"];
-        result["tables"][table]["data"]["with_replicas"]["in_overlaps"]["index"] = stats[table]["data_with_replica_in_overlaps_index"];
+        auto&& statsTable = stats[table];
+        auto&& resultTable = result["tables"][table];
+        resultTable["is_partitioned"] = 1;
+        resultTable["rows"]["in_chunks"]   = 0;
+        resultTable["rows"]["in_overlaps"] = 0;
+        resultTable["data"]["unique"]["in_chunks"]["data"]    = statsTable["data_unique_in_chunks_data"];
+        resultTable["data"]["unique"]["in_chunks"]["index"]   = statsTable["data_unique_in_chunks_index"];
+        resultTable["data"]["unique"]["in_overlaps"]["data"]  = statsTable["data_unique_in_overlaps_data"];
+        resultTable["data"]["unique"]["in_overlaps"]["index"] = statsTable["data_unique_in_overlaps_index"];
+        resultTable["data"]["with_replicas"]["in_chunks"]["data"]    = statsTable["data_with_replica_in_chunks_data"];
+        resultTable["data"]["with_replicas"]["in_chunks"]["index"]   = statsTable["data_with_replica_in_chunks_index"];
+        resultTable["data"]["with_replicas"]["in_overlaps"]["data"]  = statsTable["data_with_replica_in_overlaps_data"];
+        resultTable["data"]["with_replicas"]["in_overlaps"]["index"] = statsTable["data_with_replica_in_overlaps_index"];
     }
     for (auto&& table: config->databaseInfo(database).regularTables) {
 
@@ -184,12 +188,13 @@ json HttpCatalogsModule::_databaseStats(string const& database, bool dummyReport
         size_t data_with_replicas_data  = 0;
         size_t data_with_replicas_index = 0;
 
-        result["tables"][table]["is_partitioned"] = 0;
-        result["tables"][table]["rows"] = 0;
-        result["tables"][table]["data"]["unique"]["data"]  = data_unique_data;
-        result["tables"][table]["data"]["unique"]["index"] = data_unique_index;
-        result["tables"][table]["data"]["with_replicas"]["data"]  = data_with_replicas_data;
-        result["tables"][table]["data"]["with_replicas"]["index"] = data_with_replicas_index;
+        auto&& resultTable = result["tables"][table];
+        resultTable["is_partitioned"] = 0;
+        resultTable["rows"] = 0;
+        resultTable["data"]["unique"]["data"]  = data_unique_data;
+        resultTable["data"]["unique"]["index"] = data_unique_index;
+        resultTable["data"]["with_replicas"]["data"]  = data_with_replicas_data;
+        resultTable["data"]["with_replicas"]["index"] = data_with_replicas_index;
     }
     return result;
 }
