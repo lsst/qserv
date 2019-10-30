@@ -51,3 +51,10 @@ cd $SOURCE
 setup -r .
 scons -j4 install
 
+See the comments in 
+  qserv/admin/tools/docker/index/container/Dockerfile
+  qserv/admin/tools/docker/index/container/master/Dockerfile
+  qserv/admin/tools/docker/index/container/worker/Dockerfile
+  qserv/admin/tools/docker/index/container/clientNum/Dockerfile
+  
+
