@@ -44,10 +44,9 @@ if [ "lsst-qserv-${MASTER}" != "$(hostname -s)" ]; then
     >&2 echo "this tool must be run on the master: ${MASTER}"
     exit 1
 fi
+# -e "XRDSSIDEBUG=1" \
 PID=$$
 docker run \
-    --rm \
-    -it \
     --network host \
     -u ${CONTAINER_UID}:${CONTAINER_GID} \
     -v /etc/passwd:/etc/passwd:ro \

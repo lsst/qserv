@@ -83,6 +83,8 @@ MASTER="$(get_param master)"
 
 DB_PORT=23306
 DB_ROOT_PASSWORD="CHANGEME"
+QSERV_WORKER_DB_PASSWORD="CHANGEME"
+QSERV_MASTER_DB_PASSWORD="CHANGEME"
 
 CONFIG="mysql://qsreplica@lsst-qserv-${MASTER}:${DB_PORT}/qservReplica"
 

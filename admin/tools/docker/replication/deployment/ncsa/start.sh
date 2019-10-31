@@ -74,7 +74,7 @@ for WORKER in $WORKERS; do
         --name "${WORKER_CONTAINER_NAME}" \
         -u ${CONTAINER_UID}:${CONTAINER_GID} \
         -v /etc/passwd:/etc/passwd:ro \
-        -v "${QSERV_DATA_DIR}/mysql:${QSERV_DATA_DIR}/mysql" \
+        -v "${QSERV_DATA_DIR}:${QSERV_DATA_DIR}" \
         -v "${CONFIG_DIR}:/qserv/replication/config:ro" \
         -v "${LOG_DIR}:${LOG_DIR}" \
         -e "WORKER_CONTAINER_NAME=${WORKER_CONTAINER_NAME}" \
@@ -82,8 +82,9 @@ for WORKER in $WORKERS; do
         -e "LSST_LOG_CONFIG=${LSST_LOG_CONFIG}" \
         -e "CONFIG=${CONFIG}" \
         -e "WORKER=${WORKER}" \
+        -e "QSERV_WORKER_DB_PASSWORD=${QSERV_WORKER_DB_PASSWORD}" \
         "${REPLICATION_IMAGE_TAG}" \
-        bash -c \''/qserv/bin/qserv-replica-worker ${WORKER} --config=${CONFIG} --debug >& ${LOG_DIR}/${WORKER_CONTAINER_NAME}.log'\'
+        bash -c \''/qserv/bin/qserv-replica-worker ${WORKER} --config=${CONFIG} --qserv-db-password="${QSERV_WORKER_DB_PASSWORD}" --debug >& ${LOG_DIR}/${WORKER_CONTAINER_NAME}.log'\'
 done
 
 # Start master controller
@@ -103,6 +104,8 @@ if [ -n "${MASTER_CONTROLLER}" ]; then
         -u ${CONTAINER_UID}:${CONTAINER_GID} \
         -v /etc/passwd:/etc/passwd:ro \
         -v ${WORK_DIR}:${WORK_DIR} \
+        -v "${QSERV_DATA_DIR}/qserv:${QSERV_DATA_DIR}/qserv" \
+        -v "${QSERV_DATA_DIR}/ingest:${QSERV_DATA_DIR}/ingest" \
         -v ${CONFIG_DIR}:/qserv/replication/config:ro \
         -v ${LOG_DIR}:${LOG_DIR} \
         -e "TOOL=qserv-replica-master-http" \
@@ -113,7 +116,8 @@ if [ -n "${MASTER_CONTROLLER}" ]; then
         -e "CONFIG=${CONFIG}" \
         -e "OPT_MALLOC_CONF=${OPT_MALLOC_CONF}" \
         -e "OPT_LD_PRELOAD=${OPT_LD_PRELOAD}" \
+        -e "QSERV_MASTER_DB_PASSWORD=${QSERV_MASTER_DB_PASSWORD}" \
         --name "${MASTER_CONTAINER_NAME}" \
         "${REPLICATION_IMAGE_TAG}" \
-        bash -c \''cd ${WORK_DIR}; MALLOC_CONF=${OPT_MALLOC_CONF} LD_PRELOAD=${OPT_LD_PRELOAD} /qserv/bin/${TOOL} ${PARAMETERS} --config=${CONFIG} --debug >& ${LOG_DIR}/${TOOL}.log'\'
+        bash -c \''cd ${WORK_DIR}; MALLOC_CONF=${OPT_MALLOC_CONF} LD_PRELOAD=${OPT_LD_PRELOAD} /qserv/bin/${TOOL} ${PARAMETERS} --config=${CONFIG} --qserv-db-password="${QSERV_MASTER_DB_PASSWORD}" --debug >& ${LOG_DIR}/${TOOL}.log'\'
 fi
