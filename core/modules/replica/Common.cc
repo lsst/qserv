@@ -282,9 +282,9 @@ ostream& operator<<(ostream& os, SqlRequestParams const& params) {
     objParams["transactionId"] = params.transactionId;
 
     json objParamsColumns;
-    for (auto&& itr: params.columns) {
-        objParamsColumns["name"] = itr.first;
-        objParamsColumns["type"] = itr.second;
+    for (auto&& coldef: params.columns) {
+        objParamsColumns["name"] = coldef.name;
+        objParamsColumns["type"] = coldef.type;
     }
     objParams["columns"] = objParamsColumns;
 

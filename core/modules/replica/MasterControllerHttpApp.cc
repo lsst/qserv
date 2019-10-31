@@ -156,11 +156,21 @@ MasterControllerHttpApp::MasterControllerHttpApp(int argc, char* argv[])
         " this option with caution as it will result in losing all records"
         " associated with the deleted workers.",
         _permanentDelete
+    ).option(
+        "qserv-db-password",
+        "A password for the MySQL 'root' account of the Qserv master database.",
+        _qservDbRootPassword
     );
 }
 
 
 int MasterControllerHttpApp::runImpl() {
+
+    // IMPORTANT: set the database password, then clear it up to avoid
+    // contaminating the log files when logging command line arguments
+    // parsed by the application.
+    Configuration::setQservMasterDatabasePassword(_qservDbRootPassword);
+    _qservDbRootPassword = "******";
 
     LOGS(_log, LOG_LVL_INFO, _name() << parser().serializeArguments());
 
@@ -200,13 +210,8 @@ int MasterControllerHttpApp::runImpl() {
 
     _httpProcessor = HttpProcessor::create(
         _controller,
-        [self] (string const& worker2evict) {
-            self->_evict(worker2evict);
-        },
         _workerResponseTimeoutSec,
-        _healthMonitorTask,
-        _replicationTask,
-        _deleteWorkerTask
+        _healthMonitorTask
     );
 
     // Keep running before a catastrophic failure is reported by any

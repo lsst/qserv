@@ -41,6 +41,7 @@
 #include "nlohmann/json.hpp"
 
 // Qserv headers
+#include "replica/Common.h"
 #include "replica/ConfigurationIFace.h"
 
 // This header declarations
@@ -289,7 +290,7 @@ protected:
      *   'true' if found
      */
     bool columnInSchema(std::string const& colName,
-                        std::list<std::pair<std::string, std::string>> const& columns) const;
+                        std::list<SqlColDef> const& columns) const;
 
     /**
      * Validate table parameters and thrown exception std::invalid_argument
@@ -301,7 +302,7 @@ protected:
                                  std::string const& database,
                                  std::string const& table,
                                  bool isPartitioned,
-                                 std::list<std::pair<std::string,std::string>> const& columns,
+                                 std::list<SqlColDef> const& columns,
                                  bool isDirectorTable,
                                  std::string const& directorTableKey,
                                  std::string const& chunkIdColName,
@@ -318,7 +319,7 @@ protected:
                                    std::string const& database,
                                    std::string const& table,
                                    bool isPartitioned,
-                                   std::list<std::pair<std::string,std::string>> const& columns,
+                                   std::list<SqlColDef> const& columns,
                                    bool isDirectorTable,
                                    std::string const& directorTableKey,
                                    std::string const& chunkIdColName,

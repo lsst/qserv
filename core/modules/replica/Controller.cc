@@ -427,7 +427,7 @@ SqlCreateTableRequest::Ptr Controller::sqlCreateTable(
         string const& table,
         string const& engine,
         string const& partitionByColumn,
-        list<pair<string, string>> const& columns,
+        list<SqlColDef> const& columns,
         SqlCreateTableRequest::CallbackType const& onFinish,
         int priority,
         bool keepTracking,

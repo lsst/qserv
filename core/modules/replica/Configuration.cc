@@ -504,7 +504,7 @@ void Configuration::deleteDatabase(string const& name) {
 
 
 DatabaseInfo Configuration::addTable(string const& database, string const& table, bool isPartitioned,
-                                     list<pair<string,string>> const& columns, bool isDirectorTable,
+                                     list<SqlColDef> const& columns, bool isDirectorTable,
                                      string const& directorTableKey, string const& chunkIdColName,
                                      string const& subChunkIdColName, string const& latitudeColName,
                                      string const& longitudeColName) {

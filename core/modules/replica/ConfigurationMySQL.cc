@@ -903,8 +903,7 @@ DatabaseInfo ConfigurationMySQL::addDatabase(DatabaseInfo const& info) {
 
         // Then update the transient state
 
-        map<string,
-            list<pair<string,string>>> const noTableColumns;
+        map<string,list<SqlColDef>> const noTableColumns;
 
         string const noDirectorTable;
         string const noDirectorTableKey;
@@ -1023,7 +1022,7 @@ DatabaseInfo ConfigurationMySQL::addTable(
         string const& database,
         string const& table,
         bool isPartitioned,
-        list<pair<string,string>> const& columns,
+        list<SqlColDef> const& columns,
         bool isDirectorTable,
         string const& directorTableKey,
         string const& chunkIdColName,
@@ -1082,8 +1081,8 @@ DatabaseInfo ConfigurationMySQL::addTable(
                         database,
                         table,
                         colPosition++,  // column position
-                        coldef.first,   // column name
-                        coldef.second   // column type
+                        coldef.name,
+                        coldef.type
                     );
                 }
                 if (isPartitioned) {

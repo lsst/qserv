@@ -422,12 +422,12 @@ map<string, DatabaseInfo>::iterator ConfigurationBase::safeFindDatabase(
 
 
 bool ConfigurationBase::columnInSchema(string const& colName,
-                                       list<pair<string,string>> const& columns) const {
+                                       list<SqlColDef> const& columns) const {
     return columns.end() != find_if(
          columns.begin(),
          columns.end(),
-         [&] (pair<string,string> const& coldef) {
-             return coldef.first == colName;
+         [&] (SqlColDef const& coldef) {
+             return coldef.name == colName;
          }
      );
 }
@@ -438,7 +438,7 @@ void ConfigurationBase::validateTableParameters(
         string const& database,
         string const& table,
         bool isPartitioned,
-        list<pair<string,string>> const& columns,
+        list<SqlColDef> const& columns,
         bool isDirectorTable,
         string const& directorTableKey,
         string const& chunkIdColName,
@@ -530,7 +530,7 @@ DatabaseInfo ConfigurationBase::addTableTransient(
         string const& database,
         string const& table,
         bool isPartitioned,
-        list<pair<string,string>> const& columns,
+        list<SqlColDef> const& columns,
         bool isDirectorTable,
         string const& directorTableKey,
         string const& chunkIdColName,

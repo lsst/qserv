@@ -42,6 +42,7 @@
 
 // Qserv headers
 #include "global/constants.h"
+#include "replica/Common.h"
 #include "replica/ConfigurationIFace.h"
 #include "util/Mutex.h"
 
@@ -235,8 +236,7 @@ public:
     DatabaseInfo addTable(std::string const& database,
                             std::string const& table,
                             bool isPartitioned,
-                            std::list<std::pair<std::string,std::string>> const& columns=
-                                  std::list<std::pair<std::string,std::string>>(),
+                            std::list<SqlColDef> const& columns=std::list<SqlColDef>(),
                             bool isDirectorTable=false,
                             std::string const& directorTableKey="objectId",
                             std::string const& chunkIdColName=lsst::qserv::CHUNK_COLUMN,

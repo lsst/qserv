@@ -29,6 +29,7 @@
 #include <string>
 
 // Qserv headers
+#include "replica/Common.h"
 #include "replica/SqlRequest.h"
 
 // This header declarations
@@ -92,7 +93,7 @@ public:
      *   ingest into the table.
      *
      * @param columns
-     *   column definitions as pairs of (name,type) of the table
+     *   column definitions (name,type) of the table
      *
      * @param onFinish
      *   (optional) callback function to call upon completion of the request
@@ -116,7 +117,7 @@ public:
                       std::string const& table,
                       std::string const& engine,
                       std::string const& partitionByColumn,
-                      std::list<std::pair<std::string, std::string>> const& columns,
+                      std::list<SqlColDef> const& columns,
                       CallbackType const& onFinish,
                       int priority,
                       bool keepTracking,
@@ -137,7 +138,7 @@ private:
                           std::string const& table,
                           std::string const& engine,
                           std::string const& partitionByColumn,
-                          std::list<std::pair<std::string, std::string>> const& columns,
+                          std::list<SqlColDef> const& columns,
                           CallbackType const& onFinish,
                           int priority,
                           bool keepTracking,

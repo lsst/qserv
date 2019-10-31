@@ -49,8 +49,8 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
-list<pair<string,string>> SqlSchemaUtils::readFromTextFile(string const& fileName) {
-    list<pair<string,string>> columns;
+list<SqlColDef> SqlSchemaUtils::readFromTextFile(string const& fileName) {
+    list<SqlColDef> columns;
     int lineNum = 0;
     for (auto&& line: util::File::getLines(fileName)) {
         ++lineNum;

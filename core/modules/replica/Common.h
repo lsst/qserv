@@ -98,16 +98,38 @@ ProtocolStatusExt translate(ExtendedCompletionStatus status);
  * a new identifier.
  */
 class Generators {
-
 public:
-
     /// @return next unique identifier
     static std::string uniqueId();
 
 private:
-
     /// For thread safety where it's required
     static util::Mutex _mtx;
+};
+
+
+/**
+ * This class is an abstraction for column definitions. A column has
+ * a name and a type.
+ */
+class SqlColDef {
+public:
+
+    SqlColDef() = default;
+    SqlColDef(std::string const name_,
+              std::string const type_)
+        :    name(name_),
+             type(type_) {
+    }
+
+    SqlColDef(SqlColDef const&) = default;
+    SqlColDef& operator=(SqlColDef const&) = default;
+
+    ~SqlColDef() = default;
+
+
+    std::string name;
+    std::string type;
 };
 
 /**
@@ -219,7 +241,7 @@ public:
 
     uint32_t transactionId = 0;
 
-    std::list<std::pair<std::string, std::string>> columns;
+    std::list<SqlColDef> columns;
 
     SqlRequestParams() = default;
 

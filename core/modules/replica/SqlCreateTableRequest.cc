@@ -48,7 +48,7 @@ SqlCreateTableRequest::Ptr SqlCreateTableRequest::create(
         std::string const& table,
         std::string const& engine,
         string const& partitionByColumn,
-        std::list<std::pair<std::string, std::string>> const& columns,
+        std::list<SqlColDef> const& columns,
         CallbackType const& onFinish,
         int priority,
         bool keepTracking,
@@ -79,7 +79,7 @@ SqlCreateTableRequest::SqlCreateTableRequest(
         std::string const& table,
         std::string const& engine,
         string const& partitionByColumn,
-        std::list<std::pair<std::string, std::string>> const& columns,
+        std::list<SqlColDef> const& columns,
         CallbackType const& onFinish,
         int priority,
         bool keepTracking,
@@ -104,8 +104,8 @@ SqlCreateTableRequest::SqlCreateTableRequest(
     requestBody.set_partition_by_column(partitionByColumn);
     for (auto&& column: columns) {
         auto out = requestBody.add_columns();
-        out->set_name(column.first);
-        out->set_type(column.second);
+        out->set_name(column.name);
+        out->set_type(column.type);
     }
 }
 
