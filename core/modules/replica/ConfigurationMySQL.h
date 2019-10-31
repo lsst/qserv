@@ -34,6 +34,7 @@
 #include <string>
 
 // Qserv headers
+#include "replica/Common.h"
 #include "replica/ConfigurationBase.h"
 #include "replica/DatabaseMySQL.h"
 
@@ -280,7 +281,7 @@ public:
     DatabaseInfo addTable(std::string const& database,
                           std::string const& table,
                           bool isPartitioned,
-                          std::list<std::pair<std::string,std::string>> const& columns,
+                          std::list<SqlColDef> const& columns,
                           bool isDirectorTable,
                           std::string const& directorTableKey,
                           std::string const& chunkIdColName,

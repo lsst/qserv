@@ -213,13 +213,11 @@ string WorkerIndexRequest::_query(database::mysql::Connection::Ptr const& conn) 
     string chunkIdColNameType;
     string subChunkIdColNameType;
 
-    for (auto&& colDef: databaseInfo.columns.at(databaseInfo.directorTable)) {
-        auto&& colName = colDef.first;
-        auto&& colType = colDef.second;
-        if      (not qservTransId.empty() and colName == qservTransId) qservTransIdType = colType;
-        else if (colName == databaseInfo.directorTableKey) directorTableKeyType = colType;
-        else if (colName == databaseInfo.chunkIdColName) chunkIdColNameType = colType;
-        else if (colName == databaseInfo.subChunkIdColName) subChunkIdColNameType = colType;
+    for (auto&& coldef: databaseInfo.columns.at(databaseInfo.directorTable)) {
+        if      (not qservTransId.empty() and coldef.name == qservTransId) qservTransIdType = coldef.type;
+        else if (coldef.name == databaseInfo.directorTableKey) directorTableKeyType = coldef.type;
+        else if (coldef.name == databaseInfo.chunkIdColName) chunkIdColNameType = coldef.type;
+        else if (coldef.name == databaseInfo.subChunkIdColName) subChunkIdColNameType = coldef.type;
     }
     if ((not qservTransId.empty() and qservTransIdType.empty()) or
         directorTableKeyType.empty() or

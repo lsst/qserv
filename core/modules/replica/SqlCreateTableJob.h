@@ -29,6 +29,7 @@
 #include <tuple>
 
 // Qserv headers
+#include "replica/Common.h"
 #include "replica/SqlJob.h"
 
 // This header declarations
@@ -73,7 +74,7 @@ public:
      *   ingest into the table.
      *
      * @param columns
-     *   column definitions as pairs of (name,type) of the table
+     *   column definitions (name,type) of the table
      *
      * @param allWorkers
      *   engage all known workers regardless of their status. If the flag
@@ -99,7 +100,7 @@ public:
                       std::string const& table,
                       std::string const& engine,
                       std::string const& partitionByColumn,
-                      std::list<std::pair<std::string, std::string>> const& columns,
+                      std::list<SqlColDef> const& columns,
                       bool allWorkers,
                       Controller::Ptr const& controller,
                       std::string const& parentJobId=std::string(),
@@ -122,7 +123,7 @@ public:
 
     std::string const& partitionByColumn() const { return _partitionByColumn; }
 
-    std::list<std::pair<std::string, std::string>> const& columns() const { return _columns; }
+    std::list<SqlColDef> const& columns() const { return _columns; }
 
     /// @see Job::extendedPersistentState()
     std::list<std::pair<std::string,std::string>> extendedPersistentState() const final;
@@ -146,7 +147,7 @@ private:
                       std::string const& table,
                       std::string const& engine,
                       std::string const& partitionByColumn,
-                      std::list<std::pair<std::string, std::string>> const& columns,
+                      std::list<SqlColDef> const& columns,
                       bool allWorkers,
                       Controller::Ptr const& controller,
                       std::string const& parentJobId,
@@ -160,7 +161,7 @@ private:
     std::string const _engine;
     std::string const _partitionByColumn;
 
-    std::list<std::pair<std::string, std::string>> const _columns;
+    std::list<SqlColDef> const _columns;
 
     CallbackType _onFinish;     /// @note is reset when the job finishes
 

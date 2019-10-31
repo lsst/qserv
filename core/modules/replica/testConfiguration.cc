@@ -35,6 +35,7 @@
 #include "lsst/log/Log.h"
 
 // Qserv headers
+#include "replica/Common.h"
 #include "replica/Configuration.h"
 
 // Boost unit test header
@@ -527,9 +528,26 @@ BOOST_AUTO_TEST_CASE(ConfigurationTest) {
 
     }
     {
-        list<pair<string,string>> coldefs;
-        coldefs.push_back({"chunkIdT1", "INT"});
-        coldefs.push_back({"subChunkIdT1", "INT"});
+        SqlColDef const emptyColdef;
+        BOOST_CHECK(emptyColdef.name.empty());
+        BOOST_CHECK(emptyColdef.type.empty());
+
+        SqlColDef const coldef("itsName", "itsType");
+        BOOST_CHECK(coldef.name == "itsName");
+        BOOST_CHECK(coldef.type == "itsType");
+
+        SqlColDef const copiedColdef(coldef);
+        BOOST_CHECK(copiedColdef.name == "itsName");
+        BOOST_CHECK(copiedColdef.type == "itsType");
+
+        SqlColDef const assignedColdef = coldef;
+        BOOST_CHECK(assignedColdef.name == "itsName");
+        BOOST_CHECK(assignedColdef.type == "itsType");
+    }
+    {
+        list<SqlColDef> coldefs;
+        coldefs.emplace_back("chunkIdT1", "INT");
+        coldefs.emplace_back("subChunkIdT1", "INT");
         bool const isPartitioned = true;
         bool const isDirectorTable = false;
         string const directorTableKey;
@@ -542,46 +560,47 @@ BOOST_AUTO_TEST_CASE(ConfigurationTest) {
     }
     BOOST_CHECK_THROW(config->addTable("new", "T1", true), invalid_argument);
     {
-        list<pair<string,string>> coldefs;
-        coldefs.push_back({"idT12", "VARCHAR(255)"});
-        coldefs.push_back({"chunkIdT1", "INT"});
-        coldefs.push_back({"subChunkIdT1", "INT"});
-        coldefs.push_back({"declT12", "DOUBLE"});
-        coldefs.push_back({"raT12", "DOUBLE"});
+        list<SqlColDef> coldefs;
+        coldefs.emplace_back("idT2", "VARCHAR(255)");
+        coldefs.emplace_back("chunkIdT2", "INT");
+        coldefs.emplace_back("subChunkIdT2", "INT");
+        coldefs.emplace_back("declT2", "DOUBLE");
+        coldefs.emplace_back("raT2", "DOUBLE");
         bool const isPartitioned = true;
         bool const isDirectorTable = true;
-        string const directorTableKey = "idT12";
+        string const directorTableKey = "idT2";
         DatabaseInfo info;
         BOOST_REQUIRE_NO_THROW({
-            info = config->addTable("new", "T12", isPartitioned, coldefs, isDirectorTable, directorTableKey,
-                    "chunkIdT1", "subChunkIdT1", "declT12", "raT12");
+            info = config->addTable("new", "T2", isPartitioned, coldefs, isDirectorTable, directorTableKey,
+                    "chunkIdT2", "subChunkIdT2", "declT2", "raT2");
         });
         BOOST_CHECK(info.partitionedTables.size() == 2);
     }
-    BOOST_CHECK_THROW(config->addTable("new", "T1", true), invalid_argument);
+    BOOST_CHECK_THROW(config->addTable("new", "T2", true), invalid_argument);
     BOOST_REQUIRE_NO_THROW({
-        DatabaseInfo const info = config->addTable("new", "T2", false);
+        DatabaseInfo const info = config->addTable("new", "T3", false);
         BOOST_CHECK(info.regularTables.size() == 1 and
-                    info.regularTables[0] == "T2");
+                    info.regularTables[0] == "T3");
     });
-    BOOST_CHECK_THROW(config->addTable("new", "T2", false), invalid_argument);
+    BOOST_CHECK_THROW(config->addTable("new", "T3", false), invalid_argument);
+    BOOST_REQUIRE_NO_THROW({
+        config->deleteTable("new", "T3");
+    });
     BOOST_REQUIRE_NO_THROW({
         DatabaseInfo const info = config->publishDatabase("new");
         BOOST_CHECK(info.name == "new");
         BOOST_CHECK(info.family == "test");
         BOOST_CHECK(info.isPublished == true);
-        BOOST_CHECK(info.partitionedTables.size() == 0);
+        BOOST_CHECK(info.partitionedTables.size() == 2);
         BOOST_CHECK(info.regularTables.size() == 0);
     });
+    // Adding tables to the database after it's published isn't allowed
+    BOOST_CHECK_THROW(config->addTable("new", "T4", true), invalid_argument);
     BOOST_REQUIRE_NO_THROW({
         config->deleteTable("new", "T1");
-        config->deleteTable("new", "T12");
         config->deleteTable("new", "T2");
         config->deleteDatabase("new");
     });
-
-    // Adding tables to the database after it's published isn't allowed
-    BOOST_CHECK_THROW(config->addTable("new", "T3", true), invalid_argument);
 
     BOOST_CHECK_THROW(config->deleteDatabase("new"), invalid_argument);
     BOOST_REQUIRE_NO_THROW({

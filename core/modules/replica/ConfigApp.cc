@@ -29,6 +29,7 @@
 #include <vector>
 
 // Qserv headers
+#include "replica/Common.h"
 #include "replica/ConfigurationFile.h"
 #include "replica/ConfigurationMySQL.h"
 #include "util/TablePrinter.h"
@@ -1123,7 +1124,7 @@ int ConfigApp::_addTable() {
         return 1;
     }
     try {
-        list<pair<string,string>> noColumns;
+        list<SqlColDef> noColumns;
         _config->addTable(_database, _table, _isPartitioned, noColumns,
                           _isDirector, _directorKey,
                           _chunkIdColName, _subChunkIdColName, _latitudeColName, _longitudeColName);

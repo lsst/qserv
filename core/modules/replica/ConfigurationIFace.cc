@@ -67,9 +67,7 @@ json WorkerInfo::toJson() const {
 string DatabaseInfo::schema4css(string const& table) const {
     string schema;
     for (auto const& coldef: columns.at(table)) {
-        string const& colName = coldef.first;
-        string const& colType = coldef.second;
-        schema += string(schema.empty() ? "(" : ", ") + "`" + colName + "` " + colType;
+        schema += string(schema.empty() ? "(" : ", ") + "`" + coldef.name + "` " + coldef.type;
     }
     schema += ")";
     return schema;
@@ -106,8 +104,8 @@ json DatabaseInfo::toJson() const {
         json coldefsJson;
         for (auto&& coldef: coldefs) {
             json coldefJson;
-            coldefJson["name"] = coldef.first;
-            coldefJson["type"] = coldef.second;
+            coldefJson["name"] = coldef.name;
+            coldefJson["type"] = coldef.type;
             coldefsJson.push_back(coldefJson);
         }
         infoJson["columns"][table] = coldefsJson;

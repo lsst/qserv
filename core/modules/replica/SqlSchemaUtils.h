@@ -26,6 +26,9 @@
 #include <string>
 #include <tuple>
 
+// Qserv headers
+#include "replica/Common.h"
+
 // This header declarations
 namespace lsst {
 namespace qserv {
@@ -51,14 +54,13 @@ public:
      *
      * @param fileName  the name of a file to be parsed
      *
-     * @return a collection of pairs representing the name of a column and its
+     * @return a collection of column deinitions representing the name of a column and its
      *   MySQL type definition
      *
      * @throws std::invalid_argument  if the file can't be open/read
      *   or if it has a non-valid format
      */
-    static std::list<std::pair<std::string,std::string>> readFromTextFile(
-            std::string const& fileName);
+    static std::list<SqlColDef> readFromTextFile(std::string const& fileName);
 };
 
 }}} // namespace lsst::qserv::replica

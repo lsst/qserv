@@ -364,8 +364,7 @@ DatabaseInfo ConfigurationStore::addDatabase(DatabaseInfo const& info) {
 
     auto const isNotPublished = 0;
 
-    map<string,
-        list<pair<string,string>>> const noTableColumns;
+    map<string,list<SqlColDef>> const noTableColumns;
 
     string const noDirectorTable;
     string const noDirectorTableKey;
@@ -432,7 +431,7 @@ DatabaseInfo ConfigurationStore::addTable(
         string const& database,
         string const& table,
         bool isPartitioned,
-        list<pair<string,string>> const& columns,
+        list<SqlColDef> const& columns,
         bool isDirectorTable,
         string const& directorTableKey,
         string const& chunkIdColName,

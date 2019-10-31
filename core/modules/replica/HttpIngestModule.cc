@@ -675,7 +675,7 @@ void HttpIngestModule::_addTable(qhttp::Request::Ptr const& req,
         return;
     }
 
-    list<pair<string,string>> columns;
+    list<SqlColDef> columns;
 
     // The name of a special column for the super-transaction-based ingest.
     // Always insert this column as the very first one into the schema.
@@ -709,11 +709,6 @@ void HttpIngestModule::_addTable(qhttp::Request::Ptr const& req,
         }
         columns.emplace_back(colName, colType);
     }
-
-    // TODO: if this is a partitioned table then add columns for
-    //       chunk and sub-chunk numbers provided with the request.
-    //       Check if these columns aren't present in the schema.
-    //       Make sure they're provided for the partitioned table.
 
     // Create template tables on all workers. These tables will be used
     // to create chunk-specific tables before loading data.
@@ -1082,7 +1077,7 @@ void HttpIngestModule::_publishDatabaseInMaster(DatabaseInfo const& databaseInfo
                 } else {
                     sql += ",";
                 }
-                sql += h.conn->sqlId(coldef.first) + " " + coldef.second;
+                sql += h.conn->sqlId(coldef.name) + " " + coldef.type;
             }
             sql += ") ENGINE=InnoDB";
             statements.push_back(sql);
@@ -1308,12 +1303,10 @@ void HttpIngestModule::_createSecondaryIndex(DatabaseInfo const& databaseInfo) c
     string chunkIdColNameType;
     string subChunkIdColNameType;
 
-    for (auto&& colDef: databaseInfo.columns.at(databaseInfo.directorTable)) {
-        auto&& colName = colDef.first;
-        auto&& colType = colDef.second;
-        if      (colName == databaseInfo.directorTableKey) directorTableKeyType = colType;
-        else if (colName == databaseInfo.chunkIdColName)       chunkIdColNameType = colType;
-        else if (colName == databaseInfo.subChunkIdColName)    subChunkIdColNameType = colType;
+    for (auto&& coldef: databaseInfo.columns.at(databaseInfo.directorTable)) {
+        if      (coldef.name == databaseInfo.directorTableKey)  directorTableKeyType  = coldef.type;
+        else if (coldef.name == databaseInfo.chunkIdColName)    chunkIdColNameType    = coldef.type;
+        else if (coldef.name == databaseInfo.subChunkIdColName) subChunkIdColNameType = coldef.type;
     }
     if (directorTableKeyType.empty() or chunkIdColNameType.empty() or subChunkIdColNameType.empty()) {
         throw logic_error(

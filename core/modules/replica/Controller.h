@@ -35,6 +35,7 @@
 #include <vector>
 
 // Qserv headers
+#include "replica/Common.h"
 #include "replica/Request.h"
 #include "replica/ServiceProvider.h"
 #include "util/Mutex.h"
@@ -379,7 +380,7 @@ public:
             std::string const& table,
             std::string const& engine,
             std::string const& partitionByColumn,
-            std::list<std::pair<std::string, std::string>> const& columns,
+            std::list<SqlColDef> const& columns,
             std::function<void(SqlCreateTableRequestPtr)> const& onFinish=nullptr,
             int priority=0,
             bool keepTracking=true,

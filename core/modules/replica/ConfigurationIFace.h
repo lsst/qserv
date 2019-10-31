@@ -44,6 +44,7 @@
 
 // Qserv headers
 #include "global/constants.h"
+#include "replica/Common.h"
 
 // Forward declarations
 namespace lsst {
@@ -111,8 +112,7 @@ public:
 
     /// Table schema (optional) 
     std::map<std::string,                       // table name
-             std::list<std::pair<std::string,   // column name
-                       std::string>>> columns;  // column type
+             std::list<SqlColDef>> columns;
 
     /// @return the names of all tables
     std::vector<std::string> tables() const {
@@ -541,7 +541,7 @@ public:
      *   'true' if the table is partitioned
      *
      * @param columns
-     *   (optional) column definitions as pairs of (name,type) of the table
+     *   (optional) column definitions (name,type) of the table
      *
      * @param isDirectorTable
      *   (optional) flag indicating if this is the "director" table of
@@ -581,8 +581,7 @@ public:
     virtual DatabaseInfo addTable(std::string const& database,
                                   std::string const& table,
                                   bool isPartitioned,
-                                  std::list<std::pair<std::string,std::string>> const& columns=
-                                        std::list<std::pair<std::string,std::string>>(),
+                                  std::list<SqlColDef> const& columns=std::list<SqlColDef>(),
                                   bool isDirectorTable=false,
                                   std::string const& directorTableKey="objectId",
                                   std::string const& chunkIdColName=lsst::qserv::CHUNK_COLUMN,
