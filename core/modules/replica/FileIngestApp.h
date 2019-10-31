@@ -18,33 +18,32 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_REPLICA_WORKERAPP_H
-#define LSST_QSERV_REPLICA_WORKERAPP_H
+#ifndef LSST_QSERV_REPLICA_FILEINGESTAPP_H
+#define LSST_QSERV_REPLICA_FILEINGESTAPP_H
 
 // System headers
-#include <limits>
+#include <memory>
 #include <string>
 
 // Qserv headers
 #include "replica/Application.h"
 
-// LSST headers
-#include "lsst/log/Log.h"
-
 // This header declarations
+
 namespace lsst {
 namespace qserv {
 namespace replica {
 
 /**
- * Class WorkerApp implements represents a worker service.
+ * Class FileIngestApp implements a tool which acts as a catalog data loading
+ * client of the Replication system's catalog data ingest server.
  */
-class WorkerApp : public Application {
+class FileIngestApp : public Application {
 
 public:
 
     /// The pointer type for instances of the class
-    typedef std::shared_ptr<WorkerApp> Ptr;
+    typedef std::shared_ptr<FileIngestApp> Ptr;
 
     /**
      * The factory method is the only way of creating objects of this class
@@ -60,11 +59,11 @@ public:
 
     // Default construction and copy semantics are prohibited
 
-    WorkerApp() = delete;
-    WorkerApp(WorkerApp const&) = delete;
-    WorkerApp& operator=(WorkerApp const&) = delete;
+    FileIngestApp() = delete;
+    FileIngestApp(FileIngestApp const&) = delete;
+    FileIngestApp& operator=(FileIngestApp const&) = delete;
 
-    ~WorkerApp() final = default;
+    ~FileIngestApp() override = default;
 
 protected:
 
@@ -73,20 +72,17 @@ protected:
 
 private:
 
-    /// @see WorkerApp::create()
-    WorkerApp(int argc, char* argv[]);
+    /// @see FileIngestApp::create()
+    FileIngestApp(int argc, char* argv[]);
 
-    /// Logger stream
-    LOG_LOGGER _log;
-
-    /// The name of a worker
-    std::string _worker;
-    
-    /// A password for the MySQL account of the Qserv worker database.
-    /// The account name is found in the Configuration.
-    std::string _qservDbPassword;
+    std::string  _workerHost;           /// The host name or an IP address of a worker
+    uint16_t     _workerPort = 0;       /// The port number of the Ingest Service
+    unsigned int _transactionId = 0;    /// An identifier of the super-transaction
+    std::string  _tableName;            /// The base name of a table to be ingested
+    std::string  _inFileName;           /// The name of a local file to be ingested
+    bool         _verbose = false;      /// Print various stats upon a completion of the ingest
 };
 
 }}} // namespace lsst::qserv::replica
 
-#endif /* LSST_QSERV_REPLICA_WORKERAPP_H */
+#endif /* LSST_QSERV_REPLICA_FILEINGESTAPP_H */
