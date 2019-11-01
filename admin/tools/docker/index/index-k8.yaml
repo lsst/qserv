@@ -33,6 +33,7 @@ spec:
       containers:
       - name: imaster-ctr
         image: qserv/indexmaster:dev
+        imagePullPolicy: Always
         ports:
         - containerPort: 10042
           protocol: UDP
@@ -72,6 +73,7 @@ spec:
       containers:
       - name: iworker-ctr
         image: qserv/indexworker:dev
+        imagePullPolicy: Always
         ports:
         - containerPort: 10043
           protocol: UDP
@@ -114,6 +116,7 @@ spec:
       - name: iclientnum-ctr
         image: qserv/indexclientnum:dev
         args: ["1", "500000", "client-k8s-a1.cnf"]
+        imagePullPolicy: Always
         ports:
         - containerPort: 10050
           protocol: UDP
