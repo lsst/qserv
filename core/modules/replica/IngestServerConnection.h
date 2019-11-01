@@ -21,12 +21,6 @@
 #ifndef LSST_QSERV_REPLICA_INGESTSERVERCONNECTION_H
 #define LSST_QSERV_REPLICA_INGESTSERVERCONNECTION_H
 
-/**
- * This header declares class IngestServerConnection which is used
- * in the server-side implementation of the point-to-point catalog data
- * ingest service of the Replication system.
- */
-
 // System headers
 #include <cstdio>
 #include <fstream>
@@ -47,9 +41,10 @@ namespace qserv {
 namespace replica {
 
 /**
- * Class IngestServerConnection is used for handling catalog data ingest requests
- * from remote clients. One instance of the class serves one file from one client
- * at a time.
+ * Class IngestServerConnection is used in the server-side implementation of
+ * the point-to-point catalog data ingest service of the Replication system.
+ * The class handles catalog data ingest requests initiated by remote clients.
+ * One instance of the class serves one file from one client at a time.
  *
  * Objects of this class are instantiated by IngestServer. After that
  * the server calls this class's method beginProtocol() which starts
@@ -79,15 +74,11 @@ public:
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
      *
-     * @param serviceProvider
-     *  is needed to access Configuration
-     *
-     * @param workerName
-     *   The name of a worker this service is acting upon (used to pull
-     *   worker-specific configuration options for the service)
-     *
-     * @param io_service
-     *   service object for the network I/O operations
+     * @param serviceProvider is needed to access Configuration
+     * @param workerName  the name of a worker this service is acting
+     * upon (used to pull worker-specific configuration options for
+     * the service)
+     * @param io_service service object for the network I/O operations
      */
     static Ptr create(ServiceProvider::Ptr const& serviceProvider,
                       std::string const& workerName,
@@ -162,15 +153,12 @@ private:
 
     /**
      * The callback on finishing (either successfully or not) of the asynchronous
-     * read o fth ehadnshak erequest from a client. The request will be parsed,
+     * read of the handshake request from a client. The request will be parsed,
      * analyzed and if everything is right an invitation to send data will be sent
-     * asynchronously to the clirnt.
+     * asynchronously to the client.
      *
-     * @param ec
-     *   error code to be evaluated
-     * 
-     * @param bytes_transferred
-     *   number of bytes received from a client
+     * @param ec  error code to be evaluated
+     * @param bytes_transferred  number of bytes received from a client
      */
     void _handshakeReceived(boost::system::error_code const& ec,
                             size_t bytes_transferred);
@@ -183,11 +171,8 @@ private:
     /**
      * The callback on finishing (either successfully or not) of asynchronous writes.
      *
-     * @param ec
-     *   error code to be evaluated
-     *
-     * @param bytes_transferred
-     *   number of bytes sent to a client in a response
+     * @param ec  error code to be evaluated
+     * @param bytes_transferred  number of bytes sent to a client in a response
      */
     void _responseSent(boost::system::error_code const& ec,
                        size_t bytes_transferred);
@@ -195,7 +180,7 @@ private:
     /**
      * Read asynchronously the next batch of rows from a client. The method
      * will only read the frame header (4 byte length) of a client message. The rest
-     * f the message will be requested upon a successful completion of the frame
+     * of the message will be requested upon a successful completion of the frame
      * header.
      */
     void _receiveData();
@@ -205,20 +190,16 @@ private:
      * This method will read (SYNC) a body of the message. Then the data received
      * from a client will get processed.
      *
-     * @param ec
-     *   error code to be evaluated
-     * 
-     * @param bytes_transferred
-     *   number of bytes of the file payload sent to a client 
+     * @param ec  a error code to be evaluated
+     * @param bytes_transferred  the number of bytes of the file payload sent to a client 
      */
     void _dataReceived(boost::system::error_code const& ec,
                        size_t bytes_transferred);
 
     /**
      * Send back a message with an invitation to a client to send more data.
-     * 
-     * @param maxRows
-     *   the maximum number of rows to be requested from a client
+     *
+     * @param maxRows  the maximum number of rows to be requested from a client
      */
     void _sendReadyToReadData(size_t maxRows) {
         _reply(ProtocolIngestResponse::READY_TO_READ_DATA, std::string(), maxRows);
@@ -226,18 +207,15 @@ private:
 
     /**
      * Send back a message with status FAILED and the error message.
-     * 
-     * @param msg
-     *   a message to be delivered to a client
+     *
+     * @param msg  a message to be delivered to a client
      */
     void _failed(std::string const& msg) {
         _closeFile();
         _reply(ProtocolIngestResponse::FAILED, msg);
     }
 
-    /**
-     * Send back a message with status FINISHED and no error message.
-     */
+    /// Send back a message with status FINISHED and no error message.
     void _finished() {
         _closeFile();
         _reply(ProtocolIngestResponse::FINISHED);
@@ -245,9 +223,8 @@ private:
 
     /**
      * Send back a message with status ILLEGAL_PARAMETERS and the error message.
-     * 
-     * @param msg
-     *   a message to be delivered to a client
+     *
+     * @param msg  a message to be delivered to a client
      */
     void _illegalParameters(std::string const& msg) {
         _closeFile();
@@ -256,15 +233,10 @@ private:
 
     /**
      * Send back a message with a specific status and the error message.
-     * 
-     * @param status
-     *   a status code indicating a general reason for the failure
      *
-     * @param msg
-     *   (optional) message to be delivered to a client
-     * 
-     * @param maxRows
-     *   (optional) the maximum number of rows to be requested from a client
+     * @param status  a status code indicating a general reason for the failure
+     * @param msg  (optional) message to be delivered to a client
+     * @param maxRows (optional) the maximum number of rows to be requested from a client
      */
     void _reply(ProtocolIngestResponse::Status status,
                 std::string const& msg=std::string(),

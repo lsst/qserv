@@ -359,6 +359,11 @@ void IngestServerConnection::_dataReceived(boost::system::error_code const& ec,
     ProtocolIngestResponse response;
     if (request.last()) {
         LOGS(_log, LOG_LVL_DEBUG, context << __func__ << "  _totalNumRows: " << _totalNumRows);
+        
+        // Make sure no unsaved rows were staying in memory before proceeding
+        // to the loading phase.
+        _file.flush();
+
         try {
             _loadDataIntoTable();
             _finished();
