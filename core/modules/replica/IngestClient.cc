@@ -47,14 +47,15 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
-IngestClient::Ptr IngestClient::connect(std::string const& workerHost,
-                                        uint16_t workerPort,
-                                        unsigned int transactionId,
-                                        std::string const& tableName,
-                                        unsigned int chunk,
-                                        bool isOverlap,
-                                        std::string const& inputFilePath,
-                                        ColumnSeparator columnSeparator) {
+IngestClient::Ptr IngestClient::connect(
+        string const& workerHost,
+        uint16_t workerPort,
+        unsigned int transactionId,
+        string const& tableName,
+        unsigned int chunk,
+        bool isOverlap,
+        string const& inputFilePath,
+        ColumnSeparator columnSeparator) {
     IngestClient::Ptr ptr(new IngestClient(
         workerHost,
         workerPort,
@@ -70,13 +71,13 @@ IngestClient::Ptr IngestClient::connect(std::string const& workerHost,
 }
 
 
-IngestClient::IngestClient(std::string const& workerHost,
+IngestClient::IngestClient(string const& workerHost,
                            uint16_t workerPort,
                            unsigned int transactionId,
-                           std::string const& tableName,
+                           string const& tableName,
                            unsigned int chunk,
                            bool isOverlap,
-                           std::string const& inputFilePath,
+                           string const& inputFilePath,
                            ColumnSeparator columnSeparator)
     :   _workerHost(workerHost),
         _workerPort(workerPort),
@@ -118,7 +119,6 @@ void IngestClient::send() {
 
         // Read up to the maximum number of lines requested by the server
         // into a data message
-
         ProtocolIngestData data;
         string row;
         size_t numRows = 0;
@@ -136,7 +136,6 @@ void IngestClient::send() {
         data.set_last(eof);
 
         // Send the message, even if the number of rows is zero
-
         _bufferPtr->resize();
         _bufferPtr->serialize(data);
 
@@ -149,7 +148,6 @@ void IngestClient::send() {
         _assertErrorCode(ec, __func__, "data send");
 
         // Read and analyze the response
-
         ProtocolIngestResponse response;
         _readResponse(response);
 
@@ -191,7 +189,6 @@ void IngestClient::_connectImpl() {
 
     // Connect to the server synchronously using error codes to process errors
     // instead of exceptions.
-
     boost::asio::ip::tcp::resolver resolver(_io_service);
     boost::asio::ip::tcp::resolver::iterator iter =
         resolver.resolve(
@@ -206,7 +203,6 @@ void IngestClient::_connectImpl() {
     _assertErrorCode(ec, __func__, "server connect");
 
     // Make the handshake with the server and wait for the reply.
-
     ProtocolIngestHandshakeRequest request;
     request.set_transaction_id(_transactionId);
     request.set_table(_tableName);
@@ -227,7 +223,6 @@ void IngestClient::_connectImpl() {
     _assertErrorCode(ec, __func__, "handshake send");
 
     // Read and analyze the response
-
     ProtocolIngestResponse response;
     _readResponse(response);
     if (response.status() != ProtocolIngestResponse::READY_TO_READ_DATA) {
@@ -242,11 +237,8 @@ void IngestClient::_readResponse(ProtocolIngestResponse& response) {
 
     LOGS(_log, LOG_LVL_DEBUG, _context(__func__));
 
-    // Read the response and parse it
-
     // Start with receiving the fixed length frame carrying
     // the size (in bytes) the length of the subsequent message.
-
     const size_t frameLengthBytes = sizeof(uint32_t);
 
     _bufferPtr->resize(frameLengthBytes);
@@ -262,7 +254,6 @@ void IngestClient::_readResponse(ProtocolIngestResponse& response) {
 
     // Get the length of the message and try reading the message itself
     // from the socket.
-
     const uint32_t responseLengthBytes = _bufferPtr->parseLength();
 
     _bufferPtr->resize(responseLengthBytes);    // make sure the buffer has enough space to
@@ -311,9 +302,7 @@ void IngestClient::_closeConnection() {
 
     // Always attempt to shutdown and close the socket. This code deliberately
     // ignores any abnormal conditions should they happen during the operation.
-
     boost::system::error_code ec;
-
     _socket.shutdown(boost::asio::ip::tcp::socket::shutdown_both, ec);
     _socket.close(ec);
 }

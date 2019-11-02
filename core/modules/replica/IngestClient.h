@@ -21,11 +21,6 @@
 #ifndef LSST_QSERV_REPLICA_INGESTCLIENT_H
 #define LSST_QSERV_REPLICA_INGESTCLIENT_H
 
-/**
- * This header represents the client-side API for the point-to-point
- * catalog data ingest service of the Replication system.
- */
-
 // System headers
 #include <ctime>
 #include <memory>
@@ -49,11 +44,11 @@ namespace qserv {
 namespace replica {
 
 /**
- * Class IngestClientError represents exceptions thrown by IngestClient on errors
+ * Class IngestClientError represents exceptions thrown by IngestClient
+ * on errors.
  */
 class IngestClientError : public std::runtime_error {
 public:
-    /// @param what reason for the exception
     IngestClientError(std::string const& msg)
         :   std::runtime_error(msg) {
     }
@@ -64,10 +59,8 @@ public:
  * data ingest service.
  */
 class IngestClient : public std::enable_shared_from_this<IngestClient>  {
-
 public:
 
-    /// The pointer type for instances of the class
     typedef std::shared_ptr<IngestClient> Ptr;
 
     enum ColumnSeparator {
@@ -80,37 +73,23 @@ public:
      * then a valid pointer will be returned and the data could be could be send via
      * method IngestClient::sendData(). Otherwise return the null pointer.
      *
-     * @param workerHost
-     *   the name or an IP address of a worker node where the ingest service
-     *   is run
-     *
-     * @param workerPort
-     *   the port number of the ingest service
-     *
-     * @param transactionId
-     *   an identifier of a super-transaction which is required to be started
-     *   before attempting the ingest
-     *
-     * @param tableName
-     *   the base name of a table to be loaded. The table should not include
-     *   partition numbers, 'overlap', etc.
-     *
-     * @param chunk
-     *   the number of a chunk
-     *
-     * @param isOverlap
-     *   a flag indicating if this is the chunk 'overlap' table
-     *
-     * @param inputFilePath
-     *   the path (relative or absolute) name for a file whose content will be
-     *   transferred to to the remote service
-     * 
-     * @param columnSeparator
-     *   a character which separates columns within each row
-     * 
-     * @throws IngestClientError
-     *   if any problem occurred when establishing a connection or during
-     *   the initial handshake with the server
+     * @param workerHost the name or an IP address of a worker node where
+     *   the ingest service is run
+     * @param workerPort the port number of the ingest service
+     * @param transactionId an identifier of a super-transaction which is required
+     *   to be started before attempting the ingest
+     * @param tableName the base name of a table to be loaded. The table should not
+     *   include partition numbers, 'overlap', etc. Note that for the regular tables
+     *   the base name of the table is the same name as the actual name of the table.
+     * @param chunk the number of a chunk. The parameter is ignored for
+     *   non-partitioned tables.
+     * @param isOverlap a flag indicating if this is the chunk 'overlap' table.
+     *   The parameter is ignored for non-partitioned tables.
+     * @param inputFilePath the path (relative or absolute) name for a file
+     *   whose content will be transferred to to the remote service.
+     * @param columnSeparator a character which separates columns within each row
+     * @throws IngestClientError for any problem occurred when establishing
+     *   a connection or during the initial handshake with the server
      */
     static Ptr connect(std::string const& workerHost,
                        uint16_t workerPort,
@@ -134,8 +113,8 @@ public:
      * Send the whole file. Note, this is the blocking operation
      * for a thread which calls the method.
      * 
-     * @throws IngestClientError
-     *   if any problem occurred when sending the file content to the server
+     * @throws IngestClientError for any problem occurred when sending the file
+     *   content to the server
      */
     void send();
 
@@ -148,7 +127,6 @@ public:
 private:
 
 
-    /// @see IngestClient::connect()
     IngestClient(std::string const& workerHost,
                  uint16_t workerPort,
                  unsigned int transactionId,
@@ -169,21 +147,18 @@ private:
      * Establish a connection with the service and perform the initial
      * handshake.
      * 
-     * @throws IngestClientError
-     *   if any problem occurred when establishing a connection or during
-     *   the initial handshake with the server
+     * @throws IngestClientError for any problem occurred when establishing
+     *   a connection or during the initial handshake with the server.
      */
     void _connectImpl();
 
     /**
      * Read a response message from the server
      *
-     * @param response
-     *   an object to be initialized upon successful completion
+     * @param response an object to be initialized upon successful completion
      *   of the operation
-     * 
-     * @throws IngestClientError
-     *   if any problem occurred when communicating with the server
+     * @throws IngestClientError for any problem occurred when communicating
+     *   with the server
      */
     void _readResponse(ProtocolIngestResponse& response);
 
@@ -193,18 +168,11 @@ private:
      * attempt to shutdown and close a connection with the server.
      * If no problem will be found in the error code the method will do nothing.
      *
-     * @param ec
-     *   the error code to be checked
-     *
-     * @param func
-     *   the name of a method which requested the test
-     *
-     * @param msg
-     *   a message to be reported in case of a problem. The will be extended
-     *   with an explanation of the problem extracted from the error code.
-     *
-     * @throws IngestClientError
-     *   if a problem was found
+     * @param ec error code to be checked
+     * @param func the name of a method which requested the test
+     * @param msg a message to be reported in case of a problem. The will be
+     *   extended with an explanation of the problem extracted from the error code.
+     * @throws IngestClientError if a problem was found
      */
     void _assertErrorCode(boost::system::error_code const& ec,
                           std::string const& func,
@@ -214,14 +182,9 @@ private:
      * Unconditionally abort the operation by shutting down and closing
      * the server connection, logging a error message and throwing an exception.
      *
-     * @param func
-     *   the name of a method which requested the abort
-     *
-     * @param error
-     *   an error message to be reported
-     *
-     * @throws IngestClientError
-     *   is always thrown by the method
+     * @param func the name of a method which requested the abort
+     * @param error an error message to be reported
+     * @throws IngestClientError is always thrown by the method
      */
     void _abort(std::string const& func,
                 std::string const& error);
