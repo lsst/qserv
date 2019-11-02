@@ -267,11 +267,15 @@ private:
     // request received from a client.
 
     unsigned int _transactionId = 0;
-    std::string  _database;
     std::string  _table;
     unsigned int _chunk = 0;
     bool         _isOverlap = false;
     char         _columnSeparator = ',';
+
+    /// The database descriptor and the state of the table are set after receiving
+    /// and validating a handshake message from a client.
+    DatabaseInfo _databaseInfo;
+    bool _isPartitioned = false;
 
     // A file for storing rows received from a client before ingesting
     // its content into the database. This file is created after the handshake

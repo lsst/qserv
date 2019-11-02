@@ -34,6 +34,7 @@
 #include <boost/filesystem.hpp>
 
 // Qserv headers
+#include "global/constants.h"
 #include "replica/Configuration.h"
 #include "replica/DatabaseMySQL.h"
 #include "replica/DatabaseServices.h"
@@ -42,6 +43,7 @@
 
 // LSST headers
 #include "lsst/log/Log.h"
+#include "ConfigurationIFace.h"
 
 using namespace std;
 namespace fs = boost::filesystem;
@@ -199,47 +201,59 @@ void IngestServerConnection::_handshakeReceived(boost::system::error_code const&
             _illegalParameters("transaction is not active");
             return;
         }
-        _database = transactionInfo.database;
 
-        // The next test is to see if the chunk number is valid and it's allocated to this
-        // worker. This test will also check (indirectly though) that the database is
-        // still in the UNPUBLISHED state.
-        //
-        // TODO: in the future the last test should be made by pulling the most
-        // recent state of the database directly from the Configuration. A reason
-        // why this can't be done now is because the current implementation of
-        // the Configuration service loads and caches its state when the workers
-        // are starting. Meanwhile the DatabaseServices never caches its products.
+        // Get and validate a status of the database and the table
 
-        DatabaseInfo const databaseInfo = _serviceProvider->config()->databaseInfo(_database);
-        if (databaseInfo.isPublished) {
-            throw invalid_argument("database '" + _database + "' is not in the UNPUBLISHED state");
+        _databaseInfo = _serviceProvider->config()->databaseInfo(transactionInfo.database);
+        if (_databaseInfo.isPublished) {
+            throw invalid_argument("database '" + _databaseInfo.name + "' is already PUBLISHED");
         }
-
-        vector<ReplicaInfo> replicas;       // Chunk replicas at the current worker found
-                                            // among the unpublished databases only
-        bool const allDatabases = false;
-        bool const isPublished = false;
-
-        _serviceProvider->databaseServices()->findWorkerReplicas(
-            replicas,
-            _chunk,
-            _workerName,
-            databaseInfo.family,
-            allDatabases,
-            isPublished
-        );
-        bool databaseIsFound = false;
-        for (auto&& replica: replicas) {
-            if (replica.database() == _database) {
-                databaseIsFound = true;
-                break;
+        _isPartitioned = _databaseInfo.partitionedTables.end() != find(
+            _databaseInfo.partitionedTables.begin(),
+            _databaseInfo.partitionedTables.end(),
+            _table);
+        if (not _isPartitioned) {
+            if (_databaseInfo.regularTables.end() != find(
+                _databaseInfo.regularTables.begin(),
+                _databaseInfo.regularTables.end(),
+                _table)) {
+                throw invalid_argument(
+                        "no such table '" + _table + "' in a scope of database '" +
+                        _databaseInfo.name + "'");
             }
         }
-        if (not databaseIsFound) {
-            throw invalid_argument(
-                    "chunk " + to_string(_chunk) + " of the UNPUBLISHED database '" +
-                    databaseInfo.name + "' is not allocated to worker '" + _workerName + "'");
+
+        // The next test is for the partitioned tables, and it's meant to check if
+        // the chunk number is valid and it's allocated to this worker. The test will
+        // also ensure that the database is in the UNPUBLISHED state.
+
+        if (_isPartitioned) {
+
+            vector<ReplicaInfo> replicas;       // Chunk replicas at the current worker found
+                                                // among the unpublished databases only
+            bool const allDatabases = false;
+            bool const isPublished = false;
+
+            _serviceProvider->databaseServices()->findWorkerReplicas(
+                replicas,
+                _chunk,
+                _workerName,
+                _databaseInfo.family,
+                allDatabases,
+                isPublished
+            );
+            bool databaseIsFound = false;
+            for (auto&& replica: replicas) {
+                if (replica.database() == _databaseInfo.name) {
+                    databaseIsFound = true;
+                    break;
+                }
+            }
+            if (not databaseIsFound) {
+                throw invalid_argument(
+                        "chunk " + to_string(_chunk) + " of the UNPUBLISHED database '" +
+                        _databaseInfo.name + "' is not allocated to worker '" + _workerName + "'");
+            }
         }
                 
     } catch (DatabaseServicesNotFound const& ex) {
@@ -255,7 +269,7 @@ void IngestServerConnection::_handshakeReceived(boost::system::error_code const&
     boost::system::error_code errCode;
     
     string const fileExt = ".csv";
-    string const pattern = _database + "-" + _table + "-" + to_string(_chunk) + "-" +
+    string const pattern = _databaseInfo.name + "-" + _table + "-" + to_string(_chunk) + "-" +
                            to_string(_transactionId) + "-%%%%" + fileExt;
     fs::path const baseFileName = fs::unique_path(pattern, errCode);
     if (errCode.value() != 0) {
@@ -400,17 +414,10 @@ void IngestServerConnection::_loadDataIntoTable() {
 
     LOGS(_log, LOG_LVL_DEBUG, context << __func__);
 
-    // ATTENTION: this will require that the MySQL server could see the data directory
-    // when the CSV file will be residing. So, make proper adjustments to a configuration
-    // of the Replication system, so that it would shared that temporary data directory.
-    //
-    // All workers at NCSA PDAC have the following folder mounted RW into the container:
-    //
-    //   /qserv/data/
-    //
-    // So, perhaps, the following folder would work here?
-    //
-    //   /qserv/data/ingest
+    // ATTENTION: the data loading metod used in this implementation requires
+    // that the MySQL server has (at least) the read-only access to files in
+    // a folder in which the CSV file will be stored by this server. So, make
+    // proper adjustments to a configuration of the Replication system.
 
     database::mysql::Connection::Ptr conn;
     try {
@@ -423,32 +430,74 @@ void IngestServerConnection::_loadDataIntoTable() {
             ""
         ));
 
-        string const sqlDatabase     = conn->sqlId(_database);
-        string const sqlProtoTable   = sqlDatabase + "." + conn->sqlId(_table);
-        string const sqlTable        = sqlDatabase + "." + conn->sqlId(_table + "_" + to_string(_chunk));
-        string const sqlOverlapTable = sqlDatabase + "." + conn->sqlId(_table + "FullOverlap_" + to_string(_chunk));
-        string const sqlPartition    = conn->sqlId("p" + to_string(_transactionId));
+        string const sqlDatabase = conn->sqlId(_databaseInfo.name);
+        string const sqlPartition = conn->sqlId("p" + to_string(_transactionId));
 
-        vector<string> const statements = {
-            "CREATE TABLE IF NOT EXISTS " + sqlTable + " LIKE " + sqlProtoTable,
-            "ALTER TABLE " + sqlTable + " ADD PARTITION IF NOT EXISTS (PARTITION " + sqlPartition +
-                " VALUES IN (" + to_string(_transactionId) + "))",
-            "CREATE TABLE IF NOT EXISTS " + sqlOverlapTable + " LIKE " + sqlProtoTable,
-            "ALTER TABLE " + sqlOverlapTable + " ADD PARTITION IF NOT EXISTS (PARTITION " + sqlPartition +
-                " VALUES IN (" + to_string(_transactionId) + "))",
-            "LOAD DATA INFILE " + conn->sqlValue(_fileName) +
-                " INTO TABLE " + (_isOverlap ? sqlOverlapTable : sqlTable) +
-                " PARTITION (" + sqlPartition + ")" +
-                " FIELDS TERMINATED BY " + conn->sqlValue(string() + _columnSeparator)
-        };
+        vector<string> statements;
+
+        if (_isPartitioned) {
+            
+            // Chunked tables are created from the prototype table which is expected
+            // to exist in the database before attempting data loading.
+
+            string const sqlProtoTable = sqlDatabase + "." + conn->sqlId(_table);
+            string const sqlTable = sqlDatabase + "." + conn->sqlId(_table + "_" + to_string(_chunk));
+            string const sqlFullOverlapTable  =
+                sqlDatabase + "." + conn->sqlId(_table + "FullOverlap_" + to_string(_chunk));
+
+            string const sqlDummyChunkTable =
+                sqlDatabase + "." + conn->sqlId(_table + "_" + to_string(lsst::qserv::DUMMY_CHUNK));
+
+            string const sqlOverlapDummyChunkTable =
+                sqlDatabase + "." + conn->sqlId(_table + "FullOverlap_" + to_string(lsst::qserv::DUMMY_CHUNK));
+
+            vector<string> const tablesToBeCreated = {
+                sqlTable,
+                sqlFullOverlapTable,
+                sqlDummyChunkTable,
+                sqlOverlapDummyChunkTable
+            };
+            for (auto&& table: tablesToBeCreated) {
+                statements.push_back(
+                    "CREATE TABLE IF NOT EXISTS " + table + " LIKE " + sqlProtoTable
+                );
+                statements.push_back(
+                    "ALTER TABLE " + table + " ADD PARTITION IF NOT EXISTS (PARTITION " + sqlPartition +
+                        " VALUES IN (" + to_string(_transactionId) + "))"
+                );
+            }
+            statements.push_back(
+                "LOAD DATA INFILE " + conn->sqlValue(_fileName) +
+                    " INTO TABLE " + (_isOverlap ? sqlFullOverlapTable : sqlTable) +
+                    " FIELDS TERMINATED BY " + conn->sqlValue(string() + _columnSeparator)
+            );
+        } else {
+
+            // Regular tables are expected to exist in the database before
+            // attempting data loading.
+
+            string const sqlTable = sqlDatabase + "." + conn->sqlId(_table);
+
+            statements.push_back(
+                "ALTER TABLE " + sqlTable + " ADD PARTITION IF NOT EXISTS (PARTITION " + sqlPartition +
+                    " VALUES IN (" + to_string(_transactionId) + "))"
+            );
+            statements.push_back(
+                "LOAD DATA INFILE " + conn->sqlValue(_fileName) +
+                    " INTO TABLE " + sqlTable +
+                    " FIELDS TERMINATED BY " + conn->sqlValue(string() + _columnSeparator)
+            );
+        }
         for (auto&& statement: statements) {
             LOGS(_log, LOG_LVL_DEBUG, context << __func__ << "  statement: " << statement);
-            conn->execute([&statement](decltype(conn) const& conn_) {
-                conn_->begin();
+        }
+        conn->execute([&statements](decltype(conn) const& conn_) {
+            conn_->begin();
+            for (auto&& statement: statements) {
                 conn_->execute(statement);
-                conn_->commit();
-            });
-       }
+            }
+            conn_->commit();
+        });
     } catch (exception const& ex) {
         LOGS(_log, LOG_LVL_ERROR, context << __func__ << "  exception: " << ex.what());
         if ((nullptr != conn) and conn->inTransaction()) conn->rollback();
