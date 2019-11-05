@@ -22,6 +22,7 @@
 #define LSST_QSERV_REPLICA_FILEINGESTAPP_H
 
 // System headers
+#include <list>
 #include <memory>
 #include <string>
 
@@ -66,21 +67,44 @@ public:
     ~FileIngestApp() override = default;
 
 protected:
-
-    /// @see Application::runImpl()
     int runImpl() final;
 
 private:
-
-    /// @see FileIngestApp::create()
     FileIngestApp(int argc, char* argv[]);
 
-    std::string  _workerHost;           /// The host name or an IP address of a worker
-    uint16_t     _workerPort = 0;       /// The port number of the Ingest Service
-    unsigned int _transactionId = 0;    /// An identifier of the super-transaction
-    std::string  _tableName;            /// The base name of a table to be ingested
-    std::string  _inFileName;           /// The name of a local file to be ingested
-    bool         _verbose = false;      /// Print various stats upon a completion of the ingest
+    struct FileIngestSpec {
+        std::string workerHost;         /// The host name or an IP address of a worker
+        uint16_t    workerPort = 0;     /// The port number of the Ingest Service
+        uint32_t    transactionId = 0;  /// An identifier of the super-transaction
+        std::string tableName;          /// The base name of a table to be ingested
+        std::string tableType;          /// The type of the table. Allowed options: 'P' or 'R'
+        std::string inFileName;         /// The name of a local file to be ingested
+    };
+
+    /**
+     * Read ingest specifications from a file supplied via the corresponding
+     * command line parameter with command 'FILE-LIST'. Each line of the file
+     * is expected to have the following space-separated fields:
+     * 
+     *   <worker-host> <worker-port> <transaction-id> <table> <type> <infile>
+     * 
+     * @return a list of file specifications
+     */
+    std::list<FileIngestSpec> _readFileList() const;
+
+    /**
+     * Ingest a single file as per the ingest specification
+     * @param file a specification of the file
+     * @throws invalid_argument for non existing files or incorrect file names
+     */
+    void _ingest(FileIngestSpec const& file) const;
+
+    std::string _command;       /// 'FILE' or 'FILE-LIST' ingest scenarios
+    std::string _fileListName;  /// The name of a file to read info for 'FILE-LIST' scenario
+
+    FileIngestSpec _file;       /// File specification for the single file ingest ('FILE'))
+
+    bool _verbose = false;      /// Print various stats upon a completion of the ingest
 };
 
 }}} // namespace lsst::qserv::replica
