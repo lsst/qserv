@@ -4,6 +4,11 @@
 
 FROM qserv/qserv:dev
 
+USER 0
+
+#RUN mv /usr/bin/sh /usr/bin/sh.old && ln -s /usr/bin/bash /usr/bin/sh
+RUN yum update --assumeyes && yum install --assumeyes bind-utils
+
 USER 1000 
 
 RUN mkdir /home/qserv/dev/ && \

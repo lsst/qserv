@@ -11,4 +11,5 @@ RUN yum update --assumeyes && yum install --assumeyes bind-utils
 USER 1000
     
 ENTRYPOINT ["/home/qserv/dev/qserv/admin/tools/docker/index/container/dev/clientNum/appClientNum.bash"]
-CMD ["1 500000"]
+#ENTRYPOINT ["/bin/bash", "-lc", "/home/qserv/dev/qserv/admin/tools/docker/index/container/dev/clientNum/appClientNum.bash"]
+# CMD ["1 500000"]

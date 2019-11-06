@@ -223,7 +223,7 @@ bool CentralWorker::_determineRange() {
         // Must send the number of bytes in the message so TCP server knows how many bytes to read.
         bytesInMsg.appendToData(data);
         strElem.appendToData(data);
-        ServerTcpBase::writeData(*_rightSocket, data);
+        ServerTcpBase::writeData(*_rightSocket, data, "detRange");
     }
     // Get back their basic info
     {
@@ -364,7 +364,7 @@ void CentralWorker::_shift(Direction direction, int keysToShift) {
             bytesInMsg.appendToData(data);
             keyShiftReq.appendToData(data);
             LOGS(_log, LOG_LVL_INFO, fName << " FROMRIGHT " << keysToShift);
-            ServerTcpBase::writeData(*_rightSocket, data);
+            ServerTcpBase::writeData(*_rightSocket, data, "_shift FROMRIGHT");
         }
         // Wait for the KeyList response
         {
@@ -395,7 +395,7 @@ void CentralWorker::_shift(Direction direction, int keysToShift) {
         data.reset();
         UInt32Element elem(LoaderMsg::SHIFT_FROM_RIGHT_RECEIVED);
         elem.appendToData(data);
-        ServerTcpBase::writeData(*_rightSocket, data);
+        ServerTcpBase::writeData(*_rightSocket, data, "shift SHIFT_FROM_RIGHT_RECEIVED");
         LOGS(_log, LOG_LVL_INFO, fName << " direction=" << direction << " keys=" << keysToShift);
 
     } else if (direction == TORIGHT1) {
@@ -446,7 +446,7 @@ void CentralWorker::_shift(Direction direction, int keysToShift) {
         keyList.appendToData(data);
 
         LOGS(_log, LOG_LVL_INFO, fName << " TORIGHT sending keys");
-        ServerTcpBase::writeData(*_rightSocket, data);
+        ServerTcpBase::writeData(*_rightSocket, data, "shift TORIGHT sending keys");
 
         // read back LoaderMsg::SHIFT_TO_RIGHT_KEYS_RECEIVED
         data.reset();

@@ -68,8 +68,9 @@ void ServerTcpBase::_startAccept() {
 }
 
 
-bool ServerTcpBase::writeData(AsioTcp::socket& socket, BufferUdp& data) {
+bool ServerTcpBase::writeData(AsioTcp::socket& socket, BufferUdp& data, std::string note) {
     while (data.getBytesLeftToRead() > 0) {
+        LOGS(_log, LOG_LVL_INFO, note << " &&& write data bytesLeft=" << data.getBytesLeftToRead());
         // Read cursor advances (manually in this case) as data is read from the buffer.
         auto res = boost::asio::write(socket,
                                       boost::asio::buffer(data.getReadCursor(), data.getBytesLeftToRead()));
@@ -114,7 +115,7 @@ bool ServerTcpBase::testConnect() {
         kind.appendToData(data);
         UInt32Element bytes(1234); // dummy value
         bytes.appendToData(data);
-        writeData(socket, data);
+        writeData(socket, data, "tc");
 
         // send back our name and left neighbor message.
         data.reset();
@@ -124,7 +125,7 @@ bool ServerTcpBase::testConnect() {
         ourName.appendToData(data);
         UInt64Element valuePairCount(testNewNodeValuePairCount);
         valuePairCount.appendToData(data);
-        writeData(socket, data);
+        writeData(socket, data, "tc");
 
         // Get back left neighbor information
         auto msgKind = std::dynamic_pointer_cast<UInt32Element>(
@@ -158,7 +159,7 @@ bool ServerTcpBase::testConnect() {
         data.reset();
         UInt32Element verified(LoaderMsg::NEIGHBOR_VERIFIED);
         verified.appendToData(data);
-        writeData(socket, data);
+        writeData(socket, data, "tc");
 
         boost::system::error_code ec;
         socket.shutdown(boost::asio::ip::tcp::socket::shutdown_both, ec);
@@ -465,7 +466,7 @@ void TcpBaseConnection::_handleImYourLNeighbor1(boost::system::error_code const&
         // Send the number of bytes in the message so TCP client knows how many bytes to read.
         bytesInMsg.appendToData(_buf);
         strWKI.appendToData(_buf);
-        ServerTcpBase::writeData(_socket, _buf);
+        ServerTcpBase::writeData(_socket, _buf, "shift _handleImYourLNeighbor1");
         LOGS(_log, LOG_LVL_INFO, funcName << " done");
     } catch (LoaderMsgErr const& ex) {
         LOGS(_log, LOG_LVL_ERROR, funcName << " Buffer failed " << ex.what());
@@ -539,7 +540,7 @@ void TcpBaseConnection::_handleShiftToRight1(boost::system::error_code const& ec
         _buf.reset();
         UInt32Element elem(LoaderMsg::SHIFT_TO_RIGHT_RECEIVED);
         elem.appendToData(_buf);
-        ServerTcpBase::writeData(_socket, _buf);
+        ServerTcpBase::writeData(_socket, _buf, "_shift SHIFT_TO_RIGHT_RECEIVED");
         LOGS(_log, LOG_LVL_INFO, funcName << " done dumpKeys " <<
                                              _serverTcpBase->getCentralWorker()->dumpKeysStr(2));
     } catch (LoaderMsgErr const& ex) {
@@ -612,7 +613,7 @@ void TcpBaseConnection::_handleShiftFromRight1(boost::system::error_code const& 
             throw LoaderMsgErr(ERR_LOC, errMsg);
         }
         keyList->appendToData(data);
-        ServerTcpBase::writeData(_socket, data);
+        ServerTcpBase::writeData(_socket, data, " &&& _handleShiftFromRight1");
 
         // Wait for the SHIFT_FROM_RIGHT_KEYS_RECEIVED response back.
         _buf.reset();

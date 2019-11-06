@@ -147,7 +147,7 @@ public:
 
     CentralWorker* getCentralWorker() const { return _centralWorker; }
 
-    static bool writeData(AsioTcp::socket& socket, BufferUdp& data);
+    static bool writeData(AsioTcp::socket& socket, BufferUdp& data, std::string note); // &&& delete note
 
 private:
     void _startAccept();

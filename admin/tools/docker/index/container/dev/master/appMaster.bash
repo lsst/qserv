@@ -1,4 +1,4 @@
-#! /bin/bash
+#! /bin/bash -l
 # admin/tools/docker/loader/container/dev/master/appMaster.bash
 
 _term() { 
@@ -10,7 +10,7 @@ trap _term SIGTERM
 trap _term SIGKILL
 
 source /qserv/stack/loadLSST.bash
-cd /qserv/dev/qserv
+cd /home/qserv/dev/qserv
 setup -r . -t qserv-dev
 
 export LSST_LOG_CONFIG=/home/qserv/dev/qserv/admin/templates/configuration/etc/log4cxx.index.properties
@@ -18,4 +18,5 @@ export LSST_LOG_CONFIG=/home/qserv/dev/qserv/admin/templates/configuration/etc/l
 /home/qserv/dev/qserv/build/loader/appMaster /home/qserv/dev/qserv/core/modules/loader/config/master.cnf
 
 child=$!
+echo "child ${child}"
 wait "$child"
