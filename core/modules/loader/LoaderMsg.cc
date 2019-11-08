@@ -49,28 +49,28 @@ LoaderMsg::LoaderMsg(uint16_t kind, uint64_t id, std::string const& host, uint32
 
 
 void LoaderMsg::parseFromData(BufferUdp& data) {
-    MsgElement::Ptr elem = MsgElement::retrieve(data);
+    MsgElement::Ptr elem = MsgElement::retrieve(data, " 1parseFromData&&& ");
     msgKind = std::dynamic_pointer_cast<UInt16Element>(elem);
     if (msgKind == nullptr) {
         throw LoaderMsgErr(ERR_LOC, "LoaderMsg::parseMsg wrong type for msgKind:" +
                            MsgElement::getStringVal(elem));
     }
 
-    elem = MsgElement::retrieve(data);
+    elem = MsgElement::retrieve(data, " 2parseFromData&&& ");
     msgId = std::dynamic_pointer_cast<UInt64Element>(elem);
     if (msgId == nullptr) {
         throw LoaderMsgErr(ERR_LOC, "LoaderMsg::parseMsg wrong type for msgId:" +
                            MsgElement::getStringVal(elem));
     }
 
-    elem = MsgElement::retrieve(data);
+    elem = MsgElement::retrieve(data, " 3parseFromData&&& ");
     senderHost = std::dynamic_pointer_cast<StringElement>(elem);
     if (senderHost == nullptr) {
         throw LoaderMsgErr(ERR_LOC, "LoaderMsg::parseMsg wrong type for senderHost:" +
                            MsgElement::getStringVal(elem));
     }
 
-    elem = MsgElement::retrieve(data);
+    elem = MsgElement::retrieve(data, " 4parseFromData&&& ");
     senderPort = std::dynamic_pointer_cast<UInt32Element>(elem);
     if (senderPort == nullptr) {
         throw LoaderMsgErr(ERR_LOC, "LoaderMsg::parseMsg wrong type for senderPort:" +

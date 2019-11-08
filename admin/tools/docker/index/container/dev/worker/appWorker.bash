@@ -22,3 +22,4 @@ echo "child ${child}"
 wait "$child"
 
 sleep 10000
+tail -f /dev/null

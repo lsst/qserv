@@ -34,9 +34,10 @@
 
 // Qserv headers
 #include "loader/Central.h"
+#include "loader/CentralFollower.h"
 #include "loader/ClientServer.h"
+#include "loader/WWorkerList.h"
 #include "util/Command.h"
-
 
 namespace lsst {
 namespace qserv {
@@ -66,24 +67,31 @@ public:
 /// so replies to its request can be sent directly back to it.
 /// 'Central' provides access to the master and a DoList for handling requests.
 /// TODO Maybe base this on CentralWorker or have a common base class?
-class CentralClient : public Central {
+// &&& class CentralClient : public Central {
+class CentralClient : public CentralFollower {
 public:
     /// The client needs to know the master's IP and its own IP.
     CentralClient(boost::asio::io_service& ioService_,
                   std::string const& hostName, ClientConfig const& cfg);
 
-    void start();
+    // &&&void start();
+    void startService() override;
 
-    ~CentralClient() override = default;
+    ~CentralClient() override;
 
     std::string const& getHostName() const { return _hostName; }
-    int getUdpPort() const { return _udpPort; }
+    // &&& int getUdpPort() const { return _udpPort; }
     int getTcpPort() const { return 0; } ///< No tcp port at this time.
 
     /// @return the default worker's host name.
     std::string getDefWorkerHost() const { return _defWorkerHost; }
     /// @return the default worker's UDP port
     int getDefWorkerPortUdp() const { return _defWorkerPortUdp; }
+
+    /// Try to get the correct address for the worker responsible for 'key'
+    /// and place the information in 'ip' and 'port'. If a reasonable worker is
+    /// not located, the default worker information is returned.
+    void getWorkerForKey(CompositeKey const& key, std::string& ip, int& port);
 
     /// Asynchronously request a key value insert to the workers.
     /// This can block if too many key insert requests are already in progress.
@@ -156,8 +164,8 @@ private:
 
     /// TODO The worker IP becomes default worker as it should be able to get
     ///      that information from the master in the future. DM-16555
-    const std::string _hostName;
-    const int         _udpPort;
+    // &&& const std::string _hostName;
+    // &&& const int         _udpPort;
 
     // If const is removed, these will need mutex protection.
     const std::string _defWorkerHost;    ///< Default worker host

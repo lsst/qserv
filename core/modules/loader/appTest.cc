@@ -220,6 +220,7 @@ int main(int argc, char* argv[]) {
 
             server.testConnect();
             LOGS(_log, LOG_LVL_INFO, "ServTcpBase e");
+            LOGS(_log, LOG_LVL_INFO, "&&& SLEEP");
             sleep(5);
         }
         catch (std::exception const& e) {
@@ -372,6 +373,7 @@ int main(int argc, char* argv[]) {
         auto originalErrCount = wCentral1.getErrCount();
         LOGS(_log, LOG_LVL_INFO, "1TSTAGE testSendBadMessage start");
         wCentral1.testSendBadMessage();
+        LOGS(_log, LOG_LVL_INFO, "&&& SLEEP");
         sleep(2); // TODO handshaking instead of sleep
 
         if (originalErrCount == wCentral1.getErrCount()) {
@@ -381,6 +383,7 @@ int main(int argc, char* argv[]) {
     }
 
     LOGS(_log, LOG_LVL_INFO, "sleeping");
+    LOGS(_log, LOG_LVL_INFO, "&&& SLEEP");
     sleep(5); // TODO change to 20 second timeout with a check every 0.1 seconds.
     // The workers should agree on the worker list, and it should have 2 elements.
     if (wCentral1.getWorkerList()->getIdMapSize() == 0) {
@@ -648,11 +651,20 @@ int main(int argc, char* argv[]) {
 
     }
 
+    sleep(10);
+    {
+        // Tests for client worker lists.
+        /// Clients should have lists of workers cCentral2A cCentral1B
+        WWorkerList::Ptr wList2A = cCentral2A.getWorkerList();
+        LOGS(_log, LOG_LVL_INFO, " wList2A size=" << wList2A->getIdMapSize() << " dump=" << wList2A->dump());
+        WWorkerList::Ptr wList1B = cCentral1B.getWorkerList();
+        LOGS(_log, LOG_LVL_INFO, " wList1B size=" << wList1B->getIdMapSize() << " dump=" << wList1B->dump());
+        // TODO: A new pair of clients should have matching lists at this time.
+    }
 
     //ioService.stop(); // this doesn't seem to work cleanly
     // mastT.join();
 
-    sleep(10);
     LOGS(_log, LOG_LVL_INFO, "DONE");
     exit(0);
 }

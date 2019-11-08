@@ -86,6 +86,10 @@ public:
 
     void flagNeedToSendList();
 
+    /// Check if the worker actually received the list of workers that
+    /// was sent. Currently, it assumes the worker got the list.
+    /// If the worker didn't get the list, it will ask for it after not
+    /// receiving updates.
     void sendListToWorkerInfoReceived();
 
     std::ostream& dump(std::ostream& os) const override;

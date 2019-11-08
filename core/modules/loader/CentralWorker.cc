@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2018 AURA/LSST.
+ * Copyright 2018-2019 AURA/LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -50,7 +50,7 @@ namespace lsst {
 namespace qserv {
 namespace loader {
 
-
+/* &&&
 CentralWorker::CentralWorker(boost::asio::io_service& ioService_, boost::asio::io_context& io_context_,
                              std::string const& hostName_, WorkerConfig const& cfg)
     : Central(ioService_, cfg.getMasterHost(), cfg.getMasterPortUdp(),
@@ -63,18 +63,38 @@ CentralWorker::CentralWorker(boost::asio::io_service& ioService_, boost::asio::i
       _thresholdNeighborShift(cfg.getThresholdNeighborShift()),
       _maxKeysToShift(cfg.getMaxKeysToShift()) {
 }
+*/
+CentralWorker::CentralWorker(boost::asio::io_service& ioService_, boost::asio::io_context& io_context_,
+                             std::string const& hostName_, WorkerConfig const& cfg)
+    : CentralFollower(ioService_, hostName_, cfg.getMasterHost(), cfg.getMasterPortUdp(),
+              cfg.getThreadPoolSize(), cfg.getLoopSleepTime(), cfg.getIOThreads(),cfg.getWPortUdp()),
+      _tcpPort(cfg.getWPortTcp()),
+      _ioContext(io_context_),
+      _recentAddLimit(cfg.getRecentAddLimit()),
+      _thresholdNeighborShift(cfg.getThresholdNeighborShift()),
+      _maxKeysToShift(cfg.getMaxKeysToShift()) {
+}
 
-
+/* &&&
 void CentralWorker::start() {
     _server = std::make_shared<WorkerServer>(ioService, _hostName, _udpPort, this);
     _tcpServer = std::make_shared<ServerTcpBase>(_ioContext, _tcpPort, this);
     _tcpServer->runThread();
     _startMonitoring();
 }
+*/
+void CentralWorker::startService() {
+    _server = std::make_shared<WorkerServer>(ioService, _hostName, _udpPort, this);
+    _tcpServer = std::make_shared<ServerTcpBase>(_ioContext, _tcpPort, this);
+    _tcpServer->runThread();
+}
+
 
 
 CentralWorker::~CentralWorker() {
-    _wWorkerList.reset();
+    // Members that contain pointers to this. Deleting while this != null.
+    // &&&_wWorkerList.reset();
+    // TODO: wait for reference count to drop to one or less.
     _tcpServer.reset();
 }
 
@@ -86,10 +106,11 @@ std::string CentralWorker::getOurLogId() const {
     return os.str();
 }
 
-void CentralWorker::_startMonitoring() {
+void CentralWorker::startMonitoring() {
+    CentralFollower::startMonitoring();
     // Add _workerList to _doList so it starts checking new entries.
     _centralWorkerDoListItem = std::make_shared<CentralWorkerDoListItem>(this);
-    doList->addItem(_wWorkerList);
+    // &&& doList->addItem(_wWorkerList);
     doList->addItem(_centralWorkerDoListItem);
 }
 
@@ -101,6 +122,7 @@ void CentralWorker::_monitor() {
     if (_isOurIdInvalid()) {
         _registerWithMaster();
         // Give the master a half second to answer.
+        LOGS(_log, LOG_LVL_INFO, "&&& SLEEP");
         usleep(500000);
         return;
     }
@@ -152,14 +174,14 @@ void CentralWorker::_monitor() {
                 dataShifted = _shiftIfNeeded(rMtxLG);
             } catch (LoaderMsgErr const& ex) {
                 LOGS(_log, LOG_LVL_ERROR, "_monitor() catching exception " << ex.what());
-                _rightDisconnect(rMtxLG);
+                _rightDisconnect(rMtxLG, "_monitor msgErr ex");
             } catch (boost::system::system_error const& ex) {
                 LOGS(_log, LOG_LVL_ERROR, "_monitor() catching boost exception " << ex.what());
-                _rightDisconnect(rMtxLG);
+                _rightDisconnect(rMtxLG, "_monitor boost ex");
             }
         } else {
             // If there is a connection, close it.
-            _rightDisconnect(rMtxLG);
+            _rightDisconnect(rMtxLG, "_monitor closing since _neighborRight.getId()=0");
         }
         if (_rangeChanged) {
             // Send new range to master so all clients and workers can be updated.
@@ -198,7 +220,7 @@ void CentralWorker::_masterDisable() {
     // Disconnect from right neighbor.
     {
         std::lock_guard<std::mutex> rMtxLG(_rightMtx);
-        _rightDisconnect(rMtxLG);
+        _rightDisconnect(rMtxLG, "_masterDisable");
         _neighborRight.setId(0);
     }
     // Disconnect from left neighbor. TODO actively kill the left connection.
@@ -588,8 +610,8 @@ void CentralWorker::setNeighborInfoLeft(uint32_t wId, int keyCount, KeyRange con
 
 
 /// Must hold _rightMtx before calling
-void CentralWorker::_rightDisconnect(std::lock_guard<std::mutex> const& lg) {
-    LOGS(_log, LOG_LVL_DEBUG, "CentralWorker::_rightDisconnect");
+void CentralWorker::_rightDisconnect(std::lock_guard<std::mutex> const& lg, std::string const& note) {
+    LOGS(_log, LOG_LVL_INFO, "CentralWorker::_rightDisconnect " << note);
     if (_rightSocket != nullptr) {
         LOGS(_log, LOG_LVL_WARN, "CentralWorker::_rightDisconnect disconnecting");
         _rightSocket->shutdown(boost::asio::ip::tcp::socket::shutdown_both);
@@ -645,10 +667,10 @@ void CentralWorker::cancelShiftsWithLeftNeighbor() {
     }
 }
 
-
+/* &&&
 bool CentralWorker::workerInfoReceive(BufferUdp::Ptr const&  data) {
     // Open the data protobuffer and add it to our list.
-    StringElement::Ptr sData = std::dynamic_pointer_cast<StringElement>(MsgElement::retrieve(*data));
+    StringElement::Ptr sData = std::dynamic_pointer_cast<StringElement>(MsgElement::retrieve(*data, " CentralWorker::workerInfoReceive&&& "));
     if (sData == nullptr) {
         LOGS(_log, LOG_LVL_WARN, "CentralWorker::workerInfoRecieve Failed to parse list");
         return false;
@@ -663,8 +685,9 @@ bool CentralWorker::workerInfoReceive(BufferUdp::Ptr const&  data) {
     _workerInfoReceive(protoList);
     return true;
 }
+*/
 
-
+/* &&&
 void CentralWorker::_workerInfoReceive(std::unique_ptr<proto::WorkerListItem>& protoL) {
     std::unique_ptr<proto::WorkerListItem> protoList(std::move(protoL));
 
@@ -716,6 +739,33 @@ void CentralWorker::_workerInfoReceive(std::unique_ptr<proto::WorkerListItem>& p
     // Make/update entry in map.
     _wWorkerList->updateEntry(wId, ipUdp, portUdp, portTcp, strRange);
 }
+*/
+
+
+void CentralWorker::checkForThisWorkerValues(uint32_t wId, std::string const& ip,
+                                             int portUdp, int portTcp, KeyRange& strRange) {
+    // If the address matches ours, check the name.
+    if (getHostName() == ip && getUdpPort() == portUdp) {
+        if (_isOurIdInvalid()) {
+            LOGS(_log, LOG_LVL_INFO, "Setting our name " << wId);
+            _setOurId(wId);
+        } else if (getOurId() != wId) {
+            LOGS(_log, LOG_LVL_ERROR, "Our wId doesn't match address from master! wId=" <<
+                                      getOurId() << " from master=" << wId);
+        }
+
+        // It is this worker. If there is a valid range in the message and our range is not valid,
+        // take the range given as our own.
+        if (strRange.getValid()) {
+            std::lock_guard<std::mutex> lckM(_idMapMtx);
+            if (not _keyRange.getValid()) {
+                LOGS(_log, LOG_LVL_INFO, "Setting our range " << strRange);
+                _keyRange.setMinMax(strRange.getMin(), strRange.getMax(), strRange.getUnlimited());
+            }
+        }
+    }
+
+}
 
 
 KeyRange CentralWorker::updateRangeWithLeftData(KeyRange const& leftNeighborRange) {
@@ -759,7 +809,7 @@ KeyRange CentralWorker::updateRangeWithLeftData(KeyRange const& leftNeighborRang
 
 
 bool CentralWorker::workerKeyInsertReq(LoaderMsg const& inMsg, BufferUdp::Ptr const&  data) {
-    StringElement::Ptr sData = std::dynamic_pointer_cast<StringElement>(MsgElement::retrieve(*data));
+    StringElement::Ptr sData = std::dynamic_pointer_cast<StringElement>(MsgElement::retrieve(*data, " CentralWorker::workerKeyInsertReq&&& "));
     if (sData == nullptr) {
         LOGS(_log, LOG_LVL_WARN, "CentralWorker::workerKeyInsertReq Failed to read list element");
         return false;
@@ -870,7 +920,7 @@ void CentralWorker::_forwardKeyInsertRequest(NetworkAddress const& targetAddr, L
 
 bool CentralWorker::workerKeyInfoReq(LoaderMsg const& inMsg, BufferUdp::Ptr const&  data) {
     LOGS(_log, LOG_LVL_DEBUG, "CentralWorker::workerKeyInfoReq");
-    StringElement::Ptr sData = std::dynamic_pointer_cast<StringElement>(MsgElement::retrieve(*data));
+    StringElement::Ptr sData = std::dynamic_pointer_cast<StringElement>(MsgElement::retrieve(*data, " CentralWorker::workerKeyInfoReq&&& "));
     if (sData == nullptr) {
         LOGS(_log, LOG_LVL_WARN, "CentralWorker::workerKeyInfoReq Failed to read list element");
         return false;
@@ -954,7 +1004,7 @@ void CentralWorker::_workerKeyInfoReq(LoaderMsg const& inMsg, std::unique_ptr<pr
 
 
 bool CentralWorker::workerWorkerSetRightNeighbor(LoaderMsg const& inMsg, BufferUdp::Ptr const& data) {
-    auto msgElem = MsgElement::retrieve(*data);
+    auto msgElem = MsgElement::retrieve(*data, " CentralWorker::workerWorkerSetRightNeighbor&&& ");
     UInt32Element::Ptr neighborName = std::dynamic_pointer_cast<UInt32Element>(msgElem);
     if (neighborName == nullptr) {
         return false;
@@ -968,7 +1018,7 @@ bool CentralWorker::workerWorkerSetRightNeighbor(LoaderMsg const& inMsg, BufferU
 
 
 bool CentralWorker::workerWorkerSetLeftNeighbor(LoaderMsg const& inMsg, BufferUdp::Ptr const& data) {
-    auto msgElem = MsgElement::retrieve(*data);
+    auto msgElem = MsgElement::retrieve(*data, " CentralWorker::workerWorkerSetLeftNeighbor&&& ");
     UInt32Element::Ptr neighborName = std::dynamic_pointer_cast<UInt32Element>(msgElem);
     if (neighborName == nullptr) {
         return false;

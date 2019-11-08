@@ -43,8 +43,12 @@ namespace lsst {
 namespace qserv {
 namespace loader {
 
-
+/* &&&
 void CentralMaster::start() {
+    _server = std::make_shared<MasterServer>(ioService, getMasterHostName(), getMasterPort(), this);
+}
+*/
+void CentralMaster::startService() {
     _server = std::make_shared<MasterServer>(ioService, getMasterHostName(), getMasterPort(), this);
 }
 

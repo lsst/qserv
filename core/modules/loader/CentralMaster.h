@@ -59,7 +59,8 @@ public:
           _maxKeysPerWorker(cfg.getMaxKeysPerWorker()) {}
 
     /// Open the UDP port. This can throw boost::system::system_error.
-    void start();
+    // &&&void start();
+    void startService() override;
 
     ~CentralMaster() override { _mWorkerList.reset(); }
 

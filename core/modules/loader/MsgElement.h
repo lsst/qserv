@@ -94,9 +94,12 @@ public:
 
     /// Retrieve a MsgElement from 'data' and return it. Pointers in 'data'
     /// are updated appropriately.
+    /// if 'throwOnMissing' is true it will throw an error on missing data
+    ///   if the type is known. For UDP messages, it should be all or nothing,
+    ///   so a type without data indicates an error. This is not the case with TCP.
     /// @return a pointer to the MsgElement retrieved or nullptr if
     ///         no MsgElement could be retrieved.
-    static MsgElement::Ptr retrieve(BufferUdp& data);
+    static MsgElement::Ptr retrieve(BufferUdp& data, std::string const& note, bool throwOnMissing=true);
 
     /// @return True if 'a' and 'b' are equivalent. False otherwise.
     static bool equal(MsgElement* a, MsgElement* b) {
@@ -297,7 +300,7 @@ public:
     /// This the case with UDP, and boost asio async reads that return after X bytes read.
     template<typename T>
     static std::unique_ptr<T> protoParse(BufferUdp& data) {
-        StringElement::Ptr itemData = std::dynamic_pointer_cast<StringElement>(MsgElement::retrieve(data));
+        StringElement::Ptr itemData = std::dynamic_pointer_cast<StringElement>(MsgElement::retrieve(data, "protoParse &&&"));
         if (itemData == nullptr) { return nullptr; }
         return itemData->protoParse<T>();
     }

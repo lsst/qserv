@@ -40,7 +40,8 @@ namespace lsst {
 namespace qserv {
 namespace loader {
 
-class CentralWorker;
+class CentralFollower;
+//class CentralWorker; // &&&
 class LoaderMsg;
 
 
@@ -50,7 +51,7 @@ public:
     using Ptr = std::shared_ptr<WWorkerListItem>;
     using WPtr = std::weak_ptr<WWorkerListItem>;
 
-    static WWorkerListItem::Ptr create(uint32_t wId, CentralWorker *central) {
+    static WWorkerListItem::Ptr create(uint32_t wId, CentralFollower *central) {
         return WWorkerListItem::Ptr(new WWorkerListItem(wId, central));
     }
 
@@ -68,7 +69,7 @@ public:
 
     void addDoListItems(Central *central) override;
 
-    util::CommandTracked::Ptr createCommandWorkerInfoReq(CentralWorker* centralW);
+    util::CommandTracked::Ptr createCommandWorkerInfoReq(CentralFollower* centralF);
 
     /// @return true if this item is equal to other.
     bool equal(WWorkerListItem &other) const;
@@ -77,15 +78,15 @@ public:
     bool containsKey(CompositeKey const& key) const;
 
 private:
-    WWorkerListItem(uint32_t wId, CentralWorker* central) : WorkerListItemBase(wId), _central(central) {}
+    WWorkerListItem(uint32_t wId, CentralFollower* central) : WorkerListItemBase(wId), _central(central) {}
 
-    CentralWorker* _central;
+    CentralFollower* _central;
 
     struct WorkerNeedsMasterData : public DoListItem {
-        WorkerNeedsMasterData(WWorkerListItem::Ptr const& wWorkerListItem_, CentralWorker* central_) :
+        WorkerNeedsMasterData(WWorkerListItem::Ptr const& wWorkerListItem_, CentralFollower* central_) :
             wWorkerListItem(wWorkerListItem_), central(central_) {}
         WWorkerListItem::WPtr wWorkerListItem;
-        CentralWorker* central;
+        CentralFollower* central;
         util::CommandTracked::Ptr createCommand() override;
     };
     DoListItem::Ptr _workerUpdateNeedsMasterData;
@@ -93,11 +94,12 @@ private:
 
 
 
+
 class WWorkerList : public DoListItem {
 public:
     using Ptr = std::shared_ptr<WWorkerList>;
 
-    WWorkerList(CentralWorker* central) : _central(central) {}
+    WWorkerList(CentralFollower* central) : _central(central) {}
     WWorkerList() = delete;
     WWorkerList(WWorkerList const&) = delete;
     WWorkerList& operator=(WWorkerList const&) = delete;
@@ -110,7 +112,7 @@ public:
     bool equal(WWorkerList& other) const;
 
     util::CommandTracked::Ptr createCommand() override;
-    util::CommandTracked::Ptr createCommandWorker(CentralWorker* centralW);
+    util::CommandTracked::Ptr createCommandWorker(CentralFollower* centralF);
 
     ////////////////////////////////////////////
     /// Nearly the same on Worker and Master
@@ -135,7 +137,7 @@ public:
 protected:
     void _flagListChange();
 
-    CentralWorker* _central;
+    CentralFollower* _central;
     std::map<uint32_t, WWorkerListItem::Ptr> _wIdMap; ///< worker id map
     std::map<NetworkAddress, WWorkerListItem::Ptr> _ipMap;
     std::map<KeyRange, WWorkerListItem::Ptr> _rangeMap;

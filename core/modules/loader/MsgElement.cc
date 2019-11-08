@@ -45,20 +45,28 @@ bool MsgElement::retrieveType(BufferUdp &data, char& elemType) {
 }
 
 
-MsgElement::Ptr MsgElement::retrieve(BufferUdp& data) {
+MsgElement::Ptr MsgElement::retrieve(BufferUdp& data, std::string const& note, bool throwOnMissing) { // &&& delete note, maybe, the thrown error is pretty useful.
     char elemT;
     if (not retrieveType(data, elemT)) {
-        LOGS(_log, LOG_LVL_INFO, "no type retrieved");
+        LOGS(_log, LOG_LVL_INFO, note << "no type retrieved ");
         return nullptr; // the data probably has not been read from the socket yet.
     }
     MsgElement::Ptr msgElem = create(elemT);
     if (msgElem != nullptr && not msgElem->retrieveFromData(data)) {
-        // No good way to recover from missing data from a know type.
-        throw LoaderMsgErr(ERR_LOC, "static retrieve, incomplete data for type=" +
-                std::to_string((int)elemT) + " data:" + data.dumpStr());
+        if (throwOnMissing) {
+            // For UDP, No good way to recover from missing data from a know type.
+            throw LoaderMsgErr(ERR_LOC, note + "static retrieve, incomplete data for type=" +
+                               std::to_string((int)elemT) + " data:" + data.dumpStr());
+        }
+        // For TCP, data can arrive later.
+        return nullptr;
+
     }
     return msgElem;
 }
+
+
+
 
 
 MsgElement::Ptr MsgElement::create(char elementType) {

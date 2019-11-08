@@ -230,6 +230,7 @@ int main(int argc, char* argv[]) {
 
     bool loop = true;
     while(loop) {
+        LOGS(_log, LOG_LVL_INFO, "&&& SLEEP");
         sleep(10);
     }
     ioService.stop(); // this doesn't seem to work cleanly

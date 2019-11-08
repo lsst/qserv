@@ -64,20 +64,26 @@ BufferUdp::Ptr ClientServer::parseMsg(BufferUdp::Ptr const& data,
             break;
 
         case LoaderMsg::KEY_LOOKUP:
-            LOGS(_log, LOG_LVL_INFO, "KEY_LOOK");
+            LOGS(_log, LOG_LVL_DEBUG, "KEY_LOOK");
             _centralClient->handleKeyLookup(inMsg, data);
             break;
 
         case LoaderMsg::KEY_INSERT_COMPLETE:
-            LOGS(_log, LOG_LVL_INFO, "KEY_INSERT_COMPLETE");
+            LOGS(_log, LOG_LVL_DEBUG, "KEY_INSERT_COMPLETE");
             _centralClient->handleKeyInsertComplete(inMsg, data);
             break;
 
+        case LoaderMsg::MAST_WORKER_LIST:
+            _centralClient->getWorkerList()->workerListReceive(data);
+            break;
+        case LoaderMsg::MAST_WORKER_INFO:
+            _centralClient->workerInfoReceive(data);
+            break;
             // following not expected by client
         case LoaderMsg::KEY_INSERT_REQ: //  This is what this client should send out
         case LoaderMsg::KEY_LOOKUP_REQ: //  This is what this client should send out
-        case LoaderMsg::MAST_WORKER_INFO:
-        case LoaderMsg::MAST_WORKER_LIST: // TODO having the client know would be useful.
+        // &&& case LoaderMsg::MAST_WORKER_INFO:
+        // &&& case LoaderMsg::MAST_WORKER_LIST: // TODO having the client know would be useful.
         case LoaderMsg::MAST_INFO:
         case LoaderMsg::MAST_INFO_REQ:
         case LoaderMsg::MAST_WORKER_LIST_REQ:
@@ -131,7 +137,7 @@ void ClientServer::_msgRecievedHandler(LoaderMsg const& inMsg, BufferUdp::Ptr co
     bool success = true;
     // This is only really expected for parsing errors. Most responses to
     // requests come in as normal messages.
-    StringElement::Ptr seData = std::dynamic_pointer_cast<StringElement>(MsgElement::retrieve(*data));
+    StringElement::Ptr seData = std::dynamic_pointer_cast<StringElement>(MsgElement::retrieve(*data, "ClientServer::_msgRecievedHandler&&& "));
     if (seData == nullptr) {
         success = false;
     }

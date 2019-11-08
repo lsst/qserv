@@ -191,6 +191,7 @@ int main(int argc, char* argv[]) {
     if (waitForKeysCount > maxWaitCount) maxWaitCount = waitForKeysCount;
     while (!keyInsertListClean(kList, successCount, failedCount) && count < waitForKeysCount) {
         LOGS(_log, LOG_LVL_INFO, "waiting for inserts to finish count=" << count);
+        LOGS(_log, LOG_LVL_INFO, "&&& SLEEP");
         sleep(1);
         ++count;
     }
@@ -238,6 +239,7 @@ int main(int argc, char* argv[]) {
     // About 1 second per 1000 keys)
     while (!keyLookupListClean(kList, successCount, failedCount) && count < waitForKeysCount) {
         LOGS(_log, LOG_LVL_INFO, "waiting for lookups to finish count=" << count);
+        LOGS(_log, LOG_LVL_INFO, "&&& SLEEP");
         sleep(1);
         ++count;
     }

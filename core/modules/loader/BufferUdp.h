@@ -45,7 +45,8 @@ class MsgElement;
 
 
 /// A buffer for reading and writing. Nothing can be read from the buffer until
-/// something has written to it.
+/// something has been written to it.
+/// TODO: rename BufferUdp is not really accurate anymore. &&&
 class BufferUdp {
 public:
     using Ptr = std::shared_ptr<BufferUdp>;
@@ -154,7 +155,7 @@ private:
     /// MsgElement is available. If so, return the element and advance _rCursor.
     /// Otherwise return nullptr.
     /// If a message is not recovered, the buffer is left effectively unchanged.
-    std::shared_ptr<MsgElement> _safeRetrieve();
+    std::shared_ptr<MsgElement> _safeRetrieve(std::string const& note);
 
 
     char* _buffer;

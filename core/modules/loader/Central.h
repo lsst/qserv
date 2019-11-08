@@ -77,6 +77,18 @@ public:
 
     int getErrCount() const { return _server->getErrCount(); }
 
+    /// Start the server on UDP and/or TCP ports. May throw boost::system::system_error
+    void start() {
+        startService();
+        startMonitoring();
+    }
+
+    /// Override with function to define and start the server.
+    void virtual startService() = 0;
+
+    /// Override with functions to add do list items.
+    void virtual startMonitoring() {};
+
     /// Send the contents of 'sendBuf' to 'host:port'. This waits for the message to be
     /// sent before returning.
     /// @throw boost::system::system_error on failure.

@@ -33,7 +33,7 @@
 
 
 // qserv headers
-#include "loader/CentralWorker.h"
+#include "loader/CentralFollower.h"
 #include "loader/LoaderMsg.h"
 #include "proto/ProtoImporter.h"
 #include "proto/loader.pb.h"
@@ -56,53 +56,53 @@ util::CommandTracked::Ptr WWorkerList::createCommand() {
 }
 
 
-util::CommandTracked::Ptr WWorkerList::createCommandWorker(CentralWorker* centralW) {
-    // On the worker, need to occasionally ask for a list of workers from the master
-    // and make sure each of those workers is on the doList
+util::CommandTracked::Ptr WWorkerList::createCommandWorker(CentralFollower* centralF) {
+    // On the worker and clients, need to occasionally ask for a list of workers
+    // from the master and make sure each of those workers is on the doList
     class MastWorkerListReqCmd : public util::CommandTracked {
     public:
-        MastWorkerListReqCmd(CentralWorker* centralW, std::map<uint32_t, WWorkerListItem::Ptr> nameMap)
-            : _centralW(centralW), _wIdMap(nameMap) {}
+        MastWorkerListReqCmd(CentralFollower* centralF, std::map<uint32_t, WWorkerListItem::Ptr> nameMap)
+            : _centralF(centralF), _wIdMap(nameMap) {}
 
         void action(util::CmdData *data) override {
             /// Request a list of all workers.
             // TODO make a function for this, it's always going to be the same.
             proto::LdrNetAddress protoOurAddress;
-            protoOurAddress.set_ip(_centralW->getHostName());
-            protoOurAddress.set_udpport(_centralW->getUdpPort());
-            protoOurAddress.set_tcpport(_centralW->getTcpPort());
+            protoOurAddress.set_ip(_centralF->getHostName());
+            protoOurAddress.set_udpport(_centralF->getUdpPort());
+            protoOurAddress.set_tcpport(_centralF->getTcpPort());
             StringElement eOurAddress(protoOurAddress.SerializeAsString());
 
-            LoaderMsg workerInfoReqMsg(LoaderMsg::MAST_WORKER_LIST_REQ, _centralW->getNextMsgId(),
-                                       _centralW->getHostName(), _centralW->getUdpPort());
+            LoaderMsg workerInfoReqMsg(LoaderMsg::MAST_WORKER_LIST_REQ, _centralF->getNextMsgId(),
+                                       _centralF->getHostName(), _centralF->getUdpPort());
             BufferUdp sendBuf(1000);
             workerInfoReqMsg.appendToData(sendBuf);
             eOurAddress.appendToData(sendBuf);
 
             // Send the request to master.
-            auto masterHost = _centralW->getMasterHostName();
-            auto masterPort = _centralW->getMasterPort();
+            auto masterHost = _centralF->getMasterHostName();
+            auto masterPort = _centralF->getMasterPort();
             LOGS(_log, LOG_LVL_DEBUG, "MastWorkerListReqCmd::action host=" << masterHost <<
                                       " port=" << masterPort);
             try {
-                _centralW->sendBufferTo(masterHost, masterPort, sendBuf);
+                _centralF->sendBufferTo(masterHost, masterPort, sendBuf);
             } catch (boost::system::system_error const& e) {
                 LOGS(_log, LOG_LVL_ERROR, "MastWorkerListReqCmd::action boost system_error=" << e.what());
             }
 
             /// Go through the existing list and add any that have not been add to the doList
             for (auto const& item : _wIdMap) {
-                item.second->addDoListItems(_centralW);
+                item.second->addDoListItems(_centralF);
             }
         }
 
     private:
-        CentralWorker* _centralW;
+        CentralFollower* _centralF;
         std::map<uint32_t, WWorkerListItem::Ptr> _wIdMap;
     };
 
     LOGS(_log, LOG_LVL_DEBUG, "WorkerList::createCommandWorker");
-    return std::make_shared<MastWorkerListReqCmd>(centralW, _wIdMap);
+    return std::make_shared<MastWorkerListReqCmd>(centralF, _wIdMap);
 }
 
 
@@ -110,7 +110,7 @@ bool WWorkerList::workerListReceive(BufferUdp::Ptr const& data) {
     std::string const funcName("WWorkerList::workerListReceive");
     LOGS(_log, LOG_LVL_INFO, funcName << " data=" << data->dumpStr());
     // Open the data protobuffer and add it to our list.
-    StringElement::Ptr sData = std::dynamic_pointer_cast<StringElement>(MsgElement::retrieve(*data));
+    StringElement::Ptr sData = std::dynamic_pointer_cast<StringElement>(MsgElement::retrieve(*data, " WWorkerList::workerListReceive&&& "));
     if (sData == nullptr) {
         LOGS(_log, LOG_LVL_WARN, funcName << " Failed to parse list");
         return false;
@@ -142,6 +142,7 @@ bool WWorkerList::workerListReceive(BufferUdp::Ptr const& data) {
                 strNames += std::to_string(wId) + ",";
                 item->addDoListItems(_central);
             }
+            // TODO: Should this call updateEntry() to fill in the information for the worker? &&&
         }
         sizeChange = _wIdMap.size() - initialSize;
         if (sizeChange > 0) {
@@ -234,9 +235,7 @@ void WWorkerList::updateEntry(uint32_t wId,
         }
     }
 
-
-    // TODO probably special action should be taken if this is our name.
-    LOGS(_log, LOG_LVL_INFO, "updateEntry strRange=" << strRange);
+    LOGS(_log, LOG_LVL_INFO, "wId=" << wId << " updateEntry strRange=" << strRange);
     if (strRange.getValid()) {
         // Does the new range match the old range?
         auto oldRange = item->setRangeString(strRange);
@@ -319,42 +318,42 @@ util::CommandTracked::Ptr WWorkerListItem::WorkerNeedsMasterData::createCommand(
     return item->createCommandWorkerInfoReq(central);
 }
 
-util::CommandTracked::Ptr WWorkerListItem::createCommandWorkerInfoReq(CentralWorker* centralW) {
+util::CommandTracked::Ptr WWorkerListItem::createCommandWorkerInfoReq(CentralFollower* centralF) {
      // Create a command to put on the pool to
      //  - ask the master about a server with our _name
 
     class WorkerReqCmd : public util::CommandTracked {
     public:
-        WorkerReqCmd(CentralWorker* centralW, uint32_t name) : _centralW(centralW), _wId(name) {}
+        WorkerReqCmd(CentralFollower* centralF, uint32_t name) : _centralF(centralF), _wId(name) {}
 
         void action(util::CmdData *data) override {
             /// Request all information the master has for one worker.
             LOGS(_log, LOG_LVL_INFO, "WWorkerListItem::createCommand::WorkerReqCmd::action " <<
-                                     "ourName=" << _centralW->getOurLogId() << " req name=" << _wId);
+                                     "ourName=" << _centralF->getOurLogId() << " req name=" << _wId);
 
             // TODO make a function for this, it's always going to be the same.
             proto::LdrNetAddress protoOurAddress;
-            protoOurAddress.set_ip(_centralW->getHostName());
-            protoOurAddress.set_udpport(_centralW->getUdpPort());
-            protoOurAddress.set_tcpport(_centralW->getTcpPort());
+            protoOurAddress.set_ip(_centralF->getHostName());
+            protoOurAddress.set_udpport(_centralF->getUdpPort());
+            protoOurAddress.set_tcpport(_centralF->getTcpPort());
             StringElement eOurAddress(protoOurAddress.SerializeAsString());
 
             proto::WorkerListItem protoItem;
             protoItem.set_wid(_wId);
             StringElement eItem(protoItem.SerializeAsString());
 
-            LoaderMsg workerInfoReqMsg(LoaderMsg::MAST_WORKER_INFO_REQ, _centralW->getNextMsgId(),
-                                       _centralW->getHostName(), _centralW->getUdpPort());
+            LoaderMsg workerInfoReqMsg(LoaderMsg::MAST_WORKER_INFO_REQ, _centralF->getNextMsgId(),
+                                       _centralF->getHostName(), _centralF->getUdpPort());
             BufferUdp sendBuf(1000);
             workerInfoReqMsg.appendToData(sendBuf);
             eOurAddress.appendToData(sendBuf);
             eItem.appendToData(sendBuf);
 
             // Send the request to master.
-            auto masterHost = _centralW->getMasterHostName();
-            auto masterPort = _centralW->getMasterPort();
+            auto masterHost = _centralF->getMasterHostName();
+            auto masterPort = _centralF->getMasterPort();
             try {
-                _centralW->sendBufferTo(masterHost, masterPort, sendBuf);
+                _centralF->sendBufferTo(masterHost, masterPort, sendBuf);
             } catch (boost::system::system_error const& e) {
                 LOGS(_log, LOG_LVL_ERROR, "WorkerReqCmd::action boost system_error=" << e.what() <<
                         " wId=" << _wId);
@@ -362,13 +361,13 @@ util::CommandTracked::Ptr WWorkerListItem::createCommandWorkerInfoReq(CentralWor
         }
 
     private:
-        CentralWorker* _centralW;
+        CentralFollower* _centralF;
         uint32_t _wId; ///< worker id
     };
 
     LOGS(_log, LOG_LVL_INFO, "WWorkerListItem::createCommandWorker this=" <<
-                             centralW->getOurLogId() << " name=" << _wId);
-    return std::make_shared<WorkerReqCmd>(centralW, _wId);
+                             centralF->getOurLogId() << " name=" << _wId);
+    return std::make_shared<WorkerReqCmd>(centralF, _wId);
 }
 
 

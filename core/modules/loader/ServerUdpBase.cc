@@ -56,7 +56,7 @@ ServerUdpBase::ServerUdpBase(boost::asio::io_service& io_service, std::string co
 void ServerUdpBase::_receiveCallback(boost::system::error_code const& error, size_t bytesRecvd) {
     _data->advanceWriteCursor(bytesRecvd); // _data needs to know the valid portion of the buffer.
     if (!error && bytesRecvd > 0) {
-        LOGS(_log, LOG_LVL_INFO, "rCb received(" << bytesRecvd << "):" <<
+        LOGS(_log, LOG_LVL_DEBUG, "rCb received(" << bytesRecvd << "):" <<
                                  ", code=" << error << ", from endpoint=" << _senderEndpoint);
 
         _sendData = parseMsg(_data, _senderEndpoint);

@@ -48,7 +48,7 @@ MsgElement::Ptr BufferUdp::readFromSocket(boost::asio::ip::tcp::socket& socket, 
 
         // If there's something in the buffer already, get it and return.
         // This can happen when the previous read of socket read multiple elements.
-        MsgElement::Ptr msgElem = _safeRetrieve();
+        MsgElement::Ptr msgElem = _safeRetrieve("1readFromSocket&&&" + note);
         if (msgElem != nullptr) {
             return msgElem;
         }
@@ -69,7 +69,7 @@ MsgElement::Ptr BufferUdp::readFromSocket(boost::asio::ip::tcp::socket& socket, 
 
         /// Try to retrieve an element (there's no guarantee that an entire element got read in a single read.
         // Store original cursor positions so they can be restored if the read fails.
-        msgElem = _safeRetrieve();
+        msgElem = _safeRetrieve("2readFromSocket&&&" + note);
         if (msgElem != nullptr) {
             return msgElem;
         }
@@ -117,10 +117,11 @@ void BufferUdp::advanceReadCursor(size_t len) {
 }
 
 
-std::shared_ptr<MsgElement> BufferUdp::_safeRetrieve() {
+std::shared_ptr<MsgElement> BufferUdp::_safeRetrieve(std::string const& note) { // &&& delete note, maybe
     auto wCursorOriginal = _wCursor;
     auto rCursorOriginal = _rCursor;
-    MsgElement::Ptr msgElem = MsgElement::retrieve(*this);
+    // throwOnMissing=false since missing data is possible with TCP.
+    MsgElement::Ptr msgElem = MsgElement::retrieve(*this, note + " _safeRetrieve &&&", false);
     if (msgElem != nullptr) {
         return msgElem;
     } else {
@@ -133,7 +134,20 @@ std::shared_ptr<MsgElement> BufferUdp::_safeRetrieve() {
 
 bool BufferUdp::isRetrieveSafe(size_t len) const {
     auto newLen = (_rCursor + len);
-    return (newLen <= _end && newLen <= _wCursor);
+    // &&&return (newLen <= _end && newLen <= _wCursor);
+    bool res = (newLen <= _end && newLen <= _wCursor); // &&&
+    if (!res) { // &&&
+        LOGS(_log, LOG_LVL_WARN, "&&& BufferUdp::isRetrieveSafe not safe len=" << len <<
+                                 " rCursor=" << (void*)_rCursor <<
+                                 " newLen=" << (void*)newLen <<
+                                 " wCursor=" << (void*)_wCursor <<
+                                 " _end=" << (void*)_end <<
+                                 " (newLen<=end)=" << (newLen <= _end) <<
+                                 " (newLen<=_wCursor)=" << (newLen <= _wCursor) <<
+                                 " res=" << res);
+        LOGS(_log, LOG_LVL_WARN, "&&& BufferUdp::isRetrieveSafe " << dumpStr(false));
+    }
+    return res;
 }
 
 
@@ -143,6 +157,7 @@ bool BufferUdp::retrieve(void* out, size_t len) {
         _rCursor += len;
         return true;
     }
+    LOGS(_log, LOG_LVL_WARN, "&&& BufferUdp::retrieve not safe len=" << len);
     return false;
 }
 

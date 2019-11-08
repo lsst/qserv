@@ -50,7 +50,7 @@ namespace loader {
 
 NetworkAddress::UPtr NetworkAddress::create(BufferUdp::Ptr const& bufData, int& tcpPort, std::string const& note) {
 
-    StringElement::Ptr data = std::dynamic_pointer_cast<StringElement>(MsgElement::retrieve(*bufData));
+    StringElement::Ptr data = std::dynamic_pointer_cast<StringElement>(MsgElement::retrieve(*bufData, " NetworkAddress::create&&& "));
 
     if (data == nullptr) {
         LOGS(_log, LOG_LVL_WARN, "NetworkAddress::create data==nullptr " + note);

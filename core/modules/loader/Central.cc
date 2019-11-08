@@ -77,6 +77,7 @@ void Central::_checkDoList() {
     while(_loop) {
         // Run and then sleep for a second. TODO A more advanced timer should be used
         doList->checkList();
+        LOGS(_log, LOG_LVL_INFO, "&&& SLEEP");
         usleep(_loopSleepTime);
     }
 }

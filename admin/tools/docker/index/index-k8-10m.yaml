@@ -116,7 +116,7 @@ spec:
       - name: iclientnum-ctr
         image: qserv/indexclientnum:dev
         imagePullPolicy: Always
-        args: ["100000000", "1", "client-k8s-a1.cnf"]
+        args: ["1000000", "1", "client-k8s-a1.cnf"]
         ports:
         - containerPort: 10050
           protocol: UDP
@@ -157,7 +157,7 @@ spec:
       - name: iclientnum2-ctr
         image: qserv/indexclientnum:dev
         imagePullPolicy: Always
-        args: ["200000001", "300000001", "client-k8s-a2.cnf"]
+        args: ["2000001", "3000001", "client-k8s-a2.cnf"]
         ports:
         - containerPort: 10050
           protocol: UDP
@@ -198,7 +198,7 @@ spec:
       - name: iclientnum3-ctr
         image: qserv/indexclientnum:dev
         imagePullPolicy: Always
-        args: ["100000001", "200000000", "client-k8s-a3.cnf"]
+        args: ["1000001", "2000000", "client-k8s-a3.cnf"]
         ports:
         - containerPort: 10050
           protocol: UDP          

@@ -239,14 +239,14 @@ void TcpBaseConnection::_recvKind(const boost::system::error_code& ec, size_t by
     }
     // Fix the buffer with the information given.
     _buf.advanceWriteCursor(bytesTrans);
-    auto msgElem = MsgElement::retrieve(_buf);
+    auto msgElem = MsgElement::retrieve(_buf, " 1TcpBaseConnection::_recvKind&&& ");  // &&& should all tcp stuff be safe retrieve?
     auto msgKind = std::dynamic_pointer_cast<UInt32Element>(msgElem);
     if (msgKind == nullptr) {
         LOGS(_log, LOG_LVL_ERROR, "_recvKind unexpected type of msg");
         _freeConnect();
         return;
     }
-    msgElem = MsgElement::retrieve(_buf);
+    msgElem = MsgElement::retrieve(_buf, " 2TcpBaseConnection::_recvKind&&& ");
     auto msgBytes = std::dynamic_pointer_cast<UInt32Element>(msgElem);
     if (msgBytes == nullptr) {
         LOGS(_log, LOG_LVL_ERROR, "_recvKind missing bytes");
@@ -310,11 +310,11 @@ void TcpBaseConnection::_handleTest2(const boost::system::error_code& ec, size_t
      }
      // Fix the buffer with the information given.
      _buf.advanceWriteCursor(bytesTrans);
-     auto msgElem = MsgElement::retrieve(_buf);
+     auto msgElem = MsgElement::retrieve(_buf, " _handleTest2&&& ");
      auto msgKind = std::dynamic_pointer_cast<UInt32Element>(msgElem);
-     msgElem = MsgElement::retrieve(_buf);
+     msgElem = MsgElement::retrieve(_buf, " _handleTest2&&& ");
      auto msgName = std::dynamic_pointer_cast<UInt32Element>(msgElem);
-     msgElem = MsgElement::retrieve(_buf);
+     msgElem = MsgElement::retrieve(_buf, " _handleTest2&&& ");
      auto msgKeys = std::dynamic_pointer_cast<UInt64Element>(msgElem);
 
      // TODO move most of this to CentralWorker
@@ -373,7 +373,7 @@ void TcpBaseConnection::_handleTest2c(const boost::system::error_code& ec, size_
     }
     // Fix the buffer with the information given.
     _buf.advanceWriteCursor(bytesTrans);
-    auto msgElem = MsgElement::retrieve(_buf);
+    auto msgElem = MsgElement::retrieve(_buf, " _handleTest2c&&& ");
     if (msgElem == nullptr) {
         LOGS(_log, LOG_LVL_ERROR, "_handleTest2b Kind nullptr error");
         _freeConnect();
@@ -595,6 +595,7 @@ void TcpBaseConnection::_handleShiftFromRight1(boost::system::error_code const& 
         }
         // Extract keysToShift from the protobuffer
         int keyShiftReq = protoKeyShiftReq->keystoshift();
+        LOGS(_log, LOG_LVL_INFO, fName << " &&& keystoshift=" << keyShiftReq);
         if (keyShiftReq < 1) {
             throw LoaderMsgErr(ERR_LOC, " KeyShiftRequest for < 1 key");
         }
@@ -613,7 +614,7 @@ void TcpBaseConnection::_handleShiftFromRight1(boost::system::error_code const& 
             throw LoaderMsgErr(ERR_LOC, errMsg);
         }
         keyList->appendToData(data);
-        ServerTcpBase::writeData(_socket, data, " &&& _handleShiftFromRight1");
+        ServerTcpBase::writeData(_socket, data, std::string(" &&& _handleShiftFromRight1 " + data.dumpStr(false)));
 
         // Wait for the SHIFT_FROM_RIGHT_KEYS_RECEIVED response back.
         _buf.reset();

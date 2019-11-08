@@ -33,6 +33,7 @@
 
 // qserv headers
 #include "loader/LoaderMsg.h"
+#include "loader/WWorkerList.h"
 #include "proto/loader.pb.h"
 #include "proto/ProtoImporter.h"
 
@@ -48,6 +49,7 @@ namespace lsst {
 namespace qserv {
 namespace loader {
 
+/* &&&
 CentralClient::CentralClient(boost::asio::io_service& ioService_,
                              std::string const& hostName, ClientConfig const& cfg)
     : Central(ioService_, cfg.getMasterHost(), cfg.getMasterPortUdp(), cfg.getThreadPoolSize(), cfg.getLoopSleepTime(), cfg.getIOThreads()),
@@ -58,17 +60,39 @@ CentralClient::CentralClient(boost::asio::io_service& ioService_,
       _doListMaxInserts(cfg.getMaxInserts()),
       _maxRequestSleepTime(cfg.getMaxRequestSleepTime()) {
 }
+*/
+CentralClient::CentralClient(boost::asio::io_service& ioService_,
+                             std::string const& hostName, ClientConfig const& cfg)
+    : CentralFollower(ioService_, hostName, cfg.getMasterHost(), cfg.getMasterPortUdp(),
+                      cfg.getThreadPoolSize(),cfg.getLoopSleepTime(), cfg.getIOThreads(), cfg.getClientPortUdp()),
+      // &&& _hostName(hostName),
+      // &&& _udpPort(cfg.getClientPortUdp()),
+      _defWorkerHost(cfg.getDefWorkerHost()),
+      _defWorkerPortUdp(cfg.getDefWorkerPortUdp()),
+      _doListMaxLookups(cfg.getMaxLookups()),
+      _doListMaxInserts(cfg.getMaxInserts()),
+      _maxRequestSleepTime(cfg.getMaxRequestSleepTime()) {
+}
 
-
+/* &&&
 void CentralClient::start() {
     _server = std::make_shared<ClientServer>(ioService, _hostName, _udpPort, this);
+}
+*/
+
+void CentralClient::startService() {
+    _server = std::make_shared<ClientServer>(ioService, _hostName, _udpPort, this);
+}
+
+
+CentralClient::~CentralClient() {
 }
 
 
 void CentralClient::handleKeyLookup(LoaderMsg const& inMsg, BufferUdp::Ptr const& data) {
     LOGS(_log, LOG_LVL_DEBUG, "CentralClient::handleKeyLookup");
 
-    auto const sData = std::dynamic_pointer_cast<StringElement>(MsgElement::retrieve(*data));
+    auto const sData = std::dynamic_pointer_cast<StringElement>(MsgElement::retrieve(*data, " CentralClient::handleKeyLookup&&& "));
     if (sData == nullptr) {
         LOGS(_log, LOG_LVL_WARN, "CentralClient::handleKeyLookup Failed to parse list");
         return;
@@ -104,14 +128,14 @@ void CentralClient::_handleKeyLookup(LoaderMsg const& inMsg, std::unique_ptr<pro
         _waitingKeyLookupMap.erase(iter);
     }
     keyLookupOneShot->keyInfoComplete(key, chunkInfo.chunk, chunkInfo.subchunk, protoData->success());
-    LOGS(_log, LOG_LVL_INFO, "Successfully found key=" << key << " " << chunkInfo);
+    LOGS(_log, LOG_LVL_INFO, "Successful KEY_LOOKUP key=" << key << " " << chunkInfo);
 }
 
 
 void CentralClient::handleKeyInsertComplete(LoaderMsg const& inMsg, BufferUdp::Ptr const& data) {
     LOGS(_log, LOG_LVL_DEBUG, "CentralClient::handleKeyInsertComplete");
 
-    auto sData = std::dynamic_pointer_cast<StringElement>(MsgElement::retrieve(*data));
+    auto sData = std::dynamic_pointer_cast<StringElement>(MsgElement::retrieve(*data, " CentralClient::handleKeyInsertComplete&&& "));
     if (sData == nullptr) {
         LOGS(_log, LOG_LVL_WARN, "CentralClient::handleKeyInsertComplete Failed to retrieve element");
         return;
@@ -149,7 +173,7 @@ void CentralClient::_handleKeyInsertComplete(LoaderMsg const& inMsg, std::unique
         mapSize = _waitingKeyInsertMap.size();
     }
     keyInsertOneShot->keyInsertComplete();
-    LOGS(_log, LOG_LVL_INFO, "Successfully inserted key=" << key << " " << chunkInfo <<
+    LOGS(_log, LOG_LVL_INFO, "Successful KEY_INSERT_COMPLETE key=" << key << " " << chunkInfo <<
                              " mapSize=" << mapSize);
 }
 
@@ -179,6 +203,7 @@ KeyInfoData::Ptr CentralClient::keyInsertReq(CompositeKey const& key, int chunk,
                         "size=" << sz << " loopCount=" << loopCount);
             }
             // Let the CPU do something else while waiting for some requests to finish.
+            LOGS(_log, LOG_LVL_INFO, "&&& SLEEP");
             usleep(_maxRequestSleepTime);
             ++loopCount;
             lck.lock();
@@ -230,7 +255,10 @@ void CentralClient::_keyInsertReq(CompositeKey const& key, int chunk, int subchu
     protoKeyInsert.SerializeToString(&(strElem.element));
     strElem.appendToData(msgData);
     try {
-        sendBufferTo(getDefWorkerHost(), getDefWorkerPortUdp(), msgData);
+        std::string ip;
+        int port = 0;
+        getWorkerForKey(key, ip, port);
+        sendBufferTo(ip, port, msgData);
     } catch (boost::system::system_error const& e) {
         LOGS(_log, LOG_LVL_ERROR, "CentralClient::_keyInsertReq boost system_error=" << e.what() <<
                                   " key=" << key << " chunk=" << chunk << " sub=" << subchunk);
@@ -266,6 +294,7 @@ KeyInfoData::Ptr CentralClient::keyLookupReq(CompositeKey const& key) {
                         "size=" << sz << " loopCount=" << loopCount);
             }
             // Let the CPU do something else while waiting for some requests to finish.
+            LOGS(_log, LOG_LVL_INFO, "&&& SLEEP");
             usleep(_maxRequestSleepTime);
             sleptForMicroSec += _maxRequestSleepTime;
             ++loopCount;
@@ -309,11 +338,28 @@ void CentralClient::_keyLookupReq(CompositeKey const& key) {
      strElem.appendToData(msgData);
 
      try {
-         sendBufferTo(getDefWorkerHost(), getDefWorkerPortUdp(), msgData);
+         std::string ip;
+         int port = 0;
+         getWorkerForKey(key, ip, port);
+         sendBufferTo(ip, port, msgData);
      } catch (boost::system::system_error const& e) {
          LOGS(_log, LOG_LVL_ERROR, "CentralClient::_keyInfoReq boost system_error=" << e.what() <<
                  " key=" << key);
      }
+}
+
+
+void CentralClient::getWorkerForKey(CompositeKey const& key, std::string& ip, int& port) {
+    auto worker = _wWorkerList->findWorkerForKey(key);
+    if (worker != nullptr) {
+        auto nAddr = worker->getUdpAddress();
+        ip = nAddr.ip;
+        port = nAddr.port;
+        LOGS(_log, LOG_LVL_DEBUG, "getWorkerForKey " << key << " worker=" << worker);
+    } else {
+        ip = getDefWorkerHost();
+        port = getDefWorkerPortUdp();
+    }
 }
 
 

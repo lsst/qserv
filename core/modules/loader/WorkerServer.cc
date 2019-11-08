@@ -137,7 +137,7 @@ void WorkerServer::_msgRecieved(LoaderMsg const& inMsg, BufferUdp::Ptr const& da
     bool success = true;
     // This is only really expected for parsing errors. Most responses to
     // requests come in as normal messages.
-    StringElement::Ptr seData = std::dynamic_pointer_cast<StringElement>(MsgElement::retrieve(*data));
+    StringElement::Ptr seData = std::dynamic_pointer_cast<StringElement>(MsgElement::retrieve(*data, " WorkerServer::_msgRecieved&&& "));
     if (seData == nullptr) {
         success = false;
     }

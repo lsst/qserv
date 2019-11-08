@@ -74,7 +74,7 @@ BufferUdp::Ptr MasterServer::parseMsg(BufferUdp::Ptr const& data,
                 // TODO: locate msg id in send messages and take appropriate action
                 break;
             case LoaderMsg::MAST_INFO_REQ:
-                // TODO: provide performance information about the master via MAST_INFO
+                // TODO: sendData = masterInfoRequest(inMsg, data, senderEndpoint); &&&
                 break;
             case LoaderMsg::MAST_WORKER_LIST_REQ:
                 sendData = workerListRequest(inMsg, data, senderEndpoint);

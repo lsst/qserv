@@ -48,7 +48,7 @@ namespace loader {
 
 
 void DoList::checkList() {
-    if (::limiter%100 == 0) LOGS(_log, LOG_LVL_DEBUG, "DoList::checkList " << limiter);
+    if (::limiter%1000 == 0) LOGS(_log, LOG_LVL_DEBUG, "DoList::checkList " << limiter);
     ++::limiter;
     std::lock_guard<std::mutex> lock(_listMtx);
     {
@@ -64,7 +64,7 @@ void DoList::checkList() {
             _central.queueCmd(cmd);
         } else {
             if (item->shouldRemoveFromList()) {
-                LOGS(_log, LOG_LVL_INFO, "removing item " << item->getCommandsCreated());
+                LOGS(_log, LOG_LVL_DEBUG, "removing item " << item->getCommandsCreated());
                 item->setAddedToList(false);
                 iter = _list.erase(iter);
             }
@@ -76,7 +76,7 @@ void DoList::checkList() {
 void DoList::runItemNow(DoListItem::Ptr const& item) {
     auto cmd = item->runIfNeeded(TimeOut::Clock::now());
     if (cmd != nullptr) {
-        LOGS(_log, LOG_LVL_INFO, "DoList::addAndRunItemNow queuing command");
+        LOGS(_log, LOG_LVL_DEBUG, "DoList::addAndRunItemNow queuing command");
         _central.queueCmd(cmd);
     }
 }

@@ -38,7 +38,7 @@ class CentralWorkerDoListItem : public DoListItem {
 public:
     CentralWorkerDoListItem() = delete;
     explicit CentralWorkerDoListItem(CentralWorker* centralWorker) : _centralWorker(centralWorker) {
-        setTimeOut(std::chrono::seconds(4));  // TODO: DM-17453 set via config
+        setTimeOut(std::chrono::seconds(15));  // TODO: DM-17453 set via config
     }
 
     util::CommandTracked::Ptr createCommand() override {

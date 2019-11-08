@@ -18,7 +18,7 @@ recentAddLimit = 60000
 # Difference in number of keys stored between neighbors
 # A value of 1.2 would cause a shift if either worker had 
 # 20% more keys than its neighbor.
-thresholdNeighborShift = 1.1
+thresholdNeighborShift = 1.05
 
 # Maximum number of keys to shift in a single iteration.
 # An iteration would be transfer, insert, verify range.
