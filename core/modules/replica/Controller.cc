@@ -513,8 +513,8 @@ SqlRemoveTablePartitionsRequest::Ptr Controller::sqlRemoveTablePartitions(
 SqlDeleteTablePartitionRequest::Ptr Controller::sqlDeleteTablePartition(
         string const& workerName,
         string const& database,
-        string const& table,
-        TransactionId transactionId,
+        vector<string> const& tables,
+        uint32_t transactionId,
         SqlDeleteTablePartitionRequest::CallbackType const& onFinish,
         int priority,
         bool keepTracking,
@@ -525,11 +525,11 @@ SqlDeleteTablePartitionRequest::Ptr Controller::sqlDeleteTablePartition(
 
     return _submit<SqlDeleteTablePartitionRequest,
                    decltype(database),
-                   decltype(table),
+                   decltype(tables),
                    decltype(transactionId)>(
         workerName,
         database,
-        table,
+        tables,
         transactionId,
         onFinish,
         priority,

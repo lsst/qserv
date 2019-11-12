@@ -83,6 +83,26 @@ string leastLoadedWorker(DatabaseServices::Ptr const& databaseServices,
     }
     return worker;
 }
+
+
+string jobCompletionErrorIfAny(SqlJob::Ptr const& job,
+                               string const& prefix) {
+    string error;
+    if (job->extendedState() != Job::ExtendedState::SUCCESS) {
+        auto const& resultData = job->getResultData();
+        for (auto&& itr: resultData.resultSets) {
+            auto&& worker = itr.first;
+            for (auto&& result: itr.second) {
+                if (result.hasErrors()) {
+                    error += prefix + ", worker: " + worker + ",  error: " +
+                             result.firstError() + " ";
+                }
+            }
+        }
+    }
+    return error;
+}
+
 }
 
 namespace lsst {
@@ -443,18 +463,7 @@ void HttpIngestModule::_addDatabase(qhttp::Request::Ptr const& req,
     job->wait();
     logJobFinishedEvent(SqlCreateDbJob::typeName(), job, familyName);
 
-    string error;
-    auto const& resultData = job->getResultData();
-    for (auto&& itr: resultData.resultSets) {
-        auto&& worker = itr.first;
-        auto&& workerResultSet = itr.second;
-        for (auto&& resultSet: workerResultSet) {
-            if (not resultSet.error.empty()) {
-                error += "database creation failed on worker: " + worker + ",  error: " +
-                         resultSet.error + " ";
-            }
-        }
-    }
+    string error = ::jobCompletionErrorIfAny(job, "database creation failed");
     if (not error.empty()) {
         sendError(resp, __func__, error);
         return;
@@ -583,18 +592,7 @@ void HttpIngestModule::_deleteDatabase(qhttp::Request::Ptr const& req,
     job->wait();
     logJobFinishedEvent(SqlDeleteDbJob::typeName(), job, databaseInfo.family);
 
-    string error;
-    auto const& resultData = job->getResultData();
-    for (auto&& itr: resultData.resultSets) {
-        auto&& worker = itr.first;
-        auto&& workerResultSet = itr.second;
-        for (auto&& resultSet: workerResultSet) {
-            if (not resultSet.error.empty()) {
-                error += "table creation failed on worker: " + worker + ",  error: " +
-                         resultSet.error + " ";
-            }
-        }
-    }
+    string error = ::jobCompletionErrorIfAny(job, "database deletion failed");
     if (not error.empty()) {
         sendError(resp, __func__, error);
         return;
@@ -717,7 +715,7 @@ void HttpIngestModule::_addTable(qhttp::Request::Ptr const& req,
     string const engine = "MyISAM";
 
     auto const job = SqlCreateTableJob::create(
-        database,
+        databaseInfo.name,
         table,
         engine,
         _partitionByColumn,
@@ -730,18 +728,7 @@ void HttpIngestModule::_addTable(qhttp::Request::Ptr const& req,
     job->wait();
     logJobFinishedEvent(SqlCreateTableJob::typeName(), job, databaseInfo.family);
 
-    string error;
-    auto const& resultData = job->getResultData();
-    for (auto&& itr: resultData.resultSets) {
-        auto&& worker = itr.first;
-        auto&& workerResultSet = itr.second;
-        for (auto&& resultSet: workerResultSet) {
-            if (not resultSet.error.empty()) {
-                error += "table creation failed on worker: " + worker + ",  error: " +
-                         resultSet.error + " ";
-            }
-        }
-    }
+    string error = ::jobCompletionErrorIfAny(job, "table creation failed");
     if (not error.empty()) {
         sendError(resp, __func__, error);
         return;
@@ -751,7 +738,7 @@ void HttpIngestModule::_addTable(qhttp::Request::Ptr const& req,
 
     json result;
     result["database"] = config->addTable(
-        database, table, isPartitioned, columns, isDirector,
+        databaseInfo.name, table, isPartitioned, columns, isDirector,
         directorKey, chunkIdColName, subChunkIdColName,
         latitudeColName, longitudeColName
     ).toJson();
@@ -759,7 +746,7 @@ void HttpIngestModule::_addTable(qhttp::Request::Ptr const& req,
     // Create the secondary index table using an updated version of
     // the database descriptor.
 
-    if (isPartitioned and isDirector) _createSecondaryIndex(config->databaseInfo(database));
+    if (isPartitioned and isDirector) _createSecondaryIndex(config->databaseInfo(databaseInfo.name));
 
     // This step is needed to get workers' Configuration in-sync with its
     // persistent state.
@@ -947,19 +934,7 @@ bool HttpIngestModule::_grantDatabaseAccess(qhttp::Response::Ptr const& resp,
     job->wait();
     logJobFinishedEvent(SqlGrantAccessJob::typeName(), job, databaseInfo.family);
 
-    string error;
-    auto const& resultData = job->getResultData();
-    for (auto&& itr: resultData.resultSets) {
-        auto&& worker = itr.first;
-        auto&& workerResultSet = itr.second;
-        for (auto&& resultSet: workerResultSet) {
-            if (not resultSet.error.empty()) {
-                error +=
-                        "grant access to a database failed on worker: " + worker +
-                        ",  error: " + resultSet.error + " ";
-            }
-        }
-    }
+    string const error = ::jobCompletionErrorIfAny(job, "grant access to a database failed");
     if (not error.empty()) {
         sendError(resp, __func__, error);
         return false;
@@ -984,19 +959,7 @@ bool HttpIngestModule::_enableDatabase(qhttp::Response::Ptr const& resp,
     job->wait();
     logJobFinishedEvent(SqlEnableDbJob::typeName(), job, databaseInfo.family);
 
-    string error;
-    auto const& resultData = job->getResultData();
-    for (auto&& itr: resultData.resultSets) {
-        auto&& worker = itr.first;
-        auto&& workerResultSet = itr.second;
-        for (auto&& resultSet: workerResultSet) {
-            if (not resultSet.error.empty()) {
-                error +=
-                        "enabling database failed on worker: " + worker + ",  error: " +
-                        resultSet.error + " ";
-            }
-        }
-    }
+    string const error = ::jobCompletionErrorIfAny(job, "enabling database failed");
     if (not error.empty()) {
         sendError(resp, __func__, error);
         return false;
@@ -1025,19 +988,10 @@ bool HttpIngestModule::_removeMySQLPartitions(qhttp::Response::Ptr const& resp,
         job->wait();
         logJobFinishedEvent(SqlRemoveTablePartitionsJob::typeName(), job, databaseInfo.family);
 
-        auto const& resultData = job->getResultData();
-        for (auto&& itr: resultData.resultSets) {
-            auto&& worker = itr.first;
-            auto&& workerResultSet = itr.second;
-            for (auto&& resultSet: workerResultSet) {
-                if (not resultSet.error.empty()) {
-                    error +=
-                            "MySQL partitions removal failed on worker: " + worker +
-                            " for database: " + databaseInfo.name + " and table: " + table +
-                            ",  error: " + resultSet.error + " ";
-                }
-            }
-        }
+        error += ::jobCompletionErrorIfAny(
+                        job,
+                        "MySQL partitions removal failed for database: " +
+                        databaseInfo.name + ", table: " + table);
     }
     if (not error.empty()) {
         sendError(resp, __func__, error);

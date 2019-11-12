@@ -44,9 +44,9 @@ SqlDeleteTablePartitionRequest::Ptr SqlDeleteTablePartitionRequest::create(
         ServiceProvider::Ptr const& serviceProvider,
         boost::asio::io_service& io_service,
         string const& worker,
-        std::string const& database,
-        std::string const& table,
-        TransactionId transactionId,
+        string const& database,
+        vector<string> const& tables,
+        uint32_t transactionId,
         CallbackType const& onFinish,
         int priority,
         bool keepTracking,
@@ -57,7 +57,7 @@ SqlDeleteTablePartitionRequest::Ptr SqlDeleteTablePartitionRequest::create(
         io_service,
         worker,
         database,
-        table,
+        tables,
         transactionId,
         onFinish,
         priority,
@@ -71,9 +71,9 @@ SqlDeleteTablePartitionRequest::SqlDeleteTablePartitionRequest(
         ServiceProvider::Ptr const& serviceProvider,
         boost::asio::io_service& io_service,
         string const& worker,
-        std::string const& database,
-        std::string const& table,
-        TransactionId transactionId,
+        string const& database,
+        vector<string> const& tables,
+        uint32_t transactionId,
         CallbackType const& onFinish,
         int priority,
         bool keepTracking,
@@ -91,7 +91,7 @@ SqlDeleteTablePartitionRequest::SqlDeleteTablePartitionRequest(
     // Finish initializing the request body's content
     requestBody.set_type(ProtocolRequestSql::DROP_TABLE_PARTITION);
     requestBody.set_database(database);
-    requestBody.set_table(table);
+    requestBody.set_tables(tables);
     requestBody.set_transaction_id(transactionId);
 }
 

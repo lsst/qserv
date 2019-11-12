@@ -55,22 +55,27 @@ namespace replica {
 void SqlRequest::extendedPrinter(Ptr const& ptr) {
 
     Request::defaultPrinter(ptr);
+    
+    for (auto&& itr: ptr->responseData().queryResultSet) {
 
-    auto&& resultSet = ptr->responseData();
-    if (resultSet.hasResult) {
+        auto&& scope = itr.first;
+        auto&& resultSet = itr.second;
 
-        string const caption = "RESULT SET";
-        string const indent  = "";
+        if (resultSet.hasResult) {
 
-        auto const table = resultSet.toColumnTable(caption, indent);
+            string const caption = "RESULT SET [" + scope + "]";
+            string const indent  = "";
 
-        bool const topSeparator    = false;
-        bool const bottomSeparator = false;
-        bool const repeatedHeader  = false;
+            auto const table = resultSet.toColumnTable(caption, indent);
 
-        size_t const pageSize = 0;
+            bool const topSeparator    = false;
+            bool const bottomSeparator = false;
+            bool const repeatedHeader  = false;
 
-        table.print(cout, topSeparator, bottomSeparator, pageSize, repeatedHeader);
+            size_t const pageSize = 0;
+
+            table.print(cout, topSeparator, bottomSeparator, pageSize, repeatedHeader);
+        }
     }
 }
 
@@ -207,7 +212,7 @@ void SqlRequest::_send(util::Lock const& lock) {
 
 
 void SqlRequest::_analyze(bool success,
-                              ProtocolResponseSql const& response) {
+                          ProtocolResponseSql const& response) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "  success=" << (success ? "true" : "false"));
 

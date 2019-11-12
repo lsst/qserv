@@ -88,22 +88,28 @@ list<pair<string,string>> SqlJob::persistentLogData() const {
 
     // Per-worker stats
 
-    for (auto&& itr: resultData.resultSets) {
-        auto&& worker = itr.first;
-        string workerResultSetStr;
-        auto&& workerResultSet = itr.second;
-        for (auto&& resultSet: workerResultSet) {
-            workerResultSetStr +=
-                "(char_set_name=" + resultSet.charSetName +
-                ",has_result=" + string(resultSet.hasResult ? "1" : "0") +
-                ",fields=" + to_string(resultSet.fields.size()) +
-                ",rows=" + to_string(resultSet.rows.size()) +
-                ",error=" + resultSet.error +
-                "),";
+    for (auto&& workerItr: resultData.resultSets) {
+        auto&& worker = workerItr.first;
+        auto&& workerResultSets = workerItr.second;
+        string workerResultSetsStr;
+        for (auto&& resultSet: workerResultSets) {
+            for (auto&& resultSetItr: resultSet.queryResultSet) {
+                auto&& context = resultSetItr.first;
+                auto&& resultSet = resultSetItr.second;
+                workerResultSetsStr +=
+                    "(context=" + context +
+                    ",extended_status=" + status2string(resultSet.extendedStatus) +
+                    ",char_set_name=" + resultSet.charSetName +
+                    ",has_result=" + string(resultSet.hasResult ? "1" : "0") +
+                    ",fields=" + to_string(resultSet.fields.size()) +
+                    ",rows=" + to_string(resultSet.rows.size()) +
+                    ",error=" + resultSet.error +
+                    "),";
+            }
         }
         result.emplace_back(
             "worker-stats",
-            "worker=" + worker + ",result-set=" + workerResultSetStr
+            "worker=" + worker + ",result-set=" + workerResultSetsStr
         );
     }
     return result;

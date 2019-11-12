@@ -410,8 +410,8 @@ public:
     SqlDeleteTablePartitionRequestPtr sqlDeleteTablePartition(
             std::string const& workerName,
             std::string const& database,
-            std::string const& table,
-            TransactionId transactionId,
+            std::vector<std::string> const& tables,
+            uint32_t transactionId,
             std::function<void(SqlDeleteTablePartitionRequestPtr)> const& onFinish=nullptr,
             int priority=0,
             bool keepTracking=true,

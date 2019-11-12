@@ -718,8 +718,9 @@ int ControllerApp::runImpl() {
 
     } else if ("SQL_DELETE_TABLE_PARTITION" == _requestType) {
 
+        vector<string> const tables = {_sqlTable};
         request = controller->sqlDeleteTablePartition(
-            _workerName, _sqlDatabase, _sqlTable, _transactionId,
+            _workerName, _sqlDatabase, tables, _transactionId,
             SqlRequest::extendedPrinter,
             _priority, not _doNotTrackRequest
         );

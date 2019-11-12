@@ -50,7 +50,7 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
-string SqlResultSet::Field::type2string() const {
+string SqlResultSet::ResultSet::Field::type2string() const {
     
     switch (type) {
         case MYSQL_TYPE_DECIMAL:     return "MYSQL_TYPE_DECIMAL";
@@ -90,7 +90,7 @@ string SqlResultSet::Field::type2string() const {
 }
 
 
-SqlResultSet::Field::Field(ProtocolResponseSqlField const& field)
+SqlResultSet::ResultSet::Field::Field(ProtocolResponseSqlField const& field)
     :   name(     field.name()),
         orgName(  field.org_name()),
         table(    field.table()),
@@ -106,7 +106,7 @@ SqlResultSet::Field::Field(ProtocolResponseSqlField const& field)
 }
 
 
-SqlResultSet::Row::Row(ProtocolResponseSqlRow const& row) {
+SqlResultSet::ResultSet::Row::Row(ProtocolResponseSqlRow const& row) {
     for (int i = 0; i < row.cells_size(); ++i) {
         cells.push_back(row.cells(i));
         nulls.push_back(row.nulls(i) ? 1 : 0);
@@ -114,34 +114,29 @@ SqlResultSet::Row::Row(ProtocolResponseSqlRow const& row) {
 }
 
 
-void SqlResultSet::set(ProtocolResponseSql const& message) {
-
-    error = message.error();
-    charSetName = message.char_set_name();
-    hasResult = message.has_result();
-
-    // Translate fields
-    fields.clear();
-    for (int i = 0; i < message.fields_size(); ++i) {
-        fields.emplace_back(message.fields(i));
+SqlResultSet::ResultSet::ResultSet(ProtocolResponseSqlResultSet const& result) {
+    extendedStatus = qserv::replica::translate(result.status_ext());
+    error = result.error();
+    charSetName = result.char_set_name();
+    hasResult = result.has_result();
+    for (int i = 0; i < result.fields_size(); ++i) {
+        fields.emplace_back(result.fields(i));
     }
-
-    // Translate rows
-    rows.clear();
-    for (int i = 0; i < message.rows_size(); ++i) {
-        rows.emplace_back(message.rows(i));
+    for (int i = 0; i < result.rows_size(); ++i) {
+        rows.emplace_back(result.rows(i));
     }
-}    
+}
 
 
-json SqlResultSet::toJson() const {
+json SqlResultSet::ResultSet::toJson() const {
 
-    json resultJson;
+    json resultJson = json::object();
 
+    resultJson["extended_status"] = status2string(extendedStatus);
     resultJson["error"] = error;
     resultJson["char_set_name"] = charSetName;
     resultJson["has_result"] = hasResult;
-    
+
     for (size_t columnIdx = 0; columnIdx < fields.size(); ++columnIdx) {
         auto const& field = fields[columnIdx];
         auto&& fieldsJson = resultJson["fields"][columnIdx];
@@ -169,11 +164,14 @@ json SqlResultSet::toJson() const {
 }
 
 
-util::ColumnTablePrinter SqlResultSet::toColumnTable(string const& caption,
-                                                     string const& indent,
-                                                     bool verticalSeparator) const {
+util::ColumnTablePrinter SqlResultSet::ResultSet::toColumnTable(
+        string const& caption,
+        string const& indent,
+        bool verticalSeparator) const {
+
     if (not hasResult) {
-        throw logic_error("SqlResultSet::" + string(__func__) + "  no result set for the query");
+        throw logic_error(
+                "SqlResultSet::ResultSet::" + string(__func__) + "  no result set for the query");
     }
 
     // Package input data into columns
@@ -208,13 +206,86 @@ util::ColumnTablePrinter SqlResultSet::toColumnTable(string const& caption,
 }
 
 
+void SqlResultSet::set(ProtocolResponseSql const& message) {
+    queryResultSet.clear();
+    for (int i = 0; i < message.result_sets_size(); ++i) {
+        auto&& resultSetMessage = message.result_sets(i);
+        queryResultSet.emplace(resultSetMessage.scope(), resultSetMessage);
+    }
+}    
+
+
+json SqlResultSet::toJson() const {
+
+    json resultJson = json::array();
+
+    for (auto&& itr: queryResultSet) {
+        auto&& scope = itr.first;
+        auto&& resultSet = itr.second;
+        json resultSetJson = json::object();
+        resultSetJson["scope"] = scope;
+        resultSetJson["result_set"] = resultSet.toJson();
+        resultJson.push_back(resultSetJson);
+    }
+    return resultJson;
+}
+
+
+bool SqlResultSet::hasErrors() const {
+    for (auto&& itr: queryResultSet) {
+        auto&& result = itr.second;
+        if (result.extendedStatus != ExtendedCompletionStatus::EXT_STATUS_NONE) {
+            return true;
+        }
+    }
+    return false;
+}
+
+
+string SqlResultSet::firstError() const {
+    for (auto&& itr: queryResultSet) {
+        auto&& scope = itr.first;
+        auto&& result = itr.second;
+        if (result.extendedStatus != ExtendedCompletionStatus::EXT_STATUS_NONE) {
+            return scope + ":" + status2string(result.extendedStatus) + ":" + result.error;
+        }
+    }
+    return string();
+}
+
+
+vector<string> SqlResultSet::allErrors() const {
+    vector<string> errors;
+    for (auto&& itr: queryResultSet) {
+        auto&& scope = itr.first;
+        auto&& result = itr.second;
+        if (result.extendedStatus != ExtendedCompletionStatus::EXT_STATUS_NONE) {
+            errors.push_back(scope + ":" + status2string(result.extendedStatus) + ":" + result.error);
+        }
+    }
+    return errors;
+}
+
+
 ostream& operator<<(ostream& os, SqlResultSet const& info) {
-    os << "SqlResultSet {error:'" << info.error << "',"
-       << "charSetName:'" << info.charSetName << "',"
-       << "hasResult:" << (info.hasResult ? 1 : 0) << ","
-       << "fields.size:" << info.fields.size() << ","
-       << "rows.size:" << info.rows.size() << ","
-       << "performanceSec:" << info.performanceSec << "}";
+    os << "SqlResultSet:{qservResultSet:[";
+    bool first = false;
+    for (auto&& itr: info.queryResultSet) {
+        auto&& scope = itr.first;
+        auto&& result = itr.second;
+        if (first) {
+            first = false;
+            os << ",";
+        }
+        os << "{scope:'" << scope << "',"
+           << "extendedStatus:" << status2string(result.extendedStatus) << ","
+           << "error:'" << result.error << "',"
+           << "charSetName:'" << result.charSetName << "',"
+           << "hasResult:" << (result.hasResult ? "1" : "0") << ","
+           << "fields.size:" << result.fields.size() << ","
+           << "rows.size:" << result.rows.size() << "}";
+    }
+    os << "],performanceSec:" << info.performanceSec << "}}";
     return os;
 }
 

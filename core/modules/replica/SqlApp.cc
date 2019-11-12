@@ -256,9 +256,7 @@ int SqlApp::runImpl() {
 
     auto const controller = Controller::create(serviceProvider());
     SqlJob::Ptr job;
-    bool shouldHaveResultSet = false;
     if (_command == "QUERY") {
-        shouldHaveResultSet = true;
         job = SqlQueryJob::create(_query, _mysqlUser, _mysqlPassword, _maxRows,
                                   _allWorkers, controller);
     } else if(_command == "CREATE_DATABASE") {
@@ -296,15 +294,24 @@ int SqlApp::runImpl() {
         auto&& worker = itr.first;
         auto&& workerResultSet = itr.second;
         for (auto&& resultSet: workerResultSet) {
-            if (not resultSet.error.empty()) {
-                cout << "worker: " << worker << ",  error: " << resultSet.error << endl;
+            if (resultSet.hasErrors()) {
+                for (auto&& error: resultSet.allErrors()) {
+                    cout << "worker: " << worker << ",  error: " << error << endl;
+                }
                 continue;
             }
-            string const caption = "worker: " + worker + ",  performance [sec]: " +
-                                   to_string(resultSet.performanceSec);
-            if (shouldHaveResultSet) {
+            string const caption =
+                    "worker: " + worker + ",  performance [sec]: "
+                    + to_string(resultSet.performanceSec);
+
+            if (_command == "QUERY") {
+                auto const queryResultSetItr = resultSet.queryResultSet.find(_query);
+                if (queryResultSetItr == resultSet.queryResultSet.end()) {
+                    throw logic_error(
+                            "SqlApp::" + string(__func__) + "  no result set found for the query");
+                }
                 string const indent = "";
-                auto table = resultSet.toColumnTable(caption, indent);
+                auto table = queryResultSetItr->second.toColumnTable(caption, indent);
 
                 bool const topSeparator    = false;
                 bool const bottomSeparator = false;

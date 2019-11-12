@@ -23,8 +23,10 @@
 #include "replica/AbortTransactionJob.h"
 
 // System headers
+#include <algorithm>
 #include <limits>
 #include <stdexcept>
+#include <vector>
 
 // Qserv headers
 #include "replica/Controller.h"
@@ -41,28 +43,60 @@ namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.AbortTransactionJob");
 
+/**
+ * The algorithm will distribute tables between the specified number of
+ * bins. The resulting collection will be empty if the input collection
+ * of tables is empty or if the number of bins is 0, and the result will
+ * not have empty bins.
+ *
+ * @param allTables all known tables 
+ * @param numBins the total number of bins for distributing tables
+ * @return tables distributed between the bins
+ */
+vector<vector<string>> distributeTables(vector<string> const& allTables,
+                                        size_t numBins) {
+
+    // If the total number of tables if less than the number of bins
+    // then we won't be constructing empty bins.
+    vector<vector<string>> tablesPerBin(min(numBins,allTables.size()));
+
+    // The trivial 'round-robin' 
+    for (size_t i=0; i<allTables.size(); ++i) {
+        auto const bin = i % tablesPerBin.size();
+        tablesPerBin[bin].push_back(allTables[i]);
+    }
+    return tablesPerBin;
+}
+
 } /// namespace
 
 namespace lsst {
 namespace qserv {
 namespace replica {
 
-json AbortTransactionJobResult::toJson() const {
-    string const context = "AbortTransactionJobResult::" + string(__func__) + "  ";
-    json result = json::object();
-    result["completed"] = json::object();
-    result["error"    ] = json::object();
-    for (auto&& workerEntry: resultSets) {
-        auto&& worker = workerEntry.first;
-        result["completed"][worker] = json::object();
-        result["error"    ][worker] = json::object();
-        for (auto&& tableEntry: workerEntry.second) {
-            auto&& table = tableEntry.first;
-            auto&& resultSet = tableEntry.second;
-            result["completed"][worker][table] = completed.at(worker).at(table) ? 1 : 0;
-            result["error"    ][worker][table] = resultSet.error;
+void AbortTransactionJobResult::iterate(
+        AbortTransactionJobResult::OnTableVisitCallback const& onTableVisit) const {
+
+    for (auto&& workerItr: resultSets) {
+        auto&& worker = workerItr.first;
+        for (auto&& requestResultSets: workerItr.second) {
+            for (auto&& tableItr: requestResultSets.queryResultSet) {
+                auto&& table = tableItr.first;
+                auto&& resultSet = tableItr.second;
+                onTableVisit(worker, table, resultSet);
+            }
         }
     }
+}
+
+json AbortTransactionJobResult::toJson() const {
+    json result = json::object();
+    iterate([&result](WorkerName const& worker,
+                      TableName const& table,
+                      SqlResultSet::ResultSet const& resultSet) {
+        result["completed"][worker][table] = resultSet.extendedStatus == ExtendedCompletionStatus::EXT_STATUS_NONE ? 1 : 0;
+        result["error"    ][worker][table] = resultSet.error;
+    });
     return result;
 }
 
@@ -87,12 +121,10 @@ AbortTransactionJob::Ptr AbortTransactionJob::create(TransactionId transactionId
                                                      CallbackType const& onFinish,
                                                      Job::Options const& options) {
     return AbortTransactionJob::Ptr(
-        new AbortTransactionJob(transactionId,
-                                allWorkers,
-                                controller,
-                                parentJobId,
-                                onFinish,
-                                options));
+            new AbortTransactionJob(
+                transactionId, allWorkers, controller, parentJobId,
+                onFinish, options
+            ));
 }
 
 
@@ -143,22 +175,18 @@ list<pair<string,string>> AbortTransactionJob::extendedPersistentState() const {
 
 
 list<pair<string,string>> AbortTransactionJob::persistentLogData() const {
-
     list<pair<string,string>> result;
-
-    for (auto&& workerEntry: _resultData.resultSets) {
-        auto&& worker = workerEntry.first;
-        for (auto&& tableEntry: workerEntry.second) {
-            auto&& table = tableEntry.first;
-            result.emplace_back(
-                "status",
-                "worker=" + worker +
-                " table=" + table +
-                " completed=" + string(_resultData.completed.at(worker).at(table) ? "1" : "0") +
-                " error=" + _resultData.resultSets.at(worker).at(table).error
-            );
-        }
-    }
+    _resultData.iterate([&result](AbortTransactionJobResult::WorkerName const& worker,
+                                  AbortTransactionJobResult::TableName const& table,
+                                  SqlResultSet::ResultSet const& resultSet) {
+        result.emplace_back(
+            "status",
+            "worker=" + worker +
+            " table=" + table +
+            " completed=" + string(resultSet.extendedStatus == ExtendedCompletionStatus::EXT_STATUS_NONE ? "1" : "0") +
+            " error=" + resultSet.error
+        );
+    });
     return result;
 }
 
@@ -184,14 +212,33 @@ void AbortTransactionJob::startImpl(util::Lock const& lock) {
         return;
     }
 
-    // Prepare a collection of tables to be processed. Group them by
-    // worker names.
+    // Submit requests to process tables on each workers. For each worker,
+    // The algorithm will identify all tables to be processed on the worker.
+    // Then it will create (up to) as many requests as many processing threads are
+    // known to exist on each worker. Each request would get its 'fair share'
+    // of tables to be processed sequentially by the request. This algorithm has
+    // the following benefits:
+    //
+    // - it limits the number of requests submitted to the workers by
+    //   the number of workers multiplied by the number of the processing
+    //   threads configured for each worker.
+    // - it will ensure each thread will get enough work to absorb any
+    //   latencies incurred by the request handling protocol.
+    // - altogether, this will result in a more efficient utilization of
+    //   various resources, at both the Controller and workers sides.
+
+    auto const threadsPerWorker =
+        controller()->serviceProvider()->config()->workerNumProcessingThreads();
+
+    auto self = shared_from_base<AbortTransactionJob>();
 
     for (auto const& worker: _workers) {
-        _worker2tables[worker] = list<string>();
+
+        // All tables which are going to be processed at the worker
+        vector<string> allTables;
 
         for (auto&& table: _databaseInfo.regularTables) {
-            _worker2tables[worker].push_back(table);
+            allTables.push_back(table);
         }
         
         // Locate all chunks registered on the worker. These chunks will be used
@@ -206,20 +253,33 @@ void AbortTransactionJob::startImpl(util::Lock const& lock) {
         for (auto&& replica: replicas) {
             auto const chunk = replica.chunk();
             for (auto&& table: _databaseInfo.partitionedTables) {
-                _worker2tables[worker].push_back(table + "FullOverlap_" + to_string(chunk));
-                _worker2tables[worker].push_back(table + "_" + to_string(chunk));
+                allTables.push_back(table + "FullOverlap_" + to_string(chunk));
+                allTables.push_back(table + "_" + to_string(chunk));
             }
         }
+        
+        // Divide tables between requests. Then launch the requests
+        // for the current worker.
+
+        auto const tablesPerThread = ::distributeTables(allTables, threadsPerWorker);
+        for (auto&& tables: tablesPerThread) {
+            _requests.push_back(
+                controller()->sqlDeleteTablePartition(
+                    worker,
+                    _databaseInfo.name,
+                    tables,
+                    _transactionId,
+                    [self] (SqlDeleteTablePartitionRequest::Ptr const& request) {
+                        self->_onRequestFinish(request);
+                    },
+                    options(lock).priority,
+                    true,   /* keepTracking */
+                    id()    /* parent Job ID */
+                )
+            );
+        }
     }
-
-    // Submit the first batch of requests. The number of the requests not to exceed
-    // the processing capacity of all workers.
-
-    size_t const maxRequests =
-        _workers.size() * controller()->serviceProvider()->config()->workerNumProcessingThreads();
-
-    if (0 == _submitNextBatch(lock, maxRequests)) {
-        // No tables to be processed
+    if (0 == _requests.size()) {
         finish(lock, ExtendedState::SUCCESS);
     }
 }
@@ -234,9 +294,7 @@ void AbortTransactionJob::cancelImpl(util::Lock const& lock) {
 
 
 void AbortTransactionJob::notify(util::Lock const& lock) {
-
     LOGS(_log, LOG_LVL_TRACE, context() << __func__);
-
     notifyDefaultImpl<AbortTransactionJob>(lock, _onFinish);
 }
 
@@ -255,72 +313,20 @@ void AbortTransactionJob::_onRequestFinish(SqlDeleteTablePartitionRequest::Ptr c
     ++_numFinished;
     if (request->extendedState() == Request::SUCCESS) ++_numSuccess;
 
-    // Replace the finished job with a new one unless the input set is empty
-    if (0 == _submitNextBatch(lock, 1)) {
-        if (_numFinished == _numLaunched) {
+    if (_numFinished == _requests.size()) {
 
-            // Harvest results from all jobs (regardless of their completion status)
-            // and be done.
+        // Harvest results from all jobs regardless of their completion status.
+        // Requests declared as failed might be partially successful. In order
+        // to determine which tables have not been processed one has to look
+        // at the corresponding result set reported in the response data
+        // object of the request.
 
-            for (auto&& ptr: _requests) {
-                auto const table = ptr->targetRequestParams().table;
-                _resultData.completed [ptr->worker()][table] = ptr->extendedState() == Request::SUCCESS;
-                _resultData.resultSets[ptr->worker()][table] = ptr->responseData();
-            }
-            finish(lock, _numSuccess == _numLaunched ? ExtendedState::SUCCESS
-                                                     : ExtendedState::FAILED);
+        for (auto&& ptr: _requests) {
+            _resultData.resultSets[ptr->worker()].push_back(ptr->responseData());
         }
+        finish(lock, _numSuccess == _numFinished ? ExtendedState::SUCCESS
+                                                 : ExtendedState::FAILED);
     }
-}
-
-
-size_t AbortTransactionJob::_submitNextBatch(util::Lock const& lock,
-                                             size_t const maxRequests) {
-
-    if (0 == maxRequests) return maxRequests;
-
-    auto self = shared_from_base<AbortTransactionJob>();
-
-    size_t batchSize = 0;
-    for (size_t i = 0; i < maxRequests; ++i) {
-
-        // Scan the input queue and find a worker which has the longest list
-        // of tables to be processed. Then submit a request for any table
-        // of that worker.
-        
-        size_t maxNumTables = 0; 
-        string candidateWorker;
-        for (auto&& entry: _worker2tables) {
-            string const& worker = entry.first;
-            size_t const numTables = entry.second.size();
-            if (numTables > maxNumTables) {
-                maxNumTables = numTables;
-                candidateWorker = worker;
-            }
-        }
-        if (candidateWorker.empty()) return batchSize;  // no more entries in the input queue
-        
-        string const table = _worker2tables[candidateWorker].front();
-        _worker2tables[candidateWorker].pop_front();
-
-        _requests.push_back(
-            controller()->sqlDeleteTablePartition(
-                candidateWorker,
-                _databaseInfo.name,
-                table,
-                _transactionId,
-                [self] (SqlDeleteTablePartitionRequest::Ptr const& request) {
-                    self->_onRequestFinish(request);
-                },
-                options(lock).priority,
-                true,   /* keepTracking */
-                id()    /* parent Job ID */
-            )
-        );
-        ++batchSize;
-        ++_numLaunched;
-    }
-    return batchSize;
 }
 
 }}} // namespace lsst::qserv::replica
