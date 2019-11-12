@@ -80,7 +80,8 @@ enum ExtendedCompletionStatus {
     EXT_STATUS_LARGE_RESULT,    // result exceeds a limit set in a request
     EXT_STATUS_NO_SUCH_TABLE,   // a reason why a MySQL operation failed 
     EXT_STATUS_NOT_PARTITIONED_TABLE,   // why a MySQL operation for removing partitions failed
-    EXT_STATUS_NO_SUCH_PARTITION        // why a MySQL operation for for selecting data from a table failed
+    EXT_STATUS_NO_SUCH_PARTITION,       // why a MySQL operation for for selecting data from a table failed
+    EXT_STATUS_MULTIPLE                 // multiple errors encountered when processing a request
 };
 
 /// Return the string representation of the extended status
@@ -245,6 +246,8 @@ public:
     TransactionId transactionId = 0;
 
     std::list<SqlColDef> columns;
+
+    std::vector<std::string> tables;
 
     SqlRequestParams() = default;
 
