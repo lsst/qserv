@@ -306,7 +306,7 @@ int SqlApp::runImpl() {
                     + to_string(resultSet.performanceSec);
 
             if (_command == "QUERY") {
-                auto const queryResultSetItr = resultSet.queryResultSet.find(_query);
+                auto const queryResultSetItr = resultSet.queryResultSet.find("");
                 if (queryResultSetItr == resultSet.queryResultSet.end()) {
                     throw logic_error(
                             "SqlApp::" + string(__func__) + "  no result set found for the query");

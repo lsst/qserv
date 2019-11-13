@@ -109,17 +109,19 @@ bool WorkerSqlRequest::execute() {
 
         // Pre-create the default result-set message before any operations with
         // the database service. This is needed to report errors.
-
         auto currentResultSet = _response.add_result_sets();
 
-        database::mysql::ConnectionHandler const h(_connector());
+        // Open the connection once and then manage transactions via
+        // the connection handlers down below to ensure no lingering transactions
+        // are left after the completion of the request's execution (whether it's
+        // successful or not).
+        auto const connection = _connector();
 
         // Check if this is the "batch" request which involves executing
         // a series of queries. This kind of requests needs to be processed
         // slightly differently since we need to intercept and properly handle
         // a few known (and somewhat expected) MySQL errors w/o aborting
         // the whole request.
-
         if (_batchMode()) {
 
             // Count the number of failures for proper error reporting on
@@ -136,6 +138,7 @@ bool WorkerSqlRequest::execute() {
                 currentResultSet->set_scope(table);      
 
                 try {
+                    database::mysql::ConnectionHandler const h(connection);
                     h.conn->execute([&](decltype(h.conn) const& conn_) {
                         conn_->begin();
                         conn_->execute(_batchQuery(conn_, table));
@@ -160,6 +163,7 @@ bool WorkerSqlRequest::execute() {
             }
 
         } else {
+            database::mysql::ConnectionHandler const h(connection);
             h.conn->execute([&](decltype(h.conn) const& conn_) {
                 conn_->begin();
                 conn_->execute(_query(conn_));
