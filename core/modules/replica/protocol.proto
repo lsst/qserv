@@ -224,6 +224,9 @@ message ProtocolRequestSql {
     /// A collection of tables to apply an operation upon. This parameter is used
     /// for batch processing over multiple tables.
     repeated string tables = 13;
+
+    /// This flag is used when a request to process multiple queries is made
+    optional bool batch_mode = 14 [default = false];
 }
 
 // This request is always queued.
@@ -357,6 +360,7 @@ enum ProtocolStatusExt {
     NOT_PARTITIONED_TABLE = 28;
     NO_SUCH_PARTITION = 29;
     MULTIPLE = 30;
+    OTHER_EXCEPTION = 31;
 }
 
 message ProtocolFileInfo {
