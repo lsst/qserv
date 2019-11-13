@@ -278,7 +278,8 @@ int SqlApp::runImpl() {
     } else if(_command == "REMOVE_TABLE_PARTITIONS") {
         job = SqlRemoveTablePartitionsJob::create(_database, _table, _allWorkers, controller);
     } else if(_command == "DELETE_TABLE_PARTITION") {
-        job = SqlDeleteTablePartitionJob::create(_database, _table, _transactionId,
+        vector<string> const tables = {_table};
+        job = SqlDeleteTablePartitionJob::create(_database, tables, _transactionId,
                                                  _allWorkers, controller);
     } else {
         throw logic_error(

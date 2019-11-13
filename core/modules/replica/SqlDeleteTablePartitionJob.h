@@ -28,6 +28,7 @@
 #include <set>
 #include <string>
 #include <tuple>
+#include <vector>
 
 // Qserv headers
 #include "replica/Common.h"
@@ -61,25 +62,22 @@ public:
      * low-level pointers).
      *
      * @param database the name of a database from which a table will be deleted
-     * @param table the name of an existing table to be affected by the operation
-     * @param transactionId
-     *   an identifier of a super-transaction corresponding to a MySQL partition
-     *   to be dropped. The transaction must exist, and it should be in
-     *   the ABORTED state.
-     * @param allWorkers
-     *   engage all known workers regardless of their status. If the flag
-     *   is set to 'false' then only 'ENABLED' workers which are not in
-     *   the 'READ-ONLY' state will be involved into the operation.
+     * @param tables the names of existing tables to be affected by the operation
+     * @param transactionId an identifier of a super-transaction corresponding
+     *   to a MySQL partition to be dropped. The transaction must exist, and it
+     *   should be in the ABORTED state.
+     * @param allWorkers engage all known workers regardless of their status.
+     *  If the flag is set to 'false' then only 'ENABLED' workers which are not
+     *  in the 'READ-ONLY' state will be involved into the operation.
      * @param controller is needed launching requests and accessing the Configuration
      * @param parentJobId (optional) identifier of a parent job
-     * @param onFinish (optional) callback function to be called upon a completion
-     *   of the job
+     * @param onFinish (optional) callback function to be called upon a completion of the job
      * @param options (optional) defines the job priority, etc.
-     * @return a pointer to the created object
+     * @return pointer to the created object
      */
     static Ptr create(std::string const& database,
-                      std::string const& table,
-                      TransactionId transactionId,
+                      std::vector<std::string> const& tables,
+                      uint32_t transactionId,
                       bool allWorkers,
                       Controller::Ptr const& controller,
                       std::string const& parentJobId=std::string(),
@@ -95,10 +93,9 @@ public:
     // Trivial get methods
 
     std::string const& database() const { return _database; }
-    std::string const& table()    const { return _table; }
+    std::vector<std::string> const& tables() const { return _tables; }
 
     TransactionId transactionId() const { return _transactionId; }
-
 
     std::list<std::pair<std::string,std::string>> extendedPersistentState() const final;
 
@@ -114,8 +111,8 @@ protected:
 
 private:
     SqlDeleteTablePartitionJob(std::string const& database,
-                               std::string const& table,
-                               TransactionId transactionId,
+                               std::vector<std::string> const& tables,
+                               uint32_t transactionId,
                                bool allWorkers,
                                Controller::Ptr const& controller,
                                std::string const& parentJobId,
@@ -124,9 +121,9 @@ private:
 
     // Input parameters
 
-    std::string   const _database;
-    std::string   const _table;
-    TransactionId const _transactionId;
+    std::string const _database;
+    std::vector<std::string> const _tables;
+    uint32_t const _transactionId;
 
     CallbackType _onFinish;     /// @note is reset when the job finishes
 

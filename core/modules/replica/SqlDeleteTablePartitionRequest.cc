@@ -91,8 +91,12 @@ SqlDeleteTablePartitionRequest::SqlDeleteTablePartitionRequest(
     // Finish initializing the request body's content
     requestBody.set_type(ProtocolRequestSql::DROP_TABLE_PARTITION);
     requestBody.set_database(database);
-    requestBody.set_tables(tables);
+    requestBody.clear_tables();
+    for (auto&& table: tables) {
+        requestBody.add_tables(table);
+    }
     requestBody.set_transaction_id(transactionId);
+    requestBody.set_batch_mode(true);
 }
 
 
