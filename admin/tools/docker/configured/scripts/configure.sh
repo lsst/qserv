@@ -76,7 +76,7 @@ awk \
 -v NODE_TYPE_KV="node_type = $NODE_TYPE" \
 -v MASTER_KV="master = <DOCKER_ENV_QSERV_MASTER>" \
 '{gsub(/node_type = mono/, NODE_TYPE_KV);
-  gsub(/master = 127.0.0.1/, MASTER_KV);
+  gsub(/master = master.localdomain/, MASTER_KV);
   print}' /tmp/qserv-meta.conf.orig > "$QSERV_RUN_DIR/qserv-meta.conf"
 
 qserv-configure.py --qserv-run-dir "$QSERV_RUN_DIR" --force
