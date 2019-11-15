@@ -114,8 +114,8 @@ int AbortTransactionApp::runImpl() {
         size_t numSucceeded = 0;
         map<ExtendedCompletionStatus,size_t> numFailed;
         resultData.iterate(
-            [&numFailed, &numSucceeded](AbortTransactionJobResult::WorkerName const& worker,
-                                        AbortTransactionJobResult::TableName const& table,
+            [&numFailed, &numSucceeded](AbortTransactionJobResult::Worker const& worker,
+                                        AbortTransactionJobResult::Scope const& table,
                                         SqlResultSet::ResultSet const& resultSet) {
                 if (resultSet.extendedStatus == ExtendedCompletionStatus::EXT_STATUS_NONE) {
                     numSucceeded++;

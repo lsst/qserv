@@ -39,7 +39,7 @@
 #include "replica/DatabaseServices.h"
 #include "replica/Job.h"
 #include "replica/SqlDeleteTablePartitionRequest.h"
-#include "replica/SqlResultSet.h"
+#include "replica/SqlJobResult.h"
 #include "util/TablePrinter.h"
 
 // This header declarations
@@ -48,46 +48,31 @@ namespace qserv {
 namespace replica {
 
 /**
- * Class AbortTransactionJobResult represents a combined result received
- * from worker services upon a completion of the job.
+ * Class AbortTransactionJobResult represents an extended collection of
+ * results received from worker services upon a completion of the job.
  */
-class AbortTransactionJobResult {
+class AbortTransactionJobResult: public SqlJobResult {
 public:
-    /// Result sets for the requests for each worker. And result sets
-    /// are stored as a list since processing of tables may be
-    /// assigned to multiple requests.
-    std::map<std::string,std::list<SqlResultSet>> resultSets;
-
-    // The callback type and its convenience types for the work and tables names
-    // which are used for exploring results sets of the tables.
-
-    typedef std::string WorkerName;
-    typedef std::string TableName;
-    typedef std::function<void(WorkerName,TableName,SqlResultSet::ResultSet)> OnTableVisitCallback;
 
     /**
-     * Iterate over the result sets.
-     * @param onTableVisit the callback function to be called on each table
-     * visited during the iteration.
-     */
-    void iterate(OnTableVisitCallback const& onTableVisit) const;
-
-    /// @return  JSON representation of the object
-    nlohmann::json toJson() const;
-
-    /**
-     * Package results into a table. First parameters of the method are
-     * the same as for the constructor of the table printer class.
-     * @see class util::ColumnTablePrinter
-     * @param reportAll If a value of the parameter is 'true' then include all
-     * tables into the report regardless of the completion status for a table.
-     * Otherwise only those tables which failed to be processed by the job
-     * will be reported.
+     * This is just a front-end to a similar method of the base class.
+     * The current implementation will print the following table header:
+     * @code
+     *   worker | table | status | error
+     *  --------+-------+--------+-------
+     * @code
+     * @see SqlJobResult::toColumnTable
      */
     util::ColumnTablePrinter toColumnTable(std::string const& caption=std::string(),
                                            std::string const& indent=std::string(),
                                            bool verticalSeparator=true,
-                                           bool reportAll=true) const;
+                                           bool reportAll=true) const {
+        return SqlJobResult::toColumnTable(caption,
+                                           indent,
+                                           verticalSeparator,
+                                           reportAll,
+                                           "table");
+    }
 };
 
 /**

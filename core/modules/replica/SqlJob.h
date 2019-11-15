@@ -23,7 +23,6 @@
 
 // System headers
 #include <cstdint>
-#include <functional>
 #include <list>
 #include <map>
 #include <string>
@@ -32,24 +31,13 @@
 // Qserv headers
 #include "replica/Controller.h"
 #include "replica/Job.h"
+#include "replica/SqlJobResult.h"
 #include "replica/SqlRequest.h"
-#include "replica/SqlResultSet.h"
 
 // This header declarations
 namespace lsst {
 namespace qserv {
 namespace replica {
-
-/**
- * The structure SqlJobResult represents a combined result received
- * from worker services upon a completion of the job.
- */
-struct SqlJobResult {
-
-    /// Result sets for the workers. Note, that specific job types
-    /// may launch more than one request per worker.
-    std::map<std::string, std::list<SqlResultSet>> resultSets;
-};
 
 /**
  * Class SqlJob is a base class for a family of jobs which broadcast the same
@@ -58,13 +46,10 @@ struct SqlJobResult {
  */
 class SqlJob : public Job {
 public:
-    /// The pointer type for instances of the class
     typedef std::shared_ptr<SqlJob> Ptr;
 
     /// @return default options object for this type of a request
     static Job::Options const& defaultOptions();
-
-    // Default construction and copy semantics are prohibited
 
     SqlJob() = delete;
     SqlJob(SqlJob const&) = delete;
@@ -85,43 +70,29 @@ public:
      *  The method should be invoked only after the job has finished (primary
      *  status is set to Job::Status::FINISHED). Otherwise exception
      *  std::logic_error will be thrown
-     *
-     * @return
-     *   the data structure to be filled upon the completion of the job.
-     *
-     * @throws std::logic_error
-     *   if the job didn't finished at a time when the method was called
+     * @return the data structure to be filled upon the completion of the job.
+     * @throws std::logic_error  if the job didn't finished at a time when
+     *   the method was called
      */
     SqlJobResult const& getResultData() const;
 
-    /// @see Job::persistentLogData()
     std::list<std::pair<std::string,std::string>> persistentLogData() const final;
 
 protected:
     /**
-     * @param maxRows
-     *   (optional) limit for the maximum number of rows to be returned with the request.
-     *   Leaving the default value of the parameter to 0 will result in not imposing any
-     *   explicit restrictions on a size of the result set. Note that other, resource-defined
-     *   restrictions will still apply. The later includes the maximum size of the Google Protobuf
-     *   objects, the amount of available memory, etc.
-     *
-     * @param allWorkers
-     *   engage all known workers regardless of their status. If the flag
-     *   is set to 'false' then only 'ENABLED' workers which are not in
-     *   the 'READ-ONLY' state will be involved into the operation.
-     *
-     * @param controller
-     *   is needed launching requests and accessing the Configuration
-     *
-     * @param parentJobId
-     *   (optional) identifier of a parent job
-     *
-     * @param jobName
-     *   the name of a job in the persistent state of the Replication system
-     *
-     * @param options
-     *   (optional) defines the job priority, etc.
+     * @param maxRows (optional) limit for the maximum number of rows to be returned
+     *   with the request. Leaving the default value of the parameter to 0 will result
+     *   in not imposing any explicit restrictions on a size of the result set. Note
+     *   that other, resource-defined restrictions will still apply. The later
+     *   includes the maximum size of the Google Protobuf objects, the amount of
+     *   available memory, etc.
+     * @param allWorkers engage all known workers regardless of their status.
+     *   If the flag is set to 'false' then only 'ENABLED' workers which are not
+     *   in the 'READ-ONLY' state will be involved into the operation.
+     * @param controller is needed launching requests and accessing the Configuration
+     * @param parentJobId (optional) identifier of a parent job
+     * @param jobName the name of a job in the persistent state of the Replication system
+     * @param options (optional) defines the job priority, etc.
      */
     SqlJob(uint64_t maxRows,
            bool allWorkers,
@@ -130,10 +101,8 @@ protected:
            std::string const& jobName,
            Job::Options const& options);
 
-    /// @see Job::startImpl()
     void startImpl(util::Lock const& lock) final;
 
-    /// @see Job::cancelImpl()
     void cancelImpl(util::Lock const& lock) final;
 
     /**
@@ -146,15 +115,10 @@ protected:
      * This method lets a request type-specific subclass to launch requests
      * of the corresponding subtype.
      *
-     * @param lock
-     *   on the mutex Job::_mtx to be acquired for protecting the object's state
-     *
-     * @param worker
-     *   the name of a worker the requests to be sent to
-     * 
-     * @param maxRequests
-     *   the maximum number of requests to be launched
-     *
+     * @param lock on the mutex Job::_mtx to be acquired for protecting
+     *   the object's state
+     * @param worker the name of a worker the requests to be sent to
+     * @param maxRequests the maximum number of requests to be launched
      * @return a collection of requests launched
      */
     virtual std::list<SqlRequest::Ptr> launchRequests(util::Lock const& lock,

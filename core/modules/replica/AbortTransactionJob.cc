@@ -37,7 +37,6 @@
 #include "lsst/log/Log.h"
 
 using namespace std;
-using namespace nlohmann;
 
 namespace {
 
@@ -73,65 +72,6 @@ vector<vector<string>> distributeTables(vector<string> const& allTables,
 namespace lsst {
 namespace qserv {
 namespace replica {
-
-void AbortTransactionJobResult::iterate(
-        AbortTransactionJobResult::OnTableVisitCallback const& onTableVisit) const {
-
-    for (auto&& workerItr: resultSets) {
-        auto&& worker = workerItr.first;
-        for (auto&& requestResultSets: workerItr.second) {
-            for (auto&& tableItr: requestResultSets.queryResultSet) {
-                auto&& table = tableItr.first;
-                auto&& resultSet = tableItr.second;
-                onTableVisit(worker, table, resultSet);
-            }
-        }
-    }
-}
-
-json AbortTransactionJobResult::toJson() const {
-    json result = json::object();
-    iterate([&result](WorkerName const& worker,
-                      TableName const& table,
-                      SqlResultSet::ResultSet const& resultSet) {
-        result["completed"][worker][table] = resultSet.extendedStatus == ExtendedCompletionStatus::EXT_STATUS_NONE ? 1 : 0;
-        result["error"    ][worker][table] = resultSet.error;
-    });
-    return result;
-}
-
-
-util::ColumnTablePrinter AbortTransactionJobResult::toColumnTable(
-        string const& caption,
-        string const& indent,
-        bool verticalSeparator,
-        bool reportAll) const {
-
-    vector<string> workers;
-    vector<string> tables;
-    vector<string> statuses;
-    vector<string> errors;
-
-    iterate([&](WorkerName const& worker,
-                TableName const& table,
-                SqlResultSet::ResultSet const& resultSet) {
-        if (reportAll or resultSet.extendedStatus != ExtendedCompletionStatus::EXT_STATUS_NONE) {
-            workers.push_back(worker);
-            tables.push_back(table);
-            statuses.push_back(status2string(resultSet.extendedStatus));
-            errors.push_back(resultSet.error);
-        }
-    });
-
-    util::ColumnTablePrinter table(caption, indent, verticalSeparator);
-    table.addColumn("worker", workers,  util::ColumnTablePrinter::LEFT);
-    table.addColumn("table",  tables,   util::ColumnTablePrinter::LEFT);
-    table.addColumn("status", statuses, util::ColumnTablePrinter::LEFT);
-    table.addColumn("error",  errors,   util::ColumnTablePrinter::LEFT);
-
-    return table;
-}
-
 
 string AbortTransactionJob::typeName() { return "AbortTransactionJob"; }
 
@@ -208,8 +148,8 @@ list<pair<string,string>> AbortTransactionJob::extendedPersistentState() const {
 
 list<pair<string,string>> AbortTransactionJob::persistentLogData() const {
     list<pair<string,string>> result;
-    _resultData.iterate([&result](AbortTransactionJobResult::WorkerName const& worker,
-                                  AbortTransactionJobResult::TableName const& table,
+    _resultData.iterate([&result](AbortTransactionJobResult::Worker const& worker,
+                                  AbortTransactionJobResult::Scope const& table,
                                   SqlResultSet::ResultSet const& resultSet) {
         result.emplace_back(
             "status",
