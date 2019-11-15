@@ -40,6 +40,7 @@
 #include "replica/Job.h"
 #include "replica/SqlDeleteTablePartitionRequest.h"
 #include "replica/SqlResultSet.h"
+#include "util/TablePrinter.h"
 
 // This header declarations
 namespace lsst {
@@ -73,6 +74,20 @@ public:
 
     /// @return  JSON representation of the object
     nlohmann::json toJson() const;
+
+    /**
+     * Package results into a table. First parameters of the method are
+     * the same as for the constructor of the table printer class.
+     * @see class util::ColumnTablePrinter
+     * @param reportAll If a value of the parameter is 'true' then include all
+     * tables into the report regardless of the completion status for a table.
+     * Otherwise only those tables which failed to be processed by the job
+     * will be reported.
+     */
+    util::ColumnTablePrinter toColumnTable(std::string const& caption=std::string(),
+                                           std::string const& indent=std::string(),
+                                           bool verticalSeparator=true,
+                                           bool reportAll=true) const;
 };
 
 /**

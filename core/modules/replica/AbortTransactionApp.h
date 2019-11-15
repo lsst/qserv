@@ -41,13 +41,11 @@ namespace replica {
  */
 class AbortTransactionApp : public Application {
 public:
-    /// The pointer type for instances of the class
     typedef std::shared_ptr<AbortTransactionApp> Ptr;
 
     /**
      * The factory method is the only way of creating objects of this class
      * because of the very base class's inheritance from 'enable_shared_from_this'.
-     *
      * @param argc the number of command-line arguments
      * @param argv the vector of command-line arguments
      */
@@ -67,6 +65,7 @@ private:
 
     TransactionId _transactionId = 0;
     bool _allWorkers = false;
+    unsigned int _reportLevel = 0;
 };
 
 }}} // namespace lsst::qserv::replica

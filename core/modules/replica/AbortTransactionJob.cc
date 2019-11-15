@@ -101,6 +101,38 @@ json AbortTransactionJobResult::toJson() const {
 }
 
 
+util::ColumnTablePrinter AbortTransactionJobResult::toColumnTable(
+        string const& caption,
+        string const& indent,
+        bool verticalSeparator,
+        bool reportAll) const {
+
+    vector<string> workers;
+    vector<string> tables;
+    vector<string> statuses;
+    vector<string> errors;
+
+    iterate([&](WorkerName const& worker,
+                TableName const& table,
+                SqlResultSet::ResultSet const& resultSet) {
+        if (reportAll or resultSet.extendedStatus != ExtendedCompletionStatus::EXT_STATUS_NONE) {
+            workers.push_back(worker);
+            tables.push_back(table);
+            statuses.push_back(status2string(resultSet.extendedStatus));
+            errors.push_back(resultSet.error);
+        }
+    });
+
+    util::ColumnTablePrinter table(caption, indent, verticalSeparator);
+    table.addColumn("worker", workers,  util::ColumnTablePrinter::LEFT);
+    table.addColumn("table",  tables,   util::ColumnTablePrinter::LEFT);
+    table.addColumn("status", statuses, util::ColumnTablePrinter::LEFT);
+    table.addColumn("error",  errors,   util::ColumnTablePrinter::LEFT);
+
+    return table;
+}
+
+
 string AbortTransactionJob::typeName() { return "AbortTransactionJob"; }
 
 
