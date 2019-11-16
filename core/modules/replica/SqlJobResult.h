@@ -92,6 +92,21 @@ public:
                                            bool verticalSeparator=true,
                                            bool reportAll=true,
                                            std::string scopeName="") const;
+
+    /**
+     * Package results into a summary table which will have the following columns:
+     * @code
+     *   worker | #succeeded | #failed | performance [sec]
+     *  --------+------------+---------+-------------------
+     * @code
+     *
+     * First three parameters (\caption, \indent, and \verticalSeparator) of
+     * the method are the same as for the constructor of the table printer class.
+     * @see class util::ColumnTablePrinter
+     */
+    util::ColumnTablePrinter summaryToColumnTable(std::string const& caption=std::string(),
+                                                  std::string const& indent=std::string(),
+                                                  bool verticalSeparator=true) const;
 };
 
 }}} // namespace lsst::qserv::replica

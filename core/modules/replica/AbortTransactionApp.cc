@@ -76,7 +76,7 @@ AbortTransactionApp::AbortTransactionApp(int argc, char* argv[])
         "The flag includes all known workers (not just ENABLED) into the operation.",
         _allWorkers
     ).option(
-        "report_level",
+        "report-level",
         "The option which controls the verbosity of the job completion report."
         " Supported report levels:"
         " 0: no report, just return the completion status to the shell."

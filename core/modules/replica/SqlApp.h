@@ -83,6 +83,8 @@ private:
     unsigned int _timeoutSec = 300; /// When waiting for the completion of the queries
 
     size_t _pageSize = 100; /// Rows per page in the printout
+
+    unsigned int _reportLevel = 0;
 };
 
 }}} // namespace lsst::qserv::replica

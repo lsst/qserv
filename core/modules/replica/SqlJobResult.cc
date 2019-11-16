@@ -93,4 +93,44 @@ util::ColumnTablePrinter SqlJobResult::toColumnTable(
     return table;
 }
 
+
+util::ColumnTablePrinter SqlJobResult::summaryToColumnTable(
+        string const& caption,
+        std::string const& indent,
+        bool verticalSeparator) const {
+
+    vector<string> workers;
+    vector<size_t> succeeded;
+    vector<size_t> failed;
+    vector<double> performance;
+
+    for (auto&& itr : resultSets) {
+         auto&& worker = itr.first;
+         for (auto&& workerResultSet: itr.second) {
+             size_t numSucceeded = 0;
+             size_t numFailed = 0;
+             for (auto&& queryResultSetItr: workerResultSet.queryResultSet) {
+                auto&& resultSet = queryResultSetItr.second;
+                if (resultSet.extendedStatus == ExtendedCompletionStatus::EXT_STATUS_NONE) {
+                    numSucceeded++;
+                } else {
+                    numFailed++;
+                }
+             }
+             workers.push_back(worker);
+             succeeded.push_back(numSucceeded);
+             failed.push_back(numFailed);
+             performance.push_back(workerResultSet.performanceSec);
+         }
+    }
+
+    util::ColumnTablePrinter table(caption, indent, verticalSeparator);
+    table.addColumn("worker", workers, util::ColumnTablePrinter::LEFT);
+    table.addColumn("#succeeded", succeeded);
+    table.addColumn("#failed", failed);
+    table.addColumn("performance [sec]", performance);
+
+    return table;
+}
+
 }}} // namespace lsst::qserv::replica

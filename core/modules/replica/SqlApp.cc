@@ -102,6 +102,24 @@ SqlApp::SqlApp(int argc, char* argv[])
         "tables-page-size",
         "The number of rows in the table of replicas (0 means no pages).",
         _pageSize
+    ).option(
+        "report-level",
+        "The option which controls the verbosity of the job completion report."
+        " Supported report levels:"
+        " 0: no report, just return the completion status to the shell."
+        " 1: report a summary, including the job completion status, the number"
+        " of objects (tables/databases) failed to be processed, as well as the number"
+        " of objects which have been successfully processed."
+        " 2: report processing status of each object failed to be processed by the operation."
+        " The result will include the name of the object (if any), the name of a worker on which"
+        " the object was expected to be residing, the completion status of"
+        " the operation, and an error message (if any) reported by the remote"
+        " worker service. Results will be presented in a tabular format with a row"
+        " per each object involved into the operation."
+        " 3: also include into the report all objects which were successfully"
+        " processed by the operation. This level will also trigger printing result sets"
+        " for a query if command QUERY was requested.",
+        _reportLevel
     );
 
     parser().command(
@@ -287,44 +305,83 @@ int SqlApp::runImpl() {
     job->start();
     job->wait();
 
-    // Analyze and display results for each worker
+    if (_reportLevel > 0) {
+        cout << endl;
+        cout << "Job completion status: " << Job::state2string(job->extendedState()) << endl;
 
-    auto const& resultData = job->getResultData();
-    for (auto&& itr : resultData.resultSets) {
-        auto&& worker = itr.first;
-        auto&& workerResultSet = itr.second;
-        for (auto&& resultSet: workerResultSet) {
-            if (resultSet.hasErrors()) {
-                for (auto&& error: resultSet.allErrors()) {
-                    cout << "worker: " << worker << ",  error: " << error << endl;
+        auto&& resultData = job->getResultData();
+        size_t numSucceeded = 0;
+        map<ExtendedCompletionStatus,size_t> numFailed;
+        resultData.iterate(
+            [&numFailed, &numSucceeded](SqlJobResult::Worker const& worker,
+                                        SqlJobResult::Scope const& object,
+                                        SqlResultSet::ResultSet const& resultSet) {
+                if (resultSet.extendedStatus == ExtendedCompletionStatus::EXT_STATUS_NONE) {
+                    numSucceeded++;
+                } else {
+                    if (numFailed.count(resultSet.extendedStatus) == 0) {
+                        numFailed[resultSet.extendedStatus] = 0;
+                    }
+                    numFailed[resultSet.extendedStatus]++;
                 }
-                continue;
             }
-            string const caption =
-                    "worker: " + worker + ",  performance [sec]: "
-                    + to_string(resultSet.performanceSec);
+        );
+        cout << "Object processing summary:\n"
+             << "  succeeded: " << numSucceeded << "\n";
+        if (numFailed.size() == 0) {
+            cout << "  failed: " << 0 << endl;
+        } else {
+            cout << "  failed:\n";
+            for (auto&& itr: numFailed) {
+                cout << "    " << status2string(itr.first) << ": " << itr.second << endl;
+            }
+        }
+        cout << endl;
 
+        string const indent = "";
+        bool const topSeparator = false;
+        bool const bottomSeparator = false;
+        bool const repeatedHeader = false;
+        bool const verticalSeparator = true;
+
+        auto const workerSummaryTable = resultData.summaryToColumnTable(
+                "Worker requests statistics:", indent
+        );
+        workerSummaryTable.print(cout, topSeparator, bottomSeparator, _pageSize,
+                                 repeatedHeader);
+        cout << endl;
+
+        if (_reportLevel > 1) {
             if (_command == "QUERY") {
-                auto const queryResultSetItr = resultSet.queryResultSet.find("");
-                if (queryResultSetItr == resultSet.queryResultSet.end()) {
-                    throw logic_error(
-                            "SqlApp::" + string(__func__) + "  no result set found for the query");
-                }
-                string const indent = "";
-                auto table = queryResultSetItr->second.toColumnTable(caption, indent);
-
-                bool const topSeparator    = false;
-                bool const bottomSeparator = false;
-                bool const repeatedHeader  = false;
-
-                table.print(cout, topSeparator, bottomSeparator, _pageSize, repeatedHeader);
-                cout << "\n";
+                resultData.iterate([&](SqlJobResult::Worker const& worker,
+                                       SqlJobResult::Scope const& scope,
+                                       SqlResultSet::ResultSet const& resultSet) {
+                    string const caption =
+                        worker + ":" + scope + ":" + status2string(resultSet.extendedStatus)
+                        + ":" + resultSet.error;
+                    if (resultSet.extendedStatus != ExtendedCompletionStatus::EXT_STATUS_NONE) {
+                        cout << caption << endl;
+                    } else {
+                        auto const table = resultSet.toColumnTable(
+                                caption, indent, verticalSeparator
+                        );
+                        table.print(cout, topSeparator, bottomSeparator, _pageSize,
+                                    repeatedHeader);
+                    }
+                    cout << endl;
+                });
             } else {
-                cout << caption << endl;
+                string const caption = "Result sets completion status:";
+                bool const reportAll = _reportLevel > 2;
+                auto const table = resultData.toColumnTable(
+                        caption, indent, verticalSeparator, reportAll
+                );
+                table.print(cout, topSeparator, bottomSeparator, _pageSize,
+                            repeatedHeader);
             }
         }
     }
-    return 0;
+    return job->extendedState() == Job::SUCCESS ? 0 : 1;
 }
 
 }}} // namespace lsst::qserv::replica

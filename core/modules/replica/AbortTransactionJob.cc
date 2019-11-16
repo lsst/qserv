@@ -287,7 +287,7 @@ void AbortTransactionJob::_onRequestFinish(SqlDeleteTablePartitionRequest::Ptr c
 
     if (_numFinished == _requests.size()) {
 
-        // Harvest results from all jobs regardless of their completion status.
+        // Harvest results from all requests regardless of their completion status.
         // Requests declared as failed might be partially successful. In order
         // to determine which tables have not been processed one has to look
         // at the corresponding result set reported in the response data
