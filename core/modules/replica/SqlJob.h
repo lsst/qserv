@@ -27,6 +27,7 @@
 #include <map>
 #include <string>
 #include <tuple>
+#include <vector>
 
 // Qserv headers
 #include "replica/Controller.h"
@@ -118,12 +119,13 @@ protected:
      * @param lock on the mutex Job::_mtx to be acquired for protecting
      *   the object's state
      * @param worker the name of a worker the requests to be sent to
-     * @param maxRequests the maximum number of requests to be launched
+     * @param maxRequestsPerWorker the maximum number of requests to be
+     *   launched per each worker
      * @return a collection of requests launched
      */
     virtual std::list<SqlRequest::Ptr> launchRequests(util::Lock const& lock,
                                                       std::string const& worker,
-                                                      size_t maxRequests=1) = 0;
+                                                      size_t maxRequestsPerWorker=1) = 0;
 
     /**
      * This method lets a request type-specific subclass to stop requests
@@ -150,7 +152,49 @@ protected:
         );
     }
 
+    /**
+     * Find out which tables corresponding to the name are expected to exist
+     * at the worker as per the Configuration and persistent records for
+     * the replicas (for the partitioned tables only). Normally this method
+     * is expected to return a single entry for the regular tables, and 
+     * multiple entries for the partitioned tables (which includes prototype
+     * tables, special "overflow" tables, and chunk-specific tables).
+     *
+     * @return a collection of tables found
+     * @throws std::invalid_argument in case if the database or a table
+     *   aren't valid.
+     */
+    std::vector<std::string> workerTables(std::string const& worker,
+                                          std::string const& database,
+                                          std::string const& table) const;
+
+    /**
+     * The algorithm will distribute tables between the specified number of
+     * bins. The resulting collection will be empty if the input collection
+     * of tables is empty or if the number of bins is 0, and the result will
+     * not have empty bins.
+     *
+     * @param allTables all known tables 
+     * @param numBins the total number of bins for distributing tables
+     * @return tables distributed between the bins
+     */
+    static std::vector<std::vector<std::string>> distributeTables(
+            std::vector<std::string> const& allTables,
+            size_t numBins);
+
 private:
+
+    /**
+     * Verify if the database and and the table are known to the Configuration,
+     * and and obtain the partitioning status of the table.
+     *
+     * @return 'true' if this si the partitioned table
+     * @throws std::invalid_argument in case if the database or a table
+     *   aren't valid.
+     */
+    bool _isPartitioned(std::string const& database,
+                        std::string const& table) const;
+
     // Input parameters
 
     uint64_t const _maxRows;

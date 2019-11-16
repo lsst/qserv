@@ -702,16 +702,18 @@ int ControllerApp::runImpl() {
 
     } else if ("SQL_DELETE_TABLE" == _requestType) {
 
+        vector<string> const tables = {_sqlTable};
         request = controller->sqlDeleteTable(
-            _workerName, _sqlDatabase, _sqlTable,
+            _workerName, _sqlDatabase, tables,
             SqlRequest::extendedPrinter,
             _priority, not _doNotTrackRequest
         );
 
     } else if ("SQL_REMOVE_TABLE_PARTITIONS" == _requestType) {
 
+        vector<string> const tables = {_sqlTable};
         request = controller->sqlRemoveTablePartitions(
-            _workerName, _sqlDatabase, _sqlTable,
+            _workerName, _sqlDatabase, tables,
             SqlRequest::extendedPrinter,
             _priority, not _doNotTrackRequest
         );

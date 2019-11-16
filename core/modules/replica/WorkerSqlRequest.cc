@@ -307,6 +307,9 @@ string WorkerSqlRequest::_batchQuery(database::mysql::Connection::Ptr const& con
     string const databaseTable = conn->sqlId(_request.database()) + "." + conn->sqlId(table);
 
     switch (_request.type()) {
+        case ProtocolRequestSql::DROP_TABLE:
+            return "DROP TABLE IF EXISTS " + databaseTable;
+
         case ProtocolRequestSql::DROP_TABLE_PARTITION:
             return "ALTER TABLE " + databaseTable + " DROP PARTITION IF EXISTS "
                    + conn->sqlId("p" + to_string(_request.transaction_id()));

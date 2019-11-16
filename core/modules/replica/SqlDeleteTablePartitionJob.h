@@ -28,7 +28,6 @@
 #include <set>
 #include <string>
 #include <tuple>
-#include <vector>
 
 // Qserv headers
 #include "replica/Common.h"
@@ -44,6 +43,12 @@ namespace replica {
  * the same request for removing a MySQL partition corresponding to a given
  * super-transaction from existing table from all worker databases of a setup.
  * Result sets are collected in the above defined data structure.
+ *
+ * @note the meaning of the 'table' depends on a kind of a table. If this is
+ * a regular table then tables with exact names will be deleted from all workers.
+ * For the partitioned tables the operation will include both the prototype
+ * tables (tables at exactly the specified name existing at all workers) and
+ * the corresponding chunk tables for all chunks found at the relevant workers.
  */
 class SqlDeleteTablePartitionJob : public SqlJob {
 public:
@@ -62,7 +67,7 @@ public:
      * low-level pointers).
      *
      * @param database the name of a database from which a table will be deleted
-     * @param tables the names of existing tables to be affected by the operation
+     * @param table the name of an existing table to be affected by the operation
      * @param transactionId an identifier of a super-transaction corresponding
      *   to a MySQL partition to be dropped. The transaction must exist, and it
      *   should be in the ABORTED state.
@@ -76,7 +81,7 @@ public:
      * @return pointer to the created object
      */
     static Ptr create(std::string const& database,
-                      std::vector<std::string> const& tables,
+                      std::string const& table,
                       uint32_t transactionId,
                       bool allWorkers,
                       Controller::Ptr const& controller,
@@ -93,7 +98,7 @@ public:
     // Trivial get methods
 
     std::string const& database() const { return _database; }
-    std::vector<std::string> const& tables() const { return _tables; }
+    std::string const& table() const { return _table; }
 
     TransactionId transactionId() const { return _transactionId; }
 
@@ -104,14 +109,14 @@ protected:
 
     std::list<SqlRequest::Ptr> launchRequests(util::Lock const& lock,
                                               std::string const& worker,
-                                              size_t maxRequests) final;
+                                              size_t maxRequestsPerWorker) final;
 
     void stopRequest(util::Lock const& lock,
                      SqlRequest::Ptr const& request) final;
 
 private:
     SqlDeleteTablePartitionJob(std::string const& database,
-                               std::vector<std::string> const& tables,
+                               std::string const& table,
                                uint32_t transactionId,
                                bool allWorkers,
                                Controller::Ptr const& controller,
@@ -122,7 +127,7 @@ private:
     // Input parameters
 
     std::string const _database;
-    std::vector<std::string> const _tables;
+    std::string const _table;
     uint32_t const _transactionId;
 
     CallbackType _onFinish;     /// @note is reset when the job finishes

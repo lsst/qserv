@@ -22,18 +22,15 @@
 // Class header
 #include "replica/SqlRemoveTablePartitionsJob.h"
 
-// System headers
-#include <algorithm>
-#include <stdexcept>
-
 // Qserv headers
-#include "replica/Configuration.h"
-#include "replica/ServiceProvider.h"
 #include "replica/SqlRemoveTablePartitionsRequest.h"
 #include "replica/StopRequest.h"
 
 // LSST headers
 #include "lsst/log/Log.h"
+
+// System headers
+#include <vector>
 
 using namespace std;
 
@@ -88,22 +85,6 @@ SqlRemoveTablePartitionsJob::SqlRemoveTablePartitionsJob(
         _database(database),
         _table(table),
         _onFinish(onFinish) {
-
-    // Determine the type of the table
-    auto const info = controller->serviceProvider()->config()->databaseInfo(database);
-    if (find(info.partitionedTables.begin(),
-             info.partitionedTables.end(), table) != info.partitionedTables.end()) {
-        _isPartitioned = true;
-        return;
-    }
-
-    // And the following test is just to ensure the table name is valid
-    if (find(info.regularTables.begin(),
-             info.regularTables.end(), table) != info.regularTables.end()) return;
-
-    throw invalid_argument(
-            context() + string(__func__) + "  unknown <database>.<table> '" + database +
-            "'.'" + table + "'");
 }
 
 
@@ -118,47 +99,27 @@ list<pair<string,string>> SqlRemoveTablePartitionsJob::extendedPersistentState()
 
 list<SqlRequest::Ptr> SqlRemoveTablePartitionsJob::launchRequests(util::Lock const& lock,
                                                                   string const& worker,
-                                                                  size_t maxRequests) {
+                                                                  size_t maxRequestsPerWorker) {
     list<SqlRequest::Ptr> requests;
 
-    // Initialize worker's sub-collection if the first time seeing
-    // this worker.
-    if (not _workers2tables.count(worker)) {
+    if (maxRequestsPerWorker == 0) return requests;
 
-        // This table must exist in both versions
-        _workers2tables[worker].push_back(table());
+    // Make sure this worker has already been served
+    if (_workers.count(worker) != 0) return requests;
+    _workers.insert(worker);
 
-        // Add chunk specific tables
-        if (_isPartitioned) {
+    // All tables which are going to be processed at the worker
+    vector<string> const allTables = workerTables(worker, database(), table());
 
-            // Locate all chunks registered on the worker. These chunks will be used
-            // to build names of the corresponding chunk-specific partitioned tables.
-
-            vector<ReplicaInfo> replicas;
-            controller()->serviceProvider()->databaseServices()->findWorkerReplicas(
-                replicas,
-                worker,
-                database()
-            );
-            for (auto&& replica: replicas) {
-                auto const chunk = replica.chunk();
-                _workers2tables[worker].push_back(table() + "_" + to_string(chunk));
-                _workers2tables[worker].push_back(table() + "FullOverlap_" + to_string(chunk));
-            }
-        }
-    }
-
-    // Launch up to (not to exceed) the specified number of requests for tables
-    // by pulling table names from the worker's sub-collection. Note that used
-    // tables will get removed from the sub-collections.
-
+    // Divide tables into subsets allocated to the "batch" requests. Then launch
+    // the requests for the current worker.
     auto const self = shared_from_base<SqlRemoveTablePartitionsJob>();
-    while (not _workers2tables[worker].empty() and requests.size() < maxRequests) {
+    for (auto&& tables: distributeTables(allTables, maxRequestsPerWorker)) {
         requests.push_back(
             controller()->sqlRemoveTablePartitions(
                 worker,
                 database(),
-                _workers2tables[worker].front(),
+                tables,
                 [self] (SqlRemoveTablePartitionsRequest::Ptr const& request) {
                     self->onRequestFinish(request);
                 },
@@ -167,7 +128,6 @@ list<SqlRequest::Ptr> SqlRemoveTablePartitionsJob::launchRequests(util::Lock con
                 id()    /* jobId */
             )
         );
-        _workers2tables[worker].pop_front();
     }
     return requests;
 }

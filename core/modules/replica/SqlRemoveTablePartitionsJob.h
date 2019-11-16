@@ -100,31 +100,17 @@ public:
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
      *
-     * @param database
-     *   the name of a database from which a table will be deleted
-     *
-     * @param table
-     *   the name of an existing table to be affected by the operation
-     *
-     * @param allWorkers
-     *   engage all known workers regardless of their status. If the flag
-     *   is set to 'false' then only 'ENABLED' workers which are not in
-     *   the 'READ-ONLY' state will be involved into the operation.
-     *
-     * @param controller
-     *   is needed launching requests and accessing the Configuration
-     *
-     * @param parentJobId
-     *   (optional) identifier of a parent job
-     *
-     * @param onFinish
-     *   (optional) callback function to be called upon a completion of the job
-     *
-     * @param options
-     *   (optional) defines the job priority, etc.
-     *
-     * @return
-     *   pointer to the created object
+     * @param database the name of a database from which a table will be deleted
+     * @param table the name of an existing table to be affected by the operation
+     * @param allWorkers engage all known workers regardless of their status.
+     *   If the flag is set to 'false' then only 'ENABLED' workers which are
+     *   not in the 'READ-ONLY' state will be involved into the operation.
+     * @param controller is needed launching requests and accessing the Configuration
+     * @param parentJobId (optional) identifier of a parent job
+     * @param onFinish (optional) callback function to be called upon a completion
+     *   of the job
+     * @param options (optional) defines the job priority, etc.
+     * @return a pointer to the created object
      */
     static Ptr create(std::string const& database,
                       std::string const& table,
@@ -133,8 +119,6 @@ public:
                       std::string const& parentJobId=std::string(),
                       CallbackType const& onFinish=nullptr,
                       Job::Options const& options=defaultOptions());
-
-    // Default construction and copy semantics are prohibited
 
     SqlRemoveTablePartitionsJob() = delete;
     SqlRemoveTablePartitionsJob(SqlRemoveTablePartitionsJob const&) = delete;
@@ -147,24 +131,19 @@ public:
     std::string const& database() const { return _database; }
     std::string const& table()    const { return _table; }
 
-    /// @see Job::extendedPersistentState()
     std::list<std::pair<std::string,std::string>> extendedPersistentState() const final;
 
 protected:
-    /// @see Job::notify()
     void notify(util::Lock const& lock) final;
 
-    /// @see SqlJob::launchRequests()
     std::list<SqlRequest::Ptr> launchRequests(util::Lock const& lock,
                                               std::string const& worker,
-                                              size_t maxRequests) final;
+                                              size_t maxRequestsPerWorker) final;
 
-    /// @see SqlJob::stopRequest()
     void stopRequest(util::Lock const& lock,
                      SqlRequest::Ptr const& request) final;
 
 private:
-    /// @see SqlRemoveTablePartitionsJob::create()
     SqlRemoveTablePartitionsJob(std::string const& database,
                                 std::string const& table,
                                 bool allWorkers,
@@ -180,25 +159,10 @@ private:
 
     CallbackType _onFinish;     /// @note is reset when the job finishes
 
-    /// Is set in the constructor by pulling table status from the Configuration
-    bool _isPartitioned = false;
-
-    /// A collection of per-worker tables for which the remote operations are
-    /// required. Each worker-specific sub-collections gets initialized
-    /// just once upon the very first request to the request launching method
-    /// in a context of the corresponding worker. Hence there are three states
-    /// of the sub-collections:
-    ///
-    /// - (initial) no worker key exists. At this state the algorithm would
-    ///   initialize the sub-collection if called at the request launching method
-    ///   for the first time in a context of the worker.
-    /// - (populated) will be used for making requests to the worker. Each time
-    ///   a request for a table is sent to the worker the table gets removed from
-    ///   from the sub-collection
-    /// - (empty) the worker key exists. This means no tables to be processed for
-    ///   by the worker exists. The tables have either been all processed, or
-    ///   the collection was made empty upon the initialization.
-    std::map<std::string, std::list<std::string>> _workers2tables;
+    /// A registry of workers to mark those for which request has been sent.
+    /// The registry prevents duplicate requests because exactly one
+    /// such request is permitted to be sent to each worker.
+    std::set<std::string> _workers;
 };
 
 }}} // namespace lsst::qserv::replica

@@ -135,7 +135,7 @@ protected:
     /// @see SqlJob::launchRequests()
     std::list<SqlRequest::Ptr> launchRequests(util::Lock const& lock,
                                               std::string const& worker,
-                                              size_t maxRequests) final;
+                                              size_t maxRequestsPerWorker) final;
 
     /// @see SqlJob::stopRequest()
     void stopRequest(util::Lock const& lock,

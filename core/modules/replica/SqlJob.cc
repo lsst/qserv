@@ -28,6 +28,9 @@
 
 // Qserv headers
 #include "replica/Configuration.h"
+#include "replica/Controller.h"
+#include "replica/DatabaseServices.h"
+#include "replica/ReplicaInfo.h"
 #include "replica/ServiceProvider.h"
 #include "replica/StopRequest.h"
 
@@ -196,6 +199,70 @@ void SqlJob::onRequestFinish(SqlRequest::Ptr const& request) {
                                                       ExtendedState::FAILED);
         }
     }
+}
+
+
+vector<vector<string>> SqlJob::distributeTables(vector<string> const& allTables,
+                                                size_t numBins) {
+
+    // If the total number of tables if less than the number of bins
+    // then we won't be constructing empty bins.
+    vector<vector<string>> tablesPerBin(min(numBins, allTables.size()));
+
+    // The trivial 'round-robin' 
+    for (size_t i=0; i<allTables.size(); ++i) {
+        auto const bin = i % tablesPerBin.size();
+        tablesPerBin[bin].push_back(allTables[i]);
+    }
+    return tablesPerBin;
+}
+
+
+vector<string> SqlJob::workerTables(string const& worker,
+                                    string const& database,
+                                    string const& table) const {
+    vector<string> tables;
+    if (_isPartitioned(database, table)) {
+
+        // The prototype table for creating chunks and chunk overlap tables
+        tables.push_back(table);
+
+        // Locate all chunks registered on the worker. These chunks will be used
+        // to build names of the corresponding chunk-specific partitioned tables.
+        vector<ReplicaInfo> replicas;
+        controller()->serviceProvider()->databaseServices()->findWorkerReplicas(
+            replicas, worker, database);
+
+        for (auto&& replica: replicas) {
+            auto const chunk = replica.chunk();
+            tables.push_back(table + "_" + to_string(chunk));
+            tables.push_back(table + "FullOverlap_" + to_string(chunk));
+        }
+    } else {
+        tables.push_back(table);
+    }
+    return tables;
+}
+
+
+bool SqlJob::_isPartitioned(string const& database,
+                            string const& table) const {
+
+    // Determine the type of the table
+    auto const info = controller()->serviceProvider()->config()->databaseInfo(database);
+    if (find(info.partitionedTables.begin(),
+             info.partitionedTables.end(), table) != info.partitionedTables.end()) {
+        return true;
+    }
+
+    // And the following test is just to ensure the table name is valid
+    if (find(info.regularTables.begin(),
+             info.regularTables.end(), table) != info.regularTables.end()) {
+        return false;
+    }
+    throw invalid_argument(
+            context() + string(__func__) + "  unknown <database>.<table> '" + database +
+            "'.'" + table + "'");
 }
 
 }}} // namespace lsst::qserv::replica

@@ -390,7 +390,7 @@ public:
     SqlDeleteTableRequestPtr sqlDeleteTable(
             std::string const& workerName,
             std::string const& database,
-            std::string const& table,
+            std::vector<std::string> const& tables,
             std::function<void(SqlDeleteTableRequestPtr)> const& onFinish=nullptr,
             int priority=0,
             bool keepTracking=true,
@@ -400,7 +400,7 @@ public:
     SqlRemoveTablePartitionsRequestPtr sqlRemoveTablePartitions(
             std::string const& workerName,
             std::string const& database,
-            std::string const& table,
+            std::vector<std::string> const& tables,
             std::function<void(SqlRemoveTablePartitionsRequestPtr)> const& onFinish=nullptr,
             int priority=0,
             bool keepTracking=true,

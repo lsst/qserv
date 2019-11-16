@@ -44,8 +44,8 @@ SqlRemoveTablePartitionsRequest::Ptr SqlRemoveTablePartitionsRequest::create(
         ServiceProvider::Ptr const& serviceProvider,
         boost::asio::io_service& io_service,
         string const& worker,
-        std::string const& database,
-        std::string const& table,
+        string const& database,
+        vector<string> const& tables,
         CallbackType const& onFinish,
         int priority,
         bool keepTracking,
@@ -56,7 +56,7 @@ SqlRemoveTablePartitionsRequest::Ptr SqlRemoveTablePartitionsRequest::create(
         io_service,
         worker,
         database,
-        table,
+        tables,
         onFinish,
         priority,
         keepTracking,
@@ -69,8 +69,8 @@ SqlRemoveTablePartitionsRequest::SqlRemoveTablePartitionsRequest(
         ServiceProvider::Ptr const& serviceProvider,
         boost::asio::io_service& io_service,
         string const& worker,
-        std::string const& database,
-        std::string const& table,
+        string const& database,
+        vector<string> const& tables,
         CallbackType const& onFinish,
         int priority,
         bool keepTracking,
@@ -88,7 +88,11 @@ SqlRemoveTablePartitionsRequest::SqlRemoveTablePartitionsRequest(
     // Finish initializing the request body's content
     requestBody.set_type(ProtocolRequestSql::REMOVE_TABLE_PARTITIONING);
     requestBody.set_database(database);
-    requestBody.set_table(table);
+    requestBody.clear_tables();
+    for (auto&& table: tables) {
+        requestBody.add_tables(table);
+    }
+    requestBody.set_batch_mode(true);
 }
 
 
