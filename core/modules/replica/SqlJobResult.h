@@ -50,6 +50,9 @@ public:
     /// assigned to multiple requests issued to each worker.
     std::map<std::string, std::list<SqlResultSet>> resultSets;
 
+    /// Merge a result set of another job into into the current one
+    void merge(SqlJobResult const& other);
+
     // The callback type and its convenience types for the worker and scope
     // names within each batch that are used for exploring results sets of
     // the requests,

@@ -35,6 +35,16 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
+void SqlJobResult::merge(SqlJobResult const& other) {
+    for (auto&& otherWorkerItr: other.resultSets) {
+        auto&& worker = otherWorkerItr.first;
+        auto&& otherColl = otherWorkerItr.second;
+        auto&& thisColl = resultSets[worker];
+        thisColl.insert(thisColl.cend(), otherColl.cbegin(), otherColl.cend());
+    }
+}
+
+
 void SqlJobResult::iterate(OnResultVisitCallback const& onResultVisitCallback) const {
     for (auto&& workerItr: resultSets) {
         auto&& worker = workerItr.first;
