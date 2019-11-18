@@ -114,8 +114,8 @@ int AbortTransactionApp::runImpl() {
         size_t numSucceeded = 0;
         map<ExtendedCompletionStatus,size_t> numFailed;
         resultData.iterate(
-            [&numFailed, &numSucceeded](AbortTransactionJobResult::Worker const& worker,
-                                        AbortTransactionJobResult::Scope const& table,
+            [&numFailed, &numSucceeded](SqlJobResult::Worker const& worker,
+                                        SqlJobResult::Scope const& table,
                                         SqlResultSet::ResultSet const& resultSet) {
                 if (resultSet.extendedStatus == ExtendedCompletionStatus::EXT_STATUS_NONE) {
                     numSucceeded++;
@@ -143,7 +143,8 @@ int AbortTransactionApp::runImpl() {
             string const indent = "";
             bool const verticalSeparator = true;
             bool const reportAll = _reportLevel > 2;
-            auto tablePrinter = resultData.toColumnTable(caption, indent, verticalSeparator, reportAll);
+            auto tablePrinter = resultData.toColumnTable(
+                    caption, indent, verticalSeparator, reportAll, "table");
 
             bool const topSeparator = false;
             bool const bottomSeparator = false;

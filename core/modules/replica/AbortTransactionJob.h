@@ -25,22 +25,12 @@
 #include <cstdint>
 #include <functional>
 #include <list>
-#include <map>
 #include <memory>
 #include <string>
-#include <vector>
-
-// Third party headers
-#include "nlohmann/json.hpp"
 
 // Qserv headers
-#include "replica/Common.h"
-#include "replica/Configuration.h"
-#include "replica/DatabaseServices.h"
-#include "replica/Job.h"
-#include "replica/SqlDeleteTablePartitionRequest.h"
-#include "replica/SqlJobResult.h"
-#include "util/TablePrinter.h"
+#include "replica/Controller.h"
+#include "replica/SqlDeleteTablePartitionJob.h"
 
 // This header declarations
 namespace lsst {
@@ -48,58 +38,25 @@ namespace qserv {
 namespace replica {
 
 /**
- * Class AbortTransactionJobResult represents an extended collection of
- * results received from worker services upon a completion of the job.
- */
-class AbortTransactionJobResult: public SqlJobResult {
-public:
-
-    /**
-     * This is just a front-end to a similar method of the base class.
-     * The current implementation will print the following table header:
-     * @code
-     *   worker | table | status | error
-     *  --------+-------+--------+-------
-     * @code
-     * @see SqlJobResult::toColumnTable
-     */
-    util::ColumnTablePrinter toColumnTable(std::string const& caption=std::string(),
-                                           std::string const& indent=std::string(),
-                                           bool verticalSeparator=true,
-                                           bool reportAll=true) const {
-        return SqlJobResult::toColumnTable(caption,
-                                           indent,
-                                           verticalSeparator,
-                                           reportAll,
-                                           "table");
-    }
-};
-
-/**
- * Class AbortTransactionJob represents a tool which will broadcast
- * requests for removing MySQL partitions corresponding to a given
- * super-transaction. The algorithm is designed to work for all types
- * of tables (regular or partitioned) across a select (sub-)set of worker
- * databases. Result sets are collected into structure AbortTransactionJobResult.
- * 
- * An implementation of the job will limit the number of the concurrent
- * in-flight requests to avoid overloading a host where the job issuing
- * Controller runs. The limit will be based on a total number of the requests
- * processing processing threads at the worker services
- * (e.g. N_workers x M_threads_per_worker).
+ * Class AbortTransactionJob represents a tool which will issue and track
+ * a collection of the table-specific jobs for removing MySQL partitions
+ * from the tables corresponding to a given super-transaction. The algorithm
+ * is designed to work for all types of tables (regular or partitioned) across
+ * a select (sub-)set of workers. Result sets are collected into an object
+ * of class SqlJobResult.
  */
 class AbortTransactionJob : public Job  {
 public:
     /// The pointer type for instances of the class
     typedef std::shared_ptr<AbortTransactionJob> Ptr;
 
-    /// The function type for notifications on the completion of the request
+    /// The function type for notifications on the completion of the job
     typedef std::function<void(Ptr)> CallbackType;
 
     /// @return the unique name distinguishing this class from other types of jobs
     static std::string typeName();
 
-    /// @return default options object for this type of a request
+    /// @return default options object for this type of a job
     static Job::Options const& defaultOptions();
 
     /**
@@ -150,7 +107,7 @@ public:
      * @throws std::logic_error if the job didn't finished at a time when the method
      *   was called
      */
-    AbortTransactionJobResult const& getResultData() const;
+    SqlJobResult const& getResultData() const;
 
     std::list<std::pair<std::string,std::string>> extendedPersistentState() const final;
 
@@ -166,7 +123,7 @@ protected:
 
 
 private:
-    AbortTransactionJob(uint32_t transactionId,
+    AbortTransactionJob(TransactionId transactionId,
                         bool allWorkers,
                         Controller::Ptr const& controller,
                         std::string const& parentJobId,
@@ -174,7 +131,7 @@ private:
                         Job::Options const& options);
 
 
-    void _onRequestFinish(SqlDeleteTablePartitionRequest::Ptr const& request);
+    void _onChildJobFinish(SqlDeleteTablePartitionJob::Ptr const& job);
  
     // Input parameters
 
@@ -182,25 +139,18 @@ private:
     bool const _allWorkers;
 
     CallbackType _onFinish;     /// @note is reset when the job finishes
-
-    /// Set up by the constructor
-
-    TransactionInfo _transactionInfo;
-    DatabaseInfo    _databaseInfo;
-
-    std::vector<std::string> _workers;
     
-    /// A collection of requests which are either in flight, or finished
-    std::list<SqlDeleteTablePartitionRequest::Ptr> _requests;
+    /// A collection of the child jobs which are either in flight, or finished
+    std::list<SqlDeleteTablePartitionJob::Ptr> _jobs;
 
-    // Request counters are used for tracking a condition for
-    // completing the job and for computing its final state.
+    // Counters for the child jobs are used for tracking a condition for completing
+    // this job and for computing its final state.
 
     size_t _numFinished = 0;
     size_t _numSuccess = 0;
 
-    /// The result of the operation (gets updated as requests are finishing)
-    AbortTransactionJobResult _resultData;
+    /// The result of the operation (gets updated as jobs are finishing)
+    SqlJobResult _resultData;
 };
 
 }}} // namespace lsst::qserv::replica
