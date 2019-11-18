@@ -24,6 +24,9 @@
 
 // System headers
 #include <algorithm>
+#include <cctype>
+#include <fstream>
+#include <streambuf>
 #include <iostream>
 #include <limits>
 #include <regex>
@@ -39,6 +42,7 @@
 #include "util/File.h"
 
 using namespace std;
+using namespace nlohmann;
 namespace fs = boost::filesystem;
 
 namespace {
@@ -47,6 +51,34 @@ string const description =
     "This is an  application which acts as a a catalog data loading"
     " client of the Replication system's catalog data ingest server.";
 
+string parse(string const& context, json const& jsonObj, string const& key) {
+    if ((0 == jsonObj.count(key) or not jsonObj[key].is_string())) {
+        throw invalid_argument(
+                context + "No key for <" + key + "> found in the current element of the JSON array"
+                " or its value is not a string");
+    }
+    return jsonObj[key];
+}
+
+
+template<typename T>
+T parse(string const& context, json const& jsonObj, string const& key, T minValue) {
+    if ((0 == jsonObj.count(key) or not jsonObj[key].is_number())) {
+        throw invalid_argument(
+                context + "No key for <" + key + "> found in the current element of the JSON array"
+                " or its value is not a number");
+    }
+    uint64_t const num = jsonObj[key];
+    if (num < minValue or num > numeric_limits<T>::max()) {
+        throw invalid_argument(
+                context
+                + "Failed to parse JSON object, a value " + to_string(num)
+                + " of <" + key + "> is not in a range of " + to_string(minValue) + "-"
+                + to_string(numeric_limits<T>::max()) + ".");
+    }
+    return (T)num;
+}
+
 } /// namespace
 
 
@@ -54,10 +86,48 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
+list<FileIngestApp::FileIngestSpec> FileIngestApp::parseFileList(json const& jsonObj) {
+    string const context = "FileIngestApp::" + string(__func__) + "  ";
+
+    list<FileIngestApp::FileIngestSpec> files;
+
+    if (not jsonObj.is_array()) {
+        throw invalid_argument(
+                context + "The input parameter doesn't represent a JSON array of file"
+                " specifications.");
+    }
+
+    for (auto&& fileSpecJson: jsonObj) {
+        if (not fileSpecJson.is_object()) {
+            throw invalid_argument(
+                    context + "The next element in the JSON array doesn't represent a JSON object"
+                    " with a file specification.");
+        }
+        FileIngestApp::FileIngestSpec file;
+
+        file.workerHost    = parse(          context, fileSpecJson, "worker-host");
+        file.workerPort    = parse<uint16_t>(context, fileSpecJson, "worker-port", 1);
+        file.transactionId = parse<uint32_t>(context, fileSpecJson, "transaction-id", 0);
+        file.tableName     = parse(          context, fileSpecJson, "table");
+
+        string tableType = parse(context, fileSpecJson, "type");
+        transform(tableType.begin(), tableType.end(), tableType.begin(), ::toupper);
+        if ((tableType != "R") and (tableType != "P")) {
+            throw invalid_argument(
+                    + "Failed to parse JSON object, a value " + tableType
+                    + " of <type> is not in a set of {'R','P'}.");
+        }
+        file.tableType = tableType;
+        file.inFileName = parse(context, fileSpecJson, "path");
+
+        files.push_back(file);
+    }
+    return files;
+}
+
+
 FileIngestApp::Ptr FileIngestApp::create(int argc, char* argv[]) {
-    return Ptr(
-        new FileIngestApp(argc, argv)
-    );
+    return Ptr(new FileIngestApp(argc, argv));
 }
 
 
@@ -119,13 +189,16 @@ FileIngestApp::FileIngestApp(int argc, char* argv[])
         "FILE-LIST"
     ).description(
         "The batch ingest option. A list of files to be ingested will be read from"
-        " a file.  Each line of the file specifies a destination of the ingest and"
-        " the name name of a file to ingest via the following space-separated fields:"
-        " <worker-host> <worker-port> <transaction-id> <table> {'P'|'R'} <infile>."
-        " Where 'P' is for the partitioned (chunked) table contributions, and 'R' is"
-        " for the regular tables contributions. Input files for the partitioned tables"
-        " are expected to have the following names: 'chunk_<num>.txt' or"
-        " 'chunk_<num>_overlap.txt'. The files will be ingested sequentially."
+        " a file. The content of the file is required to be a serialized JSON array"
+        " of objects. Each object specifies a destination of the ingest and"
+        " the name name of a file to ingest. The general schema of the JSON object is:"
+        " [{\"worker-host\":<string>,\"worker-port\":<number>,\"transaction-id\":<number>,"
+        "\"table\":<string>,\"type\":<string>,\"path\":<string>},...]."
+        " Where allowed values for the key \"type\" are either \"P\" for"
+        " the partitioned (chunked) table contributions, or \"R\" for the"
+        " regular tables contributions. Input files for the partitioned tables"
+        " are expected to have the following names: \"chunk_<num>.txt\" or"
+        " \"chunk_<num>_overlap.txt\". The files will be ingested sequentially."
     ).required(
         "file-list",
         "The name of a file with ingest specifications. If the file name is set to '-'"
@@ -143,9 +216,7 @@ int FileIngestApp::runImpl() {
     } else if (_command == "FILE-LIST") {
         files = _readFileList();
     } else {
-        throw invalid_argument(
-                context
-                + "Unsupported loading method " + _command);
+        throw invalid_argument(context + "Unsupported loading method " + _command);
     }
     for (auto&& file: files) {
         _ingest(file);
@@ -157,52 +228,27 @@ int FileIngestApp::runImpl() {
 list<FileIngestApp::FileIngestSpec> FileIngestApp::_readFileList() const {
     string const context = "FileIngestApp::" + string(__func__) + "  ";
 
-    list<FileIngestSpec> files;
-    int lineNum = 0;
-
-    for (auto&& line: util::File::getLines(_fileListName)) {
-        ++lineNum;
-
-        // Fields to be parsed:
-        // <worker-host> <worker-port> <transaction-id> <table> <type> <infile>
-        regex const re("^(.+)[ ]+([0-9]+)[ ]+([0-9]+)[ ]+(.+)[ ]+(P|R)[ ]+(.+)$", regex::extended);
-        smatch match;
-        if (not regex_search(line, match, re) or match.size() != 7) {
-            throw invalid_argument(
-                    context
-                    + "Failed to parse the content of file " + _fileListName + ":" + to_string(lineNum)
-                    + ", expected fields: <worker-host> <worker-port> <transaction-id> <table> <type> <infile>.");
-        }
-
-        FileIngestSpec file;
-        file.workerHost = match[1].str();
-
-        auto const workerPort = stoul(match[2].str());
-        if (workerPort < 1 or workerPort > numeric_limits<uint16_t>::max()) {
-            throw invalid_argument(
-                    context
-                    + "Failed to parse the content of file " + _fileListName + ":" + to_string(lineNum)
-                    + ", a value " + to_string(workerPort) + " of <worker-port> is not in a range of 1-"
-                    + to_string(numeric_limits<uint16_t>::max()) + ".");
-        }
-        file.workerPort = (uint16_t)workerPort;
-
-        auto const transactionId = stoul(match[3].str());
-        if (transactionId > numeric_limits<uint32_t>::max()) {
-            throw invalid_argument(
-                    context
-                    + "Failed to parse the content of file " + _fileListName + ":" + to_string(lineNum)
-                    + ", a value " + to_string(transactionId) + " of <transaction-id> is not in a range of 0-"
-                    + to_string(numeric_limits<uint32_t>::max()) + ".");
-        }
-        file.transactionId = (uint32_t)transactionId;
-        file.tableName = match[4].str();
-        file.tableType = match[5].str();
-        file.inFileName = match[6].str();
-        
-        files.push_back(file);
+    ifstream file(_fileListName);
+    if (not file.good()) {
+        throw invalid_argument(context + "Failed to open file: " + _fileListName);
     }
-    return files;
+    string str;
+    try {
+        str = string(istreambuf_iterator<char>(file), istreambuf_iterator<char>());
+    } catch (exception const& ex) {
+        throw invalid_argument(
+                context + "Failed to read file: " + _fileListName
+                + ", exception: " + string(ex.what()));
+    }
+    json jsonObj;
+    try {
+        jsonObj = json::parse(str);
+    } catch (exception const& ex) {
+        throw invalid_argument(
+                context + "Failed to parse the content of file: " + _fileListName
+                + " into a JSON object, exception: " + string(ex.what()));
+    }
+    return parseFileList(jsonObj);
 }
 
 
@@ -268,9 +314,9 @@ void FileIngestApp::_ingest(FileIngestSpec const& file) const {
     
     if (_verbose) {
         uint64_t const elapsedMs  = max(1UL, finishedMs - startedMs);
-        double   const elapsedSec = elapsedMs / 1000.;
-        uint64_t const rowsPerSec = ptr->totalNumRows() / elapsedSec;
-        uint64_t const megaBytesPerSec = ptr->sizeBytes() / 1000000 / elapsedSec;
+        double   const elapsedSec = elapsedMs / 1000;
+        double   const rowsPerSec = ptr->totalNumRows() / elapsedSec;
+        double   const megaBytesPerSec = ptr->sizeBytes() / 1000000 / elapsedSec;
         cout << "Ingest service location: " << file.workerHost << ":" << file.workerPort << "\n"
              << " Transaction identifier: " << file.transactionId << "\n"
              << "      Destination table: " << file.tableName << "\n"
