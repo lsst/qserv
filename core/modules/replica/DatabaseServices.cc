@@ -26,10 +26,12 @@
 #include <stdexcept>
 
 // Qserv headers
-#include "lsst/log/Log.h"
 #include "replica/Configuration.h"
 #include "replica/DatabaseMySQL.h"
 #include "replica/DatabaseServicesMySQL.h"
+
+// LSST headers
+#include "lsst/log/Log.h"
 
 using namespace std;
 using json = nlohmann::json;

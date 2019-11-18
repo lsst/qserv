@@ -26,8 +26,10 @@
 #include <stdexcept>
 
 // Qserv headers
-#include "lsst/log/Log.h"
 #include "replica/Configuration.h"
+
+// LSST headers
+#include "lsst/log/Log.h"
 
 using namespace std;
 

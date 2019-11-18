@@ -31,7 +31,6 @@
 #include <list>
 
 // Qserv headers
-#include "lsst/log/Log.h"
 #include "replica/Configuration.h"
 #include "replica/Controller.h"
 #include "replica/Job.h"
@@ -40,6 +39,9 @@
 #include "replica/ReplicaInfo.h"
 #include "replica/Request.h"
 #include "replica/SemanticMaps.h"
+
+// LSST headers
+#include "lsst/log/Log.h"
 
 using namespace std;
 using namespace lsst::qserv::replica;

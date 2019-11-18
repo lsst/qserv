@@ -26,10 +26,12 @@
 #include <stdexcept>
 
 // Qserv headers
-#include "lsst/log/Log.h"
 #include "replica/ServiceProvider.h"
 #include "replica/SuccessRateGenerator.h"
 #include "util/BlockPost.h"
+
+// LSST headers
+#include "lsst/log/Log.h"
 
 using namespace std;
 

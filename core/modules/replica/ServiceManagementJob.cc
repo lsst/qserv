@@ -26,7 +26,7 @@
 #include <algorithm>
 #include <stdexcept>
 
-// Qserv headers
+// LSST headers
 #include "lsst/log/Log.h"
 
 using namespace std;

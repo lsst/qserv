@@ -28,7 +28,6 @@
 #include <stdexcept>
 
 // Qserv headers
-#include "lsst/log/Log.h"
 #include "replica/Configuration.h"
 #include "replica/Performance.h"
 #include "replica/ServiceProvider.h"
@@ -41,6 +40,9 @@
 #include "replica/WorkerSqlRequest.h"
 #include "replica/WorkerIndexRequest.h"
 #include "util/BlockPost.h"
+
+// LSST headers
+#include "lsst/log/Log.h"
 
 using namespace std;
 using namespace lsst::qserv::replica;

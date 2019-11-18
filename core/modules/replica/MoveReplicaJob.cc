@@ -23,12 +23,13 @@
 #include "replica/MoveReplicaJob.h"
 
 // System headers
-#include <future>
 #include <stdexcept>
 
 // Qserv headers
-#include "lsst/log/Log.h"
 #include "replica/Configuration.h"
+
+// LSST headers
+#include "lsst/log/Log.h"
 
 using namespace std;
 
@@ -222,9 +223,7 @@ void MoveReplicaJob::cancelImpl(util::Lock const& lock) {
 
 
 void MoveReplicaJob::notify(util::Lock const& lock) {
-
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
-
     notifyDefaultImpl<MoveReplicaJob>(lock, _onFinish);
 }
 

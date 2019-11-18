@@ -30,9 +30,11 @@
 #include "XrdSsi/XrdSsiService.hh"
 
 // Qserv headers
-#include "lsst/log/Log.h"
 #include "replica/Configuration.h"
 #include "replica/ServiceProvider.h"
+
+// LSST headers
+#include "lsst/log/Log.h"
 
 /// This C++ symbol is provided by the SSI shared library
 extern XrdSsiProvider* XrdSsiProviderClient;

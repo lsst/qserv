@@ -23,14 +23,15 @@
 #include "replica/FindAllJob.h"
 
 // System headers
-#include <future>
 #include <stdexcept>
 
 // Qserv headers
-#include "lsst/log/Log.h"
 #include "replica/Configuration.h"
 #include "replica/ServiceProvider.h"
 #include "replica/StopRequest.h"
+
+// LSST headers
+#include "lsst/log/Log.h"
 
 using namespace std;
 
@@ -249,9 +250,7 @@ void FindAllJob::cancelImpl(util::Lock const& lock) {
 
 
 void FindAllJob::notify(util::Lock const& lock) {
-
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
-
     notifyDefaultImpl<FindAllJob>(lock, _onFinish);
 }
 

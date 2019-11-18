@@ -34,7 +34,6 @@
 
 // System headers
 #include <functional>
-#include <future>
 #include <memory>
 #include <ostream>
 #include <string>
@@ -103,10 +102,8 @@ public:
   */
 template <typename POLICY>
 class ServiceManagementRequest : public ServiceManagementRequestBase {
-
 public:
-
-    /// Inject tye into a namespace of the class
+    /// Inject the into a namespace of the class
     typedef POLICY Policy;
 
     /// The pointer type for instances of the class
@@ -114,8 +111,6 @@ public:
 
     /// The function type for notifications on the completion of the request
     typedef std::function<void(Ptr)> CallbackType;
-
-    // Default construction and copy semantics are prohibited
 
     ServiceManagementRequest() = delete;
     ServiceManagementRequest(ServiceManagementRequest const&) = delete;
@@ -130,20 +125,11 @@ public:
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
      *
-     * @param serviceProvider
-     *   provides various services for the application
-     *
-     * @param worker
-     *   identifier of a worker node (the one to be affected by the request)
-     *
-     * @param io_service
-     *   network communication service (BOOST ASIO)
-     *
-     * @param onFinish
-     *   callback function to be called upon a completion of the request
-     *
-     * @param messenger
-     *   messenger service for workers
+     * @param serviceProvider provides various services for the application
+     * @param worker identifier of a worker node (the one to be affected by the request)
+     * @param io_service network communication service (BOOST ASIO)
+     * @param onFinish callback function to be called upon a completion of the request
+     * @param messenger messenger service for workers
      */
     static Ptr create(ServiceProvider::Ptr const& serviceProvider,
                       boost::asio::io_service& io_service,
@@ -163,15 +149,11 @@ public:
     }
 
 protected:
-
-    /// @see Request::notify()
     void notify(util::Lock const& lock) final {
         notifyDefaultImpl<ServiceManagementRequest<POLICY>>(lock, _onFinish);
     }
 
 private:
-
-    /// @see ServiceManagementRequest::create()
     ServiceManagementRequest(ServiceProvider::Ptr const& serviceProvider,
                              boost::asio::io_service& io_service,
                              char const* requestName,
@@ -187,7 +169,6 @@ private:
                                          messenger),
             _onFinish(onFinish) {
     }
-
 
     // Input parameters
 

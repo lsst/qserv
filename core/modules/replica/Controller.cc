@@ -29,7 +29,6 @@
 #include <unistd.h>
 
 // Qserv headers
-#include "lsst/log/Log.h"
 #include "replica/Common.h"
 #include "replica/Configuration.h"
 #include "replica/DatabaseServices.h"
@@ -55,6 +54,9 @@
 #include "replica/SqlRemoveTablePartitionsRequest.h"
 #include "replica/StatusRequest.h"
 #include "replica/StopRequest.h"
+
+// LSST headers
+#include "lsst/log/Log.h"
 
 using namespace std;
 

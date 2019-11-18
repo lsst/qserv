@@ -28,9 +28,11 @@
 
 // Qserv headers
 #include "global/ResourceUnit.h"
-#include "lsst/log/Log.h"
 #include "replica/Configuration.h"
 #include "replica/ServiceProvider.h"
+
+// LSST headers
+#include "lsst/log/Log.h"
 
 using namespace std;
 

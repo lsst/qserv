@@ -24,17 +24,18 @@
 
 // System headers
 #include <algorithm>
-#include <future>
 #include <stdexcept>
 
 // Qserv headers
-#include "lsst/log/Log.h"
 #include "replica/Configuration.h"
 #include "replica/DatabaseServices.h"
 #include "replica/ErrorReporting.h"
 #include "replica/QservMgtServices.h"
 #include "replica/ServiceProvider.h"
 #include "replica/StopRequest.h"
+
+// LSST headers
+#include "lsst/log/Log.h"
 
 using namespace std;
 using namespace lsst::qserv::replica;
