@@ -23,17 +23,18 @@
 #include "replica/WorkerServer.h"
 
 // System headers
-
-// Third party headers
-#include "boost/bind.hpp"
+#include <functional>
 
 // Qserv headers
-#include "lsst/log/Log.h"
 #include "replica/Configuration.h"
 #include "replica/ServiceProvider.h"
 #include "replica/WorkerProcessor.h"
 
+// LSST headers
+#include "lsst/log/Log.h"
+
 using namespace std;
+using namespace std::placeholders;
 
 namespace {
 
@@ -101,12 +102,7 @@ void WorkerServer::_beginAccept() {
         
     _acceptor.async_accept(
         connection->socket(),
-        boost::bind (
-            &WorkerServer::_handleAccept,
-            shared_from_this(),
-            connection,
-            boost::asio::placeholders::error
-        )
+        bind(&WorkerServer::_handleAccept, shared_from_this(), connection, _1)
     );
 }
 

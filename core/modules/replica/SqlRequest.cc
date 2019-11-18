@@ -23,21 +23,24 @@
 #include "replica/SqlRequest.h"
 
 // System headers
+#include <functional>
 #include <stdexcept>
 #include <iostream>
 
 // Third party headers
-#include "boost/bind.hpp"
 #include "boost/date_time/posix_time/posix_time.hpp"
 
 // Qserv headers
-#include "lsst/log/Log.h"
 #include "replica/Controller.h"
 #include "replica/DatabaseServices.h"
 #include "replica/Messenger.h"
 #include "replica/ServiceProvider.h"
 
+// LSST headers
+#include "lsst/log/Log.h"
+
 using namespace std;
+using namespace std::placeholders;
 
 namespace {
 
@@ -148,13 +151,7 @@ void SqlRequest::_waitAsync(util::Lock const& lock) {
     // Always need to set the interval before launching the timer.
 
     timer().expires_from_now(boost::posix_time::milliseconds(nextTimeIvalMsec()));
-    timer().async_wait(
-        boost::bind(
-            &SqlRequest::_awaken,
-            shared_from_base<SqlRequest>(),
-            boost::asio::placeholders::error
-        )
-    );
+    timer().async_wait(bind(&SqlRequest::_awaken, shared_from_base<SqlRequest>(),_1));
 }
 
 

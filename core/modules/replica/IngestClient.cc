@@ -25,9 +25,6 @@
 // System headers
 #include <fstream>
 
-// Third party headers
-#include "boost/bind.hpp"
-
 // Qserv headers
 #include "replica/ProtocolBuffer.h"
 #include "replica/protocol.pb.h"

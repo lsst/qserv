@@ -22,15 +22,14 @@
 // Class header
 #include "replica/FileClient.h"
 
-// Third party headers
-#include "boost/bind.hpp"
-
 // Qserv headers
-#include "lsst/log/Log.h"
 #include "replica/Configuration.h"
 #include "replica/protocol.pb.h"
 #include "replica/ProtocolBuffer.h"
 #include "replica/ServiceProvider.h"
+
+// LSST headers
+#include "lsst/log/Log.h"
 
 using namespace std;
 

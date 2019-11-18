@@ -33,7 +33,6 @@
 #include <stdexcept>
 
 // Third party headers
-#include "boost/bind.hpp"
 #include "boost/filesystem.hpp"
 
 // Qserv headers

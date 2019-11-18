@@ -26,18 +26,21 @@
 #include <cerrno>
 #include <cstring>
 #include <ctime>
+#include <functional>
 #include <stdexcept>
 
 // Third party headers
-#include "boost/bind.hpp"
 #include "boost/filesystem.hpp"
 
 // Qserv headers
-#include "lsst/log/Log.h"
 #include "replica/Configuration.h"
 #include "replica/ServiceProvider.h"
 
+// LSST headers
+#include "lsst/log/Log.h"
+
 using namespace std;
+using namespace std::placeholders;
 namespace fs = boost::filesystem;
 using namespace lsst::qserv::replica;
 
@@ -175,17 +178,9 @@ void FileServerConnection::_receiveRequest() {
 
     boost::asio::async_read(
         _socket,
-        boost::asio::buffer(
-            _bufferPtr->data(),
-            bytes
-        ),
+        boost::asio::buffer(_bufferPtr->data(), bytes),
         boost::asio::transfer_at_least(bytes),
-        boost::bind(
-            &FileServerConnection::_requestReceived,
-            shared_from_this(),
-            boost::asio::placeholders::error,
-            boost::asio::placeholders::bytes_transferred
-        )
+        bind(&FileServerConnection::_requestReceived, shared_from_this(), _1, _2)
     );
 }
 
@@ -280,16 +275,8 @@ void FileServerConnection::_sendResponse() {
 
     boost::asio::async_write(
         _socket,
-        boost::asio::buffer(
-            _bufferPtr->data(),
-            _bufferPtr->size()
-        ),
-        boost::bind(
-            &FileServerConnection::_responseSent,
-            shared_from_this(),
-            boost::asio::placeholders::error,
-            boost::asio::placeholders::bytes_transferred
-        )
+        boost::asio::buffer(_bufferPtr->data(), _bufferPtr->size()),
+        bind(&FileServerConnection::_responseSent, shared_from_this(), _1, _2)
     );
 }
 
@@ -342,16 +329,8 @@ void FileServerConnection::_sendData() {
 
     boost::asio::async_write(
         _socket,
-        boost::asio::buffer(
-            _fileBuf,
-            bytes
-        ),
-        boost::bind(
-            &FileServerConnection::_dataSent,
-            shared_from_this(),
-            boost::asio::placeholders::error,
-            boost::asio::placeholders::bytes_transferred
-        )
+        boost::asio::buffer(_fileBuf, bytes),
+        bind(&FileServerConnection::_dataSent, shared_from_this(), _1, _2)
     );
 }
 

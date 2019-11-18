@@ -27,15 +27,16 @@
 #include <cerrno>
 #include <cstring>
 #include <ctime>
+#include <functional>
 #include <stdexcept>
 
 // Third party headers
-#include "boost/bind.hpp"
 #include "boost/filesystem.hpp"
 
 // Qserv headers
 #include "global/constants.h"
 #include "replica/Configuration.h"
+#include "replica/ConfigurationIFace.h"
 #include "replica/DatabaseMySQL.h"
 #include "replica/DatabaseServices.h"
 #include "replica/ReplicaInfo.h"
@@ -43,9 +44,9 @@
 
 // LSST headers
 #include "lsst/log/Log.h"
-#include "ConfigurationIFace.h"
 
 using namespace std;
+using namespace std::placeholders;
 namespace fs = boost::filesystem;
 using namespace lsst::qserv::replica;
 
@@ -165,12 +166,7 @@ void IngestServerConnection::_receiveHandshake() {
         _socket,
         boost::asio::buffer(_bufferPtr->data(), bytes),
         boost::asio::transfer_at_least(bytes),
-        boost::bind(
-            &IngestServerConnection::_handshakeReceived,
-            shared_from_this(),
-            boost::asio::placeholders::error,
-            boost::asio::placeholders::bytes_transferred
-        )
+        bind(&IngestServerConnection::_handshakeReceived, shared_from_this(), _1, _2)
     );
 }
 
@@ -298,12 +294,7 @@ void IngestServerConnection::_sendResponse() {
     boost::asio::async_write(
         _socket,
         boost::asio::buffer(_bufferPtr->data(), _bufferPtr->size()),
-        boost::bind(
-            &IngestServerConnection::_responseSent,
-            shared_from_this(),
-            boost::asio::placeholders::error,
-            boost::asio::placeholders::bytes_transferred
-        )
+        bind(&IngestServerConnection::_responseSent, shared_from_this(), _1, _2)
     );
 }
 
@@ -331,12 +322,7 @@ void IngestServerConnection::_receiveData() {
         _socket,
         boost::asio::buffer(_bufferPtr->data(), bytes),
         boost::asio::transfer_at_least(bytes),
-        boost::bind(
-            &IngestServerConnection::_dataReceived,
-            shared_from_this(),
-            boost::asio::placeholders::error,
-            boost::asio::placeholders::bytes_transferred
-        )
+        bind(&IngestServerConnection::_dataReceived, shared_from_this(), _1, _2)
     );
 }
 

@@ -23,16 +23,15 @@
 #include "replica/Job.h"
 
 // System headers
+#include <functional>
 #include <sstream>
 #include <stdexcept>
 #include <utility>
 
 // Third party headers
-#include "boost/bind.hpp"
 #include "boost/date_time/posix_time/posix_time.hpp"
 
 // Qserv headers
-#include "lsst/log/Log.h"
 #include "replica/AddReplicaQservMgtRequest.h"
 #include "replica/Common.h"            // Generators::uniqueId()
 #include "replica/Configuration.h"
@@ -43,7 +42,11 @@
 #include "replica/ServiceProvider.h"
 #include "util/IterableFormatter.h"
 
+// LSST headers
+#include "lsst/log/Log.h"
+
 using namespace std;
+using namespace std::placeholders;
 
 namespace {
 
@@ -394,13 +397,7 @@ void Job::_startHeartbeatTimer(util::Lock const& lock) {
                 controller()->io_service(),
                 boost::posix_time::seconds(_heartbeatTimerIvalSec)));
 
-        _heartbeatTimerPtr->async_wait(
-            boost::bind(
-                &Job::_heartbeat,
-                shared_from_this(),
-                boost::asio::placeholders::error
-            )
-        );
+        _heartbeatTimerPtr->async_wait(bind(&Job::_heartbeat, shared_from_this(), _1));
     }
 }
 
@@ -443,13 +440,7 @@ void Job::_startExpirationTimer(util::Lock const& lock) {
                 controller()->io_service(),
                 boost::posix_time::seconds(_expirationIvalSec)));
 
-        _expirationTimerPtr->async_wait(
-            boost::bind(
-                &Job::_expired,
-                shared_from_this(),
-                boost::asio::placeholders::error
-            )
-        );
+        _expirationTimerPtr->async_wait(bind(&Job::_expired, shared_from_this(),_1));
     }
 }
 
