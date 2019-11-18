@@ -30,8 +30,8 @@
 #include <stdexcept>
 
 // Third party headers
-#include <boost/bind.hpp>
-#include <boost/filesystem.hpp>
+#include "boost/bind.hpp"
+#include "boost/filesystem.hpp"
 
 // Qserv headers
 #include "global/constants.h"

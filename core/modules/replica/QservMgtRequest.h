@@ -31,7 +31,7 @@
 #include <string>
 
 // THird party headers
-#include <boost/asio.hpp>
+#include "boost/asio.hpp"
 
 // Qserv headers
 #include "replica/Performance.h"

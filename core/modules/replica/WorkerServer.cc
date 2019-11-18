@@ -25,7 +25,7 @@
 // System headers
 
 // Third party headers
-#include <boost/bind.hpp>
+#include "boost/bind.hpp"
 
 // Qserv headers
 #include "lsst/log/Log.h"

@@ -26,7 +26,7 @@
 #include <map>
 
 // Third party headers
-#include <boost/filesystem.hpp>
+#include "boost/filesystem.hpp"
 
 // Qserv headers
 #include "lsst/log/Log.h"

@@ -36,7 +36,7 @@
 #include <vector>
 
 // Third party headers
-#include <boost/lexical_cast.hpp>
+#include "boost/lexical_cast.hpp"
 
 // Qserv headers
 #include "util/Issue.h"
