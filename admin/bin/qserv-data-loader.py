@@ -52,8 +52,6 @@ option may be added later.
 
 """
 
-from __future__ import absolute_import, division, print_function
-
 # -------------------------------
 #  Imports of standard modules --
 # -------------------------------
@@ -77,7 +75,7 @@ from lsst.qserv.wmgr.client import WmgrClient
 # ---------------------------------
 
 
-class _LogFilter(object):
+class _LogFilter:
     """Filter for logging which passes all records from specified logger only"""
 
     def __init__(self, loggerName):
@@ -98,7 +96,7 @@ class _LogFilter(object):
 # -----------------------
 
 
-class Loader(object):
+class Loader:
     """
     Application class for loader application
     """
@@ -223,7 +221,7 @@ class Loader(object):
 
         # connect to czar/master server
         czarWmgr = WmgrClient(self.args.czarHost, self.args.czarPort, secretFile=self.args.secret)
-        
+
         # Connect to listed czars
         czarWmgrList = []
         if self.args.czars is not None:

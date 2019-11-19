@@ -31,7 +31,6 @@
 # using. So, we redistribute files among node_xx directories.
 
 # This reuses some (large?) portions from Serge's loader.py
-from __future__ import print_function
 from itertools import chain, imap, izip, repeat
 import optparse
 import os

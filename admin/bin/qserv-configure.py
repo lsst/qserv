@@ -38,16 +38,11 @@ A Qserv run directory can only run one Qserv instance at a time.
 @author  Fabrice Jammes, IN2P3
 
 """
-from __future__ import absolute_import, division, print_function
-
 # -------------------------------
 #  Imports of standard modules --
 # -------------------------------
 import argparse
-try:
-    import configparser
-except ImportError:
-    import ConfigParser as configparser  # python2
+import configparser
 import logging
 import os
 import re
@@ -71,7 +66,7 @@ _LOG = logging.getLogger()
 # -----------------------
 
 
-class Configurator(object):
+class Configurator:
     """
     Application class for configuration application
     """

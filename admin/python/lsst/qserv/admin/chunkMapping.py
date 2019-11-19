@@ -28,8 +28,6 @@ in CSS.
 @author  Andy Salnikov, SLAC
 """
 
-from __future__ import absolute_import, division, print_function
-
 # --------------------------------
 #  Imports of standard modules --
 # --------------------------------
@@ -48,7 +46,7 @@ from lsst.qserv import css
 # ------------------------
 
 
-class ChunkMapping(object):
+class ChunkMapping:
     """
     Instances of ChunkMapping class represent updatable mapping between
     chunk numbers and worker names (host names).

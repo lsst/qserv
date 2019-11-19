@@ -25,8 +25,6 @@ Module defining ssh utilities
 @author  Fabrice Jammes, IN2P3
 """
 
-from __future__ import absolute_import, division, print_function
-
 # --------------------------------
 #  Imports of standard modules --
 # --------------------------------
@@ -49,7 +47,7 @@ _LOG = logging.getLogger(__name__)
 # ------------------------
 
 
-class SSHCommand(object):
+class SSHCommand:
     """
     Class implementing execution of the command on remote host.
     """
@@ -111,7 +109,7 @@ class SSHCommand(object):
             subprocess.check_call(args, close_fds=True)
 
 
-class SSHTunnel(object):
+class SSHTunnel:
     """
     Class implementing SSH tunneling of TCP port(s).
 

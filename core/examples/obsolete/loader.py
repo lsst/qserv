@@ -22,8 +22,6 @@
 # see <http://www.lsstcorp.org/LegalNotices/>.
 #
 
-
-from __future__ import print_function
 import getpass
 from glob import glob
 from itertools import cycle, groupby
@@ -47,7 +45,7 @@ except ImportError:
     _have_mp = False
 
 
-class SerialPool(object):
+class SerialPool:
     """Simple drop-in replacement for a subset of the multiprocessing.Pool
     class; all tasks are run in the same process as the caller."""
 
@@ -77,7 +75,7 @@ strategies = {'round-robin': roundRobin}
 
 # -- Database interaction --------
 
-class SqlActions(object):
+class SqlActions:
     """Higher level interface for database loading/cleanup tasks.
     """
 
@@ -412,7 +410,7 @@ def tableFromPath(path, opts, prefix=''):
     return opts.database + '.' + prefix + table
 
 
-class Params(object):
+class Params:
     """Parameter holder class for a specific database server
     """
 

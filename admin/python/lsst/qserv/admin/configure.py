@@ -27,12 +27,9 @@ Utilities for directory tree creation, templates management and command-line opt
 
 """
 
-from __future__ import absolute_import, division, print_function
-
 # --------------------------------
 #  Imports of standard modules --
 # -------------------------------
-from builtins import input
 from distutils.util import strtobool
 import getpass
 import logging
@@ -231,7 +228,7 @@ def has_configuration_step(steps):
     return bool(intersect_list(steps, ALL_CONFIGURATION_STEPS))
 
 
-class Templater(object):
+class Templater:
 
     def __init__(self, qserv_version):
         self.qserv_version = qserv_version

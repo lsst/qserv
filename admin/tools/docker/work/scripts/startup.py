@@ -1,4 +1,3 @@
-from __future__ import absolute_import, division, print_function
 hooks.config.Eups.colorize = True
 hooks.config.Eups.userTags += ["git"]
 

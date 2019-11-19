@@ -26,12 +26,9 @@ Module defining WmgrClient class and related methods.
 @author Andy Salnikov <salnikov@slac.stanford.edu>
 """
 
-from __future__ import absolute_import, division, print_function
-
 # --------------------------------
 #  Imports of standard modules --
 # --------------------------------
-from past.builtins import basestring
 import io
 import logging
 
@@ -51,7 +48,7 @@ _None = object()
 _log = logging.getLogger(__name__)
 
 
-class _MPEncoder(object):
+class _MPEncoder:
     """
     Special class for streamable multi-part encoded body.
 
@@ -103,7 +100,7 @@ class _MPEncoder(object):
             currentBuf.write(self._makeHeader(name, filename, content, headers))
 
             if name is not None:
-                if isinstance(data, basestring):
+                if isinstance(data, str):
                     currentBuf.write(data.encode(self._encoding))
                     currentBuf.write('\r\n'.encode(self._encoding))
                 else:
@@ -222,7 +219,7 @@ class ServerResponseError(ClientException):
 # ---------------------
 
 
-class WmgrClient(object):
+class WmgrClient:
     """
     This class provides Python API for worker management service.
 

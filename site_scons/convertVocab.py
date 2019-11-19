@@ -20,7 +20,6 @@
 # see <http://www.lsstcorp.org/LegalNotices/>.
 #
 # convertVocab.py converts ANTLRv2 token vocabularies to c++ header files
-from __future__ import print_function
 from itertools import chain
 from optparse import OptionParser
 import hashlib
@@ -28,11 +27,8 @@ import os
 import subprocess
 import sys
 
-from string import digits
-try:
-    from string import ascii_letters
-except ImportError:
-    from string import letters as ascii_letters
+from string import digits, ascii_letters
+
 
 sample = """// $ANTLR 2.7.2
 SqlSQL2Imp    // input token vocab name

@@ -26,8 +26,6 @@ Module defining Auth class and related methods.
 @author Andy Salnikov - salnikov@slac.stanford.edu
 """
 
-from __future__ import absolute_import, division, print_function
-
 # --------------------------------
 #  Imports of standard modules --
 # --------------------------------
@@ -50,7 +48,7 @@ _log = logging.getLogger('auth')
 # ------------------------
 
 
-class Auth(object):
+class Auth:
     """
     Main responsibility of this class is to verify that user is authenticated
     with wmgr. We support two different authentication mechanisms, basic or

@@ -72,7 +72,7 @@ def _mysql_identifier_validator(db_or_table_name):
 # ------------------------
 
 
-class DataLoader(object):
+class DataLoader:
     """
     DataLoader class defines all logic for loading data, including data
     partitioning, CSS updating, etc. It is driven by a set of configuration
@@ -89,7 +89,7 @@ class DataLoader(object):
 
         @param configFiles:  Sequence of the files defining all partitioning options.
         @param czarWmgr:     WmgrClient instance for czar/master node.
-        @param czarWmgrList: list of WmgrClients for czars to be updated with 
+        @param czarWmgrList: list of WmgrClients for czars to be updated with
                              new database.
         @param workerWmgrMap: Dictionary mapping worker host name to corresponding
                              WmgrClient instance. May be empty, in which case czar
@@ -462,10 +462,10 @@ class DataLoader(object):
         Returns a list of wmgr "connections", for each conection there is a
         tuple (name, connection) where name is something like "czar" or
         "worker lsst-dbdev2". If czar/master connection is included then it
-        is always first in the list, followed by 
+        is always first in the list, followed by
         non-master czars, "czarSimple", and then workers.
 
-        @param useCzar:     if True then include czar/master and all other 
+        @param useCzar:     if True then include czar/master and all other
                             czars in the list
         @param useWorkers:  if True then include all workers in the list
         """
