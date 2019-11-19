@@ -75,9 +75,8 @@ IngestServer::IngestServer(ServiceProvider::Ptr const& serviceProvider,
 
 void IngestServer::run() {
 
-    // We shall do so before running the io_service. Otherwise it will
-    // immediately finish as soon as it will discover that there are
-    // outstanding operations.
+    // Queue some work for the io_service, so it doesn't immediately tail out
+    // when started.
     _beginAccept();
 
     // Launch all threads in the pool

@@ -31,6 +31,7 @@
 
 // Qserv headers
 #include "replica/Application.h"
+#include "replica/Common.h"
 
 // This header declarations
 
@@ -54,12 +55,12 @@ public:
      * be ingested.
      */
     struct FileIngestSpec {
-        std::string workerHost;         /// The host name or an IP address of a worker
-        uint16_t    workerPort = 0;     /// The port number of the Ingest Service
-        uint32_t    transactionId = 0;  /// An identifier of the super-transaction
-        std::string tableName;          /// The base name of a table to be ingested
-        std::string tableType;          /// The type of the table. Allowed options: 'P' or 'R'
-        std::string inFileName;         /// The name of a local file to be ingested
+        std::string   workerHost;           /// The host name or an IP address of a worker
+        uint16_t      workerPort = 0;       /// The port number of the Ingest Service
+        TransactionId transactionId = 0;    /// An identifier of the super-transaction
+        std::string   tableName;            /// The base name of a table to be ingested
+        std::string   tableType;            /// The type of the table. Allowed options: 'P' or 'R'
+        std::string   inFileName;           /// The name of a local file to be ingested
     };
 
     /**

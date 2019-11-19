@@ -219,7 +219,7 @@ void HttpIngestModule::_beginTransaction(qhttp::Request::Ptr const& req,
                                          qhttp::Response::Ptr const& resp) {
     debug(__func__);
 
-    uint32_t id = 0;
+    TransactionId id = 0;
     string database;
 
     auto const logBeginTransaction = [&](string const& status, string const& msg=string()) {
@@ -279,7 +279,7 @@ void HttpIngestModule::_endTransaction(qhttp::Request::Ptr const& req,
                                        qhttp::Response::Ptr const& resp) {
     debug(__func__);
 
-    uint32_t id = 0;
+    TransactionId id = 0;
     string database;
     bool abort = false;
     bool buildSecondaryIndex = false;
@@ -779,7 +779,7 @@ void HttpIngestModule::_addChunk(qhttp::Request::Ptr const& req,
     debug(__func__);
 
     HttpRequestBody body(req);
-    uint32_t const transactionId = body.required<uint32_t>("transaction_id");
+    TransactionId const transactionId = body.required<TransactionId>("transaction_id");
     unsigned int const chunk = body.required<unsigned int>("chunk");
 
     debug(__func__, "transactionId=" + to_string(transactionId));
@@ -1348,7 +1348,7 @@ void HttpIngestModule::_createSecondaryIndex(DatabaseInfo const& databaseInfo) c
 
 
 void HttpIngestModule::_addPartitionToSecondaryIndex(DatabaseInfo const& databaseInfo,
-                                                     uint32_t transactionId) const {
+                                                     TransactionId transactionId) const {
     if (databaseInfo.directorTable.empty()) {
         throw logic_error(
                 "director table has not been properly configured in database '" +
@@ -1375,7 +1375,7 @@ void HttpIngestModule::_addPartitionToSecondaryIndex(DatabaseInfo const& databas
 
 
 void HttpIngestModule::_removePartitionFromSecondaryIndex(DatabaseInfo const& databaseInfo,
-                                                          uint32_t transactionId) const {
+                                                          TransactionId transactionId) const {
     if (databaseInfo.directorTable.empty()) {
         throw logic_error(
                 "director table has not been properly configured in database '" +

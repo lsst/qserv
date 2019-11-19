@@ -22,7 +22,6 @@
 #define LSST_QSERV_REPLICA_INGESTSERVERCONNECTION_H
 
 // System headers
-#include <cstdio>
 #include <fstream>
 #include <memory>
 
@@ -30,6 +29,7 @@
 #include "boost/asio.hpp"
 
 // Qserv headers
+#include "replica/Common.h"
 #include "replica/Configuration.h"
 #include "replica/protocol.pb.h"
 #include "replica/ProtocolBuffer.h"
@@ -105,8 +105,7 @@ public:
      *   2. ASYNC: write a frame header of a reply to the request
      *             followed by a status (to tell a client if parameters of the request
      *             are valid, or if the operation is possible, etc.). If there was
-     *             a problem with the request then send ILLEGAL_PARAMETERS or
-     *             FAILED and be done.
+     *             a problem with the request then send FAILED and be done.
      *             Otherwise send READY_TO_READ_DATA to invite the client to send the first
      *             batch of rows.
      *   3. ASYNC: read a frame header of the first data request
@@ -121,7 +120,7 @@ public:
      *             the next batch of rows. The reply may also be adjusted to
      *             notify the client on the maximum number of rows to be send in
      *             the next request.
-     *   5 -> 3:   repeat this in the loop until ll rows are received from the client
+     *   5 -> 3:   repeat this in the loop until all rows are received from the client
      *             and loaded into the database, or until a problem at any stage occurs. 
      *
      * @note
@@ -222,16 +221,6 @@ private:
     }
 
     /**
-     * Send back a message with status ILLEGAL_PARAMETERS and the error message.
-     *
-     * @param msg  a message to be delivered to a client
-     */
-    void _illegalParameters(std::string const& msg) {
-        _closeFile();
-        _reply(ProtocolIngestResponse::ILLEGAL_PARAMETERS, msg);
-    }
-
-    /**
      * Send back a message with a specific status and the error message.
      *
      * @param status  a status code indicating a general reason for the failure
@@ -266,11 +255,11 @@ private:
     // Parameters defining a scope of the operation are set from the handshake
     // request received from a client.
 
-    unsigned int _transactionId = 0;
-    std::string  _table;
-    unsigned int _chunk = 0;
-    bool         _isOverlap = false;
-    char         _columnSeparator = ',';
+    TransactionId _transactionId = 0;
+    std::string   _table;
+    unsigned int  _chunk = 0;
+    bool          _isOverlap = false;
+    char          _columnSeparator = ',';
 
     /// The database descriptor and the state of the table are set after receiving
     /// and validating a handshake message from a client.

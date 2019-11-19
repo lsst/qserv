@@ -194,7 +194,7 @@ void IngestServerConnection::_handshakeReceived(boost::system::error_code const&
     try {
         auto transactionInfo = _serviceProvider->databaseServices()->transaction(_transactionId);
         if (transactionInfo.state != "STARTED") {
-            _illegalParameters("transaction is not active");
+            _failed("transaction is not active");
             return;
         }
 
@@ -205,14 +205,14 @@ void IngestServerConnection::_handshakeReceived(boost::system::error_code const&
             throw invalid_argument("database '" + _databaseInfo.name + "' is already PUBLISHED");
         }
         _isPartitioned = _databaseInfo.partitionedTables.end() != find(
-            _databaseInfo.partitionedTables.begin(),
-            _databaseInfo.partitionedTables.end(),
-            _table);
+                _databaseInfo.partitionedTables.begin(),
+                _databaseInfo.partitionedTables.end(),
+                _table);
         if (not _isPartitioned) {
             if (_databaseInfo.regularTables.end() != find(
-                _databaseInfo.regularTables.begin(),
-                _databaseInfo.regularTables.end(),
-                _table)) {
+                    _databaseInfo.regularTables.begin(),
+                    _databaseInfo.regularTables.end(),
+                    _table)) {
                 throw invalid_argument(
                         "no such table '" + _table + "' in a scope of database '" +
                         _databaseInfo.name + "'");
@@ -238,14 +238,10 @@ void IngestServerConnection::_handshakeReceived(boost::system::error_code const&
                 allDatabases,
                 isPublished
             );
-            bool databaseIsFound = false;
-            for (auto&& replica: replicas) {
-                if (replica.database() == _databaseInfo.name) {
-                    databaseIsFound = true;
-                    break;
-                }
-            }
-            if (not databaseIsFound) {
+            if (replicas.cend() == find_if(replicas.cbegin(), replicas.cend(),
+                    [&](ReplicaInfo const& replica) {
+                        return replica.database() == _databaseInfo.name;
+                    })) {
                 throw invalid_argument(
                         "chunk " + to_string(_chunk) + " of the UNPUBLISHED database '" +
                         _databaseInfo.name + "' is not allocated to worker '" + _workerName + "'");
@@ -253,10 +249,10 @@ void IngestServerConnection::_handshakeReceived(boost::system::error_code const&
         }
                 
     } catch (DatabaseServicesNotFound const& ex) {
-        _illegalParameters("invalid transaction identifier");
+        _failed("invalid transaction identifier");
         return;
     } catch (invalid_argument const& ex) {
-        _illegalParameters(ex.what());
+        _failed(ex.what());
         return;
     }
     

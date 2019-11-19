@@ -92,7 +92,7 @@ IndexJob::Destination IndexJob::fromString(string const& str) {
 
 IndexJob::Ptr IndexJob::create(string const& database,
                                bool hasTransactions,
-                               uint32_t transactionId,
+                               TransactionId transactionId,
                                bool allWorkers,
                                Destination destination,
                                string const& destinationPath,
@@ -117,7 +117,7 @@ IndexJob::Ptr IndexJob::create(string const& database,
 
 IndexJob::IndexJob(string const& database,
                    bool hasTransactions,
-                   uint32_t transactionId,
+                   TransactionId transactionId,
                    bool allWorkers,
                    Destination destination,
                    string const& destinationPath,

@@ -104,10 +104,10 @@ list<FileIngestApp::FileIngestSpec> FileIngestApp::parseFileList(json const& jso
         }
         FileIngestApp::FileIngestSpec file;
 
-        file.workerHost    = parse(          context, fileSpecJson, "worker-host");
+        file.workerHost    = parse(context, fileSpecJson, "worker-host");
         file.workerPort    = parse<uint16_t>(context, fileSpecJson, "worker-port", 1);
-        file.transactionId = parse<uint32_t>(context, fileSpecJson, "transaction-id", 0);
-        file.tableName     = parse(          context, fileSpecJson, "table");
+        file.transactionId = parse<TransactionId>(context, fileSpecJson, "transaction-id", 0);
+        file.tableName     = parse(context, fileSpecJson, "table");
 
         string tableType = parse(context, fileSpecJson, "type");
         transform(tableType.begin(), tableType.end(), tableType.begin(), ::toupper);
@@ -201,7 +201,7 @@ FileIngestApp::FileIngestApp(int argc, char* argv[])
     ).required(
         "file-list",
         "The name of a file with ingest specifications. If the file name is set to '-'"
-        " then the specifications will be read from the Standard Input Stream",
+        " then the specifications will be read from the standard input stream",
         _fileListName
     );
 }

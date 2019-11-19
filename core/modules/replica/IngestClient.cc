@@ -38,6 +38,8 @@ namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.IngestClient");
 
+size_t const defaultBufferCapacity = 1024;
+
 } /// namespace
 
 namespace lsst {
@@ -47,7 +49,7 @@ namespace replica {
 IngestClient::Ptr IngestClient::connect(
         string const& workerHost,
         uint16_t workerPort,
-        unsigned int transactionId,
+        TransactionId transactionId,
         string const& tableName,
         unsigned int chunk,
         bool isOverlap,
@@ -70,7 +72,7 @@ IngestClient::Ptr IngestClient::connect(
 
 IngestClient::IngestClient(string const& workerHost,
                            uint16_t workerPort,
-                           unsigned int transactionId,
+                           TransactionId transactionId,
                            string const& tableName,
                            unsigned int chunk,
                            bool isOverlap,
@@ -84,7 +86,8 @@ IngestClient::IngestClient(string const& workerHost,
         _isOverlap(isOverlap),
         _inputFilePath(inputFilePath),
         _columnSeparator(columnSeparator),
-        _bufferPtr(new ProtocolBuffer(_bufferCapacity)),
+        _bufferCapacity(defaultBufferCapacity),
+        _bufferPtr(new ProtocolBuffer(defaultBufferCapacity)),
         _io_service(),
         _socket(_io_service) {
 
@@ -118,18 +121,16 @@ void IngestClient::send() {
         // into a data message
         ProtocolIngestData data;
         string row;
-        size_t numRows = 0;
-        while (numRows < _numRowsPerSend) {
+        while (data.rows_size() < _numRowsPerSend) {
             if (getline(file, row)) {
                 data.add_rows(row);
-                ++numRows;
                 _sizeBytes += row.size();
             } else {
                 eof = true;
                 break;
             }
         }
-        _totalNumRows += numRows;
+        _totalNumRows += data.rows_size();
         data.set_last(eof);
 
         // Send the message, even if the number of rows is zero
@@ -150,13 +151,21 @@ void IngestClient::send() {
 
         switch (response.status()) {
             case ProtocolIngestResponse::READY_TO_READ_DATA:
-               if (eof) _abort(__func__, "protocol error #1");
+                if (eof) {
+                    _abort(__func__, "protocol error: the server is still waiting for data"
+                           " after receiving the last batch of rows.");
+                }
                 _numRowsPerSend = response.max_rows();
-                if (_numRowsPerSend == 0) _abort(__func__, "protocol error #2");
+                if (_numRowsPerSend == 0) {
+                    _abort(__func__, "protocol error: the number of rows requested by the server is 0.");
+                }
                 break;
 
             case ProtocolIngestResponse::FINISHED:
-                if (not eof) _abort(__func__, "protocol error #3");
+                if (not eof) {
+                    _abort(__func__, "protocol error: the server unexpectedly finished accepting"
+                           " new data");
+                }
                 break;
 
             case ProtocolIngestResponse::FAILED:
@@ -187,11 +196,8 @@ void IngestClient::_connectImpl() {
     // Connect to the server synchronously using error codes to process errors
     // instead of exceptions.
     boost::asio::ip::tcp::resolver resolver(_io_service);
-    boost::asio::ip::tcp::resolver::iterator iter =
-        resolver.resolve(
-            boost::asio::ip::tcp::resolver::query(
-                _workerHost,
-                to_string(_workerPort)),
+    boost::asio::ip::tcp::resolver::iterator iter = resolver.resolve(
+        boost::asio::ip::tcp::resolver::query(_workerHost,to_string(_workerPort)),
         ec
     );
     _assertErrorCode(ec, __func__, "host/port resolve");

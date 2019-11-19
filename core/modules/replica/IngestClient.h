@@ -30,6 +30,9 @@
 // Third party headers
 #include "boost/asio.hpp"
 
+// Qserv headers
+#include "replica/Common.h"
+
 // Forward declarations
 namespace lsst {
 namespace qserv {
@@ -49,9 +52,7 @@ namespace replica {
  */
 class IngestClientError : public std::runtime_error {
 public:
-    IngestClientError(std::string const& msg)
-        :   std::runtime_error(msg) {
-    }
+    using std::runtime_error::runtime_error;
 };
 
 /**
@@ -71,7 +72,7 @@ public:
     /**
      * Establish a connection to the remote service. If the operation is successful
      * then a valid pointer will be returned and the data could be could be send via
-     * method IngestClient::sendData(). Otherwise return the null pointer.
+     * method IngestClient::send(). Otherwise return the null pointer.
      *
      * @param workerHost the name or an IP address of a worker node where
      *   the ingest service is run
@@ -93,7 +94,7 @@ public:
      */
     static Ptr connect(std::string const& workerHost,
                        uint16_t workerPort,
-                       unsigned int transactionId,
+                       TransactionId transactionId,
                        std::string const& tableName,
                        unsigned int chunk,
                        bool isOverlap,
@@ -110,7 +111,7 @@ public:
     ~IngestClient();
 
     /**
-     * Send the whole file. Note, this is the blocking operation
+     * Send the whole file. Note, this is a blocking operation
      * for a thread which calls the method.
      * 
      * @throws IngestClientError for any problem occurred when sending the file
@@ -129,7 +130,7 @@ private:
 
     IngestClient(std::string const& workerHost,
                  uint16_t workerPort,
-                 unsigned int transactionId,
+                 TransactionId transactionId,
                  std::string const& tableName,
                  unsigned int chunk,
                  bool isOverlap,
@@ -196,7 +197,7 @@ private:
 
     std::string     const _workerHost;
     uint16_t        const _workerPort;
-    unsigned int    const _transactionId;
+    TransactionId   const _transactionId;
     std::string     const _tableName;
     unsigned int    const _chunk;
     bool            const _isOverlap;
@@ -206,12 +207,12 @@ private:
     // Buffer for data moved over the network. The initial buffer capacity
     // would be adjusted during the initial handshake with the server.
 
-    size_t _bufferCapacity = 1024;
+    size_t _bufferCapacity;
     std::unique_ptr<ProtocolBuffer> _bufferPtr;
 
     /// The maximum number of rows to be sent to the server. A value of
     /// this parameter is adjusted during the initial handshake with the server.
-    size_t _numRowsPerSend = 1;
+    long _numRowsPerSend = 1;
 
     boost::asio::io_service      _io_service;
     boost::asio::ip::tcp::socket _socket;

@@ -58,16 +58,8 @@ namespace replica {
  * Class FileClientError represents exceptions thrown by FileClient on errors
  */
 class FileClientError : public std::runtime_error {
-
 public:
-    
-    /**
-     * @param what
-     *   reason for the exception
-     */
-    FileClientError(std::string const& msg)
-        :   std::runtime_error(msg) {
-    }
+    using std::runtime_error::runtime_error;
 };
 
 /**
@@ -75,29 +67,20 @@ public:
   * service.
   */
 class FileClient : public std::enable_shared_from_this<FileClient>  {
-
 public:
-
     /// The pointer type for instances of the class
     typedef std::shared_ptr<FileClient> Ptr;
 
     /**
      * Open a file and return a smart pointer to an object of this class.
      * If the operation is successful then a valid pointer will be returned
-     * and the file content could be read via method FileClient::read().
+     * and the file content will be read via method FileClient::read().
      * Otherwise return the null pointer.
      *
-     * @param serviceProvider
-     *   for configuration, etc. services
-     *
-     * @param workerName
-     *   the name of a worker where the file resides
-     *
-     * @param databaseName
-     *   the name of a database the file belongs to
-     *
-     * @param fileName
-     *   the file to read or examine
+     * @param serviceProvider for configuration, etc. services
+     * @param workerName the name of a worker where the file resides
+     * @param databaseName the name of a database the file belongs to
+     * @param fileName the file to read or examine
      */
     static Ptr open(ServiceProvider::Ptr const& serviceProvider,
                     std::string const& workerName,
@@ -116,25 +99,17 @@ public:
      * If the operation is successful then a valid pointer will be returned.
      * If the operation fails the method will return the null pointer.
      *
-     * @note
-     *   Unlike the previous method FileClient::open() the returned file object
-     *   can't be used to read the file content (via FileClient::read()).
+     * @note Unlike the previous method FileClient::open() the returned file
+     *   object can't be used to read the file content (via FileClient::read()).
      *   The method of opening files is meant to be used for checking the availability
      *   of files and getting various metadata (size, etc.) about the files.
      *   Any attempts to call method FileClient::read() will result in
      *   throwing FileClientError.
      *
-     * @param serviceProvider
-     *   for configuration, etc. services
-     *
-     * @param workerName
-     *   the name of a worker where the file resides
-     *
-     * @param databaseName
-     *   the name of a database the file belongs to
-     *
-     * @param fileName
-     *   the file to read or examine
+     * @param serviceProvider for configuration, etc. services
+     * @param workerName the name of a worker where the file resides
+     * @param databaseName the name of a database the file belongs to
+     * @param fileName the file to read or examine
      */
     static Ptr stat(ServiceProvider::Ptr const& serviceProvider,
                     std::string const& workerName,
@@ -175,15 +150,10 @@ public:
      * occurs during the operation. Illegal parameters (zero buffer pointer
      * or the buffer size of 0) will be reported by std::invalid_argument exception.
      *
-     * @param buf
-     *   a pointer to a valid buffer where the data will be placed
-     *
-     * @param bufSize
-     *   a size of the buffer (would determine the maximum number of bytes
-     *   which can be read at a single call to the method)
-     *
-     * @return
-     *   the actual number of bytes read or 0 if the end of file reached
+     * @param buf a pointer to a valid buffer where the data will be placed
+     * @param bufSize a size of the buffer (would determine the maximum number
+     *   of bytes which can be read at a single call to the method)
+     * @return the actual number of bytes read or 0 if the end of file reached
      */
     size_t read(uint8_t* buf, size_t bufSize);
 
@@ -194,12 +164,10 @@ private:
      * of this class. If the operation is successful then a valid pointer will
      * be returned.
      *
-     * @param readContent
-     *   the mode in which the file will be used
+     * @param readContent the mode in which the file will be used
      *
      * Other parameters are explained in the comments for the public factory
      * methods:
-     * 
      * @see FileClient::open()
      * @see FileClient::stat()
      */
@@ -218,7 +186,6 @@ private:
 
     /**
      * Try opening the file
-     *
      * @return 'true' if successful
      */
     bool _openImpl();

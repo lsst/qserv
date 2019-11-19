@@ -54,9 +54,7 @@ namespace replica {
  * the pool in the destructor.
  */
 class ServiceAllocator {
-
 public:
-    
     ServiceAllocator(DatabaseServicesPool::Ptr const& pool)
         :   _pool(pool),
             _service(pool->_allocateService()) {
@@ -360,7 +358,7 @@ list<JobInfo> DatabaseServicesPool::jobs(string const& controllerId,
 }
 
 
-TransactionInfo DatabaseServicesPool::transaction(uint32_t id) {
+TransactionInfo DatabaseServicesPool::transaction(TransactionId id) {
     ServiceAllocator service(shared_from_base<DatabaseServicesPool>());
     return service()->transaction(id);
 }
@@ -378,7 +376,7 @@ TransactionInfo DatabaseServicesPool::beginTransaction(string const& databaseNam
 }
 
 
-TransactionInfo DatabaseServicesPool::endTransaction(uint32_t id,
+TransactionInfo DatabaseServicesPool::endTransaction(TransactionId id,
                                                      bool abort) {
     ServiceAllocator service(shared_from_base<DatabaseServicesPool>());
     return service()->endTransaction(id,

@@ -1896,7 +1896,7 @@ list<JobInfo> DatabaseServicesMySQL::_jobs(util::Lock const& lock,
 }
 
 
-TransactionInfo DatabaseServicesMySQL::transaction(uint32_t id) {
+TransactionInfo DatabaseServicesMySQL::transaction(TransactionId id) {
 
     string const context = _context(__func__) + "id="  + to_string(id) + " ";
 
@@ -1995,7 +1995,7 @@ TransactionInfo DatabaseServicesMySQL::beginTransaction(string const& databaseNa
 }
 
 
-TransactionInfo DatabaseServicesMySQL::endTransaction(uint32_t id, bool abort) {
+TransactionInfo DatabaseServicesMySQL::endTransaction(TransactionId id, bool abort) {
 
     string const context = _context(__func__) +
             "id="  + to_string(id) + " abort=" + string(abort ? "true" : "false") + " ";
