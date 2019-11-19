@@ -27,8 +27,6 @@ This is a unit test for workerAdmin module.
 
 """
 
-from __future__ import absolute_import, division, print_function
-
 import logging
 import socket
 import unittest
@@ -66,7 +64,7 @@ class _EchoServer(Thread):
             conn.close()
 
 
-class _EchoClient(object):
+class _EchoClient:
     """ simple echo client class """
 
     def __init__(self, port, host='127.0.0.1'):

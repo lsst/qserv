@@ -12,15 +12,13 @@ This module provides Basic and Digest HTTP authentication for Flask routes.
 # with some modifications.
 #
 
-from __future__ import absolute_import, division, print_function
-
 from functools import wraps
 from hashlib import md5
 from random import Random, SystemRandom
 from flask import request, make_response, session
 
 
-class HTTPAuth(object):
+class HTTPAuth:
 
     def __init__(self):
         def default_get_password(username):

@@ -32,15 +32,9 @@ Known issues and todos:
  - many commands still need to be implemented
  - need to separate dangerous admin commands like DROP EVERYTHING
 """
-from __future__ import absolute_import, division, print_function
-
 # standard library imports
 from argparse import ArgumentParser
-from builtins import input
-try:
-    import configparser
-except ImportError:
-    import ConfigParser as configparser  # python2
+import configparser
 import logging
 import os
 import re
@@ -95,7 +89,7 @@ class _UnreadableConfigError(_ToolError):
         _ToolError.__init__(self, "Can't access the config file: {}".format(config))
 
 
-class CommandParser(object):
+class CommandParser:
     """
     Parse commands and calls appropriate function from qservAdmin.
     """
@@ -665,7 +659,7 @@ class CommandParser(object):
         self._logger = logging.getLogger("QADM")
 
 
-class WordCompleter(object):
+class WordCompleter:
     """
     Set auto-completion for commonly used words.
     """

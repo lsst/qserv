@@ -29,12 +29,9 @@ qserv nodes, for example creating/deleting databases or tables.
 @author Andy Salnikov - salnikov@slac.stanford.edu
 """
 
-from __future__ import absolute_import, division, print_function
-
 # --------------------------------
 #  Imports of standard modules --
 # --------------------------------
-from past.builtins import basestring
 import logging
 
 # -----------------------------
@@ -61,7 +58,7 @@ _Exception = produceExceptionClass('WorkerMgmtException', [
 # ---------------------
 
 
-class NodeMgmt(object):
+class NodeMgmt:
     """
     NodeMgmt class main purpose is to facilitate management operations on
     a set of nodes. It's two main responsibities are:
@@ -126,11 +123,11 @@ class NodeMgmt(object):
         """
 
         # if state is a string make a list out of it
-        if isinstance(state, basestring):
+        if isinstance(state, str):
             state = [state]
 
         # if nodeType is a string make a list out of it
-        if isinstance(nodeType, basestring):
+        if isinstance(nodeType, str):
             nodeType = [nodeType]
 
         # get all nodes as a sequence of (node_name, node_data)

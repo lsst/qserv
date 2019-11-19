@@ -28,12 +28,9 @@ Most of the code is stolen from partitioner C++ code and adopted for Python.
 @author  Andy Salnikov, SLAC
 """
 
-from __future__ import absolute_import, division, print_function
-
 # --------------------------------
 #  Imports of standard modules --
 # --------------------------------
-from builtins import chr
 
 # -----------------------------
 # Imports for other modules --
@@ -48,7 +45,7 @@ from builtins import chr
 # ------------------------
 
 
-class ConfigParser(object):
+class ConfigParser:
     """
     Instances of ConfigParser class are used to parse configuration from
     a single file.

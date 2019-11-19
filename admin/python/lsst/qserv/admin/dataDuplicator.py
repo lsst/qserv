@@ -27,8 +27,6 @@ https://github.com/LSST/partition/blob/master/docs/duplication.md
 @author  Vaikunth Thukral, TAMU/SLAC
 """
 
-from __future__ import absolute_import, division, print_function
-
 # --------------------------------
 #  Imports of standard modules --
 # --------------------------------
@@ -49,7 +47,7 @@ from lsst.qserv.admin import commons
 # ------------------------
 
 
-class DataDuplicator(object):
+class DataDuplicator:
 
     def __init__(self, data_reader, cfg_dir, out_dir):
 

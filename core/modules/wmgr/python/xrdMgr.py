@@ -26,8 +26,6 @@ Module defining Flask blueprint for xrootd management.
 @author Andy Salnikov - salnikov@slac.stanford.edu
 """
 
-from __future__ import absolute_import, division, print_function
-
 # --------------------------------
 #  Imports of standard modules --
 # --------------------------------
@@ -245,7 +243,7 @@ def registerDb():
         except SQLAlchemyError as exc:
             _log.error('exception when checking qservw_worker.Dbs: %s', exc)
             raise
-    
+
         # now add it
         try:
             query = "INSERT INTO qservw_worker.Dbs (db) VALUES ('{0}')".format(dbName)
@@ -253,7 +251,7 @@ def registerDb():
         except SQLAlchemyError as exc:
             _log.error('exception when adding database %s: %s', dbName, exc)
             raise
-    
+
         _log.debug('database %s added', dbName)
 
     # presently we have to restart xrootd to update ChunkInventory
@@ -300,7 +298,7 @@ def unregisterDb(dbName):
         except SQLAlchemyError as exc:
             _log.error('exception when executing query: %s', exc)
             raise
-    
+
         _log.debug('database %s removed', dbName)
 
     if xrootdRestart:

@@ -37,8 +37,6 @@ Script performs these tasks:
 
 """
 
-from __future__ import absolute_import, division, print_function
-
 # --------------------------------
 #  Imports of standard modules  --
 # --------------------------------
@@ -63,7 +61,7 @@ _LOG = logging.getLogger(__name__)
 # ------------------------
 # Exported definitions  --
 # ------------------------
-class ParallelCmd(object):
+class ParallelCmd:
     """
     Application class for parallel command application
     """

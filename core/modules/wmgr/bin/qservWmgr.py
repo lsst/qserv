@@ -26,8 +26,6 @@ Application which provides worker management service (HTTP-based).
 @author  Andy Salnikov, SLAC
 """
 
-from __future__ import absolute_import, division, print_function
-
 # --------------------------------
 #  Imports of standard modules --
 # --------------------------------

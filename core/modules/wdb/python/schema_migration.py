@@ -1,8 +1,6 @@
 """Module defining methods used in schema migration of qservw_worker database.
 """
 
-from __future__ import absolute_import, division, print_function
-
 __all__ = ["make_migration_manager"]
 
 #--------------------------------

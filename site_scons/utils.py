@@ -1,4 +1,3 @@
-from __future__ import print_function
 #
 #  @file
 #
@@ -18,7 +17,7 @@ import SCons.Script
 #
 
 
-class Log(object):
+class Log:
 
     def __init__(self, verbose, silent, traceback):
         self.traceback = traceback

@@ -23,16 +23,11 @@
 """Application which implements migration process for qserv databases.
 """
 
-from __future__ import absolute_import, division, print_function
-
 # --------------------------------
 #  Imports of standard modules --
 # --------------------------------
 import argparse
-try:
-    import configparser
-except ImportError:
-    import ConfigParser as configparser  # python2
+import configparser
 import importlib
 import logging
 import os

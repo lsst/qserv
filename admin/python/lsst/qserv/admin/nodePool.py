@@ -30,8 +30,6 @@ It can be used to install Qserv on a cluster.
 @author  Fabrice Jammes, IN2P3
 """
 
-from __future__ import absolute_import, division, print_function
-
 # --------------------------------
 #  Imports of standard modules --
 # --------------------------------
@@ -60,7 +58,7 @@ def cpu_count():
         return 1
 
 
-class NodePool(object):
+class NodePool:
     """
     Class providing tools to send ssh command to a set of machines.
     Use system ssh.

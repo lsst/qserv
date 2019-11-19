@@ -34,8 +34,6 @@ a set of parameters to constructor.
 @author  Andy Salnikov, SLAC
 """
 
-from __future__ import absolute_import, division, print_function
-
 # --------------------------------
 #  Imports of standard modules --
 # --------------------------------
@@ -63,7 +61,7 @@ _Exception = produceExceptionClass('WorkerAdminException', [
 # ------------------------
 
 
-class NodeAdmin(object):
+class NodeAdmin:
     """
     Class representing administration/communication endpoint for qserv worker.
     """

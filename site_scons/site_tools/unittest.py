@@ -38,8 +38,6 @@ Example which also checks unit test results:
     env.Alias("test", utest)
 \\endcode
 """
-from __future__ import print_function
-
 import os
 import platform
 import shutil
@@ -49,7 +47,7 @@ from SCons.Errors import StopError
 from SCons.Platform import platform_default
 
 
-class _unitTest(object):
+class _unitTest:
     """
     Class which implements builder action for UnitTest.
     """
@@ -113,7 +111,7 @@ class _unitTest(object):
         return "UnitTest: " + str(source[0])
 
 
-class _unitTestCheck(object):
+class _unitTestCheck:
     """
     Class which implements builder action for UnitTestCheck.
     """
