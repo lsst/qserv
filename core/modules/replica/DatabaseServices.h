@@ -214,11 +214,23 @@ public:
  */
 class TransactionInfo {
 public:
+    /// Allowed states for the transaction
+    enum State {
+        STARTED,
+        FINISHED,
+        ABORTED
+    };
 
-    TransactionId id = 0;   /// Its unique identifier
+    static State string2state(std::string const& str);
+    static std::string state2string(State state);
 
-    std::string database;   /// The name of a database
-    std::string state;      /// Its state
+    /// Its unique identifier (the default value represents a non valid transaction)
+    TransactionId id = std::numeric_limits<TransactionId>::max();
+
+    /// The name of a database associated with the transaction
+    std::string database;
+
+    State state = State::STARTED;
 
     uint64_t beginTime = 0; /// The timestamp (milliseconds) when it started
     uint64_t endTime = 0;   /// The timestamp (milliseconds) when it was committed/aborted

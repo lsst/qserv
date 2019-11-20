@@ -2005,7 +2005,7 @@ TransactionInfo DatabaseServicesMySQL::endTransaction(TransactionId id, bool abo
     util::Lock lock(_mtx, context);
 
     uint64_t const endTime = PerformanceUtils::now();
-    string   const state   = abort ? "ABORTED" : "FINISHED";
+    string   const stateStr = abort ? "ABORTED" : "FINISHED";
 
     TransactionInfo info;
     try {
@@ -2020,10 +2020,10 @@ TransactionInfo DatabaseServicesMySQL::endTransaction(TransactionId id, bool abo
                 conn->executeSimpleUpdateQuery(
                     "transaction",
                     predicate,
-                    make_pair("state",    state),
+                    make_pair("state",    stateStr),
                     make_pair("end_time", endTime)
                 );
-                info.state   = state;
+                info.state   = TransactionInfo::string2state(stateStr);
                 info.endTime = endTime;
                 conn->commit();
             }
@@ -2077,7 +2077,11 @@ vector<TransactionInfo> DatabaseServicesMySQL::_findTransactionsImpl(util::Lock 
 
             row.get("id",         info.id);
             row.get("database",   info.database);
-            row.get("state",      info.state);
+
+            string stateStr;
+            row.get("state",      stateStr);
+            info.state = TransactionInfo::string2state(stateStr);
+
             row.get("begin_time", info.beginTime);
             row.get("end_time",   info.endTime);
 

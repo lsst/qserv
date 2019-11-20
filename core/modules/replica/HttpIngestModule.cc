@@ -510,7 +510,7 @@ void HttpIngestModule::_publishDatabase(qhttp::Request::Ptr const& req,
 
     // Scan super-transactions to make sure none is still open
     for (auto&& t: databaseServices->transactions(databaseInfo.name)) {
-        if (t.state == "STARTED") {
+        if (t.state == TransactionInfo::STARTED) {
             sendError(resp, __func__, "database has uncommitted transactions");
             return;
         }
@@ -789,7 +789,7 @@ void HttpIngestModule::_addChunk(qhttp::Request::Ptr const& req,
     auto const config = controller()->serviceProvider()->config();
 
     auto const transactionInfo = databaseServices->transaction(transactionId);
-    if (transactionInfo.state != "STARTED") {
+    if (transactionInfo.state != TransactionInfo::STARTED) {
         sendError(resp, __func__, "this transaction is already over");
         return;
     }

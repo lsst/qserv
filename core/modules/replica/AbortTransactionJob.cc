@@ -172,7 +172,7 @@ void AbortTransactionJob::startImpl(util::Lock const& lock) {
 
     // Verify the current state of the transaction
 
-    if (_transactionInfo.state != "ABORTED") {
+    if (_transactionInfo.state != TransactionInfo::ABORTED) {
         LOGS(_log, LOG_LVL_ERROR, context_ << "transaction is not ABORTED");
         finish(lock, ExtendedState::FAILED);
         return;

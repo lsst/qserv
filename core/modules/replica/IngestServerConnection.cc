@@ -193,7 +193,7 @@ void IngestServerConnection::_handshakeReceived(boost::system::error_code const&
     
     try {
         auto transactionInfo = _serviceProvider->databaseServices()->transaction(_transactionId);
-        if (transactionInfo.state != "STARTED") {
+        if (transactionInfo.state != TransactionInfo::STARTED) {
             _failed("transaction is not active");
             return;
         }

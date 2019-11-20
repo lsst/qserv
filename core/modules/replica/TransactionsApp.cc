@@ -150,7 +150,7 @@ void TransactionsApp::_print(vector<TransactionInfo> const& collection) const {
     for (auto&& info: collection) {
         colId       .push_back(info.id);
         colDatabase .push_back(info.database);
-        colState    .push_back(info.state);
+        colState    .push_back(TransactionInfo::state2string(info.state));
         colBeginTime.push_back(PerformanceUtils::toDateTimeString(chrono::milliseconds(info.beginTime)));
         colEndTime  .push_back(info.endTime == 0 ? "" : PerformanceUtils::toDateTimeString(chrono::milliseconds(info.endTime)));
     }
