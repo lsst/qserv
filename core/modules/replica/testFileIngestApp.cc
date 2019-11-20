@@ -44,9 +44,9 @@ using namespace lsst::qserv::replica;
 
 BOOST_AUTO_TEST_SUITE(Suite)
 
-BOOST_AUTO_TEST_CASE(FileIngestAppTest) {
+BOOST_AUTO_TEST_CASE(FileIngestAppTest_parseFileList) {
 
-    LOGS_INFO("FileIngestApp test begins");
+    LOGS_INFO("FileIngestApp::parseFileList test begins");
 
     list<FileIngestApp::FileIngestSpec> fileSpecList;
     json obj;
@@ -183,7 +183,47 @@ BOOST_AUTO_TEST_CASE(FileIngestAppTest) {
         fileSpecList = FileIngestApp::parseFileList(obj);
     }, invalid_argument);
 
-    LOGS_INFO("FileIngestApp test ends");
+    LOGS_INFO("FileIngestApp::parseFileList test ends");
+}
+
+
+BOOST_AUTO_TEST_CASE(FileIngestAppTest_parseChunkContribution) {
+
+    LOGS_INFO("FileIngestApp::parseChunkContribution test begins");
+
+    FileIngestApp::ChunkContribution contrib;
+    BOOST_CHECK(contrib.chunk == 0);
+    BOOST_CHECK(not contrib.isOverlap);
+
+    BOOST_REQUIRE_NO_THROW({
+        contrib = FileIngestApp::parseChunkContribution("chunk_1.txt");
+    });
+    BOOST_CHECK(contrib.chunk == 1);
+    BOOST_CHECK(not contrib.isOverlap);
+
+    BOOST_REQUIRE_NO_THROW({
+        contrib = FileIngestApp::parseChunkContribution("chunk_2_overlap.txt");
+    });
+    BOOST_CHECK(contrib.chunk == 2);
+    BOOST_CHECK(contrib.isOverlap);
+
+    BOOST_CHECK_THROW({
+        contrib = FileIngestApp::parseChunkContribution("path/chunk_2_overlap.txt");
+    }, invalid_argument);
+
+    BOOST_CHECK_THROW({
+        contrib = FileIngestApp::parseChunkContribution("chunk_2_overlap");
+    }, invalid_argument);
+
+    BOOST_CHECK_THROW({
+        contrib = FileIngestApp::parseChunkContribution("chunk_");
+    }, invalid_argument);
+
+    BOOST_CHECK_THROW({
+        contrib = FileIngestApp::parseChunkContribution("test_2.txt");
+    }, invalid_argument);
+
+    LOGS_INFO("FileIngestApp::parseChunkContribution test ends");
 }
 
 BOOST_AUTO_TEST_SUITE_END()

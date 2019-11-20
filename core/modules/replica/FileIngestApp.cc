@@ -125,6 +125,22 @@ list<FileIngestApp::FileIngestSpec> FileIngestApp::parseFileList(json const& jso
 }
 
 
+FileIngestApp::ChunkContribution FileIngestApp::parseChunkContribution(string const& filename) {
+    regex const re("^chunk_([0-9]+)(_overlap)?\\.txt$", regex::extended);
+    smatch match;
+    if (not regex_search(filename, match, re) or match.size() != 3) {
+        throw invalid_argument(
+                "FileIngestApp::" + string(__func__)
+                + "allowed file names for contributions into partitioned tables:"
+                " 'chunk_<chunk>.txt', 'chunk_<chunk>_overlap.txt'");
+    }
+    ChunkContribution result;
+    result.chunk = stoul(match[1].str());
+    result.isOverlap = not match[2].str().empty();
+    return result;
+}
+
+
 FileIngestApp::Ptr FileIngestApp::create(int argc, char* argv[]) {
     return Ptr(new FileIngestApp(argc, argv));
 }
@@ -268,27 +284,17 @@ void FileIngestApp::_ingest(FileIngestSpec const& file) const {
     
     // For partitioned tables analyze file name and extract a chunk number and
     // the 'overlap' attribute
-    unsigned int chunk = 0;
-    bool isOverlap = false;
-
+    ChunkContribution chunkContribution;
     if (file.tableType == "P") {
-        string const filename = fs::absolute(path).filename().string();
-        regex const re("^chunk_([0-9]+)(_overlap)?\\.txt$", regex::extended);
-        smatch match;
-        if (not regex_search(filename, match, re) or match.size() != 3) {
-            throw invalid_argument(
-                    context + "allowed file names for contributions into partitioned tables:"
-                    " 'chunk_<chunk>.txt', 'chunk_<chunk>_overlap.txt'");
-        }
-        chunk = stoul(match[1].str());
-        isOverlap = not match[2].str().empty();
-
+        // Remove a base path (if any) from the file name before parsing the name
+        chunkContribution = parseChunkContribution(fs::absolute(path).filename().string());
     } else if (file.tableType == "R") {
+        // No special requirements for the names of the regular files
         ;
     } else {
         throw invalid_argument(
                 context + "a value '" + file.tableType
-                + "' of <type> is not in a set of {'P','R'}.");
+                + "' of <type> is not in a set of {P,R}.");
     }
 
     // Push the file
@@ -304,8 +310,8 @@ void FileIngestApp::_ingest(FileIngestSpec const& file) const {
         file.workerPort,
         file.transactionId,
         file.tableName,
-        chunk,
-        isOverlap,
+        chunkContribution.chunk,
+        chunkContribution.isOverlap,
         file.inFileName
     );
     ptr->send();
@@ -319,8 +325,8 @@ void FileIngestApp::_ingest(FileIngestSpec const& file) const {
         cout << "Ingest service location: " << file.workerHost << ":" << file.workerPort << "\n"
              << " Transaction identifier: " << file.transactionId << "\n"
              << "      Destination table: " << file.tableName << "\n"
-             << "                  Chunk: " << chunk << "\n"
-             << "       Is chunk overlap: " << (isOverlap ? "1" : "0") << "\n"
+             << "                  Chunk: " << chunkContribution.chunk << "\n"
+             << "       Is chunk overlap: " << (chunkContribution.isOverlap ? "1" : "0") << "\n"
              << "        Input file name: " << file.inFileName << "\n"
              << "            Start  time: " << PerformanceUtils::toDateTimeString(chrono::milliseconds(startedMs)) << "\n"
              << "            Finish time: " << PerformanceUtils::toDateTimeString(chrono::milliseconds(finishedMs)) << "\n"

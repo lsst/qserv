@@ -51,7 +51,7 @@ public:
     typedef std::shared_ptr<FileIngestApp> Ptr;
 
     /**
-     * Class FileIngestSpec represents a specification for a single file to
+     * Structure FileIngestSpec represents a specification for a single file to
      * be ingested.
      */
     struct FileIngestSpec {
@@ -91,6 +91,27 @@ public:
      * @throws std::invalid_argument if the string can't be parsed
      */
     static std::list<FileIngestSpec> parseFileList(nlohmann::json const& jsonObj);
+
+    /**
+     * Structure ChunkContribution represents attributes of a chunk contribution
+     * file.
+     */
+    struct ChunkContribution {
+        unsigned int chunk = 0;
+        bool isOverlap = false;
+    };
+
+    /**
+     * Parse the file name (no folder allowed) and extract chunk attributes.
+     * Allowed file names:
+     * @code
+     *   chunk_<number>.txt
+     *   chunk_<number>_overlap.txt
+     * @code
+     * @param filename the name of the chunk contribution files
+     * @return an object encapsulating the attributes
+     */
+    static ChunkContribution parseChunkContribution(std::string const& filename);
 
     /**
      * The factory method is the only way of creating objects of this class
