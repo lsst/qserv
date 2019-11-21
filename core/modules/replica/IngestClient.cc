@@ -109,7 +109,7 @@ void IngestClient::send() {
 
     if (_sent) return;
 
-    ifstream file(_inputFilePath);
+    ifstream file(_inputFilePath, ofstream::binary);
     if (not file.good()) {
         _abort(__func__, "failed to open the file: " + _inputFilePath);
     }

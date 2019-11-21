@@ -279,7 +279,7 @@ void IngestServerConnection::_handshakeReceived(boost::system::error_code const&
     }
 
     // Ask a client to send 1 row to begin with. An optimal number of rows will be
-    // calculated based later upon a completion of that row and measuting its size.
+    // calculated based later upon a completion of that row and measuring its size.
     _sendReadyToReadData(1);
 }
 
@@ -340,7 +340,7 @@ void IngestServerConnection::_dataReceived(boost::system::error_code const& ec,
         return;
     }
 
-    // Prepend each row with the transaction identifier and wite it into the output file.
+    // Prepend each row with the transaction identifier and write it into the output file.
     // Compute the maximum length of the rows. It's value will be used on the next step
     // to advise a client on the most optimal number of rows to be sent with the next
     // batch (of rows).

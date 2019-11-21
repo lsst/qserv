@@ -139,7 +139,7 @@ BOOST_AUTO_TEST_CASE(FileUtils_createTemporaryFile) {
     }
 
     suffix = string();
-    maxRetries = 16;
+    maxRetries = digits.size();
     for (auto&& d: digits) {
         string const filePath = baseFilePath + "-" + d;
         LOGS_INFO("FileUtils::createTemporaryFile creating a temporary file: " + filePath);
@@ -147,6 +147,8 @@ BOOST_AUTO_TEST_CASE(FileUtils_createTemporaryFile) {
             FileUtils::createTemporaryFile(baseFilePath, "-", "%", suffix, maxRetries);
         }, runtime_error);
     }
+
+    fs::remove(baseFilePath, errCode);
     for (auto&& d: digits) {
         string const filePath = baseFilePath + "-" + d;
         fs::remove(filePath, errCode);
