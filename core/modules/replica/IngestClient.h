@@ -167,12 +167,13 @@ private:
      * Analyze a error condition and if there is a problem then report it
      * into the logging stream and throw an exception. The method will also
      * attempt to shutdown and close a connection with the server.
-     * If no problem will be found in the error code the method will do nothing.
+     * If no problem is found in the error code the method will do nothing.
      *
      * @param ec error code to be checked
      * @param func the name of a method which requested the test
-     * @param msg a message to be reported in case of a problem. The will be
-     *   extended with an explanation of the problem extracted from the error code.
+     * @param msg a message to be reported in case of a problem. The input message
+     *   will be extended with an explanation of the problem extracted from
+     *   the error code.
      * @throws IngestClientError if a problem was found
      */
     void _assertErrorCode(boost::system::error_code const& ec,

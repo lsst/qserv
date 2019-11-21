@@ -27,16 +27,21 @@
 #include <cerrno>
 #include <cstring>
 #include <cstdio>
+#include <fstream>
 #include <stdexcept>
 #include <sys/types.h>
 #include <pwd.h>
 #include <unistd.h>
+
+// Third party headers
+#include "boost/filesystem.hpp"
 
 // Qserv headers
 #include "replica/Configuration.h"
 
 using namespace std;
 using namespace lsst::qserv::replica;
+namespace fs = boost::filesystem;
 
 namespace {
 
@@ -74,6 +79,10 @@ bool isValidPartitionedTable(
     }
     return false;
 }
+
+// The conservative limit for most file systems
+size_t const maxFileNameLength = 255;
+
 } // namespace
 
 namespace lsst {
@@ -83,6 +92,8 @@ namespace replica {
 ///////////////////////////
 //    class FileUtils    //
 ///////////////////////////
+
+mutex FileUtils::_tmpFileMtx;
 
 vector<string> FileUtils::partitionedFiles(DatabaseInfo const& databaseInfo,
                                            unsigned int chunk) {
@@ -201,6 +212,72 @@ uint64_t FileUtils::compute_cs(string const& fileName,
 
 string FileUtils::getEffectiveUser() {
     return string(getpwuid(geteuid())->pw_name);
+}
+
+
+string FileUtils::createTemporaryFile(string const& baseDir,
+                                      string const& filePrefix,
+                                      string const& model,
+                                      string const& fileSuffix,
+                                      unsigned int maxRetries) {
+    string const context = "FileUtils::" + string(__func__) + "  ";
+
+    if (model.empty()) {
+        throw invalid_argument(context + "model can't be empty.");
+    }
+
+    string const pattern = filePrefix + model + fileSuffix;
+    if (pattern.size() > maxFileNameLength) {
+        throw range_error(
+                context + "file name length " + to_string(pattern.size())
+                + " exceeds a limit of " + to_string(maxFileNameLength) + " characters.");
+    }
+    if (maxRetries < 1) {
+        throw invalid_argument(context + "maxRetries can't be less than 1.");
+    }
+
+    boost::system::error_code errCode;
+
+    unsigned int numRetriesLeft = maxRetries;
+    while (numRetriesLeft-- > 0) {
+
+        // Generate a unique file path
+        fs::path const uniqueFileName = fs::unique_path(pattern, errCode);
+        if (errCode.value() != 0) {
+            throw runtime_error(
+                    context + "failed to generate a unique name for model: '" + model
+                    + "', error: " + errCode.message());
+        }
+        string const filePath =
+                baseDir + (baseDir.empty() ? "" : "/") + filePrefix + uniqueFileName.string()
+                + fileSuffix;
+
+        // Locate the file and make another retry if the file already exists.
+        // Grab a lock to ensure the file check and file creation sequence
+        // is atomic for the current process.
+
+        lock_guard<mutex> lock(_tmpFileMtx);
+
+        fs::file_status const stat = fs::status(filePath, errCode);
+        if (stat.type() == fs::status_error) {
+            throw runtime_error(
+                    context + "failed to check a status of the temporary file: '" + filePath
+                    + "', error: " + errCode.message());
+        }
+        if (fs::exists(stat)) continue;
+
+        // Create the file
+        ofstream file(filePath, ofstream::out);
+        if (not file.is_open()) {
+            throw runtime_error(
+                    context + "failed to create the temporary file: " + filePath);
+        }
+        file.close();
+        return filePath;
+    }
+    throw runtime_error(
+            "exceeded the maximum number of retries: " + to_string(maxRetries)
+            + " to create a temporary file for pattern: '" + pattern + "'.");
 }
 
 

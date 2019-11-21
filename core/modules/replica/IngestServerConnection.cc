@@ -28,6 +28,7 @@
 #include <cstring>
 #include <ctime>
 #include <functional>
+#include <thread>
 #include <stdexcept>
 
 // Third party headers
@@ -39,6 +40,7 @@
 #include "replica/ConfigurationIFace.h"
 #include "replica/DatabaseMySQL.h"
 #include "replica/DatabaseServices.h"
+#include "replica/FileUtils.h"
 #include "replica/ReplicaInfo.h"
 #include "replica/ServiceProvider.h"
 
@@ -256,21 +258,20 @@ void IngestServerConnection::_handshakeReceived(boost::system::error_code const&
         return;
     }
     
-    // Create a temporary file
-
-    boost::system::error_code errCode;
-    
-    string const fileExt = ".csv";
-    string const pattern = _databaseInfo.name + "-" + _table + "-" + to_string(_chunk) + "-" +
-                           to_string(_transactionId) + "-%%%%" + fileExt;
-    fs::path const baseFileName = fs::unique_path(pattern, errCode);
-    if (errCode.value() != 0) {
-        _failed("failed to allocate the name for a temporary file, error: " + errCode.message());
+    // Create a temporary file. The algorithm will make several attempts to create
+    // a temporary file name
+    try {
+        _fileName = FileUtils::createTemporaryFile(
+            _workerInfo.loaderTmpDir,
+            _databaseInfo.name + "-" + _table + "-" + to_string(_chunk) + "-" + to_string(_transactionId),
+            "-%%%%-%%%%-%%%%-%%%%",
+            ".csv"
+        );
+    } catch (exception const& ex) {
+        _failed("failed to generate a unique name for a temporary file, ex: " + string(ex.what()));
         return;
     }
 
-    fs::path const filePath = fs::path(_workerInfo.loaderTmpDir) / baseFileName;
-    _fileName = filePath.string();
     _file.open(_fileName, ofstream::out);
     if (not _file.is_open()) {
         _failed("failed to create a temporary file: " + _fileName);

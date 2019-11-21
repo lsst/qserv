@@ -27,19 +27,19 @@
 // LSST headers
 #include "lsst/log/Log.h"
 
-// Qserv headers
-#include "replica/FileIngestApp.h"
-
 // Third party headers
 #include "nlohmann/json.hpp"
+
+// Qserv headers
+#include "replica/FileIngestApp.h"
 
 // Boost unit test header
 #define BOOST_TEST_MODULE FileIngestApp
 #include "boost/test/included/unit_test.hpp"
 
 using namespace std;
-using namespace nlohmann;
 namespace test = boost::test_tools;
+using json = nlohmann::json;
 using namespace lsst::qserv::replica;
 
 BOOST_AUTO_TEST_SUITE(Suite)
