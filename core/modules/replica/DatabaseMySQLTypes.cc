@@ -26,6 +26,7 @@
 #include <regex>
 #include <sstream>
 #include <stdexcept>
+#include <tuple>
 
 // Qserv headers
 #include "replica/FileUtils.h"
@@ -81,7 +82,7 @@ ConnectionParams ConnectionParams::parse(string const& params,
 
     string const context = "ConnectionParams::" + string(__func__) + "  ";
 
-    regex  re("^mysql://([^:]+)?(:([^:]?.*[^@]?))?@([^:^/]+)?(:([0-9]+))?(/([^/]+))?$", regex::extended);
+    regex  re("^[ ]*mysql://([^:]+)?(:([^:]?.*[^@]?))?@([^:^/]+)?(:([0-9]+))?(/([^ ]+))[ ]*$", regex::extended);
     smatch match;
 
     if (not regex_search(params, match, re)) {
@@ -121,6 +122,12 @@ ConnectionParams ConnectionParams::parse(string const& params,
 string ConnectionParams::toString(bool showPassword) const {
     return string("mysql://") + user + ":" + (showPassword ? password : string("xxxxxx")) + "@" +
            host + ":" + to_string(port) + "/" + database;
+}
+
+
+bool ConnectionParams::operator==(ConnectionParams const& rhs) const {
+    return tie(    host,     port,     user,     password,     database) ==
+           tie(rhs.host, rhs.port, rhs.user, rhs.password, rhs.database);
 }
 
 

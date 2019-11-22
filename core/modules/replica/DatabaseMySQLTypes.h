@@ -43,7 +43,7 @@ namespace database {
 namespace mysql {
 
 /**
- * Structure ConnectionParams encapsulates connection parameters to
+ * Class ConnectionParams encapsulates connection parameters to
  * a MySQL server. If constructed using the default constructor
  * the parameters will be initialized with some reasonable defaults:
  *
@@ -56,54 +56,26 @@ namespace mysql {
  *   password:
  *   database:
  */
-struct ConnectionParams {
-
-    /// The DNS name or IP address of a machine where the database
-    /// server runs
-    std::string host;
-
-    /// The port number of the MySQL service
-    uint16_t port;
-
-    /// The name of a database user
-    std::string user;
-
-    /// The database password
-    std::string password;
-
-    /// The name of a database to be set upon the connection
-    std::string database;
-
+class ConnectionParams {
+public:
     /**
      * The factory method will return an instance of this structure initialized
      * by values of parameters found in the input encoded string. The string is
      * expected to have the following syntax:
      * @code
-     *   mysql://[user][:password]@[host][:port][/database]
+     *   mysql://[user][:password]@[host][:port]/database
      * @code
      *
      * @note
-     *   1) all keywords are mandatory
-     *   2) the corresponding values for for all but the database are optional
-     *   3) default values for other parameters (if missing in the string) will be assumed.
+     *   1) all (but the database) keywords are mandatory
+     *   2) default values for other parameters (if missing in the string) will be assumed.
      *
-     * @param params
-     *   connection parameters packed into a string
-     *
-     * @param defaultHost
-     *   default value for a host name
-     *
-     * @param defaultPort
-     *   default port number
-     *
-     * @param defaultUser
-     *   default value for a database user account
-     *
-     * @param defaultPassword
-     *   default value for a database user account
-     *
-     * @throw std::invalid_argument
-     *   if the string can't be parsed
+     * @param params connection parameters packed into a string
+     * @param defaultHost default value for a host name
+     * @param defaultPort default port number
+     * @param defaultUser default value for a database user account
+     * @param defaultPassword default value for a database user account
+     * @throw std::invalid_argument if the string can't be parsed
      */
     static ConnectionParams parse(std::string const& params,
                                   std::string const& defaultHost,
@@ -122,15 +94,38 @@ struct ConnectionParams {
                      std::string const& password_,
                      std::string const& database_);
 
+    ConnectionParams(ConnectionParams const&) = default;
+    ConnectionParams& operator=(ConnectionParams const&) = default;
+
+    ~ConnectionParams() = default;
+
+    bool operator==(ConnectionParams const& rhs) const;
+    bool operator!=(ConnectionParams const& rhs) const { return not operator==(rhs); };
+
     /**
-     * @param showPassword  if 'false' then hash a password in the result
-     *
-     * @return
-     *   a string representation of all (but the password unless requested) parameters.
-     *   The result will be formatted similarly to the one expected by
+     * @param showPassword if 'false' then hash a password in the result
+     * @return a string representation of all (but the password unless requested)
+     *   parameters. The result will be formatted similarly to the one expected by
      *   the non-default constructor of the class.
      */
     std::string toString(bool showPassword=false) const;
+
+
+    /// The DNS name or IP address of a machine where the database
+    /// server runs
+    std::string host;
+
+    /// The port number of the MySQL service
+    uint16_t port;
+
+    /// The name of a database user
+    std::string user;
+
+    /// The database password
+    std::string password;
+
+    /// The name of a database to be set upon the connection
+    std::string database;
 };
 
 /// Overloaded operator for serializing ConnectionParams instances
@@ -142,19 +137,14 @@ std::ostream& operator<<(std::ostream&, ConnectionParams const&);
  * being processed (escaped and quoted) as regular string values.
  */
 class DoNotProcess {
-
 public:
-
     /**
      * The normal constructor
-     *
-     * @param name_
-     *   the input value
+     * @param name_  the input value
      */
     explicit DoNotProcess(std::string const& name_);
 
     DoNotProcess() = delete;
-
     DoNotProcess(DoNotProcess const&) = default;
     DoNotProcess& operator=(DoNotProcess const&) = default;
 
