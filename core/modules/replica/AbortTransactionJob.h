@@ -34,6 +34,7 @@
 #include "nlohmann/json.hpp"
 
 // Qserv headers
+#include "replica/Common.h"
 #include "replica/Configuration.h"
 #include "replica/DatabaseServices.h"
 #include "replica/Job.h"
@@ -51,7 +52,6 @@ namespace replica {
  */
 class AbortTransactionJobResult {
 public:
-    
     /// Completion status of an operation over tables
     std::map<std::string,           // worker
              std::map<std::string,  // table
@@ -102,35 +102,23 @@ public:
      *   an identifier of a super-transaction corresponding to a MySQL partition
      *   to be dropped. The transaction must exist, and it should be in
      *   the ABORTED state.
-     *
      * @param allWorkers
      *   engage all known workers regardless of their status. If the flag
      *   is set to 'false' then only 'ENABLED' workers which are not in
      *   the 'READ-ONLY' state will be involved into the operation.
-     *
-     * @param controller
-     *   is needed launching requests and accessing the Configuration
-     *
-     * @param parentJobId
-     *   (optional) identifier of a parent job
-     *
-     * @param onFinish
-     *   (optional) callback function to be called upon a completion of the job
-     *
-     * @param options
-     *   (optional) defines the job priority, etc.
-     *
-     * @return
-     *   pointer to the created object
+     * @param controller is needed launching requests and accessing the Configuration
+     * @param parentJobId (optional) identifier of a parent job
+     * @param onFinish (optional) callback function to be called upon a completion
+     *   of the job
+     * @param options (optional) defines the job priority, etc.
+     * @return pointer to the created object
      */
-    static Ptr create(uint32_t transactionId,
+    static Ptr create(TransactionId transactionId,
                       bool allWorkers,
                       Controller::Ptr const& controller,
                       std::string const& parentJobId=std::string(),
                       CallbackType const& onFinish=nullptr,
                       Job::Options const& options=defaultOptions());
-
-    // Default construction and copy semantics are prohibited
 
     AbortTransactionJob() = delete;
     AbortTransactionJob(AbortTransactionJob const&) = delete;
@@ -140,47 +128,33 @@ public:
 
     // Trivial get methods
 
-    uint32_t transactionId() const { return _transactionId; }
+    TransactionId transactionId() const { return _transactionId; }
 
     bool allWorkers() const { return _allWorkers; }
 
     /**
      * Return the combined result of the operation
      *
-     * @note:
+     * @note
      *  The method should be invoked only after the job has finished (primary
      *  status is set to Job::Status::FINISHED). Otherwise exception
      *  std::logic_error will be thrown
-     *
-     * @return
-     *   the data structure to be filled upon the completion of the job.
-     *
-     * @throws std::logic_error
-     *   if the job didn't finished at a time when the method was called
+     * @return the data structure to be filled upon the completion of the job.
+     * @throws std::logic_error if the job didn't finished at a time when the method was called
      */
     AbortTransactionJobResult const& getResultData() const;
 
-    /// @see Job::extendedPersistentState()
     std::list<std::pair<std::string,std::string>> extendedPersistentState() const final;
-
-    /// @see Job::persistentLogData()
     std::list<std::pair<std::string,std::string>> persistentLogData() const final;
 
 protected:
-
-    /// @see Job::startImpl()
     void startImpl(util::Lock const& lock) final;
-
-    /// @see Job::cancelImpl()
     void cancelImpl(util::Lock const& lock) final;
-
-    /// @see Job::notify()
     void notify(util::Lock const& lock) final;
 
 
 private:
-    /// @see AbortTransactionJob::create()
-    AbortTransactionJob(uint32_t transactionId,
+    AbortTransactionJob(TransactionId transactionId,
                         bool allWorkers,
                         Controller::Ptr const& controller,
                         std::string const& parentJobId,
@@ -198,14 +172,9 @@ private:
      * The algorithm will try to keep the workers equally loaded.
      * If no candidates were found in the input queue then the method would return 0.
      *
-     * @param lock
-     *   the lock on the base class's mutex Job::_mtx to be acquired
-     * 
-     * @param maxRequests
-     *   the maximum number of requests to be submitted
-     * 
-     * @return
-     *   the actual number of requests to be submitted, or 0 if the input
+     * @param lock the lock on the base class's mutex Job::_mtx to be acquired
+     * @param maxRequests the maximum number of requests to be submitted
+     * @return the actual number of requests to be submitted, or 0 if the input
      *   queue is empty
      */
     size_t _submitNextBatch(util::Lock const& lock,
@@ -213,15 +182,15 @@ private:
 
     // Input parameters
 
-    uint32_t const _transactionId;
-    bool     const _allWorkers;
+    TransactionId const _transactionId;
+    bool const _allWorkers;
 
     CallbackType _onFinish;     /// @note is reset when the job finishes
 
     /// Set up by the constructor
 
     TransactionInfo _transactionInfo;
-    DatabaseInfo  _databaseInfo;
+    DatabaseInfo    _databaseInfo;
 
     std::vector<std::string> _workers;
 

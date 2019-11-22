@@ -27,6 +27,7 @@
 
 // Qserv headers
 #include "replica/Application.h"
+#include "replica/Common.h"
 
 // Forward declarations
 namespace lsst {
@@ -44,9 +45,7 @@ namespace replica {
  * Class TransactionsApp implements a tool for testing super-transactions.
  */
 class TransactionsApp : public Application {
-
 public:
-
     /// The pointer type for instances of the class
     typedef std::shared_ptr<TransactionsApp> Ptr;
 
@@ -54,15 +53,10 @@ public:
      * The factory method is the only way of creating objects of this class
      * because of the very base class's inheritance from 'enable_shared_from_this'.
      *
-     * @param argc
-     *   the number of command-line arguments
-     *
-     * @param argv
-     *   the vector of command-line arguments
+     * @param argc the number of command-line arguments
+     * @param argv  the vector of command-line arguments
      */
     static Ptr create(int argc, char* argv[]);
-
-    // Default construction and copy semantics are prohibited
 
     TransactionsApp() = delete;
     TransactionsApp(TransactionsApp const&) = delete;
@@ -71,13 +65,9 @@ public:
     ~TransactionsApp() override = default;
 
 protected:
-
-    /// @see Application::runImpl()
     int runImpl() final;
 
 private:
-
-    /// @see TransactionsApp::create()
     TransactionsApp(int argc, char* argv[]);
 
     void _print(TransactionInfo const& info) const;
@@ -87,7 +77,7 @@ private:
     std::string _operation;     /// An operation over transactions
     std::string _databaseName;  /// The name of a database associated with a transaction(s))
 
-    uint32_t _id = 0;           /// A unique identifier of an existing transaction
+    TransactionId _id = 0;      /// A unique identifier of an existing transaction
 
     bool _abort = false;        /// Abort a transaction rather than finish it normally
 

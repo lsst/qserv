@@ -26,10 +26,12 @@
 #include <stdexcept>
 
 // Qserv headers
-#include "lsst/log/Log.h"
 #include "replica/Configuration.h"
 #include "replica/DatabaseMySQL.h"
 #include "replica/DatabaseServicesMySQL.h"
+
+// LSST headers
+#include "lsst/log/Log.h"
 
 using namespace std;
 using json = nlohmann::json;
@@ -45,9 +47,7 @@ namespace qserv {
 namespace replica {
 
 json ControllerEvent::toJson() const {
-    
     json event;
-
     event["id"]            = id;
     event["controller_id"] = controllerId;
     event["timestamp"]     = timeStamp;
@@ -70,15 +70,12 @@ json ControllerEvent::toJson() const {
 
 
 json ControllerInfo::toJson(bool isCurrent) const {
-
     json info;
-
     info["id"]         = id;
     info["hostname"]   = hostname;
     info["pid"]        = pid;
     info["start_time"] = started;
     info["current"]    = isCurrent ? 1 : 0;
-
     return info;
 }
 
@@ -109,15 +106,12 @@ json RequestInfo::toJson() const {
         extended.push_back(attr);
     }
     info["extended"] = extended;
-
     return info;
 }
 
 
 json JobInfo::toJson() const {
-
     json info;
-
     info["id"]             = id;
     info["controller_id"]  = controllerId;
     info["parent_job_id"]  = parentJobId;
@@ -137,21 +131,38 @@ json JobInfo::toJson() const {
         extended.push_back(attr);
     }
     info["extended"] = extended;
-
     return info;
 }
 
 
+TransactionInfo::State TransactionInfo::string2state(string const& str) {
+    if ("STARTED"  == str) return STARTED;
+    if ("FINISHED" == str) return FINISHED;
+    if ("ABORTED"  == str) return ABORTED;
+    throw runtime_error(
+            "DatabaseServices::" + string(__func__) + "  unknown transaction state: '"
+            + str + "'");
+}
+
+
+string TransactionInfo::state2string(State state) {
+    switch (state) {
+        case STARTED:  return "STARTED";
+        case FINISHED: return "FINISHED";
+        case ABORTED:  return "ABORTED";
+    };
+    throw runtime_error(
+            "DatabaseServices::" + string(__func__) + "  unhandled transaction state");
+}
+
+
 json TransactionInfo::toJson() const {
-
     json info;
-
     info["id"]         = id;
     info["database"]   = database;
-    info["state"]      = state;
+    info["state"]      = state2string(state);
     info["begin_time"] = beginTime;
     info["end_time"]   = endTime;
-
     return info;
 }
 

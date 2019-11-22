@@ -23,18 +23,19 @@
 #include "replica/WorkerServerConnection.h"
 
 // System headers
-
-// Third party headers
-#include <boost/bind.hpp>
+#include <functional>
 
 // Qserv headers
-#include "lsst/log/Log.h"
 #include "replica/Configuration.h"
 #include "replica/Performance.h"
 #include "replica/ProtocolBuffer.h"
 #include "replica/ServiceProvider.h"
 
+// LSST headers
+#include "lsst/log/Log.h"
+
 using namespace std;
+using namespace std::placeholders;
 using namespace lsst::qserv::replica;
 
 namespace {
@@ -172,12 +173,7 @@ void WorkerServerConnection::_receive() {
             bytes
         ),
         boost::asio::transfer_at_least(bytes),
-        boost::bind(
-            &WorkerServerConnection::_received,
-            shared_from_this(),
-            boost::asio::placeholders::error,
-            boost::asio::placeholders::bytes_transferred
-        )
+        bind(&WorkerServerConnection::_received, shared_from_this(), _1, _2)
     );
 }
 
@@ -553,16 +549,8 @@ void WorkerServerConnection::_send() {
 
     boost::asio::async_write(
         _socket,
-        boost::asio::buffer(
-            _bufferPtr->data(),
-            _bufferPtr->size()
-        ),
-        boost::bind(
-            &WorkerServerConnection::_sent,
-            shared_from_this(),
-            boost::asio::placeholders::error,
-            boost::asio::placeholders::bytes_transferred
-        )
+        boost::asio::buffer(_bufferPtr->data(), _bufferPtr->size()),
+        bind(&WorkerServerConnection::_sent, shared_from_this(), _1, _2)
     );
 }
 

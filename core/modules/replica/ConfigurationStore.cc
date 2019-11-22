@@ -28,7 +28,7 @@
 #include <sstream>
 
 // Third party headers
-#include <boost/lexical_cast.hpp>
+#include "boost/lexical_cast.hpp"
 
 // Qserv headers
 #include "replica/ChunkNumber.h"

@@ -24,14 +24,15 @@
 
 // System headers
 #include <algorithm>
-#include <future>
 #include <stdexcept>
 
 // Qserv headers
-#include "lsst/log/Log.h"
 #include "replica/ErrorReporting.h"
 #include "replica/ServiceProvider.h"
 #include "replica/StopRequest.h"
+
+// LSST headers
+#include "lsst/log/Log.h"
 
 using namespace std;
 
@@ -239,9 +240,7 @@ void FixUpJob::_restart(util::Lock const& lock) {
 
 
 void FixUpJob::notify(util::Lock const& lock) {
-
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
-
     notifyDefaultImpl<FixUpJob>(lock, _onFinish);
 }
 

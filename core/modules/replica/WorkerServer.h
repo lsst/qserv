@@ -25,7 +25,7 @@
 #include <memory>
 
 // Third party headers
-#include <boost/asio.hpp>
+#include "boost/asio.hpp"
 
 // Qserv headers
 #include "replica/ServiceProvider.h"

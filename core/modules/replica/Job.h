@@ -32,7 +32,7 @@
 #include <vector>
 
 // THird party headers
-#include <boost/asio.hpp>
+#include "boost/asio.hpp"
 
 // Qserv headers
 #include "replica/AddReplicaQservMgtRequest.h"

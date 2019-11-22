@@ -34,6 +34,7 @@
 #include <list>
 
 // Qserv headers
+#include "replica/Common.h"
 #include "replica/DatabaseServices.h"
 
 // This header declarations
@@ -43,11 +44,9 @@ namespace replica {
 
 /**
   * Class DatabaseServicesPool is a pool of service objects.
-  *
   * @see class DatabaseServices
   */
 class DatabaseServicesPool : public DatabaseServices {
-
 public:
     /// This class which implements the RAII paradigm is used by
     /// the implementation of the pool.
@@ -60,15 +59,10 @@ public:
      * The factory method for instantiating a proper service object based
      * on an application configuration.
      *
-     * @param configuration
-     *   the configuration service
-     *
-     * @return
-     *   pointer to the created object
+     * @param configuration the configuration service
+     * @return pointer to the created object
      */
     static Ptr create(ConfigurationPtr const& configuration);
-
-    // Default construction and copy semantics are prohibited
 
     DatabaseServicesPool() = delete;
     DatabaseServicesPool(DatabaseServicesPool const&) = delete;
@@ -174,33 +168,26 @@ public:
                             uint64_t toTimeStamp,
                             size_t maxEntries) final;
 
-    TransactionInfo transaction(uint32_t id) final;
+    TransactionInfo transaction(TransactionId id) final;
 
     std::vector<TransactionInfo> transactions(std::string const& databaseName=std::string()) final;
 
     TransactionInfo beginTransaction(std::string const& databaseName) final;
 
-    TransactionInfo endTransaction(uint32_t id,
+    TransactionInfo endTransaction(TransactionId id,
                                    bool abort=false) final;
 
 private:
     /**
-     * Construct the object.
-     *
-     * @param configuration
-     *   the configuration service
+     * @param configuration the configuration service
      */
     explicit DatabaseServicesPool(ConfigurationPtr const& configuration);
 
     /**
      * Allocate the next available service object.
      *
-     * @note
-     *   the requester must return the service back after it's no longer needed.
-     *
-     * @return
-     *   pointer to a service
-     *
+     * @note the requester must return the service back after it's no longer needed.
+     * @return pointer to a service
      * @see DatabaseServicesPool::_releaseService()
      */
     DatabaseServices::Ptr _allocateService();
@@ -208,12 +195,8 @@ private:
     /**
      * Return a service object back into the pool of the available ones.
      *
-     * @param service
-     *   service object to be returned back
-     *
-     * @throws std::logic_error
-     *   if the service object was not previously allocated
-     *
+     * @param service service object to be returned back
+     * @throws std::logic_error if the service object was not previously allocated
      * @see DatabaseServicesPool::_allocateService()
      */
     void _releaseService(DatabaseServices::Ptr const& service);

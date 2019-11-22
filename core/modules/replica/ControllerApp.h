@@ -28,6 +28,7 @@
 
 // Qserv headers
 #include "replica/Application.h"
+#include "replica/Common.h"
 #include "replica/Controller.h"
 #include "replica/Request.h"
 
@@ -41,9 +42,7 @@ namespace replica {
  * the Controller requests.
  */
 class ControllerApp : public Application {
-
 public:
-
     /// The pointer type for instances of the class
     typedef std::shared_ptr<ControllerApp> Ptr;
 
@@ -51,15 +50,10 @@ public:
      * The factory method is the only way of creating objects of this class
      * because of the very base class's inheritance from 'enable_shared_from_this'.
      *
-     * @param argc
-     *   the number of command-line arguments
-     *
-     * @param argv
-     *   the vector of command-line arguments
+     * @param argc the number of command-line arguments
+     * @param argv the vector of command-line arguments
      */
     static Ptr create(int argc, char* argv[]);
-
-    // Default construction and copy semantics are prohibited
 
     ControllerApp()=delete;
     ControllerApp(ControllerApp const&)=delete;
@@ -68,13 +62,9 @@ public:
     ~ControllerApp() override=default;
 
 protected:
-
-    /// @see Application::runImpl()
     int runImpl() final;
 
 private:
-
-    /// @see ControllerApp::create()
     ControllerApp(int argc, char* argv[]);
 
     void _configureParser();
@@ -145,7 +135,7 @@ private:
     std::string _sqlPartitionByColumn;
 
     /// An identifier of a super-transaction
-    uint32_t _transactionId = std::numeric_limits<uint32_t>::max();
+    TransactionId _transactionId = std::numeric_limits<TransactionId>::max();
 
     /// The optional limit for the total number of rows to be pulled from a result
     /// set when executing queries against the worker's database. The default value

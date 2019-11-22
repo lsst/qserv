@@ -23,21 +23,24 @@
 #include "replica/StopRequestBase.h"
 
 // System headers
+#include <functional>
 #include <sstream>
 #include <stdexcept>
 
 // Third party headers
-#include <boost/bind.hpp>
-#include <boost/date_time/posix_time/posix_time.hpp>
+#include "boost/date_time/posix_time/posix_time.hpp"
 
 // Qserv headers
-#include "lsst/log/Log.h"
 #include "replica/Controller.h"
 #include "replica/DatabaseServices.h"
 #include "replica/ProtocolBuffer.h"
 #include "replica/ServiceProvider.h"
 
+// LSST headers
+#include "lsst/log/Log.h"
+
 using namespace std;
+using namespace std::placeholders;
 
 namespace {
 
@@ -92,13 +95,7 @@ void StopRequestBase::_wait(util::Lock const& lock) {
     // Always need to set the interval before launching the timer.
 
     timer().expires_from_now(boost::posix_time::seconds(timerIvalSec()));
-    timer().async_wait(
-        boost::bind(
-            &StopRequestBase::_awaken,
-            shared_from_base<StopRequestBase>(),
-            boost::asio::placeholders::error
-        )
-    );
+    timer().async_wait(bind(&StopRequestBase::_awaken, shared_from_base<StopRequestBase>(), _1));
 }
 
 

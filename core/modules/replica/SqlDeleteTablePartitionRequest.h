@@ -28,6 +28,7 @@
 #include <string>
 
 // Qserv headers
+#include "replica/Common.h"
 #include "replica/SqlRequest.h"
 
 // This header declarations
@@ -42,14 +43,11 @@ namespace replica {
  */
 class SqlDeleteTablePartitionRequest : public SqlRequest {
 public:
-
     /// The pointer type for instances of the class
     typedef std::shared_ptr<SqlDeleteTablePartitionRequest> Ptr;
 
     /// The function type for notifications on the completion of the request
     typedef std::function<void(Ptr)> CallbackType;
-
-    // Default construction and copy semantics are prohibited
 
     SqlDeleteTablePartitionRequest() = delete;
     SqlDeleteTablePartitionRequest(SqlDeleteTablePartitionRequest const&) = delete;
@@ -69,63 +67,40 @@ public:
      * @param serviceProvider
      *   is needed to access the Configuration and the Controller for communicating
      *   with the worker
-     *
-     * @param io_service
-     *   a communication end-point
-     *
-     * @param worker
-     *   identifier of a worker node
-     *
-     * @param database
-     *   the name of an existing database where the table is residing
-     *
-     * @param table
-     *   the name of a table affected by the operation
-     *
+     * @param io_service a communication end-point
+     * @param worker identifier of a worker node
+     * @param database the name of an existing database where the table is residing
+     * @param table the name of a table affected by the operation
      * @param transactionId
      *   a unique identifier of a transaction which corresponds to a MySQL
      *   partition to be removed.
-     *
-     * @param onFinish
-     *   (optional) callback function to call upon completion of the request
-     *
-     * @param priority
-     *   priority level of the request
-     *
-     * @param keepTracking
-     *   keep tracking the request before it finishes or fails
-     *
-     * @param messenger
-     *   interface for communicating with workers
-     *
-     * @return
-     *   pointer to the created object
+     * @param onFinish (optional) callback function to call upon completion of the request
+     * @param priority priority level of the request
+     * @param keepTracking keep tracking the request before it finishes or fails
+     * @param messenger interface for communicating with workers
+     * @return pointer to the created object
      */
     static Ptr create(ServiceProvider::Ptr const& serviceProvider,
                       boost::asio::io_service& io_service,
                       std::string const& worker,
                       std::string const& database,
                       std::string const& table,
-                      uint32_t transactionId,
+                      TransactionId transactionId,
                       CallbackType const& onFinish,
                       int priority,
                       bool keepTracking,
                       std::shared_ptr<Messenger> const& messenger);
 
 protected:
-
-    /// @see Request::notify()
     void notify(util::Lock const& lock) final;
 
 private:
-
-    /// @see SqlDeleteTablePartitionRequest::create()
     SqlDeleteTablePartitionRequest(ServiceProvider::Ptr const& serviceProvider,
                                     boost::asio::io_service& io_service,
                                     std::string const& worker,
                                     std::string const& database,
                                     std::string const& table,
-                                    uint32_t transactionId,
+                                    TransactionId transactionId,
                                     CallbackType const& onFinish,
                                     int priority,
                                     bool keepTracking,

@@ -23,19 +23,22 @@
 #include "replica/MessengerConnector.h"
 
 // System headers
+#include <functional>
 #include <stdexcept>
 
 // Third party headers
-#include <boost/bind.hpp>
-#include <boost/date_time/posix_time/posix_time.hpp>
+#include "boost/date_time/posix_time/posix_time.hpp"
 
 // Qserv headers
-#include "lsst/log/Log.h"
 #include "replica/Configuration.h"
 #include "replica/ProtocolBuffer.h"
 #include "replica/ServiceProvider.h"
 
+// LSST headers
+#include "lsst/log/Log.h"
+
 using namespace std;
+using namespace std::placeholders;
 
 namespace {
 
@@ -251,12 +254,7 @@ void MessengerConnector::_resolve(util::Lock const& lock) {
     );
     _resolver.async_resolve(
         query,
-        boost::bind(
-            &MessengerConnector::_resolved,
-            shared_from_this(),
-            boost::asio::placeholders::error,
-            boost::asio::placeholders::iterator
-        )
+        bind(&MessengerConnector::_resolved, shared_from_this(), _1, _2)
     );
     _state = STATE_CONNECTING;
 }
@@ -289,12 +287,7 @@ void MessengerConnector::_connect(util::Lock const& lock,
     boost::asio::async_connect(
         _socket,
         iter,
-        boost::bind(
-            &MessengerConnector::_connected,
-            shared_from_this(),
-            boost::asio::placeholders::error,
-            boost::asio::placeholders::iterator
-        )
+        bind(&MessengerConnector::_connected, shared_from_this(), _1, _2)
     );
 }
 
@@ -326,13 +319,7 @@ void MessengerConnector::_waitBeforeRestart(util::Lock const& lock) {
     // Always need to set the interval before launching the timer.
 
     _timer.expires_from_now(boost::posix_time::seconds(_timerIvalSec));
-    _timer.async_wait(
-        boost::bind(
-            &MessengerConnector::_awakenForRestart,
-            shared_from_this(),
-            boost::asio::placeholders::error
-        )
-    );
+    _timer.async_wait(bind(&MessengerConnector::_awakenForRestart, shared_from_this(),_1));
 }
 
 
@@ -376,12 +363,7 @@ void MessengerConnector::_sendRequest(util::Lock const& lock) {
             _currentRequest->requestBufferPtr()->data(),
             _currentRequest->requestBufferPtr()->size()
         ),
-        boost::bind(
-            &MessengerConnector::_requestSent,
-            shared_from_this(),
-            boost::asio::placeholders::error,
-            boost::asio::placeholders::bytes_transferred
-        )
+        bind(&MessengerConnector::_requestSent, shared_from_this(), _1, _2)
     );
 }
 
@@ -455,12 +437,7 @@ void MessengerConnector::_receiveResponse(util::Lock const& lock) {
             bytes
         ),
         boost::asio::transfer_at_least(bytes),
-        boost::bind(
-            &MessengerConnector::_responseReceived,
-            shared_from_this(),
-            boost::asio::placeholders::error,
-            boost::asio::placeholders::bytes_transferred
-        )
+        bind(&MessengerConnector::_responseReceived, shared_from_this(), _1, _2)
     );
 }
 

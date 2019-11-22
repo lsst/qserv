@@ -632,7 +632,7 @@ int ControllerApp::runImpl() {
 
     } else if ("INDEX" == _requestType) {
 
-        bool const hasTransactions = _transactionId != numeric_limits<uint32_t>::max();
+        bool const hasTransactions = _transactionId != numeric_limits<TransactionId>::max();
 
         request = controller->index(
             _workerName, _sqlDatabase, _chunkNumber, hasTransactions, _transactionId,

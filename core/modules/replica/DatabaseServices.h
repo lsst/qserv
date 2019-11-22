@@ -35,6 +35,7 @@
 #include "nlohmann/json.hpp"
 
 // Qserv headers
+#include "replica/Common.h"
 #include "replica/Job.h"
 #include "replica/ReplicaInfo.h"
 
@@ -213,11 +214,23 @@ public:
  */
 class TransactionInfo {
 public:
+    /// Allowed states for the transaction
+    enum State {
+        STARTED,
+        FINISHED,
+        ABORTED
+    };
 
-    uint32_t id = 0;    /// Its unique identifier
+    static State string2state(std::string const& str);
+    static std::string state2string(State state);
 
-    std::string database;   /// The name of a database
-    std::string state;      /// Its state
+    /// Its unique identifier (the default value represents a non valid transaction)
+    TransactionId id = std::numeric_limits<TransactionId>::max();
+
+    /// The name of a database associated with the transaction
+    std::string database;
+
+    State state = State::STARTED;
 
     uint64_t beginTime = 0; /// The timestamp (milliseconds) when it started
     uint64_t endTime = 0;   /// The timestamp (milliseconds) when it was committed/aborted
@@ -831,7 +844,7 @@ public:
 
     /// @return a description of a super-transaction
     /// @throws DatabaseServicesNotFound if no such transaction found
-    virtual TransactionInfo transaction(uint32_t id) = 0;
+    virtual TransactionInfo transaction(TransactionId id) = 0;
 
     /// @return a collection of super-transactions (all of them or for the specified database only)
     /// @throws std::invalid_argument if database name is not valid
@@ -845,7 +858,7 @@ public:
     /// @return an updated descriptor of the (committed or aborted) super-transaction 
     /// @throws DatabaseServicesNotFound if no such transaction found
     /// @throws std::logic_error if the transaction has already ended
-    virtual TransactionInfo endTransaction(uint32_t id,
+    virtual TransactionInfo endTransaction(TransactionId id,
                                            bool abort=false) = 0;
     
 protected:

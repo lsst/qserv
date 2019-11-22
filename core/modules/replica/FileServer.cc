@@ -23,17 +23,18 @@
 #include "replica/FileServer.h"
 
 // System headers
+#include <functional>
 #include <thread>
 
-// Third party headers
-#include <boost/bind.hpp>
-
 // Qserv headers
-#include "lsst/log/Log.h"
 #include "replica/Configuration.h"
 #include "replica/ServiceProvider.h"
 
+// LSST headers
+#include "lsst/log/Log.h"
+
 using namespace std;
+using namespace std::placeholders;
 
 namespace {
 
@@ -81,25 +82,22 @@ void FileServer::run() {
 
     // Launch all threads in the pool
     vector<shared_ptr<thread>> threads(_serviceProvider->config()->fsNumProcessingThreads());
-
-    for (size_t i = 0; i < threads.size(); ++i) {
-        shared_ptr<thread> ptr(
-            new thread(boost::bind(&boost::asio::io_service::run,
-                       &_io_service))
-        );
-        threads[i] = ptr;
+    for (auto&& ptr: threads) {
+        ptr = shared_ptr<thread>(new thread([&]() {
+            _io_service.run();
+        }));
     }
 
     // Wait for all threads in the pool to exit.
-    for (size_t i = 0; i < threads.size(); ++i) {
-        threads[i]->join();
+    for (auto&& ptr: threads) {
+        ptr->join();
     }
 }
 
 
 void FileServer::_beginAccept() {
 
-    FileServerConnection::Ptr connection =
+    FileServerConnection::Ptr const connection =
         FileServerConnection::create(
             _serviceProvider,
             _workerName,
@@ -107,11 +105,8 @@ void FileServer::_beginAccept() {
 
     _acceptor.async_accept(
         connection->socket(),
-        boost::bind(
-            &FileServer::_handleAccept,
-            shared_from_this(),
-            connection,
-            boost::asio::placeholders::error));
+        bind(&FileServer::_handleAccept, shared_from_this(), connection, _1)
+    );
 }
 
 

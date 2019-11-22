@@ -759,3 +759,54 @@ message ProtocolFileResponse {
     required uint32 mtime = 3;
 
 }
+
+//////////////////////////////////////////////
+//         The IngestServer protocol        //
+//////////////////////////////////////////////
+
+/// Sent once by a client after establishing a connection with a server
+message ProtocolIngestHandshakeRequest {
+
+    /// An identifier of a super-transaction
+    required uint32 transaction_id = 1;
+
+    /// The base name (no chunk numbers or 'overlap' suffixes) of table to be loaded
+    required string table = 2;
+
+    /// The chunk number
+    required uint32 chunk = 3;
+
+    /// The flag indicating if this is the chunk 'overlap' table
+    required bool is_overlap = 4;
+
+    /// A character separating columns within a row
+    enum ColumnSeparator {
+        COMMA = 0;
+        TAB   = 1;
+    }
+    required ColumnSeparator column_separator = 5;
+}
+
+/// A message which is meant for sending rows to a server after receiving
+/// status READY_TO_READ_DATA. This message is sent once after each READY_TO_READ_DATA.
+/// When sending the last batch of rows the client should set the flag 'last' to
+/// to tell the server that no more data are available. In that case the server
+/// should respond with FINISHED. Then both parties should close the connection.
+message ProtocolIngestData {
+    repeated bytes rows = 1;
+    required bool last = 2;     /// 'true' if this was the last batch of rows
+}
+
+/// The response message sent by a server on each client's request
+message ProtocolIngestResponse {
+
+    enum Status {
+        READY_TO_READ_DATA = 0;     /// server is waiting for data
+        FINISHED           = 1;     /// a confirmation that the file content accepted
+        FAILED             = 2;     /// to report problems
+    }
+    required Status status = 1;
+
+    optional uint32 max_rows = 2 [default = 1]; /// sent with READY_TO_READ_DATA
+    optional string error = 3 [default = ""];   /// sent with FAILED
+}

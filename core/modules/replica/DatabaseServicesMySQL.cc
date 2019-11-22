@@ -31,7 +31,6 @@
 #include <list>
 
 // Qserv headers
-#include "lsst/log/Log.h"
 #include "replica/Configuration.h"
 #include "replica/Controller.h"
 #include "replica/Job.h"
@@ -40,6 +39,9 @@
 #include "replica/ReplicaInfo.h"
 #include "replica/Request.h"
 #include "replica/SemanticMaps.h"
+
+// LSST headers
+#include "lsst/log/Log.h"
 
 using namespace std;
 using namespace lsst::qserv::replica;
@@ -1894,7 +1896,7 @@ list<JobInfo> DatabaseServicesMySQL::_jobs(util::Lock const& lock,
 }
 
 
-TransactionInfo DatabaseServicesMySQL::transaction(uint32_t id) {
+TransactionInfo DatabaseServicesMySQL::transaction(TransactionId id) {
 
     string const context = _context(__func__) + "id="  + to_string(id) + " ";
 
@@ -1993,7 +1995,7 @@ TransactionInfo DatabaseServicesMySQL::beginTransaction(string const& databaseNa
 }
 
 
-TransactionInfo DatabaseServicesMySQL::endTransaction(uint32_t id, bool abort) {
+TransactionInfo DatabaseServicesMySQL::endTransaction(TransactionId id, bool abort) {
 
     string const context = _context(__func__) +
             "id="  + to_string(id) + " abort=" + string(abort ? "true" : "false") + " ";
@@ -2003,7 +2005,7 @@ TransactionInfo DatabaseServicesMySQL::endTransaction(uint32_t id, bool abort) {
     util::Lock lock(_mtx, context);
 
     uint64_t const endTime = PerformanceUtils::now();
-    string   const state   = abort ? "ABORTED" : "FINISHED";
+    string   const stateStr = abort ? "ABORTED" : "FINISHED";
 
     TransactionInfo info;
     try {
@@ -2018,10 +2020,10 @@ TransactionInfo DatabaseServicesMySQL::endTransaction(uint32_t id, bool abort) {
                 conn->executeSimpleUpdateQuery(
                     "transaction",
                     predicate,
-                    make_pair("state",    state),
+                    make_pair("state",    stateStr),
                     make_pair("end_time", endTime)
                 );
-                info.state   = state;
+                info.state   = TransactionInfo::string2state(stateStr);
                 info.endTime = endTime;
                 conn->commit();
             }
@@ -2075,7 +2077,11 @@ vector<TransactionInfo> DatabaseServicesMySQL::_findTransactionsImpl(util::Lock 
 
             row.get("id",         info.id);
             row.get("database",   info.database);
-            row.get("state",      info.state);
+
+            string stateStr;
+            row.get("state",      stateStr);
+            info.state = TransactionInfo::string2state(stateStr);
+
             row.get("begin_time", info.beginTime);
             row.get("end_time",   info.endTime);
 

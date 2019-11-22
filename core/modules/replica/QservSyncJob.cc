@@ -23,16 +23,17 @@
 #include "replica/QservSyncJob.h"
 
 // System headers
-#include <future>
 #include <map>
 #include <stdexcept>
 
 // Qserv headers
-#include "lsst/log/Log.h"
 #include "replica/Configuration.h"
 #include "replica/DatabaseServices.h"
 #include "replica/QservMgtServices.h"
 #include "replica/ServiceProvider.h"
+
+// LSST headers
+#include "lsst/log/Log.h"
 
 using namespace std;
 

@@ -27,10 +27,12 @@
 #include <thread>
 
 // Qserv headers
-#include "lsst/log/Log.h"
 #include "replica/Controller.h"
 #include "replica/QservMgtServices.h"
 #include "replica/ServiceProvider.h"
+
+// LSST headers
+#include "lsst/log/Log.h"
 
 using namespace std;
 

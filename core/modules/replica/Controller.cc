@@ -29,7 +29,6 @@
 #include <unistd.h>
 
 // Qserv headers
-#include "lsst/log/Log.h"
 #include "replica/Common.h"
 #include "replica/Configuration.h"
 #include "replica/DatabaseServices.h"
@@ -55,6 +54,9 @@
 #include "replica/SqlRemoveTablePartitionsRequest.h"
 #include "replica/StatusRequest.h"
 #include "replica/StopRequest.h"
+
+// LSST headers
+#include "lsst/log/Log.h"
 
 using namespace std;
 
@@ -244,7 +246,7 @@ IndexRequest::Ptr Controller::index(
         string const& database,
         unsigned int chunk,
         bool hasTransactions,
-        uint32_t transactionId,
+        TransactionId transactionId,
         IndexRequest::CallbackType const& onFinish,
         int priority,
         bool keepTracking,
@@ -512,7 +514,7 @@ SqlDeleteTablePartitionRequest::Ptr Controller::sqlDeleteTablePartition(
         string const& workerName,
         string const& database,
         string const& table,
-        uint32_t transactionId,
+        TransactionId transactionId,
         SqlDeleteTablePartitionRequest::CallbackType const& onFinish,
         int priority,
         bool keepTracking,

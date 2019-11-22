@@ -22,9 +22,7 @@
 // Class header
 #include "replica/RequestMessenger.h"
 
-// System headers
-
-// Qserv headers
+// LSST headers
 #include "lsst/log/Log.h"
 
 using namespace std;

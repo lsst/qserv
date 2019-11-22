@@ -33,7 +33,6 @@
 
 // System headers
 #include <functional>
-#include <future>
 #include <iostream>
 #include <memory>
 #include <string>
@@ -68,7 +67,6 @@ namespace replica {
 
 class StatusReplicationRequestPolicy {
 public:
-
     using ResponseMessageType     = ProtocolResponseReplicate;
     using ResponseDataType        = ReplicaInfo;
     using TargetRequestParamsType = ReplicationRequestParams;
@@ -94,7 +92,6 @@ public:
 
 class StatusDeleteRequestPolicy {
 public:
-
     using ResponseMessageType     = ProtocolResponseDelete;
     using ResponseDataType        = ReplicaInfo;
     using TargetRequestParamsType = DeleteRequestParams;
@@ -120,7 +117,6 @@ public:
 
 class StatusFindRequestPolicy {
 public:
-
     using ResponseMessageType     = ProtocolResponseFind;
     using ResponseDataType        = ReplicaInfo;
     using TargetRequestParamsType = FindRequestParams;
@@ -146,7 +142,6 @@ public:
 
 class StatusFindAllRequestPolicy {
 public:
-
     using ResponseMessageType     = ProtocolResponseFindAll;
     using ResponseDataType        = ReplicaInfoCollection;
     using TargetRequestParamsType = FindAllRequestParams;
@@ -175,7 +170,6 @@ public:
 
 class StatusEchoRequestPolicy {
 public:
-
     using ResponseMessageType     = ProtocolResponseEcho;
     using ResponseDataType        = std::string;
     using TargetRequestParamsType = EchoRequestParams;
@@ -201,7 +195,6 @@ public:
 
 class StatusIndexRequestPolicy {
 public:
-
     using ResponseMessageType     = ProtocolResponseIndex;
     using ResponseDataType        = IndexInfo;
     using TargetRequestParamsType = IndexRequestParams;
@@ -227,7 +220,6 @@ public:
 
 class StatusSqlRequestPolicy {
 public:
-
     using ResponseMessageType     = ProtocolResponseSql;
     using ResponseDataType        = SqlResultSet;
     using TargetRequestParamsType = SqlRequestParams;
@@ -256,16 +248,12 @@ public:
   */
 template <typename POLICY>
 class StatusRequest : public StatusRequestBase {
-
 public:
-
     /// The pointer type for instances of the class
     typedef std::shared_ptr<StatusRequest<POLICY>> Ptr;
 
     /// The function type for notifications on the completion of the request
     typedef std::function<void(Ptr)> CallbackType;
-
-    // Default construction and copy semantics are prohibited
 
     StatusRequest() = delete;
     StatusRequest(StatusRequest const&) = delete;
@@ -279,8 +267,7 @@ public:
     }
 
     /**
-     * @return
-     *   request-specific extended data reported upon a successful
+     * @return request-specific extended data reported upon a successful
      *   completion of the request
      */
     typename POLICY::ResponseDataType const& responseData() const { return _responseData; }
@@ -292,34 +279,17 @@ public:
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
      *
-     * @param serviceProvider
-     *   a host of services for various communications
-     *
-     * @param worker
-     *   the identifier of a worker node (the one to be affected by the request)
-     * 
-     * @param io_service
-     *   network communication service
-     * 
-     * @param targetRequestId
-     *   an identifier of the target request whose remote status
+     * @param serviceProvider a host of services for various communications
+     * @param worker the identifier of a worker node (the one to be affected by the request)
+     * @param io_service network communication service
+     * @param targetRequestId an identifier of the target request whose remote status
      *   is going to be inspected
-     *
-     * @param onFinish
-     *   an optional callback function to be called upon a completion of
+     * @param onFinish an optional callback function to be called upon a completion of
      *   the request.
-     *
-     * @param priority
-     *   priority level of the request
-     *
-     * @param keepTracking
-     *   keep tracking the request before it finishes or fails
-     *
-     * @param messenger
-     *   an interface for communicating with workers
-     *
-     * @return
-     *   pointer to the created object
+     * @param priority priority level of the request
+     * @param keepTracking keep tracking the request before it finishes or fails
+     * @param messenger an interface for communicating with workers
+     * @return pointer to the created object
      */
     static Ptr create(ServiceProvider::Ptr const& serviceProvider,
                       boost::asio::io_service& io_service,
@@ -348,7 +318,7 @@ public:
      * Make an extended print of the request which would include a result set.
      * The method will also make a call to Request::defaultPrinter().
      * 
-     * @param ptr  an object to be printed
+     * @param ptr an object to be printed
      */
     static void extendedPrinter(Ptr const& ptr) {
         Request::defaultPrinter(ptr);
@@ -356,8 +326,6 @@ public:
     }
 
 protected:
-
-    /// @see Request::notify()
     void notify(util::Lock const& lock) final {
         notifyDefaultImpl<StatusRequest<POLICY>>(lock, _onFinish);
     }
@@ -368,8 +336,7 @@ protected:
      * This method implements the corresponding virtual method defined
      * by the base class.
      *
-     * @param lock
-     *   a lock on Request::_mtx must be acquired before calling this method
+     * @param lock a lock on Request::_mtx must be acquired before calling this method
      */
     void send(util::Lock const& lock) final {
 
@@ -403,8 +370,6 @@ protected:
     }
 
 private:
-
-    /// @see StatusRequest::create()
     StatusRequest(ServiceProvider::Ptr const& serviceProvider,
                   boost::asio::io_service& io_service,
                   char const* requestName,
@@ -430,11 +395,8 @@ private:
     /**
      * Parse request-specific reply
      *
-     * @param message
-     *   message to parse
-     *
-     * @return
-     *    status of the operation reported by a server
+     * @param message message to parse
+     * @return status of the operation reported by a server
      */
     ProtocolStatus _parseResponse(typename POLICY::ResponseMessageType const& message) {
 

@@ -67,61 +67,55 @@ TransactionsApp::TransactionsApp(int argc, char* argv[])
 
     parser().commands(
         "operation",
-        {   "FIND",
-            "LIST",
-            "BEGIN",
-            "END"
-        },
-        _operation);
-
-    parser().option(
+        {"FIND", "LIST", "BEGIN", "END"},
+        _operation
+    ).option(
         "tables-page-size",
         "The number of rows in the table of a query result set (0 means no pages).",
-        _sqlPageSize);
+        _sqlPageSize
+    );
 
-    auto& findCmd = parser().command("FIND");
-
-    findCmd.description(
-        "Find an existing transaction by its unique identifier.");
-
-    findCmd.required(
+    parser().command(
+        "FIND"
+    ).description(
+        "Find an existing transaction by its unique identifier."
+    ).required(
         "id",
         "A unique identifier of a transaction to be looked up for.",
-        _id);
+        _id
+    );
 
-    auto& listCmd = parser().command("LIST");
-
-    listCmd.description(
+    parser().command(
+        "LIST"
+    ).description(
         "Find existing transactions associated with a specific database (if provided)."
-        " If no database name is provided then all transactions will be reported");
-
-    listCmd.optional(
+        " If no database name is provided then all transactions will be reported"
+    ).optional(
         "database",
         "The name of a database associated with a transaction(s).",
-        _databaseName);
+        _databaseName
+    );
 
-    auto& beginCmd = parser().command("BEGIN");
-
-    beginCmd.description(
-        "Begin a new transaction in a scope of the specified database.");
-
-    beginCmd.optional(
+    parser().command(
+        "BEGIN"
+    ).description(
+        "Begin a new transaction in a scope of the specified database."
+    ).optional(
         "database",
         "The name of a database to be associated with a new transaction.",
-        _databaseName);
+        _databaseName
+    );
 
-    auto& endCmd = parser().command("END");
-
-    endCmd.description(
+    parser().command(
+        "END"
+    ).description(
         "End normally or abnormally (depending on a presence of an optional flag"
-        " an existing transaction.");
-
-    endCmd.required(
+        " an existing transaction."
+    ).required(
         "id",
         "A unique identifier of a transaction to be ended.",
-        _id);
-
-    endCmd.flag(
+        _id
+    ).flag(
         "abort",
         "Abort the transaction",
         _abort
@@ -156,7 +150,7 @@ void TransactionsApp::_print(vector<TransactionInfo> const& collection) const {
     for (auto&& info: collection) {
         colId       .push_back(info.id);
         colDatabase .push_back(info.database);
-        colState    .push_back(info.state);
+        colState    .push_back(TransactionInfo::state2string(info.state));
         colBeginTime.push_back(PerformanceUtils::toDateTimeString(chrono::milliseconds(info.beginTime)));
         colEndTime  .push_back(info.endTime == 0 ? "" : PerformanceUtils::toDateTimeString(chrono::milliseconds(info.endTime)));
     }

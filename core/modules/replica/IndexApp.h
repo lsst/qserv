@@ -27,6 +27,7 @@
 
 // Qserv headers
 #include "replica/Application.h"
+#include "replica/Common.h"
 
 // This header declarations
 namespace lsst {
@@ -39,9 +40,7 @@ namespace replica {
  * database and aggregate these data at a specified destination.
  */
 class IndexApp : public Application {
-
 public:
-
     /// The pointer type for instances of the class
     typedef std::shared_ptr<IndexApp> Ptr;
 
@@ -49,15 +48,10 @@ public:
      * The factory method is the only way of creating objects of this class
      * because of the base class' inheritance from 'enable_shared_from_this'.
      *
-     * @param argc
-     *   the number of command-line arguments
-     *
-     * @param argv
-     *   the vector of command-line arguments
+     * @param argc the number of command-line arguments
+     * @param argv the vector of command-line arguments
      */
     static Ptr create(int argc, char* argv[]);
-
-    // Default construction and copy semantics are prohibited
 
     IndexApp()=delete;
     IndexApp(IndexApp const&)=delete;
@@ -66,20 +60,16 @@ public:
     ~IndexApp() final=default;
 
 protected:
-
-    /// @see Application::runImpl()
     int runImpl() final;
 
 private:
-
-    /// @see IndexApp::create()
     IndexApp(int argc, char* argv[]);
 
     /// The name of a database
     std::string _database;
 
     /// A unique identifier of a super-transaction (not used if its value stays default)
-    uint32_t _transactionId = std::numeric_limits<uint32_t>::max();
+    TransactionId _transactionId = std::numeric_limits<TransactionId>::max();
 
     /// The destination type of the harvested data. Allowed values here
     /// are: "DISCARD", "FILE", "FOLDER", "TABLE.

@@ -80,7 +80,7 @@ Job::Options const& AbortTransactionJob::defaultOptions() {
 }
 
 
-AbortTransactionJob::Ptr AbortTransactionJob::create(uint32_t transactionId,
+AbortTransactionJob::Ptr AbortTransactionJob::create(TransactionId transactionId,
                                                      bool allWorkers,
                                                      Controller::Ptr const& controller,
                                                      string const& parentJobId,
@@ -96,7 +96,7 @@ AbortTransactionJob::Ptr AbortTransactionJob::create(uint32_t transactionId,
 }
 
 
-AbortTransactionJob::AbortTransactionJob(uint32_t transactionId,
+AbortTransactionJob::AbortTransactionJob(TransactionId transactionId,
                                          bool allWorkers,
                                          Controller::Ptr const& controller,
                                          string const& parentJobId,
@@ -172,7 +172,7 @@ void AbortTransactionJob::startImpl(util::Lock const& lock) {
 
     // Verify the current state of the transaction
 
-    if (_transactionInfo.state != "ABORTED") {
+    if (_transactionInfo.state != TransactionInfo::ABORTED) {
         LOGS(_log, LOG_LVL_ERROR, context_ << "transaction is not ABORTED");
         finish(lock, ExtendedState::FAILED);
         return;

@@ -26,6 +26,7 @@
 #include <cstdint>
 #include <map>
 #include <memory>
+#include <mutex>
 #include <string>
 #include <tuple>
 #include <vector>
@@ -145,6 +146,35 @@ public:
 
     /// @return user account under which the current process runs
     static std::string getEffectiveUser();
+
+    /**
+     * Create a temporary file with a unique name at the specified location.
+     * The file will be empty. And it will be closed after completion of
+     * the method. The final file name would look like:
+     * @code
+     * <baseDir>/<filePrefix><model-replaced-with-random-text><fileSuffix>
+     * @code
+     * 
+     * @param baseDir a location where the file will get created
+     * @param prefix (optional) file name prefix
+     * @param model (optional) random patter as as required by boost::filesystem::unique_path
+     * @param suffix (optionaL) file name suffix (including an extention if needed)
+     * @param maxRetries the maximum number of extra retries to generate the unique file
+     * @return the name of the file
+     * @throws std::invalid_argument if the \model is empty, or \maxRetries is less than 1
+     * @throws std::range_error if the filename length exceeds 255 characters
+     * @throws std::runtime_error to report failures with the file system operations,
+     *   or if the maximum number of retries exceeded.
+     */
+    static std::string createTemporaryFile(std::string const& baseDir,
+                                           std::string const& prefix=std::string(),
+                                           std::string const& model="%%%%-%%%%-%%%%-%%%%",
+                                           std::string const& suffix=std::string(),
+                                           unsigned int maxRetries=1);
+
+private:
+    /// For thread synchronization of the temporary file creation
+    static std::mutex _tmpFileMtx;
 };
 
 /**

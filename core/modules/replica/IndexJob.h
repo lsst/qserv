@@ -33,6 +33,7 @@
 #include <vector>
 
 // Qserv headers
+#include "replica/Common.h"
 #include "replica/Job.h"
 #include "replica/IndexRequest.h"
 
@@ -102,52 +103,35 @@ public:
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
      *
-     * @param database
-     *   the name of a database for which the "secondary index" is built
-     *
-     * @param hasTransactions
-     *   if 'true' then the database's "director" tables are expected to be partitioned,
-     *   and the job will extract data (including column "qserv_trans_id") from
-     *   a specific MySQL partition.
-     *
-     * @param transactionId
-     *   an identifier of a super-transaction which would limit a scope of the data
-     *   extraction requests. NOte this request will be considered only if
-     *   'hasTransactions=true'.
-     *
-     * @param allWorkers
-     *   engage all known workers regardless of their status. If the flag
-     *   is set to 'false' then only 'ENABLED' workers which are not in
-     *   the 'READ-ONLY' state will be involved into the operation.
-     *
-     * @param destination
-     *   a destination for the harvested data
-     * 
-     * @param destinationPath
-     *   depending on a value of the previous parameter 'destination', a value
-     *   of this parameter could be either either the name of a file, the name
-     *   of an existing folder, or the name of a table. For the FILE destination
-     *   the empty destination path will trigger dumping the data onto the Standard
-     *   Output Stream. For the FOLDER option the current working directory will
-     *   be assumed. And for the TABLE option the empty value would imply
-     *   the standard "secondary index" table of the database. A non-empty value
-     *   for the table would imply the name of a specific (non-standard) table.
-     *
-     * @param controller
-     *   is needed launching requests and accessing the Configuration
-     *
-     * @param parentJobId
-     *   (optional) identifier of a parent job
-     *
-     * @param onFinish
-     *   (optional) a function to be called upon a completion of the job
-     *
-     * @param options
-     *   (optional) defines the job priority, etc.
+     * @param database the name of a database for which the "secondary index"
+     *   is built
+     * @param hasTransactions  if 'true' then the database's "director" tables
+     *   are expected to be partitioned, and the job will extract data (including
+     *   column "qserv_trans_id") from a specific MySQL partition.
+     * @param transactionId an identifier of a super-transaction which would
+     *   limit a scope of the data extraction requests. NOte this request will
+     *   be considered only if 'hasTransactions=true'.
+     * @param allWorkers engage all known workers regardless of their status.
+     *   If the flag is set to 'false' then only 'ENABLED' workers which are not
+     *   in the 'READ-ONLY' state will be involved into the operation.
+     * @param destination a destination for the harvested data
+     * @param destinationPath depending on a value of the previous parameter
+     *   'destination', a value of this parameter could be either either the name
+     *   of a file, the name of an existing folder, or the name of a table. For
+     *   the FILE destination the empty destination path will trigger dumping
+     *   the data onto the Standard Output Stream. For the FOLDER option
+     *   the current working directory will be assumed. And for the TABLE option
+     *   the empty value would imply the standard "secondary index" table of
+     *   the database. A non-empty value for the table would imply the name of
+     *   a specific (non-standard) table.
+     * @param controller is needed launching requests and accessing the Configuration
+     * @param parentJobId (optional) identifier of a parent job
+     * @param onFinish (optional) a function to be called upon a completion of the job
+     * @param options (optional) defines the job priority, etc.
      */
     static Ptr create(std::string const& database,
                       bool hasTransactions,
-                      uint32_t transactionId,
+                      TransactionId transactionId,
                       bool allWorkers,
                       Destination destination,
                       std::string const& destinationPath,
@@ -170,7 +154,7 @@ public:
 
     std::string const& database()        const { return _database; }
     bool               hasTransactions() const { return _hasTransactions; }
-    uint32_t           transactionId()   const { return _transactionId; }
+    TransactionId      transactionId()   const { return _transactionId; }
     bool               allWorkers()      const { return _allWorkers; }
     Destination        destination()     const { return _destination; }
     std::string const& destinationPath() const { return _destinationPath; }
@@ -178,16 +162,12 @@ public:
     /**
      * Return the combined result of the operation
      *
-     * @note:
-     *  The method should be invoked only after the job has finished (primary
-     *  status is set to Job::Status::FINISHED). Otherwise exception
-     *  std::logic_error will be thrown
-     *
-     * @return
-     *   the data structure to be filled upon the completion of the job.
-     *
-     * @throws std::logic_error
-     *   if the job didn't finish at a time when the method was called
+     * @note The method should be invoked only after the job has
+     *  finished (primary status is set to Job::Status::FINISHED). Otherwise
+     *  exception std::logic_error will be thrown
+     * @return the data structure to be filled upon the completion of the job.
+     * @throws std::logic_error if the job didn't finish at a time when
+     *   the method was called
      */
     IndexJobResult const& getResultData() const;
 
@@ -195,7 +175,6 @@ public:
     std::list<std::pair<std::string,std::string>> persistentLogData() const final;
 
 protected:
-
     void startImpl(util::Lock const& lock) final;
 
     void cancelImpl(util::Lock const& lock) final;
@@ -203,10 +182,9 @@ protected:
     void notify(util::Lock const& lock) final;
 
 private:
-
     IndexJob(std::string const& database,
              bool hasTransactions,
-             uint32_t transactionId,
+             TransactionId transactionId,
              bool allWorkers,
              Destination destination,
              std::string const& destinationPath,
@@ -225,11 +203,9 @@ private:
      * Extract data from the successfully completed requests. The completion
      * state of the request will be evaluated by the method.
      *
-     * @param lock
-     *   on the mutex Job::_mtx to be acquired for protecting the object's state
-     *
-     * @param request
-     *   the request to extract the data to be processed
+     * @param lock on the mutex Job::_mtx to be acquired for protecting
+     *   the object's state
+     * @param request the request to extract the data to be processed
      */
     void _processRequestData(util::Lock const& lock,
                              IndexRequest::Ptr const& request);
@@ -238,15 +214,10 @@ private:
      * Launch a batch of requests with a total number not to exceed the specified
      * limit.
      *
-     * @param lock
-     *   on the mutex Job::_mtx to be acquired for protecting the object's state
-     *
-     * @param worker
-     *   the name of a worker the requests to be sent to
-     * 
-     * @param maxRequests
-     *   the maximum number of requests to be launched
-     *
+     * @param lock on the mutex Job::_mtx to be acquired for protecting
+     *   the object's state
+     * @param worker the name of a worker the requests to be sent to
+     * @param maxRequests the maximum number of requests to be launched
      * @return a collection of requests launched
      */
     std::list<IndexRequest::Ptr> _launchRequests(util::Lock const& lock,
@@ -263,15 +234,14 @@ private:
     void _rollbackTransaction(std::string const& func);
 
 private:
-
     // Input parameters
 
-    std::string const _database;
-    bool        const _hasTransactions;
-    uint32_t    const _transactionId;
-    bool        const _allWorkers;
-    Destination const _destination;
-    std::string const _destinationPath;
+    std::string   const _database;
+    bool          const _hasTransactions;
+    TransactionId const _transactionId;
+    bool          const _allWorkers;
+    Destination   const _destination;
+    std::string   const _destinationPath;
 
     CallbackType _onFinish;     /// @note is reset when the job finishes
 

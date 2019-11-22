@@ -55,8 +55,7 @@ namespace mysql {
  */
 class Error : public std::runtime_error {
 public:
-    /// @param what  reason for the exception
-    explicit Error(std::string const& what) : std::runtime_error(what) {}
+    using std::runtime_error::runtime_error;
 };
 
 
@@ -65,8 +64,7 @@ public:
  */
 class ConnectError : public Error {
 public:
-    /// @param what  reason for the exception
-    explicit ConnectError(std::string const& what) : Error(what) {}
+    using Error::Error;
 };
 
 /**
@@ -125,8 +123,7 @@ private:
  */
 class Reconnected : public Error {
 public:
-    /// @param what  reason for the exception
-    explicit Reconnected(std::string const& what) : Error(what) {}
+    using Error::Error;
 };
 
 
@@ -136,8 +133,7 @@ public:
  */
 class DuplicateKeyError : public Error {
 public:
-    /// @param what  reason for the exception
-    explicit DuplicateKeyError(std::string const& what) : Error(what) {}
+    using Error::Error;
 };
 
 
@@ -147,8 +143,7 @@ public:
  */
 class NoSuchTable : public Error {
 public:
-    /// @param what  reason for the exception
-    explicit NoSuchTable(std::string const& what) : Error(what) {}
+    using Error::Error;
 };
 
 
@@ -165,8 +160,7 @@ public:
  */
 class NotPartitionedTable : public Error {
 public:
-    /// @param what  reason for the exception
-    explicit NotPartitionedTable(std::string const& what) : Error(what) {}
+    using Error::Error;
 };
 
 
@@ -183,8 +177,7 @@ public:
  */
 class NoSuchPartition : public Error {
 public:
-    /// @param what  reason for the exception
-    explicit NoSuchPartition(std::string const& what) : Error(what) {}
+    using Error::Error;
 };
 
 
@@ -194,8 +187,7 @@ public:
  */
 class InvalidTypeError : public Error {
 public:
-    /// @param what  reason for the exception
-    explicit InvalidTypeError(std::string const& what) : Error(what) {}
+    using Error::Error;
 };
 
 
@@ -205,8 +197,7 @@ public:
  */
 class EmptyResultSetError : public Error {
 public:
-    /// @param what  reason for the exception
-    explicit EmptyResultSetError(std::string const& what) : Error(what) {}
+    using Error::Error;
 };
 
 

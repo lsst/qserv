@@ -24,22 +24,25 @@
 
 // System headers
 #include <fstream>
+#include <functional>
 #include <iostream>
 #include <stdexcept>
 
 // Third party headers
-#include <boost/bind.hpp>
-#include <boost/date_time/posix_time/posix_time.hpp>
+#include "boost/date_time/posix_time/posix_time.hpp"
 
 // Qserv headers
-#include "lsst/log/Log.h"
 #include "replica/Controller.h"
 #include "replica/DatabaseServices.h"
 #include "replica/Messenger.h"
 #include "replica/ProtocolBuffer.h"
 #include "replica/ServiceProvider.h"
 
+// LSST headers
+#include "lsst/log/Log.h"
+
 using namespace std;
+using namespace std::placeholders;
 
 namespace {
 
@@ -79,7 +82,7 @@ IndexRequest::Ptr IndexRequest::create(ServiceProvider::Ptr const& serviceProvid
                                        string const& database,
                                        unsigned int chunk,
                                        bool hasTransactions,
-                                       unsigned int transactionId,
+                                       TransactionId transactionId,
                                        CallbackType const& onFinish,
                                        int priority,
                                        bool keepTracking,
@@ -105,7 +108,7 @@ IndexRequest::IndexRequest(ServiceProvider::Ptr const& serviceProvider,
                            string const& database,
                            unsigned int chunk,
                            bool hasTransactions,
-                           unsigned int transactionId,
+                           TransactionId transactionId,
                            CallbackType const& onFinish,
                            int priority,
                            bool keepTracking,
@@ -174,13 +177,7 @@ void IndexRequest::_wait(util::Lock const& lock) {
     // Always need to set the interval before launching the timer.
 
     timer().expires_from_now(boost::posix_time::milliseconds(nextTimeIvalMsec()));
-    timer().async_wait(
-        boost::bind(
-            &IndexRequest::_awaken,
-            shared_from_base<IndexRequest>(),
-            boost::asio::placeholders::error
-        )
-    );
+    timer().async_wait(bind(&IndexRequest::_awaken, shared_from_base<IndexRequest>(), _1));
 }
 
 

@@ -208,6 +208,9 @@ public:
     explicit EchoRequestParams(ProtocolRequestEcho const& request);
 };
 
+/// The type for the super-transaction identifiers
+typedef uint32_t TransactionId;
+
 /**
  * Class SqlRequestParams represents parameters of the SQL requests.
  */
@@ -239,7 +242,7 @@ public:
     std::string engine;
     std::string partitionByColumn;
 
-    uint32_t transactionId = 0;
+    TransactionId transactionId = 0;
 
     std::list<SqlColDef> columns;
 
@@ -258,11 +261,11 @@ std::ostream& operator<<(std::ostream& os, SqlRequestParams const& params);
  */
 class IndexRequestParams {
 public:
-    int          priority = 0;
-    std::string  database;
-    unsigned int chunk = 0;
-    bool         hasTransactions = false;
-    unsigned int transactionId = 0;
+    int           priority = 0;
+    std::string   database;
+    unsigned int  chunk = 0;
+    bool          hasTransactions = false;
+    TransactionId transactionId = 0;
 
     IndexRequestParams() = default;
 

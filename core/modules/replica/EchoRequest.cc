@@ -23,14 +23,13 @@
 #include "replica/EchoRequest.h"
 
 // System headers
+#include <functional>
 #include <stdexcept>
 
 // Third party headers
-#include <boost/bind.hpp>
-#include <boost/date_time/posix_time/posix_time.hpp>
+#include "boost/date_time/posix_time/posix_time.hpp"
 
 // Qserv headers
-#include "lsst/log/Log.h"
 #include "replica/Controller.h"
 #include "replica/DatabaseServices.h"
 #include "replica/Messenger.h"
@@ -38,7 +37,11 @@
 #include "replica/ReplicaInfo.h"
 #include "replica/ServiceProvider.h"
 
+// LSST headers
+#include "lsst/log/Log.h"
+
 using namespace std;
+using namespace std::placeholders;
 
 namespace {
 
@@ -135,13 +138,7 @@ void EchoRequest::_wait(util::Lock const& lock) {
     // Allways need to set the interval before launching the timer.
 
     timer().expires_from_now(boost::posix_time::milliseconds(nextTimeIvalMsec()));
-    timer().async_wait(
-        boost::bind(
-            &EchoRequest::_awaken,
-            shared_from_base<EchoRequest>(),
-            boost::asio::placeholders::error
-        )
-    );
+    timer().async_wait(bind(&EchoRequest::_awaken, shared_from_base<EchoRequest>(), _1));
 }
 
 

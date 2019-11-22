@@ -23,20 +23,23 @@
 #include "replica/QservMgtRequest.h"
 
 // System headers
+#include <functional>
 #include <stdexcept>
 
 // Third party headers
-#include <boost/bind.hpp>
-#include <boost/date_time/posix_time/posix_time.hpp>
+#include "boost/date_time/posix_time/posix_time.hpp"
 
 // Qserv headers
-#include "lsst/log/Log.h"
 #include "replica/Configuration.h"
 #include "replica/Common.h"
 #include "replica/DatabaseServices.h"
 #include "replica/ServiceProvider.h"
 
+// LSST headers
+#include "lsst/log/Log.h"
+
 using namespace std;
+using namespace std::placeholders;
 
 namespace {
 
@@ -189,13 +192,7 @@ void QservMgtRequest::start(XrdSsiService* service,
     if (0 != _requestExpirationIvalSec) {
         _requestExpirationTimer.cancel();
         _requestExpirationTimer.expires_from_now(boost::posix_time::seconds(_requestExpirationIvalSec));
-        _requestExpirationTimer.async_wait(
-            boost::bind(
-                &QservMgtRequest::expired,
-                shared_from_this(),
-                boost::asio::placeholders::error
-            )
-        );
+        _requestExpirationTimer.async_wait(bind(&QservMgtRequest::expired, shared_from_this(), _1));
     }
 
     // Let a subclass to proceed with its own sequence of actions before

@@ -24,21 +24,24 @@
 
 // System headers
 #include <algorithm>
+#include <functional>
 #include <sstream>
 #include <stdexcept>
 
 // Third party headers
-#include <boost/bind.hpp>
-#include <boost/date_time/posix_time/posix_time.hpp>
+#include "boost/date_time/posix_time/posix_time.hpp"
 
 // Qserv headers
-#include "lsst/log/Log.h"
 #include "replica/Configuration.h"
 #include "replica/Controller.h"
 #include "replica/ProtocolBuffer.h"
 #include "replica/ServiceProvider.h"
 
+// LSST headers
+#include "lsst/log/Log.h"
+
 using namespace std;
+using namespace std::placeholders;
 
 namespace {
 
@@ -218,13 +221,7 @@ void Request::start(shared_ptr<Controller> const& controller,
     if (_requestExpirationIvalSec) {
         _requestExpirationTimer.cancel();
         _requestExpirationTimer.expires_from_now(boost::posix_time::seconds(_requestExpirationIvalSec));
-        _requestExpirationTimer.async_wait(
-            boost::bind(
-                &Request::expired,
-                shared_from_this(),
-                boost::asio::placeholders::error
-            )
-        );
+        _requestExpirationTimer.async_wait(bind(&Request::expired, shared_from_this(), _1));
     }
 
     // Let a subclass to proceed with its own sequence of actions

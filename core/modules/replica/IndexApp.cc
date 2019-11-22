@@ -144,7 +144,7 @@ int IndexApp::runImpl() {
 
     auto const job = IndexJob::create(
         _database,
-        _transactionId != numeric_limits<uint32_t>::max(),
+        _transactionId != numeric_limits<TransactionId>::max(),
         _transactionId,
         _allWorkers,
         IndexJob::fromString(_destination),

@@ -29,6 +29,7 @@
 #include "nlohmann/json.hpp"
 
 // Qserv headers
+#include "replica/Common.h"
 #include "replica/HttpModule.h"
 #include "util/Mutex.h"
 
@@ -256,7 +257,7 @@ private:
      * @param transactionId  unique identifier of a super-transaction
      */
     void _addPartitionToSecondaryIndex(DatabaseInfo const& databaseInfo,
-                                       uint32_t transactionId) const;
+                                       TransactionId transactionId) const;
 
    /**
      * Shrink an existing "secondary index" table by removing a MySQL partition
@@ -266,7 +267,7 @@ private:
      * @param transactionId  unique identifier of a super-transaction
      */
     void _removePartitionFromSecondaryIndex(DatabaseInfo const& databaseInfo,
-                                            uint32_t transactionId) const;
+                                            TransactionId transactionId) const;
 
     /**
      * Remove MySQL partitions from the "secondary index" table by turning it

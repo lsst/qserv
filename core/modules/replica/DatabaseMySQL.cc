@@ -31,11 +31,13 @@
 #include <mysql/errmsg.h>
 
 // Qserv headers
-#include "lsst/log/Log.h"
 #include "replica/Configuration.h"
 #include "replica/Performance.h"
 #include "replica/protocol.pb.h"
 #include "util/BlockPost.h"
+
+// LSST headers
+#include "lsst/log/Log.h"
 
 using namespace std;
 

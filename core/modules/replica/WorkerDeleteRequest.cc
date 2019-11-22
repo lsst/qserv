@@ -25,14 +25,16 @@
 // System headers
 
 // Third party headers
-#include <boost/filesystem.hpp>
+#include "boost/filesystem.hpp"
 
 // Qserv headers
-#include "lsst/log/Log.h"
 #include "replica/Configuration.h"
 #include "replica/FileUtils.h"
 #include "replica/Performance.h"
 #include "replica/ServiceProvider.h"
+
+// LSST headers
+#include "lsst/log/Log.h"
 
 using namespace std;
 namespace fs = boost::filesystem;

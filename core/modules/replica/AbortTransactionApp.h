@@ -26,6 +26,7 @@
 
 // Qserv headers
 #include "replica/Application.h"
+#include "replica/Common.h"
 
 // This header declarations
 namespace lsst {
@@ -39,9 +40,7 @@ namespace replica {
  * worker nodes as balanced as possible.
  */
 class AbortTransactionApp : public Application {
-
 public:
-
     /// The pointer type for instances of the class
     typedef std::shared_ptr<AbortTransactionApp> Ptr;
 
@@ -49,15 +48,10 @@ public:
      * The factory method is the only way of creating objects of this class
      * because of the very base class's inheritance from 'enable_shared_from_this'.
      *
-     * @param argc
-     *   the number of command-line arguments
-     *
-     * @param argv
-     *   the vector of command-line arguments
+     * @param argc the number of command-line arguments
+     * @param argv the vector of command-line arguments
      */
     static Ptr create(int argc, char* argv[]);
-
-    // Default construction and copy semantics are prohibited
 
     AbortTransactionApp()=delete;
     AbortTransactionApp(AbortTransactionApp const&)=delete;
@@ -66,16 +60,12 @@ public:
     ~AbortTransactionApp() override=default;
 
 protected:
-
-    /// @see Application::runImpl()
     int runImpl() final;
 
 private:
-
-    /// @see AbortTransactionApp::create()
     AbortTransactionApp(int argc, char* argv[]);
 
-    uint32_t _transactionId = 0;
+    TransactionId _transactionId = 0;
     bool _allWorkers = false;
 };
 
