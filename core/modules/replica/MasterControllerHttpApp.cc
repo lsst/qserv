@@ -27,6 +27,7 @@
 
 // Qserv headers
 #include "replica/DatabaseServices.h"
+#include "replica/HttpProcessorConfig.h"
 #include "replica/Performance.h"
 #include "util/BlockPost.h"
 
@@ -210,7 +211,7 @@ int MasterControllerHttpApp::runImpl() {
 
     _httpProcessor = HttpProcessor::create(
         _controller,
-        _workerResponseTimeoutSec,
+        HttpProcessorConfig(_workerResponseTimeoutSec, _qservSyncTimeoutSec),
         _healthMonitorTask
     );
 

@@ -39,21 +39,17 @@ namespace replica {
 
 HttpRequestsModule::Ptr HttpRequestsModule::create(Controller::Ptr const& controller,
                                                    string const& taskName,
-                                                   unsigned int workerResponseTimeoutSec) {
+                                                   HttpProcessorConfig const& processorConfig) {
     return Ptr(new HttpRequestsModule(
-        controller,
-        taskName,
-        workerResponseTimeoutSec
+        controller, taskName, processorConfig
     ));
 }
 
 
 HttpRequestsModule::HttpRequestsModule(Controller::Ptr const& controller,
                                        string const& taskName,
-                                       unsigned int workerResponseTimeoutSec)
-    :   HttpModule(controller,
-                   taskName,
-                   workerResponseTimeoutSec) {
+                                       HttpProcessorConfig const& processorConfig)
+    :   HttpModule(controller, taskName, processorConfig) {
 }
 
 

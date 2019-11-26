@@ -31,6 +31,7 @@
 // Qserv headers
 #include "qhttp/Server.h"
 #include "replica/EventLogger.h"
+#include "replica/HttpProcessorConfig.h"
 
 // This header declarations
 namespace lsst {
@@ -45,7 +46,6 @@ class HttpModule:
         public EventLogger,
         public std::enable_shared_from_this<HttpModule> {
 public:
-
     typedef std::shared_ptr<HttpModule> Ptr;
 
     HttpModule() = delete;
@@ -73,12 +73,12 @@ public:
                  std::string const& subModuleName=std::string());
 
 protected:
-
     HttpModule(Controller::Ptr const& controller,
                std::string const& taskName,
-               unsigned int workerResponseTimeoutSec);
+               HttpProcessorConfig const& processorConfig);
 
-    unsigned int workerResponseTimeoutSec() const { return _workerResponseTimeoutSec; }
+    unsigned int workerResponseTimeoutSec() const { return _processorConfig.workerResponseTimeoutSec; }
+    unsigned int qservSyncTimeoutSec() const { return _processorConfig.qservSyncTimeoutSec; }
 
     std::string context() const;
 
@@ -131,10 +131,10 @@ protected:
                              std::string const& subModuleName) = 0 ;
 
 private:
-
     // Input parameters
 
-    unsigned int const _workerResponseTimeoutSec;
+    HttpProcessorConfig const _processorConfig;
+
 };
     
 }}} // namespace lsst::qserv::replica

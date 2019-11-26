@@ -42,12 +42,11 @@ namespace replica {
  */
 class HttpControllersModule: public HttpModule {
 public:
-
     typedef std::shared_ptr<HttpControllersModule> Ptr;
 
     static Ptr create(Controller::Ptr const& controller,
                       std::string const& taskName,
-                      unsigned int workerResponseTimeoutSec);
+                      HttpProcessorConfig const& processorConfig);
 
     HttpControllersModule() = delete;
     HttpControllersModule(HttpControllersModule const&) = delete;
@@ -56,7 +55,6 @@ public:
     ~HttpControllersModule() final = default;
 
 protected:
-
     /**
      * @note supported values for parameter 'subModuleName' are
      * the empty string (for pulling info on all known Controllers),
@@ -69,10 +67,9 @@ protected:
                      std::string const& subModuleName) final;
 
 private:
-
     HttpControllersModule(Controller::Ptr const& controller,
                           std::string const& taskName,
-                          unsigned int workerResponseTimeoutSec);
+                          HttpProcessorConfig const& processorConfig);
 
     void _controllers(qhttp::Request::Ptr const& req,
                          qhttp::Response::Ptr const& resp);

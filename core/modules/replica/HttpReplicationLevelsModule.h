@@ -44,12 +44,11 @@ namespace replica {
  */
 class HttpReplicationLevelsModule: public HttpModule {
 public:
-
     typedef std::shared_ptr<HttpReplicationLevelsModule> Ptr;
 
     static Ptr create(Controller::Ptr const& controller,
                       std::string const& taskName,
-                      unsigned int workerResponseTimeoutSec,
+                      HttpProcessorConfig const& processorConfig,
                       HealthMonitorTask::Ptr const& healthMonitorTask);
 
     HttpReplicationLevelsModule() = delete;
@@ -59,16 +58,14 @@ public:
     ~HttpReplicationLevelsModule() final = default;
 
 protected:
-
     void executeImpl(qhttp::Request::Ptr const& req,
                      qhttp::Response::Ptr const& resp,
                      std::string const& subModuleName) final;
 
 private:
-
     HttpReplicationLevelsModule(Controller::Ptr const& controller,
                                 std::string const& taskName,
-                                unsigned int workerResponseTimeoutSec,
+                                HttpProcessorConfig const& processorConfig,
                                 HealthMonitorTask::Ptr const& healthMonitorTask);
 
     // Input parameters

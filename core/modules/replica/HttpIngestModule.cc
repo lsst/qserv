@@ -40,9 +40,11 @@
 #include "replica/Configuration.h"
 #include "replica/DatabaseMySQL.h"
 #include "replica/DatabaseServices.h"
+#include "replica/FindAllJob.h"
 #include "replica/IndexJob.h"
 #include "replica/HttpRequestBody.h"
 #include "replica/HttpRequestQuery.h"
+#include "replica/QservSyncJob.h"
 #include "replica/ReplicaInfo.h"
 #include "replica/ServiceManagementJob.h"
 #include "replica/ServiceProvider.h"
@@ -115,21 +117,16 @@ string const HttpIngestModule::_partitionByColumnType = "INT NOT NULL";
 
 HttpIngestModule::Ptr HttpIngestModule::create(Controller::Ptr const& controller,
                                                string const& taskName,
-                                               unsigned int workerResponseTimeoutSec) {
+                                               HttpProcessorConfig const& processorConfig) {
     return Ptr(new HttpIngestModule(
-        controller,
-        taskName,
-        workerResponseTimeoutSec
-    ));
+        controller, taskName, processorConfig));
 }
 
 
 HttpIngestModule::HttpIngestModule(Controller::Ptr const& controller,
                                    string const& taskName,
-                                   unsigned int workerResponseTimeoutSec)
-    :   HttpModule(controller,
-                   taskName,
-                   workerResponseTimeoutSec) {
+                                   HttpProcessorConfig const& processorConfig)
+    :   HttpModule(controller, taskName, processorConfig) {
 }
 
 
@@ -542,13 +539,14 @@ void HttpIngestModule::_publishDatabase(qhttp::Request::Ptr const& req,
         return;
     }
 
-    // Finalize setting the database in Qserv master
-    //
-    // NOTE: the rest should be taken care of by the Replication system.
-    // This includes registering chunks in the persistent store of the Replication
-    // system, synchronizing with Qserv workers, fixing, re-balancing,
-    // replicating, etc.
+    // Run the chunks scanner to ensure new chunks are registered in the persistent
+    // store of the Replication system and synchronized with the Qserv workers.
+    // The (fixing, re-balancing, replicating, etc.) will be taken care off by
+    // the Replication system.
+    if (not _qservSync(resp, databaseInfo, allWorkers)) return;
 
+    // Finalize setting the database in Qserv master to make the new catalog
+    // visible to Qserv users.
     _publishDatabaseInMaster(databaseInfo);
 
     ControllerEvent event;
@@ -1402,6 +1400,48 @@ void HttpIngestModule::_deleteSecondaryIndex(DatabaseInfo const& databaseInfo) c
         conn->execute(query);
         conn->commit();
     });
+}
+
+
+bool HttpIngestModule::_qservSync(qhttp::Response::Ptr const& resp,
+                                  DatabaseInfo const& databaseInfo,
+                                  bool allWorkers) const {
+    debug(__func__);
+
+    bool const saveReplicaInfo = true;
+    auto const findAlljob = FindAllJob::create(
+        databaseInfo.family,
+        saveReplicaInfo,
+        allWorkers,
+        controller()
+    );
+    findAlljob->start();
+    logJobStartedEvent(FindAllJob::typeName(), findAlljob, databaseInfo.family);
+    findAlljob->wait();
+    logJobFinishedEvent(FindAllJob::typeName(), findAlljob, databaseInfo.family);
+
+    if (findAlljob->extendedState() != Job::SUCCESS) {
+        sendError(resp, __func__, "replica lookup stage failed");
+        return false;
+    }
+
+    bool const force = false;
+    auto const qservSyncJob = QservSyncJob::create(
+        databaseInfo.family,
+        force,
+        qservSyncTimeoutSec(),
+        controller()
+    );
+    qservSyncJob->start();
+    logJobStartedEvent(QservSyncJob::typeName(), qservSyncJob, databaseInfo.family);
+    qservSyncJob->wait();
+    logJobFinishedEvent(QservSyncJob::typeName(), qservSyncJob, databaseInfo.family);
+
+    if (qservSyncJob->extendedState() != Job::SUCCESS) {
+        sendError(resp, __func__, "Qserv synchronization failed");
+        return false;
+    }
+    return true;
 }
 
 

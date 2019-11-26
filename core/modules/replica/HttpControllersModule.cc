@@ -37,23 +37,20 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
-HttpControllersModule::Ptr HttpControllersModule::create(Controller::Ptr const& controller,
-                                                         string const& taskName,
-                                                         unsigned int workerResponseTimeoutSec) {
+HttpControllersModule::Ptr HttpControllersModule::create(
+                                Controller::Ptr const& controller,
+                                string const& taskName,
+                                HttpProcessorConfig const& processorConfig) {
     return Ptr(new HttpControllersModule(
-        controller,
-        taskName,
-        workerResponseTimeoutSec
+        controller, taskName, processorConfig
     ));
 }
 
 
 HttpControllersModule::HttpControllersModule(Controller::Ptr const& controller,
                                              string const& taskName,
-                                             unsigned int workerResponseTimeoutSec)
-    :   HttpModule(controller,
-                   taskName,
-                   workerResponseTimeoutSec) {
+                                             HttpProcessorConfig const& processorConfig)
+    :   HttpModule(controller, taskName, processorConfig) {
 }
 
 

@@ -42,12 +42,11 @@ namespace replica {
  */
 class HttpQservSqlModule: public HttpModule {
 public:
-
     typedef std::shared_ptr<HttpQservSqlModule> Ptr;
 
     static Ptr create(Controller::Ptr const& controller,
                       std::string const& taskName,
-                      unsigned int workerResponseTimeoutSec);
+                      HttpProcessorConfig const& processorConfig);
 
     HttpQservSqlModule() = delete;
     HttpQservSqlModule(HttpQservSqlModule const&) = delete;
@@ -56,7 +55,6 @@ public:
     ~HttpQservSqlModule() final = default;
 
 protected:
-
     /**
      * The only supported value for parameter 'subModuleName' is the empty
      * string for executing a query via database services of the Qserv
@@ -69,10 +67,9 @@ protected:
                      std::string const& subModuleName) final;
 
 private:
-
     HttpQservSqlModule(Controller::Ptr const& controller,
                        std::string const& taskName,
-                       unsigned int workerResponseTimeoutSec);
+                       HttpProcessorConfig const& processorConfig);
 
     /**
      * Process a request for executing a query against a worker database.

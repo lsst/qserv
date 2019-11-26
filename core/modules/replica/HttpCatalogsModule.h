@@ -43,12 +43,11 @@ namespace replica {
  */
 class HttpCatalogsModule: public HttpModule {
 public:
-
     typedef std::shared_ptr<HttpCatalogsModule> Ptr;
 
     static Ptr create(Controller::Ptr const& controller,
                       std::string const& taskName,
-                      unsigned int workerResponseTimeoutSec);
+                      HttpProcessorConfig const& processorConfig);
 
     HttpCatalogsModule() = delete;
     HttpCatalogsModule(HttpCatalogsModule const&) = delete;
@@ -57,16 +56,14 @@ public:
     ~HttpCatalogsModule() final = default;
 
 protected:
-
     void executeImpl(qhttp::Request::Ptr const& req,
                      qhttp::Response::Ptr const& resp,
                      std::string const& subModuleName) final;
 
 private:
-
     HttpCatalogsModule(Controller::Ptr const& controller,
                        std::string const& taskName,
-                       unsigned int workerResponseTimeoutSec);
+                       HttpProcessorConfig const& processorConfig);
 
     /**
      * Retrieve the latest state of the database stats from a persistent

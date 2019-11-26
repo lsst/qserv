@@ -52,7 +52,6 @@ using namespace lsst::qserv::replica;
 
 namespace {
 
-
 /**
  * Extract a value of field from a result set and store it 
  *
@@ -126,23 +125,19 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
-HttpQservMonitorModule::Ptr HttpQservMonitorModule::create(Controller::Ptr const& controller,
-                                                           string const& taskName,
-                                                           unsigned int workerResponseTimeoutSec) {
+HttpQservMonitorModule::Ptr HttpQservMonitorModule::create(
+        Controller::Ptr const& controller,
+        string const& taskName,
+        HttpProcessorConfig const& processorConfig) {
     return Ptr(new HttpQservMonitorModule(
-        controller,
-        taskName,
-        workerResponseTimeoutSec
-    ));
+        controller, taskName, processorConfig));
 }
 
 
 HttpQservMonitorModule::HttpQservMonitorModule(Controller::Ptr const& controller,
                                                string const& taskName,
-                                               unsigned int workerResponseTimeoutSec)
-    :   HttpModule(controller,
-                   taskName,
-                   workerResponseTimeoutSec) {
+                                               HttpProcessorConfig const& processorConfig)
+    :   HttpModule(controller, taskName, processorConfig) {
 }
 
 
