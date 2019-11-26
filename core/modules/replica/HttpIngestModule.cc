@@ -154,6 +154,8 @@ void HttpIngestModule::executeImpl(qhttp::Request::Ptr const& req,
          _addChunk(req, resp);
     } else if (subModuleName == "BUILD-CHUNK-LIST") {
          _buildEmptyChunksList(req, resp);
+    } else if (subModuleName == "REGULAR") {
+         _getRegular(req, resp);
     } else {
         throw invalid_argument(
                 context() + "::" + string(__func__) +
@@ -911,6 +913,37 @@ void HttpIngestModule::_buildEmptyChunksList(qhttp::Request::Ptr const& req,
     result["file"] = emptyListInfo.first;
     result["num_chunks"] = emptyListInfo.second;
 
+    sendData(resp, result);
+}
+
+
+void HttpIngestModule::_getRegular(qhttp::Request::Ptr const& req,
+                                   qhttp::Response::Ptr const& resp) {
+    debug(__func__);
+
+    auto const databaseServices = controller()->serviceProvider()->databaseServices();
+    auto const config = controller()->serviceProvider()->config();
+
+    auto const id = stoul(req->params.at("id"));
+    debug(__func__, "id="    + to_string(id));
+
+    auto const transaction = databaseServices->transaction(id);
+    if (transaction.state != TransactionInfo::STARTED) {
+        throw invalid_argument("transaction has already ended");
+    }
+
+    json resultLocations = json::array();
+    for (auto&& worker: config->workers()) {
+        auto&& workerInfo = config->workerInfo(worker);
+        json resultLocation;
+        resultLocation["worker"] = workerInfo.name;
+        resultLocation["host"]   = workerInfo.loaderHost;
+        resultLocation["port"]   = workerInfo.loaderPort;
+        resultLocations.push_back(resultLocation);
+    }
+
+    json result;
+    result["locations"] = resultLocations;
     sendData(resp, result);
 }
 

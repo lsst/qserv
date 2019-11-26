@@ -80,6 +80,8 @@ protected:
      *   ADD-TABLE                 for adding a new table for the data ingest
      *   ADD-CHUNK                 for registering (or requesting a status of) of a new chunk
      *   BUILD-CHUNK-LIST          for building (or rebuilding) an "empty chunk list"
+     *   REGULAR                   for reporting connection parameters of the ingest servers
+     *                             required to load the regular tables
      *
      * @throws std::invalid_argument for unknown values of parameter 'subModuleName'
      */
@@ -155,6 +157,13 @@ private:
      */
     void _buildEmptyChunksList(qhttp::Request::Ptr const& req,
                                qhttp::Response::Ptr const& resp);
+
+    /**
+     * Return connection parameters of the ingest servers of all workers
+     * where the regular tbles would have to be loaded.
+     */
+    void _getRegular(qhttp::Request::Ptr const& req,
+                     qhttp::Response::Ptr const& resp);
 
     /**
      * Grant SELECT authorizations for the new database to Qserv

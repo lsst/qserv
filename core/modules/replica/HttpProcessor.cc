@@ -275,6 +275,11 @@ void HttpProcessor::_initialize() {
             [self](qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp) {
                 self->_ingestModule->execute(req, resp, "BUILD-CHUNK-LIST");
             }
+        },
+        {"GET", "/ingest/v1/regular/:id",
+            [self](qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp) {
+                self->_ingestModule->execute(req, resp, "REGULAR");
+            }
         }
     });
     controller()->serviceProvider()->httpServer()->start();
