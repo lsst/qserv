@@ -85,6 +85,7 @@ SqlGrantAccessJob::SqlGrantAccessJob(string const& database,
                "SQL_GRANT_ACCESS",
                options),
         _database(database),
+        _user(user),
         _onFinish(onFinish) {
 }
 
@@ -92,6 +93,7 @@ SqlGrantAccessJob::SqlGrantAccessJob(string const& database,
 list<pair<string,string>> SqlGrantAccessJob::extendedPersistentState() const {
     list<pair<string,string>> result;
     result.emplace_back("database", database());
+    result.emplace_back("user", user());
     result.emplace_back("all_workers", string(allWorkers() ? "1" : "0"));
     return result;
 }
