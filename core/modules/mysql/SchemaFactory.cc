@@ -62,7 +62,7 @@ struct ColTypeFactory {
 
           case MYSQL_TYPE_TIMESTAMP: sqlType = "TIMESTAMP"; break;
           case MYSQL_TYPE_LONGLONG: _setGeneric("BIGINT", f.length); break;
-          case MYSQL_TYPE_INT24: sqlType = "INT24??"; break;
+          case MYSQL_TYPE_INT24: sqlType = "MEDIUMINT"; break;
           case MYSQL_TYPE_DATE: sqlType = "DATE"; break;
           case MYSQL_TYPE_TIME: sqlType = "TIME"; break;
           case MYSQL_TYPE_DATETIME: sqlType = "DATETIME"; break;
