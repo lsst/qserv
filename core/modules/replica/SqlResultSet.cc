@@ -241,6 +241,16 @@ bool SqlResultSet::hasErrors() const {
     return false;
 }
 
+bool SqlResultSet::allErrorsOf(ExtendedCompletionStatus desiredExtendedStatus) const {
+    for (auto&& itr: queryResultSet) {
+        auto&& result = itr.second;
+        if (result.extendedStatus != desiredExtendedStatus) {
+            return false;
+        }
+    }
+    return true;
+}
+
 
 string SqlResultSet::firstError() const {
     for (auto&& itr: queryResultSet) {

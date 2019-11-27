@@ -79,6 +79,7 @@ protected:
 
     unsigned int workerResponseTimeoutSec() const { return _processorConfig.workerResponseTimeoutSec; }
     unsigned int qservSyncTimeoutSec() const { return _processorConfig.qservSyncTimeoutSec; }
+    unsigned int workerReconfigTimeoutSec() const { return _processorConfig.workerReconfigTimeoutSec; }
 
     std::string context() const;
 

@@ -64,10 +64,12 @@ SqlJob::SqlJob(uint64_t maxRows,
                Controller::Ptr const& controller,
                string const& parentJobId,
                std::string const& jobName,
-               Job::Options const& options)
+               Job::Options const& options,
+               bool ignoreNonPartitioned)
     :   Job(controller, parentJobId, jobName, options),
         _maxRows(maxRows),
-        _allWorkers(allWorkers) {
+        _allWorkers(allWorkers),
+        _ignoreNonPartitioned(ignoreNonPartitioned) {
 }
 
 
@@ -193,6 +195,19 @@ void SqlJob::onRequestFinish(SqlRequest::Ptr const& request) {
             for (auto&& ptr: _requests) {
                 if (ptr->extendedState() == Request::ExtendedState::SUCCESS) {
                     numSuccess++;
+                } else {
+                    // This too may also count as a success since the table might be processed
+                    // before, when this job was ran.
+                    if (ignoreNonPartitioned() and
+                            ptr->extendedServerStatus() == ExtendedCompletionStatus::EXT_STATUS_MULTIPLE) {
+                        auto&& responseData = request->responseData();
+                        if (responseData.hasErrors() and responseData.allErrorsOf(
+                                ExtendedCompletionStatus::EXT_STATUS_NOT_PARTITIONED_TABLE)) {
+                            LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "  id=" << request->id()
+                                 << " [ignoreNonPartitioned & EXT_STATUS_NOT_PARTITIONED_TABLE]");
+                            numSuccess++;
+                        }
+                    }
                 }
             }
             finish(lock, numSuccess == _numFinished ? ExtendedState::SUCCESS :

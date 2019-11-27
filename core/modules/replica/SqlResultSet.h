@@ -179,6 +179,10 @@ public:
     /// based on a value of the extended status of each result set.
     bool hasErrors() const;
 
+    /// @return 'true' if all errors are of the specified \desiredExtendedStatus
+    /// @note this method should be used together with method SqlResultSet::hasErrors().
+    bool allErrorsOf(ExtendedCompletionStatus desiredExtendedStatus) const;
+    
     /**
      * Look for errors in the result sets based on a value of the extended
      * status and MySQL error strings reported by the servers. And return

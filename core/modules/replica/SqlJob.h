@@ -63,6 +63,7 @@ public:
     uint64_t maxRows() const { return _maxRows; }
 
     bool allWorkers() const { return _allWorkers; }
+    bool ignoreNonPartitioned() const { return _ignoreNonPartitioned; }
 
     /**
      * Return the combined result of the operation
@@ -94,13 +95,17 @@ protected:
      * @param parentJobId (optional) identifier of a parent job
      * @param jobName the name of a job in the persistent state of the Replication system
      * @param options (optional) defines the job priority, etc.
+     * @param ignoreNonPartitioned if 'true' then don't report as errors tables
+     *   which don't have MySQL partitions. Those partitions may have already been
+     *   removed by a previous attempt to run this algorithm. 
      */
     SqlJob(uint64_t maxRows,
            bool allWorkers,
            Controller::Ptr const& controller,
            std::string const& parentJobId,
            std::string const& jobName,
-           Job::Options const& options);
+           Job::Options const& options,
+           bool ignoreNonPartitioned=false);
 
     void startImpl(util::Lock const& lock) final;
 
@@ -199,6 +204,7 @@ private:
 
     uint64_t const _maxRows;
     bool     const _allWorkers;
+    bool     const _ignoreNonPartitioned;
 
     /// A collection of requests implementing the operation
     std::vector<SqlRequest::Ptr> _requests;

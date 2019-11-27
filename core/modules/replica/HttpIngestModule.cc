@@ -479,9 +479,7 @@ void HttpIngestModule::_addDatabase(qhttp::Request::Ptr const& req,
     databaseInfo = config->addDatabase(databaseInfo);
 
     // Tell workers to reload their configurations
-
-    unsigned int const workerResponseTimeoutSec = 60;
-    error = _reconfigureWorkers(databaseInfo, allWorkers, workerResponseTimeoutSec);
+    error = _reconfigureWorkers(databaseInfo, allWorkers, workerReconfigTimeoutSec());
     if (not error.empty()) {
         sendError(resp, __func__, error);
         return;
@@ -534,8 +532,7 @@ void HttpIngestModule::_publishDatabase(qhttp::Request::Ptr const& req,
 
     // This step is needed to get workers' Configuration in-sync with its
     // persistent state.
-    unsigned int const workerResponseTimeoutSec = 60;
-    auto const error = _reconfigureWorkers(databaseInfo, allWorkers, workerResponseTimeoutSec);
+    auto const error = _reconfigureWorkers(databaseInfo, allWorkers, workerReconfigTimeoutSec());
     if (not error.empty()) {
         sendError(resp, __func__, error);
         return;
@@ -604,8 +601,7 @@ void HttpIngestModule::_deleteDatabase(qhttp::Request::Ptr const& req,
 
     // This step is needed to get workers' Configuration in-sync with its
     // persistent state.
-    unsigned int const workerResponseTimeoutSec = 60;
-    error = _reconfigureWorkers(databaseInfo, allWorkers, workerResponseTimeoutSec);
+    error = _reconfigureWorkers(databaseInfo, allWorkers, workerReconfigTimeoutSec());
     if (not error.empty()) {
         sendError(resp, __func__, error);
         return;
@@ -751,8 +747,7 @@ void HttpIngestModule::_addTable(qhttp::Request::Ptr const& req,
     // This step is needed to get workers' Configuration in-sync with its
     // persistent state.
 
-    unsigned int const workerResponseTimeoutSec = 60;
-    error = _reconfigureWorkers(databaseInfo, allWorkers, workerResponseTimeoutSec);
+    error = _reconfigureWorkers(databaseInfo, allWorkers, workerReconfigTimeoutSec());
     if (not error.empty()) {
         sendError(resp, __func__, error);
         return;
@@ -1006,12 +1001,17 @@ bool HttpIngestModule::_removeMySQLPartitions(qhttp::Response::Ptr const& resp,
 
     auto const config = controller()->serviceProvider()->config();
 
+    // Ignore tables which may have already been processed at a previous attempt
+    // of running this algorithm.
+    bool const ignoreNonPartitioned = true;
+
     string error;
     for (auto const table: databaseInfo.tables()) {
         auto const job = SqlRemoveTablePartitionsJob::create(
             databaseInfo.name,
             table,
             allWorkers,
+            ignoreNonPartitioned,
             controller()
         );
         job->start();

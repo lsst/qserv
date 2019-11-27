@@ -163,6 +163,7 @@ private:
     unsigned int _workerEvictTimeoutSec;
     unsigned int _qservSyncTimeoutSec;
     unsigned int _numReplicas;
+    unsigned int _workerReconfigTimeoutSec;
 
     bool _purge;
     bool _forceQservSync;

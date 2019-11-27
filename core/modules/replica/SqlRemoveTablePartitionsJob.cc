@@ -51,6 +51,7 @@ SqlRemoveTablePartitionsJob::Ptr SqlRemoveTablePartitionsJob::create(
         string const& database,
         string const& table,
         bool allWorkers,
+        bool ignoreNonPartitioned,
         Controller::Ptr const& controller,
         string const& parentJobId,
         CallbackType const& onFinish,
@@ -60,6 +61,7 @@ SqlRemoveTablePartitionsJob::Ptr SqlRemoveTablePartitionsJob::create(
         database,
         table,
         allWorkers,
+        ignoreNonPartitioned,
         controller,
         parentJobId,
         onFinish,
@@ -72,6 +74,7 @@ SqlRemoveTablePartitionsJob::SqlRemoveTablePartitionsJob(
         string const& database,
         string const& table,
         bool allWorkers,
+        bool ignoreNonPartitioned,
         Controller::Ptr const& controller,
         string const& parentJobId,
         CallbackType const& onFinish,
@@ -81,7 +84,8 @@ SqlRemoveTablePartitionsJob::SqlRemoveTablePartitionsJob(
                controller,
                parentJobId,
                "SQL_REMOVE_TABLE_PARTITIONING",
-               options),
+               options,
+               ignoreNonPartitioned),
         _database(database),
         _table(table),
         _onFinish(onFinish) {
@@ -93,6 +97,7 @@ list<pair<string,string>> SqlRemoveTablePartitionsJob::extendedPersistentState()
     result.emplace_back("database", database());
     result.emplace_back("table", table());
     result.emplace_back("all_workers", string(allWorkers() ? "1" : "0"));
+    result.emplace_back("ignore_non_partitioned", string(ignoreNonPartitioned() ? "1" : "0"));
     return result;
 }
 

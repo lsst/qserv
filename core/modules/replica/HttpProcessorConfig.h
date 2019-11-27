@@ -38,9 +38,11 @@ class HttpProcessorConfig {
 public:
     /// The normal and the default constructor
     explicit HttpProcessorConfig(unsigned int workerResponseTimeoutSec_=0,
-                                 unsigned int qservSyncTimeoutSec_=0)
+                                 unsigned int qservSyncTimeoutSec_=0,
+                                 unsigned int workerReconfigTimeoutSec_=0)
         :   workerResponseTimeoutSec(workerResponseTimeoutSec_),
-            qservSyncTimeoutSec(qservSyncTimeoutSec_) {
+            qservSyncTimeoutSec(qservSyncTimeoutSec_),
+            workerReconfigTimeoutSec(workerReconfigTimeoutSec_) {
     }
     HttpProcessorConfig(HttpProcessorConfig const&) = default;
     HttpProcessorConfig& operator=(HttpProcessorConfig const&) = default;
@@ -57,6 +59,10 @@ public:
     /// @note a value of the parameter may differ from the default option
     /// supplied by the Configuration.
     unsigned int qservSyncTimeoutSec = 0;
+
+    /// The maximum number of seconds to wait for the completion of the worker
+    /// reconfiguration requests.
+    unsigned int const workerReconfigTimeoutSec = 0;
 };
     
 }}} // namespace lsst::qserv::replica

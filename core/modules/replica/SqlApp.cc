@@ -243,6 +243,12 @@ SqlApp::SqlApp(int argc, char* argv[])
         "table",
         "The name of an existing table to be affected by the operation.",
         _table
+    ).flag(
+        "ignore-non-partitioned",
+        "The flag allowing to run this job multiple times w/o considering tables"
+        " which don't have MySQL partitions. The partitions may have already been"
+        " removed at prior invocations of the job.",
+        _ignoreNonPartitioned
     );
 
     parser().command(
@@ -294,7 +300,8 @@ int SqlApp::runImpl() {
     } else if(_command == "DELETE_TABLE") {
         job = SqlDeleteTableJob::create(_database, _table, _allWorkers, controller);
     } else if(_command == "REMOVE_TABLE_PARTITIONS") {
-        job = SqlRemoveTablePartitionsJob::create(_database, _table, _allWorkers, controller);
+        job = SqlRemoveTablePartitionsJob::create(_database, _table, _allWorkers, _ignoreNonPartitioned,
+                                                  controller);
     } else if(_command == "DELETE_TABLE_PARTITION") {
         job = SqlDeleteTablePartitionJob::create(_database, _table, _transactionId,
                                                  _allWorkers, controller);

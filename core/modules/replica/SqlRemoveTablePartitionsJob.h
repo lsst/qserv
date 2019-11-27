@@ -105,6 +105,9 @@ public:
      * @param allWorkers engage all known workers regardless of their status.
      *   If the flag is set to 'false' then only 'ENABLED' workers which are
      *   not in the 'READ-ONLY' state will be involved into the operation.
+     * @param ignoreNonPartitioned if 'true' then don't report as errors tables
+     *   which don't have MySQL partitions. Those partitions may have already been
+     *   removed by a previous attempt to run this algorithm. 
      * @param controller is needed launching requests and accessing the Configuration
      * @param parentJobId (optional) identifier of a parent job
      * @param onFinish (optional) callback function to be called upon a completion
@@ -115,6 +118,7 @@ public:
     static Ptr create(std::string const& database,
                       std::string const& table,
                       bool allWorkers,
+                      bool ignoreNonPartitioned,
                       Controller::Ptr const& controller,
                       std::string const& parentJobId=std::string(),
                       CallbackType const& onFinish=nullptr,
@@ -147,6 +151,7 @@ private:
     SqlRemoveTablePartitionsJob(std::string const& database,
                                 std::string const& table,
                                 bool allWorkers,
+                                bool ignoreNonPartitioned,
                                 Controller::Ptr const& controller,
                                 std::string const& parentJobId,
                                 CallbackType const& onFinish,
