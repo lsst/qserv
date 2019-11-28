@@ -22,9 +22,11 @@
 #define LSST_QSERV_REPLICA_FIXUPJOB_H
 
 // System headers
+#include <cstdint>
 #include <functional>
 #include <list>
 #include <map>
+#include <queue>
 #include <string>
 
 // Qserv headers
@@ -51,9 +53,8 @@ struct FixUpJobResult {
     /// Results grouped by: chunk number, database, worker
     ChunkDatabaseWorkerReplicaInfo chunks;
 
-    /// Per-worker flags indicating if the corresponding replica retrieval
-    /// request succeeded.
-    std::map<std::string, bool> workers;
+    /// Per-worker counters indicating the number of failed requests
+    std::map<std::string, size_t> workers;
 };
 
 /**
@@ -65,9 +66,7 @@ struct FixUpJobResult {
   * then others (not affected by the operation).
   */
 class FixUpJob : public Job  {
-
 public:
-
     /// The pointer type for instances of the class
     typedef std::shared_ptr<FixUpJob> Ptr;
 
@@ -85,21 +84,11 @@ public:
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
      *
-     * @param databaseFamily
-     *   the name of a database family
-     *
-     * @param controller
-     *   for launching requests
-     *
-     * @param parentJobId
-     *   optional identifier of a parent job
-     *
-     * @param onFinish
-     *   callback function to be called upon a completion of the job
-     *
-     * @param options
-     *   job options
-     *
+     * @param databaseFamily The name of a database family
+     * @param controller This is needed for launching requests
+     * @param parentJobId An optional identifier of a parent job
+     * @param onFinish The callback function to be called upon a completion of the job
+     * @param options A collection of job options
      * @return pointer to the created object
      */
     static Ptr create(std::string const& databaseFamily,
@@ -108,14 +97,11 @@ public:
                       CallbackType const& onFinish=nullptr,
                       Job::Options const& options=defaultOptions());
 
-    // Default construction and copy semantics are prohibited
-
     FixUpJob() = delete;
     FixUpJob(FixUpJob const&) = delete;
     FixUpJob& operator=(FixUpJob const&) = delete;
 
-    /// Destructor (non-trivial in order to release locks on chunks)
-    ~FixUpJob() final;
+    ~FixUpJob() final = default;
 
     /// @return the name of a database family defining a scope of the operation
     std::string const& databaseFamily() const { return _databaseFamily; }
@@ -123,48 +109,27 @@ public:
     /**
      * Return the result of the operation.
      *
-     * @note:
-     *   The method should be invoked only after the job has finished (primary
-     *   status is set to Job::Status::FINISHED). Otherwise exception
+     * @note The method should be invoked only after the job has finished
+     *   (primary status is set to Job::Status::FINISHED). Otherwise exception
      *   std::logic_error will be thrown
-     *
-     * @note
-     *   The result will be extracted from requests which have successfully
+     * @note The result will be extracted from requests which have successfully
      *   finished. Please, verify the primary and extended status of the object
      *   to ensure that all requests have finished.
-     *
-     * @return
-     *   the data structure to be filled upon the completion of the job.
-     *
-     * @throws std::logic_error
-     *   if the job didn't finished at a time when the method was called
+     * @return the data structure to be filled upon the completion of the job.
+     * @throws std::logic_error if the job didn't finished at a time when the method
+     *   was called
      */
     FixUpJobResult const& getReplicaData() const;
 
-    /**
-     * Implement the corresponding method of the base class.
-     *
-     * @see Job::extendedPersistentState()
-     */
     std::list<std::pair<std::string,std::string>> extendedPersistentState() const final;
-
-    /// @see Job::persistentLogData()
     std::list<std::pair<std::string,std::string>> persistentLogData() const final;
 
 protected:
-
-    /// @see Job::startImpl()
     void startImpl(util::Lock const& lock) final;
-
-    /// @see Job::cancelImpl()
     void cancelImpl(util::Lock const& lock) final;
-
-    /// @see Job::notify()
     void notify(util::Lock const& lock) final;
 
 private:
-
-    /// @see FixUpJob::create()
     FixUpJob(std::string const& databaseFamily,
              Controller::Ptr const& controller,
              std::string const& parentJobId,
@@ -183,21 +148,6 @@ private:
      */
     void _onRequestFinish(ReplicationRequest::Ptr const& request);
 
-    /**
-     * Restart the job from scratch. This method will reset object context
-     * to a state it was before method Job::startImpl() called and then call
-     * Job::startImpl() again.
-     * 
-     * @param lock
-     *   a lock on Job::_mtx must be acquired before calling this method
-     */
-    void _restart(util::Lock const& lock);
-
-    /**
-     * Unconditionally release the specified chunk
-     */
-    void _release(unsigned int chunk);
-
     // Input parameters
 
     std::string const _databaseFamily;
@@ -207,33 +157,38 @@ private:
     /// replica disposition.
     FindAllJob::Ptr _findAllJob;
 
-    /// The total number of iterations the job has gone so far
-    size_t _numIterations = 0;
+    /**
+     * Analyze the work queue for the specified worker and launch up to
+     * the specified number of the replication requests for the worker. The method
+     * will eliminate input tasks from the work queue as it goes.
+     * 
+     * @param lock The lock to be be held for the thread safety of the operation
+     * @param destinationWorker The name of a replica receiving worker
+     * @param maxRequests The maximum number of requests to be launched
+     * @return The number of requests launched or 0 if no tasks existed for the worker.
+     */
+    size_t _launchNext(util::Lock const& lock,
+                       std::string const& destinationWorker,
+                       size_t maxRequests);
 
-    /// The number of chunks which require the fix-up but couldn't be locked
-    /// in the exclusive mode. The counter will be analyzed upon a completion
-    /// of the last request, and if it were found not empty another iteration
-    /// of the job will be undertaken
-    size_t _numFailedLocks = 0;
+    /// Structure ReplicationTask encapsulates a task to be schedule for executing
+    /// as a replication request.
+    struct ReplicationTask {
+        std::string destinationWorker;
+        std::string sourceWorker;
+        std::string database;
+        unsigned int chunk;
+    };
+    
+    /// A collection of tasks to be executed for each destination worker.
+    /// The collection is populated once, based on results reported by
+    /// the "precursor" job. The tasks are pulled from the collection and turned
+    /// into requests by method FixUpJob::_launchNext().
+    std::map<std::string, std::queue<ReplicationTask>> _destinationWorker2tasks;
 
-    /// A collection of requests grouped by the corresponding chunk
-    /// number. The main idea is simplify tracking the completion status
-    /// of the operation on each chunk. Requests will be added to the
-    /// corresponding group as they're launched, and removed when they
-    /// finished. This allows releasing (unlocking) chunks before
-    /// the whole job finishes.
-    ///
-    /// [chunk][worker][database]
-    //
-    std::map<unsigned int,
-             std::map<std::string,
-                      std::map<std::string,
-                               ReplicationRequest::Ptr>>> _chunk2requests;
-
-    /// A collection of requests implementing the operation
+    /// A collection of launched requests implementing the operation
     std::list<ReplicationRequest::Ptr> _requests;
 
-    size_t _numLaunched = 0;    ///< the total number of requests launched
     size_t _numFinished = 0;    ///< the total number of finished requests
     size_t _numSuccess  = 0;    ///< the number of successfully completed requests
 
