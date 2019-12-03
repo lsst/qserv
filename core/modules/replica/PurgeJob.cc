@@ -27,10 +27,9 @@
 #include <stdexcept>
 
 // Qserv headers
-#include "replica/Common.h"
 #include "replica/Configuration.h"
-#include "replica/ErrorReporting.h"
 #include "replica/ServiceProvider.h"
+#include "replica/StopRequest.h"
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -95,25 +94,19 @@ PurgeJob::PurgeJob(string const& databaseFamily,
 
     if (not _numReplicas) {
         throw invalid_argument(
-                "PurgeJob::" + string(__func__) + "  0 replicas is not allowed");
+                typeName() + "::" + string(__func__) + "  0 replicas is not allowed");
     }
-}
-
-
-PurgeJob::~PurgeJob() {
-    // Make sure all chunks locked by this job are released
-    controller()->serviceProvider()->chunkLocker().release(id());
 }
 
 
 PurgeJobResult const& PurgeJob::getReplicaData() const {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
+    LOGS(_log, LOG_LVL_TRACE, context() << __func__);
 
     if (state() == State::FINISHED) return _replicaData;
 
     throw logic_error (
-            "PurgeJob::" + string(__func__) +
+            typeName() + "::" + string(__func__) +
             "  the method can't be called while the job hasn't finished");
 }
 
@@ -132,14 +125,15 @@ list<pair<string,string>> PurgeJob::persistentLogData() const {
 
     auto&& replicaData = getReplicaData();
 
-    // Report workers failed to respond to the requests
+    // Report workers failed to respond to the jobs
 
     for (auto&& workerInfo: replicaData.workers) {
         auto&& worker = workerInfo.first;
-
-        bool const responded = workerInfo.second;
-        if (not responded) {
-            result.emplace_back("failed-worker", worker);
+        auto const numFailedJobs = workerInfo.second;
+        if (numFailedJobs != 0) {
+            result.emplace_back(
+                "failed-worker", "worker=" + worker
+                + " num-failed-jobs=" + to_string(numFailedJobs));
         }
     }
 
@@ -173,9 +167,7 @@ list<pair<string,string>> PurgeJob::persistentLogData() const {
 
 void PurgeJob::startImpl(util::Lock const& lock) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "  _numIterations=" << _numIterations);
-
-    ++_numIterations;
+    LOGS(_log, LOG_LVL_TRACE, context() << __func__);
 
     // Launch the chained job to get chunk disposition
 
@@ -185,7 +177,7 @@ void PurgeJob::startImpl(util::Lock const& lock) {
                                                 // the algorithm depends on it.
     bool const allWorkers = false;              // only consider enabled workers
     _findAllJob = FindAllJob::create(
-        _databaseFamily,
+        databaseFamily(),
         saveReplicInfo,
         allWorkers,
         controller(),
@@ -200,7 +192,7 @@ void PurgeJob::startImpl(util::Lock const& lock) {
 
 void PurgeJob::cancelImpl(util::Lock const& lock) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
+    LOGS(_log, LOG_LVL_TRACE, context() << __func__);
 
     // The algorithm will also clear resources taken by various
     // locally created objects.
@@ -215,42 +207,20 @@ void PurgeJob::cancelImpl(util::Lock const& lock) {
             ptr->cancel();
         }
     }
-    _chunk2jobs.clear();
+    _targetWorker2tasks.clear();
     _jobs.clear();
-
-    _numFailedLocks = 0;
-
-    _numLaunched = 0;
-    _numFinished = 0;
-    _numSuccess  = 0;
-}
-
-
-void PurgeJob::_restart(util::Lock const& lock) {
-
-    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
-
-    if (_findAllJob or (_numLaunched != _numFinished)) {
-        throw logic_error("PurgeJob::" + string(__func__) + "  not allowed in this object state");
-    }
-    _jobs.clear();
-
-    _numFailedLocks = 0;
-
-    _numLaunched = 0;
-    _numFinished = 0;
 }
 
 
 void PurgeJob::notify(util::Lock const& lock) {
-    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
+    LOGS(_log, LOG_LVL_TRACE, context() << __func__);
     notifyDefaultImpl<PurgeJob>(lock, _onFinish);
 }
 
 
 void PurgeJob::_onPrecursorJobFinish() {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
+    LOGS(_log, LOG_LVL_TRACE, context() << __func__);
 
     if (state() == State::FINISHED) return;
 
@@ -258,16 +228,11 @@ void PurgeJob::_onPrecursorJobFinish() {
 
     if (state() == State::FINISHED) return;
 
-    ////////////////////////////////////////////////////////////////
-    // Only proceed with the replication effort if the precursor job
-    // has succeeded.
-
     if (_findAllJob->extendedState() != ExtendedState::SUCCESS) {
         finish(lock, ExtendedState::FAILED);
         return;
     }
 
-    /////////////////////////////////////////////////////////////////
     // Analyze results and prepare a deletion plan to remove extra
     // replicas for over-represented chunks
     //
@@ -340,11 +305,8 @@ void PurgeJob::_onPrecursorJobFinish() {
              << ", occupancy=" << entry.second);
     }
 
-    /////////////////////////////////////////////////////////////////////
     // Check which chunks are over-represented. Then find a least loaded
-    // worker and launch a replica removal jobs.
-
-    auto self = shared_from_base<PurgeJob>();
+    // worker and register a replica removal task.
 
     for (auto&& chunk2replicas: chunk2numReplicas2delete) {
 
@@ -354,17 +316,6 @@ void PurgeJob::_onPrecursorJobFinish() {
         LOGS(_log, LOG_LVL_DEBUG, context() << __func__
              << "  chunk=" << chunk
              << ", numReplicas2delete=" << numReplicas2delete);
-
-        // Chunk locking is mandatory. If it's not possible to do this now then
-        // the job will need to make another attempt later.
-
-        if (not controller()->serviceProvider()->chunkLocker().lock({_databaseFamily, chunk}, id())) {
-            ++_numFailedLocks;
-            LOGS(_log, LOG_LVL_DEBUG, context() << __func__
-                 << "  chunk=" << chunk
-                 << ", _numFailedLocks=" << _numFailedLocks);
-            continue;
-        }
 
         // This list of workers will be reduced as the replica will get deleted
 
@@ -397,12 +348,10 @@ void PurgeJob::_onPrecursorJobFinish() {
                 }
             }
             if (targetWorker.empty() or not maxNumChunks) {
-
                 LOGS(_log, LOG_LVL_ERROR, context() << __func__
                      << "  failed to find a target worker for chunk: " << chunk);
-
                 finish(lock, ExtendedState::FAILED);
-                break;
+                return;
             }
 
             // Remove the select worker from the list, so that the next iteration (if the one
@@ -410,26 +359,10 @@ void PurgeJob::_onPrecursorJobFinish() {
 
             goodWorkersOfThisChunk.remove(targetWorker);
 
-            // Finally, launch and register for further tracking deletion
-            // a job which will affect all participating databases
+            // Finally, register the replica deletion task which will turn into
+            // a job affecting all participating databases.
 
-            auto ptr = DeleteReplicaJob::create(
-                databaseFamily(),
-                chunk,
-                targetWorker,
-                controller(),
-                id(),
-                [self] (DeleteReplicaJob::Ptr const& job) {
-                    self->_onDeleteJobFinish(job);
-                },
-                options(lock)   // inherit from the current job
-            );
-            ptr->start();
-
-            _chunk2jobs[chunk][targetWorker] = ptr;
-            _jobs.push_back(ptr);
-
-            _numLaunched++;
+            _targetWorker2tasks[targetWorker].emplace(ReplicaPurgeTask{chunk, targetWorker});
 
             // Reduce the worker occupancy count by the number of databases participating
             // in the replica of the chunk, so that it will be taken into
@@ -437,125 +370,115 @@ void PurgeJob::_onPrecursorJobFinish() {
 
             worker2occupancy[targetWorker] -= replicaData.databases.at(chunk).size();
         }
-        if (state() == State::FINISHED) break;
     }
-    if (state() != State::FINISHED) {
 
-        // ATTENTION: if the job submission algorithm didn't launch any
-        // child jobs while leaving this object in the unfinished state
-        // then we must evaluate reasons and take proper actions. Otherwise
-        // the object will get into a 'zombie' state.
+    // Launch the initial batch of jobs in the number which won't exceed
+    // the number of the service processing threads at each worker multiplied
+    // by the number of workers involved into the operation.
+    size_t const maxJobsPerWorker =
+        controller()->serviceProvider()->config()->workerNumProcessingThreads();
 
-        if (not _jobs.size()) {
-            if (not _numFailedLocks) {
+    for (auto&& itr: _targetWorker2tasks) {
+        auto&& targetWorker = itr.first;
+        _launchNext(lock, targetWorker, maxJobsPerWorker);
+    }
 
-                // Finish right away if no problematic chunks found
-                finish(lock, ExtendedState::SUCCESS);
-
-            } else {
-
-                // Some of the chunks were locked and yet, no single job was
-                // lunched. Hence we should start another iteration by requesting
-                // the fresh state of the chunks within the family.
-
-                _restart(lock);
-                return;
-            }
-        }
+    // In case if everything is alright, and no replica removals were needed.
+    if (_jobs.size() == 0) {
+        finish(lock, ExtendedState::SUCCESS);
     }
 }
 
 
 void PurgeJob::_onDeleteJobFinish(DeleteReplicaJob::Ptr const& job) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << __func__
-         << "  databaseFamily=" << job->databaseFamily()
-         << "  worker="         << job->worker()
-         << "  chunk="          << job->chunk());
+    string       const worker = job->worker();
+    unsigned int const chunk  = job->chunk();
 
-    if (state() == State::FINISHED) {
-        _release(job->chunk());
-        return;
-    }
+    LOGS(_log, LOG_LVL_TRACE, context() << __func__
+         << "  databaseFamily=" << databaseFamily()
+         << "  worker="         << worker
+         << "  chunk="          << chunk);
+
+    if (state() == State::FINISHED) return;
 
     util::Lock lock(_mtx, context() + __func__);
 
-    if (state() == State::FINISHED) {
-        _release(job->chunk());
-        return;
-    }
+    if (state() == State::FINISHED) return;
 
     // Update counters and merge results of the finished job into the current
     // job's stats if the replica deletion has been a success.
 
     _numFinished++;
-
     if (job->extendedState() == Job::ExtendedState::SUCCESS) {
-
         _numSuccess++;
 
         DeleteReplicaJobResult const& jobReplicaData = job->getReplicaData();
 
         // Append replicas info by the end of the list
-
         _replicaData.replicas.insert(_replicaData.replicas.end(),
                                      jobReplicaData.replicas.begin(),
                                      jobReplicaData.replicas.end());
 
         // Merge the replica info into the dictionary
-
-        for (auto&& databaseEntry: jobReplicaData.chunks.at(job->chunk())) {
+        for (auto&& databaseEntry: jobReplicaData.chunks.at(chunk)) {
             string const& database = databaseEntry.first;
-            _replicaData.chunks[job->chunk()][database][job->worker()] =
-                jobReplicaData.chunks.at(job->chunk()).at(database).at(job->worker());
+            _replicaData.chunks[chunk][database][worker] =
+                jobReplicaData.chunks.at(chunk).at(database).at(worker);
         }
-        _replicaData.workers[job->worker()] = true;
     } else {
-        _replicaData.workers[job->worker()] = false;
+        if (_replicaData.workers.count(worker) == 0) _replicaData.workers[worker] = 0;
+        _replicaData.workers[worker]++;
     }
 
-    // Make sure the chunk is released if this was the last
-    // job in its scope.
-
-    _chunk2jobs.at(job->chunk()).erase(job->worker());
-    if (_chunk2jobs.at(job->chunk()).empty()) {
-        _chunk2jobs.erase(job->chunk());
-        _release(job->chunk());
-    }
-
-    // Evaluate the status of on-going operations to see if the job
-    // has finished.
-
-    if (_numFinished == _numLaunched) {
-        if (_numSuccess == _numLaunched) {
-            if (_numFailedLocks) {
-
-                // Make another iteration (and another one, etc. as many as needed)
-                // before it succeeds or fails.
-
-                _restart(lock);
-                return;
-
-            } else {
-                finish(lock, ExtendedState::SUCCESS);
-            }
-        } else {
-            finish(lock, ExtendedState::FAILED);
+    // Launch a replacement job for the worker and check if this was the very
+    // last job in flight and no more are ready to be lunched.
+    if (0 == _launchNext(lock, worker, 1)) {
+        if (_numFinished == _jobs.size()) {
+            finish(lock, _numSuccess == _numFinished ? ExtendedState::SUCCESS :
+                                                       ExtendedState::FAILED);
         }
     }
 }
 
 
-void PurgeJob::_release(unsigned int chunk) {
 
-    // THREAD-SAFETY NOTE: This method is thread-agnostic because it's trading
-    // a static context of the request with an external service which is guaranteed
-    // to be thread-safe.
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "  chunk=" << chunk);
+size_t PurgeJob::_launchNext(util::Lock const& lock,
+                             string const& targetWorker,
+                             size_t maxJobs) {
 
-    Chunk chunkObj {databaseFamily(), chunk};
-    controller()->serviceProvider()->chunkLocker().release(chunkObj);
+    if (maxJobs == 0) return 0;
+
+    auto const self = shared_from_base<PurgeJob>();
+    auto&& tasks = _targetWorker2tasks[targetWorker];
+
+    size_t numLaunched = 0;
+    for (size_t i = 0; i < maxJobs; ++i) {
+
+        if (tasks.size() == 0) break;
+
+        // Launch the replica removal job and register it for further
+        // tracking (or cancellation, should the one be requested)
+
+        ReplicaPurgeTask const& task = tasks.front();
+
+        auto const job = DeleteReplicaJob::create(
+            databaseFamily(),
+            task.chunk,
+            task.targetWorker,
+            controller(),
+            id(),
+            [self] (DeleteReplicaJob::Ptr const& job) {
+                self->_onDeleteJobFinish(job);
+            },
+            options(lock)   // inherit from the current job
+        );
+        job->start();
+        _jobs.push_back(job);
+        tasks.pop();
+        numLaunched++;
+    }
+    return numLaunched;
 }
-
 }}} // namespace lsst::qserv::replica
