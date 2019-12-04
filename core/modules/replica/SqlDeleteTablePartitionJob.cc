@@ -22,18 +22,15 @@
 // Class header
 #include "replica/SqlDeleteTablePartitionJob.h"
 
-// System headers
-#include <algorithm>
-#include <stdexcept>
-
 // Qserv headers
-#include "replica/Configuration.h"
-#include "replica/ServiceProvider.h"
 #include "replica/SqlDeleteTablePartitionRequest.h"
 #include "replica/StopRequest.h"
 
 // LSST headers
 #include "lsst/log/Log.h"
+
+// System headers
+#include <vector>
 
 using namespace std;
 
@@ -107,19 +104,27 @@ list<pair<string,string>> SqlDeleteTablePartitionJob::extendedPersistentState() 
 
 list<SqlRequest::Ptr> SqlDeleteTablePartitionJob::launchRequests(util::Lock const& lock,
                                                                  string const& worker,
-                                                                 size_t maxRequests) {
-
-    // Launch exactly one request per worker unless it was already
-    // launched earlier
-
+                                                                 size_t maxRequestsPerWorker) {
     list<SqlRequest::Ptr> requests;
-    if (not _workers.count(worker) and maxRequests != 0) {
-        auto const self = shared_from_base<SqlDeleteTablePartitionJob>();
+
+    if (maxRequestsPerWorker == 0) return requests;
+
+    // Make sure this worker has already been served
+    if (_workers.count(worker) != 0) return requests;
+    _workers.insert(worker);
+
+    // All tables which are going to be processed at the worker
+    vector<string> const allTables = workerTables(worker, database(), table());
+
+    // Divide tables into subsets allocated to the "batch" requests. Then launch
+    // the requests for the current worker.
+    auto const self = shared_from_base<SqlDeleteTablePartitionJob>();
+    for (auto&& tables: distributeTables(allTables, maxRequestsPerWorker)) {
         requests.push_back(
             controller()->sqlDeleteTablePartition(
                 worker,
                 database(),
-                table(),
+                tables,
                 transactionId(),
                 [self] (SqlDeleteTablePartitionRequest::Ptr const& request) {
                     self->onRequestFinish(request);
@@ -129,7 +134,6 @@ list<SqlRequest::Ptr> SqlDeleteTablePartitionJob::launchRequests(util::Lock cons
                 id()    /* jobId */
             )
         );
-        _workers.insert(worker);
     }
     return requests;
 }

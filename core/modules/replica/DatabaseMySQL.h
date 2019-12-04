@@ -54,6 +54,7 @@
 #include <mysql/mysql.h>
 
 // Qserv headers
+#include "replica/Common.h"
 #include "replica/DatabaseMySQLExceptions.h"
 #include "replica/DatabaseMySQLTypes.h"
 #include "replica/DatabaseMySQLRow.h"
@@ -312,6 +313,11 @@ public:
     /// Return a non-escaped and back-tick-quoted string which is meant
     /// to be an SQL identifier.
     std::string sqlId(std::string const& str) const { return "`" + str + "`"; }
+
+    /// @return a back-ticked identifier of a MySQL partition for the given "super-transaction"
+    std::string sqlPartitionId(TransactionId transactionId) const {
+        return sqlId("p" + std::to_string(transactionId));
+    }
 
     /**
      * Generate and return an SQL expression for a binary operator applied

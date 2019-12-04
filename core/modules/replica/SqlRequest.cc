@@ -25,6 +25,7 @@
 // System headers
 #include <functional>
 #include <stdexcept>
+#include <sstream>
 #include <iostream>
 
 // Third party headers
@@ -35,6 +36,7 @@
 #include "replica/DatabaseServices.h"
 #include "replica/Messenger.h"
 #include "replica/ServiceProvider.h"
+#include "util/IterableFormatter.h"
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -55,22 +57,27 @@ namespace replica {
 void SqlRequest::extendedPrinter(Ptr const& ptr) {
 
     Request::defaultPrinter(ptr);
+    
+    for (auto&& itr: ptr->responseData().queryResultSet) {
 
-    auto&& resultSet = ptr->responseData();
-    if (resultSet.hasResult) {
+        auto&& scope = itr.first;
+        auto&& resultSet = itr.second;
 
-        string const caption = "RESULT SET";
-        string const indent  = "";
+        if (resultSet.hasResult) {
 
-        auto const table = resultSet.toColumnTable(caption, indent);
+            string const caption = "RESULT SET [" + scope + "]";
+            string const indent  = "";
 
-        bool const topSeparator    = false;
-        bool const bottomSeparator = false;
-        bool const repeatedHeader  = false;
+            auto const table = resultSet.toColumnTable(caption, indent);
 
-        size_t const pageSize = 0;
+            bool const topSeparator    = false;
+            bool const bottomSeparator = false;
+            bool const repeatedHeader  = false;
 
-        table.print(cout, topSeparator, bottomSeparator, pageSize, repeatedHeader);
+            size_t const pageSize = 0;
+
+            table.print(cout, topSeparator, bottomSeparator, pageSize, repeatedHeader);
+        }
     }
 }
 
@@ -114,6 +121,10 @@ list<pair<string,string>> SqlRequest::extendedPersistentState() const {
     result.emplace_back("partition_by_column", requestBody.partition_by_column());
     result.emplace_back("transaction_id", to_string(requestBody.transaction_id()));
     result.emplace_back("num_columns", to_string(requestBody.columns_size()));
+    ostringstream tablesStream;
+    tablesStream << util::printable(requestBody.tables(), "", "", " ");
+    result.emplace_back("tables", tablesStream.str());
+    result.emplace_back("batch_mode", string(requestBody.batch_mode() ? "1" : "0"));
     return result;
 }
 
@@ -207,7 +218,7 @@ void SqlRequest::_send(util::Lock const& lock) {
 
 
 void SqlRequest::_analyze(bool success,
-                              ProtocolResponseSql const& response) {
+                          ProtocolResponseSql const& response) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "  success=" << (success ? "true" : "false"));
 

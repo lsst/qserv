@@ -41,10 +41,9 @@ namespace replica {
 
 HttpModule::HttpModule(Controller::Ptr const& controller,
                        string const& taskName,
-                       unsigned int workerResponseTimeoutSec)
-    :   EventLogger(controller,
-                    taskName),
-        _workerResponseTimeoutSec(workerResponseTimeoutSec) {
+                       HttpProcessorConfig const& processorConfig)
+    :   EventLogger(controller, taskName),
+        _processorConfig(processorConfig) {
 }
 
 

@@ -45,27 +45,21 @@ namespace replica {
 HttpReplicationLevelsModule::Ptr HttpReplicationLevelsModule::create(
                                     Controller::Ptr const& controller,
                                     string const& taskName,
-                                    unsigned int workerResponseTimeoutSec,
+                                    HttpProcessorConfig const& processorConfig,
                                     HealthMonitorTask::Ptr const& healthMonitorTask) {
-    return Ptr(
-        new HttpReplicationLevelsModule(
-            controller,
-            taskName,
-            workerResponseTimeoutSec,
-            healthMonitorTask
-        )
-    );
+    return Ptr(new HttpReplicationLevelsModule(
+        controller, taskName, processorConfig,
+        healthMonitorTask
+    ));
 }
 
 
 HttpReplicationLevelsModule::HttpReplicationLevelsModule(
                                 Controller::Ptr const& controller,
                                 string const& taskName,
-                                unsigned int workerResponseTimeoutSec,
+                                HttpProcessorConfig const& processorConfig,
                                 HealthMonitorTask::Ptr const& healthMonitorTask)
-    :   HttpModule(controller,
-                   taskName,
-                   workerResponseTimeoutSec),
+    :   HttpModule(controller, taskName, processorConfig),
         _healthMonitorTask(healthMonitorTask) {
 }
 

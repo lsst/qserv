@@ -43,12 +43,11 @@ namespace replica {
  */
 class HttpQservMonitorModule: public HttpModule {
 public:
-
     typedef std::shared_ptr<HttpQservMonitorModule> Ptr;
 
     static Ptr create(Controller::Ptr const& controller,
                       std::string const& taskName,
-                      unsigned int workerResponseTimeoutSec);
+                      HttpProcessorConfig const& processorConfig);
 
     HttpQservMonitorModule() = delete;
     HttpQservMonitorModule(HttpQservMonitorModule const&) = delete;
@@ -57,7 +56,6 @@ public:
     ~HttpQservMonitorModule() final = default;
 
 protected:
-
     /**
      * Supported values for parameter 'subModuleName':
      *
@@ -73,10 +71,9 @@ protected:
                      std::string const& subModuleName) final;
 
 private:
-
     HttpQservMonitorModule(Controller::Ptr const& controller,
-                            std::string const& taskName,
-                            unsigned int workerResponseTimeoutSec);
+                           std::string const& taskName,
+                           HttpProcessorConfig const& processorConfig);
 
     /**
      * Process a request for extracting various status info for select

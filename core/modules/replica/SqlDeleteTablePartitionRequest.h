@@ -26,6 +26,7 @@
 #include <functional>
 #include <memory>
 #include <string>
+#include <vector>
 
 // Qserv headers
 #include "replica/Common.h"
@@ -64,17 +65,17 @@ public:
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
      *
-     * @param serviceProvider
-     *   is needed to access the Configuration and the Controller for communicating
-     *   with the worker
+     * @param serviceProvider is needed to access the Configuration and the Controller
+     *   for communicating with the worker
      * @param io_service a communication end-point
      * @param worker identifier of a worker node
      * @param database the name of an existing database where the table is residing
-     * @param table the name of a table affected by the operation
-     * @param transactionId
-     *   a unique identifier of a transaction which corresponds to a MySQL
-     *   partition to be removed.
-     * @param onFinish (optional) callback function to call upon completion of the request
+     * @param tables a collection of tables (given by their names) affected by
+     *   the operation
+     * @param transactionId a unique identifier of a transaction which corresponds
+     *   to a MySQL partition to be removed.
+     * @param onFinish (optional) callback function to call upon completion of
+     *   the request
      * @param priority priority level of the request
      * @param keepTracking keep tracking the request before it finishes or fails
      * @param messenger interface for communicating with workers
@@ -84,7 +85,7 @@ public:
                       boost::asio::io_service& io_service,
                       std::string const& worker,
                       std::string const& database,
-                      std::string const& table,
+                      std::vector<std::string> const& tables,
                       TransactionId transactionId,
                       CallbackType const& onFinish,
                       int priority,
@@ -99,7 +100,7 @@ private:
                                     boost::asio::io_service& io_service,
                                     std::string const& worker,
                                     std::string const& database,
-                                    std::string const& table,
+                                    std::vector<std::string> const& tables,
                                     TransactionId transactionId,
                                     CallbackType const& onFinish,
                                     int priority,

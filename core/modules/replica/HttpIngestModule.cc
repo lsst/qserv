@@ -40,9 +40,11 @@
 #include "replica/Configuration.h"
 #include "replica/DatabaseMySQL.h"
 #include "replica/DatabaseServices.h"
+#include "replica/FindAllJob.h"
 #include "replica/IndexJob.h"
 #include "replica/HttpRequestBody.h"
 #include "replica/HttpRequestQuery.h"
+#include "replica/QservSyncJob.h"
 #include "replica/ReplicaInfo.h"
 #include "replica/ServiceManagementJob.h"
 #include "replica/ServiceProvider.h"
@@ -83,6 +85,26 @@ string leastLoadedWorker(DatabaseServices::Ptr const& databaseServices,
     }
     return worker;
 }
+
+
+string jobCompletionErrorIfAny(SqlJob::Ptr const& job,
+                               string const& prefix) {
+    string error;
+    if (job->extendedState() != Job::ExtendedState::SUCCESS) {
+        auto const& resultData = job->getResultData();
+        for (auto&& itr: resultData.resultSets) {
+            auto&& worker = itr.first;
+            for (auto&& result: itr.second) {
+                if (result.hasErrors()) {
+                    error += prefix + ", worker: " + worker + ",  error: " +
+                             result.firstError() + " ";
+                }
+            }
+        }
+    }
+    return error;
+}
+
 }
 
 namespace lsst {
@@ -95,21 +117,16 @@ string const HttpIngestModule::_partitionByColumnType = "INT NOT NULL";
 
 HttpIngestModule::Ptr HttpIngestModule::create(Controller::Ptr const& controller,
                                                string const& taskName,
-                                               unsigned int workerResponseTimeoutSec) {
+                                               HttpProcessorConfig const& processorConfig) {
     return Ptr(new HttpIngestModule(
-        controller,
-        taskName,
-        workerResponseTimeoutSec
-    ));
+        controller, taskName, processorConfig));
 }
 
 
 HttpIngestModule::HttpIngestModule(Controller::Ptr const& controller,
                                    string const& taskName,
-                                   unsigned int workerResponseTimeoutSec)
-    :   HttpModule(controller,
-                   taskName,
-                   workerResponseTimeoutSec) {
+                                   HttpProcessorConfig const& processorConfig)
+    :   HttpModule(controller, taskName, processorConfig) {
 }
 
 
@@ -137,6 +154,8 @@ void HttpIngestModule::executeImpl(qhttp::Request::Ptr const& req,
          _addChunk(req, resp);
     } else if (subModuleName == "BUILD-CHUNK-LIST") {
          _buildEmptyChunksList(req, resp);
+    } else if (subModuleName == "REGULAR") {
+         _getRegular(req, resp);
     } else {
         throw invalid_argument(
                 context() + "::" + string(__func__) +
@@ -443,18 +462,7 @@ void HttpIngestModule::_addDatabase(qhttp::Request::Ptr const& req,
     job->wait();
     logJobFinishedEvent(SqlCreateDbJob::typeName(), job, familyName);
 
-    string error;
-    auto const& resultData = job->getResultData();
-    for (auto&& itr: resultData.resultSets) {
-        auto&& worker = itr.first;
-        auto&& workerResultSet = itr.second;
-        for (auto&& resultSet: workerResultSet) {
-            if (not resultSet.error.empty()) {
-                error += "database creation failed on worker: " + worker + ",  error: " +
-                         resultSet.error + " ";
-            }
-        }
-    }
+    string error = ::jobCompletionErrorIfAny(job, "database creation failed");
     if (not error.empty()) {
         sendError(resp, __func__, error);
         return;
@@ -471,9 +479,7 @@ void HttpIngestModule::_addDatabase(qhttp::Request::Ptr const& req,
     databaseInfo = config->addDatabase(databaseInfo);
 
     // Tell workers to reload their configurations
-
-    unsigned int const workerResponseTimeoutSec = 60;
-    error = _reconfigureWorkers(databaseInfo, allWorkers, workerResponseTimeoutSec);
+    error = _reconfigureWorkers(databaseInfo, allWorkers, workerReconfigTimeoutSec());
     if (not error.empty()) {
         sendError(resp, __func__, error);
         return;
@@ -526,20 +532,20 @@ void HttpIngestModule::_publishDatabase(qhttp::Request::Ptr const& req,
 
     // This step is needed to get workers' Configuration in-sync with its
     // persistent state.
-    unsigned int const workerResponseTimeoutSec = 60;
-    auto const error = _reconfigureWorkers(databaseInfo, allWorkers, workerResponseTimeoutSec);
+    auto const error = _reconfigureWorkers(databaseInfo, allWorkers, workerReconfigTimeoutSec());
     if (not error.empty()) {
         sendError(resp, __func__, error);
         return;
     }
 
-    // Finalize setting the database in Qserv master
-    //
-    // NOTE: the rest should be taken care of by the Replication system.
-    // This includes registering chunks in the persistent store of the Replication
-    // system, synchronizing with Qserv workers, fixing, re-balancing,
-    // replicating, etc.
+    // Run the chunks scanner to ensure new chunks are registered in the persistent
+    // store of the Replication system and synchronized with the Qserv workers.
+    // The (fixing, re-balancing, replicating, etc.) will be taken care of by
+    // the Replication system.
+    if (not _qservSync(resp, databaseInfo, allWorkers)) return;
 
+    // Finalize setting the database in Qserv master to make the new catalog
+    // visible to Qserv users.
     _publishDatabaseInMaster(databaseInfo);
 
     ControllerEvent event;
@@ -583,18 +589,7 @@ void HttpIngestModule::_deleteDatabase(qhttp::Request::Ptr const& req,
     job->wait();
     logJobFinishedEvent(SqlDeleteDbJob::typeName(), job, databaseInfo.family);
 
-    string error;
-    auto const& resultData = job->getResultData();
-    for (auto&& itr: resultData.resultSets) {
-        auto&& worker = itr.first;
-        auto&& workerResultSet = itr.second;
-        for (auto&& resultSet: workerResultSet) {
-            if (not resultSet.error.empty()) {
-                error += "table creation failed on worker: " + worker + ",  error: " +
-                         resultSet.error + " ";
-            }
-        }
-    }
+    string error = ::jobCompletionErrorIfAny(job, "database deletion failed");
     if (not error.empty()) {
         sendError(resp, __func__, error);
         return;
@@ -606,8 +601,7 @@ void HttpIngestModule::_deleteDatabase(qhttp::Request::Ptr const& req,
 
     // This step is needed to get workers' Configuration in-sync with its
     // persistent state.
-    unsigned int const workerResponseTimeoutSec = 60;
-    error = _reconfigureWorkers(databaseInfo, allWorkers, workerResponseTimeoutSec);
+    error = _reconfigureWorkers(databaseInfo, allWorkers, workerReconfigTimeoutSec());
     if (not error.empty()) {
         sendError(resp, __func__, error);
         return;
@@ -717,7 +711,7 @@ void HttpIngestModule::_addTable(qhttp::Request::Ptr const& req,
     string const engine = "MyISAM";
 
     auto const job = SqlCreateTableJob::create(
-        database,
+        databaseInfo.name,
         table,
         engine,
         _partitionByColumn,
@@ -730,18 +724,7 @@ void HttpIngestModule::_addTable(qhttp::Request::Ptr const& req,
     job->wait();
     logJobFinishedEvent(SqlCreateTableJob::typeName(), job, databaseInfo.family);
 
-    string error;
-    auto const& resultData = job->getResultData();
-    for (auto&& itr: resultData.resultSets) {
-        auto&& worker = itr.first;
-        auto&& workerResultSet = itr.second;
-        for (auto&& resultSet: workerResultSet) {
-            if (not resultSet.error.empty()) {
-                error += "table creation failed on worker: " + worker + ",  error: " +
-                         resultSet.error + " ";
-            }
-        }
-    }
+    string error = ::jobCompletionErrorIfAny(job, "table creation failed");
     if (not error.empty()) {
         sendError(resp, __func__, error);
         return;
@@ -751,7 +734,7 @@ void HttpIngestModule::_addTable(qhttp::Request::Ptr const& req,
 
     json result;
     result["database"] = config->addTable(
-        database, table, isPartitioned, columns, isDirector,
+        databaseInfo.name, table, isPartitioned, columns, isDirector,
         directorKey, chunkIdColName, subChunkIdColName,
         latitudeColName, longitudeColName
     ).toJson();
@@ -759,13 +742,12 @@ void HttpIngestModule::_addTable(qhttp::Request::Ptr const& req,
     // Create the secondary index table using an updated version of
     // the database descriptor.
 
-    if (isPartitioned and isDirector) _createSecondaryIndex(config->databaseInfo(database));
+    if (isPartitioned and isDirector) _createSecondaryIndex(config->databaseInfo(databaseInfo.name));
 
     // This step is needed to get workers' Configuration in-sync with its
     // persistent state.
 
-    unsigned int const workerResponseTimeoutSec = 60;
-    error = _reconfigureWorkers(databaseInfo, allWorkers, workerResponseTimeoutSec);
+    error = _reconfigureWorkers(databaseInfo, allWorkers, workerReconfigTimeoutSec());
     if (not error.empty()) {
         sendError(resp, __func__, error);
         return;
@@ -930,6 +912,37 @@ void HttpIngestModule::_buildEmptyChunksList(qhttp::Request::Ptr const& req,
 }
 
 
+void HttpIngestModule::_getRegular(qhttp::Request::Ptr const& req,
+                                   qhttp::Response::Ptr const& resp) {
+    debug(__func__);
+
+    auto const databaseServices = controller()->serviceProvider()->databaseServices();
+    auto const config = controller()->serviceProvider()->config();
+
+    auto const id = stoul(req->params.at("id"));
+    debug(__func__, "id="    + to_string(id));
+
+    auto const transaction = databaseServices->transaction(id);
+    if (transaction.state != TransactionInfo::STARTED) {
+        throw invalid_argument("transaction has already ended");
+    }
+
+    json resultLocations = json::array();
+    for (auto&& worker: config->workers()) {
+        auto&& workerInfo = config->workerInfo(worker);
+        json resultLocation;
+        resultLocation["worker"] = workerInfo.name;
+        resultLocation["host"]   = workerInfo.loaderHost;
+        resultLocation["port"]   = workerInfo.loaderPort;
+        resultLocations.push_back(resultLocation);
+    }
+
+    json result;
+    result["locations"] = resultLocations;
+    sendData(resp, result);
+}
+
+
 bool HttpIngestModule::_grantDatabaseAccess(qhttp::Response::Ptr const& resp,
                                             DatabaseInfo const& databaseInfo,
                                             bool allWorkers) const {
@@ -947,19 +960,7 @@ bool HttpIngestModule::_grantDatabaseAccess(qhttp::Response::Ptr const& resp,
     job->wait();
     logJobFinishedEvent(SqlGrantAccessJob::typeName(), job, databaseInfo.family);
 
-    string error;
-    auto const& resultData = job->getResultData();
-    for (auto&& itr: resultData.resultSets) {
-        auto&& worker = itr.first;
-        auto&& workerResultSet = itr.second;
-        for (auto&& resultSet: workerResultSet) {
-            if (not resultSet.error.empty()) {
-                error +=
-                        "grant access to a database failed on worker: " + worker +
-                        ",  error: " + resultSet.error + " ";
-            }
-        }
-    }
+    string const error = ::jobCompletionErrorIfAny(job, "grant access to a database failed");
     if (not error.empty()) {
         sendError(resp, __func__, error);
         return false;
@@ -984,19 +985,7 @@ bool HttpIngestModule::_enableDatabase(qhttp::Response::Ptr const& resp,
     job->wait();
     logJobFinishedEvent(SqlEnableDbJob::typeName(), job, databaseInfo.family);
 
-    string error;
-    auto const& resultData = job->getResultData();
-    for (auto&& itr: resultData.resultSets) {
-        auto&& worker = itr.first;
-        auto&& workerResultSet = itr.second;
-        for (auto&& resultSet: workerResultSet) {
-            if (not resultSet.error.empty()) {
-                error +=
-                        "enabling database failed on worker: " + worker + ",  error: " +
-                        resultSet.error + " ";
-            }
-        }
-    }
+    string const error = ::jobCompletionErrorIfAny(job, "enabling database failed");
     if (not error.empty()) {
         sendError(resp, __func__, error);
         return false;
@@ -1012,12 +1001,17 @@ bool HttpIngestModule::_removeMySQLPartitions(qhttp::Response::Ptr const& resp,
 
     auto const config = controller()->serviceProvider()->config();
 
+    // Ignore tables which may have already been processed at a previous attempt
+    // of running this algorithm.
+    bool const ignoreNonPartitioned = true;
+
     string error;
     for (auto const table: databaseInfo.tables()) {
         auto const job = SqlRemoveTablePartitionsJob::create(
             databaseInfo.name,
             table,
             allWorkers,
+            ignoreNonPartitioned,
             controller()
         );
         job->start();
@@ -1025,19 +1019,10 @@ bool HttpIngestModule::_removeMySQLPartitions(qhttp::Response::Ptr const& resp,
         job->wait();
         logJobFinishedEvent(SqlRemoveTablePartitionsJob::typeName(), job, databaseInfo.family);
 
-        auto const& resultData = job->getResultData();
-        for (auto&& itr: resultData.resultSets) {
-            auto&& worker = itr.first;
-            auto&& workerResultSet = itr.second;
-            for (auto&& resultSet: workerResultSet) {
-                if (not resultSet.error.empty()) {
-                    error +=
-                            "MySQL partitions removal failed on worker: " + worker +
-                            " for database: " + databaseInfo.name + " and table: " + table +
-                            ",  error: " + resultSet.error + " ";
-                }
-            }
-        }
+        error += ::jobCompletionErrorIfAny(
+                        job,
+                        "MySQL partitions removal failed for database: " +
+                        databaseInfo.name + ", table: " + table);
     }
     if (not error.empty()) {
         sendError(resp, __func__, error);
@@ -1448,6 +1433,48 @@ void HttpIngestModule::_deleteSecondaryIndex(DatabaseInfo const& databaseInfo) c
         conn->execute(query);
         conn->commit();
     });
+}
+
+
+bool HttpIngestModule::_qservSync(qhttp::Response::Ptr const& resp,
+                                  DatabaseInfo const& databaseInfo,
+                                  bool allWorkers) const {
+    debug(__func__);
+
+    bool const saveReplicaInfo = true;
+    auto const findAlljob = FindAllJob::create(
+        databaseInfo.family,
+        saveReplicaInfo,
+        allWorkers,
+        controller()
+    );
+    findAlljob->start();
+    logJobStartedEvent(FindAllJob::typeName(), findAlljob, databaseInfo.family);
+    findAlljob->wait();
+    logJobFinishedEvent(FindAllJob::typeName(), findAlljob, databaseInfo.family);
+
+    if (findAlljob->extendedState() != Job::SUCCESS) {
+        sendError(resp, __func__, "replica lookup stage failed");
+        return false;
+    }
+
+    bool const force = false;
+    auto const qservSyncJob = QservSyncJob::create(
+        databaseInfo.family,
+        force,
+        qservSyncTimeoutSec(),
+        controller()
+    );
+    qservSyncJob->start();
+    logJobStartedEvent(QservSyncJob::typeName(), qservSyncJob, databaseInfo.family);
+    qservSyncJob->wait();
+    logJobFinishedEvent(QservSyncJob::typeName(), qservSyncJob, databaseInfo.family);
+
+    if (qservSyncJob->extendedState() != Job::SUCCESS) {
+        sendError(resp, __func__, "Qserv synchronization failed");
+        return false;
+    }
+    return true;
 }
 
 

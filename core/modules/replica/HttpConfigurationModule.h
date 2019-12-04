@@ -42,12 +42,11 @@ namespace replica {
  */
 class HttpConfigurationModule: public HttpModule {
 public:
-
     typedef std::shared_ptr<HttpConfigurationModule> Ptr;
 
     static Ptr create(Controller::Ptr const& controller,
                       std::string const& taskName,
-                      unsigned int workerResponseTimeoutSec);
+                      HttpProcessorConfig const& processorConfig);
 
     HttpConfigurationModule() = delete;
     HttpConfigurationModule(HttpConfigurationModule const&) = delete;
@@ -56,7 +55,6 @@ public:
     ~HttpConfigurationModule() final = default;
 
 protected:
-
     /**
      * Supported values for parameter 'subModuleName':
      *
@@ -79,10 +77,9 @@ protected:
                      std::string const& subModuleName) final;
 
 private:
-
     HttpConfigurationModule(Controller::Ptr const& controller,
                             std::string const& taskName,
-                            unsigned int workerResponseTimeoutSec);
+                            HttpProcessorConfig const& processorConfig);
 
     /**
      * Return the current Configuration of the system.

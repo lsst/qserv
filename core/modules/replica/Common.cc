@@ -70,6 +70,8 @@ string status2string(ExtendedCompletionStatus status) {
         case ExtendedCompletionStatus::EXT_STATUS_NO_SUCH_TABLE: return "EXT_STATUS_NO_SUCH_TABLE";
         case ExtendedCompletionStatus::EXT_STATUS_NOT_PARTITIONED_TABLE: return "EXT_STATUS_NOT_PARTITIONED_TABLE";
         case ExtendedCompletionStatus::EXT_STATUS_NO_SUCH_PARTITION:     return "EXT_STATUS_NO_SUCH_PARTITION";
+        case ExtendedCompletionStatus::EXT_STATUS_MULTIPLE:              return "EXT_STATUS_MULTIPLE";
+        case ExtendedCompletionStatus::EXT_STATUS_OTHER_EXCEPTION:       return "EXT_STATUS_OTHER_EXCEPTION";
     }
     throw logic_error(
             "Common::" + string(__func__) + "(ExtendedCompletionStatus) - unhandled status: " +
@@ -109,6 +111,8 @@ ExtendedCompletionStatus translate(ProtocolStatusExt status) {
         case ProtocolStatusExt::NO_SUCH_TABLE: return ExtendedCompletionStatus::EXT_STATUS_NO_SUCH_TABLE;
         case ProtocolStatusExt::NOT_PARTITIONED_TABLE: return ExtendedCompletionStatus::EXT_STATUS_NOT_PARTITIONED_TABLE;
         case ProtocolStatusExt::NO_SUCH_PARTITION:     return ExtendedCompletionStatus::EXT_STATUS_NO_SUCH_PARTITION;
+        case ProtocolStatusExt::MULTIPLE:              return ExtendedCompletionStatus::EXT_STATUS_MULTIPLE;
+        case ProtocolStatusExt::OTHER_EXCEPTION:       return ExtendedCompletionStatus::EXT_STATUS_OTHER_EXCEPTION;
     }
     throw logic_error(
                 "Common::" + string(__func__) + "(ProtocolStatusExt) - unhandled status: " +
@@ -148,6 +152,8 @@ ProtocolStatusExt translate(ExtendedCompletionStatus status) {
         case ExtendedCompletionStatus::EXT_STATUS_NO_SUCH_TABLE: return ProtocolStatusExt::NO_SUCH_TABLE;
         case ExtendedCompletionStatus::EXT_STATUS_NOT_PARTITIONED_TABLE: return ProtocolStatusExt::NOT_PARTITIONED_TABLE;
         case ExtendedCompletionStatus::EXT_STATUS_NO_SUCH_PARTITION:     return ProtocolStatusExt::NO_SUCH_PARTITION;
+        case ExtendedCompletionStatus::EXT_STATUS_MULTIPLE:              return ProtocolStatusExt::MULTIPLE;
+        case ExtendedCompletionStatus::EXT_STATUS_OTHER_EXCEPTION:       return ProtocolStatusExt::OTHER_EXCEPTION;
     }
     throw logic_error(
                 "Common::" + string(__func__) + "(ExtendedCompletionStatus) - unhandled status: " +
@@ -241,6 +247,10 @@ SqlRequestParams::SqlRequestParams(ProtocolRequestSql const& request)
         auto const& column = request.columns(index);
         columns.emplace_back(column.name(), column.type());
     }
+    for (int index = 0; index < request.tables_size(); ++index) {
+        tables.push_back(request.tables(index));
+    }
+    if (request.has_batch_mode()) batchMode = request.batch_mode();
 }
 
 
@@ -280,6 +290,7 @@ ostream& operator<<(ostream& os, SqlRequestParams const& params) {
     objParams["engine"] = params.engine;
     objParams["partitionByColumn"] = params.partitionByColumn;
     objParams["transactionId"] = params.transactionId;
+    objParams["batchMode"] = params.batchMode ? 1 : 0;
 
     json objParamsColumns;
     for (auto&& coldef: params.columns) {
@@ -287,6 +298,12 @@ ostream& operator<<(ostream& os, SqlRequestParams const& params) {
         objParamsColumns["type"] = coldef.type;
     }
     objParams["columns"] = objParamsColumns;
+
+    json objParamsTables = json::array();
+    for (auto&& table: params.tables) {
+        objParamsTables.push_back(table);
+    }
+    objParams["tables"] = objParamsTables;
 
     json obj;
     obj["SqlRequestParams"] = objParams;

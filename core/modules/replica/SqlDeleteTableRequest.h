@@ -25,6 +25,7 @@
 #include <functional>
 #include <memory>
 #include <string>
+#include <vector>
 
 // Qserv headers
 #include "replica/SqlRequest.h"
@@ -40,14 +41,11 @@ namespace replica {
  */
 class SqlDeleteTableRequest : public SqlRequest {
 public:
-
     /// The pointer type for instances of the class
     typedef std::shared_ptr<SqlDeleteTableRequest> Ptr;
 
     /// The function type for notifications on the completion of the request
     typedef std::function<void(Ptr)> CallbackType;
-
-    // Default construction and copy semantics are prohibited
 
     SqlDeleteTableRequest() = delete;
     SqlDeleteTableRequest(SqlDeleteTableRequest const&) = delete;
@@ -64,60 +62,37 @@ public:
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
      *
-     * @param serviceProvider
-     *   is needed to access the Configuration and the Controller for communicating
-     *   with the worker
-     *
-     * @param io_service
-     *   a communication end-point
-     *
-     * @param worker
-     *   identifier of a worker node
-     *
-     * @param database
-     *   the name of an existing database where the table is residing
-     *
-     * @param table
-     *   the name of a table to be deleted
-     *
-     * @param onFinish
-     *   (optional) callback function to call upon completion of the request
-     *
-     * @param priority
-     *   priority level of the request
-     *
-     * @param keepTracking
-     *   keep tracking the request before it finishes or fails
-     *
-     * @param messenger
-     *   interface for communicating with workers
-     *
-     * @return
-     *   pointer to the created object
+     * @param serviceProvider is needed to access the Configuration and the Controller
+     *   for communicating with the worker
+     * @param io_service a communication end-point
+     * @param worker identifier of a worker node
+     * @param database the name of an existing database where the table is residing
+     * @param tables the names of tables to be deleted
+     * @param onFinish (optional) callback function to call upon completion of the request
+     * @param priority priority level of the request
+     * @param keepTracking keep tracking the request before it finishes or fails
+     * @param messenger interface for communicating with workers
+     * @return a pointer to the created object
      */
     static Ptr create(ServiceProvider::Ptr const& serviceProvider,
                       boost::asio::io_service& io_service,
                       std::string const& worker,
                       std::string const& database,
-                      std::string const& table,
+                      std::vector<std::string> const& tables,
                       CallbackType const& onFinish,
                       int priority,
                       bool keepTracking,
                       std::shared_ptr<Messenger> const& messenger);
 
 protected:
-
-    /// @see Request::notify()
     void notify(util::Lock const& lock) final;
 
 private:
-
-    /// @see SqlDeleteTableRequest::create()
     SqlDeleteTableRequest(ServiceProvider::Ptr const& serviceProvider,
                           boost::asio::io_service& io_service,
                           std::string const& worker,
                           std::string const& database,
-                          std::string const& table,
+                          std::vector<std::string> const& tables,
                           CallbackType const& onFinish,
                           int priority,
                           bool keepTracking,

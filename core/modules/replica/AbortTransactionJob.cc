@@ -23,19 +23,19 @@
 #include "replica/AbortTransactionJob.h"
 
 // System headers
-#include <limits>
+#include <algorithm>
 #include <stdexcept>
 
 // Qserv headers
-#include "replica/Controller.h"
-#include "replica/ReplicaInfo.h"
+#include "replica/Configuration.h"
+#include "replica/DatabaseServices.h"
 #include "replica/ServiceProvider.h"
 
 // LSST headers
 #include "lsst/log/Log.h"
 
 using namespace std;
-using namespace nlohmann;
+using namespace std::placeholders;
 
 namespace {
 
@@ -46,26 +46,6 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.AbortTransactionJob");
 namespace lsst {
 namespace qserv {
 namespace replica {
-
-json AbortTransactionJobResult::toJson() const {
-    string const context = "AbortTransactionJobResult::" + string(__func__) + "  ";
-    json result = json::object();
-    result["completed"] = json::object();
-    result["error"    ] = json::object();
-    for (auto&& workerEntry: resultSets) {
-        auto&& worker = workerEntry.first;
-        result["completed"][worker] = json::object();
-        result["error"    ][worker] = json::object();
-        for (auto&& tableEntry: workerEntry.second) {
-            auto&& table = tableEntry.first;
-            auto&& resultSet = tableEntry.second;
-            result["completed"][worker][table] = completed.at(worker).at(table) ? 1 : 0;
-            result["error"    ][worker][table] = resultSet.error;
-        }
-    }
-    return result;
-}
-
 
 string AbortTransactionJob::typeName() { return "AbortTransactionJob"; }
 
@@ -87,12 +67,10 @@ AbortTransactionJob::Ptr AbortTransactionJob::create(TransactionId transactionId
                                                      CallbackType const& onFinish,
                                                      Job::Options const& options) {
     return AbortTransactionJob::Ptr(
-        new AbortTransactionJob(transactionId,
-                                allWorkers,
-                                controller,
-                                parentJobId,
-                                onFinish,
-                                options));
+            new AbortTransactionJob(
+                transactionId, allWorkers, controller, parentJobId,
+                onFinish, options
+            ));
 }
 
 
@@ -109,25 +87,12 @@ AbortTransactionJob::AbortTransactionJob(TransactionId transactionId,
         _transactionId(transactionId),
         _allWorkers(allWorkers),
         _onFinish(onFinish) {
-
-    auto const serviceProvider = controller->serviceProvider();
-    auto const config = serviceProvider->config();
-
-    // Exception will be thrown if any of those objects couldn't be found
-    _transactionInfo = serviceProvider->databaseServices()->transaction(_transactionId);
-    _databaseInfo = config->databaseInfo(_transactionInfo.database);
-
-    // The names of workers are cached for the duration of the job
-    _workers = _allWorkers ? config->allWorkers() : config->workers();
 }
 
 
-AbortTransactionJobResult const& AbortTransactionJob::getResultData() const {
-
+SqlJobResult const& AbortTransactionJob::getResultData() const {
     LOGS(_log, LOG_LVL_TRACE, context() << __func__);
-
     if (state() == State::FINISHED) return _resultData;
-
     throw logic_error(
             "AbortTransactionJob::" + string(__func__) +
             "  the method can't be called until the job hasn't finished");
@@ -143,83 +108,82 @@ list<pair<string,string>> AbortTransactionJob::extendedPersistentState() const {
 
 
 list<pair<string,string>> AbortTransactionJob::persistentLogData() const {
-
     list<pair<string,string>> result;
-
-    for (auto&& workerEntry: _resultData.resultSets) {
-        auto&& worker = workerEntry.first;
-        for (auto&& tableEntry: workerEntry.second) {
-            auto&& table = tableEntry.first;
-            result.emplace_back(
-                "status",
-                "worker=" + worker +
-                " table=" + table +
-                " completed=" + string(_resultData.completed.at(worker).at(table) ? "1" : "0") +
-                " error=" + _resultData.resultSets.at(worker).at(table).error
-            );
-        }
-    }
+    _resultData.iterate([&result](SqlJobResult::Worker const& worker,
+                                  SqlJobResult::Scope const& table,
+                                  SqlResultSet::ResultSet const& resultSet) {
+        result.emplace_back(
+            "status",
+            "worker=" + worker +
+            " table=" + table +
+            " completed=" + string(resultSet.extendedStatus == ExtendedCompletionStatus::EXT_STATUS_NONE ? "1" : "0") +
+            " error=" + resultSet.error
+        );
+    });
     return result;
 }
 
 
 void AbortTransactionJob::startImpl(util::Lock const& lock) {
 
-    string const context_ =
-        context() + string(__func__) + " transactionId=" + to_string(_transactionId) + " ";
-
+    string const context_ = context() + string(__func__) + "  ";
     LOGS(_log, LOG_LVL_TRACE, context_);
 
-    // Verify the current state of the transaction
+    // Verify the current state of the transaction and the database
 
-    if (_transactionInfo.state != TransactionInfo::ABORTED) {
-        LOGS(_log, LOG_LVL_ERROR, context_ << "transaction is not ABORTED");
-        finish(lock, ExtendedState::FAILED);
+    auto const serviceProvider = controller()->serviceProvider();
+
+    TransactionInfo transactionInfo;
+    try {
+        transactionInfo = serviceProvider->databaseServices()->transaction(_transactionId);
+    } catch (exception const& ex) {
+        LOGS(_log, LOG_LVL_ERROR, context_ << "failed to located the transaction: "
+             << _transactionId << ", exception: " << ex.what());
+        finish(lock, ExtendedState::CONFIG_ERROR);
         return;
     }
-    if (_databaseInfo.isPublished) {
-        LOGS(_log, LOG_LVL_ERROR, context_ << "database " << _databaseInfo.name
+    if (transactionInfo.state != TransactionInfo::ABORTED) {
+        LOGS(_log, LOG_LVL_ERROR, context_ << "transaction " << transactionInfo.id << " is not ABORTED");
+        finish(lock, ExtendedState::CONFIG_ERROR);
+        return;
+    }
+
+    DatabaseInfo databaseInfo;
+    try {
+        databaseInfo = serviceProvider->config()->databaseInfo(transactionInfo.database);
+    } catch (exception const& ex) {
+        LOGS(_log, LOG_LVL_ERROR, context_ << "failed to located database: '"
+             << transactionInfo.database << "', exception: " << ex.what());
+        finish(lock, ExtendedState::CONFIG_ERROR);
+        return;
+    }
+    if (databaseInfo.isPublished) {
+        LOGS(_log, LOG_LVL_ERROR, context_ << "database " << databaseInfo.name
              << " is already PUBLISHED");
-        finish(lock, ExtendedState::FAILED);
+        finish(lock, ExtendedState::CONFIG_ERROR);
         return;
     }
 
-    // Prepare a collection of tables to be processed. Group them by
-    // worker names.
+    // Submit a dedicated job for each table to process table instances on
+    // a requested set of workers.
 
-    for (auto const& worker: _workers) {
-        _worker2tables[worker] = list<string>();
+    auto self = shared_from_base<AbortTransactionJob>();
 
-        for (auto&& table: _databaseInfo.regularTables) {
-            _worker2tables[worker].push_back(table);
-        }
-        
-        // Locate all chunks registered on the worker. These chunks will be used
-        // to build names of the corresponding chunk-specific partitioned tables.
-
-        vector<ReplicaInfo> replicas;
-        controller()->serviceProvider()->databaseServices()->findWorkerReplicas(
-            replicas,
-            worker,
-            _databaseInfo.name
+    for (auto&& table: databaseInfo.tables()) {
+        auto job = SqlDeleteTablePartitionJob::create(
+            databaseInfo.name,
+            table,
+            _transactionId,
+            _allWorkers,
+            controller(),
+            id(),
+            bind(&AbortTransactionJob::_onChildJobFinish, self, _1),
+            defaultOptions()
         );
-        for (auto&& replica: replicas) {
-            auto const chunk = replica.chunk();
-            for (auto&& table: _databaseInfo.partitionedTables) {
-                _worker2tables[worker].push_back(table + "FullOverlap_" + to_string(chunk));
-                _worker2tables[worker].push_back(table + "_" + to_string(chunk));
-            }
-        }
+        job->start();
+        _jobs.push_back(job);
     }
-
-    // Submit the first batch of requests. The number of the requests not to exceed
-    // the processing capacity of all workers.
-
-    size_t const maxRequests =
-        _workers.size() * controller()->serviceProvider()->config()->workerNumProcessingThreads();
-
-    if (0 == _submitNextBatch(lock, maxRequests)) {
-        // No tables to be processed
+    if (_jobs.empty()) {
         finish(lock, ExtendedState::SUCCESS);
     }
 }
@@ -227,24 +191,22 @@ void AbortTransactionJob::startImpl(util::Lock const& lock) {
 
 void AbortTransactionJob::cancelImpl(util::Lock const& lock) {
     LOGS(_log, LOG_LVL_TRACE, context() << __func__);
-    for (auto&& request: _requests) {
-        request->cancel();
+    for (auto&& job: _jobs) {
+        job->cancel();
     }
 }
 
 
 void AbortTransactionJob::notify(util::Lock const& lock) {
-
     LOGS(_log, LOG_LVL_TRACE, context() << __func__);
-
     notifyDefaultImpl<AbortTransactionJob>(lock, _onFinish);
 }
 
 
-void AbortTransactionJob::_onRequestFinish(SqlDeleteTablePartitionRequest::Ptr const& request) {
+void AbortTransactionJob::_onChildJobFinish(SqlDeleteTablePartitionJob::Ptr const& job) {
 
     LOGS(_log, LOG_LVL_TRACE, context() << __func__
-         << "  worker=" << request->worker() << " id=" << request->id());
+         << "  table=" << job->table() << " id=" << job->id());
 
     if (state() == State::FINISHED) return;
 
@@ -253,74 +215,19 @@ void AbortTransactionJob::_onRequestFinish(SqlDeleteTablePartitionRequest::Ptr c
     if (state() == State::FINISHED) return;
 
     ++_numFinished;
-    if (request->extendedState() == Request::SUCCESS) ++_numSuccess;
+    if (job->extendedState() == Job::SUCCESS) ++_numSuccess;
 
-    // Replace the finished job with a new one unless the input set is empty
-    if (0 == _submitNextBatch(lock, 1)) {
-        if (_numFinished == _numLaunched) {
+    // Harvest results from the job regardless of its completion status.
+    // Jobs declared as failed might be still partially successful. In order
+    // to determine which tables have not been processed one has to look
+    // at the corresponding result set reported in the combined response data
+    // object.
+    _resultData.merge(job->getResultData());
 
-            // Harvest results from all jobs (regardless of their completion status)
-            // and be done.
-
-            for (auto&& ptr: _requests) {
-                auto const table = ptr->targetRequestParams().table;
-                _resultData.completed [ptr->worker()][table] = ptr->extendedState() == Request::SUCCESS;
-                _resultData.resultSets[ptr->worker()][table] = ptr->responseData();
-            }
-            finish(lock, _numSuccess == _numLaunched ? ExtendedState::SUCCESS
-                                                     : ExtendedState::FAILED);
-        }
+    if (_numFinished == _jobs.size()) {
+        finish(lock, _numSuccess == _numFinished ? ExtendedState::SUCCESS
+                                                 : ExtendedState::FAILED);
     }
-}
-
-
-size_t AbortTransactionJob::_submitNextBatch(util::Lock const& lock,
-                                             size_t const maxRequests) {
-
-    if (0 == maxRequests) return maxRequests;
-
-    auto self = shared_from_base<AbortTransactionJob>();
-
-    size_t batchSize = 0;
-    for (size_t i = 0; i < maxRequests; ++i) {
-
-        // Scan the input queue and find a worker which has the longest list
-        // of tables to be processed. Then submit a request for any table
-        // of that worker.
-        
-        size_t maxNumTables = 0; 
-        string candidateWorker;
-        for (auto&& entry: _worker2tables) {
-            string const& worker = entry.first;
-            size_t const numTables = entry.second.size();
-            if (numTables > maxNumTables) {
-                maxNumTables = numTables;
-                candidateWorker = worker;
-            }
-        }
-        if (candidateWorker.empty()) return batchSize;  // no more entries in the input queue
-        
-        string const table = _worker2tables[candidateWorker].front();
-        _worker2tables[candidateWorker].pop_front();
-
-        _requests.push_back(
-            controller()->sqlDeleteTablePartition(
-                candidateWorker,
-                _databaseInfo.name,
-                table,
-                _transactionId,
-                [self] (SqlDeleteTablePartitionRequest::Ptr const& request) {
-                    self->_onRequestFinish(request);
-                },
-                options(lock).priority,
-                true,   /* keepTracking */
-                id()    /* parent Job ID */
-            )
-        );
-        ++batchSize;
-        ++_numLaunched;
-    }
-    return batchSize;
 }
 
 }}} // namespace lsst::qserv::replica

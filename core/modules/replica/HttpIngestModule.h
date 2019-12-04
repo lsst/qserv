@@ -54,12 +54,11 @@ namespace replica {
  */
 class HttpIngestModule: public HttpModule {
 public:
-
     typedef std::shared_ptr<HttpIngestModule> Ptr;
 
     static Ptr create(Controller::Ptr const& controller,
                       std::string const& taskName,
-                      unsigned int workerResponseTimeoutSec);
+                      HttpProcessorConfig const& processorConfig);
 
     HttpIngestModule() = delete;
     HttpIngestModule(HttpIngestModule const&) = delete;
@@ -68,7 +67,6 @@ public:
     ~HttpIngestModule() final = default;
 
 protected:
-
     /**
      * Supported values for parameter 'subModuleName':
      *
@@ -82,6 +80,8 @@ protected:
      *   ADD-TABLE                 for adding a new table for the data ingest
      *   ADD-CHUNK                 for registering (or requesting a status of) of a new chunk
      *   BUILD-CHUNK-LIST          for building (or rebuilding) an "empty chunk list"
+     *   REGULAR                   for reporting connection parameters of the ingest servers
+     *                             required to load the regular tables
      *
      * @throws std::invalid_argument for unknown values of parameter 'subModuleName'
      */
@@ -90,10 +90,9 @@ protected:
                      std::string const& subModuleName) final;
 
 private:
-
     HttpIngestModule(Controller::Ptr const& controller,
                      std::string const& taskName,
-                     unsigned int workerResponseTimeoutSec);
+                     HttpProcessorConfig const& processorConfig);
 
     /**
      * Get info on super-transactions
@@ -160,13 +159,18 @@ private:
                                qhttp::Response::Ptr const& resp);
 
     /**
+     * Return connection parameters of the ingest servers of all workers
+     * where the regular tables would have to be loaded.
+     */
+    void _getRegular(qhttp::Request::Ptr const& req,
+                     qhttp::Response::Ptr const& resp);
+
+    /**
      * Grant SELECT authorizations for the new database to Qserv
      * MySQL account(s) at workers
-     *
-     * @param resp          the HTTP response channel for reporting errors
-     * @param databaseInfo  database descriptor
-     * @param allWorkers    'true' if all workers should be involved into the operation
-     *
+     * @param resp the HTTP response channel for reporting errors
+     * @param databaseInfo database descriptor
+     * @param allWorkers  'true' if all workers should be involved into the operation
      * @return 'false' if operation failed
      */
     bool _grantDatabaseAccess(qhttp::Response::Ptr const& resp,
@@ -176,11 +180,9 @@ private:
     /**
      * Enable this database in Qserv workers by adding an entry
      * to table 'qservw_worker.Dbs' at workers.
-     *
-     * @param resp          the HTTP response channel for reporting errors
-     * @param databaseInfo  database descriptor
-     * @param allWorkers    'true' if all workers should be involved into the operation
-     *
+     * @param resp the HTTP response channel for reporting errors
+     * @param databaseInfo database descriptor
+     * @param allWorkers 'true' if all workers should be involved into the operation
      * @return 'false' if operation failed
      */
     bool _enableDatabase(qhttp::Response::Ptr const& resp,
@@ -189,11 +191,9 @@ private:
 
     /**
      * Consolidate MySQL partitioned tables at workers by removing partitions.
-     *
-     * @param resp          the HTTP response channel for reporting errors
-     * @param databaseInfo  database descriptor
-     * @param allWorkers    'true' if all workers should be involved into the operation
-     *
+     * @param resp the HTTP response channel for reporting errors
+     * @param databaseInfo database descriptor
+     * @param allWorkers 'true' if all workers should be involved into the operation
      * @return 'false' if operation failed
      */
     bool _removeMySQLPartitions(qhttp::Response::Ptr const& resp,
@@ -207,17 +207,14 @@ private:
      * - creating empty tables (with the proper) schema at the database
      * - registering database, tables and their partitioning parameters in CSS
      * - granting MySQL privileges for the Qserv account to access the database and tables
-     *
-     * @param databaseName  the name of a database to be published
+     * @param databaseName the name of a database to be published
      */
     void _publishDatabaseInMaster(DatabaseInfo const& databaseInfo) const;
 
     /**
      * (Re-)build the empty chunks list (table) for the specified database.
-     *
-     * @param database  the name of a database
-     * @param force     rebuild the file if 'true'
-     *
+     * @param database the name of a database
+     * @param force rebuild the file if 'true'
      * @return pair of (empty chunk lists file name, number of chunks)
      */
     std::pair<std::string,size_t> _buildEmptyChunksListImpl(std::string const& database,
@@ -229,7 +226,6 @@ private:
      * system's configuration occur, such as creating new databases or tables.
      * This is to implement an explicit model of making workers aware about changes
      * in the mostly static state of the system.
-     *
      * @param databaseInfo  defines a scope of the operation (used for status and error reporting)
      * @param allWorkers  'true' if all workers are involved into the operation
      * @param workerResponseTimeoutSec  do not wait longer than the specified number of seconds
@@ -244,17 +240,15 @@ private:
      * The table will be configured with a single initial partition. More partitions
      * corresponding to super-transactions open during catalog ingest sessions will
      * be added later.
-     *
-     * @param databaseInfo  defines a scope of the operation
+     * @param databaseInfo defines a scope of the operation
      */
     void _createSecondaryIndex(DatabaseInfo const& databaseInfo) const;
 
     /**
      * Extend an existing "secondary index" table by adding a MySQL partition
      * corresponding to the specified transaction identifier.
-     *
-     * @param databaseInfo   defines a scope of the operation
-     * @param transactionId  unique identifier of a super-transaction
+     * @param databaseInfo defines a scope of the operation
+     * @param transactionId unique identifier of a super-transaction
      */
     void _addPartitionToSecondaryIndex(DatabaseInfo const& databaseInfo,
                                        TransactionId transactionId) const;
@@ -262,9 +256,8 @@ private:
    /**
      * Shrink an existing "secondary index" table by removing a MySQL partition
      * corresponding to the specified transaction identifier from the table.
-     *
-     * @param databaseInfo   defines a scope of the operation
-     * @param transactionId  unique identifier of a super-transaction
+     * @param databaseInfo defines a scope of the operation
+     * @param transactionId unique identifier of a super-transaction
      */
     void _removePartitionFromSecondaryIndex(DatabaseInfo const& databaseInfo,
                                             TransactionId transactionId) const;
@@ -272,18 +265,29 @@ private:
     /**
      * Remove MySQL partitions from the "secondary index" table by turning it
      * into a regular monolithic table.
-     * 
-     * @param databaseInfo   defines a scope of the operation
+     * @param databaseInfo  defines a scope of the operation
      */
     void _consolidateSecondaryIndex(DatabaseInfo const& databaseInfo) const;
 
     /**
      * Delete the "secondary index" table.
-     * 
-     * @param databaseInfo   defines a scope of the operation
+     * @param databaseInfo defines a scope of the operation
      */
     void _deleteSecondaryIndex(DatabaseInfo const& databaseInfo) const;
 
+    /**
+     * This operation is called in a context of publishing new databases.
+     * It runs the Replication system's chunks scanner to register chunk info
+     * in the persistent state of the system. It also registers (synchronizes)
+     * new chunks at Qserv workers.
+     * @param resp the HTTP response channel for reporting errors
+     * @param databaseInfo database descriptor
+     * @param allWorkers 'true' if all workers should be involved into the operation
+     * @return 'false' if operation failed
+     */
+    bool _qservSync(qhttp::Response::Ptr const& resp,
+                    DatabaseInfo const& databaseInfo,
+                    bool allWorkers) const;
 
     /// @return connection object for the Qserv Master Database server
     std::shared_ptr<database::mysql::Connection> _qservMasterDbConnection() const;

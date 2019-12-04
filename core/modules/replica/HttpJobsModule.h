@@ -42,12 +42,11 @@ namespace replica {
  */
 class HttpJobsModule: public HttpModule {
 public:
-
     typedef std::shared_ptr<HttpJobsModule> Ptr;
 
     static Ptr create(Controller::Ptr const& controller,
                       std::string const& taskName,
-                      unsigned int workerResponseTimeoutSec);
+                      HttpProcessorConfig const& processorConfig);
 
     HttpJobsModule() = delete;
     HttpJobsModule(HttpJobsModule const&) = delete;
@@ -56,7 +55,6 @@ public:
     ~HttpJobsModule() final = default;
 
 protected:
-
     /**
      * @note supported values for parameter 'subModuleName' are
      * the empty string (for pulling info on all known Jobs),
@@ -69,10 +67,9 @@ protected:
                      std::string const& subModuleName) final;
 
 private:
-
     HttpJobsModule(Controller::Ptr const& controller,
                    std::string const& taskName,
-                   unsigned int workerResponseTimeoutSec);
+                   HttpProcessorConfig const& processorConfig);
 
     void _jobs(qhttp::Request::Ptr const& req,
                qhttp::Response::Ptr const& resp);

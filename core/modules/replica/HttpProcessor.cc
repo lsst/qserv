@@ -49,13 +49,11 @@ namespace replica {
 
 HttpProcessor::Ptr HttpProcessor::create(
                         Controller::Ptr const& controller,
-                        unsigned int workerResponseTimeoutSec,
+                        HttpProcessorConfig const& processorConfig,
                         HealthMonitorTask::Ptr const& healthMonitorTask) {
 
     auto ptr = Ptr(new HttpProcessor(
-        controller,
-        workerResponseTimeoutSec,
-        healthMonitorTask
+        controller, processorConfig, healthMonitorTask
     ));
     ptr->_initialize();
     return ptr;
@@ -63,31 +61,29 @@ HttpProcessor::Ptr HttpProcessor::create(
 
 
 HttpProcessor::HttpProcessor(Controller::Ptr const& controller,
-                             unsigned int workerResponseTimeoutSec,
+                             HttpProcessorConfig const& processorConfig,
                              HealthMonitorTask::Ptr const& healthMonitorTask)
     :   EventLogger(controller, taskName),
         _catalogsModule(HttpCatalogsModule::create(
-            controller, taskName, workerResponseTimeoutSec)),
+            controller, taskName, processorConfig)),
         _replicationLevelsModule(HttpReplicationLevelsModule::create(
-            controller, taskName, workerResponseTimeoutSec,
-            healthMonitorTask)),
+            controller, taskName, processorConfig, healthMonitorTask)),
         _workerStatusModule(HttpWorkerStatusModule::create(
-            controller, taskName, workerResponseTimeoutSec,
-            healthMonitorTask)),
+            controller, taskName, processorConfig, healthMonitorTask)),
         _controllersModule(HttpControllersModule::create(
-            controller, taskName, workerResponseTimeoutSec)),
+            controller, taskName, processorConfig)),
         _requestsModule(HttpRequestsModule::create(
-            controller, taskName, workerResponseTimeoutSec)),
+            controller, taskName, processorConfig)),
         _jobsModule(HttpJobsModule::create(
-            controller, taskName, workerResponseTimeoutSec)),
+            controller, taskName, processorConfig)),
         _configurationModule(HttpConfigurationModule::create(
-            controller, taskName, workerResponseTimeoutSec)),
+            controller, taskName, processorConfig)),
         _qservMonitorModule(HttpQservMonitorModule::create(
-            controller, taskName, workerResponseTimeoutSec)),
+            controller, taskName, processorConfig)),
         _qservSqlModule(HttpQservSqlModule::create(
-            controller, taskName, workerResponseTimeoutSec)),
+            controller, taskName, processorConfig)),
         _ingestModule(HttpIngestModule::create(
-            controller, taskName, workerResponseTimeoutSec)) {
+            controller, taskName, processorConfig)) {
 }
 
 
@@ -278,6 +274,11 @@ void HttpProcessor::_initialize() {
         {"POST", "/ingest/v1/chunk/empty",
             [self](qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp) {
                 self->_ingestModule->execute(req, resp, "BUILD-CHUNK-LIST");
+            }
+        },
+        {"GET", "/ingest/v1/regular/:id",
+            [self](qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp) {
+                self->_ingestModule->execute(req, resp, "REGULAR");
             }
         }
     });

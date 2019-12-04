@@ -27,7 +27,6 @@
 
 // Qserv headers
 #include "replica/Configuration.h"
-#include "replica/DatabaseMySQL.h"
 #include "replica/Performance.h"
 
 // LSST headers
@@ -73,7 +72,6 @@ WorkerSqlRequest::WorkerSqlRequest(ServiceProvider::Ptr const& serviceProvider,
 void WorkerSqlRequest::setInfo(ProtocolResponseSql& response) const {
 
     LOGS(_log, LOG_LVL_DEBUG, context(__func__));
-
     util::Lock lock(_mtx, context(__func__));
 
     response.set_allocated_target_performance(performance().info().release());
@@ -83,11 +81,7 @@ void WorkerSqlRequest::setInfo(ProtocolResponseSql& response) const {
     switch (status()) {
         case STATUS_SUCCEEDED:
         case STATUS_FAILED:
-            response.set_error(            _response.error());
-            response.set_char_set_name(    _response.char_set_name());
-            response.set_has_result(       _response.has_result());
-            *(response.mutable_fields()) = _response.fields();
-            *(response.mutable_rows())   = _response.rows();
+            *(response.mutable_result_sets()) = _response.result_sets();
             *(response.mutable_request())= _request;
             break;
         default:
@@ -99,75 +93,104 @@ void WorkerSqlRequest::setInfo(ProtocolResponseSql& response) const {
 bool WorkerSqlRequest::execute() {
 
     LOGS(_log, LOG_LVL_DEBUG, context(__func__));
-
     util::Lock lock(_mtx, context(__func__));
 
     switch (status()) {
-
         case STATUS_IN_PROGRESS: break;
-
         case STATUS_IS_CANCELLING:
-
-            // Abort the operation right away
             setStatus(lock, STATUS_CANCELLED);
             throw WorkerRequestCancelled();
-
         default:
             throw logic_error(
                     "WorkerSqlRequest::" + context(__func__) + "  not allowed while in state: " +
                     WorkerRequest::status2string(status()));
     }
-
-    database::mysql::Connection::Ptr conn;
     try {
-        auto self = shared_from_base<WorkerSqlRequest>();
-        conn = _connector();
-        conn->execute([self](decltype(conn) const& conn_) {
-            conn_->begin();
-            conn_->execute(self->_query(conn_));
-            self->_setResponse(conn_);
-            conn_->commit();
-        });
-        setStatus(lock, STATUS_SUCCEEDED);
+
+        // Pre-create the default result-set message before any operations with
+        // the database service. This is needed to report errors.
+        auto currentResultSet = _response.add_result_sets();
+
+        // Open the connection once and then manage transactions via
+        // the connection handlers down below to ensure no lingering transactions
+        // are left after the completion of the request's execution (whether it's
+        // successful or not).
+        auto const connection = _connector();
+
+        // Check if this is the "batch" request which involves executing
+        // a series of queries. This kind of requests needs to be processed
+        // slightly differently since we need to intercept and properly handle
+        // a few known (and somewhat expected) MySQL errors w/o aborting
+        // the whole request.
+        if (_batchMode()) {
+
+            // Count the number of failures for proper error reporting on
+            // the current request.
+            size_t numFailures = 0;
+
+            for (int i = 0; i < _request.tables_size(); ++i) {
+                string const table = _request.tables(i);
+
+                // If this is the very first iteration of the loop then use
+                // the default result set created earlier. Otherwise create
+                // a new one.
+                if (i > 0) currentResultSet = _response.add_result_sets();
+                currentResultSet->set_scope(table);      
+
+                try {
+                    database::mysql::ConnectionHandler const h(connection);
+                    h.conn->execute([&](decltype(h.conn) const& conn_) {
+                        conn_->begin();
+                        conn_->execute(_batchQuery(conn_, table));
+                        _extractResultSet(lock, conn_);
+                        conn_->commit();
+                    });
+                } catch(database::mysql::NoSuchTable const& ex) {
+                    ++numFailures;
+                    currentResultSet->set_status_ext(ProtocolStatusExt::NO_SUCH_TABLE);
+                    currentResultSet->set_error(ex.what());
+
+                } catch(database::mysql::NotPartitionedTable const& ex) {
+                    ++numFailures;
+                    currentResultSet->set_status_ext(ProtocolStatusExt::NOT_PARTITIONED_TABLE);
+                    currentResultSet->set_error(ex.what());
+                }
+            }
+            if (numFailures > 0) {
+                setStatus(lock, STATUS_FAILED, EXT_STATUS_MULTIPLE);
+            } else {
+                setStatus(lock, STATUS_SUCCEEDED);
+            }
+
+        } else {
+            database::mysql::ConnectionHandler const h(connection);
+            h.conn->execute([&](decltype(h.conn) const& conn_) {
+                conn_->begin();
+                conn_->execute(_query(conn_));
+                _extractResultSet(lock, conn_);
+                conn_->commit();
+            });
+            setStatus(lock, STATUS_SUCCEEDED);
+        }
 
     } catch(database::mysql::NoSuchTable const& ex) {
-
-        LOGS(_log, LOG_LVL_ERROR, context(__func__) << "  MySQL error: " << ex.what());
-        _response.set_error(ex.what());
-        setStatus(lock, STATUS_FAILED, EXT_STATUS_NO_SUCH_TABLE);
+        _reportFailure(lock, EXT_STATUS_NO_SUCH_TABLE, ex.what());
 
     } catch(database::mysql::NotPartitionedTable const& ex) {
-
-        LOGS(_log, LOG_LVL_ERROR, context(__func__) << "  MySQL error: " << ex.what());
-        _response.set_error(ex.what());
-        setStatus(lock, STATUS_FAILED, EXT_STATUS_NOT_PARTITIONED_TABLE);
+        _reportFailure(lock, EXT_STATUS_NOT_PARTITIONED_TABLE, ex.what());
 
     } catch(database::mysql::Error const& ex) {
-
-        LOGS(_log, LOG_LVL_ERROR, context(__func__) << "  MySQL error: " << ex.what());
-        _response.set_error(ex.what());
-        setStatus(lock, STATUS_FAILED, EXT_STATUS_MYSQL_ERROR);
+        _reportFailure(lock, EXT_STATUS_MYSQL_ERROR, ex.what());
 
     } catch (invalid_argument const& ex) {
-
-        LOGS(_log, LOG_LVL_ERROR, context(__func__) << "  exception: " << ex.what());
-        _response.set_error(ex.what());
-        setStatus(lock, STATUS_FAILED, EXT_STATUS_INVALID_PARAM);
+        _reportFailure(lock, EXT_STATUS_INVALID_PARAM, ex.what());
 
     } catch (out_of_range const& ex) {
-
-        LOGS(_log, LOG_LVL_ERROR, context(__func__) << "  exception: " << ex.what());
-        _response.set_error(ex.what());
-        setStatus(lock, STATUS_FAILED, EXT_STATUS_LARGE_RESULT);
+        _reportFailure(lock, EXT_STATUS_LARGE_RESULT, ex.what());
 
     } catch (exception const& ex) {
-
-        LOGS(_log, LOG_LVL_ERROR, context(__func__) << "  exception: " << ex.what());
-        _response.set_error("Exception: " + string(ex.what()));
-        setStatus(lock, STATUS_FAILED);
-
+        _reportFailure(lock, EXT_STATUS_OTHER_EXCEPTION, ex.what());
     }
-    if ((nullptr != conn) and conn->inTransaction()) conn->rollback();
     return true;
 }
 
@@ -202,8 +225,7 @@ string WorkerSqlRequest::_query(database::mysql::Connection::Ptr const& conn) co
     string const qservDbsTable = conn->sqlId("qservw_worker") + "." + conn->sqlId("Dbs");
     string const databaseTable = conn->sqlId(_request.database()) + "." + conn->sqlId(_request.table());
 
-    auto const requestType = _request.type();
-    switch (requestType) {
+    switch (_request.type()) {
 
         case ProtocolRequestSql::QUERY:
             return _request.query();
@@ -269,26 +291,57 @@ string WorkerSqlRequest::_query(database::mysql::Connection::Ptr const& conn) co
 
         case ProtocolRequestSql::DROP_TABLE_PARTITION:
             return "ALTER TABLE " + databaseTable + " DROP PARTITION IF EXISTS " +
-                   conn->sqlId("p" + to_string(_request.transaction_id()));
+                   conn->sqlPartitionId(_request.transaction_id());
 
         default:
             throw invalid_argument(
                     "WorkerSqlRequest::" + string(__func__) +
-                    "  unsupported request type: " + ProtocolRequestSql_Type_Name(requestType));
+                    "  unsupported request type: " + ProtocolRequestSql_Type_Name(_request.type()));
     }
 }
 
 
-void WorkerSqlRequest::_setResponse(database::mysql::Connection::Ptr const& conn) {
+string WorkerSqlRequest::_batchQuery(database::mysql::Connection::Ptr const& conn,
+                                     string const& table) const {
+
+    string const databaseTable = conn->sqlId(_request.database()) + "." + conn->sqlId(table);
+
+    switch (_request.type()) {
+        case ProtocolRequestSql::DROP_TABLE:
+            return "DROP TABLE IF EXISTS " + databaseTable;
+
+        case ProtocolRequestSql::DROP_TABLE_PARTITION:
+            return "ALTER TABLE " + databaseTable + " DROP PARTITION IF EXISTS "
+                   + conn->sqlPartitionId(_request.transaction_id());
+
+        case ProtocolRequestSql::REMOVE_TABLE_PARTITIONING:
+            return "ALTER TABLE " + databaseTable + " REMOVE PARTITIONING";
+
+        default:
+            throw invalid_argument(
+                    "WorkerSqlRequest::" + string(__func__) +
+                    "  not the batch request type: " + ProtocolRequestSql_Type_Name(_request.type()));
+    }
+}
+
+void WorkerSqlRequest::_extractResultSet(util::Lock const& lock,
+                                         database::mysql::Connection::Ptr const& conn) {
 
     LOGS(_log, LOG_LVL_DEBUG, context(__func__));
 
-    _response.set_char_set_name(conn->charSetName());
-    _response.set_has_result(conn->hasResult());
+    auto resultSet = _currentResultSet(lock);
+
+    // This will explicitly reset the default failure mode as it was
+    // initialized by the constructor of the result set class.
+    resultSet->set_status_ext(ProtocolStatusExt::NONE);
+
+    // Now carry over the actual rest set (if any)
+    resultSet->set_char_set_name(conn->charSetName());
+    resultSet->set_has_result(conn->hasResult());
 
     if (conn->hasResult()) {
         for (size_t i=0; i < conn->numFields(); ++i) {
-            conn->exportField(_response.add_fields(), i);
+            conn->exportField(resultSet->add_fields(), i);
         }
         size_t numRowsProcessed = 0;
         database::mysql::Row row;
@@ -301,14 +354,46 @@ void WorkerSqlRequest::_setResponse(database::mysql::Connection::Ptr const& conn
                 }
                 ++numRowsProcessed;
             }
-            row.exportRow(_response.add_rows());
+            row.exportRow(resultSet->add_rows());
         }
     }
-    LOGS(_log, LOG_LVL_DEBUG, context(__func__)
-         << " char_set_name: " << _response.char_set_name()
-         << " has_result: " << (_response.has_result() ? 1 : 0)
-         << " #fields: " << _response.fields_size()
-         << " #rows: " << _response.rows_size());
+}
+
+
+void WorkerSqlRequest::_reportFailure(util::Lock const& lock,
+                                      ExtendedCompletionStatus statusExt,
+                                      string const& error) {
+
+    LOGS(_log, LOG_LVL_ERROR, context(__func__) << "  exception: " << error);
+
+    // Note that the actual reason for a query to fail is recorded in its
+    // result set, while the final state of the whole request may vary
+    // depending on a kind of the request - if it's a simple or the "batch"
+    // request.
+
+    auto resultSet = _currentResultSet(lock);
+
+    resultSet->set_status_ext(translate(statusExt));
+    resultSet->set_error(error);
+
+    setStatus(lock, STATUS_FAILED,
+              _batchMode() ? statusExt : EXT_STATUS_MULTIPLE);
+}
+
+
+ProtocolResponseSqlResultSet* WorkerSqlRequest::_currentResultSet(util::Lock const& lock) {
+    auto const numResultSets = _response.result_sets_size();
+    if (numResultSets < 1) {
+        throw logic_error(
+                "WorkerSqlRequest::" + context(__func__)
+                + " the operation is not allowed in this state");
+    }
+    return _response.mutable_result_sets(numResultSets - 1);;
+}
+
+
+bool WorkerSqlRequest::_batchMode() const {
+    return _request.has_batch_mode() and _request.batch_mode();
 }
 
 }}} // namespace lsst::qserv::replica

@@ -38,21 +38,17 @@ namespace replica {
 
 HttpQservSqlModule::Ptr HttpQservSqlModule::create(Controller::Ptr const& controller,
                                                    string const& taskName,
-                                                   unsigned int workerResponseTimeoutSec) {
+                                                   HttpProcessorConfig const& processorConfig) {
     return Ptr(new HttpQservSqlModule(
-        controller,
-        taskName,
-        workerResponseTimeoutSec
+        controller, taskName, processorConfig
     ));
 }
 
 
 HttpQservSqlModule::HttpQservSqlModule(Controller::Ptr const& controller,
                                        string const& taskName,
-                                       unsigned int workerResponseTimeoutSec)
-    :   HttpModule(controller,
-                   taskName,
-                   workerResponseTimeoutSec) {
+                                       HttpProcessorConfig const& processorConfig)
+    :   HttpModule(controller, taskName, processorConfig) {
 }
 
 

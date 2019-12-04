@@ -23,33 +23,22 @@
 
 // System headers
 #include <cstdint>
-#include <functional>
 #include <list>
 #include <map>
 #include <string>
 #include <tuple>
+#include <vector>
 
 // Qserv headers
 #include "replica/Controller.h"
 #include "replica/Job.h"
+#include "replica/SqlJobResult.h"
 #include "replica/SqlRequest.h"
-#include "replica/SqlResultSet.h"
 
 // This header declarations
 namespace lsst {
 namespace qserv {
 namespace replica {
-
-/**
- * The structure SqlJobResult represents a combined result received
- * from worker services upon a completion of the job.
- */
-struct SqlJobResult {
-
-    /// Result sets for the workers. Note, that specific job types
-    /// may launch more than one request per worker.
-    std::map<std::string, std::list<SqlResultSet>> resultSets;
-};
 
 /**
  * Class SqlJob is a base class for a family of jobs which broadcast the same
@@ -58,13 +47,10 @@ struct SqlJobResult {
  */
 class SqlJob : public Job {
 public:
-    /// The pointer type for instances of the class
     typedef std::shared_ptr<SqlJob> Ptr;
 
     /// @return default options object for this type of a request
     static Job::Options const& defaultOptions();
-
-    // Default construction and copy semantics are prohibited
 
     SqlJob() = delete;
     SqlJob(SqlJob const&) = delete;
@@ -77,6 +63,7 @@ public:
     uint64_t maxRows() const { return _maxRows; }
 
     bool allWorkers() const { return _allWorkers; }
+    bool ignoreNonPartitioned() const { return _ignoreNonPartitioned; }
 
     /**
      * Return the combined result of the operation
@@ -85,55 +72,43 @@ public:
      *  The method should be invoked only after the job has finished (primary
      *  status is set to Job::Status::FINISHED). Otherwise exception
      *  std::logic_error will be thrown
-     *
-     * @return
-     *   the data structure to be filled upon the completion of the job.
-     *
-     * @throws std::logic_error
-     *   if the job didn't finished at a time when the method was called
+     * @return the data structure to be filled upon the completion of the job.
+     * @throws std::logic_error  if the job didn't finished at a time when
+     *   the method was called
      */
     SqlJobResult const& getResultData() const;
 
-    /// @see Job::persistentLogData()
     std::list<std::pair<std::string,std::string>> persistentLogData() const final;
 
 protected:
     /**
-     * @param maxRows
-     *   (optional) limit for the maximum number of rows to be returned with the request.
-     *   Leaving the default value of the parameter to 0 will result in not imposing any
-     *   explicit restrictions on a size of the result set. Note that other, resource-defined
-     *   restrictions will still apply. The later includes the maximum size of the Google Protobuf
-     *   objects, the amount of available memory, etc.
-     *
-     * @param allWorkers
-     *   engage all known workers regardless of their status. If the flag
-     *   is set to 'false' then only 'ENABLED' workers which are not in
-     *   the 'READ-ONLY' state will be involved into the operation.
-     *
-     * @param controller
-     *   is needed launching requests and accessing the Configuration
-     *
-     * @param parentJobId
-     *   (optional) identifier of a parent job
-     *
-     * @param jobName
-     *   the name of a job in the persistent state of the Replication system
-     *
-     * @param options
-     *   (optional) defines the job priority, etc.
+     * @param maxRows (optional) limit for the maximum number of rows to be returned
+     *   with the request. Leaving the default value of the parameter to 0 will result
+     *   in not imposing any explicit restrictions on a size of the result set. Note
+     *   that other, resource-defined restrictions will still apply. The later
+     *   includes the maximum size of the Google Protobuf objects, the amount of
+     *   available memory, etc.
+     * @param allWorkers engage all known workers regardless of their status.
+     *   If the flag is set to 'false' then only 'ENABLED' workers which are not
+     *   in the 'READ-ONLY' sub-state will be involved into the operation.
+     * @param controller is needed launching requests and accessing the Configuration
+     * @param parentJobId (optional) identifier of a parent job
+     * @param jobName the name of a job in the persistent state of the Replication system
+     * @param options (optional) defines the job priority, etc.
+     * @param ignoreNonPartitioned if 'true' then don't report as errors tables
+     *   that don't have MySQL partitions. Those partitions may have already been
+     *   removed by a previous attempt to run this algorithm. 
      */
     SqlJob(uint64_t maxRows,
            bool allWorkers,
            Controller::Ptr const& controller,
            std::string const& parentJobId,
            std::string const& jobName,
-           Job::Options const& options);
+           Job::Options const& options,
+           bool ignoreNonPartitioned=false);
 
-    /// @see Job::startImpl()
     void startImpl(util::Lock const& lock) final;
 
-    /// @see Job::cancelImpl()
     void cancelImpl(util::Lock const& lock) final;
 
     /**
@@ -146,20 +121,16 @@ protected:
      * This method lets a request type-specific subclass to launch requests
      * of the corresponding subtype.
      *
-     * @param lock
-     *   on the mutex Job::_mtx to be acquired for protecting the object's state
-     *
-     * @param worker
-     *   the name of a worker the requests to be sent to
-     * 
-     * @param maxRequests
-     *   the maximum number of requests to be launched
-     *
+     * @param lock on the mutex Job::_mtx to be acquired for protecting
+     *   the object's state
+     * @param worker the name of a worker the requests to be sent to
+     * @param maxRequestsPerWorker the maximum number of requests to be
+     *   launched per each worker
      * @return a collection of requests launched
      */
     virtual std::list<SqlRequest::Ptr> launchRequests(util::Lock const& lock,
                                                       std::string const& worker,
-                                                      size_t maxRequests=1) = 0;
+                                                      size_t maxRequestsPerWorker=1) = 0;
 
     /**
      * This method lets a request type-specific subclass to stop requests
@@ -186,11 +157,54 @@ protected:
         );
     }
 
+    /**
+     * Find out which tables corresponding to the name are expected to exist
+     * at the worker as per the Configuration and persistent records for
+     * the replicas (for the partitioned tables only). Normally this method
+     * is expected to return a single entry for the regular tables, and 
+     * multiple entries for the partitioned tables (which includes prototype
+     * tables, special "overflow" tables, and chunk-specific tables).
+     *
+     * @return a collection of tables found
+     * @throws std::invalid_argument in case if the database or a table
+     *   aren't valid.
+     */
+    std::vector<std::string> workerTables(std::string const& worker,
+                                          std::string const& database,
+                                          std::string const& table) const;
+
+    /**
+     * The algorithm will distribute tables between the specified number of
+     * bins. The resulting collection will be empty if the input collection
+     * of tables is empty or if the number of bins is 0, and the result will
+     * not have empty bins.
+     *
+     * @param allTables all known tables 
+     * @param numBins the total number of bins for distributing tables
+     * @return tables distributed between the bins
+     */
+    static std::vector<std::vector<std::string>> distributeTables(
+            std::vector<std::string> const& allTables,
+            size_t numBins);
+
 private:
+
+    /**
+     * Verify if the database and the table are known to the Configuration,
+     * and obtain the partitioning status of the table.
+     *
+     * @return 'true' if this is the partitioned table
+     * @throws std::invalid_argument in case if the database or a table
+     *   aren't valid.
+     */
+    bool _isPartitioned(std::string const& database,
+                        std::string const& table) const;
+
     // Input parameters
 
     uint64_t const _maxRows;
     bool     const _allWorkers;
+    bool     const _ignoreNonPartitioned;
 
     /// A collection of requests implementing the operation
     std::vector<SqlRequest::Ptr> _requests;

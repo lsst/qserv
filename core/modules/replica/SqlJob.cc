@@ -28,6 +28,9 @@
 
 // Qserv headers
 #include "replica/Configuration.h"
+#include "replica/Controller.h"
+#include "replica/DatabaseServices.h"
+#include "replica/ReplicaInfo.h"
 #include "replica/ServiceProvider.h"
 #include "replica/StopRequest.h"
 
@@ -61,10 +64,12 @@ SqlJob::SqlJob(uint64_t maxRows,
                Controller::Ptr const& controller,
                string const& parentJobId,
                std::string const& jobName,
-               Job::Options const& options)
+               Job::Options const& options,
+               bool ignoreNonPartitioned)
     :   Job(controller, parentJobId, jobName, options),
         _maxRows(maxRows),
-        _allWorkers(allWorkers) {
+        _allWorkers(allWorkers),
+        _ignoreNonPartitioned(ignoreNonPartitioned) {
 }
 
 
@@ -88,22 +93,28 @@ list<pair<string,string>> SqlJob::persistentLogData() const {
 
     // Per-worker stats
 
-    for (auto&& itr: resultData.resultSets) {
-        auto&& worker = itr.first;
-        string workerResultSetStr;
-        auto&& workerResultSet = itr.second;
-        for (auto&& resultSet: workerResultSet) {
-            workerResultSetStr +=
-                "(char_set_name=" + resultSet.charSetName +
-                ",has_result=" + string(resultSet.hasResult ? "1" : "0") +
-                ",fields=" + to_string(resultSet.fields.size()) +
-                ",rows=" + to_string(resultSet.rows.size()) +
-                ",error=" + resultSet.error +
-                "),";
+    for (auto&& workerItr: resultData.resultSets) {
+        auto&& worker = workerItr.first;
+        auto&& workerResultSets = workerItr.second;
+        string workerResultSetsStr;
+        for (auto&& resultSet: workerResultSets) {
+            for (auto&& resultSetItr: resultSet.queryResultSet) {
+                auto&& context = resultSetItr.first;
+                auto&& resultSet = resultSetItr.second;
+                workerResultSetsStr +=
+                    "(context=" + context +
+                    ",extended_status=" + status2string(resultSet.extendedStatus) +
+                    ",char_set_name=" + resultSet.charSetName +
+                    ",has_result=" + string(resultSet.hasResult ? "1" : "0") +
+                    ",fields=" + to_string(resultSet.fields.size()) +
+                    ",rows=" + to_string(resultSet.rows.size()) +
+                    ",error=" + resultSet.error +
+                    "),";
+            }
         }
         result.emplace_back(
             "worker-stats",
-            "worker=" + worker + ",result-set=" + workerResultSetStr
+            "worker=" + worker + ",result-set=" + workerResultSetsStr
         );
     }
     return result;
@@ -184,12 +195,91 @@ void SqlJob::onRequestFinish(SqlRequest::Ptr const& request) {
             for (auto&& ptr: _requests) {
                 if (ptr->extendedState() == Request::ExtendedState::SUCCESS) {
                     numSuccess++;
+                } else {
+                    // This too may also count as a success since the table might be processed
+                    // before, when this job was ran.
+                    if (ignoreNonPartitioned() and
+                            ptr->extendedServerStatus() == ExtendedCompletionStatus::EXT_STATUS_MULTIPLE) {
+                        auto&& responseData = request->responseData();
+                        if (responseData.hasErrors() and responseData.allErrorsOf(
+                                ExtendedCompletionStatus::EXT_STATUS_NOT_PARTITIONED_TABLE)) {
+                            LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "  id=" << request->id()
+                                 << " [ignoreNonPartitioned & EXT_STATUS_NOT_PARTITIONED_TABLE]");
+                            numSuccess++;
+                        }
+                    }
                 }
             }
             finish(lock, numSuccess == _numFinished ? ExtendedState::SUCCESS :
                                                       ExtendedState::FAILED);
         }
     }
+}
+
+
+vector<vector<string>> SqlJob::distributeTables(vector<string> const& allTables,
+                                                size_t numBins) {
+
+    // If the total number of tables if less than the number of bins
+    // then we won't be constructing empty bins.
+    vector<vector<string>> tablesPerBin(min(numBins, allTables.size()));
+
+    if (not tablesPerBin.empty()) {
+        // The trivial 'round-robin' 
+        for (size_t i=0; i<allTables.size(); ++i) {
+            auto const bin = i % tablesPerBin.size();
+            tablesPerBin[bin].push_back(allTables[i]);
+        }
+    }
+    return tablesPerBin;
+}
+
+
+vector<string> SqlJob::workerTables(string const& worker,
+                                    string const& database,
+                                    string const& table) const {
+    vector<string> tables;
+    if (_isPartitioned(database, table)) {
+
+        // The prototype table for creating chunks and chunk overlap tables
+        tables.push_back(table);
+
+        // Locate all chunks registered on the worker. These chunks will be used
+        // to build names of the corresponding chunk-specific partitioned tables.
+        vector<ReplicaInfo> replicas;
+        controller()->serviceProvider()->databaseServices()->findWorkerReplicas(
+            replicas, worker, database);
+
+        for (auto&& replica: replicas) {
+            auto const chunk = replica.chunk();
+            tables.push_back(table + "_" + to_string(chunk));
+            tables.push_back(table + "FullOverlap_" + to_string(chunk));
+        }
+    } else {
+        tables.push_back(table);
+    }
+    return tables;
+}
+
+
+bool SqlJob::_isPartitioned(string const& database,
+                            string const& table) const {
+
+    // Determine the type of the table
+    auto const info = controller()->serviceProvider()->config()->databaseInfo(database);
+    if (find(info.partitionedTables.begin(),
+             info.partitionedTables.end(), table) != info.partitionedTables.end()) {
+        return true;
+    }
+
+    // And the following test is just to ensure the table name is valid
+    if (find(info.regularTables.begin(),
+             info.regularTables.end(), table) != info.regularTables.end()) {
+        return false;
+    }
+    throw invalid_argument(
+            context() + string(__func__) + "  unknown <database>.<table> '" + database +
+            "'.'" + table + "'");
 }
 
 }}} // namespace lsst::qserv::replica

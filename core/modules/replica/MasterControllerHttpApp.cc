@@ -27,6 +27,7 @@
 
 // Qserv headers
 #include "replica/DatabaseServices.h"
+#include "replica/HttpProcessorConfig.h"
 #include "replica/Performance.h"
 #include "util/BlockPost.h"
 
@@ -46,6 +47,7 @@ struct {
     unsigned int const workerEvictTimeoutSec    = 3600 ;
     unsigned int const qservSyncTimeoutSec      = 1800;
     unsigned int const numReplicas              = 0;
+    unsigned int const workerReconfigTimeoutSec = 600;
 
     bool const purge           = false;
     bool const forceQservSync  = false;
@@ -94,6 +96,7 @@ MasterControllerHttpApp::MasterControllerHttpApp(int argc, char* argv[])
         _workerEvictTimeoutSec   (::defaultOptions.workerEvictTimeoutSec),
         _qservSyncTimeoutSec     (::defaultOptions.qservSyncTimeoutSec),
         _numReplicas             (::defaultOptions.numReplicas),
+        _workerReconfigTimeoutSec(::defaultOptions.workerReconfigTimeoutSec),
         _purge                   (::defaultOptions.purge),
         _forceQservSync          (::defaultOptions.forceQservSync),
         _permanentDelete         (::defaultOptions.permanentDelete),
@@ -129,6 +132,14 @@ MasterControllerHttpApp::MasterControllerHttpApp(int argc, char* argv[])
         " would override the corresponding parameter specified"
         " in the Configuration.",
         _qservSyncTimeoutSec
+    ).option(
+        "worker-config-timeout",
+        "The maximum number of seconds to wait for the completion of the worker"
+        " reconfiguration requests. A value which"
+        " differs from " + to_string(defaultOptions.workerReconfigTimeoutSec) +
+        " would override the corresponding parameter specified"
+        " in the Configuration.",
+        _workerReconfigTimeoutSec
     ).flag(
         "qserv-sync-force",
         "The flag which would force Qserv workers to update their list of replicas"
@@ -210,7 +221,9 @@ int MasterControllerHttpApp::runImpl() {
 
     _httpProcessor = HttpProcessor::create(
         _controller,
-        _workerResponseTimeoutSec,
+        HttpProcessorConfig(
+            _workerResponseTimeoutSec, _qservSyncTimeoutSec, _workerReconfigTimeoutSec
+        ),
         _healthMonitorTask
     );
 
@@ -294,6 +307,7 @@ void MasterControllerHttpApp::_logControllerStartedEvent() const {
     event.kvInfo.emplace_back("worker-evict-timeout",    to_string(_workerEvictTimeoutSec));
     event.kvInfo.emplace_back("qserv-sync-timeout",      to_string(_qservSyncTimeoutSec));
     event.kvInfo.emplace_back("qserv-sync-force",                  _forceQservSync ? "1" : "0");
+    event.kvInfo.emplace_back("worker-config-timeout",   to_string(_workerReconfigTimeoutSec));
     event.kvInfo.emplace_back("replicas",                to_string(_numReplicas));
     event.kvInfo.emplace_back("purge",                             _purge ? "1" : "0");
     event.kvInfo.emplace_back("permanent-worker-delete",           _permanentDelete ? "1" : "0");

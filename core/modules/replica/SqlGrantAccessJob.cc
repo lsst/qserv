@@ -85,6 +85,7 @@ SqlGrantAccessJob::SqlGrantAccessJob(string const& database,
                "SQL_GRANT_ACCESS",
                options),
         _database(database),
+        _user(user),
         _onFinish(onFinish) {
 }
 
@@ -92,6 +93,7 @@ SqlGrantAccessJob::SqlGrantAccessJob(string const& database,
 list<pair<string,string>> SqlGrantAccessJob::extendedPersistentState() const {
     list<pair<string,string>> result;
     result.emplace_back("database", database());
+    result.emplace_back("user", user());
     result.emplace_back("all_workers", string(allWorkers() ? "1" : "0"));
     return result;
 }
@@ -99,13 +101,13 @@ list<pair<string,string>> SqlGrantAccessJob::extendedPersistentState() const {
 
 list<SqlRequest::Ptr> SqlGrantAccessJob::launchRequests(util::Lock const& lock,
                                                         string const& worker,
-                                                        size_t maxRequests) {
+                                                        size_t maxRequestsPerWorker) {
 
     // Launch exactly one request per worker unless it was already
     // launched earlier
 
     list<SqlRequest::Ptr> requests;
-    if (not _workers.count(worker) and maxRequests != 0) {
+    if (not _workers.count(worker) and maxRequestsPerWorker != 0) {
         auto const self = shared_from_base<SqlGrantAccessJob>();
         requests.push_back(
             controller()->sqlGrantAccess(

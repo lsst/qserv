@@ -40,6 +40,12 @@ namespace replica {
  * Class SqlDeleteTableJob represents a tool which will broadcast the same request
  * for deleting an existing table from all worker databases of a setup. Result sets
  * are collected in the above defined data structure.
+ *
+ * @note the meaning of the 'table' depends on a kind of a table. If this is
+ * a regular table then tables with exact names will be deleted from all workers.
+ * For the partitioned tables the operation will include both the prototype
+ * tables (tables at exactly the specified name existing at all workers) and
+ * the corresponding chunk tables for all chunks found at the relevant workers.
  */
 class SqlDeleteTableJob : public SqlJob {
 public:
@@ -57,31 +63,17 @@ public:
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
      *
-     * @param database
-     *   the name of a database from which a table will be deleted
-     *
-     * @param table
-     *   the name of an existing table to be deleted
-     *
-     * @param allWorkers
-     *   engage all known workers regardless of their status. If the flag
-     *   is set to 'false' then only 'ENABLED' workers which are not in
-     *   the 'READ-ONLY' state will be involved into the operation.
-     *
-     * @param controller
-     *   is needed launching requests and accessing the Configuration
-     *
-     * @param parentJobId
-     *   (optional) identifier of a parent job
-     *
-     * @param onFinish
-     *   (optional) callback function to be called upon a completion of the job
-     *
-     * @param options
-     *   (optional) defines the job priority, etc.
-     *
-     * @return
-     *   pointer to the created object
+     * @param database the name of a database from which a table will be deleted
+     * @param table the name of an existing table to be deleted
+     * @param allWorkers engage all known workers regardless of their status.
+     *   If the flag is set to 'false' then only 'ENABLED' workers which are not
+     *   in the 'READ-ONLY' sub-state will be involved into the operation.
+     * @param controller is needed launching requests and accessing the Configuration
+     * @param parentJobId (optional) identifier of a parent job
+     * @param onFinish (optional) callback function to be called upon a completion
+     *   of the job
+     * @param options (optional) defines the job priority, etc.
+     * @return pointer to the created object
      */
     static Ptr create(std::string const& database,
                       std::string const& table,
@@ -90,8 +82,6 @@ public:
                       std::string const& parentJobId=std::string(),
                       CallbackType const& onFinish=nullptr,
                       Job::Options const& options=defaultOptions());
-
-    // Default construction and copy semantics are prohibited
 
     SqlDeleteTableJob() = delete;
     SqlDeleteTableJob(SqlDeleteTableJob const&) = delete;
@@ -104,24 +94,19 @@ public:
     std::string const& database() const { return _database; }
     std::string const& table()    const { return _table; }
 
-    /// @see Job::extendedPersistentState()
     std::list<std::pair<std::string,std::string>> extendedPersistentState() const final;
 
 protected:
-    /// @see Job::notify()
     void notify(util::Lock const& lock) final;
 
-    /// @see SqlJob::launchRequests()
     std::list<SqlRequest::Ptr> launchRequests(util::Lock const& lock,
                                               std::string const& worker,
-                                              size_t maxRequests) final;
+                                              size_t maxRequestsPerWorker) final;
 
-    /// @see SqlJob::stopRequest()
     void stopRequest(util::Lock const& lock,
                      SqlRequest::Ptr const& request) final;
 
 private:
-    /// @see SqlDeleteTableJob::create()
     SqlDeleteTableJob(std::string const& database,
                       std::string const& table,
                       bool allWorkers,

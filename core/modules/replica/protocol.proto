@@ -220,6 +220,13 @@ message ProtocolRequestSql {
 
     /// table schema
     repeated ProtocolRequestSqlColumn columns = 12;
+
+    /// A collection of tables to apply an operation upon. This parameter is used
+    /// for batch processing over multiple tables.
+    repeated string tables = 13;
+
+    /// This flag is used when a request to process multiple queries is made
+    optional bool batch_mode = 14 [default = false];
 }
 
 // This request is always queued.
@@ -352,6 +359,8 @@ enum ProtocolStatusExt {
     NO_SUCH_TABLE = 27;
     NOT_PARTITIONED_TABLE = 28;
     NO_SUCH_PARTITION = 29;
+    MULTIPLE = 30;
+    OTHER_EXCEPTION = 31;
 }
 
 message ProtocolFileInfo {
@@ -593,12 +602,45 @@ message ProtocolResponseSqlRow {
     repeated bool nulls = 2;
 }
 
+message ProtocolResponseSqlResultSet {
+
+    /// This parameter defines a scope of an operation over a worker database,
+    /// and its meaning varies depending on the operation. It could be the name
+    /// of a table, the name of a database, or a query. 
+    optional string scope = 1 [default = ""];
+
+    /// Extended status of an operation in a scope of a query. It needs to be
+    /// explicitly set for queries with a different outcome (if they succeeded
+    /// or failed due to a specific problem). The successful completion of a query
+    /// is indicated by status set to NONE.
+    optional ProtocolStatusExt status_ext = 2 [default = MYSQL_ERROR];
+
+    /// MySQL-specific error (if any)
+    optional string error = 3 [default = ""];
+
+    /// Of the connection
+    optional string char_set_name = 4 [default = ""];
+
+    /// The request produced a result set
+    optional bool has_result = 5;
+
+    /// A vector with field definitions from a result set,
+    /// where the number of objects in the array represents
+    /// the "width" of the result set
+    repeated ProtocolResponseSqlField fields = 6;
+
+    /// An array of rows from a result set,
+    /// where the number of elements in the array represents
+    /// the number of rows.
+    repeated ProtocolResponseSqlRow rows = 7;
+}
+
 message ProtocolResponseSql {
 
     /// The completion status of the operation
     required ProtocolStatus status = 1;
 
-    /// Extended status of this operation
+    /// Extended status of an operation
     optional ProtocolStatusExt status_ext = 2 [default = NONE];
 
     /// The performance of this operation
@@ -615,24 +657,8 @@ message ProtocolResponseSql {
 
     // Extended information on the request
 
-    /// MySQL-specific error
-    optional string error = 5 [default = ""];
-
-    /// Of the connection
-    optional string char_set_name = 6 [default = ""];
-
-    /// The request produced a result set
-    optional bool has_result = 7;
-
-    /// A vector with field definitions from a result set,
-    /// where the number of objects in the array represents
-    /// the "width" of the result set
-    repeated ProtocolResponseSqlField fields = 8;
-
-    /// An array of rows from a result set,
-    /// where the number of elements in the array represents
-    /// the number of rows.
-    repeated ProtocolResponseSqlRow rows = 9;
+    /// Result sets for the operations
+    repeated ProtocolResponseSqlResultSet result_sets = 11;
 
     /// Parameters of the original request to which this response is related
     optional ProtocolRequestSql request = 10;

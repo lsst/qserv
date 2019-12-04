@@ -414,7 +414,7 @@ void IngestServerConnection::_loadDataIntoTable() {
         ));
 
         string const sqlDatabase = conn->sqlId(_databaseInfo.name);
-        string const sqlPartition = conn->sqlId("p" + to_string(_transactionId));
+        string const sqlPartition = conn->sqlPartitionId(_transactionId);
 
         vector<string> statements;
 

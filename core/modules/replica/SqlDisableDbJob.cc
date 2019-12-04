@@ -96,13 +96,13 @@ list<pair<string,string>> SqlDisableDbJob::extendedPersistentState() const {
 
 list<SqlRequest::Ptr> SqlDisableDbJob::launchRequests(util::Lock const& lock,
                                                       string const& worker,
-                                                      size_t maxRequests) {
+                                                      size_t maxRequestsPerWorker) {
 
     // Launch exactly one request per worker unless it was already
     // launched earlier
 
     list<SqlRequest::Ptr> requests;
-    if (not _workers.count(worker) and maxRequests != 0) {
+    if (not _workers.count(worker) and maxRequestsPerWorker != 0) {
         auto const self = shared_from_base<SqlDisableDbJob>();
         requests.push_back(
             controller()->sqlDisableDb(

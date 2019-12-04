@@ -34,6 +34,7 @@ namespace lsst {
 namespace qserv {
 namespace replica {
     class HttpModule;
+    class HttpProcessorConfig;
 }}} // Forward declarations
 
 // This header declarations
@@ -50,7 +51,6 @@ class HttpProcessor:
         public EventLogger,
         public std::enable_shared_from_this<HttpProcessor> {
 public:
-
     typedef std::shared_ptr<HttpProcessor> Ptr;
 
     HttpProcessor() = delete;
@@ -60,13 +60,12 @@ public:
     ~HttpProcessor();
 
     static Ptr create(Controller::Ptr const& controller,
-                      unsigned int workerResponseTimeoutSec,
+                      HttpProcessorConfig const& processorConfig,
                       HealthMonitorTask::Ptr const& healthMonitorTask);
 
 private:
-
     HttpProcessor(Controller::Ptr const& controller,
-                  unsigned int workerResponseTimeoutSec,
+                  HttpProcessorConfig const& processorConfig,
                   HealthMonitorTask::Ptr const& healthMonitorTask);
 
     void _initialize();

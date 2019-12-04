@@ -26,6 +26,7 @@
 
 // Qserv headers
 #include "replica/protocol.pb.h"
+#include "replica/DatabaseMySQL.h"
 #include "replica/WorkerRequest.h"
 
 // Forward declarations
@@ -46,12 +47,11 @@ namespace replica {
  * Class WorkerSqlRequest executes queries against the worker database
  * and return results sets (if any) back to a caller.
  *
- * @note
- *   queries passed into this operation are supposed to be well formed.
- *   If a MySQL error would occur during an attempt to execute an incorrectly
- *   formed query then the corresponding MySQL error will be recorded
- *   and report to a caller in the reponse structure which is set
- *   by method WorkerSqlRequest::setInfo().
+ * @note Queries passed into this operation are supposed to be well formed.
+ * If a MySQL error would occur during an attempt to execute an incorrectly
+ * formed query then the corresponding MySQL error will be recorded
+ * and reported to a caller in the response structure which is set
+ * by method WorkerSqlRequest::setInfo().
  */
 class WorkerSqlRequest : public WorkerRequest {
 
@@ -65,22 +65,13 @@ public:
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
      *
-     * @param serviceProvider
-     *   provider is needed to access the Configuration of a setup
+     * @param serviceProvider It's needed to access the Configuration of a setup
      *   and for validating the input parameters
-     *
-     * @param worker
-     *   the name of a worker. The name must match the worker which
+     * @param worker The name of a worker. The name must match the worker which
      *   is going to execute the request.
-     * 
-     * @param id
-     *   an identifier of a client request
-     *
-     * @param request
-     *   ProtoBuf body of the request
-     *
-     * @return
-     *   pointer to the created object
+     * @param id An identifier of a client request
+     * @param request The ProtoBuf body of the original request
+     * @return A pointer to the created object
      */
     static Ptr create(ServiceProvider::Ptr const& serviceProvider,
                       std::string const& worker,
@@ -100,59 +91,83 @@ public:
 
     /**
      * Extract request status into the Protobuf response object.
-     *
-     * @param response
-     *   Protobuf response to be initialized
+     * @param response The Protobuf response to be initialized
      */
     void setInfo(ProtocolResponseSql& response) const;
 
-    /// @see WorkerRequest::execute
     bool execute() override;
 
 private:
-
-    /// @see WorkerSqlRequest::create()
     WorkerSqlRequest(ServiceProvider::Ptr const& serviceProvider,
                      std::string const& worker,
                      std::string const& id,
                      ProtocolRequestSql const& request);
 
-    /// @return a connector as per the input request
+    /// @return A connector as per the input request
     std::shared_ptr<database::mysql::Connection> _connector() const;
 
     /**
-     * The query generator uses parameters of a request to compose
-     * a desired query.
-     *
-     * @param conn
-     *   a reference to the database connector is needed to process arguments
-     *   to meet requirements of the database query processing engine.
-     *
-     * @return
-     *   a query as per the input request
-     *
-     * @throws std::invalid_argument
-     *   if the input parameters are not supported
+     * The query generator for simple requests uses parameters of a request
+     * to compose a desired query.
+     * @note this method is only used to generate a single query for
+     *   the non-batch requests.
+     * @param conn A reference to the database connector is needed to process
+     *   arguments to meet requirements of the database query processing engine.
+     * @return A query as per the input request.
+     * @throws std::invalid_argument For unsupported requests types supported.
      */
     std::string _query(std::shared_ptr<database::mysql::Connection> const& conn) const;
 
     /**
-     * Initialize the Protobuf response object.
-     * 
-     * @note
-     *   This method is called to extract result set of a query via the connector
-     *   provided and cache the result within the request.
-     * 
-     * @param conn
-     *   a valid database connector for extracting a result set
+     * An alternative query generator for the "batch" requests for the specified
+     * table. The generator uses parameters of a request and the name of a table
+     * to compose a desired query. Only a subset of requests can be
+     * executed in the "batch" mode.
+     * @param conn A reference to the database connector is needed to process
+     *   arguments to meet requirements of the database query processing engine.
+     * @param table The name of table affected by the query.
+     * @return A query as per the input request and the name of a table.
+     * @throws std::invalid_argument For unsupported requests types.
      */
-    void _setResponse(std::shared_ptr<database::mysql::Connection> const& conn);
+    std::string _batchQuery(database::mysql::Connection::Ptr const& conn,
+                            std::string const& table) const;
+
+    /**
+     * Extract a result set (if any) via the database connector into
+     * the Protobuf response object.
+     * @param lock The lock must be held before calling the method since it's
+     *   going to access a protected state of the object.
+     * @param conn  a valid database connector for extracting a result set
+     */
+    void _extractResultSet(util::Lock const& lock,
+                           std::shared_ptr<database::mysql::Connection> const& conn);
+
+    /**
+     * Report & record a failure
+     *
+     * @param lock The lock must be held before calling the method since it's
+     *   going to modify a protected state of the object.
+     * @param statusExt An extended status to be reported to Controllers and
+     *   set in the current (most recently processed query if any) result set.
+     * @param error A message to be logged and returned to Controllers.
+     * @throws std::logic_error Is thrown when the method is called before
+     *   creating a result set.
+     */    
+    void _reportFailure(util::Lock const& lock,
+                        ExtendedCompletionStatus statusExt,
+                        std::string const& error);
+
+    // @return A mutable pointer to the current result set
+    ProtocolResponseSqlResultSet* _currentResultSet(util::Lock const& lock);
+
+    /// @return 'true' if the request issues multiple queries
+    bool _batchMode() const;
 
     // Input parameters
 
     ProtocolRequestSql const _request;
 
-    /// Cached result to be sent to a client
+    /// Cached result to be sent to a client upon a request
     mutable ProtocolResponseSql _response;
 };
 

@@ -102,6 +102,24 @@ SqlApp::SqlApp(int argc, char* argv[])
         "tables-page-size",
         "The number of rows in the table of replicas (0 means no pages).",
         _pageSize
+    ).option(
+        "report-level",
+        "The option which controls the verbosity of the job completion report."
+        " Supported report levels:"
+        " 0: no report, just return the completion status to the shell."
+        " 1: report a summary, including the job completion status, the number"
+        " of objects (tables/databases) failed to be processed, as well as the number"
+        " of objects which have been successfully processed."
+        " 2: report processing status of each object failed to be processed by the operation."
+        " The result will include the name of the object (if any), the name of a worker on which"
+        " the object was expected to be residing, the completion status of"
+        " the operation, and an error message (if any) reported by the remote"
+        " worker service. Results will be presented in a tabular format with a row"
+        " per each object involved into the operation."
+        " 3: also include into the report all objects which were successfully"
+        " processed by the operation. This level will also trigger printing result sets"
+        " for a query if command QUERY was requested.",
+        _reportLevel
     );
 
     parser().command(
@@ -225,6 +243,12 @@ SqlApp::SqlApp(int argc, char* argv[])
         "table",
         "The name of an existing table to be affected by the operation.",
         _table
+    ).flag(
+        "ignore-non-partitioned",
+        "The flag allowing to run this job multiple times w/o considering tables"
+        " which don't have MySQL partitions. The partitions may have already been"
+        " removed at prior invocations of the job.",
+        _ignoreNonPartitioned
     );
 
     parser().command(
@@ -256,9 +280,7 @@ int SqlApp::runImpl() {
 
     auto const controller = Controller::create(serviceProvider());
     SqlJob::Ptr job;
-    bool shouldHaveResultSet = false;
     if (_command == "QUERY") {
-        shouldHaveResultSet = true;
         job = SqlQueryJob::create(_query, _mysqlUser, _mysqlPassword, _maxRows,
                                   _allWorkers, controller);
     } else if(_command == "CREATE_DATABASE") {
@@ -278,7 +300,8 @@ int SqlApp::runImpl() {
     } else if(_command == "DELETE_TABLE") {
         job = SqlDeleteTableJob::create(_database, _table, _allWorkers, controller);
     } else if(_command == "REMOVE_TABLE_PARTITIONS") {
-        job = SqlRemoveTablePartitionsJob::create(_database, _table, _allWorkers, controller);
+        job = SqlRemoveTablePartitionsJob::create(_database, _table, _allWorkers, _ignoreNonPartitioned,
+                                                  controller);
     } else if(_command == "DELETE_TABLE_PARTITION") {
         job = SqlDeleteTablePartitionJob::create(_database, _table, _transactionId,
                                                  _allWorkers, controller);
@@ -289,35 +312,82 @@ int SqlApp::runImpl() {
     job->start();
     job->wait();
 
-    // Analyze and display results for each worker
+    if (_reportLevel > 0) {
+        cout << endl;
+        cout << "Job completion status: " << Job::state2string(job->extendedState()) << endl;
 
-    auto const& resultData = job->getResultData();
-    for (auto&& itr : resultData.resultSets) {
-        auto&& worker = itr.first;
-        auto&& workerResultSet = itr.second;
-        for (auto&& resultSet: workerResultSet) {
-            if (not resultSet.error.empty()) {
-                cout << "worker: " << worker << ",  error: " << resultSet.error << endl;
-                continue;
+        auto&& resultData = job->getResultData();
+        size_t numSucceeded = 0;
+        map<ExtendedCompletionStatus,size_t> numFailed;
+        resultData.iterate(
+            [&numFailed, &numSucceeded](SqlJobResult::Worker const& worker,
+                                        SqlJobResult::Scope const& object,
+                                        SqlResultSet::ResultSet const& resultSet) {
+                if (resultSet.extendedStatus == ExtendedCompletionStatus::EXT_STATUS_NONE) {
+                    numSucceeded++;
+                } else {
+                    numFailed[resultSet.extendedStatus]++;
+                }
             }
-            string const caption = "worker: " + worker + ",  performance [sec]: " +
-                                   to_string(resultSet.performanceSec);
-            if (shouldHaveResultSet) {
-                string const indent = "";
-                auto table = resultSet.toColumnTable(caption, indent);
+        );
+        cout << "Object processing summary:\n"
+             << "  succeeded: " << numSucceeded << "\n";
+        if (numFailed.size() == 0) {
+            cout << "  failed: " << 0 << endl;
+        } else {
+            cout << "  failed:\n";
+            for (auto&& entry: numFailed) {
+                auto const extendedStatus = entry.first;
+                auto const counter = entry.second;
+                cout << "    " << status2string(extendedStatus) << ": " << counter << endl;
+            }
+        }
+        cout << endl;
 
-                bool const topSeparator    = false;
-                bool const bottomSeparator = false;
-                bool const repeatedHeader  = false;
+        string const indent = "";
+        bool const topSeparator = false;
+        bool const bottomSeparator = false;
+        bool const repeatedHeader = false;
+        bool const verticalSeparator = true;
 
-                table.print(cout, topSeparator, bottomSeparator, _pageSize, repeatedHeader);
-                cout << "\n";
+        auto const workerSummaryTable = resultData.summaryToColumnTable(
+                "Worker requests statistics:", indent
+        );
+        workerSummaryTable.print(cout, topSeparator, bottomSeparator, _pageSize,
+                                 repeatedHeader);
+        cout << endl;
+
+        if (_reportLevel > 1) {
+            if (_command == "QUERY") {
+                resultData.iterate([&](SqlJobResult::Worker const& worker,
+                                       SqlJobResult::Scope const& scope,
+                                       SqlResultSet::ResultSet const& resultSet) {
+                    string const caption =
+                        worker + ":" + scope + ":" + status2string(resultSet.extendedStatus)
+                        + ":" + resultSet.error;
+                    if (resultSet.extendedStatus != ExtendedCompletionStatus::EXT_STATUS_NONE) {
+                        cout << caption << endl;
+                    } else {
+                        auto const table = resultSet.toColumnTable(
+                                caption, indent, verticalSeparator
+                        );
+                        table.print(cout, topSeparator, bottomSeparator, _pageSize,
+                                    repeatedHeader);
+                    }
+                    cout << endl;
+                });
             } else {
-                cout << caption << endl;
+                string const caption = "Result sets completion status:";
+                bool const reportAll = _reportLevel > 2;
+                auto const table = resultData.toColumnTable(
+                        caption, indent, verticalSeparator, reportAll
+                );
+                table.print(cout, topSeparator, bottomSeparator, _pageSize,
+                            repeatedHeader);
             }
         }
     }
-    return 0;
+    return job->extendedState() == Job::SUCCESS ? 0 : 1;
 }
 
 }}} // namespace lsst::qserv::replica

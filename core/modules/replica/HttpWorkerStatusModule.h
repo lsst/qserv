@@ -43,12 +43,11 @@ namespace replica {
  */
 class HttpWorkerStatusModule: public HttpModule {
 public:
-
     typedef std::shared_ptr<HttpWorkerStatusModule> Ptr;
 
     static Ptr create(Controller::Ptr const& controller,
                       std::string const& taskName,
-                      unsigned int workerResponseTimeoutSec,
+                      HttpProcessorConfig const& processorConfig,
                       HealthMonitorTask::Ptr const& healthMonitorTask);
 
     HttpWorkerStatusModule() = delete;
@@ -58,16 +57,14 @@ public:
     ~HttpWorkerStatusModule() final = default;
 
 protected:
-
     void executeImpl(qhttp::Request::Ptr const& req,
                      qhttp::Response::Ptr const& resp,
                      std::string const& subModuleName) final;
 
 private:
-
     HttpWorkerStatusModule(Controller::Ptr const& controller,
                            std::string const& taskName,
-                           unsigned int workerResponseTimeoutSec,
+                           HttpProcessorConfig const& processorConfig,
                            HealthMonitorTask::Ptr const& healthMonitorTask);
 
     // Input parameters

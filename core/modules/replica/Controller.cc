@@ -461,7 +461,7 @@ SqlCreateTableRequest::Ptr Controller::sqlCreateTable(
 SqlDeleteTableRequest::Ptr Controller::sqlDeleteTable(
         string const& workerName,
         string const& database,
-        string const& table,
+        vector<string> const& tables,
         SqlDeleteTableRequest::CallbackType const& onFinish,
         int priority,
         bool keepTracking,
@@ -472,10 +472,10 @@ SqlDeleteTableRequest::Ptr Controller::sqlDeleteTable(
 
     return _submit<SqlDeleteTableRequest,
                    decltype(database),
-                   decltype(table)>(
+                   decltype(tables)>(
         workerName,
         database,
-        table,
+        tables,
         onFinish,
         priority,
         keepTracking,
@@ -487,7 +487,7 @@ SqlDeleteTableRequest::Ptr Controller::sqlDeleteTable(
 SqlRemoveTablePartitionsRequest::Ptr Controller::sqlRemoveTablePartitions(
         string const& workerName,
         string const& database,
-        string const& table,
+        vector<string> const& tables,
         SqlRemoveTablePartitionsRequest::CallbackType const& onFinish,
         int priority,
         bool keepTracking,
@@ -498,10 +498,10 @@ SqlRemoveTablePartitionsRequest::Ptr Controller::sqlRemoveTablePartitions(
 
     return _submit<SqlRemoveTablePartitionsRequest,
                    decltype(database),
-                   decltype(table)>(
+                   decltype(tables)>(
         workerName,
         database,
-        table,
+        tables,
         onFinish,
         priority,
         keepTracking,
@@ -513,7 +513,7 @@ SqlRemoveTablePartitionsRequest::Ptr Controller::sqlRemoveTablePartitions(
 SqlDeleteTablePartitionRequest::Ptr Controller::sqlDeleteTablePartition(
         string const& workerName,
         string const& database,
-        string const& table,
+        vector<string> const& tables,
         TransactionId transactionId,
         SqlDeleteTablePartitionRequest::CallbackType const& onFinish,
         int priority,
@@ -525,11 +525,11 @@ SqlDeleteTablePartitionRequest::Ptr Controller::sqlDeleteTablePartition(
 
     return _submit<SqlDeleteTablePartitionRequest,
                    decltype(database),
-                   decltype(table),
+                   decltype(tables),
                    decltype(transactionId)>(
         workerName,
         database,
-        table,
+        tables,
         transactionId,
         onFinish,
         priority,
