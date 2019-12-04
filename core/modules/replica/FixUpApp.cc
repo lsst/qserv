@@ -71,12 +71,12 @@ FixUpApp::FixUpApp(int argc, char* argv[])
     parser().required(
         "database-family",
         "The name of a database family.",
-        _databaseFamily);
-
-    parser().option(
+        _databaseFamily
+    ).option(
         "tables-page-size",
         "The number of rows in the table of replicas (0 means no pages).",
-        _pageSize);
+        _pageSize
+    );
 }
 
 
@@ -92,10 +92,10 @@ int FixUpApp::runImpl() {
     // Analyze and display results
 
     cout << "\n";
-    replica::printAsTable("REPLICAS", "  ", job->getReplicaData().chunks, cout, _pageSize);
+    replica::printAsTable("CREATED REPLICAS", "  ", job->getReplicaData().chunks, cout, _pageSize);
     cout << "\n";
 
-    return 0;
+    return job->extendedState() == Job::SUCCESS ? 0 : 1;
 }
 
 }}} // namespace lsst::qserv::replica

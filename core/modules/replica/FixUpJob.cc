@@ -27,7 +27,7 @@
 #include <stdexcept>
 
 // Qserv headers
-#include "replica/ErrorReporting.h"
+#include "replica/Configuration.h"
 #include "replica/ServiceProvider.h"
 #include "replica/StopRequest.h"
 
@@ -87,12 +87,6 @@ FixUpJob::FixUpJob(string const& databaseFamily,
 }
 
 
-FixUpJob::~FixUpJob() {
-    // Make sure all chunks locked by this job are released
-    controller()->serviceProvider()->chunkLocker().release(id());
-}
-
-
 FixUpJobResult const& FixUpJob::getReplicaData() const {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
@@ -100,7 +94,7 @@ FixUpJobResult const& FixUpJob::getReplicaData() const {
     if (state() == State::FINISHED) return _replicaData;
 
     throw logic_error(
-            "FixUpJob::" + string(__func__) +
+            typeName() + "::" + string(__func__) +
             "  the method can't be called while the job hasn't finished");
 }
 
@@ -122,10 +116,11 @@ list<pair<string,string>> FixUpJob::persistentLogData() const {
 
     for (auto&& workerInfo: replicaData.workers) {
         auto&& worker = workerInfo.first;
-
-        bool const responded = workerInfo.second;
-        if (not responded) {
-            result.emplace_back("failed-worker", worker);
+        auto const numFailedRequests = workerInfo.second;
+        if (numFailedRequests != 0) {
+            result.emplace_back(
+                "failed-worker", "worker=" + worker
+                + " num-failed-requests=" + to_string(numFailedRequests));
         }
     }
 
@@ -159,9 +154,7 @@ list<pair<string,string>> FixUpJob::persistentLogData() const {
 
 void FixUpJob::startImpl(util::Lock const& lock) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "  _numIterations=" << _numIterations);
-
-    ++_numIterations;
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     // Launch the chained job to get chunk disposition
 
@@ -210,32 +203,8 @@ void FixUpJob::cancelImpl(util::Lock const& lock) {
                 true,       /* keepTracking */
                 id()        /* jobId */);
     }
-
-    _chunk2requests.clear();
+    _destinationWorker2tasks.clear();
     _requests.clear();
-
-    _numFailedLocks = 0;
-
-    _numLaunched = 0;
-    _numFinished = 0;
-    _numSuccess  = 0;
-}
-
-
-void FixUpJob::_restart(util::Lock const& lock) {
-
-    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
-
-    if (_findAllJob or (_numLaunched != _numFinished)) {
-        throw logic_error("FixUpJob::" + string(__func__) + "  not allowed in this object state");
-    }
-    _requests.clear();
-
-    _numFailedLocks = 0;
-
-    _numLaunched = 0;
-    _numFinished = 0;
-    _numSuccess  = 0;
 }
 
 
@@ -255,7 +224,6 @@ void FixUpJob::_onPrecursorJobFinish() {
 
     if (state() == State::FINISHED) return;
 
-    /////////////////////////////////////////////////////////////////
     // Proceed with the replication effort only if the precursor job
     // has succeeded.
 
@@ -264,14 +232,10 @@ void FixUpJob::_onPrecursorJobFinish() {
         return;
     }
 
-    /////////////////////////////////////////////////////////////////
     // Analyze results and prepare a replication plan to fix chunk
     // co-location for under-represented chunks
 
     FindAllJobResult const& replicaData = _findAllJob->getReplicaData();
-
-    auto self = shared_from_base<FixUpJob>();
-
     for (auto&& chunk2workers: replicaData.isColocated) {
         unsigned int chunk = chunk2workers.first;
 
@@ -280,14 +244,6 @@ void FixUpJob::_onPrecursorJobFinish() {
             bool   const  isColocated       = worker2colocated.second;
 
             if (isColocated) continue;
-
-            // Chunk locking is mandatory. If it's not possible to do this now then
-            // the job will need to make another attempt later.
-
-            if (not controller()->serviceProvider()->chunkLocker().lock({databaseFamily(), chunk}, id())) {
-                ++_numFailedLocks;
-                continue;
-            }
 
             // Iterate over all participating databases, find the ones which aren't
             // represented on the worker, find a suitable source worker which has
@@ -314,61 +270,36 @@ void FixUpJob::_onPrecursorJobFinish() {
                              << __func__ << "  failed to find a source worker for chunk: "
                              << chunk << " and database: " << database);
 
-                        _release(chunk);
                         finish(lock, ExtendedState::FAILED);
-
-                        break;
+                        return;
                     }
 
-                    // Finally, launch the replication request and register it for further
-                    // tracking (or cancellation, should the one be requested)
-
-                    ReplicationRequest::Ptr ptr =
-                        controller()->replicate(
-                            destinationWorker,
-                            sourceWorker,
-                            database,
-                            chunk,
-                            [self] (ReplicationRequest::Ptr ptr) {
-                                self->_onRequestFinish(ptr);
-                            },
-                            0,      /* priority */
-                            true,   /* keepTracking */
-                            true,   /* allowDuplicate */
-                            id()    /* jobId */
-                        );
-
-                    _chunk2requests[chunk][destinationWorker][database] = ptr;
-                    _requests.push_back(ptr);
-                    _numLaunched++;
+                    // Register the replica creation task which will turn into a job.
+                    _destinationWorker2tasks[destinationWorker].emplace(ReplicationTask{
+                        destinationWorker,
+                        sourceWorker,
+                        database,
+                        chunk
+                    });
                 }
             }
-            if (state() == State::FINISHED) break;
         }
-        if (state() == State::FINISHED) break;
     }
-    if (state() != State::FINISHED) {
+    
+    // Launch the initial batch of requests in the number which won't exceed
+    // the number of the service processing threads at each worker multiplied
+    // by the number of workers involved into the operation.
+    size_t const maxRequestsPerWorker =
+        controller()->serviceProvider()->config()->workerNumProcessingThreads();
 
-        // ATTENTION: We need to evaluate reasons why no single request was
-        // launched while the job is still in the unfinished state and take
-        // proper actions. Otherwise (if this isn't done here) the object will
-        // get into a "zombie" state.
+    for (auto&& itr: _destinationWorker2tasks) {
+        auto&& destinationWorker = itr.first;
+        _launchNext(lock, destinationWorker, maxRequestsPerWorker);
+    }
 
-        if (not _requests.size()) {
-
-            // Finish right away if no problematic chunks found
-
-            if (not _numFailedLocks) {
-                finish(lock, ExtendedState::SUCCESS);
-            } else {
-
-                // Some of the chunks were locked and yet, no single request was
-                // lunched. Hence we should start another iteration by requesting
-                // the fresh state of the chunks within the family.
-
-                _restart(lock);
-            }
-        }
+    // In case if everything is alright, and no fix-ups were needed.
+    if (_requests.empty()) {
+        finish(lock, ExtendedState::SUCCESS);
     }
 }
 
@@ -380,80 +311,70 @@ void FixUpJob::_onRequestFinish(ReplicationRequest::Ptr const& request) {
     unsigned int const chunk    = request->chunk();
 
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << " "
-         << " database=" << database
-         << " worker="   << worker
-         << " chunk="    << chunk);
+         << " database=" << database << " worker=" << worker << " chunk=" << chunk);
 
-    if (state() == State::FINISHED)  {
-        _release(chunk);
-        return;
-    }
+    if (state() == State::FINISHED) return;
 
     util::Lock lock(_mtx, context() + __func__);
 
-    if (state() == State::FINISHED) {
-        _release(chunk);
-        return;
-    }
+    if (state() == State::FINISHED) return;
 
-    // Update counters and object state if needed.
     _numFinished++;
     if (request->extendedState() == Request::ExtendedState::SUCCESS) {
         _numSuccess++;
         _replicaData.replicas.push_back(request->responseData());
         _replicaData.chunks[chunk][database][worker] = request->responseData();
-        _replicaData.workers[worker] = true;
     } else {
-        _replicaData.workers[worker] = false;
+        _replicaData.workers[worker]++;
     }
 
-    // Make sure the chunk is released if this was the last
-    // request in its scope.
-
-    _chunk2requests.at(chunk).at(worker).erase(database);
-    if (_chunk2requests.at(chunk).at(worker).empty()) {
-        _chunk2requests.at(chunk).erase(worker);
-        if (_chunk2requests.at(chunk).empty()) {
-            _chunk2requests.erase(chunk);
-            _release(chunk);
-        }
-    }
-
-    // Evaluate the status of on-going operations to see if the job
-    // has finished.
-
-    if (_numFinished == _numLaunched) {
-        if (_numSuccess == _numLaunched) {
-            if (_numFailedLocks) {
-                
-                // Make another iteration (and another one, etc. as many as needed)
-                // before it succeeds or fails.
-
-                _restart(lock);
-                return;
-
-            } else {
-                finish(lock,
-                       ExtendedState::SUCCESS);
-            }
-        } else {
-            finish(lock,
-                   ExtendedState::FAILED);
+    // Launch a replacement request for the worker and check if this was the very
+    // last request in flight and no more are ready to be lunched.
+    if (0 == _launchNext(lock, worker, 1)) {
+        if (_numFinished == _requests.size()) {
+            finish(lock, _numSuccess == _numFinished ? ExtendedState::SUCCESS :
+                                                       ExtendedState::FAILED);
         }
     }
 }
 
 
-void FixUpJob::_release(unsigned int chunk) {
+size_t FixUpJob::_launchNext(util::Lock const& lock,
+                             string const& destinationWorker,
+                             size_t maxRequests) {
 
-    // THREAD-SAFETY NOTE: This method is thread-agnostic because it's trading
-    // a static context of the request with an external service which is guaranteed
-    // to be thread-safe.
+    if (maxRequests == 0) return 0;
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "  chunk=" << chunk);
+    auto const self = shared_from_base<FixUpJob>();
+    auto&& tasks = _destinationWorker2tasks[destinationWorker];
 
-    Chunk chunkObj {databaseFamily(), chunk};
-    controller()->serviceProvider()->chunkLocker().release(chunkObj);
+    size_t numLaunched = 0;
+    for (size_t i = 0; i < maxRequests; ++i) {
+
+        if (tasks.size() == 0) break;
+
+        // Launch the replication request and register it for further
+        // tracking (or cancellation, should the one be requested)
+
+        ReplicationTask const& task = tasks.front();
+
+        _requests.push_back(controller()->replicate(
+            task.destinationWorker,
+            task.sourceWorker,
+            task.database,
+            task.chunk,
+            [self] (ReplicationRequest::Ptr const& ptr) {
+                self->_onRequestFinish(ptr);
+            },
+            0,      /* priority */
+            true,   /* keepTracking */
+            true,   /* allowDuplicate */
+            id()    /* jobId */
+        ));
+        tasks.pop();
+        numLaunched++;
+    }
+    return numLaunched;
 }
 
 }}} // namespace lsst::qserv::replica

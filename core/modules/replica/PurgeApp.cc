@@ -71,20 +71,18 @@ PurgeApp::PurgeApp(int argc, char* argv[])
     parser().required(
         "database-family",
         "The name of a database family",
-        _databaseFamily);
-
-    parser().option(
+        _databaseFamily
+    ).option(
         "replicas",
         "The maximum number of replicas to be left for each chunk (leaving"
         " it to the default value 0 will pull the actual value of the parameter"
         " from the Configuration).",
         _replicas
-    );
-
-    parser().option(
+    ).option(
         "tables-page-size",
         "The number of rows in the table of replicas (0 means no pages).",
-        _pageSize);
+        _pageSize
+    );
 }
 
 
@@ -102,7 +100,7 @@ int PurgeApp::runImpl() {
     replica::printAsTable("DELETED REPLICAS", "  ", job->getReplicaData().chunks, cout, _pageSize);
     cout << "\n";
 
-    return 0;
+    return job->extendedState() == Job::SUCCESS ? 0 : 1;
 }
 
 }}} // namespace lsst::qserv::replica
