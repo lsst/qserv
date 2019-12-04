@@ -82,7 +82,7 @@ public:
      */
     static Ptr create(std::string const& database,
                       std::string const& table,
-                      uint32_t transactionId,
+                      TransactionId transactionId,
                       bool allWorkers,
                       Controller::Ptr const& controller,
                       std::string const& parentJobId=std::string(),
@@ -117,7 +117,7 @@ protected:
 private:
     SqlDeleteTablePartitionJob(std::string const& database,
                                std::string const& table,
-                               uint32_t transactionId,
+                               TransactionId transactionId,
                                bool allWorkers,
                                Controller::Ptr const& controller,
                                std::string const& parentJobId,
@@ -128,7 +128,7 @@ private:
 
     std::string const _database;
     std::string const _table;
-    uint32_t const _transactionId;
+    TransactionId const _transactionId;
 
     CallbackType _onFinish;     /// @note is reset when the job finishes
 

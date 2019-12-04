@@ -241,7 +241,7 @@ string WorkerIndexRequest::_query(database::mysql::Connection::Ptr const& conn) 
         conn->sqlId(databaseInfo.directorTable + "_" + to_string(_request.chunk()));
 
     string const partitionRestrictorEscaped =
-        qservTransId.empty() ? string() : "PARTITION (" + conn->sqlId("p" + to_string(_request.transaction_id())) + ")";
+        qservTransId.empty() ? string() : "PARTITION (" + conn->sqlPartitionId(_request.transaction_id()) + ")";
 
     string const orderByEscaped =
         (qservTransId.empty() ? string() : conn->sqlId(qservTransId) + ",") +

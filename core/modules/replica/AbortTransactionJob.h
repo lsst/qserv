@@ -31,6 +31,7 @@
 // Qserv headers
 #include "replica/Controller.h"
 #include "replica/SqlDeleteTablePartitionJob.h"
+#include "replica/SqlJobResult.h"
 
 // This header declarations
 namespace lsst {
@@ -114,13 +115,9 @@ public:
     std::list<std::pair<std::string,std::string>> persistentLogData() const final;
 
 protected:
-
     void startImpl(util::Lock const& lock) final;
-
     void cancelImpl(util::Lock const& lock) final;
-
     void notify(util::Lock const& lock) final;
-
 
 private:
     AbortTransactionJob(TransactionId transactionId,

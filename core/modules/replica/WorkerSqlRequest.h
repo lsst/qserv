@@ -50,7 +50,7 @@ namespace replica {
  * @note Queries passed into this operation are supposed to be well formed.
  * If a MySQL error would occur during an attempt to execute an incorrectly
  * formed query then the corresponding MySQL error will be recorded
- * and report to a caller in the reponse structure which is set
+ * and reported to a caller in the response structure which is set
  * by method WorkerSqlRequest::setInfo().
  */
 class WorkerSqlRequest : public WorkerRequest {
@@ -67,7 +67,7 @@ public:
      *
      * @param serviceProvider It's needed to access the Configuration of a setup
      *   and for validating the input parameters
-     * @param worker> The name of a worker. The name must match the worker which
+     * @param worker The name of a worker. The name must match the worker which
      *   is going to execute the request.
      * @param id An identifier of a client request
      * @param request The ProtoBuf body of the original request
@@ -119,15 +119,15 @@ private:
     std::string _query(std::shared_ptr<database::mysql::Connection> const& conn) const;
 
     /**
-     * An alternative query generator for the "batch" requests which involve
-     * a table uses parameters of a request and the name of a table
+     * An alternative query generator for the "batch" requests for the specified
+     * table. The generator uses parameters of a request and the name of a table
      * to compose a desired query. Only a subset of requests can be
      * executed in the "batch" mode.
      * @param conn A reference to the database connector is needed to process
      *   arguments to meet requirements of the database query processing engine.
      * @param table The name of table affected by the query.
      * @return A query as per the input request and the name of a table.
-     * @throws std::invalid_argument For unsupported requests types supported.
+     * @throws std::invalid_argument For unsupported requests types.
      */
     std::string _batchQuery(database::mysql::Connection::Ptr const& conn,
                             std::string const& table) const;

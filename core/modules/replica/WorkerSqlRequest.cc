@@ -291,7 +291,7 @@ string WorkerSqlRequest::_query(database::mysql::Connection::Ptr const& conn) co
 
         case ProtocolRequestSql::DROP_TABLE_PARTITION:
             return "ALTER TABLE " + databaseTable + " DROP PARTITION IF EXISTS " +
-                   conn->sqlId("p" + to_string(_request.transaction_id()));
+                   conn->sqlPartitionId(_request.transaction_id());
 
         default:
             throw invalid_argument(
@@ -312,7 +312,7 @@ string WorkerSqlRequest::_batchQuery(database::mysql::Connection::Ptr const& con
 
         case ProtocolRequestSql::DROP_TABLE_PARTITION:
             return "ALTER TABLE " + databaseTable + " DROP PARTITION IF EXISTS "
-                   + conn->sqlId("p" + to_string(_request.transaction_id()));
+                   + conn->sqlPartitionId(_request.transaction_id());
 
         case ProtocolRequestSql::REMOVE_TABLE_PARTITIONING:
             return "ALTER TABLE " + databaseTable + " REMOVE PARTITIONING";

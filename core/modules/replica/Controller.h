@@ -411,7 +411,7 @@ public:
             std::string const& workerName,
             std::string const& database,
             std::vector<std::string> const& tables,
-            uint32_t transactionId,
+            TransactionId transactionId,
             std::function<void(SqlDeleteTablePartitionRequestPtr)> const& onFinish=nullptr,
             int priority=0,
             bool keepTracking=true,

@@ -50,7 +50,7 @@ string SqlDeleteTablePartitionJob::typeName() { return "SqlDeleteTablePartitionJ
 SqlDeleteTablePartitionJob::Ptr SqlDeleteTablePartitionJob::create(
         string const& database,
         string const& table,
-        uint32_t transactionId,
+        TransactionId transactionId,
         bool allWorkers,
         Controller::Ptr const& controller,
         string const& parentJobId,
@@ -73,7 +73,7 @@ SqlDeleteTablePartitionJob::Ptr SqlDeleteTablePartitionJob::create(
 SqlDeleteTablePartitionJob::SqlDeleteTablePartitionJob(
         string const& database,
         string const& table,
-        uint32_t transactionId,
+        TransactionId transactionId,
         bool allWorkers,
         Controller::Ptr const& controller,
         string const& parentJobId,

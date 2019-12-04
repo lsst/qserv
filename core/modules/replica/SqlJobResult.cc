@@ -76,7 +76,7 @@ util::ColumnTablePrinter SqlJobResult::toColumnTable(
         string const& indent,
         bool verticalSeparator,
         bool reportAll,
-        string scopeName) const {
+        string const& scopeName) const {
 
     vector<string> workers;
     vector<string> scopes;

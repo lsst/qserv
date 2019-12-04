@@ -37,7 +37,7 @@ namespace qserv {
 namespace replica {
 
 /**
- * Class SqlRemoveTablePartitionsJob represents a tool which will broadcast
+ * Class SqlRemoveTablePartitionsJob represents a tool that will broadcast
  * the same request for removing MySQL partitions from existing table from all
  * worker databases of a setup.
  * 
@@ -103,10 +103,10 @@ public:
      * @param database the name of a database from which a table will be deleted
      * @param table the name of an existing table to be affected by the operation
      * @param allWorkers engage all known workers regardless of their status.
-     *   If the flag is set to 'false' then only 'ENABLED' workers which are
-     *   not in the 'READ-ONLY' state will be involved into the operation.
+     *   If the flag is set to 'false' then only 'ENABLED' workers that are
+     *   not in the 'READ-ONLY' sub-state will be involved into the operation.
      * @param ignoreNonPartitioned if 'true' then don't report as errors tables
-     *   which don't have MySQL partitions. Those partitions may have already been
+     *   that don't have MySQL partitions. Those partitions may have already been
      *   removed by a previous attempt to run this algorithm. 
      * @param controller is needed launching requests and accessing the Configuration
      * @param parentJobId (optional) identifier of a parent job
@@ -164,7 +164,7 @@ private:
 
     CallbackType _onFinish;     /// @note is reset when the job finishes
 
-    /// A registry of workers to mark those for which request has been sent.
+    /// A registry of workers to mark the ones that has been processed.
     /// The registry prevents duplicate requests because exactly one
     /// such request is permitted to be sent to each worker.
     std::set<std::string> _workers;

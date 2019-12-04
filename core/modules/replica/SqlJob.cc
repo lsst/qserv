@@ -224,10 +224,12 @@ vector<vector<string>> SqlJob::distributeTables(vector<string> const& allTables,
     // then we won't be constructing empty bins.
     vector<vector<string>> tablesPerBin(min(numBins, allTables.size()));
 
-    // The trivial 'round-robin' 
-    for (size_t i=0; i<allTables.size(); ++i) {
-        auto const bin = i % tablesPerBin.size();
-        tablesPerBin[bin].push_back(allTables[i]);
+    if (not tablesPerBin.empty()) {
+        // The trivial 'round-robin' 
+        for (size_t i=0; i<allTables.size(); ++i) {
+            auto const bin = i % tablesPerBin.size();
+            tablesPerBin[bin].push_back(allTables[i]);
+        }
     }
     return tablesPerBin;
 }

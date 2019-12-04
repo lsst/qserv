@@ -610,7 +610,7 @@ message ProtocolResponseSqlResultSet {
     optional string scope = 1 [default = ""];
 
     /// Extended status of an operation in a scope of a query. It needs to be
-    /// explicitly set for queries with a different outcome (wether they succeeded
+    /// explicitly set for queries with a different outcome (if they succeeded
     /// or failed due to a specific problem). The successful completion of a query
     /// is indicated by status set to NONE.
     optional ProtocolStatusExt status_ext = 2 [default = MYSQL_ERROR];

@@ -514,7 +514,7 @@ SqlDeleteTablePartitionRequest::Ptr Controller::sqlDeleteTablePartition(
         string const& workerName,
         string const& database,
         vector<string> const& tables,
-        uint32_t transactionId,
+        TransactionId transactionId,
         SqlDeleteTablePartitionRequest::CallbackType const& onFinish,
         int priority,
         bool keepTracking,

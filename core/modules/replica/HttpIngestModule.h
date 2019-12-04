@@ -160,7 +160,7 @@ private:
 
     /**
      * Return connection parameters of the ingest servers of all workers
-     * where the regular tbles would have to be loaded.
+     * where the regular tables would have to be loaded.
      */
     void _getRegular(qhttp::Request::Ptr const& req,
                      qhttp::Response::Ptr const& resp);

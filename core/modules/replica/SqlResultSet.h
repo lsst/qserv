@@ -179,9 +179,9 @@ public:
     /// based on a value of the extended status of each result set.
     bool hasErrors() const;
 
-    /// @return 'true' if all errors are of the specified \desiredExtendedStatus
+    /// @return 'true' if all errors are of the specified 'status'
     /// @note this method should be used together with method SqlResultSet::hasErrors().
-    bool allErrorsOf(ExtendedCompletionStatus desiredExtendedStatus) const;
+    bool allErrorsOf(ExtendedCompletionStatus status) const;
     
     /**
      * Look for errors in the result sets based on a value of the extended
@@ -189,12 +189,12 @@ public:
      * the first error found in there (if any).
      *
      * @return a string formatted as <scope>:<extendedStatus>:<MySQL error>
-     * if a error was found, or the empty string otherwise
+     * if an error was found, or the empty string otherwise
      */
     std::string firstError() const;
 
-    /// @return a collection of all errors as strings formatted in a result
-    /// returned by method SqlResultSet::firstError()
+    /// @return a collection of all error strings formatted in the same way as
+    /// results returned by method SqlResultSet::firstError()
     /// @see SqlResultSet::firstError()
     std::vector<std::string> allErrors() const;
 };

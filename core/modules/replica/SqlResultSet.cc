@@ -23,6 +23,7 @@
 #include "replica/SqlResultSet.h"
 
 // System headers
+#include <algorithm>
 #include <stdexcept>
 
 // Third party headers
@@ -232,35 +233,25 @@ json SqlResultSet::toJson() const {
 
 
 bool SqlResultSet::hasErrors() const {
-    for (auto&& itr: queryResultSet) {
-        auto&& result = itr.second;
-        if (result.extendedStatus != ExtendedCompletionStatus::EXT_STATUS_NONE) {
-            return true;
-        }
-    }
-    return false;
+    return any_of(queryResultSet.cbegin(), queryResultSet.cend(), [](auto const& elem) {
+        return elem.second.extendedStatus != ExtendedCompletionStatus::EXT_STATUS_NONE;
+    });
 }
 
-bool SqlResultSet::allErrorsOf(ExtendedCompletionStatus desiredExtendedStatus) const {
-    for (auto&& itr: queryResultSet) {
-        auto&& result = itr.second;
-        if (result.extendedStatus != desiredExtendedStatus) {
-            return false;
-        }
-    }
-    return true;
+bool SqlResultSet::allErrorsOf(ExtendedCompletionStatus status) const {
+    return not any_of(queryResultSet.cbegin(), queryResultSet.cend(), [status](auto const& elem) {
+        return elem.second.extendedStatus != status;
+    });
 }
 
 
 string SqlResultSet::firstError() const {
-    for (auto&& itr: queryResultSet) {
-        auto&& scope = itr.first;
-        auto&& result = itr.second;
-        if (result.extendedStatus != ExtendedCompletionStatus::EXT_STATUS_NONE) {
-            return scope + ":" + status2string(result.extendedStatus) + ":" + result.error;
-        }
-    }
-    return string();
+    auto const itr = find_if(queryResultSet.cbegin(), queryResultSet.cend(), [](auto const& elem) {
+        return elem.second.extendedStatus != ExtendedCompletionStatus::EXT_STATUS_NONE;
+    });
+    return itr == queryResultSet.cend()
+        ? string()
+        : itr->first + ":" + status2string(itr->second.extendedStatus) + ":" + itr->second.error;
 }
 
 

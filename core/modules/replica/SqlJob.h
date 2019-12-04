@@ -90,13 +90,13 @@ protected:
      *   available memory, etc.
      * @param allWorkers engage all known workers regardless of their status.
      *   If the flag is set to 'false' then only 'ENABLED' workers which are not
-     *   in the 'READ-ONLY' state will be involved into the operation.
+     *   in the 'READ-ONLY' sub-state will be involved into the operation.
      * @param controller is needed launching requests and accessing the Configuration
      * @param parentJobId (optional) identifier of a parent job
      * @param jobName the name of a job in the persistent state of the Replication system
      * @param options (optional) defines the job priority, etc.
      * @param ignoreNonPartitioned if 'true' then don't report as errors tables
-     *   which don't have MySQL partitions. Those partitions may have already been
+     *   that don't have MySQL partitions. Those partitions may have already been
      *   removed by a previous attempt to run this algorithm. 
      */
     SqlJob(uint64_t maxRows,
@@ -190,10 +190,10 @@ protected:
 private:
 
     /**
-     * Verify if the database and and the table are known to the Configuration,
-     * and and obtain the partitioning status of the table.
+     * Verify if the database and the table are known to the Configuration,
+     * and obtain the partitioning status of the table.
      *
-     * @return 'true' if this si the partitioned table
+     * @return 'true' if this is the partitioned table
      * @throws std::invalid_argument in case if the database or a table
      *   aren't valid.
      */

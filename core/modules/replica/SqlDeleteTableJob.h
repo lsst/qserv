@@ -67,7 +67,7 @@ public:
      * @param table the name of an existing table to be deleted
      * @param allWorkers engage all known workers regardless of their status.
      *   If the flag is set to 'false' then only 'ENABLED' workers which are not
-     *   in the 'READ-ONLY' state will be involved into the operation.
+     *   in the 'READ-ONLY' sub-state will be involved into the operation.
      * @param controller is needed launching requests and accessing the Configuration
      * @param parentJobId (optional) identifier of a parent job
      * @param onFinish (optional) callback function to be called upon a completion

@@ -183,7 +183,7 @@ void AbortTransactionJob::startImpl(util::Lock const& lock) {
         job->start();
         _jobs.push_back(job);
     }
-    if (0 == _jobs.size()) {
+    if (_jobs.empty()) {
         finish(lock, ExtendedState::SUCCESS);
     }
 }

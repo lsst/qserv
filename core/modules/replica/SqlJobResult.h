@@ -78,7 +78,7 @@ public:
      *  --------+-------------+--------+-------
      * @code
      *
-     * First three parameters (\caption, \indent, and \verticalSeparator) of
+     * First three parameters ('caption', 'indent', and 'verticalSeparator') of
      * the method are the same as for the constructor of the table printer class.
      * @see class util::ColumnTablePrinter
      *
@@ -94,7 +94,7 @@ public:
                                            std::string const& indent=std::string(),
                                            bool verticalSeparator=true,
                                            bool reportAll=true,
-                                           std::string scopeName="") const;
+                                           std::string const& scopeName="") const;
 
     /**
      * Package results into a summary table which will have the following columns:
@@ -103,7 +103,7 @@ public:
      *  --------+------------+---------+-------------------
      * @code
      *
-     * First three parameters (\caption, \indent, and \verticalSeparator) of
+     * First three parameters ('caption', 'indent', and 'verticalSeparator') of
      * the method are the same as for the constructor of the table printer class.
      * @see class util::ColumnTablePrinter
      */

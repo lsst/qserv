@@ -540,7 +540,7 @@ void HttpIngestModule::_publishDatabase(qhttp::Request::Ptr const& req,
 
     // Run the chunks scanner to ensure new chunks are registered in the persistent
     // store of the Replication system and synchronized with the Qserv workers.
-    // The (fixing, re-balancing, replicating, etc.) will be taken care off by
+    // The (fixing, re-balancing, replicating, etc.) will be taken care of by
     // the Replication system.
     if (not _qservSync(resp, databaseInfo, allWorkers)) return;
 

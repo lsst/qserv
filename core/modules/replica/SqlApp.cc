@@ -326,9 +326,6 @@ int SqlApp::runImpl() {
                 if (resultSet.extendedStatus == ExtendedCompletionStatus::EXT_STATUS_NONE) {
                     numSucceeded++;
                 } else {
-                    if (numFailed.count(resultSet.extendedStatus) == 0) {
-                        numFailed[resultSet.extendedStatus] = 0;
-                    }
                     numFailed[resultSet.extendedStatus]++;
                 }
             }
@@ -339,8 +336,10 @@ int SqlApp::runImpl() {
             cout << "  failed: " << 0 << endl;
         } else {
             cout << "  failed:\n";
-            for (auto&& itr: numFailed) {
-                cout << "    " << status2string(itr.first) << ": " << itr.second << endl;
+            for (auto&& entry: numFailed) {
+                auto const extendedStatus = entry.first;
+                auto const counter = entry.second;
+                cout << "    " << status2string(extendedStatus) << ": " << counter << endl;
             }
         }
         cout << endl;

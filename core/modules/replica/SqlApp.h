@@ -80,7 +80,7 @@ private:
                                 /// This is not the same as SQL's 'LIMIT <num-rows>'.
     bool _allWorkers = false;   /// send the query to all workers regardless of their status
 
-    bool _ignoreNonPartitioned = false; /// To allow (f 'true') running the partitions removal
+    bool _ignoreNonPartitioned = false; /// To allow (if 'true') running the partitions removal
                                         /// job multiple times.
 
     unsigned int _timeoutSec = 300; /// When waiting for the completion of the queries
