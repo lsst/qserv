@@ -258,7 +258,6 @@ void PurgeJob::_onPrecursorJobFinish() {
     FindAllJobResult const& replicaData = _findAllJob->getReplicaData();
 
     // The number of replicas to be deleted for eligible chunks
-    //
     map<unsigned int,int> chunk2numReplicas2delete;
 
     for (auto&& chunk2workers: replicaData.isGood) {
@@ -356,18 +355,15 @@ void PurgeJob::_onPrecursorJobFinish() {
 
             // Remove the select worker from the list, so that the next iteration (if the one
             // will happen) will be not considering this worker for deletion.
-
             goodWorkersOfThisChunk.remove(targetWorker);
 
-            // Finally, register the replica deletion task which will turn into
+            // Register the replica deletion task which will turn into
             // a job affecting all participating databases.
-
             _targetWorker2tasks[targetWorker].emplace(ReplicaPurgeTask{chunk, targetWorker});
 
             // Reduce the worker occupancy count by the number of databases participating
             // in the replica of the chunk, so that it will be taken into
             // consideration when creating next replicas.
-
             worker2occupancy[targetWorker] -= replicaData.databases.at(chunk).size();
         }
     }
@@ -384,7 +380,7 @@ void PurgeJob::_onPrecursorJobFinish() {
     }
 
     // In case if everything is alright, and no replica removals were needed.
-    if (_jobs.size() == 0) {
+    if (_jobs.empty()) {
         finish(lock, ExtendedState::SUCCESS);
     }
 }
@@ -427,7 +423,6 @@ void PurgeJob::_onDeleteJobFinish(DeleteReplicaJob::Ptr const& job) {
                 jobReplicaData.chunks.at(chunk).at(database).at(worker);
         }
     } else {
-        if (_replicaData.workers.count(worker) == 0) _replicaData.workers[worker] = 0;
         _replicaData.workers[worker]++;
     }
 

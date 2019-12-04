@@ -274,9 +274,7 @@ void FixUpJob::_onPrecursorJobFinish() {
                         return;
                     }
 
-                    // Register , launch the replication request and register it for further
-                    // tracking (or cancellation, should the one be requested)
-
+                    // Register the replica creation task which will turn into a job.
                     _destinationWorker2tasks[destinationWorker].emplace(ReplicationTask{
                         destinationWorker,
                         sourceWorker,
@@ -300,7 +298,7 @@ void FixUpJob::_onPrecursorJobFinish() {
     }
 
     // In case if everything is alright, and no fix-ups were needed.
-    if (_requests.size() == 0) {
+    if (_requests.empty()) {
         finish(lock, ExtendedState::SUCCESS);
     }
 }
@@ -327,7 +325,6 @@ void FixUpJob::_onRequestFinish(ReplicationRequest::Ptr const& request) {
         _replicaData.replicas.push_back(request->responseData());
         _replicaData.chunks[chunk][database][worker] = request->responseData();
     } else {
-        if (_replicaData.workers.count(worker) == 0) _replicaData.workers[worker] = 0;
         _replicaData.workers[worker]++;
     }
 
