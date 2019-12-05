@@ -70,11 +70,11 @@ public:
                 }
             }
         }
-        auto column = cr.getColumn();
-        bool addQuotes = column.find(".") != std::string::npos && column.find("`") == std::string::npos;
-        if (addQuotes) { os << "`"; }
-        os << column;
-        if (addQuotes) { os << "`"; }
+        if (queryTemplate.quoteIdentifiers()) {
+            os << "`" << cr.getColumn() << "`";
+        } else {
+            os << cr.getColumn();
+        }
         val = os.str();
     }
     virtual std::string getValue() const {

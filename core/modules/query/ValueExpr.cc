@@ -352,13 +352,18 @@ bool ValueExpr::isSubsetOf(ValueExpr const& valueExpr) const {
 }
 
 
-/** Return a string representation of the object
- *
- * @return a string representation of the object
- */
 std::string ValueExpr::sqlFragment(QueryTemplate::SetAliasMode aliasMode) const {
     // Reuse QueryTemplate-based rendering
     QueryTemplate qt(aliasMode);
+    ValueExpr::render render(qt, false);
+    render.applyToQT(this);
+    return boost::lexical_cast<std::string>(qt);
+}
+
+
+std::string ValueExpr::sqlFragmentNoQuotes(QueryTemplate::SetAliasMode aliasMode) const {
+    QueryTemplate qt(aliasMode);
+    qt.quoteIdentifiers(false);
     ValueExpr::render render(qt, false);
     render.applyToQT(this);
     return boost::lexical_cast<std::string>(qt);
@@ -384,10 +389,14 @@ std::ostream& operator<<(std::ostream& os, ValueExpr const* ve) {
 // ValueExpr::render
 ////////////////////////////////////////////////////////////////////////
 void ValueExpr::render::applyToQT(ValueExpr const& ve) {
-
+    bool quoteIdentifiers = _qt.quoteIdentifiers();
     if (_needsComma && _count++ > 0) { _qt.append(","); }
     if (_qt.getValueExprAliasMode() == QueryTemplate::USE && ve.hasAlias()) {
-        _qt.append("`" + ve._alias + "`");
+        if (quoteIdentifiers) {
+            _qt.append("`" + ve._alias + "`");
+        } else {
+            _qt.append(ve._alias);
+        }
         return;
     }
     auto previousAliasMode = _qt.getAliasMode();
@@ -435,7 +444,14 @@ void ValueExpr::render::applyToQT(ValueExpr const& ve) {
     }
     _qt.setAliasMode(previousAliasMode);
     if (_qt.getValueExprAliasMode() == QueryTemplate::DEFINE) {
-        if (!ve._alias.empty()) { _qt.append("AS"); _qt.append("`" + ve._alias + "`"); }
+        if (!ve._alias.empty()) {
+            _qt.append("AS");
+            if (quoteIdentifiers) {
+                _qt.append("`" + ve._alias + "`");
+            } else {
+                _qt.append(ve._alias);
+            }
+        }
     }
 }
 

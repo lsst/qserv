@@ -205,9 +205,14 @@ std::string TableRef::sqlFragment() const {
 
 void TableRef::putTemplate(QueryTemplate& qt) const {
     auto aliasMode = qt.getTableAliasMode();
+    bool quoteIdentifiers = qt.quoteIdentifiers();
     if (QueryTemplate::USE == aliasMode) {
         if (hasAlias()) {
-            qt.append("`" + _alias + "`");
+            if (quoteIdentifiers) {
+                qt.append("`" + _alias + "`");
+            } else {
+                qt.append(_alias);
+            }
         } else {
             if (!_db.empty()) {
                 qt.append(_db);
@@ -225,7 +230,11 @@ void TableRef::putTemplate(QueryTemplate& qt) const {
     if (QueryTemplate::DEFINE == aliasMode) {
         if (hasAlias()) {
             qt.append("AS");
-            qt.append("`" + _alias + "`");
+            if (quoteIdentifiers) {
+                qt.append("`" + _alias + "`");
+            } else {
+                qt.append(_alias);
+            }
         }
     }
     typedef JoinRefPtrVector::const_iterator Iter;

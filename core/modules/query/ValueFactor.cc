@@ -43,6 +43,9 @@
 #include <iterator>
 #include <sstream>
 
+// Third-party headers
+#include "boost/lexical_cast.hpp"
+
 // Qserv headers
 #include "query/ColumnRef.h"
 #include "query/FuncExpr.h"
@@ -198,7 +201,10 @@ void ValueFactor::render::applyToQT(ValueFactor const& ve) {
     case ValueFactor::AGGFUNC: ve._funcExpr->renderTo(_qt); break;
     case ValueFactor::STAR:
         if (nullptr != ve._tableStar) {
-            _qt.append(ColumnRef(ve._tableStar, "*"));
+            QueryTemplate qt(_qt.getAliasMode());
+            TableRef::render render(qt);
+            render.applyToQT(ve._tableStar);
+            _qt.append(boost::lexical_cast<std::string>(qt) + ".*");
         } else {
             _qt.append("*");
         }

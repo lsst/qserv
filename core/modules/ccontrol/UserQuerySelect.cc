@@ -238,7 +238,7 @@ std::string UserQuerySelect::getResultQuery() const {
                 newValueExpr = query::ValueExpr::newColumnExpr(valueExpr->getAlias());
                 newValueExpr->setAlias(valueExpr->getColumnRef()->getColumn());
             } else {
-                newValueExpr = query::ValueExpr::newColumnExpr("`" + valueExpr->getAlias() + "`");
+                newValueExpr = query::ValueExpr::newColumnExpr(valueExpr->getAlias());
                 newValueExpr->setAlias(valueExpr->getAlias());
             }
             selectList.addValueExpr(newValueExpr);

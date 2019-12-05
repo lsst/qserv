@@ -195,10 +195,19 @@ public:
     /**
      * @brief Get the sql string that this ValueExpr represents
      *
-     * @param aliasOnly if this ValueExpr has an alias and this is true then only the alias
+     * @param aliasMode how this ValueExpr should be represented with regard to its alias.
      * @return std::string
      */
     std::string sqlFragment(QueryTemplate::SetAliasMode aliasMode) const;
+
+    /**
+     * @brief Get the sql string that this ValueExpr represents, without quoting any identifiers.
+     *
+     * @param aliasMode how this ValueExpr should be represented with regard to its alias.
+     * @return std::string
+     */
+    std::string sqlFragmentNoQuotes(QueryTemplate::SetAliasMode aliasMode) const;
+
 
     ValueExprPtr clone() const;
     friend std::ostream& operator<<(std::ostream& os, ValueExpr const& ve);

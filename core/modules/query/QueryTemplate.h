@@ -127,6 +127,12 @@ public:
 
     QueryTemplate(SetAliasMode aliasMode) : _aliasMode(aliasMode) {}
 
+    // set if the output should quote identifiers or not
+    void quoteIdentifiers(bool quoteIdentifiers) { _quoteIdentifiers = quoteIdentifiers; };
+
+    // get if the output should quote identifiers or not
+    bool quoteIdentifiers() const { return _quoteIdentifiers; }
+
     void append(std::string const& s);
     void append(ColumnRef const& cr);
     void append(Entry::Ptr const& e);
@@ -201,6 +207,7 @@ public:
 private:
     EntryPtrVector _entries;
     SetAliasMode _aliasMode{USE_ALIAS};
+    bool _quoteIdentifiers{true}; // if true, identifiers will be quoted.
     bool _useColumnOnly{false}; // if true, ColumnRef won't print db or table, only column name.
 };
 
