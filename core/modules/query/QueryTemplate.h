@@ -127,8 +127,19 @@ public:
 
     QueryTemplate(SetAliasMode aliasMode) : _aliasMode(aliasMode) {}
 
+    /**
+     * @brief Get a version of the identifier that has any needed quoting applied.
+     *
+     * Curently this means putting backtick quotes around the identifier if quoteIdentifiers is set to true,
+     * but may include other formatting as needed in the future.
+     *
+     * @param identifier a reference to a string to be formatted.
+     * @return std::string& a reference to the passed-in string so the function may be used inline.
+     */
+    std::string formatIdentifier(std::string const& identifier) const;
+
     // set if the output should quote identifiers or not
-    void quoteIdentifiers(bool quoteIdentifiers) { _quoteIdentifiers = quoteIdentifiers; };
+    void setQuoteIdentifiers(bool quoteIdentifiers) { _quoteIdentifiers = quoteIdentifiers; };
 
     // get if the output should quote identifiers or not
     bool quoteIdentifiers() const { return _quoteIdentifiers; }
@@ -136,6 +147,9 @@ public:
     void append(std::string const& s);
     void append(ColumnRef const& cr);
     void append(Entry::Ptr const& e);
+
+    // process an identifier string entry with formatIdentifier and append it.
+    void appendIdentifier(std::string const& s);
 
     /** Return a string representation of the object
      *
