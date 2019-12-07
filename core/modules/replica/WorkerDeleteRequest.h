@@ -43,10 +43,7 @@ namespace replica {
   * Real implementations of the request processing must derive from this class.
   */
 class WorkerDeleteRequest : public WorkerRequest {
-
 public:
-
-    /// Pointer to self
     typedef std::shared_ptr<WorkerDeleteRequest> Ptr;
 
     /**
@@ -54,39 +51,28 @@ public:
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
      *
-     * @param serviceProvider
-     *   provider is needed to access the Configuration of a setup
-     *   and for validating the input parameters
-     *
-     * @param worker
-     *   the name of a worker. The name must match the worker which
+     * @param serviceProvider provider is needed to access the Configuration of
+     *   a setup and for validating the input parameters
+     * @param worker The name of a worker. The name must match the worker which
      *   is going to execute the request.
-     *   the name of a worker
-     *
-     * @param id
-     *   an identifier of a client request
-     *
-     * @param priority
-     *   indicates the importance of the request
-     *
-     * @param database
-     *   the name of a database defines a scope of the replica
-     *   lookup operation
-     *
-     * @param chunk
-     *   the chunk whose replicas will be deleted
-     *
-     * @return
-     *   pointer to the created object
+     * @param id an identifier of a client request
+     * @param priority indicates the importance of the request
+     * @param (optional) onExpired request expiration callback function.
+     *   If nullptr is passed as a parameter then the request will never expire.
+     * @param (optional) requestExpirationIvalSec request expiration interval.
+     *   If 0 is passed into the method then a value of the corresponding
+     *   parameter for the Controller-side requests will be pulled from
+     *   the Configuration.
+     * @param request ProtoBuf body of the request
+     * @return pointer to the created object
      */
     static Ptr create(ServiceProvider::Ptr const& serviceProvider,
                       std::string const& worker,
                       std::string const& id,
                       int priority,
-                      std::string const& database,
-                      unsigned int chunk);
-
-    // Default construction and copy semantics are prohibited
+                      ExpirationCallbackType const& onExpired,
+                      unsigned int requestExpirationIvalSec,
+                      ProtocolRequestDelete const& request);
 
     WorkerDeleteRequest() = delete;
     WorkerDeleteRequest(WorkerDeleteRequest const&) = delete;
@@ -96,35 +82,30 @@ public:
 
     // Trivial get methods
 
-    std::string const& database() const { return _database; }
+    std::string const& database() const { return _request.database(); }
 
-    unsigned int chunk() const { return _chunk; }
+    unsigned int chunk() const { return _request.chunk(); }
     
     /**
      * Extract request status into the Protobuf response object.
-     *
-     * @param response
-     *   Protobuf response to be initialized
+     * @param response Protobuf response to be initialized
      */
     void setInfo(ProtocolResponseDelete& response) const;
 
-    /// @see WorkerRequest::execute
     bool execute() override;
 
 protected:
-
-    /// @see WorkerDeleteRequest::create()
     WorkerDeleteRequest(ServiceProvider::Ptr const& serviceProvider,
                         std::string const& worker,
                         std::string const& id,
                         int priority,
-                        std::string const& database,
-                        unsigned int chunk);
+                        ExpirationCallbackType const& onExpired,
+                        unsigned int requestExpirationIvalSec,
+                        ProtocolRequestDelete const& request);
 
     // Input parameters
 
-    std::string  const _database;
-    unsigned int const _chunk;
+    ProtocolRequestDelete const _request;
 
     /// Extended status of the replica deletion request
     ReplicaInfo _replicaInfo;
@@ -136,21 +117,16 @@ protected:
   * a POSIX file system.
   */
 class WorkerDeleteRequestPOSIX : public WorkerDeleteRequest {
-
 public:
-
-    /// Pointer to self
     typedef std::shared_ptr<WorkerDeleteRequestPOSIX> Ptr;
 
-    /// @see WorkerDeleteRequest::create()
     static Ptr create(ServiceProvider::Ptr const& serviceProvider,
                       std::string const& worker,
                       std::string const& id,
                       int priority,
-                      std::string const& database,
-                      unsigned int chunk);
-
-    // Default construction and copy semantics are prohibited
+                      ExpirationCallbackType const& onExpired,
+                      unsigned int requestExpirationIvalSec,
+                      ProtocolRequestDelete const& request);
 
     WorkerDeleteRequestPOSIX() = delete;
     WorkerDeleteRequestPOSIX(WorkerDeleteRequestPOSIX const&) = delete;
@@ -158,18 +134,16 @@ public:
 
     ~WorkerDeleteRequestPOSIX() final = default;
 
-    /// @see WorkerDeleteRequest::execute()
     bool execute() final;
 
 private:
-
-    /// @see WorkerDeleteRequestPOSIX::create()
     WorkerDeleteRequestPOSIX(ServiceProvider::Ptr const& serviceProvider,
                              std::string const& worker,
                              std::string const& id,
                              int priority,
-                             std::string const& database,
-                             unsigned int chunk);
+                             ExpirationCallbackType const& onExpired,
+                             unsigned int requestExpirationIvalSec,
+                             ProtocolRequestDelete const& request);
 };
 
 /**

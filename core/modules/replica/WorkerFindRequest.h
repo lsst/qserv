@@ -48,10 +48,7 @@ namespace replica {
   * Real implementations of the request processing must derive from this class.
   */
 class WorkerFindRequest : public WorkerRequest {
-
 public:
-
-    /// Pointer to self
     typedef std::shared_ptr<WorkerFindRequest> Ptr;
 
     /**
@@ -59,43 +56,28 @@ public:
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
      *
-     * @param serviceProvider
-     *   provider is needed to access the Configuration of a setup
-     *   and for validating the input parameters
-     *
-     * @param worker
-     *   the name of a worker. The name must match the worker which
+     * @param serviceProvider provider is needed to access the Configuration of
+     *   a setup and for validating the input parameters
+     * @param worker the name of a worker. The name must match the worker which
      *   is going to execute the request.
-     *
-     * @param id
-     *   an identifier of a client request
-     * 
-     * @param priority
-     *   indicates the importance of the request
-     *
-     * @param database
-     *   the name of a database defines a scope of the replica
-     *   lookup operation
-     *
-     * @param chunk
-     *   the chunk whose replicas will be looked for
-     *
-     * @param computeCheckSum
-     *   flag indicating if check/control sums should be
-     *   computed on all files of the chunk
-     *
-     * @return
-     *   pointer to the created object
+     * @param id an identifier of a client request
+     * @param priority indicates the importance of the request
+     * @param (optional) onExpired request expiration callback function.
+     *   If nullptr is passed as a parameter then the request will never expire.
+     * @param (optional) requestExpirationIvalSec request expiration interval.
+     *   If 0 is passed into the method then a value of the corresponding
+     *   parameter for the Controller-side requests will be pulled from
+     *   the Configuration.
+     * @param request ProtoBuf body of the request
+     * @return pointer to the created object
      */
     static Ptr create(ServiceProvider::Ptr const& serviceProvider,
                       std::string const& worker,
                       std::string const& id,
                       int priority,
-                      std::string const& database,
-                      unsigned int chunk,
-                      bool computeCheckSum);
-
-    // Default construction and copy semantics are prohibited
+                      ExpirationCallbackType const& onExpired,
+                      unsigned int requestExpirationIvalSec,
+                      ProtocolRequestFind const& request);
 
     WorkerFindRequest() = delete;
     WorkerFindRequest(WorkerFindRequest const&) = delete;
@@ -105,40 +87,33 @@ public:
 
     // Trivial get methods
 
-    std::string const& database() const { return _database; }
+    std::string const& database() const { return _request.database(); }
 
-    unsigned int chunk() const { return _chunk; }
+    unsigned int chunk() const { return _request.chunk(); }
 
-    bool computeCheckSum() const { return _computeCheckSum; }
+    bool computeCheckSum() const { return _request.compute_cs(); }
 
     /**
      * Extract request status into the Protobuf response object.
-     *
-     * @param response
-     *   Protobuf response to be initialized
+     * @param response Protobuf response to be initialized
      */
     void setInfo(ProtocolResponseFind& response) const;
 
-    /// @see WorkerRequest::execute
     bool execute() override;
 
 protected:
-
-    /// @see WorkerFindRequest::create()
     WorkerFindRequest(ServiceProvider::Ptr const& serviceProvider,
                       std::string const& worker,
                       std::string const& id,
                       int priority,
-                      std::string const& database,
-                      unsigned int chunk,
-                      bool computeCheckSum);
+                      ExpirationCallbackType const& onExpired,
+                      unsigned int requestExpirationIvalSec,
+                      ProtocolRequestFind const& request);
 
 
     // Input parameters
 
-    std::string  const _database;
-    unsigned int const _chunk;
-    bool         const _computeCheckSum;
+    ProtocolRequestFind const _request;
 
     /// Result of the operation
     ReplicaInfo _replicaInfo;
@@ -150,30 +125,17 @@ protected:
   * a POSIX file system.
   */
 class WorkerFindRequestPOSIX : public WorkerFindRequest {
-
 public:
-
-    /// Pointer to self
     typedef std::shared_ptr<WorkerFindRequestPOSIX> Ptr;
 
-    /**
-     * Static factory method is needed to prevent issue with the lifespan
-     * and memory management of instances created otherwise (as values or via
-     * low-level pointers).
-     * 
-     * For a description of parameters:
-     * 
-     * @see WorkerFindRequestPOSIX::create()
-     */
+    /// @see WorkerFindRequestPOSIX::create()
     static Ptr create(ServiceProvider::Ptr const& serviceProvider,
                       std::string const& worker,
                       std::string const& id,
                       int priority,
-                      std::string const& database,
-                      unsigned int chunk,
-                      bool computeCheckSum);
-
-    // Default construction and copy semantics are prohibited
+                      ExpirationCallbackType const& onExpired,
+                      unsigned int requestExpirationIvalSec,
+                      ProtocolRequestFind const& request);
 
     WorkerFindRequestPOSIX() = delete;
     WorkerFindRequestPOSIX(WorkerFindRequestPOSIX const&) = delete;
@@ -181,19 +143,16 @@ public:
 
     ~WorkerFindRequestPOSIX() final = default;
 
-    /// @see WorkerFindRequest::execute
     bool execute() final;
 
 private:
-
-    /// @see WorkerFindRequestPOSIX::create()
     WorkerFindRequestPOSIX(ServiceProvider::Ptr const& serviceProvider,
                            std::string const& worker,
                            std::string const& id,
                            int priority,
-                           std::string const& database,
-                           unsigned int chunk,
-                           bool computeCheckSum);
+                           ExpirationCallbackType const& onExpired,
+                           unsigned int requestExpirationIvalSec,
+                           ProtocolRequestFind const& request);
 
     
     /// The engine for incremental control sum calculation

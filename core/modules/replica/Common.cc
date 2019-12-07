@@ -179,43 +179,37 @@ string Generators::uniqueId() {
 ////////////////////////////////////////////
 
 ReplicationRequestParams::ReplicationRequestParams(ProtocolRequestReplicate const& request)
-    :   priority(request.priority()),
-        database(request.database()),
+    :   database(request.database()),
         chunk(request.chunk()),
         sourceWorker(request.worker()) {
 }
 
 
 DeleteRequestParams::DeleteRequestParams(ProtocolRequestDelete const& request)
-    :   priority(request.priority()),
-        database(request.database()),
+    :   database(request.database()),
         chunk(request.chunk()) {
 }
 
 
 FindRequestParams::FindRequestParams(ProtocolRequestFind const& request)
-    :   priority(request.priority()),
-        database(request.database()),
+    :   database(request.database()),
         chunk(request.chunk()) {
 }
 
 
 FindAllRequestParams::FindAllRequestParams(ProtocolRequestFindAll const& request)
-    :   priority(request.priority()),
-        database(request.database()) {
+    :   database(request.database()) {
 }
 
 
 EchoRequestParams::EchoRequestParams(ProtocolRequestEcho const& request)
-    :   priority(request.priority()),
-        data(request.data()),
+    :   data(request.data()),
         delay(request.delay()) {
 }
 
 
 SqlRequestParams::SqlRequestParams(ProtocolRequestSql const& request)
-    :   priority(request.priority()),
-        maxRows(request.max_rows()) {
+    :   maxRows(request.max_rows()) {
 
     auto const requestType = request.type();
     switch (requestType) {
@@ -314,8 +308,7 @@ ostream& operator<<(ostream& os, SqlRequestParams const& params) {
 
 
 IndexRequestParams::IndexRequestParams(ProtocolRequestIndex const& request)
-    :   priority(request.priority()),
-        database(request.database()),
+    :   database(request.database()),
         chunk(request.chunk()),
         hasTransactions(request.has_transactions()),
         transactionId(request.transaction_id()) {

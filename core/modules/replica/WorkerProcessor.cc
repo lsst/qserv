@@ -45,6 +45,7 @@
 #include "lsst/log/Log.h"
 
 using namespace std;
+using namespace std::placeholders;
 using namespace lsst::qserv::replica;
 
 namespace {
@@ -217,9 +218,11 @@ void WorkerProcessor::reconfig() {
 
 
 void WorkerProcessor::enqueueForReplication(
-                            string const& id,
-                            ProtocolRequestReplicate const& request,
-                            ProtocolResponseReplicate& response) {
+        string const& id,
+        int32_t priority,
+        unsigned int requestExpirationIvalSec,
+        ProtocolRequestReplicate const& request,
+        ProtocolResponseReplicate& response) {
 
     LOGS(_log, LOG_LVL_DEBUG, _context(__func__)
         << "  id: "     << id
@@ -247,10 +250,10 @@ void WorkerProcessor::enqueueForReplication(
         auto const ptr = _requestFactory.createReplicationRequest(
             _worker,
             id,
-            request.priority(),
-            request.database(),
-            request.chunk(),
-            request.worker()
+            priority,
+            bind(&WorkerProcessor::dispose, shared_from_this(), _1),
+            requestExpirationIvalSec,
+            request
         );
         _newRequests.push(ptr);
 
@@ -271,6 +274,8 @@ void WorkerProcessor::enqueueForReplication(
 
 
 void WorkerProcessor::enqueueForDeletion(string const& id,
+                                         int32_t priority,
+                                         unsigned int requestExpirationIvalSec,
                                          ProtocolRequestDelete const& request,
                                          ProtocolResponseDelete& response) {
 
@@ -299,9 +304,10 @@ void WorkerProcessor::enqueueForDeletion(string const& id,
         auto const ptr = _requestFactory.createDeleteRequest(
             _worker,
             id,
-            request.priority(),
-            request.database(),
-            request.chunk()
+            priority,
+            bind(&WorkerProcessor::dispose, shared_from_this(), _1),
+            requestExpirationIvalSec,
+            request
         );
         _newRequests.push(ptr);
 
@@ -322,6 +328,8 @@ void WorkerProcessor::enqueueForDeletion(string const& id,
 
 
 void WorkerProcessor::enqueueForFind(string const& id,
+                                     int32_t priority,
+                                     unsigned int requestExpirationIvalSec,
                                      ProtocolRequestFind const& request,
                                      ProtocolResponseFind& response) {
 
@@ -340,10 +348,10 @@ void WorkerProcessor::enqueueForFind(string const& id,
         auto const ptr = _requestFactory.createFindRequest(
             _worker,
             id,
-            request.priority(),
-            request.database(),
-            request.chunk(),
-            request.compute_cs()
+            priority,
+            bind(&WorkerProcessor::dispose, shared_from_this(), _1),
+            requestExpirationIvalSec,
+            request
         );
         _newRequests.push(ptr);
     
@@ -364,6 +372,8 @@ void WorkerProcessor::enqueueForFind(string const& id,
 
 
 void WorkerProcessor::enqueueForFindAll(string const& id,
+                                        int32_t priority,
+                                        unsigned int requestExpirationIvalSec,
                                         ProtocolRequestFindAll const& request,
                                         ProtocolResponseFindAll& response) {
 
@@ -380,8 +390,10 @@ void WorkerProcessor::enqueueForFindAll(string const& id,
         auto const ptr = _requestFactory.createFindAllRequest(
             _worker,
             id,
-            request.priority(),
-            request.database()
+            priority,
+            bind(&WorkerProcessor::dispose, shared_from_this(), _1),
+            requestExpirationIvalSec,
+            request
         );
         _newRequests.push(ptr);
     
@@ -402,6 +414,8 @@ void WorkerProcessor::enqueueForFindAll(string const& id,
 
 
 void WorkerProcessor::enqueueForEcho(string const& id,
+                                     int32_t priority,
+                                     unsigned int requestExpirationIvalSec,
                                      ProtocolRequestEcho const& request,
                                      ProtocolResponseEcho& response) {
 
@@ -436,9 +450,10 @@ void WorkerProcessor::enqueueForEcho(string const& id,
         auto const ptr = _requestFactory.createEchoRequest(
             _worker,
             id,
-            request.priority(),
-            request.data(),
-            request.delay()
+            priority,
+            bind(&WorkerProcessor::dispose, shared_from_this(), _1),
+            requestExpirationIvalSec,
+            request
         );
         _newRequests.push(ptr);
     
@@ -459,6 +474,8 @@ void WorkerProcessor::enqueueForEcho(string const& id,
 
 
 void WorkerProcessor::enqueueForSql(std::string const& id,
+                                    int32_t priority,
+                                    unsigned int requestExpirationIvalSec,
                                     ProtocolRequestSql const& request,
                                     ProtocolResponseSql& response) {
 
@@ -477,6 +494,9 @@ void WorkerProcessor::enqueueForSql(std::string const& id,
         auto const ptr = _requestFactory.createSqlRequest(
             _worker,
             id,
+            priority,
+            bind(&WorkerProcessor::dispose, shared_from_this(), _1),
+            requestExpirationIvalSec,
             request
         );
         _newRequests.push(ptr);
@@ -498,6 +518,8 @@ void WorkerProcessor::enqueueForSql(std::string const& id,
 
 
 void WorkerProcessor::enqueueForIndex(string const& id,
+                                      int32_t priority,
+                                      unsigned int requestExpirationIvalSec,
                                       ProtocolRequestIndex const& request,
                                       ProtocolResponseIndex& response) {
 
@@ -517,6 +539,9 @@ void WorkerProcessor::enqueueForIndex(string const& id,
         auto const ptr = _requestFactory.createIndexRequest(
             _worker,
             id,
+            priority,
+            bind(&WorkerProcessor::dispose, shared_from_this(), _1),
+            requestExpirationIvalSec,
             request
         );
         _newRequests.push(ptr);
@@ -802,6 +827,13 @@ void WorkerProcessor::_setServiceResponseInfo(
     }
     info->set_id(request->id());
     info->set_priority(request->priority());
+}
+
+
+void WorkerProcessor::dispose(string const& id) {
+    LOGS(_log, LOG_LVL_DEBUG, _context(__func__) << "  id: " << id);
+    util::Lock lock(_mtx, _context(__func__));
+
 }
 
 

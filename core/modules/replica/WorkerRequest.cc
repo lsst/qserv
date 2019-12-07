@@ -25,7 +25,11 @@
 // System headers
 #include <stdexcept>
 
+// Third party headers
+#include "boost/date_time/posix_time/posix_time.hpp"
+
 // Qserv headers
+#include "replica/Configuration.h"
 #include "replica/ServiceProvider.h"
 #include "replica/SuccessRateGenerator.h"
 #include "util/BlockPost.h"
@@ -34,6 +38,7 @@
 #include "lsst/log/Log.h"
 
 using namespace std;
+using namespace std::placeholders;
 
 namespace {
 
@@ -81,18 +86,30 @@ WorkerRequest::WorkerRequest(ServiceProvider::Ptr const& serviceProvider,
                              string const& worker,
                              string const& type,
                              string const& id,
-                             int priority)
+                             int priority,
+                             ExpirationCallbackType const& onExpired,
+                             unsigned int requestExpirationIvalSec)
     :   _serviceProvider(serviceProvider),
         _worker(worker),
         _type(type),
         _id(id),
         _priority(priority),
+        _onExpired(onExpired),
+        _requestExpirationIvalSec(requestExpirationIvalSec == 0
+            ? serviceProvider->config()->controllerRequestTimeoutSec()
+            : requestExpirationIvalSec),
+        _requestExpirationTimer(serviceProvider->io_service()),
         _status(STATUS_NONE),
         _extendedStatus(ExtendedCompletionStatus::EXT_STATUS_NONE),
         _performance(),
         _durationMillisec(0) {
 
     serviceProvider->assertWorkerIsValid(worker);
+}
+
+
+WorkerRequest::~WorkerRequest() {
+    dispose();
 }
 
 
@@ -110,18 +127,33 @@ WorkerRequest::ErrorContext WorkerRequest::reportErrorIf(
 }
 
 
-void WorkerRequest::start() {
-
+void WorkerRequest::init() {
     LOGS(_log, LOG_LVL_DEBUG, context(__func__));    
+    util::Lock lock(_mtx, context(__func__));
 
+    if (status() != STATUS_NONE) return;
+
+    // Start the expiration timer
+
+    if (_requestExpirationIvalSec != 0) {
+        _requestExpirationTimer.cancel();
+        _requestExpirationTimer.expires_from_now(boost::posix_time::seconds(_requestExpirationIvalSec));
+        _requestExpirationTimer.async_wait(bind(&WorkerRequest::_expired, shared_from_this(), _1));
+
+        LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "  started expiration timer with "
+             << " _requestExpirationIvalSec: " << _requestExpirationIvalSec);
+    }
+}
+
+
+void WorkerRequest::start() {
+    LOGS(_log, LOG_LVL_DEBUG, context(__func__));    
     util::Lock lock(_mtx, context(__func__));
 
     switch (status()) {
-
         case STATUS_NONE:
             setStatus(lock, STATUS_IN_PROGRESS);
             break;
-
         default:
             throw logic_error(
                     context(__func__) + "  not allowed while in status: " +
@@ -131,9 +163,7 @@ void WorkerRequest::start() {
 
 
 bool WorkerRequest::execute() {
-
     LOGS(_log, LOG_LVL_DEBUG, context(__func__));
-
     util::Lock lock(_mtx, context(__func__));
 
     // Simulate request 'processing' for some maximum duration of time (milliseconds)
@@ -141,14 +171,11 @@ bool WorkerRequest::execute() {
     // Success/failure modes will be also simulated using the corresponding generator.
 
    switch (status()) {
-
         case STATUS_IN_PROGRESS:
             break;
-
         case STATUS_IS_CANCELLING:
             setStatus(lock, STATUS_CANCELLED);
             throw WorkerRequestCancelled();
-
         default:
             throw logic_error(
                     context(__func__) + "  not allowed while in status: " +
@@ -167,18 +194,14 @@ bool WorkerRequest::execute() {
 
 
 void WorkerRequest::cancel() {
-
     LOGS(_log, LOG_LVL_DEBUG, context(__func__));
-
     util::Lock lock(_mtx, context(__func__));
 
     switch (status()) {
-
         case STATUS_NONE:
         case STATUS_CANCELLED:
             setStatus(lock, STATUS_CANCELLED);
             break;
-
         case STATUS_IN_PROGRESS:
         case STATUS_IS_CANCELLING:
             setStatus(lock, STATUS_IS_CANCELLING);
@@ -193,23 +216,18 @@ void WorkerRequest::cancel() {
 
 
 void WorkerRequest::rollback() {
-
     LOGS(_log, LOG_LVL_DEBUG, context(__func__));
-
     util::Lock lock(_mtx, context(__func__));
 
     switch (status()) {
-
         case STATUS_NONE:
         case STATUS_IN_PROGRESS:
             setStatus(lock, STATUS_NONE);
             break;
-
         case STATUS_IS_CANCELLING:
             setStatus(lock, STATUS_CANCELLED);
             throw WorkerRequestCancelled();
             break;
-
         default:
             throw logic_error(
                     context(__func__) + "  not allowed while in status: " +
@@ -225,10 +243,23 @@ void WorkerRequest::stop() {
 }
 
 
+void WorkerRequest::dispose() noexcept {
+    LOGS(_log, LOG_LVL_DEBUG, context(__func__));    
+    util::Lock lock(_mtx, context(__func__));
+    if (_requestExpirationIvalSec != 0) {
+        try {
+            _requestExpirationTimer.cancel();
+        } catch (exception const& ex) {
+            LOGS(_log, LOG_LVL_DEBUG, context(__func__)
+                 << "  request expiration couldn't be cancelled, ex: " << ex.what());
+        }
+    }
+}
+
+
 void WorkerRequest::setStatus(util::Lock const& lock,
                               CompletionStatus status,
                               ExtendedCompletionStatus extendedStatus) {
-
     LOGS(_log, LOG_LVL_DEBUG, context(__func__) << "  "
          << WorkerRequest::status2string(_status, _extendedStatus) << " -> "
          << WorkerRequest::status2string( status,  extendedStatus));
@@ -238,15 +269,12 @@ void WorkerRequest::setStatus(util::Lock const& lock,
             _performance.start_time  = 0;
             _performance.finish_time = 0;
             break;
-
         case STATUS_IN_PROGRESS:
             _performance.setUpdateStart();
             _performance.finish_time = 0;
             break;
-
         case STATUS_IS_CANCELLING:
             break;
-
         case STATUS_CANCELLED:
 
             // Set the start time to some meaningful value in case if the request was
@@ -261,7 +289,6 @@ void WorkerRequest::setStatus(util::Lock const& lock,
         case STATUS_FAILED:
             _performance.setUpdateFinish();
             break;
-
         default:
             throw logic_error(
                     context(__func__) + "  unhandled status: " +
@@ -274,6 +301,28 @@ void WorkerRequest::setStatus(util::Lock const& lock,
 
     _extendedStatus = extendedStatus;
     _status = status;
+}
+
+
+void WorkerRequest::_expired(boost::system::error_code const& ec) {
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__
+         << (ec == boost::asio::error::operation_aborted ? "  ** ABORTED **" : ""));
+    util::Lock lock(_mtx, context(__func__));
+
+    // Clearing the stored callback after finishing the up-stream notification
+    // has two purposes:
+    //
+    // 1. it guaranties no more than one time notification
+    // 2. it breaks the up-stream dependency on a caller object if a shared
+    //    pointer to the object was mentioned as the lambda-function's closure
+
+    // Ignore this event if the timer was aborted
+    if (ec != boost::asio::error::operation_aborted) {
+        if (_onExpired != nullptr) {
+            serviceProvider()->io_service().post(bind(move(_onExpired), _id));
+        }
+    }
+    _onExpired = nullptr;
 }
 
 }}} // namespace lsst::qserv::replica

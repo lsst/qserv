@@ -44,36 +44,44 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
-WorkerEchoRequest::Ptr WorkerEchoRequest::create(ServiceProvider::Ptr const& serviceProvider,
-                                                 string const& worker,
-                                                 string const& id,
-                                                 int priority,
-                                                 string const& data,
-                                                 uint64_t delay) {
-    return WorkerEchoRequest::Ptr(
-        new WorkerEchoRequest(serviceProvider,
-                              worker,
-                              id,
-                              priority,
-                              data,
-                              delay));
+WorkerEchoRequest::Ptr WorkerEchoRequest::create(
+        ServiceProvider::Ptr const& serviceProvider,
+        string const& worker,
+        string const& id,
+        int priority,
+        ExpirationCallbackType const& onExpired,
+        unsigned int requestExpirationIvalSec,
+        ProtocolRequestEcho const& request) {
+    return WorkerEchoRequest::Ptr(new WorkerEchoRequest(
+        serviceProvider,
+        worker,
+        id,
+        priority,
+        onExpired,
+        requestExpirationIvalSec,
+        request
+     ));
 }
 
 
-WorkerEchoRequest::WorkerEchoRequest(ServiceProvider::Ptr const& serviceProvider,
-                                     string const& worker,
-                                     string const& id,
-                                     int priority,
-                                     string const& data,
-                                     uint64_t delay)
-    :   WorkerRequest(serviceProvider,
-                      worker,
-                      "TEST_ECHO",
-                      id,
-                      priority),
-        _data(data),
-        _delay(delay),
-        _delayLeft(delay) {
+WorkerEchoRequest::WorkerEchoRequest(
+        ServiceProvider::Ptr const& serviceProvider,
+        string const& worker,
+        string const& id,
+        int priority,
+        ExpirationCallbackType const& onExpired,
+        unsigned int requestExpirationIvalSec,
+        ProtocolRequestEcho const& request)
+    :   WorkerRequest(
+            serviceProvider,
+            worker,
+            "TEST_ECHO",
+            id,
+            priority,
+            onExpired,
+            requestExpirationIvalSec),
+        _request(request),
+        _delayLeft(request.delay()) {
 }
 
 
@@ -85,6 +93,8 @@ void WorkerEchoRequest::setInfo(ProtocolResponseEcho& response) const {
 
     response.set_allocated_target_performance(performance().info().release());
     response.set_data(data());
+
+    *(response.mutable_request()) = _request;
 }
 
 

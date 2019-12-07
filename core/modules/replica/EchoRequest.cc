@@ -62,16 +62,16 @@ EchoRequest::Ptr EchoRequest::create(ServiceProvider::Ptr const& serviceProvider
                                      int priority,
                                      bool keepTracking,
                                      shared_ptr<Messenger> const& messenger) {
-    return EchoRequest::Ptr(
-        new EchoRequest(serviceProvider,
-                        io_service,
-                        worker,
-                        data,
-                        delay,
-                        onFinish,
-                        priority,
-                        keepTracking,
-                        messenger));
+    return EchoRequest::Ptr(new EchoRequest(serviceProvider,
+        io_service,
+        worker,
+        data,
+        delay,
+        onFinish,
+        priority,
+        keepTracking,
+        messenger
+    ));
 }
 
 
@@ -117,11 +117,12 @@ void EchoRequest::startImpl(util::Lock const& lock) {
     hdr.set_id(id());
     hdr.set_type(ProtocolRequestHeader::QUEUED);
     hdr.set_queued_type(ProtocolQueuedRequestType::TEST_ECHO);
+    hdr.set_timeout(requestExpirationIvalSec());
+    hdr.set_priority(priority());
 
     buffer()->serialize(hdr);
 
     ProtocolRequestEcho message;
-    message.set_priority(priority());
     message.set_data(data());
     message.set_delay(delay());
 

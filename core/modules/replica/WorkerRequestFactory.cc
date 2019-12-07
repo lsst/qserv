@@ -73,11 +73,7 @@ WorkerRequestFactoryBase::WorkerRequestFactoryBase(
   * of the request objects which make no persistent side effects.
   */
 class WorkerRequestFactoryTest : public WorkerRequestFactoryBase {
-
 public:
-
-    // Default construction and copy semantics are prohibited
-
     WorkerRequestFactoryTest() = delete;
     WorkerRequestFactoryTest(WorkerRequestFactoryTest const&) = delete;
     WorkerRequestFactoryTest& operator=(WorkerRequestFactoryTest const&) = delete;
@@ -90,106 +86,125 @@ public:
 
     ~WorkerRequestFactoryTest() final = default;
 
-    /// @see WorkerRequestFactoryBase::technology
     string technology() const final { return "TEST"; }
 
-    /// @see WorkerRequestFactoryBase::createReplicationRequest
-    WorkerReplicationRequestPtr createReplicationRequest(string const& worker,
-                                                         string const& id,
-                                                         int priority,
-                                                         string const& database,
-                                                         unsigned int chunk,
-                                                         string const& sourceWorker) const final {
+    WorkerReplicationRequest::Ptr createReplicationRequest(
+            string const& worker,
+            string const& id,
+            int priority,
+            WorkerRequest::ExpirationCallbackType const& onExpired,
+            unsigned int requestExpirationIvalSec,
+            ProtocolRequestReplicate const& request) const final {
         return WorkerReplicationRequest::create(
             _serviceProvider,
             worker,
             id,
             priority,
-            database,
-            chunk,
-            sourceWorker);
+            onExpired,
+            requestExpirationIvalSec,
+            request);
     }
 
-    /// @see WorkerRequestFactoryBase::createDeleteRequest
-    WorkerDeleteRequestPtr createDeleteRequest(string const& worker,
-                                               string const& id,
-                                               int priority,
-                                               string const& database,
-                                               unsigned int chunk) const final {
+    WorkerDeleteRequest::Ptr createDeleteRequest(
+            string const& worker,
+            string const& id,
+            int priority,
+            WorkerRequest::ExpirationCallbackType const& onExpired,
+            unsigned int requestExpirationIvalSec,
+            ProtocolRequestDelete const& request) const final {
         return WorkerDeleteRequest::create(
             _serviceProvider,
             worker,
             id,
             priority,
-            database,
-            chunk);
+            onExpired,
+            requestExpirationIvalSec,
+            request);
     }
 
-    /// @see WorkerRequestFactoryBase::createFindRequest
-    WorkerFindRequestPtr createFindRequest(string const& worker,
-                                           string const& id,
-                                           int priority,
-                                           string const& database,
-                                           unsigned int chunk,
-                                           bool computeCheckSum) const final {
+    WorkerFindRequest::Ptr createFindRequest(
+            string const& worker,
+            string const& id,
+            int priority,
+            WorkerRequest::ExpirationCallbackType const& onExpired,
+            unsigned int requestExpirationIvalSec,
+            ProtocolRequestFind const& request) const final {
         return WorkerFindRequest::create(
             _serviceProvider,
             worker,
             id,
             priority,
-            database,
-            chunk,
-            computeCheckSum);
+            onExpired,
+            requestExpirationIvalSec,
+            request);
     }
 
-    /// @see WorkerRequestFactoryBase::createFindAllRequest
-    WorkerFindAllRequestPtr createFindAllRequest(string const& worker,
-                                                 string const& id,
-                                                 int priority,
-                                                 string const& database) const final {
+    WorkerFindAllRequest::Ptr createFindAllRequest(
+            string const& worker,
+            string const& id,
+            int priority,
+            WorkerRequest::ExpirationCallbackType const& onExpired,
+            unsigned int requestExpirationIvalSec,
+            ProtocolRequestFindAll const& request) const final {
         return WorkerFindAllRequest::create(
             _serviceProvider,
             worker,
             id,
             priority,
-            database);
+            onExpired,
+            requestExpirationIvalSec,
+            request);
     }
 
-    /// @see WorkerRequestFactoryBase::createEchoRequest
-    WorkerEchoRequestPtr createEchoRequest(string const& worker,
-                                           string const& id,
-                                           int priority,
-                                           string const& data,
-                                           uint64_t delay) const final {
+    WorkerEchoRequest::Ptr createEchoRequest(
+            string const& worker,
+            string const& id,
+            int priority,
+            WorkerRequest::ExpirationCallbackType const& onExpired,
+            unsigned int requestExpirationIvalSec,
+            ProtocolRequestEcho const& request) const final {
         return WorkerEchoRequest::create(
             _serviceProvider,
             worker,
             id,
             priority,
-            data,
-            delay);
+            onExpired,
+            requestExpirationIvalSec,
+            request);
     }
 
-    /// @see WorkerRequestFactoryBase::createSqlRequest
-    WorkerSqlRequestPtr createSqlRequest(string const& worker,
-                                         string const& id,
-                                         ProtocolRequestSql const& request) const final {
+    WorkerSqlRequest::Ptr createSqlRequest(
+            string const& worker,
+            string const& id,
+            int priority,
+            WorkerRequest::ExpirationCallbackType const& onExpired,
+            unsigned int requestExpirationIvalSec,
+            ProtocolRequestSql const& request) const final {
         return WorkerSqlRequest::create(
             _serviceProvider,
             worker,
             id,
+            priority,
+            onExpired,
+            requestExpirationIvalSec,
             request);
     }
 
-    /// @see WorkerRequestFactoryBase::createIndexRequest
-    WorkerIndexRequestPtr createIndexRequest(string const& worker,
-                                             string const& id,
-                                             ProtocolRequestIndex const& request) const final {
+    WorkerIndexRequest::Ptr createIndexRequest(
+            string const& worker,
+            string const& id,
+            int priority,
+            WorkerRequest::ExpirationCallbackType const& onExpired,
+            unsigned int requestExpirationIvalSec,
+            ProtocolRequestIndex const& request) const final {
         return WorkerIndexRequest::create(
             _serviceProvider,
             _connectionPool,
             worker,
             id,
+            priority,
+            onExpired,
+            requestExpirationIvalSec,
             request);
     }
 };
@@ -204,11 +219,7 @@ public:
   * manipulation of files on a POSIX file system.
   */
 class WorkerRequestFactoryPOSIX : public WorkerRequestFactoryBase {
-
 public:
-
-    // Default construction and copy semantics are prohibited
-
     WorkerRequestFactoryPOSIX() = delete;
     WorkerRequestFactoryPOSIX(WorkerRequestFactoryPOSIX const&) = delete;
     WorkerRequestFactoryPOSIX& operator=(WorkerRequestFactoryPOSIX const&) = delete;
@@ -221,106 +232,125 @@ public:
 
     ~WorkerRequestFactoryPOSIX() final = default;
 
-    /// @see WorkerRequestFactoryBase::technology
     string technology() const final { return "POSIX"; }
 
-    /// @see WorkerRequestFactoryBase::createReplicationRequest
-    WorkerReplicationRequestPtr createReplicationRequest(string const& worker,
-                                                         string const& id,
-                                                         int priority,
-                                                         string const& database,
-                                                         unsigned int chunk,
-                                                         string const& sourceWorker) const final {
+    WorkerReplicationRequest::Ptr createReplicationRequest(
+            string const& worker,
+            string const& id,
+            int priority,
+            WorkerRequest::ExpirationCallbackType const& onExpired,
+            unsigned int requestExpirationIvalSec,
+            ProtocolRequestReplicate const& request) const final {
         return WorkerReplicationRequestPOSIX::create(
             _serviceProvider,
             worker,
             id,
             priority,
-            database,
-            chunk,
-            sourceWorker);
+            onExpired,
+            requestExpirationIvalSec,
+            request);
     }
 
-    /// @see WorkerRequestFactoryBase::createDeleteRequest
-    WorkerDeleteRequestPtr createDeleteRequest(string const& worker,
-                                               string const& id,
-                                               int priority,
-                                               string const& database,
-                                               unsigned int chunk) const final {
+    WorkerDeleteRequest::Ptr createDeleteRequest(
+            string const& worker,
+            string const& id,
+            int priority,
+            WorkerRequest::ExpirationCallbackType const& onExpired,
+            unsigned int requestExpirationIvalSec,
+            ProtocolRequestDelete const& request) const final {
         return WorkerDeleteRequestPOSIX::create(
             _serviceProvider,
             worker,
             id,
             priority,
-            database,
-            chunk);
+            onExpired,
+            requestExpirationIvalSec,
+            request);
     }
 
-    /// @see WorkerRequestFactoryBase::createFindRequest
-    WorkerFindRequestPtr createFindRequest(string const& worker,
-                                           string const& id,
-                                           int priority,
-                                           string const& database,
-                                           unsigned int chunk,
-                                           bool computeCheckSum) const final {
+    WorkerFindRequest::Ptr createFindRequest(
+            string const& worker,
+            string const& id,
+            int priority,
+            WorkerRequest::ExpirationCallbackType const& onExpired,
+            unsigned int requestExpirationIvalSec,
+            ProtocolRequestFind const& request) const final {
         return WorkerFindRequestPOSIX::create(
             _serviceProvider,
             worker,
             id,
             priority,
-            database,
-            chunk,
-            computeCheckSum);
+            onExpired,
+            requestExpirationIvalSec,
+            request);
     }
 
-    /// @see WorkerRequestFactoryBase::createFindAllRequest
-    WorkerFindAllRequestPtr createFindAllRequest(string const& worker,
-                                                 string const& id,
-                                                 int priority,
-                                                 string const& database) const final {
+    WorkerFindAllRequest::Ptr createFindAllRequest(
+            string const& worker,
+            string const& id,
+            int priority,
+            WorkerRequest::ExpirationCallbackType const& onExpired,
+            unsigned int requestExpirationIvalSec,
+            ProtocolRequestFindAll const& request) const final {
         return WorkerFindAllRequestPOSIX::create(
             _serviceProvider,
             worker,
             id,
             priority,
-            database);
+            onExpired,
+            requestExpirationIvalSec,
+            request);
     }
 
-    /// @see WorkerRequestFactoryBase::createEchoRequest
-    WorkerEchoRequestPtr createEchoRequest(string const& worker,
-                                           string const& id,
-                                           int priority,
-                                           string const& data,
-                                           uint64_t delay) const final {
+    WorkerEchoRequest::Ptr createEchoRequest(
+            string const& worker,
+            string const& id,
+            int priority,
+            WorkerRequest::ExpirationCallbackType const& onExpired,
+            unsigned int requestExpirationIvalSec,
+            ProtocolRequestEcho const& request) const final {
         return WorkerEchoRequestPOSIX::create(
             _serviceProvider,
             worker,
             id,
             priority,
-            data,
-            delay);
+            onExpired,
+            requestExpirationIvalSec,
+            request);
     }
 
-    /// @see WorkerRequestFactoryBase::createSqlRequest
-    WorkerSqlRequestPtr createSqlRequest(string const& worker,
-                                         string const& id,
-                                         ProtocolRequestSql const& request) const final {
+    WorkerSqlRequest::Ptr createSqlRequest(
+            string const& worker,
+            string const& id,
+            int priority,
+            WorkerRequest::ExpirationCallbackType const& onExpired,
+            unsigned int requestExpirationIvalSec,
+            ProtocolRequestSql const& request) const final {
         return WorkerSqlRequestPOSIX::create(
             _serviceProvider,
             worker,
             id,
+            priority,
+            onExpired,
+            requestExpirationIvalSec,
             request);
     }
 
-    /// @see WorkerRequestFactoryBase::createIndexRequest
-    WorkerIndexRequestPtr createIndexRequest(string const& worker,
-                                             string const& id,
-                                             ProtocolRequestIndex const& request) const final {
+    WorkerIndexRequest::Ptr createIndexRequest(
+            string const& worker,
+            string const& id,
+            int priority,
+            WorkerRequest::ExpirationCallbackType const& onExpired,
+            unsigned int requestExpirationIvalSec,
+            ProtocolRequestIndex const& request) const final {
         return WorkerIndexRequestPOSIX::create(
             _serviceProvider,
             _connectionPool,
             worker,
             id,
+            priority,
+            onExpired,
+            requestExpirationIvalSec,
             request);
     }
 };
@@ -336,11 +366,7 @@ public:
   * files using the built-into-worker simple file server.
   */
 class WorkerRequestFactoryFS : public WorkerRequestFactoryBase {
-
 public:
-
-    // Default construction and copy semantics are prohibited
-
     WorkerRequestFactoryFS() = delete;
     WorkerRequestFactoryFS(WorkerRequestFactoryFS const&) = delete;
     WorkerRequestFactoryFS& operator=(WorkerRequestFactoryFS const&) = delete;
@@ -353,106 +379,125 @@ public:
 
     ~WorkerRequestFactoryFS() final = default;
 
-    /// @see WorkerRequestFactoryBase::technology
     string technology() const final { return "FS"; }
 
-    /// @see WorkerRequestFactoryBase::createReplicationRequest
-    WorkerReplicationRequestPtr createReplicationRequest(string const& worker,
-                                                         string const& id,
-                                                         int priority,
-                                                         string const& database,
-                                                         unsigned int chunk,
-                                                         string const& sourceWorker) const final {
+    WorkerReplicationRequest::Ptr createReplicationRequest(
+            string const& worker,
+            string const& id,
+            int priority,
+            WorkerRequest::ExpirationCallbackType const& onExpired,
+            unsigned int requestExpirationIvalSec,
+            ProtocolRequestReplicate const& request) const final {
         return WorkerReplicationRequestFS::create(
             _serviceProvider,
             worker,
             id,
             priority,
-            database,
-            chunk,
-            sourceWorker);
+            onExpired,
+            requestExpirationIvalSec,
+            request);
     }
 
-    /// @see WorkerRequestFactoryBase::createDeleteRequest
-    WorkerDeleteRequestPtr createDeleteRequest(string const& worker,
-                                               string const& id,
-                                               int priority,
-                                               string const& database,
-                                               unsigned int chunk) const final {
+    WorkerDeleteRequest::Ptr createDeleteRequest(
+            string const& worker,
+            string const& id,
+            int priority,
+            WorkerRequest::ExpirationCallbackType const& onExpired,
+            unsigned int requestExpirationIvalSec,
+            ProtocolRequestDelete const& request) const final {
         return WorkerDeleteRequestFS::create(
             _serviceProvider,
             worker,
             id,
             priority,
-            database,
-            chunk);
+            onExpired,
+            requestExpirationIvalSec,
+            request);
     }
 
-    /// @see WorkerRequestFactoryBase::createFindRequest
-    WorkerFindRequestPtr createFindRequest(string const& worker,
-                                           string const& id,
-                                           int priority,
-                                           string const& database,
-                                           unsigned int chunk,
-                                           bool computeCheckSum) const final {
+    WorkerFindRequest::Ptr createFindRequest(
+            string const& worker,
+            string const& id,
+            int priority,
+            WorkerRequest::ExpirationCallbackType const& onExpired,
+            unsigned int requestExpirationIvalSec,
+            ProtocolRequestFind const& request) const final {
         return WorkerFindRequestFS::create(
             _serviceProvider,
             worker,
             id,
             priority,
-            database,
-            chunk,
-            computeCheckSum);
+            onExpired,
+            requestExpirationIvalSec,
+            request);
     }
 
-    /// @see WorkerRequestFactoryBase::createFindAllRequest
-    WorkerFindAllRequestPtr createFindAllRequest(string const& worker,
-                                                 string const& id,
-                                                 int priority,
-                                                 string const& database) const final {
+    WorkerFindAllRequest::Ptr createFindAllRequest(
+            string const& worker,
+            string const& id,
+            int priority,
+            WorkerRequest::ExpirationCallbackType const& onExpired,
+            unsigned int requestExpirationIvalSec,
+            ProtocolRequestFindAll const& request) const final {
         return WorkerFindAllRequestFS::create(
             _serviceProvider,
             worker,
             id,
             priority,
-            database);
+            onExpired,
+            requestExpirationIvalSec,
+            request);
     }
 
-    /// @see WorkerRequestFactoryBase::createEchoRequest
-    WorkerEchoRequestPtr createEchoRequest(string const& worker,
-                                           string const& id,
-                                           int priority,
-                                           string const& data,
-                                           uint64_t delay) const final {
+    WorkerEchoRequest::Ptr createEchoRequest(
+            string const& worker,
+            string const& id,
+            int priority,
+            WorkerRequest::ExpirationCallbackType const& onExpired,
+            unsigned int requestExpirationIvalSec,
+            ProtocolRequestEcho const& request) const final {
         return WorkerEchoRequestFS::create(
             _serviceProvider,
             worker,
             id,
             priority,
-            data,
-            delay);
+            onExpired,
+            requestExpirationIvalSec,
+            request);
     }
 
-    /// @see WorkerRequestFactoryBase::createSqlRequest
-    WorkerSqlRequestPtr createSqlRequest(string const& worker,
-                                         string const& id,
-                                         ProtocolRequestSql const& request) const final {
+    WorkerSqlRequest::Ptr createSqlRequest(
+            string const& worker,
+            string const& id,
+            int priority,
+            WorkerRequest::ExpirationCallbackType const& onExpired,
+            unsigned int requestExpirationIvalSec,
+            ProtocolRequestSql const& request) const final {
         return WorkerSqlRequestFS::create(
             _serviceProvider,
             worker,
             id,
+            priority,
+            onExpired,
+            requestExpirationIvalSec,
             request);
     }
 
-    /// @see WorkerRequestFactoryBase::createIndexRequest
-    WorkerIndexRequestPtr createIndexRequest(string const& worker,
-                                             string const& id,
-                                             ProtocolRequestIndex const& request) const final {
+    WorkerIndexRequest::Ptr createIndexRequest(
+            string const& worker,
+            string const& id,
+            int priority,
+            WorkerRequest::ExpirationCallbackType const& onExpired,
+            unsigned int requestExpirationIvalSec,
+            ProtocolRequestIndex const& request) const final {
         return WorkerIndexRequestFS::create(
             _serviceProvider,
             _connectionPool,
             worker,
             id,
+            priority,
+            onExpired,
+            requestExpirationIvalSec,
             request);
     }
 };
@@ -479,6 +524,139 @@ WorkerRequestFactory::WorkerRequestFactory(ServiceProvider::Ptr const& servicePr
                 "WorkerRequestFactory::" + string(__func__) +
                 " unknown technology: '" + finalTechnology);
     }
+}
+
+
+WorkerReplicationRequest::Ptr WorkerRequestFactory::createReplicationRequest(
+        string const& worker,
+        string const& id,
+        int priority,
+        WorkerRequest::ExpirationCallbackType const& onExpired,
+        unsigned int requestExpirationIvalSec,
+        ProtocolRequestReplicate const& request) const {
+    auto ptr = _ptr->createReplicationRequest(
+        worker,
+        id,
+        priority,
+        onExpired,
+        requestExpirationIvalSec,
+        request);
+    ptr->init();
+    return ptr;
+}
+
+
+WorkerDeleteRequest::Ptr WorkerRequestFactory::createDeleteRequest(
+        string const& worker,
+        string const& id,
+        int priority,
+        WorkerRequest::ExpirationCallbackType const& onExpired,
+        unsigned int requestExpirationIvalSec,
+        ProtocolRequestDelete const& request) const {
+    auto ptr = _ptr->createDeleteRequest(
+        worker,
+        id,
+        priority,
+        onExpired,
+        requestExpirationIvalSec,
+        request);
+    ptr->init();
+    return ptr;
+}
+
+
+WorkerFindRequest::Ptr WorkerRequestFactory::createFindRequest(
+        string const& worker,
+        string const& id,
+        int priority,
+        WorkerRequest::ExpirationCallbackType const& onExpired,
+        unsigned int requestExpirationIvalSec,
+        ProtocolRequestFind const& request) const {
+    auto ptr = _ptr->createFindRequest(
+        worker,
+        id,
+        priority,
+        onExpired,
+        requestExpirationIvalSec,
+        request);
+    ptr->init();
+    return ptr;
+}
+
+
+WorkerFindAllRequest::Ptr WorkerRequestFactory::createFindAllRequest(
+        string const& worker,
+        string const& id,
+        int priority,
+        WorkerRequest::ExpirationCallbackType const& onExpired,
+        unsigned int requestExpirationIvalSec,
+        ProtocolRequestFindAll const& request) const {
+    auto ptr = _ptr->createFindAllRequest(
+        worker,
+        id,
+        priority,
+        onExpired,
+        requestExpirationIvalSec,
+        request);
+    ptr->init();
+    return ptr;
+}
+
+
+WorkerEchoRequest::Ptr WorkerRequestFactory::createEchoRequest(
+        string const& worker,
+        string const& id,
+        int priority,
+        WorkerRequest::ExpirationCallbackType const& onExpired,
+        unsigned int requestExpirationIvalSec,
+        ProtocolRequestEcho const& request) const {
+    auto ptr = _ptr->createEchoRequest(
+        worker,
+        id,
+        priority,
+        onExpired,
+        requestExpirationIvalSec,
+        request);
+    ptr->init();
+    return ptr;
+}
+
+
+WorkerSqlRequest::Ptr WorkerRequestFactory::createSqlRequest(
+        string const& worker,
+        string const& id,
+        int priority,
+        WorkerRequest::ExpirationCallbackType const& onExpired,
+        unsigned int requestExpirationIvalSec,
+        ProtocolRequestSql const& request) const {
+    auto ptr = _ptr->createSqlRequest(
+        worker,
+        id,
+        priority,
+        onExpired,
+        requestExpirationIvalSec,
+        request);
+    ptr->init();
+    return ptr;
+}
+
+
+WorkerIndexRequest::Ptr WorkerRequestFactory::createIndexRequest(
+        string const& worker,
+        string const& id,
+        int priority,
+        WorkerRequest::ExpirationCallbackType const& onExpired,
+        unsigned int requestExpirationIvalSec,
+        ProtocolRequestIndex const& request) const {
+    auto ptr = _ptr->createIndexRequest(
+        worker,
+        id,
+        priority,
+        onExpired,
+        requestExpirationIvalSec,
+        request);
+    ptr->init();
+    return ptr;
 }
 
 }}} // namespace lsst::qserv::replica

@@ -54,44 +54,44 @@ namespace replica {
 ////////////////////////////////////////////////////////////
 
 WorkerFindRequest::Ptr WorkerFindRequest::create(
-                                ServiceProvider::Ptr const& serviceProvider,
-                                string const& worker,
-                                string const& id,
-                                int priority,
-                                string const& database,
-                                unsigned int chunk,
-                                bool computeCheckSum) {
-    return WorkerFindRequest::Ptr(
-        new WorkerFindRequest(
-                serviceProvider,
-                worker,
-                id,
-                priority,
-                database,
-                chunk,
-                computeCheckSum));
+        ServiceProvider::Ptr const& serviceProvider,
+        string const& worker,
+        string const& id,
+        int priority,
+        ExpirationCallbackType const& onExpired,
+        unsigned int requestExpirationIvalSec,
+        ProtocolRequestFind const& request) {
+    return WorkerFindRequest::Ptr(new WorkerFindRequest(
+        serviceProvider,
+        worker,
+        id,
+        priority,
+        onExpired,
+        requestExpirationIvalSec,
+        request
+    ));
 }
 
 
 WorkerFindRequest::WorkerFindRequest(
-                        ServiceProvider::Ptr const& serviceProvider,
-                        string const& worker,
-                        string const& id,
-                        int priority,
-                        string const& database,
-                        unsigned int chunk,
-                        bool computeCheckSum)
+        ServiceProvider::Ptr const& serviceProvider,
+        string const& worker,
+        string const& id,
+        int priority,
+        ExpirationCallbackType const& onExpired,
+        unsigned int requestExpirationIvalSec,
+        ProtocolRequestFind const& request)
     :   WorkerRequest(
             serviceProvider,
             worker,
             "FIND",
             id,
-            priority),
-        _database(database),
-        _chunk(chunk),
-        _computeCheckSum(computeCheckSum) {
+            priority,
+            onExpired,
+            requestExpirationIvalSec),
+        _request(request) {
 
-    serviceProvider->assertDatabaseIsValid(database);
+    serviceProvider->assertDatabaseIsValid(request.database());
 }
 
 
@@ -104,12 +104,7 @@ void WorkerFindRequest::setInfo(ProtocolResponseFind& response) const {
     response.set_allocated_target_performance(performance().info().release());
     response.set_allocated_replica_info(_replicaInfo.info().release());
 
-    auto ptr = make_unique<ProtocolRequestFind>();
-    ptr->set_priority(  priority());
-    ptr->set_database(  database());
-    ptr->set_chunk(     chunk());
-    ptr->set_compute_cs(computeCheckSum());
-    response.set_allocated_request(ptr.release());
+    *(response.mutable_request()) = _request;
 }
 
 
@@ -141,41 +136,41 @@ bool WorkerFindRequest::execute() {
 /////////////////////////////////////////////////////////////////
 
 WorkerFindRequestPOSIX::Ptr WorkerFindRequestPOSIX::create(
-                                    ServiceProvider::Ptr const& serviceProvider,
-                                    string const& worker,
-                                    string const& id,
-                                    int priority,
-                                    string const& database,
-                                    unsigned int chunk,
-                                    bool computeCheckSum) {
-    return WorkerFindRequestPOSIX::Ptr(
-        new WorkerFindRequestPOSIX(
-                serviceProvider,
-                worker,
-                id,
-                priority,
-                database,
-                chunk,
-                computeCheckSum));
+        ServiceProvider::Ptr const& serviceProvider,
+        string const& worker,
+        string const& id,
+        int priority,
+        ExpirationCallbackType const& onExpired,
+        unsigned int requestExpirationIvalSec,
+        ProtocolRequestFind const& request) {
+    return WorkerFindRequestPOSIX::Ptr(new WorkerFindRequestPOSIX(
+        serviceProvider,
+        worker,
+        id,
+        priority,
+        onExpired,
+        requestExpirationIvalSec,
+        request
+    ));
 }
 
 
 WorkerFindRequestPOSIX::WorkerFindRequestPOSIX(
-                            ServiceProvider::Ptr const& serviceProvider,
-                            string const& worker,
-                            string const& id,
-                            int priority,
-                            string const& database,
-                            unsigned int chunk,
-                            bool computeCheckSum)
+        ServiceProvider::Ptr const& serviceProvider,
+        string const& worker,
+        string const& id,
+        int priority,
+        ExpirationCallbackType const& onExpired,
+        unsigned int requestExpirationIvalSec,
+        ProtocolRequestFind const& request)
     :   WorkerFindRequest(
             serviceProvider,
             worker,
             id,
             priority,
-            database,
-            chunk,
-            computeCheckSum) {
+            onExpired,
+            requestExpirationIvalSec,
+            request) {
 }
 
 
@@ -210,7 +205,7 @@ bool WorkerFindRequestPOSIX::execute() {
     WorkerRequest::ErrorContext errorContext;
     boost::system::error_code   ec;
 
-    if (not _computeCheckSum or not _csComputeEnginePtr) {
+    if (not computeCheckSum() or not _csComputeEnginePtr) {
 
         WorkerInfo   const workerInfo   = _serviceProvider->config()->workerInfo(worker());
         DatabaseInfo const databaseInfo = _serviceProvider->config()->databaseInfo(database());
@@ -265,7 +260,7 @@ bool WorkerFindRequestPOSIX::execute() {
 
             if (fs::exists(stat)) {
 
-                if (not _computeCheckSum) {
+                if (not computeCheckSum()) {
 
                     // Get file size & mtime right away
 
@@ -307,7 +302,7 @@ bool WorkerFindRequestPOSIX::execute() {
         }
 
         // If that's so then finalize the operation right away
-        if (not _computeCheckSum) {
+        if (not computeCheckSum()) {
 
             ReplicaInfo::Status status = ReplicaInfo::Status::NOT_FOUND;
             if (fileInfoCollection.size())

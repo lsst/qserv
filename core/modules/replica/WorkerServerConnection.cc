@@ -225,7 +225,7 @@ void WorkerServerConnection::_processQueuedRequest(ProtocolRequestHeader& hdr) {
             if (not ::readMessage(_socket, _bufferPtr, bytes, request)) return;
 
             ProtocolResponseReplicate response;
-            _processor->enqueueForReplication(hdr.id(), request, response);
+            _processor->enqueueForReplication(hdr.id(), hdr.priority(), hdr.timeout(), request, response);
             _reply(hdr.id(), response);
             break;
         }
@@ -236,7 +236,7 @@ void WorkerServerConnection::_processQueuedRequest(ProtocolRequestHeader& hdr) {
             if (not ::readMessage(_socket, _bufferPtr, bytes, request)) return;
 
             ProtocolResponseDelete response;
-            _processor->enqueueForDeletion(hdr.id(), request, response);
+            _processor->enqueueForDeletion(hdr.id(), hdr.priority(), hdr.timeout(), request, response);
             _reply(hdr.id(), response);
             break;
         }
@@ -247,7 +247,7 @@ void WorkerServerConnection::_processQueuedRequest(ProtocolRequestHeader& hdr) {
             if (not ::readMessage(_socket, _bufferPtr, bytes, request)) return;
 
             ProtocolResponseFind response;
-            _processor->enqueueForFind(hdr.id(), request, response);
+            _processor->enqueueForFind(hdr.id(), hdr.priority(), hdr.timeout(), request, response);
             _reply(hdr.id(), response);
             break;
         }
@@ -258,7 +258,7 @@ void WorkerServerConnection::_processQueuedRequest(ProtocolRequestHeader& hdr) {
             if (not ::readMessage(_socket, _bufferPtr, bytes, request)) return;
 
             ProtocolResponseFindAll response;
-            _processor->enqueueForFindAll(hdr.id(), request, response);
+            _processor->enqueueForFindAll(hdr.id(), hdr.priority(), hdr.timeout(), request, response);
             _reply(hdr.id(), response);
             break;
         }
@@ -269,7 +269,7 @@ void WorkerServerConnection::_processQueuedRequest(ProtocolRequestHeader& hdr) {
             if (not ::readMessage(_socket, _bufferPtr, bytes, request)) return;
 
             ProtocolResponseEcho response;
-            _processor->enqueueForEcho(hdr.id(), request, response);
+            _processor->enqueueForEcho(hdr.id(), hdr.priority(), hdr.timeout(), request, response);
             _reply(hdr.id(), response);
             break;
         }
@@ -280,7 +280,7 @@ void WorkerServerConnection::_processQueuedRequest(ProtocolRequestHeader& hdr) {
             if (not ::readMessage(_socket, _bufferPtr, bytes, request)) return;
 
             ProtocolResponseIndex response;
-            _processor->enqueueForIndex(hdr.id(), request, response);
+            _processor->enqueueForIndex(hdr.id(), hdr.priority(), hdr.timeout(), request, response);
             _reply(hdr.id(), response);
             break;
         }
@@ -291,7 +291,7 @@ void WorkerServerConnection::_processQueuedRequest(ProtocolRequestHeader& hdr) {
             if (not ::readMessage(_socket, _bufferPtr, bytes, request)) return;
 
             ProtocolResponseSql response;
-            _processor->enqueueForSql(hdr.id(), request, response);
+            _processor->enqueueForSql(hdr.id(), hdr.priority(), hdr.timeout(), request, response);
             _reply(hdr.id(), response);
             break;
         }
@@ -427,6 +427,15 @@ void WorkerServerConnection::_processManagementRequest(ProtocolRequestHeader& hd
                             ProtocolQueuedRequestType_Name(request.queued_type()));
             }
             break;
+        }
+        case ProtocolManagementRequestType::REQUEST_DISPOSE: {
+
+            // Read the request body
+            ProtocolRequestDispose request;
+            if (not ::readMessage(_socket, _bufferPtr, bytes, request)) return;
+ 
+            // INitiate the disposal and don't send any reply.
+            _processor->dispose(request.id());
         }
         default:
             throw logic_error(

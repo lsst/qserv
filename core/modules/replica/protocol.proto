@@ -61,8 +61,9 @@ enum ProtocolQueuedRequestType {
 //
 enum ProtocolManagementRequestType {
 
-    REQUEST_STATUS   = 0;    // check a status of a request
-    REQUEST_STOP     = 1;    // stop a previously requested request
+    REQUEST_STATUS   = 0;   // check a status of a request
+    REQUEST_STOP     = 1;   // stop a previously requested request
+    REQUEST_DISPOSE  = 2;   // garbage collect the request (in-progress ones will be also stopped)
 }
 
 // Request types affecting the overall state of the worker replication service
@@ -101,6 +102,17 @@ message ProtocolRequestHeader {
     optional ProtocolQueuedRequestType     queued_type     = 3;
     optional ProtocolManagementRequestType management_type = 4;
     optional ProtocolServiceRequestType    service_type    = 5;
+
+    /// Request expiration timeout (for queued requests only) for disposing
+    /// requests regardless of their statuses. The timeout is expressed in
+    /// seconds. The default value of '0' means no expiration for a request.
+    optional uint32 timeout = 6 [default = 0];
+
+    /// The priority level (for queued requests only) may affect a position of
+    /// a request relative to others in the input queue of the worker processor.
+    /// Requests with higher priority levels are placed close to the head
+    /// of the queue.
+    optional int32 priority = 7 [default = 0];
 }
 
 //
@@ -113,7 +125,6 @@ message ProtocolRequestHeader {
 //
 message ProtocolRequestReplicate {
 
-    required int32  priority = 1;
     required string database = 2;
     required uint32 chunk    = 3;
     required string worker   = 4;
@@ -124,7 +135,6 @@ message ProtocolRequestReplicate {
 //
 message ProtocolRequestDelete {
 
-    required int32  priority = 1;
     required string database = 2;
     required uint32 chunk    = 3;
 }
@@ -134,7 +144,6 @@ message ProtocolRequestDelete {
 //
 message ProtocolRequestFind {
 
-    required int32  priority = 1;
     required string database = 2;
     required uint32 chunk    = 3;
 
@@ -148,7 +157,6 @@ message ProtocolRequestFind {
 //
 message ProtocolRequestFindAll {
 
-    required int32  priority = 1;
     required string database = 2;
 }
 
@@ -158,8 +166,6 @@ message ProtocolRequestFindAll {
 // This message is sent once after the header.
 //
 message ProtocolRequestEcho {
-
-    required int32 priority = 1;
 
     /// Data to be echoed back upon the completion of the request (if successful)
     required string data = 2;
@@ -179,8 +185,6 @@ message ProtocolRequestSqlColumn {
 // This request is always queued.
 // This message is sent once after the header for the 'SQL' request types
 message ProtocolRequestSql {
-
-    required int32 priority = 1;
 
     enum Type {
         QUERY = 0;
@@ -233,7 +237,6 @@ message ProtocolRequestSql {
 // This message is sent once after the header for the 'INDEX' request types
 message ProtocolRequestIndex {
 
-    required int32  priority = 1;
     required string database = 2;
     required uint32 chunk    = 3;
     required bool   has_transactions = 4;
@@ -272,6 +275,19 @@ message ProtocolRequestStatus {
     // in the preceding header at: ProtocolRequestHeader::type
 
     optional ProtocolQueuedRequestType queued_type = 2;
+}
+
+// This request is sent to explicitly require to garbage-collect a request.
+// The operation will happen regardless of the request status. If the request
+// is still in a progress then it will be stopped before being disposed.
+// This message is sent once after the header.
+//
+// ATTENTION: no response will be sent for this request.
+//
+message ProtocolRequestDispose {
+
+    /// an identifier of a request to be disposed
+    required string id = 1;
 }
 
 /////////////////////////////////////////////////////////

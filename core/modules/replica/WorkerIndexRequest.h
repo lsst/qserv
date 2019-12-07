@@ -49,10 +49,7 @@ namespace replica {
  * to extracts data to be loaded into the "secondary index".
  */
 class WorkerIndexRequest : public WorkerRequest {
-
 public:
-
-    /// Pointer to self
     typedef std::shared_ptr<WorkerIndexRequest> Ptr;
 
     /// Forward declaration for the connection pool
@@ -63,33 +60,30 @@ public:
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
      *
-     * @param serviceProvider
-     *   provider is needed to access the Configuration of a setup
-     *   and for validating the input parameters
-     *
-     * @param connectionPool
-     *   a pool of persistent database connections
-     *
-     * @param worker
-     *   the name of a worker. The name must match the worker which
+     * @param serviceProvider provider is needed to access the Configuration of
+     *   a setup and for validating the input parameters
+     * @param connectionPool a pool of persistent database connections
+     * @param worker the name of a worker. The name must match the worker which
      *   is going to execute the request.
-     * 
-     * @param id
-     *   an identifier of a client request
-     *
-     * @param request
-     *   ProtoBuf body of the request
-     *
-     * @return
-     *   pointer to the created object
+     * @param id an identifier of a client request
+     * @param priority indicates the importance of the request
+     * @param (optional) onExpired request expiration callback function.
+     *   If nullptr is passed as a parameter then the request will never expire.
+     * @param (optional) requestExpirationIvalSec request expiration interval.
+     *   If 0 is passed into the method then a value of the corresponding
+     *   parameter for the Controller-side requests will be pulled from
+     *   the Configuration.
+     * @param request ProtoBuf body of the request
+     * @return pointer to the created object
      */
     static Ptr create(ServiceProvider::Ptr const& serviceProvider,
                       ConnectionPoolPtr const& connectionPool,
                       std::string const& worker,
                       std::string const& id,
+                      int priority,
+                      ExpirationCallbackType const& onExpired,
+                      unsigned int requestExpirationIvalSec,
                       ProtocolRequestIndex const& request);
-
-    // Default construction and copy semantics are prohibited
 
     WorkerIndexRequest() = delete;
     WorkerIndexRequest(WorkerIndexRequest const&) = delete;
@@ -103,21 +97,20 @@ public:
     /**
      * Extract request status into the Protobuf response object.
      *
-     * @param response
-     *   Protobuf response to be initialized
+     * @param response Protobuf response to be initialized
      */
     void setInfo(ProtocolResponseIndex& response) const;
 
-    /// @see WorkerRequest::execute
     bool execute() override;
 
 private:
-
-    /// @see WorkerIndexRequest::create()
     WorkerIndexRequest(ServiceProvider::Ptr const& serviceProvider,
                        ConnectionPoolPtr const& connectionPool,
                        std::string const& worker,
                        std::string const& id,
+                       int priority,
+                       ExpirationCallbackType const& onExpired,
+                       unsigned int requestExpirationIvalSec,
                        ProtocolRequestIndex const& request);
 
 
@@ -125,15 +118,10 @@ private:
      * The query generator uses parameters of a request to compose
      * a desired query.
      *
-     * @param conn
-     *   a reference to the database connector is needed to process arguments
-     *   to meet requirements of the database query processing engine.
-     *
-     * @return
-     *   a query as per the input request
-     *
-     * @throws std::invalid_argument
-     *   if the input parameters are not supported
+     * @param conn a reference to the database connector is needed to process
+     *   arguments to meet requirements of the database query processing engine.
+     * @return a query as per the input request
+     * @throws std::invalid_argument if the input parameters are not supported
      */
     std::string _query(std::shared_ptr<database::mysql::Connection> const& conn) const;
 

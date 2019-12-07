@@ -52,30 +52,44 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
-WorkerIndexRequest::Ptr WorkerIndexRequest::create(ServiceProvider::Ptr const& serviceProvider,
-                                                   ConnectionPoolPtr const& connectionPool,
-                                                   string const& worker,
-                                                   string const& id,
-                                                   ProtocolRequestIndex const& request) {
-    return WorkerIndexRequest::Ptr(
-        new WorkerIndexRequest(serviceProvider,
-                               connectionPool,
-                               worker,
-                               id,
-                               request));
+WorkerIndexRequest::Ptr WorkerIndexRequest::create(
+        ServiceProvider::Ptr const& serviceProvider,
+        ConnectionPoolPtr const& connectionPool,
+        string const& worker,
+        string const& id,
+        int priority,
+        ExpirationCallbackType const& onExpired,
+        unsigned int requestExpirationIvalSec,
+        ProtocolRequestIndex const& request) {
+    return WorkerIndexRequest::Ptr(new WorkerIndexRequest(serviceProvider,
+        connectionPool,
+        worker,
+        id,
+        priority,
+        onExpired,
+        requestExpirationIvalSec,
+        request
+    ));
 }
 
 
-WorkerIndexRequest::WorkerIndexRequest(ServiceProvider::Ptr const& serviceProvider,
-                                       ConnectionPoolPtr const& connectionPool,
-                                       string const& worker,
-                                       string const& id,
-                                       ProtocolRequestIndex const& request)
-    :   WorkerRequest(serviceProvider,
-                      worker,
-                      "INDEX",
-                      id,
-                      request.priority()),
+WorkerIndexRequest::WorkerIndexRequest(
+        ServiceProvider::Ptr const& serviceProvider,
+        ConnectionPoolPtr const& connectionPool,
+        string const& worker,
+        string const& id,
+        int priority,
+        ExpirationCallbackType const& onExpired,
+        unsigned int requestExpirationIvalSec,
+        ProtocolRequestIndex const& request)
+    :   WorkerRequest(
+            serviceProvider,
+            worker,
+            "INDEX",
+            id,
+            priority,
+            onExpired,
+            requestExpirationIvalSec),
         _connectionPool(connectionPool),
         _request(request) {
 }
@@ -90,6 +104,8 @@ void WorkerIndexRequest::setInfo(ProtocolResponseIndex& response) const {
     response.set_allocated_target_performance(performance().info().release());
     response.set_error(_error);
     response.set_data(_data);
+
+    *(response.mutable_request()) = _request;
 }
 
 

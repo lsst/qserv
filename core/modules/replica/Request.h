@@ -591,6 +591,10 @@ protected:
     }
 
 protected:
+    /// @return A value of the interval (Note, the final value of the parameter is
+    /// set after the request has started. Before that a default value obtained by
+    /// the class's constructor from the Configuration will be returned).
+    unsigned int requestExpirationIvalSec() const { return _requestExpirationIvalSec; }
 
     /// Mutex guarding internal state. This object is made protected
     /// to allow subclasses use it.

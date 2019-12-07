@@ -65,19 +65,19 @@ ReplicationRequest::Ptr ReplicationRequest::create(
                             int priority,
                             bool keepTracking,
                             shared_ptr<Messenger> const& messenger) {
-    return ReplicationRequest::Ptr(
-        new ReplicationRequest(
-            serviceProvider,
-            io_service,
-            worker,
-            sourceWorker,
-            database,
-            chunk,
-            allowDuplicate,
-            onFinish,
-            priority,
-            keepTracking,
-            messenger));
+    return ReplicationRequest::Ptr(new ReplicationRequest(
+        serviceProvider,
+        io_service,
+        worker,
+        sourceWorker,
+        database,
+        chunk,
+        allowDuplicate,
+        onFinish,
+        priority,
+        keepTracking,
+        messenger
+    ));
 }
 
 
@@ -127,11 +127,12 @@ void ReplicationRequest::startImpl(util::Lock const& lock) {
     hdr.set_id(id());
     hdr.set_type(ProtocolRequestHeader::QUEUED);
     hdr.set_queued_type(ProtocolQueuedRequestType::REPLICA_CREATE);
+    hdr.set_timeout(requestExpirationIvalSec());
+    hdr.set_priority(priority());
 
     buffer()->serialize(hdr);
 
     ProtocolRequestReplicate message;
-    message.set_priority(priority());
     message.set_database(database());
     message.set_chunk(chunk());
     message.set_worker(sourceWorker());
