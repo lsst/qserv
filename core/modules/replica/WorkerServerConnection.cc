@@ -434,8 +434,15 @@ void WorkerServerConnection::_processManagementRequest(ProtocolRequestHeader& hd
             ProtocolRequestDispose request;
             if (not ::readMessage(_socket, _bufferPtr, bytes, request)) return;
  
-            // INitiate the disposal and don't send any reply.
-            _processor->dispose(request.id());
+            ProtocolResponseDispose response;
+            for (int i = 0; i < request.ids_size(); ++i) {
+                string const id = request.ids(i);
+                auto ptr = response.add_ids();
+                ptr->set_id(id);
+                ptr->set_disposed(_processor->dispose(id));
+            }
+            _reply(hdr.id(), response);
+            break;
         }
         default:
             throw logic_error(

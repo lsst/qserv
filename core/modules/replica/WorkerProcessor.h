@@ -364,8 +364,9 @@ public:
      * in any queue then nothing will happen (no exception thrown, no side effects).
      *
      * @param id an identifier of a request affected by the operation
+     * @return 'true' if the request was found and actually removed from any queue
      */
-    void dispose(std::string const& id);
+    bool dispose(std::string const& id);
 
     /**
      * Fill in processor's state and counters into a response object to be sent

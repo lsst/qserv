@@ -277,17 +277,15 @@ message ProtocolRequestStatus {
     optional ProtocolQueuedRequestType queued_type = 2;
 }
 
-// This request is sent to explicitly require to garbage-collect a request.
-// The operation will happen regardless of the request status. If the request
-// is still in a progress then it will be stopped before being disposed.
-// This message is sent once after the header.
-//
-// ATTENTION: no response will be sent for this request.
+// This request is sent to explicitly require to garbage-collect a set
+// of requests. The operation will happen regardless of states of
+// the requests. Requests which are still in progress will be stopped before
+// being disposed. This message is sent once after the header.
 //
 message ProtocolRequestDispose {
 
     /// an identifier of a request to be disposed
-    required string id = 1;
+    repeated string ids = 1;
 }
 
 /////////////////////////////////////////////////////////
@@ -721,6 +719,15 @@ message ProtocolResponseIndex {
     /// Parameters of the original request to which this response
     /// is related
     optional ProtocolRequestIndex request = 7;
+}
+
+message ProtocolResponseDisposeStatus {
+    required string id = 1;
+    required bool disposed = 2; 
+}
+
+message ProtocolResponseDispose {
+    repeated ProtocolResponseDisposeStatus ids = 1;
 }
 
 /////////////////////////////////////////////////////////////////////////

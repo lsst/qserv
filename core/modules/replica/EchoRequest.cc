@@ -245,9 +245,7 @@ void EchoRequest::_analyze(bool success,
         _targetRequestParams = EchoRequestParams(message.request());
     }
     switch (message.status()) {
-
         case ProtocolStatus::SUCCESS:
-
             finish(lock, SUCCESS);
             break;
 
@@ -287,9 +285,7 @@ void EchoRequest::_analyze(bool success,
 
 
 void EchoRequest::notify(util::Lock const& lock) {
-
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
-
     notifyDefaultImpl<EchoRequest>(lock, _onFinish);
 }
 

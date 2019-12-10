@@ -29,6 +29,7 @@
 
 // Qserv headers
 #include "replica/DeleteRequest.h"
+#include "replica/DisposeRequest.h"
 #include "replica/EchoRequest.h"
 #include "replica/FindRequest.h"
 #include "replica/FindAllRequest.h"
@@ -160,7 +161,7 @@ void ControllerApp::_configureParser() {
             "SQL_ENABLE_DATABASE", "SQL_DISABLE_DATABASE", "SQL_GRANT_ACCESS",
             "SQL_CREATE_TABLE", "SQL_DELETE_TABLE",
             "SQL_REMOVE_TABLE_PARTITIONS", "SQL_DELETE_TABLE_PARTITION",
-            "INDEX", "STATUS", "STOP",
+            "INDEX", "STATUS", "STOP", "DISPOSE",
             "SERVICE_SUSPEND", "SERVICE_RESUME", "SERVICE_STATUS",
             "SERVICE_REQUESTS", "SERVICE_DRAIN", "SERVICE_RECONFIG"
         },
@@ -209,6 +210,7 @@ void ControllerApp::_configureParser() {
     _configureParserCommandINDEX();
     _configureParserCommandSTATUS();
     _configureParserCommandSTOP();
+    _configureParserCommandDISPOSE();
     _configureParserCommandSERVICE();
 }
 
@@ -535,6 +537,19 @@ void ControllerApp::_configureParserCommandSTOP() {
 }
 
 
+void ControllerApp::_configureParserCommandDISPOSE() {
+    parser().command(
+        "DISPOSE"
+    ).description(
+        "Tell a worker to garbage collect the request. If the request is"
+        " still being processed then it will be stopped before being disposed."
+    ).required(
+        "id",
+        "A unique identifier of a request to be disposed.",
+        _affectedRequestId
+    );
+}
+
 void ControllerApp::_configureParserCommandSERVICE() {
 
     parser().command(
@@ -733,7 +748,15 @@ int ControllerApp::runImpl() {
 
     } else if ("STOP" == _requestType) {
 
-        request = _launchStopRequest(controller);
+        request = _launchStatusRequest(controller);
+
+    } else if ("DISPOSE" == _requestType) {
+
+        vector<string> const targetIds = {_affectedRequestId};
+        request = controller->dispose(
+            _workerName, targetIds,
+            Request::defaultPrinter
+        );
 
     } else if ("SERVICE_SUSPEND" == _requestType) {
 
