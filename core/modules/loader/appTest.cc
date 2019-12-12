@@ -220,7 +220,6 @@ int main(int argc, char* argv[]) {
 
             server.testConnect();
             LOGS(_log, LOG_LVL_INFO, "ServTcpBase e");
-            LOGS(_log, LOG_LVL_INFO, "&&& SLEEP");
             sleep(5);
         }
         catch (std::exception const& e) {
@@ -373,7 +372,6 @@ int main(int argc, char* argv[]) {
         auto originalErrCount = wCentral1.getErrCount();
         LOGS(_log, LOG_LVL_INFO, "1TSTAGE testSendBadMessage start");
         wCentral1.testSendBadMessage();
-        LOGS(_log, LOG_LVL_INFO, "&&& SLEEP");
         sleep(2); // TODO handshaking instead of sleep
 
         if (originalErrCount == wCentral1.getErrCount()) {
@@ -383,7 +381,6 @@ int main(int argc, char* argv[]) {
     }
 
     LOGS(_log, LOG_LVL_INFO, "sleeping");
-    LOGS(_log, LOG_LVL_INFO, "&&& SLEEP");
     sleep(5); // TODO change to 20 second timeout with a check every 0.1 seconds.
     // The workers should agree on the worker list, and it should have 2 elements.
     if (wCentral1.getWorkerList()->getIdMapSize() == 0) {

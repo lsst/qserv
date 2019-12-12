@@ -44,6 +44,8 @@ typedef boost::asio::ip::tcp AsioTcp;
 class CentralWorker;
 class ServerTcpBase;
 
+/// Class to maintain a worker's TCP connection using boost::asio.
+/// TODO: Rename as this has become specialized for a worker.
 class TcpBaseConnection : public std::enable_shared_from_this<TcpBaseConnection> {
 public:
     typedef std::shared_ptr<TcpBaseConnection> Ptr;
@@ -99,6 +101,8 @@ private:
 };
 
 
+/// This class maintains the TCP server using boost::asio for a worker.
+/// TODO: Rename as this has become specialized for a worker.
 class ServerTcpBase {
 public:
     typedef std::shared_ptr<ServerTcpBase> Ptr;
@@ -147,7 +151,7 @@ public:
 
     CentralWorker* getCentralWorker() const { return _centralWorker; }
 
-    static bool writeData(AsioTcp::socket& socket, BufferUdp& data, std::string note); // &&& delete note
+    static bool writeData(AsioTcp::socket& socket, BufferUdp& data);
 
 private:
     void _startAccept();

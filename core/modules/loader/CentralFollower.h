@@ -47,11 +47,8 @@ class WorkerKeysInfo;
 
 namespace loader {
 
-
-// &&& class CentralWorkerDoListItem;
-
-/// This class is used a base central class for servers that need to get
-/// lists of of worker from the master.
+/// This class is used as a base central class for servers that need to get
+/// lists of workers from the master.
 /// CentralFollower provides no service on its own. The derived classes must:
 ///   call workerInfoReceive(data) to handle LoaderMsg::MAST_WORKER_INFO
 ///   call getWorkerList()->workerListReceive(data) to handle LoaderMsg::MAST_WORKER_LIST
@@ -60,20 +57,6 @@ namespace loader {
 class CentralFollower : public Central {
 public:
     typedef std::pair<CompositeKey, ChunkSubchunk> CompKeyPair;
-
-    /* &&&
-    enum SocketStatus {
-        VOID0 = 0,
-        STARTING1,
-        ESTABLISHED2
-    };
-
-    enum Direction {
-        NONE0 = 0,
-        TORIGHT1,
-        FROMRIGHT2
-    };
-    */
 
     CentralFollower(boost::asio::io_service& ioService,
                     std::string const& hostName_, std::string const& masterHost, int masterPortUdp,
@@ -87,53 +70,40 @@ public:
 
     /// CentralFollower provides no service on its own. The derived classes must handle
     /// messages sent from the master and call workerInfoReceive() as needed.
-    // void startServices() override;
     void startMonitoring() override;
 
     WWorkerList::Ptr getWorkerList() const { return _wWorkerList; }
 
     std::string const& getHostName() const { return _hostName; }
     int getUdpPort() const { return _udpPort; }
-    virtual int getTcpPort() const { return 0; }
 
-    /////////////////////////////////////////////////////////////////////////////////
-    /// Methods to handle messages received from other servers.
-    /// 'inMsg' contains information about the originator of a request
-    ///         and the type of message.
-    /// 'data'  contains the message data.
+    /// Only workers have TCP ports.
+    virtual int getTcpPort() const { return 0; }
 
     /// Receive information about workers from the master.
     bool workerInfoReceive(BufferUdp::Ptr const&  data);
 
+    /// Returns a pointer to our worker list.
+    WWorkerList::Ptr const& getWorkerList() { return _wWorkerList; }
+
     std::string getOurLogId() const override { return "CentralFollower"; }
 
-    // &&& friend CentralWorkerDoListItem;
-
-protected: // &&& make some or all private again
-
+protected:
     /// Real workers need to check this for initial ranges.
     virtual void checkForThisWorkerValues(uint32_t wId, std::string const& ip,
                                           int portUdp, int portTcp, KeyRange& strRange) {};
-    /// &&& This function is needed to fill the map. On real workers, CentralWorker
-    /// needs to do additional work to set its id.
+
+private:
+    const std::string        _hostName; ///< our host name
+    const int                _udpPort;  ///< our UDP port
+
+    /// This function is needed to fill the map. On real workers, CentralWorker
+    /// needs to do additional work to set its own id.
     void _workerInfoReceive(std::unique_ptr<proto::WorkerListItem>& protoBuf);
 
-    /// See workerWorkerKeysInfoReq(...)
-    // &&& void _workerWorkerKeysInfoReq(LoaderMsg const& inMsg);
-
-    const std::string        _hostName;
-    const int                _udpPort;
-    // &&& const int                _tcpPort;
-
-    WWorkerList::Ptr _wWorkerList{std::make_shared<WWorkerList>(this)}; ///< Maps of workers.
-
-    /// The DoListItem that makes sure _monitor() is run. &&& needs to ask master for worker map occasionally
-    // &&& replace with item to refresh _wWorkerList (see CentralWorker::_startMonitoring)// std::shared_ptr<CentralWorkerDoListItem> _centralWorkerDoListItem;
+    /// Maps of workers with their key ranges and network addresses.
+    WWorkerList::Ptr _wWorkerList{std::make_shared<WWorkerList>(this)};
 };
-
-
-
-
 
 }}} // namespace lsst::qserv::loader
 

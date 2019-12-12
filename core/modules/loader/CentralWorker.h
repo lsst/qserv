@@ -40,19 +40,20 @@
 
 namespace lsst {
 namespace qserv {
-
-namespace proto {
-// &&& class WorkerKeysInfo;
-// &&& class WorkerListItem;
-}
-
 namespace loader {
-
 
 class CentralWorkerDoListItem;
 
-
-// &&& class CentralWorker : public Central {
+/// This class is central to the worker. In addition
+/// to maintaining lists of other workers it maintains a key-value
+/// store over a range of keys. The range can change over time
+/// as keys are shifted between this worker and its left and
+/// right neighbors. It connects to its neighbors using TCP and
+/// informs the master of its current key range using UDP.
+/// Key-value lookups and inserts are done using UDP.
+/// Workers will attempt to forward key lookups and inserts
+/// to the correct worker when the key is not in this worker's
+/// range.
 class CentralWorker : public CentralFollower {
 public:
     typedef std::pair<CompositeKey, ChunkSubchunk> CompKeyPair;
@@ -73,16 +74,11 @@ public:
                       std::string const& hostName_, WorkerConfig const& cfg);
 
     /// Open the UDP and TCP ports and start monitoring. This can throw boost::system::system_error.
-    // &&&void start();
     void startService() override;
     void startMonitoring() override;
 
     ~CentralWorker() override;
 
-    // &&& WWorkerList::Ptr getWorkerList() const { return _wWorkerList; }
-
-    // &&& std::string const& getHostName() const { return _hostName; }
-    // &&& int getUdpPort() const { return _udpPort; }
     int getTcpPort() const override { return _tcpPort; }
 
     uint32_t getOurId() const {
@@ -113,9 +109,6 @@ public:
     /// Our minimum key is their maximum key(exclusive).
     /// @returns what it thinks the range of the left neighbor should be.
     KeyRange updateRangeWithLeftData(KeyRange const& strRange);
-
-    /// Receive our name from the master. Returns true if successful.
-    // &&& bool workerInfoReceive(BufferUdp::Ptr const&  data) override;
 
     /// Receive a request to insert a key value pair.
     /// If the key value pair could not be inserted, it tries to forward the request appropriately.
@@ -160,7 +153,6 @@ public:
     friend CentralWorkerDoListItem;
 
 protected:
-    // &&& void _workerInfoReceive(std::unique_ptr<proto::WorkerListItem>& protoBuf) override; ///< see workerInfoReceive() // &&& need this to work properly with new class
     void checkForThisWorkerValues(uint32_t wId, std::string const& ip,
                                   int portUdp, int portTcp, KeyRange& strRange) override;
 private:
@@ -223,22 +215,17 @@ private:
     /// Connect to the right neighbor. Must hold _rightMtx in the lock.
     void _rightConnect(std::lock_guard<std::mutex> const& rightMtxLG);
     ///< Disconnect from the right neighbor. Must hold _rightMtx in the lock.
-    void _rightDisconnect(std::lock_guard<std::mutex> const& rightMtxLG, std::string const& note); // &&& remove note ??
+    void _rightDisconnect(std::lock_guard<std::mutex> const& rightMtxLG, std::string const& note);
 
     void _cancelShiftsWithRightNeighbor(); ///< Cancel shifts to/from the right neighbor.
     void _finishShiftToRight(); ///< The shift to the right neighbor is complete, cleanup.
 
-    // &&& const std::string        _hostName;
-    // &&& const int                _udpPort;
     const int                _tcpPort;
     boost::asio::io_context& _ioContext;
-
-    // &&& WWorkerList::Ptr _wWorkerList{std::make_shared<WWorkerList>(this)}; ///< Maps of workers.
 
     bool _ourIdInvalid{true}; ///< true until our id has been set by the master.
     std::atomic<uint32_t> _ourId{0}; ///< id given by the master, 0 is invalid id.
     mutable std::mutex _ourIdMtx; ///< protects _ourIdInvalid, _ourId
-
 
     KeyRange _keyRange; ///< range for this worker
     std::atomic<bool> _rangeChanged{false};

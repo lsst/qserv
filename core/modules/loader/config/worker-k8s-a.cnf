@@ -10,7 +10,10 @@ wPortUdp = 10043
 wPortTcp = 10143
 
 # Worker thread pool size
-threadPoolSize = 10
+threadPoolSize = 30
+
+# IO threads
+iOThreads = 100
 
 # Period of time where a key insert is considered recent in milliseconds
 recentAddLimit = 60000 
@@ -18,7 +21,7 @@ recentAddLimit = 60000
 # Difference in number of keys stored between neighbors
 # A value of 1.2 would cause a shift if either worker had 
 # 20% more keys than its neighbor.
-thresholdNeighborShift = 1.1
+thresholdNeighborShift = 1.05
 
 # Maximum number of keys to shift in a single iteration.
 # An iteration would be transfer, insert, verify range.
@@ -26,5 +29,5 @@ maxKeysToShift = 10000
 
 # Time to sleep between checking every item in the DoList 
 # in microseconds.
-loopSleepTime = 100000
+loopSleepTime = 50000
 

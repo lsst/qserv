@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2018-2019 AURA/LSST.
+ * Copyright 2018 AURA/LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -36,6 +36,7 @@
 #include "loader/WorkerConfig.h"
 #include "proto/loader.pb.h"
 #include "proto/ProtoImporter.h"
+#include "util/Timer.h" // &&&
 
 
 // LSST headers
@@ -50,20 +51,6 @@ namespace lsst {
 namespace qserv {
 namespace loader {
 
-/* &&&
-CentralWorker::CentralWorker(boost::asio::io_service& ioService_, boost::asio::io_context& io_context_,
-                             std::string const& hostName_, WorkerConfig const& cfg)
-    : Central(ioService_, cfg.getMasterHost(), cfg.getMasterPortUdp(),
-              cfg.getThreadPoolSize(), cfg.getLoopSleepTime(), cfg.getIOThreads()),
-      _hostName(hostName_),
-      _udpPort(cfg.getWPortUdp()),
-      _tcpPort(cfg.getWPortTcp()),
-      _ioContext(io_context_),
-      _recentAddLimit(cfg.getRecentAddLimit()),
-      _thresholdNeighborShift(cfg.getThresholdNeighborShift()),
-      _maxKeysToShift(cfg.getMaxKeysToShift()) {
-}
-*/
 CentralWorker::CentralWorker(boost::asio::io_service& ioService_, boost::asio::io_context& io_context_,
                              std::string const& hostName_, WorkerConfig const& cfg)
     : CentralFollower(ioService_, hostName_, cfg.getMasterHost(), cfg.getMasterPortUdp(),
@@ -75,34 +62,26 @@ CentralWorker::CentralWorker(boost::asio::io_service& ioService_, boost::asio::i
       _maxKeysToShift(cfg.getMaxKeysToShift()) {
 }
 
-/* &&&
-void CentralWorker::start() {
-    _server = std::make_shared<WorkerServer>(ioService, _hostName, _udpPort, this);
-    _tcpServer = std::make_shared<ServerTcpBase>(_ioContext, _tcpPort, this);
-    _tcpServer->runThread();
-    _startMonitoring();
-}
-*/
-void CentralWorker::startService() {
-    _server = std::make_shared<WorkerServer>(ioService, _hostName, _udpPort, this);
-    _tcpServer = std::make_shared<ServerTcpBase>(_ioContext, _tcpPort, this);
-    _tcpServer->runThread();
-}
 
+void CentralWorker::startService() {
+    _server = std::make_shared<WorkerServer>(ioService, getHostName(), getUdpPort(), this);
+    _tcpServer = std::make_shared<ServerTcpBase>(_ioContext, _tcpPort, this);
+    _tcpServer->runThread();
+}
 
 
 CentralWorker::~CentralWorker() {
     // Members that contain pointers to this. Deleting while this != null.
-    // &&&_wWorkerList.reset();
-    // TODO: wait for reference count to drop to one or less.
+    // TODO: Wait for reference count to drop to one or less,
+    //       although CentralWorker is never really shutdown.
     _tcpServer.reset();
 }
 
 
 std::string CentralWorker::getOurLogId() const {
     std::stringstream os;
-    os << "(w name=" << _ourId << " addr=" << _hostName <<
-            ":udp=" << _udpPort << " tcp=" << _tcpPort << ")";
+    os << "(w name=" << _ourId << " addr=" << getHostName() <<
+            ":udp=" << getUdpPort() << " tcp=" << _tcpPort << ")";
     return os.str();
 }
 
@@ -110,7 +89,6 @@ void CentralWorker::startMonitoring() {
     CentralFollower::startMonitoring();
     // Add _workerList to _doList so it starts checking new entries.
     _centralWorkerDoListItem = std::make_shared<CentralWorkerDoListItem>(this);
-    // &&& doList->addItem(_wWorkerList);
     doList->addItem(_centralWorkerDoListItem);
 }
 
@@ -122,7 +100,6 @@ void CentralWorker::_monitor() {
     if (_isOurIdInvalid()) {
         _registerWithMaster();
         // Give the master a half second to answer.
-        LOGS(_log, LOG_LVL_INFO, "&&& SLEEP");
         usleep(500000);
         return;
     }
@@ -147,7 +124,7 @@ void CentralWorker::_monitor() {
                     if (nAddr.ip == "") {
                         // look up the network address for the rightNeighbor
                         WWorkerListItem::Ptr nWorker =
-                            _wWorkerList->getWorkerWithId(_neighborRight.getId());
+                            getWorkerList()->getWorkerWithId(_neighborRight.getId());
                         if (nWorker != nullptr) {
                             auto addrTcp = nWorker->getTcpAddress();
                             auto addrUdp = nWorker->getUdpAddress();
@@ -245,7 +222,7 @@ bool CentralWorker::_determineRange() {
         // Must send the number of bytes in the message so TCP server knows how many bytes to read.
         bytesInMsg.appendToData(data);
         strElem.appendToData(data);
-        ServerTcpBase::writeData(*_rightSocket, data, "detRange");
+        ServerTcpBase::writeData(*_rightSocket, data);
     }
     // Get back their basic info
     {
@@ -386,7 +363,7 @@ void CentralWorker::_shift(Direction direction, int keysToShift) {
             bytesInMsg.appendToData(data);
             keyShiftReq.appendToData(data);
             LOGS(_log, LOG_LVL_INFO, fName << " FROMRIGHT " << keysToShift);
-            ServerTcpBase::writeData(*_rightSocket, data, "_shift FROMRIGHT");
+            ServerTcpBase::writeData(*_rightSocket, data);
         }
         // Wait for the KeyList response
         {
@@ -417,7 +394,7 @@ void CentralWorker::_shift(Direction direction, int keysToShift) {
         data.reset();
         UInt32Element elem(LoaderMsg::SHIFT_FROM_RIGHT_RECEIVED);
         elem.appendToData(data);
-        ServerTcpBase::writeData(*_rightSocket, data, "shift SHIFT_FROM_RIGHT_RECEIVED");
+        ServerTcpBase::writeData(*_rightSocket, data);
         LOGS(_log, LOG_LVL_INFO, fName << " direction=" << direction << " keys=" << keysToShift);
 
     } else if (direction == TORIGHT1) {
@@ -460,7 +437,7 @@ void CentralWorker::_shift(Direction direction, int keysToShift) {
             LOGS(_log, LOG_LVL_ERROR, errMsg);
             // This will keep getting thrown and never work, but at least it will show up
             // in the logs.
-            // &&& create new exception, catch it and halve the number of keys to shift ???
+            // TODO Maybe create new exception, catch it and halve the number of keys to shift?
             throw LoaderMsgErr(ERR_LOC, errMsg);
         }
         kindShiftRight.appendToData(data);
@@ -468,7 +445,7 @@ void CentralWorker::_shift(Direction direction, int keysToShift) {
         keyList.appendToData(data);
 
         LOGS(_log, LOG_LVL_INFO, fName << " TORIGHT sending keys");
-        ServerTcpBase::writeData(*_rightSocket, data, "shift TORIGHT sending keys");
+        ServerTcpBase::writeData(*_rightSocket, data);
 
         // read back LoaderMsg::SHIFT_TO_RIGHT_KEYS_RECEIVED
         data.reset();
@@ -667,80 +644,6 @@ void CentralWorker::cancelShiftsWithLeftNeighbor() {
     }
 }
 
-/* &&&
-bool CentralWorker::workerInfoReceive(BufferUdp::Ptr const&  data) {
-    // Open the data protobuffer and add it to our list.
-    StringElement::Ptr sData = std::dynamic_pointer_cast<StringElement>(MsgElement::retrieve(*data, " CentralWorker::workerInfoReceive&&& "));
-    if (sData == nullptr) {
-        LOGS(_log, LOG_LVL_WARN, "CentralWorker::workerInfoRecieve Failed to parse list");
-        return false;
-    }
-    std::unique_ptr<proto::WorkerListItem> protoList = sData->protoParse<proto::WorkerListItem>();
-    if (protoList == nullptr) {
-        LOGS(_log, LOG_LVL_WARN, "CentralWorker::workerInfoRecieve Failed to parse list");
-        return false;
-    }
-
-    // TODO: move this call to another thread
-    _workerInfoReceive(protoList);
-    return true;
-}
-*/
-
-/* &&&
-void CentralWorker::_workerInfoReceive(std::unique_ptr<proto::WorkerListItem>& protoL) {
-    std::unique_ptr<proto::WorkerListItem> protoList(std::move(protoL));
-
-    // Check the information, if it is our network address, set or check our id.
-    // Then compare it with the map, adding new/changed information.
-    uint32_t wId = protoList->wid();
-    std::string ipUdp("");
-    int portUdp = 0;
-    int portTcp = 0;
-    if (protoList->has_address()) {
-        proto::LdrNetAddress protoAddr = protoList->address();
-        ipUdp = protoAddr.ip();
-        portUdp = protoAddr.udpport();
-        portTcp = protoAddr.tcpport();
-    }
-    KeyRange strRange;
-    if (protoList->has_range()) {
-        proto::WorkerRange protoRange = protoList->range();
-        bool valid        = protoRange.valid();
-        if (valid) {
-            CompositeKey min(protoRange.minint(), protoRange.minstr());
-            CompositeKey max(protoRange.maxint(), protoRange.maxstr());
-            bool unlimited = protoRange.maxunlimited();
-            strRange.setMinMax(min, max, unlimited);
-        }
-    }
-
-    // If the address matches ours, check the name.
-    if (getHostName() == ipUdp && getUdpPort() == portUdp) {
-        if (_isOurIdInvalid()) {
-            LOGS(_log, LOG_LVL_INFO, "Setting our name " << wId);
-            _setOurId(wId);
-        } else if (getOurId() != wId) {
-            LOGS(_log, LOG_LVL_ERROR, "Our wId doesn't match address from master! wId=" <<
-                                      getOurId() << " from master=" << wId);
-        }
-
-        // It is this worker. If there is a valid range in the message and our range is not valid,
-        // take the range given as our own.
-        if (strRange.getValid()) {
-            std::lock_guard<std::mutex> lckM(_idMapMtx);
-            if (not _keyRange.getValid()) {
-                LOGS(_log, LOG_LVL_INFO, "Setting our range " << strRange);
-                _keyRange.setMinMax(strRange.getMin(), strRange.getMax(), strRange.getUnlimited());
-            }
-        }
-    }
-
-    // Make/update entry in map.
-    _wWorkerList->updateEntry(wId, ipUdp, portUdp, portTcp, strRange);
-}
-*/
-
 
 void CentralWorker::checkForThisWorkerValues(uint32_t wId, std::string const& ip,
                                              int portUdp, int portTcp, KeyRange& strRange) {
@@ -826,6 +729,9 @@ bool CentralWorker::workerKeyInsertReq(LoaderMsg const& inMsg, BufferUdp::Ptr co
 }
 
 
+util::Timer lastInsertTimer; // &&&
+std::mutex lastInsertTimerMtx; // &&&
+
 void CentralWorker::_workerKeyInsertReq(LoaderMsg const& inMsg, std::unique_ptr<proto::KeyInfoInsert>& protoBuf) {
     std::unique_ptr<proto::KeyInfoInsert> protoData(std::move(protoBuf));
 
@@ -850,7 +756,17 @@ void CentralWorker::_workerKeyInsertReq(LoaderMsg const& inMsg, std::unique_ptr<
             // Element already found, check file id and row number. Bad if not the same.
             // TODO HIGH send back duplicate key mismatch message to the original requester and return
         }
-        LOGS(_log, LOG_LVL_INFO, "Key inserted=" << key << "(" << chunkInfo << ")");
+        {
+        std::lock_guard<std::mutex> tLg(lastInsertTimerMtx);
+        lastInsertTimer.stop();
+        auto elapsedInsert = lastInsertTimer.getElapsed();
+        if (elapsedInsert > 0.5) {
+            LOGS(_log, LOG_LVL_ERROR, "&&& Longdelay key=" << key << " dlay=" << elapsedInsert);
+        }
+        // &&& LOGS(_log, LOG_LVL_INFO, "Key inserted=" << key << "(" << chunkInfo << ")");
+        LOGS(_log, LOG_LVL_WARN, "&&&INFO Key inserted=" << key << "(" << chunkInfo << ") dlay=" <<  elapsedInsert);
+        lastInsertTimer.start();
+        }
         // TODO Send this item to the keyLogger (which would then send KEY_INSERT_COMPLETE back to the requester),
         // for now this function will send the message back for proof of concept.
         LoaderMsg msg(LoaderMsg::KEY_INSERT_COMPLETE, inMsg.msgId->element, getHostName(), getUdpPort());
@@ -875,7 +791,7 @@ void CentralWorker::_workerKeyInsertReq(LoaderMsg const& inMsg, std::unique_ptr<
     } else {
         lck.unlock();
         // Find the target range in the list and send the request there
-        auto targetWorker = _wWorkerList->findWorkerForKey(key);
+        auto targetWorker = getWorkerList()->findWorkerForKey(key);
         if (targetWorker != nullptr && targetWorker->getId() != _ourId) {
             _forwardKeyInsertRequest(targetWorker->getUdpAddress(), inMsg, protoData);
         } else {
@@ -898,7 +814,7 @@ void CentralWorker::_forwardKeyInsertRequest(NetworkAddress const& targetAddr, L
     // The proto buffer should be the same, just need a new message.
     int hops = protoData->hops() + 1;
     if (hops > 4) { // TODO replace magic number with variable set via config file.
-        LOGS(_log, LOG_LVL_INFO, "Too many hops, dropping insert request hops=" << hops << " key=" << key);
+        LOGS(_log, LOG_LVL_WARN, "Too many hops, dropping insert request hops=" << hops << " key=" << key);
         return;
     }
     LOGS(_log, LOG_LVL_INFO, "Forwarding key insert hops=" << hops << " key=" << key);
@@ -989,7 +905,7 @@ void CentralWorker::_workerKeyInfoReq(LoaderMsg const& inMsg, std::unique_ptr<pr
         }
     } else {
         // Find the target range in the list and send the request there
-        auto targetWorker = _wWorkerList->findWorkerForKey(key);
+        auto targetWorker = getWorkerList()->findWorkerForKey(key);
         if (targetWorker == nullptr) {
             LOGS(_log, LOG_LVL_INFO, "CentralWorker::_workerKeyInfoReq " << _ourId <<
                                      " could not forward key=" << key);
@@ -1004,7 +920,7 @@ void CentralWorker::_workerKeyInfoReq(LoaderMsg const& inMsg, std::unique_ptr<pr
 
 
 bool CentralWorker::workerWorkerSetRightNeighbor(LoaderMsg const& inMsg, BufferUdp::Ptr const& data) {
-    auto msgElem = MsgElement::retrieve(*data, " CentralWorker::workerWorkerSetRightNeighbor&&& ");
+    auto msgElem = MsgElement::retrieve(*data, "CentralWorker::workerWorkerSetRightNeighbor");
     UInt32Element::Ptr neighborName = std::dynamic_pointer_cast<UInt32Element>(msgElem);
     if (neighborName == nullptr) {
         return false;
@@ -1018,7 +934,7 @@ bool CentralWorker::workerWorkerSetRightNeighbor(LoaderMsg const& inMsg, BufferU
 
 
 bool CentralWorker::workerWorkerSetLeftNeighbor(LoaderMsg const& inMsg, BufferUdp::Ptr const& data) {
-    auto msgElem = MsgElement::retrieve(*data, " CentralWorker::workerWorkerSetLeftNeighbor&&& ");
+    auto msgElem = MsgElement::retrieve(*data, "CentralWorker::workerWorkerSetLeftNeighbor");
     UInt32Element::Ptr neighborName = std::dynamic_pointer_cast<UInt32Element>(msgElem);
     if (neighborName == nullptr) {
         return false;

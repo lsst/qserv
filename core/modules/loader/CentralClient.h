@@ -66,22 +66,15 @@ public:
 /// This class is 'Central' to the client. The client maintains a UDP port
 /// so replies to its request can be sent directly back to it.
 /// 'Central' provides access to the master and a DoList for handling requests.
-/// TODO Maybe base this on CentralWorker or have a common base class?
-// &&& class CentralClient : public Central {
 class CentralClient : public CentralFollower {
 public:
     /// The client needs to know the master's IP and its own IP.
     CentralClient(boost::asio::io_service& ioService_,
                   std::string const& hostName, ClientConfig const& cfg);
 
-    // &&&void start();
     void startService() override;
 
     ~CentralClient() override;
-
-    std::string const& getHostName() const { return _hostName; }
-    // &&& int getUdpPort() const { return _udpPort; }
-    int getTcpPort() const { return 0; } ///< No tcp port at this time.
 
     /// @return the default worker's host name.
     std::string getDefWorkerHost() const { return _defWorkerHost; }
@@ -161,16 +154,9 @@ private:
         CentralClient* central;
     };
 
-
-    /// TODO The worker IP becomes default worker as it should be able to get
-    ///      that information from the master in the future. DM-16555
-    // &&& const std::string _hostName;
-    // &&& const int         _udpPort;
-
     // If const is removed, these will need mutex protection.
     const std::string _defWorkerHost;    ///< Default worker host
     const int         _defWorkerPortUdp; ///< Default worker UDP port
-
 
     size_t const _doListMaxLookups = 1000; ///< Maximum number of concurrent lookups in DoList, set by config
     size_t const _doListMaxInserts = 1000; ///< Maximum number of concurrent inserts in DoList, set by config

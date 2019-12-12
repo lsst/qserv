@@ -41,7 +41,6 @@ namespace qserv {
 namespace loader {
 
 class CentralFollower;
-//class CentralWorker; // &&&
 class LoaderMsg;
 
 

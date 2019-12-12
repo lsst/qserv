@@ -110,7 +110,7 @@ bool WWorkerList::workerListReceive(BufferUdp::Ptr const& data) {
     std::string const funcName("WWorkerList::workerListReceive");
     LOGS(_log, LOG_LVL_INFO, funcName << " data=" << data->dumpStr());
     // Open the data protobuffer and add it to our list.
-    StringElement::Ptr sData = std::dynamic_pointer_cast<StringElement>(MsgElement::retrieve(*data, " WWorkerList::workerListReceive&&& "));
+    StringElement::Ptr sData = std::dynamic_pointer_cast<StringElement>(MsgElement::retrieve(*data, "WWorkerList::workerListReceive"));
     if (sData == nullptr) {
         LOGS(_log, LOG_LVL_WARN, funcName << " Failed to parse list");
         return false;
@@ -142,7 +142,7 @@ bool WWorkerList::workerListReceive(BufferUdp::Ptr const& data) {
                 strNames += std::to_string(wId) + ",";
                 item->addDoListItems(_central);
             }
-            // TODO: Should this call updateEntry() to fill in the information for the worker? &&&
+            // TODO: Should this call updateEntry() to fill in the information for the worker?
         }
         sizeChange = _wIdMap.size() - initialSize;
         if (sizeChange > 0) {

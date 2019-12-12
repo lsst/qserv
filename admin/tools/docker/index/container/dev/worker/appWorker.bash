@@ -20,6 +20,3 @@ export LSST_LOG_CONFIG=/home/qserv/dev/qserv/admin/templates/configuration/etc/l
 child=$!
 echo "child ${child}"
 wait "$child"
-
-sleep 10000
-tail -f /dev/null

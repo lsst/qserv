@@ -87,7 +87,16 @@ void ServerUdpBase::sendBufferTo(std::string const& hostName, int port, BufferUd
     using namespace boost::asio;
     LOGS(_log, LOG_LVL_DEBUG, "ServerUdpBase::sendBufferTo hostName=" << hostName << " port=" << port);
     try {
-        ip::udp::endpoint dest = resolve(hostName, port);
+        NetworkAddress addr(hostName, port);
+        ip::udp::endpoint dest;
+        auto iter = _resolvMap.find(addr);
+        if (iter == _resolvMap.end()) {
+            dest = resolve(hostName, port); // may throw boost::system::system_error
+            _resolvMap[addr] = dest;
+        } else {
+            // TODO if the entry is old, call resolv to freshen.
+            dest = iter->second;
+        }
         _socket.send_to(buffer(sendBuf.getReadCursor(), sendBuf.getBytesLeftToRead()), dest);
     } catch (boost::system::system_error const& e) {
         LOGS(_log, LOG_LVL_ERROR, "ServerUdpBase::sendBufferTo boost system_error=" << e.what() <<
@@ -130,6 +139,7 @@ boost::asio::ip::udp::endpoint ServerUdpBase::resolve(std::string const& hostNam
     using namespace boost::asio;
     // Resolver returns an iterator. This uses the first item only.
     // Failure to resolve anything throws a boost::system::error.
+    // There's a 5 second timeout, which is extremely painful and frequent.
     ip::udp::endpoint dest =
             *_resolver.resolve(ip::udp::v4(), hostName, std::to_string(port)).begin();
     return dest;

@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2018-2019 AURA/LSST.
+ * Copyright 2018 LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -30,9 +30,6 @@
 #include <iostream>
 
 // qserv headers
-// &&& #include "loader/BufferUdp.h"
-// &&& #include "loader/CentralWorkerDoListItem.h"
-// &&& #include "loader/LoaderMsg.h"
 #include "proto/loader.pb.h"
 #include "proto/ProtoImporter.h"
 
@@ -65,7 +62,7 @@ void CentralFollower::startMonitoring() {
 
 bool CentralFollower::workerInfoReceive(BufferUdp::Ptr const&  data) {
     // Open the data protobuffer and add it to our list.
-    StringElement::Ptr sData = std::dynamic_pointer_cast<StringElement>(MsgElement::retrieve(*data, " CentralFollower::workerInfoReceive&&& "));
+    StringElement::Ptr sData = std::dynamic_pointer_cast<StringElement>(MsgElement::retrieve(*data, "CentralFollower::workerInfoReceive"));
     if (sData == nullptr) {
         LOGS(_log, LOG_LVL_WARN, "CentralFollower::workerInfoRecieve Failed to parse list");
         return false;
@@ -84,7 +81,6 @@ bool CentralFollower::workerInfoReceive(BufferUdp::Ptr const&  data) {
 
 void CentralFollower::_workerInfoReceive(std::unique_ptr<proto::WorkerListItem>& protoL) {
     std::unique_ptr<proto::WorkerListItem> protoList(std::move(protoL));
-
 
     // Check the information, if it is our network address, set or check our id.
     // Then compare it with the map, adding new/changed information.
@@ -110,28 +106,6 @@ void CentralFollower::_workerInfoReceive(std::unique_ptr<proto::WorkerListItem>&
         }
     }
 
-    /* &&&
-    // If the address matches ours, check the name.
-    if (getHostName() == ipUdp && getUdpPort() == portUdp) {
-        if (_isOurIdInvalid()) {
-            LOGS(_log, LOG_LVL_INFO, "Setting our name " << wId);
-            _setOurId(wId);
-        } else if (getOurId() != wId) {
-            LOGS(_log, LOG_LVL_ERROR, "Our wId doesn't match address from master! wId=" <<
-                                      getOurId() << " from master=" << wId);
-        }
-
-        // It is this worker. If there is a valid range in the message and our range is not valid,
-        // take the range given as our own.
-        if (strRange.getValid()) {
-            std::lock_guard<std::mutex> lckM(_idMapMtx);
-            if (not _keyRange.getValid()) {
-                LOGS(_log, LOG_LVL_INFO, "Setting our range " << strRange);
-                _keyRange.setMinMax(strRange.getMin(), strRange.getMax(), strRange.getUnlimited());
-            }
-        }
-    }
-    */
     checkForThisWorkerValues(wId, ipUdp, portUdp, portTcp, strRange);
 
     // Make/update entry in map.

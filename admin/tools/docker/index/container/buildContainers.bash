@@ -15,7 +15,7 @@ cd admin/tools/docker/index/container/dev/worker/ && docker build -t qserv/index
 cd ../master/ && docker build -t qserv/indexmaster:dev .
 #docker build -f admin/tools/docker/index/container/dev/master/Dockerfile -t qserv/indexmaster:dev .
 
-# clinetNum
+# clientNum
 cd ../clientNum/ && docker build -t qserv/indexclientnum:dev .
 #docker build -f admin/tools/docker/index/container/dev/clientNum/Dockerfile -t qserv/indexclientnum:dev .
 

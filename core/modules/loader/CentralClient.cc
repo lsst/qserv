@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2018 AURA/LSST.
+ * Copyright 2018 LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -49,24 +49,11 @@ namespace lsst {
 namespace qserv {
 namespace loader {
 
-/* &&&
-CentralClient::CentralClient(boost::asio::io_service& ioService_,
-                             std::string const& hostName, ClientConfig const& cfg)
-    : Central(ioService_, cfg.getMasterHost(), cfg.getMasterPortUdp(), cfg.getThreadPoolSize(), cfg.getLoopSleepTime(), cfg.getIOThreads()),
-      _hostName(hostName), _udpPort(cfg.getClientPortUdp()),
-      _defWorkerHost(cfg.getDefWorkerHost()),
-      _defWorkerPortUdp(cfg.getDefWorkerPortUdp()),
-      _doListMaxLookups(cfg.getMaxLookups()),
-      _doListMaxInserts(cfg.getMaxInserts()),
-      _maxRequestSleepTime(cfg.getMaxRequestSleepTime()) {
-}
-*/
+
 CentralClient::CentralClient(boost::asio::io_service& ioService_,
                              std::string const& hostName, ClientConfig const& cfg)
     : CentralFollower(ioService_, hostName, cfg.getMasterHost(), cfg.getMasterPortUdp(),
                       cfg.getThreadPoolSize(),cfg.getLoopSleepTime(), cfg.getIOThreads(), cfg.getClientPortUdp()),
-      // &&& _hostName(hostName),
-      // &&& _udpPort(cfg.getClientPortUdp()),
       _defWorkerHost(cfg.getDefWorkerHost()),
       _defWorkerPortUdp(cfg.getDefWorkerPortUdp()),
       _doListMaxLookups(cfg.getMaxLookups()),
@@ -74,14 +61,9 @@ CentralClient::CentralClient(boost::asio::io_service& ioService_,
       _maxRequestSleepTime(cfg.getMaxRequestSleepTime()) {
 }
 
-/* &&&
-void CentralClient::start() {
-    _server = std::make_shared<ClientServer>(ioService, _hostName, _udpPort, this);
-}
-*/
 
 void CentralClient::startService() {
-    _server = std::make_shared<ClientServer>(ioService, _hostName, _udpPort, this);
+    _server = std::make_shared<ClientServer>(ioService, getHostName(), getUdpPort(), this);
 }
 
 
@@ -92,7 +74,7 @@ CentralClient::~CentralClient() {
 void CentralClient::handleKeyLookup(LoaderMsg const& inMsg, BufferUdp::Ptr const& data) {
     LOGS(_log, LOG_LVL_DEBUG, "CentralClient::handleKeyLookup");
 
-    auto const sData = std::dynamic_pointer_cast<StringElement>(MsgElement::retrieve(*data, " CentralClient::handleKeyLookup&&& "));
+    auto const sData = std::dynamic_pointer_cast<StringElement>(MsgElement::retrieve(*data, " CentralClient::handleKeyLookup "));
     if (sData == nullptr) {
         LOGS(_log, LOG_LVL_WARN, "CentralClient::handleKeyLookup Failed to parse list");
         return;
@@ -135,7 +117,7 @@ void CentralClient::_handleKeyLookup(LoaderMsg const& inMsg, std::unique_ptr<pro
 void CentralClient::handleKeyInsertComplete(LoaderMsg const& inMsg, BufferUdp::Ptr const& data) {
     LOGS(_log, LOG_LVL_DEBUG, "CentralClient::handleKeyInsertComplete");
 
-    auto sData = std::dynamic_pointer_cast<StringElement>(MsgElement::retrieve(*data, " CentralClient::handleKeyInsertComplete&&& "));
+    auto sData = std::dynamic_pointer_cast<StringElement>(MsgElement::retrieve(*data, " CentralClient::handleKeyInsertComplete "));
     if (sData == nullptr) {
         LOGS(_log, LOG_LVL_WARN, "CentralClient::handleKeyInsertComplete Failed to retrieve element");
         return;
@@ -199,11 +181,10 @@ KeyInfoData::Ptr CentralClient::keyInsertReq(CompositeKey const& key, int chunk,
             size_t sz = _waitingKeyInsertMap.size();
             lck.unlock();
             if (loopCount % 100 == 0) {
-                LOGS(_log, LOG_LVL_INFO, "keyInsertReq waiting key=" << key <<
+                LOGS(_log, LOG_LVL_DEBUG, "keyInsertReq waiting key=" << key <<
                         "size=" << sz << " loopCount=" << loopCount);
             }
             // Let the CPU do something else while waiting for some requests to finish.
-            LOGS(_log, LOG_LVL_INFO, "&&& SLEEP");
             usleep(_maxRequestSleepTime);
             ++loopCount;
             lck.lock();
@@ -294,7 +275,6 @@ KeyInfoData::Ptr CentralClient::keyLookupReq(CompositeKey const& key) {
                         "size=" << sz << " loopCount=" << loopCount);
             }
             // Let the CPU do something else while waiting for some requests to finish.
-            LOGS(_log, LOG_LVL_INFO, "&&& SLEEP");
             usleep(_maxRequestSleepTime);
             sleptForMicroSec += _maxRequestSleepTime;
             ++loopCount;
@@ -350,12 +330,12 @@ void CentralClient::_keyLookupReq(CompositeKey const& key) {
 
 
 void CentralClient::getWorkerForKey(CompositeKey const& key, std::string& ip, int& port) {
-    auto worker = _wWorkerList->findWorkerForKey(key);
+    auto worker = getWorkerList()->findWorkerForKey(key);
     if (worker != nullptr) {
         auto nAddr = worker->getUdpAddress();
         ip = nAddr.ip;
         port = nAddr.port;
-        LOGS(_log, LOG_LVL_DEBUG, "getWorkerForKey " << key << " worker=" << worker);
+        LOGS(_log, LOG_LVL_DEBUG, "getWorkerForKey " << key << " worker=" << *worker);
     } else {
         ip = getDefWorkerHost();
         port = getDefWorkerPortUdp();

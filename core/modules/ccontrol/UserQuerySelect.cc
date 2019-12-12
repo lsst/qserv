@@ -183,7 +183,7 @@ std::string UserQuerySelect::getError() const {
     return _qSession->getError() + div + _errorExtra;
 }
 
-/// Attempt to kill query in progress.
+/// Attempt to kill in progress.
 void UserQuerySelect::kill() {
     LOGS(_log, LOG_LVL_DEBUG, "UserQuerySelect kill");
     std::lock_guard<std::mutex> lock(_killMutex);

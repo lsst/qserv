@@ -35,7 +35,6 @@
 #include "proto/ProtoImporter.h"
 #include "util/Issue.h"
 
-
 #define MAX_MSG_STRING_LENGTH 5000
 
 namespace lsst {
@@ -248,7 +247,6 @@ public:
 };
 
 
-
 // Using uint32_t (LEN_TYPE) for length in all cases.
 class StringElement : public MsgElement {
 public:
@@ -300,7 +298,7 @@ public:
     /// This the case with UDP, and boost asio async reads that return after X bytes read.
     template<typename T>
     static std::unique_ptr<T> protoParse(BufferUdp& data) {
-        StringElement::Ptr itemData = std::dynamic_pointer_cast<StringElement>(MsgElement::retrieve(data, "protoParse &&&"));
+        StringElement::Ptr itemData = std::dynamic_pointer_cast<StringElement>(MsgElement::retrieve(data, "protoParse"));
         if (itemData == nullptr) { return nullptr; }
         return itemData->protoParse<T>();
     }

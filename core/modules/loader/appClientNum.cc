@@ -122,8 +122,39 @@ KeyInfoData::Ptr clientAddLookup(CentralClient& central, uint64_t j) {
     return central.keyLookupReq(cKey);
 }
 
+std::string bitsStr(uint64_t in) {
+    std::string str;
+    uint64_t const bits = sizeof(in) * 8;
+    for (uint64_t j=bits; j>0; --j) {
+        uint64_t const base = 1;
+        if ((base << (j - 1)) & in) {
+            str += "1";
+        } else {
+            str += "0";
+        }
+    }
+    return str;
+}
+
+
+uint64_t reverseBits(uint64_t in) {
+    uint64_t out = 0;
+    uint64_t const bits = sizeof(in) * 8;
+    std::cout << "bits=" << bits << std::endl;;
+    for (uint64_t j=0; j<bits; ++j) {
+        uint64_t const base = 1;
+        if (((base << j) & in) != 0) {
+            out |= base << ((bits - 1) - j);
+        }
+    }
+    LOGS(_log, LOG_LVL_DEBUG, "reverse " << bitsStr(in) << " -> " << bitsStr(out));
+    return out;
+}
+
 
 int main(int argc, char* argv[]) {
+
+    bool reverse = true; // When true, reverse bits before inserting or looking up.
     std::string cCfgFile("core/modules/loader/config/client1.cnf");
     if (argc < 3) {
         LOGS(_log, LOG_LVL_ERROR, "usage: appClientNum <startingNumber> <endingNumber> <optional config file name>");
@@ -141,7 +172,6 @@ int main(int argc, char* argv[]) {
     }
 
 
-    //std::string const ourHost = boost::asio::ip::host_name(); &&&
     std::string const ourHost = getOurHostName(0);
     LOGS(_log, LOG_LVL_INFO, "ourHost=" << ourHost);
     boost::asio::io_service ioService;
@@ -170,14 +200,16 @@ int main(int argc, char* argv[]) {
     if (numEnd >= numStart) {
         totalKeyCount = (numEnd - numStart) + 1;
         for (uint64_t j=numStart; j<=numEnd; ++j) {
-            kList.push_back(clientAdd(cClient, j));
+            uint64_t key = (reverse) ? reverseBits(j) : j;
+            kList.push_back(clientAdd(cClient, key));
             // occasionally trim the list
             if (j%modInsertCheck == 0) keyInsertListClean(kList, successCount, failedCount);
         }
     } else {
         totalKeyCount = (numStart - numEnd) + 1;
         for (uint64_t j=numStart; j>=numEnd; --j) {
-            kList.push_back(clientAdd(cClient, j));
+            uint64_t key = (reverse) ? reverseBits(j) : j;
+            kList.push_back(clientAdd(cClient, key));
             // occasionally trim the list
             if (j%modInsertCheck == 0) keyInsertListClean(kList, successCount, failedCount);
         }
@@ -191,7 +223,6 @@ int main(int argc, char* argv[]) {
     if (waitForKeysCount > maxWaitCount) maxWaitCount = waitForKeysCount;
     while (!keyInsertListClean(kList, successCount, failedCount) && count < waitForKeysCount) {
         LOGS(_log, LOG_LVL_INFO, "waiting for inserts to finish count=" << count);
-        LOGS(_log, LOG_LVL_INFO, "&&& SLEEP");
         sleep(1);
         ++count;
     }
@@ -229,7 +260,8 @@ int main(int argc, char* argv[]) {
     int modLookupCheck = cClient.getDoListMaxLookups()/4;
     if (modLookupCheck < 1) modLookupCheck = 1;
     for (uint64_t j=nStart; j<=nEnd; ++j) {
-        kList.push_back(clientAddLookup(cClient, j));
+        uint64_t key = (reverse) ? reverseBits(j) : j;
+        kList.push_back(clientAddLookup(cClient, key));
         // occasionally trim the list
         if (j%modLookupCheck == 0) keyLookupListClean(kList, successCount, failedCount);
     }
@@ -239,7 +271,6 @@ int main(int argc, char* argv[]) {
     // About 1 second per 1000 keys)
     while (!keyLookupListClean(kList, successCount, failedCount) && count < waitForKeysCount) {
         LOGS(_log, LOG_LVL_INFO, "waiting for lookups to finish count=" << count);
-        LOGS(_log, LOG_LVL_INFO, "&&& SLEEP");
         sleep(1);
         ++count;
     }
@@ -259,18 +290,18 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
-    LOGS(_log, LOG_LVL_INFO, "lookup all elements. success=" << successCount <<
+    LOGS(_log, LOG_LVL_WARN, "lookup all elements. success=" << successCount <<
             " failed=" << failedCount << " size=" << kList.size());
 
     TimeOut::TimePoint lookupEnd = TimeOut::Clock::now();
 
-    LOGS(_log, LOG_LVL_INFO, "DONE inserts seconds=" <<
+    LOGS(_log, LOG_LVL_WARN, "DONE inserts seconds=" <<
          std::chrono::duration_cast<std::chrono::seconds>(insertEnd - insertBegin).count());
-    LOGS(_log, LOG_LVL_INFO, "DONE lookups seconds=" <<
+    LOGS(_log, LOG_LVL_WARN, "DONE lookups seconds=" <<
          std::chrono::duration_cast<std::chrono::seconds>(lookupEnd - insertEnd).count());
     ioService.stop();
-    LOGS(_log, LOG_LVL_INFO, "client DONE");
-    while(true) sleep(100); // &&& keep kubernetes from restarting this
+    LOGS(_log, LOG_LVL_WARN, "client DONE");
+    while(true) sleep(100); // prevent kubernetes from restarting this TODO: make this program run as a job.
     return 0;
 }
 

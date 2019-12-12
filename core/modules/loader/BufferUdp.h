@@ -46,7 +46,7 @@ class MsgElement;
 
 /// A buffer for reading and writing. Nothing can be read from the buffer until
 /// something has been written to it.
-/// TODO: rename BufferUdp is not really accurate anymore. &&&
+/// TODO: rename BufferUdp is not really accurate anymore.
 class BufferUdp {
 public:
     using Ptr = std::shared_ptr<BufferUdp>;
@@ -55,7 +55,7 @@ public:
     /// Usually, they should be much smaller.
     static size_t const MAX_MSG_SIZE_UDP = 6000;
 
-    /// These are also being used for TCP messages, which can be much bigger.
+    /// These are also being used for TCP messages, which can be much larger.
     static size_t const MAX_MSG_SIZE_TCP = 10000000;
 
     /// Create the object with a new _buffer with 'length' bytes.
@@ -64,7 +64,6 @@ public:
         _ourBuffer = true;
         _setupBuffer();
     }
-
 
     /// Create a BufferUdp object that uses 'buf' as its buffer, with 'length'
     /// indicating the number of bytes in the buffer. If 'buf' already

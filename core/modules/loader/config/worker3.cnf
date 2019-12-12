@@ -10,7 +10,7 @@ wPortUdp = 10045
 wPortTcp = 10145
 
 # Worker thread pool size
-threadPoolSize = 10
+threadPoolSize = 50
 
 # Period of time where a key insert is considered recent in milliseconds
 recentAddLimit = 60000

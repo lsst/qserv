@@ -57,8 +57,7 @@ struct ChunkSubchunk {
 
 /// This class is 'central' to the execution of the program, and must be around
 /// until the bitter end. As such, it can be accessed by normal pointers.
-/// This class is central to loader workers and the master.
-/// It is the base class for CentralWorker, CentralMaster, and CentralClient.
+/// This class is central to clients, workers and the master.
 /// It provides a DoList and a means to contact the master. The master
 /// needs to know its own address.
 class Central {

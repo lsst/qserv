@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2018 AURA/LSST.
+ * Copyright 2018 LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -77,7 +77,6 @@ void Central::_checkDoList() {
     while(_loop) {
         // Run and then sleep for a second. TODO A more advanced timer should be used
         doList->checkList();
-        LOGS(_log, LOG_LVL_INFO, "&&& SLEEP");
         usleep(_loopSleepTime);
     }
 }

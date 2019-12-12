@@ -77,7 +77,7 @@ std::vector<std::string> split(std::string const& in, std::function<bool(char)> 
 }
 
 
-/// Test to be put in unit tests &&&
+/// TODO Test to be put in unit tests
 bool splitTest() {
     auto out = split("www.github.com", [](char c) {return c == '.';});
     auto test = (out[0] == "www" && out[1] == "github" && out[2] == "com");

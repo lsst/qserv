@@ -45,7 +45,7 @@ bool MsgElement::retrieveType(BufferUdp &data, char& elemType) {
 }
 
 
-MsgElement::Ptr MsgElement::retrieve(BufferUdp& data, std::string const& note, bool throwOnMissing) { // &&& delete note, maybe, the thrown error is pretty useful.
+MsgElement::Ptr MsgElement::retrieve(BufferUdp& data, std::string const& note, bool throwOnMissing) {
     char elemT;
     if (not retrieveType(data, elemT)) {
         LOGS(_log, LOG_LVL_INFO, note << "no type retrieved ");
@@ -64,9 +64,6 @@ MsgElement::Ptr MsgElement::retrieve(BufferUdp& data, std::string const& note, b
     }
     return msgElem;
 }
-
-
-
 
 
 MsgElement::Ptr MsgElement::create(char elementType) {

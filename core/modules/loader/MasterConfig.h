@@ -24,10 +24,8 @@
 #ifndef LSST_QSERV_LOADER_MASTERCONFIG_H
 #define LSST_QSERV_LOADER_MASTERCONFIG_H
 
-
 // Qserv headers
 #include "loader/ConfigBase.h"
-
 
 namespace lsst {
 namespace qserv {

@@ -98,25 +98,7 @@ public:
 
     virtual ~DoListItem() = default;
 
-    util::CommandTracked::Ptr runIfNeeded(TimeOut::TimePoint now) {
-        std::lock_guard<std::mutex> lock(_mtx);
-        if (_command == nullptr) {
-            if (_isOneShotDone()) return nullptr;
-            if ((_needInfo || _timeOut.due(now)) && _timeRateLimit.due(now)) {
-                _timeRateLimit.triggered();
-                // Randomly vary the next rate limit timeout
-                int rand = (std::rand()/(RAND_MAX/100)); // 0 to 500
-                auto rateLimitRandom = now + std::chrono::milliseconds(rand);
-                _timeRateLimit.triggered(rateLimitRandom);
-                _command = createCommand();
-                if (_oneShot) ++_commandsCreated;
-                return _command;
-            }
-        } else if (_command->isFinished()) {
-            _command.reset(); // Allow the command to be sent again later.
-        }
-        return nullptr;
-    }
+    util::CommandTracked::Ptr runIfNeeded(TimeOut::TimePoint now);
 
     bool isAlreadyOnList() { return _addedToList; }
 
@@ -177,7 +159,7 @@ private:
     /// If no info is needed, check for info after this period of time.
     TimeOut _timeOut{std::chrono::minutes(5)};
     /// Rate limiter, no more than 1 message every few seconds
-    TimeOut _timeRateLimit{std::chrono::milliseconds(1500)}; // TODO: DM-17453 set via config
+    TimeOut _timeRateLimit{std::chrono::milliseconds(7500)}; // TODO: DM-17453 set via config
     util::CommandTracked::Ptr _command;
     std::mutex _mtx; ///< protects _timeOut, _timeRequest, _command, _oneShot, _needInfo
     /// Number of times the command needed to be created. It's only tracked for oneShots as

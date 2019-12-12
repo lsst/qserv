@@ -47,7 +47,6 @@ int main(int argc, char* argv[]) {
     }
     LOGS(_log, LOG_LVL_INFO, "masterCfg=" << mCfgFile);
 
-    //std::string const ourHost = boost::asio::ip::host_name(); &&&
     std::string const ourHost = getOurHostName(0);
     LOGS(_log, LOG_LVL_INFO, "ourHost=" << ourHost);
     boost::asio::io_service ioService;
@@ -64,7 +63,6 @@ int main(int argc, char* argv[]) {
 
     bool loop = true;
     while(loop) {
-        LOGS(_log, LOG_LVL_INFO, "&&& SLEEP");
         sleep(10);
     }
     ioService.stop();

@@ -47,8 +47,6 @@ class CentralClient;
 /// sent directly to the client instead of passed back through the chain of workers
 /// that were queried when looking for the worker that could handle this client's
 /// request.
-/// TODO This class should also be able to handle list of workers and their ranges from
-/// the master.
 class ClientServer : public ServerUdpBase {
 public:
     // The base class default constructor, copy constructor, and operator= have been set to delete.
@@ -73,7 +71,6 @@ private:
     /// Construct basic replies to unknown and unexpected messages.
     void _msgRecievedHandler(LoaderMsg const& inMsg, BufferUdp::Ptr const& data,
                              boost::asio::ip::udp::endpoint const& senderEndpoint);
-
 
     CentralClient* _centralClient;
 };

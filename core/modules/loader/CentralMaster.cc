@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2018 AURA/LSST.
+ * Copyright 2018 LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -43,11 +43,6 @@ namespace lsst {
 namespace qserv {
 namespace loader {
 
-/* &&&
-void CentralMaster::start() {
-    _server = std::make_shared<MasterServer>(ioService, getMasterHostName(), getMasterPort(), this);
-}
-*/
 void CentralMaster::startService() {
     _server = std::make_shared<MasterServer>(ioService, getMasterHostName(), getMasterPort(), this);
 }

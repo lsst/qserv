@@ -32,6 +32,7 @@
 
 // Qserv headers
 #include "loader/BufferUdp.h"
+#include "loader/NetworkAddress.h"
 
 namespace lsst {
 namespace qserv {
@@ -86,6 +87,10 @@ private:
     BufferUdp::Ptr _sendData; ///< data buffer for sending.
     std::string _hostName;
     int _port;
+
+    /// Map and mutex to store ip destinations
+    // TODO: add occasional checks to see if addresses changed
+    std::map<NetworkAddress, boost::asio::ip::udp::endpoint> _resolvMap;
 
     /// Items for resolving UDP addresses
     /// There appear to be concurrency issues even with

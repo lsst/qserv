@@ -30,7 +30,6 @@
 
 // Third-party headers
 
-
 // qserv headers
 #include "loader/CentralMaster.h"
 #include "loader/LoaderMsg.h"
@@ -73,7 +72,7 @@ BufferUdp::Ptr MasterServer::parseMsg(BufferUdp::Ptr const& data,
             case LoaderMsg::MSG_RECEIVED:
                 // TODO: locate msg id in send messages and take appropriate action
                 break;
-            case LoaderMsg::MAST_INFO_REQ:
+            case LoaderMsg::MAST_INFO_REQ: // &&& TODO delete this enum ???
                 // TODO: sendData = masterInfoRequest(inMsg, data, senderEndpoint); &&&
                 break;
             case LoaderMsg::MAST_WORKER_LIST_REQ:
