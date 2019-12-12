@@ -62,6 +62,7 @@ public:
             auto tableRef = cr.getTableRef();
             if (nullptr != tableRef) {
                 QueryTemplate qt(queryTemplate.getAliasMode());
+                qt.setQuoteIdentifiers(queryTemplate.quoteIdentifiers());
                 TableRef::render render(qt);
                 render.applyToQT(*tableRef);
                 os << qt;

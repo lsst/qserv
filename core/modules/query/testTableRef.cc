@@ -154,32 +154,32 @@ BOOST_AUTO_TEST_CASE(renderTableRef) {
     };
 
     auto tableRef = std::make_shared<TableRef>("db", "table", "alias");
-    BOOST_CHECK_EQUAL(getRendered(tableRef, QueryTemplate::NO_ALIAS), "db.table");
+    BOOST_CHECK_EQUAL(getRendered(tableRef, QueryTemplate::NO_ALIAS), "`db`.`table`");
     BOOST_CHECK_EQUAL(getRendered(tableRef, QueryTemplate::USE_ALIAS), "`alias`");
     BOOST_CHECK_EQUAL(getRendered(tableRef, QueryTemplate::DEFINE_VALUE_ALIAS_USE_TABLE_ALIAS), "`alias`");
     BOOST_CHECK_EQUAL(getRendered(tableRef, QueryTemplate::NO_VALUE_ALIAS_USE_TABLE_ALIAS), "`alias`");
-    BOOST_CHECK_EQUAL(getRendered(tableRef, QueryTemplate::DEFINE_TABLE_ALIAS), "db.table AS `alias`");
+    BOOST_CHECK_EQUAL(getRendered(tableRef, QueryTemplate::DEFINE_TABLE_ALIAS), "`db`.`table` AS `alias`");
 
     tableRef = std::make_shared<TableRef>("db", "table", "");
-    BOOST_CHECK_EQUAL(getRendered(tableRef, QueryTemplate::NO_ALIAS), "db.table");
-    BOOST_CHECK_EQUAL(getRendered(tableRef, QueryTemplate::USE_ALIAS), "db.table");
-    BOOST_CHECK_EQUAL(getRendered(tableRef, QueryTemplate::DEFINE_VALUE_ALIAS_USE_TABLE_ALIAS), "db.table");
-    BOOST_CHECK_EQUAL(getRendered(tableRef, QueryTemplate::NO_VALUE_ALIAS_USE_TABLE_ALIAS), "db.table");
-    BOOST_CHECK_EQUAL(getRendered(tableRef, QueryTemplate::DEFINE_TABLE_ALIAS), "db.table");
+    BOOST_CHECK_EQUAL(getRendered(tableRef, QueryTemplate::NO_ALIAS), "`db`.`table`");
+    BOOST_CHECK_EQUAL(getRendered(tableRef, QueryTemplate::USE_ALIAS), "`db`.`table`");
+    BOOST_CHECK_EQUAL(getRendered(tableRef, QueryTemplate::DEFINE_VALUE_ALIAS_USE_TABLE_ALIAS), "`db`.`table`");
+    BOOST_CHECK_EQUAL(getRendered(tableRef, QueryTemplate::NO_VALUE_ALIAS_USE_TABLE_ALIAS), "`db`.`table`");
+    BOOST_CHECK_EQUAL(getRendered(tableRef, QueryTemplate::DEFINE_TABLE_ALIAS), "`db`.`table`");
 
     tableRef = std::make_shared<TableRef>("", "table", "alias");
-    BOOST_CHECK_EQUAL(getRendered(tableRef, QueryTemplate::NO_ALIAS), "table");
+    BOOST_CHECK_EQUAL(getRendered(tableRef, QueryTemplate::NO_ALIAS), "`table`");
     BOOST_CHECK_EQUAL(getRendered(tableRef, QueryTemplate::USE_ALIAS), "`alias`");
     BOOST_CHECK_EQUAL(getRendered(tableRef, QueryTemplate::DEFINE_VALUE_ALIAS_USE_TABLE_ALIAS), "`alias`");
     BOOST_CHECK_EQUAL(getRendered(tableRef, QueryTemplate::NO_VALUE_ALIAS_USE_TABLE_ALIAS), "`alias`");
-    BOOST_CHECK_EQUAL(getRendered(tableRef, QueryTemplate::DEFINE_TABLE_ALIAS), "table AS `alias`");
+    BOOST_CHECK_EQUAL(getRendered(tableRef, QueryTemplate::DEFINE_TABLE_ALIAS), "`table` AS `alias`");
 
     tableRef = std::make_shared<TableRef>("", "table", "");
-    BOOST_CHECK_EQUAL(getRendered(tableRef, QueryTemplate::NO_ALIAS), "table");
-    BOOST_CHECK_EQUAL(getRendered(tableRef, QueryTemplate::USE_ALIAS), "table");
-    BOOST_CHECK_EQUAL(getRendered(tableRef, QueryTemplate::DEFINE_VALUE_ALIAS_USE_TABLE_ALIAS), "table");
-    BOOST_CHECK_EQUAL(getRendered(tableRef, QueryTemplate::NO_VALUE_ALIAS_USE_TABLE_ALIAS), "table");
-    BOOST_CHECK_EQUAL(getRendered(tableRef, QueryTemplate::DEFINE_TABLE_ALIAS), "table");
+    BOOST_CHECK_EQUAL(getRendered(tableRef, QueryTemplate::NO_ALIAS), "`table`");
+    BOOST_CHECK_EQUAL(getRendered(tableRef, QueryTemplate::USE_ALIAS), "`table`");
+    BOOST_CHECK_EQUAL(getRendered(tableRef, QueryTemplate::DEFINE_VALUE_ALIAS_USE_TABLE_ALIAS), "`table`");
+    BOOST_CHECK_EQUAL(getRendered(tableRef, QueryTemplate::NO_VALUE_ALIAS_USE_TABLE_ALIAS), "`table`");
+    BOOST_CHECK_EQUAL(getRendered(tableRef, QueryTemplate::DEFINE_TABLE_ALIAS), "`table`");
 }
 
 

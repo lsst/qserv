@@ -93,7 +93,7 @@ void TestFactory::addWhere(std::shared_ptr<SelectStmt> const& stmt) {
     std::shared_ptr<WhereClause> wc = std::make_shared<WhereClause>();
     CompPredicate::Ptr cp = std::make_shared<CompPredicate>();
     cp->left = std::make_shared<ValueExpr>(); // baz
-    ValueFactorPtr fact = ValueFactor::newColumnRefFactor((ColumnRef::newShared("","b","baz")));
+    ValueFactorPtr fact = ValueFactor::newColumnRefFactor(std::make_shared<ColumnRef>("","b","baz"));
     cp->left->getFactorOps().push_back(ValueExpr::FactorOp(fact));
     cp->op = CompPredicate::lookupOp("==");
     cp->right = std::make_shared<ValueExpr>(); // 42

@@ -53,13 +53,13 @@ BOOST_AUTO_TEST_CASE(SecIdxCompRestrictorTestLeft){
     auto restrictor = SecIdxCompRestrictor(
             make_shared<CompPredicate>(ValueExpr::newColumnExpr("db", "tbl", "", "objectId"),
                                        CompPredicate::EQUALS_OP,
-                                       ValueExpr::newColumnExpr("123456")),
+                                       ValueExpr::newSimple(ValueFactor::newConstFactor("123456"))),
                                        true);
-    BOOST_CHECK_EQUAL(restrictor.sqlFragment(), "db.tbl.objectId=123456");
+    BOOST_CHECK_EQUAL(restrictor.sqlFragment(), "`db`.`tbl`.`objectId`=123456");
     BOOST_CHECK_EQUAL(restrictor.getSecIdxLookupQuery("db", "tbl", "chunkColumn", "subChunkColumn"),
                       "SELECT `chunkColumn`, `subChunkColumn` "
                       "FROM `db`.`tbl` "
-                      "WHERE objectId=123456");
+                      "WHERE `objectId`=123456");
     auto secIdxColRef = restrictor.getSecIdxColumnRef();
     BOOST_REQUIRE(secIdxColRef != nullptr);
     BOOST_CHECK_EQUAL(*secIdxColRef, ColumnRef("db", "tbl", "", "objectId"));
@@ -68,15 +68,15 @@ BOOST_AUTO_TEST_CASE(SecIdxCompRestrictorTestLeft){
 
 BOOST_AUTO_TEST_CASE(SecIdxCompRestrictorTestRight){
     auto restrictor = SecIdxCompRestrictor(
-            make_shared<CompPredicate>(ValueExpr::newColumnExpr("123456"),
+            make_shared<CompPredicate>(ValueExpr::newSimple(ValueFactor::newConstFactor("123456")),
                                        CompPredicate::EQUALS_OP,
                                        ValueExpr::newColumnExpr("db", "tbl", "", "objectId")),
                                        false);
-    BOOST_CHECK_EQUAL(restrictor.sqlFragment(), "123456=db.tbl.objectId");
+    BOOST_CHECK_EQUAL(restrictor.sqlFragment(), "123456=`db`.`tbl`.`objectId`");
     BOOST_CHECK_EQUAL(restrictor.getSecIdxLookupQuery("db", "tbl", "chunkColumn", "subChunkColumn"),
                       "SELECT `chunkColumn`, `subChunkColumn` "
                       "FROM `db`.`tbl` "
-                      "WHERE 123456=objectId");
+                      "WHERE 123456=`objectId`");
     auto secIdxColRef = restrictor.getSecIdxColumnRef();
     BOOST_REQUIRE(secIdxColRef != nullptr);
     BOOST_CHECK_EQUAL(*secIdxColRef, ColumnRef("db", "tbl", "", "objectId"));
@@ -89,11 +89,11 @@ BOOST_AUTO_TEST_CASE(SecIdxBetweenRestrictorTest) {
                                           ValueExpr::newSimple(ValueFactor::newConstFactor("0")),
                                           ValueExpr::newSimple(ValueFactor::newConstFactor("100000")),
                                           false));
-    BOOST_CHECK_EQUAL(restrictor.sqlFragment(), "db.tbl.objectId BETWEEN 0 AND 100000");
+    BOOST_CHECK_EQUAL(restrictor.sqlFragment(), "`db`.`tbl`.`objectId` BETWEEN 0 AND 100000");
     BOOST_CHECK_EQUAL(restrictor.getSecIdxLookupQuery("db", "tbl", "chunkColumn", "subChunkColumn"),
                       "SELECT `chunkColumn`, `subChunkColumn` "
                       "FROM `db`.`tbl` "
-                      "WHERE objectId BETWEEN 0 AND 100000");
+                      "WHERE `objectId` BETWEEN 0 AND 100000");
     auto secIdxColRef = restrictor.getSecIdxColumnRef();
     BOOST_REQUIRE(secIdxColRef != nullptr);
     BOOST_CHECK_EQUAL(*secIdxColRef, ColumnRef("db", "tbl", "", "objectId"));
@@ -109,11 +109,11 @@ BOOST_AUTO_TEST_CASE(SecIdxInRestrictorTest) {
     auto restrictor = SecIdxInRestrictor(
             make_shared<InPredicate>(ValueExpr::newColumnExpr("db", "tbl", "", "objectId"),
                                      candidates, false));
-    BOOST_CHECK_EQUAL(restrictor.sqlFragment(), "db.tbl.objectId IN(1,3,5,7,11)");
+    BOOST_CHECK_EQUAL(restrictor.sqlFragment(), "`db`.`tbl`.`objectId` IN(1,3,5,7,11)");
     BOOST_CHECK_EQUAL(restrictor.getSecIdxLookupQuery("db", "tbl", "chunkColumn", "subChunkColumn"),
                       "SELECT `chunkColumn`, `subChunkColumn` "
                       "FROM `db`.`tbl` "
-                      "WHERE objectId IN(1,3,5,7,11)");
+                      "WHERE `objectId` IN(1,3,5,7,11)");
     auto secIdxColRef = restrictor.getSecIdxColumnRef();
     BOOST_REQUIRE(secIdxColRef != nullptr);
     BOOST_CHECK_EQUAL(*secIdxColRef, ColumnRef("db", "tbl", "", "objectId"));

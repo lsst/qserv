@@ -84,7 +84,7 @@ BOOST_AUTO_TEST_CASE(SecondaryIndex) {
         "SELECT `" + std::string(lsst::qserv::CHUNK_COLUMN) + "`, `" +
         std::string(lsst::qserv::SUB_CHUNK_COLUMN) +
         "` FROM `" + std::string(lsst::qserv::SEC_INDEX_DB) +
-        "`.`LSST__Object` WHERE objectIdObjTest IN(2,3145,9999)");
+        "`.`LSST__Object` WHERE `objectIdObjTest` IN(2,3145,9999)");
 }
 
 
@@ -92,9 +92,9 @@ BOOST_AUTO_TEST_CASE(CountIn) {
     std::string stmt = "select COUNT(*) AS N FROM Source WHERE objectId IN(386950783579546, 386942193651348);";
     qsTest.sqlConfig = SqlConfig(SqlConfig::MockDbTableColumns({{"LSST", {{"Source", {"objectId"}}}}}));
     std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, stmt);
-    std::string expectedParallel = "SELECT COUNT(*) AS `QS1_COUNT` FROM LSST.Source_100 AS `LSST.Source` "
-                                   "WHERE `LSST.Source`.objectId IN(386950783579546,386942193651348)";
-    std::string expectedMerge = "SELECT SUM(QS1_COUNT) AS `N` FROM LSST.Source AS `LSST.Source`";
+    std::string expectedParallel = "SELECT COUNT(*) AS `QS1_COUNT` FROM `LSST`.`Source_100` AS `LSST.Source` "
+                                   "WHERE `LSST.Source`.`objectId` IN(386950783579546,386942193651348)";
+    std::string expectedMerge = "SELECT SUM(`QS1_COUNT`) AS `N` FROM `LSST`.`Source` AS `LSST.Source`";
     auto queries = queryAnaHelper.getInternalQueries(qsTest, stmt);
     BOOST_CHECK_EQUAL(queries[0], expectedParallel);
     BOOST_CHECK_EQUAL(queries[1], expectedMerge);
@@ -128,7 +128,7 @@ BOOST_AUTO_TEST_CASE(RestrictorObjectIdAlias) {
         "SELECT `" + std::string(lsst::qserv::CHUNK_COLUMN) + "`, `" +
         std::string(lsst::qserv::SUB_CHUNK_COLUMN) +
         "` FROM `" + std::string(lsst::qserv::SEC_INDEX_DB) +
-        "`.`LSST__Object` WHERE objectIdObjTest IN(2,3145,9999)");
+        "`.`LSST__Object` WHERE `objectIdObjTest` IN(2,3145,9999)");
 }
 
 BOOST_AUTO_TEST_SUITE_END()

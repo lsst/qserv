@@ -210,17 +210,17 @@ void TableRef::putTemplate(QueryTemplate& qt) const {
             qt.appendIdentifier(_alias);
         } else {
             if (!_db.empty()) {
-                qt.append(_db);
+                qt.appendIdentifier(_db);
                 qt.append(".");
             }
-            qt.append(_table);
+            if (!_table.empty()) { qt.appendIdentifier(_table); }
         }
     } else { // DEFINE or DONT_USE
         if (!_db.empty()) {
-            qt.append(_db);
+            qt.appendIdentifier(_db);
             qt.append(".");
         }
-        qt.append(_table);
+        if (!_table.empty()) { qt.appendIdentifier(_table); }
     }
     if (QueryTemplate::DEFINE == aliasMode) {
         if (hasAlias()) {
