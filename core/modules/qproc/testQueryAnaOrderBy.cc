@@ -93,14 +93,14 @@ static const std::vector<Data> DATA = {
     Data("SELECT objectId, taiMidPoint "
             "FROM Source "
             "ORDER BY objectId ASC",
-        "SELECT `LSST.Source`.objectId AS `objectId`,`LSST.Source`.taiMidPoint AS `taiMidPoint` FROM LSST.Source_100 AS `LSST.Source`",
+        "SELECT `LSST.Source`.`objectId` AS `objectId`,`LSST.Source`.`taiMidPoint` AS `taiMidPoint` FROM `LSST`.`Source_100` AS `LSST.Source`",
         "",
         "ORDER BY `objectId` ASC",
         sql::SqlConfig(sql::SqlConfig::MockDbTableColumns({{defaultDb, {{"Source", {"objectId", "taiMidPoint"}}}}}))),
     // Order by not chunked:
 
     Data("SELECT filterId FROM Filter ORDER BY filterId",
-        "SELECT `LSST.Filter`.filterId AS `filterId` FROM LSST.Filter AS `LSST.Filter`",
+        "SELECT `LSST.Filter`.`filterId` AS `filterId` FROM `LSST`.`Filter` AS `LSST.Filter`",
         "",
         "ORDER BY `filterId`",
         sql::SqlConfig(sql::SqlConfig::MockDbTableColumns({{defaultDb, {{"Filter", {"filterId"}}}}}))),
@@ -109,7 +109,7 @@ static const std::vector<Data> DATA = {
     Data("SELECT objectId, taiMidPoint "
             "FROM Source "
             "ORDER BY objectId, taiMidPoint ASC",
-        "SELECT `LSST.Source`.objectId AS `objectId`,`LSST.Source`.taiMidPoint AS `taiMidPoint` FROM LSST.Source_100 AS `LSST.Source`",
+        "SELECT `LSST.Source`.`objectId` AS `objectId`,`LSST.Source`.`taiMidPoint` AS `taiMidPoint` FROM `LSST`.`Source_100` AS `LSST.Source`",
         "",
         "ORDER BY `objectId`, `taiMidPoint` ASC",
         sql::SqlConfig(sql::SqlConfig::MockDbTableColumns({{defaultDb, {{"Source", {"objectId", "taiMidPoint"}}}}}))),
@@ -118,9 +118,9 @@ static const std::vector<Data> DATA = {
     Data("SELECT objectId, taiMidPoint, xFlux "
             "FROM Source "
             "ORDER BY objectId, taiMidPoint, xFlux DESC",
-        "SELECT `LSST.Source`.objectId AS `objectId`,"
-            "`LSST.Source`.taiMidPoint AS `taiMidPoint`,`LSST.Source`.xFlux AS `xFlux` "
-            "FROM LSST.Source_100 AS `LSST.Source`",
+        "SELECT `LSST.Source`.`objectId` AS `objectId`,"
+            "`LSST.Source`.`taiMidPoint` AS `taiMidPoint`,`LSST.Source`.`xFlux` AS `xFlux` "
+            "FROM `LSST`.`Source_100` AS `LSST.Source`",
         "",
         "ORDER BY `objectId`, `taiMidPoint`, `xFlux` DESC",
         sql::SqlConfig(sql::SqlConfig::MockDbTableColumns({{defaultDb, {{"Source", {"objectId", "taiMidPoint", "xFlux"}}}}}))),
@@ -130,40 +130,40 @@ static const std::vector<Data> DATA = {
             "FROM Source "
             "GROUP BY objectId "
             "ORDER BY objectId ASC",
-        "SELECT `LSST.Source`.objectId AS `objectId`,COUNT(`LSST.Source`.taiMidPoint) AS `QS1_COUNT`,SUM(`LSST.Source`.taiMidPoint) AS `QS2_SUM` "
-            "FROM LSST.Source_100 AS `LSST.Source` "
+        "SELECT `LSST.Source`.`objectId` AS `objectId`,COUNT(`LSST.Source`.`taiMidPoint`) AS `QS1_COUNT`,SUM(`LSST.Source`.`taiMidPoint`) AS `QS2_SUM` "
+            "FROM `LSST`.`Source_100` AS `LSST.Source` "
             "GROUP BY `objectId`",
-        "SELECT objectId AS `objectId`,(SUM(QS2_SUM)/SUM(QS1_COUNT)) AS `AVG(taiMidPoint)` "
-            "FROM LSST.Source AS `LSST.Source` "
+        "SELECT `objectId` AS `objectId`,(SUM(`QS2_SUM`)/SUM(`QS1_COUNT`)) AS `AVG(taiMidPoint)` "
+            "FROM `LSST`.`Source` AS `LSST.Source` "
             "GROUP BY `objectId`",
         "ORDER BY `objectId` ASC",
         sql::SqlConfig(sql::SqlConfig::MockDbTableColumns({{defaultDb, {{"Source", {"objectId", "taiMidPoint"}}}}}))),
 
     // OrderByAggregateNotChunked)
     Data("SELECT filterId, SUM(photClam) FROM Filter GROUP BY filterId ORDER BY filterId",
-        "SELECT `LSST.Filter`.filterId AS `filterId`,SUM(`LSST.Filter`.photClam) AS `QS1_SUM` FROM LSST.Filter AS `LSST.Filter` GROUP BY `filterId`",
+        "SELECT `LSST.Filter`.`filterId` AS `filterId`,SUM(`LSST.Filter`.`photClam`) AS `QS1_SUM` FROM `LSST`.`Filter` AS `LSST.Filter` GROUP BY `filterId`",
         // FIXME merge query is not useful here, see DM-3166
-        "SELECT filterId AS `filterId`,SUM(QS1_SUM) AS `SUM(photClam)` "
-            "FROM LSST.Filter AS `LSST.Filter` "
+        "SELECT `filterId` AS `filterId`,SUM(`QS1_SUM`) AS `SUM(photClam)` "
+            "FROM `LSST`.`Filter` AS `LSST.Filter` "
             "GROUP BY `filterId`",
         "ORDER BY `filterId`",
         sql::SqlConfig(sql::SqlConfig::MockDbTableColumns({{defaultDb, {{"Filter", {"filterId", "photClam"}}}}}))),
 
     // OrderByLimit
-    Data( "SELECT objectId, taiMidPoint "
+    Data("SELECT objectId, taiMidPoint "
             "FROM Source "
             "ORDER BY objectId ASC LIMIT 5",
-        "SELECT `LSST.Source`.objectId AS `objectId`,`LSST.Source`.taiMidPoint AS `taiMidPoint` FROM LSST.Source_100 AS `LSST.Source` ORDER BY `objectId` ASC LIMIT 5",
-        "SELECT objectId AS `objectId`,taiMidPoint AS `taiMidPoint` "
-            "FROM LSST.Source AS `LSST.Source` "
+        "SELECT `LSST.Source`.`objectId` AS `objectId`,`LSST.Source`.`taiMidPoint` AS `taiMidPoint` FROM `LSST`.`Source_100` AS `LSST.Source` ORDER BY `objectId` ASC LIMIT 5",
+        "SELECT `objectId` AS `objectId`,`taiMidPoint` AS `taiMidPoint` "
+            "FROM `LSST`.`Source` AS `LSST.Source` "
             "ORDER BY `objectId` ASC LIMIT 5",
         "ORDER BY `objectId` ASC",
         sql::SqlConfig(sql::SqlConfig::MockDbTableColumns({{defaultDb, {{"Source", {"objectId", "taiMidPoint"}}}}}))),
 
     // OrderByLimitNotChunked
         Data("SELECT run, field FROM LSST.Science_Ccd_Exposure order by field limit 2",
-            "SELECT `LSST.Science_Ccd_Exposure`.run AS `run`,`LSST.Science_Ccd_Exposure`.field AS `field` "
-                "FROM LSST.Science_Ccd_Exposure AS `LSST.Science_Ccd_Exposure` "
+            "SELECT `LSST.Science_Ccd_Exposure`.`run` AS `run`,`LSST.Science_Ccd_Exposure`.`field` AS `field` "
+                "FROM `LSST`.`Science_Ccd_Exposure` AS `LSST.Science_Ccd_Exposure` "
                 "ORDER BY `field` "
                 "LIMIT 2",
             "",
@@ -175,12 +175,12 @@ static const std::vector<Data> DATA = {
             "FROM Source "
             "GROUP BY objectId "
             "ORDER BY objectId ASC LIMIT 2",
-        "SELECT `LSST.Source`.objectId AS `objectId`,COUNT(`LSST.Source`.taiMidPoint) AS `QS1_COUNT`,SUM(`LSST.Source`.taiMidPoint) AS `QS2_SUM` "
-            "FROM LSST.Source_100 AS `LSST.Source` "
+        "SELECT `LSST.Source`.`objectId` AS `objectId`,COUNT(`LSST.Source`.`taiMidPoint`) AS `QS1_COUNT`,SUM(`LSST.Source`.`taiMidPoint`) AS `QS2_SUM` "
+            "FROM `LSST`.`Source_100` AS `LSST.Source` "
             "GROUP BY `objectId` "
             "ORDER BY `objectId` ASC",
-        "SELECT objectId AS `objectId`,(SUM(QS2_SUM)/SUM(QS1_COUNT)) AS `AVG(taiMidPoint)` "
-            "FROM LSST.Source AS `LSST.Source` "
+        "SELECT `objectId` AS `objectId`,(SUM(`QS2_SUM`)/SUM(`QS1_COUNT`)) AS `AVG(taiMidPoint)` "
+            "FROM `LSST`.`Source` AS `LSST.Source` "
             "GROUP BY `objectId` "
             "ORDER BY `objectId` ASC LIMIT 2",
         "ORDER BY `objectId` ASC",
@@ -188,13 +188,13 @@ static const std::vector<Data> DATA = {
 
     // OrderByAggregateNotChunkedLimit
     Data("SELECT filterId, SUM(photClam) FROM Filter GROUP BY filterId ORDER BY filterId LIMIT 3",
-        "SELECT `LSST.Filter`.filterId AS `filterId`,SUM(`LSST.Filter`.photClam) AS `QS1_SUM` "
-            "FROM LSST.Filter AS `LSST.Filter` "
+        "SELECT `LSST.Filter`.`filterId` AS `filterId`,SUM(`LSST.Filter`.`photClam`) AS `QS1_SUM` "
+            "FROM `LSST`.`Filter` AS `LSST.Filter` "
             "GROUP BY `filterId` "
             "ORDER BY `filterId`",
        // FIXME merge query is not useful here, see DM-3166
-        "SELECT filterId AS `filterId`,SUM(QS1_SUM) AS `SUM(photClam)` "
-            "FROM LSST.Filter AS `LSST.Filter` "
+        "SELECT `filterId` AS `filterId`,SUM(`QS1_SUM`) AS `SUM(photClam)` "
+            "FROM `LSST`.`Filter` AS `LSST.Filter` "
             "GROUP BY `filterId` ORDER BY `filterId` LIMIT 3",
         "ORDER BY `filterId`",
         sql::SqlConfig(sql::SqlConfig::MockDbTableColumns({{defaultDb, {{"Filter", {"filterId", "photClam"}}}}}))),

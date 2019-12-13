@@ -122,7 +122,7 @@ BOOST_AUTO_TEST_CASE(BoxToSciSql) {
     QueryTemplate qt;
     boolFactor->renderTo(qt);
     BOOST_CHECK_EQUAL(qt.sqlFragment(),
-                      "scisql_s2PtInBox(`table`.chunkColumn1,`table`.chunkColumn2,1,2,3,4)=1");
+                      "scisql_s2PtInBox(`table`.`chunkColumn1`,`table`.`chunkColumn2`,1,2,3,4)=1");
 }
 
 
@@ -134,7 +134,7 @@ BOOST_AUTO_TEST_CASE(CircleToSciSql) {
     QueryTemplate qt;
     boolFactor->renderTo(qt);
     BOOST_CHECK_EQUAL(qt.sqlFragment(),
-                      "scisql_s2PtInCircle(`table`.chunkColumn1,`table`.chunkColumn2,1,2,3)=1");
+                      "scisql_s2PtInCircle(`table`.`chunkColumn1`,`table`.`chunkColumn2`,1,2,3)=1");
 }
 
 
@@ -146,7 +146,7 @@ BOOST_AUTO_TEST_CASE(EllipseToSciSql) {
     QueryTemplate qt;
     boolFactor->renderTo(qt);
     BOOST_CHECK_EQUAL(qt.sqlFragment(),
-                      "scisql_s2PtInEllipse(`table`.chunkColumn1,`table`.chunkColumn2,1,2,3,4,5)=1");
+                      "scisql_s2PtInEllipse(`table`.`chunkColumn1`,`table`.`chunkColumn2`,1,2,3,4,5)=1");
 }
 
 
@@ -158,7 +158,7 @@ BOOST_AUTO_TEST_CASE(PolyToSciSql) {
     QueryTemplate qt;
     boolFactor->renderTo(qt);
     BOOST_CHECK_EQUAL(qt.sqlFragment(),
-            "scisql_s2PtInCPoly(`table`.chunkColumn1,`table`.chunkColumn2,1,2,3,4,5,6,7,8)=1");
+            "scisql_s2PtInCPoly(`table`.`chunkColumn1`,`table`.`chunkColumn2`,1,2,3,4,5,6,7,8)=1");
 }
 
 

@@ -173,7 +173,7 @@ TablePlugin::applyLogical(query::SelectStmt& stmt,
     for (auto& valueExpr : *(stmt.getSelectList().getValueExprList())) {
         if (not valueExpr->hasAlias()) {
             if (not valueExpr->isStar()) {
-                auto alias = valueExpr->sqlFragment(query::QueryTemplate::NO_ALIAS);
+                auto alias = valueExpr->sqlFragmentNoQuotes(query::QueryTemplate::NO_ALIAS);
                 if (alias.size() > MYSQL_FIELD_MAX_LEN) {
                     alias = _getNextValueExprAlias();
                 }

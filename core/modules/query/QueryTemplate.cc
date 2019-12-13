@@ -62,6 +62,7 @@ public:
             auto tableRef = cr.getTableRef();
             if (nullptr != tableRef) {
                 QueryTemplate qt(queryTemplate.getAliasMode());
+                qt.setQuoteIdentifiers(queryTemplate.quoteIdentifiers());
                 TableRef::render render(qt);
                 render.applyToQT(*tableRef);
                 os << qt;
@@ -70,11 +71,7 @@ public:
                 }
             }
         }
-        auto column = cr.getColumn();
-        bool addQuotes = column.find(".") != std::string::npos && column.find("`") == std::string::npos;
-        if (addQuotes) { os << "`"; }
-        os << column;
-        if (addQuotes) { os << "`"; }
+        os << queryTemplate.formatIdentifier(cr.getColumn());
         val = os.str();
     }
     virtual std::string getValue() const {
@@ -131,6 +128,12 @@ std::ostream& operator<<(std::ostream& os, QueryTemplate const& queryTemplate) {
 }
 
 
+std::string QueryTemplate::formatIdentifier(std::string const& identifier) const {
+    if (not _quoteIdentifiers) return identifier;
+    return "`" + identifier + "`";
+}
+
+
 void QueryTemplate::append(std::string const& s) {
     std::shared_ptr<Entry> e = std::make_shared<StringEntry>(s);
     _entries.push_back(e);
@@ -145,6 +148,15 @@ void QueryTemplate::append(ColumnRef const& cr) {
 
 void QueryTemplate::append(QueryTemplate::Entry::Ptr const& e) {
     _entries.push_back(e);
+}
+
+
+void QueryTemplate::appendIdentifier(std::string const& s) {
+    if (not _quoteIdentifiers) {
+        append(s);
+        return;
+    }
+    append(formatIdentifier(s));
 }
 
 

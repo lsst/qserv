@@ -207,25 +207,25 @@ void TableRef::putTemplate(QueryTemplate& qt) const {
     auto aliasMode = qt.getTableAliasMode();
     if (QueryTemplate::USE == aliasMode) {
         if (hasAlias()) {
-            qt.append("`" + _alias + "`");
+            qt.appendIdentifier(_alias);
         } else {
             if (!_db.empty()) {
-                qt.append(_db);
+                qt.appendIdentifier(_db);
                 qt.append(".");
             }
-            qt.append(_table);
+            if (!_table.empty()) { qt.appendIdentifier(_table); }
         }
     } else { // DEFINE or DONT_USE
         if (!_db.empty()) {
-            qt.append(_db);
+            qt.appendIdentifier(_db);
             qt.append(".");
         }
-        qt.append(_table);
+        if (!_table.empty()) { qt.appendIdentifier(_table); }
     }
     if (QueryTemplate::DEFINE == aliasMode) {
         if (hasAlias()) {
             qt.append("AS");
-            qt.append("`" + _alias + "`");
+            qt.appendIdentifier(_alias);
         }
     }
     typedef JoinRefPtrVector::const_iterator Iter;

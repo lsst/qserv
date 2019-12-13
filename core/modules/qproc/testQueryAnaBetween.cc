@@ -85,7 +85,7 @@ BOOST_AUTO_TEST_CASE(SecondaryIndex) {
         "SELECT `" + std::string(lsst::qserv::CHUNK_COLUMN) + "`, " +
         "`" + std::string(lsst::qserv::SUB_CHUNK_COLUMN) + "`" +
         " FROM `" + std::string(lsst::qserv::SEC_INDEX_DB) + "`" +
-        ".`LSST__Object` WHERE objectIdObjTest BETWEEN 386942193651347 AND 386942193651349");
+        ".`LSST__Object` WHERE `objectIdObjTest` BETWEEN 386942193651347 AND 386942193651349");
 }
 
 
@@ -120,7 +120,7 @@ BOOST_AUTO_TEST_CASE(DoubleSecondaryIndexRestrictor) {
         "SELECT `" + std::string(lsst::qserv::CHUNK_COLUMN) + "`, " +
         "`" + std::string(lsst::qserv::SUB_CHUNK_COLUMN) + "`" +
         " FROM " + "`" + std::string(lsst::qserv::SEC_INDEX_DB) + "`" +
-        ".`LSST__Object` WHERE objectIdObjTest BETWEEN 38 AND 40");
+        ".`LSST__Object` WHERE `objectIdObjTest` BETWEEN 38 AND 40");
     BOOST_REQUIRE(context->secIdxRestrictors->at(1));
     auto inRestrictor = std::dynamic_pointer_cast<SecIdxInRestrictor>(context->secIdxRestrictors->at(1));
     BOOST_REQUIRE(inRestrictor != nullptr);
@@ -129,7 +129,7 @@ BOOST_AUTO_TEST_CASE(DoubleSecondaryIndexRestrictor) {
         "SELECT `" + std::string(lsst::qserv::CHUNK_COLUMN) + "`, " +
         "`" + std::string(lsst::qserv::SUB_CHUNK_COLUMN) + "`" +
         " FROM " + "`" + std::string(lsst::qserv::SEC_INDEX_DB) + "`" +
-        ".`LSST__Object` WHERE objectIdObjTest IN(10,30,70)");
+        ".`LSST__Object` WHERE `objectIdObjTest` IN(10,30,70)");
 }
 
 
@@ -157,7 +157,7 @@ BOOST_AUTO_TEST_CASE(DoubleSecondaryIndexRestrictorCartesian) {
         "SELECT `" + std::string(lsst::qserv::CHUNK_COLUMN) + "`, " +
         "`" + std::string(lsst::qserv::SUB_CHUNK_COLUMN) + "`" +
         " FROM `" + std::string(lsst::qserv::SEC_INDEX_DB) + "`" +
-        ".`LSST__Object` WHERE objectIdObjTest BETWEEN 38 AND 40");
+        ".`LSST__Object` WHERE `objectIdObjTest` BETWEEN 38 AND 40");
     BOOST_REQUIRE(context->secIdxRestrictors->at(1));
     auto inRestrictor = std::dynamic_pointer_cast<SecIdxInRestrictor>(context->secIdxRestrictors->at(1));
     BOOST_REQUIRE(inRestrictor != nullptr);
@@ -166,7 +166,7 @@ BOOST_AUTO_TEST_CASE(DoubleSecondaryIndexRestrictorCartesian) {
         "SELECT `" + std::string(lsst::qserv::CHUNK_COLUMN) + "`, " +
         "`" + std::string(lsst::qserv::SUB_CHUNK_COLUMN) + "`" +
         " FROM `" + std::string(lsst::qserv::SEC_INDEX_DB) + "`" +
-        ".`LSST__Object` WHERE objectIdObjTest IN(10,30,70)");
+        ".`LSST__Object` WHERE `objectIdObjTest` IN(10,30,70)");
 }
 
 

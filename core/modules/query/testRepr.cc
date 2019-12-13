@@ -179,14 +179,14 @@ BOOST_AUTO_TEST_CASE(BoolTermRenderParens) {
 BOOST_AUTO_TEST_CASE(DM_737_REGRESSION) {
 
     // Construct "refObjectId IS NULL OR flags<>2"
-    ColumnRef::Ptr cr0 = ColumnRef::newShared("", "", "refObjectId");
+    ColumnRef::Ptr cr0 = std::make_shared<ColumnRef>("", "", "refObjectId");
     std::shared_ptr<ValueFactor> vf0 = ValueFactor::newColumnRefFactor(cr0);
     std::shared_ptr<ValueExpr> ve0 = ValueExpr::newSimple(vf0);
     NullPredicate::Ptr np0 = std::make_shared<NullPredicate>();
     np0->value = ve0;
     BoolFactor::Ptr bf0 = std::make_shared<BoolFactor>();
     bf0->_terms.push_back(np0);
-    ColumnRef::Ptr cr1 = ColumnRef::newShared("", "", "flags");
+    ColumnRef::Ptr cr1 = std::make_shared<ColumnRef>("", "", "flags");
     std::shared_ptr<ValueFactor> vf1 = ValueFactor::newColumnRefFactor(cr1);
     std::shared_ptr<ValueExpr> ve1 = ValueExpr::newSimple(vf1);
     std::shared_ptr<ValueFactor> vf2 = ValueFactor::newConstFactor("2");
@@ -202,10 +202,10 @@ BOOST_AUTO_TEST_CASE(DM_737_REGRESSION) {
     ot0->_terms.push_back(bf1);
 
     // Construct "WHERE foo!=bar AND baz<3.14159"
-    ColumnRef::Ptr cr2 = ColumnRef::newShared("", "", "foo");
+    ColumnRef::Ptr cr2 = std::make_shared<ColumnRef>("", "", "foo");
     std::shared_ptr<ValueFactor> vf3 = ValueFactor::newColumnRefFactor(cr2);
     std::shared_ptr<ValueExpr> ve3 = ValueExpr::newSimple(vf3);
-    ColumnRef::Ptr cr3 = ColumnRef::newShared("", "", "bar");
+    ColumnRef::Ptr cr3 = std::make_shared<ColumnRef>("", "", "bar");
     std::shared_ptr<ValueFactor> vf4 = ValueFactor::newColumnRefFactor(cr3);
     std::shared_ptr<ValueExpr> ve4 = ValueExpr::newSimple(vf4);
     CompPredicate::Ptr cp1 = std::make_shared<CompPredicate>();
@@ -214,7 +214,7 @@ BOOST_AUTO_TEST_CASE(DM_737_REGRESSION) {
     cp1->right = ve4;
     BoolFactor::Ptr bf2 = std::make_shared<BoolFactor>();
     bf2->_terms.push_back(cp1);
-    ColumnRef::Ptr cr4 = ColumnRef::newShared("", "", "baz");
+    ColumnRef::Ptr cr4 = std::make_shared<ColumnRef>("", "", "baz");
     std::shared_ptr<ValueFactor> vf5 = ValueFactor::newColumnRefFactor(cr4);
     std::shared_ptr<ValueExpr> ve5 = ValueExpr::newSimple(vf5);
     std::shared_ptr<ValueFactor> vf6 = ValueFactor::newConstFactor("3.14159");
@@ -236,7 +236,7 @@ BOOST_AUTO_TEST_CASE(DM_737_REGRESSION) {
     std::shared_ptr<WhereClause> wc1 = wc0->clone();
     wc1->prependAndTerm(ot0);
     auto str0 = wc1->getGenerated();
-    BOOST_CHECK_EQUAL(str0, "(refObjectId IS NULL OR flags<>2) AND foo!=bar AND baz<3.14159");
+    BOOST_CHECK_EQUAL(str0, "(`refObjectId` IS NULL OR `flags`<>2) AND `foo`!=`bar` AND `baz`<3.14159");
 }
 
 BOOST_AUTO_TEST_SUITE_END()
