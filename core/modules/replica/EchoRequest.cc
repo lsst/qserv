@@ -90,7 +90,8 @@ EchoRequest::EchoRequest(ServiceProvider::Ptr const& serviceProvider,
                          worker,
                          priority,
                          keepTracking,
-                         false /* allowDuplicate */,
+                         false, // allowDuplicate
+                         true,  // disposeRequired
                          messenger),
         _data(data),
         _delay(delay),

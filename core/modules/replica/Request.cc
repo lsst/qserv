@@ -104,7 +104,8 @@ Request::Request(ServiceProvider::Ptr const& serviceProvider,
                  string const& worker,
                  int  priority,
                  bool keepTracking,
-                 bool allowDuplicate)
+                 bool allowDuplicate,
+                 bool disposeRequired)
     :   _serviceProvider(serviceProvider),
         _type(type),
         _id(Generators::uniqueId()),
@@ -112,6 +113,7 @@ Request::Request(ServiceProvider::Ptr const& serviceProvider,
         _priority(priority),
         _keepTracking(keepTracking),
         _allowDuplicate(allowDuplicate),
+        _disposeRequired(disposeRequired),
         _state(CREATED),
         _extendedState(NONE),
         _extendedServerStatus(ExtendedCompletionStatus::EXT_STATUS_NONE),
@@ -180,6 +182,7 @@ string Request::toString(bool extended) const {
         << "  priority: " << priority() << "\n"
         << "  keepTracking: " << (keepTracking() ? "1" : "0") << "\n"
         << "  allowDuplicate: " << (allowDuplicate() ? "1" : "0") << "\n"
+        << "  disposeRequired: " << (disposeRequired() ? "1" : "0") << "\n"
         << "  remoteId: " << remoteId() << "\n"
         << "  performance: " << performance() << "\n";
     if (extended) {

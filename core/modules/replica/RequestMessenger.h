@@ -43,13 +43,9 @@ namespace replica {
   * the replication Controller server.
   */
 class RequestMessenger : public Request  {
-
 public:
-
     /// The pointer type for instances of the class
     typedef std::shared_ptr<RequestMessenger> Ptr;
-
-    // Default construction and copy semantics are prohibited
 
     RequestMessenger() = delete;
     RequestMessenger(RequestMessenger const&) = delete;
@@ -58,41 +54,12 @@ public:
     ~RequestMessenger() override = default;
 
 protected:
-
     /**
      * Construct the request with the pointer to the services provider.
      *
-     * @note
-     *   options 'keepTracking' and 'allowDuplicate' have effect for
-     *   specific request only.
-     *
-     * @param serviceProvider
-     *   a provider of various services
-     *
-     * @param type
-     *   its type name (used informally for debugging)
-     *
-     * @param worker
-     *   the name of a worker
-     *
-     * @io_service
-     *   BOOST ASIO service
-     *
-     * @priority
-     *   may affect an execution order of the request by the worker service.
-     *   Higher number means higher priority.
-     *
-     * @param keepTracking
-     *   keep tracking the request before it finishes or fails
-     *
-     * @param allowDuplicate
-     *   follow a previously made request if the current one duplicates it
-     *
-     * @param messenger
-     *   an interface for communicating with workers
-     *
-     * @return
-     *   pointer to the created object
+     * @param messenger An interface for communicating with workers.
+     * @see class Request for an explanation of other parameters.
+     * @return A pointer to the created object.
      */
     RequestMessenger(ServiceProvider::Ptr const& serviceProvider,
                      boost::asio::io_service& io_service,
@@ -101,6 +68,7 @@ protected:
                      int  priority,
                      bool keepTracking,
                      bool allowDuplicate,
+                     bool disposeRequired,
                      Messenger::Ptr const& messenger);
 
     /// @return pointer to the messaging service

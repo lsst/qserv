@@ -104,6 +104,7 @@ DisposeRequest::DisposeRequest(ServiceProvider::Ptr const& serviceProvider,
                          priority,
                          keepTracking,
                          false, // allowDuplicate
+                         false, // disposeRequired
                          messenger),
         _targetIds(targetIds),
         _onFinish(onFinish) {

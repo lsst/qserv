@@ -101,6 +101,7 @@ ReplicationRequest::ReplicationRequest(
             priority,
             keepTracking,
             allowDuplicate,
+            true,  // disposeRequired
             messenger),
         _database(database),
         _chunk(chunk),

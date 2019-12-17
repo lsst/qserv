@@ -22,6 +22,10 @@
 // Class header
 #include "replica/RequestMessenger.h"
 
+// Qserv headers
+#include "replica/protocol.pb.h"
+#include "replica/ProtocolBuffer.h"
+
 // LSST headers
 #include "lsst/log/Log.h"
 
@@ -44,6 +48,7 @@ RequestMessenger::RequestMessenger(ServiceProvider::Ptr const& serviceProvider,
                                    int  priority,
                                    bool keepTracking,
                                    bool allowDuplicate,
+                                   bool disposeRequired,
                                    Messenger::Ptr const& messenger)
     :   Request(serviceProvider,
                 io_service,
@@ -51,7 +56,8 @@ RequestMessenger::RequestMessenger(ServiceProvider::Ptr const& serviceProvider,
                 worker,
                 priority,
                 keepTracking,
-                allowDuplicate),
+                allowDuplicate,
+                disposeRequired),
         _messenger(messenger) {
 }
 
@@ -61,9 +67,34 @@ void RequestMessenger::finishImpl(util::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     // Make sure the request (if any) has been eliminated from the messenger
-
     if (_messenger->exists(worker(), id())) {
         _messenger->cancel(worker(), id());
+    }
+
+    // Tell the worker to dispose the request should this be requested
+    if (disposeRequired()) {
+
+        buffer()->resize();
+
+        ProtocolRequestHeader hdr;
+        hdr.set_id(id());
+        hdr.set_type(ProtocolRequestHeader::REQUEST);
+        hdr.set_management_type(ProtocolManagementRequestType::REQUEST_DISPOSE);
+
+        buffer()->serialize(hdr);
+        ProtocolRequestDispose message;
+        message.add_ids(id());
+        buffer()->serialize(message);
+
+        _messenger->send<ProtocolResponseDispose>(
+            worker(),
+            id(),
+            buffer(),
+            // Don't require any callback notification for the completion of
+            // the operation. This will also prevent incrementing a shared pointer
+            // counter for the current object.
+            nullptr
+        );
     }
 }
 

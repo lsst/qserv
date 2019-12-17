@@ -187,9 +187,10 @@ ServiceManagementRequestBase::ServiceManagementRequestBase(
                          io_service,
                          requestName,
                          worker,
-                         0,        /* priority */
-                         false,    /* keepTracking */
-                         false,    /* allowDuplicate */
+                         0,     // priority
+                         false, // keepTracking
+                         false, // allowDuplicate
+                         false, // disposeRequired
                          messenger),
         _requestType(requestType) {
 }

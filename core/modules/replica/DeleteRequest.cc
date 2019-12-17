@@ -95,6 +95,7 @@ DeleteRequest::DeleteRequest(ServiceProvider::Ptr const& serviceProvider,
                          priority,
                          keepTracking,
                          allowDuplicate,
+                         true,  // disposeRequired
                          messenger),
         _database(database),
         _chunk(chunk),

@@ -98,7 +98,8 @@ SqlRequest::SqlRequest(
             worker,
             priority,
             keepTracking,
-            false /* allowDuplicate */,
+            false, // allowDuplicate
+            true,  // disposeRequired
             messenger
         ) {
 

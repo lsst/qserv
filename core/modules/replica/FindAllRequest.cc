@@ -89,7 +89,8 @@ FindAllRequest::FindAllRequest(ServiceProvider::Ptr const& serviceProvider,
                          worker,
                          priority,
                          keepTracking,
-                         false, /* allowDuplicate */
+                         false, // allowDuplicate
+                         true,  // disposeRequired
                          messenger),
         _database(database),
         _saveReplicaInfo(saveReplicaInfo),
