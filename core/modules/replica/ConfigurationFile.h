@@ -39,23 +39,16 @@ namespace replica {
   * of the INI-style configuration files.
   */
 class ConfigurationFile : public ConfigurationStore {
-
 public:
-
     /**
      * Dump the input configuration into the text representing an initialization
      * sequence compatible with the INI file format and its schema assumed by
      * the current implementation.
      *
-     * @param config
-     *   input configuration to be dumped
-     *
-     * @return
-     *   the text representation of the configuration
+     * @param config An input configuration to be dumped.
+     * @return The text representation of the configuration.
      */
     static std::string dump2init(ConfigurationIFace::Ptr const& config);
-
-    // Default construction and copy semantics are prohibited
 
     ConfigurationFile() = delete;
     ConfigurationFile(ConfigurationFile const&) = delete;
@@ -65,8 +58,7 @@ public:
      * Construct the object by reading the configuration
      * from the specified file.
      *
-     * @param configFile
-     *   the name of a configuration file
+     * @param configFile The name of a configuration file.
      */
     explicit ConfigurationFile(std::string const& configFile);
 
@@ -77,8 +69,7 @@ public:
     std::string configUrl(bool showPassword=false) const final { return prefix() + ":" + _configFile; }
 
 private:
-
-    /// The name of the configuration file
+    /// The name of the configuration file.
     std::string const _configFile;
 };
 

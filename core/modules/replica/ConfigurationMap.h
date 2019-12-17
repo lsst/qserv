@@ -43,21 +43,15 @@ namespace replica {
   * key-value map as defined by class util::ConfigStore.
   */
 class ConfigurationMap : public ConfigurationStore {
-
 public:
-
-    // Default construction and copy semantics are prohibited
-
     ConfigurationMap() = delete;
     ConfigurationMap(ConfigurationMap const&) = delete;
     ConfigurationMap& operator=(ConfigurationMap const&) = delete;
 
     /**
-     * Initialize the configuration from a map
+     * Initialize the configuration from a map.
      *
-     * @param kvMap
-     *   the key-value map with configuration parameters
-     * 
+     * @param kvMap The key-value map with configuration parameters.
      * @see ConfigurationStore::ConfigurationStore()
      */
     explicit ConfigurationMap(std::map<std::string, std::string> const& kvMap);
