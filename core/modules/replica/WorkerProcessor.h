@@ -24,7 +24,7 @@
 // System headers
 #include <algorithm>
 #include <cstdint>
-#include <list>
+#include <map>
 #include <memory>
 #include <queue>
 #include <stdexcept>
@@ -105,9 +105,6 @@ public:
             return false;
         }
     };
-
-    /// Ordinary collection of pointers for requests in other (than new/unprocessed) state
-    typedef std::list<WorkerRequest::Ptr> CollectionType;
 
     /// Current state of the request processing engine
     enum State {
@@ -586,8 +583,8 @@ private:
 
     PriorityQueueType _newRequests;
 
-    CollectionType _inProgressRequests;
-    CollectionType _finishedRequests;
+    std::map<std::string, WorkerRequest::Ptr> _inProgressRequests;
+    std::map<std::string, WorkerRequest::Ptr> _finishedRequests;
 };
 
 }}} // namespace lsst::qserv::replica

@@ -71,7 +71,7 @@ public:
 
 /**
  * Class DisposeRequest represents Controller-side requests for "garbage
- * collecting requests at workers.
+ * collecting" requests at workers.
  *
  * @note Requests of this type don't have any persistent states. 
  */
