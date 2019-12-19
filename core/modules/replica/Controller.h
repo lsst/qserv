@@ -61,6 +61,7 @@ namespace replica {
     class SqlDeleteTableRequest;
     class SqlRemoveTablePartitionsRequest;
     class SqlDeleteTablePartitionRequest;
+    class DisposeRequest;
 
     typedef std::shared_ptr<ReplicationRequest> ReplicationRequestPtr;
     typedef std::shared_ptr<DeleteRequest>      DeleteRequestPtr;
@@ -78,6 +79,7 @@ namespace replica {
     typedef std::shared_ptr<SqlDeleteTableRequest>           SqlDeleteTableRequestPtr;
     typedef std::shared_ptr<SqlRemoveTablePartitionsRequest> SqlRemoveTablePartitionsRequestPtr;
     typedef std::shared_ptr<SqlDeleteTablePartitionRequest>  SqlDeleteTablePartitionRequestPtr;
+    typedef std::shared_ptr<DisposeRequest> DisposeRequestPtr;
 
     class StopReplicationRequestPolicy;
     class StopDeleteRequestPolicy;
@@ -413,6 +415,15 @@ public:
             std::vector<std::string> const& tables,
             TransactionId transactionId,
             std::function<void(SqlDeleteTablePartitionRequestPtr)> const& onFinish=nullptr,
+            int priority=0,
+            bool keepTracking=true,
+            std::string const& jobId="",
+            unsigned int requestExpirationIvalSec=0);
+
+    DisposeRequestPtr dispose(
+            std::string const& workerName,
+            std::vector<std::string> const& targetIds,
+            std::function<void(DisposeRequestPtr)> const& onFinish=nullptr,
             int priority=0,
             bool keepTracking=true,
             std::string const& jobId="",

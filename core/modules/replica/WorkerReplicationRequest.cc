@@ -55,45 +55,45 @@ namespace replica {
 ///////////////////////////////////////////////////////////////////
 
 WorkerReplicationRequest::Ptr WorkerReplicationRequest::create(
-                                        ServiceProvider::Ptr const& serviceProvider,
-                                        string const& worker,
-                                        string const& id,
-                                        int priority,
-                                        string const& database,
-                                        unsigned int chunk,
-                                        string const& sourceWorker) {
-    return WorkerReplicationRequest::Ptr(
-        new WorkerReplicationRequest(
-                serviceProvider,
-                worker,
-                id,
-                priority,
-                database,
-                chunk,
-                sourceWorker));
+        ServiceProvider::Ptr const& serviceProvider,
+        string const& worker,
+        string const& id,
+        int priority,
+        ExpirationCallbackType const& onExpired,
+        unsigned int requestExpirationIvalSec,
+        ProtocolRequestReplicate const& request) {
+    return WorkerReplicationRequest::Ptr(new WorkerReplicationRequest(
+        serviceProvider,
+        worker,
+        id,
+        priority,
+        onExpired,
+        requestExpirationIvalSec,
+        request
+    ));
 }
 
 
 WorkerReplicationRequest::WorkerReplicationRequest(
-                                ServiceProvider::Ptr const& serviceProvider,
-                                string const& worker,
-                                string const& id,
-                                int priority,
-                                string const& database,
-                                unsigned int chunk,
-                                string const& sourceWorker)
+        ServiceProvider::Ptr const& serviceProvider,
+        string const& worker,
+        string const& id,
+        int priority,
+        ExpirationCallbackType const& onExpired,
+        unsigned int requestExpirationIvalSec,
+        ProtocolRequestReplicate const& request)
     :   WorkerRequest (
             serviceProvider,
             worker,
             "REPLICATE",
             id,
-            priority),
-        _database(database),
-        _chunk(chunk),
-        _sourceWorker(sourceWorker) {
+            priority,
+            onExpired,
+            requestExpirationIvalSec),
+        _request(request) {
 
-    serviceProvider->assertWorkerIsValid(sourceWorker);
-    serviceProvider->assertWorkersAreDifferent(worker, sourceWorker);
+    serviceProvider->assertWorkerIsValid(request.worker());
+    serviceProvider->assertWorkersAreDifferent(worker, request.worker());
 }
 
 
@@ -106,12 +106,7 @@ void WorkerReplicationRequest::setInfo(ProtocolResponseReplicate& response) cons
     response.set_allocated_target_performance(performance().info().release());
     response.set_allocated_replica_info(_replicaInfo.info().release());
 
-    auto ptr = make_unique<ProtocolRequestReplicate>();
-    ptr->set_priority(priority());
-    ptr->set_database(database());
-    ptr->set_chunk(   chunk());
-    ptr->set_worker(  sourceWorker());
-    response.set_allocated_request(ptr.release());
+    *(response.mutable_request()) = _request;
 }
 
 
@@ -142,41 +137,41 @@ bool WorkerReplicationRequest::execute() {
 ////////////////////////////////////////////////////////////////////////
 
 WorkerReplicationRequestPOSIX::Ptr WorkerReplicationRequestPOSIX::create (
-                                    ServiceProvider::Ptr const& serviceProvider,
-                                    string const& worker,
-                                    string const& id,
-                                    int priority,
-                                    string const& database,
-                                    unsigned int chunk,
-                                    string const& sourceWorker) {
-    return WorkerReplicationRequestPOSIX::Ptr(
-        new WorkerReplicationRequestPOSIX(
-                serviceProvider,
-                worker,
-                id,
-                priority,
-                database,
-                chunk,
-                sourceWorker));
+        ServiceProvider::Ptr const& serviceProvider,
+        string const& worker,
+        string const& id,
+        int priority,
+        ExpirationCallbackType const& onExpired,
+        unsigned int requestExpirationIvalSec,
+        ProtocolRequestReplicate const& request) {
+    return WorkerReplicationRequestPOSIX::Ptr(new WorkerReplicationRequestPOSIX(
+        serviceProvider,
+        worker,
+        id,
+        priority,
+        onExpired,
+        requestExpirationIvalSec,
+        request
+    ));
 }
 
 
 WorkerReplicationRequestPOSIX::WorkerReplicationRequestPOSIX(
-                                    ServiceProvider::Ptr const& serviceProvider,
-                                    string const& worker,
-                                    string const& id,
-                                    int priority,
-                                    string const& database,
-                                    unsigned int chunk,
-                                    string const& sourceWorker)
+        ServiceProvider::Ptr const& serviceProvider,
+        string const& worker,
+        string const& id,
+        int priority,
+        ExpirationCallbackType const& onExpired,
+        unsigned int requestExpirationIvalSec,
+        ProtocolRequestReplicate const& request)
     :   WorkerReplicationRequest(
-                serviceProvider,
-                worker,
-                id,
-                priority,
-                database,
-                chunk,
-                sourceWorker) {
+            serviceProvider,
+            worker,
+            id,
+            priority,
+            onExpired,
+            requestExpirationIvalSec,
+            request) {
 }
 
 
@@ -420,46 +415,46 @@ bool WorkerReplicationRequestPOSIX::execute () {
 /////////////////////////////////////////////////////////////////////
 
 WorkerReplicationRequestFS::Ptr WorkerReplicationRequestFS::create (
-                                            ServiceProvider::Ptr const& serviceProvider,
-                                            string const& worker,
-                                            string const& id,
-                                            int priority,
-                                            string const& database,
-                                            unsigned int chunk,
-                                            string const& sourceWorker) {
-    return WorkerReplicationRequestFS::Ptr(
-        new WorkerReplicationRequestFS(
-                serviceProvider,
-                worker,
-                id,
-                priority,
-                database,
-                chunk,
-                sourceWorker));
+        ServiceProvider::Ptr const& serviceProvider,
+        string const& worker,
+        string const& id,
+        int priority,
+        ExpirationCallbackType const& onExpired,
+        unsigned int requestExpirationIvalSec,
+        ProtocolRequestReplicate const& request) {
+    return WorkerReplicationRequestFS::Ptr(new WorkerReplicationRequestFS(
+        serviceProvider,
+        worker,
+        id,
+        priority,
+        onExpired,
+        requestExpirationIvalSec,
+        request
+    ));
 }
 
 
 WorkerReplicationRequestFS::WorkerReplicationRequestFS(
-                                    ServiceProvider::Ptr const& serviceProvider,
-                                    string const& worker,
-                                    string const& id,
-                                    int priority,
-                                    string const& database,
-                                    unsigned int chunk,
-                                    string const& sourceWorker)
+        ServiceProvider::Ptr const& serviceProvider,
+        string const& worker,
+        string const& id,
+        int priority,
+        ExpirationCallbackType const& onExpired,
+        unsigned int requestExpirationIvalSec,
+        ProtocolRequestReplicate const& request)
     :   WorkerReplicationRequest(
-                serviceProvider,
-                worker,
-                id,
-                priority,
-                database,
-                chunk,
-                sourceWorker),
-        _inWorkerInfo(_serviceProvider->config()->workerInfo(sourceWorker)),
+            serviceProvider,
+            worker,
+            id,
+            priority,
+            onExpired,
+            requestExpirationIvalSec,
+            request),
+        _inWorkerInfo(_serviceProvider->config()->workerInfo(request.worker())),
         _outWorkerInfo(_serviceProvider->config()->workerInfo(worker)),
-        _databaseInfo(_serviceProvider->config()->databaseInfo(database)),
+        _databaseInfo(_serviceProvider->config()->databaseInfo(request.database())),
         _initialized(false),
-        _files(FileUtils::partitionedFiles(_databaseInfo, chunk)),
+        _files(FileUtils::partitionedFiles(_databaseInfo, request.chunk())),
         _tmpFilePtr(nullptr),
         _buf(0),
         _bufSize(serviceProvider->config()->workerFsBufferSizeBytes()) {

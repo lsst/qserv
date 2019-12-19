@@ -77,6 +77,7 @@ private:
     void _configureParserCommandINDEX();
     void _configureParserCommandSTATUS();
     void _configureParserCommandSTOP();
+    void _configureParserCommandDISPOSE();
     void _configureParserCommandSERVICE();
 
     Request::Ptr _launchStatusRequest(Controller::Ptr const& controller) const;

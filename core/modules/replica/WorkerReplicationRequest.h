@@ -56,10 +56,7 @@ namespace replica {
   * Real implementations of the request processing must derive from this class.
   */
 class WorkerReplicationRequest : public WorkerRequest {
-
 public:
-
-    /// Pointer to self
     typedef std::shared_ptr<WorkerReplicationRequest> Ptr;
 
     /**
@@ -67,42 +64,29 @@ public:
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
      *
-     * @param serviceProvider
-     *   provider is needed to access the Configuration of a setup
-     *   and for validating the input parameters
-     *
-     * @param worker
-     *   the name of a worker. It must be the same worker where the operation
-     *   is being run.
-     *
-     * @param id
-     *   an identifier of a client request
-     * 
-     * @param priority 
-     *   indicates the importance of the request
-     *
-     * @param database
-     *   the name of a database defining a scope of the operation
-     *
-     * @param chunk
-     *   the chunk to be replicated
-     *
-     * @param sourceWorker
-     *   the name of a source worker where an input replica is expected
-     *   to be located.
-     *
-     * @return
-     *   pointer to the created object
+     * @param serviceProvider provider is needed to access the Configuration of
+     *   a setup and for validating the input parameters
+     * @param worker the name of a worker. It must be the same worker as the one
+     *   where the request is going to be processed.
+     * @param type the type name of a request
+     * @param id an identifier of a client request
+     * @param priority indicates the importance of the request
+     * @param (optional) onExpired request expiration callback function.
+     *   If nullptr is passed as a parameter then the request will never expire.
+     * @param (optional) requestExpirationIvalSec request expiration interval.
+     *   If 0 is passed into the method then a value of the corresponding
+     *   parameter for the Controller-side requests will be pulled from
+     *   the Configuration.
+     * @param request ProtoBuf body of the request
+     * @return pointer to the created object
      */
     static Ptr create(ServiceProvider::Ptr const& serviceProvider,
                       std::string const& worker,
                       std::string const& id,
                       int priority,
-                      std::string const& database,
-                      unsigned int chunk,
-                      std::string const& sourceWorker);
-
-    // Default construction and copy semantics are prohibited
+                      ExpirationCallbackType const& onExpired,
+                      unsigned int requestExpirationIvalSec,
+                      ProtocolRequestReplicate const& request);
 
     WorkerReplicationRequest() = delete;
     WorkerReplicationRequest(WorkerReplicationRequest const&) = delete;
@@ -112,39 +96,30 @@ public:
 
     // Trivial get methods
 
-    std::string const& database() const { return _database; }
-
-    unsigned int chunk() const { return _chunk; }
-
-    std::string const& sourceWorker() const { return _sourceWorker; }
+    std::string const& database() const { return _request.database(); }
+    unsigned int chunk() const { return _request.chunk(); }
+    std::string const& sourceWorker() const { return _request.worker(); }
 
     /**
      * Extract request status into the Protobuf response object.
-     *
-     * @param response
-     *   Protobuf response to be initialized
+     * @param response Protobuf response to be initialized
      */
     void setInfo(ProtocolResponseReplicate& response) const;
 
-    /// @see WorkerRequest::execute
     bool execute() override;
 
 protected:
-
-    /// @see WorkerReplicationRequest::created()
     WorkerReplicationRequest(ServiceProvider::Ptr const& serviceProvider,
                              std::string const& worker,
                              std::string const& id,
                              int priority,
-                             std::string const& database,
-                             unsigned int chunk,
-                             std::string const& sourceWorker);
+                             ExpirationCallbackType const& onExpired,
+                             unsigned int requestExpirationIvalSec,
+                             ProtocolRequestReplicate const& request);
 
     // Input parameters
 
-    std::string  const _database;
-    unsigned int const _chunk;
-    std::string  const _sourceWorker;
+    ProtocolRequestReplicate const _request;
 
     /// Result of the operation
     ReplicaInfo _replicaInfo;
@@ -156,30 +131,17 @@ protected:
   * a POSIX file system.
   */
 class WorkerReplicationRequestPOSIX : public WorkerReplicationRequest {
-
 public:
-
-    /// Pointer to self
     typedef std::shared_ptr<WorkerReplicationRequestPOSIX> Ptr;
 
-    /**
-     * Static factory method is needed to prevent issue with the lifespan
-     * and memory management of instances created otherwise (as values or via
-     * low-level pointers).
-     * 
-     * For a description of parameters:
-     *
-     * @see WorkerReplicationRequest::created()
-     */
+    /// @see WorkerReplicationRequest::created()
     static Ptr create(ServiceProvider::Ptr const& serviceProvider,
                       std::string const& worker,
                       std::string const& id,
                       int priority,
-                      std::string const& database,
-                      unsigned int chunk,
-                      std::string const& sourceWorker);
-
-    // Default construction and copy semantics are prohibited
+                      ExpirationCallbackType const& onExpired,
+                      unsigned int requestExpirationIvalSec,
+                      ProtocolRequestReplicate const& request);
 
     WorkerReplicationRequestPOSIX() = delete;
     WorkerReplicationRequestPOSIX(WorkerReplicationRequestPOSIX const&) = delete;
@@ -187,19 +149,16 @@ public:
 
     ~WorkerReplicationRequestPOSIX() final = default;
 
-    /// @see WorkerReplicationRequest::execute
     bool execute() final;
 
 protected:
-
-    /// @see WorkerReplicationRequestPOSIX::created()
     WorkerReplicationRequestPOSIX(ServiceProvider::Ptr const& serviceProvider,
                                   std::string const& worker,
                                   std::string const& id,
                                   int priority,
-                                  std::string const& database,
-                                  unsigned int chunk,
-                                  std::string const& sourceWorker);
+                                  ExpirationCallbackType const& onExpired,
+                                  unsigned int requestExpirationIvalSec,
+                                  ProtocolRequestReplicate const& request);
 };
 
 /**
@@ -209,30 +168,17 @@ protected:
   * simple file server.
   */
 class WorkerReplicationRequestFS : public WorkerReplicationRequest {
-
 public:
-
-    /// Pointer to self
     typedef std::shared_ptr<WorkerReplicationRequestFS> Ptr;
 
-    /**
-     * Static factory method is needed to prevent issue with the lifespan
-     * and memory management of instances created otherwise (as values or via
-     * low-level pointers).
-     *
-     * For a description of parameters:
-     *
-     * @see WorkerReplicationRequest::created()
-     */
+    /// @see WorkerReplicationRequest::created()
     static Ptr create(ServiceProvider::Ptr const& serviceProvider,
                       std::string const& worker,
                       std::string const& id,
                       int priority,
-                      std::string const& database,
-                      unsigned int chunk,
-                      std::string const& sourceWorker);
-
-    // Default construction and copy semantics are prohibited
+                      ExpirationCallbackType const& onExpired,
+                      unsigned int requestExpirationIvalSec,
+                      ProtocolRequestReplicate const& request);
 
     WorkerReplicationRequestFS() = delete;
     WorkerReplicationRequestFS(WorkerReplicationRequestFS const&) = delete;
@@ -241,30 +187,24 @@ public:
     /// Destructor (non trivial one is needed to release resources)
     ~WorkerReplicationRequestFS() final;
 
-    /// @see WorkerReplicationRequest::execute
     bool execute() final;
 
 protected:
-
     /// @see WorkerReplicationRequestFS::create()
     WorkerReplicationRequestFS(ServiceProvider::Ptr const& serviceProvider,
                                std::string const& worker,
                                std::string const& id,
                                int priority,
-                               std::string const& database,
-                               unsigned int chunk,
-                               std::string const& sourceWorker);
+                               ExpirationCallbackType const& onExpired,
+                               unsigned int requestExpirationIvalSec,
+                               ProtocolRequestReplicate const& request);
 
 private:
-    
     /**
      * Open files associated with the current state of iterator _fileItr.
      *
-     * @param lock
-     *   lock which must be acquired before calling this method
-     *
-     * @return
-     *   'false' in case of any error
+     * @param lock lock which must be acquired before calling this method
+     * @return 'false' in case of any error
      */
     bool _openFiles(util::Lock const& lock);
 
@@ -275,11 +215,8 @@ private:
      *
      * Resources will also be released.
      *
-     * @param lock
-     *   lock which must be acquired before calling this method
-     *
-     * @return
-     *   always 'true'
+     * @param lock A lock to be acquired before calling this method
+     * @return always 'true'
      */
     bool _finalize(util::Lock const& lock);
 
@@ -291,16 +228,14 @@ private:
      * request objects can stay in the server's memory for an extended
      * period of time.
      *
-     * @param lock
-     *   lock which must be acquired before calling this method
+     * @param lock A lock to be acquired before calling this method
      */
     void _releaseResources(util::Lock const& lock);
 
     /**
      * Update file migration statistics
      *
-     * @param lock
-     *   lock which must be acquired before calling this method
+     * @param lock A lock to be acquired before calling this method
      */
     void _updateInfo(util::Lock const& lock);
 

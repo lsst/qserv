@@ -62,16 +62,16 @@ EchoRequest::Ptr EchoRequest::create(ServiceProvider::Ptr const& serviceProvider
                                      int priority,
                                      bool keepTracking,
                                      shared_ptr<Messenger> const& messenger) {
-    return EchoRequest::Ptr(
-        new EchoRequest(serviceProvider,
-                        io_service,
-                        worker,
-                        data,
-                        delay,
-                        onFinish,
-                        priority,
-                        keepTracking,
-                        messenger));
+    return EchoRequest::Ptr(new EchoRequest(serviceProvider,
+        io_service,
+        worker,
+        data,
+        delay,
+        onFinish,
+        priority,
+        keepTracking,
+        messenger
+    ));
 }
 
 
@@ -90,7 +90,8 @@ EchoRequest::EchoRequest(ServiceProvider::Ptr const& serviceProvider,
                          worker,
                          priority,
                          keepTracking,
-                         false /* allowDuplicate */,
+                         false, // allowDuplicate
+                         true,  // disposeRequired
                          messenger),
         _data(data),
         _delay(delay),
@@ -117,11 +118,12 @@ void EchoRequest::startImpl(util::Lock const& lock) {
     hdr.set_id(id());
     hdr.set_type(ProtocolRequestHeader::QUEUED);
     hdr.set_queued_type(ProtocolQueuedRequestType::TEST_ECHO);
+    hdr.set_timeout(requestExpirationIvalSec());
+    hdr.set_priority(priority());
 
     buffer()->serialize(hdr);
 
     ProtocolRequestEcho message;
-    message.set_priority(priority());
     message.set_data(data());
     message.set_delay(delay());
 
@@ -244,9 +246,7 @@ void EchoRequest::_analyze(bool success,
         _targetRequestParams = EchoRequestParams(message.request());
     }
     switch (message.status()) {
-
         case ProtocolStatus::SUCCESS:
-
             finish(lock, SUCCESS);
             break;
 
@@ -286,9 +286,7 @@ void EchoRequest::_analyze(bool success,
 
 
 void EchoRequest::notify(util::Lock const& lock) {
-
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
-
     notifyDefaultImpl<EchoRequest>(lock, _onFinish);
 }
 

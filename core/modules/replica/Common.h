@@ -140,7 +140,6 @@ public:
  */
 class ReplicationRequestParams {
 public:
-    int          priority = 0;
     std::string  database;
     unsigned int chunk = 0;
     std::string  sourceWorker;
@@ -156,7 +155,6 @@ public:
  */
 class DeleteRequestParams {
 public:
-    int          priority = 0;
     std::string  database;
     unsigned int chunk = 0;
     std::string  sourceWorker;
@@ -172,7 +170,6 @@ public:
  */
 class FindRequestParams {
 public:
-    int          priority = 0;
     std::string  database;
     unsigned int chunk = 0;
 
@@ -188,7 +185,6 @@ public:
  */
 class FindAllRequestParams {
 public:
-    int          priority = 0;
     std::string  database;
 
     FindAllRequestParams() = default;
@@ -201,7 +197,6 @@ public:
  */
 class EchoRequestParams {
 public:
-    int          priority = 0;
     std::string  data;
     uint64_t     delay = 0;
 
@@ -218,8 +213,6 @@ typedef uint32_t TransactionId;
  */
 class SqlRequestParams {
 public:
-    int priority = 0;
-
     enum Type {
         QUERY,
         CREATE_DATABASE,
@@ -267,7 +260,6 @@ std::ostream& operator<<(std::ostream& os, SqlRequestParams const& params);
  */
 class IndexRequestParams {
 public:
-    int           priority = 0;
     std::string   database;
     unsigned int  chunk = 0;
     bool          hasTransactions = false;

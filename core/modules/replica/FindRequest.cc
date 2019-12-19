@@ -63,17 +63,17 @@ FindRequest::Ptr FindRequest::create(ServiceProvider::Ptr const& serviceProvider
                                      int priority,
                                      bool keepTracking,
                                      shared_ptr<Messenger> const& messenger) {
-    return FindRequest::Ptr(
-        new FindRequest(serviceProvider,
-                        io_service,
-                        worker,
-                        database,
-                        chunk,
-                        computeCheckSum,
-                        onFinish,
-                        priority,
-                        keepTracking,
-                        messenger));
+    return FindRequest::Ptr(new FindRequest(serviceProvider,
+        io_service,
+        worker,
+        database,
+        chunk,
+        computeCheckSum,
+        onFinish,
+        priority,
+        keepTracking,
+        messenger
+    ));
 }
 
 
@@ -93,7 +93,8 @@ FindRequest::FindRequest(ServiceProvider::Ptr const& serviceProvider,
                          worker,
                          priority,
                          keepTracking,
-                         false /* allowDuplicate */,
+                         false, // allowDuplicate
+                         true,  // disposeRequired
                          messenger),
         _database(database),
         _chunk(chunk),
@@ -126,11 +127,12 @@ void FindRequest::startImpl(util::Lock const& lock) {
     hdr.set_id(id());
     hdr.set_type(ProtocolRequestHeader::QUEUED);
     hdr.set_queued_type(ProtocolQueuedRequestType::REPLICA_FIND);
+    hdr.set_timeout(requestExpirationIvalSec());
+    hdr.set_priority(priority());
 
     buffer()->serialize(hdr);
 
     ProtocolRequestFind message;
-    message.set_priority(priority());
     message.set_database(database());
     message.set_chunk(chunk());
     message.set_compute_cs(computeCheckSum());

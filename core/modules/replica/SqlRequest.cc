@@ -98,13 +98,13 @@ SqlRequest::SqlRequest(
             worker,
             priority,
             keepTracking,
-            false /* allowDuplicate */,
+            false, // allowDuplicate
+            true,  // disposeRequired
             messenger
         ) {
 
     // Partial initialization of the request body's content. Other members
     // will be set in the request type-specific subclasses.
-    requestBody.set_priority(priority);
     requestBody.set_max_rows(maxRows);
 }
 
@@ -147,6 +147,8 @@ void SqlRequest::startImpl(util::Lock const& lock) {
     hdr.set_id(id());
     hdr.set_type(ProtocolRequestHeader::QUEUED);
     hdr.set_queued_type(ProtocolQueuedRequestType::SQL);
+    hdr.set_timeout(requestExpirationIvalSec());
+    hdr.set_priority(priority());
 
     buffer()->serialize(hdr);
     buffer()->serialize(requestBody);

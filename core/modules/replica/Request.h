@@ -57,9 +57,7 @@ namespace replica {
   * the master server.
   */
 class Request : public std::enable_shared_from_this<Request>  {
-
 public:
-
     /// The pointer type for instances of the class
     typedef std::shared_ptr<Request> Ptr;
 
@@ -155,12 +153,11 @@ public:
     std::string const& id() const { return _id; }
 
     /**
-     * @return
-     *   an effective identifier of a remote (worker-side) request.
-     *
      * Normally this is the same request as the one a request object is created with
      * unless allowing to track duplicate requests (see constructor's options: 'keepTracking'
      * and 'allowDuplicate') and after the one is found.
+     *
+     * @return an effective identifier of a remote (worker-side) request.
      */
     std::string const& remoteId() const;
 
@@ -193,20 +190,15 @@ public:
      * of the Controller class which (if set) may be used by subclasses for saving
      * their state in a database.
      *
-     * @note
-     *   Only the first call with the non-default pointer to the Controller
+     * @note Only the first call with the non-default pointer to the Controller
      *   will be considering for building an association with the Controller.
      *
-     * @param controller
-     *   (optional) pointer to an instance of the Controller
-     *
-     * @param jobId
-     *   (optional) identifier of a job specifying a context
+     * @param controller A (optional) pointer to an instance of the Controller.
+     * @param jobId An (optional) identifier of a job specifying a context
      *   in which a request will be executed.
-     *
-     * @param requestExpirationIvalSec
-     *   (optional) parameter (if differs from 0) allowing to override the default
-     *   value of the corresponding parameter from the Configuration.
+     * @param requestExpirationIvalSecAn (optional) parameter (if differs from 0)
+     *   allowing to override the default value of the corresponding parameter from
+     *   the Configuration.
      */
     void start(std::shared_ptr<Controller> const& controller=nullptr,
                std::string const& jobId="",
@@ -218,8 +210,7 @@ public:
     /**
      * Return an identifier if the owning job (if the request has started)
      *
-     * @throws std::logic_error
-     *   if the request hasn't started
+     * @throws std::logic_error If the request hasn't started.
      */
     std::string const& jobId() const;
 
@@ -228,8 +219,7 @@ public:
      * the FINISHED::CANCELLED state. This operation is very similar to the
      * timeout-based request expiration, except it's requested explicitly.
      *
-     * @note
-     *   This operation won't affect the remote (server-side) state
+     * @note This operation won't affect the remote (server-side) state
      *   of the operation in case if the request was queued.
      */
     void cancel();
@@ -242,10 +232,9 @@ public:
 
     /**
      * @return a dictionary of parameters and the corresponding values to
-     * be stored in a database for a request.
+     *   be stored in a database for a request.
      *
-     * @note
-     *   This method will be called only if the previously defined
+     * @note This method will be called only if the previously defined
      *   method Request::savePersistentState() has a non-trivial
      *   implementation by a subclass. Also, this method is supposed to
      *   be "lock-free" as it returns extended parameters of sub-classes
@@ -267,8 +256,7 @@ public:
      * Subclasses may extend the implementation of the method
      *
      * @param extended  if 'true' then include the key/value pairs of
-     * the extended persistent state
-     *
+     *   the extended persistent state
      * @return the string representation of the request object
      */
     virtual std::string toString(bool extended = false) const;
@@ -283,35 +271,26 @@ public:
     }
 
 protected:
-
     /**
      * Construct the request with the pointer to the services provider.
      *
-     * @note
-     *   options 'keepTracking' and 'allowDuplicate' have effect for
-     *   specific request only.
+     * @note options 'keepTracking', 'allowDuplicate' and 'disposeRequired'
+     *   have effect for specific request only.
      *
-     * @param serviceProvider
-     *   a provider of various services
-     *
-     * @param type 
-     *   its type name (used informally for debugging)
-     *
-     * @param worker
-     *   the name of a worker
-     *
-     * @param io_service
-     *   BOOST ASIO service
-     *
-     * @param priority
-     *   may affect an execution order of the request by the worker service.
-     *   Higher number means higher priority.
-     *
-     * @param keepTracking
-     *   keep tracking the request before it finishes or fails
-     *
-     * @param allowDuplicate
-     *   follow a previously made request if the current one duplicates it
+     * @param serviceProvider A provider of various services (Configuration, etc.).
+     * @param io_service BOOST ASIO service object
+     * @param type The type name of a request (used informally for debugging, and it's
+     *   also stored in the persistent state of the Replication system).
+     * @param worker The name of a worker.
+     * @param priority A value of the parameter may affect an execution order of
+     *   the request by the worker service. It may also affect an order requests
+     *   are processed locally. Higher number means higher priority.
+     * @param keepTracking Keep tracking the request before it finishes or fails
+     * @param allowDuplicate Follow a previously made request if the current one
+     *   duplicates it.
+     * @param disposeRequired The flag indicating of the worker-side request
+     *   disposal is needed for a particular request. Normally, it's required for
+     *   requests which are queued by workers in its processing queues.
      */
     Request(ServiceProvider::Ptr const& serviceProvider,
             boost::asio::io_service& io_service,
@@ -319,27 +298,32 @@ protected:
             std::string const& worker,
             int  priority,
             bool keepTracking,
-            bool allowDuplicate);
+            bool allowDuplicate,
+            bool disposeRequired);
 
-    /// @return a shared pointer of the desired subclass (no dynamic type checking)
+    /// @return A shared pointer of the desired subclass (no dynamic type checking)
     template <class T>
     std::shared_ptr<T> shared_from_base() {
         return std::static_pointer_cast<T>(shared_from_this());
     }
 
-    /// @return  keep tracking the request before it finishes or fails
+    /// @return If 'true' then track request completion (queued requests only)
     bool keepTracking() const { return _keepTracking; }
 
-    /// @return follow a previously made request if the current one duplicates it
+    /// @return If 'true' then follow a previously made request if the current one duplicates it.
     bool allowDuplicate() const { return _allowDuplicate; }
 
-    /// @return pointer to a buffer for data moved over the network
+    /// @return If 'true' the request needs to be disposed at the worker's side upon
+    ///   a completion of an operation.
+    bool disposeRequired() const { return _disposeRequired; }
+
+    /// @return A pointer to a buffer for data moved over the network.
     std::shared_ptr<ProtocolBuffer> const& buffer() const { return _bufferPtr; }
 
-    /// @return reference onto a timer used for ordering asynchronous delays
+    /// @return A reference onto a timer used for ordering asynchronous delays.
     boost::asio::deadline_timer& timer() { return _timer; }
 
-    /// @return suggested interval (seconds) between retries in communications with workers
+    /// @return A suggested interval (seconds) between retries in communications with workers.
     unsigned int timerIvalSec() const { return _timerIvalSec; }
 
     /**
@@ -363,17 +347,13 @@ protected:
      * - it doesn't cause an excessive use of resources on either ends of
      *   the Replication system
      *
-     * @return
-     *   the next value of the delay expressed in milliseconds
+     * @return The next value of the delay expressed in milliseconds
      */
     unsigned int nextTimeIvalMsec();
 
     /**
-     * @param lock
-     *   a lock on Request::_mtx must be acquired before calling this method
-     *
-     * @return
-     *   the performance info
+     * @param lock A lock on Request::_mtx must be acquired before calling this method.
+     * @return The performance info.
      */
     Performance performance(util::Lock const& lock) const;
 
@@ -382,35 +362,29 @@ protected:
 
     /**
      * Update a state of the extended status variable
-     * 
-     * @param lock
-     *   a lock on Request::_mtx must be acquired before calling this method
      *
-     * @param status
-     *   new status to be set
+     * @param lock A lock on Request::_mtx must be acquired before calling this method
+     * @param status The new status to be set.
      */
     void setExtendedServerStatus(util::Lock const& lock,
                                  ExtendedCompletionStatus status) { _extendedServerStatus = status; }
 
     /**
      * Set an effective identifier of a remote (worker-side) request
-     * 
-     * @param lock
-     *   a lock on Request::_mtx must be acquired before calling this method
      *
-     * @param id
-     *   identifier to be set
+     * @param lock A lock on Request::_mtx must be acquired before calling this method.
+     * @param id An identifier to be set.
      */
     void setDuplicateRequestId(util::Lock const& lock,
                                std::string const& id) { _duplicateRequestId = id; }
 
     /**
-      * This method is supposed to be provided by subclasses for additional
-      * subclass-specific actions to begin processing the request.
-      * 
-      * @param lock
-     *   a lock on Request::_mtx must be acquired before calling this method
-      */
+     * This method is supposed to be provided by subclasses for additional
+     * subclass-specific actions to begin processing the request.
+     *
+     * @param lock A lock on Request::_mtx must be acquired before calling this method.
+     *
+     */
     virtual void startImpl(util::Lock const& lock) = 0;
 
     /**
@@ -418,22 +392,18 @@ protected:
      * is configured via the configuration service. When the request expires
      * it finishes with completion status FINISHED::TIMEOUT_EXPIRED.
      *
-     * @param ec
-     *    error code to be checked
+     * @param ec A error code to be checked.
      */
     void expired(boost::system::error_code const& ec);
 
     /**
      * Finalize request processing (as reported by subclasses)
      *
-     * This is supposed to be the last operation to be called by subclasses
-     * upon a completion of the request.
+     * @note This is supposed to be the last operation to be called by subclasses
+     *   upon a completion of the request.
      *
-     * @param lock
-     *   a lock on Request::_mtx must be acquired before calling this method
-     *
-     * @param extendedState
-     *   new extended state
+     * @param lock A lock on Request::_mtx must be acquired before calling this method.
+     * @param extendedState The new extended state.
      */
     void finish(util::Lock const& lock,
                 ExtendedState extendedState);
@@ -442,8 +412,7 @@ protected:
      * This method is supposed to be provided by subclasses
      * to finalize request processing as required by the subclass.
      *
-     * @param lock
-     *   a lock on Request::_mtx must be acquired before calling this method
+     * @param lock A lock on Request::_mtx must be acquired before calling this method.
      */
     virtual void finishImpl(util::Lock const& lock) = 0;
 
@@ -454,27 +423,22 @@ protected:
       * The default implementation of the method is intentionally left empty
       * to allow requests not to have the persistent state.
       * 
-      * @param lock
-     *   a lock on Request::_mtx must be acquired before calling this method
+      * @param lock A lock on Request::_mtx must be acquired before calling this method.
       */
     virtual void savePersistentState(util::Lock const& lock) {}
 
     /**
      * Return 'true' if the operation was aborted.
      *
-     * @note:
-     *    Normally this method is supposed to be called as the first action
-     *    within asynchronous handlers to figure out if an on-going asynchronous
-     *    operation was cancelled for some reason. Should this be the case
-     *    the caller is supposed to quit right away. It will be up to a code
-     *    which initiated the abort to take care of putting the object into
-     *    a proper state.
+     * @note Normally this method is supposed to be called as the first action
+     *   within asynchronous handlers to figure out if an on-going asynchronous
+     *   operation was cancelled for some reason. Should this be the case
+     *   the caller is supposed to quit right away. It will be up to a code
+     *   which initiated the abort to take care of putting the object into
+     *   a proper state.
      *
-     * @param ec
-     *   error code to be checked
-     *
-     * @return
-     *   'true' if the code corresponds to the operation abort
+     * @param ec A error code to be checked
+     * @return 'true' if the code corresponds to the operation abort
      */
     bool isAborted(boost::system::error_code const& ec) const;
 
@@ -482,22 +446,13 @@ protected:
      * Ensure the object is in the desired internal state. Throw an
      * exception otherwise.
      *
-     * @note
-     *   Normally this condition should never be seen unless
-     *   there is a problem with the application implementation
-     *   or the underlying run-time system.
+     * @note Normally this condition should never be seen unless there is a problem
+     *   with the application implementation or the underlying run-time system.
      *
-     * @param lock
-     *   a lock on Request::_mtx must be acquired before calling this method
-     *
-     * @param desiredState
-     *   desired state
-     *
-     * @param context
-     *   context from which the state test is requested
-     *
-     * @throws std::logic_error
-     *   if the desired state condition is not met
+     * @param lock A lock on Request::_mtx must be acquired before calling this method.
+     * @param desiredState The desired state.
+     * @param context A context from which the state test is requested.
+     * @throws std::logic_error If the desired state condition is not met.
      */
     void assertState(util::Lock const& lock,
                      State desiredState,
@@ -508,18 +463,12 @@ protected:
      *
      * The change of the state is done via a method to allow extra actions
      * at this step, such as:
-     *
      * - reporting change state in a debug stream
      * - verifying the correctness of the state transition
      *
-     * @param lock
-     *   a lock on Request::_mtx must be acquired before calling this method
-     *
-     * @param state
-     *   new primary state
-     *
-     * @param extendedState
-     *   new extended state
+     * @param lock A lock on Request::_mtx must be acquired before calling this method.
+     * @param state The new primary state.
+     * @param extendedState The new extended state.
      */
     void setState(util::Lock const& lock,
                   State state,
@@ -544,9 +493,7 @@ protected:
      * @code
      *
      * @see Request::notifyDefaultImpl
-     *
-     * @param lock
-     *   a lock on Request::_mtx must be acquired before calling this method
+     * @param lock A lock on Request::_mtx must be acquired before calling this method.
      */
     virtual void notify(util::Lock const& lock) = 0;
 
@@ -561,11 +508,8 @@ protected:
      * their callbacks should have their own implementations which may look
      * similarly to this one.
      *
-     * @param lock
-     *   a lock on Request::_mtx must be acquired before calling this method
-     *
-     * @param onFinish
-     *   callback function (if set) to be called
+     * @param lock A lock on Request::_mtx must be acquired before calling this method.
+     * @param onFinish A callback function (if set) to be called.
      */
     template <class T>
     void notifyDefaultImpl(util::Lock const& lock,
@@ -590,14 +534,16 @@ protected:
         }
     }
 
-protected:
+    /// @return A value of the interval (Note, the final value of the parameter is
+    ///   set after the request has started. Before that a default value obtained by
+    ///   the class's constructor from the Configuration will be returned).
+    unsigned int requestExpirationIvalSec() const { return _requestExpirationIvalSec; }
 
     /// Mutex guarding internal state. This object is made protected
     /// to allow subclasses use it.
     mutable util::Mutex _mtx;
 
 private:
-
     /// The global counter for the number of instances of any subclasses
     static std::atomic<size_t> _numClassInstances;
 
@@ -612,6 +558,7 @@ private:
     int  const _priority;
     bool const _keepTracking;
     bool const _allowDuplicate;
+    bool const _disposeRequired;
 
     /// An effective identifier of a remote (worker-side) request where
     /// this applies. Note that the duplicate requests are discovered

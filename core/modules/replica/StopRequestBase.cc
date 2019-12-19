@@ -67,7 +67,8 @@ StopRequestBase::StopRequestBase(ServiceProvider::Ptr const& serviceProvider,
                          worker,
                          priority,
                          keepTracking,
-                         false /* allowDuplicate */,
+                         false, // allowDuplicate
+                         false, // disposeRequired
                          messenger),
         _targetRequestId(targetRequestId),
         _targetRequestType(targetRequestType) {

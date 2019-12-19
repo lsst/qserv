@@ -61,16 +61,16 @@ FindAllRequest::Ptr FindAllRequest::create(ServiceProvider::Ptr const& servicePr
                                            int priority,
                                            bool keepTracking,
                                            shared_ptr<Messenger> const& messenger) {
-    return FindAllRequest::Ptr(
-        new FindAllRequest(serviceProvider,
-                           io_service,
-                           worker,
-                           database,
-                           saveReplicaInfo,
-                           onFinish,
-                           priority,
-                           keepTracking,
-                           messenger));
+    return FindAllRequest::Ptr(new FindAllRequest(serviceProvider,
+        io_service,
+        worker,
+        database,
+        saveReplicaInfo,
+        onFinish,
+        priority,
+        keepTracking,
+        messenger
+    ));
 }
 
 
@@ -89,7 +89,8 @@ FindAllRequest::FindAllRequest(ServiceProvider::Ptr const& serviceProvider,
                          worker,
                          priority,
                          keepTracking,
-                         false, /* allowDuplicate */
+                         false, // allowDuplicate
+                         true,  // disposeRequired
                          messenger),
         _database(database),
         _saveReplicaInfo(saveReplicaInfo),
@@ -117,11 +118,12 @@ void FindAllRequest::startImpl(util::Lock const& lock) {
     hdr.set_id(id());
     hdr.set_type(ProtocolRequestHeader::QUEUED);
     hdr.set_queued_type(ProtocolQueuedRequestType::REPLICA_FIND_ALL);
+    hdr.set_timeout(requestExpirationIvalSec());
+    hdr.set_priority(priority());
 
     buffer()->serialize(hdr);
 
     ProtocolRequestFindAll message;
-    message.set_priority(priority());
     message.set_database(database());
 
     buffer()->serialize(message);

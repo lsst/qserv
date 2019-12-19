@@ -54,42 +54,50 @@ namespace replica {
 //////////////////////////////////////////////////////////////
 
 WorkerDeleteRequest::Ptr WorkerDeleteRequest::create(
-                                    ServiceProvider::Ptr const& serviceProvider,
-                                    string const& worker,
-                                    string const& id,
-                                    int priority,
-                                    string const& database,
-                                    unsigned int chunk) {
-    return WorkerDeleteRequest::Ptr(
-        new WorkerDeleteRequest(serviceProvider,
-                                worker,
-                                id,
-                                priority,
-                                database,
-                                chunk));
+        ServiceProvider::Ptr const& serviceProvider,
+        string const& worker,
+        string const& id,
+        int priority,
+        ExpirationCallbackType const& onExpired,
+        unsigned int requestExpirationIvalSec,
+        ProtocolRequestDelete const& request) {
+    return WorkerDeleteRequest::Ptr(new WorkerDeleteRequest(
+        serviceProvider,
+        worker,
+        id,
+        priority,
+        onExpired,
+        requestExpirationIvalSec,
+        request
+    ));
 }
 
 
-WorkerDeleteRequest::WorkerDeleteRequest(ServiceProvider::Ptr const& serviceProvider,
-                                         string const& worker,
-                                         string const& id,
-                                         int priority,
-                                         string const& database,
-                                         unsigned int chunk)
-    :   WorkerRequest (serviceProvider,
-                       worker,
-                       "DELETE",
-                       id,
-                       priority),
-        _database(database),
-        _chunk(chunk),
+WorkerDeleteRequest::WorkerDeleteRequest(
+        ServiceProvider::Ptr const& serviceProvider,
+        string const& worker,
+        string const& id,
+        int priority,
+        ExpirationCallbackType const& onExpired,
+        unsigned int requestExpirationIvalSec,
+        ProtocolRequestDelete const& request)
+    :   WorkerRequest(
+            serviceProvider,
+            worker,
+            "DELETE",
+            id,
+            priority,
+            onExpired,
+            requestExpirationIvalSec),
+        _request(request),
         // This status will be returned in all contexts
-        _replicaInfo(ReplicaInfo::Status::NOT_FOUND,
-                     worker,
-                     database,
-                     chunk,
-                     PerformanceUtils::now(),
-                     ReplicaInfo::FileInfoCollection{}) {
+        _replicaInfo(
+            ReplicaInfo::Status::NOT_FOUND,
+            worker,
+            request.database(),
+            request.chunk(),
+            PerformanceUtils::now(),
+            ReplicaInfo::FileInfoCollection{}) {
 }
                      
 
@@ -102,11 +110,7 @@ void WorkerDeleteRequest::setInfo(ProtocolResponseDelete& response) const {
     response.set_allocated_target_performance(performance().info().release());
     response.set_allocated_replica_info(_replicaInfo.info().release());
 
-    auto ptr = make_unique<ProtocolRequestDelete>();
-    ptr->set_priority(priority());
-    ptr->set_database(database());
-    ptr->set_chunk(   chunk());
-    response.set_allocated_request(ptr.release());
+    *(response.mutable_request()) = _request;
 }
 
 
@@ -125,38 +129,41 @@ bool WorkerDeleteRequest::execute() {
 ///////////////////////////////////////////////////////////////////
 
 WorkerDeleteRequestPOSIX::Ptr WorkerDeleteRequestPOSIX::create(
-                                        ServiceProvider::Ptr const& serviceProvider,
-                                        string const& worker,
-                                        string const& id,
-                                        int priority,
-                                        string const& database,
-                                        unsigned int chunk) {
-
-    return WorkerDeleteRequestPOSIX::Ptr(
-        new WorkerDeleteRequestPOSIX(
-                serviceProvider,
-                worker,
-                id,
-                priority,
-                database,
-                chunk));
+        ServiceProvider::Ptr const& serviceProvider,
+        string const& worker,
+        string const& id,
+        int priority,
+        ExpirationCallbackType const& onExpired,
+        unsigned int requestExpirationIvalSec,
+        ProtocolRequestDelete const& request) {
+    return WorkerDeleteRequestPOSIX::Ptr(new WorkerDeleteRequestPOSIX(
+        serviceProvider,
+        worker,
+        id,
+        priority,
+        onExpired,
+        requestExpirationIvalSec,
+        request
+    ));
 }
 
 
 WorkerDeleteRequestPOSIX::WorkerDeleteRequestPOSIX(
-                                ServiceProvider::Ptr const& serviceProvider,
-                                string const& worker,
-                                string const& id,
-                                int priority,
-                                string const& database,
-                                unsigned int chunk)
+        ServiceProvider::Ptr const& serviceProvider,
+        string const& worker,
+        string const& id,
+        int priority,
+        ExpirationCallbackType const& onExpired,
+        unsigned int requestExpirationIvalSec,
+        ProtocolRequestDelete const& request)
     :   WorkerDeleteRequest(
             serviceProvider,
             worker,
             id,
             priority,
-            database,
-            chunk) {
+            onExpired,
+            requestExpirationIvalSec,
+            request) {
 }
 
 

@@ -194,12 +194,16 @@ public:
                 setSuccess(false);
             }
         }
-        _onFinish(id(), success(), response);
+        // Make sure the notification (if requested) is sent just once
+        if (_onFinish != nullptr) {
+            _onFinish(id(), success(), response);
+            _onFinish = nullptr;
+        }
     }
 
 private:
 
-    /// The collback function to be called upon the completion of the transaction
+    /// The callback function to be called upon the completion of the transaction
     CallbackType _onFinish;
 };
 

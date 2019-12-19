@@ -45,6 +45,7 @@
 #include "lsst/log/Log.h"
 
 using namespace std;
+using namespace std::placeholders;
 using namespace lsst::qserv::replica;
 
 namespace {
@@ -139,7 +140,6 @@ WorkerProcessor::WorkerProcessor(ServiceProvider::Ptr const& serviceProvider,
 void WorkerProcessor::run() {
 
     LOGS(_log, LOG_LVL_DEBUG, _context(__func__));
-
     util::Lock lock(_mtx, _context(__func__));
 
     if (_state == STATE_IS_STOPPED) {
@@ -161,7 +161,6 @@ void WorkerProcessor::run() {
         }
 
         // Tell each thread to run
-
         for (auto&& t: _threads) {
             t->run();
         }
@@ -173,13 +172,11 @@ void WorkerProcessor::run() {
 void WorkerProcessor::stop() {
 
     LOGS(_log, LOG_LVL_DEBUG, _context(__func__));
-
     util::Lock lock(_mtx, _context(__func__));
 
     if (_state == STATE_IS_RUNNING) {
 
         // Tell each thread to stop.
-
         for (auto&& t: _threads) {
             t->stop();
         }
@@ -187,7 +184,6 @@ void WorkerProcessor::stop() {
         // Begin transitioning to the final state via this intermediate one.
         // The transition will finish asynchronous when all threads will report
         // desired changes in their states.
-
         _state = STATE_IS_STOPPING;
     }
 }
@@ -196,14 +192,13 @@ void WorkerProcessor::stop() {
 void WorkerProcessor::drain() {
 
     LOGS(_log, LOG_LVL_DEBUG, _context(__func__));
-
     util::Lock lock(_mtx, _context(__func__));
 
     // Collect identifiers of requests to be affected by the operation
     list<string> ids;
 
-    for (auto&& ptr: _newRequests)        ids.push_back(ptr->id());
-    for (auto&& ptr: _inProgressRequests) ids.push_back(ptr->id());
+    for (auto&& ptr: _newRequests) ids.push_back(ptr->id());
+    for (auto&& entry: _inProgressRequests) ids.push_back(entry.first);
 
     for (auto&& id: ids) _dequeueOrCancelImpl(lock, id);
 }
@@ -217,9 +212,11 @@ void WorkerProcessor::reconfig() {
 
 
 void WorkerProcessor::enqueueForReplication(
-                            string const& id,
-                            ProtocolRequestReplicate const& request,
-                            ProtocolResponseReplicate& response) {
+        string const& id,
+        int32_t priority,
+        unsigned int requestExpirationIvalSec,
+        ProtocolRequestReplicate const& request,
+        ProtocolResponseReplicate& response) {
 
     LOGS(_log, LOG_LVL_DEBUG, _context(__func__)
         << "  id: "     << id
@@ -236,8 +233,8 @@ void WorkerProcessor::enqueueForReplication(
     for (auto&& ptr: _newRequests) {
         if (::ifDuplicateRequest(response, ptr, request)) return;
     }
-    for (auto&& ptr: _inProgressRequests) {
-        if (::ifDuplicateRequest(response, ptr,request)) return;
+    for (auto&& entry: _inProgressRequests) {
+        if (::ifDuplicateRequest(response, entry.second, request)) return;
     }
 
     // The code below may catch exceptions if other parameters of the request
@@ -247,10 +244,10 @@ void WorkerProcessor::enqueueForReplication(
         auto const ptr = _requestFactory.createReplicationRequest(
             _worker,
             id,
-            request.priority(),
-            request.database(),
-            request.chunk(),
-            request.worker()
+            priority,
+            bind(&WorkerProcessor::dispose, shared_from_this(), _1),
+            requestExpirationIvalSec,
+            request
         );
         _newRequests.push(ptr);
 
@@ -271,6 +268,8 @@ void WorkerProcessor::enqueueForReplication(
 
 
 void WorkerProcessor::enqueueForDeletion(string const& id,
+                                         int32_t priority,
+                                         unsigned int requestExpirationIvalSec,
                                          ProtocolRequestDelete const& request,
                                          ProtocolResponseDelete& response) {
 
@@ -288,8 +287,8 @@ void WorkerProcessor::enqueueForDeletion(string const& id,
     for (auto&& ptr : _newRequests) {
         if (::ifDuplicateRequest(response, ptr, request)) return;
     }
-    for (auto&& ptr : _inProgressRequests) {
-        if (::ifDuplicateRequest(response, ptr, request)) return;
+    for (auto&& entry : _inProgressRequests) {
+        if (::ifDuplicateRequest(response, entry.second, request)) return;
     }
 
     // The code below may catch exceptions if other parameters of the request
@@ -299,9 +298,10 @@ void WorkerProcessor::enqueueForDeletion(string const& id,
         auto const ptr = _requestFactory.createDeleteRequest(
             _worker,
             id,
-            request.priority(),
-            request.database(),
-            request.chunk()
+            priority,
+            bind(&WorkerProcessor::dispose, shared_from_this(), _1),
+            requestExpirationIvalSec,
+            request
         );
         _newRequests.push(ptr);
 
@@ -322,6 +322,8 @@ void WorkerProcessor::enqueueForDeletion(string const& id,
 
 
 void WorkerProcessor::enqueueForFind(string const& id,
+                                     int32_t priority,
+                                     unsigned int requestExpirationIvalSec,
                                      ProtocolRequestFind const& request,
                                      ProtocolResponseFind& response) {
 
@@ -340,10 +342,10 @@ void WorkerProcessor::enqueueForFind(string const& id,
         auto const ptr = _requestFactory.createFindRequest(
             _worker,
             id,
-            request.priority(),
-            request.database(),
-            request.chunk(),
-            request.compute_cs()
+            priority,
+            bind(&WorkerProcessor::dispose, shared_from_this(), _1),
+            requestExpirationIvalSec,
+            request
         );
         _newRequests.push(ptr);
     
@@ -364,6 +366,8 @@ void WorkerProcessor::enqueueForFind(string const& id,
 
 
 void WorkerProcessor::enqueueForFindAll(string const& id,
+                                        int32_t priority,
+                                        unsigned int requestExpirationIvalSec,
                                         ProtocolRequestFindAll const& request,
                                         ProtocolResponseFindAll& response) {
 
@@ -380,8 +384,10 @@ void WorkerProcessor::enqueueForFindAll(string const& id,
         auto const ptr = _requestFactory.createFindAllRequest(
             _worker,
             id,
-            request.priority(),
-            request.database()
+            priority,
+            bind(&WorkerProcessor::dispose, shared_from_this(), _1),
+            requestExpirationIvalSec,
+            request
         );
         _newRequests.push(ptr);
     
@@ -402,6 +408,8 @@ void WorkerProcessor::enqueueForFindAll(string const& id,
 
 
 void WorkerProcessor::enqueueForEcho(string const& id,
+                                     int32_t priority,
+                                     unsigned int requestExpirationIvalSec,
                                      ProtocolRequestEcho const& request,
                                      ProtocolResponseEcho& response) {
 
@@ -413,7 +421,6 @@ void WorkerProcessor::enqueueForEcho(string const& id,
     util::Lock lock(_mtx, _context(__func__));
 
     // Instant response if no delay was requested
-
     if (0 == request.delay()) {
 
         WorkerPerformance performance;
@@ -431,14 +438,14 @@ void WorkerProcessor::enqueueForEcho(string const& id,
     // The code below may catch exceptions if other parameters of the request
     // won't pass further validation against the present configuration of the request
     // processing service.
-
     try {
         auto const ptr = _requestFactory.createEchoRequest(
             _worker,
             id,
-            request.priority(),
-            request.data(),
-            request.delay()
+            priority,
+            bind(&WorkerProcessor::dispose, shared_from_this(), _1),
+            requestExpirationIvalSec,
+            request
         );
         _newRequests.push(ptr);
     
@@ -459,6 +466,8 @@ void WorkerProcessor::enqueueForEcho(string const& id,
 
 
 void WorkerProcessor::enqueueForSql(std::string const& id,
+                                    int32_t priority,
+                                    unsigned int requestExpirationIvalSec,
                                     ProtocolRequestSql const& request,
                                     ProtocolResponseSql& response) {
 
@@ -472,11 +481,13 @@ void WorkerProcessor::enqueueForSql(std::string const& id,
     // The code below may catch exceptions if other parameters of the request
     // won't pass further validation against the present configuration of the request
     // processing service.
-
     try {
         auto const ptr = _requestFactory.createSqlRequest(
             _worker,
             id,
+            priority,
+            bind(&WorkerProcessor::dispose, shared_from_this(), _1),
+            requestExpirationIvalSec,
             request
         );
         _newRequests.push(ptr);
@@ -498,6 +509,8 @@ void WorkerProcessor::enqueueForSql(std::string const& id,
 
 
 void WorkerProcessor::enqueueForIndex(string const& id,
+                                      int32_t priority,
+                                      unsigned int requestExpirationIvalSec,
                                       ProtocolRequestIndex const& request,
                                       ProtocolResponseIndex& response) {
 
@@ -517,6 +530,9 @@ void WorkerProcessor::enqueueForIndex(string const& id,
         auto const ptr = _requestFactory.createIndexRequest(
             _worker,
             id,
+            priority,
+            bind(&WorkerProcessor::dispose, shared_from_this(), _1),
+            requestExpirationIvalSec,
             request
         );
         _newRequests.push(ptr);
@@ -555,16 +571,12 @@ WorkerRequest::Ptr WorkerProcessor::_dequeueOrCancelImpl(util::Lock const& lock,
             // Cancel it and move it into the final queue in case if a client
             // won't be able to receive the desired status of the request due to
             // a protocol failure, etc.
-
             ptr->cancel();
 
             switch (ptr->status()) {
-
                 case WorkerRequest::STATUS_CANCELLED: {
-
                     _newRequests.remove(id);
-                    _finishedRequests.push_back(ptr);
-
+                    _finishedRequests[ptr->id()] = ptr;
                     return ptr;
                 }
                 default:
@@ -576,68 +588,58 @@ WorkerRequest::Ptr WorkerProcessor::_dequeueOrCancelImpl(util::Lock const& lock,
     }
 
     // Is it already being processed?
+    auto itrInProgress = _inProgressRequests.find(id);
+    if (itrInProgress != _inProgressRequests.end()) {
+        auto ptr = itrInProgress->second;
+        // Tell the request to begin the cancelling protocol. The protocol
+        // will take care of moving the request into the final queue when
+        // the cancellation will finish.
+        //
+        // At the meant time we just notify the client about the cancellation status
+        // of the request and let it come back later to check the updated status.
+        ptr->cancel();
 
-    for (auto&& ptr: _inProgressRequests) {
-        if (ptr->id() == id) {
+        switch (ptr->status()) {
 
-            // Tell the request to begin the cancelling protocol. The protocol
-            // will take care of moving the request into the final queue when
-            // the cancellation will finish.
-            //
-            // At the meant time we just notify the client about the cancellation status
-            // of the request and let it come back later to check the updated status.
+            // These are the most typical states for request in this queue
+            case WorkerRequest::STATUS_CANCELLED:
+            case WorkerRequest::STATUS_IS_CANCELLING:
 
-            ptr->cancel();
+            // The following two states are also allowed here because
+            // in-progress requests are still allowed to progress to the completed
+            // states before reporting their new state via method:
+            //    WorkerProcessor::_processingFinished()
+            // Sometimes, the request just can't finish this in time due to
+            // util::Lock lock(_mtx) held by the current method. We shouldn't worry
+            // about this situation here. The request will be moved into the next
+            // queue as soon as util::Lock lock(_mtx) will be released.
+            case WorkerRequest::STATUS_SUCCEEDED:
+            case WorkerRequest::STATUS_FAILED:
+                return ptr;
 
-            switch (ptr->status()) {
-
-                // These are the most typical states for request in this queue
-
-                case WorkerRequest::STATUS_CANCELLED:
-                case WorkerRequest::STATUS_IS_CANCELLING:
-
-                // The following two states are also allowed here because
-                // in-progress requests are still allowed to progress to the completed
-                // states before reporting their new state via method:
-                //    WorkerProcessor::_processingFinished()
-                // Sometimes, the request just can't finish this in time due to
-                // util::Lock lock(_mtx) held by the current method. We shouldn't worry
-                // about this situation here. The request will be moved into the next
-                // queue as soon as util::Lock lock(_mtx) will be released.
-
-                case WorkerRequest::STATUS_SUCCEEDED:
-                case WorkerRequest::STATUS_FAILED:
-                    return ptr;
-
-                default:
-                    throw logic_error(
-                            _classMethodContext(__func__) + "  unexpected request status " +
-                            WorkerRequest::status2string(ptr->status()) + " in in-progress requests");
-            }
+            default:
+                throw logic_error(
+                        _classMethodContext(__func__) + "  unexpected request status " +
+                        WorkerRequest::status2string(ptr->status()) + " in in-progress requests");
         }
     }
 
     // Has it finished?
-
-    for (auto&& ptr: _finishedRequests) {
-        if (ptr->id() == id) {
-
-            // There is nothing else we can do here other than just
-            // reporting the completion status of the request. It's up to a client
-            // to figure out what to do about this situation.
-
-            switch (ptr->status()) {
-
-                case WorkerRequest::STATUS_CANCELLED:
-                case WorkerRequest::STATUS_SUCCEEDED:
-                case WorkerRequest::STATUS_FAILED:
-                    return ptr;
-
-                default:
-                    throw logic_error(
-                            _classMethodContext(__func__) + "  unexpected request status " +
-                            WorkerRequest::status2string(ptr->status()) + " in finished requests");
-            }
+    auto itrFinished = _finishedRequests.find(id);
+    if (itrFinished != _finishedRequests.end()) {
+        auto ptr = itrFinished->second;
+        // There is nothing else we can do here other than just
+        // reporting the completion status of the request. It's up to a client
+        // to figure out what to do about this situation.
+        switch (ptr->status()) {
+            case WorkerRequest::STATUS_CANCELLED:
+            case WorkerRequest::STATUS_SUCCEEDED:
+            case WorkerRequest::STATUS_FAILED:
+                return ptr;
+            default:
+                throw logic_error(
+                        _classMethodContext(__func__) + "  unexpected request status " +
+                        WorkerRequest::status2string(ptr->status()) + " in finished requests");
         }
     }
 
@@ -652,15 +654,12 @@ WorkerRequest::Ptr WorkerProcessor::_checkStatusImpl(util::Lock const& lock,
     LOGS(_log, LOG_LVL_DEBUG, _context(__func__) << "  id: " << id);
 
     // Still waiting in the queue?
-
     for (auto&& ptr: _newRequests) {
         if (ptr->id() == id) {
             switch (ptr->status()) {
-
                 // This state requirement is strict for the non-active requests
                 case WorkerRequest::STATUS_NONE:
                     return ptr;
-
                 default:
                     throw logic_error(
                             _classMethodContext(__func__) + "  unexpected request status " +
@@ -670,72 +669,63 @@ WorkerRequest::Ptr WorkerProcessor::_checkStatusImpl(util::Lock const& lock,
     }
 
     // Is it already being processed?
+    auto itrInProgress = _inProgressRequests.find(id);
+    if (itrInProgress != _inProgressRequests.end()) {
+        auto ptr = itrInProgress->second;
+        switch (ptr->status()) {
 
-    for (auto&& ptr: _inProgressRequests) {
-        if (ptr->id() == id) {
-            switch (ptr->status()) {
+            // These are the most typical states for request in this queue
+            case WorkerRequest::STATUS_IS_CANCELLING:
+            case WorkerRequest::STATUS_IN_PROGRESS:
 
-                // These are the most typical states for request in this queue
-
-                case WorkerRequest::STATUS_IS_CANCELLING:
-                case WorkerRequest::STATUS_IN_PROGRESS:
-
-                // The following three states are also allowed here because
-                // in-progress requests are still allowed to progress to the completed
-                // states before reporting their new state via method:
-                //    WorkerProcessor::_processingFinished()
-                // Sometimes, the request just can't finish this in time due to
-                // util::Lock lock(_mtx) held by the current method. We shouldn't worry
-                // about this situation here. The request will be moved into the next
-                // queue as soon as util::Lock lock(_mtx) will be released.
-
-                case WorkerRequest::STATUS_CANCELLED:
-                case WorkerRequest::STATUS_SUCCEEDED:
-                case WorkerRequest::STATUS_FAILED:
-                    return ptr;
-
-                default:
-                    throw logic_error(
-                            _classMethodContext(__func__) + "  unexpected request status " +
-                            WorkerRequest::status2string(ptr->status()) + " in in-progress requests");
-            }
+            // The following three states are also allowed here because
+            // in-progress requests are still allowed to progress to the completed
+            // states before reporting their new state via method:
+            //    WorkerProcessor::_processingFinished()
+            // Sometimes, the request just can't finish this in time due to
+            // util::Lock lock(_mtx) held by the current method. We shouldn't worry
+            // about this situation here. The request will be moved into the next
+            // queue as soon as util::Lock lock(_mtx) will be released.
+            case WorkerRequest::STATUS_CANCELLED:
+            case WorkerRequest::STATUS_SUCCEEDED:
+            case WorkerRequest::STATUS_FAILED:
+                return ptr;
+            default:
+                throw logic_error(
+                        _classMethodContext(__func__) + "  unexpected request status " +
+                        WorkerRequest::status2string(ptr->status()) + " in in-progress requests");
         }
     }
 
     // Has it finished?
-
-    for (auto&& ptr: _finishedRequests) {
-        if (ptr->id() == id) {
-            switch (ptr->status()) {
-
-                /* This state requirement is strict for the completed requests */
-                case WorkerRequest::STATUS_CANCELLED:
-                case WorkerRequest::STATUS_SUCCEEDED:
-                case WorkerRequest::STATUS_FAILED:
-                    return ptr;
-
-                default:
-                    throw logic_error(
-                            _classMethodContext(__func__) + "  unexpected request status " +
-                            WorkerRequest::status2string(ptr->status()) + " in finished requests");
-            }
+    auto itrFinished = _finishedRequests.find(id);
+    if (itrFinished != _finishedRequests.end()) {
+        auto ptr = itrFinished->second;
+        switch (ptr->status()) {
+            // This state requirement is strict for the completed requests
+            case WorkerRequest::STATUS_CANCELLED:
+            case WorkerRequest::STATUS_SUCCEEDED:
+            case WorkerRequest::STATUS_FAILED:
+                return ptr;
+            default:
+                throw logic_error(
+                        _classMethodContext(__func__) + "  unexpected request status " +
+                        WorkerRequest::status2string(ptr->status()) + " in finished requests");
         }
     }
 
     // No request found!
-
     return WorkerRequest::Ptr();
 }
 
 
 void WorkerProcessor::setServiceResponse(
-                            ProtocolServiceResponse& response,
-                            string const& id,
-                            ProtocolServiceResponse::Status status,
-                            bool extendedReport) {
+        ProtocolServiceResponse& response,
+        string const& id,
+        ProtocolServiceResponse::Status status,
+        bool extendedReport) {
 
     LOGS(_log, LOG_LVL_DEBUG, _context(__func__));
-
     util::Lock lock(_mtx, _context(__func__));
 
     response.set_status(    status);
@@ -743,34 +733,31 @@ void WorkerProcessor::setServiceResponse(
     response.set_start_time(_startTime);
 
     switch (state()) {
-
         case WorkerProcessor::State::STATE_IS_RUNNING:
             response.set_service_state(ProtocolServiceResponse::RUNNING);
             break;
-
         case WorkerProcessor::State::STATE_IS_STOPPING:
             response.set_service_state(ProtocolServiceResponse::SUSPEND_IN_PROGRESS);
             break;
-
         case WorkerProcessor::State::STATE_IS_STOPPED:
             response.set_service_state(ProtocolServiceResponse::SUSPENDED);
             break;
     }
-    response.set_num_new_requests(        _newRequests.size());
+    response.set_num_new_requests(_newRequests.size());
     response.set_num_in_progress_requests(_inProgressRequests.size());
-    response.set_num_finished_requests(   _finishedRequests.size());
+    response.set_num_finished_requests(_finishedRequests.size());
 
     if (extendedReport) {
         for (auto&& request: _newRequests) {
             _setServiceResponseInfo(request,
                                     response.add_new_requests());
         }
-        for (auto&& request: _inProgressRequests) {
-            _setServiceResponseInfo(request,
+        for (auto&& entry: _inProgressRequests) {
+            _setServiceResponseInfo(entry.second,
                                     response.add_in_progress_requests());
         }
-        for (auto&& request: _finishedRequests) {
-            _setServiceResponseInfo(request,
+        for (auto&& entry: _finishedRequests) {
+            _setServiceResponseInfo(entry.second,
                                     response.add_finished_requests());
         }
     }
@@ -805,6 +792,53 @@ void WorkerProcessor::_setServiceResponseInfo(
 }
 
 
+bool WorkerProcessor::dispose(string const& id) {
+
+    util::Lock lock(_mtx, _context(__func__));
+
+    // Try finding a request in any queue.
+
+    bool found = false;
+
+    string queue;   // For logging the name of a queue where the request will
+                    // be found
+
+    // Still waiting in the queue? Then unconditionally remove before any of
+    // of the processing threads will get a chance to pick it up.
+    for (auto&& ptr: _newRequests) {
+        found = ptr->id() == id;
+        if (found) {
+            ptr->dispose();
+            _newRequests.remove(id);
+            queue = "new";
+            break;
+        }
+    }
+    if (not found) {
+        // Is it already being processed? If so then make sure the request gets
+        // cancelled before being removed from the queue.
+        // NOTE: this operation will still trigger a notification sent
+        auto itr = _inProgressRequests.find(id);
+        if (itr != _inProgressRequests.end()) {
+            itr->second->cancel();
+            itr->second->dispose();
+            _inProgressRequests.erase(itr);
+            queue = "in-progress";
+        } else {
+            // Has it already finished?
+            auto itr = _finishedRequests.find(id);
+            if (itr != _finishedRequests.end()) {
+                itr->second->dispose();
+                _finishedRequests.erase(itr);
+                queue = "finished";
+            }
+        }
+    }
+    LOGS(_log, LOG_LVL_TRACE, _context(__func__) << "  id: " << id << " queue: " << queue);
+    return found;
+}
+
+
 size_t WorkerProcessor::numNewRequests() const {
     util::Lock lock(_mtx, _context(__func__));
     return _newRequests.size();
@@ -836,7 +870,10 @@ WorkerRequest::Ptr WorkerProcessor::_fetchNextForProcessing(
 
     // For generating random intervals within the maximum range of seconds
     // requested by a client.
-
+    //
+    // TODO: Re-implement this loop to use a condition variable instead.
+    // This will improve the performance of the processor which is limited
+    // by the half-latency of the wait interval.
     util::BlockPost blockPost(0, min(10U, timeoutMilliseconds));
 
     unsigned int totalElapsedTime = 0;
@@ -846,7 +883,6 @@ WorkerRequest::Ptr WorkerProcessor::_fetchNextForProcessing(
         // scope where the thread safe block is defined. Otherwise
         // the queue will be locked for all threads for the duration of
         // the wait.
-
         {
             util::Lock lock(_mtx, _context(__func__));
 
@@ -856,7 +892,7 @@ WorkerRequest::Ptr WorkerProcessor::_fetchNextForProcessing(
                 _newRequests.pop();
 
                 request->start();
-                _inProgressRequests.push_back(request);
+                _inProgressRequests[request->id()] = request;
 
                 return request;
             }
@@ -874,20 +910,17 @@ WorkerRequest::Ptr WorkerProcessor::_fetchNextForProcessing(
 void WorkerProcessor::_processingRefused(WorkerRequest::Ptr const& request) {
 
     LOGS(_log, LOG_LVL_DEBUG, _context(__func__) << "  id: " << request->id());
-
     util::Lock lock(_mtx, _context(__func__));
 
-    // Update request's state before moving it back into
-    // the input queue.
-
-    request->stop();
-
-    _inProgressRequests.remove_if(
-        [&request] (WorkerRequest::Ptr const& ptr) {
-            return ptr->id() == request->id();
-        }
-    );
-    _newRequests.push(request);
+    // Note that disposed requests won't be found in any queue.
+    auto itr = _inProgressRequests.find(request->id());
+    if (itr != _inProgressRequests.end()) {
+        // Update request's state before moving it back into
+        // the input queue.
+        itr->second->stop();
+        _newRequests.push(itr->second);
+        _inProgressRequests.erase(itr);
+    }
 }
 
 
@@ -899,28 +932,23 @@ void WorkerProcessor::_processingFinished(WorkerRequest::Ptr const& request) {
 
     util::Lock lock(_mtx, _context(__func__));
 
-    // Then move it forward into the finished queue.
-
-    _inProgressRequests.remove_if(
-        [&request] (WorkerRequest::Ptr const& ptr) {
-            return ptr->id() == request->id();
-        }
-    );
-    _finishedRequests.push_back(request);
+    // Note that disposed requests won't be found in any queue.
+    auto itr = _inProgressRequests.find(request->id());
+    if (itr != _inProgressRequests.end()) {
+        _finishedRequests[itr->first] = itr->second;
+        _inProgressRequests.erase(itr);
+    }
 }
 
 
 void WorkerProcessor::_processorThreadStopped(WorkerProcessorThread::Ptr const& processorThread) {
 
-    LOGS(_log, LOG_LVL_DEBUG, _context(__func__) << "  thread: "
-         << processorThread->id());
-
+    LOGS(_log, LOG_LVL_DEBUG, _context(__func__) << "  thread: " << processorThread->id());
     util::Lock lock(_mtx, _context(__func__));
 
     if (_state == STATE_IS_STOPPING) {
 
         // Complete state transition if all threads are stopped
-
         for (auto&& t: _threads) {
             if (t->isRunning()) return;
         }

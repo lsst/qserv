@@ -44,27 +44,41 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
-WorkerSqlRequest::Ptr WorkerSqlRequest::create(ServiceProvider::Ptr const& serviceProvider,
-                                               string const& worker,
-                                               string const& id,
-                                               ProtocolRequestSql const& request) {
-    return WorkerSqlRequest::Ptr(
-        new WorkerSqlRequest(serviceProvider,
-                             worker,
-                             id,
-                             request));
+WorkerSqlRequest::Ptr WorkerSqlRequest::create(
+        ServiceProvider::Ptr const& serviceProvider,
+        string const& worker,
+        string const& id,
+        int priority,
+        ExpirationCallbackType const& onExpired,
+        unsigned int requestExpirationIvalSec,
+        ProtocolRequestSql const& request) {
+    return WorkerSqlRequest::Ptr(new WorkerSqlRequest(serviceProvider,
+        worker,
+        id,
+        priority,
+        onExpired,
+        requestExpirationIvalSec,
+        request
+    ));
 }
 
 
-WorkerSqlRequest::WorkerSqlRequest(ServiceProvider::Ptr const& serviceProvider,
-                                   string const& worker,
-                                   string const& id,
-                                   ProtocolRequestSql const& request)
-    :   WorkerRequest(serviceProvider,
-                      worker,
-                      "SQL",
-                      id,
-                      request.priority()),
+WorkerSqlRequest::WorkerSqlRequest(
+        ServiceProvider::Ptr const& serviceProvider,
+        string const& worker,
+        string const& id,
+        int priority,
+        ExpirationCallbackType const& onExpired,
+        unsigned int requestExpirationIvalSec,
+        ProtocolRequestSql const& request)
+    :   WorkerRequest(
+            serviceProvider,
+            worker,
+            "SQL",
+            id,
+            priority,
+            onExpired,
+            requestExpirationIvalSec),
         _request(request) {
 }
 
@@ -82,11 +96,11 @@ void WorkerSqlRequest::setInfo(ProtocolResponseSql& response) const {
         case STATUS_SUCCEEDED:
         case STATUS_FAILED:
             *(response.mutable_result_sets()) = _response.result_sets();
-            *(response.mutable_request())= _request;
             break;
         default:
             break;
     }
+    *(response.mutable_request()) = _request;
 }
 
 

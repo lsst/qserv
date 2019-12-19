@@ -63,18 +63,18 @@ DeleteRequest::Ptr DeleteRequest::create(ServiceProvider::Ptr const& serviceProv
                                          int priority,
                                          bool keepTracking,
                                          shared_ptr<Messenger> const& messenger) {
-    return DeleteRequest::Ptr(
-        new DeleteRequest(
-            serviceProvider,
-            io_service,
-            worker,
-            database,
-            chunk,
-            allowDuplicate,
-            onFinish,
-            priority,
-            keepTracking,
-            messenger));
+    return DeleteRequest::Ptr(new DeleteRequest(
+        serviceProvider,
+        io_service,
+        worker,
+        database,
+        chunk,
+        allowDuplicate,
+        onFinish,
+        priority,
+        keepTracking,
+        messenger
+    ));
 }
 
 
@@ -95,6 +95,7 @@ DeleteRequest::DeleteRequest(ServiceProvider::Ptr const& serviceProvider,
                          priority,
                          keepTracking,
                          allowDuplicate,
+                         true,  // disposeRequired
                          messenger),
         _database(database),
         _chunk(chunk),
@@ -117,11 +118,12 @@ void DeleteRequest::startImpl(util::Lock const& lock) {
     hdr.set_id(id());
     hdr.set_type(ProtocolRequestHeader::QUEUED);
     hdr.set_queued_type(ProtocolQueuedRequestType::REPLICA_DELETE);
+    hdr.set_timeout(requestExpirationIvalSec());
+    hdr.set_priority(priority());
 
     buffer()->serialize(hdr);
 
     ProtocolRequestDelete message;
-    message.set_priority(priority());
     message.set_database(database());
     message.set_chunk(chunk());
 

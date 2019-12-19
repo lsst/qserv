@@ -54,10 +54,7 @@ namespace replica {
  * by method WorkerSqlRequest::setInfo().
  */
 class WorkerSqlRequest : public WorkerRequest {
-
 public:
-
-    /// Pointer to self
     typedef std::shared_ptr<WorkerSqlRequest> Ptr;
 
     /**
@@ -70,15 +67,23 @@ public:
      * @param worker The name of a worker. The name must match the worker which
      *   is going to execute the request.
      * @param id An identifier of a client request
+     * @param priority indicates the importance of the request
+     * @param (optional) onExpired request expiration callback function.
+     *   If nullptr is passed as a parameter then the request will never expire.
+     * @param (optional) requestExpirationIvalSec request expiration interval.
+     *   If 0 is passed into the method then a value of the corresponding
+     *   parameter for the Controller-side requests will be pulled from
+     *   the Configuration.
      * @param request The ProtoBuf body of the original request
      * @return A pointer to the created object
      */
     static Ptr create(ServiceProvider::Ptr const& serviceProvider,
                       std::string const& worker,
                       std::string const& id,
+                      int priority,
+                      ExpirationCallbackType const& onExpired,
+                      unsigned int requestExpirationIvalSec,
                       ProtocolRequestSql const& request);
-
-    // Default construction and copy semantics are prohibited
 
     WorkerSqlRequest() = delete;
     WorkerSqlRequest(WorkerSqlRequest const&) = delete;
@@ -101,6 +106,9 @@ private:
     WorkerSqlRequest(ServiceProvider::Ptr const& serviceProvider,
                      std::string const& worker,
                      std::string const& id,
+                     int priority,
+                     ExpirationCallbackType const& onExpired,
+                     unsigned int requestExpirationIvalSec,
                      ProtocolRequestSql const& request);
 
     /// @return A connector as per the input request

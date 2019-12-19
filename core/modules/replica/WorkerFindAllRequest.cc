@@ -55,34 +55,42 @@ namespace replica {
 ///////////////////////////////////////////////////////////////
 
 WorkerFindAllRequest::Ptr WorkerFindAllRequest::create(
-                                    ServiceProvider::Ptr const& serviceProvider,
-                                    string const& worker,
-                                    string const& id,
-                                    int priority,
-                                    string const& database) {
-    return WorkerFindAllRequest::Ptr(
-        new WorkerFindAllRequest(
-                serviceProvider,
-                worker,
-                id,
-                priority,
-                database));
+        ServiceProvider::Ptr const& serviceProvider,
+        string const& worker,
+        string const& id,
+        int priority,
+        ExpirationCallbackType const& onExpired,
+        unsigned int requestExpirationIvalSec,
+        ProtocolRequestFindAll const& request) {
+    return WorkerFindAllRequest::Ptr(new WorkerFindAllRequest(
+        serviceProvider,
+        worker,
+        id,
+        priority,
+        onExpired,
+        requestExpirationIvalSec,
+        request
+    ));
 }
 
 
 WorkerFindAllRequest::WorkerFindAllRequest(
-                            ServiceProvider::Ptr const& serviceProvider,
-                            string const& worker,
-                            string const& id,
-                            int priority,
-                            string const& database)
+        ServiceProvider::Ptr const& serviceProvider,
+        string const& worker,
+        string const& id,
+        int priority,
+        ExpirationCallbackType const& onExpired,
+        unsigned int requestExpirationIvalSec,
+        ProtocolRequestFindAll const& request)
     :   WorkerRequest(
             serviceProvider,
             worker,
             "FIND-ALL",
             id,
-            priority),
-        _database(database) {
+            priority,
+            onExpired,
+            requestExpirationIvalSec),
+        _request(request) {
 }
 
 
@@ -97,10 +105,7 @@ void WorkerFindAllRequest::setInfo(ProtocolResponseFindAll& response) const {
     for (auto&& replicaInfo: _replicaInfoCollection) {
         replicaInfo.setInfo(response.add_replica_info_many());
     }
-    auto ptr = make_unique<ProtocolRequestFindAll>();
-    ptr->set_priority(priority());
-    ptr->set_database(database());
-    response.set_allocated_request(ptr.release());
+    *(response.mutable_request()) = _request;
 }
 
 
@@ -135,33 +140,41 @@ bool WorkerFindAllRequest::execute() {
 ////////////////////////////////////////////////////////////////////
 
 WorkerFindAllRequestPOSIX::Ptr WorkerFindAllRequestPOSIX::create(
-                                        ServiceProvider::Ptr const& serviceProvider,
-                                        string const& worker,
-                                        string const& id,
-                                        int priority,
-                                        string const& database) {
-    return WorkerFindAllRequestPOSIX::Ptr(
-        new WorkerFindAllRequestPOSIX(
-                serviceProvider,
-                worker,
-                id,
-                priority,
-                database));
+        ServiceProvider::Ptr const& serviceProvider,
+        string const& worker,
+        string const& id,
+        int priority,
+        ExpirationCallbackType const& onExpired,
+        unsigned int requestExpirationIvalSec,
+        ProtocolRequestFindAll const& request) {
+    return WorkerFindAllRequestPOSIX::Ptr(new WorkerFindAllRequestPOSIX(
+        serviceProvider,
+        worker,
+        id,
+        priority,
+        onExpired,
+        requestExpirationIvalSec,
+        request
+    ));
 }
 
 
 WorkerFindAllRequestPOSIX::WorkerFindAllRequestPOSIX(
-                                ServiceProvider::Ptr const& serviceProvider,
-                                string const& worker,
-                                string const& id,
-                                int priority,
-                                string const& database)
+        ServiceProvider::Ptr const& serviceProvider,
+        string const& worker,
+        string const& id,
+        int priority,
+        ExpirationCallbackType const& onExpired,
+        unsigned int requestExpirationIvalSec,
+        ProtocolRequestFindAll const& request)
     :   WorkerFindAllRequest(
             serviceProvider,
             worker,
             id,
             priority,
-            database) {
+            onExpired,
+            requestExpirationIvalSec,
+            request) {
 }
 
 

@@ -40,10 +40,7 @@ namespace replica {
   * any files or databases).
   */
 class WorkerEchoRequest : public WorkerRequest {
-
 public:
-
-    /// Pointer to self
     typedef std::shared_ptr<WorkerEchoRequest> Ptr;
 
     /**
@@ -51,37 +48,28 @@ public:
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
      *
-     * @param serviceProvider
-     *   provider is needed to access the Configuration of a setup
-     *   and for validating the input parameters
-     *
-     * @param worker
-     *   the name of a worker. The name must match the worker which
+     * @param serviceProvider provider is needed to access the Configuration
+     *   of a setup and for validating the input parameters
+     * @param worker the name of a worker. The name must match the worker which
      *   is going to execute the request.
-     * 
-     * @param id
-     *   an identifier of a client request
-     *
-     * @param priority
-     *   indicates the importance of the request
-     *
-     * @param data
-     *   the data string to be echoed back
-     *
-     * @param delay
-     *   the desired minimum execution time (milliseconds) of a request
-     *
-     * @return
-     *   pointer to the created object
+     * @param id an identifier of a client request
+     * @param priority indicates the importance of the request
+     * @param (optional) onExpired request expiration callback function.
+     *   If nullptr is passed as a parameter then the request will never expire.
+     * @param (optional) requestExpirationIvalSec request expiration interval.
+     *   If 0 is passed into the method then a value of the corresponding
+     *   parameter for the Controller-side requests will be pulled from
+     *   the Configuration.
+     * @param request ProtoBuf body of the request
+     * @return pointer to the created object
      */
     static Ptr create(ServiceProvider::Ptr const& serviceProvider,
                       std::string const& worker,
                       std::string const& id,
                       int priority,
-                      std::string const& data,
-                      uint64_t delay);
-
-    // Default construction and copy semantics are prohibited
+                      ExpirationCallbackType const& onExpired,
+                      unsigned int requestExpirationIvalSec,
+                      ProtocolRequestEcho const& request);
 
     WorkerEchoRequest() = delete;
     WorkerEchoRequest(WorkerEchoRequest const&) = delete;
@@ -91,35 +79,30 @@ public:
 
     // Trivial get methods
 
-    std::string const& data() const { return _data; }
+    std::string const& data() const { return _request.data(); }
 
-    uint64_t delay() const { return _delay; }
+    uint64_t delay() const { return _request.delay(); }
     
     /**
      * Extract request status into the Protobuf response object.
-     *
-     * @param response
-     *   Protobuf response to be initialized
+     * @param response Protobuf response to be initialized
      */
     void setInfo(ProtocolResponseEcho& response) const;
 
-    /// @see WorkerRequest::execute
     bool execute() override;
 
 protected:
-
-    /// @see WorkerEchoRequest::create()
     WorkerEchoRequest(ServiceProvider::Ptr const& serviceProvider,
                       std::string const& worker,
                       std::string const& id,
                       int priority,
-                      std::string const& data,
-                      uint64_t delay);
+                      ExpirationCallbackType const& onExpired,
+                      unsigned int requestExpirationIvalSec,
+                      ProtocolRequestEcho const& request);
 
     // Input parameters
 
-    std::string const _data;
-    uint64_t    const _delay;
+    ProtocolRequestEcho const _request;
 
     /// The amount of the initial delay which is still left
     uint64_t _delayLeft;

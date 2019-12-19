@@ -87,18 +87,18 @@ IndexRequest::Ptr IndexRequest::create(ServiceProvider::Ptr const& serviceProvid
                                        int priority,
                                        bool keepTracking,
                                        shared_ptr<Messenger> const& messenger) {
-    return IndexRequest::Ptr(
-        new IndexRequest(serviceProvider,
-                         io_service,
-                         worker,
-                         database,
-                         chunk,
-                         hasTransactions,
-                         transactionId,
-                         onFinish,
-                         priority,
-                         keepTracking,
-                         messenger));
+    return IndexRequest::Ptr(new IndexRequest(serviceProvider,
+        io_service,
+        worker,
+        database,
+        chunk,
+        hasTransactions,
+        transactionId,
+        onFinish,
+        priority,
+        keepTracking,
+        messenger
+    ));
 }
 
 
@@ -119,7 +119,8 @@ IndexRequest::IndexRequest(ServiceProvider::Ptr const& serviceProvider,
                          worker,
                          priority,
                          keepTracking,
-                         false /* allowDuplicate */,
+                         false, // allowDuplicate
+                         true,  // disposeRequired
                          messenger),
         _database(database),
         _chunk(chunk),
@@ -154,11 +155,12 @@ void IndexRequest::startImpl(util::Lock const& lock) {
     hdr.set_id(id());
     hdr.set_type(ProtocolRequestHeader::QUEUED);
     hdr.set_queued_type(ProtocolQueuedRequestType::INDEX);
+    hdr.set_timeout(requestExpirationIvalSec());
+    hdr.set_priority(priority());
 
     buffer()->serialize(hdr);
 
     ProtocolRequestIndex message;
-    message.set_priority(priority());
     message.set_database(database());
     message.set_chunk(chunk());
     message.set_has_transactions(hasTransactions());

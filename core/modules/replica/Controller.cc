@@ -33,6 +33,7 @@
 #include "replica/Configuration.h"
 #include "replica/DatabaseServices.h"
 #include "replica/DeleteRequest.h"
+#include "replica/DisposeRequest.h"
 #include "replica/EchoRequest.h"
 #include "replica/FindRequest.h"
 #include "replica/FindAllRequest.h"
@@ -531,6 +532,29 @@ SqlDeleteTablePartitionRequest::Ptr Controller::sqlDeleteTablePartition(
         database,
         tables,
         transactionId,
+        onFinish,
+        priority,
+        keepTracking,
+        jobId,
+        requestExpirationIvalSec);
+}
+
+
+DisposeRequest::Ptr Controller::dispose(
+        string const& workerName,
+        vector<string> const& targetIds,
+        function<void(DisposeRequest::Ptr)> const& onFinish,
+        int priority,
+        bool keepTracking,
+        string const& jobId,
+        unsigned int requestExpirationIvalSec) {
+
+    LOGS(_log, LOG_LVL_TRACE, _context(__func__));
+
+    return _submit<DisposeRequest,
+                   decltype(targetIds)>(
+        workerName,
+        targetIds,
         onFinish,
         priority,
         keepTracking,

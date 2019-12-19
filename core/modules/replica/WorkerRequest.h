@@ -24,8 +24,12 @@
 // System headers
 #include <atomic>
 #include <exception>
+#include <functional>
 #include <memory>
 #include <string>
+
+// Third party headers
+#include "boost/asio.hpp"
 
 // Qserv headers
 #include "replica/Common.h"
@@ -57,11 +61,12 @@ public:
   * which can't be implemented instantaneously fall into this category.
   */
 class WorkerRequest : public std::enable_shared_from_this<WorkerRequest> {
-
 public:
-
-    /// Pointer to self
     typedef std::shared_ptr<WorkerRequest> Ptr;
+
+    /// The function type for notifications on the expiration of the request
+    /// given its unique identifier.
+    typedef std::function<void(std::string const&)> ExpirationCallbackType;
 
     /// Completion status of the request processing operation
     enum CompletionStatus {
@@ -80,23 +85,21 @@ public:
     static std::string status2string(CompletionStatus status,
                                      ExtendedCompletionStatus extendedStatus);
 
-    // Default construction and copy semantics are prohibited
-
     WorkerRequest() = delete;
     WorkerRequest(WorkerRequest const&) = delete;
     WorkerRequest& operator=(WorkerRequest const&) = delete;
 
     /// Destructor (can't 'override' because the base class's one is not virtual)
-    virtual ~WorkerRequest() = default;
+    /// Also, non-trivial destructor is needed to stop the request expiration
+    /// timer (if any was started by the constructor).
+    virtual ~WorkerRequest();
 
     // Trivial getter methods
 
     ServiceProvider::Ptr const& serviceProvider() const { return _serviceProvider; }
 
     std::string const& worker() const { return _worker; }
-
     std::string const& type() const { return _type; }
-
     std::string const& id() const { return _id; }
 
     int priority() const { return _priority; }
@@ -107,6 +110,15 @@ public:
 
     /// @return the performance info
     const WorkerPerformance& performance() const { return _performance; }
+
+
+    /**
+     * This method is called from the initial state STATUS_NONE in order
+     * to start the request expiration timer. It's safe to call this operation
+     * multiple times. Each invocation of the method will result in cancelling
+     * the previously set timer (if any) and starting a new one.
+     */
+    void init();
 
     /**
      * This method is called from the initial state STATUS_NONE in order
@@ -131,8 +143,7 @@ public:
      * processing. This can be serve as a foundation for various tests
      * of this framework.
      *
-     * @return
-     *   result of the operation as explained above
+     * @return result of the operation as explained above
      */
     virtual bool execute();
 
@@ -168,10 +179,23 @@ public:
      * This method is called from *ANY* initial state in order to turn
      * the request back into the initial STATUS_NONE.
      * 
-     * @param func
-     *   (optional) the name of a function/method which requested the context string
+     * @param func (optional) the name of a function/method which requested
+     *   the context string
      */
     void stop();
+
+    /**
+     * This method should be used to cancel the request expiration timer.
+     * Normally this method is initiated during the external "garbage collection"
+     * of requests to ensure all resources (including a copy of a smart pointer onto
+     * objects of the request classes) held by timers get released.
+     *
+     * @note this method won't throw any exceptions so that it could
+     *   be invoked from the destructor. All exceptions (should they
+     *   occur during an execution of the method) will be intersected
+     *   and reported as errors to the message logger.
+     */
+    void dispose() noexcept;
 
     /// @return the context string
     std::string context(std::string const& func=std::string()) const {
@@ -179,49 +203,40 @@ public:
     }
 
 protected:
-
     /**
      * The normal constructor of the class
      *
-     * @param serviceProvider
-     *   provider is needed to access the Configuration of a setup
-     *   and for validating the input parameters
-     *
-     * @param worker
-     *   the name of a worker. It must be the same worker as the one
+     * @param serviceProvider provider is needed to access the Configuration of
+     *   a setup and for validating the input parameters
+     * @param worker the name of a worker. It must be the same worker as the one
      *   where the request is going to be processed.
-     *
-     * @param type
-     *   the type name of a request
-     *
-     * @param id
-     *   an identifier of a client request
-     *
-     * @param priority
-     *   indicates the importance of the request
-     *
-     * @throws std::invalid_argument
-     *   if the worker is unknown
+     * @param type the type name of a request
+     * @param id an identifier of a client request
+     * @param priority indicates the importance of the request
+     * @param (optional) onExpired request expiration callback function.
+     *   If nullptr is passed as a parameter then the request will never expire.
+     * @param (optional) requestExpirationIvalSec request expiration interval.
+     *   If 0 is passed into the method then a value of the corresponding
+     *   parameter for the Controller-side requests will be pulled from
+     *   the Configuration.
+     * @throws std::invalid_argument if the worker is unknown
      */
     WorkerRequest(ServiceProvider::Ptr const& serviceProvider,
                   std::string const& worker,
                   std::string const& type,
                   std::string const& id,
-                  int priority);
+                  int priority,
+                  ExpirationCallbackType const& onExpired=nullptr,
+                  unsigned int requestExpirationIvalSec=0);
 
     /** Set the status
      *
-     * ATTENTION: this method needs to be called within a thread-safe context
-     * when moving requests between different queues.
+     * @note this method needs to be called within a thread-safe context
+     *   when moving requests between different queues.
      *
-     * @param lock
-     *   lock must be acquired before calling this method
-     *
-     * @param status
-     *   primary status to be set
-     *
-     * @param extendedStatus
-     *   secondary status to be set
+     * @param lock a lock which acquired before calling this method
+     * @param status primary status to be set
+     * @param extendedStatus secondary status to be set
      */
     void setStatus(util::Lock const& lock,
                    CompletionStatus status,
@@ -234,7 +249,6 @@ protected:
     struct ErrorContext {
 
         // State of the object
-
         bool failed;
         ExtendedCompletionStatus extendedStatus;
 
@@ -246,14 +260,11 @@ protected:
         /**
          * Merge the context of another object into the current one.
          *
-         * @note
-         *  Only the first error code will be stored when a error condition
+         * @note Only the first error code will be stored when a error condition
          *  is detected. An assumption is that the first error would usually cause
          *  a "chain reaction", hence only the first one typically matters.
          *  Other details could be found in the log files if needed.
-         *
-         * @param ErrorContext
-         *   input context to be merged with the current state
+         * @param ErrorContext input context to be merged with the current state
          */
         ErrorContext& operator||(const ErrorContext &rhs) {
             if (&rhs != this) {
@@ -271,18 +282,11 @@ protected:
      * The error message will be sent to the corresponding logging
      * stream.
      *
-     * @param condition
-     *   if set to 'true' then there is a error condition
-     *
-     * @param extendedStatus
-     *   extended status corresponding to the condition
+     * @param condition if set to 'true' then there is a error condition
+     * @param extendedStatus extended status corresponding to the condition
      *   (will be ignored if no error condition is present)
-     *
-     * @param errorMsg
-     *   a message to be reported into the log stream
-     *
-     * @return
-     *   the context object encapsulating values passed in parameters
+     * @param errorMsg a message to be reported into the log stream
+     * @return the context object encapsulating values passed in parameters
      *   'condition' and 'extendedStatus'
      */
     ErrorContext reportErrorIf(bool condition,
@@ -304,6 +308,20 @@ protected:
     std::string const _id;
     int         const _priority;
 
+    ExpirationCallbackType _onExpired;  ///< The callback is reset when the request gets expired
+                                        /// or explicitly disposed.
+    unsigned int const _requestExpirationIvalSec;
+
+    /// This timer is used (if configured) to limit the total duration of time
+    /// a request could exist from its creation till termination. The timer
+    /// starts when the request gets created. And it's explicitly finished when
+    /// a request object gets destroyed.
+    ///
+    /// If the time has a chance to expire then the request expiration callback
+    /// (if any) passed into the constructor will be invoked to notify WorkerProcessor
+    /// on the expiration event.
+    boost::asio::deadline_timer _requestExpirationTimer;
+
     // 2-layer state of a request
 
     std::atomic<CompletionStatus>         _status;
@@ -322,6 +340,19 @@ protected:
 
     /// Mutex guarding operations with the worker's data folder
     static util::Mutex _mtxDataFolderOperations;
+
+private:
+    /**
+     * Request expiration timer's handler. The expiration interval (if any)
+     * is obtained from the Controller-side requests or obtained from
+     * the configuration service. When the request expires (and if the timer
+     * is not aborted due to request disposal) then an upstream callback
+     * is invoked.
+     *
+     * @param ec error code to be checked to see if the time was aborted
+     *   by the explicit request disposal operation.
+     */
+    void _expired(boost::system::error_code const& ec);
 };
 
 

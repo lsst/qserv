@@ -24,7 +24,7 @@
 // System headers
 #include <algorithm>
 #include <cstdint>
-#include <list>
+#include <map>
 #include <memory>
 #include <queue>
 #include <stdexcept>
@@ -55,10 +55,7 @@ namespace replica {
   * requests from remote clients within worker-side services.
   */
 class WorkerProcessor : public std::enable_shared_from_this<WorkerProcessor> {
-
 public:
-
-    /// Pointer type for objects of the class
     typedef std::shared_ptr<WorkerProcessor> Ptr;
 
     // The thread-based processor class is allowed to access the internal API
@@ -89,11 +86,8 @@ public:
         /**
          * Remove a request from the queue by its identifier
          *
-         * @param id
-         *   an identifier of a request
-         *
-         * @return
-         *   'true' if the object was actually removed
+         * @param id an identifier of a request
+         * @return 'true' if the object was actually removed
          */
         bool remove(std::string const& id) {
             auto itr = std::find_if (
@@ -112,9 +106,6 @@ public:
         }
     };
 
-    /// Ordinary collection of pointers for requests in other (than new/unprocessed) state
-    typedef std::list<WorkerRequest::Ptr> CollectionType;
-
     /// Current state of the request processing engine
     enum State {
         STATE_IS_RUNNING,    // all threads are running
@@ -128,22 +119,16 @@ public:
     /**
      * The factory method for objects of the class
      *
-     * @param serviceProvider
-     *   provider is needed to access the Configuration of a setup
-     *   in order to get a number of the processing threads to be launched
+     * @param serviceProvider provider is needed to access the Configuration of
+     *   a setup in order to get a number of the processing threads to be launched
      *   by the processor.
-     *
-     * @param requestFactory
-     *   reference to a factory of requests (for instantiating request objects)
-     * 
-     * @param worker
-     *   the name of a worker
+     * @param requestFactory reference to a factory of requests (for instantiating
+     *   request objects)
+     * @param worker the name of a worker
      */
     static Ptr create(ServiceProvider::Ptr const& serviceProvider,
                       WorkerRequestFactory const& requestFactory,
                       std::string const& worker);
-
-    // Default construction and copy semantics are prohibited
 
     WorkerProcessor() = delete;
     WorkerProcessor(WorkerProcessor const&) = delete;
@@ -172,102 +157,90 @@ public:
     /**
      * Enqueue the replication request for processing
      *
-     * @param id
-     *    an identifier of a request
-     *
-     * @param request
-     *   the Protobuf object received from a client
-     *
-     * @param response
-     *   the Protobuf object to be initialized and ready to be sent back to
-     *   the client
+     * @param id an identifier of a request
+     * @param priority the priority level of a request
+     * @param request the Protobuf object received from a client
+     * @param response the Protobuf object to be initialized and ready to be sent
+     *   back to the client
      */
     void enqueueForReplication(std::string const& id,
+                               int32_t priority,
+                               unsigned int requestExpirationIvalSec,
                                ProtocolRequestReplicate const& request,
                                ProtocolResponseReplicate& response);
 
     /**
      * Enqueue the replica deletion request for processing
      *
-     * @param id
-     *   an identifier of a request
-     *
-     * @param request
-     *   the Protobuf object received from a client
-     *
-     * @param response
-     *   the Protobuf object to be initialized and ready to be sent back
-     *   to the client
+     * @param id an identifier of a request
+     * @param priority the priority level of a request
+     * @param request the Protobuf object received from a client
+     * @param response the Protobuf object to be initialized and ready to be sent
+     *   back to the client
      */
     void enqueueForDeletion(std::string const& id,
+                            int32_t priority,
+                            unsigned int requestExpirationIvalSec,
                             ProtocolRequestDelete const& request,
                             ProtocolResponseDelete& response);
 
     /**
      * Enqueue the replica lookup request for processing
      *
-     * @param id
-     *   an identifier of a request
-     *
-     * @param request
-     *   the Protobuf object received from a client
-     *
-     * @param response
-     *   the Protobuf object to be initialized and ready to be sent back
-     *   to the client
+     * @param id an identifier of a request
+     * @param priority the priority level of a request
+     * @param request the Protobuf object received from a client
+     * @param response the Protobuf object to be initialized and ready to be sent
+     *   back to the client
      */
     void enqueueForFind(std::string const& id,
+                        int32_t priority,
+                        unsigned int requestExpirationIvalSec,
                         ProtocolRequestFind const& request,
                         ProtocolResponseFind& response);
 
     /**
      * Enqueue the multi-replica lookup request for processing
      *
-     * @param id
-     *   an identifier of a request
-     *
-     * @param request
-     *   the Protobuf object received from a client
-     *
-     * @param response
-     *   the Protobuf object to be initialized and ready to be sent back
-     *   to the client
+     * @param id an identifier of a request
+     * @param priority the priority level of a request
+     * @param request the Protobuf object received from a client
+     * @param response the Protobuf object to be initialized and ready to be sent
+     *   back to the client
      */
     void enqueueForFindAll(std::string const& id,
+                           int32_t priority,
+                           unsigned int requestExpirationIvalSec,
                            ProtocolRequestFindAll const& request,
                            ProtocolResponseFindAll& response);
 
     /**
      * Enqueue the worker-side testing request for processing
      *
-     * @param id
-     *   an identifier of a request
-     *
-     * @param request
-     *   the Protobuf object received from a client
-     *
-     * @param response
-     *   the Protobuf object to be initialized and ready to be sent back
-     *   to the client
+     * @param id an identifier of a request
+     * @param priority the priority level of a request
+     * @param request the Protobuf object received from a client
+     * @param response the Protobuf object to be initialized and ready to be sent
+     *   back to the client
      */
     void enqueueForEcho(std::string const& id,
+                        int32_t priority,
+                        unsigned int requestExpirationIvalSec,
                         ProtocolRequestEcho const& request,
                         ProtocolResponseEcho& response);
 
     /**
      * Enqueue a request for querying the worker database
      *
-     * @param id
-     *   an identifier of a request
-     *
-     * @param request
-     *   the Protobuf object received from a client
-     *
-     * @param response
-     *   the Protobuf object to be initialized and ready to be sent back
-     *   to the client
+     * @param id an identifier of a request
+     * @param priority the priority level of a request
+     * @param request the Protobuf object received from a client
+     * @param response the Protobuf object to be initialized and ready to be sent
+     *   back to the client
      */
     void enqueueForSql(std::string const& id,
+                       int32_t priority,
+                       unsigned int requestExpirationIvalSec,
                        ProtocolRequestSql const& request,
                        ProtocolResponseSql& response);
 
@@ -275,17 +248,15 @@ public:
      * Enqueue a request for extracting the "secondary index" data from
      * the director tables.
      *
-     * @param id
-     *   an identifier of a request
-     *
-     * @param request
-     *   the Protobuf object received from a client
-     *
-     * @param response
-     *   the Protobuf object to be initialized and ready to be sent back
-     *   to the client
+     * @param id an identifier of a request
+     * @param priority the priority level of a request
+     * @param request the Protobuf object received from a client
+     * @param response the Protobuf object to be initialized and ready to be sent
+     *   back to the client
      */
     void enqueueForIndex(std::string const& id,
+                         int32_t priority,
+                         unsigned int requestExpirationIvalSec,
                          ProtocolRequestIndex const& request,
                          ProtocolResponseIndex& response);
 
@@ -296,14 +267,9 @@ public:
      *   status_ext
      *   performance
      *   
-     * @param response
-     *   the Protobuf object to be updated
-     *
-     * @param status
-     *   primary completion status of a request
-     *
-     * @param extendedStatus
-     *   extended completion status of a request
+     * @param response the Protobuf object to be updated
+     * @param status primary completion status of a request
+     * @param extendedStatus extended completion status of a request
      */
     template <class PROTOCOL_RESPONSE_TYPE>
     static void setDefaultResponse(PROTOCOL_RESPONSE_TYPE& response,
@@ -389,21 +355,25 @@ public:
     }
 
     /**
+     * Find the request in any queue, and "garbage collect" it to release resources
+     * associated with the request. If the request is still in the "in-progress"
+     * state then it will be "drained" before disposing. If the request isn't found
+     * in any queue then nothing will happen (no exception thrown, no side effects).
+     *
+     * @param id an identifier of a request affected by the operation
+     * @return 'true' if the request was found and actually removed from any queue
+     */
+    bool dispose(std::string const& id);
+
+    /**
      * Fill in processor's state and counters into a response object to be sent
      * back to a remote client.
      *
-     * @param response
-     *   the Protobuf object to be initialized and ready to be sent back
-     *   to the client
-     *
-     * @param id
-     *   an identifier of an original request this response is being sent
-     * 
-     * @param status
-     *   desired status to set
-     * 
-     * @param extendedReport
-     *   to return detailed info on all known replica-related requests
+     * @param response the Protobuf object to be initialized and ready to be sent
+     *   back to the client
+     * @param id an identifier of an original request this response is being sent
+     * @param status desired status to set
+     * @param extendedReport to return detailed info on all known replica-related requests
      */
     void setServiceResponse(ProtocolServiceResponse& response,
                             std::string const& id,
@@ -415,7 +385,6 @@ public:
     size_t numFinishedRequests() const;
 
 private:
-
     WorkerProcessor(ServiceProvider::Ptr const& serviceProvider,
                     WorkerRequestFactory const& requestFactory,
                     std::string const& worker);
@@ -438,16 +407,11 @@ private:
      * This method is supposed to be called by one of the processing threads
      * when it becomes available.
      *
-     * @note
-     *   this method will block for a duration of time not exceeding
+     * @note this method will block for a duration of time not exceeding
      *   the client-specified timeout unless it's set to 0. In the later
      *   case the method will block indefinitely.
-     *
-     * @param processorThread
-     *   reference to a thread which fetches the next request
-     *
-     * @param timeoutMilliseconds
-     *   (optional) amount of time to wait before to finish if
+     * @param processorThread reference to a thread which fetches the next request
+     * @param timeoutMilliseconds (optional) amount of time to wait before to finish if
      *   no suitable requests are available for processing
      */
     WorkerRequest::Ptr _fetchNextForProcessing(
@@ -459,15 +423,10 @@ private:
      * is still known to the Processor. Return a reference to the request object
      * whose state will be properly updated.
      *
-     * @param lock
-     *   lock on WorkerProcessor::_mtx which must be acquired before calling
-     *   this method
-     * 
-     * @param id
-     *   an identifier of a request
-     *
-     * @return
-     *   a valid reference to the request object (if found)
+     * @param lock а lock on WorkerProcessor::_mtx to be acquired before
+     *   calling this method
+     * @param id an identifier of a request
+     * @return a valid reference to the request object (if found)
      *   or a reference to nullptr otherwise.
      */
     WorkerRequest::Ptr _dequeueOrCancelImpl(util::Lock const& lock,
@@ -476,15 +435,10 @@ private:
     /**
      * Find and return a reference to the request object.
      *
-     * @param lock
-     *   lock on WorkerProcessor::_mtx which must be acquired before calling
-     *   this method
-     *
-     * @param id
-     *   an identifier of a request
-     *
-     * @return
-     *   a valid reference to the request object (if found)
+     * @param lock а lock on WorkerProcessor::_mtx to be acquired before
+     *   calling this method
+     * @param id an identifier of a request
+     * @return a valid reference to the request object (if found)
      *   or a reference to nullptr otherwise.
      */
     WorkerRequest::Ptr _checkStatusImpl(util::Lock const& lock,
@@ -494,8 +448,7 @@ private:
      * Extract the extra data from the request and put
      * it into the response object.
      *
-     * @note
-     *   This method expects a correct dynamic type of the request
+     * @note This method expects a correct dynamic type of the request
      *   object. Otherwise it will throw the std::logic_error exception.
      */
     void _setInfo(WorkerRequest::Ptr const& request,
@@ -504,14 +457,9 @@ private:
     /**
      * Extract the extra data from the request and put it into the response object.
      *
-     * @param request
-     *   finished request
-     *
-     * @param response
-     *   Google Protobuf object to be initialized
-     *
-     * @throws std::logic_error
-     *   if the dynamic type of the request won't match expectations
+     * @param request finished request
+     * @param response Google Protobuf object to be initialized
+     * @throws std::logic_error if the dynamic type of the request won't match expectations
      */
     void _setInfo(WorkerRequest::Ptr const& request,
                   ProtocolResponseDelete& response);
@@ -520,14 +468,9 @@ private:
      * Extract the replica info (for one chunk) from the request and put
      * it into the response object.
      *
-     * @param request
-     *   finished request
-     *
-     * @param response
-     *   Google Protobuf object to be initialized
-     *
-     * @throws std::logic_error
-     *   if the dynamic type of the request won't match expectations
+     * @param request finished request
+     * @param response Google Protobuf object to be initialized
+     * @throws std::logic_error if the dynamic type of the request won't match expectations
      */
     void _setInfo(WorkerRequest::Ptr const& request,
                   ProtocolResponseFind& response);
@@ -536,14 +479,9 @@ private:
      * Extract the replica info (for multiple chunks) from the request and put
      * it into the response object.
      *
-     * @param request
-     *   finished request
-     *
-     * @param response
-     *   Google Protobuf object to be initialized
-     *
-     * @throws std::logic_error
-     *   if the dynamic type of the request won't match expectations
+     * @param request finished request
+     * @param response Google Protobuf object to be initialized
+     * @throws std::logic_error if the dynamic type of the request won't match expectations
      */
     void _setInfo(WorkerRequest::Ptr const& request,
                   ProtocolResponseFindAll& response);
@@ -552,14 +490,9 @@ private:
      * Extract the input data string received with the request and put
      * it back into the response object.
      *
-     * @param request
-     *   finished request
-     *
-     * @param response
-     *   Google Protobuf object to be initialized
-     *
-     * @throws std::logic_error
-     *   if the dynamic type of the request won't match expectations
+     * @param request finished request
+     * @param response Google Protobuf object to be initialized
+     * @throws std::logic_error if the dynamic type of the request won't match expectations
      */
     void _setInfo(WorkerRequest::Ptr const& request,
                   ProtocolResponseEcho& response);
@@ -568,14 +501,9 @@ private:
      * Extract the result set (if the query has succeeded) and put
      * it into the response object.
      *
-     * @param request
-     *   finished request
-     *
-     * @param response
-     *   Google Protobuf object to be initialized
-     *
-     * @throws std::logic_error
-     *   if the dynamic type of the request won't match expectations
+     * @param request finished request
+     * @param response Google Protobuf object to be initialized
+     * @throws std::logic_error if the dynamic type of the request won't match expectations
      */
     void _setInfo(WorkerRequest::Ptr const& request,
                   ProtocolResponseSql& response);
@@ -584,14 +512,9 @@ private:
      * Extract the result set (if the query has succeeded) and put
      * it into the response object.
      *
-     * @param request
-     *   finished request
-     *
-     * @param response
-     *   Google Protobuf object to be initialized
-     *
-     * @throws std::logic_error
-     *   if the dynamic type of the request won't match expectations
+     * @param request finished request
+     * @param response Google Protobuf object to be initialized
+     * @throws std::logic_error if the dynamic type of the request won't match expectations
      */
     void _setInfo(WorkerRequest::Ptr const& request,
                   ProtocolResponseIndex& response);
@@ -600,14 +523,9 @@ private:
      * Fill in the information object for the specified request based on its
      * actual type.
      *
-     * @param request
-     *   a pointer to the request
-     *
-     * @param info
-     *   a pointer to the Protobuf object to be filled
-     *
-     * @throw std::logic_error
-     *   for unsupported request types.
+     * @param request a pointer to the request
+     * @param info a pointer to the Protobuf object to be filled
+     * @throw std::logic_error for unsupported request types.
      */
     void _setServiceResponseInfo(WorkerRequest::Ptr const& request,
                                  ProtocolServiceResponseInfo* info) const;
@@ -622,8 +540,7 @@ private:
      * back into the ready-to-be processed request and be picked up later
      * by some other thread.
      *
-     * @param request
-     *   a pointer to the request
+     * @param request a pointer to the request
      */
     void _processingRefused(WorkerRequest::Ptr const& request);
 
@@ -634,8 +551,7 @@ private:
      * The request will be moved into the corresponding queue. A proper
      * completion status is expected be stored within the request.
      *
-     * @param request
-     *   a pointer to the request
+     * @param request a pointer to the request
      */
     void _processingFinished(WorkerRequest::Ptr const& request);
 
@@ -647,13 +563,11 @@ private:
      * of this processor from the combined State::STATE_IS_STOPPING to
      * State::STATE_IS_STOPPED. The later is achieved when all threads are stopped.
      *
-     * @param processorThread
-     *   reference to the processing thread which finished
+     * @param processorThread reference to the processing thread which finished
      */
     void _processorThreadStopped(WorkerProcessorThread::Ptr const& processorThread);
 
     std::string _context(std::string const& func=std::string()) const { return "PROCESSOR  " + func; }
-
 
     ServiceProvider::Ptr const  _serviceProvider;
     WorkerRequestFactory const& _requestFactory;
@@ -669,8 +583,8 @@ private:
 
     PriorityQueueType _newRequests;
 
-    CollectionType _inProgressRequests;
-    CollectionType _finishedRequests;
+    std::map<std::string, WorkerRequest::Ptr> _inProgressRequests;
+    std::map<std::string, WorkerRequest::Ptr> _finishedRequests;
 };
 
 }}} // namespace lsst::qserv::replica

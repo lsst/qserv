@@ -42,10 +42,7 @@ namespace replica {
   * Real implementations of the request processing must derive from this class.
   */
 class WorkerFindAllRequest : public WorkerRequest {
-
 public:
-
-    /// Pointer to self
     typedef std::shared_ptr<WorkerFindAllRequest> Ptr;
 
     /**
@@ -53,34 +50,28 @@ public:
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
      *
-     * @param serviceProvider
-     *   provider is needed to access the Configuration of a setup
-     *   and for validating the input parameters
-     *
-     * @param worker
-     *   the name of a worker. The name must match the worker which
+     * @param serviceProvider provider is needed to access the Configuration of
+     *   a setup and for validating the input parameters
+     * @param worker the name of a worker. The name must match the worker which
      *   is going to execute the request.
-     *
-     * @param id
-     *   an identifier of a client request
-     *
-     * @param priority
-     *   indicates the importance of the request
-     *
-     * @param database
-     *   the name of a database defines a scope of the replica
-     *   lookup operation
-     *
-     * @return
-     *   pointer to the created object
+     * @param id an identifier of a client request
+     * @param priority indicates the importance of the request
+     * @param (optional) onExpired request expiration callback function.
+     *   If nullptr is passed as a parameter then the request will never expire.
+     * @param (optional) requestExpirationIvalSec request expiration interval.
+     *   If 0 is passed into the method then a value of the corresponding
+     *   parameter for the Controller-side requests will be pulled from
+     *   the Configuration.
+     * @param request ProtoBuf body of the request
+     * @return pointer to the created object
      */
     static Ptr create(ServiceProvider::Ptr const& serviceProvider,
                       std::string const& worker,
                       std::string const& id,
                       int priority,
-                      std::string const& database);
-
-    // Default construction and copy semantics are prohibited
+                      ExpirationCallbackType const& onExpired,
+                      unsigned int requestExpirationIvalSec,
+                      ProtocolRequestFindAll const& request);
 
     WorkerFindAllRequest() = delete;
     WorkerFindAllRequest(WorkerFindAllRequest const&) = delete;
@@ -90,31 +81,28 @@ public:
 
     // Trivial get methods
 
-    std::string const& database() const { return _database; }
+    std::string const& database() const { return _request.database(); }
 
     /**
      * Extract request status into the Protobuf response object.
-     *
-     * @param response
-     *   Protobuf response to be initialized
+     * @param response Protobuf response to be initialized
      */
     void setInfo(ProtocolResponseFindAll& response) const;
 
-    /// @see WorkerRequest::execute
     bool execute() override;
 
 protected:
-
-    /// @see WorkerFindAllRequest::create()
     WorkerFindAllRequest(ServiceProvider::Ptr const& serviceProvider,
                          std::string const& worker,
                          std::string const& id,
                          int priority,
-                         std::string const& database);
+                         ExpirationCallbackType const& onExpired,
+                         unsigned int requestExpirationIvalSec,
+                         ProtocolRequestFindAll const& request);
 
     // Input parameters
 
-    std::string const _database;
+    ProtocolRequestFindAll const _request;
 
     /// Result of the operation
     ReplicaInfoCollection _replicaInfoCollection;
@@ -126,28 +114,17 @@ protected:
   * a POSIX file system.
   */
 class WorkerFindAllRequestPOSIX : public WorkerFindAllRequest {
-
 public:
-
-    /// Pointer to self
     typedef std::shared_ptr<WorkerFindAllRequestPOSIX> Ptr;
 
-    /**
-     * Static factory method is needed to prevent issue with the lifespan
-     * and memory management of instances created otherwise (as values or via
-     * low-level pointers).
-     *
-     * For a description of parameters:
-     *
-     * @see WorkerFindAllRequest::create()
-     */
+    /// @see WorkerFindAllRequest::create()
     static Ptr create(ServiceProvider::Ptr const& serviceProvider,
                       std::string const& worker,
                       std::string const& id,
                       int priority,
-                      std::string const& database);
-
-    // Default construction and copy semantics are prohibited
+                      ExpirationCallbackType const& onExpired,
+                      unsigned int requestExpirationIvalSec,
+                      ProtocolRequestFindAll const& request);
 
     WorkerFindAllRequestPOSIX() = delete;
     WorkerFindAllRequestPOSIX(WorkerFindAllRequestPOSIX const&) = delete;
@@ -155,17 +132,16 @@ public:
 
     ~WorkerFindAllRequestPOSIX() final = default;
 
-    /// @see WorkerRequest::execute
     bool execute() final;
 
 private:
-
-    /// @see WorkerFindAllRequestPOSIX::create()
     WorkerFindAllRequestPOSIX(ServiceProvider::Ptr const& serviceProvider,
                               std::string const& worker,
                               std::string const& id,
                               int priority,
-                              std::string const& database);
+                              ExpirationCallbackType const& onExpired,
+                              unsigned int requestExpirationIvalSec,
+                              ProtocolRequestFindAll const& request);
 };
 
 /**

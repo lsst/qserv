@@ -28,6 +28,7 @@
 
 // Qserv headers
 #include "replica/ServiceProvider.h"
+#include "replica/WorkerRequest.h"
 
 // Forward declarations
 namespace lsst {
@@ -57,9 +58,7 @@ namespace replica {
  * various implementations of factories for creating request objects.
  */
 class WorkerRequestFactoryBase {
-
 public:
-
     // Pointers to specific request types
 
     typedef std::shared_ptr<database::mysql::ConnectionPool> ConnectionPoolPtr;
@@ -72,8 +71,6 @@ public:
     typedef std::shared_ptr<WorkerSqlRequest>         WorkerSqlRequestPtr;
     typedef std::shared_ptr<WorkerIndexRequest>       WorkerIndexRequestPtr;
 
-    // The default constructor and copy semantics are prohibited
-
     WorkerRequestFactoryBase() = delete;
     WorkerRequestFactoryBase(WorkerRequestFactoryBase const&) = delete;
     WorkerRequestFactoryBase& operator=(WorkerRequestFactoryBase const&) = delete;
@@ -83,124 +80,78 @@ public:
     /// @return the name of a technology the factory is based upon
     virtual std::string technology() const = 0;
 
-    /**
-     * Create an instance of the replication request
-     *
-     * @see class WorkerReplicationRequest
-     *
-     * @return
-     *   a pointer to the newly created object
-     */
+    /// @see class WorkerReplicationRequest
     virtual WorkerReplicationRequestPtr createReplicationRequest(
             std::string const& worker,
             std::string const& id,
             int priority,
-            std::string const& database,
-            unsigned int chunk,
-            std::string const& sourceWorker) const = 0;
+            WorkerRequest::ExpirationCallbackType const& onExpired,
+            unsigned int requestExpirationIvalSec,
+            ProtocolRequestReplicate const& request) const = 0;
 
-   /**
-    * Create an instance of the replica deletion request
-    *
-    * @see class WorkerDeleteRequest
-    *
-    * @return
-    *   a pointer to the newly created object
-    */
+    /// @see class WorkerDeleteRequest
     virtual WorkerDeleteRequestPtr createDeleteRequest(
             std::string const& worker,
             std::string const& id,
             int priority,
-            std::string const& database,
-            unsigned int chunk) const = 0;
+            WorkerRequest::ExpirationCallbackType const& onExpired,
+            unsigned int requestExpirationIvalSec,
+            ProtocolRequestDelete const& request) const = 0;
 
-   /**
-    * Create an instance of the replica lookup request
-    *
-    * @see class WorkerFindRequest
-    *
-    * @return
-    *   a pointer to the newly created object
-    */
+    /// @see class WorkerFindRequest
     virtual WorkerFindRequestPtr createFindRequest(
             std::string const& worker,
             std::string const& id,
             int priority,
-            std::string const& database,
-            unsigned int chunk,
-            bool computeCheckSum) const = 0;
+            WorkerRequest::ExpirationCallbackType const& onExpired,
+            unsigned int requestExpirationIvalSec,
+            ProtocolRequestFind const& request) const = 0;
 
-   /**
-    * Create an instance of the replicas lookup request
-    *
-    * @see class WorkerFindAllRequest
-    *
-    * @return
-    *   a pointer to the newly created object
-    */
+    /// @see class WorkerFindAllRequest
     virtual WorkerFindAllRequestPtr createFindAllRequest(
             std::string const& worker,
             std::string const& id,
             int priority,
-            std::string const& database) const = 0;
+            WorkerRequest::ExpirationCallbackType const& onExpired,
+            unsigned int requestExpirationIvalSec,
+            ProtocolRequestFindAll const& request) const = 0;
 
-    /**
-     * Create an instance of the test request
-     *
-     * @see class WorkerEchoRequest
-     *
-     * @return
-     *   a pointer to the newly created object
-     */
+    /// @see class WorkerEchoRequest
     virtual WorkerEchoRequestPtr createEchoRequest(
             std::string const& worker,
             std::string const& id,
             int priority,
-            std::string const& data,
-            uint64_t delay) const = 0;
+            WorkerRequest::ExpirationCallbackType const& onExpired,
+            unsigned int requestExpirationIvalSec,
+            ProtocolRequestEcho const& request) const = 0;
  
-    /**
-     * Create an instance of the query execution request
-     *
-     * @see class WorkerSqlRequest
-     *
-     * @return
-     *   a pointer to the newly created object
-     */
+    /// @see class WorkerSqlRequest
     virtual WorkerSqlRequestPtr createSqlRequest(
             std::string const& worker,
             std::string const& id,
+            int priority,
+            WorkerRequest::ExpirationCallbackType const& onExpired,
+            unsigned int requestExpirationIvalSec,
             ProtocolRequestSql const& request) const = 0;
  
-    /**
-     * Create an instance of a request extracting the "secondary index" data
-     *
-     * @see class WorkerIndexRequest
-     *
-     * @return
-     *   a pointer to the newly created object
-     */
+    /// @see class WorkerIndexRequest
     virtual WorkerIndexRequestPtr createIndexRequest(
             std::string const& worker,
             std::string const& id,
+            int priority,
+            WorkerRequest::ExpirationCallbackType const& onExpired,
+            unsigned int requestExpirationIvalSec,
             ProtocolRequestIndex const& request) const = 0;
 
 protected:
-
     /**
-     * The constructor of the class.
-     *
-     * @param serviceProvider
-     *   a provider of various services
-     * 
-     * @param connectionPool
-     *   a pool of persistent database connections
+     * @param serviceProvider a provider of various services
+     * @param connectionPool a pool of persistent database connections
      */
     WorkerRequestFactoryBase(ServiceProvider::Ptr const& serviceProvider,
                              ConnectionPoolPtr const& connectionPool);
 
 protected:
-
     ServiceProvider::Ptr const _serviceProvider;
     ConnectionPoolPtr const _connectionPool;
 };
@@ -211,11 +162,7 @@ protected:
   * a choice of a specific implementation of the factory.
   */
 class WorkerRequestFactory : public WorkerRequestFactoryBase {
-
 public:
-
-    // Default construction and copy semantics are prohibited
-
     WorkerRequestFactory() = delete;
     WorkerRequestFactory(WorkerRequestFactory const&) = delete;
     WorkerRequestFactory& operator=(WorkerRequestFactory const&) = delete;
@@ -239,14 +186,9 @@ public:
      *              on a POSIX file system and for reading remote files using
      *              the built-into-worker simple file server.
      *
-     * @param serviceProvider
-     *   provider of various services (including configurations)
-     *
-     * @param connectionPool
-     *   a pool of persistent database connections
-     *
-     * @param technology
-     *   (optional) the name of a technology
+     * @param serviceProvider provider of various services (including configurations)
+     * @param connectionPool a pool of persistent database connections
+     * @param technology (optional) the name of a technology
      */
     WorkerRequestFactory(ServiceProvider::Ptr const& serviceProvider,
                          ConnectionPoolPtr const& connectionPool,
@@ -254,117 +196,65 @@ public:
 
     ~WorkerRequestFactory() final { delete _ptr; }
 
-    /// @see WorkerReplicationRequestBase::technology()
     std::string technology() const final { return _ptr->technology(); }
 
-    /// @see WorkerReplicationRequestBase::createReplicationRequest()
     WorkerReplicationRequestPtr createReplicationRequest(
             std::string const& worker,
             std::string const& id,
             int priority,
-            std::string const& database,
-            unsigned int chunk,
-            std::string const& sourceWorker) const final {
+            WorkerRequest::ExpirationCallbackType const& onExpired,
+            unsigned int requestExpirationIvalSec,
+            ProtocolRequestReplicate const& request) const final;
 
-        return _ptr->createReplicationRequest(
-            worker,
-            id,
-            priority,
-            database,
-            chunk,
-            sourceWorker);
-    }
-
-   /// @see WorkerReplicationRequestBase::createDeleteRequest()
     WorkerDeleteRequestPtr createDeleteRequest(
             std::string const& worker,
             std::string const& id,
             int priority,
-            std::string const& database,
-            unsigned int chunk) const final {
+            WorkerRequest::ExpirationCallbackType const& onExpired,
+            unsigned int requestExpirationIvalSec,
+            ProtocolRequestDelete const& request) const final;
 
-        return _ptr->createDeleteRequest(
-            worker,
-            id,
-            priority,
-            database,
-            chunk);
-    }
-
-   /// @see WorkerReplicationRequestBase::createFindRequest()
     WorkerFindRequestPtr createFindRequest(
             std::string const& worker,
             std::string const& id,
             int priority,
-            std::string const& database,
-            unsigned int chunk,
-            bool computeCheckSum) const final {
-        
-        return _ptr->createFindRequest(
-            worker,
-            id,
-            priority,
-            database,
-            chunk,
-            computeCheckSum);
-    }
+            WorkerRequest::ExpirationCallbackType const& onExpired,
+            unsigned int requestExpirationIvalSec,
+            ProtocolRequestFind const& request) const final;
 
-   /// @see WorkerReplicationRequestBase::createFindAllRequest()
     WorkerFindAllRequestPtr createFindAllRequest(
             std::string const& worker,
             std::string const& id,
             int priority,
-            std::string const& database) const final {
-        
-        return _ptr->createFindAllRequest(
-            worker,
-            id,
-            priority,
-            database);
-    }
+            WorkerRequest::ExpirationCallbackType const& onExpired,
+            unsigned int requestExpirationIvalSec,
+            ProtocolRequestFindAll const& request) const final;
 
-    /// @see WorkerReplicationRequestBase::createEchoRequest()
     WorkerEchoRequestPtr createEchoRequest(
             std::string const& worker,
             std::string const& id,
             int priority,
-            std::string const& data,
-            uint64_t delay) const final {
+            WorkerRequest::ExpirationCallbackType const& onExpired,
+            unsigned int requestExpirationIvalSec,
+            ProtocolRequestEcho const& request) const final;
 
-        return _ptr->createEchoRequest(
-            worker,
-            id,
-            priority,
-            data,
-            delay);
-    }
-
-    /// @see WorkerReplicationRequestBase::createSqlRequest()
     WorkerSqlRequestPtr createSqlRequest(
             std::string const& worker,
             std::string const& id,
-            ProtocolRequestSql const& request) const final {
+            int priority,
+            WorkerRequest::ExpirationCallbackType const& onExpired,
+            unsigned int requestExpirationIvalSec,
+            ProtocolRequestSql const& request) const final;
 
-        return _ptr->createSqlRequest(
-            worker,
-            id,
-            request);
-    }
-
-    /// @see WorkerReplicationRequestBase::createIndexRequest()
     WorkerIndexRequestPtr createIndexRequest(
             std::string const& worker,
             std::string const& id,
-            ProtocolRequestIndex const& request) const final {
-
-        return _ptr->createIndexRequest(
-            worker,
-            id,
-            request);
-    }
+            int priority,
+            WorkerRequest::ExpirationCallbackType const& onExpired,
+            unsigned int requestExpirationIvalSec,
+            ProtocolRequestIndex const& request) const final;
 
 protected:
-
     /// Pointer to the final implementation of the factory
     WorkerRequestFactoryBase const* _ptr;
 };
