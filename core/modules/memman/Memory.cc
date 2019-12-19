@@ -59,13 +59,11 @@ MemInfo Memory::fileInfo(std::string const& fPath) {
     // Simply issue a stat() to get the size
     //
     if (stat(fPath.c_str(), &sBuff)) {
+        fInfo._memSize = 0;
         fInfo._errCode = errno;
     } else {
-        if (sBuff.st_size > 0) {
-            fInfo._memSize = static_cast<uint64_t>(sBuff.st_size);
-        } else {
-            fInfo._errCode = ESPIPE;
-        }
+        fInfo._memSize = static_cast<uint64_t>(sBuff.st_size);
+        fInfo._errCode = 0;
     }
 
     // Return file information
@@ -114,7 +112,8 @@ int Memory::memLock(MemInfo& mInfo, bool isFlex) {
         std::lock_guard<std::mutex> lg(_mlockMtx);
         LOGS(_log, LOG_LVL_DEBUG, "mlock start");
         timer.start();
-        result = mlock(mInfo._memAddr, mInfo._memSize);
+        if (mInfo._memSize == 0) result = 0;
+           else result = mlock(mInfo._memAddr, mInfo._memSize);
         timer.stop();
     }
     mInfo._mlockTime = timer.getElapsed();
@@ -160,7 +159,7 @@ MemInfo Memory::mapFile(std::string const& fPath) {
         mInfo._memSize = static_cast<uint64_t>(sBuff.st_size);
     } else {
         close(fdNum);
-        mInfo.setErrCode(ESPIPE);
+        mInfo._memSize = 0;
         return mInfo;
     }
 
