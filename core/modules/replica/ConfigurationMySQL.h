@@ -95,7 +95,7 @@ public:
              "common",
              "request_buf_size_bytes",
              val,
-             false,
+             false, // allowZero
              updatePersistentState);
     }
 
@@ -105,7 +105,7 @@ public:
              "common",
              "request_retry_interval_sec",
              val,
-             false,
+             false, // allowZero
              updatePersistentState);
     }
 
@@ -115,7 +115,7 @@ public:
              "controller",
              "num_threads",
              val,
-             false,
+             false, // allowZero
              updatePersistentState);
     }
 
@@ -125,7 +125,7 @@ public:
              "controller",
              "http_server_port",
              val,
-             false,
+             false, // allowZero
              updatePersistentState);
     }
 
@@ -135,7 +135,7 @@ public:
              "controller",
              "http_server_threads",
              val,
-             false,
+             false, // allowZero
              updatePersistentState);
     }
 
@@ -145,7 +145,7 @@ public:
              "controller",
              "request_timeout_sec",
              val,
-             false,
+             false, // allowZero
              updatePersistentState);
     }
 
@@ -155,7 +155,7 @@ public:
              "controller",
              "job_timeout_sec",
              val,
-             false,
+             false, // allowZero
              updatePersistentState);
     }
 
@@ -165,7 +165,7 @@ public:
              "controller",
              "job_heartbeat_sec",
              val,
-             true,
+             true, // allowZero
              updatePersistentState);
     }
 
@@ -175,7 +175,7 @@ public:
              "xrootd",
              "auto_notify",
              val,
-             false,
+             false, // allowZero
              updatePersistentState);
     }
 
@@ -185,7 +185,7 @@ public:
              "xrootd",
              "host",
              val,
-             false,
+             false, // allowZero
              updatePersistentState);
     }
 
@@ -195,7 +195,7 @@ public:
              "xrootd",
              "port",
              val,
-             false,
+             false, // allowZero
              updatePersistentState);
     }
 
@@ -205,7 +205,7 @@ public:
              "xrootd",
              "request_timeout_sec",
              val,
-             false,
+             false, // allowZero
              updatePersistentState);
     }
 
@@ -215,7 +215,7 @@ public:
              "database",
              "services_pool_size",
              val,
-             false,
+             false, // allowZero
              updatePersistentState);
     }
 
@@ -281,7 +281,7 @@ public:
              "worker",
              "technology",
              val,
-             false,
+             false, // allowEmpty
              updatePersistentState);
     }
 
@@ -291,7 +291,7 @@ public:
              "worker",
              "num_svc_processing_threads",
              val,
-             false,
+             false, // allowZero
              updatePersistentState);
     }
 
@@ -301,7 +301,7 @@ public:
              "worker",
              "num_fs_processing_threads",
              val,
-             false,
+             false, // allowZero
              updatePersistentState);
     }
 
@@ -311,7 +311,7 @@ public:
              "worker",
              "fs_buf_size_bytes",
              val,
-             false,
+             false, // allowZero
              updatePersistentState);
     }
 
@@ -321,7 +321,7 @@ public:
              "worker",
              "num_loader_processing_threads",
              val,
-             false,
+             false, // allowZero
              updatePersistentState);
     }
 
