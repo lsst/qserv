@@ -203,9 +203,10 @@ size_t Configuration::requestBufferSizeBytes() const {
 }
 
 
-void Configuration::setRequestBufferSizeBytes(size_t val) {
+void Configuration::setRequestBufferSizeBytes(size_t val,
+                                              bool updatePersistentState) {
     util::Lock lock(_mtx, context(__func__));
-    _impl->setRequestBufferSizeBytes(val);
+    _impl->setRequestBufferSizeBytes(val, updatePersistentState);
 }
 
 
@@ -215,9 +216,10 @@ unsigned int Configuration::retryTimeoutSec() const {
 }
 
 
-void Configuration::setRetryTimeoutSec(unsigned int val) {
+void Configuration::setRetryTimeoutSec(unsigned int val,
+                                       bool updatePersistentState) {
     util::Lock lock(_mtx, context(__func__));
-    _impl->setRetryTimeoutSec(val);
+    _impl->setRetryTimeoutSec(val, updatePersistentState);
 }
 
 
@@ -227,9 +229,10 @@ size_t Configuration::controllerThreads() const {
 }
 
 
-void Configuration::setControllerThreads(size_t val) {
+void Configuration::setControllerThreads(size_t val,
+                                         bool updatePersistentState) {
     util::Lock lock(_mtx, context(__func__));
-    _impl->setControllerThreads(val);
+    _impl->setControllerThreads(val, updatePersistentState);
 }
 
 
@@ -239,9 +242,10 @@ uint16_t Configuration::controllerHttpPort() const {
 }
 
 
-void Configuration::setControllerHttpPort(uint16_t val) {
+void Configuration::setControllerHttpPort(uint16_t val,
+                                          bool updatePersistentState) {
     util::Lock lock(_mtx, context(__func__));
-    _impl->setControllerHttpPort(val);
+    _impl->setControllerHttpPort(val, updatePersistentState);
 }
 
 
@@ -251,9 +255,10 @@ size_t Configuration::controllerHttpThreads() const {
 }
 
 
-void Configuration::setControllerHttpThreads(size_t val) {
+void Configuration::setControllerHttpThreads(size_t val,
+                                             bool updatePersistentState) {
     util::Lock lock(_mtx, context(__func__));
-    _impl->setControllerHttpThreads(val);
+    _impl->setControllerHttpThreads(val, updatePersistentState);
 }
 
 
@@ -269,9 +274,10 @@ string Configuration::controllerEmptyChunksDir() const {
 }
 
 
-void Configuration::setControllerRequestTimeoutSec(unsigned int val) {
+void Configuration::setControllerRequestTimeoutSec(unsigned int val,
+                                                   bool updatePersistentState) {
     util::Lock lock(_mtx, context(__func__));
-    _impl->setControllerRequestTimeoutSec(val);
+    _impl->setControllerRequestTimeoutSec(val, updatePersistentState);
 }
 
 
@@ -281,9 +287,10 @@ unsigned int Configuration::jobTimeoutSec() const {
 }
 
 
-void Configuration::setJobTimeoutSec(unsigned int val) {
+void Configuration::setJobTimeoutSec(unsigned int val,
+                                     bool updatePersistentState) {
     util::Lock lock(_mtx, context(__func__));
-    _impl->setJobTimeoutSec(val);
+    _impl->setJobTimeoutSec(val, updatePersistentState);
 }
 
 
@@ -293,9 +300,10 @@ unsigned int Configuration::jobHeartbeatTimeoutSec() const {
 }
 
 
-void Configuration::setJobHeartbeatTimeoutSec(unsigned int val) {
+void Configuration::setJobHeartbeatTimeoutSec(unsigned int val,
+                                              bool updatePersistentState) {
     util::Lock lock(_mtx, context(__func__));
-    _impl->setJobHeartbeatTimeoutSec(val);
+    _impl->setJobHeartbeatTimeoutSec(val, updatePersistentState);
 }
 
 
@@ -305,9 +313,10 @@ bool Configuration::xrootdAutoNotify() const {
 }
 
 
-void Configuration::setXrootdAutoNotify(bool val) {
+void Configuration::setXrootdAutoNotify(bool val,
+                                        bool updatePersistentState) {
     util::Lock lock(_mtx, context(__func__));
-    _impl->setXrootdAutoNotify(val);
+    _impl->setXrootdAutoNotify(val, updatePersistentState);
 }
 
 
@@ -317,9 +326,10 @@ string Configuration::xrootdHost() const {
 }
 
 
-void Configuration::setXrootdHost(string const& val) {
+void Configuration::setXrootdHost(string const& val,
+                                  bool updatePersistentState) {
     util::Lock lock(_mtx, context(__func__));
-    _impl->setXrootdHost(val);
+    _impl->setXrootdHost(val, updatePersistentState);
 }
 
 
@@ -329,9 +339,10 @@ uint16_t Configuration::xrootdPort() const {
 }
 
 
-void Configuration::setXrootdPort(uint16_t val) {
+void Configuration::setXrootdPort(uint16_t val,
+                                  bool updatePersistentState) {
     util::Lock lock(_mtx, context(__func__));
-    _impl->setXrootdPort(val);
+    _impl->setXrootdPort(val, updatePersistentState);
 }
 
 
@@ -341,9 +352,10 @@ unsigned int Configuration::xrootdTimeoutSec() const {
 }
 
 
-void Configuration::setXrootdTimeoutSec(unsigned int val) {
+void Configuration::setXrootdTimeoutSec(unsigned int val,
+                                        bool updatePersistentState) {
     util::Lock lock(_mtx, context(__func__));
-    _impl->setXrootdTimeoutSec(val);
+    _impl->setXrootdTimeoutSec(val, updatePersistentState);
 }
 
 
@@ -389,9 +401,10 @@ size_t Configuration::databaseServicesPoolSize() const {
 }
 
 
-void Configuration::setDatabaseServicesPoolSize(size_t val) {
+void Configuration::setDatabaseServicesPoolSize(size_t val,
+                                                bool updatePersistentState) {
     util::Lock lock(_mtx, context(__func__));
-    _impl->setDatabaseServicesPoolSize(val);
+    _impl->setDatabaseServicesPoolSize(val, updatePersistentState);
 }
 
 
@@ -539,9 +552,10 @@ string Configuration::workerTechnology() const {
 }
 
 
-void Configuration::setWorkerTechnology(string const& val) {
+void Configuration::setWorkerTechnology(string const& val,
+                                        bool updatePersistentState) {
     util::Lock lock(_mtx, context(__func__));
-    _impl->setWorkerTechnology(val);
+    _impl->setWorkerTechnology(val, updatePersistentState);
 }
 
 
@@ -557,81 +571,107 @@ void Configuration::deleteWorker(string const& name) {
 }
 
 
-WorkerInfo Configuration::disableWorker(string const& name, bool disable) {
+WorkerInfo Configuration::disableWorker(string const& name,
+                                        bool disable,
+                                        bool updatePersistentState) {
     util::Lock lock(_mtx, context(__func__));
-    return _impl->disableWorker(name, disable);
+    return _impl->disableWorker(name, disable, updatePersistentState);
 }
 
 
-WorkerInfo Configuration::setWorkerReadOnly(string const& name, bool readOnly) {
+WorkerInfo Configuration::setWorkerReadOnly(string const& name,
+                                            bool readOnly,
+                                            bool updatePersistentState) {
     util::Lock lock(_mtx, context(__func__));
-    return _impl->setWorkerReadOnly(name, readOnly);
+    return _impl->setWorkerReadOnly(name, readOnly, updatePersistentState);
 }
 
 
-WorkerInfo Configuration::setWorkerSvcHost(string const& name, string const& host) {
+WorkerInfo Configuration::setWorkerSvcHost(string const& name,
+                                           string const& host,
+                                           bool updatePersistentState) {
     util::Lock lock(_mtx, context(__func__));
-    return _impl->setWorkerSvcHost(name, host);
+    return _impl->setWorkerSvcHost(name, host, updatePersistentState);
 }
 
 
-WorkerInfo Configuration::setWorkerSvcPort(string const& name, uint16_t port) {
+WorkerInfo Configuration::setWorkerSvcPort(string const& name,
+                                           uint16_t port,
+                                           bool updatePersistentState) {
     util::Lock lock(_mtx, context(__func__));
-    return _impl->setWorkerSvcPort(name, port);
+    return _impl->setWorkerSvcPort(name, port, updatePersistentState);
 }
 
 
-WorkerInfo Configuration::setWorkerFsHost(string const& name, string const& host) {
+WorkerInfo Configuration::setWorkerFsHost(string const& name,
+                                          string const& host,
+                                          bool updatePersistentState) {
     util::Lock lock(_mtx, context(__func__));
-    return _impl->setWorkerFsHost(name, host);
+    return _impl->setWorkerFsHost(name, host, updatePersistentState);
 }
 
 
-WorkerInfo Configuration::setWorkerFsPort(string const& name, uint16_t port) {
+WorkerInfo Configuration::setWorkerFsPort(string const& name,
+                                          uint16_t port,
+                                          bool updatePersistentState) {
     util::Lock lock(_mtx, context(__func__));
-    return _impl->setWorkerFsPort(name, port);
+    return _impl->setWorkerFsPort(name, port, updatePersistentState);
 }
 
 
-WorkerInfo Configuration::setWorkerDataDir(string const& name, string const& dataDir) {
+WorkerInfo Configuration::setWorkerDataDir(string const& name,
+                                           string const& dataDir,
+                                           bool updatePersistentState) {
     util::Lock lock(_mtx, context(__func__));
-    return _impl->setWorkerDataDir(name, dataDir);
+    return _impl->setWorkerDataDir(name, dataDir, updatePersistentState);
 }
 
 
-WorkerInfo Configuration::setWorkerDbHost(string const& name, string const& host) {
+WorkerInfo Configuration::setWorkerDbHost(string const& name,
+                                          string const& host,
+                                          bool updatePersistentState) {
     util::Lock lock(_mtx, context(__func__));
-    return _impl->setWorkerDbHost(name, host);
+    return _impl->setWorkerDbHost(name, host, updatePersistentState);
 }
 
 
-WorkerInfo Configuration::setWorkerDbPort(string const& name, uint16_t port) {
+WorkerInfo Configuration::setWorkerDbPort(string const& name,
+                                          uint16_t port,
+                                          bool updatePersistentState) {
     util::Lock lock(_mtx, context(__func__));
-    return _impl->setWorkerDbPort(name, port);
+    return _impl->setWorkerDbPort(name, port, updatePersistentState);
 }
 
 
-WorkerInfo Configuration::setWorkerDbUser(string const& name, string const& user) {
+WorkerInfo Configuration::setWorkerDbUser(string const& name,
+                                          string const& user,
+                                          bool updatePersistentState) {
     util::Lock lock(_mtx, context(__func__));
-    return _impl->setWorkerDbUser(name, user);
+    return _impl->setWorkerDbUser(name, user, updatePersistentState);
 }
 
 
-WorkerInfo Configuration::setWorkerLoaderHost(string const& name, string const& host) {
+WorkerInfo Configuration::setWorkerLoaderHost(string const& name,
+                                              string const& host,
+                                              bool updatePersistentState) {
     util::Lock lock(_mtx, context(__func__));
-    return _impl->setWorkerLoaderHost(name, host);
+    return _impl->setWorkerLoaderHost(name, host, updatePersistentState);
 }
 
 
-WorkerInfo Configuration::setWorkerLoaderPort(string const& name, uint16_t port) {
+WorkerInfo Configuration::setWorkerLoaderPort(string const& name,
+                                              uint16_t port,
+                                              bool updatePersistentState) {
     util::Lock lock(_mtx, context(__func__));
-    return _impl->setWorkerLoaderPort(name, port);
+    return _impl->setWorkerLoaderPort(name, port, updatePersistentState);
 }
 
 
-WorkerInfo Configuration::setWorkerLoaderTmpDir(string const& name, string const& tmpDir) {
+WorkerInfo Configuration::setWorkerLoaderTmpDir(string const& name,
+                                                string const& tmpDir,
+                                                bool updatePersistentState) {
     util::Lock lock(_mtx, context(__func__));
-    return _impl->setWorkerLoaderTmpDir(name, tmpDir);
+    return _impl->setWorkerLoaderTmpDir(name, tmpDir, updatePersistentState);
 }
 
 
@@ -641,9 +681,10 @@ size_t Configuration::workerNumProcessingThreads() const {
 }
 
 
-void Configuration::setWorkerNumProcessingThreads(size_t val) {
+void Configuration::setWorkerNumProcessingThreads(size_t val,
+                                                  bool updatePersistentState) {
     util::Lock lock(_mtx, context(__func__));
-    _impl->setWorkerNumProcessingThreads(val);
+    _impl->setWorkerNumProcessingThreads(val, updatePersistentState);
 }
 
 
@@ -653,9 +694,10 @@ size_t Configuration::fsNumProcessingThreads() const {
 }
 
 
-void Configuration::setFsNumProcessingThreads(size_t val) {
+void Configuration::setFsNumProcessingThreads(size_t val,
+                                              bool updatePersistentState) {
     util::Lock lock(_mtx, context(__func__));
-    _impl->setFsNumProcessingThreads(val);
+    _impl->setFsNumProcessingThreads(val, updatePersistentState);
 }
 
 
@@ -665,9 +707,10 @@ size_t Configuration::workerFsBufferSizeBytes() const {
 }
 
 
-void Configuration::setWorkerFsBufferSizeBytes(size_t val) {
+void Configuration::setWorkerFsBufferSizeBytes(size_t val,
+                                               bool updatePersistentState) {
     util::Lock lock(_mtx, context(__func__));
-    _impl->setWorkerFsBufferSizeBytes(val);
+    _impl->setWorkerFsBufferSizeBytes(val, updatePersistentState);
 }
 
 
@@ -677,9 +720,10 @@ size_t Configuration::loaderNumProcessingThreads() const {
 }
 
 
-void Configuration::setLoaderNumProcessingThreads(size_t val) {
+void Configuration::setLoaderNumProcessingThreads(size_t val,
+                                                  bool updatePersistentState) {
     util::Lock lock(_mtx, context(__func__));
-    _impl->setLoaderNumProcessingThreads(val);
+    _impl->setLoaderNumProcessingThreads(val, updatePersistentState);
 }
 
 

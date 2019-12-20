@@ -58,11 +58,10 @@ namespace replica {
   */
 class Configuration : public ConfigurationIFace {
 public:
-
-    /// The pointer type for instances of the class
+    /// The pointer type for instances of the class.
     typedef std::shared_ptr<Configuration> Ptr;
 
-    /// @return JSON representation of the object
+    /// @return The JSON representation of the object.
     static nlohmann::json toJson(Configuration::Ptr const& config);
 
     /**
@@ -74,15 +73,11 @@ public:
      *   mysql://[user][:password]@[host][:port][/database]
      * @code
      *
-     * @param configUrl
-     *   the configuration source
-     *
-     * @throw std::invalid_argument
-     *   if the URL has unsupported prefix or it couldn't be parsed
-     *                            
-     * @throw std::runtime_error
-     *   if the input configuration is not consistent with expectations of
-     *   the application
+     * @param configUrl The configuration source.
+     * @throw std::invalid_argument If the URL has unsupported prefix or it
+     *   couldn't be parsed.                          
+     * @throw std::runtime_error If the input configuration is not consistent
+     *   with expectations of the application.
      */
     static Ptr load(std::string const& configUrl);
 
@@ -93,16 +88,11 @@ public:
      *
      *   map:
      *
-     * @param kvMap
-     *   the configuration source
-     *
-     * @throw std::runtime_error
-     *   if the input configuration is not consistent
-     *   with expectations of the application
+     * @param kvMap The configuration source.
+     * @throw std::runtime_error If the input configuration is not consistent
+     *   with expectations of the application.
      */
     static Ptr load(std::map<std::string, std::string> const& kvMap);
-
-    // default construction and copy semantics is prohibited
 
     Configuration() = delete;
     Configuration(Configuration const&) = delete;
@@ -114,35 +104,28 @@ public:
      * Reload non-static parameters of the Configuration from the same source
      * they were originally read before.
      * 
-     * @note if the object was initialed from an in-memory map then
-     * the method will do noting.
+     * @note If the object was initialed from an in-memory map then
+     *   the method will do noting.
      */
     void reload();
 
     /**
      * Reload non-static parameters of the Configuration from an external source.
      *
-     * @param configUrl
-     *   the configuration source
-     *
-     * @throw std::invalid_argument
-     *   if the URL has unsupported prefix or it couldn't be parsed
-     *                            
-     * @throw std::runtime_error
-     *   if the input configuration is not consistent with expectations of
-     *   the application
+     * @param configUrl The configuration source,
+     * @throw std::invalid_argument If the URL has unsupported prefix or it couldn't
+     *   be parsed.
+     * @throw std::runtime_error If the input configuration is not consistent with
+     *   expectations of the application.
      */
     void reload(std::string const& configUrl);
 
     /**
-     * Reload non-static parameters of the Configuration from the in-memory map
+     * Reload non-static parameters of the Configuration from the in-memory map.
      *
-     * @param kvMap
-     *   the configuration source
-     *
-     * @throw std::runtime_error
-     *   if the input configuration is not consistent
-     *   with expectations of the application
+     * @param kvMap The configuration source.
+     * @throw std::runtime_error If the input configuration is not consistent
+     *   with expectations of the application.
      */
     void reload(std::map<std::string, std::string> const& kvMap);
     
@@ -156,42 +139,54 @@ public:
     std::vector<std::string> allWorkers() const final;
 
     size_t requestBufferSizeBytes() const final;
-    void   setRequestBufferSizeBytes(size_t val)final;
+    void setRequestBufferSizeBytes(size_t val,
+                                   bool updatePersistentState=true)final;
 
     unsigned int retryTimeoutSec() const final;
-    void         setRetryTimeoutSec(unsigned int val) final;
+    void setRetryTimeoutSec(unsigned int val,
+                            bool updatePersistentState=true) final;
 
     size_t controllerThreads() const final;
-    void   setControllerThreads(size_t val) final;
+    void setControllerThreads(size_t val,
+                              bool updatePersistentState=true) final;
 
     uint16_t controllerHttpPort() const final;
-    void     setControllerHttpPort(uint16_t val) final;
+    void setControllerHttpPort(uint16_t val,
+                               bool updatePersistentState=true) final;
 
     size_t controllerHttpThreads() const final;
-    void   setControllerHttpThreads(size_t val) final;
+    void setControllerHttpThreads(size_t val,
+                                  bool updatePersistentState=true) final;
 
     unsigned int controllerRequestTimeoutSec() const final;
-    void         setControllerRequestTimeoutSec(unsigned int val) final;
+    void setControllerRequestTimeoutSec(unsigned int val,
+                                        bool updatePersistentState=true) final;
 
     std::string controllerEmptyChunksDir() const final;
 
     unsigned int jobTimeoutSec() const final;
-    void         setJobTimeoutSec(unsigned int val) final;
+    void setJobTimeoutSec(unsigned int val,
+                          bool updatePersistentState=true) final;
 
     unsigned int jobHeartbeatTimeoutSec() const final;
-    void         setJobHeartbeatTimeoutSec(unsigned int val) final;
+    void setJobHeartbeatTimeoutSec(unsigned int val,
+                                   bool updatePersistentState=true) final;
 
     bool xrootdAutoNotify() const final;
-    void setXrootdAutoNotify(bool val) final;
+    void setXrootdAutoNotify(bool val,
+                             bool updatePersistentState=true) final;
 
     std::string xrootdHost() const final;
-    void        setXrootdHost(std::string const& val) final;
+    void setXrootdHost(std::string const& val,
+                       bool updatePersistentState=true) final;
 
     uint16_t xrootdPort() const final;
-    void     setXrootdPort(uint16_t val) final;
+    void     setXrootdPort(uint16_t val,
+                           bool updatePersistentState=true) final;
 
     unsigned int xrootdTimeoutSec() const final;
-    void         setXrootdTimeoutSec(unsigned int val) final;
+    void setXrootdTimeoutSec(unsigned int val,
+                             bool updatePersistentState=true) final;
 
     std::string databaseTechnology() const final;
     std::string databaseHost() const final;
@@ -200,8 +195,9 @@ public:
     std::string databasePassword() const final;
     std::string databaseName() const final;
 
-    size_t      databaseServicesPoolSize() const final;
-    void        setDatabaseServicesPoolSize(size_t val) final;
+    size_t databaseServicesPoolSize() const final;
+    void setDatabaseServicesPoolSize(size_t val,
+                                     bool updatePersistentState=true) final;
 
     std::string qservMasterDatabaseHost() const final;
     uint16_t    qservMasterDatabasePort() const final;
@@ -255,66 +251,109 @@ public:
     void addWorker(WorkerInfo const& info) final;
     void deleteWorker(std::string const& name) final;
 
-    WorkerInfo disableWorker(std::string const& name, bool disable=true) final;
-    WorkerInfo setWorkerReadOnly(std::string const& name, bool readOnly=true) final;
-    WorkerInfo setWorkerSvcHost(std::string const& name, std::string const& host) final;
-    WorkerInfo setWorkerSvcPort(std::string const& name, uint16_t port) final;
-    WorkerInfo setWorkerFsHost(std::string const& name, std::string const& host) final;
-    WorkerInfo setWorkerFsPort(std::string const& name, uint16_t port) final;
-    WorkerInfo setWorkerDataDir(std::string const& name, std::string const& dataDir) final;
-    WorkerInfo setWorkerDbHost(std::string const& name, std::string const& host) final;
-    WorkerInfo setWorkerDbPort(std::string const& name, uint16_t port) final;
-    WorkerInfo setWorkerDbUser(std::string const& name, std::string const& user) final;
-    WorkerInfo setWorkerLoaderHost(std::string const& name, std::string const& host) final;
-    WorkerInfo setWorkerLoaderPort(std::string const& name, uint16_t port) final;
-    WorkerInfo setWorkerLoaderTmpDir(std::string const& name, std::string const& tmpDir) final;
+    WorkerInfo disableWorker(std::string const& name,
+                             bool disable=true,
+                             bool updatePersistentState=true) final;
+
+    WorkerInfo setWorkerReadOnly(std::string const& name,
+                                 bool readOnly=true,
+                                 bool updatePersistentState=true) final;
+
+    WorkerInfo setWorkerSvcHost(std::string const& name,
+                                 std::string const& host,
+                                 bool updatePersistentState=true) final;
+
+    WorkerInfo setWorkerSvcPort(std::string const& name,
+                                uint16_t port,
+                                bool updatePersistentState=true) final;
+
+    WorkerInfo setWorkerFsHost(std::string const& name,
+                               std::string const& host,
+                               bool updatePersistentState=true) final;
+
+    WorkerInfo setWorkerFsPort(std::string const& name,
+                               uint16_t port,
+                               bool updatePersistentState=true) final;
+
+    WorkerInfo setWorkerDataDir(std::string const& name,
+                                std::string const& dataDir,
+                                bool updatePersistentState=true) final;
+
+    WorkerInfo setWorkerDbHost(std::string const& name,
+                               std::string const& host,
+                               bool updatePersistentState=true) final;
+
+    WorkerInfo setWorkerDbPort(std::string const& name,
+                               uint16_t port,
+                               bool updatePersistentState=true) final;
+
+    WorkerInfo setWorkerDbUser(std::string const& name,
+                               std::string const& user,
+                               bool updatePersistentState=true) final;
+
+    WorkerInfo setWorkerLoaderHost(std::string const& name,
+                                   std::string const& host,
+                                   bool updatePersistentState=true) final;
+
+    WorkerInfo setWorkerLoaderPort(std::string const& name,
+                                   uint16_t port,
+                                   bool updatePersistentState=true) final;
+
+    WorkerInfo setWorkerLoaderTmpDir(std::string const& name,
+                                     std::string const& tmpDir,
+                                     bool updatePersistentState=true) final;
 
     std::string workerTechnology() const final;
-    void        setWorkerTechnology(std::string const& val) final;
+    void setWorkerTechnology(std::string const& val,
+                             bool updatePersistentState=true) final;
 
     size_t workerNumProcessingThreads() const final;
-    void   setWorkerNumProcessingThreads(size_t val) final;
+    void setWorkerNumProcessingThreads(size_t val,
+                                       bool updatePersistentState=true) final;
 
     size_t fsNumProcessingThreads() const final;
-    void   setFsNumProcessingThreads(size_t val) final;
+    void setFsNumProcessingThreads(size_t val,
+                                   bool updatePersistentState=true) final;
 
     size_t workerFsBufferSizeBytes() const final;
-    void   setWorkerFsBufferSizeBytes(size_t val) final;
+    void setWorkerFsBufferSizeBytes(size_t val,
+                                    bool updatePersistentState=true) final;
 
     size_t loaderNumProcessingThreads() const final;
-    void   setLoaderNumProcessingThreads(size_t val) final;
+    void setLoaderNumProcessingThreads(size_t val,
+                                       bool updatePersistentState=true) final;
 
     std::string asString() const final;
 
     void dumpIntoLogger() const final;
 
-    // --------------------------------------------------------------
-    // -- (lobal) parameters of the Qserv worker database services --
-    // --------------------------------------------------------------
+    // ---------------------------------------------------------------
+    // -- (global) parameters of the Qserv worker database services --
+    // ---------------------------------------------------------------
 
     /// @return the database password
     static std::string const& qservMasterDatabasePassword() { return _qservMasterDatabasePassword; }
 
     /**
-     * @param newPassword new password to be set
+     * @param newPassword The new password to be set.
      * @return the previous value of the password
      */
     static std::string setQservMasterDatabasePassword(std::string const& newPassword);
 
-    // ------------------------------------------------------------
-    // -- Gloal parameters of the Qserv worker database services --
-    // ------------------------------------------------------------
+    // -------------------------------------------------------------
+    // -- Global parameters of the Qserv worker database services --
+    // -------------------------------------------------------------
 
     /**
      * This method is used by the workers when they need to connect directly
      * to the corresponding MySQL/MariaDB service of the Qserv worker.
      *
-     * @return the current password for the worker databases
+     * @return The current password for the worker databases
      */
     static std::string qservWorkerDatabasePassword() { return _qservWorkerDatabasePassword; }
 
     /**
-     * @param newPassword new password to be set
+     * @param newPassword The new password to be set.
      * @return the previous value of the password
      */
     static std::string setQservWorkerDatabasePassword(std::string const& newPassword);
@@ -331,32 +370,27 @@ public:
      * automatic reconnects to a database server. Setting 'true' will enable
      * reconnects.
      *
-     * @param value  new value of the parameter
-     * @return the previous value
+     * @param value The new value of the parameter.
+     * @return The previous value.
      */
     static bool setDatabaseAllowReconnect(bool value);
 
-    /// @return the default timeout for connecting to database servers
+    /// @return The default timeout for connecting to database servers.
     static unsigned int databaseConnectTimeoutSec() { return _databaseConnectTimeoutSec; }
 
     /**
      * Change the default value of a parameter specifying delays between automatic
      * reconnects (should those be enabled by the corresponding policy).
      *
-     * @param value
-     *   new value of the parameter (must be strictly greater than 0)
-     *
-     * @return
-     *   the previous value
-     *
-     * @throws std::invalid_argument
-     *   if the new value of the parameter is 0
+     * @param value The new value of the parameter (must be strictly greater than 0).
+     * @return The previous value.
+     * @throws std::invalid_argument If the new value of the parameter is 0.
      */
     static unsigned int setDatabaseConnectTimeoutSec(unsigned int value);
 
     /**
-     * @return the default number of a maximum number of attempts to execute
-     * a query due to database connection failures and subsequent reconnects.
+     * @return The default number of a maximum number of attempts to execute
+     *   a query due to database connection failures and subsequent reconnects.
      */
     static unsigned int databaseMaxReconnects() { return _databaseMaxReconnects; }
 
@@ -365,20 +399,15 @@ public:
      * of attempts to execute a query due to database connection failures and
      * subsequent reconnects (should they be enabled by the corresponding policy).
      *
-     * @param value
-     *   new value of the parameter (must be strictly greater than 0)
+     * @param value The new value of the parameter (must be strictly greater than 0).
      *
-     * @return
-     *   the previous value
-     *
-     * @throws std::invalid_argument
-     *   if the new value of the parameter is 0
+     * @return The previous value.
+     * @throws std::invalid_argument If the new value of the parameter is 0.
      */
     static unsigned int setDatabaseMaxReconnects(unsigned int value);
 
     /**
-     * @return
-     *   the default timeout for executing transactions at a presence
+     * @return The default timeout for executing transactions at a presence
      *   of server reconnects.
      */
     static unsigned int databaseTransactionTimeoutSec() { return _databaseTransactionTimeoutSec; }
@@ -387,35 +416,26 @@ public:
      * Change the default value of a parameter specifying a timeout for executing
      * transactions at a presence of server reconnects.
      *
-     * @param value
-     *   new value of the parameter (must be strictly greater than 0)
-     *
-     * @return
-     *   the previous value
-     *
-     * @throws std::invalid_argument
-     *   if the new value of the parameter is 0
+     * @param value The new value of the parameter (must be strictly greater than 0).
+     * @return The previous value.
+     * @throws std::invalid_argument If the new value of the parameter is 0.
      */
     static unsigned int setDatabaseTransactionTimeoutSec(unsigned int value);
 
-
 protected:
-
     /**
-     * Normal constructor
-     * @param impl pointer to the actual implementation of the Configuration
+     * @param impl A pointer to the actual implementation of the Configuration.
      */
     Configuration(ConfigurationIFace::Ptr const& impl) : _impl(impl) {}
 
 private:
-
-    /// For implementing synchronized methods
+    /// For implementing synchronized methods.
     mutable util::Mutex _mtx;
 
     /// The actual implementation of the forwarded methods
     ConfigurationIFace::Ptr _impl;
 
-    // Global parameters of the database connectors (read-write)
+    // Global parameters of the database connectors (read-write).
 
     static bool         _databaseAllowReconnect;
     static unsigned int _databaseConnectTimeoutSec;

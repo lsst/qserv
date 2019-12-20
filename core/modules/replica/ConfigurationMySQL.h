@@ -56,10 +56,8 @@ namespace replica {
   *   - caches parameters in memory
   */
 class ConfigurationMySQL : public ConfigurationBase {
-
 public:
-
-    /// The function type for converting values into the corresponding SQL sub-expressions
+    /// The function type for converting values into the corresponding SQL sub-expressions.
     typedef std::function<std::string(database::mysql::Connection::Ptr const& conn)> SetValueExprFunc;
 
     /**
@@ -67,28 +65,21 @@ public:
      * initialization sequence compatible with the database schema assumed
      * by the current implementation.
      *
-     * @param config
-     *   input configuration to be dumped
-     *
-     * @return
-     *   the text representation of the configuration
+     * @param config An input configuration to be dumped.
+     * @return The text representation of the configuration.
      */
     static std::string dump2init(ConfigurationIFace::Ptr const& config);
-
-    // Default construction and copy semantics are prohibited
 
     ConfigurationMySQL() = delete;
     ConfigurationMySQL(ConfigurationMySQL const&) = delete;
     ConfigurationMySQL& operator=(ConfigurationMySQL const&) = delete;
 
     /**
-     * The constructor will load the configuration from a database into memory
+     * The constructor will load the configuration from a database into memory.
      *
-     * @param connectionParams
-     *   connection parameters for a database where the Configuration is stored
-     * 
-     * @throw database::mysql::Error
-     *   for any problems with the database service
+     * @param connectionParams Connection parameters for a database where
+     *   the Configuration is stored.
+     * @throw database::mysql::Error For any problems with the database service.
      */
     ConfigurationMySQL(database::mysql::ConnectionParams const& connectionParams);
 
@@ -98,96 +89,134 @@ public:
 
     std::string configUrl(bool showPassword=false) const final;
 
-    void setRequestBufferSizeBytes(size_t val) final {
+    void setRequestBufferSizeBytes(size_t val,
+                                   bool updatePersistentState) final {
         _set(_requestBufferSizeBytes,
              "common",
              "request_buf_size_bytes",
-             val);
+             val,
+             false, // allowZero
+             updatePersistentState);
     }
 
-    void setRetryTimeoutSec(unsigned int val) final {
+    void setRetryTimeoutSec(unsigned int val,
+                            bool updatePersistentState) final {
         _set(_retryTimeoutSec,
              "common",
              "request_retry_interval_sec",
-             val);
+             val,
+             false, // allowZero
+             updatePersistentState);
     }
 
-    void setControllerThreads(size_t val) final {
+    void setControllerThreads(size_t val,
+                              bool updatePersistentState) final {
         _set(_controllerThreads,
              "controller",
              "num_threads",
-             val);
+             val,
+             false, // allowZero
+             updatePersistentState);
     }
 
-    void setControllerHttpPort(uint16_t val) final {
+    void setControllerHttpPort(uint16_t val,
+                               bool updatePersistentState) final {
         _set(_controllerHttpPort,
              "controller",
              "http_server_port",
-             val);
+             val,
+             false, // allowZero
+             updatePersistentState);
     }
 
-    void setControllerHttpThreads(size_t val) final {
+    void setControllerHttpThreads(size_t val,
+                                  bool updatePersistentState) final {
         _set(_controllerHttpThreads,
              "controller",
              "http_server_threads",
-             val);
+             val,
+             false, // allowZero
+             updatePersistentState);
     }
 
-    void setControllerRequestTimeoutSec(unsigned int val) final {
+    void setControllerRequestTimeoutSec(unsigned int val,
+                                        bool updatePersistentState) final {
         _set(_controllerRequestTimeoutSec,
              "controller",
              "request_timeout_sec",
-             val);
+             val,
+             false, // allowZero
+             updatePersistentState);
     }
 
-    void setJobTimeoutSec(unsigned int val) final {
+    void setJobTimeoutSec(unsigned int val,
+                          bool updatePersistentState) final {
         _set(_jobTimeoutSec,
              "controller",
              "job_timeout_sec",
-             val);
+             val,
+             false, // allowZero
+             updatePersistentState);
     }
 
-    void setJobHeartbeatTimeoutSec(unsigned int val) final {
+    void setJobHeartbeatTimeoutSec(unsigned int val,
+                                   bool updatePersistentState) final {
         _set(_jobHeartbeatTimeoutSec,
              "controller",
              "job_heartbeat_sec",
              val,
-             true);
+             true, // allowZero
+             updatePersistentState);
     }
 
-    void setXrootdAutoNotify(bool val) final {
+    void setXrootdAutoNotify(bool val,
+                             bool updatePersistentState) final {
         _set(_xrootdAutoNotify,
              "xrootd",
              "auto_notify",
-             val);
+             val,
+             false, // allowZero
+             updatePersistentState);
     }
 
-    void setXrootdHost(std::string const& val) final {
+    void setXrootdHost(std::string const& val,
+                       bool updatePersistentState) final {
         _set(_xrootdHost,
              "xrootd",
              "host",
-             val);
+             val,
+             false, // allowZero
+             updatePersistentState);
     }
 
-    void setXrootdPort(uint16_t val) final {
+    void setXrootdPort(uint16_t val,
+                       bool updatePersistentState) final {
         _set(_xrootdPort,
              "xrootd",
              "port",
-             val);
+             val,
+             false, // allowZero
+             updatePersistentState);
     }
 
-    void setXrootdTimeoutSec(unsigned int val) final {
+    void setXrootdTimeoutSec(unsigned int val,
+                             bool updatePersistentState) final {
         _set(_xrootdTimeoutSec,
              "xrootd",
              "request_timeout_sec",
-             val);
+             val,
+             false, // allowZero
+             updatePersistentState);
     }
 
-    void setDatabaseServicesPoolSize(size_t val) final {
+    void setDatabaseServicesPoolSize(size_t val,
+                                     bool updatePersistentState) final {
         _set(_databaseServicesPoolSize,
              "database",
              "services_pool_size",
-             val);
+             val,
+             false, // allowZero
+             updatePersistentState);
     }
 
     void addWorker(WorkerInfo const& workerInfo) final;
@@ -195,77 +224,105 @@ public:
     void deleteWorker(std::string const& name) final;
 
     WorkerInfo disableWorker(std::string const& name,
-                             bool disable) final;
+                             bool disable,
+                             bool updatePersistentState) final;
 
     WorkerInfo setWorkerReadOnly(std::string const& name,
-                                 bool readOnly) final;
+                                 bool readOnly,
+                                 bool updatePersistentState) final;
 
     WorkerInfo setWorkerSvcHost(std::string const& name,
-                                std::string const& host) final;
+                                std::string const& host,
+                                bool updatePersistentState) final;
 
     WorkerInfo setWorkerSvcPort(std::string const& name,
-                                uint16_t port) final;
+                                uint16_t port,
+                                bool updatePersistentState) final;
 
     WorkerInfo setWorkerFsPort(std::string const& name,
-                               uint16_t port) final;
+                               uint16_t port,
+                               bool updatePersistentState) final;
 
     WorkerInfo setWorkerFsHost(std::string const& name,
-                               std::string const& host) final;
+                               std::string const& host,
+                               bool updatePersistentState) final;
 
     WorkerInfo setWorkerDataDir(std::string const& name,
-                                std::string const& dataDir) final;
+                                std::string const& dataDir,
+                                bool updatePersistentState) final;
 
     WorkerInfo setWorkerDbHost(std::string const& name,
-                               std::string const& host)final;
+                               std::string const& host,
+                               bool updatePersistentState)final;
 
     WorkerInfo setWorkerDbPort(std::string const& name,
-                               uint16_t port) final;
+                               uint16_t port,
+                               bool updatePersistentState) final;
 
     WorkerInfo setWorkerDbUser(std::string const& name,
-                               std::string const& user) final;
+                               std::string const& user,
+                               bool updatePersistentState) final;
 
     WorkerInfo setWorkerLoaderHost(std::string const& name,
-                                   std::string const& host) final;
+                                   std::string const& host,
+                                   bool updatePersistentState) final;
 
     WorkerInfo setWorkerLoaderPort(std::string const& name,
-                                   uint16_t port) final;
+                                   uint16_t port,
+                                   bool updatePersistentState) final;
 
     WorkerInfo setWorkerLoaderTmpDir(std::string const& name,
-                                     std::string const& tmpDir) final;
+                                     std::string const& tmpDir,
+                                     bool updatePersistentState) final;
 
-    void setWorkerTechnology(std::string const& val) final {
+    void setWorkerTechnology(std::string const& val,
+                             bool updatePersistentState) final {
         _set(_workerTechnology,
              "worker",
              "technology",
-             val);
+             val,
+             false, // allowEmpty
+             updatePersistentState);
     }
 
-    void setWorkerNumProcessingThreads(size_t val) final {
+    void setWorkerNumProcessingThreads(size_t val,
+                                       bool updatePersistentState) final {
         _set(_workerNumProcessingThreads,
              "worker",
              "num_svc_processing_threads",
-             val);
+             val,
+             false, // allowZero
+             updatePersistentState);
     }
 
-    void setFsNumProcessingThreads(size_t val) final {
+    void setFsNumProcessingThreads(size_t val,
+                                   bool updatePersistentState) final {
         _set(_fsNumProcessingThreads,
              "worker",
              "num_fs_processing_threads",
-             val);
+             val,
+             false, // allowZero
+             updatePersistentState);
     }
 
-    void setWorkerFsBufferSizeBytes(size_t val) final {
+    void setWorkerFsBufferSizeBytes(size_t val,
+                                    bool updatePersistentState) final {
         _set(_workerFsBufferSizeBytes,
              "worker",
              "fs_buf_size_bytes",
-             val);
+             val,
+             false, // allowZero
+             updatePersistentState);
     }
 
-    void setLoaderNumProcessingThreads(size_t val) final {
+    void setLoaderNumProcessingThreads(size_t val,
+                                       bool updatePersistentState) final {
         _set(_loaderNumProcessingThreads,
              "worker",
              "num_loader_processing_threads",
-             val);
+             val,
+             false, // allowZero
+             updatePersistentState);
     }
 
     DatabaseFamilyInfo addDatabaseFamily(DatabaseFamilyInfo const& info) final;
@@ -293,46 +350,38 @@ public:
                              std::string const& table) final;
 
 private:
-
     /**
      * Analyze the configuration and initialize the cache of parameters.
      *
-     * @throw std::runtime_error
-     *   if the configuration is not consistent with expectations of
-     *   the application
+     * @throw std::runtime_error If the configuration is not consistent with
+     *   expectations of the application.
      */
     void _loadConfiguration();
 
     /**
      * The actual implementation of method _loadConfiguration.
-     * @param conn  the reference to the database connector
+     * @param conn The reference to the database connector.
      */
     void _loadConfigurationImpl(database::mysql::Connection::Ptr const& conn);
 
     /**
-     * The setter method for numeric types
+     * The setter method for numeric types.
      * 
-     * @param var
-     *   a reference to a parameter variable to be set
-     * 
-     * @param category
-     *   a value of the 'category' field
-     *
-     * @param param
-     *   a value of the 'param' field
-     *
-     * @param value
-     *   the new value of the parameter
-     * 
-     * @param allowZero
-     *   (optional) flag disallowing (if set) zero values
+     * @param var A reference to a parameter variable to be set.
+     * @param category A value of the 'category' field.
+     * @param param A value of the 'param' field.
+     * @param value The new value of the parameter.
+     * @param allowZero A flag disallowing (if set) zero values.
+     * @param updatePersistentState The flag which if set to 'true' will result
+     *   in propagating the change to the persistent store.
      */
     template <class T>
     void _set(T& var,
               std::string const& category,
               std::string const& param,
               T value,
-              bool allowZero=false) {
+              bool allowZero,
+              bool updatePersistentState) {
 
         if (not allowZero and value == 0) {
             throw std::invalid_argument(
@@ -346,30 +395,26 @@ private:
             },
             [&var,&value]() {
                 var = value;
-            }
+            },
+            updatePersistentState
         );
     }
 
     /**
-     * Specialized version of the setter method for type 'bool'
+     * Specialized version of the setter method for type 'bool'.
      * 
-     * @param var
-     *   a reference to a parameter variable to be set
-     * 
-     * @param category
-     *   a value of the 'category' field
-     *
-     * @param param
-     *   a value of the 'param' field
-     *
-     * @param value
-     *   the new value of the parameter
+     * @param var A reference to a parameter variable to be set.
+     * @param category A value of the 'category' field.
+     * @param param A value of the 'param' field.
+     * @param value The new value of the parameter.
+     * @param updatePersistentState The flag which if set to 'true' will result
+     *   in propagating the change to the persistent store.
      */
     void _set(bool& var,
               std::string const& category,
               std::string const& param,
-              bool value) {
-
+              bool value,
+              bool updatePersistentState) {
         _setImp(
             category,
             param,
@@ -378,33 +423,28 @@ private:
             },
             [&var,&value]() {
                 var = value;
-            }
+            },
+            updatePersistentState
         );
     }
 
     /**
-     * Specialized version of the setter method for type 'std::string'
+     * Specialized version of the setter method for type 'std::string'.
      * 
-     * @param var
-     *   a reference to a parameter variable to be set
-     * 
-     * @param category
-     *   a value of the 'category' field
-     *
-     * @param param
-     *   a value of the 'param' field
-     *
-     * @param value
-     *   the new value of the parameter
-     * 
-     * @param allowEmpty
-     *   (optional) flag disallowing (if set) empty values
+     * @param var A reference to a parameter variable to be set.
+     * @param category A value of the 'category' field.
+     * @param param A value of the 'param' field.
+     * @param value The new value of the parameter.
+     * @param allowEmpty A flag disallowing (if set) empty values.
+     * @param updatePersistentState The flag which if set to 'true' will result
+     *   in propagating the change to the persistent store.
      */
     void _set(std::string& var,
               std::string const& category,
               std::string const& param,
               std::string const& value,
-              bool allowEmpty=false) {
+              bool allowEmpty,
+              bool updatePersistentState) {
 
         if (not allowEmpty and value.empty()) {
             throw std::invalid_argument(
@@ -418,38 +458,36 @@ private:
             },
             [&var,&value]() {
                 var = value;
-            }
+            },
+            updatePersistentState
         );
     }
 
     /**
      * Database update method for table "config".
      * 
-     * @param category
-     *   a value of the 'category' field
-     *
-     * @param param
-     *   a value of the 'param' field
-     *
-     * @param setValueExpr
-     *   the lambda function for converting a value of an arbitrary type
-     *   into the corresponding SQL sub-expression for updating the 'value' field
-     * 
-     * @param onSuccess
-     *   a function to be called upon successful completion of the update.
-     *   This function is meant to be used to safely update a transient (cached)
-     *   value of the corresponding configuration parameter.
+     * @param category A value of the 'category' field.
+     * @param param A value of the 'param' field.
+     * @param setValueExpr The lambda function for converting a value of an
+     *   arbitrary type into the corresponding SQL sub-expression for updating
+     *   the 'value' field.
+     * @param onSuccess A function to be called upon successful completion of
+     *   the update. This function is meant to be used to safely update
+     *   a transient (cached) value of the corresponding configuration parameter.
+     * @param updatePersistentState The flag which if set to 'true' will result
+     *   in propagating the change to the persistent store.
      */
     void _setImp(std::string const& category,
                  std::string const& param,
                  SetValueExprFunc const& setValueExprFunc,
-                 std::function<void()> const& onSuccess);
+                 std::function<void()> const& onSuccess,
+                 bool updatePersistentState);
 
 
-    /// Parameters of the connection
+    /// Parameters of the connection.
     database::mysql::ConnectionParams const _connectionParams;
 
-    /// Message logger
+    /// Message logger.
     LOG_LOGGER _log;
 };
 

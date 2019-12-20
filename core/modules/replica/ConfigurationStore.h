@@ -63,95 +63,122 @@ namespace replica {
   *   - caches parameters in memory
   */
 class ConfigurationStore : public ConfigurationBase {
-
 public:
-
-    // Default construction and copy semantics are prohibited
-
     ConfigurationStore() = delete;
     ConfigurationStore(ConfigurationStore const&) = delete;
     ConfigurationStore& operator=(ConfigurationStore const&) = delete;
 
     ~ConfigurationStore() override = default;
 
-    void setRequestBufferSizeBytes(size_t val) final { _set(_requestBufferSizeBytes, val); }
+    void setRequestBufferSizeBytes(size_t val,
+                                   bool updatePersistentState) final { _set(_requestBufferSizeBytes, val); }
 
-    void setRetryTimeoutSec(unsigned int val) final { _set(_retryTimeoutSec, val); }
+    void setRetryTimeoutSec(unsigned int val,
+                            bool updatePersistentState) final { _set(_retryTimeoutSec, val); }
 
-    void setControllerThreads(size_t val) final { _set(_controllerThreads, val); }
+    void setControllerThreads(size_t val,
+                              bool updatePersistentState) final { _set(_controllerThreads, val); }
 
-    void setControllerHttpPort(uint16_t val) final { _set(_controllerHttpPort, val); }
+    void setControllerHttpPort(uint16_t val,
+                               bool updatePersistentState) final { _set(_controllerHttpPort, val); }
 
-    void setControllerHttpThreads(size_t val) final { _set(_controllerHttpThreads, val); }
+    void setControllerHttpThreads(size_t val,
+                                  bool updatePersistentState) final { _set(_controllerHttpThreads, val); }
 
-    void setControllerRequestTimeoutSec(unsigned int val) final { _set(_controllerRequestTimeoutSec, val); }
+    void setControllerRequestTimeoutSec(unsigned int val,
+                                        bool updatePersistentState) final { _set(_controllerRequestTimeoutSec, val); }
 
-    void setJobTimeoutSec(unsigned int val) final { _set(_jobTimeoutSec, val); }
+    void setJobTimeoutSec(unsigned int val,
+                          bool updatePersistentState) final { _set(_jobTimeoutSec, val); }
 
-    void setJobHeartbeatTimeoutSec(unsigned int val) final { _set(_jobHeartbeatTimeoutSec, val, true); }
+    void setJobHeartbeatTimeoutSec(unsigned int val,
+                                   bool updatePersistentState) final { _set(_jobHeartbeatTimeoutSec, val, true); }
 
-    void setXrootdAutoNotify(bool val) final { _set(_xrootdAutoNotify, val); }
+    void setXrootdAutoNotify(bool val,
+                             bool updatePersistentState) final { _set(_xrootdAutoNotify, val); }
 
-    void setXrootdHost(std::string const& val) final { _set(_xrootdHost, val); }
+    void setXrootdHost(std::string const& val,
+                       bool updatePersistentState) final { _set(_xrootdHost, val); }
 
-    void setXrootdPort(uint16_t val) final { _set(_xrootdPort, val); }
+    void setXrootdPort(uint16_t val,
+                       bool updatePersistentState) final { _set(_xrootdPort, val); }
 
-    void setXrootdTimeoutSec(unsigned int val) final { _set(_xrootdTimeoutSec, val); }
+    void setXrootdTimeoutSec(unsigned int val,
+                             bool updatePersistentState) final { _set(_xrootdTimeoutSec, val); }
 
-    void setDatabaseServicesPoolSize(size_t val) final { _set(_databaseServicesPoolSize, val); }
+    void setDatabaseServicesPoolSize(size_t val,
+                                     bool updatePersistentState) final { _set(_databaseServicesPoolSize, val); }
 
     void addWorker(WorkerInfo const& workerInfo) final;
 
     void deleteWorker(std::string const& name) final;
 
     WorkerInfo disableWorker(std::string const& name,
-                             bool disable) final;
+                             bool disable,
+                             bool updatePersistentState) final;
 
     WorkerInfo setWorkerReadOnly(std::string const& name,
-                                 bool readOnly) final;
+                                 bool readOnly,
+                                 bool updatePersistentState) final;
 
     WorkerInfo setWorkerSvcHost(std::string const& name,
-                                std::string const& host) final;
+                                std::string const& host,
+                                bool updatePersistentState) final;
 
     WorkerInfo setWorkerSvcPort(std::string const& name,
-                                uint16_t port) final;
+                                uint16_t port,
+                                bool updatePersistentState) final;
 
     WorkerInfo setWorkerFsHost(std::string const& name,
-                               std::string const& host) final;
+                               std::string const& host,
+                               bool updatePersistentState) final;
 
     WorkerInfo setWorkerFsPort(std::string const& name,
-                               uint16_t port) final;
+                               uint16_t por,
+                               bool updatePersistentStatet) final;
 
     WorkerInfo setWorkerDataDir(std::string const& name,
-                                std::string const& dataDir) final;
+                                std::string const& dataDir,
+                                bool updatePersistentState) final;
 
     WorkerInfo setWorkerDbHost(std::string const& name,
-                               std::string const& host)final;
+                               std::string const& host,
+                               bool updatePersistentState) final;
 
     WorkerInfo setWorkerDbPort(std::string const& name,
-                               uint16_t port) final;
+                               uint16_t port,
+                               bool updatePersistentState) final;
 
     WorkerInfo setWorkerDbUser(std::string const& name,
-                               std::string const& user) final;
+                               std::string const& user,
+                               bool updatePersistentState) final;
 
     WorkerInfo setWorkerLoaderHost(std::string const& name,
-                                   std::string const& host) final;
+                                   std::string const& host,
+                                   bool updatePersistentState) final;
 
     WorkerInfo setWorkerLoaderPort(std::string const& name,
-                                   uint16_t port) final;
+                                   uint16_t port,
+                                   bool updatePersistentState) final;
 
     WorkerInfo setWorkerLoaderTmpDir(std::string const& name,
-                                     std::string const& tmpDir) final;
+                                     std::string const& tmpDir,
+                                     bool updatePersistentState) final;
 
-    void setWorkerTechnology(std::string const& val) final { _set(_workerTechnology, val); }
+    void setWorkerTechnology(std::string const& val,
+                             bool updatePersistentState) final { _set(_workerTechnology, val); }
 
-    void setWorkerNumProcessingThreads(size_t val) final { _set(_workerNumProcessingThreads, val); }
+    void setWorkerNumProcessingThreads(size_t val,
+                                       bool updatePersistentState) final { _set(_workerNumProcessingThreads, val); }
 
-    void setFsNumProcessingThreads(size_t val) final { _set(_fsNumProcessingThreads, val); }
+    void setFsNumProcessingThreads(size_t val,
+                                   bool updatePersistentState) final { _set(_fsNumProcessingThreads, val); }
 
-    void setWorkerFsBufferSizeBytes(size_t val) final { _set(_workerFsBufferSizeBytes, val); }
+    void setWorkerFsBufferSizeBytes(size_t val,
+                                    bool updatePersistentState) final { _set(_workerFsBufferSizeBytes, val); }
 
-    void setLoaderNumProcessingThreads(size_t val) final { _set(_loaderNumProcessingThreads, val); }
+    void setLoaderNumProcessingThreads(size_t val,
+                                       bool updatePersistentState) final { _set(_loaderNumProcessingThreads, val); }
 
     DatabaseFamilyInfo addDatabaseFamily(DatabaseFamilyInfo const& info) final;
 
@@ -193,33 +220,24 @@ protected:
     explicit ConfigurationStore(util::ConfigStore const& configStore);
 
 private:
-
     static std::string _classMethodContext(std::string const& func);
 
     /**
      * Read and validate input configuration parameters from the specified 
      * store and initialize the object.
      *
-     * @param configStore
-     *   reference to a configuration store object
-     *
-     * @throw std::runtime_error
-     *   if the input configuration is not consistent with expectations
-     *   of the application
+     * @param configStore A reference to a configuration store object.
+     * @throw std::runtime_error If the input configuration is not consistent with
+     *   expectations of the application.
      */
     void _loadConfiguration(util::ConfigStore const& configStore);
 
     /**
-     * The setter method for numeric types
+     * The setter method for numeric types.
      * 
-     * @param var
-     *   a reference to a parameter variable to be set
-     * 
-     * @param val
-     *   the new value of the parameter
-     * 
-     * @param allowZero
-     *   (optional) flag disallowing (if set) zero values
+     * @param var A reference to a parameter variable to be set.
+     * @param val The new value of the parameter.
+     * @param allowZero The (optional) flag disallowing (if set) zero values.
      */
     template <class T>
     void _set(T& var, T val, bool allowZero=false) {
@@ -232,7 +250,7 @@ private:
     }
 
     /**
-     * Specialized version of the setter method for type 'bool'
+     * Specialized version of the setter method for type 'bool'.
      */
     void _set(bool& var, bool val) {
         LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "  val=" << (val ? "true" : "false"));
@@ -240,16 +258,11 @@ private:
     }
 
     /**
-     * Specialized version of the setter method for type 'std::string'
+     * Specialized version of the setter method for type 'std::string'.
      * 
-     * @param var
-     *   a reference to a parameter variable to be set
-     * 
-     * @param val
-     *   the new value of the parameter
-     * 
-     * @param allowEmpty
-     *   (optional) flag disallowing (if set) empty values
+     * @param var A reference to a parameter variable to be set.
+     * @param val The new value of the parameter.
+     * @param allowEmpty The (optional) flag disallowing (if set) empty values.
      */
     void _set(std::string& var, std::string const& val, bool allowEmpty=false) {
         LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "  val=" << val);

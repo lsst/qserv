@@ -137,7 +137,8 @@ void ConfigurationStore::deleteWorker(string const& name) {
 
 
 WorkerInfo ConfigurationStore::disableWorker(string const& name,
-                                             bool disable) {
+                                             bool disable,
+                                             bool updatePersistentState) {
     LOGS(_log, LOG_LVL_DEBUG, context(__func__) << "  name=" << name
          << " disable=" << (disable ? "true" : "false"));
 
@@ -149,7 +150,8 @@ WorkerInfo ConfigurationStore::disableWorker(string const& name,
 
 
 WorkerInfo ConfigurationStore::setWorkerReadOnly(string const& name,
-                                                 bool readOnly) {
+                                                 bool readOnly,
+                                                 bool updatePersistentState) {
     LOGS(_log, LOG_LVL_DEBUG, context(__func__) << "  name=" << name
          << " readOnly=" << (readOnly ? "true" : "false"));
 
@@ -161,7 +163,8 @@ WorkerInfo ConfigurationStore::setWorkerReadOnly(string const& name,
 
 
 WorkerInfo ConfigurationStore::setWorkerSvcHost(string const& name,
-                                                string const& host) {
+                                                string const& host,
+                                                bool updatePersistentState) {
     LOGS(_log, LOG_LVL_DEBUG, context(__func__) << "  name=" << name << " host=" << host);
 
     auto itr = safeFindWorker(name, _classMethodContext(__func__));
@@ -172,7 +175,8 @@ WorkerInfo ConfigurationStore::setWorkerSvcHost(string const& name,
 
 
 WorkerInfo ConfigurationStore::setWorkerSvcPort(string const& name,
-                                                uint16_t port) {
+                                                uint16_t port,
+                                                bool updatePersistentState) {
     LOGS(_log, LOG_LVL_DEBUG, context(__func__) << "  name=" << name << " port=" << port);
 
     auto itr = safeFindWorker(name, _classMethodContext(__func__));
@@ -183,7 +187,8 @@ WorkerInfo ConfigurationStore::setWorkerSvcPort(string const& name,
 
 
 WorkerInfo ConfigurationStore::setWorkerFsHost(string const& name,
-                                               string const& host) {
+                                               string const& host,
+                                               bool updatePersistentState) {
     LOGS(_log, LOG_LVL_DEBUG, context(__func__) << "  name=" << name << " host=" << host);
 
     auto itr = safeFindWorker(name, _classMethodContext(__func__));
@@ -194,7 +199,8 @@ WorkerInfo ConfigurationStore::setWorkerFsHost(string const& name,
 
 
 WorkerInfo ConfigurationStore::setWorkerFsPort(string const& name,
-                                               uint16_t port) {
+                                               uint16_t port,
+                                               bool updatePersistentState) {
     LOGS(_log, LOG_LVL_DEBUG, context(__func__) << "  name=" << name << " port=" << port);
 
     auto itr = safeFindWorker(name, _classMethodContext(__func__));
@@ -205,8 +211,8 @@ WorkerInfo ConfigurationStore::setWorkerFsPort(string const& name,
 
 
 WorkerInfo ConfigurationStore::setWorkerDataDir(string const& name,
-                                                string const& dataDir) {
-
+                                                string const& dataDir,
+                                                bool updatePersistentState) {
     LOGS(_log, LOG_LVL_DEBUG, context(__func__) << "  name=" << name << " dataDir=" << dataDir);
 
     auto itr = safeFindWorker(name, _classMethodContext(__func__));
@@ -218,7 +224,8 @@ WorkerInfo ConfigurationStore::setWorkerDataDir(string const& name,
 
 
 WorkerInfo ConfigurationStore::setWorkerDbHost(std::string const& name,
-                                               std::string const& host) {
+                                               std::string const& host,
+                                               bool updatePersistentState) {
     LOGS(_log, LOG_LVL_DEBUG, context(__func__) << "  name=" << name << " host=" << host);
 
     auto itr = safeFindWorker(name, _classMethodContext(__func__));
@@ -228,7 +235,8 @@ WorkerInfo ConfigurationStore::setWorkerDbHost(std::string const& name,
 
 
 WorkerInfo ConfigurationStore::setWorkerDbPort(std::string const& name,
-                                               uint16_t port) {
+                                               uint16_t port,
+                                               bool updatePersistentState) {
     LOGS(_log, LOG_LVL_DEBUG, context(__func__) << "  name=" << name << " port=" << port);
 
     auto itr = safeFindWorker(name, _classMethodContext(__func__));
@@ -238,7 +246,8 @@ WorkerInfo ConfigurationStore::setWorkerDbPort(std::string const& name,
 
 
 WorkerInfo ConfigurationStore::setWorkerDbUser(std::string const& name,
-                                               std::string const& user)  {
+                                               std::string const& user,
+                                               bool updatePersistentState)  {
     LOGS(_log, LOG_LVL_DEBUG, context(__func__) << "  name=" << name << " user=" << user);
 
     auto itr = safeFindWorker(name, _classMethodContext(__func__));
@@ -249,7 +258,8 @@ WorkerInfo ConfigurationStore::setWorkerDbUser(std::string const& name,
 
 
 WorkerInfo ConfigurationStore::setWorkerLoaderHost(string const& name,
-                                                   string const& host) {
+                                                   string const& host,
+                                                   bool updatePersistentState) {
     LOGS(_log, LOG_LVL_DEBUG, context(__func__) << "  name=" << name << " host=" << host);
 
     auto itr = safeFindWorker(name, _classMethodContext(__func__));
@@ -260,7 +270,8 @@ WorkerInfo ConfigurationStore::setWorkerLoaderHost(string const& name,
 
 
 WorkerInfo ConfigurationStore::setWorkerLoaderPort(string const& name,
-                                                   uint16_t port) {
+                                                   uint16_t port,
+                                                   bool updatePersistentState) {
     LOGS(_log, LOG_LVL_DEBUG, context(__func__) << "  name=" << name << " port=" << port);
 
     auto itr = safeFindWorker(name, _classMethodContext(__func__));
@@ -271,8 +282,8 @@ WorkerInfo ConfigurationStore::setWorkerLoaderPort(string const& name,
 
 
 WorkerInfo ConfigurationStore::setWorkerLoaderTmpDir(string const& name,
-                                                     string const& tmpDir) {
-
+                                                     string const& tmpDir,
+                                                     bool updatePersistentState) {
     LOGS(_log, LOG_LVL_DEBUG, context(__func__) << "  name=" << name << " tmpDir=" << tmpDir);
 
     auto itr = safeFindWorker(name, _classMethodContext(__func__));

@@ -55,7 +55,6 @@ namespace replica {
  */
 class ConfigurationBase : public ConfigurationIFace {
 public:
-
     /// The pointer type for instances of the class
     typedef std::shared_ptr<ConfigurationBase> Ptr;
 
@@ -68,15 +67,11 @@ public:
      *   mysql://[user][:password]@[host][:port][/database]
      * @code
      *
-     * @param configUrl
-     *   the configuration source
-     *
-     * @throw std::invalid_argument
-     *   if the URL has unsupported prefix or it couldn't be parsed
-     *                            
-     * @throw std::runtime_error
-     *   if the input configuration is not consistent with expectations of
-     *   the application
+     * @param configUrl The configuration source.
+     * @throw std::invalid_argument If the URL has unsupported prefix or it couldn't
+     *   be parsed.                         
+     * @throw std::runtime_error If the input configuration is not consistent with
+     *   expectations of the application.
      */
     static ConfigurationIFace::Ptr load(std::string const& configUrl);
 
@@ -87,16 +82,11 @@ public:
      *
      *   map:
      *
-     * @param kvMap
-     *   the configuration source
-     *
-     * @throw std::runtime_error
-     *   if the input configuration is not consistent
-     *   with expectations of the application
+     * @param kvMap The configuration source.
+     * @throw std::runtime_error If the input configuration is not consistent
+     *   with expectations of the application.
      */
     static ConfigurationIFace::Ptr load(std::map<std::string, std::string> const& kvMap);
-
-    // Copy semantics is prohibited
 
     ConfigurationBase(ConfigurationBase const&) = delete;
     ConfigurationBase& operator=(ConfigurationBase const&) = delete;
@@ -228,66 +218,48 @@ protected:
      * In-place translation of the a worker directory string by finding an optional
      * placeholder '{worker}' and replacing it with the name of the specified worker.
      *
-     * @param path
-     *   the string to be translated
-     * 
-     * @param workerName
-     *   the actual name of a worker for replacing the placeholder
+     * @param path The string to be translated.
+     * @param workerName The actual name of a worker for replacing the placeholder.
      */
     static void translateWorkerDir(std::string& path,
                                    std::string const& workerName);
-    /**
-     * Construct the object
-     *
+    /**     *
      * The constructor will initialize the configuration parameters with
      * some default states, some of which are probably meaningless.
      */
     ConfigurationBase();
 
     /**
-     * @param name
-     *   the name of a worker to find
-     *
-     * @param context
-     *   a context (usually - a class and a method) from which the operation was
-     *   requested. This is used for error reporting if no such worker was found.
-     *
-     * @return
-     *   an iterator pointing to the worker's position within a collection of workers
-     *
-     * @throw std::invalid_argument
-     *   if the specified worker was not found in the configuration
+     * @param name The name of a worker to be found.
+     * @param context A context (usually - a class and a method) from which
+     *   the operation was requested. This is used for error reporting if no
+     *   such worker was found.
+     * @return An iterator pointing to the worker's position within a collection
+     *   of workers.
+     * @throw std::invalid_argument If the specified worker was not found in
+     *   the configuration.
      */
     std::map<std::string, WorkerInfo>::iterator safeFindWorker(std::string const& name,
                                                                std::string const& context);
 
     /**
-     * @param name
-     *   the name of a database to find
-     *
-     * @param context
-     *   a context (usually - a class and a method) from which the operation was
-     *   requested. This is used for error reporting if no such database was found.
-     *
-     * @return
-     *   an iterator pointing to the database's position within a collection of databases
-     *
-     * @throw std::invalid_argument
-     *   if the specified database was not found in the configuration
+     * @param name The name of a database to be found.
+     * @param context A context (usually - a class and a method) from which
+     *   the operation was requested. This is used for error reporting if no such
+     *   database was found.
+     * @return An iterator pointing to the database's position within a collection
+     *   of databases.
+     * @throw std::invalid_argument If the specified database was not found in
+     *   the configuration
      */
     std::map<std::string, DatabaseInfo>::iterator safeFindDatabase(std::string const& name,
                                                                    std::string const& context);
 
     /**
      * 
-     * @param colName
-     *   the name of a column to be found
-     *
-     * @param columns
-     *   the schema definition
-     *
-     * @return
-     *   'true' if found
+     * @param colName The name of a column to be found.
+     * @param columns The schema definition.
+     * @return 'true' if found.
      */
     bool columnInSchema(std::string const& colName,
                         std::list<SqlColDef> const& columns) const;
@@ -311,7 +283,7 @@ protected:
                                  std::string const& longitudeColName) const;
 
     /**
-     * Update the transient state of the database by adding a new table
+     * Update the transient state of the database by adding a new table.
      *
      * @see ConfigurationBase::addTable()
      */

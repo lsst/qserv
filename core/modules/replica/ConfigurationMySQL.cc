@@ -286,8 +286,8 @@ void ConfigurationMySQL::deleteWorker(string const& name) {
 
 
 WorkerInfo ConfigurationMySQL::disableWorker(string const& name,
-                                             bool disable) {
-
+                                             bool disable,
+                                             bool updatePersistentState) {
     string const context_ = context() + __func__;
 
     LOGS(_log, LOG_LVL_DEBUG, context_ << "  name=" << name
@@ -295,23 +295,21 @@ WorkerInfo ConfigurationMySQL::disableWorker(string const& name,
 
     database::mysql::ConnectionHandler handler;
     try {
-
-        // First update the database state
-
-        handler.conn = database::mysql::Connection::open(_connectionParams);
-        handler.conn->execute(
-            [&name,disable](decltype(handler.conn) conn) {
-                conn->begin();
-                conn->executeSimpleUpdateQuery(
-                    "config_worker",
-                    conn->sqlEqual("name", name),
-                    make_pair("is_enabled", disable ? 0 : 1));
-                conn->commit();
-            }
-        );
+        if (updatePersistentState) {
+            handler.conn = database::mysql::Connection::open(_connectionParams);
+            handler.conn->execute(
+                [&name,disable](decltype(handler.conn) conn) {
+                    conn->begin();
+                    conn->executeSimpleUpdateQuery(
+                        "config_worker",
+                        conn->sqlEqual("name", name),
+                        make_pair("is_enabled", disable ? 0 : 1));
+                    conn->commit();
+                }
+            );
+        }
 
         // Then update the transient state
-
         auto itr = safeFindWorker(name, context_);
         itr->second.isEnabled = not disable;
 
@@ -324,8 +322,8 @@ WorkerInfo ConfigurationMySQL::disableWorker(string const& name,
 
 
 WorkerInfo ConfigurationMySQL::setWorkerReadOnly(string const& name,
-                                                 bool readOnly) {
-
+                                                 bool readOnly,
+                                                 bool updatePersistentState) {
     string const context_ = context() + __func__;
 
     LOGS(_log, LOG_LVL_DEBUG, context_ << "  name=" << name
@@ -333,23 +331,21 @@ WorkerInfo ConfigurationMySQL::setWorkerReadOnly(string const& name,
 
     database::mysql::ConnectionHandler handler;
     try {
-
-        // First update the database state
-
-        handler.conn = database::mysql::Connection::open(_connectionParams);
-        handler.conn->execute(
-            [&name,readOnly](decltype(handler.conn) conn) {
-                conn->begin();
-                conn->executeSimpleUpdateQuery(
-                    "config_worker",
-                    conn->sqlEqual("name", name),
-                    make_pair("is_read_only", readOnly ? 1 : 0));
-                conn->commit();
-            }
-        );
+        if (updatePersistentState) {
+            handler.conn = database::mysql::Connection::open(_connectionParams);
+            handler.conn->execute(
+                [&name,readOnly](decltype(handler.conn) conn) {
+                    conn->begin();
+                    conn->executeSimpleUpdateQuery(
+                        "config_worker",
+                        conn->sqlEqual("name", name),
+                        make_pair("is_read_only", readOnly ? 1 : 0));
+                    conn->commit();
+                }
+            );
+        }
 
         // Then update the transient state
-
         auto itr = safeFindWorker(name, context_);
         itr->second.isReadOnly = readOnly;
 
@@ -362,30 +358,29 @@ WorkerInfo ConfigurationMySQL::setWorkerReadOnly(string const& name,
 
 
 WorkerInfo ConfigurationMySQL::setWorkerSvcHost(string const& name,
-                                                string const& host) {
-
+                                                string const& host,
+                                                bool updatePersistentState) {
     string const context_ = context() + __func__;
 
     LOGS(_log, LOG_LVL_DEBUG, context_ << "  name=" << name << " host=" << host);
 
     database::mysql::ConnectionHandler handler;
     try {
-
-        // First update the database
-        handler.conn = database::mysql::Connection::open(_connectionParams);
-        handler.conn->execute(
-            [&name,&host](decltype(handler.conn) conn) {
-                conn->begin();
-                conn->executeSimpleUpdateQuery(
-                    "config_worker",
-                    conn->sqlEqual("name", name),
-                    make_pair("svc_host", host));
-                conn->commit();
-            }
-        );
+        if (updatePersistentState) {
+            handler.conn = database::mysql::Connection::open(_connectionParams);
+            handler.conn->execute(
+                [&name,&host](decltype(handler.conn) conn) {
+                    conn->begin();
+                    conn->executeSimpleUpdateQuery(
+                        "config_worker",
+                        conn->sqlEqual("name", name),
+                        make_pair("svc_host", host));
+                    conn->commit();
+                }
+            );
+        }
 
         // Then update the transient state 
-
         auto itr = safeFindWorker(name, context_);
         itr->second.svcHost = host;
 
@@ -398,30 +393,29 @@ WorkerInfo ConfigurationMySQL::setWorkerSvcHost(string const& name,
 
 
 WorkerInfo ConfigurationMySQL::setWorkerSvcPort(string const& name,
-                                                uint16_t port) {
-
+                                                uint16_t port,
+                                                bool updatePersistentState) {
     string const context_ = context() + __func__;
 
     LOGS(_log, LOG_LVL_DEBUG, context_ << "  name=" << name << " port=" << port);
 
     database::mysql::ConnectionHandler handler;
     try {
-
-        // First update the database
-        handler.conn = database::mysql::Connection::open(_connectionParams);
-        handler.conn->execute(
-            [&name,port](decltype(handler.conn) conn) {
-                conn->begin();
-                conn->executeSimpleUpdateQuery(
-                    "config_worker",
-                    conn->sqlEqual("name", name),
-                    make_pair("svc_port", port));
-                conn->commit();
-            }
-        );
+        if (updatePersistentState) {
+            handler.conn = database::mysql::Connection::open(_connectionParams);
+            handler.conn->execute(
+                [&name,port](decltype(handler.conn) conn) {
+                    conn->begin();
+                    conn->executeSimpleUpdateQuery(
+                        "config_worker",
+                        conn->sqlEqual("name", name),
+                        make_pair("svc_port", port));
+                    conn->commit();
+                }
+            );
+        }
 
         // Then update the transient state 
-
         auto itr = safeFindWorker(name, context_);
         itr->second.svcPort = port;
 
@@ -434,30 +428,29 @@ WorkerInfo ConfigurationMySQL::setWorkerSvcPort(string const& name,
 
 
 WorkerInfo ConfigurationMySQL::setWorkerFsHost(string const& name,
-                                               string const& host) {
-
+                                               string const& host,
+                                               bool updatePersistentState) {
     string const context_ = context() + __func__;
 
     LOGS(_log, LOG_LVL_DEBUG, context_ << "  name=" << name << " host=" << host);
 
     database::mysql::ConnectionHandler handler;
     try {
-
-        // First update the database
-        handler.conn = database::mysql::Connection::open(_connectionParams);
-        handler.conn->execute(
-            [&name,&host](decltype(handler.conn) conn) {
-                conn->begin();
-                conn->executeSimpleUpdateQuery(
-                    "config_worker",
-                    conn->sqlEqual("name", name),
-                    make_pair("fs_host", host));
-                conn->commit();
-            }
-        );
+        if (updatePersistentState) {
+            handler.conn = database::mysql::Connection::open(_connectionParams);
+            handler.conn->execute(
+                [&name,&host](decltype(handler.conn) conn) {
+                    conn->begin();
+                    conn->executeSimpleUpdateQuery(
+                        "config_worker",
+                        conn->sqlEqual("name", name),
+                        make_pair("fs_host", host));
+                    conn->commit();
+                }
+            );
+        }
 
         // Then update the transient state 
-
         auto itr = safeFindWorker(name, context_);
         itr->second.fsHost = host;
 
@@ -470,30 +463,29 @@ WorkerInfo ConfigurationMySQL::setWorkerFsHost(string const& name,
 
 
 WorkerInfo ConfigurationMySQL::setWorkerFsPort(string const& name,
-                                               uint16_t port) {
-
+                                               uint16_t port,
+                                               bool updatePersistentState) {
     string const context_ = context() + __func__;
 
     LOGS(_log, LOG_LVL_DEBUG, context_ << "  name=" << name << " port=" << port);
 
     database::mysql::ConnectionHandler handler;
     try {
+        if (updatePersistentState) {
+            handler.conn = database::mysql::Connection::open(_connectionParams);
+            handler.conn->execute(
+                [&name,port](decltype(handler.conn) conn) {
+                    conn->begin();
+                    conn->executeSimpleUpdateQuery(
+                        "config_worker",
+                        conn->sqlEqual("name", name),
+                        make_pair("fs_port", port));
+                    conn->commit();
+                }
+            );
+        }
 
-        // First update the database
-        handler.conn = database::mysql::Connection::open(_connectionParams);
-        handler.conn->execute(
-            [&name,port](decltype(handler.conn) conn) {
-                conn->begin();
-                conn->executeSimpleUpdateQuery(
-                    "config_worker",
-                    conn->sqlEqual("name", name),
-                    make_pair("fs_port", port));
-                conn->commit();
-            }
-        );
-
-        // Then update the transient state 
-    
+        // Then update the transient state     
         auto itr = safeFindWorker(name, context_);
         itr->second.fsPort = port;
 
@@ -506,30 +498,29 @@ WorkerInfo ConfigurationMySQL::setWorkerFsPort(string const& name,
 
 
 WorkerInfo ConfigurationMySQL::setWorkerDataDir(string const& name,
-                                                string const& dataDir) {
-
+                                                string const& dataDir,
+                                                bool updatePersistentState) {
     string const context_ = context() + __func__;
 
     LOGS(_log, LOG_LVL_DEBUG, context_ << "  name=" << name << " dataDir=" << dataDir);
 
     database::mysql::ConnectionHandler handler;
     try {
-
-        // First update the database
-        handler.conn = database::mysql::Connection::open(_connectionParams);
-        handler.conn->execute(
-            [&name,&dataDir](decltype(handler.conn) conn) {
-                conn->begin();
-                conn->executeSimpleUpdateQuery(
-                    "config_worker",
-                    conn->sqlEqual("name", name),
-                    make_pair("data_dir", dataDir));
-                conn->commit();
-            }
-        );
+        if (updatePersistentState) {
+            handler.conn = database::mysql::Connection::open(_connectionParams);
+            handler.conn->execute(
+                [&name,&dataDir](decltype(handler.conn) conn) {
+                    conn->begin();
+                    conn->executeSimpleUpdateQuery(
+                        "config_worker",
+                        conn->sqlEqual("name", name),
+                        make_pair("data_dir", dataDir));
+                    conn->commit();
+                }
+            );
+        }
 
         // Then update the transient state 
-
         auto itr = safeFindWorker(name, context_);
         itr->second.dataDir = dataDir;
 
@@ -542,29 +533,29 @@ WorkerInfo ConfigurationMySQL::setWorkerDataDir(string const& name,
 
 
 WorkerInfo ConfigurationMySQL::setWorkerDbHost(std::string const& name,
-                                               std::string const& host) {
+                                               std::string const& host,
+                                               bool updatePersistentState) {
     string const context_ = context() + __func__;
 
     LOGS(_log, LOG_LVL_DEBUG, context_ << "  name=" << name << " host=" << host);
 
     database::mysql::ConnectionHandler handler;
     try {
-
-        // First update the database
-        handler.conn = database::mysql::Connection::open(_connectionParams);
-        handler.conn->execute(
-            [&name,&host](decltype(handler.conn) conn) {
-                conn->begin();
-                conn->executeSimpleUpdateQuery(
-                    "config_worker",
-                    conn->sqlEqual("name", name),
-                    make_pair("db_host", host));
-                conn->commit();
-            }
-        );
+        if (updatePersistentState) {
+            handler.conn = database::mysql::Connection::open(_connectionParams);
+            handler.conn->execute(
+                [&name,&host](decltype(handler.conn) conn) {
+                    conn->begin();
+                    conn->executeSimpleUpdateQuery(
+                        "config_worker",
+                        conn->sqlEqual("name", name),
+                        make_pair("db_host", host));
+                    conn->commit();
+                }
+            );
+        }
 
         // Then update the transient state 
-
         auto itr = safeFindWorker(name, context_);
         itr->second.dbHost = host;
 
@@ -577,29 +568,29 @@ WorkerInfo ConfigurationMySQL::setWorkerDbHost(std::string const& name,
 
 
 WorkerInfo ConfigurationMySQL::setWorkerDbPort(std::string const& name,
-                                               uint16_t port) {
+                                               uint16_t port,
+                                               bool updatePersistentState) {
     string const context_ = context() + __func__;
 
     LOGS(_log, LOG_LVL_DEBUG, context_ << "  name=" << name << " port=" << port);
 
     database::mysql::ConnectionHandler handler;
     try {
+        if (updatePersistentState) {
+            handler.conn = database::mysql::Connection::open(_connectionParams);
+            handler.conn->execute(
+                [&name,port](decltype(handler.conn) conn) {
+                    conn->begin();
+                    conn->executeSimpleUpdateQuery(
+                        "config_worker",
+                        conn->sqlEqual("name", name),
+                        make_pair("db_port", port));
+                    conn->commit();
+                }
+            );
+        }
 
-        // First update the database
-        handler.conn = database::mysql::Connection::open(_connectionParams);
-        handler.conn->execute(
-            [&name,port](decltype(handler.conn) conn) {
-                conn->begin();
-                conn->executeSimpleUpdateQuery(
-                    "config_worker",
-                    conn->sqlEqual("name", name),
-                    make_pair("db_port", port));
-                conn->commit();
-            }
-        );
-
-        // Then update the transient state 
-    
+        // Then update the transient state
         auto itr = safeFindWorker(name, context_);
         itr->second.dbPort = port;
 
@@ -612,29 +603,29 @@ WorkerInfo ConfigurationMySQL::setWorkerDbPort(std::string const& name,
 
 
 WorkerInfo ConfigurationMySQL::setWorkerDbUser(std::string const& name,
-                                               std::string const& user)  {
+                                               std::string const& user,
+                                               bool updatePersistentState)  {
     string const context_ = context() + __func__;
 
     LOGS(_log, LOG_LVL_DEBUG, context_ << "  name=" << name << " user=" << user);
 
     database::mysql::ConnectionHandler handler;
     try {
-
-        // First update the database
-        handler.conn = database::mysql::Connection::open(_connectionParams);
-        handler.conn->execute(
-            [&name,&user](decltype(handler.conn) conn) {
-                conn->begin();
-                conn->executeSimpleUpdateQuery(
-                    "config_worker",
-                    conn->sqlEqual("name", name),
-                    make_pair("db_user", user));
-                conn->commit();
-            }
-        );
+        if (updatePersistentState) {
+            handler.conn = database::mysql::Connection::open(_connectionParams);
+            handler.conn->execute(
+                [&name,&user](decltype(handler.conn) conn) {
+                    conn->begin();
+                    conn->executeSimpleUpdateQuery(
+                        "config_worker",
+                        conn->sqlEqual("name", name),
+                        make_pair("db_user", user));
+                    conn->commit();
+                }
+            );
+        }
 
         // Then update the transient state 
-
         auto itr = safeFindWorker(name, context_);
         itr->second.dbUser = user;
 
@@ -647,29 +638,29 @@ WorkerInfo ConfigurationMySQL::setWorkerDbUser(std::string const& name,
 
 
 WorkerInfo ConfigurationMySQL::setWorkerLoaderHost(std::string const& name,
-                                                   std::string const& host) {
+                                                   std::string const& host,
+                                                   bool updatePersistentState) {
     string const context_ = context() + __func__;
 
     LOGS(_log, LOG_LVL_DEBUG, context_ << "  name=" << name << " host=" << host);
 
     database::mysql::ConnectionHandler handler;
     try {
-
-        // First update the database
-        handler.conn = database::mysql::Connection::open(_connectionParams);
-        handler.conn->execute(
-            [&name,&host](decltype(handler.conn) conn) {
-                conn->begin();
-                conn->executeSimpleUpdateQuery(
-                    "config_worker",
-                    conn->sqlEqual("name", name),
-                    make_pair("loader_host", host));
-                conn->commit();
-            }
-        );
+        if (updatePersistentState) {
+            handler.conn = database::mysql::Connection::open(_connectionParams);
+            handler.conn->execute(
+                [&name,&host](decltype(handler.conn) conn) {
+                    conn->begin();
+                    conn->executeSimpleUpdateQuery(
+                        "config_worker",
+                        conn->sqlEqual("name", name),
+                        make_pair("loader_host", host));
+                    conn->commit();
+                }
+            );
+        }
 
         // Then update the transient state 
-
         auto itr = safeFindWorker(name, context_);
         itr->second.loaderHost = host;
 
@@ -682,29 +673,29 @@ WorkerInfo ConfigurationMySQL::setWorkerLoaderHost(std::string const& name,
 
 
 WorkerInfo ConfigurationMySQL::setWorkerLoaderPort(std::string const& name,
-                                                   uint16_t port) {
+                                                   uint16_t port,
+                                                   bool updatePersistentState) {
     string const context_ = context() + __func__;
 
     LOGS(_log, LOG_LVL_DEBUG, context_ << "  name=" << name << " port=" << port);
 
     database::mysql::ConnectionHandler handler;
     try {
+        if (updatePersistentState) {
+            handler.conn = database::mysql::Connection::open(_connectionParams);
+            handler.conn->execute(
+                [&name,port](decltype(handler.conn) conn) {
+                    conn->begin();
+                    conn->executeSimpleUpdateQuery(
+                        "config_worker",
+                        conn->sqlEqual("name", name),
+                        make_pair("loader_port", port));
+                    conn->commit();
+                }
+            );
+        }
 
-        // First update the database
-        handler.conn = database::mysql::Connection::open(_connectionParams);
-        handler.conn->execute(
-            [&name,port](decltype(handler.conn) conn) {
-                conn->begin();
-                conn->executeSimpleUpdateQuery(
-                    "config_worker",
-                    conn->sqlEqual("name", name),
-                    make_pair("loader_port", port));
-                conn->commit();
-            }
-        );
-
-        // Then update the transient state 
-    
+        // Then update the transient state     
         auto itr = safeFindWorker(name, context_);
         itr->second.loaderPort = port;
 
@@ -717,30 +708,29 @@ WorkerInfo ConfigurationMySQL::setWorkerLoaderPort(std::string const& name,
 
 
 WorkerInfo ConfigurationMySQL::setWorkerLoaderTmpDir(string const& name,
-                                                     string const& tmpDir) {
-
+                                                     string const& tmpDir,
+                                                     bool updatePersistentState) {
     string const context_ = context() + __func__;
 
     LOGS(_log, LOG_LVL_DEBUG, context_ << "  name=" << name << " dataDir=" << tmpDir);
 
     database::mysql::ConnectionHandler handler;
     try {
-
-        // First update the database
-        handler.conn = database::mysql::Connection::open(_connectionParams);
-        handler.conn->execute(
-            [&name,&tmpDir](decltype(handler.conn) conn) {
-                conn->begin();
-                conn->executeSimpleUpdateQuery(
-                    "config_worker",
-                    conn->sqlEqual("name", name),
-                    make_pair("loader_tmp_dir", tmpDir));
-                conn->commit();
-            }
-        );
+        if (updatePersistentState) {
+            handler.conn = database::mysql::Connection::open(_connectionParams);
+            handler.conn->execute(
+                [&name,&tmpDir](decltype(handler.conn) conn) {
+                    conn->begin();
+                    conn->executeSimpleUpdateQuery(
+                        "config_worker",
+                        conn->sqlEqual("name", name),
+                        make_pair("loader_tmp_dir", tmpDir));
+                    conn->commit();
+                }
+            );
+        }
 
         // Then update the transient state 
-
         auto itr = safeFindWorker(name, context_);
         itr->second.loaderTmpDir = tmpDir;
 
@@ -1410,27 +1400,32 @@ void ConfigurationMySQL::_loadConfigurationImpl(database::mysql::Connection::Ptr
 void ConfigurationMySQL::_setImp(string const& category,
                                  string const& param,
                                  SetValueExprFunc const& setValueExprFunc,
-                                 function<void()> const& onSuccess) {
-
+                                 function<void()> const& onSuccess,
+                                 bool updatePersistentState) {
     string const context_ = context() + __func__;
 
-    LOGS(_log, LOG_LVL_DEBUG, context_ << "  category: " << category << " param: " << param);
+    LOGS(_log, LOG_LVL_DEBUG, context_ << "  category: " << category << " param: " << param
+         << " updatePersistentState: " << (updatePersistentState ? "1" : "0"));
 
     database::mysql::ConnectionHandler handler;
     try {
-        handler.conn = database::mysql::Connection::open(_connectionParams);
-        handler.conn->execute(
-            [&category,&param,&setValueExprFunc](decltype(handler.conn) conn) {
-                ostringstream query;
-                query << "UPDATE  " << conn->sqlId("config")
-                      << "  SET   " << setValueExprFunc(conn)
-                      << "  WHERE " << conn->sqlEqual("category", category)
-                      << "    AND " << conn->sqlEqual("param", param);
-                conn->begin();
-                conn->execute(query.str());
-                conn->commit();
-            }
-        );
+        if (updatePersistentState) {
+            handler.conn = database::mysql::Connection::open(_connectionParams);
+            handler.conn->execute(
+                [&category,&param,&setValueExprFunc](decltype(handler.conn) conn) {
+                    ostringstream query;
+                    query << "UPDATE  " << conn->sqlId("config")
+                          << "  SET   " << setValueExprFunc(conn)
+                          << "  WHERE " << conn->sqlEqual("category", category)
+                          << "    AND " << conn->sqlEqual("param", param);
+                    conn->begin();
+                    conn->execute(query.str());
+                    conn->commit();
+                }
+            );
+        }
+        
+        // Then update the transient state.
         onSuccess();
 
     } catch (database::mysql::Error const& ex) {
