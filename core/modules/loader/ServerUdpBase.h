@@ -27,8 +27,9 @@
 // system headers
 #include <cstdlib>
 #include <iostream>
-#include <boost/bind.hpp>
-#include <boost/asio.hpp>
+
+// third party headers
+#include "boost/asio.hpp"
 
 // Qserv headers
 #include "loader/BufferUdp.h"

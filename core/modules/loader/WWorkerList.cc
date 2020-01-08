@@ -26,11 +26,10 @@
 #include "loader/WWorkerList.h"
 
 // System headers
-#include <boost/asio.hpp>
 #include <iostream>
 
 // Third-party headers
-
+#include "boost/asio.hpp"
 
 // qserv headers
 #include "loader/CentralFollower.h"

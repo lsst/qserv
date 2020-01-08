@@ -25,11 +25,12 @@
 #define LSST_QSERV_LOADER_SERVERTCPBASE_H
 
 // system headers
-#include <boost/asio.hpp>
-#include <boost/bind.hpp>
 #include <cstdlib>
 #include <iostream>
 #include <set>
+
+// third party headers
+#include "boost/asio.hpp"
 
 // Qserv headers
 #include "loader/BufferUdp.h"

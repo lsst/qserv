@@ -25,10 +25,11 @@
 #define LSST_QSERV_LOADER_CENTRAL_WORKER_H
 
 // system headers
-#include <boost/bind.hpp>
-#include <boost/asio.hpp>
 #include <thread>
 #include <vector>
+
+// third party headers
+#include "boost/asio.hpp"
 
 // Qserv headers
 #include "loader/CentralFollower.h"
@@ -80,11 +81,7 @@ public:
     ~CentralWorker() override;
 
     int getTcpPort() const override { return _tcpPort; }
-
-    uint32_t getOurId() const {
-        std::lock_guard<std::mutex> lck(_ourIdMtx);
-        return _ourId;
-    }
+    uint32_t getOurId() const;
 
     /// Insert the keys in keyList into _keyValueMap, adjusting ranges
     /// as needed.
@@ -133,9 +130,8 @@ public:
 
     std::string getOurLogId() const override;
 
-    std::unique_ptr<proto::WorkerKeysInfo> _workerKeysInfoBuilder(); // TODO make private
+    std::unique_ptr<proto::WorkerKeysInfo> workerKeysInfoBuilder(); // TODO make private
     void setNeighborInfoLeft(uint32_t wId, int keyCount, KeyRange const& range);  // TODO make private
-
 
     /// @Return a string describing the first and last 'count' keys. count=0 dumps all keys.
     std::string dumpKeysStr(unsigned int count);
@@ -190,8 +186,6 @@ private:
     /// @parameter keysToShift is number of keys to shift.
     /// @parameter direction is TO or FROM the right neighbor.
     void _shift(Direction direction, int keysToShift);
-
-
 
     /// See workerKeyInsertReq(...)
     void _workerKeyInsertReq(LoaderMsg const& inMsg, std::unique_ptr<proto::KeyInfoInsert>& protoBuf);
@@ -265,10 +259,6 @@ private:
     /// The DoListItem that makes sure _monitor() is run.
     std::shared_ptr<CentralWorkerDoListItem> _centralWorkerDoListItem;
 };
-
-
-
-
 
 }}} // namespace lsst::qserv::loader
 

@@ -29,7 +29,7 @@
 #include <iostream>
 
 // Third-party headers
-#include <boost/asio.hpp>
+#include "boost/asio.hpp"
 
 // qserv headers
 #include "loader/LoaderMsg.h"

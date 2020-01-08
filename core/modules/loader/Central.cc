@@ -22,12 +22,14 @@
  */
 
 
+// System headers
+#include <iostream>
+
 // Class header
 #include "Central.h"
 
 // Third-party headers
-#include <boost/asio.hpp>
-#include <iostream>
+#include "boost/asio.hpp"
 
 // qserv headers
 #include "loader/LoaderMsg.h"

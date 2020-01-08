@@ -23,7 +23,9 @@
 
 // System headers
 #include <iostream>
-#include <boost/asio.hpp>
+
+// Third party headers
+#include "boost/asio.hpp"
 
 // Qserv headers
 #include "loader/CentralClient.h"
@@ -194,10 +196,10 @@ int main(int argc, char* argv[]) {
     {
         LoaderMsg outMsg;
         outMsg.parseFromData(lBuf);
-        if (  lMsg.msgKind->element    != outMsg.msgKind->element    ||
-                lMsg.msgId->element      != outMsg.msgId->element      ||
-                lMsg.senderHost->element != outMsg.senderHost->element ||
-                lMsg.senderPort->element != outMsg.senderPort->element) {
+        if (lMsg.msgKind->element    != outMsg.msgKind->element    ||
+            lMsg.msgId->element      != outMsg.msgId->element      ||
+            lMsg.senderHost->element != outMsg.senderHost->element ||
+            lMsg.senderPort->element != outMsg.senderPort->element) {
             LOGS(_log, LOG_LVL_ERROR,
                     "FAILED messages didn't match out:" << outMsg.getStringVal() <<
                     " != lMsg" << lMsg.getStringVal());

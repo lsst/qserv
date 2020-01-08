@@ -26,11 +26,10 @@
 #include "loader/MWorkerList.h"
 
 // System headers
-#include <boost/asio.hpp>
 #include <iostream>
 
 // Third-party headers
-
+#include "boost/asio.hpp"
 
 // qserv headers
 #include "loader/CentralMaster.h"

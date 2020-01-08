@@ -27,15 +27,13 @@
 // system headers
 #include <arpa/inet.h>
 #include <cstring>
-#include <stdexcept>
 #include <memory>
 #include <sstream>
+#include <stdexcept>
 #include <string>
 
 // third party headers
-#include <boost/asio.hpp>
-#include <boost/bind.hpp>
-
+#include "boost/asio.hpp"
 
 namespace lsst {
 namespace qserv {
@@ -59,9 +57,8 @@ public:
     static size_t const MAX_MSG_SIZE_TCP = 10000000;
 
     /// Create the object with a new _buffer with 'length' bytes.
-    explicit BufferUdp(size_t length = MAX_MSG_SIZE_UDP) : _length(length) {
-        _buffer = new char[length];
-        _ourBuffer = true;
+    explicit BufferUdp(size_t length = MAX_MSG_SIZE_UDP)
+        : _buffer(new char[length]), _length(length), _ourBuffer(true) {
         _setupBuffer();
     }
 

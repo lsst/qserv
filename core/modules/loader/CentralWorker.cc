@@ -26,8 +26,10 @@
 #include "loader/CentralWorker.h"
 
 // system headers
-#include <boost/asio.hpp>
 #include <iostream>
+
+// third party headers
+#include "boost/asio.hpp"
 
 // qserv headers
 #include "loader/BufferUdp.h"
@@ -36,7 +38,7 @@
 #include "loader/WorkerConfig.h"
 #include "proto/loader.pb.h"
 #include "proto/ProtoImporter.h"
-#include "util/Timer.h" // &&&
+#include "util/Timer.h"
 
 
 // LSST headers
@@ -190,6 +192,12 @@ bool CentralWorker::_setOurId(uint32_t id) {
 }
 
 
+uint32_t CentralWorker::getOurId() const {
+    std::lock_guard<std::mutex> lck(_ourIdMtx);
+    return _ourId;
+}
+
+
 void CentralWorker::_masterDisable() {
     LOGS(_log, LOG_LVL_INFO, "worker=" << _ourId <<
             " changed to 0, master shutting this down.");
@@ -216,7 +224,7 @@ bool CentralWorker::_determineRange() {
         imLeftKind.appendToData(data);
         // Send information about how many keys on this node and their range.
         StringElement strElem;
-        std::unique_ptr<proto::WorkerKeysInfo> protoWKI = _workerKeysInfoBuilder();
+        std::unique_ptr<proto::WorkerKeysInfo> protoWKI = workerKeysInfoBuilder();
         protoWKI->SerializeToString(&(strElem.element));
         UInt32Element bytesInMsg(strElem.transmitSize());
         // Must send the number of bytes in the message so TCP server knows how many bytes to read.
@@ -712,7 +720,8 @@ KeyRange CentralWorker::updateRangeWithLeftData(KeyRange const& leftNeighborRang
 
 
 bool CentralWorker::workerKeyInsertReq(LoaderMsg const& inMsg, BufferUdp::Ptr const&  data) {
-    StringElement::Ptr sData = std::dynamic_pointer_cast<StringElement>(MsgElement::retrieve(*data, " CentralWorker::workerKeyInsertReq&&& "));
+    StringElement::Ptr sData = std::dynamic_pointer_cast<StringElement>(
+                               MsgElement::retrieve(*data, " CentralWorker::workerKeyInsertReq"));
     if (sData == nullptr) {
         LOGS(_log, LOG_LVL_WARN, "CentralWorker::workerKeyInsertReq Failed to read list element");
         return false;
@@ -728,9 +737,6 @@ bool CentralWorker::workerKeyInsertReq(LoaderMsg const& inMsg, BufferUdp::Ptr co
     return true;
 }
 
-
-util::Timer lastInsertTimer; // &&&
-std::mutex lastInsertTimerMtx; // &&&
 
 void CentralWorker::_workerKeyInsertReq(LoaderMsg const& inMsg, std::unique_ptr<proto::KeyInfoInsert>& protoBuf) {
     std::unique_ptr<proto::KeyInfoInsert> protoData(std::move(protoBuf));
@@ -756,17 +762,7 @@ void CentralWorker::_workerKeyInsertReq(LoaderMsg const& inMsg, std::unique_ptr<
             // Element already found, check file id and row number. Bad if not the same.
             // TODO HIGH send back duplicate key mismatch message to the original requester and return
         }
-        {
-        std::lock_guard<std::mutex> tLg(lastInsertTimerMtx);
-        lastInsertTimer.stop();
-        auto elapsedInsert = lastInsertTimer.getElapsed();
-        if (elapsedInsert > 0.5) {
-            LOGS(_log, LOG_LVL_ERROR, "&&& Longdelay key=" << key << " dlay=" << elapsedInsert);
-        }
-        // &&& LOGS(_log, LOG_LVL_INFO, "Key inserted=" << key << "(" << chunkInfo << ")");
-        LOGS(_log, LOG_LVL_WARN, "&&&INFO Key inserted=" << key << "(" << chunkInfo << ") dlay=" <<  elapsedInsert);
-        lastInsertTimer.start();
-        }
+        LOGS(_log, LOG_LVL_INFO, "Key inserted=" << key << "(" << chunkInfo << ")");
         // TODO Send this item to the keyLogger (which would then send KEY_INSERT_COMPLETE back to the requester),
         // for now this function will send the message back for proof of concept.
         LoaderMsg msg(LoaderMsg::KEY_INSERT_COMPLETE, inMsg.msgId->element, getHostName(), getUdpPort());
@@ -836,7 +832,8 @@ void CentralWorker::_forwardKeyInsertRequest(NetworkAddress const& targetAddr, L
 
 bool CentralWorker::workerKeyInfoReq(LoaderMsg const& inMsg, BufferUdp::Ptr const&  data) {
     LOGS(_log, LOG_LVL_DEBUG, "CentralWorker::workerKeyInfoReq");
-    StringElement::Ptr sData = std::dynamic_pointer_cast<StringElement>(MsgElement::retrieve(*data, " CentralWorker::workerKeyInfoReq&&& "));
+    StringElement::Ptr sData = std::dynamic_pointer_cast<StringElement>(
+                               MsgElement::retrieve(*data, " CentralWorker::workerKeyInfoReq "));
     if (sData == nullptr) {
         LOGS(_log, LOG_LVL_WARN, "CentralWorker::workerKeyInfoReq Failed to read list element");
         return false;
@@ -972,7 +969,7 @@ void CentralWorker::_sendWorkerKeysInfo(NetworkAddress const& nAddr, uint64_t ms
     LoaderMsg msg(LoaderMsg::WORKER_KEYS_INFO, msgId, getHostName(), getUdpPort());
     BufferUdp msgData;
     msg.appendToData(msgData);
-    std::unique_ptr<proto::WorkerKeysInfo> protoWKI = _workerKeysInfoBuilder();
+    std::unique_ptr<proto::WorkerKeysInfo> protoWKI = workerKeysInfoBuilder();
     StringElement strElem;
     protoWKI->SerializeToString(&(strElem.element));
     strElem.appendToData(msgData);
@@ -988,7 +985,7 @@ void CentralWorker::_sendWorkerKeysInfo(NetworkAddress const& nAddr, uint64_t ms
 }
 
 
-std::unique_ptr<proto::WorkerKeysInfo> CentralWorker::_workerKeysInfoBuilder() {
+std::unique_ptr<proto::WorkerKeysInfo> CentralWorker::workerKeysInfoBuilder() {
     std::unique_ptr<proto::WorkerKeysInfo> protoWKI(new proto::WorkerKeysInfo());
     // Build message containing Range, size of map, number of items added.
     // TODO this code is similar to code elsewhere, try to merge it.

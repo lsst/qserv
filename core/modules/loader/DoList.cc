@@ -39,7 +39,7 @@
 namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.loader.DoList");
 
-std::atomic<uint64_t> limiter(0); // Counter to limit log messages &&& make class member
+//std::atomic<uint64_t> limiter(0); // Counter to limit log messages &&& make class member
 }
 
 namespace lsst {
@@ -48,8 +48,8 @@ namespace loader {
 
 
 void DoList::checkList() {
-    if (::limiter%1000 == 0) LOGS(_log, LOG_LVL_DEBUG, "DoList::checkList " << limiter);
-    ++::limiter;
+    if (_limiter%1000 == 0) LOGS(_log, LOG_LVL_DEBUG, "DoList::checkList " << _limiter);
+    ++_limiter;
     std::lock_guard<std::mutex> lock(_listMtx);
     {
         std::lock_guard<std::mutex> lockAddList(_addListMtx);

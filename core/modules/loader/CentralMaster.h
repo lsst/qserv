@@ -29,8 +29,7 @@
 #include <vector>
 
 // third party headers
-#include <boost/asio.hpp>
-#include <boost/bind.hpp>
+#include "boost/asio.hpp"
 
 // Qserv headers
 #include "loader/Central.h"

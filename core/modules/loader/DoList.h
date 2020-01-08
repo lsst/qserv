@@ -24,7 +24,6 @@
 #ifndef LSST_QSERV_LOADER_DOLIST_H
 #define LSST_QSERV_LOADER_DOLIST_H
 
-
 // Qserv headers
 #include "loader/DoListItem.h"
 
@@ -70,6 +69,8 @@ private:
 
     std::list<DoListItem::Ptr> _addList;
     std::mutex _addListMtx; ///< Protects _addList (lock this one second)
+
+    std::atomic<unsigned int> _limiter{0}; // Counter to limit log messages, wraps back to 0.
 
     Central& _central;
 };

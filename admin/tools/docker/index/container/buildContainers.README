@@ -1,0 +1,22 @@
+Invoking the following command from the qserv directory should build and push the containers and is
+useful for breaking the build into smaller commands when there are problems.
+
+It helps to do a "rm -rf bin share build" before running as docker copies everything in
+the qserv directory and includes it in the base container. This saves a couple of GB
+in both the initial copy and pushing the containers.
+
+
+docker build -f admin/tools/docker/index/container/dev/Dockerfile -t qserv/indexbase:dev . && \
+cd admin/tools/docker/index/container/dev/worker/ && docker build -t qserv/indexworker:dev . && \
+cd ../master/ && docker build -t qserv/indexmaster:dev . && \
+cd ../clientNum/ && docker build -t qserv/indexclientnum:dev . && \
+cd ../../../../../../../../qserv
+docker push qserv/indexmaster:dev && docker push qserv/indexworker:dev && docker push qserv/indexclientnum:dev
+
+
+Useful kubernetes commands:
+kubectl apply -f admin/tools/docker/index/index-k8-m.yaml
+kubectl delete -f admin/tools/docker/index/index-k8-m.yaml
+kubectl get pods
+kubectl logs -f imaster-sts-0 | grep -i keycount
+kubectl logs -f iclientnum2-sts-0 | egrep "DONE|INSERT|LOOK"

@@ -25,10 +25,12 @@
 #define LSST_QSERV_LOADER_CENTRAL_FOLLOWER_H
 
 // system headers
-#include <boost/bind.hpp>
-#include <boost/asio.hpp>
+#include <atomic>
 #include <thread>
 #include <vector>
+
+// third party headers
+#include "boost/asio.hpp"
 
 // Qserv headers
 #include "loader/Central.h"
@@ -72,8 +74,6 @@ public:
     /// messages sent from the master and call workerInfoReceive() as needed.
     void startMonitoring() override;
 
-    WWorkerList::Ptr getWorkerList() const { return _wWorkerList; }
-
     std::string const& getHostName() const { return _hostName; }
     int getUdpPort() const { return _udpPort; }
 
@@ -84,7 +84,7 @@ public:
     bool workerInfoReceive(BufferUdp::Ptr const&  data);
 
     /// Returns a pointer to our worker list.
-    WWorkerList::Ptr const& getWorkerList() { return _wWorkerList; }
+    WWorkerList::Ptr const& getWorkerList();
 
     std::string getOurLogId() const override { return "CentralFollower"; }
 
@@ -101,8 +101,12 @@ private:
     /// needs to do additional work to set its own id.
     void _workerInfoReceive(std::unique_ptr<proto::WorkerListItem>& protoBuf);
 
-    /// Maps of workers with their key ranges and network addresses.
-    WWorkerList::Ptr _wWorkerList{std::make_shared<WWorkerList>(this)};
+    /// Maps of workers with their key ranges and network addresses. due to
+    /// lazy initialization.
+    /// This should be accessed through getWorkerList()
+    WWorkerList::Ptr _wWorkerList;
+    std::mutex _wListInitMtx; ///< mutex for initialization of _wWorkerList
+    std::atomic<bool> _destroy{false};
 };
 
 }}} // namespace lsst::qserv::loader

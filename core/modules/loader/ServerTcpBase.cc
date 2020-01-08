@@ -456,10 +456,12 @@ void TcpBaseConnection::_handleImYourLNeighbor1(boost::system::error_code const&
 
         _serverTcpBase->getCentralWorker()->setNeighborInfoLeft(workerName, nInfo.keyCount, newLeftRange);
 
-        // Need to send our range and key count back to left neighbor so it can figure out what to do with its range.
+        // Need to send our range and key count back to left neighbor so it
+        // can figure out what to do with its range.
         _buf.reset();
         StringElement strWKI;
-        std::unique_ptr<proto::WorkerKeysInfo> protoWKI = _serverTcpBase->getCentralWorker()->_workerKeysInfoBuilder();
+        std::unique_ptr<proto::WorkerKeysInfo> protoWKI =
+            _serverTcpBase->getCentralWorker()->workerKeysInfoBuilder();
         protoWKI->SerializeToString(&(strWKI.element));
         UInt32Element bytesInMsg(strWKI.transmitSize());
         // Send the number of bytes in the message so TCP client knows how many bytes to read.

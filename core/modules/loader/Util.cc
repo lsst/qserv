@@ -30,7 +30,7 @@
 #include <netdb.h>
 
 // Third party headers
-#include <boost/asio.hpp>
+#include "boost/asio.hpp"
 
 // LSST headers
 #include "lsst/log/Log.h"

@@ -21,18 +21,18 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-
 // Class header
 #include "loader/CentralFollower.h"
 
 // system headers
-#include <boost/asio.hpp>
 #include <iostream>
+
+// third party headers
+#include "boost/asio.hpp"
 
 // qserv headers
 #include "proto/loader.pb.h"
 #include "proto/ProtoImporter.h"
-
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -50,13 +50,24 @@ namespace loader {
 CentralFollower::~CentralFollower() {
     // Members that contain pointers to this. Deleting while this != null.
     // TODO: wait for reference count to drop to one on _wWorkerList
+    _destroy = true;
     _wWorkerList.reset();
+}
+
+
+WWorkerList::Ptr const& CentralFollower::getWorkerList() {
+    // _wWorkerList == nullptr is extremely rare.
+    if (_wWorkerList == nullptr && !_destroy) {
+        std::lock_guard<std::mutex> lg(_wListInitMtx);
+        if (_wWorkerList == nullptr && !_destroy) _wWorkerList = std::make_shared<WWorkerList>(this);
+    }
+    return _wWorkerList;
 }
 
 
 void CentralFollower::startMonitoring() {
     LOGS(_log, LOG_LVL_INFO, "CentralFollower::startMonitoring");
-    doList->addItem(_wWorkerList);
+    doList->addItem(getWorkerList());
 }
 
 
@@ -109,7 +120,7 @@ void CentralFollower::_workerInfoReceive(std::unique_ptr<proto::WorkerListItem>&
     checkForThisWorkerValues(wId, ipUdp, portUdp, portTcp, strRange);
 
     // Make/update entry in map.
-    _wWorkerList->updateEntry(wId, ipUdp, portUdp, portTcp, strRange);
+    getWorkerList()->updateEntry(wId, ipUdp, portUdp, portTcp, strRange);
 }
 
 
