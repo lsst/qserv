@@ -1,0 +1,123 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: imaster-svc
+  labels:
+    app: index
+spec:
+  ports:
+  - port: 10042
+    protocol: UDP
+  clusterIP: None
+  selector:
+    app: imaster-pod
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: imaster-sts
+  labels:
+    app: index
+spec:
+  serviceName: imaster-svc
+  podManagementPolicy: Parallel
+  replicas: 1
+  selector:
+    matchLabels:
+      app: imaster-pod
+  template:
+    metadata:
+      labels:
+        app: imaster-pod
+    spec:
+      containers:
+      - name: imaster-ctr
+        image: qserv/indexmaster:dev
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 10042
+          protocol: UDP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: iworker-svc
+  labels:
+    app: index
+spec:
+  ports:
+  - port: 10043
+    protocol: UDP
+  clusterIP: None
+  selector:
+    app: iworker-pod
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: iworker-sts
+  labels:
+    app: index
+spec:
+  serviceName: iworker-svc
+  podManagementPolicy: Parallel
+  replicas: 3
+  selector:
+    matchLabels:
+      app: iworker-pod
+  template:
+    metadata:
+      labels:
+        app: iworker-pod
+    spec:
+      containers:
+      - name: iworker-ctr
+        image: qserv/indexworker:dev
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 10043
+          protocol: UDP
+        - containerPort: 10143
+          protocol: TCP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: iclientnum-svc
+  labels:
+    app: index
+spec:
+  ports:
+  - port: 10050
+    protocol: UDP
+  clusterIP: None
+  selector:
+    app: iclientnum-pod
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: iclientnum-sts
+  labels:
+    app: index
+spec:
+  serviceName: iclientnum-svc
+  podManagementPolicy: Parallel
+  replicas: 1
+  selector:
+    matchLabels:
+      app: iclientnum-pod
+  template:
+    metadata:
+      labels:
+        app: iclientnum-pod
+    spec:
+      containers:
+      - name: iclientnum-ctr
+        image: qserv/indexclientnum:dev
+        args: ["1", "500000", "client-k8s-a1.cnf"]
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 10050
+          protocol: UDP
+

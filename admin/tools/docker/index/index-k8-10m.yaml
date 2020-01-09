@@ -1,0 +1,415 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: imaster-svc
+  labels:
+    app: index
+spec:
+  ports:
+  - port: 10042
+    protocol: UDP
+  clusterIP: None
+  selector:
+    app: imaster-pod
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: imaster-sts
+  labels:
+    app: index
+spec:
+  serviceName: imaster-svc
+  podManagementPolicy: Parallel
+  replicas: 1
+  selector:
+    matchLabels:
+      app: imaster-pod
+  template:
+    metadata:
+      labels:
+        app: imaster-pod
+    spec:
+      containers:
+      - name: imaster-ctr
+        image: qserv/indexmaster:dev
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 10042
+          protocol: UDP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: iworker-svc
+  labels:
+    app: index
+spec:
+  ports:
+  - port: 10043
+    protocol: UDP
+  clusterIP: None
+  selector:
+    app: iworker-pod
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: iworker-sts
+  labels:
+    app: index
+spec:
+  serviceName: iworker-svc
+  podManagementPolicy: Parallel
+  replicas: 14
+  selector:
+    matchLabels:
+      app: iworker-pod
+  template:
+    metadata:
+      labels:
+        app: iworker-pod
+    spec:
+      containers:
+      - name: iworker-ctr
+        image: qserv/indexworker:dev
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 10043
+          protocol: UDP
+        - containerPort: 10143
+          protocol: TCP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: iclientnum-svc
+  labels:
+    app: index
+spec:
+  ports:
+  - port: 10050
+    protocol: UDP
+  clusterIP: None
+  selector:
+    app: iclientnum-pod
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: iclientnum-sts
+  labels:
+    app: index
+spec:
+  serviceName: iclientnum-svc
+  podManagementPolicy: Parallel
+  replicas: 1
+  selector:
+    matchLabels:
+      app: iclientnum-pod
+  template:
+    metadata:
+      labels:
+        app: iclientnum-pod
+    spec:
+      containers:
+      - name: iclientnum-ctr
+        image: qserv/indexclientnum:dev
+        imagePullPolicy: Always
+        args: ["10000000", "1", "client-k8s-a1.cnf"]
+        ports:
+        - containerPort: 10050
+          protocol: UDP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: iclientnum2-svc
+  labels:
+    app: index
+spec:
+  ports:
+  - port: 10050
+    protocol: UDP
+  clusterIP: None
+  selector:
+    app: iclientnum2-pod
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: iclientnum2-sts
+  labels:
+    app: index
+spec:
+  serviceName: iclientnum2-svc
+  podManagementPolicy: Parallel
+  replicas: 1
+  selector:
+    matchLabels:
+      app: iclientnum2-pod
+  template:
+    metadata:
+      labels:
+        app: iclientnum2-pod
+    spec:
+      containers:
+      - name: iclientnum2-ctr
+        image: qserv/indexclientnum:dev
+        imagePullPolicy: Always
+        args: ["20000001", "30000001", "client-k8s-a2.cnf"]
+        ports:
+        - containerPort: 10050
+          protocol: UDP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: iclientnum3-svc
+  labels:
+    app: index
+spec:
+  ports:
+  - port: 10050
+    protocol: UDP
+  clusterIP: None
+  selector:
+    app: iclientnum3-pod
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: iclientnum3-sts
+  labels:
+    app: index
+spec:
+  serviceName: iclientnum3-svc
+  podManagementPolicy: Parallel
+  replicas: 1
+  selector:
+    matchLabels:
+      app: iclientnum3-pod
+  template:
+    metadata:
+      labels:
+        app: iclientnum3-pod
+    spec:
+      containers:
+      - name: iclientnum3-ctr
+        image: qserv/indexclientnum:dev
+        imagePullPolicy: Always
+        args: ["10000001", "20000000", "client-k8s-a3.cnf"]
+        ports:
+        - containerPort: 10050
+          protocol: UDP
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: iclientnum4-svc
+  labels:
+    app: index
+spec:
+  ports:
+  - port: 10050
+    protocol: UDP
+  clusterIP: None
+  selector:
+    app: iclientnum4-pod
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: iclientnum4-sts
+  labels:
+    app: index
+spec:
+  serviceName: iclientnum4-svc
+  podManagementPolicy: Parallel
+  replicas: 1
+  selector:
+    matchLabels:
+      app: iclientnum4-pod
+  template:
+    metadata:
+      labels:
+        app: iclientnum4-pod
+    spec:
+      containers:
+      - name: iclientnum3-ctr
+        image: qserv/indexclientnum:dev
+        imagePullPolicy: Always
+        args: ["40000001", "50000000", "client-k8s-a1.cnf"]
+        ports:
+        - containerPort: 10050
+          protocol: UDP
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: iclientnum5-svc
+  labels:
+    app: index
+spec:
+  ports:
+  - port: 10050
+    protocol: UDP
+  clusterIP: None
+  selector:
+    app: iclientnum5-pod
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: iclientnum5-sts
+  labels:
+    app: index
+spec:
+  serviceName: iclientnum5-svc
+  podManagementPolicy: Parallel
+  replicas: 1
+  selector:
+    matchLabels:
+      app: iclientnum5-pod
+  template:
+    metadata:
+      labels:
+        app: iclientnum5-pod
+    spec:
+      containers:
+      - name: iclientnum5-ctr
+        image: qserv/indexclientnum:dev
+        imagePullPolicy: Always
+        args: ["50000001", "60000000", "client-k8s-a1.cnf"]
+        ports:
+        - containerPort: 10050
+          protocol: UDP
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: iclientnum6-svc
+  labels:
+    app: index
+spec:
+  ports:
+  - port: 10050
+    protocol: UDP
+  clusterIP: None
+  selector:
+    app: iclientnum6-pod
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: iclientnum6-sts
+  labels:
+    app: index
+spec:
+  serviceName: iclientnum6-svc
+  podManagementPolicy: Parallel
+  replicas: 1
+  selector:
+    matchLabels:
+      app: iclientnum6-pod
+  template:
+    metadata:
+      labels:
+        app: iclientnum6-pod
+    spec:
+      containers:
+      - name: iclientnum6-ctr
+        image: qserv/indexclientnum:dev
+        imagePullPolicy: Always
+        args: ["60000001", "70000000", "client-k8s-a1.cnf"]
+        ports:
+        - containerPort: 10050
+          protocol: UDP
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: iclientnum7-svc
+  labels:
+    app: index
+spec:
+  ports:
+  - port: 10050
+    protocol: UDP
+  clusterIP: None
+  selector:
+    app: iclientnum7-pod
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: iclientnum7-sts
+  labels:
+    app: index
+spec:
+  serviceName: iclientnum7-svc
+  podManagementPolicy: Parallel
+  replicas: 1
+  selector:
+    matchLabels:
+      app: iclientnum7-pod
+  template:
+    metadata:
+      labels:
+        app: iclientnum7-pod
+    spec:
+      containers:
+      - name: iclientnum7-ctr
+        image: qserv/indexclientnum:dev
+        imagePullPolicy: Always
+        args: ["70000001", "80000000", "client-k8s-a1.cnf"]
+        ports:
+        - containerPort: 10050
+          protocol: UDP
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: iclientnum8-svc
+  labels:
+    app: index
+spec:
+  ports:
+  - port: 10050
+    protocol: UDP
+  clusterIP: None
+  selector:
+    app: iclientnum8-pod
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: iclientnum8-sts
+  labels:
+    app: index
+spec:
+  serviceName: iclientnum8-svc
+  podManagementPolicy: Parallel
+  replicas: 1
+  selector:
+    matchLabels:
+      app: iclientnum8-pod
+  template:
+    metadata:
+      labels:
+        app: iclientnum8-pod
+    spec:
+      containers:
+      - name: iclientnum8-ctr
+        image: qserv/indexclientnum:dev
+        imagePullPolicy: Always
+        args: ["80000001", "90000000", "client-k8s-a1.cnf"]
+        ports:
+        - containerPort: 10050
+          protocol: UDP
+
