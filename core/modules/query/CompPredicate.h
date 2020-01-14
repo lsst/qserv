@@ -71,6 +71,7 @@ public:
 
     ~CompPredicate() override = default;
 
+    bool isEqualsOp() const { return EQUALS_OP == op || NULL_SAFE_EQUALS_OP == op; }
     char const* getName() const override { return "CompPredicate"; }
     void findValueExprs(std::vector<std::shared_ptr<ValueExpr>>& vector) const override;
     void findValueExprRefs(ValueExprPtrRefVector& vector) override;

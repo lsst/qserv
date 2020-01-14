@@ -44,6 +44,15 @@ namespace qserv {
 namespace query {
 
 
+SecIdxCompRestrictor::SecIdxCompRestrictor(std::shared_ptr<query::CompPredicate> compPredicate, bool useLeft)
+        : _compPredicate(compPredicate), _useLeft(useLeft) {
+    if (_compPredicate->op != query::CompPredicate::EQUALS_OP &&
+            _compPredicate->op != query::CompPredicate::NULL_SAFE_EQUALS_OP ) {
+        throw std::logic_error("Internal error: comparison restrictor only supports = or <=>.");
+    }
+}
+
+
 std::ostream& operator<<(std::ostream& os, SecIdxRestrictor const& q) {
     QueryTemplate qt;
     q.renderTo(qt);

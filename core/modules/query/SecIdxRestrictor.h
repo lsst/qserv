@@ -100,8 +100,7 @@ class SecIdxCompRestrictor : public SecIdxRestrictor {
 public:
     SecIdxCompRestrictor() = default;
 
-    SecIdxCompRestrictor(std::shared_ptr<query::CompPredicate> compPredicate, bool useLeft)
-            : _compPredicate(compPredicate), _useLeft(useLeft) {}
+    SecIdxCompRestrictor(std::shared_ptr<query::CompPredicate> compPredicate, bool useLeft);
 
     /**
      * @brief Serialze this instance as SQL to the QueryTemplate.

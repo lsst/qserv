@@ -362,8 +362,8 @@ std::shared_ptr<query::SecIdxInRestrictor> makeSecondaryIndexRestrictor(
 
 
 /**
- * @brief Make a Secondary Index 'between' restrictor for the given comparison predicate, if one of the
- *      columns in the comparison predicate is a director column.
+ * @brief Make a Secondary Index 'comparison' restrictor for the given comparison predicate, if one of the
+ *      columns in the comparison predicate is a director column and the operator is an equality operator.
  *
  * @param compPredicate
  * @param context
@@ -373,7 +373,9 @@ std::shared_ptr<query::SecIdxInRestrictor> makeSecondaryIndexRestrictor(
 std::shared_ptr<query::SecIdxCompRestrictor> makeSecondaryIndexRestrictor(
             query::CompPredicate const& compPredicate,
             query::QueryContext const& context) {
-    if (compPredicate.right->isConstVal() && isSecIndexCol(context, compPredicate.left->getColumnRef())) {
+    if (compPredicate.right->isConstVal() &&
+            compPredicate.isEqualsOp() &&
+            isSecIndexCol(context, compPredicate.left->getColumnRef())) {
         auto dirCol = getCorrespondingDirectorColumn(context, compPredicate.left->getColumnRef());
         if (nullptr == dirCol) {
             LOGS(_log, LOG_LVL_ERROR, "Failed to get director column for " << compPredicate.left->getColumnRef());
@@ -383,7 +385,9 @@ std::shared_ptr<query::SecIdxCompRestrictor> makeSecondaryIndexRestrictor(
                                                                  compPredicate.op,
                                                                  compPredicate.right);
         return std::make_shared<query::SecIdxCompRestrictor>(siCompPred, true);
-    } else if (compPredicate.left->isConstVal() && isSecIndexCol(context, compPredicate.right->getColumnRef())) {
+    } else if (compPredicate.left->isConstVal() &&
+                compPredicate.isEqualsOp() &&
+                isSecIndexCol(context, compPredicate.right->getColumnRef())) {
         auto dirCol = getCorrespondingDirectorColumn(context, compPredicate.right->getColumnRef());
         if (nullptr == dirCol) {
             LOGS(_log, LOG_LVL_ERROR, "Failed to get director column for " << compPredicate.right->getColumnRef());
