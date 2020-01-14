@@ -132,41 +132,6 @@ private:
 };
 
 
-class SecIdxBetweenRestrictor : public SecIdxRestrictor {
-public:
-    SecIdxBetweenRestrictor() = default;
-
-    SecIdxBetweenRestrictor(std::shared_ptr<query::BetweenPredicate> betweenPredicate)
-            : _betweenPredicate(betweenPredicate) {}
-
-    /**
-     * @brief Serialze this instance as SQL to the QueryTemplate.
-     */
-    void renderTo(QueryTemplate& qt) const override;
-
-    std::shared_ptr<query::ColumnRef const> getSecIdxColumnRef() const override;
-
-    std::string getSecIdxLookupQuery(std::string const& secondaryIndexDb,
-                                     std::string const& secondaryIndexTable,
-                                     std::string const& chunkColumn,
-                                     std::string const& subChunkColumn) const override;
-
-protected:
-    /**
-     * @brief Test if this is equal with rhs.
-     *
-     * This is an overidable helper function for operator==, it should only be called by that function, or at
-     * least make sure that typeid(this) == typeid(rhs) before calling isEqual.
-     */
-    bool isEqual(const SecIdxRestrictor& rhs) const override;
-
-private:
-    // Currently the only place the secondary index column appears is in the `value` parameter of the
-    // BetweenPredicate.
-    std::shared_ptr<query::BetweenPredicate> _betweenPredicate;
-};
-
-
 class SecIdxInRestrictor : public SecIdxRestrictor {
 public:
     SecIdxInRestrictor() = default;

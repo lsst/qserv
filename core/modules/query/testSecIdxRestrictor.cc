@@ -83,23 +83,6 @@ BOOST_AUTO_TEST_CASE(SecIdxCompRestrictorTestRight){
 }
 
 
-BOOST_AUTO_TEST_CASE(SecIdxBetweenRestrictorTest) {
-    auto restrictor = SecIdxBetweenRestrictor(
-            make_shared<BetweenPredicate>(ValueExpr::newColumnExpr("db", "tbl", "", "objectId"),
-                                          ValueExpr::newSimple(ValueFactor::newConstFactor("0")),
-                                          ValueExpr::newSimple(ValueFactor::newConstFactor("100000")),
-                                          false));
-    BOOST_CHECK_EQUAL(restrictor.sqlFragment(), "`db`.`tbl`.`objectId` BETWEEN 0 AND 100000");
-    BOOST_CHECK_EQUAL(restrictor.getSecIdxLookupQuery("db", "tbl", "chunkColumn", "subChunkColumn"),
-                      "SELECT `chunkColumn`, `subChunkColumn` "
-                      "FROM `db`.`tbl` "
-                      "WHERE `objectId` BETWEEN 0 AND 100000");
-    auto secIdxColRef = restrictor.getSecIdxColumnRef();
-    BOOST_REQUIRE(secIdxColRef != nullptr);
-    BOOST_CHECK_EQUAL(*secIdxColRef, ColumnRef("db", "tbl", "", "objectId"));
-}
-
-
 BOOST_AUTO_TEST_CASE(SecIdxInRestrictorTest) {
     vector<shared_ptr<ValueExpr>> candidates = {ValueExpr::newSimple(ValueFactor::newConstFactor("1")),
                                       ValueExpr::newSimple(ValueFactor::newConstFactor("3")),

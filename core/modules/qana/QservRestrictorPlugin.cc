@@ -362,33 +362,6 @@ std::shared_ptr<query::SecIdxInRestrictor> makeSecondaryIndexRestrictor(
 
 
 /**
- * @brief Make a Secondary Index comparison restrictor for the given between predicate, if one of the
- *      columns in the predicate is a director column.
- *
- * @param betweenPredicate
- * @param context
- * @return std::shared_ptr<query::SIBetweenRestr> The restrictor that corresponds to the given predicate if one
- *      of the columns is a director column, otherwise nullptr.
- */
-std::shared_ptr<query::SecIdxBetweenRestrictor> makeSecondaryIndexRestrictor(
-            query::BetweenPredicate const& betweenPredicate,
-            query::QueryContext const& context) {
-    if (isSecIndexCol(context, betweenPredicate.value->getColumnRef())) {
-        auto dirCol = getCorrespondingDirectorColumn(context, betweenPredicate.value->getColumnRef());
-        if (nullptr == dirCol) {
-            LOGS(_log, LOG_LVL_ERROR, "Failed to get director column for " <<
-                betweenPredicate.value->getColumnRef());
-            return nullptr;
-        }
-        return std::make_shared<query::SecIdxBetweenRestrictor>(std::make_shared<query::BetweenPredicate>(
-                query::ValueExpr::newSimple(dirCol), betweenPredicate.minValue,
-                betweenPredicate.maxValue, betweenPredicate.hasNot));
-    }
-    return nullptr;
-}
-
-
-/**
  * @brief Make a Secondary Index 'between' restrictor for the given comparison predicate, if one of the
  *      columns in the comparison predicate is a director column.
  *
@@ -448,9 +421,6 @@ std::vector<std::shared_ptr<query::SecIdxRestrictor>> getSecIndexRestrictors(que
             } else if (auto const compPredicate =
                     std::dynamic_pointer_cast<query::CompPredicate>(factorTerm)) {
                 restrictor = makeSecondaryIndexRestrictor(*compPredicate, context);
-            } else if (auto const betweenPredicate =
-                    std::dynamic_pointer_cast<query::BetweenPredicate>(factorTerm)) {
-                restrictor = makeSecondaryIndexRestrictor(*betweenPredicate, context);
             }
             if (restrictor) {
                 LOGS(_log, LOG_LVL_TRACE, "Add restrictor: " << *restrictor << " for " << factorTerm);
