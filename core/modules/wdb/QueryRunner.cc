@@ -194,9 +194,15 @@ bool QueryRunner::runQuery() {
 MYSQL_RES* QueryRunner::_primeResult(std::string const& query) {
         bool queryOk = _mysqlConn->queryUnbuffered(query);
         if (!queryOk) {
+            /* &&&
             util::Error error(_mysqlConn->getErrno(), _mysqlConn->getError());
             _multiError.push_back(error);
             return nullptr;
+            */
+            sql::SqlErrorObject errObj;
+            errObj.setErrNo(_mysqlConn->getErrno());
+            errObj.addErrMsg("primeResult error " + _mysqlConn->getError());
+            throw errObj;
         }
         return _mysqlConn->getResult();
 }
@@ -278,6 +284,13 @@ bool QueryRunner::_fillRows(MYSQL_RES* result, int numFields, uint& rowCount, si
                 LOGS(_log, LOG_LVL_DEBUG, "Large result PoolEventThread was null. Probably already moved. b");
             }
         }
+    }
+    unsigned int mysqlErrNo = _mysqlConn->getErrno();
+    if (mysqlErrNo) {
+        sql::SqlErrorObject errObj;
+        errObj.setErrNo(mysqlErrNo);
+        errObj.addErrMsg("fetch row error " + _mysqlConn->getError());
+        throw errObj;
     }
     return true;
 }
@@ -452,13 +465,16 @@ bool QueryRunner::_dispatchChannel() {
             for(auto const& query : queries) {
                 util::Timer sqlTimer;
                 sqlTimer.start();
-                MYSQL_RES* res = _primeResult(query); // This runs the SQL query.
+                MYSQL_RES* res = _primeResult(query); // This runs the SQL query. throws SqlErrorObj on failure.
                 sqlTimer.stop();
                 LOGS(_log, LOG_LVL_DEBUG, " fragment time=" << sqlTimer.getElapsed() << " query=" << query);
+                /* &&&
                 if (!res) {
+                    // &&& this appears to be wrong, erred is never checked in a meaningful way.  sql::SqlErrorObject or _multiError.push_back?
                     erred = true;
                     continue;
                 }
+                */
                 if (firstResult) {
                     firstResult = false;
                     _fillSchema(res);
@@ -478,6 +494,7 @@ bool QueryRunner::_dispatchChannel() {
         LOGS(_log, LOG_LVL_ERROR, "dispatchChannel " << e.errMsg());
         util::Error worker_err(e.errNo(), e.errMsg());
         _multiError.push_back(worker_err);
+        erred = true;
     }
     if (!_cancelled) {
         // Send results.
