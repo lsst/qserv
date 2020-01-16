@@ -37,6 +37,7 @@
 #include "lsst/log/Log.h"
 
 // Qserv headers
+#include "global/UnsupportedError.h"
 #include "mysql/MySqlConfig.h"
 #include "proto/worker.pb.h"
 #include "wbase/Base.h"
@@ -100,7 +101,15 @@ void Foreman::processTask(std::shared_ptr<wbase::Task> const& task) {
             }
         } else {
             auto qr = wdb::QueryRunner::newQueryRunner(task, _chunkResourceMgr, _mySqlConfig);
-            qr->runQuery();
+            bool success = false;
+            try {
+                success = qr->runQuery();
+            } catch (UnsupportedError const& e) {
+                LOGS(_log, LOG_LVL_ERROR, "runQuery threw UnsupportedError " << e.what() << *task);
+            }
+            if (not success) {
+                LOGS(_log, LOG_LVL_ERROR, "runQuery failed " << *task);
+            }
         }
         // Transmission is done, but 'task' contains statistics that are still useful.
         task->sendChannel.reset(); // Frees its xrdsvc::SsiRequest object.
