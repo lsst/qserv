@@ -145,4 +145,15 @@ bool HttpRequestQuery::optionalBool(string const& param,
     return not (itr->second.empty() or (itr->second == "0"));
 }
 
+
+double HttpRequestQuery::requiredDouble(string const& param) const {
+    auto&& itr = _query.find(param);
+    if (itr == _query.end()) {
+        throw invalid_argument(
+                string(__func__) + " parameter '" + param + "' is missing");
+    }
+    return stod(itr->second);
+
+}
+
 }}}  // namespace lsst::qserv::replica
