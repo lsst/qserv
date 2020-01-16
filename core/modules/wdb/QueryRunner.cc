@@ -194,11 +194,6 @@ bool QueryRunner::runQuery() {
 MYSQL_RES* QueryRunner::_primeResult(std::string const& query) {
         bool queryOk = _mysqlConn->queryUnbuffered(query);
         if (!queryOk) {
-            /* &&&
-            util::Error error(_mysqlConn->getErrno(), _mysqlConn->getError());
-            _multiError.push_back(error);
-            return nullptr;
-            */
             sql::SqlErrorObject errObj;
             errObj.setErrNo(_mysqlConn->getErrno());
             errObj.addErrMsg("primeResult error " + _mysqlConn->getError());
@@ -465,16 +460,9 @@ bool QueryRunner::_dispatchChannel() {
             for(auto const& query : queries) {
                 util::Timer sqlTimer;
                 sqlTimer.start();
-                MYSQL_RES* res = _primeResult(query); // This runs the SQL query. throws SqlErrorObj on failure.
+                MYSQL_RES* res = _primeResult(query); // This runs the SQL query, throws SqlErrorObj on failure.
                 sqlTimer.stop();
                 LOGS(_log, LOG_LVL_DEBUG, " fragment time=" << sqlTimer.getElapsed() << " query=" << query);
-                /* &&&
-                if (!res) {
-                    // &&& this appears to be wrong, erred is never checked in a meaningful way.  sql::SqlErrorObject or _multiError.push_back?
-                    erred = true;
-                    continue;
-                }
-                */
                 if (firstResult) {
                     firstResult = false;
                     _fillSchema(res);
