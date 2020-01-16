@@ -760,8 +760,8 @@ DatabaseFamilyInfo ConfigurationMySQL::addDatabaseFamily(DatabaseFamilyInfo cons
     if (info.numSubStripes == 0) {
         throw invalid_argument(context_ + "  the number of sub-stripes level can't be 0");
     }
-    if (info.overlap < 0) {
-        throw invalid_argument(context_ + "  the overlap can't have a negative value");
+    if (info.overlap <= 0) {
+        throw invalid_argument(context_ + "  the overlap can't be less or equal to 0");
     }
 
     database::mysql::ConnectionHandler handler;
