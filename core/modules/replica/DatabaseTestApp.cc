@@ -128,156 +128,177 @@ DatabaseTestApp::DatabaseTestApp(int argc, char* argv[])
          "DATABASES",
          "FIND_OLDEST_REPLICAS",
          "FIND_REPLICAS",
+         "FIND_REPLICAS_1",
          "FIND_WORKER_REPLICAS_1",
          "FIND_WORKER_REPLICAS_2",
          "FIND_WORKER_REPLICAS_3",
          "FIND_WORKER_REPLICAS_4"
         },
         _operation
-    );
-    parser().option(
+    ).option(
         "tables-page-size",
         "The number of rows in the table of replicas (0 means no pages).",
-        _pageSize);
-    {
-        auto& command = parser().command("CONFIGURATION");
+        _pageSize
+    );
 
-        command.description(
-            "Dump the current configuration of the Replication system.");
-    }
-    {
-        auto& command = parser().command("DATABASES");
+    parser().command(
+        "CONFIGURATION"
+    ).description(
+        "Dump the current configuration of the Replication system."
+    );
 
-        command.description(
-            "Get a list of databases for a given selection criteria from Configuration."
-            " If flags --all and --published are not used then the command will report"
-            " a subset of databases (for a given family or all families) which are not"
-            " yet PUBLISHED.");
-        command.option(
-            "database-family",
-            "The name of a database family. This option will narrow a scope of the operation"
-            " to the specified family only. Otherwise databases of all known families will"
-            " be considered.",
-            _databaseFamilyName);
-        command.flag(
-            "all",
-            "Report all known databases in the specified family (if the one was provided)"
-            " or all families regardless if they are PUBLISHED or not. If this flag is not"
-            " used then a subset of databases in question is determined by a presence of"
-            " flag --published",
-            _allDatabases);
-        command.flag(
-            "published",
-            "Report a subset of PUBLISHED databases in the specified family (if the one was provided)"
-            " or all families. This flag is used only if flag --all is not used.",
-            _isPublished);
-    }
-    {
-        auto& command = parser().command("FIND_OLDEST_REPLICAS");
+    parser().command(
+        "DATABASES"
+    ).description(
+        "Get a list of databases for a given selection criteria from Configuration."
+        " If flags --all and --published are not used then the command will report"
+        " a subset of databases (for a given family or all families) which are not"
+        " yet PUBLISHED."
+    ).option(
+        "database-family",
+        "The name of a database family. This option will narrow a scope of the operation"
+        " to the specified family only. Otherwise databases of all known families will"
+        " be considered.",
+        _databaseFamilyName
+    ).flag(
+        "all",
+        "Report all known databases in the specified family (if the one was provided)"
+        " or all families regardless if they are PUBLISHED or not. If this flag is not"
+        " used then a subset of databases in question is determined by a presence of"
+        " flag --published",
+        _allDatabases
+    ).flag(
+        "published",
+        "Report a subset of PUBLISHED databases in the specified family (if the one was provided)"
+        " or all families. This flag is used only if flag --all is not used.",
+        _isPublished
+    );
 
-        command.description(
-            "Find oldest replicas. The number of replicas can be also limited by using"
-            " option --replicas.");
-        command.option(
-            "replicas",
-            "The maximum number of replicas to be returned when querying the database.",
-            _maxReplicas);
-        command.flag(
-            "enabled-workers-only",
-            "Limit a scope of an operation to workers which are presently enabled in"
-            " the Replication system.",
-            _enabledWorkersOnly);
-    }
-    {
-        auto& command = parser().command("FIND_REPLICAS");
+    parser().command(
+        "FIND_OLDEST_REPLICAS"
+    ).description(
+        "Find oldest replicas. The number of replicas can be also limited by using"
+        " option --replicas."
+    ).option(
+        "replicas",
+        "The maximum number of replicas to be returned when querying the database.",
+        _maxReplicas
+    ).flag(
+        "enabled-workers-only",
+        "Limit a scope of an operation to workers which are presently enabled in"
+        " the Replication system.",
+        _enabledWorkersOnly
+    );
 
-        command.description(
-            "Find replicas of a given chunk in a scope of a database.");
-        command.required(
-            "chunk",
-            "The chunk number.",
-            _chunk);
-        command.required(
-            "database",
-            "The name of a database.",
-            _databaseName);
-        command.flag(
-            "enabled-workers-only",
-            "Limit a scope of an operation to workers which are presently enabled in"
-            " the Replication system.",
-            _enabledWorkersOnly);
-    }
-    {
-        auto& command = parser().command("FIND_WORKER_REPLICAS_1");
+    parser().command(
+        "FIND_REPLICAS"
+    ).description(
+        "Find replicas of a given chunk in a scope of a database."
+    ).required(
+        "chunk",
+        "The chunk number.",
+        _chunk
+    ).required(
+        "database",
+        "The name of a database.",
+        _databaseName
+    ).flag(
+        "enabled-workers-only",
+        "Limit a scope of an operation to workers which are presently enabled in"
+        " the Replication system.",
+        _enabledWorkersOnly
+    );
 
-        command.description(
-            "Find replicas at a given worker.");
-        command.required(
-            "worker",
-            "The name of a worker.",
-            _workerName);
-    }
-    {
-        auto& command = parser().command("FIND_WORKER_REPLICAS_2");
+    parser().command(
+        "FIND_REPLICAS_1"
+    ).description(
+        "Find replicas of a collection of two chunks in a scope of a database."
+    ).required(
+        "chunk1",
+        "The first chunk number.",
+        _chunk1
+    ).required(
+        "chunk2",
+        "The second chunk number.",
+        _chunk2
+    ).required(
+        "database",
+        "The name of a database.",
+        _databaseName
+    ).flag(
+        "enabled-workers-only",
+        "Limit a scope of an operation to workers which are presently enabled in"
+        " the Replication system.",
+        _enabledWorkersOnly
+    );
 
-        command.description(
-            "Find replicas at a given worker for the specified database only."
-        );
-        command.required(
-            "worker",
-            "The name of a worker",
-            _workerName
-        );
-        command.required(
-            "database",
-            "The name of a database",
-            _databaseName
-        );
-    }
-    {
-        auto& command = parser().command("FIND_WORKER_REPLICAS_3");
+    parser().command(
+        "FIND_WORKER_REPLICAS_1"
+    ).description(
+        "Find replicas at a given worker."
+    ).required(
+        "worker",
+        "The name of a worker.",
+        _workerName
+    );
 
-        command.description(
-            "Find replicas of a chunk at a given worker.");
-        command.required(
-            "chunk",
-            "The chunk number.",
-            _chunk);
-        command.required(
-            "worker",
-            "The name of a worker",
-            _workerName);
-    }
-    {
-        auto& command = parser().command("FIND_WORKER_REPLICAS_4");
+    parser().command(
+        "FIND_WORKER_REPLICAS_2"
+    ).description(
+        "Find replicas at a given worker for the specified database only."
+    ).required(
+        "worker",
+        "The name of a worker",
+        _workerName
+    ).required(
+        "database",
+        "The name of a database",
+        _databaseName
+    );
 
-        command.description(
-            "Find replicas of a chunk at a given worker.");
-        command.required(
-            "chunk",
-            "The chunk number.",
-            _chunk);
-        command.required(
-            "worker",
-            "The name of a worker.",
-            _workerName);
-        command.required(
-            "database-family",
-            "The name of a database family.",
-            _databaseFamilyName);
-        command.flag(
-            "all",
-            "Report all known databases in the specified family (if the one was provided)"
-            " or all families regardless if they are PUBLISHED or not. If this flag is not"
-            " used then a subset of databases in question is determined by a presence of"
-            " flag --published",
-            _allDatabases);
-        command.flag(
-            "published",
-            "Report a subset of PUBLISHED databases in the specified family (if the one was provided)"
-            " or all families. This flag is used only if flag --all is not used.",
-            _isPublished);
-    }
+    parser().command(
+        "FIND_WORKER_REPLICAS_3"
+    ).description(
+        "Find replicas of a chunk at a given worker."
+    ).required(
+        "chunk",
+        "The chunk number.",
+        _chunk
+    ).required(
+        "worker",
+        "The name of a worker",
+        _workerName
+    );
+
+    parser().command(
+        "FIND_WORKER_REPLICAS_4"
+    ).description(
+        "Find replicas of a chunk at a given worker."
+    ).required(
+        "chunk",
+        "The chunk number.",
+        _chunk
+    ).required(
+        "worker",
+        "The name of a worker.",
+        _workerName
+    ).required(
+        "database-family",
+        "The name of a database family.",
+        _databaseFamilyName
+    ).flag(
+        "all",
+        "Report all known databases in the specified family (if the one was provided)"
+        " or all families regardless if they are PUBLISHED or not. If this flag is not"
+        " used then a subset of databases in question is determined by a presence of"
+        " flag --published",
+        _allDatabases
+    ).flag(
+        "published",
+        "Report a subset of PUBLISHED databases in the specified family (if the one was provided)"
+        " or all families. This flag is used only if flag --all is not used.",
+        _isPublished
+    );
 }
 
 
@@ -307,6 +328,16 @@ int DatabaseTestApp::runImpl() {
             serviceProvider()->databaseServices()->findReplicas(
                 replicas,
                 _chunk,
+                _databaseName,
+                _enabledWorkersOnly
+            );
+        } else if ("FIND_REPLICAS_1" == _operation) {
+            vector<unsigned int> chunks;
+            chunks.push_back(_chunk1);
+            chunks.push_back(_chunk2);
+            serviceProvider()->databaseServices()->findReplicas(
+                replicas,
+                chunks,
                 _databaseName,
                 _enabledWorkersOnly
             );

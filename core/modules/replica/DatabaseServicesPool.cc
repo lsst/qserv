@@ -186,13 +186,29 @@ void DatabaseServicesPool::findOldestReplicas(vector<ReplicaInfo>& replicas,
 void DatabaseServicesPool::findReplicas(vector<ReplicaInfo>& replicas,
                                         unsigned int chunk,
                                         string const& database,
-                                        bool enabledWorkersOnly) {
+                                        bool enabledWorkersOnly,
+                                        bool includeFileInfo) {
 
     ServiceAllocator service(shared_from_base<DatabaseServicesPool>());
     service()->findReplicas(replicas,
                             chunk,
                             database,
-                            enabledWorkersOnly);
+                            enabledWorkersOnly,
+                            includeFileInfo);
+}
+
+
+void DatabaseServicesPool::findReplicas(vector<ReplicaInfo>& replicas,
+                                        vector<unsigned int> const& chunks,
+                                        string const& database,
+                                        bool enabledWorkersOnly,
+                                        bool includeFileInfo) {
+    ServiceAllocator service(shared_from_base<DatabaseServicesPool>());
+    service()->findReplicas(replicas,
+                            chunks,
+                            database,
+                            enabledWorkersOnly,
+                            includeFileInfo);
 }
 
 

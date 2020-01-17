@@ -34,9 +34,7 @@ namespace replica {
  * used by the Replication system implementation.
  */
 class DatabaseTestApp : public Application {
-
 public:
-
     /// The pointer type for instances of the class
     typedef std::shared_ptr<DatabaseTestApp> Ptr;
 
@@ -44,15 +42,10 @@ public:
      * The factory method is the only way of creating objects of this class
      * because of the very base class's inheritance from 'enable_shared_from_this'.
      *
-     * @param argc
-     *   the number of command-line arguments
-     *
-     * @param argv
-     *   the vector of command-line arguments
+     * @param argc the number of command-line arguments
+     * @param argv the vector of command-line arguments
      */
     static Ptr create(int argc, char* argv[]);
-
-    // Default construction and copy semantics are prohibited
 
     DatabaseTestApp()=delete;
     DatabaseTestApp(DatabaseTestApp const&)=delete;
@@ -61,13 +54,9 @@ public:
     ~DatabaseTestApp() override=default;
 
 protected:
-
-    /// @see Application::runImpl()
     int runImpl() final;
 
 private:
-
-    /// @see DatabaseTestApp::create()
     DatabaseTestApp(int argc, char* argv[]);
 
     /// The name of a test
@@ -80,8 +69,10 @@ private:
     /// the Replication system.
     bool _enabledWorkersOnly = false;
 
-    /// The chunk number
-    unsigned int _chunk = 0;
+    /// The chunk numbers
+    unsigned int _chunk  = 0;
+    unsigned int _chunk1 = 0;
+    unsigned int _chunk2 = 0;
 
     /// The name of a worker
     std::string _workerName;

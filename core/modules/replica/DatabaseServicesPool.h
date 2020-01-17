@@ -104,7 +104,14 @@ public:
     void findReplicas(std::vector<ReplicaInfo>& replicas,
                       unsigned int chunk,
                       std::string const& database,
-                      bool enabledWorkersOnly) final;
+                      bool enabledWorkersOnly,
+                      bool includeFileInfo) final;
+
+    void findReplicas(std::vector<ReplicaInfo>& replicas,
+                      std::vector<unsigned int> const& chunks,
+                      std::string const& database,
+                      bool enabledWorkersOnly,
+                      bool includeFileInfo) final;
 
     void findWorkerReplicas(std::vector<ReplicaInfo>& replicas,
                             std::string const& worker,
