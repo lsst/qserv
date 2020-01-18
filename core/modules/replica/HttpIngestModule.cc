@@ -86,6 +86,43 @@ string leastLoadedWorker(DatabaseServices::Ptr const& databaseServices,
     return worker;
 }
 
+/**
+ * The optimized version of the previously defined function will
+ * re-use and update the transient replica disposition cache when
+ * selecting a candidate worker. Each worker's entry in the cache
+ * will be populated from the database first time 
+ *
+ * @param worker2replicasCache  the cache of replica disposition for workers
+ * @param databaseServices  the service used for pulling the initial replica
+ *   disposition counters for workers.
+ * @param workers  a collection of workers to be evaluated as candidates.
+ * @return the name of a worker which has the least number of replicas
+ */
+template<typename COLLECTION_OF_WORKERS>
+string leastLoadedWorker(map<string,size_t>& worker2replicasCache,
+                         DatabaseServices::Ptr const& databaseServices,
+                         COLLECTION_OF_WORKERS const& workers) {
+    string worker;
+    string const noSpecificDatabase;
+    bool   const allDatabases = true;
+    size_t numReplicas = numeric_limits<size_t>::max();
+    for (auto&& candidateWorker: workers) {
+        if (worker2replicasCache.count(candidateWorker) == 0) {
+            worker2replicasCache[candidateWorker] =
+                    databaseServices->numWorkerReplicas(candidateWorker,
+                                                        noSpecificDatabase,
+                                                        allDatabases);
+        } 
+        size_t const num = worker2replicasCache[candidateWorker];
+        if (num < numReplicas) {
+            numReplicas = num;
+            worker = candidateWorker;
+        }
+    }
+    if (not worker.empty()) worker2replicasCache[worker]++;
+    return worker;
+}
+
 
 /**
  * The optimized version of the previously defined function will
