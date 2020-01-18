@@ -153,7 +153,6 @@ double HttpRequestQuery::requiredDouble(string const& param) const {
                 string(__func__) + " parameter '" + param + "' is missing");
     }
     return stod(itr->second);
-
 }
 
 }}}  // namespace lsst::qserv::replica
