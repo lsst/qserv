@@ -76,10 +76,7 @@ class SQLBackend {
 public:
     using Ptr=std::shared_ptr<SQLBackend>;
 
-    SQLBackend(mysql::MySqlConfig const& mc)
-        : _sqlConn(sql::SqlConnectionFactory::make(sql::SqlConfig(mc))), _uid(getpid()) {
-        _memLockAcquire();
-    }
+    SQLBackend(mysql::MySqlConfig const& mc);
 
     virtual ~SQLBackend() {
         _memLockRelease();
@@ -94,10 +91,8 @@ public:
     virtual void memLockRequireOwnership();
 
 protected:
-    SQLBackend() : _uid(getpid()) {};
-
     /// Construct a fake instance
-    SQLBackend(char) : _uid(getpid()) {}
+    SQLBackend();
 
     virtual void _discard(ScTableVector::const_iterator begin, ScTableVector::const_iterator end);
 
@@ -124,7 +119,7 @@ protected:
     std::string _lockDb;
     std::string _lockTbl;
     std::string _lockDbTbl;
-    int _uid;
+    std::string _uid; // uuid
 };
 
 
