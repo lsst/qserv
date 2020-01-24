@@ -29,6 +29,9 @@
 #include <iostream>
 
 // Third-party headers
+#include "boost/uuid/uuid.hpp"
+#include "boost/uuid/uuid_generators.hpp"
+#include "boost/uuid/uuid_io.hpp"
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -42,12 +45,27 @@ namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.wdb.ChunkResource");
 
+std::string makeUuid() {
+    boost::uuids::uuid id = boost::uuids::random_generator()();
+    return boost::uuids::to_string(id);
+}
+
 } // anonymous namespace
 
 
 namespace lsst {
 namespace qserv {
 namespace wdb {
+
+
+SQLBackend::SQLBackend() : _uid(makeUuid()) {
+}
+
+
+SQLBackend::SQLBackend(mysql::MySqlConfig const& mc)
+     : _sqlConn(sql::SqlConnectionFactory::make(sql::SqlConfig(mc))), _uid(makeUuid()) {
+     _memLockAcquire();
+ }
 
 
 std::ostream& operator<<(std::ostream& os, ScTable const& st) {
@@ -130,10 +148,9 @@ SQLBackend::LockStatus SQLBackend::_memLockStatus() {
         LOGS(_log, LOG_LVL_WARN, "memLockStatus unexpected results, assuming LOCKED_OTHER. err=" << err.printErrMsg());
         return LOCKED_OTHER;
     }
-    int uid = atoi(uidStr.c_str());
-    if (uid != _uid) {
+    if (uidStr != _uid) {
         LOGS(_log, LOG_LVL_WARN, "memLockStatus LOCKED_OTHER wrong uid. Expected "
-             << _uid << " got " << uid << " err=" << err.printErrMsg());
+             << _uid << " got " << uidStr << " err=" << err.printErrMsg());
         return LOCKED_OTHER;
     }
     return LOCKED_OURS;
@@ -148,17 +165,23 @@ void SQLBackend::_memLockAcquire() {
     LockStatus mls = _memLockStatus();
     if (mls != UNLOCKED) {
         LOGS(_log, LOG_LVL_WARN, "Memory tables were not released cleanly! LockStatus=" << mls);
+        // Drop the database to clear the table.
+        std::string sql = "DROP DATABASE " + _lockDb + ";";
+        sql::SqlErrorObject err;
+        if (!_sqlConn->runQuery(sql, err)) {
+            LOGS(_log, LOG_LVL_WARN, "Could not drop memLockDB " << _lockDb << " " << err.printErrMsg());
+        }
     }
 
     // Lock the memory tables.
     std::string sql = "CREATE DATABASE IF NOT EXISTS " + _lockDb + ";";
-    sql += "CREATE TABLE IF NOT EXISTS " + _lockDbTbl + " ( keyId INT UNIQUE, uid INT ) ENGINE = MEMORY;";
+    sql += "CREATE TABLE IF NOT EXISTS " + _lockDbTbl + " ( keyId INT UNIQUE, uid VARCHAR(255) ) ENGINE = MEMORY;";
     _execLockSql(sql);
     // The following 2 lines will cause the new worker to always take the lock.
     sql = "TRUNCATE TABLE " + _lockDbTbl;
     _execLockSql(sql);
     std::ostringstream insert;
-    insert << "INSERT INTO " << _lockDbTbl << " (keyId, uid) VALUES(1, " << _uid << " )";
+    insert << "INSERT INTO " << _lockDbTbl << " (keyId, uid) VALUES(1, '" << _uid << "' )";
     _execLockSql(insert.str());
     _lockAquired = true;
 
