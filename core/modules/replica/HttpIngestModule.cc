@@ -1494,6 +1494,8 @@ pair<string,size_t> HttpIngestModule::_buildEmptyChunksListImpl(string const& da
     vector<unsigned int> chunks;
     databaseServices->findDatabaseChunks(chunks, database, enabledWorkersOnly);
 
+    // Sanitize the collection of chunks to ensure it only has unique
+    // chunk numbers.
     set<unsigned int> uniqueChunks;
     for (auto chunk: chunks) uniqueChunks.insert(chunk);
 
@@ -1525,7 +1527,7 @@ pair<string,size_t> HttpIngestModule::_buildEmptyChunksListImpl(string const& da
     ofs.flush();
     ofs.close();
     
-    return make_pair(file, chunks.size());
+    return make_pair(file, uniqueChunks.size());
 }
 
 
