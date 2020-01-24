@@ -88,6 +88,8 @@ public:
     bool optionalBool(std::string const& param,
                       bool defaultValue=false) const;
 
+    double requiredDouble(std::string const& param) const;
+
 private:
 
     /// The input map of parameters is stored as a view for the efficiency

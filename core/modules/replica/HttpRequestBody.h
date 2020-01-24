@@ -98,7 +98,33 @@ public:
         if (objJson.find(name) != objJson.end()) return objJson[name];
         return defaultValue;
     }
-};
+
+    /**
+     * Find and return a vector of values for the specified required parameter
+     * @param name  the name of a parameter
+     * @return a collection of the values for the parameter
+     * @throws invalid_argument  if the parameter wasn't found
+     */
+    template <typename T>
+    std::vector<T> requiredColl(std::string const& name) const {
+        auto const itr = objJson.find(name);
+        if (objJson.find(name) == objJson.end()) {
+            throw std::invalid_argument(
+                    "HttpRequestBody::" + std::string(__func__) + "<T> required parameter " + name +
+                    " is missing in the request body");
+        }
+        if (not itr->is_array()) {
+            throw std::invalid_argument(
+                    "HttpRequestBody::" + std::string(__func__) + "<T> a value of the required parameter " + name +
+                    " is not an array");
+        }
+        std::vector<T> coll;
+        for (size_t i = 0, size = itr->size(); i < size; ++i) {
+            T val = (*itr)[i];
+            coll.push_back(val);
+        }
+        return coll;
+    }};
 
 }}} // namespace lsst::qserv::replica
 

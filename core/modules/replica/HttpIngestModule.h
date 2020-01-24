@@ -79,6 +79,7 @@ protected:
      *   DELETE-DATABASE           for deleting an unpublished (partially ingest) database
      *   ADD-TABLE                 for adding a new table for the data ingest
      *   ADD-CHUNK                 for registering (or requesting a status of) of a new chunk
+     *   ADD-CHUNK-LIST            for registering (or requesting a status of) of many new chunks
      *   BUILD-CHUNK-LIST          for building (or rebuilding) an "empty chunk list"
      *   REGULAR                   for reporting connection parameters of the ingest servers
      *                             required to load the regular tables
@@ -151,6 +152,14 @@ private:
      */
     void _addChunk(qhttp::Request::Ptr const& req,
                    qhttp::Response::Ptr const& resp);
+
+    /**
+     * Register (if it's not register yet) a list of chunks for ingest.
+     * Return connection parameters to an end-point services (may differ
+     * from chunk to chunk) where data of each chunk will need to be ingested.
+     */
+    void _addChunks(qhttp::Request::Ptr const& req,
+                    qhttp::Response::Ptr const& resp);
 
     /**
      * (Re-)build the "empty chunks list" for a database.

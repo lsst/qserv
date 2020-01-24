@@ -271,6 +271,11 @@ void HttpProcessor::_initialize() {
                 self->_ingestModule->execute(req, resp, "ADD-CHUNK");
             }
         },
+        {"POST", "/ingest/v1/chunks",
+            [self](qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp) {
+                self->_ingestModule->execute(req, resp, "ADD-CHUNK-LIST");
+            }
+        },
         {"POST", "/ingest/v1/chunk/empty",
             [self](qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp) {
                 self->_ingestModule->execute(req, resp, "BUILD-CHUNK-LIST");

@@ -761,7 +761,8 @@ void DatabaseServicesMySQL::findOldestReplicas(vector<ReplicaInfo>& replicas,
 void DatabaseServicesMySQL::findReplicas(vector<ReplicaInfo>& replicas,
                                          unsigned int chunk,
                                          string const& database,
-                                         bool enabledWorkersOnly) {
+                                         bool enabledWorkersOnly,
+                                         bool includeFileInfo) {
     string const context =
         "DatabaseServicesMySQL::" + string(__func__) + " chunk=" + to_string(chunk) +
         "  database=" + database +
@@ -785,7 +786,54 @@ void DatabaseServicesMySQL::findReplicas(vector<ReplicaInfo>& replicas,
         _conn->execute(
             [&](decltype(_conn) conn) {
                 conn->begin();
-                _findReplicasImpl(lock, replicas, query);
+                _findReplicasImpl(lock, replicas, query, includeFileInfo);
+                conn->rollback();
+            }
+        );
+    } catch (database::mysql::Error const& ex) {
+        LOGS(_log, LOG_LVL_ERROR, context << "failed, exception: " << ex.what());
+        if (_conn->inTransaction()) _conn->rollback();
+        throw;
+    }
+    LOGS(_log, LOG_LVL_DEBUG, context << "** DONE ** replicas.size(): " << replicas.size());
+}
+
+
+void DatabaseServicesMySQL::findReplicas(vector<ReplicaInfo>& replicas,
+                                         vector<unsigned int> const& chunks,
+                                         string const& database,
+                                         bool enabledWorkersOnly,
+                                         bool includeFileInfo) {
+    string const context =
+        "DatabaseServicesMySQL::" + string(__func__) + " chunks.size()=" + to_string(chunks.size()) +
+        "  database=" + database +
+        " ";
+
+    LOGS(_log, LOG_LVL_DEBUG, context);
+
+    // The trivial optimization for the trivial input
+    if (chunks.empty()) {
+        replicas.clear();
+        return;
+    }
+
+    if (not _configuration->isKnownDatabase(database)) {
+        throw invalid_argument(context + "unknown database");
+    }
+
+    util::Lock lock(_mtx, context);
+
+    try {
+        string const query =
+            "SELECT * FROM " +  _conn->sqlId("replica") +
+            "  WHERE "       +  _conn->sqlIn("chunk",       chunks) +
+            "    AND "       +  _conn->sqlEqual("database", database) +
+            (enabledWorkersOnly ?
+             "   AND "       +  _conn->sqlIn("worker", _configuration->workers(true)) : "");
+        _conn->execute(
+            [&](decltype(_conn) conn) {
+                conn->begin();
+                _findReplicasImpl(lock, replicas, query, includeFileInfo);
                 conn->rollback();
             }
         );

@@ -127,12 +127,10 @@ public:
     /**
      * Translate an instance into a JSON object
      *
-     * @param isCurrent
-     *   (optional) flag which will set an extra property 'current' to the desired
-     *    state (as defined by the value of the flag)
+     * @param isCurrent (optional) flag which will set an extra property 'current'
+     *   to the desired state (as defined by the value of the flag)
      *
-     * @return
-     *   JSON representation of the object
+     * @return JSON representation of the object
      */
     nlohmann::json toJson(bool isCurrent=false) const;
 };
@@ -280,16 +278,13 @@ public:
      * Save the state of the Controller. Note this operation can be called
      * just once for a particular instance of the Controller.
      *
-     * @param identity
-     *   an object encapsulating a unique identity of
+     * @param identity an object encapsulating a unique identity of
      *   the Controller instance.
      *
-     * @param startTime
-     *   a time (milliseconds since UNIX Epoch) when an instance of
-     *   the Controller was created.
+     * @param startTime a time (milliseconds since UNIX Epoch) when an instance
+     *   of the Controller was created.
      *
-     * @throws std::logic_error
-     *   if this Controller's state is already found in a database
+     * @throws std::logic_error if this Controller's state is already found in a database
      */
     virtual void saveState(ControllerIdentity const& identity,
                            uint64_t startTime) = 0;
@@ -301,11 +296,8 @@ public:
      * The Job::Option object is explicitly passed as a parameter to avoid
      * making a blocked call back to the job which may create a deadlock.
      *
-     * @param job
-     *   reference to a Job object
-     *
-     * @param options
-     *   reference to a Job options object
+     * @param job a reference to a Job object
+     * @param options a reference to a Job options object
      */
     virtual void saveState(Job const& job,
                            Job::Options const& options) = 0;
@@ -325,14 +317,9 @@ public:
      * The Performance object is explicitly passed as a parameter to avoid
      * making a blocked call back to the request which may create a deadlock.
      *
-     * @param request
-     *   reference to a QservMgtRequest object
-     *
-     * @param performance
-     *   reference to a Performance object
-     *
-     * @param serverError
-     *   server error message (if any)
+     * @param request a reference to a QservMgtRequest object
+     * @param performance a reference to a Performance object
+     * @param serverError a server error message (if any)
      */
     virtual void saveState(QservMgtRequest const& request,
                            Performance const& performance,
@@ -345,11 +332,8 @@ public:
      * The Performance object is explicitly passed as a parameter to avoid
      * making a blocked call back to the request which may create a deadlock.
      *
-     * @param request
-     *   reference to a Request object
-     *
-     * @param performance
-     *   reference to a Performance object
+     * @param request a reference to a Request object
+     * @param performance a reference to a Performance object
      */
     virtual void saveState(Request const& request,
                            Performance const& performance) = 0;
@@ -360,14 +344,10 @@ public:
      * This method is supposed to be called by monitoring requests (State* and Stop*)
      * to update state of the corresponding target requests.
      *
-     * @param request
-     *   reference to the monitoring Request object
-     *
-     * @param targetRequestId
-     *   identifier of a target request
-     *
-     * @param targetRequestPerformance
-     *   performance counters of a target request obtained from a worker
+     * @param request a reference to the monitoring Request object
+     * @param targetRequestId an identifier of a target request
+     * @param targetRequestPerformance performance counters of a target request
+     *   obtained from a worker
      */
     virtual void updateRequestState(Request const& request,
                                     std::string const& targetRequestId,
@@ -376,8 +356,7 @@ public:
     /**
      * Update the status of replica in the corresponding tables.
      *
-     * @param info
-     *   a replica to be added/updated or deleted
+     * @param info a replica to be added/updated or deleted
      */
     virtual void saveReplicaInfo(ReplicaInfo const& info) = 0;
 
@@ -392,17 +371,10 @@ public:
      * - new replicas not present in the database will be registered in there
      * - existing replicas will be updated in the database
      *
-     * @param worker
-     *   worker name (as per the request)
-     *
-     * @param database
-     *   database name (as per the request)
-     *
-     * @param infoCollection
-     *   collection of replicas
-     *
-     * @throw std::invalid_argument
-     *   if the database is unknown or empty
+     * @param worker the name of a worker (as per the request)
+     * @param database the name of a database (as per the request)
+     * @param infoCollection a collection of replicas
+     * @throw std::invalid_argument if the database is unknown or empty
      */
     virtual void saveReplicaInfoCollection(std::string const& worker,
                                            std::string const& database,
@@ -413,28 +385,18 @@ public:
      * Return 'true' and populate a collection with up to the 'maxReplicas'
      * if any found.
      *
-     * @note
-     *   no assumption on a new status of the replica collection
+     * @note no assumption on a new status of the replica collection
      *   passed into the method should be made if the operation fails.
      *
-     * @param replica
-     *   reference to an object to be initialized
-     *
-     * @param maxReplicas
-     *   (optional) maximum number of replicas to be returned
-     *
-     * @param enabledWorkersOnly
-     *   (optional) if set to 'true' then only consider known
+     * @param replica a reference to an object to be initialized
+     * @param maxReplicas (optional) the maximum number of replicas to be returned
+     * @param enabledWorkersOnly (optional) if set to 'true' then only consider known
      *   workers which are enabled in the Configuration
-     *
-     * @param allDatabases
-     *   (optional) flag which if set to 'true' will include into the search all
+     * @param allDatabases (optional) a flag which if set to 'true' will include into the search all
      *   known database entries regardless of their PUBLISHED status. Otherwise
      *   a subset of databases as determined by the second flag 'isPublished'
      *   will get assumed.
-     * 
-     * @param isPublished
-     *   (optional) flag which is used if flag 'all' is set to 'false'
+     * @param isPublished (optional) a flag which is used if flag 'all' is set to 'false'
      *   to narrow a collection of databases included into the search.
      */
     virtual void findOldestReplicas(std::vector<ReplicaInfo>& replicas,
@@ -446,65 +408,71 @@ public:
     /**
      * Find all replicas for the specified chunk and the database.
      *
-     * @note
-     *   no assumption on a new status of the replica collection
+     * @note no assumption on a new status of the replica collection
      *   passed into the method should be made if the operation fails.
      *
-     * @param replicas
-     *   collection of replicas (if any found)
-     *
-     * @param chunk
-     *   the chunk whose replicas will be looked for
-     *
-     * @param database
-     *   the name of a database limiting a scope of the lookup operation
-     *
-     * @param enabledWorkersOnly
-     *   (optional) if set to 'true' then only consider known
+     * @param replicas a collection of replicas (if any found)
+     * @param chunk a chunk whose replicas will be looked for
+     * @param database the name of a database limiting a scope of the lookup operation
+     * @param enabledWorkersOnly (optional) if set to 'true' then only consider known
      *   workers which are enabled in the Configuration
+     * @param includeFileInfo a flag will instructs the method wether to provide
+     *   the detailed file info for each replica as well.
      *
-     * @throw std::invalid_argument
-     *   if the database is unknown or empty
+     * @throw std::invalid_argument if the database is unknown or empty
      */
     virtual void findReplicas(std::vector<ReplicaInfo>& replicas,
                               unsigned int chunk,
                               std::string const& database,
-                              bool enabledWorkersOnly=true) = 0;
+                              bool enabledWorkersOnly=true,
+                              bool includeFileInfo=true) = 0;
+
+    /**
+     * Find all replicas for the specified collection of chunks and the database.
+     * This is an optimized version of the sigle chunk lookup method defined above,
+     *
+     * @note no assumption on a new status of the replica collection
+     *   passed into the method should be mande if the operation fails.
+     *
+     * @param replicas a collection of replicas (if any found)
+     * @param chunks a collection chunk numbers whose replicas will be looked for
+     * @param database the name of a database limiting a scope of the lookup operation
+     * @param enabledWorkersOnly (optional) if set to 'true' then only consider known
+     *   workers which are enabled in the Configuration
+     * @param includeFileInfo a flag will instructs the method wether to provide
+     *   the detailed file info for each replica as well.
+     *
+     * @throw std::invalid_argument if the database is unknown or empty
+     */
+    virtual void findReplicas(std::vector<ReplicaInfo>& replicas,
+                              std::vector<unsigned int> const& chunks,
+                              std::string const& database,
+                              bool enabledWorkersOnly=true,
+                              bool includeFileInfo=true) = 0;
 
     /**
      * Find all replicas for the specified worker and a database (or all
      * databases if no specific one is requested).
      *
-     * @note
-     *   No assumption on a new status of the replica collection
+     * @note No assumption on a new status of the replica collection
      *   passed into the method should be made if the operation fails.
      *
-     * @param replicas
-     *   collection of replicas (if any found)
+     * @param replicas a collection of replicas (if any found)
+     * @param worker the name of a worker
+     * @param database (optional)the name of a database
+     * @param allDatabases (optional) a flag which if set to 'true' will include
+     *   into the search all known database entries regardless of their PUBLISHED
+     *   status. Otherwise a subset of databases as determined by the second flag
+     *   'isPublished' will get assumed. Note that this flag is used only if no
+     *   specific database name is provided as a value of the previous parameter
+     *   'database'.
+     * @param isPublished (optional) a flag which is used if flag 'all' is set to
+     *   'false' to narrow a collection of databases included into the search.
+     * @param includeFileInfo a flag will instructs the method wether to provide
+     *   the detailed file info for each replica as well.
      *
-     * @param worker
-     *   worker name
-     *
-     * @param database
-     *   (optional) database name
-     *
-     * @param allDatabases
-     *   (optional) flag which if set to 'true' will include into the search all
-     *   known database entries regardless of their PUBLISHED status. Otherwise
-     *   a subset of databases as determined by the second flag 'isPublished'
-     *   will get assumed. Note that this flag is used only if no specific database
-     *   name is provided as a value of the previous parameter 'database'.
-     * 
-     * @param isPublished
-     *   (optional) flag which is used if flag 'all' is set to 'false'
-     *   to narrow a collection of databases included into the search.
-     * 
-     * @param includeFileInfo
-     *   if set to 'true' then file info will also be added to each replica
-     *
-     * @throw std::invalid_argument
-     *   if the worker is unknown or its name is empty, or if the database
-     *   family is unknown (if provided)
+     * @throw std::invalid_argument if the worker is unknown or its name is empty,
+     *   or if the database family is unknown (if provided)
      */
     virtual void findWorkerReplicas(std::vector<ReplicaInfo>& replicas,
                                     std::string const& worker,
@@ -517,33 +485,24 @@ public:
      * Find the number of replicas for the specified worker and a database (or all
      * databases if no specific one is requested).
      *
-     * @note
-     *   No assumption on a new status of the replica collection
+     * @note No assumption on a new status of the replica collection
      *   passed into the method should be made if the operation fails.
      *
-     * @param worker
-     *   worker name
-     *
-     * @param database
-     *   (optional) database name
-     *
-     * @param allDatabases
-     *   (optional) flag which if set to 'true' will include into the search all
-     *   known database entries regardless of their PUBLISHED status. Otherwise
-     *   a subset of databases as determined by the second flag 'isPublished'
-     *   will get assumed. Note that this flag is used only if no specific database
-     *   name is provided as a value of the previous parameter 'database'.
-     * 
-     * @param isPublished
-     *   (optional) flag which is used if flag 'all' is set to 'false'
+     * @param worker the name of a worker
+     * @param database (optional) the name of a database
+     * @param allDatabases (optional) a flag which if set to 'true' will include
+     *   into the search all known database entries regardless of their PUBLISHED
+     *   status. Otherwise a subset of databases as determined by the second flag
+     *   'isPublished' will get assumed. Note that this flag is used only if
+     *   no specific database name is provided as a value of the previous parameter
+     *   'database'.
+     * @param isPublished (optional) a flag which is used if flag 'all' is set to 'false'
      *   to narrow a collection of databases included into the search.
      *
-     * @return
-     *   the number of replicas
+     * @return the number of replicas
      *
-     * @throw std::invalid_argument
-     *   if the worker is unknown or its name is empty, or if the database
-     *   family is unknown (if provided)
+     * @throw std::invalid_argument if the worker is unknown or its name is empty,
+     *   or if the database family is unknown (if provided)
      */
     virtual uint64_t numWorkerReplicas(std::string const& worker,
                                        std::string const& database=std::string(),
@@ -553,34 +512,22 @@ public:
     /**
      * Find all replicas for the specified chunk on a worker.
      *
-     * @note
-     *   no assumption on a new status of the replica collection
+     * @note no assumption on a new status of the replica collection
      *   passed into the method should be made if the operation fails.
      *
-     * @param replicas
-     *   collection of replicas (if any found)
+     * @param replicas a collection of replicas (if any found)
+     * @param chunk a chunk whose replicas will be looked for at the worker
+     * @param worker the name of a worker
+     * @param databaseFamily (optional) the name of a database family
+     * @param allDatabases (optional) a flag which if set to 'true' will include
+     *   into the search all known database entries regardless of their PUBLISHED
+     *   status. Otherwise a subset of databases as determined by the second flag
+     *   'isPublished' will get assumed.
+     * @param isPublished (optional) a flag which is used if flag 'all' is set
+     *   to 'false' to further narrow a collection of databases included into
+     *   the search.
      *
-     * @param chunk
-     *   the chunk whose replicas will be looked for at the worker
-     *
-     * @param worker
-     *   worker name of a worker
-     *
-     * @param databaseFamily
-     *   (optional) database family name
-     *
-     * @param allDatabases
-     *   (optional) flag which if set to 'true' will include into the search all
-     *   known database entries regardless of their PUBLISHED status. Otherwise
-     *   a subset of databases as determined by the second flag 'isPublished'
-     *   will get assumed.
-     * 
-     * @param isPublished
-     *   (optional) flag which is used if flag 'all' is set to 'false'
-     *   to narrow a collection of databases included into the search.
-     *
-     * @throw std::invalid_argument
-     *   if the worker is unknown or its name is empty,
+     * @throw std::invalid_argument if the worker is unknown or its name is empty,
      *   or if the database family is unknown (if provided)
      */
     virtual void findWorkerReplicas(std::vector<ReplicaInfo>& replicas,
@@ -593,22 +540,15 @@ public:
     /**
      * Find all replicas for the specified the database.
      *
-     * @note
-     *   no assumption on a new status of the replica collection
+     * @note no assumption on a new status of the replica collection
      *   passed into the method should be made if the operation fails.
      *
-     * @param replicas
-     *   collection of replicas (if any found)
-     *
-     * @param database
-     *   the name of a database limiting a scope of the lookup operation
-     *
-     * @param enabledWorkersOnly
-     *   (optional) if set to 'true' then only consider known
+     * @param replicas a collection of replicas (if any found)
+     * @param database the name of a database limiting a scope of the lookup operation
+     * @param enabledWorkersOnly (optional) if set to 'true' then only consider known
      *   workers which are enabled in the Configuration
      *
-     * @throw std::invalid_argument
-     *   if the database is unknown or empty
+     * @throw std::invalid_argument if the database is unknown or empty
      */
     virtual void findDatabaseReplicas(std::vector<ReplicaInfo>& replicas,
                                       std::string const& database,
@@ -617,49 +557,37 @@ public:
     /**
      * Find all unique chunk numbers for the specified the database.
      *
-     * @note
-     *   no assumption on a new status of the chunks collection
+     * @note no assumption on a new status of the chunks collection
      *   passed into the method should be made if the operation fails.
      *
-     * @param chunks
-     *   collection of chunk numbers (if any found)
-     *
-     * @param database
-     *   the name of a database limiting a scope of the lookup operation
-     *
-     * @param enabledWorkersOnly
-     *   (optional) if set to 'true' then only consider known
+     * @param chunks a collection of chunk numbers (if any found)
+     * @param database the name of a database limiting a scope of the lookup operation
+     * @param enabledWorkersOnly (optional) if set to 'true' then only consider known
      *   workers which are enabled in the Configuration
      *
-     * @throw std::invalid_argument
-     *   if the database is unknown or empty
+     * @throw std::invalid_argument if the database is unknown or empty
      */
     virtual void findDatabaseChunks(std::vector<unsigned int>& chunks,
                                     std::string const& database,
                                     bool enabledWorkersOnly=true) = 0;
 
     /**
-     * @return
-     *   a map (a histogram) representing the actual replication level
+     * @note the so called 'overflow' chunks will be implicitly excluded
+     *   from the report.
+     *
+     * @param database the name of a database
+     * @param workersToExclude a collection of workers to be excluded from
+     *   the consideration. If the empty collection is passed as a value of
+     *   the parameter then ALL known (regardless of their 'read-only or
+     *   'disabled' status) workers will be considered.
+     *
+     * @return a map (a histogram) representing the actual replication level
      *   for a database. The key of the map is the replication level (the number of
      *   replicas found for chunks in the group), and the value is the number of
      *   chunks at this replication level.
-     * 
-     * @note
-     *   the so called 'overflow' chunks will be implicitly excluded
-     *   from the report.
      *
-     * @param database
-     *   the name of a database
-     *
-     * @param workersToExclude
-     *   a collection of workers to be excluded from the consideration. If the empty
-     *   collection is passed as a value of the parameter then ALL known (regardless
-     *   of their 'read-only or 'disabled' status) workers will be considered.
-     *
-     * @throw std::invalid_argument
-     *   if the specified database or any of the workers in the optional collection
-     *   was not found in the configuration.
+     * @throw std::invalid_argument if the specified database or any of the workers
+     *   in the optional collection was not found in the configuration.
      */
     virtual std::map<unsigned int, size_t> actualReplicationLevel(
                                                 std::string const& database,
@@ -667,26 +595,20 @@ public:
                                                     std::vector<std::string>()) = 0;
 
     /**
-     * @return
-     *   the total number of chunks which only exist on any worker of
+     * Locate so called 'orphan' chunks which only exist on a specific set of
+     * workers which are supposed to be offline (or in some other unusable state).
+     *
+     * @param database the name of a database
+     * @param uniqueOnWorkers a collection of workers where to look for the chunks
+     *   in question
+     *
+     * @return the total number of chunks which only exist on any worker of
      *   the specified collection of unique workers, and not any other worker
      *   which is not in this collection. The method will always return 0 if
      *   the collection of workers passed into the method is empty.
      *
-     * @note
-     *   this operation is meant to locate so called 'orphan' chunks which only
-     *   exist on a specific set of workers which are supposed to be offline
-     *   (or in some other unusable state).
-     *
-     * @param database
-     *   the name of a database
-     *
-     * @param uniqueOnWorkers
-     *   a collection of workers where to look for the chunks in question
-     *
-     * @throw std::invalid_argument
-     *   if the specified database or any of the workers in the collection
-     *   was not found in the configuration.
+     * @throw std::invalid_argument if the specified database or any of the workers
+     *   in the collection was not found in the configuration.
      */
     virtual size_t numOrphanChunks(std::string const& database,
                                    std::vector<std::string> const& uniqueOnWorkers) = 0;
@@ -694,29 +616,21 @@ public:
     /**
      * Log a Controller event
      *
-     * @param event
-     *   event to be logged
+     * @param event an event to be logged
      */
     virtual void logControllerEvent(ControllerEvent const& event) = 0;
 
     /**
      * Search the log of controller events for events in the specified time range.
      *
-     * @param controllerId
-     *   unique identifier of a Controller whose events will be searched
-     *
-     * @param fromTimeStamp
-     *   (optional) the oldest (inclusive) timestamp for the search.
-     * 
-     * @param toTimeStamp
-     *   (optional) the most recent (inclusive) timestamp for the search.
-     *
-     * @param maxEntries
-     *   (optional) the maximum number of events to be reported. The default
+     * @param controllerId a unique identifier of a Controller whose events will
+     *   be searched
+     * @param fromTimeStamp (optional) the oldest (inclusive) timestamp for the search.
+     * @param toTimeStamp (optional) the most recent (inclusive) timestamp for the search.
+     * @param maxEntries (optional) the maximum number of events to be reported. The default
      *   values of 0 doesn't impose any limits.
      *
-     * @return
-     *   collection of events found within the specified time interval
+     * @return a collection of events found within the specified time interval
      */
     virtual std::list<ControllerEvent> readControllerEvents(
                                             std::string const& controllerId,
@@ -725,34 +639,26 @@ public:
                                             size_t maxEntries=0) = 0;
 
     /**
-     * Find an information on a controller
+     * Find an information on a controller.
      * 
-     * @param id
-     *   the unique identifier of the Controller
+     * @param id a unique identifier of the Controller
      * 
-     * @return
-     *   the description of the Controller
+     * @return the description of the Controller
      * 
-     * @throws DatabaseServicesNotFound
-     *   if no Controller was found for the specified identifier
+     * @throws DatabaseServicesNotFound if no Controller was found for
+     *   the specified identifier
      */
     virtual ControllerInfo controller(std::string const& id) = 0;
 
     /**
      * Find an information on controllers in the specified scope.
      *
-     * @param fromTimeStamp
-     *   (optional) the oldest (inclusive) timestamp for the search
-     * 
-     * @param toTimeStamp
-     *   (optional) the most recent (inclusive) timestamp for the search
+     * @param fromTimeStamp (optional) the oldest (inclusive) timestamp for the search
+     * @param toTimeStamp (optional) the most recent (inclusive) timestamp for the search
+     * @param maxEntries (optional) the maximum number of controllers to be reported.
+     *   The default values of 0 doesn't impose any limits.
      *
-     * @param maxEntries
-     *   (optional) the maximum number of controllers to be reported. The default
-     *   values of 0 doesn't impose any limits.
-     *
-     * @return
-     *   a collection of controllers descriptors sorted by the start time in
+     * @return a collection of controllers descriptors sorted by the start time in
      *   in the descent order
      */
     virtual std::list<ControllerInfo> controllers(
@@ -761,37 +667,26 @@ public:
                                         size_t maxEntries=0) = 0;
 
     /**
-     * Find an information on a request
+     * Find an information on a request.
      * 
-     * @param id
-     *   the unique identifier of a request
+     * @param id a unique identifier of a request
      * 
-     * @return
-     *   the description of the request
+     * @return the description of the request
      * 
-     * @throws DatabaseServicesNotFound
-     *   if no request was found for the specified identifier
+     * @throws DatabaseServicesNotFound if no request was found for the specified identifier
      */
     virtual RequestInfo request(std::string const& id) = 0;
     
     /**
      * Find an information on requests in the specified scope
      * 
-     * @param jobId
-     *   the unique identifier of a parent job
+     * @param jobId a unique identifier of a parent job
+     * @param fromTimeStamp (optional) the oldest (inclusive) timestamp for the search
+     * @param toTimeStamp (optional) the most recent (inclusive) timestamp for the search
+     * @param maxEntries (optional) the maximum number of requests to be reported.
+     *   The default values of 0 doesn't impose any limits.
      *
-     * @param fromTimeStamp
-     *   (optional) the oldest (inclusive) timestamp for the search
-     * 
-     * @param toTimeStamp
-     *   (optional) the most recent (inclusive) timestamp for the search
-     *
-     * @param maxEntries
-     *   (optional) the maximum number of requests to be reported. The default
-     *   values of 0 doesn't impose any limits.
-     *
-     * @return
-     *   a collection of request descriptors sorted by the creation time in
+     * @return a collection of request descriptors sorted by the creation time in
      *   in the descent order
      */
     virtual std::list<RequestInfo> requests(std::string const& jobId="",
@@ -802,38 +697,25 @@ public:
     /**
      * Find an information on a job
      * 
-     * @param id
-     *   the unique identifier of a job
+     * @param id a unique identifier of a job
      * 
-     * @return
-     *   the description of the job
+     * @return the description of the job
      * 
-     * @throws DatabaseServicesNotFound
-     *   if no job was found for the specified identifier
+     * @throws DatabaseServicesNotFound if no job was found for the specified identifier
      */
     virtual JobInfo job(std::string const& id) = 0;
 
     /**
      * Find an information on jobs in the specified scope
      *
-     * @param controllerId
-     *   the unique identifier of a Controller
+     * @param controllerId a unique identifier of a Controller
+     * @param parentJobId a unique identifier of a parent job
+     * @param fromTimeStamp (optional) the oldest (inclusive) timestamp for the search
+     * @param toTimeStamp (optional) the most recent (inclusive) timestamp for the search
+     * @param maxEntries (optional) the maximum number of jobs to be reported.
+     *   The default values of 0 doesn't impose any limits.
      *
-     * @param parentJobId
-     *   the unique identifier of a parent job
-     *
-     * @param fromTimeStamp
-     *   (optional) the oldest (inclusive) timestamp for the search
-     * 
-     * @param toTimeStamp
-     *   (optional) the most recent (inclusive) timestamp for the search
-     *
-     * @param maxEntries
-     *   (optional) the maximum number of jobs to be reported. The default
-     *   values of 0 doesn't impose any limits.
-     *
-     * @return
-     *   a collection of jobs descriptors sorted by the start time in
+     * @return a collection of jobs descriptors sorted by the start time in
      *   in the descent order
      */
     virtual std::list<JobInfo> jobs(std::string const& controllerId="",

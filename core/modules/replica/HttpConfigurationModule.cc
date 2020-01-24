@@ -301,11 +301,13 @@ void HttpConfigurationModule::_addFamily(qhttp::Request::Ptr const& req,
     info.replicationLevel = query.requiredUInt64("replication_level");
     info.numStripes       = query.requiredUInt(  "num_stripes");
     info.numSubStripes    = query.requiredUInt(  "num_sub_stripes");
+    info.overlap          = query.requiredDouble("overlap");
 
     debug(__func__, "name="              +           info.name);
     debug(__func__, "replication_level=" + to_string(info.replicationLevel));
     debug(__func__, "num_stripes="       + to_string(info.numStripes));
     debug(__func__, "num_sub_stripes="   + to_string(info.numSubStripes));
+    debug(__func__, "overlap="           + to_string(info.overlap));
 
     if (0 == info.replicationLevel) {
         sendError(resp, __func__, "'replication_level' can't be equal to 0");
@@ -317,6 +319,10 @@ void HttpConfigurationModule::_addFamily(qhttp::Request::Ptr const& req,
     }
     if (0 == info.numSubStripes) {
         sendError(resp, __func__, "'num_sub_stripes' can't be equal to 0");
+        return;
+    }
+    if (info.overlap <= 0) {
+        sendError(resp, __func__, "'overlap' can't be less or equal to 0");
         return;
     }
     config->addDatabaseFamily(info);
