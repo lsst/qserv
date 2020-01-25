@@ -44,6 +44,9 @@ function get_param {
     cat "$path"
 }
 
+# A unique identifier of a Qserv instance served by the setup
+INSTANCE_ID=
+
 # Base directory where Qserv is installed on the worker nodes
 QSERV_DATA_DIR="/qserv/data"
 

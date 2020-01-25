@@ -48,9 +48,10 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
-ServiceProvider::Ptr ServiceProvider::create(string const& configUrl) {
+ServiceProvider::Ptr ServiceProvider::create(string const& configUrl,
+                                             string const& instanceId) {
 
-    auto ptr = ServiceProvider::Ptr(new ServiceProvider(configUrl));
+    auto ptr = ServiceProvider::Ptr(new ServiceProvider(configUrl, instanceId));
 
     // This initialization is made "a posteriori" because the shared pointer
     // onto the object can't be accessed via the usual call to shared_from_this()
@@ -64,9 +65,11 @@ ServiceProvider::Ptr ServiceProvider::create(string const& configUrl) {
 }
 
 
-ServiceProvider::ServiceProvider(string const& configUrl)
+ServiceProvider::ServiceProvider(string const& configUrl,
+                                 string const& instanceId)
     :   _configuration(Configuration::load(configUrl)),
-        _databaseServices(DatabaseServicesPool::create(_configuration)) {
+        _databaseServices(DatabaseServicesPool::create(_configuration)),
+        _instanceId(instanceId) {
 }
 
 
@@ -164,7 +167,7 @@ void ServiceProvider::assertWorkersAreDifferent(string const& firstName,
 
     if (firstName == secondName) {
         throw invalid_argument(
-                "Request::" + string(__func__) + "  worker names are the same: " + firstName);
+                "ServiceProvider::" + string(__func__) + "  worker names are the same: " + firstName);
     }
 }
 

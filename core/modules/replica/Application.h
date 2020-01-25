@@ -43,7 +43,6 @@ namespace replica {
   * command-line parameters, initializing application environment, etc.
   */
 class Application : public std::enable_shared_from_this<Application> {
-
 public:
 
     /// To bring the Parser type into the class's scope
@@ -68,39 +67,26 @@ public:
      * @see Parser::Status
      * @see Application::runImpl()
      *
-     * @return
-     *   completion code
+     * @return a completion code
      */
     int run();
 
 protected:
-
     /**
      * Construct and initialize an application.
      *
-     * @param arc
-     *   argument count
-     * 
-     * @parav argv
-     *   vector of argument values
-     *
-     * @param description
-     *   (optional) description of an application as it will appear in
-     *   the documentation string reported with option "--help"
-     *
-     * @param injectDatabaseOptions
-     *   (optional) flag which will inject database options and use an input
-     *   from a user to change the corresponding defaults in the Configuration
-     *
-     * @param boostProtobufVersionCheck
-     *   (optional) flag which will force Google Protobuf version check. The check
-     *   will ensure that a version of the Protobuf library linked to an application
-     *   is consistent with header files.
-     *
-     * @param enableServiceProvider
-     *   (optional) flag which will inject configuration option "--config=<url>",
-     *   load the configuration into Configuration and initialize the ServiceProvider
-     *   with the configuration.
+     * @param arc  An argument count
+     * @parav argv  A vector of argument values
+     * @param description  An optional description of an application as it will appear
+     *   in the documentation string reported with option "--help".
+     * @param injectDatabaseOptions An optional flag which will inject database options
+     *   and use an input from a user to change the corresponding defaults in the Configuration.
+     * @param boostProtobufVersionCheck  An optional flag which will force Google Protobuf
+     *   version check. The check will ensure that a version of the Protobuf library linked
+     *   to an application is consistent with header files.
+     * @param enableServiceProvider An optional flag which will inject configuration
+     *   option "--config=<url>", load the configuration into Configuration and initialize
+     *   the ServiceProvider with the configuration.
      */
     Application(int argc,
                 const char* const argv[],
@@ -135,12 +121,11 @@ protected:
      *
      * @see method Application::run()
      * 
-     * @eturn completion code
+     * @eturn a completion code
      */
     virtual int runImpl() = 0;
     
 private:
-
     // Input parameters
 
     bool const _injectDatabaseOptions;
@@ -155,6 +140,9 @@ private:
 
     /// Configuration URL
     std::string _config;
+
+    /// A unique identifier of a Qserv instance served by the Replication System
+    std::string _instanceId;
 
     // Database connector options (if enabled)
 

@@ -105,7 +105,16 @@ int Application::run() {
             "config",
             "Configuration URL (a configuration file or a set of database connection parameters).",
             _config
+        ).option(
+            "instance-id",
+            " A unique identifier of a Qserv instance served by the Replication System."
+            " Its value will be passed along various internal communication lines of"
+            " the system to ensure that all services are related to the same instance."
+            " This mechanism also prevents 'cross-talks' between two (or many) Replication"
+            " System's setups in case of accidental miss-configurations.",
+            _instanceId
         );
+
     }
     try {
         int const code = parser().parse();
@@ -138,12 +147,12 @@ int Application::run() {
     if (_enableServiceProvider) {
 
         // Create and then start the provider in its own thread pool before
-        // performing any asynchronious operations via BOOST ASIO.
+        // performing any asynchronous operations via BOOST ASIO.
         //
         // Note that onFinish callbacks which are activated upon the completion of
-        // the asynchronious activities will be run by a thread from the pool.
+        // the asynchronous activities will be run by a thread from the pool.
 
-        _serviceProvider = ServiceProvider::create(_config);
+        _serviceProvider = ServiceProvider::create(_config, _instanceId);
         _serviceProvider->run();
     }
 

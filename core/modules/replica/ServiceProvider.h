@@ -55,7 +55,6 @@ namespace replica {
   * and controllers.
   */
 class ServiceProvider : public std::enable_shared_from_this<ServiceProvider> {
-
 public:
 
     /// The pointer type for instances of the class
@@ -76,13 +75,16 @@ public:
     /**
      * Static factory for creating objects of the class
      *
-     * @param configUrl
-     *   a source of the application configuration parameters
-     * 
-     * @return
-     *   pointer to the created object
+     * @param configUrl  A source of the application configuration parameters.
+     * @param instanceId  A unique identifier of a Qserv instance served by
+     *  the Replication System. Its value will be passed along various internal
+     *  communication lines of the system to ensure that all services are related
+     *  to the same instance. This mechanism also prevents 'cross-talks' between
+     *  two (or many) Replication System's setups in case of accidental miss-configurations.
+     * @return A pointer to the created object.
      */
-    static ServiceProvider::Ptr create(std::string const& configUrl);
+    static ServiceProvider::Ptr create(std::string const& configUrl,
+                                       std::string const& instanceId);
 
     ~ServiceProvider() = default;
 
@@ -117,6 +119,9 @@ public:
     /// @return a reference to the database services
     DatabaseServicesPtr const& databaseServices() const { return _databaseServices; }
 
+    /// @return A unique identifier of a Qserv instance served by the Replication System
+    std::string const& instanceId() const { return _instanceId; }
+
     /// @return a reference to the local (process) chunk locking services
     ChunkLocker& chunkLocker() { return _chunkLocker; }
 
@@ -132,25 +137,18 @@ public:
     /**
      * Make sure this worker is known in the configuration
      *
-     * @param name
-     *   the name of a worker
-     *
-     * @throws std::invalid_argument
-     *   if the worker is unknown
+     * @param name The name of a worker.
+     * @throws std::invalid_argument if the worker is unknown
      */
     void assertWorkerIsValid(std::string const& name);
 
     /**
      * Make sure workers are now known in the configuration and they're different
      *
-     * @param workerOneName
-     *   name of the first worker in the comparison
+     * @param workerOneName The name of the first worker in the comparison.
+     * @param workerTwoName The name of the second worker in the comparison.
      *
-     * @param workerTwoName
-     *   name of the second worker in the comparison
-     *
-     * @throws std::invalid_argument
-     *   if either worker is unknown
+     * @throws std::invalid_argument if either worker is unknown
      */
     void assertWorkersAreDifferent(std::string const& workerOneName,
                                    std::string const& workerTwoName);
@@ -158,22 +156,20 @@ public:
     /**
      * Make sure this database is known in the configuration
      *
-     * @param name
-     *   the name of a database
+     * @param name The name of a database.
      * 
-     * @throws std::invalid_argument
-     *   if the database is unknown
+     * @throws std::invalid_argument if the database is unknown
      */
     void assertDatabaseIsValid(std::string const& name);
 
 private:
-
     /**
      * Construct the object
      *
      * @see ServiceProvider::create()
      */
-    explicit ServiceProvider(std::string const& configUrl);
+    explicit ServiceProvider(std::string const& configUrl,
+                             std::string const& instanceId);
 
     /// @return the context string for debugging and diagnostic printouts
     std::string _context() const;
@@ -190,6 +186,9 @@ private:
 
     /// Database services
     DatabaseServicesPtr const _databaseServices;
+
+    /// A unique identifier of a Qserv instance served by the Replication System
+    std::string const _instanceId;
 
     /// For claiming exclusive ownership over chunks during replication
     /// operations to ensure consistency of the operations.

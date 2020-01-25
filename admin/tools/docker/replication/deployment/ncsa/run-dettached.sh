@@ -60,4 +60,4 @@ docker run \
     -e "WORK_DIR=${WORK_DIR}" \
     --name "${TOOL}-${PID}" \
     "${REPLICATION_IMAGE_TAG}" \
-    /qserv/bin/${TOOL} "$@" --config=${CONFIG}
+    /qserv/bin/${TOOL} "$@" --config=${CONFIG} --instance-id=${INSTANCE_ID}
