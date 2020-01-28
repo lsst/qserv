@@ -129,6 +129,7 @@ void DisposeRequest::startImpl(util::Lock const& lock) {
     hdr.set_id(id());
     hdr.set_type(ProtocolRequestHeader::REQUEST);
     hdr.set_management_type(ProtocolManagementRequestType::REQUEST_DISPOSE);
+    hdr.set_instance_id(serviceProvider()->instanceId());
 
     buffer()->serialize(hdr);
 

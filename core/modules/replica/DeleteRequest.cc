@@ -120,6 +120,7 @@ void DeleteRequest::startImpl(util::Lock const& lock) {
     hdr.set_queued_type(ProtocolQueuedRequestType::REPLICA_DELETE);
     hdr.set_timeout(requestExpirationIvalSec());
     hdr.set_priority(priority());
+    hdr.set_instance_id(serviceProvider()->instanceId());
 
     buffer()->serialize(hdr);
 
@@ -165,6 +166,7 @@ void DeleteRequest::_awaken(boost::system::error_code const& ec) {
     hdr.set_id(id());
     hdr.set_type(ProtocolRequestHeader::REQUEST);
     hdr.set_management_type(ProtocolManagementRequestType::REQUEST_STATUS);
+    hdr.set_instance_id(serviceProvider()->instanceId());
 
     buffer()->serialize(hdr);
 

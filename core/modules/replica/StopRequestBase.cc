@@ -129,6 +129,7 @@ void StopRequestBase::_sendImpl(util::Lock const& lock) {
     hdr.set_id(id());
     hdr.set_type(ProtocolRequestHeader::REQUEST);
     hdr.set_management_type(ProtocolManagementRequestType::REQUEST_STOP);
+    hdr.set_instance_id(serviceProvider()->instanceId());
 
     buffer()->serialize(hdr);
 

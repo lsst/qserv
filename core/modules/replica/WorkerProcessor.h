@@ -377,7 +377,7 @@ public:
      */
     void setServiceResponse(ProtocolServiceResponse& response,
                             std::string const& id,
-                            ProtocolServiceResponse::Status status,
+                            ProtocolStatus status,
                             bool extendedReport=false);
 
     size_t numNewRequests() const;

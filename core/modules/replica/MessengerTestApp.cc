@@ -125,6 +125,7 @@ int MessengerTestApp::runImpl() {
         hdr.set_id(id);
         hdr.set_type(ProtocolRequestHeader::SERVICE);
         hdr.set_service_type(ProtocolServiceRequestType::SERVICE_STATUS);
+        hdr.set_instance_id(serviceProvider()->instanceId());
 
         requestBufferPtr->serialize(hdr);
 

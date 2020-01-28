@@ -52,10 +52,7 @@ namespace replica {
   * the client.
   */
 class WorkerServerConnection : public std::enable_shared_from_this<WorkerServerConnection> {
-
 public:
-
-    /// Shared pointer type for the class
     typedef std::shared_ptr<WorkerServerConnection> Ptr;
 
     /**
@@ -63,23 +60,15 @@ public:
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
      *
-     * @param serviceProvider
-     *   provider is needed to access the Configuration of a setup
+     * @param serviceProvider A provider is needed to access the Configuration of a setup.
+     * @param processor A processor for long (queued) requests.
+     * @param io_service An endpoint for network I/O, timers, etc.
      *
-     * @param processor
-     *   processor for long (queued) requests
-     *
-     * @param io_service
-     *   endpoint for network I/O
-     *
-     * @return
-     *   pointer to the new object created by the factory
+     * @return A pointer to the new object created by the factory.
      */
     static Ptr create(ServiceProvider::Ptr const& serviceProvider,
                       WorkerProcessor::Ptr const& processor,
                       boost::asio::io_service& io_service);
-
-    // Default construction and copy semantics are prohibited
 
     WorkerServerConnection() = delete;
     WorkerServerConnection(WorkerServerConnection const&) = delete;
@@ -100,8 +89,7 @@ public:
      *   - ASYNC: write a frame header of a reply to the request
      *            then write the reply itself
      *
-     * @note
-     *   a reason why the read phase is split into four steps is
+     * @note A reason why the read phase is split into four steps is
      *   that a client is expected to send all components of the request
      *   (frame header, request header and request body) at once. This means
      *   the whole incoming message will be already available on the server's
@@ -117,7 +105,6 @@ public:
     void beginProtocol();
 
 private:
-
     /// @see WorkerServerConnection::create()
     WorkerServerConnection(ServiceProvider::Ptr const& serviceProvider,
                            WorkerProcessor::Ptr const& processor,
@@ -134,11 +121,8 @@ private:
     /**
      * The callback on finishing (either successfully or not) of asynchronous reads.
      *
-     * @param ec
-     *   error condition to be checked for
-     *
-     * @param bytes_transferred
-     *   the number of bytes received (if successful)
+     * @param ec  А error condition to be checked for.
+     * @param bytes_transferred  Тhe number of bytes received (if successful).
      */
     void _received(boost::system::error_code const& ec,
                    size_t bytes_transferred);
@@ -146,37 +130,31 @@ private:
     /**
      * Process queued requests (REPLICATE, DELETE, FIND, FIND-ALL, ECHO, etc.)
      *
-     * @param hdr
-     *   request header to be inspected
+     * @param hdr  А request header to be inspected.
      */
-    void _processQueuedRequest(ProtocolRequestHeader& hdr);
+    void _processQueuedRequest(ProtocolRequestHeader const& hdr);
 
     /**
      * Process requests about replication requests (STOP, STATUS)
      *
-     * @param hdr
-     *   request header to be inspected
+     * @param hdr  A request header to be inspected.
      */
-    void _processManagementRequest(ProtocolRequestHeader& hdr);
+    void _processManagementRequest(ProtocolRequestHeader const& hdr);
 
     /**
      * Process requests affecting the service
      *
-     * @param hdr
-     *   request header to be inspected
+     * @param hdr  A request header to be inspected.
      */
-    void _processServiceRequest(ProtocolRequestHeader& hdr);
+    void _processServiceRequest(ProtocolRequestHeader const& hdr);
 
     /**
      * Serialize an identifier of a request into response header
      * followed by the Protobuf response body Protobuf object and
      * send it all back to a client.
      *
-     * @param id
-     *   a unique identifier of a request to which the reply is sent
-     *
-     * @param body
-     *   a body of the response
+     * @param id  A unique identifier of a request to which the reply is sent.
+     * @param body A body of the response.
      */
     template <class T>
     void _reply(std::string const& id,
@@ -201,15 +179,51 @@ private:
     /**
      * The callback on finishing (either successfully or not) of asynchronous writes.
      *
-     * @param ec
-     *   error condition to be checked for
-     *
-     * @param bytes_transferred
-     *   the number of bytes sent (if successful)
+     * @param ec  A error condition to be checked for.
+     * @param bytes_transferred  The number of bytes sent (if successful).
      */
     void _sent(boost::system::error_code const& ec,
                size_t bytes_transferred);
 
+    /**
+     * Verify if the name of a Qserv instance found in the request header matches
+     * the one expected by the worker. If that's not the case then fill out
+     * the response message with error codes explaining the problem.
+     * 
+     * @note This method is compatible with responses sent for the queued messages.
+     * 
+     * @param hdr  A request header message.
+     * @param response  A response to be pre-filled with error codes in case if
+     *   a mismatching instance found in the protocol header.
+     *
+     * @return 'true' if the instance found in the protocol header matches the one
+     *   expected by the current worker.
+     */
+    template <class RESPONSE>
+    bool _verifyInstance(ProtocolRequestHeader const& hdr, RESPONSE& response) const {
+        if (hdr.instance_id() == _serviceProvider->instanceId()) return true;
+        WorkerProcessor::setDefaultResponse(response, ProtocolStatus::BAD, ProtocolStatusExt::FOREIGN_INSTANCE);
+        return false;
+    }
+
+    /// The specialized version of the above defined template method for responses
+    /// to the requests disposals.
+    bool _verifyInstance(ProtocolRequestHeader const& hdr, ProtocolResponseDispose& response) const {
+        if (hdr.instance_id() == _serviceProvider->instanceId()) return true;
+        response.set_status(ProtocolStatus::BAD);
+        response.set_status_ext(ProtocolStatusExt::FOREIGN_INSTANCE);
+        return false;
+    }
+
+    /// The specialized version of the above defined template method for responses
+    /// to the worker services management requests.
+    bool _verifyInstance(ProtocolRequestHeader const& hdr, ProtocolServiceResponse& response) const {
+        if (hdr.instance_id() == _serviceProvider->instanceId()) return true;
+        response.set_status(ProtocolStatus::BAD);
+        response.set_status_ext(ProtocolStatusExt::FOREIGN_INSTANCE);
+        return false;
+    }
+    
     // Input parameters
 
     ServiceProvider::Ptr const _serviceProvider;

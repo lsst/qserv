@@ -29,7 +29,6 @@
 #include "replica/Configuration.h"
 #include "replica/Performance.h"
 #include "replica/ProtocolBuffer.h"
-#include "replica/ServiceProvider.h"
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -210,7 +209,7 @@ void WorkerServerConnection::_received(boost::system::error_code const& ec,
 }
 
 
-void WorkerServerConnection::_processQueuedRequest(ProtocolRequestHeader& hdr) {
+void WorkerServerConnection::_processQueuedRequest(ProtocolRequestHeader const& hdr) {
 
     // Read the request length
     uint32_t bytes;
@@ -225,7 +224,9 @@ void WorkerServerConnection::_processQueuedRequest(ProtocolRequestHeader& hdr) {
             if (not ::readMessage(_socket, _bufferPtr, bytes, request)) return;
 
             ProtocolResponseReplicate response;
-            _processor->enqueueForReplication(hdr.id(), hdr.priority(), hdr.timeout(), request, response);
+            if (_verifyInstance(hdr, response)) {
+                _processor->enqueueForReplication(hdr.id(), hdr.priority(), hdr.timeout(), request, response);
+            }
             _reply(hdr.id(), response);
             break;
         }
@@ -236,7 +237,9 @@ void WorkerServerConnection::_processQueuedRequest(ProtocolRequestHeader& hdr) {
             if (not ::readMessage(_socket, _bufferPtr, bytes, request)) return;
 
             ProtocolResponseDelete response;
-            _processor->enqueueForDeletion(hdr.id(), hdr.priority(), hdr.timeout(), request, response);
+            if (_verifyInstance(hdr, response)) {
+                _processor->enqueueForDeletion(hdr.id(), hdr.priority(), hdr.timeout(), request, response);
+            }
             _reply(hdr.id(), response);
             break;
         }
@@ -247,7 +250,9 @@ void WorkerServerConnection::_processQueuedRequest(ProtocolRequestHeader& hdr) {
             if (not ::readMessage(_socket, _bufferPtr, bytes, request)) return;
 
             ProtocolResponseFind response;
-            _processor->enqueueForFind(hdr.id(), hdr.priority(), hdr.timeout(), request, response);
+            if (_verifyInstance(hdr, response)) {
+                _processor->enqueueForFind(hdr.id(), hdr.priority(), hdr.timeout(), request, response);
+            }
             _reply(hdr.id(), response);
             break;
         }
@@ -258,7 +263,9 @@ void WorkerServerConnection::_processQueuedRequest(ProtocolRequestHeader& hdr) {
             if (not ::readMessage(_socket, _bufferPtr, bytes, request)) return;
 
             ProtocolResponseFindAll response;
-            _processor->enqueueForFindAll(hdr.id(), hdr.priority(), hdr.timeout(), request, response);
+            if (_verifyInstance(hdr, response)) {
+                _processor->enqueueForFindAll(hdr.id(), hdr.priority(), hdr.timeout(), request, response);
+            }
             _reply(hdr.id(), response);
             break;
         }
@@ -269,7 +276,9 @@ void WorkerServerConnection::_processQueuedRequest(ProtocolRequestHeader& hdr) {
             if (not ::readMessage(_socket, _bufferPtr, bytes, request)) return;
 
             ProtocolResponseEcho response;
-            _processor->enqueueForEcho(hdr.id(), hdr.priority(), hdr.timeout(), request, response);
+            if (_verifyInstance(hdr, response)) {
+                _processor->enqueueForEcho(hdr.id(), hdr.priority(), hdr.timeout(), request, response);
+            }
             _reply(hdr.id(), response);
             break;
         }
@@ -280,7 +289,9 @@ void WorkerServerConnection::_processQueuedRequest(ProtocolRequestHeader& hdr) {
             if (not ::readMessage(_socket, _bufferPtr, bytes, request)) return;
 
             ProtocolResponseIndex response;
-            _processor->enqueueForIndex(hdr.id(), hdr.priority(), hdr.timeout(), request, response);
+            if (_verifyInstance(hdr, response)) {
+                _processor->enqueueForIndex(hdr.id(), hdr.priority(), hdr.timeout(), request, response);
+            }
             _reply(hdr.id(), response);
             break;
         }
@@ -291,7 +302,9 @@ void WorkerServerConnection::_processQueuedRequest(ProtocolRequestHeader& hdr) {
             if (not ::readMessage(_socket, _bufferPtr, bytes, request)) return;
 
             ProtocolResponseSql response;
-            _processor->enqueueForSql(hdr.id(), hdr.priority(), hdr.timeout(), request, response);
+            if (_verifyInstance(hdr, response)) {
+                _processor->enqueueForSql(hdr.id(), hdr.priority(), hdr.timeout(), request, response);
+            }
             _reply(hdr.id(), response);
             break;
         }
@@ -303,7 +316,7 @@ void WorkerServerConnection::_processQueuedRequest(ProtocolRequestHeader& hdr) {
 }
 
 
-void WorkerServerConnection::_processManagementRequest(ProtocolRequestHeader& hdr) {
+void WorkerServerConnection::_processManagementRequest(ProtocolRequestHeader const& hdr) {
 
     // Read the request length
     uint32_t bytes;
@@ -324,43 +337,43 @@ void WorkerServerConnection::_processManagementRequest(ProtocolRequestHeader& hd
 
                 case ProtocolQueuedRequestType::REPLICA_CREATE: {
                     ProtocolResponseReplicate response;
-                    _processor->dequeueOrCancel(request, response);
+                    if (_verifyInstance(hdr, response)) _processor->dequeueOrCancel(request, response);
                     _reply(hdr.id(), response);
                     break;
                 }
                 case ProtocolQueuedRequestType::REPLICA_DELETE: {
                     ProtocolResponseDelete response;
-                    _processor->dequeueOrCancel(request, response);
+                    if (_verifyInstance(hdr, response)) _processor->dequeueOrCancel(request, response);
                     _reply(hdr.id(), response);
                     break;
                 }
                 case ProtocolQueuedRequestType::REPLICA_FIND: {
                     ProtocolResponseFind response;
-                    _processor->dequeueOrCancel(request, response);
+                    if (_verifyInstance(hdr, response)) _processor->dequeueOrCancel(request, response);
                     _reply(hdr.id(), response);
                     break;
                 }
                 case ProtocolQueuedRequestType::REPLICA_FIND_ALL: {
                     ProtocolResponseFindAll response;
-                    _processor->dequeueOrCancel(request, response);
+                    if (_verifyInstance(hdr, response)) _processor->dequeueOrCancel(request, response);
                     _reply(hdr.id(), response);
                     break;
                 }
                 case ProtocolQueuedRequestType::TEST_ECHO: {
                     ProtocolResponseEcho response;
-                    _processor->dequeueOrCancel(request, response);
+                    if (_verifyInstance(hdr, response)) _processor->dequeueOrCancel(request, response);
                     _reply(hdr.id(), response);
                     break;
                 }
                 case ProtocolQueuedRequestType::INDEX: {
                     ProtocolResponseIndex response;
-                    _processor->dequeueOrCancel(request, response);
+                    if (_verifyInstance(hdr, response)) _processor->dequeueOrCancel(request, response);
                     _reply(hdr.id(), response);
                     break;
                 }
                 case ProtocolQueuedRequestType::SQL: {
                     ProtocolResponseSql response;
-                    _processor->dequeueOrCancel(request, response);
+                    if (_verifyInstance(hdr, response)) _processor->dequeueOrCancel(request, response);
                     _reply(hdr.id(), response);
                     break;
                 }
@@ -381,43 +394,43 @@ void WorkerServerConnection::_processManagementRequest(ProtocolRequestHeader& hd
 
                 case ProtocolQueuedRequestType::REPLICA_CREATE: {
                     ProtocolResponseReplicate response;
-                    _processor->checkStatus(request, response);
+                    if (_verifyInstance(hdr, response)) _processor->checkStatus(request, response);
                     _reply(hdr.id(), response);
                     break;
                 }
                 case ProtocolQueuedRequestType::REPLICA_DELETE: {
                     ProtocolResponseDelete response;
-                    _processor->checkStatus(request, response);
+                    if (_verifyInstance(hdr, response)) _processor->checkStatus(request, response);
                     _reply(hdr.id(), response);
                     break;
                 }
                 case ProtocolQueuedRequestType::REPLICA_FIND: {
                     ProtocolResponseFind response;
-                    _processor->checkStatus(request, response);
+                    if (_verifyInstance(hdr, response)) _processor->checkStatus(request, response);
                     _reply(hdr.id(), response);
                     break;
                 }
                 case ProtocolQueuedRequestType::REPLICA_FIND_ALL: {
                     ProtocolResponseFindAll response;
-                    _processor->checkStatus(request, response);
+                    if (_verifyInstance(hdr, response)) _processor->checkStatus(request, response);
                     _reply(hdr.id(), response);
                     break;
                 }
                 case ProtocolQueuedRequestType::TEST_ECHO: {
                     ProtocolResponseEcho response;
-                    _processor->checkStatus(request, response);
+                    if (_verifyInstance(hdr, response)) _processor->checkStatus(request, response);
                     _reply(hdr.id(), response);
                     break;
                 }
                 case ProtocolQueuedRequestType::INDEX: {
                     ProtocolResponseIndex response;
-                    _processor->checkStatus(request, response);
+                    if (_verifyInstance(hdr, response)) _processor->checkStatus(request, response);
                     _reply(hdr.id(), response);
                     break;
                 }
                 case ProtocolQueuedRequestType::SQL: {
                     ProtocolResponseSql response;
-                    _processor->checkStatus(request, response);
+                    if (_verifyInstance(hdr, response)) _processor->checkStatus(request, response);
                     _reply(hdr.id(), response);
                     break;
                 }
@@ -435,11 +448,13 @@ void WorkerServerConnection::_processManagementRequest(ProtocolRequestHeader& hd
             if (not ::readMessage(_socket, _bufferPtr, bytes, request)) return;
  
             ProtocolResponseDispose response;
-            for (int i = 0; i < request.ids_size(); ++i) {
-                string const id = request.ids(i);
-                auto ptr = response.add_ids();
-                ptr->set_id(id);
-                ptr->set_disposed(_processor->dispose(id));
+            if (_verifyInstance(hdr, response)) {
+                for (int i = 0; i < request.ids_size(); ++i) {
+                    string const id = request.ids(i);
+                    auto ptr = response.add_ids();
+                    ptr->set_id(id);
+                    ptr->set_disposed(_processor->dispose(id));
+                }
             }
             _reply(hdr.id(), response);
             break;
@@ -452,7 +467,7 @@ void WorkerServerConnection::_processManagementRequest(ProtocolRequestHeader& hd
 }
 
 
-void WorkerServerConnection::_processServiceRequest(ProtocolRequestHeader& hdr) {
+void WorkerServerConnection::_processServiceRequest(ProtocolRequestHeader const& hdr) {
 
     ProtocolServiceResponse response;
 
@@ -464,98 +479,80 @@ void WorkerServerConnection::_processServiceRequest(ProtocolRequestHeader& hdr) 
     performance.setUpdateFinish();
     response.set_allocated_performance(performance.info().release());
 
-    switch (hdr.service_type()) {
+    if (_verifyInstance(hdr, response)) {
 
-        case ProtocolServiceRequestType::SERVICE_SUSPEND: {
-
-            // This operation is allowed to be asynchronous as it may take
-            // extra time for the processor's threads to finish on-going processing
-
-            _processor->stop();
-            _processor->setServiceResponse(
-                  response,
-                  hdr.id(),
-                  _processor->state() == WorkerProcessor::State::STATE_IS_RUNNING ?
-                      ProtocolServiceResponse::FAILED :
-                      ProtocolServiceResponse::SUCCESS
-            );
-            _reply(hdr.id(), response);
-            break;
+        switch (hdr.service_type()) {
+            case ProtocolServiceRequestType::SERVICE_SUSPEND: {
+                // This operation is allowed to be asynchronous as it may take
+                // extra time for the processor's threads to finish on-going processing
+                _processor->stop();
+                _processor->setServiceResponse(
+                      response,
+                      hdr.id(),
+                      _processor->state() == WorkerProcessor::State::STATE_IS_RUNNING ?
+                          ProtocolStatus::FAILED :
+                          ProtocolStatus::SUCCESS
+                );
+                break;
+            }
+            case ProtocolServiceRequestType::SERVICE_RESUME: {
+                // This is a synchronous operation. The state transition request should happen
+                // (or be denied) instantaneously.
+                _processor->run();
+                _processor->setServiceResponse(
+                      response,
+                      hdr.id(),
+                      _processor->state() == WorkerProcessor::State::STATE_IS_RUNNING ?
+                          ProtocolStatus::SUCCESS :
+                          ProtocolStatus::FAILED);
+                break;
+            }
+            case ProtocolServiceRequestType::SERVICE_STATUS: {
+                _processor->setServiceResponse(
+                      response,
+                      hdr.id(),
+                      ProtocolStatus::SUCCESS);
+                break;
+            }
+            case ProtocolServiceRequestType::SERVICE_REQUESTS: {
+                const bool extendedReport = true;   // to return detailed info on all known
+                                                    // replica-related requests
+                _processor->setServiceResponse(
+                      response,
+                      hdr.id(),
+                      ProtocolStatus::SUCCESS,
+                      extendedReport);
+                break;
+            }
+            case ProtocolServiceRequestType::SERVICE_DRAIN: {
+                const bool extendedReport = true;   // to return detailed info on all known
+                                                    // replica-related requests
+                _processor->drain();
+                _processor->setServiceResponse(
+                      response,
+                      hdr.id(),
+                      ProtocolStatus::SUCCESS,
+                      extendedReport);
+                break;
+            }
+            case ProtocolServiceRequestType::SERVICE_RECONFIG: {
+                const bool extendedReport = true;   // to return detailed info on all known
+                                                    // replica-related requests
+                _processor->reconfig();
+                _processor->setServiceResponse(
+                      response,
+                      hdr.id(),
+                      ProtocolStatus::SUCCESS,
+                      extendedReport);
+                break;
+            }
+            default:
+                throw logic_error(
+                        "WorkerServerConnection::" + string(__func__) + "  unhandled request type: '" +
+                        ProtocolServiceRequestType_Name(hdr.service_type()));
         }
-        case ProtocolServiceRequestType::SERVICE_RESUME: {
-
-            // This is a synchronous operation. The state transition request should happen
-            // (or be denied) instantaneously.
-
-            _processor->run();
-            _processor->setServiceResponse(
-                  response,
-                  hdr.id(),
-                  _processor->state() == WorkerProcessor::State::STATE_IS_RUNNING ?
-                      ProtocolServiceResponse::SUCCESS :
-                      ProtocolServiceResponse::FAILED);
-
-            _reply(hdr.id(), response);
-            break;
-        }
-        case ProtocolServiceRequestType::SERVICE_STATUS: {
-
-            _processor->setServiceResponse(
-                  response,
-                  hdr.id(),
-                  ProtocolServiceResponse::SUCCESS);
-
-            _reply(hdr.id(), response);
-            break;
-        }
-        case ProtocolServiceRequestType::SERVICE_REQUESTS: {
-
-            const bool extendedReport = true;   // to return detailed info on all known
-                                                // replica-related requests
-            _processor->setServiceResponse(
-                  response,
-                  hdr.id(),
-                  ProtocolServiceResponse::SUCCESS,
-                  extendedReport);
-
-            _reply(hdr.id(), response);
-            break;
-        }
-        case ProtocolServiceRequestType::SERVICE_DRAIN: {
-
-            _processor->drain();
-
-            const bool extendedReport = true;   // to return detailed info on all known
-                                                // replica-related requests
-            _processor->setServiceResponse(
-                  response,
-                  hdr.id(),
-                  ProtocolServiceResponse::SUCCESS,
-                  extendedReport);
-
-            _reply(hdr.id(), response);
-            break;
-        }
-        case ProtocolServiceRequestType::SERVICE_RECONFIG: {
-
-            _processor->reconfig();
-
-            const bool extendedReport = true;   // to return detailed info on all known
-                                                // replica-related requests
-            _processor->setServiceResponse(
-                  response,
-                  hdr.id(),
-                  ProtocolServiceResponse::SUCCESS,
-                  extendedReport);
-
-            _reply(hdr.id(), response);
-            break;
-        }
-        default:
-            throw logic_error(
-                    "WorkerServerConnection::" + string(__func__) + "  unhandled request type: '" +
-                    ProtocolServiceRequestType_Name(hdr.service_type()));
     }
+    _reply(hdr.id(), response);
 }
 
 

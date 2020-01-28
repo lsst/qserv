@@ -82,7 +82,8 @@ enum ExtendedCompletionStatus {
     EXT_STATUS_NOT_PARTITIONED_TABLE,   // why a MySQL operation for removing partitions failed
     EXT_STATUS_NO_SUCH_PARTITION,       // why a MySQL operation for for selecting data from a table failed
     EXT_STATUS_MULTIPLE,                // multiple errors encountered when processing a request
-    EXT_STATUS_OTHER_EXCEPTION  // other exception
+    EXT_STATUS_OTHER_EXCEPTION, // other exception
+    EXT_STATUS_FOREIGN_INSTANCE // detected a request from a Controller serving an unrelated Qserv
 };
 
 /// Return the string representation of the extended status
