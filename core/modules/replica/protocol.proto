@@ -810,6 +810,9 @@ message ProtocolFileRequest {
     /// after sending the response message. Otherwise the server will just
     /// close a connection.
     required bool send_content = 3;
+
+    /// A unique identifier of a Qserv instance served by the Replication System
+    required string instance_id = 4;
 }
 
 message ProtocolFileResponse {
@@ -824,6 +827,9 @@ message ProtocolFileResponse {
     /// The file content modification time in seconds (since UNIX Epoch)
     required uint32 mtime = 3;
 
+    /// The flag which if set indicates if the worker and the server belong
+    /// to different Qserv instances.
+    optional bool foreign_instance = 4 [default = false];
 }
 
 //////////////////////////////////////////////

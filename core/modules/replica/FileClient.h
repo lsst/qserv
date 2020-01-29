@@ -201,6 +201,9 @@ private:
     /// Cached database descriptors obtained from the Configuration
     DatabaseInfo const _databaseInfo;
 
+    /// The cached identifier of a Qserv instance (obtained from the ServiceProvider)
+    std::string const _instanceId;
+
     /// Buffer for data moved over the network
     std::unique_ptr<ProtocolBuffer> _bufferPtr;
 

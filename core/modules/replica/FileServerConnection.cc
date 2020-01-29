@@ -203,12 +203,20 @@ void FileServerConnection::_requestReceived(boost::system::error_code const& ec,
     // Find a file requested by a client
 
     bool     available = false;
+    bool     foreignInstance = false;
     uint64_t size      = 0;
     time_t   mtime     = 0;
     do {
         if (not _serviceProvider->config()->isKnownDatabase(request.database())) {
             LOGS(_log, LOG_LVL_ERROR, context << __func__ << "  unknown database: "
                  << request.database());
+            break;
+        }
+        if (_serviceProvider->instanceId() != request.instance_id()) {
+            LOGS(_log, LOG_LVL_ERROR, context << __func__
+                 << "  Qserv instance of the request: '" << request.instance_id() << "'"
+                 << " doesn't match the one of this service: '" << _serviceProvider->instanceId() << "'");
+            foreignInstance = true;
             break;
         }
         boost::system::error_code ec;
@@ -261,6 +269,7 @@ void FileServerConnection::_requestReceived(boost::system::error_code const& ec,
     response.set_available(available);
     response.set_size(size);
     response.set_mtime(mtime);
+    response.set_foreign_instance(foreignInstance);
 
     _bufferPtr->resize();
     _bufferPtr->serialize(response);
