@@ -209,6 +209,7 @@ void ServiceManagementRequestBase::startImpl(util::Lock const& lock) {
     hdr.set_id(id());
     hdr.set_type(ProtocolRequestHeader::SERVICE);
     hdr.set_service_type(_requestType);
+    hdr.set_instance_id(serviceProvider()->instanceId());
 
     buffer()->serialize(hdr);
 
@@ -259,7 +260,7 @@ void ServiceManagementRequestBase::_analyze(bool success,
 
     switch (message.status()) {
 
-        case ProtocolServiceResponse::SUCCESS:
+        case ProtocolStatus::SUCCESS:
 
             // Transfer the state of the remote service into a local data member
             // before initiating state transition of the request object.

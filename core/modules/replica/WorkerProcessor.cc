@@ -722,7 +722,7 @@ WorkerRequest::Ptr WorkerProcessor::_checkStatusImpl(util::Lock const& lock,
 void WorkerProcessor::setServiceResponse(
         ProtocolServiceResponse& response,
         string const& id,
-        ProtocolServiceResponse::Status status,
+        ProtocolStatus status,
         bool extendedReport) {
 
     LOGS(_log, LOG_LVL_DEBUG, _context(__func__));

@@ -81,10 +81,11 @@ for WORKER in $WORKERS; do
         -e "LOG_DIR=${LOG_DIR}" \
         -e "LSST_LOG_CONFIG=${LSST_LOG_CONFIG}" \
         -e "CONFIG=${CONFIG}" \
+        -e "INSTANCE_ID=${INSTANCE_ID}" \
         -e "WORKER=${WORKER}" \
         -e "QSERV_WORKER_DB_PASSWORD=${QSERV_WORKER_DB_PASSWORD}" \
         "${REPLICATION_IMAGE_TAG}" \
-        bash -c \''/qserv/bin/qserv-replica-worker ${WORKER} --config=${CONFIG} --qserv-db-password="${QSERV_WORKER_DB_PASSWORD}" --debug >& ${LOG_DIR}/${WORKER_CONTAINER_NAME}.log'\'
+        bash -c \''/qserv/bin/qserv-replica-worker ${WORKER} --config=${CONFIG}  --instance-id=${INSTANCE_ID} --qserv-db-password="${QSERV_WORKER_DB_PASSWORD}" --debug >& ${LOG_DIR}/${WORKER_CONTAINER_NAME}.log'\'
 done
 
 # Start master controller
@@ -114,10 +115,11 @@ if [ -n "${MASTER_CONTROLLER}" ]; then
         -e "LOG_DIR=${LOG_DIR}" \
         -e "LSST_LOG_CONFIG=${LSST_LOG_CONFIG}" \
         -e "CONFIG=${CONFIG}" \
+        -e "INSTANCE_ID=${INSTANCE_ID}" \
         -e "OPT_MALLOC_CONF=${OPT_MALLOC_CONF}" \
         -e "OPT_LD_PRELOAD=${OPT_LD_PRELOAD}" \
         -e "QSERV_MASTER_DB_PASSWORD=${QSERV_MASTER_DB_PASSWORD}" \
         --name "${MASTER_CONTAINER_NAME}" \
         "${REPLICATION_IMAGE_TAG}" \
-        bash -c \''cd ${WORK_DIR}; MALLOC_CONF=${OPT_MALLOC_CONF} LD_PRELOAD=${OPT_LD_PRELOAD} /qserv/bin/${TOOL} ${PARAMETERS} --config=${CONFIG} --qserv-db-password="${QSERV_MASTER_DB_PASSWORD}" --debug >& ${LOG_DIR}/${TOOL}.log'\'
+        bash -c \''cd ${WORK_DIR}; MALLOC_CONF=${OPT_MALLOC_CONF} LD_PRELOAD=${OPT_LD_PRELOAD} /qserv/bin/${TOOL} ${PARAMETERS} --config=${CONFIG} --instance-id=${INSTANCE_ID} --qserv-db-password="${QSERV_MASTER_DB_PASSWORD}" --debug >& ${LOG_DIR}/${TOOL}.log'\'
 fi

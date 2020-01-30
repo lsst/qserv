@@ -72,6 +72,7 @@ string status2string(ExtendedCompletionStatus status) {
         case ExtendedCompletionStatus::EXT_STATUS_NO_SUCH_PARTITION:     return "EXT_STATUS_NO_SUCH_PARTITION";
         case ExtendedCompletionStatus::EXT_STATUS_MULTIPLE:              return "EXT_STATUS_MULTIPLE";
         case ExtendedCompletionStatus::EXT_STATUS_OTHER_EXCEPTION:       return "EXT_STATUS_OTHER_EXCEPTION";
+        case ExtendedCompletionStatus::EXT_STATUS_FOREIGN_INSTANCE:      return "EXT_STATUS_FOREIGN_INSTANCE";
     }
     throw logic_error(
             "Common::" + string(__func__) + "(ExtendedCompletionStatus) - unhandled status: " +
@@ -113,6 +114,7 @@ ExtendedCompletionStatus translate(ProtocolStatusExt status) {
         case ProtocolStatusExt::NO_SUCH_PARTITION:     return ExtendedCompletionStatus::EXT_STATUS_NO_SUCH_PARTITION;
         case ProtocolStatusExt::MULTIPLE:              return ExtendedCompletionStatus::EXT_STATUS_MULTIPLE;
         case ProtocolStatusExt::OTHER_EXCEPTION:       return ExtendedCompletionStatus::EXT_STATUS_OTHER_EXCEPTION;
+        case ProtocolStatusExt::FOREIGN_INSTANCE:      return ExtendedCompletionStatus::EXT_STATUS_FOREIGN_INSTANCE;
     }
     throw logic_error(
                 "Common::" + string(__func__) + "(ProtocolStatusExt) - unhandled status: " +
@@ -154,6 +156,7 @@ ProtocolStatusExt translate(ExtendedCompletionStatus status) {
         case ExtendedCompletionStatus::EXT_STATUS_NO_SUCH_PARTITION:     return ProtocolStatusExt::NO_SUCH_PARTITION;
         case ExtendedCompletionStatus::EXT_STATUS_MULTIPLE:              return ProtocolStatusExt::MULTIPLE;
         case ExtendedCompletionStatus::EXT_STATUS_OTHER_EXCEPTION:       return ProtocolStatusExt::OTHER_EXCEPTION;
+        case ExtendedCompletionStatus::EXT_STATUS_FOREIGN_INSTANCE:      return ProtocolStatusExt::FOREIGN_INSTANCE;
     }
     throw logic_error(
                 "Common::" + string(__func__) + "(ExtendedCompletionStatus) - unhandled status: " +

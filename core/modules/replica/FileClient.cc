@@ -79,6 +79,7 @@ FileClient::FileClient(ServiceProvider::Ptr const& serviceProvider,
         _readContent(readContent),
         _workerInfo(serviceProvider->config()->workerInfo(workerName)),
         _databaseInfo(serviceProvider->config()->databaseInfo(databaseName)),
+        _instanceId(serviceProvider->instanceId()),
         _bufferPtr(new ProtocolBuffer(serviceProvider->config()->requestBufferSizeBytes())),
         _io_service(),
         _socket(_io_service),
@@ -159,6 +160,7 @@ bool FileClient::_openImpl() {
         request.set_database(database());
         request.set_file(file());
         request.set_send_content(_readContent);
+        request.set_instance_id(_instanceId);
 
         _bufferPtr->serialize(request);
 
@@ -240,6 +242,13 @@ bool FileClient::_openImpl() {
             _size  = response.size();
             _mtime = response.mtime();
             return true;
+        }
+        if (response.foreign_instance()) {
+            LOGS(_log, LOG_LVL_ERROR, context
+                 << "an error occurred while processing response from the server: "
+                 << _workerInfo.svcHost << ":" << _workerInfo.fsPort
+                 << ", database: " << database() << ", file: " << file()
+                 << ", error: the server belongs to a different Qserv instance");
         }
 
     } catch (exception const& ex) {

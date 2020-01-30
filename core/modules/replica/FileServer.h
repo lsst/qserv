@@ -49,10 +49,7 @@ namespace replica {
   * in its own thread.
   */
 class FileServer : public std::enable_shared_from_this<FileServer>  {
-
 public:
-
-    /// The pointer type for instances of the class
     typedef std::shared_ptr<FileServer> Ptr;
 
     /**
@@ -60,20 +57,14 @@ public:
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
      *
-     * @param serviceProvider
-     *   for configuration, etc. services
-     *
-     * @workerName
-     *   the name of a worker this service is acting upon (used for checking
+     * @param serviceProvider Is needed for configuration, etc. services
+     * @param workerName the name of a worker this service is acting upon (used for checking
      *   consistency of the protocol)
      *
-     * @return
-     *   pointer to the created object
+     * @return A pointer to the created object
      */
     static Ptr create(ServiceProvider::Ptr const& serviceProvider,
                       std::string const& workerName);
-
-    // Default construction and copy semantics are prohibited
 
     FileServer() = delete;
     FileServer(FileServer const&) = delete;
@@ -87,14 +78,12 @@ public:
     /**
      * Run the server in a thread pool (as per the Configuration)
      *
-     * @note
-     *   This is the blocking operation. Please, run it within its own thread
+     * @note This is the blocking operation. Please, run it within its own thread
      *   if needed.
      */
     void run();
 
 private:
-
     /// @see FileServer::create()
     FileServer(ServiceProvider::Ptr const& serviceProvider,
                std::string const& workerName);

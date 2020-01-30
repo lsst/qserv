@@ -66,10 +66,7 @@ namespace replica {
   * stops doing anything.
   */
 class FileServerConnection : public std::enable_shared_from_this<FileServerConnection> {
-
 public:
-
-    /// Shared pointer type for the class
     typedef std::shared_ptr<FileServerConnection> Ptr;
 
     /**
@@ -77,21 +74,14 @@ public:
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
      *
-     * @param serviceProvider
-     *  is needed to access Configuration
-     *
-     * @param workerName
-     *   The name of a worker this service is acting upon (used for checking
-     *   a consistency of the protocol)
-     *
-     * @param io_service
-     *   service object for the network I/O operations
+     * @param serviceProvider Is needed to access Configuration, etc.
+     * @param workerName The name of a worker this service is acting upon (used
+     *   for checking a consistency of the protocol)
+     * @param io_service A service object for the network I/O operations
      */
     static Ptr create(ServiceProvider::Ptr const& serviceProvider,
                       std::string const& workerName,
                       boost::asio::io_service& io_service);
-
-    // Default construction and copy semantics are prohibited
 
     FileServerConnection() = delete;
     FileServerConnection(FileServerConnection const&) = delete;
@@ -116,8 +106,7 @@ public:
      *   - ASYNC: if the request is accepted then begin streaming the content of
      *            a file in a series of records until it's done.
      *
-     * @note
-     *   A reason why the read phase is split into three steps is
+     * @note A reason why the read phase is split into three steps is
      *   that a client is expected to send all components of the request
      *   (frame header and request header) at once. This means
      *   the whole incoming message will be already available on the server's
@@ -134,7 +123,6 @@ public:
     void beginProtocol();
 
 private:
-
     /// @see FileServerConnection::create()
     FileServerConnection(ServiceProvider::Ptr const& serviceProvider,
                          std::string const& workerName,
@@ -153,11 +141,8 @@ private:
      * reads. The request will be parsed, analyzed and if everything is right
      * the file transfer will begin.
      *
-     * @param ec
-     *   error code to be evaluated
-     * 
-     * @param bytes_transferred
-     *   number of bytes received from a client
+     * @param ec An error code to be evaluated.
+     * @param bytes_transferred The number of bytes received from a client.
      */
     void _requestReceived(boost::system::error_code const& ec,
                           size_t bytes_transferred);
@@ -170,11 +155,8 @@ private:
     /**
      * The callback on finishing (either successfully or not) of asynchronous writes.
      *
-     * @param ec
-     *   error code to be evaluated
-     *
-     * @param bytes_transferred
-     *   number of bytes sent to a client in a response
+     * @param ec An error code to be evaluated.
+     * @param bytes_transferred The number of bytes sent to a client in a response.
      */
     void _responseSent(boost::system::error_code const& ec,
                        size_t bytes_transferred);
@@ -188,11 +170,8 @@ private:
     /**
      * The callback on finishing (either successfully or not) of asynchronous writes.
      *
-     * @param ec
-     *   error code to be evaluated
-     * 
-     * @param bytes_transferred
-     *   number of bytes of the file payload sent to a client 
+     * @param ec An error code to be evaluated.
+     * @param bytes_transferred The number of bytes of the file payload sent to a client.
      */
     void _dataSent(boost::system::error_code const& ec,
                    size_t bytes_transferred);
