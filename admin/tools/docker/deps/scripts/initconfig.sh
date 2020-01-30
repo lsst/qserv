@@ -1,8 +1,7 @@
-#!/bin/sh
-
+#!/bin/bash
 
 # LSST Data Management System
-# Copyright 2015 LSST Corporation.
+# Copyright 2014-2015 LSST Corporation.
 #
 # This product includes software developed by the
 # LSST Project (http://www.lsst.org/).
@@ -21,35 +20,24 @@
 # the GNU General Public License along with this program.  If not,
 # see <http://www.lsstcorp.org/LegalNotices/>.
 
-#
-# Dependencies for Debian8.x-based distributions
-# Tested on jessie
-#
 
-# @author  Fabrice Jammes, IN2P3
+# Initialize configuration for Qserv
 
-apt-get --yes install bash \
-    bison \
-    bzip2 \
-    curl \
-    flex \
-    g++ \
-    gettext \
-    git \
-    libbz2-dev \
-    libglib2.0-dev \
-    libpthread-workqueue-dev \
-    libreadline-dev \
-    libssl-dev \
-    make \
-    python-numpy \
-    ncurses-dev \
-    openjdk-7-jre-headless \
-    openssl \
-    patch \
-    python-dev \
-    python-setuptools \
-    uuid-dev \
-    zlib1g-dev
+# @author  Fabrice Jammes, IN2P3/SLAC
 
-apt-get --yes -t jessie-backports install cmake
+
+set -e
+set -x
+
+DIR=$(cd "$(dirname "$0")"; pwd -P)
+. "$DIR"/env.sh
+
+. "$STACK_DIR"/loadLSST.bash
+
+setup qserv -t qserv-dev
+
+cp "$SCISQL_DIR"/lib/libscisql-scisql_?.?.so "$MARIADB_DIR"/lib/plugin
+
+qserv-configure.py --init --force --qserv-run-dir "$QSERV_RUN_DIR"
+qserv-configure.py --etc --qserv-run-dir "$QSERV_RUN_DIR" --force
+rm $QSERV_RUN_DIR/qserv-meta.conf

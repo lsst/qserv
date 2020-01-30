@@ -1,4 +1,4 @@
-FROM <DOCKER_IMAGE>
+FROM <QSERV_IMAGE>
 LABEL maintainer="Fabrice Jammes <fabrice.jammes@in2p3.fr>"
 
 # Allow the start.sh script to modify the local timezone settings
