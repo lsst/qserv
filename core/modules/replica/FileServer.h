@@ -57,7 +57,7 @@ public:
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
      *
-     * @param serviceProvider Is neededfor configuration, etc. services
+     * @param serviceProvider Is needed for configuration, etc. services
      * @param workerName the name of a worker this service is acting upon (used for checking
      *   consistency of the protocol)
      *

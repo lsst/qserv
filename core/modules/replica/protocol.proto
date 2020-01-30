@@ -755,13 +755,6 @@ message ProtocolServiceResponseInfo {
 
 message ProtocolServiceResponse {
 
-    /// Completion status of the operation
-    //enum Status {
-    //    SUCCESS = 0;
-    //    FAILED  = 1;
-    //}
-    //required Status status = 1;
-
     /// The completion status of the operation
     required ProtocolStatus status = 12;
 

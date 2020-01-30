@@ -111,7 +111,7 @@ int Application::run() {
             " Its value will be passed along various internal communication lines of"
             " the system to ensure that all services are related to the same instance."
             " This mechanism also prevents 'cross-talks' between two (or many) Replication"
-            " System's setups in case of accidental miss-configurations.",
+            " System's setups in case of an accidental mis-configuration.",
             _instanceId
         );
 
