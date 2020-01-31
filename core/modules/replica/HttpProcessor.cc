@@ -27,6 +27,7 @@
 #include "replica/HttpCatalogsModule.h"
 #include "replica/HttpConfigurationModule.h"
 #include "replica/HttpControllersModule.h"
+#include "replica/HttpIngestChunksModule.h"
 #include "replica/HttpIngestModule.h"
 #include "replica/HttpJobsModule.h"
 #include "replica/HttpQservMonitorModule.h"
@@ -81,6 +82,8 @@ HttpProcessor::HttpProcessor(Controller::Ptr const& controller,
         _qservMonitorModule(HttpQservMonitorModule::create(
             controller, taskName, processorConfig)),
         _qservSqlModule(HttpQservSqlModule::create(
+            controller, taskName, processorConfig)),
+        _ingestChunksModule(HttpIngestChunksModule::create(
             controller, taskName, processorConfig)),
         _ingestModule(HttpIngestModule::create(
             controller, taskName, processorConfig)) {
@@ -268,12 +271,12 @@ void HttpProcessor::_initialize() {
         },
         {"POST", "/ingest/v1/chunk",
             [self](qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp) {
-                self->_ingestModule->execute(req, resp, "ADD-CHUNK");
+                self->_ingestChunksModule->execute(req, resp, "ADD-CHUNK");
             }
         },
         {"POST", "/ingest/v1/chunks",
             [self](qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp) {
-                self->_ingestModule->execute(req, resp, "ADD-CHUNK-LIST");
+                self->_ingestChunksModule->execute(req, resp, "ADD-CHUNK-LIST");
             }
         },
         {"POST", "/ingest/v1/chunk/empty",
