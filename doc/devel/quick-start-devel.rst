@@ -5,7 +5,7 @@ Quick start guide for developers
 ################################
 
 Using Qserv with your own custom code or arbitrary versions can be done by
-connecting your local git clone with an eups software stack containing Qserv
+connecting your local git repository with an eups software stack containing Qserv
 dependencies.
 
 .. _quick-start-devel-pre-requisites:
@@ -14,7 +14,7 @@ dependencies.
 Pre-requisites
 **************
 
-Follow classical install :ref:`quick-start-pre-requisites`, and then build and install all
+Use a Qserv dependencies container image, named qserv/qserv:deps_YYYYMMDD, and then build and install inside it all
 source dependencies for the current Qserv release:
 
 .. code-block:: bash
@@ -70,7 +70,7 @@ Once Qserv dependencies are installed in eups stack, please use next commands in
 For complete list of supported scons targets see :ref:`scons-targets`.
 
 Once the qserv eups stack is integrated with your local Qserv repository, you
-will need to configure and (if desired) test it (see :ref:`quick-start-configuration`).
+will need to configure and (if desired) test it.
 
 *******************
 Updating test cases

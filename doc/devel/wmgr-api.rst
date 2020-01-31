@@ -76,8 +76,7 @@ creating/deleting databases and tables, loading table data, etc.
             * 500 - for database errors
 
         Response body (for successful completion):
-            JSON object, "results" property is a list of database
-            objects with keys:
+            JSON object, "results" property is a list of database objects with keys:
                 * name: database name
                 * uri: URL for database operations
 
@@ -126,8 +125,7 @@ creating/deleting databases and tables, loading table data, etc.
             * 500 - for other database errors
 
         Response body (for successful completion):
-            JSON object, "result" property is a database object with
-            keys:
+            JSON object, "result" property is a database object with keys:
                 * name: database name
                 * uri: URL for database operations
 
@@ -172,8 +170,7 @@ creating/deleting databases and tables, loading table data, etc.
             * 500 - for other database errors
 
         Response body (for successful completion):
-            JSON object, "result" property is a database object with
-            keys:
+            JSON object, "result" property is a database object with keys:
                 * name: database name
                 * uri: URL for database operations
 
@@ -211,8 +208,7 @@ creating/deleting databases and tables, loading table data, etc.
             * 500 - for database errors
 
         Response body (for successful completion):
-            JSON object, "results" property is a list of table
-            objects with keys:
+            JSON object, "results" property is a list of table objects with keys:
                 * name: table name
                 * uri: URL for database operations
 
@@ -282,8 +278,7 @@ creating/deleting databases and tables, loading table data, etc.
               database errors
 
         Response body (for successful completion):
-            JSON object, "result" property is a table object with
-            keys:
+            JSON object, "result" property is a table object with keys:
                 * name: database name
                 * uri: URL for database operations
 
@@ -337,8 +332,7 @@ creating/deleting databases and tables, loading table data, etc.
             * 500 - for other database errors
 
         Response body (for successful completion):
-            JSON object, "result" property is a table object with
-            keys:
+            JSON object, "result" property is a table object with keys:
                 * name: database name
                 * uri: URL for database operations
 
@@ -378,8 +372,7 @@ creating/deleting databases and tables, loading table data, etc.
             * 500 - for database errors
 
         Response body (for successful completion):
-            JSON object, "result" property is a string with
-            resulting schema.
+            JSON object, "result" property is a string with resulting schema.
                 * name: table name
                 * uri: URL for database operations
 
@@ -459,8 +452,7 @@ creating/deleting databases and tables, loading table data, etc.
             * 500 - for database errors
 
         Response body (for successful completion):
-            JSON object, "results" property is a list of chunk
-            objects with keys:
+            JSON object, "results" property is a list of chunk objects with keys:
                 * chunkId: chunk number (integer)
                 * chunkTable: true if chunk has regular chunk
                   table (boolean)
@@ -520,8 +512,7 @@ creating/deleting databases and tables, loading table data, etc.
               database errors
 
         Response body (for successful completion):
-            JSON object, "result" property is a chunk object with
-            keys:
+            JSON object, "result" property is a chunk object with keys:
                 * chunkId: chunk number (integer)
                 * chunkTable: true if chunk has regular chunk
                   table (boolean)
@@ -574,8 +565,7 @@ creating/deleting databases and tables, loading table data, etc.
             * 500 - for other database errors
 
         Response body (for successful completion):
-            JSON object, "result" property is a chunk object with
-            keys:
+            JSON object, "result" property is a chunk object with keys:
                 * chunkId: chunk number (integer)
                 * chunkTable: true if chunk has regular chunk
                   table (boolean)
@@ -621,12 +611,10 @@ creating/deleting databases and tables, loading table data, etc.
             * load-options: set of options encoded with usual
               ``application/x-www-form-urlencoded`` content type, options are:
               - delimiter - defaults to TAB
-              - enclose - defaults to empty string (strings are
-                not enclosed)
+              - enclose - defaults to empty string (strings are not enclosed)
               - escape - defaults to backslash
               - terminate - defaults to newline
-              - compressed - "0" or "1", by default is guessed
-                from file extension (.gz)
+              - compressed - "0" or "1", by default is guessed from file extension (.gz)
 
         Response headers:
             * Content-Type: ``application/json``
@@ -838,8 +826,7 @@ publishing database via xrootd.
             * 500 - for other database errors
 
         Response body (for successful completion):
-            JSON object, "results" property is a list of database
-            objects with keys:
+            JSON object, "results" property is a list of database objects with keys:
                 * name: database name
                 * uri: URL for *xrootd* database operations
 
@@ -885,8 +872,7 @@ publishing database via xrootd.
             * 500 - on other database errors
 
         Response body (for successful completion):
-            JSON object, "results" property is a database object
-            with keys:
+            JSON object, "results" property is a database object with keys:
                 * name: database name
                 * uri: URL for *xrootd* database operations
 
@@ -939,8 +925,7 @@ publishing database via xrootd.
             * 500 - for other database errors
 
         Response body (for successful completion):
-            JSON object, "results" property is a database object
-            with keys:
+            JSON object, "results" property is a database object with keys:
                 * name: database name
                 * uri: URL for *xrootd* database operations
 
@@ -987,8 +972,7 @@ e.g. stopping and starting processes.
             * 200 - for success
 
         Response body (for successful completion):
-            JSON object, "results" property is a list of service
-            objects with keys:
+            JSON object, "results" property is a list of service objects with keys:
                 * name: service name
                 * uri: URL for service operations
 
@@ -1030,8 +1014,7 @@ e.g. stopping and starting processes.
             * 404 - for invalid service name
 
         Response body (for successful completion):
-            JSON object, "result" property is a service object with
-            keys:
+            JSON object, "result" property is a service object with keys:
                 * name: service name
                 * state: one of "active" or "stopped"
                 * uri: URL for service operations
@@ -1078,8 +1061,7 @@ e.g. stopping and starting processes.
             * 409 - if action has failed
 
         Response body (for successful completion):
-            JSON object, "result" property is a service object with
-            keys:
+            JSON object, "result" property is a service object with keys:
                 * name: service name
                 * state: state of service after action, one of
                   "active" or "stopped"
