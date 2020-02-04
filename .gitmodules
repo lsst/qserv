@@ -1,0 +1,18 @@
+[submodule "extern/sphgeom"]
+	path = extern/sphgeom
+	url = ../../lsst/sphgeom
+[submodule "extern/log"]
+	path = extern/log
+	url = ../../lsst/log
+[submodule "extern/partition"]
+	path = extern/partition
+	url = ../../lsst/partition
+[submodule "extern/db"]
+	path = extern/db
+	url = ../../lsst/db
+[submodule "extern/utils"]
+	path = extern/utils
+	url = ../../lsst/utils
+[submodule "extern/qserv_web"]
+	path = extern/qserv_web
+	url = ../../lsst-dm/qserv_web
