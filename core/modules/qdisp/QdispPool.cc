@@ -75,7 +75,7 @@ void PriorityQueue::queCmd(util::Command::Ptr const& cmd) {
         iter->second->queCmd(cmd);
         _changed = true;
     }
-    _cv.notify_all();
+    _cv.notify_one();
 }
 
 
@@ -97,7 +97,7 @@ void PriorityQueue::queCmd(PriorityCommand::Ptr const& cmd, int priority) {
         LOGS (_log, LOG_LVL_DEBUG, "priQue p=" << priority << *this);
         _changed = true;
     }
-    _cv.notify_all();
+    _cv.notify_one();
 }
 
 
