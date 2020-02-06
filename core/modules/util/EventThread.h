@@ -85,7 +85,8 @@ public:
     virtual void queCmd(Command::Ptr const& cmd) {
         std::lock_guard<std::mutex> lock(_mx);
         _qu.push_back(cmd);
-        notify(_qu.size() > 1);
+        // &&& notify(_qu.size() > 1);
+        notify(false);
     };
 
     /// Get a command off the queue.
