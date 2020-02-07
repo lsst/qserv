@@ -125,6 +125,7 @@ void Executive::setQueryId(QueryId id) {
 /// Add a new job to executive queue, if not already in. Not thread-safe.
 ///
 JobQuery::Ptr Executive::add(JobDescription::Ptr const& jobDesc) {
+    /* &&&
     auto timeDiff = [](std::chrono::time_point<std::chrono::system_clock> const& begin, // TEMPORARY-timing
             std::chrono::time_point<std::chrono::system_clock> const& end) -> int {
         auto diff = std::chrono::duration_cast<std::chrono::microseconds>(end - begin);
@@ -133,6 +134,7 @@ JobQuery::Ptr Executive::add(JobDescription::Ptr const& jobDesc) {
     auto startQSEA = std::chrono::system_clock::now(); // TEMPORARY-timing
     std::chrono::time_point<std::chrono::system_clock> cancelLockQSEA, jobQueryQSEA,
                                                        addJobQSEA, trackQSEA; // TEMPORARY-timing
+    */
     JobQuery::Ptr jobQuery;
     {
         // Create the JobQuery and put it in the map.
@@ -140,13 +142,13 @@ JobQuery::Ptr Executive::add(JobDescription::Ptr const& jobDesc) {
         Ptr thisPtr = shared_from_this();
         MarkCompleteFunc::Ptr mcf = std::make_shared<MarkCompleteFunc>(thisPtr, jobDesc->id());
         jobQuery = JobQuery::create(thisPtr, jobDesc, jobStatus, mcf, _id);
-        jobQueryQSEA = std::chrono::system_clock::now(); // TEMPORARY-timing
+        // &&& jobQueryQSEA = std::chrono::system_clock::now(); // TEMPORARY-timing
 
         QSERV_LOGCONTEXT_QUERY_JOB(jobQuery->getQueryId(), jobQuery->getIdInt());
 
         {
             std::lock_guard<std::recursive_mutex> lock(_cancelled.getMutex());
-            cancelLockQSEA = std::chrono::system_clock::now(); // // TEMPORARY-timing
+            // &&& cancelLockQSEA = std::chrono::system_clock::now(); // // TEMPORARY-timing
             if (_cancelled) {
                 LOGS(_log, LOG_LVL_DEBUG, "Executive already cancelled, ignoring add("
                         << jobDesc->id() << ")");
@@ -157,14 +159,14 @@ JobQuery::Ptr Executive::add(JobDescription::Ptr const& jobDesc) {
                 LOGS(_log, LOG_LVL_ERROR, "Executive ignoring duplicate job add");
                 return jobQuery;
             }
-            addJobQSEA = std::chrono::system_clock::now(); // TEMPORARY-timing
+            // &&& addJobQSEA = std::chrono::system_clock::now(); // TEMPORARY-timing
 
             if (!_track(jobQuery->getIdInt(), jobQuery)) {
                 LOGS(_log, LOG_LVL_ERROR, "Executive ignoring duplicate track add");
                 return jobQuery;
             }
         }
-        trackQSEA = std::chrono::system_clock::now(); // TEMPORARY-timing
+        // &&& trackQSEA = std::chrono::system_clock::now(); // TEMPORARY-timing
 
         if (_empty.exchange(false)) {
             LOGS(_log, LOG_LVL_DEBUG, "Flag _empty set to false");
@@ -174,9 +176,10 @@ JobQuery::Ptr Executive::add(JobDescription::Ptr const& jobDesc) {
 
     QSERV_LOGCONTEXT_QUERY_JOB(jobQuery->getQueryId(), jobQuery->getIdInt());
 
-    std::string msg = "Executive::add with path=" + jobDesc->resource().path();
-    LOGS(_log, LOG_LVL_DEBUG, msg);
-    //_messageStore->addMessage(jobDesc.resource().chunk(), ccontrol::MSG_MGR_ADD, msg); TODO: maybe relocate.
+    // &&& std::string msg = "Executive::add with path=" + jobDesc->resource().path();
+    LOGS(_log, LOG_LVL_DEBUG, "Executive::add with path=" << jobDesc->resource().path());
+    // &&& _messageStore->addMessage(jobDesc.resource().chunk(), ccontrol::MSG_MGR_ADD, msg); TODO: maybe relocate.
+    /* &&&
     auto endQSEA = std::chrono::system_clock::now(); // TEMPORARY-timing
     { // TEMPORARY-timing
         std::lock_guard<std::mutex> sumLock(sumMtx);
@@ -187,6 +190,7 @@ JobQuery::Ptr Executive::add(JobDescription::Ptr const& jobDesc) {
         endQSEASum += timeDiff(trackQSEA, endQSEA);
     }
     //_queueJobStart(jobQuery);
+     */
     jobQuery->runJob();
     return jobQuery;
 }

@@ -108,12 +108,13 @@ namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.ccontrol.UserQuerySelect");
 
-
+/* &&&
 int timeDiff(std::chrono::time_point<std::chrono::system_clock> const& begin, // TEMPORARY-timing
         std::chrono::time_point<std::chrono::system_clock> const& end) {
     auto diff = std::chrono::duration_cast<std::chrono::microseconds>(end - begin);
     return diff.count();
 }
+*/
 
 } // namespace
 
@@ -282,10 +283,10 @@ void UserQuerySelect::submit() {
     LOGS(_log, LOG_LVL_DEBUG, "first query template:" <<
         (queryTemplates.size() > 0 ? queryTemplates[0].sqlFragment() : "none produced."));
 
-    std::atomic<int> addTimeSum; // TEMPORARY-timing
+    // &&& std::atomic<int> addTimeSum; // TEMPORARY-timing
 
     // Writing query for each chunk, stop if query is cancelled.
-    auto startAllQSJ = std::chrono::system_clock::now(); // TEMPORARY-timing
+    // &&& auto startAllQSJ = std::chrono::system_clock::now(); // TEMPORARY-timing
 
     // attempt to change priority, requires root
     bool increaseThreadPriority = false;  // TODO: add to configuration
@@ -312,11 +313,12 @@ void UserQuerySelect::submit() {
                 [this, sequence,     // sequence must be a copy
                  &chunkSpec, &queryTemplates,
                  &chunks, &chunksMtx, &ttn,
-                 &taskMsgFactory, &addTimeSum](util::CmdData*) {
+                 &taskMsgFactory](util::CmdData*) {
+            //&&&     &taskMsgFactory, &addTimeSum](util::CmdData*) {
 
             QSERV_LOGCONTEXT_QUERY(_qMetaQueryId);
 
-            auto startbuildQSJ = std::chrono::system_clock::now(); // TEMPORARY-timing
+            // &&& auto startbuildQSJ = std::chrono::system_clock::now(); // TEMPORARY-timing
             qproc::ChunkQuerySpec::Ptr cs;
             {
                 std::lock_guard<std::mutex> lock(chunksMtx);
@@ -333,10 +335,12 @@ void UserQuerySelect::submit() {
                     std::make_shared<MergingHandler>(cmr, _infileMerger, chunkResultName),
                     taskMsgFactory, cs, chunkResultName);
             _executive->add(jobDesc);
+            /* &&&
             auto endChunkAddQSJ = std::chrono::system_clock::now(); // TEMPORARY-timing
             { // TEMPORARY-timing
                 addTimeSum += timeDiff(startbuildQSJ, endChunkAddQSJ);
             }
+            */
         };
 
         auto cmd = std::make_shared<qdisp::PriorityCommand>(funcBuildJob);
@@ -351,6 +355,7 @@ void UserQuerySelect::submit() {
 
     LOGS(_log, LOG_LVL_DEBUG, "total jobs in query=" << sequence);
     _executive->waitForAllJobsToStart();
+    /* &&&
     auto endAllQSJ = std::chrono::system_clock::now(); // TEMPORARY-timing
     { // TEMPORARY-timing
         std::lock_guard<std::mutex> sumLock(_executive->sumMtx);
@@ -363,6 +368,7 @@ void UserQuerySelect::submit() {
              << ", trackQSEASum=" << _executive->trackQSEASum
              << ", endQSEASum=" << _executive->endQSEASum );
     }
+    */
 
     // we only care about per-chunk info for ASYNC queries
     if (_async) {

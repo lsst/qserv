@@ -133,12 +133,14 @@ public:
 
     bool startQuery(std::shared_ptr<JobQuery> const& jobQuery);
 
+    /* &&&
     std::mutex sumMtx; // TEMPORARY-timing
     int cancelLockQSEASum{0}; // TEMPORARY-timing
     int jobQueryQSEASum{0}; // TEMPORARY-timing
     int addJobQSEASum{0}; // TEMPORARY-timing
     int trackQSEASum{0}; // TEMPORARY-timing
     int endQSEASum{0}; // TEMPORARY-timing
+    */
 
 private:
     Executive(ExecutiveConfig const& c, std::shared_ptr<MessageStore> const& ms,
