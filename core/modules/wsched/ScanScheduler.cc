@@ -230,7 +230,7 @@ void ScanScheduler::queCmd(util::Command::Ptr const& cmd) {
         _taskQueue->queueTask(t);
         _infoChanged = true;
     }
-    util::CommandQueue::_cv.notify_all();
+    util::CommandQueue::_cv.notify_one();
 }
 
 
