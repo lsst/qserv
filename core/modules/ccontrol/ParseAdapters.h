@@ -2095,7 +2095,7 @@ public:
             auto param = std::make_shared<query::ValueExpr>();
             assert_execution_condition(nullptr != _valueFactor, "ValueFactor must be populated.", _ctx);
             param->addValueFactor(_valueFactor);
-            antlr4::tree::TerminalNode * terminalNode;
+            antlr4::tree::TerminalNode * terminalNode = nullptr;
             if (_ctx->AVG()) {
                 terminalNode = _ctx->AVG();
             } else if (_ctx->MAX()) {
@@ -2913,21 +2913,19 @@ public:
     }
 
     void onExit() override {
-        BitOperatorCBH::OperatorType op;
         if (_ctx->getText() == "<<") {
-            op = BitOperatorCBH::LEFT_SHIFT;
+            lockedParent()->handleBitOperator(BitOperatorCBH::LEFT_SHIFT);
         } else if (_ctx->getText() == ">>") {
-            op = BitOperatorCBH::RIGHT_SHIFT;
+            lockedParent()->handleBitOperator(BitOperatorCBH::RIGHT_SHIFT);
         } else if (_ctx->getText() == "&") {
-            op = BitOperatorCBH::AND;
+            lockedParent()->handleBitOperator(BitOperatorCBH::AND);
         } else if (_ctx->getText() == "|") {
-            op = BitOperatorCBH::OR;
+            lockedParent()->handleBitOperator(BitOperatorCBH::OR);
         } else if (_ctx->getText() == "^") {
-            op = BitOperatorCBH::XOR;
+            lockedParent()->handleBitOperator(BitOperatorCBH::XOR);
         } else {
             assert_execution_condition(false, "unhandled bit operator", _ctx);
         }
-        lockedParent()->handleBitOperator(op);
     }
 
     std::string name() const override { return getTypeName(this); }
