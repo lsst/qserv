@@ -201,6 +201,8 @@ if not env.GetOption('clean'):
 
     env.Append(CPPPATH=[os.getcwd()])
 
+    env.Append(CCFLAGS = '-Og')
+
     state.log.debug("Scons env:\n" + env.Dump())
 
 # Generate version
