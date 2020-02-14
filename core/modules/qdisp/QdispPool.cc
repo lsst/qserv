@@ -100,13 +100,20 @@ void PriorityQueue::queCmd(PriorityCommand::Ptr const& cmd, int priority) {
     _cv.notify_one();
 }
 
+std::atomic<unsigned int> localLogLimiter(0); /// &&& delete
 
 util::Command::Ptr PriorityQueue::getCmd(bool wait){
     util::Command::Ptr ptr;
     std::unique_lock<std::mutex> uLock(_mtx);
     while (true) {
         _changed = false;
-        LOGS (_log, LOG_LVL_DEBUG, "priQueGet " << *this);
+        LOGS(_log, LOG_LVL_DEBUG, "priQueGet " << *this);
+        { /// &&& delete block
+            ++localLogLimiter;
+            if (localLogLimiter%1000 == 0) {
+                LOGS(_log, LOG_LVL_WARN, "priQueGet " << *this);
+            }
+        }
 
         /// Make sure minimum number of jobs running per priority.
         if (!_shuttingDown) {
@@ -130,6 +137,8 @@ util::Command::Ptr PriorityQueue::getCmd(bool wait){
             if (que->running < que->getMaxRunning()) {
                 ptr = que->getCmd(false); // no wait
                 if (ptr != nullptr) {
+                    _changed = true;
+                    _cv.notify_one();
                     return ptr;
                 }
             }
@@ -200,9 +209,9 @@ void QdispPool::_setup(bool unitTest) {
         // slow queries at the same time a burden on the system.
         // TODO: Set up thread pool size and queues in configuration. DM-10237
         _prQueue = std::make_shared<PriorityQueue>(100, 1, 5); // default (lowest) priority.
-        _pool = util::ThreadPool::newThreadPool(1200, _prQueue);
+        _pool = util::ThreadPool::newThreadPool(2400, _prQueue);
         _prQueue->addPriQueue(0, 1, 90);  // Highest priority - interactive queries
-        _prQueue->addPriQueue(1, 1, 50);  // Outgoing shared scan queries.
+        _prQueue->addPriQueue(1, 1, 500);  // Outgoing shared scan queries.
         _prQueue->addPriQueue(2, 6, 850); // FAST queries (Object table)
         _prQueue->addPriQueue(3, 7, 250); // MEDIUM queries (Source table)
         _prQueue->addPriQueue(4, 6, 150); // SLOW queries (Object Extra table)

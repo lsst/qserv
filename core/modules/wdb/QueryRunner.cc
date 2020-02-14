@@ -254,6 +254,20 @@ bool QueryRunner::_fillRows(MYSQL_RES* result, int numFields, uint& rowCount, si
         unsigned int szLimit = std::min(proto::ProtoHeaderWrap::PROTOBUFFER_DESIRED_LIMIT,
                                         proto::ProtoHeaderWrap::PROTOBUFFER_HARD_LIMIT);
 
+        if (not _removedFromThreadPool) {
+            // This query has been answered by the database and the
+            // scheduler for this worker should stop waiting for it.
+            // leavePool() will tell the scheduler this task is finished
+            // and create a new thread in the pool to replace this one.
+            auto pet = _task->getAndNullPoolEventThread();
+            _removedFromThreadPool = true;
+            if (pet != nullptr) {
+                pet->leavePool();
+            } else {
+                LOGS(_log, LOG_LVL_WARN, "Result PoolEventThread was null. Probably already moved.");
+            }
+        }
+
         // Each element needs to be mysql-sanitized
         if (tSize > szLimit) {
             if (tSize > proto::ProtoHeaderWrap::PROTOBUFFER_HARD_LIMIT) {
@@ -266,18 +280,20 @@ bool QueryRunner::_fillRows(MYSQL_RES* result, int numFields, uint& rowCount, si
             rowCount = 0;
             tSize = 0;
             _initMsg();
+            /* &&&
             // This task is going to have multiple results to return to the czar and
             // the speed this task can be completed will be limited by the czar's ability to
             // read in results, which could be very very slow. The upshot of this is the
             // scheduler for this worker should stop waiting for this task. leavePool()
             // will tell the scheduler this task is finished and create a new thread in the pool
             // to replace this thread.
-            auto pet = _task->getAndNullPoolEventThread();
+            auto pet = _task->getAndNullPoolEventThread(); // &&&
             if (pet != nullptr) {
                 pet->leavePool();
             } else {
                 LOGS(_log, LOG_LVL_DEBUG, "Large result PoolEventThread was null. Probably already moved. b");
             }
+            */
         }
     }
     unsigned int mysqlErrNo = _mysqlConn->getErrno();

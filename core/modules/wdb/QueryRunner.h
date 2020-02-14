@@ -103,13 +103,14 @@ private:
     void _transmit(bool last, unsigned int rowCount, size_t size);
     void _transmitHeader(std::string& msg);
 
-    ///< Actual task
-    wbase::Task::Ptr _task;
 
-    ///< Resource reservation
+    wbase::Task::Ptr _task; ///< Actual task
+
+    /// Resource reservation
     ChunkResourceMgr::Ptr _chunkResourceMgr;
     std::string _dbName;
     std::atomic<bool> _cancelled{false};
+    std::atomic<bool> _removedFromThreadPool{false};
     mysql::MySqlConfig const _mySqlConfig;
     std::unique_ptr<mysql::MySqlConnection> _mysqlConn;
 

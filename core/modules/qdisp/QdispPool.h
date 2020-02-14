@@ -141,8 +141,7 @@ public:
     QdispPool& operator=(QdispPool const&) = delete;
 
     /// Lower priority numbers are higher priority.
-    /// Invalid priorities get the lowest priority, which
-    /// is the bottom of the heap.
+    /// Invalid priorities get the lowest priority (high priority number).
     void queCmd(PriorityCommand::Ptr const& cmd, int priority) {
         _prQueue->queCmd(cmd, priority);
     }
