@@ -1,3 +1,23 @@
+<<<<<<< HEAD
+=======
+/*
+ * TransmitMgr.h
+ *
+ *  Created on: Feb 18, 2020
+ *      Author: jgates
+ */
+
+#ifndef CORE_MODULES_WDB_TRANSMITMGR_H_
+#define CORE_MODULES_WDB_TRANSMITMGR_H_
+
+
+
+
+
+#endif /* CORE_MODULES_WDB_TRANSMITMGR_H_ */
+
+
+>>>>>>> Added code to examine memory double free and limit the number of active transmitions.
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
@@ -23,6 +43,7 @@
 
 #ifndef LSST_QSERV_WDB_TRANSMITMGR_H
 #define LSST_QSERV_WDB_TRANSMITMGR_H
+
 
 // System headers
 #include <atomic>
