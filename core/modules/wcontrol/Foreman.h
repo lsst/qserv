@@ -87,7 +87,7 @@ public:
      * @param queries     - query statistics collector
      */
     Foreman(Scheduler::Ptr                  const& scheduler,
-            uint                                   poolSize,
+            unsigned int                    poolSize,
             mysql::MySqlConfig              const& mySqlConfig,
             wpublish::QueriesAndChunks::Ptr const& queries);
 

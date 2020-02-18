@@ -297,7 +297,7 @@ util::TimerHistogram transmitHisto("transmit Hist", {0.1, 1, 5, 10, 20, 40});
 /// Transmit result data with its header.
 /// If 'last' is true, this is the last message in the result set
 /// and flags are set accordingly.
-void QueryRunner::_transmit(bool last, uint rowCount, size_t tSize) {
+void QueryRunner::_transmit(bool last, unsigned int rowCount, size_t tSize) {
     LOGS(_log, LOG_LVL_DEBUG, "_transmit last=" << last
          << " rowCount=" << rowCount << " tSize=" << tSize);
     std::string resultString;
@@ -434,7 +434,7 @@ bool QueryRunner::_dispatchChannel() {
     }
     ChunkResourceRequest req(_chunkResourceMgr, m);
 
-    uint rowCount = 0;
+    unsigned int rowCount = 0;
     size_t tSize = 0;
 
     try {

@@ -55,7 +55,7 @@ namespace qserv {
 namespace wcontrol {
 
 Foreman::Foreman(Scheduler::Ptr                  const& scheduler,
-                 uint                                   poolSize,
+                 unsigned int                    poolSize,
                  mysql::MySqlConfig              const& mySqlConfig,
                  wpublish::QueriesAndChunks::Ptr const& queries)
 
