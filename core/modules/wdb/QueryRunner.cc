@@ -70,6 +70,7 @@
 #include "wbase/Base.h"
 #include "wbase/SendChannel.h"
 #include "wdb/ChunkResource.h"
+#include "wdb/TransmitMgr.h"
 
 namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.wdb.QueryRunner");
@@ -309,6 +310,8 @@ bool QueryRunner::_fillRows(MYSQL_RES* result, int numFields, uint& rowCount, si
 
 util::TimerHistogram transmitHisto("transmit Hist", {0.1, 1, 5, 10, 20, 40});
 
+TransmitMgr _transmitMgr(5000); /// &&& This is an absolutely horrible way to instantiate this but need this fast.
+
 
 /// Transmit result data with its header.
 /// If 'last' is true, this is the last message in the result set
@@ -316,6 +319,8 @@ util::TimerHistogram transmitHisto("transmit Hist", {0.1, 1, 5, 10, 20, 40});
 void QueryRunner::_transmit(bool last, unsigned int rowCount, size_t tSize) {
     LOGS(_log, LOG_LVL_DEBUG, "_transmit last=" << last
          << " rowCount=" << rowCount << " tSize=" << tSize);
+    TransmitLock transmitLock(_transmitMgr, _task->getScanInteractive());
+    LOGS(_log, LOG_LVL_WARN, "&&& _transmitMgr count " << _transmitMgr.getTransmitCount());
     std::string resultString;
     _result->set_queryid(_task->getQueryId());
     _result->set_jobid(_task->getJobId());

@@ -359,7 +359,7 @@ void SsiRequest::Finished(XrdSsiRequest& req, XrdSsiRespInfo const& rinfo, bool 
 
     // We can't do much other than close the file.
     // It should work (on linux) to unlink the file after we open it, though.
-    LOGS(_log, LOG_LVL_DEBUG, "RequestFinished " << type);
+    LOGS(_log, LOG_LVL_DEBUG, "RequestFinished " << type << " " << keepAlive.use_count());
 }
 
 bool SsiRequest::reply(char const* buf, int bufLen) {

@@ -110,8 +110,8 @@ util::Command::Ptr PriorityQueue::getCmd(bool wait){
         LOGS(_log, LOG_LVL_DEBUG, "priQueGet " << *this);
         { /// &&& delete block
             ++localLogLimiter;
-            if (localLogLimiter%1000 == 0) {
-                LOGS(_log, LOG_LVL_WARN, "priQueGet " << *this);
+            if (localLogLimiter%25 == 0) {
+                LOGS(_log, LOG_LVL_WARN, "priQueGet " << *this); // &&& change to INFO every 100 calls
             }
         }
 

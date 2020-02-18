@@ -85,6 +85,7 @@ private:
     void _setPoolEventThread(PoolEventThread::Ptr const& poolEventThread);
 
     std::weak_ptr<PoolEventThread> _poolEventThread;
+    std::mutex _poolMtx;
 };
 
 
