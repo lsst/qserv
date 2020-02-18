@@ -1,20 +1,3 @@
-/*
- * TransmitMgr.h
- *
- *  Created on: Feb 18, 2020
- *      Author: jgates
- */
-
-#ifndef CORE_MODULES_WDB_TRANSMITMGR_H_
-#define CORE_MODULES_WDB_TRANSMITMGR_H_
-
-
-
-
-
-#endif /* CORE_MODULES_WDB_TRANSMITMGR_H_ */
-
-
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
@@ -40,15 +23,6 @@
 
 #ifndef LSST_QSERV_WDB_TRANSMITMGR_H
 #define LSST_QSERV_WDB_TRANSMITMGR_H
- /**
-  * @file
-  *
-  * @brief QueryAction instances perform single-shot query execution with the
-  * result reflected in the db state or returned via a SendChannel. Works with
-  * new XrdSsi API.
-  *
-  * @author Daniel L. Wang, SLAC
-  */
 
 // System headers
 #include <atomic>
