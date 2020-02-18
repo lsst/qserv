@@ -1,4 +1,5 @@
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 /*
  * TransmitMgr.h
@@ -18,6 +19,8 @@
 
 
 >>>>>>> Added code to examine memory double free and limit the number of active transmitions.
+=======
+>>>>>>> Removed extraneous #ifdef and comments.
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
@@ -43,7 +46,6 @@
 
 #ifndef LSST_QSERV_WDB_TRANSMITMGR_H
 #define LSST_QSERV_WDB_TRANSMITMGR_H
-
 
 // System headers
 #include <atomic>
