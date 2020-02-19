@@ -100,10 +100,10 @@ SsiService::SsiService(XrdSsiLogger* log, wconfig::WorkerConfig const& workerCon
     }
 
     // Set thread pool size.
-    uint poolSize = std::max(workerConfig.getThreadPoolSize(), std::thread::hardware_concurrency());
+    unsigned int poolSize = std::max(workerConfig.getThreadPoolSize(), std::thread::hardware_concurrency());
 
     // poolSize should be greater than either GroupScheduler::maxThreads or ScanScheduler::maxThreads
-    uint maxThread = poolSize;
+    unsigned int maxThread = poolSize;
     int maxReserve = 2;
     auto group = std::make_shared<wsched::GroupScheduler>(
         "SchedGroup", maxThread, maxReserve,

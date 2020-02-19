@@ -91,7 +91,7 @@ BOOST_AUTO_TEST_CASE(EventThreadTest) {
     {
         auto cmdQueue = std::make_shared<CommandQueue>();
         weak_que = cmdQueue;
-        uint sz = 2; // size of thread pool to create
+        unsigned int sz = 2; // size of thread pool to create
         auto pool = ThreadPool::newThreadPool(sz, cmdQueue);
         weak_pool = pool;
         LOGS_DEBUG("pool size=" << sz);
@@ -110,7 +110,7 @@ BOOST_AUTO_TEST_CASE(EventThreadTest) {
     {
         auto cmdQueue = std::make_shared<CommandQueue>();
         weak_que = cmdQueue;
-        uint sz = 10; // size of thread pool to create
+        unsigned int sz = 10; // size of thread pool to create
         auto pool = ThreadPool::newThreadPool(sz, cmdQueue);
         weak_pool = pool;
         LOGS_DEBUG("pool size=" << sz);
@@ -218,7 +218,7 @@ BOOST_AUTO_TEST_CASE(EventThreadTest) {
         SumUnprotected sum;
         auto cmdQueue = std::make_shared<CommandQueue>();
         weak_que = cmdQueue;
-        uint sz = 10;
+        unsigned int sz = 10;
         auto pool = ThreadPool::newThreadPool(sz, cmdQueue);
         weak_pool = pool;
         auto func = [&sum](CmdData*){

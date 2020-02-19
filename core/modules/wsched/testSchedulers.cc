@@ -747,9 +747,9 @@ BOOST_AUTO_TEST_CASE(BlendScheduleQueryRemovalTest) {
     LOGS(_log, LOG_LVL_DEBUG, "BlendScheduleQueryRemovalTest");
     // Add two queries to scanFast scheduler and then move one query to scanSlow.
     int startChunk = 70;
-    uint jobs = 11;
-    uint jobsA = jobs;
-    uint jobsB = jobs;
+    unsigned int jobs = 11;
+    unsigned int jobsA = jobs;
+    unsigned int jobsB = jobs;
     std::vector<Task::Ptr> queryATasks;
     std::vector<Task::Ptr> queryBTasks;
     lsst::qserv::QueryId qIdA = f.qIdInc++;
@@ -757,7 +757,7 @@ BOOST_AUTO_TEST_CASE(BlendScheduleQueryRemovalTest) {
     {
         int jobId = 0;
         int chunkId = startChunk;
-        for (uint j=0; j<jobs; ++j) {
+        for (unsigned int j=0; j<jobs; ++j) {
             auto taskMsg = newTaskMsgScan(chunkId, lsst::qserv::proto::ScanInfo::Rating::FAST, qIdA, jobId);
             Task::Ptr mv = makeTask(taskMsg);
             queryATasks.push_back(mv);
