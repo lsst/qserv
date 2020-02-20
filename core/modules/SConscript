@@ -64,7 +64,6 @@ from SCons.Script import *
 from SCons.Platform import platform_default
 
 import detect
-import genversion
 import state
 
 Import('env')
@@ -204,10 +203,6 @@ if not env.GetOption('clean'):
     env.Append(CCFLAGS = '-Og')
 
     state.log.debug("Scons env:\n" + env.Dump())
-
-# Generate version
-versionFile = env.Command(['global/version.h'], None, genversion.buildVersionHeader)
-env.AlwaysBuild(versionFile)  # Always rebuild this.
 
 
 # Dictionary with definitions of shared libraries, shared library name
