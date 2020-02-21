@@ -256,6 +256,7 @@ bool MergingHandler::_setResult() {
     auto start = std::chrono::system_clock::now();
     auto buff = _mBuf.getBuffer();
     if (!ProtoImporter<proto::Result>::setMsgFrom(_response->result, &((buff)[0]), _mBuf.getSize())) {
+        LOGS(_log, LOG_LVL_ERROR, "_setResult decoding error");
         _setError(ccontrol::MSG_RESULT_DECODE, "Error decoding result msg");
         _state = MsgState::RESULT_ERR;
         return false;
@@ -268,6 +269,7 @@ bool MergingHandler::_setResult() {
 bool MergingHandler::_verifyResult() {
     auto buff = _mBuf.getBuffer();
     if (_response->protoHeader.md5() != util::StringHash::getMd5(buff.data(), _mBuf.getSize())) {
+        LOGS(_log, LOG_LVL_ERROR, "_verifyResult MD5 mismatch");
         _setError(ccontrol::MSG_RESULT_MD5, "Result message MD5 mismatch");
         _state = MsgState::RESULT_ERR;
         return false;

@@ -300,6 +300,10 @@ void QueryRequest::_queueAskForResponse(AskForResponseDataCmd::Ptr const& cmd, J
     int rating = jq->getDescription()->getScanRating();
     if (jq->getDescription()->getScanInteractive()) {
         _qdispPool->queCmd(cmd, 0);
+    } else {
+        _qdispPool->queCmd(cmd, 2);
+    }
+    /* &&&
     } else if (rating <= proto::ScanInfo::Rating::FAST) {
         if (_largeResult) {
             _qdispPool->queCmd(cmd, 5);
@@ -321,6 +325,7 @@ void QueryRequest::_queueAskForResponse(AskForResponseDataCmd::Ptr const& cmd, J
     } else {
         _qdispPool->queCmd(cmd, 7);
     }
+    */
 
 }
 

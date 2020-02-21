@@ -48,6 +48,7 @@
 #define LSST_QSERV_WDB_TRANSMITMGR_H
 
 // System headers
+#include <assert.h>
 #include <atomic>
 #include <condition_variable>
 #include <mutex>
@@ -63,35 +64,38 @@ class TransmitLock;
 
 /// Currently, a quick and dirty way to limit the number of concurrent
 /// transmits. 'interactive queries' are not blocked.
+/// New tasks cannot transmit to the czar until the number of jobs
+/// currently transmitting data drops below maxAlreadyTran
 /// TODO:
 ///    -- Priority should be given to finish tasks that have already started transmitting
+///    -- The czar these are being sent to should be taken into consideration
 ///    -- RAII class should be created for take() and release().
 ///    -- maxTransmits set via config, maybe change at runtime.
 class TransmitMgr {
 public:
-    TransmitMgr(unsigned int maxTransmits) : _maxTransmits(maxTransmits)  {}
+    TransmitMgr(int maxTransmits, int maxAlreadyTran)
+        : _maxTransmits(maxTransmits),  _maxAlreadyTran(maxAlreadyTran) {
+        assert(_maxTransmits > 1);
+        assert(_maxAlreadyTran > 1);
+    }
     // &&& delete default constructor, copy constructor, and such
 
-    unsigned int getTransmitCount() { return _transmitCount; }
+    int getTotalCount() { return _totalCount; }
+    int getTransmitCount() { return _transmitCount; }
+    int getAlreadyTransCount() { return _alreadyTransCount; }
 
     friend class TransmitLock;
 
 private:
-    void _take(bool interactive) {
-        if (not interactive) {
-            std::unique_lock<std::mutex> uLock(_mtx);
-            _tCv.wait(uLock, [this](){ return _transmitCount < _maxTransmits; });
-        }
-        ++_transmitCount;
-    }
+    void _take(bool interactive, bool alreadyTransmitting);
 
-    void _release() {
-        --_transmitCount;
-        _tCv.notify_one();
-    }
+    void _release(bool interactive, bool alreadyTransmitting);
 
-    std::atomic<unsigned int> _transmitCount{0};
-    unsigned int _maxTransmits;
+    std::atomic<int> _totalCount{0};
+    std::atomic<int> _transmitCount{0};
+    std::atomic<int> _alreadyTransCount{0};
+    int _maxTransmits;
+    int _maxAlreadyTran;
     std::mutex _mtx;
     std::condition_variable _tCv;
 };
@@ -100,17 +104,21 @@ private:
 /// RAII class to support TransmitMgr
 class TransmitLock {
 public:
-    TransmitLock(TransmitMgr& transmitMgr, bool interactive) : _transmitMgr(transmitMgr) {
-        _transmitMgr._take(interactive);
+    TransmitLock(TransmitMgr& transmitMgr, bool interactive, bool alreadyTransmitting)
+      : _transmitMgr(transmitMgr), _interactive(interactive),
+        _alreadyTransmitting(alreadyTransmitting) {
+        _transmitMgr._take(_interactive, _alreadyTransmitting);
     }
     // &&& delete default constructor and such
 
     ~TransmitLock() {
-        _transmitMgr._release();
+        _transmitMgr._release(_interactive, _alreadyTransmitting);
     }
 
 private:
     TransmitMgr& _transmitMgr;
+    bool _interactive;
+    bool _alreadyTransmitting;
 };
 
 

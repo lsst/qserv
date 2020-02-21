@@ -209,14 +209,14 @@ void QdispPool::_setup(bool unitTest) {
         // slow queries at the same time a burden on the system.
         // TODO: Set up thread pool size and queues in configuration. DM-10237
         _prQueue = std::make_shared<PriorityQueue>(100, 1, 5); // default (lowest) priority.
-        _pool = util::ThreadPool::newThreadPool(2400, _prQueue);
+        _pool = util::ThreadPool::newThreadPool(1200, _prQueue);
         _prQueue->addPriQueue(0, 1, 90);  // Highest priority - interactive queries
-        _prQueue->addPriQueue(1, 1, 500);  // Outgoing shared scan queries.
-        _prQueue->addPriQueue(2, 6, 850); // FAST queries (Object table)
-        _prQueue->addPriQueue(3, 7, 250); // MEDIUM queries (Source table)
-        _prQueue->addPriQueue(4, 6, 150); // SLOW queries (Object Extra table)
-        _prQueue->addPriQueue(5, 6, 500); // FAST large results
-        _prQueue->addPriQueue(6, 6, 100); // MEDIUM large results
+        _prQueue->addPriQueue(1, 1, 1000);  // Outgoing shared scan queries.
+        _prQueue->addPriQueue(2, 6, 1000); // FAST queries (Object table)
+        _prQueue->addPriQueue(3, 7, 400); // MEDIUM queries (Source table)
+        _prQueue->addPriQueue(4, 6, 400); // SLOW queries (Object Extra table)
+        _prQueue->addPriQueue(5, 6, 350); // FAST large results
+        _prQueue->addPriQueue(6, 6, 300); // MEDIUM large results
         _prQueue->addPriQueue(7, 6, 20);  // Everything else (slow things)
         // default priority is the lowest priority.
     } else {

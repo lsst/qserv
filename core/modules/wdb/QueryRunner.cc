@@ -70,6 +70,7 @@
 #include "wbase/Base.h"
 #include "wbase/SendChannel.h"
 #include "wdb/ChunkResource.h"
+#include "wdb/SqlConnMgr.h"
 #include "wdb/TransmitMgr.h"
 
 namespace {
@@ -131,6 +132,8 @@ void QueryRunner::_setDb() {
 
 util::TimerHistogram memWaitHisto("memWait Hist", {1, 5, 10, 20, 40});
 
+SqlConnMgr _sqlConnMgr(800,750); /// &&& put this in a more sane location, use configuration values.
+
 
 bool QueryRunner::runQuery() {
     QSERV_LOGCONTEXT_QUERY_JOB(_task->getQueryId(), _task->getJobId());
@@ -167,6 +170,8 @@ bool QueryRunner::runQuery() {
 
     _setDb();
     LOGS(_log, LOG_LVL_DEBUG,  "Exec in flight for Db=" << _dbName);
+    LOGS(_log, LOG_LVL_WARN, "&&& sqlConnMgr total" << _sqlConnMgr.getTotalCount() << " conn=" << _sqlConnMgr.getSqlConnCount());
+    SqlConnLock sqlConnLock(_sqlConnMgr, not _task->getScanInteractive());
     bool connOk = _initConnection();
     if (!connOk) {
         // Transmit the mysql connection error to the czar, which should trigger a re-try.
@@ -255,6 +260,8 @@ bool QueryRunner::_fillRows(MYSQL_RES* result, int numFields, uint& rowCount, si
         unsigned int szLimit = std::min(proto::ProtoHeaderWrap::PROTOBUFFER_DESIRED_LIMIT,
                                         proto::ProtoHeaderWrap::PROTOBUFFER_HARD_LIMIT);
 
+        // If there are more than _&&& transmits happening, stop and wait
+        // for some to finish, otherwise
         if (not _removedFromThreadPool) {
             // This query has been answered by the database and the
             // scheduler for this worker should stop waiting for it.
@@ -310,7 +317,7 @@ bool QueryRunner::_fillRows(MYSQL_RES* result, int numFields, uint& rowCount, si
 
 util::TimerHistogram transmitHisto("transmit Hist", {0.1, 1, 5, 10, 20, 40});
 
-TransmitMgr _transmitMgr(5000); /// &&& This is an absolutely horrible way to instantiate this but need this fast.
+TransmitMgr _transmitMgr(100, 10); /// &&& This is an absolutely horrible way to instantiate this but need this fast.
 
 
 /// Transmit result data with its header.
@@ -319,8 +326,10 @@ TransmitMgr _transmitMgr(5000); /// &&& This is an absolutely horrible way to in
 void QueryRunner::_transmit(bool last, unsigned int rowCount, size_t tSize) {
     LOGS(_log, LOG_LVL_DEBUG, "_transmit last=" << last
          << " rowCount=" << rowCount << " tSize=" << tSize);
-    TransmitLock transmitLock(_transmitMgr, _task->getScanInteractive());
-    LOGS(_log, LOG_LVL_WARN, "&&& _transmitMgr count " << _transmitMgr.getTransmitCount());
+    TransmitLock transmitLock(_transmitMgr, _task->getScanInteractive(), _largeResult);
+    LOGS(_log, LOG_LVL_WARN, "&&& _transmitMgr count=" << _transmitMgr.getTransmitCount()
+         << " already=" << _transmitMgr.getAlreadyTransCount()
+         << " total=" << _transmitMgr.getTotalCount());
     std::string resultString;
     _result->set_queryid(_task->getQueryId());
     _result->set_jobid(_task->getJobId());

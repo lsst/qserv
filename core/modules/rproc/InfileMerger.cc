@@ -154,8 +154,17 @@ void InfileMerger::_setQueryIdStr(std::string const& qIdStr) {
     _queryIdStrSet = true;
 }
 
+struct TmpMergeCount { // &&&
+    TmpMergeCount() { ++mergeCount; }
+    ~TmpMergeCount() { --mergeCount; }
+    static std::atomic<int> mergeCount; // &&&
+};
+std::atomic<int> TmpMergeCount::mergeCount(0);
+
 
 bool InfileMerger::merge(std::shared_ptr<proto::WorkerResponse> response) {
+    TmpMergeCount mergeCount;
+    LOGS(_log, LOG_LVL_WARN, "mergeCount=" << mergeCount.mergeCount);
     if (!response) {
         return false;
     }
@@ -178,7 +187,8 @@ bool InfileMerger::merge(std::shared_ptr<proto::WorkerResponse> response) {
 
     if (response->result.has_errorcode() || response->result.has_errormsg()) {
         _error = util::Error(response->result.errorcode(), response->result.errormsg(), util::ErrorCode::MYSQLEXEC);
-        LOGS(_log, LOG_LVL_ERROR, "Error in response data: " << _error);
+        LOGS(_log, LOG_LVL_ERROR, "Error from worker:" << response->protoHeader.wname()
+                << " in response data: " << _error);
         return false;
     }
 
@@ -234,6 +244,7 @@ bool InfileMerger::merge(std::shared_ptr<proto::WorkerResponse> response) {
             }
         }
     }
+    LOGS(_log, LOG_LVL_DEBUG, "mergeCount " << mergeCount.mergeCount ); // &&&
     return ret;
 }
 
