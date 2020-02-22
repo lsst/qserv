@@ -164,7 +164,7 @@ std::atomic<int> TmpMergeCount::mergeCount(0);
 
 bool InfileMerger::merge(std::shared_ptr<proto::WorkerResponse> response) {
     TmpMergeCount mergeCount;
-    LOGS(_log, LOG_LVL_WARN, "mergeCount=" << mergeCount.mergeCount);
+    if (mergeCount.mergeCount > 12) LOGS(_log, LOG_LVL_WARN, "&&& mergeCount=" << mergeCount.mergeCount);
     if (!response) {
         return false;
     }

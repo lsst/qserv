@@ -416,7 +416,8 @@ int BlendScheduler::getInFlight() const {
 
 
 void BlendScheduler::_logChunkStatus() {
-    if (LOG_CHECK_LVL(_log, LOG_LVL_DEBUG)) {
+    // &&& if (LOG_CHECK_LVL(_log, LOG_LVL_DEBUG)) {
+    if (LOG_CHECK_LVL(_log, LOG_LVL_WARN)) { // &&&
         string str;
         {
             lock_guard<mutex> lg(_schedMtx);
@@ -424,7 +425,8 @@ void BlendScheduler::_logChunkStatus() {
                 if (sched != nullptr) str += sched->chunkStatusStr() + " ";
             }
         }
-        LOGS(_log, LOG_LVL_DEBUG, str);
+        //LOGS(_log, LOG_LVL_DEBUG, str); // &&&
+        LOGS(_log, LOG_LVL_WARN, str); //&&&
     }
 }
 

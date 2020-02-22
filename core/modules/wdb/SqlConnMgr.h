@@ -80,7 +80,7 @@ private:
     void _release() {
         --_sqlConnCount;
         --_totalCount;
-        _tCv.notify_one();
+        _tCv.notify_all(); // &&&
     }
 
     std::atomic<int> _totalCount{0};

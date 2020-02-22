@@ -125,7 +125,7 @@ bool QueryRunner::_initConnection() {
 void QueryRunner::_setDb() {
     if (_task->msg->has_db()) {
         _dbName = _task->msg->db();
-        LOGS(_log, LOG_LVL_WARN, "QueryRunner overriding dbName with " << _dbName);
+        LOGS(_log, LOG_LVL_INFO, "QueryRunner overriding dbName with " << _dbName);
     }
 }
 
