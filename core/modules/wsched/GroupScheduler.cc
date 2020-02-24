@@ -120,7 +120,7 @@ void GroupScheduler::queCmd(util::Command::Ptr const& cmd) {
     }
     auto uqCount = _incrCountForUserQuery(t->getQueryId());
     LOGS(_log, LOG_LVL_WARN, getName() << " queCmd uqCount=" << uqCount);
-    util::CommandQueue::_cv.notify_all();
+    util::CommandQueue::_cv.notify_one();
 }
 
 /// Return a Task from the front of the queue. If no message is available, wait until one is.

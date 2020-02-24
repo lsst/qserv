@@ -297,7 +297,7 @@ bool QueryRequest::_importStream(JobQuery::Ptr const& jq) {
 void QueryRequest::_queueAskForResponse(AskForResponseDataCmd::Ptr const& cmd, JobQuery::Ptr const& jq) {
     // ScanInfo::Rating { FASTEST = 0, FAST = 10, MEDIUM = 20, SLOW = 30, SLOWEST = 100 };
 
-    int rating = jq->getDescription()->getScanRating();
+    //int rating = jq->getDescription()->getScanRating(); &&&
     if (jq->getDescription()->getScanInteractive()) {
         _qdispPool->queCmd(cmd, 0);
     } else {

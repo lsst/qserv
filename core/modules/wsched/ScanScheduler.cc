@@ -122,7 +122,8 @@ void ScanScheduler::commandFinish(util::Command::Ptr const& cmd) {
     }
     // Whenever a Task finishes, all sleeping threads need to check if resources
     // are available to run new Tasks.
-    _cv.notify_all();
+    //_cv.notify_all(); &&&
+    _cv.notify_one();
 }
 
 
