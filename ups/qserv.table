@@ -23,6 +23,7 @@ setupRequired(scons)
 setupRequired(sphgeom)
 setupRequired(sqlalchemy)
 setupRequired(xrootd)
+setupRequired(redis_plus_plus)
 
 envPrepend(LD_LIBRARY_PATH, ${PRODUCT_DIR}/lib)
 envPrepend(DYLD_LIBRARY_PATH, ${PRODUCT_DIR}/lib)
