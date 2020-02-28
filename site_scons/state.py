@@ -193,6 +193,10 @@ def _setEnvWithDependencies():
                       PathVariable.PathIsDir)),
         (PathVariable('PARTITION_DIR', 'partition library install dir', _findPrefixFromName('PARTITION'),
                       PathVariable.PathIsDir)),
+        (PathVariable('HIREDIS_DIR', 'hiredis library install dir', _findPrefixFromName('HIREDIS'),
+                      PathVariable.PathIsDir)),
+        (PathVariable('REDIS_PLUS_PLUS_DIR', 'redis-plus-plus library install dir', _findPrefixFromName('REDIS_PLUS_PLUS'),
+                      PathVariable.PathIsDir)),
     )
     opts.Update(env)
 
@@ -209,6 +213,14 @@ def _setEnvWithDependencies():
                       os.path.join(env['ANTLR4_DIR'], "include/antlr4-runtime"), PathVariable.PathIsDir)),
         (PathVariable('ANTLR4_LIB', 'antlr4 libraries path',
          os.path.join(env['ANTLR4_DIR'], "lib"), PathVariable.PathIsDir)),
+        (PathVariable('HIREDIS_INC', 'hiredis include path', os.path.join(
+            env['HIREDIS_DIR'], "usr", "local", "include"), PathVariable.PathIsDir)),
+        (PathVariable('HIREDIS_LIB', 'hiredis libraries path',
+            os.path.join(env['HIREDIS_DIR'], "usr", "local", "lib"), PathVariable.PathIsDir)),
+        (PathVariable('REDIS_PLUS_PLUS_INC', 'redis_plus_plus include path', os.path.join(
+            env['REDIS_PLUS_PLUS_DIR'], "include"), PathVariable.PathIsDir)),
+        (PathVariable('REDIS_PLUS_PLUS_LIB', 'redis-plus-plus libraries path',
+            os.path.join(env['REDIS_PLUS_PLUS_DIR'], "lib"), PathVariable.PathIsDir)),
         (PathVariable('XROOTD_INC', 'xrootd include path', os.path.join(
             env['XROOTD_DIR'], "include", "xrootd/private"), PathVariable.PathIsDir)),
         (PathVariable('XROOTD_LIB', 'xrootd libraries path',
