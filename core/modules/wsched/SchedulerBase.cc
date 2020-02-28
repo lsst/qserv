@@ -54,6 +54,7 @@ void SchedulerBase::setPriorityDefault() {
 
 int SchedulerBase::_incrCountForUserQuery(QueryId queryId) {
     std::lock_guard<std::mutex> lock(_countsMutex);
+    ++_totalTaskCount;
     return ++_userQueryCounts[queryId];
 }
 
@@ -62,6 +63,7 @@ int SchedulerBase::_decrCountForUserQuery(QueryId queryId) {
     std::lock_guard<std::mutex> lock(_countsMutex);
     // Decrement the count for this user query and remove the entry if count is 0.
     int count = 0;
+    --_totalTaskCount;
     auto iter = _userQueryCounts.find(queryId);
     if (iter != _userQueryCounts.end()) {
         count = --(iter->second);
@@ -108,7 +110,7 @@ int SchedulerBase::getActiveChunkCount() {
 std::string SchedulerBase::chunkStatusStr() {
     std::ostringstream os;
     std::lock_guard<std::mutex> lock(_countsMutex);
-    os << getName() << " ActiveChunks=" << _chunkTasks.size() << " ";
+    os << getName() << " q=" << getTotalTaskCount() <<" ActChunks=" << _chunkTasks.size() << " ";
     for (auto const& entry:_chunkTasks) {
         int chunkId = entry.first;
         int count = entry.second;

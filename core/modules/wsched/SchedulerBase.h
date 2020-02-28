@@ -105,6 +105,8 @@ public:
     /// @return a JSON representation of the object's status for the monitoring
     nlohmann::json statusToJson();
 
+    int getTotalTaskCount() { return _totalTaskCount; }
+
     /// Remove task from this scheduler.
     /// @return - If task was still in the queue, return true.
     /// Most schedulers do not support this operation. Currently only supports
@@ -129,10 +131,10 @@ protected:
     void _decrChunkTaskCount(int chunkId); //< Decrease the count of Tasks working on this chunk.
 
     std::string const _name{}; //< Name of this scheduler.
-    int _maxReserve{1};    //< Number of threads this scheduler would like to have reserved for its use.
-    int _maxReserveDefault{1};
-    int _maxThreads{1};    //< Maximum number of threads for this scheduler to have inFlight.
-    int _maxThreadsAdj{1}; //< Maximum number of threads to have inFlight adjusted for available pool.
+    int _maxReserve = 1;    //< Number of threads this scheduler would like to have reserved for its use.
+    int _maxReserveDefault = 1;
+    int _maxThreads = 1;    //< Maximum number of threads for this scheduler to have inFlight.
+    int _maxThreadsAdj = 1; //< Maximum number of threads to have inFlight adjusted for available pool.
 
     int _priority; ///< Current priority, higher value - higher priority
     int _priorityDefault;
@@ -143,6 +145,8 @@ private:
     /// The true purpose of _userQuerycount is to track how many different UserQuery's are on the queue.
     /// Number of Tasks for each UserQuery in the queue.
     std::map<QueryId, int> _userQueryCounts;
+
+    std::atomic<int> _totalTaskCount{0};
 
     std::map<int, int> _chunkTasks; ///< Number of tasks in each chunk actively being queried.
     std::mutex _countsMutex; ///< Protects _userQueryCounts and _chunkTasks.

@@ -29,7 +29,8 @@ location = {{QSERV_DATA_DIR}}/mysql
 
 # Thread pool size
 # thread_pool_size = 20
-thread_pool_size = 12
+#thread_pool_size = 12
+thread_pool_size = 100
 
 # Required number of completed tasks for table in a chunk for the average time to be valid
 # required_tasks_completed = 25
@@ -58,10 +59,13 @@ priority_fast = 4
 # reserve_fast = 2
 
 # Maximum number of active chunks per scan scheduler
-# maxActiveChunks_snail = 1
-# maxActiveChunks_slow = 4
-# maxActiveChunks_med = 4
-# maxActiveChunks_fast = 4
+# maxactivechunks_snail = 1
+# maxactivechunks_slow = 4
+# maxactivechunks_med = 4
+# maxactivechunks_fast = 4 
+# &&& delete following lines
+maxactivechunks_fast = 50
+maxactivechunks_med = 50
 
 # Maximum time for all tasks in a user query to complete.
 # scanmaxminutes_fast = 60
