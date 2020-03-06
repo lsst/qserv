@@ -3,10 +3,6 @@
 #   This folder contains instructions and tools for building a runnable container
 #   packed with the Replication System's binaries and their dependent libraries
 #
-#   NOTES: these instructions assume you're building a container under
-#          the following name: 'qserv/replica:tools'
-#          This name can be obviously changed to some other name as needed
-
 # Go into a development folder where you normally build Qserv (by running
 # the scons tool)
 
@@ -23,11 +19,15 @@ docker run \
     -v /etc/group:/etc/group:ro \
     -v $PWD:$PWD \
     qserv/replica:dev \
-    bash -c '$SOURCE/admin/tools/docker/replication/container/tools/ncsa/collect.sh $SOURCE'
+    bash -c '$SOURCE/admin/tools/docker/replication/container/tools/collect.sh $SOURCE'
+
 
 # Build the runnable container from the previously prepared area
 
-docker build -t qserv/replica:tools tmp/replication/container/build
+docker build \
+   -t qserv/replica:tools \
+   -f $PWD/admin/tools/docker/replication/container/tools/Dockerfile.ncsa \
+   tmp/replication/container/build
 
 # (optional) run a few tests to inspect if container content is well formed
 # and applications' dependencies are satisfied.
@@ -45,6 +45,15 @@ docker push qserv/replica:tools
 
 ####################################################################
 # An alternative method is run the following script wich will do all
-# explained above
+# explained above and build a container tagged as 'qserv/replica:tools'.
 
-admin/tools/docker/replication/container/tools/ncsa/build.sh /home/user/development/qserv
+admin/tools/docker/replication/container/tools/build.sh $PWD ncsa
+
+# Or, if the default container tag 'qserv/replica:tools' is not desired, using
+# the Git hash to tag the container. Note that this container will be built using
+# a different specification file 'Dockerfile.gke'. Look inside 'Dockerfile.gke'
+# to see how it's different from 'Dockerfile.ncsa'.
+
+TAG="qserv/replica:tools-$(git describe --dirty --always)" 
+admin/tools/docker/replication/container/tools/build.sh $PWD gke "$TAG"
+
