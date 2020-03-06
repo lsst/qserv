@@ -45,6 +45,7 @@ import tempfile
 from lsst.qserv import css
 from lsst.qserv.admin.partConfig import PartConfig
 from lsst.qserv.admin.chunkMapping import ChunkMapping
+from lsst.qserv.gsidx import gsidxLib
 from lsst.qserv.wmgr.client import ServerError
 
 # ----------------------------------
@@ -117,6 +118,8 @@ class DataLoader:
         if not loggerName:
             loggerName = __name__
         self._log = logging.getLogger(loggerName)
+
+        self.gsidx = gsidxLib.GsidxContext("redis-cluster").gsidx()
 
         self.configFiles = configFiles
         self.czarWmgr = czarWmgr
@@ -897,10 +900,14 @@ class DataLoader:
         columns = (idxCol, 'chunkId', 'subChunkId')
         indexData = wmgr.getIndex(database, table, chunkId=chunk, columns=columns)
 
+        def gsidxCallback(err):
+            pass # todo log error?
+
         # dump it into a in-memory file, loadData expects binary mode
         data = BytesIO()
         for row in indexData:
             data.write(b"%d\t%d\t%d\n" % tuple(row))
+            self.gsidx.set(row[0], row[1], row[2], gsidxCallback)
         data.seek(0)
 
         # send that file to czar
