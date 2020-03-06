@@ -2,15 +2,27 @@
 
 set -e
 
+USAGE="usage: <path> {gke|ncsa} [<tag>]"
 SOURCE="$1"
 if [ -z "$SOURCE" ]; then
-    echo "usage: <path>"
+    echo $USAGE
     exit 1
+fi
+DEST="$2"
+case $DEST in
+  gke | ncsa)
+    ;;
+  *)
+    echo $USAGE
+    exit 1
+    ;;
+esac
+TAG="$3"
+if [ -z "$TAG" ]; then
+    TAG="qserv/replica:tools"
 fi
 
 cd $SOURCE
-
-TAG="qserv/replica:tools-$(git describe --dirty --always)"
 
 echo "************************************************************************************************"
 echo "collecting binaries and library dependencies of ${TAG}"
@@ -23,14 +35,14 @@ docker run \
        -v $HOME:$HOME \
        -v $PWD:$PWD \
        qserv/replica:dev \
-       bash -c '$SOURCE/admin/tools/docker/replication/container/tools/gke/collect.sh $SOURCE'
+       bash -c '$SOURCE/admin/tools/docker/replication/container/tools/collect.sh $SOURCE'
 
 echo "************************************************************************************************"
 echo "building ${TAG}"
 echo "************************************************************************************************"
 docker build \
        -t ${TAG} \
-       -f admin/tools/docker/replication/container/tools/gke/Dockerfile \
+       -f admin/tools/docker/replication/container/tools/Dockerfile.$DEST \
        tmp/replication/container/build
 
 echo "************************************************************************************************"
