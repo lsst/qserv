@@ -384,7 +384,7 @@ std::shared_ptr<query::SecIdxCompRestrictor> makeSecondaryIndexRestrictor(
         auto siCompPred = std::make_shared<query::CompPredicate>(query::ValueExpr::newSimple(dirCol),
                                                                  compPredicate.op,
                                                                  compPredicate.right);
-        return std::make_shared<query::SecIdxCompRestrictor>(siCompPred, true);
+        return std::make_shared<query::SecIdxCompRestrictor>(siCompPred, false);
     } else if (compPredicate.left->isConstVal() &&
                 compPredicate.isEqualsOp() &&
                 isSecIndexCol(context, compPredicate.right->getColumnRef())) {
@@ -396,7 +396,7 @@ std::shared_ptr<query::SecIdxCompRestrictor> makeSecondaryIndexRestrictor(
         auto siCompPred = std::make_shared<query::CompPredicate>(compPredicate.left,
                                                                  compPredicate.op,
                                                                  query::ValueExpr::newSimple(dirCol));
-        return std::make_shared<query::SecIdxCompRestrictor>(siCompPred, false);
+        return std::make_shared<query::SecIdxCompRestrictor>(siCompPred, true);
     }
     return nullptr;
 }

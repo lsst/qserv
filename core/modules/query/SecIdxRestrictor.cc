@@ -44,8 +44,8 @@ namespace qserv {
 namespace query {
 
 
-SecIdxCompRestrictor::SecIdxCompRestrictor(std::shared_ptr<query::CompPredicate> compPredicate, bool useLeft)
-        : _compPredicate(compPredicate), _useLeft(useLeft) {
+SecIdxCompRestrictor::SecIdxCompRestrictor(std::shared_ptr<query::CompPredicate> compPredicate, bool valOnLeft)
+        : _compPredicate(compPredicate), _valOnLeft(valOnLeft) {
     if (_compPredicate->op != query::CompPredicate::EQUALS_OP &&
             _compPredicate->op != query::CompPredicate::NULL_SAFE_EQUALS_OP ) {
         throw std::logic_error("Internal error: comparison restrictor only supports = or <=>.");
@@ -85,7 +85,7 @@ bool SecIdxCompRestrictor::isEqual(const SecIdxRestrictor& rhs) const {
 
 
 std::shared_ptr<query::ColumnRef const> SecIdxCompRestrictor::getSecIdxColumnRef() const {
-    return _useLeft ? _compPredicate->left->getColumnRef() : _compPredicate->right->getColumnRef();
+    return _valOnLeft ? _compPredicate->right->getColumnRef() : _compPredicate->left->getColumnRef();
 }
 
 

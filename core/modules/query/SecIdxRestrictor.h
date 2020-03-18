@@ -100,7 +100,7 @@ class SecIdxCompRestrictor : public SecIdxRestrictor {
 public:
     SecIdxCompRestrictor() = default;
 
-    SecIdxCompRestrictor(std::shared_ptr<query::CompPredicate> compPredicate, bool useLeft);
+    SecIdxCompRestrictor(std::shared_ptr<query::CompPredicate> compPredicate, bool valOnLeft);
 
     /**
      * @brief Serialze this instance as SQL to the QueryTemplate.
@@ -127,7 +127,7 @@ protected:
 
 private:
     std::shared_ptr<query::CompPredicate> _compPredicate; //< the comparison for this restrictor.
-    bool _useLeft; //< true if the secondary index column is on the left of the ComPredicate (false for right)
+    bool _valOnLeft; //< true if the value for the index column is on the left of the CompPredicate (false for right)
 };
 
 

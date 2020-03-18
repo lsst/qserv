@@ -54,7 +54,7 @@ BOOST_AUTO_TEST_CASE(SecIdxCompRestrictorTestLeft){
             make_shared<CompPredicate>(ValueExpr::newColumnExpr("db", "tbl", "", "objectId"),
                                        CompPredicate::EQUALS_OP,
                                        ValueExpr::newSimple(ValueFactor::newConstFactor("123456"))),
-                                       true);
+                                       false);
     BOOST_CHECK_EQUAL(restrictor.sqlFragment(), "`db`.`tbl`.`objectId`=123456");
     BOOST_CHECK_EQUAL(restrictor.getSecIdxLookupQuery("db", "tbl", "chunkColumn", "subChunkColumn"),
                       "SELECT `chunkColumn`, `subChunkColumn` "
@@ -71,7 +71,7 @@ BOOST_AUTO_TEST_CASE(SecIdxCompRestrictorTestRight){
             make_shared<CompPredicate>(ValueExpr::newSimple(ValueFactor::newConstFactor("123456")),
                                        CompPredicate::EQUALS_OP,
                                        ValueExpr::newColumnExpr("db", "tbl", "", "objectId")),
-                                       false);
+                                       true);
     BOOST_CHECK_EQUAL(restrictor.sqlFragment(), "123456=`db`.`tbl`.`objectId`");
     BOOST_CHECK_EQUAL(restrictor.getSecIdxLookupQuery("db", "tbl", "chunkColumn", "subChunkColumn"),
                       "SELECT `chunkColumn`, `subChunkColumn` "
