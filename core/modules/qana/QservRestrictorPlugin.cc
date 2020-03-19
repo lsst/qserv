@@ -347,7 +347,7 @@ query::ColumnRef::Ptr getCorrespondingDirectorColumn(query::QueryContext const& 
 std::shared_ptr<query::SecIdxInRestrictor> makeSecondaryIndexRestrictor(
             query::InPredicate const& inPredicate,
             query::QueryContext const& context) {
-    if (isSecIndexCol(context, inPredicate.value->getColumnRef())) {
+    if (not inPredicate.hasNot && isSecIndexCol(context, inPredicate.value->getColumnRef())) {
         auto dirCol = getCorrespondingDirectorColumn(context, inPredicate.value->getColumnRef());
         if (nullptr == dirCol) {
             LOGS(_log, LOG_LVL_ERROR, "Failed to get director column for " <<
