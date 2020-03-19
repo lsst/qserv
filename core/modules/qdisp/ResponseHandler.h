@@ -38,6 +38,9 @@ namespace qdisp {
 
 class JobQuery;
 
+
+
+
 /// ResponseHandler is an interface that handles result bytes. Tasks are
 /// submitted to an Executive instance naming a resource unit (what resource is
 /// required), a request string (task payload), and a handler for returning bytes.
@@ -47,25 +50,17 @@ class JobQuery;
 class ResponseHandler {
 public:
     typedef util::Error Error;
+    using BufPtr = std::shared_ptr<std::vector<char>>;
 
     typedef std::shared_ptr<ResponseHandler> Ptr;
     ResponseHandler() {}
     void setJobQuery(std::shared_ptr<JobQuery> const& jobQuery) { _jobQuery = jobQuery; }
     virtual ~ResponseHandler() {}
 
-    /// @return a char vector to receive the next message. The vector
-    /// should be sized to the request size. The buffer will be filled
-    /// before flush(), unless the response is completed (no more
-    /// bytes) or there is an error.
-    virtual std::vector<char>& nextBuffer() = 0;
-
-    /// @return the size of the nextBuffer() without allocating the memory for it.
-    virtual size_t nextBufferSize() = 0;
-
     /// Flush the retrieved buffer where bLen bytes were set. If last==true,
     /// then no more buffer() and flush() calls should occur.
     /// @return true if successful (no error)
-    virtual bool flush(int bLen, bool& last, bool& largeResult) = 0;
+    virtual bool flush(int bLen, BufPtr const& bufPtr, bool& last, bool& largeResult, int& nextBufSize) = 0;
 
     /// Signal an unrecoverable error condition. No further calls are expected.
     virtual void errorFlush(std::string const& msg, int code) = 0;

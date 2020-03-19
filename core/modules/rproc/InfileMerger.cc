@@ -159,7 +159,7 @@ struct TmpMergeCount { // &&&
     ~TmpMergeCount() { --mergeCount; }
     static std::atomic<int> mergeCount; // &&&
 };
-std::atomic<int> TmpMergeCount::mergeCount(0);
+std::atomic<int> TmpMergeCount::mergeCount(0); // &&&
 
 
 bool InfileMerger::merge(std::shared_ptr<proto::WorkerResponse> response) {
@@ -397,7 +397,7 @@ bool InfileMerger::makeResultsTableForQuery(query::SelectStmt const& stmt) {
     }
     _addJobIdColumnToSchema(schema);
     std::string createStmt = sql::formCreateTable(_mergeTable, schema);
-    // createStmt += " ENGINE=MyISAM"; &&&
+    createStmt += " ENGINE=MyISAM"; // &&&
     LOGS(_log, LOG_LVL_TRACE, "InfileMerger make results table query: " << createStmt);
     if (not _applySqlLocal(createStmt, "makeResultsTableForQuery")) {
         _error = InfileMergerError(util::ErrorCode::CREATE_TABLE, "Error creating table:" + _mergeTable + ": " + _error.getMsg());

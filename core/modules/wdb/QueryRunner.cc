@@ -125,7 +125,7 @@ bool QueryRunner::_initConnection() {
 void QueryRunner::_setDb() {
     if (_task->msg->has_db()) {
         _dbName = _task->msg->db();
-        LOGS(_log, LOG_LVL_INFO, "QueryRunner overriding dbName with " << _dbName);
+        LOGS(_log, LOG_LVL_DEBUG, "QueryRunner overriding dbName with " << _dbName);
     }
 }
 
@@ -288,20 +288,6 @@ bool QueryRunner::_fillRows(MYSQL_RES* result, int numFields, uint& rowCount, si
             rowCount = 0;
             tSize = 0;
             _initMsg();
-            /* &&&
-            // This task is going to have multiple results to return to the czar and
-            // the speed this task can be completed will be limited by the czar's ability to
-            // read in results, which could be very very slow. The upshot of this is the
-            // scheduler for this worker should stop waiting for this task. leavePool()
-            // will tell the scheduler this task is finished and create a new thread in the pool
-            // to replace this thread.
-            auto pet = _task->getAndNullPoolEventThread(); // &&&
-            if (pet != nullptr) {
-                pet->leavePool();
-            } else {
-                LOGS(_log, LOG_LVL_DEBUG, "Large result PoolEventThread was null. Probably already moved. b");
-            }
-            */
         }
     }
     unsigned int mysqlErrNo = _mysqlConn->getErrno();
@@ -317,8 +303,8 @@ bool QueryRunner::_fillRows(MYSQL_RES* result, int numFields, uint& rowCount, si
 
 util::TimerHistogram transmitHisto("transmit Hist", {0.1, 1, 5, 10, 20, 40});
 
-TransmitMgr _transmitMgr(100, 10); /// &&& This is an absolutely horrible way to instantiate this but need this fast.
-
+//TransmitMgr _transmitMgr(100, 10); /// &&& This is an absolutely horrible way to instantiate this but need this fast.
+TransmitMgr _transmitMgr(200, 150); /// &&&
 
 /// Transmit result data with its header.
 /// If 'last' is true, this is the last message in the result set
@@ -329,7 +315,8 @@ void QueryRunner::_transmit(bool last, unsigned int rowCount, size_t tSize) {
     TransmitLock transmitLock(_transmitMgr, _task->getScanInteractive(), _largeResult);
     LOGS(_log, LOG_LVL_WARN, "&&& _transmitMgr count=" << _transmitMgr.getTransmitCount()
          << " already=" << _transmitMgr.getAlreadyTransCount()
-         << " total=" << _transmitMgr.getTotalCount());
+         << " total=" << _transmitMgr.getTotalCount()
+         << " rowCount=" << rowCount << " tSize=" << tSize);
     std::string resultString;
     _result->set_queryid(_task->getQueryId());
     _result->set_jobid(_task->getJobId());

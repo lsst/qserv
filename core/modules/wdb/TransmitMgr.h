@@ -66,10 +66,14 @@ class TransmitLock;
 /// transmits. 'interactive queries' are not blocked.
 /// New tasks cannot transmit to the czar until the number of jobs
 /// currently transmitting data drops below maxAlreadyTran
+/// Priority is given to finish tasks that have already started transmitting.
+/// This class is meant to improve transmission efficiency, and
+/// it is possible for _alreadyTransCount to go above normal
+/// limits due to a race condition. Fixing the race condition may well
+/// slow things down more than the occasional breach of the
+/// _alreadyTransCount limit.
 /// TODO:
-///    -- Priority should be given to finish tasks that have already started transmitting
 ///    -- The czar these are being sent to should be taken into consideration
-///    -- RAII class should be created for take() and release().
 ///    -- maxTransmits set via config, maybe change at runtime.
 class TransmitMgr {
 public:

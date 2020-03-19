@@ -357,7 +357,6 @@ util::Command::Ptr BlendScheduler::getCmd(bool wait) {
     if (cmd != nullptr) {
         _infoChanged = true;
         _logChunkStatus();
-        //notify(true); &&&
         notify(false);
     }
     // returning nullptr is acceptable.

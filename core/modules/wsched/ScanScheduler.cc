@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2013-2016 AURA/LSST.
+ * Copyright 2013-2019 LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -120,9 +120,8 @@ void ScanScheduler::commandFinish(util::Command::Ptr const& cmd) {
 
         _decrChunkTaskCount(t->getChunkId());
     }
-    // Whenever a Task finishes, all sleeping threads need to check if resources
+    // Whenever a Task finishes, sleeping threads need to check if resources
     // are available to run new Tasks.
-    //_cv.notify_all(); &&&
     _cv.notify_one();
 }
 

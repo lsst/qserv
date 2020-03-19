@@ -65,7 +65,7 @@ void TransmitMgr::_release(bool interactive, bool alreadyTransmitting) {
         LOGS(_log, LOG_LVL_WARN, "&&& --_alreadyTransCount=" << _alreadyTransCount);
         _tCv.notify_one();
     }
-    _tCv.notify_all(); // &&&
+    _tCv.notify_one();
 }
 
 }}} // namespace lsst::qserv::wdb

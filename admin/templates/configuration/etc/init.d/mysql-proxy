@@ -78,6 +78,11 @@ if [ "$USER" = "root" ]; then
     proxy_user_option="--user=$proxy_user"
 fi
 
+# &&& delete or clean up so miniconda version isn't needed here.
+JEMU='/qserv/stack/stack/miniconda3-4.7.12-984c9f7/Linux64/jemalloc/5.0.1.lsst1/lib/libjemalloc.so'
+JEMD='prof:true,lg_prof_interval:30,lg_prof_sample:17,prof_prefix:/qserv/run/var/log/jeprof'
+
+#cmd="QSERV_CONFIG=${QSERV_CONFIG} LD_PRELOAD=${JEMU} MALLOC_CONF=${JEMD} ${VALG} ${DAEMON} \
 cmd="QSERV_CONFIG=${QSERV_CONFIG} ${VALG} ${DAEMON} \
     $PROXY_OPTIONS --pid-file=$pidfile $proxy_user_option \
     --defaults-file=${PROXY_CONFIG} >> ${LUA_LOG_FILE} 2>&1 &"
