@@ -31,7 +31,7 @@ else
     all.role server
 
     # Use XrdSsi plugin
-    xrootd.fslib libXrdSsi.so
+    xrootd.fslib -2 libXrdSsi.so
     ssi.svclib libxrdsvc.so
     oss.statlib -2 -arevents libXrdSsi.so
 
