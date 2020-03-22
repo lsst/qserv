@@ -1,0 +1,2 @@
+install(DIRECTORY python/ DESTINATION ${CMAKE_INSTALL_PREFIX}/python/lsst/qserv/schema)
+install(DIRECTORY bin/ DESTINATION ${CMAKE_INSTALL_BINDIR})
