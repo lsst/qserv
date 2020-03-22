@@ -1,0 +1,59 @@
+add_library(qserv_css SHARED)
+
+target_sources(qserv_css PRIVATE
+    CssAccess.cc
+    CssConfig.cc
+    DbInterfaceMySql.cc
+    EmptyChunks.cc
+    KvInterfaceImplMem.cc
+    KvInterfaceImplMySql.cc
+)
+
+target_link_libraries(qserv_css PUBLIC
+    qserv_common
+    log
+)
+
+install(TARGETS qserv_css)
+install(DIRECTORY schema/ DESTINATION ${CMAKE_INSTALL_PREFIX}/qserv/smig/css/schema/)
+
+FUNCTION(css_tests)
+    FOREACH(TEST IN ITEMS ${ARGV})
+        add_executable(${TEST} ${TEST}.cc)
+        target_link_libraries(${TEST} PUBLIC
+            qserv_css
+            Boost::unit_test_framework
+        )
+        add_test(NAME ${TEST} COMMAND ${TEST})
+    ENDFOREACH()
+ENDFUNCTION()
+
+css_tests(
+    testEmptyChunks
+    testKvInterfaceImpl
+#    testKvInterfaceImplMySql # crashes because of a missing file.
+    testCssAccess
+)
+
+# Even though this and the test is commented out, leave this so it's findable by
+# searching for text similar to other WILL_FAIL tests.
+# set_tests_properties(testKvInterfaceImplMySql PROPERTIES WILL_FAIL 1)
+
+#-----------------------------------------------------------------------------
+
+pybind11_add_module(cssLib MODULE)
+
+target_include_directories(cssLib PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/..
+)
+
+target_sources(cssLib PRIVATE
+    cssPythonWrapper.cc
+)
+
+target_link_libraries(cssLib PRIVATE
+    qserv_css
+)
+
+install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/python/ DESTINATION ${CMAKE_INSTALL_PREFIX}/python/lsst/qserv/css)
+install(TARGETS cssLib DESTINATION ${CMAKE_INSTALL_PREFIX}/python/lsst/qserv/css)
