@@ -56,7 +56,7 @@ InstanceCount::~InstanceCount() {
     auto iter = _instances.find(_className);
     if (iter != _instances.end()) {
         iter->second -= 1;
-        LOGS(_log, LOG_LVL_DEBUG, "~InstanceCount " << iter->first << "=" << iter->second << " : " << *this);
+        LOGS(_log, LOG_LVL_WARN, "&&&W~InstanceCount " << iter->first << "=" << iter->second << " : " << *this);
     } else {
         LOGS(_log, LOG_LVL_ERROR, "~InstanceCount " << _className << " was not found! : " << *this);
     }

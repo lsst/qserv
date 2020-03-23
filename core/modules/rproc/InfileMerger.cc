@@ -100,6 +100,66 @@ const char JOB_ID_BASE_NAME[] = "jobId";
 
 } // anonymous namespace
 
+namespace {
+
+class SemaMgr {
+public:
+    explicit SemaMgr(int max) : _max(max) { assert(_max> 1); }
+    // &&& delete default constructor, copy constructor, and such
+
+    int getTotalCount() { return _totalCount; }
+    int getUsedCount() { return _usedCount; }
+    friend class SemaLock;
+
+private:
+    void _take()  {
+        ++_totalCount;
+        if (_usedCount >= _max) {
+            std::unique_lock<std::mutex> uLock(_mtx);
+            _tCv.wait(uLock, [this](){
+                return (_usedCount < _max);
+            });
+        }
+
+        // Incrementing outside the mutex may result in occasionally having more than
+        // _maxTransmits happening at one time. This should be harmless.
+        ++_usedCount;
+    }
+
+    void _release() {
+        --_totalCount;
+        --_usedCount;
+        _tCv.notify_one();
+    }
+
+    std::atomic<int> _totalCount{0};
+    std::atomic<int> _usedCount{0};
+    int _max;
+    std::mutex _mtx;
+    std::condition_variable _tCv;
+};
+
+
+/// RAII class to support SemaMgr
+class SemaLock {
+public:
+    SemaLock(SemaMgr& semaMgr)
+      : _semaMgr(semaMgr) {
+        _semaMgr._take();
+    }
+    // &&& delete default constructor and such
+
+    ~SemaLock() {
+        _semaMgr._release();
+    }
+
+private:
+    SemaMgr& _semaMgr;
+};
+
+} // anon namespace
+
+
 namespace lsst {
 namespace qserv {
 namespace rproc {
@@ -114,6 +174,7 @@ InfileMerger::InfileMerger(InfileMergerConfig const& c,
       _mysqlConn(_config.mySqlConfig),
       _databaseModels(dm),
       _jobIdColName(JOB_ID_BASE_NAME) {
+    //_mysqlConn.closeMySqlConn(); // &&&
     _fixupTargetName();
     _maxResultTableSizeMB = _config.mySqlConfig.maxTableSizeMB;
 
@@ -162,9 +223,11 @@ struct TmpMergeCount { // &&&
 std::atomic<int> TmpMergeCount::mergeCount(0); // &&&
 
 
+SemaMgr semaMgrLocal(30);
+
 bool InfileMerger::merge(std::shared_ptr<proto::WorkerResponse> response) {
     TmpMergeCount mergeCount;
-    if (mergeCount.mergeCount > 12) LOGS(_log, LOG_LVL_WARN, "&&& mergeCount=" << mergeCount.mergeCount);
+    if (mergeCount.mergeCount > 12) LOGS(_log, LOG_LVL_DEBUG, "&&& mergeCount=" << mergeCount.mergeCount);
     if (!response) {
         return false;
     }
@@ -198,6 +261,8 @@ bool InfileMerger::merge(std::shared_ptr<proto::WorkerResponse> response) {
     }
     _sizeCheckRowCount += response->result.row_size();
 
+
+    // &&&SemaLock semaLock(semaMgrLocal);
     bool ret = false;
     // Add columns to rows in virtFile.
     int resultJobId = makeJobIdAttempt(response->result.jobid(), response->result.attemptcount());
@@ -205,20 +270,25 @@ bool InfileMerger::merge(std::shared_ptr<proto::WorkerResponse> response) {
                                      resultJobId, _jobIdColName, _jobIdSqlType, _jobIdMysqlType);
     std::string const virtFile = _infileMgr.prepareSrc(pRowBuffer);
     std::string const infileStatement = sql::formLoadInfile(_mergeTable, virtFile);
-    auto start = std::chrono::system_clock::now();
+
     // If the job attempt is invalid, exit without adding rows.
     // It will wait here if rows need to be deleted.
     if (_invalidJobAttemptMgr.incrConcurrentMergeCount(resultJobId)) {
         return true;
     }
+
+
+    auto start = std::chrono::system_clock::now();
     ret = _applyMysql(infileStatement);
+    // &&& ret = _applyMysqlNew(infileStatement);
+    auto end = std::chrono::system_clock::now();
+    auto mergeDur = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+    LOGS(_log, LOG_LVL_WARN, "&&& mergeDur=" << mergeDur.count() << "sema(total=" << semaMgrLocal.getTotalCount() << " used=" << semaMgrLocal.getUsedCount());
     if (not ret) {
         LOGS(_log, LOG_LVL_ERROR, "InfileMerger::merge mysql applyMysql failure");
     }
     _invalidJobAttemptMgr.decrConcurrentMergeCount();
-    auto end = std::chrono::system_clock::now();
-    auto mergeDur = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-    LOGS(_log, LOG_LVL_TRACE, "mergeDur=" << mergeDur.count());
+
     /// Check the size of the result table.
     if (_sizeCheckRowCount >= _checkSizeEveryXRows) {
         auto tSize = _getResultTableSizeMB();
@@ -244,7 +314,7 @@ bool InfileMerger::merge(std::shared_ptr<proto::WorkerResponse> response) {
             }
         }
     }
-    LOGS(_log, LOG_LVL_DEBUG, "mergeCount " << mergeCount.mergeCount ); // &&&
+    LOGS(_log, LOG_LVL_INFO, "&&&mergeCount " << mergeCount.mergeCount << " mergeDur=" << mergeDur.count());
     return ret;
 }
 
@@ -263,6 +333,29 @@ bool InfileMerger::_applyMysql(std::string const& query) {
     int rc = mysql_real_query(_mysqlConn.getMySql(),
                               query.data(), query.size());
     return rc == 0;
+}
+
+bool InfileMerger::_applyMysqlNew(std::string const& query) {
+    mysql::MySqlConnection mySConn(_config.mySqlConfig);
+    if (!mySConn.connected()) {
+        // should have connected during construction
+        // Try reconnecting--maybe we timed out.
+        if (!_setupConnectionNew(mySConn)) {
+            LOGS(_log, LOG_LVL_ERROR, "InfileMerger::_applyMysql _setupConnection() failed!!!");
+            return false; // Reconnection failed. This is an error.
+        }
+    }
+
+    int rc = mysql_real_query(mySConn.getMySql(), query.data(), query.size());
+    return rc == 0;
+}
+
+bool InfileMerger::_setupConnectionNew(mysql::MySqlConnection& mySConn) {
+    if (mySConn.connect()) {
+        _infileMgr.attach(mySConn.getMySql());
+        return true;
+    }
+    return false;
 }
 
 
@@ -397,7 +490,9 @@ bool InfileMerger::makeResultsTableForQuery(query::SelectStmt const& stmt) {
     }
     _addJobIdColumnToSchema(schema);
     std::string createStmt = sql::formCreateTable(_mergeTable, schema);
-    createStmt += " ENGINE=MyISAM"; // &&&
+    //createStmt += " ENGINE=MyISAM"; // &&&
+    //createStmt += " ENGINE=MEMORY"; // &&&
+    createStmt += " ENGINE=InnoDB";
     LOGS(_log, LOG_LVL_TRACE, "InfileMerger make results table query: " << createStmt);
     if (not _applySqlLocal(createStmt, "makeResultsTableForQuery")) {
         _error = InfileMergerError(util::ErrorCode::CREATE_TABLE, "Error creating table:" + _mergeTable + ": " + _error.getMsg());
@@ -586,6 +681,7 @@ bool InvalidJobAttemptMgr::incrConcurrentMergeCount(int jobIdAttempt) {
         return true;
     }
     if (_waitFlag) {
+        LOGS(_log, LOG_LVL_WARN, "&&& InvalidJobAttemptMgr waiting");
         /// wait for flag to clear
         _cv.wait(uLock, [this](){ return !_waitFlag; });
         // Since wait lets the mutex go, this must be checked again.

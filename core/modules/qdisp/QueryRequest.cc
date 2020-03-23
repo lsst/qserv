@@ -48,6 +48,7 @@
 #include "qdisp/JobStatus.h"
 #include "qdisp/ResponseHandler.h"
 #include "util/common.h"
+#include "util/InstanceCount.h"
 #include "util/Timer.h"
 
 namespace {
@@ -179,6 +180,7 @@ private:
 
     int _blen{-1};
     bool _last{true};
+    util::InstanceCount _instCount{"AskForResponseDataCmd"};
 };
 
 
@@ -297,19 +299,24 @@ bool QueryRequest::_importStream(JobQuery::Ptr const& jq) {
     }
     _askForResponseDataCmd = std::make_shared<AskForResponseDataCmd>(
                                shared_from_this(), jq, proto::ProtoHeaderWrap::PROTO_HEADER_SIZE);
-    _queueAskForResponse(_askForResponseDataCmd, jq);
+    _queueAskForResponse(_askForResponseDataCmd, jq, true);
     return true;
 }
 
 
-void QueryRequest::_queueAskForResponse(AskForResponseDataCmd::Ptr const& cmd, JobQuery::Ptr const& jq) {
+void QueryRequest::_queueAskForResponse(AskForResponseDataCmd::Ptr const& cmd, JobQuery::Ptr const& jq, bool initialRequest) {
     // ScanInfo::Rating { FASTEST = 0, FAST = 10, MEDIUM = 20, SLOW = 30, SLOWEST = 100 };
+    // Trying to get existing requests done before doing new ones.
 
     //int rating = jq->getDescription()->getScanRating(); &&&
     if (jq->getDescription()->getScanInteractive()) {
         _qdispPool->queCmd(cmd, 0);
     } else {
-        _qdispPool->queCmd(cmd, 2);
+        if (initialRequest) {
+            _qdispPool->queCmd(cmd, 3);
+        } else {
+            _qdispPool->queCmd(cmd, 2);
+        }
     }
     /* &&&
     } else if (rating <= proto::ScanInfo::Rating::FAST) {
@@ -453,7 +460,7 @@ void QueryRequest::_processData(JobQuery::Ptr const& jq, int blen, bool last) {
         } else {
             _askForResponseDataCmd = std::make_shared<AskForResponseDataCmd>(shared_from_this(), jq, nextBufSize);
             LOGS(_log, LOG_LVL_DEBUG, "queuing askForResponseDataCmd bufSize=" << nextBufSize);
-            _queueAskForResponse(_askForResponseDataCmd, jq);
+            _queueAskForResponse(_askForResponseDataCmd, jq, false);
         }
     } else {
         LOGS(_log, LOG_LVL_DEBUG, "ProcessResponse data flush failed");

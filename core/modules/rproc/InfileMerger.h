@@ -222,6 +222,7 @@ public:
 
 private:
     bool _applyMysql(std::string const& query);
+    bool _applyMysqlNew(std::string const& query);
     bool _merge(std::shared_ptr<proto::WorkerResponse>& response);
     int _readHeader(proto::ProtoHeader& header, char const* buffer, int length);
     int _readResult(proto::Result& result, char const* buffer, int length);
@@ -244,6 +245,8 @@ private:
         }
         return false;
     }
+
+    bool _setupConnectionNew(mysql::MySqlConnection& mySConn); // &&&
 
     InfileMergerConfig _config; ///< Configuration
     std::shared_ptr<sql::SqlConnection> _sqlConn; ///< SQL connection
@@ -290,6 +293,7 @@ private:
     int _sizeCheckRowCount{0}; ///< Number of rows read since last size check.
     int _checkSizeEveryXRows{1000}; ///< Check the size of the result table after every x number of rows.
     size_t _maxResultTableSizeMB{5000}; ///< Max result table size.
+
 };
 
 }}} // namespace lsst::qserv::rproc

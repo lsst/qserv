@@ -1,26 +1,3 @@
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
-/*
- * TransmitMgr.h
- *
- *  Created on: Feb 18, 2020
- *      Author: jgates
- */
-
-#ifndef CORE_MODULES_WDB_TRANSMITMGR_H_
-#define CORE_MODULES_WDB_TRANSMITMGR_H_
-
-
-
-
-
-#endif /* CORE_MODULES_WDB_TRANSMITMGR_H_ */
-
-
->>>>>>> Added code to examine memory double free and limit the number of active transmitions.
-=======
->>>>>>> Removed extraneous #ifdef and comments.
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
@@ -61,7 +38,7 @@ namespace qserv {
 namespace wdb {
 
 class TransmitLock;
-
+//TODO: &&& This class and SemaMgr (in InfileMerger.cc) are similar. The alreadyTran aspect of this class may not be needed.
 /// Currently, a quick and dirty way to limit the number of concurrent
 /// transmits. 'interactive queries' are not blocked.
 /// New tasks cannot transmit to the czar until the number of jobs
