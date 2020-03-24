@@ -39,6 +39,8 @@
 
 // Qserv headers
 #include "util/common.h"
+#include "util/IterableFormatter.h"
+#include "util/StringToVector.h"
 
 // Boost unit test header
 #define BOOST_TEST_MODULE common
@@ -92,6 +94,83 @@ BOOST_AUTO_TEST_CASE(prettyPrint) {
     auto strBuf3 = util::prettyCharBuf(buf, bufLen, 3);
     LOGS_DEBUG("strBuf3=" << strBuf3);
     BOOST_CHECK(strBuf3.compare(expectedList3) == 0);
+}
+
+BOOST_AUTO_TEST_CASE(stringToVector) {
+    {
+        auto vect = util::splitString("testing123,qsa4$3,hjdw q,,7321,ml;oujh", ",");
+        LOGS_ERROR("vect=" << util::printable(vect));
+        BOOST_CHECK(vect.size() == 6);
+        BOOST_CHECK(vect[0] == "testing123");
+        BOOST_CHECK(vect[1] == "qsa4$3");
+        BOOST_CHECK(vect[2] == "hjdw q");
+        BOOST_CHECK(vect[3] == "");
+        BOOST_CHECK(vect[4] == "7321");
+        BOOST_CHECK(vect[5] == "ml;oujh");
+    }
+    {
+        auto vect = util::splitString("testing123::q:sa4$3:::hjdw q::::7321::ml;oujh", "::");
+        BOOST_CHECK(vect.size() == 6);
+        BOOST_CHECK(vect[0] == "testing123");
+        BOOST_CHECK(vect[1] == "q:sa4$3");
+        BOOST_CHECK(vect[2] == ":hjdw q");
+        BOOST_CHECK(vect[3] == "");
+        BOOST_CHECK(vect[4] == "7321");
+        BOOST_CHECK(vect[5] == "ml;oujh");
+    }
+    {
+        auto vect = util::splitString(":testing123:qsa4$3:hjdw q::7321:ml;oujh:", ":");
+        BOOST_CHECK(vect.size() == 8);
+        BOOST_CHECK(vect[0] == "");
+        BOOST_CHECK(vect[1] == "testing123");
+        BOOST_CHECK(vect[2] == "qsa4$3");
+        BOOST_CHECK(vect[3] == "hjdw q");
+        BOOST_CHECK(vect[4] == "");
+        BOOST_CHECK(vect[5] == "7321");
+        BOOST_CHECK(vect[6] == "ml;oujh");
+        BOOST_CHECK(vect[7] == "");
+    }
+    {
+        auto vect = util::splitString("qsa4$3", ":");
+        BOOST_CHECK(vect.size() == 1);
+        BOOST_CHECK(vect[0] == "qsa4$3");
+    }
+    {
+        auto vect = util::splitString("", ":");
+        BOOST_CHECK(vect.size() == 1);
+        BOOST_CHECK(vect[0] == "");
+    }
+
+    {
+        auto vect = util::getIntVectFromStr("987:23:0:1:-123", ":");
+        unsigned int j = 0;
+        BOOST_CHECK(vect[j++] == 987);
+        BOOST_CHECK(vect[j++] == 23);
+        BOOST_CHECK(vect[j++] == 0);
+        BOOST_CHECK(vect[j++] == 1);
+        BOOST_CHECK(vect[j++] == -123);
+        BOOST_CHECK(vect.size() == j);
+    }
+    {
+        bool caught=false;
+        try {
+            auto vect = util::getIntVectFromStr("987:23:x:1:-123", ":");
+        } catch (std::invalid_argument const& e) {
+            caught=true;
+        }
+        BOOST_CHECK(caught);
+    }
+    {
+        auto vect = util::getIntVectFromStr("987:23:x8owlq:1:-123:", ":", false, 99);
+        unsigned int j = 0;
+        BOOST_CHECK(vect[j++] == 987);
+        BOOST_CHECK(vect[j++] == 23);
+        BOOST_CHECK(vect[j++] == 99);
+        BOOST_CHECK(vect[j++] == 1);
+        BOOST_CHECK(vect[j++] == -123);
+        BOOST_CHECK(vect[j++] == 99);
+        BOOST_CHECK(vect.size() == j);
+    }
 }
 /*
     test::output_test_stream output;

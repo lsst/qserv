@@ -126,8 +126,7 @@ bool MergingHandler::flush(int bLen, BufPtr const& bufPtr, bool& last, bool& lar
                 return false;
             } // set _response->result
             largeResult = _response->result.largeresult();
-            LOGS(_log, LOG_LVL_DEBUG, "From:" << _wName << " _mBuf " <<
-                 util::prettyCharList(*bufPtr, 5));
+            LOGS(_log, LOG_LVL_DEBUG, "From:" << _wName << " _mBuf " << util::prettyCharList(*bufPtr, 5));
             bool msgContinues = _response->result.continues();
             _state = MsgState::RESULT_RECV;
             if (msgContinues) {

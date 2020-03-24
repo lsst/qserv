@@ -62,10 +62,7 @@ priority_fast = 4
 # maxactivechunks_snail = 1
 # maxactivechunks_slow = 4
 # maxactivechunks_med = 4
-# maxactivechunks_fast = 4 
-# &&& delete following lines
-maxactivechunks_fast = 50
-maxactivechunks_med = 50
+# maxactivechunks_fast = 4
 
 # Maximum time for all tasks in a user query to complete.
 # scanmaxminutes_fast = 60
@@ -75,3 +72,16 @@ maxactivechunks_med = 50
 
 # Maximum number of Tasks that can take too long before moving a query to the snail scan.
 # maxtasksbootedperuserquery = 5
+
+[sqlconnections]
+# Maximum number of SQL connections for tasks
+maxsqlconn = 801
+# Number of SQL connections reserved for interactive queries (must be less than maxsqlconn)
+reservedinteractivesqlconn = 20
+
+[transmits]
+# Maximum number of concurrent transmits to a czar.
+maxtransmits = 50
+# If more than this number of large transmits is happening at once, wait to
+# start more transmits until some are done.
+maxalreadytransmitting = 10

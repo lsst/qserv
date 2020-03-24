@@ -102,60 +102,7 @@ const char JOB_ID_BASE_NAME[] = "jobId";
 
 namespace {
 
-class SemaMgr {
-public:
-    explicit SemaMgr(int max) : _max(max) { assert(_max> 1); }
-    // &&& delete default constructor, copy constructor, and such
 
-    int getTotalCount() { return _totalCount; }
-    int getUsedCount() { return _usedCount; }
-    friend class SemaLock;
-
-private:
-    void _take()  {
-        ++_totalCount;
-        if (_usedCount >= _max) {
-            std::unique_lock<std::mutex> uLock(_mtx);
-            _tCv.wait(uLock, [this](){
-                return (_usedCount < _max);
-            });
-        }
-
-        // Incrementing outside the mutex may result in occasionally having more than
-        // _maxTransmits happening at one time. This should be harmless.
-        ++_usedCount;
-    }
-
-    void _release() {
-        --_totalCount;
-        --_usedCount;
-        _tCv.notify_one();
-    }
-
-    std::atomic<int> _totalCount{0};
-    std::atomic<int> _usedCount{0};
-    int _max;
-    std::mutex _mtx;
-    std::condition_variable _tCv;
-};
-
-
-/// RAII class to support SemaMgr
-class SemaLock {
-public:
-    SemaLock(SemaMgr& semaMgr)
-      : _semaMgr(semaMgr) {
-        _semaMgr._take();
-    }
-    // &&& delete default constructor and such
-
-    ~SemaLock() {
-        _semaMgr._release();
-    }
-
-private:
-    SemaMgr& _semaMgr;
-};
 
 } // anon namespace
 
@@ -164,20 +111,39 @@ namespace lsst {
 namespace qserv {
 namespace rproc {
 
-
 ////////////////////////////////////////////////////////////////////////
 // InfileMerger public
 ////////////////////////////////////////////////////////////////////////
 InfileMerger::InfileMerger(InfileMergerConfig const& c,
-                           std::shared_ptr<qproc::DatabaseModels> const& dm)
+                           std::shared_ptr<qproc::DatabaseModels> const& dm,
+                           util::SemaMgr::Ptr const& semaMgrConn)
     : _config(c),
       _mysqlConn(_config.mySqlConfig),
       _databaseModels(dm),
-      _jobIdColName(JOB_ID_BASE_NAME) {
-    //_mysqlConn.closeMySqlConn(); // &&&
-    _fixupTargetName();
-    _maxResultTableSizeMB = _config.mySqlConfig.maxTableSizeMB;
+      _jobIdColName(JOB_ID_BASE_NAME),
+      _semaMgrConn(semaMgrConn) {
 
+    _fixupTargetName();
+    _maxResultTableSizeMB = _config.czarConfig.getMaxTableSizeMB();
+    _setEngineFromStr(_config.czarConfig.getResultEngine());
+    if (_dbEngine == MYISAM) {
+        LOGS(_log, LOG_LVL_INFO, "Engine is MYISAM, serial");
+        if (!_setupConnectionMyIsam()) {
+            throw InfileMergerError(util::ErrorCode::MYSQLCONNECT, "InfileMerger mysql connect failure.");
+        }
+    } else {
+        if (_dbEngine == INNODB)  {
+            LOGS(_log, LOG_LVL_INFO, "Engine is INNODB, parallel, semaMgrConn=" << _semaMgrConn);
+            // TODO: Size calculation does not work correctly for INNODB
+            //       increase max allowed size to reduce false positives
+            //       until a reasonably accurate method is implemented.
+            _maxResultTableSizeMB *= 10;
+        } else {
+            LOGS(_log, LOG_LVL_INFO, "Engine is MEMORY, parallel, semaMgrConn=" << _semaMgrConn);
+        }
+        // Shared connection not used for parallel inserts.
+        _mysqlConn.closeMySqlConn();
+    }
     // Assume worst case of 10,000 bytes per row, what's the earliest row to test?
     // Subtract that from the count so the first check doesn't happen for a while.
     // Subsequent checks should happen at reasonable intervals.
@@ -193,15 +159,42 @@ InfileMerger::InfileMerger(InfileMergerConfig const& c,
         return _deleteInvalidRows(jobAttempts);
     });
 
-    if (!_setupConnection()) {
-        throw InfileMergerError(util::ErrorCode::MYSQLCONNECT, "InfileMerger mysql connect failure.");
-    }
+
 }
 
 
 InfileMerger::~InfileMerger() {
 }
 
+
+void InfileMerger::_setEngineFromStr(std::string const& engineName) {
+    std::string eName;
+    for (auto&& c:engineName) { eName += toupper(c); }
+    if (eName == "INNODB") {
+        _dbEngine = INNODB;
+    } else if (eName == "MEMORY") {
+        _dbEngine = MEMORY;
+    } else if (eName == "MYISAM") {
+        _dbEngine = MYISAM;
+    } else {
+        LOGS(_log, LOG_LVL_ERROR, "unknown dbEngine=" << engineName << " using default MYISAM");
+        _dbEngine = MYISAM;
+    }
+    LOGS(_log, LOG_LVL_INFO, "set engine to " << engineToStr(_dbEngine));
+}
+
+std::string InfileMerger::engineToStr(InfileMerger::DbEngine engine) {
+    switch (engine) {
+        case MYISAM:
+            return "MYISAM";
+        case INNODB:
+            return "INNODB";
+        case MEMORY:
+            return "MEMORY";
+        default:
+            return "UNKNOWN";
+    }
+}
 
 std::string InfileMerger::_getQueryIdStr() {
     std::lock_guard<std::mutex> lk(_queryIdStrMtx);
@@ -215,19 +208,8 @@ void InfileMerger::_setQueryIdStr(std::string const& qIdStr) {
     _queryIdStrSet = true;
 }
 
-struct TmpMergeCount { // &&&
-    TmpMergeCount() { ++mergeCount; }
-    ~TmpMergeCount() { --mergeCount; }
-    static std::atomic<int> mergeCount; // &&&
-};
-std::atomic<int> TmpMergeCount::mergeCount(0); // &&&
-
-
-SemaMgr semaMgrLocal(30);
 
 bool InfileMerger::merge(std::shared_ptr<proto::WorkerResponse> response) {
-    TmpMergeCount mergeCount;
-    if (mergeCount.mergeCount > 12) LOGS(_log, LOG_LVL_DEBUG, "&&& mergeCount=" << mergeCount.mergeCount);
     if (!response) {
         return false;
     }
@@ -259,10 +241,12 @@ bool InfileMerger::merge(std::shared_ptr<proto::WorkerResponse> response) {
     if (response->result.row_size() == 0) {
         return true;
     }
-    _sizeCheckRowCount += response->result.row_size();
 
-
-    // &&&SemaLock semaLock(semaMgrLocal);
+    std::unique_ptr<util::SemaLock> semaLock;
+    if (_dbEngine != MYISAM) {
+        // needed for INNODB and MYISAM
+        semaLock.reset(new util::SemaLock(*_semaMgrConn));
+    }
     bool ret = false;
     // Add columns to rows in virtFile.
     int resultJobId = makeJobIdAttempt(response->result.jobid(), response->result.attemptcount());
@@ -279,18 +263,23 @@ bool InfileMerger::merge(std::shared_ptr<proto::WorkerResponse> response) {
 
 
     auto start = std::chrono::system_clock::now();
-    ret = _applyMysql(infileStatement);
-    // &&& ret = _applyMysqlNew(infileStatement);
+    if (_dbEngine == MYISAM) {
+        ret = _applyMysqlMyIsam(infileStatement);
+    } else { // Used for both INNODB and MEMORY
+        ret = _applyMysqlInnoDb(infileStatement);
+    }
     auto end = std::chrono::system_clock::now();
     auto mergeDur = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-    LOGS(_log, LOG_LVL_WARN, "&&& mergeDur=" << mergeDur.count() << "sema(total=" << semaMgrLocal.getTotalCount() << " used=" << semaMgrLocal.getUsedCount());
+    LOGS(_log, LOG_LVL_INFO, "mergeDur=" << mergeDur.count()
+        << "sema(total=" << _semaMgrConn->getTotalCount() << " used=" << _semaMgrConn->getUsedCount() << ")");
     if (not ret) {
         LOGS(_log, LOG_LVL_ERROR, "InfileMerger::merge mysql applyMysql failure");
     }
     _invalidJobAttemptMgr.decrConcurrentMergeCount();
 
     /// Check the size of the result table.
-    if (_sizeCheckRowCount >= _checkSizeEveryXRows) {
+    _sizeCheckRowCount += response->result.row_size();
+    if (_sizeCheckRowCount >= _checkSizeEveryXRows && _dbEngine != MEMORY) {
         auto tSize = _getResultTableSizeMB();
         LOGS(_log, LOG_LVL_TRACE, "checking ResultTableSize " << _mergeTable
                                   << " " << tSize
@@ -314,19 +303,25 @@ bool InfileMerger::merge(std::shared_ptr<proto::WorkerResponse> response) {
             }
         }
     }
-    LOGS(_log, LOG_LVL_INFO, "&&&mergeCount " << mergeCount.mergeCount << " mergeDur=" << mergeDur.count());
+    LOGS(_log, LOG_LVL_INFO, "mergeDur=" << mergeDur.count());
     return ret;
 }
 
 
-bool InfileMerger::_applyMysql(std::string const& query) {
-    std::lock_guard<std::mutex> lock(_mysqlMutex);
-    if (!_mysqlConn.connected()) {
+bool InfileMerger::_applyMysqlMyIsam(std::string const& query) {
+    std::unique_lock<std::mutex> lock(_mysqlMutex);
+    for (int j=0;!_mysqlConn.connected(); ++j) {
         // should have connected during construction
         // Try reconnecting--maybe we timed out.
-        if (!_setupConnection()) {
-            LOGS(_log, LOG_LVL_ERROR, "InfileMerger::_applyMysql _setupConnection() failed!!!");
-            return false; // Reconnection failed. This is an error.
+        if (!_setupConnectionMyIsam()) {
+            if (j < 10) {
+                lock.unlock();
+                sleep(1);
+                lock.lock();
+            } else {
+                LOGS(_log, LOG_LVL_ERROR, "InfileMerger::_applyMysql _setupConnection() failed!!!");
+                return false; // Reconnection failed. This is an error.
+            }
         }
     }
 
@@ -335,12 +330,11 @@ bool InfileMerger::_applyMysql(std::string const& query) {
     return rc == 0;
 }
 
-bool InfileMerger::_applyMysqlNew(std::string const& query) {
+
+bool InfileMerger::_applyMysqlInnoDb(std::string const& query) {
     mysql::MySqlConnection mySConn(_config.mySqlConfig);
     if (!mySConn.connected()) {
-        // should have connected during construction
-        // Try reconnecting--maybe we timed out.
-        if (!_setupConnectionNew(mySConn)) {
+        if (!_setupConnectionInnoDb(mySConn)) {
             LOGS(_log, LOG_LVL_ERROR, "InfileMerger::_applyMysql _setupConnection() failed!!!");
             return false; // Reconnection failed. This is an error.
         }
@@ -350,10 +344,18 @@ bool InfileMerger::_applyMysqlNew(std::string const& query) {
     return rc == 0;
 }
 
-bool InfileMerger::_setupConnectionNew(mysql::MySqlConnection& mySConn) {
-    if (mySConn.connect()) {
-        _infileMgr.attach(mySConn.getMySql());
-        return true;
+
+bool InfileMerger::_setupConnectionInnoDb(mysql::MySqlConnection& mySConn) {
+    // Make 10 attempts to open the connection. They can fail when the
+    // system is busy.
+    for (int j=0; j < 10; ++j) {
+        if (mySConn.connect()) {
+            _infileMgr.attach(mySConn.getMySql());
+            return true;
+        } else {
+            LOGS(_log, LOG_LVL_ERROR, "_setupConnectionInnoDb failed connect attempt " << j);
+            sleep(1);
+        }
     }
     return false;
 }
@@ -490,9 +492,13 @@ bool InfileMerger::makeResultsTableForQuery(query::SelectStmt const& stmt) {
     }
     _addJobIdColumnToSchema(schema);
     std::string createStmt = sql::formCreateTable(_mergeTable, schema);
-    //createStmt += " ENGINE=MyISAM"; // &&&
-    //createStmt += " ENGINE=MEMORY"; // &&&
-    createStmt += " ENGINE=InnoDB";
+    if (_dbEngine == INNODB) {
+        createStmt += " ENGINE=InnoDB";
+    } else if (_dbEngine == MEMORY) {
+        createStmt += " ENGINE=MEMORY";
+    } else { // MYISAM
+        createStmt += " ENGINE=MyISAM";
+    }
     LOGS(_log, LOG_LVL_TRACE, "InfileMerger make results table query: " << createStmt);
     if (not _applySqlLocal(createStmt, "makeResultsTableForQuery")) {
         _error = InfileMergerError(util::ErrorCode::CREATE_TABLE, "Error creating table:" + _mergeTable + ": " + _error.getMsg());
@@ -616,7 +622,8 @@ size_t InfileMerger::_getResultTableSizeMB() {
     std::string tbName = row[0].first;
     std::string tbSize = row[1].first;
     size_t sz = std::stoul(tbSize);
-    LOGS(_log, LOG_LVL_TRACE, "ResultTableSizeMB tbl=" << tbName << " tbSize=" << tbSize);
+    LOGS(_log, LOG_LVL_TRACE, "Checking ResultTableSize " << tableSizeSql
+                           << " ResultTableSizeMB tbl=" << tbName << " tbSize=" << tbSize);
     return sz;
 }
 
@@ -681,7 +688,7 @@ bool InvalidJobAttemptMgr::incrConcurrentMergeCount(int jobIdAttempt) {
         return true;
     }
     if (_waitFlag) {
-        LOGS(_log, LOG_LVL_WARN, "&&& InvalidJobAttemptMgr waiting");
+        LOGS(_log, LOG_LVL_DEBUG, "InvalidJobAttemptMgr waiting");
         /// wait for flag to clear
         _cv.wait(uLock, [this](){ return !_waitFlag; });
         // Since wait lets the mutex go, this must be checked again.

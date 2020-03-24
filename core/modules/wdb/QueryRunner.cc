@@ -47,7 +47,7 @@
 // LSST headers
 #include "lsst/log/Log.h"
 
-// Qserv headers
+#include "wcontrol/TransmitMgr.h"
 #include "global/Bug.h"
 #include "global/constants.h"
 #include "global/DbTable.h"
@@ -70,8 +70,6 @@
 #include "wbase/Base.h"
 #include "wbase/SendChannel.h"
 #include "wdb/ChunkResource.h"
-#include "wdb/SqlConnMgr.h"
-#include "wdb/TransmitMgr.h"
 
 namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.wdb.QueryRunner");
@@ -84,8 +82,10 @@ namespace wdb {
 
 QueryRunner::Ptr QueryRunner::newQueryRunner(wbase::Task::Ptr const& task,
                                              ChunkResourceMgr::Ptr const& chunkResourceMgr,
-                                             mysql::MySqlConfig const& mySqlConfig) {
-    Ptr qr{new QueryRunner{task, chunkResourceMgr, mySqlConfig}}; // Private constructor.
+                                             mysql::MySqlConfig const& mySqlConfig,
+                                             std::shared_ptr<wcontrol::SqlConnMgr> const& sqlConnMgr,
+                                             std::shared_ptr<wcontrol::TransmitMgr> const& transmitMgr) {
+    Ptr qr(new QueryRunner(task, chunkResourceMgr, mySqlConfig, sqlConnMgr, transmitMgr)); // Private constructor.
     // Let the Task know this is its QueryRunner.
     bool cancelled = qr->_task->setTaskQueryRunner(qr);
     if (cancelled) {
@@ -99,8 +99,11 @@ QueryRunner::Ptr QueryRunner::newQueryRunner(wbase::Task::Ptr const& task,
 /// and correct setup of enable_shared_from_this.
 QueryRunner::QueryRunner(wbase::Task::Ptr const& task,
                          ChunkResourceMgr::Ptr const& chunkResourceMgr,
-                         mysql::MySqlConfig const& mySqlConfig)
-    : _task(task), _chunkResourceMgr(chunkResourceMgr), _mySqlConfig(mySqlConfig) {
+                         mysql::MySqlConfig const& mySqlConfig,
+                         std::shared_ptr<wcontrol::SqlConnMgr> const& sqlConnMgr,
+                         std::shared_ptr<wcontrol::TransmitMgr> const& transmitMgr)
+    : _task(task), _chunkResourceMgr(chunkResourceMgr), _mySqlConfig(mySqlConfig),
+      _sqlConnMgr(sqlConnMgr), _transmitMgr(transmitMgr) {
     int rc = mysql_thread_init();
     assert(rc == 0);
     assert(_task->msg);
@@ -131,8 +134,6 @@ void QueryRunner::_setDb() {
 
 
 util::TimerHistogram memWaitHisto("memWait Hist", {1, 5, 10, 20, 40});
-
-SqlConnMgr _sqlConnMgr(800,750); /// &&& put this in a more sane location, use configuration values.
 
 
 bool QueryRunner::runQuery() {
@@ -169,9 +170,9 @@ bool QueryRunner::runQuery() {
     }
 
     _setDb();
-    LOGS(_log, LOG_LVL_DEBUG,  "Exec in flight for Db=" << _dbName);
-    LOGS(_log, LOG_LVL_WARN, "&&& sqlConnMgr total" << _sqlConnMgr.getTotalCount() << " conn=" << _sqlConnMgr.getSqlConnCount());
-    SqlConnLock sqlConnLock(_sqlConnMgr, not _task->getScanInteractive());
+    LOGS(_log, LOG_LVL_INFO,  "Exec in flight for Db=" << _dbName
+        << " sqlConnMgr total" << _sqlConnMgr->getTotalCount() << " conn=" << _sqlConnMgr->getSqlConnCount());
+    wcontrol::SqlConnLock sqlConnLock(*_sqlConnMgr, not _task->getScanInteractive());
     bool connOk = _initConnection();
     if (!connOk) {
         // Transmit the mysql connection error to the czar, which should trigger a re-try.
@@ -260,7 +261,6 @@ bool QueryRunner::_fillRows(MYSQL_RES* result, int numFields, uint& rowCount, si
         unsigned int szLimit = std::min(proto::ProtoHeaderWrap::PROTOBUFFER_DESIRED_LIMIT,
                                         proto::ProtoHeaderWrap::PROTOBUFFER_HARD_LIMIT);
 
-        // If there are more than _&&& transmits happening, stop and wait
         // for some to finish, otherwise
         if (not _removedFromThreadPool) {
             // This query has been answered by the database and the
@@ -303,20 +303,16 @@ bool QueryRunner::_fillRows(MYSQL_RES* result, int numFields, uint& rowCount, si
 
 util::TimerHistogram transmitHisto("transmit Hist", {0.1, 1, 5, 10, 20, 40});
 
-//TransmitMgr _transmitMgr(100, 10); /// &&& This is an absolutely horrible way to instantiate this but need this fast.
-TransmitMgr _transmitMgr(200, 150); /// &&&
 
 /// Transmit result data with its header.
 /// If 'last' is true, this is the last message in the result set
 /// and flags are set accordingly.
 void QueryRunner::_transmit(bool last, unsigned int rowCount, size_t tSize) {
-    LOGS(_log, LOG_LVL_DEBUG, "_transmit last=" << last
-         << " rowCount=" << rowCount << " tSize=" << tSize);
-    TransmitLock transmitLock(_transmitMgr, _task->getScanInteractive(), _largeResult);
-    LOGS(_log, LOG_LVL_WARN, "&&& _transmitMgr count=" << _transmitMgr.getTransmitCount()
-         << " already=" << _transmitMgr.getAlreadyTransCount()
-         << " total=" << _transmitMgr.getTotalCount()
-         << " rowCount=" << rowCount << " tSize=" << tSize);
+    LOGS(_log, LOG_LVL_INFO, "_transmitMgr count=" << _transmitMgr->getTransmitCount()
+         << " already=" << _transmitMgr->getAlreadyTransCount()
+         << " total=" << _transmitMgr->getTotalCount()
+         << "_transmit last=" << last << " rowCount=" << rowCount << " tSize=" << tSize);
+    wcontrol::TransmitLock transmitLock(*_transmitMgr, _task->getScanInteractive(), _largeResult);
     std::string resultString;
     _result->set_queryid(_task->getQueryId());
     _result->set_jobid(_task->getJobId());

@@ -9,7 +9,7 @@ USER root
 RUN if [ -f /etc/localtime ]; then chown qserv:qserv /etc/localtime; fi && \
     if [ -f /etc/timezone ]; then chown qserv:qserv /etc/timezone; fi
     
-# &&& delete, this is only for jeprof
+# only for jeprof
 RUN yum install --assumeyes graphviz
 
 WORKDIR /qserv

@@ -20,10 +20,23 @@ passwd =
 db = qservResult
 unix_socket = {{MYSQLD_SOCK}}
 host =
-user= {{MYSQLD_USER_QSERV}}
+user = {{MYSQLD_USER_QSERV}}
 port = 0
+
 # maximum user query result size in MB
 maxtablesize_mb = 5100
+
+# Database engine used for aggreagting results. 
+# Values:   myisam, innodb, memory
+# myisam is serial, innodb and memory are parallel.
+# memory does not support blob or text fields
+engine = innodb 
+
+# The maximum number of database connections to use for
+# aggregating results. Only meaningful for 'parallel' 
+# engines such as innodb and memory.
+maxconnections = 40
+
 
 # database connection for QMeta database
 [qmeta]
@@ -65,6 +78,18 @@ qMetaSecsBetweenChunkCompletionUpdates = 59
 
 #[debug]
 #chunkLimit = -1
+
+
+# see qdisp/QdispPool.h QdispPool::QdispPool for more information
+[qdisppool]
+#size of the pool
+poolSize = 2400
+# Low numbers are higher priority. Largest priority 3 creates 4 priority queues 0, 1, 2, 3
+largestPriority = 3
+# Maximum number of threads running for each queue. No spaces. Values separated by ':'
+vectRunSizes = 1200:1200:1200:1000
+# Minimum number of threads running for each queue. No spaces. Values separated by ':'
+vectMinRunningSizes = 0:1:3:3
 
 [log]
 logConfig = {{QSERV_RUN_DIR}}/etc/log4cxx.czar.properties

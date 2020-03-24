@@ -21,10 +21,11 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-#ifndef LSST_QSERV_WDB_SQLCONNMGR_H
-#define LSST_QSERV_WDB_SQLCONNMGR_H
+#ifndef LSST_QSERV_WCONTROL_SQLCONNMGR_H
+#define LSST_QSERV_WCONTROL_SQLCONNMGR_H
 
 // System headers
+#include <assert.h>
 #include <atomic>
 #include <condition_variable>
 #include <mutex>
@@ -34,54 +35,46 @@
 
 namespace lsst {
 namespace qserv {
-namespace wdb {
+namespace wcontrol {
 
 class SqlConnLock;
 
-/// Currently, a quick and dirty way to limit the number of simultaneous
-/// MySQL connections related to user queries and the worker scheduler. The
-/// total number of maxSqlConnections should be significantly lower than
-/// MySQL max_connections since other things may make connections to MySQL
-/// and running out of connections is extremely painful for qserv.
+/// A way to limit the number of simultaneous MySQL connections related to
+/// user queries and the worker scheduler. The total number of
+/// maxSqlConnections should be significantly lower than MySQL max_connections
+/// since other things may need to make connections to MySQL and running out
+/// of connections is extremely painful for qserv.
 /// The number of connections for shared scan connections
 /// (maxScanSqlConnections)should be lower than the total (maxSqlConnections).
 /// This allows interactive queries to go through even when shared scans
-/// have the system swamped.
+/// have the system heavily loaded.
 ///
 class SqlConnMgr {
 public:
+    using Ptr = std::shared_ptr<SqlConnMgr>;
     SqlConnMgr(int maxSqlConnections, int maxScanSqlConnections)
         : _maxSqlConnections(maxSqlConnections), _maxScanSqlConnections(maxScanSqlConnections) {
         assert( _maxSqlConnections > 1);
         assert( _maxScanSqlConnections > 1);
         assert( _maxSqlConnections >= _maxScanSqlConnections);
     }
-    // &&& delete default constructor, copy constructor, and such
+    SqlConnMgr() = delete;
+    SqlConnMgr(SqlConnMgr const&) = delete;
+    SqlConnMgr& operator=(SqlConnMgr const&) = delete;
+    virtual ~SqlConnMgr() = default;
 
     int getTotalCount() { return _totalCount; }
     int getSqlConnCount() { return _sqlConnCount; }
 
+    virtual std::ostream& dump(std::ostream &os) const;
+    std::string dump() const;
+    friend std::ostream& operator<<(std::ostream &out, SqlConnMgr const& mgr);
+
     friend class SqlConnLock;
 
 private:
-    void _take(bool scanQuery) {
-        ++_totalCount;
-        std::unique_lock<std::mutex> uLock(_mtx);
-        _tCv.wait(uLock, [this, scanQuery](){
-            bool ok = _sqlConnCount < _maxScanSqlConnections;
-            if (not scanQuery) {
-                ok = _sqlConnCount < _maxSqlConnections;
-            }
-            return ok;
-        });
-        ++_sqlConnCount;
-    }
-
-    void _release() {
-        --_sqlConnCount;
-        --_totalCount;
-        _tCv.notify_one();
-    }
+    void _take(bool scanQuery);
+    void _release();
 
     std::atomic<int> _totalCount{0};
     std::atomic<int> _sqlConnCount{0};
@@ -99,7 +92,9 @@ public:
       : _sqlConnMgr(sqlConnMgr) {
         _sqlConnMgr._take(scanQuery);
     }
-    // &&& delete default constructor and such
+    SqlConnLock() = delete;
+    SqlConnLock(SqlConnLock const&) = delete;
+    SqlConnLock& operator=(SqlConnLock const&) = delete;
 
     ~SqlConnLock() { _sqlConnMgr._release(); }
 
@@ -108,6 +103,6 @@ private:
 };
 
 
-}}} // namespace lsst::qserv::wdb
+}}} // namespace lsst::qserv::wcontrol
 
-#endif // LSST_QSERV_WDB_TRANSMITMGR_H
+#endif // LSST_QSERV_WCONTROL_TRANSMITMGR_H

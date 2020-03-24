@@ -80,6 +80,7 @@ makeUserQuerySharedResources(czar::CzarConfig const& czarConfig,
                              std::shared_ptr<qproc::DatabaseModels> const& dbModels,
                              std::string const& czarName) {
     return std::make_shared<UserQuerySharedResources>(
+        czarConfig,
         css::CssAccess::createFromConfig(czarConfig.getCssConfigMap(), czarConfig.getEmptyChunkPath()),
         czarConfig.getMySqlResultConfig(),
         std::make_shared<qproc::SecondaryIndex>(czarConfig.getMySqlQmetaConfig()),
@@ -208,6 +209,7 @@ UserQueryFactory::newUserQuery(std::string const& aQuery,
             executive = qdisp::Executive::create(*_executiveConfig, messageStore,
                                                  qdispPool, _userQuerySharedResources->queryStatsData);
             infileMergerConfig = std::make_shared<rproc::InfileMergerConfig>(
+                    _userQuerySharedResources->czarConfig,
                     _userQuerySharedResources->mysqlResultConfig);
         }
 
@@ -215,7 +217,8 @@ UserQueryFactory::newUserQuery(std::string const& aQuery,
                 _userQuerySharedResources->databaseModels,
                 infileMergerConfig,
                 _userQuerySharedResources->secondaryIndex, _userQuerySharedResources->queryMetadata,
-                _userQuerySharedResources->queryStatsData, _userQuerySharedResources->qMetaCzarId,
+                _userQuerySharedResources->queryStatsData, _userQuerySharedResources->semaMgrConnections,
+                _userQuerySharedResources->qMetaCzarId,
                 qdispPool, errorExtra, async, resultDb);
         if (sessionValid) {
             uq->qMetaRegister(resultLocation, msgTableName);

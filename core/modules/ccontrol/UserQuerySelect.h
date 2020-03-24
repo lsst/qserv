@@ -70,7 +70,11 @@ namespace query {
 namespace rproc {
     class InfileMerger;
     class InfileMergerConfig;
+}
+namespace util {
+    class SemaMgr;
 }}} // End of forward declarations
+
 
 
 namespace lsst {
@@ -89,6 +93,7 @@ public:
                     std::shared_ptr<qproc::SecondaryIndex> const& secondaryIndex,
                     std::shared_ptr<qmeta::QMeta> const& queryMetadata,
                     std::shared_ptr<qmeta::QStatus> const& queryStatsData,
+                    std::shared_ptr<util::SemaMgr> const& semaMgrConn,
                     qmeta::CzarId czarId,
                     std::shared_ptr<qdisp::QdispPool> const& qdispPool,
                     std::string const& errorExtra,
@@ -175,6 +180,7 @@ private:
     std::shared_ptr<qproc::SecondaryIndex> _secondaryIndex;
     std::shared_ptr<qmeta::QMeta> _queryMetadata;
     std::shared_ptr<qmeta::QStatus> _queryStatsData;
+    std::shared_ptr<util::SemaMgr> const& _semaMgrConn;
 
     qmeta::CzarId _qMetaCzarId; ///< Czar ID in QMeta database
     QueryId _qMetaQueryId{0};      ///< Query ID in QMeta database

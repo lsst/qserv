@@ -22,37 +22,40 @@
  */
 
 // Class header
-#include "wdb/TransmitMgr.h"
+#include "wcontrol/TransmitMgr.h"
 
-// LSST headers
 #include "lsst/log/Log.h"
 
+using namespace std;
+
 namespace {
-LOG_LOGGER _log = LOG_GET("lsst.qserv.wdb.TransmitMgr");
+LOG_LOGGER _log = LOG_GET("lsst.qserv.wcontrol.TransmitMgr");
 }
 
 namespace lsst {
 namespace qserv {
-namespace wdb {
+namespace wcontrol {
 
 
 void TransmitMgr::_take(bool interactive, bool alreadyTransmitting) {
     ++_totalCount;
     if (not interactive || _transmitCount >= _maxTransmits || _alreadyTransCount >= _maxAlreadyTran) {
+        // If not alreadyTransmitting, it needs to wait until the number of already transmitting
+        // jobs drops below _maxAlreadyTran before it can start transmitting.
         if (alreadyTransmitting) {
-            std::unique_lock<std::mutex> uLock(_mtx);
+            unique_lock<mutex> uLock(_mtx);
             ++_alreadyTransCount;
-            LOGS(_log, LOG_LVL_WARN, "&&& ++_alreadyTransCount=" << _alreadyTransCount);
+            LOGS(_log, LOG_LVL_DEBUG, " ++_alreadyTransCount=" << _alreadyTransCount);
             _tCv.wait(uLock, [this](){ return _transmitCount < _maxTransmits; });
         } else {
-            std::unique_lock<std::mutex> uLock(_mtx);
+            unique_lock<mutex> uLock(_mtx);
             _tCv.wait(uLock, [this](){
                 return (_transmitCount < _maxTransmits) && (_alreadyTransCount < _maxAlreadyTran);
             });
         }
     }
     // Incrementing outside the mutex may result in occasionally having more than
-    // _maxTransmits happening at one time. This should be harmless.
+    // _maxTransmits happening at a time.
     ++_transmitCount;
 }
 
@@ -62,10 +65,33 @@ void TransmitMgr::_release(bool interactive, bool alreadyTransmitting) {
     --_transmitCount;
     if (not interactive && alreadyTransmitting) {
         --_alreadyTransCount;
-        LOGS(_log, LOG_LVL_WARN, "&&& --_alreadyTransCount=" << _alreadyTransCount);
+        LOGS(_log, LOG_LVL_DEBUG, "--_alreadyTransCount=" << _alreadyTransCount);
         _tCv.notify_one();
     }
     _tCv.notify_one();
 }
 
-}}} // namespace lsst::qserv::wdb
+
+ostream& TransmitMgr::dump(ostream &os) const {
+    os << "(totalCount=" << _totalCount
+       << " transmitCount=" << _transmitCount
+       << ":max=" << _maxTransmits
+       << " alreadyTransCount=" << _alreadyTransCount
+       << ":max=" << _maxAlreadyTran << ")";
+    return os;
+}
+
+
+string TransmitMgr::dump() const {
+    ostringstream os;
+    dump(os);
+    return os.str();
+}
+
+
+ostream& operator<<(ostream &os, TransmitMgr const& mgr) {
+    return mgr.dump(os);
+}
+
+
+}}} // namespace lsst::qserv::wcontrol

@@ -48,6 +48,8 @@
 #include "wconfig/WorkerConfig.h"
 #include "wconfig/WorkerConfigError.h"
 #include "wcontrol/Foreman.h"
+#include "wcontrol/SqlConnMgr.h"
+#include "wcontrol/TransmitMgr.h"
 #include "wpublish/ChunkInventory.h"
 #include "wsched/BlendScheduler.h"
 #include "wsched/FifoScheduler.h"
@@ -55,6 +57,7 @@
 #include "wsched/ScanScheduler.h"
 #include "xrdsvc/XrdName.h"
 
+using namespace std;
 
 class XrdPosixCallBack; // Forward.
 
@@ -63,7 +66,7 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.xrdsvc.SsiService");
 
 // add LWP to MDC in log messages
 void initMDC() {
-    LOG_MDC("LWP", std::to_string(lsst::log::lwpID()));
+    LOG_MDC("LWP", to_string(lsst::log::lwpID()));
 }
 int dummyInitMDC = LOG_MDC_INIT(initMDC);
 
@@ -84,28 +87,28 @@ SsiService::SsiService(XrdSsiLogger* log, wconfig::WorkerConfig const& workerCon
     }
     _initInventory();
 
-    std::string cfgMemMan = workerConfig.getMemManClass();
+    string cfgMemMan = workerConfig.getMemManClass();
     memman::MemMan::Ptr memMan;
     if (cfgMemMan  == "MemManReal") {
         // Default to 1 gigabyte
         uint64_t memManSize = workerConfig.getMemManSizeMb()*1000000;
         LOGS(_log, LOG_LVL_DEBUG, "Using MemManReal with memManSizeMb=" << workerConfig.getMemManSizeMb()
             << " location=" <<  workerConfig.getMemManLocation());
-        memMan = std::shared_ptr<memman::MemMan>(memman::MemMan::create(memManSize, workerConfig.getMemManLocation()));
+        memMan = shared_ptr<memman::MemMan>(memman::MemMan::create(memManSize, workerConfig.getMemManLocation()));
     } else if (cfgMemMan == "MemManNone"){
-        memMan = std::make_shared<memman::MemManNone>(1, false);
+        memMan = make_shared<memman::MemManNone>(1, false);
     } else {
         LOGS(_log, LOG_LVL_ERROR, "Unrecognized memory manager " << cfgMemMan);
         throw wconfig::WorkerConfigError("Unrecognized memory manager.");
     }
 
     // Set thread pool size.
-    unsigned int poolSize = std::max(workerConfig.getThreadPoolSize(), std::thread::hardware_concurrency());
+    unsigned int poolSize = max(workerConfig.getThreadPoolSize(), thread::hardware_concurrency());
 
     // poolSize should be greater than either GroupScheduler::maxThreads or ScanScheduler::maxThreads
     unsigned int maxThread = poolSize;
     int maxReserve = 2;
-    auto group = std::make_shared<wsched::GroupScheduler>(
+    auto group = make_shared<wsched::GroupScheduler>(
         "SchedGroup", maxThread, maxReserve,
         workerConfig.getMaxGroupSize(), wsched::SchedulerBase::getMaxPriority());
 
@@ -119,26 +122,26 @@ SsiService::SsiService(XrdSsiLogger* log, wconfig::WorkerConfig const& workerCon
     double slowScanMaxMinutes = (double)workerConfig.getScanMaxMinutesSlow();
     double snailScanMaxMinutes = (double)workerConfig.getScanMaxMinutesSnail();
     int maxTasksBootedPerUserQuery = workerConfig.getMaxTasksBootedPerUserQuery();
-    std::vector<wsched::ScanScheduler::Ptr> scanSchedulers{
-        std::make_shared<wsched::ScanScheduler>(
+    vector<wsched::ScanScheduler::Ptr> scanSchedulers{
+        make_shared<wsched::ScanScheduler>(
             "SchedSlow", maxThread, workerConfig.getMaxReserveSlow(), workerConfig.getPrioritySlow(),
             workerConfig.getMaxActiveChunksSlow(), memMan, medium+1, slow, slowScanMaxMinutes),
-        std::make_shared<wsched::ScanScheduler>(
+        make_shared<wsched::ScanScheduler>(
            "SchedFast", maxThread, workerConfig.getMaxReserveFast(), workerConfig.getPriorityFast(),
            workerConfig.getMaxActiveChunksFast(), memMan, fastest, fast, fastScanMaxMinutes),
-        std::make_shared<wsched::ScanScheduler>(
+        make_shared<wsched::ScanScheduler>(
             "SchedMed", maxThread, workerConfig.getMaxReserveMed(), workerConfig.getPriorityMed(),
             workerConfig.getMaxActiveChunksMed(), memMan, fast+1, medium, medScanMaxMinutes),
     };
 
-    auto snail = std::make_shared<wsched::ScanScheduler>(
+    auto snail = make_shared<wsched::ScanScheduler>(
         "SchedSnail", maxThread, workerConfig.getMaxReserveSnail(), workerConfig.getPrioritySnail(),
         workerConfig.getMaxActiveChunksSnail(), memMan, slow+1, slowest, snailScanMaxMinutes);
 
     wpublish::QueriesAndChunks::Ptr queries =
-        std::make_shared<wpublish::QueriesAndChunks>(std::chrono::minutes(5), std::chrono::minutes(5),
+        make_shared<wpublish::QueriesAndChunks>(chrono::minutes(5), chrono::minutes(5),
                 maxTasksBootedPerUserQuery);
-    wsched::BlendScheduler::Ptr blendSched = std::make_shared<wsched::BlendScheduler>("BlendSched", queries,
+    wsched::BlendScheduler::Ptr blendSched = make_shared<wsched::BlendScheduler>("BlendSched", queries,
             maxThread, group, snail, scanSchedulers);
     blendSched->setPrioritizeByInFlight(false); // TODO: set in configuration file.
     queries->setBlendScheduler(blendSched);
@@ -146,8 +149,18 @@ SsiService::SsiService(XrdSsiLogger* log, wconfig::WorkerConfig const& workerCon
     unsigned int requiredTasksCompleted = workerConfig.getRequiredTasksCompleted();
     queries->setRequiredTasksCompleted(requiredTasksCompleted);
 
-    _foreman = std::make_shared<wcontrol::Foreman>(
-            blendSched, poolSize, workerConfig.getMySqlConfig(), queries);
+    unsigned int maxSqlConn = workerConfig.getMaxSqlConnections();
+    unsigned int resvInteractiveSqlConn = workerConfig.getReservedInteractiveSqlConnections();
+    auto sqlConnMgr = make_shared<wcontrol::SqlConnMgr>(maxSqlConn, maxSqlConn - resvInteractiveSqlConn);
+    LOGS(_log, LOG_LVL_WARN, "config sqlConnMgr" << *sqlConnMgr);
+
+    unsigned int maxTransmits = workerConfig.getMaxTransmits();
+    unsigned int maxAlreadyTransmitting =  workerConfig.getMaxAlreadyTransmitting();
+    auto transmitMgr = make_shared<wcontrol::TransmitMgr>(maxTransmits, maxAlreadyTransmitting);
+    LOGS(_log, LOG_LVL_WARN, "config transmitMgr" << *transmitMgr);
+
+    _foreman = make_shared<wcontrol::Foreman>(
+        blendSched, poolSize, workerConfig.getMySqlConfig(), queries, sqlConnMgr, transmitMgr);
 }
 
 SsiService::~SsiService() {
@@ -168,12 +181,12 @@ void SsiService::_initInventory() {
     XrdName x;
     if (not _mySqlConfig.dbName.empty()) {
         LOGS(_log, LOG_LVL_FATAL, "dbName must be empty to prevent accidental context");
-        throw std::runtime_error("dbName must be empty to prevent accidental context");
+        throw runtime_error("dbName must be empty to prevent accidental context");
     }
     auto conn = sql::SqlConnectionFactory::make(_mySqlConfig);
     assert(conn);
-    _chunkInventory = std::make_shared<wpublish::ChunkInventory>(x.getName(), conn);
-    std::ostringstream os;
+    _chunkInventory = make_shared<wpublish::ChunkInventory>(x.getName(), conn);
+    ostringstream os;
     os << "Paths exported: ";
     _chunkInventory->dbgPrint(os);
     LOGS(_log, LOG_LVL_DEBUG, os.str());

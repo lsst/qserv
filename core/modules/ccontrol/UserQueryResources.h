@@ -41,6 +41,9 @@ namespace ccontrol {
 namespace css {
     class CssAccess;
 }
+namespace czar {
+    class CzarConfig;
+}
 namespace mysql {
     class MySqlConfig;
 }
@@ -55,6 +58,9 @@ namespace qproc {
 }
 namespace sql {
     class SqlConnection;
+}
+namespace util {
+    class SemaMgr;
 }}}
 
 
@@ -69,7 +75,8 @@ namespace ccontrol {
 class UserQuerySharedResources {
 
 public:
-    UserQuerySharedResources(std::shared_ptr<css::CssAccess> css_,
+    UserQuerySharedResources(czar::CzarConfig const& czarConfig_,
+                             std::shared_ptr<css::CssAccess> css_,
                              mysql::MySqlConfig const& mysqlResultConfig_,
                              std::shared_ptr<qproc::SecondaryIndex> secondaryIndex_,
                              std::shared_ptr<qmeta::QMeta> queryMetadata_,
@@ -81,7 +88,7 @@ public:
 
     UserQuerySharedResources(UserQuerySharedResources const& rhs) = default;
     UserQuerySharedResources& operator=(UserQuerySharedResources const& rhs) = delete;
-
+    czar::CzarConfig const& czarConfig;
     std::shared_ptr<css::CssAccess> css;
     mysql::MySqlConfig const mysqlResultConfig;
     std::shared_ptr<qproc::SecondaryIndex> secondaryIndex;
@@ -91,6 +98,7 @@ public:
     std::shared_ptr<sql::SqlConnection> resultDbConn;
     std::shared_ptr<qproc::DatabaseModels> databaseModels;
     qmeta::CzarId qMetaCzarId;   ///< Czar ID in QMeta database
+    std::shared_ptr<util::SemaMgr> semaMgrConnections;
 
     /**
      * @brief Make a query resources with parameters that are specific to the UserQuery (the id and the

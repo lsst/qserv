@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2014 LSST Corporation.
+ * Copyright 2020 LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -21,23 +21,43 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-#ifndef LSST_QSERV_PROTO_WORKERRESPONSE_H
-#define LSST_QSERV_PROTO_WORKERRESPONSE_H
+// Class header
+#include "util/SemaMgr.h"
 
-// Qserv headers
-#include "proto/worker.pb.h"
-#include "util/InstanceCount.h"
+// System headers
+
+
+// LSST headers
+#include "lsst/log/Log.h"
+
+namespace {
+
+LOG_LOGGER _log = LOG_GET("lsst.qserv.util.SemaMgr");
+
+}
 
 namespace lsst {
 namespace qserv {
-namespace proto {
+namespace util {
 
-struct WorkerResponse {
-    unsigned char headerSize;
-    ProtoHeader protoHeader;
-    Result result;
-};
+std::ostream& SemaMgr::dump(std::ostream &os) const {
+    os << "(totalCount=" << _totalCount
+       << " usedcount=" << _usedCount
+       << " max=" << _max << ")";
+    return os;
+}
 
-}}} // lsst::qserv::proto
 
-#endif // #define LSST_QSERV_PROTO_WORKERRESPONSE_H
+std::string SemaMgr::dump() const {
+    std::ostringstream os;
+    dump(os);
+    return os.str();
+}
+
+
+std::ostream& operator<<(std::ostream &os, SemaMgr const& semaMgr) {
+    return semaMgr.dump(os);
+}
+
+
+}}} // namespace lsst::qserv::util

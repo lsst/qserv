@@ -45,7 +45,9 @@
 #include "rproc/InfileMerger.h"
 #include "sql/SqlConnection.h"
 #include "sql/SqlConnectionFactory.h"
+#include "util/common.h"
 #include "util/IterableFormatter.h"
+#include "util/StringToVector.h"
 #include "XrdSsi/XrdSsiProvider.hh"
 
 
@@ -95,14 +97,22 @@ Czar::Czar(std::string const& configPath, std::string const& czarName)
     auto databaseModels = qproc::DatabaseModels::create(_czarConfig.getCssConfigMap(),
                                                         _czarConfig.getMySqlResultConfig());
 
-    // need to be done first as it add logging context for new threads
+    // Need to be done first as it adds logging context for new threads
     _uqFactory.reset(new ccontrol::UserQueryFactory(_czarConfig, databaseModels, _czarName));
 
     int largeResultConcurrent = _czarConfig.getLargeResultConcurrentMerges();
     // TODO:DM-10273 - remove largeResults from configuration
     LOGS(_log, LOG_LVL_INFO, "config largeResultConcurrent=" << largeResultConcurrent);
-    _qdispPool = std::make_shared<qdisp::QdispPool>(); // TODO:configuration add to configuration
-
+    int qPoolSize = _czarConfig.getQdispPoolSize();
+    int maxPriority = std::max(0, _czarConfig.getQdispMaxPriority());
+    std::string vectRunSizesStr = _czarConfig.getQdispVectRunSizes();
+    std::vector<int> vectRunSizes = util::getIntVectFromStr(vectRunSizesStr, ":", 1);
+    std::string vectMinRunningSizesStr = _czarConfig.getQdispVectMinRunningSizes();
+    std::vector<int> vectMinRunningSizes = util::getIntVectFromStr(vectMinRunningSizesStr, ":", 0);
+    LOGS(_log, LOG_LVL_INFO, "INFO qdisp config qPoolSize=" << qPoolSize << " maxPriority=" << maxPriority
+            << " vectRunSizes=" << vectRunSizesStr << " -> " << util::prettyCharList(vectRunSizes)
+            << " vectMinRunningSizes=" << vectMinRunningSizesStr << " -> " << util::prettyCharList(vectMinRunningSizes));
+    _qdispPool = std::make_shared<qdisp::QdispPool>(qPoolSize, maxPriority, vectRunSizes, vectMinRunningSizes);
     int xrootdCBThreadsMax = _czarConfig.getXrootdCBThreadsMax();
     int xrootdCBThreadsInit = _czarConfig.getXrootdCBThreadsInit();
     LOGS(_log, LOG_LVL_INFO, "config xrootdCBThreadsMax=" << xrootdCBThreadsMax);
@@ -110,7 +120,7 @@ Czar::Czar(std::string const& configPath, std::string const& czarName)
     XrdSsiProviderClient->SetCBThreads(xrootdCBThreadsMax, xrootdCBThreadsInit);
 
     LOGS(_log, LOG_LVL_INFO, "Creating czar instance with name " << czarName);
-    LOGS(_log, LOG_LVL_DEBUG, "Czar config: " << _czarConfig);
+    LOGS(_log, LOG_LVL_INFO, "Czar config: " << _czarConfig);
 }
 
 SubmitResult

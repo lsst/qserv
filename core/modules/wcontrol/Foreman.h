@@ -33,7 +33,6 @@
 #include "util/EventThread.h"
 #include "wbase/Base.h"
 #include "wbase/MsgProcessor.h"
-//#include "wbase/Task.h"
 #include "wpublish/QueriesAndChunks.h"
 
 
@@ -49,6 +48,9 @@ namespace wdb {
 namespace lsst {
 namespace qserv {
 namespace wcontrol {
+
+class SqlConnMgr;
+class TransmitMgr;
 
 /// An abstract scheduler interface. Foreman objects use Scheduler instances
 /// to determine what tasks to launch upon triggering events.
@@ -89,7 +91,9 @@ public:
     Foreman(Scheduler::Ptr                  const& scheduler,
             unsigned int                    poolSize,
             mysql::MySqlConfig              const& mySqlConfig,
-            wpublish::QueriesAndChunks::Ptr const& queries);
+            wpublish::QueriesAndChunks::Ptr const& queries,
+            std::shared_ptr<wcontrol::SqlConnMgr>  const& sqlConnMgr,
+            std::shared_ptr<wcontrol::TransmitMgr> const& transmitMgr);
 
     virtual ~Foreman();
 
@@ -127,6 +131,12 @@ private:
 
     mysql::MySqlConfig const        _mySqlConfig;
     wpublish::QueriesAndChunks::Ptr _queries;
+
+    /// For limiting the number of MySQL connections used for tasks.
+    std::shared_ptr<wcontrol::SqlConnMgr> _sqlConnMgr;
+
+    /// For limiting the number of transmits back to czars
+    std::shared_ptr<wcontrol::TransmitMgr> _transmitMgr;
 };
 
 }}}  // namespace lsst::qserv::wcontrol

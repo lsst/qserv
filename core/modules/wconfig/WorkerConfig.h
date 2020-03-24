@@ -257,6 +257,24 @@ public:
          return _maxActiveChunksSnail;
      }
 
+     /// @return the maximum number of SQL connections for tasks.
+     unsigned int getMaxSqlConnections() const {
+         return _maxSqlConnections;
+     }
+     /// @return the number of SQL connections reserved for interactive tasks.
+     unsigned int getReservedInteractiveSqlConnections() const {
+         return _ReservedInteractiveSqlConnections;
+     }
+
+     /// @return the maximum number of concurrent transmits to a czar.
+     unsigned int getMaxTransmits() const {
+         return _maxTransmits;
+     }
+     /// @return the maximum number of tasks that can be transmitting large results.
+     unsigned int getMaxAlreadyTransmitting() const {
+         return _maxAlreadyTransmitting;
+     }
+
 
     /** Overload output operator for current class
      *
@@ -300,6 +318,11 @@ private:
     unsigned int const _scanMaxMinutesSlow;
     unsigned int const _scanMaxMinutesSnail;
     unsigned int const _maxTasksBootedPerUserQuery;
+
+    unsigned int const _maxSqlConnections;
+    unsigned int const _ReservedInteractiveSqlConnections;
+    unsigned int const _maxTransmits;
+    unsigned int const _maxAlreadyTransmitting;
 };
 
 }}} // namespace qserv::core::wconfig

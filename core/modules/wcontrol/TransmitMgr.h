@@ -21,8 +21,8 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-#ifndef LSST_QSERV_WDB_TRANSMITMGR_H
-#define LSST_QSERV_WDB_TRANSMITMGR_H
+#ifndef LSST_QSERV_WCONTROL_TRANSMITMGR_H
+#define LSST_QSERV_WCONTROL_TRANSMITMGR_H
 
 // System headers
 #include <assert.h>
@@ -35,11 +35,10 @@
 
 namespace lsst {
 namespace qserv {
-namespace wdb {
+namespace wcontrol {
 
 class TransmitLock;
-//TODO: &&& This class and SemaMgr (in InfileMerger.cc) are similar. The alreadyTran aspect of this class may not be needed.
-/// Currently, a quick and dirty way to limit the number of concurrent
+/// A way to limit the number of concurrent
 /// transmits. 'interactive queries' are not blocked.
 /// New tasks cannot transmit to the czar until the number of jobs
 /// currently transmitting data drops below maxAlreadyTran
@@ -51,19 +50,29 @@ class TransmitLock;
 /// _alreadyTransCount limit.
 /// TODO:
 ///    -- The czar these are being sent to should be taken into consideration
-///    -- maxTransmits set via config, maybe change at runtime.
+///       as the limit should really be per czar.
+///    -- maybe change at runtime.
 class TransmitMgr {
 public:
+    using Ptr = std::shared_ptr<TransmitMgr>;
+
     TransmitMgr(int maxTransmits, int maxAlreadyTran)
         : _maxTransmits(maxTransmits),  _maxAlreadyTran(maxAlreadyTran) {
         assert(_maxTransmits > 1);
         assert(_maxAlreadyTran > 1);
     }
-    // &&& delete default constructor, copy constructor, and such
+    TransmitMgr() = delete;
+    TransmitMgr(TransmitMgr const&) = delete;
+    TransmitMgr& operator=(TransmitMgr const&) = delete;
+    virtual ~TransmitMgr() = default;
 
     int getTotalCount() { return _totalCount; }
     int getTransmitCount() { return _transmitCount; }
     int getAlreadyTransCount() { return _alreadyTransCount; }
+
+    virtual std::ostream& dump(std::ostream &os) const;
+    std::string dump() const;
+    friend std::ostream& operator<<(std::ostream &out, TransmitMgr const& mgr);
 
     friend class TransmitLock;
 
@@ -90,7 +99,9 @@ public:
         _alreadyTransmitting(alreadyTransmitting) {
         _transmitMgr._take(_interactive, _alreadyTransmitting);
     }
-    // &&& delete default constructor and such
+    TransmitLock() = delete;
+    TransmitLock(TransmitLock const&) = delete;
+    TransmitLock& operator=(TransmitLock const&) = delete;
 
     ~TransmitLock() {
         _transmitMgr._release(_interactive, _alreadyTransmitting);
@@ -103,6 +114,6 @@ private:
 };
 
 
-}}} // namespace lsst::qserv::wdb
+}}} // namespace lsst::qserv::wcontrol
 
-#endif // LSST_QSERV_WDB_TRANSMITMGR_H
+#endif // LSST_QSERV_WCONTROL_TRANSMITMGR_H
