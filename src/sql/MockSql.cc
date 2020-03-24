@@ -20,6 +20,8 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
+#include <stdexcept>
+
 // Third-party headers
 
 // Qserv headers

@@ -61,7 +61,7 @@ namespace {
         InitializeMysqlLibrary(JanitorTsp & j) : janitor(j) {}
 
         void operator()() {
-            int rc = mysql_library_init(0, nullptr, nullptr);
+            [[maybe_unused]] int rc = mysql_library_init(0, nullptr, nullptr);
             assert(0 == rc && "mysql_library_init() failed");
             assert(mysql_thread_safe() != 0 &&
                    "MySQL client library is not thread safe!");

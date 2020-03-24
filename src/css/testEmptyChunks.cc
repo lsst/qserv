@@ -68,7 +68,7 @@ struct DummyFile {
         assert(_path.find("/tmp/") == 0);
         std::string c = "mkdir ";
         c += _path;
-        ::system(c.c_str());
+        [[maybe_unused]] int unused = ::system(c.c_str());
     }
     void rmDir() {
         // Slightly dangerous: invoke OS system interpreter
@@ -76,7 +76,7 @@ struct DummyFile {
         assert(_path.find("/tmp/") == 0);
         std::string c = "rm -r ";
         c += _path;
-        ::system(c.c_str());
+        [[maybe_unused]] int unused = ::system(c.c_str());
     }
     void writeFile(char const* dbname, int begin, int end) {
         std::string filename = _path;

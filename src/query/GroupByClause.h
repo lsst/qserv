@@ -67,6 +67,8 @@ public:
     GroupByTerm(ValueExprPtr valueExpr, std::string collate)
     : _expr(valueExpr), _collate(collate) {}
 
+    GroupByTerm(GroupByTerm const&) = default;
+
     ValueExprPtr& getExpr() { return _expr; }
     std::string getCollate() const { return _collate; }
     GroupByTerm cloneValue() const;

@@ -41,6 +41,7 @@
 #include <stdexcept>
 
 // Third-party headers
+#define BOOST_BIND_GLOBAL_PLACEHOLDERS 1
 #include "boost/algorithm/string.hpp"
 #include "boost/algorithm/string/predicate.hpp"
 #include "boost/property_tree/ptree.hpp"

@@ -31,6 +31,7 @@
 #include <sstream>
 
 // Third-party headers
+#define BOOST_BIND_GLOBAL_PLACEHOLDERS 1
 #include "boost/lexical_cast.hpp"
 #include "boost/property_tree/ptree.hpp"
 #include "boost/property_tree/json_parser.hpp"

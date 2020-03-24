@@ -29,7 +29,6 @@
 // Qserv headers
 #include "proto/ProtoHeaderWrap.h"
 #include "util/common.h"
-#include "xrdsvc/StreamBuffer.h"
 
 namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.parser.ProtoHeaderWrap");
@@ -60,9 +59,8 @@ std::string ProtoHeaderWrap::wrap(std::string& protoHeaderString) {
 }
 
 bool ProtoHeaderWrap::unwrap(std::shared_ptr<WorkerResponse>& response, std::vector<char>& buffer) {
-    response->headerSize = static_cast<unsigned char const>(buffer[0]);
-    if (!ProtoImporter<ProtoHeader>::setMsgFrom(
-            response->protoHeader, &buffer[1], response->headerSize)) {
+    response->headerSize = static_cast<unsigned char>(buffer[0]);
+    if (!ProtoImporter<ProtoHeader>::setMsgFrom(response->protoHeader, &buffer[1], response->headerSize)) {
         return false;
     }
     LOGS(_log, LOG_LVL_TRACE, "buffer size=" << buffer.size() << " --> " << util::prettyCharList(buffer, 5));

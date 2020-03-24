@@ -25,9 +25,6 @@ THE SOFTWARE.
 
 parser grammar MySqlParser;
 
-options { tokenVocab=MySqlLexer; }
-
-
 // Top Level Description
 
 root

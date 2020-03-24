@@ -105,7 +105,7 @@ QueryRunner::QueryRunner(wbase::Task::Ptr const& task,
     : _task(task), _chunkResourceMgr(chunkResourceMgr), _mySqlConfig(mySqlConfig),
       _arena(std::make_unique<google::protobuf::Arena>()),
       _sqlConnMgr(sqlConnMgr), _transmitMgr(transmitMgr) {
-    int rc = mysql_thread_init();
+    [[maybe_unused]] int rc = mysql_thread_init();
     assert(rc == 0);
     assert(_task->msg);
 }
