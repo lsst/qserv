@@ -67,7 +67,7 @@ public:
     void registerRunner(Runner* r);
     void signalDeath(Runner* r);
     bool isPoison(Callable const* const c) {
-        return (Callable const* const)0 == c;
+        return (Callable *)0 == c;
     }
 
 private:
