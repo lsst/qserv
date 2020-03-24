@@ -72,7 +72,6 @@ public:
               {memset(&_myStats, 0, sizeof(_myStats));
                _myStats.bytesLockMax = maxBytes;
                _myStats.bytesLocked  = maxBytes;
-               memset(&_status, 0, sizeof(_status));
               }
 
     ~MemManNone() override {}
