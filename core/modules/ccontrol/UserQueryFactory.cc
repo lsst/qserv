@@ -82,7 +82,9 @@ makeUserQuerySharedResources(czar::CzarConfig const& czarConfig,
     return std::make_shared<UserQuerySharedResources>(
         css::CssAccess::createFromConfig(czarConfig.getCssConfigMap(), czarConfig.getEmptyChunkPath()),
         czarConfig.getMySqlResultConfig(),
-        std::make_shared<qproc::SecondaryIndex>(czarConfig.getMySqlQmetaConfig()),
+        (czarConfig.getDirIdxRedisClientConfig().empty() ? 
+            std::make_shared<qproc::SecondaryIndex>(czarConfig.getMySqlQmetaConfig()) : 
+            std::make_shared<qproc::SecondaryIndex>(czarConfig.getDirIdxRedisClientConfig())),
         std::make_shared<qmeta::QMetaMysql>(czarConfig.getMySqlQmetaConfig()),
         std::make_shared<qmeta::QStatusMysql>(czarConfig.getMySqlQStatusDataConfig()),
         std::make_shared<qmeta::QMetaSelect>(czarConfig.getMySqlQmetaConfig()),

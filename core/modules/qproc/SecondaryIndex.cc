@@ -45,6 +45,9 @@
 #include "global/intTypes.h"
 #include "global/constants.h"
 #include "global/stringUtil.h"
+#include "diridx/ChunkData.h"
+#include "diridx/DirIdxRedisClientContext.h"
+#include "diridx/DirIdxRedisClient.h"
 #include "query/ColumnRef.h"
 #include "query/CompPredicate.h"
 #include "query/SecIdxRestrictor.h"
@@ -64,11 +67,47 @@ namespace qserv {
 namespace qproc {
 
 
+class MySqlBackend;
+class RedisBackend;
+
+
 class SecondaryIndex::Backend {
 public:
+    static std::shared_ptr<MySqlBackend> makeBackend(mysql::MySqlConfig const& c) {
+        return std::make_shared<MySqlBackend>(c);
+    }
+
+    static std::shared_ptr<RedisBackend> makeBackend(std::string const& redisClusterServiceName) {
+        return std::make_shared<RedisBackend>(redisClusterServiceName);
+    }
+
     virtual ~Backend() {}
+
     /// Lookup an index restrictor. Ignore restrictors that are not "sIndex" restrictors.
     virtual ChunkSpecVector lookup(query::SecIdxRestrictorVec const& restrictors) = 0;
+};
+
+
+class RedisBackend : public SecondaryIndex::Backend {
+public:
+    RedisBackend(std::string const& name) :
+        _context(name) 
+    {}
+
+    virtual ChunkSpecVector lookup(query::SecIdxRestrictorVec const& restrictors) {
+        ChunkSpecVector chunkSpecVec;
+        for (auto const& restrictor : restrictors) {
+            for (auto const& id : restrictor->getIds()) {
+                diridx::ChunkData chunkData = _context.dirIdxRedisClient().get(id);
+                chunkSpecVec.push_back(ChunkSpec(chunkData.chunkId(), {chunkData.subChunkId()}));
+            }
+        }
+        normalize(chunkSpecVec);
+        return chunkSpecVec;
+    }
+
+private:
+    diridx::DirIdxRedisClientContext _context;
 };
 
 
@@ -164,8 +203,14 @@ private:
 
 
 SecondaryIndex::SecondaryIndex(mysql::MySqlConfig const& c)
-    : _backend(std::make_shared<MySqlBackend>(c)) {
+    : _backend(Backend::makeBackend(c)) {
 }
+
+
+SecondaryIndex::SecondaryIndex(std::string const& name)
+    : _backend(Backend::makeBackend(name)) {
+}
+
 
 SecondaryIndex::SecondaryIndex()
     : _backend(std::make_shared<FakeBackend>()) {

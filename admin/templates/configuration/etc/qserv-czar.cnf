@@ -68,3 +68,7 @@ qMetaSecsBetweenChunkCompletionUpdates = 59
 
 [log]
 logConfig = {{QSERV_RUN_DIR}}/etc/log4cxx.czar.properties
+
+# uncomment this section to use redis-cluster director index backend.
+# [directorIndex]
+# redisClusterName = "redis-cluster"

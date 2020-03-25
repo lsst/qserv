@@ -245,13 +245,17 @@ shlibs["xrdsvc"] = dict(mods="""wbase wcontrol wconfig wdb wpublish wsched xrdsv
 shlibs["qserv_css"] = dict(mods="""css""",
                            libs="""qserv_common log mysqlclient_r""")
 
+# library with diridx code (regular C++ bindings)
+shlibs["qserv_diridx"] = dict(mods="""diridx""",
+                           libs="""redis++ log""")
+
 # library with QMeta code (regular C++ bindings)
 shlibs["qserv_qmeta"] = dict(mods="""qmeta""",
                              libs="""qserv_common log mysqlclient_r""")
 
 # library with all czar C++ code
 shlibs["qserv_czar"] = dict(mods="""ccontrol czar parser qana query qdisp qproc rproc tests""",
-                            libs="""qserv_css qserv_qmeta qserv_common antlr4-runtime sphgeom
+                            libs="""qserv_diridx qserv_css qserv_qmeta qserv_common antlr4-runtime sphgeom
                                  log XrdSsiLib boost_regex""")
 
 # library implementing core functionality of the replication subsystem, tests and
@@ -275,6 +279,12 @@ shlibs["cssLib"] = dict(mods="css:python",
                         libs="qserv_css log boost_thread",
                         SHLIBPREFIX='',
                         instDir="$python_prefix/lsst/qserv/css")
+
+# Python extension module wrapping qserv_diridx
+shlibs["diridxLib"] = dict(mods="diridx:python",
+                        libs="qserv_diridx",
+                        SHLIBPREFIX='',
+                        instDir="$python_prefix/lsst/qserv/diridx")
 
 # Python extension module wrapping qserv_qmeta
 shlibs["qmetaLib"] = dict(mods="qmeta:python",

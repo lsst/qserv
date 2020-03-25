@@ -51,7 +51,22 @@ namespace qproc {
  */
 class SecondaryIndex {
 public:
+    /**
+     * @brief Construct a mysql-backed instance
+     */
     explicit SecondaryIndex(mysql::MySqlConfig const& c);
+
+    /**
+     * @brief Construct a diridx Redis-backed instance
+     *
+     * @param name the ip address and port number of a node to connect to separated by a colon
+     *        e.g. "192.168.0.1:6379"
+     *
+     *  TODO a variable called 'name' that takes an ip address + port may not be the best var name. I think
+     *  the function can not take a dns name (at least the Redis api can't?), consider wrapping that or
+     *  changing the variable name to something more apropriate.
+     */
+    SecondaryIndex(std::string const& name);
 
     /** Construct a fake instance
      *

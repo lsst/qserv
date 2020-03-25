@@ -36,6 +36,8 @@
 #include <string>
 #include <vector>
 
+// Third-party headers
+#include "boost/variant.hpp"
 
 // Forward declarations
 namespace lsst {
@@ -63,6 +65,8 @@ public:
     virtual ~SecIdxRestrictor() = default;
 
     bool operator==(const SecIdxRestrictor& rhs) const;
+
+    virtual std::vector<std::string> getIds() const = 0;
 
     /**
      * @brief Serialze this instance as SQL to the QueryTemplate.
@@ -102,6 +106,8 @@ public:
 
     SecIdxCompRestrictor(std::shared_ptr<query::CompPredicate> compPredicate, bool valOnLeft);
 
+    std::vector<std::string> getIds() const override;
+
     /**
      * @brief Serialze this instance as SQL to the QueryTemplate.
      */
@@ -137,6 +143,8 @@ public:
 
     SecIdxInRestrictor(std::shared_ptr<query::InPredicate> inPredicate)
             : _inPredicate(inPredicate) {}
+
+    std::vector<std::string> getIds() const override;
 
     /**
      * @brief Serialze this instance as SQL to the QueryTemplate.

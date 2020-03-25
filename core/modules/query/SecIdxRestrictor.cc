@@ -73,6 +73,14 @@ bool SecIdxRestrictor::operator==(const SecIdxRestrictor& rhs) const {
 }
 
 
+std::vector<std::string> SecIdxCompRestrictor::getIds() const {
+    std::vector<std::string> secIdxIds;
+    secIdxIds.push_back(
+        _valOnLeft ? _compPredicate->left->getConstVal() : _compPredicate->right->getConstVal());
+    return secIdxIds;
+}
+
+
 void SecIdxCompRestrictor::renderTo(QueryTemplate& qt) const {
     _compPredicate->renderTo(qt);
 }
@@ -98,6 +106,15 @@ std::string SecIdxCompRestrictor::getSecIdxLookupQuery(std::string const& second
     return "SELECT `" + chunkColumn + "`, `" + subChunkColumn + "`" +
             " FROM `" + secondaryIndexDb + "`.`" + secondaryIndexTable + "`" +
             " WHERE " + boost::lexical_cast<std::string>(columnRefQt);
+}
+
+
+std::vector<std::string> SecIdxInRestrictor::getIds() const {
+    std::vector<std::string> secIdxVals;
+    for (auto const& cand : _inPredicate->cands) {
+        secIdxVals.push_back(cand->getConstVal());
+    }
+    return secIdxVals;
 }
 
 

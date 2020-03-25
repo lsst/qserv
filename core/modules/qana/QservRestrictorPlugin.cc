@@ -354,6 +354,9 @@ std::shared_ptr<query::SecIdxInRestrictor> makeSecondaryIndexRestrictor(
                 inPredicate.value->getColumnRef());
             return nullptr;
         }
+        // TODO before making the IN restr, should we test that the cands are all const values, or "simple",
+        // for some definition of "won't do fancy lookups later on"? - the value basically needs to be
+        // extracted as-is as a key to the diridx kv store.
         return std::make_shared<query::SecIdxInRestrictor>(std::make_shared<query::InPredicate>(
                 query::ValueExpr::newSimple(dirCol), inPredicate.cands, inPredicate.hasNot));
     }

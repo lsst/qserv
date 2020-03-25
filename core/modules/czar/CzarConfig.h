@@ -152,6 +152,11 @@ public:
     int getQMetaSecondsBetweenChunkUpdates() const {
         return _qMetaSecsBetweenChunkCompletionUpdates;
     }
+
+    std::string getDirIdxRedisClientConfig() const {
+        return _dirIdxRedisConfig;
+    }
+
 private:
 
     CzarConfig(util::ConfigStore const& ConfigStore);
@@ -166,6 +171,7 @@ private:
     mysql::MySqlConfig const _mySqlQstatusDataConfig;
     std::string const _xrootdFrontendUrl;
     std::string const _emptyChunkPath;
+    std::string const _dirIdxRedisConfig;
     int const _largeResultConcurrentMerges;
     int const _xrootdCBThreadsMax;
     int const _xrootdCBThreadsInit;
