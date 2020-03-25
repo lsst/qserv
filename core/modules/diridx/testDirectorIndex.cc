@@ -66,6 +66,13 @@ BOOST_AUTO_TEST_CASE(makeSubIdAndField) {
 }
 
 
+BOOST_AUTO_TEST_CASE(makeSubIdAndField_smallNumber) {
+    auto subIdAndField = TestAccessor::getSubIdAndField(12);
+    BOOST_CHECK_EQUAL(subIdAndField.first, 0u);
+    BOOST_CHECK_EQUAL(subIdAndField.second, 12);
+}
+
+
 BOOST_AUTO_TEST_CASE(combineChunkData) {
     BOOST_CHECK_EQUAL(TestAccessor::combineChunkData(18446744073709551615u, 65535u),
                       "18446744073709551615.65535");
