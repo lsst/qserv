@@ -211,7 +211,7 @@ void IngestServerConnection::_handshakeReceived(boost::system::error_code const&
                 _databaseInfo.partitionedTables.end(),
                 _table);
         if (not _isPartitioned) {
-            if (_databaseInfo.regularTables.end() != find(
+            if (_databaseInfo.regularTables.end() == find(
                     _databaseInfo.regularTables.begin(),
                     _databaseInfo.regularTables.end(),
                     _table)) {
