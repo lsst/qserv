@@ -61,12 +61,19 @@ CREATE TABLE IF NOT EXISTS `config_worker` (
   `loader_port`    SMALLINT UNSIGNED  DEFAULT NULL ,    -- override for the global default
   `loader_tmp_dir` VARCHAR(255)       DEFAULT NULL ,    -- a file system path to the temporary folder
 
+  -- Data exporting service
+
+  `exporter_host`    VARCHAR(255)       NOT NULL ,        -- the host name on which the worker's data exporting server runs
+  `exporter_port`    SMALLINT UNSIGNED  DEFAULT NULL ,    -- override for the global default
+  `exporter_tmp_dir` VARCHAR(255)       DEFAULT NULL ,    -- a file system path to the temporary folder
+
   PRIMARY KEY (`name`) ,
 
   UNIQUE  KEY (`svc_host`, `svc_port`) ,
   UNIQUE  KEY (`fs_host`,  `fs_port`) ,
   UNIQUE  KEY (`db_host`,  `db_port`) ,
   UNIQUE  KEY (`loader_host`, `loader_port`)
+  UNIQUE  KEY (`exporter_host`, `exporter_port`)
 )
 ENGINE = InnoDB;
 

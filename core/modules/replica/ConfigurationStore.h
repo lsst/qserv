@@ -165,6 +165,18 @@ public:
                                      std::string const& tmpDir,
                                      bool updatePersistentState) final;
 
+    WorkerInfo setWorkerExporterHost(std::string const& name,
+                                     std::string const& host,
+                                     bool updatePersistentState=true) final;
+
+    WorkerInfo setWorkerExporterPort(std::string const& name,
+                                     uint16_t port,
+                                     bool updatePersistentState=true) final;
+
+    WorkerInfo setWorkerExporterTmpDir(std::string const& name,
+                                       std::string const& tmpDir,
+                                       bool updatePersistentState=true) final;
+
     void setWorkerTechnology(std::string const& val,
                              bool updatePersistentState) final { _set(_workerTechnology, val); }
 
@@ -179,6 +191,9 @@ public:
 
     void setLoaderNumProcessingThreads(size_t val,
                                        bool updatePersistentState) final { _set(_loaderNumProcessingThreads, val); }
+
+    void setExporterNumProcessingThreads(size_t val,
+                                         bool updatePersistentState) final { _set(_exporterNumProcessingThreads, val); }
 
     DatabaseFamilyInfo addDatabaseFamily(DatabaseFamilyInfo const& info) final;
 

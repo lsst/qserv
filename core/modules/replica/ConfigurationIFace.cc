@@ -59,6 +59,9 @@ json WorkerInfo::toJson() const {
     infoJson["loader_host"]  = loaderHost;
     infoJson["loader_port"]  = loaderPort;
     infoJson["loader_tmp_dir"] = loaderTmpDir;
+    infoJson["exporter_host"]    = exporterHost;
+    infoJson["exporter_port"]    = exporterPort;
+    infoJson["exporter_tmp_dir"] = exporterTmpDir;
 
     return infoJson;
 }
@@ -148,7 +151,10 @@ ostream& operator <<(ostream& os, WorkerInfo const& info) {
         << "dbUser:'"    <<      info.dbUser     << "',"
         << "loaderHost:'"   <<   info.loaderHost   << "',"
         << "loaderPort:"    <<   info.loaderPort   << ","
-        << "loaderTmpDir:'" <<   info.loaderTmpDir << "')";
+        << "loaderTmpDir:'" <<   info.loaderTmpDir << "',"
+        << "exporterHost:'"   <<   info.exporterHost   << "',"
+        << "exporterPort:"    <<   info.exporterPort   << ","
+        << "exporterTmpDir:'" <<   info.exporterTmpDir << "')";
     return os;
 }
 

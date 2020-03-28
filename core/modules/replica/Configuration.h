@@ -303,6 +303,18 @@ public:
                                      std::string const& tmpDir,
                                      bool updatePersistentState=true) final;
 
+    WorkerInfo setWorkerExporterHost(std::string const& name,
+                                     std::string const& host,
+                                     bool updatePersistentState=true) final;
+
+    WorkerInfo setWorkerExporterPort(std::string const& name,
+                                     uint16_t port,
+                                     bool updatePersistentState=true) final;
+
+    WorkerInfo setWorkerExporterTmpDir(std::string const& name,
+                                       std::string const& tmpDir,
+                                       bool updatePersistentState=true) final;
+
     std::string workerTechnology() const final;
     void setWorkerTechnology(std::string const& val,
                              bool updatePersistentState=true) final;
@@ -322,6 +334,10 @@ public:
     size_t loaderNumProcessingThreads() const final;
     void setLoaderNumProcessingThreads(size_t val,
                                        bool updatePersistentState=true) final;
+
+    size_t exporterNumProcessingThreads() const final;
+    void setExporterNumProcessingThreads(size_t val,
+                                         bool updatePersistentState=true) final;
 
     std::string asString() const final;
 

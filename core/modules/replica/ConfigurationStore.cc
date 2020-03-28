@@ -290,7 +290,42 @@ WorkerInfo ConfigurationStore::setWorkerLoaderTmpDir(string const& name,
     itr->second.loaderTmpDir = tmpDir;
 
     return itr->second;
+}
 
+
+WorkerInfo ConfigurationStore::setWorkerExporterHost(string const& name,
+                                                     string const& host,
+                                                     bool updatePersistentState) {
+    LOGS(_log, LOG_LVL_DEBUG, context(__func__) << "  name=" << name << " host=" << host);
+
+    auto itr = safeFindWorker(name, _classMethodContext(__func__));
+    itr->second.exporterHost = host;
+
+    return itr->second;
+}
+
+
+WorkerInfo ConfigurationStore::setWorkerExporterPort(string const& name,
+                                                     uint16_t port,
+                                                     bool updatePersistentState) {
+    LOGS(_log, LOG_LVL_DEBUG, context(__func__) << "  name=" << name << " port=" << port);
+
+    auto itr = safeFindWorker(name, _classMethodContext(__func__));
+    itr->second.exporterPort = port;
+
+    return itr->second;
+}
+
+
+WorkerInfo ConfigurationStore::setWorkerExporterTmpDir(string const& name,
+                                                       string const& tmpDir,
+                                                       bool updatePersistentState) {
+    LOGS(_log, LOG_LVL_DEBUG, context(__func__) << "  name=" << name << " tmpDir=" << tmpDir);
+
+    auto itr = safeFindWorker(name, _classMethodContext(__func__));
+    itr->second.exporterTmpDir = tmpDir;
+
+    return itr->second;
 }
 
 
@@ -594,6 +629,7 @@ void ConfigurationStore::_loadConfiguration(util::ConfigStore const& configStore
     ::parseKeyVal(configStore, "worker.num_fs_processing_threads",  _fsNumProcessingThreads,       defaultFsNumProcessingThreads);
     ::parseKeyVal(configStore, "worker.fs_buf_size_bytes",          _workerFsBufferSizeBytes,      defaultWorkerFsBufferSizeBytes);
     ::parseKeyVal(configStore, "worker.num_loader_processing_threads", _loaderNumProcessingThreads, defaultLoaderNumProcessingThreads);
+    ::parseKeyVal(configStore, "worker.num_exporter_processing_threads", _exporterNumProcessingThreads, defaultExporterNumProcessingThreads);
 
 
     // Optional common parameters for workers
@@ -605,6 +641,8 @@ void ConfigurationStore::_loadConfiguration(util::ConfigStore const& configStore
     string   commonWorkerDbUser;
     uint16_t commonWorkerLoaderPort;
     string   commonWorkerLoaderTmpDir;
+    uint16_t commonWorkerExporterPort;
+    string   commonWorkerExporterTmpDir;
 
     ::parseKeyVal(configStore, "worker.svc_port",    commonWorkerSvcPort,    defaultWorkerSvcPort);
     ::parseKeyVal(configStore, "worker.fs_port",     commonWorkerFsPort,     defaultWorkerFsPort);
@@ -613,6 +651,8 @@ void ConfigurationStore::_loadConfiguration(util::ConfigStore const& configStore
     ::parseKeyVal(configStore, "worker.db_user",     commonWorkerDbUser,     defaultWorkerDbUser);
     ::parseKeyVal(configStore, "worker.loader_port",    commonWorkerLoaderPort,   defaultWorkerLoaderPort);
     ::parseKeyVal(configStore, "worker.loader_tmp_dir", commonWorkerLoaderTmpDir, defaultWorkerLoaderTmpDir);
+    ::parseKeyVal(configStore, "worker.exporter_port",    commonWorkerExporterPort,   defaultWorkerExporterPort);
+    ::parseKeyVal(configStore, "worker.exporter_tmp_dir", commonWorkerExporterTmpDir, defaultWorkerExporterTmpDir);
 
     // Parse optional worker-specific configuration sections. Assume default
     // or (previously parsed) common values if a whole section or individual
@@ -642,9 +682,13 @@ void ConfigurationStore::_loadConfiguration(util::ConfigStore const& configStore
         ::parseKeyVal(configStore, section+".loader_host",    workerInfo.loaderHost,   defaultWorkerLoaderHost);
         ::parseKeyVal(configStore, section+".loader_port",    workerInfo.loaderPort,   commonWorkerLoaderPort);
         ::parseKeyVal(configStore, section+".loader_tmp_dir", workerInfo.loaderTmpDir, commonWorkerLoaderTmpDir);
+        ::parseKeyVal(configStore, section+".exporter_host",    workerInfo.exporterHost,   defaultWorkerExporterHost);
+        ::parseKeyVal(configStore, section+".exporter_port",    workerInfo.exporterPort,   commonWorkerExporterPort);
+        ::parseKeyVal(configStore, section+".exporter_tmp_dir", workerInfo.exporterTmpDir, commonWorkerExporterTmpDir);
 
         ConfigurationBase::translateWorkerDir(workerInfo.dataDir, name);
         ConfigurationBase::translateWorkerDir(workerInfo.loaderTmpDir, name);
+        ConfigurationBase::translateWorkerDir(workerInfo.exporterTmpDir, name);
     }
 
     // Parse mandatory database family-specific configuration sections

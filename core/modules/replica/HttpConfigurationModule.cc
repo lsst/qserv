@@ -161,6 +161,8 @@ void HttpConfigurationModule::_updateGeneral(qhttp::Request::Ptr const& req,
         ::saveConfigParameter(general.workerNumProcessingThreads,  req->query, config, logger);
         ::saveConfigParameter(general.fsNumProcessingThreads,      req->query, config, logger);
         ::saveConfigParameter(general.workerFsBufferSizeBytes,     req->query, config, logger);
+        ::saveConfigParameter(general.loaderNumProcessingThreads,   req->query, config, logger);
+        ::saveConfigParameter(general.exporterNumProcessingThreads, req->query, config, logger);
 
         json result;
         result["config"] = Configuration::toJson(config);

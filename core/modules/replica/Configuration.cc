@@ -675,6 +675,30 @@ WorkerInfo Configuration::setWorkerLoaderTmpDir(string const& name,
 }
 
 
+WorkerInfo Configuration::setWorkerExporterHost(string const& name,
+                                                string const& host,
+                                                bool updatePersistentState) {
+    util::Lock lock(_mtx, context(__func__));
+    return _impl->setWorkerExporterHost(name, host, updatePersistentState);
+}
+
+
+WorkerInfo Configuration::setWorkerExporterPort(string const& name,
+                                                uint16_t port,
+                                                bool updatePersistentState) {
+    util::Lock lock(_mtx, context(__func__));
+    return _impl->setWorkerExporterPort(name, port, updatePersistentState);
+}
+
+
+WorkerInfo Configuration::setWorkerExporterTmpDir(string const& name,
+                                                  string const& tmpDir,
+                                                  bool updatePersistentState) {
+    util::Lock lock(_mtx, context(__func__));
+    return _impl->setWorkerExporterTmpDir(name, tmpDir, updatePersistentState);
+}
+
+
 size_t Configuration::workerNumProcessingThreads() const {
     util::Lock lock(_mtx, context(__func__));
     return _impl->workerNumProcessingThreads();
@@ -724,6 +748,19 @@ void Configuration::setLoaderNumProcessingThreads(size_t val,
                                                   bool updatePersistentState) {
     util::Lock lock(_mtx, context(__func__));
     _impl->setLoaderNumProcessingThreads(val, updatePersistentState);
+}
+
+
+size_t Configuration::exporterNumProcessingThreads() const {
+    util::Lock lock(_mtx, context(__func__));
+    return _impl->exporterNumProcessingThreads();
+}
+
+
+void Configuration::setExporterNumProcessingThreads(size_t val,
+                                                    bool updatePersistentState) {
+    util::Lock lock(_mtx, context(__func__));
+    _impl->setExporterNumProcessingThreads(val, updatePersistentState);
 }
 
 
