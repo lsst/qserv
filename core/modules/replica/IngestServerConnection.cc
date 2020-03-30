@@ -56,10 +56,6 @@ namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.IngestServerConnection");
 
-/// The limit of 16 MB for the maximum record size for file I/O and
-/// network operations.
-size_t const maxFileBufSizeBytes = 16 * 1024 * 1024;
-
 /// The context for diagnostic & debug printouts
 string const context = "INGEST-SERVER-CONNECTION  ";
 

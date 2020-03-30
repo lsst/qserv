@@ -878,3 +878,94 @@ message ProtocolIngestResponse {
     optional uint32 max_rows = 2 [default = 1]; /// sent with READY_TO_READ_DATA
     optional string error = 3 [default = ""];   /// sent with FAILED
 }
+
+//////////////////////////////////////////////
+//         The ExportServer protocol        //
+//////////////////////////////////////////////
+
+/// Sent once by a client after establishing a connection with a server.
+/// The server is expected to response with ProtocolExportHandshakeResponse.
+
+message ProtocolExportHandshakeRequest {
+
+    /// The name of a database
+    required string database = 1;
+
+    /// The base name (no chunk numbers or 'overlap' suffixes) of a table
+    /// to be exported.
+    required string table = 2;
+
+    /// The chunk number (for partitioned tables only)
+    optional uint32 chunk = 3 [default = 0];
+
+    /// The flag indicating if this is the chunk 'overlap' table
+    //// (for partitioned tables only)
+    optional bool is_overlap = 4 [default = false];
+
+    /// A character separating columns within a row
+    enum ColumnSeparator {
+        COMMA = 0;
+        TAB   = 1;
+    }
+    optional ColumnSeparator column_separator = 5 [default = COMMA];
+}
+
+/// The response message is sent once by a server to a client to indicate
+/// that a table dump has been successfully obtained and the server is ready
+/// to send data, or in case if any problem with the request's parameters or
+/// its implementation occurred.
+///
+/// In the former case the the server should send back the number of bytes in
+/// the table dump, so that the client could use this information for various purposes,
+/// such as tracking a progress of the operation. Otherwise a non-empty error
+/// string will be returned in the corresponding field of the message.
+///
+/// The client is expected to begin requesting table data by sending ProtocolExportRequest.
+
+message ProtocolExportHandshakeResponse {
+
+    /// Non-empty if the operation failed
+    optional string error = 1 [default = ""];
+
+    /// The amount of data in the table dump
+    optional uint64 file_size = 2 [default = 0];
+}
+
+/// The request message sent by a client to a server to indicate it's ready
+/// to receive the next set of rows. The server is expected to respond with
+/// message ProtocolExportResponse.
+
+message ProtocolExportRequest {
+
+    enum Status {
+        READY_TO_READ_DATA = 0;     /// client is waiting for data
+        FINISHED           = 1;     /// a confirmation that the file content accepted,
+                                    /// or when the client wants to abort the operation.
+    }
+    required Status status = 1;
+
+    /// The advised number of rows in the server's response. This parameter
+    /// is used for the flow control in the protocol.
+    optional uint32 max_rows = 2 [default = 1]; /// sent with READY_TO_READ_DATA
+}
+
+
+/// A message which is meant for sending rows to a client after receiving
+/// a message ProtocolExportRequest with status set to READY_TO_READ_DATA.
+/// This message is sent once after each READY_TO_READ_DATA.
+/// When sending the last batch of rows the server should set the flag 'last' to
+/// to tell the client that no more data are available. In that case the client
+/// should respond with FINISHED. Then both parties should close the connection.
+
+message ProtocolExportResponse {
+
+    /// Non-empty if the operation failed
+    optional string error = 1 [default = ""];
+
+    /// Set to 'true' if this was the last batch of rows
+    optional bool last = 2 [default = false];
+
+    /// The payload of the request. Note that this is the binary stream of bytes
+    /// obtained from the dump file.
+    repeated bytes rows = 3;
+}

@@ -30,7 +30,7 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
-    /**
+/**
  * Class ChunkedTable represents a utility for parsing and building
  * names of the chunked tables.
  */
