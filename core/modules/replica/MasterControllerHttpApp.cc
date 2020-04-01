@@ -171,6 +171,10 @@ MasterControllerHttpApp::MasterControllerHttpApp(int argc, char* argv[])
         "qserv-db-password",
         "A password for the MySQL 'root' account of the Qserv master database.",
         _qservDbRootPassword
+    ).option(
+        "auth-key",
+        "An authorization key for metadata operations requested via the REST API.",
+        _authKey
     );
 }
 
@@ -222,7 +226,7 @@ int MasterControllerHttpApp::runImpl() {
     _httpProcessor = HttpProcessor::create(
         _controller,
         HttpProcessorConfig(
-            _workerResponseTimeoutSec, _qservSyncTimeoutSec, _workerReconfigTimeoutSec
+            _workerResponseTimeoutSec, _qservSyncTimeoutSec, _workerReconfigTimeoutSec, _authKey
         ),
         _healthMonitorTask
     );

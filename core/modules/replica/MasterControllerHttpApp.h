@@ -172,6 +172,9 @@ private:
     /// A password for the MySQL 'root' account of the Qserv master database
     std::string _qservDbRootPassword;
 
+    /// An authorization key for metadata operations requested via the REST API.
+    std::string _authKey;
+
     /// This flag will be raised by any thread if a non-recoverable
     /// catastrophic failure will be detected.
     OneWayFailer _isFailed;

@@ -54,7 +54,8 @@ IngestClient::Ptr IngestClient::connect(
         unsigned int chunk,
         bool isOverlap,
         string const& inputFilePath,
-        ColumnSeparator columnSeparator) {
+        ColumnSeparator columnSeparator,
+        string const& authKey) {
     IngestClient::Ptr ptr(new IngestClient(
         workerHost,
         workerPort,
@@ -63,7 +64,8 @@ IngestClient::Ptr IngestClient::connect(
         chunk,
         isOverlap,
         inputFilePath,
-        columnSeparator
+        columnSeparator,
+        authKey
     ));
     ptr->_connectImpl();
     return ptr;
@@ -77,7 +79,8 @@ IngestClient::IngestClient(string const& workerHost,
                            unsigned int chunk,
                            bool isOverlap,
                            string const& inputFilePath,
-                           ColumnSeparator columnSeparator)
+                           ColumnSeparator columnSeparator,
+                           string const& authKey)
     :   _workerHost(workerHost),
         _workerPort(workerPort),
         _transactionId(transactionId),
@@ -86,6 +89,7 @@ IngestClient::IngestClient(string const& workerHost,
         _isOverlap(isOverlap),
         _inputFilePath(inputFilePath),
         _columnSeparator(columnSeparator),
+        _authKey(authKey),
         _bufferCapacity(defaultBufferCapacity),
         _bufferPtr(new ProtocolBuffer(defaultBufferCapacity)),
         _io_service(),
@@ -214,6 +218,7 @@ void IngestClient::_connectImpl() {
     request.set_column_separator(_columnSeparator == COMMA ?
                                  ProtocolIngestHandshakeRequest::COMMA :
                                  ProtocolIngestHandshakeRequest::TAB);
+    request.set_auth_key(_authKey);
 
     _bufferPtr->resize();
     _bufferPtr->serialize(request);

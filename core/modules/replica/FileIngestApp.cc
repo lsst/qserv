@@ -161,6 +161,10 @@ FileIngestApp::FileIngestApp(int argc, char* argv[])
         "command",
         {"FILE", "FILE-LIST"},
         _command
+    ).option(
+        "auth-key",
+        "An authorization key which should also be known to servers.",
+        _authKey
     ).flag(
         "verbose",
         "Print various stats upon a completion of the ingest",
@@ -312,7 +316,9 @@ void FileIngestApp::_ingest(FileIngestSpec const& file) const {
         file.tableName,
         chunkContribution.chunk,
         chunkContribution.isOverlap,
-        file.inFileName
+        file.inFileName,
+        IngestClient::ColumnSeparator::COMMA,
+        _authKey
     );
     ptr->send();
     uint64_t const finishedMs = PerformanceUtils::now();

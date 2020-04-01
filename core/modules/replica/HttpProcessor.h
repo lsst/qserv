@@ -81,6 +81,7 @@ private:
     std::shared_ptr<HttpModule> const _qservSqlModule;
     std::shared_ptr<HttpModule> const _ingestChunksModule;
     std::shared_ptr<HttpModule> const _ingestModule;
+    std::shared_ptr<HttpModule> const _exportModule;
 };
     
 }}} // namespace lsst::qserv::replica

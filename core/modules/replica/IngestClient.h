@@ -89,6 +89,7 @@ public:
      * @param inputFilePath the path (relative or absolute) name for a file
      *   whose content will be transferred to to the remote service.
      * @param columnSeparator a character which separates columns within each row
+     * @param authKey  an authorization key which should also be known to the server.
      * @throws IngestClientError for any problem occurred when establishing
      *   a connection or during the initial handshake with the server
      */
@@ -99,7 +100,8 @@ public:
                        unsigned int chunk,
                        bool isOverlap,
                        std::string const& inputFilePath,
-                       ColumnSeparator columnSeparator=COMMA);
+                       ColumnSeparator columnSeparator=COMMA,
+                       std::string const& authKey=std::string());
 
     // Default construction and copy semantics are prohibited
 
@@ -126,8 +128,6 @@ public:
     size_t sizeBytes() const { return _sizeBytes; }
 
 private:
-
-
     IngestClient(std::string const& workerHost,
                  uint16_t workerPort,
                  TransactionId transactionId,
@@ -135,7 +135,8 @@ private:
                  unsigned int chunk,
                  bool isOverlap,
                  std::string const& inputFilePath,
-                 ColumnSeparator columnSeparator);
+                 ColumnSeparator columnSeparator,
+                 std::string const& authKey);
 
     /// @return a context string for the logger and exceptions
     std::string _context(std::string const& func) const {
@@ -204,6 +205,7 @@ private:
     bool            const _isOverlap;
     std::string     const _inputFilePath;
     ColumnSeparator const _columnSeparator;
+    std::string     const _authKey;
 
     // Buffer for data moved over the network. The initial buffer capacity
     // would be adjusted during the initial handshake with the server.

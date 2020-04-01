@@ -47,10 +47,9 @@ namespace replica {
   * the file delivery service. Each instance of this class will be running
   * in its own thread.
   */
-class IngestServer : public std::enable_shared_from_this<IngestServer>  {
+class IngestServer: public std::enable_shared_from_this<IngestServer>  {
 public:
 
-    /// The pointer type for instances of the class
     typedef std::shared_ptr<IngestServer> Ptr;
 
     /**
@@ -58,20 +57,15 @@ public:
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
      *
-     * @param serviceProvider
-     *   for configuration, etc. services
-     *
-     * @workerName
-     *   the name of a worker this service is acting upon (used for checking
-     *   consistency of the protocol)
-     *
-     * @return
-     *   pointer to the created object
+     * @param serviceProvider  for configuration, etc. services.
+     * @param workerName the name of a worker this service is acting upon (used for
+     *   checking consistency of the protocol).
+     * @param authKey an authorization key for the catalog ingest operation.
+     * @return pointer to the created object
      */
     static Ptr create(ServiceProvider::Ptr const& serviceProvider,
-                      std::string const& workerName);
-
-    // Default construction and copy semantics are prohibited
+                      std::string const& workerName,
+                      std::string const& authKey);
 
     IngestServer() = delete;
     IngestServer(IngestServer const&) = delete;
@@ -85,17 +79,16 @@ public:
     /**
      * Run the server in a thread pool (as per the Configuration)
      *
-     * @note
-     *   This is the blocking operation. Please, run it within its own thread
-     *   if needed.
+     * @note This is the blocking operation. Please, run it within its own
+     *   thread if needed.
      */
     void run();
 
 private:
-
     /// @see IngestServer::create()
     IngestServer(ServiceProvider::Ptr const& serviceProvider,
-                 std::string const& workerName);
+                 std::string const& workerName,
+                 std::string const& authKey);
 
     /**
      * Begin (asynchronously) accepting connection requests.
@@ -117,6 +110,7 @@ private:
 
     ServiceProvider::Ptr const _serviceProvider;
     std::string          const _workerName;
+    std::string          const _authKey;
 
     /// Cached worker descriptor obtained from the configuration
     WorkerInfo const _workerInfo;

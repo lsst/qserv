@@ -123,21 +123,25 @@ size_t IngestServerConnection::networkBufSizeBytes = 1024 * 1024;
 
 IngestServerConnection::Ptr IngestServerConnection::create(
         ServiceProvider::Ptr const& serviceProvider,
+        string const& authKey,
         string const& workerName,
         boost::asio::io_service& io_service) {
     return IngestServerConnection::Ptr(
         new IngestServerConnection(
             serviceProvider,
             workerName,
+            authKey,
             io_service));
 }
 
 
 IngestServerConnection::IngestServerConnection(ServiceProvider::Ptr const& serviceProvider,
                                                string const& workerName,
+                                               string const& authKey,
                                                boost::asio::io_service& io_service)
     :   _serviceProvider(serviceProvider),
         _workerName(workerName),
+        _authKey(authKey),
         _workerInfo(serviceProvider->config()->workerInfo(workerName)),
         _socket(io_service),
         _bufferPtr(make_shared<ProtocolBuffer>(
@@ -190,6 +194,13 @@ void IngestServerConnection::_handshakeReceived(boost::system::error_code const&
     _chunk           = request.chunk();
     _isOverlap       = request.is_overlap();
     _columnSeparator = request.column_separator() == ProtocolIngestHandshakeRequest::COMMA ? ',' : '\t';
+
+    // Check if the client is authorized for the operation
+
+    if (request.auth_key() != _authKey) {
+        _failed("not authorized");
+        return;
+    }
 
     // Check if a context of the request is valid
     

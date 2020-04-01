@@ -850,6 +850,9 @@ message ProtocolIngestHandshakeRequest {
         TAB   = 1;
     }
     required ColumnSeparator column_separator = 5;
+
+    /// An authorization key which should match the one known to a server
+    optional string auth_key = 6 [default = ""];
 }
 
 /// A message which is meant for sending rows to a server after receiving
