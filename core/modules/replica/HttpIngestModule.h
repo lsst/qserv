@@ -31,7 +31,6 @@
 // Qserv headers
 #include "replica/Common.h"
 #include "replica/HttpModule.h"
-#include "util/Mutex.h"
 
 // Forward declarations
 namespace lsst {
@@ -78,8 +77,6 @@ protected:
      *   PUBLISH-DATABASE          for publishing a database when data ingest is over
      *   DELETE-DATABASE           for deleting an unpublished (partially ingest) database
      *   ADD-TABLE                 for adding a new table for the data ingest
-     *   ADD-CHUNK                 for registering (or requesting a status of) of a new chunk
-     *   ADD-CHUNK-LIST            for registering (or requesting a status of) of many new chunks
      *   BUILD-CHUNK-LIST          for building (or rebuilding) an "empty chunk list"
      *   REGULAR                   for reporting connection parameters of the ingest servers
      *                             required to load the regular tables
@@ -144,22 +141,6 @@ private:
      */
     void _addTable(qhttp::Request::Ptr const& req,
                    qhttp::Response::Ptr const& resp);
-
-    /**
-     * Register (if it's not register yet) a chunk for ingest.
-     * Return connection parameters to an end-point service where chunk
-     * data will need to be ingested.
-     */
-    void _addChunk(qhttp::Request::Ptr const& req,
-                   qhttp::Response::Ptr const& resp);
-
-    /**
-     * Register (if it's not register yet) a list of chunks for ingest.
-     * Return connection parameters to an end-point services (may differ
-     * from chunk to chunk) where data of each chunk will need to be ingested.
-     */
-    void _addChunks(qhttp::Request::Ptr const& req,
-                    qhttp::Response::Ptr const& resp);
 
     /**
      * (Re-)build the "empty chunks list" for a database.
@@ -305,8 +286,6 @@ private:
 
     static std::string const _partitionByColumn;
     static std::string const _partitionByColumnType;
-
-    util::Mutex _ingestManagementMtx;   /// Synchronized access to the Ingest management operations
 };
     
 }}} // namespace lsst::qserv::replica

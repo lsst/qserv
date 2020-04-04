@@ -39,10 +39,12 @@ public:
     /// The normal and the default constructor
     explicit HttpProcessorConfig(unsigned int workerResponseTimeoutSec_=0,
                                  unsigned int qservSyncTimeoutSec_=0,
-                                 unsigned int workerReconfigTimeoutSec_=0)
+                                 unsigned int workerReconfigTimeoutSec_=0,
+                                 std::string const& authKey_=std::string())
         :   workerResponseTimeoutSec(workerResponseTimeoutSec_),
             qservSyncTimeoutSec(qservSyncTimeoutSec_),
-            workerReconfigTimeoutSec(workerReconfigTimeoutSec_) {
+            workerReconfigTimeoutSec(workerReconfigTimeoutSec_),
+            authKey(authKey_) {
     }
     HttpProcessorConfig(HttpProcessorConfig const&) = default;
     HttpProcessorConfig& operator=(HttpProcessorConfig const&) = default;
@@ -63,6 +65,9 @@ public:
     /// The maximum number of seconds to wait for the completion of the worker
     /// reconfiguration requests.
     unsigned int const workerReconfigTimeoutSec = 0;
+
+    /// An authorization key for metadata operations requested via the REST API.
+    std::string authKey;
 };
     
 }}} // namespace lsst::qserv::replica

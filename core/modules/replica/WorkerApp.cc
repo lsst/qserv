@@ -79,6 +79,10 @@ WorkerApp::WorkerApp(int argc, char* argv[])
         "A password for the MySQL account of the Qserv worker database. The account"
         " name is found in the Configuration.",
         _qservDbPassword
+    ).option(
+        "auth-key",
+        "An authorization key for the catalog ingest operations.",
+        _authKey
     );
 }
 
@@ -114,7 +118,7 @@ int WorkerApp::runImpl() {
         fileSvr->run();
     });
 
-    auto const ingestSvr = IngestServer::create(serviceProvider(), _worker);
+    auto const ingestSvr = IngestServer::create(serviceProvider(), _worker, _authKey);
     thread ingestSvrThread([ingestSvr]() {
         ingestSvr->run();
     });

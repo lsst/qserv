@@ -27,6 +27,8 @@
 #include "replica/HttpCatalogsModule.h"
 #include "replica/HttpConfigurationModule.h"
 #include "replica/HttpControllersModule.h"
+#include "replica/HttpExportModule.h"
+#include "replica/HttpIngestChunksModule.h"
 #include "replica/HttpIngestModule.h"
 #include "replica/HttpJobsModule.h"
 #include "replica/HttpQservMonitorModule.h"
@@ -82,7 +84,11 @@ HttpProcessor::HttpProcessor(Controller::Ptr const& controller,
             controller, taskName, processorConfig)),
         _qservSqlModule(HttpQservSqlModule::create(
             controller, taskName, processorConfig)),
+        _ingestChunksModule(HttpIngestChunksModule::create(
+            controller, taskName, processorConfig)),
         _ingestModule(HttpIngestModule::create(
+            controller, taskName, processorConfig)),
+        _exportModule(HttpExportModule::create(
             controller, taskName, processorConfig)) {
 }
 
@@ -152,53 +158,53 @@ void HttpProcessor::_initialize() {
         },
         {"PUT", "/replication/v1/config/general",
             [self](qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp) {
-                self->_configurationModule->execute(req, resp, "UPDATE-GENERAL");
+                self->_configurationModule->execute(req, resp, "UPDATE-GENERAL", HttpModule::AUTH_REQUIRED);
             }
         },
         {"PUT", "/replication/v1/config/worker/:name",
             [self](qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp) {
-                self->_configurationModule->execute(req, resp, "UPDATE-WORKER");
+                self->_configurationModule->execute(req, resp, "UPDATE-WORKER", HttpModule::AUTH_REQUIRED);
             }
         },
 
         {"DELETE", "/replication/v1/config/worker/:name",
             [self](qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp) {
-                self->_configurationModule->execute(req, resp, "DELETE-WORKER");
+                self->_configurationModule->execute(req, resp, "DELETE-WORKER", HttpModule::AUTH_REQUIRED);
             }
         },
         {"POST", "/replication/v1/config/worker",
             [self](qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp) {
-                self->_configurationModule->execute(req, resp, "ADD-WORKER");
+                self->_configurationModule->execute(req, resp, "ADD-WORKER", HttpModule::AUTH_REQUIRED);
             }
         },
         {"DELETE", "/replication/v1/config/family/:name",
             [self](qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp) {
-                self->_configurationModule->execute(req, resp, "DELETE-DATABASE-FAMILY");
+                self->_configurationModule->execute(req, resp, "DELETE-DATABASE-FAMILY", HttpModule::AUTH_REQUIRED);
             }
         },
         {"POST", "/replication/v1/config/family",
             [self](qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp) {
-                self->_configurationModule->execute(req, resp, "ADD-DATABASE-FAMILY");
+                self->_configurationModule->execute(req, resp, "ADD-DATABASE-FAMILY", HttpModule::AUTH_REQUIRED);
             }
         },
         {"DELETE", "/replication/v1/config/database/:name",
             [self](qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp) {
-                self->_configurationModule->execute(req, resp, "DELETE-DATABASE");
+                self->_configurationModule->execute(req, resp, "DELETE-DATABASE", HttpModule::AUTH_REQUIRED);
             }
         },
         {"POST", "/replication/v1/config/database",
             [self](qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp) {
-                self->_configurationModule->execute(req, resp, "ADD-DATABASE");
+                self->_configurationModule->execute(req, resp, "ADD-DATABASE", HttpModule::AUTH_REQUIRED);
             }
         },
         {"DELETE", "/replication/v1/config/table/:name",
             [self](qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp) {
-                self->_configurationModule->execute(req, resp, "DELETE-TABLE");
+                self->_configurationModule->execute(req, resp, "DELETE-TABLE", HttpModule::AUTH_REQUIRED);
             }
         },
         {"POST", "/replication/v1/config/table",
             [self](qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp) {
-                self->_configurationModule->execute(req, resp, "ADD-TABLE");
+                self->_configurationModule->execute(req, resp, "ADD-TABLE", HttpModule::AUTH_REQUIRED);
             }
         },
         {"GET", "/replication/v1/qserv/worker/status",
@@ -223,7 +229,7 @@ void HttpProcessor::_initialize() {
         },
         {"POST", "/replication/v1/sql/query",
             [self](qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp) {
-                self->_qservSqlModule->execute(req, resp);
+                self->_qservSqlModule->execute(req, resp, string(), HttpModule::AUTH_REQUIRED);
             }
         },
         {"GET", "/ingest/v1/trans",
@@ -238,52 +244,57 @@ void HttpProcessor::_initialize() {
         },
         {"POST", "/ingest/v1/trans",
             [self](qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp) {
-                self->_ingestModule->execute(req, resp, "BEGIN-TRANSACTION");
+                self->_ingestModule->execute(req, resp, "BEGIN-TRANSACTION", HttpModule::AUTH_REQUIRED);
             }
         },
         {"PUT", "/ingest/v1/trans/:id",
             [self](qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp) {
-                self->_ingestModule->execute(req, resp, "END-TRANSACTION");
+                self->_ingestModule->execute(req, resp, "END-TRANSACTION", HttpModule::AUTH_REQUIRED);
             }
         },
         {"POST", "/ingest/v1/database",
             [self](qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp) {
-                self->_ingestModule->execute(req, resp, "ADD-DATABASE");
+                self->_ingestModule->execute(req, resp, "ADD-DATABASE", HttpModule::AUTH_REQUIRED);
             }
         },
         {"PUT", "/ingest/v1/database/:name",
             [self](qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp) {
-                self->_ingestModule->execute(req, resp, "PUBLISH-DATABASE");
+                self->_ingestModule->execute(req, resp, "PUBLISH-DATABASE", HttpModule::AUTH_REQUIRED);
             }
         },
         {"DELETE", "/ingest/v1/database/:name",
             [self](qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp) {
-                self->_ingestModule->execute(req, resp, "DELETE-DATABASE");
+                self->_ingestModule->execute(req, resp, "DELETE-DATABASE", HttpModule::AUTH_REQUIRED);
             }
         },
         {"POST", "/ingest/v1/table",
             [self](qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp) {
-                self->_ingestModule->execute(req, resp, "ADD-TABLE");
+                self->_ingestModule->execute(req, resp, "ADD-TABLE", HttpModule::AUTH_REQUIRED);
             }
         },
         {"POST", "/ingest/v1/chunk",
             [self](qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp) {
-                self->_ingestModule->execute(req, resp, "ADD-CHUNK");
+                self->_ingestChunksModule->execute(req, resp, "ADD-CHUNK", HttpModule::AUTH_REQUIRED);
             }
         },
         {"POST", "/ingest/v1/chunks",
             [self](qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp) {
-                self->_ingestModule->execute(req, resp, "ADD-CHUNK-LIST");
+                self->_ingestChunksModule->execute(req, resp, "ADD-CHUNK-LIST", HttpModule::AUTH_REQUIRED);
             }
         },
         {"POST", "/ingest/v1/chunk/empty",
             [self](qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp) {
-                self->_ingestModule->execute(req, resp, "BUILD-CHUNK-LIST");
+                self->_ingestModule->execute(req, resp, "BUILD-CHUNK-LIST", HttpModule::AUTH_REQUIRED);
             }
         },
         {"GET", "/ingest/v1/regular/:id",
             [self](qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp) {
                 self->_ingestModule->execute(req, resp, "REGULAR");
+            }
+        },
+        {"GET", "/export/v1/tables",
+            [self](qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp) {
+                self->_exportModule->execute(req, resp, "TABLES");
             }
         }
     });

@@ -23,6 +23,7 @@
 
 // System headers
 #include <memory>
+#include <stdexcept>
 #include <string>
 
 // Third party headers
@@ -48,6 +49,22 @@ class HttpModule:
 public:
     typedef std::shared_ptr<HttpModule> Ptr;
 
+    /// The enumeration type which is used for configuring/enforcing
+    /// module's authorization requirements.
+    enum AuthType {
+        AUTH_REQUIRED,
+        AUTH_NONE
+    };
+
+    /**
+     * Class AuthError represent exceptions thrown when the authorization
+     * requirements aren't met.
+     */
+    class AuthError: public std::invalid_argument {
+    public:
+        using std::invalid_argument::invalid_argument;
+    };
+
     HttpModule() = delete;
     HttpModule(HttpModule const&) = delete;
     HttpModule& operator=(HttpModule const&) = delete;
@@ -64,13 +81,17 @@ public:
      * @param req  the HTTP request
      * @param resp  the HTTP response channel
      * @param subModuleName  this optional parameter allows modules to have
-     * multiple sub-modules. A value of this parameter will be forwarded to
-     * the subclass-specific implementation of the pure virtual method
-     * HttpModule::executeImpl().
+     *   multiple sub-modules. A value of this parameter will be forwarded to
+     *   the subclass-specific implementation of the pure virtual method
+     *   HttpModule::executeImpl().
+     * @param authType  Authorization requirements of the module. If AUTH_REQUIRED is
+     *   requested then the method will enforce the authorization.  would result in a error
+     *   sent back to a client.
      */
     void execute(qhttp::Request::Ptr const& req,
                  qhttp::Response::Ptr const& resp,
-                 std::string const& subModuleName=std::string());
+                 std::string const& subModuleName=std::string(),
+                 AuthType const authType=AUTH_NONE);
 
 protected:
     HttpModule(Controller::Ptr const& controller,
@@ -132,6 +153,17 @@ protected:
                              std::string const& subModuleName) = 0 ;
 
 private:
+    /**
+     * Inspect the body of a request or a presence of a user-supplied authorization key.
+     * Its value will be compared against a value of the corresponding configuration
+     * parameter of the service (processorConfig) passed into the constructor of the class.
+     * In the absence of the message body, or in the absence of the key in the body, or
+     * in case of any mismatch between the keys would result in an exception thrown.
+     *
+     * @throw AuthError  This exception is thrown if the authorization requirements weren't met.
+     */
+    void _enforceAuthorization(qhttp::Request::Ptr const& req) const;
+
     // Input parameters
 
     HttpProcessorConfig const _processorConfig;

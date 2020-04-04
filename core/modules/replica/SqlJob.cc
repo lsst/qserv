@@ -244,6 +244,11 @@ vector<string> SqlJob::workerTables(string const& worker,
         // The prototype table for creating chunks and chunk overlap tables
         tables.push_back(table);
 
+        // Always include the "dummy" chunk even if it won't be explicitly found
+        // in the replica collection. This chunk must be present at all workers.
+        tables.push_back(table + "_" + to_string(DUMMY_CHUNK));
+        tables.push_back(table + "FullOverlap_" + to_string(DUMMY_CHUNK));
+
         // Locate all chunks registered on the worker. These chunks will be used
         // to build names of the corresponding chunk-specific partitioned tables.
         vector<ReplicaInfo> replicas;
@@ -252,8 +257,12 @@ vector<string> SqlJob::workerTables(string const& worker,
 
         for (auto&& replica: replicas) {
             auto const chunk = replica.chunk();
-            tables.push_back(table + "_" + to_string(chunk));
-            tables.push_back(table + "FullOverlap_" + to_string(chunk));
+            // Avoding the "dummy" chunk as it was already forced to be in
+            // the collection.
+            if (chunk != DUMMY_CHUNK) {
+                tables.push_back(table + "_" + to_string(chunk));
+                tables.push_back(table + "FullOverlap_" + to_string(chunk));
+            }
         }
     } else {
         tables.push_back(table);

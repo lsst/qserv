@@ -47,18 +47,18 @@ namespace qserv {
 namespace replica {
 
 IngestServer::Ptr IngestServer::create(ServiceProvider::Ptr const& serviceProvider,
-                                       string const& workerName) {
-    return IngestServer::Ptr(
-        new IngestServer(
-            serviceProvider,
-            workerName));
+                                       string const& workerName,
+                                       string const& authKey) {
+    return IngestServer::Ptr(new IngestServer(serviceProvider, workerName, authKey));
 }
 
 
 IngestServer::IngestServer(ServiceProvider::Ptr const& serviceProvider,
-                           string const& workerName)
+                           string const& workerName,
+                           string const& authKey)
     :   _serviceProvider(serviceProvider),
         _workerName(workerName),
+        _authKey(authKey),
         _workerInfo(serviceProvider->config()->workerInfo(workerName)),
         _io_service(),
         _acceptor(
@@ -100,6 +100,7 @@ void IngestServer::_beginAccept() {
         IngestServerConnection::create(
             _serviceProvider,
             _workerName,
+            _authKey,
             _io_service);
 
     _acceptor.async_accept(

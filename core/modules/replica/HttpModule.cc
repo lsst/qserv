@@ -22,6 +22,9 @@
 // Class header
 #include "replica/HttpModule.h"
 
+// Qserv headers
+#include "replica/HttpRequestBody.h"
+
 // LSST headers
 #include "lsst/log/Log.h"
 
@@ -49,9 +52,13 @@ HttpModule::HttpModule(Controller::Ptr const& controller,
 
 void HttpModule::execute(qhttp::Request::Ptr const& req,
                          qhttp::Response::Ptr const& resp,
-                         string const& subModuleName) {
+                         string const& subModuleName,
+                         AuthType const authType) {
     try {
+        if (authType == AUTH_REQUIRED) _enforceAuthorization(req);
         executeImpl(req, resp, subModuleName);
+    } catch (AuthError const& ex) {
+        sendError(resp, __func__, "failed to pass authorization requirements, ex: " + string(ex.what()));
     } catch (invalid_argument const& ex) {
         sendError(resp, __func__, "invalid parameters of the request, ex: " + string(ex.what()));
     } catch (exception const& ex) {
@@ -100,6 +107,15 @@ void HttpModule::sendData(qhttp::Response::Ptr const& resp,
     result["error"] = "";
 
     resp->send(result.dump(), "application/json");
+}
+
+
+void HttpModule::_enforceAuthorization(qhttp::Request::Ptr const& req) const {
+    HttpRequestBody body(req);
+    auto authKey = body.required<string>("auth-key");
+    if (authKey != _processorConfig.authKey) {
+        throw AuthError("authorization key in the request didn't match the one in server configuration");
+    }
 }
 
 }}}  // namespace lsst::qserv::replica
