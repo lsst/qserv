@@ -38,7 +38,7 @@ namespace qserv {
 namespace replica {
 
 /**
- * Class HttpExportModule provides a support exporting tables
+ * Class HttpExportModule provides support exporting tables
  * from Qserv.
  */
 class HttpExportModule: public HttpModule {

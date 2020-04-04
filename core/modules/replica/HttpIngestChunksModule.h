@@ -91,6 +91,23 @@ private:
     void _addChunks(qhttp::Request::Ptr const& req,
                     qhttp::Response::Ptr const& resp);
 
+    /**
+     * Register new chunk in a collection of known replicas.
+     *
+     * @note In the current version of the operation, the chunk will be registered
+     *   with status COMPLETE. This decision will be reconsidered later after
+     *   extending schema of table 'replica' to store the status as well. This would
+     *   make it possible to differentiate between the 'INGEST_PRIMARY' and 'INGEST_SECONDARY'
+     *   replicas for selecting the right version of the replica for further ingests.
+     *
+     * @param worker    The name of a worker this chunk will be placed at.
+     * @param database  The name of the database the chunk belongs to.
+     * @param chunk     The number of a chunk to be registered.
+     */
+    void _registerNewChunk(std::string const& worker,
+                           std::string const& database,
+                           unsigned int chunk) const;
+
     util::Mutex _ingestManagementMtx;   /// Synchronized access to the Ingest management operations
 };
     

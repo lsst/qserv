@@ -261,22 +261,7 @@ void HttpIngestChunksModule::_addChunk(qhttp::Request::Ptr const& req,
 
             worker = ::leastLoadedWorker(databaseServices, config->workers());
         }
-
-        // Register the new chunk
-        //
-        // TODO: Use status COMPLETE for now. Consider extending schema
-        // of table 'replica' to store the status as well. This will allow
-        // to differentiate between the 'INGEST_PRIMARY' and 'INGEST_SECONDARY' replicas,
-        // which will be used for making the second replica of a chunk and selecting
-        // the right version for further ingests.
-
-        auto const verifyTime = PerformanceUtils::now();
-        ReplicaInfo const newReplica(ReplicaInfo::Status::COMPLETE,
-                                     worker,
-                                     transactionInfo.database,
-                                     chunk,
-                                     verifyTime);
-        databaseServices->saveReplicaInfo(newReplica);
+        _registerNewChunk(worker, transactionInfo.database, chunk);
     }
 
     // The sanity check, just to make sure we've found a worker
@@ -349,8 +334,7 @@ void HttpIngestChunksModule::_addChunks(qhttp::Request::Ptr const& req,
     map<unsigned int, vector<ReplicaInfo>> chunk2replicas;
     for (auto&& replica: replicas) {
         auto const chunk = replica.chunk();
-        chunk2replicas[chunk].push_back(move(replica));     // enforcing moving semantics in order
-                                                            // to avoid memory bloating, etc.
+        chunk2replicas[chunk].push_back(move(replica));
     }
 
     // This locks prevents other invocations of the method from making different
@@ -429,22 +413,7 @@ void HttpIngestChunksModule::_addChunks(qhttp::Request::Ptr const& req,
                 chunk2worker[chunk] = ::leastLoadedWorker(
                         worker2replicasCache, databaseServices, config->workers());
             }
-
-            // Register the new chunk
-            //
-            // TODO: Use status COMPLETE for now. Consider extending schema
-            // of table 'replica' to store the status as well. This will allow
-            // to differentiate between the 'INGEST_PRIMARY' and 'INGEST_SECONDARY' replicas,
-            // which will be used for making the second replica of a chunk and selecting
-            // the right version for further ingests.
-
-            auto const verifyTime = PerformanceUtils::now();
-            ReplicaInfo const newReplica(ReplicaInfo::Status::COMPLETE,
-                                         chunk2worker[chunk],
-                                         transactionInfo.database,
-                                         chunk,
-                                         verifyTime);
-            databaseServices->saveReplicaInfo(newReplica);
+            _registerNewChunk(chunk2worker[chunk], transactionInfo.database, chunk);
         }
 
         // The sanity check, just to make sure we've found a worker
@@ -487,6 +456,20 @@ void HttpIngestChunksModule::_addChunks(qhttp::Request::Ptr const& req,
         result["location"].push_back(workerResult);
     }
     sendData(resp, result);
+}
+
+
+void HttpIngestChunksModule::_registerNewChunk(string const& worker,
+                                               string const& database,
+                                               unsigned int chunk) const {
+    auto const verifyTime = PerformanceUtils::now();
+    ReplicaInfo const newReplica(
+            ReplicaInfo::Status::COMPLETE,
+            worker,
+            database,
+            chunk,
+            verifyTime);
+    controller()->serviceProvider()->databaseServices()->saveReplicaInfo(newReplica);
 }
 
 }}}  // namespace lsst::qserv::replica
