@@ -119,8 +119,8 @@ size_t IngestServerConnection::networkBufSizeBytes = 1024 * 1024;
 
 IngestServerConnection::Ptr IngestServerConnection::create(
         ServiceProvider::Ptr const& serviceProvider,
-        string const& authKey,
         string const& workerName,
+        string const& authKey,
         boost::asio::io_service& io_service) {
     return IngestServerConnection::Ptr(
         new IngestServerConnection(
