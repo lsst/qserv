@@ -292,7 +292,7 @@ void HttpProcessor::_initialize() {
                 self->_ingestModule->execute(req, resp, "REGULAR");
             }
         },
-        {"GET", "/export/v1/tables",
+        {"GET", "/export/v1/tables/:database",
             [self](qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp) {
                 self->_exportModule->execute(req, resp, "TABLES");
             }
