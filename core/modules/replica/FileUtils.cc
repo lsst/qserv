@@ -248,9 +248,7 @@ string FileUtils::createTemporaryFile(string const& baseDir,
                     context + "failed to generate a unique name for model: '" + model
                     + "', error: " + errCode.message());
         }
-        string const filePath =
-                baseDir + (baseDir.empty() ? "" : "/") + filePrefix + uniqueFileName.string()
-                + fileSuffix;
+        string const filePath = baseDir + (baseDir.empty() ? "" : "/") + uniqueFileName.string();
 
         // Locate the file and make another retry if the file already exists.
         // Grab a lock to ensure the file check and file creation sequence
