@@ -77,6 +77,15 @@ string DatabaseInfo::schema4css(string const& table) const {
 }
 
 
+bool DatabaseInfo::isPartitioned(string const& table) const {
+    if (partitionedTables.end() != find(partitionedTables.begin(), partitionedTables.end(), table))  return true;
+    if (regularTables.end() != find(regularTables.begin(), regularTables.end(), table)) return false;
+    throw invalid_argument(
+            "DatabaseInfo::" + string(__func__) +
+            "no such table '" + table + "' found in database '" + name + "'");
+}
+
+
 json DatabaseInfo::toJson() const {
 
     json infoJson;

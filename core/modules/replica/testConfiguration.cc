@@ -393,11 +393,13 @@ BOOST_AUTO_TEST_CASE(ConfigurationTest) {
         sort(tables.begin(), tables.end());
         BOOST_CHECK(tables.size() == 1);
         BOOST_CHECK(tables == vector<string>({"Table11"}));
+        BOOST_CHECK(db1info.isPartitioned("Table11"));
 
         tables = db1info.regularTables;
         sort(tables.begin(), tables.end());
         BOOST_CHECK(tables.size() == 1);
         BOOST_CHECK(tables == vector<string>({"MetaTable11"}));
+        BOOST_CHECK(not db1info.isPartitioned("MetaTable11"));
     });
     BOOST_REQUIRE_NO_THROW({
         vector<string> tables;
@@ -533,7 +535,10 @@ BOOST_AUTO_TEST_CASE(ConfigurationTest) {
 
         info.family = "unknown";
         BOOST_CHECK_THROW(config->addDatabase(info), invalid_argument);
-
+    }
+    {
+        DatabaseInfo info;
+        BOOST_CHECK_THROW(info.isPartitioned("NonExistingTable"), invalid_argument);
     }
     {
         SqlColDef const emptyColdef;
