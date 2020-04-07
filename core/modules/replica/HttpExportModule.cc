@@ -106,7 +106,7 @@ void HttpExportModule::_getTables(qhttp::Request::Ptr const& req,
     HttpRequestBody body(req);
     auto const tables = body.requiredColl<json>("tables");
 
-    debug(__func__, "tables.size()=" + tables.size());
+    debug(__func__, "tables.size()=" + to_string(tables.size()));
 
     auto const databaseServices = controller()->serviceProvider()->databaseServices();
     auto const config = controller()->serviceProvider()->config();
@@ -124,12 +124,13 @@ void HttpExportModule::_getTables(qhttp::Request::Ptr const& req,
     // Validate input collection of tables and produce an extended collection
     // with table specifications to be returned back (to a caller).
     json result;
+    result["location"] = json::array();
     for (auto&& table: tables) {
 
         TableSpec spec;
 
-        spec.databaseName = table["database"];
-        spec.tableName = table["table"];
+        spec.databaseName = HttpRequestBody::required<string>(table, "database");
+        spec.tableName    = HttpRequestBody::required<string>(table, "table");
 
         // This operation will throw an exception if the database name is not valid
 
@@ -157,8 +158,8 @@ void HttpExportModule::_getTables(qhttp::Request::Ptr const& req,
             }
         }
         if (spec.partitioned) {
-            spec.overlap = table["overlap"];
-            spec.chunk = table["chunk"];
+            spec.overlap = HttpRequestBody::required<unsigned int>(table, "overlap");
+            spec.chunk   = HttpRequestBody::required<unsigned int>(table, "chunk");
             // Make sure the chunk is valid for the given partitioning scheme.
             ChunkNumberQservValidator const validator(databaseFamilyInfo.numStripes,
                                                       databaseFamilyInfo.numSubStripes);
@@ -201,7 +202,7 @@ void HttpExportModule::_getTables(qhttp::Request::Ptr const& req,
         spec.workerHost = workerInfo.exporterHost;
         spec.workerPort = workerInfo.exporterPort;
 
-        result.push_back(spec.toJson());
+        result["location"].push_back(spec.toJson());
     }
     sendData(resp, result);
 }

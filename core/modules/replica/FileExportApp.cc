@@ -103,7 +103,7 @@ list<FileExportApp::FileExportSpec> FileExportApp::parseFileList(json const& jso
         file.workerPort   = parse<uint16_t>(context, fileSpecJson, "worker-port", 1);
         file.databaseName = parse(context, fileSpecJson, "database");
         file.tableName    = parse(context, fileSpecJson, "table");
-        file.chunk        = parse<unsigned int>(context, fileSpecJson, "chunk", 1);
+        file.chunk        = parse<unsigned int>(context, fileSpecJson, "chunk", 0);
         file.overlap      = parse<unsigned int>(context, fileSpecJson, "overlap", 0);
         file.outFileName  = parse(context, fileSpecJson, "path");
 

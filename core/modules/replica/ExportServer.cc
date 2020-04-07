@@ -48,7 +48,7 @@ namespace replica {
 
 ExportServer::Ptr ExportServer::create(ServiceProvider::Ptr const& serviceProvider,
                                        string const& workerName) {
-    return ExportServer::Ptr(new ExportServer(serviceProvider,workerName));
+    return ExportServer::Ptr(new ExportServer(serviceProvider, workerName));
 }
 
 

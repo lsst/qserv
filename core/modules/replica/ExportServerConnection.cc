@@ -256,10 +256,16 @@ void ExportServerConnection::_handshakeReceived(boost::system::error_code const&
             ".%%%%-%%%%-%%%%-%%%%",
             ".csv"
         );
+        boost::system::error_code ec;
+        fs::remove(fs::path(_fileName), ec);
+        if (ec.value() != 0) {
+            LOGS(_log, LOG_LVL_ERROR, context << __func__ << "  file removal failed: " << ec.message());
+        }
     } catch (exception const& ex) {
         _failed("failed to generate a unique name for a temporary file, ex: " + string(ex.what()), isHandshakeError);
         return;
     }
+    LOGS(_log, LOG_LVL_DEBUG, context << __func__ << "  output file: " << _fileName);
 
     // Note that, depending on a size of the table and the current load on
     // the database server and the underlying file system, this operation may take
@@ -331,7 +337,6 @@ void ExportServerConnection::_receiveDataRequest() {
     LOGS(_log, LOG_LVL_DEBUG, context << __func__);
 
     const size_t bytes = sizeof(uint32_t);
-
     _bufferPtr->resize(bytes);
 
     boost::asio::async_read(
@@ -346,7 +351,7 @@ void ExportServerConnection::_receiveDataRequest() {
 void ExportServerConnection::_dataRequestReceived(boost::system::error_code const& ec,
                                                   size_t bytes_transferred) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context << __func__);
+    LOGS(_log, LOG_LVL_DEBUG, context << __func__ << " bytes_transferred=" << bytes_transferred);
 
     if (::isErrorCode(ec, __func__)) {
         _closeFile();

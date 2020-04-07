@@ -151,7 +151,7 @@ private:
      */
     template <class MESSAGE>
     void _send(MESSAGE const& message, std::string const& context) {
-
+        _bufferPtr->resize();
         _bufferPtr->serialize(message);
         boost::system::error_code ec;
         boost::asio::write(

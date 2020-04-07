@@ -26,6 +26,9 @@
 #include <algorithm>
 #include <fstream>
 
+// Third party headers
+#include "boost/filesystem.hpp"
+
 // Qserv headers
 #include "replica/protocol.pb.h"
 
@@ -33,6 +36,7 @@
 #include "lsst/log/Log.h"
 
 using namespace std;
+namespace fs = boost::filesystem;
 
 namespace {
 
@@ -155,6 +159,7 @@ void ExportClient::receive() {
 
         // Receive the data
         ProtocolExportResponse response;
+        _receive(response, "data response receive");
         if (response.error() != string()) {
             _abort(__func__, "failed to read data, server error: " + response.error());
         }
@@ -162,7 +167,7 @@ void ExportClient::receive() {
         int const numRows = response.rows_size();
         for (int i = 0; i < numRows; ++i) {
             auto&& row = response.rows(i);
-            file << row;
+            file << row << "\n";
             numBytes += row.size();
         }
         _sizeBytes += numBytes;
@@ -190,11 +195,21 @@ void ExportClient::receive() {
 
     } while (true);
 
+    file.flush();
+    file.close();
+    _closeConnection();
+
     LOGS(_log, LOG_LVL_DEBUG, _context(__func__) << "_totalNumRows: " << _totalNumRows
          << " _sizeBytes: " << _sizeBytes);
 
+    // As a sanity check, verify if the local file has the same size as
+    // the remote one before declaring a success.
+    auto const localFileSizeBytes = fs::file_size(fs::path(_outputFilePath));
+    if (localFileSizeBytes != _totalSizeBytes) {
+        _abort(__func__, "local file: " + _outputFilePath + " size: " + to_string(localFileSizeBytes)
+                + " doesn't match the remote file size: " + to_string(_totalSizeBytes));
+    }
     _received = true;
-    _closeConnection();
 }
 
 

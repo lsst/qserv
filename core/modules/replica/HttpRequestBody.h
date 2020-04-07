@@ -74,17 +74,36 @@ public:
     explicit HttpRequestBody(qhttp::Request::Ptr const& req);
 
     /**
-     * Find and return a value for the specified required parameter
+     * The helper method for finding and returning a value of a required
+     * parameter.
+     *
+     * @param obj  the JSON object to be inspected
+     * @param name  the name of a parameter
+     * @return a value of the parameter
+     * @throws invalid_argument  if the parameter wasn't found
+     */
+    template <typename T>
+    static T required(nlohmann::json const& obj,
+                      std::string const& name) {
+        if (not obj.is_object()) {
+            throw std::invalid_argument(
+                "HttpRequestBody::" + std::string(__func__) + "<T>[static] parameter 'obj' is not a valid JSON object");
+        }
+        if (obj.find(name) != obj.end()) return obj[name];
+        throw std::invalid_argument(
+                "HttpRequestBody::" + std::string(__func__) + "<T>[static] required parameter " + name +
+                " is missing in the request body");
+    }
+
+    /**
+     * Find and return a value of a required parameter
      * @param name  the name of a parameter
      * @return a value of the parameter
      * @throws invalid_argument  if the parameter wasn't found
      */
     template <typename T>
     T required(std::string const& name) const {
-        if (objJson.find(name) != objJson.end()) return objJson[name];
-        throw std::invalid_argument(
-                "HttpRequestBody::" + std::string(__func__) + "<T> required parameter " + name +
-                " is missing in the request body");
+        return required<T>(objJson, name);
     }
 
     /**
