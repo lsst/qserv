@@ -32,7 +32,6 @@
 #include "replica/Configuration.h"
 #include "replica/ConfigurationTypes.h"
 #include "replica/DatabaseServices.h"
-#include "replica/HttpRequestQuery.h"
 #include "replica/ServiceProvider.h"
 
 using namespace std;
@@ -180,14 +179,13 @@ void HttpConfigurationModule::_updateWorker() {
     // are expected to be replaced by actual values provided by a client in
     // parameters found in the query.
 
-    HttpRequestQuery const query(req()->query);
-    string   const svcHost    = query.optionalString("svc_host");
-    uint16_t const svcPort    = query.optionalUInt16("svc_port");
-    string   const fsHost     = query.optionalString("fs_host");
-    uint16_t const fsPort     = query.optionalUInt16("fs_port");
-    string   const dataDir    = query.optionalString("data_dir");
-    int      const isEnabled  = query.optionalInt(   "is_enabled");
-    int      const isReadOnly = query.optionalInt(   "is_read_only");
+    string   const svcHost    = query().optionalString("svc_host");
+    uint16_t const svcPort    = query().optionalUInt16("svc_port");
+    string   const fsHost     = query().optionalString("fs_host");
+    uint16_t const fsPort     = query().optionalUInt16("fs_port");
+    string   const dataDir    = query().optionalString("data_dir");
+    int      const isEnabled  = query().optionalInt(   "is_enabled");
+    int      const isReadOnly = query().optionalInt(   "is_read_only");
 
     debug(__func__, "svc_host="     +           svcHost);
     debug(__func__, "svc_port="     + to_string(svcPort));
@@ -239,15 +237,14 @@ void HttpConfigurationModule::_addWorker() {
     auto const config = controller()->serviceProvider()->config();
 
     WorkerInfo info;
-    HttpRequestQuery const query(req()->query);
-    info.name       = query.requiredString("name");
-    info.svcHost    = query.requiredString("svc_host");
-    info.svcPort    = query.requiredUInt16("svc_port");
-    info.fsHost     = query.requiredString("fs_host");
-    info.fsPort     = query.requiredUInt16("fs_port");
-    info.dataDir    = query.requiredString("data_dir");
-    info.isEnabled  = query.requiredBool(  "is_enabled");
-    info.isReadOnly = query.requiredBool(  "is_read_only");
+    info.name       = query().requiredString("name");
+    info.svcHost    = query().requiredString("svc_host");
+    info.svcPort    = query().requiredUInt16("svc_port");
+    info.fsHost     = query().requiredString("fs_host");
+    info.fsPort     = query().requiredUInt16("fs_port");
+    info.dataDir    = query().requiredString("data_dir");
+    info.isEnabled  = query().requiredBool(  "is_enabled");
+    info.isReadOnly = query().requiredBool(  "is_read_only");
 
     debug(__func__, "name="         +           info.name);
     debug(__func__, "svc_host="     +           info.svcHost);
@@ -288,13 +285,12 @@ void HttpConfigurationModule::_addFamily() {
 
     auto const config = controller()->serviceProvider()->config();
 
-    HttpRequestQuery const query(req()->query);
     DatabaseFamilyInfo info;
-    info.name             = query.requiredString("name");
-    info.replicationLevel = query.requiredUInt64("replication_level");
-    info.numStripes       = query.requiredUInt(  "num_stripes");
-    info.numSubStripes    = query.requiredUInt(  "num_sub_stripes");
-    info.overlap          = query.requiredDouble("overlap");
+    info.name             = query().requiredString("name");
+    info.replicationLevel = query().requiredUInt64("replication_level");
+    info.numStripes       = query().requiredUInt(  "num_stripes");
+    info.numSubStripes    = query().requiredUInt(  "num_sub_stripes");
+    info.overlap          = query().requiredDouble("overlap");
 
     debug(__func__, "name="              +           info.name);
     debug(__func__, "replication_level=" + to_string(info.replicationLevel));
@@ -347,10 +343,9 @@ void HttpConfigurationModule::_addDatabase() {
 
     auto const config = controller()->serviceProvider()->config();
 
-    HttpRequestQuery const query(req()->query);
     DatabaseInfo info;
-    info.name   = query.requiredString("name");
-    info.family = query.requiredString("family");
+    info.name   = query().requiredString("name");
+    info.family = query().requiredString("family");
 
     debug(__func__, "name="   + info.name);
     debug(__func__, "family=" + info.family);
@@ -370,8 +365,7 @@ void HttpConfigurationModule::_deleteTable() {
     auto const config = controller()->serviceProvider()->config();
     auto const table = req()->params.at("name");
 
-    HttpRequestQuery const query(req()->query);
-    auto const database = query.requiredString("database");
+    auto const database = query().requiredString("database");
 
     config->deleteTable(database, table);
 
@@ -387,10 +381,9 @@ void HttpConfigurationModule::_addTable() {
 
     auto const config = controller()->serviceProvider()->config();
 
-    HttpRequestQuery const query(req()->query);
-    auto const table         = query.requiredString("name");
-    auto const database      = query.requiredString("database");
-    auto const isPartitioned = query.requiredBool(  "is_partitioned");
+    auto const table         = query().requiredString("name");
+    auto const database      = query().requiredString("database");
+    auto const isPartitioned = query().requiredBool(  "is_partitioned");
 
     debug(__func__, "name="           + table);
     debug(__func__, "database="       + database);

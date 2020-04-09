@@ -34,6 +34,7 @@
 #include "replica/EventLogger.h"
 #include "replica/HttpProcessorConfig.h"
 #include "replica/HttpRequestBody.h"
+#include "replica/HttpRequestQuery.h"
 
 // This header declarations
 namespace lsst {
@@ -108,6 +109,7 @@ protected:
     qhttp::Request::Ptr const& req() const { return _req; }
     qhttp::Response::Ptr const& resp() const { return _resp; }
 
+    HttpRequestQuery const& query() const { return _query; }
     HttpRequestBody const& body() const { return _body; }
 
     // Message loggers for the corresponding log levels
@@ -174,6 +176,11 @@ private:
 
     qhttp::Request::Ptr _req;
     qhttp::Response::Ptr _resp;
+
+    /// The parser for parameters passed into the Web services via the optional
+    /// query part of a URL. The object gets initialized when a module is called
+    /// for execution.
+    HttpRequestQuery _query;
 
     /// The body of a request is initialized when a module is called for execution.
     HttpRequestBody _body;

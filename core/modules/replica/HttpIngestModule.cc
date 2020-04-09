@@ -41,7 +41,6 @@
 #include "replica/DatabaseServices.h"
 #include "replica/FindAllJob.h"
 #include "replica/IndexJob.h"
-#include "replica/HttpRequestQuery.h"
 #include "replica/QservSyncJob.h"
 #include "replica/ReplicaInfo.h"
 #include "replica/ServiceManagementJob.h"
@@ -138,11 +137,10 @@ void HttpIngestModule::_getTransactions() {
     auto const config = controller()->serviceProvider()->config();
     auto const databaseServices = controller()->serviceProvider()->databaseServices();
 
-    HttpRequestQuery const query(req()->query);
-    auto const database     = query.optionalString("database");
-    auto const family       = query.optionalString("family");
-    auto const allDatabases = query.optionalUInt64("all_databases", 0) != 0;
-    auto const isPublished  = query.optionalUInt64("is_published",  0) != 0;
+    auto const database     = query().optionalString("database");
+    auto const family       = query().optionalString("family");
+    auto const allDatabases = query().optionalUInt64("all_databases", 0) != 0;
+    auto const isPublished  = query().optionalUInt64("is_published",  0) != 0;
 
     debug(__func__, "database=" + database);
     debug(__func__, "family=" + family);
@@ -287,9 +285,8 @@ void HttpIngestModule::_endTransaction() {
 
         id = stoul(req()->params.at("id"));
 
-        HttpRequestQuery const query(req()->query);
-        abort               = query.requiredBool("abort");
-        buildSecondaryIndex = query.optionalBool("build-secondary-index");
+        abort               = query().requiredBool("abort");
+        buildSecondaryIndex = query().optionalBool("build-secondary-index");
 
         debug(__func__, "id="    + to_string(id));
         debug(__func__, "abort=" + to_string(abort ? 1 : 0));
@@ -462,8 +459,7 @@ void HttpIngestModule::_publishDatabase() {
 
     auto const database = req()->params.at("name");
 
-    HttpRequestQuery const query(req()->query);
-    bool const consolidateSecondayIndex = query.optionalBool("consolidate_secondary_index", false);
+    bool const consolidateSecondayIndex = query().optionalBool("consolidate_secondary_index", false);
 
     debug(__func__, "database=" + database);
     debug(__func__, "consolidate_secondary_index=" + to_string(consolidateSecondayIndex ? 1 : 0));
@@ -527,8 +523,7 @@ void HttpIngestModule::_deleteDatabase() {
     bool const allWorkers = true;
     auto const database = req()->params.at("name");
 
-    HttpRequestQuery const query(req()->query);
-    bool const deleteSecondaryIndex = query.optionalBool("delete_secondary_index", false);
+    bool const deleteSecondaryIndex = query().optionalBool("delete_secondary_index", false);
 
     debug(__func__, "database=" + database);
     debug(__func__, "delete_secondary_index=" + to_string(deleteSecondaryIndex ? 1 : 0));

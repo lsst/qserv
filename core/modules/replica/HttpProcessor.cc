@@ -32,7 +32,6 @@
 #include "replica/HttpIngestModule.h"
 #include "replica/HttpJobsModule.h"
 #include "replica/HttpQservMonitorModule.h"
-#include "replica/HttpRequestQuery.h"
 #include "replica/HttpRequestsModule.h"
 #include "replica/HttpReplicationLevelsModule.h"
 #include "replica/HttpWorkerStatusModule.h"

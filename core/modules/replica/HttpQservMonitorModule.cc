@@ -35,7 +35,6 @@
 #include "replica/ConfigurationTypes.h"
 #include "replica/DatabaseMySQL.h"
 #include "replica/DatabaseServices.h"
-#include "replica/HttpRequestQuery.h"
 #include "replica/QservMgtServices.h"
 #include "replica/QservStatusJob.h"
 #include "replica/ServiceProvider.h"
@@ -162,9 +161,8 @@ void HttpQservMonitorModule::executeImpl(string const& subModuleName) {
 void HttpQservMonitorModule::_workers() {
     debug(__func__);
 
-    HttpRequestQuery const query(req()->query);
-    unsigned int const timeoutSec    = query.optionalUInt("timeout_sec", workerResponseTimeoutSec());
-    bool         const keepResources = query.optionalUInt("keep_resources", 0) != 0;
+    unsigned int const timeoutSec    = query().optionalUInt("timeout_sec", workerResponseTimeoutSec());
+    bool         const keepResources = query().optionalUInt("keep_resources", 0) != 0;
 
     debug(__func__, "timeout_sec=" + to_string(timeoutSec));
 
@@ -219,8 +217,7 @@ void HttpQservMonitorModule::_worker() {
 
     auto const worker = req()->params.at("name");
 
-    HttpRequestQuery const query(req()->query);
-    unsigned int const timeoutSec = query.optionalUInt("timeout_sec", workerResponseTimeoutSec());
+    unsigned int const timeoutSec = query().optionalUInt("timeout_sec", workerResponseTimeoutSec());
 
     debug(__func__, "worker=" + worker);
     debug(__func__, "timeout_sec=" + to_string(timeoutSec));
@@ -255,9 +252,8 @@ void HttpQservMonitorModule::_userQueries() {
 
     auto const config = controller()->serviceProvider()->config();
 
-    HttpRequestQuery const query(req()->query);
-    unsigned int const timeoutSec = query.optionalUInt("timeout_sec", workerResponseTimeoutSec());
-    unsigned int const limit4past = query.optionalUInt("limit4past", 1);
+    unsigned int const timeoutSec = query().optionalUInt("timeout_sec", workerResponseTimeoutSec());
+    unsigned int const limit4past = query().optionalUInt("limit4past", 1);
 
     debug(__func__, "timeout_sec=" + to_string(timeoutSec));
     debug(__func__, "limit4past=" + to_string(limit4past));

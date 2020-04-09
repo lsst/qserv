@@ -27,7 +27,6 @@
 
 // Qserv headers
 #include "replica/DatabaseServices.h"
-#include "replica/HttpRequestQuery.h"
 #include "replica/ServiceProvider.h"
 
 using namespace std;
@@ -71,10 +70,9 @@ void HttpControllersModule::executeImpl(string const& subModuleName) {
 void HttpControllersModule::_controllers() {
     debug(__func__);
 
-    HttpRequestQuery const query(req()->query);
-    uint64_t const fromTimeStamp = query.optionalUInt64("from");
-    uint64_t const toTimeStamp   = query.optionalUInt64("to", numeric_limits<uint64_t>::max());
-    size_t   const maxEntries    = query.optionalUInt64("max_entries");
+    uint64_t const fromTimeStamp = query().optionalUInt64("from");
+    uint64_t const toTimeStamp   = query().optionalUInt64("to", numeric_limits<uint64_t>::max());
+    size_t   const maxEntries    = query().optionalUInt64("max_entries");
 
     debug(__func__, "from="        + to_string(fromTimeStamp));
     debug(__func__, "to="          + to_string(toTimeStamp));
@@ -108,11 +106,10 @@ void HttpControllersModule::_oneController() {
 
     auto const id = req()->params.at("id");
 
-    HttpRequestQuery const query(req()->query);
-    bool     const log           = query.optionalBool(  "log");
-    uint64_t const fromTimeStamp = query.optionalUInt64("log_from");
-    uint64_t const toTimeStamp   = query.optionalUInt64("log_to", numeric_limits<uint64_t>::max());
-    size_t   const maxEvents     = query.optionalUInt64("log_max_events");
+    bool     const log           = query().optionalBool(  "log");
+    uint64_t const fromTimeStamp = query().optionalUInt64("log_from");
+    uint64_t const toTimeStamp   = query().optionalUInt64("log_to", numeric_limits<uint64_t>::max());
+    size_t   const maxEvents     = query().optionalUInt64("log_max_events");
 
     debug(string(__func__) + " log="            +    string(log ? "1" : "0"));
     debug(string(__func__) + " log_from="       + to_string(fromTimeStamp));

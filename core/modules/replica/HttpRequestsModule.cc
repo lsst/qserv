@@ -27,7 +27,6 @@
 
 // Qserv headers
 #include "replica/DatabaseServices.h"
-#include "replica/HttpRequestQuery.h"
 #include "replica/ServiceProvider.h"
 
 using namespace std;
@@ -70,11 +69,10 @@ void HttpRequestsModule::executeImpl(string const& subModuleName) {
 void HttpRequestsModule::_requests() {
     debug(__func__);
 
-    HttpRequestQuery const query(req()->query);
-    string   const jobId         = query.optionalString("job_id");
-    uint64_t const fromTimeStamp = query.optionalUInt64("from");
-    uint64_t const toTimeStamp   = query.optionalUInt64("to", numeric_limits<uint64_t>::max());
-    size_t   const maxEntries    = query.optionalUInt64("max_entries");
+    string   const jobId         = query().optionalString("job_id");
+    uint64_t const fromTimeStamp = query().optionalUInt64("from");
+    uint64_t const toTimeStamp   = query().optionalUInt64("to", numeric_limits<uint64_t>::max());
+    size_t   const maxEntries    = query().optionalUInt64("max_entries");
 
     debug(__func__, "job_id="      +           jobId);
     debug(__func__, "from="        + to_string(fromTimeStamp));
