@@ -33,6 +33,7 @@
 #include "qhttp/Server.h"
 #include "replica/EventLogger.h"
 #include "replica/HttpProcessorConfig.h"
+#include "replica/HttpRequestBody.h"
 
 // This header declarations
 namespace lsst {
@@ -104,6 +105,8 @@ protected:
 
     std::string context() const;
 
+    HttpRequestBody const& body() const { return _body; }
+
     // Message loggers for the corresponding log levels
 
     void info(std::string const& msg) const;
@@ -162,12 +165,14 @@ private:
      *
      * @throw AuthError  This exception is thrown if the authorization requirements weren't met.
      */
-    void _enforceAuthorization(qhttp::Request::Ptr const& req) const;
+    void _enforceAuthorization() const;
 
     // Input parameters
 
     HttpProcessorConfig const _processorConfig;
 
+    /// The body of a request is initialized when a module is called for execution.
+    HttpRequestBody _body;
 };
     
 }}} // namespace lsst::qserv::replica

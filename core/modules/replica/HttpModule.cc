@@ -55,7 +55,8 @@ void HttpModule::execute(qhttp::Request::Ptr const& req,
                          string const& subModuleName,
                          AuthType const authType) {
     try {
-        if (authType == AUTH_REQUIRED) _enforceAuthorization(req);
+        _body = HttpRequestBody(req);
+        if (authType == AUTH_REQUIRED) _enforceAuthorization();
         executeImpl(req, resp, subModuleName);
     } catch (AuthError const& ex) {
         sendError(resp, __func__, "failed to pass authorization requirements, ex: " + string(ex.what()));
@@ -110,9 +111,8 @@ void HttpModule::sendData(qhttp::Response::Ptr const& resp,
 }
 
 
-void HttpModule::_enforceAuthorization(qhttp::Request::Ptr const& req) const {
-    HttpRequestBody body(req);
-    auto authKey = body.required<string>("auth-key");
+void HttpModule::_enforceAuthorization() const {
+    auto authKey = body().required<string>("auth_key");
     if (authKey != _processorConfig.authKey) {
         throw AuthError("authorization key in the request didn't match the one in server configuration");
     }
