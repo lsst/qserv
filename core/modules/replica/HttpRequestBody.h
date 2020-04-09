@@ -52,11 +52,9 @@ public:
     /// parsed body of the request
     nlohmann::json objJson;
 
-    // No default construction or copy semantics is allowed
-
-    HttpRequestBody() = delete;
-    HttpRequestBody(HttpRequestBody const&) = delete;
-    HttpRequestBody& operator=(HttpRequestBody const&) = delete;
+    HttpRequestBody() = default;
+    HttpRequestBody(HttpRequestBody const&) = default;
+    HttpRequestBody& operator=(HttpRequestBody const&) = default;
 
     ~HttpRequestBody() = default;
 

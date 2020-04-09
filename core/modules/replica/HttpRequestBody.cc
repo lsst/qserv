@@ -38,7 +38,11 @@ HttpRequestBody::HttpRequestBody(qhttp::Request::Ptr const& req) {
                 "unsupported content type: '" + contentType + "' instead of: '" +
                 requiredContentType + "'");
     }
-    req->content >> objJson;
+    // This way of parsing the optional body allows request which have no body
+    // in them.
+    string content;
+    req->content >> content;
+    objJson = content.empty() ? json::object() : json::parse(content);
     if (objJson.is_null() or objJson.is_object()) return;
     throw invalid_argument(
             "invalid format of the request body. A simple JSON object was expected");
