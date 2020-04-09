@@ -41,7 +41,6 @@
 #include "replica/DatabaseServices.h"
 #include "replica/FindAllJob.h"
 #include "replica/IndexJob.h"
-#include "replica/HttpRequestBody.h"
 #include "replica/HttpRequestQuery.h"
 #include "replica/QservSyncJob.h"
 #include "replica/ReplicaInfo.h"
@@ -229,8 +228,7 @@ void HttpIngestModule::_beginTransaction(qhttp::Request::Ptr const& req,
         auto const config = controller()->serviceProvider()->config();
         auto const databaseServices = controller()->serviceProvider()->databaseServices();
 
-        HttpRequestBody body(req);
-        auto const database = body.required<string>("database");
+        auto const database = body().required<string>("database");
 
         debug(__func__, "database=" + database);
 
@@ -374,13 +372,12 @@ void HttpIngestModule::_addDatabase(qhttp::Request::Ptr const& req,
 
     auto const config = controller()->serviceProvider()->config();
 
-    HttpRequestBody body(req);
     DatabaseInfo databaseInfo;
-    databaseInfo.name = body.required<string>("database");
+    databaseInfo.name = body().required<string>("database");
 
-    auto const numStripes    = body.required<unsigned int>("num_stripes");
-    auto const numSubStripes = body.required<unsigned int>("num_sub_stripes");
-    auto const overlap       = body.required<double>("overlap");
+    auto const numStripes    = body().required<unsigned int>("num_stripes");
+    auto const numSubStripes = body().required<unsigned int>("num_sub_stripes");
+    auto const overlap       = body().required<double>("overlap");
 
     debug(__func__, "database="      + databaseInfo.name);
     debug(__func__, "numStripes="    + to_string(numStripes));
@@ -589,17 +586,16 @@ void HttpIngestModule::_addTable(qhttp::Request::Ptr const& req,
 
     auto const config = controller()->serviceProvider()->config();
 
-    HttpRequestBody body(req);
-    auto const database      = body.required<string>("database");
-    auto const table         = body.required<string>("table");
-    auto const isPartitioned = (bool)body.required<int>("is_partitioned");
-    auto const schema        = body.required<json>("schema");
-    auto const isDirector    = (bool)body.required<int>("is_director");
-    auto const directorKey   = body.optional<string>("director_key", "");
-    auto const chunkIdColName    = body.optional<string>("chunk_id_key", "");
-    auto const subChunkIdColName = body.optional<string>("sub_chunk_id_key", "");
-    auto const latitudeColName  = body.optional<string>("latitude_key",  "");
-    auto const longitudeColName = body.optional<string>("longitude_key", "");
+    auto const database      = body().required<string>("database");
+    auto const table         = body().required<string>("table");
+    auto const isPartitioned = (bool)body().required<int>("is_partitioned");
+    auto const schema        = body().required<json>("schema");
+    auto const isDirector    = (bool)body().required<int>("is_director");
+    auto const directorKey   = body().optional<string>("director_key", "");
+    auto const chunkIdColName    = body().optional<string>("chunk_id_key", "");
+    auto const subChunkIdColName = body().optional<string>("sub_chunk_id_key", "");
+    auto const latitudeColName  = body().optional<string>("latitude_key",  "");
+    auto const longitudeColName = body().optional<string>("longitude_key", "");
 
     debug(__func__, "database="      + database);
     debug(__func__, "table="         + table);
@@ -731,9 +727,8 @@ void HttpIngestModule::_buildEmptyChunksList(qhttp::Request::Ptr const& req,
                                              qhttp::Response::Ptr const& resp) {
     debug(__func__);
 
-    HttpRequestBody body(req);
-    string const database = body.required<string>("database");
-    bool const force = (bool)body.optional<int>("force", 0);
+    string const database = body().required<string>("database");
+    bool const force = (bool)body().optional<int>("force", 0);
 
     debug(__func__, "database=" + database);
     debug(__func__, "force=" + string(force ? "1" : "0"));

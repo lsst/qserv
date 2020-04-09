@@ -26,7 +26,6 @@
 #include <stdexcept>
 
 // Qserv headers
-#include "replica/HttpRequestBody.h"
 #include "replica/SqlQueryRequest.h"
 
 using namespace std;
@@ -70,14 +69,11 @@ void HttpQservSqlModule::_execute(qhttp::Request::Ptr const& req,
                                   qhttp::Response::Ptr const& resp) {
     debug(__func__);
 
-    // All parameters must be provided via the body of the request
-
-    HttpRequestBody body(req);
-    auto const worker   = body.required<string>("worker");
-    auto const query    = body.required<string>("query");
-    auto const user     = body.required<string>("user");
-    auto const password = body.required<string>("password");
-    auto const maxRows  = body.optional<uint64_t>("max_rows", 0);
+    auto const worker   = body().required<string>("worker");
+    auto const query    = body().required<string>("query");
+    auto const user     = body().required<string>("user");
+    auto const password = body().required<string>("password");
+    auto const maxRows  = body().optional<uint64_t>("max_rows", 0);
 
     debug(__func__, "worker="   + worker);
     debug(__func__, "query="    + query);

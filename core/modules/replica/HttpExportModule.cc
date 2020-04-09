@@ -28,7 +28,6 @@
 // Qserv headers
 #include "replica/Configuration.h"
 #include "replica/DatabaseServices.h"
-#include "replica/HttpRequestBody.h"
 #include "replica/ReplicaInfo.h"
 #include "replica/ServiceProvider.h"
 
@@ -102,8 +101,7 @@ void HttpExportModule::_getTables(qhttp::Request::Ptr const& req,
 
     auto const database = req->params.at("database");
 
-    HttpRequestBody body(req);
-    auto const tables = body.requiredColl<json>("tables");
+    auto const tables = body().requiredColl<json>("tables");
 
     debug(__func__, "database=" + database);
     debug(__func__, "tables.size()=" + to_string(tables.size()));

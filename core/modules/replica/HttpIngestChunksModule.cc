@@ -34,7 +34,6 @@
 #include "replica/ChunkNumber.h"
 #include "replica/Configuration.h"
 #include "replica/DatabaseServices.h"
-#include "replica/HttpRequestBody.h"
 #include "replica/ReplicaInfo.h"
 #include "replica/ServiceProvider.h"
 
@@ -170,9 +169,8 @@ void HttpIngestChunksModule::_addChunk(qhttp::Request::Ptr const& req,
                                        qhttp::Response::Ptr const& resp) {
     debug(__func__);
 
-    HttpRequestBody body(req);
-    TransactionId const transactionId = body.required<TransactionId>("transaction_id");
-    unsigned int const chunk = body.required<unsigned int>("chunk");
+    TransactionId const transactionId = body().required<TransactionId>("transaction_id");
+    unsigned int const chunk = body().required<unsigned int>("chunk");
 
     debug(__func__, "transactionId=" + to_string(transactionId));
     debug(__func__, "chunk=" + to_string(chunk));
@@ -294,9 +292,8 @@ void HttpIngestChunksModule::_addChunks(qhttp::Request::Ptr const& req,
                                         qhttp::Response::Ptr const& resp) {
     debug(__func__);
 
-    HttpRequestBody body(req);
-    TransactionId const transactionId = body.required<TransactionId>("transaction_id");
-    auto const chunks = body.requiredColl<unsigned int>("chunks");
+    TransactionId const transactionId = body().required<TransactionId>("transaction_id");
+    auto const chunks = body().requiredColl<unsigned int>("chunks");
 
     debug(__func__, "transactionId=" + to_string(transactionId));
     debug(__func__, "chunks.size()=" + chunks.size());
