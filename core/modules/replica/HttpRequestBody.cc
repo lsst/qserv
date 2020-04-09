@@ -22,6 +22,9 @@
 // Class header
 #include "replica/HttpRequestBody.h"
 
+// System headers
+#include <iterator>
+
 using namespace std;
 using json = nlohmann::json;
 
@@ -29,23 +32,21 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
-HttpRequestBody::HttpRequestBody(qhttp::Request::Ptr const& req) {
+HttpRequestBody::HttpRequestBody(qhttp::Request::Ptr const& req)
+    :   objJson(json::object()) {
+
+    // This way of parsing the optional body allows requests which have no body.
 
     string const contentType = req->header["Content-Type"];
     string const requiredContentType = "application/json";
-    if (contentType != requiredContentType) {
+
+    if (contentType == requiredContentType) {
+        string content(istreambuf_iterator<char>(req->content), {});
+        if (not content.empty()) objJson = json::parse(content);
+        if (objJson.is_null() or objJson.is_object()) return;
         throw invalid_argument(
-                "unsupported content type: '" + contentType + "' instead of: '" +
-                requiredContentType + "'");
+                "invalid format of the request body. A simple JSON object was expected");
     }
-    // This way of parsing the optional body allows request which have no body
-    // in them.
-    string content;
-    req->content >> content;
-    objJson = content.empty() ? json::object() : json::parse(content);
-    if (objJson.is_null() or objJson.is_object()) return;
-    throw invalid_argument(
-            "invalid format of the request body. A simple JSON object was expected");
 }
 
 }}} // namespace lsst::qserv::replica
