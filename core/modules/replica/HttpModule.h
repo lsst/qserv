@@ -25,6 +25,7 @@
 #include <memory>
 #include <stdexcept>
 #include <string>
+#include <unordered_map>
 
 // Third party headers
 #include "nlohmann/json.hpp"
@@ -109,6 +110,8 @@ protected:
     qhttp::Request::Ptr const& req() const { return _req; }
     qhttp::Response::Ptr const& resp() const { return _resp; }
 
+    std::unordered_map<std::string, std::string> const& params() const { return _params; }
+
     HttpRequestQuery const& query() const { return _query; }
     HttpRequestBody const& body() const { return _body; }
 
@@ -176,6 +179,10 @@ private:
 
     qhttp::Request::Ptr _req;
     qhttp::Response::Ptr _resp;
+
+    /// Parameters of the RST service. The dictionary gets initialized when a module is called
+    /// for execution.
+    std::unordered_map<std::string, std::string> _params;
 
     /// The parser for parameters passed into the Web services via the optional
     /// query part of a URL. The object gets initialized when a module is called

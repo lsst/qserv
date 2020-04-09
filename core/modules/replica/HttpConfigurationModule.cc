@@ -173,7 +173,7 @@ void HttpConfigurationModule::_updateWorker() {
     debug(__func__);
 
     auto const config = controller()->serviceProvider()->config();
-    auto const worker = req()->params.at("name");
+    auto const worker = params().at("name");
 
     // Get optional parameters of the query. Note the default values which
     // are expected to be replaced by actual values provided by a client in
@@ -221,7 +221,7 @@ void HttpConfigurationModule::_deleteWorker() {
     debug(__func__);
 
     auto const config = controller()->serviceProvider()->config();
-    auto const worker = req()->params.at("name");
+    auto const worker = params().at("name");
 
     config->deleteWorker(worker);
     json result;
@@ -268,7 +268,7 @@ void HttpConfigurationModule::_deleteFamily() {
     debug(__func__);
 
     auto const config = controller()->serviceProvider()->config();
-    auto const family = req()->params.at("name");
+    auto const family = params().at("name");
 
     config->deleteDatabaseFamily(family);
 
@@ -327,7 +327,7 @@ void HttpConfigurationModule::_deleteDatabase() {
     debug(__func__);
 
     auto const config = controller()->serviceProvider()->config();
-    auto const database = req()->params.at("name");
+    auto const database = params().at("name");
 
     config->deleteDatabase(database);
 
@@ -363,8 +363,7 @@ void HttpConfigurationModule::_deleteTable() {
     debug(__func__);
 
     auto const config = controller()->serviceProvider()->config();
-    auto const table = req()->params.at("name");
-
+    auto const table = params().at("name");
     auto const database = query().requiredString("database");
 
     config->deleteTable(database, table);

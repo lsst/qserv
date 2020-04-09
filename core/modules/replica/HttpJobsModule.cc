@@ -105,8 +105,7 @@ void HttpJobsModule::_jobs() {
 void HttpJobsModule::_oneJob() {
     debug(__func__);
 
-    auto const id = req()->params.at("id");
-
+    auto const id = params().at("id");
     try {
         json result;
         result["job"] = controller()->serviceProvider()->databaseServices()->job(id).toJson();

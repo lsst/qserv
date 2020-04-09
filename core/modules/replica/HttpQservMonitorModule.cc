@@ -215,8 +215,7 @@ void HttpQservMonitorModule::_workers() {
 void HttpQservMonitorModule::_worker() {
     debug(__func__);
 
-    auto const worker = req()->params.at("name");
-
+    auto const worker = params().at("name");
     unsigned int const timeoutSec = query().optionalUInt("timeout_sec", workerResponseTimeoutSec());
 
     debug(__func__, "worker=" + worker);
@@ -387,7 +386,7 @@ void HttpQservMonitorModule::_userQueries() {
 void HttpQservMonitorModule::_userQuery() {
     debug(__func__);
 
-    auto const id = stoull(req()->params.at("id"));
+    auto const id = stoull(params().at("id"));
 
     debug(__func__, " id=" + to_string(id));
 

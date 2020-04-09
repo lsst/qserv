@@ -104,7 +104,7 @@ void HttpControllersModule::_controllers() {
 void HttpControllersModule::_oneController() {
     debug(__func__);
 
-    auto const id = req()->params.at("id");
+    auto const id = params().at("id");
 
     bool     const log           = query().optionalBool(  "log");
     uint64_t const fromTimeStamp = query().optionalUInt64("log_from");

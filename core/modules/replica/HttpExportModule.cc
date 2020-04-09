@@ -96,7 +96,7 @@ void HttpExportModule::executeImpl(string const& subModuleName) {
 void HttpExportModule::_getTables() {
     debug(__func__);
 
-    auto const database = req()->params.at("database");
+    auto const database = params().at("database");
     auto const tables = body().requiredColl<json>("tables");
 
     debug(__func__, "database=" + database);

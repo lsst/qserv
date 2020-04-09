@@ -58,6 +58,7 @@ void HttpModule::execute(qhttp::Request::Ptr const& req,
         // Finish setting up a context of the module.
         _req = req;
         _resp = resp;
+        _params = req->params;
         _query = HttpRequestQuery(req->query);
         _body = HttpRequestBody(req);
 

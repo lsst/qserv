@@ -102,8 +102,7 @@ void HttpRequestsModule::_requests() {
 void HttpRequestsModule::_oneRequest() {
     debug(__func__);
 
-    auto const id = req()->params.at("id");
-
+    auto const id = params().at("id");
     try {
         json result;
         result["request"] = controller()->serviceProvider()->databaseServices()->request(id).toJson();

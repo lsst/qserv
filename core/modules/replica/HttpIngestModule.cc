@@ -179,7 +179,7 @@ void HttpIngestModule::_getTransaction() {
 
     auto const config = controller()->serviceProvider()->config();
     auto const databaseServices = controller()->serviceProvider()->databaseServices();
-    auto const id = stoul(req()->params.at("id"));
+    auto const id = stoul(params().at("id"));
 
     debug(__func__, "id=" + to_string(id));
 
@@ -283,7 +283,7 @@ void HttpIngestModule::_endTransaction() {
         auto const config = controller()->serviceProvider()->config();
         auto const databaseServices = controller()->serviceProvider()->databaseServices();
 
-        id = stoul(req()->params.at("id"));
+        id = stoul(params().at("id"));
 
         abort               = query().requiredBool("abort");
         buildSecondaryIndex = query().optionalBool("build-secondary-index");
@@ -457,7 +457,7 @@ void HttpIngestModule::_publishDatabase() {
     auto const databaseServices = controller()->serviceProvider()->databaseServices();
     auto const config = controller()->serviceProvider()->config();
 
-    auto const database = req()->params.at("name");
+    auto const database = params().at("name");
 
     bool const consolidateSecondayIndex = query().optionalBool("consolidate_secondary_index", false);
 
@@ -521,7 +521,7 @@ void HttpIngestModule::_deleteDatabase() {
 
     auto const config = controller()->serviceProvider()->config();
     bool const allWorkers = true;
-    auto const database = req()->params.at("name");
+    auto const database = params().at("name");
 
     bool const deleteSecondaryIndex = query().optionalBool("delete_secondary_index", false);
 
@@ -733,7 +733,7 @@ void HttpIngestModule::_getRegular() {
     auto const databaseServices = controller()->serviceProvider()->databaseServices();
     auto const config = controller()->serviceProvider()->config();
 
-    auto const id = stoul(req()->params.at("id"));
+    auto const id = stoul(params().at("id"));
     debug(__func__, "id="    + to_string(id));
 
     auto const transaction = databaseServices->transaction(id);
