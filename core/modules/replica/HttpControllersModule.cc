@@ -54,14 +54,12 @@ HttpControllersModule::HttpControllersModule(Controller::Ptr const& controller,
 }
 
 
-void HttpControllersModule::executeImpl(qhttp::Request::Ptr const& req,
-                                        qhttp::Response::Ptr const& resp,
-                                        string const& subModuleName) {
+void HttpControllersModule::executeImpl(string const& subModuleName) {
 
     if (subModuleName.empty()) {
-        _controllers(req, resp);
+        _controllers();
     } else if (subModuleName == "SELECT-ONE-BY-ID") {
-        _oneController(req, resp);
+        _oneController();
     } else {
         throw invalid_argument(
                 context() + "::" + string(__func__) +
@@ -70,11 +68,10 @@ void HttpControllersModule::executeImpl(qhttp::Request::Ptr const& req,
 }
 
 
-void HttpControllersModule::_controllers(qhttp::Request::Ptr const& req,
-                                        qhttp::Response::Ptr const& resp) {
+void HttpControllersModule::_controllers() {
     debug(__func__);
 
-    HttpRequestQuery const query(req->query);
+    HttpRequestQuery const query(req()->query);
     uint64_t const fromTimeStamp = query.optionalUInt64("from");
     uint64_t const toTimeStamp   = query.optionalUInt64("to", numeric_limits<uint64_t>::max());
     size_t   const maxEntries    = query.optionalUInt64("max_entries");
@@ -102,17 +99,16 @@ void HttpControllersModule::_controllers(qhttp::Request::Ptr const& req,
     json result;
     result["controllers"] = controllersJson;
 
-    sendData(resp, result);
+    sendData(result);
 }
 
 
-void HttpControllersModule::_oneController(qhttp::Request::Ptr const& req,
-                                           qhttp::Response::Ptr const& resp) {
+void HttpControllersModule::_oneController() {
     debug(__func__);
 
-    auto const id = req->params.at("id");
+    auto const id = req()->params.at("id");
 
-    HttpRequestQuery const query(req->query);
+    HttpRequestQuery const query(req()->query);
     bool     const log           = query.optionalBool(  "log");
     uint64_t const fromTimeStamp = query.optionalUInt64("log_from");
     uint64_t const toTimeStamp   = query.optionalUInt64("log_to", numeric_limits<uint64_t>::max());
@@ -148,10 +144,10 @@ void HttpControllersModule::_oneController(qhttp::Request::Ptr const& req,
             }
         }
         result["log"] = jsonLog;
-        sendData(resp, result);
+        sendData(result);
 
     } catch (DatabaseServicesNotFound const& ex) {
-        sendError(resp, __func__, "no such controller found");
+        sendError(__func__, "no such controller found");
     }
 }
 

@@ -58,9 +58,7 @@ public:
     ~HttpReplicationLevelsModule() final = default;
 
 protected:
-    void executeImpl(qhttp::Request::Ptr const& req,
-                     qhttp::Response::Ptr const& resp,
-                     std::string const& subModuleName) final;
+    void executeImpl(std::string const& subModuleName) final;
 
 private:
     HttpReplicationLevelsModule(Controller::Ptr const& controller,

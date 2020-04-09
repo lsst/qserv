@@ -89,32 +89,30 @@ HttpConfigurationModule::HttpConfigurationModule(Controller::Ptr const& controll
 }
 
 
-void HttpConfigurationModule::executeImpl(qhttp::Request::Ptr const& req,
-                                          qhttp::Response::Ptr const& resp,
-                                          string const& subModuleName) {
+void HttpConfigurationModule::executeImpl(string const& subModuleName) {
 
     if (subModuleName.empty()) {
-        _get(req, resp);
+        _get();
     } else if (subModuleName == "UPDATE-GENERAL") {
-        _updateGeneral(req, resp);
+        _updateGeneral();
     } else if (subModuleName == "UPDATE-WORKER") {
-        _updateWorker(req, resp);
+        _updateWorker();
     } else if (subModuleName == "DELETE-WORKER") {
-        _deleteWorker(req, resp);
+        _deleteWorker();
     } else if (subModuleName == "ADD-WORKER") {
-        _addWorker(req, resp);
+        _addWorker();
     } else if (subModuleName == "DELETE-DATABASE-FAMILY") {
-        _deleteFamily(req, resp);
+        _deleteFamily();
     } else if (subModuleName == "ADD-DATABASE-FAMILY") {
-        _addFamily(req, resp);
+        _addFamily();
     } else if (subModuleName == "DELETE-DATABASE") {
-        _deleteDatabase(req, resp);
+        _deleteDatabase();
     } else if (subModuleName == "ADD-DATABASE") {
-        _addDatabase(req, resp);
+        _addDatabase();
     } else if (subModuleName == "DELETE-TABLE") {
-        _deleteTable(req, resp);
+        _deleteTable();
     } else if (subModuleName == "ADD-TABLE") {
-        _addTable(req, resp);
+        _addTable();
     } else {
         throw invalid_argument(
                 context() + "::" + string(__func__) +
@@ -123,17 +121,15 @@ void HttpConfigurationModule::executeImpl(qhttp::Request::Ptr const& req,
 }
 
 
-void HttpConfigurationModule::_get(qhttp::Request::Ptr const& req,
-                                   qhttp::Response::Ptr const& resp) {
+void HttpConfigurationModule::_get() {
     debug(__func__);
     json result;
     result["config"] = Configuration::toJson(controller()->serviceProvider()->config());
-    sendData(resp, result);
+    sendData(result);
 }
 
 
-void HttpConfigurationModule::_updateGeneral(qhttp::Request::Ptr const& req,
-                                             qhttp::Response::Ptr const& resp) {
+void HttpConfigurationModule::_updateGeneral() {
     debug(__func__);
 
     try {
@@ -144,48 +140,47 @@ void HttpConfigurationModule::_updateGeneral(qhttp::Request::Ptr const& req,
         auto   const logger  = [this, context](string const& msg) {
             this->debug(context, msg);
         };
-        ::saveConfigParameter(general.requestBufferSizeBytes,      req->query, config, logger);
-        ::saveConfigParameter(general.retryTimeoutSec,             req->query, config, logger);
-        ::saveConfigParameter(general.controllerThreads,           req->query, config, logger);
-        ::saveConfigParameter(general.controllerHttpPort,          req->query, config, logger);
-        ::saveConfigParameter(general.controllerHttpThreads,       req->query, config, logger);
-        ::saveConfigParameter(general.controllerRequestTimeoutSec, req->query, config, logger);
-        ::saveConfigParameter(general.jobTimeoutSec,               req->query, config, logger);
-        ::saveConfigParameter(general.jobHeartbeatTimeoutSec,      req->query, config, logger);
-        ::saveConfigParameter(general.xrootdAutoNotify,            req->query, config, logger);
-        ::saveConfigParameter(general.xrootdHost,                  req->query, config, logger);
-        ::saveConfigParameter(general.xrootdPort,                  req->query, config, logger);
-        ::saveConfigParameter(general.xrootdTimeoutSec,            req->query, config, logger);
-        ::saveConfigParameter(general.databaseServicesPoolSize,    req->query, config, logger);
-        ::saveConfigParameter(general.workerTechnology,            req->query, config, logger);
-        ::saveConfigParameter(general.workerNumProcessingThreads,  req->query, config, logger);
-        ::saveConfigParameter(general.fsNumProcessingThreads,      req->query, config, logger);
-        ::saveConfigParameter(general.workerFsBufferSizeBytes,     req->query, config, logger);
-        ::saveConfigParameter(general.loaderNumProcessingThreads,   req->query, config, logger);
-        ::saveConfigParameter(general.exporterNumProcessingThreads, req->query, config, logger);
+        ::saveConfigParameter(general.requestBufferSizeBytes,      req()->query, config, logger);
+        ::saveConfigParameter(general.retryTimeoutSec,             req()->query, config, logger);
+        ::saveConfigParameter(general.controllerThreads,           req()->query, config, logger);
+        ::saveConfigParameter(general.controllerHttpPort,          req()->query, config, logger);
+        ::saveConfigParameter(general.controllerHttpThreads,       req()->query, config, logger);
+        ::saveConfigParameter(general.controllerRequestTimeoutSec, req()->query, config, logger);
+        ::saveConfigParameter(general.jobTimeoutSec,               req()->query, config, logger);
+        ::saveConfigParameter(general.jobHeartbeatTimeoutSec,      req()->query, config, logger);
+        ::saveConfigParameter(general.xrootdAutoNotify,            req()->query, config, logger);
+        ::saveConfigParameter(general.xrootdHost,                  req()->query, config, logger);
+        ::saveConfigParameter(general.xrootdPort,                  req()->query, config, logger);
+        ::saveConfigParameter(general.xrootdTimeoutSec,            req()->query, config, logger);
+        ::saveConfigParameter(general.databaseServicesPoolSize,    req()->query, config, logger);
+        ::saveConfigParameter(general.workerTechnology,            req()->query, config, logger);
+        ::saveConfigParameter(general.workerNumProcessingThreads,  req()->query, config, logger);
+        ::saveConfigParameter(general.fsNumProcessingThreads,      req()->query, config, logger);
+        ::saveConfigParameter(general.workerFsBufferSizeBytes,     req()->query, config, logger);
+        ::saveConfigParameter(general.loaderNumProcessingThreads,   req()->query, config, logger);
+        ::saveConfigParameter(general.exporterNumProcessingThreads, req()->query, config, logger);
 
         json result;
         result["config"] = Configuration::toJson(config);
-        sendData(resp, result);
+        sendData(result);
 
     } catch (boost::bad_lexical_cast const& ex) {
-        sendError(resp, __func__, "invalid value of a configuration parameter: " + string(ex.what()));
+        sendError(__func__, "invalid value of a configuration parameter: " + string(ex.what()));
     }
 }
 
 
-void HttpConfigurationModule::_updateWorker(qhttp::Request::Ptr const& req,
-                                            qhttp::Response::Ptr const& resp) {
+void HttpConfigurationModule::_updateWorker() {
     debug(__func__);
 
     auto const config = controller()->serviceProvider()->config();
-    auto const worker = req->params.at("name");
+    auto const worker = req()->params.at("name");
 
     // Get optional parameters of the query. Note the default values which
     // are expected to be replaced by actual values provided by a client in
     // parameters found in the query.
 
-    HttpRequestQuery const query(req->query);
+    HttpRequestQuery const query(req()->query);
     string   const svcHost    = query.optionalString("svc_host");
     uint16_t const svcPort    = query.optionalUInt16("svc_port");
     string   const fsHost     = query.optionalString("fs_host");
@@ -220,33 +215,31 @@ void HttpConfigurationModule::_updateWorker(qhttp::Request::Ptr const& req,
     json result;
     result["config"] = Configuration::toJson(config);
 
-    sendData(resp, result);
+    sendData(result);
 }
 
 
-void HttpConfigurationModule::_deleteWorker(qhttp::Request::Ptr const& req,
-                                            qhttp::Response::Ptr const& resp) {
+void HttpConfigurationModule::_deleteWorker() {
     debug(__func__);
 
     auto const config = controller()->serviceProvider()->config();
-    auto const worker = req->params.at("name");
+    auto const worker = req()->params.at("name");
 
     config->deleteWorker(worker);
     json result;
     result["config"] = Configuration::toJson(config);
 
-    sendData(resp, result);
+    sendData(result);
 }
 
 
-void HttpConfigurationModule::_addWorker(qhttp::Request::Ptr const& req,
-                                         qhttp::Response::Ptr const& resp) {
+void HttpConfigurationModule::_addWorker() {
     debug(__func__);
 
     auto const config = controller()->serviceProvider()->config();
 
     WorkerInfo info;
-    HttpRequestQuery const query(req->query);
+    HttpRequestQuery const query(req()->query);
     info.name       = query.requiredString("name");
     info.svcHost    = query.requiredString("svc_host");
     info.svcPort    = query.requiredUInt16("svc_port");
@@ -270,34 +263,32 @@ void HttpConfigurationModule::_addWorker(qhttp::Request::Ptr const& req,
     json result;
     result["config"] = Configuration::toJson(config);
 
-    sendData(resp, result);
+    sendData(result);
 }
 
 
-void HttpConfigurationModule::_deleteFamily(qhttp::Request::Ptr const& req,
-                                            qhttp::Response::Ptr const& resp) {
+void HttpConfigurationModule::_deleteFamily() {
     debug(__func__);
 
     auto const config = controller()->serviceProvider()->config();
-    auto const family = req->params.at("name");
+    auto const family = req()->params.at("name");
 
     config->deleteDatabaseFamily(family);
 
     json result;
     result["config"] = Configuration::toJson(config);
 
-    sendData(resp, result);
+    sendData(result);
 
 }
 
 
-void HttpConfigurationModule::_addFamily(qhttp::Request::Ptr const& req,
-                                         qhttp::Response::Ptr const& resp) {
+void HttpConfigurationModule::_addFamily() {
     debug(__func__);
 
     auto const config = controller()->serviceProvider()->config();
 
-    HttpRequestQuery const query(req->query);
+    HttpRequestQuery const query(req()->query);
     DatabaseFamilyInfo info;
     info.name             = query.requiredString("name");
     info.replicationLevel = query.requiredUInt64("replication_level");
@@ -312,19 +303,19 @@ void HttpConfigurationModule::_addFamily(qhttp::Request::Ptr const& req,
     debug(__func__, "overlap="           + to_string(info.overlap));
 
     if (0 == info.replicationLevel) {
-        sendError(resp, __func__, "'replication_level' can't be equal to 0");
+        sendError(__func__, "'replication_level' can't be equal to 0");
         return;
     }
     if (0 == info.numStripes) {
-        sendError(resp, __func__, "'num_stripes' can't be equal to 0");
+        sendError(__func__, "'num_stripes' can't be equal to 0");
         return;
     }
     if (0 == info.numSubStripes) {
-        sendError(resp, __func__, "'num_sub_stripes' can't be equal to 0");
+        sendError(__func__, "'num_sub_stripes' can't be equal to 0");
         return;
     }
     if (info.overlap <= 0) {
-        sendError(resp, __func__, "'overlap' can't be less or equal to 0");
+        sendError(__func__, "'overlap' can't be less or equal to 0");
         return;
     }
     config->addDatabaseFamily(info);
@@ -332,33 +323,31 @@ void HttpConfigurationModule::_addFamily(qhttp::Request::Ptr const& req,
     json result;
     result["config"] = Configuration::toJson(config);
 
-    sendData(resp, result);
+    sendData(result);
 }
 
 
-void HttpConfigurationModule::_deleteDatabase(qhttp::Request::Ptr const& req,
-                                              qhttp::Response::Ptr const& resp) {
+void HttpConfigurationModule::_deleteDatabase() {
     debug(__func__);
 
     auto const config = controller()->serviceProvider()->config();
-    auto const database = req->params.at("name");
+    auto const database = req()->params.at("name");
 
     config->deleteDatabase(database);
 
     json result;
     result["config"] = Configuration::toJson(config);
 
-    sendData(resp, result);
+    sendData(result);
 }
 
 
-void HttpConfigurationModule::_addDatabase(qhttp::Request::Ptr const& req,
-                                           qhttp::Response::Ptr const& resp) {
+void HttpConfigurationModule::_addDatabase() {
     debug(__func__);
 
     auto const config = controller()->serviceProvider()->config();
 
-    HttpRequestQuery const query(req->query);
+    HttpRequestQuery const query(req()->query);
     DatabaseInfo info;
     info.name   = query.requiredString("name");
     info.family = query.requiredString("family");
@@ -371,18 +360,17 @@ void HttpConfigurationModule::_addDatabase(qhttp::Request::Ptr const& req,
     json result;
     result["config"] = Configuration::toJson(config);
 
-    sendData(resp, result);
+    sendData(result);
 }
 
 
-void HttpConfigurationModule::_deleteTable(qhttp::Request::Ptr const& req,
-                                           qhttp::Response::Ptr const& resp) {
+void HttpConfigurationModule::_deleteTable() {
     debug(__func__);
 
     auto const config = controller()->serviceProvider()->config();
-    auto const table = req->params.at("name");
+    auto const table = req()->params.at("name");
 
-    HttpRequestQuery const query(req->query);
+    HttpRequestQuery const query(req()->query);
     auto const database = query.requiredString("database");
 
     config->deleteTable(database, table);
@@ -390,17 +378,16 @@ void HttpConfigurationModule::_deleteTable(qhttp::Request::Ptr const& req,
     json result;
     result["config"] = Configuration::toJson(config);
 
-    sendData(resp, result);
+    sendData(result);
 }
 
 
-void HttpConfigurationModule::_addTable(qhttp::Request::Ptr const& req,
-                                        qhttp::Response::Ptr const& resp) {
+void HttpConfigurationModule::_addTable() {
     debug(__func__);
 
     auto const config = controller()->serviceProvider()->config();
 
-    HttpRequestQuery const query(req->query);
+    HttpRequestQuery const query(req()->query);
     auto const table         = query.requiredString("name");
     auto const database      = query.requiredString("database");
     auto const isPartitioned = query.requiredBool(  "is_partitioned");
@@ -414,7 +401,7 @@ void HttpConfigurationModule::_addTable(qhttp::Request::Ptr const& req,
     json result;
     result["config"] = Configuration::toJson(config);
 
-    sendData(resp, result);
+    sendData(result);
 }
 
 }}}  // namespace lsst::qserv::replica

@@ -66,9 +66,7 @@ protected:
      *
      * @throws std::invalid_argument for unknown values of parameter 'subModuleName'
      */
-    void executeImpl(qhttp::Request::Ptr const& req,
-                     qhttp::Response::Ptr const& resp,
-                     std::string const& subModuleName) final;
+    void executeImpl(std::string const& subModuleName) final;
 
 private:
     HttpQservMonitorModule(Controller::Ptr const& controller,
@@ -80,29 +78,25 @@ private:
      * Qserv workers (all of them or a subset of those as per parameters
      * of a request).
      */
-    void _workers(qhttp::Request::Ptr const& req,
-                  qhttp::Response::Ptr const& resp);
+    void _workers();
 
     /**
      * Process a request for extracting various status info for one
      * Qserv worker.
      */
-    void _worker(qhttp::Request::Ptr const& req,
-                 qhttp::Response::Ptr const& resp);
+    void _worker();
 
     /**
      * Process a request for extracting a status on select user queries
      * launched at Qserv.
      */
-    void _userQueries(qhttp::Request::Ptr const& req,
-                      qhttp::Response::Ptr const& resp);
+    void _userQueries();
 
     /**
      * Process a request for extracting a status on a specific user query
      * launched at Qserv.
      */
-    void _userQuery(qhttp::Request::Ptr const& req,
-                    qhttp::Response::Ptr const& resp);
+    void _userQuery();
 
     /**
      * Find descriptions of queries

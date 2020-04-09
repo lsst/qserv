@@ -105,6 +105,9 @@ protected:
 
     std::string context() const;
 
+    qhttp::Request::Ptr const& req() const { return _req; }
+    qhttp::Response::Ptr const& resp() const { return _resp; }
+
     HttpRequestBody const& body() const { return _body; }
 
     // Message loggers for the corresponding log levels
@@ -126,8 +129,7 @@ protected:
      * @param func the name of a context from which the operation was initiated
      * @param errorMsg error condition to be reported
      */
-    void sendError(qhttp::Response::Ptr const& resp,
-                   std::string const& func,
+    void sendError(std::string const& func,
                    std::string const& errorMsg) const;
 
     /**
@@ -141,8 +143,7 @@ protected:
      *                a value of the flag. The result object may provide more specific
      *                info on a reason of a failure (if not success)
      */
-    void sendData(qhttp::Response::Ptr const& resp,
-                  nlohmann::json& result,
+    void sendData(nlohmann::json& result,
                   bool success=true);
 
     /**
@@ -151,9 +152,7 @@ protected:
      * @note all exceptions thrown by the implementations will be intercepted and
      * reported as errors to callers.
      */
-    virtual void executeImpl(qhttp::Request::Ptr const& req,
-                             qhttp::Response::Ptr const& resp,
-                             std::string const& subModuleName) = 0 ;
+    virtual void executeImpl(std::string const& subModuleName) = 0 ;
 
 private:
     /**
@@ -170,6 +169,11 @@ private:
     // Input parameters
 
     HttpProcessorConfig const _processorConfig;
+
+    // Pointers to the request and response are set when a module is called for execution.
+
+    qhttp::Request::Ptr _req;
+    qhttp::Response::Ptr _resp;
 
     /// The body of a request is initialized when a module is called for execution.
     HttpRequestBody _body;

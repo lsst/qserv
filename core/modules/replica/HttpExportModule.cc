@@ -81,12 +81,10 @@ HttpExportModule::HttpExportModule(Controller::Ptr const& controller,
 }
 
 
-void HttpExportModule::executeImpl(qhttp::Request::Ptr const& req,
-                                   qhttp::Response::Ptr const& resp,
-                                   string const& subModuleName) {
+void HttpExportModule::executeImpl(string const& subModuleName) {
 
     if (subModuleName == "TABLES") {
-        _getTables(req, resp);
+        _getTables();
     } else {
         throw invalid_argument(
                 context() + "::" + string(__func__) +
@@ -95,12 +93,10 @@ void HttpExportModule::executeImpl(qhttp::Request::Ptr const& req,
 }
 
 
-void HttpExportModule::_getTables(qhttp::Request::Ptr const& req,
-                                  qhttp::Response::Ptr const& resp) {
+void HttpExportModule::_getTables() {
     debug(__func__);
 
-    auto const database = req->params.at("database");
-
+    auto const database = req()->params.at("database");
     auto const tables = body().requiredColl<json>("tables");
 
     debug(__func__, "database=" + database);
@@ -112,7 +108,7 @@ void HttpExportModule::_getTables(qhttp::Request::Ptr const& req,
     // This operation will throw an exception if the database name is not valid
     auto const databaseInfo = config->databaseInfo(database);
     if (not databaseInfo.isPublished) {
-        sendError(resp, __func__, "database '" + databaseInfo.name + "' is not PUBLISHED");
+        sendError(__func__, "database '" + databaseInfo.name + "' is not PUBLISHED");
         return;
     }
 
@@ -122,7 +118,7 @@ void HttpExportModule::_getTables(qhttp::Request::Ptr const& req,
         allWorkerInfos.push_back(config->workerInfo(worker));
     }
     if (allWorkerInfos.empty()) {
-        sendError(resp, __func__, "no workers found in the Configuration of the system.");
+        sendError(__func__, "no workers found in the Configuration of the system.");
         return;
     }
 
@@ -236,10 +232,10 @@ void HttpExportModule::_getTables(qhttp::Request::Ptr const& req,
             }
         }
     } catch (invalid_argument const& ex) {
-        sendError(resp, __func__, ex.what());
+        sendError(__func__, ex.what());
         return;
     }
-    sendData(resp, result);
+    sendData(result);
 }
 
 }}}  // namespace lsst::qserv::replica

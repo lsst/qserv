@@ -56,9 +56,7 @@ HttpWorkerStatusModule::HttpWorkerStatusModule(
 }
 
 
-void HttpWorkerStatusModule::executeImpl(qhttp::Request::Ptr const& req,
-                                         qhttp::Response::Ptr const& resp,
-                                         string const& subModuleName) {
+void HttpWorkerStatusModule::executeImpl(string const& subModuleName) {
     debug(__func__);
 
     auto const healthMonitorTask = _healthMonitorTask.lock();
@@ -96,7 +94,7 @@ void HttpWorkerStatusModule::executeImpl(qhttp::Request::Ptr const& req,
     json result;
     result["workers"] = workersJson;
 
-    sendData(resp, result);
+    sendData(result);
 }
 
 }}}  // namespace lsst::qserv::replica

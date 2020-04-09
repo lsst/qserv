@@ -62,9 +62,7 @@ protected:
      *
      * @throws std::invalid_argument for unknown values of parameter 'subModuleName'
      */
-    void executeImpl(qhttp::Request::Ptr const& req,
-                     qhttp::Response::Ptr const& resp,
-                     std::string const& subModuleName) final;
+    void executeImpl(std::string const& subModuleName) final;
 
 private:
     HttpQservSqlModule(Controller::Ptr const& controller,
@@ -76,8 +74,7 @@ private:
      * A result set of the query will be returned for those query types which
      * have the one upon a successful completion of a request.
      */
-    void _execute(qhttp::Request::Ptr const& req,
-                  qhttp::Response::Ptr const& resp);
+    void _execute();
 
 };
     

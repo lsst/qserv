@@ -53,14 +53,12 @@ HttpJobsModule::HttpJobsModule(Controller::Ptr const& controller,
 }
 
 
-void HttpJobsModule::executeImpl(qhttp::Request::Ptr const& req,
-                                 qhttp::Response::Ptr const& resp,
-                                 string const& subModuleName) {
+void HttpJobsModule::executeImpl(string const& subModuleName) {
 
     if (subModuleName.empty()) {
-        _jobs(req, resp);
+        _jobs();
     } else if (subModuleName == "SELECT-ONE-BY-ID") {
-        _oneJob(req, resp);
+        _oneJob();
     } else {
         throw invalid_argument(
                 context() + "::" + string(__func__) +
@@ -69,11 +67,10 @@ void HttpJobsModule::executeImpl(qhttp::Request::Ptr const& req,
 }
 
 
-void HttpJobsModule::_jobs(qhttp::Request::Ptr const& req,
-                           qhttp::Response::Ptr const& resp) {
+void HttpJobsModule::_jobs() {
     debug(__func__);
 
-    HttpRequestQuery const query(req->query);
+    HttpRequestQuery const query(req()->query);
     string   const controllerId  = query.optionalString("controller_id");
     string   const parentJobId   = query.optionalString("parent_job_id");
     uint64_t const fromTimeStamp = query.optionalUInt64("from");
@@ -103,23 +100,22 @@ void HttpJobsModule::_jobs(qhttp::Request::Ptr const& req,
     json result;
     result["jobs"] = jobsJson;
 
-    sendData(resp, result);
+    sendData(result);
 }
 
 
-void HttpJobsModule::_oneJob(qhttp::Request::Ptr const& req,
-                             qhttp::Response::Ptr const& resp) {
+void HttpJobsModule::_oneJob() {
     debug(__func__);
 
-    auto const id = req->params.at("id");
+    auto const id = req()->params.at("id");
 
     try {
         json result;
         result["job"] = controller()->serviceProvider()->databaseServices()->job(id).toJson();
-        sendData(resp, result);
+        sendData(result);
 
     } catch (DatabaseServicesNotFound const& ex) {
-        sendError(resp, __func__, "no such job found");
+        sendError(__func__, "no such job found");
     }
 }
 

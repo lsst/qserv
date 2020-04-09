@@ -141,18 +141,16 @@ HttpQservMonitorModule::HttpQservMonitorModule(Controller::Ptr const& controller
 }
 
 
-void HttpQservMonitorModule::executeImpl(qhttp::Request::Ptr const& req,
-                                         qhttp::Response::Ptr const& resp,
-                                         string const& subModuleName) {
+void HttpQservMonitorModule::executeImpl(string const& subModuleName) {
 
     if (subModuleName == "WORKERS") {
-        _workers(req, resp);
+        _workers();
     } else if (subModuleName == "SELECT-WORKER-BY-NAME") {
-        _worker(req, resp);
+        _worker();
     } else if (subModuleName == "QUERIES") {
-        _userQueries(req, resp);
+        _userQueries();
     } else if (subModuleName == "SELECT-QUERY-BY-ID") {
-        _userQuery(req, resp);
+        _userQuery();
     } else {
         throw invalid_argument(
                 context() + "::" + string(__func__) +
@@ -161,11 +159,10 @@ void HttpQservMonitorModule::executeImpl(qhttp::Request::Ptr const& req,
 }
 
 
-void HttpQservMonitorModule::_workers(qhttp::Request::Ptr const& req,
-                                      qhttp::Response::Ptr const& resp) {
+void HttpQservMonitorModule::_workers() {
     debug(__func__);
 
-    HttpRequestQuery const query(req->query);
+    HttpRequestQuery const query(req()->query);
     unsigned int const timeoutSec    = query.optionalUInt("timeout_sec", workerResponseTimeoutSec());
     bool         const keepResources = query.optionalUInt("keep_resources", 0) != 0;
 
@@ -213,17 +210,16 @@ void HttpQservMonitorModule::_workers(qhttp::Request::Ptr const& req,
     }
     result["schedulers_to_chunks"] = resultSchedulers2chunks;
     result["chunks"] = _chunkInfo(chunks);
-    sendData(resp, result);
+    sendData(result);
 }
 
 
-void HttpQservMonitorModule::_worker(qhttp::Request::Ptr const& req,
-                                     qhttp::Response::Ptr const& resp) {
+void HttpQservMonitorModule::_worker() {
     debug(__func__);
 
-    auto const worker = req->params.at("name");
+    auto const worker = req()->params.at("name");
 
-    HttpRequestQuery const query(req->query);
+    HttpRequestQuery const query(req()->query);
     unsigned int const timeoutSec = query.optionalUInt("timeout_sec", workerResponseTimeoutSec());
 
     debug(__func__, "worker=" + worker);
@@ -250,17 +246,16 @@ void HttpQservMonitorModule::_worker(qhttp::Request::Ptr const& req,
     } else {
         result["status"][worker]["success"] = 0;
     }        
-    sendData(resp, result);
+    sendData(result);
 }
 
 
-void HttpQservMonitorModule::_userQueries(qhttp::Request::Ptr const& req,
-                                          qhttp::Response::Ptr const& resp) {
+void HttpQservMonitorModule::_userQueries() {
     debug(__func__);
 
     auto const config = controller()->serviceProvider()->config();
 
-    HttpRequestQuery const query(req->query);
+    HttpRequestQuery const query(req()->query);
     unsigned int const timeoutSec = query.optionalUInt("timeout_sec", workerResponseTimeoutSec());
     unsigned int const limit4past = query.optionalUInt("limit4past", 1);
 
@@ -389,20 +384,19 @@ void HttpQservMonitorModule::_userQueries(qhttp::Request::Ptr const& req,
             result["queries_past"].push_back(resultRow);
         }
     }
-    sendData(resp, result);
+    sendData(result);
 }
 
 
-void HttpQservMonitorModule::_userQuery(qhttp::Request::Ptr const& req,
-                                        qhttp::Response::Ptr const& resp) {
+void HttpQservMonitorModule::_userQuery() {
     debug(__func__);
 
-    auto const id = stoull(req->params.at("id"));
+    auto const id = stoull(req()->params.at("id"));
 
     debug(__func__, " id=" + to_string(id));
 
     json result;
-    sendData(resp, result);
+    sendData(result);
 }
 
 

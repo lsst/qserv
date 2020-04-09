@@ -64,9 +64,7 @@ HttpReplicationLevelsModule::HttpReplicationLevelsModule(
 }
 
 
-void HttpReplicationLevelsModule::executeImpl(qhttp::Request::Ptr const& req,
-                                              qhttp::Response::Ptr const& resp,
-                                              string const& subModuleName) {
+void HttpReplicationLevelsModule::executeImpl(string const& subModuleName) {
     debug(__func__);
 
     util::Lock lock(_replicationLevelMtx, "HttpReplicationLevelsModule::" + string(__func__));
@@ -78,7 +76,7 @@ void HttpReplicationLevelsModule::executeImpl(qhttp::Request::Ptr const& req,
     if (not _replicationLevelReport.is_null()) {
         uint64_t lastReportAgeMs = PerformanceUtils::now() - _replicationLevelReportTimeMs;
         if (lastReportAgeMs < 240 * 1000) {
-            sendData(resp, _replicationLevelReport);
+            sendData(_replicationLevelReport);
             return;
         }
     }
@@ -262,7 +260,7 @@ void HttpReplicationLevelsModule::executeImpl(qhttp::Request::Ptr const& req,
     _replicationLevelReport = result;
     _replicationLevelReportTimeMs = PerformanceUtils::now();
 
-    sendData(resp, _replicationLevelReport);
+    sendData(_replicationLevelReport);
 }
 
 }}}  // namespace lsst::qserv::replica

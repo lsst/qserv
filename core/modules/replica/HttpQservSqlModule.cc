@@ -51,12 +51,10 @@ HttpQservSqlModule::HttpQservSqlModule(Controller::Ptr const& controller,
 }
 
 
-void HttpQservSqlModule::executeImpl(qhttp::Request::Ptr const& req,
-                                     qhttp::Response::Ptr const& resp,
-                                     string const& subModuleName) {
+void HttpQservSqlModule::executeImpl(string const& subModuleName) {
 
     if (subModuleName.empty()) {
-        _execute(req, resp);
+        _execute();
     } else {
         throw invalid_argument(
                 context() + "::" + string(__func__) +
@@ -65,8 +63,7 @@ void HttpQservSqlModule::executeImpl(qhttp::Request::Ptr const& req,
 }
 
 
-void HttpQservSqlModule::_execute(qhttp::Request::Ptr const& req,
-                                  qhttp::Response::Ptr const& resp) {
+void HttpQservSqlModule::_execute() {
     debug(__func__);
 
     auto const worker   = body().required<string>("worker");
@@ -93,7 +90,7 @@ void HttpQservSqlModule::_execute(qhttp::Request::Ptr const& req,
     result["result_set"] = request->responseData().toJson();
 
     bool const success = request->extendedState() == Request::SUCCESS ? 1 : 0;
-    sendData(resp, result, success);
+    sendData(result, success);
 }
 
 }}}  // namespace lsst::qserv::replica

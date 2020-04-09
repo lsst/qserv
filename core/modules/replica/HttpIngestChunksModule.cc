@@ -149,14 +149,12 @@ HttpIngestChunksModule::HttpIngestChunksModule(
 }
 
 
-void HttpIngestChunksModule::executeImpl(qhttp::Request::Ptr const& req,
-                                         qhttp::Response::Ptr const& resp,
-                                         string const& subModuleName) {
+void HttpIngestChunksModule::executeImpl(string const& subModuleName) {
 
     if (subModuleName == "ADD-CHUNK") {
-         _addChunk(req, resp);
+         _addChunk();
     } else if (subModuleName == "ADD-CHUNK-LIST") {
-         _addChunks(req, resp);
+         _addChunks();
     } else {
         throw invalid_argument(
                 context() + "::" + string(__func__) +
@@ -165,8 +163,7 @@ void HttpIngestChunksModule::executeImpl(qhttp::Request::Ptr const& req,
 }
 
 
-void HttpIngestChunksModule::_addChunk(qhttp::Request::Ptr const& req,
-                                       qhttp::Response::Ptr const& resp) {
+void HttpIngestChunksModule::_addChunk() {
     debug(__func__);
 
     TransactionId const transactionId = body().required<TransactionId>("transaction_id");
@@ -180,7 +177,7 @@ void HttpIngestChunksModule::_addChunk(qhttp::Request::Ptr const& req,
 
     auto const transactionInfo = databaseServices->transaction(transactionId);
     if (transactionInfo.state != TransactionInfo::STARTED) {
-        sendError(resp, __func__, "this transaction is already over");
+        sendError(__func__, "this transaction is already over");
         return;
     }
     auto const databaseInfo = config->databaseInfo(transactionInfo.database);
@@ -189,7 +186,7 @@ void HttpIngestChunksModule::_addChunk(qhttp::Request::Ptr const& req,
     ChunkNumberQservValidator const validator(databaseFamilyInfo.numStripes,
                                               databaseFamilyInfo.numSubStripes);
     if (not validator.valid(chunk)) {
-        sendError(resp, __func__, "this chunk number is not valid");
+        sendError(__func__, "this chunk number is not valid");
         return;
     }
 
@@ -214,7 +211,7 @@ void HttpIngestChunksModule::_addChunk(qhttp::Request::Ptr const& req,
     databaseServices->findReplicas(replicas, chunk, transactionInfo.database,
                                    enabledWorkersOnly, includeFileInfo);
     if (replicas.size() > 1) {
-        sendError(resp, __func__, "this chunk has too many replicas");
+        sendError(__func__, "this chunk has too many replicas");
         return;
     }
     if (replicas.size() == 1) {
@@ -264,7 +261,7 @@ void HttpIngestChunksModule::_addChunk(qhttp::Request::Ptr const& req,
 
     // The sanity check, just to make sure we've found a worker
     if (worker.empty()) {
-        sendError(resp, __func__, "no suitable worker found");
+        sendError(__func__, "no suitable worker found");
         return;
     }
     ControllerEvent event;
@@ -284,12 +281,11 @@ void HttpIngestChunksModule::_addChunk(qhttp::Request::Ptr const& req,
     result["location"]["host"]   = workerInfo.loaderHost;
     result["location"]["port"]   = workerInfo.loaderPort;
 
-    sendData(resp, result);
+    sendData(result);
 }
 
 
-void HttpIngestChunksModule::_addChunks(qhttp::Request::Ptr const& req,
-                                        qhttp::Response::Ptr const& resp) {
+void HttpIngestChunksModule::_addChunks() {
     debug(__func__);
 
     TransactionId const transactionId = body().required<TransactionId>("transaction_id");
@@ -303,7 +299,7 @@ void HttpIngestChunksModule::_addChunks(qhttp::Request::Ptr const& req,
 
     auto const transactionInfo = databaseServices->transaction(transactionId);
     if (transactionInfo.state != TransactionInfo::STARTED) {
-        sendError(resp, __func__, "this transaction is already over");
+        sendError(__func__, "this transaction is already over");
         return;
     }
     auto const databaseInfo = config->databaseInfo(transactionInfo.database);
@@ -315,7 +311,7 @@ void HttpIngestChunksModule::_addChunks(qhttp::Request::Ptr const& req,
                                               databaseFamilyInfo.numSubStripes);
     for (auto const chunk: chunks) {
         if (not validator.valid(chunk)) {
-            sendError(resp, __func__, "chunk " + to_string(chunk) + " is not valid");
+            sendError(__func__, "chunk " + to_string(chunk) + " is not valid");
             return;
         }
     }
@@ -358,7 +354,7 @@ void HttpIngestChunksModule::_addChunks(qhttp::Request::Ptr const& req,
         vector<ReplicaInfo> const& replicas = chunk2replicas[chunk];
 
         if (replicas.size() > 1) {
-            sendError(resp, __func__, "chunk " + to_string(chunk) + " has too many replicas");
+            sendError(__func__, "chunk " + to_string(chunk) + " has too many replicas");
             return;
         }
         if (replicas.size() == 1) {
@@ -415,7 +411,7 @@ void HttpIngestChunksModule::_addChunks(qhttp::Request::Ptr const& req,
 
         // The sanity check, just to make sure we've found a worker
         if (chunk2worker[chunk].empty()) {
-            sendError(resp, __func__, "no suitable worker found for chunk " + to_string(chunk));
+            sendError(__func__, "no suitable worker found for chunk " + to_string(chunk));
             return;
         }
     }
@@ -452,7 +448,7 @@ void HttpIngestChunksModule::_addChunks(qhttp::Request::Ptr const& req,
 
         result["location"].push_back(workerResult);
     }
-    sendData(resp, result);
+    sendData(result);
 }
 
 

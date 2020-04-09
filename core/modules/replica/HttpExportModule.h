@@ -67,20 +67,15 @@ protected:
      *
      * @throws std::invalid_argument for unknown values of parameter 'subModuleName'
      */
-    void executeImpl(qhttp::Request::Ptr const& req,
-                     qhttp::Response::Ptr const& resp,
-                     std::string const& subModuleName) final;
+    void executeImpl(std::string const& subModuleName) final;
 
 private:
     HttpExportModule(Controller::Ptr const& controller,
                      std::string const& taskName,
                      HttpProcessorConfig const& processorConfig);
 
-    /**
-     * Get service locations for table(s).
-     */
-    void _getTables(qhttp::Request::Ptr const& req,
-                    qhttp::Response::Ptr const& resp);
+    /// Get service locations for table(s).
+    void _getTables();
 };
     
 }}} // namespace lsst::qserv::replica
