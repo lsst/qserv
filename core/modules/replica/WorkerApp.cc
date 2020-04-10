@@ -124,7 +124,7 @@ int WorkerApp::runImpl() {
         ingestSvr->run();
     });
 
-    auto const exportSvr = ExportServer::create(serviceProvider(), _worker);
+    auto const exportSvr = ExportServer::create(serviceProvider(), _worker, _authKey);
     thread exportSvrThread([exportSvr]() {
         exportSvr->run();
     });

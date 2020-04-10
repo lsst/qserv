@@ -133,6 +133,10 @@ FileExportApp::FileExportApp(int argc, char* argv[])
         "command",
         {"FILE", "FILE-LIST"},
         _command
+    ).option(
+        "auth-key",
+        "An authorization key which should also be known to servers.",
+        _authKey
     ).flag(
         "verbose",
         "Print various stats upon a completion of the export.",
@@ -258,7 +262,9 @@ void FileExportApp::_export(FileExportSpec const& file) const {
         file.tableName,
         file.chunk,
         file.overlap,
-        file.outFileName
+        file.outFileName,
+        ExportClient::ColumnSeparator::COMMA,
+        _authKey
     );
     ptr->receive();
     uint64_t const finishedMs = PerformanceUtils::now();

@@ -82,6 +82,7 @@ public:
      *   where the content will be saved. Note, the previous content of the file
      *   will get overwritten.
      * @param columnSeparator a character which separates columns within each row
+     * @param authKey  an authorization key which should also be known to the server.
      * @throws ExportClientError for any problem occurred when establishing
      *   a connection or during the initial handshake with the server
      */
@@ -92,7 +93,8 @@ public:
                        unsigned int chunk,
                        bool isOverlap,
                        std::string const& outputFilePath,
-                       ColumnSeparator columnSeparator=COMMA);
+                       ColumnSeparator columnSeparator=COMMA,
+                       std::string const& authKey=std::string());
 
     ExportClient() = delete;
     ExportClient(ExportClient const&) = delete;
@@ -124,7 +126,8 @@ private:
                  unsigned int chunk,
                  bool isOverlap,
                  std::string const& outputFilePath,
-                 ColumnSeparator columnSeparator);
+                 ColumnSeparator columnSeparator,
+                 std::string const& authKey);
 
     /// @return a context string for the logger and exceptions
     std::string _context(std::string const& func) const {
@@ -233,6 +236,7 @@ private:
     bool            const _isOverlap;
     std::string     const _outputFilePath;
     ColumnSeparator const _columnSeparator;
+    std::string     const _authKey;
 
     // Buffer for data moved over the network. The initial buffer capacity
     // would be adjusted during the initial handshake with the server.

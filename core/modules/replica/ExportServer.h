@@ -59,10 +59,12 @@ public:
      * @param serviceProvider For configuration, etc. services
      * @workerName The name of a worker this service is acting upon (is needed
      *   for checking the consistency of the protocol)
+     * @param authKey an authorization key for the catalog ingest operation.
      * @return A pointer to the created object
      */
     static Ptr create(ServiceProvider::Ptr const& serviceProvider,
-                      std::string const& workerName);
+                      std::string const& workerName,
+                      std::string const& authKey);
 
     ExportServer() = delete;
     ExportServer(ExportServer const&) = delete;
@@ -83,7 +85,8 @@ public:
 
 private:
     ExportServer(ServiceProvider::Ptr const& serviceProvider,
-                 std::string const& workerName);
+                 std::string const& workerName,
+                 std::string const& authKey);
 
     /**
      * Begin (asynchronously) accepting connection requests.
@@ -105,6 +108,7 @@ private:
 
     ServiceProvider::Ptr const _serviceProvider;
     std::string          const _workerName;
+    std::string          const _authKey;
 
     /// Cached worker descriptor obtained from the configuration
     WorkerInfo const _workerInfo;

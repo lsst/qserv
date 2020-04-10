@@ -908,6 +908,9 @@ message ProtocolExportHandshakeRequest {
         TAB   = 1;
     }
     optional ColumnSeparator column_separator = 5 [default = COMMA];
+
+    /// An authorization key which should match the one known to a server
+    optional string auth_key = 6 [default = ""];
 }
 
 /// The response message is sent once by a server to a client to indicate

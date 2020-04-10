@@ -58,7 +58,8 @@ ExportClient::Ptr ExportClient::connect(
         unsigned int chunk,
         bool isOverlap,
         string const& outputFilePath,
-        ColumnSeparator columnSeparator) {
+        ColumnSeparator columnSeparator,
+        string const& authKey) {
     ExportClient::Ptr ptr(new ExportClient(
         workerHost,
         workerPort,
@@ -67,7 +68,8 @@ ExportClient::Ptr ExportClient::connect(
         chunk,
         isOverlap,
         outputFilePath,
-        columnSeparator
+        columnSeparator,
+        authKey
     ));
     ptr->_connectImpl();
     return ptr;
@@ -81,7 +83,8 @@ ExportClient::ExportClient(string const& workerHost,
                            unsigned int chunk,
                            bool isOverlap,
                            string const& outputFilePath,
-                           ColumnSeparator columnSeparator)
+                           ColumnSeparator columnSeparator,
+                           string const& authKey)
     :   _workerHost(workerHost),
         _workerPort(workerPort),
         _databaseName(databaseName),
@@ -90,6 +93,7 @@ ExportClient::ExportClient(string const& workerHost,
         _isOverlap(isOverlap),
         _outputFilePath(outputFilePath),
         _columnSeparator(columnSeparator),
+        _authKey(authKey),
         _bufferCapacity(defaultBufferCapacity),
         _bufferPtr(new ProtocolBuffer(defaultBufferCapacity)),
         _io_service(),
@@ -123,6 +127,7 @@ void ExportClient::receive() {
         ProtocolExportHandshakeRequest::COMMA :
         ProtocolExportHandshakeRequest::TAB
     );
+    handshakeRequest.set_auth_key(_authKey);
     _send(handshakeRequest, "handshake request send");
 
 
