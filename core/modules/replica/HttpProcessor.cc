@@ -293,7 +293,7 @@ void HttpProcessor::_initialize() {
         },
         {"GET", "/export/v1/tables/:database",
             [self](qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp) {
-                self->_exportModule->execute(req, resp, "TABLES");
+                self->_exportModule->execute(req, resp, "TABLES", HttpModule::AUTH_REQUIRED);
             }
         }
     });
