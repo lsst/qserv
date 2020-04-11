@@ -26,6 +26,7 @@
 #include <stdexcept>
 
 // Qserv headers
+#include "replica/ChunkedTable.h"
 #include "replica/Configuration.h"
 #include "replica/DatabaseServices.h"
 #include "replica/ReplicaInfo.h"
@@ -51,7 +52,8 @@ struct TableSpec {
 
     json toJson() const {
         json spec;
-        spec["tableName"]   = tableName;
+        spec["baseName"]    = tableName;
+        spec["fullName"]    = partitioned ? ChunkedTable(tableName, chunk, overlap).name() : tableName;
         spec["partitioned"] = partitioned ? 1 : 0;
         spec["chunk"]       = chunk;
         spec["overlap"]     = overlap ? 1 : 0;
