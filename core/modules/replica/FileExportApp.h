@@ -140,6 +140,9 @@ private:
     std::string _command;       /// 'FILE' or 'FILE-LIST' export scenarios
     std::string _fileListName;  /// The name of a file to read info for 'FILE-LIST' scenario
 
+    /// The column separator in the output files.
+    std::string _columnSeparatorStr = "COMMA";
+
     /// An authorization key which should also be known to servers
     std::string _authKey;
 

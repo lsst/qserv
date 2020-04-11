@@ -134,6 +134,10 @@ FileExportApp::FileExportApp(int argc, char* argv[])
         {"FILE", "FILE-LIST"},
         _command
     ).option(
+        "column-separator",
+        "The column separator in the output files. Allowed values: COMMA, TAB.",
+        _columnSeparatorStr
+    ).option(
         "auth-key",
         "An authorization key which should also be known to servers.",
         _authKey
@@ -254,6 +258,15 @@ void FileExportApp::_export(FileExportSpec const& file) const {
     // timer launched in a separate thread). A duration of the timeout could be
     // set via an optional parameter to the application.
 
+    ExportClient::ColumnSeparator columnSeparator;
+    if ("COMMA" == _columnSeparatorStr) {
+        columnSeparator = ExportClient::ColumnSeparator::COMMA;
+    } else if ("TAB" == _columnSeparatorStr) {
+        columnSeparator = ExportClient::ColumnSeparator::TAB;
+    } else {
+        throw invalid_argument(
+                context + "unsupported value of the column separator: '" + _columnSeparatorStr + "'");
+    }
     uint64_t const startedMs = PerformanceUtils::now();
     auto const ptr = ExportClient::connect(
         file.workerHost,
@@ -263,7 +276,7 @@ void FileExportApp::_export(FileExportSpec const& file) const {
         file.chunk,
         file.overlap,
         file.outFileName,
-        ExportClient::ColumnSeparator::COMMA,
+        columnSeparator,
         _authKey
     );
     ptr->receive();
