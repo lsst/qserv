@@ -394,12 +394,14 @@ BOOST_AUTO_TEST_CASE(ConfigurationTest) {
         BOOST_CHECK(tables.size() == 1);
         BOOST_CHECK(tables == vector<string>({"Table11"}));
         BOOST_CHECK(db1info.isPartitioned("Table11"));
+        BOOST_CHECK(db1info.isDirector("Table11"));
 
         tables = db1info.regularTables;
         sort(tables.begin(), tables.end());
         BOOST_CHECK(tables.size() == 1);
         BOOST_CHECK(tables == vector<string>({"MetaTable11"}));
         BOOST_CHECK(not db1info.isPartitioned("MetaTable11"));
+        BOOST_CHECK(not db1info.isDirector("MetaTable11"));
     });
     BOOST_REQUIRE_NO_THROW({
         vector<string> tables;
@@ -412,6 +414,8 @@ BOOST_AUTO_TEST_CASE(ConfigurationTest) {
         BOOST_CHECK(db2info.directorTableKey == "id2");
         BOOST_CHECK(db2info.chunkIdColName == "chunkId2");
         BOOST_CHECK(db2info.subChunkIdColName == "subChunkId2");
+        BOOST_CHECK(db2info.isDirector("Table21"));
+        BOOST_CHECK(not db2info.isDirector("Table22"));
 
         tables = db2info.partitionedTables;
         sort(tables.begin(), tables.end());
@@ -539,6 +543,7 @@ BOOST_AUTO_TEST_CASE(ConfigurationTest) {
     {
         DatabaseInfo info;
         BOOST_CHECK_THROW(info.isPartitioned("NonExistingTable"), invalid_argument);
+        BOOST_CHECK_THROW(info.isDirector("NonExistingTable"), invalid_argument);
     }
     {
         SqlColDef const emptyColdef;

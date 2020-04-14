@@ -976,14 +976,21 @@ void HttpIngestModule::_publishDatabaseInMaster(DatabaseInfo const& databaseInfo
         if (not cssAccess->containsTable(databaseInfo.name, table)) {
 
             bool const isPartitioned = true;
-            bool const hasSubChunks = true;
+
+            // These parameters need to be set correctly for the 'director' and dependent
+            // tables to avoid confusing Qserv query analyzer. Also note, that the 'overlap'
+            // is set to be the same for all 'dirctor' tables of the database family.
+            bool const isDirector = databaseInfo.isDirector(table);
+            double const overlap = isDirector ? databaseFamilyInfo.overlap : 0;
+            bool const hasSubChunks = isDirector;
+
             css::PartTableParams const partParams(
                 databaseInfo.name,
                 databaseInfo.directorTable,
                 databaseInfo.directorTableKey,
                 databaseInfo.latitudeColName.at(table),
                 databaseInfo.longitudeColName.at(table),
-                databaseFamilyInfo.overlap,     /* same as for other tables of the database family*/
+                overlap,
                 isPartitioned,
                 hasSubChunks
             );

@@ -145,6 +145,11 @@ public:
     /// @throw std::invalid_argument if no such table is known
     bool isPartitioned(std::string const& table) const;
 
+    /// @param The name of a table to be located and inspected
+    /// @return 'true' if the table was found and it's the 'partitioned' and the 'director' table
+    /// @throw std::invalid_argument if no such table is known
+    bool isDirector(std::string const& table) const;
+
     /// @return The table schema in format which is suitable for CSS.
     /// @throws std::out_of_range If the table is unknown.
     std::string schema4css(std::string const& table) const;

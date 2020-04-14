@@ -86,6 +86,14 @@ bool DatabaseInfo::isPartitioned(string const& table) const {
 }
 
 
+bool DatabaseInfo::isDirector(string const& table) const {
+    // This test will also ensure the table is known. Otherwise, an exception
+    // will be thrown.
+    if (not isPartitioned(table)) return false;
+    return table == directorTable;
+}
+
+
 json DatabaseInfo::toJson() const {
 
     json infoJson;
