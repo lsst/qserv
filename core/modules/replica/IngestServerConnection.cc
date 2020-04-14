@@ -427,40 +427,52 @@ void IngestServerConnection::_loadDataIntoTable() {
 
         if (_isPartitioned) {
             
-            // Chunked tables are created from the prototype table which is expected
-            // to exist in the database before attempting data loading.
+            // Note, that the algorithm will create chunked tables for _ALL_ partitioned
+            // tables (not just for the current one) to ensure they have representations
+            // in all chunks touched by the ingest workflows. Missing representations would
+            // case Qserv to fail when processing queries involving these tables.
 
-            string const sqlProtoTable = sqlDatabase + "." + conn->sqlId(_table);
-            string const sqlTable = sqlDatabase + "." + conn->sqlId(_table + "_" + to_string(_chunk));
-            string const sqlFullOverlapTable  =
-                sqlDatabase + "." + conn->sqlId(_table + "FullOverlap_" + to_string(_chunk));
+            for (auto&& table: _databaseInfo.partitionedTables) {
 
-            string const sqlDummyChunkTable =
-                sqlDatabase + "." + conn->sqlId(_table + "_" + to_string(lsst::qserv::DUMMY_CHUNK));
+                // Chunked tables are created from the prototype table which is expected
+                // to exist in the database before attempting data loading.
 
-            string const sqlOverlapDummyChunkTable =
-                sqlDatabase + "." + conn->sqlId(_table + "FullOverlap_" + to_string(lsst::qserv::DUMMY_CHUNK));
+                string const sqlProtoTable = sqlDatabase + "." + conn->sqlId(table);
+                string const sqlTable = sqlDatabase + "." + conn->sqlId(table + "_" + to_string(_chunk));
+                string const sqlFullOverlapTable  =
+                    sqlDatabase + "." + conn->sqlId(table + "FullOverlap_" + to_string(_chunk));
 
-            vector<string> const tablesToBeCreated = {
-                sqlTable,
-                sqlFullOverlapTable,
-                sqlDummyChunkTable,
-                sqlOverlapDummyChunkTable
-            };
-            for (auto&& table: tablesToBeCreated) {
-                statements.push_back(
-                    "CREATE TABLE IF NOT EXISTS " + table + " LIKE " + sqlProtoTable
-                );
-                statements.push_back(
-                    "ALTER TABLE " + table + " ADD PARTITION IF NOT EXISTS (PARTITION " + sqlPartition +
-                        " VALUES IN (" + to_string(_transactionId) + "))"
-                );
+                string const sqlDummyChunkTable =
+                    sqlDatabase + "." + conn->sqlId(table + "_" + to_string(lsst::qserv::DUMMY_CHUNK));
+
+                string const sqlOverlapDummyChunkTable =
+                    sqlDatabase + "." + conn->sqlId(table + "FullOverlap_" + to_string(lsst::qserv::DUMMY_CHUNK));
+
+                vector<string> const tablesToBeCreated = {
+                    sqlTable,
+                    sqlFullOverlapTable,
+                    sqlDummyChunkTable,
+                    sqlOverlapDummyChunkTable
+                };
+                for (auto&& table: tablesToBeCreated) {
+                    statements.push_back(
+                        "CREATE TABLE IF NOT EXISTS " + table + " LIKE " + sqlProtoTable
+                    );
+                    statements.push_back(
+                        "ALTER TABLE " + table + " ADD PARTITION IF NOT EXISTS (PARTITION " + sqlPartition +
+                            " VALUES IN (" + to_string(_transactionId) + "))"
+                    );
+                }
+
+                // An additional step for the current request's table
+                if (table == _table) {
+                    statements.push_back(
+                        "LOAD DATA INFILE " + conn->sqlValue(_fileName) +
+                            " INTO TABLE " + (_isOverlap ? sqlFullOverlapTable : sqlTable) +
+                            " FIELDS TERMINATED BY " + conn->sqlValue(string() + _columnSeparator)
+                    );
+                }
             }
-            statements.push_back(
-                "LOAD DATA INFILE " + conn->sqlValue(_fileName) +
-                    " INTO TABLE " + (_isOverlap ? sqlFullOverlapTable : sqlTable) +
-                    " FIELDS TERMINATED BY " + conn->sqlValue(string() + _columnSeparator)
-            );
         } else {
 
             // Regular tables are expected to exist in the database before
@@ -481,12 +493,15 @@ void IngestServerConnection::_loadDataIntoTable() {
         for (auto&& statement: statements) {
             LOGS(_log, LOG_LVL_DEBUG, context << __func__ << "  statement: " << statement);
         }
+        // Note that each statement gets executed in its own transaction to eliminate
+        // a probability of deadlocking on the DML operations creating tables.
+        // A failure of an individual query is still a failure of the whole request.
         conn->execute([&statements](decltype(conn) const& conn_) {
-            conn_->begin();
             for (auto&& statement: statements) {
+                conn_->begin();
                 conn_->execute(statement);
+                conn_->commit();
             }
-            conn_->commit();
         });
     } catch (exception const& ex) {
         LOGS(_log, LOG_LVL_ERROR, context << __func__ << "  exception: " << ex.what());
