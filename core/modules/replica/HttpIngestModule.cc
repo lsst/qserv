@@ -240,13 +240,28 @@ void HttpIngestModule::_beginTransaction() {
             sendError(__func__, "the database is already published");
             return;
         }
-        transaction = databaseServices->beginTransaction(databaseInfo.name);
+        if (databaseInfo.directorTable.empty()) {
+            sendError(__func__, "director table has not been configured in database '" +
+                    databaseInfo.name + "'");
+            return;
+        }
 
-        _addPartitionToSecondaryIndex(databaseInfo, transaction.id);
-
+        // Get chunks stats to be reported with the request's result object
         bool const allWorkers = true;
         vector<unsigned int> chunks;
         databaseServices->findDatabaseChunks(chunks, databaseInfo.name, allWorkers);
+
+        // Any problems during the secondary index creation will result in
+        // automatically aborting the transaction. Otherwise ingest workflows
+        // may be screwed/confused by the presence of the "invisible" transaction.
+        transaction = databaseServices->beginTransaction(databaseInfo.name);
+        try {
+            _addPartitionToSecondaryIndex(databaseInfo, transaction.id);
+        } catch (...) {
+            bool const abort = true;
+            transaction = databaseServices->endTransaction(transaction.id, abort);
+            throw;
+        }
 
         json result;
         result["databases"][transaction.database]["info"] = config->databaseInfo(databaseInfo.name).toJson();
