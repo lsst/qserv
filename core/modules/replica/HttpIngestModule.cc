@@ -503,6 +503,14 @@ void HttpIngestModule::_publishDatabase() {
         }
     }
 
+    // Refuse the operation if no chunks were registered
+    vector<unsigned int> chunks;
+    databaseServices->findDatabaseChunks(chunks, databaseInfo.name, allWorkers);
+    if (chunks.empty()) {
+        sendError(__func__, "the database doesn't have any chunks");
+        return;
+    }
+
     // ATTENTION: this operation may take a while if the table has
     // a large number of entries
     if (consolidateSecondayIndex) _consolidateSecondaryIndex(databaseInfo);
