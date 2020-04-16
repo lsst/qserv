@@ -207,15 +207,19 @@ void HttpIngestModule::_getTransaction() {
 void HttpIngestModule::_beginTransaction() {
     debug(__func__);
 
-    TransactionId id = 0;
-    string database;
+    // Keep the transaction object in this scope to allow logging a status
+    // of the operation regardless if it succeeds or fails. The name of a database
+    // encoded in the object will get initialized from the REST request's
+    // parameter. And the rest will be set up after attempting to actually start
+    // the transaction.
+    TransactionInfo transaction;
 
     auto const logBeginTransaction = [&](string const& status, string const& msg=string()) {
         ControllerEvent event;
         event.operation = "BEGIN TRANSACTION";
         event.status = status;
-        event.kvInfo.emplace_back("id", to_string(id));
-        event.kvInfo.emplace_back("database", database);
+        event.kvInfo.emplace_back("id", to_string(transaction.id));
+        event.kvInfo.emplace_back("database", transaction.database);
         if (not msg.empty()) event.kvInfo.emplace_back("error", msg);
         logEvent(event);
     };
@@ -227,16 +231,16 @@ void HttpIngestModule::_beginTransaction() {
         auto const config = controller()->serviceProvider()->config();
         auto const databaseServices = controller()->serviceProvider()->databaseServices();
 
-        auto const database = body().required<string>("database");
+        transaction.database = body().required<string>("database");
 
-        debug(__func__, "database=" + database);
+        debug(__func__, "database=" + transaction.database);
 
-        auto const databaseInfo = config->databaseInfo(database);
+        auto const databaseInfo = config->databaseInfo(transaction.database);
         if (databaseInfo.isPublished) {
             sendError(__func__, "the database is already published");
             return;
         }
-        auto const transaction = databaseServices->beginTransaction(databaseInfo.name);
+        transaction = databaseServices->beginTransaction(databaseInfo.name);
 
         _addPartitionToSecondaryIndex(databaseInfo, transaction.id);
 
@@ -816,8 +820,6 @@ bool HttpIngestModule::_removeMySQLPartitions(DatabaseInfo const& databaseInfo,
                                               bool allWorkers) const {
     debug(__func__);
 
-    auto const config = controller()->serviceProvider()->config();
-
     // Ignore tables which may have already been processed at a previous attempt
     // of running this algorithm.
     bool const ignoreNonPartitioned = true;
@@ -1203,11 +1205,17 @@ void HttpIngestModule::_removePartitionFromSecondaryIndex(DatabaseInfo const& da
 
     debug(__func__, query);
 
-    h.conn->execute([&query](decltype(h.conn) conn) {
-        conn->begin();
-        conn->execute(query);
-        conn->commit();
-    });
+    // Not having the specifid partition is still fine as it couldn't be properly
+    // created after the transaction was created.
+    try {
+        h.conn->execute([&query](decltype(h.conn) conn) {
+            conn->begin();
+            conn->execute(query);
+            conn->commit();
+        });
+    } catch (database::mysql::DropPartitionNonExistent const&) {
+        ;
+    }
 }
 
 
