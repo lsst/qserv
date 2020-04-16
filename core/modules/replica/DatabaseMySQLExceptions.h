@@ -182,6 +182,22 @@ public:
 
 
 /**
+ * Instances of this exception class are thrown on queries attempting to drop
+ * a non-existing partition from the table's definition:
+ * 
+ *   @code
+ *   ALTER TABLE <database>.<table> DROP PARTITION <partition>;
+ *   @code
+ * 
+ * This error corresponds to MySQL error: ER_DROP_PARTITION_NON_EXISTENT
+ */
+class DropPartitionNonExistent: public Error {
+public:
+    using Error::Error;
+};
+
+
+/**
  * Instances of this exception class are thrown on failed attempts
  * to interpret the contents of the result set.
  */
