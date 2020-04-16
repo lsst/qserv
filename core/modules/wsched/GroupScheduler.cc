@@ -119,7 +119,8 @@ void GroupScheduler::queCmd(util::Command::Ptr const& cmd) {
         _queue.push_back(group);
     }
     auto uqCount = _incrCountForUserQuery(t->getQueryId());
-    LOGS(_log, LOG_LVL_WARN, getName() << " queCmd uqCount=" << uqCount);
+    LOGS(_log, LOG_LVL_INFO, getName() << " queCmd uqCount=" << uqCount
+        << " rating=" << t->getScanInfo().scanRating << " interactive=" << t->getScanInteractive());
     util::CommandQueue::_cv.notify_one();
 }
 
@@ -139,6 +140,8 @@ util::Command::Ptr GroupScheduler::getCmd(bool wait)  {
     ++_inFlight; // Considered inFlight as soon as it's off the queue.
     _decrCountForUserQuery(task->getQueryId());
     _incrChunkTaskCount(task->getChunkId());
+    LOGS(_log, LOG_LVL_DEBUG, "GroupSched tskStart task=" << task->getIdStr()
+                           << " chunk=" << task->getChunkId());
     return task;
 }
 
@@ -147,6 +150,7 @@ void GroupScheduler::commandFinish(util::Command::Ptr const& cmd) {
     --_inFlight;
     auto t = std::dynamic_pointer_cast<wbase::Task>(cmd);
     if (t != nullptr) _decrChunkTaskCount(t->getChunkId());
+    LOGS(_log, LOG_LVL_DEBUG, "GroupSched tskEnd task=" << t->getIdStr() << " chunk=" << t->getChunkId());
 }
 
 

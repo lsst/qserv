@@ -441,8 +441,7 @@ void QueryRequest::_processData(JobQuery::Ptr const& jq, int blen, bool last) {
         LOGS(_log, LOG_LVL_DEBUG, "ProcessResponse data flush failed");
         ResponseHandler::Error err = jq->getDescription()->respHandler()->getError();
         jq->getStatus()->updateInfo(_jobIdStr, JobStatus::MERGE_ERROR, err.getCode(), err.getMsg());
-        // @todo DM-2378 Take a closer look at what causes this error and take
-        // appropriate action. There could be cases where this is recoverable.
+        // This error can be caused by errors in the SQL
         _retried.store(true); // Do not retry
         _errorFinish(true);
     }

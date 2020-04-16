@@ -120,6 +120,7 @@ void ScanScheduler::commandFinish(util::Command::Ptr const& cmd) {
 
         _decrChunkTaskCount(t->getChunkId());
     }
+    LOGS(_log, LOG_LVL_DEBUG, "tskEnd chunk=" << t->getChunkId());
     // Whenever a Task finishes, sleeping threads need to check if resources
     // are available to run new Tasks.
     _cv.notify_one();
@@ -206,7 +207,9 @@ util::Command::Ptr ScanScheduler::getCmd(bool wait)  {
     auto task = _taskQueue->getTask(useFlexibleLock);
     if (task != nullptr) {
         ++_inFlight; // in flight as soon as it is off the queue.
-        LOGS(_log, LOG_LVL_DEBUG, "getCmd " << getName() << " inflight=" << _inFlight);
+        QSERV_LOGCONTEXT_QUERY_JOB(task->getQueryId(), task->getJobId());
+        LOGS(_log, LOG_LVL_DEBUG, "getCmd " << getName() << " tskStart chunk=" << task->getChunkId()
+                               << " inflight=" << _inFlight);
         _infoChanged = true;
         _decrCountForUserQuery(task->getQueryId());
         _incrChunkTaskCount(task->getChunkId());
@@ -224,6 +227,8 @@ void ScanScheduler::queCmd(util::Command::Ptr const& cmd) {
         return;
     }
     QSERV_LOGCONTEXT_QUERY_JOB(t->getQueryId(), t->getJobId());
+    LOGS(_log, LOG_LVL_INFO, getName()
+        << " queCmd rating=" << t->getScanInfo().scanRating << " interactive=" << t->getScanInteractive());
     {
         std::lock_guard<std::mutex> lock(util::CommandQueue::_mx);
         auto uqCount = _incrCountForUserQuery(t->getQueryId());

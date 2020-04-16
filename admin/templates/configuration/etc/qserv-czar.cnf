@@ -29,7 +29,7 @@ maxtablesize_mb = 5100
 # Database engine used for aggreagting results. 
 # Values:   myisam, innodb, memory
 # myisam is serial, innodb and memory are parallel.
-# memory does not support blob or text fields
+# memory does not support blob or text fields and fails on larger queries.
 engine = innodb 
 
 # The maximum number of database connections to use for

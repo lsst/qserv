@@ -308,10 +308,8 @@ util::TimerHistogram transmitHisto("transmit Hist", {0.1, 1, 5, 10, 20, 40});
 /// If 'last' is true, this is the last message in the result set
 /// and flags are set accordingly.
 void QueryRunner::_transmit(bool last, unsigned int rowCount, size_t tSize) {
-    LOGS(_log, LOG_LVL_INFO, "_transmitMgr count=" << _transmitMgr->getTransmitCount()
-         << " already=" << _transmitMgr->getAlreadyTransCount()
-         << " total=" << _transmitMgr->getTotalCount()
-         << "_transmit last=" << last << " rowCount=" << rowCount << " tSize=" << tSize);
+    LOGS(_log, LOG_LVL_INFO, "_transmitMgr=" << *_transmitMgr
+         << " last=" << last << " rowCount=" << rowCount << " tSize=" << tSize);
     wcontrol::TransmitLock transmitLock(*_transmitMgr, _task->getScanInteractive(), _largeResult);
     std::string resultString;
     _result->set_queryid(_task->getQueryId());
