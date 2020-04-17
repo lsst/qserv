@@ -121,6 +121,7 @@ string ConfigurationFile::dump2init(ConfigurationIFace::Ptr const& config) {
         << "num_fs_processing_threads  = " << config->fsNumProcessingThreads() << "\n"
         << "fs_buf_size_bytes          = " << config->workerFsBufferSizeBytes() << "\n"
         << "num_loader_processing_threads = " << config->loaderNumProcessingThreads() << "\n"
+        << "num_exporter_processing_threads = " << config->exporterNumProcessingThreads() << "\n"
         << "svc_host                   = " << defaultWorkerSvcHost << "\n"
         << "svc_port                   = " << defaultWorkerSvcPort << "\n"
         << "fs_host                    = " << defaultWorkerFsHost << "\n"
@@ -132,6 +133,9 @@ string ConfigurationFile::dump2init(ConfigurationIFace::Ptr const& config) {
         << "loader_host                = " << defaultWorkerLoaderHost << "\n"
         << "loader_port                = " << defaultWorkerLoaderPort << "\n"
         << "loader_tmp_dir             = " << defaultWorkerLoaderTmpDir << "\n"
+        << "exporter_host              = " << defaultWorkerExporterHost << "\n"
+        << "exporter_port              = " << defaultWorkerExporterPort << "\n"
+        << "exporter_tmp_dir           = " << defaultWorkerExporterTmpDir << "\n"
         << "\n";
 
     for (auto&& worker: config->allWorkers()) {
@@ -151,6 +155,9 @@ string ConfigurationFile::dump2init(ConfigurationIFace::Ptr const& config) {
             << "loader_host    = " << info.loaderHost << "\n"
             << "loader_port    = " << info.loaderPort << "\n"
             << "loader_tmp_dir = " << info.loaderTmpDir << "\n"
+            << "exporter_host    = " << info.exporterHost << "\n"
+            << "exporter_port    = " << info.exporterPort << "\n"
+            << "exporter_tmp_dir = " << info.exporterTmpDir << "\n"
             << "\n";
     }
     for (auto&& family: config->databaseFamilies()) {

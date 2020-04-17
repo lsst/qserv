@@ -62,20 +62,15 @@ protected:
      *
      * @throws std::invalid_argument for unknown values of parameter 'subModuleName'
      */
-    void executeImpl(qhttp::Request::Ptr const& req,
-                     qhttp::Response::Ptr const& resp,
-                     std::string const& subModuleName) final;
+    void executeImpl(std::string const& subModuleName) final;
 
 private:
     HttpJobsModule(Controller::Ptr const& controller,
                    std::string const& taskName,
                    HttpProcessorConfig const& processorConfig);
 
-    void _jobs(qhttp::Request::Ptr const& req,
-               qhttp::Response::Ptr const& resp);
-
-    void _oneJob(qhttp::Request::Ptr const& req,
-                 qhttp::Response::Ptr const& resp);
+    void _jobs();
+    void _oneJob();
 };
     
 }}} // namespace lsst::qserv::replica

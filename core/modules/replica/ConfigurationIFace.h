@@ -89,6 +89,13 @@ public:
                                 /// by the service. The folder must be write-enabled for a user
                                 /// under which the service will be run.
 
+    std::string exporterHost;       /// The host name (or IP address) of the data exporting service
+    uint16_t    exporterPort = 0;   /// The port number of the data exporting service
+
+    std::string exporterTmpDir;     /// An absolute path to the temporary directory which would be used
+                                    /// by the service. The folder must be write-enabled for a user
+                                    /// under which the service will be run.
+
     /// @return JSON representation of the object
     nlohmann::json toJson() const;
 };
@@ -132,6 +139,11 @@ public:
 
     std::map<std::string,                   // table name
              std::string> longitudeColName; // longitude (right ascension) column name
+
+    /// @param The name of a table to be located and inspected
+    /// @return 'true' if the table was found and it's 'partitioned'
+    /// @throw std::invalid_argument if no such table is known
+    bool isPartitioned(std::string const& table) const;
 
     /// @return The table schema in format which is suitable for CSS.
     /// @throws std::out_of_range If the table is unknown.
@@ -817,6 +829,60 @@ public:
                                              std::string const& tmpDir,
                                              bool updatePersistentState=true) = 0;
 
+    /**
+     * Change the host name of the worker's Data Exporting service.
+     *
+     * @note This operation may throw implementation-specific exceptions
+     *   which are not covered by this technology-neutral interface.
+     *
+     * @param name The name of a worker affected by the operation.
+     * @param host The name of the worker data exporting service's host.
+     * @param updatePersistentState The flag which if set to 'true' will result
+     *   in propagating the change to the persistent store.
+     * @return An updated worker descriptor.
+     * @throw std::invalid_argument If the specified worker was not found in
+     *   the configuration.
+     */
+    virtual WorkerInfo setWorkerExporterHost(std::string const& name,
+                                             std::string const& host,
+                                             bool updatePersistentState=true) = 0;
+
+    /**
+     * Change the port number of the worker's Data Exporting service.
+     *
+     * @note This operation may throw implementation-specific exceptions
+     *   which are not covered by this technology-neutral interface.
+     *
+     * @param name The name of a worker affected by the operation
+     * @param port The number of the worker data exporting service's port.
+     * @param updatePersistentState The flag which if set to 'true' will result
+     *   in propagating the change to the persistent store.
+     * @return An updated worker descriptor.
+     * @throw std::invalid_argument If the specified worker was not found in
+     *   the configuration.
+     */
+    virtual WorkerInfo setWorkerExporterPort(std::string const& name,
+                                             uint16_t port,
+                                             bool updatePersistentState=true) = 0;
+
+    /**
+     * Change the temporary directory of the worker's Data Exporting service.
+     *
+     * @note This operation may throw implementation-specific exceptions
+     *   which are not covered by this technology-neutral interface.
+     *
+     * @param name The name of a worker affected by the operation.
+     * @param tmpDir The new file system path.
+     * @param updatePersistentState The flag which if set to 'true' will result
+     *   in propagating the change to the persistent store.
+     * @return An updated worker descriptor.
+     * @throw std::invalid_argument If the specified worker was not found in
+     *   the configuration.
+     */
+    virtual WorkerInfo setWorkerExporterTmpDir(std::string const& name,
+                                               std::string const& tmpDir,
+                                               bool updatePersistentState=true) = 0;
+
     /// @return The name of the default technology for implementing requests.
     virtual std::string workerTechnology() const = 0;
 
@@ -861,6 +927,15 @@ public:
     ///   in propagating the change to the persistent store.
     virtual void setLoaderNumProcessingThreads(size_t val,
                                                bool updatePersistentState=true) = 0;
+
+    /// @return The number of request processing threads in each worker's Data Exporting service.
+    virtual size_t exporterNumProcessingThreads() const = 0;
+
+    /// @param val The new value of the parameter.
+    /// @param updatePersistentState The flag which if set to 'true' will result
+    ///   in propagating the change to the persistent store.
+    virtual void setExporterNumProcessingThreads(size_t val,
+                                                 bool updatePersistentState=true) = 0;
 
     /**
      * Serialize the configuration parameters into a string.

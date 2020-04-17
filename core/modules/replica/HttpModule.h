@@ -25,6 +25,7 @@
 #include <memory>
 #include <stdexcept>
 #include <string>
+#include <unordered_map>
 
 // Third party headers
 #include "nlohmann/json.hpp"
@@ -33,6 +34,8 @@
 #include "qhttp/Server.h"
 #include "replica/EventLogger.h"
 #include "replica/HttpProcessorConfig.h"
+#include "replica/HttpRequestBody.h"
+#include "replica/HttpRequestQuery.h"
 
 // This header declarations
 namespace lsst {
@@ -104,6 +107,14 @@ protected:
 
     std::string context() const;
 
+    qhttp::Request::Ptr const& req() const { return _req; }
+    qhttp::Response::Ptr const& resp() const { return _resp; }
+
+    std::unordered_map<std::string, std::string> const& params() const { return _params; }
+
+    HttpRequestQuery const& query() const { return _query; }
+    HttpRequestBody const& body() const { return _body; }
+
     // Message loggers for the corresponding log levels
 
     void info(std::string const& msg) const;
@@ -123,8 +134,7 @@ protected:
      * @param func the name of a context from which the operation was initiated
      * @param errorMsg error condition to be reported
      */
-    void sendError(qhttp::Response::Ptr const& resp,
-                   std::string const& func,
+    void sendError(std::string const& func,
                    std::string const& errorMsg) const;
 
     /**
@@ -138,8 +148,7 @@ protected:
      *                a value of the flag. The result object may provide more specific
      *                info on a reason of a failure (if not success)
      */
-    void sendData(qhttp::Response::Ptr const& resp,
-                  nlohmann::json& result,
+    void sendData(nlohmann::json& result,
                   bool success=true);
 
     /**
@@ -148,9 +157,7 @@ protected:
      * @note all exceptions thrown by the implementations will be intercepted and
      * reported as errors to callers.
      */
-    virtual void executeImpl(qhttp::Request::Ptr const& req,
-                             qhttp::Response::Ptr const& resp,
-                             std::string const& subModuleName) = 0 ;
+    virtual void executeImpl(std::string const& subModuleName) = 0 ;
 
 private:
     /**
@@ -162,12 +169,28 @@ private:
      *
      * @throw AuthError  This exception is thrown if the authorization requirements weren't met.
      */
-    void _enforceAuthorization(qhttp::Request::Ptr const& req) const;
+    void _enforceAuthorization() const;
 
     // Input parameters
 
     HttpProcessorConfig const _processorConfig;
 
+    // Pointers to the request and response are set when a module is called for execution.
+
+    qhttp::Request::Ptr _req;
+    qhttp::Response::Ptr _resp;
+
+    /// Parameters of the RST service. The dictionary gets initialized when a module is called
+    /// for execution.
+    std::unordered_map<std::string, std::string> _params;
+
+    /// The parser for parameters passed into the Web services via the optional
+    /// query part of a URL. The object gets initialized when a module is called
+    /// for execution.
+    HttpRequestQuery _query;
+
+    /// The body of a request is initialized when a module is called for execution.
+    HttpRequestBody _body;
 };
     
 }}} // namespace lsst::qserv::replica

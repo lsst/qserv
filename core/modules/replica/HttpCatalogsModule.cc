@@ -58,9 +58,7 @@ HttpCatalogsModule::HttpCatalogsModule(Controller::Ptr const& controller,
 }
 
 
-void HttpCatalogsModule::executeImpl(qhttp::Request::Ptr const& req,
-                                     qhttp::Response::Ptr const& resp,
-                                     string const& subModuleName) {
+void HttpCatalogsModule::executeImpl(string const& subModuleName) {
 
     debug(__func__);
 
@@ -71,7 +69,7 @@ void HttpCatalogsModule::executeImpl(qhttp::Request::Ptr const& req,
 
         // Send what's available so far before evaluating the age of the cache
         // to see if it needs to be upgraded in the background.
-        sendData(resp, _catalogsReport);
+        sendData(_catalogsReport);
 
         uint64_t lastReportAgeMs = PerformanceUtils::now() - _catalogsReportTimeMs;
         if (lastReportAgeMs < 60 * 60 * 1000) return;
@@ -84,7 +82,7 @@ void HttpCatalogsModule::executeImpl(qhttp::Request::Ptr const& req,
         for (auto&& database: controller()->serviceProvider()->config()->databases()) {
             result["databases"][database] = _databaseStats(database, dummyReport);
         }
-        sendData(resp, result);
+        sendData(result);
     }
 
     // Otherwise, get the fresh snapshot of the replica distributions
@@ -99,7 +97,7 @@ void HttpCatalogsModule::executeImpl(qhttp::Request::Ptr const& req,
     _catalogsReport = result;
     _catalogsReportTimeMs = PerformanceUtils::now();
 
-    sendData(resp, _catalogsReport);
+    sendData(_catalogsReport);
 }
 
 

@@ -27,7 +27,6 @@
 
 // Qserv headers
 #include "replica/DatabaseServices.h"
-#include "replica/HttpRequestQuery.h"
 #include "replica/ServiceProvider.h"
 
 using namespace std;
@@ -53,14 +52,12 @@ HttpRequestsModule::HttpRequestsModule(Controller::Ptr const& controller,
 }
 
 
-void HttpRequestsModule::executeImpl(qhttp::Request::Ptr const& req,
-                                     qhttp::Response::Ptr const& resp,
-                                     string const& subModuleName) {
+void HttpRequestsModule::executeImpl(string const& subModuleName) {
 
     if (subModuleName.empty()) {
-        _requests(req, resp);
+        _requests();
     } else if (subModuleName == "SELECT-ONE-BY-ID") {
-        _oneRequest(req, resp);
+        _oneRequest();
     } else {
         throw invalid_argument(
                 context() + "::" + string(__func__) +
@@ -69,15 +66,13 @@ void HttpRequestsModule::executeImpl(qhttp::Request::Ptr const& req,
 }
 
 
-void HttpRequestsModule::_requests(qhttp::Request::Ptr const& req,
-                                   qhttp::Response::Ptr const& resp) {
+void HttpRequestsModule::_requests() {
     debug(__func__);
 
-    HttpRequestQuery const query(req->query);
-    string   const jobId         = query.optionalString("job_id");
-    uint64_t const fromTimeStamp = query.optionalUInt64("from");
-    uint64_t const toTimeStamp   = query.optionalUInt64("to", numeric_limits<uint64_t>::max());
-    size_t   const maxEntries    = query.optionalUInt64("max_entries");
+    string   const jobId         = query().optionalString("job_id");
+    uint64_t const fromTimeStamp = query().optionalUInt64("from");
+    uint64_t const toTimeStamp   = query().optionalUInt64("to", numeric_limits<uint64_t>::max());
+    size_t   const maxEntries    = query().optionalUInt64("max_entries");
 
     debug(__func__, "job_id="      +           jobId);
     debug(__func__, "from="        + to_string(fromTimeStamp));
@@ -100,23 +95,21 @@ void HttpRequestsModule::_requests(qhttp::Request::Ptr const& req,
     json result;
     result["requests"] = requestsJson;
 
-    sendData(resp, result);
+    sendData(result);
 }
 
 
-void HttpRequestsModule::_oneRequest(qhttp::Request::Ptr const& req,
-                                     qhttp::Response::Ptr const& resp) {
+void HttpRequestsModule::_oneRequest() {
     debug(__func__);
 
-    auto const id = req->params.at("id");
-
+    auto const id = params().at("id");
     try {
         json result;
         result["request"] = controller()->serviceProvider()->databaseServices()->request(id).toJson();
-        sendData(resp, result);
+        sendData(result);
 
     } catch (DatabaseServicesNotFound const& ex) {
-        sendError(resp, __func__, "no such request found");
+        sendError(__func__, "no such request found");
     }
 }
 

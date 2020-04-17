@@ -34,10 +34,6 @@ namespace replica {
  * Class HttpRequestQuery implements a parser for parameters passed into
  * the Web services via the optional query part of a URL.
  *
- * @note this class implements a "view" onto an input collection of parameters.
- * This requires a guarantee that the lifespan of the input collection was
- * the same or longer than the one of the view.
- * 
  * There are two kinds of the parameter extraction methods in this class:
  *
  * "required<type>"
@@ -54,14 +50,11 @@ namespace replica {
 class HttpRequestQuery {
 public:
 
-    /**
-     * @param query  a read-only view onto a query
-     */
     explicit HttpRequestQuery(std::unordered_map<std::string,std::string> const& query);
 
-    HttpRequestQuery() = delete;
-    HttpRequestQuery(HttpRequestQuery const&) = delete;
-    HttpRequestQuery& operator=(HttpRequestQuery const&) = delete;
+    HttpRequestQuery() = default;
+    HttpRequestQuery(HttpRequestQuery const&) = default;
+    HttpRequestQuery& operator=(HttpRequestQuery const&) = default;
 
     ~HttpRequestQuery() = default;
 
@@ -92,9 +85,8 @@ public:
 
 private:
 
-    /// The input map of parameters is stored as a view for the efficiency
-    /// reasons.
-    std::unordered_map<std::string,std::string> const& _query;
+    /// The input map of parameters
+    std::unordered_map<std::string,std::string> _query;
 };
 
 }}} // namespace lsst::qserv::replica

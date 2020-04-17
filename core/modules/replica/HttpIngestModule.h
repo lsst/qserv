@@ -83,111 +83,80 @@ protected:
      *
      * @throws std::invalid_argument for unknown values of parameter 'subModuleName'
      */
-    void executeImpl(qhttp::Request::Ptr const& req,
-                     qhttp::Response::Ptr const& resp,
-                     std::string const& subModuleName) final;
+    void executeImpl(std::string const& subModuleName) final;
 
 private:
     HttpIngestModule(Controller::Ptr const& controller,
                      std::string const& taskName,
                      HttpProcessorConfig const& processorConfig);
 
-    /**
-     * Get info on super-transactions
-     */
-    void _getTransactions(qhttp::Request::Ptr const& req,
-                          qhttp::Response::Ptr const& resp);
+    /// Get info on super-transactions
+    void _getTransactions();
 
-    /**
-     * Get info on the current/latest super-transaction
-     */
-    void _getTransaction(qhttp::Request::Ptr const& req,
-                         qhttp::Response::Ptr const& resp);
+    /// Get info on the current/latest super-transaction
+    void _getTransaction();
 
-    /**
-     * Crate and start a super-transaction
-     */
-    void _beginTransaction(qhttp::Request::Ptr const& req,
-                           qhttp::Response::Ptr const& resp);
+    /// Crate and start a super-transaction
+    void _beginTransaction();
 
-    /**
-     * Commit or rollback a super-transaction
-     */
-    void _endTransaction(qhttp::Request::Ptr const& req,
-                         qhttp::Response::Ptr const& resp);
+    /// Commit or rollback a super-transaction
+    void _endTransaction();
 
-    /**
-     * Register a database for an ingest
-     */
-    void _addDatabase(qhttp::Request::Ptr const& req,
-                      qhttp::Response::Ptr const& resp);
+    /// Register a database for an ingest
+    void _addDatabase();
 
-    /**
-     * Publish a database whose data were ingested earlier
-     */
-    void _publishDatabase(qhttp::Request::Ptr const& req,
-                          qhttp::Response::Ptr const& resp);
+    /// Publish a database whose data were ingested earlier
+    void _publishDatabase();
 
     /**
      * Delete a database which is not yet published. All relevant data,
      * including databases and tables at workers, the secondary index (if any)
      * and Replication System's Configuration will be deleted s well.
      */
-    void _deleteDatabase(qhttp::Request::Ptr const& req,
-                         qhttp::Response::Ptr const& resp);
+    void _deleteDatabase();
 
-    /**
-     * Register a database table for an ingest
-     */
-    void _addTable(qhttp::Request::Ptr const& req,
-                   qhttp::Response::Ptr const& resp);
+    /// Register a database table for an ingest
+    void _addTable();
 
-    /**
-     * (Re-)build the "empty chunks list" for a database.
-     */
-    void _buildEmptyChunksList(qhttp::Request::Ptr const& req,
-                               qhttp::Response::Ptr const& resp);
+    /// (Re-)build the "empty chunks list" for a database.
+    void _buildEmptyChunksList();
 
     /**
      * Return connection parameters of the ingest servers of all workers
      * where the regular tables would have to be loaded.
      */
-    void _getRegular(qhttp::Request::Ptr const& req,
-                     qhttp::Response::Ptr const& resp);
+    void _getRegular();
 
     /**
      * Grant SELECT authorizations for the new database to Qserv
-     * MySQL account(s) at workers
-     * @param resp the HTTP response channel for reporting errors
+     * MySQL account(s) at workers.
+     * 
      * @param databaseInfo database descriptor
      * @param allWorkers  'true' if all workers should be involved into the operation
      * @return 'false' if operation failed
      */
-    bool _grantDatabaseAccess(qhttp::Response::Ptr const& resp,
-                              DatabaseInfo const& databaseInfo,
+    bool _grantDatabaseAccess(DatabaseInfo const& databaseInfo,
                               bool allWorkers) const;
 
     /**
      * Enable this database in Qserv workers by adding an entry
      * to table 'qservw_worker.Dbs' at workers.
-     * @param resp the HTTP response channel for reporting errors
+     * 
      * @param databaseInfo database descriptor
      * @param allWorkers 'true' if all workers should be involved into the operation
      * @return 'false' if operation failed
      */
-    bool _enableDatabase(qhttp::Response::Ptr const& resp,
-                         DatabaseInfo const& databaseInfo,
+    bool _enableDatabase(DatabaseInfo const& databaseInfo,
                          bool allWorkers) const;
 
     /**
      * Consolidate MySQL partitioned tables at workers by removing partitions.
-     * @param resp the HTTP response channel for reporting errors
+     * 
      * @param databaseInfo database descriptor
      * @param allWorkers 'true' if all workers should be involved into the operation
      * @return 'false' if operation failed
      */
-    bool _removeMySQLPartitions(qhttp::Response::Ptr const& resp,
-                                DatabaseInfo const& databaseInfo,
+    bool _removeMySQLPartitions(DatabaseInfo const& databaseInfo,
                                 bool allWorkers) const;
 
     /**
@@ -270,13 +239,12 @@ private:
      * It runs the Replication system's chunks scanner to register chunk info
      * in the persistent state of the system. It also registers (synchronizes)
      * new chunks at Qserv workers.
-     * @param resp the HTTP response channel for reporting errors
+     *
      * @param databaseInfo database descriptor
      * @param allWorkers 'true' if all workers should be involved into the operation
      * @return 'false' if operation failed
      */
-    bool _qservSync(qhttp::Response::Ptr const& resp,
-                    DatabaseInfo const& databaseInfo,
+    bool _qservSync(DatabaseInfo const& databaseInfo,
                     bool allWorkers) const;
 
     /// @return connection object for the Qserv Master Database server

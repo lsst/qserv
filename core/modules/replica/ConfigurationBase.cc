@@ -70,6 +70,7 @@ size_t       const ConfigurationBase::defaultWorkerNumProcessingThreads   = 1;
 size_t       const ConfigurationBase::defaultFsNumProcessingThreads       = 1;
 size_t       const ConfigurationBase::defaultWorkerFsBufferSizeBytes      = 1048576;
 size_t       const ConfigurationBase::defaultLoaderNumProcessingThreads   = 1;
+size_t       const ConfigurationBase::defaultExporterNumProcessingThreads = 1;
 string       const ConfigurationBase::defaultWorkerSvcHost                = "localhost";
 uint16_t     const ConfigurationBase::defaultWorkerSvcPort                = 50000;
 string       const ConfigurationBase::defaultWorkerFsHost                 = "localhost";
@@ -81,6 +82,9 @@ string       const ConfigurationBase::defaultWorkerDbUser                 = File
 string       const ConfigurationBase::defaultWorkerLoaderHost             = "localhost";
 uint16_t     const ConfigurationBase::defaultWorkerLoaderPort             = 50002;
 string       const ConfigurationBase::defaultWorkerLoaderTmpDir           = "tmp/{worker}";
+string       const ConfigurationBase::defaultWorkerExporterHost           = "localhost";
+uint16_t     const ConfigurationBase::defaultWorkerExporterPort           = 50003;
+string       const ConfigurationBase::defaultWorkerExporterTmpDir         = "tmp/{worker}";
 string       const ConfigurationBase::defaultDatabaseTechnology           = "mysql";
 string       const ConfigurationBase::defaultDatabaseHost                 = "localhost";
 uint16_t     const ConfigurationBase::defaultDatabasePort                 = 3306;
@@ -169,6 +173,7 @@ ConfigurationBase::ConfigurationBase()
         _fsNumProcessingThreads     (defaultFsNumProcessingThreads),
         _workerFsBufferSizeBytes    (defaultWorkerFsBufferSizeBytes),
         _loaderNumProcessingThreads (defaultLoaderNumProcessingThreads),
+        _exporterNumProcessingThreads(defaultExporterNumProcessingThreads),
         _databaseTechnology         (defaultDatabaseTechnology),
         _databaseHost               (defaultDatabaseHost),
         _databasePort               (defaultDatabasePort),
@@ -330,6 +335,7 @@ string ConfigurationBase::asString() const {
     ss << context() << "defaultFsNumProcessingThreads:        " << defaultFsNumProcessingThreads << "\n";
     ss << context() << "defaultWorkerFsBufferSizeBytes:       " << defaultWorkerFsBufferSizeBytes << "\n";
     ss << context() << "defaultLoaderNumProcessingThreads:    " << defaultLoaderNumProcessingThreads << "\n";
+    ss << context() << "defaultExporterNumProcessingThreads:  " << defaultExporterNumProcessingThreads << "\n";
     ss << context() << "defaultWorkerSvcHost:                 " << defaultWorkerSvcHost << "\n";
     ss << context() << "defaultWorkerSvcPort:                 " << defaultWorkerSvcPort << "\n";
     ss << context() << "defaultWorkerFsHost:                  " << defaultWorkerFsHost << "\n";
@@ -341,6 +347,9 @@ string ConfigurationBase::asString() const {
     ss << context() << "defaultWorkerLoaderHost:              " << defaultWorkerLoaderHost << "\n";
     ss << context() << "defaultWorkerLoaderPort:              " << defaultWorkerLoaderPort << "\n";
     ss << context() << "defaultWorkerLoaderTmpDir:            " << defaultWorkerLoaderTmpDir << "\n";
+    ss << context() << "defaultWorkerExporterHost:            " << defaultWorkerExporterHost << "\n";
+    ss << context() << "defaultWorkerExporterPort:            " << defaultWorkerExporterPort << "\n";
+    ss << context() << "defaultWorkerExporterTmpDir:          " << defaultWorkerExporterTmpDir << "\n";
     ss << context() << "defaultDatabaseTechnology:            " << defaultDatabaseTechnology << "\n";
     ss << context() << "defaultDatabaseHost:                  " << defaultDatabaseHost << "\n";
     ss << context() << "defaultDatabasePort:                  " << defaultDatabasePort << "\n";
@@ -373,6 +382,7 @@ string ConfigurationBase::asString() const {
     ss << context() << "_workerNumProcessingThreads:          " << _workerNumProcessingThreads << "\n";
     ss << context() << "_fsNumProcessingThreads:              " << _fsNumProcessingThreads << "\n";
     ss << context() << "_loaderNumProcessingThreads:          " << _loaderNumProcessingThreads << "\n";
+    ss << context() << "_exporterNumProcessingThreads:        " << _exporterNumProcessingThreads << "\n";
     ss << context() << "_workerFsBufferSizeBytes:             " << _workerFsBufferSizeBytes << "\n";
     ss << context() << "_databaseTechnology:                  " << _databaseTechnology << "\n";
     ss << context() << "_databaseHost:                        " << _databaseHost << "\n";

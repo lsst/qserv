@@ -27,6 +27,7 @@
 
 // Qserv headers
 #include "replica/DatabaseMySQL.h"
+#include "replica/ExportServer.h"
 #include "replica/FileServer.h"
 #include "replica/IngestServer.h"
 #include "replica/ServiceProvider.h"
@@ -123,6 +124,11 @@ int WorkerApp::runImpl() {
         ingestSvr->run();
     });
 
+    auto const exportSvr = ExportServer::create(serviceProvider(), _worker, _authKey);
+    thread exportSvrThread([exportSvr]() {
+        exportSvr->run();
+    });
+
     // Print the 'heartbeat' report every 5 seconds
 
     util::BlockPost blockPost(5000, 5001);
@@ -139,6 +145,7 @@ int WorkerApp::runImpl() {
     reqProcSvrThread.join();
     fileSvrThread.join();
     ingestSvrThread.join();
+    exportSvrThread.join();
     
     return 0;
 }

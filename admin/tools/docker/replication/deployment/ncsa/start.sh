@@ -75,6 +75,7 @@ for WORKER in $WORKERS; do
         -u ${CONTAINER_UID}:${CONTAINER_GID} \
         -v /etc/passwd:/etc/passwd:ro \
         -v "${QSERV_DATA_DIR}:${QSERV_DATA_DIR}" \
+        -v "${QSERV_DATA_DIR}/export:${QSERV_DATA_DIR}/export" \
         -v "${CONFIG_DIR}:/qserv/replication/config:ro" \
         -v "${LOG_DIR}:${LOG_DIR}" \
         -e "WORKER_CONTAINER_NAME=${WORKER_CONTAINER_NAME}" \

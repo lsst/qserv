@@ -59,24 +59,23 @@ protected:
     /**
      * Supported values for parameter 'subModuleName':
      *
-     *   TABLES  return service locations for one or many tables of any type
+     *   TABLES  Return service locations for one or many tables of any type
+     *           in a scope of the specified database. If the input collection
+     *           of tables in the  request is empty then locations of all tables
+     *           and unique chunks of the partitioned tables (including 'overlap '
+     *           tables will be returned.
      *
      * @throws std::invalid_argument for unknown values of parameter 'subModuleName'
      */
-    void executeImpl(qhttp::Request::Ptr const& req,
-                     qhttp::Response::Ptr const& resp,
-                     std::string const& subModuleName) final;
+    void executeImpl(std::string const& subModuleName) final;
 
 private:
     HttpExportModule(Controller::Ptr const& controller,
                      std::string const& taskName,
                      HttpProcessorConfig const& processorConfig);
 
-    /**
-     * Get service locations for table(s).
-     */
-    void _getTables(qhttp::Request::Ptr const& req,
-                    qhttp::Response::Ptr const& resp);
+    /// Get service locations for table(s).
+    void _getTables();
 };
     
 }}} // namespace lsst::qserv::replica

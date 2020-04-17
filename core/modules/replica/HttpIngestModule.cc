@@ -41,8 +41,6 @@
 #include "replica/DatabaseServices.h"
 #include "replica/FindAllJob.h"
 #include "replica/IndexJob.h"
-#include "replica/HttpRequestBody.h"
-#include "replica/HttpRequestQuery.h"
 #include "replica/QservSyncJob.h"
 #include "replica/ReplicaInfo.h"
 #include "replica/ServiceManagementJob.h"
@@ -103,30 +101,28 @@ HttpIngestModule::HttpIngestModule(Controller::Ptr const& controller,
 }
 
 
-void HttpIngestModule::executeImpl(qhttp::Request::Ptr const& req,
-                                   qhttp::Response::Ptr const& resp,
-                                   string const& subModuleName) {
+void HttpIngestModule::executeImpl(string const& subModuleName) {
 
     if (subModuleName == "TRANSACTIONS") {
-        _getTransactions(req, resp);
+        _getTransactions();
     } else if (subModuleName == "SELECT-TRANSACTION-BY-ID") {
-        _getTransaction(req, resp);
+        _getTransaction();
     } else if (subModuleName == "BEGIN-TRANSACTION") {
-        _beginTransaction(req, resp);
+        _beginTransaction();
     } else if (subModuleName == "END-TRANSACTION") {
-        _endTransaction(req, resp);
+        _endTransaction();
     } else if (subModuleName == "ADD-DATABASE") {
-        _addDatabase(req, resp);
+        _addDatabase();
     } else if (subModuleName == "PUBLISH-DATABASE") {
-         _publishDatabase(req, resp);
+         _publishDatabase();
     } else if (subModuleName == "DELETE-DATABASE") {
-         _deleteDatabase(req, resp);
+         _deleteDatabase();
     } else if (subModuleName == "ADD-TABLE") {
-         _addTable(req, resp);
+         _addTable();
     } else if (subModuleName == "BUILD-CHUNK-LIST") {
-         _buildEmptyChunksList(req, resp);
+         _buildEmptyChunksList();
     } else if (subModuleName == "REGULAR") {
-         _getRegular(req, resp);
+         _getRegular();
     } else {
         throw invalid_argument(
                 context() + "::" + string(__func__) +
@@ -135,18 +131,16 @@ void HttpIngestModule::executeImpl(qhttp::Request::Ptr const& req,
 }
 
 
-void HttpIngestModule::_getTransactions(qhttp::Request::Ptr const& req,
-                                        qhttp::Response::Ptr const& resp) {
+void HttpIngestModule::_getTransactions() {
     debug(__func__);
 
     auto const config = controller()->serviceProvider()->config();
     auto const databaseServices = controller()->serviceProvider()->databaseServices();
 
-    HttpRequestQuery const query(req->query);
-    auto const database     = query.optionalString("database");
-    auto const family       = query.optionalString("family");
-    auto const allDatabases = query.optionalUInt64("all_databases", 0) != 0;
-    auto const isPublished  = query.optionalUInt64("is_published",  0) != 0;
+    auto const database     = query().optionalString("database");
+    auto const family       = query().optionalString("family");
+    auto const allDatabases = query().optionalUInt64("all_databases", 0) != 0;
+    auto const isPublished  = query().optionalUInt64("is_published",  0) != 0;
 
     debug(__func__, "database=" + database);
     debug(__func__, "family=" + family);
@@ -176,17 +170,16 @@ void HttpIngestModule::_getTransactions(qhttp::Request::Ptr const& req,
             result["databases"][database]["transactions"].push_back(transaction.toJson());
         }
     }
-    sendData(resp, result);
+    sendData(result);
 }
 
 
-void HttpIngestModule::_getTransaction(qhttp::Request::Ptr const& req,
-                                       qhttp::Response::Ptr const& resp) {
+void HttpIngestModule::_getTransaction() {
     debug(__func__);
 
     auto const config = controller()->serviceProvider()->config();
     auto const databaseServices = controller()->serviceProvider()->databaseServices();
-    auto const id = stoul(req->params.at("id"));
+    auto const id = stoul(params().at("id"));
 
     debug(__func__, "id=" + to_string(id));
 
@@ -201,12 +194,11 @@ void HttpIngestModule::_getTransaction(qhttp::Request::Ptr const& req,
     result["databases"][transaction.database]["transactions"].push_back(transaction.toJson());
     result["databases"][transaction.database]["num_chunks"] = chunks.size();
 
-    sendData(resp, result);
+    sendData(result);
 }
 
 
-void HttpIngestModule::_beginTransaction(qhttp::Request::Ptr const& req,
-                                         qhttp::Response::Ptr const& resp) {
+void HttpIngestModule::_beginTransaction() {
     debug(__func__);
 
     TransactionId id = 0;
@@ -229,14 +221,13 @@ void HttpIngestModule::_beginTransaction(qhttp::Request::Ptr const& req,
         auto const config = controller()->serviceProvider()->config();
         auto const databaseServices = controller()->serviceProvider()->databaseServices();
 
-        HttpRequestBody body(req);
-        auto const database = body.required<string>("database");
+        auto const database = body().required<string>("database");
 
         debug(__func__, "database=" + database);
 
         auto const databaseInfo = config->databaseInfo(database);
         if (databaseInfo.isPublished) {
-            sendError(resp, __func__, "the database is already published");
+            sendError(__func__, "the database is already published");
             return;
         }
         auto const transaction = databaseServices->beginTransaction(databaseInfo.name);
@@ -252,7 +243,7 @@ void HttpIngestModule::_beginTransaction(qhttp::Request::Ptr const& req,
         result["databases"][transaction.database]["transactions"].push_back(transaction.toJson());
         result["databases"][transaction.database]["num_chunks"] = chunks.size();
 
-        sendData(resp, result);
+        sendData(result);
         logBeginTransaction("SUCCESS");
 
     } catch (invalid_argument const& ex) {
@@ -265,8 +256,7 @@ void HttpIngestModule::_beginTransaction(qhttp::Request::Ptr const& req,
 }
 
 
-void HttpIngestModule::_endTransaction(qhttp::Request::Ptr const& req,
-                                       qhttp::Response::Ptr const& resp) {
+void HttpIngestModule::_endTransaction() {
     debug(__func__);
 
     TransactionId id = 0;
@@ -293,11 +283,10 @@ void HttpIngestModule::_endTransaction(qhttp::Request::Ptr const& req,
         auto const config = controller()->serviceProvider()->config();
         auto const databaseServices = controller()->serviceProvider()->databaseServices();
 
-        id = stoul(req->params.at("id"));
+        id = stoul(params().at("id"));
 
-        HttpRequestQuery const query(req->query);
-        abort               = query.requiredBool("abort");
-        buildSecondaryIndex = query.optionalBool("build-secondary-index");
+        abort               = query().requiredBool("abort");
+        buildSecondaryIndex = query().optionalBool("build-secondary-index");
 
         debug(__func__, "id="    + to_string(id));
         debug(__func__, "abort=" + to_string(abort ? 1 : 0));
@@ -355,7 +344,7 @@ void HttpIngestModule::_endTransaction(qhttp::Request::Ptr const& req,
             // TODO: replicate MySQL partition associated with the transaction
             error(__func__, "replication stage is not implemented");
         }
-        sendData(resp, result);
+        sendData(result);
         logEndTransaction("SUCCESS");
 
     } catch (invalid_argument const& ex) {
@@ -368,19 +357,17 @@ void HttpIngestModule::_endTransaction(qhttp::Request::Ptr const& req,
 }
 
 
-void HttpIngestModule::_addDatabase(qhttp::Request::Ptr const& req,
-                                    qhttp::Response::Ptr const& resp) {
+void HttpIngestModule::_addDatabase() {
     debug(__func__);
 
     auto const config = controller()->serviceProvider()->config();
 
-    HttpRequestBody body(req);
     DatabaseInfo databaseInfo;
-    databaseInfo.name = body.required<string>("database");
+    databaseInfo.name = body().required<string>("database");
 
-    auto const numStripes    = body.required<unsigned int>("num_stripes");
-    auto const numSubStripes = body.required<unsigned int>("num_sub_stripes");
-    auto const overlap       = body.required<double>("overlap");
+    auto const numStripes    = body().required<unsigned int>("num_stripes");
+    auto const numSubStripes = body().required<unsigned int>("num_sub_stripes");
+    auto const overlap       = body().required<double>("overlap");
 
     debug(__func__, "database="      + databaseInfo.name);
     debug(__func__, "numStripes="    + to_string(numStripes));
@@ -388,7 +375,7 @@ void HttpIngestModule::_addDatabase(qhttp::Request::Ptr const& req,
     debug(__func__, "overlap="       + to_string(overlap));
 
     if (overlap < 0) {
-        sendError(resp, __func__, "overlap can't have a negative value");
+        sendError(__func__, "overlap can't have a negative value");
         return;
     }
 
@@ -435,7 +422,7 @@ void HttpIngestModule::_addDatabase(qhttp::Request::Ptr const& req,
 
     string error = ::jobCompletionErrorIfAny(job, "database creation failed");
     if (not error.empty()) {
-        sendError(resp, __func__, error);
+        sendError(__func__, error);
         return;
     }
 
@@ -452,43 +439,41 @@ void HttpIngestModule::_addDatabase(qhttp::Request::Ptr const& req,
     // Tell workers to reload their configurations
     error = _reconfigureWorkers(databaseInfo, allWorkers, workerReconfigTimeoutSec());
     if (not error.empty()) {
-        sendError(resp, __func__, error);
+        sendError(__func__, error);
         return;
     }
 
     json result;
     result["database"] = databaseInfo.toJson();
 
-    sendData(resp, result);
+    sendData(result);
 }
 
 
-void HttpIngestModule::_publishDatabase(qhttp::Request::Ptr const& req,
-                                        qhttp::Response::Ptr const& resp) {
+void HttpIngestModule::_publishDatabase() {
     debug(__func__);
 
     bool const allWorkers = true;
     auto const databaseServices = controller()->serviceProvider()->databaseServices();
     auto const config = controller()->serviceProvider()->config();
 
-    auto const database = req->params.at("name");
+    auto const database = params().at("name");
 
-    HttpRequestQuery const query(req->query);
-    bool const consolidateSecondayIndex = query.optionalBool("consolidate_secondary_index", false);
+    bool const consolidateSecondayIndex = query().optionalBool("consolidate_secondary_index", false);
 
     debug(__func__, "database=" + database);
     debug(__func__, "consolidate_secondary_index=" + to_string(consolidateSecondayIndex ? 1 : 0));
 
     auto const databaseInfo = config->databaseInfo(database);
     if (databaseInfo.isPublished) {
-        sendError(resp, __func__, "the database is already published");
+        sendError(__func__, "the database is already published");
         return;
     }
 
     // Scan super-transactions to make sure none is still open
     for (auto&& t: databaseServices->transactions(databaseInfo.name)) {
         if (t.state == TransactionInfo::STARTED) {
-            sendError(resp, __func__, "database has uncommitted transactions");
+            sendError(__func__, "database has uncommitted transactions");
             return;
         }
     }
@@ -497,15 +482,15 @@ void HttpIngestModule::_publishDatabase(qhttp::Request::Ptr const& req,
     // a large number of entries
     if (consolidateSecondayIndex) _consolidateSecondaryIndex(databaseInfo);
 
-    if (not _grantDatabaseAccess(resp, databaseInfo, allWorkers)) return;
-    if (not _enableDatabase(resp, databaseInfo, allWorkers)) return;
-    if (not _removeMySQLPartitions(resp, databaseInfo, allWorkers)) return;
+    if (not _grantDatabaseAccess(databaseInfo, allWorkers)) return;
+    if (not _enableDatabase(databaseInfo, allWorkers)) return;
+    if (not _removeMySQLPartitions(databaseInfo, allWorkers)) return;
 
     // This step is needed to get workers' Configuration in-sync with its
     // persistent state.
     auto const error = _reconfigureWorkers(databaseInfo, allWorkers, workerReconfigTimeoutSec());
     if (not error.empty()) {
-        sendError(resp, __func__, error);
+        sendError(__func__, error);
         return;
     }
 
@@ -513,7 +498,7 @@ void HttpIngestModule::_publishDatabase(qhttp::Request::Ptr const& req,
     // store of the Replication system and synchronized with the Qserv workers.
     // The (fixing, re-balancing, replicating, etc.) will be taken care of by
     // the Replication system.
-    if (not _qservSync(resp, databaseInfo, allWorkers)) return;
+    if (not _qservSync(databaseInfo, allWorkers)) return;
 
     // Finalize setting the database in Qserv master to make the new catalog
     // visible to Qserv users.
@@ -527,27 +512,25 @@ void HttpIngestModule::_publishDatabase(qhttp::Request::Ptr const& req,
     json result;
     result["database"] = config->publishDatabase(database).toJson();
 
-    sendData(resp, result);
+    sendData(result);
 }
 
 
-void HttpIngestModule::_deleteDatabase(qhttp::Request::Ptr const& req,
-                                       qhttp::Response::Ptr const& resp) {
+void HttpIngestModule::_deleteDatabase() {
     debug(__func__);
 
     auto const config = controller()->serviceProvider()->config();
     bool const allWorkers = true;
-    auto const database = req->params.at("name");
+    auto const database = params().at("name");
 
-    HttpRequestQuery const query(req->query);
-    bool const deleteSecondaryIndex = query.optionalBool("delete_secondary_index", false);
+    bool const deleteSecondaryIndex = query().optionalBool("delete_secondary_index", false);
 
     debug(__func__, "database=" + database);
     debug(__func__, "delete_secondary_index=" + to_string(deleteSecondaryIndex ? 1 : 0));
 
     auto const databaseInfo = config->databaseInfo(database);
     if (databaseInfo.isPublished) {
-        sendError(resp, __func__, "unable to delete the database which is already published");
+        sendError(__func__, "unable to delete the database which is already published");
         return;
     }
 
@@ -562,7 +545,7 @@ void HttpIngestModule::_deleteDatabase(qhttp::Request::Ptr const& req,
 
     string error = ::jobCompletionErrorIfAny(job, "database deletion failed");
     if (not error.empty()) {
-        sendError(resp, __func__, error);
+        sendError(__func__, error);
         return;
     }
 
@@ -574,32 +557,30 @@ void HttpIngestModule::_deleteDatabase(qhttp::Request::Ptr const& req,
     // persistent state.
     error = _reconfigureWorkers(databaseInfo, allWorkers, workerReconfigTimeoutSec());
     if (not error.empty()) {
-        sendError(resp, __func__, error);
+        sendError(__func__, error);
         return;
     }
 
     json result;
-    sendData(resp, result);
+    sendData(result);
 }
 
 
-void HttpIngestModule::_addTable(qhttp::Request::Ptr const& req,
-                                 qhttp::Response::Ptr const& resp) {
+void HttpIngestModule::_addTable() {
     debug(__func__);
 
     auto const config = controller()->serviceProvider()->config();
 
-    HttpRequestBody body(req);
-    auto const database      = body.required<string>("database");
-    auto const table         = body.required<string>("table");
-    auto const isPartitioned = (bool)body.required<int>("is_partitioned");
-    auto const schema        = body.required<json>("schema");
-    auto const isDirector    = (bool)body.required<int>("is_director");
-    auto const directorKey   = body.optional<string>("director_key", "");
-    auto const chunkIdColName    = body.optional<string>("chunk_id_key", "");
-    auto const subChunkIdColName = body.optional<string>("sub_chunk_id_key", "");
-    auto const latitudeColName  = body.optional<string>("latitude_key",  "");
-    auto const longitudeColName = body.optional<string>("longitude_key", "");
+    auto const database      = body().required<string>("database");
+    auto const table         = body().required<string>("table");
+    auto const isPartitioned = (bool)body().required<int>("is_partitioned");
+    auto const schema        = body().required<json>("schema");
+    auto const isDirector    = (bool)body().required<int>("is_director");
+    auto const directorKey   = body().optional<string>("director_key", "");
+    auto const chunkIdColName    = body().optional<string>("chunk_id_key", "");
+    auto const subChunkIdColName = body().optional<string>("sub_chunk_id_key", "");
+    auto const latitudeColName  = body().optional<string>("latitude_key",  "");
+    auto const longitudeColName = body().optional<string>("longitude_key", "");
 
     debug(__func__, "database="      + database);
     debug(__func__, "table="         + table);
@@ -616,7 +597,7 @@ void HttpIngestModule::_addTable(qhttp::Request::Ptr const& req,
 
     auto databaseInfo = config->databaseInfo(database);
     if (databaseInfo.isPublished) {
-       sendError(resp, __func__, "the database is already published");
+       sendError(__func__, "the database is already published");
         return;
     }
 
@@ -624,7 +605,7 @@ void HttpIngestModule::_addTable(qhttp::Request::Ptr const& req,
 
     for (auto&& existingTable: databaseInfo.tables()) {
         if (table == existingTable) {
-            sendError(resp, __func__, "table already exists");
+            sendError(__func__, "table already exists");
             return;
         }
     }
@@ -632,11 +613,11 @@ void HttpIngestModule::_addTable(qhttp::Request::Ptr const& req,
     // Translate table schema
 
     if (schema.is_null()) {
-        sendError(resp, __func__, "table schema is empty");
+        sendError( __func__, "table schema is empty");
         return;
     }
     if (not schema.is_array()) {
-        sendError(resp, __func__, "table schema is not defined as an array");
+        sendError(__func__, "table schema is not defined as an array");
         return;
     }
 
@@ -648,19 +629,19 @@ void HttpIngestModule::_addTable(qhttp::Request::Ptr const& req,
 
     for (auto&& coldef: schema) {
         if (not coldef.is_object()) {
-            sendError(resp, __func__,
+            sendError(__func__,
                     "columns definitions in table schema are not JSON objects");
             return;
         }
         if (0 == coldef.count("name")) {
-            sendError(resp, __func__,
+            sendError(__func__,
                     "column attribute 'name' is missing in table schema for "
                     "column number: " + to_string(columns.size() + 1));
             return;
         }
         string colName = coldef["name"];
         if (0 == coldef.count("type")) {
-            sendError(resp, __func__,
+            sendError(__func__,
                     "column attribute 'type' is missing in table schema for "
                     "column number: " + to_string(columns.size() + 1));
             return;
@@ -668,7 +649,7 @@ void HttpIngestModule::_addTable(qhttp::Request::Ptr const& req,
         string colType = coldef["type"];
 
         if (_partitionByColumn == colName) {
-            sendError(resp, __func__,
+            sendError(__func__,
                     "reserved column '" + _partitionByColumn + "' is not allowed");
             return;
         }
@@ -697,7 +678,7 @@ void HttpIngestModule::_addTable(qhttp::Request::Ptr const& req,
 
     string error = ::jobCompletionErrorIfAny(job, "table creation failed");
     if (not error.empty()) {
-        sendError(resp, __func__, error);
+        sendError(__func__, error);
         return;
     }
 
@@ -720,20 +701,18 @@ void HttpIngestModule::_addTable(qhttp::Request::Ptr const& req,
 
     error = _reconfigureWorkers(databaseInfo, allWorkers, workerReconfigTimeoutSec());
     if (not error.empty()) {
-        sendError(resp, __func__, error);
+        sendError(__func__, error);
         return;
     }
-    sendData(resp, result);
+    sendData(result);
 }
 
 
-void HttpIngestModule::_buildEmptyChunksList(qhttp::Request::Ptr const& req,
-                                             qhttp::Response::Ptr const& resp) {
+void HttpIngestModule::_buildEmptyChunksList() {
     debug(__func__);
 
-    HttpRequestBody body(req);
-    string const database = body.required<string>("database");
-    bool const force = (bool)body.optional<int>("force", 0);
+    string const database = body().required<string>("database");
+    bool const force = (bool)body().optional<int>("force", 0);
 
     debug(__func__, "database=" + database);
     debug(__func__, "force=" + string(force ? "1" : "0"));
@@ -744,18 +723,17 @@ void HttpIngestModule::_buildEmptyChunksList(qhttp::Request::Ptr const& req,
     result["file"] = emptyListInfo.first;
     result["num_chunks"] = emptyListInfo.second;
 
-    sendData(resp, result);
+    sendData(result);
 }
 
 
-void HttpIngestModule::_getRegular(qhttp::Request::Ptr const& req,
-                                   qhttp::Response::Ptr const& resp) {
+void HttpIngestModule::_getRegular() {
     debug(__func__);
 
     auto const databaseServices = controller()->serviceProvider()->databaseServices();
     auto const config = controller()->serviceProvider()->config();
 
-    auto const id = stoul(req->params.at("id"));
+    auto const id = stoul(params().at("id"));
     debug(__func__, "id="    + to_string(id));
 
     auto const transaction = databaseServices->transaction(id);
@@ -775,12 +753,11 @@ void HttpIngestModule::_getRegular(qhttp::Request::Ptr const& req,
 
     json result;
     result["locations"] = resultLocations;
-    sendData(resp, result);
+    sendData(result);
 }
 
 
-bool HttpIngestModule::_grantDatabaseAccess(qhttp::Response::Ptr const& resp,
-                                            DatabaseInfo const& databaseInfo,
+bool HttpIngestModule::_grantDatabaseAccess(DatabaseInfo const& databaseInfo,
                                             bool allWorkers) const {
     debug(__func__);
 
@@ -798,15 +775,14 @@ bool HttpIngestModule::_grantDatabaseAccess(qhttp::Response::Ptr const& resp,
 
     string const error = ::jobCompletionErrorIfAny(job, "grant access to a database failed");
     if (not error.empty()) {
-        sendError(resp, __func__, error);
+        sendError(__func__, error);
         return false;
     }
     return true;
 }
 
 
-bool HttpIngestModule::_enableDatabase(qhttp::Response::Ptr const& resp,
-                                       DatabaseInfo const& databaseInfo,
+bool HttpIngestModule::_enableDatabase(DatabaseInfo const& databaseInfo,
                                        bool allWorkers) const {
     debug(__func__);
 
@@ -823,15 +799,14 @@ bool HttpIngestModule::_enableDatabase(qhttp::Response::Ptr const& resp,
 
     string const error = ::jobCompletionErrorIfAny(job, "enabling database failed");
     if (not error.empty()) {
-        sendError(resp, __func__, error);
+        sendError(__func__, error);
         return false;
     }
     return true;
 }
 
 
-bool HttpIngestModule::_removeMySQLPartitions(qhttp::Response::Ptr const& resp,
-                                              DatabaseInfo const& databaseInfo,
+bool HttpIngestModule::_removeMySQLPartitions(DatabaseInfo const& databaseInfo,
                                               bool allWorkers) const {
     debug(__func__);
 
@@ -861,7 +836,7 @@ bool HttpIngestModule::_removeMySQLPartitions(qhttp::Response::Ptr const& resp,
                         databaseInfo.name + ", table: " + table);
     }
     if (not error.empty()) {
-        sendError(resp, __func__, error);
+        sendError(__func__, error);
         return false;
     }
     return true;
@@ -1274,8 +1249,7 @@ void HttpIngestModule::_deleteSecondaryIndex(DatabaseInfo const& databaseInfo) c
 }
 
 
-bool HttpIngestModule::_qservSync(qhttp::Response::Ptr const& resp,
-                                  DatabaseInfo const& databaseInfo,
+bool HttpIngestModule::_qservSync(DatabaseInfo const& databaseInfo,
                                   bool allWorkers) const {
     debug(__func__);
 
@@ -1292,7 +1266,7 @@ bool HttpIngestModule::_qservSync(qhttp::Response::Ptr const& resp,
     logJobFinishedEvent(FindAllJob::typeName(), findAlljob, databaseInfo.family);
 
     if (findAlljob->extendedState() != Job::SUCCESS) {
-        sendError(resp, __func__, "replica lookup stage failed");
+        sendError(__func__, "replica lookup stage failed");
         return false;
     }
 
@@ -1309,7 +1283,7 @@ bool HttpIngestModule::_qservSync(qhttp::Response::Ptr const& resp,
     logJobFinishedEvent(QservSyncJob::typeName(), qservSyncJob, databaseInfo.family);
 
     if (qservSyncJob->extendedState() != Job::SUCCESS) {
-        sendError(resp, __func__, "Qserv synchronization failed");
+        sendError( __func__, "Qserv synchronization failed");
         return false;
     }
     return true;

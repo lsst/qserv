@@ -208,6 +208,21 @@ ConfigApp::ConfigApp(int argc, char* argv[])
         "The name of a user account for a temporary folder of the worker's Catalog Ingest service.",
         _workerInfo.loaderTmpDir);
 
+    updateWorkerCmd.option(
+        "worker-exporter-host",
+        "The new DNS name or an IP address where the worker's Data Exporting service runs.",
+        _workerInfo.exporterHost);
+
+    updateWorkerCmd.option(
+        "worker-exporter-port",
+        "The port number of the worker's Data Exporting service.",
+        _workerInfo.exporterPort);
+
+    updateWorkerCmd.option(
+        "worker-exporter-tmp-dir",
+        "The name of a user account for a temporary folder of the worker's Data Exporting service.",
+        _workerInfo.exporterTmpDir);
+
     // Command-specific parameters, options and flags
 
     auto&& addWorkerCmd = parser().command("ADD_WORKER");
@@ -282,6 +297,21 @@ ConfigApp::ConfigApp(int argc, char* argv[])
         "The temporay directory of the worker's Ingest Service",
         _workerInfo.loaderTmpDir);
 
+    addWorkerCmd.required(
+        "exporter-host",
+        "The DNS name or an IP address where the worker's Data Exporting Server runs.",
+        _workerInfo.exporterHost);
+
+    addWorkerCmd.required(
+        "exporter-port",
+        "The port number of the worker's Data Exporting Server.",
+        _workerInfo.exporterPort);
+
+    addWorkerCmd.required(
+        "exporter-tmp-dir",
+        "The temporay directory of the worker's Data Exporting Service",
+        _workerInfo.exporterTmpDir);
+
     // Command-specific parameters, options and flags
 
     parser().command("DELETE_WORKER").required(
@@ -311,6 +341,7 @@ ConfigApp::ConfigApp(int argc, char* argv[])
     ::addCommandOption(updateGeneralCmd, _general.fsNumProcessingThreads);
     ::addCommandOption(updateGeneralCmd, _general.workerFsBufferSizeBytes);
     ::addCommandOption(updateGeneralCmd, _general.loaderNumProcessingThreads);
+    ::addCommandOption(updateGeneralCmd, _general.exporterNumProcessingThreads);
 
     // Command-specific parameters, options and flags
 
@@ -647,6 +678,10 @@ void ConfigApp::_dumpGeneralAsTable(string const& indent) const {
     value.      push_back(_general.loaderNumProcessingThreads.str(_config));
     description.push_back(_general.loaderNumProcessingThreads.description);
 
+    parameter.  push_back(_general.exporterNumProcessingThreads.key);
+    value.      push_back(_general.exporterNumProcessingThreads.str(_config));
+    description.push_back(_general.exporterNumProcessingThreads.description);
+
     util::ColumnTablePrinter table("GENERAL PARAMETERS:", indent, _verticalSeparator);
 
     table.addColumn("parameter",   parameter,   util::ColumnTablePrinter::LEFT);
@@ -676,6 +711,9 @@ void ConfigApp::_dumpWorkersAsTable(string const& indent) const {
     vector<string> loaderHost;
     vector<string> loaderPort;
     vector<string> loaderTmpDir;
+    vector<string> exporterHost;
+    vector<string> exporterPort;
+    vector<string> exporterTmpDir;
 
     for (auto&& worker: _config->allWorkers()) {
         auto const wi = _config->workerInfo(worker);
@@ -693,6 +731,9 @@ void ConfigApp::_dumpWorkersAsTable(string const& indent) const {
         loaderHost.push_back(wi.loaderHost);
         loaderPort.push_back(to_string(wi.loaderPort));
         loaderTmpDir.push_back(wi.loaderTmpDir);
+        exporterHost.push_back(wi.exporterHost);
+        exporterPort.push_back(to_string(wi.exporterPort));
+        exporterTmpDir.push_back(wi.exporterTmpDir);
     }
 
     util::ColumnTablePrinter table("WORKERS:", indent, _verticalSeparator);
@@ -711,6 +752,9 @@ void ConfigApp::_dumpWorkersAsTable(string const& indent) const {
     table.addColumn("Ingest server", loaderHost, util::ColumnTablePrinter::LEFT);
     table.addColumn(":port", loaderPort);
     table.addColumn(":tmp", loaderTmpDir, util::ColumnTablePrinter::LEFT);
+    table.addColumn("Export server", exporterHost, util::ColumnTablePrinter::LEFT);
+    table.addColumn(":port", exporterPort);
+    table.addColumn(":tmp", exporterTmpDir, util::ColumnTablePrinter::LEFT);
 
     table.print(cout, false, false);
 }
@@ -958,6 +1002,24 @@ int ConfigApp::_updateWorker() const {
 
             _config->setWorkerLoaderTmpDir(_workerInfo.name,
                                            _workerInfo.loaderTmpDir);
+        }
+        if (not _workerInfo.exporterHost.empty()
+            and _workerInfo.exporterHost != info.exporterHost) {
+
+            _config->setWorkerExporterHost(_workerInfo.name,
+                                           _workerInfo.exporterHost);
+        }
+        if (_workerInfo.exporterPort != 0 and
+            _workerInfo.exporterPort != info.exporterPort) {
+
+            _config->setWorkerExporterPort(_workerInfo.name,
+                                           _workerInfo.exporterPort);
+        }
+        if (not _workerInfo.exporterTmpDir.empty()
+            and _workerInfo.exporterTmpDir != _workerInfo.exporterTmpDir) {
+
+            _config->setWorkerExporterTmpDir(_workerInfo.name,
+                                             _workerInfo.exporterTmpDir);
         }
     } catch (exception const& ex) {
         LOGS(_log, LOG_LVL_ERROR, context << "operation failed, exception: " << ex.what());

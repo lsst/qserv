@@ -35,7 +35,6 @@
 #include "replica/ConfigurationTypes.h"
 #include "replica/DatabaseMySQL.h"
 #include "replica/DatabaseServices.h"
-#include "replica/HttpRequestQuery.h"
 #include "replica/QservMgtServices.h"
 #include "replica/QservStatusJob.h"
 #include "replica/ServiceProvider.h"
@@ -141,18 +140,16 @@ HttpQservMonitorModule::HttpQservMonitorModule(Controller::Ptr const& controller
 }
 
 
-void HttpQservMonitorModule::executeImpl(qhttp::Request::Ptr const& req,
-                                         qhttp::Response::Ptr const& resp,
-                                         string const& subModuleName) {
+void HttpQservMonitorModule::executeImpl(string const& subModuleName) {
 
     if (subModuleName == "WORKERS") {
-        _workers(req, resp);
+        _workers();
     } else if (subModuleName == "SELECT-WORKER-BY-NAME") {
-        _worker(req, resp);
+        _worker();
     } else if (subModuleName == "QUERIES") {
-        _userQueries(req, resp);
+        _userQueries();
     } else if (subModuleName == "SELECT-QUERY-BY-ID") {
-        _userQuery(req, resp);
+        _userQuery();
     } else {
         throw invalid_argument(
                 context() + "::" + string(__func__) +
@@ -161,13 +158,11 @@ void HttpQservMonitorModule::executeImpl(qhttp::Request::Ptr const& req,
 }
 
 
-void HttpQservMonitorModule::_workers(qhttp::Request::Ptr const& req,
-                                      qhttp::Response::Ptr const& resp) {
+void HttpQservMonitorModule::_workers() {
     debug(__func__);
 
-    HttpRequestQuery const query(req->query);
-    unsigned int const timeoutSec    = query.optionalUInt("timeout_sec", workerResponseTimeoutSec());
-    bool         const keepResources = query.optionalUInt("keep_resources", 0) != 0;
+    unsigned int const timeoutSec    = query().optionalUInt("timeout_sec", workerResponseTimeoutSec());
+    bool         const keepResources = query().optionalUInt("keep_resources", 0) != 0;
 
     debug(__func__, "timeout_sec=" + to_string(timeoutSec));
 
@@ -213,18 +208,15 @@ void HttpQservMonitorModule::_workers(qhttp::Request::Ptr const& req,
     }
     result["schedulers_to_chunks"] = resultSchedulers2chunks;
     result["chunks"] = _chunkInfo(chunks);
-    sendData(resp, result);
+    sendData(result);
 }
 
 
-void HttpQservMonitorModule::_worker(qhttp::Request::Ptr const& req,
-                                     qhttp::Response::Ptr const& resp) {
+void HttpQservMonitorModule::_worker() {
     debug(__func__);
 
-    auto const worker = req->params.at("name");
-
-    HttpRequestQuery const query(req->query);
-    unsigned int const timeoutSec = query.optionalUInt("timeout_sec", workerResponseTimeoutSec());
+    auto const worker = params().at("name");
+    unsigned int const timeoutSec = query().optionalUInt("timeout_sec", workerResponseTimeoutSec());
 
     debug(__func__, "worker=" + worker);
     debug(__func__, "timeout_sec=" + to_string(timeoutSec));
@@ -250,19 +242,17 @@ void HttpQservMonitorModule::_worker(qhttp::Request::Ptr const& req,
     } else {
         result["status"][worker]["success"] = 0;
     }        
-    sendData(resp, result);
+    sendData(result);
 }
 
 
-void HttpQservMonitorModule::_userQueries(qhttp::Request::Ptr const& req,
-                                          qhttp::Response::Ptr const& resp) {
+void HttpQservMonitorModule::_userQueries() {
     debug(__func__);
 
     auto const config = controller()->serviceProvider()->config();
 
-    HttpRequestQuery const query(req->query);
-    unsigned int const timeoutSec = query.optionalUInt("timeout_sec", workerResponseTimeoutSec());
-    unsigned int const limit4past = query.optionalUInt("limit4past", 1);
+    unsigned int const timeoutSec = query().optionalUInt("timeout_sec", workerResponseTimeoutSec());
+    unsigned int const limit4past = query().optionalUInt("limit4past", 1);
 
     debug(__func__, "timeout_sec=" + to_string(timeoutSec));
     debug(__func__, "limit4past=" + to_string(limit4past));
@@ -389,20 +379,19 @@ void HttpQservMonitorModule::_userQueries(qhttp::Request::Ptr const& req,
             result["queries_past"].push_back(resultRow);
         }
     }
-    sendData(resp, result);
+    sendData(result);
 }
 
 
-void HttpQservMonitorModule::_userQuery(qhttp::Request::Ptr const& req,
-                                        qhttp::Response::Ptr const& resp) {
+void HttpQservMonitorModule::_userQuery() {
     debug(__func__);
 
-    auto const id = stoull(req->params.at("id"));
+    auto const id = stoull(params().at("id"));
 
     debug(__func__, " id=" + to_string(id));
 
     json result;
-    sendData(resp, result);
+    sendData(result);
 }
 
 

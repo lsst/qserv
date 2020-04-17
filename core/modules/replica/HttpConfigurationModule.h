@@ -72,9 +72,7 @@ protected:
      *
      * @throws std::invalid_argument for unknown values of parameter 'subModuleName'
      */
-    void executeImpl(qhttp::Request::Ptr const& req,
-                     qhttp::Response::Ptr const& resp,
-                     std::string const& subModuleName) final;
+    void executeImpl(std::string const& subModuleName) final;
 
 private:
     HttpConfigurationModule(Controller::Ptr const& controller,
@@ -84,80 +82,69 @@ private:
     /**
      * Return the current Configuration of the system.
      */
-    void _get(qhttp::Request::Ptr const& req,
-              qhttp::Response::Ptr const& resp);
+    void _get();
 
     /**
      * Process a request which updates the Configuration of the Replication
      * system and reports back its new state.
      */
-    void _updateGeneral(qhttp::Request::Ptr const& req,
-                        qhttp::Response::Ptr const& resp);
+    void _updateGeneral();
 
     /**
      * Process a request which updates parameters of an existing worker in
      * the Configuration of the Replication system and reports back the new
      * state of the system
      */
-    void _updateWorker(qhttp::Request::Ptr const& req,
-                       qhttp::Response::Ptr const& resp);
+    void _updateWorker();
 
     /**
      * Process a request which removes an existing worker from the Configuration
      * of the Replication system and reports back the new state of the system
      */
-    void _deleteWorker(qhttp::Request::Ptr const& req,
-                       qhttp::Response::Ptr const& resp);
+    void _deleteWorker();
 
     /**
      * Process a request which adds a new worker into the Configuration
      * of the Replication system and reports back the new state of the system
      */
-    void _addWorker(qhttp::Request::Ptr const& req,
-                    qhttp::Response::Ptr const& resp);
+    void _addWorker();
 
     /**
      * Process a request which removes an existing database family from
      * the Configuration of the Replication system and reports back the new
      * state of the system
      */
-    void _deleteFamily(qhttp::Request::Ptr const& req,
-                       qhttp::Response::Ptr const& resp);
+    void _deleteFamily();
 
     /**
      * Process a request which adds a new database family into the Configuration
      * of the Replication system and reports back the new state of the system
      */
-    void _addFamily(qhttp::Request::Ptr const& req,
-                    qhttp::Response::Ptr const& resp);
+    void _addFamily();
 
     /**
      * Process a request which removes an existing database from the Configuration
      * of the Replication system and reports back the new state of the system
      */
-    void _deleteDatabase(qhttp::Request::Ptr const& req,
-                         qhttp::Response::Ptr const& resp);
+    void _deleteDatabase();
 
     /**
      * Process a request which adds a new database into the Configuration
      * of the Replication system and reports back the new state of the system
      */
-    void _addDatabase(qhttp::Request::Ptr const& req,
-                      qhttp::Response::Ptr const& resp);
+    void _addDatabase();
 
     /**
      * Process a request which removes an existing table from the Configuration
      * of the Replication system and reports back the new state of the system
      */
-    void _deleteTable(qhttp::Request::Ptr const& req,
-                      qhttp::Response::Ptr const& resp);
+    void _deleteTable();
 
     /**
      * Process a request which adds a new database table into the Configuration
      * of the Replication system and reports back the new state of the system
      */
-    void _addTable(qhttp::Request::Ptr const& req,
-                   qhttp::Response::Ptr const& resp);
+    void _addTable();
 };
     
 }}} // namespace lsst::qserv::replica

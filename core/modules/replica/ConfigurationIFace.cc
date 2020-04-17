@@ -59,6 +59,9 @@ json WorkerInfo::toJson() const {
     infoJson["loader_host"]  = loaderHost;
     infoJson["loader_port"]  = loaderPort;
     infoJson["loader_tmp_dir"] = loaderTmpDir;
+    infoJson["exporter_host"]    = exporterHost;
+    infoJson["exporter_port"]    = exporterPort;
+    infoJson["exporter_tmp_dir"] = exporterTmpDir;
 
     return infoJson;
 }
@@ -71,6 +74,15 @@ string DatabaseInfo::schema4css(string const& table) const {
     }
     schema += ")";
     return schema;
+}
+
+
+bool DatabaseInfo::isPartitioned(string const& table) const {
+    if (partitionedTables.end() != find(partitionedTables.begin(), partitionedTables.end(), table))  return true;
+    if (regularTables.end() != find(regularTables.begin(), regularTables.end(), table)) return false;
+    throw invalid_argument(
+            "DatabaseInfo::" + string(__func__) +
+            "no such table '" + table + "' found in database '" + name + "'");
 }
 
 
@@ -148,7 +160,10 @@ ostream& operator <<(ostream& os, WorkerInfo const& info) {
         << "dbUser:'"    <<      info.dbUser     << "',"
         << "loaderHost:'"   <<   info.loaderHost   << "',"
         << "loaderPort:"    <<   info.loaderPort   << ","
-        << "loaderTmpDir:'" <<   info.loaderTmpDir << "')";
+        << "loaderTmpDir:'" <<   info.loaderTmpDir << "',"
+        << "exporterHost:'"   <<   info.exporterHost   << "',"
+        << "exporterPort:"    <<   info.exporterPort   << ","
+        << "exporterTmpDir:'" <<   info.exporterTmpDir << "')";
     return os;
 }
 

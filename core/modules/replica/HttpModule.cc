@@ -55,14 +55,22 @@ void HttpModule::execute(qhttp::Request::Ptr const& req,
                          string const& subModuleName,
                          AuthType const authType) {
     try {
-        if (authType == AUTH_REQUIRED) _enforceAuthorization(req);
-        executeImpl(req, resp, subModuleName);
+        // Finish setting up a context of the module.
+        _req = req;
+        _resp = resp;
+        _params = req->params;
+        _query = HttpRequestQuery(req->query);
+        _body = HttpRequestBody(req);
+
+        if (authType == AUTH_REQUIRED) _enforceAuthorization();
+        executeImpl(subModuleName);
+
     } catch (AuthError const& ex) {
-        sendError(resp, __func__, "failed to pass authorization requirements, ex: " + string(ex.what()));
+        sendError(__func__, "failed to pass authorization requirements, ex: " + string(ex.what()));
     } catch (invalid_argument const& ex) {
-        sendError(resp, __func__, "invalid parameters of the request, ex: " + string(ex.what()));
+        sendError(__func__, "invalid parameters of the request, ex: " + string(ex.what()));
     } catch (exception const& ex) {
-        sendError(resp, __func__, "operation failed due to: " + string(ex.what()));
+        sendError(__func__, "operation failed due to: " + string(ex.what()));
     }
 }
 
@@ -87,8 +95,7 @@ void HttpModule::error(string const& msg) const {
 }
 
 
-void HttpModule::sendError(qhttp::Response::Ptr const& resp,
-                           string const& func,
+void HttpModule::sendError(string const& func,
                            string const& errorMsg) const {
     error(func, errorMsg);
 
@@ -96,23 +103,21 @@ void HttpModule::sendError(qhttp::Response::Ptr const& resp,
     result["success"] = 0;
     result["error"] = errorMsg;
 
-    resp->send(result.dump(), "application/json");
+    resp()->send(result.dump(), "application/json");
 }
 
 
-void HttpModule::sendData(qhttp::Response::Ptr const& resp,
-                          json& result,
+void HttpModule::sendData(json& result,
                           bool success) {
     result["success"] = success ? 1 : 0;
     result["error"] = "";
 
-    resp->send(result.dump(), "application/json");
+    resp()->send(result.dump(), "application/json");
 }
 
 
-void HttpModule::_enforceAuthorization(qhttp::Request::Ptr const& req) const {
-    HttpRequestBody body(req);
-    auto authKey = body.required<string>("auth-key");
+void HttpModule::_enforceAuthorization() const {
+    auto authKey = body().required<string>("auth_key");
     if (authKey != _processorConfig.authKey) {
         throw AuthError("authorization key in the request didn't match the one in server configuration");
     }

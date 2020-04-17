@@ -429,10 +429,10 @@ public:
 
     /**
      * Find all replicas for the specified collection of chunks and the database.
-     * This is an optimized version of the sigle chunk lookup method defined above,
+     * This is an optimized version of the single chunk lookup method defined above,
      *
      * @note no assumption on a new status of the replica collection
-     *   passed into the method should be mande if the operation fails.
+     *   passed into the method should be made if the operation fails.
      *
      * @param replicas a collection of replicas (if any found)
      * @param chunks a collection chunk numbers whose replicas will be looked for

@@ -57,9 +57,7 @@ public:
     ~HttpWorkerStatusModule() final = default;
 
 protected:
-    void executeImpl(qhttp::Request::Ptr const& req,
-                     qhttp::Response::Ptr const& resp,
-                     std::string const& subModuleName) final;
+    void executeImpl(std::string const& subModuleName) final;
 
 private:
     HttpWorkerStatusModule(Controller::Ptr const& controller,
