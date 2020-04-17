@@ -44,9 +44,20 @@ class HttpRequestsModule: public HttpModule {
 public:
     typedef std::shared_ptr<HttpRequestsModule> Ptr;
 
-    static Ptr create(Controller::Ptr const& controller,
-                      std::string const& taskName,
-                      HttpProcessorConfig const& processorConfig);
+    /**
+     * @note supported values for parameter 'subModuleName' are
+     * the empty string (for pulling info on all known Requests),
+     * or 'SELECT-ONE-BY-ID' for a single request.
+     *
+     * @throws std::invalid_argument for unknown values of parameter 'subModuleName'
+     */
+    static void process(Controller::Ptr const& controller,
+                        std::string const& taskName,
+                        HttpProcessorConfig const& processorConfig,
+                        qhttp::Request::Ptr const& req,
+                        qhttp::Response::Ptr const& resp,
+                        std::string const& subModuleName=std::string(),
+                        HttpModule::AuthType const authType=HttpModule::AUTH_NONE);
 
     HttpRequestsModule() = delete;
     HttpRequestsModule(HttpRequestsModule const&) = delete;
@@ -55,19 +66,14 @@ public:
     ~HttpRequestsModule() final = default;
 
 protected:
-    /**
-     * @note supported values for parameter 'subModuleName' are
-     * the empty string (for pulling info on all known Requests),
-     * or 'SELECT-ONE-BY-ID' for a single request.
-     *
-     * @throws std::invalid_argument for unknown values of parameter 'subModuleName'
-     */
     void executeImpl(std::string const& subModuleName) final;
 
 private:
     HttpRequestsModule(Controller::Ptr const& controller,
                        std::string const& taskName,
-                       HttpProcessorConfig const& processorConfig);
+                       HttpProcessorConfig const& processorConfig,
+                       qhttp::Request::Ptr const& req,
+                       qhttp::Response::Ptr const& resp);
 
     void _requests();
     void _oneRequest();

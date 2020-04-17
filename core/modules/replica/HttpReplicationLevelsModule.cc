@@ -42,15 +42,23 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
-HttpReplicationLevelsModule::Ptr HttpReplicationLevelsModule::create(
-                                    Controller::Ptr const& controller,
-                                    string const& taskName,
-                                    HttpProcessorConfig const& processorConfig,
-                                    HealthMonitorTask::Ptr const& healthMonitorTask) {
-    return Ptr(new HttpReplicationLevelsModule(
-        controller, taskName, processorConfig,
-        healthMonitorTask
-    ));
+// Initialize static members
+
+json HttpReplicationLevelsModule::_replicationLevelReport = json::object();
+uint64_t HttpReplicationLevelsModule::_replicationLevelReportTimeMs = 0;
+util::Mutex HttpReplicationLevelsModule::_replicationLevelMtx;
+
+
+void HttpReplicationLevelsModule::process(Controller::Ptr const& controller,
+                                          string const& taskName,
+                                          HttpProcessorConfig const& processorConfig,
+                                          qhttp::Request::Ptr const& req,
+                                          qhttp::Response::Ptr const& resp,
+                                          HealthMonitorTask::Ptr const& healthMonitorTask,
+                                          string const& subModuleName,
+                                          HttpModule::AuthType const authType) {
+    HttpReplicationLevelsModule module(controller, taskName, processorConfig, req, resp, healthMonitorTask);
+    module.execute(subModuleName, authType);
 }
 
 
@@ -58,8 +66,10 @@ HttpReplicationLevelsModule::HttpReplicationLevelsModule(
                                 Controller::Ptr const& controller,
                                 string const& taskName,
                                 HttpProcessorConfig const& processorConfig,
+                                qhttp::Request::Ptr const& req,
+                                qhttp::Response::Ptr const& resp,
                                 HealthMonitorTask::Ptr const& healthMonitorTask)
-    :   HttpModule(controller, taskName, processorConfig),
+    :   HttpModule(controller, taskName, processorConfig, req, resp),
         _healthMonitorTask(healthMonitorTask) {
 }
 
@@ -71,7 +81,9 @@ void HttpReplicationLevelsModule::executeImpl(string const& subModuleName) {
 
     // Check if a cached report can be used
     //
-    // TODO: add a cache control parameter to the class's constructor
+    // TODO: add a cache control parameter to the class's constructor,
+    // or (even better) extract it from an optional parameter of the request
+    // to let a client decide on how "stale" the result is expected to be.
 
     if (not _replicationLevelReport.is_null()) {
         uint64_t lastReportAgeMs = PerformanceUtils::now() - _replicationLevelReportTimeMs;

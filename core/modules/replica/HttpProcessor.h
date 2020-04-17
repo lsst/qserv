@@ -28,14 +28,7 @@
 // Qserv headers
 #include "replica/EventLogger.h"
 #include "replica/HealthMonitorTask.h"
-
-// Forward declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
-    class HttpModule;
-    class HttpProcessorConfig;
-}}} // Forward declarations
+#include "replica/HttpProcessorConfig.h"
 
 // This header declarations
 namespace lsst {
@@ -70,18 +63,10 @@ private:
 
     void _initialize();
 
-    std::shared_ptr<HttpModule> const _catalogsModule;
-    std::shared_ptr<HttpModule> const _replicationLevelsModule;
-    std::shared_ptr<HttpModule> const _workerStatusModule;
-    std::shared_ptr<HttpModule> const _controllersModule;
-    std::shared_ptr<HttpModule> const _requestsModule;
-    std::shared_ptr<HttpModule> const _jobsModule;
-    std::shared_ptr<HttpModule> const _configurationModule;
-    std::shared_ptr<HttpModule> const _qservMonitorModule;
-    std::shared_ptr<HttpModule> const _qservSqlModule;
-    std::shared_ptr<HttpModule> const _ingestChunksModule;
-    std::shared_ptr<HttpModule> const _ingestModule;
-    std::shared_ptr<HttpModule> const _exportModule;
+    // Input parameters
+
+    HttpProcessorConfig const _processorConfig;
+    HealthMonitorTask::Ptr const _healthMonitorTask;
 };
     
 }}} // namespace lsst::qserv::replica

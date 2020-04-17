@@ -22,7 +22,6 @@
 #define LSST_QSERV_HTTPMODULE_H
 
 // System headers
-#include <memory>
 #include <stdexcept>
 #include <string>
 #include <unordered_map>
@@ -46,12 +45,8 @@ namespace replica {
  * Class HttpModule is a base class for requests processing modules
  * of an HTTP server built into the Master Replication Controller.
  */
-class HttpModule:
-        public EventLogger,
-        public std::enable_shared_from_this<HttpModule> {
+class HttpModule: public EventLogger {
 public:
-    typedef std::shared_ptr<HttpModule> Ptr;
-
     /// The enumeration type which is used for configuring/enforcing
     /// module's authorization requirements.
     enum AuthType {
@@ -81,8 +76,6 @@ public:
      * implementations of method HttpModule::executeImpl(). These error conditions will
      * be reported to as errors to callers.
      * 
-     * @param req  the HTTP request
-     * @param resp  the HTTP response channel
      * @param subModuleName  this optional parameter allows modules to have
      *   multiple sub-modules. A value of this parameter will be forwarded to
      *   the subclass-specific implementation of the pure virtual method
@@ -91,15 +84,23 @@ public:
      *   requested then the method will enforce the authorization.  would result in a error
      *   sent back to a client.
      */
-    void execute(qhttp::Request::Ptr const& req,
-                 qhttp::Response::Ptr const& resp,
-                 std::string const& subModuleName=std::string(),
+    void execute(std::string const& subModuleName=std::string(),
                  AuthType const authType=AUTH_NONE);
 
 protected:
+    /**
+     * 
+     * @param controller       The Controller provides the network I/O services (BOOST ASIO)
+     * @param taskName         The name of a task in a context of the Master Replication Controller
+     * @param processorConfig  Shared parameters of the HTTP services
+     * @param req              The HTTP request
+     * @param resp             The HTTP response channel
+     */
     HttpModule(Controller::Ptr const& controller,
                std::string const& taskName,
-               HttpProcessorConfig const& processorConfig);
+               HttpProcessorConfig const& processorConfig,
+               qhttp::Request::Ptr const& req,
+               qhttp::Response::Ptr const& resp);
 
     unsigned int workerResponseTimeoutSec() const { return _processorConfig.workerResponseTimeoutSec; }
     unsigned int qservSyncTimeoutSec() const { return _processorConfig.qservSyncTimeoutSec; }
@@ -110,7 +111,7 @@ protected:
     qhttp::Request::Ptr const& req() const { return _req; }
     qhttp::Response::Ptr const& resp() const { return _resp; }
 
-    std::unordered_map<std::string, std::string> const& params() const { return _params; }
+    std::unordered_map<std::string, std::string> const& params() const { return _req->params; }
 
     HttpRequestQuery const& query() const { return _query; }
     HttpRequestBody const& body() const { return _body; }
@@ -175,22 +176,15 @@ private:
 
     HttpProcessorConfig const _processorConfig;
 
-    // Pointers to the request and response are set when a module is called for execution.
-
-    qhttp::Request::Ptr _req;
-    qhttp::Response::Ptr _resp;
-
-    /// Parameters of the RST service. The dictionary gets initialized when a module is called
-    /// for execution.
-    std::unordered_map<std::string, std::string> _params;
+    qhttp::Request::Ptr const _req;
+    qhttp::Response::Ptr const _resp;
 
     /// The parser for parameters passed into the Web services via the optional
-    /// query part of a URL. The object gets initialized when a module is called
-    /// for execution.
-    HttpRequestQuery _query;
+    /// query part of a URL. The object gets initialized from the request.
+    HttpRequestQuery const _query;
 
-    /// The body of a request is initialized when a module is called for execution.
-    HttpRequestBody _body;
+    /// The body of a request is initialized from the request.
+    HttpRequestBody const _body;
 };
     
 }}} // namespace lsst::qserv::replica

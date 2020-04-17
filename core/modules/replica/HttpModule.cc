@@ -44,27 +44,23 @@ namespace replica {
 
 HttpModule::HttpModule(Controller::Ptr const& controller,
                        string const& taskName,
-                       HttpProcessorConfig const& processorConfig)
+                       HttpProcessorConfig const& processorConfig,
+                       qhttp::Request::Ptr const& req,
+                       qhttp::Response::Ptr const& resp)
     :   EventLogger(controller, taskName),
-        _processorConfig(processorConfig) {
+        _processorConfig(processorConfig),
+        _req(req),
+        _resp(resp),
+        _query(req->query),
+        _body(req) {
 }
 
 
-void HttpModule::execute(qhttp::Request::Ptr const& req,
-                         qhttp::Response::Ptr const& resp,
-                         string const& subModuleName,
+void HttpModule::execute(string const& subModuleName,
                          AuthType const authType) {
     try {
-        // Finish setting up a context of the module.
-        _req = req;
-        _resp = resp;
-        _params = req->params;
-        _query = HttpRequestQuery(req->query);
-        _body = HttpRequestBody(req);
-
         if (authType == AUTH_REQUIRED) _enforceAuthorization();
         executeImpl(subModuleName);
-
     } catch (AuthError const& ex) {
         sendError(__func__, "failed to pass authorization requirements, ex: " + string(ex.what()));
     } catch (invalid_argument const& ex) {

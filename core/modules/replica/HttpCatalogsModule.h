@@ -45,9 +45,13 @@ class HttpCatalogsModule: public HttpModule {
 public:
     typedef std::shared_ptr<HttpCatalogsModule> Ptr;
 
-    static Ptr create(Controller::Ptr const& controller,
-                      std::string const& taskName,
-                      HttpProcessorConfig const& processorConfig);
+    static void process(Controller::Ptr const& controller,
+                       std::string const& taskName,
+                       HttpProcessorConfig const& processorConfig,
+                       qhttp::Request::Ptr const& req,
+                       qhttp::Response::Ptr const& resp,
+                       std::string const& subModuleName=std::string(),
+                       HttpModule::AuthType const authType=HttpModule::AUTH_NONE);
 
     HttpCatalogsModule() = delete;
     HttpCatalogsModule(HttpCatalogsModule const&) = delete;
@@ -61,7 +65,9 @@ protected:
 private:
     HttpCatalogsModule(Controller::Ptr const& controller,
                        std::string const& taskName,
-                       HttpProcessorConfig const& processorConfig);
+                       HttpProcessorConfig const& processorConfig,
+                       qhttp::Request::Ptr const& req,
+                       qhttp::Response::Ptr const& resp);
 
     /**
      * Retrieve the latest state of the database stats from a persistent
@@ -74,14 +80,16 @@ private:
     nlohmann::json _databaseStats(std::string const& database,
                                   bool dummyReport=false) const;
 
+    // The cached state is shared by all instances of the class
+
     /// The cached state of the last catalog stats report
-    nlohmann::json _catalogsReport = nlohmann::json::object();
+    static nlohmann::json _catalogsReport;
 
     /// The time of the last cached report
-    uint64_t _catalogsReportTimeMs = 0;
+    static uint64_t _catalogsReportTimeMs;
 
     /// Protects the catalog stats cache
-    util::Mutex _catalogsMtx;
+    static util::Mutex _catalogsMtx;
 };
     
 }}} // namespace lsst::qserv::replica

@@ -133,19 +133,25 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
-HttpIngestChunksModule::Ptr HttpIngestChunksModule::create(
-            Controller::Ptr const& controller,
-            string const& taskName,
-            HttpProcessorConfig const& processorConfig) {
-    return Ptr(new HttpIngestChunksModule(controller, taskName, processorConfig));
+void HttpIngestChunksModule::process(Controller::Ptr const& controller,
+                                     string const& taskName,
+                                     HttpProcessorConfig const& processorConfig,
+                                     qhttp::Request::Ptr const& req,
+                                     qhttp::Response::Ptr const& resp,
+                                     string const& subModuleName,
+                                     HttpModule::AuthType const authType) {
+    HttpIngestChunksModule module(controller, taskName, processorConfig, req, resp);
+    module.execute(subModuleName, authType);
 }
 
 
 HttpIngestChunksModule::HttpIngestChunksModule(
             Controller::Ptr const& controller,
             string const& taskName,
-            HttpProcessorConfig const& processorConfig)
-    :   HttpModule(controller, taskName, processorConfig) {
+            HttpProcessorConfig const& processorConfig,
+            qhttp::Request::Ptr const& req,
+            qhttp::Response::Ptr const& resp)
+    :   HttpModule(controller, taskName, processorConfig, req, resp) {
 }
 
 

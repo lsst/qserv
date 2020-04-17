@@ -47,17 +47,6 @@ class HttpIngestChunksModule: public HttpModule {
 public:
     typedef std::shared_ptr<HttpIngestChunksModule> Ptr;
 
-    static Ptr create(Controller::Ptr const& controller,
-                      std::string const& taskName,
-                      HttpProcessorConfig const& processorConfig);
-
-    HttpIngestChunksModule() = delete;
-    HttpIngestChunksModule(HttpIngestChunksModule const&) = delete;
-    HttpIngestChunksModule& operator=(HttpIngestChunksModule const&) = delete;
-
-    ~HttpIngestChunksModule() final = default;
-
-protected:
     /**
      * Supported values for parameter 'subModuleName':
      *
@@ -66,12 +55,29 @@ protected:
      *
      * @throws std::invalid_argument for unknown values of parameter 'subModuleName'
      */
+    static void process(Controller::Ptr const& controller,
+                        std::string const& taskName,
+                        HttpProcessorConfig const& processorConfig,
+                        qhttp::Request::Ptr const& req,
+                        qhttp::Response::Ptr const& resp,
+                        std::string const& subModuleName=std::string(),
+                        HttpModule::AuthType const authType=HttpModule::AUTH_NONE);
+
+    HttpIngestChunksModule() = delete;
+    HttpIngestChunksModule(HttpIngestChunksModule const&) = delete;
+    HttpIngestChunksModule& operator=(HttpIngestChunksModule const&) = delete;
+
+    ~HttpIngestChunksModule() final = default;
+
+protected:
     void executeImpl(std::string const& subModuleName) final;
 
 private:
     HttpIngestChunksModule(Controller::Ptr const& controller,
                            std::string const& taskName,
-                           HttpProcessorConfig const& processorConfig);
+                           HttpProcessorConfig const& processorConfig,
+                           qhttp::Request::Ptr const& req,
+                           qhttp::Response::Ptr const& resp);
 
     /**
      * Register (if it's not register yet) a chunk for ingest.
