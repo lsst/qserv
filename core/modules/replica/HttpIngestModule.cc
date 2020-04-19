@@ -35,7 +35,9 @@
 
 // Qserv headers
 #include "css/CssAccess.h"
+#include "global/constants.h"
 #include "replica/AbortTransactionJob.h"
+#include "replica/ChunkedTable.h"
 #include "replica/Configuration.h"
 #include "replica/DatabaseMySQL.h"
 #include "replica/DatabaseServices.h"
@@ -689,30 +691,46 @@ void HttpIngestModule::_addTable() {
         columns.emplace_back(colName, colType);
     }
 
-    // Create template tables on all workers. These tables will be used
-    // to create chunk-specific tables before loading data.
+    // Create template and special (if the partitioned table requested) tables on all
+    // workers. These tables will be used to create chunk-specific tables before
+    // loading data.
+    //
+    // The special tables to be created are for the "dummy" chunk which is required
+    // to be present on each worker regardless if it (the worker) will have or not
+    // any normal chunks upon completion of the ingest. Not having the special chunk
+    // will confuse the ingest (and eventually - Qserv query processor).
 
     bool const allWorkers = true;
     string const engine = "MyISAM";
 
-    auto const job = SqlCreateTableJob::create(
-        databaseInfo.name,
-        table,
-        engine,
-        _partitionByColumn,
-        columns,
-        allWorkers,
-        controller()
-    );
-    job->start();
-    logJobStartedEvent(SqlCreateTableJob::typeName(), job, databaseInfo.family);
-    job->wait();
-    logJobFinishedEvent(SqlCreateTableJob::typeName(), job, databaseInfo.family);
+    vector<string> tables;
+    tables.push_back(table);
+    if (isPartitioned) {
+        unsigned int const chunk = lsst::qserv::DUMMY_CHUNK;
+        bool const overlap = false;
+        tables.push_back(ChunkedTable(table, chunk, overlap).name());
+        tables.push_back(ChunkedTable(table, chunk, not overlap).name());
+    }
+    for (auto&& table: tables) {
+        auto const job = SqlCreateTableJob::create(
+            databaseInfo.name,
+            table,
+            engine,
+            _partitionByColumn,
+            columns,
+            allWorkers,
+            controller()
+        );
+        job->start();
+        logJobStartedEvent(SqlCreateTableJob::typeName(), job, databaseInfo.family);
+        job->wait();
+        logJobFinishedEvent(SqlCreateTableJob::typeName(), job, databaseInfo.family);
 
-    string error = ::jobCompletionErrorIfAny(job, "table creation failed");
-    if (not error.empty()) {
-        sendError(__func__, error);
-        return;
+        string const error = ::jobCompletionErrorIfAny(job, "table creation failed for: '" + table + "'");
+        if (not error.empty()) {
+            sendError(__func__, error);
+            return;
+        }
     }
 
     // Register table in the Configuration
@@ -732,7 +750,7 @@ void HttpIngestModule::_addTable() {
     // This step is needed to get workers' Configuration in-sync with its
     // persistent state.
 
-    error = _reconfigureWorkers(databaseInfo, allWorkers, workerReconfigTimeoutSec());
+    string const error = _reconfigureWorkers(databaseInfo, allWorkers, workerReconfigTimeoutSec());
     if (not error.empty()) {
         sendError(__func__, error);
         return;
