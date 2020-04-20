@@ -36,6 +36,7 @@
 
 // Qserv headers
 #include "global/constants.h"
+#include "replica/ChunkedTable.h"
 #include "replica/Configuration.h"
 #include "replica/ConfigurationIFace.h"
 #include "replica/DatabaseMySQL.h"
@@ -441,22 +442,16 @@ void IngestServerConnection::_loadDataIntoTable() {
                 // Chunked tables are created from the prototype table which is expected
                 // to exist in the database before attempting data loading.
 
-                string const sqlProtoTable = sqlDatabase + "." + h.conn->sqlId(table);
-                string const sqlTable = sqlDatabase + "." + h.conn->sqlId(table + "_" + to_string(_chunk));
-                string const sqlFullOverlapTable  =
-                    sqlDatabase + "." + h.conn->sqlId(table + "FullOverlap_" + to_string(_chunk));
-
-                string const sqlDummyChunkTable =
-                    sqlDatabase + "." + h.conn->sqlId(table + "_" + to_string(lsst::qserv::DUMMY_CHUNK));
-
-                string const sqlOverlapDummyChunkTable =
-                    sqlDatabase + "." + h.conn->sqlId(table + "FullOverlap_" + to_string(lsst::qserv::DUMMY_CHUNK));
+                bool const overlap = true;
+                string const sqlProtoTable       = sqlDatabase + "." + h.conn->sqlId(table);
+                string const sqlTable            = sqlDatabase + "." + h.conn->sqlId(ChunkedTable(table, _chunk, not overlap).name());
+                string const sqlFullOverlapTable = sqlDatabase + "." + h.conn->sqlId(ChunkedTable(table, _chunk, overlap).name());
 
                 vector<string> const tablesToBeCreated = {
                     sqlTable,
                     sqlFullOverlapTable,
-                    sqlDummyChunkTable,
-                    sqlOverlapDummyChunkTable
+                    sqlDatabase + "." + h.conn->sqlId(ChunkedTable(table, lsst::qserv::DUMMY_CHUNK, not overlap).name()),
+                    sqlDatabase + "." + h.conn->sqlId(ChunkedTable(table, lsst::qserv::DUMMY_CHUNK, overlap).name())
                 };
                 for (auto&& table: tablesToBeCreated) {
                     statements.push_back(
