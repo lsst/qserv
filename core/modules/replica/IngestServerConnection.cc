@@ -404,24 +404,28 @@ void IngestServerConnection::_loadDataIntoTable() {
 
     LOGS(_log, LOG_LVL_DEBUG, context << __func__);
 
-    // ATTENTION: the data loading metod used in this implementation requires
+    // ATTENTION: the data loading method used in this implementation requires
     // that the MySQL server has (at least) the read-only access to files in
     // a folder in which the CSV file will be stored by this server. So, make
     // proper adjustments to a configuration of the Replication system.
 
-    database::mysql::Connection::Ptr conn;
     try {
-        
-        conn = database::mysql::Connection::open(database::mysql::ConnectionParams(
-            _workerInfo.dbHost,
-            _workerInfo.dbPort,
-            _workerInfo.dbUser,
-            _serviceProvider->config()->qservWorkerDatabasePassword(),
-            ""
-        ));
+        // The RAII connection handler automatically aborts the active transaction
+        // should an exception be thrown within the block.
+        database::mysql::ConnectionHandler h(
+            database::mysql::Connection::open(
+                database::mysql::ConnectionParams(
+                    _workerInfo.dbHost,
+                    _workerInfo.dbPort,
+                    _workerInfo.dbUser,
+                    _serviceProvider->config()->qservWorkerDatabasePassword(),
+                    ""
+                )
+            )
+        );
 
-        string const sqlDatabase = conn->sqlId(_databaseInfo.name);
-        string const sqlPartition = conn->sqlPartitionId(_transactionId);
+        string const sqlDatabase = h.conn->sqlId(_databaseInfo.name);
+        string const sqlPartition = h.conn->sqlPartitionId(_transactionId);
 
         vector<string> statements;
 
@@ -437,16 +441,16 @@ void IngestServerConnection::_loadDataIntoTable() {
                 // Chunked tables are created from the prototype table which is expected
                 // to exist in the database before attempting data loading.
 
-                string const sqlProtoTable = sqlDatabase + "." + conn->sqlId(table);
-                string const sqlTable = sqlDatabase + "." + conn->sqlId(table + "_" + to_string(_chunk));
+                string const sqlProtoTable = sqlDatabase + "." + h.conn->sqlId(table);
+                string const sqlTable = sqlDatabase + "." + h.conn->sqlId(table + "_" + to_string(_chunk));
                 string const sqlFullOverlapTable  =
-                    sqlDatabase + "." + conn->sqlId(table + "FullOverlap_" + to_string(_chunk));
+                    sqlDatabase + "." + h.conn->sqlId(table + "FullOverlap_" + to_string(_chunk));
 
                 string const sqlDummyChunkTable =
-                    sqlDatabase + "." + conn->sqlId(table + "_" + to_string(lsst::qserv::DUMMY_CHUNK));
+                    sqlDatabase + "." + h.conn->sqlId(table + "_" + to_string(lsst::qserv::DUMMY_CHUNK));
 
                 string const sqlOverlapDummyChunkTable =
-                    sqlDatabase + "." + conn->sqlId(table + "FullOverlap_" + to_string(lsst::qserv::DUMMY_CHUNK));
+                    sqlDatabase + "." + h.conn->sqlId(table + "FullOverlap_" + to_string(lsst::qserv::DUMMY_CHUNK));
 
                 vector<string> const tablesToBeCreated = {
                     sqlTable,
@@ -467,9 +471,9 @@ void IngestServerConnection::_loadDataIntoTable() {
                 // An additional step for the current request's table
                 if (table == _table) {
                     statements.push_back(
-                        "LOAD DATA INFILE " + conn->sqlValue(_fileName) +
+                        "LOAD DATA INFILE " + h.conn->sqlValue(_fileName) +
                             " INTO TABLE " + (_isOverlap ? sqlFullOverlapTable : sqlTable) +
-                            " FIELDS TERMINATED BY " + conn->sqlValue(string() + _columnSeparator)
+                            " FIELDS TERMINATED BY " + h.conn->sqlValue(string() + _columnSeparator)
                     );
                 }
             }
@@ -478,16 +482,16 @@ void IngestServerConnection::_loadDataIntoTable() {
             // Regular tables are expected to exist in the database before
             // attempting data loading.
 
-            string const sqlTable = sqlDatabase + "." + conn->sqlId(_table);
+            string const sqlTable = sqlDatabase + "." + h.conn->sqlId(_table);
 
             statements.push_back(
                 "ALTER TABLE " + sqlTable + " ADD PARTITION IF NOT EXISTS (PARTITION " + sqlPartition +
                     " VALUES IN (" + to_string(_transactionId) + "))"
             );
             statements.push_back(
-                "LOAD DATA INFILE " + conn->sqlValue(_fileName) +
+                "LOAD DATA INFILE " + h.conn->sqlValue(_fileName) +
                     " INTO TABLE " + sqlTable +
-                    " FIELDS TERMINATED BY " + conn->sqlValue(string() + _columnSeparator)
+                    " FIELDS TERMINATED BY " + h.conn->sqlValue(string() + _columnSeparator)
             );
         }
         for (auto&& statement: statements) {
@@ -496,7 +500,7 @@ void IngestServerConnection::_loadDataIntoTable() {
         // Note that each statement gets executed in its own transaction to eliminate
         // a probability of deadlocking on the DML operations creating tables.
         // A failure of an individual query is still a failure of the whole request.
-        conn->execute([&statements](decltype(conn) const& conn_) {
+        h.conn->execute([&statements](decltype(h.conn) const& conn_) {
             for (auto&& statement: statements) {
                 conn_->begin();
                 conn_->execute(statement);
@@ -505,7 +509,6 @@ void IngestServerConnection::_loadDataIntoTable() {
         });
     } catch (exception const& ex) {
         LOGS(_log, LOG_LVL_ERROR, context << __func__ << "  exception: " << ex.what());
-        if ((nullptr != conn) and conn->inTransaction()) conn->rollback();
         throw;
     }
 }
