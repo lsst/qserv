@@ -39,6 +39,7 @@
 #include "replica/ServiceProvider.h"
 #include "replica/SqlCreateDbRequest.h"
 #include "replica/SqlCreateTableRequest.h"
+#include "replica/SqlCreateTablesRequest.h"
 #include "replica/SqlDeleteDbRequest.h"
 #include "replica/SqlDeleteTablePartitionRequest.h"
 #include "replica/SqlDeleteTableRequest.h"
@@ -159,7 +160,7 @@ void ControllerApp::_configureParser() {
         {   "REPLICATE", "DELETE", "FIND", "FIND_ALL",  "ECHO",
             "SQL_QUERY", "SQL_CREATE_DATABASE", "SQL_DELETE_DATABASE",
             "SQL_ENABLE_DATABASE", "SQL_DISABLE_DATABASE", "SQL_GRANT_ACCESS",
-            "SQL_CREATE_TABLE", "SQL_DELETE_TABLE",
+            "SQL_CREATE_TABLE", "SQL_CREATE_TABLES", "SQL_DELETE_TABLE",
             "SQL_REMOVE_TABLE_PARTITIONS", "SQL_DELETE_TABLE_PARTITION",
             "INDEX", "STATUS", "STOP", "DISPOSE",
             "SERVICE_SUSPEND", "SERVICE_RESUME", "SERVICE_STATUS",
@@ -408,6 +409,34 @@ void ControllerApp::_configureParserCommandSQL() {
     );
 
     parser().command(
+        "SQL_CREATE_TABLES"
+    ).required(
+        "database",
+        "The name of an existing database where the table will be created.",
+        _sqlDatabase
+    ).required(
+        "table",
+        "The name of a table to be created.",
+        _sqlTable
+    ).required(
+        "engine",
+        "The name of a MySQL engine for the new table",
+        _sqlEngine
+    ).required(
+        "schema-file",
+        "The name of a file where column definitions of the table schema will be"
+        " read from. If symbol '-' is passed instead of the file name then column"
+        " definitions will be read from the Standard Input File. The file is required"
+        " to have the following format: <column-name> <type>",
+        _sqlSchemaFile
+    ).option(
+        "partition-by-column",
+        "The name of a column which is used for creating the table based on"
+        " the MySQL partitioning mechanism,",
+        _sqlPartitionByColumn
+    );
+
+    parser().command(
         "SQL_DELETE_TABLE"
     ).required(
         "database",
@@ -490,13 +519,13 @@ void ControllerApp::_configureParserCommandSTATUS() {
         " REPLICATE, DELETE, FIND, FIND_ALL, ECHO, SQL_QUERY, SQL_CREATE_DATABASE"
         " SQL_DELETE_DATABASE, SQL_ENABLE_DATABASE, SQL_DISABLE_DATABASE"
         " SQL_GRANT_ACCESS"
-        " SQL_CREATE_TABLE, SQL_DELETE_TABLE, SQL_REMOVE_TABLE_PARTITIONS,"
+        " SQL_CREATE_TABLE, SQL_CREATE_TABLES, SQL_DELETE_TABLE, SQL_REMOVE_TABLE_PARTITIONS,"
         " SQL_DELETE_TABLE_PARTITION,"
         " INDEX",
         _affectedRequest,
        {    "REPLICATE", "DELETE", "FIND", "FIND_ALL", "ECHO", "SQL_QUERY",
             "SQL_CREATE_DATABASE", "SQL_DELETE_DATABASE", "SQL_ENABLE_DATABASE",
-            "SQL_DISABLE_DATABASE", "SQL_GRANT_ACCESS", "SQL_CREATE_TABLE", "SQL_DELETE_TABLE",
+            "SQL_DISABLE_DATABASE", "SQL_GRANT_ACCESS", "SQL_CREATE_TABLE", "SQL_CREATE_TABLES", "SQL_DELETE_TABLE",
             "SQL_REMOVE_TABLE_PARTITIONS", "SQL_DELETE_TABLE_PARTITION",
             "INDEX"
         }
@@ -519,13 +548,13 @@ void ControllerApp::_configureParserCommandSTOP() {
         " REPLICATE, DELETE, FIND, FIND_ALL, ECHO, SQL_QUERY, SQL_CREATE_DATABASE"
         " SQL_DELETE_DATABASE, SQL_ENABLE_DATABASE, SQL_DISABLE_DATABASE"
         " SQL_GRANT_ACCESS"
-        " SQL_CREATE_TABLE, SQL_DELETE_TABLE, SQL_REMOVE_TABLE_PARTITIONS,"
+        " SQL_CREATE_TABLE, SQL_CREATE_TABLES, SQL_DELETE_TABLE, SQL_REMOVE_TABLE_PARTITIONS,"
         " SQL_DELETE_TABLE_PARTITION,"
         " INDEX",
         _affectedRequest,
        {    "REPLICATE", "DELETE", "FIND", "FIND_ALL", "ECHO", "SQL_QUERY",
             "SQL_CREATE_DATABASE", "SQL_DELETE_DATABASE", "SQL_ENABLE_DATABASE",
-            "SQL_DISABLE_DATABASE", "SQL_GRANT_ACCESS", "SQL_CREATE_TABLE", "SQL_DELETE_TABLE",
+            "SQL_DISABLE_DATABASE", "SQL_GRANT_ACCESS", "SQL_CREATE_TABLE", "SQL_CREATE_TABLES", "SQL_DELETE_TABLE",
             "SQL_REMOVE_TABLE_PARTITIONS", "SQL_DELETE_TABLE_PARTITION",
             "INDEX"
         }
@@ -710,6 +739,16 @@ int ControllerApp::runImpl() {
 
         request = controller->sqlCreateTable(
             _workerName, _sqlDatabase, _sqlTable, _sqlEngine, _sqlPartitionByColumn,
+            SqlSchemaUtils::readFromTextFile(_sqlSchemaFile),
+            SqlRequest::extendedPrinter,
+            _priority, not _doNotTrackRequest
+        );
+
+    } else if ("SQL_CREATE_TABLES" == _requestType) {
+
+        vector<string> const tables = {_sqlTable};
+        request = controller->sqlCreateTables(
+            _workerName, _sqlDatabase, tables, _sqlEngine, _sqlPartitionByColumn,
             SqlSchemaUtils::readFromTextFile(_sqlSchemaFile),
             SqlRequest::extendedPrinter,
             _priority, not _doNotTrackRequest

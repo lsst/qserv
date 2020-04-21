@@ -46,6 +46,7 @@
 #include "replica/SqlQueryRequest.h"
 #include "replica/SqlCreateDbRequest.h"
 #include "replica/SqlCreateTableRequest.h"
+#include "replica/SqlCreateTablesRequest.h"
 #include "replica/SqlDeleteDbRequest.h"
 #include "replica/SqlDeleteTablePartitionRequest.h"
 #include "replica/SqlDeleteTableRequest.h"
@@ -448,6 +449,41 @@ SqlCreateTableRequest::Ptr Controller::sqlCreateTable(
         workerName,
         database,
         table,
+        engine,
+        partitionByColumn,
+        columns,
+        onFinish,
+        priority,
+        keepTracking,
+        jobId,
+        requestExpirationIvalSec);
+}
+
+
+SqlCreateTablesRequest::Ptr Controller::sqlCreateTables(
+        string const& workerName,
+        string const& database,
+        vector<string> const& tables,
+        string const& engine,
+        string const& partitionByColumn,
+        list<SqlColDef> const& columns,
+        SqlCreateTablesRequest::CallbackType const& onFinish,
+        int priority,
+        bool keepTracking,
+        string const& jobId,
+        unsigned int requestExpirationIvalSec) {
+
+    LOGS(_log, LOG_LVL_TRACE, _context(__func__));
+
+    return _submit<SqlCreateTablesRequest,
+                   decltype(database),
+                   decltype(tables),
+                   decltype(engine),
+                   decltype(partitionByColumn),
+                   decltype(columns)>(
+        workerName,
+        database,
+        tables,
         engine,
         partitionByColumn,
         columns,
