@@ -523,7 +523,7 @@ void Executive::_waitAllUntilEmpty() {
                 os << "Still " << count << " in flight.";
                 complainCount = 0;
                 lock.unlock(); // release the lock while we trigger logging.
-                LOGS(_log, LOG_LVL_DEBUG, os.str());
+                LOGS(_log, LOG_LVL_INFO, os.str());
                 lock.lock();
             }
         }

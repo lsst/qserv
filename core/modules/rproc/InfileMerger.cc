@@ -100,12 +100,6 @@ const char JOB_ID_BASE_NAME[] = "jobId";
 
 } // anonymous namespace
 
-namespace {
-
-
-
-} // anon namespace
-
 
 namespace lsst {
 namespace qserv {
@@ -271,7 +265,7 @@ bool InfileMerger::merge(std::shared_ptr<proto::WorkerResponse> response) {
     auto end = std::chrono::system_clock::now();
     auto mergeDur = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
     LOGS(_log, LOG_LVL_INFO, "mergeDur=" << mergeDur.count()
-        << "sema(total=" << _semaMgrConn->getTotalCount() << " used=" << _semaMgrConn->getUsedCount() << ")");
+        << " sema(total=" << _semaMgrConn->getTotalCount() << " used=" << _semaMgrConn->getUsedCount() << ")");
     if (not ret) {
         LOGS(_log, LOG_LVL_ERROR, "InfileMerger::merge mysql applyMysql failure");
     }
@@ -303,7 +297,7 @@ bool InfileMerger::merge(std::shared_ptr<proto::WorkerResponse> response) {
             }
         }
     }
-    LOGS(_log, LOG_LVL_INFO, "mergeDur=" << mergeDur.count());
+    LOGS(_log, LOG_LVL_DEBUG, "mergeDur=" << mergeDur.count());
     return ret;
 }
 

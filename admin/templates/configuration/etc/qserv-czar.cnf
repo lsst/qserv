@@ -83,11 +83,11 @@ qMetaSecsBetweenChunkCompletionUpdates = 59
 # see qdisp/QdispPool.h QdispPool::QdispPool for more information
 [qdisppool]
 #size of the pool
-poolSize = 2400
+poolSize = 50
 # Low numbers are higher priority. Largest priority 3 creates 4 priority queues 0, 1, 2, 3
 largestPriority = 3
 # Maximum number of threads running for each queue. No spaces. Values separated by ':'
-vectRunSizes = 1200:1200:1200:1000
+vectRunSizes = 50:50:50:50
 # Minimum number of threads running for each queue. No spaces. Values separated by ':'
 vectMinRunningSizes = 0:1:3:3
 
