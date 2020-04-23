@@ -10,7 +10,7 @@ RUN if [ -f /etc/localtime ]; then chown qserv:qserv /etc/localtime; fi && \
     if [ -f /etc/timezone ]; then chown qserv:qserv /etc/timezone; fi
     
 # only for jeprof
-RUN yum install --assumeyes graphviz
+#RUN yum install --assumeyes graphviz
 
 WORKDIR /qserv
 
