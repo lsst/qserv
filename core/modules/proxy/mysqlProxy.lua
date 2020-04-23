@@ -150,7 +150,7 @@ function utilities()
         q = string.gsub(q, '[\n\t]+', ' ')
 
         -- remove all spaces at the beginning
-        q = string.gsub(q, "^%s*", "")
+        q = string.gsub(q, '^%s*', '')
 
         -- remove all spaces before/after '='
         q = string.gsub(q, '[ ]+=', '=')
@@ -161,9 +161,9 @@ function utilities()
         q = string.gsub(q, ',[ ]+', ',')
 
         -- remove all spaces before/after '(' and before ')'
-        q = string.gsub(q, "[ ]+%(", '%(')
-        q = string.gsub(q, "%([ ]+", '%(')
-        q = string.gsub(q, '[ ]+%)', '%)')
+        q = string.gsub(q, '[ ]+%(', '(')
+        q = string.gsub(q, '%([ ]+', '(')
+        q = string.gsub(q, '[ ]+%)', ')')
 
         -- convert multiple spaces to a single space
         q = string.gsub(q, '[ ]+', ' ')
