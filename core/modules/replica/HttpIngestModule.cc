@@ -49,6 +49,7 @@
 #include "replica/ServiceProvider.h"
 #include "replica/SqlCreateDbJob.h"
 #include "replica/SqlCreateTableJob.h"
+#include "replica/SqlCreateTablesJob.h"
 #include "replica/SqlDeleteDbJob.h"
 #include "replica/SqlGrantAccessJob.h"
 #include "replica/SqlEnableDbJob.h"
@@ -519,6 +520,7 @@ void HttpIngestModule::_publishDatabase() {
 
     if (not _grantDatabaseAccess(databaseInfo, allWorkers)) return;
     if (not _enableDatabase(databaseInfo, allWorkers)) return;
+    if (not _createMissingChunkTables(databaseInfo, allWorkers)) return;
     if (not _removeMySQLPartitions(databaseInfo, allWorkers)) return;
 
     // This step is needed to get workers' Configuration in-sync with its
@@ -852,6 +854,43 @@ bool HttpIngestModule::_enableDatabase(DatabaseInfo const& databaseInfo,
     if (not error.empty()) {
         sendError(__func__, error);
         return false;
+    }
+    return true;
+}
+
+
+bool HttpIngestModule::_createMissingChunkTables(DatabaseInfo const& databaseInfo,
+                                                 bool allWorkers) const {
+    debug(__func__);
+
+    string const engine = "MyISAM";
+
+    for (auto&& table: databaseInfo.partitionedTables) {
+
+        auto const columnsItr = databaseInfo.columns.find(table);
+        if (columnsItr == databaseInfo.columns.cend()) {
+            sendError( __func__, "schema is empty for table: '" + table + "'");
+            return false;
+        }
+        auto const job = SqlCreateTablesJob::create(
+            databaseInfo.name,
+            table,
+            engine,
+            _partitionByColumn,
+            columnsItr->second,
+            allWorkers,
+            controller()
+        );
+        job->start();
+        logJobStartedEvent(SqlCreateTablesJob::typeName(), job, databaseInfo.family);
+        job->wait();
+        logJobFinishedEvent(SqlCreateTablesJob::typeName(), job, databaseInfo.family);
+
+        string const error = ::jobCompletionErrorIfAny(job, "table creation failed for: '" + table + "'");
+        if (not error.empty()) {
+            sendError(__func__, error);
+            return false;
+        }
     }
     return true;
 }
