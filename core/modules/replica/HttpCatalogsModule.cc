@@ -42,19 +42,31 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
-HttpCatalogsModule::Ptr HttpCatalogsModule::create(Controller::Ptr const& controller,
-                                                   string const& taskName,
-                                                   HttpProcessorConfig const& processorConfig) {
-    return Ptr(new HttpCatalogsModule(
-        controller, taskName, processorConfig
-    ));
+// Initialize static members
+
+json HttpCatalogsModule::_catalogsReport = json::object();
+uint64_t HttpCatalogsModule::_catalogsReportTimeMs = 0;
+util::Mutex HttpCatalogsModule::_catalogsMtx;
+
+
+void HttpCatalogsModule::process(Controller::Ptr const& controller,
+                                 string const& taskName,
+                                 HttpProcessorConfig const& processorConfig,
+                                 qhttp::Request::Ptr const& req,
+                                 qhttp::Response::Ptr const& resp,
+                                 string const& subModuleName,
+                                 HttpModule::AuthType const authType) {
+    HttpCatalogsModule module(controller, taskName, processorConfig, req, resp);
+    module.execute(subModuleName, authType);
 }
 
 
 HttpCatalogsModule::HttpCatalogsModule(Controller::Ptr const& controller,
                                        string const& taskName,
-                                       HttpProcessorConfig const& processorConfig)
-    :   HttpModule(controller, taskName, processorConfig) {
+                                       HttpProcessorConfig const& processorConfig,
+                                       qhttp::Request::Ptr const& req,
+                                       qhttp::Response::Ptr const& resp)
+    :   HttpModule(controller, taskName, processorConfig, req, resp) {
 }
 
 
@@ -71,6 +83,9 @@ void HttpCatalogsModule::executeImpl(string const& subModuleName) {
         // to see if it needs to be upgraded in the background.
         sendData(_catalogsReport);
 
+        // TODO: add a cache control parameter to the class's constructor,
+        // or (even better) extract it from an optional parameter of the request
+        // to let a client decide on how "stale" the result is expected to be.
         uint64_t lastReportAgeMs = PerformanceUtils::now() - _catalogsReportTimeMs;
         if (lastReportAgeMs < 60 * 60 * 1000) return;
 

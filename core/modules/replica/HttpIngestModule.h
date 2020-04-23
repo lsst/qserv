@@ -55,17 +55,6 @@ class HttpIngestModule: public HttpModule {
 public:
     typedef std::shared_ptr<HttpIngestModule> Ptr;
 
-    static Ptr create(Controller::Ptr const& controller,
-                      std::string const& taskName,
-                      HttpProcessorConfig const& processorConfig);
-
-    HttpIngestModule() = delete;
-    HttpIngestModule(HttpIngestModule const&) = delete;
-    HttpIngestModule& operator=(HttpIngestModule const&) = delete;
-
-    ~HttpIngestModule() final = default;
-
-protected:
     /**
      * Supported values for parameter 'subModuleName':
      *
@@ -83,12 +72,29 @@ protected:
      *
      * @throws std::invalid_argument for unknown values of parameter 'subModuleName'
      */
+    static void process(Controller::Ptr const& controller,
+                        std::string const& taskName,
+                        HttpProcessorConfig const& processorConfig,
+                        qhttp::Request::Ptr const& req,
+                        qhttp::Response::Ptr const& resp,
+                        std::string const& subModuleName=std::string(),
+                        HttpModule::AuthType const authType=HttpModule::AUTH_NONE);
+
+    HttpIngestModule() = delete;
+    HttpIngestModule(HttpIngestModule const&) = delete;
+    HttpIngestModule& operator=(HttpIngestModule const&) = delete;
+
+    ~HttpIngestModule() final = default;
+
+protected:
     void executeImpl(std::string const& subModuleName) final;
 
 private:
     HttpIngestModule(Controller::Ptr const& controller,
                      std::string const& taskName,
-                     HttpProcessorConfig const& processorConfig);
+                     HttpProcessorConfig const& processorConfig,
+                     qhttp::Request::Ptr const& req,
+                     qhttp::Response::Ptr const& resp);
 
     /// Get info on super-transactions
     void _getTransactions();

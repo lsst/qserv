@@ -46,10 +46,14 @@ class HttpReplicationLevelsModule: public HttpModule {
 public:
     typedef std::shared_ptr<HttpReplicationLevelsModule> Ptr;
 
-    static Ptr create(Controller::Ptr const& controller,
-                      std::string const& taskName,
-                      HttpProcessorConfig const& processorConfig,
-                      HealthMonitorTask::Ptr const& healthMonitorTask);
+    static void process(Controller::Ptr const& controller,
+                        std::string const& taskName,
+                        HttpProcessorConfig const& processorConfig,
+                        qhttp::Request::Ptr const& req,
+                        qhttp::Response::Ptr const& resp,
+                        HealthMonitorTask::Ptr const& healthMonitorTask,
+                        std::string const& subModuleName=std::string(),
+                        HttpModule::AuthType const authType=HttpModule::AUTH_NONE);
 
     HttpReplicationLevelsModule() = delete;
     HttpReplicationLevelsModule(HttpReplicationLevelsModule const&) = delete;
@@ -64,20 +68,24 @@ private:
     HttpReplicationLevelsModule(Controller::Ptr const& controller,
                                 std::string const& taskName,
                                 HttpProcessorConfig const& processorConfig,
+                                qhttp::Request::Ptr const& req,
+                                qhttp::Response::Ptr const& resp,
                                 HealthMonitorTask::Ptr const& healthMonitorTask);
 
     // Input parameters
 
     std::weak_ptr<HealthMonitorTask> const _healthMonitorTask;
 
+    // The cached state is shared by all instances of the class
+
     /// The cached state of the last replication levels report
-    nlohmann::json _replicationLevelReport = nlohmann::json::object();
+    static nlohmann::json _replicationLevelReport;
 
     /// The time of the last cached report
-    uint64_t _replicationLevelReportTimeMs = 0;
+    static uint64_t _replicationLevelReportTimeMs;
 
     /// Protects the replication level cache
-    util::Mutex _replicationLevelMtx;
+    static util::Mutex _replicationLevelMtx;
 };
     
 }}} // namespace lsst::qserv::replica

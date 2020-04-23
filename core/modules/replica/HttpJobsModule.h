@@ -44,9 +44,20 @@ class HttpJobsModule: public HttpModule {
 public:
     typedef std::shared_ptr<HttpJobsModule> Ptr;
 
-    static Ptr create(Controller::Ptr const& controller,
-                      std::string const& taskName,
-                      HttpProcessorConfig const& processorConfig);
+    /**
+     * @note supported values for parameter 'subModuleName' are
+     * the empty string (for pulling info on all known Jobs),
+     * or 'SELECT-ONE-BY-ID' for a single job.
+     *
+     * @throws std::invalid_argument for unknown values of parameter 'subModuleName'
+     */
+    static void process(Controller::Ptr const& controller,
+                        std::string const& taskName,
+                        HttpProcessorConfig const& processorConfig,
+                        qhttp::Request::Ptr const& req,
+                        qhttp::Response::Ptr const& resp,
+                        std::string const& subModuleName=std::string(),
+                        HttpModule::AuthType const authType=HttpModule::AUTH_NONE);
 
     HttpJobsModule() = delete;
     HttpJobsModule(HttpJobsModule const&) = delete;
@@ -55,19 +66,14 @@ public:
     ~HttpJobsModule() final = default;
 
 protected:
-    /**
-     * @note supported values for parameter 'subModuleName' are
-     * the empty string (for pulling info on all known Jobs),
-     * or 'SELECT-ONE-BY-ID' for a single job.
-     *
-     * @throws std::invalid_argument for unknown values of parameter 'subModuleName'
-     */
     void executeImpl(std::string const& subModuleName) final;
 
 private:
     HttpJobsModule(Controller::Ptr const& controller,
                    std::string const& taskName,
-                   HttpProcessorConfig const& processorConfig);
+                   HttpProcessorConfig const& processorConfig,
+                   qhttp::Request::Ptr const& req,
+                   qhttp::Response::Ptr const& resp);
 
     void _jobs();
     void _oneJob();

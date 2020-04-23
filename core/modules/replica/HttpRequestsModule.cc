@@ -36,19 +36,24 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
-HttpRequestsModule::Ptr HttpRequestsModule::create(Controller::Ptr const& controller,
-                                                   string const& taskName,
-                                                   HttpProcessorConfig const& processorConfig) {
-    return Ptr(new HttpRequestsModule(
-        controller, taskName, processorConfig
-    ));
+void HttpRequestsModule::process(Controller::Ptr const& controller,
+                                 string const& taskName,
+                                 HttpProcessorConfig const& processorConfig,
+                                 qhttp::Request::Ptr const& req,
+                                 qhttp::Response::Ptr const& resp,
+                                 string const& subModuleName,
+                                 HttpModule::AuthType const authType) {
+    HttpRequestsModule module(controller, taskName, processorConfig, req, resp);
+    module.execute(subModuleName, authType);
 }
 
 
 HttpRequestsModule::HttpRequestsModule(Controller::Ptr const& controller,
                                        string const& taskName,
-                                       HttpProcessorConfig const& processorConfig)
-    :   HttpModule(controller, taskName, processorConfig) {
+                                       HttpProcessorConfig const& processorConfig,
+                                       qhttp::Request::Ptr const& req,
+                                       qhttp::Response::Ptr const& resp)
+    :   HttpModule(controller, taskName, processorConfig, req, resp) {
 }
 
 

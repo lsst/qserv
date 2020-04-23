@@ -44,9 +44,20 @@ class HttpQservSqlModule: public HttpModule {
 public:
     typedef std::shared_ptr<HttpQservSqlModule> Ptr;
 
-    static Ptr create(Controller::Ptr const& controller,
-                      std::string const& taskName,
-                      HttpProcessorConfig const& processorConfig);
+    /**
+     * The only supported value for parameter 'subModuleName' is the empty
+     * string for executing a query via database services of the Qserv
+     * workers.
+     *
+     * @throws std::invalid_argument for unknown values of parameter 'subModuleName'
+     */
+    static void process(Controller::Ptr const& controller,
+                        std::string const& taskName,
+                        HttpProcessorConfig const& processorConfig,
+                        qhttp::Request::Ptr const& req,
+                        qhttp::Response::Ptr const& resp,
+                        std::string const& subModuleName=std::string(),
+                        HttpModule::AuthType const authType=HttpModule::AUTH_NONE);
 
     HttpQservSqlModule() = delete;
     HttpQservSqlModule(HttpQservSqlModule const&) = delete;
@@ -55,19 +66,14 @@ public:
     ~HttpQservSqlModule() final = default;
 
 protected:
-    /**
-     * The only supported value for parameter 'subModuleName' is the empty
-     * string for executing a query via database services of the Qserv
-     * workers.
-     *
-     * @throws std::invalid_argument for unknown values of parameter 'subModuleName'
-     */
     void executeImpl(std::string const& subModuleName) final;
 
 private:
     HttpQservSqlModule(Controller::Ptr const& controller,
                        std::string const& taskName,
-                       HttpProcessorConfig const& processorConfig);
+                       HttpProcessorConfig const& processorConfig,
+                       qhttp::Request::Ptr const& req,
+                       qhttp::Response::Ptr const& resp);
 
     /**
      * Process a request for executing a query against a worker database.

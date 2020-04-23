@@ -34,15 +34,16 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
-HttpWorkerStatusModule::Ptr HttpWorkerStatusModule::create(
-                                Controller::Ptr const& controller,
-                                string const& taskName,
-                                HttpProcessorConfig const& processorConfig,
-                                HealthMonitorTask::Ptr const& healthMonitorTask) {
-    return Ptr(new HttpWorkerStatusModule(
-        controller, taskName, processorConfig,
-        healthMonitorTask
-    ));
+void HttpWorkerStatusModule::process(Controller::Ptr const& controller,
+                                     string const& taskName,
+                                     HttpProcessorConfig const& processorConfig,
+                                     qhttp::Request::Ptr const& req,
+                                     qhttp::Response::Ptr const& resp,
+                                     HealthMonitorTask::Ptr const& healthMonitorTask,
+                                     string const& subModuleName,
+                                     HttpModule::AuthType const authType) {
+    HttpWorkerStatusModule module(controller, taskName, processorConfig, req, resp, healthMonitorTask);
+    module.execute(subModuleName, authType);
 }
 
 
@@ -50,8 +51,10 @@ HttpWorkerStatusModule::HttpWorkerStatusModule(
                             Controller::Ptr const& controller,
                             string const& taskName,
                             HttpProcessorConfig const& processorConfig,
+                            qhttp::Request::Ptr const& req,
+                            qhttp::Response::Ptr const& resp,
                             HealthMonitorTask::Ptr const& healthMonitorTask)
-    :   HttpModule(controller, taskName, processorConfig),
+    :   HttpModule(controller, taskName, processorConfig, req, resp),
         _healthMonitorTask(healthMonitorTask) {
 }
 

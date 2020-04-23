@@ -45,10 +45,14 @@ class HttpWorkerStatusModule: public HttpModule {
 public:
     typedef std::shared_ptr<HttpWorkerStatusModule> Ptr;
 
-    static Ptr create(Controller::Ptr const& controller,
-                      std::string const& taskName,
-                      HttpProcessorConfig const& processorConfig,
-                      HealthMonitorTask::Ptr const& healthMonitorTask);
+    static void process(Controller::Ptr const& controller,
+                        std::string const& taskName,
+                        HttpProcessorConfig const& processorConfig,
+                        qhttp::Request::Ptr const& req,
+                        qhttp::Response::Ptr const& resp,
+                        HealthMonitorTask::Ptr const& healthMonitorTask,
+                        std::string const& subModuleName=std::string(),
+                        HttpModule::AuthType const authType=HttpModule::AUTH_NONE);
 
     HttpWorkerStatusModule() = delete;
     HttpWorkerStatusModule(HttpWorkerStatusModule const&) = delete;
@@ -63,6 +67,8 @@ private:
     HttpWorkerStatusModule(Controller::Ptr const& controller,
                            std::string const& taskName,
                            HttpProcessorConfig const& processorConfig,
+                           qhttp::Request::Ptr const& req,
+                           qhttp::Response::Ptr const& resp,
                            HealthMonitorTask::Ptr const& healthMonitorTask);
 
     // Input parameters
