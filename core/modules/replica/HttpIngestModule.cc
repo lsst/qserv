@@ -1061,7 +1061,7 @@ void HttpIngestModule::_publishDatabaseInMaster(DatabaseInfo const& databaseInfo
 
             // These parameters need to be set correctly for the 'director' and dependent
             // tables to avoid confusing Qserv query analyzer. Also note, that the 'overlap'
-            // is set to be the same for all 'dirctor' tables of the database family.
+            // is set to be the same for all 'director' tables of the database family.
             bool const isDirector = databaseInfo.isDirector(table);
             double const overlap = isDirector ? databaseFamilyInfo.overlap : 0;
             bool const hasSubChunks = isDirector;
@@ -1285,7 +1285,7 @@ void HttpIngestModule::_removePartitionFromSecondaryIndex(DatabaseInfo const& da
 
     debug(__func__, query);
 
-    // Not having the specifid partition is still fine as it couldn't be properly
+    // Not having the specified partition is still fine as it couldn't be properly
     // created after the transaction was created.
     try {
         h.conn->execute([&query](decltype(h.conn) conn) {

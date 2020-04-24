@@ -435,7 +435,7 @@ void IngestServerConnection::_loadDataIntoTable() {
             // Note, that the algorithm will create chunked tables for _ALL_ partitioned
             // tables (not just for the current one) to ensure they have representations
             // in all chunks touched by the ingest workflows. Missing representations would
-            // case Qserv to fail when processing queries involving these tables.
+            // cause Qserv to fail when processing queries involving these tables.
 
             for (auto&& table: _databaseInfo.partitionedTables) {
 
@@ -447,7 +447,7 @@ void IngestServerConnection::_loadDataIntoTable() {
                 string const sqlTable            = sqlDatabase + "." + h.conn->sqlId(ChunkedTable(table, _chunk, not overlap).name());
                 string const sqlFullOverlapTable = sqlDatabase + "." + h.conn->sqlId(ChunkedTable(table, _chunk, overlap).name());
 
-                vector<string> const tablesToBeCreated = {
+                string const tablesToBeCreated[] = {
                     sqlTable,
                     sqlFullOverlapTable,
                     sqlDatabase + "." + h.conn->sqlId(ChunkedTable(table, lsst::qserv::DUMMY_CHUNK, not overlap).name()),
@@ -492,9 +492,6 @@ void IngestServerConnection::_loadDataIntoTable() {
         for (auto&& statement: statements) {
             LOGS(_log, LOG_LVL_DEBUG, context << __func__ << "  statement: " << statement);
         }
-        // Note that each statement gets executed in its own transaction to eliminate
-        // a probability of deadlocking on the DML operations creating tables.
-        // A failure of an individual query is still a failure of the whole request.
         h.conn->execute([&statements](decltype(h.conn) const& conn_) {
             for (auto&& statement: statements) {
                 conn_->begin();

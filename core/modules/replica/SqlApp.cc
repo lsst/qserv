@@ -218,7 +218,7 @@ SqlApp::SqlApp(int argc, char* argv[])
     ).option(
         "partition-by-column",
         "The name of a column which is used for creating the table based on"
-        " the MySQL partitioning mechanism,",
+        " the MySQL partitioning mechanism.",
         _partitionByColumn
     );
 
@@ -240,13 +240,13 @@ SqlApp::SqlApp(int argc, char* argv[])
         "schema-file",
         "The name of a file where column definitions of the table schema will be"
         " read from. If symbol '-' is passed instead of the file name then column"
-        " definitions will be read from the Standard Input File. The file is required"
+        " definitions will be read from the standard input stream. The file is required"
         " to have the following format: <column-name> <type>",
         _schemaFile
     ).option(
         "partition-by-column",
         "The name of a column which is used for creating the tables based on"
-        " the MySQL partitioning mechanism,",
+        " the MySQL partitioning mechanism.",
         _partitionByColumn
     );
 

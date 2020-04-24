@@ -65,16 +65,21 @@ public:
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
      *
-     * @param database the name of a database from which a table will be created
-     * @param table the name of the base table to be affected by the operation
-     * @param allWorkers engage all known workers regardless of their status.
-     *  If the flag is set to 'false' then only 'ENABLED' workers which are not
-     *  in the 'READ-ONLY' state will be involved into the operation.
-     * @param controller is needed launching requests and accessing the Configuration
-     * @param parentJobId (optional) identifier of a parent job
-     * @param onFinish (optional) callback function to be called upon a completion of the job
-     * @param options (optional) defines the job priority, etc.
-     * @return pointer to the created object
+     * @param database The name of a database from which a table will be created.
+     * @param table The name of the base table to be affected by the operation.
+     * @param engine The name of a MySQL engine for the tables.
+     * @param partitionByColumn The name of a column to be used for the MySQL partitioning.
+     *   The partitioning won't me made if a value of the parameter is an empty string.
+     * @param columns The table schema.
+     * @param allWorkers The flag which if set to 'true' will engage all known
+     *   workers regardless of their status. If the flag is set to 'false' then
+     *   only 'ENABLED' workers which are not in the 'READ-ONLY' state will be
+     *   involved into the operation.
+     * @param controller This is needed launching requests and accessing the Configuration.
+     * @param parentJobId (optional) An identifier of a parent job.
+     * @param onFinish (optional) A callback function to be called upon a completion of the job.
+     * @param options (optional) A collection of parameters defining the job priority, etc.
+     * @return A pointer to the created object.
      */
     static Ptr create(std::string const& database,
                       std::string const& table,
@@ -92,8 +97,6 @@ public:
     SqlCreateTablesJob& operator=(SqlCreateTablesJob const&) = delete;
 
     ~SqlCreateTablesJob() final = default;
-
-    // Trivial get methods
 
     std::string const& database() const { return _database; }
     std::string const& table()    const { return _table; }
