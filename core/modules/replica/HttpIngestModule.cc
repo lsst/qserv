@@ -35,7 +35,9 @@
 
 // Qserv headers
 #include "css/CssAccess.h"
+#include "global/constants.h"
 #include "replica/AbortTransactionJob.h"
+#include "replica/ChunkedTable.h"
 #include "replica/Configuration.h"
 #include "replica/DatabaseMySQL.h"
 #include "replica/DatabaseServices.h"
@@ -47,6 +49,7 @@
 #include "replica/ServiceProvider.h"
 #include "replica/SqlCreateDbJob.h"
 #include "replica/SqlCreateTableJob.h"
+#include "replica/SqlCreateTablesJob.h"
 #include "replica/SqlDeleteDbJob.h"
 #include "replica/SqlGrantAccessJob.h"
 #include "replica/SqlEnableDbJob.h"
@@ -207,15 +210,19 @@ void HttpIngestModule::_getTransaction() {
 void HttpIngestModule::_beginTransaction() {
     debug(__func__);
 
-    TransactionId id = 0;
-    string database;
+    // Keep the transaction object in this scope to allow logging a status
+    // of the operation regardless if it succeeds or fails. The name of a database
+    // encoded in the object will get initialized from the REST request's
+    // parameter. And the rest will be set up after attempting to actually start
+    // the transaction.
+    TransactionInfo transaction;
 
     auto const logBeginTransaction = [&](string const& status, string const& msg=string()) {
         ControllerEvent event;
         event.operation = "BEGIN TRANSACTION";
         event.status = status;
-        event.kvInfo.emplace_back("id", to_string(id));
-        event.kvInfo.emplace_back("database", database);
+        event.kvInfo.emplace_back("id", to_string(transaction.id));
+        event.kvInfo.emplace_back("database", transaction.database);
         if (not msg.empty()) event.kvInfo.emplace_back("error", msg);
         logEvent(event);
     };
@@ -227,22 +234,37 @@ void HttpIngestModule::_beginTransaction() {
         auto const config = controller()->serviceProvider()->config();
         auto const databaseServices = controller()->serviceProvider()->databaseServices();
 
-        auto const database = body().required<string>("database");
+        transaction.database = body().required<string>("database");
 
-        debug(__func__, "database=" + database);
+        debug(__func__, "database=" + transaction.database);
 
-        auto const databaseInfo = config->databaseInfo(database);
+        auto const databaseInfo = config->databaseInfo(transaction.database);
         if (databaseInfo.isPublished) {
             sendError(__func__, "the database is already published");
             return;
         }
-        auto const transaction = databaseServices->beginTransaction(databaseInfo.name);
+        if (databaseInfo.directorTable.empty()) {
+            sendError(__func__, "director table has not been configured in database '" +
+                    databaseInfo.name + "'");
+            return;
+        }
 
-        _addPartitionToSecondaryIndex(databaseInfo, transaction.id);
-
+        // Get chunks stats to be reported with the request's result object
         bool const allWorkers = true;
         vector<unsigned int> chunks;
         databaseServices->findDatabaseChunks(chunks, databaseInfo.name, allWorkers);
+
+        // Any problems during the secondary index creation will result in
+        // automatically aborting the transaction. Otherwise ingest workflows
+        // may be screwed/confused by the presence of the "invisible" transaction.
+        transaction = databaseServices->beginTransaction(databaseInfo.name);
+        try {
+            _addPartitionToSecondaryIndex(databaseInfo, transaction.id);
+        } catch (...) {
+            bool const abort = true;
+            transaction = databaseServices->endTransaction(transaction.id, abort);
+            throw;
+        }
 
         json result;
         result["databases"][transaction.database]["info"] = config->databaseInfo(databaseInfo.name).toJson();
@@ -484,12 +506,21 @@ void HttpIngestModule::_publishDatabase() {
         }
     }
 
+    // Refuse the operation if no chunks were registered
+    vector<unsigned int> chunks;
+    databaseServices->findDatabaseChunks(chunks, databaseInfo.name, allWorkers);
+    if (chunks.empty()) {
+        sendError(__func__, "the database doesn't have any chunks");
+        return;
+    }
+
     // ATTENTION: this operation may take a while if the table has
     // a large number of entries
     if (consolidateSecondayIndex) _consolidateSecondaryIndex(databaseInfo);
 
     if (not _grantDatabaseAccess(databaseInfo, allWorkers)) return;
     if (not _enableDatabase(databaseInfo, allWorkers)) return;
+    if (not _createMissingChunkTables(databaseInfo, allWorkers)) return;
     if (not _removeMySQLPartitions(databaseInfo, allWorkers)) return;
 
     // This step is needed to get workers' Configuration in-sync with its
@@ -662,30 +693,46 @@ void HttpIngestModule::_addTable() {
         columns.emplace_back(colName, colType);
     }
 
-    // Create template tables on all workers. These tables will be used
-    // to create chunk-specific tables before loading data.
+    // Create template and special (if the partitioned table requested) tables on all
+    // workers. These tables will be used to create chunk-specific tables before
+    // loading data.
+    //
+    // The special tables to be created are for the "dummy" chunk which is required
+    // to be present on each worker regardless if it (the worker) will have or not
+    // any normal chunks upon completion of the ingest. Not having the special chunk
+    // will confuse the ingest (and eventually - Qserv query processor).
 
     bool const allWorkers = true;
     string const engine = "MyISAM";
 
-    auto const job = SqlCreateTableJob::create(
-        databaseInfo.name,
-        table,
-        engine,
-        _partitionByColumn,
-        columns,
-        allWorkers,
-        controller()
-    );
-    job->start();
-    logJobStartedEvent(SqlCreateTableJob::typeName(), job, databaseInfo.family);
-    job->wait();
-    logJobFinishedEvent(SqlCreateTableJob::typeName(), job, databaseInfo.family);
+    vector<string> tables;
+    tables.push_back(table);
+    if (isPartitioned) {
+        unsigned int const chunk = lsst::qserv::DUMMY_CHUNK;
+        bool const overlap = false;
+        tables.push_back(ChunkedTable(table, chunk, overlap).name());
+        tables.push_back(ChunkedTable(table, chunk, not overlap).name());
+    }
+    for (auto&& table: tables) {
+        auto const job = SqlCreateTableJob::create(
+            databaseInfo.name,
+            table,
+            engine,
+            _partitionByColumn,
+            columns,
+            allWorkers,
+            controller()
+        );
+        job->start();
+        logJobStartedEvent(SqlCreateTableJob::typeName(), job, databaseInfo.family);
+        job->wait();
+        logJobFinishedEvent(SqlCreateTableJob::typeName(), job, databaseInfo.family);
 
-    string error = ::jobCompletionErrorIfAny(job, "table creation failed");
-    if (not error.empty()) {
-        sendError(__func__, error);
-        return;
+        string const error = ::jobCompletionErrorIfAny(job, "table creation failed for: '" + table + "'");
+        if (not error.empty()) {
+            sendError(__func__, error);
+            return;
+        }
     }
 
     // Register table in the Configuration
@@ -705,7 +752,7 @@ void HttpIngestModule::_addTable() {
     // This step is needed to get workers' Configuration in-sync with its
     // persistent state.
 
-    error = _reconfigureWorkers(databaseInfo, allWorkers, workerReconfigTimeoutSec());
+    string const error = _reconfigureWorkers(databaseInfo, allWorkers, workerReconfigTimeoutSec());
     if (not error.empty()) {
         sendError(__func__, error);
         return;
@@ -812,11 +859,46 @@ bool HttpIngestModule::_enableDatabase(DatabaseInfo const& databaseInfo,
 }
 
 
+bool HttpIngestModule::_createMissingChunkTables(DatabaseInfo const& databaseInfo,
+                                                 bool allWorkers) const {
+    debug(__func__);
+
+    string const engine = "MyISAM";
+
+    for (auto&& table: databaseInfo.partitionedTables) {
+
+        auto const columnsItr = databaseInfo.columns.find(table);
+        if (columnsItr == databaseInfo.columns.cend()) {
+            sendError( __func__, "schema is empty for table: '" + table + "'");
+            return false;
+        }
+        auto const job = SqlCreateTablesJob::create(
+            databaseInfo.name,
+            table,
+            engine,
+            _partitionByColumn,
+            columnsItr->second,
+            allWorkers,
+            controller()
+        );
+        job->start();
+        logJobStartedEvent(SqlCreateTablesJob::typeName(), job, databaseInfo.family);
+        job->wait();
+        logJobFinishedEvent(SqlCreateTablesJob::typeName(), job, databaseInfo.family);
+
+        string const error = ::jobCompletionErrorIfAny(job, "table creation failed for: '" + table + "'");
+        if (not error.empty()) {
+            sendError(__func__, error);
+            return false;
+        }
+    }
+    return true;
+}
+
+
 bool HttpIngestModule::_removeMySQLPartitions(DatabaseInfo const& databaseInfo,
                                               bool allWorkers) const {
     debug(__func__);
-
-    auto const config = controller()->serviceProvider()->config();
 
     // Ignore tables which may have already been processed at a previous attempt
     // of running this algorithm.
@@ -976,14 +1058,21 @@ void HttpIngestModule::_publishDatabaseInMaster(DatabaseInfo const& databaseInfo
         if (not cssAccess->containsTable(databaseInfo.name, table)) {
 
             bool const isPartitioned = true;
-            bool const hasSubChunks = true;
+
+            // These parameters need to be set correctly for the 'director' and dependent
+            // tables to avoid confusing Qserv query analyzer. Also note, that the 'overlap'
+            // is set to be the same for all 'director' tables of the database family.
+            bool const isDirector = databaseInfo.isDirector(table);
+            double const overlap = isDirector ? databaseFamilyInfo.overlap : 0;
+            bool const hasSubChunks = isDirector;
+
             css::PartTableParams const partParams(
                 databaseInfo.name,
                 databaseInfo.directorTable,
                 databaseInfo.directorTableKey,
                 databaseInfo.latitudeColName.at(table),
                 databaseInfo.longitudeColName.at(table),
-                databaseFamilyInfo.overlap,     /* same as for other tables of the database family*/
+                overlap,
                 isPartitioned,
                 hasSubChunks
             );
@@ -1196,11 +1285,17 @@ void HttpIngestModule::_removePartitionFromSecondaryIndex(DatabaseInfo const& da
 
     debug(__func__, query);
 
-    h.conn->execute([&query](decltype(h.conn) conn) {
-        conn->begin();
-        conn->execute(query);
-        conn->commit();
-    });
+    // Not having the specified partition is still fine as it couldn't be properly
+    // created after the transaction was created.
+    try {
+        h.conn->execute([&query](decltype(h.conn) conn) {
+            conn->begin();
+            conn->execute(query);
+            conn->commit();
+        });
+    } catch (database::mysql::DropPartitionNonExistent const&) {
+        ;
+    }
 }
 
 

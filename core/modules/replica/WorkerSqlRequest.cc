@@ -321,6 +321,25 @@ string WorkerSqlRequest::_batchQuery(database::mysql::Connection::Ptr const& con
     string const databaseTable = conn->sqlId(_request.database()) + "." + conn->sqlId(table);
 
     switch (_request.type()) {
+        case ProtocolRequestSql::CREATE_TABLE: {
+            string query = "CREATE TABLE IF NOT EXISTS " + databaseTable + " (";
+            for (int index = 0, num_columns = _request.columns_size(); index < num_columns; ++index) {
+                auto const column = _request.columns(index);
+                query += conn->sqlId(column.name()) + " " + column.type();
+                if (index != num_columns - 1) query += ",";
+            }
+            query += ") ENGINE=" + _request.engine();
+
+            // If MySQL partitioning was requested for the table then automatically
+            // create the initial partition 'p0' corresponding to value '0'
+            // of the key which is used for partitioning.
+            string const partitionByColumn = _request.partition_by_column();
+            if (not partitionByColumn.empty()) {
+                query += " PARTITION BY LIST (" + conn->sqlId(partitionByColumn) +
+                         ") (PARTITION `p0` VALUES IN (0) ENGINE = " + _request.engine() + ")";
+            }
+            return query;
+        }
         case ProtocolRequestSql::DROP_TABLE:
             return "DROP TABLE IF EXISTS " + databaseTable;
 

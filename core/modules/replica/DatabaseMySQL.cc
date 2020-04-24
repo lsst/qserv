@@ -239,7 +239,7 @@ void Connection::_processLastError(string const& context,
         case ER_DUP_ENTRY:
             throw DuplicateKeyError(msg);
 
-        case  ER_NO_SUCH_TABLE:
+        case ER_NO_SUCH_TABLE:
             throw NoSuchTable(msg);
 
         case ER_PARTITION_MGMT_ON_NONPARTITIONED:
@@ -247,6 +247,9 @@ void Connection::_processLastError(string const& context,
 
         case ER_UNKNOWN_PARTITION:
             throw NoSuchPartition(msg);
+
+        case ER_DROP_PARTITION_NON_EXISTENT:
+            throw DropPartitionNonExistent(msg);
 
         case ER_ABORTING_CONNECTION:
         case ER_NEW_ABORTING_CONNECTION:

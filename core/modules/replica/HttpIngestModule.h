@@ -156,6 +156,20 @@ private:
                          bool allWorkers) const;
 
     /**
+     * The optional fix-up for missing chunked tables applied by the database publishing
+     * service. Once successfully complete the operation ensures that all partitioned
+     * tables have chunks representations for all registered chunks, even though some
+     * of the chunks may be empty. This stage enforces structural consistency across
+     * partitioned tables.
+     * 
+     * @param databaseInfo database descriptor
+     * @param allWorkers 'true' if all workers should be involved into the operation
+     * @return 'false' if operation failed
+     */
+    bool _createMissingChunkTables(DatabaseInfo const& databaseInfo,
+                                   bool allWorkers) const;
+
+    /**
      * Consolidate MySQL partitioned tables at workers by removing partitions.
      * 
      * @param databaseInfo database descriptor

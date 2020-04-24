@@ -33,6 +33,7 @@
 #include "replica/Controller.h"
 #include "replica/SqlCreateDbJob.h"
 #include "replica/SqlCreateTableJob.h"
+#include "replica/SqlCreateTablesJob.h"
 #include "replica/SqlDeleteDbJob.h"
 #include "replica/SqlDeleteTableJob.h"
 #include "replica/SqlDeleteTablePartitionJob.h"
@@ -82,7 +83,7 @@ SqlApp::SqlApp(int argc, char* argv[])
         {"QUERY",
          "CREATE_DATABASE", "DELETE_DATABASE", "ENABLE_DATABASE", "DISABLE_DATABASE",
          "GRANT_ACCESS",
-         "CREATE_TABLE", "DELETE_TABLE", "REMOVE_TABLE_PARTITIONS", "DELETE_TABLE_PARTITION"},
+         "CREATE_TABLE", "CREATE_TABLES", "DELETE_TABLE", "REMOVE_TABLE_PARTITIONS", "DELETE_TABLE_PARTITION"},
         _command
     ).flag(
         "all-workers",
@@ -217,7 +218,35 @@ SqlApp::SqlApp(int argc, char* argv[])
     ).option(
         "partition-by-column",
         "The name of a column which is used for creating the table based on"
-        " the MySQL partitioning mechanism,",
+        " the MySQL partitioning mechanism.",
+        _partitionByColumn
+    );
+
+    parser().command(
+        "CREATE_TABLES"
+    ).required(
+        "database",
+        "The name of an existing database where the tables will be created.",
+        _database
+    ).required(
+        "table",
+        "The base name for tables to be created.",
+        _table
+    ).required(
+        "engine",
+        "The name of a MySQL engine for the new tables",
+        _engine
+    ).required(
+        "schema-file",
+        "The name of a file where column definitions of the table schema will be"
+        " read from. If symbol '-' is passed instead of the file name then column"
+        " definitions will be read from the standard input stream. The file is required"
+        " to have the following format: <column-name> <type>",
+        _schemaFile
+    ).option(
+        "partition-by-column",
+        "The name of a column which is used for creating the tables based on"
+        " the MySQL partitioning mechanism.",
         _partitionByColumn
     );
 
@@ -298,6 +327,10 @@ int SqlApp::runImpl() {
         job = SqlCreateTableJob::create(_database, _table, _engine, _partitionByColumn,
                                         SqlSchemaUtils::readFromTextFile(_schemaFile),
                                         _allWorkers, controller);
+    } else if(_command == "CREATE_TABLES") {
+        job = SqlCreateTablesJob::create(_database, _table, _engine, _partitionByColumn,
+                                         SqlSchemaUtils::readFromTextFile(_schemaFile),
+                                         _allWorkers, controller);
     } else if(_command == "DELETE_TABLE") {
         job = SqlDeleteTableJob::create(_database, _table, _allWorkers, controller);
     } else if(_command == "REMOVE_TABLE_PARTITIONS") {

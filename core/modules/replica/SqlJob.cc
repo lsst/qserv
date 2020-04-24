@@ -27,6 +27,8 @@
 #include <stdexcept>
 
 // Qserv headers
+#include "global/constants.h"
+#include "replica/ChunkedTable.h"
 #include "replica/Configuration.h"
 #include "replica/Controller.h"
 #include "replica/DatabaseServices.h"
@@ -246,8 +248,9 @@ vector<string> SqlJob::workerTables(string const& worker,
 
         // Always include the "dummy" chunk even if it won't be explicitly found
         // in the replica collection. This chunk must be present at all workers.
-        tables.push_back(table + "_" + to_string(DUMMY_CHUNK));
-        tables.push_back(table + "FullOverlap_" + to_string(DUMMY_CHUNK));
+        bool const overlap = true;
+        tables.push_back(ChunkedTable(table, lsst::qserv::DUMMY_CHUNK, not overlap).name());
+        tables.push_back(ChunkedTable(table, lsst::qserv::DUMMY_CHUNK,     overlap).name());
 
         // Locate all chunks registered on the worker. These chunks will be used
         // to build names of the corresponding chunk-specific partitioned tables.
@@ -257,11 +260,11 @@ vector<string> SqlJob::workerTables(string const& worker,
 
         for (auto&& replica: replicas) {
             auto const chunk = replica.chunk();
-            // Avoding the "dummy" chunk as it was already forced to be in
+            // Avoiding the "dummy" chunk as it was already forced to be in
             // the collection.
-            if (chunk != DUMMY_CHUNK) {
-                tables.push_back(table + "_" + to_string(chunk));
-                tables.push_back(table + "FullOverlap_" + to_string(chunk));
+            if (chunk != lsst::qserv::DUMMY_CHUNK) {
+                tables.push_back(ChunkedTable(table, chunk, not overlap).name());
+                tables.push_back(ChunkedTable(table, chunk,     overlap).name());
             }
         }
     } else {

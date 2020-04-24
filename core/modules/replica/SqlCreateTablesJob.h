@@ -18,10 +18,11 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_REPLICA_SQLCREATETABLEJOB_H
-#define LSST_QSERV_REPLICA_SQLCREATETABLEJOB_H
+#ifndef LSST_QSERV_REPLICA_SQLCREATETABLESJOB_H
+#define LSST_QSERV_REPLICA_SQLCREATETABLESJOB_H
 
 // System headers
+#include <cstdint>
 #include <functional>
 #include <list>
 #include <set>
@@ -38,14 +39,20 @@ namespace qserv {
 namespace replica {
 
 /**
- * Class SqlCreateTableJob represents a tool which will broadcast the same request
- * for creating a new table to all worker databases of a setup. Result sets
- * are collected in the above defined data structure.
+ * Class SqlCreateTablesJob represents a tool which will broadcast batches of
+ * the table creation requests to workers.
+ *
+ * @note the meaning of the 'table' depends on a kind of a table. If this is
+ * a regular table then tables with exact names will be created at all workers.
+ * For the partitioned tables the operation will include both the prototype
+ * tables (tables at exactly the specified name existing at all workers) and
+ * the corresponding chunk tables for all chunks associated with the corresponding
+ * workers, as well as so called "dummy chunk" tables.
  */
-class SqlCreateTableJob : public SqlJob {
+class SqlCreateTablesJob: public SqlJob {
 public:
     /// The pointer type for instances of the class
-    typedef std::shared_ptr<SqlCreateTableJob> Ptr;
+    typedef std::shared_ptr<SqlCreateTablesJob> Ptr;
 
     /// The function type for notifications on the completion of the request
     typedef std::function<void(Ptr)> CallbackType;
@@ -58,43 +65,21 @@ public:
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
      *
-     * @param database
-     *   the name of a database where a new table will be created
-     *
-     * @param table
-     *   the name of a table to be created
-     *
-     * @param engine
-     *   the name of the MySQL engine for the new table
-     *
-     * @pram partitionByColumn
-     *   (optional, if not empty) the name of a column which will be used
-     *   as a key to configure MySQL partitions for the new table.
-     *   This variation of table schema will be used for the super-transaction-based
-     *   ingest into the table.
-     *
-     * @param columns
-     *   column definitions (name,type) of the table
-     *
-     * @param allWorkers
-     *   engage all known workers regardless of their status. If the flag
-     *   is set to 'false' then only 'ENABLED' workers which are not in
-     *   the 'READ-ONLY' state will be involved into the operation.
-     *
-     * @param controller
-     *   is needed launching requests and accessing the Configuration
-     *
-     * @param parentJobId
-     *   (optional) identifier of a parent job
-     *
-     * @param onFinish
-     *   (optional) callback function to be called upon a completion of the job
-     *
-     * @param options
-     *   (optional) defines the job priority, etc.
-     *
-     * @return
-     *   pointer to the created object
+     * @param database The name of a database from which a table will be created.
+     * @param table The name of the base table to be affected by the operation.
+     * @param engine The name of a MySQL engine for the tables.
+     * @param partitionByColumn The name of a column to be used for the MySQL partitioning.
+     *   The partitioning won't me made if a value of the parameter is an empty string.
+     * @param columns The table schema.
+     * @param allWorkers The flag which if set to 'true' will engage all known
+     *   workers regardless of their status. If the flag is set to 'false' then
+     *   only 'ENABLED' workers which are not in the 'READ-ONLY' state will be
+     *   involved into the operation.
+     * @param controller This is needed launching requests and accessing the Configuration.
+     * @param parentJobId (optional) An identifier of a parent job.
+     * @param onFinish (optional) A callback function to be called upon a completion of the job.
+     * @param options (optional) A collection of parameters defining the job priority, etc.
+     * @return A pointer to the created object.
      */
     static Ptr create(std::string const& database,
                       std::string const& table,
@@ -107,13 +92,11 @@ public:
                       CallbackType const& onFinish=nullptr,
                       Job::Options const& options=defaultOptions());
 
-    SqlCreateTableJob() = delete;
-    SqlCreateTableJob(SqlCreateTableJob const&) = delete;
-    SqlCreateTableJob& operator=(SqlCreateTableJob const&) = delete;
+    SqlCreateTablesJob() = delete;
+    SqlCreateTablesJob(SqlCreateTablesJob const&) = delete;
+    SqlCreateTablesJob& operator=(SqlCreateTablesJob const&) = delete;
 
-    ~SqlCreateTableJob() final = default;
-
-    // Trivial get methods
+    ~SqlCreateTablesJob() final = default;
 
     std::string const& database() const { return _database; }
     std::string const& table()    const { return _table; }
@@ -136,16 +119,16 @@ protected:
                      SqlRequest::Ptr const& request) final;
 
 private:
-    SqlCreateTableJob(std::string const& database,
-                      std::string const& table,
-                      std::string const& engine,
-                      std::string const& partitionByColumn,
-                      std::list<SqlColDef> const& columns,
-                      bool allWorkers,
-                      Controller::Ptr const& controller,
-                      std::string const& parentJobId,
-                      CallbackType const& onFinish,
-                      Job::Options const& options);
+    SqlCreateTablesJob(std::string const& database,
+                       std::string const& table,
+                       std::string const& engine,
+                       std::string const& partitionByColumn,
+                       std::list<SqlColDef> const& columns,
+                       bool allWorkers,
+                       Controller::Ptr const& controller,
+                       std::string const& parentJobId,
+                       CallbackType const& onFinish,
+                       Job::Options const& options);
 
     // Input parameters
 
@@ -166,4 +149,4 @@ private:
 
 }}} // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REPLICA_SQLCREATETABLEJOB_H
+#endif // LSST_QSERV_REPLICA_SQLCREATETABLESJOB_H
