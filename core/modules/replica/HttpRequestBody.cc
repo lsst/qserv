@@ -42,10 +42,20 @@ HttpRequestBody::HttpRequestBody(qhttp::Request::Ptr const& req)
 
     if (contentType == requiredContentType) {
         string content(istreambuf_iterator<char>(req->content), {});
-        if (not content.empty()) objJson = json::parse(content);
-        if (objJson.is_null() or objJson.is_object()) return;
-        throw invalid_argument(
-                "invalid format of the request body. A simple JSON object was expected");
+        if (not content.empty()) {
+            try {
+                objJson = json::parse(content);
+                if (objJson.is_null() or objJson.is_object()) return;
+            } catch(...) {
+                // Not really interested in knowing specific details of the exception.
+                // All what matters here is that the string can't be parsed into
+                // a valid JSON object. This will be reported via another exception
+                // after this block ends.
+                ;
+            }
+            throw invalid_argument(
+                    "invalid format of the request body. A simple JSON object was expected");
+        }
     }
 }
 

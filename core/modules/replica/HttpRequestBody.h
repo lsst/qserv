@@ -50,7 +50,7 @@ class HttpRequestBody {
 public:
 
     /// parsed body of the request
-    nlohmann::json objJson;
+    nlohmann::json objJson = nlohmann::json::object();
 
     HttpRequestBody() = default;
     HttpRequestBody(HttpRequestBody const&) = default;

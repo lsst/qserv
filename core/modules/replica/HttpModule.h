@@ -183,8 +183,9 @@ private:
     /// query part of a URL. The object gets initialized from the request.
     HttpRequestQuery const _query;
 
-    /// The body of a request is initialized from the request.
-    HttpRequestBody const _body;
+    /// The body of a request is initialized/parsed from the request before calling
+    /// the overloaded method HttpModule::executeImpl.
+    HttpRequestBody _body;
 };
     
 }}} // namespace lsst::qserv::replica
