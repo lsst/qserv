@@ -51,14 +51,14 @@ HttpModule::HttpModule(Controller::Ptr const& controller,
         _processorConfig(processorConfig),
         _req(req),
         _resp(resp),
-        _query(req->query),
-        _body(req) {
+        _query(req->query) {
 }
 
 
 void HttpModule::execute(string const& subModuleName,
                          AuthType const authType) {
     try {
+        _body = HttpRequestBody(_req);
         if (authType == AUTH_REQUIRED) _enforceAuthorization();
         executeImpl(subModuleName);
     } catch (AuthError const& ex) {
