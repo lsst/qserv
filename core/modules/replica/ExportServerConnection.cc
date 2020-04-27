@@ -74,9 +74,9 @@ bool isErrorCode(boost::system::error_code const& ec, string const& scope) {
 bool readIntoBuffer(boost::asio::ip::tcp::socket& socket,
                     shared_ptr<ProtocolBuffer> const& ptr,
                     size_t bytes) {
-
-    // The buffer needs to be resized to accommodate
-    // the message.
+    // Make sure the buffer has enough space to accommodate the data
+    // of the message. Note, this call may throw an exception which is
+    // supposed to be caught by the method's caller.
     ptr->resize(bytes);
 
     boost::system::error_code ec;
@@ -95,9 +95,15 @@ bool readMessage(boost::asio::ip::tcp::socket& socket,
                  shared_ptr<ProtocolBuffer> const& ptr,
                  size_t bytes,
                  T& message) {
-    if (not readIntoBuffer(socket, ptr, bytes)) return false;
-    ptr->parse(message, bytes);
-    return true;
+    try {
+        if (readIntoBuffer(socket, ptr, bytes)) {
+            ptr->parse(message, bytes);
+            return true;
+        }
+    } catch (exception const& ex) {
+        LOGS(_log, LOG_LVL_ERROR, context << __func__ << ex.what());
+    }
+    return false;
 }
 }   // namespace
 
