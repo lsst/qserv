@@ -1,5 +1,0 @@
-# -*- python -*-
-Import('env')
-Import('standardModule')
-
-standardModule(env, test_libs="log4cxx")

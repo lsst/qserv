@@ -1,7 +1,0 @@
-DEFAULT_CONFIG = """
-
-"""
-
-NO_CHUNK = 0
-CHUNK = 1
-SUBCHUNK = 2

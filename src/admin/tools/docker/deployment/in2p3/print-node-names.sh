@@ -1,1 +1,0 @@
-../parallel/print-node-names.sh

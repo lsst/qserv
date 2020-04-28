@@ -1,7 +1,0 @@
-# -*- python -*-
-Import('env')
-Import('standardModule')
-
-import convertVocab
-
-standardModule(env)

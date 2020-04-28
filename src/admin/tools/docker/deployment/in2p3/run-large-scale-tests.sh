@@ -1,1 +1,0 @@
-../parallel/run-large-scale-tests.sh

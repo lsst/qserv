@@ -1,1 +1,0 @@
-../parallel/clean-result-tables.sh
