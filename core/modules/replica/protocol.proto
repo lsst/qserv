@@ -185,6 +185,13 @@ message ProtocolRequestSqlColumn {
     required string type = 2;
 }
 
+// This message is used in the index definitions
+message ProtocolRequestSqlIndexColumn {
+    required string name = 1;
+    optional uint64 length = 2 [default = 0];
+    optional bool ascending = 3 [default = true];
+}
+
 // This request is always queued.
 // This message is sent once after the header for the 'SQL' request types
 message ProtocolRequestSql {
@@ -200,6 +207,9 @@ message ProtocolRequestSql {
         DROP_TABLE = 7;
         REMOVE_TABLE_PARTITIONING = 8;
         DROP_TABLE_PARTITION = 9;
+        GET_TABLE_INDEX = 10;
+        CREATE_TABLE_INDEX = 11;
+        DROP_TABLE_INDEX = 12;
     }
     required Type type = 6;
 
@@ -234,6 +244,19 @@ message ProtocolRequestSql {
 
     /// This flag is used when a request to process multiple queries is made
     optional bool batch_mode = 14 [default = false];
+
+    // Parameters of the index management operations
+
+    enum IndexSpec {
+        DEFAULT = 1;
+        UNIQUE  = 2;
+        FULLTEXT = 3;
+        SPATIAL = 4;
+    }
+    optional IndexSpec index_spec = 15 [default = DEFAULT];
+    optional string index_name = 16 [default = ""];
+    optional string index_comment = 17 [default = ""];
+    repeated ProtocolRequestSqlIndexColumn index_columns = 18;
 }
 
 // This request is always queued.
@@ -379,6 +402,8 @@ enum ProtocolStatusExt {
     MULTIPLE = 30;
     OTHER_EXCEPTION = 31;
     FOREIGN_INSTANCE = 32;
+    DUPLICATE_KEY    = 33;
+    CANT_DROP_KEY    = 34;
 }
 
 message ProtocolFileInfo {
