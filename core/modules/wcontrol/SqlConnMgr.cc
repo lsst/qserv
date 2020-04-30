@@ -36,7 +36,6 @@ namespace lsst {
 namespace qserv {
 namespace wcontrol {
 
-
 void SqlConnMgr::_take(bool scanQuery) {
     ++_totalCount;
     std::unique_lock<std::mutex> uLock(_mtx);
@@ -50,12 +49,12 @@ void SqlConnMgr::_take(bool scanQuery) {
     ++_sqlConnCount;
 }
 
+
 void SqlConnMgr::_release() {
     --_sqlConnCount;
     --_totalCount;
     _tCv.notify_one();
 }
-
 
 
 ostream& SqlConnMgr::dump(ostream &os) const {
@@ -77,6 +76,5 @@ string SqlConnMgr::dump() const {
 ostream& operator<<(ostream &os, SqlConnMgr const& mgr) {
     return mgr.dump(os);
 }
-
 
 }}} // namespace lsst::qserv::wcontrol

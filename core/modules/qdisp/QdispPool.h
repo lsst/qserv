@@ -135,6 +135,11 @@ class QdispPool {
 public:
     typedef std::shared_ptr<QdispPool> Ptr;
 
+    /// Default priority, the lowest possible priority.
+    static int defaultPriority() { return 100; }
+    /// This should be more than enough.
+    static int maxPoolSize() { return 20000; }
+
     /// poolSize - total number of threads in the pool
     /// largestPriority - highest priority is 0, lowest possible priority is
     ///            100 and is reserved for default priority. largestPriority=4 would
@@ -154,8 +159,8 @@ public:
     ///             priorities.
     QdispPool(int poolSize, int largestPriority, std::vector<int> const& maxRunSizes,
               std::vector<int> const& minRunningSizes);
-    QdispPool() { _setup(false); }
-    explicit QdispPool(bool unitTest) { _setup(unitTest); }
+    QdispPool() = delete;
+    explicit QdispPool(bool unitTest);
     QdispPool(QdispPool const&) = delete;
     QdispPool& operator=(QdispPool const&) = delete;
 
@@ -172,8 +177,6 @@ public:
     }
 
 private:
-    void _setup(bool unitTest);
-
     PriorityQueue::Ptr _prQueue;
     util::ThreadPool::Ptr _pool;
 };

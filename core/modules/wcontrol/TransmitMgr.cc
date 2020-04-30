@@ -38,37 +38,42 @@ namespace wcontrol {
 
 
 void TransmitMgr::_take(bool interactive, bool alreadyTransmitting) {
+    LOGS(_log, LOG_LVL_DEBUG, "TransmitMgr::_take locking " << *this);
+    unique_lock<mutex> uLock(_mtx);
     ++_totalCount;
     if (not interactive || _transmitCount >= _maxTransmits || _alreadyTransCount >= _maxAlreadyTran) {
         // If not alreadyTransmitting, it needs to wait until the number of already transmitting
         // jobs drops below _maxAlreadyTran before it can start transmitting.
         if (alreadyTransmitting) {
-            unique_lock<mutex> uLock(_mtx);
             ++_alreadyTransCount;
             LOGS(_log, LOG_LVL_DEBUG, " ++_alreadyTransCount=" << _alreadyTransCount);
             _tCv.wait(uLock, [this](){ return _transmitCount < _maxTransmits; });
         } else {
-            unique_lock<mutex> uLock(_mtx);
             _tCv.wait(uLock, [this](){
                 return (_transmitCount < _maxTransmits) && (_alreadyTransCount < _maxAlreadyTran);
             });
         }
     }
-    // Incrementing outside the mutex may result in occasionally having more than
-    // _maxTransmits happening at a time.
     ++_transmitCount;
+    LOGS(_log, LOG_LVL_DEBUG, "TransmitMgr::_take locking done " << *this);
 }
 
 
 void TransmitMgr::_release(bool interactive, bool alreadyTransmitting) {
-    --_totalCount;
-    --_transmitCount;
-    if (not interactive && alreadyTransmitting) {
-        --_alreadyTransCount;
-        LOGS(_log, LOG_LVL_DEBUG, "--_alreadyTransCount=" << _alreadyTransCount);
-        _tCv.notify_one();
+    LOGS(_log, LOG_LVL_DEBUG, "TransmitMgr::_release locking " << *this);
+    {
+        unique_lock<mutex> uLock(_mtx);
+        --_totalCount;
+        --_transmitCount;
+        if (not interactive && alreadyTransmitting) {
+            --_alreadyTransCount;
+            LOGS(_log, LOG_LVL_DEBUG, "--_alreadyTransCount=" << _alreadyTransCount);
+        }
     }
-    _tCv.notify_one();
+    // There could be several threads waiting on _alreadyTransCount or
+    // it needs to make sure to wake the thread waiting only on _transmitCount.
+    LOGS(_log, LOG_LVL_DEBUG, "TransmitMgr::_release locking done " << *this);
+    _tCv.notify_all();
 }
 
 

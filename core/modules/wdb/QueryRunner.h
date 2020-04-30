@@ -114,7 +114,7 @@ private:
     void _transmitHeader(std::string& msg);
 
 
-    wbase::Task::Ptr _task; ///< Actual task
+    wbase::Task::Ptr const _task; ///< Actual task
 
     /// Resource reservation
     ChunkResourceMgr::Ptr _chunkResourceMgr;
@@ -131,10 +131,10 @@ private:
     bool _largeResult{false}; //< True for all transmits after the first transmit.
 
     /// Used to limit the number of open MySQL connections.
-    std::shared_ptr<wcontrol::SqlConnMgr> _sqlConnMgr;
+    std::shared_ptr<wcontrol::SqlConnMgr> const _sqlConnMgr;
 
     /// Used to limit the number of transmits being sent to czars.
-    std::shared_ptr<wcontrol::TransmitMgr> _transmitMgr;
+    std::shared_ptr<wcontrol::TransmitMgr> const _transmitMgr;
 };
 
 }}} // namespace

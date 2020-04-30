@@ -145,7 +145,7 @@ void BlendScheduler::queCmd(util::Command::Ptr const& cmd) {
             util::LockGuardTimed guard(util::CommandQueue::_mx, "BlendScheduler::queCmd a");
             _ctrlCmdQueue.queCmd(cmd);
         }
-        notify(true);
+        notify(true); // notify all=true
         return;
     }
 
@@ -211,7 +211,7 @@ void BlendScheduler::queCmd(util::Command::Ptr const& cmd) {
     s->queCmd(task);
     _queries->queuedTask(task);
     _infoChanged = true;
-    notify(true);
+    notify(true); // notify all=true
 }
 
 void BlendScheduler::commandStart(util::Command::Ptr const& cmd) {
@@ -254,7 +254,7 @@ void BlendScheduler::commandFinish(util::Command::Ptr const& cmd) {
     _infoChanged = true;
     _logChunkStatus();
     _queries->finishedTask(t);
-    notify(true);
+    notify(true); // notify all=true
 }
 
 
@@ -265,7 +265,7 @@ bool BlendScheduler::ready() {
         ready = _ready();
     }
     if (ready) {
-        notify(false);
+        notify(false); // notify all=false
     }
     return ready;
 }
@@ -357,7 +357,7 @@ util::Command::Ptr BlendScheduler::getCmd(bool wait) {
     if (cmd != nullptr) {
         _infoChanged = true;
         _logChunkStatus();
-        notify(false);
+        notify(false); // notify all=false
     }
     // returning nullptr is acceptable.
     timeHeld.stop();

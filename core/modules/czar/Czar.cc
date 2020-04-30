@@ -47,8 +47,8 @@
 #include "sql/SqlConnectionFactory.h"
 #include "util/common.h"
 #include "util/IterableFormatter.h"
-#include "util/StringToVector.h"
 #include "XrdSsi/XrdSsiProvider.hh"
+#include "../util/StringHelper.h"
 
 
 extern XrdSsiProvider *XrdSsiProviderClient;
@@ -106,9 +106,9 @@ Czar::Czar(std::string const& configPath, std::string const& czarName)
     int qPoolSize = _czarConfig.getQdispPoolSize();
     int maxPriority = std::max(0, _czarConfig.getQdispMaxPriority());
     std::string vectRunSizesStr = _czarConfig.getQdispVectRunSizes();
-    std::vector<int> vectRunSizes = util::getIntVectFromStr(vectRunSizesStr, ":", 1);
+    std::vector<int> vectRunSizes = util::StringHelper::getIntVectFromStr(vectRunSizesStr, ":", 1);
     std::string vectMinRunningSizesStr = _czarConfig.getQdispVectMinRunningSizes();
-    std::vector<int> vectMinRunningSizes = util::getIntVectFromStr(vectMinRunningSizesStr, ":", 0);
+    std::vector<int> vectMinRunningSizes = util::StringHelper::getIntVectFromStr(vectMinRunningSizesStr, ":", 0);
     LOGS(_log, LOG_LVL_INFO, "INFO qdisp config qPoolSize=" << qPoolSize << " maxPriority=" << maxPriority
             << " vectRunSizes=" << vectRunSizesStr << " -> " << util::prettyCharList(vectRunSizes)
             << " vectMinRunningSizes=" << vectMinRunningSizesStr << " -> " << util::prettyCharList(vectMinRunningSizes));

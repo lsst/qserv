@@ -149,13 +149,13 @@ SsiService::SsiService(XrdSsiLogger* log, wconfig::WorkerConfig const& workerCon
     unsigned int requiredTasksCompleted = workerConfig.getRequiredTasksCompleted();
     queries->setRequiredTasksCompleted(requiredTasksCompleted);
 
-    unsigned int maxSqlConn = workerConfig.getMaxSqlConnections();
-    unsigned int resvInteractiveSqlConn = workerConfig.getReservedInteractiveSqlConnections();
+    int const maxSqlConn = workerConfig.getMaxSqlConnections();
+    int const resvInteractiveSqlConn = workerConfig.getReservedInteractiveSqlConnections();
     auto sqlConnMgr = make_shared<wcontrol::SqlConnMgr>(maxSqlConn, maxSqlConn - resvInteractiveSqlConn);
     LOGS(_log, LOG_LVL_WARN, "config sqlConnMgr" << *sqlConnMgr);
 
-    unsigned int maxTransmits = workerConfig.getMaxTransmits();
-    unsigned int maxAlreadyTransmitting =  workerConfig.getMaxAlreadyTransmitting();
+    int const maxTransmits = workerConfig.getMaxTransmits();
+    int const maxAlreadyTransmitting =  workerConfig.getMaxAlreadyTransmitting();
     auto transmitMgr = make_shared<wcontrol::TransmitMgr>(maxTransmits, maxAlreadyTransmitting);
     LOGS(_log, LOG_LVL_WARN, "config transmitMgr" << *transmitMgr);
 

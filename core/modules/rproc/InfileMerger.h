@@ -237,6 +237,8 @@ public:
      */
     bool makeResultsTableForQuery(query::SelectStmt const& stmt);
 
+    int sqlConnectionAttempts() { return _maxSqlConnectionAttempts; }
+
 private:
     bool _applyMysqlMyIsam(std::string const& query);
     bool _applyMysqlInnoDb(std::string const& query);
@@ -310,9 +312,10 @@ private:
     InvalidJobAttemptMgr _invalidJobAttemptMgr;
     bool _deleteInvalidRows(std::set<int> const& jobIdAttempts);
 
-    int _sizeCheckRowCount{0}; ///< Number of rows read since last size check.
-    int _checkSizeEveryXRows{1000}; ///< Check the size of the result table after every x number of rows.
-    size_t _maxResultTableSizeMB{5000}; ///< Max result table size.
+    int _sizeCheckRowCount = 0; ///< Number of rows read since last size check.
+    int _checkSizeEveryXRows = 1000; ///< Check the size of the result table after every x number of rows.
+    size_t _maxResultTableSizeMB = 5000; ///< Max result table size.
+    int const _maxSqlConnectionAttempts = 10; ///< maximum number of times to retry connecting to the SQL database.
 
     std::shared_ptr<util::SemaMgr> _semaMgrConn; ///< Used to limit the number of open mysql connections.
 };

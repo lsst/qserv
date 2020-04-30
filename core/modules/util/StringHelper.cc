@@ -22,13 +22,15 @@
  */
 
 // Class header
-#include "util/StringToVector.h"
+#include "StringHelper.h"
 
 // System headers
-
+#include <sstream>
 
 // LSST headers
 #include "lsst/log/Log.h"
+
+using namespace std;
 
 namespace {
 
@@ -40,14 +42,15 @@ namespace lsst {
 namespace qserv {
 namespace util {
 
-std::vector<std::string> splitString(std::string const& original, std::string const& separator) {
-    std::vector<std::string> result;
-    std::string str(original);
+
+vector<string> StringHelper::splitString(string const& original, string const& separator) {
+    vector<string> result;
+    string str(original);
     size_t pos;
     bool loop = true;
     while (loop) {
         pos = str.find(separator);
-        if (pos == std::string::npos) {
+        if (pos == string::npos) {
             loop = false;
         }
         result.push_back(str.substr(0, pos));
@@ -57,28 +60,30 @@ std::vector<std::string> splitString(std::string const& original, std::string co
 }
 
 
-std::vector<int> getIntVectFromStr(std::string const& str, std::string const& separator, bool throwOnError, int defaultVal) {
+vector<int> StringHelper::getIntVectFromStr(string const& str, string const& separator, bool throwOnError, int defaultVal) {
     auto vectString = splitString(str, separator);
-    std::vector<int> result;
+    vector<int> result;
     for (auto iStr:vectString) {
         try {
             size_t sz = 0;
-            int val = std::stoi(iStr, &sz);
+            int val = stoi(iStr, &sz);
             if (sz != iStr.length()) {
                 LOGS(_log, LOG_LVL_WARN, "unused characters when converting " << iStr << " to " << val);
             }
             result.push_back(val);
-        } catch (std::invalid_argument const& e) {
-            LOGS(_log, LOG_LVL_ERROR, "invalid argument when converting " << iStr << " from " << str);
+        } catch (invalid_argument const& e) {
+            string msg("getIntsFromString invalid argument in str=" + str + " iStr=" + iStr);
+            LOGS(_log, LOG_LVL_ERROR, msg);
             if (throwOnError) {
-                throw;
+                throw invalid_argument(msg);
             } else {
                 result.push_back(defaultVal);
             }
         }
     }
     return result;
- }
+}
+
 
 }}} // namespace lsst::qserv::util
 

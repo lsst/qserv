@@ -35,16 +35,17 @@ namespace qserv {
 namespace ccontrol {
 
 
-UserQuerySharedResources::UserQuerySharedResources(czar::CzarConfig const& czarConfig_,
-                                                   std::shared_ptr<css::CssAccess> css_,
-                                                   mysql::MySqlConfig const& mysqlResultConfig_,
-                                                   std::shared_ptr<qproc::SecondaryIndex> secondaryIndex_,
-                                                   std::shared_ptr<qmeta::QMeta> queryMetadata_,
-                                                   std::shared_ptr<qmeta::QStatus> queryStatsData_,
-                                                   std::shared_ptr<qmeta::QMetaSelect> qMetaSelect_,
-                                                   std::shared_ptr<sql::SqlConnection> resultDbConn_,
-                                                   std::shared_ptr<qproc::DatabaseModels> const& dbModels_,
-                                                   std::string const& czarName)
+UserQuerySharedResources::UserQuerySharedResources(
+                        czar::CzarConfig const& czarConfig_,
+                        std::shared_ptr<css::CssAccess> const& css_,
+                        mysql::MySqlConfig const& mysqlResultConfig_,
+                        std::shared_ptr<qproc::SecondaryIndex> const& secondaryIndex_,
+                        std::shared_ptr<qmeta::QMeta> const& queryMetadata_,
+                        std::shared_ptr<qmeta::QStatus> const& queryStatsData_,
+                        std::shared_ptr<qmeta::QMetaSelect> const& qMetaSelect_,
+                        std::shared_ptr<sql::SqlConnection> const& resultDbConn_,
+                        std::shared_ptr<qproc::DatabaseModels> const& dbModels_,
+                        std::string const& czarName)
         : czarConfig(czarConfig_),
         css(css_),
         mysqlResultConfig(mysqlResultConfig_),
@@ -53,10 +54,9 @@ UserQuerySharedResources::UserQuerySharedResources(czar::CzarConfig const& czarC
         queryStatsData(queryStatsData_),
         qMetaSelect(qMetaSelect_),
         resultDbConn(resultDbConn_),
-        databaseModels(dbModels_)
-
+        databaseModels(dbModels_),
+        semaMgrConnections(new util::SemaMgr(czarConfig.getResultMaxConnections()))
 {
-    semaMgrConnections.reset(new util::SemaMgr(czarConfig.getResultMaxConnections()));
     // register czar in QMeta
     // TODO: check that czar with the same name is not active already?
     qMetaCzarId = queryMetadata->registerCzar(czarName);

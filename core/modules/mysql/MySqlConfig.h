@@ -67,7 +67,7 @@ public:
                 std::string const& hostname,
                 unsigned int const port,
                 std::string const& socket,
-                std::string const& db = "");
+                std::string const& db="");
 
     /**
      *  Create MySqlConfig instance

@@ -43,11 +43,6 @@ class TransmitLock;
 /// New tasks cannot transmit to the czar until the number of jobs
 /// currently transmitting data drops below maxAlreadyTran
 /// Priority is given to finish tasks that have already started transmitting.
-/// This class is meant to improve transmission efficiency, and
-/// it is possible for _alreadyTransCount to go above normal
-/// limits due to a race condition. Fixing the race condition may well
-/// slow things down more than the occasional breach of the
-/// _alreadyTransCount limit.
 /// TODO:
 ///    -- The czar these are being sent to should be taken into consideration
 ///       as the limit should really be per czar.
@@ -60,6 +55,7 @@ public:
         : _maxTransmits(maxTransmits),  _maxAlreadyTran(maxAlreadyTran) {
         assert(_maxTransmits > 1);
         assert(_maxAlreadyTran > 1);
+        assert(_maxTransmits >= _maxAlreadyTran);
     }
     TransmitMgr() = delete;
     TransmitMgr(TransmitMgr const&) = delete;
@@ -84,8 +80,8 @@ private:
     std::atomic<int> _totalCount{0};
     std::atomic<int> _transmitCount{0};
     std::atomic<int> _alreadyTransCount{0};
-    int _maxTransmits;
-    int _maxAlreadyTran;
+    int const _maxTransmits;
+    int const _maxAlreadyTran;
     std::mutex _mtx;
     std::condition_variable _tCv;
 };

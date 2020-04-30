@@ -327,7 +327,6 @@ void QueryRunner::_transmit(bool last, unsigned int rowCount, size_t tSize) {
     }
     _result->SerializeToString(&resultString);
     _result.reset(); // don't need it anymore and a new one will be made when needed..
-
     _transmitHeader(resultString);
     LOGS(_log, LOG_LVL_DEBUG, "_transmit last=" << last
          << " resultString=" << util::prettyCharList(resultString, 5));

@@ -76,13 +76,13 @@ class UserQuerySharedResources {
 
 public:
     UserQuerySharedResources(czar::CzarConfig const& czarConfig_,
-                             std::shared_ptr<css::CssAccess> css_,
+                             std::shared_ptr<css::CssAccess> const& css_,
                              mysql::MySqlConfig const& mysqlResultConfig_,
-                             std::shared_ptr<qproc::SecondaryIndex> secondaryIndex_,
-                             std::shared_ptr<qmeta::QMeta> queryMetadata_,
-                             std::shared_ptr<qmeta::QStatus> queryStatsData_,
-                             std::shared_ptr<qmeta::QMetaSelect> qMetaSelect_,
-                             std::shared_ptr<sql::SqlConnection> resultDbConn_,
+                             std::shared_ptr<qproc::SecondaryIndex> const& secondaryIndex_,
+                             std::shared_ptr<qmeta::QMeta> const& queryMetadata_,
+                             std::shared_ptr<qmeta::QStatus> const& queryStatsData_,
+                             std::shared_ptr<qmeta::QMetaSelect> const& qMetaSelect_,
+                             std::shared_ptr<sql::SqlConnection> const& resultDbConn_,
                              std::shared_ptr<qproc::DatabaseModels> const& databaseModels_,
                              std::string const& czarName);
 

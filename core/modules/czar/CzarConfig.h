@@ -155,6 +155,7 @@ public:
 
     /// Getters for result aggregation options.
     int getMaxTableSizeMB() const { return _maxTableSizeMB; }
+    int getMaxSqlConnectionAttempts() const { return _maxSqlConnectionAttempts; }
     std::string getResultEngine() const { return _resultEngine; }
     int getResultMaxConnections() const { return _resultMaxConnections; }
 
@@ -183,6 +184,7 @@ private:
 
     // Parameters used to affect result aggregation in rproc.
     int const         _maxTableSizeMB;
+    int const         _maxSqlConnectionAttempts;
     std::string const _resultEngine;
     int const         _resultMaxConnections;
 

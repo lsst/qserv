@@ -214,7 +214,7 @@ util::Command::Ptr ScanScheduler::getCmd(bool wait)  {
         _decrCountForUserQuery(task->getQueryId());
         _incrChunkTaskCount(task->getChunkId());
         // Since a command was retrieved, there's a possibility another is ready.
-        notify(false);
+        notify(false); // notify all=false
     }
     return task;
 }

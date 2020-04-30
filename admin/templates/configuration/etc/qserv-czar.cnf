@@ -23,6 +23,9 @@ host =
 user = {{MYSQLD_USER_QSERV}}
 port = 0
 
+# maximum nuber of connection retries to SQL databse (per connection attempt)
+maxsqlconnectionattempts = 10
+
 # maximum user query result size in MB
 maxtablesize_mb = 5100
 
@@ -30,11 +33,12 @@ maxtablesize_mb = 5100
 # Values:   myisam, innodb, memory
 # myisam is serial, innodb and memory are parallel.
 # memory does not support blob or text fields and fails on larger queries.
+# Default is myisam.
 engine = innodb 
 
-# The maximum number of database connections to use for
-# aggregating results. Only meaningful for 'parallel' 
-# engines such as innodb and memory.
+# The maximum number of database connections for the czar to open for
+# aggregating results (not per user query). 
+# Only meaningful for 'parallel' engines such as innodb and memory.
 maxconnections = 40
 
 
@@ -80,13 +84,16 @@ qMetaSecsBetweenChunkCompletionUpdates = 59
 #chunkLimit = -1
 
 
-# see qdisp/QdispPool.h QdispPool::QdispPool for more information
+# Please see qdisp/QdispPool.h QdispPool::QdispPool for more information
 [qdisppool]
 #size of the pool
 poolSize = 50
 # Low numbers are higher priority. Largest priority 3 creates 4 priority queues 0, 1, 2, 3
+#     Must be greater than 0.
 largestPriority = 3
 # Maximum number of threads running for each queue. No spaces. Values separated by ':'
+#   Using largestPriority = 2  and   vectRunsizes = 3:5:8
+#    queue 0 would have runSize 3, queue 1 would have runSize 5, and queue 2 would have runSize 8.    
 vectRunSizes = 50:50:50:50
 # Minimum number of threads running for each queue. No spaces. Values separated by ':'
 vectMinRunningSizes = 0:1:3:3

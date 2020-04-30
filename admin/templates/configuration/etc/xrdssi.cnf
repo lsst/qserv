@@ -29,7 +29,7 @@ location = {{QSERV_DATA_DIR}}/mysql
 
 # Thread pool size
 #thread_pool_size = 12
-thread_pool_size = 21
+thread_pool_size = 20
 
 # Required number of completed tasks for table in a chunk for the average time to be valid
 # required_tasks_completed = 25
@@ -72,7 +72,7 @@ maxactivechunks_fast = 4
 
 [sqlconnections]
 # Maximum number of SQL connections for tasks
-maxsqlconn = 801
+maxsqlconn = 800
 # Number of SQL connections reserved for interactive queries (must be less than maxsqlconn)
 reservedinteractivesqlconn = 20
 
