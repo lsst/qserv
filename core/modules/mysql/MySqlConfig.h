@@ -49,7 +49,7 @@ namespace mysql {
  */
 class MySqlConfig {
 public:
-    MySqlConfig() : port(0), maxTableSizeMB(0) {}
+    MySqlConfig() {}
 
     /**
      *  Create MySqlConfig instance
@@ -60,7 +60,6 @@ public:
      *  @param port:         MySQL port
      *  @param socket:       MySQL socket
      *  @param db:           MySQL database
-     *  @param maxtablesize: maximum table size.
      *
      * @throws std::runtime_error: if checkValid is true and some parameters are invalid
      */
@@ -68,8 +67,7 @@ public:
                 std::string const& hostname,
                 unsigned int const port,
                 std::string const& socket,
-                std::string const& db = "",
-                size_t maxresultsize = 0);
+                std::string const& db="");
 
     /**
      *  Create MySqlConfig instance
@@ -83,8 +81,7 @@ public:
      * @throws std::runtime_error: if some parameters are invalid
      */
     MySqlConfig(std::string const& username, std::string const& password,
-                std::string const& socket, std::string const& db = "",
-                size_t maxtablesize = 0);
+                std::string const& socket, std::string const& db = "");
 
     /**
      * Create MySqlConfig instance with an SqlConnection that should be used instead of creating a new
@@ -109,10 +106,9 @@ public:
     std::string username;
     std::string password;
     std::string hostname;
-    unsigned int port;
+    unsigned int port = 0;
     std::string socket;
     std::string dbName;
-    size_t maxTableSizeMB;
 
     /**
      * Get the connection object to use if one was provided.

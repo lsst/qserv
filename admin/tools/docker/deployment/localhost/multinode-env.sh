@@ -3,8 +3,8 @@
 
 # VERSION can be a git ticket branch but with _ instead of /
 # example: u_fjammes_DM-4295
-#VERSION=dev
-VERSION=tickets_DM-20212
+VERSION=dev
+#VERSION=tickets_DM-10019
 
 NB_WORKERS=3
 

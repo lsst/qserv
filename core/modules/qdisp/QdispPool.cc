@@ -24,9 +24,11 @@
 // Class header
 #include "qdisp/QdispPool.h"
 
+// LSST headers
 #include "lsst/log/Log.h"
 
 // Qserv headers
+#include "util/common.h"
 
 namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.qdisp.QdispPool");
@@ -75,7 +77,7 @@ void PriorityQueue::queCmd(util::Command::Ptr const& cmd) {
         iter->second->queCmd(cmd);
         _changed = true;
     }
-    _cv.notify_all();
+    _cv.notify_one();
 }
 
 
@@ -97,16 +99,26 @@ void PriorityQueue::queCmd(PriorityCommand::Ptr const& cmd, int priority) {
         LOGS (_log, LOG_LVL_DEBUG, "priQue p=" << priority << *this);
         _changed = true;
     }
-    _cv.notify_all();
+    _cv.notify_one();
 }
 
+
+std::atomic<unsigned int> localLogLimiter(0);
 
 util::Command::Ptr PriorityQueue::getCmd(bool wait){
     util::Command::Ptr ptr;
     std::unique_lock<std::mutex> uLock(_mtx);
     while (true) {
         _changed = false;
-        LOGS (_log, LOG_LVL_DEBUG, "priQueGet " << *this);
+        ++localLogLimiter;
+        // Log this every once in while to INFO so there's some idea of system
+        // load without generating crushing amounts of log messages.
+        if (localLogLimiter % 50 == 0) {
+            LOGS(_log, LOG_LVL_INFO, "priQueGet " << *this);
+        } else {
+            LOGS(_log, LOG_LVL_DEBUG, "priQueGet " << *this);
+        }
+
 
         /// Make sure minimum number of jobs running per priority.
         if (!_shuttingDown) {
@@ -130,6 +142,8 @@ util::Command::Ptr PriorityQueue::getCmd(bool wait){
             if (que->running < que->getMaxRunning()) {
                 ptr = que->getCmd(false); // no wait
                 if (ptr != nullptr) {
+                    _changed = true;
+                    _cv.notify_one();
                     return ptr;
                 }
             }
@@ -192,26 +206,41 @@ std::string PriorityQueue::statsStr() {
 }
 
 
-void QdispPool::_setup(bool unitTest) {
+QdispPool::QdispPool(int poolSize, int largestPriority, std::vector<int> const& maxRunSizes,
+                      std::vector<int> const& minRunningSizes) {
+    std::stringstream os;
+    os << "poolSize(max " << maxPoolSize() << ")=" << poolSize
+       << " maxPriority(1 to " << defaultPriority() - 2 << ")=" << largestPriority << " maxRunSizes=" << util::prettyCharList(maxRunSizes)
+       << " minRunningSizes=" << util::prettyCharList(minRunningSizes);
+    if (poolSize < 1 || poolSize > maxPoolSize()
+        || largestPriority < 0
+        || maxRunSizes.size() <static_cast<size_t>(largestPriority) + 1
+        || largestPriority > defaultPriority() - 2) {
+        LOGS(_log, LOG_LVL_ERROR, "QdispPool invalid paramater " << os.str());
+        throw std::invalid_argument(os.str());
+    }
+
+    LOGS(_log, LOG_LVL_INFO, "QdispPool creating " << os.str());
+    _prQueue = std::make_shared<PriorityQueue>(defaultPriority(), 1, 1); // default (lowest) priority.
+    for (unsigned int pri = 0; pri <= static_cast<unsigned int>(largestPriority); ++pri) {
+        size_t const minRun = minRunningSizes.size() > pri ? minRunningSizes[pri] : 1;
+        size_t const maxRun = maxRunSizes.size() > pri ? maxRunSizes[pri] : 1;
+        LOGS(_log, LOG_LVL_INFO, "creating priQ pri=" << pri << " min=" << minRun << " max=" << maxRun);
+        _prQueue->addPriQueue(pri, minRun, maxRun);
+    }
+    _pool = util::ThreadPool::newThreadPool(poolSize, _prQueue);
+}
+
+
+QdispPool::QdispPool(bool unitTest) {
     if (not unitTest) {
-        // Numbers are based on 1200 threads in the _pool. Large results
-        // tend to be slow to give up their threads, thus can't be allowed
-        // to eat up the pool. Bandwidth also makes running many of the
-        // slow queries at the same time a burden on the system.
-        // TODO: Set up thread pool size and queues in configuration. DM-10237
-        _prQueue = std::make_shared<PriorityQueue>(100, 1, 5); // default (lowest) priority.
-        _pool = util::ThreadPool::newThreadPool(1200, _prQueue);
-        _prQueue->addPriQueue(0, 1, 90);  // Highest priority - interactive queries
-        _prQueue->addPriQueue(1, 1, 50);  // Outgoing shared scan queries.
-        _prQueue->addPriQueue(2, 6, 850); // FAST queries (Object table)
-        _prQueue->addPriQueue(3, 7, 250); // MEDIUM queries (Source table)
-        _prQueue->addPriQueue(4, 6, 150); // SLOW queries (Object Extra table)
-        _prQueue->addPriQueue(5, 6, 500); // FAST large results
-        _prQueue->addPriQueue(6, 6, 100); // MEDIUM large results
-        _prQueue->addPriQueue(7, 6, 20);  // Everything else (slow things)
-        // default priority is the lowest priority.
+        std::string msg("QdispPool::QdispPool(bool unitTest) "
+                        "This constructor is only meant for use with unit tests.");
+        LOGS(_log, LOG_LVL_ERROR,
+             "QdispPool::QdispPool(bool unitTest) This constructor is only meant for use with unit tests.");
+        throw std::invalid_argument(msg);
     } else {
-        _prQueue = std::make_shared<PriorityQueue>(100, 1, 5); // default (lowest) priority.
+        _prQueue = std::make_shared<PriorityQueue>(100, 1, 1); // default (lowest) priority.
         _pool = util::ThreadPool::newThreadPool(50, _prQueue);
         _prQueue->addPriQueue(0, 1, 3);  // Highest priority - interactive queries
         _prQueue->addPriQueue(1, 1, 3);  // Outgoing shared scan queries.

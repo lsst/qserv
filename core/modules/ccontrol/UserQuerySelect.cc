@@ -105,16 +105,7 @@
 #include "util/ThreadPriority.h"
 
 namespace {
-
 LOG_LOGGER _log = LOG_GET("lsst.qserv.ccontrol.UserQuerySelect");
-
-
-int timeDiff(std::chrono::time_point<std::chrono::system_clock> const& begin, // TEMPORARY-timing
-        std::chrono::time_point<std::chrono::system_clock> const& end) {
-    auto diff = std::chrono::duration_cast<std::chrono::microseconds>(end - begin);
-    return diff.count();
-}
-
 } // namespace
 
 namespace lsst {
@@ -164,6 +155,7 @@ UserQuerySelect::UserQuerySelect(std::shared_ptr<qproc::QuerySession> const& qs,
                                  std::shared_ptr<qproc::SecondaryIndex> const& secondaryIndex,
                                  std::shared_ptr<qmeta::QMeta> const& queryMetadata,
                                  std::shared_ptr<qmeta::QStatus> const& queryStatsData,
+                                 std::shared_ptr<util::SemaMgr> const& semaMgrConn,
                                  qmeta::CzarId czarId,
                                  std::shared_ptr<qdisp::QdispPool> const& qdispPool,
                                  std::string const& errorExtra,
@@ -173,6 +165,7 @@ UserQuerySelect::UserQuerySelect(std::shared_ptr<qproc::QuerySession> const& qs,
        _databaseModels(dbModels), _infileMergerConfig(infileMergerConfig),
        _secondaryIndex(secondaryIndex),
        _queryMetadata(queryMetadata), _queryStatsData(queryStatsData),
+       _semaMgrConn(semaMgrConn),
        _qMetaCzarId(czarId), _qdispPool(qdispPool),
        _errorExtra(errorExtra), _resultDb(resultDb), _async(async) {
 }
@@ -282,11 +275,7 @@ void UserQuerySelect::submit() {
     LOGS(_log, LOG_LVL_DEBUG, "first query template:" <<
         (queryTemplates.size() > 0 ? queryTemplates[0].sqlFragment() : "none produced."));
 
-    std::atomic<int> addTimeSum; // TEMPORARY-timing
-
     // Writing query for each chunk, stop if query is cancelled.
-    auto startAllQSJ = std::chrono::system_clock::now(); // TEMPORARY-timing
-
     // attempt to change priority, requires root
     bool increaseThreadPriority = false;  // TODO: add to configuration
     util::ThreadPriority threadPriority(pthread_self());
@@ -312,11 +301,10 @@ void UserQuerySelect::submit() {
                 [this, sequence,     // sequence must be a copy
                  &chunkSpec, &queryTemplates,
                  &chunks, &chunksMtx, &ttn,
-                 &taskMsgFactory, &addTimeSum](util::CmdData*) {
+                 &taskMsgFactory](util::CmdData*) {
 
             QSERV_LOGCONTEXT_QUERY(_qMetaQueryId);
 
-            auto startbuildQSJ = std::chrono::system_clock::now(); // TEMPORARY-timing
             qproc::ChunkQuerySpec::Ptr cs;
             {
                 std::lock_guard<std::mutex> lock(chunksMtx);
@@ -333,10 +321,6 @@ void UserQuerySelect::submit() {
                     std::make_shared<MergingHandler>(cmr, _infileMerger, chunkResultName),
                     taskMsgFactory, cs, chunkResultName);
             _executive->add(jobDesc);
-            auto endChunkAddQSJ = std::chrono::system_clock::now(); // TEMPORARY-timing
-            { // TEMPORARY-timing
-                addTimeSum += timeDiff(startbuildQSJ, endChunkAddQSJ);
-            }
         };
 
         auto cmd = std::make_shared<qdisp::PriorityCommand>(funcBuildJob);
@@ -351,18 +335,6 @@ void UserQuerySelect::submit() {
 
     LOGS(_log, LOG_LVL_DEBUG, "total jobs in query=" << sequence);
     _executive->waitForAllJobsToStart();
-    auto endAllQSJ = std::chrono::system_clock::now(); // TEMPORARY-timing
-    { // TEMPORARY-timing
-        std::lock_guard<std::mutex> sumLock(_executive->sumMtx);
-        LOGS(_log, LOG_LVL_DEBUG, "QSJ Total=" <<  timeDiff(startAllQSJ, endAllQSJ)
-             << ", **sequence=" << sequence
-             << ", addTimeSum=" << addTimeSum
-             << ", cancelLockQSEASum=" << _executive->cancelLockQSEASum
-             << ", jobQueryQSEASum=" << _executive->jobQueryQSEASum
-             << ", addJobQSEASum=" << _executive->addJobQSEASum
-             << ", trackQSEASum=" << _executive->trackQSEASum
-             << ", endQSEASum=" << _executive->endQSEASum );
-    }
 
     // we only care about per-chunk info for ASYNC queries
     if (_async) {
@@ -447,7 +419,7 @@ void UserQuerySelect::setupMerger() {
     LOGS(_log, LOG_LVL_DEBUG, "setting mergeStmt:" <<
         (_infileMergerConfig->mergeStmt != nullptr ?
             _infileMergerConfig->mergeStmt->getQueryTemplate().sqlFragment() : "nullptr"));
-    _infileMerger = std::make_shared<rproc::InfileMerger>(*_infileMergerConfig, _databaseModels);
+    _infileMerger = std::make_shared<rproc::InfileMerger>(*_infileMergerConfig, _databaseModels, _semaMgrConn);
 
     auto&& preFlightStmt = _qSession->getPreFlightStmt();
     if (preFlightStmt == nullptr) {

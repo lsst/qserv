@@ -45,8 +45,10 @@
 #include "rproc/InfileMerger.h"
 #include "sql/SqlConnection.h"
 #include "sql/SqlConnectionFactory.h"
+#include "util/common.h"
 #include "util/IterableFormatter.h"
 #include "XrdSsi/XrdSsiProvider.hh"
+#include "../util/StringHelper.h"
 
 
 extern XrdSsiProvider *XrdSsiProviderClient;
@@ -95,14 +97,22 @@ Czar::Czar(std::string const& configPath, std::string const& czarName)
     auto databaseModels = qproc::DatabaseModels::create(_czarConfig.getCssConfigMap(),
                                                         _czarConfig.getMySqlResultConfig());
 
-    // need to be done first as it add logging context for new threads
+    // Need to be done first as it adds logging context for new threads
     _uqFactory.reset(new ccontrol::UserQueryFactory(_czarConfig, databaseModels, _czarName));
 
     int largeResultConcurrent = _czarConfig.getLargeResultConcurrentMerges();
     // TODO:DM-10273 - remove largeResults from configuration
     LOGS(_log, LOG_LVL_INFO, "config largeResultConcurrent=" << largeResultConcurrent);
-    _qdispPool = std::make_shared<qdisp::QdispPool>(); // TODO:configuration add to configuration
-
+    int qPoolSize = _czarConfig.getQdispPoolSize();
+    int maxPriority = std::max(0, _czarConfig.getQdispMaxPriority());
+    std::string vectRunSizesStr = _czarConfig.getQdispVectRunSizes();
+    std::vector<int> vectRunSizes = util::StringHelper::getIntVectFromStr(vectRunSizesStr, ":", 1);
+    std::string vectMinRunningSizesStr = _czarConfig.getQdispVectMinRunningSizes();
+    std::vector<int> vectMinRunningSizes = util::StringHelper::getIntVectFromStr(vectMinRunningSizesStr, ":", 0);
+    LOGS(_log, LOG_LVL_INFO, "INFO qdisp config qPoolSize=" << qPoolSize << " maxPriority=" << maxPriority
+            << " vectRunSizes=" << vectRunSizesStr << " -> " << util::prettyCharList(vectRunSizes)
+            << " vectMinRunningSizes=" << vectMinRunningSizesStr << " -> " << util::prettyCharList(vectMinRunningSizes));
+    _qdispPool = std::make_shared<qdisp::QdispPool>(qPoolSize, maxPriority, vectRunSizes, vectMinRunningSizes);
     int xrootdCBThreadsMax = _czarConfig.getXrootdCBThreadsMax();
     int xrootdCBThreadsInit = _czarConfig.getXrootdCBThreadsInit();
     LOGS(_log, LOG_LVL_INFO, "config xrootdCBThreadsMax=" << xrootdCBThreadsMax);
@@ -110,14 +120,14 @@ Czar::Czar(std::string const& configPath, std::string const& czarName)
     XrdSsiProviderClient->SetCBThreads(xrootdCBThreadsMax, xrootdCBThreadsInit);
 
     LOGS(_log, LOG_LVL_INFO, "Creating czar instance with name " << czarName);
-    LOGS(_log, LOG_LVL_DEBUG, "Czar config: " << _czarConfig);
+    LOGS(_log, LOG_LVL_INFO, "Czar config: " << _czarConfig);
 }
 
 SubmitResult
 Czar::submitQuery(std::string const& query,
                   std::map<std::string, std::string> const& hints) {
 
-    LOGS(_log, LOG_LVL_INFO, "New query: " << query
+    LOGS(_log, LOG_LVL_DEBUG, "New query: " << query
          << ", hints: " << util::printable(hints));
 
     util::ConfigStore hintsConfigStore(hints);
@@ -131,7 +141,7 @@ Czar::submitQuery(std::string const& query,
     int threadId = hintsConfigStore.getInt("server_thread_id", -1);
 
     std::string defaultDb = hintsConfigStore.get("db");
-    LOGS(_log, LOG_LVL_INFO, "Default database is \"" << defaultDb <<"\"");
+    LOGS(_log, LOG_LVL_DEBUG, "Default database is \"" << defaultDb <<"\"");
 
     // make message table name
     std::string userQueryId = std::to_string(_idCounter++);
@@ -164,6 +174,10 @@ Czar::submitQuery(std::string const& query,
 
     // Add logging context with query ID
     QSERV_LOGCONTEXT_QUERY(uq->getQueryId());
+    // Generate a log message with the QueryId and the full user query so that problems in the log
+    // can be traced back to the source query without accessing the database.
+    LOGS(_log, LOG_LVL_WARN, "New query:" << query << ", hints:" << util::printable(hints)
+                          << " defaultDb:" << defaultDb << " message_table:" << msgTableName);
 
     // check for errors
     auto error = uq->getError();

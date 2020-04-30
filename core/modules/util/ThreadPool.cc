@@ -130,6 +130,7 @@ void CommandThreadPool::_setPoolEventThread(PoolEventThread::Ptr const& poolEven
 /// have the thread leave the pool. This prevents that from
 /// happening more than once.
 PoolEventThread::Ptr CommandThreadPool::getAndNullPoolEventThread() {
+    std::lock_guard<std::mutex> lg(_poolMtx);
     auto pet = _poolEventThread.lock();
     _poolEventThread.reset();
     return pet;

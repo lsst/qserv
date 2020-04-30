@@ -43,10 +43,12 @@
 // Qserv headers
 #include "czar/Czar.h"
 #include "global/LogContext.h"
+#include "proto/ProtoHeaderWrap.h"
 #include "proto/ScanTableInfo.h"
 #include "qdisp/JobStatus.h"
 #include "qdisp/ResponseHandler.h"
 #include "util/common.h"
+#include "util/InstanceCount.h"
 #include "util/Timer.h"
 
 namespace {
@@ -63,8 +65,10 @@ class QueryRequest::AskForResponseDataCmd : public PriorityCommand {
 public:
     typedef std::shared_ptr<AskForResponseDataCmd> Ptr;
     enum class State { STARTED0, DATAREADY1, DONE2 };
-    AskForResponseDataCmd(QueryRequest::Ptr const& qr, JobQuery::Ptr const& jq)
-        : _qRequest(qr), _jQuery(jq), _qid(jq->getQueryId()), _jobid(jq->getIdInt()) {}
+    AskForResponseDataCmd(QueryRequest::Ptr const& qr, JobQuery::Ptr const& jq, size_t bufferSize)
+        : _qRequest(qr), _jQuery(jq), _qid(jq->getQueryId()), _jobid(jq->getIdInt()) {
+        _bufPtr.reset(new std::vector<char>(bufferSize));
+    }
 
     void action(util::CmdData *data) override {
         // If everything is ok, call GetResponseData to have XrdSsi ask the worker for the data.
@@ -88,7 +92,7 @@ public:
                 _setState(State::DONE2);
                 return;
             }
-            std::vector<char>& buffer = jq->getDescription()->respHandler()->nextBuffer();
+            std::vector<char>& buffer = *_bufPtr;
             LOGS(_log, LOG_LVL_TRACE, "AskForResp GetResponseData size=" << buffer.size());
             tWaiting.start();
             qr->GetResponseData(&buffer[0], buffer.size());
@@ -126,7 +130,7 @@ public:
                 return;
             }
             qr->_processData(jq, _blen, _last);
-            // _processData will have created another AskForResponseDataCmd object if needed.
+            // _processData will have created another AskForResponseDataCmd object if was needed.
             tTotal.stop();
         }
         _setState(State::DONE2);
@@ -155,6 +159,8 @@ public:
         return _state;
     }
 
+    ResponseHandler::BufPtr getBufPtr() { return _bufPtr; }
+
 private:
     void _setState(State const state) {
         std::lock_guard<std::mutex> lg(_mtx);
@@ -170,8 +176,11 @@ private:
     std::condition_variable _cv;
     State _state = State::STARTED0;
 
+    ResponseHandler::BufPtr _bufPtr;
+
     int _blen{-1};
     bool _last{true};
+    util::InstanceCount _instCount{"AskForResponseDataCmd"};
 };
 
 
@@ -288,40 +297,26 @@ bool QueryRequest::_importStream(JobQuery::Ptr const& jq) {
         // Keep the previous object from wedging the pool.
         _askForResponseDataCmd->notifyFailed();
     }
-    _askForResponseDataCmd = std::make_shared<AskForResponseDataCmd>(shared_from_this(), jq);
-    _queueAskForResponse(_askForResponseDataCmd, jq);
+    _askForResponseDataCmd = std::make_shared<AskForResponseDataCmd>(
+                               shared_from_this(), jq, proto::ProtoHeaderWrap::PROTO_HEADER_SIZE);
+    _queueAskForResponse(_askForResponseDataCmd, jq, true);
     return true;
 }
 
 
-void QueryRequest::_queueAskForResponse(AskForResponseDataCmd::Ptr const& cmd, JobQuery::Ptr const& jq) {
+void QueryRequest::_queueAskForResponse(AskForResponseDataCmd::Ptr const& cmd, JobQuery::Ptr const& jq, bool initialRequest) {
     // ScanInfo::Rating { FASTEST = 0, FAST = 10, MEDIUM = 20, SLOW = 30, SLOWEST = 100 };
+    // Trying to get existing requests done before doing new ones.
 
-    int rating = jq->getDescription()->getScanRating();
     if (jq->getDescription()->getScanInteractive()) {
         _qdispPool->queCmd(cmd, 0);
-    } else if (rating <= proto::ScanInfo::Rating::FAST) {
-        if (_largeResult) {
-            _qdispPool->queCmd(cmd, 5);
+    } else {
+        if (initialRequest) {
+            _qdispPool->queCmd(cmd, 3);
         } else {
             _qdispPool->queCmd(cmd, 2);
         }
-    } else if (rating <= proto::ScanInfo::Rating::MEDIUM) {
-        if (_largeResult) {
-            _qdispPool->queCmd(cmd, 6);
-        } else {
-            _qdispPool->queCmd(cmd, 3);
-        }
-    } else if (rating <= proto::ScanInfo::Rating::SLOW) {
-        if (not _largeResult) {
-            _qdispPool->queCmd(cmd, 4);
-        } else {
-            _qdispPool->queCmd(cmd, 7);
-        }
-    } else {
-        _qdispPool->queCmd(cmd, 7);
     }
-
 }
 
 /// Process an incoming error.
@@ -391,7 +386,7 @@ XrdSsiRequest::PRD_Xeq QueryRequest::ProcessResponseData(XrdSsiErrInfo const& eI
         jq->getDescription()->respHandler()->errorFlush(
             "Couldn't retrieve response data:" + reason + " " + _jobIdStr, eCode);
 
-        // Let the ask for response command end.
+        // Let the AskForResponseDataCmd end.
         _askForResponseDataCmd->notifyFailed();
         _errorFinish();
         // An error occurred, let processing continue so it can be cleaned up soon.
@@ -415,9 +410,12 @@ void QueryRequest::_processData(JobQuery::Ptr const& jq, int blen, bool last) {
         return;
     }
 
-    _askForResponseDataCmd.reset(); // No longer need it, and don't want our destructor calling _errorFinish().
+    // Get a copy of the shared buffer pointer so askForResponseDataCmd can be deleted.
+    ResponseHandler::BufPtr bufPtr = _askForResponseDataCmd->getBufPtr();
+    _askForResponseDataCmd.reset(); // No longer need it, and don't want the destructor calling _errorFinish().
     bool largeResult = false;
-    bool flushOk = jq->getDescription()->respHandler()->flush(blen, last, largeResult);
+    int nextBufSize = 0;
+    bool flushOk = jq->getDescription()->respHandler()->flush(blen, bufPtr, last, largeResult, nextBufSize);
     if (largeResult) {
         if (!_largeResult) LOGS(_log, LOG_LVL_DEBUG, "holdState largeResult set to true");
         _largeResult = true; // Once the worker indicates it's a large result, it stays that way.
@@ -425,10 +423,9 @@ void QueryRequest::_processData(JobQuery::Ptr const& jq, int blen, bool last) {
 
     if (flushOk) {
         if (last) {
-            auto sz = jq->getDescription()->respHandler()->nextBufferSize();
-            if (last && sz != 0) {
+            if (last && nextBufSize != 0) {
                 LOGS(_log, LOG_LVL_WARN,
-                     "Connection closed when more information expected sz=" << sz);
+                     "Connection closed when more information expected sz=" << nextBufSize);
             }
             jq->getStatus()->updateInfo(_jobIdStr, JobStatus::COMPLETE);
             _finish();
@@ -436,16 +433,15 @@ void QueryRequest::_processData(JobQuery::Ptr const& jq, int blen, bool last) {
             // having XrdSsi wait for anything.
             return;
         } else {
-            _askForResponseDataCmd = std::make_shared<AskForResponseDataCmd>(shared_from_this(), jq);
-            LOGS(_log, LOG_LVL_DEBUG, "queuing askForResponseDataCmd");
-            _queueAskForResponse(_askForResponseDataCmd, jq);
+            _askForResponseDataCmd = std::make_shared<AskForResponseDataCmd>(shared_from_this(), jq, nextBufSize);
+            LOGS(_log, LOG_LVL_DEBUG, "queuing askForResponseDataCmd bufSize=" << nextBufSize);
+            _queueAskForResponse(_askForResponseDataCmd, jq, false);
         }
     } else {
         LOGS(_log, LOG_LVL_DEBUG, "ProcessResponse data flush failed");
         ResponseHandler::Error err = jq->getDescription()->respHandler()->getError();
         jq->getStatus()->updateInfo(_jobIdStr, JobStatus::MERGE_ERROR, err.getCode(), err.getMsg());
-        // @todo DM-2378 Take a closer look at what causes this error and take
-        // appropriate action. There could be cases where this is recoverable.
+        // This error can be caused by errors in the SQL
         _retried.store(true); // Do not retry
         _errorFinish(true);
     }

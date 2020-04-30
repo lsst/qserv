@@ -28,8 +28,8 @@ location = {{QSERV_DATA_DIR}}/mysql
 [scheduler]
 
 # Thread pool size
-# thread_pool_size = 20
-thread_pool_size = 12
+#thread_pool_size = 12
+thread_pool_size = 20
 
 # Required number of completed tasks for table in a chunk for the average time to be valid
 # required_tasks_completed = 25
@@ -41,12 +41,10 @@ group_size = 10
 
 # Scheduler priority - higher numbers mean higher priority.
 # Running the fast scheduler at high priority tends to make it use significant 
-# resources on a small number of queries.
+# resources on a small number of queries. 
 # priority_snail = -20
-priority_slow = 2
 # priority_slow = 4
 # priority_med = 3
-priority_fast = 4
 # priority_fast = 2
 
 
@@ -58,10 +56,10 @@ priority_fast = 4
 # reserve_fast = 2
 
 # Maximum number of active chunks per scan scheduler
-# maxActiveChunks_snail = 1
-# maxActiveChunks_slow = 4
-# maxActiveChunks_med = 4
-# maxActiveChunks_fast = 4
+maxactivechunks_snail = 1
+maxactivechunks_slow = 4
+maxactivechunks_med = 4
+maxactivechunks_fast = 4
 
 # Maximum time for all tasks in a user query to complete.
 # scanmaxminutes_fast = 60
@@ -71,3 +69,16 @@ priority_fast = 4
 
 # Maximum number of Tasks that can take too long before moving a query to the snail scan.
 # maxtasksbootedperuserquery = 5
+
+[sqlconnections]
+# Maximum number of SQL connections for tasks
+maxsqlconn = 800
+# Number of SQL connections reserved for interactive queries (must be less than maxsqlconn)
+reservedinteractivesqlconn = 20
+
+[transmits]
+# Maximum number of concurrent transmits to a czar.
+maxtransmits = 50
+# If more than this number of large transmits is happening at once, wait to
+# start more transmits until some are done.
+maxalreadytransmitting = 10

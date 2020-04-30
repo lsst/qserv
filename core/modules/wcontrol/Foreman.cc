@@ -43,6 +43,8 @@
 #include "wbase/Base.h"
 #include "wbase/SendChannel.h"
 #include "wbase/WorkerCommand.h"
+#include "wcontrol/SqlConnMgr.h"
+#include "wcontrol/TransmitMgr.h"
 #include "wdb/ChunkResource.h"
 #include "wdb/QueryRunner.h"
 
@@ -57,11 +59,15 @@ namespace wcontrol {
 Foreman::Foreman(Scheduler::Ptr                  const& scheduler,
                  unsigned int                    poolSize,
                  mysql::MySqlConfig              const& mySqlConfig,
-                 wpublish::QueriesAndChunks::Ptr const& queries)
+                 wpublish::QueriesAndChunks::Ptr const& queries,
+                 wcontrol::SqlConnMgr::Ptr       const& sqlConnMgr,
+                 wcontrol::TransmitMgr::Ptr      const& transmitMgr)
 
     :   _scheduler  (scheduler),
         _mySqlConfig(mySqlConfig),
-        _queries    (queries) {
+        _queries    (queries),
+        _sqlConnMgr (sqlConnMgr),
+        _transmitMgr(transmitMgr) {
 
     // Make the chunk resource mgr
     // Creating backend makes a connection to the database for making temporary tables.
@@ -78,6 +84,7 @@ Foreman::Foreman(Scheduler::Ptr                  const& scheduler,
 
     _workerCommandQueue = std::make_shared<util::CommandQueue>();
     _workerCommandPool  = util::ThreadPool::newThreadPool(poolSize, _workerCommandQueue);
+
 }
 
 Foreman::~Foreman() {
@@ -100,7 +107,8 @@ void Foreman::processTask(std::shared_ptr<wbase::Task> const& task) {
                 task->sendChannel->sendError("Unsupported wire protocol", 1);
             }
         } else {
-            auto qr = wdb::QueryRunner::newQueryRunner(task, _chunkResourceMgr, _mySqlConfig);
+            auto qr = wdb::QueryRunner::newQueryRunner(task, _chunkResourceMgr, _mySqlConfig,
+                                                       _sqlConnMgr, _transmitMgr);
             bool success = false;
             try {
                 success = qr->runQuery();

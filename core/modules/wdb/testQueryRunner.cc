@@ -36,12 +36,16 @@
 #include "util/StringHash.h"
 #include "wbase/SendChannel.h"
 #include "wbase/Task.h"
+#include "wcontrol/SqlConnMgr.h"
+#include "wcontrol/TransmitMgr.h"
 #include "wdb/ChunkResource.h"
 #include "wdb/QueryRunner.h"
 
 // Boost unit test header
 #define BOOST_TEST_MODULE QueryRunner
 #include "boost/test/included/unit_test.hpp"
+
+using namespace std;
 
 namespace test = boost::test_tools;
 namespace gio = google::protobuf::io;
@@ -59,14 +63,16 @@ using lsst::qserv::proto::TaskMsg_Fragment;
 
 using lsst::qserv::wbase::SendChannel;
 using lsst::qserv::wbase::Task;
+using lsst::qserv::wcontrol::SqlConnMgr;
+using lsst::qserv::wcontrol::TransmitMgr;
 using lsst::qserv::wdb::ChunkResource;
 using lsst::qserv::wdb::ChunkResourceMgr;
 using lsst::qserv::wdb::FakeBackend;
 using lsst::qserv::wdb::QueryRunner;
 
 struct Fixture {
-    std::shared_ptr<TaskMsg> newTaskMsg() {
-        std::shared_ptr<TaskMsg> t = std::make_shared<TaskMsg>();
+    shared_ptr<TaskMsg> newTaskMsg() {
+        shared_ptr<TaskMsg> t = make_shared<TaskMsg>();
         t->set_protocol(2);
         t->set_session(123456);
         t->set_chunkid(3240); // hardcoded
@@ -80,20 +86,20 @@ struct Fixture {
         f->add_query("SELECT AVG(yFlux_PS) from LSST.Object_3240");
         return t;
     }
-    std::shared_ptr<Task> newTask() {
-        std::shared_ptr<TaskMsg> msg(newTaskMsg());
-        std::shared_ptr<SendChannel> sc(SendChannel::newNopChannel());
+    shared_ptr<Task> newTask() {
+        shared_ptr<TaskMsg> msg(newTaskMsg());
+        shared_ptr<SendChannel> sc(SendChannel::newNopChannel());
         Task::Ptr taskPtr(new Task(msg, sc));
         return taskPtr;
     }
 
     MySqlConfig newMySqlConfig() {
-        std::string user = "qsmaster";
-        std::string password = "";
-        std::string socket = "SET ME HERE";
+        string user = "qsmaster";
+        string password = "";
+        string socket = "SET ME HERE";
         MySqlConfig mySqlConfig(user, password, socket);
         if (not MySqlConnection::checkConnection(mySqlConfig)) {
-            throw std::runtime_error("Unable to connect to MySQL database with params: "+mySqlConfig.toString());
+            throw runtime_error("Unable to connect to MySQL database with params: "+mySqlConfig.toString());
         }
         return mySqlConfig;
     }
@@ -102,23 +108,27 @@ struct Fixture {
 BOOST_FIXTURE_TEST_SUITE(Basic, Fixture)
 
 BOOST_AUTO_TEST_CASE(Simple) {
-    std::shared_ptr<TaskMsg> msg(newTaskMsg());
-    std::shared_ptr<SendChannel> sc(SendChannel::newNopChannel());
+    shared_ptr<TaskMsg> msg(newTaskMsg());
+    shared_ptr<SendChannel> sc(SendChannel::newNopChannel());
     Task::Ptr task(new Task(msg, sc));
-    FakeBackend::Ptr backend = std::make_shared<FakeBackend>();
-    std::shared_ptr<ChunkResourceMgr> crm = ChunkResourceMgr::newMgr(backend);
-    QueryRunner::Ptr a{QueryRunner::newQueryRunner(task, crm, newMySqlConfig())};
+    FakeBackend::Ptr backend = make_shared<FakeBackend>();
+    shared_ptr<ChunkResourceMgr> crm = ChunkResourceMgr::newMgr(backend);
+    SqlConnMgr::Ptr sqlConnMgr = make_shared<SqlConnMgr>(20,15);
+    TransmitMgr::Ptr transmitMgr = make_shared<TransmitMgr>(50,10);
+    QueryRunner::Ptr a(QueryRunner::newQueryRunner(task, crm, newMySqlConfig(), sqlConnMgr, transmitMgr));
     BOOST_CHECK(a->runQuery());
 }
 
 BOOST_AUTO_TEST_CASE(Output) {
-    std::string out;
-    std::shared_ptr<TaskMsg> msg(newTaskMsg());
-    std::shared_ptr<SendChannel> sc(SendChannel::newStringChannel(out));
+    string out;
+    shared_ptr<TaskMsg> msg(newTaskMsg());
+    shared_ptr<SendChannel> sc(SendChannel::newStringChannel(out));
     Task::Ptr task(new Task(msg, sc));
-    FakeBackend::Ptr backend = std::make_shared<FakeBackend>();
-    std::shared_ptr<ChunkResourceMgr> crm = ChunkResourceMgr::newMgr(backend);
-    QueryRunner::Ptr a{QueryRunner::newQueryRunner(task, crm, newMySqlConfig())};
+    FakeBackend::Ptr backend = make_shared<FakeBackend>();
+    shared_ptr<ChunkResourceMgr> crm = ChunkResourceMgr::newMgr(backend);
+    SqlConnMgr::Ptr sqlConnMgr = make_shared<SqlConnMgr>(20,15);
+    TransmitMgr::Ptr transmitMgr = make_shared<TransmitMgr>(50,10);
+    QueryRunner::Ptr a(QueryRunner::newQueryRunner(task, crm, newMySqlConfig(), sqlConnMgr, transmitMgr));
     BOOST_CHECK(a->runQuery());
 
     unsigned char phSize = *reinterpret_cast<unsigned char const*>(out.data());
@@ -133,7 +143,7 @@ BOOST_AUTO_TEST_CASE(Output) {
     lsst::qserv::proto::Result result;
     BOOST_REQUIRE(ProtoImporter<Result>::setMsgFrom(result, cursor, remain));
     result.PrintDebugString();
-    std::string computedMd5 = util::StringHash::getMd5(cursor, remain);
+    string computedMd5 = util::StringHash::getMd5(cursor, remain);
     BOOST_CHECK_EQUAL(ph.md5(), computedMd5);
     BOOST_CHECK_EQUAL(task->msg->session(), result.session());
 }

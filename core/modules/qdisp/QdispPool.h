@@ -135,14 +135,37 @@ class QdispPool {
 public:
     typedef std::shared_ptr<QdispPool> Ptr;
 
-    QdispPool() { _setup(false); }
-    explicit QdispPool(bool unitTest) { _setup(unitTest); }
+    /// Default priority, the lowest possible priority.
+    static int defaultPriority() { return 100; }
+    /// This should be more than enough.
+    static int maxPoolSize() { return 20000; }
+
+    /// poolSize - total number of threads in the pool
+    /// largestPriority - highest priority is 0, lowest possible priority is
+    ///            100 and is reserved for default priority. largestPriority=4 would
+    ///            result in PriorityQueues's being created for
+    ///            priorities 0, 1, 2, 3, 4, and 100
+    /// runSizes - Each entry represents the maximum number of concurrent running
+    ///            commands for a priority given by the position in the array.
+    ///            If a position is undefined, the default value is 1.
+    ///             ex. 5, 10, 10, 3, 3 would apply to the priorities above as
+    ///              priority 0 can have up to 5 concurrent running commands
+    ///              priorities 1 and 2 can have up to 10
+    ///              priorities 3 and 4 can have up to 3
+    /// minRunningSizes - Each entry represents the minimum number of threads
+    ///             to be running (defaults to 0). Non-zero values can keep
+    ///             lower priorities from being completely stared and/or
+    ///             reduce deadlocks from high priorities depending on lower
+    ///             priorities.
+    QdispPool(int poolSize, int largestPriority, std::vector<int> const& maxRunSizes,
+              std::vector<int> const& minRunningSizes);
+    QdispPool() = delete;
+    explicit QdispPool(bool unitTest);
     QdispPool(QdispPool const&) = delete;
     QdispPool& operator=(QdispPool const&) = delete;
 
     /// Lower priority numbers are higher priority.
-    /// Invalid priorities get the lowest priority, which
-    /// is the bottom of the heap.
+    /// Invalid priorities get the lowest priority (high priority number).
     void queCmd(PriorityCommand::Ptr const& cmd, int priority) {
         _prQueue->queCmd(cmd, priority);
     }
@@ -154,8 +177,6 @@ public:
     }
 
 private:
-    void _setup(bool unitTest);
-
     PriorityQueue::Ptr _prQueue;
     util::ThreadPool::Ptr _pool;
 };

@@ -42,12 +42,16 @@
 #include "sql/SqlConnection.h"
 #include "util/Error.h"
 #include "util/EventThread.h"
+#include "util/SemaMgr.h"
 
 // Forward declarations
 namespace lsst {
 namespace qserv {
+namespace czar {
+    class CzarConfig;
+}
 namespace mysql {
-    class MySqlConfig;
+    class MysqlConfig;
 }
 namespace proto {
     class ProtoHeader;
@@ -87,12 +91,13 @@ typedef util::Error InfileMergerError;
 /// class InfileMergerConfig - value class for configuring a InfileMerger
 class InfileMergerConfig {
 public:
-    InfileMergerConfig() {}
-    InfileMergerConfig(mysql::MySqlConfig const& mySqlConfig)
-        :  mySqlConfig(mySqlConfig)
-    {
+    InfileMergerConfig() = delete;
+    InfileMergerConfig(czar::CzarConfig const& czarConfig_, mysql::MySqlConfig const& mySqlConfig_)
+        :  czarConfig(czarConfig_), mySqlConfig(mySqlConfig_) {
     }
+
     // for final result, and imported result
+    czar::CzarConfig const& czarConfig;
     mysql::MySqlConfig const mySqlConfig;
     std::string targetTable;
     std::shared_ptr<query::SelectStmt> mergeStmt;
@@ -167,8 +172,20 @@ private:
 /// At present, Result messages are not chained.
 class InfileMerger {
 public:
-    explicit InfileMerger(InfileMergerConfig const& c, std::shared_ptr<qproc::DatabaseModels> const& dm);
+    explicit InfileMerger(InfileMergerConfig const& c, std::shared_ptr<qproc::DatabaseModels> const& dm,
+                          std::shared_ptr<util::SemaMgr> const& semaMgrConn);
+    InfileMerger() = delete;
+    InfileMerger(InfileMerger const&) = delete;
+    InfileMerger& operator=(InfileMerger const&) = delete;
     ~InfileMerger();
+
+    enum DbEngine {
+        MYISAM,
+        INNODB,
+        MEMORY
+    };
+
+    std::string engineToStr(InfileMerger::DbEngine engine);
 
     /// Create the shared thread pool and/or change its size.
     // @return the size of the large result thread pool.
@@ -220,8 +237,11 @@ public:
      */
     bool makeResultsTableForQuery(query::SelectStmt const& stmt);
 
+    int sqlConnectionAttempts() { return _maxSqlConnectionAttempts; }
+
 private:
-    bool _applyMysql(std::string const& query);
+    bool _applyMysqlMyIsam(std::string const& query);
+    bool _applyMysqlInnoDb(std::string const& query);
     bool _merge(std::shared_ptr<proto::WorkerResponse>& response);
     int _readHeader(proto::ProtoHeader& header, char const* buffer, int length);
     int _readResult(proto::Result& result, char const* buffer, int length);
@@ -237,7 +257,10 @@ private:
     void _setQueryIdStr(std::string const& qIdStr);
     void _fixupTargetName();
 
-    bool _setupConnection() {
+    /// Set the engine name from the string engineName. Default to MYISAM.
+    void _setEngineFromStr(std::string const& engineName);
+
+    bool _setupConnectionMyIsam() {
         if (_mysqlConn.connect()) {
             _infileMgr.attach(_mysqlConn.getMySql());
             return true;
@@ -245,7 +268,10 @@ private:
         return false;
     }
 
+    bool _setupConnectionInnoDb(mysql::MySqlConnection& mySConn);
+
     InfileMergerConfig _config; ///< Configuration
+    DbEngine _dbEngine = MYISAM; ///< ENGINE used for aggregating results.
     std::shared_ptr<sql::SqlConnection> _sqlConn; ///< SQL connection
     std::string _mergeTable; ///< Table for result loading
     InfileMergerError _error; ///< Error state
@@ -271,7 +297,7 @@ private:
     mysql::MySqlConnection _mysqlConn;
 
     std::mutex _mysqlMutex;
-    lsst::qserv::mysql::LocalInfile::Mgr _infileMgr;
+    mysql::LocalInfile::Mgr _infileMgr;
 
     std::shared_ptr<qproc::DatabaseModels> _databaseModels; ///< Used to create result table.
 
@@ -286,10 +312,12 @@ private:
     InvalidJobAttemptMgr _invalidJobAttemptMgr;
     bool _deleteInvalidRows(std::set<int> const& jobIdAttempts);
 
+    int _sizeCheckRowCount = 0; ///< Number of rows read since last size check.
+    int _checkSizeEveryXRows = 1000; ///< Check the size of the result table after every x number of rows.
+    size_t _maxResultTableSizeMB = 5000; ///< Max result table size.
+    int const _maxSqlConnectionAttempts = 10; ///< maximum number of times to retry connecting to the SQL database.
 
-    int _sizeCheckRowCount{0}; ///< Number of rows read since last size check.
-    int _checkSizeEveryXRows{1000}; ///< Check the size of the result table after every x number of rows.
-    size_t _maxResultTableSizeMB{5000}; ///< Max result table size.
+    std::shared_ptr<util::SemaMgr> _semaMgrConn; ///< Used to limit the number of open mysql connections.
 };
 
 }}} // namespace lsst::qserv::rproc

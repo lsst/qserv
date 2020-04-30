@@ -359,7 +359,11 @@ void SsiRequest::Finished(XrdSsiRequest& req, XrdSsiRespInfo const& rinfo, bool 
 
     // We can't do much other than close the file.
     // It should work (on linux) to unlink the file after we open it, though.
-    LOGS(_log, LOG_LVL_DEBUG, "RequestFinished " << type);
+    // With the optimizer on '-Og', there was a double free for a SsiRequest.
+    // The likely cause could be keepAlive being optimized out for being unused.
+    // The problem has not reoccurred since adding keepAlive to the following
+    // comment, but having code depend on a comment line is ugly in its own way.
+    LOGS(_log, LOG_LVL_DEBUG, "RequestFinished " << type << " " << keepAlive.use_count());
 }
 
 bool SsiRequest::reply(char const* buf, int bufLen) {

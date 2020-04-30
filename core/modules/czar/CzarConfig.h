@@ -152,6 +152,28 @@ public:
     int getQMetaSecondsBetweenChunkUpdates() const {
         return _qMetaSecsBetweenChunkCompletionUpdates;
     }
+
+    /// Getters for result aggregation options.
+    int getMaxTableSizeMB() const { return _maxTableSizeMB; }
+    int getMaxSqlConnectionAttempts() const { return _maxSqlConnectionAttempts; }
+    std::string getResultEngine() const { return _resultEngine; }
+    int getResultMaxConnections() const { return _resultMaxConnections; }
+
+    /// Getters for QdispPool configuration
+    /// @return the number of threads to create for the pool.
+    int getQdispPoolSize() const { return _qdispPoolSize; }
+    /// @return the maximum priority for a queue. The number of queues
+    ///    equals this value +1.
+    int getQdispMaxPriority() const { return _qdispMaxPriority; }
+    /// @return a string with substrings separated by ':' like "2:45:32:9"
+    ///      The values indicate the maximum number of commands for each
+    ///      priority that can be running concurrently.
+    std::string getQdispVectRunSizes() const { return _qdispVectRunSizes; }
+    /// @return a string with substrings separated by ':' like "2:45:32:9"
+    ///      The values indicate the minimum number of commands for each
+    ///      priority that should be running concurrently
+    std::string getQdispVectMinRunningSizes() const { return _qdispVectMinRunningSizes; }
+
 private:
 
     CzarConfig(util::ConfigStore const& ConfigStore);
@@ -159,6 +181,12 @@ private:
     // Parameters below used in czar::Czar
     mysql::MySqlConfig const _mySqlResultConfig;
     std::string const _logConfig;
+
+    // Parameters used to affect result aggregation in rproc.
+    int const         _maxTableSizeMB;
+    int const         _maxSqlConnectionAttempts;
+    std::string const _resultEngine;
+    int const         _resultMaxConnections;
 
     // Parameters below used in ccontrol::UserQueryFactory
     std::map<std::string, std::string> const _cssConfigMap;
@@ -170,6 +198,12 @@ private:
     int const _xrootdCBThreadsMax;
     int const _xrootdCBThreadsInit;
     int const _qMetaSecsBetweenChunkCompletionUpdates;
+
+    // Parameters for QdispPool configuration
+    int const _qdispPoolSize;
+    int const _qdispMaxPriority;
+    std::string const _qdispVectRunSizes; // No spaces, values separated by ':'
+    std::string const _qdispVectMinRunningSizes; // No spaces, values separated by ':'
 };
 
 }}} // namespace lsst::qserv::czar

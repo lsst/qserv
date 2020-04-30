@@ -128,8 +128,6 @@ public:
     void setBuffer(std::string const& s, std::shared_ptr<RowBuffer> const& rb);
     std::shared_ptr<RowBuffer> get(std::string const& s);
 
-
-
 private:
     /// @return next filename
     std::string _nextFilename();

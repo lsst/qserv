@@ -42,6 +42,7 @@
 #include "mysql/MySqlConnection.h"
 #include "util/MultiError.h"
 #include "wbase/Task.h"
+#include "wcontrol/SqlConnMgr.h"
 #include "wdb/ChunkResource.h"
 
 namespace lsst {
@@ -60,6 +61,11 @@ namespace xrdsvc {
 class StreamBuffer;
 }
 
+namespace wcontrol {
+class SqlConnMgr;
+class TransmitMgr;
+}
+
 }}
 
 namespace lsst {
@@ -73,7 +79,9 @@ public:
     using Ptr = std::shared_ptr<QueryRunner>;
     static QueryRunner::Ptr newQueryRunner(wbase::Task::Ptr const& task,
                                            ChunkResourceMgr::Ptr const& chunkResourceMgr,
-                                           mysql::MySqlConfig const& mySqlConfig);
+                                           mysql::MySqlConfig const& mySqlConfig,
+                                           std::shared_ptr<wcontrol::SqlConnMgr> const& sqlConnMgr,
+                                           std::shared_ptr<wcontrol::TransmitMgr> const& tansmitMgr);
     // Having more than one copy of this would making tracking its progress difficult.
     QueryRunner(QueryRunner const&) = delete;
     QueryRunner& operator=(QueryRunner const&) = delete;
@@ -85,7 +93,9 @@ public:
 protected:
     QueryRunner(wbase::Task::Ptr const& task,
                 ChunkResourceMgr::Ptr const& chunkResourceMgr,
-                mysql::MySqlConfig const& mySqlConfig);
+                mysql::MySqlConfig const& mySqlConfig,
+                std::shared_ptr<wcontrol::SqlConnMgr> const& sqlConnMgr,
+                std::shared_ptr<wcontrol::TransmitMgr> const& transmitMgr);
 private:
     bool _initConnection();
     void _setDb();
@@ -103,13 +113,14 @@ private:
     void _transmit(bool last, unsigned int rowCount, size_t size);
     void _transmitHeader(std::string& msg);
 
-    ///< Actual task
-    wbase::Task::Ptr _task;
 
-    ///< Resource reservation
+    wbase::Task::Ptr const _task; ///< Actual task
+
+    /// Resource reservation
     ChunkResourceMgr::Ptr _chunkResourceMgr;
     std::string _dbName;
     std::atomic<bool> _cancelled{false};
+    std::atomic<bool> _removedFromThreadPool{false};
     mysql::MySqlConfig const _mySqlConfig;
     std::unique_ptr<mysql::MySqlConnection> _mysqlConn;
 
@@ -118,6 +129,12 @@ private:
     std::shared_ptr<proto::ProtoHeader> _protoHeader;
     std::shared_ptr<proto::Result> _result;
     bool _largeResult{false}; //< True for all transmits after the first transmit.
+
+    /// Used to limit the number of open MySQL connections.
+    std::shared_ptr<wcontrol::SqlConnMgr> const _sqlConnMgr;
+
+    /// Used to limit the number of transmits being sent to czars.
+    std::shared_ptr<wcontrol::TransmitMgr> const _transmitMgr;
 };
 
 }}} // namespace

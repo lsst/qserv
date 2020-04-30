@@ -69,9 +69,12 @@ CzarConfig::CzarConfig(util::ConfigStore const& configStore)
             configStore.getRequired("resultdb.passwd"),
             configStore.getRequired("resultdb.host"), configStore.getInt("resultdb.port"),
             configStore.getRequired("resultdb.unix_socket"),
-            configStore.get("resultdb.db","qservResult"),
-            configStore.getInt("resultdb.maxtablesize_mb", 5001)),
+            configStore.get("resultdb.db","qservResult")),
       _logConfig(configStore.get("log.logConfig")),
+      _maxTableSizeMB(configStore.getInt("resultdb.maxtablesize_mb", 5001)),
+      _maxSqlConnectionAttempts(configStore.getInt("resultdb.maxsqlconnectionattempts", 10)),
+      _resultEngine(configStore.get("resultdb.engine", "myisam")),
+      _resultMaxConnections(configStore.getInt("resultdb.maxconnections", 40)),
       _cssConfigMap(configStore.getSectionConfigMap("css")),
       _mySqlQmetaConfig(configStore.get("qmeta.user", "qsmaster"),
                         configStore.get("qmeta.passwd"),
@@ -91,7 +94,11 @@ CzarConfig::CzarConfig(util::ConfigStore const& configStore)
       _xrootdCBThreadsMax(configStore.getInt("tuning.xrootdCBThreadsMax", 500)),
       _xrootdCBThreadsInit(configStore.getInt("tuning.xrootdCBThreadsInit", 50)),
       _qMetaSecsBetweenChunkCompletionUpdates(configStore.getInt(
-                                               "tuning.qMetaSecsBetweenChunkCompletionUpdates", 60)) {
+                                               "tuning.qMetaSecsBetweenChunkCompletionUpdates", 60)),
+      _qdispPoolSize(configStore.getInt("qdisppool.poolSize", 1000)),
+      _qdispMaxPriority(configStore.getInt("qdisppool.largestPriority", 2)),
+      _qdispVectRunSizes(configStore.get("qdisppool.vectRunSizes", "50:50:50:50")),
+      _qdispVectMinRunningSizes(configStore.get("qdisppool.vectMinRunningSizes", "0:1:3:3")) {
 }
 
 std::ostream& operator<<(std::ostream &out, CzarConfig const& czarConfig) {

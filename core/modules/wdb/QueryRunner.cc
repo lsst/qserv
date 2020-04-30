@@ -47,7 +47,7 @@
 // LSST headers
 #include "lsst/log/Log.h"
 
-// Qserv headers
+#include "wcontrol/TransmitMgr.h"
 #include "global/Bug.h"
 #include "global/constants.h"
 #include "global/DbTable.h"
@@ -82,8 +82,10 @@ namespace wdb {
 
 QueryRunner::Ptr QueryRunner::newQueryRunner(wbase::Task::Ptr const& task,
                                              ChunkResourceMgr::Ptr const& chunkResourceMgr,
-                                             mysql::MySqlConfig const& mySqlConfig) {
-    Ptr qr{new QueryRunner{task, chunkResourceMgr, mySqlConfig}}; // Private constructor.
+                                             mysql::MySqlConfig const& mySqlConfig,
+                                             std::shared_ptr<wcontrol::SqlConnMgr> const& sqlConnMgr,
+                                             std::shared_ptr<wcontrol::TransmitMgr> const& transmitMgr) {
+    Ptr qr(new QueryRunner(task, chunkResourceMgr, mySqlConfig, sqlConnMgr, transmitMgr)); // Private constructor.
     // Let the Task know this is its QueryRunner.
     bool cancelled = qr->_task->setTaskQueryRunner(qr);
     if (cancelled) {
@@ -97,8 +99,11 @@ QueryRunner::Ptr QueryRunner::newQueryRunner(wbase::Task::Ptr const& task,
 /// and correct setup of enable_shared_from_this.
 QueryRunner::QueryRunner(wbase::Task::Ptr const& task,
                          ChunkResourceMgr::Ptr const& chunkResourceMgr,
-                         mysql::MySqlConfig const& mySqlConfig)
-    : _task(task), _chunkResourceMgr(chunkResourceMgr), _mySqlConfig(mySqlConfig) {
+                         mysql::MySqlConfig const& mySqlConfig,
+                         std::shared_ptr<wcontrol::SqlConnMgr> const& sqlConnMgr,
+                         std::shared_ptr<wcontrol::TransmitMgr> const& transmitMgr)
+    : _task(task), _chunkResourceMgr(chunkResourceMgr), _mySqlConfig(mySqlConfig),
+      _sqlConnMgr(sqlConnMgr), _transmitMgr(transmitMgr) {
     int rc = mysql_thread_init();
     assert(rc == 0);
     assert(_task->msg);
@@ -123,7 +128,7 @@ bool QueryRunner::_initConnection() {
 void QueryRunner::_setDb() {
     if (_task->msg->has_db()) {
         _dbName = _task->msg->db();
-        LOGS(_log, LOG_LVL_WARN, "QueryRunner overriding dbName with " << _dbName);
+        LOGS(_log, LOG_LVL_DEBUG, "QueryRunner overriding dbName with " << _dbName);
     }
 }
 
@@ -165,7 +170,9 @@ bool QueryRunner::runQuery() {
     }
 
     _setDb();
-    LOGS(_log, LOG_LVL_DEBUG,  "Exec in flight for Db=" << _dbName);
+    LOGS(_log, LOG_LVL_INFO,  "Exec in flight for Db=" << _dbName
+        << " sqlConnMgr total" << _sqlConnMgr->getTotalCount() << " conn=" << _sqlConnMgr->getSqlConnCount());
+    wcontrol::SqlConnLock sqlConnLock(*_sqlConnMgr, not _task->getScanInteractive());
     bool connOk = _initConnection();
     if (!connOk) {
         // Transmit the mysql connection error to the czar, which should trigger a re-try.
@@ -254,6 +261,21 @@ bool QueryRunner::_fillRows(MYSQL_RES* result, int numFields, uint& rowCount, si
         unsigned int szLimit = std::min(proto::ProtoHeaderWrap::PROTOBUFFER_DESIRED_LIMIT,
                                         proto::ProtoHeaderWrap::PROTOBUFFER_HARD_LIMIT);
 
+        // for some to finish, otherwise
+        if (not _removedFromThreadPool) {
+            // This query has been answered by the database and the
+            // scheduler for this worker should stop waiting for it.
+            // leavePool() will tell the scheduler this task is finished
+            // and create a new thread in the pool to replace this one.
+            auto pet = _task->getAndNullPoolEventThread();
+            _removedFromThreadPool = true;
+            if (pet != nullptr) {
+                pet->leavePool();
+            } else {
+                LOGS(_log, LOG_LVL_WARN, "Result PoolEventThread was null. Probably already moved.");
+            }
+        }
+
         // Each element needs to be mysql-sanitized
         if (tSize > szLimit) {
             if (tSize > proto::ProtoHeaderWrap::PROTOBUFFER_HARD_LIMIT) {
@@ -266,18 +288,6 @@ bool QueryRunner::_fillRows(MYSQL_RES* result, int numFields, uint& rowCount, si
             rowCount = 0;
             tSize = 0;
             _initMsg();
-            // This task is going to have multiple results to return to the czar and
-            // the speed this task can be completed will be limited by the czar's ability to
-            // read in results, which could be very very slow. The upshot of this is the
-            // scheduler for this worker should stop waiting for this task. leavePool()
-            // will tell the scheduler this task is finished and create a new thread in the pool
-            // to replace this thread.
-            auto pet = _task->getAndNullPoolEventThread();
-            if (pet != nullptr) {
-                pet->leavePool();
-            } else {
-                LOGS(_log, LOG_LVL_DEBUG, "Large result PoolEventThread was null. Probably already moved. b");
-            }
         }
     }
     unsigned int mysqlErrNo = _mysqlConn->getErrno();
@@ -298,8 +308,9 @@ util::TimerHistogram transmitHisto("transmit Hist", {0.1, 1, 5, 10, 20, 40});
 /// If 'last' is true, this is the last message in the result set
 /// and flags are set accordingly.
 void QueryRunner::_transmit(bool last, unsigned int rowCount, size_t tSize) {
-    LOGS(_log, LOG_LVL_DEBUG, "_transmit last=" << last
-         << " rowCount=" << rowCount << " tSize=" << tSize);
+    LOGS(_log, LOG_LVL_INFO, "_transmitMgr=" << *_transmitMgr
+         << " last=" << last << " rowCount=" << rowCount << " tSize=" << tSize);
+    wcontrol::TransmitLock transmitLock(*_transmitMgr, _task->getScanInteractive(), _largeResult);
     std::string resultString;
     _result->set_queryid(_task->getQueryId());
     _result->set_jobid(_task->getJobId());
@@ -316,7 +327,6 @@ void QueryRunner::_transmit(bool last, unsigned int rowCount, size_t tSize) {
     }
     _result->SerializeToString(&resultString);
     _result.reset(); // don't need it anymore and a new one will be made when needed..
-
     _transmitHeader(resultString);
     LOGS(_log, LOG_LVL_DEBUG, "_transmit last=" << last
          << " resultString=" << util::prettyCharList(resultString, 5));

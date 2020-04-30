@@ -166,7 +166,7 @@ std::string LocalInfile::Mgr::prepareSrc(MYSQL_RES* result) {
 
 
 std::string LocalInfile::Mgr::prepareSrc(std::shared_ptr<RowBuffer> const& rowBuffer) {
-    LOGS(_log, LOG_LVL_DEBUG, "rowBuffer=" << rowBuffer->dump());
+    LOGS(_log, LOG_LVL_TRACE, "rowBuffer=" << rowBuffer->dump());
     return insertBuffer(rowBuffer);
 }
 
@@ -174,7 +174,6 @@ std::string LocalInfile::Mgr::prepareSrc(std::shared_ptr<RowBuffer> const& rowBu
 // mysql_local_infile_handler interface
 int LocalInfile::Mgr::local_infile_init(void **ptr, const char *filename, void *userdata) {
     assert(userdata);
-    //cout << "New infile:" << filename << "\n";
     LocalInfile::Mgr* m = static_cast<LocalInfile::Mgr*>(userdata);
     RowBuffer::Ptr rb= m->get(std::string(filename));
     assert(rb);

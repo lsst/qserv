@@ -71,7 +71,11 @@ WorkerConfig::WorkerConfig(const util::ConfigStore& configStore)
       _scanMaxMinutesMed(configStore.getInt("scheduler.scanmaxminutes_med", 60*8)),
       _scanMaxMinutesSlow(configStore.getInt("scheduler.scanmaxminutes_slow", 60*12)),
       _scanMaxMinutesSnail(configStore.getInt("scheduler.scanmaxminutes_snail", 60*24)),
-      _maxTasksBootedPerUserQuery(configStore.getInt("scheduler.maxtasksbootedperuserquery", 5)) {
+      _maxTasksBootedPerUserQuery(configStore.getInt("scheduler.maxtasksbootedperuserquery", 5)),
+      _maxSqlConnections(configStore.getInt("sqlconnections.maxsqlconn", 800)),
+      _ReservedInteractiveSqlConnections(configStore.getInt("sqlconnections.reservedinteractivesqlconn", 50)),
+      _maxTransmits(configStore.getInt("transmit.maxtransmits", 50)),
+      _maxAlreadyTransmitting(configStore.getInt("transmit.maxalreadytransmitting", 10)) {
 }
 
 std::ostream& operator<<(std::ostream &out, WorkerConfig const& workerConfig) {

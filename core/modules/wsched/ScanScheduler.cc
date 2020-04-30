@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2013-2016 AURA/LSST.
+ * Copyright 2013-2019 LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -120,9 +120,10 @@ void ScanScheduler::commandFinish(util::Command::Ptr const& cmd) {
 
         _decrChunkTaskCount(t->getChunkId());
     }
-    // Whenever a Task finishes, all sleeping threads need to check if resources
+    LOGS(_log, LOG_LVL_DEBUG, "tskEnd chunk=" << t->getChunkId());
+    // Whenever a Task finishes, sleeping threads need to check if resources
     // are available to run new Tasks.
-    _cv.notify_all();
+    _cv.notify_one();
 }
 
 
@@ -206,10 +207,14 @@ util::Command::Ptr ScanScheduler::getCmd(bool wait)  {
     auto task = _taskQueue->getTask(useFlexibleLock);
     if (task != nullptr) {
         ++_inFlight; // in flight as soon as it is off the queue.
-        LOGS(_log, LOG_LVL_DEBUG, "getCmd " << getName() << " inflight=" << _inFlight);
+        QSERV_LOGCONTEXT_QUERY_JOB(task->getQueryId(), task->getJobId());
+        LOGS(_log, LOG_LVL_DEBUG, "getCmd " << getName() << " tskStart chunk=" << task->getChunkId()
+                               << " inflight=" << _inFlight);
         _infoChanged = true;
         _decrCountForUserQuery(task->getQueryId());
         _incrChunkTaskCount(task->getChunkId());
+        // Since a command was retrieved, there's a possibility another is ready.
+        notify(false); // notify all=false
     }
     return task;
 }
@@ -222,6 +227,8 @@ void ScanScheduler::queCmd(util::Command::Ptr const& cmd) {
         return;
     }
     QSERV_LOGCONTEXT_QUERY_JOB(t->getQueryId(), t->getJobId());
+    LOGS(_log, LOG_LVL_INFO, getName()
+        << " queCmd rating=" << t->getScanInfo().scanRating << " interactive=" << t->getScanInteractive());
     {
         std::lock_guard<std::mutex> lock(util::CommandQueue::_mx);
         auto uqCount = _incrCountForUserQuery(t->getQueryId());
@@ -230,7 +237,7 @@ void ScanScheduler::queCmd(util::Command::Ptr const& cmd) {
         _taskQueue->queueTask(t);
         _infoChanged = true;
     }
-    util::CommandQueue::_cv.notify_all();
+    util::CommandQueue::_cv.notify_one();
 }
 
 
