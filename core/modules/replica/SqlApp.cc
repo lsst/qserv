@@ -32,13 +32,16 @@
 #include "replica/Configuration.h"
 #include "replica/Controller.h"
 #include "replica/SqlCreateDbJob.h"
+#include "replica/SqlCreateIndexesJob.h"
 #include "replica/SqlCreateTableJob.h"
 #include "replica/SqlCreateTablesJob.h"
 #include "replica/SqlDeleteDbJob.h"
 #include "replica/SqlDeleteTableJob.h"
 #include "replica/SqlDeleteTablePartitionJob.h"
 #include "replica/SqlDisableDbJob.h"
+#include "replica/SqlDropIndexesJob.h"
 #include "replica/SqlEnableDbJob.h"
+#include "replica/SqlGetIndexesJob.h"
 #include "replica/SqlGrantAccessJob.h"
 #include "replica/SqlJob.h"
 #include "replica/SqlQueryJob.h"
@@ -83,7 +86,8 @@ SqlApp::SqlApp(int argc, char* argv[])
         {"QUERY",
          "CREATE_DATABASE", "DELETE_DATABASE", "ENABLE_DATABASE", "DISABLE_DATABASE",
          "GRANT_ACCESS",
-         "CREATE_TABLE", "CREATE_TABLES", "DELETE_TABLE", "REMOVE_TABLE_PARTITIONS", "DELETE_TABLE_PARTITION"},
+         "CREATE_TABLE", "CREATE_TABLES", "DELETE_TABLE", "REMOVE_TABLE_PARTITIONS", "DELETE_TABLE_PARTITION",
+         "CREATE_INDEXES", "DROP_INDEXES", "GET_INDEXES"},
         _command
     ).flag(
         "all-workers",
@@ -297,6 +301,63 @@ SqlApp::SqlApp(int argc, char* argv[])
         " should be in the ABORTED state.",
         _transactionId
     );
+
+    parser().command(
+        "CREATE_INDEXES"
+    ).required(
+        "database",
+        "The name of an existing database where the table is residing.",
+        _database
+    ).required(
+        "table",
+        "The name of an existing table to be affected by the operation.",
+        _table
+    ).required(
+        "name",
+        "The name of an index to be created.",
+        _indexName
+    ).required(
+        "type-specification",
+        "The type specification of an index.",
+        _indexSpecStr,
+        {"DEFAULT", "UNIQUE", "FULLTEXT", "SPATIAL"}
+    ).required(
+        "columns-file",
+        "The name of a file where to read definitions of the index's columns.",
+        _indexColumnsFile
+    ).optional(
+        "comment",
+        "The optional comment explaining an index.",
+        _indexComment
+    );
+
+    parser().command(
+        "DROP_INDEXES"
+    ).required(
+        "database",
+        "The name of an existing database where the table is residing.",
+        _database
+    ).required(
+        "table",
+        "The name of an existing table to be affected by the operation.",
+        _table
+    ).required(
+        "name",
+        "The name of an index to be дроппед.",
+        _indexName
+    );
+
+    parser().command(
+        "GET_INDEXES"
+    ).required(
+        "database",
+        "The name of an existing database where the table is residing.",
+        _database
+    ).required(
+        "table",
+        "The name of an existing table to be affected by the operation.",
+        _table
+    );
 }
 
 
@@ -339,6 +400,20 @@ int SqlApp::runImpl() {
     } else if(_command == "DELETE_TABLE_PARTITION") {
         job = SqlDeleteTablePartitionJob::create(_database, _table, _transactionId,
                                                  _allWorkers, controller);
+    } else if(_command == "CREATE_INDEXES") {
+        job = SqlCreateIndexesJob::create(_database, _table,
+                                          SqlRequestParams::IndexSpec(_indexSpecStr),
+                                          _indexName,
+                                          _indexComment,
+                                          SqlSchemaUtils::readIndexSpecFromTextFile(_indexColumnsFile),
+                                         _allWorkers, controller);
+    } else if(_command == "DROP_INDEXES") {
+        job = SqlDropIndexesJob::create(_database, _table,
+                                        _indexName,
+                                        _allWorkers, controller);
+    } else if(_command == "GET_INDEXES") {
+        job = SqlGetIndexesJob::create(_database, _table,
+                                       _allWorkers, controller);
     } else {
         throw logic_error(
                 "SqlApp::" + string(__func__) + "  command='" + _command + "' is not supported");

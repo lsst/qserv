@@ -38,12 +38,15 @@
 #include "replica/ServiceManagementRequest.h"
 #include "replica/ServiceProvider.h"
 #include "replica/SqlCreateDbRequest.h"
+#include "replica/SqlCreateIndexesRequest.h"
 #include "replica/SqlCreateTableRequest.h"
 #include "replica/SqlCreateTablesRequest.h"
 #include "replica/SqlDeleteDbRequest.h"
 #include "replica/SqlDeleteTablePartitionRequest.h"
 #include "replica/SqlDeleteTableRequest.h"
 #include "replica/SqlDisableDbRequest.h"
+#include "replica/SqlDropIndexesRequest.h"
+#include "replica/SqlGetIndexesRequest.h"
 #include "replica/SqlEnableDbRequest.h"
 #include "replica/SqlGrantAccessRequest.h"
 #include "replica/SqlQueryRequest.h"
@@ -162,6 +165,7 @@ void ControllerApp::_configureParser() {
             "SQL_ENABLE_DATABASE", "SQL_DISABLE_DATABASE", "SQL_GRANT_ACCESS",
             "SQL_CREATE_TABLE", "SQL_CREATE_TABLES", "SQL_DELETE_TABLE",
             "SQL_REMOVE_TABLE_PARTITIONS", "SQL_DELETE_TABLE_PARTITION",
+            "SQL_CREATE_TABLE_INDEXES", "SQL_DROP_TABLE_INDEXES", "SQL_GET_TABLE_INDEXES",
             "INDEX", "STATUS", "STOP", "DISPOSE",
             "SERVICE_SUSPEND", "SERVICE_RESUME", "SERVICE_STATUS",
             "SERVICE_REQUESTS", "SERVICE_DRAIN", "SERVICE_RECONFIG"
@@ -477,6 +481,63 @@ void ControllerApp::_configureParserCommandSQL() {
         " should be in the ABORTED state.",
         _transactionId
     );
+
+    parser().command(
+        "SQL_CREATE_TABLE_INDEXES"
+    ).required(
+        "database",
+        "The name of an existing database where the table is residing.",
+        _sqlDatabase
+    ).required(
+        "table",
+        "The name of an existing table to be affected by the operation.",
+        _sqlTable
+    ).required(
+        "name",
+        "The name of an index to be created.",
+        _sqlIndexName
+    ).required(
+        "type-specification",
+        "The type specification of an index.",
+        _sqlIndexSpecStr,
+        {"DEFAULT", "UNIQUE", "FULLTEXT", "SPATIAL"}
+    ).required(
+        "columns-file",
+        "The name of a file where to read definitions of the index's columns.",
+        _sqlIndexColumnsFile
+    ).optional(
+        "comment",
+        "The optional comment explaining an index.",
+        _sqlIndexComment
+    );
+
+    parser().command(
+        "SQL_DROP_TABLE_INDEXES"
+    ).required(
+        "database",
+        "The name of an existing database where the table is residing.",
+        _sqlDatabase
+    ).required(
+        "table",
+        "The name of an existing table to be affected by the operation.",
+        _sqlTable
+    ).required(
+        "name",
+        "The name of an index to be dropped.",
+        _sqlIndexName
+    );
+
+    parser().command(
+        "SQL_GET_TABLE_INDEXES"
+    ).required(
+        "database",
+        "The name of an existing database where the table is residing.",
+        _sqlDatabase
+    ).required(
+        "table",
+        "The name of an existing table to be affected by the operation.",
+        _sqlTable
+    );
 }
 
 
@@ -521,12 +582,14 @@ void ControllerApp::_configureParserCommandSTATUS() {
         " SQL_GRANT_ACCESS"
         " SQL_CREATE_TABLE, SQL_CREATE_TABLES, SQL_DELETE_TABLE, SQL_REMOVE_TABLE_PARTITIONS,"
         " SQL_DELETE_TABLE_PARTITION,"
+        " SQL_CREATE_TABLE_INDEXES, SQL_DROP_TABLE_INDEXES, SQL_GET_TABLE_INDEXES"
         " INDEX",
         _affectedRequest,
        {    "REPLICATE", "DELETE", "FIND", "FIND_ALL", "ECHO", "SQL_QUERY",
             "SQL_CREATE_DATABASE", "SQL_DELETE_DATABASE", "SQL_ENABLE_DATABASE",
             "SQL_DISABLE_DATABASE", "SQL_GRANT_ACCESS", "SQL_CREATE_TABLE", "SQL_CREATE_TABLES", "SQL_DELETE_TABLE",
             "SQL_REMOVE_TABLE_PARTITIONS", "SQL_DELETE_TABLE_PARTITION",
+            "SQL_CREATE_TABLE_INDEXES", "SQL_DROP_TABLE_INDEXES", "SQL_GET_TABLE_INDEXES",
             "INDEX"
         }
     ).required(
@@ -550,12 +613,14 @@ void ControllerApp::_configureParserCommandSTOP() {
         " SQL_GRANT_ACCESS"
         " SQL_CREATE_TABLE, SQL_CREATE_TABLES, SQL_DELETE_TABLE, SQL_REMOVE_TABLE_PARTITIONS,"
         " SQL_DELETE_TABLE_PARTITION,"
+        " SQL_CREATE_TABLE_INDEXES, SQL_DROP_TABLE_INDEXES, SQL_GET_TABLE_INDEXES"
         " INDEX",
         _affectedRequest,
        {    "REPLICATE", "DELETE", "FIND", "FIND_ALL", "ECHO", "SQL_QUERY",
             "SQL_CREATE_DATABASE", "SQL_DELETE_DATABASE", "SQL_ENABLE_DATABASE",
             "SQL_DISABLE_DATABASE", "SQL_GRANT_ACCESS", "SQL_CREATE_TABLE", "SQL_CREATE_TABLES", "SQL_DELETE_TABLE",
             "SQL_REMOVE_TABLE_PARTITIONS", "SQL_DELETE_TABLE_PARTITION",
+            "SQL_CREATE_TABLE_INDEXES", "SQL_DROP_TABLE_INDEXES", "SQL_GET_TABLE_INDEXES",
             "INDEX"
         }
     ).required(
@@ -781,6 +846,36 @@ int ControllerApp::runImpl() {
             _priority, not _doNotTrackRequest
         );
 
+    } else if ("SQL_CREATE_TABLE_INDEXES" == _requestType) {
+
+        vector<string> const tables = {_sqlTable};
+        request = controller->sqlCreateTableIndexes(
+            _workerName, _sqlDatabase, tables,
+            SqlRequestParams::IndexSpec(_sqlIndexSpecStr), _sqlIndexName, _sqlIndexComment,
+            SqlSchemaUtils::readIndexSpecFromTextFile(_sqlIndexColumnsFile),
+            SqlRequest::extendedPrinter,
+            _priority, not _doNotTrackRequest
+        );
+
+    } else if ("SQL_DROP_TABLE_INDEXES" == _requestType) {
+
+        vector<string> const tables = {_sqlTable};
+        request = controller->sqlDropTableIndexes(
+            _workerName, _sqlDatabase, tables,
+            _sqlIndexName,
+            SqlRequest::extendedPrinter,
+            _priority, not _doNotTrackRequest
+        );
+
+    } else if ("SQL_GET_TABLE_INDEXES" == _requestType) {
+
+        vector<string> const tables = {_sqlTable};
+        request = controller->sqlGetTableIndexes(
+            _workerName, _sqlDatabase, tables,
+            SqlRequest::extendedPrinter,
+            _priority, not _doNotTrackRequest
+        );
+
     } else if ("STATUS" == _requestType) {
 
         request = _launchStatusRequest(controller);
@@ -875,7 +970,11 @@ Request::Ptr ControllerApp::_launchStatusRequest(Controller::Ptr const& controll
     if ("SQL_DISABLE_DATABASE"        == _affectedRequest) return l.status<StatusSqlDisableDbRequest>();
     if ("SQL_GRANT_ACCESS"            == _affectedRequest) return l.status<StatusSqlGrantAccessRequest>();
     if ("SQL_CREATE_TABLE"            == _affectedRequest) return l.status<StatusSqlCreateTableRequest>();
+    if ("SQL_CREATE_TABLES"           == _affectedRequest) return l.status<StatusSqlCreateTablesRequest>();
+    if ("SQL_CREATE_TABLE_INDEXES"    == _affectedRequest) return l.status<StatusSqlCreateIndexesRequest>();
     if ("SQL_DELETE_TABLE"            == _affectedRequest) return l.status<StatusSqlDeleteTableRequest>();
+    if ("SQL_DROP_TABLE_INDEXES"      == _affectedRequest) return l.status<StatusSqlDropIndexesRequest>();
+    if ("SQL_GET_TABLE_INDEXES"       == _affectedRequest) return l.status<StatusSqlGetIndexesRequest>();
     if ("SQL_REMOVE_TABLE_PARTITIONS" == _affectedRequest) return l.status<StatusSqlRemoveTablePartitionsRequest>();
     if ("SQL_DELETE_TABLE_PARTITION"  == _affectedRequest) return l.status<StatusSqlDeleteTablePartitionRequest>(); 
     if ("INDEX"                       == _affectedRequest) return l.status<StatusIndexRequest>(); 
@@ -891,23 +990,27 @@ Request::Ptr ControllerApp::_launchStopRequest(Controller::Ptr const& controller
     ::ManagementRequestLauncher l(controller, _workerName, _affectedRequestId,
                                   _priority, _doNotTrackRequest);
 
-    if ("REPLICATE"                   == _affectedRequest) return l.stop<StatusReplicationRequest>();
-    if ("DELETE"                      == _affectedRequest) return l.stop<StatusDeleteRequest>();
-    if ("FIND"                        == _affectedRequest) return l.stop<StatusFindRequest>();
-    if ("FIND_ALL"                    == _affectedRequest) return l.stop<StatusFindAllRequest>();
-    if ("ECHO"                        == _affectedRequest) return l.stop<StatusEchoRequest>();
-    if ("INDEX"                       == _affectedRequest) return l.stop<StatusIndexRequest>();
-    if ("SQL_QUERY"                   == _affectedRequest) return l.stop<StatusSqlQueryRequest>();
-    if ("SQL_CREATE_DATABASE"         == _affectedRequest) return l.stop<StatusSqlCreateDbRequest>();
-    if ("SQL_DELETE_DATABASE"         == _affectedRequest) return l.stop<StatusSqlDeleteDbRequest>();
-    if ("SQL_ENABLE_DATABASE"         == _affectedRequest) return l.stop<StatusSqlEnableDbRequest>();
-    if ("SQL_DISABLE_DATABASE"        == _affectedRequest) return l.stop<StatusSqlDisableDbRequest>();
-    if ("SQL_GRANT_ACCESS"            == _affectedRequest) return l.stop<StatusSqlGrantAccessRequest>();
-    if ("SQL_CREATE_TABLE"            == _affectedRequest) return l.stop<StatusSqlCreateTableRequest>();
-    if ("SQL_DELETE_TABLE"            == _affectedRequest) return l.stop<StatusSqlDeleteTableRequest>();
-    if ("SQL_REMOVE_TABLE_PARTITIONS" == _affectedRequest) return l.stop<StatusSqlRemoveTablePartitionsRequest>();
-    if ("SQL_DELETE_TABLE_PARTITION"  == _affectedRequest) return l.stop<StatusSqlDeleteTablePartitionRequest>(); 
-    if ("INDEX"                       == _affectedRequest) return l.stop<StatusIndexRequest>(); 
+    if ("REPLICATE"                   == _affectedRequest) return l.stop<StopReplicationRequest>();
+    if ("DELETE"                      == _affectedRequest) return l.stop<StopDeleteRequest>();
+    if ("FIND"                        == _affectedRequest) return l.stop<StopFindRequest>();
+    if ("FIND_ALL"                    == _affectedRequest) return l.stop<StopFindAllRequest>();
+    if ("ECHO"                        == _affectedRequest) return l.stop<StopEchoRequest>();
+    if ("INDEX"                       == _affectedRequest) return l.stop<StopIndexRequest>();
+    if ("SQL_QUERY"                   == _affectedRequest) return l.stop<StopSqlQueryRequest>();
+    if ("SQL_CREATE_DATABASE"         == _affectedRequest) return l.stop<StopSqlCreateDbRequest>();
+    if ("SQL_DELETE_DATABASE"         == _affectedRequest) return l.stop<StopSqlDeleteDbRequest>();
+    if ("SQL_ENABLE_DATABASE"         == _affectedRequest) return l.stop<StopSqlEnableDbRequest>();
+    if ("SQL_DISABLE_DATABASE"        == _affectedRequest) return l.stop<StopSqlDisableDbRequest>();
+    if ("SQL_GRANT_ACCESS"            == _affectedRequest) return l.stop<StopSqlGrantAccessRequest>();
+    if ("SQL_CREATE_TABLE"            == _affectedRequest) return l.stop<StopSqlCreateTableRequest>();
+    if ("SQL_CREATE_TABLES"           == _affectedRequest) return l.stop<StopSqlCreateTablesRequest>();
+    if ("SQL_CREATE_TABLE_INDEXES"    == _affectedRequest) return l.stop<StopSqlCreateIndexesRequest>();
+    if ("SQL_DELETE_TABLE"            == _affectedRequest) return l.stop<StopSqlDeleteTableRequest>();
+    if ("SQL_DROP_TABLE_INDEXES"      == _affectedRequest) return l.stop<StopSqlDropIndexesRequest>();
+    if ("SQL_GET_TABLE_INDEXES"       == _affectedRequest) return l.stop<StopSqlGetIndexesRequest>();
+    if ("SQL_REMOVE_TABLE_PARTITIONS" == _affectedRequest) return l.stop<StopSqlRemoveTablePartitionsRequest>();
+    if ("SQL_DELETE_TABLE_PARTITION"  == _affectedRequest) return l.stop<StopSqlDeleteTablePartitionRequest>(); 
+    if ("INDEX"                       == _affectedRequest) return l.stop<StopIndexRequest>(); 
 
     throw logic_error(
             "ControllerApp::" + string(__func__) + "  unsupported request: " +
