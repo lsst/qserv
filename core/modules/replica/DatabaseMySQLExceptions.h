@@ -29,6 +29,7 @@
  * class ConnectError
  * class ConnectTimeout
  * class Reconnected
+ * class DuplicateKeyName
  * class DuplicateKeyError
  * class InvalidTypeError
  * class EmptyResultSetError
@@ -128,10 +129,30 @@ public:
 
 
 /**
+ * Instances of this exception class are thrown on attempts to create
+ * an index with the name of a key which already exists in a table.
+ */
+class DuplicateKeyName : public Error {
+public:
+    using Error::Error;
+};
+
+
+/**
  * Instances of this exception class are thrown on attempts to insert
  * rows with duplicate keys.
  */
 class DuplicateKeyError : public Error {
+public:
+    using Error::Error;
+};
+
+
+/**
+ * Instances of this exception class are thrown on attempts to drop
+ * a field or a index which doesn't exist.
+ */
+class CantDropFieldOrKey : public Error {
 public:
     using Error::Error;
 };
