@@ -890,7 +890,7 @@ void HttpIngestModule::_publishDatabaseInMaster(DatabaseInfo const& databaseInfo
         statements.push_back(
             "GRANT ALL ON " + h.conn->sqlId(databaseInfo.name) + ".* TO " +
             h.conn->sqlValue(config->qservMasterDatabaseUser()) + "@" +
-            h.conn->sqlValue(config->qservMasterDatabaseHost()));
+            h.conn->sqlValue("localhost"));
 
         h.conn->execute([&statements](decltype(h.conn) conn) {
             conn->begin();
