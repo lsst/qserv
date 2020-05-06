@@ -57,9 +57,12 @@ namespace replica {
     class SqlEnableDbRequest;
     class SqlDisableDbRequest;
     class SqlGrantAccessRequest;
+    class SqlCreateIndexesRequest;
     class SqlCreateTableRequest;
     class SqlCreateTablesRequest;
     class SqlDeleteTableRequest;
+    class SqlDropIndexesRequest;
+    class SqlGetIndexesRequest;
     class SqlRemoveTablePartitionsRequest;
     class SqlDeleteTablePartitionRequest;
     class DisposeRequest;
@@ -76,9 +79,12 @@ namespace replica {
     typedef std::shared_ptr<SqlEnableDbRequest>              SqlEnableDbRequestPtr;
     typedef std::shared_ptr<SqlDisableDbRequest>             SqlDisableDbRequestPtr;
     typedef std::shared_ptr<SqlGrantAccessRequest>           SqlGrantAccessRequestPtr;
+    typedef std::shared_ptr<SqlCreateIndexesRequest>         SqlCreateIndexesRequestPtr;
     typedef std::shared_ptr<SqlCreateTableRequest>           SqlCreateTableRequestPtr;
     typedef std::shared_ptr<SqlCreateTablesRequest>          SqlCreateTablesRequestPtr;
     typedef std::shared_ptr<SqlDeleteTableRequest>           SqlDeleteTableRequestPtr;
+    typedef std::shared_ptr<SqlDropIndexesRequest>           SqlDropIndexesRequestPtr;
+    typedef std::shared_ptr<SqlGetIndexesRequest>            SqlGetIndexesRequestPtr;
     typedef std::shared_ptr<SqlRemoveTablePartitionsRequest> SqlRemoveTablePartitionsRequestPtr;
     typedef std::shared_ptr<SqlDeleteTablePartitionRequest>  SqlDeleteTablePartitionRequestPtr;
     typedef std::shared_ptr<DisposeRequest> DisposeRequestPtr;
@@ -105,9 +111,12 @@ namespace replica {
     using StopSqlEnableDbRequest    = StopRequest<StopSqlRequestPolicy>;
     using StopSqlDisableDbRequest   = StopRequest<StopSqlRequestPolicy>;
     using StopSqlGrantAccessRequest = StopRequest<StopSqlRequestPolicy>;
+    using StopSqlCreateIndexesRequest = StopRequest<StopSqlRequestPolicy>;
     using StopSqlCreateTableRequest = StopRequest<StopSqlRequestPolicy>;
     using StopSqlCreateTablesRequest = StopRequest<StopSqlRequestPolicy>;
     using StopSqlDeleteTableRequest = StopRequest<StopSqlRequestPolicy>;
+    using StopSqlDropIndexesRequest = StopRequest<StopSqlRequestPolicy>;
+    using StopSqlGetIndexesRequest  = StopRequest<StopSqlRequestPolicy>;
     using StopSqlRemoveTablePartitionsRequest = StopRequest<StopSqlRequestPolicy>;
     using StopSqlDeleteTablePartitionRequest  = StopRequest<StopSqlRequestPolicy>;
 
@@ -123,9 +132,12 @@ namespace replica {
     typedef std::shared_ptr<StopSqlEnableDbRequest>    StopSqlEnableDbRequestPtr;
     typedef std::shared_ptr<StopSqlDisableDbRequest>   StopSqlDisableDbRequestPtr;
     typedef std::shared_ptr<StopSqlGrantAccessRequest> StopSqlGrantAccessRequestPtr;
+    typedef std::shared_ptr<StopSqlCreateIndexesRequest> StopSqlCreateIndexesRequestPtr;
     typedef std::shared_ptr<StopSqlCreateTableRequest> StopSqlCreateTableRequestPtr;
     typedef std::shared_ptr<StopSqlCreateTablesRequest> StopSqlCreateTablesRequestPtr;
     typedef std::shared_ptr<StopSqlDeleteTableRequest> StopSqlDeleteTableRequestPtr;
+    typedef std::shared_ptr<StopSqlDropIndexesRequest> StopSqlDropIndexesRequestPtr;
+    typedef std::shared_ptr<StopSqlGetIndexesRequest>  StopSqlGetIndexesRequestPtr;
     typedef std::shared_ptr<StopSqlRemoveTablePartitionsRequest> StopSqlRemoveTablePartitionsRequestPtr;
     typedef std::shared_ptr<StopSqlDeleteTablePartitionRequest>  StopSqlDeleteTablePartitionRequestPtr;
 
@@ -151,9 +163,12 @@ namespace replica {
     using StatusSqlEnableDbRequest    = StatusRequest<StatusSqlRequestPolicy>;
     using StatusSqlDisableDbRequest   = StatusRequest<StatusSqlRequestPolicy>;
     using StatusSqlGrantAccessRequest = StatusRequest<StatusSqlRequestPolicy>;
+    using StatusSqlCreateIndexesRequest = StatusRequest<StatusSqlRequestPolicy>;
     using StatusSqlCreateTableRequest = StatusRequest<StatusSqlRequestPolicy>;
     using StatusSqlCreateTablesRequest = StatusRequest<StatusSqlRequestPolicy>;
     using StatusSqlDeleteTableRequest = StatusRequest<StatusSqlRequestPolicy>;
+    using StatusSqlDropIndexesRequest = StatusRequest<StatusSqlRequestPolicy>;
+    using StatusSqlGetIndexesRequest  = StatusRequest<StatusSqlRequestPolicy>;
     using StatusSqlRemoveTablePartitionsRequest = StatusRequest<StatusSqlRequestPolicy>;
     using StatusSqlDeleteTablePartitionRequest  = StatusRequest<StatusSqlRequestPolicy>;
 
@@ -169,9 +184,12 @@ namespace replica {
     typedef std::shared_ptr<StatusSqlEnableDbRequest>    StatusSqlEnableDbRequestPtr;
     typedef std::shared_ptr<StatusSqlDisableDbRequest>   StatusSqlDisableDbRequestPtr;
     typedef std::shared_ptr<StatusSqlGrantAccessRequest> StatusSqlGrantAccessRequestPtr;
+    typedef std::shared_ptr<StatusSqlCreateIndexesRequest> StatusSqlCreateIndexesRequestPtr;
     typedef std::shared_ptr<StatusSqlCreateTableRequest> StatusSqlCreateTableRequestPtr;
     typedef std::shared_ptr<StatusSqlCreateTablesRequest> StatusSqlCreateTablesRequestPtr;
     typedef std::shared_ptr<StatusSqlDeleteTableRequest> StatusSqlDeleteTableRequestPtr;
+    typedef std::shared_ptr<StatusSqlDropIndexesRequest> StatusSqlDropIndexesRequestPtr;
+    typedef std::shared_ptr<StatusSqlGetIndexesRequest>  StatusSqlGetIndexesRequestPtr;
     typedef std::shared_ptr<StatusSqlRemoveTablePartitionsRequest> StatusSqlRemoveTablePartitionsRequestPtr;
     typedef std::shared_ptr<StatusSqlDeleteTablePartitionRequest>  StatusSqlDeleteTablePartitionRequestPtr;
 
@@ -382,6 +400,20 @@ public:
             std::string const& jobId="",
             unsigned int requestExpirationIvalSec=0);
 
+    SqlCreateIndexesRequestPtr sqlCreateTableIndexes(
+            std::string const& workerName,
+            std::string const& database,
+            std::vector<std::string> const& tables,
+            SqlRequestParams::IndexSpec const& indexSpec,
+            std::string const& indexName,
+            std::string const& indexComment,
+            std::vector<SqlIndexColumn> const& indexColumns,
+            std::function<void(SqlCreateIndexesRequestPtr)> const& onFinish=nullptr,
+            int priority=0,
+            bool keepTracking=true,
+            std::string const& jobId="",
+            unsigned int requestExpirationIvalSec=0);
+
     SqlCreateTableRequestPtr sqlCreateTable(
             std::string const& workerName,
             std::string const& database,
@@ -434,6 +466,27 @@ public:
             std::vector<std::string> const& tables,
             TransactionId transactionId,
             std::function<void(SqlDeleteTablePartitionRequestPtr)> const& onFinish=nullptr,
+            int priority=0,
+            bool keepTracking=true,
+            std::string const& jobId="",
+            unsigned int requestExpirationIvalSec=0);
+
+    SqlDropIndexesRequestPtr sqlDropTableIndexes(
+            std::string const& workerName,
+            std::string const& database,
+            std::vector<std::string> const& tables,
+            std::string const& indexName,
+            std::function<void(SqlDropIndexesRequestPtr)> const& onFinish=nullptr,
+            int priority=0,
+            bool keepTracking=true,
+            std::string const& jobId="",
+            unsigned int requestExpirationIvalSec=0);
+
+    SqlGetIndexesRequestPtr sqlGetTableIndexes(
+            std::string const& workerName,
+            std::string const& database,
+            std::vector<std::string> const& tables,
+            std::function<void(SqlGetIndexesRequestPtr)> const& onFinish=nullptr,
             int priority=0,
             bool keepTracking=true,
             std::string const& jobId="",

@@ -73,6 +73,8 @@ string status2string(ExtendedCompletionStatus status) {
         case ExtendedCompletionStatus::EXT_STATUS_MULTIPLE:              return "EXT_STATUS_MULTIPLE";
         case ExtendedCompletionStatus::EXT_STATUS_OTHER_EXCEPTION:       return "EXT_STATUS_OTHER_EXCEPTION";
         case ExtendedCompletionStatus::EXT_STATUS_FOREIGN_INSTANCE:      return "EXT_STATUS_FOREIGN_INSTANCE";
+        case ExtendedCompletionStatus::EXT_STATUS_DUPLICATE_KEY: return "EXT_STATUS_DUPLICATE_KEY";
+        case ExtendedCompletionStatus::EXT_STATUS_CANT_DROP_KEY: return "EXT_STATUS_CANT_DROP_KEY";
     }
     throw logic_error(
             "Common::" + string(__func__) + "(ExtendedCompletionStatus) - unhandled status: " +
@@ -115,6 +117,8 @@ ExtendedCompletionStatus translate(ProtocolStatusExt status) {
         case ProtocolStatusExt::MULTIPLE:              return ExtendedCompletionStatus::EXT_STATUS_MULTIPLE;
         case ProtocolStatusExt::OTHER_EXCEPTION:       return ExtendedCompletionStatus::EXT_STATUS_OTHER_EXCEPTION;
         case ProtocolStatusExt::FOREIGN_INSTANCE:      return ExtendedCompletionStatus::EXT_STATUS_FOREIGN_INSTANCE;
+        case ProtocolStatusExt::DUPLICATE_KEY: return ExtendedCompletionStatus::EXT_STATUS_DUPLICATE_KEY;
+        case ProtocolStatusExt::CANT_DROP_KEY: return ExtendedCompletionStatus::EXT_STATUS_CANT_DROP_KEY;
     }
     throw logic_error(
                 "Common::" + string(__func__) + "(ProtocolStatusExt) - unhandled status: " +
@@ -157,6 +161,8 @@ ProtocolStatusExt translate(ExtendedCompletionStatus status) {
         case ExtendedCompletionStatus::EXT_STATUS_MULTIPLE:              return ProtocolStatusExt::MULTIPLE;
         case ExtendedCompletionStatus::EXT_STATUS_OTHER_EXCEPTION:       return ProtocolStatusExt::OTHER_EXCEPTION;
         case ExtendedCompletionStatus::EXT_STATUS_FOREIGN_INSTANCE:      return ProtocolStatusExt::FOREIGN_INSTANCE;
+        case ExtendedCompletionStatus::EXT_STATUS_DUPLICATE_KEY: return ProtocolStatusExt::DUPLICATE_KEY;
+        case ExtendedCompletionStatus::EXT_STATUS_CANT_DROP_KEY: return ProtocolStatusExt::CANT_DROP_KEY;
     }
     throw logic_error(
                 "Common::" + string(__func__) + "(ExtendedCompletionStatus) - unhandled status: " +
@@ -226,6 +232,9 @@ SqlRequestParams::SqlRequestParams(ProtocolRequestSql const& request)
         case ProtocolRequestSql::DROP_TABLE:                type = DROP_TABLE; break;
         case ProtocolRequestSql::REMOVE_TABLE_PARTITIONING: type = REMOVE_TABLE_PARTITIONING; break;
         case ProtocolRequestSql::DROP_TABLE_PARTITION:      type = DROP_TABLE_PARTITION; break;
+        case ProtocolRequestSql::GET_TABLE_INDEX:           type = GET_TABLE_INDEX; break;
+        case ProtocolRequestSql::CREATE_TABLE_INDEX:        type = CREATE_TABLE_INDEX; break;
+        case ProtocolRequestSql::DROP_TABLE_INDEX:          type = DROP_TABLE_INDEX; break;
         default:
             throw runtime_error(
                     "SqlRequestParams::" + string(__func__) +
@@ -248,6 +257,15 @@ SqlRequestParams::SqlRequestParams(ProtocolRequestSql const& request)
         tables.push_back(request.tables(index));
     }
     if (request.has_batch_mode()) batchMode = request.batch_mode();
+    if (request.has_index_spec()) indexSpec = IndexSpec(request.index_spec());
+    if (request.has_index_name()) indexName = request.index_name();
+    if (request.has_index_comment()) indexComment = request.index_comment();
+
+    for (int i = 0; i < request.index_columns_size(); ++i) {
+        auto const& column = request.index_columns(i);
+        indexColumns.emplace_back(column.name(), column.length(), column.ascending());
+    }
+
 }
 
 
@@ -263,11 +281,66 @@ string SqlRequestParams::type2str() const {
         case DROP_TABLE:                return "DROP_TABLE";
         case REMOVE_TABLE_PARTITIONING: return "REMOVE_TABLE_PARTITIONING";
         case DROP_TABLE_PARTITION:      return "DROP_TABLE_PARTITION";
-        default:
-            throw runtime_error(
-                    "SqlRequestParams::" + string(__func__) +
-                    "  unsupported request type");
+        case GET_TABLE_INDEX:           return "GET_TABLE_INDEX";
+        case CREATE_TABLE_INDEX:        return "CREATE_TABLE_INDEX";
+        case DROP_TABLE_INDEX:          return "DROP_TABLE_INDEX";
     }
+    throw runtime_error(
+            "SqlRequestParams::" + string(__func__) + "  unsupported request type");
+}
+
+
+SqlRequestParams::IndexSpec::IndexSpec(ProtocolRequestSql::IndexSpec spec) {
+    switch (spec) {
+        case ProtocolRequestSql::DEFAULT:  { _spec = IndexSpec::DEFAULT;  break; }
+        case ProtocolRequestSql::UNIQUE:   { _spec = IndexSpec::UNIQUE;   break; }
+        case ProtocolRequestSql::FULLTEXT: { _spec = IndexSpec::FULLTEXT; break; }
+        case ProtocolRequestSql::SPATIAL:  { _spec = IndexSpec::SPATIAL;  break; }
+    }
+    throw invalid_argument(
+            "SqlRequestParams::IndexSpec::" + string(__func__) +
+            "  unsupported protocol index specification: '"
+            + ProtocolRequestSql_IndexSpec_Name(spec) + "'");
+
+}
+
+
+SqlRequestParams::IndexSpec::IndexSpec(string const& str) {
+    if      (str == "DEFAULT")  { _spec = IndexSpec::DEFAULT;  }
+    else if (str == "UNIQUE")   { _spec = IndexSpec::UNIQUE;   }
+    else if (str == "FULLTEXT") { _spec = IndexSpec::FULLTEXT; }
+    else if (str == "SPATIAL")  { _spec = IndexSpec::SPATIAL;  }
+    else {
+        throw invalid_argument(
+                "SqlRequestParams::IndexSpec::" + string(__func__)
+                + "  unsupported index specification: '" + str + "'");
+    }
+}
+
+
+string SqlRequestParams::IndexSpec::str() const {
+    switch (_spec) {
+        case IndexSpec::DEFAULT:  return "DEFAULT";
+        case IndexSpec::UNIQUE:   return "UNIQUE";
+        case IndexSpec::FULLTEXT: return "FULLTEXT";
+        case IndexSpec::SPATIAL:  return "SPATIAL";
+    }
+    throw runtime_error(
+            "SqlRequestParams::IndexSpec::" + string(__func__)
+            + "  unsupported index specification");
+}
+
+
+ProtocolRequestSql::IndexSpec SqlRequestParams::IndexSpec::protocol() const {
+    switch (_spec) {
+        case IndexSpec::DEFAULT:  return ProtocolRequestSql::DEFAULT;
+        case IndexSpec::UNIQUE:   return ProtocolRequestSql::UNIQUE;
+        case IndexSpec::FULLTEXT: return ProtocolRequestSql::FULLTEXT;
+        case IndexSpec::SPATIAL:  return ProtocolRequestSql::SPATIAL;
+    }
+    throw runtime_error(
+            "SqlRequestParams::IndexSpec::" + string(__func__) +
+            "  unsupported index specification: '" + str() + "'");
 }
 
 
@@ -289,10 +362,12 @@ ostream& operator<<(ostream& os, SqlRequestParams const& params) {
     objParams["transactionId"] = params.transactionId;
     objParams["batchMode"] = params.batchMode ? 1 : 0;
 
-    json objParamsColumns;
+    json objParamsColumns = json::array();
     for (auto&& coldef: params.columns) {
-        objParamsColumns["name"] = coldef.name;
-        objParamsColumns["type"] = coldef.type;
+        json objColDef;
+        objColDef["name"] = coldef.name;
+        objColDef["type"] = coldef.type;
+        objParamsColumns.push_back(objColDef);
     }
     objParams["columns"] = objParamsColumns;
 
@@ -301,6 +376,19 @@ ostream& operator<<(ostream& os, SqlRequestParams const& params) {
         objParamsTables.push_back(table);
     }
     objParams["tables"] = objParamsTables;
+    objParams["index_spec"] = params.indexSpec.str();
+    objParams["index_name"] = params.indexName;
+    objParams["index_comment"] = params.indexComment;
+
+    json objParamsIndexColumns = json::array();
+    for (auto&& column: params.indexColumns) {
+        json objColumn;
+        objColumn["name"] = column.name;
+        objColumn["length"] = column.length;
+        objColumn["ascending"] = column.ascending ? 1 : 0;
+        objParamsIndexColumns.push_back(objColumn);
+    }
+    objParams["index_columns"] = objParamsIndexColumns;
 
     json obj;
     obj["SqlRequestParams"] = objParams;

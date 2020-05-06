@@ -34,6 +34,7 @@
 #include "replica/HttpQservMonitorModule.h"
 #include "replica/HttpRequestsModule.h"
 #include "replica/HttpReplicationLevelsModule.h"
+#include "replica/HttpSqlIndexModule.h"
 #include "replica/HttpWorkerStatusModule.h"
 #include "replica/HttpQservSqlModule.h"
 #include "replica/ServiceProvider.h"
@@ -274,6 +275,29 @@ void HttpProcessor::_initialize() {
                         self->controller(), self->name(), self->_processorConfig,
                         req, resp,
                         defaultSubModule, HttpModule::AUTH_REQUIRED);
+            }
+        },
+        {"GET", "/replication/v1/sql/index",
+            [self](qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp) {
+                HttpSqlIndexModule::process(
+                        self->controller(), self->name(), self->_processorConfig,
+                        req, resp);
+            }
+        },
+        {"POST", "/replication/v1/sql/index",
+            [self](qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp) {
+                HttpSqlIndexModule::process(
+                        self->controller(), self->name(), self->_processorConfig,
+                        req, resp,
+                        "CREATE-INDEXES", HttpModule::AUTH_REQUIRED);
+            }
+        },
+        {"DELETE", "/replication/v1/sql/index",
+            [self](qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp) {
+                HttpSqlIndexModule::process(
+                        self->controller(), self->name(), self->_processorConfig,
+                        req, resp,
+                        "DROP-INDEXES", HttpModule::AUTH_REQUIRED);
             }
         },
         {"GET", "/ingest/v1/trans",

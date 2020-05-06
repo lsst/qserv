@@ -135,6 +135,18 @@ private:
     /// The name of the PRIMARY KEY for the MySQL partitioned tables
     std::string _sqlPartitionByColumn;
 
+    /// The name of an index to be created
+    std::string _sqlIndexName;
+
+    /// The type specification of an index.
+    std::string _sqlIndexSpecStr;
+
+    /// The optional comment explaining an index to be created
+    std::string _sqlIndexComment;
+
+    /// The name of a file where to read definitions of the index's columns
+    std::string _sqlIndexColumnsFile;
+
     /// An identifier of a super-transaction
     TransactionId _transactionId = std::numeric_limits<TransactionId>::max();
 

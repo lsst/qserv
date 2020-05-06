@@ -236,8 +236,14 @@ void Connection::_processLastError(string const& context,
             throw logic_error(
                     string(__func__) + "  inappropriate use of this method from context: " + msg);
 
+        case ER_DUP_KEYNAME:
+            throw DuplicateKeyName(msg);
+
         case ER_DUP_ENTRY:
             throw DuplicateKeyError(msg);
+
+        case ER_CANT_DROP_FIELD_OR_KEY:
+            throw CantDropFieldOrKey(msg);
 
         case ER_NO_SUCH_TABLE:
             throw NoSuchTable(msg);

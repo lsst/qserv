@@ -45,12 +45,15 @@
 #include "replica/ServiceProvider.h"
 #include "replica/SqlQueryRequest.h"
 #include "replica/SqlCreateDbRequest.h"
+#include "replica/SqlCreateIndexesRequest.h"
 #include "replica/SqlCreateTableRequest.h"
 #include "replica/SqlCreateTablesRequest.h"
 #include "replica/SqlDeleteDbRequest.h"
 #include "replica/SqlDeleteTablePartitionRequest.h"
 #include "replica/SqlDeleteTableRequest.h"
 #include "replica/SqlDisableDbRequest.h"
+#include "replica/SqlDropIndexesRequest.h"
+#include "replica/SqlGetIndexesRequest.h"
 #include "replica/SqlEnableDbRequest.h"
 #include "replica/SqlGrantAccessRequest.h"
 #include "replica/SqlRemoveTablePartitionsRequest.h"
@@ -252,7 +255,7 @@ IndexRequest::Ptr Controller::index(
         IndexRequest::CallbackType const& onFinish,
         int priority,
         bool keepTracking,
-        std::string const& jobId,
+        string const& jobId,
         unsigned int requestExpirationIvalSec) {
  
     LOGS(_log, LOG_LVL_TRACE, _context(__func__));
@@ -425,6 +428,44 @@ SqlGrantAccessRequest::Ptr Controller::sqlGrantAccess(
 }
 
 
+SqlCreateIndexesRequest::Ptr Controller::sqlCreateTableIndexes(
+        string const& workerName,
+        string const& database,
+        vector<string> const& tables,
+        SqlRequestParams::IndexSpec const& indexSpec,
+        string const& indexName,
+        string const& indexComment,
+        vector<SqlIndexColumn> const& indexColumns,
+        function<void(SqlCreateIndexesRequest::Ptr)> const& onFinish,
+        int priority,
+        bool keepTracking,
+        string const& jobId,
+        unsigned int requestExpirationIvalSec) {
+
+    LOGS(_log, LOG_LVL_TRACE, _context(__func__));
+
+    return _submit<SqlCreateIndexesRequest,
+                   decltype(database),
+                   decltype(tables),
+                   decltype(indexSpec),
+                   decltype(indexName),
+                   decltype(indexComment),
+                   decltype(indexColumns)>(
+        workerName,
+        database,
+        tables,
+        indexSpec,
+        indexName,
+        indexComment,
+        indexColumns,
+        onFinish,
+        priority,
+        keepTracking,
+        jobId,
+        requestExpirationIvalSec);
+}
+
+
 SqlCreateTableRequest::Ptr Controller::sqlCreateTable(
         string const& workerName,
         string const& database,
@@ -568,6 +609,61 @@ SqlDeleteTablePartitionRequest::Ptr Controller::sqlDeleteTablePartition(
         database,
         tables,
         transactionId,
+        onFinish,
+        priority,
+        keepTracking,
+        jobId,
+        requestExpirationIvalSec);
+}
+
+
+SqlDropIndexesRequest::Ptr Controller::sqlDropTableIndexes(
+        string const& workerName,
+        string const& database,
+        vector<string> const& tables,
+        string const& indexName,
+        function<void(SqlDropIndexesRequest::Ptr)> const& onFinish,
+        int priority,
+        bool keepTracking,
+        string const& jobId,
+        unsigned int requestExpirationIvalSec) {
+
+    LOGS(_log, LOG_LVL_TRACE, _context(__func__));
+
+    return _submit<SqlDropIndexesRequest,
+                   decltype(database),
+                   decltype(tables),
+                   decltype(indexName)>(
+        workerName,
+        database,
+        tables,
+        indexName,
+        onFinish,
+        priority,
+        keepTracking,
+        jobId,
+        requestExpirationIvalSec);
+}
+
+
+SqlGetIndexesRequest::Ptr Controller::sqlGetTableIndexes(
+        string const& workerName,
+        string const& database,
+        vector<string> const& tables,
+        function<void(SqlGetIndexesRequest::Ptr)> const& onFinish,
+        int priority,
+        bool keepTracking,
+        string const& jobId,
+        unsigned int requestExpirationIvalSec) {
+
+    LOGS(_log, LOG_LVL_TRACE, _context(__func__));
+
+    return _submit<SqlGetIndexesRequest,
+                   decltype(database),
+                   decltype(tables)>(
+        workerName,
+        database,
+        tables,
         onFinish,
         priority,
         keepTracking,

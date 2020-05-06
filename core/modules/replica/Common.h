@@ -34,6 +34,7 @@
 #include <ostream>
 #include <string>
 #include <tuple>
+#include <vector>
 
 // Qserv headers
 #include "replica/protocol.pb.h"
@@ -83,7 +84,9 @@ enum ExtendedCompletionStatus {
     EXT_STATUS_NO_SUCH_PARTITION,       // why a MySQL operation for for selecting data from a table failed
     EXT_STATUS_MULTIPLE,                // multiple errors encountered when processing a request
     EXT_STATUS_OTHER_EXCEPTION, // other exception
-    EXT_STATUS_FOREIGN_INSTANCE // detected a request from a Controller serving an unrelated Qserv
+    EXT_STATUS_FOREIGN_INSTANCE,// detected a request from a Controller serving an unrelated Qserv
+    EXT_STATUS_DUPLICATE_KEY,   // duplicate key found when creating an index or altering a table schema
+    EXT_STATUS_CANT_DROP_KEY    // can't drop a field or a key which doesn't exist
 };
 
 /// Return the string representation of the extended status
@@ -134,6 +137,35 @@ public:
     std::string name;
     std::string type;
 };
+
+
+/**
+ * This class is an abstraction for columns within table index
+ * specifications.
+ */
+class SqlIndexColumn {
+public:
+
+    SqlIndexColumn() = default;
+    SqlIndexColumn(std::string const name_,
+                   size_t length_,
+                   bool ascending_)
+        :   name(name_),
+            length(length_),
+            ascending(ascending_) {
+    }
+
+    SqlIndexColumn(SqlIndexColumn const&) = default;
+    SqlIndexColumn& operator=(SqlIndexColumn const&) = default;
+
+    ~SqlIndexColumn() = default;
+
+
+    std::string name;
+    size_t length = 0;
+    bool ascending = true;
+};
+
 
 /**
  * Class ReplicationRequestParams encapsulates parameters of the replica
@@ -224,7 +256,10 @@ public:
         CREATE_TABLE,
         DROP_TABLE,
         REMOVE_TABLE_PARTITIONING,
-        DROP_TABLE_PARTITION
+        DROP_TABLE_PARTITION,
+        GET_TABLE_INDEX,
+        CREATE_TABLE_INDEX,
+        DROP_TABLE_INDEX
     };
     Type type = QUERY;
 
@@ -245,6 +280,58 @@ public:
     std::vector<std::string> tables;
 
     bool batchMode = false;
+
+    /**
+     * Class IndexSpec is an abstraction for the index type specification.
+     * 
+     * It's been designed to allow constructing specifications from a string
+     * or a Protobuf representations. The class contract also allows a reverse
+     * translation into either of those representations.
+     */
+    class IndexSpec {
+    public:
+        /**
+         * Construct from the Protobuf representation.
+         * @throws std::invalid_argument If the input specification is not supported
+         *   by the class.
+         */
+        IndexSpec(ProtocolRequestSql::IndexSpec spec);
+
+        /**
+         * Construct by translate the input string into the internal specification.
+         * @throws std::invalid_argument If the input specification is not supported
+         *   by the class.
+         */
+        IndexSpec(std::string const& str);
+
+        IndexSpec() = default;
+        IndexSpec(IndexSpec const&) = default;
+        IndexSpec& operator=(IndexSpec const&) = default;
+
+        /// @return The string representation.
+        std::string str() const;
+
+        /// @return The Protobuf representation.
+        ProtocolRequestSql::IndexSpec protocol() const;
+
+    private:
+        /// The internal representation
+        enum Spec {
+            DEFAULT,
+            UNIQUE,
+            FULLTEXT,
+            SPATIAL
+        };
+        Spec _spec = Spec::DEFAULT;
+    };
+    IndexSpec indexSpec;
+
+    std::string indexName;
+    std::string indexComment;
+
+    std::vector<SqlIndexColumn> indexColumns;
+
+    // The constructors
 
     SqlRequestParams() = default;
 

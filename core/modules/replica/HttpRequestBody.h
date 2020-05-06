@@ -22,6 +22,7 @@
 #define LSST_QSERV_HTTPREQUESTBODY_H
 
 // System headers
+#include <algorithm>
 #include <stdexcept>
 #include <string>
 
@@ -105,6 +106,24 @@ public:
     }
 
     /**
+     * Return a value of a required parameter. Also ensure that the value is permitted.
+     *
+     * @param name  The name of a parameter.
+     * @param permitted  A collection of values to be checked against.
+     * @return A value of the parameter.
+     * @throws invalid_argument  If the parameter wasn't found, or if it's value
+     *   is not in a collection of the permitted values.
+     */
+    template <typename T>
+    T required(std::string const& name, std::vector<T> const& permitted) const {
+        auto const value = required<T>(objJson, name);
+        if (_in(value, permitted)) return value;
+        throw std::invalid_argument(
+                "HttpRequestBody::" + std::string(__func__) + "<T>(permitted) a value of parameter "
+                + name + " is not allowed.");
+    }
+
+    /**
      * Find and return a value for the specified optional parameter
      * @param name  the name of a parameter
      * @param defaultValue  a value to be returned if the parameter wasn't found
@@ -115,6 +134,26 @@ public:
         if (objJson.find(name) != objJson.end()) return objJson[name];
         return defaultValue;
     }
+
+    /**
+     * Return a value of an optional parameter. Also ensure that the value is permitted.
+     *
+     * @note the default value must be also in a set of the permitted values.
+     *
+     * @param name  The name of a parameter.
+     * @param defaultValue  A value to be returned if the parameter wasn't found.
+     * @param permitted  A collection of values to be checked against.
+     * @return A value of the parameter or the default value.
+     */
+    template <typename T>
+    T optional(std::string const& name, T const& defaultValue, std::vector<T> const& permitted) const {
+        auto const value = optional<T>(name, defaultValue);
+        if (_in(value, permitted)) return value;
+        throw std::invalid_argument(
+                "HttpRequestBody::" + std::string(__func__) + "<T>(permitted) a value of parameter "
+                + name + " is not allowed.");
+    }
+
 
     /**
      * Find and return a vector of values for the specified required parameter
@@ -141,7 +180,20 @@ public:
             coll.push_back(val);
         }
         return coll;
-    }};
+    }
+
+private:
+    /**
+     * Check if the specified value is found in a collection of permitted values.
+     * @param value  A value to be checked.
+     * @param permitted  A collection of values to be checked against.
+     * @return 'true' if the collection is empty or if the input value is found in the collection.
+     */
+    template <typename T>
+    static bool _in(T const& value, std::vector<T> const& permitted) {
+        return permitted.empty() or std::find(permitted.cbegin(), permitted.cend(), value) != permitted.cend();
+    }
+};
 
 }}} // namespace lsst::qserv::replica
 

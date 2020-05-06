@@ -168,6 +168,17 @@ bool WorkerSqlRequest::execute() {
                     ++numFailures;
                     currentResultSet->set_status_ext(ProtocolStatusExt::NOT_PARTITIONED_TABLE);
                     currentResultSet->set_error(ex.what());
+
+                } catch(database::mysql::DuplicateKeyName const& ex) {
+                    ++numFailures;
+                    currentResultSet->set_status_ext(ProtocolStatusExt::DUPLICATE_KEY);
+                    currentResultSet->set_error(ex.what());
+
+                } catch(database::mysql::CantDropFieldOrKey const& ex) {
+                    ++numFailures;
+                    currentResultSet->set_status_ext(ProtocolStatusExt::CANT_DROP_KEY);
+                    currentResultSet->set_error(ex.what());
+
                 }
             }
             if (numFailures > 0) {
@@ -192,6 +203,12 @@ bool WorkerSqlRequest::execute() {
 
     } catch(database::mysql::NotPartitionedTable const& ex) {
         _reportFailure(lock, EXT_STATUS_NOT_PARTITIONED_TABLE, ex.what());
+
+    } catch(database::mysql::DuplicateKeyName const& ex) {
+        _reportFailure(lock, EXT_STATUS_DUPLICATE_KEY, ex.what());
+
+    } catch(database::mysql::CantDropFieldOrKey const& ex) {
+        _reportFailure(lock, EXT_STATUS_CANT_DROP_KEY, ex.what());
 
     } catch(database::mysql::Error const& ex) {
         _reportFailure(lock, EXT_STATUS_MYSQL_ERROR, ex.what());
@@ -297,6 +314,7 @@ string WorkerSqlRequest::_query(database::mysql::Connection::Ptr const& conn) co
             }
             return query;
         }
+
         case ProtocolRequestSql::DROP_TABLE:
             return "DROP TABLE IF EXISTS " + databaseTable;
 
@@ -340,6 +358,7 @@ string WorkerSqlRequest::_batchQuery(database::mysql::Connection::Ptr const& con
             }
             return query;
         }
+
         case ProtocolRequestSql::DROP_TABLE:
             return "DROP TABLE IF EXISTS " + databaseTable;
 
@@ -349,6 +368,27 @@ string WorkerSqlRequest::_batchQuery(database::mysql::Connection::Ptr const& con
 
         case ProtocolRequestSql::REMOVE_TABLE_PARTITIONING:
             return "ALTER TABLE " + databaseTable + " REMOVE PARTITIONING";
+
+        case ProtocolRequestSql::CREATE_TABLE_INDEX: {
+            string const spec = _request.index_spec() == ProtocolRequestSql::DEFAULT ?
+                    "" : ProtocolRequestSql_IndexSpec_Name(_request.index_spec());
+            string keys;
+            for (int i = 0; i < _request.index_columns_size(); ++i) {
+                auto const& key = _request.index_columns(i);
+                if (i != 0) keys += ",";
+                keys += conn->sqlId(key.name());
+                if (key.length() != 0) keys += "(" + to_string(key.length()) + ")";
+                keys += key.ascending() ? " ASC" : " DESC";
+            }
+            return "CREATE " + spec + " INDEX " + conn->sqlId(_request.index_name()) + " ON " + databaseTable +
+                   " (" + keys + ")" + " COMMENT " + conn->sqlValue(_request.index_comment());
+        }
+
+        case ProtocolRequestSql::DROP_TABLE_INDEX:
+            return "DROP INDEX " + conn->sqlId(_request.index_name()) + " ON " + databaseTable;
+
+        case ProtocolRequestSql::GET_TABLE_INDEX:
+            return "SHOW INDEXES FROM " + databaseTable;
 
         default:
             throw invalid_argument(

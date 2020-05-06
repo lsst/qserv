@@ -72,6 +72,10 @@ private:
     std::string _engine;
     std::string _schemaFile;
     std::string _partitionByColumn;     
+    std::string _indexName;
+    std::string _indexSpecStr;
+    std::string _indexComment;
+    std::string _indexColumnsFile;
 
     TransactionId _transactionId = 0;   /// An identifier of a super-transaction corresponding to
                                         /// to a MySQL partition.

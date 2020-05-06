@@ -24,7 +24,7 @@
 // System headers
 #include <list>
 #include <string>
-#include <tuple>
+#include <vector>
 
 // Qserv headers
 #include "replica/Common.h"
@@ -39,12 +39,6 @@ namespace replica {
  */
 class SqlSchemaUtils {
 public:
-
-    // Objects of this class aren't allowed to be created
-
-    SqlSchemaUtils() = delete;
-    ~SqlSchemaUtils() = delete;
-
     /**
      * Read column definitions from a text file. Each column is defined
      * on a separate line of a file. And the format of the file looks
@@ -54,13 +48,35 @@ public:
      *
      * @param fileName  the name of a file to be parsed
      *
-     * @return a collection of column deinitions representing the name of a column and its
-     *   MySQL type definition
+     * @return a collection of column definitions representing the name of a column
+     *   and its MySQL type definition
      *
      * @throws std::invalid_argument  if the file can't be open/read
      *   or if it has a non-valid format
      */
     static std::list<SqlColDef> readFromTextFile(std::string const& fileName);
+
+    /**
+     * Read column definitions of an index specification from a text file.
+     * Each column is defined on a separate line of a file. And the format of
+     * the file looks like this:
+     * 
+     *   <column-name> <length> <ascending-flag>
+     *
+     * Where:
+     *   'column-name'    - the name of a column
+     *   'length'         - the length of a sub-string used for an index
+     *   'ascending-flag' - the numeric flag defining the sorting order ('1' - for ascending,
+     *                      and '0' for descending).
+     *
+     * @param fileName  the name of a file to be parsed
+     *
+     * @return a collection of column definitions needed for creating an index
+     *
+     * @throws std::invalid_argument  if the file can't be open/read
+     *   or if it has a non-valid format
+     */
+    static std::vector<SqlIndexColumn> readIndexSpecFromTextFile(std::string const& fileName);
 };
 
 }}} // namespace lsst::qserv::replica
