@@ -296,12 +296,12 @@ SqlRequestParams::IndexSpec::IndexSpec(ProtocolRequestSql::IndexSpec spec) {
         case ProtocolRequestSql::UNIQUE:   { _spec = IndexSpec::UNIQUE;   break; }
         case ProtocolRequestSql::FULLTEXT: { _spec = IndexSpec::FULLTEXT; break; }
         case ProtocolRequestSql::SPATIAL:  { _spec = IndexSpec::SPATIAL;  break; }
+        default:
+            throw invalid_argument(
+                    "SqlRequestParams::IndexSpec::" + string(__func__) +
+                    "  unsupported protocol index specification: '"
+                    + ProtocolRequestSql_IndexSpec_Name(spec) + "'");
     }
-    throw invalid_argument(
-            "SqlRequestParams::IndexSpec::" + string(__func__) +
-            "  unsupported protocol index specification: '"
-            + ProtocolRequestSql_IndexSpec_Name(spec) + "'");
-
 }
 
 
