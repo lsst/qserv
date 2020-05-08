@@ -70,34 +70,19 @@ HttpCatalogsModule::HttpCatalogsModule(Controller::Ptr const& controller,
 }
 
 
-void HttpCatalogsModule::executeImpl(string const& subModuleName) {
-
+json HttpCatalogsModule::executeImpl(string const& subModuleName) {
     debug(__func__);
 
     util::Lock lock(_catalogsMtx, "HttpCatalogsModule::" + string(__func__));
 
-    // Check if a cached report can be used
+    // Check if a valid cached report is still available
     if (not _catalogsReport.is_null()) {
-
-        // Send what's available so far before evaluating the age of the cache
-        // to see if it needs to be upgraded in the background.
-        sendData(_catalogsReport);
 
         // TODO: add a cache control parameter to the class's constructor,
         // or (even better) extract it from an optional parameter of the request
         // to let a client decide on how "stale" the result is expected to be.
-        uint64_t lastReportAgeMs = PerformanceUtils::now() - _catalogsReportTimeMs;
-        if (lastReportAgeMs < 60 * 60 * 1000) return;
-
-    } else {
-
-        // Send a dummy report for now, then upgrade the cache
-        bool const dummyReport = true;
-        json result;
-        for (auto&& database: controller()->serviceProvider()->config()->databases()) {
-            result["databases"][database] = _databaseStats(database, dummyReport);
-        }
-        sendData(result);
+        uint64_t const lastReportAgeMs = PerformanceUtils::now() - _catalogsReportTimeMs;
+        if (lastReportAgeMs < 60 * 60 * 1000) return _catalogsReport;
     }
 
     // Otherwise, get the fresh snapshot of the replica distributions
@@ -112,20 +97,20 @@ void HttpCatalogsModule::executeImpl(string const& subModuleName) {
     _catalogsReport = result;
     _catalogsReportTimeMs = PerformanceUtils::now();
 
-    sendData(_catalogsReport);
+    return _catalogsReport;
 }
 
 
-json HttpCatalogsModule::_databaseStats(string const& database, bool dummyReport) const {
+json HttpCatalogsModule::_databaseStats(string const& database) const {
 
     auto const config = controller()->serviceProvider()->config();
     auto const databaseServices = controller()->serviceProvider()->databaseServices();
 
     vector<unsigned int> chunks;
-    if (not dummyReport) databaseServices->findDatabaseChunks(chunks, database);
+    databaseServices->findDatabaseChunks(chunks, database);
 
     vector<ReplicaInfo> replicas;
-    if (not dummyReport) databaseServices->findDatabaseReplicas(replicas, database);
+    databaseServices->findDatabaseReplicas(replicas, database);
 
     json result;
     result["chunks"]["unique"] = chunks.size();

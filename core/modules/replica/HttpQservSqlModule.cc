@@ -26,6 +26,7 @@
 #include <stdexcept>
 
 // Qserv headers
+#include "replica/HttpExceptions.h"
 #include "replica/SqlQueryRequest.h"
 
 using namespace std;
@@ -56,19 +57,15 @@ HttpQservSqlModule::HttpQservSqlModule(Controller::Ptr const& controller,
 }
 
 
-void HttpQservSqlModule::executeImpl(string const& subModuleName) {
-
-    if (subModuleName.empty()) {
-        _execute();
-    } else {
-        throw invalid_argument(
-                context() + "::" + string(__func__) +
-                "  unsupported sub-module: '" + subModuleName + "'");
-    }
+json HttpQservSqlModule::executeImpl(string const& subModuleName) {
+    if (subModuleName.empty()) return _execute();
+    throw invalid_argument(
+            context() + "::" + string(__func__) +
+            "  unsupported sub-module: '" + subModuleName + "'");
 }
 
 
-void HttpQservSqlModule::_execute() {
+json HttpQservSqlModule::_execute() {
     debug(__func__);
 
     auto const worker   = body().required<string>("worker");
@@ -94,8 +91,10 @@ void HttpQservSqlModule::_execute() {
     json result;
     result["result_set"] = request->responseData().toJson();
 
-    bool const success = request->extendedState() == Request::SUCCESS ? 1 : 0;
-    sendData(result, success);
+    if (request->extendedState() != Request::SUCCESS) {
+        throw HttpError(__func__, "Query failed. See details in the result set", result);
+    }
+    return result;
 }
 
 }}}  // namespace lsst::qserv::replica

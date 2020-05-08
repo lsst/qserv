@@ -61,7 +61,7 @@ public:
     ~HttpWorkerStatusModule() final = default;
 
 protected:
-    void executeImpl(std::string const& subModuleName) final;
+    nlohmann::json executeImpl(std::string const& subModuleName) final;
 
 private:
     HttpWorkerStatusModule(Controller::Ptr const& controller,

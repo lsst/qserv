@@ -71,7 +71,7 @@ public:
     ~HttpExportModule() final = default;
 
 protected:
-    void executeImpl(std::string const& subModuleName) final;
+    nlohmann::json executeImpl(std::string const& subModuleName) final;
 
 private:
     HttpExportModule(Controller::Ptr const& controller,
@@ -80,8 +80,8 @@ private:
                      qhttp::Request::Ptr const& req,
                      qhttp::Response::Ptr const& resp);
 
-    /// Get service locations for table(s).
-    void _getTables();
+    /// @return Service locations for table(s).
+    nlohmann::json _getTables();
 };
     
 }}} // namespace lsst::qserv::replica

@@ -68,7 +68,7 @@ public:
     ~HttpSqlIndexModule() final = default;
 
 protected:
-    void executeImpl(std::string const& subModuleName) final;
+    nlohmann::json executeImpl(std::string const& subModuleName) final;
 
 private:
     HttpSqlIndexModule(Controller::Ptr const& controller,
@@ -80,17 +80,17 @@ private:
     /**
      * Return a status of the existing indexes on all instances of a table.
      */
-    void _getIndexes();
+    nlohmann::json _getIndexes();
 
     /**
      * Create a new index on all instances of a table.
      */
-    void _createIndexes();
+    nlohmann::json _createIndexes();
 
     /**
      * Dropping an existing index from all instances of a table.
      */
-    void _dropIndexes();
+    nlohmann::json _dropIndexes();
 };
     
 }}} // namespace lsst::qserv::replica

@@ -87,7 +87,7 @@ public:
     ~HttpIngestModule() final = default;
 
 protected:
-    void executeImpl(std::string const& subModuleName) final;
+    nlohmann::json executeImpl(std::string const& subModuleName) final;
 
 private:
     HttpIngestModule(Controller::Ptr const& controller,
@@ -97,41 +97,41 @@ private:
                      qhttp::Response::Ptr const& resp);
 
     /// Get info on super-transactions
-    void _getTransactions();
+    nlohmann::json _getTransactions();
 
     /// Get info on the current/latest super-transaction
-    void _getTransaction();
+    nlohmann::json _getTransaction();
 
     /// Crate and start a super-transaction
-    void _beginTransaction();
+    nlohmann::json _beginTransaction();
 
     /// Commit or rollback a super-transaction
-    void _endTransaction();
+    nlohmann::json _endTransaction();
 
     /// Register a database for an ingest
-    void _addDatabase();
+    nlohmann::json _addDatabase();
 
     /// Publish a database whose data were ingested earlier
-    void _publishDatabase();
+    nlohmann::json _publishDatabase();
 
     /**
      * Delete a database which is not yet published. All relevant data,
      * including databases and tables at workers, the secondary index (if any)
      * and Replication System's Configuration will be deleted s well.
      */
-    void _deleteDatabase();
+    nlohmann::json _deleteDatabase();
 
     /// Register a database table for an ingest
-    void _addTable();
+    nlohmann::json _addTable();
 
     /// (Re-)build the "empty chunks list" for a database.
-    void _buildEmptyChunksList();
+    nlohmann::json _buildEmptyChunksList();
 
     /**
      * Return connection parameters of the ingest servers of all workers
      * where the regular tables would have to be loaded.
      */
-    void _getRegular();
+    nlohmann::json _getRegular();
 
     /**
      * Grant SELECT authorizations for the new database to Qserv
@@ -139,9 +139,9 @@ private:
      * 
      * @param databaseInfo database descriptor
      * @param allWorkers  'true' if all workers should be involved into the operation
-     * @return 'false' if operation failed
+     * @throws HttpError if the operation failed
      */
-    bool _grantDatabaseAccess(DatabaseInfo const& databaseInfo,
+    void _grantDatabaseAccess(DatabaseInfo const& databaseInfo,
                               bool allWorkers) const;
 
     /**
@@ -150,9 +150,9 @@ private:
      * 
      * @param databaseInfo database descriptor
      * @param allWorkers 'true' if all workers should be involved into the operation
-     * @return 'false' if operation failed
+     * @throws HttpError if the operation failed
      */
-    bool _enableDatabase(DatabaseInfo const& databaseInfo,
+    void _enableDatabase(DatabaseInfo const& databaseInfo,
                          bool allWorkers) const;
 
     /**
@@ -164,9 +164,9 @@ private:
      * 
      * @param databaseInfo database descriptor
      * @param allWorkers 'true' if all workers should be involved into the operation
-     * @return 'false' if operation failed
+     * @throws HttpError if the operation failed
      */
-    bool _createMissingChunkTables(DatabaseInfo const& databaseInfo,
+    void _createMissingChunkTables(DatabaseInfo const& databaseInfo,
                                    bool allWorkers) const;
 
     /**
@@ -174,9 +174,9 @@ private:
      * 
      * @param databaseInfo database descriptor
      * @param allWorkers 'true' if all workers should be involved into the operation
-     * @return 'false' if operation failed
+     * @throws HttpError if operation failed
      */
-    bool _removeMySQLPartitions(DatabaseInfo const& databaseInfo,
+    void _removeMySQLPartitions(DatabaseInfo const& databaseInfo,
                                 bool allWorkers) const;
 
     /**
@@ -262,9 +262,9 @@ private:
      *
      * @param databaseInfo database descriptor
      * @param allWorkers 'true' if all workers should be involved into the operation
-     * @return 'false' if operation failed
+     * @throws HttpError if the operation failed
      */
-    bool _qservSync(DatabaseInfo const& databaseInfo,
+    void _qservSync(DatabaseInfo const& databaseInfo,
                     bool allWorkers) const;
 
     /// @return connection object for the Qserv Master Database server

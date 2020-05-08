@@ -34,6 +34,7 @@
 #include "replica/ChunkNumber.h"
 #include "replica/Configuration.h"
 #include "replica/DatabaseServices.h"
+#include "replica/HttpExceptions.h"
 #include "replica/ReplicaInfo.h"
 #include "replica/ServiceProvider.h"
 
@@ -155,21 +156,16 @@ HttpIngestChunksModule::HttpIngestChunksModule(
 }
 
 
-void HttpIngestChunksModule::executeImpl(string const& subModuleName) {
-
-    if (subModuleName == "ADD-CHUNK") {
-         _addChunk();
-    } else if (subModuleName == "ADD-CHUNK-LIST") {
-         _addChunks();
-    } else {
-        throw invalid_argument(
-                context() + "::" + string(__func__) +
-                "  unsupported sub-module: '" + subModuleName + "'");
-    }
+json HttpIngestChunksModule::executeImpl(string const& subModuleName) {
+    if (subModuleName == "ADD-CHUNK") return _addChunk();
+    else if (subModuleName == "ADD-CHUNK-LIST") return _addChunks();
+    throw invalid_argument(
+            context() + "::" + string(__func__) +
+            "  unsupported sub-module: '" + subModuleName + "'");
 }
 
 
-void HttpIngestChunksModule::_addChunk() {
+json HttpIngestChunksModule::_addChunk() {
     debug(__func__);
 
     TransactionId const transactionId = body().required<TransactionId>("transaction_id");
@@ -183,8 +179,7 @@ void HttpIngestChunksModule::_addChunk() {
 
     auto const transactionInfo = databaseServices->transaction(transactionId);
     if (transactionInfo.state != TransactionInfo::STARTED) {
-        sendError(__func__, "this transaction is already over");
-        return;
+        throw HttpError(__func__, "this transaction is already over");
     }
     auto const databaseInfo = config->databaseInfo(transactionInfo.database);
     auto const databaseFamilyInfo = config->databaseFamilyInfo(databaseInfo.family);
@@ -192,8 +187,7 @@ void HttpIngestChunksModule::_addChunk() {
     ChunkNumberQservValidator const validator(databaseFamilyInfo.numStripes,
                                               databaseFamilyInfo.numSubStripes);
     if (not validator.valid(chunk)) {
-        sendError(__func__, "this chunk number is not valid");
-        return;
+        throw HttpError(__func__, "this chunk number is not valid");
     }
 
     // This locks prevents other invocations of the method from making different
@@ -217,8 +211,7 @@ void HttpIngestChunksModule::_addChunk() {
     databaseServices->findReplicas(replicas, chunk, transactionInfo.database,
                                    enabledWorkersOnly, includeFileInfo);
     if (replicas.size() > 1) {
-        sendError(__func__, "this chunk has too many replicas");
-        return;
+        throw HttpError(__func__, "this chunk has too many replicas");
     }
     if (replicas.size() == 1) {
         worker = replicas[0].worker();
@@ -267,8 +260,7 @@ void HttpIngestChunksModule::_addChunk() {
 
     // The sanity check, just to make sure we've found a worker
     if (worker.empty()) {
-        sendError(__func__, "no suitable worker found");
-        return;
+        throw HttpError(__func__, "no suitable worker found");
     }
     ControllerEvent event;
     event.status = "ADD CHUNK";
@@ -286,12 +278,11 @@ void HttpIngestChunksModule::_addChunk() {
     result["location"]["worker"] = workerInfo.name;
     result["location"]["host"]   = workerInfo.loaderHost;
     result["location"]["port"]   = workerInfo.loaderPort;
-
-    sendData(result);
+    return result;
 }
 
 
-void HttpIngestChunksModule::_addChunks() {
+json HttpIngestChunksModule::_addChunks() {
     debug(__func__);
 
     TransactionId const transactionId = body().required<TransactionId>("transaction_id");
@@ -305,8 +296,7 @@ void HttpIngestChunksModule::_addChunks() {
 
     auto const transactionInfo = databaseServices->transaction(transactionId);
     if (transactionInfo.state != TransactionInfo::STARTED) {
-        sendError(__func__, "this transaction is already over");
-        return;
+        throw HttpError(__func__, "this transaction is already over");
     }
     auto const databaseInfo = config->databaseInfo(transactionInfo.database);
     auto const databaseFamilyInfo = config->databaseFamilyInfo(databaseInfo.family);
@@ -317,8 +307,7 @@ void HttpIngestChunksModule::_addChunks() {
                                               databaseFamilyInfo.numSubStripes);
     for (auto const chunk: chunks) {
         if (not validator.valid(chunk)) {
-            sendError(__func__, "chunk " + to_string(chunk) + " is not valid");
-            return;
+            throw HttpError(__func__, "chunk " + to_string(chunk) + " is not valid");
         }
     }
 
@@ -360,8 +349,7 @@ void HttpIngestChunksModule::_addChunks() {
         vector<ReplicaInfo> const& replicas = chunk2replicas[chunk];
 
         if (replicas.size() > 1) {
-            sendError(__func__, "chunk " + to_string(chunk) + " has too many replicas");
-            return;
+            throw HttpError(__func__, "chunk " + to_string(chunk) + " has too many replicas");
         }
         if (replicas.size() == 1) {
             chunk2worker[chunk] = replicas[0].worker();
@@ -417,8 +405,7 @@ void HttpIngestChunksModule::_addChunks() {
 
         // The sanity check, just to make sure we've found a worker
         if (chunk2worker[chunk].empty()) {
-            sendError(__func__, "no suitable worker found for chunk " + to_string(chunk));
-            return;
+            throw HttpError(__func__, "no suitable worker found for chunk " + to_string(chunk));
         }
     }
 
@@ -454,7 +441,7 @@ void HttpIngestChunksModule::_addChunks() {
 
         result["location"].push_back(workerResult);
     }
-    sendData(result);
+    return result;
 }
 
 

@@ -128,39 +128,20 @@ protected:
     void error(std::string const& context, std::string const& msg) const { error(context + "  " + msg); }
 
     /**
-     * Report a error condition and send a error message back to a requester
-     * of a service.
-     *
-     * @param resp the HTTP response channel
-     * @param func the name of a context from which the operation was initiated
-     * @param errorMsg error condition to be reported
-     */
-    void sendError(std::string const& func,
-                   std::string const& errorMsg) const;
-
-    /**
-     * Report a result back to a requester of a service upon its successful
-     * completion.
-     *
-     * @param resp    the HTTP response channel
-     * @param result  JSON object to be sent back
-     * @param success (optional) flag indicating if the operation was successful.
-     *                Note, that the method will still send a result regardless of
-     *                a value of the flag. The result object may provide more specific
-     *                info on a reason of a failure (if not success)
-     */
-    void sendData(nlohmann::json& result,
-                  bool success=true);
-
-    /**
      * To implement a subclass-specific request processing.
      * 
-     * @note all exceptions thrown by the implementations will be intercepted and
-     * reported as errors to callers.
+     * @note All exceptions thrown by the implementations will be intercepted and
+     *   reported as errors to callers. Exceptions are now the only way to report
+     *   errors from modules.
+     * @return A result to be sent back to a service requester in case of a successful
+     *   completion of the requested operation.
+     * @throws HttpExceptions In case if a module needs to pass extra details
+     *   on a error back to a service requester. 
      */
-    virtual void executeImpl(std::string const& subModuleName) = 0 ;
+    virtual nlohmann::json executeImpl(std::string const& subModuleName) = 0 ;
 
 private:
+
     /**
      * Inspect the body of a request or a presence of a user-supplied authorization key.
      * Its value will be compared against a value of the corresponding configuration
@@ -168,9 +149,28 @@ private:
      * In the absence of the message body, or in the absence of the key in the body, or
      * in case of any mismatch between the keys would result in an exception thrown.
      *
-     * @throw AuthError  This exception is thrown if the authorization requirements weren't met.
+     * @throw AuthError This exception is thrown if the authorization requirements weren't met.
      */
     void _enforceAuthorization() const;
+
+    /**
+     * Report a error condition and send an error message back to a requester
+     * of a service.
+     *
+     * @param func The name of a context from which the operation was initiated.
+     * @param errorMsg An error condition to be reported.
+     * @param errorExt (optional) The additional information on the error.
+     */
+    void _sendError(std::string const& func,
+                    std::string const& errorMsg,
+                    nlohmann::json const& errorExt=nlohmann::json::object()) const;
+
+    /**
+     * Report a result back to a requester of a service upon its successful
+     * completion.
+     * @param result A JSON object to be sent back.
+     */
+    void _sendData(nlohmann::json& result);
 
     // Input parameters
 

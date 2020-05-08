@@ -27,6 +27,7 @@
 
 // Qserv headers
 #include "replica/DatabaseServices.h"
+#include "replica/HttpExceptions.h"
 #include "replica/ServiceProvider.h"
 
 using namespace std;
@@ -57,21 +58,16 @@ HttpRequestsModule::HttpRequestsModule(Controller::Ptr const& controller,
 }
 
 
-void HttpRequestsModule::executeImpl(string const& subModuleName) {
-
-    if (subModuleName.empty()) {
-        _requests();
-    } else if (subModuleName == "SELECT-ONE-BY-ID") {
-        _oneRequest();
-    } else {
-        throw invalid_argument(
-                context() + "::" + string(__func__) +
-                "  unsupported sub-module: '" + subModuleName + "'");
-    }
+json HttpRequestsModule::executeImpl(string const& subModuleName) {
+    if (subModuleName.empty()) return _requests();
+    else if (subModuleName == "SELECT-ONE-BY-ID") return _oneRequest();
+    throw invalid_argument(
+            context() + "::" + string(__func__) +
+            "  unsupported sub-module: '" + subModuleName + "'");
 }
 
 
-void HttpRequestsModule::_requests() {
+json HttpRequestsModule::_requests() {
     debug(__func__);
 
     string   const jobId         = query().optionalString("job_id");
@@ -83,8 +79,6 @@ void HttpRequestsModule::_requests() {
     debug(__func__, "from="        + to_string(fromTimeStamp));
     debug(__func__, "to="          + to_string(toTimeStamp));
     debug(__func__, "max_entries=" + to_string(maxEntries));
-
-    // Pull descriptions of the Requests
 
     auto const requests =
         controller()->serviceProvider()->databaseServices()->requests(
@@ -99,22 +93,20 @@ void HttpRequestsModule::_requests() {
     }
     json result;
     result["requests"] = requestsJson;
-
-    sendData(result);
+    return result;
 }
 
 
-void HttpRequestsModule::_oneRequest() {
+json HttpRequestsModule::_oneRequest() {
     debug(__func__);
 
     auto const id = params().at("id");
     try {
         json result;
         result["request"] = controller()->serviceProvider()->databaseServices()->request(id).toJson();
-        sendData(result);
-
+        return result;
     } catch (DatabaseServicesNotFound const& ex) {
-        sendError(__func__, "no such request found");
+        throw HttpError(__func__, "no such request found");
     }
 }
 

@@ -66,7 +66,7 @@ public:
     ~HttpQservSqlModule() final = default;
 
 protected:
-    void executeImpl(std::string const& subModuleName) final;
+    nlohmann::json executeImpl(std::string const& subModuleName) final;
 
 private:
     HttpQservSqlModule(Controller::Ptr const& controller,
@@ -80,8 +80,7 @@ private:
      * A result set of the query will be returned for those query types which
      * have the one upon a successful completion of a request.
      */
-    void _execute();
-
+    nlohmann::json _execute();
 };
     
 }}} // namespace lsst::qserv::replica

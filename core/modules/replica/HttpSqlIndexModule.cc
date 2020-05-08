@@ -30,6 +30,7 @@
 
 // Qserv headers
 #include "replica/Configuration.h"
+#include "replica/HttpExceptions.h"
 #include "replica/SqlCreateIndexesJob.h"
 #include "replica/SqlDropIndexesJob.h"
 #include "replica/SqlGetIndexesJob.h"
@@ -167,23 +168,17 @@ HttpSqlIndexModule::HttpSqlIndexModule(
 }
 
 
-void HttpSqlIndexModule::executeImpl(string const& subModuleName) {
-
-    if (subModuleName.empty()) {
-        _getIndexes();
-    } else if (subModuleName == "CREATE-INDEXES") {
-        _createIndexes();
-    } else if (subModuleName == "DROP-INDEXES") {
-        _dropIndexes();
-    } else {
-        throw invalid_argument(
-                context() + "::" + string(__func__) +
-                "  unsupported sub-module: '" + subModuleName + "'");
-    }
+json HttpSqlIndexModule::executeImpl(string const& subModuleName) {
+    if (subModuleName.empty()) return _getIndexes();
+    else if (subModuleName == "CREATE-INDEXES") return _createIndexes();
+    else if (subModuleName == "DROP-INDEXES") return _dropIndexes();
+    throw invalid_argument(
+            context() + "::" + string(__func__) +
+            "  unsupported sub-module: '" + subModuleName + "'");
 }
 
 
-void HttpSqlIndexModule::_getIndexes() {
+json HttpSqlIndexModule::_getIndexes() {
     debug(__func__);
 
     string const database = body().required<string>("database");
@@ -203,17 +198,15 @@ void HttpSqlIndexModule::_getIndexes() {
     logJobFinishedEvent(SqlGetIndexesJob::typeName(), job, databaseInfo.family);
 
     string const error = ::getErrorIfAny(job);
-    if (not error.empty()) {
-        sendError(__func__, error);
-        return;
-    }
+    if (not error.empty()) throw HttpError(__func__, error);
+
     json result;
     result["workers"] = ::result2json(job->getResultData(), context());
-    sendData(result);
+    return result;
 }
 
 
-void HttpSqlIndexModule::_createIndexes() {
+json HttpSqlIndexModule::_createIndexes() {
     debug(__func__);
 
     string const database = body().required<string>("database");
@@ -237,10 +230,7 @@ void HttpSqlIndexModule::_createIndexes() {
 
     // This safeguard is needed here because the index management job launched
     // doesn't have this restriction.
-    if (databaseInfo.isPublished) {
-        sendError(__func__, "database is not published");
-        return;
-    }
+    if (databaseInfo.isPublished) throw HttpError(__func__, "database is not published");
 
     // Process the input collection of the column specifications.
     // 
@@ -283,16 +273,13 @@ void HttpSqlIndexModule::_createIndexes() {
     logJobFinishedEvent(SqlCreateIndexesJob::typeName(), job, databaseInfo.family);
 
     string const error = ::getErrorIfAny(job);
-    if (not error.empty()) {
-        sendError(__func__, error);
-        return;
-    }
-    json result;
-    sendData(result);
+    if (not error.empty()) throw HttpError(__func__, error);
+
+    return json::object();
 }
 
 
-void HttpSqlIndexModule::_dropIndexes() {
+json HttpSqlIndexModule::_dropIndexes() {
     debug(__func__);
 
     string const database = body().required<string>("database");
@@ -314,12 +301,9 @@ void HttpSqlIndexModule::_dropIndexes() {
     logJobFinishedEvent(SqlDropIndexesJob::typeName(), job, databaseInfo.family);
 
     string const error = ::getErrorIfAny(job);
-    if (not error.empty()) {
-        sendError(__func__, error);
-        return;
-    }
-    json result;
-    sendData(result);
+    if (not error.empty()) throw HttpError(__func__, error);
+
+    return json::object();
 }
 
 }}}  // namespace lsst::qserv::replica

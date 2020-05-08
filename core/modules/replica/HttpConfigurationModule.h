@@ -76,7 +76,7 @@ public:
     ~HttpConfigurationModule() final = default;
 
 protected:
-    void executeImpl(std::string const& subModuleName) final;
+    nlohmann::json executeImpl(std::string const& subModuleName) final;
 
 private:
     HttpConfigurationModule(Controller::Ptr const& controller,
@@ -88,69 +88,69 @@ private:
     /**
      * Return the current Configuration of the system.
      */
-    void _get();
+    nlohmann::json _get();
 
     /**
      * Process a request which updates the Configuration of the Replication
      * system and reports back its new state.
      */
-    void _updateGeneral();
+    nlohmann::json _updateGeneral();
 
     /**
      * Process a request which updates parameters of an existing worker in
      * the Configuration of the Replication system and reports back the new
      * state of the system
      */
-    void _updateWorker();
+    nlohmann::json _updateWorker();
 
     /**
      * Process a request which removes an existing worker from the Configuration
      * of the Replication system and reports back the new state of the system
      */
-    void _deleteWorker();
+    nlohmann::json _deleteWorker();
 
     /**
      * Process a request which adds a new worker into the Configuration
      * of the Replication system and reports back the new state of the system
      */
-    void _addWorker();
+    nlohmann::json _addWorker();
 
     /**
      * Process a request which removes an existing database family from
      * the Configuration of the Replication system and reports back the new
      * state of the system
      */
-    void _deleteFamily();
+    nlohmann::json _deleteFamily();
 
     /**
      * Process a request which adds a new database family into the Configuration
      * of the Replication system and reports back the new state of the system
      */
-    void _addFamily();
+    nlohmann::json _addFamily();
 
     /**
      * Process a request which removes an existing database from the Configuration
      * of the Replication system and reports back the new state of the system
      */
-    void _deleteDatabase();
+    nlohmann::json _deleteDatabase();
 
     /**
      * Process a request which adds a new database into the Configuration
      * of the Replication system and reports back the new state of the system
      */
-    void _addDatabase();
+    nlohmann::json _addDatabase();
 
     /**
      * Process a request which removes an existing table from the Configuration
      * of the Replication system and reports back the new state of the system
      */
-    void _deleteTable();
+    nlohmann::json _deleteTable();
 
     /**
      * Process a request which adds a new database table into the Configuration
      * of the Replication system and reports back the new state of the system
      */
-    void _addTable();
+    nlohmann::json _addTable();
 };
     
 }}} // namespace lsst::qserv::replica
