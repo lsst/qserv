@@ -60,7 +60,7 @@ public:
     ~HttpCatalogsModule() final = default;
 
 protected:
-    void executeImpl(std::string const& subModuleName) final;
+    nlohmann::json executeImpl(std::string const& subModuleName) final;
 
 private:
     HttpCatalogsModule(Controller::Ptr const& controller,
@@ -70,15 +70,11 @@ private:
                        qhttp::Response::Ptr const& resp);
 
     /**
-     * Retrieve the latest state of the database stats from a persistent
-     * store.
-     *
-     * @param database  the name of a database
-     * @param dummyReport  if 'true' then return a report with all zeroes for known databases and tables
-     * @return data statistics for the specified database
+     * Retrieve the latest state of the database stats from a persistent store.
+     * @param database The name of a database.
+     * @return The data statistics for the specified database.
      */
-    nlohmann::json _databaseStats(std::string const& database,
-                                  bool dummyReport=false) const;
+    nlohmann::json _databaseStats(std::string const& database) const;
 
     // The cached state is shared by all instances of the class
 

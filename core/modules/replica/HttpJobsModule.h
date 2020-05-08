@@ -66,7 +66,7 @@ public:
     ~HttpJobsModule() final = default;
 
 protected:
-    void executeImpl(std::string const& subModuleName) final;
+    nlohmann::json executeImpl(std::string const& subModuleName) final;
 
 private:
     HttpJobsModule(Controller::Ptr const& controller,
@@ -75,8 +75,8 @@ private:
                    qhttp::Request::Ptr const& req,
                    qhttp::Response::Ptr const& resp);
 
-    void _jobs();
-    void _oneJob();
+    nlohmann::json _jobs();
+    nlohmann::json _oneJob();
 };
     
 }}} // namespace lsst::qserv::replica

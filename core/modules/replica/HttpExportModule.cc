@@ -29,6 +29,7 @@
 #include "replica/ChunkedTable.h"
 #include "replica/Configuration.h"
 #include "replica/DatabaseServices.h"
+#include "replica/HttpExceptions.h"
 #include "replica/ReplicaInfo.h"
 #include "replica/ServiceProvider.h"
 
@@ -90,19 +91,15 @@ HttpExportModule::HttpExportModule(Controller::Ptr const& controller,
 }
 
 
-void HttpExportModule::executeImpl(string const& subModuleName) {
-
-    if (subModuleName == "TABLES") {
-        _getTables();
-    } else {
-        throw invalid_argument(
-                context() + "::" + string(__func__) +
-                "  unsupported sub-module: '" + subModuleName + "'");
-    }
+json HttpExportModule::executeImpl(string const& subModuleName) {
+    if (subModuleName == "TABLES") return _getTables();
+    throw invalid_argument(
+            context() + "::" + string(__func__) +
+            "  unsupported sub-module: '" + subModuleName + "'");
 }
 
 
-void HttpExportModule::_getTables() {
+json HttpExportModule::_getTables() {
     debug(__func__);
 
     auto const database = params().at("database");
@@ -117,8 +114,7 @@ void HttpExportModule::_getTables() {
     // This operation will throw an exception if the database name is not valid
     auto const databaseInfo = config->databaseInfo(database);
     if (not databaseInfo.isPublished) {
-        sendError(__func__, "database '" + databaseInfo.name + "' is not PUBLISHED");
-        return;
+        throw HttpError(__func__, "database '" + databaseInfo.name + "' is not PUBLISHED");
     }
 
     // Get a collection of known workers which are in the 'ENABLED' state
@@ -127,8 +123,7 @@ void HttpExportModule::_getTables() {
         allWorkerInfos.push_back(config->workerInfo(worker));
     }
     if (allWorkerInfos.empty()) {
-        sendError(__func__, "no workers found in the Configuration of the system.");
-        return;
+        throw HttpError(__func__, "no workers found in the Configuration of the system.");
     }
 
     /**
@@ -178,11 +173,10 @@ void HttpExportModule::_getTables() {
     //       of the Replication system.
     //
     // TODO: consider load balancing workers.
-
-    json result;
-    result["location"] = json::array();
-
     try {
+        json result;
+        result["location"] = json::array();
+
         if (tables.empty()) {
 
             // Report locations for all regular tables in the database
@@ -240,11 +234,11 @@ void HttpExportModule::_getTables() {
                 result["location"].push_back(spec.toJson());
             }
         }
+        return result;
+
     } catch (invalid_argument const& ex) {
-        sendError(__func__, ex.what());
-        return;
+        throw HttpError(__func__, ex.what());
     }
-    sendData(result);
 }
 
 }}}  // namespace lsst::qserv::replica

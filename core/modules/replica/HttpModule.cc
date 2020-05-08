@@ -23,6 +23,7 @@
 #include "replica/HttpModule.h"
 
 // Qserv headers
+#include "replica/HttpExceptions.h"
 #include "replica/HttpRequestBody.h"
 
 // LSST headers
@@ -60,13 +61,16 @@ void HttpModule::execute(string const& subModuleName,
     try {
         _body = HttpRequestBody(_req);
         if (authType == AUTH_REQUIRED) _enforceAuthorization();
-        executeImpl(subModuleName);
+        json result = executeImpl(subModuleName);
+        _sendData(result);
     } catch (AuthError const& ex) {
-        sendError(__func__, "failed to pass authorization requirements, ex: " + string(ex.what()));
+        _sendError(__func__, "failed to pass authorization requirements, ex: " + string(ex.what()));
+    } catch (HttpError const& ex) {
+        _sendError(ex.func(), ex.what(), ex.errorExt());
     } catch (invalid_argument const& ex) {
-        sendError(__func__, "invalid parameters of the request, ex: " + string(ex.what()));
+        _sendError(__func__, "invalid parameters of the request, ex: " + string(ex.what()));
     } catch (exception const& ex) {
-        sendError(__func__, "operation failed due to: " + string(ex.what()));
+        _sendError(__func__, "operation failed due to: " + string(ex.what()));
     }
 }
 
@@ -91,22 +95,24 @@ void HttpModule::error(string const& msg) const {
 }
 
 
-void HttpModule::sendError(string const& func,
-                           string const& errorMsg) const {
+void HttpModule::_sendError(string const& func,
+                            string const& errorMsg,
+                            json const& errorExt) const {
     error(func, errorMsg);
 
     json result;
     result["success"] = 0;
     result["error"] = errorMsg;
+    result["error_ext"] = errorExt.is_null() ? json::object() : errorExt;
 
     resp()->send(result.dump(), "application/json");
 }
 
 
-void HttpModule::sendData(json& result,
-                          bool success) {
-    result["success"] = success ? 1 : 0;
+void HttpModule::_sendData(json& result) {
+    result["success"] = 1;
     result["error"] = "";
+    result["error_ext"] = json::object();
 
     resp()->send(result.dump(), "application/json");
 }

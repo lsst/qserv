@@ -66,7 +66,7 @@ public:
     ~HttpRequestsModule() final = default;
 
 protected:
-    void executeImpl(std::string const& subModuleName) final;
+    nlohmann::json executeImpl(std::string const& subModuleName) final;
 
 private:
     HttpRequestsModule(Controller::Ptr const& controller,
@@ -75,8 +75,8 @@ private:
                        qhttp::Request::Ptr const& req,
                        qhttp::Response::Ptr const& resp);
 
-    void _requests();
-    void _oneRequest();
+    nlohmann::json _requests();
+    nlohmann::json _oneRequest();
 };
     
 }}} // namespace lsst::qserv::replica

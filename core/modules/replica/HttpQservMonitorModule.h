@@ -70,7 +70,7 @@ public:
     ~HttpQservMonitorModule() final = default;
 
 protected:
-    void executeImpl(std::string const& subModuleName) final;
+    nlohmann::json executeImpl(std::string const& subModuleName) final;
 
 private:
     HttpQservMonitorModule(Controller::Ptr const& controller,
@@ -84,25 +84,25 @@ private:
      * Qserv workers (all of them or a subset of those as per parameters
      * of a request).
      */
-    void _workers();
+    nlohmann::json _workers();
 
     /**
      * Process a request for extracting various status info for one
      * Qserv worker.
      */
-    void _worker();
+    nlohmann::json _worker();
 
     /**
      * Process a request for extracting a status on select user queries
      * launched at Qserv.
      */
-    void _userQueries();
+    nlohmann::json _userQueries();
 
     /**
      * Process a request for extracting a status on a specific user query
      * launched at Qserv.
      */
-    void _userQuery();
+    nlohmann::json _userQuery();
 
     /**
      * Find descriptions of queries

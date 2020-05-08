@@ -27,6 +27,7 @@
 
 // Qserv headers
 #include "replica/DatabaseServices.h"
+#include "replica/HttpExceptions.h"
 #include "replica/ServiceProvider.h"
 
 using namespace std;
@@ -57,21 +58,16 @@ HttpJobsModule::HttpJobsModule(Controller::Ptr const& controller,
 }
 
 
-void HttpJobsModule::executeImpl(string const& subModuleName) {
-
-    if (subModuleName.empty()) {
-        _jobs();
-    } else if (subModuleName == "SELECT-ONE-BY-ID") {
-        _oneJob();
-    } else {
-        throw invalid_argument(
-                context() + "::" + string(__func__) +
-                "  unsupported sub-module: '" + subModuleName + "'");
-    }
+json HttpJobsModule::executeImpl(string const& subModuleName) {
+    if (subModuleName.empty()) return _jobs();
+    else if (subModuleName == "SELECT-ONE-BY-ID") return _oneJob();
+    throw invalid_argument(
+            context() + "::" + string(__func__) +
+            "  unsupported sub-module: '" + subModuleName + "'");
 }
 
 
-void HttpJobsModule::_jobs() {
+json HttpJobsModule::_jobs() {
     debug(__func__);
 
     string   const controllerId  = query().optionalString("controller_id");
@@ -102,22 +98,21 @@ void HttpJobsModule::_jobs() {
     }
     json result;
     result["jobs"] = jobsJson;
-
-    sendData(result);
+    return result;
 }
 
 
-void HttpJobsModule::_oneJob() {
+json HttpJobsModule::_oneJob() {
     debug(__func__);
 
     auto const id = params().at("id");
     try {
         json result;
         result["job"] = controller()->serviceProvider()->databaseServices()->job(id).toJson();
-        sendData(result);
+        return result;
 
     } catch (DatabaseServicesNotFound const& ex) {
-        sendError(__func__, "no such job found");
+        throw HttpError(__func__, "no such job found");
     }
 }
 

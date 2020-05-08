@@ -32,6 +32,7 @@
 #include "replica/Configuration.h"
 #include "replica/ConfigurationTypes.h"
 #include "replica/DatabaseServices.h"
+#include "replica/HttpExceptions.h"
 #include "replica/ServiceProvider.h"
 
 using namespace std;
@@ -92,49 +93,36 @@ HttpConfigurationModule::HttpConfigurationModule(Controller::Ptr const& controll
 }
 
 
-void HttpConfigurationModule::executeImpl(string const& subModuleName) {
-
-    if (subModuleName.empty()) {
-        _get();
-    } else if (subModuleName == "UPDATE-GENERAL") {
-        _updateGeneral();
-    } else if (subModuleName == "UPDATE-WORKER") {
-        _updateWorker();
-    } else if (subModuleName == "DELETE-WORKER") {
-        _deleteWorker();
-    } else if (subModuleName == "ADD-WORKER") {
-        _addWorker();
-    } else if (subModuleName == "DELETE-DATABASE-FAMILY") {
-        _deleteFamily();
-    } else if (subModuleName == "ADD-DATABASE-FAMILY") {
-        _addFamily();
-    } else if (subModuleName == "DELETE-DATABASE") {
-        _deleteDatabase();
-    } else if (subModuleName == "ADD-DATABASE") {
-        _addDatabase();
-    } else if (subModuleName == "DELETE-TABLE") {
-        _deleteTable();
-    } else if (subModuleName == "ADD-TABLE") {
-        _addTable();
-    } else {
-        throw invalid_argument(
-                context() + "::" + string(__func__) +
-                "  unsupported sub-module: '" + subModuleName + "'");
-    }
+json HttpConfigurationModule::executeImpl(string const& subModuleName) {
+    if (subModuleName.empty()) return _get();
+    else if (subModuleName == "UPDATE-GENERAL") return _updateGeneral();
+    else if (subModuleName == "UPDATE-WORKER") return _updateWorker();
+    else if (subModuleName == "DELETE-WORKER") return _deleteWorker();
+    else if (subModuleName == "ADD-WORKER") return _addWorker();
+    else if (subModuleName == "DELETE-DATABASE-FAMILY") return _deleteFamily();
+    else if (subModuleName == "ADD-DATABASE-FAMILY") return _addFamily();
+    else if (subModuleName == "DELETE-DATABASE") return _deleteDatabase();
+    else if (subModuleName == "ADD-DATABASE") return _addDatabase();
+    else if (subModuleName == "DELETE-TABLE") return _deleteTable();
+    else if (subModuleName == "ADD-TABLE") return _addTable();
+    throw invalid_argument(
+            context() + "::" + string(__func__) +
+            "  unsupported sub-module: '" + subModuleName + "'");
 }
 
 
-void HttpConfigurationModule::_get() {
+json HttpConfigurationModule::_get() {
     debug(__func__);
     json result;
     result["config"] = Configuration::toJson(controller()->serviceProvider()->config());
-    sendData(result);
+    return result;
 }
 
 
-void HttpConfigurationModule::_updateGeneral() {
+json HttpConfigurationModule::_updateGeneral() {
     debug(__func__);
 
+    json result;
     try {
         ConfigurationGeneralParams general;
 
@@ -143,37 +131,36 @@ void HttpConfigurationModule::_updateGeneral() {
         auto   const logger  = [this, context](string const& msg) {
             this->debug(context, msg);
         };
-        ::saveConfigParameter(general.requestBufferSizeBytes,      req()->query, config, logger);
-        ::saveConfigParameter(general.retryTimeoutSec,             req()->query, config, logger);
-        ::saveConfigParameter(general.controllerThreads,           req()->query, config, logger);
-        ::saveConfigParameter(general.controllerHttpPort,          req()->query, config, logger);
-        ::saveConfigParameter(general.controllerHttpThreads,       req()->query, config, logger);
+        ::saveConfigParameter(general.requestBufferSizeBytes, req()->query, config, logger);
+        ::saveConfigParameter(general.retryTimeoutSec, req()->query, config, logger);
+        ::saveConfigParameter(general.controllerThreads, req()->query, config, logger);
+        ::saveConfigParameter(general.controllerHttpPort, req()->query, config, logger);
+        ::saveConfigParameter(general.controllerHttpThreads, req()->query, config, logger);
         ::saveConfigParameter(general.controllerRequestTimeoutSec, req()->query, config, logger);
-        ::saveConfigParameter(general.jobTimeoutSec,               req()->query, config, logger);
-        ::saveConfigParameter(general.jobHeartbeatTimeoutSec,      req()->query, config, logger);
-        ::saveConfigParameter(general.xrootdAutoNotify,            req()->query, config, logger);
-        ::saveConfigParameter(general.xrootdHost,                  req()->query, config, logger);
-        ::saveConfigParameter(general.xrootdPort,                  req()->query, config, logger);
-        ::saveConfigParameter(general.xrootdTimeoutSec,            req()->query, config, logger);
-        ::saveConfigParameter(general.databaseServicesPoolSize,    req()->query, config, logger);
-        ::saveConfigParameter(general.workerTechnology,            req()->query, config, logger);
-        ::saveConfigParameter(general.workerNumProcessingThreads,  req()->query, config, logger);
-        ::saveConfigParameter(general.fsNumProcessingThreads,      req()->query, config, logger);
-        ::saveConfigParameter(general.workerFsBufferSizeBytes,     req()->query, config, logger);
-        ::saveConfigParameter(general.loaderNumProcessingThreads,   req()->query, config, logger);
+        ::saveConfigParameter(general.jobTimeoutSec, req()->query, config, logger);
+        ::saveConfigParameter(general.jobHeartbeatTimeoutSec, req()->query, config, logger);
+        ::saveConfigParameter(general.xrootdAutoNotify, req()->query, config, logger);
+        ::saveConfigParameter(general.xrootdHost, req()->query, config, logger);
+        ::saveConfigParameter(general.xrootdPort, req()->query, config, logger);
+        ::saveConfigParameter(general.xrootdTimeoutSec, req()->query, config, logger);
+        ::saveConfigParameter(general.databaseServicesPoolSize, req()->query, config, logger);
+        ::saveConfigParameter(general.workerTechnology, req()->query, config, logger);
+        ::saveConfigParameter(general.workerNumProcessingThreads, req()->query, config, logger);
+        ::saveConfigParameter(general.fsNumProcessingThreads, req()->query, config, logger);
+        ::saveConfigParameter(general.workerFsBufferSizeBytes, req()->query, config, logger);
+        ::saveConfigParameter(general.loaderNumProcessingThreads, req()->query, config, logger);
         ::saveConfigParameter(general.exporterNumProcessingThreads, req()->query, config, logger);
 
-        json result;
         result["config"] = Configuration::toJson(config);
-        sendData(result);
 
     } catch (boost::bad_lexical_cast const& ex) {
-        sendError(__func__, "invalid value of a configuration parameter: " + string(ex.what()));
+        throw HttpError(__func__, "invalid value of a configuration parameter: " + string(ex.what()));
     }
+    return result;
 }
 
 
-void HttpConfigurationModule::_updateWorker() {
+json HttpConfigurationModule::_updateWorker() {
     debug(__func__);
 
     auto const config = controller()->serviceProvider()->config();
@@ -216,26 +203,25 @@ void HttpConfigurationModule::_updateWorker() {
     }
     json result;
     result["config"] = Configuration::toJson(config);
-
-    sendData(result);
+    return result;
 }
 
 
-void HttpConfigurationModule::_deleteWorker() {
+json HttpConfigurationModule::_deleteWorker() {
     debug(__func__);
 
     auto const config = controller()->serviceProvider()->config();
     auto const worker = params().at("name");
 
     config->deleteWorker(worker);
+
     json result;
     result["config"] = Configuration::toJson(config);
-
-    sendData(result);
+    return result;
 }
 
 
-void HttpConfigurationModule::_addWorker() {
+json HttpConfigurationModule::_addWorker() {
     debug(__func__);
 
     auto const config = controller()->serviceProvider()->config();
@@ -263,12 +249,11 @@ void HttpConfigurationModule::_addWorker() {
 
     json result;
     result["config"] = Configuration::toJson(config);
-
-    sendData(result);
+    return result;
 }
 
 
-void HttpConfigurationModule::_deleteFamily() {
+json HttpConfigurationModule::_deleteFamily() {
     debug(__func__);
 
     auto const config = controller()->serviceProvider()->config();
@@ -278,13 +263,11 @@ void HttpConfigurationModule::_deleteFamily() {
 
     json result;
     result["config"] = Configuration::toJson(config);
-
-    sendData(result);
-
+    return result;
 }
 
 
-void HttpConfigurationModule::_addFamily() {
+json HttpConfigurationModule::_addFamily() {
     debug(__func__);
 
     auto const config = controller()->serviceProvider()->config();
@@ -303,31 +286,26 @@ void HttpConfigurationModule::_addFamily() {
     debug(__func__, "overlap="           + to_string(info.overlap));
 
     if (0 == info.replicationLevel) {
-        sendError(__func__, "'replication_level' can't be equal to 0");
-        return;
+        throw HttpError(__func__, "'replication_level' can't be equal to 0");
     }
     if (0 == info.numStripes) {
-        sendError(__func__, "'num_stripes' can't be equal to 0");
-        return;
+        throw HttpError(__func__, "'num_stripes' can't be equal to 0");
     }
     if (0 == info.numSubStripes) {
-        sendError(__func__, "'num_sub_stripes' can't be equal to 0");
-        return;
+        throw HttpError(__func__, "'num_sub_stripes' can't be equal to 0");
     }
     if (info.overlap <= 0) {
-        sendError(__func__, "'overlap' can't be less or equal to 0");
-        return;
+        throw HttpError(__func__, "'overlap' can't be less or equal to 0");
     }
     config->addDatabaseFamily(info);
 
     json result;
     result["config"] = Configuration::toJson(config);
-
-    sendData(result);
+    return result;
 }
 
 
-void HttpConfigurationModule::_deleteDatabase() {
+json HttpConfigurationModule::_deleteDatabase() {
     debug(__func__);
 
     auto const config = controller()->serviceProvider()->config();
@@ -337,12 +315,11 @@ void HttpConfigurationModule::_deleteDatabase() {
 
     json result;
     result["config"] = Configuration::toJson(config);
-
-    sendData(result);
+    return result;
 }
 
 
-void HttpConfigurationModule::_addDatabase() {
+json HttpConfigurationModule::_addDatabase() {
     debug(__func__);
 
     auto const config = controller()->serviceProvider()->config();
@@ -358,12 +335,11 @@ void HttpConfigurationModule::_addDatabase() {
 
     json result;
     result["config"] = Configuration::toJson(config);
-
-    sendData(result);
+    return result;
 }
 
 
-void HttpConfigurationModule::_deleteTable() {
+json HttpConfigurationModule::_deleteTable() {
     debug(__func__);
 
     auto const config = controller()->serviceProvider()->config();
@@ -374,12 +350,11 @@ void HttpConfigurationModule::_deleteTable() {
 
     json result;
     result["config"] = Configuration::toJson(config);
-
-    sendData(result);
+    return result;
 }
 
 
-void HttpConfigurationModule::_addTable() {
+json HttpConfigurationModule::_addTable() {
     debug(__func__);
 
     auto const config = controller()->serviceProvider()->config();
@@ -396,8 +371,7 @@ void HttpConfigurationModule::_addTable() {
 
     json result;
     result["config"] = Configuration::toJson(config);
-
-    sendData(result);
+    return result;
 }
 
 }}}  // namespace lsst::qserv::replica

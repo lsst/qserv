@@ -25,6 +25,7 @@
 // Qserv headers
 #include "replica/Configuration.h"
 #include "replica/DatabaseServices.h"
+#include "replica/HttpExceptions.h"
 #include "replica/ServiceProvider.h"
 
 using namespace std;
@@ -59,14 +60,14 @@ HttpWorkerStatusModule::HttpWorkerStatusModule(
 }
 
 
-void HttpWorkerStatusModule::executeImpl(string const& subModuleName) {
+json HttpWorkerStatusModule::executeImpl(string const& subModuleName) {
     debug(__func__);
 
     auto const healthMonitorTask = _healthMonitorTask.lock();
     if (nullptr == healthMonitorTask) {
-        string const msg = "no access to the Health Monitor Task. The service may be shutting down.";
-        error(__func__, msg);
-        throw runtime_error("HttpWorkerStatusModule::" + string(__func__) + "  " + msg);
+        throw HttpError(__func__,
+                "no access to the Health Monitor Task from HttpWorkerStatusModule."
+                " The service may be shutting down.");
     }
     auto const delays = healthMonitorTask->workerResponseDelay();
 
@@ -96,8 +97,7 @@ void HttpWorkerStatusModule::executeImpl(string const& subModuleName) {
     }
     json result;
     result["workers"] = workersJson;
-
-    sendData(result);
+    return result;
 }
 
 }}}  // namespace lsst::qserv::replica

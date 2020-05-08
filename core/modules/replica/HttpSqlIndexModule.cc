@@ -30,6 +30,7 @@
 
 // Qserv headers
 #include "replica/Configuration.h"
+#include "replica/HttpExceptions.h"
 #include "replica/SqlCreateIndexesJob.h"
 #include "replica/SqlDropIndexesJob.h"
 #include "replica/SqlGetIndexesJob.h"
@@ -42,40 +43,44 @@ using namespace lsst::qserv::replica;
 
 namespace {
 /**
- * Analyze completion status of a job and return an error string to be
- * reported back to a client if any such error was reported by the job.
+ * Analyze a result set of a job for a presence of errors and report them if any.
+ * The result will be reported as a JSON object. The object will be empty
+ * (be evaluated as json::is_null()) if no errors were detected. Otherwise it
+ * would be based on the following schema:
+ * @code
+ *   "error":<serialized error code of the job>,
+ *   "workers":{
+ *     <worker>:{
+ *       <table>:{
+ *         "status":<serialized error code of a table-specific request>,
+ *         "error":<server error string for the request>
+ *       }
+ *     }
+ *   }
+ * @code
  *
- * @param job  A pointer to a job
- * @return A summary of the error (if any). Otherwise an empty string is returned.
+ * @param job A pointer to a job.
+ * @return A JSON object representing the summary report.
  */
-string getErrorIfAny(SqlJob::Ptr const& job) {
-    if (job->extendedState() == Job::ExtendedState::SUCCESS) return string();
+json getExtendedErrorReport(SqlJob::Ptr const& job) {
 
-    // Extract counters for specific errors. The counters will be reported
-    // to a client.
-    auto&& resultData = job->getResultData();
-    size_t numSucceeded = 0;
-    map<ExtendedCompletionStatus,size_t> numFailed;
-    resultData.iterate(
-        [&numFailed, &numSucceeded](SqlJobResult::Worker const& worker,
-                                    SqlJobResult::Scope const& object,
-                                    SqlResultSet::ResultSet const& resultSet) {
-            if (resultSet.extendedStatus == ExtendedCompletionStatus::EXT_STATUS_NONE) {
-                numSucceeded++;
-            } else {
-                numFailed[resultSet.extendedStatus]++;
+    if (job->extendedState() == Job::ExtendedState::SUCCESS) return json();
+
+    json report;
+    report["job_state"] = Job::state2string(job->extendedState());
+    report["workers"] = json::object();
+
+    job->getResultData().iterate(
+        [&report](SqlJobResult::Worker const& worker,
+                  SqlJobResult::Scope const& object,
+                  SqlResultSet::ResultSet const& resultSet) {
+            if (resultSet.extendedStatus != ExtendedCompletionStatus::EXT_STATUS_NONE) {
+                report["workers"][worker][object]["request_status"] = status2string(resultSet.extendedStatus);
+                report["workers"][worker][object]["request_error"] = resultSet.error;
             }
         }
     );
-
-    string error = "job failure code: " + Job::state2string(job->extendedState())
-            + ", success counter: " + to_string(numSucceeded) + ", error counters:";
-    for (auto&& elem: numFailed) {
-        string const extendedStatus = status2string(elem.first);
-        size_t const num = elem.second;
-        error += " " + extendedStatus + ":" + to_string(num);
-    }
-    return error;
+    return report;
 }
 
 
@@ -109,12 +114,12 @@ json result2json(SqlJobResult const& jobResultSet, string const& context) {
     // of fields.
     map<string,size_t> field;
 
-    json result;
+    json result = json::object();
     jobResultSet.iterate([&](SqlJobResult::Worker const& worker,
                              SqlJobResult::Scope const& scope,
                              SqlResultSet::ResultSet const& resultSet) {
-        // TODO: Ignoring failed or empty results for now. Will decide
-        // what to do about them later.
+        // Ignoring failed or empty results for now. They will be analyzed and reported
+        // in the extended error channel.
         if (resultSet.extendedStatus != ExtendedCompletionStatus::EXT_STATUS_NONE) return;
         if (not resultSet.hasResult) return;
 
@@ -124,10 +129,10 @@ json result2json(SqlJobResult const& jobResultSet, string const& context) {
                 field[resultSet.fields[idx].name] = idx;
             }
         }
-        
+        string const& tableName = scope;
+        result[worker][tableName] = json::object();
         for (auto&& row:resultSet.rows) {
             auto const& cells = row.cells;
-            string const& tableName  = cells[field.at("Table")];
             string const& keyName    = cells[field.at("Key_name")];
             string const& columnName = cells[field.at("Column_name")];
             string const& sequence   = cells[field.at("Seq_in_index")];
@@ -167,23 +172,17 @@ HttpSqlIndexModule::HttpSqlIndexModule(
 }
 
 
-void HttpSqlIndexModule::executeImpl(string const& subModuleName) {
-
-    if (subModuleName.empty()) {
-        _getIndexes();
-    } else if (subModuleName == "CREATE-INDEXES") {
-        _createIndexes();
-    } else if (subModuleName == "DROP-INDEXES") {
-        _dropIndexes();
-    } else {
-        throw invalid_argument(
-                context() + "::" + string(__func__) +
-                "  unsupported sub-module: '" + subModuleName + "'");
-    }
+json HttpSqlIndexModule::executeImpl(string const& subModuleName) {
+    if (subModuleName.empty()) return _getIndexes();
+    else if (subModuleName == "CREATE-INDEXES") return _createIndexes();
+    else if (subModuleName == "DROP-INDEXES") return _dropIndexes();
+    throw invalid_argument(
+            context() + "::" + string(__func__) +
+            "  unsupported sub-module: '" + subModuleName + "'");
 }
 
 
-void HttpSqlIndexModule::_getIndexes() {
+json HttpSqlIndexModule::_getIndexes() {
     debug(__func__);
 
     string const database = body().required<string>("database");
@@ -195,6 +194,10 @@ void HttpSqlIndexModule::_getIndexes() {
     auto const config = controller()->serviceProvider()->config();
     auto const databaseInfo = config->databaseInfo(database);
 
+    // This safeguard is needed here because the index management job launched
+    // doesn't have this restriction.
+    if (not databaseInfo.isPublished) throw HttpError(__func__, "database is not published");
+
     bool const allWorkers = true;
     auto const job = SqlGetIndexesJob::create(database, table, allWorkers, controller());
     job->start();
@@ -202,18 +205,18 @@ void HttpSqlIndexModule::_getIndexes() {
     job->wait();
     logJobFinishedEvent(SqlGetIndexesJob::typeName(), job, databaseInfo.family);
 
-    string const error = ::getErrorIfAny(job);
-    if (not error.empty()) {
-        sendError(__func__, error);
-        return;
+    auto const extendedErrorReport = ::getExtendedErrorReport(job);
+    if (not extendedErrorReport.is_null()) {
+        throw HttpError(__func__, "The operation failed. See details in the extended report.",
+                extendedErrorReport);
     }
     json result;
     result["workers"] = ::result2json(job->getResultData(), context());
-    sendData(result);
+    return result;
 }
 
 
-void HttpSqlIndexModule::_createIndexes() {
+json HttpSqlIndexModule::_createIndexes() {
     debug(__func__);
 
     string const database = body().required<string>("database");
@@ -237,10 +240,7 @@ void HttpSqlIndexModule::_createIndexes() {
 
     // This safeguard is needed here because the index management job launched
     // doesn't have this restriction.
-    if (databaseInfo.isPublished) {
-        sendError(__func__, "database is not published");
-        return;
-    }
+    if (not databaseInfo.isPublished) throw HttpError(__func__, "database is not published");
 
     // Process the input collection of the column specifications.
     // 
@@ -282,17 +282,16 @@ void HttpSqlIndexModule::_createIndexes() {
     job->wait();
     logJobFinishedEvent(SqlCreateIndexesJob::typeName(), job, databaseInfo.family);
 
-    string const error = ::getErrorIfAny(job);
-    if (not error.empty()) {
-        sendError(__func__, error);
-        return;
+    auto const extendedErrorReport = ::getExtendedErrorReport(job);
+    if (not extendedErrorReport.is_null()) {
+        throw HttpError(__func__, "The operation failed. See details in the extended report.",
+                extendedErrorReport);
     }
-    json result;
-    sendData(result);
+    return json::object();
 }
 
 
-void HttpSqlIndexModule::_dropIndexes() {
+json HttpSqlIndexModule::_dropIndexes() {
     debug(__func__);
 
     string const database = body().required<string>("database");
@@ -306,6 +305,10 @@ void HttpSqlIndexModule::_dropIndexes() {
     auto const config = controller()->serviceProvider()->config();
     auto const databaseInfo = config->databaseInfo(database);
 
+    // This safeguard is needed here because the index management job launched
+    // doesn't have this restriction.
+    if (not databaseInfo.isPublished) throw HttpError(__func__, "database is not published");
+
     bool const allWorkers = true;
     auto const job = SqlDropIndexesJob::create(database, table, index, allWorkers, controller());
     job->start();
@@ -313,13 +316,12 @@ void HttpSqlIndexModule::_dropIndexes() {
     job->wait();
     logJobFinishedEvent(SqlDropIndexesJob::typeName(), job, databaseInfo.family);
 
-    string const error = ::getErrorIfAny(job);
-    if (not error.empty()) {
-        sendError(__func__, error);
-        return;
+    auto const extendedErrorReport = ::getExtendedErrorReport(job);
+    if (not extendedErrorReport.is_null()) {
+        throw HttpError(__func__, "The operation failed. See details in the extended report.",
+                extendedErrorReport);
     }
-    json result;
-    sendData(result);
+    return json::object();
 }
 
 }}}  // namespace lsst::qserv::replica

@@ -31,6 +31,7 @@
 // Qserv headers
 #include "replica/Configuration.h"
 #include "replica/DatabaseServices.h"
+#include "replica/HttpExceptions.h"
 #include "replica/Performance.h"
 #include "replica/ReplicaInfo.h"
 #include "replica/ServiceProvider.h"
@@ -74,7 +75,7 @@ HttpReplicationLevelsModule::HttpReplicationLevelsModule(
 }
 
 
-void HttpReplicationLevelsModule::executeImpl(string const& subModuleName) {
+json HttpReplicationLevelsModule::executeImpl(string const& subModuleName) {
     debug(__func__);
 
     util::Lock lock(_replicationLevelMtx, "HttpReplicationLevelsModule::" + string(__func__));
@@ -86,11 +87,8 @@ void HttpReplicationLevelsModule::executeImpl(string const& subModuleName) {
     // to let a client decide on how "stale" the result is expected to be.
 
     if (not _replicationLevelReport.is_null()) {
-        uint64_t lastReportAgeMs = PerformanceUtils::now() - _replicationLevelReportTimeMs;
-        if (lastReportAgeMs < 240 * 1000) {
-            sendData(_replicationLevelReport);
-            return;
-        }
+        uint64_t const lastReportAgeMs = PerformanceUtils::now() - _replicationLevelReportTimeMs;
+        if (lastReportAgeMs < 240 * 1000) return _replicationLevelReport;
     }
 
     // Otherwise, get the fresh snapshot of the replica distributions
@@ -99,9 +97,9 @@ void HttpReplicationLevelsModule::executeImpl(string const& subModuleName) {
 
     auto const healthMonitorTask = _healthMonitorTask.lock();
     if (nullptr == healthMonitorTask) {
-        string const msg = "no access to the Health Monitor Task. The service may be shutting down.";
-        error(__func__, msg);
-        throw runtime_error("HttpReplicationLevelsModule::" + string(__func__) + "  " + msg);
+        throw HttpError(__func__,
+                "no access to the Health Monitor Task from HttpReplicationLevelsModule."
+                " The service may be shutting down.");
     }
     auto const delays = healthMonitorTask->workerResponseDelay();
 
@@ -272,7 +270,7 @@ void HttpReplicationLevelsModule::executeImpl(string const& subModuleName) {
     _replicationLevelReport = result;
     _replicationLevelReportTimeMs = PerformanceUtils::now();
 
-    sendData(_replicationLevelReport);
+    return _replicationLevelReport;
 }
 
 }}}  // namespace lsst::qserv::replica

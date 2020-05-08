@@ -70,7 +70,7 @@ public:
     ~HttpIngestChunksModule() final = default;
 
 protected:
-    void executeImpl(std::string const& subModuleName) final;
+    nlohmann::json executeImpl(std::string const& subModuleName) final;
 
 private:
     HttpIngestChunksModule(Controller::Ptr const& controller,
@@ -84,14 +84,14 @@ private:
      * Return connection parameters to an end-point service where chunk
      * data will need to be ingested.
      */
-    void _addChunk();
+    nlohmann::json _addChunk();
 
     /**
      * Register (if it's not register yet) a list of chunks for ingest.
      * Return connection parameters to an end-point services (may differ
      * from chunk to chunk) where data of each chunk will need to be ingested.
      */
-    void _addChunks();
+    nlohmann::json _addChunks();
 
     /**
      * Register new chunk in a collection of known replicas.

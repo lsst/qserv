@@ -145,25 +145,18 @@ HttpQservMonitorModule::HttpQservMonitorModule(Controller::Ptr const& controller
 }
 
 
-void HttpQservMonitorModule::executeImpl(string const& subModuleName) {
-
-    if (subModuleName == "WORKERS") {
-        _workers();
-    } else if (subModuleName == "SELECT-WORKER-BY-NAME") {
-        _worker();
-    } else if (subModuleName == "QUERIES") {
-        _userQueries();
-    } else if (subModuleName == "SELECT-QUERY-BY-ID") {
-        _userQuery();
-    } else {
-        throw invalid_argument(
-                context() + "::" + string(__func__) +
-                "  unsupported sub-module: '" + subModuleName + "'");
-    }
+json HttpQservMonitorModule::executeImpl(string const& subModuleName) {
+    if (subModuleName == "WORKERS") return _workers();
+    else if (subModuleName == "SELECT-WORKER-BY-NAME") return _worker();
+    else if (subModuleName == "QUERIES") return _userQueries();
+    else if (subModuleName == "SELECT-QUERY-BY-ID") return _userQuery();
+    throw invalid_argument(
+            context() + "::" + string(__func__) +
+            "  unsupported sub-module: '" + subModuleName + "'");
 }
 
 
-void HttpQservMonitorModule::_workers() {
+json HttpQservMonitorModule::_workers() {
     debug(__func__);
 
     unsigned int const timeoutSec    = query().optionalUInt("timeout_sec", workerResponseTimeoutSec());
@@ -213,11 +206,11 @@ void HttpQservMonitorModule::_workers() {
     }
     result["schedulers_to_chunks"] = resultSchedulers2chunks;
     result["chunks"] = _chunkInfo(chunks);
-    sendData(result);
+    return result;
 }
 
 
-void HttpQservMonitorModule::_worker() {
+json HttpQservMonitorModule::_worker() {
     debug(__func__);
 
     auto const worker = params().at("name");
@@ -247,11 +240,11 @@ void HttpQservMonitorModule::_worker() {
     } else {
         result["status"][worker]["success"] = 0;
     }        
-    sendData(result);
+    return result;
 }
 
 
-void HttpQservMonitorModule::_userQueries() {
+json HttpQservMonitorModule::_userQueries() {
     debug(__func__);
 
     auto const config = controller()->serviceProvider()->config();
@@ -384,19 +377,18 @@ void HttpQservMonitorModule::_userQueries() {
             result["queries_past"].push_back(resultRow);
         }
     }
-    sendData(result);
+    return result;
 }
 
 
-void HttpQservMonitorModule::_userQuery() {
+json HttpQservMonitorModule::_userQuery() {
     debug(__func__);
 
     auto const id = stoull(params().at("id"));
 
     debug(__func__, " id=" + to_string(id));
 
-    json result;
-    sendData(result);
+    return json::object();
 }
 
 

@@ -27,6 +27,7 @@
 
 // Qserv headers
 #include "replica/DatabaseServices.h"
+#include "replica/HttpExceptions.h"
 #include "replica/ServiceProvider.h"
 
 using namespace std;
@@ -57,21 +58,16 @@ HttpControllersModule::HttpControllersModule(Controller::Ptr const& controller,
 }
 
 
-void HttpControllersModule::executeImpl(string const& subModuleName) {
-
-    if (subModuleName.empty()) {
-        _controllers();
-    } else if (subModuleName == "SELECT-ONE-BY-ID") {
-        _oneController();
-    } else {
-        throw invalid_argument(
-                context() + "::" + string(__func__) +
-                "  unsupported sub-module: '" + subModuleName + "'");
-    }
+json HttpControllersModule::executeImpl(string const& subModuleName) {
+    if (subModuleName.empty()) return _controllers();
+    else if (subModuleName == "SELECT-ONE-BY-ID") return _oneController();
+    throw invalid_argument(
+            context() + "::" + string(__func__) +
+            "  unsupported sub-module: '" + subModuleName + "'");
 }
 
 
-void HttpControllersModule::_controllers() {
+json HttpControllersModule::_controllers() {
     debug(__func__);
 
     uint64_t const fromTimeStamp = query().optionalUInt64("from");
@@ -85,27 +81,24 @@ void HttpControllersModule::_controllers() {
     // Just descriptions of the Controllers. No persistent logs in this
     // report.
 
-    json controllersJson;
-
     auto const controllers =
         controller()->serviceProvider()->databaseServices()->controllers(
             fromTimeStamp,
             toTimeStamp,
             maxEntries);
 
+    json controllersJson;
     for (auto&& info: controllers) {
         bool const isCurrent = info.id == controller()->identity().id;
         controllersJson.push_back(info.toJson(isCurrent));
     }
-
     json result;
     result["controllers"] = controllersJson;
-
-    sendData(result);
+    return result;
 }
 
 
-void HttpControllersModule::_oneController() {
+json HttpControllersModule::_oneController() {
     debug(__func__);
 
     auto const id = params().at("id");
@@ -120,6 +113,7 @@ void HttpControllersModule::_oneController() {
     debug(string(__func__) + " log_to="         + to_string(toTimeStamp));
     debug(string(__func__) + " log_max_events=" + to_string(maxEvents));
 
+    json result;
     try {
         // General description of the Controller
 
@@ -127,8 +121,6 @@ void HttpControllersModule::_oneController() {
         auto const controllerInfo = databaseServices->controller(id);
 
         bool const isCurrent = controllerInfo.id == controller()->identity().id;
-
-        json result;
         result["controller"] = controllerInfo.toJson(isCurrent);
 
         // Pull the Controller log data if requested
@@ -145,11 +137,11 @@ void HttpControllersModule::_oneController() {
             }
         }
         result["log"] = jsonLog;
-        sendData(result);
 
     } catch (DatabaseServicesNotFound const& ex) {
-        sendError(__func__, "no such controller found");
+        throw HttpError(__func__, "no such controller found");
     }
+    return result;
 }
 
 }}}  // namespace lsst::qserv::replica
