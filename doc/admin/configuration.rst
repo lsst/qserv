@@ -9,7 +9,7 @@ Goals
 
 Qserv installation procedure consists of next steps :
 
-.. _eups https://github.com/RobertLuptonTheGood/eups
+.. _eups: https://github.com/RobertLuptonTheGood/eups
 
 - download, build and install Qserv using eups_,
 - configure Qserv.

@@ -12,12 +12,7 @@ Continuous integration server launches Qserv build and also multi-node integrati
 
 ## Documentation
 
-### Current release
+[Documentation for master branch](https://qserv.lsst.io/)
 
 
-See http://slac.stanford.edu/exp/lsst/qserv/
-
-### Development version
-
-Documentation is avaible in doc/source
 

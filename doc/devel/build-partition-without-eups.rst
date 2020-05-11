@@ -6,17 +6,16 @@ Developer may be interested to build Qserv packages without having to install
 eups stack. An example is given here with the partition package, whose build
 system relies on sconsUtils.
 
-**************
 Pre-requisites
-**************
+==============
 
 Install scons v2.1.0 or greater.
 
-*****
 Build 
-*****
+=====
 
 * Install sconsUtils:
+
 .. code-block:: bash
 
    # clone sconsUtils repository
@@ -25,6 +24,7 @@ Build
    git clone git://git.lsstcorp.org/LSST/DMS/devenv/sconsUtils
 
 * Clone partition repository:
+
 .. code-block:: bash
 
    # clone partition repository
@@ -37,11 +37,13 @@ Build
    cd partition
 
 * Retrieve sconsUtils configuration files for Boost: 
+
 .. code-block:: bash
 
    git archive --remote=git://git.lsstcorp.org/LSST/external/boost --format=tar HEAD ups/*.cfg | tar xv
 
 * Define build environment:
+
 .. code-block:: bash
 
    export PYTHONPATH=${PYTHONPATH}:${SRC_DIR}/sconsUtils/python/

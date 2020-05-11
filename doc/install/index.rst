@@ -5,8 +5,5 @@ Installation
 .. toctree::
    :maxdepth: 2
 
-   quick-start
-   automated
+   k8s
    docker
-   k8s-user
-   k8s-sysadmin
