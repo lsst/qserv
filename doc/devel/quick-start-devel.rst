@@ -14,7 +14,7 @@ dependencies.
 Pre-requisites
 **************
 
-Use a Qserv dependencies container image, named qserv/qserv:deps_YYYYMMDD, and then build and install inside it all
+Use a Qserv dependencies container image, named ``qserv/qserv:deps_YYYYMMDD``, and then build and install inside it all
 source dependencies for the current Qserv release:
 
 .. code-block:: bash

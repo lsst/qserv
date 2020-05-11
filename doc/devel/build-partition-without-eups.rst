@@ -6,15 +6,13 @@ Developer may be interested to build Qserv packages without having to install
 eups stack. An example is given here with the partition package, whose build
 system relies on sconsUtils.
 
-**************
 Pre-requisites
-**************
+==============
 
 Install scons v2.1.0 or greater.
 
-*****
 Build 
-*****
+=====
 
 * Install sconsUtils:
 
