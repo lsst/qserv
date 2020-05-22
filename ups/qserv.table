@@ -1,7 +1,6 @@
 setupRequired(antlr4)
 setupRequired(db)
 setupRequired(log)
-setupRequired(log4cxx)
 setupRequired(mariadb)
 #setupRequired(mariadbclient)
 setupRequired(mysqlproxy)
