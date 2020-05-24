@@ -31,6 +31,7 @@
 #include "replica/HttpIngestChunksModule.h"
 #include "replica/HttpIngestModule.h"
 #include "replica/HttpJobsModule.h"
+#include "replica/HttpMetaModule.h"
 #include "replica/HttpQservMonitorModule.h"
 #include "replica/HttpRequestsModule.h"
 #include "replica/HttpReplicationLevelsModule.h"
@@ -81,6 +82,14 @@ void HttpProcessor::_initialize() {
     auto const self = shared_from_this();
 
     controller()->serviceProvider()->httpServer()->addHandlers({
+        {"GET", "/meta/version",
+            [self](qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp) {
+                HttpMetaModule::process(
+                        self->controller(), self->name(), self->_processorConfig,
+                        req, resp,
+                        "VERSION");
+            }
+        },
         {"GET", "/replication/catalogs",
             [self](qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp) {
                 HttpCatalogsModule::process(
