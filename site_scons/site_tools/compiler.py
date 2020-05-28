@@ -113,6 +113,8 @@ def generate(env):
         # that is in LD_LIBRARY_PATH
         if 'LD_LIBRARY_PATH' in os.environ:
             env.Append(LINKFLAGS=["-Wl,-rpath-link=" + os.environ["LD_LIBRARY_PATH"]])
+        if 'CONDA_PREFIX' in os.environ:
+            env.Prepend(LINKFLAGS=["-Wl,-rpath-link=" + os.path.join(os.environ["CONDA_PREFIX"], "lib")])
 
         env.Append(LINKFLAGS=["-pthread"])
 
