@@ -149,6 +149,7 @@ def standardModule(env, exclude=None, module=None, test_libs=None, unit_tests=No
     libs = [mylib]
     libs += Split(build_data['shlibs'].get(mylib, {}).get('libs', []))
     libs += Split(test_libs or [])
+    libs += ["rt"]
 
     def Prog(cc_files):
         return env.Program(cc_files, LIBS=libs,
