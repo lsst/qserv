@@ -60,7 +60,10 @@ def _findPrefixFromName(product):
     product_envvar = "%s_DIR" % product.upper()
     prefix = os.getenv(product_envvar)
     if not prefix:
-        log.fail("Could not locate %s install prefix using %s" % (product, product_envvar))
+        prefix = os.getenv("CONDA_PREFIX")
+        if not prefix:
+            log.fail("Could not locate %s install prefix using %s or CONDA_PREFIX"
+                     % (product, product_envvar))
     return prefix
 
 
