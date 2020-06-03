@@ -1,6 +1,7 @@
 setupRequired(antlr4)
 setupRequired(db)
 setupRequired(log)
+setupRequired(lua)
 setupRequired(mariadb)
 setupRequired(mysqlproxy)
 setupRequired(partition)
