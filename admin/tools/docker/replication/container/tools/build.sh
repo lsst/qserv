@@ -34,7 +34,7 @@ docker run \
        -v /etc/group:/etc/group:ro \
        -v $HOME:$HOME \
        -v $PWD:$PWD \
-       qserv/replica:dev \
+       qserv/replica:dev_conda \
        bash -c '$SOURCE/admin/tools/docker/replication/container/tools/collect.sh $SOURCE'
 
 echo "************************************************************************************************"
