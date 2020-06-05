@@ -255,7 +255,7 @@ bool QueryRunner::_fillRows(MYSQL_RES* result, int numFields, uint& rowCount, si
                 rawRow->add_isnull(true);
             }
         }
-        tSize += rawRow->ByteSize();
+        tSize += rawRow->ByteSizeLong();
         ++rowCount;
 
         unsigned int szLimit = std::min(proto::ProtoHeaderWrap::PROTOBUFFER_DESIRED_LIMIT,

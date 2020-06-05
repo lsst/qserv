@@ -108,7 +108,7 @@ public:
     template <class T>
     void serialize(T const& message) {
 
-        uint32_t const bytes = message.ByteSize();
+        uint32_t const bytes = message.ByteSizeLong();
 
         // Make sure we have enough space to accommodate the frame length
         // and the message body.
