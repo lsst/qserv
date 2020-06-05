@@ -235,7 +235,7 @@ public:
     void serialize(T const& message) {
         
         uint32_t const headerLength  = sizeof(uint32_t);
-        uint32_t const messageLength = message.ByteSize();
+        uint32_t const messageLength = message.ByteSizeLong();
 
         // Make sure we have enough space to accomodate the frame header
         // and the message body.
