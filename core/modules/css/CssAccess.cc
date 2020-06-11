@@ -1087,11 +1087,11 @@ CssAccess::_fillScanTableParams(std::map<std::string, std::string>& paramMap,
 
 
 std::string CssAccess::getEmptyChunksTableName(std::string const& dbName) {
-    return _dbI->getEmptyChunksTableName(dbName);
+    return DbInterfaceMySql::getEmptyChunksTableName(dbName);
 }
 
 std::string CssAccess::getEmptyChunksSchema(std::string const& dbName) {
-    return _dbI->getEmptyChunksSchema(dbName);
+    return DbInterfaceMySql::getEmptyChunksSchema(dbName);
 }
 
 }}} // namespace lsst::qserv::css
