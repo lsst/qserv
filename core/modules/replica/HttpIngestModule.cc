@@ -705,12 +705,7 @@ json HttpIngestModule::_buildEmptyChunksList() {
     debug(__func__, "database=" + database);
     debug(__func__, "force=" + string(force ? "1" : "0"));
 
-    auto const emptyListInfo = _buildEmptyChunksListImpl(database, force);
-
-    json result;
-    result["file"] = emptyListInfo.first;
-    result["num_chunks"] = emptyListInfo.second;
-    return result;
+    return _buildEmptyChunksListImpl(database, force);
 }
 
 
@@ -1013,8 +1008,8 @@ void HttpIngestModule::_publishDatabaseInMaster(DatabaseInfo const& databaseInfo
 }
 
 
-pair<string,size_t> HttpIngestModule::_buildEmptyChunksListImpl(string const& database,
-                                                                bool force) const {
+json HttpIngestModule::_buildEmptyChunksListImpl(string const& database,
+                                                 bool force) const {
     debug(__func__);
 
     auto const databaseServices = controller()->serviceProvider()->databaseServices();
@@ -1062,7 +1057,10 @@ pair<string,size_t> HttpIngestModule::_buildEmptyChunksListImpl(string const& da
     ofs.flush();
     ofs.close();
     
-    return make_pair(file, uniqueChunks.size());
+    json result;
+    result["file"] = file;
+    result["num_chunks"] = uniqueChunks.size();
+    return result;
 }
 
 
