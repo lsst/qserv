@@ -35,6 +35,7 @@
 
 // Qserv headers
 #include "css/CssAccess.h"
+#include "css/DbInterfaceMySql.h"
 #include "global/constants.h"
 #include "replica/AbortTransactionJob.h"
 #include "replica/ChunkedTable.h"
@@ -701,11 +702,13 @@ json HttpIngestModule::_buildEmptyChunksList() {
 
     string const database = body().required<string>("database");
     bool const force = (bool)body().optional<int>("force", 0);
+    bool const tableImpl = (bool)body().optional<int>("table_impl", 0);
 
     debug(__func__, "database=" + database);
     debug(__func__, "force=" + string(force ? "1" : "0"));
+    debug(__func__, "table_impl=" + string(tableImpl ? "1" : "0"));
 
-    return _buildEmptyChunksListImpl(database, force);
+    return _buildEmptyChunksListImpl(database, force, tableImpl);
 }
 
 
@@ -853,7 +856,7 @@ void HttpIngestModule::_publishDatabaseInMaster(DatabaseInfo const& databaseInfo
     // is automatically rolled-back in case of exceptions.
 
     {
-        database::mysql::ConnectionHandler const h(_qservMasterDbConnection());
+        database::mysql::ConnectionHandler const h(_qservMasterDbConnection("qservMeta"));
 
         // SQL statements to be executed
         vector<string> statements;
@@ -1004,12 +1007,14 @@ void HttpIngestModule::_publishDatabaseInMaster(DatabaseInfo const& databaseInfo
     }
     
     bool const forceRebuild = true;
-    _buildEmptyChunksListImpl(databaseInfo.name, forceRebuild);
+    bool const tableImpl = true;
+    _buildEmptyChunksListImpl(databaseInfo.name, forceRebuild, tableImpl);
 }
 
 
 json HttpIngestModule::_buildEmptyChunksListImpl(string const& database,
-                                                 bool force) const {
+                                                 bool force,
+                                                 bool tableImpl) const {
     debug(__func__);
 
     auto const databaseServices = controller()->serviceProvider()->databaseServices();
@@ -1029,36 +1034,55 @@ json HttpIngestModule::_buildEmptyChunksListImpl(string const& database,
     set<unsigned int> uniqueChunks;
     for (auto chunk: chunks) uniqueChunks.insert(chunk);
 
-    auto const file = "empty_" + database + ".txt";
-    auto const filePath = fs::path(config->controllerEmptyChunksDir()) / file;
-
-    if (not force) {
-        boost::system::error_code ec;
-        fs::file_status const stat = fs::status(filePath, ec);
-        if (stat.type() == fs::status_error) {
-            throw runtime_error("failed to check the status of file: " + filePath.string());
-        }
-        if (fs::exists(stat)) {
-            throw runtime_error("'force' is required to overwrite existing file: " + filePath.string());
-        }
-    }
-
-    debug(__func__, "creating/opening file: " + filePath.string());
-    ofstream ofs(filePath.string());
-    if (not ofs.good()) {
-        throw runtime_error("failed to create/open file: " + filePath.string());
-    }
     unsigned int const maxChunkAllowed = 1000000;
-    for (unsigned int chunk = 0; chunk < maxChunkAllowed; ++chunk) {
-        if (not uniqueChunks.count(chunk)) {
-            ofs << chunk << "\n";
+
+    if (tableImpl) {
+        database::mysql::ConnectionHandler const h(_qservMasterDbConnection("qservCssData"));
+        string const table = css::DbInterfaceMySql::getEmptyChunksTableName(database);
+        vector<string> statements;
+        if (force) statements.push_back("DROP TABLE IF EXISTS " + h.conn->sqlId(table));
+        statements.push_back(css::DbInterfaceMySql::getEmptyChunksSchema(database));
+        for (unsigned int chunk = 0; chunk < maxChunkAllowed; ++chunk) {
+            if (not uniqueChunks.count(chunk)) {
+                statements.push_back(h.conn->sqlInsertQuery(table, chunk));
+            }
         }
+        h.conn->execute([&statements](decltype(h.conn) conn) {
+            conn->begin();
+            for (auto const& query: statements) {
+                conn->execute(query);
+            }
+            conn->commit();
+        });
+    } else {
+        auto const file = "empty_" + database + ".txt";
+        auto const filePath = fs::path(config->controllerEmptyChunksDir()) / file;
+
+        if (not force) {
+            boost::system::error_code ec;
+            fs::file_status const stat = fs::status(filePath, ec);
+            if (stat.type() == fs::status_error) {
+                throw runtime_error("failed to check the status of file: " + filePath.string());
+            }
+            if (fs::exists(stat)) {
+                throw runtime_error("'force' is required to overwrite existing file: " + filePath.string());
+            }
+        }
+
+        debug(__func__, "creating/opening file: " + filePath.string());
+        ofstream ofs(filePath.string());
+        if (not ofs.good()) {
+            throw runtime_error("failed to create/open file: " + filePath.string());
+        }
+        for (unsigned int chunk = 0; chunk < maxChunkAllowed; ++chunk) {
+            if (not uniqueChunks.count(chunk)) {
+                ofs << chunk << "\n";
+            }
+        }
+        ofs.flush();
+        ofs.close();
     }
-    ofs.flush();
-    ofs.close();
-    
     json result;
-    result["file"] = file;
     result["num_chunks"] = uniqueChunks.size();
     return result;
 }
@@ -1126,7 +1150,7 @@ void HttpIngestModule::_createSecondaryIndex(DatabaseInfo const& databaseInfo) c
     // Manage the new connection via the RAII-style handler to ensure the transaction
     // is automatically rolled-back in case of exceptions.
 
-    database::mysql::ConnectionHandler const h(_qservMasterDbConnection());
+    database::mysql::ConnectionHandler const h(_qservMasterDbConnection("qservMeta"));
     auto const escapedTableName = h.conn->sqlId(databaseInfo.name + "__" + databaseInfo.directorTable);
 
     vector<string> queries;
@@ -1166,7 +1190,7 @@ void HttpIngestModule::_addPartitionToSecondaryIndex(DatabaseInfo const& databas
     // Manage the new connection via the RAII-style handler to ensure the transaction
     // is automatically rolled-back in case of exceptions.
 
-    database::mysql::ConnectionHandler const h(_qservMasterDbConnection());
+    database::mysql::ConnectionHandler const h(_qservMasterDbConnection("qservMeta"));
     string const query =
         "ALTER TABLE " + h.conn->sqlId(databaseInfo.name + "__" + databaseInfo.directorTable) +
         " ADD PARTITION (PARTITION `p" + to_string(transactionId) + "` VALUES IN (" + to_string(transactionId) +
@@ -1193,7 +1217,7 @@ void HttpIngestModule::_removePartitionFromSecondaryIndex(DatabaseInfo const& da
     // Manage the new connection via the RAII-style handler to ensure the transaction
     // is automatically rolled-back in case of exceptions.
 
-    database::mysql::ConnectionHandler const h(_qservMasterDbConnection());
+    database::mysql::ConnectionHandler const h(_qservMasterDbConnection("qservMeta"));
     string const query =
         "ALTER TABLE " + h.conn->sqlId(databaseInfo.name + "__" + databaseInfo.directorTable) +
         " DROP PARTITION `p" + to_string(transactionId) + "`";
@@ -1225,7 +1249,7 @@ void HttpIngestModule::_consolidateSecondaryIndex(DatabaseInfo const& databaseIn
     // Manage the new connection via the RAII-style handler to ensure the transaction
     // is automatically rolled-back in case of exceptions.
 
-    database::mysql::ConnectionHandler const h(_qservMasterDbConnection());
+    database::mysql::ConnectionHandler const h(_qservMasterDbConnection("qservMeta"));
     string const query =
         "ALTER TABLE " + h.conn->sqlId(databaseInfo.name + "__" + databaseInfo.directorTable) +
         " REMOVE PARTITIONING";
@@ -1251,7 +1275,7 @@ void HttpIngestModule::_deleteSecondaryIndex(DatabaseInfo const& databaseInfo) c
     // Manage the new connection via the RAII-style handler to ensure the transaction
     // is automatically rolled-back in case of exceptions.
 
-    database::mysql::ConnectionHandler const h(_qservMasterDbConnection());
+    database::mysql::ConnectionHandler const h(_qservMasterDbConnection("qservMeta"));
     string const query =
         "DROP TABLE IF EXISTS " + h.conn->sqlId(databaseInfo.name + "__" + databaseInfo.directorTable);
 
@@ -1303,7 +1327,7 @@ void HttpIngestModule::_qservSync(DatabaseInfo const& databaseInfo,
 }
 
 
-database::mysql::Connection::Ptr HttpIngestModule::_qservMasterDbConnection() const {
+database::mysql::Connection::Ptr HttpIngestModule::_qservMasterDbConnection(string const& database) const {
     auto const config = controller()->serviceProvider()->config();
     return database::mysql::Connection::open(
         database::mysql::ConnectionParams(
@@ -1311,7 +1335,7 @@ database::mysql::Connection::Ptr HttpIngestModule::_qservMasterDbConnection() co
             config->qservMasterDatabasePort(),
             "root",
             Configuration::qservMasterDatabasePassword(),
-            "qservMeta"
+            database
         )
     );
 }
