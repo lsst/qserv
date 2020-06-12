@@ -56,9 +56,9 @@ public:
     // Destructor
     ~DbInterfaceMySql() = default;
 
-    std::string getEmptyChunksTableName(std::string const& dbName) { return dbName + "_EmptyChunks"; }
+    static std::string getEmptyChunksTableName(std::string const& dbName) { return dbName + "_EmptyChunks"; }
 
-    std::string getEmptyChunksSchema(std::string const& dbName) {
+    static std::string getEmptyChunksSchema(std::string const& dbName) {
         return "CREATE TABLE " + getEmptyChunksTableName(dbName) +
                " (chunkId INT NOT NULL PRIMARY KEY) ENGINE = INNODB";
     }

@@ -192,12 +192,17 @@ private:
 
     /**
      * (Re-)build the empty chunks list (table) for the specified database.
-     * @param database the name of a database
-     * @param force rebuild the file if 'true'
-     * @return pair of (empty chunk lists file name, number of chunks)
+     * The methods throws exceptions in case of any errors.
+     *
+     * @param database The name of a database.
+     * @param force Rebuild the list if 'true'.
+     * @param tableImpl Create/update the table-based list implementation if 'true'.
+     * @return An object representing a result of the operation (empty chunk list
+     *   file/table name, number of chunks) in case of successful completion.
      */
-    std::pair<std::string,size_t> _buildEmptyChunksListImpl(std::string const& database,
-                                                            bool force) const;
+    nlohmann::json _buildEmptyChunksListImpl(std::string const& database,
+                                             bool force,
+                                             bool tableImpl) const;
 
     /**
      * This method will tell all (or a subset of) workers to reload cache Configuration
@@ -267,8 +272,9 @@ private:
     void _qservSync(DatabaseInfo const& databaseInfo,
                     bool allWorkers) const;
 
-    /// @return connection object for the Qserv Master Database server
-    std::shared_ptr<database::mysql::Connection> _qservMasterDbConnection() const;
+    /// @param database The name of a database to connect to.
+    /// @return A connection object for the Qserv Master Database server.
+    std::shared_ptr<database::mysql::Connection> _qservMasterDbConnection(std::string const& database) const;
 
     // The name and a type of a special column for the super-transaction-based ingest
 
