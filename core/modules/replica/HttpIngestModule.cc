@@ -57,6 +57,9 @@
 #include "replica/SqlEnableDbJob.h"
 #include "replica/SqlRemoveTablePartitionsJob.h"
 
+// LSST headers
+#include "lsst/sphgeom/Chunker.h"
+
 using namespace std;
 using json = nlohmann::json;
 using namespace lsst::qserv::replica;
@@ -1025,16 +1028,22 @@ json HttpIngestModule::_buildEmptyChunksListImpl(string const& database,
         throw invalid_argument("database is already published");
     }
 
-    bool const enabledWorkersOnly = true;
-    vector<unsigned int> chunks;
-    databaseServices->findDatabaseChunks(chunks, database, enabledWorkersOnly);
+    // Get a collection of all possible chunks which are allowed to be present
+    // in the database given its partitioning scheme.
+    auto const familyInfo = config->databaseFamilyInfo(databaseInfo.family);
+    lsst::sphgeom::Chunker const chunker(familyInfo.numStripes, familyInfo.numSubStripes);
+    auto const allChunks = chunker.getAllChunks();
 
-    // Sanitize the collection of chunks to ensure it only has unique
-    // chunk numbers.
-    set<unsigned int> uniqueChunks;
-    for (auto chunk: chunks) uniqueChunks.insert(chunk);
+    // Get the numbers of chunks ingested into the database. They will be excluded
+    // from the "empty chunk list".
+    set<unsigned int> ingestedChunks;
+    {
+        bool const enabledWorkersOnly = true;
+        vector<unsigned int> chunks;
+        databaseServices->findDatabaseChunks(chunks, database, enabledWorkersOnly);
 
-    unsigned int const maxChunkAllowed = 1000000;
+        for (auto chunk: chunks) ingestedChunks.insert(chunk);
+    }
 
     if (tableImpl) {
         database::mysql::ConnectionHandler const h(_qservMasterDbConnection("qservCssData"));
@@ -1042,8 +1051,8 @@ json HttpIngestModule::_buildEmptyChunksListImpl(string const& database,
         vector<string> statements;
         if (force) statements.push_back("DROP TABLE IF EXISTS " + h.conn->sqlId(table));
         statements.push_back(css::DbInterfaceMySql::getEmptyChunksSchema(database));
-        for (unsigned int chunk = 0; chunk < maxChunkAllowed; ++chunk) {
-            if (not uniqueChunks.count(chunk)) {
+        for (auto&& chunk: allChunks) {
+            if (not ingestedChunks.count(chunk)) {
                 statements.push_back(h.conn->sqlInsertQuery(table, chunk));
             }
         }
@@ -1074,8 +1083,8 @@ json HttpIngestModule::_buildEmptyChunksListImpl(string const& database,
         if (not ofs.good()) {
             throw runtime_error("failed to create/open file: " + filePath.string());
         }
-        for (unsigned int chunk = 0; chunk < maxChunkAllowed; ++chunk) {
-            if (not uniqueChunks.count(chunk)) {
+        for (auto&& chunk: allChunks) {
+            if (not ingestedChunks.count(chunk)) {
                 ofs << chunk << "\n";
             }
         }
@@ -1083,7 +1092,8 @@ json HttpIngestModule::_buildEmptyChunksListImpl(string const& database,
         ofs.close();
     }
     json result;
-    result["num_chunks"] = uniqueChunks.size();
+    result["num_chunks_ingested"] = ingestedChunks.size();
+    result["num_chunks_all"] = allChunks.size();
     return result;
 }
 
