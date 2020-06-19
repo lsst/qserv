@@ -211,7 +211,13 @@ json HttpIngestChunksModule::_addChunk() {
     databaseServices->findReplicas(replicas, chunk, transactionInfo.database,
                                    enabledWorkersOnly, includeFileInfo);
     if (replicas.size() > 1) {
-        throw HttpError(__func__, "this chunk has too many replicas");
+        json replicasJson = json::array();
+        for (auto&& replica: replicas) {
+            replicasJson.push_back(replica.toJson());
+        }
+        json extendedError;
+        extendedError["replicas"] = replicasJson;
+        throw HttpError(__func__, "this chunk has too many replicas", extendedError);
     }
     if (replicas.size() == 1) {
         worker = replicas[0].worker();
