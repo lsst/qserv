@@ -32,6 +32,7 @@
 
 using namespace std;
 using namespace lsst::qserv::replica;
+using json = nlohmann::json;
 
 namespace {
 
@@ -112,6 +113,22 @@ string ReplicaInfo::FileInfo::_removeChunkAndExt() const {
         // the chunk table, both chunk number and extension removed
         return name.substr(0, underscorePos);
     }
+}
+
+
+json ReplicaInfo::FileInfo::toJson() const {
+
+    json infoJson;
+
+    infoJson["name"] = name;
+    infoJson["size"] = size;
+    infoJson["mtime"] = mtime;
+    infoJson["cs"] = cs;
+    infoJson["begin_transfer_time"] = beginTransferTime;
+    infoJson["end_transfer_time"] = endTransferTime;
+    infoJson["in_size"] = inSize;
+
+    return infoJson;
 }
 
 
@@ -245,6 +262,26 @@ map<string, ReplicaInfo::FileInfo> ReplicaInfo::fileInfoMap() const {
         result[f.name] = f;
     }
     return result;
+}
+
+
+json ReplicaInfo::toJson() const {
+
+    json infoJson;
+
+    infoJson["status"] = status2string(_status);
+    infoJson["worker"] = _worker;
+    infoJson["database"] = _database;
+    infoJson["chunk"] = _chunk;
+    infoJson["verify_time"] = _verifyTime;
+
+    json filesJson = json::array();
+    for (auto&& file: _fileInfo) {
+        filesJson.push_back(file.toJson());
+    }
+    infoJson["files"] = filesJson;
+
+    return infoJson;
 }
 
 
