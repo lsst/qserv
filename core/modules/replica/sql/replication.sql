@@ -540,6 +540,32 @@ CREATE TABLE IF NOT EXISTS `transaction` (
 ENGINE = InnoDB;
 
 
+-- -----------------------------------------------------
+-- Table `database_ingest`
+-- -----------------------------------------------------
+--
+-- Store a parameters and a state of the catalog ingest.
+
+DROP TABLE IF EXISTS `database_ingest` ;
+
+CREATE TABLE IF NOT EXISTS `database_ingest` (
+
+  `database` VARCHAR(255) NOT NULL ,
+  `category` VARCHAR(255) NOT NULL ,
+  `param`    VARCHAR(255) NOT NULL ,
+  `value`    TEXT NOT NULL ,
+
+  PRIMARY KEY (`database`, `category`, `param`) ,
+
+  CONSTRAINT `database_ingest_fk_1`
+    FOREIGN KEY (`database` )
+    REFERENCES `config_database` (`database` )
+    ON DELETE CASCADE
+    ON UPDATE CASCADE
+)
+ENGINE = InnoDB ;
+
+
 SET SQL_MODE=@OLD_SQL_MODE ;
 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS ;
 SET UNIQUE_CHECKS=@OLD_UNIQUE_CHECKS ;

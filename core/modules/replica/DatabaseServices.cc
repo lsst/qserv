@@ -167,6 +167,16 @@ json TransactionInfo::toJson() const {
 }
 
 
+json DatabaseIngestParam::toJson() const {
+    json info;
+    info["database"] = database;
+    info["category"] = category;
+    info["param"]    = param;
+    info["value"]    = value;
+    return info;
+}
+
+
 DatabaseServices::Ptr DatabaseServices::create(Configuration::Ptr const& configuration) {
 
     // If the configuration is pulled from a database then *try*

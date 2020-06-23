@@ -239,6 +239,23 @@ public:
 
 
 /**
+ * Class DatabaseIngestParam encapsulate a persistent state of the database ingest
+ * parameters which are required to be carried over through the catalog ingests.
+ */
+class DatabaseIngestParam {
+public:
+
+    std::string database;   /// The name of a database for which a parameter is defined
+    std::string category;   /// The name of the parameter's category.
+    std::string param;      /// The name of the parameter.
+    std::string value;      /// A value of the parameter.
+
+    /// @return JSON representation of the object
+    nlohmann::json toJson() const;
+};
+
+
+/**
   * Class DatabaseServices is a high-level interface to the database services
   * for replication entities: Controller, Job and Request.
   *
@@ -742,7 +759,47 @@ public:
     /// @throws std::logic_error if the transaction has already ended
     virtual TransactionInfo endTransaction(TransactionId id,
                                            bool abort=false) = 0;
-    
+
+    /// @return A descriptor of the parameter
+    /// @throws DatabaseServicesNotFound If no such parameter found.
+    virtual DatabaseIngestParam ingestParam(std::string const& database,
+                                            std::string const& category,
+                                            std::string const& param) = 0;
+
+    /**
+     * Find parameters in scope of database and (optionally) a category.
+     *
+     * @param database The name of a database.
+     * @param category (optional) The name of a parameter's category. If the name is empty
+     *   then parameters from all categories will be returned.
+     *
+     * @return A collection the parameter descriptors.
+     */
+    virtual std::vector<DatabaseIngestParam> ingestParams(std::string const& database,
+                                                          std::string const& category=std::string()) = 0;
+
+    /**
+     * Save or update a value of a parameter.
+     * 
+     * @param database The name of a database.
+     * @param category The name of a parameter's category.
+     * @param param The name of the parameter to be saved.
+     * @param value A value of the parameter.
+     */
+    virtual void saveIngestParam(std::string const& database,
+                                 std::string const& category,
+                                 std::string const& param,
+                                 std::string const& value) = 0;
+
+    /**
+     * Save or update a value of a parameter.
+     * 
+     * @param info A descriptor (including its value) of the parameter.
+     */
+    void saveIngestParam(DatabaseIngestParam const& info) {
+        saveIngestParam(info.database, info.category, info.param, info.value);
+    }
+
 protected:
 
     DatabaseServices() = default;

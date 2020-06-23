@@ -187,6 +187,18 @@ public:
     TransactionInfo endTransaction(TransactionId id,
                                    bool abort=false) final;
 
+    DatabaseIngestParam ingestParam(std::string const& database,
+                                    std::string const& category,
+                                    std::string const& param) final;
+
+    std::vector<DatabaseIngestParam> ingestParams(std::string const& database,
+                                                  std::string const& category=std::string()) final;
+
+    void saveIngestParam(std::string const& database,
+                         std::string const& category,
+                         std::string const& param,
+                         std::string const& value) final;
+
 private:
 
     std::string _context(std::string const& func=std::string()) const;
@@ -334,6 +346,12 @@ private:
                                          std::string const& predicate);
 
     std::vector<TransactionInfo> _findTransactionsImpl(util::Lock const& lock,
+                                                       std::string const& predicate);
+
+    DatabaseIngestParam _ingestParamImpl(util::Lock const& lock,
+                                         std::string const& predicate);
+
+    std::vector<DatabaseIngestParam> _ingestParamsImpl(util::Lock const& lock,
                                                        std::string const& predicate);
 
     // Input parameters

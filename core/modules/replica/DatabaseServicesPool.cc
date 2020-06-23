@@ -380,7 +380,7 @@ TransactionInfo DatabaseServicesPool::transaction(TransactionId id) {
 }
 
 
-std::vector<TransactionInfo> DatabaseServicesPool::transactions(string const& databaseName) {
+vector<TransactionInfo> DatabaseServicesPool::transactions(string const& databaseName) {
     ServiceAllocator service(shared_from_base<DatabaseServicesPool>());
     return service()->transactions(databaseName);
 }
@@ -397,6 +397,30 @@ TransactionInfo DatabaseServicesPool::endTransaction(TransactionId id,
     ServiceAllocator service(shared_from_base<DatabaseServicesPool>());
     return service()->endTransaction(id,
                                      abort);
+}
+
+
+DatabaseIngestParam DatabaseServicesPool::ingestParam(string const& database,
+                                                      string const& category,
+                                                      string const& param) {
+    ServiceAllocator service(shared_from_base<DatabaseServicesPool>());
+    return service()->ingestParam(database, category, param);
+}
+
+
+vector<DatabaseIngestParam> DatabaseServicesPool::ingestParams(string const& database,
+                                                               string const& category) {
+    ServiceAllocator service(shared_from_base<DatabaseServicesPool>());
+    return service()->ingestParams(database, category);
+}
+
+
+void DatabaseServicesPool::saveIngestParam(string const& database,
+                                           string const& category,
+                                           string const& param,
+                                           string const& value) {
+    ServiceAllocator service(shared_from_base<DatabaseServicesPool>());
+    service()->saveIngestParam(database, category, param, value);
 }
 
 
