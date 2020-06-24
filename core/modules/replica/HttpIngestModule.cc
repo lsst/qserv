@@ -248,7 +248,11 @@ json HttpIngestModule::_beginTransaction() {
         // may be screwed/confused by the presence of the "invisible" transaction.
         transaction = databaseServices->beginTransaction(databaseInfo.name);
         try {
-            _addPartitionToSecondaryIndex(databaseInfo, transaction.id);
+            // This operation can be vetoed by a catalog ingest workflow at the database
+            // registration time.
+            if (_autoBuildSecondaryIndex(databaseInfo.name)) {
+                _addPartitionToSecondaryIndex(databaseInfo, transaction.id);
+            }
         } catch (...) {
             bool const abort = true;
             transaction = databaseServices->endTransaction(transaction.id, abort);
@@ -278,7 +282,6 @@ json HttpIngestModule::_endTransaction() {
     TransactionId id = 0;
     string database;
     bool abort = false;
-    bool buildSecondaryIndex = false;
 
     auto const logEndTransaction = [&](string const& status, string const& msg=string()) {
         ControllerEvent event;
@@ -287,7 +290,6 @@ json HttpIngestModule::_endTransaction() {
         event.kvInfo.emplace_back("id", to_string(id));
         event.kvInfo.emplace_back("database", database);
         event.kvInfo.emplace_back("abort", abort ? "true" : "false");
-        event.kvInfo.emplace_back("build-secondary-index", buildSecondaryIndex ? "true" : "false");
         if (not msg.empty()) event.kvInfo.emplace_back("error", msg);
         logEvent(event);
     };
@@ -301,12 +303,10 @@ json HttpIngestModule::_endTransaction() {
 
         id = stoul(params().at("id"));
 
-        abort               = query().requiredBool("abort");
-        buildSecondaryIndex = query().optionalBool("build-secondary-index");
+        abort = query().requiredBool("abort");
 
         debug(__func__, "id="    + to_string(id));
         debug(__func__, "abort=" + to_string(abort ? 1 : 0));
-        debug(__func__, "build-secondary-index=" + to_string(abort ? 1 : 0));
 
         auto const transaction = databaseServices->endTransaction(id, abort);
         auto const databaseInfo = config->databaseInfo(transaction.database);
@@ -332,13 +332,17 @@ json HttpIngestModule::_endTransaction() {
             logJobFinishedEvent(AbortTransactionJob::typeName(), job, databaseInfo.family);
             result["data"] = job->getResultData().toJson();
 
-            _removePartitionFromSecondaryIndex(databaseInfo, transaction.id);
+            // This operation in a context of the "secondary index" table can be vetoed by
+            // a catalog ingest workflow at the database registration time.
+            if (_autoBuildSecondaryIndex(databaseInfo.name)) {
+                _removePartitionFromSecondaryIndex(databaseInfo, transaction.id);
+            }
 
         } else {
 
-            // Make the best attempt to build a layer at the "secondary index"
-            // if requested.
-            if (buildSecondaryIndex) {
+            // Make the best attempt to build a layer at the "secondary index" if requested
+            // by a catalog ingest workflow at the database registration time.
+            if (_autoBuildSecondaryIndex(databaseInfo.name)) {
                 bool const hasTransactions = true;
                 string const destinationPath = transaction.database + "__" + databaseInfo.directorTable;
                 auto const job = IndexJob::create(
@@ -358,7 +362,7 @@ json HttpIngestModule::_endTransaction() {
             }
 
             // TODO: replicate MySQL partition associated with the transaction
-            error(__func__, "replication stage is not implemented");
+            info(__func__, "replication stage is not implemented");
         }
         logEndTransaction("SUCCESS");
 
@@ -378,6 +382,7 @@ json HttpIngestModule::_addDatabase() {
     debug(__func__);
 
     auto const config = controller()->serviceProvider()->config();
+    auto const databaseServices = controller()->serviceProvider()->databaseServices();
 
     DatabaseInfo databaseInfo;
     databaseInfo.name = body().required<string>("database");
@@ -385,11 +390,13 @@ json HttpIngestModule::_addDatabase() {
     auto const numStripes    = body().required<unsigned int>("num_stripes");
     auto const numSubStripes = body().required<unsigned int>("num_sub_stripes");
     auto const overlap       = body().required<double>("overlap");
+    auto const autoBuildSecondaryIndex = body().optional<unsigned int>("auto_build_secondary_index", 1);
 
     debug(__func__, "database="      + databaseInfo.name);
     debug(__func__, "numStripes="    + to_string(numStripes));
     debug(__func__, "numSubStripes=" + to_string(numSubStripes));
     debug(__func__, "overlap="       + to_string(overlap));
+    debug(__func__, "autoBuildSecondaryIndex=" + to_string(autoBuildSecondaryIndex ? 1 : 0));
 
     if (overlap < 0) throw HttpError(__func__, "overlap can't have a negative value");
 
@@ -447,6 +454,14 @@ json HttpIngestModule::_addDatabase() {
 
     databaseInfo = config->addDatabase(databaseInfo);
 
+    // Register a requested mode for building the secondary index. If a value
+    // of the parameter is set to 'true' (or '1' in the database) then contributions
+    // into the index will be automatically made when committing transactions. Otherwise,
+    // it's going to be up to a user's catalog ingest workflow to (re-)build
+    // the index.
+    databaseServices->saveIngestParam(databaseInfo.name, "secondary-index", "auto-build",
+            to_string(autoBuildSecondaryIndex ? 1 : 0));
+
     // Tell workers to reload their configurations
     error = _reconfigureWorkers(databaseInfo, allWorkers, workerReconfigTimeoutSec());
     if (not error.empty()) throw HttpError(__func__, error);
@@ -486,10 +501,12 @@ json HttpIngestModule::_publishDatabase() {
     databaseServices->findDatabaseChunks(chunks, databaseInfo.name, allWorkers);
     if (chunks.empty()) throw HttpError(__func__, "the database doesn't have any chunks");
 
-    // ATTENTION: this operation may take a while if the table has
-    // a large number of entries
-    if (consolidateSecondayIndex) _consolidateSecondaryIndex(databaseInfo);
-
+    // The operation can be vetoed by the corresponding workflow parameter requested
+    // by a catalog ingest workflow at the database creation time.
+    if (_autoBuildSecondaryIndex(database) and consolidateSecondayIndex) {
+        // This operation may take a while if the table has a large number of entries.
+        _consolidateSecondaryIndex(databaseInfo);
+    }
     _grantDatabaseAccess(databaseInfo, allWorkers);
     _enableDatabase(databaseInfo, allWorkers);
     _createMissingChunkTables(databaseInfo, allWorkers);
@@ -687,8 +704,12 @@ json HttpIngestModule::_addTable() {
 
     // Create the secondary index table using an updated version of
     // the database descriptor.
-
-    if (isPartitioned and isDirector) _createSecondaryIndex(config->databaseInfo(databaseInfo.name));
+    //
+    // This operation can be vetoed by a catalog ingest workflow at the database
+    // registration time.
+    if (_autoBuildSecondaryIndex(databaseInfo.name)) {
+        if (isPartitioned and isDirector) _createSecondaryIndex(config->databaseInfo(databaseInfo.name));
+    }
 
     // This step is needed to get workers' Configuration in-sync with its
     // persistent state.
@@ -1348,6 +1369,19 @@ database::mysql::Connection::Ptr HttpIngestModule::_qservMasterDbConnection(stri
             database
         )
     );
+}
+
+
+bool HttpIngestModule::_autoBuildSecondaryIndex(string const& database) const {
+    auto const databaseServices = controller()->serviceProvider()->databaseServices();
+    try {
+        DatabaseIngestParam const paramInfo =
+            databaseServices->ingestParam(database, "secondary-index", "auto-build");
+        return paramInfo.value != "0";
+    } catch (DatabaseServicesNotFound const& ex) {
+        info(__func__, "the secondary index auto-build mode was not specified");
+    }
+    return false;
 }
 
 }}}  // namespace lsst::qserv::replica
