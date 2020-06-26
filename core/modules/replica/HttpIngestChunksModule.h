@@ -110,7 +110,7 @@ private:
                            std::string const& database,
                            unsigned int chunk) const;
 
-    static util::Mutex _ingestManagementMtx;    /// Synchronized access to the chunk management operations
+    static util::Mutex _ingestManagementMtx;  /// Synchronized access to the chunk management operations
 };
     
 }}} // namespace lsst::qserv::replica
