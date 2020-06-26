@@ -36,6 +36,9 @@
 #include <string>
 #include <vector>
 
+// Third party headers
+#include "nlohmann/json.hpp"
+
 // Forward declarations
 namespace lsst {
 namespace qserv {
@@ -96,6 +99,9 @@ public:
 
         // @return 'true' if this is the index file
         bool isIndex() const { return name.substr(name.size() - 4, 4) == ".MYI"; }
+
+        /// @return JSON representation of the object
+        nlohmann::json toJson() const;
 
     private:
 
@@ -194,6 +200,9 @@ public:
     bool operator!=(ReplicaInfo const& other) const {
         return not operator==(other);
     }
+
+    /// @return JSON representation of the object
+    nlohmann::json toJson() const;
 
 private:
 
