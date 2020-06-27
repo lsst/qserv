@@ -880,7 +880,7 @@ void HttpIngestModule::_publishDatabaseInMaster(DatabaseInfo const& databaseInfo
     // is automatically rolled-back in case of exceptions.
 
     {
-        database::mysql::ConnectionHandler const h(_qservMasterDbConnection("qservMeta"));
+        database::mysql::ConnectionHandler const h(qservMasterDbConnection("qservMeta"));
 
         // SQL statements to be executed
         vector<string> statements;
@@ -1067,7 +1067,7 @@ json HttpIngestModule::_buildEmptyChunksListImpl(string const& database,
     }
 
     if (tableImpl) {
-        database::mysql::ConnectionHandler const h(_qservMasterDbConnection("qservCssData"));
+        database::mysql::ConnectionHandler const h(qservMasterDbConnection("qservCssData"));
         string const table = css::DbInterfaceMySql::getEmptyChunksTableName(database);
         vector<string> statements;
         if (force) statements.push_back("DROP TABLE IF EXISTS " + h.conn->sqlId(table));
@@ -1181,7 +1181,7 @@ void HttpIngestModule::_createSecondaryIndex(DatabaseInfo const& databaseInfo) c
     // Manage the new connection via the RAII-style handler to ensure the transaction
     // is automatically rolled-back in case of exceptions.
 
-    database::mysql::ConnectionHandler const h(_qservMasterDbConnection("qservMeta"));
+    database::mysql::ConnectionHandler const h(qservMasterDbConnection("qservMeta"));
     auto const escapedTableName = h.conn->sqlId(databaseInfo.name + "__" + databaseInfo.directorTable);
 
     vector<string> queries;
@@ -1221,7 +1221,7 @@ void HttpIngestModule::_addPartitionToSecondaryIndex(DatabaseInfo const& databas
     // Manage the new connection via the RAII-style handler to ensure the transaction
     // is automatically rolled-back in case of exceptions.
 
-    database::mysql::ConnectionHandler const h(_qservMasterDbConnection("qservMeta"));
+    database::mysql::ConnectionHandler const h(qservMasterDbConnection("qservMeta"));
     string const query =
         "ALTER TABLE " + h.conn->sqlId(databaseInfo.name + "__" + databaseInfo.directorTable) +
         " ADD PARTITION (PARTITION `p" + to_string(transactionId) + "` VALUES IN (" + to_string(transactionId) +
@@ -1248,7 +1248,7 @@ void HttpIngestModule::_removePartitionFromSecondaryIndex(DatabaseInfo const& da
     // Manage the new connection via the RAII-style handler to ensure the transaction
     // is automatically rolled-back in case of exceptions.
 
-    database::mysql::ConnectionHandler const h(_qservMasterDbConnection("qservMeta"));
+    database::mysql::ConnectionHandler const h(qservMasterDbConnection("qservMeta"));
     string const query =
         "ALTER TABLE " + h.conn->sqlId(databaseInfo.name + "__" + databaseInfo.directorTable) +
         " DROP PARTITION `p" + to_string(transactionId) + "`";
@@ -1280,7 +1280,7 @@ void HttpIngestModule::_consolidateSecondaryIndex(DatabaseInfo const& databaseIn
     // Manage the new connection via the RAII-style handler to ensure the transaction
     // is automatically rolled-back in case of exceptions.
 
-    database::mysql::ConnectionHandler const h(_qservMasterDbConnection("qservMeta"));
+    database::mysql::ConnectionHandler const h(qservMasterDbConnection("qservMeta"));
     string const query =
         "ALTER TABLE " + h.conn->sqlId(databaseInfo.name + "__" + databaseInfo.directorTable) +
         " REMOVE PARTITIONING";
@@ -1306,7 +1306,7 @@ void HttpIngestModule::_deleteSecondaryIndex(DatabaseInfo const& databaseInfo) c
     // Manage the new connection via the RAII-style handler to ensure the transaction
     // is automatically rolled-back in case of exceptions.
 
-    database::mysql::ConnectionHandler const h(_qservMasterDbConnection("qservMeta"));
+    database::mysql::ConnectionHandler const h(qservMasterDbConnection("qservMeta"));
     string const query =
         "DROP TABLE IF EXISTS " + h.conn->sqlId(databaseInfo.name + "__" + databaseInfo.directorTable);
 
@@ -1355,20 +1355,6 @@ void HttpIngestModule::_qservSync(DatabaseInfo const& databaseInfo,
     if (qservSyncJob->extendedState() != Job::SUCCESS) {
         throw HttpError( __func__, "Qserv synchronization failed");
     }
-}
-
-
-database::mysql::Connection::Ptr HttpIngestModule::_qservMasterDbConnection(string const& database) const {
-    auto const config = controller()->serviceProvider()->config();
-    return database::mysql::Connection::open(
-        database::mysql::ConnectionParams(
-            config->qservMasterDatabaseHost(),
-            config->qservMasterDatabasePort(),
-            "root",
-            Configuration::qservMasterDatabasePassword(),
-            database
-        )
-    );
 }
 
 

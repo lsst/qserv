@@ -37,10 +37,7 @@ namespace lsst {
 namespace qserv {
 namespace replica {
     class DatabaseInfo;
-namespace database {
-namespace mysql {
-    class Connection;
-}}}}} // Forward declarations
+}}} // Forward declarations
 
 // This header declarations
 namespace lsst {
@@ -283,10 +280,6 @@ private:
      */
     void _qservSync(DatabaseInfo const& databaseInfo,
                     bool allWorkers) const;
-
-    /// @param database The name of a database to connect to.
-    /// @return A connection object for the Qserv Master Database server.
-    std::shared_ptr<database::mysql::Connection> _qservMasterDbConnection(std::string const& database) const;
 
     // The name and a type of a special column for the super-transaction-based ingest
 

@@ -23,8 +23,12 @@
 #include "replica/HttpModule.h"
 
 // Qserv headers
+#include "replica/Configuration.h"
+#include "replica/DatabaseMySQL.h"
+#include "replica/DatabaseServices.h"
 #include "replica/HttpExceptions.h"
 #include "replica/HttpRequestBody.h"
+#include "replica/ServiceProvider.h"
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -92,6 +96,20 @@ void HttpModule::debug(string const& msg) const {
 
 void HttpModule::error(string const& msg) const {
     LOGS(_log, LOG_LVL_ERROR, context() << msg);
+}
+
+
+database::mysql::Connection::Ptr HttpModule::qservMasterDbConnection(string const& database) const {
+    auto const config = controller()->serviceProvider()->config();
+    return database::mysql::Connection::open(
+        database::mysql::ConnectionParams(
+            config->qservMasterDatabaseHost(),
+            config->qservMasterDatabasePort(),
+            "root",
+            Configuration::qservMasterDatabasePassword(),
+            database
+        )
+    );
 }
 
 
