@@ -162,6 +162,7 @@ HttpIngestChunksModule::HttpIngestChunksModule(
 json HttpIngestChunksModule::executeImpl(string const& subModuleName) {
     if (subModuleName == "ADD-CHUNK") return _addChunk();
     else if (subModuleName == "ADD-CHUNK-LIST") return _addChunks();
+    else if (subModuleName == "GET-CHUNK-LIST") return _getChunks();
     throw invalid_argument(
             context() + "::" + string(__func__) +
             "  unsupported sub-module: '" + subModuleName + "'");
@@ -466,5 +467,63 @@ void HttpIngestChunksModule::_registerNewChunk(string const& worker,
             verifyTime);
     controller()->serviceProvider()->databaseServices()->saveReplicaInfo(newReplica);
 }
+
+
+json HttpIngestChunksModule::_getChunks() {
+    debug(__func__);
+
+    auto const databaseServices = controller()->serviceProvider()->databaseServices();
+    auto const config = controller()->serviceProvider()->config();
+
+    string const database = query().requiredString("database");
+    debug(__func__, "database=" + database);
+
+    auto const databaseInfo = config->databaseInfo(database);
+
+    // Locate replicas (if any) for all chunks of the database.
+    bool const enabledWorkersOnly = true;
+    vector<ReplicaInfo> replicas;
+    databaseServices->findDatabaseReplicas(replicas, database, enabledWorkersOnly);
+
+    // Build the chunk-to-worker map to be returned to a client in the result
+    // object. Note that published databases may have more than 1 replica of a chunk.
+
+    json result;
+    result["replica"] = json::array();
+
+    for (auto const& replica: replicas) {
+
+        json replicaResult;
+        replicaResult["chunk"] = replica.chunk();
+        replicaResult["worker"] = replica.worker(); 
+
+        // Initialize required attributes to the default values (all 0) for all
+        // relevant tables.
+        for (auto&& table: databaseInfo.partitionedTables) {
+            replicaResult[table]["overlap_rows"] = 0;          // TBC when available
+            replicaResult[table]["overlap_data_size"] = 0;
+            replicaResult[table]["overlap_index_size"] = 0;
+
+            replicaResult[table]["rows"] = 0;                  // TBC when available
+            replicaResult[table]["data_size"] = 0;
+            replicaResult[table]["index_size"] = 0;
+        }
+
+        // fetch and report actual values of the attributes.
+        for (auto&& file: replica.fileInfo()) {
+            auto& replicaTableResult = replicaResult[file.baseTable()];
+            if (file.isOverlap()) {
+                if      (file.isData())  replicaTableResult["overlap_data_size"]  = file.size;
+                else if (file.isIndex()) replicaTableResult["overlap_index_size"] = file.size;
+            } else {
+                if      (file.isData())  replicaTableResult["data_size"]  = file.size;
+                else if (file.isIndex()) replicaTableResult["index_size"] = file.size;
+            }
+        }
+        result["replica"].push_back(replicaResult);
+    }
+    return result;
+}
+
 
 }}}  // namespace lsst::qserv::replica
