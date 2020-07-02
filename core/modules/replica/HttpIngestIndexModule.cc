@@ -74,8 +74,8 @@ json HttpIngestIndexModule::_buildSecondaryIndex() {
     auto const config = controller()->serviceProvider()->config();
 
     string const database = body().required<string>("database");
-    bool const allowForPublished = (bool)body().optional<int>("allow_for_published", 0);
-    bool const rebuild = (bool)body().optional<int>("rebuild", 0);
+    bool const allowForPublished = body().optional<int>("allow_for_published", 0) != 0;
+    bool const rebuild = body().optional<int>("rebuild", 0) != 0;
 
     debug(__func__, "database=" + database);
     debug(__func__, "allow_for_published=" + string(allowForPublished ? "1" : "0"));

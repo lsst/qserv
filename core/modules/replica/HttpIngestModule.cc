@@ -587,9 +587,9 @@ json HttpIngestModule::_addTable() {
 
     auto const database      = body().required<string>("database");
     auto const table         = body().required<string>("table");
-    auto const isPartitioned = (bool)body().required<int>("is_partitioned");
+    auto const isPartitioned = body().required<int>("is_partitioned") != 0;
     auto const schema        = body().required<json>("schema");
-    auto const isDirector    = (bool)body().required<int>("is_director");
+    auto const isDirector    = body().required<int>("is_director") != 0;
     auto const directorKey   = body().optional<string>("director_key", "");
     auto const chunkIdColName    = body().optional<string>("chunk_id_key", "");
     auto const subChunkIdColName = body().optional<string>("sub_chunk_id_key", "");
@@ -725,8 +725,8 @@ json HttpIngestModule::_buildEmptyChunksList() {
     debug(__func__);
 
     string const database = body().required<string>("database");
-    bool const force = (bool)body().optional<int>("force", 0);
-    bool const tableImpl = (bool)body().optional<int>("table_impl", 0);
+    bool const force = body().optional<int>("force", 0) != 0;
+    bool const tableImpl = body().optional<int>("table_impl", 0) != 0;
 
     debug(__func__, "database=" + database);
     debug(__func__, "force=" + string(force ? "1" : "0"));
