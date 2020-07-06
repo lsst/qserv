@@ -111,7 +111,7 @@ list<pair<string,string>> SqlCreateIndexesJob::extendedPersistentState() const {
     result.emplace_back("index_name", indexName());
     result.emplace_back("index_comment", indexComment());
     result.emplace_back("index_num_columns", to_string(indexColumns().size()));
-    result.emplace_back("all_workers", allWorkers() ? "1" : "0");
+    result.emplace_back("all_workers", bool2str(allWorkers()));
     return result;
 }
 

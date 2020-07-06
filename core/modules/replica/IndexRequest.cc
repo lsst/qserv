@@ -343,7 +343,7 @@ list<pair<string,string>> IndexRequest::extendedPersistentState() const {
     list<pair<string,string>> result;
     result.emplace_back("database",         database());
     result.emplace_back("chunk",            to_string(chunk()));
-    result.emplace_back("has_transactions", hasTransactions() ? "1" : "0");
+    result.emplace_back("has_transactions", bool2str(hasTransactions()));
     result.emplace_back("transaction_id",   to_string(transactionId()));
     return result;
 }

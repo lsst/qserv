@@ -855,8 +855,8 @@ void DatabaseServicesMySQL::findWorkerReplicas(vector<ReplicaInfo>& replicas,
 
     string const context = "DatabaseServicesMySQL::" + string(__func__) +
         " worker=" + worker + " database=" + database +
-        " allDatabases=" + string(allDatabases ? "1" : "0") +
-        " isPublished=" + string(isPublished ? "1" : "0") + "  ";
+        " allDatabases=" + bool2str(allDatabases) +
+        " isPublished=" + bool2str(isPublished) + "  ";
 
     util::Lock lock(_mtx, context);
 
@@ -891,8 +891,8 @@ uint64_t DatabaseServicesMySQL::numWorkerReplicas(string const& worker,
 
     string const context = "DatabaseServicesMySQL::" + string(__func__) +
         " worker=" + worker + " database=" + database +
-        " allDatabases=" + string(allDatabases ? "1" : "0") +
-        " isPublished=" + string(isPublished ? "1" : "0") + "  ";
+        " allDatabases=" + bool2str(allDatabases) +
+        " isPublished=" + bool2str(isPublished) + "  ";
 
     util::Lock lock(_mtx, context);
 
@@ -941,8 +941,8 @@ void DatabaseServicesMySQL::_findWorkerReplicasImpl(util::Lock const& lock,
     string const context =
         "DatabaseServicesMySQL::" + string(__func__) +
         " worker=" + worker + " database=" + database +
-        " allDatabases=" + string(allDatabases ? "1" : "0") +
-        " isPublished=" + string(isPublished ? "1" : "0") + "  ";
+        " allDatabases=" + bool2str(allDatabases) +
+        " isPublished=" + bool2str(isPublished) + "  ";
 
     LOGS(_log, LOG_LVL_DEBUG, context);
 
@@ -980,8 +980,8 @@ void DatabaseServicesMySQL::findWorkerReplicas(vector<ReplicaInfo>& replicas,
     string const context =
         "DatabaseServicesMySQL::" + string(__func__) + " worker=" + worker +
         " chunk=" + to_string(chunk) + " family=" + databaseFamily +
-        " allDatabases=" + string(allDatabases ? "1" : "0") +
-        " isPublished=" + string(isPublished ? "1" : "0") + "  ";
+        " allDatabases=" + bool2str(allDatabases) +
+        " isPublished=" + bool2str(isPublished) + "  ";
 
     LOGS(_log, LOG_LVL_DEBUG, context);
 
@@ -1025,7 +1025,7 @@ void DatabaseServicesMySQL::findDatabaseReplicas(
                                 bool enabledWorkersOnly) {
     string const context =
         "DatabaseServicesMySQL::" + string(__func__) +
-        "  database=" + database + " enabledWorkersOnly=" + string(enabledWorkersOnly ? "1" : "0") +
+        "  database=" + database + " enabledWorkersOnly=" + bool2str(enabledWorkersOnly) +
         " ";
 
     LOGS(_log, LOG_LVL_DEBUG, context);
@@ -1064,7 +1064,7 @@ void DatabaseServicesMySQL::findDatabaseChunks(
                                 bool enabledWorkersOnly) {
     string const context =
         "DatabaseServicesMySQL::" + string(__func__) +
-        "  database=" + database + " enabledWorkersOnly=" + string(enabledWorkersOnly ? "1" : "0") +
+        "  database=" + database + " enabledWorkersOnly=" + bool2str(enabledWorkersOnly) +
         " ";
 
     LOGS(_log, LOG_LVL_DEBUG, context);

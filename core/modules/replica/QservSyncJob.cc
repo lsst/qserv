@@ -111,7 +111,7 @@ QservSyncJobResult const& QservSyncJob::getReplicaData() const {
 list<pair<string,string>> QservSyncJob::extendedPersistentState() const {
     list<pair<string,string>> result;
     result.emplace_back("database_family", databaseFamily());
-    result.emplace_back("force",           force() ? "1" : "0");
+    result.emplace_back("force", bool2str(force()));
     return result;
 }
 

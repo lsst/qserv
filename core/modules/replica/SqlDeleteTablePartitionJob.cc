@@ -97,7 +97,7 @@ list<pair<string,string>> SqlDeleteTablePartitionJob::extendedPersistentState() 
     result.emplace_back("database", database());
     result.emplace_back("table", table());
     result.emplace_back("transaction_id", to_string(transactionId()));
-    result.emplace_back("all_workers", string(allWorkers() ? "1" : "0"));
+    result.emplace_back("all_workers", bool2str(allWorkers()));
     return result;
 }
 

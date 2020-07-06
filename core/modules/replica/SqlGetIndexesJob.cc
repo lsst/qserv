@@ -91,7 +91,7 @@ list<pair<string,string>> SqlGetIndexesJob::extendedPersistentState() const {
     list<pair<string,string>> result;
     result.emplace_back("database", database());
     result.emplace_back("table", table());
-    result.emplace_back("all_workers", allWorkers() ? "1" : "0");
+    result.emplace_back("all_workers", bool2str(allWorkers()));
     return result;
 }
 

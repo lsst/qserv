@@ -257,8 +257,8 @@ DatabaseFamilyInfo ConfigurationBase::databaseFamilyInfo(string const& name) con
 vector<string> ConfigurationBase::databases(string const& family, bool allDatabases, bool isPublished) const {
 
     string const context_ = context() + string(__func__) + " "
-        + " family='" + family + "' allDatabases=" + string(allDatabases ? "1" : "0")
-        + " isPublished=" + string(isPublished ? "1" : "0") + "  ";
+        + " family='" + family + "' allDatabases=" + bool2str(allDatabases)
+        + " isPublished=" + bool2str(isPublished) + "  ";
 
     if (not family.empty() and not _databaseFamilyInfo.count(family)) {
         throw invalid_argument(context_ + "unknown database family");
@@ -326,7 +326,7 @@ string ConfigurationBase::asString() const {
     ss << context() << "defaultControllerEmptyChunksDir:      " << defaultControllerEmptyChunksDir << "\n";
     ss << context() << "defaultJobTimeoutSec:                 " << defaultJobTimeoutSec << "\n";
     ss << context() << "defaultJobHeartbeatTimeoutSec:        " << defaultJobHeartbeatTimeoutSec << "\n";
-    ss << context() << "defaultXrootdAutoNotify:              " << (defaultXrootdAutoNotify ? "1" : "0") << "\n";
+    ss << context() << "defaultXrootdAutoNotify:              " << bool2str(defaultXrootdAutoNotify) << "\n";
     ss << context() << "defaultXrootdHost:                    " << defaultXrootdHost << "\n";
     ss << context() << "defaultXrootdPort:                    " << defaultXrootdPort << "\n";
     ss << context() << "defaultXrootdTimeoutSec:              " << defaultXrootdTimeoutSec << "\n";
@@ -374,7 +374,7 @@ string ConfigurationBase::asString() const {
     ss << context() << "_controllerEmptyChunksDir:            " << _controllerEmptyChunksDir << "\n";
     ss << context() << "_jobTimeoutSec:                       " << _jobTimeoutSec << "\n";
     ss << context() << "_jobHeartbeatTimeoutSec:              " << _jobHeartbeatTimeoutSec << "\n";
-    ss << context() << "_xrootdAutoNotify:                    " << (_xrootdAutoNotify ? "1" : "0") << "\n";
+    ss << context() << "_xrootdAutoNotify:                    " << bool2str(_xrootdAutoNotify) << "\n";
     ss << context() << "_xrootdHost:                          " << _xrootdHost << "\n";
     ss << context() << "_xrootdPort:                          " << _xrootdPort << "\n";
     ss << context() << "_xrootdTimeoutSec:                    " << _xrootdTimeoutSec << "\n";

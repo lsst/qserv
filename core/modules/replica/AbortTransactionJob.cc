@@ -102,7 +102,7 @@ SqlJobResult const& AbortTransactionJob::getResultData() const {
 list<pair<string,string>> AbortTransactionJob::extendedPersistentState() const {
     list<pair<string,string>> result;
     result.emplace_back("transaction_id", to_string(transactionId()));
-    result.emplace_back("all_workers", allWorkers() ? "1" : "0");
+    result.emplace_back("all_workers", bool2str(allWorkers()));
     return result;
 }
 
@@ -116,7 +116,7 @@ list<pair<string,string>> AbortTransactionJob::persistentLogData() const {
             "status",
             "worker=" + worker +
             " table=" + table +
-            " completed=" + string(resultSet.extendedStatus == ExtendedCompletionStatus::EXT_STATUS_NONE ? "1" : "0") +
+            " completed=" + bool2str(resultSet.extendedStatus == ExtendedCompletionStatus::EXT_STATUS_NONE) +
             " error=" + resultSet.error
         );
     });

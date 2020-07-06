@@ -106,7 +106,7 @@ list<pair<string,string>> SqlCreateTablesJob::extendedPersistentState() const {
     result.emplace_back("engine", engine());
     result.emplace_back("partition_by_column", partitionByColumn());
     result.emplace_back("num_columns", to_string(columns().size()));
-    result.emplace_back("all_workers", allWorkers() ? "1" : "0");
+    result.emplace_back("all_workers", bool2str(allWorkers()));
     return result;
 }
 

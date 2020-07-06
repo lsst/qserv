@@ -1526,7 +1526,7 @@ void ConfigurationMySQL::_setImp(string const& category,
     string const context_ = context() + __func__;
 
     LOGS(_log, LOG_LVL_DEBUG, context_ << "  category: " << category << " param: " << param
-         << " updatePersistentState: " << (updatePersistentState ? "1" : "0"));
+         << " updatePersistentState: " << bool2str(updatePersistentState));
 
     database::mysql::ConnectionHandler handler;
     try {

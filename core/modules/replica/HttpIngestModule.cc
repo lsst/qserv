@@ -145,8 +145,8 @@ json HttpIngestModule::_getTransactions() {
 
     debug(__func__, "database=" + database);
     debug(__func__, "family=" + family);
-    debug(__func__, "all_databases=" + string(allDatabases ? "1": "0"));
-    debug(__func__, "is_published=" + string(isPublished ? "1": "0"));
+    debug(__func__, "all_databases=" + bool2str(allDatabases));
+    debug(__func__, "is_published=" + bool2str(isPublished));
 
     vector<string> databases;
     if (database.empty()) {
@@ -598,9 +598,9 @@ json HttpIngestModule::_addTable() {
 
     debug(__func__, "database="      + database);
     debug(__func__, "table="         + table);
-    debug(__func__, "isPartitioned=" + string(isPartitioned ? "1" : "0"));
+    debug(__func__, "isPartitioned=" + bool2str(isPartitioned));
     debug(__func__, "schema="        + schema.dump());
-    debug(__func__, "isDirector="    + string(isDirector ? "1" : "0"));
+    debug(__func__, "isDirector="    + bool2str(isDirector));
     debug(__func__, "directorKey="   + directorKey);
     debug(__func__, "chunkIdColName="    + chunkIdColName);
     debug(__func__, "subChunkIdColName=" + subChunkIdColName);
@@ -729,8 +729,8 @@ json HttpIngestModule::_buildEmptyChunksList() {
     bool const tableImpl = body().optional<int>("table_impl", 0) != 0;
 
     debug(__func__, "database=" + database);
-    debug(__func__, "force=" + string(force ? "1" : "0"));
-    debug(__func__, "table_impl=" + string(tableImpl ? "1" : "0"));
+    debug(__func__, "force=" + bool2str(force));
+    debug(__func__, "table_impl=" + bool2str(tableImpl));
 
     return _buildEmptyChunksListImpl(database, force, tableImpl);
 }

@@ -310,11 +310,11 @@ void MasterControllerHttpApp::_logControllerStartedEvent() const {
     event.kvInfo.emplace_back("worker-response-timeout", to_string(_workerResponseTimeoutSec));
     event.kvInfo.emplace_back("worker-evict-timeout",    to_string(_workerEvictTimeoutSec));
     event.kvInfo.emplace_back("qserv-sync-timeout",      to_string(_qservSyncTimeoutSec));
-    event.kvInfo.emplace_back("qserv-sync-force",                  _forceQservSync ? "1" : "0");
+    event.kvInfo.emplace_back("qserv-sync-force",         bool2str(_forceQservSync));
     event.kvInfo.emplace_back("worker-config-timeout",   to_string(_workerReconfigTimeoutSec));
     event.kvInfo.emplace_back("replicas",                to_string(_numReplicas));
-    event.kvInfo.emplace_back("purge",                             _purge ? "1" : "0");
-    event.kvInfo.emplace_back("permanent-worker-delete",           _permanentDelete ? "1" : "0");
+    event.kvInfo.emplace_back("purge",                    bool2str(_purge));
+    event.kvInfo.emplace_back("permanent-worker-delete",  bool2str(_permanentDelete));
 
     _logEvent(event);
 }

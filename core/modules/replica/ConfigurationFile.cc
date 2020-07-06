@@ -108,7 +108,7 @@ string ConfigurationFile::dump2init(ConfigurationIFace::Ptr const& config) {
 
     str << "[xrootd]\n"
         << "\n"
-        << "auto_notify         = " << (config->xrootdAutoNotify() ? "1" : "0") << "\n"
+        << "auto_notify         = " << bool2str(config->xrootdAutoNotify()) << "\n"
         << "host                = " << config->xrootdHost() << "\n"
         << "port                = " << config->xrootdPort() << "\n"
         << "request_timeout_sec = " << config->xrootdTimeoutSec() << "\n"
@@ -142,8 +142,8 @@ string ConfigurationFile::dump2init(ConfigurationIFace::Ptr const& config) {
         auto&& info = config->workerInfo(worker);
         str << "[worker:" << info.name << "]\n"
             << "\n"
-            << "is_enabled   = " << (info.isEnabled  ? "1" : "0") << "\n"
-            << "is_read_only = " << (info.isReadOnly ? "1" : "0") << "\n"
+            << "is_enabled   = " << bool2str(info.isEnabled ) << "\n"
+            << "is_read_only = " << bool2str(info.isReadOnly) << "\n"
             << "svc_host     = " << info.svcHost << "\n"
             << "svc_port     = " << info.svcPort << "\n"
             << "fs_host      = " << info.fsHost << "\n"
@@ -175,7 +175,7 @@ string ConfigurationFile::dump2init(ConfigurationIFace::Ptr const& config) {
         str << "[database:" << info.name << "]\n"
             << "\n"
             << "family             = " << info.family << "\n"
-            << "is_published       = " << (info.isPublished ? "1" : "0") << "\n"
+            << "is_published       = " << bool2str(info.isPublished) << "\n"
             << "partitioned_tables = " << info.partitionedTables << "\n"
             << "regular_tables     = " << info.regularTables << "\n"
             << "director_table     = " << info.directorTable << "\n"

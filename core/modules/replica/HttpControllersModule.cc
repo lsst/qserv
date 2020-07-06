@@ -108,7 +108,7 @@ json HttpControllersModule::_oneController() {
     uint64_t const toTimeStamp   = query().optionalUInt64("log_to", numeric_limits<uint64_t>::max());
     size_t   const maxEvents     = query().optionalUInt64("log_max_events");
 
-    debug(string(__func__) + " log="            +    string(log ? "1" : "0"));
+    debug(string(__func__) + " log="            +  bool2str(log));
     debug(string(__func__) + " log_from="       + to_string(fromTimeStamp));
     debug(string(__func__) + " log_to="         + to_string(toTimeStamp));
     debug(string(__func__) + " log_max_events=" + to_string(maxEvents));

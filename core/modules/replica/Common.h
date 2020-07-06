@@ -358,6 +358,14 @@ public:
     explicit IndexRequestParams(ProtocolRequestIndex const& request);
 };
 
+
+/**
+ * An utility function translating a boolean value into a string representation.
+ * @param v The input value.
+ * @return The result ("0" for "false" and "1" for "true").
+ */
+inline std::string bool2str(bool v) { return v ? "1" : "0"; }
+
 }}} // namespace lsst::qserv::replica
 
 #endif // LSST_QSERV_REPLICA_COMMON_H
