@@ -111,8 +111,8 @@ QservGetReplicasJobResult const& QservGetReplicasJob::getReplicaData() const {
 list<pair<string,string>> QservGetReplicasJob::extendedPersistentState() const {
     list<pair<string,string>> result;
     result.emplace_back("database_family", databaseFamily());
-    result.emplace_back("in_use_only",     inUseOnly()  ? "1" : "0");
-    result.emplace_back("all_workers",     allWorkers() ? "1" : "0");
+    result.emplace_back("in_use_only", bool2str(inUseOnly()));
+    result.emplace_back("all_workers", bool2str(allWorkers()));
     return result;
 }
 

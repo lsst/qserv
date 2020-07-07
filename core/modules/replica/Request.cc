@@ -180,9 +180,9 @@ string Request::toString(bool extended) const {
     oss << context() << "\n"
         << "  worker: " << worker() << "\n"
         << "  priority: " << priority() << "\n"
-        << "  keepTracking: " << (keepTracking() ? "1" : "0") << "\n"
-        << "  allowDuplicate: " << (allowDuplicate() ? "1" : "0") << "\n"
-        << "  disposeRequired: " << (disposeRequired() ? "1" : "0") << "\n"
+        << "  keepTracking: " << bool2str(keepTracking()) << "\n"
+        << "  allowDuplicate: " << bool2str(allowDuplicate()) << "\n"
+        << "  disposeRequired: " << bool2str(disposeRequired()) << "\n"
         << "  remoteId: " << remoteId() << "\n"
         << "  performance: " << performance() << "\n";
     if (extended) {

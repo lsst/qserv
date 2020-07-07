@@ -110,7 +110,7 @@ DeleteWorkerJobResult const& DeleteWorkerJob::getReplicaData() const {
 list<pair<string,string>> DeleteWorkerJob::extendedPersistentState() const {
     list<pair<string,string>> result;
     result.emplace_back("worker",           worker());
-    result.emplace_back("permanent_delete", permanentDelete() ? "1" : "0");
+    result.emplace_back("permanent_delete", bool2str(permanentDelete()));
     return result;
 }
 

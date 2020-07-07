@@ -39,6 +39,7 @@
 #include "boost/lexical_cast.hpp"
 
 // Qserv headers
+#include "replica/Common.h"
 #include "util/Issue.h"
 
 // Forward declarations
@@ -388,7 +389,7 @@ public:
 
     /// @see ArgumentParser::dumpNameValue()
     void dumpNameValue(std::ostream& os) const final {
-        os << name() << "=" << (_var ? "1" : "0");
+        os << name() << "=" << bool2str(_var);
     }
 
 private:

@@ -110,8 +110,8 @@ FindAllJobResult const& FindAllJob::getReplicaData() const {
 list<pair<string,string>> FindAllJob::extendedPersistentState() const {
     list<pair<string,string>> result;
     result.emplace_back("database_family",   databaseFamily());
-    result.emplace_back("save_replica_info", saveReplicaInfo() ? "1" : "0");
-    result.emplace_back("all_workers",       allWorkers()      ? "1" : "0");
+    result.emplace_back("save_replica_info", bool2str(saveReplicaInfo()));
+    result.emplace_back("all_workers",       bool2str(allWorkers()));
     return result;
 }
 

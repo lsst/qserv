@@ -118,7 +118,7 @@ list<pair<string,string>> MoveReplicaJob::extendedPersistentState() const {
     result.emplace_back("chunk",              to_string(chunk()));
     result.emplace_back("source_worker",      sourceWorker());
     result.emplace_back("destination_worker", destinationWorker());
-    result.emplace_back("purge",              purge() ? "1" : "0");
+    result.emplace_back("purge",              bool2str(purge()));
     return result;
 }
 

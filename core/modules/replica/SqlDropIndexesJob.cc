@@ -96,7 +96,7 @@ list<pair<string,string>> SqlDropIndexesJob::extendedPersistentState() const {
     result.emplace_back("database", database());
     result.emplace_back("table", table());
     result.emplace_back("index_name", indexName());
-    result.emplace_back("all_workers", allWorkers() ? "1" : "0");
+    result.emplace_back("all_workers", bool2str(allWorkers()));
     return result;
 }
 

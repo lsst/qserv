@@ -22,6 +22,7 @@
 #define LSST_QSERV_HTTPMODULE_H
 
 // System headers
+#include <memory>
 #include <stdexcept>
 #include <string>
 #include <unordered_map>
@@ -35,6 +36,15 @@
 #include "replica/HttpProcessorConfig.h"
 #include "replica/HttpRequestBody.h"
 #include "replica/HttpRequestQuery.h"
+
+// Forward declarations
+namespace lsst {
+namespace qserv {
+namespace replica {
+namespace database {
+namespace mysql {
+    class Connection;
+}}}}} // Forward declarations
 
 // This header declarations
 namespace lsst {
@@ -139,6 +149,10 @@ protected:
      *   on a error back to a service requester. 
      */
     virtual nlohmann::json executeImpl(std::string const& subModuleName) = 0 ;
+
+    /// @param database The name of a database to connect to.
+    /// @return A connection object for the Qserv Master Database server.
+    std::shared_ptr<database::mysql::Connection> qservMasterDbConnection(std::string const& database) const;
 
 private:
 

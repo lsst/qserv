@@ -230,8 +230,8 @@ VerifyJob::VerifyJob(size_t maxReplicas,
 
 list<pair<string,string>> VerifyJob::extendedPersistentState() const {
     list<pair<string,string>> result;
-    result.emplace_back("max_replicas",      to_string(maxReplicas()));
-    result.emplace_back("compute_check_sum", computeCheckSum() ? "1" : "0");
+    result.emplace_back("max_replicas", to_string(maxReplicas()));
+    result.emplace_back("compute_check_sum", bool2str(computeCheckSum()));
     return result;
 }
 

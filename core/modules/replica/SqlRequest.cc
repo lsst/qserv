@@ -124,7 +124,7 @@ list<pair<string,string>> SqlRequest::extendedPersistentState() const {
     ostringstream tablesStream;
     tablesStream << util::printable(requestBody.tables(), "", "", " ");
     result.emplace_back("tables", tablesStream.str());
-    result.emplace_back("batch_mode", string(requestBody.batch_mode() ? "1" : "0"));
+    result.emplace_back("batch_mode", bool2str(requestBody.batch_mode()));
     return result;
 }
 

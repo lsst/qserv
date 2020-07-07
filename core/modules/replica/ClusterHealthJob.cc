@@ -159,7 +159,7 @@ ClusterHealth const& ClusterHealthJob::clusterHealth() const {
 list<pair<string,string>> ClusterHealthJob::extendedPersistentState() const {
     list<pair<string,string>> result;
     result.emplace_back("timeout_sec", to_string(timeoutSec()));
-    result.emplace_back("all_workers", allWorkers() ? "1" : "0");
+    result.emplace_back("all_workers", bool2str(allWorkers()));
     return result;
 }
 

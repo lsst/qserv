@@ -100,7 +100,7 @@ list<pair<string,string>> SqlQueryJob::extendedPersistentState() const {
     result.emplace_back("query", query());
     result.emplace_back("user", user());
     result.emplace_back("max_rows", to_string(maxRows()));
-    result.emplace_back("all_workers", string(allWorkers() ? "1" : "0"));
+    result.emplace_back("all_workers", bool2str(allWorkers()));
     return result;
 }
 

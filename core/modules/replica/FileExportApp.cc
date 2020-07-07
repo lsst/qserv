@@ -291,7 +291,7 @@ void FileExportApp::_export(FileExportSpec const& file) const {
              << "           Source database: " << file.databaseName << "\n"
              << "              Source table: " << file.tableName << "\n"
              << "                     Chunk: " << file.chunk << "\n"
-             << "          Is chunk overlap: " << (file.overlap ? "1" : "0") << "\n"
+             << "          Is chunk overlap: " << bool2str(file.overlap) << "\n"
              << "          Output file name: " << file.outFileName << "\n"
              << "               Start  time: " << PerformanceUtils::toDateTimeString(chrono::milliseconds(startedMs)) << "\n"
              << "               Finish time: " << PerformanceUtils::toDateTimeString(chrono::milliseconds(finishedMs)) << "\n"

@@ -37,10 +37,7 @@ namespace lsst {
 namespace qserv {
 namespace replica {
     class DatabaseInfo;
-namespace database {
-namespace mysql {
-    class Connection;
-}}}}} // Forward declarations
+}}} // Forward declarations
 
 // This header declarations
 namespace lsst {
@@ -220,6 +217,18 @@ private:
                                     unsigned int workerResponseTimeoutSec) const;
 
     /**
+     * Fetch a mode of building the "secondary index" as requested by a catalog
+     * ingest workflow and recorded at the database creation time. A value of
+     * the parameter is recorded in a database.
+     * 
+     * @param database The name of a database for which a value of the parameter
+     *   is requested.
+     * @return 'true' if the index was requested to be built automatically w/o any
+     *   explicit requests from a catalog ingest workflow.
+     */
+    bool _autoBuildSecondaryIndex(std::string const& database) const;
+
+    /**
      * Create an empty "secondary index" table partitioned using MySQL partitions.
      * The table will be configured with a single initial partition. More partitions
      * corresponding to super-transactions open during catalog ingest sessions will
@@ -271,10 +280,6 @@ private:
      */
     void _qservSync(DatabaseInfo const& databaseInfo,
                     bool allWorkers) const;
-
-    /// @param database The name of a database to connect to.
-    /// @return A connection object for the Qserv Master Database server.
-    std::shared_ptr<database::mysql::Connection> _qservMasterDbConnection(std::string const& database) const;
 
     // The name and a type of a special column for the super-transaction-based ingest
 

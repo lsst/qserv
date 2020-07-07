@@ -87,7 +87,7 @@ list<pair<string,string>> RemoveReplicaQservMgtRequest::extendedPersistentState(
         result.emplace_back("database", database);
     }
     result.emplace_back("chunk", to_string(chunk()));
-    result.emplace_back("force", force() ? "1" : "0");
+    result.emplace_back("force", bool2str(force()));
     return result;
 }
 

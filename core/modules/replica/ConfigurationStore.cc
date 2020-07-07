@@ -68,7 +68,7 @@ void parseKeyVal<bool,bool>(util::ConfigStore const& configStore,
 
     unsigned int number;
     parseKeyVal(configStore, key, number, defaultVal ? 1 : 0);
-    val = (bool) number;
+    val = number != 0;
 }
 
 }  // namespace

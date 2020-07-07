@@ -103,7 +103,7 @@ list<pair<string,string>> SetReplicasQservMgtRequest::extendedPersistentState() 
     ostringstream databasesStream;
     databasesStream << util::printable(_databases, "", "", " ");
     result.emplace_back("databases", databasesStream.str());
-    result.emplace_back("force", force() ? "1" : "0");
+    result.emplace_back("force", bool2str(force()));
     return result;
 }
 

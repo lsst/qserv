@@ -332,7 +332,7 @@ void FileIngestApp::_ingest(FileIngestSpec const& file) const {
              << " Transaction identifier: " << file.transactionId << "\n"
              << "      Destination table: " << file.tableName << "\n"
              << "                  Chunk: " << chunkContribution.chunk << "\n"
-             << "       Is chunk overlap: " << (chunkContribution.isOverlap ? "1" : "0") << "\n"
+             << "       Is chunk overlap: " << bool2str(chunkContribution.isOverlap) << "\n"
              << "        Input file name: " << file.inFileName << "\n"
              << "            Start  time: " << PerformanceUtils::toDateTimeString(chrono::milliseconds(startedMs)) << "\n"
              << "            Finish time: " << PerformanceUtils::toDateTimeString(chrono::milliseconds(finishedMs)) << "\n"

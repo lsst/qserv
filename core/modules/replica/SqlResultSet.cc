@@ -282,7 +282,7 @@ ostream& operator<<(ostream& os, SqlResultSet const& info) {
            << "extendedStatus:" << status2string(result.extendedStatus) << ","
            << "error:'" << result.error << "',"
            << "charSetName:'" << result.charSetName << "',"
-           << "hasResult:" << (result.hasResult ? "1" : "0") << ","
+           << "hasResult:" << bool2str(result.hasResult) << ","
            << "fields.size:" << result.fields.size() << ","
            << "rows.size:" << result.rows.size() << "}";
     }

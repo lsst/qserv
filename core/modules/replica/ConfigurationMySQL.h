@@ -441,7 +441,7 @@ private:
             category,
             param,
             [&value](database::mysql::Connection::Ptr const& conn) -> std::string {
-                return conn->sqlEqual<std::string>("value", value ? "1" : "0");
+                return conn->sqlEqual<std::string>("value", bool2str(value ));
             },
             [&var,&value]() {
                 var = value;

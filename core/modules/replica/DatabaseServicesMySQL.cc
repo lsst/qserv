@@ -855,8 +855,8 @@ void DatabaseServicesMySQL::findWorkerReplicas(vector<ReplicaInfo>& replicas,
 
     string const context = "DatabaseServicesMySQL::" + string(__func__) +
         " worker=" + worker + " database=" + database +
-        " allDatabases=" + string(allDatabases ? "1" : "0") +
-        " isPublished=" + string(isPublished ? "1" : "0") + "  ";
+        " allDatabases=" + bool2str(allDatabases) +
+        " isPublished=" + bool2str(isPublished) + "  ";
 
     util::Lock lock(_mtx, context);
 
@@ -891,8 +891,8 @@ uint64_t DatabaseServicesMySQL::numWorkerReplicas(string const& worker,
 
     string const context = "DatabaseServicesMySQL::" + string(__func__) +
         " worker=" + worker + " database=" + database +
-        " allDatabases=" + string(allDatabases ? "1" : "0") +
-        " isPublished=" + string(isPublished ? "1" : "0") + "  ";
+        " allDatabases=" + bool2str(allDatabases) +
+        " isPublished=" + bool2str(isPublished) + "  ";
 
     util::Lock lock(_mtx, context);
 
@@ -941,8 +941,8 @@ void DatabaseServicesMySQL::_findWorkerReplicasImpl(util::Lock const& lock,
     string const context =
         "DatabaseServicesMySQL::" + string(__func__) +
         " worker=" + worker + " database=" + database +
-        " allDatabases=" + string(allDatabases ? "1" : "0") +
-        " isPublished=" + string(isPublished ? "1" : "0") + "  ";
+        " allDatabases=" + bool2str(allDatabases) +
+        " isPublished=" + bool2str(isPublished) + "  ";
 
     LOGS(_log, LOG_LVL_DEBUG, context);
 
@@ -980,8 +980,8 @@ void DatabaseServicesMySQL::findWorkerReplicas(vector<ReplicaInfo>& replicas,
     string const context =
         "DatabaseServicesMySQL::" + string(__func__) + " worker=" + worker +
         " chunk=" + to_string(chunk) + " family=" + databaseFamily +
-        " allDatabases=" + string(allDatabases ? "1" : "0") +
-        " isPublished=" + string(isPublished ? "1" : "0") + "  ";
+        " allDatabases=" + bool2str(allDatabases) +
+        " isPublished=" + bool2str(isPublished) + "  ";
 
     LOGS(_log, LOG_LVL_DEBUG, context);
 
@@ -1025,7 +1025,7 @@ void DatabaseServicesMySQL::findDatabaseReplicas(
                                 bool enabledWorkersOnly) {
     string const context =
         "DatabaseServicesMySQL::" + string(__func__) +
-        "  database=" + database + " enabledWorkersOnly=" + string(enabledWorkersOnly ? "1" : "0") +
+        "  database=" + database + " enabledWorkersOnly=" + bool2str(enabledWorkersOnly) +
         " ";
 
     LOGS(_log, LOG_LVL_DEBUG, context);
@@ -1064,7 +1064,7 @@ void DatabaseServicesMySQL::findDatabaseChunks(
                                 bool enabledWorkersOnly) {
     string const context =
         "DatabaseServicesMySQL::" + string(__func__) +
-        "  database=" + database + " enabledWorkersOnly=" + string(enabledWorkersOnly ? "1" : "0") +
+        "  database=" + database + " enabledWorkersOnly=" + bool2str(enabledWorkersOnly) +
         " ";
 
     LOGS(_log, LOG_LVL_DEBUG, context);
@@ -2132,6 +2132,156 @@ vector<TransactionInfo> DatabaseServicesMySQL::_findTransactionsImpl(util::Lock 
 
             row.get("begin_time", info.beginTime);
             row.get("end_time",   info.endTime);
+
+            collection.push_back(info);
+        }
+    }
+    return collection;
+}
+
+
+DatabaseIngestParam DatabaseServicesMySQL::ingestParam(string const& database,
+                                                       string const& category,
+                                                       string const& param) {
+
+    string const context = _context(__func__) + "database="  + database +
+           " category=" + category + " param=" + param;
+
+    LOGS(_log, LOG_LVL_DEBUG, context);
+
+    util::Lock lock(_mtx, context);
+
+    DatabaseIngestParam info;
+    try {
+        auto const predicate =
+                _conn->sqlEqual("database", database) + " AND " + 
+                _conn->sqlEqual("category", category) + " AND " +
+                _conn->sqlEqual("param", param);
+        _conn->execute(
+            [&](decltype(_conn) conn) {
+                conn->begin();
+                info = _ingestParamImpl(lock, predicate);
+                conn->commit();
+            }
+        );
+
+    } catch (exception const& ex) {
+        LOGS(_log, LOG_LVL_ERROR, context << "failed, exception: " << ex.what());
+        if (_conn->inTransaction()) _conn->rollback();
+        throw;
+    }
+    LOGS(_log, LOG_LVL_DEBUG, context + "** DONE **");
+    return info;
+}
+
+
+vector<DatabaseIngestParam> DatabaseServicesMySQL::ingestParams(string const& database,
+                                                                string const& category) {
+    string const context = _context(__func__) + "database="  + database +
+           " category=" + category;
+
+    LOGS(_log, LOG_LVL_DEBUG, context);
+
+    util::Lock lock(_mtx, context);
+
+    vector<DatabaseIngestParam> collection;
+    try {
+        auto const predicate =
+                _conn->sqlEqual("database", database) +
+                (category.empty() ? "" : " AND " + _conn->sqlEqual("category", category));
+        _conn->execute(
+            [&](decltype(_conn) conn) {
+                conn->begin();
+                collection = _ingestParamsImpl(lock, predicate);
+                conn->commit();
+            }
+        );
+    } catch (exception const& ex) {
+        LOGS(_log, LOG_LVL_ERROR, context << "failed, exception: " << ex.what());
+        if (_conn->inTransaction()) _conn->rollback();
+        throw;
+    }
+    LOGS(_log, LOG_LVL_DEBUG, context + "** DONE **");
+    return collection;
+}
+
+
+void DatabaseServicesMySQL::saveIngestParam(string const& database,
+                                            string const& category,
+                                            string const& param,
+                                            string const& value) {
+
+    string const context = _context(__func__) + "database="  + database +
+           " category=" + category + " param=" + param;
+
+    LOGS(_log, LOG_LVL_DEBUG, context);
+
+    util::Lock lock(_mtx, context);
+
+    try {
+        _conn->executeInsertOrUpdate(
+            [&](decltype(_conn) conn) {
+                conn->begin();
+                conn->executeInsertQuery("database_ingest", database, category, param, value);
+                conn->commit();
+            },
+            [&](decltype(_conn) conn) {
+                auto const predicate =
+                        conn->sqlEqual("database", database) + " AND " + 
+                        conn->sqlEqual("category", category) + " AND " +
+                        conn->sqlEqual("param", param);
+                conn->begin();
+                conn->executeSimpleUpdateQuery("database_ingest", predicate, make_pair("value", value));
+                conn->commit();
+            }
+        );
+
+    } catch (exception const& ex) {
+        LOGS(_log, LOG_LVL_ERROR, context << "failed, exception: " << ex.what());
+        if (_conn->inTransaction()) _conn->rollback();
+        throw;
+    }
+    LOGS(_log, LOG_LVL_DEBUG, context + "** DONE **");
+}
+
+
+DatabaseIngestParam DatabaseServicesMySQL::_ingestParamImpl(util::Lock const& lock,
+                                                            string const& predicate) {
+    string const context = _context(__func__) + "predicate=" + predicate + " ";
+    auto   const collection = _ingestParamsImpl(lock, predicate);
+    size_t const num = collection.size();
+
+    if (num == 1) return collection[0];
+    if (num == 0) throw DatabaseServicesNotFound(context + "no such parameter");
+    throw DatabaseServicesError(context + "two many parameters found: " + to_string(num));
+}
+
+
+vector<DatabaseIngestParam> DatabaseServicesMySQL::_ingestParamsImpl(util::Lock const& lock,
+                                                                     string const& predicate) {
+
+    string const context = _context(__func__) + "predicate=" + predicate + " ";
+
+    LOGS(_log, LOG_LVL_DEBUG, context);
+
+    vector<DatabaseIngestParam> collection;
+
+    string const query = "SELECT * FROM " + _conn->sqlId("database_ingest") +
+            (predicate.empty() ? "" : " WHERE " + predicate);
+
+    _conn->execute(query);
+
+    if (_conn->hasResult()) {
+
+        database::mysql::Row row;
+        while (_conn->next(row)) {
+
+            DatabaseIngestParam info;
+
+            row.get("database", info.database);
+            row.get("category", info.category);
+            row.get("param",    info.param);
+            row.get("value",    info.value);
 
             collection.push_back(info);
         }
