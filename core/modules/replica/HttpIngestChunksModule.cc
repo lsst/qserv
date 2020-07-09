@@ -513,11 +513,17 @@ json HttpIngestChunksModule::_getChunks() {
         for (auto&& file: replica.fileInfo()) {
             auto& replicaTableResult = replicaResult[file.baseTable()];
             if (file.isOverlap()) {
-                if      (file.isData())  replicaTableResult["overlap_data_size"]  = file.size;
-                else if (file.isIndex()) replicaTableResult["overlap_index_size"] = file.size;
+                if (file.isData()) {
+                    replicaTableResult["overlap_data_size"] = file.size;
+                } else if (file.isIndex()) {
+                    replicaTableResult["overlap_index_size"] = file.size;
+                }
             } else {
-                if      (file.isData())  replicaTableResult["data_size"]  = file.size;
-                else if (file.isIndex()) replicaTableResult["index_size"] = file.size;
+                if (file.isData()) {
+                    replicaTableResult["data_size"] = file.size;
+                } else if (file.isIndex()) {
+                    replicaTableResult["index_size"] = file.size;
+                }
             }
         }
         result["replica"].push_back(replicaResult);
