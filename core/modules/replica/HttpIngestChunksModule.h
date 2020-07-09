@@ -52,6 +52,7 @@ public:
      *
      *   ADD-CHUNK      for registering (or requesting a status of) of a new chunk
      *   ADD-CHUNK-LIST for registering (or requesting a status of) of many new chunks
+     *   GET-CHUNK-LIST return the chunk allocation map for a database
      *
      * @throws std::invalid_argument for unknown values of parameter 'subModuleName'
      */
@@ -109,6 +110,11 @@ private:
     void _registerNewChunk(std::string const& worker,
                            std::string const& database,
                            unsigned int chunk) const;
+
+    /**
+     * Return a chunks allocation map for a database.
+     */
+    nlohmann::json _getChunks();
 
     static util::Mutex _ingestManagementMtx;  /// Synchronized access to the chunk management operations
 };

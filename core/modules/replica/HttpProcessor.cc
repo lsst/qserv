@@ -390,6 +390,14 @@ void HttpProcessor::_initialize() {
                         "ADD-CHUNK-LIST", HttpModule::AUTH_REQUIRED);
             }
         },
+        {"GET", "/ingest/chunks",
+            [self](qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp) {
+                HttpIngestChunksModule::process(
+                        self->controller(), self->name(), self->_processorConfig,
+                        req, resp,
+                        "GET-CHUNK-LIST");
+            }
+        },
         {"POST", "/ingest/chunk/empty",
             [self](qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp) {
                 HttpIngestModule::process(
