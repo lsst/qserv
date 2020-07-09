@@ -59,7 +59,7 @@ XRDSSI_CONFIG="${QSERV_RUN_DIR}/etc/xrdssi.cnf"
 PID_DIR=${QSERV_PID_DIR}/${XROOTD_INSTANCE_NAME}
 LOG_DIR=${QSERV_LOG_DIR}
 
-# Log configuration file for worker nodes.
+# Log configuration file for both master and worker nodes.
 # xrootd manager doesn't use it.
 # Indeed, log4cxx is only used by Qserv plugin
 # which only runs on xrootd server side (i.e. worker nodes)
@@ -104,7 +104,7 @@ start_service() {
     [ -x ${BINARY} ] || exit 5
     [ -f ${XROOTD_CONFIG} ] || exit 6
 
-    console_logfile="${LOG_DIR}/xrootd.log"
+    console_logfile="${LOG_DIR}/${prog}.log"
     cmd="${BINARY} -c ${XROOTD_CONFIG} -l ${logfile} -n ${XROOTD_INSTANCE_NAME} -I v4  -+xrdssi ${XRDSSI_CONFIG} >>${console_logfile} 2>&1 &"
     echo "pidfile=$pidfile"  >> $XRLOG
     echo "lockfile=$lockfile"  >> $XRLOG
