@@ -145,6 +145,15 @@ public:
         return _xrootdCBThreadsInit;
     }
 
+    /*
+     * @return A value of the "spread" parameter. This may improve a performance
+     * of xrootd for catalogs with the large number of chunks. The default value
+     * of this parameter in xrootd is 4.
+     */
+    int getXrootdSpread() const {
+        return _xrootdSpread;
+    }
+
     /* Get minimum number of seconds between QMeta chunk completion updates.
      *
      * @return seconds between QMeta chunk completion updates.
@@ -197,6 +206,7 @@ private:
     int const _largeResultConcurrentMerges;
     int const _xrootdCBThreadsMax;
     int const _xrootdCBThreadsInit;
+    int const _xrootdSpread;
     int const _qMetaSecsBetweenChunkCompletionUpdates;
 
     // Parameters for QdispPool configuration

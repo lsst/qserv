@@ -93,6 +93,7 @@ CzarConfig::CzarConfig(util::ConfigStore const& configStore)
       _largeResultConcurrentMerges(configStore.getInt("tuning.largeResultConcurrentMerges", 3)),
       _xrootdCBThreadsMax(configStore.getInt("tuning.xrootdCBThreadsMax", 500)),
       _xrootdCBThreadsInit(configStore.getInt("tuning.xrootdCBThreadsInit", 50)),
+      _xrootdSpread(configStore.getInt("tuning.xrootdSpread", 4)),
       _qMetaSecsBetweenChunkCompletionUpdates(configStore.getInt(
                                                "tuning.qMetaSecsBetweenChunkCompletionUpdates", 60)),
       _qdispPoolSize(configStore.getInt("qdisppool.poolSize", 1000)),
