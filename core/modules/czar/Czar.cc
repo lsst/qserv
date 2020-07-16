@@ -118,6 +118,9 @@ Czar::Czar(std::string const& configPath, std::string const& czarName)
     LOGS(_log, LOG_LVL_INFO, "config xrootdCBThreadsMax=" << xrootdCBThreadsMax);
     LOGS(_log, LOG_LVL_INFO, "config xrootdCBThreadsInit=" << xrootdCBThreadsInit);
     XrdSsiProviderClient->SetCBThreads(xrootdCBThreadsMax, xrootdCBThreadsInit);
+    int const xrootdSpread = _czarConfig.getXrootdSpread();
+    LOGS(_log, LOG_LVL_INFO, "config xrootdSpread=" << xrootdSpread);
+    XrdSsiProviderClient->SetSpread(xrootdSpread);
 
     LOGS(_log, LOG_LVL_INFO, "Creating czar instance with name " << czarName);
     LOGS(_log, LOG_LVL_INFO, "Czar config: " << _czarConfig);
