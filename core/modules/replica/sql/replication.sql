@@ -72,7 +72,7 @@ CREATE TABLE IF NOT EXISTS `config_worker` (
   UNIQUE  KEY (`svc_host`, `svc_port`) ,
   UNIQUE  KEY (`fs_host`,  `fs_port`) ,
   UNIQUE  KEY (`db_host`,  `db_port`) ,
-  UNIQUE  KEY (`loader_host`, `loader_port`)
+  UNIQUE  KEY (`loader_host`, `loader_port`),
   UNIQUE  KEY (`exporter_host`, `exporter_port`)
 )
 ENGINE = InnoDB;
