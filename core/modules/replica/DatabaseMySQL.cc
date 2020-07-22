@@ -257,6 +257,9 @@ void Connection::_processLastError(string const& context,
         case ER_DROP_PARTITION_NON_EXISTENT:
             throw DropPartitionNonExistent(msg);
 
+        case ER_LOCK_DEADLOCK:
+            throw LockDeadlock(msg);
+
         case ER_ABORTING_CONNECTION:
         case ER_NEW_ABORTING_CONNECTION:
 
