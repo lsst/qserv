@@ -430,7 +430,13 @@ void IngestServerConnection::_loadDataIntoTable() {
         string const sqlDatabase = h.conn->sqlId(_databaseInfo.name);
         string const sqlPartition = h.conn->sqlPartitionId(_transactionId);
 
-        vector<string> statements;
+        vector<string> tableMgtStatements;
+
+        // Make sure no outstanding table locks exist from prior operations
+        // on persistent database connections.
+        tableMgtStatements.push_back("UNLOCK TABLES");
+
+        string dataLoadStatement;
 
         if (_isPartitioned) {
             
@@ -456,10 +462,10 @@ void IngestServerConnection::_loadDataIntoTable() {
                     sqlDatabase + "." + h.conn->sqlId(ChunkedTable(table, lsst::qserv::DUMMY_CHUNK, overlap).name())
                 };
                 for (auto&& table: tablesToBeCreated) {
-                    statements.push_back(
+                    tableMgtStatements.push_back(
                         "CREATE TABLE IF NOT EXISTS " + table + " LIKE " + sqlProtoTable
                     );
-                    statements.push_back(
+                    tableMgtStatements.push_back(
                         "ALTER TABLE " + table + " ADD PARTITION IF NOT EXISTS (PARTITION " + sqlPartition +
                             " VALUES IN (" + to_string(_transactionId) + "))"
                     );
@@ -467,11 +473,10 @@ void IngestServerConnection::_loadDataIntoTable() {
 
                 // An additional step for the current request's table
                 if (table == _table) {
-                    statements.push_back(
+                    dataLoadStatement =
                         "LOAD DATA INFILE " + h.conn->sqlValue(_fileName) +
                             " INTO TABLE " + (_isOverlap ? sqlFullOverlapTable : sqlTable) +
-                            " FIELDS TERMINATED BY " + h.conn->sqlValue(string() + _columnSeparator)
-                    );
+                            " FIELDS TERMINATED BY " + h.conn->sqlValue(string() + _columnSeparator);
                 }
             }
         } else {
@@ -481,26 +486,63 @@ void IngestServerConnection::_loadDataIntoTable() {
 
             string const sqlTable = sqlDatabase + "." + h.conn->sqlId(_table);
 
-            statements.push_back(
+            tableMgtStatements.push_back(
                 "ALTER TABLE " + sqlTable + " ADD PARTITION IF NOT EXISTS (PARTITION " + sqlPartition +
                     " VALUES IN (" + to_string(_transactionId) + "))"
             );
-            statements.push_back(
+            dataLoadStatement =
                 "LOAD DATA INFILE " + h.conn->sqlValue(_fileName) +
                     " INTO TABLE " + sqlTable +
-                    " FIELDS TERMINATED BY " + h.conn->sqlValue(string() + _columnSeparator)
-            );
+                    " FIELDS TERMINATED BY " + h.conn->sqlValue(string() + _columnSeparator);
         }
-        for (auto&& statement: statements) {
+        for (auto&& statement: tableMgtStatements) {
             LOGS(_log, LOG_LVL_DEBUG, context << __func__ << "  statement: " << statement);
         }
-        h.conn->execute([&statements](decltype(h.conn) const& conn_) {
-            for (auto&& statement: statements) {
-                conn_->begin();
-                conn_->execute(statement);
-                conn_->commit();
+        LOGS(_log, LOG_LVL_DEBUG, context << __func__ << "  statement: " << dataLoadStatement);
+
+        // Allow retries for the table management statements in case of deadlocks.
+        // Deadlocks may happen when two or many threads are attempting to create
+        // or modify partitioned tables, or at a presence of other threads loading
+        // data into these tables.
+        //
+        // TODO: the experimental limit for the maximum number of retries may need
+        //       to be made unlimited, or be limited by some configurable timeout.
+        int const maxRetries = 1;
+        int numRetries = 0;
+        while (true) {
+            try {
+                h.conn->execute([&tableMgtStatements](decltype(h.conn) const& conn_) {
+                    conn_->begin();
+                    for (auto&& statement: tableMgtStatements) {
+                        conn_->execute(statement);
+                    }
+                    conn_->commit();
+                });
+                break;
+            } catch (database::mysql::LockDeadlock const& ex) {
+                if (h.conn->inTransaction()) h.conn->rollback();
+                if (numRetries < maxRetries) {
+                    LOGS(_log, LOG_LVL_WARN, context << __func__ << "  exception: " << ex.what());
+                    ++numRetries;
+                } else {
+                    LOGS(_log, LOG_LVL_ERROR, context << __func__ << "  maximum number of retries "
+                            << maxRetries << " for avoiding table management deadlocks has been reached."
+                            << " Aborting the file loading operation.");
+                    throw;
+                }
             }
+        }
+
+        // Load table contribution
+        if (dataLoadStatement.empty()) {
+            throw std::runtime_error(context + string(__func__) + "  no data loading statement generated");
+        }
+        h.conn->execute([&dataLoadStatement](decltype(h.conn) const& conn_) {
+            conn_->begin();
+            conn_->execute(dataLoadStatement);
+            conn_->commit();
         });
+
     } catch (exception const& ex) {
         LOGS(_log, LOG_LVL_ERROR, context << __func__ << "  exception: " << ex.what());
         throw;
