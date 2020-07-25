@@ -79,14 +79,6 @@ if [ "$USER" = "root" ]; then
     proxy_user_option="--user=$proxy_user"
 fi
 
-# This parameter is required for achieving the most optimal performance of
-# the xrootd client.
-#
-# TODO: The parameter setting should be moved into a configuration file
-#       of the proxy to be set via xrootd management API. This will be
-#       possible after upgrading Qserv to xrootd version 5.
-export XRD_PARALLELEVTLOOP=100
-
 # jemalloc profilling
 #JEMU='LD_PRELOAD=${JEMALLOC_DIR}/lib/libjemalloc.so'
 #JEMD='MALLOC_CONF=MALLOC_CONF=prof:true,lg_prof_interval:30,lg_prof_sample:17,prof_prefix:/qserv/run/var/log/jeprof'
