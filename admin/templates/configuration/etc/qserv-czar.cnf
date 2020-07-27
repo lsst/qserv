@@ -85,14 +85,14 @@ xrootdCBThreadsInit = 50
 #   for use cases where many queries are processed by Qserv simultaneously,
 #   even for a modest number of chunks per catalog.
 #
-#   Set the parameter to -1 to enable auto-tuning.
+#   Set the parameter to 0 to enable auto-tuning.
 #
 #   The general formula for auto-tuning implies incrementing a value of the parameter
 #   by 1 for every 65,000 "in-flight" requests.
 #
 #   The value set below has been tested to work for 80 simultaneous "shared scan" queries
 #   of 150,000 chunks each.
-xrootdSpread = 256
+xrootdSpread = 0
 
 # Seconds between updates the czar sends to qmeta for completed chunks.
 # This is per user query and important milestones ignore this limit.

@@ -53,8 +53,8 @@ ulimit -c unlimited
 export PYTHONUNBUFFERED=1
 
 export XRD_LOGLEVEL=Debug
-#unset XRDSSIDEBUG
-export XRDSSIDEBUG=0
+unset XRDSSIDEBUG
+#export XRDSSIDEBUG=0
 
 # Increase timeouts, without that, long-running queries fail.
 # The proper fix is coming, see DM-3433
@@ -63,4 +63,10 @@ export XRD_STREAMTIMEOUT=64000
 export XRD_DATASERVERTTL=64000
 export XRD_TIMEOUTRESOLUTION=64000
 
-
+# This parameter is required for achieving the most optimal performance of
+# the xrootd client.
+#
+# TODO: The parameter setting should be moved into a configuration file
+#       of the proxy to be set via xrootd management API. This will be
+#       possible after upgrading Qserv to xrootd version 5.
+export XRD_PARALLELEVTLOOP=100
