@@ -43,6 +43,7 @@
 using namespace std;
 using namespace nlohmann;
 namespace fs = boost::filesystem;
+using namespace lsst::qserv::replica;
 
 namespace {
 
@@ -76,6 +77,16 @@ T parse(string const& context, json const& jsonObj, string const& key, T minValu
                 + to_string(numeric_limits<T>::max()) + ".");
     }
     return (T)num;
+}
+
+
+IngestClient::ColumnSeparator translateColumnsSeparator(string const& context, string const& str) {
+    if ("COMMA" == str) {
+        return IngestClient::ColumnSeparator::COMMA;
+    } else if ("TAB" == str) {
+        return IngestClient::ColumnSeparator::TAB;
+    }
+    throw invalid_argument(context + "unsupported columns separator: " + str);
 }
 
 } /// namespace
@@ -161,6 +172,11 @@ FileIngestApp::FileIngestApp(int argc, char* argv[])
         "command",
         {"FILE", "FILE-LIST"},
         _command
+    ).option(
+        "columns-separator",
+        "The columns separator option. A value of the parameter is sent to ingest"
+        " services. Allowed options: COMMA, TAB.",
+        _columnsSeparator
     ).option(
         "auth-key",
         "An authorization key which should also be known to servers.",
@@ -317,7 +333,7 @@ void FileIngestApp::_ingest(FileIngestSpec const& file) const {
         chunkContribution.chunk,
         chunkContribution.isOverlap,
         file.inFileName,
-        IngestClient::ColumnSeparator::COMMA,
+        ::translateColumnsSeparator(context, _columnsSeparator),
         _authKey
     );
     ptr->send();

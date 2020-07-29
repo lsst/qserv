@@ -153,6 +153,8 @@ private:
     std::string _command;       /// 'FILE' or 'FILE-LIST' ingest scenarios
     std::string _fileListName;  /// The name of a file to read info for 'FILE-LIST' scenario
 
+    std::string _columnsSeparator = "COMMA";    /// columns separator to be sent to ingest servers
+
     /// An authorization key which should also be known to servers
     std::string _authKey;
 
