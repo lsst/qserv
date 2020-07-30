@@ -274,7 +274,10 @@ struct QhttpFixture
     {
         server->start();
         urlPrefix = "http://localhost:" + std::to_string(server->getPort()) + "/";
-        serviceThread = std::thread([this](){ service.run(); });
+        serviceThread = std::thread([this](){ 
+            asio::io_service::work work(service);
+            service.run();
+        });
     }
 
     ~QhttpFixture()

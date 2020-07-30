@@ -129,12 +129,15 @@ void Server::_accept()
     _acceptor.async_accept(
         *socket,
         [self, socket](boost::system::error_code const& ec) {
-            self->_accept(); // start accept for the next incoming connection
+            if (!self->_acceptor.is_open() || ec == asio::error::operation_aborted) {
+                return;
+            }
             if (!ec) {
                 boost::system::error_code ignore;
                 socket->set_option(ip::tcp::no_delay(true), ignore);
                 self->_readRequest(socket);
             }
+            self->_accept(); // start accept for the next incoming connection
         }
     );
 }
