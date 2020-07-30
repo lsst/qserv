@@ -74,6 +74,7 @@ queryClasses:
     maxRate: 1
 """
 
+
 class TestConfig(unittest.TestCase):
 
     def test_merge(self):
@@ -93,7 +94,7 @@ class TestConfig(unittest.TestCase):
     def test_construct_empty(self):
 
         with self.assertRaises(ValueError):
-          config.Config([])
+            config.Config([])
 
     def test_construct_yaml_one(self):
 
@@ -154,6 +155,7 @@ class TestConfig(unittest.TestCase):
         self.assertIsNone(cfg0.maxRate("FTSObj"))
         self.assertIsNone(cfg1.maxRate("FTSObj"))
         self.assertIsNone(cfg2.maxRate("FTSObj"))
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -3,7 +3,6 @@
 
 __all__ = ["Config", "QueryFactory"]
 
-from collections import defaultdict
 import contextlib
 import logging
 import random
@@ -176,7 +175,7 @@ class Config:
         -------
         queries : `dict` [`str`, `QueryFactory`]
             Dictionary whose key is a query ID (abstract string defined by
-            config) and value either a string 
+            config) and value is a `QueryFactory` instance.
         """
         return self._queries[q_class]
 
@@ -269,5 +268,3 @@ class Config:
                 # otherwise second one overrides
                 result[key] = config2[key]
         return result
-
-
