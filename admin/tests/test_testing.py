@@ -26,7 +26,7 @@
 import io
 import unittest
 
-from lsst.qserv.testing import config
+from lsst.qserv.testing import config, mock_db
 
 
 _CFG1 = """
@@ -155,6 +155,32 @@ class TestConfig(unittest.TestCase):
         self.assertIsNone(cfg0.maxRate("FTSObj"))
         self.assertIsNone(cfg1.maxRate("FTSObj"))
         self.assertIsNone(cfg2.maxRate("FTSObj"))
+
+
+class TestMockDb(unittest.TestCase):
+
+    def test_mock_db(self):
+
+        # can take any args
+        conn = mock_db.connect(host="host", port=4040, user='qsmaster',
+                               passwd='', db='LSST')
+
+        cursor = conn.cursor()
+
+        query = "SELECT * from Object"
+        cursor.execute(query)
+        rows = cursor.fetchall()
+        self.assertEqual(len(rows), 2)
+
+        query = "SELECT * from Object where O = 5"
+        cursor.execute(query)
+        rows = cursor.fetchall()
+        self.assertEqual(len(rows), 5)
+
+        query = "SELECT * from Ob22ject"
+        cursor.execute(query)
+        rows = cursor.fetchall()
+        self.assertEqual(len(rows), 22)
 
 
 if __name__ == "__main__":
