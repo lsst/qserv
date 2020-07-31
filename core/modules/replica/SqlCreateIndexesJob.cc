@@ -50,6 +50,7 @@ string SqlCreateIndexesJob::typeName() { return "SqlCreateIndexesJob"; }
 SqlCreateIndexesJob::Ptr SqlCreateIndexesJob::create(
         string const& database,
         string const& table,
+        bool overlap,
         SqlRequestParams::IndexSpec const& indexSpec,
         string const& indexName,
         string const& indexComment,
@@ -62,6 +63,7 @@ SqlCreateIndexesJob::Ptr SqlCreateIndexesJob::create(
     return Ptr(new SqlCreateIndexesJob(
         database,
         table,
+        overlap,
         indexSpec,
         indexName,
         indexComment,
@@ -78,6 +80,7 @@ SqlCreateIndexesJob::Ptr SqlCreateIndexesJob::create(
 SqlCreateIndexesJob::SqlCreateIndexesJob(
         string const& database,
         string const& table,
+        bool overlap,
         SqlRequestParams::IndexSpec const& indexSpec,
         string const& indexName,
         string const& indexComment,
@@ -95,6 +98,7 @@ SqlCreateIndexesJob::SqlCreateIndexesJob(
                options),
         _database(database),
         _table(table),
+        _overlap(overlap),
         _indexSpec(indexSpec),
         _indexName(indexName),
         _indexComment(indexComment),
@@ -107,6 +111,7 @@ list<pair<string,string>> SqlCreateIndexesJob::extendedPersistentState() const {
     list<pair<string,string>> result;
     result.emplace_back("database", database());
     result.emplace_back("table", table());
+    result.emplace_back("overlap", bool2str(overlap()));
     result.emplace_back("index_spec", indexSpec().str());
     result.emplace_back("index_name", indexName());
     result.emplace_back("index_comment", indexComment());
@@ -127,13 +132,14 @@ list<SqlRequest::Ptr> SqlCreateIndexesJob::launchRequests(util::Lock const& lock
     if (_workers.count(worker) != 0) return requests;
     _workers.insert(worker);
 
-    // All tables which are going to be processed at the worker
-    vector<string> const allTables = workerTables(worker, database(), table());
+    // Only the requested subset of tables is going to be processed at the worker.
+    bool const allTables = false;
+    vector<string> const tables2process = workerTables(worker, database(), table(), allTables, overlap());
 
     // Divide tables into subsets allocated to the "batch" requests. Then launch
     // the requests for the current worker.
     auto const self = shared_from_base<SqlCreateIndexesJob>();
-    for (auto&& tables: distributeTables(allTables, maxRequestsPerWorker)) {
+    for (auto&& tables: distributeTables(tables2process, maxRequestsPerWorker)) {
         requests.push_back(
             controller()->sqlCreateTableIndexes(
                 worker,

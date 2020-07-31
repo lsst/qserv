@@ -67,6 +67,11 @@ public:
      *
      * @param database The name of a database where the tables are residing.
      * @param table The name of the base table to be affected by the operation.
+     * @param overlap The flag (applies to the partitioned tables only)
+     *   indicating which kind of the partitioned tables to be affected by
+     *   the operation. If the flag is set to 'true' then only the overlap tables
+     *   will be involved into the operation. Otherwise, only the chunk tables will
+     *   be affected.
      * @param indexSpec The type specification of the index.
      * @param indexName The name of the index.
      * @param indexComment An arbitrary comment string documenting the index.
@@ -83,6 +88,7 @@ public:
      */
     static Ptr create(std::string const& database,
                       std::string const& table,
+                      bool overlap,
                       SqlRequestParams::IndexSpec const& indexSpec,
                       std::string const& indexName,
                       std::string const& indexComment,
@@ -101,6 +107,7 @@ public:
 
     std::string const& database() const { return _database; }
     std::string const& table() const { return _table; }
+    bool overlap() const { return _overlap; }
     SqlRequestParams::IndexSpec const& indexSpec() const { return _indexSpec; }
     std::string const& indexName() const { return _indexName; }
     std::string const& indexComment() const { return _indexComment; }
@@ -121,6 +128,7 @@ protected:
 private:
     SqlCreateIndexesJob(std::string const& database,
                         std::string const& table,
+                        bool overlap,
                         SqlRequestParams::IndexSpec const& indexSpec,
                         std::string const& indexName,
                         std::string const& indexComment,
@@ -135,6 +143,7 @@ private:
 
     std::string const _database;
     std::string const _table;
+    bool const _overlap;
     SqlRequestParams::IndexSpec const _indexSpec;
     std::string const _indexName;
     std::string const _indexComment;

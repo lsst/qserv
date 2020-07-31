@@ -50,6 +50,7 @@ string SqlDropIndexesJob::typeName() { return "SqlDropIndexesJob"; }
 SqlDropIndexesJob::Ptr SqlDropIndexesJob::create(
         string const& database,
         string const& table,
+        bool overlap,
         string const& indexName,
         bool allWorkers,
         Controller::Ptr const& controller,
@@ -59,6 +60,7 @@ SqlDropIndexesJob::Ptr SqlDropIndexesJob::create(
     return Ptr(new SqlDropIndexesJob(
         database,
         table,
+        overlap,
         indexName,
         allWorkers,
         controller,
@@ -72,6 +74,7 @@ SqlDropIndexesJob::Ptr SqlDropIndexesJob::create(
 SqlDropIndexesJob::SqlDropIndexesJob(
         string const& database,
         string const& table,
+        bool overlap,
         string const& indexName,
         bool allWorkers,
         Controller::Ptr const& controller,
@@ -86,6 +89,7 @@ SqlDropIndexesJob::SqlDropIndexesJob(
                options),
         _database(database),
         _table(table),
+        _overlap(overlap),
         _indexName(indexName),
         _onFinish(onFinish) {
 }
@@ -95,6 +99,7 @@ list<pair<string,string>> SqlDropIndexesJob::extendedPersistentState() const {
     list<pair<string,string>> result;
     result.emplace_back("database", database());
     result.emplace_back("table", table());
+    result.emplace_back("overlap", bool2str(overlap()));
     result.emplace_back("index_name", indexName());
     result.emplace_back("all_workers", bool2str(allWorkers()));
     return result;
@@ -112,13 +117,14 @@ list<SqlRequest::Ptr> SqlDropIndexesJob::launchRequests(util::Lock const& lock,
     if (_workers.count(worker) != 0) return requests;
     _workers.insert(worker);
 
-    // All tables which are going to be processed at the worker
-    vector<string> const allTables = workerTables(worker, database(), table());
+    // Only the requested subset of tables is going to be processed at the worker.
+    bool const allTables = false;
+    vector<string> const tables2process = workerTables(worker, database(), table(), allTables, overlap());
 
     // Divide tables into subsets allocated to the "batch" requests. Then launch
     // the requests for the current worker.
     auto const self = shared_from_base<SqlDropIndexesJob>();
-    for (auto&& tables: distributeTables(allTables, maxRequestsPerWorker)) {
+    for (auto&& tables: distributeTables(tables2process, maxRequestsPerWorker)) {
         requests.push_back(
             controller()->sqlDropTableIndexes(
                 worker,

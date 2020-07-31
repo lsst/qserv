@@ -302,16 +302,42 @@ SqlApp::SqlApp(int argc, char* argv[])
         _transactionId
     );
 
+    _configureIndexCommands();
+}
+
+
+void SqlApp::_configureIndexCommands() {
+
+    // Common parameters & flags. Note that two required positional parameters 
+    // added in the loop below will be present in the same order at each command.
+    // The additional positional (required and/or optional) parameters will be
+    // appended for each command at the next step.
+
+    for (auto&& command: {"CREATE_INDEXES", "DROP_INDEXES", "GET_INDEXES"}) {
+        parser().command(
+            command
+        ).required(
+            "database",
+            "The name of an existing database where the table is residing.",
+            _database
+        ).required(
+            "table",
+            "The name of an existing table to be affected by the operation.",
+            _table
+        ).flag(
+            "overlap",
+            "The optional selector for a subset of the partitioned tables to be affected by"
+            " the operation. If the flag is provided then only the so called 'overalp' will be"
+            " included into the operation. Otherwise, the chunk tables will be included. The flag"
+            " is ignored for the regular tables.",
+            _overlap
+        );
+    }
+
+    // Additional parameters, options and flags for some commands
+
     parser().command(
         "CREATE_INDEXES"
-    ).required(
-        "database",
-        "The name of an existing database where the table is residing.",
-        _database
-    ).required(
-        "table",
-        "The name of an existing table to be affected by the operation.",
-        _table
     ).required(
         "name",
         "The name of an index to be created.",
@@ -334,29 +360,9 @@ SqlApp::SqlApp(int argc, char* argv[])
     parser().command(
         "DROP_INDEXES"
     ).required(
-        "database",
-        "The name of an existing database where the table is residing.",
-        _database
-    ).required(
-        "table",
-        "The name of an existing table to be affected by the operation.",
-        _table
-    ).required(
         "name",
         "The name of an index to be дроппед.",
         _indexName
-    );
-
-    parser().command(
-        "GET_INDEXES"
-    ).required(
-        "database",
-        "The name of an existing database where the table is residing.",
-        _database
-    ).required(
-        "table",
-        "The name of an existing table to be affected by the operation.",
-        _table
     );
 }
 
@@ -401,18 +407,18 @@ int SqlApp::runImpl() {
         job = SqlDeleteTablePartitionJob::create(_database, _table, _transactionId,
                                                  _allWorkers, controller);
     } else if(_command == "CREATE_INDEXES") {
-        job = SqlCreateIndexesJob::create(_database, _table,
+        job = SqlCreateIndexesJob::create(_database, _table, _overlap,
                                           SqlRequestParams::IndexSpec(_indexSpecStr),
                                           _indexName,
                                           _indexComment,
                                           SqlSchemaUtils::readIndexSpecFromTextFile(_indexColumnsFile),
                                          _allWorkers, controller);
     } else if(_command == "DROP_INDEXES") {
-        job = SqlDropIndexesJob::create(_database, _table,
+        job = SqlDropIndexesJob::create(_database, _table, _overlap,
                                         _indexName,
                                         _allWorkers, controller);
     } else if(_command == "GET_INDEXES") {
-        job = SqlGetIndexesJob::create(_database, _table,
+        job = SqlGetIndexesJob::create(_database, _table, _overlap,
                                        _allWorkers, controller);
     } else {
         throw logic_error(
