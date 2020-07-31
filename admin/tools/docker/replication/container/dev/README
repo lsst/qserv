@@ -36,10 +36,10 @@ docker run \
 # NOTE: you may also check if your account (as mapped above) has required
 #       privileges to your home folder.
 
-source /stack/loadLSST.bash
+source /qserv/stack/loadLSST.bash
 setup -t qserv-dev qserv_distrib
 
 cd $SOURCE
 setup -r .
-scons -j4 install
+scons -j6 install
 
