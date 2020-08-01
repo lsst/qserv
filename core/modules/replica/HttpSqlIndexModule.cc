@@ -187,9 +187,11 @@ json HttpSqlIndexModule::_getIndexes() {
 
     string const database = body().required<string>("database");
     string const table = body().required<string>("table");
+    bool const overlap = body().optional<int>("overlap", 0) != 0;
 
     debug(__func__, "database=" + database);
     debug(__func__, "table=" + table);
+    debug(__func__, "overlap=" + bool2str(overlap));
 
     auto const config = controller()->serviceProvider()->config();
     auto const databaseInfo = config->databaseInfo(database);
@@ -199,7 +201,7 @@ json HttpSqlIndexModule::_getIndexes() {
     if (not databaseInfo.isPublished) throw HttpError(__func__, "database is not published");
 
     bool const allWorkers = true;
-    auto const job = SqlGetIndexesJob::create(database, table, allWorkers, controller());
+    auto const job = SqlGetIndexesJob::create(database, table, overlap, allWorkers, controller());
     job->start();
     logJobStartedEvent(SqlGetIndexesJob::typeName(), job, databaseInfo.family);
     job->wait();
@@ -227,6 +229,7 @@ json HttpSqlIndexModule::_createIndexes() {
         body().optional<string>("spec", "DEFAULT", {"DEFAULT", "UNIQUE", "FULLTEXT", "SPATIAL"})
     );
     json const columnsJson = body().required<json>("columns");
+    bool const overlap = body().optional<int>("overlap", 0) != 0;
 
     debug(__func__, "database=" + database);
     debug(__func__, "table=" + table);
@@ -234,6 +237,7 @@ json HttpSqlIndexModule::_createIndexes() {
     debug(__func__, "comment=" + comment);
     debug(__func__, "spec=" + spec.str());
     debug(__func__, "columns.size()=" + columnsJson.size());
+    debug(__func__, "overlap=" + bool2str(overlap));
 
     auto const config = controller()->serviceProvider()->config();
     auto const databaseInfo = config->databaseInfo(database);
@@ -275,7 +279,7 @@ json HttpSqlIndexModule::_createIndexes() {
     }
 
     bool const allWorkers = true;
-    auto const job = SqlCreateIndexesJob::create(database, table, spec, index, comment, columns,
+    auto const job = SqlCreateIndexesJob::create(database, table, overlap, spec, index, comment, columns,
                                                  allWorkers, controller());
     job->start();
     logJobStartedEvent(SqlCreateIndexesJob::typeName(), job, databaseInfo.family);
@@ -297,10 +301,12 @@ json HttpSqlIndexModule::_dropIndexes() {
     string const database = body().required<string>("database");
     string const table = body().required<string>("table");
     string const index = body().required<string>("index");
+    bool const overlap = body().optional<int>("overlap", 0) != 0;
 
     debug(__func__, "database=" + database);
     debug(__func__, "table=" + table);
     debug(__func__, "index=" + index);
+    debug(__func__, "overlap=" + bool2str(overlap));
 
     auto const config = controller()->serviceProvider()->config();
     auto const databaseInfo = config->databaseInfo(database);
@@ -310,7 +316,7 @@ json HttpSqlIndexModule::_dropIndexes() {
     if (not databaseInfo.isPublished) throw HttpError(__func__, "database is not published");
 
     bool const allWorkers = true;
-    auto const job = SqlDropIndexesJob::create(database, table, index, allWorkers, controller());
+    auto const job = SqlDropIndexesJob::create(database, table, overlap, index, allWorkers, controller());
     job->start();
     logJobStartedEvent(SqlDropIndexesJob::typeName(), job, databaseInfo.family);
     job->wait();

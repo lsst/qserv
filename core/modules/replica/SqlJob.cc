@@ -239,7 +239,9 @@ vector<vector<string>> SqlJob::distributeTables(vector<string> const& allTables,
 
 vector<string> SqlJob::workerTables(string const& worker,
                                     string const& database,
-                                    string const& table) const {
+                                    string const& table,
+                                    bool allTables,
+                                    bool overlapTablesOnly) const {
     vector<string> tables;
     if (_isPartitioned(database, table)) {
 
@@ -249,8 +251,12 @@ vector<string> SqlJob::workerTables(string const& worker,
         // Always include the "dummy" chunk even if it won't be explicitly found
         // in the replica collection. This chunk must be present at all workers.
         bool const overlap = true;
-        tables.push_back(ChunkedTable(table, lsst::qserv::DUMMY_CHUNK, not overlap).name());
-        tables.push_back(ChunkedTable(table, lsst::qserv::DUMMY_CHUNK,     overlap).name());
+        if (allTables or overlapTablesOnly) {
+            tables.push_back(ChunkedTable(table, lsst::qserv::DUMMY_CHUNK, overlap).name());
+        }
+        if (allTables or not overlapTablesOnly) {
+            tables.push_back(ChunkedTable(table, lsst::qserv::DUMMY_CHUNK, not overlap).name());
+        }
 
         // Locate all chunks registered on the worker. These chunks will be used
         // to build names of the corresponding chunk-specific partitioned tables.
@@ -263,8 +269,12 @@ vector<string> SqlJob::workerTables(string const& worker,
             // Avoiding the "dummy" chunk as it was already forced to be in
             // the collection.
             if (chunk != lsst::qserv::DUMMY_CHUNK) {
-                tables.push_back(ChunkedTable(table, chunk, not overlap).name());
-                tables.push_back(ChunkedTable(table, chunk,     overlap).name());
+                if (allTables or overlapTablesOnly) {
+                    tables.push_back(ChunkedTable(table, chunk, overlap).name());
+                }
+                if (allTables or not overlapTablesOnly) {
+                    tables.push_back(ChunkedTable(table, chunk, not overlap).name());
+                }
             }
         }
     } else {

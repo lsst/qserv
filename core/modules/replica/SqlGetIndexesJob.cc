@@ -50,6 +50,7 @@ string SqlGetIndexesJob::typeName() { return "SqlGetIndexesJob"; }
 SqlGetIndexesJob::Ptr SqlGetIndexesJob::create(
         string const& database,
         string const& table,
+        bool overlap,
         bool allWorkers,
         Controller::Ptr const& controller,
         string const& parentJobId,
@@ -58,6 +59,7 @@ SqlGetIndexesJob::Ptr SqlGetIndexesJob::create(
     return Ptr(new SqlGetIndexesJob(
         database,
         table,
+        overlap,
         allWorkers,
         controller,
         parentJobId,
@@ -70,6 +72,7 @@ SqlGetIndexesJob::Ptr SqlGetIndexesJob::create(
 SqlGetIndexesJob::SqlGetIndexesJob(
         string const& database,
         string const& table,
+        bool overlap,
         bool allWorkers,
         Controller::Ptr const& controller,
         string const& parentJobId,
@@ -83,6 +86,7 @@ SqlGetIndexesJob::SqlGetIndexesJob(
                options),
         _database(database),
         _table(table),
+        _overlap(overlap),
         _onFinish(onFinish) {
 }
 
@@ -91,6 +95,7 @@ list<pair<string,string>> SqlGetIndexesJob::extendedPersistentState() const {
     list<pair<string,string>> result;
     result.emplace_back("database", database());
     result.emplace_back("table", table());
+    result.emplace_back("overlap", bool2str(overlap()));
     result.emplace_back("all_workers", bool2str(allWorkers()));
     return result;
 }
@@ -107,13 +112,14 @@ list<SqlRequest::Ptr> SqlGetIndexesJob::launchRequests(util::Lock const& lock,
     if (_workers.count(worker) != 0) return requests;
     _workers.insert(worker);
 
-    // All tables which are going to be processed at the worker
-    vector<string> const allTables = workerTables(worker, database(), table());
+    // Only the requested subset of tables is going to be processed at the worker.
+    bool const allTables = false;
+    vector<string> const tables2process = workerTables(worker, database(), table(), allTables, overlap());
 
     // Divide tables into subsets allocated to the "batch" requests. Then launch
     // the requests for the current worker.
     auto const self = shared_from_base<SqlGetIndexesJob>();
-    for (auto&& tables: distributeTables(allTables, maxRequestsPerWorker)) {
+    for (auto&& tables: distributeTables(tables2process, maxRequestsPerWorker)) {
         requests.push_back(
             controller()->sqlGetTableIndexes(
                 worker,

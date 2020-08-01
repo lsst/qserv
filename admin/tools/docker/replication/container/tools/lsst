@@ -1,0 +1,7 @@
+#!/bin/bash
+
+source /qserv/stack/loadLSST.bash
+setup -t qserv-dev qserv_distrib
+PATH=/qserv/bin:${PATH}
+LD_LIBRARY_PATH=/qserv/lib:${LD_LIBRARY_PATH}
+$@

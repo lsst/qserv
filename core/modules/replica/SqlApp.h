@@ -39,15 +39,10 @@ namespace replica {
  * will be reported upon a completion of the application.
  */
 class SqlApp : public Application {
-
 public:
-
-    /// The pointer type for instances of the class
     typedef std::shared_ptr<SqlApp> Ptr;
 
     static Ptr create(int argc, char* argv[]);
-
-    // Default construction and copy semantics are prohibited
 
     SqlApp() = delete;
     SqlApp(SqlApp const&) = delete;
@@ -56,12 +51,13 @@ public:
     ~SqlApp() final = default;
 
 protected:
-
     int runImpl() final;
 
 private:
-
     SqlApp(int argc, char* argv[]);
+
+    /// Configure Parser for the table index management commands
+    void _configureIndexCommands();
 
     std::string _command;
     std::string _mysqlUser;
@@ -92,6 +88,8 @@ private:
     size_t _pageSize = 100; /// Rows per page in the printout
 
     unsigned int _reportLevel = 0;
+
+    bool _overlap = false;  /// Specifies a subset of the partitioned tables
 };
 
 }}} // namespace lsst::qserv::replica

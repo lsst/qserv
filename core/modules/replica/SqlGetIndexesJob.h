@@ -67,6 +67,11 @@ public:
      *
      * @param database The name of a database where the tables are residing.
      * @param table The name of the base table to be affected by the operation.
+     * @param overlap The flag (applies to the partitioned tables only)
+     *   indicating which kind of the partitioned tables to be affected by
+     *   the operation. If the flag is set to 'true' then only the overlap tables
+     *   will be involved into the operation. Otherwise, only the chunk tables will
+     *   be affected.
      * @param allWorkers The flag which if set to 'true' will engage all known
      *   workers regardless of their status. If the flag is set to 'false' then
      *   only 'ENABLED' workers which are not in the 'READ-ONLY' state will be
@@ -79,6 +84,7 @@ public:
      */
     static Ptr create(std::string const& database,
                       std::string const& table,
+                      bool overlap,
                       bool allWorkers,
                       Controller::Ptr const& controller,
                       std::string const& parentJobId=std::string(),
@@ -93,6 +99,7 @@ public:
 
     std::string const& database() const { return _database; }
     std::string const& table() const { return _table; }
+    bool overlap() const { return _overlap; }
 
     std::list<std::pair<std::string,std::string>> extendedPersistentState() const final;
 
@@ -109,6 +116,7 @@ protected:
 private:
     SqlGetIndexesJob(std::string const& database,
                      std::string const& table,
+                     bool overlap,
                      bool allWorkers,
                      Controller::Ptr const& controller,
                      std::string const& parentJobId,
@@ -119,6 +127,7 @@ private:
 
     std::string const _database;
     std::string const _table;
+    bool const _overlap;
 
     CallbackType _onFinish;     /// @note is reset when the job finishes
 

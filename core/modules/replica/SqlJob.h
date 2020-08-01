@@ -165,13 +165,28 @@ protected:
      * multiple entries for the partitioned tables (which includes prototype
      * tables, special "overflow" tables, and chunk-specific tables).
      *
+     * @param worker The unique identifier of a worker hosting the tables.
+     * @param database The name of the table's database.
+     * @param table The base name of a table.
+     * @param allTables The optional flag (applies to the partitioned tables only)
+     *   indicating if all or a subset of tables (as determined by the next
+     *   parameter 'overlapTablesOnly') shall be reported. if the flag is set to 'true'
+     *   then the next parameter 'overlapTablesOnly' will be ignored.
+     * @param overlapTablesOnly The optional flag (applies to the partitioned tables only)
+     *   indicating which kind of the partitioned tables to be reported.
+     *   If the flag is set to 'true' then overlap tables will be reported.
+     *   If the flag is set to 'false' then the chunk tables will be reported.
+     *   Note, this parameter is only taken into consideration if the previous
+     *   parameter 'allTables' was set to 'false'.
      * @return a collection of tables found
      * @throws std::invalid_argument in case if the database or a table
      *   aren't valid.
      */
     std::vector<std::string> workerTables(std::string const& worker,
                                           std::string const& database,
-                                          std::string const& table) const;
+                                          std::string const& table,
+                                          bool allTables=true,
+                                          bool overlapTablesOnly=false) const;
 
     /**
      * The algorithm will distribute tables between the specified number of
