@@ -163,9 +163,7 @@ json HttpIngestModule::_getTransactions() {
         vector<unsigned int> chunks;
         databaseServices->findDatabaseChunks(chunks, database, allWorkers);
 
-        result["databases"][database]["info"] = config->databaseInfo(database).toJson();
         result["databases"][database]["num_chunks"] = chunks.size();
-
         result["databases"][database]["transactions"] = json::array();
         for (auto&& transaction: databaseServices->transactions(database)) {
             result["databases"][database]["transactions"].push_back(transaction.toJson());
@@ -191,7 +189,6 @@ json HttpIngestModule::_getTransaction() {
     databaseServices->findDatabaseChunks(chunks, transaction.database, allWorkers);
 
     json result;
-    result["databases"][transaction.database]["info"] = config->databaseInfo(transaction.database).toJson();
     result["databases"][transaction.database]["transactions"].push_back(transaction.toJson());
     result["databases"][transaction.database]["num_chunks"] = chunks.size();
     return result;
@@ -261,7 +258,6 @@ json HttpIngestModule::_beginTransaction() {
         logBeginTransaction("SUCCESS");
 
         json result;
-        result["databases"][transaction.database]["info"] = config->databaseInfo(databaseInfo.name).toJson();
         result["databases"][transaction.database]["transactions"].push_back(transaction.toJson());
         result["databases"][transaction.database]["num_chunks"] = chunks.size();
         return result;
@@ -317,7 +313,6 @@ json HttpIngestModule::_endTransaction() {
         databaseServices->findDatabaseChunks(chunks, transaction.database, allWorkers);
 
         json result;
-        result["databases"][transaction.database]["info"] = config->databaseInfo(transaction.database).toJson();
         result["databases"][transaction.database]["transactions"].push_back(transaction.toJson());
         result["databases"][transaction.database]["num_chunks"] = chunks.size();
         result["secondary-index-build-success"] = 0;
@@ -330,7 +325,6 @@ json HttpIngestModule::_endTransaction() {
             logJobStartedEvent(AbortTransactionJob::typeName(), job, databaseInfo.family);
             job->wait();
             logJobFinishedEvent(AbortTransactionJob::typeName(), job, databaseInfo.family);
-            result["data"] = job->getResultData().toJson();
 
             // This operation in a context of the "secondary index" table can be vetoed by
             // a catalog ingest workflow at the database registration time.
