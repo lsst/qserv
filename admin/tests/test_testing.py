@@ -26,7 +26,7 @@
 import io
 import unittest
 
-from lsst.qserv.testing import config, mock_db
+from lsst.qserv.testing import config, mock_db, query_runner
 
 
 _CFG1 = """
@@ -159,7 +159,7 @@ class TestConfig(unittest.TestCase):
 
 class TestMockDb(unittest.TestCase):
 
-    def test_mock_db(self):
+    def test_mock_db_fetchall(self):
 
         # can take any args
         conn = mock_db.connect(host="host", port=4040, user='qsmaster',
@@ -181,6 +181,82 @@ class TestMockDb(unittest.TestCase):
         cursor.execute(query)
         rows = cursor.fetchall()
         self.assertEqual(len(rows), 22)
+
+    def test_mock_db_fetchmany(self):
+
+        # can take any args
+        conn = mock_db.connect(host="host", port=4040, user='qsmaster',
+                               passwd='', db='LSST')
+
+        cursor = conn.cursor()
+
+        query = "SELECT * from Object"
+        cursor.execute(query)
+        rows = cursor.fetchmany()
+        self.assertEqual(len(rows), 1)
+        rows = cursor.fetchmany()
+        self.assertEqual(len(rows), 1)
+        rows = cursor.fetchmany()
+        self.assertEqual(len(rows), 0)
+
+        query = "SELECT * from Object where O = 5"
+        cursor.execute(query)
+        rows = cursor.fetchmany(4)
+        self.assertEqual(len(rows), 4)
+        rows = cursor.fetchmany(4)
+        self.assertEqual(len(rows), 1)
+        rows = cursor.fetchmany(4)
+        self.assertEqual(len(rows), 0)
+
+        query = "SELECT * from Ob22ject"
+        cursor.execute(query)
+        rows = cursor.fetchmany(1000)
+        self.assertEqual(len(rows), 22)
+        rows = cursor.fetchmany(1000)
+        self.assertEqual(len(rows), 0)
+
+
+class TestQueryRunner(unittest.TestCase):
+
+    def test_query_runner_count(self):
+
+        def connectionFactory():
+            return mock_db.connect()
+
+        cfg = config.Config.from_yaml([io.StringIO(_CFG1)])
+        queries = cfg.queries("FTSObj")
+
+        runner = query_runner.QueryRunner(
+            queries=queries,
+            maxRate=None,
+            connectionFactory=connectionFactory,
+            runnerId="runner1",
+            arraysize=1000,
+            queryCountLimit=10,
+            runTimeLimit=None,
+            monitor=None
+        )
+        runner()
+
+    def test_query_runner_time(self):
+
+        def connectionFactory():
+            return mock_db.connect()
+
+        cfg = config.Config.from_yaml([io.StringIO(_CFG1)])
+        queries = cfg.queries("FTSObj")
+
+        runner = query_runner.QueryRunner(
+            queries=queries,
+            maxRate=None,
+            connectionFactory=connectionFactory,
+            runnerId="runner1",
+            arraysize=1000,
+            queryCountLimit=None,
+            runTimeLimit=1.5,
+            monitor=None
+        )
+        runner()
 
 
 if __name__ == "__main__":
