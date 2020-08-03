@@ -31,7 +31,7 @@ before_install:
 #install:
 # Will not work because travis-ci free plan does not allow builds longer than 50
 # minutes
-#  - echo "Building image with Qserv dependencies" 
+#  - echo "Building image with Qserv dependencies"
 #  - travis_wait 120 ./admin/tools/docker/1_build-deps.sh
 
 script:
@@ -45,7 +45,7 @@ notifications:
 
 after_success:
   - echo "Generate and upload documentation"
-  - curl -fsSL https://raw.githubusercontent.com/lsst/doc-container/tickets\/DM-23256/run.sh | bash -s -- -p "$LTD_PASSWORD" "$PWD" 
+  - curl -fsSL https://raw.githubusercontent.com/lsst/doc-container/master/run.sh | bash -s -- -p "$LTD_PASSWORD" "$PWD"
   - echo "Push $IMAGE and associated master, worker images to Docker Hub"
   - docker login -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD";
   - docker push "$IMAGE"
