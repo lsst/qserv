@@ -45,7 +45,7 @@ notifications:
 
 after_success:
   - echo "Generate and upload documentation"
-  - curl -fsSL https://raw.githubusercontent.com/lsst/doc-container/master/run.sh | bash -s -- -p "$LTD_PASSWORD" "$PWD"
+  - curl -fsSL https://raw.githubusercontent.com/lsst-dm/doc-container/master/run.sh | bash -s -- -p "$LTD_PASSWORD" "$PWD"
   - echo "Push $IMAGE and associated master, worker images to Docker Hub"
   - docker login -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD";
   - docker push "$IMAGE"
