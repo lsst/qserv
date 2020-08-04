@@ -219,6 +219,18 @@ public:
 
 
 /**
+ * Instances of this exception class are thrown in a scenario when deadlock found
+ * when trying to get lock. A solution is to try restarting an ongoing transaction.
+ * 
+ * This error corresponds to MySQL error: ER_LOCK_DEADLOCK
+ */
+class LockDeadlock: public Error {
+public:
+    using Error::Error;
+};
+
+
+/**
  * Instances of this exception class are thrown on failed attempts
  * to interpret the contents of the result set.
  */
