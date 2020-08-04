@@ -32,7 +32,7 @@ import unittest
 from lsst.qserv.testing import config, mock_db, monitor, query_runner
 
 
-logging.basicConfig(level=logging.WARNING)
+logging.basicConfig(level=logging.INFO)
 
 _CFG1 = """
 queryClasses:
@@ -314,6 +314,102 @@ class TestQueryRunner(unittest.TestCase):
             monitor=None
         )
         runner()
+
+
+class TestMonitor(unittest.TestCase):
+
+    def test_monitor_influxdb_file(self):
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+
+            fname = os.path.join(tmpdir, "monit1-%T.dat")
+            monit = monitor.InfluxDBFileMonitor(fname, None)
+
+            monit.add_metrics(
+                "metrics1",
+                value=1
+            )
+            monit.add_metrics(
+                "metrics2",
+                value1=1,
+                value2=2,
+                tags={"tag1": "tag", "tag2": 100}
+            )
+
+            path = monit.path
+            self.assertTrue(path.endswith(".dat"))
+
+            monit.close()
+
+            with open(path) as f:
+                data = f.read().split("\n")
+                self.assertEqual(len(data), 4)
+                self.assertEqual(data[0], "# DML")
+                # ignores timestamps
+                self.assertTrue(data[1].startswith("metrics1 value=1 "))
+                self.assertTrue(data[2].startswith("metrics2,tag1=tag,tag2=100 value1=1,value2=2 "))
+
+            # now add database name
+            fname = os.path.join(tmpdir, "monit2.dat")
+            monit = monitor.InfluxDBFileMonitor(fname, 1000000, "metricsdb")
+
+            monit.add_metrics(
+                "metrics1",
+                value=1
+            )
+            monit.add_metrics(
+                "metrics2",
+                value1=1,
+                value2=2,
+                tags={"tag1": "tag", "tag2": 100}
+            )
+
+            path = monit.path
+            # name should end with timestamp
+            self.assertFalse(path.endswith(".dat"))
+
+            monit.close()
+
+            with open(path) as f:
+                data = f.read().split("\n")
+                self.assertEqual(len(data), 5)
+                self.assertEqual(data[0], "# DML")
+                self.assertEqual(data[1], "# CONTEXT-DATABASE: metricsdb")
+                # ignores timestamps
+                self.assertTrue(data[2].startswith("metrics1 value=1 "))
+                self.assertTrue(data[3].startswith("metrics2,tag1=tag,tag2=100 value1=1,value2=2 "))
+
+    def test_monitor_addtags(self):
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+
+            fname = os.path.join(tmpdir, "monit1-%T.dat")
+            monit1 = monitor.InfluxDBFileMonitor(fname, None)
+            monit = monitor.AddTagsMonitor(monit1, tags={"tag3": "supertag"})
+
+            monit.add_metrics(
+                "metrics1",
+                value=1
+            )
+            monit.add_metrics(
+                "metrics2",
+                value1=1,
+                value2=2,
+                tags={"tag1": "tag", "tag2": 100, "tag3": 1000000}
+            )
+
+            path = monit1.path
+            monit.close()
+
+            with open(path) as f:
+                data = f.read().split("\n")
+                self.assertEqual(len(data), 4)
+                self.assertEqual(data[0], "# DML")
+                # ignores timestamps
+                self.assertTrue(data[1].startswith("metrics1,tag3=supertag value=1 "))
+                self.assertTrue(data[2].startswith(
+                    "metrics2,tag1=tag,tag2=100,tag3=supertag value1=1,value2=2 ")
+                )
 
 
 if __name__ == "__main__":

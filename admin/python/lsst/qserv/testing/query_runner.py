@@ -90,7 +90,8 @@ class QueryRunner:
 
             if self._monitor:
                 self._monitor.add_metrics(
-                    n_running=1,
+                    "queries",
+                    count=1,
                     tags={
                         "qid": qkey,
                         "runner": self._runnerId,
@@ -112,7 +113,8 @@ class QueryRunner:
 
             if self._monitor:
                 self._monitor.add_metrics(
-                    n_running=0,
+                    "queries",
+                    count=0,
                     tags={
                         "qid": qkey,
                         "runner": self._runnerId,
@@ -150,20 +152,55 @@ class QueryRunner:
             sleep_time_cum += sleep_time
 
             if self._monitor:
+
+                # current query timing metrics
                 self._monitor.add_metrics(
-                    exec_time=t_executed - t_qstart,
-                    result_time=t_qend - t_executed,
-                    query_time=t_qend - t_qstart,
-                    sleep_time=sleep_time,
-                    total_time=total_time,
-                    n_queries=n_queries,
-                    exec_time_cum=exec_time_cum,
-                    result_time_cum=result_time_cum,
-                    query_time_cum=query_time_cum,
-                    sleep_time_cum=sleep_time_cum,
-                    rate=rate,
+                    "query_time",
+                    exec=t_executed - t_qstart,
+                    result=t_qend - t_executed,
+                    query=t_qend - t_qstart,
+                    sleep=sleep_time,
                     tags={
                         "qid": qkey,
+                        "runner": self._runnerId,
+                    }
+                )
+
+                # cumulative time metrics
+                self._monitor.add_metrics(
+                    "query_time_sum",
+                    exec=exec_time_cum,
+                    result=result_time_cum,
+                    query=query_time_cum,
+                    sleep=sleep_time_cum,
+                    tags={
+                        "runner": self._runnerId,
+                    }
+                )
+
+                # query rate
+                self._monitor.add_metrics(
+                    "rate",
+                    value=rate,
+                    tags={
+                        "runner": self._runnerId,
+                    }
+                )
+
+                # total query count
+                self._monitor.add_metrics(
+                    "total_queries",
+                    count=n_queries,
+                    tags={
+                        "runner": self._runnerId,
+                    }
+                )
+
+                # total time (just linear function)
+                self._monitor.add_metrics(
+                    "total_time",
+                    value=total_time,
+                    tags={
                         "runner": self._runnerId,
                     }
                 )
