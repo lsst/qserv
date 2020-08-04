@@ -71,7 +71,7 @@ class QueryRunner:
             if self._runTimeLimit is not None:
                 if time.time() - t_start > self._runTimeLimit:
                     _LOG.debug("runner=%s: stopping due to run time limit: %s sec",
-                            self._runnerId, self._runTimeLimit)
+                               self._runnerId, self._runTimeLimit)
                     break
 
             # chose one query randomly

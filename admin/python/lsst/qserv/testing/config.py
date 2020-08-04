@@ -41,19 +41,20 @@ class _ValueRandomUniform:
 class _ValueIntFromFile:
     def __init__(self, path, mode="random"):
         # read all numbers from file as integers
-        if path == "/def/null":
+        if path == "/dev/null":
             # for testing only
             self._array = [0]
         else:
             self._array = np.fromfile(path, dtype=int, sep=" ")
         self._mode = mode
+        assert mode in ("random", "sequential")
         self._seq = 0
 
     def __call__(self):
         if self._mode == "random":
             return random.choice(self._array)
         else:
-            if self._seq >= len(self.array):
+            if self._seq >= len(self._array):
                 self._seq = 0
             value = self._array[self._seq]
             self._seq += 1
@@ -97,7 +98,7 @@ class QueryFactory:
             return self._txt
         else:
             values = {}
-            for var, generator in self._vars:
+            for var, generator in self._vars.items():
                 values[var] = generator()
             return self._txt.format(**values)
 

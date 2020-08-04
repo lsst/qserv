@@ -29,7 +29,7 @@ class MockCursor:
         self.rows = []
 
     def execute(self, query):
-        _LOG.info("executing query: %s", query)
+        _LOG.debug("executing query: %s", query)
         self._query = query
         self.n_rows = 2
         if self._query:

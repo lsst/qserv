@@ -24,10 +24,15 @@
 """
 
 import io
+import logging
+import os
+import tempfile
 import unittest
 
-from lsst.qserv.testing import config, mock_db, query_runner
+from lsst.qserv.testing import config, mock_db, monitor, query_runner
 
+
+logging.basicConfig(level=logging.WARNING)
 
 _CFG1 = """
 queryClasses:
@@ -156,6 +161,57 @@ class TestConfig(unittest.TestCase):
         self.assertIsNone(cfg1.maxRate("FTSObj"))
         self.assertIsNone(cfg2.maxRate("FTSObj"))
 
+    def test_ValueRandomUniform(self):
+
+        gen = config._ValueRandomUniform(1., 42.)
+        for i in range(100):
+            val = gen()
+            self.assertGreaterEqual(val, 1.)
+            self.assertLessEqual(val, 42.)
+
+    def test_ValueIntFromFile(self):
+
+        with self.assertRaises(AssertionError):
+            # bad mode
+            config._ValueIntFromFile("/dev/null", "non-random")
+
+        # /dev/null makes all zeros
+        gen = config._ValueIntFromFile("/dev/null")
+        values = set(gen() for i in range(100))
+        self.assertEqual(values, {0})
+
+        with self.assertRaises(FileNotFoundError):
+            config._ValueIntFromFile("/def/none")
+
+        # make file with some data
+        with tempfile.TemporaryDirectory() as tmpdir:
+            fname = os.path.join(tmpdir, "data.txt")
+            with open(fname, "w") as f:
+                f.write("1 10\n 20\t 30\n42\n")
+
+            # random mode
+            gen = config._ValueIntFromFile(fname)
+            values = set(gen() for i in range(100))
+
+            for val in values:
+                self.assertIn(val, {1, 10, 20, 30, 42})
+
+            # sequential mode
+            gen = config._ValueIntFromFile(fname, "sequential")
+            values = [gen() for i in range(10)]
+            self.assertEqual(values, [1, 10, 20, 30, 42, 1, 10, 20, 30, 42])
+
+    def test_QueryFactory(self):
+
+        cfg = config.Config.from_yaml([io.StringIO(_CFG1)])
+
+        for qclass in cfg.classes():
+            queries = cfg.queries(qclass)
+            for qid, factory in queries.items():
+                for i in range(10):
+                    query = factory.query()
+                    self.assertIsInstance(query, str)
+
 
 class TestMockDb(unittest.TestCase):
 
@@ -224,7 +280,8 @@ class TestQueryRunner(unittest.TestCase):
             return mock_db.connect()
 
         cfg = config.Config.from_yaml([io.StringIO(_CFG1)])
-        queries = cfg.queries("FTSObj")
+        queries = cfg.queries("LV")
+        monit = monitor.LogMonitor("testmonit")
 
         runner = query_runner.QueryRunner(
             queries=queries,
@@ -234,7 +291,7 @@ class TestQueryRunner(unittest.TestCase):
             arraysize=1000,
             queryCountLimit=10,
             runTimeLimit=None,
-            monitor=None
+            monitor=monit
         )
         runner()
 
