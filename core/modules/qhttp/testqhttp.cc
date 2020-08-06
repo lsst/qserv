@@ -249,8 +249,9 @@ void CurlMulti::perform(int msecs)
         int numfds = 0;
         auto remaining = end - std::chrono::steady_clock::now();
         msecs = std::chrono::duration_cast<std::chrono::milliseconds>(remaining).count();
-        BOOST_TEST(msecs >= 0);
-        BOOST_TEST(curl_multi_wait(hcurlm, nullptr, 0, msecs, &numfds) == CURLM_OK);
+        if (msecs > 0) {
+            BOOST_TEST(curl_multi_wait(hcurlm, nullptr, 0, msecs, &numfds) == CURLM_OK);
+        }
     }
 }
 
