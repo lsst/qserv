@@ -38,6 +38,15 @@ class _ValueRandomUniform:
         return random.uniform(self._min, self._max)
 
 
+class _ValueRandomUniformInt:
+    def __init__(self, min, max):
+        self._min = float(min)
+        self._max = float(max)
+
+    def __call__(self):
+        return int(random.uniform(self._min, self._max))
+
+
 class _ValueIntFromFile:
     def __init__(self, path, mode="random"):
         # read all numbers from file as integers
@@ -85,6 +94,10 @@ class QueryFactory:
                         min = config.get("min", 0.)
                         max = config.get("max", 1.)
                         generator = _ValueRandomUniform(min, max)
+                    elif config["distribution"] == "uniform_int":
+                        min = config.get("min", 0)
+                        max = config.get("max", 2**64)
+                        generator = _ValueRandomUniformInt(min, max)
                 elif "path" in config:
                     path = config["path"]
                     mode = config.get("mode", "random")
@@ -159,6 +172,10 @@ class Config:
                 configs.append(yaml.load(file, Loader=yaml.SafeLoader))
         return cls(configs)
 
+    def to_yaml(self):
+        """Convert current config to YAML string"""
+        return yaml.dump(self._config)
+
     def classes(self):
         """Return set of classes defined in configuration.
         """
@@ -208,7 +225,22 @@ class Config:
         rate : `float`
             Max rate of submission for this class of queries.
         """
-        return self._config["queryClasses"][q_class]["maxRate"]
+        return self._config["queryClasses"][q_class].get("maxRate")
+
+    def arraysize(self, q_class):
+        """Return array size for fetchmany().
+
+        Parameters
+        ----------
+        q_class : `str`
+            Query class name.
+
+        Returns
+        -------
+        arraysize : `int`
+            Array size to use.
+        """
+        return self._config["queryClasses"][q_class].get("arraysize")
 
     def split(self, n_workers, i_worker):
         """Divide configuration (or its workload) between number of workers.

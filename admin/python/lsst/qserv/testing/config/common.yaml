@@ -8,11 +8,13 @@ queryClasses:
     concurrentQueries: 80  # how many concurrent queries to run, upper limit
     targetTime: 10s  # not really used
     maxRate: 100  # maximum query submission rate, Hz
+    arraysize: 1000
 
   FTSObj:
     concurrentQueries: 12
     targetTimeSec: 1h
     maxRate: null  # null means no limit, it is default
+    arraysize: null  # null means default
 
   FTSSrc:
     concurrentQueries: 3

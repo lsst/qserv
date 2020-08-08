@@ -29,7 +29,7 @@ import os
 import tempfile
 import unittest
 
-from lsst.qserv.testing import config, mock_db, monitor, query_runner
+from lsst.qserv.testing import config, mock_db, monitor, query_runner, runner_mgr
 
 
 logging.basicConfig(level=logging.INFO)
@@ -40,6 +40,7 @@ queryClasses:
     concurrentQueries: 80
     targetTime: 10s
     maxRate: 100
+    arraysize: 1000
   FTSObj:
     concurrentQueries: 12
     targetTimeSec: 1h
@@ -276,13 +277,11 @@ class TestQueryRunner(unittest.TestCase):
 
     def test_query_runner_count(self):
 
-        def connectionFactory():
-            return mock_db.connect()
-
         cfg = config.Config.from_yaml([io.StringIO(_CFG1)])
         queries = cfg.queries("LV")
         monit = monitor.LogMonitor("testmonit")
 
+        connectionFactory = mock_db.connect
         runner = query_runner.QueryRunner(
             queries=queries,
             maxRate=None,
@@ -297,12 +296,10 @@ class TestQueryRunner(unittest.TestCase):
 
     def test_query_runner_time(self):
 
-        def connectionFactory():
-            return mock_db.connect()
-
         cfg = config.Config.from_yaml([io.StringIO(_CFG1)])
         queries = cfg.queries("FTSObj")
 
+        connectionFactory = mock_db.connect
         runner = query_runner.QueryRunner(
             queries=queries,
             maxRate=None,
@@ -314,6 +311,29 @@ class TestQueryRunner(unittest.TestCase):
             monitor=None
         )
         runner()
+
+
+class TestRunnerManager(unittest.TestCase):
+
+    def test_slot_none(self):
+
+        cfg = config.Config.from_yaml([io.StringIO(_CFG1)])
+        connectionFactory = mock_db.connect
+        slot = None
+        mgr = runner_mgr.RunnerManager(
+            cfg, connectionFactory, slot, runTimeLimit=1.5, monitor=None
+        )
+        mgr.run()
+
+    def test_slot_7(self):
+
+        cfg = config.Config.from_yaml([io.StringIO(_CFG1)])
+        connectionFactory = mock_db.connect
+        slot = 7
+        mgr = runner_mgr.RunnerManager(
+            cfg, connectionFactory, slot, runTimeLimit=1.5, monitor=None
+        )
+        mgr.run()
 
 
 class TestMonitor(unittest.TestCase):

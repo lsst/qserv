@@ -17,15 +17,15 @@ class QueryRunner:
     Parameters
     ----------
     queries : `dict` [`str`, `QueryFactory`]
-        Factories for makeing query text, key is a short identifier useful
+        Factories for making query text, key is a short identifier useful
         for monitoring.
     maxRate : `float`, optional
         Max. query submittion rate in Hz or ``None`` to avoid limiting it.
     connectionFactory : callable
         Function or object that makes database connection, mock or real.
-    runnerId : `int`
-        Small integer number identifying this runner.
-    arraysize : `int`
+    runnerId : `str`
+        String identifier for this runner.
+    arraysize : `int`, optional
         Array size for fetchmany()
     queryCountLimit : `int`, option
         Limit number of queries to run, by default run indefinitely.
@@ -35,7 +35,7 @@ class QueryRunner:
         Monitoring instance
     """
 
-    def __init__(self, queries, maxRate, connectionFactory, runnerId, arraysize,
+    def __init__(self, queries, maxRate, connectionFactory, runnerId, arraysize=None,
                  queryCountLimit=None, runTimeLimit=None, monitor=None):
         self._queries = queries
         self._queryKeys = list(queries.keys())
@@ -107,9 +107,12 @@ class QueryRunner:
 
             # fetch all data, do not fill memory with fetchall(), better
             # to iterate, hopefully it retrieves more than one row a a time
-            rows = cursor.fetchmany(self._arraysize)
+            rows = 42
             while rows:
-                rows = cursor.fetchmany(self._arraysize)
+                if self._arraysize:
+                    rows = cursor.fetchmany(self._arraysize)
+                else:
+                    rows = cursor.fetchmany()
 
             if self._monitor:
                 self._monitor.add_metrics(
