@@ -270,11 +270,7 @@ class Config:
                 quot += 1
             n_queries = quot
 
-            rate = self.maxRate(q_class)
-            if rate is not None:
-                rate = float(rate) / n_workers
-
-            overrides[q_class] = dict(concurrentQueries=n_queries, maxRate=rate)
+            overrides[q_class] = dict(concurrentQueries=n_queries)
 
         return self.__class__([self._config, dict(queryClasses=overrides)])
 

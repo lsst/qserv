@@ -5,7 +5,7 @@
 queryClasses:
 
   LV:
-    concurrentQueries: 80  # how many concurrent queries to run, upper limit
+    concurrentQueries: 80  # how many concurrent queries to run
     targetTime: 10s  # not really used
     maxRate: 100  # maximum query submission rate, Hz
     arraysize: 1000

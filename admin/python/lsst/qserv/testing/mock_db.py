@@ -33,8 +33,8 @@ class MockCursor:
         self._query = query
         self.n_rows = 2
         if self._query:
-            # some parameterization, look at the query, if it contains any number
-            # then use that number for the count of rows returned
+            # some parameterization, look at the query, if it contains any
+            # number then use that number for the count of rows returned
             match = _num_re.search(self._query)
             if match:
                 self.n_rows = min(int(match[0]), 10000)

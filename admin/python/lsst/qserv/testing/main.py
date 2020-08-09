@@ -6,6 +6,9 @@ setup process to define an entry point).
 
 import argparse
 import logging
+import functools
+
+import MySQLdb
 
 from .config import Config
 from . import mock_db
@@ -29,26 +32,39 @@ def main():
     parser.add_argument('-v', '--verbose', default=0, action='count',
                         help='More verbose output, can use several times.')
 
-    parser.add_argument("-n", "--num-slots", type=int, default=None, metavar="NUMBER",
+    agroup = parser.add_argument_group("Database connection options")
+    agroup.add_argument("--dummy-db", action="store_true", default=False,
+                        help="Use dummy implementation of database connection, for testing.")
+    agroup.add_argument("--host", default=None, metavar="HOST",
+                        help="Host name for qserv connection.")
+    agroup.add_argument("--port", default=4040, metavar="NUMBER",
+                        help="Port number for qserv connection, default: %(default)s.")
+    agroup.add_argument("--user", default="qsmaster", metavar="STRING",
+                        help="User name for qserv connection, default: %(default)s.")
+    agroup.add_argument("--password", default=None, metavar="STRING",
+                        help="Password for qserv connection.")
+    agroup.add_argument("--db", default="LSST", metavar="STRING",
+                        help="Database name, default: %(default)s.")
+
+    agroup = parser.add_argument_group("Execution options")
+    agroup.add_argument("-n", "--num-slots", type=int, default=None, metavar="NUMBER",
                         help="Number of slots to divide the whole workload into.")
-    parser.add_argument("-s", "--slot", type=int, default=None, metavar="NUMBER",
+    agroup.add_argument("-s", "--slot", type=int, default=None, metavar="NUMBER",
                         help="Slot number for this process, in range [0, num-slots)."
                         " --num-slots and --slot must be specified together.")
-    parser.add_argument("-t", "--time-limit", type=int, default=None, metavar="SECONDS",
+    agroup.add_argument("-t", "--time-limit", type=int, default=None, metavar="SECONDS",
                         help="Run for maximum number of seconds.")
 
-    parser.add_argument("--dummy-db", action="store_true", default=False,
-                        help="Use dummy implementation of database connection, for testing.")
-
-    parser.add_argument("-m", "--monitor", choices=["log", "influxdb-file"],
+    agroup = parser.add_argument_group("Monitoring options")
+    agroup.add_argument("-m", "--monitor", choices=["log", "influxdb-file"],
                         help="Type for monitoring output, one of %(choices)s, default is no output.")
-    parser.add_argument("-r", "--monitor-rollover", type=int, default=3600, metavar="SECONDS",
+    agroup.add_argument("-r", "--monitor-rollover", type=int, default=3600, metavar="SECONDS",
                         help="Number of seconds between rollovers for influxdb-file monitor,"
-                        " default is %(default)s")
-    parser.add_argument("--influxdb-file-name", default="qserv-kraken-mon-%T.dat", metavar="PATH",
-                        help="File name for influxdb-file monitor, default is %(default)s.")
-    parser.add_argument("--influxdb-db", default="qserv_kraken", metavar="DATABASE",
-                        help="InfluxDB database name, default is %(default)s.")
+                        " default: %(default)s")
+    agroup.add_argument("--influxdb-file-name", default="qserv-kraken-mon-%T.dat", metavar="PATH",
+                        help="File name for influxdb-file monitor, default: %(default)s.")
+    agroup.add_argument("--influxdb-db", default="qserv_kraken", metavar="DATABASE",
+                        help="InfluxDB database name, default: %(default)s.")
 
     parser.add_argument("config", nargs="+", type=argparse.FileType(),
                         help="Configuration file name, at least one is required.")
@@ -70,7 +86,14 @@ def main():
     if args.dummy_db:
         connFactory = mock_db.connect
     else:
-        raise NotImplementedError()
+        connFactory = functools.partial(
+            MySQLdb.connect,
+            host=args.host,
+            port=args.port,
+            user=args.user,
+            passwd=args.password,
+            db=args.db
+        )
 
     # monitor
     monitor = None
