@@ -4,6 +4,7 @@
 from collections import namedtuple
 import logging
 import re
+import time
 
 
 _LOG = logging.getLogger(__name__)
@@ -39,6 +40,8 @@ class MockCursor:
             if match:
                 self.n_rows = min(int(match[0]), 10000)
         self.rows = [(i, f"row{i}") for i in range(self.n_rows)]
+        # spend at least few milliseconds in query
+        time.sleep(0.01)
 
     def fetchall(self):
         rows = self.rows

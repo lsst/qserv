@@ -161,8 +161,8 @@ option `--slurm`. When this option is passed it uses slurm environment
 variables `SLURM_NTASKS` and `SLURM_NODEID` (see
 https://slurm.schedmd.com/srun.html). For this to work correctly one has to
 make sure that slurm allocates whole node per task, this can be done in
-different ways, one of then is to pass `-n` and `-N` options with the same
-values to sbatch/srun.
+different ways, one of them is to pass `--ntasks` and `--nodes` options with
+the same values to sbatch/srun.
 
 Here is an example of a script for sbatch command:
 
