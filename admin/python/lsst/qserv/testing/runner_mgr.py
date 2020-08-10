@@ -8,6 +8,7 @@ from multiprocessing import Process
 import time
 
 from .query_runner import QueryRunner
+from .monitor import MPMonitor
 
 _LOG = logging.getLogger(__name__)
 
@@ -42,13 +43,17 @@ class RunnerManager:
         """Start all runners and wait until they are done.
         """
 
+        monitor = None
+        if self._monitor:
+            monitor = MPMonitor(self._monitor)
+
         # instantiate all query runners
         runners = {}
         for qclass in self._config.classes():
 
             n_runners = self._config.concurrentQueries(qclass)
             queries = self._config.queries(qclass)
-            _LOG.debug("%s and %s queries for class %s", n_runners, len(queries), qclass)
+            _LOG.debug("%s runners and %s queries for class %s", n_runners, len(queries), qclass)
             maxRate = self._config.maxRate(qclass)
             arraysize = self._config.arraysize(qclass)
             for i_runner in range(n_runners):
@@ -62,7 +67,7 @@ class RunnerManager:
                 runner = QueryRunner(queries, maxRate, self._connectionFactory,
                                      runnerId, arraysize, queryCountLimit=None,
                                      runTimeLimit=self._runTimeLimit,
-                                     monitor=self._monitor)
+                                     monitor=monitor.child_monitor() if monitor else None)
                 runners[runnerId] = runner
 
         # start all of them
@@ -82,7 +87,14 @@ class RunnerManager:
                     del processes[runnerId]
                     break
             else:
-                # don't get too tired
-                time.sleep(1)
+                if monitor:
+                    monitor.process(1)
+                else:
+                    # just relax
+                    time.sleep(1)
+
+        if monitor:
+            # process whatever may be remaining in the queue
+            monitor.process(None)
 
         _LOG.info("All runners have finished")

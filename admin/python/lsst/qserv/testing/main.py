@@ -13,7 +13,7 @@ import MySQLdb
 
 from .config import Config
 from . import mock_db
-from .monitor import AddTagsMonitor, InfluxDBFileMonitor, LogMonitor
+from .monitor import InfluxDBFileMonitor, LogMonitor
 from .runner_mgr import RunnerManager
 
 _LOG = logging.getLogger(__name__)
@@ -82,7 +82,6 @@ def main():
     if (args.num_slots, args.slot).count(None) == 1:
         parser.error("options --num-slots and --slot must be specified together")
 
-
     if args.slurm:
         if args.num_slots is not None or args.slot is not None:
             parser.error("cannot use --slurm together with --num-slots or --slot")
@@ -121,24 +120,26 @@ def main():
         )
 
     # monitor
+    tags = None if args.slot is None else {"slot": args.slot}
     monitor = None
     if args.monitor == "log":
-        monitor = LogMonitor(logging.getLogger("metrics"))
+        monitor = LogMonitor(logging.getLogger("metrics"), tags=tags)
     elif args.monitor == "influxdb-file":
         slot = "" if args.slot is None else str(args.slot)
         fname = args.influxdb_file_name.replace("%S", slot)
         monitor = InfluxDBFileMonitor(
             fname,
             periodSec=args.monitor_rollover,
-            dbname=args.influxdb_db
+            dbname=args.influxdb_db,
+            tags=tags
         )
-    # add a tag for slot number
-    if monitor is not None and args.slot is not None:
-        monitor = AddTagsMonitor(monitor, tags={"slot": args.slot})
 
     mgr = RunnerManager(cfg, connFactory, args.slot,
                         runTimeLimit=args.time_limit, monitor=monitor)
     mgr.run()
+
+    if monitor:
+        monitor.close()
 
 
 if __name__ == "__main__":

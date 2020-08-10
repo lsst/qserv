@@ -83,7 +83,7 @@ class QueryRunner:
             if self._maxRate is not None:
                 now = time.time()
                 t_next = t_start + n_queries / self._maxRate
-                sleep_time = t_next - now
+                sleep_time = max(t_next - now, 0.)
                 if sleep_time > 0:
                     _LOG.debug("runner=%s: sleeping for %s seconds", self._runnerId, sleep_time)
                     time.sleep(sleep_time)
@@ -207,3 +207,7 @@ class QueryRunner:
                         "runner": self._runnerId,
                     }
                 )
+
+        # because this runs in a subprocess we need to cleanup
+        if self._monitor:
+            self._monitor.close()
