@@ -103,7 +103,7 @@ def main():
     if args.num_slots is not None:
         cfg = cfg.split(args.num_slots, args.slot)
     if args.dump_config:
-        print("Configuration for this process (n_slots={args.num_slots}, slot={args.slot}):")
+        print(f"Configuration for this process (n_slots={args.num_slots}, slot={args.slot}):")
         print(cfg.to_yaml())
 
     # connection factory

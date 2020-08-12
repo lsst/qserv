@@ -30,6 +30,13 @@ def _make_file(path_or_file):
 
 
 class _ValueRandomUniform:
+    """Generator for uniformly distributed floating point numbers.
+
+    Parameters
+    ----------
+    min, max : `float`
+        Range for generated numbers.
+    """
     def __init__(self, min, max):
         self._min = float(min)
         self._max = float(max)
@@ -39,6 +46,13 @@ class _ValueRandomUniform:
 
 
 class _ValueRandomUniformInt:
+    """Generator for uniformly distributed integer numbers.
+
+    Parameters
+    ----------
+    min, max : `int`
+        Range for generated numbers.
+    """
     def __init__(self, min, max):
         self._min = float(min)
         self._max = float(max)
@@ -48,6 +62,15 @@ class _ValueRandomUniformInt:
 
 
 class _ValueIntFromFile:
+    """Generator for numbers that are read from input file.
+
+    Parameters
+    ----------
+    path : `str`
+        Name of the file to read numbers from.
+    mode : `str`, optional
+        One of "random" or "sequential".
+    """
     def __init__(self, path, mode="random"):
         # read all numbers from file as integers
         if path == "/dev/null":
@@ -107,6 +130,13 @@ class QueryFactory:
                 self._vars[var] = generator
 
     def query(self):
+        """Return next query to execute.
+
+        Returns
+        -------
+        query : `str`
+            Query to be executed.
+        """
         if not self._vars:
             return self._txt
         else:
@@ -164,6 +194,11 @@ class Config:
         ----------
         config_files : `list` [`str` or file]
             List of YAML sources, file name or open file object is acceptable.
+
+        Returns
+        -------
+        config : `Config`
+            Configuration class instance.
         """
         # read all YAML files into memory
         configs = []
@@ -173,11 +208,22 @@ class Config:
         return cls(configs)
 
     def to_yaml(self):
-        """Convert current config to YAML string"""
+        """Convert current config to YAML string.
+
+        Returns
+        -------
+        yaml_str : `str`
+            YAML representation of the configuration as a string.
+        """
         return yaml.dump(self._config)
 
     def classes(self):
         """Return set of classes defined in configuration.
+
+        Returns
+        -------
+        classes : `set` [`str`]
+            Sequence of class names defined by configuration.
         """
         return self._classes
 
@@ -260,8 +306,12 @@ class Config:
             Total number of workers.
         i_worker : `int`
             This worker serial number (0 to n_workers-1 inclusive)
-        """
 
+        Returns
+        -------
+        config : `Config`
+            Configuration for specified worker.
+        """
         overrides = {}
         for q_class in self._classes:
             n_queries = self.concurrentQueries(q_class)
@@ -283,6 +333,12 @@ class Config:
         Parameters
         ----------
         config1, config2 : `dict`
+            Dictionaries with configuration data.
+
+        Returns
+        -------
+        config : `dict`
+            Merged configuration data.
         """
 
         result = {}

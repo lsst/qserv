@@ -152,9 +152,9 @@ class TestConfig(unittest.TestCase):
         self.assertEqual(cfg0.concurrentQueries("LV"), 27)
         self.assertEqual(cfg1.concurrentQueries("LV"), 27)
         self.assertEqual(cfg2.concurrentQueries("LV"), 26)
-        self.assertEqual(cfg0.maxRate("LV"), 100. / 3.)
-        self.assertEqual(cfg1.maxRate("LV"), 100. / 3.)
-        self.assertEqual(cfg2.maxRate("LV"), 100. / 3.)
+        self.assertEqual(cfg0.maxRate("LV"), 100.)
+        self.assertEqual(cfg1.maxRate("LV"), 100.)
+        self.assertEqual(cfg2.maxRate("LV"), 100.)
         self.assertEqual(cfg0.concurrentQueries("FTSObj"), 4)
         self.assertEqual(cfg1.concurrentQueries("FTSObj"), 4)
         self.assertEqual(cfg2.concurrentQueries("FTSObj"), 4)
@@ -276,7 +276,11 @@ class TestMockDb(unittest.TestCase):
 class TestQueryRunner(unittest.TestCase):
 
     def test_query_runner_count(self):
+        """Test for queryCountLimit parameter.
 
+        The test is for that runner eventually stops, there are no usual
+        asserts below.
+        """
         cfg = config.Config.from_yaml([io.StringIO(_CFG1)])
         queries = cfg.queries("LV")
         monit = monitor.LogMonitor("testmonit")
@@ -295,7 +299,11 @@ class TestQueryRunner(unittest.TestCase):
         runner()
 
     def test_query_runner_time(self):
+        """Test for runTimeLimit parameter.
 
+        The test is for that runner eventually stops, there are no usual
+        asserts below.
+        """
         cfg = config.Config.from_yaml([io.StringIO(_CFG1)])
         queries = cfg.queries("FTSObj")
 
@@ -316,7 +324,12 @@ class TestQueryRunner(unittest.TestCase):
 class TestRunnerManager(unittest.TestCase):
 
     def test_slot_none(self):
+        """Test for RunnerManager execution with slot=None.
 
+        The test is for that runner eventually stops due to run time limit,
+        there are no usual asserts below but looking at the log output may
+        be useful.
+        """
         cfg = config.Config.from_yaml([io.StringIO(_CFG1)])
         connectionFactory = mock_db.connect
         slot = None
@@ -326,7 +339,12 @@ class TestRunnerManager(unittest.TestCase):
         mgr.run()
 
     def test_slot_7(self):
+        """Test for RunnerManager execution with slot=7.
 
+        The test is for that runner eventually stops due to run time limit,
+        there are no usual asserts below but looking at the log output may
+        be useful (it should include "slot=7").
+        """
         cfg = config.Config.from_yaml([io.StringIO(_CFG1)])
         connectionFactory = mock_db.connect
         slot = 7
@@ -399,13 +417,14 @@ class TestMonitor(unittest.TestCase):
                 self.assertTrue(data[2].startswith("metrics1 value=1 "))
                 self.assertTrue(data[3].startswith("metrics2,tag1=tag,tag2=100 value1=1,value2=2 "))
 
-    def test_monitor_addtags(self):
+    def test_monitor_extratags(self):
+        """Test for extra tags passed to constructor.
+        """
 
         with tempfile.TemporaryDirectory() as tmpdir:
 
             fname = os.path.join(tmpdir, "monit1-%T.dat")
-            monit1 = monitor.InfluxDBFileMonitor(fname, None)
-            monit = monitor.AddTagsMonitor(monit1, tags={"tag3": "supertag"})
+            monit = monitor.InfluxDBFileMonitor(fname, None, tags={"tag3": "supertag"})
 
             monit.add_metrics(
                 "metrics1",
@@ -418,9 +437,8 @@ class TestMonitor(unittest.TestCase):
                 tags={"tag1": "tag", "tag2": 100, "tag3": 1000000}
             )
 
-            path = monit1.path
+            path = monit.path
             monit.close()
-
             with open(path) as f:
                 data = f.read().split("\n")
                 self.assertEqual(len(data), 4)
@@ -428,7 +446,7 @@ class TestMonitor(unittest.TestCase):
                 # ignores timestamps
                 self.assertTrue(data[1].startswith("metrics1,tag3=supertag value=1 "))
                 self.assertTrue(data[2].startswith(
-                    "metrics2,tag1=tag,tag2=100,tag3=supertag value1=1,value2=2 ")
+                    "metrics2,tag3=1000000,tag1=tag,tag2=100 value1=1,value2=2 ")
                 )
 
 
