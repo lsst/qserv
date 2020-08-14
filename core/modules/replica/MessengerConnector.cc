@@ -94,9 +94,13 @@ void MessengerConnector::stop() {
     list<MessageWrapperBase::Ptr> requests2notify;
     {
         util::Lock lock(_mtx, _context() + __func__);
-    
+
+        // The error code is used to call non-throwing methods and to prevent exceptions.
+        // Note that it makes no sense to handle (not even report) any errors within the body
+        // of this method.
+        boost::system::error_code ec;
+
         // Cancel any asynchronous operation(s) if not in the initial state
-    
         switch (_state) {
     
             case STATE_INITIAL:
@@ -104,14 +108,14 @@ void MessengerConnector::stop() {
     
             case STATE_CONNECTING:
             case STATE_COMMUNICATING:
-    
-                _state = STATE_INITIAL;
-    
                 _resolver.cancel();
-                _socket.cancel();
-                _socket.close();
-                _timer.cancel();
-    
+                if (_state == STATE_COMMUNICATING) {
+                    _socket.cancel(ec);
+                    _socket.close(ec);
+                }
+                _timer.cancel(ec);
+                _state = STATE_INITIAL;
+   
                 // Make sure the current request's owner gets notified
     
                 if (_currentRequest != nullptr) {
@@ -216,8 +220,12 @@ void MessengerConnector::_restart(util::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG, _context() << __func__
          << "  _currentRequest=" << (_currentRequest ? _currentRequest->id() : ""));
 
-    // Cancel any asynchronous operation(s) if not in the initial state
+    // The error code is used to call non-throwing methods and to prevent exceptions.
+    // Note that it makes no sense to handle (not even report) any errors within the body
+    // of this method.
+    boost::system::error_code ec;
 
+    // Cancel any asynchronous operation(s) if not in the initial state
     switch (_state) {
 
         case STATE_INITIAL:
@@ -226,10 +234,11 @@ void MessengerConnector::_restart(util::Lock const& lock) {
         case STATE_CONNECTING:
         case STATE_COMMUNICATING:
             _resolver.cancel();
-            _socket.cancel();
-            _socket.close();
-            _timer.cancel();
-
+            if (_state == STATE_COMMUNICATING) {
+                _socket.cancel(ec);
+                _socket.close(ec);
+            }
+            _timer.cancel(ec);
             _state = STATE_INITIAL;
             break;
 
