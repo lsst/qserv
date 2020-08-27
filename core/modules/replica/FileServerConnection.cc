@@ -88,21 +88,20 @@ bool readIntoBuffer(boost::asio::ip::tcp::socket& socket,
     return not ::isErrorCode(ec, __func__);
 }
 
-
 template <class T>
 bool readMessage(boost::asio::ip::tcp::socket& socket,
                  shared_ptr<ProtocolBuffer> const& ptr,
                  size_t bytes,
                  T& message) {
-
-    if (not readIntoBuffer(socket,
-                           ptr,
-                           bytes)) return false;
-
-    // Parse the response to see what should be done next.
-
-    ptr->parse(message, bytes);
-    return true;
+    try {
+        if (readIntoBuffer(socket, ptr, bytes)) {
+            ptr->parse(message, bytes);
+            return true;
+        }
+    } catch (exception const& ex) {
+        LOGS(_log, LOG_LVL_ERROR, context << __func__ << ex.what());
+    }
+    return false;
 }
 }   // namespace
 
