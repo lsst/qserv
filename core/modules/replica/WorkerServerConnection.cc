@@ -105,13 +105,15 @@ bool readLength(boost::asio::ip::tcp::socket& socket,
                 shared_ptr<ProtocolBuffer> const& ptr,
                 uint32_t& bytes) {
 
-    if (not readIntoBuffer(socket,
-                           ptr,
-                           sizeof(uint32_t))) {
-        return false;
+    try {
+        if (readIntoBuffer(socket, ptr, sizeof(uint32_t))) {
+            bytes = ptr->parseLength();
+            return true;
+        }
+    } catch (exception const& ex) {
+        LOGS(_log, LOG_LVL_ERROR, context << __func__ << ex.what());
     }
-    bytes = ptr->parseLength();
-    return true;
+    return false;
 }
 }   // namespace
 
