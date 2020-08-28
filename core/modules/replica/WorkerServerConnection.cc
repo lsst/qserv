@@ -46,7 +46,7 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.WorkerServerConnection");
 namespace {
 
 /// The context for diagnostic & debug printouts
-string const context = "CONNECTION  ";
+string const context = "WORKER-SERVER-CONNECTION  ";
 
 bool isErrorCode(boost::system::error_code const& ec,
                  string const& scope) {
@@ -89,17 +89,15 @@ bool readMessage(boost::asio::ip::tcp::socket& socket,
                  shared_ptr<ProtocolBuffer> const& ptr,
                  size_t bytes,
                  T& message) {
-
-    if (not readIntoBuffer(socket,
-                           ptr,
-                           bytes)) {
-        return false;
+    try {
+        if (readIntoBuffer(socket, ptr, bytes)) {
+            ptr->parse(message, bytes);
+            return true;
+        }
+    } catch (exception const& ex) {
+        LOGS(_log, LOG_LVL_ERROR, context << __func__ << ex.what());
     }
-
-    // Parse the response to see what should be done next.
-
-    ptr->parse(message, bytes);
-    return true;
+    return false;
 }
 
 
