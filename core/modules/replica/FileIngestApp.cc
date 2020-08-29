@@ -223,7 +223,7 @@ FileIngestApp::FileIngestApp(int argc, char* argv[])
     ).required(
         "transaction-id",
         "A unique identifier (number) of a super-transaction which must be already"
-        "open.",
+        " open.",
         _file.transactionId
     ).required(
         "table",
@@ -248,7 +248,7 @@ FileIngestApp::FileIngestApp(int argc, char* argv[])
         " of objects. Each object specifies a destination of the ingest and"
         " the name name of a file to ingest. The general schema of the JSON object is:"
         " [{\"worker-host\":<string>,\"worker-port\":<number>,\"transaction-id\":<number>,"
-        "\"table\":<string>,\"type\":<string>,\"path\":<string>},...]."
+        " \"table\":<string>,\"type\":<string>,\"path\":<string>},...]."
         " Where allowed values for the key \"type\" are either \"P\" for"
         " the partitioned (chunked) table contributions, or \"R\" for the"
         " regular tables contributions. Input files for the partitioned tables"
@@ -264,8 +264,8 @@ FileIngestApp::FileIngestApp(int argc, char* argv[])
     parser().command(
         "FILE-LIST-TRANS"
     ).description(
-        "The batch ingest option. A list of files to be ingested will be read from"
-        " a file. The content of the file is required to be a serialized JSON array"
+        "The alternative batch ingest option. A list of files to be ingested will be read"
+        " from a file. The content of the file is required to be a serialized JSON array"
         " of objects. Each object specifies a destination of the ingest and"
         " the name name of a file to ingest. The general schema of the JSON object is:"
         " [{\"worker-host\":<string>,\"worker-port\":<number>,\"path\":<string>},...]."
@@ -275,7 +275,7 @@ FileIngestApp::FileIngestApp(int argc, char* argv[])
     ).required(
         "transaction-id",
         "A unique identifier (number) of a super-transaction which must be already"
-        "open.",
+        " open.",
         _file.transactionId
     ).required(
         "table",
