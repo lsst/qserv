@@ -96,7 +96,13 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
-list<FileIngestApp::FileIngestSpec> FileIngestApp::parseFileList(json const& jsonObj) {
+list<FileIngestApp::FileIngestSpec> FileIngestApp::parseFileList(
+        json const& jsonObj,
+        bool shortFormat,
+        TransactionId transactionId,
+        std::string const& tableName,
+        std::string const& tableType) {
+
     string const context = "FileIngestApp::" + string(__func__) + "  ";
 
     list<FileIngestApp::FileIngestSpec> files;
@@ -106,7 +112,17 @@ list<FileIngestApp::FileIngestSpec> FileIngestApp::parseFileList(json const& jso
                 context + "The input parameter doesn't represent a JSON array of file"
                 " specifications.");
     }
-
+    if (shortFormat) {
+        if (tableName.empty()) {
+            throw invalid_argument(
+                    context + "The name of the table can't be empty");
+        }
+        if ((tableType != "R") and (tableType != "P")) {
+            throw invalid_argument(
+                    context + "The value '" + tableType
+                    + "' of the table type is not in a set of {'R','P'}.");
+        }
+    }
     for (auto&& fileSpecJson: jsonObj) {
         if (not fileSpecJson.is_object()) {
             throw invalid_argument(
@@ -114,22 +130,26 @@ list<FileIngestApp::FileIngestSpec> FileIngestApp::parseFileList(json const& jso
                     " with a file specification.");
         }
         FileIngestApp::FileIngestSpec file;
+        file.workerHost = parse(context, fileSpecJson, "worker-host");
+        file.workerPort = parse<uint16_t>(context, fileSpecJson, "worker-port", 1);
+        if (shortFormat) {
+            file.transactionId = transactionId;
+            file.tableName = tableName;
+            file.tableType = tableType;
+        } else {
+            file.transactionId = parse<TransactionId>(context, fileSpecJson, "transaction-id", 0);
+            file.tableName = parse(context, fileSpecJson, "table");
 
-        file.workerHost    = parse(context, fileSpecJson, "worker-host");
-        file.workerPort    = parse<uint16_t>(context, fileSpecJson, "worker-port", 1);
-        file.transactionId = parse<TransactionId>(context, fileSpecJson, "transaction-id", 0);
-        file.tableName     = parse(context, fileSpecJson, "table");
-
-        string tableType = parse(context, fileSpecJson, "type");
-        transform(tableType.begin(), tableType.end(), tableType.begin(), ::toupper);
-        if ((tableType != "R") and (tableType != "P")) {
-            throw invalid_argument(
-                    + "Failed to parse JSON object, a value " + tableType
-                    + " of <type> is not in a set of {'R','P'}.");
+            string tableType = parse(context, fileSpecJson, "type");
+            transform(tableType.begin(), tableType.end(), tableType.begin(), ::toupper);
+            if ((tableType != "R") and (tableType != "P")) {
+                throw invalid_argument(
+                        + "Failed to parse JSON object, a value " + tableType
+                        + " of <type> is not in a set of {'R','P'}.");
+            }
+            file.tableType = tableType;
         }
-        file.tableType = tableType;
         file.inFileName = parse(context, fileSpecJson, "path");
-
         files.push_back(file);
     }
     return files;
@@ -170,7 +190,7 @@ FileIngestApp::FileIngestApp(int argc, char* argv[])
 
     parser().commands(
         "command",
-        {"FILE", "FILE-LIST"},
+        {"FILE", "FILE-LIST", "FILE-LIST-TRANS"},
         _command
     ).option(
         "columns-separator",
@@ -240,6 +260,38 @@ FileIngestApp::FileIngestApp(int argc, char* argv[])
         " then the specifications will be read from the standard input stream",
         _fileListName
     );
+
+    parser().command(
+        "FILE-LIST-TRANS"
+    ).description(
+        "The batch ingest option. A list of files to be ingested will be read from"
+        " a file. The content of the file is required to be a serialized JSON array"
+        " of objects. Each object specifies a destination of the ingest and"
+        " the name name of a file to ingest. The general schema of the JSON object is:"
+        " [{\"worker-host\":<string>,\"worker-port\":<number>,\"path\":<string>},...]."
+        " Input files for the partitioned tables are expected to have the following"
+        " names: \"chunk_<num>.txt\" or \"chunk_<num>_overlap.txt\". The files will be"
+        " ingested sequentially."
+    ).required(
+        "transaction-id",
+        "A unique identifier (number) of a super-transaction which must be already"
+        "open.",
+        _file.transactionId
+    ).required(
+        "table",
+        "The name of a table to be ingested.",
+        _file.tableName
+    ).required(
+        "type",
+        "The type of a table to be ingested. Allowed options: 'P' for contributions"
+        " into partitioned tables, and 'R' for contributions into the regular tables.",
+        _file.tableType
+    ).required(
+        "file-list",
+        "The name of a file with ingest specifications. If the file name is set to '-'"
+        " then the specifications will be read from the standard input stream",
+        _fileListName
+    );
 }
 
 int FileIngestApp::runImpl() {
@@ -249,7 +301,11 @@ int FileIngestApp::runImpl() {
     if (_command == "FILE") {
         files.push_back(_file);
     } else if (_command == "FILE-LIST") {
-        files = _readFileList();
+        bool const shortFormat = false;
+        files = _readFileList(shortFormat);
+    } else if (_command == "FILE-LIST-TRANS") {
+        bool const shortFormat = true;
+        files = _readFileList(shortFormat);
     } else {
         throw invalid_argument(context + "Unsupported loading method " + _command);
     }
@@ -260,7 +316,7 @@ int FileIngestApp::runImpl() {
 }
 
 
-list<FileIngestApp::FileIngestSpec> FileIngestApp::_readFileList() const {
+list<FileIngestApp::FileIngestSpec> FileIngestApp::_readFileList(bool shortFormat) const {
     string const context = "FileIngestApp::" + string(__func__) + "  ";
 
     ifstream file(_fileListName);
@@ -283,7 +339,11 @@ list<FileIngestApp::FileIngestSpec> FileIngestApp::_readFileList() const {
                 context + "Failed to parse the content of file: " + _fileListName
                 + " into a JSON object, exception: " + string(ex.what()));
     }
-    return parseFileList(jsonObj);
+    return parseFileList(jsonObj,
+                         shortFormat,
+                         _file.transactionId,
+                         _file.tableName,
+                         _file.tableType);
 }
 
 

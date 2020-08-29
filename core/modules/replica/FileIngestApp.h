@@ -64,8 +64,20 @@ public:
     };
 
     /**
-     * Read file ingest specifications from a JSON object. Here is a schema of
-     * the object:
+     * Read file ingest specifications from a JSON object. The schema of an input file
+     * depends on a value of the 'shortFormat' parameter passed into the method.
+     * If the parameter is set to 'true' then the following schema will be expected
+     * for each object found in the file:
+     * @code
+     * [
+     *   {"worker-host":<string>,
+     *    "worker-port":<number>,
+     *    "path":<string>
+     *   },
+     *   ...
+     * ]
+     * @code
+     * Otherwise, the following schema will be expected:
      * @code
      * [
      *   {"worker-host":<string>,
@@ -87,10 +99,24 @@ public:
      * - "path" is a path to the file to be read. The file has to be readable by the application
      *
      * @param jsonObj specifications packaged into a JSON object
+     * @param shortFormat (optional) flag which is set to 'true' would ommit reading
+     *   transaction identifiers and table specifications (name and type) from
+     *   an input object. In this case values of the remaining optional parameters will
+     *   be used to set values of the missing fields. If the flag is set to 'false' then
+     *   the optional parameters will be ignored and the corresponding specifications
+     *   will be pulled from the input JSON object.
+     * @param transactionId (optional) identifier of a transaction (if shortFormat=false)
+     * @param tableName (optional) the name of a table (if shortFormat=false)
+     * @param tableType (optional) the type of a table (if shortFormat=false)
      * @return a collection of specifications
-     * @throws std::invalid_argument if the string can't be parsed
+     * @throws std::invalid_argument if the string can't be parsed, or if strings
+     *   don't have a valid payload in the shortFormat=false mode.
      */
-    static std::list<FileIngestSpec> parseFileList(nlohmann::json const& jsonObj);
+    static std::list<FileIngestSpec> parseFileList(nlohmann::json const& jsonObj,
+                                                   bool shortFormat=false,
+                                                   TransactionId transactionId=0,
+                                                   std::string const& tableName=std::string(),
+                                                   std::string const& tableType=std::string());
 
     /**
      * Structure ChunkContribution represents attributes of a chunk contribution
@@ -139,9 +165,11 @@ private:
     /**
      * Read ingest specifications from a file supplied via the corresponding
      * command line parameter with command 'FILE-LIST'.
+     * @param shortFormat the flag which is 'true' would omit reading transaction
+     *   identifiers and table specifications (name and type) from a file.
      * @return a list of file specifications
      */
-    std::list<FileIngestSpec> _readFileList() const;
+    std::list<FileIngestSpec> _readFileList(bool shortFormat) const;
 
     /**
      * Ingest a single file as per the ingest specification
