@@ -91,6 +91,29 @@ BOOST_AUTO_TEST_CASE(FileIngestAppTest_parseFileList) {
         "["
         "{\"worker-host\":\"worker-A\","
         "\"worker-port\":25002,"
+        "\"path\":\"/tmp/chunk_123.txt\"}"
+        "]";
+    BOOST_REQUIRE_NO_THROW({
+        obj = json::parse(str);
+        bool const shortMode = true;
+        TransactionId const transactionId = 1;
+        string const tableName = "Object";
+        string const tableType = "P";
+        fileSpecList = FileIngestApp::parseFileList(obj, shortMode, transactionId, tableName, tableType);
+    });
+    BOOST_CHECK(fileSpecList.size() == 1);
+    auto const& fileSpec1 = fileSpecList.front();
+    BOOST_CHECK(fileSpec1.workerHost == "worker-A");
+    BOOST_CHECK(fileSpec1.workerPort == 25002);
+    BOOST_CHECK(fileSpec1.transactionId == 1);
+    BOOST_CHECK(fileSpec1.tableName == "Object");
+    BOOST_CHECK(fileSpec1.tableType == "P");
+    BOOST_CHECK(fileSpec1.inFileName == "/tmp/chunk_123.txt");
+
+    str =
+        "["
+        "{\"worker-host\":\"worker-A\","
+        "\"worker-port\":25002,"
         "\"transaction-id\":1,"
         "\"table\":\"Object\","
         "\"type\":\"P\","
