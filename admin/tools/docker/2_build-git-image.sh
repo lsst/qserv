@@ -66,7 +66,7 @@ fi
 
 if [ -z "$DEPS_IMAGE" ]; then
     echo "Qserv image not provided, switching to locally build image"
-    if [ f "$DEPS_TAG_FILE" ]
+    if [ -f "$DEPS_TAG_FILE" ]
     then
         >&2 echo "ERROR: local build not available, use -D option to provide a source Qserv dependencies image"
         exit 1
