@@ -76,9 +76,4 @@ std::string MySqlConfig::toString() const {
     return oss.str();
 }
 
-
-std::shared_ptr<sql::SqlConnection> MySqlConfig::getConnection() const {
-    return _sqlConnection;
-}
-
 }}} // namespace lsst::qserv::mysql
