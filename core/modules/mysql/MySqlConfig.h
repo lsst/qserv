@@ -49,7 +49,13 @@ namespace mysql {
  */
 class MySqlConfig {
 public:
-    MySqlConfig() {}
+    MySqlConfig() = default;
+
+    /**
+     * Default copy constructor appropriate as long as all members remain simple.
+     */
+    MySqlConfig(MySqlConfig const&) = default;
+    MySqlConfig& operator=(MySqlConfig const&) = default;
 
     /**
      *  Create MySqlConfig instance
@@ -83,12 +89,6 @@ public:
     MySqlConfig(std::string const& username, std::string const& password,
                 std::string const& socket, std::string const& db = "");
 
-    /**
-     * Default copy constructor appropriate as long as all members remain simple.
-     */
-    MySqlConfig(MySqlConfig const&) = default;
-
-    MySqlConfig& operator=(MySqlConfig const&) = default;
 
     /** Overload output operator for current class
      *
