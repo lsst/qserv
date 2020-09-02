@@ -49,7 +49,9 @@ namespace mysql {
  */
 class MySqlConfig {
 public:
-    MySqlConfig() {}
+    MySqlConfig() = default;
+    MySqlConfig(MySqlConfig const&) = default;
+    MySqlConfig& operator=(MySqlConfig const&) = default;
 
     /**
      *  Create MySqlConfig instance
@@ -83,11 +85,6 @@ public:
     MySqlConfig(std::string const& username, std::string const& password,
                 std::string const& socket, std::string const& db = "");
 
-    /**
-     * Create MySqlConfig instance with an SqlConnection that should be used instead of creating a new
-     * connection. Used to implement custom behavior for unit tests.
-     */
-    MySqlConfig(std::shared_ptr<sql::SqlConnection> sqlConnection) : _sqlConnection(sqlConnection) {}
 
     /** Overload output operator for current class
      *
@@ -110,14 +107,6 @@ public:
     std::string socket;
     std::string dbName;
 
-    /**
-     * Get the connection object to use if one was provided.
-     * This is useful for unit testing.
-     */
-    std::shared_ptr<sql::SqlConnection> getConnection() const;
-
-private:
-    std::shared_ptr<sql::SqlConnection> _sqlConnection;
 };
 
 }}} // namespace lsst::qserv::mysql
