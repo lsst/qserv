@@ -211,11 +211,17 @@ E.g., don't try to express it as "WHERE objectId != 1", or WHERE objectId > 123 
 Note, we expect to allow decomposing objectId into bitfields (e.g., for sampling) in the future. See [DM-2889](https://jira.lsstcorp.org/browse/DM-2889).
 
 
-### Column(s) used in ORDER BY must appear in SELECT
+### Column(s) used in ORDER BY or GROUP BY must appear in SELECT
 
-At the moment we require columns used in ORDER BY to be listed in SELECT. Example of an invalid query:
+At the moment we require columns used in ORDER BY or GROUP BY to be listed in SELECT. Example of an invalid query:
 
     SELECT x
+    FROM   T
+    ORDER BY y
+
+Correct version:
+
+    SELECT y, x
     FROM   T
     ORDER BY y
 
