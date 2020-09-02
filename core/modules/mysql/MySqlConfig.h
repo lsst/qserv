@@ -84,10 +84,11 @@ public:
                 std::string const& socket, std::string const& db = "");
 
     /**
-     * Create MySqlConfig instance with an SqlConnection that should be used instead of creating a new
-     * connection. Used to implement custom behavior for unit tests.
+     * Default copy constructor appropriate as long as all members remain simple.
      */
-    MySqlConfig(std::shared_ptr<sql::SqlConnection> sqlConnection) : _sqlConnection(sqlConnection) {}
+    MySqlConfig(MySqlConfig const&) = default;
+
+    MySqlConfig& operator=(MySqlConfig const&) = default;
 
     /** Overload output operator for current class
      *
@@ -110,14 +111,6 @@ public:
     std::string socket;
     std::string dbName;
 
-    /**
-     * Get the connection object to use if one was provided.
-     * This is useful for unit testing.
-     */
-    std::shared_ptr<sql::SqlConnection> getConnection() const;
-
-private:
-    std::shared_ptr<sql::SqlConnection> _sqlConnection;
 };
 
 }}} // namespace lsst::qserv::mysql
