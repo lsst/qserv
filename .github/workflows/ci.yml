@@ -1,0 +1,120 @@
+# Qserv CI workflow
+---
+name: "CI"
+on:
+  push:
+  pull_request:
+    branches:
+      - master
+jobs:
+  build:
+    name: Build qserv
+    runs-on: ubuntu-18.04
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+      - name: Declare Version Variables
+        id: vars
+        shell: bash
+        run: |
+          echo "::set-env name=QSERV_IMAGE::qserv/qserv:$(git rev-parse --short HEAD)"
+          echo "Build and validate Qserv image: qserv/qserv:$(git rev-parse --short HEAD)"
+      - name: Build Qserv image
+        run: |
+          # Docker user id is 1000, but CI user uid might be different
+          # So give permission to docker user to create qserv/build/ and other scons tmp
+          chmod o+w .
+          ./admin/tools/docker/2_build-git-image.sh -F -L -T "${{ env.QSERV_IMAGE }}" "$PWD"
+      - name: Scan Qserv image
+        uses: anchore/scan-action@v2
+        with:
+          image: "${{ env.QSERV_IMAGE }}"
+          acs-report-enable: true
+      - name: upload Anchore scan SARIF report
+        uses: github/codeql-action/upload-sarif@v1
+        with:
+          sarif_file: results.sarif
+  # FIXME: Github action runners are too weak to run e2e tests
+  #     - name: Login to DockerHub
+  #       uses: docker/login-action@v1
+  #       with:
+  #         username: ${{ secrets.DOCKER_USERNAME }}
+  #         password: ${{ secrets.DOCKER_TOKEN }}
+  #     - name: Push image to Docker Hub 
+  #       run: |
+  #         docker push ${{ env.QSERV_IMAGE }}
+  #     - shell: bash
+  #       run: |
+  #         echo "${{ env.QSERV_IMAGE }}" > qserv-image.txt
+  #     - name: Upload qserv image name
+  #       uses: actions/upload-artifact@v2
+  #       with:
+  #         name: qserv-image
+  #         path: qserv-image.txt
+  # e2e:
+  #   name: Run end to end test on qserv
+  #   runs-on: ubuntu-18.04
+  #   needs: build
+  #   steps:
+  #     - name: Checkout qserv-operator code
+  #       uses: actions/checkout@v2
+  #       with:
+  #         repository: "lsst/qserv-operator"
+  #         ref: "tickets/DM-26555"
+  #     - name: Download qserv image name, built during job 1
+  #       uses: actions/download-artifact@v2
+  #       with:
+  #         name: qserv-image
+  #     - name: Declare Version Variables
+  #       id: vars
+  #       shell: bash
+  #       run: |
+  #         # echo "::set-env name=QSERV_IMAGE::$(cat qserv-image.txt)"
+  #         echo "::set-env name=QSERV_IMAGE::qserv/qserv:a4f428a"
+  #     - name: Create k8s Kind Cluster
+  #       uses: helm/kind-action@v1.0.0
+  #       with:
+  #         version: v0.8.1
+  #     - run: |
+  #         kubectl get nodes
+  #     - name: Setup kustomize
+  #       uses: imranismail/setup-kustomize@v1
+  #       with:
+  #         kustomize-version: "3.1.0"
+  #     - name: Deploy Qserv operator
+  #       run: |
+  #         ./deploy.sh
+  #     - name: Deploy Qserv
+  #       run: |
+  #         QSERV_IMAGE="${{ env.QSERV_IMAGE }}"
+  #         cat <<EOF > manifests/base/image.yaml
+  #         apiVersion: qserv.lsst.org/v1alpha1
+  #         kind: Qserv
+  #         metadata:
+  #           name: qserv
+  #         spec:
+  #           czar:
+  #             image: $QSERV_IMAGE
+  #           worker:
+  #             image: $QSERV_IMAGE
+  #           replication:
+  #             image: $QSERV_IMAGE
+  #           xrootd:
+  #             image: $QSERV_IMAGE
+  #         EOF
+  #         kubectl apply -k manifests/base
+  #     - name: Wait for Qserv to start
+  #       run: ./tests/tools/wait-qserv-ready.sh
+  #     - name: Run E2E Tests
+  #       run: ./tests/e2e/integration.sh
+  # doc:
+  #   name: Generate and upload documentation
+  #   runs-on: ubuntu-18.04
+  #   needs: e2e
+  #   steps:
+  #     - name: Checkout code
+  #       uses: actions/checkout@v2
+  #     - name: Generate and upload documentation
+  #       run: |
+  #         curl -fsSL https://raw.githubusercontent.com/lsst-dm/doc-container/master/run.sh | bash -s -- -p "${{ secrets.LTD_PASSWORD }}"  -u "${{ secrets.LTD_USERNAME }}" "$PWD"
+
