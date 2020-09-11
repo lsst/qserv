@@ -34,7 +34,7 @@ docker run \
        -v /etc/group:/etc/group:ro \
        -v $HOME:$HOME \
        -v $PWD:$PWD \
-       qserv/qserv:deps_20200729_0234 \
+       qserv/qserv:deps_20200901_0156 \
        bash -c '$SOURCE/admin/tools/docker/replication/container/tools/collect.sh $SOURCE'
 
 echo "************************************************************************************************"

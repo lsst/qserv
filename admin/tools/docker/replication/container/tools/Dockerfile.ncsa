@@ -1,5 +1,5 @@
 # Using the Qserv development toolchain
-FROM qserv/qserv:deps_20200729_0234
+FROM qserv/qserv:deps_20200901_0156
 
 USER 0
 

@@ -166,16 +166,15 @@ void SetChunkListCommand::run() {
                  << resource << " in DataContext=" << clusterManager->DataContext());
 
             try {
-                // Notify XRootD/cmsd and (depending on a mode) modify the provider's copy
-                // of the inventory.
-                clusterManager->Removed(resource.c_str());
-                if (clusterManager->DataContext()) {
-                    providerServer->GetChunkInventory().remove(database, chunk);
-                }
-
                 // Notify QServ and update the database
                 _chunkInventory->remove(database, chunk, _mySqlConfig);
 
+                // Notify XRootD/cmsd and (depending on a mode) modify the provider's copy
+                // of the inventory.
+                if (clusterManager->DataContext()) {
+                    providerServer->GetChunkInventory().remove(database, chunk);
+                    clusterManager->Removed(resource.c_str());
+                }
             } catch (InvalidParamError const& ex) {
                 _reportError(proto::WorkerCommandSetChunkListR::INVALID,
                              ex.what(),
@@ -207,16 +206,15 @@ void SetChunkListCommand::run() {
                  << resource << " in DataContext=" << clusterManager->DataContext());
 
             try {
-                // Notify XRootD/cmsd and (depending on a mode) modify the provider's copy
-                // of the inventory.
-                clusterManager->Added(resource.c_str());
-                if (clusterManager->DataContext()) {
-                    providerServer->GetChunkInventory().add(database, chunk);
-                }
-
                 // Notify QServ and update the database
                 _chunkInventory->add(database, chunk, _mySqlConfig);
 
+                // Notify XRootD/cmsd and (depending on a mode) modify the provider's copy
+                // of the inventory.
+                if (clusterManager->DataContext()) {
+                    providerServer->GetChunkInventory().add(database, chunk);
+                    clusterManager->Added(resource.c_str());
+                }
             } catch (InvalidParamError const& ex) {
                 _reportError(proto::WorkerCommandSetChunkListR::INVALID,
                              ex.what(),

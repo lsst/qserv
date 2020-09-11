@@ -511,23 +511,29 @@ json HttpIngestModule::_publishDatabase() {
     auto const error = _reconfigureWorkers(databaseInfo, allWorkers, workerReconfigTimeoutSec());
     if (not error.empty()) throw HttpError(__func__, error);
 
+    // Finalize setting the database in Qserv master to make the new catalog
+    // visible to Qserv users.
+    _publishDatabaseInMaster(databaseInfo);
+
+    // Change database status so that it would be seen by the Qserv synchronization
+    // algorithm (job) run on the next step. Otherwise users would have to wait
+    // for the next synchronization cycle of the Master Replication Controller
+    // which would synchronize chunks between the Replication System and Qserv
+    // workers.
+    json result;
+    result["database"] = config->publishDatabase(database).toJson();
+
     // Run the chunks scanner to ensure new chunks are registered in the persistent
     // store of the Replication system and synchronized with the Qserv workers.
     // The (fixing, re-balancing, replicating, etc.) will be taken care of by
     // the Replication system.
     _qservSync(databaseInfo, allWorkers);
 
-    // Finalize setting the database in Qserv master to make the new catalog
-    // visible to Qserv users.
-    _publishDatabaseInMaster(databaseInfo);
-
     ControllerEvent event;
     event.status = "PUBLISH DATABASE";
     event.kvInfo.emplace_back("database", database);
     logEvent(event);
 
-    json result;
-    result["database"] = config->publishDatabase(database).toJson();
     return result;
 }
 
