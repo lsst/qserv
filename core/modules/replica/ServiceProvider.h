@@ -64,6 +64,7 @@ public:
 
     typedef std::shared_ptr<Configuration>    ConfigurationPtr;
     typedef std::shared_ptr<DatabaseServices> DatabaseServicesPtr;
+    typedef std::shared_ptr<Messenger>        MessengerPtr;
     typedef std::shared_ptr<QservMgtServices> QservMgtServicesPtr;
 
     // Default construction and copy semantics are prohibited
@@ -117,23 +118,23 @@ public:
     /// @return a reference to the configuration service
     ConfigurationPtr const& config() const { return _configuration; }
 
-    /// @return a reference to the database services
-    DatabaseServicesPtr const& databaseServices() const { return _databaseServices; }
-
     /// @return A unique identifier of a Qserv instance served by the Replication System
     std::string const& instanceId() const { return _instanceId; }
 
     /// @return a reference to the local (process) chunk locking services
     ChunkLocker& chunkLocker() { return _chunkLocker; }
 
-    /// @return a reference to the Qserv notification services
-    QservMgtServicesPtr const& qservMgtServices() const { return _qservMgtServices; }
+    /// @return a reference to the database services
+    DatabaseServicesPtr const& databaseServices();
 
-    /// @return a reference to worker messenger service
-    std::shared_ptr<Messenger> const& messenger() const { return _messenger; }
+    /// @return a reference to the Qserv notification services (via the XRootD/SSI protocol)
+    QservMgtServicesPtr const& qservMgtServices();
 
-    /// @return a reference to the built-in HTTP server
-    qhttp::Server::Ptr const& httpServer() const { return _httpServer; }
+    /// @return a reference to worker messenger service (configured for controllers)
+    MessengerPtr const& messenger();
+
+    /// @return a reference to the built-in HTTP server (configured for controllers)
+    qhttp::Server::Ptr const& httpServer();
 
     /**
      * Make sure this worker is known in the configuration
@@ -185,9 +186,6 @@ private:
     /// URL passed into the constructor of the class).
     ConfigurationPtr const _configuration;
 
-    /// Database services
-    DatabaseServicesPtr const _databaseServices;
-
     /// A unique identifier of a Qserv instance served by the Replication System
     std::string const _instanceId;
 
@@ -195,13 +193,16 @@ private:
     /// operations to ensure consistency of the operations.
     ChunkLocker _chunkLocker;
 
-    /// Qserv management services
+    /// Database services  (lazy instantiation on a first request)
+    DatabaseServicesPtr _databaseServices;
+
+    /// Qserv management services  (lazy instantiation on a first request)
     QservMgtServicesPtr _qservMgtServices;
 
-    /// Worker messenger service
-    std::shared_ptr<Messenger> _messenger;
+    /// Worker messenger service  (lazy instantiation on a first request)
+    MessengerPtr _messenger;
 
-    /// The server for processing REST requests
+    /// The server for processing REST requests (lazy instantiation on a first request)
     qhttp::Server::Ptr _httpServer;
 
     /// The mutex for enforcing thread safety of the class's public API
