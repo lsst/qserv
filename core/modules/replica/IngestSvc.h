@@ -18,11 +18,11 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_REPLICA_INGESTSERVER_H
-#define LSST_QSERV_REPLICA_INGESTSERVER_H
+#ifndef LSST_QSERV_REPLICA_INGESTSVC_H
+#define LSST_QSERV_REPLICA_INGESTSVC_H
 
 /**
- * This header declares class IngestServer which is used as a worker-side
+ * This header declares class IngestSvc which is used as a worker-side
  * end point for ingesting catalog data into the Qserv worker's MySQL database.
  */
 
@@ -34,7 +34,7 @@
 
 // Qserv headers
 #include "replica/Configuration.h"
-#include "replica/IngestServerConnection.h"
+#include "replica/IngestSvcConn.h"
 #include "replica/ServiceProvider.h"
 
 // This header declarations
@@ -43,14 +43,14 @@ namespace qserv {
 namespace replica {
 
 /**
-  * Class IngestServer is used for handling incoming connections to
+  * Class IngestSvc is used for handling incoming connections to
   * the file delivery service. Each instance of this class will be running
   * in its own thread.
   */
-class IngestServer: public std::enable_shared_from_this<IngestServer>  {
+class IngestSvc: public std::enable_shared_from_this<IngestSvc>  {
 public:
 
-    typedef std::shared_ptr<IngestServer> Ptr;
+    typedef std::shared_ptr<IngestSvc> Ptr;
 
     /**
      * Static factory method is needed to prevent issue with the lifespan
@@ -67,11 +67,11 @@ public:
                       std::string const& workerName,
                       std::string const& authKey);
 
-    IngestServer() = delete;
-    IngestServer(IngestServer const&) = delete;
-    IngestServer& operator=(IngestServer const&) = delete;
+    IngestSvc() = delete;
+    IngestSvc(IngestSvc const&) = delete;
+    IngestSvc& operator=(IngestSvc const&) = delete;
 
-    ~IngestServer() = default;
+    ~IngestSvc() = default;
 
     /// @return the name of a worker this server runs for
     std::string const& worker() const { return _workerName; }
@@ -85,10 +85,10 @@ public:
     void run();
 
 private:
-    /// @see IngestServer::create()
-    IngestServer(ServiceProvider::Ptr const& serviceProvider,
-                 std::string const& workerName,
-                 std::string const& authKey);
+    /// @see IngestSvc::create()
+    IngestSvc(ServiceProvider::Ptr const& serviceProvider,
+              std::string const& workerName,
+              std::string const& authKey);
 
     /**
      * Begin (asynchronously) accepting connection requests.
@@ -100,11 +100,11 @@ private:
      * the communication will be forwarded to the connection object
      * specified as a parameter of the method.
      */
-    void _handleAccept(IngestServerConnection::Ptr const& connection,
+    void _handleAccept(IngestSvcConn::Ptr const& connection,
                        boost::system::error_code const& ec);
 
     /// @return the context string to be used for the message logging
-    std::string _context() const { return "INGEST-SERVER  "; }
+    std::string _context() const { return "INGEST-SVC  "; }
 
     // Input parameters
 
@@ -121,4 +121,4 @@ private:
 
 }}} // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REPLICA_INGESTSERVER_H
+#endif // LSST_QSERV_REPLICA_INGESTSVC_H

@@ -20,7 +20,7 @@
  */
 
 // Class header
-#include "replica/IngestServerConnection.h"
+#include "replica/IngestSvcConn.h"
 
 // System headers
 #include <algorithm>
@@ -55,10 +55,10 @@ using namespace lsst::qserv::replica;
 
 namespace {
 
-LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.IngestServerConnection");
+LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.IngestSvcConn");
 
 /// The context for diagnostic & debug printouts
-string const context = "INGEST-SERVER-CONNECTION  ";
+string const context = "INGEST-SVC-CONN  ";
 
 bool isErrorCode(boost::system::error_code const& ec,
                  string const& scope) {
@@ -117,16 +117,16 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
-size_t IngestServerConnection::networkBufSizeBytes = 1024 * 1024;
+size_t IngestSvcConn::networkBufSizeBytes = 1024 * 1024;
 
 
-IngestServerConnection::Ptr IngestServerConnection::create(
+IngestSvcConn::Ptr IngestSvcConn::create(
         ServiceProvider::Ptr const& serviceProvider,
         string const& workerName,
         string const& authKey,
         boost::asio::io_service& io_service) {
-    return IngestServerConnection::Ptr(
-        new IngestServerConnection(
+    return IngestSvcConn::Ptr(
+        new IngestSvcConn(
             serviceProvider,
             workerName,
             authKey,
@@ -134,10 +134,10 @@ IngestServerConnection::Ptr IngestServerConnection::create(
 }
 
 
-IngestServerConnection::IngestServerConnection(ServiceProvider::Ptr const& serviceProvider,
-                                               string const& workerName,
-                                               string const& authKey,
-                                               boost::asio::io_service& io_service)
+IngestSvcConn::IngestSvcConn(ServiceProvider::Ptr const& serviceProvider,
+                             string const& workerName,
+                             string const& authKey,
+                             boost::asio::io_service& io_service)
     :   _serviceProvider(serviceProvider),
         _workerName(workerName),
         _authKey(authKey),
@@ -149,17 +149,17 @@ IngestServerConnection::IngestServerConnection(ServiceProvider::Ptr const& servi
 }
 
 
-IngestServerConnection::~IngestServerConnection() {
+IngestSvcConn::~IngestSvcConn() {
     _closeFile();
 }
 
 
-void IngestServerConnection::beginProtocol() {
+void IngestSvcConn::beginProtocol() {
     _receiveHandshake();
 }
 
 
-void IngestServerConnection::_receiveHandshake() {
+void IngestSvcConn::_receiveHandshake() {
 
     LOGS(_log, LOG_LVL_DEBUG, context << __func__);
 
@@ -171,13 +171,13 @@ void IngestServerConnection::_receiveHandshake() {
         _socket,
         boost::asio::buffer(_bufferPtr->data(), bytes),
         boost::asio::transfer_at_least(bytes),
-        bind(&IngestServerConnection::_handshakeReceived, shared_from_this(), _1, _2)
+        bind(&IngestSvcConn::_handshakeReceived, shared_from_this(), _1, _2)
     );
 }
 
 
-void IngestServerConnection::_handshakeReceived(boost::system::error_code const& ec,
-                                                size_t bytes_transferred) {
+void IngestSvcConn::_handshakeReceived(boost::system::error_code const& ec,
+                                       size_t bytes_transferred) {
 
     LOGS(_log, LOG_LVL_DEBUG, context << __func__);
 
@@ -294,20 +294,20 @@ void IngestServerConnection::_handshakeReceived(boost::system::error_code const&
 }
 
 
-void IngestServerConnection::_sendResponse() {
+void IngestSvcConn::_sendResponse() {
 
     LOGS(_log, LOG_LVL_DEBUG, context << __func__);
 
     boost::asio::async_write(
         _socket,
         boost::asio::buffer(_bufferPtr->data(), _bufferPtr->size()),
-        bind(&IngestServerConnection::_responseSent, shared_from_this(), _1, _2)
+        bind(&IngestSvcConn::_responseSent, shared_from_this(), _1, _2)
     );
 }
 
 
-void IngestServerConnection::_responseSent(boost::system::error_code const& ec,
-                                           size_t bytes_transferred) {
+void IngestSvcConn::_responseSent(boost::system::error_code const& ec,
+                                  size_t bytes_transferred) {
 
     LOGS(_log, LOG_LVL_DEBUG, context << __func__);
 
@@ -317,7 +317,7 @@ void IngestServerConnection::_responseSent(boost::system::error_code const& ec,
     _receiveData();
 }
 
-void IngestServerConnection::_receiveData() {
+void IngestSvcConn::_receiveData() {
 
     LOGS(_log, LOG_LVL_DEBUG, context << __func__);
 
@@ -329,13 +329,13 @@ void IngestServerConnection::_receiveData() {
         _socket,
         boost::asio::buffer(_bufferPtr->data(), bytes),
         boost::asio::transfer_at_least(bytes),
-        bind(&IngestServerConnection::_dataReceived, shared_from_this(), _1, _2)
+        bind(&IngestSvcConn::_dataReceived, shared_from_this(), _1, _2)
     );
 }
 
 
-void IngestServerConnection::_dataReceived(boost::system::error_code const& ec,
-                                           size_t bytes_transferred) {
+void IngestSvcConn::_dataReceived(boost::system::error_code const& ec,
+                                  size_t bytes_transferred) {
 
     LOGS(_log, LOG_LVL_DEBUG, context << __func__);
 
@@ -388,9 +388,9 @@ void IngestServerConnection::_dataReceived(boost::system::error_code const& ec,
 }
 
 
-void IngestServerConnection::_reply(ProtocolIngestResponse::Status status,
-                                    string const& msg,
-                                    size_t maxRows) {
+void IngestSvcConn::_reply(ProtocolIngestResponse::Status status,
+                           string const& msg,
+                           size_t maxRows) {
     ProtocolIngestResponse response;
     response.set_status(status);
     response.set_error(msg);
@@ -403,7 +403,7 @@ void IngestServerConnection::_reply(ProtocolIngestResponse::Status status,
 }
 
 
-void IngestServerConnection::_loadDataIntoTable() {
+void IngestSvcConn::_loadDataIntoTable() {
 
     LOGS(_log, LOG_LVL_DEBUG, context << __func__);
 
@@ -550,7 +550,7 @@ void IngestServerConnection::_loadDataIntoTable() {
 }
 
 
-void IngestServerConnection::_closeFile() {
+void IngestSvcConn::_closeFile() {
     if (_file.is_open()) {
         _file.close();
         boost::system::error_code ec;

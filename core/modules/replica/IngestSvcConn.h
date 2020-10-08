@@ -18,8 +18,8 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_REPLICA_INGESTSERVERCONNECTION_H
-#define LSST_QSERV_REPLICA_INGESTSERVERCONNECTION_H
+#ifndef LSST_QSERV_REPLICA_INGESTSVCCONN_H
+#define LSST_QSERV_REPLICA_INGESTSVCCONN_H
 
 // System headers
 #include <fstream>
@@ -41,7 +41,7 @@ namespace qserv {
 namespace replica {
 
 /**
- * Class IngestServerConnection is used in the server-side implementation of
+ * Class IngestSvcConn is used in the server-side implementation of
  * the point-to-point catalog data ingest service of the Replication system.
  * The class handles catalog data ingest requests initiated by remote clients.
  * One instance of the class serves one file from one client at a time.
@@ -59,10 +59,10 @@ namespace replica {
  * a database, or communicating with a client) occurs. When this happens the object
  * stops doing anything.
  */
-class IngestServerConnection: public std::enable_shared_from_this<IngestServerConnection> {
+class IngestSvcConn: public std::enable_shared_from_this<IngestSvcConn> {
 public:
 
-    typedef std::shared_ptr<IngestServerConnection> Ptr;
+    typedef std::shared_ptr<IngestSvcConn> Ptr;
 
     /// This parameter determines a suggested size of the messages sent by clients
     static size_t networkBufSizeBytes;
@@ -86,12 +86,12 @@ public:
 
     // Default construction and copy semantics are prohibited
 
-    IngestServerConnection() = delete;
-    IngestServerConnection(IngestServerConnection const&) = delete;
-    IngestServerConnection& operator=(IngestServerConnection const&) = delete;
+    IngestSvcConn() = delete;
+    IngestSvcConn(IngestSvcConn const&) = delete;
+    IngestSvcConn& operator=(IngestSvcConn const&) = delete;
 
     /// Destructor (non-trivial because some resources need to be properly released)
-    ~IngestServerConnection();
+    ~IngestSvcConn();
 
     /// @return network socket associated with the connection.
     boost::asio::ip::tcp::socket& socket() { return _socket; }
@@ -142,11 +142,11 @@ public:
 
 private:
 
-    /// @see IngestServerConnection::create()
-    IngestServerConnection(ServiceProvider::Ptr const& serviceProvider,
-                           std::string const& workerName,
-                           std::string const& authKey,
-                           boost::asio::io_service& io_service);
+    /// @see IngestSvcConn::create()
+    IngestSvcConn(ServiceProvider::Ptr const& serviceProvider,
+                  std::string const& workerName,
+                  std::string const& authKey,
+                  boost::asio::io_service& io_service);
 
     /// Initiate (ASYNC) read of the handshake request from a client)
     void _receiveHandshake();
@@ -280,4 +280,4 @@ private:
 
 }}} // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REPLICA_INGESTSERVERCONNECTION_H
+#endif // LSST_QSERV_REPLICA_INGESTSVCCONN_H
