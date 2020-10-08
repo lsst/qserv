@@ -54,85 +54,50 @@ INSERT INTO `config` VALUES ('worker', 'loader_port',                '25002');
 INSERT INTO `config` VALUES ('worker', 'loader_tmp_dir',             '/qserv/data/ingest');
 INSERT INTO `config` VALUES ('worker', 'exporter_port',              '25003');
 INSERT INTO `config` VALUES ('worker', 'exporter_tmp_dir',           '/qserv/data/export');
+INSERT INTO `config` VALUES ('worker', 'http_loader_port',           '25004');
+INSERT INTO `config` VALUES ('worker', 'http_loader_tmp_dir',        '/qserv/data/ingest');
 INSERT INTO `config` VALUES ('worker', 'num_loader_processing_threads',   '16');
 INSERT INTO `config` VALUES ('worker', 'num_exporter_processing_threads', '16');
+INSERT INTO `config` VALUES ('worker', 'num_http_loader_processing_threads', '16');
 
 
 -- Preload parameters for runnig all services on the same host
 
-INSERT INTO `config_worker` VALUES ('db01', 1, 0, 'lsst-qserv-db01', NULL, 'lsst-qserv-db01', NULL, NULL, '127.0.0.1', NULL, NULL, 'lsst-qserv-db01', NULL, NULL, 'lsst-qserv-db01', NULL, NULL);
-INSERT INTO `config_worker` VALUES ('db02', 1, 0, 'lsst-qserv-db02', NULL, 'lsst-qserv-db02', NULL, NULL, '127.0.0.1', NULL, NULL, 'lsst-qserv-db02', NULL, NULL, 'lsst-qserv-db02', NULL, NULL);
-INSERT INTO `config_worker` VALUES ('db03', 1, 0, 'lsst-qserv-db03', NULL, 'lsst-qserv-db03', NULL, NULL, '127.0.0.1', NULL, NULL, 'lsst-qserv-db03', NULL, NULL, 'lsst-qserv-db03', NULL, NULL);
-INSERT INTO `config_worker` VALUES ('db04', 1, 0, 'lsst-qserv-db04', NULL, 'lsst-qserv-db04', NULL, NULL, '127.0.0.1', NULL, NULL, 'lsst-qserv-db04', NULL, NULL, 'lsst-qserv-db04', NULL, NULL);
-INSERT INTO `config_worker` VALUES ('db05', 1, 0, 'lsst-qserv-db05', NULL, 'lsst-qserv-db05', NULL, NULL, '127.0.0.1', NULL, NULL, 'lsst-qserv-db05', NULL, NULL, 'lsst-qserv-db05', NULL, NULL);
-INSERT INTO `config_worker` VALUES ('db06', 1, 0, 'lsst-qserv-db06', NULL, 'lsst-qserv-db06', NULL, NULL, '127.0.0.1', NULL, NULL, 'lsst-qserv-db06', NULL, NULL, 'lsst-qserv-db06', NULL, NULL);
-INSERT INTO `config_worker` VALUES ('db07', 1, 0, 'lsst-qserv-db07', NULL, 'lsst-qserv-db07', NULL, NULL, '127.0.0.1', NULL, NULL, 'lsst-qserv-db07', NULL, NULL, 'lsst-qserv-db07', NULL, NULL);
-INSERT INTO `config_worker` VALUES ('db08', 1, 0, 'lsst-qserv-db08', NULL, 'lsst-qserv-db08', NULL, NULL, '127.0.0.1', NULL, NULL, 'lsst-qserv-db08', NULL, NULL, 'lsst-qserv-db08', NULL, NULL);
-INSERT INTO `config_worker` VALUES ('db09', 1, 0, 'lsst-qserv-db09', NULL, 'lsst-qserv-db09', NULL, NULL, '127.0.0.1', NULL, NULL, 'lsst-qserv-db09', NULL, NULL, 'lsst-qserv-db09', NULL, NULL);
-INSERT INTO `config_worker` VALUES ('db10', 1, 0, 'lsst-qserv-db10', NULL, 'lsst-qserv-db10', NULL, NULL, '127.0.0.1', NULL, NULL, 'lsst-qserv-db10', NULL, NULL, 'lsst-qserv-db10', NULL, NULL);
-INSERT INTO `config_worker` VALUES ('db11', 1, 0, 'lsst-qserv-db11', NULL, 'lsst-qserv-db11', NULL, NULL, '127.0.0.1', NULL, NULL, 'lsst-qserv-db11', NULL, NULL, 'lsst-qserv-db11', NULL, NULL);
-INSERT INTO `config_worker` VALUES ('db12', 1, 0, 'lsst-qserv-db12', NULL, 'lsst-qserv-db12', NULL, NULL, '127.0.0.1', NULL, NULL, 'lsst-qserv-db12', NULL, NULL, 'lsst-qserv-db12', NULL, NULL);
-INSERT INTO `config_worker` VALUES ('db13', 1, 0, 'lsst-qserv-db13', NULL, 'lsst-qserv-db13', NULL, NULL, '127.0.0.1', NULL, NULL, 'lsst-qserv-db13', NULL, NULL, 'lsst-qserv-db13', NULL, NULL);
-INSERT INTO `config_worker` VALUES ('db14', 1, 0, 'lsst-qserv-db14', NULL, 'lsst-qserv-db14', NULL, NULL, '127.0.0.1', NULL, NULL, 'lsst-qserv-db14', NULL, NULL, 'lsst-qserv-db14', NULL, NULL);
-INSERT INTO `config_worker` VALUES ('db15', 1, 0, 'lsst-qserv-db15', NULL, 'lsst-qserv-db15', NULL, NULL, '127.0.0.1', NULL, NULL, 'lsst-qserv-db15', NULL, NULL, 'lsst-qserv-db15', NULL, NULL);
-INSERT INTO `config_worker` VALUES ('db16', 1, 0, 'lsst-qserv-db16', NULL, 'lsst-qserv-db16', NULL, NULL, '127.0.0.1', NULL, NULL, 'lsst-qserv-db16', NULL, NULL, 'lsst-qserv-db16', NULL, NULL);
-INSERT INTO `config_worker` VALUES ('db17', 1, 0, 'lsst-qserv-db17', NULL, 'lsst-qserv-db17', NULL, NULL, '127.0.0.1', NULL, NULL, 'lsst-qserv-db17', NULL, NULL, 'lsst-qserv-db17', NULL, NULL);
-INSERT INTO `config_worker` VALUES ('db18', 1, 0, 'lsst-qserv-db18', NULL, 'lsst-qserv-db18', NULL, NULL, '127.0.0.1', NULL, NULL, 'lsst-qserv-db18', NULL, NULL, 'lsst-qserv-db18', NULL, NULL);
-INSERT INTO `config_worker` VALUES ('db19', 1, 0, 'lsst-qserv-db19', NULL, 'lsst-qserv-db19', NULL, NULL, '127.0.0.1', NULL, NULL, 'lsst-qserv-db19', NULL, NULL, 'lsst-qserv-db19', NULL, NULL);
-INSERT INTO `config_worker` VALUES ('db20', 1, 0, 'lsst-qserv-db20', NULL, 'lsst-qserv-db20', NULL, NULL, '127.0.0.1', NULL, NULL, 'lsst-qserv-db20', NULL, NULL, 'lsst-qserv-db20', NULL, NULL);
-INSERT INTO `config_worker` VALUES ('db21', 1, 0, 'lsst-qserv-db21', NULL, 'lsst-qserv-db21', NULL, NULL, '127.0.0.1', NULL, NULL, 'lsst-qserv-db21', NULL, NULL, 'lsst-qserv-db21', NULL, NULL);
-INSERT INTO `config_worker` VALUES ('db22', 1, 0, 'lsst-qserv-db22', NULL, 'lsst-qserv-db22', NULL, NULL, '127.0.0.1', NULL, NULL, 'lsst-qserv-db22', NULL, NULL, 'lsst-qserv-db22', NULL, NULL);
-INSERT INTO `config_worker` VALUES ('db23', 1, 0, 'lsst-qserv-db23', NULL, 'lsst-qserv-db23', NULL, NULL, '127.0.0.1', NULL, NULL, 'lsst-qserv-db23', NULL, NULL, 'lsst-qserv-db23', NULL, NULL);
-INSERT INTO `config_worker` VALUES ('db24', 1, 0, 'lsst-qserv-db24', NULL, 'lsst-qserv-db24', NULL, NULL, '127.0.0.1', NULL, NULL, 'lsst-qserv-db24', NULL, NULL, 'lsst-qserv-db24', NULL, NULL);
-INSERT INTO `config_worker` VALUES ('db25', 1, 0, 'lsst-qserv-db25', NULL, 'lsst-qserv-db25', NULL, NULL, '127.0.0.1', NULL, NULL, 'lsst-qserv-db25', NULL, NULL, 'lsst-qserv-db25', NULL, NULL);
-INSERT INTO `config_worker` VALUES ('db26', 1, 0, 'lsst-qserv-db26', NULL, 'lsst-qserv-db26', NULL, NULL, '127.0.0.1', NULL, NULL, 'lsst-qserv-db26', NULL, NULL, 'lsst-qserv-db26', NULL, NULL);
-INSERT INTO `config_worker` VALUES ('db27', 1, 0, 'lsst-qserv-db27', NULL, 'lsst-qserv-db27', NULL, NULL, '127.0.0.1', NULL, NULL, 'lsst-qserv-db27', NULL, NULL, 'lsst-qserv-db27', NULL, NULL);
-INSERT INTO `config_worker` VALUES ('db28', 1, 0, 'lsst-qserv-db28', NULL, 'lsst-qserv-db28', NULL, NULL, '127.0.0.1', NULL, NULL, 'lsst-qserv-db28', NULL, NULL, 'lsst-qserv-db28', NULL, NULL);
-INSERT INTO `config_worker` VALUES ('db29', 1, 0, 'lsst-qserv-db29', NULL, 'lsst-qserv-db29', NULL, NULL, '127.0.0.1', NULL, NULL, 'lsst-qserv-db29', NULL, NULL, 'lsst-qserv-db29', NULL, NULL);
-INSERT INTO `config_worker` VALUES ('db30', 1, 0, 'lsst-qserv-db30', NULL, 'lsst-qserv-db30', NULL, NULL, '127.0.0.1', NULL, NULL, 'lsst-qserv-db30', NULL, NULL, 'lsst-qserv-db30', NULL, NULL);
+INSERT INTO `config_worker` VALUES ('db01', 1, 0, 'lsst-qserv-db01', NULL, 'lsst-qserv-db01', NULL, NULL, '127.0.0.1', NULL, NULL, 'lsst-qserv-db01', NULL, NULL, 'lsst-qserv-db01', NULL, NULL, 'lsst-qserv-db01', NULL, NULL);
+INSERT INTO `config_worker` VALUES ('db02', 1, 0, 'lsst-qserv-db02', NULL, 'lsst-qserv-db02', NULL, NULL, '127.0.0.1', NULL, NULL, 'lsst-qserv-db02', NULL, NULL, 'lsst-qserv-db02', NULL, NULL, 'lsst-qserv-db02', NULL, NULL);
+INSERT INTO `config_worker` VALUES ('db03', 1, 0, 'lsst-qserv-db03', NULL, 'lsst-qserv-db03', NULL, NULL, '127.0.0.1', NULL, NULL, 'lsst-qserv-db03', NULL, NULL, 'lsst-qserv-db03', NULL, NULL, 'lsst-qserv-db03', NULL, NULL);
+INSERT INTO `config_worker` VALUES ('db04', 1, 0, 'lsst-qserv-db04', NULL, 'lsst-qserv-db04', NULL, NULL, '127.0.0.1', NULL, NULL, 'lsst-qserv-db04', NULL, NULL, 'lsst-qserv-db04', NULL, NULL, 'lsst-qserv-db04', NULL, NULL);
+INSERT INTO `config_worker` VALUES ('db05', 1, 0, 'lsst-qserv-db05', NULL, 'lsst-qserv-db05', NULL, NULL, '127.0.0.1', NULL, NULL, 'lsst-qserv-db05', NULL, NULL, 'lsst-qserv-db05', NULL, NULL, 'lsst-qserv-db05', NULL, NULL);
+INSERT INTO `config_worker` VALUES ('db06', 1, 0, 'lsst-qserv-db06', NULL, 'lsst-qserv-db06', NULL, NULL, '127.0.0.1', NULL, NULL, 'lsst-qserv-db06', NULL, NULL, 'lsst-qserv-db06', NULL, NULL, 'lsst-qserv-db06', NULL, NULL);
+INSERT INTO `config_worker` VALUES ('db07', 1, 0, 'lsst-qserv-db07', NULL, 'lsst-qserv-db07', NULL, NULL, '127.0.0.1', NULL, NULL, 'lsst-qserv-db07', NULL, NULL, 'lsst-qserv-db07', NULL, NULL, 'lsst-qserv-db07', NULL, NULL);
+INSERT INTO `config_worker` VALUES ('db08', 1, 0, 'lsst-qserv-db08', NULL, 'lsst-qserv-db08', NULL, NULL, '127.0.0.1', NULL, NULL, 'lsst-qserv-db08', NULL, NULL, 'lsst-qserv-db08', NULL, NULL, 'lsst-qserv-db08', NULL, NULL);
+INSERT INTO `config_worker` VALUES ('db09', 1, 0, 'lsst-qserv-db09', NULL, 'lsst-qserv-db09', NULL, NULL, '127.0.0.1', NULL, NULL, 'lsst-qserv-db09', NULL, NULL, 'lsst-qserv-db09', NULL, NULL, 'lsst-qserv-db09', NULL, NULL);
+INSERT INTO `config_worker` VALUES ('db10', 1, 0, 'lsst-qserv-db10', NULL, 'lsst-qserv-db10', NULL, NULL, '127.0.0.1', NULL, NULL, 'lsst-qserv-db10', NULL, NULL, 'lsst-qserv-db10', NULL, NULL, 'lsst-qserv-db10', NULL, NULL);
+INSERT INTO `config_worker` VALUES ('db11', 1, 0, 'lsst-qserv-db11', NULL, 'lsst-qserv-db11', NULL, NULL, '127.0.0.1', NULL, NULL, 'lsst-qserv-db11', NULL, NULL, 'lsst-qserv-db11', NULL, NULL, 'lsst-qserv-db11', NULL, NULL);
+INSERT INTO `config_worker` VALUES ('db12', 1, 0, 'lsst-qserv-db12', NULL, 'lsst-qserv-db12', NULL, NULL, '127.0.0.1', NULL, NULL, 'lsst-qserv-db12', NULL, NULL, 'lsst-qserv-db12', NULL, NULL, 'lsst-qserv-db12', NULL, NULL);
+INSERT INTO `config_worker` VALUES ('db13', 1, 0, 'lsst-qserv-db13', NULL, 'lsst-qserv-db13', NULL, NULL, '127.0.0.1', NULL, NULL, 'lsst-qserv-db13', NULL, NULL, 'lsst-qserv-db13', NULL, NULL, 'lsst-qserv-db13', NULL, NULL);
+INSERT INTO `config_worker` VALUES ('db14', 1, 0, 'lsst-qserv-db14', NULL, 'lsst-qserv-db14', NULL, NULL, '127.0.0.1', NULL, NULL, 'lsst-qserv-db14', NULL, NULL, 'lsst-qserv-db14', NULL, NULL, 'lsst-qserv-db14', NULL, NULL);
+INSERT INTO `config_worker` VALUES ('db15', 1, 0, 'lsst-qserv-db15', NULL, 'lsst-qserv-db15', NULL, NULL, '127.0.0.1', NULL, NULL, 'lsst-qserv-db15', NULL, NULL, 'lsst-qserv-db15', NULL, NULL, 'lsst-qserv-db15', NULL, NULL);
+INSERT INTO `config_worker` VALUES ('db16', 1, 0, 'lsst-qserv-db16', NULL, 'lsst-qserv-db16', NULL, NULL, '127.0.0.1', NULL, NULL, 'lsst-qserv-db16', NULL, NULL, 'lsst-qserv-db16', NULL, NULL, 'lsst-qserv-db16', NULL, NULL);
+INSERT INTO `config_worker` VALUES ('db17', 1, 0, 'lsst-qserv-db17', NULL, 'lsst-qserv-db17', NULL, NULL, '127.0.0.1', NULL, NULL, 'lsst-qserv-db17', NULL, NULL, 'lsst-qserv-db17', NULL, NULL, 'lsst-qserv-db17', NULL, NULL);
+INSERT INTO `config_worker` VALUES ('db18', 1, 0, 'lsst-qserv-db18', NULL, 'lsst-qserv-db18', NULL, NULL, '127.0.0.1', NULL, NULL, 'lsst-qserv-db18', NULL, NULL, 'lsst-qserv-db18', NULL, NULL, 'lsst-qserv-db18', NULL, NULL);
+INSERT INTO `config_worker` VALUES ('db19', 1, 0, 'lsst-qserv-db19', NULL, 'lsst-qserv-db19', NULL, NULL, '127.0.0.1', NULL, NULL, 'lsst-qserv-db19', NULL, NULL, 'lsst-qserv-db19', NULL, NULL, 'lsst-qserv-db19', NULL, NULL);
+INSERT INTO `config_worker` VALUES ('db20', 1, 0, 'lsst-qserv-db20', NULL, 'lsst-qserv-db20', NULL, NULL, '127.0.0.1', NULL, NULL, 'lsst-qserv-db20', NULL, NULL, 'lsst-qserv-db20', NULL, NULL, 'lsst-qserv-db20', NULL, NULL);
+INSERT INTO `config_worker` VALUES ('db21', 1, 0, 'lsst-qserv-db21', NULL, 'lsst-qserv-db21', NULL, NULL, '127.0.0.1', NULL, NULL, 'lsst-qserv-db21', NULL, NULL, 'lsst-qserv-db21', NULL, NULL, 'lsst-qserv-db21', NULL, NULL);
+INSERT INTO `config_worker` VALUES ('db22', 1, 0, 'lsst-qserv-db22', NULL, 'lsst-qserv-db22', NULL, NULL, '127.0.0.1', NULL, NULL, 'lsst-qserv-db22', NULL, NULL, 'lsst-qserv-db22', NULL, NULL, 'lsst-qserv-db22', NULL, NULL);
+INSERT INTO `config_worker` VALUES ('db23', 1, 0, 'lsst-qserv-db23', NULL, 'lsst-qserv-db23', NULL, NULL, '127.0.0.1', NULL, NULL, 'lsst-qserv-db23', NULL, NULL, 'lsst-qserv-db23', NULL, NULL, 'lsst-qserv-db23', NULL, NULL);
+INSERT INTO `config_worker` VALUES ('db24', 1, 0, 'lsst-qserv-db24', NULL, 'lsst-qserv-db24', NULL, NULL, '127.0.0.1', NULL, NULL, 'lsst-qserv-db24', NULL, NULL, 'lsst-qserv-db24', NULL, NULL, 'lsst-qserv-db24', NULL, NULL);
+INSERT INTO `config_worker` VALUES ('db25', 1, 0, 'lsst-qserv-db25', NULL, 'lsst-qserv-db25', NULL, NULL, '127.0.0.1', NULL, NULL, 'lsst-qserv-db25', NULL, NULL, 'lsst-qserv-db25', NULL, NULL, 'lsst-qserv-db25', NULL, NULL);
+INSERT INTO `config_worker` VALUES ('db26', 1, 0, 'lsst-qserv-db26', NULL, 'lsst-qserv-db26', NULL, NULL, '127.0.0.1', NULL, NULL, 'lsst-qserv-db26', NULL, NULL, 'lsst-qserv-db26', NULL, NULL, 'lsst-qserv-db26', NULL, NULL);
+INSERT INTO `config_worker` VALUES ('db27', 1, 0, 'lsst-qserv-db27', NULL, 'lsst-qserv-db27', NULL, NULL, '127.0.0.1', NULL, NULL, 'lsst-qserv-db27', NULL, NULL, 'lsst-qserv-db27', NULL, NULL, 'lsst-qserv-db27', NULL, NULL);
+INSERT INTO `config_worker` VALUES ('db28', 1, 0, 'lsst-qserv-db28', NULL, 'lsst-qserv-db28', NULL, NULL, '127.0.0.1', NULL, NULL, 'lsst-qserv-db28', NULL, NULL, 'lsst-qserv-db28', NULL, NULL, 'lsst-qserv-db28', NULL, NULL);
+INSERT INTO `config_worker` VALUES ('db29', 1, 0, 'lsst-qserv-db29', NULL, 'lsst-qserv-db29', NULL, NULL, '127.0.0.1', NULL, NULL, 'lsst-qserv-db29', NULL, NULL, 'lsst-qserv-db29', NULL, NULL, 'lsst-qserv-db29', NULL, NULL);
+INSERT INTO `config_worker` VALUES ('db30', 1, 0, 'lsst-qserv-db30', NULL, 'lsst-qserv-db30', NULL, NULL, '127.0.0.1', NULL, NULL, 'lsst-qserv-db30', NULL, NULL, 'lsst-qserv-db30', NULL, NULL, 'lsst-qserv-db30', NULL, NULL);
 
 
--- This database lives witin its own family
+-- The default database family
 
-INSERT INTO `config_database_family` VALUES ('production', 2, 340, 12);
-
-INSERT INTO `config_database`        VALUES ('sdss_stripe82_01', 'production');
-INSERT INTO `config_database_table`  VALUES ('sdss_stripe82_01', 'RunDeepSource',1);
-INSERT INTO `config_database_table`  VALUES ('sdss_stripe82_01', 'RunDeepForcedSource', 1);
-INSERT INTO `config_database_table`  VALUES ('sdss_stripe82_01', 'ZZZ_Db_Description', 0);
-INSERT INTO `config_database_table`  VALUES ('sdss_stripe82_01', 'LeapSeconds', 0);
-INSERT INTO `config_database_table`  VALUES ('sdss_stripe82_01', 'Filter', 0);
-INSERT INTO `config_database_table`  VALUES ('sdss_stripe82_01', 'Science_Ccd_Exposure', 0);
-INSERT INTO `config_database_table`  VALUES ('sdss_stripe82_01', 'Science_Ccd_Exposure_Metadata', 0);
-INSERT INTO `config_database_table`  VALUES ('sdss_stripe82_01', 'Science_Ccd_Exposure_To_Htm10', 0);
-INSERT INTO `config_database_table`  VALUES ('sdss_stripe82_01', 'DeepCoadd', 0);
-INSERT INTO `config_database_table`  VALUES ('sdss_stripe82_01', 'DeepCoadd_Metadata', 0);
-INSERT INTO `config_database_table`  VALUES ('sdss_stripe82_01', 'DeepCoadd_To_Htm10', 0);
-INSERT INTO `config_database_table`  VALUES ('sdss_stripe82_01', 'Science_Ccd_Exposure_NoFile', 0);
-
-INSERT INTO `config_database`        VALUES ('wise_00', 'production');
-INSERT INTO `config_database_table`  VALUES ('wise_00', 'allwise_p3as_psd', 1);
-INSERT INTO `config_database_table`  VALUES ('wise_00', 'allwise_p3as_mep', 1);
-INSERT INTO `config_database_table`  VALUES ('wise_00', 'allwise_p3am_cdd', 0);
-INSERT INTO `config_database_table`  VALUES ('wise_00', 'allwise_p3as_cdd', 0);
-INSERT INTO `config_database_table`  VALUES ('wise_00', 'allsky_4band_p1bm_frm', 0);
-INSERT INTO `config_database_table`  VALUES ('wise_00', 'allsky_3band_p1bm_frm', 0);
-INSERT INTO `config_database_table`  VALUES ('wise_00', 'allsky_2band_p1bm_frm', 0);
-
-INSERT INTO `config_database`        VALUES ('wise_ext_00', 'production');
-INSERT INTO `config_database_table`  VALUES ('wise_ext_00', 'allwise_p3as_psr', 1);
-
-INSERT INTO `config_database`        VALUES ('wise_2band_00', 'production');
-INSERT INTO `config_database_table`  VALUES ('wise_2band_00', 'allsky_2band_p1bs_psd', 1);
-
-INSERT INTO `config_database`        VALUES ('wise_3band_00', 'production');
-INSERT INTO `config_database_table`  VALUES ('wise_3band_00', 'allsky_3band_p1bs_psd', 1);
-
-INSERT INTO `config_database`        VALUES ('wise_4band_00', 'production');
-INSERT INTO `config_database_table`  VALUES ('wise_4band_00', 'allsky_4band_p1bs_psd', 1);
-
-INSERT INTO `config_database`        VALUES ('neowiser_yr1_00', 'production');
-INSERT INTO `config_database_table`  VALUES ('neowiser_yr1_00', 'neowiser_yr1_p1bs_psd', 1);
+INSERT INTO `config_database_family` VALUES ('production', 2, 340, 3, 0.01667);
 
 SET SQL_MODE=@OLD_SQL_MODE ;
 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS ;

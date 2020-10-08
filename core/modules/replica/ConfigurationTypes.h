@@ -568,6 +568,23 @@ struct ConfigurationGeneralParams {
 
     } exporterNumProcessingThreads;
     
+    struct {
+
+        std::string const key         = "WORKER_HTTP_LOADER_NUM_PROC_THREADS";
+        std::string const description = "The number of request processing threads in each worker's"
+                                        " catalog HTTP-based ingest server.";
+        size_t            value;
+
+        bool const updatable = true;
+
+        void save(Configuration::Ptr const& config) {
+            if (value != 0) config->setHttpLoaderNumProcessingThreads(value);
+        }
+        size_t      get(Configuration::Ptr const& config) const { return config->httpLoaderNumProcessingThreads(); }
+        std::string str(Configuration::Ptr const& config) const { return std::to_string(get(config)); }
+
+    } httpLoaderNumProcessingThreads;
+    
     /**
      * Pull general parameters from the Configuration and put them into
      * a JSON array.

@@ -699,6 +699,30 @@ WorkerInfo Configuration::setWorkerExporterTmpDir(string const& name,
 }
 
 
+WorkerInfo Configuration::setWorkerHttpLoaderHost(string const& name,
+                                                  string const& host,
+                                                  bool updatePersistentState) {
+    util::Lock lock(_mtx, context(__func__));
+    return _impl->setWorkerHttpLoaderHost(name, host, updatePersistentState);
+}
+
+
+WorkerInfo Configuration::setWorkerHttpLoaderPort(string const& name,
+                                                  uint16_t port,
+                                                  bool updatePersistentState) {
+    util::Lock lock(_mtx, context(__func__));
+    return _impl->setWorkerHttpLoaderPort(name, port, updatePersistentState);
+}
+
+
+WorkerInfo Configuration::setWorkerHttpLoaderTmpDir(string const& name,
+                                                    string const& tmpDir,
+                                                    bool updatePersistentState) {
+    util::Lock lock(_mtx, context(__func__));
+    return _impl->setWorkerHttpLoaderTmpDir(name, tmpDir, updatePersistentState);
+}
+
+
 size_t Configuration::workerNumProcessingThreads() const {
     util::Lock lock(_mtx, context(__func__));
     return _impl->workerNumProcessingThreads();
@@ -763,6 +787,18 @@ void Configuration::setExporterNumProcessingThreads(size_t val,
     _impl->setExporterNumProcessingThreads(val, updatePersistentState);
 }
 
+
+size_t Configuration::httpLoaderNumProcessingThreads() const {
+    util::Lock lock(_mtx, context(__func__));
+    return _impl->httpLoaderNumProcessingThreads();
+}
+
+
+void Configuration::setHttpLoaderNumProcessingThreads(size_t val,
+                                                      bool updatePersistentState) {
+    util::Lock lock(_mtx, context(__func__));
+    _impl->setHttpLoaderNumProcessingThreads(val, updatePersistentState);
+}
 
 void Configuration::dumpIntoLogger() const {
     util::Lock lock(_mtx, context(__func__));

@@ -342,6 +342,7 @@ ConfigApp::ConfigApp(int argc, char* argv[])
     ::addCommandOption(updateGeneralCmd, _general.workerFsBufferSizeBytes);
     ::addCommandOption(updateGeneralCmd, _general.loaderNumProcessingThreads);
     ::addCommandOption(updateGeneralCmd, _general.exporterNumProcessingThreads);
+    ::addCommandOption(updateGeneralCmd, _general.httpLoaderNumProcessingThreads);
 
     // Command-specific parameters, options and flags
 
@@ -681,6 +682,10 @@ void ConfigApp::_dumpGeneralAsTable(string const& indent) const {
     parameter.  push_back(_general.exporterNumProcessingThreads.key);
     value.      push_back(_general.exporterNumProcessingThreads.str(_config));
     description.push_back(_general.exporterNumProcessingThreads.description);
+
+    parameter.  push_back(_general.httpLoaderNumProcessingThreads.key);
+    value.      push_back(_general.httpLoaderNumProcessingThreads.str(_config));
+    description.push_back(_general.httpLoaderNumProcessingThreads.description);
 
     util::ColumnTablePrinter table("GENERAL PARAMETERS:", indent, _verticalSeparator);
 

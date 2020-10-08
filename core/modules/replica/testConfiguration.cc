@@ -82,6 +82,7 @@ BOOST_AUTO_TEST_CASE(ConfigurationTest) {
         {"worker.fs_buf_size_bytes",          "1024"},
         {"worker.num_loader_processing_threads", "6"},
         {"worker.num_exporter_processing_threads", "7"},
+        {"worker.num_http_loader_processing_threads", "8"},
         {"worker.svc_port",                   "51000"},
         {"worker.fs_port",                    "52000"},
         {"worker.data_dir",                   "/data/{worker}"},
@@ -91,7 +92,9 @@ BOOST_AUTO_TEST_CASE(ConfigurationTest) {
         {"worker.loader_tmp_dir",             "/tmp/{worker}"},
         {"worker.exporter_port",              "54000"},
         {"worker.exporter_tmp_dir",           "/tmp/{worker}"},
-
+        {"worker.http_loader_port",           "55000"},
+        {"worker.http_loader_tmp_dir",        "/tmp/{worker}"},
+   
         {"worker:worker-A.is_enabled",   "1"},
         {"worker:worker-A.is_read_only", "0"},
         {"worker:worker-A.svc_host",     "host-A"},
@@ -108,6 +111,9 @@ BOOST_AUTO_TEST_CASE(ConfigurationTest) {
         {"worker:worker-A.exporter_host",  "host-A"},
         {"worker:worker-A.exporter_port",  "53003"},
         {"worker:worker-A.exporter_tmp_dir", "/tmp/export/A"},
+        {"worker:worker-A.http_loader_host",  "host-A"},
+        {"worker:worker-A.http_loader_port",  "53004"},
+        {"worker:worker-A.http_loader_tmp_dir", "/tmp/http/A"},
 
         {"worker:worker-B.is_enabled",   "1"},
         {"worker:worker-B.is_read_only", "1"},
@@ -117,6 +123,7 @@ BOOST_AUTO_TEST_CASE(ConfigurationTest) {
         {"worker:worker-B.db_host",      "host-B"},
         {"worker:worker-B.loader_host",  "host-B"},
         {"worker:worker-B.exporter_host",  "host-B"},
+        {"worker:worker-B.http_loader_host", "host-B"},
 
         {"worker:worker-C.is_enabled",   "0"},
         {"worker:worker-C.is_read_only", "0"},
@@ -125,6 +132,7 @@ BOOST_AUTO_TEST_CASE(ConfigurationTest) {
         {"worker:worker-C.db_host",      "host-C"},
         {"worker:worker-C.loader_host",  "host-C"},
         {"worker:worker-C.exporter_host",  "host-C"},
+        {"worker:worker-C.http_loader_host", "host-C"},
 
         {"database_family:production.min_replication_level", "10"},
         {"database_family:production.num_stripes",           "11"},
@@ -644,6 +652,9 @@ BOOST_AUTO_TEST_CASE(ConfigurationTest) {
         BOOST_CHECK(workerA.exporterHost   == "host-A");
         BOOST_CHECK(workerA.exporterPort   == 53003);
         BOOST_CHECK(workerA.exporterTmpDir == "/tmp/export/A");
+        BOOST_CHECK(workerA.httpLoaderHost   == "host-A");
+        BOOST_CHECK(workerA.httpLoaderPort   == 53004);
+        BOOST_CHECK(workerA.httpLoaderTmpDir == "/tmp/http/A");
 
         WorkerInfo const workerB = config->workerInfo("worker-B");
         BOOST_CHECK(workerB.name =="worker-B");
@@ -663,6 +674,9 @@ BOOST_AUTO_TEST_CASE(ConfigurationTest) {
         BOOST_CHECK(workerB.exporterHost   == "host-B");
         BOOST_CHECK(workerB.exporterPort   == 54000);
         BOOST_CHECK(workerB.exporterTmpDir == "/tmp/worker-B");
+        BOOST_CHECK(workerB.httpLoaderHost   == "host-B");
+        BOOST_CHECK(workerB.httpLoaderPort   == 55000);
+        BOOST_CHECK(workerB.httpLoaderTmpDir == "/tmp/worker-B");
 
         WorkerInfo const workerC = config->workerInfo("worker-C");
         BOOST_CHECK(workerC.name =="worker-C");
@@ -681,6 +695,9 @@ BOOST_AUTO_TEST_CASE(ConfigurationTest) {
         BOOST_CHECK(workerC.exporterHost   == "host-C");
         BOOST_CHECK(workerC.exporterPort   == 54000);
         BOOST_CHECK(workerC.exporterTmpDir == "/tmp/worker-C");
+        BOOST_CHECK(workerC.httpLoaderHost   == "host-C");
+        BOOST_CHECK(workerC.httpLoaderPort   == 55000);
+        BOOST_CHECK(workerC.httpLoaderTmpDir == "/tmp/worker-C");
 
         // Adding a new worker with well formed and unique parameters
 
@@ -702,6 +719,9 @@ BOOST_AUTO_TEST_CASE(ConfigurationTest) {
         workerD.exporterHost   = "host-D";
         workerD.exporterPort   = 52003;
         workerD.exporterTmpDir = "/tmp/D";
+        workerD.httpLoaderHost   = "host-D";
+        workerD.httpLoaderPort   = 52004;
+        workerD.httpLoaderTmpDir = "/tmp/http/D";
 
         config->addWorker(workerD);
         BOOST_CHECK_THROW(config->addWorker(workerD), invalid_argument);
@@ -724,6 +744,9 @@ BOOST_AUTO_TEST_CASE(ConfigurationTest) {
         BOOST_CHECK(workerD.exporterHost   == "host-D");
         BOOST_CHECK(workerD.exporterPort   == 52003);
         BOOST_CHECK(workerD.exporterTmpDir == "/tmp/D");
+        BOOST_CHECK(workerD.httpLoaderHost   == "host-D");
+        BOOST_CHECK(workerD.httpLoaderPort   == 52004);
+        BOOST_CHECK(workerD.httpLoaderTmpDir == "/tmp/http/D");
 
         // Adding a new worker with parameters conflicting with the ones of
         // some existing worker
@@ -760,12 +783,29 @@ BOOST_AUTO_TEST_CASE(ConfigurationTest) {
 
         BOOST_CHECK(config->setWorkerDataDir("worker-A", "/test").dataDir == "/test");
 
+        BOOST_CHECK(config->setWorkerDbHost("worker-A", "host-A1").dbHost == "host-A1");
+        BOOST_CHECK(config->setWorkerDbPort("worker-A", 3).dbPort == 3);
+        BOOST_CHECK(config->setWorkerDbUser("worker-A", "user-A1").dbUser == "user-A1");
+
+        BOOST_CHECK(config->setWorkerLoaderHost("worker-A", "host-A1").loaderHost == "host-A1");
+        BOOST_CHECK(config->setWorkerLoaderPort("worker-A", 4).loaderPort == 4);
+        BOOST_CHECK(config->setWorkerLoaderTmpDir("worker-A", "/tmp/A1").loaderTmpDir == "/tmp/A1");
+
+        BOOST_CHECK(config->setWorkerExporterHost("worker-A", "host-A1").exporterHost == "host-A1");
+        BOOST_CHECK(config->setWorkerExporterPort("worker-A", 4).exporterPort == 4);
+        BOOST_CHECK(config->setWorkerExporterTmpDir("worker-A", "/tmp/A1").exporterTmpDir == "/tmp/A1");
+
+        BOOST_CHECK(config->setWorkerHttpLoaderHost("worker-A", "host-A1").httpLoaderHost == "host-A1");
+        BOOST_CHECK(config->setWorkerHttpLoaderPort("worker-A", 5).httpLoaderPort == 5);
+        BOOST_CHECK(config->setWorkerHttpLoaderTmpDir("worker-A", "/tmp/A1").httpLoaderTmpDir == "/tmp/A1");
+
         BOOST_CHECK(config->workerTechnology()           == "POSIX");
         BOOST_CHECK(config->workerNumProcessingThreads() == 4);
         BOOST_CHECK(config->fsNumProcessingThreads()     == 5);
         BOOST_CHECK(config->workerFsBufferSizeBytes()    == 1024);
         BOOST_CHECK(config->loaderNumProcessingThreads() == 6);
         BOOST_CHECK(config->exporterNumProcessingThreads() == 7);
+        BOOST_CHECK(config->httpLoaderNumProcessingThreads() == 8);
 
         config->setRequestBufferSizeBytes(8193);
         BOOST_CHECK(config->requestBufferSizeBytes() == 8193);
@@ -836,6 +876,9 @@ BOOST_AUTO_TEST_CASE(ConfigurationTest) {
 
         config->setExporterNumProcessingThreads(8);
         BOOST_CHECK(config->exporterNumProcessingThreads() == 8);
+
+        config->setHttpLoaderNumProcessingThreads(9);
+        BOOST_CHECK(config->httpLoaderNumProcessingThreads() == 9);
     });
 
     BOOST_CHECK_THROW(kvMap.at("non-existing-key"), out_of_range);
