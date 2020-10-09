@@ -22,7 +22,6 @@
 #define LSST_QSERV_REPLICA_INGESTSVCCONN_H
 
 // System headers
-#include <fstream>
 #include <memory>
 
 // Third party headers
@@ -30,7 +29,7 @@
 
 // Qserv headers
 #include "replica/Common.h"
-#include "replica/Configuration.h"
+#include "replica/IngestFileSvc.h"
 #include "replica/protocol.pb.h"
 #include "replica/ProtocolBuffer.h"
 #include "replica/ServiceProvider.h"
@@ -59,7 +58,8 @@ namespace replica {
  * a database, or communicating with a client) occurs. When this happens the object
  * stops doing anything.
  */
-class IngestSvcConn: public std::enable_shared_from_this<IngestSvcConn> {
+class IngestSvcConn: public IngestFileSvc,
+                     public std::enable_shared_from_this<IngestSvcConn> {
 public:
 
     typedef std::shared_ptr<IngestSvcConn> Ptr;
@@ -90,8 +90,7 @@ public:
     IngestSvcConn(IngestSvcConn const&) = delete;
     IngestSvcConn& operator=(IngestSvcConn const&) = delete;
 
-    /// Destructor (non-trivial because some resources need to be properly released)
-    ~IngestSvcConn();
+    virtual ~IngestSvcConn() = default;
 
     /// @return network socket associated with the connection.
     boost::asio::ip::tcp::socket& socket() { return _socket; }
@@ -211,13 +210,13 @@ private:
      * @param msg  a message to be delivered to a client
      */
     void _failed(std::string const& msg) {
-        _closeFile();
+        closeFile();
         _reply(ProtocolIngestResponse::FAILED, msg);
     }
 
     /// Send back a message with status FINISHED and no error message.
     void _finished() {
-        _closeFile();
+        closeFile();
         _reply(ProtocolIngestResponse::FINISHED);
     }
 
@@ -232,20 +231,9 @@ private:
                 std::string const& msg=std::string(),
                 size_t maxRows=1);
 
-    /// Load the content of the current file into a table
-    void _loadDataIntoTable();
-
-    /// Make sure the currently open/created file gets closed and deleted
-    void _closeFile();
-
     // Input parameters
 
-    ServiceProvider::Ptr const _serviceProvider;
-    std::string          const _workerName;
-    std::string          const _authKey;
-
-    /// Cached worker descriptor obtained from the configuration
-    WorkerInfo const _workerInfo;
+    std::string const _authKey;
 
     /// A socket for communication with clients
     boost::asio::ip::tcp::socket _socket;
@@ -253,29 +241,6 @@ private:
     /// Buffer management class facilitating serialization/de-serialization
     /// of data sent over the network
     std::shared_ptr<ProtocolBuffer> const _bufferPtr;
-
-    // Parameters defining a scope of the operation are set from the handshake
-    // request received from a client.
-
-    TransactionId _transactionId = 0;
-    std::string   _table;
-    unsigned int  _chunk = 0;
-    bool          _isOverlap = false;
-    char          _columnSeparator = ',';
-
-    /// The database descriptor and the state of the table are set after receiving
-    /// and validating a handshake message from a client.
-    DatabaseInfo _databaseInfo;
-    bool _isPartitioned = false;
-
-    // A file for storing rows received from a client before ingesting
-    // its content into the database. This file is created after the handshake
-    // request is obtained from a client.
-
-    std::string   _fileName;    /// an absolute path name for the file
-    std::ofstream _file;        /// The output file stream
-
-    size_t _totalNumRows = 0;   /// The number of rows received and recorded
 };
 
 }}} // namespace lsst::qserv::replica

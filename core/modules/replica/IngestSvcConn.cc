@@ -31,17 +31,10 @@
 #include <thread>
 #include <stdexcept>
 
-// Third party headers
-#include "boost/filesystem.hpp"
-
 // Qserv headers
 #include "global/constants.h"
-#include "replica/ChunkedTable.h"
 #include "replica/Configuration.h"
-#include "replica/ConfigurationIFace.h"
-#include "replica/DatabaseMySQL.h"
 #include "replica/DatabaseServices.h"
-#include "replica/FileUtils.h"
 #include "replica/ReplicaInfo.h"
 #include "replica/ServiceProvider.h"
 
@@ -50,7 +43,6 @@
 
 using namespace std;
 using namespace std::placeholders;
-namespace fs = boost::filesystem;
 using namespace lsst::qserv::replica;
 
 namespace {
@@ -138,19 +130,13 @@ IngestSvcConn::IngestSvcConn(ServiceProvider::Ptr const& serviceProvider,
                              string const& workerName,
                              string const& authKey,
                              boost::asio::io_service& io_service)
-    :   _serviceProvider(serviceProvider),
-        _workerName(workerName),
+    :   IngestFileSvc(serviceProvider,
+                      workerName),
         _authKey(authKey),
-        _workerInfo(serviceProvider->config()->workerInfo(workerName)),
         _socket(io_service),
         _bufferPtr(make_shared<ProtocolBuffer>(
             serviceProvider->config()->requestBufferSizeBytes()
         )) {
-}
-
-
-IngestSvcConn::~IngestSvcConn() {
-    _closeFile();
 }
 
 
@@ -188,103 +174,20 @@ void IngestSvcConn::_handshakeReceived(boost::system::error_code const& ec,
     ProtocolIngestHandshakeRequest request;
     if (not ::readMessage(_socket, _bufferPtr, _bufferPtr->parseLength(), request)) return;
 
-    _transactionId   = request.transaction_id();
-    _table           = request.table();
-    _chunk           = request.chunk();
-    _isOverlap       = request.is_overlap();
-    _columnSeparator = request.column_separator() == ProtocolIngestHandshakeRequest::COMMA ? ',' : '\t';
-
     // Check if the client is authorized for the operation
-
     if (request.auth_key() != _authKey) {
         _failed("not authorized");
         return;
     }
 
-    // Check if a context of the request is valid
-    
     try {
-        auto transactionInfo = _serviceProvider->databaseServices()->transaction(_transactionId);
-        if (transactionInfo.state != TransactionInfo::STARTED) {
-            _failed("transaction is not active");
-            return;
-        }
-
-        // Get and validate a status of the database and the table
-
-        _databaseInfo = _serviceProvider->config()->databaseInfo(transactionInfo.database);
-        if (_databaseInfo.isPublished) {
-            throw invalid_argument("database '" + _databaseInfo.name + "' is already PUBLISHED");
-        }
-        _isPartitioned = _databaseInfo.partitionedTables.end() != find(
-                _databaseInfo.partitionedTables.begin(),
-                _databaseInfo.partitionedTables.end(),
-                _table);
-        if (not _isPartitioned) {
-            if (_databaseInfo.regularTables.end() == find(
-                    _databaseInfo.regularTables.begin(),
-                    _databaseInfo.regularTables.end(),
-                    _table)) {
-                throw invalid_argument(
-                        "no such table '" + _table + "' in a scope of database '" +
-                        _databaseInfo.name + "'");
-            }
-        }
-
-        // The next test is for the partitioned tables, and it's meant to check if
-        // the chunk number is valid and it's allocated to this worker. The test will
-        // also ensure that the database is in the UNPUBLISHED state.
-
-        if (_isPartitioned) {
-
-            vector<ReplicaInfo> replicas;       // Chunk replicas at the current worker found
-                                                // among the unpublished databases only
-            bool const allDatabases = false;
-            bool const isPublished = false;
-
-            _serviceProvider->databaseServices()->findWorkerReplicas(
-                replicas,
-                _chunk,
-                _workerName,
-                _databaseInfo.family,
-                allDatabases,
-                isPublished
-            );
-            if (replicas.cend() == find_if(replicas.cbegin(), replicas.cend(),
-                    [&](ReplicaInfo const& replica) {
-                        return replica.database() == _databaseInfo.name;
-                    })) {
-                throw invalid_argument(
-                        "chunk " + to_string(_chunk) + " of the UNPUBLISHED database '" +
-                        _databaseInfo.name + "' is not allocated to worker '" + _workerName + "'");
-            }
-        }
-                
-    } catch (DatabaseServicesNotFound const& ex) {
-        _failed("invalid transaction identifier");
-        return;
-    } catch (invalid_argument const& ex) {
-        _failed(ex.what());
-        return;
-    }
-    
-    // Create a temporary file. The algorithm will make several attempts to create
-    // a temporary file name
-    try {
-        _fileName = FileUtils::createTemporaryFile(
-            _workerInfo.loaderTmpDir,
-            _databaseInfo.name + "-" + _table + "-" + to_string(_chunk) + "-" + to_string(_transactionId),
-            "-%%%%-%%%%-%%%%-%%%%",
-            ".csv"
-        );
+        openFile(request.transaction_id(),
+                 request.table(),
+                 request.column_separator() == ProtocolIngestHandshakeRequest::COMMA ? ',' : '\t',
+                 request.chunk(),
+                 request.is_overlap());
     } catch (exception const& ex) {
-        _failed("failed to generate a unique name for a temporary file, ex: " + string(ex.what()));
-        return;
-    }
-
-    _file.open(_fileName, ofstream::out);
-    if (not _file.is_open()) {
-        _failed("failed to create a temporary file: " + _fileName);
+        _failed(ex.what());
         return;
     }
 
@@ -311,9 +214,10 @@ void IngestSvcConn::_responseSent(boost::system::error_code const& ec,
 
     LOGS(_log, LOG_LVL_DEBUG, context << __func__);
 
-    if (::isErrorCode(ec, __func__)) _closeFile();
-    if (not _file.is_open()) return;
-
+    if (::isErrorCode(ec, __func__)) {
+        closeFile();
+        return;
+    }
     _receiveData();
 }
 
@@ -340,13 +244,13 @@ void IngestSvcConn::_dataReceived(boost::system::error_code const& ec,
     LOGS(_log, LOG_LVL_DEBUG, context << __func__);
 
     if (::isErrorCode(ec, __func__)) {
-        _closeFile();
+        closeFile();
         return;
     }
 
     ProtocolIngestData request;
     if (not ::readMessage(_socket, _bufferPtr, _bufferPtr->parseLength(), request)) {
-        _closeFile();
+        closeFile();
         return;
     }
 
@@ -358,21 +262,14 @@ void IngestSvcConn::_dataReceived(boost::system::error_code const& ec,
     size_t rowSize = 0;
     for (int i = 0, num = request.rows_size(); i < num; ++i) {
         auto&& row = request.rows(i);
+        writeRowIntoFile(row);
         rowSize = max(rowSize, row.size());
-        _file << _transactionId << _columnSeparator << row << "\n";
-        ++_totalNumRows;
     }
 
     ProtocolIngestResponse response;
     if (request.last()) {
-        LOGS(_log, LOG_LVL_DEBUG, context << __func__ << "  _totalNumRows: " << _totalNumRows);
-        
-        // Make sure no unsaved rows were staying in memory before proceeding
-        // to the loading phase.
-        _file.flush();
-
         try {
-            _loadDataIntoTable();
+            loadDataIntoTable();
             _finished();
         } catch(exception const& ex) {
             string const error = string("data load failed: ") + ex.what();
@@ -400,165 +297,6 @@ void IngestSvcConn::_reply(ProtocolIngestResponse::Status status,
     _bufferPtr->serialize(response);
 
     _sendResponse();
-}
-
-
-void IngestSvcConn::_loadDataIntoTable() {
-
-    LOGS(_log, LOG_LVL_DEBUG, context << __func__);
-
-    // ATTENTION: the data loading method used in this implementation requires
-    // that the MySQL server has (at least) the read-only access to files in
-    // a folder in which the CSV file will be stored by this server. So, make
-    // proper adjustments to a configuration of the Replication system.
-
-    try {
-        // The RAII connection handler automatically aborts the active transaction
-        // should an exception be thrown within the block.
-        database::mysql::ConnectionHandler h(
-            database::mysql::Connection::open(
-                database::mysql::ConnectionParams(
-                    _workerInfo.dbHost,
-                    _workerInfo.dbPort,
-                    _workerInfo.dbUser,
-                    _serviceProvider->config()->qservWorkerDatabasePassword(),
-                    ""
-                )
-            )
-        );
-
-        string const sqlDatabase = h.conn->sqlId(_databaseInfo.name);
-        string const sqlPartition = h.conn->sqlPartitionId(_transactionId);
-
-        vector<string> tableMgtStatements;
-
-        // Make sure no outstanding table locks exist from prior operations
-        // on persistent database connections.
-        tableMgtStatements.push_back("UNLOCK TABLES");
-
-        string dataLoadStatement;
-
-        if (_isPartitioned) {
-            
-            // Note, that the algorithm will create chunked tables for _ALL_ partitioned
-            // tables (not just for the current one) to ensure they have representations
-            // in all chunks touched by the ingest workflows. Missing representations would
-            // cause Qserv to fail when processing queries involving these tables.
-
-            for (auto&& table: _databaseInfo.partitionedTables) {
-
-                // Chunked tables are created from the prototype table which is expected
-                // to exist in the database before attempting data loading.
-
-                bool const overlap = true;
-                string const sqlProtoTable       = sqlDatabase + "." + h.conn->sqlId(table);
-                string const sqlTable            = sqlDatabase + "." + h.conn->sqlId(ChunkedTable(table, _chunk, not overlap).name());
-                string const sqlFullOverlapTable = sqlDatabase + "." + h.conn->sqlId(ChunkedTable(table, _chunk, overlap).name());
-
-                string const tablesToBeCreated[] = {
-                    sqlTable,
-                    sqlFullOverlapTable,
-                    sqlDatabase + "." + h.conn->sqlId(ChunkedTable(table, lsst::qserv::DUMMY_CHUNK, not overlap).name()),
-                    sqlDatabase + "." + h.conn->sqlId(ChunkedTable(table, lsst::qserv::DUMMY_CHUNK, overlap).name())
-                };
-                for (auto&& table: tablesToBeCreated) {
-                    tableMgtStatements.push_back(
-                        "CREATE TABLE IF NOT EXISTS " + table + " LIKE " + sqlProtoTable
-                    );
-                    tableMgtStatements.push_back(
-                        "ALTER TABLE " + table + " ADD PARTITION IF NOT EXISTS (PARTITION " + sqlPartition +
-                            " VALUES IN (" + to_string(_transactionId) + "))"
-                    );
-                }
-
-                // An additional step for the current request's table
-                if (table == _table) {
-                    dataLoadStatement =
-                        "LOAD DATA INFILE " + h.conn->sqlValue(_fileName) +
-                            " INTO TABLE " + (_isOverlap ? sqlFullOverlapTable : sqlTable) +
-                            " FIELDS TERMINATED BY " + h.conn->sqlValue(string() + _columnSeparator);
-                }
-            }
-        } else {
-
-            // Regular tables are expected to exist in the database before
-            // attempting data loading.
-
-            string const sqlTable = sqlDatabase + "." + h.conn->sqlId(_table);
-
-            tableMgtStatements.push_back(
-                "ALTER TABLE " + sqlTable + " ADD PARTITION IF NOT EXISTS (PARTITION " + sqlPartition +
-                    " VALUES IN (" + to_string(_transactionId) + "))"
-            );
-            dataLoadStatement =
-                "LOAD DATA INFILE " + h.conn->sqlValue(_fileName) +
-                    " INTO TABLE " + sqlTable +
-                    " FIELDS TERMINATED BY " + h.conn->sqlValue(string() + _columnSeparator);
-        }
-        for (auto&& statement: tableMgtStatements) {
-            LOGS(_log, LOG_LVL_DEBUG, context << __func__ << "  statement: " << statement);
-        }
-        LOGS(_log, LOG_LVL_DEBUG, context << __func__ << "  statement: " << dataLoadStatement);
-
-        // Allow retries for the table management statements in case of deadlocks.
-        // Deadlocks may happen when two or many threads are attempting to create
-        // or modify partitioned tables, or at a presence of other threads loading
-        // data into these tables.
-        //
-        // TODO: the experimental limit for the maximum number of retries may need
-        //       to be made unlimited, or be limited by some configurable timeout.
-        int const maxRetries = 1;
-        int numRetries = 0;
-        while (true) {
-            try {
-                h.conn->execute([&tableMgtStatements](decltype(h.conn) const& conn_) {
-                    conn_->begin();
-                    for (auto&& statement: tableMgtStatements) {
-                        conn_->execute(statement);
-                    }
-                    conn_->commit();
-                });
-                break;
-            } catch (database::mysql::LockDeadlock const& ex) {
-                if (h.conn->inTransaction()) h.conn->rollback();
-                if (numRetries < maxRetries) {
-                    LOGS(_log, LOG_LVL_WARN, context << __func__ << "  exception: " << ex.what());
-                    ++numRetries;
-                } else {
-                    LOGS(_log, LOG_LVL_ERROR, context << __func__ << "  maximum number of retries "
-                            << maxRetries << " for avoiding table management deadlocks has been reached."
-                            << " Aborting the file loading operation.");
-                    throw;
-                }
-            }
-        }
-
-        // Load table contribution
-        if (dataLoadStatement.empty()) {
-            throw std::runtime_error(context + string(__func__) + "  no data loading statement generated");
-        }
-        h.conn->execute([&dataLoadStatement](decltype(h.conn) const& conn_) {
-            conn_->begin();
-            conn_->execute(dataLoadStatement);
-            conn_->commit();
-        });
-
-    } catch (exception const& ex) {
-        LOGS(_log, LOG_LVL_ERROR, context << __func__ << "  exception: " << ex.what());
-        throw;
-    }
-}
-
-
-void IngestSvcConn::_closeFile() {
-    if (_file.is_open()) {
-        _file.close();
-        boost::system::error_code ec;
-        fs::remove(_fileName, ec);
-        if (ec.value() != 0) {
-            LOGS(_log, LOG_LVL_ERROR, context << __func__ << "  file removal failed: " << ec.message());
-        }
-    }
 }
 
 }}} // namespace lsst::qserv::replica
