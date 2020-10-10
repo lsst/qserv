@@ -164,7 +164,7 @@ public:
     template <typename T>
     std::vector<T> requiredColl(std::string const& name) const {
         auto const itr = objJson.find(name);
-        if (objJson.find(name) == objJson.end()) {
+        if (itr == objJson.end()) {
             throw std::invalid_argument(
                     "HttpRequestBody::" + std::string(__func__) + "<T> required parameter " + name +
                     " is missing in the request body");
@@ -182,7 +182,22 @@ public:
         return coll;
     }
 
+    /**
+     * Find and return a vector of values for the specified optional parameter
+     * @param name  the name of a parameter
+     * @param defaultValue  a value to be returned if the parameter wasn't found
+     * @return a value of the parameter or the default value
+     * @return A value of the parameter or the default value.
+     */
+    template <typename T>
+    std::vector<T> optionalColl(std::string const& name, std::vector<T> const& defaultValue) const {
+        auto const itr = objJson.find(name);
+        if (itr == objJson.end()) return defaultValue;
+        return requiredColl<T>(name);
+    }
+
 private:
+
     /**
      * Check if the specified value is found in a collection of permitted values.
      * @param value  A value to be checked.

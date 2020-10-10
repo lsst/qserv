@@ -68,7 +68,7 @@ public:
     HttpModuleBase(HttpModuleBase const&) = delete;
     HttpModuleBase& operator=(HttpModuleBase const&) = delete;
 
-    virtual ~HttpModuleBase() = default;
+    virtual ~HttpModuleBase();
 
     /**
      * Invokes a subclass-specific request processing provided by implementations

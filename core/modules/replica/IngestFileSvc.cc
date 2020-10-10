@@ -53,7 +53,7 @@ namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.IngestFileSvc");
 
 /// The context for diagnostic & debug printouts
-string const context = "INGEST-FILE-SVC  ";
+string const context = "INGEST-FILE-SVC ";
 
 }   // namespace
 

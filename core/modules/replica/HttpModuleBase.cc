@@ -49,6 +49,12 @@ HttpModuleBase::HttpModuleBase(string const& authKey,
         _req(req),
         _resp(resp),
         _query(req->query) {
+    LOGS(_log, LOG_LVL_INFO, "HttpModuleBase::" << __func__);
+}
+
+
+HttpModuleBase::~HttpModuleBase() {
+    LOGS(_log, LOG_LVL_INFO, "HttpModuleBase::" << __func__);
 }
 
 
