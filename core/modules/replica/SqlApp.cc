@@ -31,6 +31,7 @@
 // Qserv headers
 #include "replica/Configuration.h"
 #include "replica/Controller.h"
+#include "replica/SqlAlterTablesJob.h"
 #include "replica/SqlCreateDbJob.h"
 #include "replica/SqlCreateIndexesJob.h"
 #include "replica/SqlCreateTableJob.h"
@@ -83,7 +84,8 @@ SqlApp::SqlApp(int argc, char* argv[])
 
     parser().commands(
         "command",
-        {"QUERY",
+        {"ALTER_TABLES",
+         "QUERY",
          "CREATE_DATABASE", "DELETE_DATABASE", "ENABLE_DATABASE", "DISABLE_DATABASE",
          "GRANT_ACCESS",
          "CREATE_TABLE", "CREATE_TABLES", "DELETE_TABLE", "REMOVE_TABLE_PARTITIONS", "DELETE_TABLE_PARTITION",
@@ -302,18 +304,18 @@ SqlApp::SqlApp(int argc, char* argv[])
         _transactionId
     );
 
-    _configureIndexCommands();
+    _configureTableCommands();
 }
 
 
-void SqlApp::_configureIndexCommands() {
+void SqlApp::_configureTableCommands() {
 
     // Common parameters & flags. Note that two required positional parameters 
     // added in the loop below will be present in the same order at each command.
     // The additional positional (required and/or optional) parameters will be
     // appended for each command at the next step.
 
-    for (auto&& command: {"CREATE_INDEXES", "DROP_INDEXES", "GET_INDEXES"}) {
+    for (auto&& command: {"ALTER_TABLES", "CREATE_INDEXES", "DROP_INDEXES", "GET_INDEXES"}) {
         parser().command(
             command
         ).required(
@@ -324,6 +326,15 @@ void SqlApp::_configureIndexCommands() {
             "table",
             "The name of an existing table to be affected by the operation.",
             _table
+        );
+    }
+
+    // Note that "ALTER_TABLES" doesn't have this flag since it affects all tables
+    // regardless their status.
+
+    for (auto&& command: {"CREATE_INDEXES", "DROP_INDEXES", "GET_INDEXES"}) {
+        parser().command(
+            command
         ).flag(
             "overlap",
             "The optional selector for a subset of the partitioned tables to be affected by"
@@ -335,6 +346,15 @@ void SqlApp::_configureIndexCommands() {
     }
 
     // Additional parameters, options and flags for some commands
+
+    parser().command(
+        "ALTER_TABLES"
+    ).required(
+        "alter-spec",
+        "The specification of what's to change in table definitions as it follows"
+        " after 'ALTER TABLE <table> ' in the corresponding SQL statement.",
+        _alterSpec
+    );
 
     parser().command(
         "CREATE_INDEXES"
@@ -361,7 +381,7 @@ void SqlApp::_configureIndexCommands() {
         "DROP_INDEXES"
     ).required(
         "name",
-        "The name of an index to be дроппед.",
+        "The name of an index to be dropped.",
         _indexName
     );
 }
@@ -377,7 +397,9 @@ int SqlApp::runImpl() {
 
     auto const controller = Controller::create(serviceProvider());
     SqlJob::Ptr job;
-    if (_command == "QUERY") {
+    if(_command == "ALTER_TABLES") {
+        job = SqlAlterTablesJob::create(_database, _table, _alterSpec, _allWorkers, controller);
+    } else if(_command == "QUERY") {
         job = SqlQueryJob::create(_query, _mysqlUser, _mysqlPassword, _maxRows,
                                   _allWorkers, controller);
     } else if(_command == "CREATE_DATABASE") {

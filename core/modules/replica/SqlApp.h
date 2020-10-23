@@ -56,8 +56,8 @@ protected:
 private:
     SqlApp(int argc, char* argv[]);
 
-    /// Configure Parser for the table index management commands
-    void _configureIndexCommands();
+    /// Configure Parser for the table management commands
+    void _configureTableCommands();
 
     std::string _command;
     std::string _mysqlUser;
@@ -72,6 +72,7 @@ private:
     std::string _indexSpecStr;
     std::string _indexComment;
     std::string _indexColumnsFile;
+    std::string _alterSpec;
 
     TransactionId _transactionId = 0;   /// An identifier of a super-transaction corresponding to
                                         /// to a MySQL partition.
