@@ -37,6 +37,7 @@
 #include "replica/ReplicationRequest.h"
 #include "replica/ServiceManagementRequest.h"
 #include "replica/ServiceProvider.h"
+#include "replica/SqlAlterTablesRequest.h"
 #include "replica/SqlCreateDbRequest.h"
 #include "replica/SqlCreateIndexesRequest.h"
 #include "replica/SqlCreateTableRequest.h"
@@ -161,7 +162,7 @@ void ControllerApp::_configureParser() {
     parser().commands(
         "request",
         {   "REPLICATE", "DELETE", "FIND", "FIND_ALL",  "ECHO",
-            "SQL_QUERY", "SQL_CREATE_DATABASE", "SQL_DELETE_DATABASE",
+            "SQL_ALTER_TABLES", "SQL_QUERY", "SQL_CREATE_DATABASE", "SQL_DELETE_DATABASE",
             "SQL_ENABLE_DATABASE", "SQL_DISABLE_DATABASE", "SQL_GRANT_ACCESS",
             "SQL_CREATE_TABLE", "SQL_CREATE_TABLES", "SQL_DELETE_TABLE",
             "SQL_REMOVE_TABLE_PARTITIONS", "SQL_DELETE_TABLE_PARTITION",
@@ -309,6 +310,25 @@ void ControllerApp::_configureParserCommandECHO() {
 
 
 void ControllerApp::_configureParserCommandSQL() {
+    parser().command(
+        "SQL_ALTER_TABLES"
+    ).description(
+        "Ask a worker service to execute the 'ALTER TABLE <table> ...' query against"
+        " select tables of a database, get a result set (if any) back and print it as a table."
+    ).required(
+        "database",
+        "The name of an existing database where the tables are residing.",
+        _sqlDatabase
+    ).required(
+        "table",
+        "The name of an existing table to be affected by the operation.",
+        _sqlTable
+    ).required(
+        "alter-spec",
+        "A specification of the change following 'ALTER TABLE <table> ...' to be executed"
+        " against each select table of teh requested database by a worker.",
+        _sqlAlterSpec
+    );
 
     parser().command(
         "SQL_QUERY"
@@ -577,7 +597,7 @@ void ControllerApp::_configureParserCommandSTATUS() {
     ).required(
         "affected-request",
         "The type of a request affected by the operation. Supported types:"
-        " REPLICATE, DELETE, FIND, FIND_ALL, ECHO, SQL_QUERY, SQL_CREATE_DATABASE"
+        " REPLICATE, DELETE, FIND, FIND_ALL, ECHO, SQL_ALTER_TABLES, SQL_QUERY, SQL_CREATE_DATABASE"
         " SQL_DELETE_DATABASE, SQL_ENABLE_DATABASE, SQL_DISABLE_DATABASE"
         " SQL_GRANT_ACCESS"
         " SQL_CREATE_TABLE, SQL_CREATE_TABLES, SQL_DELETE_TABLE, SQL_REMOVE_TABLE_PARTITIONS,"
@@ -585,7 +605,7 @@ void ControllerApp::_configureParserCommandSTATUS() {
         " SQL_CREATE_TABLE_INDEXES, SQL_DROP_TABLE_INDEXES, SQL_GET_TABLE_INDEXES"
         " INDEX",
         _affectedRequest,
-       {    "REPLICATE", "DELETE", "FIND", "FIND_ALL", "ECHO", "SQL_QUERY",
+       {    "REPLICATE", "DELETE", "FIND", "FIND_ALL", "ECHO", "SQL_ALTER_TABLES", "SQL_QUERY",
             "SQL_CREATE_DATABASE", "SQL_DELETE_DATABASE", "SQL_ENABLE_DATABASE",
             "SQL_DISABLE_DATABASE", "SQL_GRANT_ACCESS", "SQL_CREATE_TABLE", "SQL_CREATE_TABLES", "SQL_DELETE_TABLE",
             "SQL_REMOVE_TABLE_PARTITIONS", "SQL_DELETE_TABLE_PARTITION",
@@ -608,7 +628,7 @@ void ControllerApp::_configureParserCommandSTOP() {
     ).required(
         "affected-request",
         "The type of a request affected by the operation. Supported types:"
-        " REPLICATE, DELETE, FIND, FIND_ALL, ECHO, SQL_QUERY, SQL_CREATE_DATABASE"
+        " REPLICATE, DELETE, FIND, FIND_ALL, ECHO, SQL_ALTER_TABLES, SQL_QUERY, SQL_CREATE_DATABASE"
         " SQL_DELETE_DATABASE, SQL_ENABLE_DATABASE, SQL_DISABLE_DATABASE"
         " SQL_GRANT_ACCESS"
         " SQL_CREATE_TABLE, SQL_CREATE_TABLES, SQL_DELETE_TABLE, SQL_REMOVE_TABLE_PARTITIONS,"
@@ -616,7 +636,7 @@ void ControllerApp::_configureParserCommandSTOP() {
         " SQL_CREATE_TABLE_INDEXES, SQL_DROP_TABLE_INDEXES, SQL_GET_TABLE_INDEXES"
         " INDEX",
         _affectedRequest,
-       {    "REPLICATE", "DELETE", "FIND", "FIND_ALL", "ECHO", "SQL_QUERY",
+       {    "REPLICATE", "DELETE", "FIND", "FIND_ALL", "ECHO", "SQL_ALTER_TABLES", "SQL_QUERY",
             "SQL_CREATE_DATABASE", "SQL_DELETE_DATABASE", "SQL_ENABLE_DATABASE",
             "SQL_DISABLE_DATABASE", "SQL_GRANT_ACCESS", "SQL_CREATE_TABLE", "SQL_CREATE_TABLES", "SQL_DELETE_TABLE",
             "SQL_REMOVE_TABLE_PARTITIONS", "SQL_DELETE_TABLE_PARTITION",
@@ -749,6 +769,16 @@ int ControllerApp::runImpl() {
                 Request::defaultPrinter(request_);
                 request_->responseData().print(_indexFileName);
             },
+            _priority, not _doNotTrackRequest
+        );
+
+    } else if ("SQL_ALTER_TABLES" == _requestType) {
+
+        vector<string> const tables = {_sqlTable};
+        request = controller->sqlAlterTables(
+            _workerName, _sqlDatabase, tables,
+            _sqlAlterSpec,
+            SqlRequest::extendedPrinter,
             _priority, not _doNotTrackRequest
         );
 
@@ -963,6 +993,7 @@ Request::Ptr ControllerApp::_launchStatusRequest(Controller::Ptr const& controll
     if ("FIND_ALL"                    == _affectedRequest) return l.status<StatusFindAllRequest>();
     if ("ECHO"                        == _affectedRequest) return l.status<StatusEchoRequest>();
     if ("INDEX"                       == _affectedRequest) return l.status<StatusIndexRequest>();
+    if ("SQL_ALTER_TABLES"            == _affectedRequest) return l.status<StatusSqlAlterTablesRequest>();
     if ("SQL_QUERY"                   == _affectedRequest) return l.status<StatusSqlQueryRequest>();
     if ("SQL_CREATE_DATABASE"         == _affectedRequest) return l.status<StatusSqlCreateDbRequest>();
     if ("SQL_DELETE_DATABASE"         == _affectedRequest) return l.status<StatusSqlDeleteDbRequest>();
@@ -996,6 +1027,7 @@ Request::Ptr ControllerApp::_launchStopRequest(Controller::Ptr const& controller
     if ("FIND_ALL"                    == _affectedRequest) return l.stop<StopFindAllRequest>();
     if ("ECHO"                        == _affectedRequest) return l.stop<StopEchoRequest>();
     if ("INDEX"                       == _affectedRequest) return l.stop<StopIndexRequest>();
+    if ("SQL_ALTER_TABLES"            == _affectedRequest) return l.stop<StopSqlAlterTablesRequest>();
     if ("SQL_QUERY"                   == _affectedRequest) return l.stop<StopSqlQueryRequest>();
     if ("SQL_CREATE_DATABASE"         == _affectedRequest) return l.stop<StopSqlCreateDbRequest>();
     if ("SQL_DELETE_DATABASE"         == _affectedRequest) return l.stop<StopSqlDeleteDbRequest>();
