@@ -20,6 +20,8 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
+syntax = "proto2";
+
 /**
  * replica.proto
  *   defines the wire-messages sent between replication controllers and
@@ -210,6 +212,7 @@ message ProtocolRequestSql {
         GET_TABLE_INDEX = 10;
         CREATE_TABLE_INDEX = 11;
         DROP_TABLE_INDEX = 12;
+        ALTER_TABLE = 13;
     }
     required Type type = 6;
 
@@ -257,6 +260,7 @@ message ProtocolRequestSql {
     optional string index_name = 16 [default = ""];
     optional string index_comment = 17 [default = ""];
     repeated ProtocolRequestSqlIndexColumn index_columns = 18;
+    optional string alter_spec = 19 [default = ""];
 }
 
 // This request is always queued.
