@@ -325,6 +325,9 @@ string WorkerSqlRequest::_query(database::mysql::Connection::Ptr const& conn) co
             return "ALTER TABLE " + databaseTable + " DROP PARTITION IF EXISTS " +
                    conn->sqlPartitionId(_request.transaction_id());
 
+        case ProtocolRequestSql::ALTER_TABLE:
+            return "ALTER TABLE " + databaseTable + " " + _request.alter_spec();
+
         default:
             throw invalid_argument(
                     "WorkerSqlRequest::" + string(__func__) +
@@ -389,6 +392,9 @@ string WorkerSqlRequest::_batchQuery(database::mysql::Connection::Ptr const& con
 
         case ProtocolRequestSql::GET_TABLE_INDEX:
             return "SHOW INDEXES FROM " + databaseTable;
+
+        case ProtocolRequestSql::ALTER_TABLE:
+            return "ALTER TABLE " + databaseTable + " " + _request.alter_spec();
 
         default:
             throw invalid_argument(
