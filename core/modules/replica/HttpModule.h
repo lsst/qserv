@@ -35,6 +35,9 @@
 // Forward declarations
 namespace lsst {
 namespace qserv {
+namespace css {
+    class CssAccess;
+}
 namespace replica {
 namespace database {
 namespace mysql {
@@ -84,6 +87,10 @@ protected:
     /// @param database The name of a database to connect to.
     /// @return A connection object for the Qserv Master Database server.
     std::shared_ptr<database::mysql::Connection> qservMasterDbConnection(std::string const& database) const;
+
+    /// @param readOnly The open mode for the connection.
+    /// @return A connection object for operations with Qserv CSS.
+    std::shared_ptr<css::CssAccess> qservCssAccess(bool readOnly=false) const;
 
 private:
     HttpProcessorConfig const _processorConfig;
