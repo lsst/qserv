@@ -37,6 +37,7 @@
 #include "replica/HttpRequestsModule.h"
 #include "replica/HttpReplicationLevelsModule.h"
 #include "replica/HttpSqlIndexModule.h"
+#include "replica/HttpSqlSchemaModule.h"
 #include "replica/HttpWorkerStatusModule.h"
 #include "replica/HttpQservSqlModule.h"
 #include "replica/ServiceProvider.h"
@@ -276,6 +277,22 @@ void HttpProcessor::_initialize() {
                         self->controller(), self->name(), self->_processorConfig,
                         req, resp,
                         "SELECT-QUERY-BY-ID");
+            }
+        },
+        {"GET", "/replication/sql/table/schema",
+            [self](qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp) {
+                HttpSqlSchemaModule::process(
+                        self->controller(), self->name(), self->_processorConfig,
+                        req, resp,
+                        "GET-TABLE-SCHEMA");
+            }
+        },
+        {"PUT", "/replication/sql/table/schema",
+            [self](qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp) {
+                HttpSqlSchemaModule::process(
+                        self->controller(), self->name(), self->_processorConfig,
+                        req, resp,
+                        "ALTER-TABLE-SCHEMA", HttpModule::AUTH_REQUIRED);
             }
         },
         {"POST", "/replication/sql/query",
