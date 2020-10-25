@@ -281,6 +281,17 @@ public:
     std::string getTableSchema(std::string const& dbName, std::string const& tableName) const;
 
     /**
+     * @brief Set/update table schema.
+     *
+     * @param dbName: database name
+     * @param tableName: table name
+     * @param schema: table schema
+     * @throws NoSuchTable: if table (or database) does not exist
+     * @throws CssError: for all other errors
+     */
+    void setTableSchema(std::string const& dbName, std::string const& tableName, std::string const& schema) const;
+
+    /**
      * @brief Returns match table metadata.
      *
      * Deprecated: use getTableParams() instead to get a consistent set of all table parameters.
