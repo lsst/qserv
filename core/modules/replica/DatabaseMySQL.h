@@ -290,6 +290,11 @@ public:
     /// to be an SQL identifier.
     std::string sqlId(std::string const& str) const { return "`" + str + "`"; }
 
+    /// @return a composite identifier for a database and a table, or a table and a column
+    std::string sqlId(std::string const& first, std::string const& second) const {
+        return sqlId(first) + "." + sqlId(second);
+    }
+
     /// @return a back-ticked identifier of a MySQL partition for the given "super-transaction"
     std::string sqlPartitionId(TransactionId transactionId) const {
         return sqlId("p" + std::to_string(transactionId));
@@ -687,6 +692,36 @@ public:
     Connection::Ptr execute(std::function<void(Ptr)> const& script,
                             unsigned int maxReconnects=0,
                             unsigned int timeoutSec=0);
+
+    /**
+     * Execute a script within its own transaction to be automatically started and commited.
+     *
+     * @param script user-provided function (the callable) to execute
+     * @param maxReconnects
+     *   (optional) maximum number of reconnects allowed
+     *   If 0 is passed as a value pf the parameter then the default
+     *   value corresponding configuration parameter will be
+     *   assumed: Configuration::databaseMaxReconnects().
+     * @param timeoutSec
+     *   (optional) the maximum duration of time allowed for
+     *   the procedure to wait before a connection will be established.
+     *   If 0 is passed as a value pf the parameter then the default
+     *   value corresponding configuration parameter will be
+     *   assumed: Configuration::databaseConnectTimeoutSec().
+     * @see Connection::execute()
+     */
+    Connection::Ptr executeInOwnTransaction(std::function<void(Ptr)> const& script,
+                                            unsigned int maxReconnects=0,
+                                            unsigned int timeoutSec=0) {
+        return execute(
+            [&script](Connection::Ptr const& conn) {
+                conn->begin();
+                script(conn);
+                conn->commit();
+            },
+            maxReconnects,
+            timeoutSec);
+    }
 
     /**
      * This is just a convenience method for a typical use case.
