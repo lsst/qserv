@@ -104,6 +104,7 @@ SsiService::SsiService(XrdSsiLogger* log, wconfig::WorkerConfig const& workerCon
 
     // Set thread pool size.
     unsigned int poolSize = max(workerConfig.getThreadPoolSize(), thread::hardware_concurrency());
+    unsigned int maxPoolThreads = max(workerConfig.getMaxPoolThreads(), poolSize);
 
     // poolSize should be greater than either GroupScheduler::maxThreads or ScanScheduler::maxThreads
     unsigned int maxThread = poolSize;
@@ -160,7 +161,7 @@ SsiService::SsiService(XrdSsiLogger* log, wconfig::WorkerConfig const& workerCon
     LOGS(_log, LOG_LVL_WARN, "config transmitMgr" << *transmitMgr);
 
     _foreman = make_shared<wcontrol::Foreman>(
-        blendSched, poolSize, workerConfig.getMySqlConfig(), queries, sqlConnMgr, transmitMgr);
+        blendSched, poolSize, maxPoolThreads, workerConfig.getMySqlConfig(), queries, sqlConnMgr, transmitMgr);
 }
 
 SsiService::~SsiService() {

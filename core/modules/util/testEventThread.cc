@@ -162,6 +162,7 @@ BOOST_AUTO_TEST_CASE(EventThreadTest) {
         std::condition_variable goCV;
         std::mutex goCVMtx;
         // Create more threads than can fit in the pool and don't let any complete.
+        // Since they all leave the pool (via peThread->leavePool();), they should all run.
         int threadsRunning = 2*sz;
         for (int j=0; j<threadsRunning; j++) {
             // The command to run.
@@ -173,7 +174,7 @@ BOOST_AUTO_TEST_CASE(EventThreadTest) {
                     LOGS_DEBUG("Wait for goCVTest.");
                     auto goCVTest = [&go](){ return go; };
                     std::unique_lock<std::mutex> goLock(goCVMtx);
-                    goCV.wait(goLock, goCVTest); // wait on go == true;
+                    goCV.wait(goLock, goCVTest); // wait until go == true;
                     sum.add(1);
             });
             trackedCmds.push_back(cmdDelaySum); // Remember the command so we can check status later.
@@ -191,7 +192,6 @@ BOOST_AUTO_TEST_CASE(EventThreadTest) {
         pool->resize(0);
         pool->waitForResize(0);
         LOGS_DEBUG("pool size=" << 0 << " weak_pool.use_count=" << weak_pool.use_count());
-        BOOST_CHECK(pool->size() == 0);
         // Have the separated threads finish.
         {
             std::lock_guard<std::mutex> lock(goCVMtx);
@@ -203,7 +203,7 @@ BOOST_AUTO_TEST_CASE(EventThreadTest) {
             LOGS_DEBUG("Wait for thread to finish.");
             ptc->waitComplete();
         }
-        // sum.total should now be double what it was.
+        // sum.total should now be double what it was, indicating all threads completed.
         BOOST_CHECK(sum.total == 2*threadsRunning);
         LOGS_DEBUG("Shutting down pool.");
         pool->shutdownPool();

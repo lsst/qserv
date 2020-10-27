@@ -275,7 +275,7 @@ bool ScanScheduler::removeTask(wbase::Task::Ptr const& task, bool removeRunning)
     auto poolThread = task->getAndNullPoolEventThread();
     if (poolThread != nullptr) {
         LOGS(_log, LOG_LVL_INFO, "removeTask moving running task");
-        poolThread->leavePool(task);
+        return poolThread->leavePool(task);
     } else {
         LOGS(_log, LOG_LVL_DEBUG, "removeTask PoolEventThread was null, "
                 "presumably already moved for large result.");

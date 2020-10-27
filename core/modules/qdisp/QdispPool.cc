@@ -228,6 +228,8 @@ QdispPool::QdispPool(int poolSize, int largestPriority, std::vector<int> const& 
         LOGS(_log, LOG_LVL_INFO, "creating priQ pri=" << pri << " min=" << minRun << " max=" << maxRun);
         _prQueue->addPriQueue(pri, minRun, maxRun);
     }
+    // This pool does not kick threads out when they take time (but little CPU) to process,
+    // so maxPoolThreads is just slightly larger than poolSize.
     _pool = util::ThreadPool::newThreadPool(poolSize, _prQueue);
 }
 
@@ -241,7 +243,8 @@ QdispPool::QdispPool(bool unitTest) {
         throw std::invalid_argument(msg);
     } else {
         _prQueue = std::make_shared<PriorityQueue>(100, 1, 1); // default (lowest) priority.
-        _pool = util::ThreadPool::newThreadPool(50, _prQueue);
+        unsigned int poolSize = 50;
+        _pool = util::ThreadPool::newThreadPool(poolSize, _prQueue);
         _prQueue->addPriQueue(0, 1, 3);  // Highest priority - interactive queries
         _prQueue->addPriQueue(1, 1, 3);  // Outgoing shared scan queries.
         _prQueue->addPriQueue(2, 1, 3); // FAST queries (Object table)
