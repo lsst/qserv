@@ -66,7 +66,7 @@ PoolEventThread::~PoolEventThread() {
 
 /// If cmd is a CommandThreadPool object, give it a copy of our this pointer.
 void PoolEventThread::specialActions(Command::Ptr const& cmd) {
-    CommandThreadPool::Ptr cmdPool = std::dynamic_pointer_cast<CommandThreadPool>(cmd);
+    CommandForThreadPool::Ptr cmdPool = std::dynamic_pointer_cast<CommandForThreadPool>(cmd);
     if (cmdPool != nullptr) {
         cmdPool->_setPoolEventThread(shared_from_this());
     }
@@ -83,10 +83,6 @@ bool PoolEventThread::leavePool(Command::Ptr const& cmd) {
     // This thread will stop accepting commands
     _loop = false;
     LOGS(_log, LOG_LVL_DEBUG, "PoolEventThread::leavePool " << this);
-    if (_threadPool->atMaxThreadPoolCount()) {
-        LOGS(_log, LOG_LVL_WARN, "A new thread cannot be created immediately as there are too many threads");
-        return false;
-    }
 
     if (cmd.get() != getCurrentCommand()) {
         LOGS(_log, LOG_LVL_DEBUG, "PoolEventThread::leavePool different command" << this);
@@ -117,6 +113,11 @@ void PoolEventThread::leavePool() {
 }
 
 
+bool PoolEventThread::atMaxThreadCount() {
+    return _threadPool->atMaxThreadPoolCount();
+}
+
+
 void PoolEventThread::finishup() {
     if (_finishupOnce.exchange(true) == false) {
         LOGS(_log, LOG_LVL_DEBUG, "Releasing this PoolEventThread");
@@ -128,7 +129,7 @@ void PoolEventThread::finishup() {
 
 
 /// Set _poolEventThread pointer to the thread running this command.
-void CommandThreadPool::_setPoolEventThread(PoolEventThread::Ptr const& poolEventThread) {
+void CommandForThreadPool::_setPoolEventThread(PoolEventThread::Ptr const& poolEventThread) {
     _poolEventThread = poolEventThread;
 }
 
@@ -137,11 +138,18 @@ void CommandThreadPool::_setPoolEventThread(PoolEventThread::Ptr const& poolEven
 /// At this point, the reason to get _poolEventThread is to
 /// have the thread leave the pool. This prevents that from
 /// happening more than once.
-PoolEventThread::Ptr CommandThreadPool::getAndNullPoolEventThread() {
+PoolEventThread::Ptr CommandForThreadPool::getAndNullPoolEventThread() {
     std::lock_guard<std::mutex> lg(_poolMtx);
     auto pet = _poolEventThread.lock();
     _poolEventThread.reset();
     return pet;
+}
+
+
+bool CommandForThreadPool::atMaxThreadCount() {
+    std::lock_guard<std::mutex> lg(_poolMtx);
+    auto pet = _poolEventThread.lock();
+    return (pet == nullptr || pet->atMaxThreadCount());
 }
 
 

@@ -270,6 +270,13 @@ bool ScanScheduler::removeTask(wbase::Task::Ptr const& task, bool removeRunning)
         LOGS(_log, LOG_LVL_WARN, "removeTask couldn't move as still waiting on MemMan");
         return false;
     }
+
+    /// Don't remove the task if there are already too many threads in existence.
+    if (task->atMaxThreadCount()) {
+        LOGS(_log, LOG_LVL_WARN, "removeTask couldn't move as too many threads existing");
+        return false;
+    }
+
     /// The task can only leave the pool if it has been started, poolThread should be set as
     /// it is safe to move the running task according to the test above.
     auto poolThread = task->getAndNullPoolEventThread();

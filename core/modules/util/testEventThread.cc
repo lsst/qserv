@@ -163,10 +163,10 @@ BOOST_AUTO_TEST_CASE(EventThreadTest) {
         std::mutex goCVMtx;
         // Create more threads than can fit in the pool and don't let any complete.
         // Since they all leave the pool (via peThread->leavePool();), they should all run.
-        int threadsRunning = 2*sz;
+        int threadsRunning = sz*2;
         for (int j=0; j<threadsRunning; j++) {
             // The command to run.
-            auto cmdDelaySum = std::make_shared<CommandThreadPool>(
+            auto cmdDelaySum = std::make_shared<CommandForThreadPool>(
                 [&sum, &go, &goCV, &goCVMtx](CmdData* eventThread){
                     PoolEventThread* peThread = dynamic_cast<PoolEventThread*>(eventThread);
                     peThread->leavePool();

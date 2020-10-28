@@ -58,8 +58,18 @@ public:
     /// Cause this thread to leave the thread pool. This MUST only called from within
     /// the thread that will be removed (most likely from within a CommandThreadPool action).
     void leavePool();
+
     /// This can be called from outside the thread that will be removed.
+    /// - If within the thread that will leave the pool, leavePool()
+    ///   should be called.
+    /// - atMaxThreadCount() should be called first to avoid seriously
+    ///   breaking the limit of threads.
+    /// - This version of leavePool never waits as that could cause a deadlock.
     bool leavePool(Command::Ptr const& cmd);
+
+    /// Return true if at or above the maximum number of threads that can
+    /// exist concurrently.
+    bool atMaxThreadCount();
 
 protected:
     void specialActions(Command::Ptr const& cmd) override;
@@ -75,13 +85,16 @@ private:
 
 /// A Command that is aware that it is running as part of a PoolEventThread,
 // which allows it to tell the event thread and pool to take special actions.
-class CommandThreadPool : public CommandTracked {
+class CommandForThreadPool : public CommandTracked {
 public:
-    using Ptr = std::shared_ptr<CommandThreadPool>;
+    using Ptr = std::shared_ptr<CommandForThreadPool>;
 
-    CommandThreadPool() = default;
-    explicit CommandThreadPool(std::function<void(CmdData*)> func) : CommandTracked{func} {}
+    CommandForThreadPool() = default;
+    explicit CommandForThreadPool(std::function<void(CmdData*)> func) : CommandTracked{func} {}
 
+    /// Return true if the number of threads created and still existing is
+    /// greater than the max.
+    bool atMaxThreadCount();
     PoolEventThread::Ptr getAndNullPoolEventThread();
 
     friend class PoolEventThread;
@@ -100,6 +113,11 @@ private:
 ///  likely be a segmentation fault. Every command sent to the pool before shutdown is
 ///  called should complete. Once shutdown has been called, the size of the pool
 ///  cannot be increased (target size permanently set to 0).
+/// Note: It is possible for threads to leave the pool and be replaced using leavePool()
+///  This is usually done when a thread no longer requires significant CPU but has
+///  to wait for something to happen, like transferring data.
+///  _poolThreadCount is a total of all threads in the pool and all threads that have
+///  left the pool and this total should not exceed _maxThreadCount.
 class ThreadPool : public std::enable_shared_from_this<ThreadPool> {
 public:
     using Ptr = std::shared_ptr<ThreadPool>;

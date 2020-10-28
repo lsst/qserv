@@ -315,7 +315,7 @@ void QueriesAndChunks::examineAll() {
                     LOGS(_log, lvl, "examineAll " << (booting ? "booting" : "keeping") << " task " << task->getIdStr()
                             << "maxTimeChunk(" << maxTimeChunk << ")=percent(" << percent << ")*schedMaxTime(" << schedMaxTime << ")"
                             << " runTimeMinutes=" << runTimeMinutes << " valid=" << valid);
-                    if (booting) {
+                    if (booting && !task->atMaxThreadCount()) {
                         _bootTask(uq, task, sched);
                     }
                 }
