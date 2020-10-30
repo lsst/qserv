@@ -158,6 +158,7 @@ public:
     size_t workerFsBufferSizeBytes()    const final { return _workerFsBufferSizeBytes; }
     size_t loaderNumProcessingThreads() const final { return _loaderNumProcessingThreads; }
     size_t exporterNumProcessingThreads() const final { return _exporterNumProcessingThreads; }
+    size_t httpLoaderNumProcessingThreads() const final { return _httpLoaderNumProcessingThreads; }
 
     std::string asString() const final;
 
@@ -188,6 +189,7 @@ protected:
     static size_t       const defaultWorkerFsBufferSizeBytes;
     static size_t       const defaultLoaderNumProcessingThreads;
     static size_t       const defaultExporterNumProcessingThreads;
+    static size_t       const defaultHttpLoaderNumProcessingThreads;
     static std::string  const defaultWorkerSvcHost;
     static uint16_t     const defaultWorkerSvcPort;
     static std::string  const defaultWorkerFsHost;
@@ -202,6 +204,9 @@ protected:
     static std::string  const defaultWorkerExporterHost;
     static uint16_t     const defaultWorkerExporterPort;
     static std::string  const defaultWorkerExporterTmpDir;
+    static std::string  const defaultWorkerHttpLoaderHost;
+    static uint16_t     const defaultWorkerHttpLoaderPort;
+    static std::string  const defaultWorkerHttpLoaderTmpDir;
     static std::string  const defaultDatabaseTechnology;
     static std::string  const defaultDatabaseHost;
     static uint16_t     const defaultDatabasePort;
@@ -333,6 +338,7 @@ protected:
     size_t _workerFsBufferSizeBytes;
     size_t _loaderNumProcessingThreads;
     size_t _exporterNumProcessingThreads;
+    size_t _httpLoaderNumProcessingThreads;
 
     std::map<std::string, DatabaseFamilyInfo> _databaseFamilyInfo;
     std::map<std::string, DatabaseInfo>       _databaseInfo;

@@ -329,6 +329,36 @@ WorkerInfo ConfigurationStore::setWorkerExporterTmpDir(string const& name,
 }
 
 
+WorkerInfo ConfigurationStore::setWorkerHttpLoaderHost(string const& name,
+                                                       string const& host,
+                                                       bool updatePersistentState) {
+    LOGS(_log, LOG_LVL_DEBUG, context(__func__) << "  name=" << name << " host=" << host);
+    auto itr = safeFindWorker(name, _classMethodContext(__func__));
+    itr->second.httpLoaderHost = host;
+    return itr->second;
+}
+
+
+WorkerInfo ConfigurationStore::setWorkerHttpLoaderPort(string const& name,
+                                                       uint16_t port,
+                                                       bool updatePersistentState) {
+    LOGS(_log, LOG_LVL_DEBUG, context(__func__) << "  name=" << name << " port=" << port);
+    auto itr = safeFindWorker(name, _classMethodContext(__func__));
+    itr->second.httpLoaderPort = port;
+    return itr->second;
+}
+
+
+WorkerInfo ConfigurationStore::setWorkerHttpLoaderTmpDir(string const& name,
+                                                         string const& tmpDir,
+                                                         bool updatePersistentState) {
+    LOGS(_log, LOG_LVL_DEBUG, context(__func__) << "  name=" << name << " tmpDir=" << tmpDir);
+    auto itr = safeFindWorker(name, _classMethodContext(__func__));
+    itr->second.httpLoaderTmpDir = tmpDir;
+    return itr->second;
+}
+
+
 DatabaseFamilyInfo ConfigurationStore::addDatabaseFamily(DatabaseFamilyInfo const& info) {
 
     LOGS(_log, LOG_LVL_DEBUG, context(__func__) << "  familyInfo: " << info);
@@ -630,6 +660,7 @@ void ConfigurationStore::_loadConfiguration(util::ConfigStore const& configStore
     ::parseKeyVal(configStore, "worker.fs_buf_size_bytes",          _workerFsBufferSizeBytes,      defaultWorkerFsBufferSizeBytes);
     ::parseKeyVal(configStore, "worker.num_loader_processing_threads", _loaderNumProcessingThreads, defaultLoaderNumProcessingThreads);
     ::parseKeyVal(configStore, "worker.num_exporter_processing_threads", _exporterNumProcessingThreads, defaultExporterNumProcessingThreads);
+    ::parseKeyVal(configStore, "worker.num_http_loader_processing_threads", _httpLoaderNumProcessingThreads, defaultHttpLoaderNumProcessingThreads);
 
 
     // Optional common parameters for workers

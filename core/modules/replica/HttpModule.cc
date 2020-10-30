@@ -24,10 +24,8 @@
 
 // Qserv headers
 #include "replica/Configuration.h"
+#include "replica/Controller.h"
 #include "replica/DatabaseMySQL.h"
-#include "replica/DatabaseServices.h"
-#include "replica/HttpExceptions.h"
-#include "replica/HttpRequestBody.h"
 #include "replica/ServiceProvider.h"
 
 // LSST headers
@@ -53,49 +51,14 @@ HttpModule::HttpModule(Controller::Ptr const& controller,
                        qhttp::Request::Ptr const& req,
                        qhttp::Response::Ptr const& resp)
     :   EventLogger(controller, taskName),
-        _processorConfig(processorConfig),
-        _req(req),
-        _resp(resp),
-        _query(req->query) {
-}
-
-
-void HttpModule::execute(string const& subModuleName,
-                         AuthType const authType) {
-    try {
-        _body = HttpRequestBody(_req);
-        if (authType == AUTH_REQUIRED) _enforceAuthorization();
-        json result = executeImpl(subModuleName);
-        _sendData(result);
-    } catch (AuthError const& ex) {
-        _sendError(__func__, "failed to pass authorization requirements, ex: " + string(ex.what()));
-    } catch (HttpError const& ex) {
-        _sendError(ex.func(), ex.what(), ex.errorExt());
-    } catch (invalid_argument const& ex) {
-        _sendError(__func__, "invalid parameters of the request, ex: " + string(ex.what()));
-    } catch (exception const& ex) {
-        _sendError(__func__, "operation failed due to: " + string(ex.what()));
-    }
+        HttpModuleBase(processorConfig.authKey,
+                       req,
+                       resp) {
 }
 
 
 string HttpModule::context() const {
     return name() + " ";
-}
-
-
-void HttpModule::info(string const& msg) const {
-    LOGS(_log, LOG_LVL_INFO, context() << msg);
-}
-
-
-void HttpModule::debug(string const& msg) const {
-    LOGS(_log, LOG_LVL_DEBUG, context() << msg);
-}
-
-
-void HttpModule::error(string const& msg) const {
-    LOGS(_log, LOG_LVL_ERROR, context() << msg);
 }
 
 
@@ -110,37 +73,6 @@ database::mysql::Connection::Ptr HttpModule::qservMasterDbConnection(string cons
             database
         )
     );
-}
-
-
-void HttpModule::_sendError(string const& func,
-                            string const& errorMsg,
-                            json const& errorExt) const {
-    error(func, errorMsg);
-
-    json result;
-    result["success"] = 0;
-    result["error"] = errorMsg;
-    result["error_ext"] = errorExt.is_null() ? json::object() : errorExt;
-
-    resp()->send(result.dump(), "application/json");
-}
-
-
-void HttpModule::_sendData(json& result) {
-    result["success"] = 1;
-    result["error"] = "";
-    result["error_ext"] = json::object();
-
-    resp()->send(result.dump(), "application/json");
-}
-
-
-void HttpModule::_enforceAuthorization() const {
-    auto authKey = body().required<string>("auth_key");
-    if (authKey != _processorConfig.authKey) {
-        throw AuthError("authorization key in the request didn't match the one in server configuration");
-    }
 }
 
 }}}  // namespace lsst::qserv::replica

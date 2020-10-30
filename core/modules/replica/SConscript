@@ -30,10 +30,11 @@ for f in env.Glob(os.path.join(path, "qserv-*.cc"), source=True, strings=True):
         "protobuf",
         "boost_filesystem",
         "boost_system",
+        "curl",
         "log",
         "log4cxx"]
 
 # Initiate the standard sequence of actions for this module by excluding
 # the above discovered binary sources
 
-standardModule(env, bin_cc_files=bin_cc_files, unit_tests="")
+standardModule(env, bin_cc_files=bin_cc_files, unit_tests="", test_libs="curl")

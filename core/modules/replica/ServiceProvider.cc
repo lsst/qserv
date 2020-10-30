@@ -50,26 +50,50 @@ namespace replica {
 
 ServiceProvider::Ptr ServiceProvider::create(string const& configUrl,
                                              string const& instanceId) {
-
-    auto ptr = ServiceProvider::Ptr(new ServiceProvider(configUrl, instanceId));
-
-    // This initialization is made "a posteriori" because the shared pointer
-    // onto the object can't be accessed via the usual call to shared_from_this()
-    // inside the constructor.
-
-    ptr->_qservMgtServices = QservMgtServices::create(ptr);
-    ptr->_messenger        = Messenger::create(ptr, ptr->_io_service);
-    ptr->_httpServer       = qhttp::Server::create(ptr->_io_service, ptr->config()->controllerHttpPort());
-
-    return ptr;
+    return ServiceProvider::Ptr(new ServiceProvider(configUrl, instanceId));
 }
 
 
 ServiceProvider::ServiceProvider(string const& configUrl,
                                  string const& instanceId)
     :   _configuration(Configuration::load(configUrl)),
-        _databaseServices(DatabaseServicesPool::create(_configuration)),
         _instanceId(instanceId) {
+}
+
+
+DatabaseServices::Ptr const& ServiceProvider::databaseServices() {
+    util::Lock lock(_mtx, _context() + __func__);
+    if (_databaseServices == nullptr) {
+        _databaseServices = DatabaseServicesPool::create(_configuration);
+    }
+    return _databaseServices;
+}
+
+
+QservMgtServices::Ptr const& ServiceProvider::qservMgtServices() {
+    util::Lock lock(_mtx, _context() + __func__);
+    if (_qservMgtServices == nullptr) {
+        _qservMgtServices = QservMgtServices::create(shared_from_this());
+    }
+    return _qservMgtServices;
+}
+
+
+Messenger::Ptr const& ServiceProvider::messenger() {
+    util::Lock lock(_mtx, _context() + __func__);
+    if (_messenger == nullptr) {
+        _messenger = Messenger::create(shared_from_this(), _io_service);
+    }
+    return _messenger;
+}
+
+
+qhttp::Server::Ptr const& ServiceProvider::httpServer() {
+    util::Lock lock(_mtx, _context() + __func__);
+    if (_httpServer == nullptr) {
+        _httpServer = qhttp::Server::create(_io_service, config()->controllerHttpPort());
+    }
+    return _httpServer;
 }
 
 
@@ -126,7 +150,7 @@ void ServiceProvider::stop() {
 
     // These steps will cancel all outstanding requests to workers (if any)
 
-    _messenger->stop();
+    messenger()->stop();
 
     // Destroying this object will let the I/O service to (eventually) finish
     // all on-going work and shut down all service threads. In that case there

@@ -29,7 +29,8 @@
 #include "replica/DatabaseMySQL.h"
 #include "replica/ExportServer.h"
 #include "replica/FileServer.h"
-#include "replica/IngestServer.h"
+#include "replica/IngestHttpSvc.h"
+#include "replica/IngestSvc.h"
 #include "replica/ServiceProvider.h"
 #include "replica/WorkerProcessor.h"
 #include "replica/WorkerRequestFactory.h"
@@ -119,9 +120,14 @@ int WorkerApp::runImpl() {
         fileSvr->run();
     });
 
-    auto const ingestSvr = IngestServer::create(serviceProvider(), _worker, _authKey);
+    auto const ingestSvr = IngestSvc::create(serviceProvider(), _worker, _authKey);
     thread ingestSvrThread([ingestSvr]() {
         ingestSvr->run();
+    });
+
+    auto const ingestHttpSvr = IngestHttpSvc::create(serviceProvider(), _worker, _authKey);
+    thread ingestHttpSvrThread([ingestHttpSvr]() {
+        ingestHttpSvr->run();
     });
 
     auto const exportSvr = ExportServer::create(serviceProvider(), _worker, _authKey);
@@ -145,6 +151,7 @@ int WorkerApp::runImpl() {
     reqProcSvrThread.join();
     fileSvrThread.join();
     ingestSvrThread.join();
+    ingestHttpSvrThread.join();
     exportSvrThread.join();
     
     return 0;

@@ -757,6 +757,8 @@ json HttpIngestModule::_getRegular() {
         resultLocation["worker"] = workerInfo.name;
         resultLocation["host"]   = workerInfo.loaderHost;
         resultLocation["port"]   = workerInfo.loaderPort;
+        resultLocation["http_host"] = workerInfo.httpLoaderHost;
+        resultLocation["http_port"] = workerInfo.httpLoaderPort;
         resultLocations.push_back(resultLocation);
     }
     json result;

@@ -20,7 +20,7 @@
  */
 
 // Class header
-#include "replica/IngestServer.h"
+#include "replica/IngestSvc.h"
 
 // System headers
 #include <functional>
@@ -38,7 +38,7 @@ using namespace std::placeholders;
 
 namespace {
 
-LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.IngestServer");
+LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.IngestSvc");
 
 } /// namespace
 
@@ -46,16 +46,16 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
-IngestServer::Ptr IngestServer::create(ServiceProvider::Ptr const& serviceProvider,
-                                       string const& workerName,
-                                       string const& authKey) {
-    return IngestServer::Ptr(new IngestServer(serviceProvider, workerName, authKey));
+IngestSvc::Ptr IngestSvc::create(ServiceProvider::Ptr const& serviceProvider,
+                                 string const& workerName,
+                                 string const& authKey) {
+    return IngestSvc::Ptr(new IngestSvc(serviceProvider, workerName, authKey));
 }
 
 
-IngestServer::IngestServer(ServiceProvider::Ptr const& serviceProvider,
-                           string const& workerName,
-                           string const& authKey)
+IngestSvc::IngestSvc(ServiceProvider::Ptr const& serviceProvider,
+                     string const& workerName,
+                     string const& authKey)
     :   _serviceProvider(serviceProvider),
         _workerName(workerName),
         _authKey(authKey),
@@ -73,7 +73,7 @@ IngestServer::IngestServer(ServiceProvider::Ptr const& serviceProvider,
 }
 
 
-void IngestServer::run() {
+void IngestSvc::run() {
 
     // Queue some work for the io_service, so it doesn't immediately tail out
     // when started.
@@ -94,10 +94,10 @@ void IngestServer::run() {
 }
 
 
-void IngestServer::_beginAccept() {
+void IngestSvc::_beginAccept() {
 
-    IngestServerConnection::Ptr const connection =
-        IngestServerConnection::create(
+    IngestSvcConn::Ptr const connection =
+        IngestSvcConn::create(
             _serviceProvider,
             _workerName,
             _authKey,
@@ -105,13 +105,13 @@ void IngestServer::_beginAccept() {
 
     _acceptor.async_accept(
         connection->socket(),
-        bind(&IngestServer::_handleAccept, shared_from_this(), connection, _1)
+        bind(&IngestSvc::_handleAccept, shared_from_this(), connection, _1)
     );
 }
 
 
-void IngestServer::_handleAccept(IngestServerConnection::Ptr const& connection,
-                                 boost::system::error_code const& ec) {
+void IngestSvc::_handleAccept(IngestSvcConn::Ptr const& connection,
+                              boost::system::error_code const& ec) {
     if (ec.value() == 0) {
         connection->beginProtocol();
     } else {

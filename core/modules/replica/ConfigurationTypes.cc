@@ -82,6 +82,7 @@ json ConfigurationGeneralParams::toJson(Configuration::Ptr const& config) const 
     result.push_back(::paramToJson(workerFsBufferSizeBytes,     config));
     result.push_back(::paramToJson(loaderNumProcessingThreads,  config));
     result.push_back(::paramToJson(exporterNumProcessingThreads, config));
+    result.push_back(::paramToJson(httpLoaderNumProcessingThreads, config));
 
     return result;
 }

@@ -56,12 +56,15 @@ json WorkerInfo::toJson() const {
     infoJson["db_host"]      = dbHost;
     infoJson["db_port"]      = dbPort;
     infoJson["db_user"]      = dbUser;
-    infoJson["loader_host"]  = loaderHost;
-    infoJson["loader_port"]  = loaderPort;
+    infoJson["loader_host"]    = loaderHost;
+    infoJson["loader_port"]    = loaderPort;
     infoJson["loader_tmp_dir"] = loaderTmpDir;
     infoJson["exporter_host"]    = exporterHost;
     infoJson["exporter_port"]    = exporterPort;
     infoJson["exporter_tmp_dir"] = exporterTmpDir;
+    infoJson["http_loader_host"]    = httpLoaderHost;
+    infoJson["http_loader_port"]    = httpLoaderPort;
+    infoJson["http_loader_tmp_dir"] = httpLoaderTmpDir;
 
     return infoJson;
 }
@@ -169,9 +172,12 @@ ostream& operator <<(ostream& os, WorkerInfo const& info) {
         << "loaderHost:'"   <<   info.loaderHost   << "',"
         << "loaderPort:"    <<   info.loaderPort   << ","
         << "loaderTmpDir:'" <<   info.loaderTmpDir << "',"
-        << "exporterHost:'"   <<   info.exporterHost   << "',"
-        << "exporterPort:"    <<   info.exporterPort   << ","
-        << "exporterTmpDir:'" <<   info.exporterTmpDir << "')";
+        << "exporterHost:'"   << info.exporterHost   << "',"
+        << "exporterPort:"    << info.exporterPort   << ","
+        << "exporterTmpDir:'" << info.exporterTmpDir << "',"
+        << "httpLoaderHost:'"   << info.httpLoaderHost   << "',"
+        << "httpLoaderPort:"    << info.httpLoaderPort   << ","
+        << "httpLoaderTmpDir:'" << info.httpLoaderTmpDir << "')";
     return os;
 }
 

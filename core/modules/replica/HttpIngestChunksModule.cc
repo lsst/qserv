@@ -288,6 +288,8 @@ json HttpIngestChunksModule::_addChunk() {
     result["location"]["worker"] = workerInfo.name;
     result["location"]["host"]   = workerInfo.loaderHost;
     result["location"]["port"]   = workerInfo.loaderPort;
+    result["location"]["http_host"] = workerInfo.httpLoaderHost;
+    result["location"]["http_port"] = workerInfo.httpLoaderPort;
     return result;
 }
 
@@ -448,6 +450,8 @@ json HttpIngestChunksModule::_addChunks() {
         workerResult["worker"] = workerInfo.name;
         workerResult["host"]   = workerInfo.loaderHost;
         workerResult["port"]   = workerInfo.loaderPort;
+        workerResult["http_host"] = workerInfo.httpLoaderHost;
+        workerResult["http_port"] = workerInfo.httpLoaderPort;
 
         result["location"].push_back(workerResult);
     }
