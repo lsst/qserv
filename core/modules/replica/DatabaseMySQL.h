@@ -78,10 +78,7 @@ namespace mysql {
  * Class Connection provides the main API to the database.
  */
 class Connection : public std::enable_shared_from_this<Connection> {
-
 public:
-
-    /// The pointer type for instances of the class
     typedef std::shared_ptr<Connection> Ptr;
 
     /// @return value of the corresponding MySQL variable set for a session
@@ -99,17 +96,12 @@ public:
      * before the connection timeout expires or until some problem which can't be
      * resolved with the allowed connection retries happens.
      *
-     * @note
-     *    MySQL auto-commits are disabled
-     *
-     * @note
-     *    MySQL automatic re-connects are not allowed because this Connector class
-     *    implements its own protocol for reconnects (when allowed)
-     *
+     * @note MySQL auto-commits are disabled
+     * @note MySQL automatic re-connects are not allowed because this Connector class
+     *   implements its own protocol for reconnects (when allowed)
      *
      * Here is an example of using this method to establish a connection:
      * @code
-     *
      *    BlockPost delayBetweenReconnects(1000,2000);
      *    ConnectionParams params = ...;
      *    Connection::Ptr conn;
@@ -132,26 +124,21 @@ public:
      *            throw;
      *        }
      *   } while (nullptr != conn);
-     *
      * @code
      *
-     * @param connectionParams
-     *    parameters of a connection
+     * @param connectionParams parameters of a connection
      *
-     * @return
-     *    a valid object if the connection attempt succeeded (no nullptr
-     *    to be returned under any circumstances)
+     * @return a valid object if the connection attempt succeeded (no nullptr
+     *   to be returned under any circumstances)
      * 
-     * @throws ConnectTimeout
-     *    the exception is thrown only if the automatic reconnects
-     *    are allowed to indicate that connection attempts to a server
-     *    failed to be established within the specified timeout
+     * @throw ConnectTimeout is thrown only if the automatic reconnects
+     *   are allowed to indicate that connection attempts to a server
+     *   failed to be established within the specified timeout
      *
-     * @throws ConnectError
-     *    the exception is thrown if automatic reconnets are not allowed
-     *    to indicate that the only connection attempt to a server failed
+     * @throw ConnectError the exception is thrown if automatic reconnets are not allowed
+     *   to indicate that the only connection attempt to a server failed
      *
-     * @throws Error - for any other database errors
+     * @throw Error - for any other database errors
      *
      * @see Configuration::databaseAllowReconnect()
      * @see Configuration::databaseConnectTimeoutSec()
@@ -163,26 +150,18 @@ public:
      * The factory method allows to override default values of the corresponding
      * connection management options of the Configuration.
      *
-     * @note
-     *   if the timeout is set to 0 (the default value) and if reconnects are
+     * @note If the timeout is set to 0 (the default value) and if reconnects are
      *   allowed then the method will assume a global value defined by
      *   the Configuration parameter: Configuration::databaseConnectTimeoutSec()
-     *
-     * @note
-     *   the same value of the timeout would be also assumed if the connection
+     * @note The same value of the timeout would be also assumed if the connection
      *   is lost when executing queries or pulling the result sets.
      * 
      * @param connectionParams
+     * @param allowReconnects  if 'true' then multiple reconnection attempts will be allowed
+     * @param connectTimeoutSec  maximum number of seconds to wait before a connection with
+     *   a database server is established.
      *
-     * @param allowReconnects
-     *   if set to 'true' then multiple reconnection attempts will be allowed
-     *   
-     * @param connectTimeoutSec
-     *   maximum number of seconds to wait before a connection with a database
-     *   server is established.
-     *
-     * @return
-     *  a valid object if the connection attempt succeeded (no nullptr
+     * @return a valid object if the connection attempt succeeded (no nullptr
      *  to be returned under any circumstances)
      *
      * @see Configuration::databaseConnectTimeoutSec()
@@ -191,8 +170,6 @@ public:
     static Ptr open2(ConnectionParams const& connectionParams,
                      bool allowReconnects=false,
                      unsigned int connectTimeoutSec=0);
-
-    // Default construction and copy semantics are prohibited
 
     Connection() = delete;
     Connection(Connection const&) = delete;
@@ -203,9 +180,7 @@ public:
     /// @return maximum amount of time to wait while making reconnection attempts
     unsigned int connectTimeoutSec() const { return _connectTimeoutSec; }
 
-
     std::string escape(std::string const& str) const;
-
     std::string charSetName() const;
 
     // -------------------------------------------------
@@ -227,8 +202,7 @@ public:
      * generators. Unlike the standard operator this function allows internal
      * type switching while producing a result of a specific type.
      *
-     * @return
-     *   an object which doesn't require any further processing
+     * @return an object which doesn't require any further processing
      */
     DoNotProcess nullIfEmpty(std::string const& val) {
         return val.empty() ? DoNotProcess(Keyword::SQL_NULL) : DoNotProcess(sqlValue(val));
@@ -242,12 +216,10 @@ public:
 
     /// The next step in the variadic recursion when at least one value is
     /// still available
-    template <typename T,
-              typename ...Targs>
+    template <typename T, typename ...Targs>
     void sqlValues(std::string& sql,
-                   T            val,
-                   Targs...     Fargs) const {
-
+                   T val,
+                   Targs... Fargs) const {
         bool const last = sizeof...(Fargs) - 1 < 0;
         std::ostringstream ss;
         ss << (sql.empty() ? "(" : (last ? "" : ",")) << sqlValue(val);
@@ -287,15 +259,12 @@ public:
      * types 'std::string' and 'char*' will be additionally escaped and surrounded by
      * single quotes as required by the SQL standard.
      *
-     * @param tableName
-     *   the name of a table
-     *
-     * @param Fargs
-     *   the variadic list of values to be inserted
+     * @param tableName the name of a table
+     * @param Fargs the variadic list of values to be inserted
      */
     template <typename...Targs>
     std::string sqlInsertQuery(std::string const& tableName,
-                               Targs...           Fargs) const {
+                               Targs... Fargs) const {
         std::ostringstream qs;
         qs  << "INSERT INTO " << sqlId(tableName) << " "
             << "VALUES "      << sqlPackValues(Fargs...);
@@ -328,13 +297,13 @@ public:
      * @param op   binary operator to be applied to both above
      *
      * @return "<col> <binary operator> <value>" where column name will be
-     * surrounded by back ticks, and  values of string types will be escaped
-     * and surrounded by single quotes.
+     *   surrounded by back ticks, and  values of string types will be escaped
+     *   and surrounded by single quotes.
      */
     template <typename T>
     std::string sqlBinaryOperator(std::string const& col,
-                                  T const&           val,
-                                  char const*        op) const {
+                                  T const& val,
+                                  char const* op) const {
         std::ostringstream ss;
         ss << sqlId(col) << op << sqlValue(val);
         return ss.str();
@@ -399,13 +368,11 @@ public:
 
     /// Recursive variadic function (overloaded for column names given as std::string)
     template <typename T, typename...Targs>
-    void sqlPackPair(std::string&             sql,
+    void sqlPackPair(std::string& sql,
                      std::pair<std::string,T> colVal,
-                     Targs...                 Fargs) const {
-
+                     Targs... Fargs) const {
         std::string const& col = colVal.first;
-        T const&           val = colVal.second;
-
+        T const& val = colVal.second;
         std::ostringstream ss;
         ss << (sql.empty() ? "" : (sizeof...(Fargs) - 1 < 0 ? "" : ",")) << sqlEqual(col, val);
         sql += ss.str();
@@ -415,13 +382,11 @@ public:
 
     /// Recursive variadic function (overloaded for column names given as char const*)
     template <typename T, typename...Targs>
-    void sqlPackPair(std::string&             sql,
+    void sqlPackPair(std::string& sql,
                      std::pair<char const*,T> colVal,
-                     Targs...                 Fargs) const {
-
+                     Targs... Fargs) const {
         std::string const  col = colVal.first;
-        T const&           val = colVal.second;
-
+        T const& val = colVal.second;
         std::ostringstream ss;
         ss << (sql.empty() ? "" : (sizeof...(Fargs) - 1 < 0 ? "" : ",")) << sqlEqual(col, val);
         sql += ss.str();
@@ -431,14 +396,13 @@ public:
     /**
      * Pack pairs of column names and their new values into a string which can be
      * further used to form SQL statements of the following kind:
-     *
+     * @code
      *   UPDATE <table> SET <packed-pairs>
-     *
-     * NOTES:
-     * - The method allows any number of arguments and any types of value types.
-     * - Values types 'std::string' and 'char*' will be additionally escaped and
+     * @code
+     * @note The method allows any number of arguments and any types of values.
+     * @note  Values types 'std::string' and 'char*' will be additionally escaped and
      *   surrounded by single quotes as required by the SQL standard.
-     * - The column names will be surrounded with back-tick quotes.
+     * @note The column names will be surrounded with back-tick quotes.
      *
      * For example, the following call:
      * @code
@@ -453,8 +417,7 @@ public:
      *     `col1`='st\'r',`col2`="c",`col3`=123,`fk_id`=LAST_INSERT_ID()
      * @code
      *
-     * @param Fargs
-     *   the variadic list of values to be inserted
+     * @param Fargs the variadic list of values to be inserted
      */
     template <typename...Targs>
     std::string sqlPackPairs(Targs... Fargs) const {
@@ -464,23 +427,18 @@ public:
     }
 
     /**
-     * Return:
+     * The generator of identifiers
      *
-     *   `col` IN (<val1>,<val2>,<val3>,,,)
+     * @note The column name will be surrounded by back ticks.
+     * @note Values of string types will be escaped and surrounded by single quotes.
      *
-     * NOTES:
-     * - the column name will be surrounded by back ticks
-     * - values of string types will be escaped and surrounded by single quotes
-     *
-     * @param col
-     *   the name of a column
-     *
-     * @param values
-     *   an iterable collection of values
+     * @param col the name of a column
+     * @param values an iterable collection of values
+     * @return `col` IN (<val1>,<val2>,<val3>,,,)
      */
     template <typename T>
     std::string sqlIn(std::string const& col,
-                      T const&           values) const {
+                      T const& values) const {
         std::ostringstream ss;
         ss << sqlId(col) << " IN (";
         int num=0;
@@ -494,14 +452,13 @@ public:
      * Generate an SQL statement for updating select values of table rows
      * where the optional condition is met. Fields to be updated and their new
      * values are passed into the method as variadic list of std::pair objects.
-     *
+     * @code
      *   UPDATE <table> SET <packed-pairs> [WHERE <condition>]
-     *
-     * NOTES:
-     * - The method allows any number of arguments and any types of value types.
-     * - Values types 'std::string' and 'char*' will be additionally escaped and
+     * @code
+     * @note  The method allows any number of arguments and any types of value types.
+     * @note  Values types 'std::string' and 'char*' will be additionally escaped and
      *   surrounded by single quotes as required by the SQL standard.
-     * - The column names will be surrounded with back-tick quotes.
+     * @note  The column names will be surrounded with back-tick quotes.
      *
      * For example:
      * @code
@@ -523,22 +480,15 @@ public:
      *       `fk_id`=LAST_INSERT_ID()
      * @code
      *
-     * @param tableName
-     *   the name of a table
-     *
-     * @param condition
-     *   the optional condition for selecting rows to be updated
-     *
-     * @param Fargs
-     *   the variadic list of values to be inserted
-     *
-     * @return
-     *   well-formed SQL statement
+     * @param tableName the name of a table
+     * @param condition the optional condition for selecting rows to be updated
+     * @param Fargs the variadic list of values to be inserted
+     * @return well-formed SQL statement
      */
     template <typename...Targs>
     std::string sqlSimpleUpdateQuery(std::string const& tableName,
                                      std::string const& condition,
-                                     Targs...           Fargs) const {
+                                     Targs... Fargs) const {
         std::ostringstream qs;
         qs  << "UPDATE " << sqlId(tableName)       << " "
             << "SET "    << sqlPackPairs(Fargs...) << " "
@@ -550,44 +500,29 @@ public:
     bool inTransaction() const { return _inTransaction; }
 
     /**
-     * Start the transaction
+     * Start a transaction
      *
-     * @return
-     *   smart pointer to self to allow chained calls
-     *
-     * @throws std::logic_error
-     *   if the transaction was already been started
-     *
-     * @throws Error
-     *   for any other MySQL specific errors
+     * @return a smart pointer to self to allow chained calls
+     * @throw std::logic_error if the transaction was already been started
+     * @throw Error for any other MySQL specific errors
      */
     Connection::Ptr begin();
 
     /**
-     * Commit the transaction
+     * Commit the current transaction
      *
-     * @return
-     *   smart pointer to self to allow chained calls
-     * 
-     * @throws std::logic_error
-     *   if the transaction was not started
-     *
-     * @throws Error
-     *   for any other MySQL specific errors
+     * @return a smart pointer to self to allow chained calls
+     * @throw std::logic_error if the transaction was not started
+     * @throw Error for any other MySQL specific errors
      */
     Connection::Ptr commit();
 
     /**
-     * Rollback the transaction
+     * Rollback the current transaction
      *
-     * @return
-     *   smart pointer to self to allow chained calls
-     * 
-     * @throws std::logic_error
-     *   if the transaction was not started
-     * 
-     * @throws Error
-     *   for any other MySQL specific errors
+     * @return smart pointer to self to allow chained calls
+     * @throw std::logic_error if the transaction was not started
+     * @throw Error for any other MySQL specific errors
      */
     Connection::Ptr rollback();
 
@@ -595,20 +530,12 @@ public:
      * Execute the specified query and initialize object context to allow
      * a result set extraction.
      *
-     * @param query
-     *   query to be executed
+     * @param query query to be executed
+     * @return a smart pointer to self to allow chained calls
      * 
-     * @return
-     *   smart pointer to self to allow chained calls
-     * 
-     * @throws std::invalid_argument
-     *    for empty query strings
-     *
-     * @throws DuplicateKeyError
-     *   for attempts to insert rows with duplicate keys
-     * 
-     * @throws Error
-     *   for any other MySQL specific errors
+     * @throw std::invalid_argument for empty query strings
+     * @throw DuplicateKeyError for attempts to insert rows with duplicate keys
+     * @throw Error for any other MySQL specific errors
      */
     Connection::Ptr execute(std::string const& query);
 
@@ -620,36 +547,26 @@ public:
      * single quotes as required by the SQL standard.
      *
      * The effect:
-     *
+     * @code
      *   INSERT INTO <table> VALUES (<packed-values>)
-     *
-     * ATTENTION: the method will *NOT* start a transaction, neither it will
-     * commit the one in the end. Transaction management is a responsibility
-     * of a caller of the method.
+     * @code
+     * @note The method will *NOT* start a transaction, neither it will
+     *   commit the one in the end. Transaction management is a responsibility
+     *   of a caller of the method.
      *
      * @see Connection::sqlInsertQuery()
      *
-     * @param tableName
-     *   the name of a table
+     * @param tableName the name of a table
+     * @param Fargs the variadic list of values to be inserted
+     * @return a smart pointer to self to allow chained calls
      *
-     * @param Fargs
-     *   the variadic list of values to be inserted
-     *
-     * @return
-     *   smart pointer to self to allow chained calls
-     *
-     * @throws DuplicateKeyError
-     *   for attempts to insert rows with duplicate keys
-     *
-     * @throws Error
-     *   for any other MySQL specific errors
+     * @throw DuplicateKeyError for attempts to insert rows with duplicate keys
+     * @throw Error for any other MySQL specific errors
      */
     template <typename...Targs>
     Connection::Ptr executeInsertQuery(std::string const& tableName,
-                                       Targs...           Fargs) {
-
-        return execute(sqlInsertQuery(tableName,
-                                      Fargs...));
+                                       Targs... Fargs) {
+        return execute(sqlInsertQuery(tableName, Fargs...));
     }
 
     /**
@@ -658,38 +575,28 @@ public:
      * values are passed into the method as variadic list of std::pair objects.
      *
      * The effect:
-     *
+     * @code
      *   UPDATE <table> SET <packed-pairs> [WHERE <condition>]
+     * @code
      *
-     * ATTENTION: the method will *NOT* start a transaction, neither it will
-     * commit the one in the end. Transaction management is a responsibility
-     * of a caller of the method.
-     *
+     * @note The method will *NOT* start a transaction, neither it will
+     *   commit the one in the end. Transaction management is a responsibility
+     *   of a caller of the method.
      * @see Connection::sqlSimpleUpdateQuery()
      *
-     * @param tableName
-     *   the name of a table
+     * @param tableName the name of a table
+     * @param whereCondition the optional condition for selecting rows to be updated
+     * @param Fargs the variadic list of column-value pairs to be updated
      *
-     * @param whereCondition
-     *   the optional condition for selecting rows to be updated
+     * @return a smart pointer to self to allow chained calls
      *
-     * @param Fargs
-     *   the variadic list of column-value pairs to be updated
-     *
-     * @return
-     *   smart pointer to self to allow chained calls
-     *
-     * @throws std::invalid_argument
-     *   for empty query strings
-     *
-     * @throws Error
-     *   for any MySQL specific errors
+     * @throw std::invalid_argument for empty query strings
+     * @throw Error for any MySQL specific errors
      */
     template <typename...Targs>
     Connection::Ptr executeSimpleUpdateQuery(std::string const& tableName,
                                              std::string const& condition,
-                                             Targs...           Fargs) {
-
+                                             Targs... Fargs) {
         return execute(sqlSimpleUpdateQuery(tableName,
                                             condition,
                                             Fargs...));
@@ -702,14 +609,13 @@ public:
      * The number of allowed auto-reconnects and the timeout are controlled by
      * the corresponding parameters of the method.
      *
-     * Notes:
-     * - in case of reconnects and retries the failed transaction will be aborted
-     * - it's up to a user script to begin and commit a transaction as needed
-     * - it's up to a user script to take care of side effects if the script will run
-     * more than once
+     * @note In case of reconnects and retries the failed transaction will be aborted.
+     * @note It's up to a user script to begin and commit a transaction as needed.
+     * @note It's up to a user script to take care of side effects if the script will run
+     *   more than once.
      *
      * Example:
-     *   @code
+     * @code
      *     Configuration::setDatabaseConnectTimeoutSec(60);
      *     ConnectionParams params = ... ;
      *     Connection::Ptr conn = Connection::open(params);
@@ -735,57 +641,40 @@ public:
      *     } catch (Error const& ex) {
      *         cerr << "failed due to an unrecoverable error: " << ex.what() 
      *     }
-     *   @code
+     * @code
      *
-     *
-     * @param script
-     *   user-provided function (the callable) to execute
-     *
-     * @param maxReconnects
-     *   (optional) maximum number of reconnects allowed
+     * @param script a user-provided function (the callable) to execute
+     * @param maxReconnects (optional) maximum number of reconnects allowed
      *   If 0 is passed as a value pf the parameter then the default
      *   value corresponding configuration parameter will be
      *   assumed: Configuration::databaseMaxReconnects().
-     *
-     * @param timeoutSec
-     *   (optional) the maximum duration of time allowed for
+     * @param timeoutSec (optional) the maximum duration of time allowed for
      *   the procedure to wait before a connection will be established.
      *   If 0 is passed as a value pf the parameter then the default
      *   value corresponding configuration parameter will be
      *   assumed: Configuration::databaseConnectTimeoutSec().
      *
-     * @throws std::invalid_argument
-     *   if 'nullptr' is passed in place of 'script'
+     * @throw std::invalid_argument if 'nullptr' is passed in place of 'script'
+     * @throw ConnectError failed to establish a connection if connection was
+     *   open with factory method Connection::open().
+     * @throw ConnectTimeout failed to establish a connection within a timeout
+     *   if a connection was open with factory method Connection::openWait().
      *
-     * @throws ConnectError
-     *   failed to establish a connection if connection was
-     *   open with fuctory method Connection::open()
-     *
-     * @throws ConnectTimeout
-     *   failed to establish a connection within a timeout
-     *   if a connection was open with functory method
-     *   Connection::openWait()
-     *
-     * @throws MaxReconnectsExceeded
-     *   multiple failed (due to connecton losses and subsequent reconnects)
-     *   attempts to execute the user function. And the number of the attempts
+     * @throw MaxReconnectsExceeded for multiple failed attempts (due to connection losses
+     *   and subsequent reconnects) to execute the user function. And the number of the attempts
      *   exceeded a limit set by parameter 'maxReconnects'.
      * 
-     * @throws Error
-     *   or any MySQL specific errors. You may also
-     *   catch for specific subclasses (other than ConnectError
-     *   or ConnectTimeout) of that class if needed.
+     * @throw Error the general exception for any MySQL specific errors. A client code may also
+     *   catch specific subclasses (other than ConnectError or ConnectTimeout) of that class
+     *   if needed.
      *
-     * @return
-     *   pointer to the same connector against which the method was invoked
-     *   in case of successful commpletion of the requested operaton.
+     * @return a pointer to the same connector against which the method was invoked
+     *   in case of successful completion of the requested operaton.
      *
      * @see Configuration::databaseMaxReconnects()
      * @see Configuration::setDatabaseMaxReconnects()
-     * 
      * @see Configuration::databaseConnectTimeoutSec()
      * @see Configuration::setDatabaseConnectTimeoutSec()
-     * 
      * @see Connection::open()
      */
     Connection::Ptr execute(std::function<void(Ptr)> const& script,
@@ -793,11 +682,8 @@ public:
                             unsigned int timeoutSec=0);
 
     /**
-     * This is just a convenience method for a typical use case
-     *
-     * @note
-     *   it's up to the 'updateScript' to rollback a previous transaction
-     *   if needed.
+     * This is just a convenience method for a typical use case.
+     * @note It's up to the 'updateScript' to rollback a previous transaction if needed.
      */
     Connection::Ptr executeInsertOrUpdate(std::function<void(Ptr)> const& insertScript,
                                           std::function<void(Ptr)> const& updateScript,
@@ -811,32 +697,23 @@ public:
     }
 
     /**
-     * @return
-     *   'true' if the last successful query returned a result set
-     *   (even though it may be empty)
+     * @return 'true' if the last successful query returned a result set
+     *   (even though it may be empty).
      */
     bool hasResult() const;
 
     /**
-     * @return
-     *  names of the columns from the current result set
-     *
-     * @note
-     *   columns are returned exactly in the same order they were
+     * @note Columns are returned exactly in the same order they were
      *   requested in the corresponding query.
-     *
-     * @throws std::logic_error
-     *   if no SQL statement has ever been executed, or
+     * @return names of the columns from the current result set
+     * @throw std::logic_error if no SQL statement has ever been executed, or
      *   if the last query failed.
      */
     std::vector<std::string> const& columnNames() const;
 
     /**
-     * @return
-     *  the number of columns in the current result set
-     *
-     * @throws std::logic_error
-     *   if no SQL statement has ever been executed, or
+     * @return the number of columns in the current result set
+     * @throw std::logic_error if no SQL statement has ever been executed, or
      *   if the last query failed.
      */
     size_t numFields() const;
@@ -844,25 +721,18 @@ public:
     /**
      * Fill a Protobuf object representing a field
      * 
-     * @note
-     *   The method can be called only upon a successful completion of a query
+     * @note The method can be called only upon a successful completion of a query
      *   which has a result set. Otherwise it will throw an exception.
      *
      * @see mysql_fetch_field()
      * @see database::mysql::Connection::hasResult
      *
-     * @param ptr
-     *   a pointer to the Protobuf object to be populated
-     * 
-     * @param idx
-     *   a relative (0 based) index of the field in a result set
+     * @param ptr a pointer to the Protobuf object to be populated
+     * @param idx a relative (0 based) index of the field in a result set
      *
-     * @throws std::logic_error
-     *   if no SQL statement has ever been executed, or
+     * @throw std::logic_error if no SQL statement has ever been executed, or
      *   if the last query failed.
-     * 
-     * @throws std::out_of_range
-     *   if the specified index exceed the maximum index of a result set.
+     * @throw std::out_of_range if the specified index exceed the maximum index of a result set.
      */
     void exportField(ProtocolResponseSqlField* ptr, size_t idx) const;
 
@@ -871,12 +741,11 @@ public:
      * and if the iterator is not beyond the last row then initialize an object
      * passed as a parameter.
      *
-     * ATTENTION: objects initialized upon the successful completion
-     * of the method are valid until the next call to the method or before
-     * the next query. Hence the safe practice for using this method to iterate
-     * over a result set would be:
-     *
-     *   @code
+     * @note Objects initialized upon the successful completion
+     *   of the method are valid until the next call to the method or before
+     *   the next query. Hence the safe practice for using this method to iterate
+     *   over a result set would be:
+     * @code
      *     Connection::Ptr conn = Connection::connect(...);
      *     conn->execute ("SELECT ...");
      *
@@ -885,14 +754,12 @@ public:
      *         // Extract data from 'row' within this block
      *         // before proceeding to the next row, etc.
      *     }
-     *   @code
+     * @code
      *
-     * @return
-     *   'true' if the row was initialized or 'false' if past the last row
+     * @return 'true' if the row was initialized or 'false' if past the last row
      *   in the result set.
      *
-     * @throws std::logic_error
-     *    if no SQL statement has ever been executed, or
+     * @throw std::logic_error if no SQL statement has ever been executed, or
      *    if the last query failed.
      */
     bool next(Row& row);
@@ -901,73 +768,47 @@ public:
      * The convenience method is for executing a query from which a single value
      * will be extracted (typically a PK). Please, read the notes below.
      *
-     * @note
-     *   By default the method requires a result set to have 0 or 1 rows.
+     * @note By default the method requires a result set to have 0 or 1 rows.
      *   If the result set has more than one row exception std::logic_error
      *   will be thrown.
-     *
-     * @note
-     *   The previously mentioned requirement can be relaxed by setting
+     * @note The previously mentioned requirement can be relaxed by setting
      *   a value of the optional parameter 'noMoreThanOne' to 'false'.
      *   In that case a value from the very first row will be extracted.
+     * @note If a result set is empty the method will throw EmptyResultSetError
+     * @note If the field has 'NULL' the method will return 'false'
+     * @note If the conversion to a proposed type will fail the method will
+     *    throw InvalidTypeError
      *
-     * @note
-     *   If a result set is empty the method will throw EmptyResultSetError
-     *
-     * @note
-     *   If the field has 'NULL' the method will return 'false'
-     *
-     * @note
-     *   If the conversion to a proposed type will fail the method will
-     *   throw InvalidTypeError
-     *
-     * @param query
-     *   a query to be executed
-     *
-     * @param col
-     *   the name of a column from which to extract a value
-     * 
-     * @param val
-     *   a value to be set (unless the field contains NULL)
-     * 
-     * @param noMoreThanOne
-     *   flag (if set) forcing the above explained behavior
-     *
-     * @return
-     *   'true' if the value is not NULL
+     * @param query a query to be executed
+     * @param col the name of a column from which to extract a value
+     * @param val a value to be set (unless the field contains NULL)
+     * @param noMoreThanOne a flag (if set) forcing the above explained behavior
+     * @return 'true' if the value is not NULL
      */
     template <typename T>
     bool executeSingleValueSelect(std::string const& query,
                                   std::string const& col,
-                                  T&                 val,
-                                  bool               noMoreThanOne=true) {
+                                  T& val,
+                                  bool noMoreThanOne=true) {
+        std::string const context_ = "DatabaseMySQL::" + std::string(__func__) + "  ";
         execute(query);
-        if (not hasResult()) {
-            throw EmptyResultSetError(
-                "DatabaseMySQL::executeSingleValueSelect()  result set is empty");
-        }
+        if (!hasResult()) throw EmptyResultSetError(context_ + "result set is empty");
 
-        bool isNotNull;
+        bool isNotNull = false;
         size_t numRows = 0;
-
         Row row;
         while (next(row)) {
-
             // Only the very first row matters
-            if (not numRows) isNotNull = row.get(col, val);
+            if (!numRows) isNotNull = row.get(col, val);
 
-            // have to read the rest of the result set to avoid problems with the MySQL
-            // protocol
+            // Have to read the rest of the result set to avoid problems with the MySQL protocol
             ++numRows;
         }
-        if ((1 == numRows) or not noMoreThanOne) return isNotNull;
-
-        throw std::logic_error(
-                "DatabaseMySQL::executeSingleValueSelect()  result set has more than 1 row");
+        if ((1 == numRows) or !noMoreThanOne) return isNotNull;
+        throw std::logic_error(context_ + "result set has more than 1 row");
     }
 
 private:
-
     /**
      * @see Connection::open()
      * @see Connection::open2()
@@ -979,113 +820,73 @@ private:
      * Keep trying to connect to a server until either a timeout expires, or
      * some unrecoverable failure happens while trying to establish a connection.
      *
-     * @throws ConnectTimeout
-     *   failed to establish a connection within a timeout
-     *
-     * @throws Error
-     *   other problem when preparing or establishing a connection
+     * @throw ConnectTimeout if failed to establish a connection within a timeout
+     * @throw Error for other problems when preparing or establishing a connection
      */
     void _connect();
 
     /**
      * Make exactly one attempt to establish a connection
      *
-     * @throws ConnectError
-     *   connection to a server failed
-     *
-     * @throws Error
-     *   other problem when preparing or establishing a connection
+     * @throw ConnectError connection to a server failed
+     * @throw Error other problem when preparing or establishing a connection
      */
     void _connectOnce();
 
     /**
      * The method is called to process the last error, reconnect if needed (and allowed), etc.
      *
-     * @param context
-     *   context from which this method was called
-     *
-     * @param instantAutoReconnect
-     *   (optional) flag allowing to make instant reconnects for
+     * @param context a context from which this method was called
+     * @param instantAutoReconnect an optional flag allowing to make instant reconnects for
      *   qualified error conditions
      *
-     * @throws std::logic_error
-     *   if the method is called after no actual error happened
-     *
-     * @throws Reconnected
-     *   after a successful reconnection has happened
-     *
-     * @throws ConnectError
-     *   connection to a server failed
-     *
-     * @throws DuplicateKeyError
-     *   after the last statement attempted to violate
+     * @throw std::logic_error if the method is called after no actual error happened
+     * @throw Reconnected after a successful reconnection has happened
+     * @throw ConnectError connection to a server failed
+     * @throw DuplicateKeyError after the last statement attempted to violate
      *   the corresponding key constraint
-     *
-     * @throws Error
-     *   for some other error not listed above
+     * @throw Error for some other error not listed above
      */
     void _processLastError(std::string const& context,
                            bool instantAutoReconnect=true);
 
     /**
      * The method is to ensure that the transaction is in the desired state.
-     *
-     * @param inTransaction
-     *   the desired state of the transaction
+     * @param inTransaction the desired state of the transaction
      */
     void _assertTransaction(bool inTransaction) const;
 
     /**
      * The method is to ensure that a proper query context is set and
      * its result set can be explored.
-     *
-     * @throw Error
-     *   if the connection is not established or no prior query was made
+     * @throw Error if the connection is not established or no prior query was made
      */
     void _assertQueryContext() const;
 
+    static std::atomic<size_t> _nextId;         // The next available connector identifier in the generator's sequence
+    size_t const _id;                           // Unique identifier of this connector
+    ConnectionParams const _connectionParams;   // Parameters of the connection
+    unsigned int _connectTimeoutSec;            // Time to wait between reconnection attempts
+    std::string _lastQuery;                     // The last SQL statement
+    bool _inTransaction;                        // Transaction status
+    MYSQL* _mysql;                              // MySQL connection
+    unsigned long _mysqlThreadId;               // Thread ID of the current connection
+    unsigned long _connectionAttempt;           // The counter of attempts between successful reconnects
 
-    /// Sequence of the connector identifiers
-    static std::atomic<size_t> _nextId;
+    // A result set of the last successful query
 
-    /// Unique identifier of a connector
-    size_t const _id;
-
-    /// Parameters of the connection
-    ConnectionParams const _connectionParams;
-
-    /// Maximum amount of time to wait while making reconnection attempts
-    unsigned int _connectTimeoutSec;
-
-    /// The last SQL statement
-    std::string _lastQuery;
-
-    /// Transaction status
-    bool _inTransaction;
-
-    // Connection
-
-    MYSQL* _mysql;
-    unsigned long _mysqlThreadId;       // thread ID of the current connection
-    unsigned long _connectionAttempt;   // the counter of attempts between successful reconnects
-
-    // Last result set
-
-    MYSQL_RES*   _res;
+    MYSQL_RES* _res;
     MYSQL_FIELD* _fields;
-
     size_t _numFields;
-
     std::vector<std::string> _columnNames;
-
     std::map<std::string, size_t> _name2index;
 
     std::string _charSetName;   // of the current connection
 
-    // Get updated after fetching each row of the result set
-
-    MYSQL_ROW _row;     // must be cached here to ensure its lifespan
-                        // while a client will be processing its content.
+    // The row object gets updated after fetching each row of the result set.
+    // It's required to be cached here to ensure at least the same lifespan as
+    // the one of thw current class while a client is processing the last result set.
+    MYSQL_ROW _row;
 };
 
 
@@ -1096,16 +897,12 @@ private:
  * on demand. This ensures that the class constructor is not blocking in case if
  * (or while) the corresponding MySQL/MariaDB service is not responding.
  * 
- * @note this class is meant to be used indirectly by passing its instances
- * to the constructor of class ConnectionHandler.
- *
+ * @note This class is meant to be used indirectly by passing its instances
+ *   to the constructor of class ConnectionHandler.
  * @see class ConnectionHandler
  */
 class ConnectionPool {
-
 public:
-
-    /// The pointer type for instances of the class
     typedef std::shared_ptr<ConnectionPool> Ptr;
 
     /**
@@ -1113,7 +910,7 @@ public:
      * of connections.
      * 
      * @note this is a non-blocking method. In particular, No connection attempts
-     * will be made by this method.
+     *   will be made by this method.
      *
      * @param params  parameters of the connections
      * @param maxConnections  the maximum number of connections managed by the pool
@@ -1121,8 +918,6 @@ public:
      */
     static Ptr create(ConnectionParams const& params,
                       size_t maxConnections);
-
-    // Copy semantics and the default construction is prohibited
 
     ConnectionPool() = delete;
     ConnectionPool(ConnectionPool const&) = delete;
@@ -1141,13 +936,13 @@ public:
      * Return a connection object back into the pool of the available ones.
      *
      * @param conn  connection object to be returned back
-     * @throws std::logic_error if the object was not previously allocated
+     * @throw std::logic_error if the object was not previously allocated
      * @see ConnectionPool::allocate()
      */
     void release(Connection::Ptr const& conn);
 
 private:
-
+   /// @see ConnectionPool::create
     ConnectionPool(ConnectionParams const& params,
                    size_t maxConnections);
 
@@ -1179,9 +974,7 @@ private:
  * connection.
  */
 class ConnectionHandler {
-
 public:
-
     /**
      * The default constructor will initialize the connection pointer
      * with 'nullptr'
@@ -1203,8 +996,6 @@ public:
      */
     explicit ConnectionHandler(ConnectionPool::Ptr const& pool);
 
-    // Copy semantics is prohibited
-
     ConnectionHandler(ConnectionHandler const&) = delete;
     ConnectionHandler& operator=(ConnectionHandler const&) = delete;
 
@@ -1218,11 +1009,9 @@ public:
     Connection::Ptr conn;
 
 private:
-
     /// The smart reference to the connector pool object (if any))
     ConnectionPool::Ptr _pool;
 };
-
 
 }}}}} // namespace lsst::qserv::replica::database::mysql
 

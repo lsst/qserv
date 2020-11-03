@@ -58,7 +58,7 @@ atomic<size_t> Connection::_nextId{0};
 
 unsigned long Connection::max_allowed_packet() {
 
-    // Reasons behind setting this parameter to 4 MB cam be found here:
+    // Reasons behind setting this parameter to 4 MB can be found here:
     // https://dev.mysql.com/doc/refman/8.0/en/server-system-variables.html#sysvar_max_allowed_packet
 
     return 4*1024*1024;
@@ -596,8 +596,8 @@ void Connection::_connectOnce() {
     }
 
     // Only allow TCP/IP, no UNIX sockets for now
-    enum mysql_protocol_type prot_type = MYSQL_PROTOCOL_TCP;
-    mysql_optionsv(_mysql, MYSQL_OPT_PROTOCOL,(void*)&prot_type);
+    enum mysql_protocol_type const prot_type = MYSQL_PROTOCOL_TCP;
+    mysql_options(_mysql, MYSQL_OPT_PROTOCOL, &prot_type);
 
     // Make a connection attempt
 

@@ -21,14 +21,6 @@
 #ifndef LSST_QSERV_REPLICA_DATABASEMYSQLTYPES_H
 #define LSST_QSERV_REPLICA_DATABASEMYSQLTYPES_H
 
-/**
- * This header defines public classes used in the implementation of
- * the C++ wrapper of the MySQL C language library. This header is
- * not supposed to be included directly by user's code.
- *
- * @see class Connection
- */
-
 // System headers
 #include <cstddef>
 #include <cstdint>
@@ -41,7 +33,6 @@ namespace qserv {
 namespace replica {
 namespace database {
 namespace mysql {
-
 /**
  * Class ConnectionParams encapsulates connection parameters to
  * a MySQL server. If constructed using the default constructor
@@ -49,7 +40,7 @@ namespace mysql {
  *
  *   host: localhost
  *   port: 3306
- *   user: effective user of a process
+ *   user: effective user id of a process
  *
  * The following parameters will be empty:
  *
@@ -83,8 +74,7 @@ public:
                                   std::string const& defaultUser,
                                   std::string const& defaultPassword);
 
-    /// Default constructor will initialize connection parameters
-    /// with default values
+    /// Initialize connection parameters with default values
     ConnectionParams();
 
     /// Normal constructor
@@ -110,26 +100,18 @@ public:
      */
     std::string toString(bool showPassword=false) const;
 
-
-    /// The DNS name or IP address of a machine where the database
-    /// server runs
-    std::string host;
-
-    /// The port number of the MySQL service
-    uint16_t port;
-
-    /// The name of a database user
-    std::string user;
-
-    /// The database password
-    std::string password;
-
-    /// The name of a database to be set upon the connection
-    std::string database;
+    std::string host;       ///< The DNS name or IP address of a machine where the MySQL service runs
+    uint16_t    port;       ///< The port number of the MySQL service
+    std::string user;       ///< The name of a database user
+    std::string password;   ///< The database password
+    std::string database;   ///< The name of a default database to be set upon the connection
 };
 
+
 /// Overloaded operator for serializing ConnectionParams instances
+/// @note a value of the database password will be hashed in the output
 std::ostream& operator<<(std::ostream&, ConnectionParams const&);
+
 
 /**
  * Class DoNotProcess is an abstraction for SQL strings which than ordinary
@@ -138,10 +120,7 @@ std::ostream& operator<<(std::ostream&, ConnectionParams const&);
  */
 class DoNotProcess {
 public:
-    /**
-     * The normal constructor
-     * @param name_  the input value
-     */
+    /// @param name_ the input value
     explicit DoNotProcess(std::string const& name_);
 
     DoNotProcess() = delete;
@@ -150,63 +129,46 @@ public:
 
     virtual ~DoNotProcess() = default;
 
-    /**
-     * The exact string value as it should appear within queries. It will
-     * be extracted by the corresponding query generators.
-     */
+    /// Unmodified value of an input string passed into the normal constructor of
+    /// the class. The value would be inserted into queries by query generators.
     std::string name;
 };
+
 
 /**
  * Class Keyword is an abstraction for SQL keywords which needs to be processed
  * differently than ordinary values of string types. There won't be escape
  * processing or extra quotes of any kind added to the function name strings.
  */
-class Keyword : public DoNotProcess {
-
+class Keyword: public DoNotProcess {
 public:
-
-    // Predefined SQL keywords
-
-    /// @return the object representing the corresponding SQL keyword
+    /// @return the object representing the SQL keyword 'NULL'
     static Keyword const SQL_NULL;
 
-    /**
-     * The normal constructor
-     *
-     * @param name_ - the input value
-     */
+    /// @param name_ the input value
     explicit Keyword(std::string const& name_);
 
     Keyword() = delete;
-
     Keyword(Keyword const&) = default;
     Keyword& operator=(Keyword const&) = default;
-
     ~Keyword() override = default;
 };
+
 
 /**
  * Class Function is an abstraction for SQL functions which needs to be processed
  * differently than ordinary values of string types. There won't be escape
  * processing or extra quotes of any kind added to the function name strings.
  */
-class Function : public DoNotProcess {
-
+class Function: public DoNotProcess {
 public:
-
     /// @return the object representing the corresponding SQL function
     static Function const LAST_INSERT_ID;
 
-    /**
-     * The normal constructor
-     *
-     * @param name_ - the input value
-     */
+    /// @param name_ the input value
     explicit Function(std::string const& name_);
 
     Function() = delete;
-
     Function(Function const&) = default;
     Function& operator=(Function const&) = default;
 
