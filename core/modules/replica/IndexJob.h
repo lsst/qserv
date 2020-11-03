@@ -124,6 +124,15 @@ public:
      *   the empty value would imply the standard "secondary index" table of
      *   the database. A non-empty value for the table would imply the name of
      *   a specific (non-standard) table.
+     * @param localFile the flag which is used along with the TABLE destinaton option.
+     *   If the flag is set to 'true' then index contribution files retrieved from
+     *   workers would be loaded into the destination table using MySQL statement
+     *   "LOAD DATA LOCAL INFILE". Otherwise, contributions will be loaded using
+     *   "LOAD DATA INFILE", which will require the files be directly visible by
+     *   the MySQL server where the table is residing. Note that the non-local
+     *   option results in the better performance of the operation. On the other hand,
+     *   the local option requires the server be properly configured to allow this
+     *   mechanism. The flag is ignored for other destination options.
      * @param controller is needed launching requests and accessing the Configuration
      * @param parentJobId (optional) identifier of a parent job
      * @param onFinish (optional) a function to be called upon a completion of the job
@@ -135,6 +144,7 @@ public:
                       bool allWorkers,
                       Destination destination,
                       std::string const& destinationPath,
+                      bool localFile,
                       Controller::Ptr const& controller,
                       std::string const& parentJobId=std::string(),
                       CallbackType const& onFinish=nullptr,
@@ -158,6 +168,7 @@ public:
     bool               allWorkers()      const { return _allWorkers; }
     Destination        destination()     const { return _destination; }
     std::string const& destinationPath() const { return _destinationPath; }
+    bool               localFile()       const { return _localFile; }
 
     /**
      * Return the combined result of the operation
@@ -188,6 +199,7 @@ private:
              bool allWorkers,
              Destination destination,
              std::string const& destinationPath,
+             bool localFile,
              Controller::Ptr const& controller,
              std::string const& parentJobId,
              CallbackType const& onFinish,
@@ -242,6 +254,7 @@ private:
     bool          const _allWorkers;
     Destination   const _destination;
     std::string   const _destinationPath;
+    bool          const _localFile;
 
     CallbackType _onFinish;     /// @note is reset when the job finishes
 
