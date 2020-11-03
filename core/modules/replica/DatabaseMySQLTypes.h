@@ -175,6 +175,24 @@ public:
     ~Function() override = default;
 };
 
+
+/**
+ * Objects of class Warning store rows extracted from a result set of MySQL
+ * query "SHOW WARNINGS". Members of the class directly map to the corresponding
+ * columns returned by the query. More info on this subject can be found in
+ * the MySQL documentation for the query.
+ */
+class Warning {
+public:
+    explicit Warning(std::string const& level_,
+                     unsigned int code_,
+                     std::string const& message_)
+        :   level(level_), code(code_), message(message_) {}
+    std::string level;
+    unsigned int code = 0;
+    std::string message;
+};
+
 }}}}} // namespace lsst::qserv::replica::database::mysql
 
 #endif // LSST_QSERV_REPLICA_DATABASEMYSQLTYPES_H
