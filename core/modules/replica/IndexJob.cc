@@ -96,6 +96,7 @@ IndexJob::Ptr IndexJob::create(string const& database,
                                bool allWorkers,
                                Destination destination,
                                string const& destinationPath,
+                               bool localFile,
                                Controller::Ptr const& controller,
                                string const& parentJobId,
                                CallbackType const& onFinish,
@@ -107,6 +108,7 @@ IndexJob::Ptr IndexJob::create(string const& database,
         allWorkers,
         destination,
         destinationPath,
+        localFile,
         controller,
         parentJobId,
         onFinish,
@@ -121,6 +123,7 @@ IndexJob::IndexJob(string const& database,
                    bool allWorkers,
                    Destination destination,
                    string const& destinationPath,
+                   bool localFile,
                    Controller::Ptr const& controller,
                    string const& parentJobId,
                    CallbackType const& onFinish,
@@ -132,6 +135,7 @@ IndexJob::IndexJob(string const& database,
         _allWorkers(allWorkers),
         _destination(destination),
         _destinationPath(destinationPath),
+        _localFile(localFile),
         _onFinish(onFinish) {
 }
 
@@ -161,6 +165,7 @@ list<std::pair<string,string>> IndexJob::extendedPersistentState() const {
     result.emplace_back("all_workers", bool2str(allWorkers()));
     result.emplace_back("destination", toString(destination()));
     result.emplace_back("destination_path", destinationPath());
+    result.emplace_back("local_file", bool2str(localFile()));
     return result;
 }
 
@@ -451,12 +456,26 @@ void IndexJob::_processRequestData(util::Lock const& lock,
                 );
             }
             string const query =
-                "LOAD DATA INFILE " + _conn->sqlValue(filePath) +
+                "LOAD DATA" + string(_localFile ? " LOCAL" : "") + " INFILE " + _conn->sqlValue(filePath) +
                 " INTO TABLE " + _conn->sqlId(_destinationPath);
 
             _conn->execute([&](decltype(_conn) conn) {
                 conn->begin();
                 conn->execute(query);
+                // Loading operations based on this mechanism won't result in throwing exceptions in
+                // case of certain types of problems encountered during the loading, such as 
+                // out-of-range data, duplicate keys, etc. These errors are reported as warnings
+                // which need to be retrieved using a special call to the database API.
+                if (_localFile) {
+                    auto const warnings = conn->warnings();
+                    if (!warnings.empty()) {
+                        auto const& w = warnings.front();
+                        throw database::mysql::Error(
+                                "query: " + query + " failed with total number of problems: " + to_string(warnings.size())
+                                + ", first problem (Level,Code,Message) was: " + w.level + "," + to_string(w.code)
+                                + "," + w.message);
+                    }
+                }
                 conn->commit();
             });
             

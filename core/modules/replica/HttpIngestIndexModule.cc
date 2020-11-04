@@ -76,10 +76,12 @@ json HttpIngestIndexModule::_buildSecondaryIndex() {
     string const database = body().required<string>("database");
     bool const allowForPublished = body().optional<int>("allow_for_published", 0) != 0;
     bool const rebuild = body().optional<int>("rebuild", 0) != 0;
+    bool const localFile = body().optional<int>("local", 0) != 0;
 
     debug(__func__, "database=" + database);
     debug(__func__, "allow_for_published=" + bool2str(allowForPublished));
     debug(__func__, "rebuild=" + bool2str(rebuild));
+    debug(__func__, "local=" + bool2str(localFile));
 
     auto const databaseInfo = config->databaseInfo(database);
     if (databaseInfo.isPublished and not allowForPublished) {
@@ -158,6 +160,7 @@ json HttpIngestIndexModule::_buildSecondaryIndex() {
         allWorkers,
         IndexJob::TABLE,
         tableName,
+        localFile,
         controller()
     );
     job->start();

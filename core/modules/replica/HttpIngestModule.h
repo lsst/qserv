@@ -229,6 +229,19 @@ private:
     bool _autoBuildSecondaryIndex(std::string const& database) const;
 
     /**
+     * Fetch a mode of loading contributions into the "secondary index" as requested by
+     * a catalog ingest workflow and recorded at the database creation time. A value of
+     * the parameter is recorded in a database.
+     * 
+     * @param database The name of a database for which a value of the parameter
+     *   is requested.
+     * @return 'true' if the index was requested to be loaded using MySQL protocol
+     *   "LOAD DATA LOCAL INFILE" instead of just "LOAD DATA INFILE". See MySQL
+     *   documentation for further explanation of the protocol.
+     */
+    bool _localLoadSecondaryIndex(std::string const& database) const;
+
+    /**
      * Create an empty "secondary index" table partitioned using MySQL partitions.
      * The table will be configured with a single initial partition. More partitions
      * corresponding to super-transactions open during catalog ingest sessions will

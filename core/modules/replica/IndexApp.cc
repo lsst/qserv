@@ -94,6 +94,13 @@ IndexApp::IndexApp(int argc, char* argv[])
         "A specific destination (depends on a value of parameter 'destination')"
         " where the 'secondary index' data received from workers would go",
         _destinationPath);
+    parser().flag(
+        "local",
+        "This flag is used together with the TABLE destination option to load"
+        " contributions using 'LOAD DATA LOCAL INFILE' protocol instead of"
+        " 'LOAD DATA INFILE'. See MySQL documentation for further details"
+        " on this subject.",
+        _localFile);
 
     parser().flag(
         "all-workers",
@@ -150,6 +157,7 @@ int IndexApp::runImpl() {
         _allWorkers,
         IndexJob::fromString(_destination),
         _destinationPath,
+        _localFile,
         controller
     );
     job->start();

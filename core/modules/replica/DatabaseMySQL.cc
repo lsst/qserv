@@ -58,7 +58,7 @@ atomic<size_t> Connection::_nextId{0};
 
 unsigned long Connection::max_allowed_packet() {
 
-    // Reasons behind setting this parameter to 4 MB cam be found here:
+    // Reasons behind setting this parameter to 4 MB can be found here:
     // https://dev.mysql.com/doc/refman/8.0/en/server-system-variables.html#sysvar_max_allowed_packet
 
     return 4*1024*1024;
@@ -427,6 +427,29 @@ Connection::Ptr Connection::execute(function<void(Connection::Ptr)> const& scrip
 }
 
 
+unsigned int Connection::warningCount() {
+    return mysql_warning_count(_mysql);
+}
+
+
+list<Warning> Connection::warnings() {
+    list<Warning> result;
+    if (mysql_warning_count(_mysql) == 0) return result;
+    execute("SHOW WARNINGS");
+    Row row;
+    while(next(row)) {
+        string level;
+        unsigned int code = 0;
+        string message;
+        row.get("Level", level);
+        row.get("Code", code);
+        row.get("Message", message);
+        result.emplace_back(level, code, message);
+    }
+    return result;
+}
+
+
 bool Connection::hasResult() const {
     return _mysql and _res;
 }
@@ -596,8 +619,22 @@ void Connection::_connectOnce() {
     }
 
     // Only allow TCP/IP, no UNIX sockets for now
-    enum mysql_protocol_type prot_type = MYSQL_PROTOCOL_TCP;
-    mysql_optionsv(_mysql, MYSQL_OPT_PROTOCOL,(void*)&prot_type);
+    enum mysql_protocol_type const prot_type = MYSQL_PROTOCOL_TCP;
+    mysql_options(_mysql, MYSQL_OPT_PROTOCOL, &prot_type);
+
+    // This is required by 'LOAD DATA LOCAL INFILE ...' to allow ingesting files which
+    // are not directly seen by the MySQL server. The 'LOCAL' option would make a file
+    // local to a client opening this connection to be transferred to some temporary
+    // directory owned by the server. After that the file will get ingestd into
+    // the destination table.
+    //
+    // NOTES:
+    // - The server must be configured with global variable 'local_infile=1'
+    // - The temporary folder managed by the server is required to have enough space
+    //   to accommodate files received from the client.
+    unsigned int const enableLocalInfile = 1;
+    mysql_options(_mysql, MYSQL_OPT_LOCAL_INFILE, &enableLocalInfile);
+    mysql_set_local_infile_default(_mysql);
 
     // Make a connection attempt
 

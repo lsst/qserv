@@ -346,6 +346,7 @@ json HttpIngestModule::_endTransaction() {
                     allWorkers,
                     IndexJob::TABLE,
                     destinationPath,
+                    _localLoadSecondaryIndex(databaseInfo.name),
                     controller()
                 );
                 job->start();
@@ -385,12 +386,14 @@ json HttpIngestModule::_addDatabase() {
     auto const numSubStripes = body().required<unsigned int>("num_sub_stripes");
     auto const overlap       = body().required<double>("overlap");
     auto const autoBuildSecondaryIndex = body().optional<unsigned int>("auto_build_secondary_index", 1);
+    auto const localLoadSecondaryIndex = body().optional<unsigned int>("local_load_secondary_index", 0);
 
     debug(__func__, "database="      + databaseInfo.name);
     debug(__func__, "numStripes="    + to_string(numStripes));
     debug(__func__, "numSubStripes=" + to_string(numSubStripes));
     debug(__func__, "overlap="       + to_string(overlap));
     debug(__func__, "autoBuildSecondaryIndex=" + to_string(autoBuildSecondaryIndex ? 1 : 0));
+    debug(__func__, "localLoadSecondaryIndex=" + to_string(localLoadSecondaryIndex ? 1 : 0));
 
     if (overlap < 0) throw HttpError(__func__, "overlap can't have a negative value");
 
@@ -455,6 +458,8 @@ json HttpIngestModule::_addDatabase() {
     // the index.
     databaseServices->saveIngestParam(databaseInfo.name, "secondary-index", "auto-build",
             to_string(autoBuildSecondaryIndex ? 1 : 0));
+    databaseServices->saveIngestParam(databaseInfo.name, "secondary-index", "local-load",
+            to_string(localLoadSecondaryIndex ? 1 : 0));
 
     // Tell workers to reload their configurations
     error = _reconfigureWorkers(databaseInfo, allWorkers, workerReconfigTimeoutSec());
@@ -1368,6 +1373,19 @@ bool HttpIngestModule::_autoBuildSecondaryIndex(string const& database) const {
         return paramInfo.value != "0";
     } catch (DatabaseServicesNotFound const& ex) {
         info(__func__, "the secondary index auto-build mode was not specified");
+    }
+    return false;
+}
+
+
+bool HttpIngestModule::_localLoadSecondaryIndex(string const& database) const {
+    auto const databaseServices = controller()->serviceProvider()->databaseServices();
+    try {
+        DatabaseIngestParam const paramInfo =
+            databaseServices->ingestParam(database, "secondary-index", "local-load");
+        return paramInfo.value != "0";
+    } catch (DatabaseServicesNotFound const& ex) {
+        info(__func__, "the secondary index local-load mode was not specified");
     }
     return false;
 }

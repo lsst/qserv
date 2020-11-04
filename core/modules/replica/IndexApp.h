@@ -79,6 +79,12 @@ private:
     /// the destination type).
     std::string _destinationPath;
 
+    /// This flag is used together with the TABLE destination option to load
+    /// contributions using "LOAD DATA LOCAL INFILE" protocol instead of
+    /// just "LOAD DATA INFILE". See MySQL documentation for further details
+    /// on this subject.
+    bool _localFile = false;
+
     /// A password for the MySQL 'root' account of the Qserv master database
     std::string _qservDbRootPassword;
 
