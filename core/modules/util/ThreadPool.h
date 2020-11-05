@@ -193,7 +193,7 @@ private:
     void _decrPoolThreadCount();
 
     unsigned int _poolThreadCount = 0;    ///< Number of threads that exist.
-    unsigned int _maxThreadCount = 20000; ///< Max number of thread allowed &&& use config file value
+    unsigned int _maxThreadCount = 5000;  ///< Max number of thread allowed, set from config.
     std::condition_variable  _cvPool{};   ///< Signal when threads deleted.
     mutable std::mutex       _mxPool{};   ///< Protects _poolThreadCount, _cvPool, _mxPool
 };

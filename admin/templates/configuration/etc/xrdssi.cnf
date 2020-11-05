@@ -29,7 +29,7 @@ location = {{QSERV_DATA_DIR}}/mysql
 
 # Thread pool size
 thread_pool_size = 20
-max_pool_threads = 10000
+max_pool_threads = 5000
 
 # Required number of completed tasks for table in a chunk for the average time to be valid
 # required_tasks_completed = 25

@@ -228,7 +228,7 @@ bool ThreadPool::release(PoolEventThread *thrd) {
 /// Change the size of the thread pool.
 void ThreadPool::resize(unsigned int targetThrdCount) {
     {
-        LOGS(_log, LOG_LVL_WARN, "&&&WARN ThreadPool::resize " << targetThrdCount);
+        LOGS(_log, LOG_LVL_INFO, "ThreadPool::resize " << targetThrdCount);
         {
             std::lock_guard<std::mutex> lockPool(_mxPool);
             /// This is not expected to be used in cases where low CPU usage threads
@@ -300,7 +300,7 @@ void ThreadPool::waitForResize(int millisecs) {
 void ThreadPool::_incrPoolThreadCount() {
     std::lock_guard<std::mutex> lockPool(_mxPool);
     ++_poolThreadCount;
-    LOGS(_log, LOG_LVL_WARN, "&&&WARN incr _poolThreadCount=" << _poolThreadCount);
+    LOGS(_log, LOG_LVL_DEBUG, "incr _poolThreadCount=" << _poolThreadCount);
 }
 
 void ThreadPool::_decrPoolThreadCount() {
@@ -308,15 +308,18 @@ void ThreadPool::_decrPoolThreadCount() {
         std::lock_guard<std::mutex> lockPool(_mxPool);
         --_poolThreadCount;
     }
-    LOGS(_log, LOG_LVL_WARN, "&&&WARN decr _poolThreadCount=" << _poolThreadCount);
+    LOGS(_log, LOG_LVL_DEBUG, "decr _poolThreadCount=" << _poolThreadCount);
     _cvPool.notify_all(); // There should not be many threads waiting.
 }
 
 void ThreadPool::_waitIfAtMaxThreadPoolCount() {
     std::unique_lock<std::mutex> lockPool(_mxPool);
-    LOGS(_log, LOG_LVL_WARN, "&&&WARN wait A _poolThreadCount=" << _poolThreadCount);
+    auto logLvl = LOG_LVL_DEBUG;
+    if (_poolThreadCount >= _maxThreadCount - 10) {
+        logLvl = LOG_LVL_WARN;
+    }
+    LOGS(_log, logLvl, "wait before _poolThreadCount=" << _poolThreadCount);
     _cvPool.wait(lockPool, [this](){return (_poolThreadCount <= _maxThreadCount);});
-    LOGS(_log, LOG_LVL_WARN, "&&&WARN wait B _poolThreadCount=" << _poolThreadCount);
 }
 
 bool ThreadPool::atMaxThreadPoolCount() {

@@ -77,3 +77,8 @@ xrd.port {{XROOTD_PORT}}
 
 # Uncomment the following line for detailed xrootd debugging
 # xrootd.trace all debug
+
+# Set limits for the number of threads open by XRootD services
+# See more details on these parameters at:
+# https://xrootd.slac.stanford.edu/doc/dev48/xrd_config.htm#_Toc496911324 
+xrd.sched mint 8 maxt 2048 avlt 512 idle 780
