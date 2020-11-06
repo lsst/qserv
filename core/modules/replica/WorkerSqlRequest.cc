@@ -155,7 +155,7 @@ bool WorkerSqlRequest::execute() {
                     database::mysql::ConnectionHandler const h(connection);
                     h.conn->execute([&](decltype(h.conn) const& conn_) {
                         conn_->begin();
-                        conn_->execute(_batchQuery(conn_, table));
+                        conn_->execute(_query(conn_, table));
                         _extractResultSet(lock, conn_);
                         conn_->commit();
                     });
@@ -254,7 +254,6 @@ string WorkerSqlRequest::_query(database::mysql::Connection::Ptr const& conn) co
     auto const workerInfo = config->workerInfo(worker());    
 
     string const qservDbsTable = conn->sqlId("qservw_worker") + "." + conn->sqlId("Dbs");
-    string const databaseTable = conn->sqlId(_request.database()) + "." + conn->sqlId(_request.table());
 
     switch (_request.type()) {
 
@@ -295,49 +294,18 @@ string WorkerSqlRequest::_query(database::mysql::Connection::Ptr const& conn) co
             return "GRANT ALL ON " + conn->sqlId(_request.database()) + ".* TO " +
                    conn->sqlValue(_request.user()) + "@" + conn->sqlValue(workerInfo.dbHost);
 
-        case ProtocolRequestSql::CREATE_TABLE: {
-            string query = "CREATE TABLE IF NOT EXISTS " + databaseTable + " (";
-            for (int index = 0, num_columns = _request.columns_size(); index < num_columns; ++index) {
-                auto const column = _request.columns(index);
-                query += conn->sqlId(column.name()) + " " + column.type();
-                if (index != num_columns - 1) query += ",";
-            }
-            query += ") ENGINE=" + _request.engine();
-
-            // If MySQL partitioning was requested for the table then automatically
-            // create the initial partition 'p0' corresponding to value '0'
-            // of the key which is used for partitioning.
-            string const partitionByColumn = _request.partition_by_column();
-            if (not partitionByColumn.empty()) {
-                query += " PARTITION BY LIST (" + conn->sqlId(partitionByColumn) +
-                         ") (PARTITION `p0` VALUES IN (0) ENGINE = " + _request.engine() + ")";
-            }
-            return query;
-        }
-
-        case ProtocolRequestSql::DROP_TABLE:
-            return "DROP TABLE IF EXISTS " + databaseTable;
-
-        case ProtocolRequestSql::REMOVE_TABLE_PARTITIONING:
-            return "ALTER TABLE " + databaseTable + " REMOVE PARTITIONING";
-
-        case ProtocolRequestSql::DROP_TABLE_PARTITION:
-            return "ALTER TABLE " + databaseTable + " DROP PARTITION IF EXISTS " +
-                   conn->sqlPartitionId(_request.transaction_id());
-
-        case ProtocolRequestSql::ALTER_TABLE:
-            return "ALTER TABLE " + databaseTable + " " + _request.alter_spec();
-
         default:
-            throw invalid_argument(
-                    "WorkerSqlRequest::" + string(__func__) +
-                    "  unsupported request type: " + ProtocolRequestSql_Type_Name(_request.type()));
+
+            // The remaining remaining types of requests require the name of a table
+            // affected by the operation.
+
+            return _query(conn, _request.table());
     }
 }
 
 
-string WorkerSqlRequest::_batchQuery(database::mysql::Connection::Ptr const& conn,
-                                     string const& table) const {
+string WorkerSqlRequest::_query(database::mysql::Connection::Ptr const& conn,
+                                string const& table) const {
 
     string const databaseTable = conn->sqlId(_request.database()) + "." + conn->sqlId(table);
 
@@ -399,9 +367,10 @@ string WorkerSqlRequest::_batchQuery(database::mysql::Connection::Ptr const& con
         default:
             throw invalid_argument(
                     "WorkerSqlRequest::" + string(__func__) +
-                    "  not the batch request type: " + ProtocolRequestSql_Type_Name(_request.type()));
+                    "  not the table-scope request type: " + ProtocolRequestSql_Type_Name(_request.type()));
     }
 }
+
 
 void WorkerSqlRequest::_extractResultSet(util::Lock const& lock,
                                          database::mysql::Connection::Ptr const& conn) {

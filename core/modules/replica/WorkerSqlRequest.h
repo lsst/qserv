@@ -122,23 +122,20 @@ private:
      * @param conn A reference to the database connector is needed to process
      *   arguments to meet requirements of the database query processing engine.
      * @return A query as per the input request.
-     * @throws std::invalid_argument For unsupported requests types supported.
+     * @throw std::invalid_argument For unsupported requests types supported.
      */
     std::string _query(std::shared_ptr<database::mysql::Connection> const& conn) const;
 
     /**
-     * An alternative query generator for the "batch" requests for the specified
-     * table. The generator uses parameters of a request and the name of a table
-     * to compose a desired query. Only a subset of requests can be
-     * executed in the "batch" mode.
+     * The query generator for queries which have a target table.
      * @param conn A reference to the database connector is needed to process
      *   arguments to meet requirements of the database query processing engine.
      * @param table The name of table affected by the query.
      * @return A query as per the input request and the name of a table.
-     * @throws std::invalid_argument For unsupported requests types.
+     * @throw std::invalid_argument For unsupported requests types.
      */
-    std::string _batchQuery(database::mysql::Connection::Ptr const& conn,
-                            std::string const& table) const;
+    std::string _query(std::shared_ptr<database::mysql::Connection> const& conn,
+                       std::string const& table) const;
 
     /**
      * Extract a result set (if any) via the database connector into
@@ -158,7 +155,7 @@ private:
      * @param statusExt An extended status to be reported to Controllers and
      *   set in the current (most recently processed query if any) result set.
      * @param error A message to be logged and returned to Controllers.
-     * @throws std::logic_error Is thrown when the method is called before
+     * @throw std::logic_error Is thrown when the method is called before
      *   creating a result set.
      */    
     void _reportFailure(util::Lock const& lock,
