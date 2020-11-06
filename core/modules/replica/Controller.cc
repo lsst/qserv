@@ -43,6 +43,7 @@
 #include "replica/ReplicationRequest.h"
 #include "replica/ServiceManagementRequest.h"
 #include "replica/ServiceProvider.h"
+#include "replica/SqlAlterTablesRequest.h"
 #include "replica/SqlQueryRequest.h"
 #include "replica/SqlCreateDbRequest.h"
 #include "replica/SqlCreateIndexesRequest.h"
@@ -270,6 +271,35 @@ IndexRequest::Ptr Controller::index(
         chunk,
         hasTransactions,
         transactionId,
+        onFinish,
+        priority,
+        keepTracking,
+        jobId,
+        requestExpirationIvalSec);
+}
+
+
+SqlAlterTablesRequest::Ptr Controller::sqlAlterTables(
+        string const& workerName,
+        string const& database,
+        vector<string> const& tables,
+        string const& alterSpec,
+        function<void(SqlAlterTablesRequest::Ptr)> const& onFinish,
+        int priority,
+        bool keepTracking,
+        string const& jobId,
+        unsigned int requestExpirationIvalSec) {
+
+    LOGS(_log, LOG_LVL_TRACE, _context(__func__));
+
+    return _submit<SqlAlterTablesRequest,
+                   decltype(database),
+                   decltype(tables),
+                   decltype(alterSpec)>(
+        workerName,
+        database,
+        tables,
+        alterSpec,
         onFinish,
         priority,
         keepTracking,

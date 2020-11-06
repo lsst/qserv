@@ -35,54 +35,13 @@
 #include "replica/SqlDropIndexesJob.h"
 #include "replica/SqlGetIndexesJob.h"
 #include "replica/SqlResultSet.h"
-#include "HttpRequestBody.h"
+#include "replica/HttpRequestBody.h"
 
 using namespace std;
 using json = nlohmann::json;
 using namespace lsst::qserv::replica;
 
 namespace {
-/**
- * Analyze a result set of a job for a presence of errors and report them if any.
- * The result will be reported as a JSON object. The object will be empty
- * (be evaluated as json::is_null()) if no errors were detected. Otherwise it
- * would be based on the following schema:
- * @code
- *   "error":<serialized error code of the job>,
- *   "workers":{
- *     <worker>:{
- *       <table>:{
- *         "status":<serialized error code of a table-specific request>,
- *         "error":<server error string for the request>
- *       }
- *     }
- *   }
- * @code
- *
- * @param job A pointer to a job.
- * @return A JSON object representing the summary report.
- */
-json getExtendedErrorReport(SqlJob::Ptr const& job) {
-
-    if (job->extendedState() == Job::ExtendedState::SUCCESS) return json();
-
-    json report;
-    report["job_state"] = Job::state2string(job->extendedState());
-    report["workers"] = json::object();
-
-    job->getResultData().iterate(
-        [&report](SqlJobResult::Worker const& worker,
-                  SqlJobResult::Scope const& object,
-                  SqlResultSet::ResultSet const& resultSet) {
-            if (resultSet.extendedStatus != ExtendedCompletionStatus::EXT_STATUS_NONE) {
-                report["workers"][worker][object]["request_status"] = status2string(resultSet.extendedStatus);
-                report["workers"][worker][object]["request_error"] = resultSet.error;
-            }
-        }
-    );
-    return report;
-}
-
 
 /**
  * Translate a result set of a job into a JSON object. 
@@ -207,7 +166,7 @@ json HttpSqlIndexModule::_getIndexes() {
     job->wait();
     logJobFinishedEvent(SqlGetIndexesJob::typeName(), job, databaseInfo.family);
 
-    auto const extendedErrorReport = ::getExtendedErrorReport(job);
+    auto const extendedErrorReport = job->getExtendedErrorReport();
     if (not extendedErrorReport.is_null()) {
         throw HttpError(__func__, "The operation failed. See details in the extended report.",
                 extendedErrorReport);
@@ -286,7 +245,7 @@ json HttpSqlIndexModule::_createIndexes() {
     job->wait();
     logJobFinishedEvent(SqlCreateIndexesJob::typeName(), job, databaseInfo.family);
 
-    auto const extendedErrorReport = ::getExtendedErrorReport(job);
+    auto const extendedErrorReport = job->getExtendedErrorReport();
     if (not extendedErrorReport.is_null()) {
         throw HttpError(__func__, "The operation failed. See details in the extended report.",
                 extendedErrorReport);
@@ -322,7 +281,7 @@ json HttpSqlIndexModule::_dropIndexes() {
     job->wait();
     logJobFinishedEvent(SqlDropIndexesJob::typeName(), job, databaseInfo.family);
 
-    auto const extendedErrorReport = ::getExtendedErrorReport(job);
+    auto const extendedErrorReport = job->getExtendedErrorReport();
     if (not extendedErrorReport.is_null()) {
         throw HttpError(__func__, "The operation failed. See details in the extended report.",
                 extendedErrorReport);

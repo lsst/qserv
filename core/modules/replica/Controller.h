@@ -51,6 +51,7 @@ namespace replica {
     class FindAllRequest;
     class EchoRequest;
     class IndexRequest;
+    class SqlAlterTablesRequest;
     class SqlQueryRequest;
     class SqlCreateDbRequest;
     class SqlDeleteDbRequest;
@@ -73,6 +74,7 @@ namespace replica {
     typedef std::shared_ptr<FindAllRequest> FindAllRequestPtr;
     typedef std::shared_ptr<EchoRequest> EchoRequestPtr;
     typedef std::shared_ptr<IndexRequest> IndexRequestPtr;
+    typedef std::shared_ptr<SqlAlterTablesRequest>           SqlAlterTablesRequestPtr;
     typedef std::shared_ptr<SqlQueryRequest>                 SqlQueryRequestPtr;
     typedef std::shared_ptr<SqlCreateDbRequest>              SqlCreateDbRequestPtr;
     typedef std::shared_ptr<SqlDeleteDbRequest>              SqlDeleteDbRequestPtr;
@@ -105,6 +107,7 @@ namespace replica {
     using StopFindAllRequest     = StopRequest<StopFindAllRequestPolicy>;
     using StopEchoRequest        = StopRequest<StopEchoRequestPolicy>;
     using StopIndexRequest       = StopRequest<StopIndexRequestPolicy>;
+    using StopSqlAlterTablesRequest = StopRequest<StopSqlRequestPolicy>;
     using StopSqlQueryRequest       = StopRequest<StopSqlRequestPolicy>;
     using StopSqlCreateDbRequest    = StopRequest<StopSqlRequestPolicy>;
     using StopSqlDeleteDbRequest    = StopRequest<StopSqlRequestPolicy>;
@@ -126,6 +129,7 @@ namespace replica {
     typedef std::shared_ptr<StopFindAllRequest>     StopFindAllRequestPtr;
     typedef std::shared_ptr<StopEchoRequest>        StopEchoRequestPtr;
     typedef std::shared_ptr<StopIndexRequest>       StopIndexRequestPtr;
+    typedef std::shared_ptr<StopSqlAlterTablesRequest> StopSqlAlterTablesRequestPtr;
     typedef std::shared_ptr<StopSqlQueryRequest>       StopSqlQueryRequestPtr;
     typedef std::shared_ptr<StopSqlCreateDbRequest>    StopSqlCreateDbRequestPtr;
     typedef std::shared_ptr<StopSqlDeleteDbRequest>    StopSqlDeleteDbRequestPtr;
@@ -157,6 +161,7 @@ namespace replica {
     using StatusFindAllRequest     = StatusRequest<StatusFindAllRequestPolicy>;
     using StatusEchoRequest        = StatusRequest<StatusEchoRequestPolicy>;
     using StatusIndexRequest       = StatusRequest<StatusIndexRequestPolicy>;
+    using StatusSqlAlterTablesRequest = StatusRequest<StatusSqlRequestPolicy>;
     using StatusSqlQueryRequest       = StatusRequest<StatusSqlRequestPolicy>;
     using StatusSqlCreateDbRequest    = StatusRequest<StatusSqlRequestPolicy>;
     using StatusSqlDeleteDbRequest    = StatusRequest<StatusSqlRequestPolicy>;
@@ -178,6 +183,7 @@ namespace replica {
     typedef std::shared_ptr<StatusFindAllRequest>     StatusFindAllRequestPtr;
     typedef std::shared_ptr<StatusEchoRequest>        StatusEchoRequestPtr;
     typedef std::shared_ptr<StatusIndexRequest>       StatusIndexRequestPtr;
+    typedef std::shared_ptr<StatusSqlAlterTablesRequest> StatusSqlAlterTablesRequestPtr;
     typedef std::shared_ptr<StatusSqlQueryRequest>       StatusSqlQueryRequestPtr;
     typedef std::shared_ptr<StatusSqlCreateDbRequest>    StatusSqlCreateDbRequestPtr;
     typedef std::shared_ptr<StatusSqlDeleteDbRequest>    StatusSqlDeleteDbRequestPtr;
@@ -337,6 +343,17 @@ public:
             bool hasTransactions,
             TransactionId transactionId,
             std::function<void(IndexRequestPtr)> const& onFinish=nullptr,
+            int priority=0,
+            bool keepTracking=true,
+            std::string const& jobId="",
+            unsigned int requestExpirationIvalSec=0);
+
+    SqlAlterTablesRequestPtr sqlAlterTables(
+            std::string const& workerName,
+            std::string const& database,
+            std::vector<std::string> const& tables,
+            std::string const& alterSpec,
+            std::function<void(SqlAlterTablesRequestPtr)> const& onFinish=nullptr,
             int priority=0,
             bool keepTracking=true,
             std::string const& jobId="",

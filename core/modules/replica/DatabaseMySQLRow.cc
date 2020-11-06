@@ -29,7 +29,6 @@
 #include "boost/lexical_cast.hpp"
 
 // Qserv headers
-#include "replica/DatabaseMySQLExceptions.h"
 #include "replica/protocol.pb.h"
 
 // LSST headers

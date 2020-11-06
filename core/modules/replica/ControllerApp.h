@@ -147,6 +147,9 @@ private:
     /// The name of a file where to read definitions of the index's columns
     std::string _sqlIndexColumnsFile;
 
+    /// A specification of what's to change following the SQL's 'ALTER TABLE <table> '
+    std::string _sqlAlterSpec;
+
     /// An identifier of a super-transaction
     TransactionId _transactionId = std::numeric_limits<TransactionId>::max();
 

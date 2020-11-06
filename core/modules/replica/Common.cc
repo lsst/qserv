@@ -235,6 +235,7 @@ SqlRequestParams::SqlRequestParams(ProtocolRequestSql const& request)
         case ProtocolRequestSql::GET_TABLE_INDEX:           type = GET_TABLE_INDEX; break;
         case ProtocolRequestSql::CREATE_TABLE_INDEX:        type = CREATE_TABLE_INDEX; break;
         case ProtocolRequestSql::DROP_TABLE_INDEX:          type = DROP_TABLE_INDEX; break;
+        case ProtocolRequestSql::ALTER_TABLE:               type = ALTER_TABLE; break;
         default:
             throw runtime_error(
                     "SqlRequestParams::" + string(__func__) +
@@ -284,6 +285,7 @@ string SqlRequestParams::type2str() const {
         case GET_TABLE_INDEX:           return "GET_TABLE_INDEX";
         case CREATE_TABLE_INDEX:        return "CREATE_TABLE_INDEX";
         case DROP_TABLE_INDEX:          return "DROP_TABLE_INDEX";
+        case ALTER_TABLE:               return "ALTER_TABLE";
     }
     throw runtime_error(
             "SqlRequestParams::" + string(__func__) + "  unsupported request type");

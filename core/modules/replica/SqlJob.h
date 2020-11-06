@@ -29,6 +29,9 @@
 #include <tuple>
 #include <vector>
 
+// Third party headers
+#include "nlohmann/json.hpp"
+
 // Qserv headers
 #include "replica/Controller.h"
 #include "replica/Job.h"
@@ -68,36 +71,58 @@ public:
     /**
      * Return the combined result of the operation
      *
-     * @note:
+     * @note
      *  The method should be invoked only after the job has finished (primary
      *  status is set to Job::Status::FINISHED). Otherwise exception
-     *  std::logic_error will be thrown
-     * @return the data structure to be filled upon the completion of the job.
-     * @throws std::logic_error  if the job didn't finished at a time when
-     *   the method was called
+     *  std::logic_error will be thrown.
+     * @return The data structure to be filled upon the completion of the job.
+     * @throw std::logic_error If the job didn't finished at a time when
+     *   the method was called.
      */
     SqlJobResult const& getResultData() const;
 
-    std::list<std::pair<std::string,std::string>> persistentLogData() const final;
+    virtual std::list<std::pair<std::string,std::string>> persistentLogData() const final;
+
+    /**
+     * Analyze a result set of a job for a presence of errors and report them if any.
+     * The result will be reported as a JSON object. The object will be empty
+     * (be evaluated as json::is_null()) if no errors were detected. Otherwise it
+     * would be based on the following schema:
+     * @code
+     *   "job_state":<serialized extended completion status of the job>,
+     *   "workers":{
+     *     <worker>:{
+     *       <table>:{
+     *         "status":<serialized error code of a table-specific request>,
+     *         "error":<server error string for the request>
+     *       }
+     *     }
+     *   }
+     * @code
+     * @return A JSON object representing the summary report.
+     * @throw std::logic_error If the job didn't finished at a time when
+     *   the method was called.
+     */
+    nlohmann::json getExtendedErrorReport() const;
 
 protected:
     /**
-     * @param maxRows (optional) limit for the maximum number of rows to be returned
+     * @param maxRows An optional limit for the maximum number of rows to be returned
      *   with the request. Leaving the default value of the parameter to 0 will result
      *   in not imposing any explicit restrictions on a size of the result set. Note
      *   that other, resource-defined restrictions will still apply. The later
      *   includes the maximum size of the Google Protobuf objects, the amount of
      *   available memory, etc.
-     * @param allWorkers engage all known workers regardless of their status.
+     * @param allWorkers A flag for engaging all known workers regardless of their status.
      *   If the flag is set to 'false' then only 'ENABLED' workers which are not
      *   in the 'READ-ONLY' sub-state will be involved into the operation.
-     * @param controller is needed launching requests and accessing the Configuration
-     * @param parentJobId (optional) identifier of a parent job
-     * @param jobName the name of a job in the persistent state of the Replication system
-     * @param options (optional) defines the job priority, etc.
-     * @param ignoreNonPartitioned if 'true' then don't report as errors tables
-     *   that don't have MySQL partitions. Those partitions may have already been
-     *   removed by a previous attempt to run this algorithm. 
+     * @param controller Is needed launching requests and accessing the Configuration.
+     * @param parentJobId An optional identifier of a parent job.
+     * @param jobName The name of a job in the persistent state of the Replication system.
+     * @param options The optional parameters defining the job's priority, etc.
+     * @param ignoreNonPartitioned The optional flag which if 'true' then don't report as
+     *   errors tables that don't have MySQL partitions. The flag can be useful when those
+     *   partitions may have already been removed . 
      */
     SqlJob(uint64_t maxRows,
            bool allWorkers,
@@ -107,9 +132,8 @@ protected:
            Job::Options const& options,
            bool ignoreNonPartitioned=false);
 
-    void startImpl(util::Lock const& lock) final;
-
-    void cancelImpl(util::Lock const& lock) final;
+    virtual void startImpl(util::Lock const& lock) final;
+    virtual void cancelImpl(util::Lock const& lock) final;
 
     /**
      * The callback function to be invoked on a completion of requests
@@ -121,12 +145,11 @@ protected:
      * This method lets a request type-specific subclass to launch requests
      * of the corresponding subtype.
      *
-     * @param lock on the mutex Job::_mtx to be acquired for protecting
-     *   the object's state
-     * @param worker the name of a worker the requests to be sent to
-     * @param maxRequestsPerWorker the maximum number of requests to be
-     *   launched per each worker
-     * @return a collection of requests launched
+     * @param lock A lock on the mutex Job::_mtx to be acquired for protecting
+     *   the object's state.
+     * @param worker The name of a worker the requests to be sent to.
+     * @param maxRequestsPerWorker The maximum number of requests to be launched per each worker.
+     * @return A collection of requests launched.
      */
     virtual std::list<SqlRequest::Ptr> launchRequests(util::Lock const& lock,
                                                       std::string const& worker,
@@ -178,9 +201,8 @@ protected:
      *   If the flag is set to 'false' then the chunk tables will be reported.
      *   Note, this parameter is only taken into consideration if the previous
      *   parameter 'allTables' was set to 'false'.
-     * @return a collection of tables found
-     * @throws std::invalid_argument in case if the database or a table
-     *   aren't valid.
+     * @return A collection of tables found.
+     * @throw std::invalid_argument If the database or a table isn't valid.
      */
     std::vector<std::string> workerTables(std::string const& worker,
                                           std::string const& database,
@@ -194,9 +216,9 @@ protected:
      * of tables is empty or if the number of bins is 0, and the result will
      * not have empty bins.
      *
-     * @param allTables all known tables 
-     * @param numBins the total number of bins for distributing tables
-     * @return tables distributed between the bins
+     * @param allTables All known tables.
+     * @param numBins The total number of bins for distributing tables,
+     * @return Tables distributed between the bins.
      */
     static std::vector<std::vector<std::string>> distributeTables(
             std::vector<std::string> const& allTables,
@@ -208,9 +230,8 @@ private:
      * Verify if the database and the table are known to the Configuration,
      * and obtain the partitioning status of the table.
      *
-     * @return 'true' if this is the partitioned table
-     * @throws std::invalid_argument in case if the database or a table
-     *   aren't valid.
+     * @return A value of 'true' if this is the partitioned table.
+     * @throw std::invalid_argument If the database or a table isn't valid.
      */
     bool _isPartitioned(std::string const& database,
                         std::string const& table) const;

@@ -40,6 +40,7 @@
 #include "lsst/log/Log.h"
 
 using namespace std;
+using json = nlohmann::json;
 
 namespace {
 
@@ -120,6 +121,32 @@ list<pair<string,string>> SqlJob::persistentLogData() const {
         );
     }
     return result;
+}
+
+
+json SqlJob::getExtendedErrorReport() const {
+    if (state() != State::FINISHED) {
+        throw logic_error(
+                "SqlJob::" + string(__func__) +
+                "  the method can't be called before the job has finished.");
+    }
+    if (extendedState() == Job::ExtendedState::SUCCESS) return json();
+
+    json report;
+    report["job_state"] = Job::state2string(extendedState());
+    report["workers"] = json::object();
+
+    getResultData().iterate(
+        [&report](SqlJobResult::Worker const& worker,
+                  SqlJobResult::Scope const& object,
+                  SqlResultSet::ResultSet const& resultSet) {
+            if (resultSet.extendedStatus != ExtendedCompletionStatus::EXT_STATUS_NONE) {
+                report["workers"][worker][object]["request_status"] = status2string(resultSet.extendedStatus);
+                report["workers"][worker][object]["request_error"] = resultSet.error;
+            }
+        }
+    );
+    return report;
 }
 
 

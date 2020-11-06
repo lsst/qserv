@@ -37,6 +37,9 @@
 #include <string>
 #include <vector>
 
+// Qserv headers
+#include "replica/DatabaseMySQLExceptions.h"
+
 // Forward declarations
 namespace lsst {
 namespace qserv {
@@ -138,6 +141,36 @@ public:
     // The second method has some extra (though, minor) overhead.
     //
     // @see class Row
+
+    template <typename T>
+    T getAs(size_t columnIdx) const {
+        T val;
+        if (get(columnIdx, val)) return val;
+        throw database::mysql::Error("NULL is not allowed for column index: " + std::to_string(columnIdx));
+    }
+
+    template <typename T>
+    T getAs(std::string const& columnName) const {
+        T val;
+        if (get(columnName, val)) return val;
+        throw database::mysql::Error("NULL is not allowed for column name: '" + columnName + "'");
+    }
+
+    template <typename T>
+    T getAs(size_t columnIdx, T const& defaultValue) const {
+        T val;
+        if (get(columnIdx, val)) return val;
+        return defaultValue;
+    }
+
+    template <typename T>
+    T getAs(std::string const& columnName, T const& defaultValue) const {
+        T val;
+        if (get(columnName, val)) return val;
+        return defaultValue;
+    }
+
+    // Strings
 
     bool get(size_t      columnIdx,         std::string& value) const;
     bool get(std::string const& columnName, std::string& value) const;

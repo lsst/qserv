@@ -23,6 +23,7 @@
 #include "replica/HttpModule.h"
 
 // Qserv headers
+#include "css/CssAccess.h"
 #include "replica/Configuration.h"
 #include "replica/Controller.h"
 #include "replica/DatabaseMySQL.h"
@@ -73,6 +74,22 @@ database::mysql::Connection::Ptr HttpModule::qservMasterDbConnection(string cons
             database
         )
     );
+}
+
+
+shared_ptr<css::CssAccess> HttpModule::qservCssAccess(bool readOnly) const {
+    auto const config = controller()->serviceProvider()->config();
+    map<string, string> cssConfig;
+    cssConfig["technology"] = "mysql";
+    // Address translation is required because CSS MySQL connector doesn't set
+    // the TCP protocol option for 'localhost' and tries to connect via UNIX socket.
+    cssConfig["hostname"] = config->qservMasterDatabaseHost() == "localhost" ?
+            "127.0.0.1" : config->qservMasterDatabaseHost();
+    cssConfig["port"] = to_string(config->qservMasterDatabasePort());
+    cssConfig["username"] = "root";
+    cssConfig["password"] = Configuration::qservMasterDatabasePassword();
+    cssConfig["database"] = "qservCssData";
+    return css::CssAccess::createFromConfig(cssConfig, config->controllerEmptyChunksDir());
 }
 
 }}}  // namespace lsst::qserv::replica

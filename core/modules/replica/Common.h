@@ -259,7 +259,8 @@ public:
         DROP_TABLE_PARTITION,
         GET_TABLE_INDEX,
         CREATE_TABLE_INDEX,
-        DROP_TABLE_INDEX
+        DROP_TABLE_INDEX,
+        ALTER_TABLE
     };
     Type type = QUERY;
 

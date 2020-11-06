@@ -432,6 +432,16 @@ CssAccess::getTableSchema(std::string const& dbName, std::string const& tableNam
     return schema;
 }
 
+void
+CssAccess::setTableSchema(std::string const& dbName, std::string const& tableName, std::string const& schema) const {
+    LOGS(_log, LOG_LVL_DEBUG, "setTableSchema(" << dbName << ", " << tableName << ")");
+    _checkVersion();
+
+    std::string const tableKey = _prefix + "/DBS/" + dbName + "/TABLES/" + tableName;
+    if (not _kvI->exists(tableKey)) throw NoSuchTable(ERR_LOC, dbName, tableName);
+    _kvI->set(tableKey + "/schema", schema);
+}
+
 MatchTableParams
 CssAccess::getMatchTableParams(std::string const& dbName,
                                std::string const& tableName) const {
