@@ -85,6 +85,10 @@ WorkerApp::WorkerApp(int argc, char* argv[])
         "auth-key",
         "An authorization key for the catalog ingest operations.",
         _authKey
+    ).option(
+        "admin-auth-key",
+        "An administrator-level authorization key for the catalog ingest operations.",
+        _adminAuthKey
     );
 }
 
@@ -125,7 +129,7 @@ int WorkerApp::runImpl() {
         ingestSvr->run();
     });
 
-    auto const ingestHttpSvr = IngestHttpSvc::create(serviceProvider(), _worker, _authKey);
+    auto const ingestHttpSvr = IngestHttpSvc::create(serviceProvider(), _worker, _authKey, _adminAuthKey);
     thread ingestHttpSvrThread([ingestHttpSvr]() {
         ingestHttpSvr->run();
     });

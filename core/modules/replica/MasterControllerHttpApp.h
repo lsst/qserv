@@ -175,6 +175,9 @@ private:
     /// An authorization key for metadata operations requested via the REST API.
     std::string _authKey;
 
+    /// An "administrator"-level authorization key.
+    std::string _adminAuthKey;
+
     /// This flag will be raised by any thread if a non-recoverable
     /// catastrophic failure will be detected.
     OneWayFailer _isFailed;

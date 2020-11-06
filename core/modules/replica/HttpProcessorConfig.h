@@ -40,11 +40,13 @@ public:
     explicit HttpProcessorConfig(unsigned int workerResponseTimeoutSec_=0,
                                  unsigned int qservSyncTimeoutSec_=0,
                                  unsigned int workerReconfigTimeoutSec_=0,
-                                 std::string const& authKey_=std::string())
+                                 std::string const& authKey_=std::string(),
+                                 std::string const& adminAuthKey_=std::string())
         :   workerResponseTimeoutSec(workerResponseTimeoutSec_),
             qservSyncTimeoutSec(qservSyncTimeoutSec_),
             workerReconfigTimeoutSec(workerReconfigTimeoutSec_),
-            authKey(authKey_) {
+            authKey(authKey_),
+            adminAuthKey(adminAuthKey_) {
     }
     HttpProcessorConfig(HttpProcessorConfig const&) = default;
     HttpProcessorConfig& operator=(HttpProcessorConfig const&) = default;
@@ -68,6 +70,9 @@ public:
 
     /// An authorization key for metadata operations requested via the REST API.
     std::string authKey;
+
+    /// An "administrator"-level authorization key.
+    std::string adminAuthKey;
 };
     
 }}} // namespace lsst::qserv::replica

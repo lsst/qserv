@@ -43,9 +43,11 @@ namespace qserv {
 namespace replica {
 
 HttpModuleBase::HttpModuleBase(string const& authKey,
+                               string const& adminAuthKey,
                                qhttp::Request::Ptr const& req,
                                qhttp::Response::Ptr const& resp)
     :   _authKey(authKey),
+        _adminAuthKey(adminAuthKey),
         _req(req),
         _resp(resp),
         _query(req->query) {
@@ -112,12 +114,29 @@ void HttpModuleBase::_sendData(json& result) {
 }
 
 
-void HttpModuleBase::_enforceAuthorization() const {
-    auto authKey = body().required<string>("auth_key");
-    if (authKey != _authKey) {
-        throw AuthError(
-            context() + "authorization key in the request didn't match the one in server configuration");
+void HttpModuleBase::_enforceAuthorization() {
+    if (body().has("admin_auth_key")) {
+        auto const adminAuthKey = body().required<string>("admin_auth_key");
+        if (adminAuthKey != _adminAuthKey) {
+            throw AuthError(
+                    context() + "administrator's authorization key 'admin_auth_key' in the request"
+                    " doesn't match the one in server configuration");
+        }
+        _isAdmin = true;
+        return;
     }
+    if (body().has("auth_key")) {
+        auto const authKey = body().required<string>("auth_key");
+        if (authKey != _authKey) {
+            throw AuthError(
+                    context() + "authorization key 'auth_key' in the request doesn't match"
+                    " the one in server configuration");
+        }
+        return;
+    }
+    throw AuthError(
+            context() + "none of the authorization keys 'auth_key' or 'admin_auth_key' was found"
+            " in the request. Please, provide one.");
 }
 
 }}}  // namespace lsst::qserv::replica

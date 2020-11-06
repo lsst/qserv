@@ -173,8 +173,12 @@ MasterControllerHttpApp::MasterControllerHttpApp(int argc, char* argv[])
         _qservDbRootPassword
     ).option(
         "auth-key",
-        "An authorization key for metadata operations requested via the REST API.",
+        "An authorization key for requests made via the REST API.",
         _authKey
+    ).option(
+        "admin-auth-key",
+        "An administrator-level authorization key for requests made via the REST API.",
+        _adminAuthKey
     );
 }
 
@@ -226,7 +230,8 @@ int MasterControllerHttpApp::runImpl() {
     _httpProcessor = HttpProcessor::create(
         _controller,
         HttpProcessorConfig(
-            _workerResponseTimeoutSec, _qservSyncTimeoutSec, _workerReconfigTimeoutSec, _authKey
+                _workerResponseTimeoutSec, _qservSyncTimeoutSec, _workerReconfigTimeoutSec,
+                _authKey, _adminAuthKey
         ),
         _healthMonitorTask
     );

@@ -58,11 +58,13 @@ public:
      * @param workerName The name of a worker this service is acting upon (used for
      *   checking consistency of the protocol).
      * @param authKey An authorization key for the catalog ingest operation.
+     * @param adminAuthKey  An administrator-level authorization key.
      * @return A pointer to the created object.
      */
     static Ptr create(ServiceProvider::Ptr const& serviceProvider,
                       std::string const& workerName,
-                      std::string const& authKey);
+                      std::string const& authKey,
+                      std::string const& adminAuthKey);
 
     IngestHttpSvc() = delete;
     IngestHttpSvc(IngestHttpSvc const&) = delete;
@@ -82,7 +84,8 @@ private:
     /// @see IngestHttpSvc::create()
     IngestHttpSvc(ServiceProvider::Ptr const& serviceProvider,
                   std::string const& workerName,
-                  std::string const& authKey);
+                  std::string const& authKey,
+                  std::string const& adminAuthKey);
 
     /// @return The context string to be used for the message logging.
     std::string _context() const { return "INGEST-HTTP-SVC  "; }
@@ -92,6 +95,7 @@ private:
     ServiceProvider::Ptr const _serviceProvider;
     std::string const _workerName;
     std::string const _authKey;
+    std::string const _adminAuthKey;
 
     boost::asio::io_service _io_service;
     qhttp::Server::Ptr _httpServer;

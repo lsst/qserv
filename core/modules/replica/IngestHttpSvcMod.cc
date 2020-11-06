@@ -42,11 +42,12 @@ namespace replica {
 void IngestHttpSvcMod::process(ServiceProvider::Ptr const& serviceProvider,
                                string const& workerName,
                                string const& authKey,
+                               string const& adminAuthKey,
                                qhttp::Request::Ptr const& req,
                                qhttp::Response::Ptr const& resp,
                                string const& subModuleName,
                                HttpModuleBase::AuthType const authType) {
-    IngestHttpSvcMod module(serviceProvider, workerName, authKey, req, resp);
+    IngestHttpSvcMod module(serviceProvider, workerName, authKey, adminAuthKey, req, resp);
     module.execute(subModuleName, authType);
 }
 
@@ -54,9 +55,10 @@ void IngestHttpSvcMod::process(ServiceProvider::Ptr const& serviceProvider,
 IngestHttpSvcMod::IngestHttpSvcMod(ServiceProvider::Ptr const& serviceProvider,
                                    string const& workerName,
                                    string const& authKey,
+                                   string const& adminAuthKey,
                                    qhttp::Request::Ptr const& req,
                                    qhttp::Response::Ptr const& resp)
-        :   HttpModuleBase(authKey, req, resp),
+        :   HttpModuleBase(authKey, adminAuthKey, req, resp),
             IngestFileSvc(serviceProvider, workerName) {
 }
 
