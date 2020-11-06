@@ -121,8 +121,8 @@ protected:
      * @param jobName The name of a job in the persistent state of the Replication system.
      * @param options The optional parameters defining the job's priority, etc.
      * @param ignoreNonPartitioned The optional flag which if 'true' then don't report as
-     *   errors tables that don't have MySQL partitions. Those partitions may have already
-     *   been removed by a previous attempt to run this algorithm. 
+     *   errors tables that don't have MySQL partitions. The flag can be useful when those
+     *   partitions may have already been removed . 
      */
     SqlJob(uint64_t maxRows,
            bool allWorkers,

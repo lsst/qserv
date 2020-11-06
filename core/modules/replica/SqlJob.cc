@@ -128,7 +128,7 @@ json SqlJob::getExtendedErrorReport() const {
     if (state() != State::FINISHED) {
         throw logic_error(
                 "SqlJob::" + string(__func__) +
-                "  the method can't be called while the job hasn't finished");
+                "  the method can't be called before the job has finished.");
     }
     if (extendedState() == Job::ExtendedState::SUCCESS) return json();
 
