@@ -478,7 +478,7 @@ json HttpIngestModule::_publishDatabase() {
     auto const databaseServices = controller()->serviceProvider()->databaseServices();
     auto const config = controller()->serviceProvider()->config();
 
-    auto const database = params().at("name");
+    auto const database = params().at("database");
 
     bool const consolidateSecondayIndex = query().optionalBool("consolidate_secondary_index", false);
 
@@ -548,7 +548,7 @@ json HttpIngestModule::_deleteDatabase() {
 
     auto const config = controller()->serviceProvider()->config();
     bool const allWorkers = true;
-    auto const database = params().at("name");
+    auto const database = params().at("database");
 
     bool const deleteSecondaryIndex = query().optionalBool("delete_secondary_index", false);
 
