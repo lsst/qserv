@@ -546,21 +546,49 @@ json HttpIngestModule::_publishDatabase() {
 json HttpIngestModule::_deleteDatabase() {
     debug(__func__);
 
+    auto const cssAccess = qservCssAccess();
     auto const config = controller()->serviceProvider()->config();
     bool const allWorkers = true;
     auto const database = params().at("database");
 
-    bool const deleteSecondaryIndex = query().optionalBool("delete_secondary_index", false);
-
     debug(__func__, "database=" + database);
-    debug(__func__, "delete_secondary_index=" + to_string(deleteSecondaryIndex ? 1 : 0));
 
-    auto const databaseInfo = config->databaseInfo(database);
+    auto databaseInfo = config->databaseInfo(database);
     if (databaseInfo.isPublished) {
-        throw HttpError(__func__, "unable to delete the database which is already published");
+        if (!isAdmin()) {
+            throw HttpError(
+                    __func__, "deleting published databases requires administrator's privileges.");
+        }
     }
 
-    if (deleteSecondaryIndex) _deleteSecondaryIndex(databaseInfo);
+    // Get the names of the 'director' tables either from the Replication/Ingest system's
+    // configuration, or from CSS. It's okay not to have those tables if they weren't yet
+    // created during the initial catalog ingest.
+    // NOTE: Qserv allows more than one 'director' table. 
+    set<string> directorTables; 
+    directorTables.insert(databaseInfo.directorTable);
+    if (cssAccess->containsDb(databaseInfo.name)) {
+        for (auto const table: cssAccess->getTableNames(databaseInfo.name)) {
+            auto const partTableParams = cssAccess->getPartTableParams(databaseInfo.name, table);
+            if (!partTableParams.dirTable.empty()) directorTables.insert(partTableParams.dirTable);
+        }
+    }
+
+    // Remove related database etries from czar's MySQL if anyting is still there
+
+    if (cssAccess->containsDb(databaseInfo.name)) {
+        cssAccess->dropDb(databaseInfo.name);
+    }
+    database::mysql::ConnectionHandler const h(qservMasterDbConnection("qservCssData"));
+    h.conn->executeInOwnTransaction([&databaseInfo, &directorTables](decltype(h.conn) conn) {
+        conn->execute("DROP DATABASE IF EXISTS " + conn->sqlId(databaseInfo.name));
+        auto const emptyChunkListTable = css::DbInterfaceMySql::getEmptyChunksTableName(databaseInfo.name); 
+        conn->execute("DROP TABLE IF EXISTS " + conn->sqlId("qservCssData", emptyChunkListTable));
+        for (auto const table: directorTables) {
+            auto const secondaryIndexTable = databaseInfo.name + "__" + table;
+            conn->execute("DROP TABLE IF EXISTS " + conn->sqlId("qservMeta", secondaryIndexTable));
+        }
+    });
 
     // Delete database entries at workers
     auto const job = SqlDeleteDbJob::create(databaseInfo.name, allWorkers, controller());
@@ -1276,31 +1304,6 @@ void HttpIngestModule::_consolidateSecondaryIndex(DatabaseInfo const& databaseIn
     string const query =
         "ALTER TABLE " + h.conn->sqlId(databaseInfo.name + "__" + databaseInfo.directorTable) +
         " REMOVE PARTITIONING";
-
-    debug(__func__, query);
-
-    h.conn->execute([&query](decltype(h.conn) conn) {
-        conn->begin();
-        conn->execute(query);
-        conn->commit();
-    });
-}
-
-
-void HttpIngestModule::_deleteSecondaryIndex(DatabaseInfo const& databaseInfo) const {
-
-    if (databaseInfo.directorTable.empty()) {
-        throw logic_error(
-                "director table has not been properly configured in database '" +
-                databaseInfo.name + "'");
-    }
-
-    // Manage the new connection via the RAII-style handler to ensure the transaction
-    // is automatically rolled-back in case of exceptions.
-
-    database::mysql::ConnectionHandler const h(qservMasterDbConnection("qservMeta"));
-    string const query =
-        "DROP TABLE IF EXISTS " + h.conn->sqlId(databaseInfo.name + "__" + databaseInfo.directorTable);
 
     debug(__func__, query);
 

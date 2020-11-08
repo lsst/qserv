@@ -61,7 +61,7 @@ public:
      *   END-TRANSACTION           for finishing/aborting a transaction
      *   ADD-DATABASE              for adding a new database for the data ingest
      *   PUBLISH-DATABASE          for publishing a database when data ingest is over
-     *   DELETE-DATABASE           for deleting an unpublished (partially ingest) database
+     *   DELETE-DATABASE           for deleting a database
      *   ADD-TABLE                 for adding a new table for the data ingest
      *   BUILD-CHUNK-LIST          for building (or rebuilding) an "empty chunk list"
      *   REGULAR                   for reporting connection parameters of the ingest servers
@@ -112,9 +112,11 @@ private:
     nlohmann::json _publishDatabase();
 
     /**
-     * Delete a database which is not yet published. All relevant data,
-     * including databases and tables at workers, the secondary index (if any)
-     * and Replication System's Configuration will be deleted s well.
+     * Delete a database. All relevant data, including databases and tables at workers,
+     * the secondary index (if any), the Replication System's Configuration, database entries
+     * at Qserv czar  will get deleted.
+     * @note This operation requires administrator-level privileges for deleting
+     *   published databases.
      */
     nlohmann::json _deleteDatabase();
 
@@ -274,12 +276,6 @@ private:
      * @param databaseInfo  defines a scope of the operation
      */
     void _consolidateSecondaryIndex(DatabaseInfo const& databaseInfo) const;
-
-    /**
-     * Delete the "secondary index" table.
-     * @param databaseInfo defines a scope of the operation
-     */
-    void _deleteSecondaryIndex(DatabaseInfo const& databaseInfo) const;
 
     /**
      * This operation is called in a context of publishing new databases.
