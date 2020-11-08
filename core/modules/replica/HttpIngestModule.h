@@ -63,6 +63,7 @@ public:
      *   PUBLISH-DATABASE          for publishing a database when data ingest is over
      *   DELETE-DATABASE           for deleting a database
      *   ADD-TABLE                 for adding a new table for the data ingest
+     *   DELETE-TABLE              for deleting a table from a database'
      *   BUILD-CHUNK-LIST          for building (or rebuilding) an "empty chunk list"
      *   REGULAR                   for reporting connection parameters of the ingest servers
      *                             required to load the regular tables
@@ -122,6 +123,15 @@ private:
 
     /// Register a database table for an ingest
     nlohmann::json _addTable();
+
+    /**
+     * Delete a table. All relevant data, including the tables at workers,
+     * the Replication System's Configuration, table entries at Qserv czar will get deleted.
+     * @note This operation requires administrator-level privileges for deleting
+     *   tables of published databases.
+     * @note The "director" tables can't be deleted with this method.
+     */
+    nlohmann::json _deleteTable();
 
     /// (Re-)build the "empty chunks list" for a database.
     nlohmann::json _buildEmptyChunksList();

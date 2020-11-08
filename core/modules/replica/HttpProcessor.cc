@@ -430,6 +430,15 @@ void HttpProcessor::_initialize() {
             }
     );
     httpServer->addHandler(
+            "DELETE", "/ingest/table/:database/:table",
+            [self](qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp) {
+                HttpIngestModule::process(
+                        self->controller(), self->name(), self->_processorConfig,
+                        req, resp,
+                        "DELETE-TABLE", HttpModule::AUTH_REQUIRED);
+            }
+    );
+    httpServer->addHandler(
             "POST", "/ingest/chunk",
             [self](qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp) {
                 HttpIngestChunksModule::process(

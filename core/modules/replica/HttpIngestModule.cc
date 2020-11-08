@@ -23,6 +23,7 @@
 #include "replica/HttpIngestModule.h"
 
 // System headers
+#include <algorithm>
 #include <limits>
 #include <fstream>
 #include <map>
@@ -53,6 +54,7 @@
 #include "replica/SqlCreateTableJob.h"
 #include "replica/SqlCreateTablesJob.h"
 #include "replica/SqlDeleteDbJob.h"
+#include "replica/SqlDeleteTableJob.h"
 #include "replica/SqlGrantAccessJob.h"
 #include "replica/SqlEnableDbJob.h"
 #include "replica/SqlRemoveTablePartitionsJob.h"
@@ -124,6 +126,7 @@ json HttpIngestModule::executeImpl(string const& subModuleName) {
     else if (subModuleName == "PUBLISH-DATABASE") return _publishDatabase();
     else if (subModuleName == "DELETE-DATABASE") return _deleteDatabase();
     else if (subModuleName == "ADD-TABLE") return _addTable();
+    else if (subModuleName == "DELETE-TABLE") return _deleteTable();
     else if (subModuleName == "BUILD-CHUNK-LIST") return _buildEmptyChunksList();
     else if (subModuleName == "REGULAR") return _getRegular();
     throw invalid_argument(
@@ -751,6 +754,81 @@ json HttpIngestModule::_addTable() {
     if (not error.empty()) throw HttpError(__func__, error);
 
     return result;
+}
+
+
+json HttpIngestModule::_deleteTable() {
+    debug(__func__);
+
+    auto const cssAccess = qservCssAccess();
+    auto const config = controller()->serviceProvider()->config();
+    bool const allWorkers = true;
+    auto const database = params().at("database");
+    auto const table = params().at("table");
+
+    debug(__func__, "database=" + database);
+    debug(__func__, "table=" + table);
+
+    auto databaseInfo = config->databaseInfo(database);
+    auto const tables = databaseInfo.tables();
+    if (tables.cend() == find(tables.cbegin(), tables.cend(), table)) {
+        throw invalid_argument(context() + "::" + string(__func__) + " unknown table: '" + table + "'");
+    }
+    if (databaseInfo.isPublished) {
+        if (!isAdmin()) {
+            throw HttpError(
+                    __func__, "deleting tables of published databases requires administrator's"
+                    " privileges.");
+        }
+        auto const tableParams = cssAccess->getTableParams(databaseInfo.name, table);
+        if (tableParams.partitioning.dirTable == table) {
+            throw HttpError(
+                    __func__, "the director table can't be deleted from the published catalog"
+                    " w/o deleting the whole database.");
+        }
+    } else {
+        // This check is done agaist the internal data structure of the Replication/Ingest System
+        // since CSS is not populated before a database gets published.
+        if (databaseInfo.isDirector(table)) {
+            throw HttpError(
+                    __func__, "the director table can't be deleted from the un-published catalog"
+                    " w/o deleting the whole database.");
+        }
+    }
+
+    // Remove table entry from czar's databases if it's still there
+
+    if (cssAccess->containsDb(databaseInfo.name)) {
+        if (cssAccess->containsTable(databaseInfo.name, table)) {
+            cssAccess->dropTable(databaseInfo.name, databaseInfo.name);
+        }
+    }
+    database::mysql::ConnectionHandler const h(qservMasterDbConnection("qservCssData"));
+    h.conn->executeInOwnTransaction([&databaseInfo, &table](decltype(h.conn) conn) {
+        // Remove table entry from czar's MySQL
+        conn->execute("DROP TABLE IF EXISTS " + conn->sqlId(databaseInfo.name, table));
+    });
+
+    // Delete table entries at workers
+    auto const job = SqlDeleteTableJob::create(databaseInfo.name, table, allWorkers, controller());
+    job->start();
+    logJobStartedEvent(SqlDeleteTableJob::typeName(), job, databaseInfo.family);
+    job->wait();
+    logJobFinishedEvent(SqlDeleteTableJob::typeName(), job, databaseInfo.family);
+
+    string error = ::jobCompletionErrorIfAny(job, "table deletion failed");
+    if (not error.empty()) throw HttpError(__func__, error);
+
+    // Remove table entry from the Configuration. This will also eliminate all
+    // dependent metadata, such as replicas info
+    config->deleteTable(databaseInfo.name, table);
+
+    // This step is needed to get workers' Configuration in-sync with its
+    // persistent state.
+    error = _reconfigureWorkers(databaseInfo, allWorkers, workerReconfigTimeoutSec());
+    if (not error.empty()) throw HttpError(__func__, error);
+
+    return json::object();
 }
 
 
