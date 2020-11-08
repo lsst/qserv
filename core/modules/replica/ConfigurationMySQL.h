@@ -377,6 +377,8 @@ public:
 
     DatabaseInfo publishDatabase(std::string const& name) final;
 
+    DatabaseInfo unPublishDatabase(std::string const& name) final;
+
     void deleteDatabase(std::string const& name) final;
 
     DatabaseInfo addTable(std::string const& database,

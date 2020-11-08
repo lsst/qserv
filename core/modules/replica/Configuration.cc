@@ -510,6 +510,12 @@ DatabaseInfo Configuration::publishDatabase(string const& name) {
 }
 
 
+DatabaseInfo Configuration::unPublishDatabase(string const& name) {
+    util::Lock lock(_mtx, context(__func__));
+    return _impl->unPublishDatabase(name);
+}
+
+
 void Configuration::deleteDatabase(string const& name) {
     util::Lock lock(_mtx, context(__func__));
     _impl->deleteDatabase(name);
