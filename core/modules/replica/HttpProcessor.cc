@@ -394,6 +394,15 @@ void HttpProcessor::_initialize() {
             }
     );
     httpServer->addHandler(
+            "GET", "/ingest/database",
+            [self](qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp) {
+                HttpIngestModule::process(
+                        self->controller(), self->name(), self->_processorConfig,
+                        req, resp,
+                        "DATABASES");
+            }
+    );
+    httpServer->addHandler(
             "POST", "/ingest/database",
             [self](qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp) {
                 HttpIngestModule::process(
@@ -418,6 +427,15 @@ void HttpProcessor::_initialize() {
                         self->controller(), self->name(), self->_processorConfig,
                         req, resp,
                         "DELETE-DATABASE", HttpModule::AUTH_REQUIRED);
+            }
+    );
+    httpServer->addHandler(
+            "GET", "/ingest/table/:database",
+            [self](qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp) {
+                HttpIngestModule::process(
+                        self->controller(), self->name(), self->_processorConfig,
+                        req, resp,
+                        "TABLES");
             }
     );
     httpServer->addHandler(

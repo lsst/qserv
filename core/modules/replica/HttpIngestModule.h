@@ -59,9 +59,11 @@ public:
      *   SELECT-TRANSACTION-BY-ID  for a single transaction
      *   BEGIN-TRANSACTION         for starting a new transaction
      *   END-TRANSACTION           for finishing/aborting a transaction
+     *   DATABASES                 for retreiving info on databases for specified criteria
      *   ADD-DATABASE              for adding a new database for the data ingest
      *   PUBLISH-DATABASE          for publishing a database when data ingest is over
      *   DELETE-DATABASE           for deleting a database
+     *   TABLES                    for retreiving the names of tables in a scope of a database
      *   ADD-TABLE                 for adding a new table for the data ingest
      *   DELETE-TABLE              for deleting a table from a database'
      *   BUILD-CHUNK-LIST          for building (or rebuilding) an "empty chunk list"
@@ -106,6 +108,9 @@ private:
     /// Commit or rollback a super-transaction
     nlohmann::json _endTransaction();
 
+    /// Get info on select databases
+    nlohmann::json _getDatabases();
+
     /// Register a database for an ingest
     nlohmann::json _addDatabase();
 
@@ -120,6 +125,9 @@ private:
      *   published databases.
      */
     nlohmann::json _deleteDatabase();
+
+    /// Get info on select tables
+    nlohmann::json _getTables();
 
     /// Register a database table for an ingest
     nlohmann::json _addTable();

@@ -122,9 +122,11 @@ json HttpIngestModule::executeImpl(string const& subModuleName) {
     else if (subModuleName == "SELECT-TRANSACTION-BY-ID") return _getTransaction();
     else if (subModuleName == "BEGIN-TRANSACTION") return _beginTransaction();
     else if (subModuleName == "END-TRANSACTION") return _endTransaction();
+    else if (subModuleName == "DATABASES") return _getDatabases();
     else if (subModuleName == "ADD-DATABASE") return _addDatabase();
     else if (subModuleName == "PUBLISH-DATABASE") return _publishDatabase();
     else if (subModuleName == "DELETE-DATABASE") return _deleteDatabase();
+    else if (subModuleName == "TABLES") return _getTables();
     else if (subModuleName == "ADD-TABLE") return _addTable();
     else if (subModuleName == "DELETE-TABLE") return _deleteTable();
     else if (subModuleName == "BUILD-CHUNK-LIST") return _buildEmptyChunksList();
@@ -376,6 +378,47 @@ json HttpIngestModule::_endTransaction() {
 }
 
 
+json HttpIngestModule::_getDatabases() {
+    debug(__func__);
+
+    auto const config = controller()->serviceProvider()->config();
+
+    // Leaving this name empty would result in scaning databases across all known
+    // families (instead of a single one) while applying the optional filter on
+    // the publishing status of each candidate.
+    //
+    // Note that filters "family" and "publishing status" are orthogonal in
+    // the current implementation of a method fetching the requested names of
+    // databases from the system's configuration. 
+    string const family = body().optional<string>("family", string());
+
+    bool const allDatabases = body().optional<unsigned int>("all", 1) != 0;
+
+    // This parameter is used only if a subset of databases specified in the optional
+    // flag "all" was requested. Should this be the case, a client will be required
+    // to resolve the ambiguity.
+    bool isPublished = false;
+    if (!allDatabases) {
+        isPublished = body().required<unsigned int>("published") != 0;
+    }
+
+    debug(__func__, "family=" + family);
+    debug(__func__, "allDatabases=" + bool2str(allDatabases));
+    debug(__func__, "isPublished=" + bool2str(isPublished));
+
+    json databasesJson = json::array();
+    for (auto const database: config->databases(family, allDatabases, isPublished )) {
+        auto const databaseInfo = config->databaseInfo(database);
+        databasesJson.push_back({
+            {"name", databaseInfo.name},
+            {"family", databaseInfo.family},
+            {"is_published", databaseInfo.isPublished ? 1: 0}
+        });
+    }
+    return json::object({{"databases", databasesJson}});
+}
+
+
 json HttpIngestModule::_addDatabase() {
     debug(__func__);
 
@@ -613,6 +656,33 @@ json HttpIngestModule::_deleteDatabase() {
     if (not error.empty()) throw HttpError(__func__, error);
 
     return json::object();
+}
+
+
+json HttpIngestModule::_getTables() {
+    debug(__func__);
+
+    auto const config = controller()->serviceProvider()->config();
+    auto const database = params().at("database");
+
+    debug(__func__, "database=" + database);
+
+    auto const databaseInfo = config->databaseInfo(database);
+
+    json tablesJson = json::array();
+    for (auto&& table: databaseInfo.partitionedTables) {
+        tablesJson.push_back({
+            {"name", table},
+            {"is_partitioned", 1}
+        });
+    }
+    for (auto&& table: databaseInfo.regularTables) {
+        tablesJson.push_back({
+            {"name", table},
+            {"is_partitioned", 0}
+        });
+    }
+    return json::object({{"tables", tablesJson}});
 }
 
 
