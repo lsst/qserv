@@ -13,6 +13,8 @@ RUN groupadd qserv && \
     mkdir /qserv && \
     chown qserv:qserv /qserv
 
+COPY ca-trust/* /etc/pki/ca-trust/source/anchors/
+RUN update-ca-trust
 
 USER qserv
 
