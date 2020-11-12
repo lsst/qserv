@@ -31,6 +31,7 @@
 #include "qhttp/Request.h"
 #include "qhttp/Response.h"
 #include "replica/HttpModuleBase.h"
+#include "replica/IngestConfigTypes.h"
 #include "replica/IngestFileSvc.h"
 #include "replica/ServiceProvider.h"
 
@@ -99,16 +100,25 @@ private:
 
     /**
      * Pull an input file from a remote HTTP service and preprocess it.
+     * @param database The name of a database.
      * @param method An HTTP method for a request.
      * @param url A location of a file to be ingested.
      * @param data Optional data to be sent with a  request (depends on the HTTP headers).
      * @param headers Optional HTTP headers to be send with a request.
      * @return An object with statistics on the amount of data read from the file.
      */
-    nlohmann::json _readRemote(std::string const& method,
+    nlohmann::json _readRemote(std::string const& database,
+                               std::string const& method,
                                std::string const& url,
                                std::string const& data=std::string(),
                                std::vector<std::string> const& headers=std::vector<std::string>());
+
+    /**
+     * Pull file reader's configuration from the config store.
+     * @param database The name of a database to be ingested.
+     * @return The configuration object.
+     */
+    HttpFileReaderConfig _fileConfig(std::string const& database) const;
 };
     
 }}} // namespace lsst::qserv::replica

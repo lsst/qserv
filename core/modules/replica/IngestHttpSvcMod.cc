@@ -23,17 +23,78 @@
 #include "replica/IngestHttpSvcMod.h"
 
 // System headers
+#include <fstream>
+#include <iostream>
 #include "curl/curl.h"
+
+// Third party headers
+#include "boost/filesystem.hpp"
 
 // Qserv headers
 #include "replica/Common.h"
+#include "replica/DatabaseServices.h"
+#include "replica/FileUtils.h"
 #include "replica/HttpExceptions.h"
 #include "replica/HttpFileReader.h"
 #include "replica/Performance.h"
 #include "replica/Url.h"
 
 using namespace std;
+namespace fs = boost::filesystem;
 using json = nlohmann::json;
+using namespace lsst::qserv::replica;
+
+namespace {
+/**
+ * Class TemporaryCertFileRAII is used for storing certificate bandles in
+ * temporary files managed basd on the RAII paradigm.
+ */
+class TemporaryCertFileRAII {
+public:
+    /// The default constructor won't create any file.
+    TemporaryCertFileRAII() = default;
+
+    TemporaryCertFileRAII(TemporaryCertFileRAII const&) = delete;
+    TemporaryCertFileRAII& operator=(TemporaryCertFileRAII const&) = delete;
+
+    /// The destructor will take care of deleting a file should the one be created.
+    ~TemporaryCertFileRAII() {
+        // Make the best effort to delete the file. Ignore any errors.
+        if (!_fileName.empty()) {
+            boost::system::error_code ec;
+            fs::remove(fs::path(_fileName), ec);
+        }
+    }
+
+    /**
+     * Create a temporary file and write a certificate bundle into it.
+     * @param baseDir A folder where the file is created.
+     * @param database The name of a database for which the file gets created.
+     * @param cert The certificate bundle to be written into the file.
+     * @return A path to the file including its folder.
+     * @throw HttpError If the file couldn't be open for writing.
+     */
+    string write(string const& baseDir, string const& database, string const& cert) {
+        string const prefix = database + "-";
+        string const model = "%%%%-%%%%-%%%%-%%%%";
+        string const suffix = ".cert";
+        unsigned int const maxRetries = 1;
+        _fileName = FileUtils::createTemporaryFile(baseDir, prefix, model, suffix, maxRetries);
+        ofstream fs;
+        fs.open(_fileName, ios::out|ios::trunc);
+        if (!fs.is_open()) {
+            HttpError("TemporaryCertFileRAII::" + string(__func__), "failed to open/create file '"
+                        + _fileName+ "'.");
+        }
+        fs << cert;
+        fs.flush();
+        fs.close();
+        return _fileName;
+    }
+private:
+    string _fileName;
+};
+}
 
 namespace lsst {
 namespace qserv {
@@ -97,6 +158,9 @@ json IngestHttpSvcMod::executeImpl(string const& subModuleName) {
     debug(__func__, "http_data: '" + httpData + "'");
     debug(__func__, "http_headers.size(): " + to_string(httpHeaders.size()));
 
+    auto const databaseServices = serviceProvider()->databaseServices();
+    TransactionInfo const trans = databaseServices->transaction(transactionId);
+
     // Performance and statistics of the ingest operations (collected for each
     // file ingested). Timestamps represent the number of milliseconds since UNIX EPOCH
     json stats = json::object();
@@ -112,7 +176,7 @@ json IngestHttpSvcMod::executeImpl(string const& subModuleName) {
                 break;
             case Url::HTTP:
             case Url::HTTPS:
-                stats = _readRemote(httpMethod, resource.url(), httpData, httpHeaders);
+                stats = _readRemote(trans.database, httpMethod, resource.url(), httpData, httpHeaders);
                 break;
             default:
                 throw invalid_argument(string(__func__) + " unsupported url '" + url + "'");
@@ -155,15 +219,42 @@ json IngestHttpSvcMod::_readLocal(string const& filename) {
 }
 
 
-json IngestHttpSvcMod::_readRemote(string const& method,
+json IngestHttpSvcMod::_readRemote(string const& database,
+                                   string const& method,
                                    string const& url,
                                    string const& data,
                                    vector<string> const& headers) {
     debug(__func__);
     size_t numBytes = 0;
     size_t numRows = 0;
-    HttpFileReader reader(method, url, data, headers);
-    reader.read([this,&numBytes,&numRows](string const& row) {
+
+    // The configuration may be amended later if certificate bundles were loaded
+    // by a client into the config store.
+    auto fileConfig = _fileConfig(database);
+
+    // Check if values of the certificate bundles were loaded into the configuration
+    // store for the catalog. If so then write the certificates into temporary files
+    // at the work folder configured to support HTTP-based file ingest operations.
+    // The files are managed by the RAII resources, and they will get automatically
+    // removed after successfully finishing reading the remote file or in case of any
+    // exceptions.
+
+    TemporaryCertFileRAII caInfoFile;
+    if (!fileConfig.caInfoVal.empty()) {
+        // Use this file instead of the existing path.
+        fileConfig.caInfo = caInfoFile.write(
+                workerInfo().httpLoaderTmpDir, database, fileConfig.caInfoVal);
+    }
+    TemporaryCertFileRAII proxyCaInfoFile;
+    if (!fileConfig.proxyCaInfoVal.empty()) {
+        // Use this file instead of the existing path.
+        fileConfig.proxyCaInfo = proxyCaInfoFile.write(
+                workerInfo().httpLoaderTmpDir, database, fileConfig.proxyCaInfoVal);
+    }
+
+    // Read the file from the data source
+    HttpFileReader reader(method, url, data, headers, fileConfig);
+    reader.read([this, &numBytes, &numRows](string const& row) {
         this->writeRowIntoFile(row);
         numBytes += row.size() + 1;     // counting the newline character
         ++numRows;
@@ -172,6 +263,35 @@ json IngestHttpSvcMod::_readRemote(string const& method,
     result["num_bytes"] = numBytes;
     result["num_rows"] = numRows;
     return result;
+}
+
+
+HttpFileReaderConfig IngestHttpSvcMod::_fileConfig(string const& database) const {
+    auto const databaseServices = serviceProvider()->databaseServices();
+    auto const getBoolParam = [&databaseServices, &database](bool& val, string const& key) {
+        try {
+            val = stoi(databaseServices->ingestParam(
+                    database, HttpFileReaderConfig::category, key).value) != 0;
+        } catch (DatabaseServicesNotFound const&) {}
+    };
+    auto const getStringParam = [&databaseServices, &database](string& val, string const& key) {
+        try {
+            val = databaseServices->ingestParam(
+                    database, HttpFileReaderConfig::category, key).value;
+        } catch (DatabaseServicesNotFound const&) {}
+    };
+    HttpFileReaderConfig fileConfig;
+    getBoolParam(fileConfig.sslVerifyHost, HttpFileReaderConfig::sslVerifyHostKey);
+    getBoolParam(fileConfig.sslVerifyPeer, HttpFileReaderConfig::sslVerifyPeerKey);
+    getStringParam(fileConfig.caPath, HttpFileReaderConfig::caPathKey);
+    getStringParam(fileConfig.caInfo, HttpFileReaderConfig::caInfoKey);
+    getStringParam(fileConfig.caInfoVal, HttpFileReaderConfig::caInfoValKey);
+    getBoolParam(fileConfig.proxySslVerifyHost, HttpFileReaderConfig::proxySslVerifyHostKey);
+    getBoolParam(fileConfig.proxySslVerifyPeer, HttpFileReaderConfig::proxySslVerifyPeerKey);
+    getStringParam(fileConfig.proxyCaPath, HttpFileReaderConfig::proxyCaPathKey);
+    getStringParam(fileConfig.proxyCaInfo, HttpFileReaderConfig::proxyCaInfoKey);
+    getStringParam(fileConfig.proxyCaInfoVal, HttpFileReaderConfig::proxyCaInfoValKey);
+    return fileConfig;
 }
 
 }}} // namespace lsst::qserv::replica
