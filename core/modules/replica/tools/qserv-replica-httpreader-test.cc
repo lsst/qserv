@@ -20,36 +20,25 @@
  */
 
 /**
- * @see HttpFileReader
+ * @see HttpFileReaderApp
  */
+
 // System headers
 #include <iostream>
+#include <stdexcept>
 
 // Qserv headers
-#include "replica/HttpFileReader.h"
+#include "replica/HttpFileReaderApp.h"
 
 using namespace std;
 using namespace lsst::qserv::replica;
 
-int main(int argc, const char* argv[]) {
-    if (argc != 5) {
-        cout << "usage: <method> <url> <data> <header>" << endl;
-        return 1;
-    }
-    string const method = argv[1];
-    string const url = argv[2];
-    string const data = argv[3];
-    string const header = argv[4];
-    vector<string> headers;
-    if (!header.empty()) headers.push_back(header);
+int main(int argc, char* argv[]) {
     try {
-        HttpFileReader reader(method, url, data, headers);
-        reader.read([](string const& line) {
-            cout << line << "\n";
-        });
-    } catch(exception const& ex) {
-        cout << ex.what() << endl;
+        auto const app = HttpFileReaderApp::create(argc, argv);
+        return app->run();
+    } catch (exception const& ex) {
+        cerr << "main()  the application failed, exception: " << ex.what() << endl;
         return 1;
     }
-    return 0;
 }

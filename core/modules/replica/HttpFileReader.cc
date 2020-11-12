@@ -42,11 +42,13 @@ size_t forwardToHttpFileReader(char* ptr, size_t size, size_t nmemb, void* userd
 HttpFileReader::HttpFileReader(string const& method,
                                string const& url,
                                string const& data,
-                               vector<string> const& headers)
+                               vector<string> const& headers,
+                               HttpFileReaderConfig const& fileReaderConfig)
     :   _method(method),
         _url(url),
         _data(data),
-        _headers(headers) {
+        _headers(headers),
+        _fileReaderConfig(fileReaderConfig) {
     _hcurl = curl_easy_init();
     if (_hcurl == nullptr) throw runtime_error("curl_easy_init() failed");
 }
@@ -81,6 +83,37 @@ void HttpFileReader::read(CallbackType const& onEachLine) {
         _hlist = curl_slist_append(_hlist, header.c_str());
     }
     _errorChecked("curl_easy_setopt(CURLOPT_HTTPHEADER)", curl_easy_setopt(_hcurl, CURLOPT_HTTPHEADER, _hlist));
+
+    // Optional settings for the peer's cert
+    if (!_fileReaderConfig.sslVerifyHost) {
+        _errorChecked("curl_easy_setopt(CURLOPT_SSL_VERIFYHOST)", curl_easy_setopt(_hcurl, CURLOPT_SSL_VERIFYHOST, 0L));
+    }
+    if (_fileReaderConfig.sslVerifyPeer) {
+        if (!_fileReaderConfig.caPath.empty()) {
+            _errorChecked("curl_easy_setopt(CURLOPT_CAPATH)", curl_easy_setopt(_hcurl, CURLOPT_CAPATH, _fileReaderConfig.caPath.c_str()));
+        }
+        if (!_fileReaderConfig.caInfo.empty()) {
+            _errorChecked("curl_easy_setopt(CURLOPT_CAINFO)", curl_easy_setopt(_hcurl, CURLOPT_CAINFO, _fileReaderConfig.caInfo.c_str()));
+        }
+    } else {
+        _errorChecked("curl_easy_setopt(CURLOPT_SSL_VERIFYPEER)", curl_easy_setopt(_hcurl, CURLOPT_SSL_VERIFYPEER, 0L));
+    }
+
+    // Optional settings for the proxy's cert
+    if (!_fileReaderConfig.proxySslVerifyHost) {
+        _errorChecked("curl_easy_setopt(CURLOPT_PROXY_SSL_VERIFYHOST)", curl_easy_setopt(_hcurl, CURLOPT_PROXY_SSL_VERIFYHOST, 0L));
+    }
+    if (_fileReaderConfig.proxySslVerifyPeer) {
+        if (!_fileReaderConfig.proxyCaPath.empty()) {
+            _errorChecked("curl_easy_setopt(CURLOPT_PROXY_CAPATH)", curl_easy_setopt(_hcurl, CURLOPT_PROXY_CAPATH, _fileReaderConfig.proxyCaPath.c_str()));
+        }
+        if (!_fileReaderConfig.proxyCaInfo.empty()) {
+            _errorChecked("curl_easy_setopt(CURLOPT_PROXY_CAINFO)", curl_easy_setopt(_hcurl, CURLOPT_PROXY_CAINFO, _fileReaderConfig.proxyCaInfo.c_str()));
+        }
+    } else {
+        _errorChecked("curl_easy_setopt(CURLOPT_PROXY_SSL_VERIFYPEER)", curl_easy_setopt(_hcurl, CURLOPT_PROXY_SSL_VERIFYPEER, 0L));
+    }
+
     _errorChecked("curl_easy_setopt(CURLOPT_WRITEFUNCTION)", curl_easy_setopt(_hcurl, CURLOPT_WRITEFUNCTION, forwardToHttpFileReader));
     _errorChecked("curl_easy_setopt(CURLOPT_WRITEDATA)", curl_easy_setopt(_hcurl, CURLOPT_WRITEDATA, this));
     _line.erase();
