@@ -47,18 +47,21 @@ namespace qserv {
 namespace replica {
 
 IngestHttpSvc::Ptr IngestHttpSvc::create(ServiceProvider::Ptr const& serviceProvider,
-                                 string const& workerName,
-                                 string const& authKey) {
-    return IngestHttpSvc::Ptr(new IngestHttpSvc(serviceProvider, workerName, authKey));
+                                         string const& workerName,
+                                         string const& authKey,
+                                         string const& adminAuthKey) {
+    return IngestHttpSvc::Ptr(new IngestHttpSvc(serviceProvider, workerName, authKey, adminAuthKey));
 }
 
 
 IngestHttpSvc::IngestHttpSvc(ServiceProvider::Ptr const& serviceProvider,
-                     string const& workerName,
-                     string const& authKey)
+                             string const& workerName,
+                             string const& authKey,
+                             string const& adminAuthKey)
     :   _serviceProvider(serviceProvider),
         _workerName(workerName),
         _authKey(authKey),
+        _adminAuthKey(adminAuthKey),
         _io_service() {
 }
 
@@ -81,7 +84,7 @@ void IngestHttpSvc::run() {
         {"POST", "/ingest/file",
             [self](qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp) {
                 IngestHttpSvcMod::process(
-                        self->_serviceProvider, self->_workerName, self->_authKey,
+                        self->_serviceProvider, self->_workerName, self->_authKey, self->_adminAuthKey,
                         req, resp);
             }
         }

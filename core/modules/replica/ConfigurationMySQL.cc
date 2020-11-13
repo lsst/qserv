@@ -1186,6 +1186,51 @@ DatabaseInfo ConfigurationMySQL::publishDatabase(string const& name) {
 }
 
 
+DatabaseInfo ConfigurationMySQL::unPublishDatabase(string const& name) {
+
+    string const context_ = context() + __func__;
+
+    LOGS(_log, LOG_LVL_DEBUG, context_ << "  name: " << name);
+
+    if (name.empty()) {
+        throw invalid_argument(context_ + "  the database name can't be empty");
+    }
+    if (not isKnownDatabase(name)) {
+        throw invalid_argument(context_ + "  unknown database: '" + name + "'");
+    }
+    if (!databaseInfo(name).isPublished) {
+        throw logic_error(context_ + "  database is already un-published");
+    }
+
+    database::mysql::ConnectionHandler handler;
+    try {
+
+        // First update the database
+        handler.conn = database::mysql::Connection::open(_connectionParams);
+        handler.conn->execute(
+            [&name](decltype(handler.conn) conn) {
+                conn->begin();
+                conn->executeSimpleUpdateQuery(
+                    "config_database",
+                    conn->sqlEqual("database", name),
+                    make_pair("is_published", 0));
+                conn->commit();
+            }
+        );
+
+        // Then update the transient state 
+
+        auto itr = safeFindDatabase(name, context_);
+        itr->second.isPublished = false;
+
+    } catch (database::mysql::Error const& ex) {
+        LOGS(_log, LOG_LVL_ERROR, context_ << "MySQL error: " << ex.what());
+        throw;
+    }
+    return databaseInfo(name);
+}
+
+
 void ConfigurationMySQL::deleteDatabase(string const& name) {
 
     string const context_ = context() + __func__;

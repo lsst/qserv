@@ -40,39 +40,29 @@ namespace replica {
  * Class WorkerApp implements represents a worker service.
  */
 class WorkerApp : public Application {
-
 public:
-
-    /// The pointer type for instances of the class
     typedef std::shared_ptr<WorkerApp> Ptr;
 
     /**
      * The factory method is the only way of creating objects of this class
      * because of the very base class's inheritance from 'enable_shared_from_this'.
      *
-     * @param argc
-     *   the number of command-line arguments
-     *
-     * @param argv
-     *   the vector of command-line arguments
+     * @param argc  The number of command-line arguments.
+     * @param argv  A vector of command-line arguments.
      */
     static Ptr create(int argc, char* argv[]);
-
-    // Default construction and copy semantics are prohibited
 
     WorkerApp() = delete;
     WorkerApp(WorkerApp const&) = delete;
     WorkerApp& operator=(WorkerApp const&) = delete;
 
-    ~WorkerApp() final = default;
+    virtual ~WorkerApp() final = default;
 
 protected:
-
     /// @see Application::runImpl()
-    int runImpl() final;
+    virtual int runImpl() final;
 
 private:
-
     /// @see WorkerApp::create()
     WorkerApp(int argc, char* argv[]);
 
@@ -88,6 +78,9 @@ private:
 
     /// An authorization key for the catalog ingest operation.
     std::string _authKey;
+
+    /// An "administrator"-level authorization key.
+    std::string _adminAuthKey;
 };
 
 }}} // namespace lsst::qserv::replica

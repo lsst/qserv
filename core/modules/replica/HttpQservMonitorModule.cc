@@ -213,7 +213,7 @@ json HttpQservMonitorModule::_workers() {
 json HttpQservMonitorModule::_worker() {
     debug(__func__);
 
-    auto const worker = params().at("name");
+    auto const worker = params().at("worker");
     unsigned int const timeoutSec = query().optionalUInt("timeout_sec", workerResponseTimeoutSec());
 
     debug(__func__, "worker=" + worker);

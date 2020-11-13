@@ -188,7 +188,7 @@ void HttpProcessor::_initialize() {
             }
     );
     httpServer->addHandler(
-            "PUT", "/replication/config/worker/:name",
+            "PUT", "/replication/config/worker/:worker",
             [self](qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp) {
                 HttpConfigurationModule::process(
                         self->controller(), self->name(), self->_processorConfig,
@@ -197,7 +197,7 @@ void HttpProcessor::_initialize() {
             }
     );
     httpServer->addHandler(
-            "DELETE", "/replication/config/worker/:name",
+            "DELETE", "/replication/config/worker/:worker",
             [self](qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp) {
                 HttpConfigurationModule::process(
                         self->controller(), self->name(), self->_processorConfig,
@@ -215,7 +215,7 @@ void HttpProcessor::_initialize() {
             }
     );
     httpServer->addHandler(
-            "DELETE", "/replication/config/family/:name",
+            "DELETE", "/replication/config/family/:family",
             [self](qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp) {
                 HttpConfigurationModule::process(
                         self->controller(), self->name(), self->_processorConfig,
@@ -233,7 +233,7 @@ void HttpProcessor::_initialize() {
             }
     );
     httpServer->addHandler(
-            "DELETE", "/replication/config/database/:name",
+            "DELETE", "/replication/config/database/:database",
             [self](qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp) {
                 HttpConfigurationModule::process(
                         self->controller(), self->name(), self->_processorConfig,
@@ -251,7 +251,7 @@ void HttpProcessor::_initialize() {
             }
     );
     httpServer->addHandler(
-            "DELETE", "/replication/config/table/:name",
+            "DELETE", "/replication/config/table/:table",
             [self](qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp) {
                 HttpConfigurationModule::process(
                         self->controller(), self->name(), self->_processorConfig,
@@ -277,7 +277,7 @@ void HttpProcessor::_initialize() {
             }
     );
     httpServer->addHandler(
-            "GET", "/replication/qserv/worker/status/:name",
+            "GET", "/replication/qserv/worker/status/:worker",
             [self](qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp) {
                 HttpQservMonitorModule::process(
                         self->controller(), self->name(), self->_processorConfig,
@@ -394,6 +394,15 @@ void HttpProcessor::_initialize() {
             }
     );
     httpServer->addHandler(
+            "GET", "/ingest/database",
+            [self](qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp) {
+                HttpIngestModule::process(
+                        self->controller(), self->name(), self->_processorConfig,
+                        req, resp,
+                        "DATABASES");
+            }
+    );
+    httpServer->addHandler(
             "POST", "/ingest/database",
             [self](qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp) {
                 HttpIngestModule::process(
@@ -403,7 +412,7 @@ void HttpProcessor::_initialize() {
             }
     );
     httpServer->addHandler(
-            "PUT", "/ingest/database/:name",
+            "PUT", "/ingest/database/:database",
             [self](qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp) {
                 HttpIngestModule::process(
                         self->controller(), self->name(), self->_processorConfig,
@@ -412,12 +421,21 @@ void HttpProcessor::_initialize() {
             }
     );
     httpServer->addHandler(
-            "DELETE", "/ingest/database/:name",
+            "DELETE", "/ingest/database/:database",
             [self](qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp) {
                 HttpIngestModule::process(
                         self->controller(), self->name(), self->_processorConfig,
                         req, resp,
                         "DELETE-DATABASE", HttpModule::AUTH_REQUIRED);
+            }
+    );
+    httpServer->addHandler(
+            "GET", "/ingest/table/:database",
+            [self](qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp) {
+                HttpIngestModule::process(
+                        self->controller(), self->name(), self->_processorConfig,
+                        req, resp,
+                        "TABLES");
             }
     );
     httpServer->addHandler(
@@ -427,6 +445,15 @@ void HttpProcessor::_initialize() {
                         self->controller(), self->name(), self->_processorConfig,
                         req, resp,
                         "ADD-TABLE", HttpModule::AUTH_REQUIRED);
+            }
+    );
+    httpServer->addHandler(
+            "DELETE", "/ingest/table/:database/:table",
+            [self](qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp) {
+                HttpIngestModule::process(
+                        self->controller(), self->name(), self->_processorConfig,
+                        req, resp,
+                        "DELETE-TABLE", HttpModule::AUTH_REQUIRED);
             }
     );
     httpServer->addHandler(

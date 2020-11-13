@@ -49,7 +49,6 @@ namespace replica {
  */
 class HttpRequestBody {
 public:
-
     /// parsed body of the request
     nlohmann::json objJson = nlohmann::json::object();
 
@@ -63,23 +62,37 @@ public:
      * The constructor will parse and evaluate a body of an HTTP request
      * and populate the 'kv' dictionary. Exceptions may be thrown in
      * the following scenarios:
-     *
      * - the required HTTP header is not found in the request
      * - the body doesn't have a valid JSON string (unless the body is empty)
      * 
-     * @param req
-     *   the request to be parsed
+     * @param req  The request to be parsed.
      */
     explicit HttpRequestBody(qhttp::Request::Ptr const& req);
 
     /**
-     * The helper method for finding and returning a value of a required
-     * parameter.
-     *
-     * @param obj  the JSON object to be inspected
-     * @param name  the name of a parameter
-     * @return a value of the parameter
-     * @throws invalid_argument  if the parameter wasn't found
+     * Check if thw specified parameter is present in the input JSON object.
+     * @param obj  JSON object to be inspected.
+     * @param name  The name of a parameter.
+     * @return  'true' if the parameter was found.
+     * @throw invalid_argument  If the input structure is not the valid JSON object.
+     */
+    bool has(nlohmann::json const& obj, std::string const& name) const;
+
+    /**
+     * Check if thw specified parameter is present in the body.
+     * @param name  The name of a parameter.
+     * @return  'true' if the parameter was found.
+     * @throw invalid_argument  If the body is not the valid JSON object.
+     */
+    bool has(std::string const& name) const;
+
+    /**
+     * The helper method for finding and returning a value of a required parameter.
+     * @param obj  JSON object to be inspected.
+     * @param name  The name of a parameter.
+     * @return  A value of the parameter.
+     * @throw invalid_argument  If the input structure is not the valid JSON object,
+     *   or if the parameter wasn't found.
      */
     template <typename T>
     static T required(nlohmann::json const& obj,
@@ -95,10 +108,10 @@ public:
     }
 
     /**
-     * Find and return a value of a required parameter
-     * @param name  the name of a parameter
-     * @return a value of the parameter
-     * @throws invalid_argument  if the parameter wasn't found
+     * Find and return a value of a required parameter.
+     * @param name  The name of a parameter.
+     * @return  A value of the parameter.
+     * @throw invalid_argument  If the parameter wasn't found.
      */
     template <typename T>
     T required(std::string const& name) const {
@@ -107,11 +120,10 @@ public:
 
     /**
      * Return a value of a required parameter. Also ensure that the value is permitted.
-     *
      * @param name  The name of a parameter.
      * @param permitted  A collection of values to be checked against.
-     * @return A value of the parameter.
-     * @throws invalid_argument  If the parameter wasn't found, or if it's value
+     * @return  A value of the parameter.
+     * @throw invalid_argument  If the parameter wasn't found, or if its value
      *   is not in a collection of the permitted values.
      */
     template <typename T>
@@ -124,10 +136,10 @@ public:
     }
 
     /**
-     * Find and return a value for the specified optional parameter
-     * @param name  the name of a parameter
-     * @param defaultValue  a value to be returned if the parameter wasn't found
-     * @return a value of the parameter or the default value
+     * Find and return a value for the specified optional parameter.
+     * @param name  The name of a parameter.
+     * @param defaultValue  A value to be returned if the parameter wasn't found.
+     * @return  A value of the parameter or the default value.
      */
     template <typename T>
     T optional(std::string const& name, T const& defaultValue) const {
@@ -137,13 +149,11 @@ public:
 
     /**
      * Return a value of an optional parameter. Also ensure that the value is permitted.
-     *
      * @note the default value must be also in a set of the permitted values.
-     *
      * @param name  The name of a parameter.
      * @param defaultValue  A value to be returned if the parameter wasn't found.
      * @param permitted  A collection of values to be checked against.
-     * @return A value of the parameter or the default value.
+     * @return  A value of the parameter or the default value.
      */
     template <typename T>
     T optional(std::string const& name, T const& defaultValue, std::vector<T> const& permitted) const {
@@ -156,10 +166,10 @@ public:
 
 
     /**
-     * Find and return a vector of values for the specified required parameter
-     * @param name  the name of a parameter
-     * @return a collection of the values for the parameter
-     * @throws invalid_argument  if the parameter wasn't found
+     * Find and return a vector of values for the specified required parameter.
+     * @param name  The name of a parameter.
+     * @return  A collection of the values for the parameter.
+     * @throw invalid_argument  If the parameter wasn't found.
      */
     template <typename T>
     std::vector<T> requiredColl(std::string const& name) const {
@@ -183,11 +193,10 @@ public:
     }
 
     /**
-     * Find and return a vector of values for the specified optional parameter
-     * @param name  the name of a parameter
-     * @param defaultValue  a value to be returned if the parameter wasn't found
-     * @return a value of the parameter or the default value
-     * @return A value of the parameter or the default value.
+     * Find and return a vector of values for the specified optional parameter.
+     * @param name  The name of a parameter.
+     * @param defaultValue  A value to be returned if the parameter wasn't found.
+     * @return  A value of the parameter or the default value.
      */
     template <typename T>
     std::vector<T> optionalColl(std::string const& name, std::vector<T> const& defaultValue) const {
@@ -202,7 +211,7 @@ private:
      * Check if the specified value is found in a collection of permitted values.
      * @param value  A value to be checked.
      * @param permitted  A collection of values to be checked against.
-     * @return 'true' if the collection is empty or if the input value is found in the collection.
+     * @return  'true' if the collection is empty or if the input value is found in the collection.
      */
     template <typename T>
     static bool _in(T const& value, std::vector<T> const& permitted) {

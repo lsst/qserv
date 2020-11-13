@@ -59,10 +59,13 @@ public:
      *   SELECT-TRANSACTION-BY-ID  for a single transaction
      *   BEGIN-TRANSACTION         for starting a new transaction
      *   END-TRANSACTION           for finishing/aborting a transaction
+     *   DATABASES                 for retreiving info on databases for specified criteria
      *   ADD-DATABASE              for adding a new database for the data ingest
      *   PUBLISH-DATABASE          for publishing a database when data ingest is over
-     *   DELETE-DATABASE           for deleting an unpublished (partially ingest) database
+     *   DELETE-DATABASE           for deleting a database
+     *   TABLES                    for retreiving the names of tables in a scope of a database
      *   ADD-TABLE                 for adding a new table for the data ingest
+     *   DELETE-TABLE              for deleting a table from a database'
      *   BUILD-CHUNK-LIST          for building (or rebuilding) an "empty chunk list"
      *   REGULAR                   for reporting connection parameters of the ingest servers
      *                             required to load the regular tables
@@ -105,6 +108,9 @@ private:
     /// Commit or rollback a super-transaction
     nlohmann::json _endTransaction();
 
+    /// Get info on select databases
+    nlohmann::json _getDatabases();
+
     /// Register a database for an ingest
     nlohmann::json _addDatabase();
 
@@ -112,14 +118,28 @@ private:
     nlohmann::json _publishDatabase();
 
     /**
-     * Delete a database which is not yet published. All relevant data,
-     * including databases and tables at workers, the secondary index (if any)
-     * and Replication System's Configuration will be deleted s well.
+     * Delete a database. All relevant data, including databases and tables at workers,
+     * the secondary index (if any), the Replication System's Configuration, database entries
+     * at Qserv czar  will get deleted.
+     * @note This operation requires administrator-level privileges for deleting
+     *   published databases.
      */
     nlohmann::json _deleteDatabase();
 
+    /// Get info on select tables
+    nlohmann::json _getTables();
+
     /// Register a database table for an ingest
     nlohmann::json _addTable();
+
+    /**
+     * Delete a table. All relevant data, including the tables at workers,
+     * the Replication System's Configuration, table entries at Qserv czar will get deleted.
+     * @note This operation requires administrator-level privileges for deleting
+     *   tables of published databases.
+     * @note The "director" tables can't be deleted with this method.
+     */
+    nlohmann::json _deleteTable();
 
     /// (Re-)build the "empty chunks list" for a database.
     nlohmann::json _buildEmptyChunksList();
@@ -274,12 +294,6 @@ private:
      * @param databaseInfo  defines a scope of the operation
      */
     void _consolidateSecondaryIndex(DatabaseInfo const& databaseInfo) const;
-
-    /**
-     * Delete the "secondary index" table.
-     * @param databaseInfo defines a scope of the operation
-     */
-    void _deleteSecondaryIndex(DatabaseInfo const& databaseInfo) const;
 
     /**
      * This operation is called in a context of publishing new databases.

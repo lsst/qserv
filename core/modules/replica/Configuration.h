@@ -226,6 +226,7 @@ public:
     DatabaseInfo databaseInfo(std::string const& name) const final;
     DatabaseInfo addDatabase(DatabaseInfo const& info) final;
     DatabaseInfo publishDatabase(std::string const& name) final;
+    DatabaseInfo unPublishDatabase(std::string const& name) final;
 
     void deleteDatabase(std::string const& name) final;
 

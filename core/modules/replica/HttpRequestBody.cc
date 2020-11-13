@@ -59,4 +59,18 @@ HttpRequestBody::HttpRequestBody(qhttp::Request::Ptr const& req)
     }
 }
 
+
+bool HttpRequestBody::has(json const& obj, string const& name) const {
+    if (not obj.is_object()) {
+        throw invalid_argument(
+                "HttpRequestBody::" + string(__func__) + " parameter 'obj' is not a valid JSON object");
+    }
+    return obj.find(name) != obj.end();
+}
+
+
+bool HttpRequestBody::has(string const& name) const {
+    return has(objJson, name);
+}
+
 }}} // namespace lsst::qserv::replica

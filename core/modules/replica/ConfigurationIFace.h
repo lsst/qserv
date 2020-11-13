@@ -492,7 +492,7 @@ public:
     virtual DatabaseInfo addDatabase(DatabaseInfo const& info) = 0;
 
     /**
-     * Change database status into PUBLISHED.
+     * Change database status to PUBLISHED.
      * 
      * @param name The name of a database.
      * @return An updated database descriptor.
@@ -501,6 +501,17 @@ public:
      * @throw std::logic_error If the specified database is already PUBLISHED.
      */
     virtual DatabaseInfo publishDatabase(std::string const& name) = 0;
+
+    /**
+     * Change database status to UNPUBLISHED.
+     * 
+     * @param name The name of a database.
+     * @return An updated database descriptor.
+     * @throw std::invalid_argument If the specified database was not found in
+     *  the configuration
+     * @throw std::logic_error If the specified database is already UNPUBLISHED.
+     */
+    virtual DatabaseInfo unPublishDatabase(std::string const& name) = 0;
 
     /**
      * Delete an existing database.

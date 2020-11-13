@@ -482,7 +482,26 @@ DatabaseInfo ConfigurationStore::publishDatabase(string const& name) {
     itr->second.isPublished = true;
 
     return itr->second;
+}
 
+
+DatabaseInfo ConfigurationStore::unPublishDatabase(string const& name) {
+
+    LOGS(_log, LOG_LVL_DEBUG, context(__func__) << "  name: " << name);
+    
+    if (name.empty()) {
+        throw invalid_argument(_classMethodContext(__func__) + "  the database name can't be empty");
+    }
+    auto itr = _databaseInfo.find(name);
+    if (itr == _databaseInfo.end()) {
+        throw invalid_argument(_classMethodContext(__func__) + "  database is unknown");
+    }
+    if (!itr->second.isPublished) {
+        throw logic_error(_classMethodContext(__func__) + "  database is already un-published");
+    }
+    itr->second.isPublished = false;
+
+    return itr->second;
 }
 
 

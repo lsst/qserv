@@ -23,6 +23,7 @@
 #include "replica/HttpIngestModule.h"
 
 // System headers
+#include <algorithm>
 #include <limits>
 #include <fstream>
 #include <map>
@@ -53,6 +54,7 @@
 #include "replica/SqlCreateTableJob.h"
 #include "replica/SqlCreateTablesJob.h"
 #include "replica/SqlDeleteDbJob.h"
+#include "replica/SqlDeleteTableJob.h"
 #include "replica/SqlGrantAccessJob.h"
 #include "replica/SqlEnableDbJob.h"
 #include "replica/SqlRemoveTablePartitionsJob.h"
@@ -120,10 +122,13 @@ json HttpIngestModule::executeImpl(string const& subModuleName) {
     else if (subModuleName == "SELECT-TRANSACTION-BY-ID") return _getTransaction();
     else if (subModuleName == "BEGIN-TRANSACTION") return _beginTransaction();
     else if (subModuleName == "END-TRANSACTION") return _endTransaction();
+    else if (subModuleName == "DATABASES") return _getDatabases();
     else if (subModuleName == "ADD-DATABASE") return _addDatabase();
     else if (subModuleName == "PUBLISH-DATABASE") return _publishDatabase();
     else if (subModuleName == "DELETE-DATABASE") return _deleteDatabase();
+    else if (subModuleName == "TABLES") return _getTables();
     else if (subModuleName == "ADD-TABLE") return _addTable();
+    else if (subModuleName == "DELETE-TABLE") return _deleteTable();
     else if (subModuleName == "BUILD-CHUNK-LIST") return _buildEmptyChunksList();
     else if (subModuleName == "REGULAR") return _getRegular();
     throw invalid_argument(
@@ -373,6 +378,47 @@ json HttpIngestModule::_endTransaction() {
 }
 
 
+json HttpIngestModule::_getDatabases() {
+    debug(__func__);
+
+    auto const config = controller()->serviceProvider()->config();
+
+    // Leaving this name empty would result in scaning databases across all known
+    // families (instead of a single one) while applying the optional filter on
+    // the publishing status of each candidate.
+    //
+    // Note that filters "family" and "publishing status" are orthogonal in
+    // the current implementation of a method fetching the requested names of
+    // databases from the system's configuration. 
+    string const family = body().optional<string>("family", string());
+
+    bool const allDatabases = body().optional<unsigned int>("all", 1) != 0;
+
+    // This parameter is used only if a subset of databases specified in the optional
+    // flag "all" was requested. Should this be the case, a client will be required
+    // to resolve the ambiguity.
+    bool isPublished = false;
+    if (!allDatabases) {
+        isPublished = body().required<unsigned int>("published") != 0;
+    }
+
+    debug(__func__, "family=" + family);
+    debug(__func__, "allDatabases=" + bool2str(allDatabases));
+    debug(__func__, "isPublished=" + bool2str(isPublished));
+
+    json databasesJson = json::array();
+    for (auto const database: config->databases(family, allDatabases, isPublished )) {
+        auto const databaseInfo = config->databaseInfo(database);
+        databasesJson.push_back({
+            {"name", databaseInfo.name},
+            {"family", databaseInfo.family},
+            {"is_published", databaseInfo.isPublished ? 1: 0}
+        });
+    }
+    return json::object({{"databases", databasesJson}});
+}
+
+
 json HttpIngestModule::_addDatabase() {
     debug(__func__);
 
@@ -478,7 +524,7 @@ json HttpIngestModule::_publishDatabase() {
     auto const databaseServices = controller()->serviceProvider()->databaseServices();
     auto const config = controller()->serviceProvider()->config();
 
-    auto const database = params().at("name");
+    auto const database = params().at("database");
 
     bool const consolidateSecondayIndex = query().optionalBool("consolidate_secondary_index", false);
 
@@ -546,21 +592,49 @@ json HttpIngestModule::_publishDatabase() {
 json HttpIngestModule::_deleteDatabase() {
     debug(__func__);
 
+    auto const cssAccess = qservCssAccess();
     auto const config = controller()->serviceProvider()->config();
     bool const allWorkers = true;
-    auto const database = params().at("name");
-
-    bool const deleteSecondaryIndex = query().optionalBool("delete_secondary_index", false);
+    auto const database = params().at("database");
 
     debug(__func__, "database=" + database);
-    debug(__func__, "delete_secondary_index=" + to_string(deleteSecondaryIndex ? 1 : 0));
 
-    auto const databaseInfo = config->databaseInfo(database);
+    auto databaseInfo = config->databaseInfo(database);
     if (databaseInfo.isPublished) {
-        throw HttpError(__func__, "unable to delete the database which is already published");
+        if (!isAdmin()) {
+            throw HttpError(
+                    __func__, "deleting published databases requires administrator's privileges.");
+        }
     }
 
-    if (deleteSecondaryIndex) _deleteSecondaryIndex(databaseInfo);
+    // Get the names of the 'director' tables either from the Replication/Ingest system's
+    // configuration, or from CSS. It's okay not to have those tables if they weren't yet
+    // created during the initial catalog ingest.
+    // NOTE: Qserv allows more than one 'director' table. 
+    set<string> directorTables; 
+    directorTables.insert(databaseInfo.directorTable);
+    if (cssAccess->containsDb(databaseInfo.name)) {
+        for (auto const table: cssAccess->getTableNames(databaseInfo.name)) {
+            auto const partTableParams = cssAccess->getPartTableParams(databaseInfo.name, table);
+            if (!partTableParams.dirTable.empty()) directorTables.insert(partTableParams.dirTable);
+        }
+    }
+
+    // Remove related database etries from czar's MySQL if anyting is still there
+
+    if (cssAccess->containsDb(databaseInfo.name)) {
+        cssAccess->dropDb(databaseInfo.name);
+    }
+    database::mysql::ConnectionHandler const h(qservMasterDbConnection("qservCssData"));
+    h.conn->executeInOwnTransaction([&databaseInfo, &directorTables](decltype(h.conn) conn) {
+        conn->execute("DROP DATABASE IF EXISTS " + conn->sqlId(databaseInfo.name));
+        auto const emptyChunkListTable = css::DbInterfaceMySql::getEmptyChunksTableName(databaseInfo.name); 
+        conn->execute("DROP TABLE IF EXISTS " + conn->sqlId("qservCssData", emptyChunkListTable));
+        for (auto const table: directorTables) {
+            auto const secondaryIndexTable = databaseInfo.name + "__" + table;
+            conn->execute("DROP TABLE IF EXISTS " + conn->sqlId("qservMeta", secondaryIndexTable));
+        }
+    });
 
     // Delete database entries at workers
     auto const job = SqlDeleteDbJob::create(databaseInfo.name, allWorkers, controller());
@@ -582,6 +656,33 @@ json HttpIngestModule::_deleteDatabase() {
     if (not error.empty()) throw HttpError(__func__, error);
 
     return json::object();
+}
+
+
+json HttpIngestModule::_getTables() {
+    debug(__func__);
+
+    auto const config = controller()->serviceProvider()->config();
+    auto const database = params().at("database");
+
+    debug(__func__, "database=" + database);
+
+    auto const databaseInfo = config->databaseInfo(database);
+
+    json tablesJson = json::array();
+    for (auto&& table: databaseInfo.partitionedTables) {
+        tablesJson.push_back({
+            {"name", table},
+            {"is_partitioned", 1}
+        });
+    }
+    for (auto&& table: databaseInfo.regularTables) {
+        tablesJson.push_back({
+            {"name", table},
+            {"is_partitioned", 0}
+        });
+    }
+    return json::object({{"tables", tablesJson}});
 }
 
 
@@ -723,6 +824,81 @@ json HttpIngestModule::_addTable() {
     if (not error.empty()) throw HttpError(__func__, error);
 
     return result;
+}
+
+
+json HttpIngestModule::_deleteTable() {
+    debug(__func__);
+
+    auto const cssAccess = qservCssAccess();
+    auto const config = controller()->serviceProvider()->config();
+    bool const allWorkers = true;
+    auto const database = params().at("database");
+    auto const table = params().at("table");
+
+    debug(__func__, "database=" + database);
+    debug(__func__, "table=" + table);
+
+    auto databaseInfo = config->databaseInfo(database);
+    auto const tables = databaseInfo.tables();
+    if (tables.cend() == find(tables.cbegin(), tables.cend(), table)) {
+        throw invalid_argument(context() + "::" + string(__func__) + " unknown table: '" + table + "'");
+    }
+    if (databaseInfo.isPublished) {
+        if (!isAdmin()) {
+            throw HttpError(
+                    __func__, "deleting tables of published databases requires administrator's"
+                    " privileges.");
+        }
+        auto const tableParams = cssAccess->getTableParams(databaseInfo.name, table);
+        if (tableParams.partitioning.dirTable == table) {
+            throw HttpError(
+                    __func__, "the director table can't be deleted from the published catalog"
+                    " w/o deleting the whole database.");
+        }
+    } else {
+        // This check is done agaist the internal data structure of the Replication/Ingest System
+        // since CSS is not populated before a database gets published.
+        if (databaseInfo.isDirector(table)) {
+            throw HttpError(
+                    __func__, "the director table can't be deleted from the un-published catalog"
+                    " w/o deleting the whole database.");
+        }
+    }
+
+    // Remove table entry from czar's databases if it's still there
+
+    if (cssAccess->containsDb(databaseInfo.name)) {
+        if (cssAccess->containsTable(databaseInfo.name, table)) {
+            cssAccess->dropTable(databaseInfo.name, databaseInfo.name);
+        }
+    }
+    database::mysql::ConnectionHandler const h(qservMasterDbConnection("qservCssData"));
+    h.conn->executeInOwnTransaction([&databaseInfo, &table](decltype(h.conn) conn) {
+        // Remove table entry from czar's MySQL
+        conn->execute("DROP TABLE IF EXISTS " + conn->sqlId(databaseInfo.name, table));
+    });
+
+    // Delete table entries at workers
+    auto const job = SqlDeleteTableJob::create(databaseInfo.name, table, allWorkers, controller());
+    job->start();
+    logJobStartedEvent(SqlDeleteTableJob::typeName(), job, databaseInfo.family);
+    job->wait();
+    logJobFinishedEvent(SqlDeleteTableJob::typeName(), job, databaseInfo.family);
+
+    string error = ::jobCompletionErrorIfAny(job, "table deletion failed");
+    if (not error.empty()) throw HttpError(__func__, error);
+
+    // Remove table entry from the Configuration. This will also eliminate all
+    // dependent metadata, such as replicas info
+    config->deleteTable(databaseInfo.name, table);
+
+    // This step is needed to get workers' Configuration in-sync with its
+    // persistent state.
+    error = _reconfigureWorkers(databaseInfo, allWorkers, workerReconfigTimeoutSec());
+    if (not error.empty()) throw HttpError(__func__, error);
+
+    return json::object();
 }
 
 
@@ -1276,31 +1452,6 @@ void HttpIngestModule::_consolidateSecondaryIndex(DatabaseInfo const& databaseIn
     string const query =
         "ALTER TABLE " + h.conn->sqlId(databaseInfo.name + "__" + databaseInfo.directorTable) +
         " REMOVE PARTITIONING";
-
-    debug(__func__, query);
-
-    h.conn->execute([&query](decltype(h.conn) conn) {
-        conn->begin();
-        conn->execute(query);
-        conn->commit();
-    });
-}
-
-
-void HttpIngestModule::_deleteSecondaryIndex(DatabaseInfo const& databaseInfo) const {
-
-    if (databaseInfo.directorTable.empty()) {
-        throw logic_error(
-                "director table has not been properly configured in database '" +
-                databaseInfo.name + "'");
-    }
-
-    // Manage the new connection via the RAII-style handler to ensure the transaction
-    // is automatically rolled-back in case of exceptions.
-
-    database::mysql::ConnectionHandler const h(qservMasterDbConnection("qservMeta"));
-    string const query =
-        "DROP TABLE IF EXISTS " + h.conn->sqlId(databaseInfo.name + "__" + databaseInfo.directorTable);
 
     debug(__func__, query);
 

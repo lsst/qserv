@@ -53,6 +53,7 @@ HttpModule::HttpModule(Controller::Ptr const& controller,
                        qhttp::Response::Ptr const& resp)
     :   EventLogger(controller, taskName),
         HttpModuleBase(processorConfig.authKey,
+                       processorConfig.adminAuthKey,
                        req,
                        resp) {
 }

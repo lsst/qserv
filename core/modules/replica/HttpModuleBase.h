@@ -82,25 +82,41 @@ public:
      *   the subclass-specific implementation of the pure virtual method
      *   HttpModuleBase::executeImpl().
      * @param authType  Authorization requirements of the module. If AUTH_REQUIRED is
-     *   requested then the method will enforce the authorization.  would result in a error
-     *   sent back to a client.
+     *   requested then the method will enforce the authorization. A lack of required
+     *   authorization key in a request, or an incorrect value of such key would result
+     *   in a error sent back to a client.
+     * 
+     * @note For requests with 'AuthType::AUTH_REQUIRED' authorization keys must be sent
+     *   by a requestor in the body of a request. There are two types of keys. The normal
+     *   authorization level key "auth_key" is required for most operations resulting
+     *   in any changes made to a persistent or transient states of Qserv, and its
+     *   Replication/Ingest systems. The key is also required when requesting sensitive
+     *   information from the system. The "administrator"-level "admin_auth_key" superseeds
+     *   "auth_key" by adding elevated privileges to requests. If "admin_auth_key" is found
+     *   in the body then "auth_key" (if any provided) will be ignored, and it won't be
+     *   validated if present. It's up to a specific module to decide on how to (or if)
+     *   use the administrative privileges.
      */
     void execute(std::string const& subModuleName=std::string(),
                  AuthType const authType=AUTH_NONE);
 
 protected:
     /**
-     * 
-     * @param authKey An authorization key for operations which require extra security.
-     * @param req     The HTTP request.
-     * @param resp    The HTTP response channel.
+     * @param authKey  An authorization key for operations which require extra security.
+     * @param adminAuthKey  An administrator-level authorization key.
+     * @param req  The HTTP request.
+     * @param resp  The HTTP response channel.
      */
     HttpModuleBase(std::string const& authKey,
+                   std::string const& adminAuthKey,
                    qhttp::Request::Ptr const& req,
                    qhttp::Response::Ptr const& resp);
 
     qhttp::Request::Ptr const& req() const { return _req; }
     qhttp::Response::Ptr const& resp() const { return _resp; }
+
+    /// @return Authorization level of the request.
+    bool isAdmin() const { return _isAdmin; }
 
     /// @return Parameters of a REST request.
     std::unordered_map<std::string, std::string> const& params() const { return _req->params; }
@@ -151,7 +167,7 @@ private:
      *
      * @throw AuthError This exception is thrown if the authorization requirements weren't met.
      */
-    void _enforceAuthorization() const;
+    void _enforceAuthorization();
 
     /**
      * Report a error condition and send an error message back to a requester
@@ -175,8 +191,12 @@ private:
     // Input parameters
 
     std::string const _authKey;
+    std::string const _adminAuthKey;
     qhttp::Request::Ptr const _req;
     qhttp::Response::Ptr const _resp;
+
+    /// The flag indicating if a request has been granted the "administrator"-level privileges.
+    bool _isAdmin = false;
 
     /// The parser for parameters passed into the Web services via the optional
     /// query part of a URL. The object gets initialized from the request.
