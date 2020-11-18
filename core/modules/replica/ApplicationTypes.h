@@ -217,7 +217,7 @@ public:
     virtual ~ParameterParser() = default;
 
     /// @see ArgumentParser::parse()
-    void parse(std::string const& inStr) final {
+    void parse(std::string const& inStr="") final {
         try {
             _var = boost::lexical_cast<T>(inStr);
         } catch (boost::bad_lexical_cast const& ex) {
@@ -306,7 +306,7 @@ public:
     virtual ~OptionParser() = default;
 
     /// @see ArgumentParser::parse()
-    void parse(std::string const& inStr) final {
+    void parse(std::string const& inStr="") final {
         if (inStr.empty()) return;
         try {
             _var = boost::lexical_cast<T>(inStr);
@@ -369,23 +369,31 @@ public:
      *   a value of the parameter after successful parsing. The type of the
      *   parameter is determined by the template argument.
      *
+     * @param reverse
+     *   the parameter which would reverse the behavior of the parser
+     *   after finding the flag. If the parameter is set to 'true' then the result
+     *   will be reset to 'false'. The default behavior of the parser is to set
+     *   the result to 'true' if the flag was found.
+     *
      * @see ArgumentParser::ArgumentParser()
      */
     FlagParser(std::string const& name,
                std::string const& description,
-               bool& var)
+               bool& var,
+               bool reverse)
     :   ArgumentParser(name,
                        description),
-        _var(var) {
+        _var(var),
+        _reverse(reverse) {
     }
 
     virtual ~FlagParser() = default;
 
     /// @see ArgumentParser::parse()
-    void parse(std::string const& inStr) final { _var = true; }
+    void parse(std::string const& inStr="") final { _var = _reverse ? false : true; }
 
     /// @see ArgumentParser::defaultValue()
-    std::string defaultValue() const final { return "false"; }
+    std::string defaultValue() const final { return _reverse ? "true" : "false"; }
 
     /// @see ArgumentParser::dumpNameValue()
     void dumpNameValue(std::ostream& os) const final {
@@ -396,6 +404,9 @@ private:
     
     /// A reference to a user variable to be initialized
     bool& _var;
+
+    /// The flag value reversing option
+    bool _reverse;
 };
 
 
@@ -546,6 +557,16 @@ public:
     Command& flag(std::string const& name,
                   std::string const& description,
                   bool& var);
+
+    /**
+     * This variation of the flag registration method would result in reversing
+     * result if a flag s found in the command line.
+     *
+     * @see method Command::flag()
+     */
+    Command& reversedFlag(std::string const& name,
+                          std::string const& description,
+                          bool& var);
 
 private:
 
@@ -865,6 +886,16 @@ public:
     Parser& flag(std::string const& name,
                  std::string const& description,
                  bool& var);
+
+    /**
+     * This variation of the flag registration method would result in reversing
+     * result if a flag s found in the command line.
+     *
+     * @see method Parser::flag()
+     */
+    Parser& reversedFlag(std::string const& name,
+                         std::string const& description,
+                         bool& var);
 
     /**
      * Parse parameters, options and flags requested by above

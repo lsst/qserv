@@ -71,11 +71,11 @@ BOOST_AUTO_TEST_CASE(ApplicationParser2) {
     //
     // Syntax tested:
     //
-    //  <r1>  <r2>  <r3>  <r4>  <r5>  <r6> [<o1>] [<o2>] [--o3=<val>]  [--f1]  [--f2]
+    //  <r1>  <r2>  <r3>  <r4>  <r5>  <r6> [<o1>] [<o2>] [--o3=<val>]  [--f1]  [--f2]  [--no-f3]
     //
     // Values of the input arguments tested:
     //
-    //  "1"   "2"   "3"   4.4   5.5   1    "o1"          --o3="o3"      --f1 
+    //  "1"   "2"   "3"   4.4   5.5   1    "o1"          --o3="o3"      --f1            --no-f3
 
     string       r1;
     int          r2 = -1;
@@ -88,14 +88,16 @@ BOOST_AUTO_TEST_CASE(ApplicationParser2) {
     string       o3;
     bool         f1 = false;
     bool         f2 = false;
+    bool         f3 = true;
 
-    int const         argc   = 10;
+    int const         argc   = 11;
     char const* const argv[] = {
         "testApplicationParser",
         "1", "2", "3", "4.4", "5.5", "1",   // required
         "o1",                               // optional
         "--o3=o3",                          // options
-        "--f1"                              // flags
+        "--f1",                             // flags
+        "--no-f3"                           // flags
     };
 
     BOOST_REQUIRE_NO_THROW({
@@ -111,7 +113,8 @@ BOOST_AUTO_TEST_CASE(ApplicationParser2) {
               .optional("o2", "optional parameter o2", o2)
               .option(  "o3", "option o3",             o3)
               .flag(    "f1", "flag f1",               f1)
-              .flag(    "f2", "flag f2",               f2);
+              .flag(    "f2", "flag f2",               f2)
+              .reversedFlag("no-f3", "reversed flag f3", f3);
         parser.parse();
 
         LOGS_INFO("ApplicationParser: input strings  " + parser.serializeArguments());
@@ -125,7 +128,8 @@ BOOST_AUTO_TEST_CASE(ApplicationParser2) {
                   " o2=" + o2 +
                   " o3=" + o3 +
                   " f1=" + string(f1 ? "true" : "false") +
-                  " f2=" + string(f2 ? "true" : "false"));
+                  " f2=" + string(f2 ? "true" : "false") +
+                  " f3=" + string(f3 ? "true" : "false"));
         
         BOOST_CHECK_EQUAL(r1, "1");
         BOOST_CHECK_EQUAL(r2, 2);
@@ -138,6 +142,7 @@ BOOST_AUTO_TEST_CASE(ApplicationParser2) {
         BOOST_CHECK_EQUAL(o3, "o3");
         BOOST_CHECK(f1);
         BOOST_CHECK(not f2);
+        BOOST_CHECK(not f3);
     });
     
     LOGS_INFO("ApplicationParser2 test ends");
