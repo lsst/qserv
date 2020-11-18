@@ -206,7 +206,10 @@ void Server::_readRequest(std::shared_ptr<ip::tcp::socket> socket)
                 request->_parseHeader();
                 request->_parseUri();
                 if (request->version == "HTTP/1.1") {
-                    *reuseSocket = true;
+                    // Temporary disable this option due to a bug in the implementation
+                    // causing disconnect if running the service within the Docker environment.
+                    // See: DM-27396
+                    //*reuseSocket = true;
                 }
                 if (request->header.count("Content-Length") > 0) {
                     asio::async_read(
