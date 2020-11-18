@@ -219,6 +219,8 @@ void IngestFileSvc::loadDataIntoTable() {
 
                 // Chunked tables are created from the prototype table which is expected
                 // to exist in the database before attempting data loading.
+                // Note that this algorithm won't create MySQL partitions in the DUMMY chunk
+                // tables since these tables are not supposed to store any data.
 
                 bool const overlap = true;
                 string const sqlProtoTable       = sqlDatabase + "." + h.conn->sqlId(table);
@@ -235,6 +237,12 @@ void IngestFileSvc::loadDataIntoTable() {
                     tableMgtStatements.push_back(
                         "CREATE TABLE IF NOT EXISTS " + table + " LIKE " + sqlProtoTable
                     );
+                }
+                string const tablesToBePartitioned[] = {
+                    sqlTable,
+                    sqlFullOverlapTable
+                };
+                for (auto&& table: tablesToBePartitioned) {
                     tableMgtStatements.push_back(
                         "ALTER TABLE " + table + " ADD PARTITION IF NOT EXISTS (PARTITION " + sqlPartition +
                             " VALUES IN (" + to_string(_transactionId) + "))"
