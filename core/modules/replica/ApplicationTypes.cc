@@ -50,12 +50,31 @@ ostream& operator<<(ostream& os, ArgumentParser const& arg) {
 Command& Command::flag(string const& name,
                        string const& description,
                        bool& var) {
+    bool const reverse = false;
     _flags.emplace(
         name,
         make_unique<FlagParser>(
             name,
             description,
-            var
+            var,
+            reverse
+        )
+    );
+    return *this;
+}
+
+
+Command& Command::reversedFlag(string const& name,
+                               string const& description,
+                               bool& var) {
+    bool const reverse = true;
+    _flags.emplace(
+        name,
+        make_unique<FlagParser>(
+            name,
+            description,
+            var,
+            reverse
         )
     );
     return *this;
@@ -131,13 +150,35 @@ Parser& Parser::flag(string const& name,
                      string const& description,
                      bool& var) {
     _verifyArgument(name);
+    bool const reverse = false;
     _flags.emplace(
         make_pair(
             name,
             make_unique<FlagParser>(
                 name,
                 description,
-                var
+                var,
+                reverse
+            )
+        )
+    );
+    return *this;
+}
+
+
+Parser& Parser::reversedFlag(string const& name,
+                             string const& description,
+                             bool& var) {
+    _verifyArgument(name);
+    bool const reverse = true;
+    _flags.emplace(
+        make_pair(
+            name,
+            make_unique<FlagParser>(
+                name,
+                description,
+                var,
+                reverse
             )
         )
     );

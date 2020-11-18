@@ -27,6 +27,9 @@
 #include <vector>
 #include "curl/curl.h"
 
+// Qserv headers
+#include "replica/IngestConfigTypes.h"
+
 // This header declarations
 namespace lsst {
 namespace qserv {
@@ -66,11 +69,13 @@ public:
      * @param url A location of a file to be retrieved.
      * @param data Optional data to be sent with a request (depends on the HTTP headers).
      * @param headers Optional HTTP headers to be send with a request.
+     * @param fileReaderConfig Optional configuration parameters of the reader.
      */
     HttpFileReader(std::string const& method,
                    std::string const& url,
                    std::string const& data=std::string(),
-                   std::vector<std::string> const& headers=std::vector<std::string>());
+                   std::vector<std::string> const& headers=std::vector<std::string>(),
+                   HttpFileReaderConfig const& fileReaderConfig=HttpFileReaderConfig());
 
     /**
      * Begin processing a request. The whole content of a file (or a data source)
@@ -117,10 +122,12 @@ private:
     void _store(char const* ptr, size_t nchars);
 
     // Input parameters
+
     std::string const _method;
     std::string const _url;
     std::string const _data;
     std::vector<std::string> const _headers;
+    HttpFileReaderConfig const _fileReaderConfig;
 
     CallbackType _onEachLine;   ///< set by method read() before pulling a file
 

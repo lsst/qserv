@@ -2230,6 +2230,7 @@ void DatabaseServicesMySQL::saveIngestParam(string const& database,
                         conn->sqlEqual("database", database) + " AND " + 
                         conn->sqlEqual("category", category) + " AND " +
                         conn->sqlEqual("param", param);
+                conn->rollback();
                 conn->begin();
                 conn->executeSimpleUpdateQuery("database_ingest", predicate, make_pair("value", value));
                 conn->commit();

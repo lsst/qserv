@@ -56,6 +56,9 @@ protected:
     IngestFileSvc(ServiceProvider::Ptr const& serviceProvider,
                   std::string const& workerName);
 
+    ServiceProvider::Ptr const& serviceProvider() const { return _serviceProvider; }
+    WorkerInfo const& workerInfo() const { return _workerInfo; }
+
     /**
      * Open a file.
      *

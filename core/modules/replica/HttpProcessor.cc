@@ -29,6 +29,7 @@
 #include "replica/HttpControllersModule.h"
 #include "replica/HttpExportModule.h"
 #include "replica/HttpIngestChunksModule.h"
+#include "replica/HttpIngestConfigModule.h"
 #include "replica/HttpIngestModule.h"
 #include "replica/HttpIngestIndexModule.h"
 #include "replica/HttpJobsModule.h"
@@ -355,6 +356,24 @@ void HttpProcessor::_initialize() {
                         self->controller(), self->name(), self->_processorConfig,
                         req, resp,
                         "DROP-INDEXES", HttpModule::AUTH_REQUIRED);
+            }
+    );
+    httpServer->addHandler(
+            "GET", "/ingest/config",
+            [self](qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp) {
+                HttpIngestConfigModule::process(
+                        self->controller(), self->name(), self->_processorConfig,
+                        req, resp,
+                        "GET");
+            }
+    );
+    httpServer->addHandler(
+            "PUT", "/ingest/config",
+            [self](qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp) {
+                HttpIngestConfigModule::process(
+                        self->controller(), self->name(), self->_processorConfig,
+                        req, resp,
+                        "UPDATE", HttpModule::AUTH_REQUIRED);
             }
     );
     httpServer->addHandler(
