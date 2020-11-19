@@ -31,7 +31,6 @@
 #include "boost/asio.hpp"
 
 // Qserv headers
-#include "qhttp/Server.h"
 #include "replica/ChunkLocker.h"
 #include "util/Mutex.h"
 
@@ -133,9 +132,6 @@ public:
     /// @return a reference to worker messenger service (configured for controllers)
     MessengerPtr const& messenger();
 
-    /// @return a reference to the built-in HTTP server (configured for controllers)
-    qhttp::Server::Ptr const& httpServer();
-
     /**
      * Make sure this worker is known in the configuration
      *
@@ -201,9 +197,6 @@ private:
 
     /// Worker messenger service  (lazy instantiation on a first request)
     MessengerPtr _messenger;
-
-    /// The server for processing REST requests (lazy instantiation on a first request)
-    qhttp::Server::Ptr _httpServer;
 
     /// The mutex for enforcing thread safety of the class's public API
     /// and internal operations.
