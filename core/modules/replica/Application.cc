@@ -30,7 +30,14 @@
 #include "replica/protocol.pb.h"
 #include "util/Issue.h"
 
+// LSST headers
+#include "lsst/log/Log.h"
+
 using namespace std;
+
+namespace {
+LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.Application");
+}
 
 namespace lsst {
 namespace qserv {
@@ -51,14 +58,11 @@ Application::Application(int argc,
         _databaseAllowReconnect       (Configuration::databaseAllowReconnect() ? 1 : 0),
         _databaseConnectTimeoutSec    (Configuration::databaseConnectTimeoutSec()),
         _databaseMaxReconnects        (Configuration::databaseMaxReconnects()),
-        _databaseTransactionTimeoutSec(Configuration::databaseTransactionTimeoutSec()),
-        _log(LOG_GET("lsst.qserv.replica.Application")) {
+        _databaseTransactionTimeoutSec(Configuration::databaseTransactionTimeoutSec()) {
 
+    // Verify that the version of the library that we linked against is
+    // compatible with the version of the headers we compiled against.
     if (_boostProtobufVersionCheck) {
-
-        // Verify that the version of the library that we linked against is
-        // compatible with the version of the headers we compiled against.
-
         GOOGLE_PROTOBUF_VERIFY_VERSION;
     }
 }
@@ -67,7 +71,6 @@ Application::Application(int argc,
 int Application::run() {
 
     // Add extra options to the parser configuration
-
     parser().flag(
         "debug",
         "Change the minimum logging level from ERROR to DEBUG. Note that the Logger"
@@ -125,7 +128,6 @@ int Application::run() {
     }
 
     // Change the default logging level if requested
-
     if (not _debugFlag) {
         LOG_CONFIG_PROP(
             "log4j.rootLogger=INFO, CONSOLE\n"
@@ -151,7 +153,6 @@ int Application::run() {
         //
         // Note that onFinish callbacks which are activated upon the completion of
         // the asynchronous activities will be run by a thread from the pool.
-
         _serviceProvider = ServiceProvider::create(_config, _instanceId);
         _serviceProvider->run();
     }

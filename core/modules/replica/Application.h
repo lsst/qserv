@@ -29,9 +29,6 @@
 #include "replica/ApplicationTypes.h"
 #include "replica/ServiceProvider.h"
 
-// LSST headers
-#include "lsst/log/Log.h"
-
 // This header declarations
 namespace lsst {
 namespace qserv {
@@ -44,11 +41,8 @@ namespace replica {
   */
 class Application : public std::enable_shared_from_this<Application> {
 public:
-
     /// To bring the Parser type into the class's scope
     using Parser = detail::Parser;
-
-    // Default construction and copy semantics are prohibited
 
     Application() = delete;
     Application(Application const&) = delete;
@@ -63,10 +57,8 @@ public:
      * the predefined values returned by the method as defined by type
      * Parser::Status. Other values are determined by the user-supplied
      * implementation of virtual method 'runImpl'.
-     * 
      * @see Parser::Status
      * @see Application::runImpl()
-     *
      * @return a completion code
      */
     int run();
@@ -75,13 +67,13 @@ protected:
     /**
      * Construct and initialize an application.
      *
-     * @param arc  An argument count
-     * @parav argv  A vector of argument values
-     * @param description  An optional description of an application as it will appear
+     * @param arc An argument count.
+     * @param argv A vector of argument values.
+     * @param description An optional description of an application as it will appear
      *   in the documentation string reported with option "--help".
      * @param injectDatabaseOptions An optional flag which will inject database options
      *   and use an input from a user to change the corresponding defaults in the Configuration.
-     * @param boostProtobufVersionCheck  An optional flag which will force Google Protobuf
+     * @param boostProtobufVersionCheck An optional flag which will force Google Protobuf
      *   version check. The check will ensure that a version of the Protobuf library linked
      *   to an application is consistent with header files.
      * @param enableServiceProvider An optional flag which will inject configuration
@@ -101,15 +93,13 @@ protected:
         return std::static_pointer_cast<T>(shared_from_this());
     }
 
-    /// @return reference to the parser
+    /// @return A reference to the parser.
     Parser& parser() { return _parser; }
 
     /**
-     * @return reference to the ServiceProvider object
-     *
-     * @throws std::logic_error
-     *   if Configuration loading and ServiceProvider is not enabled
-     *   in the constructor of the class.
+     * @return A reference to the ServiceProvider object.
+     * @throw std::logic_error If Configuration loading and ServiceProvider is
+     *   not enabled in the constructor of the class.
      */
     ServiceProvider::Ptr const& serviceProvider() const;
 
@@ -118,16 +108,13 @@ protected:
      * the application's logic. The method is called after successfully
      * parsing the command-line parameters and initializing the application's
      * context.
-     *
      * @see method Application::run()
-     * 
-     * @eturn a completion code
+     * @return A completion code.
      */
     virtual int runImpl() = 0;
     
 private:
     // Input parameters
-
     bool const _injectDatabaseOptions;
     bool const _boostProtobufVersionCheck;
     bool const _enableServiceProvider;
@@ -153,9 +140,6 @@ private:
 
     /// The provider of the Configuration and other services
     ServiceProvider::Ptr _serviceProvider;
-
-    /// Message logger
-    LOG_LOGGER _log;
 };
 
 }}} // namespace lsst::qserv::replica
