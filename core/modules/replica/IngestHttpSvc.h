@@ -23,12 +23,10 @@
 
 // System headers
 #include <memory>
-
-// Third party headers
-#include "boost/asio.hpp"
+#include <string>
 
 // Qserv headers
-#include "qhttp/Server.h"
+#include "replica/HttpSvc.h"
 #include "replica/ServiceProvider.h"
 
 // This header declarations
@@ -37,22 +35,20 @@ namespace qserv {
 namespace replica {
 
 /**
-  * Class IngestHttpSvc is used for handling incoming REST API requests for
-  * the table contribution uploads. Each instance of this class will be running
-  * in its own thread.
-  * 
-  * @note The class's implementation starts its own collection of BOOST ASIO
-  *   service threads as configured in Configuration.
-  * @note The implementation of the class is not thread-safe.
-  */
-class IngestHttpSvc: public std::enable_shared_from_this<IngestHttpSvc>  {
+ * Class IngestHttpSvc is used for handling incoming REST API requests for
+ * the table contribution uploads. Each instance of this class will be running
+ * in its own thread.
+ * 
+ * @note The class's implementation starts its own collection of BOOST ASIO
+ *   service threads as configured in Configuration.
+ * @note The implementation of the class is not thread-safe.
+ */
+class IngestHttpSvc: public HttpSvc {
 public:
     typedef std::shared_ptr<IngestHttpSvc> Ptr;
 
     /**
-     * Static factory method is needed to prevent issue with the lifespan
-     * and memory management of instances created otherwise (as values or via
-     * low-level pointers).
+     * Create an instance of the service.
      *
      * @param serviceProvider For configuration, etc. services.
      * @param workerName The name of a worker this service is acting upon (used for
@@ -70,15 +66,14 @@ public:
     IngestHttpSvc(IngestHttpSvc const&) = delete;
     IngestHttpSvc& operator=(IngestHttpSvc const&) = delete;
 
-    /// Non-trivial destructor is required to stop the HTTP server.
-    ~IngestHttpSvc();
+    virtual ~IngestHttpSvc() = default;
 
-    /**
-     * Run the server in a thread pool (as per the Configuration).
-     * @note This is the blocking operation. Please, run it within its own thread if needed.
-     * @throw std::logic_error  If trying to call the method while the service is already running.
-     */
-    void run();
+protected:
+    /// @see HttpSvc::context()
+    virtual std::string const& context() const;
+
+    /// @see HttpSvc::registerServices()
+    virtual void registerServices();
 
 private:
     /// @see IngestHttpSvc::create()
@@ -87,18 +82,9 @@ private:
                   std::string const& authKey,
                   std::string const& adminAuthKey);
 
-    /// @return The context string to be used for the message logging.
-    std::string _context() const { return "INGEST-HTTP-SVC  "; }
-
    // Input parameters
 
-    ServiceProvider::Ptr const _serviceProvider;
     std::string const _workerName;
-    std::string const _authKey;
-    std::string const _adminAuthKey;
-
-    boost::asio::io_service _io_service;
-    qhttp::Server::Ptr _httpServer;
 };
 
 }}} // namespace lsst::qserv::replica

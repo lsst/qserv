@@ -24,23 +24,18 @@
 
 // System headers
 #include <functional>
-#include <stdexcept>
-#include <thread>
 
 // Qserv headers
+#include "qhttp/Request.h"
+#include "qhttp/Response.h"
 #include "replica/Configuration.h"
 #include "replica/IngestHttpSvcMod.h"
-
-// LSST headers
-#include "lsst/log/Log.h"
 
 using namespace std;
 
 namespace {
-
-LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.IngestHttpSvc");
-
-} /// namespace
+string const context_ = "INGEST-HTTP-SVC  ";
+}
 
 namespace lsst {
 namespace qserv {
@@ -58,52 +53,29 @@ IngestHttpSvc::IngestHttpSvc(ServiceProvider::Ptr const& serviceProvider,
                              string const& workerName,
                              string const& authKey,
                              string const& adminAuthKey)
-    :   _serviceProvider(serviceProvider),
-        _workerName(workerName),
-        _authKey(authKey),
-        _adminAuthKey(adminAuthKey),
-        _io_service() {
+    :   HttpSvc(serviceProvider,
+                serviceProvider->config()->workerInfo(workerName).httpLoaderPort,
+                serviceProvider->config()->httpLoaderNumProcessingThreads(),
+                authKey,
+                adminAuthKey),
+        _workerName(workerName) {
 }
 
 
-IngestHttpSvc::~IngestHttpSvc() {
-    if (_httpServer != nullptr) _httpServer->stop();
-}
+string const& IngestHttpSvc::context() const { return context_; }
 
 
-void IngestHttpSvc::run() {
-    LOGS(_log, LOG_LVL_INFO, _context() << __func__);
-    if (_httpServer != nullptr) {
-        throw logic_error(_context() + string(__func__) + ": service is already running.");
-    }
-    auto const self = shared_from_this();
-    _httpServer = qhttp::Server::create(
-            _io_service,
-            _serviceProvider->config()->workerInfo(_workerName).httpLoaderPort);
-    _httpServer->addHandlers({
+void IngestHttpSvc::registerServices() {
+    auto const self = shared_from_base<IngestHttpSvc>();
+    httpServer()->addHandlers({
         {"POST", "/ingest/file",
             [self](qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp) {
                 IngestHttpSvcMod::process(
-                        self->_serviceProvider, self->_workerName, self->_authKey, self->_adminAuthKey,
+                        self->serviceProvider(), self->_workerName, self->authKey(), self->adminAuthKey(),
                         req, resp);
             }
         }
     });
-
-    // Make sure the service started before launching any BOOST ASIO threads.
-    // This will prevent threads from finishing due to a lack of work to be done.
-    _httpServer->start();
-
-    // Launch all threads in the pool
-    vector<shared_ptr<thread>> threads(_serviceProvider->config()->httpLoaderNumProcessingThreads());
-    for (auto&& ptr: threads) {
-        ptr = shared_ptr<thread>(new thread([self]() {
-            self->_io_service.run();
-        }));
-    }
-    for (auto&& ptr: threads) {
-        ptr->join();
-    }
 }
 
 }}} // namespace lsst::qserv::replica
