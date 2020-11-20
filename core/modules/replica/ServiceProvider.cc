@@ -88,15 +88,6 @@ Messenger::Ptr const& ServiceProvider::messenger() {
 }
 
 
-qhttp::Server::Ptr const& ServiceProvider::httpServer() {
-    util::Lock lock(_mtx, _context() + __func__);
-    if (_httpServer == nullptr) {
-        _httpServer = qhttp::Server::create(_io_service, config()->controllerHttpPort());
-    }
-    return _httpServer;
-}
-
-
 void ServiceProvider::run() {
 
     LOGS(_log, LOG_LVL_DEBUG, _context() << __func__);

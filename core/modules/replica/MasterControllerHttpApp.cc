@@ -23,17 +23,25 @@
 #include "replica/MasterControllerHttpApp.h"
 
 // System headers
+#include <functional>
 #include <stdexcept>
+#include <thread>
 
 // Qserv headers
 #include "replica/DatabaseServices.h"
+#include "replica/HttpProcessor.h"
 #include "replica/HttpProcessorConfig.h"
 #include "replica/Performance.h"
 #include "util/BlockPost.h"
 
+// LSST headers
+#include "lsst/log/Log.h"
+
 using namespace std;
 
 namespace {
+
+LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.MasterControllerHttpApp");
 
 /**
  * This structure encapsulates default values for the Master Controller.
@@ -99,8 +107,7 @@ MasterControllerHttpApp::MasterControllerHttpApp(int argc, char* argv[])
         _workerReconfigTimeoutSec(::defaultOptions.workerReconfigTimeoutSec),
         _purge                   (::defaultOptions.purge),
         _forceQservSync          (::defaultOptions.forceQservSync),
-        _permanentDelete         (::defaultOptions.permanentDelete),
-        _log(LOG_GET("lsst.qserv.replica.MasterControllerHttpApp")) {
+        _permanentDelete         (::defaultOptions.permanentDelete) {
 
     // Configure the command line parser
 
@@ -227,7 +234,8 @@ int MasterControllerHttpApp::runImpl() {
     );
     _healthMonitorTask->start();
 
-    _httpProcessor = HttpProcessor::create(
+    // Runing the REST server in its own thread
+    auto const httpProcessor = HttpProcessor::create(
         _controller,
         HttpProcessorConfig(
                 _workerResponseTimeoutSec, _qservSyncTimeoutSec, _workerReconfigTimeoutSec,
@@ -235,6 +243,9 @@ int MasterControllerHttpApp::runImpl() {
         ),
         _healthMonitorTask
     );
+    thread ingestHttpSvrThread([httpProcessor]() {
+        httpProcessor->run();
+    });
 
     // Keep running before a catastrophic failure is reported by any
     // above initiated activity
@@ -248,6 +259,9 @@ int MasterControllerHttpApp::runImpl() {
 
     _healthMonitorTask->stop();
     _replicationTask->stop();
+    httpProcessor->stop();
+
+    ingestHttpSvrThread.join();
 
     if ((_replicationTask != nullptr) and
          _replicationTask->isRunning()) _replicationTask->stop();

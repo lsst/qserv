@@ -29,12 +29,8 @@
 #include "replica/Controller.h"
 #include "replica/DeleteWorkerTask.h"
 #include "replica/HealthMonitorTask.h"
-#include "replica/HttpProcessor.h"
 #include "replica/OneWayFailer.h"
 #include "replica/ReplicationTask.h"
-
-// LSST headers
-#include "lsst/log/Log.h"
 
 // This header declarations
 namespace lsst {
@@ -48,25 +44,17 @@ namespace replica {
  * the Health Monitoring one. These tasks can be suspended/resumed via the REST API.
  */
 class MasterControllerHttpApp : public Application {
-
 public:
-
-    /// The pointer type for instances of the class
     typedef std::shared_ptr<MasterControllerHttpApp> Ptr;
 
     /**
      * The factory method is the only way of creating objects of this class
      * because of the very base class's inheritance from 'enable_shared_from_this'.
      *
-     * @param argc
-     *   the number of command-line arguments
-     *
-     * @param argv
-     *   the vector of command-line arguments
+     * @param argc The number of command-line arguments.
+     * @param argv The vector of command-line arguments.
      */
     static Ptr create(int argc, char* argv[]);
-
-    // Default construction and copy semantics are prohibited
 
     MasterControllerHttpApp() = delete;
     MasterControllerHttpApp(MasterControllerHttpApp const&) = delete;
@@ -75,12 +63,10 @@ public:
     ~MasterControllerHttpApp() final = default;
 
 protected:
-
     /// @see Application::runImpl()
     int runImpl() final;
 
 private:
-
     /// @see MasterControllerHttpApp::create()
     MasterControllerHttpApp(int argc, char* argv[]);
 
@@ -88,69 +74,50 @@ private:
     std::string _name() const { return "MASTER CONTROLLER"; };
 
     /**
-     * Evict the specified worker from the cluster
-     *
-     * NOTE: This method is called by the health-monitoring thread when
-     * a condition for evicting the worker is detected. The calling thread
-     * will be blocked for a duration of this call.
-     *
-     * @param worker
-     *   the name of a worker to be evicted
+     * Evict the specified worker from the cluster.
+     * @note This method is called by the health-monitoring thread when
+     *   a condition for evicting the worker is detected. The calling thread
+     *   will be blocked for a duration of this call.
+     * @param worker The name of a worker to be evicted.
      */
     void _evict(std::string const& worker);
 
     /**
      * Log the very first event to report the initialization of the controller
      * along with values of its command-line parameters.
-     *
-     * @throws std::logic_error
-     *   if the instance of the Controller is not set up
+     * @throw std::logic_error If the instance of the Controller is not set up.
      */
     void _logControllerStartedEvent() const;
 
     /**
      * Log the very last event to report the finalization of the controller.
-     *
-     * @throws std::logic_error
-     *   if the instance of the Controller is not set up
+     * @throw std::logic_error If the instance of the Controller is not set up
      */
     void _logControllerStoppedEvent() const;
 
     /**
      * Log the beginning of the worker eviction.
-     *
-     * @param worker
-     *   the name of a worker to be evicted
-     *
-     * @throws std::logic_error
-     *   if the instance of the Controller is not set up
+     * @param worker The name of a worker to be evicted.
+     * @throw std::logic_error If the instance of the Controller is not set up.
      */
     void _logWorkerEvictionStartedEvent(std::string const& worker) const;
 
     /**
      * Log the ending of the worker eviction.
-     *
-     * @param worker
-     *   the name of a worker to be evicted
-     *
-     * @throws std::logic_error
-     *   if the instance of the Controller is not set up
+     * @param worker The name of a worker to be evicted.
+     * @throw std::logic_error If the instance of the Controller is not set up.
      */
     void _logWorkerEvictionFinishedEvent(std::string const& worker) const;
 
     /**
-     * Log an event in the persistent log
-     *
-     * @param event
-     *   event to be recorded
+     * Log an event in the persistent log.
+     * @param event Event to be recorded.
      */
     void _logEvent(ControllerEvent& event) const;
 
     /**
      * Ensure the Controller is running. Otherwise, throw an exception.
-     *
-     * @param func
-     *   the name of a method which called this operation
+     * @param func The name of a method which called this operation.
      */
     void _assertIsStarted(std::string const& func) const;
 
@@ -169,7 +136,7 @@ private:
     bool _forceQservSync;
     bool _permanentDelete;
 
-    /// A password for the MySQL 'root' account of the Qserv master database
+    /// A password for the MySQL 'root' account of the Qserv master database.
     std::string _qservDbRootPassword;
 
     /// An authorization key for metadata operations requested via the REST API.
@@ -182,7 +149,7 @@ private:
     /// catastrophic failure will be detected.
     OneWayFailer _isFailed;
 
-    /// The controller for launching operations with the Replication system services
+    /// The controller for launching operations with the Replication system services.
     Controller::Ptr _controller;
 
     // Control threads
@@ -190,11 +157,6 @@ private:
     HealthMonitorTask::Ptr _healthMonitorTask;
     ReplicationTask::Ptr   _replicationTask;
     DeleteWorkerTask::Ptr  _deleteWorkerTask;
-
-    HttpProcessor::Ptr _httpProcessor;
-
-    /// Logger stream
-    LOG_LOGGER _log;
 };
 
 }}} // namespace lsst::qserv::replica

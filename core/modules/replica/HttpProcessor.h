@@ -22,13 +22,15 @@
 #define LSST_QSERV_HTTPPROCESSOR_H
 
 // System headers
-#include <functional>
 #include <memory>
+#include <string>
 
 // Qserv headers
+#include "replica/Controller.h"
 #include "replica/EventLogger.h"
 #include "replica/HealthMonitorTask.h"
 #include "replica/HttpProcessorConfig.h"
+#include "replica/HttpSvc.h"
 
 // This header declarations
 namespace lsst {
@@ -37,12 +39,11 @@ namespace replica {
 
 /**
  * Class HttpProcessor processes requests from the built-in HTTP server.
- * The constructor of the class will register modules to which the incoming
- * requests will be forwarded for handling.
+ * 
+ * @note The class's implementation starts its own collection of BOOST ASIO
+ *   service threads as configured in Configuration.
  */
-class HttpProcessor:
-        public EventLogger,
-        public std::enable_shared_from_this<HttpProcessor> {
+class HttpProcessor: public HttpSvc, public EventLogger {
 public:
     typedef std::shared_ptr<HttpProcessor> Ptr;
 
@@ -50,18 +51,32 @@ public:
     HttpProcessor(HttpProcessor const&) = delete;
     HttpProcessor& operator=(HttpProcessor const&) = delete;
 
-    ~HttpProcessor();
+    /// Non-trivial destructor is needed for a purpose of logging the shutdown event
+    virtual ~HttpProcessor();
 
+    /**
+     * Create an instance of the service.
+     *
+     * @param controller For configuration, etc. services.
+     * @param processorConfig Configuration parameters of the processor.
+     * @return A pointer to the created object.
+     */
     static Ptr create(Controller::Ptr const& controller,
                       HttpProcessorConfig const& processorConfig,
                       HealthMonitorTask::Ptr const& healthMonitorTask);
 
+protected:
+    /// @see HttpSvc::context()
+    virtual std::string const& context() const;
+
+    /// @see HttpSvc::registerServices()
+    virtual void registerServices();
+
 private:
+    /// @see HttpProcessor::create()
     HttpProcessor(Controller::Ptr const& controller,
                   HttpProcessorConfig const& processorConfig,
                   HealthMonitorTask::Ptr const& healthMonitorTask);
-
-    void _initialize();
 
     // Input parameters
 
