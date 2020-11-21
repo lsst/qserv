@@ -172,20 +172,13 @@ json HttpIngestChunksModule::executeImpl(string const& subModuleName) {
 json HttpIngestChunksModule::_addChunk() {
     debug(__func__);
 
-    TransactionId const transactionId = body().required<TransactionId>("transaction_id");
-    unsigned int const chunk = body().required<unsigned int>("chunk");
-
-    debug(__func__, "transactionId=" + to_string(transactionId));
-    debug(__func__, "chunk=" + to_string(chunk));
-
     auto const databaseServices = controller()->serviceProvider()->databaseServices();
     auto const config = controller()->serviceProvider()->config();
 
-    auto const transactionInfo = databaseServices->transaction(transactionId);
-    if (transactionInfo.state != TransactionInfo::STARTED) {
-        throw HttpError(__func__, "this transaction is already over");
-    }
-    auto const databaseInfo = config->databaseInfo(transactionInfo.database);
+    unsigned int const chunk = body().required<unsigned int>("chunk");
+    debug(__func__, "chunk=" + to_string(chunk));
+
+    auto const databaseInfo = _getDatabaseInfo(__func__);
     auto const databaseFamilyInfo = config->databaseFamilyInfo(databaseInfo.family);
 
     ChunkNumberQservValidator const validator(databaseFamilyInfo.numStripes,
@@ -212,7 +205,7 @@ json HttpIngestChunksModule::_addChunk() {
     bool const enabledWorkersOnly = true;
     bool const includeFileInfo = false;
     vector<ReplicaInfo> replicas;
-    databaseServices->findReplicas(replicas, chunk, transactionInfo.database,
+    databaseServices->findReplicas(replicas, chunk, databaseInfo.name,
                                    enabledWorkersOnly, includeFileInfo);
     if (replicas.size() > 1) {
         json replicasJson = json::array();
@@ -265,7 +258,7 @@ json HttpIngestChunksModule::_addChunk() {
 
             worker = ::leastLoadedWorker(databaseServices, config->workers());
         }
-        _registerNewChunk(worker, transactionInfo.database, chunk);
+        _registerNewChunk(worker, databaseInfo.name, chunk);
     }
 
     // The sanity check, just to make sure we've found a worker
@@ -274,8 +267,7 @@ json HttpIngestChunksModule::_addChunk() {
     }
     ControllerEvent event;
     event.status = "ADD CHUNK";
-    event.kvInfo.emplace_back("transaction", to_string(transactionInfo.id));
-    event.kvInfo.emplace_back("database", transactionInfo.database);
+    event.kvInfo.emplace_back("database", databaseInfo.name);
     event.kvInfo.emplace_back("worker", worker);
     event.kvInfo.emplace_back("chunk", to_string(chunk));
     logEvent(event);
@@ -297,20 +289,13 @@ json HttpIngestChunksModule::_addChunk() {
 json HttpIngestChunksModule::_addChunks() {
     debug(__func__);
 
-    TransactionId const transactionId = body().required<TransactionId>("transaction_id");
-    auto const chunks = body().requiredColl<unsigned int>("chunks");
-
-    debug(__func__, "transactionId=" + to_string(transactionId));
-    debug(__func__, "chunks.size()=" + chunks.size());
-
     auto const databaseServices = controller()->serviceProvider()->databaseServices();
     auto const config = controller()->serviceProvider()->config();
 
-    auto const transactionInfo = databaseServices->transaction(transactionId);
-    if (transactionInfo.state != TransactionInfo::STARTED) {
-        throw HttpError(__func__, "this transaction is already over");
-    }
-    auto const databaseInfo = config->databaseInfo(transactionInfo.database);
+    auto const chunks = body().requiredColl<unsigned int>("chunks");
+    debug(__func__, "chunks.size()=" + chunks.size());
+
+    auto const databaseInfo = _getDatabaseInfo(__func__);
     auto const databaseFamilyInfo = config->databaseFamilyInfo(databaseInfo.family);
 
     // Make sure chunk numbers are valid for the given
@@ -332,7 +317,7 @@ json HttpIngestChunksModule::_addChunks() {
     bool const enabledWorkersOnly = true;
     bool const includeFileInfo = false;
     vector<ReplicaInfo> replicas;
-    databaseServices->findReplicas(replicas, chunks, transactionInfo.database,
+    databaseServices->findReplicas(replicas, chunks, databaseInfo.name,
                                    enabledWorkersOnly, includeFileInfo);
 
     map<unsigned int, vector<ReplicaInfo>> chunk2replicas;
@@ -412,7 +397,7 @@ json HttpIngestChunksModule::_addChunks() {
                 chunk2worker[chunk] = ::leastLoadedWorker(
                         worker2replicasCache, databaseServices, config->workers());
             }
-            _registerNewChunk(chunk2worker[chunk], transactionInfo.database, chunk);
+            _registerNewChunk(chunk2worker[chunk], databaseInfo.name, chunk);
         }
 
         // The sanity check, just to make sure we've found a worker
@@ -429,8 +414,7 @@ json HttpIngestChunksModule::_addChunks() {
 
     ControllerEvent event;
     event.status = "ADD CHUNKS";
-    event.kvInfo.emplace_back("transaction", to_string(transactionInfo.id));
-    event.kvInfo.emplace_back("database", transactionInfo.database);
+    event.kvInfo.emplace_back("database", databaseInfo.name);
     event.kvInfo.emplace_back("num_chunks", to_string(chunks.size()));
     logEvent(event);
 
@@ -456,20 +440,6 @@ json HttpIngestChunksModule::_addChunks() {
         result["location"].push_back(workerResult);
     }
     return result;
-}
-
-
-void HttpIngestChunksModule::_registerNewChunk(string const& worker,
-                                               string const& database,
-                                               unsigned int chunk) const {
-    auto const verifyTime = PerformanceUtils::now();
-    ReplicaInfo const newReplica(
-            ReplicaInfo::Status::COMPLETE,
-            worker,
-            database,
-            chunk,
-            verifyTime);
-    controller()->serviceProvider()->databaseServices()->saveReplicaInfo(newReplica);
 }
 
 
@@ -535,5 +505,47 @@ json HttpIngestChunksModule::_getChunks() {
     return result;
 }
 
+
+DatabaseInfo HttpIngestChunksModule::_getDatabaseInfo(string const& func) const {
+    debug(func);
+    auto const databaseServices = controller()->serviceProvider()->databaseServices();
+    auto const config = controller()->serviceProvider()->config();
+    string database;
+    if (body().has("database")) {
+        database = body().required<string>("database");
+    } else {
+        if (!body().has("transaction_id")) {
+            throw invalid_argument(
+                    context() + "::" + func + " this service expects either 'database' or "
+                    " 'transaction_id' to be provided to define a scope of the request.");
+        }
+        TransactionId const transactionId = body().required<TransactionId>("transaction_id");
+        debug(func, "transactionId=" + to_string(transactionId));
+        auto const transactionInfo = databaseServices->transaction(transactionId);
+        database = transactionInfo.database;
+    }
+    debug(func, "database=" + database);
+
+    auto const databaseInfo = config->databaseInfo(database);
+    if (databaseInfo.isPublished) {
+        throw HttpError(
+                context() + "::" + func, "database '" + databaseInfo.name + " is already published.");
+    }
+    return databaseInfo;
+}
+
+
+void HttpIngestChunksModule::_registerNewChunk(string const& worker,
+                                               string const& database,
+                                               unsigned int chunk) const {
+    auto const verifyTime = PerformanceUtils::now();
+    ReplicaInfo const newReplica(
+            ReplicaInfo::Status::COMPLETE,
+            worker,
+            database,
+            chunk,
+            verifyTime);
+    controller()->serviceProvider()->databaseServices()->saveReplicaInfo(newReplica);
+}
 
 }}}  // namespace lsst::qserv::replica
