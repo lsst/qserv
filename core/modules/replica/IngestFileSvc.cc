@@ -28,6 +28,7 @@
 #include <cstring>
 #include <ctime>
 #include <functional>
+#include <mutex>
 #include <thread>
 #include <stdexcept>
 
@@ -41,12 +42,14 @@
 #include "replica/DatabaseServices.h"
 #include "replica/FileUtils.h"
 #include "replica/ReplicaInfo.h"
+#include "util/Mutex.h"
 
 // LSST headers
 #include "lsst/log/Log.h"
 
 using namespace std;
 namespace fs = boost::filesystem;
+namespace util = lsst::qserv::util;
 
 namespace {
 
@@ -54,7 +57,6 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.IngestFileSvc");
 
 /// The context for diagnostic & debug printouts
 string const context = "INGEST-FILE-SVC ";
-
 }   // namespace
 
 namespace lsst {
@@ -192,21 +194,19 @@ void IngestFileSvc::loadDataIntoTable() {
                     _workerInfo.dbPort,
                     _workerInfo.dbUser,
                     _serviceProvider->config()->qservWorkerDatabasePassword(),
-                    ""
+                    _databaseInfo.name
                 )
             )
         );
 
-        string const sqlDatabase = h.conn->sqlId(_databaseInfo.name);
         string const sqlPartition = h.conn->sqlPartitionId(_transactionId);
-
-        vector<string> tableMgtStatements;
+        vector<Query> tableMgtStatements;
 
         // Make sure no outstanding table locks exist from prior operations
         // on persistent database connections.
-        tableMgtStatements.push_back("UNLOCK TABLES");
+        tableMgtStatements.push_back(Query("UNLOCK TABLES"));
 
-        string dataLoadStatement;
+        string dataLoadQuery;
 
         if (_isPartitioned) {
             
@@ -214,28 +214,27 @@ void IngestFileSvc::loadDataIntoTable() {
             // tables (not just for the current one) to ensure they have representations
             // in all chunks touched by the ingest workflows. Missing representations would
             // cause Qserv to fail when processing queries involving these tables.
-
             for (auto&& table: _databaseInfo.partitionedTables) {
 
                 // Chunked tables are created from the prototype table which is expected
                 // to exist in the database before attempting data loading.
                 // Note that this algorithm won't create MySQL partitions in the DUMMY chunk
                 // tables since these tables are not supposed to store any data.
-
                 bool const overlap = true;
-                string const sqlProtoTable       = sqlDatabase + "." + h.conn->sqlId(table);
-                string const sqlTable            = sqlDatabase + "." + h.conn->sqlId(ChunkedTable(table, _chunk, not overlap).name());
-                string const sqlFullOverlapTable = sqlDatabase + "." + h.conn->sqlId(ChunkedTable(table, _chunk, overlap).name());
+                string const sqlProtoTable       =  h.conn->sqlId(_databaseInfo.name, table);
+                string const sqlTable            =  h.conn->sqlId(_databaseInfo.name, ChunkedTable(table, _chunk, not overlap).name());
+                string const sqlFullOverlapTable =  h.conn->sqlId(_databaseInfo.name, ChunkedTable(table, _chunk, overlap).name());
 
                 string const tablesToBeCreated[] = {
                     sqlTable,
                     sqlFullOverlapTable,
-                    sqlDatabase + "." + h.conn->sqlId(ChunkedTable(table, lsst::qserv::DUMMY_CHUNK, not overlap).name()),
-                    sqlDatabase + "." + h.conn->sqlId(ChunkedTable(table, lsst::qserv::DUMMY_CHUNK, overlap).name())
+                    h.conn->sqlId(_databaseInfo.name, ChunkedTable(table, lsst::qserv::DUMMY_CHUNK, not overlap).name()),
+                    h.conn->sqlId(_databaseInfo.name, ChunkedTable(table, lsst::qserv::DUMMY_CHUNK, overlap).name())
                 };
                 for (auto&& table: tablesToBeCreated) {
                     tableMgtStatements.push_back(
-                        "CREATE TABLE IF NOT EXISTS " + table + " LIKE " + sqlProtoTable
+                        Query("CREATE TABLE IF NOT EXISTS " + table + " LIKE " + sqlProtoTable,
+                              table)
                     );
                 }
                 string const tablesToBePartitioned[] = {
@@ -244,14 +243,15 @@ void IngestFileSvc::loadDataIntoTable() {
                 };
                 for (auto&& table: tablesToBePartitioned) {
                     tableMgtStatements.push_back(
-                        "ALTER TABLE " + table + " ADD PARTITION IF NOT EXISTS (PARTITION " + sqlPartition +
-                            " VALUES IN (" + to_string(_transactionId) + "))"
+                        Query("ALTER TABLE " + table + " ADD PARTITION IF NOT EXISTS (PARTITION " + sqlPartition +
+                              " VALUES IN (" + to_string(_transactionId) + "))",
+                              table)
                     );
                 }
 
                 // An additional step for the current request's table
                 if (table == _table) {
-                    dataLoadStatement =
+                    dataLoadQuery =
                         "LOAD DATA INFILE " + h.conn->sqlValue(_fileName) +
                             " INTO TABLE " + (_isOverlap ? sqlFullOverlapTable : sqlTable) +
                             " FIELDS TERMINATED BY " + h.conn->sqlValue(string() + _columnSeparator);
@@ -261,22 +261,21 @@ void IngestFileSvc::loadDataIntoTable() {
 
             // Regular tables are expected to exist in the database before
             // attempting data loading.
-
-            string const sqlTable = sqlDatabase + "." + h.conn->sqlId(_table);
-
+            string const sqlTable = h.conn->sqlId(_databaseInfo.name, _table);
             tableMgtStatements.push_back(
-                "ALTER TABLE " + sqlTable + " ADD PARTITION IF NOT EXISTS (PARTITION " + sqlPartition +
-                    " VALUES IN (" + to_string(_transactionId) + "))"
+                Query("ALTER TABLE " + sqlTable + " ADD PARTITION IF NOT EXISTS (PARTITION " + sqlPartition +
+                      " VALUES IN (" + to_string(_transactionId) + "))",
+                      sqlTable)
             );
-            dataLoadStatement =
+            dataLoadQuery =
                 "LOAD DATA INFILE " + h.conn->sqlValue(_fileName) +
                     " INTO TABLE " + sqlTable +
                     " FIELDS TERMINATED BY " + h.conn->sqlValue(string() + _columnSeparator);
         }
         for (auto&& statement: tableMgtStatements) {
-            LOGS(_log, LOG_LVL_DEBUG, context_ << "statement: " << statement);
+            LOGS(_log, LOG_LVL_DEBUG, context_ << "query: " << statement.query);
         }
-        LOGS(_log, LOG_LVL_DEBUG, context_ << "statement: " << dataLoadStatement);
+        LOGS(_log, LOG_LVL_DEBUG, context_ << "query: " << dataLoadQuery);
 
         // Allow retries for the table management statements in case of deadlocks.
         // Deadlocks may happen when two or many threads are attempting to create
@@ -289,10 +288,16 @@ void IngestFileSvc::loadDataIntoTable() {
         int numRetries = 0;
         while (true) {
             try {
-                h.conn->execute([&tableMgtStatements](decltype(h.conn) const& conn_) {
+                h.conn->execute([&](decltype(h.conn) const& conn_) {
                     conn_->begin();
                     for (auto&& statement: tableMgtStatements) {
-                        conn_->execute(statement);
+                        if (statement.mutexName.empty()) {
+                            conn_->execute(statement.query);
+                        } else {
+                            util::Lock const lock(_serviceProvider->getNamedMutex(statement.mutexName),
+                                                  context_);
+                            conn_->execute(statement.query);
+                        }
                     }
                     conn_->commit();
                 });
@@ -312,12 +317,12 @@ void IngestFileSvc::loadDataIntoTable() {
         }
 
         // Load table contribution
-        if (dataLoadStatement.empty()) {
-            throw runtime_error(context_ + "no data loading statement generated");
+        if (dataLoadQuery.empty()) {
+            throw runtime_error(context_ + "no data loading query generated");
         }
-        h.conn->execute([&dataLoadStatement](decltype(h.conn) const& conn_) {
+        h.conn->execute([&dataLoadQuery](decltype(h.conn) const& conn_) {
             conn_->begin();
-            conn_->execute(dataLoadStatement);
+            conn_->execute(dataLoadQuery);
             conn_->commit();
         });
 
