@@ -88,6 +88,11 @@ Messenger::Ptr const& ServiceProvider::messenger() {
 }
 
 
+shared_ptr<util::Mutex> ServiceProvider::getNamedMutex(string const& name) {
+    return _namedMutexRegistry.get(name);
+}
+
+
 void ServiceProvider::run() {
 
     LOGS(_log, LOG_LVL_DEBUG, _context() << __func__);

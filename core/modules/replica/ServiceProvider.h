@@ -32,6 +32,7 @@
 
 // Qserv headers
 #include "replica/ChunkLocker.h"
+#include "replica/NamedMutexRegistry.h"
 #include "util/Mutex.h"
 
 // Forward declarations
@@ -133,6 +134,43 @@ public:
     MessengerPtr const& messenger();
 
     /**
+     * Acquire (and register if none existed at a time of a call to the method) a mutex for
+     * the given name.
+     *
+     * @note It's advised not to cache shared pointers returned by the method. Firstly, would
+     *   have little or any benefits from the performance point of view. Secondly, it may complicate
+     *   the "garbage collection" of unused mutexes, this (potentially) resulting in non-negligible
+     *   memory consumption in class NamedMutexRegistry.
+     * @see class NamedMutexRegistry
+     *
+     * Mutex objects returned by the method are expected to be used together with class util::Lock
+     * as it's shown below (both ways are the same):
+     * @code
+     *   // Okay
+     *   auto mutex = serviceProvider->get("name");
+     *   util::Lock lock(mutex);
+     *   // The better option
+     *   util::Lock lock(serviceProvider->get("name"));
+     * @code
+     * Class util::Lock makes a copy of the shared pointer for a duration of the lock.
+     *
+     * If, for some reason, a code resorts to using low-level references/pointers to the stored mutex
+     * object then, please, make sure the shared pointer outlives the lock. This comment relates
+     * to the locking made like shown below:
+     * @code
+     *   auto mutex = serviceProvider->get("name");
+     *   util::Lock lock(*mutex);
+     *   std::lock_guard<util::Mutex> lock(*mutex);
+     * @code
+     * Though, in general this would work, the above shown dereferencing is not recommended.
+     * 
+     * @param database The name of a named mutex.
+     * @return A smart pointer to a mutex for the name.
+     * @throw std::invalid_argument If the name is empty.
+     */
+    std::shared_ptr<util::Mutex> getNamedMutex(std::string const& name);
+
+    /**
      * Make sure this worker is known in the configuration
      *
      * @param name The name of a worker.
@@ -161,11 +199,7 @@ public:
     void assertDatabaseIsValid(std::string const& name);
 
 private:
-    /**
-     * Construct the object
-     *
-     * @see ServiceProvider::create()
-     */
+    /// @see ServiceProvider::create()
     explicit ServiceProvider(std::string const& configUrl,
                              std::string const& instanceId);
 
@@ -197,6 +231,9 @@ private:
 
     /// Worker messenger service  (lazy instantiation on a first request)
     MessengerPtr _messenger;
+
+    /// Registry of unique mutexes.
+    NamedMutexRegistry _namedMutexRegistry;
 
     /// The mutex for enforcing thread safety of the class's public API
     /// and internal operations.
