@@ -26,6 +26,7 @@
 
 // Qserv headers
 #include "replica/protocol.pb.h"
+#include "replica/Common.h"
 #include "replica/DatabaseMySQL.h"
 #include "replica/WorkerRequest.h"
 
@@ -124,7 +125,7 @@ private:
      * @return A query as per the input request.
      * @throw std::invalid_argument For unsupported requests types supported.
      */
-    std::string _query(std::shared_ptr<database::mysql::Connection> const& conn) const;
+    Query _query(std::shared_ptr<database::mysql::Connection> const& conn) const;
 
     /**
      * The query generator for queries which have a target table.
@@ -134,8 +135,8 @@ private:
      * @return A query as per the input request and the name of a table.
      * @throw std::invalid_argument For unsupported requests types.
      */
-    std::string _query(std::shared_ptr<database::mysql::Connection> const& conn,
-                       std::string const& table) const;
+    Query _query(std::shared_ptr<database::mysql::Connection> const& conn,
+                 std::string const& table) const;
 
     /**
      * Extract a result set (if any) via the database connector into
