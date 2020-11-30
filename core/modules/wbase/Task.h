@@ -105,7 +105,7 @@ private:
 /// (over-the-wire) additional concrete info related to physical
 /// execution conditions.
 /// Task is non-copyable
-class Task : public util::CommandThreadPool {
+class Task : public util::CommandForThreadPool {
 public:
     static std::string const defaultUser;
     using Ptr =  std::shared_ptr<Task>;

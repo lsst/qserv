@@ -806,7 +806,7 @@ BOOST_AUTO_TEST_CASE(BlendScheduleQueryBootTaskTest) {
     LOGS(_log, LOG_LVL_DEBUG, "BlendScheduleQueryBootTaskTest");
 
     // Create a thread pool to run task
-    auto pool = lsst::qserv::util::ThreadPool::newThreadPool(20, f.blend);
+    auto pool = lsst::qserv::util::ThreadPool::newThreadPool(20, 1000, f.blend);
 
     // Create fake data - one query to get a baseline time, another to take too long.
     int qid=5;
@@ -864,6 +864,7 @@ BOOST_AUTO_TEST_CASE(BlendScheduleQueryBootTaskTest) {
     queryStats = f.queries->getStats(qid);
     BOOST_CHECK(queryStats != nullptr);
     if (queryStats != nullptr) {
+        LOGS(_log, LOG_LVL_DEBUG, "taskBooted=" << queryStats->getTasksBooted());
         BOOST_CHECK(queryStats->getTasksBooted() == 1);
     }
 
@@ -875,6 +876,7 @@ BOOST_AUTO_TEST_CASE(BlendScheduleQueryBootTaskTest) {
 
 
 BOOST_AUTO_TEST_CASE(SlowTableHeapTest) {
+    LOGS(_log, LOG_LVL_DEBUG, "SlowTableHeapTest start");
     wsched::ChunkTasks::SlowTableHeap heap{};
     lsst::qserv::QueryId qIdInc = 1;
 
@@ -904,10 +906,12 @@ BOOST_AUTO_TEST_CASE(SlowTableHeapTest) {
     BOOST_CHECK(heap.pop().get() == a1.get());
     BOOST_CHECK(heap.pop().get() == a4.get());
     BOOST_CHECK(heap.empty() == true);
+    LOGS(_log, LOG_LVL_DEBUG, "SlowTableHeapTest done");
 }
 
 
 BOOST_AUTO_TEST_CASE(ChunkTasksTest) {
+    LOGS(_log, LOG_LVL_DEBUG, "ChunkTasksTest start");
     // MemManNone always returns that memory is available.
     auto memMan = std::make_shared<lsst::qserv::memman::MemManNone>(1, true);
     int chunkId = 7;
@@ -974,10 +978,12 @@ BOOST_AUTO_TEST_CASE(ChunkTasksTest) {
     chunkTasks.taskComplete(a3);
     chunkTasks.taskComplete(a4);
     BOOST_CHECK(chunkTasks.readyToAdvance() == true);
+    LOGS(_log, LOG_LVL_DEBUG, "ChunkTasksTest done");
 }
 
 
 BOOST_AUTO_TEST_CASE(ChunkTasksQueueTest) {
+    LOGS(_log, LOG_LVL_DEBUG, "ChunkTasksQueueTest start");
     // MemManNone always returns that memory is available.
     auto memMan = std::make_shared<lsst::qserv::memman::MemManNone>(1, true);
     int firstChunkId = 100;
@@ -1101,6 +1107,7 @@ BOOST_AUTO_TEST_CASE(ChunkTasksQueueTest) {
     ctl.taskComplete(b4);
     BOOST_CHECK(ctl.ready(true) == false);
     BOOST_CHECK(ctl.getActiveChunkId() == -1);
+    LOGS(_log, LOG_LVL_DEBUG, "ChunkTasksQueueTest done");
 }
 
 BOOST_AUTO_TEST_SUITE_END()

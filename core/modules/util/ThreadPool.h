@@ -55,8 +55,21 @@ public:
                                                    CommandQueue::Ptr const& q);
     virtual ~PoolEventThread();
 
+    /// Cause this thread to leave the thread pool. This MUST only called from within
+    /// the thread that will be removed (most likely from within a CommandThreadPool action).
     void leavePool();
+
+    /// This can be called from outside the thread that will be removed.
+    /// - If within the thread that will leave the pool, leavePool()
+    ///   should be called.
+    /// - atMaxThreadCount() should be called first to avoid seriously
+    ///   breaking the limit of threads.
+    /// - This version of leavePool never waits as that could cause a deadlock.
     bool leavePool(Command::Ptr const& cmd);
+
+    /// Return true if at or above the maximum number of threads that can
+    /// exist concurrently.
+    bool atMaxThreadCount();
 
 protected:
     void specialActions(Command::Ptr const& cmd) override;
@@ -66,18 +79,22 @@ protected:
 
 private:
     PoolEventThread(std::shared_ptr<ThreadPool> const& threadPool, CommandQueue::Ptr const& q);
+
 };
 
 
 /// A Command that is aware that it is running as part of a PoolEventThread,
 // which allows it to tell the event thread and pool to take special actions.
-class CommandThreadPool : public CommandTracked {
+class CommandForThreadPool : public CommandTracked {
 public:
-    using Ptr = std::shared_ptr<CommandThreadPool>;
+    using Ptr = std::shared_ptr<CommandForThreadPool>;
 
-    CommandThreadPool() = default;
-    explicit CommandThreadPool(std::function<void(CmdData*)> func) : CommandTracked{func} {}
+    CommandForThreadPool() = default;
+    explicit CommandForThreadPool(std::function<void(CmdData*)> func) : CommandTracked{func} {}
 
+    /// Return true if the number of threads created and still existing is
+    /// greater than the max.
+    bool atMaxThreadCount();
     PoolEventThread::Ptr getAndNullPoolEventThread();
 
     friend class PoolEventThread;
@@ -96,10 +113,28 @@ private:
 ///  likely be a segmentation fault. Every command sent to the pool before shutdown is
 ///  called should complete. Once shutdown has been called, the size of the pool
 ///  cannot be increased (target size permanently set to 0).
+/// Note: It is possible for threads to leave the pool and be replaced using leavePool()
+///  This is usually done when a thread no longer requires significant CPU but has
+///  to wait for something to happen, like transferring data.
+///  _poolThreadCount is a total of all threads in the pool and all threads that have
+///  left the pool and this total should not exceed _maxThreadCount.
 class ThreadPool : public std::enable_shared_from_this<ThreadPool> {
 public:
     using Ptr = std::shared_ptr<ThreadPool>;
+
+    /// Used to create thread pool where there is not expected to be be a need
+    /// to remove time consuming, low CPU usage threads from the pool.
     static ThreadPool::Ptr newThreadPool(unsigned int thrdCount,
+                                         CommandQueue::Ptr const& q,
+                                         EventThreadJoiner::Ptr const& joiner = nullptr);
+
+    /// Used to create a pool where threads are expected to be removed for processing
+    /// and replaced by calling PoolEventThread::leavePool().
+    /// Useful for scheduling queries against mysql. The queries use significant CPU until
+    /// mysql finishes, and then the results sit around (using little CPU) until the czar
+    /// collects them.
+    static ThreadPool::Ptr newThreadPool(unsigned int thrdCount,
+                                         unsigned int maxThreadCount,
                                          CommandQueue::Ptr const& q,
                                          EventThreadJoiner::Ptr const& joiner = nullptr);
 
@@ -121,8 +156,14 @@ public:
     void resize(unsigned int targetThrdCount);
     bool release(PoolEventThread *thread);
 
+    /// Return true if existing threads are at or above _maxThreadCount.
+    bool atMaxThreadPoolCount();
+
+    friend PoolEventThread;
+
 private:
-    ThreadPool(unsigned int thrdCount, CommandQueue::Ptr const& q, EventThreadJoiner::Ptr const& joiner);
+    ThreadPool(unsigned int thrdCount, unsigned int maxPoolThreads,
+               CommandQueue::Ptr const& q, EventThreadJoiner::Ptr const& joiner);
     void _resize();
 
     std::mutex _poolMutex; ///< Protects _pool
@@ -135,6 +176,26 @@ private:
 
     EventThreadJoiner::Ptr _joinerThread; ///< Tracks and joins threads removed from the pool.
     std::atomic<bool> _shutdown{false}; ///< True after shutdownPool has been called.
+
+    // Functions to track the number of threads created by the pool.
+    /// Wait until the number of existing threads is <= max existing threads.
+    /// The pool kicks out threads that require significant time to process and
+    /// replaces them on a regular basis, see PoolEventThread::leavePool().
+    /// Under some circumstances, the number of threads that have been kicked out but
+    /// have not finished can become extremely large (tens of thousands). There
+    /// isn't much choice but to wait for some to finish before kicking more out.
+    void _waitIfAtMaxThreadPoolCount();
+
+    /// Increase the count of existing threads.
+    void _incrPoolThreadCount();
+
+    /// Decrease the count of existing threads.
+    void _decrPoolThreadCount();
+
+    unsigned int _poolThreadCount = 0;    ///< Number of threads that exist.
+    unsigned int _maxThreadCount = 5000;  ///< Max number of thread allowed, set from config.
+    std::condition_variable  _cvPool{};   ///< Signal when threads deleted.
+    mutable std::mutex       _mxPool{};   ///< Protects _poolThreadCount, _cvPool, _mxPool
 };
 
 

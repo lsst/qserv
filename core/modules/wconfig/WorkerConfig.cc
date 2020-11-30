@@ -53,6 +53,7 @@ WorkerConfig::WorkerConfig(const util::ConfigStore& configStore)
       _memManSizeMb(configStore.getInt("memman.memory", 1000)),
       _memManLocation(configStore.getRequired("memman.location")),
       _threadPoolSize(configStore.getInt("scheduler.thread_pool_size", wsched::BlendScheduler::getMinPoolSize())),
+      _maxPoolThreads(configStore.getInt("scheduler.max_pool_threads", 10000)),
       _maxGroupSize(configStore.getInt("scheduler.group_size", 1)),
       _requiredTasksCompleted(configStore.getInt("scheduler.required_tasks_completed", 25)),
       _prioritySlow(configStore.getInt("scheduler.priority_slow", 2)),

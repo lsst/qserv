@@ -53,18 +53,20 @@ PoolEventThread::Ptr PoolEventThread::newPoolEventThread(std::shared_ptr<ThreadP
 PoolEventThread::PoolEventThread(std::shared_ptr<ThreadPool> const& threadPool, CommandQueue::Ptr const& q)
 : EventThread(q), _threadPool(threadPool) {
     LOGS(_log, LOG_LVL_TRACE, "PoolEventThread::PoolEventThread() " << this);
+    _threadPool->_incrPoolThreadCount();
 }
 
 
 PoolEventThread::~PoolEventThread() {
     LOGS(_log, LOG_LVL_TRACE, "PoolEventThread::~PoolEventThread() " << this
          << " _threadPool.use_count=" << _threadPool.use_count());
+    _threadPool->_decrPoolThreadCount();
 }
 
 
 /// If cmd is a CommandThreadPool object, give it a copy of our this pointer.
 void PoolEventThread::specialActions(Command::Ptr const& cmd) {
-    CommandThreadPool::Ptr cmdPool = std::dynamic_pointer_cast<CommandThreadPool>(cmd);
+    CommandForThreadPool::Ptr cmdPool = std::dynamic_pointer_cast<CommandForThreadPool>(cmd);
     if (cmdPool != nullptr) {
         cmdPool->_setPoolEventThread(shared_from_this());
     }
@@ -81,6 +83,7 @@ bool PoolEventThread::leavePool(Command::Ptr const& cmd) {
     // This thread will stop accepting commands
     _loop = false;
     LOGS(_log, LOG_LVL_DEBUG, "PoolEventThread::leavePool " << this);
+
     if (cmd.get() != getCurrentCommand()) {
         LOGS(_log, LOG_LVL_DEBUG, "PoolEventThread::leavePool different command" << this);
         // cmd must have finished before the event loop stopped.
@@ -100,12 +103,18 @@ bool PoolEventThread::leavePool(Command::Ptr const& cmd) {
 }
 
 
-/// Cause this thread to leave the thread pool, this MUST only called from within
-// the thread that will be removed (most likely from within a CommandThreadPool action).
+/// Cause this thread to leave the thread pool. This MUST only called from within
+/// the thread that will be removed (most likely from within a CommandThreadPool action).
 void PoolEventThread::leavePool() {
     // This thread will stop accepting commands
     _loop = false;
+    _threadPool->_waitIfAtMaxThreadPoolCount();
     leavePool(_getCurrentCommandPtr());
+}
+
+
+bool PoolEventThread::atMaxThreadCount() {
+    return _threadPool->atMaxThreadPoolCount();
 }
 
 
@@ -120,7 +129,7 @@ void PoolEventThread::finishup() {
 
 
 /// Set _poolEventThread pointer to the thread running this command.
-void CommandThreadPool::_setPoolEventThread(PoolEventThread::Ptr const& poolEventThread) {
+void CommandForThreadPool::_setPoolEventThread(PoolEventThread::Ptr const& poolEventThread) {
     _poolEventThread = poolEventThread;
 }
 
@@ -129,7 +138,7 @@ void CommandThreadPool::_setPoolEventThread(PoolEventThread::Ptr const& poolEven
 /// At this point, the reason to get _poolEventThread is to
 /// have the thread leave the pool. This prevents that from
 /// happening more than once.
-PoolEventThread::Ptr CommandThreadPool::getAndNullPoolEventThread() {
+PoolEventThread::Ptr CommandForThreadPool::getAndNullPoolEventThread() {
     std::lock_guard<std::mutex> lg(_poolMtx);
     auto pet = _poolEventThread.lock();
     _poolEventThread.reset();
@@ -137,17 +146,32 @@ PoolEventThread::Ptr CommandThreadPool::getAndNullPoolEventThread() {
 }
 
 
-ThreadPool::Ptr ThreadPool::newThreadPool(unsigned int thrdCount,
-      CommandQueue::Ptr const& q, EventThreadJoiner::Ptr const& joiner) {
-    Ptr thp(new ThreadPool(thrdCount, q, joiner)); // private constructor
+bool CommandForThreadPool::atMaxThreadCount() {
+    std::lock_guard<std::mutex> lg(_poolMtx);
+    auto pet = _poolEventThread.lock();
+    return (pet == nullptr || pet->atMaxThreadCount());
+}
+
+
+ThreadPool::Ptr ThreadPool::newThreadPool(unsigned int thrdCount, unsigned int maxThreadCount,
+                                          CommandQueue::Ptr const& q, EventThreadJoiner::Ptr const& joiner) {
+    Ptr thp(new ThreadPool(thrdCount, maxThreadCount, q, joiner)); // private constructor
     thp->_resize();
     return thp;
 }
 
 
-ThreadPool::ThreadPool(unsigned int thrdCount, CommandQueue::Ptr const& q,
-                       EventThreadJoiner::Ptr const& joiner)
-    : _targetThrdCount(thrdCount), _q(q), _joinerThread(joiner) {
+ThreadPool::Ptr ThreadPool::newThreadPool(unsigned int thrdCount,
+                                          CommandQueue::Ptr const& q, EventThreadJoiner::Ptr const& joiner) {
+    Ptr thp(new ThreadPool(thrdCount, thrdCount+1, q, joiner)); // private constructor
+    thp->_resize();
+    return thp;
+}
+
+
+ThreadPool::ThreadPool(unsigned int thrdCount, unsigned int maxPoolThreads,
+                       CommandQueue::Ptr const& q, EventThreadJoiner::Ptr const& joiner)
+    : _targetThrdCount(thrdCount), _q(q), _joinerThread(joiner), _maxThreadCount(maxPoolThreads) {
     if (_q == nullptr) {
         _q = std::make_shared<CommandQueue>();
     }
@@ -175,8 +199,8 @@ void ThreadPool::shutdownPool() {
     _joinerThread->shutdownJoin();
 }
 
-/// Release the thread from the thread pool and return a shared pointer to the
-/// released thread.
+/// Release the thread from the thread pool and return true if the thread
+/// was found and added to the joiner thread.
 bool ThreadPool::release(PoolEventThread *thrd) {
     // Search for the the thread to free
     auto func = [thrd](PoolEventThread::Ptr const& pt)->bool {
@@ -204,6 +228,21 @@ bool ThreadPool::release(PoolEventThread *thrd) {
 /// Change the size of the thread pool.
 void ThreadPool::resize(unsigned int targetThrdCount) {
     {
+        LOGS(_log, LOG_LVL_INFO, "ThreadPool::resize " << targetThrdCount);
+        {
+            std::lock_guard<std::mutex> lockPool(_mxPool);
+            /// This is not expected to happen in cases where low CPU usage threads
+            /// are removed from the pool. In those cases, the targetThrdCount is expected to be
+            /// less than 100 while _maxThreadCount would be several thousand.
+            if (targetThrdCount >= _maxThreadCount) {
+                LOGS(_log, LOG_LVL_WARN, "ThreadPool::resize target count " << targetThrdCount
+                        << " is >= than max " << _maxThreadCount);
+                // Need at least one thread available to deal with released threads.
+                _maxThreadCount = targetThrdCount + 1;
+                _cvPool.notify_all();
+            }
+        }
+
         std::lock_guard<std::mutex> lock(_countMutex);
         if (_shutdown) {
             targetThrdCount = 0;
@@ -256,6 +295,40 @@ void ThreadPool::waitForResize(int millisecs) {
     } else {
         _countCV.wait(lock, eqTest);
     }
+}
+
+void ThreadPool::_incrPoolThreadCount() {
+    std::lock_guard<std::mutex> lockPool(_mxPool);
+    ++_poolThreadCount;
+    LOGS(_log, LOG_LVL_DEBUG, "incr _poolThreadCount=" << _poolThreadCount);
+}
+
+void ThreadPool::_decrPoolThreadCount() {
+    {
+        std::lock_guard<std::mutex> lockPool(_mxPool);
+        --_poolThreadCount;
+    }
+    LOGS(_log, LOG_LVL_DEBUG, "decr _poolThreadCount=" << _poolThreadCount);
+    _cvPool.notify_one();
+}
+
+void ThreadPool::_waitIfAtMaxThreadPoolCount() {
+    std::unique_lock<std::mutex> lockPool(_mxPool);
+    auto logLvl = LOG_LVL_DEBUG;
+    if (_poolThreadCount >= _maxThreadCount) {
+        logLvl = LOG_LVL_WARN;
+    }
+    LOGS(_log, logLvl, "wait before _poolThreadCount=" << _poolThreadCount);
+    _cvPool.wait(lockPool, [this](){return (_poolThreadCount <= _maxThreadCount);});
+}
+
+bool ThreadPool::atMaxThreadPoolCount() {
+    std::unique_lock<std::mutex> lockPool(_mxPool);
+    bool atMax = _poolThreadCount > _maxThreadCount;
+    if (atMax) {
+        LOGS(_log, LOG_LVL_WARN, "atMaxThreadPoolCount current=" << _poolThreadCount << " max=" << _maxThreadCount);
+    }
+    return atMax;
 }
 
 }}} // namespace lsst:qserv:util

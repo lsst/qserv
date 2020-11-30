@@ -90,6 +90,7 @@ public:
      */
     Foreman(Scheduler::Ptr                  const& scheduler,
             unsigned int                    poolSize,
+            unsigned int                    maxPoolThreads,
             mysql::MySqlConfig              const& mySqlConfig,
             wpublish::QueriesAndChunks::Ptr const& queries,
             std::shared_ptr<wcontrol::SqlConnMgr>  const& sqlConnMgr,

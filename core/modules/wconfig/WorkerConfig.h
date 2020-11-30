@@ -70,6 +70,13 @@ public:
         return _threadPoolSize;
     }
 
+    /* Get the maximum number of threads the pool can have in
+     * existence at any given time.
+     */
+    unsigned int getMaxPoolThreads() const {
+        return _maxPoolThreads;
+    }
+
     /* Get required number of completed tasks for table in a chunk for the average to be valid.
      *
      * @return required tasks completed before average time is valid.
@@ -295,6 +302,7 @@ private:
     std::string const _memManLocation;
 
     unsigned int const _threadPoolSize;
+    unsigned int const _maxPoolThreads;
     unsigned int const _maxGroupSize;
     unsigned int const _requiredTasksCompleted;
 

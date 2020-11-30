@@ -58,6 +58,7 @@ namespace wcontrol {
 
 Foreman::Foreman(Scheduler::Ptr                  const& scheduler,
                  unsigned int                    poolSize,
+                 unsigned int                    maxPoolThreads,
                  mysql::MySqlConfig              const& mySqlConfig,
                  wpublish::QueriesAndChunks::Ptr const& queries,
                  wcontrol::SqlConnMgr::Ptr       const& sqlConnMgr,
@@ -79,8 +80,8 @@ Foreman::Foreman(Scheduler::Ptr                  const& scheduler,
 
     assert(_scheduler); // Cannot operate without scheduler.
 
-    LOGS(_log, LOG_LVL_DEBUG, "poolSize=" << poolSize);
-    _pool = util::ThreadPool::newThreadPool(poolSize, _scheduler);
+    LOGS(_log, LOG_LVL_DEBUG, "poolSize=" << poolSize << " maxPoolThreads=" << maxPoolThreads);
+    _pool = util::ThreadPool::newThreadPool(poolSize,  maxPoolThreads, _scheduler);
 
     _workerCommandQueue = std::make_shared<util::CommandQueue>();
     _workerCommandPool  = util::ThreadPool::newThreadPool(poolSize, _workerCommandQueue);
