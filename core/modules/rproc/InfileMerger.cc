@@ -273,7 +273,7 @@ bool InfileMerger::merge(std::shared_ptr<proto::WorkerResponse> response) {
     }
     auto end = std::chrono::system_clock::now();
     auto mergeDur = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-    LOGS(_log, LOG_LVL_INFO, "mergeDur=" << mergeDur.count()
+    LOGS(_log, LOG_LVL_DEBUG, "mergeDur=" << mergeDur.count()
         << " sema(total=" << _semaMgrConn->getTotalCount() << " used=" << _semaMgrConn->getUsedCount() << ")");
     if (not ret) {
         LOGS(_log, LOG_LVL_ERROR, "InfileMerger::merge mysql applyMysql failure");
@@ -694,7 +694,7 @@ void InfileMerger::_fixupTargetName() {
 bool InvalidJobAttemptMgr::incrConcurrentMergeCount(int jobIdAttempt) {
     std::unique_lock<std::mutex> uLock(_iJAMtx);
     if (_isJobAttemptInvalid(jobIdAttempt)) {
-        LOGS(_log, LOG_LVL_INFO, jobIdAttempt << " invalid, not merging");
+        LOGS(_log, LOG_LVL_DEBUG, jobIdAttempt << " invalid, not merging");
         return true;
     }
     if (_waitFlag) {
@@ -703,7 +703,7 @@ bool InvalidJobAttemptMgr::incrConcurrentMergeCount(int jobIdAttempt) {
         _cv.wait(uLock, [this](){ return !_waitFlag; });
         // Since wait lets the mutex go, this must be checked again.
         if (_isJobAttemptInvalid(jobIdAttempt)) {
-            LOGS(_log, LOG_LVL_INFO, jobIdAttempt << " invalid after wait, not merging");
+            LOGS(_log, LOG_LVL_DEBUG, jobIdAttempt << " invalid after wait, not merging");
             return true;
         }
     }
@@ -753,7 +753,7 @@ bool InvalidJobAttemptMgr::holdMergingForRowDelete(std::string const& msg) {
 
     // If this jobAttempt hasn't had any rows added, no need to delete rows.
     if (_invalidJAWithRows.empty()) {
-        LOGS(_log, LOG_LVL_INFO, msg << " should not have any invalid rows, no delete needed.");
+        LOGS(_log, LOG_LVL_DEBUG, msg << " should not have any invalid rows, no delete needed.");
         _cleanupIJA();
         return true;
     }
@@ -762,7 +762,7 @@ bool InvalidJobAttemptMgr::holdMergingForRowDelete(std::string const& msg) {
         _cv.wait(lockJA, [this](){ return _concurrentMergeCount == 0;});
     }
 
-    LOGS(_log, LOG_LVL_INFO, "Deleting rows for " << util::printable(_invalidJAWithRows));
+    LOGS(_log, LOG_LVL_DEBUG, "Deleting rows for " << util::printable(_invalidJAWithRows));
     bool res = _deleteFunc(_invalidJAWithRows);
     if (res) {
         // Successful removal of all invalid rows, clear _invalidJAWithRows.

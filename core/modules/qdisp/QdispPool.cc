@@ -38,19 +38,6 @@ namespace lsst {
 namespace qserv {
 namespace qdisp {
 
-
-// must hold pq._mtx before calling
-std::ostream& operator<<(std::ostream& os, PriorityQueue const& pq) {
-    for (auto const& elem : pq._queues)   {
-        PriorityQueue::PriQ::Ptr const& que = elem.second;
-        os << "(pr=" << que->getPriority()
-           << ":sz="  << que->size()
-           << ":r="   << que->running << ")";
-    }
-    return os;
-}
-
-
 ///< @Return true if the queue could be added.
 bool PriorityQueue::addPriQueue(int priority, int minRunning, int maxRunning) {
     std::lock_guard<std::mutex> lock(_mtx);
@@ -96,7 +83,7 @@ void PriorityQueue::queCmd(PriorityCommand::Ptr const& cmd, int priority) {
         }
         cmd->_priority = priority;
         iter->second->queCmd(cmd);
-        LOGS (_log, LOG_LVL_DEBUG, "priQue p=" << priority << *this);
+        LOGS (_log, LOG_LVL_DEBUG, "priQue p=" << priority << _statsStr());
         _changed = true;
     }
     _cv.notify_one();
@@ -113,12 +100,11 @@ util::Command::Ptr PriorityQueue::getCmd(bool wait){
         ++localLogLimiter;
         // Log this every once in while to INFO so there's some idea of system
         // load without generating crushing amounts of log messages.
-        if (localLogLimiter % 50 == 0) {
-            LOGS(_log, LOG_LVL_INFO, "priQueGet " << *this);
+        if (localLogLimiter % 500 == 0) {
+            LOGS(_log, LOG_LVL_INFO, "priQueGet " << _statsStr());
         } else {
-            LOGS(_log, LOG_LVL_DEBUG, "priQueGet " << *this);
+            LOGS(_log, LOG_LVL_DEBUG, "priQueGet " << _statsStr());
         }
-
 
         /// Make sure minimum number of jobs running per priority.
         if (!_shuttingDown) {
@@ -151,7 +137,7 @@ util::Command::Ptr PriorityQueue::getCmd(bool wait){
 
         // If nothing was found, wait or return nullptr.
         if (wait) {
-            LOGS (_log, LOG_LVL_DEBUG, "getCmd wait " << *this);
+            LOGS (_log, LOG_LVL_DEBUG, "getCmd wait " << _statsStr());
             _cv.wait(uLock, [this](){ return _changed; });
         } else {
             return ptr;
@@ -198,10 +184,29 @@ void PriorityQueue::commandFinish(util::Command::Ptr const& cmd) {
 }
 
 
-std::string PriorityQueue::statsStr() {
-    std::lock_guard<std::mutex> lock(_mtx);
+std::vector<PriorityQueue::PriQ::Stats> PriorityQueue::stats() const {
+    std::lock_guard<std::mutex> const lock(_mtx);
+    return _stats();
+}
+
+
+std::vector<PriorityQueue::PriQ::Stats> PriorityQueue::_stats() const {
+    std::vector<PriorityQueue::PriQ::Stats> result;
+    for (auto const& elem: _queues)   {
+        PriQ::Ptr const& queue = elem.second;
+        result.push_back(queue->stats());
+    }
+    return result;
+}
+
+
+std::string PriorityQueue::_statsStr() const {
     std::stringstream os;
-    os << *this;
+    for (auto const& queueStats: _stats()) {
+        os << "(pr=" << queueStats.priority
+           << ":sz=" << queueStats.size
+           << ":r="  << queueStats.running << ")";
+    }
     return os.str();
 }
 

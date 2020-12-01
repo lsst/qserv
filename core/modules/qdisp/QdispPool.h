@@ -25,6 +25,7 @@
 
 // System headers
 #include <map>
+#include <vector>
 
 // Third-party headers
 
@@ -63,6 +64,17 @@ public:
     class PriQ : public util::CommandQueue {
     public:
         using Ptr = std::shared_ptr<PriQ>;
+
+        /// A snapshot status of the queue for logging or monitoring purposes.
+        struct Stats {
+            Stats(int priority_, size_t size_, int running_)
+               : priority(priority_), size(size_), running(running_)
+            {}
+            int priority;
+            size_t size;
+            int running;
+        };
+
         explicit PriQ(int priority, int minRunning, int maxRunning) :
             _priority(priority), _minRunning(minRunning), _maxRunning(maxRunning) {}
         ~PriQ() override = default;
@@ -70,13 +82,14 @@ public:
         int getMinRunning() const { return _minRunning; }
         int getMaxRunning() const { return _maxRunning; }
 
+        Stats stats() const { return Stats(_priority, const_cast<PriQ*>(this)->size(), running); }
+
         std::atomic<int> running{0}; ///< number of jobs of this priority currently running.
     private:
         int const _priority;   ///< priority value of this queue
         int const _minRunning; ///< minimum number of threads (unless nothing on this queue to run)
         int const _maxRunning; ///< maximum number of threads for this PriQ to use.
     };
-
 
     PriorityQueue() = delete;
     PriorityQueue(PriorityQueue const&) = delete;
@@ -101,22 +114,28 @@ public:
     void commandStart(util::Command::Ptr const& cmd) override;
     void commandFinish(util::Command::Ptr const& cmd) override;
 
-    std::string statsStr();
+    /// @return a snapshot of statistics for all queues (one element per queue)
+    std::vector<PriQ::Stats> stats() const;
 
 private:
+    /// @note a lock on _mtx must be held before calling the method
+    /// @return a snapshot of statistics for all queues (one element per queue)
+    std::vector<PriQ::Stats> _stats() const;
+
+    /// @note a lock on _mtx must be held before calling the method
+    /// @return the stringified representation of the statistics for all queues
+    std::string _statsStr() const;
+
     void _incrDecrRunningCount(util::Command::Ptr const& cmd, int incrDecr);
 
-    std::mutex _mtx;
+    mutable std::mutex _mtx;
     std::condition_variable _cv;
     bool _shuttingDown{false};
     bool _changed{false};
 
     std::map<int, PriQ::Ptr> _queues;
     int _defaultPriority{1};
-
-    friend std::ostream& operator<<(std::ostream& os, PriorityQueue const& pq);
 };
-
 
 /// This class is used to provide a pool of threads for handling out going
 /// and incoming messages from xrootd as well as a system for prioritizing
