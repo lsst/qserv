@@ -189,18 +189,16 @@ wbase::WorkerCommand::Ptr SsiRequest::parseWorkerCommand(char const* reqData, in
         // more data.
         proto::FrameBufferView view(reqData, reqSize);
 
-        LOGS(_log, LOG_LVL_DEBUG, "Decoding WorkerCommandH");
         proto::WorkerCommandH header;
         view.parse(header);
 
-        LOGS(_log, LOG_LVL_INFO, "WorkerCommandH: command=" <<
+        LOGS(_log, LOG_LVL_DEBUG, "WorkerCommandH: command=" <<
              proto::WorkerCommandH_Command_Name(header.command()) <<
              " resource=" << _resourceName);
 
         switch (header.command()) {
             case proto::WorkerCommandH::TEST_ECHO: {
 
-                LOGS(_log, LOG_LVL_DEBUG, "Decoding WorkerCommandTestEchoM");
                 proto::WorkerCommandTestEchoM echo;
                 view.parse(echo);
 
@@ -212,7 +210,6 @@ wbase::WorkerCommand::Ptr SsiRequest::parseWorkerCommand(char const* reqData, in
             case proto::WorkerCommandH::ADD_CHUNK_GROUP:
             case proto::WorkerCommandH::REMOVE_CHUNK_GROUP: {
 
-                LOGS(_log, LOG_LVL_DEBUG, "Decoding WorkerCommandChunkGroupM");
                 proto::WorkerCommandChunkGroupM group;
                 view.parse(group);
 
@@ -244,7 +241,6 @@ wbase::WorkerCommand::Ptr SsiRequest::parseWorkerCommand(char const* reqData, in
             }
             case proto::WorkerCommandH::UPDATE_CHUNK_LIST: {
 
-                LOGS(_log, LOG_LVL_DEBUG, "Decoding WorkerCommandUpdateChunkListM");
                 proto::WorkerCommandUpdateChunkListM message;
                 view.parse(message);
 
@@ -271,7 +267,6 @@ wbase::WorkerCommand::Ptr SsiRequest::parseWorkerCommand(char const* reqData, in
             }
             case proto::WorkerCommandH::SET_CHUNK_LIST: {
 
-                LOGS(_log, LOG_LVL_DEBUG, "Decoding WorkerCommandSetChunkListM");
                 proto::WorkerCommandSetChunkListM message;
                 view.parse(message);
 

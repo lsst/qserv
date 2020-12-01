@@ -162,7 +162,7 @@ bool QueryRunner::runQuery() {
     _task->waitForMemMan();
     memTimer.stop();
     auto logMsg = memWaitHisto.addTime(memTimer.getElapsed(), _task->getIdStr());
-    LOGS(_log, LOG_LVL_INFO, logMsg);
+    LOGS(_log, LOG_LVL_DEBUG, logMsg);
 
     if (_task->getCancelled()) {
         LOGS(_log, LOG_LVL_DEBUG, "runQuery, task was cancelled after locking tables.");
@@ -170,7 +170,7 @@ bool QueryRunner::runQuery() {
     }
 
     _setDb();
-    LOGS(_log, LOG_LVL_INFO,  "Exec in flight for Db=" << _dbName
+    LOGS(_log, LOG_LVL_DEBUG,  "Exec in flight for Db=" << _dbName
         << " sqlConnMgr total" << _sqlConnMgr->getTotalCount() << " conn=" << _sqlConnMgr->getSqlConnCount());
     wcontrol::SqlConnLock sqlConnLock(*_sqlConnMgr, not _task->getScanInteractive());
     bool connOk = _initConnection();

@@ -119,7 +119,7 @@ void GroupScheduler::queCmd(util::Command::Ptr const& cmd) {
         _queue.push_back(group);
     }
     auto uqCount = _incrCountForUserQuery(t->getQueryId());
-    LOGS(_log, LOG_LVL_INFO, getName() << " queCmd uqCount=" << uqCount
+    LOGS(_log, LOG_LVL_DEBUG, getName() << " queCmd uqCount=" << uqCount
         << " rating=" << t->getScanInfo().scanRating << " interactive=" << t->getScanInteractive());
     util::CommandQueue::_cv.notify_one();
 }
