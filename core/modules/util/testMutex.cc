@@ -27,9 +27,8 @@
 // System headers
 #include <atomic>
 #include <mutex>
+#include <sstream>
 #include <thread>
-
-// Third-party headers
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -42,59 +41,97 @@
 #define BOOST_TEST_MODULE Mutex
 #include "boost/test/included/unit_test.hpp"
 
+using namespace std;
 namespace test = boost::test_tools;
-
 using namespace lsst::qserv::util;
+
+namespace {
+string thisThreadId2str() {
+    ostringstream ss;
+    ss << this_thread::get_id();
+    return ss.str();
+}
+}
 
 BOOST_AUTO_TEST_SUITE(Suite)
 
 BOOST_AUTO_TEST_CASE(MutexTest) {
-
-    LOGS_DEBUG("Mutex test begins");
+    // Test the interface of class Mutex to comply with expectations
+    // of the standard std::lock_guard<T>.
+    LOGS_DEBUG("MutexTest begins");
 
     // The mutex won't be locked by anyone
     Mutex mtx1;
-    BOOST_CHECK(not mtx1.lockedByCaller());
+    BOOST_CHECK(!mtx1.lockedByCaller());
 
     // The mutex will be locked by the current thread
     Mutex mtx2;
-    std::lock_guard<Mutex> lockGuard2(mtx2);
+    lock_guard<Mutex> const lockGuard2(mtx2);
     BOOST_CHECK(mtx2.lockedByCaller());
 
-    // Lock this mutex within a separate thread. Let the thread to run,
-    // then run the lock ownership test from the current thread.
+    // Lock this mutex in each of two separate threads. Let each thread
+    // to wait for a random period of time within some interval before
+    // grabbing a lock. This would ensure threads would attempt locking
+    // at random order.
     //
-    // Note that the life expectancy of the launched thread once it locks
-    // the mutex will be a random duration of time (milliseconds) within
-    // an interval of passed into the constructor of class BlockPost.
-
-    Mutex mtx3;
-    std::atomic<bool> threadFinished(false);
-    std::thread thr([&mtx3,&threadFinished]() {
-        std::lock_guard<Mutex> lockGuard3(mtx3);
-        BlockPost blockPost(1000,2000);
-        blockPost.wait();
-        threadFinished = true;
-    });
-    thr.detach();
-
-    // Recheck the lock status more frequently to allow multiple attempts
-    // while the previously launched thread is still alive.
-    while (not threadFinished) {
-        BOOST_CHECK(not mtx3.lockedByCaller());
-        BlockPost blockPost(100,200);
-        blockPost.wait();
+    // Note the wait interval for each thread is a random
+    // number of milliseconds within the same interval of time.
+    // The average run time of the test is the average wait time
+    // multiplied by the number of iterations of the loop.
+    for (int i = 0; i < 100; ++i) {
+        Mutex mtx;
+        bool wasLockedBeforeBy1 = false;
+        bool wasLockedAfterBy1 = false;
+        thread thr1([&mtx, &wasLockedBeforeBy1, &wasLockedAfterBy1]() {
+            BlockPost blockPost(10,20);
+            blockPost.wait();
+            wasLockedBeforeBy1 = mtx.lockedByCaller();
+            lock_guard<Mutex> const lock(mtx);
+            wasLockedAfterBy1 = mtx.lockedByCaller();
+        });
+        bool wasLockedBeforeBy2 = false;
+        bool wasLockedAfterBy2 = false;
+        thread thr2([&mtx, &wasLockedBeforeBy2, &wasLockedAfterBy2]() {
+            BlockPost blockPost(10,20);
+            blockPost.wait();
+            wasLockedBeforeBy2 = mtx.lockedByCaller();
+            lock_guard<Mutex> const lock(mtx);
+            wasLockedAfterBy2 = mtx.lockedByCaller();
+        });
+        thr1.join();
+        BOOST_CHECK(!wasLockedBeforeBy1);
+        BOOST_CHECK(wasLockedAfterBy1);
+        thr2.join();
+        BOOST_CHECK(!wasLockedBeforeBy2);
+        BOOST_CHECK(wasLockedAfterBy2);
     }
-    BOOST_CHECK(not mtx3.lockedByCaller());
-    std::lock_guard<Mutex> lockGuard4(mtx3);
-    BOOST_CHECK(mtx3.lockedByCaller());
-
-    LOGS_DEBUG("Mutex test ends");
+    // Test the correctness of the Mutex implementation by using a non-atomic
+    // counter to be incremented after acquiring a lock.
+    {
+        Mutex mtx;
+        unsigned int counter = 0;
+        unsigned int const steps = 1024;
+        unsigned int const numThreads = min(2U, thread::hardware_concurrency());
+        vector<unique_ptr<thread>> threads(numThreads);
+        for (auto&& t: threads) {
+            t = make_unique<thread>([&mtx, &counter](){
+                for (unsigned int i = 0; i < steps; ++i) {
+                    lock_guard<Mutex> const lock(mtx);
+                    ++counter;
+                }
+            });
+        }
+        for (auto&& t: threads) {
+            t->join();
+        }
+        BOOST_CHECK_EQUAL(counter, steps * numThreads);
+    }
+    LOGS_DEBUG("MutexTest ends");
 }
 
-BOOST_AUTO_TEST_CASE(LockTest) {
-
-    LOGS_DEBUG("Lock1 test begins");
+BOOST_AUTO_TEST_CASE(LockTest1) {
+    // Test locking a mutex created on stack using a special class util::Lock.
+    LOGS_DEBUG("LockTest1 begins");
 
     // The mutex won't be locked by anyone
     Mutex mtx1;
@@ -105,45 +142,129 @@ BOOST_AUTO_TEST_CASE(LockTest) {
     {
         // Do this in a nested block to ensure that lock object
         // gets destructed before the mutex.
-        Lock lock(mtx2, "LockTest: main thread");
+        Lock const lock(mtx2, "LockTes1t: main thread");
         BOOST_CHECK(mtx2.lockedByCaller());
     }
-    BOOST_CHECK(not mtx2.lockedByCaller());
+    LOGS_DEBUG(!mtx2.lockedByCaller());
 
-    // Lock this mutex within a separate thread. Let the thread to run,
-    // then run the lock ownership test from the current thread.
+    // Lock this mutex in each of two separate threads. Let each thread
+    // to wait for a random period of time within some interval before
+    // grabbing a lock. This would ensure threads would attempt locking
+    // at random order.
     //
-    // Note that the life expectancy of the launched thread once it locks
-    // the mutex will be a random duration of time (milliseconds) within
-    // an interval of passed into the constructor of class BlockPost.
-
-    Mutex mtx3;
-    std::atomic<bool> threadFinished(false);
-    std::thread thr([&mtx3,&threadFinished]() {
-        Lock lock(mtx3, "Lock1Test: detached thread");
-        BlockPost blockPost(1000,2000);
-        blockPost.wait();
-        threadFinished = true;
-    });
-    thr.detach();
-
-    // Recheck the lock status more frequently to allow multiple attempts
-    // while the previously launched thread is still alive.
-    while (not threadFinished) {
-        BOOST_CHECK(not mtx3.lockedByCaller());
-        BlockPost blockPost(100,200);
-        blockPost.wait();
+    // Note the wait interval for each thread is a random
+    // number of milliseconds within the same interval of time.
+    // The average run time of the test is the average wait time
+    // multiplied by the number of iterations of the loop.
+    for (int i = 0; i < 100; ++i) {
+        Mutex mtx;
+        thread thr1([&mtx]() {
+            BlockPost blockPost(10,20);
+            blockPost.wait();
+            Lock const lock(mtx, "LockTest1: thread 1");
+        });
+        thread thr2([&mtx]() {
+            BlockPost blockPost(10,20);
+            blockPost.wait();
+            Lock const lock(mtx, "LockTest1: thread 2");
+        });
+        BOOST_CHECK(!mtx.lockedByCaller());
+        thr1.join();
+        thr2.join();
     }
-    BOOST_CHECK(not mtx3.lockedByCaller());
+    // Test the correctness of the Mutex implementation by using a non-atomic
+    // counter to be incremented after acquiring a lock.
+    {
+        Mutex mtx;
+        unsigned int counter = 0;
+        unsigned int const steps = 1024;
+        unsigned int const numThreads = min(2U, thread::hardware_concurrency());
+        vector<unique_ptr<thread>> threads(numThreads);
+        for (auto&& t: threads) {
+            t = make_unique<thread>([&mtx, &counter](){
+                for (unsigned int i = 0; i < steps; ++i) {
+                    Lock const lock(mtx, "LockTest1: thread " + thisThreadId2str());
+                    ++counter;
+                }
+            });
+        }
+        for (auto&& t: threads) {
+            t->join();
+        }
+        BOOST_CHECK_EQUAL(counter, steps * numThreads);
+    }
+    LOGS_DEBUG("LockTest1 ends");
+}
+
+
+BOOST_AUTO_TEST_CASE(LockTest2) {
+    // Test locking a mutex created in dynamic memory and owned by
+    // a shared pointer using a special class util::Lock. The test implements
+    // the same testing algorithm as the previous test, except it will be testing
+    // a different way of constructing the lock.
+    LOGS_DEBUG("LockTest2 begins");
+
+    // The mutex won't be locked by anyone
+    shared_ptr<Mutex> const mtx1 = make_shared<Mutex>();
+    BOOST_CHECK(!mtx1->lockedByCaller());
+
+    // The mutex will be locked by the current thread
+    shared_ptr<Mutex> const mtx2 = make_shared<Mutex>();
     {
         // Do this in a nested block to ensure that lock object
         // gets destructed before the mutex.
-        Lock lock(mtx3, "Lock1Test: main thread (again)");
-        BOOST_CHECK(mtx3.lockedByCaller());
+        Lock const lock(mtx2, "LockTes1t: main thread");
+        BOOST_CHECK(mtx2->lockedByCaller());
     }
-    BOOST_CHECK(not mtx3.lockedByCaller());
+    BOOST_CHECK(!mtx2->lockedByCaller());
 
-    LOGS_DEBUG("Lock1 test ends");
+    // Lock this mutex in each of two separate threads. Let each thread
+    // to wait for a random period of time within some interval before
+    // grabbing a lock. This would ensure threads would attempt locking
+    // at random order.
+    //
+    // Note the wait interval for each thread is a random
+    // number of milliseconds within the same interval of time.
+    // The average run time of the test is the average wait time
+    // multiplied by the number of iterations of the loop.
+    for (int i = 0; i < 100; ++i) {
+        shared_ptr<Mutex> const mtx = make_shared<Mutex>();
+        thread thr1([mtx]() {
+            BlockPost blockPost(10, 20);
+            blockPost.wait();
+            Lock const lock(mtx, "LockTest1: thread 1");
+        });
+        thread thr2([mtx]() {
+            BlockPost blockPost(10, 20);
+            blockPost.wait();
+            Lock const lock(mtx, "LockTest1: thread 2");
+        });
+        BOOST_CHECK(!mtx->lockedByCaller());
+        thr1.join();
+        thr2.join();
+    }
+    // Test the correctness of the Mutex implementation by using a non-atomic
+    // counter to be incremented after acquiring a lock.
+    {
+        shared_ptr<Mutex> const mtx = make_shared<Mutex>();
+        unsigned int counter = 0;
+        unsigned int const steps = 1024;
+        unsigned int const numThreads = min(2U, thread::hardware_concurrency());
+        vector<unique_ptr<thread>> threads(numThreads);
+        for (auto&& t: threads) {
+            t = make_unique<thread>([mtx, &counter](){
+                for (unsigned int i = 0; i < steps; ++i) {
+                    Lock const lock(mtx, "LockTest2: thread " + thisThreadId2str());
+                    ++counter;
+                }
+            });
+        }
+        for (auto&& t: threads) {
+            t->join();
+        }
+        BOOST_CHECK_EQUAL(counter, steps * numThreads);
+    }
+    LOGS_DEBUG("LockTest2 ends");
 }
 
 BOOST_AUTO_TEST_SUITE_END()

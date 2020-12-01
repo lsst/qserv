@@ -367,6 +367,29 @@ public:
  */
 inline std::string bool2str(bool v) { return v ? "1" : "0"; }
 
+
+/**
+ * Class Query stores a query and the optional transient synchronization context
+ * for the query.
+ */
+class Query {
+public:
+    Query() = default;
+    Query(Query const&) = default;
+    Query& operator=(Query const&) = default;
+    /// @param query_ A query.
+    /// @param mutexName_ The optional name of a mutex to be held before
+    ///   executing the query.
+    explicit Query(std::string const& query_,
+                   std::string const& mutexName_=std::string())
+        :   query(query_), mutexName(mutexName_) {
+    }
+    ~Query() = default;
+
+    std::string query;
+    std::string mutexName;
+};
+
 }}} // namespace lsst::qserv::replica
 
 #endif // LSST_QSERV_REPLICA_COMMON_H

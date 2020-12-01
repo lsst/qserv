@@ -23,20 +23,13 @@
 #ifndef LSST_QSERV_UTIL_MUTEX_H
 #define LSST_QSERV_UTIL_MUTEX_H
 
-/// Mutex.h declares:
-///
-///   class Mutex
-///
-/// (see individual class documentation for more information)
-
 // System headers
 #include <atomic>
+#include <memory>
 #include <mutex>
 #include <set>
 #include <string>
 #include <thread>
-
-// Qserv headers
 
 // This header declarations
 
@@ -47,9 +40,7 @@ namespace util {
 /**
  * Class Mutex extends the standard class std::mutex with extra methods.
  */
-class Mutex
-    :   public std::mutex {
-
+class Mutex: public std::mutex {
 public:
 
     /// @return identifiers of locked mutexes
@@ -61,23 +52,16 @@ public:
         return result;
     }
 
-    /// Constructor
-    Mutex()
-        :   _id(nextId()) {
-    }
+    Mutex() : _id(nextId()) {}
 
-    /**
-     * Lock the mutext (replaces the corresponidng method of the base class)
-     */
+    /// Lock the mutext (replaces the corresponding method of the base class)
     void lock() {
         std::mutex::lock();
         _holder = std::this_thread::get_id();
         addCurrentId();
     }
 
-    /**
-     * Release the mutext (replaces the corresponidng method of the base class)
-     */
+    /// Release the mutext (replaces the corresponding method of the base class)
     void unlock() {
         removeCurrentId();
         _holder = std::thread::id();
@@ -87,15 +71,12 @@ public:
     /// @return unique identifier of a lock
     unsigned int id() const { return _id; }
 
-    /**
-     * @return true if the mutex is locked by the caller of this method
-     */
+    /// @return true if the mutex is locked by the caller of this method
     bool lockedByCaller() const {
         return _holder == std::this_thread::get_id();
     }
 
 private:
-
     /// @return next identifier in a global series
     static unsigned int nextId() {
         static std::atomic<unsigned int> id{0};
@@ -123,26 +104,11 @@ private:
 };
 
 
-/// Type definition for the lock type
-//typedef std::lock_guard<Mutex> Lock;
-
-/**
- * Acquire a lock on a mutex and return the lock object (move semantics)
- * The method will also log the locking attempt into the coresponding
- * logging stream if an optional logging context is provided.
- *
- * @param mutex   - mutex object to be locked
- * @param context - context in which the lock was requested (used for logging purposes)
- * @return lock object
- */
-//Lock&& lock(Mutex& mutex, std::string const& context=std::string());
-
-
 /**
  * Class Lock is designed to completement the above defined class Mutex.
  * The current implementation of the class is very similar to std::lock_guard.
  * In addition Lock would also print out 3 debug messages into the log stream when
- * a state transition occures:
+ * a state transition ocurrs:
  *
  * - before the lock is acquired
  * - right after it's acquired
@@ -152,26 +118,47 @@ private:
  * thread before attempting to lock the mutex.
  */
 class Lock {
-
 public:
+    /**
+     * Lock the mutex given by a plain reference.
+     * @param mutex A mutex object to be locked.
+     * @param context A context in which the lock is acquired.
+     */
+    explicit Lock(Mutex& mutex,
+                  std::string const& context=std::string())
+        :   _mutex(mutex),
+            _context(context) {
+        _lock();
+    }
 
     /**
-     * The only form of object construction which is available
-     *
-     * @param mutex   - object to be locked
-     * @param context - context in which the lock is acquired
+     * Lock the mutex given by a shared pointer.
+     * @note A local copy of the shared pointer will be owned by the lock.
+     *   A local reference to the Mutex will be reffering an object pointed
+     *   to by the pointer to allow unifid inner implementation of
+     *   the locking/unlocking algorithms. See the code for further details.
+     * @param mutex A mutex object to be locked.
+     * @param context A context in which the lock is acquired.
      */
-    explicit Lock(Mutex& mutex, std::string const& context=std::string());
-
-    // Default construction and any fors of copy semantics are prohited
+    explicit Lock(std::shared_ptr<Mutex> const& mutexPtr,
+                  std::string const& context=std::string())
+        :   _mutexPtr(mutexPtr),
+            _mutex(*mutexPtr),
+            _context(context) {
+        _lock();
+    }
 
     Lock() = delete;
     Lock(Lock const&) = delete;
     Lock& operator=(Lock const&) = delete;
 
-    ~Lock();
+    ~Lock() { _unlock(); }
 
 private:
+    void _lock();
+    void _unlock();
+
+    std::shared_ptr<Mutex> const _mutexPtr;
     Mutex& _mutex;
     std::string _context;
 };

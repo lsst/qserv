@@ -28,6 +28,7 @@
 // Qserv headers
 #include "replica/Configuration.h"
 #include "replica/Performance.h"
+#include "util/Mutex.h"
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -106,8 +107,9 @@ void WorkerSqlRequest::setInfo(ProtocolResponseSql& response) const {
 
 bool WorkerSqlRequest::execute() {
 
-    LOGS(_log, LOG_LVL_DEBUG, context(__func__));
-    util::Lock lock(_mtx, context(__func__));
+    string const context_ = "WorkerSqlRequest::" + context(__func__);
+    LOGS(_log, LOG_LVL_DEBUG, context_);
+    util::Lock lock(_mtx, context_);
 
     switch (status()) {
         case STATUS_IN_PROGRESS: break;
@@ -116,7 +118,7 @@ bool WorkerSqlRequest::execute() {
             throw WorkerRequestCancelled();
         default:
             throw logic_error(
-                    "WorkerSqlRequest::" + context(__func__) + "  not allowed while in state: " +
+                    context_  + "  not allowed while in state: " +
                     WorkerRequest::status2string(status()));
     }
     try {
@@ -155,7 +157,13 @@ bool WorkerSqlRequest::execute() {
                     database::mysql::ConnectionHandler const h(connection);
                     h.conn->execute([&](decltype(h.conn) const& conn_) {
                         conn_->begin();
-                        conn_->execute(_query(conn_, table));
+                        auto const query = _query(conn_, table);
+                        if (query.mutexName.empty()) {
+                            conn_->execute(query.query);
+                        } else {
+                            util::Lock const lock(serviceProvider()->getNamedMutex(query.mutexName), context_);
+                            conn_->execute(query.query);
+                        }
                         _extractResultSet(lock, conn_);
                         conn_->commit();
                     });
@@ -191,7 +199,13 @@ bool WorkerSqlRequest::execute() {
             database::mysql::ConnectionHandler const h(connection);
             h.conn->execute([&](decltype(h.conn) const& conn_) {
                 conn_->begin();
-                conn_->execute(_query(conn_));
+                auto const query = _query(conn_);
+                if (query.mutexName.empty()) {
+                    conn_->execute(query.query);
+                } else {
+                    util::Lock const lock(serviceProvider()->getNamedMutex(query.mutexName), context_);
+                    conn_->execute(query.query);
+                }
                 _extractResultSet(lock, conn_);
                 conn_->commit();
             });
@@ -248,7 +262,7 @@ database::mysql::Connection::Ptr WorkerSqlRequest::_connector() const {
 }
 
 
-string WorkerSqlRequest::_query(database::mysql::Connection::Ptr const& conn) const {
+Query WorkerSqlRequest::_query(database::mysql::Connection::Ptr const& conn) const {
 
     auto const config = serviceProvider()->config();
     auto const workerInfo = config->workerInfo(worker());    
@@ -258,24 +272,24 @@ string WorkerSqlRequest::_query(database::mysql::Connection::Ptr const& conn) co
     switch (_request.type()) {
 
         case ProtocolRequestSql::QUERY:
-            return _request.query();
+            return Query(_request.query());
 
         case ProtocolRequestSql::CREATE_DATABASE:
-            return "CREATE DATABASE IF NOT EXISTS " + conn->sqlId(_request.database());
+            return Query("CREATE DATABASE IF NOT EXISTS " + conn->sqlId(_request.database()));
 
         case ProtocolRequestSql::DROP_DATABASE:
-            return "DROP DATABASE IF EXISTS " + conn->sqlId(_request.database());
+            return Query("DROP DATABASE IF EXISTS " + conn->sqlId(_request.database()));
 
         case ProtocolRequestSql::ENABLE_DATABASE:
 
             // Using REPLACE instead of INSERT to avoid hitting the DUPLICATE KEY error
             // if such entry already exists in the table.
-            return "REPLACE INTO " + qservDbsTable +
-                   " VALUES ("    + conn->sqlValue(_request.database()) + ")";
+            return Query("REPLACE INTO " + qservDbsTable +
+                         " VALUES ("    + conn->sqlValue(_request.database()) + ")");
 
         case ProtocolRequestSql::DISABLE_DATABASE:
-            return "DELETE FROM " + qservDbsTable +
-                   " WHERE "      + conn->sqlEqual("db", _request.database());
+            return Query("DELETE FROM " + qservDbsTable +
+                         " WHERE "      + conn->sqlEqual("db", _request.database()));
 
         case ProtocolRequestSql::GRANT_ACCESS:
 
@@ -290,24 +304,22 @@ string WorkerSqlRequest::_query(database::mysql::Connection::Ptr const& conn) co
             // Hence removing quotes from '*' an commenting the following statement:
             //   return "GRANT ALL ON " + conn->sqlId(_request.database()) + "." + conn->sqlId("*") +
             //          " TO " + conn->sqlValue(_request.user()) + "@" + conn->sqlValue(workerInfo.dbHost);
-
-            return "GRANT ALL ON " + conn->sqlId(_request.database()) + ".* TO " +
-                   conn->sqlValue(_request.user()) + "@" + conn->sqlValue(workerInfo.dbHost);
+            return Query("GRANT ALL ON " + conn->sqlId(_request.database()) + ".* TO " +
+                         conn->sqlValue(_request.user()) + "@" + conn->sqlValue(workerInfo.dbHost));
 
         default:
 
             // The remaining remaining types of requests require the name of a table
             // affected by the operation.
-
             return _query(conn, _request.table());
     }
 }
 
 
-string WorkerSqlRequest::_query(database::mysql::Connection::Ptr const& conn,
-                                string const& table) const {
+Query WorkerSqlRequest::_query(database::mysql::Connection::Ptr const& conn,
+                               string const& table) const {
 
-    string const databaseTable = conn->sqlId(_request.database()) + "." + conn->sqlId(table);
+    string const databaseTable = conn->sqlId(_request.database(), table);
 
     switch (_request.type()) {
         case ProtocolRequestSql::CREATE_TABLE: {
@@ -327,18 +339,22 @@ string WorkerSqlRequest::_query(database::mysql::Connection::Ptr const& conn,
                 query += " PARTITION BY LIST (" + conn->sqlId(partitionByColumn) +
                          ") (PARTITION `p0` VALUES IN (0) ENGINE = " + _request.engine() + ")";
             }
-            return query;
+            return Query(query,
+                         databaseTable);
         }
 
         case ProtocolRequestSql::DROP_TABLE:
-            return "DROP TABLE IF EXISTS " + databaseTable;
+            return Query("DROP TABLE IF EXISTS " + databaseTable,
+                         databaseTable);
 
         case ProtocolRequestSql::DROP_TABLE_PARTITION:
-            return "ALTER TABLE " + databaseTable + " DROP PARTITION IF EXISTS "
-                   + conn->sqlPartitionId(_request.transaction_id());
+            return Query("ALTER TABLE " + databaseTable + " DROP PARTITION IF EXISTS "
+                         + conn->sqlPartitionId(_request.transaction_id()),
+                         databaseTable);
 
         case ProtocolRequestSql::REMOVE_TABLE_PARTITIONING:
-            return "ALTER TABLE " + databaseTable + " REMOVE PARTITIONING";
+            return Query("ALTER TABLE " + databaseTable + " REMOVE PARTITIONING",
+                         databaseTable);
 
         case ProtocolRequestSql::CREATE_TABLE_INDEX: {
             string const spec = _request.index_spec() == ProtocolRequestSql::DEFAULT ?
@@ -351,18 +367,22 @@ string WorkerSqlRequest::_query(database::mysql::Connection::Ptr const& conn,
                 if (key.length() != 0) keys += "(" + to_string(key.length()) + ")";
                 keys += key.ascending() ? " ASC" : " DESC";
             }
-            return "CREATE " + spec + " INDEX " + conn->sqlId(_request.index_name()) + " ON " + databaseTable +
-                   " (" + keys + ")" + " COMMENT " + conn->sqlValue(_request.index_comment());
+            return Query("CREATE " + spec + " INDEX " + conn->sqlId(_request.index_name())
+                         + " ON " + databaseTable + " (" + keys + ")"
+                         + " COMMENT " + conn->sqlValue(_request.index_comment()),
+                         databaseTable);
         }
 
         case ProtocolRequestSql::DROP_TABLE_INDEX:
-            return "DROP INDEX " + conn->sqlId(_request.index_name()) + " ON " + databaseTable;
+            return Query("DROP INDEX " + conn->sqlId(_request.index_name()) + " ON " + databaseTable,
+                         databaseTable);
 
         case ProtocolRequestSql::GET_TABLE_INDEX:
-            return "SHOW INDEXES FROM " + databaseTable;
+            return Query("SHOW INDEXES FROM " + databaseTable);
 
         case ProtocolRequestSql::ALTER_TABLE:
-            return "ALTER TABLE " + databaseTable + " " + _request.alter_spec();
+            return Query("ALTER TABLE " + databaseTable + " " + _request.alter_spec(),
+                         databaseTable);
 
         default:
             throw invalid_argument(
