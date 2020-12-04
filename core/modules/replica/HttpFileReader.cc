@@ -124,7 +124,10 @@ void HttpFileReader::read(CallbackType const& onEachLine) {
 
 void HttpFileReader::_errorChecked(string const& scope, CURLcode errnum) {
     if (errnum != CURLE_OK) {
-        throw runtime_error(scope + " failed with: " + curl_easy_strerror(errnum));
+        string errorStr = curl_easy_strerror(errnum);
+        if (errnum == CURLE_HTTP_RETURNED_ERROR) errorStr += " (on HTTP error codes 400 or greater)";
+        throw runtime_error(
+                scope + " failed, error: '" + errorStr + "', errnum: " + to_string(errnum));
     }
 }
 

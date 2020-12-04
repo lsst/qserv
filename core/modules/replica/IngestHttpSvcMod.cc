@@ -23,6 +23,7 @@
 #include "replica/IngestHttpSvcMod.h"
 
 // System headers
+#include <cstring>
 #include <fstream>
 #include <iostream>
 #include "curl/curl.h"
@@ -205,7 +206,9 @@ json IngestHttpSvcMod::_readLocal(string const& filename) {
     size_t numRows = 0;
     ifstream infile(filename);
     if (!infile.is_open()) {
-        throw HttpError(__func__, "failed to open file '" + filename+ "'.");
+        throw HttpError(
+                __func__, "failed to open file '" + filename
+                + "', error: '" + strerror(errno) + "', errno: " + to_string(errno));
     }
     for (string row; getline(infile, row);) {
         writeRowIntoFile(row);

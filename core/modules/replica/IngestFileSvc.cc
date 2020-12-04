@@ -159,7 +159,9 @@ void IngestFileSvc::openFile(TransactionId transactionId,
     }
     _file.open(_fileName, ofstream::out);
     if (not _file.is_open()) {
-        throw runtime_error(context_ + "failed to create a temporary file: " + _fileName);
+        throw runtime_error(
+                context_ + "failed to create a temporary file '" + _fileName
+                + "', error: '" + strerror(errno) + "', errno: " + to_string(errno));
     }
 }
 
@@ -341,7 +343,8 @@ void IngestFileSvc::closeFile() {
         boost::system::error_code ec;
         fs::remove(_fileName, ec);
         if (ec.value() != 0) {
-            LOGS(_log, LOG_LVL_WARN, context_ << "file removal failed: " << ec.message());
+            LOGS(_log, LOG_LVL_WARN, context_ << "file removal failed, error: '" << ec.message()
+                 << "', ec: " + to_string(ec.value()));
         }
     }
 }
