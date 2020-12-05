@@ -23,18 +23,16 @@
 #include "replica/MessengerTestApp.h"
 
 // System headers
-#include <atomic>
 #include <iomanip>
 #include <iostream>
-#include <vector>
+#include <sstream>
 
 // Qserv headers
 #include "replica/Configuration.h"
 #include "replica/Controller.h"
-#include "replica/Messenger.h"
-#include "replica/MessengerConnector.h"
-#include "replica/protocol.pb.h"
-#include "replica/ProtocolBuffer.h"
+#include "replica/EchoRequest.h"
+#include "replica/Performance.h"
+#include "replica/ServiceProvider.h"
 #include "util/BlockPost.h"
 
 using namespace std;
@@ -42,19 +40,22 @@ using namespace std;
 namespace {
 
 string const description =
-    "This application tests the Messenger Network w/o leaving side effects on the workers.";
+    "Class MessengerTestApp implements a tool which tests the Messenger Network"
+    " w/o leaving side effects on the workers. The tool will be sending and tracking"
+    " requests of class EchoRequest.";
+
+bool const injectDatabaseOptions = false;
+bool const boostProtobufVersionCheck = true;
+bool const enableServiceProvider = true;
 
 } /// namespace
-
 
 namespace lsst {
 namespace qserv {
 namespace replica {
 
 MessengerTestApp::Ptr MessengerTestApp::create(int argc, char* argv[]) {
-    return Ptr(
-        new MessengerTestApp(argc, argv)
-    );
+    return Ptr(new MessengerTestApp(argc, argv));
 }
 
 
@@ -62,99 +63,172 @@ MessengerTestApp::MessengerTestApp(int argc, char* argv[])
     :   Application(
             argc, argv,
             ::description,
-            false   /* injectDatabaseOptions */,
-            true    /* boostProtobufVersionCheck */,
-            true    /* enableServiceProvider */
-        ) {
-
-    // Configure the command line parser
+            injectDatabaseOptions, boostProtobufVersionCheck, enableServiceProvider) {
 
     parser().required(
         "worker",
         "The name of a worker to be used during the testing.",
-        _workerName);
-
-    parser().option(
-        "iterations",
-        "The number of number of iterations (must be strictly greater than 0).",
-        _numIterations);
-
-    parser().option(
-        "cancel-after-iter",
-        "If provided and if positive then issue a request to cancel an earlier made"
-        " request iteration (starting from 0 and before the specified number of iterations)."
-        " Also, if provided this number should not exceed the number of iterations.",
-        _cancelAfterIter);
+        _workerName
+    ).option(
+        "data",
+        "The data payload to be sent to the worker and expected to be back.",
+        _data
+    ).option(
+        "proc-time-sec",
+        "The 'processing' time (seconds) of requests by the worker's threads."
+        " This interval doesn't include any latencies for delivering requests to"
+        " the threads and retreiving results back. If a value of the parameter"
+        " is set to 0 then requests will be instantly answered by the worker"
+        " w/o putting them into a queue for further processing by the workers'"
+        " threads. Zero value is also good for testing the performance of the protocol.",
+        _proccesingTimeSec
+    ).option(
+        "priority",
+        "The priority level of requests.",
+        _priority
+    ).option(
+        "expiration-ival-sec",
+        "The request expiration interval (seconds). The parameter specifies"
+        " thw maximum 'life expectancy' of the requests after they're submitted and,"
+        " before they succeeded, failed or expired. The default value of 0 will result"
+        " in fetching a value of the parameter from the Replication System's configuration.",
+        _requestExpirationIvalSec
+    ).option(
+        "requests",
+        "The total number of requests to be submitted to the worker (must be"
+        " strictly greater than 0).",
+        _totalRequests
+    ).option(
+        "max-active-requests",
+        "The number of active (in-flight) requests not to exceed at any given moment"
+        "  of time. This parameter is used for flow control, and to prevent the application"
+        " from consuming too much memory.  A value of the parameter should not be"
+        " less than the total number of requests to be submitted to the worker.",
+        _maxActiveRequests
+    ).option(
+        "events-report-ival-sec",
+        "The interval for reporting events. If a value of the parameter"
+        "is 0 then events won't be reported",
+        _eventsReportIvalSec
+    ).flag(
+        "report-request-events",
+        "Enable extended reporting on sending requests and analysing responses.",
+        _reportRequestEvents
+    );
 }
 
 
 int MessengerTestApp::runImpl() {
+    string const context = string(__func__) + "  ";
 
-    // Check if the input parameters make a sense
-
-    if (_numIterations <= 0) {
+    if (_totalRequests <= 0) {
         throw invalid_argument(
-                string(__func__) + ": the number of iterations must be strictly greater than 0");
+                context + "the total number of requests must be strictly greater than 0");
     }
-    if (_cancelAfterIter > 0 and _cancelAfterIter > _numIterations) {
+    if (_maxActiveRequests >  _totalRequests) {
         throw invalid_argument(
-                string(__func__) +
-                ": the number of iteration after which to cancel a message must not exceed"
-                " the total number of iterations");
+                context + "the number of active requests can't exceed the total number "
+                + to_string(_totalRequests) + " of requests.");
     }
-
-    // Instantiate the messenger configured in the same way as Controller 
 
     auto const controller = Controller::create(serviceProvider());
-    auto const messenger  = Messenger::create(serviceProvider(), controller->io_service());
+    bool const keepTracking = true;
+    string const noParentJobId;
 
-    // Prepare, serialize and launch multiple requests
+    for (int i = 0; i < _totalRequests; ++i) {
 
-    atomic<int> numFinished{0};
+        // Wait here if (while) the number of active requests is at
+        // the allowed maximum.
+        unique_lock<mutex> lock(_mtx);
+        _onNumActiveCv.wait(lock, [&]{ return _numActive < _maxActiveRequests; });
 
-    for (int i=0; i < _numIterations; ++i) {
-
-        string const id = "unique-request-id-" + to_string(i);
-
-        auto const requestBufferPtr =
-            make_shared<ProtocolBuffer>(serviceProvider()->config()->requestBufferSizeBytes());
-
-        requestBufferPtr->resize();
-
-        ProtocolRequestHeader hdr;
-        hdr.set_id(id);
-        hdr.set_type(ProtocolRequestHeader::SERVICE);
-        hdr.set_service_type(ProtocolServiceRequestType::SERVICE_STATUS);
-        hdr.set_instance_id(serviceProvider()->instanceId());
-
-        requestBufferPtr->serialize(hdr);
-
-        messenger->send<ProtocolServiceResponse>(
+        // Submit the next request.
+        auto const request = controller->echo(
             _workerName,
-            id,
-            requestBufferPtr,
-            [&numFinished] (string const& id,
-                            bool success,
-                            ProtocolServiceResponse const& response) {
-                numFinished++;
-                cout << setw(32) << id << "  ** finished **  "
-                     << (success ? "SUCCEEDED" : "FAILED") << endl;
-            }
+            _data,
+            _proccesingTimeSec,
+            [&](EchoRequest::Ptr request) {
+                {
+                    unique_lock<mutex> lock(_mtx);
+                    _numActive--;
+                    _numFinished++;
+                    switch (request->extendedState()) {
+                        case Request::SUCCESS: _numSuccess++; break;
+                        case Request::TIMEOUT_EXPIRED: _numExpired++; break;
+                        default: _numFailed++; break;
+                    }
+                }
+                _onNumActiveCv.notify_one();
+
+                _logEvent(
+                    unique_lock<mutex>(_mtx),
+                    request->performance().c_finish_time,
+                    "RECV " + request->id() + " " + Request::state2string(request->extendedState())
+                );
+            },
+            _priority,
+            keepTracking,
+            noParentJobId,
+            _requestExpirationIvalSec
+        );
+        _numActive++;
+
+        _logEvent(
+            lock,
+            request->performance().c_create_time,
+            "SEND " + request->id()
         );
     }
-    if (_cancelAfterIter >= 0) {
-        string const id = "unique-request-id-" + to_string(_cancelAfterIter);
-        messenger->cancel(_workerName, id);
+
+    // Wait before all requests will finish.
+    util::BlockPost blockPost(1000, 1001);
+    while (_numFinished < _totalRequests) {
+        blockPost.wait();
     }
-
-    // Wait before all requests finish
-
-    util::BlockPost blockPost(1000, 2000);
-    while (numFinished < _numIterations) {
-        cout << "HEARTBEAT  " << blockPost.wait() << " millisec" << endl;
-    }
-
+ 
+    // Always make the final report to clear up remaining entries (if any)
+    // in the event log.
+    _reportEvents(unique_lock<mutex>(_mtx));
     return 0;
+}
+
+
+void MessengerTestApp::_logEvent(unique_lock<mutex> const& lock,
+                                 uint64_t timeMs,
+                                 std::string const& event) {
+    if (_reportRequestEvents) {
+        _eventLog.push_back(make_pair(timeMs, event));
+    }
+    _reportEvents(lock);
+}
+
+
+void MessengerTestApp::_reportEvents(unique_lock<mutex> const& lock) {
+
+    if (_eventsReportIvalSec == 0) return;
+    if (_prevEventsReportMs == 0) _prevEventsReportMs = PerformanceUtils::now();
+
+    uint64_t const currentTimeMs = PerformanceUtils::now();
+    if ((currentTimeMs - _prevEventsReportMs) / 1000 >= _eventsReportIvalSec) {
+        _prevEventsReportMs = currentTimeMs;
+
+        // First report events on requests (if any). Note that the event log must
+        // be cleared to avoid double reporting.
+        for (auto const& entry: _eventLog) {
+            cout << PerformanceUtils::toDateTimeString(chrono::milliseconds(entry.first))
+                << "  " << entry.second << "\n";
+        }
+        _eventLog.clear();
+
+        // Then report the general statistics.
+        cout << PerformanceUtils::toDateTimeString(chrono::milliseconds(currentTimeMs)) << "  "
+             << "STAT"
+             << " active: "  << setw(6) << _numActive
+             << " finished: " << setw(6) << _numFinished
+             << " success: " << setw(6) << _numSuccess
+             << " expired: " << setw(6) << _numExpired
+             << " failed: "  << setw(6) << _numFailed << endl;
+    }
 }
 
 }}} // namespace lsst::qserv::replica
