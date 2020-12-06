@@ -157,24 +157,21 @@ private:
      * @param body A body of the response.
      */
     template <class T>
-    void _reply(std::string const& id,
-                T&& body) {
-
+    void _reply(std::string const& id, T&& body) {
         _bufferPtr->resize();
-
         ProtocolResponseHeader hdr;
         hdr.set_id(id);
-
         _bufferPtr->serialize(hdr);
         _bufferPtr->serialize(body);
-
-        _send();
+        _send(id);
     }
 
     /**
      * Begin sending (asynchronously) a result back to a client
+     * @param id  A unique identifier of a request to which the reply is sent
+     *   (this parameter is passed into the for the logging and debugging purposes).
      */
-    void _send();
+    void _send(std::string const& id);
 
     /**
      * The callback on finishing (either successfully or not) of asynchronous writes.
