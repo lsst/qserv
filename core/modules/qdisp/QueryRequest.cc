@@ -344,8 +344,8 @@ void QueryRequest::_setHoldState(HoldState state) {
 }
 
 
-XrdSsiRequest::PRD_Xeq QueryRequest::ProcessResponseData(XrdSsiErrInfo const& eInfo,
-                                                         char *buff, int blen, bool last) { // Step 7
+void QueryRequest::ProcessResponseData(XrdSsiErrInfo const& eInfo,
+                                       char *buff, int blen, bool last) { // Step 7
     QSERV_LOGCONTEXT_QUERY_JOB(_qid, _jobid);
     // buff is ignored here. It points to jq->getDescription()->respHandler()->_mBuf, which
     // is accessed directly by the respHandler. _mBuf is a member of MergingHandler.
@@ -354,7 +354,7 @@ XrdSsiRequest::PRD_Xeq QueryRequest::ProcessResponseData(XrdSsiErrInfo const& eI
     if (_askForResponseDataCmd == nullptr) {
         LOGS(_log, LOG_LVL_ERROR,
              "ProcessResponseData called with invalid _askForResponseDataCmd!!!");
-        return XrdSsiRequest::PRD_Normal;
+        return;
     }
 
     // Work with a copy of _jobQuery so it doesn't get reset underneath us by a call to cancel().
@@ -368,12 +368,12 @@ XrdSsiRequest::PRD_Xeq QueryRequest::ProcessResponseData(XrdSsiErrInfo const& eI
         LOGS(_log, LOG_LVL_INFO, "ProcessResponseData job is inactive.");
         // This job is already dead.
         _errorFinish();
-        return XrdSsiRequest::PRD_Normal;
+        return;
     }
     if (jq->isQueryCancelled()) {
         LOGS(_log, LOG_LVL_INFO, "ProcessResponseData job is cancelled.");
         _errorFinish(true);
-        return XrdSsiRequest::PRD_Normal;
+        return;
     }
 
     // If there's an error, it makes sense to handle it immediately.
@@ -390,7 +390,7 @@ XrdSsiRequest::PRD_Xeq QueryRequest::ProcessResponseData(XrdSsiErrInfo const& eI
         _askForResponseDataCmd->notifyFailed();
         _errorFinish();
         // An error occurred, let processing continue so it can be cleaned up soon.
-        return XrdSsiRequest::PRD_Normal;
+        return;
     }
 
     jq->getStatus()->updateInfo(_jobIdStr, JobStatus::RESPONSE_DATA);
@@ -398,7 +398,6 @@ XrdSsiRequest::PRD_Xeq QueryRequest::ProcessResponseData(XrdSsiErrInfo const& eI
     // Handle the response in a separate thread so we can give this one back to XrdSsi.
     // _askForResponseDataCmd should call QueryRequest::_processData() next.
     _askForResponseDataCmd->notifyDataSuccess(blen, last);
-    return XrdSsiRequest::PRD_Normal;
 }
 
 

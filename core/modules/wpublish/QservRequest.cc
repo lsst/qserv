@@ -135,10 +135,10 @@ bool QservRequest::ProcessResponse(const XrdSsiErrInfo& eInfo,
 }
 
 
-XrdSsiRequest::PRD_Xeq QservRequest::ProcessResponseData(const XrdSsiErrInfo& eInfo,
-                                                         char* buff,
-                                                         int blen,
-                                                         bool last) {
+void QservRequest::ProcessResponseData(const XrdSsiErrInfo& eInfo,
+                                       char* buff,
+                                       int blen,
+                                       bool last) {
 
     string const context = "QservRequest::" + string(__func__) + "  ";
 
@@ -198,7 +198,6 @@ XrdSsiRequest::PRD_Xeq QservRequest::ProcessResponseData(const XrdSsiErrInfo& eI
             GetResponseData(_buf + _bufSize, _bufIncrementSize);
         }
     }
-    return XrdSsiRequest::PRD_Normal;
 }
 
 }}} // namespace lsst::qserv::wpublish
