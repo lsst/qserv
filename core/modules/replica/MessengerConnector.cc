@@ -144,9 +144,12 @@ void MessengerConnector::stop() {
 
 void MessengerConnector::cancel(string const& id) {
 
-    LOGS(_log, LOG_LVL_DEBUG, _context() << __func__ << "  id=" << id);
-
     util::Lock lock(_mtx, _context() + __func__);
+
+    LOGS(_log, LOG_LVL_DEBUG, _context() << __func__
+         << "  _currentRequest=" << (_currentRequest ? _currentRequest->id() : "")
+         << "  _requests.size=" << _requests.size()
+         << "  id=" << id);
 
     // Remove request from the queue (if it's still there)
 
@@ -168,10 +171,12 @@ void MessengerConnector::cancel(string const& id) {
 
 bool MessengerConnector::exists(string const& id) const {
 
-    LOGS(_log, LOG_LVL_DEBUG, _context() << __func__ << "  id=" << id);
-
     util::Lock lock(_mtx, _context() + __func__);
 
+    LOGS(_log, LOG_LVL_DEBUG, _context() << __func__
+         << "  _currentRequest=" << (_currentRequest ? _currentRequest->id() : "")
+         << "  _requests.size=" << _requests.size()
+         << "  id=" << id);
     return _find(lock, id) != nullptr;
 }
 
@@ -181,7 +186,9 @@ void MessengerConnector::_sendImpl(MessageWrapperBase::Ptr const& ptr) {
     util::Lock lock(_mtx, _context() + __func__);
 
     LOGS(_log, LOG_LVL_DEBUG, _context() << __func__
-         << "  id: " << ptr->id() << " _requests.size: " << _requests.size());
+         << "  _currentRequest=" << (_currentRequest ? _currentRequest->id() : "")
+         << "  _requests.size=" << _requests.size()
+         << "  id=" << ptr->id());
 
     if (_find(lock, ptr->id()) != nullptr) {
         throw logic_error(
@@ -218,7 +225,8 @@ void MessengerConnector::_sendImpl(MessageWrapperBase::Ptr const& ptr) {
 void MessengerConnector::_restart(util::Lock const& lock) {
 
     LOGS(_log, LOG_LVL_DEBUG, _context() << __func__
-         << "  _currentRequest=" << (_currentRequest ? _currentRequest->id() : ""));
+         << "  _currentRequest=" << (_currentRequest ? _currentRequest->id() : "")
+         << "  _requests.size=" << _requests.size());
 
     // The error code is used to call non-throwing methods and to prevent exceptions.
     // Note that it makes no sense to handle (not even report) any errors within the body
@@ -253,7 +261,8 @@ void MessengerConnector::_restart(util::Lock const& lock) {
 void MessengerConnector::_resolve(util::Lock const& lock) {
 
     LOGS(_log, LOG_LVL_DEBUG, _context() << __func__
-         << "  _currentRequest=" << (_currentRequest ? _currentRequest->id() : ""));
+         << "  _currentRequest=" << (_currentRequest ? _currentRequest->id() : "")
+         << "  _requests.size=" << _requests.size());
 
     if (_state != STATE_INITIAL) return;
 
@@ -271,13 +280,14 @@ void MessengerConnector::_resolve(util::Lock const& lock) {
 
 void MessengerConnector::_resolved(boost::system::error_code const& ec,
                                    boost::asio::ip::tcp::resolver::iterator iter) {
-
     if (_isAborted(ec)) return;
 
     util::Lock lock(_mtx, _context() + __func__);
 
     LOGS(_log, LOG_LVL_DEBUG, _context() << __func__
-         << "  _currentRequest=" << (_currentRequest ? _currentRequest->id() : ""));
+         << "  _currentRequest=" << (_currentRequest ? _currentRequest->id() : "")
+         << "  _requests.size=" << _requests.size()
+         << "  ec=" << ec);
 
     if (ec.value() != 0) {
         _waitBeforeRestart(lock);
@@ -291,7 +301,8 @@ void MessengerConnector::_connect(util::Lock const& lock,
                                   boost::asio::ip::tcp::resolver::iterator iter) {
 
     LOGS(_log, LOG_LVL_DEBUG, _context() << __func__
-         << "  _currentRequest=" << (_currentRequest ? _currentRequest->id() : ""));
+         << "  _currentRequest=" << (_currentRequest ? _currentRequest->id() : "")
+         << "  _requests.size=" << _requests.size());
 
     boost::asio::async_connect(
         _socket,
@@ -303,13 +314,14 @@ void MessengerConnector::_connect(util::Lock const& lock,
 
 void MessengerConnector::_connected(boost::system::error_code const& ec,
                                     boost::asio::ip::tcp::resolver::iterator iter) {
-
     if (_isAborted(ec)) return;
 
     util::Lock lock(_mtx, _context() + __func__);
 
     LOGS(_log, LOG_LVL_DEBUG, _context() << __func__
-         << "  _currentRequest=" << (_currentRequest ? _currentRequest->id() : ""));
+         << "  _currentRequest=" << (_currentRequest ? _currentRequest->id() : "")
+         << "  _requests.size=" << _requests.size()
+         << "  ec=" << ec);
 
     if (ec.value() != 0) {
         _waitBeforeRestart(lock);
@@ -323,7 +335,8 @@ void MessengerConnector::_connected(boost::system::error_code const& ec,
 void MessengerConnector::_waitBeforeRestart(util::Lock const& lock) {
 
     LOGS(_log, LOG_LVL_DEBUG, _context() << __func__
-         << "  _currentRequest=" << (_currentRequest ? _currentRequest->id() : ""));
+         << "  _currentRequest=" << (_currentRequest ? _currentRequest->id() : "")
+         << "  _requests.size=" << _requests.size());
 
     // Always need to set the interval before launching the timer.
 
@@ -340,7 +353,8 @@ void MessengerConnector::_awakenForRestart(boost::system::error_code const& ec) 
 
     LOGS(_log, LOG_LVL_DEBUG, _context() << __func__
          << "  _currentRequest=" << (_currentRequest ? _currentRequest->id() : "")
-         << "  _requests.size=" << _requests.size());
+         << "  _requests.size=" << _requests.size()
+         << "  ec=" << ec);
 
     if (_state != STATE_CONNECTING) return;
 
@@ -351,7 +365,8 @@ void MessengerConnector::_awakenForRestart(boost::system::error_code const& ec) 
 void MessengerConnector::_sendRequest(util::Lock const& lock) {
 
     LOGS(_log, LOG_LVL_DEBUG, _context() << __func__
-         << "  _currentRequest=" << (_currentRequest ? _currentRequest->id() : ""));
+         << "  _currentRequest=" << (_currentRequest ? _currentRequest->id() : "")
+         << "  _requests.size=" << _requests.size());
 
     // Check if there is an outstanding send request
 
@@ -383,7 +398,9 @@ void MessengerConnector::_requestSent(boost::system::error_code const& ec,
     util::Lock lock(_mtx, _context() + __func__);
 
     LOGS(_log, LOG_LVL_DEBUG, _context() << __func__
-         << "  _currentRequest=" << (_currentRequest ? _currentRequest->id() : ""));
+         << "  _currentRequest=" << (_currentRequest ? _currentRequest->id() : "")
+         << "  _requests.size=" << _requests.size()
+         << "  ec=" << ec);
 
     // Check if the request was cancelled while still in flight.
     // If that happens then _currentRequest should already be nullified
@@ -419,6 +436,9 @@ void MessengerConnector::_requestSent(boost::system::error_code const& ec,
 
     } else {
         LOGS(_log, LOG_LVL_DEBUG, _context() << __func__ << "  no current request (cancelled?)");
+
+        // Pull another one (if any from the queue)
+        _sendRequest(lock);
     }
 }
 
@@ -426,7 +446,8 @@ void MessengerConnector::_requestSent(boost::system::error_code const& ec,
 void MessengerConnector::_receiveResponse(util::Lock const& lock) {
 
     LOGS(_log, LOG_LVL_DEBUG, _context() << __func__
-         << "  _currentRequest=" << (_currentRequest ? _currentRequest->id() : ""));
+         << "  _currentRequest=" << (_currentRequest ? _currentRequest->id() : "")
+         << "  _requests.size=" << _requests.size());
 
     // Start with receiving the fixed length frame carrying
     // the size (in bytes) the length of the subsequent message.
@@ -469,7 +490,8 @@ void MessengerConnector::_responseReceived(boost::system::error_code const& ec,
 
         LOGS(_log, LOG_LVL_DEBUG, _context() << __func__
              << "  _currentRequest=" << (_currentRequest ? _currentRequest->id() : "")
-             << " error_code=" << ec);
+             << "  _requests.size=" << _requests.size()
+             << "  ec=" << ec);
 
         // Check if the request was cancelled while still in flight.
         // If that happens then _currentRequest should already be nullified
@@ -584,7 +606,8 @@ boost::system::error_code MessengerConnector::_syncReadFrame(util::Lock const& l
     );
     LOGS(_log, LOG_LVL_DEBUG, _context() << __func__
          << "  _currentRequest=" << (_currentRequest ? _currentRequest->id() : "")
-         << " error_code=" << ec);
+         << "  _requests.size=" << _requests.size()
+         << " ec=" << ec);
 
     if (ec.value() == 0) bytes = buf.parseLength();
     return ec;
@@ -629,7 +652,8 @@ boost::system::error_code MessengerConnector::_syncReadMessageImpl(util::Lock co
     );
     LOGS(_log, LOG_LVL_DEBUG, _context() << __func__
          << "  _currentRequest=" << (_currentRequest ? _currentRequest->id() : "")
-         << " error_code=" << ec);
+         << "  _requests.size=" << _requests.size()
+         << " ec=" << ec);
 
     return ec;
 }
