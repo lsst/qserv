@@ -221,7 +221,7 @@ def findXrootdLibPath(libName, pathList):
 
 
 def checkXrootdLink(env, autoadd=0):
-    libList = "XrdUtils XrdClient XrdPosix XrdPosixPreload".split()
+    libList = "XrdUtils XrdPosix XrdPosixPreload".split()
  #   libList = "XrdPosix".split()
     header = "XrdSsi/XrdSsiErrInfo.hh"
 

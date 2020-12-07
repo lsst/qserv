@@ -83,10 +83,10 @@ protected:
     bool ProcessResponse(const XrdSsiErrInfo& eInfo,
                          const XrdSsiRespInfo& rInfo) override;
 
-    XrdSsiRequest::PRD_Xeq ProcessResponseData(const XrdSsiErrInfo& eInfo,
-                                               char* buff,
-                                               int blen,
-                                               bool last) override;
+    void ProcessResponseData(const XrdSsiErrInfo& eInfo,
+                             char* buff,
+                             int blen,
+                             bool last) override;
 
 private:
 

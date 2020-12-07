@@ -118,8 +118,7 @@ public:
                          XrdSsiRespInfo const& rInfo) override;
 
     /// Called by SSI when new data is available.
-    XrdSsiRequest::PRD_Xeq ProcessResponseData(XrdSsiErrInfo const& eInfo, 
-                           char *buff, int blen, bool last) override;
+    void ProcessResponseData(XrdSsiErrInfo const& eInfo, char *buff, int blen, bool last) override;
 
     bool cancel();
     bool isQueryCancelled();
