@@ -362,7 +362,7 @@ class DataLoader:
         for config in self.configFiles:
             args += ['--config-file', config]
         for data in files:
-            args += ['--in', data]
+            args += ['--in.path', data]
 
         try:
             # run partitioner
