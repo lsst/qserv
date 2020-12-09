@@ -69,15 +69,15 @@ class DataDuplicator:
         """
 
         for table in self._tables:
-            if os.path.isfile(os.path.join(self._cfgDirname, table + '.cfg')) is False:
+            if os.path.isfile(os.path.join(self._cfgDirname, table + '.json')) is False:
                 self.logger.error("Path to indexing config file not found")
 
             self.logger.info("Running indexer with output for %r to %r" % (table, self._outDirname))
             commons.run_command(["sph-htm-index",
                                  "--config-file=" +
-                                 os.path.join(self._cfgDirname, table + ".cfg"),
-                                 "--config-file=" + os.path.join(self._cfgDirname, "common.cfg"),
-                                 "--in=" + os.path.join(self._cfgDirname, table + ".txt"),
+                                 os.path.join(self._cfgDirname, table + ".json"),
+                                 "--config-file=" + os.path.join(self._cfgDirname, "common.json"),
+                                 "--in.path=" + os.path.join(self._cfgDirname, table + ".txt"),
                                  "--out.dir=" + os.path.join(self._outDirname, "index/", table)])
 
     def _runDuplicate(self):
@@ -86,15 +86,15 @@ class DataDuplicator:
         """
 
         for table in self._tables:
-            if os.path.isfile(os.path.join(self._cfgDirname, 'common.cfg')) is False:
+            if os.path.isfile(os.path.join(self._cfgDirname, 'common.json')) is False:
                 self.logger.error("Path to duplicator config file not found")
 
             self.logger.info("Running duplicator for table %r" % table)
             index_param = os.path.join(self._outDirname, "index", table, "htm_index.bin")
             part_index_param = os.path.join(self._outDirname, "index", self._directorTable, "htm_index.bin")
             commons.run_command(["sph-duplicate",
-                                 "--config-file=" + os.path.join(self._cfgDirname, table + ".cfg"),
-                                 "--config-file=" + os.path.join(self._cfgDirname, "common.cfg"),
+                                 "--config-file=" + os.path.join(self._cfgDirname, table + ".json"),
+                                 "--config-file=" + os.path.join(self._cfgDirname, "common.json"),
                                  "--index=" + index_param,
                                  "--part.index=" + part_index_param,
                                  "--out.dir=" + os.path.join(self._outDirname, "chunks/", table)])
