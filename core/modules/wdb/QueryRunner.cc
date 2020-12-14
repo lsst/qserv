@@ -39,6 +39,7 @@
 
 // Third-party headers
 #include <boost/algorithm/string/replace.hpp>
+#include <google/protobuf/arena.h>
 #include <mysql/mysql.h>
 
 // Class header
@@ -103,6 +104,7 @@ QueryRunner::QueryRunner(wbase::Task::Ptr const& task,
                          std::shared_ptr<wcontrol::SqlConnMgr> const& sqlConnMgr,
                          std::shared_ptr<wcontrol::TransmitMgr> const& transmitMgr)
     : _task(task), _chunkResourceMgr(chunkResourceMgr), _mySqlConfig(mySqlConfig),
+      _arena(std::make_unique<google::protobuf::Arena>()),
       _sqlConnMgr(sqlConnMgr), _transmitMgr(transmitMgr) {
     int rc = mysql_thread_init();
     assert(rc == 0);
@@ -210,12 +212,12 @@ MYSQL_RES* QueryRunner::_primeResult(std::string const& query) {
 }
 
 void QueryRunner::_initMsgs() {
-    _protoHeader = std::make_shared<proto::ProtoHeader>();
+    _protoHeader = google::protobuf::Arena::CreateMessage<proto::ProtoHeader>(_arena.get());
     _initMsg();
 }
 
 void QueryRunner::_initMsg() {
-    _result = std::make_shared<proto::Result>();
+    _result = google::protobuf::Arena::CreateMessage<proto::Result>(_arena.get());
     _result->mutable_rowschema();
     _result->set_continues(0);
     if (_task->msg->has_session()) {
@@ -326,7 +328,6 @@ void QueryRunner::_transmit(bool last, unsigned int rowCount, size_t tSize) {
         LOGS(_log, LOG_LVL_ERROR, msg);
     }
     _result->SerializeToString(&resultString);
-    _result.reset(); // don't need it anymore and a new one will be made when needed..
     _transmitHeader(resultString);
     LOGS(_log, LOG_LVL_DEBUG, "_transmit last=" << last
          << " resultString=" << util::prettyCharList(resultString, 5));

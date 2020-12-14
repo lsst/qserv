@@ -22,6 +22,10 @@
 /// worker.proto
 /// This defines the wire-messages sent between czar and worker.
 
+// After enabling this option, please visit Qserv code to allow
+// Arena where it's protected by macro QSERV_USE_PROTO_ARENA.
+//option cc_enable_arenas = true;
+
 package lsst.qserv.proto;
 
 // Query message sent to worker
