@@ -36,4 +36,4 @@ mkdir /home/qserv/.conda
 mkdir "$STACK_DIR"
 cd "$STACK_DIR"
 curl -OL https://raw.githubusercontent.com/lsst/lsst/master/scripts/newinstall.sh
-LSST_SPLENV_REF=51d76a3 bash newinstall.sh -b
+LSST_SPLENV_REF=5c8ee05 bash newinstall.sh -b
