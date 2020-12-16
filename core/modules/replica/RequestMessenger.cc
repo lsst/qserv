@@ -66,13 +66,27 @@ void RequestMessenger::finishImpl(util::Lock const& lock) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
-    // Make sure the request (if any) has been eliminated from the messenger
-    if (_messenger->exists(worker(), id())) {
+    // Make sure the request (if any) has been eliminated from the messenger.
+    // This operation is unnecessary if the request has successfully finished,
+    // in which case it's guaranteed that no outstanding message for the request
+    // will be at the messenger's queue. This optimization also reduces extra
+    // locking (and delays) in the messenger because the operation is synchronized.
+    if (extendedState() != Request::ExtendedState::SUCCESS) {
         _messenger->cancel(worker(), id());
     }
 
-    // Tell the worker to dispose the request should this be requested
-    if (disposeRequired()) {
+    // Tell the worker to dispose the request if a subclass made such requirement,
+    // and only if the request has successfully finished. This will remove the request
+    // from the worker's "finished" queue and release memory taken by the request
+    // much earlier than after request expiration deadline.
+    // Don't dispose requests in other states since any such actions may result in
+    // unnecessary increase of the traffic on a communication channel with the worker
+    // and increase processing latency (and increasing a probability of running into
+    // the Controller side timeouts while waiting for the completion of the requests)
+    // of the on-going or queued requests.
+    // Requests in other states ended up at workers would be automatically disposed
+    // by workers after requests's expiration deadlines.
+    if (disposeRequired() && (extendedState() == Request::ExtendedState::SUCCESS)) {
 
         buffer()->resize();
 
