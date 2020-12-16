@@ -144,6 +144,9 @@ WorkerServerConnection::WorkerServerConnection(ServiceProvider::Ptr const& servi
 
 
 WorkerServerConnection::~WorkerServerConnection() {
+    boost::system::error_code ec;
+    _socket.cancel(ec);
+    _socket.close(ec);
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << " DELETED");
 }
 
