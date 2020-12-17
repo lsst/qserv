@@ -80,7 +80,6 @@ namespace lsst {
 namespace qserv {
 namespace wdb {
 
-
 QueryRunner::Ptr QueryRunner::newQueryRunner(wbase::Task::Ptr const& task,
                                              ChunkResourceMgr::Ptr const& chunkResourceMgr,
                                              mysql::MySqlConfig const& mySqlConfig,
@@ -227,14 +226,14 @@ void QueryRunner::_initMsg() {
 
 void QueryRunner::_fillSchema(MYSQL_RES* result) {
     // Build schema obj from result
-    auto s = mysql::SchemaFactory::newFromResult(result);
+    auto const s = mysql::SchemaFactory::newFromResult(result);
     // Fill _result's schema from Schema obj
-    for(auto i=s.columns.begin(), e=s.columns.end(); i != e; ++i) {
+    for(auto&& col: s.columns) {
         proto::ColumnSchema* cs = _result->mutable_rowschema()->add_columnschema();
-        cs->set_name(i->name);
+        cs->set_name(col.name);
         cs->set_deprecated_hasdefault(false); // still need to set deprecated but 'required' protobuf field
-        cs->set_sqltype(i->colType.sqlType);
-        cs->set_mysqltype(i->colType.mysqlType);
+        cs->set_sqltype(col.colType.sqlType);
+        cs->set_mysqltype(col.colType.mysqlType);
     }
 }
 
