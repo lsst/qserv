@@ -26,8 +26,6 @@
 #include <string>
 #include <vector>
 
-// Third party headers
-
 // Qserv headers
 #include "replica/QservMgtRequest.h"
 #include "replica/ReplicaInfo.h"
@@ -40,20 +38,15 @@ namespace qserv {
 namespace replica {
 
 /**
-  * Class SetReplicasQservMgtRequest implements a request for setting new
-  * collections Qserv workers.
-  */
-class SetReplicasQservMgtRequest : public QservMgtRequest  {
-
+ * Class SetReplicasQservMgtRequest implements a request for setting new
+ * collections Qserv workers.
+ */
+class SetReplicasQservMgtRequest: public QservMgtRequest  {
 public:
-
-    /// The pointer type for instances of the class
     typedef std::shared_ptr<SetReplicasQservMgtRequest> Ptr;
 
     /// The function type for notifications on the completion of the request
     typedef std::function<void(Ptr)> CallbackType;
-
-    // Default construction and copy semantics are prohibited
 
     SetReplicasQservMgtRequest() = delete;
     SetReplicasQservMgtRequest(SetReplicasQservMgtRequest const&) = delete;
@@ -66,24 +59,14 @@ public:
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
      *
-     * @param serviceProvider
-     *   reference to a provider of services
-     *
-     * @param worker
-     *   name of a worker
-     *
-     * @param newReplicas
-     *   collection of new replicas (NOTE: useCount field is ignored)
-     *
-     * @param databases
-     *   limit a scope of the operation to databases of this collection
-     *
-     * @param force
-     *   proceed with the operation even if some replicas affected by
+     * @param serviceProvider A reference to a provider of services for accessing
+     *   Configuration, saving the request's persistent state to the database.
+     * @param worker The name of a worker to send the request to.
+     * @param newReplicas A collection of new replicas (NOTE: useCount field isignored).
+     * @param databases Limit a scope of the operation to databases of this collection.
+     * @param force Proceed with the operation even if some replicas affected by
      *   the operation are in use.
-     *
-     * @param onFinish
-     *   callback function to be called upon request completion
+     * @param onFinish A callback function to be called upon request completion.
      */
     static Ptr create(ServiceProvider::Ptr const& serviceProvider,
                       std::string const& worker,
@@ -99,22 +82,17 @@ public:
     bool force() const { return _force; }
 
     /**
-      * @return
-      *   previous collection of replicas which was set at the corresponding
-      *   Qserv worker before the operation.
-      *
-      * @note
-      *   the method will throw exception std::logic_error if called
-      *   before the request finishes or if it's finished with any but SUCCESS
-      *   status.
-      */
+     * @return A previous collection of replicas which was set at the corresponding
+     *   Qserv worker before the operation.
+     * @note The method will throw exception std::logic_error if called before
+     *    the request finishes or if it's finished with any but SUCCESS status.
+     */
     QservReplicaCollection const& replicas() const;
 
     /// @see QservMgtRequest::extendedPersistentState()
     std::list<std::pair<std::string,std::string>> extendedPersistentState() const final;
 
 protected:
-
     /// @see QservMgtRequest::startImpl
     void startImpl(util::Lock const& lock) final;
 
@@ -125,7 +103,6 @@ protected:
     void notify(util::Lock const& lock) final;
 
 private:
-
     /// @see SetReplicasQservMgtRequest::create()
     SetReplicasQservMgtRequest(ServiceProvider::Ptr const& serviceProvider,
                                std::string const& worker,
@@ -137,11 +114,8 @@ private:
     /**
      * Carry over results of the request into a local collection.
      *
-     * @param lock
-     *   a lock on QservMgtRequest::_mtx must be acquired before calling this method
-     *
-     * @param collection
-     *   input collection of replicas
+     * @param lock A lock on QservMgtRequest::_mtx must be acquired before calling this method.
+     * @param collection The input collection of replicas.
      */
     void _setReplicas(util::Lock const& lock,
                       wpublish::SetChunkListQservRequest::ChunkCollection const& collection);

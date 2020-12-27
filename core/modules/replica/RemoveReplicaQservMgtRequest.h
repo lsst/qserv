@@ -26,8 +26,6 @@
 #include <string>
 #include <vector>
 
-// Third party headers
-
 // Qserv headers
 #include "replica/QservMgtRequest.h"
 #include "replica/ServiceProvider.h"
@@ -39,20 +37,15 @@ namespace qserv {
 namespace replica {
 
 /**
-  * Class RemoveReplicaQservMgtRequest implements a request notifying Qserv workers
-  * on new chunks added to the database.
-  */
-class RemoveReplicaQservMgtRequest : public QservMgtRequest {
-
+ * Class RemoveReplicaQservMgtRequest implements a request notifying Qserv workers
+ * on new chunks added to the database.
+ */
+class RemoveReplicaQservMgtRequest: public QservMgtRequest {
 public:
-
-    /// The pointer type for instances of the class
     typedef std::shared_ptr<RemoveReplicaQservMgtRequest> Ptr;
 
     /// The function type for notifications on the completion of the request
     typedef std::function<void(Ptr)> CallbackType;
-
-    // Default construction and copy semantics are prohibited
 
     RemoveReplicaQservMgtRequest() = delete;
     RemoveReplicaQservMgtRequest(RemoveReplicaQservMgtRequest const&) = delete;
@@ -65,26 +58,14 @@ public:
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
      *
-     * @param serviceProvider
-     *   reference to a provider of services
-     *
-     * @param worker
-     *   the name of a worker
-     *
-     * @param chunk
-     *   the chunk whose replicas will be disabled at the Qserv worker
-     *
-     * @param databases
-     *   the names of databases
-     *
-     * @param force
-     *   force the removal even if the chunk is in use
-     * 
-     * @param onFinish
-     *   callback function to be called upon request completion
-     *
-     * @return
-     *   pointer to the created object
+     * @param serviceProvider A reference to a provider of services for accessing
+     *   Configuration, saving the request's persistent state to the database.
+     * @param worker The name of a worker to send the request to.
+     * @param chunk The chunk whose replicas will be disabled at the Qserv worker.
+     * @param databases The names of databases.
+     * @param force Force the removal even if the chunk is in use.
+     * @param onFinish (optional) callback function to be called upon request completion.
+     * @return A pointer to the created object.
      */
     static Ptr create(ServiceProvider::Ptr const& serviceProvider,
                       std::string const& worker,
@@ -106,7 +87,6 @@ public:
     std::list<std::pair<std::string,std::string>> extendedPersistentState() const override;
 
 protected:
-
     /// @see QservMgtRequest::startImpl
     void startImpl(util::Lock const& lock) final;
 
@@ -117,7 +97,6 @@ protected:
     void notify(util::Lock const& lock) final;
 
 private:
-
     /// @see RemoveReplicaQservMgtRequest::create()
     RemoveReplicaQservMgtRequest(ServiceProvider::Ptr const& serviceProvider,
                                  std::string const& worker,
@@ -125,7 +104,6 @@ private:
                                  std::vector<std::string> const& databases,
                                  bool force,
                                  CallbackType const& onFinish);
-
 
     // Input parameters
 

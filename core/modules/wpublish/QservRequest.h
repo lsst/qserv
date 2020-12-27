@@ -38,35 +38,31 @@ namespace qserv {
 namespace wpublish {
 
 /**
-  * Class QservRequest is a base class for a family of the client-side requests
-  * (classes) to the Qserv worker management services.
-  */
-class QservRequest : public XrdSsiRequest {
-
+ * Class QservRequest is a base class for a family of the client-side requests
+ * (classes) to the Qserv worker management services.
+ */
+class QservRequest: public XrdSsiRequest {
 public:
-
-    // Copy semantics is prohibited
     QservRequest(QservRequest const&) = delete;
     QservRequest& operator=(QservRequest const&) = delete;
 
     ~QservRequest() override;
 
 protected:
-
     QservRequest();
 
     /**
      * Serialize a request into the provided buffer. The method is required to be
      * provided by a subclass.
      *
-     * @param buf  request buffer for serializing a request 
+     * @param buf A request buffer for serializing a request.
      */
     virtual void onRequest(proto::FrameBuffer& buf) = 0;
 
     /**
      * Process response from Qserv. The method is required to be provided by a subclass.
      *
-     * @param view  buffer view for parsing results
+     * @param view The buffer view for parsing results.
      */
     virtual void onResponse(proto::FrameBufferView& view) = 0;
 
@@ -74,7 +70,7 @@ protected:
      * Notify a base class about a failure occurred when sending a request data
      * or receiving a response.
      *
-     * @param error  message explaining a reason of the failure
+     * @param error A message explaining a reason of the failure.
      */
     virtual void onError(std::string const& msg) = 0;
 
@@ -89,7 +85,6 @@ protected:
                              bool last) override;
 
 private:
-
     // Request buffer (gets prepared by subclasses before sending a request
     // to the worker service of Qserv)
 

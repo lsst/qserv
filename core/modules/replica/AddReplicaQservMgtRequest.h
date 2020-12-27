@@ -38,20 +38,15 @@ namespace qserv {
 namespace replica {
 
 /**
-  * Class AddReplicaQservMgtRequest implements a request notifying Qserv workers
-  * on new chunks added to the database.
-  */
-class AddReplicaQservMgtRequest : public QservMgtRequest  {
-
+ * Class AddReplicaQservMgtRequest implements a request notifying Qserv workers
+ * on new chunks added to the database.
+ */
+class AddReplicaQservMgtRequest: public QservMgtRequest  {
 public:
-
-    /// The pointer type for instances of the class
     typedef std::shared_ptr<AddReplicaQservMgtRequest> Ptr;
 
     /// The function type for notifications on the completion of the request
     typedef std::function<void(Ptr)> CallbackType;
-
-    // Default construction and copy semantics are prohibited
 
     AddReplicaQservMgtRequest() = delete;
     AddReplicaQservMgtRequest(AddReplicaQservMgtRequest const&) = delete;
@@ -64,21 +59,13 @@ public:
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
      *
-     * @param serviceProvider
-     *   reference to a provider of services
-     *
-     * @param worker
-     *   the name of a worker
-     *
-     * @param chunk
-     *   the chunk number
-     * @param databases
-     *   the names of databases
-     *
-     * @param onFinish
-     *   (optional) callback function to be called upon request completion
-     *
-     * @return pointer to the new object created by the factory
+     * @param serviceProvider A reference to a provider of services for accessing
+     *   Configuration, saving the request's persistent state to the database.
+     * @param worker The name of a worker to send the request to.
+     * @param chunk The chunk number.
+     * @param databases The names of databases.
+     * @param onFinish (optional) callback function to be called upon request completion.
+     * @return A pointer to the created object.
      */
     static Ptr create(ServiceProvider::Ptr const& serviceProvider,
                       std::string const& worker,
@@ -92,45 +79,26 @@ public:
     /// @return names of databases
     std::vector<std::string> const& databases() const { return _databases; }
 
-    /**
-     * Implement the corresponding method of the base class.
-     *
-     * @see QservMgtRequest::extendedPersistentState()
-     */
-     std::list<std::pair<std::string,std::string>> extendedPersistentState() const override;
+    /// @see QservMgtRequest::extendedPersistentState()
+    std::list<std::pair<std::string,std::string>> extendedPersistentState() const final;
 
 protected:
-
-    /**
-      * Implement the corresponding method of the base class
-      *
-      * @see QservMgtRequest::startImpl
-      */
+    /// @see QservMgtRequest::startImpl
     void startImpl(util::Lock const& lock) final;
 
-    /**
-      * Implement the corresponding method of the base class
-      *
-      * @see QservMgtRequest::finishImpl
-      */
+    /// @see QservMgtRequest::finishImpl
     void finishImpl(util::Lock const& lock) final;
 
-    /**
-      * Implement the corresponding method of the base class
-      *
-      * @see QservMgtRequest::notify
-      */
+    /// @see QservMgtRequest::notify
     void notify(util::Lock const& lock) final;
 
 private:
-
     /// @see AddReplicaQservMgtRequest::create()
     AddReplicaQservMgtRequest(ServiceProvider::Ptr const& serviceProvider,
                               std::string const& worker,
                               unsigned int chunk,
                               std::vector<std::string> const& databases,
                               CallbackType const& onFinish);
-
 
     // Input parameters
 

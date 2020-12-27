@@ -47,14 +47,11 @@ namespace qserv {
 namespace replica {
 
 /**
-  * Class QservMgtRequest is a base class for a family of the Qserv worker
-  * management requests within the master server.
-  */
-class QservMgtRequest : public std::enable_shared_from_this<QservMgtRequest>  {
-
+ * Class QservMgtRequest is a base class for a family of the Qserv worker
+ * management requests within the master server.
+ */
+class QservMgtRequest: public std::enable_shared_from_this<QservMgtRequest>  {
 public:
-
-    /// The pointer type for instances of the class
     typedef std::shared_ptr<QservMgtRequest> Ptr;
 
     /// The lock type used by the implementations
@@ -62,7 +59,6 @@ public:
 
     /// The type which represents the primary public state of the request
     enum State {
-
         /// The request has been constructed, and no attempt to execute it has
         /// been made.
         CREATED,
@@ -81,7 +77,6 @@ public:
     /// Type ExtendedState represents the refined public sub-state of the request
     /// once it's FINISHED as per the above defined primary state.
     enum ExtendedState {
-
         /// No extended state exists at this time
         NONE,
 
@@ -121,8 +116,6 @@ public:
                                     ExtendedState extendedState) {
         return state2string(state) + "::" +state2string(extendedState);
     }
-
-    // Default construction and copy semantics are prohibited
 
     QservMgtRequest() = delete;
     QservMgtRequest(QservMgtRequest const&) = delete;
@@ -193,12 +186,11 @@ public:
      */
     void cancel();
 
-    /// @return the context string for debugging and diagnostic printouts
+    /// @return The context string for debugging and diagnostic printouts.
     std::string context() const;
 
     /**
-     * @return
-     *   a dictionary of parameters and the corresponding values to
+     * @return A dictionary of parameters and the corresponding values to
      *   be stored in a database for a request.
      */
     virtual std::list<std::pair<std::string,std::string>> extendedPersistentState() const {
@@ -206,39 +198,33 @@ public:
     }
 
 protected:
-
     /**
      * Construct the request with the pointer to the services provider.
      *
-     * @param serviceProvider
-     *   reference to a provider of services
-     *
-     * @param type
-     *   its type name (used informally for debugging)
-     *
-     * @param worker
-     *   the name of a worker
+     * @param serviceProvider Is required to access configuration services.
+     * @param type The type name of he request (used for debugging and error reporting).
+     * @param worker The name of a worker.
      */
     QservMgtRequest(ServiceProvider::Ptr const& serviceProvider,
                     std::string const& type,
                     std::string const& worker);
 
-    /// @return shared pointer of the desired subclass (no dynamic type checking)
+    /// @return A shared pointer of the desired subclass (no dynamic type checking).
     template <class T>
     std::shared_ptr<T> shared_from_base() {
         return std::static_pointer_cast<T>(shared_from_this());
     }
 
-    /// @return API for submitting requests to the remote services
+    /// @return The API for submitting requests to the remote services.
     XrdSsiService* service() { return _service; }
 
     /**
-      * This method is supposed to be provided by subclasses for additional
-      * subclass-specific actions to begin processing the request.
-      *
-      * @param lock
-     *   a lock on QservMgtRequest::_mtx must be acquired before calling this method
-      */
+     * This method is supposed to be provided by subclasses for additional
+     * subclass-specific actions to begin processing the request.
+     *
+     * @param lock A lock on QservMgtRequest::_mtx must be acquired before calling
+     *   this method.
+     */
     virtual void startImpl(util::Lock const& lock) = 0;
 
     /**
@@ -246,8 +232,7 @@ protected:
      * is configured via the configuration service. When the request expires
      * it finishes with completion status FINISHED::TIMEOUT_EXPIRED.
      *
-     * @param ec
-     *   error code to be checked
+     * @param ec A error code to be checked.
      */
     void expired(boost::system::error_code const& ec);
 
@@ -257,26 +242,22 @@ protected:
      * This is supposed to be the last operation to be called by subclasses
      * upon a completion of the request.
      *
-     * @param lock
-     *   a lock on QservMgtRequest::_mtx must be acquired before calling this method
-     *
-     * @param extendedState
-     *   new extended state
-     *
-     * @param serverError
-     *   (optional) error message from a Qserv worker service
+     * @param lock A lock on QservMgtRequest::_mtx must be acquired before calling
+     *   this method.
+     * @param extendedState The new extended state.
+     * @param serverError (optional) error message from a Qserv worker service.
      */
     void finish(util::Lock const& lock,
                 ExtendedState extendedState,
                 std::string const& serverError="");
 
     /**
-      * This method is supposed to be provided by subclasses
-      * to finalize request processing as required by the subclass.
-      *
-      * @param lock
-     *   a lock on QservMgtRequest::_mtx must be acquired before calling this method
-      */
+     * This method is supposed to be provided by subclasses
+     * to finalize request processing as required by the subclass.
+     *
+     * @param lock A lock on QservMgtRequest::_mtx must be acquired before calling
+     *   this method.
+     */
     virtual void finishImpl(util::Lock const& lock) = 0;
 
     /**
@@ -297,8 +278,8 @@ protected:
      * @code
      * @see QservMgtRequest::notifyDefaultImpl
      *
-     * @param lock
-     *   a lock on QservMgtRequest::_mtx must be acquired before calling this method
+     * @param lock A lock on QservMgtRequest::_mtx must be acquired before calling
+     *   this method.
      */
     virtual void notify(util::Lock const& lock) = 0;
 
@@ -307,18 +288,15 @@ protected:
      * subclasses. Upon a completion of this method the callback function
      * object will get reset to 'nullptr'.
      *
-     * @note
-     *   This default implementation works for callback functions which
+     * @note This default implementation works for callback functions which
      *   accept a single parameter - a smart reference onto an object of
      *   the corresponding subclass. Subclasses with more complex signatures of
      *   their callbacks should have their own implementations which may look
      *   similarly to this one.
      *
-     * @param lock
-     *   a lock on QservMgtRequest::_mtx must be acquired before calling this method
-     *
-     * @param onFinish
-     *   callback function (if set) to be called
+     * @param lock A lock on QservMgtRequest::_mtx must be acquired before calling
+     *   this method.
+     * @param onFinish A callback function (if set) to be called.
      */
     template <class T>
     void notifyDefaultImpl(util::Lock const& lock,
@@ -347,17 +325,11 @@ protected:
      * Ensure the object is in the desired internal state. Throw an
      * exception otherwise.
      *
-     * @note
-     *  normally this condition should never been seen unless
-     *  there is a problem with the application implementation
-     *  or the underlying run-time system.
+     * @note Normally this condition should never been seen unless there is a problem with
+     *   the application implementation or the underlying run-time system.
      *
-     * @param desiredState
-     *   desired state
-     *
-     * @param context
-     *   context from which the state test is requested
-     *
+     * @param desiredState The desired state of the request.
+     * @param context A context from which the state test is requested.
      * @throws std::logic_error
      */
     void assertState(State desiredState,
@@ -368,48 +340,35 @@ protected:
      *
      * The change of the state is done via a method to allow extra actions
      * at this step, such as:
-     *
      * - reporting change state in a debug stream
      * - verifying the correctness of the state transition
      *
-     * @param lock
-     *   a lock on QservMgtRequest::_mtx must be acquired before calling this method
-     *
-     * @param state
-     *   primary state
-     *
-     * @param extendedState 
-     *   extended state of the request
+     * @param lock A lock on QservMgtRequest::_mtx must be acquired before calling
+     *   this method.
+     * @param state The primary state of the request.
+     * @param extendedState The extended state of the request.
      */
     void setState(util::Lock const& lock,
                   State state,
                   ExtendedState extendedState=ExtendedState::NONE);
 
     /**
-     * @param lock
-     *   a lock on QservMgtRequest::_mtx must be acquired before calling this method
-     *
-     * @return
-     *   server error string (if any)
+     * @param lock A lock on QservMgtRequest::_mtx must be acquired before calling this method.
+     * @return A server error string (if any).
      */
     std::string serverError(util::Lock const& lock) const;
 
     /**
-     * @param lock
-     *   a lock on QservMgtRequest::_mtx must be acquired before calling this method
-     *
-     * @return
-     *   performance info
+     * @param lock A lock on QservMgtRequest::_mtx must be acquired before calling
+     *   this method.
+     * @return The performance info.
      */
     Performance performance(util::Lock const& lock) const;
-
-protected:
 
     /// Mutex guarding internal state (also used by subclasses)
     mutable util::Mutex _mtx;
 
 private:
-
     /// The global counter for the number of instances of any subclass
     static std::atomic<size_t> _numClassInstances;
 

@@ -26,8 +26,6 @@
 #include <string>
 #include <vector>
 
-// Third party headers
-
 // Qserv headers
 #include "replica/QservMgtRequest.h"
 #include "replica/ServiceProvider.h"
@@ -39,20 +37,15 @@ namespace qserv {
 namespace replica {
 
 /**
-  * Class TestEchoQservMgtRequest implements a special kind of requests
-  * for testing Qserv workers.
-  */
-class TestEchoQservMgtRequest : public QservMgtRequest {
-
+ * Class TestEchoQservMgtRequest implements a special kind of requests
+ * for testing Qserv workers.
+ */
+class TestEchoQservMgtRequest: public QservMgtRequest {
 public:
-
-    /// The pointer type for instances of the class
     typedef std::shared_ptr<TestEchoQservMgtRequest> Ptr;
 
     /// The function type for notifications on the completion of the request
     typedef std::function<void(Ptr)> CallbackType;
-
-    // Default construction and copy semantics are prohibited
 
     TestEchoQservMgtRequest() = delete;
     TestEchoQservMgtRequest(TestEchoQservMgtRequest const&) = delete;
@@ -65,21 +58,13 @@ public:
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
      *
-     * @param serviceProvider
-     *   reference to a provider of services for accessing Configuration,
-     *   saving the request's persistent state to the database
+     * @param serviceProvider A reference to a provider of services for accessing
+     *   Configuration, saving the request's persistent state to the database.
      *
-     * @param worker
-     *   the name of a worker to send the request to
-     *
-     * @param data
-     *   the data string to be echoed back by the worker (if successful)
-     *
-     * @param onFinish
-     *   (optional) callback function to be called upon request completion
-     *
-     * @return
-     *   pointer to the created object
+     * @param worker The name of a worker to send the request to.
+     * @param data The data string to be echoed back by the worker (if successful).
+     * @param onFinish (optional) callback function to be called upon request completion.
+     * @return A pointer to the created object.
      */
     static Ptr create(ServiceProvider::Ptr const& serviceProvider,
                       std::string const& worker,
@@ -90,13 +75,9 @@ public:
     std::string const& data() const { return _data; }
 
     /**
-     * @return
-     *   data string echoed back by the worker
-     *
-     * @note
-     *   the method will throw exception std::logic_error if called
-     *   before the request finishes or if it's finished with any
-     *   status but SUCCESS.
+     * @return The data string echoed back by the worker.
+     * @note The method will throw exception std::logic_error if called before
+     *   the request finishes or if it's finished with any status but SUCCESS.
      */
     std::string const& dataEcho() const;
 
@@ -104,7 +85,6 @@ public:
     std::list<std::pair<std::string,std::string>> extendedPersistentState() const override;
 
 protected:
-
     /// @see QservMgtRequest::startImpl
     void startImpl(util::Lock const& lock) final;
 
@@ -115,8 +95,7 @@ protected:
     void notify(util::Lock const& lock) final;
 
 private:
-
-    /// @see TestEchoQservMgtRequest::created()
+    /// @see TestEchoQservMgtRequest::create()
     TestEchoQservMgtRequest(ServiceProvider::Ptr const& serviceProvider,
                             std::string const& worker,
                             std::string const& data,
@@ -125,15 +104,12 @@ private:
     /**
      * Carry over results of the request into a local storage.
      * 
-     * @param lock
-     *   lock on QservMgtRequest::_mtx must be acquired by a caller of the method
-     *
-     * @param data
-     *   data string returned by a worker
+     * @param lock A lock on QservMgtRequest::_mtx must be acquired by a caller
+     *   of the method.
+     * @param data The data string returned by a worker.
      */
     void _setData(util::Lock const& lock,
                   std::string const& data);
-
 
     // Input parameters
 
