@@ -30,8 +30,8 @@ docker run \
        --rm \
        -u "$(id -u):$(id -g)" \
        -e "SOURCE=${PWD}" \
-       -v /etc/passwd:/etc/passwd:ro \
-       -v /etc/group:/etc/group:ro \
+       -v ~/passwd:/etc/passwd:ro \
+       -v ~/group:/etc/group:ro \
        -v $HOME:$HOME \
        -v $PWD:$PWD \
        qserv/qserv:deps_20210106_0344 \
