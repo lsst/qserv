@@ -151,7 +151,6 @@ void AddReplicaQservMgtRequest::finishImpl(util::Lock const& lock) {
         default:
             break;
     }
-    _qservRequest = nullptr;
 }
 
 

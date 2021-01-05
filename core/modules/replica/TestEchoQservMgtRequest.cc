@@ -156,7 +156,6 @@ void TestEchoQservMgtRequest::finishImpl(util::Lock const& lock) {
         default:
             break;
     }
-    _qservRequest = nullptr;
 }
 
 
