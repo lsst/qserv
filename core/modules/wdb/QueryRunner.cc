@@ -39,6 +39,7 @@
 
 // Third-party headers
 #include <boost/algorithm/string/replace.hpp>
+#include <google/protobuf/arena.h>
 #include <mysql/mysql.h>
 
 // Class header
@@ -79,7 +80,6 @@ namespace lsst {
 namespace qserv {
 namespace wdb {
 
-
 QueryRunner::Ptr QueryRunner::newQueryRunner(wbase::Task::Ptr const& task,
                                              ChunkResourceMgr::Ptr const& chunkResourceMgr,
                                              mysql::MySqlConfig const& mySqlConfig,
@@ -103,6 +103,7 @@ QueryRunner::QueryRunner(wbase::Task::Ptr const& task,
                          std::shared_ptr<wcontrol::SqlConnMgr> const& sqlConnMgr,
                          std::shared_ptr<wcontrol::TransmitMgr> const& transmitMgr)
     : _task(task), _chunkResourceMgr(chunkResourceMgr), _mySqlConfig(mySqlConfig),
+      _arena(std::make_unique<google::protobuf::Arena>()),
       _sqlConnMgr(sqlConnMgr), _transmitMgr(transmitMgr) {
     int rc = mysql_thread_init();
     assert(rc == 0);
@@ -162,7 +163,7 @@ bool QueryRunner::runQuery() {
     _task->waitForMemMan();
     memTimer.stop();
     auto logMsg = memWaitHisto.addTime(memTimer.getElapsed(), _task->getIdStr());
-    LOGS(_log, LOG_LVL_INFO, logMsg);
+    LOGS(_log, LOG_LVL_DEBUG, logMsg);
 
     if (_task->getCancelled()) {
         LOGS(_log, LOG_LVL_DEBUG, "runQuery, task was cancelled after locking tables.");
@@ -170,7 +171,7 @@ bool QueryRunner::runQuery() {
     }
 
     _setDb();
-    LOGS(_log, LOG_LVL_INFO,  "Exec in flight for Db=" << _dbName
+    LOGS(_log, LOG_LVL_DEBUG,  "Exec in flight for Db=" << _dbName
         << " sqlConnMgr total" << _sqlConnMgr->getTotalCount() << " conn=" << _sqlConnMgr->getSqlConnCount());
     wcontrol::SqlConnLock sqlConnLock(*_sqlConnMgr, not _task->getScanInteractive());
     bool connOk = _initConnection();
@@ -210,12 +211,12 @@ MYSQL_RES* QueryRunner::_primeResult(std::string const& query) {
 }
 
 void QueryRunner::_initMsgs() {
-    _protoHeader = std::make_shared<proto::ProtoHeader>();
+    _protoHeader = google::protobuf::Arena::CreateMessage<proto::ProtoHeader>(_arena.get());
     _initMsg();
 }
 
 void QueryRunner::_initMsg() {
-    _result = std::make_shared<proto::Result>();
+    _result = google::protobuf::Arena::CreateMessage<proto::Result>(_arena.get());
     _result->mutable_rowschema();
     _result->set_continues(0);
     if (_task->msg->has_session()) {
@@ -225,14 +226,14 @@ void QueryRunner::_initMsg() {
 
 void QueryRunner::_fillSchema(MYSQL_RES* result) {
     // Build schema obj from result
-    auto s = mysql::SchemaFactory::newFromResult(result);
+    auto const s = mysql::SchemaFactory::newFromResult(result);
     // Fill _result's schema from Schema obj
-    for(auto i=s.columns.begin(), e=s.columns.end(); i != e; ++i) {
+    for(auto&& col: s.columns) {
         proto::ColumnSchema* cs = _result->mutable_rowschema()->add_columnschema();
-        cs->set_name(i->name);
+        cs->set_name(col.name);
         cs->set_deprecated_hasdefault(false); // still need to set deprecated but 'required' protobuf field
-        cs->set_sqltype(i->colType.sqlType);
-        cs->set_mysqltype(i->colType.mysqlType);
+        cs->set_sqltype(col.colType.sqlType);
+        cs->set_mysqltype(col.colType.mysqlType);
     }
 }
 
@@ -326,7 +327,6 @@ void QueryRunner::_transmit(bool last, unsigned int rowCount, size_t tSize) {
         LOGS(_log, LOG_LVL_ERROR, msg);
     }
     _result->SerializeToString(&resultString);
-    _result.reset(); // don't need it anymore and a new one will be made when needed..
     _transmitHeader(resultString);
     LOGS(_log, LOG_LVL_DEBUG, "_transmit last=" << last
          << " resultString=" << util::prettyCharList(resultString, 5));

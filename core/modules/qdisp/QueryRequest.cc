@@ -245,7 +245,7 @@ bool QueryRequest::ProcessResponse(XrdSsiErrInfo  const& eInfo, XrdSsiRespInfo c
     auto jq = _jobQuery;
     {
         std::lock_guard<std::mutex> lock(_finishStatusMutex);
-        if (_finishStatus != ACTIVE) {
+        if ((_finishStatus != ACTIVE) || (jq == nullptr)) {
             LOGS(_log, LOG_LVL_WARN,
                  "QueryRequest::GetRequest called after job finished (cancelled?)");
             return true;

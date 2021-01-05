@@ -68,6 +68,11 @@ class TransmitMgr;
 
 }}
 
+namespace google {
+namespace protobuf {
+class Arena;
+}}
+
 namespace lsst {
 namespace qserv {
 namespace wdb {
@@ -126,8 +131,9 @@ private:
 
     util::MultiError _multiError; // Error log
 
-    std::shared_ptr<proto::ProtoHeader> _protoHeader;
-    std::shared_ptr<proto::Result> _result;
+    std::unique_ptr<google::protobuf::Arena> _arena;
+    proto::ProtoHeader* _protoHeader = nullptr;
+    proto::Result* _result = nullptr;
     bool _largeResult{false}; //< True for all transmits after the first transmit.
 
     /// Used to limit the number of open MySQL connections.
