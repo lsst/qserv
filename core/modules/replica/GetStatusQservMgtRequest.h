@@ -44,16 +44,11 @@ namespace replica {
  * (status, counters, monitoring) reported the Qserv workers.
  */
 class GetStatusQservMgtRequest : public QservMgtRequest {
-
 public:
-
-    /// The pointer type for instances of the class
     typedef std::shared_ptr<GetStatusQservMgtRequest> Ptr;
 
     /// The function type for notifications on the completion of the request
     typedef std::function<void(Ptr)> CallbackType;
-
-    // Default construction and copy semantics are prohibited
 
     GetStatusQservMgtRequest() = delete;
     GetStatusQservMgtRequest(GetStatusQservMgtRequest const&) = delete;
@@ -66,31 +61,20 @@ public:
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
      *
-     * @param serviceProvider
-     *   reference to a provider of services for accessing Configuration,
-     *   saving the request's persistent state to the database
-     *
-     * @param worker
-     *   the name of a worker to send the request to
-     *
-     * @param onFinish
-     *   (optional) callback function to be called upon request completion
-     *
-     * @return
-     *   pointer to the created object
+     * @param serviceProvider A reference to a provider of services for accessing
+     *   Configuration, saving the request's persistent state to the database.
+     * @param worker The name of a worker to send the request to.
+     * @param onFinish (optional) callback function to be called upon request completion.
+     * @return A pointer to the created object.
      */
     static Ptr create(ServiceProvider::Ptr const& serviceProvider,
                       std::string const& worker,
                       CallbackType const& onFinish=nullptr);
 
     /**
-     * @return
-     *   info object returned back by the worker
-     *
-     * @note
-     *   the method will throw exception std::logic_error if called
-     *   before the request finishes or if it's finished with any
-     *   status but SUCCESS.
+     * @return The info object returned back by the worker.
+     * @note The method will throw exception std::logic_error if called before
+     *   the request finishes or if it's finished with any status but SUCCESS.
      */
     nlohmann::json const& info() const;
 
@@ -98,16 +82,17 @@ public:
     std::list<std::pair<std::string,std::string>> extendedPersistentState() const override;
 
 protected:
-
+    /// @see QservMgtRequest::startImpl()
     void startImpl(util::Lock const& lock) final;
 
+    /// @see QservMgtRequest::finishImpl()
     void finishImpl(util::Lock const& lock) final;
 
+    /// @see QservMgtRequest::notify()
     void notify(util::Lock const& lock) final;
 
 private:
-
-    /// @see GetStatusQservMgtRequest::created()
+    /// @see GetStatusQservMgtRequest::create()
     GetStatusQservMgtRequest(ServiceProvider::Ptr const& serviceProvider,
                              std::string const& worker,
                              CallbackType const& onFinish);
@@ -115,15 +100,11 @@ private:
     /**
      * Carry over results of the request into a local storage.
      * 
-     * @param lock
-     *   lock on QservMgtRequest::_mtx must be acquired by a caller of the method
-     *
-     * @param info
-     *   data string returned by a worker
+     * @param lock A lock on QservMgtRequest::_mtx must be acquired by a caller of the method.
+     * @param info The data string returned by a worker.
      */
     void _setInfo(util::Lock const& lock,
                   std::string const& info);
-
 
     // Input parameters
 
