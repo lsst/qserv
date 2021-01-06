@@ -27,6 +27,7 @@
 #include <chrono>
 #include <ratio>        // std::milli
 #include <stdexcept>
+#include <string>
 #include <thread>
 
 namespace lsst {
@@ -37,24 +38,22 @@ BlockPost::BlockPost(int minMilliseconds, int maxMilliseconds)
     :   _rd(),
         _gen(_rd()),
         _distr(minMilliseconds, maxMilliseconds) {
-
     if ((minMilliseconds < 0) || (minMilliseconds >= maxMilliseconds))
         throw std::invalid_argument(
-                    "BlockPost::BlockPost() - invalid range of milliseconds provided: [" +
-                    std::to_string(minMilliseconds) + ".." + std::to_string(maxMilliseconds) + "]");
+                    "BlockPost::" + std::string(__func__) + " - invalid range of milliseconds provided: ["
+                    + std::to_string(minMilliseconds) + ".." + std::to_string(maxMilliseconds) + "]");
 }
 
 int BlockPost::wait() {
     const int ival = next();
-    wait(ival);
+    BlockPost::wait(ival);
     return ival;
 }
 
 int BlockPost::wait(int milliseconds) {
-
     if (milliseconds < 0)
-        throw std::invalid_argument("BlockPost::wait(milliseconds) - invalid number of milliseconds");
-
+        throw std::invalid_argument(
+                "BlockPost::" + std::string(__func__) + "(milliseconds) - invalid number of milliseconds");
     std::this_thread::sleep_for(
         std::chrono::duration<long, std::milli>(
             std::chrono::milliseconds(
