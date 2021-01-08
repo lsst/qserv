@@ -427,6 +427,64 @@ Connection::Ptr Connection::execute(function<void(Connection::Ptr)> const& scrip
 }
 
 
+Connection::Ptr Connection::executeInOwnTransaction(function<void(Ptr)> const& script,
+                                                    unsigned int maxReconnects,
+                                                    unsigned int timeoutSec,
+                                                    unsigned int maxRetriesOnDeadLock) {
+    string const context =
+        "Connection[" + to_string(_id) + "]::" + string(__func__) + "(_inTransaction=" +
+        to_string(_inTransaction ? 1: 0) +
+        ",maxRetriesOnDeadLock=" + to_string(maxRetriesOnDeadLock) + ")  ";
+
+    auto conn = shared_from_this();
+    try {
+        unsigned int numRetriesOnDeadLock = 0;
+        do {
+            LOGS(_log, LOG_LVL_DEBUG, context << "running user script, numRetriesOnDeadLock: "
+                << numRetriesOnDeadLock);
+            try {
+                return execute(
+                    [&script](Connection::Ptr const& conn) {
+                        conn->begin();
+                        script(conn);
+                        conn->commit();
+                    },
+                    maxReconnects,
+                    timeoutSec
+                );
+            } catch (LockDeadlock const& ex) {
+                if (conn->inTransaction()) conn->rollback();
+                if (numRetriesOnDeadLock < maxRetriesOnDeadLock) {
+                    LOGS(_log, LOG_LVL_DEBUG, context << "exception: " << ex.what());
+                    ++numRetriesOnDeadLock;
+                } else {
+                    LOGS(_log, LOG_LVL_DEBUG, context << "maximum number of retries "
+                        << maxRetriesOnDeadLock << " for avoiding deadlocks on a table has been reached."
+                        << " Aborting the script.");
+                    throw;
+                }
+            }
+        } while (true);
+    } catch (...) {
+        if (conn->inTransaction()) conn->rollback();
+        throw;
+    }
+}
+
+
+Connection::Ptr Connection::executeInsertOrUpdate(function<void(Ptr)> const& insertScript,
+                                                  function<void(Ptr)> const& updateScript,
+                                                  unsigned int maxReconnects,
+                                                  unsigned int timeoutSec,
+                                                  unsigned int maxRetriesOnDeadLock) {
+    try {
+        return executeInOwnTransaction(insertScript, maxReconnects, timeoutSec, maxRetriesOnDeadLock);
+    } catch (database::mysql::DuplicateKeyError const&) {
+        return executeInOwnTransaction(updateScript, maxReconnects, timeoutSec, maxRetriesOnDeadLock);
+    }
+}
+
+
 unsigned int Connection::warningCount() {
     return mysql_warning_count(_mysql);
 }

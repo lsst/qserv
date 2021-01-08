@@ -696,6 +696,8 @@ public:
     /**
      * Execute a script within its own transaction to be automatically started and commited.
      *
+     * @note upon a completion of the method, depending of an outcome, the transaction
+     *   is guaranteed to be commited or aborted.
      * @param script user-provided function (the callable) to execute
      * @param maxReconnects
      *   (optional) maximum number of reconnects allowed
@@ -708,35 +710,45 @@ public:
      *   If 0 is passed as a value pf the parameter then the default
      *   value corresponding configuration parameter will be
      *   assumed: Configuration::databaseConnectTimeoutSec().
+     * @param maxRetriesOnDeadLock (optional) the number of retries on exception
+     *   LockDeadlock that may happen while two or many threads/processes were
+     *   trying to update the same table.
      * @see Connection::execute()
      */
     Connection::Ptr executeInOwnTransaction(std::function<void(Ptr)> const& script,
                                             unsigned int maxReconnects=0,
-                                            unsigned int timeoutSec=0) {
-        return execute(
-            [&script](Connection::Ptr const& conn) {
-                conn->begin();
-                script(conn);
-                conn->commit();
-            },
-            maxReconnects,
-            timeoutSec);
-    }
+                                            unsigned int timeoutSec=0,
+                                            unsigned int maxRetriesOnDeadLock=0);
 
     /**
      * This is just a convenience method for a typical use case.
-     * @note It's up to the 'updateScript' to rollback a previous transaction if needed.
+     * @note both scripts are executed in own transactions. No transaction cleanup
+     *   will be needed upon completion of the method.
+     * @param insertScript user-provided function (the callable) to be executed first
+     *   to insert new data into a database.
+     * @param updateScript user-provided function (the callable) to be executed as
+     *   as the failover solution to update existing data in the database if the first
+     *   script fails due to the DuplicateKeyError exception. 
+     * @param maxReconnects
+     *   (optional) maximum number of reconnects allowed
+     *   If 0 is passed as a value pf the parameter then the default
+     *   value corresponding configuration parameter will be
+     *   assumed: Configuration::databaseMaxReconnects().
+     * @param timeoutSec
+     *   (optional) the maximum duration of time allowed for
+     *   the procedure to wait before a connection will be established.
+     *   If 0 is passed as a value pf the parameter then the default
+     *   value corresponding configuration parameter will be
+     *   assumed: Configuration::databaseConnectTimeoutSec().
+     * @param maxRetriesOnDeadLock (optional) the number of retries on exception
+     *   LockDeadlock that may happen while two or many threads/processes were
+     *   trying to update the same table.
      */
     Connection::Ptr executeInsertOrUpdate(std::function<void(Ptr)> const& insertScript,
                                           std::function<void(Ptr)> const& updateScript,
                                           unsigned int maxReconnects=0,
-                                          unsigned int timeoutSec=0) {
-        try {
-            return execute(insertScript, maxReconnects, timeoutSec);
-        } catch (database::mysql::DuplicateKeyError const&) {
-            return execute(updateScript, maxReconnects, timeoutSec);
-        }
-    }
+                                          unsigned int timeoutSec=0,
+                                          unsigned int maxRetriesOnDeadLock=0);
 
     /**
      * @return 'true' if the last successful query returned a result set
