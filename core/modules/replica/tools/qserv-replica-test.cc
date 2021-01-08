@@ -19,26 +19,45 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-/**
- * @see FixUpApp
- */
-
 // System headers
 #include <iostream>
 #include <stdexcept>
 
 // Qserv headers
-#include "replica/FixUpApp.h"
+#include "replica/ApplicationColl.h"
+#include "replica/DatabaseTestApp.h"
+#include "replica/HttpFileReaderApp.h"
+#include "replica/MessengerTestApp.h"
+#include "replica/MySQLTestApp.h"
+#include "replica/QhttpTestApp.h"
+#include "replica/TransactionsApp.h"
+#include "replica/QservWorkerPingApp.h"
 
 using namespace std;
 using namespace lsst::qserv::replica;
 
+namespace {
+
+ApplicationColl getAppColl() {
+    ApplicationColl coll;
+    coll.add<DatabaseTestApp>("DATABASE");
+    coll.add<HttpFileReaderApp>("HTTP-FILE-READER");
+    coll.add<MessengerTestApp>("MESSENGER");
+    coll.add<MySQLTestApp>("MYSQL");
+    coll.add<QhttpTestApp>("QHTTP");
+    coll.add<TransactionsApp>("TRANSACTIONS");
+    coll.add<QservWorkerPingApp>("WORKER-PING");
+    return coll;
+}
+}   // namespace
+
+
 int main(int argc, char* argv[]) {
     try {
-        auto const app = FixUpApp::create(argc, argv);
-        return app->run();
+        return getAppColl().run(argc, argv);
     } catch (exception const& ex) {
-        cerr << "main()  the application failed, exception: " << ex.what() << endl;
+        cerr << argv[0] << ": the application '" << argv[1] << "' failed, exception: "
+             << ex.what() << endl;
         return 1;
     }
 }

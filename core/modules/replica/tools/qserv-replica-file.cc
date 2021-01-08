@@ -19,26 +19,39 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-/**
- * @see IndexApp
- */
-
 // System headers
 #include <iostream>
 #include <stdexcept>
 
 // Qserv headers
-#include "replica/IndexApp.h"
+#include "replica/ApplicationColl.h"
+#include "replica/FileExportApp.h"
+#include "replica/FileIngestApp.h"
+#include "replica/FileReadApp.h"
+#include "replica/FileServerApp.h"
 
 using namespace std;
 using namespace lsst::qserv::replica;
 
+namespace {
+
+ApplicationColl getAppColl() {
+    ApplicationColl coll;
+    coll.add<FileExportApp>("EXPORT");
+    coll.add<FileIngestApp>("INGEST");
+    coll.add<FileReadApp>("READ");
+    coll.add<FileServerApp>("SERVER");
+    return coll;
+}
+}   // namespace
+
+
 int main(int argc, char* argv[]) {
     try {
-        auto const app = IndexApp::create(argc, argv);
-        return app->run();
+        return getAppColl().run(argc, argv);
     } catch (exception const& ex) {
-        cerr << "main()  the application failed, exception: " << ex.what() << endl;
+        cerr << argv[0] << ": the application '" << argv[1] << "' failed, exception: "
+             << ex.what() << endl;
         return 1;
     }
 }
