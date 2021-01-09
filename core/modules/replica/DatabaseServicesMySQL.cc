@@ -476,18 +476,18 @@ void DatabaseServicesMySQL::saveReplicaInfo(ReplicaInfo const& info) {
 
     util::Lock lock(_mtx, context);
 
+    unsigned int maxReconnects = 0;     // pull the default value from the Configuration
+    unsigned int timeoutSec = 0;        // pull the default value from the Configuration
+    unsigned int maxRetriesOnDeadLock = 1;
     try {
-        _conn->execute(
+        _conn->executeInOwnTransaction(
             [&](decltype(_conn) conn) {
-                conn->begin();
                 _saveReplicaInfoImpl(lock, info);
-                conn->commit();
-            }
+            },
+            maxReconnects, timeoutSec, maxRetriesOnDeadLock
         );
-
     } catch (database::mysql::Error const& ex) {
         LOGS(_log, LOG_LVL_ERROR, context << "failed, exception: " << ex.what());
-        if (_conn->inTransaction()) _conn->rollback();
         throw;
     }
     LOGS(_log, LOG_LVL_DEBUG, context + "** DONE **");
@@ -502,22 +502,23 @@ void DatabaseServicesMySQL::saveReplicaInfoCollection(string const& worker,
 
     util::Lock lock(_mtx, context);
 
+    unsigned int maxReconnects = 0;     // pull the default value from the Configuration
+    unsigned int timeoutSec = 0;        // pull the default value from the Configuration
+    unsigned int maxRetriesOnDeadLock = 1;
     try {
-        _conn->execute(
+        _conn->executeInOwnTransaction(
             [&](decltype(_conn) conn) {
-                conn->begin();
                 _saveReplicaInfoCollectionImpl(
                     lock,
                     worker,
                     database,
-                    newReplicaInfoCollection);
-                conn->commit();
-            }
+                    newReplicaInfoCollection
+                );
+            },
+            maxReconnects, timeoutSec, maxRetriesOnDeadLock
         );
-
     } catch (exception const& ex) {
         LOGS(_log, LOG_LVL_ERROR, context << "failed, exception: " << ex.what());
-        if (_conn->inTransaction()) _conn->rollback();
         throw;
     }
     LOGS(_log, LOG_LVL_DEBUG, context + "** DONE **");
