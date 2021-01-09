@@ -279,6 +279,9 @@ void IngestFileSvc::loadDataIntoTable() {
         }
         LOGS(_log, LOG_LVL_DEBUG, context_ << "query: " << dataLoadQuery);
 
+        unsigned int maxReconnects = 0;     // pull the default value from the Configuration
+        unsigned int timeoutSec = 0;        // pull the default value from the Configuration
+
         // Allow retries for the table management statements in case of deadlocks.
         // Deadlocks may happen when two or many threads are attempting to create
         // or modify partitioned tables, or at a presence of other threads loading
@@ -286,46 +289,29 @@ void IngestFileSvc::loadDataIntoTable() {
         //
         // TODO: the experimental limit for the maximum number of retries may need
         //       to be made unlimited, or be limited by some configurable timeout.
-        int const maxRetries = 1;
-        int numRetries = 0;
-        while (true) {
-            try {
-                h.conn->execute([&](decltype(h.conn) const& conn_) {
-                    conn_->begin();
-                    for (auto&& statement: tableMgtStatements) {
-                        if (statement.mutexName.empty()) {
-                            conn_->execute(statement.query);
-                        } else {
-                            util::Lock const lock(_serviceProvider->getNamedMutex(statement.mutexName),
-                                                  context_);
-                            conn_->execute(statement.query);
-                        }
+        unsigned int maxRetriesOnDeadLock = 1;
+
+        h.conn->executeInOwnTransaction(
+            [&](decltype(h.conn) const& conn_) {
+                for (auto&& statement: tableMgtStatements) {
+                    if (statement.mutexName.empty()) {
+                        conn_->execute(statement.query);
+                    } else {
+                        util::Lock const lock(_serviceProvider->getNamedMutex(statement.mutexName),
+                                              context_);
+                        conn_->execute(statement.query);
                     }
-                    conn_->commit();
-                });
-                break;
-            } catch (database::mysql::LockDeadlock const& ex) {
-                if (h.conn->inTransaction()) h.conn->rollback();
-                if (numRetries < maxRetries) {
-                    LOGS(_log, LOG_LVL_WARN, context_ << "exception: " << ex.what());
-                    ++numRetries;
-                } else {
-                    LOGS(_log, LOG_LVL_ERROR, context_ << "maximum number of retries "
-                        << maxRetries << " for avoiding table management deadlocks has been reached."
-                        << " Aborting the file loading operation.");
-                    throw;
                 }
-            }
-        }
+            },
+            maxReconnects, timeoutSec, maxRetriesOnDeadLock
+        );
 
         // Load table contribution
         if (dataLoadQuery.empty()) {
             throw runtime_error(context_ + "no data loading query generated");
         }
-        h.conn->execute([&dataLoadQuery](decltype(h.conn) const& conn_) {
-            conn_->begin();
+        h.conn->executeInOwnTransaction([&dataLoadQuery](decltype(h.conn) const& conn_) {
             conn_->execute(dataLoadQuery);
-            conn_->commit();
         });
 
     } catch (exception const& ex) {
