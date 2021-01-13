@@ -95,27 +95,24 @@ void DatabaseServicesMySQL::saveState(ControllerIdentity const& identity,
     util::Lock lock(_mtx, context);
 
     try {
-        _conn->execute(
+        _conn->executeInOwnTransaction(
             [&](decltype(_conn) conn) {
-                conn->begin();
                 conn->executeInsertQuery(
                     "controller",
                     identity.id,
                     identity.host,
                     identity.pid,
-                    startTime);
-                conn->commit ();
+                    startTime
+                );
             }
         );
 
     } catch (database::mysql::DuplicateKeyError const&) {
         LOGS(_log, LOG_LVL_ERROR, context << "the state is already in the database");
-        _conn->rollback();
         throw logic_error(context + "the state is already in the database");
 
     } catch (database::mysql::Error const& ex) {
         LOGS(_log, LOG_LVL_ERROR, context << "failed, exception: " << ex.what());
-        if (_conn->inTransaction()) _conn->rollback();
         throw;
     }
     LOGS(_log, LOG_LVL_DEBUG, context + "** DONE **");
@@ -137,9 +134,7 @@ void DatabaseServicesMySQL::saveState(Job const& job,
 
     try {
         _conn->executeInsertOrUpdate(
-
             [&](decltype(_conn) conn) {
-                conn->begin();
                 conn->executeInsertQuery(
                     "job",
                     job.id(),
@@ -169,12 +164,8 @@ void DatabaseServicesMySQL::saveState(Job const& job,
                         param,value
                     );
                 }
-                conn->commit ();
             },
-
             [&](decltype(_conn) conn) {
-                conn->rollback();
-                conn->begin();
                 conn->executeSimpleUpdateQuery(
                     "job",
                     _conn->sqlEqual("id",                      job.id()),
@@ -183,13 +174,11 @@ void DatabaseServicesMySQL::saveState(Job const& job,
                     make_pair( "begin_time",                   job.beginTime()),
                     make_pair( "end_time",                     job.endTime())
                 );
-                conn->commit ();
             }
         );
 
     } catch (database::mysql::Error const& ex) {
         LOGS(_log, LOG_LVL_ERROR, context << "failed, exception: " << ex.what());
-        if (_conn->inTransaction()) _conn->rollback();
         throw;
     }
     LOGS(_log, LOG_LVL_DEBUG, context + "** DONE **");
@@ -204,20 +193,17 @@ void DatabaseServicesMySQL::updateHeartbeatTime(Job const& job) {
 
     util::Lock lock(_mtx, context);
     try {
-        _conn->execute(
+        _conn->executeInOwnTransaction(
              [&](decltype(_conn) conn) {
-                conn->begin();
                 conn->executeSimpleUpdateQuery(
                     "job",
                     _conn->sqlEqual("id", job.id()),
                     make_pair( "heartbeat_time", PerformanceUtils::now())
                 );
-                conn->commit ();
              }
         );
     } catch (database::mysql::Error const& ex) {
         LOGS(_log, LOG_LVL_ERROR, context << "failed, exception: " << ex.what());
-        if (_conn->inTransaction()) _conn->rollback();
         throw;
     }
     LOGS(_log, LOG_LVL_DEBUG, context + "** DONE **");
@@ -255,9 +241,7 @@ void DatabaseServicesMySQL::saveState(QservMgtRequest const& request,
 
     try {
         _conn->executeInsertOrUpdate(
-
             [&](decltype(_conn) conn) {
-                conn->begin();
                 conn->executeInsertQuery(
                     "request",
                     request.id(),
@@ -273,7 +257,8 @@ void DatabaseServicesMySQL::saveState(QservMgtRequest const& request,
                     performance.w_receive_time,
                     performance.w_start_time,
                     performance.w_finish_time,
-                    performance.c_finish_time);
+                    performance.c_finish_time
+                );
         
                 // Extended state (if any provided by a specific request class) is recorded
                 // in a separate table.
@@ -288,12 +273,8 @@ void DatabaseServicesMySQL::saveState(QservMgtRequest const& request,
                         param,value
                     );
                 }
-                conn->commit ();
             },
-
             [&](decltype(_conn) conn) {
-                conn->rollback();
-                conn->begin();
                 conn->executeSimpleUpdateQuery(
                     "request",
                     _conn->sqlEqual("id",                                     request.id()),
@@ -305,14 +286,13 @@ void DatabaseServicesMySQL::saveState(QservMgtRequest const& request,
                     make_pair("w_receive_time", performance.w_receive_time),
                     make_pair("w_start_time",   performance.w_start_time),
                     make_pair("w_finish_time",  performance.w_finish_time),
-                    make_pair("c_finish_time",  performance.c_finish_time));
-                conn->commit();
+                    make_pair("c_finish_time",  performance.c_finish_time)
+                );
             }
         );
 
     } catch (database::mysql::Error const& ex) {
         LOGS(_log, LOG_LVL_ERROR, context << "failed, exception: " << ex.what());
-        if (_conn->inTransaction()) _conn->rollback();
         throw;
     }
     LOGS(_log, LOG_LVL_DEBUG, context + "** DONE **");
@@ -350,8 +330,6 @@ void DatabaseServicesMySQL::saveState(Request const& request,
     try {
         _conn->executeInsertOrUpdate(
             [&](decltype(_conn) conn) {
-                conn->begin();
-
                 // The primary state of the request
                 conn->executeInsertQuery(
                     "request",
@@ -368,7 +346,8 @@ void DatabaseServicesMySQL::saveState(Request const& request,
                     performance.w_receive_time,
                     performance.w_start_time,
                     performance.w_finish_time,
-                    performance.c_finish_time);
+                    performance.c_finish_time
+                );
         
                 // Extended state (if any provided by a specific request class) is recorded
                 // in a separate table.
@@ -386,11 +365,8 @@ void DatabaseServicesMySQL::saveState(Request const& request,
                         param,value
                     );
                 }
-                conn->commit ();
             },
             [&](decltype(_conn) conn) {
-                conn->rollback();
-                conn->begin();
                 conn->executeSimpleUpdateQuery(
                     "request",
                     _conn->sqlEqual("id",                             request.id()),
@@ -402,14 +378,13 @@ void DatabaseServicesMySQL::saveState(Request const& request,
                     make_pair("w_receive_time", performance.w_receive_time),
                     make_pair("w_start_time",   performance.w_start_time),
                     make_pair("w_finish_time",  performance.w_finish_time),
-                    make_pair("c_finish_time",  performance.c_finish_time));
-                conn->commit();
+                    make_pair("c_finish_time",  performance.c_finish_time)
+                );
             }
         );
 
     } catch (database::mysql::Error const& ex) {
         LOGS(_log, LOG_LVL_ERROR, context << "failed, exception: " << ex.what());
-        if (_conn->inTransaction()) _conn->rollback();
         throw;
     }
     LOGS(_log, LOG_LVL_DEBUG, context + "** DONE **");
@@ -442,9 +417,8 @@ void DatabaseServicesMySQL::updateRequestState(Request const& request,
                                        Request::ExtendedState::SERVER_ERROR,
                                        Request::ExtendedState::SERVER_CANCELLED})) {
         try {
-            _conn->execute(
+            _conn->executeInOwnTransaction(
                 [&](decltype(_conn) conn) {
-                    conn->begin();
                     conn->executeSimpleUpdateQuery(
                         "request",
                         _conn->sqlEqual("id",                             targetRequestId),
@@ -453,14 +427,13 @@ void DatabaseServicesMySQL::updateRequestState(Request const& request,
                         make_pair("server_status",          status2string(request.extendedServerStatus())),
                         make_pair("w_receive_time", targetRequestPerformance.w_receive_time),
                         make_pair("w_start_time",   targetRequestPerformance.w_start_time),
-                        make_pair("w_finish_time",  targetRequestPerformance.w_finish_time));
-                    conn->commit();
+                        make_pair("w_finish_time",  targetRequestPerformance.w_finish_time)
+                    );
                 }
             );
 
         } catch (database::mysql::Error const& ex) {
             LOGS(_log, LOG_LVL_ERROR, context << "failed, exception: " << ex.what());
-            if (_conn->inTransaction()) _conn->rollback();
             throw;
         }
     }
@@ -476,18 +449,18 @@ void DatabaseServicesMySQL::saveReplicaInfo(ReplicaInfo const& info) {
 
     util::Lock lock(_mtx, context);
 
+    unsigned int maxReconnects = 0;     // pull the default value from the Configuration
+    unsigned int timeoutSec = 0;        // pull the default value from the Configuration
+    unsigned int maxRetriesOnDeadLock = 1;
     try {
-        _conn->execute(
+        _conn->executeInOwnTransaction(
             [&](decltype(_conn) conn) {
-                conn->begin();
                 _saveReplicaInfoImpl(lock, info);
-                conn->commit();
-            }
+            },
+            maxReconnects, timeoutSec, maxRetriesOnDeadLock
         );
-
     } catch (database::mysql::Error const& ex) {
         LOGS(_log, LOG_LVL_ERROR, context << "failed, exception: " << ex.what());
-        if (_conn->inTransaction()) _conn->rollback();
         throw;
     }
     LOGS(_log, LOG_LVL_DEBUG, context + "** DONE **");
@@ -502,22 +475,23 @@ void DatabaseServicesMySQL::saveReplicaInfoCollection(string const& worker,
 
     util::Lock lock(_mtx, context);
 
+    unsigned int maxReconnects = 0;     // pull the default value from the Configuration
+    unsigned int timeoutSec = 0;        // pull the default value from the Configuration
+    unsigned int maxRetriesOnDeadLock = 1;
     try {
-        _conn->execute(
+        _conn->executeInOwnTransaction(
             [&](decltype(_conn) conn) {
-                conn->begin();
                 _saveReplicaInfoCollectionImpl(
                     lock,
                     worker,
                     database,
-                    newReplicaInfoCollection);
-                conn->commit();
-            }
+                    newReplicaInfoCollection
+                );
+            },
+            maxReconnects, timeoutSec, maxRetriesOnDeadLock
         );
-
     } catch (exception const& ex) {
         LOGS(_log, LOG_LVL_ERROR, context << "failed, exception: " << ex.what());
-        if (_conn->inTransaction()) _conn->rollback();
         throw;
     }
     LOGS(_log, LOG_LVL_DEBUG, context + "** DONE **");
@@ -742,16 +716,13 @@ void DatabaseServicesMySQL::findOldestReplicas(vector<ReplicaInfo>& replicas,
             "   AND "        + _conn->sqlIn("worker", _configuration->workers(true)) : "") +
             " ORDER BY "     + _conn->sqlId("verify_time") +
             " ASC LIMIT "    + to_string(maxReplicas);
-        _conn->execute(
+        _conn->executeInOwnTransaction(
             [&](decltype(_conn) conn) {
-                conn->begin();
                 _findReplicasImpl(lock, replicas, query);
-                conn->rollback();
             }
         );
     } catch (exception const& ex) {
         LOGS(_log, LOG_LVL_ERROR, context << "failed, exception: " << ex.what());
-        if (_conn->inTransaction()) _conn->rollback();
         throw;
     }
     LOGS(_log, LOG_LVL_DEBUG, context << "** DONE ** replicas.size(): " << replicas.size());
@@ -783,16 +754,13 @@ void DatabaseServicesMySQL::findReplicas(vector<ReplicaInfo>& replicas,
             "    AND "       +  _conn->sqlEqual("database", database) +
             (enabledWorkersOnly ?
              "   AND "       +  _conn->sqlIn("worker", _configuration->workers(true)) : "");
-        _conn->execute(
+        _conn->executeInOwnTransaction(
             [&](decltype(_conn) conn) {
-                conn->begin();
                 _findReplicasImpl(lock, replicas, query, includeFileInfo);
-                conn->rollback();
             }
         );
     } catch (database::mysql::Error const& ex) {
         LOGS(_log, LOG_LVL_ERROR, context << "failed, exception: " << ex.what());
-        if (_conn->inTransaction()) _conn->rollback();
         throw;
     }
     LOGS(_log, LOG_LVL_DEBUG, context << "** DONE ** replicas.size(): " << replicas.size());
@@ -830,16 +798,13 @@ void DatabaseServicesMySQL::findReplicas(vector<ReplicaInfo>& replicas,
             "    AND "       +  _conn->sqlEqual("database", database) +
             (enabledWorkersOnly ?
              "   AND "       +  _conn->sqlIn("worker", _configuration->workers(true)) : "");
-        _conn->execute(
+        _conn->executeInOwnTransaction(
             [&](decltype(_conn) conn) {
-                conn->begin();
                 _findReplicasImpl(lock, replicas, query, includeFileInfo);
-                conn->rollback();
             }
         );
     } catch (database::mysql::Error const& ex) {
         LOGS(_log, LOG_LVL_ERROR, context << "failed, exception: " << ex.what());
-        if (_conn->inTransaction()) _conn->rollback();
         throw;
     }
     LOGS(_log, LOG_LVL_DEBUG, context << "** DONE ** replicas.size(): " << replicas.size());
@@ -861,9 +826,8 @@ void DatabaseServicesMySQL::findWorkerReplicas(vector<ReplicaInfo>& replicas,
     util::Lock lock(_mtx, context);
 
     try {
-        _conn->execute(
+        _conn->executeInOwnTransaction(
             [&](decltype(_conn) conn) {
-                conn->begin();
                 _findWorkerReplicasImpl(
                     lock,
                     replicas,
@@ -871,13 +835,12 @@ void DatabaseServicesMySQL::findWorkerReplicas(vector<ReplicaInfo>& replicas,
                     database,
                     allDatabases,
                     isPublished,
-                    includeFileInfo);
-                conn->rollback();
+                    includeFileInfo
+                );
             }
         );
     } catch (exception const& ex) {
         LOGS(_log, LOG_LVL_ERROR, context << "failed, exception: " << ex.what());
-        if (_conn->inTransaction()) _conn->rollback();
         throw;
     }
     LOGS(_log, LOG_LVL_DEBUG, context << "** DONE ** replicas.size(): " << replicas.size());
@@ -914,16 +877,13 @@ uint64_t DatabaseServicesMySQL::numWorkerReplicas(string const& worker,
             }
             query += _conn->sqlEqual("database", database);
         }
-        _conn->execute(
+        _conn->executeInOwnTransaction(
             [&](decltype(_conn) conn) {
-                conn->begin();
                 conn->executeSingleValueSelect<uint64_t>(query, "num", num, false);
-                conn->rollback();
             }
         );
     } catch (exception const& ex) {
         LOGS(_log, LOG_LVL_ERROR, context << "failed, exception: " << ex.what());
-        if (_conn->inTransaction()) _conn->rollback();
         throw;
     }
     LOGS(_log, LOG_LVL_DEBUG, context << "** DONE ** num: " << num);
@@ -1003,16 +963,13 @@ void DatabaseServicesMySQL::findWorkerReplicas(vector<ReplicaInfo>& replicas,
                                             _configuration->databases(databaseFamily,
                                                                       allDatabases,
                                                                       isPublished));
-        _conn->execute(
+        _conn->executeInOwnTransaction(
             [&](decltype(_conn) conn) {
-                conn->begin();
                 _findReplicasImpl(lock, replicas, query);
-                conn->rollback();
             }
         );
     } catch (exception const& ex) {
         LOGS(_log, LOG_LVL_ERROR, context << "failed, exception: " << ex.what());
-        if (_conn->inTransaction()) _conn->rollback();
         throw;
     }
     LOGS(_log, LOG_LVL_DEBUG, context << "** DONE ** replicas.size(): " << replicas.size());
@@ -1042,16 +999,13 @@ void DatabaseServicesMySQL::findDatabaseReplicas(
             "  WHERE "       + _conn->sqlEqual("database", database) +
             (enabledWorkersOnly ?
              "   AND "       + _conn->sqlIn("worker", _configuration->workers(true)) : "");
-        _conn->execute(
+        _conn->executeInOwnTransaction(
             [&](decltype(_conn) conn) {
-                conn->begin();
                 _findReplicasImpl(lock, replicas, query);
-                conn->rollback();
             }
         );
     } catch (database::mysql::Error const& ex) {
         LOGS(_log, LOG_LVL_ERROR, context << "failed, exception: " << ex.what());
-        if (_conn->inTransaction()) _conn->rollback();
         throw;
     }
     LOGS(_log, LOG_LVL_DEBUG, context << "** DONE ** replicas.size(): " << replicas.size());
@@ -1082,16 +1036,13 @@ void DatabaseServicesMySQL::findDatabaseChunks(
             (enabledWorkersOnly ?
              "   AND "         + _conn->sqlIn("worker", _configuration->workers(true)) : "") +
             " ORDER BY "       + _conn->sqlId("chunk");
-        _conn->execute(
+        _conn->executeInOwnTransaction(
             [&](decltype(_conn) conn) {
-                conn->begin();
                 _findChunksImpl(lock, chunks, query);
-                conn->rollback();
             }
         );
     } catch (database::mysql::Error const& ex) {
         LOGS(_log, LOG_LVL_ERROR, context << "failed, exception: " << ex.what());
-        if (_conn->inTransaction()) _conn->rollback();
         throw;
     }
     LOGS(_log, LOG_LVL_DEBUG, context << "** DONE ** replicas.size(): " << chunks.size());
@@ -1140,9 +1091,8 @@ map<unsigned int, size_t> DatabaseServicesMySQL::actualReplicationLevel(
 
         LOGS(_log, LOG_LVL_DEBUG, context + "query: " + query);
 
-        _conn->execute(
+        _conn->executeInOwnTransaction(
             [&](decltype(_conn) conn) {
-                conn->begin();
                 conn->execute(query);
 
                 // Always do this before extracting results in case of this lambda
@@ -1160,14 +1110,12 @@ map<unsigned int, size_t> DatabaseServicesMySQL::actualReplicationLevel(
 
                     result[level] = numChunks;
                 }
-                conn->rollback();
             }
         );
         LOGS(_log, LOG_LVL_DEBUG, context << "** DONE **");
         return result;
     } catch (database::mysql::Error const& ex) {
         LOGS(_log, LOG_LVL_ERROR, context << "failed, exception: " << ex.what());
-        if (_conn->inTransaction()) _conn->rollback();
         throw;
     }
 }
@@ -1226,11 +1174,9 @@ size_t DatabaseServicesMySQL::numOrphanChunks(string const& database,
 
             LOGS(_log, LOG_LVL_DEBUG, context + "query: " + query);
 
-            _conn->execute(
+            _conn->executeInOwnTransaction(
                 [&](decltype(_conn) conn) {
-                    conn->begin();
                     conn->executeSingleValueSelect(query, "num_chunks", result);
-                    conn->rollback();
                 }
             );
         }
@@ -1238,7 +1184,6 @@ size_t DatabaseServicesMySQL::numOrphanChunks(string const& database,
         return result;
     } catch (database::mysql::Error const& ex) {
         LOGS(_log, LOG_LVL_ERROR, context << "failed, exception: " << ex.what());
-        if (_conn->inTransaction()) _conn->rollback();
         throw;
     }
 
@@ -1262,19 +1207,14 @@ void DatabaseServicesMySQL::logControllerEvent(ControllerEvent const& event) {
 
     util::Lock lock(_mtx, context);
     try {
-        _conn->execute(
+        _conn->executeInOwnTransaction(
             [&](decltype(_conn) conn) {
-                conn->begin();
-                _logControllerEvent(
-                    lock,
-                    event);
-                conn->commit();
+                _logControllerEvent(lock, event);
             }
         );
 
     } catch (exception const& ex) {
         LOGS(_log, LOG_LVL_ERROR, context << "failed, exception: " << ex.what());
-        if (_conn->inTransaction()) _conn->rollback();
         throw;
     }
     LOGS(_log, LOG_LVL_DEBUG, context + "** DONE **");
@@ -1324,22 +1264,20 @@ list<ControllerEvent> DatabaseServicesMySQL::readControllerEvents(
     
     list<ControllerEvent> events;
     try {
-        _conn->execute(
+        _conn->executeInOwnTransaction(
             [&](decltype(_conn) conn) {
-                conn->begin();
                 events = _readControllerEvents(
                     lock,
                     controllerId,
                     fromTimeStamp,
                     toTimeStamp,
-                    maxEntries);
-                conn->commit();
+                    maxEntries
+                );
             }
         );
 
     } catch (exception const& ex) {
         LOGS(_log, LOG_LVL_ERROR, context << "failed, exception: " << ex.what());
-        if (_conn->inTransaction()) _conn->rollback();
         throw;
     }
     LOGS(_log, LOG_LVL_DEBUG, context + "** DONE **");
@@ -1430,17 +1368,14 @@ ControllerInfo DatabaseServicesMySQL::controller(string const& id) {
     
     ControllerInfo info;
     try {
-        _conn->execute(
+        _conn->executeInOwnTransaction(
             [&](decltype(_conn) conn) {
-                conn->begin();
                 info = _controller(lock, id);
-                conn->commit();
             }
         );
 
     } catch (exception const& ex) {
         LOGS(_log, LOG_LVL_ERROR, context << "failed, exception: " << ex.what());
-        if (_conn->inTransaction()) _conn->rollback();
         throw;
     }
     LOGS(_log, LOG_LVL_DEBUG, context + "** DONE **");
@@ -1488,21 +1423,18 @@ list<ControllerInfo> DatabaseServicesMySQL::controllers(uint64_t fromTimeStamp,
     
     list<ControllerInfo> collection;
     try {
-        _conn->execute(
+        _conn->executeInOwnTransaction(
             [&](decltype(_conn) conn) {
-                conn->begin();
                 collection = _controllers(
                     lock,
                     fromTimeStamp,
                     toTimeStamp,
                     maxEntries);
-                conn->commit();
             }
         );
 
     } catch (exception const& ex) {
         LOGS(_log, LOG_LVL_ERROR, context << "failed, exception: " << ex.what());
-        if (_conn->inTransaction()) _conn->rollback();
         throw;
     }
     LOGS(_log, LOG_LVL_DEBUG, context + "** DONE **");
@@ -1558,17 +1490,14 @@ RequestInfo DatabaseServicesMySQL::request(string const& id) {
     
     RequestInfo info;
     try {
-        _conn->execute(
+        _conn->executeInOwnTransaction(
             [&](decltype(_conn) conn) {
-                conn->begin();
                 info = _request(lock, id);
-                conn->commit();
             }
         );
 
     } catch (exception const& ex) {
         LOGS(_log, LOG_LVL_ERROR, context << "failed, exception: " << ex.what());
-        if (_conn->inTransaction()) _conn->rollback();
         throw;
     }
     LOGS(_log, LOG_LVL_DEBUG, context + "** DONE **");
@@ -1646,22 +1575,20 @@ list<RequestInfo> DatabaseServicesMySQL::requests(string const& jobId,
     
     list<RequestInfo> collection;
     try {
-        _conn->execute(
+        _conn->executeInOwnTransaction(
             [&](decltype(_conn) conn) {
-                conn->begin();
                 collection = _requests(
                     lock,
                     jobId,
                     fromTimeStamp,
                     toTimeStamp,
-                    maxEntries);
-                conn->commit();
+                    maxEntries
+                );
             }
         );
 
     } catch (exception const& ex) {
         LOGS(_log, LOG_LVL_ERROR, context << "failed, exception: " << ex.what());
-        if (_conn->inTransaction()) _conn->rollback();
         throw;
     }
     LOGS(_log, LOG_LVL_DEBUG, context + "** DONE **");
@@ -1753,17 +1680,14 @@ JobInfo DatabaseServicesMySQL::job(string const& id) {
     
     JobInfo info;
     try {
-        _conn->execute(
+        _conn->executeInOwnTransaction(
             [&](decltype(_conn) conn) {
-                conn->begin();
                 info = _job(lock, id);
-                conn->commit();
             }
         );
 
     } catch (exception const& ex) {
         LOGS(_log, LOG_LVL_ERROR, context << "failed, exception: " << ex.what());
-        if (_conn->inTransaction()) _conn->rollback();
         throw;
     }
     LOGS(_log, LOG_LVL_DEBUG, context + "** DONE **");
@@ -1843,23 +1767,21 @@ list<JobInfo> DatabaseServicesMySQL::jobs(string const& controllerId,
     
     list<JobInfo> collection;
     try {
-        _conn->execute(
+        _conn->executeInOwnTransaction(
             [&](decltype(_conn) conn) {
-                conn->begin();
                 collection = _jobs(
                     lock,
                     controllerId,
                     parentJobId,
                     fromTimeStamp,
                     toTimeStamp,
-                    maxEntries);
-                conn->commit();
+                    maxEntries
+                );
             }
         );
 
     } catch (exception const& ex) {
         LOGS(_log, LOG_LVL_ERROR, context << "failed, exception: " << ex.what());
-        if (_conn->inTransaction()) _conn->rollback();
         throw;
     }
     LOGS(_log, LOG_LVL_DEBUG, context + "** DONE **");
@@ -1955,17 +1877,14 @@ TransactionInfo DatabaseServicesMySQL::transaction(TransactionId id) {
     TransactionInfo info;
     try {
         auto const predicate = _conn->sqlEqual("id", id);
-        _conn->execute(
+        _conn->executeInOwnTransaction(
             [&](decltype(_conn) conn) {
-                conn->begin();
                 info = _findTransactionImpl(lock, predicate);
-                conn->commit();
             }
         );
 
     } catch (exception const& ex) {
         LOGS(_log, LOG_LVL_ERROR, context << "failed, exception: " << ex.what());
-        if (_conn->inTransaction()) _conn->rollback();
         throw;
     }
     LOGS(_log, LOG_LVL_DEBUG, context + "** DONE **");
@@ -1984,17 +1903,14 @@ vector<TransactionInfo> DatabaseServicesMySQL::transactions(string const& databa
     vector<TransactionInfo> collection;
     try {
         auto const predicate = databaseName.empty() ? "" : _conn->sqlEqual("database", databaseName);
-        _conn->execute(
+        _conn->executeInOwnTransaction(
             [&](decltype(_conn) conn) {
-                conn->begin();
                 collection = _findTransactionsImpl(lock, predicate);
-                conn->commit();
             }
         );
 
     } catch (exception const& ex) {
         LOGS(_log, LOG_LVL_ERROR, context << "failed, exception: " << ex.what());
-        if (_conn->inTransaction()) _conn->rollback();
         throw;
     }
     LOGS(_log, LOG_LVL_DEBUG, context + "** DONE **");
@@ -2017,9 +1933,8 @@ TransactionInfo DatabaseServicesMySQL::beginTransaction(string const& databaseNa
     TransactionInfo info;
     try {
         auto const predicate = _conn->sqlEqual("id", database::mysql::Function::LAST_INSERT_ID);
-        _conn->execute(
+        _conn->executeInOwnTransaction(
             [&](decltype(_conn) conn) {
-                conn->begin();
                 conn->executeInsertQuery(
                     "transaction",
                     database::mysql::Keyword::SQL_NULL,
@@ -2029,13 +1944,11 @@ TransactionInfo DatabaseServicesMySQL::beginTransaction(string const& databaseNa
                     endTime
                 );
                 info = _findTransactionImpl(lock, predicate);
-                conn->commit();
             }
         );
 
     } catch (exception const& ex) {
         LOGS(_log, LOG_LVL_ERROR, context << "failed, exception: " << ex.what());
-        if (_conn->inTransaction()) _conn->rollback();
         throw;
     }
     LOGS(_log, LOG_LVL_DEBUG, context + "** DONE **");
@@ -2058,9 +1971,8 @@ TransactionInfo DatabaseServicesMySQL::endTransaction(TransactionId id, bool abo
     TransactionInfo info;
     try {
         auto const predicate = _conn->sqlEqual("id", id);
-        _conn->execute(
+        _conn->executeInOwnTransaction(
             [&](decltype(_conn) conn) {
-                conn->begin();
                 info = _findTransactionImpl(lock, predicate);
                 if (info.endTime != 0) {
                     throw logic_error(context + "transaction " + to_string(id) + " is not active");
@@ -2073,13 +1985,11 @@ TransactionInfo DatabaseServicesMySQL::endTransaction(TransactionId id, bool abo
                 );
                 info.state   = TransactionInfo::string2state(stateStr);
                 info.endTime = endTime;
-                conn->commit();
             }
         );
 
     } catch (exception const& ex) {
         LOGS(_log, LOG_LVL_ERROR, context << "failed, exception: " << ex.what());
-        if (_conn->inTransaction()) _conn->rollback();
         throw;
     }
     LOGS(_log, LOG_LVL_DEBUG, context + "** DONE **");
@@ -2157,17 +2067,14 @@ DatabaseIngestParam DatabaseServicesMySQL::ingestParam(string const& database,
                 _conn->sqlEqual("database", database) + " AND " + 
                 _conn->sqlEqual("category", category) + " AND " +
                 _conn->sqlEqual("param", param);
-        _conn->execute(
+        _conn->executeInOwnTransaction(
             [&](decltype(_conn) conn) {
-                conn->begin();
                 info = _ingestParamImpl(lock, predicate);
-                conn->commit();
             }
         );
 
     } catch (exception const& ex) {
         LOGS(_log, LOG_LVL_ERROR, context << "failed, exception: " << ex.what());
-        if (_conn->inTransaction()) _conn->rollback();
         throw;
     }
     LOGS(_log, LOG_LVL_DEBUG, context + "** DONE **");
@@ -2189,16 +2096,13 @@ vector<DatabaseIngestParam> DatabaseServicesMySQL::ingestParams(string const& da
         auto const predicate =
                 _conn->sqlEqual("database", database) +
                 (category.empty() ? "" : " AND " + _conn->sqlEqual("category", category));
-        _conn->execute(
+        _conn->executeInOwnTransaction(
             [&](decltype(_conn) conn) {
-                conn->begin();
                 collection = _ingestParamsImpl(lock, predicate);
-                conn->commit();
             }
         );
     } catch (exception const& ex) {
         LOGS(_log, LOG_LVL_ERROR, context << "failed, exception: " << ex.what());
-        if (_conn->inTransaction()) _conn->rollback();
         throw;
     }
     LOGS(_log, LOG_LVL_DEBUG, context + "** DONE **");
@@ -2221,25 +2125,19 @@ void DatabaseServicesMySQL::saveIngestParam(string const& database,
     try {
         _conn->executeInsertOrUpdate(
             [&](decltype(_conn) conn) {
-                conn->begin();
                 conn->executeInsertQuery("database_ingest", database, category, param, value);
-                conn->commit();
             },
             [&](decltype(_conn) conn) {
                 auto const predicate =
                         conn->sqlEqual("database", database) + " AND " + 
                         conn->sqlEqual("category", category) + " AND " +
                         conn->sqlEqual("param", param);
-                conn->rollback();
-                conn->begin();
                 conn->executeSimpleUpdateQuery("database_ingest", predicate, make_pair("value", value));
-                conn->commit();
             }
         );
 
     } catch (exception const& ex) {
         LOGS(_log, LOG_LVL_ERROR, context << "failed, exception: " << ex.what());
-        if (_conn->inTransaction()) _conn->rollback();
         throw;
     }
     LOGS(_log, LOG_LVL_DEBUG, context + "** DONE **");
