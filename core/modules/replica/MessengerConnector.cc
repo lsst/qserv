@@ -44,6 +44,10 @@ namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.MessengerConnector");
 
+string ec2str(boost::system::error_code const& ec) {
+    return ec.category().name() + string(":") + to_string(ec.value()) + "[" + ec.message() +"]";
+}
+
 } /// namespace
 
 namespace lsst {
@@ -152,7 +156,6 @@ void MessengerConnector::cancel(string const& id) {
          << "  id=" << id);
 
     // Remove request from the queue (if it's still there)
-
     _requests.remove_if(
         [&id] (MessageWrapperBase::Ptr const& ptr) {
             return ptr->id() == id;
@@ -160,11 +163,14 @@ void MessengerConnector::cancel(string const& id) {
     );
 
     // Also, if the request is already being processed then terminate all
-    // communications with a worker. This will automatically abort the request.
-
-    if (_currentRequest and (_currentRequest->id() == id)) {
-        _currentRequest = nullptr;
-        if (_state == STATE_COMMUNICATING) _restart(lock);
+    // communications with a worker.
+    if (_state == STATE_COMMUNICATING) {
+        if ((_currentRequest != nullptr) and (_currentRequest->id() == id)) {
+            // Make sure the request gets eliminated before restarting the connection.
+            // Otherwise it will be picked up again.
+            _currentRequest = nullptr;
+            _restart(lock);
+        }
     }
 }
 
@@ -235,14 +241,17 @@ void MessengerConnector::_restart(util::Lock const& lock) {
 
     // Cancel any asynchronous operation(s) if not in the initial state
     switch (_state) {
-
-        case STATE_INITIAL:
-            break;
-
+        case STATE_INITIAL: break;
         case STATE_CONNECTING:
         case STATE_COMMUNICATING:
             _resolver.cancel();
             if (_state == STATE_COMMUNICATING) {
+                // Save curent request into the front of the queue, so that it would be the first
+                // one to be processed upon successful completion of the restart.
+                if (_currentRequest != nullptr) {
+                    _requests.push_front(_currentRequest);
+                    _currentRequest = nullptr;
+                }
                 _socket.cancel(ec);
                 _socket.close(ec);
             }
@@ -280,16 +289,17 @@ void MessengerConnector::_resolve(util::Lock const& lock) {
 
 void MessengerConnector::_resolved(boost::system::error_code const& ec,
                                    boost::asio::ip::tcp::resolver::iterator iter) {
-    if (_isAborted(ec)) return;
 
     util::Lock lock(_mtx, _context() + __func__);
 
     LOGS(_log, LOG_LVL_DEBUG, _context() << __func__
          << "  _currentRequest=" << (_currentRequest ? _currentRequest->id() : "")
          << "  _requests.size=" << _requests.size()
-         << "  ec=" << ec);
+         << "  ec=" << ec2str(ec));
 
-    if (ec.value() != 0) {
+    if (_state != STATE_CONNECTING) return;
+
+    if (_failed(ec)) {
         _waitBeforeRestart(lock);
     } else {
         _connect(lock, iter);
@@ -314,16 +324,17 @@ void MessengerConnector::_connect(util::Lock const& lock,
 
 void MessengerConnector::_connected(boost::system::error_code const& ec,
                                     boost::asio::ip::tcp::resolver::iterator iter) {
-    if (_isAborted(ec)) return;
 
     util::Lock lock(_mtx, _context() + __func__);
 
     LOGS(_log, LOG_LVL_DEBUG, _context() << __func__
          << "  _currentRequest=" << (_currentRequest ? _currentRequest->id() : "")
          << "  _requests.size=" << _requests.size()
-         << "  ec=" << ec);
+         << "  ec=" << ec2str(ec));
 
-    if (ec.value() != 0) {
+    if (_state != STATE_CONNECTING) return;
+
+    if (_failed(ec)) {
         _waitBeforeRestart(lock);
     } else {
         _state = STATE_COMMUNICATING;
@@ -347,39 +358,50 @@ void MessengerConnector::_waitBeforeRestart(util::Lock const& lock) {
 
 void MessengerConnector::_awakenForRestart(boost::system::error_code const& ec) {
 
-    if (_isAborted(ec)) return;
-
     util::Lock lock(_mtx, _context() + __func__);
 
     LOGS(_log, LOG_LVL_DEBUG, _context() << __func__
          << "  _currentRequest=" << (_currentRequest ? _currentRequest->id() : "")
          << "  _requests.size=" << _requests.size()
-         << "  ec=" << ec);
+         << "  ec=" << ec2str(ec));
 
     if (_state != STATE_CONNECTING) return;
 
-    _restart(lock);
+    // The timer was explicitly aborted by the connection restart method. So, don't
+    // bother with doing anything here.
+    if (ec == boost::asio::error::operation_aborted) return;
+
+    // In case of the normal expiration of the timer try restarting the connection.
+    if (ec.value() == 0) {
+        _restart(lock);
+        return;
+    }
+
+    // This is an abnormal scenario since timer should not arbitrary fail with
+    // any other error code.
+    throw runtime_error("MessengerConnector::" + string(__func__) + "  error: " + ec2str(ec));
 }
 
 
 void MessengerConnector::_sendRequest(util::Lock const& lock) {
 
-    LOGS(_log, LOG_LVL_DEBUG, _context() << __func__
+    LOGS(_log, LOG_LVL_DEBUG, _context() << __func__ << ":1"
          << "  _currentRequest=" << (_currentRequest ? _currentRequest->id() : "")
          << "  _requests.size=" << _requests.size());
 
-    // Check if there is an outstanding send request
+    if (_state != STATE_COMMUNICATING) return;
 
+    // Check if there is another request in flight.
     if (_currentRequest) return;
 
-    // Pull a request (if any) from the from of the queue
-
+    // Pull the next available request (if any) from the queue.
     if (_requests.empty()) return;
-
     _currentRequest = _requests.front();
     _requests.pop_front();
 
-    // Send the message
+    LOGS(_log, LOG_LVL_DEBUG, _context() << __func__ << ":1"
+         << "  _currentRequest=" << (_currentRequest ? _currentRequest->id() : "")
+         << "  _requests.size=" << _requests.size());
 
     boost::asio::async_write(
         _socket,
@@ -400,46 +422,26 @@ void MessengerConnector::_requestSent(boost::system::error_code const& ec,
     LOGS(_log, LOG_LVL_DEBUG, _context() << __func__
          << "  _currentRequest=" << (_currentRequest ? _currentRequest->id() : "")
          << "  _requests.size=" << _requests.size()
-         << "  ec=" << ec);
+         << "  ec=" << ec2str(ec));
 
-    // Check if the request was cancelled while still in flight.
-    // If that happens then _currentRequest should already be nullified
-    // and request removed from all data structures.
+    if (_state != STATE_COMMUNICATING) return;
 
-    if (_isAborted(ec)) {
-        LOGS(_log, LOG_LVL_DEBUG, _context() << __func__ << "  _isAborted -> restart");
+    // Check if the request was cancelled. If so then pull another one (if any) from
+    // the queue.
+    if (_currentRequest == nullptr) {
+        _sendRequest(lock);
+        return;
+    }
 
+    // The request will be retried later after restarting the connection.
+    if (_failed(ec)) {
+        LOGS(_log, LOG_LVL_DEBUG, _context() << __func__ << "  ** FAILED **");
         _restart(lock);
         return;
     }
-    if (_currentRequest) {
 
-        // The request is still valid
-        if (ec.value() != 0) {
-
-            // If something bad happened along the line then make sure this request
-            // will be the first to be served before restarting the communication.
-
-            _requests.push_front(_currentRequest);
-            _currentRequest = nullptr;
-
-            LOGS(_log, LOG_LVL_DEBUG, _context() << __func__
-                 << "  request is valid, but failed -> restart");
-
-            _restart(lock);
-
-        } else {
-
-            // Go wait for a server response
-            _receiveResponse(lock);
-        }
-
-    } else {
-        LOGS(_log, LOG_LVL_DEBUG, _context() << __func__ << "  no current request (cancelled?)");
-
-        // Pull another one (if any from the queue)
-        _sendRequest(lock);
-    }
+    // Go wait for a server response
+    _receiveResponse(lock);
 }
 
 
@@ -491,99 +493,72 @@ void MessengerConnector::_responseReceived(boost::system::error_code const& ec,
         LOGS(_log, LOG_LVL_DEBUG, _context() << __func__
              << "  _currentRequest=" << (_currentRequest ? _currentRequest->id() : "")
              << "  _requests.size=" << _requests.size()
-             << "  ec=" << ec);
+             << "  ec=" << ec2str(ec));
+
+        if (_state != STATE_COMMUNICATING) return;
 
         // Check if the request was cancelled while still in flight.
-        // If that happens then _currentRequest should already be nullified
-        // and request removed from all data structures.
-
-        if (_isAborted(ec)) {
+        if (_currentRequest == nullptr) {
             _restart(lock);
             return;
         }
 
-        if (_currentRequest) {
+        // At this point we're done with the current request, regardless of its completion
+        // status, or any failures to pull or digest the response data. Hence, removing
+        // completely it and getting ready to notify a caller.
+        //
+        // NOTE: by default a request would be marked as failed, unless the following method
+        // is called: request2notify->setSuccess(true).
 
-            // At this point we're done with the current request, regardless of its completion
-            // status, or any failures to pull or digest the response data. Hence, removing
-            // completely it and getting ready to notify a caller.
+        swap(request2notify, _currentRequest);
 
-            swap(request2notify, _currentRequest);
+        if (_failed(ec)) {
 
-            // The request is still valid
-            if (ec.value() != 0) {
-
-                // Failed to get any response from a worker
-                _restart(lock);
-
-            } else {
-
-                // Receive response header into the temporary buffer
-                if (_syncReadVerifyHeader(lock,
-                                          _inBuffer,
-                                          _inBuffer.parseLength(),
-                                          request2notify->id()).value() != 0) {
-
-                    // Failed to receive the header
-                    _restart(lock);
-
-                } else {
-
-                    // Read the response frame
-
-                    size_t bytes;
-                    if (_syncReadFrame(lock,
-                                       _inBuffer,
-                                       bytes).value() != 0) {
-
-                        // Failed to read the frame
-                        _restart(lock);
-
-                    } else {
-
-                        LOGS(_log, LOG_LVL_DEBUG, _context() << __func__
-                             << "  _currentRequest=" << request2notify->id()
-                             << " bytes=" << bytes);
-
-                        // Receive response body into a buffer inside the wrapper
-
-                        if (_syncReadMessageImpl(lock,
-                                                 request2notify->responseBuffer(),
-                                                 bytes).value() != 0) {
-
-                            // Failed to read the message body
-                            _restart(lock);
-
-                        } else {
-
-                            // Finally, success!
-                            request2notify->setSuccess(true);
-
-                            // Initiate the next request (if any) processing
-                            _sendRequest(lock);
-                        }
-                    }
-                }
-            }
+            // Failed to get any response from a worker. The connection is in an unusable state,
+            // and it needs to be reset.
+            _restart(lock);
 
         } else {
 
-            // We're here because there is no '_currentRequest'.
-            // The request submission had a chance to finish (successfully or not)
-            // before the cancellation attempt was made. So, we just forget about
-            // this request and send no notification to a caller.
-
-            if (ec.value() != 0) {
+            // Receive response header into the temporary buffer.
+            if (0 != _syncReadVerifyHeader(lock,
+                                           _inBuffer,
+                                           _inBuffer.parseLength(),
+                                           request2notify->id()).value()) {
+                // Failed to receive the header
                 _restart(lock);
             } else {
-                _sendRequest(lock);
+
+                // Read the response frame
+                size_t bytes;
+                if (0 != _syncReadFrame(lock, _inBuffer, bytes).value()) {
+                    // Failed to read the frame
+                    _restart(lock);
+                } else {
+
+                    LOGS(_log, LOG_LVL_DEBUG, _context() << __func__
+                         << "  _currentRequest=" << request2notify->id() << " bytes=" << bytes);
+
+                    // Receive response body into a buffer inside the wrapper
+                    if (0 != _syncReadMessageImpl(lock,
+                                                  request2notify->responseBuffer(),
+                                                  bytes).value()) {
+                        // Failed to read the message body
+                        _restart(lock);
+                    } else {
+                        // Finally, success!
+                        request2notify->setSuccess(true);
+
+                        // Initiate the next request (if any) processing
+                        _sendRequest(lock);
+                    }
+                }
             }
         }
     }
 
     // Sending notifications (if requested) outsize the lock guard to avoid
     // deadlocks.
-
     if (request2notify) request2notify->parseAndNotify();
 }
 
@@ -659,10 +634,9 @@ boost::system::error_code MessengerConnector::_syncReadMessageImpl(util::Lock co
 }
 
 
-bool MessengerConnector::_isAborted(boost::system::error_code const& ec) const {
-
-    if (ec == boost::asio::error::operation_aborted) {
-        LOGS(_log, LOG_LVL_DEBUG, _context() << __func__ << "  ** ABORTED **");
+bool MessengerConnector::_failed(boost::system::error_code const& ec) const {
+    if (ec.value() != 0) {
+        LOGS(_log, LOG_LVL_DEBUG, _context() << __func__ << "  ** FAILED **  ec=" << ec2str(ec));
         return true;
     }
     return false;
