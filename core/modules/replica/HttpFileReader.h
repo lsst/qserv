@@ -101,7 +101,7 @@ private:
      * @param errnum A result reported by the CURL library function.
      * @throw std::runtime_error If the error-code is not CURL_OK.
      */
-    static void _errorChecked(std::string const& scope, CURLcode errnum);
+    void _errorChecked(std::string const& scope, CURLcode errnum);
 
     /**
      * Non-member function declaration used for pushing chunks of data retrieved from
