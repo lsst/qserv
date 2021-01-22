@@ -22,6 +22,7 @@
 #define LSST_QSERV_REPLICA_WORKERSERVERCONNECTION_H
 
 // System headers
+#include <atomic>
 #include <memory>
 
 // Third party headers
@@ -74,7 +75,9 @@ public:
     WorkerServerConnection(WorkerServerConnection const&) = delete;
     WorkerServerConnection& operator=(WorkerServerConnection const&) = delete;
 
-    ~WorkerServerConnection() = default;
+    /// Non-default destructor is needed for the purposes of logging the connection
+    /// termination event in the log stream.
+    ~WorkerServerConnection();
 
     /// @return network socket associated with the connection
     boost::asio::ip::tcp::socket& socket() { return _socket; }
@@ -109,6 +112,9 @@ private:
     WorkerServerConnection(ServiceProvider::Ptr const& serviceProvider,
                            WorkerProcessor::Ptr const& processor,
                            boost::asio::io_service& io_service);
+
+    /// @return A context string for error reporting and logging purposes.
+    std::string const& context() const { return _context; }
 
     /**
      * Begin reading (asynchronously) the frame header of a new request
@@ -157,24 +163,21 @@ private:
      * @param body A body of the response.
      */
     template <class T>
-    void _reply(std::string const& id,
-                T&& body) {
-
+    void _reply(std::string const& id, T&& body) {
         _bufferPtr->resize();
-
         ProtocolResponseHeader hdr;
         hdr.set_id(id);
-
         _bufferPtr->serialize(hdr);
         _bufferPtr->serialize(body);
-
-        _send();
+        _send(id);
     }
 
     /**
      * Begin sending (asynchronously) a result back to a client
+     * @param id  A unique identifier of a request to which the reply is sent
+     *   (this parameter is passed into the for the logging and debugging purposes).
      */
-    void _send();
+    void _send(std::string const& id);
 
     /**
      * The callback on finishing (either successfully or not) of asynchronous writes.
@@ -227,6 +230,12 @@ private:
     // Input parameters
 
     ServiceProvider::Ptr const _serviceProvider;
+
+    // Data strctures related to unique identifiers of connections.
+
+    static std::atomic<unsigned int> _connectionIdSeries;   ///< The generator of unique connection identifiers.
+    unsigned int const _connectionId;   ///< A unique identifier of the current connection.
+    std::string const _context; ///< A string for logging and error reporting (includes connection identifier).
 
     /// This is pointer onto an object where the requests would
     /// get processed.

@@ -543,23 +543,18 @@ private:
                                                    size_t bytes);
 
     /**
-     * Check if the error status corresponds to an aborted operation
+     * Check if the error status corresponds to a failed operation
      *
-     * @note:
-     *    Normally this method is supposed to be called as the first action
-     *    within asynchronous handlers to figure out if an on-going asynchronous
-     *    operation was cancelled for some reason. Should this be the case
-     *    the caller is supposed to quit right away. It will be up to a code
-     *    which initiated the abort to take care of putting the object into
-     *    a proper state.
-     * 
-     * @param ec
-     *   error code to be checked
-     *
-     * @eturn
-     *   'true' if the operation was aborted.
+     * @note Normally this method is supposed to be called as the first action
+     *   within asynchronous handlers to figure out if an on-going asynchronous
+     *   operation was cancelled or failed for some reason. Should this be the case
+     *   the caller is supposed to quit right away. It will be up to a code
+     *   which initiated the abort to take care of putting the object into
+     *   a proper state.
+     * @param ec An error code to be checked.
+     * @return 'true' if the operation failed.
      */
-    bool _isAborted(boost::system::error_code const& ec) const;
+    bool _failed(boost::system::error_code const& ec) const;
 
     /// @return the worker-specific context string
     std::string _context() const;

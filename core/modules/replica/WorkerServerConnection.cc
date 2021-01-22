@@ -38,24 +38,19 @@ using namespace std::placeholders;
 using namespace lsst::qserv::replica;
 
 namespace {
-
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.WorkerServerConnection");
-
 } /// namespace
 
 namespace {
 
-/// The context for diagnostic & debug printouts
-string const context = "WORKER-SERVER-CONNECTION  ";
-
-bool isErrorCode(boost::system::error_code const& ec,
+bool isErrorCode(string const& context,
+                 boost::system::error_code const& ec,
                  string const& scope) {
-
     if (ec.value() != 0) {
         if (ec == boost::asio::error::eof) {
-            LOGS(_log, LOG_LVL_DEBUG, context << scope << "  ** closed **");
+            LOGS(_log, LOG_LVL_DEBUG, context << scope << "  ** CLOSED **");
         } else {
-            LOGS(_log, LOG_LVL_ERROR, context << scope << "  ** failed: " << ec << " **");
+            LOGS(_log, LOG_LVL_ERROR, context << scope << "  ** FAILED ec=" << ec.value() << " **");
         }
         return true;
     }
@@ -63,55 +58,54 @@ bool isErrorCode(boost::system::error_code const& ec,
 }
 
 
-bool readIntoBuffer(boost::asio::ip::tcp::socket& socket,
+bool readIntoBuffer(string const& context,
+                    boost::asio::ip::tcp::socket& socket,
                     shared_ptr<ProtocolBuffer> const& ptr,
                     size_t bytes) {
-
     ptr->resize(bytes);     // make sure the buffer has enough space to accommodate
                             // the data of the message.
-
     boost::system::error_code ec;
     boost::asio::read(
         socket,
-        boost::asio::buffer(
-            ptr->data(),
-            bytes
-        ),
+        boost::asio::buffer(ptr->data(), bytes),
         boost::asio::transfer_at_least(bytes),
         ec
     );
-    return not ::isErrorCode(ec, __func__);
+    return not ::isErrorCode(context, ec, __func__);
 }
 
 
 template <class T>
-bool readMessage(boost::asio::ip::tcp::socket& socket,
+bool readMessage(string const& context,
+                 boost::asio::ip::tcp::socket& socket,
                  shared_ptr<ProtocolBuffer> const& ptr,
                  size_t bytes,
                  T& message) {
+    LOGS(_log, LOG_LVL_DEBUG, context << __func__ << " bytes=" << bytes);
     try {
-        if (readIntoBuffer(socket, ptr, bytes)) {
+        if (readIntoBuffer(context, socket, ptr, bytes)) {
             ptr->parse(message, bytes);
             return true;
         }
     } catch (exception const& ex) {
-        LOGS(_log, LOG_LVL_ERROR, context << __func__ << ex.what());
+        LOGS(_log, LOG_LVL_ERROR, context << __func__ << " " << ex.what());
     }
     return false;
 }
 
 
-bool readLength(boost::asio::ip::tcp::socket& socket,
+bool readLength(string const& context,
+                boost::asio::ip::tcp::socket& socket,
                 shared_ptr<ProtocolBuffer> const& ptr,
                 uint32_t& bytes) {
-
+    LOGS(_log, LOG_LVL_DEBUG, context << __func__);
     try {
-        if (readIntoBuffer(socket, ptr, sizeof(uint32_t))) {
+        if (readIntoBuffer(context, socket, ptr, sizeof(uint32_t))) {
             bytes = ptr->parseLength();
             return true;
         }
     } catch (exception const& ex) {
-        LOGS(_log, LOG_LVL_ERROR, context << __func__ << ex.what());
+        LOGS(_log, LOG_LVL_ERROR, context << __func__ << " " << ex.what());
     }
     return false;
 }
@@ -120,6 +114,8 @@ bool readLength(boost::asio::ip::tcp::socket& socket,
 namespace lsst {
 namespace qserv {
 namespace replica {
+
+atomic<unsigned int> WorkerServerConnection::_connectionIdSeries{0};
 
 WorkerServerConnection::Ptr WorkerServerConnection::create(
                                     ServiceProvider::Ptr const& serviceProvider,
@@ -137,10 +133,21 @@ WorkerServerConnection::WorkerServerConnection(ServiceProvider::Ptr const& servi
                                                WorkerProcessor::Ptr const& processor,
                                                boost::asio::io_service& io_service)
     :   _serviceProvider(serviceProvider),
+        _connectionId(_connectionIdSeries++),
+        _context("WORKER-SERVER-CONNECTION[" + to_string(_connectionId) + "]  "),
         _processor(processor),
         _socket(io_service),
         _bufferPtr(make_shared<ProtocolBuffer>(
                        serviceProvider->config()->requestBufferSizeBytes())) {
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << " CREATED");
+}
+
+
+WorkerServerConnection::~WorkerServerConnection() {
+    boost::system::error_code ec;
+    _socket.cancel(ec);
+    _socket.close(ec);
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << " DELETED");
 }
 
 
@@ -151,7 +158,7 @@ void WorkerServerConnection::beginProtocol() {
 
 void WorkerServerConnection::_receive() {
 
-    LOGS(_log, LOG_LVL_DEBUG, context << __func__);
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     // Start with receiving the fixed length frame carrying
     // the size (in bytes) the length of the subsequent message.
@@ -162,15 +169,11 @@ void WorkerServerConnection::_receive() {
     // the message itself) at once.
 
     const size_t bytes = sizeof(uint32_t);
-
     _bufferPtr->resize(bytes);
 
     boost::asio::async_read(
         _socket,
-        boost::asio::buffer(
-            _bufferPtr->data(),
-            bytes
-        ),
+        boost::asio::buffer(_bufferPtr->data(), bytes),
         boost::asio::transfer_at_least(bytes),
         bind(&WorkerServerConnection::_received, shared_from_this(), _1, _2)
     );
@@ -180,14 +183,15 @@ void WorkerServerConnection::_receive() {
 void WorkerServerConnection::_received(boost::system::error_code const& ec,
                                        size_t bytes_transferred) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context << __func__);
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__
+         << " ec=" << ec.value()
+         << " bytes_transferred=" << bytes_transferred);
 
-    if (::isErrorCode(ec, __func__)) return;
+    if (::isErrorCode(context(), ec, __func__)) return;
 
     // Now read the request header
     ProtocolRequestHeader hdr;
-    if (not ::readMessage(_socket, _bufferPtr, _bufferPtr->parseLength(), hdr)) return;
-
+    if (not ::readMessage(context(), _socket, _bufferPtr, _bufferPtr->parseLength(), hdr)) return;
 
     // Analyze the header of the request. Note that the header message categorizes
     // requests in two layers:
@@ -196,11 +200,9 @@ void WorkerServerConnection::_received(boost::system::error_code const& ec,
     //   request codes are obtained from the corresponding members
 
     switch (hdr.type()) {
-
         case ProtocolRequestHeader::QUEUED:  _processQueuedRequest(    hdr); break;
         case ProtocolRequestHeader::REQUEST: _processManagementRequest(hdr); break;
         case ProtocolRequestHeader::SERVICE: _processServiceRequest(   hdr); break;
-
         default:
             throw logic_error(
                     "WorkerServerConnection::" + string(__func__) + " unhandled request class: '" +
@@ -211,17 +213,20 @@ void WorkerServerConnection::_received(boost::system::error_code const& ec,
 
 void WorkerServerConnection::_processQueuedRequest(ProtocolRequestHeader const& hdr) {
 
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__
+         << " id=" << hdr.id()
+         << " type=" << ProtocolQueuedRequestType_Name(hdr.queued_type()));
+
     // Read the request length
     uint32_t bytes;
-    if (not ::readLength(_socket, _bufferPtr, bytes)) return;
+    if (not ::readLength(context(), _socket, _bufferPtr, bytes)) return;
 
     switch (hdr.queued_type()) {
-
         case ProtocolQueuedRequestType::REPLICA_CREATE: {
 
             // Read the request body
             ProtocolRequestReplicate request;
-            if (not ::readMessage(_socket, _bufferPtr, bytes, request)) return;
+            if (not ::readMessage(context(), _socket, _bufferPtr, bytes, request)) return;
 
             ProtocolResponseReplicate response;
             if (_verifyInstance(hdr, response)) {
@@ -234,7 +239,7 @@ void WorkerServerConnection::_processQueuedRequest(ProtocolRequestHeader const& 
 
             // Read the request body
             ProtocolRequestDelete request;
-            if (not ::readMessage(_socket, _bufferPtr, bytes, request)) return;
+            if (not ::readMessage(context(), _socket, _bufferPtr, bytes, request)) return;
 
             ProtocolResponseDelete response;
             if (_verifyInstance(hdr, response)) {
@@ -247,7 +252,7 @@ void WorkerServerConnection::_processQueuedRequest(ProtocolRequestHeader const& 
 
             // Read the request body
             ProtocolRequestFind request;
-            if (not ::readMessage(_socket, _bufferPtr, bytes, request)) return;
+            if (not ::readMessage(context(), _socket, _bufferPtr, bytes, request)) return;
 
             ProtocolResponseFind response;
             if (_verifyInstance(hdr, response)) {
@@ -260,7 +265,7 @@ void WorkerServerConnection::_processQueuedRequest(ProtocolRequestHeader const& 
 
             // Read the request body
             ProtocolRequestFindAll request;
-            if (not ::readMessage(_socket, _bufferPtr, bytes, request)) return;
+            if (not ::readMessage(context(), _socket, _bufferPtr, bytes, request)) return;
 
             ProtocolResponseFindAll response;
             if (_verifyInstance(hdr, response)) {
@@ -273,7 +278,7 @@ void WorkerServerConnection::_processQueuedRequest(ProtocolRequestHeader const& 
 
             // Read the request body
             ProtocolRequestEcho request;
-            if (not ::readMessage(_socket, _bufferPtr, bytes, request)) return;
+            if (not ::readMessage(context(), _socket, _bufferPtr, bytes, request)) return;
 
             ProtocolResponseEcho response;
             if (_verifyInstance(hdr, response)) {
@@ -286,7 +291,7 @@ void WorkerServerConnection::_processQueuedRequest(ProtocolRequestHeader const& 
 
             // Read the request body
             ProtocolRequestIndex request;
-            if (not ::readMessage(_socket, _bufferPtr, bytes, request)) return;
+            if (not ::readMessage(context(), _socket, _bufferPtr, bytes, request)) return;
 
             ProtocolResponseIndex response;
             if (_verifyInstance(hdr, response)) {
@@ -299,7 +304,7 @@ void WorkerServerConnection::_processQueuedRequest(ProtocolRequestHeader const& 
 
             // Read the request body
             ProtocolRequestSql request;
-            if (not ::readMessage(_socket, _bufferPtr, bytes, request)) return;
+            if (not ::readMessage(context(), _socket, _bufferPtr, bytes, request)) return;
 
             ProtocolResponseSql response;
             if (_verifyInstance(hdr, response)) {
@@ -318,11 +323,13 @@ void WorkerServerConnection::_processQueuedRequest(ProtocolRequestHeader const& 
 
 void WorkerServerConnection::_processManagementRequest(ProtocolRequestHeader const& hdr) {
 
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__
+         << " id=" << hdr.id()
+         << " type=" << ProtocolManagementRequestType_Name(hdr.management_type()));
+
     // Read the request length
     uint32_t bytes;
-    if (not ::readLength(_socket,
-                         _bufferPtr,
-                         bytes)) {
+    if (not ::readLength(context(), _socket, _bufferPtr, bytes)) {
         return;
     }
     switch (hdr.management_type()) {
@@ -331,10 +338,9 @@ void WorkerServerConnection::_processManagementRequest(ProtocolRequestHeader con
 
             // Read the request body
             ProtocolRequestStop request;
-            if (not ::readMessage(_socket, _bufferPtr, bytes, request)) return;
+            if (not ::readMessage(context(), _socket, _bufferPtr, bytes, request)) return;
 
             switch (request.queued_type()) {
-
                 case ProtocolQueuedRequestType::REPLICA_CREATE: {
                     ProtocolResponseReplicate response;
                     if (_verifyInstance(hdr, response)) _processor->dequeueOrCancel(request, response);
@@ -388,10 +394,9 @@ void WorkerServerConnection::_processManagementRequest(ProtocolRequestHeader con
 
             // Read the request body
             ProtocolRequestStatus request;
-            if (not ::readMessage(_socket, _bufferPtr, bytes, request)) return;
+            if (not ::readMessage(context(), _socket, _bufferPtr, bytes, request)) return;
 
             switch (request.queued_type()) {
-
                 case ProtocolQueuedRequestType::REPLICA_CREATE: {
                     ProtocolResponseReplicate response;
                     if (_verifyInstance(hdr, response)) _processor->checkStatus(request, response);
@@ -445,7 +450,7 @@ void WorkerServerConnection::_processManagementRequest(ProtocolRequestHeader con
 
             // Read the request body
             ProtocolRequestDispose request;
-            if (not ::readMessage(_socket, _bufferPtr, bytes, request)) return;
+            if (not ::readMessage(context(), _socket, _bufferPtr, bytes, request)) return;
  
             ProtocolResponseDispose response;
             if (_verifyInstance(hdr, response)) {
@@ -468,6 +473,10 @@ void WorkerServerConnection::_processManagementRequest(ProtocolRequestHeader con
 
 
 void WorkerServerConnection::_processServiceRequest(ProtocolRequestHeader const& hdr) {
+
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__
+         << " id=" << hdr.id()
+         << " type=" << ProtocolServiceRequestType_Name(hdr.service_type()));
 
     ProtocolServiceResponse response;
 
@@ -556,9 +565,11 @@ void WorkerServerConnection::_processServiceRequest(ProtocolRequestHeader const&
 }
 
 
-void WorkerServerConnection::_send() {
+void WorkerServerConnection::_send(string const& id) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context << __func__);
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__
+         << " id=" << id
+         << " size=" << _bufferPtr->size());
 
     boost::asio::async_write(
         _socket,
@@ -571,8 +582,11 @@ void WorkerServerConnection::_send() {
 void WorkerServerConnection::_sent(boost::system::error_code const& ec,
                                    size_t bytes_transferred) {
 
-    LOGS(_log, LOG_LVL_DEBUG, context << __func__);
-    if (::isErrorCode(ec, __func__)) return;
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__
+         << " ec=" << ec.value()
+         << " bytes_transferred=" << bytes_transferred);
+
+    if (::isErrorCode(context(), ec, __func__)) return;
 
     // Go wait for another request
     _receive();

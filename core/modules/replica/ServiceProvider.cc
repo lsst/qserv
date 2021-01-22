@@ -146,7 +146,7 @@ void ServiceProvider::stop() {
 
     // These steps will cancel all outstanding requests to workers (if any)
 
-    messenger()->stop();
+    if (_messenger != nullptr) _messenger->stop();
 
     // Destroying this object will let the I/O service to (eventually) finish
     // all on-going work and shut down all service threads. In that case there
