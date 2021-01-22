@@ -26,6 +26,7 @@
 #include <cstring>
 #include <fstream>
 #include <iostream>
+#include <stdexcept>
 #include "curl/curl.h"
 
 // Third party headers
@@ -46,9 +47,10 @@ using json = nlohmann::json;
 using namespace lsst::qserv::replica;
 
 namespace {
+
 /**
  * Class TemporaryCertFileRAII is used for storing certificate bandles in
- * temporary files managed basd on the RAII paradigm.
+ * temporary files managed based on the RAII paradigm.
  */
 class TemporaryCertFileRAII {
 public:
@@ -84,8 +86,8 @@ public:
         ofstream fs;
         fs.open(_fileName, ios::out|ios::trunc);
         if (!fs.is_open()) {
-            HttpError("TemporaryCertFileRAII::" + string(__func__), "failed to open/create file '"
-                        + _fileName+ "'.");
+            raiseRetryAllowedError("TemporaryCertFileRAII::" + string(__func__),
+                    "failed to open/create file '" + _fileName+ "'.");
         }
         fs << cert;
         fs.flush();
@@ -206,8 +208,7 @@ json IngestHttpSvcMod::_readLocal(string const& filename) {
     size_t numRows = 0;
     ifstream infile(filename);
     if (!infile.is_open()) {
-        throw HttpError(
-                __func__, "failed to open file '" + filename
+        raiseRetryAllowedError(__func__, "failed to open file '" + filename
                 + "', error: '" + strerror(errno) + "', errno: " + to_string(errno));
     }
     for (string row; getline(infile, row);) {

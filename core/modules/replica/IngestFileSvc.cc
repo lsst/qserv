@@ -41,6 +41,7 @@
 #include "replica/DatabaseMySQL.h"
 #include "replica/DatabaseServices.h"
 #include "replica/FileUtils.h"
+#include "replica/HttpExceptions.h"
 #include "replica/ReplicaInfo.h"
 #include "util/Mutex.h"
 
@@ -99,7 +100,7 @@ void IngestFileSvc::openFile(TransactionId transactionId,
         }
         _databaseInfo = _serviceProvider->config()->databaseInfo(transactionInfo.database);
         if (_databaseInfo.isPublished) {
-            throw invalid_argument(context_ + "database '" + _databaseInfo.name + "' is already PUBLISHED");
+            throw logic_error(context_ + "database '" + _databaseInfo.name + "' is already PUBLISHED");
         }
         _isPartitioned = _databaseInfo.partitionedTables.end() != find(
                 _databaseInfo.partitionedTables.begin(),
@@ -110,8 +111,8 @@ void IngestFileSvc::openFile(TransactionId transactionId,
                     _databaseInfo.regularTables.begin(),
                     _databaseInfo.regularTables.end(),
                     _table)) {
-                throw invalid_argument(
-                        context_ + "no such table '" + _table + "' in a scope of database '" +
+                throw invalid_argument(context_ +
+                        "no such table '" + _table + "' in a scope of database '" +
                         _databaseInfo.name + "'");
             }
         }
@@ -141,8 +142,7 @@ void IngestFileSvc::openFile(TransactionId transactionId,
                 [&](ReplicaInfo const& replica) {
                     return replica.database() == _databaseInfo.name;
                 })) {
-            throw invalid_argument(
-                    context_ + "chunk " + to_string(_chunk) + " of the UNPUBLISHED database '" +
+            throw invalid_argument(context_ + "chunk " + to_string(_chunk) + " of the UNPUBLISHED database '" +
                     _databaseInfo.name + "' is not allocated to worker '" + _workerName + "'");
         }
     }
@@ -154,13 +154,13 @@ void IngestFileSvc::openFile(TransactionId transactionId,
             ".csv"
         );
     } catch (exception const& ex) {
-        throw runtime_error(
-                context_ + "failed to generate a unique name for a temporary file, ex: " + string(ex.what()));
+        raiseRetryAllowedError(context_,
+                "failed to generate a unique name for a temporary file, ex: " + string(ex.what()));
     }
     _file.open(_fileName, ofstream::out);
     if (not _file.is_open()) {
-        throw runtime_error(
-                context_ + "failed to create a temporary file '" + _fileName
+        raiseRetryAllowedError(context_,
+                "failed to create a temporary file '" + _fileName
                 + "', error: '" + strerror(errno) + "', errno: " + to_string(errno));
     }
 }

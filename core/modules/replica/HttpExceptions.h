@@ -65,6 +65,21 @@ private:
     nlohmann::json const _errorExt = nlohmann::json::object();
 };
 
+
+/**
+ * Report an error as an exception.
+ * @note This method always throws and it never returns control back to a caller.
+ *   The method is meant to be used by Ingest system workers to report error conditions
+ *   that won't require aborting a transaction.
+ * @param scope A scope of the error.
+ * @param error A human readable error message.
+ * @param (optional) HTTP code of an error if applies.
+ * @throws HttpError
+ */
+void raiseRetryAllowedError(std::string const& scope,
+                            std::string const& error,
+                            long httpErrCode=0);
+
 }}} // namespace lsst::qserv::replica
 
 #endif // LSST_QSERV_HTTPEXCEPTIONS_H

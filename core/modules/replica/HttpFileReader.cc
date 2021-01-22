@@ -22,8 +22,11 @@
 // Class header
 #include "replica/HttpFileReader.h"
 
-// System headers
-#include <stdexcept>
+// Qserv headers
+#include "replica/HttpExceptions.h"
+
+// Standard headers
+#include <cassert>
 
 using namespace std;
 
@@ -50,7 +53,7 @@ HttpFileReader::HttpFileReader(string const& method,
         _headers(headers),
         _fileReaderConfig(fileReaderConfig) {
     _hcurl = curl_easy_init();
-    if (_hcurl == nullptr) throw runtime_error("curl_easy_init() failed");
+    assert(_hcurl != nullptr);  // curl_easy_init() failed to allocate memory, etc.
 }
 
 
@@ -61,8 +64,8 @@ HttpFileReader::~HttpFileReader() {
 
 
 void HttpFileReader::read(CallbackType const& onEachLine) {
+    assert(onEachLine != nullptr);  // no callback function provided
     string const context = "HttpFileReader::" + string(__func__) + " ";
-    if (onEachLine == nullptr) throw invalid_argument(context + "illegal callback function.");
     _onEachLine = onEachLine;
     _errorChecked("curl_easy_setopt(CURLOPT_URL)", curl_easy_setopt(_hcurl, CURLOPT_URL, _url.c_str()));
     _errorChecked("curl_easy_setopt(CURLOPT_CUSTOMREQUEST)", curl_easy_setopt(_hcurl, CURLOPT_CUSTOMREQUEST, nullptr));
@@ -118,16 +121,20 @@ void HttpFileReader::read(CallbackType const& onEachLine) {
     _errorChecked("curl_easy_setopt(CURLOPT_WRITEDATA)", curl_easy_setopt(_hcurl, CURLOPT_WRITEDATA, this));
     _line.erase();
     _errorChecked("curl_easy_perform()", curl_easy_perform(_hcurl));
-    if (!_line.empty()) throw runtime_error(context + "no newline in the end of the input stream");
+    if (!_line.empty()) raiseRetryAllowedError(context, "no newline in the end of the input stream");
 }
 
 
 void HttpFileReader::_errorChecked(string const& scope, CURLcode errnum) {
     if (errnum != CURLE_OK) {
         string errorStr = curl_easy_strerror(errnum);
-        if (errnum == CURLE_HTTP_RETURNED_ERROR) errorStr += " (on HTTP error codes 400 or greater)";
-        throw runtime_error(
-                scope + " failed, error: '" + errorStr + "', errnum: " + to_string(errnum));
+        long httpResponseCode = 0;
+        if (errnum == CURLE_HTTP_RETURNED_ERROR) {
+            errorStr += " (on HTTP error codes 400 or greater)";
+            curl_easy_getinfo(_hcurl, CURLINFO_RESPONSE_CODE, &httpResponseCode);
+        }
+        raiseRetryAllowedError(scope,
+                " error: '" + errorStr + "', errnum: " + to_string(errnum), httpResponseCode);
     }
 }
 
