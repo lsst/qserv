@@ -88,7 +88,6 @@ public :
  */
 class ControllerEvent {
 public:
-
     uint32_t id = 0;    /// A unique identifier of the event in the persistent log.
                         /// Note, that a value of this field is retrieved from the database. 
 
@@ -115,7 +114,6 @@ public:
  */
 class ControllerInfo {
 public:
-
     std::string id; /// Unique identifier of the Controller instance
 
     uint64_t started = 0;   /// 64-bit timestamp (ms) for its start time
@@ -142,7 +140,6 @@ public:
  */
 class RequestInfo {
 public:
-    
     std::string id;     /// Unique identifier of the Request instance
     std::string jobId;  /// Unique identifier of the parent Job instance
     std::string name;   /// The name (actually - its specific type) of the request
@@ -178,7 +175,6 @@ public:
  */
 class JobInfo {
 public:
-
     std::string id;             /// Unique identifier of the Job instance
     std::string controllerId;   /// Unique identifier of the parent Controller instance)
     std::string parentJobId;    /// Unique identifier of the parent Job instance
@@ -239,12 +235,73 @@ public:
 
 
 /**
+ * Class TransactionContribInfo encapsulates a contribution into a table made
+ * at a worker in a scope of the "super-transaction".
+ */
+class TransactionContribInfo {
+public:
+    // -----------------------------------------------------------------------------
+    // These data members are initialized by the meaninfull values after the initial
+    // recording of the info in the database. After that they would never change.
+
+    /// The unique identifier of a contribution is used mostly for the state
+    /// tracking purposes. The identifier is set after the initial record on
+    /// ingesting the contribution is recorded in the persistentstate.
+    unsigned int id = std::numeric_limits<unsigned int>::max();
+
+    /// The unique identifier of a parent transaction.
+    TransactionId transactionId = std::numeric_limits<TransactionId>::max();
+
+    std::string worker;         /// The name name of a worker
+
+    std::string database;       /// The name of a database
+    std::string table;          /// The base name of a table where the contribution was made
+
+    unsigned int chunk = 0;     /// (optional) The chunk number (partitioned tables only)
+    bool isOverlap = false;     /// (optional) A flavor of the chunked table (partitioned tables only)
+
+    std::string url;            /// The data source specification
+
+    // ---------------------------------------------------------------------------
+    // These data members are meant to be used for tracking a status of an operation
+    // as it's being progressing and for the performance analysis.
+    //
+    //   beginTime - is set after the initial recording of the info in the database
+    //   endTime   - is set after finishing (regardless of an outcome) the operation
+    //
+    //      IMPORTANT:
+    //         It's possible for the 'endTime' attribute to be never set in case of
+    //         a catastrophic failure of the worker ingest service. This may
+    //         create a potential ambiguity in interpreting a state of
+    //         the contribution before its parent transaction finishes.
+    //         Seeing the default value of 0 while the transaction is still
+    //         open may indicate an on-going ingest, or a failed ingest.
+    //         Once the transaction finishes zero value would always indicate
+    //         a failure.
+    //         The same rules apply to attrubutes 'numBytes', 'numRows' and 'success'
+    //
+    //   numBytes  - is set upon the successful completion of the operation
+    //   numRows   - is set upon the successful completion of the operation
+    //   success   - is set to 'true' if the operation has succeeded
+
+    uint64_t beginTime = 0;     /// The timestamp (milliseconds) when the ingest started
+    uint64_t endTime = 0;       /// The timestamp (milliseconds) when the ingest finished
+    uint64_t numBytes = 0;      /// The total number of bytes read from the source
+    uint64_t numRows = 0;       /// The total number of rows read from the source
+
+    bool success = false;       /// The completion status of the ingest operation
+
+    /// @return JSON representation of the object
+    nlohmann::json toJson() const;
+};
+
+
+/**
  * Class DatabaseIngestParam encapsulate a persistent state of the database ingest
  * parameters which are required to be carried over through the catalog ingests.
  */
 class DatabaseIngestParam {
 public:
-
     std::string database;   /// The name of a database for which a parameter is defined
     std::string category;   /// The name of the parameter's category.
     std::string param;      /// The name of the parameter.
@@ -266,9 +323,8 @@ public:
   * as general purpose exceptions explained in their documentation
   * below.
   */
-class DatabaseServices : public std::enable_shared_from_this<DatabaseServices> {
+class DatabaseServices: public std::enable_shared_from_this<DatabaseServices> {
 public:
-
     /// The pointer type for instances of the class
     typedef std::shared_ptr<DatabaseServices> Ptr;
 
@@ -759,6 +815,44 @@ public:
     /// @throws std::logic_error if the transaction has already ended
     virtual TransactionInfo endTransaction(TransactionId id,
                                            bool abort=false) = 0;
+
+    /// @return contributions into a super-transaction for the given selectors
+    /// @param transactionId a unique identifier of the transaction
+    /// @param table (optional) the base name of a table (all tables if not provided)
+    /// @param worker (optional) the name of a worker (all workers if not provided)
+    virtual std::vector<TransactionContribInfo> transactionContribs(TransactionId transactionId,
+                                                                    std::string const& table=std::string(),
+                                                                    std::string const& worker=std::string()) = 0;
+
+    /// @return contributions into super-transactions for the given selectors
+    /// @param database the name of a database
+    /// @param table (optional) the base name of a table (all tables if not provided)
+    /// @param worker (optional) the name of a worker (all workers if not provided)
+    virtual std::vector<TransactionContribInfo> transactionContribs(std::string const& database,
+                                                                    std::string const& table=std::string(),
+                                                                    std::string const& worker=std::string()) = 0;
+
+    /// Insert the initial record on the contribution before its size and the operation's
+    /// outcome will be known. For the later use method endTransactionContrib.
+    /// @param transactionId a unique identifier of the transaction
+    /// @param table the base name of a table
+    /// @param chunk the chunk number (ignored for non-partitioned tables)
+    /// @param isOverlap the kind of a table (ignored for non-partitioned tables)
+    /// @param worker the name of a worker
+    /// @param url the data source specification
+    /// @return the initial record on the contribution
+    virtual TransactionContribInfo beginTransactionContrib(TransactionId transactionId,
+                                                           std::string const& table,
+                                                           unsigned int chunk,
+                                                           bool isOverlap,
+                                                           std::string const& worker,
+                                                           std::string const& url) = 0;
+
+    /// Update or finalize the contribution status
+    /// @param info the transient state of the contribution to be synched with
+    ///   the persistent store
+    /// @return the updated record on the contribution
+    virtual TransactionContribInfo endTransactionContrib(TransactionContribInfo const& info) = 0;
 
     /// @return A descriptor of the parameter
     /// @throws DatabaseServicesNotFound If no such parameter found.

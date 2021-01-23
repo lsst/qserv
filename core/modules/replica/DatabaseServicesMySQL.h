@@ -161,7 +161,6 @@ public:
 
     RequestInfo request(std::string const& id) final;
 
-    /// @see DatabaseServices::requests()
     std::list<RequestInfo> requests(std::string const& jobId,
                                     uint64_t fromTimeStamp,
                                     uint64_t toTimeStamp,
@@ -186,6 +185,25 @@ public:
 
     TransactionInfo endTransaction(TransactionId id,
                                    bool abort=false) final;
+
+    std::vector<TransactionContribInfo> transactionContribs(
+                                              TransactionId transactionId,
+                                              std::string const& table=std::string(),
+                                              std::string const& worker=std::string()) final;
+
+    std::vector<TransactionContribInfo> transactionContribs(
+                                              std::string const& database,
+                                              std::string const& table=std::string(),
+                                              std::string const& worker=std::string()) final;
+
+    TransactionContribInfo beginTransactionContrib(TransactionId transactionId,
+                                                   std::string const& table,
+                                                   unsigned int chunk,
+                                                   bool isOverlap,
+                                                   std::string const& worker,
+                                                   std::string const& url) final;
+
+    TransactionContribInfo endTransactionContrib(TransactionContribInfo const& info) final;
 
     DatabaseIngestParam ingestParam(std::string const& database,
                                     std::string const& category,
@@ -347,6 +365,12 @@ private:
 
     std::vector<TransactionInfo> _findTransactionsImpl(util::Lock const& lock,
                                                        std::string const& predicate);
+
+    TransactionContribInfo _transactionContribImpl(util::Lock const& lock,
+                                                   std::string const& predicate);
+
+    std::vector<TransactionContribInfo> _transactionContribsImpl(util::Lock const& lock,
+                                                                 std::string const& predicate);
 
     DatabaseIngestParam _ingestParamImpl(util::Lock const& lock,
                                          std::string const& predicate);
