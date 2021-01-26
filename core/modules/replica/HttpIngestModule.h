@@ -55,10 +55,6 @@ public:
     /**
      * Supported values for parameter 'subModuleName':
      *
-     *   TRANSACTIONS              for many transactions (possible selected by various criteria)
-     *   SELECT-TRANSACTION-BY-ID  for a single transaction
-     *   BEGIN-TRANSACTION         for starting a new transaction
-     *   END-TRANSACTION           for finishing/aborting a transaction
      *   DATABASES                 for retreiving info on databases for specified criteria
      *   ADD-DATABASE              for adding a new database for the data ingest
      *   PUBLISH-DATABASE          for publishing a database when data ingest is over
@@ -95,18 +91,6 @@ private:
                      HttpProcessorConfig const& processorConfig,
                      qhttp::Request::Ptr const& req,
                      qhttp::Response::Ptr const& resp);
-
-    /// Get info on super-transactions
-    nlohmann::json _getTransactions();
-
-    /// Get info on the current/latest super-transaction
-    nlohmann::json _getTransaction();
-
-    /// Crate and start a super-transaction
-    nlohmann::json _beginTransaction();
-
-    /// Commit or rollback a super-transaction
-    nlohmann::json _endTransaction();
 
     /// Get info on select databases
     nlohmann::json _getDatabases();
@@ -244,24 +228,6 @@ private:
      * @param databaseInfo defines a scope of the operation
      */
     void _createSecondaryIndex(DatabaseInfo const& databaseInfo) const;
-
-    /**
-     * Extend an existing "secondary index" table by adding a MySQL partition
-     * corresponding to the specified transaction identifier.
-     * @param databaseInfo defines a scope of the operation
-     * @param transactionId unique identifier of a super-transaction
-     */
-    void _addPartitionToSecondaryIndex(DatabaseInfo const& databaseInfo,
-                                       TransactionId transactionId) const;
-
-   /**
-     * Shrink an existing "secondary index" table by removing a MySQL partition
-     * corresponding to the specified transaction identifier from the table.
-     * @param databaseInfo defines a scope of the operation
-     * @param transactionId unique identifier of a super-transaction
-     */
-    void _removePartitionFromSecondaryIndex(DatabaseInfo const& databaseInfo,
-                                            TransactionId transactionId) const;
 
     /**
      * Remove MySQL partitions from the "secondary index" table by turning it

@@ -33,6 +33,7 @@
 #include "replica/HttpIngestConfigModule.h"
 #include "replica/HttpIngestModule.h"
 #include "replica/HttpIngestIndexModule.h"
+#include "replica/HttpIngestTransModule.h"
 #include "replica/HttpJobsModule.h"
 #include "replica/HttpMetaModule.h"
 #include "replica/HttpQservMonitorModule.h"
@@ -381,7 +382,7 @@ void HttpProcessor::registerServices() {
     httpServer()->addHandler(
             "GET", "/ingest/trans",
             [self](qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp) {
-                HttpIngestModule::process(
+                HttpIngestTransModule::process(
                         self->controller(), self->name(), self->_processorConfig,
                         req, resp,
                         "TRANSACTIONS");
@@ -390,7 +391,7 @@ void HttpProcessor::registerServices() {
     httpServer()->addHandler(
             "GET", "/ingest/trans/:id",
             [self](qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp) {
-                HttpIngestModule::process(
+                HttpIngestTransModule::process(
                         self->controller(), self->name(), self->_processorConfig,
                         req, resp,
                         "SELECT-TRANSACTION-BY-ID");
@@ -399,7 +400,7 @@ void HttpProcessor::registerServices() {
     httpServer()->addHandler(
             "POST", "/ingest/trans",
             [self](qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp) {
-                HttpIngestModule::process(
+                HttpIngestTransModule::process(
                         self->controller(), self->name(), self->_processorConfig,
                         req, resp,
                         "BEGIN-TRANSACTION", HttpModule::AUTH_REQUIRED);
@@ -408,7 +409,7 @@ void HttpProcessor::registerServices() {
     httpServer()->addHandler(
             "PUT", "/ingest/trans/:id",
             [self](qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp) {
-                HttpIngestModule::process(
+                HttpIngestTransModule::process(
                         self->controller(), self->name(), self->_processorConfig,
                         req, resp,
                         "END-TRANSACTION", HttpModule::AUTH_REQUIRED);
