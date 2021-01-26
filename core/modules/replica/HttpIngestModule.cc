@@ -252,7 +252,7 @@ json HttpIngestModule::_beginTransaction() {
         try {
             // This operation can be vetoed by a catalog ingest workflow at the database
             // registration time.
-            if (_autoBuildSecondaryIndex(databaseInfo.name)) {
+            if (autoBuildSecondaryIndex(databaseInfo.name)) {
                 _addPartitionToSecondaryIndex(databaseInfo, transaction.id);
             }
         } catch (...) {
@@ -333,7 +333,7 @@ json HttpIngestModule::_endTransaction() {
 
             // This operation in a context of the "secondary index" table can be vetoed by
             // a catalog ingest workflow at the database registration time.
-            if (_autoBuildSecondaryIndex(databaseInfo.name)) {
+            if (autoBuildSecondaryIndex(databaseInfo.name)) {
                 _removePartitionFromSecondaryIndex(databaseInfo, transaction.id);
             }
 
@@ -341,7 +341,7 @@ json HttpIngestModule::_endTransaction() {
 
             // Make the best attempt to build a layer at the "secondary index" if requested
             // by a catalog ingest workflow at the database registration time.
-            if (_autoBuildSecondaryIndex(databaseInfo.name)) {
+            if (autoBuildSecondaryIndex(databaseInfo.name)) {
                 bool const hasTransactions = true;
                 string const destinationPath = transaction.database + "__" + databaseInfo.directorTable;
                 auto const job = IndexJob::create(
@@ -351,7 +351,7 @@ json HttpIngestModule::_endTransaction() {
                     allWorkers,
                     IndexJob::TABLE,
                     destinationPath,
-                    _localLoadSecondaryIndex(databaseInfo.name),
+                    localLoadSecondaryIndex(databaseInfo.name),
                     controller()
                 );
                 job->start();
@@ -431,15 +431,15 @@ json HttpIngestModule::_addDatabase() {
     auto const numStripes    = body().required<unsigned int>("num_stripes");
     auto const numSubStripes = body().required<unsigned int>("num_sub_stripes");
     auto const overlap       = body().required<double>("overlap");
-    auto const autoBuildSecondaryIndex = body().optional<unsigned int>("auto_build_secondary_index", 1);
-    auto const localLoadSecondaryIndex = body().optional<unsigned int>("local_load_secondary_index", 0);
+    auto const enableAutoBuildSecondaryIndex = body().optional<unsigned int>("auto_build_secondary_index", 1);
+    auto const enableLocalLoadSecondaryIndex = body().optional<unsigned int>("local_load_secondary_index", 0);
 
     debug(__func__, "database="      + databaseInfo.name);
     debug(__func__, "numStripes="    + to_string(numStripes));
     debug(__func__, "numSubStripes=" + to_string(numSubStripes));
     debug(__func__, "overlap="       + to_string(overlap));
-    debug(__func__, "autoBuildSecondaryIndex=" + to_string(autoBuildSecondaryIndex ? 1 : 0));
-    debug(__func__, "localLoadSecondaryIndex=" + to_string(localLoadSecondaryIndex ? 1 : 0));
+    debug(__func__, "enableAutoBuildSecondaryIndex=" + to_string(enableAutoBuildSecondaryIndex ? 1 : 0));
+    debug(__func__, "enableLocalLoadSecondaryIndex=" + to_string(enableLocalLoadSecondaryIndex ? 1 : 0));
 
     if (overlap < 0) throw HttpError(__func__, "overlap can't have a negative value");
 
@@ -502,10 +502,12 @@ json HttpIngestModule::_addDatabase() {
     // into the index will be automatically made when committing transactions. Otherwise,
     // it's going to be up to a user's catalog ingest workflow to (re-)build
     // the index.
-    databaseServices->saveIngestParam(databaseInfo.name, "secondary-index", "auto-build",
-            to_string(autoBuildSecondaryIndex ? 1 : 0));
-    databaseServices->saveIngestParam(databaseInfo.name, "secondary-index", "local-load",
-            to_string(localLoadSecondaryIndex ? 1 : 0));
+    databaseServices->saveIngestParam(
+            databaseInfo.name, "secondary-index", "auto-build",
+            to_string(enableAutoBuildSecondaryIndex ? 1 : 0));
+    databaseServices->saveIngestParam(
+            databaseInfo.name, "secondary-index", "local-load",
+            to_string(enableLocalLoadSecondaryIndex ? 1 : 0));
 
     // Tell workers to reload their configurations
     error = _reconfigureWorkers(databaseInfo, allWorkers, workerReconfigTimeoutSec());
@@ -548,7 +550,7 @@ json HttpIngestModule::_publishDatabase() {
 
     // The operation can be vetoed by the corresponding workflow parameter requested
     // by a catalog ingest workflow at the database creation time.
-    if (_autoBuildSecondaryIndex(database) and consolidateSecondayIndex) {
+    if (autoBuildSecondaryIndex(database) and consolidateSecondayIndex) {
         // This operation may take a while if the table has a large number of entries.
         _consolidateSecondaryIndex(databaseInfo);
     }
@@ -813,7 +815,7 @@ json HttpIngestModule::_addTable() {
     //
     // This operation can be vetoed by a catalog ingest workflow at the database
     // registration time.
-    if (_autoBuildSecondaryIndex(databaseInfo.name)) {
+    if (autoBuildSecondaryIndex(databaseInfo.name)) {
         if (isPartitioned and isDirector) _createSecondaryIndex(config->databaseInfo(databaseInfo.name));
     }
 
@@ -1498,32 +1500,6 @@ void HttpIngestModule::_qservSync(DatabaseInfo const& databaseInfo,
     if (qservSyncJob->extendedState() != Job::SUCCESS) {
         throw HttpError( __func__, "Qserv synchronization failed");
     }
-}
-
-
-bool HttpIngestModule::_autoBuildSecondaryIndex(string const& database) const {
-    auto const databaseServices = controller()->serviceProvider()->databaseServices();
-    try {
-        DatabaseIngestParam const paramInfo =
-            databaseServices->ingestParam(database, "secondary-index", "auto-build");
-        return paramInfo.value != "0";
-    } catch (DatabaseServicesNotFound const& ex) {
-        info(__func__, "the secondary index auto-build mode was not specified");
-    }
-    return false;
-}
-
-
-bool HttpIngestModule::_localLoadSecondaryIndex(string const& database) const {
-    auto const databaseServices = controller()->serviceProvider()->databaseServices();
-    try {
-        DatabaseIngestParam const paramInfo =
-            databaseServices->ingestParam(database, "secondary-index", "local-load");
-        return paramInfo.value != "0";
-    } catch (DatabaseServicesNotFound const& ex) {
-        info(__func__, "the secondary index local-load mode was not specified");
-    }
-    return false;
 }
 
 }}}  // namespace lsst::qserv::replica
