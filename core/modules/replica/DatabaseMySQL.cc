@@ -287,6 +287,7 @@ void Connection::_processLastError(string const& context,
         case CR_SERVER_LOST:
         case CR_SERVER_LOST_EXTENDED:
         case CR_TCP_CONNECTION:
+        case CR_UNKNOWN_HOST:
 
             if (instantAutoReconnect) {
 
