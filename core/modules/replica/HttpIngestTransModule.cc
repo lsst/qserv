@@ -43,6 +43,16 @@ using namespace std;
 using json = nlohmann::json;
 using namespace lsst::qserv::replica;
 
+namespace {
+    float const GiB = 1024 * 1024 * 1024;
+
+    template <typename T>
+    void incrementBy(json& obj, string const& key, T const val) {
+        T const prev = obj[key].get<T>();
+        obj[key] = prev + val;
+    }
+}
+
 namespace lsst {
 namespace qserv {
 namespace replica {
@@ -91,11 +101,15 @@ json HttpIngestTransModule::_getTransactions() {
     auto const family       = query().optionalString("family");
     auto const allDatabases = query().optionalUInt64("all_databases", 0) != 0;
     auto const isPublished  = query().optionalUInt64("is_published",  0) != 0;
+    auto const includeContributions = query().optionalUInt64("contrib", 0) != 0;
+    auto const longContribFormat = query().optionalUInt64("contrib_long", 0) != 0;
 
     debug(__func__, "database=" + database);
     debug(__func__, "family=" + family);
     debug(__func__, "all_databases=" + bool2str(allDatabases));
     debug(__func__, "is_published=" + bool2str(isPublished));
+    debug(__func__, "contrib=" + bool2str(includeContributions));
+    debug(__func__, "contrib_long=" + bool2str(longContribFormat));
 
     vector<string> databases;
     if (database.empty()) {
@@ -107,15 +121,21 @@ json HttpIngestTransModule::_getTransactions() {
     json result;
     result["databases"] = json::object();
     for (auto&& database: databases) {
-
+        auto const databaseInfo = config->databaseInfo(database);
         bool const allWorkers = true;
         vector<unsigned int> chunks;
         databaseServices->findDatabaseChunks(chunks, database, allWorkers);
 
+        result["databases"][database]["is_published"] = databaseInfo.isPublished ? 1 : 0;
         result["databases"][database]["num_chunks"] = chunks.size();
         result["databases"][database]["transactions"] = json::array();
         for (auto&& transaction: databaseServices->transactions(database)) {
-            result["databases"][database]["transactions"].push_back(transaction.toJson());
+            json transJson = transaction.toJson();
+            if (includeContributions) {
+                transJson["contrib"] =
+                    _getTransactionContributions(transaction, longContribFormat);
+            }
+            result["databases"][database]["transactions"].push_back(transJson);
         }
     }
     return result;
@@ -128,18 +148,28 @@ json HttpIngestTransModule::_getTransaction() {
     auto const config = controller()->serviceProvider()->config();
     auto const databaseServices = controller()->serviceProvider()->databaseServices();
     auto const id = stoul(params().at("id"));
+    auto const includeContributions = query().optionalUInt64("contrib", 0) != 0;
+    auto const longContribFormat = query().optionalUInt64("contrib_long", 0) != 0;
 
     debug(__func__, "id=" + to_string(id));
+    debug(__func__, "contrib=" + bool2str(includeContributions));
+    debug(__func__, "contrib_long=" + bool2str(longContribFormat));
 
     auto const transaction = databaseServices->transaction(id);
-
+    auto const databaseInfo = config->databaseInfo(transaction.database);
     bool const allWorkers = true;
     vector<unsigned int> chunks;
     databaseServices->findDatabaseChunks(chunks, transaction.database, allWorkers);
 
+    json transJson = transaction.toJson();
+    if (includeContributions) {
+        transJson["contrib"] =
+            _getTransactionContributions(transaction, longContribFormat);
+    }
     json result;
-    result["databases"][transaction.database]["transactions"].push_back(transaction.toJson());
+    result["databases"][transaction.database]["is_published"] = databaseInfo.isPublished ? 1 : 0;
     result["databases"][transaction.database]["num_chunks"] = chunks.size();
+    result["databases"][transaction.database]["transactions"].push_back(transJson);
     return result;
 }
 
@@ -379,5 +409,125 @@ void HttpIngestTransModule::_removePartitionFromSecondaryIndex(DatabaseInfo cons
         ;
     }
 }
+
+
+json HttpIngestTransModule::_getTransactionContributions(TransactionInfo const& transactionInfo,
+                                                         bool longContribFormat) const {
+    auto const config = controller()->serviceProvider()->config();
+    auto const databaseServices = controller()->serviceProvider()->databaseServices();
+    DatabaseInfo const databaseInfo = config->databaseInfo(transactionInfo.database);
+
+    set<string> uniqueWorkers;
+    unsigned int numRegularFiles = 0;
+    unsigned int numChunkFiles = 0;
+    unsigned int numChunkOverlapFiles = 0;
+    unsigned int numFailedFiles = 0;
+    float dataSizeGb = 0;
+    uint64_t numRows = 0;
+    uint64_t firstContribBeginTime = numeric_limits<uint64_t>::max();
+    uint64_t lastContribEndTime = 0;
+
+    json tableContribJson = json::object();
+    json workerContribJson = json::object();
+    json transContribFilesJson = json::array();
+
+    for (auto&& contrib: databaseServices->transactionContribs(transactionInfo.id)) {
+
+        // Always include detailed into on the contributions
+        if (longContribFormat) transContribFilesJson.push_back(contrib.toJson());
+
+        // Don't count incomplete or non-successful contributions for the summary stats.
+        // 
+        if (!contrib.success) {
+            numFailedFiles++;
+            continue;
+        }
+        uniqueWorkers.insert(contrib.worker);
+        float const contribDataSizeGb = contrib.numBytes / GiB;
+
+        // IMPLEMENTATION NOTE: Though the nlohhmann JSON API makes a good stride to look
+        //   like STL the API implementation still leaves many holes resulting in traps when
+        //   relying on the default allocations of the dictionary keys. Hence the code below
+        //   addresses this issue by explicitly adding keys to the dictionary where it's needed.
+        //   The second issue is related to operator '+=' that's implemented in the library
+        //   as container's 'push_back'! The code below avoid using this operator.
+        if (!tableContribJson.contains(contrib.table)) {
+            tableContribJson[contrib.table] = json::object({
+                {"data_size_gb", 0},
+                {"num_rows", 0},
+                {"num_files", 0}
+            });
+        }
+        if (!workerContribJson.contains(contrib.worker)) {
+            workerContribJson[contrib.worker] = json::object({
+                {"data_size_gb", 0},
+                {"num_rows", 0},
+                {"num_chunk_overlap_files", 0},
+                {"num_chunk_files", 0},
+                {"num_regular_files", 0}
+            });
+        }
+        json& objWorker = workerContribJson[contrib.worker];
+        if (databaseInfo.isPartitioned(contrib.table)) {
+            if (contrib.isOverlap) {
+                if (!tableContribJson[contrib.table].contains("overlap")) {
+                    tableContribJson[contrib.table]["overlap"] = json::object({
+                        {"data_size_gb", 0},
+                        {"num_rows", 0},
+                        {"num_files", 0}
+                    });
+                }
+                json& objTable = tableContribJson[contrib.table]["overlap"];
+                incrementBy<float>(objTable, "data_size_gb", contribDataSizeGb);
+                incrementBy<unsigned int>(objTable, "num_rows", contrib.numRows);
+                incrementBy<unsigned int>(objTable, "num_files", 1);
+                incrementBy<unsigned int>(objWorker, "num_chunk_overlap_files", 1);
+                numChunkOverlapFiles++;
+            } else {
+                json& objTable = tableContribJson[contrib.table];
+                incrementBy<float>(objTable, "data_size_gb", contribDataSizeGb);
+                incrementBy<unsigned int>(objTable, "num_rows", contrib.numRows);
+                incrementBy<unsigned int>(objTable, "num_files", 1);
+                incrementBy<unsigned int>(objWorker, "num_chunk_files", 1);
+                numChunkFiles++;
+            }
+        } else {
+            json& objTable = tableContribJson[contrib.table];
+            incrementBy<float>(objTable, "data_size_gb", contribDataSizeGb);
+            incrementBy<unsigned int>(objTable, "num_rows", contrib.numRows);
+            incrementBy<unsigned int>(objTable, "num_files", 1);
+            incrementBy<unsigned int>(objWorker, "num_regular_files", 1);
+            numRegularFiles++;
+        }
+        dataSizeGb += contribDataSizeGb;
+        incrementBy<float>(objWorker, "data_size_gb", contribDataSizeGb);
+
+        numRows += contrib.numRows;
+        incrementBy<unsigned int>(objWorker, "num_rows", contrib.numRows);
+
+        firstContribBeginTime = min(firstContribBeginTime, contrib.beginTime);
+        lastContribEndTime = max(lastContribEndTime, contrib.endTime);
+    }
+    json resultJson;
+    resultJson["summary"] = json::object({
+        {"num_workers", uniqueWorkers.size()},
+        {"num_failed_files", numFailedFiles},
+        {"num_regular_files", numRegularFiles},
+        {"num_chunk_files", numChunkFiles},
+        {"num_chunk_overlap_files", numChunkOverlapFiles},
+        {"data_size_gb", dataSizeGb},
+        {"num_rows", numRows},
+        // Force 0 if no contribution has been made
+        {"first_contrib_begin", firstContribBeginTime == numeric_limits<uint64_t>::max() ?
+                0 : firstContribBeginTime},
+        // Will be 0 if none of the contributions has finished yet, or all have failed.
+        {"last_contrib_end", lastContribEndTime},
+        {"table", tableContribJson},
+        {"worker", workerContribJson}
+    });
+    resultJson["files"] = transContribFilesJson;
+    return resultJson;
+}
+
 
 }}}  // namespace lsst::qserv::replica

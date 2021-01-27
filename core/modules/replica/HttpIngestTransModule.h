@@ -32,6 +32,13 @@
 #include "replica/Common.h"
 #include "replica/HttpModule.h"
 
+// Forward declarations
+namespace lsst {
+namespace qserv {
+namespace replica {
+    class TransactionInfo;
+}}} // namespace lsst::qserv::replica
+
 // This header declarations
 namespace lsst {
 namespace qserv {
@@ -108,6 +115,16 @@ private:
      */
     void _removePartitionFromSecondaryIndex(DatabaseInfo const& databaseInfo,
                                             TransactionId transactionId) const;
+
+    /**
+     * Extract contributions into a transaction.
+     * @param transactionInfo A transaction defining a scope of the request.
+     * @param longContribFormat If 'true' then the method will also return info on
+     *   the individual file contributions rather than just the summary info.
+     * @return A JSON object.
+     */
+    nlohmann::json _getTransactionContributions(TransactionInfo const& transactionInfo,
+                                                bool longContribFormat) const;
 };
     
 }}} // namespace lsst::qserv::replica
