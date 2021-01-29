@@ -12,6 +12,7 @@ include_directories(
 
 #-----------------------------------------------------------------------------
 
+add_subdirectory(admin)
 add_subdirectory(ccontrol)
 add_subdirectory(css)
 add_subdirectory(czar)

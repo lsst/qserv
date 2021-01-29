@@ -50,3 +50,4 @@ target_link_libraries(qmetaLib PRIVATE
 
 install(DIRECTORY python/ DESTINATION ${CMAKE_INSTALL_PREFIX}/python/lsst/qserv/qmeta)
 install(TARGETS qmetaLib DESTINATION ${CMAKE_INSTALL_PREFIX}/python/lsst/qserv/qmeta)
+install(DIRECTORY schema/ DESTINATION ${CMAKE_INSTALL_PREFIX}/smig/qmeta/schema/)

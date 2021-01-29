@@ -1,0 +1,7 @@
+#!/usr/bin/env python3
+
+import sys
+from lsst.qserv.admin.cli import entrypoint
+
+if __name__ == '__main__':
+    sys.exit(entrypoint())

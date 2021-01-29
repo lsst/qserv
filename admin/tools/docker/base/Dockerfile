@@ -101,9 +101,12 @@ RUN echo /usr/local/lib > /etc/ld.so.conf.d/local.conf \
     && ldconfig
 
 RUN pip3 install \
+    click \
     deprecated \
     pybind11[global] \
     sqlalchemy
+
+ENV PATH "${PATH}:/root/qserv/admin/local/docker/cli/"
 
 VOLUME /root
 WORKDIR /root
@@ -158,7 +161,11 @@ RUN echo /usr/local/lib > /etc/ld.so.conf.d/local.conf \
     && ldconfig
 
 RUN pip3 install \
+    click \
     deprecated \
+    jinja2 \
+    mysql-connector-python \
+    pyyaml \
     sqlalchemy
 
 VOLUME /root

@@ -1,0 +1,7 @@
+#!/usr/bin/env python3
+
+import sys
+from python.cmd.qserv import qserv
+
+if __name__ == '__main__':
+    sys.exit(qserv())
