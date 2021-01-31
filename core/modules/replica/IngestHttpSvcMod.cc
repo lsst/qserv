@@ -164,6 +164,15 @@ json IngestHttpSvcMod::executeImpl(string const& subModuleName) {
     auto const databaseServices = serviceProvider()->databaseServices();
     TransactionInfo const trans = databaseServices->transaction(transactionId);
 
+    TransactionContribInfo contrib = databaseServices->beginTransactionContrib(
+        trans.id,
+        table,
+        chunk,
+        isOverlap,
+        workerInfo().name,
+        url
+    );
+
     // Performance and statistics of the ingest operations (collected for each
     // file ingested). Timestamps represent the number of milliseconds since UNIX EPOCH
     json stats = json::object();
@@ -190,6 +199,12 @@ json IngestHttpSvcMod::executeImpl(string const& subModuleName) {
         loadDataIntoTable();
         perf["end_file_ingest_ms"] = PerformanceUtils::now();
 
+        // Update contribution info in the database
+        contrib.numBytes = stats["num_bytes"];
+        contrib.numRows = stats["num_rows"];
+        contrib.success = true;
+        contrib = databaseServices->endTransactionContrib(contrib);
+        debug(__func__, "transaction contribution recorded: " + contrib.toJson().dump());
     } catch (...) {
         closeFile();
         throw;
