@@ -167,6 +167,25 @@ json TransactionInfo::toJson() const {
 }
 
 
+json TransactionContribInfo::toJson() const {
+    json info;
+    info["id"] = id;
+    info["transaction_id"] = transactionId;
+    info["worker"]     = worker;
+    info["database"]   = database;
+    info["table"]      = table;
+    info["chunk"]      = chunk;
+    info["overlap"]    = isOverlap ? 1 : 0;
+    info["url"]        = url;
+    info["begin_time"] = beginTime;
+    info["end_time"]   = endTime;
+    info["num_bytes"]  = numBytes;
+    info["num_rows"]   = numRows;
+    info["success"]    = success ? 1 : 0;
+    return info;
+}
+
+
 json DatabaseIngestParam::toJson() const {
     json info;
     info["database"] = database;

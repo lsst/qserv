@@ -27,6 +27,7 @@
 #include "replica/Configuration.h"
 #include "replica/Controller.h"
 #include "replica/DatabaseMySQL.h"
+#include "replica/DatabaseServices.h"
 #include "replica/ServiceProvider.h"
 
 // LSST headers
@@ -91,6 +92,32 @@ shared_ptr<css::CssAccess> HttpModule::qservCssAccess(bool readOnly) const {
     cssConfig["password"] = Configuration::qservMasterDatabasePassword();
     cssConfig["database"] = "qservCssData";
     return css::CssAccess::createFromConfig(cssConfig, config->controllerEmptyChunksDir());
+}
+
+
+bool HttpModule::autoBuildSecondaryIndex(string const& database) const {
+    auto const databaseServices = controller()->serviceProvider()->databaseServices();
+    try {
+        DatabaseIngestParam const paramInfo =
+            databaseServices->ingestParam(database, "secondary-index", "auto-build");
+        return paramInfo.value != "0";
+    } catch (DatabaseServicesNotFound const& ex) {
+        info(__func__, "the secondary index auto-build mode was not specified");
+    }
+    return false;
+}
+
+
+bool HttpModule::localLoadSecondaryIndex(string const& database) const {
+    auto const databaseServices = controller()->serviceProvider()->databaseServices();
+    try {
+        DatabaseIngestParam const paramInfo =
+            databaseServices->ingestParam(database, "secondary-index", "local-load");
+        return paramInfo.value != "0";
+    } catch (DatabaseServicesNotFound const& ex) {
+        info(__func__, "the secondary index local-load mode was not specified");
+    }
+    return false;
 }
 
 }}}  // namespace lsst::qserv::replica

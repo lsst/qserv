@@ -46,7 +46,7 @@ namespace replica {
   * Class DatabaseServicesPool is a pool of service objects.
   * @see class DatabaseServices
   */
-class DatabaseServicesPool : public DatabaseServices {
+class DatabaseServicesPool: public DatabaseServices {
 public:
     /// This class which implements the RAII paradigm is used by
     /// the implementation of the pool.
@@ -183,6 +183,23 @@ public:
 
     TransactionInfo endTransaction(TransactionId id,
                                    bool abort=false) final;
+
+    std::vector<TransactionContribInfo> transactionContribs(TransactionId transactionId,
+                                                            std::string const& table=std::string(),
+                                                            std::string const& worker=std::string()) final;
+
+    std::vector<TransactionContribInfo> transactionContribs(std::string const& database,
+                                                            std::string const& table=std::string(),
+                                                            std::string const& worker=std::string()) final;
+
+    TransactionContribInfo beginTransactionContrib(TransactionId transactionId,
+                                                   std::string const& table,
+                                                   unsigned int chunk,
+                                                   bool isOverlap,
+                                                   std::string const& worker,
+                                                   std::string const& url) final;
+
+    TransactionContribInfo endTransactionContrib(TransactionContribInfo const& info) final;
 
     DatabaseIngestParam ingestParam(std::string const& database,
                                     std::string const& category,

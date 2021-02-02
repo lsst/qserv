@@ -55,10 +55,6 @@ public:
     /**
      * Supported values for parameter 'subModuleName':
      *
-     *   TRANSACTIONS              for many transactions (possible selected by various criteria)
-     *   SELECT-TRANSACTION-BY-ID  for a single transaction
-     *   BEGIN-TRANSACTION         for starting a new transaction
-     *   END-TRANSACTION           for finishing/aborting a transaction
      *   DATABASES                 for retreiving info on databases for specified criteria
      *   ADD-DATABASE              for adding a new database for the data ingest
      *   PUBLISH-DATABASE          for publishing a database when data ingest is over
@@ -95,18 +91,6 @@ private:
                      HttpProcessorConfig const& processorConfig,
                      qhttp::Request::Ptr const& req,
                      qhttp::Response::Ptr const& resp);
-
-    /// Get info on super-transactions
-    nlohmann::json _getTransactions();
-
-    /// Get info on the current/latest super-transaction
-    nlohmann::json _getTransaction();
-
-    /// Crate and start a super-transaction
-    nlohmann::json _beginTransaction();
-
-    /// Commit or rollback a super-transaction
-    nlohmann::json _endTransaction();
 
     /// Get info on select databases
     nlohmann::json _getDatabases();
@@ -237,31 +221,6 @@ private:
                                     unsigned int workerResponseTimeoutSec) const;
 
     /**
-     * Fetch a mode of building the "secondary index" as requested by a catalog
-     * ingest workflow and recorded at the database creation time. A value of
-     * the parameter is recorded in a database.
-     * 
-     * @param database The name of a database for which a value of the parameter
-     *   is requested.
-     * @return 'true' if the index was requested to be built automatically w/o any
-     *   explicit requests from a catalog ingest workflow.
-     */
-    bool _autoBuildSecondaryIndex(std::string const& database) const;
-
-    /**
-     * Fetch a mode of loading contributions into the "secondary index" as requested by
-     * a catalog ingest workflow and recorded at the database creation time. A value of
-     * the parameter is recorded in a database.
-     * 
-     * @param database The name of a database for which a value of the parameter
-     *   is requested.
-     * @return 'true' if the index was requested to be loaded using MySQL protocol
-     *   "LOAD DATA LOCAL INFILE" instead of just "LOAD DATA INFILE". See MySQL
-     *   documentation for further explanation of the protocol.
-     */
-    bool _localLoadSecondaryIndex(std::string const& database) const;
-
-    /**
      * Create an empty "secondary index" table partitioned using MySQL partitions.
      * The table will be configured with a single initial partition. More partitions
      * corresponding to super-transactions open during catalog ingest sessions will
@@ -269,24 +228,6 @@ private:
      * @param databaseInfo defines a scope of the operation
      */
     void _createSecondaryIndex(DatabaseInfo const& databaseInfo) const;
-
-    /**
-     * Extend an existing "secondary index" table by adding a MySQL partition
-     * corresponding to the specified transaction identifier.
-     * @param databaseInfo defines a scope of the operation
-     * @param transactionId unique identifier of a super-transaction
-     */
-    void _addPartitionToSecondaryIndex(DatabaseInfo const& databaseInfo,
-                                       TransactionId transactionId) const;
-
-   /**
-     * Shrink an existing "secondary index" table by removing a MySQL partition
-     * corresponding to the specified transaction identifier from the table.
-     * @param databaseInfo defines a scope of the operation
-     * @param transactionId unique identifier of a super-transaction
-     */
-    void _removePartitionFromSecondaryIndex(DatabaseInfo const& databaseInfo,
-                                            TransactionId transactionId) const;
 
     /**
      * Remove MySQL partitions from the "secondary index" table by turning it

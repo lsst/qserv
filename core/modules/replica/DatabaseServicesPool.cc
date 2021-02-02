@@ -400,6 +400,55 @@ TransactionInfo DatabaseServicesPool::endTransaction(TransactionId id,
 }
 
 
+vector<TransactionContribInfo> DatabaseServicesPool::transactionContribs(
+        TransactionId transactionId,
+        string const& table,
+        string const& worker) {
+    ServiceAllocator service(shared_from_base<DatabaseServicesPool>());
+    return service()->transactionContribs(
+            transactionId,
+            table,
+            worker);
+}
+
+
+vector<TransactionContribInfo> DatabaseServicesPool::transactionContribs(
+        string const& database,
+        string const& table,
+        string const& worker) {
+    ServiceAllocator service(shared_from_base<DatabaseServicesPool>());
+    return service()->transactionContribs(
+            database,
+            table,
+            worker);
+}
+
+
+TransactionContribInfo DatabaseServicesPool::beginTransactionContrib(
+        TransactionId transactionId,
+        string const& table,
+        unsigned int chunk,
+        bool isOverlap,
+        string const& worker,
+        string const& url) {
+    ServiceAllocator service(shared_from_base<DatabaseServicesPool>());
+    return service()->beginTransactionContrib(
+            transactionId,
+            table,
+            chunk,
+            isOverlap,
+            worker,
+            url);
+}
+
+
+TransactionContribInfo DatabaseServicesPool::endTransactionContrib(
+        TransactionContribInfo const& info) {
+    ServiceAllocator service(shared_from_base<DatabaseServicesPool>());
+    return service()->endTransactionContrib(info);
+}
+
+
 DatabaseIngestParam DatabaseServicesPool::ingestParam(string const& database,
                                                       string const& category,
                                                       string const& param) {

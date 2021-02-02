@@ -92,6 +92,31 @@ protected:
     /// @return A connection object for operations with Qserv CSS.
     std::shared_ptr<css::CssAccess> qservCssAccess(bool readOnly=false) const;
 
+    /**
+     * Fetch a mode of building the "secondary index" as requested by a catalog
+     * ingest workflow and recorded at the database creation time. A value of
+     * the parameter is recorded in a database.
+     * 
+     * @param database The name of a database for which a value of the parameter
+     *   is requested.
+     * @return 'true' if the index was requested to be built automatically w/o any
+     *   explicit requests from a catalog ingest workflow.
+     */
+    bool autoBuildSecondaryIndex(std::string const& database) const;
+
+    /**
+     * Fetch a mode of loading contributions into the "secondary index" as requested by
+     * a catalog ingest workflow and recorded at the database creation time. A value of
+     * the parameter is recorded in a database.
+     * 
+     * @param database The name of a database for which a value of the parameter
+     *   is requested.
+     * @return 'true' if the index was requested to be loaded using MySQL protocol
+     *   "LOAD DATA LOCAL INFILE" instead of just "LOAD DATA INFILE". See MySQL
+     *   documentation for further explanation of the protocol.
+     */
+    bool localLoadSecondaryIndex(std::string const& database) const;
+
 private:
     HttpProcessorConfig const _processorConfig;
 };
