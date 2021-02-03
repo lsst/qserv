@@ -229,6 +229,26 @@ public:
     uint64_t beginTime = 0; /// The timestamp (milliseconds) when it started
     uint64_t endTime = 0;   /// The timestamp (milliseconds) when it was committed/aborted
 
+    /// (Optional) An arbitrary JSON object explaining the transaction.
+    /// Normally this could be used later (during transaction abort/commit time, or for general
+    /// bookkeeping/ data provenance purposes).
+    /// The content of this attribute gets populated if a non-empty string was stored in
+    /// the database when staring/ending transaction (methods 'beginTransaction', 'endTransaction')
+    /// or updating the context (method 'updateTransaction') and if the corresponding
+    /// transaction lookup method was invoked with the optional flag set as 'includeContext=true'.
+    /// @note methods 'beginTranaction', 'endTransaction', and 'updateTransaction' always
+    ///   populates this attribute. Methods 'transaction' and 'transactions' do it only on demand,
+    ///   of the corresponding flag passed into those methods is set. Keep in mind that a value of
+    ///   the context attribute could be as large as 16 MB as defined by MySQL type 'MEDIUMBLOB'.
+    ///   Therefore do not pull the context unless it's strictly necessary.
+    ///
+    /// @see method DatabaseServices::beginTransaction
+    /// @see method DatabaseServices::endTransaction
+    /// @see method DatabaseServices::updateTransaction
+    /// @see DatabaseServices::transaction
+    /// @see DatabaseServices::transactions
+   nlohmann::json context = nlohmann::json::object();
+
     /// @return JSON representation of the object
     nlohmann::json toJson() const;
 };
@@ -797,24 +817,48 @@ public:
                                     uint64_t toTimeStamp=std::numeric_limits<uint64_t>::max(),
                                     size_t maxEntries=0) = 0;
 
+    /// @param id the unique identifier of a transaction
+    /// @param includeContext (optional) flag that (if 'true') would pull the transacion context
     /// @return a description of a super-transaction
     /// @throws DatabaseServicesNotFound if no such transaction found
-    virtual TransactionInfo transaction(TransactionId id) = 0;
+    virtual TransactionInfo transaction(TransactionId id,
+                                        bool includeContext=false) = 0;
 
+    /// @param databaseName (optional) the name of a database
+    /// @param includeContext (optional) flag that (if 'true') would pull the transacion context
     /// @return a collection of super-transactions (all of them or for the specified database only)
     /// @throws std::invalid_argument if database name is not valid
-    virtual std::vector<TransactionInfo> transactions(std::string const& databaseName=std::string()) = 0;
+    virtual std::vector<TransactionInfo> transactions(std::string const& databaseName=std::string(),
+                                                      bool includeContext=false) = 0;
 
-    /// @return a descriptor for the new super-transaction
-    /// @throws std::invalid_argument if database name is not valid
+    /// @param databaseName the name of a database
+    /// @param transactionContext (optional) a user-define context explaining the transaction.
+    ///   Note that a serialized value of this attribute could be as large as 16 MB as defined by
+    ///   MySQL type 'MEDIUMBLOB', Longer strings will be automatically truncated.
+    /// @return a descriptor of the new super-transaction 
+    /// @throws std::invalid_argument if database name is not valid, or if a value
+    ///   of parameter 'transactionContext' is not a valid JSON object.
     /// @throws std::logic_error if super-transactions are not allowed for the database
-    virtual TransactionInfo beginTransaction(std::string const& databaseName) = 0;
+    virtual TransactionInfo beginTransaction(std::string const& databaseName,
+                                             nlohmann::json const& transactionContext=nlohmann::json::object()) = 0;
 
+    /// @param id the unique identifier of a transaction
+    /// @param abort (optional) flag indicating if the transaction is being committed or aborted
     /// @return an updated descriptor of the (committed or aborted) super-transaction 
     /// @throws DatabaseServicesNotFound if no such transaction found
     /// @throws std::logic_error if the transaction has already ended
     virtual TransactionInfo endTransaction(TransactionId id,
                                            bool abort=false) = 0;
+
+    /// @param a user-defined context explaining the transaction
+    /// @return an updated descriptor of the transactions that includes the requested modification
+    /// @throws DatabaseServicesNotFound if no such transaction found
+    /// @throws std::invalid_argument if a value of parameter 'transactionContext'
+    ///   is not a valid JSON object.
+    /// @note this operation is allowed on transactions in any state
+    /// @note the empty input object will reset the context in the database
+    virtual TransactionInfo updateTransaction(TransactionId id,
+                                              nlohmann::json const& transactionContext=nlohmann::json::object()) = 0;
 
     /// @return contributions into a super-transaction for the given selectors
     /// @param transactionId a unique identifier of the transaction

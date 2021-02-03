@@ -175,14 +175,20 @@ public:
                             uint64_t toTimeStamp,
                             size_t maxEntries) final;
 
-    TransactionInfo transaction(TransactionId id) final;
+    TransactionInfo transaction(TransactionId id,
+                                bool includeContext=false) final;
 
-    std::vector<TransactionInfo> transactions(std::string const& databaseName=std::string()) final;
+    std::vector<TransactionInfo> transactions(std::string const& databaseName=std::string(),
+                                              bool includeContext=false) final;
 
-    TransactionInfo beginTransaction(std::string const& databaseName) final;
+    TransactionInfo beginTransaction(std::string const& databaseName,
+                                     nlohmann::json const& transactionContext=nlohmann::json::object()) final;
 
     TransactionInfo endTransaction(TransactionId id,
                                    bool abort=false) final;
+
+    TransactionInfo updateTransaction(TransactionId id,
+                                      nlohmann::json const& transactionContext=nlohmann::json::object()) final;
 
     std::vector<TransactionContribInfo> transactionContribs(TransactionId transactionId,
                                                             std::string const& table=std::string(),
