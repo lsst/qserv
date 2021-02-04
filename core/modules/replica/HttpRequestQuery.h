@@ -83,6 +83,8 @@ public:
 
     double requiredDouble(std::string const& param) const;
 
+    bool has(std::string const& param) const;
+
 private:
 
     /// The input map of parameters
