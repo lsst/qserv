@@ -283,10 +283,6 @@ bool QueryRunner::_fillRows(MYSQL_RES* result, int numFields, uint& rowCount, si
                 LOGS_ERROR("Message single row too large to send using protobuffer");
                 return false;
             }
-            auto totalSize = _task->addTransmitSize(tSize);
-            if (totalSize > _maxResultSize) { // &&& just forget this part on the worker ???
-                LOGS_ERROR("Result set of single query too large totalSize=" << totalSize);
-            }
             LOGS(_log, LOG_LVL_DEBUG, "Large message size=" << tSize
                  << ", splitting message rowCount=" << rowCount);
             _transmit(false, rowCount, tSize);

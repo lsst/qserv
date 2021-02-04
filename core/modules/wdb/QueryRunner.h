@@ -118,10 +118,7 @@ private:
     void _transmit(bool last, unsigned int rowCount, size_t size);
     void _transmitHeader(std::string& msg);
 
-
     wbase::Task::Ptr const _task; ///< Actual task
-
-    size_t const _maxResultSize = 5500000000; ///< &&& remove ???
 
     /// Resource reservation
     ChunkResourceMgr::Ptr _chunkResourceMgr;

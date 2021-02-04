@@ -116,7 +116,7 @@ InfileMerger::InfileMerger(InfileMergerConfig const& c,
       _databaseModels(dm),
       _jobIdColName(JOB_ID_BASE_NAME),
       _maxSqlConnectionAttempts(_config.czarConfig.getMaxSqlConnectionAttempts()),
-      _maxResultTableSizeBytes(_config.czarConfig.getMaxTableSizeMB()*1000000),
+      _maxResultTableSizeBytes(_config.czarConfig.getMaxTableSizeMB()*1024*1024),
       _semaMgrConn(semaMgrConn) {
     _fixupTargetName();
     _setEngineFromStr(_config.czarConfig.getResultEngine());
@@ -197,7 +197,7 @@ bool InfileMerger::merge(std::shared_ptr<proto::WorkerResponse> response, bool l
         return false;
     }
     // TODO: Check session id (once session id mgmt is implemented)
-    int jobId = response->result.jobid();
+    int const jobId = response->result.jobid();
     std::string queryIdJobStr =
         QueryIdHelper::makeIdStr(response->result.queryid(), jobId);
     if (!_queryIdStrSet) {
