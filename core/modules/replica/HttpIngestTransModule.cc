@@ -103,6 +103,7 @@ json HttpIngestTransModule::_getTransactions() {
     auto const isPublished  = query().optionalUInt64("is_published",  0) != 0;
     auto const includeContributions = query().optionalUInt64("contrib", 0) != 0;
     auto const longContribFormat = query().optionalUInt64("contrib_long", 0) != 0;
+    bool const includeContext = query().optionalUInt64("include_context", 0) != 0;
 
     debug(__func__, "database=" + database);
     debug(__func__, "family=" + family);
@@ -110,6 +111,7 @@ json HttpIngestTransModule::_getTransactions() {
     debug(__func__, "is_published=" + bool2str(isPublished));
     debug(__func__, "contrib=" + bool2str(includeContributions));
     debug(__func__, "contrib_long=" + bool2str(longContribFormat));
+    debug(__func__, "include_context=" + bool2str(includeContext));
 
     vector<string> databases;
     if (database.empty()) {
@@ -129,7 +131,7 @@ json HttpIngestTransModule::_getTransactions() {
         result["databases"][database]["is_published"] = databaseInfo.isPublished ? 1 : 0;
         result["databases"][database]["num_chunks"] = chunks.size();
         result["databases"][database]["transactions"] = json::array();
-        for (auto&& transaction: databaseServices->transactions(database)) {
+        for (auto&& transaction: databaseServices->transactions(database, includeContext)) {
             json transJson = transaction.toJson();
             if (includeContributions) {
                 transJson["contrib"] =
@@ -150,12 +152,14 @@ json HttpIngestTransModule::_getTransaction() {
     auto const id = stoul(params().at("id"));
     auto const includeContributions = query().optionalUInt64("contrib", 0) != 0;
     auto const longContribFormat = query().optionalUInt64("contrib_long", 0) != 0;
+    bool const includeContext = query().optionalUInt64("include_context", 0) != 0;
 
     debug(__func__, "id=" + to_string(id));
     debug(__func__, "contrib=" + bool2str(includeContributions));
     debug(__func__, "contrib_long=" + bool2str(longContribFormat));
+    debug(__func__, "include_context=" + bool2str(includeContext));
 
-    auto const transaction = databaseServices->transaction(id);
+    auto const transaction = databaseServices->transaction(id, includeContext);
     auto const databaseInfo = config->databaseInfo(transaction.database);
     bool const allWorkers = true;
     vector<unsigned int> chunks;
@@ -202,6 +206,7 @@ json HttpIngestTransModule::_beginTransaction() {
         auto const databaseServices = controller()->serviceProvider()->databaseServices();
 
         transaction.database = body().required<string>("database");
+        transaction.context = body().optional<json>("context", json::object());
 
         debug(__func__, "database=" + transaction.database);
 
@@ -222,7 +227,7 @@ json HttpIngestTransModule::_beginTransaction() {
         // Any problems during the secondary index creation will result in
         // automatically aborting the transaction. Otherwise ingest workflows
         // may be screwed/confused by the presence of the "invisible" transaction.
-        transaction = databaseServices->beginTransaction(databaseInfo.name);
+        transaction = databaseServices->beginTransaction(databaseInfo.name, transaction.context);
         try {
             // This operation can be vetoed by a catalog ingest workflow at the database
             // registration time.
@@ -277,13 +282,21 @@ json HttpIngestTransModule::_endTransaction() {
         auto const databaseServices = controller()->serviceProvider()->databaseServices();
 
         id = stoul(params().at("id"));
-
         abort = query().requiredBool("abort");
+
+        bool const hasContext = body().has("context");
+        json const context = body().optional<json>("context", json::object());
 
         debug(__func__, "id="    + to_string(id));
         debug(__func__, "abort=" + to_string(abort ? 1 : 0));
 
-        auto const transaction = databaseServices->endTransaction(id, abort);
+        auto transaction = databaseServices->transaction(id);
+        if (transaction.state != TransactionInfo::STARTED) {
+            throw HttpError(__func__, "transaction id=" + to_string(transaction.id) + " is not active");
+        }
+
+        if (hasContext) databaseServices->updateTransaction(id, context);
+        transaction = databaseServices->endTransaction(id, abort);
         auto const databaseInfo = config->databaseInfo(transaction.database);
         database = transaction.database;
 
