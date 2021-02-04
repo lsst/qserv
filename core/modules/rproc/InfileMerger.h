@@ -315,7 +315,7 @@ private:
 
     /// Variable to track result size. Each
     size_t const _maxResultTableSizeBytes; ///< Max result table size in bytes.
-    size_t _totalResultSize{0}; ///< Size of result so far in bytes.
+    size_t _totalResultSize = 0; ///< Size of result so far in bytes.
     std::map<int, size_t> _perJobResultSize; ///< Result size for each job
     std::mutex _mtxResultSizeMtx; ///< Protects _perJobResultSize and _totalResultSize.
 
