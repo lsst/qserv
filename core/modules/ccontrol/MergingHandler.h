@@ -100,7 +100,7 @@ public:
 
 private:
     void _initState();
-    bool _merge();
+    bool _merge(bool last);
     void _setError(int code, std::string const& msg);
     bool _setResult(BufPtr const& bufPtr);
     bool _verifyResult(BufPtr const& bufPtr);

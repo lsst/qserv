@@ -283,6 +283,10 @@ bool QueryRunner::_fillRows(MYSQL_RES* result, int numFields, uint& rowCount, si
                 LOGS_ERROR("Message single row too large to send using protobuffer");
                 return false;
             }
+            auto totalSize = _task->addTransmitSize(tSize);
+            if (totalSize > _maxResultSize) { // &&& just forget this part on the worker ???
+                LOGS_ERROR("Result set of single query too large totalSize=" << totalSize);
+            }
             LOGS(_log, LOG_LVL_DEBUG, "Large message size=" << tSize
                  << ", splitting message rowCount=" << rowCount);
             _transmit(false, rowCount, tSize);
@@ -320,6 +324,7 @@ void QueryRunner::_transmit(bool last, unsigned int rowCount, size_t tSize) {
     _result->set_rowcount(rowCount);
     _result->set_transmitsize(tSize);
     _result->set_attemptcount(_task->getAttemptCount());
+
     if (!_multiError.empty()) {
         std::string chunkId = std::to_string(_task->msg->chunkid());
         std::string msg = "Error(s) in result for chunk #" + chunkId + ": " + _multiError.toOneLineString();

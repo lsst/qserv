@@ -196,7 +196,7 @@ public:
     /// ProtoHeader message
     /// Result message
     /// @return true if merge was successfully imported (queued)
-    bool merge(std::shared_ptr<proto::WorkerResponse> response);
+    bool merge(std::shared_ptr<proto::WorkerResponse> response, bool last);
 
     /// @return error details if finalize() returns false
     InfileMergerError const& getError() const { return _error; }
@@ -275,7 +275,7 @@ private:
     std::shared_ptr<sql::SqlConnection> _sqlConn; ///< SQL connection
     std::string _mergeTable; ///< Table for result loading
     InfileMergerError _error; ///< Error state
-    bool _isFinished{false}; ///< Completed?
+    bool _isFinished = false; ///< Completed?
     std::mutex _sqlMutex; ///< Protection for SQL connection
     size_t _getResultTableSizeMB(); ///< Return the size of the result table in MB.
 
@@ -311,11 +311,13 @@ private:
 
     InvalidJobAttemptMgr _invalidJobAttemptMgr;
     bool _deleteInvalidRows(std::set<int> const& jobIdAttempts);
-
-    int _sizeCheckRowCount = 0; ///< Number of rows read since last size check.
-    int _checkSizeEveryXRows = 1000; ///< Check the size of the result table after every x number of rows.
-    size_t _maxResultTableSizeMB = 5000; ///< Max result table size.
     int const _maxSqlConnectionAttempts = 10; ///< maximum number of times to retry connecting to the SQL database.
+
+    /// Variable to track result size. Each
+    size_t const _maxResultTableSizeBytes; ///< Max result table size in bytes.
+    size_t _totalResultSize{0}; ///< Size of result so far in bytes.
+    std::map<int, size_t> _perJobResultSize; ///< Result size for each job
+    std::mutex _mtxResultSizeMtx; ///< Protects _perJobResultSize and _totalResultSize.
 
     std::shared_ptr<util::SemaMgr> _semaMgrConn; ///< Used to limit the number of open mysql connections.
 };
