@@ -183,6 +183,13 @@ Task::State Task::getState() const {
 }
 
 
+size_t Task::addTransmitSize(size_t sz) {
+    std::lock_guard<std::mutex> lock(_stateMtx);
+    _totalSize += sz;
+    return _totalSize;
+}
+
+
 /// Set values associated with the Task being started.
 void Task::started(std::chrono::system_clock::time_point const& now) {
     std::lock_guard<std::mutex> guard(_stateMtx);

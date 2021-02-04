@@ -115,8 +115,8 @@ InfileMerger::InfileMerger(InfileMergerConfig const& c,
       _mysqlConn(_config.mySqlConfig),
       _databaseModels(dm),
       _jobIdColName(JOB_ID_BASE_NAME),
-      _maxResultTableSizeMB(_config.czarConfig.getMaxTableSizeMB()),
       _maxSqlConnectionAttempts(_config.czarConfig.getMaxSqlConnectionAttempts()),
+      _maxResultTableSizeBytes(_config.czarConfig.getMaxTableSizeMB()*1000000),
       _semaMgrConn(semaMgrConn) {
     _fixupTargetName();
     _setEngineFromStr(_config.czarConfig.getResultEngine());
@@ -128,10 +128,6 @@ InfileMerger::InfileMerger(InfileMergerConfig const& c,
     } else {
         if (_dbEngine == INNODB)  {
             LOGS(_log, LOG_LVL_INFO, "Engine is INNODB, parallel, semaMgrConn=" << *_semaMgrConn);
-            // TODO: Size calculation does not work correctly for INNODB
-            //       increase max allowed size to reduce false positives
-            //       until a reasonably accurate method is implemented.
-            _maxResultTableSizeMB *= 10;
         } else if (_dbEngine == MEMORY) {
             LOGS(_log, LOG_LVL_INFO, "Engine is MEMORY, parallel, semaMgrConn=" << *_semaMgrConn);
         } else {
@@ -141,22 +137,12 @@ InfileMerger::InfileMerger(InfileMergerConfig const& c,
         // Shared connection not used for parallel inserts.
         _mysqlConn.closeMySqlConn();
     }
-    // Assume worst case of 10,000 bytes per row, what's the earliest row to test?
-    // Subtract that from the count so the first check doesn't happen for a while.
-    // Subsequent checks should happen at reasonable intervals.
-    // At 5000MB max size, the first check is made at 550,000 rows, with subsequent checks
-    // about every 50,000 rows.
-    _sizeCheckRowCount = -100*(_maxResultTableSizeMB);  //  100 = 1,000,000/10,000
-    _checkSizeEveryXRows = 10*_maxResultTableSizeMB;
-    LOGS(_log, LOG_LVL_TRACE, "InfileMerger maxResultTableSizeMB=" << _maxResultTableSizeMB
-                              << " sizeCheckRowCount=" << _sizeCheckRowCount
-                              << " checkSizeEveryXRows=" << _checkSizeEveryXRows
+
+    LOGS(_log, LOG_LVL_TRACE, "InfileMerger maxResultTableSizeBytes=" << _maxResultTableSizeBytes
                               << " maxSqlConnexctionAttempts=" << _maxSqlConnectionAttempts);
     _invalidJobAttemptMgr.setDeleteFunc([this](InvalidJobAttemptMgr::jASetType const& jobAttempts) -> bool {
         return _deleteInvalidRows(jobAttempts);
     });
-
-
 }
 
 
@@ -206,21 +192,24 @@ void InfileMerger::_setQueryIdStr(std::string const& qIdStr) {
 }
 
 
-bool InfileMerger::merge(std::shared_ptr<proto::WorkerResponse> response) {
+bool InfileMerger::merge(std::shared_ptr<proto::WorkerResponse> response, bool last) {
     if (!response) {
         return false;
     }
     // TODO: Check session id (once session id mgmt is implemented)
+    int jobId = response->result.jobid();
     std::string queryIdJobStr =
-        QueryIdHelper::makeIdStr(response->result.queryid(), response->result.jobid());
+        QueryIdHelper::makeIdStr(response->result.queryid(), jobId);
     if (!_queryIdStrSet) {
         _setQueryIdStr(QueryIdHelper::makeIdStr(response->result.queryid()));
     }
+    size_t resultSize = response->result.transmitsize();
     LOGS(_log, LOG_LVL_TRACE,
          "Executing InfileMerger::merge("
          << " largeResult=" << response->result.largeresult()
          << " sizes=" << static_cast<short>(response->headerSize)
          << ", " << response->protoHeader.size()
+         << ", resultSize=" << resultSize
          << ", rowCount=" << response->result.rowcount()
          << ", row_size=" << response->result.row_size()
          << ", attemptCount=" << response-> result.attemptcount()
@@ -258,6 +247,23 @@ bool InfileMerger::merge(std::shared_ptr<proto::WorkerResponse> response) {
         return true;
     }
 
+    size_t tResultSize;
+    {
+        std::lock_guard<std::mutex> resultSzLock(_mtxResultSizeMtx);
+        _perJobResultSize[jobId] += resultSize;
+        tResultSize = _totalResultSize + _perJobResultSize[jobId];
+        if (last) {
+            _totalResultSize += _perJobResultSize[jobId];
+        }
+    }
+    if (tResultSize > _maxResultTableSizeBytes) {
+        std::ostringstream os;
+        os << queryIdJobStr << " cancelling queryResult table " << _mergeTable;
+        os << " too large at " << tResultSize << "max allowed=" << _maxResultTableSizeBytes;
+        LOGS(_log, LOG_LVL_ERROR, os.str());
+        _error = util::Error(-1, os.str(), -1);
+        return false;
+    }
 
     auto start = std::chrono::system_clock::now();
     switch (_dbEngine) {
@@ -280,32 +286,6 @@ bool InfileMerger::merge(std::shared_ptr<proto::WorkerResponse> response) {
     }
     _invalidJobAttemptMgr.decrConcurrentMergeCount();
 
-    /// Check the size of the result table.
-    _sizeCheckRowCount += response->result.row_size();
-    if (_sizeCheckRowCount >= _checkSizeEveryXRows && _dbEngine != MEMORY) {
-        auto tSize = _getResultTableSizeMB();
-        LOGS(_log, LOG_LVL_TRACE, "checking ResultTableSize " << _mergeTable
-                                  << " " << tSize
-                                  << " max=" << _maxResultTableSizeMB);
-        _sizeCheckRowCount = 0;
-        if (tSize > _maxResultTableSizeMB) {
-            // Try deleting invalid rows if there are any, then check size again
-            bool validResult = _invalidJobAttemptMgr.holdMergingForRowDelete("Checking size");
-            tSize = _getResultTableSizeMB();
-            if (tSize > _maxResultTableSizeMB || !validResult) {
-                std::ostringstream os;
-                os << queryIdJobStr << " cancelling queryResult table " << _mergeTable;
-                if (!validResult) {
-                    os << " failed to delete invalid rows.";
-                } else {
-                    os << " too large at " << tSize << "MB max allowed=" << _maxResultTableSizeMB;
-                }
-                LOGS(_log, LOG_LVL_ERROR, os.str());
-                _error = util::Error(-1, os.str(), -1);
-                return false;
-            }
-        }
-    }
     LOGS(_log, LOG_LVL_DEBUG, "mergeDur=" << mergeDur.count());
     return ret;
 }

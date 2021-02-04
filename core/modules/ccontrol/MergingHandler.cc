@@ -140,7 +140,7 @@ bool MergingHandler::flush(int bLen, BufPtr const& bufPtr, bool& last, bool& lar
             LOGS(_log, LOG_LVL_DEBUG, "Flushed msgContinues=" << msgContinues
                  << " last=" << last << " for tableName=" << _tableName);
 
-            auto success = _merge();
+            auto success = _merge(last);
             if (msgContinues) {
                 _response.reset(new WorkerResponse());
             }
@@ -223,12 +223,12 @@ void MergingHandler::_initState() {
     _setError(0, "");
 }
 
-bool MergingHandler::_merge() {
+bool MergingHandler::_merge(bool last) {
     if (auto job = getJobQuery().lock()) {
         if (_flushed) {
             throw Bug("MergingRequester::_merge : already flushed");
         }
-        bool success = _infileMerger->merge(_response);
+        bool success = _infileMerger->merge(_response, last);
         if (!success) {
             LOGS(_log, LOG_LVL_WARN, "_merge() failed");
             rproc::InfileMergerError const& err = _infileMerger->getError();

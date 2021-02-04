@@ -121,6 +121,8 @@ private:
 
     wbase::Task::Ptr const _task; ///< Actual task
 
+    size_t const _maxResultSize = 5500000000; ///< &&& remove ???
+
     /// Resource reservation
     ChunkResourceMgr::Ptr _chunkResourceMgr;
     std::string _dbName;

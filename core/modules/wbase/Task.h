@@ -172,6 +172,7 @@ public:
     void queued(std::chrono::system_clock::time_point const& now);
     void started(std::chrono::system_clock::time_point const& now);
     std::chrono::milliseconds finished(std::chrono::system_clock::time_point const& now);
+    size_t addTransmitSize(size_t sz);
 
 private:
     QueryId  const    _qId{0}; //< queryId from czar
@@ -194,6 +195,7 @@ private:
     std::chrono::system_clock::time_point _queueTime;
     std::chrono::system_clock::time_point _startTime;
     std::chrono::system_clock::time_point _finishTime;
+    size_t _totalSize = 0; ///< Total size of the result so far.
 
     util::InstanceCount _ic{"Task"}; ///< Count of existing Task objects.
 };
