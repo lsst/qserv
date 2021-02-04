@@ -320,6 +320,7 @@ void QueryRunner::_transmit(bool last, unsigned int rowCount, size_t tSize) {
     _result->set_rowcount(rowCount);
     _result->set_transmitsize(tSize);
     _result->set_attemptcount(_task->getAttemptCount());
+
     if (!_multiError.empty()) {
         std::string chunkId = std::to_string(_task->msg->chunkid());
         std::string msg = "Error(s) in result for chunk #" + chunkId + ": " + _multiError.toOneLineString();

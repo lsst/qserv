@@ -194,6 +194,7 @@ private:
     std::chrono::system_clock::time_point _queueTime;
     std::chrono::system_clock::time_point _startTime;
     std::chrono::system_clock::time_point _finishTime;
+    size_t _totalSize = 0; ///< Total size of the result so far.
 
     util::InstanceCount _ic{"Task"}; ///< Count of existing Task objects.
 };
