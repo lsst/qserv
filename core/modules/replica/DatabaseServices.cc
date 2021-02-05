@@ -163,6 +163,7 @@ json TransactionInfo::toJson() const {
     info["state"]      = state2string(state);
     info["begin_time"] = beginTime;
     info["end_time"]   = endTime;
+    info["context"]    = context;
     return info;
 }
 

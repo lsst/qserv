@@ -32,6 +32,7 @@
 #include "lsst/log/Log.h"
 
 using namespace std;
+using json = nlohmann::json;
 
 namespace {
 
@@ -374,29 +375,38 @@ list<JobInfo> DatabaseServicesPool::jobs(string const& controllerId,
 }
 
 
-TransactionInfo DatabaseServicesPool::transaction(TransactionId id) {
+TransactionInfo DatabaseServicesPool::transaction(TransactionId id,
+                                                  bool includeContext) {
     ServiceAllocator service(shared_from_base<DatabaseServicesPool>());
-    return service()->transaction(id);
+    return service()->transaction(id, includeContext);
 }
 
 
-vector<TransactionInfo> DatabaseServicesPool::transactions(string const& databaseName) {
+vector<TransactionInfo> DatabaseServicesPool::transactions(string const& databaseName,
+                                                           bool includeContext) {
     ServiceAllocator service(shared_from_base<DatabaseServicesPool>());
-    return service()->transactions(databaseName);
+    return service()->transactions(databaseName, includeContext);
 }
 
 
-TransactionInfo DatabaseServicesPool::beginTransaction(string const& databaseName) {
+TransactionInfo DatabaseServicesPool::beginTransaction(string const& databaseName,
+                                                       json const& transactionContext) {
     ServiceAllocator service(shared_from_base<DatabaseServicesPool>());
-    return service()->beginTransaction(databaseName);
+    return service()->beginTransaction(databaseName, transactionContext);
 }
 
 
 TransactionInfo DatabaseServicesPool::endTransaction(TransactionId id,
                                                      bool abort) {
     ServiceAllocator service(shared_from_base<DatabaseServicesPool>());
-    return service()->endTransaction(id,
-                                     abort);
+    return service()->endTransaction(id, abort);
+}
+
+
+TransactionInfo DatabaseServicesPool::updateTransaction(TransactionId id,
+                                                        json const& transactionContext) {
+    ServiceAllocator service(shared_from_base<DatabaseServicesPool>());
+    return service()->updateTransaction(id, transactionContext);
 }
 
 

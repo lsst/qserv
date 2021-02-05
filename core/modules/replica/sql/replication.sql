@@ -536,6 +536,8 @@ CREATE TABLE IF NOT EXISTS `transaction` (
   `begin_time` BIGINT UNSIGNED NOT NULL ,
   `end_time`   BIGINT UNSIGNED DEFAULT 0 ,
 
+  `context` MEDIUMBLOB DEFAULT '' ,
+
   UNIQUE KEY (`id`) ,
   PRIMARY KEY (`id`,`database`) ,
 

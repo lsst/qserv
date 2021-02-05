@@ -155,4 +155,10 @@ double HttpRequestQuery::requiredDouble(string const& param) const {
     return stod(itr->second);
 }
 
+
+bool HttpRequestQuery::has(std::string const& param) const {
+    return _query.find(param) != _query.end();
+}
+
+
 }}}  // namespace lsst::qserv::replica

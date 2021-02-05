@@ -177,14 +177,20 @@ public:
 
     // Operations with super-transactions
 
-    TransactionInfo transaction(TransactionId id) final;
+    TransactionInfo transaction(TransactionId id,
+                                bool includeContext=false) final;
 
-    std::vector<TransactionInfo> transactions(std::string const& databaseName=std::string()) final;
+    std::vector<TransactionInfo> transactions(std::string const& databaseName=std::string(),
+                                              bool includeContext=false) final;
 
-    TransactionInfo beginTransaction(std::string const& databaseName) final;
+    TransactionInfo beginTransaction(std::string const& databaseName,
+                                     nlohmann::json const& transactionContext=nlohmann::json::object()) final;
 
     TransactionInfo endTransaction(TransactionId id,
                                    bool abort=false) final;
+
+    TransactionInfo updateTransaction(TransactionId id,
+                                      nlohmann::json const& transactionContext=nlohmann::json::object()) final;
 
     std::vector<TransactionContribInfo> transactionContribs(
                                               TransactionId transactionId,
@@ -361,10 +367,12 @@ private:
                              size_t maxEntries);
 
     TransactionInfo _findTransactionImpl(util::Lock const& lock,
-                                         std::string const& predicate);
+                                         std::string const& predicate,
+                                         bool includeContext);
 
     std::vector<TransactionInfo> _findTransactionsImpl(util::Lock const& lock,
-                                                       std::string const& predicate);
+                                                       std::string const& predicate,
+                                                       bool includeContext);
 
     TransactionContribInfo _transactionContribImpl(util::Lock const& lock,
                                                    std::string const& predicate);
