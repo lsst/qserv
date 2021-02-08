@@ -39,7 +39,7 @@ namespace replica {
   * tools. The class is meant to take care of mundane tasks such as handling
   * command-line parameters, initializing application environment, etc.
   */
-class Application : public std::enable_shared_from_this<Application> {
+class Application: public std::enable_shared_from_this<Application> {
 public:
     /// To bring the Parser type into the class's scope
     using Parser = detail::Parser;
@@ -79,13 +79,16 @@ protected:
      * @param enableServiceProvider An optional flag which will inject configuration
      *   option "--config=<url>", load the configuration into Configuration and initialize
      *   the ServiceProvider with the configuration.
+     * @param injectXrootdOptions An optional flag which will inject XROOTD options
+     *   and use an input from a user to change the corresponding defaults in the Configuration.
      */
     Application(int argc,
                 const char* const argv[],
                 std::string const& description="",
                 bool const injectDatabaseOptions=true,
                 bool const boostProtobufVersionCheck=false,
-                bool const enableServiceProvider=false);
+                bool const enableServiceProvider=false,
+                bool const injectXrootdOptions=false);
 
     /// @return a shared pointer of the desired subclass (no dynamic type checking)
     template <class T>
@@ -118,6 +121,7 @@ private:
     bool const _injectDatabaseOptions;
     bool const _boostProtobufVersionCheck;
     bool const _enableServiceProvider;
+    bool const _injectXrootdOptions;
 
     /// For parsing command-line parameters, options and flags
     Parser _parser;
@@ -137,6 +141,8 @@ private:
     unsigned int _databaseConnectTimeoutSec;
     unsigned int _databaseMaxReconnects;
     unsigned int _databaseTransactionTimeoutSec;
+    unsigned int _xrootdAllowReconnect;
+    unsigned int _xrootdConnectTimeoutSec;
 
     /// The provider of the Configuration and other services
     ServiceProvider::Ptr _serviceProvider;
