@@ -30,7 +30,6 @@
 
 // Qserv headers
 #include "replica/Common.h"
-#include "replica/ConfigurationFile.h"
 #include "replica/ConfigurationMySQL.h"
 #include "util/TablePrinter.h"
 
@@ -79,7 +78,7 @@ ConfigApp::ConfigApp(int argc, char* argv[])
             false /* enableServiceProvider */
         ),
         _log(LOG_GET("lsst.qserv.replica.ConfigApp")),
-        _configUrl("file:replication.cfg") {
+        _configUrl("mysql://qsreplica@localhost:3306/qservReplica") {
 
     // Configure the command line parser
 
@@ -99,7 +98,7 @@ ConfigApp::ConfigApp(int argc, char* argv[])
 
     parser().option(
         "config",
-        "Configuration URL (a configuration file or a set of database connection parameters).",
+        "Configuration URL.",
         _configUrl);
 
     parser().flag(
@@ -128,9 +127,9 @@ ConfigApp::ConfigApp(int argc, char* argv[])
     parser().command("CONFIG_INIT_FILE").required(
         "format",
         "The format of the initialization file to be produced with this option."
-        " Allowed values: MYSQL, INI",
+        " Allowed values: MYSQL",
         _format,
-        vector<string>({"MYSQL", "INI"}));
+        vector<string>({"MYSQL"}));
 
     // Command-specific parameters, options and flags
 
@@ -874,8 +873,7 @@ int ConfigApp::_configInitFile() const {
     string const context = "ConfigApp::" + string(__func__) + "  ";
 
     try {
-        if      ("MYSQL" == _format) { cout << ConfigurationMySQL::dump2init(_config) << endl; }
-        else if ("INI"   == _format) { cout << ConfigurationFile::dump2init(_config) << endl; }
+        if ("MYSQL" == _format) { cout << ConfigurationMySQL::dump2init(_config) << endl; }
         else {
             LOGS(_log, LOG_LVL_ERROR, context << "operation failed, unsupported format: " << _format);
             return 1;

@@ -69,7 +69,6 @@ public:
      * corresponding to a prefix of the configuration URL. The following
      * prefixes are supported:
      * @code
-     *   file:<path>
      *   mysql://[user][:password]@[host][:port][/database]
      * @code
      *

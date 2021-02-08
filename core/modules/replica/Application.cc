@@ -54,7 +54,7 @@ Application::Application(int argc,
         _enableServiceProvider    (enableServiceProvider),
         _parser   (argc,argv, description),
         _debugFlag(false),
-        _config   ("file:replication.cfg"),
+        _config   ("mysql://qsreplica@localhost:3306/qservReplica"),
         _databaseAllowReconnect       (Configuration::databaseAllowReconnect() ? 1 : 0),
         _databaseConnectTimeoutSec    (Configuration::databaseConnectTimeoutSec()),
         _databaseMaxReconnects        (Configuration::databaseMaxReconnects()),
@@ -83,7 +83,7 @@ int Application::run() {
         parser().option(
             "db-allow-reconnect",
             "Change the default database connecton handling node. Set 0 to disable"
-            " automati reconnects. Any other number would allow reconnects.",
+            " automatic reconnects. Any other number would allow reconnects.",
             _databaseAllowReconnect
         ).option(
             "db-reconnect-timeout",

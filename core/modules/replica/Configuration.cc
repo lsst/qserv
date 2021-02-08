@@ -46,7 +46,7 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
-    // These parameters are allowed to be changed, and they are set globally
+// These parameters are allowed to be changed, and they are set globally
 // for an application (process).
 bool         Configuration::_databaseAllowReconnect        = true;
 unsigned int Configuration::_databaseConnectTimeoutSec     = 3600;
