@@ -52,8 +52,6 @@ namespace replica {
  * type-dependent pointer and a callback function.
  */
 struct QservMgtRequestWrapper {
-
-    /// The pointer type for instances of the class
     typedef std::shared_ptr<QservMgtRequestWrapper> Ptr;
 
     virtual ~QservMgtRequestWrapper() = default;
@@ -72,26 +70,18 @@ struct QservMgtRequestWrapper {
   * Class QservMgtServices is a high-level interface to the Qserv management
   * services used by the replication system.
   */
-class QservMgtServices : public std::enable_shared_from_this<QservMgtServices> {
-
+class QservMgtServices: public std::enable_shared_from_this<QservMgtServices> {
 public:
-
-    /// The pointer type for instances of the class
     typedef std::shared_ptr<QservMgtServices> Ptr;
 
     /**
      * The factory method for instantiating a proper service object based
      * on an application configuration.
      *
-     * @param configuration
-     *   the configuration service
-     *
-     * @return
-     *   pointer to the created object
+     * @param serviceProvider Is ued for accessing configuration parameters.
+     * @return A pointer to the created object.
      */
     static Ptr create(ServiceProvider::Ptr const& serviceProvider);
-
-    // Default construction and copy semantics are prohibited
 
     QservMgtServices() = delete;
     QservMgtServices(QservMgtServices const&) = delete;
@@ -105,28 +95,15 @@ public:
     /**
      * Notify Qserv worker on availability of a new replica
      *
-     * @param chunk
-     *   the chunk whose replica will be enabled on the Qserv worker
-     *
-     * @param databases
-     *   the names of databases
-     *
-     * @param worker
-     *   the name of a worker where the replica is residing
-     *
-     * @param onFinish
-     *   callback function called on a completion of the operation
-     *
-     * @param jobId
-     *   an optional identifier of a job specifying a context
+     * @param chunk  The chunk whose replica will be enabled on the Qserv worker.
+     * @param databases The names of databases.
+     * @param worker  The name of a worker where the replica is residing.
+     * @param onFinish  A allback function called on a completion of the operation.
+     * @param jobId  An optional identifier of a job specifying a context
      *   in which a request will be executed.
-     *
-     * @param requestExpirationIvalSec
-     *   an optional parameter (if differs from 0) allowing to override the default
-     *   value of the corresponding parameter from the Configuration.
-     *
-     * @return
-     *   pointer to the request object if the request was made. Return
+     * @param requestExpirationIvalSec  An optional parameter (if differs from 0) allowing
+     *   to override the default value of the corresponding parameter from the Configuration.
+     * @return A pointer to the request object if the request was made. Return
      *   nullptr otherwise.
      */
     AddReplicaQservMgtRequest::Ptr addReplica(
@@ -140,33 +117,17 @@ public:
     /**
      * Notify Qserv worker on a removal of a replica
      *
-     * @param chunk
-     *   the chunk whose replicas will be disabled at the Qserv worker
-     *
-     * @param databases
-     *   the names of databases
-     *
-     * @param worker
-     *   the name of a worker where the replica is residing
-     *
-     * @param force
-     *   tell Qserv that the replica has to be removed from its
-     *   repository regardless if there are any outstanding requests
-     *   using the replica.
-     *
-     * @param onFinish
-     *   callback function called on a completion of the operation
-     *
-     * @param jobId
-     *   an optional identifier of a job specifying a context
+     * @param chunk  The chunk whose replicas will be disabled at the Qserv worker.
+     * @param databases  The names of databases.
+     * @param worker  The name of a worker where the replica is residing.
+     * @param force  A flag to tell Qserv that the replica has to be removed from its
+     *   repository regardless if there are any outstanding requests using the replica.
+     * @param onFinish  A callback function called on a completion of the operation.
+     * @param jobId  An optional identifier of a job specifying a context
      *   in which a request will be executed.
-     *
-     * @param requestExpirationIvalSec
-     *   an optional parameter (if differs from 0) allowing to override the default
-     *   value of the corresponding parameter from the Configuration.
-     *
-     * @return
-     *   pointer to the request object if the request was made. Return
+     * @param requestExpirationIvalSec  An optional parameter (if differs from 0) allowing
+     *   to override the default value of the corresponding parameter from the Configuration.
+     * @return  A pointer to the request object if the request was made. Return
      *   nullptr otherwise.
      */
     RemoveReplicaQservMgtRequest::Ptr removeReplica(
@@ -180,28 +141,16 @@ public:
     /**
      * Fetch replicas known to a Qserv worker
      *
-     * @param databaseFamily
-     *   the name of a database family
-     *
-     * @param worker
-     *   the name of a worker
-     *
-     * @param inUseOnly
-     *   return replicas which are presently in use
-     *
-     * @param onFinish
-     *   callback function to be called upon request completion
-     *
-     * @param jobId
-     *   an optional identifier of a job specifying a context
-     *   in which a request will be executed.
-     *
-     * @param requestExpirationIvalSec
-     *   an optional parameter (if differs from 0)  allowing to override the default
-     *   value of the corresponding parameter from the Configuration.
-     *
-     * @return
-     *   pointer to the request object if the request was made. Return
+     * @param databaseFamily  The name of a database family.
+     * @param worker  The name of a worker.
+     * @param inUseOnly  A flag telling the method to return replicas which are
+     *   presently in use
+     * @param onFinish  A callback function to be called upon request completion.
+     * @param jobId  An optional identifier of a job specifying a context in which
+     *    a request will be executed.
+     * @param requestExpirationIvalSec  An optional parameter (if differs from 0)  allowing
+     *   to override the default value of the corresponding parameter from the Configuration.
+     * @return  A pointer to the request object if the request was made. Return
      *   nullptr otherwise.
      */
     GetReplicasQservMgtRequest::Ptr getReplicas(
@@ -215,33 +164,18 @@ public:
     /**
      * Enable a collection of replicas at a Qserv worker
      *
-     * @param worker
-     *   the name of a worker
-     *
-     * @param newReplicas
-     *   collection of new replicas (NOTE: useCount field is ignored)
-     *
-     * @param databases
-     *   limit a scope of the operation to databases of this collection
-     *
-     * @param force
-     *   proceed with the operation even if some replicas affected by
-     *   the operation are in use.
-     *
-     * @param onFinish
-     *   callback function to be called upon request completion
-     *
-     * @param jobId
-     *   an optional identifier of a job specifying a context
-     *   in which a request will be executed.
-     *
-     * @param requestExpirationIvalSec
-     *   an optional parameter (if differs from 0)
-     *   allowing to override the default value of
-     *   the corresponding parameter from the Configuration.
-     *
-     * @return
-     *   pointer to the request object if the request was made. Return
+     * @param worker  The name of a worker.
+     * @param newReplicas  A collection of new replicas (NOTE: useCount field is ignored).
+     * @param databases  The names of databases to be affected by the request,
+     * @param force   A flag telling the metod to proceed with the operation even if some
+     *   replicas affected by the operation are still in use.
+     * @param onFinish  A callback function to be called upon request completion.
+     * @param jobId  An optional identifier of a job specifying a context in which
+     *    a request will be executed.
+     * @param requestExpirationIvalSec  An optional parameter (if differs from 0)
+     *   allowing to override the default value of the corresponding parameter from
+     *   the Configuration.
+     * @return  A pointer to the request object if the request was made. Return
      *   nullptr otherwise.
      */
     SetReplicasQservMgtRequest::Ptr setReplicas(
@@ -256,25 +190,14 @@ public:
     /**
      * Send a data string to a Qserv worker and get the same string in response
      *
-     * @param worker
-     *   the name of a worker
-     *
-     * @param data
-     *   data to be sent to a worker
-     *
-     * @param onFinish
-     *   callback function to be called upon request completion
-     *
-     * @param jobId
-     *   an optional identifier of a job specifying a context
-     *   in which a request will be executed.
-     *
-     * @param requestExpirationIvalSec
-     *   an optional parameter (if differs from 0) allowing to override the default
-     *   value of the corresponding parameter from the Configuration.
-     *
-     * @return
-     *   pointer to the request object if the request was made. Return
+     * @param worker  The name of a worker.
+     * @param data  The data string to be sent to a worker.
+     * @param onFinish  A callback function to be called upon request completion.
+     * @param jobId  An optional identifier of a job specifying a context in which
+     *    a request will be executed.
+     * @param requestExpirationIvalSec  An optional parameter (if differs from 0) allowing
+     *   to override the default value of the corresponding parameter from the Configuration.
+     * @return  A pointer to the request object if the request was made. Return
      *   nullptr otherwise.
      */
     TestEchoQservMgtRequest::Ptr echo(std::string const& worker,
@@ -286,22 +209,13 @@ public:
     /**
      * Request detailed status of a Qserv worker
      *
-     * @param worker
-     *   the name of a worker
-     *
-     * @param onFinish
-     *   callback function to be called upon request completion
-     *
-     * @param jobId
-     *   an optional identifier of a job specifying a context
-     *   in which a request will be executed.
-     *
-     * @param requestExpirationIvalSec
-     *   an optional parameter (if differs from 0) allowing to override the default
-     *   value of the corresponding parameter from the Configuration.
-     *
-     * @return
-     *   pointer to the request object if the request was made. Return
+     * @param worker  The name of a worker.
+     * @param onFinish  A callback function to be called upon request completion.
+     * @param jobId  An optional identifier of a job specifying a context in which
+     *    a request will be executed.
+     * @param requestExpirationIvalSec  An optional parameter (if differs from 0) allowing
+     *   to override the default value of the corresponding parameter from the Configuration.
+     * @return  A pointer to the request object if the request was made. Return
      *   nullptr otherwise.
      */
     GetStatusQservMgtRequest::Ptr status(std::string const& worker,
@@ -312,10 +226,7 @@ public:
 private:
 
     /**
-     * Construct the object.
-     *
-     * @param configuration
-     *   the configuration service
+     * @param serviceProvider Is ued for accessing configuration parameters.
      */
     explicit QservMgtServices(ServiceProvider::Ptr const& serviceProvider);
 
@@ -324,15 +235,13 @@ private:
      * a requester on the completion of the operation and it will also
      * remove the request from the server's registry.
      *
-     * @param id
-     *   a unique identifier of a completed request
+     * @param id  A unique identifier of a completed request.
      */
     void _finish(std::string const& id);
 
     /**
-     * @return
-     *   XROOTD/SSI API service for launching worker management requests.
-     *   The method is allowed to return the null pointer in case if a connection
+     * @return  A pointer to the XROOTD/SSI API service for launching worker management
+     *   requests. The method is allowed to return the null pointer in case if a connection
      *   to the service provider could not be established.
      */
     XrdSsiService* _xrdSsiService();
