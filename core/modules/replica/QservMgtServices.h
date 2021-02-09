@@ -24,6 +24,7 @@
 // System headers
 #include <map>
 #include <memory>
+#include <stdexcept>
 #include <vector>
 
 // Qserv headers
@@ -43,6 +44,16 @@ class XrdSsiService;
 namespace lsst {
 namespace qserv {
 namespace replica {
+
+
+/**
+ * For exceptions thrown on unrecoverable connection failures to XRootD/SSI services.
+ */
+class QservMgtConnectionError: public std::runtime_error {
+public:
+    using std::runtime_error::runtime_error;
+};
+
 
 /**
  * Structure QservMgtRequestWrapper is an abstract base for implementing requests
@@ -241,15 +252,18 @@ private:
 
     /**
      * @return  A pointer to the XROOTD/SSI API service for launching worker management
-     *   requests. The method is allowed to return the null pointer in case if a connection
-     *   to the service provider could not be established.
+     *   requests.
+     * @throws QservMgtConnectionError If unable to establish a connection.
      */
     XrdSsiService* _xrdSsiService();
-
 
     // Input parameters
 
     ServiceProvider::Ptr const _serviceProvider;
+
+    /// The cashed pointer to the XROOTD/SSI service gets initialized at a time
+    /// the first request is being made.
+    XrdSsiService* _service = nullptr;
 
     /// The registry of the on-going requests.
     std::map<std::string, std::shared_ptr<QservMgtRequestWrapper>> _registry;
