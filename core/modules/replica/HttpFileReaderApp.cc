@@ -43,6 +43,11 @@ string const description =
     " If option '--file=<file>' is present the file's content will be writted into the"
     " specified file. Otherwise the content will be printed to the standard output stream.";
 
+bool const injectDatabaseOptions = false;
+bool const boostProtobufVersionCheck = false;
+bool const enableServiceProvider = false;
+bool const injectXrootdOptions = false;
+
 } /// namespace
 
 namespace lsst {
@@ -57,10 +62,11 @@ HttpFileReaderApp::Ptr HttpFileReaderApp::create(int argc, char* argv[]) {
 HttpFileReaderApp::HttpFileReaderApp(int argc, char* argv[])
     :   Application(
             argc, argv,
-            ::description,
-            false   /* injectDatabaseOptions */,
-            false   /* boostProtobufVersionCheck */,
-            false   /* enableServiceProvider */
+            description,
+            injectDatabaseOptions,
+            boostProtobufVersionCheck,
+            enableServiceProvider,
+            injectXrootdOptions
         ) {
 
     parser().required(

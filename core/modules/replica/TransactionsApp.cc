@@ -40,6 +40,11 @@ namespace {
 string const description =
     "This application is meant for testing persistent states of super-transaction";
 
+bool const injectDatabaseOptions = true;
+bool const boostProtobufVersionCheck = false;
+bool const enableServiceProvider = true;
+bool const injectXrootdOptions = false;
+
 } /// namespace
 
 
@@ -57,10 +62,11 @@ TransactionsApp::Ptr TransactionsApp::create(int argc, char* argv[]) {
 TransactionsApp::TransactionsApp(int argc, char* argv[])
     :   Application(
             argc, argv,
-            ::description,
-            true    /* injectDatabaseOptions */,
-            false   /* boostProtobufVersionCheck */,
-            true    /* enableServiceProvider */
+            description,
+            injectDatabaseOptions,
+            boostProtobufVersionCheck,
+            enableServiceProvider,
+            injectXrootdOptions
         ) {
 
     // Configure the command line parser

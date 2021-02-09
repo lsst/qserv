@@ -41,6 +41,11 @@ string const description =
     "This application is the tool for viewing and manipulating"
     " the configuration data of the Replication system stored in the MySQL/MariaDB.";
 
+bool const injectDatabaseOptions = true;
+bool const boostProtobufVersionCheck = true;
+bool const enableServiceProvider = true;
+bool const injectXrootdOptions = false;
+
 /**
  * Register an option with a parser (which could also represent a command)
  *
@@ -73,9 +78,10 @@ ConfigApp::ConfigApp(int argc, char* argv[])
     :   Application(
             argc, argv,
             ::description,
-            true  /* injectDatabaseOptions */,
-            false /* boostProtobufVersionCheck */,
-            false /* enableServiceProvider */
+            injectDatabaseOptions,
+            boostProtobufVersionCheck,
+            enableServiceProvider,
+            injectXrootdOptions
         ),
         _log(LOG_GET("lsst.qserv.replica.ConfigApp")),
         _configUrl("mysql://qsreplica@localhost:3306/qservReplica") {

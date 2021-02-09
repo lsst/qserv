@@ -47,6 +47,7 @@ string const description =
 bool const injectDatabaseOptions = false;
 bool const boostProtobufVersionCheck = true;
 bool const enableServiceProvider = true;
+bool const injectXrootdOptions = false;
 
 } /// namespace
 
@@ -62,8 +63,12 @@ MessengerTestApp::Ptr MessengerTestApp::create(int argc, char* argv[]) {
 MessengerTestApp::MessengerTestApp(int argc, char* argv[])
     :   Application(
             argc, argv,
-            ::description,
-            injectDatabaseOptions, boostProtobufVersionCheck, enableServiceProvider) {
+            description,
+            injectDatabaseOptions,
+            boostProtobufVersionCheck,
+            enableServiceProvider,
+            injectXrootdOptions
+        ) {
 
     parser().required(
         "worker",

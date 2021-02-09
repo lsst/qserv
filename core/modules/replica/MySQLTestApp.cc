@@ -39,6 +39,11 @@ string const description =
     "This application is for testing the MySQL API used by"
     " the Replication system implementation.";
 
+bool const injectDatabaseOptions = true;
+bool const boostProtobufVersionCheck = false;
+bool const enableServiceProvider = true;
+bool const injectXrootdOptions = false;
+
 } /// namespace
 
 
@@ -56,10 +61,11 @@ MySQLTestApp::Ptr MySQLTestApp::create(int argc, char* argv[]) {
 MySQLTestApp::MySQLTestApp(int argc, char* argv[])
     :   Application(
             argc, argv,
-            ::description,
-            true    /* injectDatabaseOptions */,
-            false   /* boostProtobufVersionCheck */,
-            true    /* enableServiceProvider */
+            description,
+            injectDatabaseOptions,
+            boostProtobufVersionCheck,
+            enableServiceProvider,
+            injectXrootdOptions
         ) {
 
     // Configure the command line parser

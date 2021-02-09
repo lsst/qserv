@@ -58,6 +58,12 @@ string const description =
     "This application executes the same SQL statement against worker databases of"
     " select workers. Result sets will be reported upon a completion of"
     " the application.";
+
+bool const injectDatabaseOptions = true;
+bool const boostProtobufVersionCheck = true;
+bool const enableServiceProvider = true;
+bool const injectXrootdOptions = false;
+
 } // namespace
 
 namespace lsst {
@@ -74,10 +80,11 @@ SqlApp::Ptr SqlApp::create(int argc, char* argv[]) {
 SqlApp::SqlApp(int argc, char* argv[])
     :   Application(
             argc, argv,
-            ::description,
-            true    /* injectDatabaseOptions */,
-            true    /* boostProtobufVersionCheck */,
-            true    /* enableServiceProvider */
+            description,
+            injectDatabaseOptions,
+            boostProtobufVersionCheck,
+            enableServiceProvider,
+            injectXrootdOptions
         ) {
 
     // Configure the command line parser

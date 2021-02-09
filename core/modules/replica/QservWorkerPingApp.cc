@@ -47,6 +47,7 @@ string const description =
 bool const injectDatabaseOptions = false;
 bool const boostProtobufVersionCheck = true;
 bool const enableServiceProvider = true;
+bool const injectXrootdOptions = true;
 
 } /// namespace
 
@@ -62,10 +63,11 @@ QservWorkerPingApp::Ptr QservWorkerPingApp::create(int argc, char* argv[]) {
 QservWorkerPingApp::QservWorkerPingApp(int argc, char* argv[])
     :   Application(
             argc, argv,
-            ::description,
+            description,
             injectDatabaseOptions,
             boostProtobufVersionCheck,
-            enableServiceProvider
+            enableServiceProvider,
+            injectXrootdOptions
         ) {
 
     parser().required(

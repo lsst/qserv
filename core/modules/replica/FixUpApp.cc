@@ -43,6 +43,11 @@ string const description =
     " effort to leave worker nodes as balanced as possible, and it will also preserve"
     " chunk collocation.";
 
+bool const injectDatabaseOptions = true;
+bool const boostProtobufVersionCheck = true;
+bool const enableServiceProvider = true;
+bool const injectXrootdOptions = true;
+
 } /// namespace
 
 
@@ -60,10 +65,11 @@ FixUpApp::Ptr FixUpApp::create(int argc, char* argv[]) {
 FixUpApp::FixUpApp(int argc, char* argv[])
     :   Application(
             argc, argv,
-            ::description,
-            true    /* injectDatabaseOptions */,
-            true    /* boostProtobufVersionCheck */,
-            true    /* enableServiceProvider */
+            description,
+            injectDatabaseOptions,
+            boostProtobufVersionCheck,
+            enableServiceProvider,
+            injectXrootdOptions
         ) {
 
     // Configure the command line parser

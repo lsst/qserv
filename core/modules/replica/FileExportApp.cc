@@ -45,6 +45,11 @@ string const description =
     "This is an  application which acts as a client for the "
     " Replication system's table data exporting server.";
 
+bool const injectDatabaseOptions = false;
+bool const boostProtobufVersionCheck = true;
+bool const enableServiceProvider = false;
+bool const injectXrootdOptions = false;
+
 string parse(string const& context, json const& jsonObj, string const& key) {
     if ((0 == jsonObj.count(key) or not jsonObj[key].is_string())) {
         throw invalid_argument(
@@ -121,10 +126,11 @@ FileExportApp::Ptr FileExportApp::create(int argc, char* argv[]) {
 FileExportApp::FileExportApp(int argc, char* argv[])
     :   Application(
             argc, argv,
-            ::description,
-            false   /* injectDatabaseOptions */,
-            true    /* boostProtobufVersionCheck */,
-            false   /* enableServiceProvider */
+            description,
+            injectDatabaseOptions,
+            boostProtobufVersionCheck,
+            enableServiceProvider,
+            injectXrootdOptions
         ) {
 
     // Configure the command line parser

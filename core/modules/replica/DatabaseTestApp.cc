@@ -46,6 +46,10 @@ string const description =
     "This application is for testing the DatabaseServices API used by"
     " the Replication system implementation.";
 
+bool const injectDatabaseOptions = true;
+bool const boostProtobufVersionCheck = false;
+bool const enableServiceProvider = true;
+bool const injectXrootdOptions = false;
 
 string asString(time_t t) {
     ostringstream ss;
@@ -114,10 +118,11 @@ DatabaseTestApp::Ptr DatabaseTestApp::create(int argc, char* argv[]) {
 DatabaseTestApp::DatabaseTestApp(int argc, char* argv[])
     :   Application(
             argc, argv,
-            ::description,
-            true    /* injectDatabaseOptions */,
-            false   /* boostProtobufVersionCheck */,
-            true    /* enableServiceProvider */
+            description,
+            injectDatabaseOptions,
+            boostProtobufVersionCheck,
+            enableServiceProvider,
+            injectXrootdOptions
         ) {
 
     // Configure the command line parser

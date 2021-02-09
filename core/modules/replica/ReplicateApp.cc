@@ -44,6 +44,11 @@ string const description =
     " minimum level. Chunks which already have the desired replication level won't"
     " be affected by the operation.";
 
+bool const injectDatabaseOptions = true;
+bool const boostProtobufVersionCheck = true;
+bool const enableServiceProvider = true;
+bool const injectXrootdOptions = true;
+
 } /// namespace
 
 
@@ -61,10 +66,11 @@ ReplicateApp::Ptr ReplicateApp::create(int argc, char* argv[]) {
 ReplicateApp::ReplicateApp(int argc, char* argv[])
     :   Application(
             argc, argv,
-            ::description,
-            true    /* injectDatabaseOptions */,
-            true    /* boostProtobufVersionCheck */,
-            true    /* enableServiceProvider */
+            description,
+            injectDatabaseOptions,
+            boostProtobufVersionCheck,
+            enableServiceProvider,
+            injectXrootdOptions
         ) {
 
     // Configure the command line parser

@@ -40,6 +40,12 @@ string const description =
     "This application probes and reports a status of the Replication system's"
     " and Qserv workers to see if they respond within the specified (or implied)"
     " timeout.";
+
+bool const injectDatabaseOptions = true;
+bool const boostProtobufVersionCheck = true;
+bool const enableServiceProvider = true;
+bool const injectXrootdOptions = true;
+
 } /// namespace
 
 
@@ -57,10 +63,11 @@ ClusterHealthApp::Ptr ClusterHealthApp::create(int argc, char* argv[]) {
 ClusterHealthApp::ClusterHealthApp(int argc, char* argv[])
     :   Application(
             argc, argv,
-            ::description,
-            true    /* injectDatabaseOptions */,
-            true    /* boostProtobufVersionCheck */,
-            true    /* enableServiceProvider */
+            description,
+            injectDatabaseOptions,
+            boostProtobufVersionCheck,
+            enableServiceProvider,
+            injectXrootdOptions
         ) {
 
     // Configure the command line parser

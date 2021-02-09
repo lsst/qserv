@@ -46,6 +46,11 @@ string const description =
     " will both preserve the replication level of chunks and to keep the chunk"
     " collocation intact.";
 
+bool const injectDatabaseOptions = true;
+bool const boostProtobufVersionCheck = true;
+bool const enableServiceProvider = true;
+bool const injectXrootdOptions = true;
+
 void printPlan(RebalanceJobResult const& r) {
 
     cout << "\nTHE REBALANCE PLAN:\n"
@@ -98,10 +103,11 @@ RebalanceApp::Ptr RebalanceApp::create(int argc, char* argv[]) {
 RebalanceApp::RebalanceApp(int argc, char* argv[])
     :   Application(
             argc, argv,
-            ::description,
-            true    /* injectDatabaseOptions */,
-            true    /* boostProtobufVersionCheck */,
-            true    /* enableServiceProvider */
+            description,
+            injectDatabaseOptions,
+            boostProtobufVersionCheck,
+            enableServiceProvider,
+            injectXrootdOptions
         ) {
 
     // Configure the command line parser
