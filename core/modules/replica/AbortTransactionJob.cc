@@ -152,7 +152,7 @@ void AbortTransactionJob::startImpl(util::Lock const& lock) {
     try {
         databaseInfo = serviceProvider->config()->databaseInfo(transactionInfo.database);
     } catch (exception const& ex) {
-        LOGS(_log, LOG_LVL_ERROR, context_ << "failed to located database: '"
+        LOGS(_log, LOG_LVL_ERROR, context_ << "failed to locate the database: '"
              << transactionInfo.database << "', exception: " << ex.what());
         finish(lock, ExtendedState::CONFIG_ERROR);
         return;
@@ -171,9 +171,8 @@ void AbortTransactionJob::startImpl(util::Lock const& lock) {
 
     for (auto&& table: databaseInfo.tables()) {
         auto job = SqlDeleteTablePartitionJob::create(
-            databaseInfo.name,
-            table,
             _transactionId,
+            table,
             _allWorkers,
             controller(),
             id(),

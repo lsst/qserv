@@ -23,6 +23,9 @@
 #include "replica/SqlDeleteTablePartitionJob.h"
 
 // Qserv headers
+#include "replica/Controller.h"
+#include "replica/DatabaseServices.h"
+#include "replica/ServiceProvider.h"
 #include "replica/SqlDeleteTablePartitionRequest.h"
 #include "replica/StopRequest.h"
 
@@ -30,6 +33,7 @@
 #include "lsst/log/Log.h"
 
 // System headers
+#include <algorithm>
 #include <vector>
 
 using namespace std;
@@ -48,9 +52,8 @@ string SqlDeleteTablePartitionJob::typeName() { return "SqlDeleteTablePartitionJ
 
 
 SqlDeleteTablePartitionJob::Ptr SqlDeleteTablePartitionJob::create(
-        string const& database,
-        string const& table,
         TransactionId transactionId,
+        string const& table,
         bool allWorkers,
         Controller::Ptr const& controller,
         string const& parentJobId,
@@ -58,9 +61,8 @@ SqlDeleteTablePartitionJob::Ptr SqlDeleteTablePartitionJob::create(
         Job::Options const& options) {
 
     return Ptr(new SqlDeleteTablePartitionJob(
-        database,
-        table,
         transactionId,
+        table,
         allWorkers,
         controller,
         parentJobId,
@@ -71,9 +73,8 @@ SqlDeleteTablePartitionJob::Ptr SqlDeleteTablePartitionJob::create(
 
 
 SqlDeleteTablePartitionJob::SqlDeleteTablePartitionJob(
-        string const& database,
-        string const& table,
         TransactionId transactionId,
+        string const& table,
         bool allWorkers,
         Controller::Ptr const& controller,
         string const& parentJobId,
@@ -85,10 +86,33 @@ SqlDeleteTablePartitionJob::SqlDeleteTablePartitionJob(
                parentJobId,
                "SQL_DROP_TABLE_PARTITION",
                options),
-        _database(database),
-        _table(table),
         _transactionId(transactionId),
+        _table(table),
         _onFinish(onFinish) {
+
+    // Get the name of a database associated with the transaction.
+    // Verify input parameters.
+    try {
+        auto const serviceProvider = controller->serviceProvider();
+        auto const transactionInfo = serviceProvider->databaseServices()->transaction(transactionId);
+        if (transactionInfo.state != TransactonInfo::ABORTED) {
+            throw invalid_argument(
+                    context() + string(__func__) + " transaction id=" + to_string(transactionId)
+                    + " is not in the state ABORTED.");
+        }
+        _database = transactionInfo.database;
+
+        auto const databaseInfo = serviceProvider->config()->databaseInfo(_database);
+        auto const tables = databaseInfo.tables();
+        if (tables.end() == find(tables.cbegin(), tables.cend(), _table)) {
+            throw invalid_argument(
+                    context() + string(__func__) + " the table '" + _table
+                    + "' was not found in database '" + _database + "'.")
+        }
+    } catch (exception const& ex) {
+        LOGS(_log, LOG_LVL_ERROR, ex.what());
+        throw;
+    }
 }
 
 

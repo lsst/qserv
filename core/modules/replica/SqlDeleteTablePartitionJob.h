@@ -39,20 +39,19 @@ namespace qserv {
 namespace replica {
 
 /**
- * Class SqlDeleteTablePartitionJob represents a tool which will broadcast
+ * Class SqlDeleteTablePartitionJob represents a tool that will broadcast
  * the same request for removing a MySQL partition corresponding to a given
- * super-transaction from existing table from all worker databases of a setup.
+ * super-transaction from existing table from the relevant worker databases of a setup.
  * Result sets are collected in the above defined data structure.
  *
- * @note the meaning of the 'table' depends on a kind of a table. If this is
- * a regular table then tables with exact names will be deleted from all workers.
- * For the partitioned tables the operation will include both the prototype
- * tables (tables at exactly the specified name existing at all workers) and
- * the corresponding chunk tables for all chunks found at the relevant workers.
+ * @note The meaning of the 'table' depends on a kind of a table. If this is
+ *   a regular table then tables with exact names will be deleted from all workers.
+ *   For the partitioned tables the operation will include both the prototype
+ *   tables (tables at exactly the specified name existing at all workers) and
+ *   the corresponding chunk tables for all chunks found at the relevant workers.
  */
-class SqlDeleteTablePartitionJob : public SqlJob {
+class SqlDeleteTablePartitionJob: public SqlJob {
 public:
-    /// The pointer type for instances of the class
     typedef std::shared_ptr<SqlDeleteTablePartitionJob> Ptr;
 
     /// The function type for notifications on the completion of the request
@@ -66,11 +65,10 @@ public:
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
      *
-     * @param database the name of a database from which a table will be deleted
-     * @param table the name of an existing table to be affected by the operation
      * @param transactionId an identifier of a super-transaction corresponding
      *   to a MySQL partition to be dropped. The transaction must exist, and it
      *   should be in the ABORTED state.
+     * @param table the name of an existing table to be affected by the operation
      * @param allWorkers engage all known workers regardless of their status.
      *  If the flag is set to 'false' then only 'ENABLED' workers which are not
      *  in the 'READ-ONLY' state will be involved into the operation.
@@ -80,9 +78,8 @@ public:
      * @param options (optional) defines the job priority, etc.
      * @return pointer to the created object
      */
-    static Ptr create(std::string const& database,
+    static Ptr create(TransactionId transactionId,
                       std::string const& table,
-                      TransactionId transactionId,
                       bool allWorkers,
                       Controller::Ptr const& controller,
                       std::string const& parentJobId=std::string(),
@@ -115,9 +112,8 @@ protected:
                      SqlRequest::Ptr const& request) final;
 
 private:
-    SqlDeleteTablePartitionJob(std::string const& database,
+    SqlDeleteTablePartitionJob(TransactionId transactionId,
                                std::string const& table,
-                               TransactionId transactionId,
                                bool allWorkers,
                                Controller::Ptr const& controller,
                                std::string const& parentJobId,
@@ -126,9 +122,9 @@ private:
 
     // Input parameters
 
-    std::string const _database;
-    std::string const _table;
     TransactionId const _transactionId;
+    std::string const _database;        // extracted from the TransactionInfo for the transaction
+    std::string const _table;
 
     CallbackType _onFinish;     /// @note is reset when the job finishes
 
