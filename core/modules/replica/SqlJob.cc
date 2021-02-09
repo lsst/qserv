@@ -311,6 +311,55 @@ vector<string> SqlJob::workerTables(string const& worker,
 }
 
 
+vector<string> SqlJob::workerTables(string const& worker,
+                                    TransactionId const& transactionId,
+                                    string const& table,
+                                    bool allTables,
+                                    bool overlapTablesOnly) const {
+    vector<string> tables;
+
+    auto const databaseServices = controller()->serviceProvider()->databaseServices();
+    TransactionInfo const transactionInfo = databaseServices->transaction(transactionId);
+
+    // Locate all contributions into the table made at the given worker.
+    vector<TransactionContribInfo> const contribs =
+            databaseServices->transactionContribs(transactionId, table, worker);
+
+    if (_isPartitioned(transactionInfo.database, table)) {
+
+        // The prototype table for creating chunks and chunk overlap tables
+        tables.push_back(table);
+
+        // Always include the "dummy" chunk even if it won't be explicitly found
+        // in the replica collection. This chunk must be present at all workers.
+        bool const overlap = true;
+        if (allTables or overlapTablesOnly) {
+            tables.push_back(ChunkedTable(table, lsst::qserv::DUMMY_CHUNK, overlap).name());
+        }
+        if (allTables or not overlapTablesOnly) {
+            tables.push_back(ChunkedTable(table, lsst::qserv::DUMMY_CHUNK, not overlap).name());
+        }
+        for (auto&& contrib: contribs) {
+            // Avoiding the "dummy" chunk as it was already forced to be in
+            // the collection.
+            if (contrib.chunk != lsst::qserv::DUMMY_CHUNK) {
+                if (allTables or overlapTablesOnly) {
+                    tables.push_back(ChunkedTable(table, contrib.chunk, overlap).name());
+                }
+                if (allTables or not overlapTablesOnly) {
+                    tables.push_back(ChunkedTable(table, contrib.chunk, not overlap).name());
+                }
+            }
+        }
+    } else {
+        for (auto&& contrib: contribs) {
+            tables.push_back(contrib.table);
+        }
+    }
+    return tables;
+}
+
+
 bool SqlJob::_isPartitioned(string const& database,
                             string const& table) const {
 

@@ -211,6 +211,34 @@ protected:
                                           bool overlapTablesOnly=false) const;
 
     /**
+     * This version of the table locator method searches for tables where actual
+     * contributions (successful or not) were attempted in a context of the given
+     * transaction. The operation relies upon the persistent records for the transaction
+     * contributions.
+     * 
+     * @param worker The unique identifier of a worker hosting the tables.
+     * @param transactionId The unique identifier of the transaction.
+     * @param table The base name of a table.
+     * @param allTables The optional flag (applies to the partitioned tables only)
+     *   indicating if all or a subset of tables (as determined by the next
+     *   parameter 'overlapTablesOnly') shall be reported. if the flag is set to 'true'
+     *   then the next parameter 'overlapTablesOnly' will be ignored.
+     * @param overlapTablesOnly The optional flag (applies to the partitioned tables only)
+     *   indicating which kind of the partitioned tables to be reported.
+     *   If the flag is set to 'true' then overlap tables will be reported.
+     *   If the flag is set to 'false' then the chunk tables will be reported.
+     *   Note, this parameter is only taken into consideration if the previous
+     *   parameter 'allTables' was set to 'false'.
+     * @return A collection of tables found.
+     * @throw std::invalid_argument If the database or a table isn't valid.
+     */
+    std::vector<std::string> workerTables(std::string const& worker,
+                                          TransactionId const& transactionId,
+                                          std::string const& table,
+                                          bool allTables=true,
+                                          bool overlapTablesOnly=false) const;
+
+    /**
      * The algorithm will distribute tables between the specified number of
      * bins. The resulting collection will be empty if the input collection
      * of tables is empty or if the number of bins is 0, and the result will
