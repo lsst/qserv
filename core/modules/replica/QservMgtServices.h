@@ -89,7 +89,7 @@ public:
      * The factory method for instantiating a proper service object based
      * on an application configuration.
      *
-     * @param serviceProvider Is ued for accessing configuration parameters.
+     * @param serviceProvider Is required for accessing configuration parameters.
      * @return A pointer to the created object.
      */
     static Ptr create(ServiceProvider::Ptr const& serviceProvider);
@@ -109,7 +109,7 @@ public:
      * @param chunk  The chunk whose replica will be enabled on the Qserv worker.
      * @param databases The names of databases.
      * @param worker  The name of a worker where the replica is residing.
-     * @param onFinish  A allback function called on a completion of the operation.
+     * @param onFinish  A callback function called on a completion of the operation.
      * @param jobId  An optional identifier of a job specifying a context
      *   in which a request will be executed.
      * @param requestExpirationIvalSec  An optional parameter (if differs from 0) allowing
@@ -237,7 +237,7 @@ public:
 private:
 
     /**
-     * @param serviceProvider Is ued for accessing configuration parameters.
+     * @param serviceProvider Is required for accessing configuration parameters.
      */
     explicit QservMgtServices(ServiceProvider::Ptr const& serviceProvider);
 

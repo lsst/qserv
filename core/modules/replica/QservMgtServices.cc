@@ -469,7 +469,7 @@ XrdSsiService* QservMgtServices::_xrdSsiService() {
     while (true) {
         ++numAttempts;
         _service =  XrdSsiProviderClient->GetService(errInfo, serviceProviderLocation);
-        if (_service != nullptr) break;
+        if (_service != nullptr) break; // success
 
         // Allow another try after waiting for the given reconnection interval if
         // allowed and while the configuration-specified timeout has not been expired.
