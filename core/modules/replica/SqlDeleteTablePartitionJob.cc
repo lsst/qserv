@@ -95,7 +95,7 @@ SqlDeleteTablePartitionJob::SqlDeleteTablePartitionJob(
     try {
         auto const serviceProvider = controller->serviceProvider();
         auto const transactionInfo = serviceProvider->databaseServices()->transaction(transactionId);
-        if (transactionInfo.state != TransactonInfo::ABORTED) {
+        if (transactionInfo.state != TransactionInfo::ABORTED) {
             throw invalid_argument(
                     context() + string(__func__) + " transaction id=" + to_string(transactionId)
                     + " is not in the state ABORTED.");
@@ -107,7 +107,7 @@ SqlDeleteTablePartitionJob::SqlDeleteTablePartitionJob(
         if (tables.end() == find(tables.cbegin(), tables.cend(), _table)) {
             throw invalid_argument(
                     context() + string(__func__) + " the table '" + _table
-                    + "' was not found in database '" + _database + "'.")
+                    + "' was not found in database '" + _database + "'.");
         }
     } catch (exception const& ex) {
         LOGS(_log, LOG_LVL_ERROR, ex.what());
@@ -137,11 +137,13 @@ list<SqlRequest::Ptr> SqlDeleteTablePartitionJob::launchRequests(util::Lock cons
     if (_workers.count(worker) != 0) return requests;
     _workers.insert(worker);
 
-    // All tables which are going to be processed at the worker
-    vector<string> const allTables = workerTables(worker, database(), table());
+    // All tables modified during the transaction will be selected
+    vector<string> const allTables = workerTables(worker, transactionId(), table());
 
     // Divide tables into subsets allocated to the "batch" requests. Then launch
     // the requests for the current worker.
+    bool const keepTracking = true;
+    string const jobId = id();
     auto const self = shared_from_base<SqlDeleteTablePartitionJob>();
     for (auto&& tables: distributeTables(allTables, maxRequestsPerWorker)) {
         requests.push_back(
@@ -154,8 +156,8 @@ list<SqlRequest::Ptr> SqlDeleteTablePartitionJob::launchRequests(util::Lock cons
                     self->onRequestFinish(request);
                 },
                 options(lock).priority,
-                true,   /* keepTracking*/
-                id()    /* jobId */
+                keepTracking,
+                jobId
             )
         );
     }

@@ -68,9 +68,8 @@ struct IndexJobResult {
  * the workers. Results are either dumped into the specified folder or
  * directly loaded into the "secondary index" of a database.
  */
-class IndexJob : public Job  {
+class IndexJob: public Job  {
 public:
-    /// The pointer type for instances of the class
     typedef std::shared_ptr<IndexJob> Ptr;
 
     /// The function type for notifications on the completion of the request
@@ -104,12 +103,12 @@ public:
      * low-level pointers).
      *
      * @param database the name of a database for which the "secondary index"
-     *   is built
+     *   is built.
      * @param hasTransactions  if 'true' then the database's "director" tables
      *   are expected to be partitioned, and the job will extract data (including
      *   column "qserv_trans_id") from a specific MySQL partition.
      * @param transactionId an identifier of a super-transaction which would
-     *   limit a scope of the data extraction requests. NOte this request will
+     *   limit a scope of the data extraction requests. Note this request will
      *   be considered only if 'hasTransactions=true'.
      * @param allWorkers engage all known workers regardless of their status.
      *   If the flag is set to 'false' then only 'ENABLED' workers which are not

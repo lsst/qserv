@@ -123,10 +123,11 @@ private:
     // Input parameters
 
     TransactionId const _transactionId;
-    std::string const _database;        // extracted from the TransactionInfo for the transaction
-    std::string const _table;
-
+    std::string   const _table;
     CallbackType _onFinish;     /// @note is reset when the job finishes
+
+    /// The name is extracted from the TransactionInfo for the transaction.
+    std::string _database;
 
     /// A registry of workers to mark those for which request has been sent.
     /// The registry prevents duplicate requests because exactly one
