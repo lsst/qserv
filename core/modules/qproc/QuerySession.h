@@ -79,8 +79,9 @@ public:
 
     QuerySession(std::shared_ptr<css::CssAccess> const& css,
                  qproc::DatabaseModels::Ptr const& dbModels,
-                 std::string const& defaultDb)
-        : _css(css), _defaultDb(defaultDb), _databaseModels(dbModels) {}
+                 std::string const& defaultDb,
+                 int const interactiveChunkLimit)
+        : _css(css), _defaultDb(defaultDb), _databaseModels(dbModels), _interactiveChunkLimit(interactiveChunkLimit) {}
 
     std::shared_ptr<query::SelectStmt> parseQuery(std::string const & statement);
 
@@ -244,19 +245,19 @@ private:
     */
     query::SelectStmtPtr _stmtMerge;
 
-    bool _hasMerge{false};
-    bool _isDummy{false}; ///< Use dummy chunk, disabling subchunks or any real chunks
+    bool _hasMerge = false;
+    bool _isDummy = false; ///< Use dummy chunk, disabling subchunks or any real chunks
     std::string _tmpTable;
     std::string _resultTable;
     std::string _error;
-    int _isFinal{0}; ///< Has query analysis/optimization completed?
+    int _isFinal = 0; ///< Has query analysis/optimization completed?
 
     ChunkSpecVector _chunks; ///< Chunk coverage
     std::shared_ptr<QueryPluginPtrVector> _plugins; ///< Analysis plugin chain
 
-    /// Maximum number of chunks in an interactive query. TODO: DM-10273 put in config file.
-    int const _interactiveChunkLimit{10};
-    bool _scanInteractive{true}; ///< True if the query can be considered interactive.
+    /// Maximum number of chunks in an interactive query.
+    int const _interactiveChunkLimit = 10; // Value of 10 only used in unit tests.
+    bool _scanInteractive = true; ///< True if the query can be considered interactive.
 
 };
 

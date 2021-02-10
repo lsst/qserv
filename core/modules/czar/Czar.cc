@@ -100,9 +100,6 @@ Czar::Czar(std::string const& configPath, std::string const& czarName)
     // Need to be done first as it adds logging context for new threads
     _uqFactory.reset(new ccontrol::UserQueryFactory(_czarConfig, databaseModels, _czarName));
 
-    int largeResultConcurrent = _czarConfig.getLargeResultConcurrentMerges();
-    // TODO:DM-10273 - remove largeResults from configuration
-    LOGS(_log, LOG_LVL_INFO, "config largeResultConcurrent=" << largeResultConcurrent);
     int qPoolSize = _czarConfig.getQdispPoolSize();
     int maxPriority = std::max(0, _czarConfig.getQdispMaxPriority());
     std::string vectRunSizesStr = _czarConfig.getQdispVectRunSizes();
