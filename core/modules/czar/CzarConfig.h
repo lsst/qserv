@@ -110,6 +110,14 @@ public:
         return _emptyChunkPath;
     }
 
+    /* Get the maximum number of chunks that can be in an interactive query.
+     * Queries that are not limited in area to a small number of chunks must
+     * be part of a full table scan.
+     */
+    int getInteractiveChunkLimit() const {
+        return _interactiveChunkLimit;
+    }
+
     /* Get hostname and port for xrootd manager
      *
      * "localhost:1094" is the most reasonable default, even though it is
@@ -119,14 +127,6 @@ public:
      */
     std::string const& getXrootdFrontendUrl() const {
         return _xrootdFrontendUrl;
-    }
-
-    /* Get number of threads to use for collecting large result data.
-     *
-     * @return the number of blocks that can be merged concurrently.
-     */
-    int getLargeResultConcurrentMerges() const {
-         return _largeResultConcurrentMerges;
     }
 
     /* Get the maximum number of threads for xrootd to use.
@@ -203,7 +203,7 @@ private:
     mysql::MySqlConfig const _mySqlQstatusDataConfig;
     std::string const _xrootdFrontendUrl;
     std::string const _emptyChunkPath;
-    int const _largeResultConcurrentMerges;
+    int const _interactiveChunkLimit;
     int const _xrootdCBThreadsMax;
     int const _xrootdCBThreadsInit;
     int const _xrootdSpread;

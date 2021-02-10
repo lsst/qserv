@@ -90,7 +90,7 @@ CzarConfig::CzarConfig(util::ConfigStore const& configStore)
                               configStore.get("qstatus.db", "qservStatusData")),
       _xrootdFrontendUrl(configStore.get("frontend.xrootd", "localhost:1094")),
       _emptyChunkPath(configStore.get("partitioner.emptyChunkPath", ".")),
-      _largeResultConcurrentMerges(configStore.getInt("tuning.largeResultConcurrentMerges", 3)),
+      _interactiveChunkLimit(configStore.getInt("tuning.interactiveChunkLimit", 10)),
       _xrootdCBThreadsMax(configStore.getInt("tuning.xrootdCBThreadsMax", 500)),
       _xrootdCBThreadsInit(configStore.getInt("tuning.xrootdCBThreadsInit", 50)),
       _xrootdSpread(configStore.getInt("tuning.xrootdSpread", 4)),

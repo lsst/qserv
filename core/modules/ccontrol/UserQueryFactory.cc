@@ -89,7 +89,8 @@ makeUserQuerySharedResources(czar::CzarConfig const& czarConfig,
         std::make_shared<qmeta::QMetaSelect>(czarConfig.getMySqlQmetaConfig()),
         sql::SqlConnectionFactory::make(czarConfig.getMySqlResultConfig()),
         dbModels,
-        czarName);
+        czarName,
+        czarConfig.getInteractiveChunkLimit());
 }
 
 
@@ -189,7 +190,8 @@ UserQueryFactory::newUserQuery(std::string const& aQuery,
         // Currently using the database for results to get schema information.
         auto qs = std::make_shared<qproc::QuerySession>(_userQuerySharedResources->css,
                                                         _userQuerySharedResources->databaseModels,
-                                                        defaultDb);
+                                                        defaultDb,
+                                                        _userQuerySharedResources->interactiveChunkLimit);
         try {
             qs->analyzeQuery(query, stmt);
         } catch (...) {

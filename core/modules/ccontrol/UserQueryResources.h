@@ -84,7 +84,8 @@ public:
                              std::shared_ptr<qmeta::QMetaSelect> const& qMetaSelect_,
                              std::shared_ptr<sql::SqlConnection> const& resultDbConn_,
                              std::shared_ptr<qproc::DatabaseModels> const& databaseModels_,
-                             std::string const& czarName);
+                             std::string const& czarName,
+                             int interactiveChunkLimit_);
 
     UserQuerySharedResources(UserQuerySharedResources const& rhs) = default;
     UserQuerySharedResources& operator=(UserQuerySharedResources const& rhs) = delete;
@@ -98,6 +99,7 @@ public:
     std::shared_ptr<sql::SqlConnection> resultDbConn;
     std::shared_ptr<qproc::DatabaseModels> databaseModels;
     qmeta::CzarId qMetaCzarId;   ///< Czar ID in QMeta database
+    int const interactiveChunkLimit;
     std::shared_ptr<util::SemaMgr> semaMgrConnections;
 
     /**

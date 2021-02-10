@@ -45,7 +45,8 @@ UserQuerySharedResources::UserQuerySharedResources(
                         std::shared_ptr<qmeta::QMetaSelect> const& qMetaSelect_,
                         std::shared_ptr<sql::SqlConnection> const& resultDbConn_,
                         std::shared_ptr<qproc::DatabaseModels> const& dbModels_,
-                        std::string const& czarName)
+                        std::string const& czarName,
+                        int interactiveChunkLimit_)
         : czarConfig(czarConfig_),
         css(css_),
         mysqlResultConfig(mysqlResultConfig_),
@@ -55,6 +56,7 @@ UserQuerySharedResources::UserQuerySharedResources(
         qMetaSelect(qMetaSelect_),
         resultDbConn(resultDbConn_),
         databaseModels(dbModels_),
+        interactiveChunkLimit(interactiveChunkLimit_),
         semaMgrConnections(new util::SemaMgr(czarConfig.getResultMaxConnections()))
 {
     // register czar in QMeta
