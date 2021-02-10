@@ -56,9 +56,8 @@ namespace replica {
   * providing configuration services for the components of the Replication
   * system.
   */
-class Configuration : public ConfigurationIFace {
+class Configuration: public ConfigurationIFace {
 public:
-    /// The pointer type for instances of the class.
     typedef std::shared_ptr<Configuration> Ptr;
 
     /// @return The JSON representation of the object.
@@ -69,7 +68,6 @@ public:
      * corresponding to a prefix of the configuration URL. The following
      * prefixes are supported:
      * @code
-     *   file:<path>
      *   mysql://[user][:password]@[host][:port][/database]
      * @code
      *
@@ -455,6 +453,37 @@ public:
      */
     static unsigned int setDatabaseTransactionTimeoutSec(unsigned int value);
 
+    // ------------------------------------------------
+    // -- Global parameters of the XROOTD connectors --
+    // ------------------------------------------------
+
+    /// @return the default mode for XROOTD reconnects.
+    static bool xrootdAllowReconnect() { return _xrootdAllowReconnect; }
+
+    /**
+     * Change the default value of a parameter defining a policy for handling
+     * automatic reconnects to the XROOTD server. Setting 'true' will enable
+     * reconnects.
+     *
+     * @param value The new value of the parameter.
+     * @return The previous value.
+     */
+    static bool setXrootdAllowReconnect(bool value);
+
+    /// @return The default timeout for connecting to the XROOTD servers.
+    static unsigned int xrootdConnectTimeoutSec() { return _xrootdConnectTimeoutSec; }
+
+    /**
+     * Change the default value of a parameter specifying the maximum interval
+     * of time (seconds) to wait for connecting to the XROOTD servers before
+     * giving up (should this be enabled by the corresponding reconnect policy).
+     *
+     * @param value The new value of the parameter (must be strictly greater than 0).
+     * @return The previous value.
+     * @throws std::invalid_argument If the new value of the parameter is 0.
+     */
+    static unsigned int setXrootdConnectTimeoutSec(unsigned int value);
+
 protected:
     /**
      * @param impl A pointer to the actual implementation of the Configuration.
@@ -476,6 +505,8 @@ private:
     static unsigned int _databaseTransactionTimeoutSec;
     static std::string  _qservMasterDatabasePassword;
     static std::string  _qservWorkerDatabasePassword;
+    static bool         _xrootdAllowReconnect;
+    static unsigned int _xrootdConnectTimeoutSec;
 };
 
 }}} // namespace lsst::qserv::replica

@@ -42,6 +42,11 @@ string const description =
     " will both preserve the replication level of chunks and to keep the chunk"
     " collocation intact.";
 
+bool const injectDatabaseOptions = true;
+bool const boostProtobufVersionCheck = true;
+bool const enableServiceProvider = true;
+bool const injectXrootdOptions = true;
+
 } /// namespace
 
 
@@ -59,10 +64,11 @@ MoveApp::Ptr MoveApp::create(int argc, char* argv[]) {
 MoveApp::MoveApp(int argc, char* argv[])
     :   Application(
             argc, argv,
-            ::description,
-            true    /* injectDatabaseOptions */,
-            true    /* boostProtobufVersionCheck */,
-            true    /* enableServiceProvider */
+            description,
+            injectDatabaseOptions,
+            boostProtobufVersionCheck,
+            enableServiceProvider,
+            injectXrootdOptions
         ) {
 
     // Configure the command line parser

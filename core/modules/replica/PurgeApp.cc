@@ -43,6 +43,11 @@ string const description =
     " doing so, the application will make the best effort to leave worker nodes as"
     " balanced as possible, and it will also preserve chunk collocation.";
 
+bool const injectDatabaseOptions = true;
+bool const boostProtobufVersionCheck = true;
+bool const enableServiceProvider = true;
+bool const injectXrootdOptions = true;
+
 } /// namespace
 
 
@@ -60,10 +65,11 @@ PurgeApp::Ptr PurgeApp::create(int argc, char* argv[]) {
 PurgeApp::PurgeApp(int argc, char* argv[])
     :   Application(
             argc, argv,
-            ::description,
-            true    /* injectDatabaseOptions */,
-            true    /* boostProtobufVersionCheck */,
-            true    /* enableServiceProvider */
+            description,
+            injectDatabaseOptions,
+            boostProtobufVersionCheck,
+            enableServiceProvider,
+            injectXrootdOptions
         ) {
 
     // Configure the command line parser

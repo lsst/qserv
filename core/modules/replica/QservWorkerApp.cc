@@ -43,6 +43,11 @@ namespace {
 string const description =
     "This is an application for operations with Qserv workers.";
 
+bool const injectDatabaseOptions = true;
+bool const boostProtobufVersionCheck = true;
+bool const enableServiceProvider = true;
+bool const injectXrootdOptions = true;
+
 } /// namespace
 
 namespace lsst {
@@ -59,10 +64,11 @@ QservWorkerApp::Ptr QservWorkerApp::create(int argc, char* argv[]) {
 QservWorkerApp::QservWorkerApp(int argc, char* argv[])
     :   Application(
             argc, argv,
-            ::description,
-            true    /* injectDatabaseOptions */,
-            true    /* boostProtobufVersionCheck */,
-            true    /* enableServiceProvider */
+            description,
+            injectDatabaseOptions,
+            boostProtobufVersionCheck,
+            enableServiceProvider,
+            injectXrootdOptions
         ) {
 
     // Configure the command line parser

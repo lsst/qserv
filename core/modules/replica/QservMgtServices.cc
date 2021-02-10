@@ -31,7 +31,9 @@
 
 // Qserv headers
 #include "replica/Configuration.h"
+#include "replica/Performance.h"
 #include "replica/ServiceProvider.h"
+#include "util/BlockPost.h"
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -60,8 +62,7 @@ namespace replica {
  * Request-type specific wrappers
  */
 template <class  T>
-struct QservMgtRequestWrapperImpl
-    :   QservMgtRequestWrapper {
+struct QservMgtRequestWrapperImpl: QservMgtRequestWrapper {
 
     /// The implementation of the virtual method defined in the base class
     void notify() const final {
@@ -453,23 +454,49 @@ void QservMgtServices::_finish(string const& id) {
 
 XrdSsiService* QservMgtServices::_xrdSsiService() {
 
-    // Lazy construction of the locator string to allow dynamic
-    // reconfiguration.
+    util::Lock lock(_mtx, "QservMgtServices::" + string(__func__));
+
+    if (_service != nullptr) return _service;
+
     string const serviceProviderLocation =
         _serviceProvider->config()->xrootdHost() + ":" +
         to_string(_serviceProvider->config()->xrootdPort());
 
-    // Connect to a service provider
     XrdSsiErrInfo errInfo;
-    XrdSsiService* service =
-        XrdSsiProviderClient->GetService(errInfo,
-                                         serviceProviderLocation);
-    if (not service) {
-        LOGS(_log, LOG_LVL_ERROR, "QservMgtServices::" << __func__
-             << "  failed to contact service provider at: " << serviceProviderLocation
-             << ", error: " << errInfo.Get());
+    unsigned int const intervalBetweenReconnectsMs = 1000;
+    uint64_t const startedConnectionAttemptsSec = PerformanceUtils::now() / 1000;
+    unsigned int numAttempts = 0;
+    while (true) {
+        ++numAttempts;
+        _service =  XrdSsiProviderClient->GetService(errInfo, serviceProviderLocation);
+        if (_service != nullptr) break; // success
+
+        // Allow another try after waiting for the given reconnection interval if
+        // allowed and while the configuration-specified timeout has not been expired.
+
+        uint64_t const timeSinceStartedSec =
+                PerformanceUtils::now() / 1000 - startedConnectionAttemptsSec;
+
+        if (Configuration::xrootdAllowReconnect() &&
+            timeSinceStartedSec < Configuration::xrootdConnectTimeoutSec()) {
+
+            LOGS(_log, LOG_LVL_WARN, "QservMgtServices::" << __func__
+                << "  failed to contact service provider at: " << serviceProviderLocation
+                << ", error: " << errInfo.Get()
+                << ", total of " << numAttempts << " failed connection attempts.");
+
+            util::BlockPost::wait(intervalBetweenReconnectsMs);
+            continue;
+        }
+        string const errMsg =
+            "QservMgtServices::" + string(__func__)
+            + "  failed to contact service provider at: " + serviceProviderLocation
+            + ", error: " + string(errInfo.Get()
+            + ", aborting after " + to_string(numAttempts) + " failed connection attempts.");
+        LOGS(_log, LOG_LVL_ERROR, errMsg);
+        throw QservMgtConnectionError(errMsg);
     }
-    return service;
+    return _service;
 }
 
 }}} // namespace lsst::qserv::replica

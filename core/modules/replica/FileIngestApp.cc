@@ -51,6 +51,11 @@ string const description =
     "This is an  application which acts as a a catalog data loading"
     " client of the Replication system's catalog data ingest server.";
 
+bool const injectDatabaseOptions = false;
+bool const boostProtobufVersionCheck = true;
+bool const enableServiceProvider = false;
+bool const injectXrootdOptions = false;
+
 string parse(string const& context, json const& jsonObj, string const& key) {
     if ((0 == jsonObj.count(key) or not jsonObj[key].is_string())) {
         throw invalid_argument(
@@ -180,10 +185,11 @@ FileIngestApp::Ptr FileIngestApp::create(int argc, char* argv[]) {
 FileIngestApp::FileIngestApp(int argc, char* argv[])
     :   Application(
             argc, argv,
-            ::description,
-            false   /* injectDatabaseOptions */,
-            true    /* boostProtobufVersionCheck */,
-            false   /* enableServiceProvider */
+            description,
+            injectDatabaseOptions,
+            boostProtobufVersionCheck,
+            enableServiceProvider,
+            injectXrootdOptions
         ) {
 
     // Configure the command line parser

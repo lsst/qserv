@@ -77,6 +77,11 @@ string const description =
     " The controller has the built-in REST API which accepts external commands"
     " or request for information.";
 
+bool const injectDatabaseOptions = true;
+bool const boostProtobufVersionCheck = true;
+bool const enableServiceProvider = true;
+bool const injectXrootdOptions = true;
+
 } /// namespace
 
 namespace lsst {
@@ -93,10 +98,11 @@ MasterControllerHttpApp::Ptr MasterControllerHttpApp::create(int argc, char* arg
 MasterControllerHttpApp::MasterControllerHttpApp(int argc, char* argv[])
     :   Application(
             argc, argv,
-            ::description,
-            true /* injectDatabaseOptions */,
-            true /* boostProtobufVersionCheck */,
-            true /* enableServiceProvider */
+            description,
+            injectDatabaseOptions,
+            boostProtobufVersionCheck,
+            enableServiceProvider,
+            injectXrootdOptions
         ),
         _healthProbeIntervalSec  (::defaultOptions.healthProbeIntervalSec),
         _replicationIntervalSec  (::defaultOptions.replicationIntervalSec),

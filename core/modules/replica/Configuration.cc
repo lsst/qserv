@@ -46,7 +46,7 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
-    // These parameters are allowed to be changed, and they are set globally
+// These parameters are allowed to be changed, and they are set globally
 // for an application (process).
 bool         Configuration::_databaseAllowReconnect        = true;
 unsigned int Configuration::_databaseConnectTimeoutSec     = 3600;
@@ -54,6 +54,8 @@ unsigned int Configuration::_databaseMaxReconnects         = 1;
 unsigned int Configuration::_databaseTransactionTimeoutSec = 3600;
 string       Configuration::_qservMasterDatabasePassword   = "";
 string       Configuration::_qservWorkerDatabasePassword   = "";
+bool         Configuration::_xrootdAllowReconnect          = true;
+unsigned int Configuration::_xrootdConnectTimeoutSec       = 3600;
 
 
 string Configuration::setQservMasterDatabasePassword(string const& newPassword) {
@@ -103,6 +105,24 @@ unsigned int Configuration::setDatabaseTransactionTimeoutSec(unsigned int value)
     }
     swap(value, _databaseTransactionTimeoutSec);
     return value;
+}
+
+
+bool Configuration::setXrootdAllowReconnect(bool value) {
+    swap(value, _xrootdAllowReconnect);
+    return value;
+
+}
+
+
+unsigned int Configuration::setXrootdConnectTimeoutSec(unsigned int value) {
+    if (0 == value) {
+        throw invalid_argument(
+                "Configuration::" + string(__func__) + "  0 is not allowed as a value");
+    }
+    swap(value, _xrootdConnectTimeoutSec);
+    return value;
+
 }
 
 

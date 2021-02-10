@@ -43,6 +43,11 @@ string const description =
     " system. The files must be read-write enabled for a user account"
     " under which the test is run.";
 
+bool const injectDatabaseOptions = true;
+bool const boostProtobufVersionCheck = true;
+bool const enableServiceProvider = true;
+bool const injectXrootdOptions = false;
+
 } /// namespace
 
 
@@ -60,10 +65,11 @@ WorkerAllApp::Ptr WorkerAllApp::create(int argc, char* argv[]) {
 WorkerAllApp::WorkerAllApp(int argc, char* argv[])
     :   Application(
             argc, argv,
-            ::description,
-            true    /* injectDatabaseOptions */,
-            true    /* boostProtobufVersionCheck */,
-            true    /* enableServiceProvider */
+            description,
+            injectDatabaseOptions,
+            boostProtobufVersionCheck,
+            enableServiceProvider,
+            injectXrootdOptions
         ),
         _log(LOG_GET("lsst.qserv.replica.WorkerAllApp")) {
 

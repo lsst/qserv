@@ -52,6 +52,11 @@ string const description =
     "This application runs an embedded HTTP server 'qhttp' for a purpose of testing"
     " the server's performance, scalability and stability.";
 
+bool const injectDatabaseOptions = false;
+bool const boostProtobufVersionCheck = false;
+bool const enableServiceProvider = false;
+bool const injectXrootdOptions = false;
+
 double const millisecondsInSecond = 1000.;
 double const KiB = 1024.;
 int const minBytes = 1;
@@ -83,10 +88,11 @@ QhttpTestApp::Ptr QhttpTestApp::create(int argc, char* argv[]) {
 QhttpTestApp::QhttpTestApp(int argc, char* argv[])
     :   Application(
             argc, argv,
-            ::description,
-            false   /* injectDatabaseOptions */,
-            false   /* boostProtobufVersionCheck */,
-            false   /* enableServiceProvider */
+            description,
+            injectDatabaseOptions,
+            boostProtobufVersionCheck,
+            enableServiceProvider,
+            injectXrootdOptions
         ) {
     parser().required(
         "port",

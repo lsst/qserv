@@ -30,7 +30,6 @@
 
 // Qserv headers
 #include "replica/Common.h"
-#include "replica/ConfigurationFile.h"
 #include "replica/ConfigurationMySQL.h"
 #include "util/TablePrinter.h"
 
@@ -41,6 +40,11 @@ namespace {
 string const description =
     "This application is the tool for viewing and manipulating"
     " the configuration data of the Replication system stored in the MySQL/MariaDB.";
+
+bool const injectDatabaseOptions = true;
+bool const boostProtobufVersionCheck = true;
+bool const enableServiceProvider = true;
+bool const injectXrootdOptions = false;
 
 /**
  * Register an option with a parser (which could also represent a command)
@@ -73,15 +77,13 @@ ConfigApp::Ptr ConfigApp::create(int argc, char* argv[]) {
 ConfigApp::ConfigApp(int argc, char* argv[])
     :   Application(
             argc, argv,
-            ::description,
-            true  /* injectDatabaseOptions */,
-            false /* boostProtobufVersionCheck */,
-            false /* enableServiceProvider */
+            description,
+            injectDatabaseOptions,
+            boostProtobufVersionCheck,
+            enableServiceProvider,
+            injectXrootdOptions
         ),
-        _log(LOG_GET("lsst.qserv.replica.ConfigApp")),
-        _configUrl("file:replication.cfg") {
-
-    // Configure the command line parser
+        _log(LOG_GET("lsst.qserv.replica.ConfigApp")) {
 
     parser().commands(
         "command",
@@ -93,236 +95,191 @@ ConfigApp::ConfigApp(int argc, char* argv[])
          "ADD_DATABASE", "PUBLISH_DATABASE", "DELETE_DATABASE",
          "ADD_TABLE", "DELETE_TABLE"
         },
-        _command);
-
-    // Parameters, options and flags shared by all commands
-
-    parser().option(
-        "config",
-        "Configuration URL (a configuration file or a set of database connection parameters).",
-        _configUrl);
-
-    parser().flag(
+        _command
+    ).flag(
         "tables-vertical-separator",
         "Print vertical separator when displaying tabular data in dumps.",
-        _verticalSeparator);
+        _verticalSeparator
+    );
 
-    // Command-specific parameters, options and flags
-
-    auto&& dumpCmd = parser().command("DUMP");
-
-    dumpCmd.optional(
+    parser().command(
+        "DUMP"
+    ).optional(
         "scope",
         "This optional parameter narrows a scope of the operation down to a specific"
         " context. If no scope is specified then everything will be dumped.",
         _dumpScope,
-        vector<string>({"GENERAL", "WORKERS", "FAMILIES", "DATABASES"}));
-
-    dumpCmd.flag(
+        vector<string>({"GENERAL", "WORKERS", "FAMILIES", "DATABASES"})
+    ).flag(
         "db-show-password",
         "Show the actual database password when making the dump of the GENERAL parameters.",
-        _dumpDbShowPassword);
+        _dumpDbShowPassword
+    );
 
-    // Command-specific parameters, options and flags
-
-    parser().command("CONFIG_INIT_FILE").required(
+    parser().command(
+        "CONFIG_INIT_FILE"
+    ).required(
         "format",
         "The format of the initialization file to be produced with this option."
-        " Allowed values: MYSQL, INI",
+        " Allowed values: MYSQL",
         _format,
-        vector<string>({"MYSQL", "INI"}));
+        vector<string>({"MYSQL"})
+    );
 
-    // Command-specific parameters, options and flags
-
-    auto&& updateWorkerCmd = parser().command("UPDATE_WORKER");
-
-    updateWorkerCmd.required(
+    parser().command(
+        "UPDATE_WORKER"
+    ).required(
         "worker",
         "The name of a worker to be updated.",
-        _workerInfo.name);
-
-    updateWorkerCmd.option(
+        _workerInfo.name
+    ).option(
         "worker-service-host",
         "The new DNS name or an IP address where the worker runs.",
-        _workerInfo.svcHost);
-
-    updateWorkerCmd.option(
+        _workerInfo.svcHost
+    ).option(
         "worker-service-port",
         "The port number of the worker service.",
-        _workerInfo.svcPort);
-
-    updateWorkerCmd.option(
+        _workerInfo.svcPort
+    ).option(
         "worker-fs-host",
         "The new DNS name or an IP address where the worker's File Server runs.",
-        _workerInfo.fsHost);
-
-    updateWorkerCmd.option(
+        _workerInfo.fsHost
+    ).option(
         "worker-fs-port",
         "The port number of the worker's File Server.",
-        _workerInfo.fsPort);
-
-    updateWorkerCmd.option(
+        _workerInfo.fsPort
+    ).option(
         "worker-data-dir",
         "The data directory of the worker.",
-        _workerInfo.dataDir);
-
-    updateWorkerCmd.option(
+        _workerInfo.dataDir
+    ).option(
         "worker-db-host",
         "The new DNS name or an IP address where the worker's database service runs.",
-        _workerInfo.dbHost);
-
-    updateWorkerCmd.option(
+        _workerInfo.dbHost
+    ).option(
         "worker-db-port",
         "The port number of the worker's database service.",
-        _workerInfo.dbPort);
-
-    updateWorkerCmd.option(
+        _workerInfo.dbPort
+    ).option(
         "worker-db-user",
         "The name of a user account for the worker's database service.",
-        _workerInfo.dbUser);
-
-    updateWorkerCmd.option(
+        _workerInfo.dbUser
+    ).option(
         "worker-enable",
         "Enable the worker if 1 (or any positive number), disable if 0."
         " Negative numbers are ignored.",
-        _workerEnable);
-
-    updateWorkerCmd.option(
+        _workerEnable
+    ).option(
         "worker-read-only",
         "Turn the worker into the read-write mode if 1 (or any positive number),"
         ", turn it int the read-write mode if 0.",
-        _workerReadOnly);
-
-    updateWorkerCmd.option(
+        _workerReadOnly
+    ).option(
         "worker-loader-host",
         "The new DNS name or an IP address where the worker's Catalog Ingest service runs.",
-        _workerInfo.loaderHost);
-
-    updateWorkerCmd.option(
+        _workerInfo.loaderHost
+    ).option(
         "worker-loader-port",
         "The port number of the worker's Catalog Ingest service.",
-        _workerInfo.loaderPort);
-
-    updateWorkerCmd.option(
+        _workerInfo.loaderPort
+    ).option(
         "worker-loader-tmp-dir",
         "The name of a user account for a temporary folder of the worker's Catalog Ingest service.",
-        _workerInfo.loaderTmpDir);
-
-    updateWorkerCmd.option(
+        _workerInfo.loaderTmpDir
+    ).option(
         "worker-exporter-host",
         "The new DNS name or an IP address where the worker's Data Exporting service runs.",
-        _workerInfo.exporterHost);
-
-    updateWorkerCmd.option(
+        _workerInfo.exporterHost
+    ).option(
         "worker-exporter-port",
         "The port number of the worker's Data Exporting service.",
-        _workerInfo.exporterPort);
-
-    updateWorkerCmd.option(
+        _workerInfo.exporterPort
+    ).option(
         "worker-exporter-tmp-dir",
         "The name of a user account for a temporary folder of the worker's Data Exporting service.",
-        _workerInfo.exporterTmpDir);
+        _workerInfo.exporterTmpDir
+    );
 
-    // Command-specific parameters, options and flags
-
-    auto&& addWorkerCmd = parser().command("ADD_WORKER");
-
-    addWorkerCmd.required(
+    parser().command(
+        "ADD_WORKER"
+    ).required(
         "worker",
         "The name of a worker to be added.",
-        _workerInfo.name);
-
-    addWorkerCmd.required(
+        _workerInfo.name
+    ).required(
         "service-host",
         "The DNS name or an IP address where the worker runs.",
-        _workerInfo.svcHost);
-
-    addWorkerCmd.required(
+        _workerInfo.svcHost
+    ).required(
         "service-port",
         "The port number of the worker service",
-        _workerInfo.svcPort);
-
-    addWorkerCmd.required(
+        _workerInfo.svcPort
+    ).required(
         "fs-host",
         "The DNS name or an IP address where the worker's File Server runs.",
-        _workerInfo.fsHost);
-
-    addWorkerCmd.required(
+        _workerInfo.fsHost
+    ).required(
         "fs-port",
         "The port number of the worker's File Server.",
-        _workerInfo.fsPort);
-
-    addWorkerCmd.required(
+        _workerInfo.fsPort
+    ).required(
         "data-dir",
         "The data directory of the worker",
-        _workerInfo.dataDir);
-
-    addWorkerCmd.required(
+        _workerInfo.dataDir
+    ).required(
         "enabled",
         "Set to '0' if the worker is turned into disabled mode upon creation.",
-        _workerInfo.isEnabled);
-
-    addWorkerCmd.required(
+        _workerInfo.isEnabled
+    ).required(
         "read-only",
         "Set to '0' if the worker is NOT turned into the read-only mode upon creation.",
-        _workerInfo.isReadOnly);
-
-    addWorkerCmd.required(
+        _workerInfo.isReadOnly
+    ).required(
         "db-host",
         "The DNS name or an IP address where the worker's Database Service runs.",
-        _workerInfo.dbHost);
-
-    addWorkerCmd.required(
+        _workerInfo.dbHost
+    ).required(
         "db-port",
         "The port number of the worker's Database Service.",
-        _workerInfo.dbPort);
-
-    addWorkerCmd.required(
+        _workerInfo.dbPort
+    ).required(
         "db-user",
         "The name of the MySQL user for the worker's Database Service",
-        _workerInfo.dbUser);
-
-    addWorkerCmd.required(
+        _workerInfo.dbUser
+    ).required(
         "loader-host",
         "The DNS name or an IP address where the worker's Catalog Ingest Server runs.",
-        _workerInfo.loaderHost);
-
-    addWorkerCmd.required(
+        _workerInfo.loaderHost
+    ).required(
         "loader-port",
         "The port number of the worker's Catalog Ingest Server.",
-        _workerInfo.loaderPort);
-
-    addWorkerCmd.required(
+        _workerInfo.loaderPort
+    ).required(
         "loader-tmp-dir",
         "The temporay directory of the worker's Ingest Service",
-        _workerInfo.loaderTmpDir);
-
-    addWorkerCmd.required(
+        _workerInfo.loaderTmpDir
+    ).required(
         "exporter-host",
         "The DNS name or an IP address where the worker's Data Exporting Server runs.",
-        _workerInfo.exporterHost);
-
-    addWorkerCmd.required(
+        _workerInfo.exporterHost
+    ).required(
         "exporter-port",
         "The port number of the worker's Data Exporting Server.",
-        _workerInfo.exporterPort);
-
-    addWorkerCmd.required(
+        _workerInfo.exporterPort
+    ).required(
         "exporter-tmp-dir",
         "The temporay directory of the worker's Data Exporting Service",
-        _workerInfo.exporterTmpDir);
+        _workerInfo.exporterTmpDir
+    );
 
-    // Command-specific parameters, options and flags
 
     parser().command("DELETE_WORKER").required(
         "worker",
         "The name of a worker to be deleted.",
-        _workerInfo.name);
-
-    // Command-specific parameters, options and flags
+        _workerInfo.name
+    );
 
     auto&& updateGeneralCmd = parser().command("UPDATE_GENERAL");
-
     ::addCommandOption(updateGeneralCmd, _general.requestBufferSizeBytes);
     ::addCommandOption(updateGeneralCmd, _general.retryTimeoutSec);
     ::addCommandOption(updateGeneralCmd, _general.controllerThreads);
@@ -344,147 +301,129 @@ ConfigApp::ConfigApp(int argc, char* argv[])
     ::addCommandOption(updateGeneralCmd, _general.exporterNumProcessingThreads);
     ::addCommandOption(updateGeneralCmd, _general.httpLoaderNumProcessingThreads);
 
-    // Command-specific parameters, options and flags
-
-    auto&& addFamilyCmd = parser().command("ADD_DATABASE_FAMILY");
-
-    addFamilyCmd.required(
+    parser().command(
+        "ADD_DATABASE_FAMILY"
+    ).required(
         "name",
         "The name of a new database family.",
-        _familyInfo.name);
-
-    addFamilyCmd.required(
+        _familyInfo.name
+    ).required(
         "replication-level",
         "The minimum replication level desired (1..N).",
-        _familyInfo.replicationLevel);
-
-    addFamilyCmd.required(
+        _familyInfo.replicationLevel
+    ).required(
         "num-stripes",
         "The number of stripes (from the CSS partitioning configuration).",
-        _familyInfo.numStripes);
-
-    addFamilyCmd.required(
+        _familyInfo.numStripes
+    ).required(
         "num-sub-stripes",
         "The number of sub-stripes (from the CSS partitioning configuration).",
-        _familyInfo.numSubStripes);
-
-    addFamilyCmd.required(
+        _familyInfo.numSubStripes
+    ).required(
         "overlap",
         "The default overlap for tables that do not specify their own overlap.",
-        _familyInfo.overlap);
+        _familyInfo.overlap
+    );
 
-    // Command-specific parameters, options and flags
-
-    parser().command("DELETE_DATABASE_FAMILY").required(
+    parser().command(
+        "DELETE_DATABASE_FAMILY"
+    ).required(
         "name",
         "The name of an existing database family to be deleted. ATTENTION: all databases that"
         " are members of the family will be deleted as well, along with the relevant info"
         " about replicas of all chunks of the databases.",
-        _familyInfo.name);
+        _familyInfo.name
+    );
     
-    // Command-specific parameters, options and flags
-
-    auto&& addDatabaseCmd = parser().command("ADD_DATABASE");
-
-    addDatabaseCmd.required(
+    parser().command(
+        "ADD_DATABASE"
+    ).required(
         "name",
         "The name of a new database.",
-        _databaseInfo.name);
-
-    addDatabaseCmd.required(
+        _databaseInfo.name
+    ).required(
         "family",
         "The name of an existing family the new database will join.",
-        _databaseInfo.family);
+        _databaseInfo.family
+    );
 
-    
-    // Command-specific parameters, options and flags
-
-    auto&& publishDatabaseCmd = parser().command("PUBLISH_DATABASE");
-
-    publishDatabaseCmd.required(
+    parser().command(
+        "PUBLISH_DATABASE"
+    ).required(
         "name",
         "The name of an existing database.",
-        _databaseInfo.name);
+        _databaseInfo.name
+    );
 
-    // Command-specific parameters, options and flags
-
-    parser().command("DELETE_DATABASE").required(
+    parser().command(
+        "DELETE_DATABASE"
+    ).required(
         "name",
         "The name of an existing database to be deleted. ATTENTION: all relevant info that"
         " is associated with the database (replicas of all chunks, etc.) will get deleted as well.",
-        _databaseInfo.name);
+        _databaseInfo.name
+    );
 
-    // Command-specific parameters, options and flags
-
-    auto&& addTableCmd = parser().command("ADD_TABLE");
-
-    addTableCmd.required(
+    parser().command(
+        "ADD_TABLE"
+    ).required(
         "database",
         "The name of an existing database.",
-        _database);
-
-    addTableCmd.required(
+        _database
+    ).required(
         "table",
         "The name of a new table.",
-        _table);
-
-    addTableCmd.flag(
+        _table
+    ).flag(
         "partitioned",
         "The flag indicating (if present) that a table is partitioned.",
-        _isPartitioned);
-
-    addTableCmd.flag(
+        _isPartitioned
+    ).flag(
         "director",
         "The flag indicating (if present) that this is a 'director' table of the database"
         " Note that this flag only applies to the partitioned tables.",
-        _isDirector);
-
-    addTableCmd.option(
+        _isDirector
+    ).option(
         "director-key",
         "The name of a column in the 'director' table of the database."
         " Note that this option must be provided for the 'director' tables.",
-        _directorKey);
-
-    addTableCmd.option(
+        _directorKey
+    ).option(
         "chunk-id-key",
         "The name of a column in the 'partitioned' table indicating a column which"
         " stores identifiers of chunks. Note that this option must be provided"
         " for the 'partitioned' tables.",
-        _chunkIdColName);
-
-    addTableCmd.option(
+        _chunkIdColName
+    ).option(
         "sub-chunk-id-key",
         "The name of a column in the 'partitioned' table indicating a column which"
         " stores identifiers of sub-chunks. Note that this option must be provided"
         " for the 'partitioned' tables.",
-        _subChunkIdColName);
-
-    addTableCmd.option(
+        _subChunkIdColName
+    ).option(
         "latitude-key",
         "The name of a column in the 'partitioned' table indicating a column which"
         " stores latitude (declination) of the object/sources. This parameter is optional.",
-        _latitudeColName);
-
-    addTableCmd.option(
+        _latitudeColName
+    ).option(
         "longitude-key",
         "The name of a column in the 'partitioned' table indicating a column which"
         " stores longitude (right ascension) of the object/sources. This parameter is optional.",
-        _longitudeColName);
+        _longitudeColName
+    );
 
-    // Command-specific parameters, options and flags
-
-    auto&& deleteTableCmd = parser().command("DELETE_TABLE");
-
-    deleteTableCmd.required(
+    parser().command(
+        "DELETE_TABLE"
+    ).required(
         "database",
         "The name of an existing database.",
-        _database );
-
-    deleteTableCmd.required(
+        _database
+    ).required(
         "table",
         "The name of an existing table to be deleted. ATTENTION: all relevant info that"
         " is associated with the table (replicas of all chunks, etc.) will get deleted as well.",
-        _table);
+        _table
+    );
 }
 
 
@@ -492,7 +431,7 @@ int ConfigApp::runImpl() {
 
     string const context = "ConfigApp::" + string(__func__) + "  ";
 
-    _config = Configuration::load(_configUrl);
+    _config = Configuration::load(configUrl());
 
     if (_command == "DUMP")                   return _dump();
     if (_command == "CONFIG_INIT_FILE")       return _configInitFile();
@@ -874,8 +813,7 @@ int ConfigApp::_configInitFile() const {
     string const context = "ConfigApp::" + string(__func__) + "  ";
 
     try {
-        if      ("MYSQL" == _format) { cout << ConfigurationMySQL::dump2init(_config) << endl; }
-        else if ("INI"   == _format) { cout << ConfigurationFile::dump2init(_config) << endl; }
+        if ("MYSQL" == _format) { cout << ConfigurationMySQL::dump2init(_config) << endl; }
         else {
             LOGS(_log, LOG_LVL_ERROR, context << "operation failed, unsupported format: " << _format);
             return 1;

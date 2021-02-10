@@ -48,17 +48,21 @@ Application::Application(int argc,
                          string const& description,
                          bool const injectDatabaseOptions,
                          bool const boostProtobufVersionCheck,
-                         bool const enableServiceProvider)
+                         bool const enableServiceProvider,
+                         bool const injectXrootdOptions)
     :   _injectDatabaseOptions    (injectDatabaseOptions),
         _boostProtobufVersionCheck(boostProtobufVersionCheck),
         _enableServiceProvider    (enableServiceProvider),
+        _injectXrootdOptions      (injectXrootdOptions),
         _parser   (argc,argv, description),
         _debugFlag(false),
-        _config   ("file:replication.cfg"),
+        _config   ("mysql://qsreplica@localhost:3306/qservReplica"),
         _databaseAllowReconnect       (Configuration::databaseAllowReconnect() ? 1 : 0),
         _databaseConnectTimeoutSec    (Configuration::databaseConnectTimeoutSec()),
         _databaseMaxReconnects        (Configuration::databaseMaxReconnects()),
-        _databaseTransactionTimeoutSec(Configuration::databaseTransactionTimeoutSec()) {
+        _databaseTransactionTimeoutSec(Configuration::databaseTransactionTimeoutSec()),
+        _xrootdAllowReconnect         (Configuration::xrootdAllowReconnect() ? 1 : 0),
+        _xrootdConnectTimeoutSec      (Configuration::xrootdConnectTimeoutSec()) {
 
     // Verify that the version of the library that we linked against is
     // compatible with the version of the headers we compiled against.
@@ -82,8 +86,8 @@ int Application::run() {
     if (_injectDatabaseOptions) {
         parser().option(
             "db-allow-reconnect",
-            "Change the default database connecton handling node. Set 0 to disable"
-            " automati reconnects. Any other number would allow reconnects.",
+            "Change the default database connection handling node. Set 0 to disable"
+            " automatic reconnects. Any other number would allow reconnects.",
             _databaseAllowReconnect
         ).option(
             "db-reconnect-timeout",
@@ -117,7 +121,20 @@ int Application::run() {
             " System's setups in case of an accidental mis-configuration.",
             _instanceId
         );
-
+    }
+    if (_injectXrootdOptions) {
+        parser().option(
+            "xrootd-allow-reconnect",
+            "Change the default XROOTD connection handling node. Set 0 to disable"
+            " automatic reconnects. Any other number would allow reconnects.",
+            _xrootdAllowReconnect
+        ).option(
+            "xrootd-reconnect-timeout",
+            "Change the default value limiting a duration of time for making automatic"
+            " reconnects to the XROOTD servers before failing and reporting error"
+            " (if the server is not up, or if it's not reachable for some reason)",
+            _xrootdConnectTimeoutSec
+        );
     }
     try {
         int const code = parser().parse();
@@ -140,10 +157,9 @@ int Application::run() {
 
     // Change default parameters of the database connectors
     if (_injectDatabaseOptions) {
-
-        Configuration::setDatabaseAllowReconnect(       _databaseAllowReconnect != 0);
-        Configuration::setDatabaseConnectTimeoutSec(    _databaseConnectTimeoutSec);
-        Configuration::setDatabaseMaxReconnects(        _databaseMaxReconnects);
+        Configuration::setDatabaseAllowReconnect(_databaseAllowReconnect != 0);
+        Configuration::setDatabaseConnectTimeoutSec(_databaseConnectTimeoutSec);
+        Configuration::setDatabaseMaxReconnects(_databaseMaxReconnects);
         Configuration::setDatabaseTransactionTimeoutSec(_databaseTransactionTimeoutSec);
     }
     if (_enableServiceProvider) {
@@ -155,6 +171,11 @@ int Application::run() {
         // the asynchronous activities will be run by a thread from the pool.
         _serviceProvider = ServiceProvider::create(_config, _instanceId);
         _serviceProvider->run();
+    }
+    // Change default parameters of the XROOTD connectors
+    if (_injectXrootdOptions) {
+        Configuration::setXrootdAllowReconnect(_xrootdAllowReconnect != 0);
+        Configuration::setXrootdConnectTimeoutSec(_xrootdConnectTimeoutSec);
     }
 
     // Let the user's code to do its job
@@ -171,9 +192,31 @@ int Application::run() {
 ServiceProvider::Ptr const& Application::serviceProvider() const {
     if (nullptr == _serviceProvider) {
         throw logic_error(
-                "Application::" + string(__func__) + "  this application was not configured to enable this");
+                "Application::" + string(__func__) + "  this application was not configured to initialize"
+                " the ServiceProvider.");
+    }
+    if (_serviceProvider == nullptr) {
+        throw logic_error(
+            "Application::" + string(__func__) + "  calling this method isn't allowed before invoking"
+            " the command-line parser.");
     }
     return _serviceProvider;
 }
+
+
+string const& Application::configUrl() const {
+    if (!_enableServiceProvider) {
+        throw logic_error(
+            "Application::" + string(__func__) + "  this application was not configured to initialize"
+            " the ServiceProvider.");
+    }
+    if (_serviceProvider == nullptr) {
+        throw logic_error(
+            "Application::" + string(__func__) + "  calling this method isn't allowed before invoking"
+            " the command-line parser.");
+    }
+    return _config;
+}
+
 
 }}} // namespace lsst::qserv::replica

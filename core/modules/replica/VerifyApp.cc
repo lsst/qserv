@@ -41,6 +41,11 @@ string const description =
     "This application runs the replica verification algorithm for all known"
     " replicas across all ENABLED workers.";
 
+bool const injectDatabaseOptions = true;
+bool const boostProtobufVersionCheck = true;
+bool const enableServiceProvider = true;
+bool const injectXrootdOptions = true;
+
 } /// namespace
 
 
@@ -58,10 +63,11 @@ VerifyApp::Ptr VerifyApp::create(int argc, char* argv[]) {
 VerifyApp::VerifyApp(int argc, char* argv[])
     :   Application(
             argc, argv,
-            ::description,
-            true    /* injectDatabaseOptions */,
-            true    /* boostProtobufVersionCheck */,
-            true    /* enableServiceProvider */
+            description,
+            injectDatabaseOptions,
+            boostProtobufVersionCheck,
+            enableServiceProvider,
+            injectXrootdOptions
         ) {
 
     // Configure the command line parser

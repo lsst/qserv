@@ -29,7 +29,6 @@
 
 // Qserv headers
 #include "global/constants.h"
-#include "replica/ConfigurationFile.h"
 #include "replica/ConfigurationMap.h"
 #include "replica/ConfigurationMySQL.h"
 #include "replica/FileUtils.h"
@@ -117,9 +116,7 @@ ConfigurationIFace::Ptr ConfigurationBase::load(string const& configUrl) {
         string const prefix = configUrl.substr(0, pos);
         string const suffix = configUrl.substr(pos+1);
 
-        if ("file"  == prefix) {
-            return make_shared<ConfigurationFile>(suffix);
-        } else if ("mysql" == prefix) {
+        if ("mysql" == prefix) {
             return make_shared<ConfigurationMySQL>(
                         database::mysql::ConnectionParams::parse(
                             configUrl,
@@ -130,7 +127,7 @@ ConfigurationIFace::Ptr ConfigurationBase::load(string const& configUrl) {
         }
     }
     throw invalid_argument(
-            "ConfigurationBase::" + string(__func__) + "  configUrl must start with 'file:' or 'mysql:'");
+            "ConfigurationBase::" + string(__func__) + "  configUrl must start with 'mysql:'");
 }
 
 

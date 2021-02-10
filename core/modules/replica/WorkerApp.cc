@@ -44,6 +44,11 @@ namespace {
 string const description =
     "This application represents the worker service of the Replication system.";
 
+bool const injectDatabaseOptions = true;
+bool const boostProtobufVersionCheck = true;
+bool const enableServiceProvider = true;
+bool const injectXrootdOptions = false;
+
 } /// namespace
 
 
@@ -61,10 +66,11 @@ WorkerApp::Ptr WorkerApp::create(int argc, char* argv[]) {
 WorkerApp::WorkerApp(int argc, char* argv[])
     :   Application(
             argc, argv,
-            ::description,
-            true    /* injectDatabaseOptions */,
-            true    /* boostProtobufVersionCheck */,
-            true    /* enableServiceProvider */
+            description,
+            injectDatabaseOptions,
+            boostProtobufVersionCheck,
+            enableServiceProvider,
+            injectXrootdOptions
         ),
         _log(LOG_GET("lsst.qserv.replica.WorkerApp")),
         _qservDbPassword(Configuration::qservWorkerDatabasePassword()) {

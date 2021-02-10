@@ -40,6 +40,11 @@ string const description =
     "This application synchronizes collections of chunks at the Qserv workers"
     " with what the Replication system sees as 'good' chunks in the data directories.";
 
+bool const injectDatabaseOptions = true;
+bool const boostProtobufVersionCheck = true;
+bool const enableServiceProvider = true;
+bool const injectXrootdOptions = true;
+
 } /// namespace
 
 
@@ -57,10 +62,11 @@ SyncApp::Ptr SyncApp::create(int argc, char* argv[]) {
 SyncApp::SyncApp(int argc, char* argv[])
     :   Application(
             argc, argv,
-            ::description,
-            true    /* injectDatabaseOptions */,
-            true    /* boostProtobufVersionCheck */,
-            true    /* enableServiceProvider */
+            description,
+            injectDatabaseOptions,
+            boostProtobufVersionCheck,
+            enableServiceProvider,
+            injectXrootdOptions
         ) {
 
     // Configure the command line parser

@@ -44,6 +44,11 @@ string const description =
     " to harvest the 'secondary index' data from the 'director' tables of a select"
     " database and aggregate these data at a specified destination.";
 
+bool const injectDatabaseOptions = true;
+bool const boostProtobufVersionCheck = true;
+bool const enableServiceProvider = true;
+bool const injectXrootdOptions = false;
+
 } /// namespace
 
 
@@ -61,10 +66,11 @@ IndexApp::Ptr IndexApp::create(int argc, char* argv[]) {
 IndexApp::IndexApp(int argc, char* argv[])
     :   Application(
             argc, argv,
-            ::description,
-            true    /* injectDatabaseOptions */,
-            true    /* boostProtobufVersionCheck */,
-            true    /* enableServiceProvider */
+            description,
+            injectDatabaseOptions,
+            boostProtobufVersionCheck,
+            enableServiceProvider,
+            injectXrootdOptions
         ) {
 
     // Configure the command line parser

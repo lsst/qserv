@@ -67,6 +67,11 @@ string const description =
     " for both testing all known types of requests and for various manual fix up"
     " operations in a replication setup.";
 
+bool const injectDatabaseOptions = true;
+bool const boostProtobufVersionCheck = true;
+bool const enableServiceProvider = true;
+bool const injectXrootdOptions = false;
+
 /**
  * This is the helper class for submitting the management requests
  * which are meant to request a status or stop an on-going request.
@@ -148,10 +153,11 @@ ControllerApp::Ptr ControllerApp::create(int argc, char* argv[]) {
 ControllerApp::ControllerApp(int argc, char* argv[])
     :   Application(
             argc, argv,
-            ::description,
-            true    /* injectDatabaseOptions */,
-            true    /* boostProtobufVersionCheck */,
-            true    /* enableServiceProvider */
+            description,
+            injectDatabaseOptions,
+            boostProtobufVersionCheck,
+            enableServiceProvider,
+            injectXrootdOptions
         ) {
     _configureParser();
 }

@@ -45,6 +45,11 @@ string const description =
     "This is a Controller application which launches a single job Controller in order"
     " to acquire, analyze, and report chunk disposition within a database family.";
 
+bool const injectDatabaseOptions = true;
+bool const boostProtobufVersionCheck = true;
+bool const enableServiceProvider = true;
+bool const injectXrootdOptions = true;
+
 /**
  * Dump the replica info
  */
@@ -151,10 +156,11 @@ ChunksApp::Ptr ChunksApp::create(int argc, char* argv[]) {
 ChunksApp::ChunksApp(int argc, char* argv[])
     :   Application(
             argc, argv,
-            ::description,
-            true    /* injectDatabaseOptions */,
-            true    /* boostProtobufVersionCheck */,
-            true    /* enableServiceProvider */
+            description,
+            injectDatabaseOptions,
+            boostProtobufVersionCheck,
+            enableServiceProvider,
+            injectXrootdOptions
         ) {
 
     // Configure the command line parser

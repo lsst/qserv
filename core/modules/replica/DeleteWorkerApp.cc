@@ -41,6 +41,11 @@ string const description =
     "This application disable a worker from any active use in a replication setup."
     " All chunks hosted by  the worker node will be distributed across the cluster.";
 
+bool const injectDatabaseOptions = true;
+bool const boostProtobufVersionCheck = true;
+bool const enableServiceProvider = true;
+bool const injectXrootdOptions = true;
+
 } /// namespace
 
 
@@ -58,10 +63,11 @@ DeleteWorkerApp::Ptr DeleteWorkerApp::create(int argc, char* argv[]) {
 DeleteWorkerApp::DeleteWorkerApp(int argc, char* argv[])
     :   Application(
             argc, argv,
-            ::description,
-            true    /* injectDatabaseOptions */,
-            true    /* boostProtobufVersionCheck */,
-            true    /* enableServiceProvider */
+            description,
+            injectDatabaseOptions,
+            boostProtobufVersionCheck,
+            enableServiceProvider,
+            injectXrootdOptions
         ) {
 
     // Configure the command line parser

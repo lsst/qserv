@@ -42,26 +42,17 @@ namespace replica {
  * Class ConfigApp implements a tool for inspecting/modifying configuration
  * records stored in the MySQL/MariaDB database.
  */
-class ConfigApp : public Application {
-
+class ConfigApp: public Application {
 public:
-
-    /// The pointer type for instances of the class
     typedef std::shared_ptr<ConfigApp> Ptr;
 
     /**
      * The factory method is the only way of creating objects of this class
      * because of the very base class's inheritance from 'enable_shared_from_this'.
-     *
-     * @param argc
-     *   the number of command-line arguments
-     *
-     * @param argv
-     *   the vector of command-line arguments
+     * @param argc The number of command-line arguments.
+     * @param argv The vector of command-line arguments.
      */
     static Ptr create(int argc, char* argv[]);
-
-    // Default construction and copy semantics are prohibited
 
     ConfigApp() = delete;
     ConfigApp(ConfigApp const&) = delete;
@@ -70,53 +61,41 @@ public:
     ~ConfigApp() override = default;
 
 protected:
-
     /// @see Application::runImpl()
     int runImpl() final;
 
 private:
-
     /// @see ConfigApp::create()
     ConfigApp(int argc, char* argv[]);
 
     /**
      * Dump the Configuration into the standard output stream
-     * 
-     * @return
-     *   a status code to be returned to the shell
+     * @return A status code to be returned to the shell.
      */
     int _dump() const;
 
     /**
      * Dump general configuration parameters into the standard output
      * stream as a table.
-     * 
-     * @param indent
-     *   the indentation for the table
+     * @param indent The indentation for the table.
      */
     void _dumpGeneralAsTable(std::string const& indent) const;
 
     /**
      * Dump workers into the standard output stream as a table 
-     * 
-     * @param indent
-     *   the indentation for the table
+     * @param indent The indentation for the table.
      */
     void _dumpWorkersAsTable(std::string const& indent) const;
 
     /**
      * Dump database families into the standard output stream as a table 
-     * 
-     * @param indent
-     *   the indentation for the table
+     * @param indent The indentation for the table.
      */
     void _dumpFamiliesAsTable(std::string const& indent) const;
 
     /**
      * Dump databases into the standard output stream as a table 
-     * 
-     * @param indent
-     *   the indentation for the table
+     * @param indent The indentation for the table.
      */
     void _dumpDatabasesAsTable(std::string const& indent) const;
 
@@ -124,97 +103,73 @@ private:
      * Dump the Configuration into the standard output stream in  format which could
      * be used for initializing the Configuration, either directly from the INI file,
      * or indirectly via a database.
-     * 
-     * @return
-     *   a status code to be returned to the shell
+     * @return A status code to be returned to the shell.
      */
     int _configInitFile() const;
 
     /**
      * Update the general configuration parameters
-     *
-     * @return
-     *   a status code to be returned to the shell
+     * @return A status code to be returned to the shell.
      */
     int _updateGeneral();
 
     /**
      * Update parameters of a worker
-     *
-     * @return
-     *   a status code to be returned to the shell
+     * @return A status code to be returned to the shell.
      */
     int _updateWorker() const;
 
     /**
      * Add a new worker
-     *
-     * @return
-     *   a status code to be returned to the shell
+     * @return A status code to be returned to the shell.
      */
     int _addWorker() const;
 
     /**
      * Delete an existing worker and all metadata associated with it
-     *
-     * @return
-     *   a status code to be returned to the shell
+     * @return A status code to be returned to the shell.
      */
     int _deleteWorker() const;
 
     /**
      * Add a new database family
-     *
-     * @return
-     *   a status code to be returned to the shell
+     * @return A status code to be returned to the shell.
      */
     int _addFamily();
 
     /**
      * Delete an existing database family
-     *
-     * @return
-     *   a status code to be returned to the shell
+     * @return A status code to be returned to the shell.
      */
     int _deleteFamily();
 
     /**
      * Add a new database
-     *
-     * @return
-     *   a status code to be returned to the shell
+     * @return A status code to be returned to the shell.
      */
     int _addDatabase();
 
     /**
      * Publish an existing database
-     *
-     * @return
-     *   a status code to be returned to the shell
+     * @return A status code to be returned to the shell.
      */
     int _publishDatabase();
 
     /**
      * Delete an existing database
-     *
-     * @return
-     *   a status code to be returned to the shell
+     * @return A status code to be returned to the shell.
      */
     int _deleteDatabase();
 
     /**
      * Add a new table
-     *
-     * @return
-     *   a status code to be returned to the shell
+     * @return A status code to be returned to the shell.
      */
     int _addTable();
 
     /**
      * Delete an existing table
-     *
-     * @return
-     *   a status code to be returned to the shell
+     * @return A status code to be returned to the shell.
      */
     int _deleteTable();
 
@@ -228,14 +183,11 @@ private:
     /// The command
     std::string _command;
 
-    /// Configuration URL
-    std::string _configUrl;
-
     /// An optional scope of the command "DUMP"
     std::string _dumpScope;
 
     /// Show the actual database password when dumping the Configuration
-    bool _dumpDbShowPassword{false};
+    bool _dumpDbShowPassword = false;
 
     /// Print vertical separator in tables
     bool _verticalSeparator = false;

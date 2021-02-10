@@ -37,6 +37,11 @@ string const description =
     "This is an application which runs a read-only file server"
     " on behalf of a Replication system's worker.";
 
+bool const injectDatabaseOptions = true;
+bool const boostProtobufVersionCheck = true;
+bool const enableServiceProvider = true;
+bool const injectXrootdOptions = false;
+
 } /// namespace
 
 
@@ -54,10 +59,11 @@ FileServerApp::Ptr FileServerApp::create(int argc, char* argv[]) {
 FileServerApp::FileServerApp(int argc, char* argv[])
     :   Application(
             argc, argv,
-            ::description,
-            true    /* injectDatabaseOptions */,
-            true    /* boostProtobufVersionCheck */,
-            true    /* enableServiceProvider */
+            description,
+            injectDatabaseOptions,
+            boostProtobufVersionCheck,
+            enableServiceProvider,
+            injectXrootdOptions
         ),
         _log(LOG_GET("lsst.qserv.replica.tools.qserv-replica-file-server")) {
 
