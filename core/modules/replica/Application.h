@@ -101,10 +101,21 @@ protected:
 
     /**
      * @return A reference to the ServiceProvider object.
-     * @throw std::logic_error If Configuration loading and ServiceProvider is
-     *   not enabled in the constructor of the class.
+     * @throws std::logic_error If Configuration loading and ServiceProvider is
+     *   not enabled in the constructor of the class, or if the method gets called
+     *   before Parser finishes processing command-line parameters.
      */
     ServiceProvider::Ptr const& serviceProvider() const;
+
+    /**
+     * @return The configuration URL, either its default value or the one that was
+     *   explicitly specified in a command line. This requires that a base class configured
+     *   the application with the option 'enableServiceProvider=true'.
+     * @throws std::logic_error If Configuration loading and ServiceProvider is
+     *   not enabled in the constructor of the class, or if the method gets called
+     *   before Parser finishes processing command-line parameters.
+     */
+    std::string const& configUrl() const;
 
     /**
      * This method is required to be implements by subclasses to run

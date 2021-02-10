@@ -56,9 +56,8 @@ namespace replica {
   * providing configuration services for the components of the Replication
   * system.
   */
-class Configuration : public ConfigurationIFace {
+class Configuration: public ConfigurationIFace {
 public:
-    /// The pointer type for instances of the class.
     typedef std::shared_ptr<Configuration> Ptr;
 
     /// @return The JSON representation of the object.
@@ -484,10 +483,6 @@ public:
      * @throws std::invalid_argument If the new value of the parameter is 0.
      */
     static unsigned int setXrootdConnectTimeoutSec(unsigned int value);
-
-
-
-
 
 protected:
     /**

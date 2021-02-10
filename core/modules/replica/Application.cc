@@ -192,9 +192,31 @@ int Application::run() {
 ServiceProvider::Ptr const& Application::serviceProvider() const {
     if (nullptr == _serviceProvider) {
         throw logic_error(
-                "Application::" + string(__func__) + "  this application was not configured to enable this");
+                "Application::" + string(__func__) + "  this application was not configured to initialize"
+                " the ServiceProvider.");
+    }
+    if (_serviceProvider == nullptr) {
+        throw logic_error(
+            "Application::" + string(__func__) + "  calling this method isn't allowed before invoking"
+            " the command-line parser.");
     }
     return _serviceProvider;
 }
+
+
+string const& Application::configUrl() const {
+    if (!_enableServiceProvider) {
+        throw logic_error(
+            "Application::" + string(__func__) + "  this application was not configured to initialize"
+            " the ServiceProvider.");
+    }
+    if (_serviceProvider == nullptr) {
+        throw logic_error(
+            "Application::" + string(__func__) + "  calling this method isn't allowed before invoking"
+            " the command-line parser.");
+    }
+    return _config;
+}
+
 
 }}} // namespace lsst::qserv::replica
