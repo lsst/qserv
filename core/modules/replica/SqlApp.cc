@@ -296,19 +296,16 @@ SqlApp::SqlApp(int argc, char* argv[])
     parser().command(
         "DELETE_TABLE_PARTITION"
     ).required(
-        "database",
-        "The name of an existing database where the table is residing.",
-        _database
+        "transaction",
+        "An identifier of a super-transaction corresponding to a partition"
+        " to be dropped from the table. The transaction must exist, and it"
+        " should be in the ABORTED state. NOTE: the name of a database will be"
+        " be deduced from an association between transactions and databases.",
+        _transactionId
     ).required(
         "table",
         "The name of an existing table to be affected by the operation.",
         _table
-    ).required(
-        "transaction",
-        "An identifier of a super-transaction corresponding to a partition"
-        " to be dropped from the table. The transaction must exist, and it"
-        " should be in the ABORTED state.",
-        _transactionId
     );
 
     _configureTableCommands();
@@ -433,8 +430,7 @@ int SqlApp::runImpl() {
         job = SqlRemoveTablePartitionsJob::create(_database, _table, _allWorkers, _ignoreNonPartitioned,
                                                   controller);
     } else if(_command == "DELETE_TABLE_PARTITION") {
-        job = SqlDeleteTablePartitionJob::create(_database, _table, _transactionId,
-                                                 _allWorkers, controller);
+        job = SqlDeleteTablePartitionJob::create(_transactionId, _table, _allWorkers, controller);
     } else if(_command == "CREATE_INDEXES") {
         job = SqlCreateIndexesJob::create(_database, _table, _overlap,
                                           SqlRequestParams::IndexSpec(_indexSpecStr),

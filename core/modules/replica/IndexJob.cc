@@ -129,7 +129,6 @@ IndexJob::IndexJob(string const& database,
                    CallbackType const& onFinish,
                    Job::Options const& options)
     :   Job(controller, parentJobId, "INDEX", options),
-        _database(database),
         _hasTransactions(hasTransactions),
         _transactionId(transactionId),
         _allWorkers(allWorkers),
@@ -137,6 +136,19 @@ IndexJob::IndexJob(string const& database,
         _destinationPath(destinationPath),
         _localFile(localFile),
         _onFinish(onFinish) {
+
+    // Get and verify database status
+    try {
+        _databaseInfo = controller->serviceProvider()->config()->databaseInfo(database);
+        if (_databaseInfo.directorTable.empty()) {
+            throw runtime_error(
+                context() + "::" + string(__func__) + " no director table found in the database: '"
+                + database + "'.");
+        }
+    } catch (exception const& ex) {
+        LOGS(_log, LOG_LVL_ERROR, ex.what());
+        throw;
+    }
 }
 
 
@@ -160,6 +172,7 @@ IndexJobResult const& IndexJob::getResultData() const {
 list<std::pair<string,string>> IndexJob::extendedPersistentState() const {
     list<pair<string,string>> result;
     result.emplace_back("database", database());
+    result.emplace_back("directorTable", directorTable());
     result.emplace_back("has_transactions", bool2str(hasTransactions()));
     result.emplace_back("transaction_id", to_string(transactionId()));
     result.emplace_back("all_workers", bool2str(allWorkers()));
@@ -196,6 +209,11 @@ void IndexJob::startImpl(util::Lock const& lock) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
+    // ------------------------
+    // Stage I: replica scanner
+    // ------------------------
+
+    auto const databaseServices = controller()->serviceProvider()->databaseServices();
     auto const workerNames = allWorkers() ?
         controller()->serviceProvider()->config()->allWorkers() :
         controller()->serviceProvider()->config()->workers();
@@ -218,20 +236,55 @@ void IndexJob::startImpl(util::Lock const& lock) {
 
     map<unsigned int, list<string>> chunk2workers;
     for (auto&& worker: workerNames) {
-        vector<ReplicaInfo> replicas;
-        controller()->serviceProvider()->databaseServices()->findWorkerReplicas(
-            replicas,
-            worker,
-            database(),
-            unusedAllDatabases,
-            unusedIsPublished,
-            includeFileInfo
-        );
-        for (auto&& replica: replicas) {
-            chunk2workers[replica.chunk()].push_back(replica.worker());
+
+        // Scan for chunk replicas at the worker. The algorithm fills the data structure
+        // used by the planner algorithm. The scanner has two flavors that depend on the input
+        // parameters to the class.
+        //   - If a specific transaction was requested then the algorithm will look at
+        //     the actual chunk contributions made into the 'director' table at the worker.
+        //     in a context of the given transaction. This scenario is more efficient during
+        //     ingests since only a few chunks may get populated during a transaction.
+        //   - Otherwise, the scanner relies upon the replica info records. This is a typical
+        //     scenario for building the index after publishing a catalog.
+
+        if (hasTransactions()) {
+            // The unique combinations of the pairs (chunk,worker) represent replicas.
+            // This intermediate data structure is needed to reduce individual chunk contributions
+            // into replicas, in order to ensure the results of this version of the chunk screening
+            // algorithm will be compatible with expectations of the planner.
+            set<pair<unsigned int, string>> chunkAndWorker;
+
+            // Locate all contributions into the table made at the given worker.
+            vector<TransactionContribInfo> const contribs =
+                    databaseServices->transactionContribs(transactionId(), directorTable(), worker);
+            for (auto&& contrib: contribs) {
+                chunkAndWorker.insert(make_pair(contrib.chunk, contrib.worker));
+            }
+
+            // Transform findings into the input data structure used by the planner.
+            for (auto const& elem: chunkAndWorker) {
+                chunk2workers[elem.first].push_back(elem.second);
+            }
+        } else {
+            vector<ReplicaInfo> replicas;
+            databaseServices->findWorkerReplicas(
+                replicas,
+                worker,
+                database(),
+                unusedAllDatabases,
+                unusedIsPublished,
+                includeFileInfo
+            );
+            for (auto&& replica: replicas) {
+                chunk2workers[replica.chunk()].push_back(replica.worker());
+            }
         }
     }
-    
+
+    // ---------------------
+    // Stage II: the planner
+    // ---------------------
+
     // Now build the plan for each worker based on the above harvested
     // distribution of chunk replicas across workers.
     //
@@ -260,6 +313,10 @@ void IndexJob::startImpl(util::Lock const& lock) {
         }
         _chunks[worker].push(chunk);
     }
+
+    // --------------------------------------------------
+    // Stage III: launching the initial batch of requests
+    // --------------------------------------------------
 
     // Launch the initial batch of requests in the number which won't exceed
     // the number of the service processing threads at each worker multiplied
