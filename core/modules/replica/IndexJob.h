@@ -161,13 +161,14 @@ public:
 
     // Trivial get methods
 
-    std::string const& database()        const { return _database; }
+    std::string const& database()        const { return _databaseInfo.name; }
     bool               hasTransactions() const { return _hasTransactions; }
     TransactionId      transactionId()   const { return _transactionId; }
     bool               allWorkers()      const { return _allWorkers; }
     Destination        destination()     const { return _destination; }
     std::string const& destinationPath() const { return _destinationPath; }
     bool               localFile()       const { return _localFile; }
+    std::string const& directorTable()   const { return _databaseInfo.directorTable; }
 
     /**
      * Return the combined result of the operation
@@ -247,7 +248,6 @@ private:
 private:
     // Input parameters
 
-    std::string   const _database;
     bool          const _hasTransactions;
     TransactionId const _transactionId;
     bool          const _allWorkers;
@@ -256,6 +256,8 @@ private:
     bool          const _localFile;
 
     CallbackType _onFinish;     /// @note is reset when the job finishes
+
+    DatabaseInfo _databaseInfo; /// Initialized by the c-tor
 
     /// A collection of chunks to be processed at specific workers
     std::map<std::string, std::queue<unsigned int>> _chunks;
