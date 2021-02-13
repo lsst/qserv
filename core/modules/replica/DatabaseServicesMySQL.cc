@@ -2196,10 +2196,6 @@ TransactionContribInfo DatabaseServicesMySQL::beginTransactionContrib(
 
     util::Lock lock(_mtx, context);
 
-    bool const includeContext = false;
-    TransactionInfo const transactionInfo =
-            _findTransactionImpl(lock, _conn->sqlEqual("id", transactionId), includeContext);
-
     uint64_t const beginTime = PerformanceUtils::now();
     uint64_t const endTime = 0;
     uint64_t const numBytes = 0;
@@ -2211,6 +2207,13 @@ TransactionContribInfo DatabaseServicesMySQL::beginTransactionContrib(
         auto const predicate = _conn->sqlEqual("id", database::mysql::Function::LAST_INSERT_ID);
         _conn->executeInOwnTransaction(
             [&](decltype(_conn) conn) {
+
+                // This will throw the exception DatabaseServicesNotFound if the transaction
+                // won't be found.
+                bool const includeContext = false;
+                TransactionInfo const transactionInfo =
+                        _findTransactionImpl(lock, conn->sqlEqual("id", transactionId), includeContext);
+
                 conn->executeInsertQuery(
                     "transaction_contrib",
                     database::mysql::Keyword::SQL_NULL,
