@@ -22,8 +22,9 @@
 #define LSST_QSERV_REPLICA_CONFIGURATIONTYPES_H
 
 /**
- * This header defines ancillary helper types which are meant to reduce code
- * duplications in applications dealing with class Configuration.
+ * This header defines helper types which are meant to reduce code duplications
+ * in applications (command line tools and REST services) dealing with
+ * the class Configuration.
  */
 
 // System headers
@@ -35,570 +36,271 @@
 
 // Qserv headers
 #include "replica/Configuration.h"
+#include "replica/ConfigurationSchema.h"
 
 // This header declarations
 namespace lsst {
 namespace qserv {
 namespace replica {
+namespace detail {
 
-/**
- * Structure ConfigurationGeneralParams defines helpers for the general parameters
- * of the Configuration system's API. The helpers are needed to eliminate code
- * duplication and streamline implementations in some command line tools and services
- * dealing with the Replication System's Configuration.
- * 
- * Each helper is represented by a dedicated
- * structure (w/o any explicitly given type name) which has the following members:
- * 
- * key:
- *   the short name of a key to be used in various context when a text-based
- *   reference to the corresponding Configuration parameter is needed (within
- *   protocols and application's implementations).
- * 
- * description:
- *   an expanded description of the parameter, its role, etc. A value of this
- *   member is used in the command-line and Web UI applications where parameters
- *   are presented to users.
- * 
- * value:
- *   is a member storing a transient value of the parameter before forwarding
- *   it to the Configuration by method 'save'.
- * 
- * updatable:
- *   flag indicating if the transient value of the parameter can be saved back
- *   into the Configuration. This flag can be used by the command-line tools
- *   and Web UI applications.
- * 
- * save:
- *   a method which stores the transient state of the parameter stored in
- *   member 'value' into the Configuration.
- *
- * get - is a type-aware method returning a value of the corresponding parameter
- * retrieved from the Configuration.
- * 
- * str - is a method which returns a value of the parameter pulled from
- * the Configuration and serializied into a string.
- */
-struct ConfigurationGeneralParams {
+// Type conversion traits.
 
-    struct {
-
-        std::string const key         = "NET_BUF_SIZE_BYTES";
-        std::string const description = "The default buffer size for network communications.";
-        size_t            value;
-
-        bool const updatable = true;
-
-        void save(Configuration::Ptr const& config) {
-            if (value != 0) config->setRequestBufferSizeBytes(value);
-        }
-        size_t      get(Configuration::Ptr const& config) const { return config->requestBufferSizeBytes(); }
-        std::string str(Configuration::Ptr const& config) const { return std::to_string(get(config)); }
-
-    } requestBufferSizeBytes;
-
-    struct {
-
-        std::string const key         = "NET_RETRY_TIMEOUT_SEC";
-        std::string const description = "The default retry timeout for network communications.";
-        unsigned int      value;
-
-        bool const updatable = true;
-
-        void save(Configuration::Ptr const& config) {
-            if (value != 0) config->setRetryTimeoutSec(value);
-        }
-        unsigned int get(Configuration::Ptr const& config) const { return config->retryTimeoutSec(); }
-        std::string  str(Configuration::Ptr const& config) const { return std::to_string(get(config)); }
-
-    } retryTimeoutSec;
-
-    struct {
-
-        std::string const key         = "CONTR_NUM_THREADS";
-        std::string const description = "The number of threads managed by BOOST ASIO.";
-        size_t            value;
-
-        bool const updatable = true;
-
-        void save(Configuration::Ptr const& config) {
-            if (value != 0) config->setControllerThreads(value);
-        }
-        size_t      get(Configuration::Ptr const& config) const { return config->controllerThreads(); }
-        std::string str(Configuration::Ptr const& config) const { return std::to_string(get(config)); }
-
-    } controllerThreads;
-
-    struct {
-
-        std::string const key         = "CONTR_HTTP_PORT";
-        std::string const description = "The port number for the controller's HTTP server.";
-        uint16_t          value;
-
-        bool const updatable = true;
-
-        void save(Configuration::Ptr const& config) {
-            if (value != 0) config->setControllerHttpPort(value);
-        }
-        uint16_t    get(Configuration::Ptr const& config) const { return config->controllerHttpPort(); }
-        std::string str(Configuration::Ptr const& config) const { return std::to_string(get(config)); }
-
-    } controllerHttpPort;
-
-    struct {
-
-        std::string const key         = "CONTR_NUM_HTTP_THREADS";
-        std::string const description = "The number of threads managed by BOOST ASIO for the HTTP server.";
-        size_t            value;
-
-        bool const updatable = true;
-
-        void save(Configuration::Ptr const& config) {
-            if (value != 0) config->setControllerHttpThreads(value);
-        }
-        size_t      get(Configuration::Ptr const& config) const { return config->controllerHttpThreads(); }
-        std::string str(Configuration::Ptr const& config) const { return std::to_string(get(config)); }
-
-    } controllerHttpThreads;
-
-    struct {
-
-        std::string const key         = "CONTR_REQUEST_TIMEOUT_SEC";
-        std::string const description = "The default timeout for completing worker requests.";
-        unsigned int      value;
-
-        bool const updatable = true;
-
-        void save(Configuration::Ptr const& config) {
-            if (value != 0) config->setControllerRequestTimeoutSec(value);
-        }
-        unsigned int get(Configuration::Ptr const& config) const { return config->controllerRequestTimeoutSec(); }
-        std::string  str(Configuration::Ptr const& config) const { return std::to_string(get(config)); }
-
-    } controllerRequestTimeoutSec;
-
-    struct {
-
-        std::string const key         = "CONTR_EMPTY_CHUNKS_DIR";
-        std::string const description = "A path to a folder where Qserv master stores its empty chunk lists.";
-        std::string       value;
-
-        bool const updatable = false;
-
-        std::string  get(Configuration::Ptr const& config) const { return config->controllerEmptyChunksDir(); }
-        std::string  str(Configuration::Ptr const& config) const { return get(config); }
-
-    } controllerEmptyChunksDir;
-
-    struct {
-
-        std::string const key         = "CONTR_JOB_TIMEOUT_SEC";
-        std::string const description = "default timeout for completing jobs";
-        unsigned int      value;
-
-        bool const updatable = true;
-
-        void save(Configuration::Ptr const& config) {
-            if (value != 0) config->setJobTimeoutSec(value);
-        }
-
-        unsigned int get(Configuration::Ptr const& config) const { return config->jobTimeoutSec(); }
-        std::string  str(Configuration::Ptr const& config) const { return std::to_string(get(config)); }
-
-    } jobTimeoutSec;
-
-    struct {
-
-        std::string const key         = "CONTR_JOB_HEARTBEAT_SEC";
-        std::string const description = "The heartbeat interval for jobs. A value of 0 disables heartbeats.";
-        unsigned int      value       = std::numeric_limits<unsigned int>::max();
-
-        bool const updatable = true;
-
-        void save(Configuration::Ptr const& config) {
-            if (value != std::numeric_limits<unsigned int>::max()) {
-                config->setJobHeartbeatTimeoutSec(value);
-            }
-        }
-        unsigned int get(Configuration::Ptr const& config) const { return config->jobHeartbeatTimeoutSec(); }
-        std::string  str(Configuration::Ptr const& config) const { return std::to_string(get(config)); }
-
-    } jobHeartbeatTimeoutSec;
-
-    struct {
-
-        std::string const key         = "QSERV_AUTO_NOTIFY";
-        std::string const description = "Automatically notify Qserv on changes in replica disposition"
-                                        " (0 disables this feature).";
-        int               value       = -1;
-
-        bool const updatable = true;
-
-        void save(Configuration::Ptr const& config) {
-            if (value >= 0) config->setXrootdAutoNotify(value != 0);
-        }
-        int         get(Configuration::Ptr const& config) const { return config->xrootdAutoNotify() ? 1 : 0; }
-        std::string str(Configuration::Ptr const& config) const { return std::to_string(get(config)); }
-
-    } xrootdAutoNotify;
-
-    struct {
-
-        std::string const key         = "XROOTD_HOST";
-        std::string const description = "The service location (the host name or an IP address) of XRootD/SSI for"
-                                        " communications with Qserv.";
-        std::string       value;
-
-        bool const updatable = true;
-
-        void save(Configuration::Ptr const& config) {
-            if (not value.empty()) config->setXrootdHost(value);
-        }
-        std::string get(Configuration::Ptr const& config) const { return config->xrootdHost(); }
-        std::string str(Configuration::Ptr const& config) const { return get(config); }
-
-    } xrootdHost;
-
-    struct {
-
-        std::string const key         = "XROOTD_PORT";
-        std::string const description = "A port number for the XRootD/SSI service needed for communications"
-                                        " with Qserv.";
-        uint16_t          value;
-
-        bool const updatable = true;
-
-        void save(Configuration::Ptr const& config) {
-            if (value != 0) config->setXrootdPort(value);
-        }
-        uint16_t    get(Configuration::Ptr const& config) const { return config->xrootdPort(); }
-        std::string str(Configuration::Ptr const& config) const { return std::to_string(get(config)); }
-
-    } xrootdPort;
-
-    struct {
-
-        std::string const key         = "XROOT_COMM_TIMEOUT_SEC";
-        std::string const description = "The default timeout for communications with Qserv over XRootD/SSI.";
-        unsigned int      value;
-
-        bool const updatable = true;
-
-        void save(Configuration::Ptr const& config) {
-            if (value != 0) config->setXrootdTimeoutSec(value);
-        }
-        unsigned int get(Configuration::Ptr const& config) const { return config->xrootdTimeoutSec(); }
-        std::string  str(Configuration::Ptr const& config) const { return std::to_string(get(config)); }
-
-    } xrootdTimeoutSec;
-
-    struct {
-
-        std::string const key         = "DB_TECHNOLOGY";
-        std::string const description = "The name of a database technology for the persistent state.";
-
-        bool const updatable = false;
-
-        std::string get(Configuration::Ptr const& config) const { return config->databaseTechnology(); }
-        std::string str(Configuration::Ptr const& config) const { return get(config); }
-
-    } databaseTechnology;
-
-    struct {
-
-        std::string const key         = "DB_HOST";
-        std::string const description = "database service location";
-
-        bool const updatable = false;
-
-        std::string get(Configuration::Ptr const& config) const { return config->databaseHost(); }
-        std::string str(Configuration::Ptr const& config) const { return get(config); }
-
-    } databaseHost;
-
-    struct {
-
-        std::string const key         = "DB_PORT";
-        std::string const description = "The database service port.";
-
-        bool const updatable = false;
-
-        uint16_t    get(Configuration::Ptr const& config) const { return config->databasePort(); }
-        std::string str(Configuration::Ptr const& config) const { return std::to_string(get(config)); }
-
-    } databasePort;
-
-    struct {
-
-        std::string const key         = "DB_USER";
-        std::string const description = "A user account for connecting to the database service.";
-
-        bool const updatable = false;
-
-        std::string get(Configuration::Ptr const& config) const { return config->databaseUser(); }
-        std::string str(Configuration::Ptr const& config) const { return get(config); }
-
-    } databaseUser;
-
-    struct {
-
-        std::string const key         = "DB_PASSWORD";
-        std::string const description = "A password for connecting to the database service.";
-
-        bool const updatable = false;
-
-        std::string get(Configuration::Ptr const& config, bool scramble=true) const {
-            return scramble ? "xxxxxx" : config->databasePassword();
-        }
-        std::string str(Configuration::Ptr const& config, bool scramble) const { return get(config, scramble); }
-
-    } databasePassword;
-
-    struct {
-
-        std::string const key         = "DB_NAME";
-        std::string const description = "The name of the default database schema.";
-
-        bool const updatable = false;
-
-        std::string get(Configuration::Ptr const& config) const { return config->databaseName(); }
-        std::string str(Configuration::Ptr const& config) const { return get(config); }
-
-    } databaseName;
-
-    struct {
-
-        std::string const key         = "DB_SVC_POOL_SIZE";
-        std::string const description = "The pool size at the client database services connector.";
-        size_t            value;
-
-        bool const updatable = true;
-
-        void save(Configuration::Ptr const& config) {
-            if (value != 0) config->setDatabaseServicesPoolSize(value);
-        }        
-        size_t      get(Configuration::Ptr const& config) const { return config->databaseServicesPoolSize(); }
-        std::string str(Configuration::Ptr const& config) const { return std::to_string(get(config)); }
-
-    } databaseServicesPoolSize;
-
-    struct {
-
-        std::string const key         = "QSERV_MASTER_DB_HOST";
-        std::string const description = "database service location for the Qserv Master database.";
-
-        bool const updatable = false;
-
-        std::string get(Configuration::Ptr const& config) const { return config->qservMasterDatabaseHost(); }
-        std::string str(Configuration::Ptr const& config) const { return get(config); }
-
-    } qservMasterDatabaseHost;
-
-    struct {
-
-        std::string const key         = "QSERV_MASTER_DB_PORT";
-        std::string const description = "The database service port for the Qserv Master database.";
-
-        bool const updatable = false;
-
-        uint16_t    get(Configuration::Ptr const& config) const { return config->qservMasterDatabasePort(); }
-        std::string str(Configuration::Ptr const& config) const { return std::to_string(get(config)); }
-
-    } qservMasterDatabasePort;
-
-    struct {
-
-        std::string const key         = "QSERV_MASTER_DB_USER";
-        std::string const description = "A user account for connecting to the Qserv Master database.";
-
-        bool const updatable = false;
-
-        std::string get(Configuration::Ptr const& config) const { return config->qservMasterDatabaseUser(); }
-        std::string str(Configuration::Ptr const& config) const { return get(config); }
-
-    } qservMasterDatabaseUser;
-
-    struct {
-
-        std::string const key         = "QSERV_MASTER_DB_PASSWORD";
-        std::string const description = "A password for connecting to the Qserv Master database.";
-
-        bool const updatable = false;
-
-        std::string get(Configuration::Ptr const& config, bool scramble=true) const {
-            return scramble ? "xxxxxx" : config->qservMasterDatabasePassword();
-        }
-        std::string str(Configuration::Ptr const& config, bool scramble) const { return get(config, scramble); }
-
-    } qservMasterDatabasePassword;
-
-    struct {
-
-        std::string const key         = "QSERV_MASTER_DB_NAME";
-        std::string const description = "The name of the default database schema for the Qserv Master database.";
-
-        bool const updatable = false;
-
-        std::string get(Configuration::Ptr const& config) const { return config->qservMasterDatabaseName(); }
-        std::string str(Configuration::Ptr const& config) const { return get(config); }
-
-    } qservMasterDatabaseName;
-
-    struct {
-
-        std::string const key         = "QSERV_MASTER_DB_SVC_POOL_SIZE";
-        std::string const description = "The pool size at the client database services connector for the Qserv Master database.";
-        size_t            value;
-
-        bool const updatable = false;
-    
-        size_t      get(Configuration::Ptr const& config) const { return config->qservMasterDatabaseServicesPoolSize(); }
-        std::string str(Configuration::Ptr const& config) const { return std::to_string(get(config)); }
-
-    } qservMasterDatabaseServicesPoolSize;
-
-    struct {
-        std::string const key         = "QSERV_MASTER_TMP_DIR";
-        std::string const description = "The temporary folder for exchanging data with the Qserv Master database service.";
-
-        bool const updatable = false;
-
-        std::string get(Configuration::Ptr const& config) const { return config->qservMasterDatabaseTmpDir(); }
-        std::string str(Configuration::Ptr const& config) const { return get(config); }
-
-    } qservMasterDatabaseTmpDir;
-
-    struct {
-
-        std::string const key         = "WORKER_TECHNOLOGY";
-        std::string const description = "The name of a technology for implementing requests.";
-        std::string       value;
-
-        bool const updatable = true;
-
-        void save(Configuration::Ptr const& config) {
-            if (not value.empty()) config->setWorkerTechnology(value);
-        }
-        std::string get(Configuration::Ptr const& config) const { return config->workerTechnology(); }
-        std::string str(Configuration::Ptr const& config) const { return get(config); }
-
-    } workerTechnology;
-
-    struct {
-
-        std::string const key         = "WORKER_NUM_PROC_THREADS";
-        std::string const description = "The number of request processing threads in each worker service.";
-        size_t            value;
-
-        bool const updatable = true;
-
-        void save(Configuration::Ptr const& config) {
-            if (value != 0) config->setWorkerNumProcessingThreads(value);
-        }
-        size_t      get(Configuration::Ptr const& config) const { return config->workerNumProcessingThreads(); }
-        std::string str(Configuration::Ptr const& config) const { return std::to_string(get(config)); }
-
-    } workerNumProcessingThreads;
-
-    struct {
-
-        std::string const key         = "WORKER_FS_NUM_PROC_THREADS";
-        std::string const description = "The number of request processing threads in each worker's"
-                                        " file server.";
-        size_t            value;
-
-        bool const updatable = true;
-
-        void save(Configuration::Ptr const& config) {
-            if (value != 0) config->setFsNumProcessingThreads(value);
-        }
-        size_t      get(Configuration::Ptr const& config) const { return config->fsNumProcessingThreads(); }
-        std::string str(Configuration::Ptr const& config) const { return std::to_string(get(config)); }
-
-    } fsNumProcessingThreads;
-
-    struct {
-
-        std::string const key         = "WORKER_FS_BUF_SIZE_BYTES";
-        std::string const description = "Buffer size for file and network operations at worker's"
-                                        " file server.";
-        size_t            value;
-
-        bool const updatable = true;
-
-        void save(Configuration::Ptr const& config) {
-            if (value != 0) config->setWorkerFsBufferSizeBytes(value);
-        }
-        size_t      get(Configuration::Ptr const& config) const { return config->workerFsBufferSizeBytes(); }
-        std::string str(Configuration::Ptr const& config) const { return std::to_string(get(config)); }
-
-    } workerFsBufferSizeBytes;
-
-    struct {
-
-        std::string const key         = "WORKER_LOADER_NUM_PROC_THREADS";
-        std::string const description = "The number of request processing threads in each worker's"
-                                        " catalog ingest server.";
-        size_t            value;
-
-        bool const updatable = true;
-
-        void save(Configuration::Ptr const& config) {
-            if (value != 0) config->setLoaderNumProcessingThreads(value);
-        }
-        size_t      get(Configuration::Ptr const& config) const { return config->loaderNumProcessingThreads(); }
-        std::string str(Configuration::Ptr const& config) const { return std::to_string(get(config)); }
-
-    } loaderNumProcessingThreads;
-    
-    struct {
-
-        std::string const key         = "WORKER_EXPORTER_NUM_PROC_THREADS";
-        std::string const description = "The number of request processing threads in each worker's"
-                                        " data exporting server.";
-        size_t            value;
-
-        bool const updatable = true;
-
-        void save(Configuration::Ptr const& config) {
-            if (value != 0) config->setExporterNumProcessingThreads(value);
-        }
-        size_t      get(Configuration::Ptr const& config) const { return config->exporterNumProcessingThreads(); }
-        std::string str(Configuration::Ptr const& config) const { return std::to_string(get(config)); }
-
-    } exporterNumProcessingThreads;
-    
-    struct {
-
-        std::string const key         = "WORKER_HTTP_LOADER_NUM_PROC_THREADS";
-        std::string const description = "The number of request processing threads in each worker's"
-                                        " catalog HTTP-based ingest server.";
-        size_t            value;
-
-        bool const updatable = true;
-
-        void save(Configuration::Ptr const& config) {
-            if (value != 0) config->setHttpLoaderNumProcessingThreads(value);
-        }
-        size_t      get(Configuration::Ptr const& config) const { return config->httpLoaderNumProcessingThreads(); }
-        std::string str(Configuration::Ptr const& config) const { return std::to_string(get(config)); }
-
-    } httpLoaderNumProcessingThreads;
-    
-    /**
-     * Pull general parameters from the Configuration and put them into
-     * a JSON array.
-     *
-     * @param config
-     *   pointer to the Configuration object
-     *
-     * @return
-     *   JSON array
-     */
-    nlohmann::json toJson(Configuration::Ptr const& config) const;
+template <typename T>
+struct ConfigParamHandlerTrait {
+    static std::string to_string(T const& val) { return std::to_string(val); }
 };
 
+template <>
+struct ConfigParamHandlerTrait<std::string> {
+    static std::string to_string(std::string const& val) { return val; }
+};
 
+/**
+ * The utility class ConfigParamHandler represents parameter value handlers.
+ */
+template <typename T>
+class ConfigParamHandler {
+public:
+    /// The flag indicating if the transient value of the parameter can be saved back
+    /// into the Configuration. This flag can be used by the command-line tools
+    /// and Web UI applications.
+    bool const updatable;
+
+    /// The name of the parameter's category.
+    std::string const category;
+
+    /// The name of the parameter within its category.
+    std::string const name;
+
+    /// The full path name to a parameter and the name of a key to be used in various
+    /// contexts when a text-based reference to the corresponding Configuration parameter
+    /// is needed (within protocols and application's implementations).
+    std::string const key;
+
+    /// This variable stores a transient value of the parameter before forwarding
+    /// it to the Configuration by method 'save' (if the one is enabled). This variable
+    /// gets initialized with the same value as the one set in variable 'defaultValue'.
+    T value;
+
+    /// The default value to be compared with the one of variable 'value' to see if the change
+    /// has to propagate to the Configuration when method 'save()' gets called and if
+    /// updates are allowed.
+    T const defaultValue;
+
+    ConfigParamHandler(bool updatable_,
+                       std::string const& category_,
+                       std::string const& name_,
+                       T const& defaultValue_=T())
+        :   updatable(updatable_),
+            category(category_),
+            name(name_),
+            key(category_ + "." + name_),
+            value(defaultValue_),
+            defaultValue(defaultValue_) {
+    }
+
+    /// @return An expanded human-readable description of the parameter, its role, etc.
+    ///   Values returned by the method  are used in the command-line tools's --help options
+    ///   and Web UI applications where parameters are presented to users.
+    std::string description() const { return ConfigurationSchema::description(category, name); }
+
+    /**
+     * The type-aware method returning a value of the parameter retrieved from
+     * the Configuration.
+     * @param config A pointer to the Configuration API.
+     * @return A value of the parameter retrieved from the Configuration.
+     */
+    T get(Configuration const& config) const {
+        return config.get<T>(category, name);
+    }
+
+    /**
+     * The method for converting a value of the parameter pulled from the Configuration
+     * into a string.
+     * @param config A pointer to the Configuration API.
+     */
+    std::string str(Configuration const& config) const {
+        return ConfigParamHandlerTrait<T>::to_string(get(config));
+    }
+
+    /**
+     * The method that pushes (if allowed by flag 'updateable') a value stored in
+     * the variable 'value' to the Configuration.
+     * @param config A pointer to the Configuration API.
+     */
+    void save(Configuration& config) {
+        if (updatable && (value != defaultValue)) {
+            config.set<T>(category, name, value);
+        }
+    }
+
+    /**
+     * @param config A pointer to the Configuration API.
+     * @return The JSON representation for the parameter.
+     */
+    nlohmann::json toJson(Configuration const& config) const {
+        return nlohmann::json({
+            {"updatable", updatable ? 1 : 0},
+            {"parameter", key},
+            {"description", description()},
+            {"value", get(config)}
+        });
+    }
+};
+}   // namespace: detail
+
+/**
+ * The class ConfigurationGeneralParams encapsulates handlers for the general parameters
+ * of the Configuration system's API. The handlers are needed to eliminate code
+ * duplication and streamline implementations in some command line tools and REST services
+ * dealing with the Replication System's Configuration.
+ * 
+ * Each handler is represented by a dedicated class detail::ConfigParamHandler<T>
+ * explained above. Some handlers don't allow updates to be made to the Configuration
+ * via the handler's interface.
+ * @see detail:ConfigParamHandler
+ */
+class ConfigurationGeneralParams {
+public:
+    detail::ConfigParamHandler<int> metaVersion =
+            detail::ConfigParamHandler<int>(false, "meta", "version", 0);
+
+    detail::ConfigParamHandler<size_t> requestBufferSizeBytes =
+            detail::ConfigParamHandler<size_t>(true, "common", "request_buf_size_bytes", 0);
+
+    detail::ConfigParamHandler<unsigned int> retryTimeoutSec =
+            detail::ConfigParamHandler<unsigned int>(true, "common", "request_retry_interval_sec", 0);
+
+    detail::ConfigParamHandler<size_t> controllerThreads =
+            detail::ConfigParamHandler<size_t>(true, "controller", "num_threads", 0);
+
+    detail::ConfigParamHandler<size_t> controllerHttpThreads =
+            detail::ConfigParamHandler<size_t>(true, "controller", "http_server_threads", 0);
+
+    detail::ConfigParamHandler<uint16_t> controllerHttpPort =
+            detail::ConfigParamHandler<uint16_t>(true, "controller", "http_server_port", 0);
+
+    detail::ConfigParamHandler<unsigned int> controllerRequestTimeoutSec =
+            detail::ConfigParamHandler<unsigned int>(true, "controller", "request_timeout_sec", 0);
+
+    detail::ConfigParamHandler<unsigned int> jobTimeoutSec =
+            detail::ConfigParamHandler<unsigned int>(true, "controller", "job_timeout_sec", 0);
+
+    detail::ConfigParamHandler<unsigned int> jobHeartbeatTimeoutSec =
+            detail::ConfigParamHandler<unsigned int>(true, "controller", "job_heartbeat_sec",
+                                                     std::numeric_limits<unsigned int>::max());
+
+    detail::ConfigParamHandler<std::string> controllerEmptyChunksDir =
+            detail::ConfigParamHandler<std::string>(true, "controller", "empty_chunks_dir");
+
+    detail::ConfigParamHandler<size_t> databaseServicesPoolSize =
+            detail::ConfigParamHandler<size_t>(true, "database", "services_pool_size", 0);
+
+    detail::ConfigParamHandler<std::string> databaseHost =
+            detail::ConfigParamHandler<std::string>(false, "database", "host");
+
+    detail::ConfigParamHandler<uint16_t> databasePort =
+            detail::ConfigParamHandler<uint16_t>(false, "database", "port", 0);
+
+    detail::ConfigParamHandler<std::string> databaseUser =
+            detail::ConfigParamHandler<std::string>(false, "database", "user");
+
+    detail::ConfigParamHandler<std::string> databaseName =
+            detail::ConfigParamHandler<std::string>(false, "database", "name");
+
+    detail::ConfigParamHandler<std::string> qservMasterDatabaseHost =
+            detail::ConfigParamHandler<std::string>(true, "database", "qserv_master_host");
+
+    detail::ConfigParamHandler<uint16_t> qservMasterDatabasePort =
+            detail::ConfigParamHandler<uint16_t>(true, "database", "qserv_master_port", 0);
+
+    detail::ConfigParamHandler<std::string> qservMasterDatabaseUser =
+            detail::ConfigParamHandler<std::string>(true, "database", "qserv_master_user");
+
+    detail::ConfigParamHandler<std::string> qservMasterDatabaseName =
+            detail::ConfigParamHandler<std::string>(true, "database", "qserv_master_name");
+
+    detail::ConfigParamHandler<size_t> qservMasterDatabaseServicesPoolSize =
+            detail::ConfigParamHandler<size_t>(true, "database", "qserv_master_services_pool_size", 0);
+
+    detail::ConfigParamHandler<std::string> qservMasterDatabaseTmpDir =
+            detail::ConfigParamHandler<std::string>(true, "database", "qserv_master_tmp_dir");
+
+    detail::ConfigParamHandler<int> xrootdAutoNotify =
+            detail::ConfigParamHandler<int>(true, "xrootd", "auto_notify", -1);
+
+    detail::ConfigParamHandler<unsigned int> xrootdTimeoutSec =
+            detail::ConfigParamHandler<unsigned int>(true, "xrootd", "request_timeout_sec", 0);
+
+    detail::ConfigParamHandler<std::string> xrootdHost =
+            detail::ConfigParamHandler<std::string>(true, "xrootd", "host");
+
+    detail::ConfigParamHandler<uint16_t> xrootdPort =
+            detail::ConfigParamHandler<uint16_t>(true, "xrootd", "port", 0);
+
+    detail::ConfigParamHandler<std::string> workerTechnology =
+            detail::ConfigParamHandler<std::string>(true, "worker", "technology");
+
+    detail::ConfigParamHandler<size_t> workerNumProcessingThreads =
+            detail::ConfigParamHandler<size_t>(true, "worker", "num_svc_processing_threads", 0);
+
+    detail::ConfigParamHandler<size_t> fsNumProcessingThreads =
+            detail::ConfigParamHandler<size_t>(true, "worker", "num_fs_processing_threads", 0);
+
+    detail::ConfigParamHandler<size_t> workerFsBufferSizeBytes =
+            detail::ConfigParamHandler<size_t>(true, "worker", "fs_buf_size_bytes", 0);
+
+    detail::ConfigParamHandler<size_t> loaderNumProcessingThreads =
+            detail::ConfigParamHandler<size_t>(true, "worker", "num_loader_processing_threads", 0);
+    
+    detail::ConfigParamHandler<size_t> exporterNumProcessingThreads =
+            detail::ConfigParamHandler<size_t>(true, "worker", "num_exporter_processing_threads", 0);
+    
+    detail::ConfigParamHandler<size_t> httpLoaderNumProcessingThreads =
+            detail::ConfigParamHandler<size_t>(true, "worker", "num_http_loader_processing_threads", 0);
+
+    detail::ConfigParamHandler<uint16_t> workerDefaultSvcPort =
+            detail::ConfigParamHandler<uint16_t>(true, "worker_defaults", "svc_port", 0);
+
+    detail::ConfigParamHandler<uint16_t> workerDefaultFsPort =
+            detail::ConfigParamHandler<uint16_t>(true, "worker_defaults", "fs_port", 0);
+
+    detail::ConfigParamHandler<std::string> workerDefaultDataDir =
+            detail::ConfigParamHandler<std::string>(true, "worker_defaults", "data_dir");
+
+    detail::ConfigParamHandler<uint16_t> workerDefaultDbPort =
+            detail::ConfigParamHandler<uint16_t>(true, "worker_defaults", "db_port", 0);
+
+    detail::ConfigParamHandler<std::string> workerDefaultDbUser =
+            detail::ConfigParamHandler<std::string>(true, "worker_defaults", "db_user");
+
+    detail::ConfigParamHandler<uint16_t> workerDefaultLoaderPort =
+            detail::ConfigParamHandler<uint16_t>(true, "worker_defaults", "loader_port", 0);
+
+    detail::ConfigParamHandler<std::string> workerDefaultLoaderTmpDir =
+            detail::ConfigParamHandler<std::string>(true, "worker_defaults", "loader_tmp_dir");
+
+    detail::ConfigParamHandler<uint16_t> workerDefaultExporterPort =
+            detail::ConfigParamHandler<uint16_t>(true, "worker_defaults", "exporter_port", 0);
+
+    detail::ConfigParamHandler<std::string> workerDefaultExporterTmpDir =
+            detail::ConfigParamHandler<std::string>(true, "worker_defaults", "exporter_tmp_dir");
+
+    detail::ConfigParamHandler<uint16_t> workerDefaultHttpLoaderPort =
+            detail::ConfigParamHandler<uint16_t>(true, "worker_defaults", "http_loader_port", 0);
+
+    detail::ConfigParamHandler<std::string> workerDefaultHttpLoaderTmpDir =
+            detail::ConfigParamHandler<std::string>(true, "worker_defaults", "http_loader_tmp_dir");
+
+    /**
+     * Pull general parameters from the Configuration and put them into a JSON array.
+     *
+     * @param config A pointer to the Configuration object.
+     * @return The JSON array representing parameters.
+     */
+    nlohmann::json toJson(Configuration const& config) const;
+};
 
 }}} // namespace lsst::qserv::replica
 

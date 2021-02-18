@@ -38,7 +38,6 @@
 #include "global/constants.h"
 #include "replica/ChunkedTable.h"
 #include "replica/Configuration.h"
-#include "replica/ConfigurationIFace.h"
 #include "replica/DatabaseMySQL.h"
 #include "replica/DatabaseServices.h"
 #include "replica/FileUtils.h"

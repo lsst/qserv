@@ -44,32 +44,32 @@ CREATE TABLE IF NOT EXISTS `config_worker` (
   `svc_host`     VARCHAR(255)       NOT NULL ,      -- the host name on which the worker server runs
   `svc_port`     SMALLINT UNSIGNED  DEFAULT NULL ,  -- override for the global default
 
-  `fs_host`      VARCHAR(255)       NOT NULL ,      -- the host name on which the built-in FileServer runs
+  `fs_host`      VARCHAR(255)       DEFAULT NULL,   -- the host name on which the built-in FileServer runs
   `fs_port`      SMALLINT UNSIGNED  DEFAULT NULL ,  -- override for the global default
 
   `data_dir`     VARCHAR(255)       DEFAULT NULL ,  -- a file system path to the databases
 
   -- Connection parameters for the Qserv worker database
 
-  `db_host`      VARCHAR(255)       NOT NULL ,      -- the host name on which the worker database server runs
+  `db_host`      VARCHAR(255)       DEFAULT NULL ,  -- the host name on which the worker database server runs
   `db_port`      SMALLINT UNSIGNED  DEFAULT NULL ,  -- override for the global default
   `db_user`      VARCHAR(255)       DEFAULT NULL ,  -- override for the global default
 
   -- Ingest service
 
-  `loader_host`    VARCHAR(255)       NOT NULL ,        -- the host name on which the worker's ingest server runs
+  `loader_host`    VARCHAR(255)       DEFAULT NULL,     -- the host name on which the worker's ingest server runs
   `loader_port`    SMALLINT UNSIGNED  DEFAULT NULL ,    -- override for the global default
   `loader_tmp_dir` VARCHAR(255)       DEFAULT NULL ,    -- a file system path to the temporary folder
 
   -- Data exporting service
 
-  `exporter_host`    VARCHAR(255)       NOT NULL ,        -- the host name on which the worker's data exporting server runs
+  `exporter_host`    VARCHAR(255)       DEFAULT NULL,     -- the host name on which the worker's data exporting server runs
   `exporter_port`    SMALLINT UNSIGNED  DEFAULT NULL ,    -- override for the global default
   `exporter_tmp_dir` VARCHAR(255)       DEFAULT NULL ,    -- a file system path to the temporary folder
 
   -- HTTP-based ingest service
 
-  `http_loader_host`    VARCHAR(255)       NOT NULL ,        -- the host name on which the worker's HTTP-based ingest server runs
+  `http_loader_host`    VARCHAR(255)       DEFAULT NULL,     -- the host name on which the worker's HTTP-based ingest server runs
   `http_loader_port`    SMALLINT UNSIGNED  DEFAULT NULL ,    -- override for the global default
   `http_loader_tmp_dir` VARCHAR(255)       DEFAULT NULL ,    -- a file system path to the temporary folder
 
