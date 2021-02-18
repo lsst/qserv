@@ -24,66 +24,56 @@
 
 using namespace std;
 using json = nlohmann::json;
-using namespace lsst::qserv::replica;
-
-namespace {
-    
-template <typename T>
-json paramToJson(T const& struct_,
-                 Configuration::Ptr const& config) {
-    return json({
-        {"parameter",   struct_.key},
-        {"value",       struct_.get(config)},
-        {"updatable",   struct_.updatable ? 1 : 0},
-        {"description", struct_.description}});
-}
-
-}  // namespace
-
 
 namespace lsst {
 namespace qserv {
 namespace replica {
 
-json ConfigurationGeneralParams::toJson(Configuration::Ptr const& config) const {
-
+json ConfigurationGeneralParams::toJson(Configuration const& config) const {
     json result;
-
-    result.push_back(::paramToJson(requestBufferSizeBytes,      config));
-    result.push_back(::paramToJson(retryTimeoutSec,             config));
-    result.push_back(::paramToJson(controllerThreads,           config));
-    result.push_back(::paramToJson(controllerHttpPort,          config));
-    result.push_back(::paramToJson(controllerHttpThreads,       config));
-    result.push_back(::paramToJson(controllerRequestTimeoutSec, config));
-    result.push_back(::paramToJson(controllerEmptyChunksDir,    config));
-    result.push_back(::paramToJson(jobTimeoutSec,               config));
-    result.push_back(::paramToJson(jobHeartbeatTimeoutSec,      config));
-    result.push_back(::paramToJson(xrootdAutoNotify,            config));
-    result.push_back(::paramToJson(xrootdHost,                  config));
-    result.push_back(::paramToJson(xrootdPort,                  config));
-    result.push_back(::paramToJson(xrootdTimeoutSec,            config));
-    result.push_back(::paramToJson(databaseTechnology,          config));
-    result.push_back(::paramToJson(databaseHost,                config));
-    result.push_back(::paramToJson(databasePort,                config));
-    result.push_back(::paramToJson(databaseUser,                config));
-    result.push_back(::paramToJson(databasePassword,            config));
-    result.push_back(::paramToJson(databaseName,                config));
-    result.push_back(::paramToJson(databaseServicesPoolSize,    config));
-    result.push_back(::paramToJson(qservMasterDatabaseHost,     config));
-    result.push_back(::paramToJson(qservMasterDatabasePort,     config));
-    result.push_back(::paramToJson(qservMasterDatabaseUser,     config));
-    result.push_back(::paramToJson(qservMasterDatabasePassword, config));
-    result.push_back(::paramToJson(qservMasterDatabaseName,     config));
-    result.push_back(::paramToJson(qservMasterDatabaseServicesPoolSize, config));
-    result.push_back(::paramToJson(qservMasterDatabaseTmpDir,   config));
-    result.push_back(::paramToJson(workerTechnology,            config));
-    result.push_back(::paramToJson(workerNumProcessingThreads,  config));
-    result.push_back(::paramToJson(fsNumProcessingThreads,      config));
-    result.push_back(::paramToJson(workerFsBufferSizeBytes,     config));
-    result.push_back(::paramToJson(loaderNumProcessingThreads,  config));
-    result.push_back(::paramToJson(exporterNumProcessingThreads, config));
-    result.push_back(::paramToJson(httpLoaderNumProcessingThreads, config));
-
+    result.push_back(metaVersion.toJson(config));
+    result.push_back(requestBufferSizeBytes.toJson(config));
+    result.push_back(retryTimeoutSec.toJson(config));
+    result.push_back(controllerThreads.toJson(config));
+    result.push_back(controllerRequestTimeoutSec.toJson(config));
+    result.push_back(jobTimeoutSec.toJson(config));
+    result.push_back(jobHeartbeatTimeoutSec.toJson(config));
+    result.push_back(controllerHttpPort.toJson(config));
+    result.push_back(controllerHttpThreads.toJson(config));
+    result.push_back(controllerEmptyChunksDir.toJson(config));
+    result.push_back(xrootdAutoNotify.toJson(config));
+    result.push_back(xrootdHost.toJson(config));
+    result.push_back(xrootdPort.toJson(config));
+    result.push_back(xrootdTimeoutSec.toJson(config));
+    result.push_back(databaseServicesPoolSize.toJson(config));
+    result.push_back(databaseHost.toJson(config));
+    result.push_back(databasePort.toJson(config));
+    result.push_back(databaseUser.toJson(config));
+    result.push_back(databaseName.toJson(config));
+    result.push_back(qservMasterDatabaseServicesPoolSize.toJson(config));
+    result.push_back(qservMasterDatabaseHost.toJson(config));
+    result.push_back(qservMasterDatabasePort.toJson(config));
+    result.push_back(qservMasterDatabaseUser.toJson(config));
+    result.push_back(qservMasterDatabaseName.toJson(config));
+    result.push_back(qservMasterDatabaseTmpDir.toJson(config));
+    result.push_back(workerTechnology.toJson(config));
+    result.push_back(workerNumProcessingThreads.toJson(config));
+    result.push_back(fsNumProcessingThreads.toJson(config));
+    result.push_back(workerFsBufferSizeBytes.toJson(config));
+    result.push_back(loaderNumProcessingThreads.toJson(config));
+    result.push_back(exporterNumProcessingThreads.toJson(config));
+    result.push_back(httpLoaderNumProcessingThreads.toJson(config));
+    result.push_back(workerDefaultSvcPort.toJson(config));
+    result.push_back(workerDefaultFsPort.toJson(config));
+    result.push_back(workerDefaultDataDir.toJson(config));
+    result.push_back(workerDefaultDbPort.toJson(config));
+    result.push_back(workerDefaultDbUser.toJson(config));
+    result.push_back(workerDefaultLoaderPort.toJson(config));
+    result.push_back(workerDefaultLoaderTmpDir.toJson(config));
+    result.push_back(workerDefaultExporterPort.toJson(config));
+    result.push_back(workerDefaultExporterTmpDir.toJson(config));
+    result.push_back(workerDefaultHttpLoaderPort.toJson(config));
+    result.push_back(workerDefaultHttpLoaderTmpDir.toJson(config));
     return result;
 }
 

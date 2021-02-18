@@ -173,10 +173,12 @@ private:
      */
     int _deleteTable();
 
-
     /// Logger stream
     LOG_LOGGER _log;
-    
+
+    /// Configuration URL
+    std::string _configUrl;
+
     /// The input Configuration
     Configuration::Ptr _config;
 
@@ -185,9 +187,6 @@ private:
 
     /// An optional scope of the command "DUMP"
     std::string _dumpScope;
-
-    /// Show the actual database password when dumping the Configuration
-    bool _dumpDbShowPassword = false;
 
     /// Print vertical separator in tables
     bool _verticalSeparator = false;
@@ -202,7 +201,6 @@ private:
     /// negative number) means that the flag wasn't used. A value of 0 means - disable
     /// the worker, and a value of 1 (or any positive number) means - enable the worker.
     int _workerEnable = -1;
-
 
     /// The flag for turning a worker into the read-only mode. The default value
     /// of -1 (or any negative number) means that the flag wasn't used. A value
