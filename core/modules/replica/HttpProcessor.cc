@@ -255,7 +255,7 @@ void HttpProcessor::registerServices() {
             }
     );
     httpServer()->addHandler(
-            "DELETE", "/replication/config/table/:table",
+            "DELETE", "/replication/config/table/:database/:table",
             [self](qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp) {
                 HttpConfigurationModule::process(
                         self->controller(), self->name(), self->_processorConfig,
