@@ -115,6 +115,7 @@ public:
     ~BlendScheduler() override = default;
 
     void queCmd(util::Command::Ptr const& cmd) override;
+    void queCmd(std::vector<util::Command::Ptr> const& cmds) override;
     util::Command::Ptr getCmd(bool wait) override;
 
     void commandStart(util::Command::Ptr const& cmd) override;

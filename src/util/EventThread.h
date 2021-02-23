@@ -83,10 +83,15 @@ public:
     /// Queue a command object in a thread safe way and signal any threads
     /// waiting on the queue that a command is available.
     virtual void queCmd(Command::Ptr const& cmd) {
-        std::lock_guard<std::mutex> lock(_mx);
-        _qu.push_back(cmd);
+        {
+            std::lock_guard<std::mutex> lock(_mx);
+            _qu.push_back(cmd);
+        }
         notify(false); // notify all=false
     };
+
+    /// Atomically queue all commands in cmds.
+    virtual void queCmd(std::vector<Command::Ptr> const& cmds);
 
     /// Get a command off the queue.
     /// If wait is true, wait until a message is available.

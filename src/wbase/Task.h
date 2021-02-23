@@ -124,6 +124,10 @@ public:
     Task(const Task&) = delete;
     virtual ~Task();
 
+    /// Read 'taskMsg' to generate a vector of one or more task objects all using the same 'sendChannel'
+    static std::vector<Ptr> createTasks(std::shared_ptr<proto::TaskMsg> const& taskMsg,
+                                        std::shared_ptr<wbase::SendChannel> sendChannel);
+
     TaskMsgPtr msg; ///< Protobufs Task spec
     std::shared_ptr<SendChannel> sendChannel; ///< For result reporting
     std::string hash; ///< hash of TaskMsg

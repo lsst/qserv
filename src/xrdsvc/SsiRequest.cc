@@ -112,6 +112,8 @@ void SsiRequest::execute(XrdSsiRequest& req) {
             // Increment the counter of the database/chunk resources in use
             _resourceMonitor->increment(_resourceName);
 
+
+            /// &&& Move most of this to Task static function decodeTaskMsg(taskMsg, sendChannel)
             // reqData has the entire request, so we can unpack it without waiting for
             // more data.
             LOGS(_log, LOG_LVL_DEBUG, "Decoding TaskMsg of size " << reqSize);
@@ -129,9 +131,34 @@ void SsiRequest::execute(XrdSsiRequest& req) {
                 || (ru.db()    != taskMsg->db())
                 || (ru.chunk() != taskMsg->chunkid())) {
                 reportError("Mismatched db/chunk in TaskMsg on resource db=" + ru.db() +
+                        " chunkId=" + std::to_string(ru.chunk()));
+                return;
+            }
+
+            auto sendChannel = std::make_shared<wbase::SendChannel>(shared_from_this());
+            auto tasks = wbase::Task::createTasks(taskMsg, sendChannel);
+
+            ReleaseRequestBuffer();
+            t.start();
+            _processor->processTasks(tasks); // Queues tasks to be run later.
+            t.stop();
+            LOGS(_log, LOG_LVL_DEBUG, "Enqueued TaskMsg for " << ru << " in "
+                                      << t.getElapsed() << " seconds");
+
+            /* &&&
+            if (!taskMsg->has_db() || !taskMsg->has_chunkid()
+                || (ru.db()    != taskMsg->db())
+                || (ru.chunk() != taskMsg->chunkid())) {
+                reportError("Mismatched db/chunk in TaskMsg on resource db=" + ru.db() +
                             " chunkId=" + std::to_string(ru.chunk()));
                 return;
             }
+
+            //&&& At this point, the task needs to be broken up into multiple tasks if it
+            //&&& has more than one fragment. All these task should be added as an atomic
+            //&&& operation so they will be run on a single pass of a chunk.
+
+            //&&& Should their be one send channel or multiple send channels? Looks like 1.
 
             // Now that the request is decoded (successfully or not), release the
             // xrootd request buffer. To avoid data races, this must happen before
@@ -144,11 +171,11 @@ void SsiRequest::execute(XrdSsiRequest& req) {
             _task = task;
             ReleaseRequestBuffer();
             t.start();
-            _processor->processTask(task); // Queues task to be run later.
+            _processor->processTask(task); // Queues task to be run later. //&&& processTask needs to take vector of Tasks
             t.stop();
             LOGS(_log, LOG_LVL_DEBUG, "Enqueued TaskMsg for " << ru <<
                  " in " << t.getElapsed() << " seconds");
-
+            */
             break;
         }
         case ResourceUnit::WORKER: {
