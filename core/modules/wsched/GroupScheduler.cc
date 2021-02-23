@@ -95,6 +95,7 @@ wbase::Task::Ptr GroupQueue::peekTask() {
     return _tasks.front();
 }
 
+
 /// Queue a Task in the GroupScheduler.
 /// Tasks in the same chunk are grouped together.
 void GroupScheduler::queCmd(util::Command::Ptr const& cmd) {
@@ -122,6 +123,13 @@ void GroupScheduler::queCmd(util::Command::Ptr const& cmd) {
     LOGS(_log, LOG_LVL_DEBUG, getName() << " queCmd uqCount=" << uqCount
         << " rating=" << t->getScanInfo().scanRating << " interactive=" << t->getScanInteractive());
     util::CommandQueue::_cv.notify_one();
+}
+
+
+void GroupScheduler::queCmd(std::vector<util::Command::Ptr> const& cmds) {
+    for (auto const& cmd:cmds) {
+        queCmd(cmd);
+    }
 }
 
 /// Return a Task from the front of the queue. If no message is available, wait until one is.
