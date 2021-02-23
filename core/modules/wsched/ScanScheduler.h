@@ -65,7 +65,15 @@ public:
     virtual ~ScanScheduler() {}
 
     // util::CommandQueue overrides
+    /// Queuing atomically is very important for ScanSchedulers. All fragments
+    /// for the query should be run on the same scheduler pass of the chunk
+    /// to free up resources as soon as possible.
+    void queCmd(std::vector<util::Command::Ptr> const& cmds) override;
+
+    /// To avoid duplicate code paths, 'cmd' is wrapped in a vector and passed to
+    /// void queCmd(std::vector<Command::Ptr> const& cmds).
     void queCmd(util::Command::Ptr const& cmd) override;
+
     util::Command::Ptr getCmd(bool wait) override;
     void commandStart(util::Command::Ptr const& cmd) override;
     void commandFinish(util::Command::Ptr const& cmd) override;
