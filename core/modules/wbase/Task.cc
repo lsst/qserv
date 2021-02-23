@@ -33,11 +33,14 @@
 
 // Third-party headers
 #include "boost/regex.hpp"
+#include <boost/algorithm/string/replace.hpp>
 
 // LSST headers
 #include "lsst/log/Log.h"
 
 // Qserv headers
+#include "global/constants.h"
+#include "global/LogContext.h"
 #include "proto/TaskMsgDigest.h"
 #include "proto/worker.pb.h"
 #include "wbase/Base.h"
@@ -124,6 +127,38 @@ Task::Task(Task::TaskMsgPtr const& t, SendChannel::Ptr const& sc)
 Task::~Task() {
     allIds.remove(std::to_string(_qId) + "_" + std::to_string(_jId));
     LOGS(_log, LOG_LVL_DEBUG, "~Task() : " << allIds);
+}
+
+
+std::vector<Task::Ptr> Task::createTasks(std::shared_ptr<proto::TaskMsg> const& taskMsg,
+                                         std::shared_ptr<wbase::SendChannel> sendChannel) {
+    QSERV_LOGCONTEXT_QUERY_JOB(taskMsg->queryid(), taskMsg->jobid());
+    std::vector<Task::Ptr> vect;
+
+    ///&&&; // Determine if there should be sub-tasks.
+    int fragmentCount = taskMsg->fragment_size();
+    if (fragmentCount < 1) {
+        throw Bug("QueryRunner: No fragments to execute in TaskMsg");
+    }
+    for (int fragNum=0; fragNum<fragmentCount; ++fragNum) {
+        proto::TaskMsg_Fragment const& fragment(taskMsg->fragment(fragNum));
+        for (const std::string queryStr: fragment.query()) {
+            std::string qs(queryStr);
+            if (fragment.has_subchunks() && false == fragment.subchunks().id().empty()) {
+                for (auto subchunkId : fragment.subchunks().id()) {
+                    boost::algorithm::replace_all(qs, SUBCHUNK_TAG, std::to_string(subchunkId));
+                }
+            } 
+            auto task = std::make_shared<wbase::Task>(taskMsg, sendChannel);
+            task->setQueryStr(qs); //&&& remove and make part of constructor
+            task->setQueryFragmentNum(fragNum); //&&& Is it better to move fragment info from
+                                          //&&& ChunkResource getResourceFragment(int i) to here???
+                                          //&&& It looks like Task should contain a ChunkResource::Info object
+                                          //&&& which could help cleaan up the mess in ChunkResource.
+            vect.push_back(task);
+        }
+    }
+    return vect;
 }
 
 

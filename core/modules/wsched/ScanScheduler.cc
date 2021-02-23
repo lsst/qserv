@@ -221,6 +221,46 @@ util::Command::Ptr ScanScheduler::getCmd(bool wait)  {
 
 
 void ScanScheduler::queCmd(util::Command::Ptr const& cmd) {
+    std::vector<util::Command::Ptr> vect;
+    vect.push_back(cmd);
+    queCmd(vect);
+}
+
+
+void ScanScheduler::queCmd(std::vector<util::Command::Ptr> const& cmds) {
+
+    {
+        std::lock_guard<std::mutex> lock(util::CommandQueue::_mx);
+
+        for (auto const& cmd:cmds) {
+            wbase::Task::Ptr t = std::dynamic_pointer_cast<wbase::Task>(cmd);
+            if (t == nullptr) {
+                LOGS(_log, LOG_LVL_WARN, getName() << " queCmd could not be converted to Task or was nullptr");
+                return;
+            }
+            QSERV_LOGCONTEXT_QUERY_JOB(t->getQueryId(), t->getJobId());
+            LOGS(_log, LOG_LVL_INFO, getName() // &&& change to debug
+                    << " queCmd rating=" << t->getScanInfo().scanRating << " interactive=" << t->getScanInteractive());
+            {
+                // &&& std::lock_guard<std::mutex> lock(util::CommandQueue::_mx);
+                auto uqCount = _incrCountForUserQuery(t->getQueryId());
+                LOGS(_log, LOG_LVL_DEBUG, getName() << " queCmd " << " uqCount=" << uqCount);
+                t->setMemMan(_memMan);
+                _taskQueue->queueTask(t);
+                _infoChanged = true;
+            }
+        }
+    }
+    if (cmds.size() > 1) {
+        util::CommandQueue::_cv.notify_all();
+    } else {
+        util::CommandQueue::_cv.notify_one();
+    }
+}
+
+
+/* &&&
+void ScanScheduler::queCmd(util::Command::Ptr const& cmd) {
     wbase::Task::Ptr t = std::dynamic_pointer_cast<wbase::Task>(cmd);
     if (t == nullptr) {
         LOGS(_log, LOG_LVL_WARN, getName() << " queCmd could not be converted to Task or was nullptr");
@@ -239,6 +279,7 @@ void ScanScheduler::queCmd(util::Command::Ptr const& cmd) {
     }
     util::CommandQueue::_cv.notify_one();
 }
+*/
 
 
 /// @returns - true if a task was removed from the queue. If the task was running

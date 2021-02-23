@@ -43,6 +43,38 @@ namespace wsched {
 
 
 /// Queue a Task with other tasks on the same chunk.
+void ChunkTasksQueue::queueTask(std::vector<wbase::Task::Ptr> const& tasks) {
+    std::lock_guard<std::mutex> lg(_mapMx);
+    auto iter = _chunkMap.end();
+    for (auto const& task:tasks) {
+        int chunkId = task->getChunkId();
+        /// If it's the first time through, or the chunkId is different than the previous one, then
+        /// find the correct ChunkTask.
+        if (iter == _chunkMap.end() || iter->first != chunkId) {
+            iter = _chunkMap.find(chunkId);
+            if (iter == _chunkMap.end()) {
+                // Correct ChunkTask wasn't found, make a new one.
+                std::pair<int, ChunkTasks::Ptr> ele(chunkId, std::make_shared<ChunkTasks>(chunkId, _memMan));
+                auto res = _chunkMap.insert(ele); // insert should fail if the key already exists.
+                LOGS(_log, LOG_LVL_DEBUG, " queueTask chunk=" << chunkId << " created=" << res.second);
+                iter =  res.first;
+            }
+        }
+        ++_taskCount;
+        iter->second->queTask(task);
+    }
+}
+
+
+/// Queue a Task with other tasks on the same chunk.
+void ChunkTasksQueue::queueTask(wbase::Task::Ptr const& task) {
+    std::vector<wbase::Task::Ptr> vect;
+    vect.push_back(task);
+    queueTask(vect);
+}
+
+/* &&&
+/// Queue a Task with other tasks on the same chunk.
 void ChunkTasksQueue::queueTask(wbase::Task::Ptr const& task) {
     // Insert a new ChunkTask object into the map if it doesn't already exist.
     auto insertChunkTask = [this](int chunkId) -> ChunkTasksQueue::ChunkMap::iterator {
@@ -62,6 +94,8 @@ void ChunkTasksQueue::queueTask(wbase::Task::Ptr const& task) {
     ++_taskCount;
     iter->second->queTask(task);
 }
+*/
+
 
 
 /// @return true if this object is ready to provide a Task from its queue.

@@ -110,6 +110,10 @@ public:
      */
     void processTask(std::shared_ptr<wbase::Task> const& task) override;
 
+    /// Process a group of query processing tasks.
+    /// @see sgProcessor::processTask()
+    void processTasks(std::vector<std::shared_ptr<wbase::Task>> const& tasks) override;
+
    /**
      * Implement the corresponding method of the base class
      *
@@ -120,6 +124,8 @@ public:
     nlohmann::json statusToJson() override;
 
 private:
+    /// Set the function called when it is time to process the task.
+    void _setRunFunc(std::shared_ptr<wbase::Task> const& task);
 
     std::shared_ptr<wdb::SQLBackend>       _backend;
     std::shared_ptr<wdb::ChunkResourceMgr> _chunkResourceMgr;
