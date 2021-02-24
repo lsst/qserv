@@ -135,7 +135,7 @@ std::vector<Task::Ptr> Task::createTasks(std::shared_ptr<proto::TaskMsg> const& 
     QSERV_LOGCONTEXT_QUERY_JOB(taskMsg->queryid(), taskMsg->jobid());
     std::vector<Task::Ptr> vect;
 
-    ///&&&; // Determine if there should be sub-tasks.
+    /// Make one task for each fragment.
     int fragmentCount = taskMsg->fragment_size();
     if (fragmentCount < 1) {
         throw Bug("QueryRunner: No fragments to execute in TaskMsg");
@@ -150,7 +150,7 @@ std::vector<Task::Ptr> Task::createTasks(std::shared_ptr<proto::TaskMsg> const& 
                 }
             } 
             auto task = std::make_shared<wbase::Task>(taskMsg, sendChannel);
-            task->setQueryStr(qs); //&&& remove and make part of constructor
+            task->setQueryString(qs); //&&& remove and make part of constructor
             task->setQueryFragmentNum(fragNum); //&&& Is it better to move fragment info from
                                           //&&& ChunkResource getResourceFragment(int i) to here???
                                           //&&& It looks like Task should contain a ChunkResource::Info object
@@ -158,7 +158,18 @@ std::vector<Task::Ptr> Task::createTasks(std::shared_ptr<proto::TaskMsg> const& 
             vect.push_back(task);
         }
     }
+    sendChannel->setTaskCount(fragmentCount);
     return vect;
+}
+
+
+void Task::setQueryString(std::string const& qs) {
+    _queryString = qs;
+}
+
+
+void Task::setQueryFragmentNum(int fragNum) {
+    _queryFragmentNum = fragNum;
 }
 
 

@@ -140,6 +140,10 @@ public:
     void cancel();
     bool getCancelled() const { return _cancelled; }
 
+    void setQueryString(std::string const& qs); ///< The query this task will run.
+    std::string getQueryString() { return _queryString; }
+    void setQueryFragmentNum(int fragNum); ///< The fragment number for this query in the task message.
+    int getQueryFragmentNum() { return _queryFragmentNum; }
     bool setTaskQueryRunner(TaskQueryRunner::Ptr const& taskQueryRunner); ///< return true if already cancelled.
     void freeTaskQueryRunner(TaskQueryRunner *tqr);
     void setTaskScheduler(TaskScheduler::Ptr const& scheduler) { _taskScheduler = scheduler; }
@@ -178,10 +182,12 @@ public:
     std::chrono::milliseconds finished(std::chrono::system_clock::time_point const& now);
 
 private:
-    QueryId  const    _qId{0}; //< queryId from czar
-    int      const    _jId{0}; //< jobId from czar
-    int      const    _attemptCount{0}; // attemptCount from czar
+    QueryId  const    _qId = 0; ///< queryId from czar
+    int      const    _jId = 0; ///< jobId from czar
+    int      const    _attemptCount = 0; // attemptCount from czar
     std::string const _idStr{QueryIdHelper::makeIdStr(0, 0, true)}; // < for logging only
+    std::string _queryString; ///< The query this task will run.
+    int _queryFragmentNum = 0; ///< The fragment number of the query in the task message.
 
     std::atomic<bool> _cancelled{false};
     std::atomic<bool> _safeToMoveRunning{false}; ///< false until done with waitForMemMan().

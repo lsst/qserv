@@ -139,6 +139,23 @@ SendChannel::Ptr SendChannel::newStringChannel(std::string& d) {
 }
 
 
+void SendChannel::setTaskCount(int taskCount) {
+    _taskCount = taskCount;
+}
+
+
+bool SendChannel::transmitTaskLast(bool inLast) {
+    /// _caller must have locked _streamMutex before calling this.
+    if (not inLast) {
+        // This wasn't the last message buffer for this task, so it doesn't matter.
+        return false;
+    }
+    ++_lastCount;
+    bool lastTaskDone = _lastCount >= _taskCount;
+    return lastTaskDone;
+}
+
+
 /// This is the standard definition of SendChannel which acually does something!
 /// We vector responses posted to SendChannel via the tightly bound SsiRequest
 /// object as this object knows how to effect Ssi responses.

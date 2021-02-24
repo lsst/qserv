@@ -81,6 +81,20 @@ public:
         _release();
     }
 
+    /// Set the number of Tasks that will be sent using this SendChannel.
+    void setTaskCount(int taskCount);
+
+    /// Return a reference to the 'streamMutex'.
+    std::mutex& getStreamMutexRef() {
+        return _streamMutex;
+    }
+
+    ///
+    /// @return true if inLast is true and this is the last task to call this
+    ///              with inLast == true.
+    /// The calling Thread must hold 'streamMutex' before calling this.
+    bool transmitTaskLast(bool inLast);
+
     /// Construct a new NopChannel that ignores everything it is asked to send
     static SendChannel::Ptr newNopChannel();
 
@@ -93,6 +107,12 @@ protected:
 
 private:
     std::shared_ptr<xrdsvc::SsiRequest> _ssiRequest;
+
+    /// _streamMutex is used to protect _lastCount and messages that are sent
+    /// using more than one buffer and order is important.
+    std::mutex _streamMutex;
+    int _taskCount = 0; ///< The number of tasks to be sent over this SendChannel.
+    int _lastCount = 0; ///< Then number of 'last' buffers received.
 };
 
 }}} // lsst::qserv::wbase
