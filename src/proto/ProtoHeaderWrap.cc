@@ -47,7 +47,11 @@ const size_t ProtoHeaderWrap::PROTOBUFFER_DESIRED_LIMIT = 2000000;
 const size_t ProtoHeaderWrap::PROTOBUFFER_HARD_LIMIT = 64000000;
 
 
-std::string ProtoHeaderWrap::wrap(std::string& protoHeaderString) {
+size_t ProtoHeaderWrap::getProtoHeaderSize() {
+    return PROTO_HEADER_SIZE;
+}
+
+std::string ProtoHeaderWrap::wrap(std::string const& protoHeaderString) {
     char phSize = static_cast<char>(protoHeaderString.size());
     std::string msgBuf{phSize};
     msgBuf += protoHeaderString;
@@ -59,7 +63,7 @@ std::string ProtoHeaderWrap::wrap(std::string& protoHeaderString) {
 }
 
 bool ProtoHeaderWrap::unwrap(std::shared_ptr<WorkerResponse>& response, std::vector<char>& buffer) {
-    response->headerSize = static_cast<unsigned char>(buffer[0]);
+    response->headerSize = static_cast<unsigned char const>(buffer[0]);
     if (!ProtoImporter<ProtoHeader>::setMsgFrom(response->protoHeader, &buffer[1], response->headerSize)) {
         return false;
     }

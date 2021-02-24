@@ -42,6 +42,7 @@ namespace lsst {
 namespace qserv {
 namespace wcontrol {
   class Foreman;
+  class TransmitMgr;
 }
 namespace wpublish {
   class ChunkInventory;
@@ -75,8 +76,14 @@ private:
     void _initInventory();
     void _configure();
 
+    /// List of available chunks.
     std::shared_ptr<wpublish::ChunkInventory> _chunkInventory;
+
+    // The Foreman contains essential structures for adding and running tasks.
     std::shared_ptr<wcontrol::Foreman> _foreman;
+
+    /// Used to throttle outgoing massages to prevent czars from being overloaded.
+    std::shared_ptr<wcontrol::TransmitMgr> _transmitMgr;
 
     mysql::MySqlConfig const _mySqlConfig;
 

@@ -50,6 +50,9 @@ namespace wbase {
 struct MsgProcessor;
 class Task;
 }
+namespace wcontrol {
+class TransmitMgr;
+}
 namespace wpublish {
 class ResourceMonitor;
 }}}
@@ -81,11 +84,13 @@ public:
             std::string const&                               rname,
             std::shared_ptr<wpublish::ChunkInventory> const& chunkInventory,
             std::shared_ptr<wbase::MsgProcessor> const&      processor,
-            mysql::MySqlConfig const&                        mySqlConfig) {
+            mysql::MySqlConfig const&                        mySqlConfig,
+            std::shared_ptr<wcontrol::TransmitMgr> const&    transmitMgr) {
         auto req = SsiRequest::Ptr(new SsiRequest(rname,
                                                   chunkInventory,
                                                   processor,
-                                                  mySqlConfig));
+                                                  mySqlConfig,
+                                                  transmitMgr));
         req->_selfKeepAlive = req;
         return req;
     }
@@ -108,6 +113,8 @@ public:
     bool replyFile(int fd, long long fSize);
     bool replyStream(StreamBuffer::Ptr const& sbuf, bool last);
 
+    bool sendMetadata(const char *buf, int blen);
+
     /// Call this to allow object to die after it truly is no longer needed.
     /// i.e. It is know Finish() will not be called.
     /// NOTE: It is important that any non-static SsiRequest member
@@ -122,12 +129,14 @@ private:
     SsiRequest(std::string const&                               rname,
                std::shared_ptr<wpublish::ChunkInventory> const& chunkInventory,
                std::shared_ptr<wbase::MsgProcessor> const&      processor,
-               mysql::MySqlConfig const&                        mySqlConfig)
+               mysql::MySqlConfig const&                        mySqlConfig,
+               std::shared_ptr<wcontrol::TransmitMgr> const&    transmitMgr)
         :   _chunkInventory(chunkInventory),
             _validator(_chunkInventory->newValidator()),
             _processor(processor),
             _resourceName(rname),
-            _mySqlConfig(mySqlConfig) {
+            _mySqlConfig(mySqlConfig),
+            _transmitMgr(transmitMgr){
     }
 
     /// For internal error reporting
@@ -155,13 +164,14 @@ private:
 
     std::mutex  _finMutex;  ///< Protects execute() from Finish(), _finished, and _stream
     bool _finished = false;  ///< set to true when Finished called
-    std::string _resourceName;
+    std::string _resourceName; ///< chunk identifier
 
     std::shared_ptr<ChannelStream> _stream;
 
     std::weak_ptr<wbase::Task> _task;
 
     mysql::MySqlConfig const _mySqlConfig;
+    std::shared_ptr<wcontrol::TransmitMgr> _transmitMgr; ///< limits transmits to czars.
 
     /// Make sure this object exists until Finish() is called.
     /// Make a local copy before calling reset() within and non-static member function.

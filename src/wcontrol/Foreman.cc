@@ -41,10 +41,9 @@
 #include "mysql/MySqlConfig.h"
 #include "proto/worker.pb.h"
 #include "wbase/Base.h"
-#include "wbase/SendChannel.h"
+#include "wbase/SendChannelShared.h"
 #include "wbase/WorkerCommand.h"
 #include "wcontrol/SqlConnMgr.h"
-#include "wcontrol/TransmitMgr.h"
 #include "wdb/ChunkResource.h"
 #include "wdb/QueryRunner.h"
 
@@ -63,14 +62,12 @@ Foreman::Foreman(Scheduler::Ptr                  const& scheduler,
                  unsigned int                    maxPoolThreads,
                  mysql::MySqlConfig              const& mySqlConfig,
                  wpublish::QueriesAndChunks::Ptr const& queries,
-                 wcontrol::SqlConnMgr::Ptr       const& sqlConnMgr,
-                 wcontrol::TransmitMgr::Ptr      const& transmitMgr)
+                 wcontrol::SqlConnMgr::Ptr       const& sqlConnMgr)
 
     :   _scheduler  (scheduler),
         _mySqlConfig(mySqlConfig),
         _queries    (queries),
-        _sqlConnMgr (sqlConnMgr),
-        _transmitMgr(transmitMgr) {
+        _sqlConnMgr (sqlConnMgr) {
 
     // Make the chunk resource mgr
     // Creating backend makes a connection to the database for making temporary tables.
@@ -98,19 +95,20 @@ Foreman::~Foreman() {
 }
 
 
-void Forman::setRunFunc(shared_ptr<wbase::Task> const& task) {
+void Foreman::_setRunFunc(shared_ptr<wbase::Task> const& task) {
     auto func = [this, task](util::CmdData*){
         proto::TaskMsg const& msg = *task->msg;
         int const resultProtocol = 2; // See proto/worker.proto Result protocol
         if (!msg.has_protocol() || msg.protocol() < resultProtocol) {
             LOGS(_log, LOG_LVL_WARN, "processMsg Unsupported wire protocol");
-            if (!task->getCancelled()) {
+            if (!task->isCancelled()) {
                 // We should not send anything back to xrootd if the task has been cancelled.
-                task->sendChannel->sendError("Unsupported wire protocol", 1);
+                lock_guard<mutex> streamLock(task->sendChannel->streamMutex);
+                task->sendChannel->sendError(streamLock, "Unsupported wire protocol", 1);
             }
         } else {
             auto qr = wdb::QueryRunner::newQueryRunner(task, _chunkResourceMgr, _mySqlConfig,
-                    _sqlConnMgr, _transmitMgr);
+                                                       _sqlConnMgr);
             bool success = false;
             try {
                 success = qr->runQuery();
@@ -118,10 +116,17 @@ void Forman::setRunFunc(shared_ptr<wbase::Task> const& task) {
                 LOGS(_log, LOG_LVL_ERROR, "runQuery threw UnsupportedError " << e.what() << *task);
             }
             if (not success) {
+                lock_guard<mutex> streamLock(task->sendChannel->streamMutex);
                 LOGS(_log, LOG_LVL_ERROR, "runQuery failed " << *task);
+                if (not task->sendChannel->kill(streamLock)) {
+                    LOGS(_log, LOG_LVL_WARN, "runQuery sendChannel killed");
+                }
             }
         }
-        // Transmission is done, but 'task' contains statistics that are still useful.
+        // Transmission is done, but 'task' contains statistics that are still useful, but
+        // the resources used by sendChannel need to be freed quickly.
+        //   The QueryRunner class access to sendChannel for results is over by this point,
+        //   so this wont be an issue there.
         task->sendChannel.reset(); // Frees its xrdsvc::SsiRequest object.
     };
 
@@ -131,7 +136,6 @@ void Forman::setRunFunc(shared_ptr<wbase::Task> const& task) {
 
 /// Put the task on the scheduler to be run later.
 void Foreman::processTasks(vector<wbase::Task::Ptr> const& tasks) {
-
     std::vector<util::Command::Ptr> cmds;
     for (auto const& task:tasks) {
         _setRunFunc(task);
@@ -144,7 +148,7 @@ void Foreman::processTasks(vector<wbase::Task::Ptr> const& tasks) {
 // &&& delete with parents ???
 /// Put the task on the scheduler to be run later.
 void Foreman::processTask(shared_ptr<wbase::Task> const& task) {
-
+    LOGS(_log, LOG_LVL_INFO, "&&& processTask");
     /* &&&
     auto func = [this, task](util::CmdData*){
         proto::TaskMsg const& msg = *task->msg;

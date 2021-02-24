@@ -37,7 +37,9 @@
 #include "proto/worker.pb.h"
 #include "util/Command.h"
 #include "util/EventThread.h"
+#include "wbase/SendChannelShared.h"
 #include "wbase/Task.h"
+#include "wcontrol/TransmitMgr.h"
 #include "wpublish/QueriesAndChunks.h"
 #include "wsched/ChunkDisk.h"
 #include "wsched/ChunkTasksQueue.h"
@@ -60,22 +62,23 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.wsched.testSchedulers");
 using lsst::qserv::proto::TaskMsg;
 using lsst::qserv::wbase::Task;
 using lsst::qserv::wbase::SendChannel;
+using lsst::qserv::wbase::SendChannelShared;
 
 double const oneHr = 60.0;
 
+lsst::qserv::wcontrol::TransmitMgr::Ptr locTransmitMgr =
+        std::make_shared<lsst::qserv::wcontrol::TransmitMgr>(50,10);
+
+std::vector<SendChannelShared::Ptr> locSendSharedPtrs;
+
 Task::Ptr makeTask(std::shared_ptr<TaskMsg> tm) {
-    Task::Ptr task(new Task(tm, std::shared_ptr<SendChannel>()));
+    auto sendC = std::make_shared<SendChannel>();
+    auto sc = SendChannelShared::create(sendC, locTransmitMgr);
+    locSendSharedPtrs.push_back(sc);
+    Task::Ptr task(new Task(tm, "", 0, sc));
     task->setSafeToMoveRunning(true); // Can't wait for MemMan in unit tests.
     return task;
 }
-
-/* &&&
-std::vector<lsst::qserv::util::Command::Ptr> makeVect(Task::Ptr const& task) {
-    std::vector<lsst::qserv::util::Command::Ptr> vect;
-    vect.push_back(task);
-    return vect;
-}
-*/
 
 
 struct SchedulerFixture {
@@ -1125,5 +1128,6 @@ BOOST_AUTO_TEST_CASE(ChunkTasksQueueTest) {
     BOOST_CHECK(ctl.getActiveChunkId() == -1);
     LOGS(_log, LOG_LVL_DEBUG, "ChunkTasksQueueTest done");
 }
+
 
 BOOST_AUTO_TEST_SUITE_END()

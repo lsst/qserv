@@ -65,8 +65,12 @@ public:
     /// largeResult - true if there is more than 1 message in the result.
     /// nextBufSize - size of the next buffer
     /// resultRows - number of result rows in this result.
+/* &&&    
     virtual bool flush(int bLen, BufPtr const& bufPtr, bool& last, bool& largeResult,
                        int& nextBufSize, int& resultRows) = 0;
+*/
+    virtual bool flush(int bLen, BufPtr const& bufPtr, bool& last, bool& largeResult,
+                       int& nextBufSize) = 0;
 
     /// Signal an unrecoverable error condition. No further calls are expected.
     virtual void errorFlush(std::string const& msg, int code) = 0;

@@ -45,15 +45,11 @@ namespace util {
 
 void CommandQueue::queCmd(std::vector<Command::Ptr> const& cmds) {
     {
-        LOGS(_log, LOG_LVL_WARN, "&&& queCmd a");
         std::lock_guard<std::mutex> lock(_mx);
-        LOGS(_log, LOG_LVL_WARN, "&&& queCmd b");
         for (auto const& cmd:cmds) {
-            LOGS(_log, LOG_LVL_WARN, "&&& queCmd c");
             _qu.push_back(cmd);
         }
     }
-    LOGS(_log, LOG_LVL_WARN, "&&& queCmd d " << cmds.size());
     notify(cmds.size() > 1); // notify all if more than 1 command, otherwise notify 1.
 }
 
