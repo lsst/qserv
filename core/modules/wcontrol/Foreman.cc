@@ -98,7 +98,7 @@ Foreman::~Foreman() {
 }
 
 
-void Forman::setRunFunc(shared_ptr<wbase::Task> const& task) {
+void Foreman::_setRunFunc(shared_ptr<wbase::Task> const& task) {
     auto func = [this, task](util::CmdData*){
         proto::TaskMsg const& msg = *task->msg;
         int const resultProtocol = 2; // See proto/worker.proto Result protocol
