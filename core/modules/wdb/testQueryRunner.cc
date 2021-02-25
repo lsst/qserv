@@ -89,7 +89,7 @@ struct Fixture {
     shared_ptr<Task> newTask() {
         shared_ptr<TaskMsg> msg(newTaskMsg());
         shared_ptr<SendChannel> sc(SendChannel::newNopChannel());
-        Task::Ptr taskPtr(new Task(msg, sc));
+        Task::Ptr taskPtr(new Task(msg, "", 0, sc));
         return taskPtr;
     }
 
@@ -110,7 +110,7 @@ BOOST_FIXTURE_TEST_SUITE(Basic, Fixture)
 BOOST_AUTO_TEST_CASE(Simple) {
     shared_ptr<TaskMsg> msg(newTaskMsg());
     shared_ptr<SendChannel> sc(SendChannel::newNopChannel());
-    Task::Ptr task(new Task(msg, sc));
+    Task::Ptr task(new Task(msg, "", 0, sc));
     FakeBackend::Ptr backend = make_shared<FakeBackend>();
     shared_ptr<ChunkResourceMgr> crm = ChunkResourceMgr::newMgr(backend);
     SqlConnMgr::Ptr sqlConnMgr = make_shared<SqlConnMgr>(20,15);
@@ -123,7 +123,7 @@ BOOST_AUTO_TEST_CASE(Output) {
     string out;
     shared_ptr<TaskMsg> msg(newTaskMsg());
     shared_ptr<SendChannel> sc(SendChannel::newStringChannel(out));
-    Task::Ptr task(new Task(msg, sc));
+    Task::Ptr task(new Task(msg, "", 0, sc));
     FakeBackend::Ptr backend = make_shared<FakeBackend>();
     shared_ptr<ChunkResourceMgr> crm = ChunkResourceMgr::newMgr(backend);
     SqlConnMgr::Ptr sqlConnMgr = make_shared<SqlConnMgr>(20,15);

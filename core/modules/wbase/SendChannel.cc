@@ -140,21 +140,18 @@ SendChannel::Ptr SendChannel::newStringChannel(std::string& d) {
 
 
 void SendChannel::setTaskCount(int taskCount) {
-    LOGS(_log, LOG_LVL_INFO, "&&& taskLast setTaskCount=" << taskCount);
     _taskCount = taskCount;
 }
 
 
 bool SendChannel::transmitTaskLast(bool inLast) {
     /// _caller must have locked _streamMutex before calling this.
-    LOGS(_log, LOG_LVL_INFO, "&&& taskLast a " << inLast << " lastC=" << _lastCount << " taskC=" << _taskCount);
     if (not inLast) {
         // This wasn't the last message buffer for this task, so it doesn't matter.
         return false;
     }
     ++_lastCount;
     bool lastTaskDone = _lastCount >= _taskCount;
-    LOGS(_log, LOG_LVL_INFO, "&&& taskLast z " << inLast << " lastC=" << _lastCount << " taskC=" << _taskCount << " lastTaskDone=" << lastTaskDone);
     return lastTaskDone;
 }
 
