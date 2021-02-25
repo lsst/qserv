@@ -143,9 +143,10 @@ std::vector<Task::Ptr> Task::createTasks(std::shared_ptr<proto::TaskMsg> const& 
     for (int fragNum=0; fragNum<fragmentCount; ++fragNum) {
         proto::TaskMsg_Fragment const& fragment(taskMsg->fragment(fragNum));
         for (const std::string queryStr: fragment.query()) {
-            std::string qs(queryStr);
             if (fragment.has_subchunks() && false == fragment.subchunks().id().empty()) {
                 for (auto subchunkId : fragment.subchunks().id()) {
+                    std::string qs(queryStr);
+                    LOGS(_log, LOG_LVL_INFO, "&&& subchunkId=" << subchunkId << " qs=" << qs);
                     boost::algorithm::replace_all(qs, SUBCHUNK_TAG, std::to_string(subchunkId));
                     auto task = std::make_shared<wbase::Task>(taskMsg, sendChannel);
                     task->setQueryString(qs); //&&& remove and make part of constructor
@@ -155,12 +156,12 @@ std::vector<Task::Ptr> Task::createTasks(std::shared_ptr<proto::TaskMsg> const& 
                 }
             } else {
                 auto task = std::make_shared<wbase::Task>(taskMsg, sendChannel);
-                task->setQueryString(qs); //&&& remove and make part of constructor
+                task->setQueryString(queryStr); //&&& remove and make part of constructor
                 task->setQueryFragmentNum(fragNum); //&&& Is it better to move fragment info from
                                                     //&&& ChunkResource getResourceFragment(int i) to here???
                                                     //&&& It looks like Task should contain a ChunkResource::Info object
                                                     //&&& which could help cleaan up the mess in ChunkResource.
-                LOGS(_log, LOG_LVL_INFO, "&&& createTasks b task fn=" << fragNum << " q=" << qs);
+                LOGS(_log, LOG_LVL_INFO, "&&& createTasks b task fn=" << fragNum << " q=" << queryStr);
                 vect.push_back(task);
             }
 
