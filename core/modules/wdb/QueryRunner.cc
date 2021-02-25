@@ -311,12 +311,19 @@ util::TimerHistogram transmitHisto("transmit Hist", {0.1, 1, 5, 10, 20, 40});
 /// If 'last' is true, this is the last message in the result set
 /// and flags are set accordingly.
 void QueryRunner::_transmit(bool inLast, unsigned int rowCount, size_t tSize) {
+    QSERV_LOGCONTEXT_QUERY_JOB(_task->getQueryId(), _task->getJobId());
     LOGS(_log, LOG_LVL_INFO, "_transmitMgr=" << *_transmitMgr
          << " last=" << inLast << " rowCount=" << rowCount << " tSize=" << tSize);
     wcontrol::TransmitLock transmitLock(*_transmitMgr, _task->getScanInteractive(), _largeResult);
     // Nothing else can use this sendChannel until this transmit is done.
-    lock_guard<mutex> streamLock(_task->sendChannel->getStreamMutexRef());
+    LOGS(_log, LOG_LVL_INFO, "&&&QR a transmitlock " << inLast);
+    mutex* streamMutex = _task->sendChannel->getStreamMutexPtr();
+    LOGS(_log, LOG_LVL_INFO, "&&&QR a1 transmitlock " << streamMutex);
+    lock_guard<mutex> streamLock(*streamMutex);
+    LOGS(_log, LOG_LVL_INFO, "&&&QR b streamlock " << inLast);
+    LOGS(_log, LOG_LVL_INFO, "&&&QR huh");
     bool last = _task->sendChannel->transmitTaskLast(inLast);
+    LOGS(_log, LOG_LVL_INFO, "&&&QR c " << inLast << " last=" << last);
     string resultString;
     _result->set_queryid(_task->getQueryId());
     _result->set_jobid(_task->getJobId());
@@ -333,18 +340,22 @@ void QueryRunner::_transmit(bool inLast, unsigned int rowCount, size_t tSize) {
         LOGS(_log, LOG_LVL_ERROR, msg);
     }
     _result->SerializeToString(&resultString);
+    LOGS(_log, LOG_LVL_INFO, "&&&QR d header");
     _transmitHeader(resultString);
+    LOGS(_log, LOG_LVL_INFO, "&&&QR e done");
     LOGS(_log, LOG_LVL_DEBUG, "_transmit last=" << last
             << " resultString=" << util::prettyCharList(resultString, 5));
 
     if (!_cancelled) {
         // StreamBuffer::create invalidates resultString by using std::move()
+        LOGS(_log, LOG_LVL_INFO, "&&&QR f stream");
         xrdsvc::StreamBuffer::Ptr streamBuf(xrdsvc::StreamBuffer::createWithMove(resultString));
         _sendBuf(streamBuf, last, transmitHisto, "body");
+        LOGS(_log, LOG_LVL_INFO, "&&&QR g stream");
     } else {
         LOGS(_log, LOG_LVL_DEBUG, "_transmit cancelled");
     }
-
+    LOGS(_log, LOG_LVL_INFO, "&&&QR h end");
     _largeResult = true; // Transmits after the first are considered large results.
 }
 
@@ -443,6 +454,7 @@ private:
 bool QueryRunner::_dispatchChannel() {
     int fragNum = _task->getQueryFragmentNum();
     proto::TaskMsg& m = *_task->msg;
+    LOGS(_log, LOG_LVL_INFO, "&&& QRD a fn=" << fragNum);
     _initMsgs();
     //&&&bool firstResult = true;
     bool erred = false;
@@ -462,13 +474,15 @@ bool QueryRunner::_dispatchChannel() {
         if (!_cancelled) {
             //&&& proto::TaskMsg_Fragment const& fragment(m.fragment(fragNum));
             string const& query = _task->getQueryString();
-
+            LOGS(_log, LOG_LVL_INFO, "&&& QRD d fn=" << fragNum << " q=" << query);
             util::Timer sqlTimer;
             sqlTimer.start();
             MYSQL_RES* res = _primeResult(query); // This runs the SQL query, throws SqlErrorObj on failure.
+            LOGS(_log, LOG_LVL_INFO, "&&& QRD e");
             sqlTimer.stop();
             LOGS(_log, LOG_LVL_DEBUG, " fragment time=" << sqlTimer.getElapsed() << " query=" << query);
             _fillSchema(res);
+            LOGS(_log, LOG_LVL_INFO, "&&& QRD f");
             numFields = mysql_num_fields(res);
             // TODO fritzm: revisit this error strategy
             // (see pull-request for DM-216)
@@ -476,7 +490,9 @@ bool QueryRunner::_dispatchChannel() {
             if (!_fillRows(res, numFields, rowCount, tSize)) {
                 erred = true;
             }
+            LOGS(_log, LOG_LVL_INFO, "&&& QRD g");
             _mysqlConn->freeResult();
+            LOGS(_log, LOG_LVL_INFO, "&&& QRD h");
         }
         /* &&&
         for(int i=0; i < m.fragment_size(); ++i) {
@@ -526,16 +542,21 @@ bool QueryRunner::_dispatchChannel() {
         _multiError.push_back(worker_err);
         erred = true;
     }
+    LOGS(_log, LOG_LVL_INFO, "&&& QRD i");
     if (!_cancelled) {
         // Send results.
+        LOGS(_log, LOG_LVL_INFO, "&&& QRD j");
         _transmit(true, rowCount, tSize);
+        LOGS(_log, LOG_LVL_INFO, "&&& QRD k");
     } else {
+        LOGS(_log, LOG_LVL_INFO, "&&& QRD l");
         erred = true;
         // Send poison error.
         LOGS(_log, LOG_LVL_ERROR, "dispatchChannel Poisoned");
         _multiError.push_back(util::Error(-1, "Poisoned."));
         // Do we need to do any cleanup?
     }
+    LOGS(_log, LOG_LVL_INFO, "&&& QRD z");
     return !erred;
 }
 

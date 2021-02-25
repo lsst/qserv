@@ -147,18 +147,26 @@ std::vector<Task::Ptr> Task::createTasks(std::shared_ptr<proto::TaskMsg> const& 
             if (fragment.has_subchunks() && false == fragment.subchunks().id().empty()) {
                 for (auto subchunkId : fragment.subchunks().id()) {
                     boost::algorithm::replace_all(qs, SUBCHUNK_TAG, std::to_string(subchunkId));
+                    auto task = std::make_shared<wbase::Task>(taskMsg, sendChannel);
+                    task->setQueryString(qs); //&&& remove and make part of constructor
+                    task->setQueryFragmentNum(fragNum); //&&& see setQueryFragmentNum comment below
+                    LOGS(_log, LOG_LVL_INFO, "&&& createTasks a task fn=" << fragNum << " q=" << qs);
+                    vect.push_back(task);
                 }
-            } 
-            auto task = std::make_shared<wbase::Task>(taskMsg, sendChannel);
-            task->setQueryString(qs); //&&& remove and make part of constructor
-            task->setQueryFragmentNum(fragNum); //&&& Is it better to move fragment info from
-                                          //&&& ChunkResource getResourceFragment(int i) to here???
-                                          //&&& It looks like Task should contain a ChunkResource::Info object
-                                          //&&& which could help cleaan up the mess in ChunkResource.
-            vect.push_back(task);
+            } else {
+                auto task = std::make_shared<wbase::Task>(taskMsg, sendChannel);
+                task->setQueryString(qs); //&&& remove and make part of constructor
+                task->setQueryFragmentNum(fragNum); //&&& Is it better to move fragment info from
+                                                    //&&& ChunkResource getResourceFragment(int i) to here???
+                                                    //&&& It looks like Task should contain a ChunkResource::Info object
+                                                    //&&& which could help cleaan up the mess in ChunkResource.
+                LOGS(_log, LOG_LVL_INFO, "&&& createTasks b task fn=" << fragNum << " q=" << qs);
+                vect.push_back(task);
+            }
+
         }
     }
-    sendChannel->setTaskCount(fragmentCount);
+    sendChannel->setTaskCount(vect.size());
     return vect;
 }
 

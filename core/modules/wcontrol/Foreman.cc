@@ -132,6 +132,7 @@ void Foreman::_setRunFunc(shared_ptr<wbase::Task> const& task) {
 /// Put the task on the scheduler to be run later.
 void Foreman::processTasks(vector<wbase::Task::Ptr> const& tasks) {
 
+    LOGS(_log, LOG_LVL_INFO, "&&& processTasks");
     std::vector<util::Command::Ptr> cmds;
     for (auto const& task:tasks) {
         _setRunFunc(task);
@@ -144,7 +145,7 @@ void Foreman::processTasks(vector<wbase::Task::Ptr> const& tasks) {
 // &&& delete with parents ???
 /// Put the task on the scheduler to be run later.
 void Foreman::processTask(shared_ptr<wbase::Task> const& task) {
-
+    LOGS(_log, LOG_LVL_INFO, "&&& processTask");
     /* &&&
     auto func = [this, task](util::CmdData*){
         proto::TaskMsg const& msg = *task->msg;

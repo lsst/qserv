@@ -437,13 +437,17 @@ bool SsiRequest::replyStream(StreamBuffer::Ptr const& sBuf, bool last) {
     // Normally, XrdSsi would call Recycle() when it is done with sBuf, but if this function
     // returns false, then it must call Recycle(). Otherwise, the scheduler will likely
     // wedge waiting for the buffer to be released.
+    LOGS(_log, LOG_LVL_INFO, "&&& replyStream a " << last);
     std::lock_guard<std::mutex> finLock(_finMutex);
     if (_finished) {
+        LOGS(_log, LOG_LVL_INFO, "&&& replyStream c finished");
         // Finished() was called, give up.
         sBuf->Recycle();
         return false;
     }
+    LOGS(_log, LOG_LVL_INFO, "&&& replyStream d");
     if (!_stream) {
+        LOGS(_log, LOG_LVL_INFO, "&&& replyStream e");
         _stream = std::make_shared<ChannelStream>();
         if (SetResponse(_stream.get()) != XrdSsiResponder::Status::wasPosted) {
             LOGS(_log, LOG_LVL_WARN, "SetResponse stream failed, calling Recycle for sBuf");
@@ -451,14 +455,18 @@ bool SsiRequest::replyStream(StreamBuffer::Ptr const& sBuf, bool last) {
             sBuf->Recycle();
             return false;
         }
+        LOGS(_log, LOG_LVL_INFO, "&&& replyStream f");
     } else if (_stream->closed()) {
+        LOGS(_log, LOG_LVL_INFO, "&&& replyStream g closed");
         // XrdSsi isn't going to call Recycle if we wind up here.
         LOGS(_log, LOG_LVL_ERROR, "Logic error SsiRequest::replyStream called with stream closed.");
         sBuf->Recycle();
         return false;
     }
     // XrdSsi or Finished() will call Recycle().
+    LOGS(_log, LOG_LVL_INFO, "&&& replyStream h");
     _stream->append(sBuf, last);
+    LOGS(_log, LOG_LVL_INFO, "&&& replyStream i DONE");
     return true;
 }
 
