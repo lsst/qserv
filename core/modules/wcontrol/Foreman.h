@@ -103,22 +103,13 @@ public:
     Foreman(Foreman const&) = delete;
     Foreman& operator=(Foreman const&) = delete;
 
-    /**
-     * Implement the corresponding method of the base class
-     *
-     * @see MsgProcessor::processTask()
-     */
-    void processTask(std::shared_ptr<wbase::Task> const& task) override;
 
     /// Process a group of query processing tasks.
     /// @see sgProcessor::processTask()
     void processTasks(std::vector<std::shared_ptr<wbase::Task>> const& tasks) override;
 
-   /**
-     * Implement the corresponding method of the base class
-     *
-     * @see MsgProcessor::processCommand()
-     */
+    ///Implement the corresponding method of the base class
+    /// @see MsgProcessor::processCommand()
     void processCommand(std::shared_ptr<wbase::WorkerCommand> const& command) override;
 
     nlohmann::json statusToJson() override;

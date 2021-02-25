@@ -120,7 +120,8 @@ public:
         bool operator()(Ptr const& x, Ptr const& y);
     };
 
-    explicit Task(TaskMsgPtr const& t, std::shared_ptr<SendChannel> const& sc);
+    explicit Task(TaskMsgPtr const& t, std::string const& query, int fragmentNumber,
+                  std::shared_ptr<SendChannel> const& sc);
     Task& operator=(const Task&) = delete;
     Task(const Task&) = delete;
     virtual ~Task();
@@ -140,9 +141,7 @@ public:
     void cancel();
     bool getCancelled() const { return _cancelled; }
 
-    void setQueryString(std::string const& qs); ///< The query this task will run.
     std::string getQueryString() { return _queryString; }
-    void setQueryFragmentNum(int fragNum); ///< The fragment number for this query in the task message.
     int getQueryFragmentNum() { return _queryFragmentNum; }
     bool setTaskQueryRunner(TaskQueryRunner::Ptr const& taskQueryRunner); ///< return true if already cancelled.
     void freeTaskQueryRunner(TaskQueryRunner *tqr);

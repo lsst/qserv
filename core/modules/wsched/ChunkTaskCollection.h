@@ -43,6 +43,9 @@ public:
     /// Queue a Task to be run later.
     virtual void queueTask(wbase::Task::Ptr const& task) = 0;
 
+    /// Queue a group of tasks to be run later.
+    virtual void queueTask(std::vector<wbase::Task::Ptr> const& tasks) = 0;
+
     /// Return a Task that is ready to run or nullptr if nothing is ready.
     /// A Task is only ready if the conditions in ready() are met.
     virtual wbase::Task::Ptr getTask(bool useFlexibleLock) = 0;
