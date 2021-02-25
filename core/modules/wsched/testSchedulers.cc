@@ -64,18 +64,10 @@ using lsst::qserv::wbase::SendChannel;
 double const oneHr = 60.0;
 
 Task::Ptr makeTask(std::shared_ptr<TaskMsg> tm) {
-    Task::Ptr task(new Task(tm, std::shared_ptr<SendChannel>()));
+    Task::Ptr task(new Task(tm, "", 0, std::shared_ptr<SendChannel>()));
     task->setSafeToMoveRunning(true); // Can't wait for MemMan in unit tests.
     return task;
 }
-
-/* &&&
-std::vector<lsst::qserv::util::Command::Ptr> makeVect(Task::Ptr const& task) {
-    std::vector<lsst::qserv::util::Command::Ptr> vect;
-    vect.push_back(task);
-    return vect;
-}
-*/
 
 
 struct SchedulerFixture {

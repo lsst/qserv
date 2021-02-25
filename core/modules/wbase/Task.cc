@@ -98,10 +98,15 @@ IdSet Task::allIds{};
 /// available to define the action to take when this task is run, so
 /// Command::setFunc() is used set the action later. This is why
 /// the util::CommandThreadPool is not called here.
-Task::Task(Task::TaskMsgPtr const& t, SendChannel::Ptr const& sc)
-    : msg(t), sendChannel(sc),
-      _qId(t->queryid()), _jId(t->jobid()), _attemptCount(t->attemptcount()),
-      _idStr(QueryIdHelper::makeIdStr(_qId, _jId)) {
+Task::Task(TaskMsgPtr const& t, std::string const& query, int fragmentNumber,
+                  std::shared_ptr<SendChannel> const& sc)
+: msg(t), sendChannel(sc),
+  _qId(t->queryid()), _jId(t->jobid()), _attemptCount(t->attemptcount()),
+  _idStr(QueryIdHelper::makeIdStr(_qId, _jId)),
+  _queryString(query),
+  _queryFragmentNum(fragmentNumber) {
+
+
     hash = hashTaskMsg(*t);
 
     if (t->has_user()) {
@@ -146,22 +151,16 @@ std::vector<Task::Ptr> Task::createTasks(std::shared_ptr<proto::TaskMsg> const& 
             if (fragment.has_subchunks() && false == fragment.subchunks().id().empty()) {
                 for (auto subchunkId : fragment.subchunks().id()) {
                     std::string qs(queryStr);
-                    LOGS(_log, LOG_LVL_INFO, "&&& subchunkId=" << subchunkId << " qs=" << qs);
                     boost::algorithm::replace_all(qs, SUBCHUNK_TAG, std::to_string(subchunkId));
-                    auto task = std::make_shared<wbase::Task>(taskMsg, sendChannel);
-                    task->setQueryString(qs); //&&& remove and make part of constructor
-                    task->setQueryFragmentNum(fragNum); //&&& see setQueryFragmentNum comment below
-                    LOGS(_log, LOG_LVL_INFO, "&&& createTasks a task fn=" << fragNum << " q=" << qs);
+                    auto task = std::make_shared<wbase::Task>(taskMsg, qs, fragNum, sendChannel);
                     vect.push_back(task);
                 }
             } else {
-                auto task = std::make_shared<wbase::Task>(taskMsg, sendChannel);
-                task->setQueryString(queryStr); //&&& remove and make part of constructor
-                task->setQueryFragmentNum(fragNum); //&&& Is it better to move fragment info from
-                                                    //&&& ChunkResource getResourceFragment(int i) to here???
-                                                    //&&& It looks like Task should contain a ChunkResource::Info object
-                                                    //&&& which could help cleaan up the mess in ChunkResource.
-                LOGS(_log, LOG_LVL_INFO, "&&& createTasks b task fn=" << fragNum << " q=" << queryStr);
+                auto task = std::make_shared<wbase::Task>(taskMsg, queryStr, fragNum, sendChannel);
+                //TODO: Maybe? Is it better to move fragment info from
+                //      ChunkResource getResourceFragment(int i) to here???
+                //      It looks like Task should contain a ChunkResource::Info object
+                //      which could help clean up the mess in ChunkResource.
                 vect.push_back(task);
             }
 
@@ -169,16 +168,6 @@ std::vector<Task::Ptr> Task::createTasks(std::shared_ptr<proto::TaskMsg> const& 
     }
     sendChannel->setTaskCount(vect.size());
     return vect;
-}
-
-
-void Task::setQueryString(std::string const& qs) {
-    _queryString = qs;
-}
-
-
-void Task::setQueryFragmentNum(int fragNum) {
-    _queryFragmentNum = fragNum;
 }
 
 

@@ -131,8 +131,6 @@ void Foreman::_setRunFunc(shared_ptr<wbase::Task> const& task) {
 
 /// Put the task on the scheduler to be run later.
 void Foreman::processTasks(vector<wbase::Task::Ptr> const& tasks) {
-
-    LOGS(_log, LOG_LVL_INFO, "&&& processTasks");
     std::vector<util::Command::Ptr> cmds;
     for (auto const& task:tasks) {
         _setRunFunc(task);
@@ -140,44 +138,6 @@ void Foreman::processTasks(vector<wbase::Task::Ptr> const& tasks) {
         cmds.push_back(task);
     }
     _scheduler->queCmd(cmds);
-}
-
-// &&& delete with parents ???
-/// Put the task on the scheduler to be run later.
-void Foreman::processTask(shared_ptr<wbase::Task> const& task) {
-    LOGS(_log, LOG_LVL_INFO, "&&& processTask");
-    /* &&&
-    auto func = [this, task](util::CmdData*){
-        proto::TaskMsg const& msg = *task->msg;
-        int const resultProtocol = 2; // See proto/worker.proto Result protocol
-        if (!msg.has_protocol() || msg.protocol() < resultProtocol) {
-            LOGS(_log, LOG_LVL_WARN, "processMsg Unsupported wire protocol");
-            if (!task->getCancelled()) {
-                // We should not send anything back to xrootd if the task has been cancelled.
-                task->sendChannel->sendError("Unsupported wire protocol", 1);
-            }
-        } else {
-            auto qr = wdb::QueryRunner::newQueryRunner(task, _chunkResourceMgr, _mySqlConfig,
-                                                       _sqlConnMgr, _transmitMgr);
-            bool success = false;
-            try {
-                success = qr->runQuery();
-            } catch (UnsupportedError const& e) {
-                LOGS(_log, LOG_LVL_ERROR, "runQuery threw UnsupportedError " << e.what() << *task);
-            }
-            if (not success) {
-                LOGS(_log, LOG_LVL_ERROR, "runQuery failed " << *task);
-            }
-        }
-        // Transmission is done, but 'task' contains statistics that are still useful.
-        task->sendChannel.reset(); // Frees its xrdsvc::SsiRequest object.
-    };
-
-    task->setFunc(func);
-    */
-    _setRunFunc(task);
-    _queries->addTask(task);
-    _scheduler->queCmd(task);
 }
 
 

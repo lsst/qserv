@@ -73,30 +73,6 @@ void ChunkTasksQueue::queueTask(wbase::Task::Ptr const& task) {
     queueTask(vect);
 }
 
-/* &&&
-/// Queue a Task with other tasks on the same chunk.
-void ChunkTasksQueue::queueTask(wbase::Task::Ptr const& task) {
-    // Insert a new ChunkTask object into the map if it doesn't already exist.
-    auto insertChunkTask = [this](int chunkId) -> ChunkTasksQueue::ChunkMap::iterator {
-        auto iter = _chunkMap.find(chunkId);
-        if (iter == _chunkMap.end()) {
-            std::pair<int, ChunkTasks::Ptr> ele(chunkId, std::make_shared<ChunkTasks>(chunkId, _memMan));
-            auto res = _chunkMap.insert(ele); // insert should fail if the key already exists.
-            LOGS(_log, LOG_LVL_DEBUG, " queueTask chunk=" << chunkId << " created=" << res.second);
-            iter =  res.first;
-        }
-        return iter;
-    };
-
-    std::lock_guard<std::mutex> lg(_mapMx);
-    int chunkId = task->getChunkId();
-    auto iter = insertChunkTask(chunkId);
-    ++_taskCount;
-    iter->second->queTask(task);
-}
-*/
-
-
 
 /// @return true if this object is ready to provide a Task from its queue.
 bool ChunkTasksQueue::ready(bool useFlexibleLock) {
