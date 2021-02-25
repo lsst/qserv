@@ -151,6 +151,7 @@ void BlendScheduler::queCmd(std::vector<util::Command::Ptr> const& cmds) {
     // user query and will go to the same scheduler.
     LOGS(_log, LOG_LVL_WARN, "&&& BlendScheduler::queCmd a");
     bool first = true;
+    std::vector<util::Command::Ptr> taskCmds;
     SchedulerBase::Ptr s = nullptr;
     bool onInteractive = false;
     for (auto const& cmd : cmds) {
@@ -169,7 +170,7 @@ void BlendScheduler::queCmd(std::vector<util::Command::Ptr> const& cmds) {
             }
             notify(true); // notify all=true
             LOGS(_log, LOG_LVL_WARN, "&&& BlendScheduler::queCmd c99");
-            return;
+            continue;
         }
 
         if (first) {
@@ -247,16 +248,20 @@ void BlendScheduler::queCmd(std::vector<util::Command::Ptr> const& cmds) {
             _queries->queuedTask(task);
             LOGS(_log, LOG_LVL_WARN, "&&& BlendScheduler::queCmd n");
         }
-
-        LOGS(_log, LOG_LVL_DEBUG, "Blend queCmd");
-        //&&&s->queCmd(tasks);
-        LOGS(_log, LOG_LVL_WARN, "&&& BlendScheduler::queCmd o " << s->getName());
-        s->queCmd(cmds);
         LOGS(_log, LOG_LVL_WARN, "&&& BlendScheduler::queCmd p");
         _queries->queuedTask(task);
-        LOGS(_log, LOG_LVL_WARN, "&&& BlendScheduler::queCmd q");
-
+        taskCmds.push_back(task);
     }
+
+
+    //&&&s->queCmd(tasks);
+    LOGS(_log, LOG_LVL_WARN, "&&& BlendScheduler::queCmd o " << s->getName());
+    //&&&s->queCmd(cmds);
+    if (!taskCmds.empty()) {
+        LOGS(_log, LOG_LVL_DEBUG, "Blend queCmd");
+        s->queCmd(taskCmds);
+    }
+    LOGS(_log, LOG_LVL_WARN, "&&& BlendScheduler::queCmd q");
 
     _infoChanged = true;
     notify(true); // notify all=true

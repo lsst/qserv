@@ -84,9 +84,9 @@ public:
     /// Set the number of Tasks that will be sent using this SendChannel.
     void setTaskCount(int taskCount);
 
-    /// Return a reference to the 'streamMutex'.
-    std::mutex& getStreamMutexRef() {
-        return _streamMutex;
+    /// Return a pointer to the 'streamMutex'.
+    std::mutex* getStreamMutexPtr() {
+        return &_streamMutex;
     }
 
     ///

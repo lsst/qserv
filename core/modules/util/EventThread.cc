@@ -45,11 +45,11 @@ namespace util {
 
 void CommandQueue::queCmd(std::vector<Command::Ptr> const& cmds) {
     {
-        LOGS(_log, LOG_LVL_WARN, "&&& queCmd a");
+        LOGS(_log, LOG_LVL_WARN, "&&& CommandQueue::queCmd a");
         std::lock_guard<std::mutex> lock(_mx);
-        LOGS(_log, LOG_LVL_WARN, "&&& queCmd b");
+        LOGS(_log, LOG_LVL_WARN, "&&& CommandQueue::queCmd b");
         for (auto const& cmd:cmds) {
-            LOGS(_log, LOG_LVL_WARN, "&&& queCmd c");
+            LOGS(_log, LOG_LVL_WARN, "&&& CommandQueue::queCmd c");
             _qu.push_back(cmd);
         }
     }
