@@ -152,7 +152,7 @@ void BlendScheduler::queCmd(std::vector<util::Command::Ptr> const& cmds) {
     LOGS(_log, LOG_LVL_WARN, "&&& BlendScheduler::queCmd a");
     bool first = true;
     std::vector<util::Command::Ptr> taskCmds;
-    SchedulerBase::Ptr s = nullptr;
+    SchedulerBase::Ptr sb = nullptr;
     bool onInteractive = false;
     for (auto const& cmd : cmds) {
         LOGS(_log, LOG_LVL_WARN, "&&& BlendScheduler::queCmd b");
@@ -198,7 +198,7 @@ void BlendScheduler::queCmd(std::vector<util::Command::Ptr> const& cmds) {
                         << " interactive=" << interactive);
                 //&&&task->setOnInteractive(true);
                 onInteractive = true;
-                s = _group;
+                sb = _group;
             } else {
                 LOGS(_log, LOG_LVL_WARN, "&&& BlendScheduler::queCmd h");
                 //&&&task->setOnInteractive(false);
@@ -221,7 +221,7 @@ void BlendScheduler::queCmd(std::vector<util::Command::Ptr> const& cmds) {
                         ScanScheduler::Ptr scan = dynamic_pointer_cast<ScanScheduler>(sched);
                         if (scan != nullptr) {
                             if (scan->isRatingInRange(scanPriority)) {
-                                s = scan;
+                                sb = scan;
                                 break;
                             }
                         }
@@ -231,40 +231,38 @@ void BlendScheduler::queCmd(std::vector<util::Command::Ptr> const& cmds) {
                 // If the user query for this task has been booted, put this task on the snail scheduler.
                 auto queryStats = _queries->getStats(task->getQueryId());
                 if (queryStats && queryStats->getQueryBooted()) {
-                    s = _scanSnail;
+                    sb = _scanSnail;
                 }
                 LOGS(_log, LOG_LVL_WARN, "&&& BlendScheduler::queCmd l");
-                if (s == nullptr) {
+                if (sb == nullptr) {
                     // Task wasn't assigned with a scheduler, assuming it is terribly slow.
                     // Assign it to the slowest scheduler so it does the least damage to other queries.
                     LOGS_WARN("Task had unexpected scanRating="
                             << scanPriority << " adding to scanSnail");
-                    s = _scanSnail;
+                    sb = _scanSnail;
                 }
             }
             LOGS(_log, LOG_LVL_WARN, "&&& BlendScheduler::queCmd m onInteractive=" << onInteractive);
-            task->setOnInteractive(onInteractive);
-            task->setTaskScheduler(s);
-            _queries->queuedTask(task);
-            LOGS(_log, LOG_LVL_WARN, "&&& BlendScheduler::queCmd n");
         }
         LOGS(_log, LOG_LVL_WARN, "&&& BlendScheduler::queCmd p");
+        task->setOnInteractive(onInteractive);
+        task->setTaskScheduler(sb);
         _queries->queuedTask(task);
         taskCmds.push_back(task);
     }
 
-
-    //&&&s->queCmd(tasks);
-    LOGS(_log, LOG_LVL_WARN, "&&& BlendScheduler::queCmd o " << s->getName());
-    //&&&s->queCmd(cmds);
     if (!taskCmds.empty()) {
+        //&&&s->queCmd(tasks);
+        LOGS(_log, LOG_LVL_WARN, "&&& BlendScheduler::queCmd o " << sb->getName());
+        //&&&s->queCmd(cmds);
         LOGS(_log, LOG_LVL_DEBUG, "Blend queCmd");
-        s->queCmd(taskCmds);
-    }
-    LOGS(_log, LOG_LVL_WARN, "&&& BlendScheduler::queCmd q");
+        sb->queCmd(taskCmds);
 
-    _infoChanged = true;
-    notify(true); // notify all=true
+        LOGS(_log, LOG_LVL_WARN, "&&& BlendScheduler::queCmd q");
+
+        _infoChanged = true;
+        notify(true); // notify all=true
+    }
 }
 
 
