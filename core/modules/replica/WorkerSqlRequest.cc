@@ -167,22 +167,22 @@ bool WorkerSqlRequest::execute() {
                         _extractResultSet(lock, conn_);
                         conn_->commit();
                     });
-                } catch(database::mysql::NoSuchTable const& ex) {
+                } catch(database::mysql::ER_NO_SUCH_TABLE_ const& ex) {
                     ++numFailures;
                     currentResultSet->set_status_ext(ProtocolStatusExt::NO_SUCH_TABLE);
                     currentResultSet->set_error(ex.what());
 
-                } catch(database::mysql::NotPartitionedTable const& ex) {
+                } catch(database::mysql::ER_PARTITION_MGMT_ON_NONPARTITIONED_ const& ex) {
                     ++numFailures;
                     currentResultSet->set_status_ext(ProtocolStatusExt::NOT_PARTITIONED_TABLE);
                     currentResultSet->set_error(ex.what());
 
-                } catch(database::mysql::DuplicateKeyName const& ex) {
+                } catch(database::mysql::ER_DUP_KEYNAME_ const& ex) {
                     ++numFailures;
                     currentResultSet->set_status_ext(ProtocolStatusExt::DUPLICATE_KEY);
                     currentResultSet->set_error(ex.what());
 
-                } catch(database::mysql::CantDropFieldOrKey const& ex) {
+                } catch(database::mysql::ER_CANT_DROP_FIELD_OR_KEY_ const& ex) {
                     ++numFailures;
                     currentResultSet->set_status_ext(ProtocolStatusExt::CANT_DROP_KEY);
                     currentResultSet->set_error(ex.what());
@@ -212,16 +212,16 @@ bool WorkerSqlRequest::execute() {
             setStatus(lock, STATUS_SUCCEEDED);
         }
 
-    } catch(database::mysql::NoSuchTable const& ex) {
+    } catch(database::mysql::ER_NO_SUCH_TABLE_ const& ex) {
         _reportFailure(lock, EXT_STATUS_NO_SUCH_TABLE, ex.what());
 
-    } catch(database::mysql::NotPartitionedTable const& ex) {
+    } catch(database::mysql::ER_PARTITION_MGMT_ON_NONPARTITIONED_ const& ex) {
         _reportFailure(lock, EXT_STATUS_NOT_PARTITIONED_TABLE, ex.what());
 
-    } catch(database::mysql::DuplicateKeyName const& ex) {
+    } catch(database::mysql::ER_DUP_KEYNAME_ const& ex) {
         _reportFailure(lock, EXT_STATUS_DUPLICATE_KEY, ex.what());
 
-    } catch(database::mysql::CantDropFieldOrKey const& ex) {
+    } catch(database::mysql::ER_CANT_DROP_FIELD_OR_KEY_ const& ex) {
         _reportFailure(lock, EXT_STATUS_CANT_DROP_KEY, ex.what());
 
     } catch(database::mysql::Error const& ex) {

@@ -546,7 +546,7 @@ public:
      * @return a smart pointer to self to allow chained calls
      * 
      * @throw std::invalid_argument for empty query strings
-     * @throw DuplicateKeyError for attempts to insert rows with duplicate keys
+     * @throw ER_DUP_ENTRY_ for attempts to insert rows with duplicate keys
      * @throw Error for any other MySQL specific errors
      */
     Connection::Ptr execute(std::string const& query);
@@ -572,7 +572,7 @@ public:
      * @param Fargs the variadic list of values to be inserted
      * @return a smart pointer to self to allow chained calls
      *
-     * @throw DuplicateKeyError for attempts to insert rows with duplicate keys
+     * @throw ER_DUP_ENTRY_ for attempts to insert rows with duplicate keys
      * @throw Error for any other MySQL specific errors
      */
     template <typename...Targs>
@@ -728,7 +728,7 @@ public:
      *   to insert new data into a database.
      * @param updateScript user-provided function (the callable) to be executed as
      *   as the failover solution to update existing data in the database if the first
-     *   script fails due to the DuplicateKeyError exception. 
+     *   script fails due to the ER_DUP_ENTRY_ exception. 
      * @param maxReconnects
      *   (optional) maximum number of reconnects allowed
      *   If 0 is passed as a value pf the parameter then the default
@@ -922,7 +922,7 @@ private:
      * @throw std::logic_error if the method is called after no actual error happened
      * @throw Reconnected after a successful reconnection has happened
      * @throw ConnectError connection to a server failed
-     * @throw DuplicateKeyError after the last statement attempted to violate
+     * @throw ER_DUP_ENTRY_ after the last statement attempted to violate
      *   the corresponding key constraint
      * @throw Error for some other error not listed above
      */
