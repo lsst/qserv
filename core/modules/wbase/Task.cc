@@ -201,7 +201,7 @@ void Task::cancel() {
 /// @return true if task has already been cancelled.
 bool Task::setTaskQueryRunner(TaskQueryRunner::Ptr const& taskQueryRunner) {
     _taskQueryRunner = taskQueryRunner;
-    return getCancelled();
+    return isCancelled();
 }
 
 void Task::freeTaskQueryRunner(TaskQueryRunner *tqr){
