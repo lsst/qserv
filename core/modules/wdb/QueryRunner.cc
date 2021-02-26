@@ -89,7 +89,7 @@ QueryRunner::Ptr QueryRunner::newQueryRunner(wbase::Task::Ptr const& task,
     // Let the Task know this is its QueryRunner.
     bool cancelled = qr->_task->setTaskQueryRunner(qr);
     if (cancelled) {
-        qr->_cancelled.store(true);
+        qr->_cancelled = true;
         // runQuery will return quickly if the Task has been cancelled.
     }
     return qr;
@@ -312,10 +312,20 @@ void QueryRunner::_transmit(bool inLast, unsigned int rowCount, size_t tSize) {
     QSERV_LOGCONTEXT_QUERY_JOB(_task->getQueryId(), _task->getJobId());
     LOGS(_log, LOG_LVL_INFO, "_transmitMgr=" << *_transmitMgr
          << " last=" << inLast << " rowCount=" << rowCount << " tSize=" << tSize);
+
+    if (_task->sendChannel->isDead()) {
+        LOGS(_log, LOG_LVL_INFO, "aborting transmit since sendChannel is dead.");
+        return;
+    }
+
+    // Limit the number of concurrent transmits.
     wcontrol::TransmitLock transmitLock(*_transmitMgr, _task->getScanInteractive(), _largeResult);
+
     // Nothing else can use this sendChannel until this transmit is done.
     mutex* streamMutex = _task->sendChannel->getStreamMutexPtr();
     lock_guard<mutex> streamLock(*streamMutex);
+
+    // Only set last to true if this is the final task using this sendChannel.
     bool last = _task->sendChannel->transmitTaskLast(inLast);
     string resultString;
     _result->set_queryid(_task->getQueryId());

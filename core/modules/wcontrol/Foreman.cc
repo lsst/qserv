@@ -106,6 +106,8 @@ void Foreman::_setRunFunc(shared_ptr<wbase::Task> const& task) {
             LOGS(_log, LOG_LVL_WARN, "processMsg Unsupported wire protocol");
             if (!task->getCancelled()) {
                 // We should not send anything back to xrootd if the task has been cancelled.
+                mutex* streamMutex = task->sendChannel->getStreamMutexPtr();
+                lock_guard<mutex> streamLock(*streamMutex);
                 task->sendChannel->sendError("Unsupported wire protocol", 1);
             }
         } else {
@@ -118,10 +120,15 @@ void Foreman::_setRunFunc(shared_ptr<wbase::Task> const& task) {
                 LOGS(_log, LOG_LVL_ERROR, "runQuery threw UnsupportedError " << e.what() << *task);
             }
             if (not success) {
+                mutex* streamMutex = task->sendChannel->getStreamMutexPtr();
+                lock_guard<mutex> streamLock(*streamMutex);
                 LOGS(_log, LOG_LVL_ERROR, "runQuery failed " << *task);
+                if (not task->sendChannel->kill()) {
+                    LOGS(_log, LOG_LVL_WARN, "runQuery sendChannel killed");
+                }
             }
         }
-        // Transmission is done, but 'task' contains statistics that are still useful.
+        // Transmission is done, but 'task' contains statistics that are still useful
         task->sendChannel.reset(); // Frees its xrdsvc::SsiRequest object.
     };
 

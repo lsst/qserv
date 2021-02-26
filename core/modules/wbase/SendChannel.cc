@@ -56,10 +56,11 @@ public:
     bool send(char const* buf, int bufLen) override {
         std::cout << "NopChannel send(" << (void*) buf
                   << ", " << bufLen << ");\n";
-        return true;
+        return !isDead();
     }
 
     bool sendError(std::string const& msg, int code) override {
+        if (kill()) return false;
         std::cout << "NopChannel sendError(\"" << msg
                   << "\", " << code << ");\n";
         return true;
@@ -67,12 +68,12 @@ public:
     bool sendFile(int fd, Size fSize) override {
         std::cout << "NopChannel sendFile(" << fd
                   << ", " << fSize << ");\n";
-        return true;
+        return !isDead();
     }
     bool sendStream(xrdsvc::StreamBuffer::Ptr const& sBuf, bool last) override {
         std::cout << "NopChannel sendStream(" << (void*) sBuf.get()
                   << ", " << (last ? "true" : "false") << ");\n";
-        return true;
+        return !isDead();
     }
 };
 
@@ -88,19 +89,22 @@ class StringChannel : public SendChannel {
 public:
     StringChannel(std::string& dest) : _dest(dest) {}
 
-    virtual bool send(char const* buf, int bufLen) {
+    bool send(char const* buf, int bufLen) override {
+        if (isDead()) return false;
         _dest.append(buf, bufLen);
         return true;
     }
 
-    virtual bool sendError(std::string const& msg, int code) {
+    bool sendError(std::string const& msg, int code) override {
+        if (kill()) return false;
         std::ostringstream os;
         os << "(" << code << "," << msg << ")";
         _dest.append(os.str());
         return true;
     }
 
-    virtual bool sendFile(int fd, Size fSize) {
+    bool sendFile(int fd, Size fSize) override {
+        if (isDead()) return false;
         std::vector<char> buf(fSize);
         Size remain = fSize;
         while(remain > 0) {
@@ -121,13 +125,27 @@ public:
         return true;
     }
 
-    virtual bool sendStream(char const* buf, int bufLen, bool last) {
+    bool sendStream(xrdsvc::StreamBuffer::Ptr const& sBuf, bool last) override {
+        if (isDead()) return false;
+        char const* buf = sBuf->data;
+        size_t bufLen = sBuf->getSize();
         _dest.append(buf, bufLen);
         std::cout << "StringChannel sendStream(" << (void*) buf
                   << ", " << bufLen << ", "
                   << (last ? "true" : "false") << ");\n";
         return true;
     }
+
+    /* &&&
+    virtual bool sendStream(char const* buf, int bufLen, bool last) {
+        if (isDead()) return false;
+        _dest.append(buf, bufLen);
+        std::cout << "StringChannel sendStream(" << (void*) buf
+                  << ", " << bufLen << ", "
+                  << (last ? "true" : "false") << ");\n";
+        return true;
+    }
+    */
 private:
     std::string& _dest;
 };
@@ -161,24 +179,39 @@ bool SendChannel::transmitTaskLast(bool inLast) {
 /// object as this object knows how to effect Ssi responses.
 ///
 bool SendChannel::send(char const* buf, int bufLen) {
-    return _ssiRequest->reply(buf, bufLen);
+    //&&&return _ssiRequest->reply(buf, bufLen);
+    if (isDead()) return false;
+    if (_ssiRequest->reply(buf, bufLen)) return true;
+    kill();
+    return false;
 }
 
 
 bool SendChannel::sendError(std::string const& msg, int code) {
-    return _ssiRequest->replyError(msg.c_str(), code);
+    //&&& return _ssiRequest->replyError(msg.c_str(), code);
+    // Kill this send channel. If it wasn't already dead, send the error.
+    if (kill()) return false;
+    if (_ssiRequest->replyError(msg.c_str(), code)) return true;
+    return false;
 }
 
 
 bool SendChannel::sendFile(int fd, Size fSize) {
-    if (_ssiRequest->replyFile(fSize, fd)) return true;
+    if (!isDead()) {
+        if (_ssiRequest->replyFile(fSize, fd)) return true;
+    }
+    kill();
     release();
     return false;
 }
 
 
 bool SendChannel::sendStream(xrdsvc::StreamBuffer::Ptr const& sBuf, bool last) {
-    return _ssiRequest->replyStream(sBuf, last);
+    //&&&return _ssiRequest->replyStream(sBuf, last);
+    if (isDead()) return false;
+    if (_ssiRequest->replyStream(sBuf, last)) return true;
+    kill();
+    return false;
 }
 
 }}} // namespace
