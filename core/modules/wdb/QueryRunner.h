@@ -94,6 +94,7 @@ public:
 
     bool runQuery() override;
     void cancel() override; ///< Cancel the action (in-progress)
+    bool isCancelled();
 
 protected:
     QueryRunner(wbase::Task::Ptr const& task,
