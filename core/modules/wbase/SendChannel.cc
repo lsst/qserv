@@ -136,16 +136,6 @@ public:
         return true;
     }
 
-    /* &&&
-    virtual bool sendStream(char const* buf, int bufLen, bool last) {
-        if (isDead()) return false;
-        _dest.append(buf, bufLen);
-        std::cout << "StringChannel sendStream(" << (void*) buf
-                  << ", " << bufLen << ", "
-                  << (last ? "true" : "false") << ");\n";
-        return true;
-    }
-    */
 private:
     std::string& _dest;
 };
@@ -179,7 +169,6 @@ bool SendChannel::transmitTaskLast(bool inLast) {
 /// object as this object knows how to effect Ssi responses.
 ///
 bool SendChannel::send(char const* buf, int bufLen) {
-    //&&&return _ssiRequest->reply(buf, bufLen);
     if (isDead()) return false;
     if (_ssiRequest->reply(buf, bufLen)) return true;
     kill();
@@ -188,7 +177,6 @@ bool SendChannel::send(char const* buf, int bufLen) {
 
 
 bool SendChannel::sendError(std::string const& msg, int code) {
-    //&&& return _ssiRequest->replyError(msg.c_str(), code);
     // Kill this send channel. If it wasn't already dead, send the error.
     if (kill()) return false;
     if (_ssiRequest->replyError(msg.c_str(), code)) return true;
@@ -207,7 +195,6 @@ bool SendChannel::sendFile(int fd, Size fSize) {
 
 
 bool SendChannel::sendStream(xrdsvc::StreamBuffer::Ptr const& sBuf, bool last) {
-    //&&&return _ssiRequest->replyStream(sBuf, last);
     if (isDead()) return false;
     if (_ssiRequest->replyStream(sBuf, last)) return true;
     kill();

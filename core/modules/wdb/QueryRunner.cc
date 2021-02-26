@@ -152,7 +152,7 @@ bool QueryRunner::runQuery() {
     };
     Release release(_task, this);
 
-    if (_task->getCancelled()) {
+    if (_task->isCancelled()) {
         LOGS(_log, LOG_LVL_DEBUG, "runQuery, task was cancelled before it started.");
         return false;
     }
@@ -165,7 +165,7 @@ bool QueryRunner::runQuery() {
     auto logMsg = memWaitHisto.addTime(memTimer.getElapsed(), _task->getIdStr());
     LOGS(_log, LOG_LVL_DEBUG, logMsg);
 
-    if (_task->getCancelled()) {
+    if (_task->isCancelled()) {
         LOGS(_log, LOG_LVL_DEBUG, "runQuery, task was cancelled after locking tables.");
         return false;
     }
@@ -467,7 +467,7 @@ bool QueryRunner::_dispatchChannel() {
     size_t tSize = 0;
 
     try {
-        if (!_cancelled) {
+        if (!_cancelled &&  !_task->sendChannel->isDead()) {
             string const& query = _task->getQueryString();
             util::Timer sqlTimer;
             sqlTimer.start();
@@ -505,7 +505,15 @@ bool QueryRunner::_dispatchChannel() {
 
 void QueryRunner::cancel() {
     LOGS(_log, LOG_LVL_WARN, "Trying QueryRunner::cancel() call");
-    _cancelled.store(true);
+    _cancelled = true;
+    // This could be called after the task has been completed, so sendChannel
+    // validation is needed.
+    auto sChannel = _task->sendChannel;
+    if (sChannel != nullptr) {
+        mutex* streamMutex = sChannel->getStreamMutexPtr();
+        lock_guard<mutex> streamLock(*streamMutex);
+        sChannel->kill();
+    }
     if (!_mysqlConn.get()) {
         LOGS(_log, LOG_LVL_WARN, "QueryRunner::cancel() no MysqlConn");
         return;
