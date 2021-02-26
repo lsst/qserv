@@ -23,18 +23,8 @@
 
 /**
  * DatabaseMySQLExceptions.h declares a collection of exceptions thrown
- * by the MySQL-backed implementation of the database service:
- *
- * class Error
- * class ConnectError
- * class ConnectTimeout
- * class Reconnected
- * class DuplicateKeyName
- * class DuplicateKeyError
- * class InvalidTypeError
- * class EmptyResultSetError
- *
- * (see individual class documentation for more information)
+ * by the MySQL-backed implementation of the database service.
+ * @note See individual class documentation for more information.
  */
 
 // System headers
@@ -54,16 +44,15 @@ namespace mysql {
  * Class Error represents a family of exceptions which are specific
  * to the implementation of this API.
  */
-class Error : public std::runtime_error {
+class Error: public std::runtime_error {
 public:
     using std::runtime_error::runtime_error;
 };
 
-
 /**
  * Thrown after failing to connect to a server
  */
-class ConnectError : public Error {
+class ConnectError: public Error {
 public:
     using Error::Error;
 };
@@ -72,49 +61,43 @@ public:
  * Thrown if the connection attempt to a server failed to be established
  * within the specified timeout.
  */
-class ConnectTimeout : public Error {
+class ConnectTimeoutError: public Error {
 public:
     /**
-     * @param what        reason for the exception
-     * @param timeoutSec  a value of the timeout which expired
+     * @param what A reason for the exception.
+     * @param timeoutSec A value of the timeout which expired.
      */
-    ConnectTimeout(std::string const& what,
-                   unsigned int timeoutSec)
-        :   Error(what),
-            _timeoutSec(timeoutSec) {
+    ConnectTimeoutError(std::string const& what, unsigned int timeoutSec)
+        :   Error(what), _timeoutSec(timeoutSec) {
     }
 
-    /// @return a value of the timeout
+    /// @return A value of the timeout that expired.
     unsigned int timeoutSec() const { return _timeoutSec; }
 
 private:
     unsigned int _timeoutSec = 0;
 };
 
-
 /**
  * Thrown after exceeding an allowed number of failed connection attempts
  * to a server.
  */
-class MaxReconnectsExceeded : public Error {
+class MaxReconnectsExceeded: public Error {
 public:
     /**
-     * @param what           reason for the exception
-     * @param maxReconnects  the number of reconnects which was set as a limit
+     * @param what A reason for the exception.
+     * @param maxReconnects The number of reconnects which was set as a limit.
      */
-    MaxReconnectsExceeded(std::string const& what,
-                          unsigned int maxReconnects)
-        :   Error(what),
-            _maxReconnects(maxReconnects) {
+    MaxReconnectsExceeded(std::string const& what, unsigned int maxReconnects)
+        :   Error(what), _maxReconnects(maxReconnects) {
     }
 
-    /// @return the number of reconnects which was set as a limit
+    /// @return The number of reconnects which was set as a limit.
     unsigned int maxReconnects() const { return _maxReconnects; }
 
 private:
     unsigned int _maxReconnects = 0;
 };
-
 
 /**
  * Thrown after a successful reconnection to a server. Normally, after catching
@@ -122,133 +105,144 @@ private:
  * It's guaranteed that all traces of the failed transaction were properly
  * cleaned up.
  */
-class Reconnected : public Error {
+class Reconnected: public Error {
 public:
     using Error::Error;
 };
 
-
-/**
- * Instances of this exception class are thrown on attempts to create
- * an index with the name of a key which already exists in a table.
- */
-class DuplicateKeyName : public Error {
+/// Thrown on attempts to create an index with the name of a key that already
+/// exists in a table.
+class ER_DUP_KEYNAME_: public Error {
 public:
     using Error::Error;
 };
 
-
-/**
- * Instances of this exception class are thrown on attempts to insert
- * rows with duplicate keys.
- */
-class DuplicateKeyError : public Error {
+/// Thrown on attempts to insert rows with duplicate keys.
+class ER_DUP_ENTRY_: public Error {
 public:
     using Error::Error;
 };
 
-
-/**
- * Instances of this exception class are thrown on attempts to drop
- * a field or a index which doesn't exist.
- */
-class CantDropFieldOrKey : public Error {
+/// Thrown on attempts to drop a field or a index that doesn't exist.
+class ER_CANT_DROP_FIELD_OR_KEY_: public Error {
 public:
     using Error::Error;
 };
 
-
-/**
- * Instances of this exception class are thrown on queries involving non-existing
- * tables.
- */
-class NoSuchTable : public Error {
+/// Thrown on queries involving non-existing databases.
+class ER_BAD_DB_ERROR_: public Error {
 public:
     using Error::Error;
 };
 
+/// Thrown on attempts to create existing databases.
+class ER_DB_CREATE_EXISTS_: public Error {
+public:
+    using Error::Error;
+};
+
+/// Thrown on attempts to drop non-existing databases.
+class ER_DB_DROP_EXISTS_: public Error {
+public:
+    using Error::Error;
+};
+
+/// Thrown on unauthorized attempts to access databases w/o any password.
+class ER_DBACCESS_DENIED_ERROR_: public Error {
+public:
+    using Error::Error;
+};
+
+/// Thrown on unauthorized attempts to access databases w/ a password.
+class ER_ACCESS_DENIED_ERROR_: public Error {
+public:
+    using Error::Error;
+};
+
+/// Thrown on attempts to create existing tables.
+class ER_TABLE_EXISTS_ERROR_: public Error {
+public:
+    using Error::Error;
+};
+
+/// Thrown on attempts to drop non-existing tables.
+class ER_BAD_TABLE_ERROR_: public Error {
+public:
+    using Error::Error;
+};
+
+/// Thrown on queries involving non-existing tables.
+class ER_NO_SUCH_TABLE_: public Error {
+public:
+    using Error::Error;
+};
 
 /**
- * Instances of this exception class are thrown on a specific query which
- * attempts to remove all partitions from a non-partitioned table:
- * 
- *   @code
+ * Thrown on a specific query that attempts to remove all partitions from
+ * a non-partitioned table:
+ * @code
  *   ALTER TABLE <database>.<table> REMOVE PARTITIONING;
- *   @code
- * 
+ * @code
  * Some application may choose to explicitly identify and process this type
  * of failures.
  */
-class NotPartitionedTable : public Error {
+class ER_PARTITION_MGMT_ON_NONPARTITIONED_: public Error {
 public:
     using Error::Error;
 };
 
-
 /**
- * Instances of this exception class are thrown on queries attempting to select
- * data from a non-existing partitions of a partitioned table:
- * 
- *   @code
+ * Thrown on queries attempting to select data from a non-existing partitions
+ * of a partitioned table:
+ * @code
  *   SELECT * FROM <database>.<table> PARTITION (<partition>);
- *   @code
- * 
+ * @code
  * Some application may choose to explicitly identify and process this type
  * of failures.
  */
-class NoSuchPartition : public Error {
+class ER_UNKNOWN_PARTITION_: public Error {
 public:
     using Error::Error;
 };
 
-
 /**
- * Instances of this exception class are thrown on queries attempting to drop
- * a non-existing partition from the table's definition:
- * 
- *   @code
+ * Thrown on queries attempting to drop a non-existing partition from
+ * the table's definition:
+ * @code
  *   ALTER TABLE <database>.<table> DROP PARTITION <partition>;
- *   @code
- * 
- * This error corresponds to MySQL error: ER_DROP_PARTITION_NON_EXISTENT
+ * @code
  */
-class DropPartitionNonExistent: public Error {
+class ER_DROP_PARTITION_NON_EXISTENT_: public Error {
 public:
     using Error::Error;
 };
-
 
 /**
- * Instances of this exception class are thrown in a scenario when deadlock found
- * when trying to get lock. A solution is to try restarting an ongoing transaction.
- * 
- * This error corresponds to MySQL error: ER_LOCK_DEADLOCK
+ * Thrown in a scenario when deadlock found when trying to get lock. A solution
+ * is to try restarting an ongoing transaction.
  */
-class LockDeadlock: public Error {
+class ER_LOCK_DEADLOCK_: public Error {
 public:
     using Error::Error;
 };
-
 
 /**
  * Instances of this exception class are thrown on failed attempts
  * to interpret the contents of the result set.
  */
-class InvalidTypeError : public Error {
+class InvalidTypeError: public Error {
 public:
     using Error::Error;
 };
-
 
 /**
  * Instances of this exception class are thrown on empty result sets
  * by some methods when a query is supposed to return at least one row.
  */
-class EmptyResultSetError : public Error {
+class EmptyResultSetError: public Error {
 public:
     using Error::Error;
 };
-
 
 }}}}} // namespace lsst::qserv::replica::database::mysql
 

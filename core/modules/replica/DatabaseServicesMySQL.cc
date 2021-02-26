@@ -109,7 +109,7 @@ void DatabaseServicesMySQL::saveState(ControllerIdentity const& identity,
             }
         );
 
-    } catch (database::mysql::DuplicateKeyError const&) {
+    } catch (database::mysql::ER_DUP_ENTRY_ const&) {
         LOGS(_log, LOG_LVL_ERROR, context << "the state is already in the database");
         throw logic_error(context + "the state is already in the database");
 
@@ -542,7 +542,7 @@ void DatabaseServicesMySQL::_saveReplicaInfoImpl(util::Lock const& lock,
                 "    AND "     + _conn->sqlEqual("chunk",    info.chunk()));
         }
 
-    } catch (database::mysql::DuplicateKeyError const&) {
+    } catch (database::mysql::ER_DUP_ENTRY_ const&) {
 
         // Replace the replica with a newer version
 
