@@ -102,6 +102,12 @@ public:
     /// provided by reference at construction.
     static SendChannel::Ptr newStringChannel(std::string& dest);
 
+    /// Kill this SendChannel
+    /// @ return the previous value of _dead
+    bool kill() { return  _dead.exchange(true); }
+
+    bool isDead() { return _dead; }
+
 protected:
     std::function<void(void)> _release = [](){;}; ///< Function to release resources.
 
@@ -113,6 +119,7 @@ private:
     std::mutex _streamMutex;
     int _taskCount = 0; ///< The number of tasks to be sent over this SendChannel.
     int _lastCount = 0; ///< Then number of 'last' buffers received.
+    std::atomic<bool> _dead{false}; ///< True if there were any failures using this SendChanel.
 };
 
 }}} // lsst::qserv::wbase
