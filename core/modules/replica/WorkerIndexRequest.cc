@@ -170,15 +170,15 @@ bool WorkerIndexRequest::execute() {
         if (fileReadSuccess) setStatus(lock, STATUS_SUCCEEDED);
         else                 setStatus(lock, STATUS_FAILED, EXT_STATUS_FILE_READ);        
 
-    } catch(database::mysql::NoSuchTable const& ex) {
+    } catch(database::mysql::ER_NO_SUCH_TABLE_ const& ex) {
         LOGS(_log, LOG_LVL_ERROR, context(__func__) << "  MySQL error: " << ex.what());
         _error = ex.what();
         setStatus(lock, STATUS_FAILED, EXT_STATUS_NO_SUCH_TABLE);
-    } catch(database::mysql::NotPartitionedTable const& ex) {
+    } catch(database::mysql::ER_PARTITION_MGMT_ON_NONPARTITIONED_ const& ex) {
         LOGS(_log, LOG_LVL_ERROR, context(__func__) << "  MySQL error: " << ex.what());
         _error = ex.what();
         setStatus(lock, STATUS_FAILED, EXT_STATUS_NOT_PARTITIONED_TABLE);
-    } catch(database::mysql::NoSuchPartition const& ex) {
+    } catch(database::mysql::ER_UNKNOWN_PARTITION_ const& ex) {
         LOGS(_log, LOG_LVL_ERROR, context(__func__) << "  MySQL error: " << ex.what());
         _error = ex.what();
         setStatus(lock, STATUS_FAILED, EXT_STATUS_NO_SUCH_PARTITION);

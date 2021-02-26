@@ -121,7 +121,7 @@ public:
      *            delayBetweenReconnects.wait();
      *            cerr << "reconnecting..." << endl;
      *            
-     *        } catch (ConnectTimeout const& ex) {
+     *        } catch (ConnectTimeoutError const& ex) {
      *            cerr << "connection attempt expired after: " << ex.timeoutSec() << " seconds "
      *                 << "due to: " << ex.what << endl;
      *            throw;
@@ -138,7 +138,7 @@ public:
      * @return a valid object if the connection attempt succeeded (no nullptr
      *   to be returned under any circumstances)
      * 
-     * @throw ConnectTimeout is thrown only if the automatic reconnects
+     * @throw ConnectTimeoutError is thrown only if the automatic reconnects
      *   are allowed to indicate that connection attempts to a server
      *   failed to be established within the specified timeout
      *
@@ -546,7 +546,7 @@ public:
      * @return a smart pointer to self to allow chained calls
      * 
      * @throw std::invalid_argument for empty query strings
-     * @throw DuplicateKeyError for attempts to insert rows with duplicate keys
+     * @throw ER_DUP_ENTRY_ for attempts to insert rows with duplicate keys
      * @throw Error for any other MySQL specific errors
      */
     Connection::Ptr execute(std::string const& query);
@@ -572,7 +572,7 @@ public:
      * @param Fargs the variadic list of values to be inserted
      * @return a smart pointer to self to allow chained calls
      *
-     * @throw DuplicateKeyError for attempts to insert rows with duplicate keys
+     * @throw ER_DUP_ENTRY_ for attempts to insert rows with duplicate keys
      * @throw Error for any other MySQL specific errors
      */
     template <typename...Targs>
@@ -646,7 +646,7 @@ public:
      *         cerr << "you only made one failed attempt because "
      *              << "no automatic reconnects were allowed. Open your connection "
      *              << "with factory method Connection::openWait()" << endl;
-     *     } catch (ConnectTimeout const& ex) {
+     *     } catch (ConnectTimeoutError const& ex) {
      *         cerr << "you have exausted the maximum allowed number of retries "
      *              << "within the specified (or implicitly assumed) "
      *                 "timeout: " << ex.timeoutSec() << endl;
@@ -669,7 +669,7 @@ public:
      * @throw std::invalid_argument if 'nullptr' is passed in place of 'script'
      * @throw ConnectError failed to establish a connection if connection was
      *   open with factory method Connection::open().
-     * @throw ConnectTimeout failed to establish a connection within a timeout
+     * @throw ConnectTimeoutError failed to establish a connection within a timeout
      *   if a connection was open with factory method Connection::openWait().
      *
      * @throw MaxReconnectsExceeded for multiple failed attempts (due to connection losses
@@ -677,7 +677,7 @@ public:
      *   exceeded a limit set by parameter 'maxReconnects'.
      * 
      * @throw Error the general exception for any MySQL specific errors. A client code may also
-     *   catch specific subclasses (other than ConnectError or ConnectTimeout) of that class
+     *   catch specific subclasses (other than ConnectError or ConnectTimeoutError) of that class
      *   if needed.
      *
      * @return a pointer to the same connector against which the method was invoked
@@ -728,7 +728,7 @@ public:
      *   to insert new data into a database.
      * @param updateScript user-provided function (the callable) to be executed as
      *   as the failover solution to update existing data in the database if the first
-     *   script fails due to the DuplicateKeyError exception. 
+     *   script fails due to the ER_DUP_ENTRY_ exception. 
      * @param maxReconnects
      *   (optional) maximum number of reconnects allowed
      *   If 0 is passed as a value pf the parameter then the default
@@ -899,7 +899,7 @@ private:
      * Keep trying to connect to a server until either a timeout expires, or
      * some unrecoverable failure happens while trying to establish a connection.
      *
-     * @throw ConnectTimeout if failed to establish a connection within a timeout
+     * @throw ConnectTimeoutError if failed to establish a connection within a timeout
      * @throw Error for other problems when preparing or establishing a connection
      */
     void _connect();
@@ -922,7 +922,7 @@ private:
      * @throw std::logic_error if the method is called after no actual error happened
      * @throw Reconnected after a successful reconnection has happened
      * @throw ConnectError connection to a server failed
-     * @throw DuplicateKeyError after the last statement attempted to violate
+     * @throw ER_DUP_ENTRY_ after the last statement attempted to violate
      *   the corresponding key constraint
      * @throw Error for some other error not listed above
      */
