@@ -104,7 +104,7 @@ void Foreman::_setRunFunc(shared_ptr<wbase::Task> const& task) {
         int const resultProtocol = 2; // See proto/worker.proto Result protocol
         if (!msg.has_protocol() || msg.protocol() < resultProtocol) {
             LOGS(_log, LOG_LVL_WARN, "processMsg Unsupported wire protocol");
-            if (!task->getCancelled()) {
+            if (!task->isCancelled()) {
                 // We should not send anything back to xrootd if the task has been cancelled.
                 mutex* streamMutex = task->sendChannel->getStreamMutexPtr();
                 lock_guard<mutex> streamLock(*streamMutex);
@@ -128,7 +128,10 @@ void Foreman::_setRunFunc(shared_ptr<wbase::Task> const& task) {
                 }
             }
         }
-        // Transmission is done, but 'task' contains statistics that are still useful
+        // Transmission is done, but 'task' contains statistics that are still useful, but
+        // the resources used by sendChannel need to be freed quickly.
+        //   The QueryRunner class access to sendChannel for results is over by this point,
+        //   so this wont be an issue there.
         task->sendChannel.reset(); // Frees its xrdsvc::SsiRequest object.
     };
 
