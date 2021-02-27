@@ -928,10 +928,25 @@ unsigned int Configuration::setXrootdConnectTimeoutSec(unsigned int value) {
 }
 
 
-Configuration::Ptr Configuration::load(string const& configUrl) {
+Configuration::Ptr Configuration::load(string const& configUrl, bool autoMigrateSchema) {
+    bool const reset = false;
+    try {
+        Ptr const ptr(new Configuration());
+        util::Lock const lock(ptr->_mtx, _context(__func__));
+        ptr->_load(lock, configUrl, reset);
+        return ptr;
+    } catch (ConfigVersionMismatch const& ex) {
+        if (autoMigrateSchema && (ex.version < ex.requiredVersion)) {
+            LOGS(_log, LOG_LVL_WARN, _context() << "schema version " << ex.version
+                    << " detected in " << configUrl << " doesn't match the required version "
+                    << ex.requiredVersion << ". Trying schema upgrade now.");
+        } else {
+            throw;
+        }
+    }
     Ptr const ptr(new Configuration());
     util::Lock const lock(ptr->_mtx, _context(__func__));
-    bool const reset = false;
+    ConfigurationSchema::upgrade(configUrl);
     ptr->_load(lock, configUrl, reset);
     return ptr;
 }

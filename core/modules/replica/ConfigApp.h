@@ -69,6 +69,22 @@ private:
     ConfigApp(int argc, char* argv[]);
 
     /**
+     * Create, initialize (or re-initialize) the configuration database. Load the database
+     * with the current schema and defaults.
+     */
+    int _create() const;
+
+    /**
+     * Upgrade schema of an existing configuration database to the current version if needed.
+     */
+    int _upgrade() const;
+
+    /**
+     * Print the current MySQL schema of the configuration database.
+     */
+    int _schema() const;
+
+    /**
      * Dump the Configuration into the standard output stream
      * @return A status code to be returned to the shell.
      */
@@ -184,6 +200,14 @@ private:
 
     /// The command
     std::string _command;
+
+    /// This flag allow resetting the content of the configuration database to the default
+    /// state, before initializing it with the current schema and defaults.
+    bool _reset = false;
+
+    /// The flag that prevents printing additional 'INSERT INTO ...' statements for initializing
+    /// the default parameters required by the Replication/Ingest system to begin operating.
+    bool _excludeDefaultParameters = false;
 
     /// An optional scope of the command "DUMP"
     std::string _dumpScope;

@@ -359,12 +359,18 @@ public:
      *   parameters. A connection object to the MySQL service will be initialized
      *   at the corresponding data member of the class.
      * @param configUrl The configuration source.
+     * @param autoMigrateSchema The optional flag that if 'true' would result in an attempt
+     *   to automatically migrate the database schema up to the level of the current
+     *   configuration's should the persistent stores schema versin be lower than
+     *   the expected one. Note that no schema downgrade is supported in the current
+     *   implementation. The flag is supposed to be set to 'true' when instantiating
+     *   the configuration object in the Master Replication Controller.
      * @throw std::invalid_argument If the URL has unsupported scheme or it
      *   couldn't be parsed.                          
      * @throw std::runtime_error If the input configuration is not consistent
      *   with expectations of the application.
      */
-    static Ptr load(std::string const& configUrl);
+    static Ptr load(std::string const& configUrl, bool autoMigrateSchema=false);
 
     /// @return The database password for accessing Qserv czar's database.
     static std::string const& qservMasterDatabasePassword() { return _qservMasterDatabasePassword; }

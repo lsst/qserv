@@ -120,6 +120,11 @@ int Application::run() {
             " This mechanism also prevents 'cross-talks' between two (or many) Replication"
             " System's setups in case of an accidental mis-configuration.",
             _instanceId
+        ).flag(
+            "auto-migrate-schema",
+            "The flag that allows automatic schema migration if the schema has a lowerr version"
+            " then expected by the current version of the application.",
+            _autoMigrateSchema
         );
     }
     if (_injectXrootdOptions) {
@@ -169,7 +174,7 @@ int Application::run() {
         //
         // Note that onFinish callbacks which are activated upon the completion of
         // the asynchronous activities will be run by a thread from the pool.
-        _serviceProvider = ServiceProvider::create(_config, _instanceId);
+        _serviceProvider = ServiceProvider::create(_config, _instanceId, _autoMigrateSchema);
         _serviceProvider->run();
     }
     // Change default parameters of the XROOTD connectors

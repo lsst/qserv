@@ -23,12 +23,25 @@
 
 // System headers
 #include <map>
+#include <memory>
 #include <set>
 #include <string>
+#include <vector>
 
 // Third party headers
 #include "nlohmann/json.hpp"
 
+
+// Forward declarations
+namespace lsst {
+namespace qserv {
+namespace replica {
+    class Configuration;
+namespace database {
+namespace mysql {
+    class Connection;
+}}  // namespace database::mysql
+}}} // namespace lsst::qserv::replica
 
 // This header declarations
 namespace lsst {
@@ -36,8 +49,13 @@ namespace qserv {
 namespace replica {
 
 /**
- * This utility class ConfigurationSchema provides methods returning known JSON schemas of
- * the Configuration service.
+ * This utility class ConfigurationSchema encaposulates the JSON and MySQL schemas
+ * and operations over the schemas of the Configuration service. Both schemas are
+ * put into this class to facilitate schema changes tracking, unit and integration
+ * testing, as well as other actions that may involve the schemas, such as schema
+ * evolution, schema verification, etc.
+ *
+ * @note This class is the primary source of the schemas for the given version.
  */
 class ConfigurationSchema {
 public:
@@ -87,6 +105,53 @@ public:
      *   the corresponding category.
      */
     static std::map<std::string, std::set<std::string>> parameters();
+  
+    /**
+     * Create and initialize the configuration database in MySQL.
+     * @note The database is allowed to exist. If it's not then it will be created
+     *   by this method. If the database is not empty then the behavior of the method
+     *   would depends on a value of the optional flag 'reset'.
+     * @note All operations in a scope of the database 
+     * @note Besides 'std::logic_error' the method may throw other exceptions
+     *   related to database operations.
+     * @param configUrl A configuration URL for the new database.
+     * @param reset The optional flag that if 'true' will tell the method to reset
+     *   the content of the database by deleting all existing tables and populating
+     *   the database with the current schema from scratch.
+     * @return A pointer to the Configuration object initialized by the method.
+     * @throws std::logic_error If the database exists and its not empty.
+     */
+    static std::shared_ptr<Configuration> create(std::string const& configUrl,
+                                                 bool reset=false);
+
+    /**
+     * Upgrade persistent configuration schema up to the currnet one.
+     * @throws std::logic_error If the persistent schema is not strictly less than
+     *   the one that is expected by current implementation of the class.
+     */
+    static void upgrade(std::string const& configUrl);
+
+    /**
+     * Return the current MySQL schema and (optionally) the initialization
+     * statements for the minimum set of teh default parameters required by
+     * the Replication/Ingest system to operate.
+     * @note This method is designed to work w/o having an open MySQL connection
+     *   to generate proper quotes for SQL identifiers and values. Please consider
+     *   the optional parameters 'idQuote' and 'valueQuote' allowing to explicitly
+     *   specify the desired values of the quotes. The default values in the signature
+     *   method are set to be consistent with the present configuration of
+     *   the MySQL/MariaDB services of Qserv and the Replication/Ingest system.
+     * @param includeInitStatements If 'true' then add 'INSERT INTO ...' statements
+     *   for initializing the default configuration parameters.
+     * @param idQuote The quotation symbol for MySQL identifiers.
+     * @param valueQuote The quotation string for MySQL values.
+     * @return An ordered collection of the MySQL statements for creating schema and
+     *   initializing configuration parameters. The order of statements takes into
+     *   accout dependencies between the tables (such as FK->PK relationships).
+     */
+    static std::vector<std::string> schema(bool includeInitStatements=true,
+                                           std::string const& idQuote="`",
+                                           std::string const& valueQuote="'");
 
     /**
      * Serialize a primitive JSON object into a non-quoted string.
@@ -98,8 +163,42 @@ public:
     static std::string json2string(std::string const& context, nlohmann::json const& obj);
 
 private:
-    /// The schema of the transient configuration.
+    /**
+     * Make the table creation statement from the specified table definition.
+     * @note If a valid connection is not provided then the quotations strings will be used
+     *   for generating SQL statements.
+     * @param obj Table definition.
+     * @param conn An optional MySQL connection that is required to take into account
+     *   various locales, etc. set for the MySQL server when generating the statement.
+     * @param idQuote The quotation string for MySQL identifiers.
+     * @param valueQuote The quotation string for MySQL values.
+     */
+    static std::string _tableCreateStatement(nlohmann::json const& obj,
+                                             std::shared_ptr<database::mysql::Connection> const& conn,
+                                             std::string const& idQuote="`");
+
+    static std::vector<std::string> _defaultConfigStatements(
+            std::shared_ptr<database::mysql::Connection> const& conn,
+            std::string const& idQuote="`",
+            std::string const& valueQuote="'");
+
+    /**
+     * Store the default configuration parameters in the database.
+     * @note If a valid connection is not provided then the quotations string will be used
+     *   for generating SQL statements.
+     * @param conn An optional MySQL connection that is required to access the database.
+     * @param idQuote The quotation string for MySQL identifiers.
+     * @param valueQuote The quotation string for MySQL values.
+     */
+    static void _storeDefaultConfig(std::shared_ptr<database::mysql::Connection> const& conn,
+                                    std::string const& idQuote="`",
+                                    std::string const& valueQuote="'");
+
+    /// The JSON schema of the transient configuration.
     static nlohmann::json const _schemaJson;
+
+    /// Persistent schemas of the MySQL tables.
+    static nlohmann::json const _schemaMySQL;
 };
 
 }}} // namespace lsst::qserv::replica

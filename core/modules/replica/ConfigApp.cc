@@ -31,6 +31,7 @@
 // Qserv headers
 #include "replica/Common.h"
 #include "replica/Configuration.h"
+#include "replica/ConfigurationSchema.h"
 #include "util/TablePrinter.h"
 
 using namespace std;
@@ -88,7 +89,9 @@ ConfigApp::ConfigApp(int argc, char* argv[])
 
     parser().commands(
         "command",
-        {"DUMP",
+        {"MYSQL_CREATE", "MYSQL_SCHEMA_UPGRADE", "MYSQL_SCHEMA_DUMP",
+         "SCHEMA_VERSION",
+         "DUMP",
          "CONFIG_INIT_FILE",
          "UPDATE_GENERAL",
          "UPDATE_WORKER", "ADD_WORKER", "DELETE_WORKER",
@@ -105,6 +108,47 @@ ConfigApp::ConfigApp(int argc, char* argv[])
         "tables-vertical-separator",
         "Print vertical separator when displaying tabular data in dumps.",
         _verticalSeparator
+    );
+
+    parser().command(
+        "MYSQL_CREATE"
+    ).description(
+        "Create the configuration database in MySQL at a location specified in the configuration"
+        " URL parameter '--config=<url>'. Populate the database with the current schema. Preload"
+        " default values of a minimal set of parameters required by the Replication/Ingest system"
+        " to begin operating. NOTE: If the database already exist one would have to use the optional"
+        " flag '--reset' to destroy the specified database before re-creating it from scratch. Plan"
+        " carefully when using this flag to avoid destroying any valuable data."
+    ).flag(
+        "reset",
+        "This flag allow resetting the content of the configuration database to the default"
+        " state, before initializing it with the current schema and defaults. ATTENTION: use"
+        " this flag with caution as it may result in destroying valuable information.",
+        _reset
+    );
+
+    parser().command(
+        "MYSQL_SCHEMA_UPGRADE"
+    ).description(
+        "Upgrade schema of an existing configuration database to the current version if needed."
+        " The MySQL database location is specified by the configuration URL parameter '--config=<url>'."
+    );
+
+    parser().command(
+        "MYSQL_SCHEMA_DUMP"
+    ).description(
+        "Print the current MySQL schema of the configuration database."
+    ).flag(
+        "exclude-default-parameters",
+        "The flag that prevents printing additional 'INSERT INTO ...' statements for initializing"
+        " the default parameters required by the Replication/Ingest system to begin operating.",
+        _excludeDefaultParameters
+    );
+
+    parser().command(
+        "SCHEMA_VERSION"
+    ).description(
+        "Print the schema version expected by the application."
     );
 
     parser().command(
@@ -474,6 +518,22 @@ int ConfigApp::runImpl() {
 
     string const context = "ConfigApp::" + string(__func__) + "  ";
 
+    if (_command == "SCHEMA_VERSION") {
+        cout << ConfigurationSchema::version << endl;
+        return 0;
+    }
+
+    // Do not attept loading the configuration since the database may not exist
+    // at this time, or it may require special handling.
+    if (_command == "MYSQL_CREATE") return _create();
+
+    // This operation opens the Configuration in a special mode to allow automated
+    // upgrade if needed.
+    if (_command == "MYSQL_SCHEMA_UPGRADE") return _upgrade();
+
+    // This command doesn't require any configuration URL.
+    if (_command == "MYSQL_SCHEMA_DUMP") return _schema();
+
     _config = Configuration::load(_configUrl);
 
     if (_command == "DUMP")                   return _dump();
@@ -492,6 +552,27 @@ int ConfigApp::runImpl() {
 
     LOGS(_log, LOG_LVL_ERROR, context << "unsupported command: '" + _command + "'");
     return 1;
+}
+
+
+int ConfigApp::_create() const {
+    auto const config = ConfigurationSchema::create(_configUrl, _reset);
+    return 0;
+}
+
+
+int ConfigApp::_upgrade() const {
+    bool const autoMigrateSchema = true;
+    auto const config = Configuration::load(_configUrl, autoMigrateSchema);
+    return 0;
+}
+
+
+int ConfigApp::_schema() const {
+    for (auto&& sql: ConfigurationSchema::schema()) {
+        cout << sql << ";" <<endl;
+    }
+    return 0;
 }
 
 

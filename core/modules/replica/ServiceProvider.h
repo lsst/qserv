@@ -83,10 +83,13 @@ public:
      *  to the same instance. This mechanism also prevents 'cross-talks' between
      *  two (or many) Replication System's setups in case of an accidental
      *  mis-configuration.
+     * @param autoMigrateSchema  The optional flag allowing (if 'true') automatic
+     *  schema upgrade to the current version.
      * @return A pointer to the created object.
      */
     static ServiceProvider::Ptr create(std::string const& configUrl,
-                                       std::string const& instanceId);
+                                       std::string const& instanceId,
+                                       bool autoMigrateSchema=false);
 
     ~ServiceProvider() = default;
 
@@ -201,7 +204,8 @@ public:
 private:
     /// @see ServiceProvider::create()
     explicit ServiceProvider(std::string const& configUrl,
-                             std::string const& instanceId);
+                             std::string const& instanceId,
+                             bool autoMigrateSchema);
 
     /// @return the context string for debugging and diagnostic printouts
     std::string _context() const;

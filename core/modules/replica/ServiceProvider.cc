@@ -49,14 +49,16 @@ namespace qserv {
 namespace replica {
 
 ServiceProvider::Ptr ServiceProvider::create(string const& configUrl,
-                                             string const& instanceId) {
-    return ServiceProvider::Ptr(new ServiceProvider(configUrl, instanceId));
+                                             string const& instanceId,
+                                             bool autoMigrateSchema) {
+    return ServiceProvider::Ptr(new ServiceProvider(configUrl, instanceId, autoMigrateSchema));
 }
 
 
 ServiceProvider::ServiceProvider(string const& configUrl,
-                                 string const& instanceId)
-    :   _configuration(Configuration::load(configUrl)),
+                                 string const& instanceId,
+                                 bool autoMigrateSchema)
+    :   _configuration(Configuration::load(configUrl, autoMigrateSchema)),
         _instanceId(instanceId) {
 }
 

@@ -143,6 +143,10 @@ private:
     /// Configuration URL
     std::string _config;
 
+    /// The flag that allows automatic schema migration. It's used along with
+    /// the configuration URL.
+    bool _autoMigrateSchema = false;
+
     /// A unique identifier of a Qserv instance served by the Replication System
     std::string _instanceId;
 
