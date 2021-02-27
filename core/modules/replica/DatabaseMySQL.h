@@ -184,6 +184,8 @@ public:
 
     ~Connection();
 
+    ConnectionParams const& connectionParams() const { return _connectionParams; }
+
     /// @return maximum amount of time to wait while making reconnection attempts
     unsigned int connectTimeoutSec() const { return _connectTimeoutSec; }
 
@@ -860,6 +862,31 @@ public:
         }
         if ((1 == numRows) or !noMoreThanOne) return isNotNull;
         throw std::logic_error(context_ + "result set has more than 1 row");
+    }
+
+    /**
+     * Select all values for the given column name.
+     * The method will replace NULL values with the specified default value.
+     * @param query A SELECT-type query to be executed.
+     * @param col The name of a column from which to extract values.
+     * @param val defaultVal The default value to be returned set for NULL.
+     * @return A collection of values.
+     */
+    template <typename T>
+    std::vector<T> executeAllValuesSelect(std::string const& query,
+                                          std::string const& col,
+                                          T const& defaultVal=T()) {
+        std::string const context_ = "DatabaseMySQL::" + std::string(__func__) + "  ";
+        std::vector<T> coll;
+        execute(query);
+        if (hasResult()) {
+            Row row;
+            while (next(row)) {
+                T val;
+                coll.push_back(row.get(col, val) ? val : defaultVal);
+            }
+        }
+        return coll;
     }
 
     /**
