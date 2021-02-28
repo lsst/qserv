@@ -425,7 +425,7 @@ Connection::Ptr Connection::execute(function<void(Connection::Ptr)> const& scrip
                     context + "aborting script, exceeded effectiveMaxReconnects: " +
                     to_string(effectiveMaxReconnects);
 
-                LOGS(_log, LOG_LVL_ERROR, msg);
+                LOGS(_log, LOG_LVL_DEBUG, msg);
                 throw MaxReconnectsExceeded(msg, effectiveMaxReconnects);
             }
         }
@@ -439,7 +439,7 @@ Connection::Ptr Connection::execute(function<void(Connection::Ptr)> const& scrip
                 to_string(effectiveTimeoutSec) + ", elapsedTimeSec: " +
                 to_string(elapsedTimeMillisec/1000);
 
-            LOGS(_log, LOG_LVL_ERROR, msg);
+            LOGS(_log, LOG_LVL_DEBUG, msg);
             throw ConnectTimeoutError(msg, effectiveTimeoutSec);
         }
 
@@ -646,14 +646,9 @@ void Connection::_connect() {
                 timeLapsedMilliseconds += delayBetweenReconnects.wait();
                 if (timeLapsedMilliseconds > 1000 * _connectTimeoutSec) {
                     string const msg = context + "connection timeout has expired";
-                    LOGS(_log, LOG_LVL_ERROR, msg);
+                    LOGS(_log, LOG_LVL_DEBUG, msg);
                     throw ConnectTimeoutError(msg, _connectTimeoutSec);
                 }
-    
-            } catch (Error const& ex) {
-    
-                LOGS(_log, LOG_LVL_ERROR, context << "unrecoverable error at: " << ex.what());
-                throw;
             }
         }
     }
@@ -922,7 +917,7 @@ ConnectionHandler::~ConnectionHandler() {
             conn->rollback();
         }
     } catch (exception const& ex) {
-        LOGS(_log, LOG_LVL_ERROR, context << "ex: " << ex.what());
+        LOGS(_log, LOG_LVL_DEBUG, context << "ex: " << ex.what());
     }
     if (nullptr != _pool) _pool->release(conn);
 }
