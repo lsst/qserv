@@ -848,8 +848,9 @@ public:
                                   bool noMoreThanOne=true) {
         std::string const context_ = "DatabaseMySQL::" + std::string(__func__) + "  ";
         execute(query);
-        if (!hasResult()) throw EmptyResultSetError(context_ + "result set is empty");
-
+        if (!hasResult()) {
+            throw std::logic_error(context_ + "wrong query type - the query doesn't have any result set.");
+        }
         bool isNotNull = false;
         size_t numRows = 0;
         Row row;
@@ -860,7 +861,12 @@ public:
             // Have to read the rest of the result set to avoid problems with the MySQL protocol
             ++numRows;
         }
-        if ((1 == numRows) or !noMoreThanOne) return isNotNull;
+        switch (numRows) {
+            case 0: throw EmptyResultSetError(context_ + "result set is empty.");
+            case 1: return isNotNull;
+            default:
+                if (!noMoreThanOne) return isNotNull;
+        }
         throw std::logic_error(context_ + "result set has more than 1 row");
     }
 
