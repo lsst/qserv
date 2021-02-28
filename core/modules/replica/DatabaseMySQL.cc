@@ -111,8 +111,14 @@ Connection::Connection(ConnectionParams const& connectionParams,
 Connection::~Connection() {
 
     if (nullptr != _res)   mysql_free_result(_res);
-    if (nullptr != _mysql) mysql_close(_mysql);
-
+    if (nullptr != _mysql) {
+        // Resetting the connection would release all table locks, roll back any
+        // outstanding transactions, etc. See details at:
+        // https://dev.mysql.com/doc/c-api/8.0/en/mysql-reset-connection.html
+        // Ignore the status code returned by the method.
+        mysql_reset_connection(_mysql);
+        mysql_close(_mysql);
+    }
     LOGS(_log, LOG_LVL_DEBUG, "Connection[" + to_string(_id) + "]  destructed");
 }
 
