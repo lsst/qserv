@@ -85,35 +85,22 @@ private:
     int _schema() const;
 
     /**
+     * The complete integration test for the Configuration service.
+     */
+    int _test();
+    bool _testGeneral();
+    bool _testWorkers();
+    bool _testDatabasesAndFamilies();
+
+    /**
      * Dump the Configuration into the standard output stream
      * @return A status code to be returned to the shell.
      */
     int _dump() const;
-
-    /**
-     * Dump general configuration parameters into the standard output
-     * stream as a table.
-     * @param indent The indentation for the table.
-     */
     void _dumpGeneralAsTable(std::string const& indent) const;
-
-    /**
-     * Dump workers into the standard output stream as a table 
-     * @param indent The indentation for the table.
-     */
-    void _dumpWorkersAsTable(std::string const& indent) const;
-
-    /**
-     * Dump database families into the standard output stream as a table 
-     * @param indent The indentation for the table.
-     */
-    void _dumpFamiliesAsTable(std::string const& indent) const;
-
-    /**
-     * Dump databases into the standard output stream as a table 
-     * @param indent The indentation for the table.
-     */
-    void _dumpDatabasesAsTable(std::string const& indent) const;
+    void _dumpWorkersAsTable(std::string const& indent, std::string const& capture="WORKERS:") const;
+    void _dumpFamiliesAsTable(std::string const& indent, std::string const& capture="DATABASES FAMILIES") const;
+    void _dumpDatabasesAsTable(std::string const& indent, std::string const& capture="DATABASES:") const;
 
     /**
      * Dump the Configuration into the standard output stream in  format which could
@@ -208,6 +195,9 @@ private:
     /// The flag that prevents printing additional 'INSERT INTO ...' statements for initializing
     /// the default parameters required by the Replication/Ingest system to begin operating.
     bool _excludeDefaultParameters = false;
+
+    /// An optional scope of the command "MYSQL_TEST"
+    std::string _testScope;
 
     /// An optional scope of the command "DUMP"
     std::string _dumpScope;
