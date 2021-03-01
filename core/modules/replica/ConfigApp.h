@@ -22,16 +22,10 @@
 #define LSST_QSERV_REPLICA_CONFIGAPP_H
 
 // System headers
-#include <limits>
 #include <string>
 
 // Qserv headers
-#include "replica/Application.h"
-#include "replica/Configuration.h"
-#include "replica/ConfigurationTypes.h"
-
-// LSST headers
-#include "lsst/log/Log.h"
+#include "replica/ConfigAppBase.h"
 
 // This header declarations
 namespace lsst {
@@ -42,7 +36,7 @@ namespace replica {
  * Class ConfigApp implements a tool for inspecting/modifying configuration
  * records stored in the MySQL/MariaDB database.
  */
-class ConfigApp: public Application {
+class ConfigApp: public ConfigAppBase {
 public:
     typedef std::shared_ptr<ConfigApp> Ptr;
 
@@ -61,8 +55,8 @@ public:
     ~ConfigApp() override = default;
 
 protected:
-    /// @see Application::runImpl()
-    int runImpl() final;
+    /// @see ConfigAppBase::runSubclassImpl()
+    virtual int runSubclassImpl() final;
 
 private:
     /// @see ConfigApp::create()
@@ -73,31 +67,6 @@ private:
      * @return A status code to be returned to the shell.
      */
     int _dump() const;
-
-    /**
-     * Dump general configuration parameters into the standard output
-     * stream as a table.
-     * @param indent The indentation for the table.
-     */
-    void _dumpGeneralAsTable(std::string const& indent) const;
-
-    /**
-     * Dump workers into the standard output stream as a table 
-     * @param indent The indentation for the table.
-     */
-    void _dumpWorkersAsTable(std::string const& indent) const;
-
-    /**
-     * Dump database families into the standard output stream as a table 
-     * @param indent The indentation for the table.
-     */
-    void _dumpFamiliesAsTable(std::string const& indent) const;
-
-    /**
-     * Dump databases into the standard output stream as a table 
-     * @param indent The indentation for the table.
-     */
-    void _dumpDatabasesAsTable(std::string const& indent) const;
 
     /**
      * Dump the Configuration into the standard output stream in  format which could
@@ -173,23 +142,11 @@ private:
      */
     int _deleteTable();
 
-    /// Logger stream
-    LOG_LOGGER _log;
-
-    /// Configuration URL
-    std::string _configUrl;
-
-    /// The input Configuration
-    Configuration::Ptr _config;
-
     /// The command
     std::string _command;
 
     /// An optional scope of the command "DUMP"
     std::string _dumpScope;
-
-    /// Print vertical separator in tables
-    bool _verticalSeparator = false;
 
     /// Format of an initialization file
     std::string _format;

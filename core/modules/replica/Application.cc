@@ -110,7 +110,7 @@ int Application::run() {
     if (_enableServiceProvider) {
         parser().option(
             "config",
-            "Configuration URL (a configuration file or a set of database connection parameters).",
+            "Configuration URL (a database connection string).",
             _config
         ).option(
             "instance-id",
