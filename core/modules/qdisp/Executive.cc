@@ -208,8 +208,9 @@ bool Executive::startQuery(std::shared_ptr<JobQuery> const& jobQuery) {
     //   Interactive Queries should have an Affinity of XrdSsiResource::None or Weak while
     //   Scans should have an affinity of Strong
     XrdSsiResource::Affinity affinity = (_scanInteractive) ? XrdSsiResource::Weak : XrdSsiResource::Strong;
+    uint32_t ropts = XrdSsiResource::Reusable;
     XrdSsiResource jobResource(jobQuery->getDescription()->resource().path(), "", jobQuery->getIdStr(),
-                               "", 0, affinity);
+                               "", 0, affinity, ropts);
 
     // Now construct the actual query request and tie it to the jobQuery. The
     // shared pointer is used by QueryRequest to keep itself alive, sloppy design.
