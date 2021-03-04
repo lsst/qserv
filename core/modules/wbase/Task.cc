@@ -99,12 +99,12 @@ IdSet Task::allIds{};
 /// Command::setFunc() is used set the action later. This is why
 /// the util::CommandThreadPool is not called here.
 Task::Task(TaskMsgPtr const& t, std::string const& query, int fragmentNumber,
-                  std::shared_ptr<SendChannel> const& sc)
-: msg(t), sendChannel(sc),
-  _qId(t->queryid()), _jId(t->jobid()), _attemptCount(t->attemptcount()),
-  _idStr(QueryIdHelper::makeIdStr(_qId, _jId)),
-  _queryString(query),
-  _queryFragmentNum(fragmentNumber) {
+        std::shared_ptr<SendChannelShared> const& sc)
+    : msg(t), sendChannel(sc),
+      _qId(t->queryid()), _jId(t->jobid()), _attemptCount(t->attemptcount()),
+      _idStr(QueryIdHelper::makeIdStr(_qId, _jId)),
+      _queryString(query),
+      _queryFragmentNum(fragmentNumber) {
 
 
     hash = hashTaskMsg(*t);
@@ -136,19 +136,22 @@ Task::~Task() {
 
 
 std::vector<Task::Ptr> Task::createTasks(std::shared_ptr<proto::TaskMsg> const& taskMsg,
-                                         std::shared_ptr<wbase::SendChannel> sendChannel) {
+                                         std::shared_ptr<wbase::SendChannelShared> const& sendChannel) {
     QSERV_LOGCONTEXT_QUERY_JOB(taskMsg->queryid(), taskMsg->jobid());
     std::vector<Task::Ptr> vect;
 
     /// Make one task for each fragment.
     int fragmentCount = taskMsg->fragment_size();
     if (fragmentCount < 1) {
-        throw Bug("QueryRunner: No fragments to execute in TaskMsg");
+        throw Bug("Task::createTasks No fragments to execute in TaskMsg");
     }
     for (int fragNum=0; fragNum<fragmentCount; ++fragNum) {
-        proto::TaskMsg_Fragment const& fragment(taskMsg->fragment(fragNum));
+        proto::TaskMsg_Fragment const& fragment = taskMsg->fragment(fragNum);
         for (const std::string queryStr: fragment.query()) {
-            if (fragment.has_subchunks() && false == fragment.subchunks().id().empty()) {
+            // fragment.has_subchunks() == true and fragment.subchunks().id().empty() == false
+            // is apparently valid and must go to the else clause.
+            // TODO: Look into the creation of fragment on the czar as this is not intuitive.
+            if (fragment.has_subchunks() && not fragment.subchunks().id().empty()) {
                 for (auto subchunkId : fragment.subchunks().id()) {
                     std::string qs(queryStr);
                     boost::algorithm::replace_all(qs, SUBCHUNK_TAG, std::to_string(subchunkId));
@@ -160,7 +163,7 @@ std::vector<Task::Ptr> Task::createTasks(std::shared_ptr<proto::TaskMsg> const& 
                 //TODO: Maybe? Is it better to move fragment info from
                 //      ChunkResource getResourceFragment(int i) to here???
                 //      It looks like Task should contain a ChunkResource::Info object
-                //      which could help clean up the mess in ChunkResource.
+                //      which could help clean up ChunkResource and related classes.
                 vect.push_back(task);
             }
 

@@ -62,6 +62,7 @@ using lsst::qserv::proto::TaskMsg_Subchunk;
 using lsst::qserv::proto::TaskMsg_Fragment;
 
 using lsst::qserv::wbase::SendChannel;
+using lsst::qserv::wbase::SendChannelShared;
 using lsst::qserv::wbase::Task;
 using lsst::qserv::wcontrol::SqlConnMgr;
 using lsst::qserv::wcontrol::TransmitMgr;
@@ -89,7 +90,8 @@ struct Fixture {
     shared_ptr<Task> newTask() {
         shared_ptr<TaskMsg> msg(newTaskMsg());
         shared_ptr<SendChannel> sc(SendChannel::newNopChannel());
-        Task::Ptr taskPtr(new Task(msg, "", 0, sc));
+        auto scs = std::make_shared<SendChannelShared>(sc);
+        Task::Ptr taskPtr(new Task(msg, "", 0, scs));
         return taskPtr;
     }
 
@@ -109,7 +111,8 @@ BOOST_FIXTURE_TEST_SUITE(Basic, Fixture)
 
 BOOST_AUTO_TEST_CASE(Simple) {
     shared_ptr<TaskMsg> msg(newTaskMsg());
-    shared_ptr<SendChannel> sc(SendChannel::newNopChannel());
+    shared_ptr<SendChannel> sendC(SendChannel::newNopChannel());
+    auto sc = std::make_shared<SendChannelShared>(sendC);
     Task::Ptr task(new Task(msg, "", 0, sc));
     FakeBackend::Ptr backend = make_shared<FakeBackend>();
     shared_ptr<ChunkResourceMgr> crm = ChunkResourceMgr::newMgr(backend);
@@ -122,7 +125,8 @@ BOOST_AUTO_TEST_CASE(Simple) {
 BOOST_AUTO_TEST_CASE(Output) {
     string out;
     shared_ptr<TaskMsg> msg(newTaskMsg());
-    shared_ptr<SendChannel> sc(SendChannel::newStringChannel(out));
+    shared_ptr<SendChannel> sendC(SendChannel::newStringChannel(out));
+    auto sc = std::make_shared<SendChannelShared>(sendC);
     Task::Ptr task(new Task(msg, "", 0, sc));
     FakeBackend::Ptr backend = make_shared<FakeBackend>();
     shared_ptr<ChunkResourceMgr> crm = ChunkResourceMgr::newMgr(backend);

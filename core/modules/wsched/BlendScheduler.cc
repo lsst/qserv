@@ -150,7 +150,7 @@ void BlendScheduler::queCmd(std::vector<util::Command::Ptr> const& cmds) {
     // user query and will go to the same scheduler.
     bool first = true;
     std::vector<util::Command::Ptr> taskCmds;
-    SchedulerBase::Ptr sb = nullptr;
+    SchedulerBase::Ptr targSched = nullptr;
     bool onInteractive = false;
     for (auto const& cmd : cmds) {
         wbase::Task::Ptr task = dynamic_pointer_cast<wbase::Task>(cmd);
@@ -158,7 +158,7 @@ void BlendScheduler::queCmd(std::vector<util::Command::Ptr> const& cmds) {
             // These should be few and far between.
             LOGS(_log, LOG_LVL_INFO, "BlendScheduler::queCmd got control command");
             if (cmds.size() > 1) {
-                throw Bug("cmds.size() > 1 when no task was set.");
+                throw Bug("BlendScheduler::queCmd cmds.size() > 1 when no task was set.");
             }
             {
                 util::LockGuardTimed guard(util::CommandQueue::_mx, "BlendScheduler::queCmd a");
@@ -188,7 +188,7 @@ void BlendScheduler::queCmd(std::vector<util::Command::Ptr> const& cmds) {
                 LOGS(_log, LOG_LVL_DEBUG, "Blend chose group scanTables.size=" << scanTables.size()
                         << " interactive=" << interactive);
                 onInteractive = true;
-                sb = _group;
+                targSched = _group;
             } else {
                 onInteractive = false;
                 int scanPriority = task->getScanInfo().scanRating;
@@ -206,7 +206,7 @@ void BlendScheduler::queCmd(std::vector<util::Command::Ptr> const& cmds) {
                         ScanScheduler::Ptr scan = dynamic_pointer_cast<ScanScheduler>(sched);
                         if (scan != nullptr) {
                             if (scan->isRatingInRange(scanPriority)) {
-                                sb = scan;
+                                targSched = scan;
                                 break;
                             }
                         }
@@ -215,26 +215,26 @@ void BlendScheduler::queCmd(std::vector<util::Command::Ptr> const& cmds) {
                 // If the user query for this task has been booted, put this task on the snail scheduler.
                 auto queryStats = _queries->getStats(task->getQueryId());
                 if (queryStats && queryStats->getQueryBooted()) {
-                    sb = _scanSnail;
+                    targSched = _scanSnail;
                 }
-                if (sb == nullptr) {
+                if (targSched == nullptr) {
                     // Task wasn't assigned with a scheduler, assuming it is terribly slow.
                     // Assign it to the slowest scheduler so it does the least damage to other queries.
                     LOGS_WARN("Task had unexpected scanRating="
                             << scanPriority << " adding to scanSnail");
-                    sb = _scanSnail;
+                    targSched = _scanSnail;
                 }
             }
         }
         task->setOnInteractive(onInteractive);
-        task->setTaskScheduler(sb);
+        task->setTaskScheduler(targSched);
         _queries->queuedTask(task);
         taskCmds.push_back(task);
     }
 
     if (!taskCmds.empty()) {
         LOGS(_log, LOG_LVL_DEBUG, "Blend queCmd");
-        sb->queCmd(taskCmds);
+        targSched->queCmd(taskCmds);
         _infoChanged = true;
         notify(true); // notify all=true
     }
