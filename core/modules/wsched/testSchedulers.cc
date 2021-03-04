@@ -38,6 +38,7 @@
 #include "util/Command.h"
 #include "util/EventThread.h"
 #include "wbase/Task.h"
+#include "wbase/SendChannel.h"
 #include "wpublish/QueriesAndChunks.h"
 #include "wsched/ChunkDisk.h"
 #include "wsched/ChunkTasksQueue.h"
@@ -60,11 +61,14 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.wsched.testSchedulers");
 using lsst::qserv::proto::TaskMsg;
 using lsst::qserv::wbase::Task;
 using lsst::qserv::wbase::SendChannel;
+using lsst::qserv::wbase::SendChannelShared;
 
 double const oneHr = 60.0;
 
 Task::Ptr makeTask(std::shared_ptr<TaskMsg> tm) {
-    Task::Ptr task(new Task(tm, "", 0, std::shared_ptr<SendChannel>()));
+    auto sendC = std::make_shared<SendChannel>();
+    auto sc = std::make_shared<SendChannelShared>(sendC);
+    Task::Ptr task(new Task(tm, "", 0, sc));
     task->setSafeToMoveRunning(true); // Can't wait for MemMan in unit tests.
     return task;
 }
