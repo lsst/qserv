@@ -38,7 +38,6 @@
 #include <memory>
 
 // Third-party headers
-#include <boost/algorithm/string/replace.hpp>
 #include <google/protobuf/arena.h>
 #include <mysql/mysql.h>
 
@@ -50,7 +49,6 @@
 
 #include "wcontrol/TransmitMgr.h"
 #include "global/Bug.h"
-#include "global/constants.h"
 #include "global/DbTable.h"
 #include "global/debugUtil.h"
 #include "global/LogContext.h"
@@ -76,6 +74,8 @@ namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.wdb.QueryRunner");
 }
 
+using namespace std;
+
 namespace lsst {
 namespace qserv {
 namespace wdb {
@@ -83,13 +83,13 @@ namespace wdb {
 QueryRunner::Ptr QueryRunner::newQueryRunner(wbase::Task::Ptr const& task,
                                              ChunkResourceMgr::Ptr const& chunkResourceMgr,
                                              mysql::MySqlConfig const& mySqlConfig,
-                                             std::shared_ptr<wcontrol::SqlConnMgr> const& sqlConnMgr,
-                                             std::shared_ptr<wcontrol::TransmitMgr> const& transmitMgr) {
+                                             shared_ptr<wcontrol::SqlConnMgr> const& sqlConnMgr,
+                                             shared_ptr<wcontrol::TransmitMgr> const& transmitMgr) {
     Ptr qr(new QueryRunner(task, chunkResourceMgr, mySqlConfig, sqlConnMgr, transmitMgr)); // Private constructor.
     // Let the Task know this is its QueryRunner.
     bool cancelled = qr->_task->setTaskQueryRunner(qr);
     if (cancelled) {
-        qr->_cancelled.store(true);
+        qr->_cancelled = true;
         // runQuery will return quickly if the Task has been cancelled.
     }
     return qr;
@@ -100,10 +100,10 @@ QueryRunner::Ptr QueryRunner::newQueryRunner(wbase::Task::Ptr const& task,
 QueryRunner::QueryRunner(wbase::Task::Ptr const& task,
                          ChunkResourceMgr::Ptr const& chunkResourceMgr,
                          mysql::MySqlConfig const& mySqlConfig,
-                         std::shared_ptr<wcontrol::SqlConnMgr> const& sqlConnMgr,
-                         std::shared_ptr<wcontrol::TransmitMgr> const& transmitMgr)
+                         shared_ptr<wcontrol::SqlConnMgr> const& sqlConnMgr,
+                         shared_ptr<wcontrol::TransmitMgr> const& transmitMgr)
     : _task(task), _chunkResourceMgr(chunkResourceMgr), _mySqlConfig(mySqlConfig),
-      _arena(std::make_unique<google::protobuf::Arena>()),
+      _arena(make_unique<google::protobuf::Arena>()),
       _sqlConnMgr(sqlConnMgr), _transmitMgr(transmitMgr) {
     int rc = mysql_thread_init();
     assert(rc == 0);
@@ -152,7 +152,7 @@ bool QueryRunner::runQuery() {
     };
     Release release(_task, this);
 
-    if (_task->getCancelled()) {
+    if (_task->isCancelled()) {
         LOGS(_log, LOG_LVL_DEBUG, "runQuery, task was cancelled before it started.");
         return false;
     }
@@ -165,7 +165,7 @@ bool QueryRunner::runQuery() {
     auto logMsg = memWaitHisto.addTime(memTimer.getElapsed(), _task->getIdStr());
     LOGS(_log, LOG_LVL_DEBUG, logMsg);
 
-    if (_task->getCancelled()) {
+    if (_task->isCancelled()) {
         LOGS(_log, LOG_LVL_DEBUG, "runQuery, task was cancelled after locking tables.");
         return false;
     }
@@ -199,7 +199,7 @@ bool QueryRunner::runQuery() {
     return false;
 }
 
-MYSQL_RES* QueryRunner::_primeResult(std::string const& query) {
+MYSQL_RES* QueryRunner::_primeResult(string const& query) {
         bool queryOk = _mysqlConn->queryUnbuffered(query);
         if (!queryOk) {
             sql::SqlErrorObject errObj;
@@ -308,11 +308,25 @@ util::TimerHistogram transmitHisto("transmit Hist", {0.1, 1, 5, 10, 20, 40});
 /// Transmit result data with its header.
 /// If 'last' is true, this is the last message in the result set
 /// and flags are set accordingly.
-void QueryRunner::_transmit(bool last, unsigned int rowCount, size_t tSize) {
+void QueryRunner::_transmit(bool inLast, unsigned int rowCount, size_t tSize) {
+    QSERV_LOGCONTEXT_QUERY_JOB(_task->getQueryId(), _task->getJobId());
     LOGS(_log, LOG_LVL_INFO, "_transmitMgr=" << *_transmitMgr
-         << " last=" << last << " rowCount=" << rowCount << " tSize=" << tSize);
+         << " last=" << inLast << " rowCount=" << rowCount << " tSize=" << tSize);
+
+    if (_task->sendChannel->isDead()) {
+        LOGS(_log, LOG_LVL_INFO, "aborting transmit since sendChannel is dead.");
+        return;
+    }
+
+    // Limit the number of concurrent transmits.
     wcontrol::TransmitLock transmitLock(*_transmitMgr, _task->getScanInteractive(), _largeResult);
-    std::string resultString;
+
+    // Nothing else can use this sendChannel until this transmit is done.
+    lock_guard<mutex> streamLock(_task->sendChannel->streamMutex);
+
+    // Only set last to true if this is the final task using this sendChannel.
+    bool last = _task->sendChannel->transmitTaskLast(streamLock, inLast);
+    string resultString;
     _result->set_queryid(_task->getQueryId());
     _result->set_jobid(_task->getJobId());
     _result->set_continues(!last);
@@ -322,20 +336,20 @@ void QueryRunner::_transmit(bool last, unsigned int rowCount, size_t tSize) {
     _result->set_attemptcount(_task->getAttemptCount());
 
     if (!_multiError.empty()) {
-        std::string chunkId = std::to_string(_task->msg->chunkid());
-        std::string msg = "Error(s) in result for chunk #" + chunkId + ": " + _multiError.toOneLineString();
+        string chunkId = to_string(_task->msg->chunkid());
+        string msg = "Error(s) in result for chunk #" + chunkId + ": " + _multiError.toOneLineString();
         _result->set_errormsg(msg);
         LOGS(_log, LOG_LVL_ERROR, msg);
     }
     _result->SerializeToString(&resultString);
-    _transmitHeader(resultString);
+    _transmitHeader(streamLock, resultString);
     LOGS(_log, LOG_LVL_DEBUG, "_transmit last=" << last
-         << " resultString=" << util::prettyCharList(resultString, 5));
+            << " resultString=" << util::prettyCharList(resultString, 5));
 
     if (!_cancelled) {
         // StreamBuffer::create invalidates resultString by using std::move()
         xrdsvc::StreamBuffer::Ptr streamBuf(xrdsvc::StreamBuffer::createWithMove(resultString));
-        _sendBuf(streamBuf, last, transmitHisto, "body");
+        _sendBuf(streamLock, streamBuf, last, transmitHisto, "body");
     } else {
         LOGS(_log, LOG_LVL_DEBUG, "_transmit cancelled");
     }
@@ -343,9 +357,10 @@ void QueryRunner::_transmit(bool last, unsigned int rowCount, size_t tSize) {
 }
 
 
-void QueryRunner::_sendBuf(xrdsvc::StreamBuffer::Ptr& streamBuf, bool last,
-                           util::TimerHistogram& histo, std::string const& note) {
-    bool sent = _task->sendChannel->sendStream(streamBuf, last);
+void QueryRunner::_sendBuf(lock_guard<mutex> const& streamLock,
+                           xrdsvc::StreamBuffer::Ptr& streamBuf, bool last,
+                           util::TimerHistogram& histo, string const& note) {
+    bool sent = _task->sendChannel->sendStream(streamLock, streamBuf, last);
     if (!sent) {
         LOGS(_log, LOG_LVL_ERROR, "Failed to transmit " << note << "!");
         _cancelled = true;
@@ -366,7 +381,7 @@ util::TimerHistogram transHeaderHisto("transHeader Hist", {0.1, 1, 5, 10, 20, 40
 
 
 /// Transmit the protoHeader
-void QueryRunner::_transmitHeader(std::string& msg) {
+void QueryRunner::_transmitHeader(lock_guard<mutex> const& streamLock, string& msg) {
     LOGS(_log, LOG_LVL_DEBUG, "_transmitHeader");
     // Set header
     _protoHeader->set_protocol(2); // protocol 2: row-by-row message
@@ -374,7 +389,7 @@ void QueryRunner::_transmitHeader(std::string& msg) {
     _protoHeader->set_md5(util::StringHash::getMd5(msg.data(), msg.size()));
     _protoHeader->set_wname(getHostname());
     _protoHeader->set_largeresult(_largeResult);
-    std::string protoHeaderString;
+    string protoHeaderString;
     _protoHeader->SerializeToString(&protoHeaderString);
 
     // Flush to channel.
@@ -383,7 +398,7 @@ void QueryRunner::_transmitHeader(std::string& msg) {
     if (!_cancelled) {
         auto msgBuf = proto::ProtoHeaderWrap::wrap(protoHeaderString);
         xrdsvc::StreamBuffer::Ptr streamBuf(xrdsvc::StreamBuffer::createWithMove(msgBuf)); // invalidates msgBuf
-        _sendBuf(streamBuf, false, transHeaderHisto, "header");
+        _sendBuf(streamLock, streamBuf, false, transHeaderHisto, "header");
     } else {
         LOGS(_log, LOG_LVL_DEBUG, "_transmitHeader cancelled");
     }
@@ -391,7 +406,7 @@ void QueryRunner::_transmitHeader(std::string& msg) {
 
 class ChunkResourceRequest {
 public:
-    ChunkResourceRequest(std::shared_ptr<ChunkResourceMgr> const& mgr,
+    ChunkResourceRequest(shared_ptr<ChunkResourceMgr> const& mgr,
                          proto::TaskMsg const& msg)
         // Use old-school member initializers because gcc 4.8.5
         // miscompiles the code when using brace initializers (DM-4704).
@@ -411,7 +426,7 @@ public:
             return _mgr->acquire(_msg.db(), _msg.chunkid(), dbTbls);
         }
 
-        std::string db;
+        string db;
         proto::TaskMsg_Subchunk const& sc = fragment.subchunks();
         DbTableSet dbTableSet;
         for (int j=0; j < sc.dbtbl_size(); j++) {
@@ -430,65 +445,45 @@ public:
 
     }
 private:
-    std::shared_ptr<ChunkResourceMgr> _mgr;
+    shared_ptr<ChunkResourceMgr> _mgr;
     proto::TaskMsg const& _msg;
 };
 
 bool QueryRunner::_dispatchChannel() {
-    proto::TaskMsg& m = *_task->msg;
+    int const fragNum = _task->getQueryFragmentNum();
+    proto::TaskMsg& tMsg = *_task->msg;
     _initMsgs();
-    bool firstResult = true;
     bool erred = false;
     int numFields = -1;
-    if (m.fragment_size() < 1) {
+    if (tMsg.fragment_size() < 1) {
         throw Bug("QueryRunner: No fragments to execute in TaskMsg");
     }
-    ChunkResourceRequest req(_chunkResourceMgr, m);
+    ChunkResourceRequest req(_chunkResourceMgr, tMsg);
+    ChunkResource cr(req.getResourceFragment(fragNum));
+    // TODO: Hold onto this for longer period of time as the odds of reuse are pretty low at this scale
+    //       Ideally, hold it until moving on to the next chunk. Try to clean up ChunkResource code.
 
     unsigned int rowCount = 0;
     size_t tSize = 0;
 
     try {
-        for(int i=0; i < m.fragment_size(); ++i) {
-            if (_cancelled) {
-                break;
+        if (!_cancelled &&  !_task->sendChannel->isDead()) {
+            string const& query = _task->getQueryString();
+            util::Timer sqlTimer;
+            sqlTimer.start();
+            MYSQL_RES* res = _primeResult(query); // This runs the SQL query, throws SqlErrorObj on failure.
+            sqlTimer.stop();
+            LOGS(_log, LOG_LVL_DEBUG, " fragment time=" << sqlTimer.getElapsed() << " query=" << query);
+            _fillSchema(res);
+            numFields = mysql_num_fields(res);
+            // TODO fritzm: revisit this error strategy
+            // (see pull-request for DM-216)
+            // Now get rows...
+            if (!_fillRows(res, numFields, rowCount, tSize)) {
+                erred = true;
             }
-            proto::TaskMsg_Fragment const& fragment(m.fragment(i));
-            std::vector<std::string> queries;
-            for (const std::string queryStr: fragment.query()) {
-                if (fragment.has_subchunks() && false == fragment.subchunks().id().empty()) {
-                    for (auto subchunkId : fragment.subchunks().id()) {
-                        std::string s(queryStr);
-                        boost::algorithm::replace_all(s, SUBCHUNK_TAG, std::to_string(subchunkId));
-                        queries.push_back(s);
-                    }
-                } else {
-                    queries.push_back(queryStr);
-                }
-            }
-            ChunkResource cr(req.getResourceFragment(i));
-            // Use query fragment as-is, funnel results.
-            for(auto const& query : queries) {
-                util::Timer sqlTimer;
-                sqlTimer.start();
-                MYSQL_RES* res = _primeResult(query); // This runs the SQL query, throws SqlErrorObj on failure.
-                sqlTimer.stop();
-                LOGS(_log, LOG_LVL_DEBUG, " fragment time=" << sqlTimer.getElapsed() << " query=" << query);
-                if (firstResult) {
-                    firstResult = false;
-                    _fillSchema(res);
-                    numFields = mysql_num_fields(res);
-                } // TODO: may want to confirm (cheaply) that
-                // successive queries have the same result schema.
-                // TODO fritzm: revisit this error strategy
-                // (see pull-request for DM-216)
-                // Now get rows...
-                if (!_fillRows(res, numFields, rowCount, tSize)) {
-                    erred = true;
-                }
-                _mysqlConn->freeResult();
-            } // Each query in a fragment
-        } // Each fragment in a msg.
+            _mysqlConn->freeResult();
+        }
     } catch(sql::SqlErrorObject const& e) {
         LOGS(_log, LOG_LVL_ERROR, "dispatchChannel " << e.errMsg());
         util::Error worker_err(e.errNo(), e.errMsg());
@@ -510,7 +505,14 @@ bool QueryRunner::_dispatchChannel() {
 
 void QueryRunner::cancel() {
     LOGS(_log, LOG_LVL_WARN, "Trying QueryRunner::cancel() call");
-    _cancelled.store(true);
+    _cancelled = true;
+    // This could be called after the task has been completed, so sendChannel
+    // validation is needed.
+    auto sChannel = _task->sendChannel;
+    if (sChannel != nullptr) {
+        lock_guard<mutex> streamLock(sChannel->streamMutex);
+        sChannel->kill(streamLock);
+    }
     if (!_mysqlConn.get()) {
         LOGS(_log, LOG_LVL_WARN, "QueryRunner::cancel() no MysqlConn");
         return;

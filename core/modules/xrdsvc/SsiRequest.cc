@@ -129,7 +129,7 @@ void SsiRequest::execute(XrdSsiRequest& req) {
                 || (ru.db()    != taskMsg->db())
                 || (ru.chunk() != taskMsg->chunkid())) {
                 reportError("Mismatched db/chunk in TaskMsg on resource db=" + ru.db() +
-                            " chunkId=" + std::to_string(ru.chunk()));
+                        " chunkId=" + std::to_string(ru.chunk()));
                 return;
             }
 
@@ -138,16 +138,16 @@ void SsiRequest::execute(XrdSsiRequest& req) {
             // the task is handed off to another thread for processing, as there is a
             // reference to this SsiRequest inside the reply channel for the task,
             // and after the call to BindRequest.
-            auto task = std::make_shared<wbase::Task>(
-                                taskMsg,
-                                std::make_shared<wbase::SendChannel>(shared_from_this()));
+            auto sendChannelBase = std::make_shared<wbase::SendChannel>(shared_from_this());
+            auto sendChannel = std::make_shared<wbase::SendChannelShared>(sendChannelBase);
+            auto tasks = wbase::Task::createTasks(taskMsg, sendChannel);
+
             ReleaseRequestBuffer();
             t.start();
-            _processor->processTask(task); // Queues task to be run later.
+            _processor->processTasks(tasks); // Queues tasks to be run later.
             t.stop();
-            LOGS(_log, LOG_LVL_DEBUG, "Enqueued TaskMsg for " << ru <<
-                 " in " << t.getElapsed() << " seconds");
-
+            LOGS(_log, LOG_LVL_DEBUG, "Enqueued TaskMsg for " << ru << " in "
+                                      << t.getElapsed() << " seconds");
             break;
         }
         case ResourceUnit::WORKER: {

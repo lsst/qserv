@@ -94,6 +94,7 @@ public:
 
     bool runQuery() override;
     void cancel() override; ///< Cancel the action (in-progress)
+    bool isCancelled();
 
 protected:
     QueryRunner(wbase::Task::Ptr const& task,
@@ -113,10 +114,11 @@ private:
     void _initMsg();
 
     /// Send result 'streamBuf' to the czar. 'histo' and 'note' are for logging purposes only.
-    void _sendBuf(std::shared_ptr<xrdsvc::StreamBuffer>& streamBuf, bool last,
+    void _sendBuf(std::lock_guard<std::mutex> const& streamLock,
+                  std::shared_ptr<xrdsvc::StreamBuffer>& streamBuf, bool last,
                   util::TimerHistogram& histo, std::string const& note);
     void _transmit(bool last, unsigned int rowCount, size_t size);
-    void _transmitHeader(std::string& msg);
+    void _transmitHeader(std::lock_guard<std::mutex> const& streamLock,std::string& msg);
 
     wbase::Task::Ptr const _task; ///< Actual task
 

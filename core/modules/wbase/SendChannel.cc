@@ -43,6 +43,8 @@ namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.wbase.SendChannel");
 }
 
+using namespace std;
+
 namespace lsst {
 namespace qserv {
 namespace wbase {
@@ -54,31 +56,32 @@ public:
     NopChannel() {}
 
     bool send(char const* buf, int bufLen) override {
-        std::cout << "NopChannel send(" << (void*) buf
-                  << ", " << bufLen << ");\n";
-        return true;
+        cout << "NopChannel send(" << (void*) buf
+             << ", " << bufLen << ");\n";
+        return !isDead();
     }
 
-    bool sendError(std::string const& msg, int code) override {
-        std::cout << "NopChannel sendError(\"" << msg
-                  << "\", " << code << ");\n";
+    bool sendError(string const& msg, int code) override {
+        if (kill()) return false;
+        cout << "NopChannel sendError(\"" << msg
+             << "\", " << code << ");\n";
         return true;
     }
     bool sendFile(int fd, Size fSize) override {
-        std::cout << "NopChannel sendFile(" << fd
-                  << ", " << fSize << ");\n";
-        return true;
+        cout << "NopChannel sendFile(" << fd
+             << ", " << fSize << ");\n";
+        return !isDead();
     }
     bool sendStream(xrdsvc::StreamBuffer::Ptr const& sBuf, bool last) override {
-        std::cout << "NopChannel sendStream(" << (void*) sBuf.get()
-                  << ", " << (last ? "true" : "false") << ");\n";
-        return true;
+        cout << "NopChannel sendStream(" << (void*) sBuf.get()
+             << ", " << (last ? "true" : "false") << ");\n";
+        return !isDead();
     }
 };
 
 
 SendChannel::Ptr SendChannel::newNopChannel() {
-    return std::make_shared<NopChannel>();
+    return make_shared<NopChannel>();
 }
 
 
@@ -86,32 +89,35 @@ SendChannel::Ptr SendChannel::newNopChannel() {
 /// remembers what it has received.
 class StringChannel : public SendChannel {
 public:
-    StringChannel(std::string& dest) : _dest(dest) {}
+    StringChannel(string& dest) : _dest(dest) {}
 
-    virtual bool send(char const* buf, int bufLen) {
+    bool send(char const* buf, int bufLen) override {
+        if (isDead()) return false;
         _dest.append(buf, bufLen);
         return true;
     }
 
-    virtual bool sendError(std::string const& msg, int code) {
-        std::ostringstream os;
+    bool sendError(string const& msg, int code) override {
+        if (kill()) return false;
+        ostringstream os;
         os << "(" << code << "," << msg << ")";
         _dest.append(os.str());
         return true;
     }
 
-    virtual bool sendFile(int fd, Size fSize) {
-        std::vector<char> buf(fSize);
+    bool sendFile(int fd, Size fSize) override {
+        if (isDead()) return false;
+        vector<char> buf(fSize);
         Size remain = fSize;
         while(remain > 0) {
             Size frag = ::read(fd, buf.data(), remain);
             if (frag < 0) {
-                std::cout << "ERROR reading from fd during "
-                          << "StringChannel::sendFile(" << "," << fSize << ")";
+                cout << "ERROR reading from fd during "
+                     << "StringChannel::sendFile(" << "," << fSize << ")";
                 return false;
             } else if (frag == 0) {
-                std::cout << "ERROR unexpected 0==read() during "
-                          << "StringChannel::sendFile(" << "," << fSize << ")";
+                cout << "ERROR unexpected 0==read() during "
+                     << "StringChannel::sendFile(" << "," << fSize << ")";
                 return false;
             }
             _dest.append(buf.data(), frag);
@@ -121,20 +127,24 @@ public:
         return true;
     }
 
-    virtual bool sendStream(char const* buf, int bufLen, bool last) {
+    bool sendStream(xrdsvc::StreamBuffer::Ptr const& sBuf, bool last) override {
+        if (isDead()) return false;
+        char const* buf = sBuf->data;
+        size_t bufLen = sBuf->getSize();
         _dest.append(buf, bufLen);
-        std::cout << "StringChannel sendStream(" << (void*) buf
-                  << ", " << bufLen << ", "
-                  << (last ? "true" : "false") << ");\n";
+        cout << "StringChannel sendStream(" << (void*) buf
+             << ", " << bufLen << ", "
+             << (last ? "true" : "false") << ");\n";
         return true;
     }
+
 private:
-    std::string& _dest;
+    string& _dest;
 };
 
 
-SendChannel::Ptr SendChannel::newStringChannel(std::string& d) {
-    return std::make_shared<StringChannel>(d);
+SendChannel::Ptr SendChannel::newStringChannel(string& d) {
+    return make_shared<StringChannel>(d);
 
 }
 
@@ -144,24 +154,50 @@ SendChannel::Ptr SendChannel::newStringChannel(std::string& d) {
 /// object as this object knows how to effect Ssi responses.
 ///
 bool SendChannel::send(char const* buf, int bufLen) {
-    return _ssiRequest->reply(buf, bufLen);
+    if (isDead()) return false;
+    if (_ssiRequest->reply(buf, bufLen)) return true;
+    kill();
+    return false;
 }
 
 
-bool SendChannel::sendError(std::string const& msg, int code) {
-    return _ssiRequest->replyError(msg.c_str(), code);
+bool SendChannel::sendError(string const& msg, int code) {
+    // Kill this send channel. If it wasn't already dead, send the error.
+    if (kill()) return false;
+    if (_ssiRequest->replyError(msg.c_str(), code)) return true;
+    return false;
 }
 
 
 bool SendChannel::sendFile(int fd, Size fSize) {
-    if (_ssiRequest->replyFile(fSize, fd)) return true;
+    if (!isDead()) {
+        if (_ssiRequest->replyFile(fSize, fd)) return true;
+    }
+    kill();
     release();
     return false;
 }
 
 
 bool SendChannel::sendStream(xrdsvc::StreamBuffer::Ptr const& sBuf, bool last) {
-    return _ssiRequest->replyStream(sBuf, last);
+    if (isDead()) return false;
+    if (_ssiRequest->replyStream(sBuf, last)) return true;
+    kill();
+    return false;
+}
+
+
+void SendChannelShared::setTaskCount(int taskCount) {
+    _taskCount = taskCount;
+}
+
+
+bool SendChannelShared::transmitTaskLast(StreamGuard sLock, bool inLast) {
+    /// _caller must have locked _streamMutex before calling this.
+    if (not inLast) return false; // This wasn't the last message buffer for this task, so it doesn't matter.
+    ++_lastCount;
+    bool lastTaskDone = _lastCount >= _taskCount;
+    return lastTaskDone;
 }
 
 }}} // namespace

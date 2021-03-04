@@ -50,8 +50,8 @@ struct MsgProcessor {
 
     virtual ~MsgProcessor() {}
 
-    /// Process a query processing task
-    virtual void processTask(std::shared_ptr<wbase::Task> const& task) = 0;
+    /// Process a group of query processing tasks.
+    virtual void processTasks(std::vector<std::shared_ptr<wbase::Task>> const& tasks) = 0;
 
     /// Process a managememt command
     virtual void processCommand(std::shared_ptr<wbase::WorkerCommand> const& command) = 0;

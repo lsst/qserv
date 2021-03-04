@@ -35,8 +35,10 @@
 #include "memman/MemManNone.h"
 #include "proto/ScanTableInfo.h"
 #include "proto/worker.pb.h"
+#include "util/Command.h"
 #include "util/EventThread.h"
 #include "wbase/Task.h"
+#include "wbase/SendChannel.h"
 #include "wpublish/QueriesAndChunks.h"
 #include "wsched/ChunkDisk.h"
 #include "wsched/ChunkTasksQueue.h"
@@ -59,14 +61,19 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.wsched.testSchedulers");
 using lsst::qserv::proto::TaskMsg;
 using lsst::qserv::wbase::Task;
 using lsst::qserv::wbase::SendChannel;
+using lsst::qserv::wbase::SendChannelShared;
 
 double const oneHr = 60.0;
 
 Task::Ptr makeTask(std::shared_ptr<TaskMsg> tm) {
-    Task::Ptr task(new Task(tm, std::shared_ptr<SendChannel>()));
+    auto sendC = std::make_shared<SendChannel>();
+    auto sc = std::make_shared<SendChannelShared>(sendC);
+    Task::Ptr task(new Task(tm, "", 0, sc));
     task->setSafeToMoveRunning(true); // Can't wait for MemMan in unit tests.
     return task;
 }
+
+
 struct SchedulerFixture {
     typedef std::shared_ptr<TaskMsg> TaskMsgPtr;
 
@@ -678,7 +685,8 @@ BOOST_AUTO_TEST_CASE(BlendScheduleThreadLimitingTest) {
     BOOST_CHECK(f.blend->ready() == false);
     std::vector<Task::Ptr> scanTasks;
     for (int j=0; j<7; ++j) {
-        f.blend->queCmd(makeTask(newTaskMsgScan(j, lsst::qserv::proto::ScanInfo::Rating::MEDIUM, f.qIdInc++, 0)));
+        auto tsk = makeTask(newTaskMsgScan(j, lsst::qserv::proto::ScanInfo::Rating::MEDIUM, f.qIdInc++, 0));
+        f.blend->queCmd(tsk);
         if (j < 6) {
             BOOST_CHECK(f.blend->ready() == true);
             auto cmd = f.blend->getCmd(false);

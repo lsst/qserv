@@ -33,11 +33,14 @@
 
 // Third-party headers
 #include "boost/regex.hpp"
+#include <boost/algorithm/string/replace.hpp>
 
 // LSST headers
 #include "lsst/log/Log.h"
 
 // Qserv headers
+#include "global/constants.h"
+#include "global/LogContext.h"
 #include "proto/TaskMsgDigest.h"
 #include "proto/worker.pb.h"
 #include "wbase/Base.h"
@@ -95,10 +98,15 @@ IdSet Task::allIds{};
 /// available to define the action to take when this task is run, so
 /// Command::setFunc() is used set the action later. This is why
 /// the util::CommandThreadPool is not called here.
-Task::Task(Task::TaskMsgPtr const& t, SendChannel::Ptr const& sc)
+Task::Task(TaskMsgPtr const& t, std::string const& query, int fragmentNumber,
+        std::shared_ptr<SendChannelShared> const& sc)
     : msg(t), sendChannel(sc),
       _qId(t->queryid()), _jId(t->jobid()), _attemptCount(t->attemptcount()),
-      _idStr(QueryIdHelper::makeIdStr(_qId, _jId)) {
+      _idStr(QueryIdHelper::makeIdStr(_qId, _jId)),
+      _queryString(query),
+      _queryFragmentNum(fragmentNumber) {
+
+
     hash = hashTaskMsg(*t);
 
     if (t->has_user()) {
@@ -124,6 +132,45 @@ Task::Task(Task::TaskMsgPtr const& t, SendChannel::Ptr const& sc)
 Task::~Task() {
     allIds.remove(std::to_string(_qId) + "_" + std::to_string(_jId));
     LOGS(_log, LOG_LVL_DEBUG, "~Task() : " << allIds);
+}
+
+
+std::vector<Task::Ptr> Task::createTasks(std::shared_ptr<proto::TaskMsg> const& taskMsg,
+                                         std::shared_ptr<wbase::SendChannelShared> const& sendChannel) {
+    QSERV_LOGCONTEXT_QUERY_JOB(taskMsg->queryid(), taskMsg->jobid());
+    std::vector<Task::Ptr> vect;
+
+    /// Make one task for each fragment.
+    int fragmentCount = taskMsg->fragment_size();
+    if (fragmentCount < 1) {
+        throw Bug("Task::createTasks No fragments to execute in TaskMsg");
+    }
+    for (int fragNum=0; fragNum<fragmentCount; ++fragNum) {
+        proto::TaskMsg_Fragment const& fragment = taskMsg->fragment(fragNum);
+        for (const std::string queryStr: fragment.query()) {
+            // fragment.has_subchunks() == true and fragment.subchunks().id().empty() == false
+            // is apparently valid and must go to the else clause.
+            // TODO: Look into the creation of fragment on the czar as this is not intuitive.
+            if (fragment.has_subchunks() && not fragment.subchunks().id().empty()) {
+                for (auto subchunkId : fragment.subchunks().id()) {
+                    std::string qs(queryStr);
+                    boost::algorithm::replace_all(qs, SUBCHUNK_TAG, std::to_string(subchunkId));
+                    auto task = std::make_shared<wbase::Task>(taskMsg, qs, fragNum, sendChannel);
+                    vect.push_back(task);
+                }
+            } else {
+                auto task = std::make_shared<wbase::Task>(taskMsg, queryStr, fragNum, sendChannel);
+                //TODO: Maybe? Is it better to move fragment info from
+                //      ChunkResource getResourceFragment(int i) to here???
+                //      It looks like Task should contain a ChunkResource::Info object
+                //      which could help clean up ChunkResource and related classes.
+                vect.push_back(task);
+            }
+
+        }
+    }
+    sendChannel->setTaskCount(vect.size());
+    return vect;
 }
 
 
@@ -157,7 +204,7 @@ void Task::cancel() {
 /// @return true if task has already been cancelled.
 bool Task::setTaskQueryRunner(TaskQueryRunner::Ptr const& taskQueryRunner) {
     _taskQueryRunner = taskQueryRunner;
-    return getCancelled();
+    return isCancelled();
 }
 
 void Task::freeTaskQueryRunner(TaskQueryRunner *tqr){
