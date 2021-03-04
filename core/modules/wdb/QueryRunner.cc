@@ -322,11 +322,10 @@ void QueryRunner::_transmit(bool inLast, unsigned int rowCount, size_t tSize) {
     wcontrol::TransmitLock transmitLock(*_transmitMgr, _task->getScanInteractive(), _largeResult);
 
     // Nothing else can use this sendChannel until this transmit is done.
-    mutex* streamMutex = _task->sendChannel->getStreamMutexPtr();
-    lock_guard<mutex> streamLock(*streamMutex);
+    lock_guard<mutex> streamLock(_task->sendChannel->streamMutex);
 
     // Only set last to true if this is the final task using this sendChannel.
-    bool last = _task->sendChannel->transmitTaskLast(inLast);
+    bool last = _task->sendChannel->transmitTaskLast(streamLock, inLast);
     string resultString;
     _result->set_queryid(_task->getQueryId());
     _result->set_jobid(_task->getJobId());
@@ -343,14 +342,14 @@ void QueryRunner::_transmit(bool inLast, unsigned int rowCount, size_t tSize) {
         LOGS(_log, LOG_LVL_ERROR, msg);
     }
     _result->SerializeToString(&resultString);
-    _transmitHeader(resultString);
+    _transmitHeader(streamLock, resultString);
     LOGS(_log, LOG_LVL_DEBUG, "_transmit last=" << last
             << " resultString=" << util::prettyCharList(resultString, 5));
 
     if (!_cancelled) {
         // StreamBuffer::create invalidates resultString by using std::move()
         xrdsvc::StreamBuffer::Ptr streamBuf(xrdsvc::StreamBuffer::createWithMove(resultString));
-        _sendBuf(streamBuf, last, transmitHisto, "body");
+        _sendBuf(streamLock, streamBuf, last, transmitHisto, "body");
     } else {
         LOGS(_log, LOG_LVL_DEBUG, "_transmit cancelled");
     }
@@ -358,9 +357,10 @@ void QueryRunner::_transmit(bool inLast, unsigned int rowCount, size_t tSize) {
 }
 
 
-void QueryRunner::_sendBuf(xrdsvc::StreamBuffer::Ptr& streamBuf, bool last,
+void QueryRunner::_sendBuf(lock_guard<mutex> const& streamLock,
+                           xrdsvc::StreamBuffer::Ptr& streamBuf, bool last,
                            util::TimerHistogram& histo, string const& note) {
-    bool sent = _task->sendChannel->sendStream(streamBuf, last);
+    bool sent = _task->sendChannel->sendStream(streamLock, streamBuf, last);
     if (!sent) {
         LOGS(_log, LOG_LVL_ERROR, "Failed to transmit " << note << "!");
         _cancelled = true;
@@ -381,7 +381,7 @@ util::TimerHistogram transHeaderHisto("transHeader Hist", {0.1, 1, 5, 10, 20, 40
 
 
 /// Transmit the protoHeader
-void QueryRunner::_transmitHeader(string& msg) {
+void QueryRunner::_transmitHeader(lock_guard<mutex> const& streamLock, string& msg) {
     LOGS(_log, LOG_LVL_DEBUG, "_transmitHeader");
     // Set header
     _protoHeader->set_protocol(2); // protocol 2: row-by-row message
@@ -398,7 +398,7 @@ void QueryRunner::_transmitHeader(string& msg) {
     if (!_cancelled) {
         auto msgBuf = proto::ProtoHeaderWrap::wrap(protoHeaderString);
         xrdsvc::StreamBuffer::Ptr streamBuf(xrdsvc::StreamBuffer::createWithMove(msgBuf)); // invalidates msgBuf
-        _sendBuf(streamBuf, false, transHeaderHisto, "header");
+        _sendBuf(streamLock, streamBuf, false, transHeaderHisto, "header");
     } else {
         LOGS(_log, LOG_LVL_DEBUG, "_transmitHeader cancelled");
     }
@@ -450,15 +450,15 @@ private:
 };
 
 bool QueryRunner::_dispatchChannel() {
-    int fragNum = _task->getQueryFragmentNum();
-    proto::TaskMsg& m = *_task->msg;
+    int const fragNum = _task->getQueryFragmentNum();
+    proto::TaskMsg& tMsg = *_task->msg;
     _initMsgs();
     bool erred = false;
     int numFields = -1;
-    if (m.fragment_size() < 1) {
+    if (tMsg.fragment_size() < 1) {
         throw Bug("QueryRunner: No fragments to execute in TaskMsg");
     }
-    ChunkResourceRequest req(_chunkResourceMgr, m);
+    ChunkResourceRequest req(_chunkResourceMgr, tMsg);
     ChunkResource cr(req.getResourceFragment(fragNum));
     // TODO: Hold onto this for longer period of time as the odds of reuse are pretty low at this scale
     //       Ideally, hold it until moving on to the next chunk. Try to clean up ChunkResource code.
@@ -510,9 +510,8 @@ void QueryRunner::cancel() {
     // validation is needed.
     auto sChannel = _task->sendChannel;
     if (sChannel != nullptr) {
-        mutex* streamMutex = sChannel->getStreamMutexPtr();
-        lock_guard<mutex> streamLock(*streamMutex);
-        sChannel->kill();
+        lock_guard<mutex> streamLock(sChannel->streamMutex);
+        sChannel->kill(streamLock);
     }
     if (!_mysqlConn.get()) {
         LOGS(_log, LOG_LVL_WARN, "QueryRunner::cancel() no MysqlConn");

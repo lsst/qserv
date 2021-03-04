@@ -133,7 +133,13 @@ void SsiRequest::execute(XrdSsiRequest& req) {
                 return;
             }
 
-            auto sendChannel = std::make_shared<wbase::SendChannel>(shared_from_this());
+            // Now that the request is decoded (successfully or not), release the
+            // xrootd request buffer. To avoid data races, this must happen before
+            // the task is handed off to another thread for processing, as there is a
+            // reference to this SsiRequest inside the reply channel for the task,
+            // and after the call to BindRequest.
+            auto sendChannelBase = std::make_shared<wbase::SendChannel>(shared_from_this());
+            auto sendChannel = std::make_shared<wbase::SendChannelShared>(sendChannelBase);
             auto tasks = wbase::Task::createTasks(taskMsg, sendChannel);
 
             ReleaseRequestBuffer();
