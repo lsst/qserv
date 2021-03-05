@@ -28,6 +28,9 @@
 #include <iostream>
 #include <vector>
 
+// Third party headers
+#include "nlohmann/json.hpp"
+
 // Qserv headers
 #include "replica/Common.h"
 #include "replica/Configuration.h"
@@ -35,6 +38,7 @@
 #include "util/TablePrinter.h"
 
 using namespace std;
+using json = nlohmann::json;
 using namespace lsst::qserv::replica;
 namespace util = lsst::qserv::util;
 
@@ -48,16 +52,6 @@ bool const injectDatabaseOptions = true;
 bool const boostProtobufVersionCheck = false;
 bool const enableServiceProvider = false;
 bool const injectXrootdOptions = false;
-
-/**
- * Register an option with a parser (which could also represent a command).
- * @param parser The handler responsible for processing options
- * @param param Parameter handler.`
- */
-template <class PARSER, typename T>
-void addCommandOption(PARSER& parser, T& param) {
-    parser.option(param.key, param.description(), param.value);
-}
 
 // Color enhanced strings for better reporting.
 string const COLOR_BEGIN_GREEN = "\001\033[0;32m\002";
@@ -100,7 +94,7 @@ public:
             T const actualValue = _config->get<T>(category, parameter);
             bool const equal = actualValue == expectedValue;
             _result.push_back(equal ? OK_STR : VALUE_MISMATCH_STR);
-            _actual.push_back(detail::ConfigParamHandlerTrait<T>::to_string(actualValue));
+            _actual.push_back(detail::TypeConversionTrait<T>::to_string(actualValue));
             if (!equal) ++_failed;
         } catch(invalid_argument const& ex) {
             _result.push_back(MISSING_STR);
@@ -115,7 +109,7 @@ public:
             _actual.push_back("");
             ++_failed;
         }
-        _expected.push_back(detail::ConfigParamHandlerTrait<T>::to_string(expectedValue));
+        _expected.push_back(detail::TypeConversionTrait<T>::to_string(expectedValue));
     }
 
     /// @return 'true' if the test was successful.
@@ -205,8 +199,8 @@ protected:
         bool const equal = actualValue == expectedValue;
         _result.push_back(equal ? OK_STR : VALUE_MISMATCH_STR);
         _attribute.push_back(attribute);
-        _actual.push_back(detail::ConfigParamHandlerTrait<T>::to_string(actualValue));
-        _expected.push_back(detail::ConfigParamHandlerTrait<T>::to_string(expectedValue));
+        _actual.push_back(detail::TypeConversionTrait<T>::to_string(actualValue));
+        _expected.push_back(detail::TypeConversionTrait<T>::to_string(expectedValue));
         if (!equal) ++_failed;
     }
 
@@ -663,45 +657,25 @@ ConfigApp::ConfigApp(int argc, char* argv[])
         _workerInfo.name
     );
 
+    // Add options for the general parameters named as:
+    //   --<category>.<param>=<string>
+    // Note that since no database connection is available at this time (that would have
+    // required knowing a value of the parameter 'configUrl', and no parsing has been made
+    // yet) then the loop below will set th edefault value of each option to be the empty
+    // string. Any changes from that will be detected when processing the input. 
     auto&& updateGeneralCmd = parser().command("UPDATE_GENERAL");
-    ::addCommandOption(updateGeneralCmd, _general.requestBufferSizeBytes);
-    ::addCommandOption(updateGeneralCmd, _general.retryTimeoutSec);
-    ::addCommandOption(updateGeneralCmd, _general.controllerThreads);
-    ::addCommandOption(updateGeneralCmd, _general.controllerRequestTimeoutSec);
-    ::addCommandOption(updateGeneralCmd, _general.jobTimeoutSec);
-    ::addCommandOption(updateGeneralCmd, _general.jobHeartbeatTimeoutSec);
-    ::addCommandOption(updateGeneralCmd, _general.controllerHttpPort);
-    ::addCommandOption(updateGeneralCmd, _general.controllerHttpThreads);
-    ::addCommandOption(updateGeneralCmd, _general.controllerEmptyChunksDir);
-    ::addCommandOption(updateGeneralCmd, _general.xrootdAutoNotify);
-    ::addCommandOption(updateGeneralCmd, _general.xrootdHost);
-    ::addCommandOption(updateGeneralCmd, _general.xrootdPort);
-    ::addCommandOption(updateGeneralCmd, _general.xrootdTimeoutSec);
-    ::addCommandOption(updateGeneralCmd, _general.databaseServicesPoolSize);
-    ::addCommandOption(updateGeneralCmd, _general.qservMasterDatabaseHost);
-    ::addCommandOption(updateGeneralCmd, _general.qservMasterDatabasePort);
-    ::addCommandOption(updateGeneralCmd, _general.qservMasterDatabaseUser);
-    ::addCommandOption(updateGeneralCmd, _general.qservMasterDatabaseName);
-    ::addCommandOption(updateGeneralCmd, _general.qservMasterDatabaseServicesPoolSize);
-    ::addCommandOption(updateGeneralCmd, _general.qservMasterDatabaseTmpDir);
-    ::addCommandOption(updateGeneralCmd, _general.workerTechnology);
-    ::addCommandOption(updateGeneralCmd, _general.workerNumProcessingThreads);
-    ::addCommandOption(updateGeneralCmd, _general.fsNumProcessingThreads);
-    ::addCommandOption(updateGeneralCmd, _general.workerFsBufferSizeBytes);
-    ::addCommandOption(updateGeneralCmd, _general.loaderNumProcessingThreads);
-    ::addCommandOption(updateGeneralCmd, _general.exporterNumProcessingThreads);
-    ::addCommandOption(updateGeneralCmd, _general.httpLoaderNumProcessingThreads);
-    ::addCommandOption(updateGeneralCmd, _general.workerDefaultSvcPort);
-    ::addCommandOption(updateGeneralCmd, _general.workerDefaultFsPort);
-    ::addCommandOption(updateGeneralCmd, _general.workerDefaultDataDir);
-    ::addCommandOption(updateGeneralCmd, _general.workerDefaultDbPort);
-    ::addCommandOption(updateGeneralCmd, _general.workerDefaultDbUser);
-    ::addCommandOption(updateGeneralCmd, _general.workerDefaultLoaderPort);
-    ::addCommandOption(updateGeneralCmd, _general.workerDefaultLoaderTmpDir);
-    ::addCommandOption(updateGeneralCmd, _general.workerDefaultExporterPort);
-    ::addCommandOption(updateGeneralCmd, _general.workerDefaultExporterTmpDir);
-    ::addCommandOption(updateGeneralCmd, _general.workerDefaultHttpLoaderPort);
-    ::addCommandOption(updateGeneralCmd, _general.workerDefaultHttpLoaderTmpDir);
+    for (auto&& itr: ConfigurationSchema::parameters()) {
+        string const& category = itr.first;
+        for (auto&& param: itr.second) {
+            // The read-only parameters can't be updated programmatically.
+            if (ConfigurationSchema::readOnly(category, param)) continue;
+            _general[category][param] = string();
+            updateGeneralCmd.option(
+                category + "." + param,
+                ConfigurationSchema::description(category, param),
+                _general[category][param]);
+        }
+    }
 
     parser().command(
         "ADD_DATABASE_FAMILY"
@@ -1591,192 +1565,28 @@ int ConfigApp::_dump() const {
 
 
 void ConfigApp::_dumpGeneralAsTable(string const& indent) const {
-
     // Extract general attributes and put them into the corresponding
     // columns. Translate tables cell values into strings when required.
-
-    vector<string> parameter;
-    vector<string> value;
-    vector<string> description;
-
-    parameter.  push_back(_general.metaVersion.key);
-    value.      push_back(_general.metaVersion.str(*_config));
-    description.push_back(_general.metaVersion.description());
-
-    parameter.  push_back(_general.requestBufferSizeBytes.key);
-    value.      push_back(_general.requestBufferSizeBytes.str(*_config));
-    description.push_back(_general.requestBufferSizeBytes.description());
-
-    parameter.  push_back(_general.retryTimeoutSec.key);
-    value.      push_back(_general.retryTimeoutSec.str(*_config));
-    description.push_back(_general.retryTimeoutSec.description());
-
-    parameter.  push_back(_general.controllerThreads.key);
-    value.      push_back(_general.controllerThreads.str(*_config));
-    description.push_back(_general.controllerThreads.description());
-
-    parameter.  push_back(_general.controllerRequestTimeoutSec.key);
-    value.      push_back(_general.controllerRequestTimeoutSec.str(*_config));
-    description.push_back(_general.controllerRequestTimeoutSec.description());
-
-    parameter.  push_back(_general.jobTimeoutSec.key);
-    value.      push_back(_general.jobTimeoutSec.str(*_config));
-    description.push_back(_general.jobTimeoutSec.description());
-
-    parameter.  push_back(_general.jobHeartbeatTimeoutSec.key);
-    value.      push_back(_general.jobHeartbeatTimeoutSec.str(*_config));
-    description.push_back(_general.jobHeartbeatTimeoutSec.description());
-
-    parameter.  push_back(_general.controllerHttpPort.key);
-    value.      push_back(_general.controllerHttpPort.str(*_config));
-    description.push_back(_general.controllerHttpPort.description());
-
-    parameter.  push_back(_general.controllerHttpThreads.key);
-    value.      push_back(_general.controllerHttpThreads.str(*_config));
-    description.push_back(_general.controllerHttpThreads.description());
-
-    parameter.  push_back(_general.controllerEmptyChunksDir.key);
-    value.      push_back(_general.controllerEmptyChunksDir.str(*_config));
-    description.push_back(_general.controllerEmptyChunksDir.description());
-
-    parameter.  push_back(_general.xrootdAutoNotify.key);
-    value.      push_back(_general.xrootdAutoNotify.str(*_config));
-    description.push_back(_general.xrootdAutoNotify.description());
-
-    parameter.  push_back(_general.xrootdHost.key);
-    value.      push_back(_general.xrootdHost.str(*_config));
-    description.push_back(_general.xrootdHost.description());
-
-    parameter.  push_back(_general.xrootdPort.key);
-    value.      push_back(_general.xrootdPort.str(*_config));
-    description.push_back(_general.xrootdPort.description());
-
-    parameter.  push_back(_general.xrootdTimeoutSec.key);
-    value.      push_back(_general.xrootdTimeoutSec.str(*_config));
-    description.push_back(_general.xrootdTimeoutSec.description());
-
-    parameter.  push_back(_general.databaseServicesPoolSize.key);
-    value.      push_back(_general.databaseServicesPoolSize.str(*_config));
-    description.push_back(_general.databaseServicesPoolSize.description());
-
-    parameter.  push_back(_general.databaseHost.key);
-    value.      push_back(_general.databaseHost.str(*_config));
-    description.push_back(_general.databaseHost.description());
-
-    parameter.  push_back(_general.databasePort.key);
-    value.      push_back(_general.databasePort.str(*_config));
-    description.push_back(_general.databasePort.description());
-
-    parameter.  push_back(_general.databaseUser.key);
-    value.      push_back(_general.databaseUser.str(*_config));
-    description.push_back(_general.databaseUser.description());
-
-    parameter.  push_back(_general.databaseName.key);
-    value.      push_back(_general.databaseName.str(*_config));
-    description.push_back(_general.databaseName.description());
-
-    parameter.  push_back(_general.qservMasterDatabaseServicesPoolSize.key);
-    value.      push_back(_general.qservMasterDatabaseServicesPoolSize.str(*_config));
-    description.push_back(_general.qservMasterDatabaseServicesPoolSize.description());
-
-    parameter.  push_back(_general.qservMasterDatabaseHost.key);
-    value.      push_back(_general.qservMasterDatabaseHost.str(*_config));
-    description.push_back(_general.qservMasterDatabaseHost.description());
-
-    parameter.  push_back(_general.qservMasterDatabasePort.key);
-    value.      push_back(_general.qservMasterDatabasePort.str(*_config));
-    description.push_back(_general.qservMasterDatabasePort.description());
-
-    parameter.  push_back(_general.qservMasterDatabaseUser.key);
-    value.      push_back(_general.qservMasterDatabaseUser.str(*_config));
-    description.push_back(_general.qservMasterDatabaseUser.description());
-
-    parameter.  push_back(_general.qservMasterDatabaseName.key);
-    value.      push_back(_general.qservMasterDatabaseName.str(*_config));
-    description.push_back(_general.qservMasterDatabaseName.description());
-
-    parameter.  push_back(_general.qservMasterDatabaseTmpDir.key);
-    value.      push_back(_general.qservMasterDatabaseTmpDir.str(*_config));
-    description.push_back(_general.qservMasterDatabaseTmpDir.description());
-
-    parameter.  push_back(_general.workerTechnology.key);
-    value.      push_back(_general.workerTechnology.str(*_config));
-    description.push_back(_general.workerTechnology.description());
-
-    parameter.  push_back(_general.workerNumProcessingThreads.key);
-    value.      push_back(_general.workerNumProcessingThreads.str(*_config));
-    description.push_back(_general.workerNumProcessingThreads.description());
-
-    parameter.  push_back(_general.fsNumProcessingThreads.key);
-    value.      push_back(_general.fsNumProcessingThreads.str(*_config));
-    description.push_back(_general.fsNumProcessingThreads.description());
-
-    parameter.  push_back(_general.workerFsBufferSizeBytes.key);
-    value.      push_back(_general.workerFsBufferSizeBytes.str(*_config));
-    description.push_back(_general.workerFsBufferSizeBytes.description());
-
-    parameter.  push_back(_general.loaderNumProcessingThreads.key);
-    value.      push_back(_general.loaderNumProcessingThreads.str(*_config));
-    description.push_back(_general.loaderNumProcessingThreads.description());
-
-    parameter.  push_back(_general.exporterNumProcessingThreads.key);
-    value.      push_back(_general.exporterNumProcessingThreads.str(*_config));
-    description.push_back(_general.exporterNumProcessingThreads.description());
-
-    parameter.  push_back(_general.httpLoaderNumProcessingThreads.key);
-    value.      push_back(_general.httpLoaderNumProcessingThreads.str(*_config));
-    description.push_back(_general.httpLoaderNumProcessingThreads.description());
-
-    parameter.  push_back(_general.workerDefaultSvcPort.key);
-    value.      push_back(_general.workerDefaultSvcPort.str(*_config));
-    description.push_back(_general.workerDefaultSvcPort.description());
-
-    parameter.  push_back(_general.workerDefaultFsPort.key);
-    value.      push_back(_general.workerDefaultFsPort.str(*_config));
-    description.push_back(_general.workerDefaultFsPort.description());
-
-    parameter.  push_back(_general.workerDefaultDataDir.key);
-    value.      push_back(_general.workerDefaultDataDir.str(*_config));
-    description.push_back(_general.workerDefaultDataDir.description());
-
-    parameter.  push_back(_general.workerDefaultDbPort.key);
-    value.      push_back(_general.workerDefaultDbPort.str(*_config));
-    description.push_back(_general.workerDefaultDbPort.description());
-
-    parameter.  push_back(_general.workerDefaultDbUser.key);
-    value.      push_back(_general.workerDefaultDbUser.str(*_config));
-    description.push_back(_general.workerDefaultDbUser.description());
-
-    parameter.  push_back(_general.workerDefaultLoaderPort.key);
-    value.      push_back(_general.workerDefaultLoaderPort.str(*_config));
-    description.push_back(_general.workerDefaultLoaderPort.description());
-
-    parameter.  push_back(_general.workerDefaultLoaderTmpDir.key);
-    value.      push_back(_general.workerDefaultLoaderTmpDir.str(*_config));
-    description.push_back(_general.workerDefaultLoaderTmpDir.description());
-
-    parameter.  push_back(_general.workerDefaultExporterPort.key);
-    value.      push_back(_general.workerDefaultExporterPort.str(*_config));
-    description.push_back(_general.workerDefaultExporterPort.description());
-
-    parameter.  push_back(_general.workerDefaultExporterTmpDir.key);
-    value.      push_back(_general.workerDefaultExporterTmpDir.str(*_config));
-    description.push_back(_general.workerDefaultExporterTmpDir.description());
-
-    parameter.  push_back(_general.workerDefaultHttpLoaderPort.key);
-    value.      push_back(_general.workerDefaultHttpLoaderPort.str(*_config));
-    description.push_back(_general.workerDefaultHttpLoaderPort.description());
-
-    parameter.  push_back(_general.workerDefaultHttpLoaderTmpDir.key);
-    value.      push_back(_general.workerDefaultHttpLoaderTmpDir.str(*_config));
-    description.push_back(_general.workerDefaultHttpLoaderTmpDir.description());
-
+    vector<string> categories;
+    vector<string> parameters;
+    vector<string> values;
+    vector<string> descriptions;
+    for (auto&& itr: ConfigurationSchema::parameters()) {
+        string const& category = itr.first;
+        for (auto&& param: itr.second) {
+            categories.push_back(category);
+            parameters.push_back(param);
+            values.push_back(ConfigurationSchema::securityContext(category, param) ?
+                    "xxxxxx" : _config->getAsString(category, param)
+            );
+            descriptions.push_back(ConfigurationSchema::description(category, param));
+        }
+    }
     util::ColumnTablePrinter table("GENERAL PARAMETERS:", indent, _verticalSeparator);
-
-    table.addColumn("parameter",   parameter,   util::ColumnTablePrinter::LEFT);
-    table.addColumn("value",       value);
-    table.addColumn("description", description, util::ColumnTablePrinter::LEFT);
-
+    table.addColumn("category", categories, util::ColumnTablePrinter::LEFT);
+    table.addColumn("param", parameters, util::ColumnTablePrinter::LEFT);
+    table.addColumn("value", values);
+    table.addColumn("description", descriptions, util::ColumnTablePrinter::LEFT);
     table.print(cout, false, false);
 }
 
@@ -1967,48 +1777,19 @@ int ConfigApp::_configInitFile() const {
 
 
 int ConfigApp::_updateGeneral() {
-
     string const context = "ConfigApp::" + string(__func__) + "  ";
-
     try {
-        _general.requestBufferSizeBytes.save(*_config);
-        _general.retryTimeoutSec.save(*_config);
-        _general.controllerRequestTimeoutSec.save(*_config);
-        _general.jobTimeoutSec.save(*_config);
-        _general.jobHeartbeatTimeoutSec.save(*_config);
-        _general.controllerThreads.save(*_config);
-        _general.controllerHttpPort.save(*_config);
-        _general.controllerHttpThreads.save(*_config);
-        _general.controllerEmptyChunksDir.save(*_config);
-        _general.xrootdAutoNotify.save(*_config);
-        _general.xrootdHost.save(*_config);
-        _general.xrootdPort.save(*_config);
-        _general.xrootdTimeoutSec.save(*_config);
-        _general.databaseServicesPoolSize.save(*_config);
-        _general.qservMasterDatabaseHost.save(*_config);
-        _general.qservMasterDatabasePort.save(*_config);
-        _general.qservMasterDatabaseUser.save(*_config);
-        _general.qservMasterDatabaseName.save(*_config);
-        _general.qservMasterDatabaseServicesPoolSize.save(*_config);
-        _general.qservMasterDatabaseTmpDir.save(*_config);
-        _general.workerTechnology.save(*_config);
-        _general.workerNumProcessingThreads.save(*_config);
-        _general.fsNumProcessingThreads.save(*_config);
-        _general.workerFsBufferSizeBytes.save(*_config);
-        _general.loaderNumProcessingThreads.save(*_config);
-        _general.exporterNumProcessingThreads.save(*_config);
-        _general.httpLoaderNumProcessingThreads.save(*_config);
-        _general.workerDefaultSvcPort.save(*_config);
-        _general.workerDefaultFsPort.save(*_config);
-        _general.workerDefaultDataDir.save(*_config);
-        _general.workerDefaultDbPort.save(*_config);
-        _general.workerDefaultDbUser.save(*_config);
-        _general.workerDefaultLoaderPort.save(*_config);
-        _general.workerDefaultLoaderTmpDir.save(*_config);
-        _general.workerDefaultExporterPort.save(*_config);
-        _general.workerDefaultExporterTmpDir.save(*_config);
-        _general.workerDefaultHttpLoaderPort.save(*_config);
-        _general.workerDefaultHttpLoaderTmpDir.save(*_config);
+        // Note that options specified by a user will have non-empty values.
+        for (auto&& categoryItr: _general) {
+            string const& category = categoryItr.first;
+            for (auto&& paramItr: categoryItr.second) {
+                string const& param = paramItr.first;
+                string const& value = paramItr.second;
+                if (!value.empty()) {
+                    _config->setFromString(category, param, value);
+                }
+            }
+        }
     } catch (exception const& ex) {
         LOGS(_log, LOG_LVL_ERROR, context << "operation failed, exception: " << ex.what());
         return 1;

@@ -396,7 +396,8 @@ int SqlApp::runImpl() {
     // Limit request execution time if such limit was provided
     if (_timeoutSec != 0) {
         bool const updatePersistentState = false;
-        serviceProvider()->config()->setControllerRequestTimeoutSec(_timeoutSec, updatePersistentState);
+        serviceProvider()->config()->set<unsigned int>(
+                "controller", "request_timeout_sec", _timeoutSec, updatePersistentState);
     }
 
     auto const controller = Controller::create(serviceProvider());

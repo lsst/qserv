@@ -79,11 +79,11 @@ DatabaseServicesMySQL::DatabaseServicesMySQL(Configuration::Ptr const& configura
         _configuration(configuration),
         _conn(database::mysql::Connection::open(
             database::mysql::ConnectionParams(
-                configuration->databaseHost(),
-                configuration->databasePort(),
-                configuration->databaseUser(),
-                configuration->databasePassword(),
-                configuration->databaseName()))) {
+                configuration->get<string>("database", "host"),
+                configuration->get<uint16_t>("database", "port"),
+                configuration->get<string>("database", "user"),
+                configuration->get<string>("database", "password"),
+                configuration->get<string>("database", "name")))) {
 }
 
 

@@ -23,12 +23,12 @@
 
 // System headers
 #include <limits>
+#include <map>
 #include <string>
 
 // Qserv headers
 #include "replica/Application.h"
 #include "replica/Configuration.h"
-#include "replica/ConfigurationTypes.h"
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -223,7 +223,7 @@ private:
     int _workerReadOnly = -1;
 
     /// General parameters
-    ConfigurationGeneralParams _general;
+    std::map<std::string, std::map<std::string, std::string>> _general;
 
     /// For database families
     DatabaseFamilyInfo _familyInfo;
