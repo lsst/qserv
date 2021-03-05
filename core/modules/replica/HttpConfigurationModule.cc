@@ -30,7 +30,7 @@
 
 // Qserv headers
 #include "replica/Configuration.h"
-#include "replica/ConfigurationTypes.h"
+#include "replica/ConfigurationSchema.h"
 #include "replica/DatabaseServices.h"
 #include "replica/HttpExceptions.h"
 #include "replica/ServiceProvider.h"
@@ -41,30 +41,19 @@ using namespace lsst::qserv::replica;
 
 namespace {
 
-/**
- * Inspect parameters of the request's query to see if the specified parameter
- * is one of those. And if so then extract its value, convert it into an appropriate
- * type and save in the Configuration.
- * 
- * @param param The general Configuration parameter.
- * @param query Input parameters of the HTTP request.
- * @param config A pointer to the Configuration service.
- * @param logger The logger function to report  to the Configuration service
- * @return 'true' if the parameter was found and saved
- */
-template<typename T>
-bool saveConfigParameter(T& param,
-                         unordered_map<string,string> const& query,
-                         Configuration::Ptr const& config,
-                         function<void(string const&)> const& logger) {
-    auto itr = query.find(param.key);
-    if (itr != query.end()) {
-        param.value = boost::lexical_cast<decltype(param.value)>(itr->second);
-        param.save(*config);
-        logger("updated " + param.key + "=" + itr->second);
-        return true;
+/// @return A JSON object with metadata for the general parameters.
+json meta4general(Configuration::Ptr const& config) {
+    json result;
+    for (auto&& itr: ConfigurationSchema::parameters()) {
+        string const& category = itr.first;
+        for (auto&& parameter: itr.second) {
+            json& obj = result[category][parameter];
+            obj["read_only"] = ConfigurationSchema::readOnly(category, parameter) ? 0 : 1;
+            obj["description"] = ConfigurationSchema::description(category, parameter);
+            obj["security_context"] = ConfigurationSchema::securityContext(category, parameter) ? 1 : 0;
+        }
     }
-    return false;
+    return result;
 }
 }
 
@@ -114,69 +103,27 @@ json HttpConfigurationModule::executeImpl(string const& subModuleName) {
 json HttpConfigurationModule::_get() {
     debug(__func__);
     auto const config  = controller()->serviceProvider()->config();
-    ConfigurationGeneralParams general;
     json result;
     result["config"] = config->toJson();
-    result["config"]["general"] = general.toJson(*config);
+    result["config"]["meta"] = meta4general(config);
     return result;
 }
 
 
 json HttpConfigurationModule::_updateGeneral() {
     debug(__func__);
-
-    json result;
-    try {
-        ConfigurationGeneralParams general;
-
-        auto   const config  = controller()->serviceProvider()->config();
-        string const context = __func__;
-        auto   const logger  = [this, context](string const& msg) {
-            this->debug(context, msg);
-        };
-        ::saveConfigParameter(general.requestBufferSizeBytes, req()->query, config, logger);
-        ::saveConfigParameter(general.retryTimeoutSec, req()->query, config, logger);
-        ::saveConfigParameter(general.controllerThreads, req()->query, config, logger);
-        ::saveConfigParameter(general.controllerRequestTimeoutSec, req()->query, config, logger);
-        ::saveConfigParameter(general.jobTimeoutSec, req()->query, config, logger);
-        ::saveConfigParameter(general.jobHeartbeatTimeoutSec, req()->query, config, logger);
-        ::saveConfigParameter(general.controllerHttpPort, req()->query, config, logger);
-        ::saveConfigParameter(general.controllerHttpThreads, req()->query, config, logger);
-        ::saveConfigParameter(general.controllerEmptyChunksDir, req()->query, config, logger);
-        ::saveConfigParameter(general.xrootdAutoNotify, req()->query, config, logger);
-        ::saveConfigParameter(general.xrootdHost, req()->query, config, logger);
-        ::saveConfigParameter(general.xrootdPort, req()->query, config, logger);
-        ::saveConfigParameter(general.xrootdTimeoutSec, req()->query, config, logger);
-        ::saveConfigParameter(general.databaseServicesPoolSize, req()->query, config, logger);
-        ::saveConfigParameter(general.qservMasterDatabaseHost, req()->query, config, logger);
-        ::saveConfigParameter(general.qservMasterDatabasePort, req()->query, config, logger);
-        ::saveConfigParameter(general.qservMasterDatabaseUser, req()->query, config, logger);
-        ::saveConfigParameter(general.qservMasterDatabaseName, req()->query, config, logger);
-        ::saveConfigParameter(general.qservMasterDatabaseServicesPoolSize, req()->query, config, logger);
-        ::saveConfigParameter(general.qservMasterDatabaseTmpDir, req()->query, config, logger);
-        ::saveConfigParameter(general.workerTechnology, req()->query, config, logger);
-        ::saveConfigParameter(general.workerNumProcessingThreads, req()->query, config, logger);
-        ::saveConfigParameter(general.fsNumProcessingThreads, req()->query, config, logger);
-        ::saveConfigParameter(general.workerFsBufferSizeBytes, req()->query, config, logger);
-        ::saveConfigParameter(general.loaderNumProcessingThreads, req()->query, config, logger);
-        ::saveConfigParameter(general.exporterNumProcessingThreads, req()->query, config, logger);
-        ::saveConfigParameter(general.httpLoaderNumProcessingThreads, req()->query, config, logger);
-        ::saveConfigParameter(general.workerDefaultSvcPort, req()->query, config, logger);
-        ::saveConfigParameter(general.workerDefaultFsPort, req()->query, config, logger);
-        ::saveConfigParameter(general.workerDefaultDataDir, req()->query, config, logger);
-        ::saveConfigParameter(general.workerDefaultDbPort, req()->query, config, logger);
-        ::saveConfigParameter(general.workerDefaultDbUser, req()->query, config, logger);
-        ::saveConfigParameter(general.workerDefaultLoaderPort, req()->query, config, logger);
-        ::saveConfigParameter(general.workerDefaultLoaderTmpDir, req()->query, config, logger);
-        ::saveConfigParameter(general.workerDefaultExporterPort, req()->query, config, logger);
-        ::saveConfigParameter(general.workerDefaultExporterTmpDir, req()->query, config, logger);
-        ::saveConfigParameter(general.workerDefaultHttpLoaderPort, req()->query, config, logger);
-        ::saveConfigParameter(general.workerDefaultHttpLoaderTmpDir, req()->query, config, logger);
-        result["config"] = config->toJson();
-        result["config"]["general"] = general.toJson(*config);
-    } catch (boost::bad_lexical_cast const& ex) {
-        throw HttpError(__func__, "invalid value of a configuration parameter: " + string(ex.what()));
+    auto const config = controller()->serviceProvider()->config();
+    string const category  = body().required<string>("category");
+    string const parameter = body().required<string>("parameter");
+    string const value     = body().required<string>("value");
+    if (ConfigurationSchema::readOnly(category, parameter)) {
+        throw invalid_argument(context() + "::" + string(__func__) +
+                "  this is the read-only parameter that can't be changed via this method.");
     }
+    config->setFromString(category, parameter, value);
+    json result;
+    result["config"] = config->toJson();
+    result["config"]["meta"] = meta4general(config);
     return result;
 }
 

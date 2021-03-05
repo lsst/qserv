@@ -28,6 +28,9 @@
 #include <iostream>
 #include <vector>
 
+// Third party headers
+#include "nlohmann/json.hpp"
+
 // Qserv headers
 #include "replica/Common.h"
 #include "replica/Configuration.h"
@@ -37,6 +40,7 @@
 #include "lsst/log/Log.h"
 
 using namespace std;
+using json = nlohmann::json;
 using namespace lsst::qserv::replica;
 namespace util = lsst::qserv::util;
 
@@ -288,45 +292,25 @@ ConfigApp::ConfigApp(int argc, char* argv[])
         _workerInfo.name
     );
 
+    // Add options for the general parameters named as:
+    //   --<category>.<param>=<string>
+    // Note that since no database connection is available at this time (that would have
+    // required knowing a value of the parameter 'configUrl', and no parsing has been made
+    // yet) then the loop below will set the default value of each option to be the empty
+    // string. Any changes from that will be detected when processing the input. 
     auto&& updateGeneralCmd = parser().command("UPDATE_GENERAL");
-    ::addCommandOption(updateGeneralCmd, _general.requestBufferSizeBytes);
-    ::addCommandOption(updateGeneralCmd, _general.retryTimeoutSec);
-    ::addCommandOption(updateGeneralCmd, _general.controllerThreads);
-    ::addCommandOption(updateGeneralCmd, _general.controllerRequestTimeoutSec);
-    ::addCommandOption(updateGeneralCmd, _general.jobTimeoutSec);
-    ::addCommandOption(updateGeneralCmd, _general.jobHeartbeatTimeoutSec);
-    ::addCommandOption(updateGeneralCmd, _general.controllerHttpPort);
-    ::addCommandOption(updateGeneralCmd, _general.controllerHttpThreads);
-    ::addCommandOption(updateGeneralCmd, _general.controllerEmptyChunksDir);
-    ::addCommandOption(updateGeneralCmd, _general.xrootdAutoNotify);
-    ::addCommandOption(updateGeneralCmd, _general.xrootdHost);
-    ::addCommandOption(updateGeneralCmd, _general.xrootdPort);
-    ::addCommandOption(updateGeneralCmd, _general.xrootdTimeoutSec);
-    ::addCommandOption(updateGeneralCmd, _general.databaseServicesPoolSize);
-    ::addCommandOption(updateGeneralCmd, _general.qservMasterDatabaseHost);
-    ::addCommandOption(updateGeneralCmd, _general.qservMasterDatabasePort);
-    ::addCommandOption(updateGeneralCmd, _general.qservMasterDatabaseUser);
-    ::addCommandOption(updateGeneralCmd, _general.qservMasterDatabaseName);
-    ::addCommandOption(updateGeneralCmd, _general.qservMasterDatabaseServicesPoolSize);
-    ::addCommandOption(updateGeneralCmd, _general.qservMasterDatabaseTmpDir);
-    ::addCommandOption(updateGeneralCmd, _general.workerTechnology);
-    ::addCommandOption(updateGeneralCmd, _general.workerNumProcessingThreads);
-    ::addCommandOption(updateGeneralCmd, _general.fsNumProcessingThreads);
-    ::addCommandOption(updateGeneralCmd, _general.workerFsBufferSizeBytes);
-    ::addCommandOption(updateGeneralCmd, _general.loaderNumProcessingThreads);
-    ::addCommandOption(updateGeneralCmd, _general.exporterNumProcessingThreads);
-    ::addCommandOption(updateGeneralCmd, _general.httpLoaderNumProcessingThreads);
-    ::addCommandOption(updateGeneralCmd, _general.workerDefaultSvcPort);
-    ::addCommandOption(updateGeneralCmd, _general.workerDefaultFsPort);
-    ::addCommandOption(updateGeneralCmd, _general.workerDefaultDataDir);
-    ::addCommandOption(updateGeneralCmd, _general.workerDefaultDbPort);
-    ::addCommandOption(updateGeneralCmd, _general.workerDefaultDbUser);
-    ::addCommandOption(updateGeneralCmd, _general.workerDefaultLoaderPort);
-    ::addCommandOption(updateGeneralCmd, _general.workerDefaultLoaderTmpDir);
-    ::addCommandOption(updateGeneralCmd, _general.workerDefaultExporterPort);
-    ::addCommandOption(updateGeneralCmd, _general.workerDefaultExporterTmpDir);
-    ::addCommandOption(updateGeneralCmd, _general.workerDefaultHttpLoaderPort);
-    ::addCommandOption(updateGeneralCmd, _general.workerDefaultHttpLoaderTmpDir);
+    for (auto&& itr: ConfigurationSchema::parameters()) {
+        string const& category = itr.first;
+        for (auto&& param: itr.second) {
+            // The read-only parameters can't be updated programmatically.
+            if (ConfigurationSchema::readOnly(category, param)) continue;
+            _general[category][param] = string();
+            updateGeneralCmd.option(
+                category + "." + param,
+                ConfigurationSchema::description(category, param),
+                _general[category][param]);
+        }
+    }
 
     parser().command(
         "ADD_DATABASE_FAMILY"
@@ -508,48 +492,19 @@ int ConfigApp::_configInitFile() const {
 
 
 int ConfigApp::_updateGeneral() {
-
     string const context = "ConfigApp::" + string(__func__) + "  ";
-
     try {
-        _general.requestBufferSizeBytes.save(*_config);
-        _general.retryTimeoutSec.save(*_config);
-        _general.controllerRequestTimeoutSec.save(*_config);
-        _general.jobTimeoutSec.save(*_config);
-        _general.jobHeartbeatTimeoutSec.save(*_config);
-        _general.controllerThreads.save(*_config);
-        _general.controllerHttpPort.save(*_config);
-        _general.controllerHttpThreads.save(*_config);
-        _general.controllerEmptyChunksDir.save(*_config);
-        _general.xrootdAutoNotify.save(*_config);
-        _general.xrootdHost.save(*_config);
-        _general.xrootdPort.save(*_config);
-        _general.xrootdTimeoutSec.save(*_config);
-        _general.databaseServicesPoolSize.save(*_config);
-        _general.qservMasterDatabaseHost.save(*_config);
-        _general.qservMasterDatabasePort.save(*_config);
-        _general.qservMasterDatabaseUser.save(*_config);
-        _general.qservMasterDatabaseName.save(*_config);
-        _general.qservMasterDatabaseServicesPoolSize.save(*_config);
-        _general.qservMasterDatabaseTmpDir.save(*_config);
-        _general.workerTechnology.save(*_config);
-        _general.workerNumProcessingThreads.save(*_config);
-        _general.fsNumProcessingThreads.save(*_config);
-        _general.workerFsBufferSizeBytes.save(*_config);
-        _general.loaderNumProcessingThreads.save(*_config);
-        _general.exporterNumProcessingThreads.save(*_config);
-        _general.httpLoaderNumProcessingThreads.save(*_config);
-        _general.workerDefaultSvcPort.save(*_config);
-        _general.workerDefaultFsPort.save(*_config);
-        _general.workerDefaultDataDir.save(*_config);
-        _general.workerDefaultDbPort.save(*_config);
-        _general.workerDefaultDbUser.save(*_config);
-        _general.workerDefaultLoaderPort.save(*_config);
-        _general.workerDefaultLoaderTmpDir.save(*_config);
-        _general.workerDefaultExporterPort.save(*_config);
-        _general.workerDefaultExporterTmpDir.save(*_config);
-        _general.workerDefaultHttpLoaderPort.save(*_config);
-        _general.workerDefaultHttpLoaderTmpDir.save(*_config);
+        // Note that options specified by a user will have non-empty values.
+        for (auto&& categoryItr: _general) {
+            string const& category = categoryItr.first;
+            for (auto&& paramItr: categoryItr.second) {
+                string const& param = paramItr.first;
+                string const& value = paramItr.second;
+                if (!value.empty()) {
+                    config()->setFromString(category, param, value);
+                }
+            }
+        }
     } catch (exception const& ex) {
         LOGS(_log, LOG_LVL_ERROR, context << "operation failed, exception: " << ex.what());
         return 1;

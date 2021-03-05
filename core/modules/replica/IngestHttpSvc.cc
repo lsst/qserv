@@ -55,7 +55,7 @@ IngestHttpSvc::IngestHttpSvc(ServiceProvider::Ptr const& serviceProvider,
                              string const& adminAuthKey)
     :   HttpSvc(serviceProvider,
                 serviceProvider->config()->workerInfo(workerName).httpLoaderPort,
-                serviceProvider->config()->httpLoaderNumProcessingThreads(),
+                serviceProvider->config()->get<size_t>("worker", "num_http_loader_processing_threads"),
                 authKey,
                 adminAuthKey),
         _workerName(workerName) {

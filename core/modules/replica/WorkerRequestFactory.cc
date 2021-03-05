@@ -514,7 +514,7 @@ WorkerRequestFactory::WorkerRequestFactory(ServiceProvider::Ptr const& servicePr
                                  connectionPool) {
 
     string const finalTechnology =
-        technology.empty() ? serviceProvider->config()->workerTechnology() : technology;
+        technology.empty() ? serviceProvider->config()->get<string>("worker", "technology") : technology;
 
     if      (finalTechnology == "TEST")  _ptr = new WorkerRequestFactoryTest( serviceProvider, connectionPool);
     else if (finalTechnology == "POSIX") _ptr = new WorkerRequestFactoryPOSIX(serviceProvider, connectionPool);

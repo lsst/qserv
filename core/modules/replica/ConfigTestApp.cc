@@ -104,7 +104,7 @@ public:
             T const actualValue = _config->get<T>(category, parameter);
             bool const equal = actualValue == expectedValue;
             _result.push_back(equal ? OK_STR : VALUE_MISMATCH_STR);
-            _actual.push_back(detail::ConfigParamHandlerTrait<T>::to_string(actualValue));
+            _actual.push_back(detail::TypeConversionTrait<T>::to_string(actualValue));
             if (!equal) ++_failed;
         } catch(invalid_argument const& ex) {
             _result.push_back(MISSING_STR);
@@ -119,7 +119,7 @@ public:
             _actual.push_back("");
             ++_failed;
         }
-        _expected.push_back(detail::ConfigParamHandlerTrait<T>::to_string(expectedValue));
+        _expected.push_back(detail::TypeConversionTrait<T>::to_string(expectedValue));
     }
 
     /// @return 'true' if the test was successful.
@@ -209,8 +209,8 @@ protected:
         bool const equal = actualValue == expectedValue;
         _result.push_back(equal ? OK_STR : VALUE_MISMATCH_STR);
         _attribute.push_back(attribute);
-        _actual.push_back(detail::ConfigParamHandlerTrait<T>::to_string(actualValue));
-        _expected.push_back(detail::ConfigParamHandlerTrait<T>::to_string(expectedValue));
+        _actual.push_back(detail::TypeConversionTrait<T>::to_string(actualValue));
+        _expected.push_back(detail::TypeConversionTrait<T>::to_string(expectedValue));
         if (!equal) ++_failed;
     }
 
@@ -220,8 +220,8 @@ protected:
         bool const equal = std::abs(actualValue - expectedValue) <= std::numeric_limits<double>::epsilon();
         _result.push_back(equal ? OK_STR : VALUE_MISMATCH_STR);
         _attribute.push_back(attribute);
-        _actual.push_back(detail::ConfigParamHandlerTrait<double>::to_string(actualValue));
-        _expected.push_back(detail::ConfigParamHandlerTrait<double>::to_string(expectedValue));
+        _actual.push_back(detail::TypeConversionTrait<double>::to_string(actualValue));
+        _expected.push_back(detail::TypeConversionTrait<double>::to_string(expectedValue));
         if (!equal) ++_failed;
     }
 

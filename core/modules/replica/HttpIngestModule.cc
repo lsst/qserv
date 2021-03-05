@@ -706,7 +706,7 @@ void HttpIngestModule::_grantDatabaseAccess(DatabaseInfo const& databaseInfo,
     auto const config = controller()->serviceProvider()->config();
     auto const job = SqlGrantAccessJob::create(
         databaseInfo.name,
-        config->qservMasterDatabaseUser(),
+        config->get<string>("database", "qserv_master_user"),
         allWorkers,
         controller()
     );
@@ -845,7 +845,7 @@ void HttpIngestModule::_publishDatabaseInMaster(DatabaseInfo const& databaseInfo
 
         statements.push_back(
             "GRANT ALL ON " + h.conn->sqlId(databaseInfo.name) + ".* TO " +
-            h.conn->sqlValue(config->qservMasterDatabaseUser()) + "@" +
+            h.conn->sqlValue(config->get<string>("database", "qserv_master_user")) + "@" +
             h.conn->sqlValue("localhost"));
 
         h.conn->execute([&statements](decltype(h.conn) conn) {
@@ -1005,7 +1005,7 @@ json HttpIngestModule::_buildEmptyChunksListImpl(string const& database,
         });
     } else {
         auto const file = "empty_" + database + ".txt";
-        auto const filePath = fs::path(config->controllerEmptyChunksDir()) / file;
+        auto const filePath = fs::path(config->get<string>("controller", "empty_chunks_dir")) / file;
 
         if (not force) {
             boost::system::error_code ec;
