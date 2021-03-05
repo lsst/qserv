@@ -21,7 +21,8 @@
 #ifndef LSST_QSERV_REPLICA_CONFIGAPP_H
 #define LSST_QSERV_REPLICA_CONFIGAPP_H
 
-// System headers
+// Qserv headers
+#include <map>
 #include <string>
 
 // Qserv headers
@@ -166,7 +167,7 @@ private:
     int _workerReadOnly = -1;
 
     /// General parameters
-    ConfigurationGeneralParams _general;
+    std::map<std::string, std::map<std::string, std::string>> _general;
 
     /// For database families
     DatabaseFamilyInfo _familyInfo;

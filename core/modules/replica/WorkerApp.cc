@@ -116,7 +116,7 @@ int WorkerApp::runImpl() {
             serviceProvider()->config()->qservWorkerDatabasePassword(),
             ""
         ),
-        serviceProvider()->config()->databaseServicesPoolSize()
+        serviceProvider()->config()->get<size_t>("database", "services_pool_size")
     );
     WorkerRequestFactory requestFactory(serviceProvider(), connectionPool);
 

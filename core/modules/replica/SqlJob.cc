@@ -163,7 +163,7 @@ void SqlJob::startImpl(util::Lock const& lock) {
     // by the number of workers involved into the operation.
 
     size_t const maxRequestsPerWorker =
-        controller()->serviceProvider()->config()->workerNumProcessingThreads();
+        controller()->serviceProvider()->config()->get<size_t>("worker", "num_svc_processing_threads");
 
     for (auto&& worker: workerNames) {
         _resultData.resultSets[worker] = list<SqlResultSet>();

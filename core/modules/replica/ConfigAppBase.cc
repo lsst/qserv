@@ -78,192 +78,28 @@ int ConfigAppBase::runImpl() {
 
 
 void ConfigAppBase::dumpGeneralAsTable(string const& indent) const {
-
     // Extract general attributes and put them into the corresponding
     // columns. Translate tables cell values into strings when required.
-
-    vector<string> parameter;
-    vector<string> value;
-    vector<string> description;
-
-    parameter.  push_back(_general.metaVersion.key);
-    value.      push_back(_general.metaVersion.str(*_config));
-    description.push_back(_general.metaVersion.description());
-
-    parameter.  push_back(_general.requestBufferSizeBytes.key);
-    value.      push_back(_general.requestBufferSizeBytes.str(*_config));
-    description.push_back(_general.requestBufferSizeBytes.description());
-
-    parameter.  push_back(_general.retryTimeoutSec.key);
-    value.      push_back(_general.retryTimeoutSec.str(*_config));
-    description.push_back(_general.retryTimeoutSec.description());
-
-    parameter.  push_back(_general.controllerThreads.key);
-    value.      push_back(_general.controllerThreads.str(*_config));
-    description.push_back(_general.controllerThreads.description());
-
-    parameter.  push_back(_general.controllerRequestTimeoutSec.key);
-    value.      push_back(_general.controllerRequestTimeoutSec.str(*_config));
-    description.push_back(_general.controllerRequestTimeoutSec.description());
-
-    parameter.  push_back(_general.jobTimeoutSec.key);
-    value.      push_back(_general.jobTimeoutSec.str(*_config));
-    description.push_back(_general.jobTimeoutSec.description());
-
-    parameter.  push_back(_general.jobHeartbeatTimeoutSec.key);
-    value.      push_back(_general.jobHeartbeatTimeoutSec.str(*_config));
-    description.push_back(_general.jobHeartbeatTimeoutSec.description());
-
-    parameter.  push_back(_general.controllerHttpPort.key);
-    value.      push_back(_general.controllerHttpPort.str(*_config));
-    description.push_back(_general.controllerHttpPort.description());
-
-    parameter.  push_back(_general.controllerHttpThreads.key);
-    value.      push_back(_general.controllerHttpThreads.str(*_config));
-    description.push_back(_general.controllerHttpThreads.description());
-
-    parameter.  push_back(_general.controllerEmptyChunksDir.key);
-    value.      push_back(_general.controllerEmptyChunksDir.str(*_config));
-    description.push_back(_general.controllerEmptyChunksDir.description());
-
-    parameter.  push_back(_general.xrootdAutoNotify.key);
-    value.      push_back(_general.xrootdAutoNotify.str(*_config));
-    description.push_back(_general.xrootdAutoNotify.description());
-
-    parameter.  push_back(_general.xrootdHost.key);
-    value.      push_back(_general.xrootdHost.str(*_config));
-    description.push_back(_general.xrootdHost.description());
-
-    parameter.  push_back(_general.xrootdPort.key);
-    value.      push_back(_general.xrootdPort.str(*_config));
-    description.push_back(_general.xrootdPort.description());
-
-    parameter.  push_back(_general.xrootdTimeoutSec.key);
-    value.      push_back(_general.xrootdTimeoutSec.str(*_config));
-    description.push_back(_general.xrootdTimeoutSec.description());
-
-    parameter.  push_back(_general.databaseServicesPoolSize.key);
-    value.      push_back(_general.databaseServicesPoolSize.str(*_config));
-    description.push_back(_general.databaseServicesPoolSize.description());
-
-    parameter.  push_back(_general.databaseHost.key);
-    value.      push_back(_general.databaseHost.str(*_config));
-    description.push_back(_general.databaseHost.description());
-
-    parameter.  push_back(_general.databasePort.key);
-    value.      push_back(_general.databasePort.str(*_config));
-    description.push_back(_general.databasePort.description());
-
-    parameter.  push_back(_general.databaseUser.key);
-    value.      push_back(_general.databaseUser.str(*_config));
-    description.push_back(_general.databaseUser.description());
-
-    parameter.  push_back(_general.databaseName.key);
-    value.      push_back(_general.databaseName.str(*_config));
-    description.push_back(_general.databaseName.description());
-
-    parameter.  push_back(_general.qservMasterDatabaseServicesPoolSize.key);
-    value.      push_back(_general.qservMasterDatabaseServicesPoolSize.str(*_config));
-    description.push_back(_general.qservMasterDatabaseServicesPoolSize.description());
-
-    parameter.  push_back(_general.qservMasterDatabaseHost.key);
-    value.      push_back(_general.qservMasterDatabaseHost.str(*_config));
-    description.push_back(_general.qservMasterDatabaseHost.description());
-
-    parameter.  push_back(_general.qservMasterDatabasePort.key);
-    value.      push_back(_general.qservMasterDatabasePort.str(*_config));
-    description.push_back(_general.qservMasterDatabasePort.description());
-
-    parameter.  push_back(_general.qservMasterDatabaseUser.key);
-    value.      push_back(_general.qservMasterDatabaseUser.str(*_config));
-    description.push_back(_general.qservMasterDatabaseUser.description());
-
-    parameter.  push_back(_general.qservMasterDatabaseName.key);
-    value.      push_back(_general.qservMasterDatabaseName.str(*_config));
-    description.push_back(_general.qservMasterDatabaseName.description());
-
-    parameter.  push_back(_general.qservMasterDatabaseTmpDir.key);
-    value.      push_back(_general.qservMasterDatabaseTmpDir.str(*_config));
-    description.push_back(_general.qservMasterDatabaseTmpDir.description());
-
-    parameter.  push_back(_general.workerTechnology.key);
-    value.      push_back(_general.workerTechnology.str(*_config));
-    description.push_back(_general.workerTechnology.description());
-
-    parameter.  push_back(_general.workerNumProcessingThreads.key);
-    value.      push_back(_general.workerNumProcessingThreads.str(*_config));
-    description.push_back(_general.workerNumProcessingThreads.description());
-
-    parameter.  push_back(_general.fsNumProcessingThreads.key);
-    value.      push_back(_general.fsNumProcessingThreads.str(*_config));
-    description.push_back(_general.fsNumProcessingThreads.description());
-
-    parameter.  push_back(_general.workerFsBufferSizeBytes.key);
-    value.      push_back(_general.workerFsBufferSizeBytes.str(*_config));
-    description.push_back(_general.workerFsBufferSizeBytes.description());
-
-    parameter.  push_back(_general.loaderNumProcessingThreads.key);
-    value.      push_back(_general.loaderNumProcessingThreads.str(*_config));
-    description.push_back(_general.loaderNumProcessingThreads.description());
-
-    parameter.  push_back(_general.exporterNumProcessingThreads.key);
-    value.      push_back(_general.exporterNumProcessingThreads.str(*_config));
-    description.push_back(_general.exporterNumProcessingThreads.description());
-
-    parameter.  push_back(_general.httpLoaderNumProcessingThreads.key);
-    value.      push_back(_general.httpLoaderNumProcessingThreads.str(*_config));
-    description.push_back(_general.httpLoaderNumProcessingThreads.description());
-
-    parameter.  push_back(_general.workerDefaultSvcPort.key);
-    value.      push_back(_general.workerDefaultSvcPort.str(*_config));
-    description.push_back(_general.workerDefaultSvcPort.description());
-
-    parameter.  push_back(_general.workerDefaultFsPort.key);
-    value.      push_back(_general.workerDefaultFsPort.str(*_config));
-    description.push_back(_general.workerDefaultFsPort.description());
-
-    parameter.  push_back(_general.workerDefaultDataDir.key);
-    value.      push_back(_general.workerDefaultDataDir.str(*_config));
-    description.push_back(_general.workerDefaultDataDir.description());
-
-    parameter.  push_back(_general.workerDefaultDbPort.key);
-    value.      push_back(_general.workerDefaultDbPort.str(*_config));
-    description.push_back(_general.workerDefaultDbPort.description());
-
-    parameter.  push_back(_general.workerDefaultDbUser.key);
-    value.      push_back(_general.workerDefaultDbUser.str(*_config));
-    description.push_back(_general.workerDefaultDbUser.description());
-
-    parameter.  push_back(_general.workerDefaultLoaderPort.key);
-    value.      push_back(_general.workerDefaultLoaderPort.str(*_config));
-    description.push_back(_general.workerDefaultLoaderPort.description());
-
-    parameter.  push_back(_general.workerDefaultLoaderTmpDir.key);
-    value.      push_back(_general.workerDefaultLoaderTmpDir.str(*_config));
-    description.push_back(_general.workerDefaultLoaderTmpDir.description());
-
-    parameter.  push_back(_general.workerDefaultExporterPort.key);
-    value.      push_back(_general.workerDefaultExporterPort.str(*_config));
-    description.push_back(_general.workerDefaultExporterPort.description());
-
-    parameter.  push_back(_general.workerDefaultExporterTmpDir.key);
-    value.      push_back(_general.workerDefaultExporterTmpDir.str(*_config));
-    description.push_back(_general.workerDefaultExporterTmpDir.description());
-
-    parameter.  push_back(_general.workerDefaultHttpLoaderPort.key);
-    value.      push_back(_general.workerDefaultHttpLoaderPort.str(*_config));
-    description.push_back(_general.workerDefaultHttpLoaderPort.description());
-
-    parameter.  push_back(_general.workerDefaultHttpLoaderTmpDir.key);
-    value.      push_back(_general.workerDefaultHttpLoaderTmpDir.str(*_config));
-    description.push_back(_general.workerDefaultHttpLoaderTmpDir.description());
-
-    util::ColumnTablePrinter table("GENERAL PARAMETERS:", indent, _verticalSeparator);
-
-    table.addColumn("parameter",   parameter,   util::ColumnTablePrinter::LEFT);
-    table.addColumn("value",       value);
-    table.addColumn("description", description, util::ColumnTablePrinter::LEFT);
-
+    vector<string> categories;
+    vector<string> parameters;
+    vector<string> values;
+    vector<string> descriptions;
+    for (auto&& itr: ConfigurationSchema::parameters()) {
+        string const& category = itr.first;
+        for (auto&& param: itr.second) {
+            categories.push_back(category);
+            parameters.push_back(param);
+            values.push_back(ConfigurationSchema::securityContext(category, param) ?
+                    "xxxxxx" : _config->getAsString(category, param)
+            );
+            descriptions.push_back(ConfigurationSchema::description(category, param));
+        }
+    }
+    util::ColumnTablePrinter table("GENERAL PARAMETERS:", indent, verticalSeparator());
+    table.addColumn("category", categories, util::ColumnTablePrinter::LEFT);
+    table.addColumn("param", parameters, util::ColumnTablePrinter::LEFT);
+    table.addColumn("value", values);
+    table.addColumn("description", descriptions, util::ColumnTablePrinter::LEFT);
     table.print(cout, false, false);
 }
 
@@ -306,7 +142,7 @@ void ConfigAppBase::dumpWorkersAsTable(string const& indent, string const& capti
         httpLoaderTmpDir.push_back(wi.httpLoaderTmpDir);
     }
 
-    util::ColumnTablePrinter table(caption, indent, _verticalSeparator);
+    util::ColumnTablePrinter table(caption, indent, verticalSeparator());
 
     table.addColumn("name", name, util::ColumnTablePrinter::LEFT);
     table.addColumn("enabled", isEnabled);
@@ -346,7 +182,7 @@ void ConfigAppBase::dumpFamiliesAsTable(string const& indent, string const& capt
         numSubStripes.push_back(fi.numSubStripes);
     }
 
-    util::ColumnTablePrinter table(caption, indent, _verticalSeparator);
+    util::ColumnTablePrinter table(caption, indent, verticalSeparator());
 
     table.addColumn("name", name, util::ColumnTablePrinter::LEFT);
     table.addColumn("replication level", replicationLevel);
@@ -417,16 +253,16 @@ void ConfigAppBase::dumpDatabasesAsTable(string const& indent, string const& cap
         }
     }
 
-    util::ColumnTablePrinter table(caption, indent, _verticalSeparator);
+    util::ColumnTablePrinter table(caption, indent, verticalSeparator());
 
-    table.addColumn("family",       familyName,   util::ColumnTablePrinter::LEFT);
-    table.addColumn("database",     databaseName, util::ColumnTablePrinter::LEFT);
-    table.addColumn(":published",   isPublished);
-    table.addColumn("table",        tableName,    util::ColumnTablePrinter::LEFT);
+    table.addColumn("family", familyName, util::ColumnTablePrinter::LEFT);
+    table.addColumn("database", databaseName, util::ColumnTablePrinter::LEFT);
+    table.addColumn(":published", isPublished);
+    table.addColumn("table", tableName, util::ColumnTablePrinter::LEFT);
     table.addColumn(":partitioned", isPartitioned);
-    table.addColumn(":director",     isDirector);
+    table.addColumn(":director", isDirector);
     table.addColumn(":director-key", directorKey);
-    table.addColumn(":chunk-id-key",     chunkIdColName);
+    table.addColumn(":chunk-id-key", chunkIdColName);
     table.addColumn(":sub-chunk-id-key", subChunkIdColName);
 
     table.print(cout, false, false);

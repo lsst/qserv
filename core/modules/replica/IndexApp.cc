@@ -153,7 +153,8 @@ int IndexApp::runImpl() {
     // Limit execution timeout for requests if such limit was provided
     if (_timeoutSec != 0) {
         bool const updatePersistentState = false;
-        serviceProvider()->config()->setControllerRequestTimeoutSec(_timeoutSec, updatePersistentState);
+        serviceProvider()->config()->set<unsigned int>(
+                "controller", "request_timeout_sec", _timeoutSec, updatePersistentState);
     }
 
     auto const job = IndexJob::create(

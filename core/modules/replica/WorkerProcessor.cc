@@ -144,7 +144,8 @@ void WorkerProcessor::run() {
 
     if (_state == STATE_IS_STOPPED) {
 
-        size_t const numThreads = _serviceProvider->config()->workerNumProcessingThreads();
+        size_t const numThreads = _serviceProvider->config()->get<size_t>(
+                "worker", "num_svc_processing_threads");
         if (not numThreads) {
             throw out_of_range(
                     _classMethodContext(__func__) +

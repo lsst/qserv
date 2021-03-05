@@ -225,8 +225,10 @@ int ChunksApp::runImpl() {
     // Limit execution timeout for requests if such limit was provided
     if (_timeoutSec != 0) {
         bool const updatePersistentState = false;
-        serviceProvider()->config()->setControllerRequestTimeoutSec(_timeoutSec, updatePersistentState);
-        serviceProvider()->config()->setXrootdTimeoutSec(_timeoutSec, updatePersistentState);
+        serviceProvider()->config()->set<unsigned int>(
+                "controller", "request_timeout_sec", _timeoutSec, updatePersistentState);
+        serviceProvider()->config()->set<unsigned int>(
+                "xrootd", "request_timeout_sec", _timeoutSec, updatePersistentState);
     }
 
     ///////////////////////////////////////////////////////////////////
