@@ -318,8 +318,11 @@ void QueryRunner::_transmit(bool inLast, unsigned int rowCount, size_t tSize) {
         return;
     }
 
+    // Get the czar id number, if there is one.
+    int czarId = (_task->msg->has_czarid()) ? _task->msg->czarid() : -1;
+
     // Limit the number of concurrent transmits.
-    wcontrol::TransmitLock transmitLock(*_transmitMgr, _task->getScanInteractive(), _largeResult);
+    wcontrol::TransmitLock transmitLock(*_transmitMgr, _task->getScanInteractive(), _largeResult, czarId);
 
     // Nothing else can use this sendChannel until this transmit is done.
     lock_guard<mutex> streamLock(_task->sendChannel->streamMutex);

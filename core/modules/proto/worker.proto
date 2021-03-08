@@ -73,6 +73,7 @@ message TaskMsg {
     required int32 jobid = 11;
     required bool scaninteractive = 12;
     required int32 attemptcount = 13;
+    optional uint32 czarid = 14;
 }
 
 // Result message received from worker
