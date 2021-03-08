@@ -41,6 +41,8 @@
 #include "lsst/log/Log.h"
 
 // Qserv headers
+#include "global/intTypes.h"
+#include "qmeta/types.h"
 #include "qproc/ChunkQuerySpec.h"
 #include "qproc/QueryProcessingBug.h"
 #include "util/common.h"
@@ -55,8 +57,9 @@ namespace qproc {
 
 
 std::shared_ptr<proto::TaskMsg> TaskMsgFactory::_makeMsg(ChunkQuerySpec const& chunkQuerySpec,
-                                                        std::string const& chunkResultName,
-                                                        uint64_t queryId, int jobId, int attemptCount) {
+                                                         std::string const& chunkResultName,
+                                                         QueryId queryId, int jobId, int attemptCount,
+                                                         qmeta::CzarId czarId) {
     std::string resultTable("Asdfasfd");
     if (!chunkResultName.empty()) { resultTable = chunkResultName; }
     auto taskMsg = std::make_shared<proto::TaskMsg>();
@@ -67,6 +70,7 @@ std::shared_ptr<proto::TaskMsg> TaskMsgFactory::_makeMsg(ChunkQuerySpec const& c
     taskMsg->set_queryid(queryId);
     taskMsg->set_jobid(jobId);
     taskMsg->set_attemptcount(attemptCount);
+    taskMsg->set_czarid(czarId);
     // scanTables (for shared scans)
     // check if more than 1 db in scanInfo
     std::string db;
@@ -144,9 +148,9 @@ void TaskMsgFactory::_addFragment(proto::TaskMsg& taskMsg, std::string const& re
 
 void TaskMsgFactory::serializeMsg(ChunkQuerySpec const& s,
                                   std::string const& chunkResultName,
-                                  uint64_t queryId, int jobId, int attemptCount,
+                                  QueryId queryId, int jobId, int attemptCount, qmeta::CzarId czarId,
                                   std::ostream& os) {
-    std::shared_ptr<proto::TaskMsg> m = _makeMsg(s, chunkResultName, queryId, jobId, attemptCount);
+    std::shared_ptr<proto::TaskMsg> m = _makeMsg(s, chunkResultName, queryId, jobId, attemptCount, czarId);
     m->SerializeToOstream(&os);
 }
 

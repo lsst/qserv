@@ -316,7 +316,7 @@ void UserQuerySelect::submit() {
             std::shared_ptr<ChunkMsgReceiver> cmr = ChunkMsgReceiver::newInstance(cs->chunkId, _messageStore);
             ResourceUnit ru;
             ru.setAsDbChunk(cs->db, cs->chunkId);
-            qdisp::JobDescription::Ptr jobDesc = qdisp::JobDescription::create(
+            qdisp::JobDescription::Ptr jobDesc = qdisp::JobDescription::create(_qMetaCzarId,
                     _executive->getId(), sequence, ru,
                     std::make_shared<MergingHandler>(cmr, _infileMerger, chunkResultName),
                     taskMsgFactory, cs, chunkResultName);

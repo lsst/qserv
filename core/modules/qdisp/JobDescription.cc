@@ -50,12 +50,13 @@ namespace qserv {
 namespace qdisp {
 
 
-JobDescription::JobDescription(QueryId qId, int jobId, ResourceUnit const& resource,
+JobDescription::JobDescription(qmeta::CzarId czarId, QueryId qId, int jobId,
+    ResourceUnit const& resource,
     std::shared_ptr<ResponseHandler> const& respHandler,
     std::shared_ptr<qproc::TaskMsgFactory> const& taskMsgFactory,
     std::shared_ptr<qproc::ChunkQuerySpec> const& chunkQuerySpec,
     std::string const& chunkResultName, bool mock)
-    : _queryId(qId), _jobId(jobId), _qIdStr(QueryIdHelper::makeIdStr(_queryId, _jobId)),
+    : _czarId(czarId), _queryId(qId), _jobId(jobId), _qIdStr(QueryIdHelper::makeIdStr(_queryId, _jobId)),
       _resource(resource), _respHandler(respHandler),
      _taskMsgFactory(taskMsgFactory), _chunkQuerySpec(chunkQuerySpec), _chunkResultName(chunkResultName),
      _mock(mock) {
@@ -78,7 +79,7 @@ bool JobDescription::incrAttemptCountScrubResults() {
 
 void JobDescription::buildPayload() {
     std::ostringstream os;
-    _taskMsgFactory->serializeMsg(*_chunkQuerySpec, _chunkResultName, _queryId, _jobId, _attemptCount, os);
+    _taskMsgFactory->serializeMsg(*_chunkQuerySpec, _chunkResultName, _queryId, _jobId, _attemptCount, _czarId, os);
     _payloads[_attemptCount] = os.str();
 }
 

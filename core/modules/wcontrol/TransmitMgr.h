@@ -28,6 +28,7 @@
 #include <assert.h>
 #include <atomic>
 #include <condition_variable>
+#include <map>
 #include <mutex>
 
 // Qserv headers
@@ -38,15 +39,14 @@ namespace qserv {
 namespace wcontrol {
 
 class TransmitLock;
-/// A way to limit the number of concurrent
-/// transmits. 'interactive queries' are not blocked.
-/// New tasks cannot transmit to the czar until the number of jobs
-/// currently transmitting data drops below maxAlreadyTran
-/// Priority is given to finish tasks that have already started transmitting.
-/// TODO:
-///    -- The czar these are being sent to should be taken into consideration
-///       as the limit should really be per czar.
-///    -- maybe change at runtime.
+
+/// This class is used to limit the number of concurrent transmits.
+/// 'interactive queries' are not blocked.
+/// New tasks cannot transmit to a czar until the number of tasks
+/// currently transmitting data to that czar drops below _maxAlreadyTran
+/// Priority is given to tasks that have already started transmitting
+/// in the hope of finishing them as soon as possible, which frees up
+/// resources on the related czar.
 class TransmitMgr {
 public:
     using Ptr = std::shared_ptr<TransmitMgr>;
@@ -62,51 +62,72 @@ public:
     TransmitMgr& operator=(TransmitMgr const&) = delete;
     virtual ~TransmitMgr() = default;
 
-    int getTotalCount() { return _totalCount; }
-    int getTransmitCount() { return _transmitCount; }
-    int getAlreadyTransCount() { return _alreadyTransCount; }
+    int getTotalCount(int czarId);
+    int getTransmitCount(int czarId);
+    int getAlreadyTransCount(int czarId);
 
-    virtual std::ostream& dump(std::ostream &os) const;
-    std::string dump() const;
+    /// Class methods, that have already locked '_mtx', should call 'dumpBase'.
+    std::ostream& dump(std::ostream &os) const;
+
+    /// This will try to lock 'TransmitMgr::_mtx'.
     friend std::ostream& operator<<(std::ostream &out, TransmitMgr const& mgr);
 
     friend class TransmitLock;
 
+protected:
+    /// _mtx must be locked before calling this function.
+    /// Dump the contents of the class to a string for logging.
+    virtual std::ostream& dumpBase(std::ostream &os) const;
+
+    /// _mtx must be locked before calling this function.
+    std::string dump() const;
+
 private:
-    void _take(bool interactive, bool alreadyTransmitting);
+    void _take(bool interactive, bool alreadyTransmitting, int czarId);
 
-    void _release(bool interactive, bool alreadyTransmitting);
+    void _release(bool interactive, bool alreadyTransmitting, int czarId);
 
-    std::atomic<int> _totalCount{0};
-    std::atomic<int> _transmitCount{0};
-    std::atomic<int> _alreadyTransCount{0};
+    /// This class is used to store transmit information for a czar
+    class TransmitInfo {
+        using Ptr = std::shared_ptr<TransmitInfo>;
+        TransmitInfo() = default;
+        TransmitInfo(TransmitInfo const&) = default;
+
+        friend class TransmitMgr;
+        int _totalCount{0};
+        int _transmitCount{0};
+        int _alreadyTransCount{0};
+    };
+
     int const _maxTransmits;
     int const _maxAlreadyTran;
-    std::mutex _mtx;
+    mutable std::mutex _mtx;
     std::condition_variable _tCv;
+    std::map<int, TransmitInfo::Ptr> _czarTransmitMap; ///< map of information per czar.
 };
 
 
 /// RAII class to support TransmitMgr
 class TransmitLock {
 public:
-    TransmitLock(TransmitMgr& transmitMgr, bool interactive, bool alreadyTransmitting)
+    TransmitLock(TransmitMgr& transmitMgr, bool interactive, bool alreadyTransmitting, int czarId)
       : _transmitMgr(transmitMgr), _interactive(interactive),
-        _alreadyTransmitting(alreadyTransmitting) {
-        _transmitMgr._take(_interactive, _alreadyTransmitting);
+        _alreadyTransmitting(alreadyTransmitting), _czarId(czarId) {
+        _transmitMgr._take(_interactive, _alreadyTransmitting, czarId);
     }
     TransmitLock() = delete;
     TransmitLock(TransmitLock const&) = delete;
     TransmitLock& operator=(TransmitLock const&) = delete;
 
     ~TransmitLock() {
-        _transmitMgr._release(_interactive, _alreadyTransmitting);
+        _transmitMgr._release(_interactive, _alreadyTransmitting, _czarId);
     }
 
 private:
     TransmitMgr& _transmitMgr;
     bool _interactive;
     bool _alreadyTransmitting;
+    int _czarId;
 };
 
 
