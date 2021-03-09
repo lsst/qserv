@@ -99,7 +99,7 @@ qdisp::JobDescription::Ptr makeMockJobDescription(qdisp::Executive::Ptr const& e
     auto mockTaskMsgFactory = std::make_shared<qproc::MockTaskMsgFactory>(msg);
     auto cqs = std::make_shared<qproc::ChunkQuerySpec>(); // dummy, unused in this case.
     std::string chunkResultName = "dummyResultTableName";
-    qmeta::CzarId czarId = 1;
+    qmeta::CzarId const czarId = 1;
     auto job = qdisp::JobDescription::create(czarId, ex->getId(), sequence, ru, mHandler,
                                              mockTaskMsgFactory, cqs, chunkResultName, true);
     return job;
