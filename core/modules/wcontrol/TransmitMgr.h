@@ -32,6 +32,7 @@
 #include <mutex>
 
 // Qserv headers
+#include "qmeta/types.h"
 
 
 namespace lsst {
@@ -53,8 +54,8 @@ public:
 
     TransmitMgr(int maxTransmits, int maxAlreadyTran)
         : _maxTransmits(maxTransmits),  _maxAlreadyTran(maxAlreadyTran) {
-        assert(_maxTransmits > 1);
-        assert(_maxAlreadyTran > 1);
+        assert(_maxTransmits >= 1);
+        assert(_maxAlreadyTran >= 1);
         assert(_maxTransmits >= _maxAlreadyTran);
     }
     TransmitMgr() = delete;
@@ -62,9 +63,9 @@ public:
     TransmitMgr& operator=(TransmitMgr const&) = delete;
     virtual ~TransmitMgr() = default;
 
-    int getTotalCount(int czarId);
-    int getTransmitCount(int czarId);
-    int getAlreadyTransCount(int czarId);
+    int getTotalCount(qmeta::CzarId czarId) const;
+    int getTransmitCount(qmeta::CzarId czarId) const;
+    int getAlreadyTransCount(qmeta::CzarId czarId) const;
 
     /// Class methods, that have already locked '_mtx', should call 'dumpBase'.
     std::ostream& dump(std::ostream &os) const;
@@ -83,34 +84,36 @@ protected:
     std::string dump() const;
 
 private:
-    void _take(bool interactive, bool alreadyTransmitting, int czarId);
+    void _take(bool interactive, bool alreadyTransmitting, qmeta::CzarId czarId);
 
-    void _release(bool interactive, bool alreadyTransmitting, int czarId);
+    void _release(bool interactive, bool alreadyTransmitting, qmeta::CzarId czarId);
 
     /// This class is used to store transmit information for a czar
     class TransmitInfo {
-        using Ptr = std::shared_ptr<TransmitInfo>;
+    public:
         TransmitInfo() = default;
         TransmitInfo(TransmitInfo const&) = default;
-
+        TransmitInfo& operator=(TransmitInfo const&) = default;
+    private:
         friend class TransmitMgr;
-        int _totalCount{0};
-        int _transmitCount{0};
-        int _alreadyTransCount{0};
+        int _totalCount = 0;
+        int _transmitCount = 0;
+        int _alreadyTransCount = 0;
+        int _takeCalls = 0; ///< current number of calls to _take.
     };
 
     int const _maxTransmits;
     int const _maxAlreadyTran;
     mutable std::mutex _mtx;
     std::condition_variable _tCv;
-    std::map<int, TransmitInfo::Ptr> _czarTransmitMap; ///< map of information per czar.
+    std::map<qmeta::CzarId, TransmitInfo> _czarTransmitMap; ///< map of information per czar.
 };
 
 
 /// RAII class to support TransmitMgr
 class TransmitLock {
 public:
-    TransmitLock(TransmitMgr& transmitMgr, bool interactive, bool alreadyTransmitting, int czarId)
+    TransmitLock(TransmitMgr& transmitMgr, bool interactive, bool alreadyTransmitting, qmeta::CzarId czarId)
       : _transmitMgr(transmitMgr), _interactive(interactive),
         _alreadyTransmitting(alreadyTransmitting), _czarId(czarId) {
         _transmitMgr._take(_interactive, _alreadyTransmitting, czarId);
@@ -127,7 +130,7 @@ private:
     TransmitMgr& _transmitMgr;
     bool _interactive;
     bool _alreadyTransmitting;
-    int _czarId;
+    qmeta::CzarId _czarId;
 };
 
 
