@@ -436,6 +436,18 @@ bool SsiRequest::replyStream(StreamBuffer::Ptr const& sBuf, bool last) {
 }
 
 
+bool SsiRequest::sendMetadata(const char *buf, int blen) {
+    Status stat = SetMetadata(buf, blen);
+    if (stat == XrdSsiResponder::wasPosted) return true;
+    if (stat == XrdSsiResponder::notActive) {
+        LOGS(_log, LOG_LVL_ERROR, "failed to setMetadata notActive");
+    } else {
+        LOGS(_log, LOG_LVL_ERROR, "failed to setMetadata notPosted blen=" << blen);
+    }
+    return false;
+}
+
+
 SsiRequest::Ptr SsiRequest::freeSelfKeepAlive() {
     Ptr keepAlive = std::move(_selfKeepAlive);
     return keepAlive;

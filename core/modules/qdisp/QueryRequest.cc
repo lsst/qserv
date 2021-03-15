@@ -67,13 +67,15 @@ class QueryRequest::AskForResponseDataCmd : public PriorityCommand {
 public:
     typedef shared_ptr<AskForResponseDataCmd> Ptr;
     enum class State { STARTED0, DATAREADY1, DONE2 };
-    AskForResponseDataCmd(QueryRequest::Ptr const& qr, JobQuery::Ptr const& jq, size_t bufferSize)
-        : _qRequest(qr), _jQuery(jq), _qid(jq->getQueryId()), _jobid(jq->getIdInt()) {
+    enum class MsgType { METADATA, BUFFER };
+    AskForResponseDataCmd(QueryRequest::Ptr const& qr, JobQuery::Ptr const& jq, size_t bufferSize, MsgType msgType)
+        : _qRequest(qr), _jQuery(jq), _qid(jq->getQueryId()), _jobid(jq->getIdInt()), _msgType(msgType) {
         _bufPtr.reset(new vector<char>(bufferSize));
     }
 
     void action(util::CmdData *data) override {
         // If everything is ok, call GetResponseData to have XrdSsi ask the worker for the data.
+        LOGS(_log, LOG_LVL_DEBUG, "&&&QReq a");
         QSERV_LOGCONTEXT_QUERY_JOB(_qid, _jobid);
         util::Timer tWaiting;
         util::Timer tTotal;
@@ -81,6 +83,7 @@ public:
             tTotal.start();
             auto jq = _jQuery.lock();
             auto qr = _qRequest.lock();
+            LOGS(_log, LOG_LVL_DEBUG, "&&&QReq b");
             if (jq == nullptr || qr == nullptr) {
                 LOGS(_log, LOG_LVL_WARN, "AskForResp null before GetResponseData");
                 // No way to call _errorFinish().
@@ -88,18 +91,43 @@ public:
                 return;
             }
 
+            LOGS(_log, LOG_LVL_DEBUG, "&&&QReq c");
             if (qr->isQueryCancelled()) {
                 LOGS(_log, LOG_LVL_DEBUG, "AskForResp query was cancelled");
                 qr->_errorFinish(true);
                 _setState(State::DONE2);
                 return;
             }
+            LOGS(_log, LOG_LVL_DEBUG, "&&&QReq d");
             vector<char>& buffer = *_bufPtr;
-            LOGS(_log, LOG_LVL_TRACE, "AskForResp GetResponseData size=" << buffer.size());
-            tWaiting.start();
-            qr->GetResponseData(&buffer[0], buffer.size());
+            if (_msgType == MsgType::BUFFER) {
+                LOGS(_log, LOG_LVL_DEBUG, "&&&QReq e");
+                LOGS(_log, LOG_LVL_TRACE, "AskForResp GetResponseData size=" << buffer.size());
+                tWaiting.start();
+                qr->GetResponseData(&buffer[0], buffer.size());
+            } else if (_msgType == MsgType::METADATA) {
+                LOGS(_log, LOG_LVL_DEBUG, "&&&QReq f");
+                /// wait for get metadata
+                int expectedLen = buffer.size();
+                int len = expectedLen;
+                auto metaData = qr->GetMetadata(len);
+                if (len == expectedLen) {
+                    LOGS(_log, LOG_LVL_DEBUG, "&&&QReq g");
+                    vector<char>& buffer = *_bufPtr;
+                    memcpy(&buffer[0], metaData, len);
+                } else {
+                    LOGS(_log, LOG_LVL_ERROR, "AskForResponseDataCmd fatal unexpected metadata length len="
+                            << len << " expected=" << expectedLen);
+                    qr->_errorFinish();
+                }
+                LOGS(_log, LOG_LVL_DEBUG, "&&&QReq h");
+            } else {
+                LOGS(_log, LOG_LVL_ERROR, "AskForResponseDataCmd fatal unknown msgType " << (int)_msgType);
+                qr->_errorFinish();
+            }
         }
 
+        LOGS(_log, LOG_LVL_DEBUG, "&&&QReq i");
         // Wait for XrdSsi to call ProcessResponseData with the data,
         // which will notify this wait with a call to receivedProcessResponseDataParameters.
         {
@@ -107,9 +135,11 @@ public:
             // TODO: make timed wait, check for wedged, if weak pointers dead, log and give up.
             _cv.wait(uLock, [this](){ return _state != State::STARTED0; });
             tWaiting.stop();
+            LOGS(_log, LOG_LVL_DEBUG, "&&&QReq j");
             // _mtx is locked at this point.
             LOGS(_log, LOG_LVL_TRACE, "AskForResp should be DATAREADY1 " << (int)_state);
             if (_state == State::DONE2) {
+                LOGS(_log, LOG_LVL_DEBUG, "&&&QReq k");
                 // There was a problem. End the stream associated
                 auto qr = _qRequest.lock();
                 if (qr != nullptr) {
@@ -124,6 +154,7 @@ public:
         // If more data needs to be sent, _processData will make a new AskForResponseDataCmd
         // object and queue it.
         {
+            LOGS(_log, LOG_LVL_DEBUG, "&&&QReq l");
             auto jq = _jQuery.lock();
             auto qr = _qRequest.lock();
             if (jq == nullptr || qr == nullptr) {
@@ -132,12 +163,14 @@ public:
                 return;
             }
             qr->_processData(jq, _blen, _last);
+            LOGS(_log, LOG_LVL_DEBUG, "&&&QReq m");
             // _processData will have created another AskForResponseDataCmd object if was needed.
             tTotal.stop();
         }
         _setState(State::DONE2);
         LOGS(_log, LOG_LVL_DEBUG, "Ask data is done wait=" << tWaiting.getElapsed() <<
                 " total=" << tTotal.getElapsed());
+        LOGS(_log, LOG_LVL_DEBUG, "&&&QReq end");
     }
 
     void notifyDataSuccess(int blen, bool last) {
@@ -180,8 +213,9 @@ private:
 
     ResponseHandler::BufPtr _bufPtr;
 
-    int _blen{-1};
-    bool _last{true};
+    int _blen = -1;
+    bool _last = true;
+    MsgType _msgType = MsgType::BUFFER; ///< Type of message expected from XrdSsi
     util::InstanceCount _instCount{"AskForResponseDataCmd"};
 };
 
@@ -300,19 +334,19 @@ bool QueryRequest::_importStream(JobQuery::Ptr const& jq) {
         _askForResponseDataCmd->notifyFailed();
     }
     _askForResponseDataCmd = make_shared<AskForResponseDataCmd>(
-                               shared_from_this(), jq, proto::ProtoHeaderWrap::PROTO_HEADER_SIZE);
+                               shared_from_this(), jq, proto::ProtoHeaderWrap::PROTO_HEADER_SIZE,
+                               AskForResponseDataCmd::MsgType::METADATA);
     _queueAskForResponse(_askForResponseDataCmd, jq, true);
     return true;
 }
 
 
 void QueryRequest::_queueAskForResponse(AskForResponseDataCmd::Ptr const& cmd, JobQuery::Ptr const& jq, bool initialRequest) {
-    // ScanInfo::Rating { FASTEST = 0, FAST = 10, MEDIUM = 20, SLOW = 30, SLOWEST = 100 };
-    // Trying to get existing requests done before doing new ones.
-
+    // Interactive queries have highest priority.
     if (jq->getDescription()->getScanInteractive()) {
         _qdispPool->queCmd(cmd, 0);
     } else {
+        // Trying to get existing requests done before doing new ones.
         if (initialRequest) {
             _qdispPool->queCmd(cmd, 3);
         } else {
@@ -434,7 +468,8 @@ void QueryRequest::_processData(JobQuery::Ptr const& jq, int blen, bool last) {
             // having XrdSsi wait for anything.
             return;
         } else {
-            _askForResponseDataCmd = make_shared<AskForResponseDataCmd>(shared_from_this(), jq, nextBufSize);
+            _askForResponseDataCmd = make_shared<AskForResponseDataCmd>(shared_from_this(), jq, nextBufSize,
+                                                                        AskForResponseDataCmd::MsgType::BUFFER);
             LOGS(_log, LOG_LVL_DEBUG, "queuing askForResponseDataCmd bufSize=" << nextBufSize);
             _queueAskForResponse(_askForResponseDataCmd, jq, false);
         }

@@ -382,7 +382,7 @@ void QueryRunner::_sendBuf(lock_guard<mutex> const& streamLock,
 
 util::TimerHistogram transHeaderHisto("transHeader Hist", {0.1, 1, 5, 10, 20, 40});
 
-
+/*&&&
 /// Transmit the protoHeader
 void QueryRunner::_transmitHeader(lock_guard<mutex> const& streamLock, string& msg) {
     LOGS(_log, LOG_LVL_DEBUG, "_transmitHeader");
@@ -405,6 +405,37 @@ void QueryRunner::_transmitHeader(lock_guard<mutex> const& streamLock, string& m
     } else {
         LOGS(_log, LOG_LVL_DEBUG, "_transmitHeader cancelled");
     }
+}
+*/
+
+/// Transmit the protoHeader
+void QueryRunner::_transmitHeader(lock_guard<mutex> const& streamLock, string& msg) {
+    LOGS(_log, LOG_LVL_DEBUG, "_transmitHeader");
+    // Set header
+    _protoHeader->set_protocol(2); // protocol 2: row-by-row message
+    _protoHeader->set_size(msg.size());
+    _protoHeader->set_md5(util::StringHash::getMd5(msg.data(), msg.size()));
+    _protoHeader->set_wname(getHostname());
+    _protoHeader->set_largeresult(_largeResult);
+    string protoHeaderString;
+    _protoHeader->SerializeToString(&protoHeaderString);
+
+    // Flush to channel.
+    // Make sure protoheader size can be encoded in a byte.
+    assert(protoHeaderString.size() < 255);
+    if (!_cancelled) {
+        _headerBuf = proto::ProtoHeaderWrap::wrap(protoHeaderString);
+        //&&& xrdsvc::StreamBuffer::Ptr streamBuf(xrdsvc::StreamBuffer::createWithMove(_headerBuf)); // invalidates _headerBuf
+        //&&&_sendBuf(streamLock, streamBuf, false, transHeaderHisto, "header");
+        LOGS(_log, LOG_LVL_WARN, "&&& _transmitHeader sz=" << _headerBuf.size() << "\n " << _headerBuf << "\n");
+        if (!_task->sendChannel->setMetadata(streamLock, _headerBuf.data(), _headerBuf.size())) {
+            LOGS(_log, LOG_LVL_ERROR, "QR transmitHeader failed");
+        }
+    } else {
+        _headerBuf = "";
+        LOGS(_log, LOG_LVL_DEBUG, "_transmitHeader cancelled");
+    }
+    LOGS(_log, LOG_LVL_WARN, "&&& _transmitHeader end");
 }
 
 class ChunkResourceRequest {

@@ -170,9 +170,7 @@ bool SendChannel::sendError(string const& msg, int code) {
 
 
 bool SendChannel::sendFile(int fd, Size fSize) {
-    if (!isDead()) {
-        if (_ssiRequest->replyFile(fSize, fd)) return true;
-    }
+    if (!isDead()) if (_ssiRequest->replyFile(fSize, fd)) return true;
     kill();
     release();
     return false;
@@ -184,6 +182,11 @@ bool SendChannel::sendStream(xrdsvc::StreamBuffer::Ptr const& sBuf, bool last) {
     if (_ssiRequest->replyStream(sBuf, last)) return true;
     kill();
     return false;
+}
+
+
+bool SendChannel::setMetadata(const char *buf, int blen) {
+    return _ssiRequest->sendMetadata(buf, blen);
 }
 
 
