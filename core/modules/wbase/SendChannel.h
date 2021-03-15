@@ -88,6 +88,9 @@ public:
     /// provided by reference at construction.
     static SendChannel::Ptr newStringChannel(std::string& dest);
 
+    /// @return true if metadata was set.
+    /// buff must remain valid until the transmit is complete.
+    bool setMetadata(const char *buf, int blen);
 
     /// Kill this SendChannel
     /// @ return the previous value of _dead
@@ -142,6 +145,11 @@ public:
     /// @see SendChannel::sendStream
     bool sendStream(StreamGuard sLock, xrdsvc::StreamBuffer::Ptr const& sBuf, bool last) {
         return _sendChannel->sendStream(sBuf, last);
+    }
+
+    /// @see SendChannel::setMetadata
+    bool setMetadata(StreamGuard sLock, const char *buf, int blen) {
+        return _sendChannel->setMetadata(buf, blen);
     }
 
     /// @see SendChannel::kill

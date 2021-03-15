@@ -107,6 +107,8 @@ public:
     bool replyFile(int fd, long long fSize);
     bool replyStream(StreamBuffer::Ptr const& sbuf, bool last);
 
+    bool sendMetadata(const char *buf, int blen);
+
     /// Call this to allow object to die after it truly is no longer needed.
     /// i.e. It is know Finish() will not be called.
     /// NOTE: It is important that any non-static SsiRequest member

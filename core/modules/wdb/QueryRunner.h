@@ -142,6 +142,10 @@ private:
 
     /// Used to limit the number of transmits being sent to czars.
     std::shared_ptr<wcontrol::TransmitMgr> const _transmitMgr;
+
+    /// Buffer to hold header metadata. Once set by _transmitHeader, it
+    /// must remain untouched until the transmit is complete.
+    std::string _headerBuf;
 };
 
 }}} // namespace
