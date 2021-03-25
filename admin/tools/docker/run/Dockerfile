@@ -1,4 +1,4 @@
-FROM qserv-run
+FROM qserv/lite-run-base
 
 COPY bin/ /usr/local/bin/
 COPY lib64/ /usr/local/lib64/
