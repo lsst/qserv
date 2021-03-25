@@ -1,0 +1,297 @@
+#!/usr/bin/env python3
+# This file is part of qserv.
+#
+# Developed for the LSST Data Management System.
+# This product includes software developed by the LSST Project
+# (https://www.lsst.org).
+# See the COPYRIGHT file at the top-level directory of this distribution
+# for details of code ownership.
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+"""This is the command-line `qserv` command. If it's findable on the PATH then
+there will be a CLI command called qserv. Use `qserv --help` to for more
+information.
+"""
+
+import click
+from functools import partial
+import os
+import pathlib
+import sys
+import yaml
+
+import launch
+
+
+run_option = partial(
+    click.option,
+    "--run/--no-run",
+    is_flag=True,
+    default=True,
+    help="Run the entrypoint script when starting this container."
+         "For --no-run, will print the entrypoint script and arguments that "
+         "would have been run.")
+
+
+python_dev_option = partial(
+    click.option,
+    "--python-dev",
+    is_flag=True,
+    help="Mount the development volume and set the pythonpath to refer to it.")
+
+
+idx_argument = partial(
+    # This is the index of this container, e.g. worker_0, worker_1. Argument
+    # help must be added manually to the command function that uses the
+    # argument.
+    click.argument,
+    "idx",
+    required=True,
+    type=click.IntRange(min=0),
+)
+
+
+remove_option = partial(
+    click.option,
+    "--rm", "remove",
+    help="Remove the container(s) from docker.",
+)
+
+
+debug_option = partial(
+    click.option,
+    "--debug",
+    help="Run gdbserver on this port number in the container, with entrypoint arguments.",
+    type=int,
+)
+
+
+container_option = partial(
+    click.option,
+    "--container",
+    help="The container(s) to launch. If not provided all containers for the "
+         "node type are launched.",
+    # This type rejects all inputs; locaitons where this is used should provide
+    # the allowed choices by overriding this `type`.
+    type=click.Choice([]),
+    multiple=True,
+)
+
+
+def loadCfgCb(ctx, par, val):
+    """A callback handler to load a yaml configuration file."""
+    with open(val) as f:
+        return yaml.safe_load(f)
+
+
+config_file_option = partial(
+    click.option,
+    "--config-file",
+    help="Location of the system config yaml file. By default will use '~/.qserv_config.yaml'",
+    default=os.path.join(pathlib.Path.home(), ".qserv_config.yaml")
+)
+
+
+logLevelChoices = ["CRITICAL", "ERROR", "WARNING", "INFO", "DEBUG"]
+log_level_option = partial(
+    click.option,
+    "--log-level",
+    type=click.Choice(logLevelChoices),
+    help=f"The logging level. Supported levels are [{'|'.join(logLevelChoices)}]",
+)
+
+
+name_argument = partial(
+    click.argument,
+    "NAME",
+    nargs=-1,
+    required=True
+)
+
+
+dry_run_option = partial(
+    click.option,
+    "--dry-run",
+    is_flag=True,
+)
+
+
+def printFormatList(list):
+    return ", ".join(list[:-2] + [" and ".join(list[-2:])])
+
+
+@click.group()
+def qserv():
+    pass
+
+
+@qserv.command()
+@config_file_option("cfg_file")
+@click.option(
+    "--num-workers",
+    help="The number of workers to add to the configuration. By default will create 1 worker.",
+    default=1,
+)
+def make_config(**kwargs):
+    """Make a qserv configuration file.
+
+    After generation this file can be edited as desired.
+    """
+    launch.make_config(**kwargs)
+
+
+@qserv.group()
+def rm(**kwargs):
+    """Remove qserv containers and volumes.
+    """
+    pass
+
+
+@rm.command("all")
+@dry_run_option(help="Print what would be removed but do not remove anything.")
+def rm_all(**kwargs):
+    """Remove all the qserv containers and volumes.
+    """
+    launch.rm_all(**kwargs)
+
+
+@rm.command()
+@name_argument()
+@dry_run_option(help="Print what containers would be removed but do not remove them.")
+def container(**kwargs):
+    """Remove qserv containers.
+
+    Assumes the container name begins with 'qserv', the provided container name
+    does not need to begin with "qserv_". For example `qserv rm worker_0` will
+    remove all the worker 0 containers ("qserv_worker_0_cmsd", etc)
+
+    To remove all the qserv containers use "all" e.g. "qserv rm container all"
+    """
+    launch.rm_container(**kwargs)
+
+
+@rm.command()
+@name_argument()
+@dry_run_option(help="Print what volumes would be removed but do not remove them.")
+def volume(**kwargs):
+    """Remove qserv volumes.
+
+    Assumes the volume name begins with 'qserv', the provided volume name
+    does not need to begin with "qserv_". For example `qserv rm worker` will
+    remove all the worker volumes.
+
+    To remove all the qserv volumes use "all" e.g. "qserv rm volume all"
+    """
+    launch.rm_volume(**kwargs)
+
+
+@qserv.command()
+@name_argument()
+@click.option("-s", "--separator",
+               help="A separator to print between containers. If not provided the container name will be "
+                    "printed by default.")
+def logs(**kwargs):
+    """Fetch the logs of qserv containers.
+    """
+    launch.logs(**kwargs)
+
+
+@qserv.group()
+def start():
+    """Commands for starting qserv containers.
+    """
+    pass
+
+
+@start.command()
+@config_file_option("cfg", callback=loadCfgCb)
+@log_level_option()
+def all(**kwargs):
+    """Start a simple qserv instance.
+
+    Launches containers for the manager, czar, and a single worker.
+    """
+    launch.start(**kwargs)
+
+
+@start.command()
+@idx_argument(default=None, required=False)
+@config_file_option("cfg", callback=loadCfgCb)
+@container_option(type=click.Choice(["xrootd", "cmsd", "mariadb", "repl"]))
+@run_option()
+@python_dev_option()
+@log_level_option()
+@debug_option()
+def worker(**kwargs):
+    """Start a collection of worker containers.
+
+    IDX is the worker identifier index.
+    """
+    launch.start_worker(**kwargs)
+
+
+@start.command()
+@idx_argument(default=0, required=False)
+@config_file_option("cfg", callback=loadCfgCb)
+@container_option(type=click.Choice(["proxy", "mariadb"]))
+@run_option()
+@python_dev_option()
+@debug_option()
+@log_level_option()
+def czar(**kwargs):
+    """Start a collection of czar containers.
+
+    IDX is the czar identifier index.
+    """
+    launch.start_czar(**kwargs)
+
+
+@start.command()
+@idx_argument(default=0, required=False)
+@container_option(type=click.Choice(["xrootd", "cmsd"]))
+@run_option()
+@log_level_option()
+def manager(**kwargs):
+    """Start a collection of xrootd manager containers.
+
+    IDX is the manager identifier index.
+    """
+    launch.start_manager(**kwargs)
+
+
+@start.command()
+@container_option(type=click.Choice(["controller", "mariadb"]))
+@run_option()
+@debug_option()
+@python_dev_option()
+@config_file_option("cfg", callback=loadCfgCb)
+@log_level_option()
+def repl(**kwargs):
+    """Start a replication controller container.
+    """
+    launch.start_manager_repl(**kwargs)
+
+
+@start.command()
+@config_file_option(
+    "cfg",
+    callback=loadCfgCb,
+)
+@run_option()
+def dashboard(**kwargs):
+    launch.start_dashboard(**kwargs)
+
+if __name__ == '__main__':
+    sys.exit(qserv())

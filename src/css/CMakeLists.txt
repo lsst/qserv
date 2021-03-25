@@ -50,4 +50,5 @@ target_link_libraries(cssLib PRIVATE
 #-----------------------------------------------------------------------------
 
 install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/python/ DESTINATION ${CMAKE_INSTALL_PREFIX}/python/lsst/qserv/css)
+install(DIRECTORY schema/ DESTINATION ${CMAKE_INSTALL_PREFIX}/qserv/smig/css/schema/)
 install(TARGETS cssLib DESTINATION ${CMAKE_INSTALL_PREFIX}/python/lsst/qserv/css)
