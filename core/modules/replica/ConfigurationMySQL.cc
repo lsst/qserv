@@ -1671,6 +1671,7 @@ void ConfigurationMySQL::_loadConfigurationImpl(database::mysql::Connection::Ptr
     _databaseHost       = _connectionParams.host;
     _databasePort       = _connectionParams.port;
     _databaseUser       = _connectionParams.user;
+    _databasePassword   = _connectionParams.password;
     _databaseName       = _connectionParams.database;
 
     dumpIntoLogger();
