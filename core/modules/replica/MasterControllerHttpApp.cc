@@ -204,8 +204,6 @@ int MasterControllerHttpApp::runImpl() {
     Configuration::setQservMasterDatabasePassword(_qservDbRootPassword);
     _qservDbRootPassword = "******";
 
-    LOGS(_log, LOG_LVL_INFO, _name() << parser().serializeArguments());
-
     _controller = Controller::create(serviceProvider());
 
     _logControllerStartedEvent();
