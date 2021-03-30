@@ -27,11 +27,14 @@
 // System headers
 #include <functional>
 #include <memory>
+#include <queue>
 #include <string>
 #include <stdexcept>
+#include <thread>
 
 // Qserv headers
 #include "global/Bug.h"
+#include "wbase/TransmitData.h"
 #include "xrdsvc/StreamBuffer.h"
 
 namespace lsst {
@@ -125,6 +128,14 @@ public:
         }
     }
 
+    ~SendChannelShared();
+
+    void run() {
+        std::thread thrd(&SendChannelShared::_transmitLoop, this);
+        _thread = std::move(thrd);
+        _threadStarted = true;
+    }
+
     /// Wrappers for SendChannel public functions that may need to be used
     /// by threads.
     /// @see SendChannel::send
@@ -163,6 +174,19 @@ public:
     /// This should not be changed once set.
     void setTaskCount(int taskCount);
 
+
+    /// Try to transmit the data in tData. // &&& review comments
+    /// If needed, this thread wants to wait before sending data to ease pressure
+    /// on the czar. Waiting is not always possible.
+    /// - If erred is true, there is no point in sending more messages after this
+    ///   so the error will be sent immediately and this sendChannel will be killed.
+    /// - If last is true and all other tasks using this channel are done, this message
+    ///   can wait.
+    /// - Else if there are no other message in queue, it can't wait. This may be the
+    ///   only source of 'tData', and waiting would deadlock.
+    bool addTransmit(int czarId, bool cancelled, bool erred, bool last, bool largeResult,
+                     TransmitData::Ptr const& tData);
+
     ///
     /// @return true if inLast is true and this is the last task to call this
     ///              with inLast == true.
@@ -174,10 +198,34 @@ public:
     std::mutex streamMutex;
 
 private:
+    void _transmit();
+
+    /// &&& doc
+    void _transmitLoop();
+
+    /// Send the buffer 'streamBuffer' using xrdssi. L
+    //  'last' should only be true if this is the last buffer to be sent with this _sendChannel.
+    //  'note' is just a log note about what/who is sending the buffer.
+    //  @return true if the buffer was sent.
+    bool _sendBuf(std::lock_guard<std::mutex> const& streamLock,
+                  xrdsvc::StreamBuffer::Ptr& streamBuf, bool last,
+                  std::string const& note);
+
     SendChannel::Ptr _sendChannel;
+    std::queue<TransmitData::Ptr> _transmitQueue;
+    std::mutex _queueMtx;
+    std::condition_variable _queueCv; // &&& once working with one, try using one cv for add and another cv for loop. notify_all becomes notify_one
+
+    /// metadata buffer. Once set, it cannot change until after Finish() has been called.
+    std::string _metadataBuf;
 
     int _taskCount = 0; ///< The number of tasks to be sent over this SendChannel.
     int _lastCount = 0; ///< Then number of 'last' buffers received.
+    std::atomic<bool> _lastRecvd = false; ///< The truly 'last' transmit message is in the queue.
+    std::atomic<bool> _firstTransmit = true; ///< True until the first transmit has been sent.
+
+    bool _threadStarted = false;
+    std::thread _thread;
 
 };
 

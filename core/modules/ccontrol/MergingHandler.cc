@@ -90,6 +90,8 @@ const char* MergingHandler::getStateStr(MsgState const& state) {
 bool MergingHandler::flush(int bLen, BufPtr const& bufPtr, bool& last, bool& largeResult, int& nextBufSize) {
     LOGS(_log, LOG_LVL_DEBUG, "From:" << _wName << " flush state="
          << getStateStr(_state) << " blen=" << bLen << " last=" << last);
+    LOGS(_log, LOG_LVL_WARN, "&&& flush From:" << _wName << " flush state="
+             << getStateStr(_state) << " blen=" << bLen << " last=" << last);
     if ((bLen < 0) || (bLen != (int)bufPtr->size())) {
         if (_state != MsgState::RESULT_EXTRA) {
             LOGS(_log, LOG_LVL_ERROR, "MergingRequester size mismatch: expected " <<

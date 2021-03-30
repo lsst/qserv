@@ -1,7 +1,5 @@
-// -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2015-2016 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -21,40 +19,41 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-#ifndef LSST_QSERV_PROTO_PROTO_HEADER_WRAP_H
-#define LSST_QSERV_PROTO_PROTO_HEADER_WRAP_H
- /**
-  * @file
-  *
-  * @brief Wrap the google protocol header in a fixed size container.
-  *
-  * @author John Gates, SLAC
-  */
+// Class header
+#include "wbase/TransmitData.h"
 
 // System headers
-#include <memory>
+
+// Third-party headers
+#include <google/protobuf/arena.h>
 
 // Qserv headers
-#include "proto/ProtoImporter.h"
-#include "proto/WorkerResponse.h"
+
+
+using namespace std;
 
 namespace lsst {
 namespace qserv {
-namespace proto {
+namespace wbase {
 
-class ProtoHeaderWrap {
-public:
-    static const size_t PROTO_HEADER_SIZE;
-    static const size_t PROTOBUFFER_DESIRED_LIMIT;
-    static const size_t PROTOBUFFER_HARD_LIMIT;
-    ProtoHeaderWrap() {};
-    virtual ~ProtoHeaderWrap() {};
 
-    static std::string wrap(std::string& protoHeaderString);
-    static bool unwrap(std::shared_ptr<WorkerResponse>& response, std::vector<char>& buffer);
-    static size_t getProtoHeaderSize();
-};
+TransmitData::TransmitData(shared_ptr<google::protobuf::Arena> const& arena) : _arena(arena) {
+}
 
-}}} // end namespace
 
-#endif
+TransmitData::Ptr TransmitData::createTransmitData(shared_ptr<google::protobuf::Arena> const& arena) {
+    return make_shared<TransmitData>(arena);
+}
+
+
+ proto::ProtoHeader* TransmitData::createHeader() {
+     return google::protobuf::Arena::CreateMessage<proto::ProtoHeader>(_arena.get());
+ }
+
+
+ proto::Result* TransmitData::createResult() {
+     return google::protobuf::Arena::CreateMessage<proto::Result>(_arena.get());
+ }
+
+}}} // namespace lsst::qserv::wbase
+

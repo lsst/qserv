@@ -42,6 +42,7 @@
 #include "mysql/MySqlConnection.h"
 #include "util/MultiError.h"
 #include "wbase/Task.h"
+#include "wbase/TransmitData.h"
 #include "wcontrol/SqlConnMgr.h"
 #include "wdb/ChunkResource.h"
 
@@ -68,6 +69,7 @@ class TransmitMgr;
 
 }}
 
+// &&& delete this block
 namespace google {
 namespace protobuf {
 class Arena;
@@ -76,6 +78,36 @@ class Arena;
 namespace lsst {
 namespace qserv {
 namespace wdb {
+
+class SchemaCol {
+public:
+    SchemaCol() = default;
+    SchemaCol(SchemaCol const&) = default;
+    SchemaCol& operator=(SchemaCol const&) = default;
+    SchemaCol(std::string name, std::string sqltype, int mysqltype) :
+        colName(name), colSqlType(sqltype), colMysqlType(mysqltype) {
+    }
+    std::string colName;
+    std::string colSqlType; ///< sqltype for the column
+    int colMysqlType = 0; ///< MySQL type number
+};
+
+/* &&&
+struct TransmitData {
+    using Ptr = std::shared_ptr<TransmitData>;
+
+    // proto objects are instantiated as part of google protobuf arenas
+    // and should not be deleted. They are deleted when the arena is deleted.
+    proto::ProtoHeader* headerThis = nullptr;
+    proto::Result* result = nullptr;
+    proto::ProtoHeader* headerNext = nullptr;
+    std::string headerMsgThis;
+
+    /// Serialized string for result that is appended with wrapped string for headerNext.
+    std::string dataMsg;
+};
+*/
+
 
 /// On the worker, run a query related to a Task, writing the results to a table or supplied SendChannel.
 ///
@@ -108,17 +140,42 @@ private:
     bool _dispatchChannel(); ///< Dispatch with output sent through a SendChannel
     MYSQL_RES* _primeResult(std::string const& query); ///< Obtain a result handle for a query.
 
-    bool _fillRows(MYSQL_RES* result, int numFields, uint& rowCount, size_t& tsize);
+    /// Use the mysql 'result' and other parameters to fill 'tData'.
+    /// @return true if there are no more left in 'result'
+    bool _fillRows(MYSQL_RES* result, TransmitData const& tData,  //&&& remove tData param
+                   int numFields, uint& rowCount, size_t& tsize);
+    //&&&bool _fillRows(MYSQL_RES* result, int numFields, uint& rowCount, size_t& tsize);
+
+    /// Use the mysql 'result' to load _schemaCols with the schema.
     void _fillSchema(MYSQL_RES* result);
+    /* &&&
     void _initMsgs();
     void _initMsg();
+    */
+    proto::ProtoHeader* _initHeader();
+    proto::Result* _initResult();
 
+
+
+    /* &&&
     /// Send result 'streamBuf' to the czar. 'histo' and 'note' are for logging purposes only.
-    void _sendBuf(std::lock_guard<std::mutex> const& streamLock,
+    void _sendBuf(std::lock_guard<std::mutex> const& streamLock, //&&& delete this
                   std::shared_ptr<xrdsvc::StreamBuffer>& streamBuf, bool last,
                   util::TimerHistogram& histo, std::string const& note);
+    */
     void _transmit(bool last, unsigned int rowCount, size_t size);
-    void _transmitHeader(std::lock_guard<std::mutex> const& streamLock,std::string& msg);
+    //&&& void _transmitHeader(std::lock_guard<std::mutex> const& streamLock,std::string& msg);
+
+    /// The pass _transmitData to _sendChannel so it can be transmitted.
+    /// @return true if _transmitData was passed to _sendChannel and will be transmitted.
+    bool _transmit();
+
+    /// @return a new TransmitData object.
+    TransmitData::Ptr _createTransmitData();
+
+    /// Build a message in 'tData' based on the parameters provided
+     void _buildDataMsg(wbase::TransmitData::Ptr const& tData, bool last, unsigned int rowCount, size_t size); //&&& remove tData param
+     void _buildHeader(wbase::TransmitData::Ptr const& tData);
 
     wbase::Task::Ptr const _task; ///< Actual task
 
@@ -133,9 +190,12 @@ private:
     util::MultiError _multiError; // Error log
 
     std::unique_ptr<google::protobuf::Arena> _arena;
-    proto::ProtoHeader* _protoHeader = nullptr;
-    proto::Result* _result = nullptr;
-    bool _largeResult{false}; //< True for all transmits after the first transmit.
+    //&&& proto::ProtoHeader* _protoHeader = nullptr;
+    //&&& proto::Result* _result = nullptr;
+    std::vector<SchemaCol> _schemaCols; ///< Description of columns for schema.
+    wbase::TransmitData::Ptr _transmitData; ///< Data for this transmit.
+    //&&& TransmitData::Ptr _dataNext; ///< Data for next transmit.
+    bool _largeResult = false; //< True for all transmits after the first transmit.
 
     /// Used to limit the number of open MySQL connections.
     std::shared_ptr<wcontrol::SqlConnMgr> const _sqlConnMgr;

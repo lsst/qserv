@@ -140,8 +140,9 @@ public:
 
         // Initialize a null message we will return as a response
         //
-        lsst::qserv::proto::ProtoHeader* ph =
-                                         new lsst::qserv::proto::ProtoHeader;
+        //&&& lsst::qserv::proto::ProtoHeader* ph = new lsst::qserv::proto::ProtoHeader;
+        _protoHeader = google::protobuf::Arena::CreateMessage<lsst::qserv::proto::ProtoHeader>(_arena.get());
+        lsst::qserv::proto::ProtoHeader* ph = _protoHeader;
         ph->set_protocol(2);
         ph->set_size(0);
         ph->set_md5(std::string("d41d8cd98f00b204e9800998ecf8427"));
@@ -171,17 +172,27 @@ private:
     }
 
     void _ReplyData() {
+        LOGS(_log, LOG_LVL_WARN, "&&& Agent::_ReplyData");
         _rspBuf = "MockResponse";
         SetResponse(_rspBuf.data(), _rspBuf.size());
     }
 
     void _ReplyError(const char* eMsg="Mock Request Ignored!", int eNum=17) {
+        LOGS(_log, LOG_LVL_WARN, "&&& Agent::_ReplyError");
         SetErrResponse(eMsg, eNum);
     }
 
-    void _ReplyStream() {SetResponse(this);}
+    void _ReplyStream() {
+        auto stat = _setMetaData(_msgBuf.size()); // &&& what should be the value here, if anything.
+        if (stat != Status::wasPosted) {
+            LOGS(_log, LOG_LVL_ERROR, "Agent::_ReplyStream _setMetadata failed " << stat);
+        }
+        LOGS(_log, LOG_LVL_WARN, "&&& Agent::_ReplyStream");
+        SetResponse(this);
+    }
 
     void _StrmResp(XrdSsiErrInfo* eP, char* buff, int blen) {
+        LOGS(_log, LOG_LVL_WARN, "&&& Agent::_StrmResp");
         std::cerr<<"Stream: cleint asks for " <<blen <<" bytes, have "
                  <<_bLen <<'\n' <<std::flush;
         bool last;
@@ -211,6 +222,15 @@ private:
         _isCancelled(false);
     }
 
+    Status _setMetaData(size_t sz) {
+        string protoHeaderString;
+        _protoHeader->set_size(sz);
+        _protoHeader->SerializeToString(&protoHeaderString);
+        _metadata = lsst::qserv::proto::ProtoHeaderWrap::wrap(protoHeaderString);
+        return SetMetadata(_metadata.data(), _metadata.size());
+    }
+
+
     std::recursive_mutex _rrMutex;
     lsst::qserv::qdisp::QueryRequest* _reqP;
     std::string _rName;
@@ -222,6 +242,9 @@ private:
     bool        _noData;
     bool        _isFIN;
     bool        _active;
+    std::string _metadata;
+    lsst::qserv::proto::ProtoHeader* _protoHeader;
+    std::unique_ptr<google::protobuf::Arena> _arena{make_unique<google::protobuf::Arena>()};
 };
 }
 
@@ -260,6 +283,7 @@ void XrdSsiServiceMock::ProcessRequest(XrdSsiRequest  &reqRef,
            {0, RESP_BADREQ}
     };
 
+    LOGS(_log, LOG_LVL_WARN, "&&& XrdSsiServiceMock::ProcessRequest a");
     int reqNum = totCount++;
 
     // Check if we should verify the resource name
@@ -270,10 +294,12 @@ void XrdSsiServiceMock::ProcessRequest(XrdSsiRequest  &reqRef,
        _aOK = false;
     }
 
+    LOGS(_log, LOG_LVL_WARN, "&&& XrdSsiServiceMock::ProcessRequest b");
     // Get the query request object for this request and process it.
     //
     QueryRequest * r = dynamic_cast<QueryRequest *>(&reqRef);
     if (r) {
+        LOGS(_log, LOG_LVL_WARN, "&&& XrdSsiServiceMock::ProcessRequest c");
         Agent* aP = new Agent(r, resRef.rName, reqNum);
         RespType doResp;
         aP->BindRequest(reqRef);
@@ -289,6 +315,7 @@ void XrdSsiServiceMock::ProcessRequest(XrdSsiRequest  &reqRef,
 
         // Convert request to response type
         //
+        LOGS(_log, LOG_LVL_WARN, "&&& XrdSsiServiceMock::ProcessRequest d");
         int i = 0;
         while(reqTab[i].cmd && strcmp(reqTab[i].cmd, reqData)) i++;
         if (reqTab[i].cmd) {
@@ -306,6 +333,7 @@ void XrdSsiServiceMock::ProcessRequest(XrdSsiRequest  &reqRef,
         // Schedule a response
         //
         reqCount++;
+        LOGS(_log, LOG_LVL_WARN, "&&& XrdSsiServiceMock::ProcessRequest end");
         std::thread (&Agent::Reply, aP, doResp).detach();
     }
 }

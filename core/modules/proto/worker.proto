@@ -95,8 +95,8 @@ message ProtoHeader {
 
 message ColumnSchema {
     optional string name = 1; // Optional to allow type-only transmission
-    required bool deprecated_hasdefault = 2; // DEPRECATED (but 'required', so will have to continue to be set)
-    optional bytes deprecated_defaultvalue = 3; // DEPRECATED
+    //&&& required bool deprecated_hasdefault = 2; // DEPRECATED (but 'required', so will have to continue to be set) //&&& delete this, just complicating things
+    //&&& optional bytes deprecated_defaultvalue = 3; // DEPRECATED  //&&& delete this, just complicating things
     required string sqltype = 4;
     optional int32 mysqltype = 5;
 }
@@ -117,7 +117,7 @@ message Result {
     repeated RowBundle row = 6;
     required uint64 queryid = 7;
     required int32 jobid = 8;
-    required bool largeresult = 9;
+    //&&& required bool largeresult = 9; // Duplicate to header info and large result can be know on first transmit
     required uint32 rowcount = 10;
     required uint64 transmitsize = 11;
     required int32 attemptcount = 12;
