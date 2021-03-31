@@ -1,13 +1,13 @@
-FROM ubuntu:bionic AS builder
+FROM ubuntu:focal AS builder
 
-RUN apt update
+RUN apt-get update
 RUN apt-get install -y software-properties-common
 RUN apt-key adv --fetch-keys 'https://mariadb.org/mariadb_release_signing_key.asc'
-RUN add-apt-repository 'deb [arch=amd64,arm64,ppc64el] http://mirrors.piconets.webwerks.in/mariadb-mirror/repo/10.4/ubuntu bionic main'
-RUN apt update
+RUN add-apt-repository 'deb [arch=amd64,arm64,ppc64el] http://mirrors.piconets.webwerks.in/mariadb-mirror/repo/10.4/ubuntu focal main'
+RUN apt-get update
 
 RUN apt-get install -y g++ make git python3 libmariadb-dev
-RUN update-alternatives --install /usr/bin/python python /usr/bin/python3.6 2
+RUN update-alternatives --install /usr/bin/python python /usr/bin/python3.8 2
 
 WORKDIR /root
 RUN git clone https://github.com/smonkewitz/scisql
