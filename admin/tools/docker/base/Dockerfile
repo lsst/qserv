@@ -105,14 +105,10 @@ RUN pip3 install \
     click \
     deprecated \
     pybind11[global] \
+    pyyaml \
     sqlalchemy
 
-RUN useradd --create-home --uid 1000 --shell /bin/bash qserv && \
-    usermod -a -G docker qserv && \
-    touch /var/run/docker.sock && \
-    chown root:docker /var/run/docker.sock
-
-USER qserv
+RUN useradd --create-home --uid 1000 --shell /bin/bash qserv
 
 ENV QSERV_ROOT "/home/qserv/code/qserv"
 ENV PATH "${PATH}:${QSERV_ROOT}/admin/local/docker/cli/"
