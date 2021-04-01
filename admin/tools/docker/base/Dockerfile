@@ -1,4 +1,4 @@
-FROM centos:8 AS qserv-build
+FROM centos:8 AS lite-build
 
 RUN dnf install -y 'dnf-command(config-manager)' \
     && dnf config-manager --set-enabled powertools \
@@ -120,7 +120,7 @@ CMD ["tail", "-f", "/dev/null"]
 
 #-----------------------------------------------------------------------------
 
-FROM centos:8 AS qserv-run
+FROM centos:8 AS lite-run-base
 
 RUN dnf install -y 'dnf-command(config-manager)' \
     && dnf config-manager --set-enabled powertools \
@@ -151,18 +151,18 @@ RUN dnf install -y 'dnf-command(config-manager)' \
     && dnf clean all \
     && rm -rf /var/cache/yum
 
-COPY --from=qserv-build /usr/local/lib/liblog4cxx.so /usr/local/lib/
-COPY --from=qserv-build /usr/local/lib/libantlr4-runtime.so /usr/local/lib/
-COPY --from=qserv-build /usr/local/bin/mysql-proxy /usr/local/bin/
-COPY --from=qserv-build /usr/local/lib/libmysql-*.so /usr/local/lib/
-COPY --from=qserv-build /usr/local/lib/mysql-proxy/lua/*.so /usr/local/lib/mysql-proxy/lua/
-COPY --from=qserv-build /usr/local/lib/mysql-proxy/plugins/*.so /usr/local/lib/mysql-proxy/plugins/
+COPY --from=lite-build /usr/local/lib/liblog4cxx.so /usr/local/lib/
+COPY --from=lite-build /usr/local/lib/libantlr4-runtime.so /usr/local/lib/
+COPY --from=lite-build /usr/local/bin/mysql-proxy /usr/local/bin/
+COPY --from=lite-build /usr/local/lib/libmysql-*.so /usr/local/lib/
+COPY --from=lite-build /usr/local/lib/mysql-proxy/lua/*.so /usr/local/lib/mysql-proxy/lua/
+COPY --from=lite-build /usr/local/lib/mysql-proxy/plugins/*.so /usr/local/lib/mysql-proxy/plugins/
 
-COPY --from=qserv-build /usr/local/include/xrootd/ /usr/local/include/
-COPY --from=qserv-build /usr/local/lib64/libXrd*.so /usr/local/lib64/
-COPY --from=qserv-build /usr/local/bin/xrootd /usr/local/bin/
-COPY --from=qserv-build /usr/local/bin/cmsd /usr/local/bin/
-COPY --from=qserv-build /usr/local/bin/xrdfs /usr/local/bin/
+COPY --from=lite-build /usr/local/include/xrootd/ /usr/local/include/
+COPY --from=lite-build /usr/local/lib64/libXrd*.so /usr/local/lib64/
+COPY --from=lite-build /usr/local/bin/xrootd /usr/local/bin/
+COPY --from=lite-build /usr/local/bin/cmsd /usr/local/bin/
+COPY --from=lite-build /usr/local/bin/xrdfs /usr/local/bin/
 
 RUN echo /usr/local/lib > /etc/ld.so.conf.d/local.conf \
     && ldconfig
@@ -178,5 +178,3 @@ RUN pip3 install \
     requests \
     sqlalchemy \
     werkzeug
-
-
