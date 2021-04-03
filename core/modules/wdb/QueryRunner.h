@@ -142,7 +142,7 @@ private:
 
     /// Use the mysql 'result' and other parameters to fill 'tData'.
     /// @return true if there are no more left in 'result'
-    bool _fillRows(MYSQL_RES* result, TransmitData const& tData,  //&&& remove tData param
+    bool _fillRows(MYSQL_RES* result, wbase::TransmitData::Ptr const& tData,  //&&& remove tData param
                    int numFields, uint& rowCount, size_t& tsize);
     //&&&bool _fillRows(MYSQL_RES* result, int numFields, uint& rowCount, size_t& tsize);
 
@@ -152,8 +152,9 @@ private:
     void _initMsgs();
     void _initMsg();
     */
-    proto::ProtoHeader* _initHeader();
+    //&&& proto::ProtoHeader* _initHeader();
     proto::Result* _initResult();
+    wbase::TransmitData::Ptr _initTransmit();
 
 
 
@@ -163,21 +164,21 @@ private:
                   std::shared_ptr<xrdsvc::StreamBuffer>& streamBuf, bool last,
                   util::TimerHistogram& histo, std::string const& note);
     */
-    void _transmit(bool last, unsigned int rowCount, size_t size);
+    //&&& void _transmit(bool last, unsigned int rowCount, size_t size);
     //&&& void _transmitHeader(std::lock_guard<std::mutex> const& streamLock,std::string& msg);
 
     /// The pass _transmitData to _sendChannel so it can be transmitted.
+    /// 'lastIn' - True if this is the last transmit for this QueryRunner instance.
     /// @return true if _transmitData was passed to _sendChannel and will be transmitted.
-    bool _transmit();
-
-    /// @return a new TransmitData object.
-    TransmitData::Ptr _createTransmitData();
+    bool _transmit(bool lastIn);
 
     /// Build a message in 'tData' based on the parameters provided
-     void _buildDataMsg(wbase::TransmitData::Ptr const& tData, bool last, unsigned int rowCount, size_t size); //&&& remove tData param
+     void _buildDataMsg(wbase::TransmitData::Ptr const& tData, unsigned int rowCount, size_t size); //&&& remove tData param
      void _buildHeader(wbase::TransmitData::Ptr const& tData);
 
     wbase::Task::Ptr const _task; ///< Actual task
+
+    qmeta::CzarId _czarId = 0; ///< To be replaced with the czarId of the requesting czar.
 
     /// Resource reservation
     ChunkResourceMgr::Ptr _chunkResourceMgr;
@@ -189,9 +190,6 @@ private:
 
     util::MultiError _multiError; // Error log
 
-    std::unique_ptr<google::protobuf::Arena> _arena;
-    //&&& proto::ProtoHeader* _protoHeader = nullptr;
-    //&&& proto::Result* _result = nullptr;
     std::vector<SchemaCol> _schemaCols; ///< Description of columns for schema.
     wbase::TransmitData::Ptr _transmitData; ///< Data for this transmit.
     //&&& TransmitData::Ptr _dataNext; ///< Data for next transmit.

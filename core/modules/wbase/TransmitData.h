@@ -27,6 +27,7 @@
 
 // Qserv headers
 #include "proto/ProtoHeaderWrap.h"
+#include "qmeta/types.h"
 
 
 namespace google {
@@ -48,12 +49,17 @@ public:
     TransmitData(TransmitData const&) = delete;
     TransmitData& operator=(TransmitData const&) = delete;
 
-    static Ptr createTransmitData(std::shared_ptr<google::protobuf::Arena> const& arena);
+    /// Create a transmitData object
+    static Ptr createTransmitData(qmeta::CzarId const& czarId_);
 
-    /// Create a header using our arena.
+    /// Create a header for an empty result using our arena.
+    /// This does not set the 'header' member of this object as there are
+    /// case where an empty header is needed to append to the result.
     proto::ProtoHeader* createHeader();
 
-    /// Create a result using our arena
+    /// Create a result using our arena.
+    /// This does not set the 'result' member of this object for consistency
+    /// and possible use cases.
     proto::Result* createResult();
 
     // proto objects are instantiated as part of google protobuf arenas
@@ -61,20 +67,17 @@ public:
     proto::ProtoHeader* header = nullptr;
     proto::Result* result = nullptr;
 
-    /// Serialized header
-    std::string headerMsg;
-
     /// Serialized string for result that is appended with wrapped string for headerNext.
     std::string dataMsg;
-    bool nextHeaderAppended = false;
 
-    int czarId = -1;
+    qmeta::CzarId const czarId;
     bool cancelled = false;
     bool erred = false;
     bool largeResult = false;
+    bool scanInteractive = false;
 
 private:
-    TransmitData(std::shared_ptr<google::protobuf::Arena> const& arena);
+    TransmitData(qmeta::CzarId const& czarId, std::shared_ptr<google::protobuf::Arena> const& arena);
 
     std::shared_ptr<google::protobuf::Arena> _arena;
 };

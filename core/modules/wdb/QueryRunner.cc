@@ -50,7 +50,7 @@
 #include "wcontrol/TransmitMgr.h"
 #include "global/Bug.h"
 #include "global/DbTable.h"
-#include "global/debugUtil.h"
+//&&& #include "global/debugUtil.h"
 #include "global/LogContext.h"
 #include "global/UnsupportedError.h"
 #include "mysql/MySqlConfig.h"
@@ -103,7 +103,6 @@ QueryRunner::QueryRunner(wbase::Task::Ptr const& task,
                          shared_ptr<wcontrol::SqlConnMgr> const& sqlConnMgr,
                          shared_ptr<wcontrol::TransmitMgr> const& transmitMgr)
     : _task(task), _chunkResourceMgr(chunkResourceMgr), _mySqlConfig(mySqlConfig),
-      _arena(make_unique<google::protobuf::Arena>()),
       _sqlConnMgr(sqlConnMgr), _transmitMgr(transmitMgr) {
     int rc = mysql_thread_init();
     assert(rc == 0);
@@ -157,6 +156,8 @@ bool QueryRunner::runQuery() {
         return false;
     }
 
+    _czarId = _task->msg->czarid();
+
     // Wait for memman to finish reserving resources. This can take several seconds.
     util::Timer memTimer;
     memTimer.start();
@@ -177,15 +178,13 @@ bool QueryRunner::runQuery() {
     bool connOk = _initConnection();
     if (!connOk) {
         // Transmit the mysql connection error to the czar, which should trigger a re-try.
-        // _initConnection should have added an error message to _multiError.
-        /* &&&
-        _initMsgs();
-        _transmit(true, 0, 0); // no rows, no bytes in rows. //&&& this is probably broken
-        */
-        _transmitData = _createTransmitData();
-        _buildDataMsg(_transmitData, true, 0, 0);
-        //&&& probably not needed. _dataThis->protoHeaderNext = _initHeader(); // Header indicating no more data
-        _transmit();
+        _transmitData = _initTransmit();
+        // Put the error from _initConnection in _transmitData via _multiError.
+        _buildDataMsg(_transmitData, 0, 0);
+        // Since there's an error, this will be the last transmit from this QueryRunner.
+        if (!_transmit(true)) {
+            LOGS(_log, LOG_LVL_WARN, " Could not report error to czar as sendChannel not accepting msgs.");
+        }
         return false;
     }
 
@@ -238,9 +237,9 @@ void QueryRunner::_fillSchema(MYSQL_RES* result) {
     auto const schema = mysql::SchemaFactory::newFromResult(result);
     // Fill _schemaCols from Schema obj
     for (auto&& col:schema.columns) {
-        string name = cs->set_name(col.name);
-        string sqltype = cs->set_sqltype(col.colType.sqlType);
-        int mysqltype = cs->set_mysqltype(col.colType.mysqlType);
+        string name = col.name;
+        string sqltype = col.colType.sqlType;
+        int mysqltype = col.colType.mysqlType;
         _schemaCols.emplace_back(name, sqltype, mysqltype);
     }
 
@@ -258,9 +257,8 @@ void QueryRunner::_fillSchema(MYSQL_RES* result) {
 
 
 
-util::TimerHistogram transmitHisto("transmit Hist", {0.1, 1, 5, 10, 20, 40});
 
-
+/* &&&
 /// Transmit result data with its header.
 /// If 'last' is true, this is the last message in the result set
 /// and flags are set accordingly.
@@ -314,21 +312,23 @@ void QueryRunner::_transmit(bool inLast, unsigned int rowCount, size_t tSize) {
     }
     _largeResult = true; // Transmits after the first are considered large results.
 }
-
+*/
 
 /// Transmit result data with its header.
 /// If 'last' is true, this is the last message in the result set
 /// and flags are set accordingly.
-void QueryRunner::_buildDataMsg(TransmitData::Ptr const& tData, bool inLast, unsigned int rowCount, size_t tSize) {
+void QueryRunner::_buildDataMsg(wbase::TransmitData::Ptr const& tData,
+                                unsigned int rowCount, size_t tSize) {
     QSERV_LOGCONTEXT_QUERY_JOB(_task->getQueryId(), _task->getJobId());
-    LOGS(_log, LOG_LVL_INFO, "_transmitMgr=" << *_transmitMgr
-         << " last=" << inLast << " rowCount=" << rowCount << " tSize=" << tSize);
+    LOGS(_log, LOG_LVL_INFO, "_transmitMgr=" << *_transmitMgr //&&& delete
+         << " rowCount=" << rowCount << " tSize=" << tSize);
     assert(tData != nullptr);
+    assert(tData->result != nullptr);
 
     proto::Result* result = tData->result;
-    result->set_queryid(_task->getQueryId());
-    result->set_jobid(_task->getJobId());
-    result->set_continues(!last);
+    //&&&result->set_queryid(_task->getQueryId());
+    //&&&result->set_jobid(_task->getJobId());
+    //&&&result->set_continues(!inLast); // This cannot be know at this time -- &&& header -> endnodata
     //&&& _result->set_largeresult(_largeResult);
     result->set_rowcount(rowCount);
     result->set_transmitsize(tSize);
@@ -343,73 +343,31 @@ void QueryRunner::_buildDataMsg(TransmitData::Ptr const& tData, bool inLast, uns
     result->SerializeToString(&(tData->dataMsg));
     // Build the header for this message, but this message can't be transmitted until the
     // next header has been built and appended to tData->dataMsg.
-    _buildHeaderThis(tData);
+    _buildHeader(tData);
 
 }
 
 
-bool QueryRunner::_transmit() {
+bool QueryRunner::_transmit(bool lastIn) {
     if (_task->sendChannel->isDead()) {
         LOGS(_log, LOG_LVL_INFO, "aborting transmit since sendChannel is dead.");
         return false;
     }
 
     // Have all rows already been read, or an error?
-    bool lastIn = not _transmitData->result->continues();
     bool erred = _transmitData->result->has_errormsg();
 
-    // Get the czar id number, if there is one.
-    qmeta::CzarId const czarId = _task->msg->czarid();
+    _transmitData->scanInteractive = _task->getScanInteractive();
+    _transmitData->erred = erred;
 
-    // Limit the number of concurrent transmits.
-    wcontrol::TransmitLock transmitLock(*_transmitMgr, _task->getScanInteractive(), _largeResult, czarId); //&&& add erred to this
-
-    // Nothing else can use this sendChannel until this transmit is done.
-    lock_guard<mutex> streamLock(_task->sendChannel->streamMutex);
-
-    // Only set last to true if this is the final task using this sendChannel.
-    bool last = _task->sendChannel->transmitTaskLast(streamLock, lastIn, erred);
-
-    if (!_cancelled) {
-        string resultString(_transmitData->headerMsg + _transmitData->dataMsg); //&&& if this works, just put headerMsg at the beginning of dataMsg for efficientcy.
-                                                                                //&&& also try to reset result and header to save memory.
-        // StreamBuffer::create invalidates resultString by using std::move()
-        LOGS(_log, LOG_LVL_DEBUG, "_transmit last=" << last
-                                  << " msg=" << util::prettyCharList(resultString, 5));
-        xrdsvc::StreamBuffer::Ptr streamBuf(xrdsvc::StreamBuffer::createWithMove(resultString));
-        _sendBuf(streamLock, streamBuf, last, transmitHisto, "body");
-    } else {
-        LOGS(_log, LOG_LVL_DEBUG, "_transmit cancelled");
-    }
-
-    bool success = _task->sendChannel->addTransmit(czarId, _cancelled, erred, last, _largeResult, _transmitData);
+    int qId = _task->getQueryId();
+    int jId = _task->getJobId();
+    bool success = _task->sendChannel->addTransmit(_cancelled, erred, lastIn, _largeResult, _transmitData, qId, jId);
 
     // Large results get priority, but new large results should not get priority until
     // after they have started transmitting.
     _largeResult = true;
-
-    /*&&& needs to happen in sendChannel
-    // Limit the number of concurrent transmits.
-    wcontrol::TransmitLock transmitLock(*_transmitMgr, _task->getScanInteractive(), _largeResult, czarId);
-
-    // Nothing else can use this sendChannel until this transmit is done.
-    lock_guard<mutex> streamLock(_task->sendChannel->streamMutex);
-
-    // Only set last to true if this is the final task using this sendChannel.
-    bool last = _task->sendChannel->transmitTaskLast(streamLock, inLast);
-
-    if (!_cancelled) {
-        &&&; if (firstLoop) set metadata
-        &&&; append next header to this result
-        // StreamBuffer::create invalidates resultString by using std::move()
-        xrdsvc::StreamBuffer::Ptr streamBuf(xrdsvc::StreamBuffer::createWithMove(resultString));
-        _sendBuf(streamLock, streamBuf, last, transmitHisto, "body");
-    } else {
-        LOGS(_log, LOG_LVL_DEBUG, "_transmit cancelled");
-    }
-    */
-
-
+    return success;
 }
 
 /* &&&
@@ -433,7 +391,7 @@ void QueryRunner::_sendBuf(lock_guard<mutex> const& streamLock,
 }
 */
 
-
+/* &&&
 proto::ProtoHeader* QueryRunner::_initHeader() { // &&& move to TransmitData
     proto::ProtoHeader* header = google::protobuf::Arena::CreateMessage<proto::ProtoHeader>(_arena.get());
     header->set_protocol(2); // protocol 2: row-by-row message
@@ -443,17 +401,28 @@ proto::ProtoHeader* QueryRunner::_initHeader() { // &&& move to TransmitData
     header->set_largeresult(false);
     return header;
 }
+*/
+
+
+wbase::TransmitData::Ptr QueryRunner::_initTransmit() {
+    wbase::TransmitData::Ptr tData = wbase::TransmitData::createTransmitData(_czarId);
+    tData->result = _initResult();
+    return tData;
+}
 
 
 proto::Result* QueryRunner::_initResult() {
-    proto::Result* result = google::protobuf::Arena::CreateMessage<proto::Result>(_arena.get());
+    proto::Result* result = _transmitData->createResult();
+    result->set_queryid(_task->getQueryId());
+    result->set_jobid(_task->getJobId());
+    _transmitData->result = result;
     result->mutable_rowschema();
     //&&& result->set_continues(0);
     if (_task->msg->has_session()) {
         result->set_session(_task->msg->session());
     }
     // Load schema from _schemaCols
-    for(auto&& col: _schemaCols) {
+    for(auto&& col:_schemaCols) {
         proto::ColumnSchema* cs = result->mutable_rowschema()->add_columnschema();
         cs->set_name(col.colName);
         cs->set_sqltype(col.colSqlType);
@@ -465,24 +434,23 @@ proto::Result* QueryRunner::_initResult() {
 
 void QueryRunner::_buildHeader(wbase::TransmitData::Ptr const& tData) {  // &&& move to TransmitData
     LOGS(_log, LOG_LVL_DEBUG, "_buildHeaderThis");
-    // Set header
-    if (tData->header == nullptr) {
-        tData->header = _initHeader();
-    }
+
     proto::ProtoHeader* header = tData->header;
 
     // The size of the dataMsg must include space for the header for the next dataMsg.
     header->set_size(tData->dataMsg.size() + proto::ProtoHeaderWrap::getProtoHeaderSize());
     // The md5 hash must not include the header for the next dataMsg.
     header->set_md5(util::StringHash::getMd5(tData->dataMsg.data(), tData->dataMsg.size()));
-    header->set_wname(getHostname());
     header->set_largeresult(_largeResult);
+    header->set_endnodata(false);
 
+    // &&& headerMsg needs to be built in SendChannelShared as endnodata can't be known here.
+    /* &&&
     string protoHeaderString;
     header->SerializeToString(&protoHeaderString);
     assert(protoHeaderString.size() < 255);
-
     tData->headerMsg = proto::ProtoHeaderWrap::wrap(protoHeaderString);
+    */
 }
 
 
@@ -532,75 +500,10 @@ private:
 };
 
 
-
-/* &&&
-bool QueryRunner::_fillRows(MYSQL_RES* result, int numFields, uint& rowCount, size_t& tSize) {
-    MYSQL_ROW row;
-
-    while ((row = mysql_fetch_row(result))) {
-        auto lengths = mysql_fetch_lengths(result);
-        proto::RowBundle* rawRow =_result->add_row();
-        for(int i=0; i < numFields; ++i) {
-            if (row[i]) {
-                rawRow->add_column(row[i], lengths[i]);
-                rawRow->add_isnull(false);
-            } else {
-                rawRow->add_column();
-                rawRow->add_isnull(true);
-            }
-        }
-        tSize += rawRow->ByteSizeLong();
-        ++rowCount;
-
-        unsigned int szLimit = std::min(proto::ProtoHeaderWrap::PROTOBUFFER_DESIRED_LIMIT,
-                                        proto::ProtoHeaderWrap::PROTOBUFFER_HARD_LIMIT);
-
-        // This thread may have already been removed from the pool for
-        // other reasons, such as taking too long.
-        if (not _removedFromThreadPool) {
-            // This query has been answered by the database and the
-            // scheduler for this worker should stop waiting for it.
-            // leavePool() will tell the scheduler this task is finished
-            // and create a new thread in the pool to replace this one.
-            // This thread will wait for the czar to read the results of
-            // the query and then die.
-            auto pet = _task->getAndNullPoolEventThread();
-            _removedFromThreadPool = true;
-            if (pet != nullptr) {
-                pet->leavePool();
-            } else {
-                LOGS(_log, LOG_LVL_WARN, "Result PoolEventThread was null. Probably already moved.");
-            }
-        }
-
-        // Each element needs to be mysql-sanitized
-        if (tSize > szLimit) {
-            if (tSize > proto::ProtoHeaderWrap::PROTOBUFFER_HARD_LIMIT) {
-                LOGS_ERROR("Message single row too large to send using protobuffer");
-                return false;
-            }
-            LOGS(_log, LOG_LVL_DEBUG, "Large message size=" << tSize
-                 << ", splitting message rowCount=" << rowCount);
-            _transmit(false, rowCount, tSize);
-            rowCount = 0;
-            tSize = 0;
-            _initMsg();
-        }
-    }
-    unsigned int mysqlErrNo = _mysqlConn->getErrno();
-    if (mysqlErrNo) {
-        sql::SqlErrorObject errObj;
-        errObj.setErrNo(mysqlErrNo);
-        errObj.addErrMsg("fetch row error " + _mysqlConn->getError());
-        throw errObj;
-    }
-    return true;
-}
-*/
 /// Fill one row in the Result msg from one row in MYSQL_RES*
 /// If the message has gotten larger than the desired message size,
 /// return false. If all rows have been read, return true.
-bool QueryRunner::_fillRows(MYSQL_RES* result, TransmitData::Ptr const& tData,
+bool QueryRunner::_fillRows(MYSQL_RES* result, wbase::TransmitData::Ptr const& tData,
                             int numFields, uint& rowCount, size_t& tSize) {
     MYSQL_ROW row;
 
@@ -643,29 +546,8 @@ bool QueryRunner::_fillRows(MYSQL_RES* result, TransmitData::Ptr const& tData,
         // Each element needs to be mysql-sanitized
         if (tSize > szLimit) {
             return false;
-            /* &&& move to loop outside
-            if (tSize > proto::ProtoHeaderWrap::PROTOBUFFER_HARD_LIMIT) {
-                LOGS_ERROR("Message single row too large to send using protobuffer");
-                return false;
-            }
-            LOGS(_log, LOG_LVL_DEBUG, "Large message size=" << tSize
-                 << ", splitting message rowCount=" << rowCount);
-            _transmit(false, rowCount, tSize);
-            rowCount = 0;
-            tSize = 0;
-            _initMsg();
-            */
         }
     }
-    /* &&& move to loop outside
-    unsigned int mysqlErrNo = _mysqlConn->getErrno();
-    if (mysqlErrNo) {
-        sql::SqlErrorObject errObj;
-        errObj.setErrNo(mysqlErrNo);
-        errObj.addErrMsg("fetch row error " + _mysqlConn->getError());
-        throw errObj;
-    }
-    */
     return true;
 }
 
@@ -702,12 +584,7 @@ bool QueryRunner::_dispatchChannel() {
             // TODO fritzm: revisit this error strategy
             // (see pull-request for DM-216)
             // Now get rows...
-            _transmitData = _createTransmitData();
-            /* &&&
-            if (!_fillRows(res, numFields, rowCount, tSize)) {
-                erred = true;
-            }
-            */
+            _transmitData = _initTransmit();
             while (!_fillRows(res, _transmitData, numFields, rowCount, tSize)) {
                 if (tSize > proto::ProtoHeaderWrap::PROTOBUFFER_HARD_LIMIT) {
                     LOGS_ERROR("Message single row too large to send using protobuffer");
@@ -715,15 +592,16 @@ bool QueryRunner::_dispatchChannel() {
                     break;
                 }
                 LOGS(_log, LOG_LVL_DEBUG, "Splitting message size=" << tSize << ", rowCount=" << rowCount);
-                //&&& _transmit(false, rowCount, tSize);
-                _buildDataMsg(_transmitData, false, rowCount, tSize);
-                _transmit();
+                _buildDataMsg(_transmitData, rowCount, tSize);
+                if (!_transmit(false)) {
+                    LOGS(_log, LOG_LVL_ERROR, "Could not transmit intermediate results.");
+                    return false;
+                }
                 rowCount = 0;
                 tSize = 0;
-                //&&& _initMsg();
+                _transmitData = _initTransmit();
             }
             // All rows have been read out or there was an error.
-
             // _transmit() transmit happens below
             _mysqlConn->freeResult();
         }
@@ -735,15 +613,17 @@ bool QueryRunner::_dispatchChannel() {
     }
     if (!_cancelled) {
         // Send results. This needs to happen after the error check.
-        //&&&_transmit(true, rowCount, tSize);
-        _buildDataMsg(_dataNext, true, rowCount, tSize);
-        _transmit();
+        _buildDataMsg(_transmitData, rowCount, tSize);
+        if (!_transmit(true)) { // All remaining rows/errors for this QueryRunner should be in this transmit.
+            LOGS(_log, LOG_LVL_ERROR, "Could not transmit last results.");
+            return false;
+        }
     } else {
         erred = true;
         // Set poison error, no point in sending.
         LOGS(_log, LOG_LVL_ERROR, "dispatchChannel Poisoned");
         _multiError.push_back(util::Error(-1, "Poisoned."));
-        // Do we need to do any cleanup?
+        // Is more cleanup needed?
     }
     return !erred;
 }

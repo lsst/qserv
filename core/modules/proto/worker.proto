@@ -91,6 +91,7 @@ message ProtoHeader {
     optional bytes md5 = 3;
     optional string wname = 4;
     required bool largeresult = 5;
+    required bool endnodata = 6; // True if this header is the end, no more data. size should be 0.
 }
 
 message ColumnSchema {
@@ -109,7 +110,7 @@ message RowBundle {
 }
 
 message Result {
-    required bool continues = 1; // Are there additional Result messages
+    //&&&required bool continues = 1; // Cannot be known as more results may be in other tasks. use ProtoHeader endnodata.
     optional int64 session = 2;
     required RowSchema rowschema = 3;
     optional int32 errorcode = 4;

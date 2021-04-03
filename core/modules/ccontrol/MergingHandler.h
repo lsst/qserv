@@ -27,6 +27,7 @@
 #include <atomic>
 #include <memory>
 #include <mutex>
+#include <set>
 
 // Qserv headers
 #include "qdisp/ResponseHandler.h"
@@ -56,10 +57,12 @@ namespace ccontrol {
 class MergingHandler : public qdisp::ResponseHandler {
 public:
     /// Possible MergingHandler message state
-    enum class MsgState { INVALID, HEADER_SIZE_WAIT,
-                    RESULT_WAIT, RESULT_EXTRA,
-                    RESULT_RECV, 
-                    HEADER_ERR, RESULT_ERR };
+    enum class MsgState { INVALID,  // &&& delete INVALID
+                    HEADER_SIZE_WAIT,
+                    RESULT_WAIT,
+                    RESULT_EXTRA, // &&& delete
+                    RESULT_RECV,  // &&& delete
+                    HEADER_ERR, RESULT_ERR }; // &&& change to TRANSMIT_ERR
     static const char* getStateStr(MsgState const& st);
 
     typedef std::shared_ptr<MergingHandler> Ptr;
@@ -75,7 +78,8 @@ public:
     /// Flush the retrieved buffer where bLen bytes were set. If last==true,
     /// then no more buffer() and flush() calls should occur.
     /// @return true if successful (no error)
-    bool flush(int bLen, BufPtr const& bufPtr, bool& last, bool& largeResult, int& nextBufSize) override;
+    bool flush(int bLen, BufPtr const& bufPtr, bool& last, bool& largeResult,
+               int& nextBufSize, bool& endNoData) override;
 
     /// Signal an unrecoverable error condition. No further calls are expected.
     void errorFlush(std::string const& msg, int code) override;
@@ -103,7 +107,7 @@ private:
     bool _merge(bool last);
     void _setError(int code, std::string const& msg);
     bool _setResult(BufPtr const& bufPtr);
-    bool _verifyResult(BufPtr const& bufPtr);
+    bool _verifyResult(BufPtr const& bufPtr, int blen);
 
 
     std::shared_ptr<MsgReceiver> _msgReceiver; ///< Message code receiver
@@ -114,8 +118,9 @@ private:
     MsgState _state; ///< Received message state
     std::shared_ptr<proto::WorkerResponse> _response; ///< protobufs msg buf
     bool _flushed {false}; ///< flushed to InfileMerger?
-    std::string _wName {"~"}; /// worker name
-    std::mutex _setResultMtx; // Allow only one call to ParseFromArray at a time from _seResult.
+    std::string _wName {"~"}; ///< worker name
+    std::mutex _setResultMtx; //< Allow only one call to ParseFromArray at a time from _seResult.
+    std::set<int> _jobIds; ///< Set of jobIds added in this request.
 };
 
 }}} // namespace lsst::qserv::qdisp
