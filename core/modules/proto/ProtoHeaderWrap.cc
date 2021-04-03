@@ -50,9 +50,9 @@ size_t ProtoHeaderWrap::getProtoHeaderSize() {
     return PROTO_HEADER_SIZE;
 }
 
-std::string ProtoHeaderWrap::wrap(std::string& protoHeaderString) {
+std::string ProtoHeaderWrap::wrap(std::string const& protoHeaderString) {
     char phSize = static_cast<char>(protoHeaderString.size());
-    std::string msgBuf(phSize);
+    std::string msgBuf{phSize};
     msgBuf += protoHeaderString;
     while (msgBuf.size() < PROTO_HEADER_SIZE) {
         msgBuf +='0'; // pad the buffer
@@ -65,8 +65,7 @@ std::string ProtoHeaderWrap::wrap(std::string& protoHeaderString) {
 bool ProtoHeaderWrap::unwrap(std::shared_ptr<WorkerResponse>& response, std::vector<char>& buffer) {
     response->headerSize = static_cast<unsigned char const>(buffer[0]);
     LOGS(_log, LOG_LVL_WARN, "&&&wrap unwrap buffer size=" << buffer.size() << " --> " << util::prettyCharList(buffer, 5));
-    if (!ProtoImporter<ProtoHeader>::setMsgFrom(
-            response->protoHeader, &buffer[1], response->headerSize)) {
+    if (!ProtoImporter<ProtoHeader>::setMsgFrom(response->protoHeader, &buffer[1], response->headerSize)) {
         return false;
     }
     LOGS(_log, LOG_LVL_TRACE, "buffer size=" << buffer.size() << " --> " << util::prettyCharList(buffer, 5));

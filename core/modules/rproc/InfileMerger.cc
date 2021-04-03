@@ -192,7 +192,15 @@ void InfileMerger::_setQueryIdStr(std::string const& qIdStr) {
 }
 
 
-bool InfileMerger::merge(std::shared_ptr<proto::WorkerResponse> response, bool last) {
+InfileMerger::mergeCompleteFor(vector<int> jobIds) {
+    for (int jobId:jobIds) {
+        _totalResultSize += _perJobResultSize[jobId];
+    }
+}
+
+
+//&&&bool InfileMerger::merge(std::shared_ptr<proto::WorkerResponse> response, bool last) {
+bool InfileMerger::merge(std::shared_ptr<proto::WorkerResponse> response) {
     if (!response) {
         return false;
     }
@@ -252,9 +260,11 @@ bool InfileMerger::merge(std::shared_ptr<proto::WorkerResponse> response, bool l
         std::lock_guard<std::mutex> resultSzLock(_mtxResultSizeMtx);
         _perJobResultSize[jobId] += resultSize;
         tResultSize = _totalResultSize + _perJobResultSize[jobId];
+        /* &&&
         if (last) {
             _totalResultSize += _perJobResultSize[jobId];
         }
+        */
     }
     if (tResultSize > _maxResultTableSizeBytes) {
         std::ostringstream os;

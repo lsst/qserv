@@ -158,13 +158,8 @@ public:
         return _sendChannel->sendStream(sBuf, last);
     }
 
-    /// @see SendChannel::setMetadata
-    bool setMetadata(StreamGuard sLock, const char *buf, int blen) {
-        return _sendChannel->setMetadata(buf, blen);
-    }
-
     /// @see SendChannel::kill
-    bool kill(StreamGuard sLock) { return  _sendChannel->kill(); }
+    bool kill(StreamGuard sLock);
 
     /// @see SendChannel::isDead
     bool isDead() { return _sendChannel->isDead(); }
@@ -175,17 +170,13 @@ public:
     void setTaskCount(int taskCount);
 
 
-    /// Try to transmit the data in tData. // &&& review comments
-    /// If needed, this thread wants to wait before sending data to ease pressure
-    /// on the czar. Waiting is not always possible.
-    /// - If erred is true, there is no point in sending more messages after this
-    ///   so the error will be sent immediately and this sendChannel will be killed.
-    /// - If last is true and all other tasks using this channel are done, this message
-    ///   can wait.
-    /// - Else if there are no other message in queue, it can't wait. This may be the
-    ///   only source of 'tData', and waiting would deadlock.
-    bool addTransmit(int czarId, bool cancelled, bool erred, bool last, bool largeResult,
-                     TransmitData::Ptr const& tData);
+    /// Try to transmit the data in tData.
+    /// If the queue already has at least 2 TransmitData objects, addTransmit
+    /// may wait before returning. It's more efficient use of memory to
+    /// collect results from MariaDB as they are sent to the czar than
+    /// to read them all in at once.
+    bool addTransmit(bool cancelled, bool erred, bool last, bool largeResult,
+                     TransmitData::Ptr const& tData, int qId, int jId);
 
     ///
     /// @return true if inLast is true and this is the last task to call this
@@ -197,6 +188,9 @@ public:
     /// using SendChannelShared.
     std::mutex streamMutex;
 
+    /// Return a normalized id string.
+    std::string makeIdStr(int qId, int jId);
+
 private:
     void _transmit();
 
@@ -204,9 +198,9 @@ private:
     void _transmitLoop();
 
     /// Send the buffer 'streamBuffer' using xrdssi. L
-    //  'last' should only be true if this is the last buffer to be sent with this _sendChannel.
-    //  'note' is just a log note about what/who is sending the buffer.
-    //  @return true if the buffer was sent.
+    /// 'last' should only be true if this is the last buffer to be sent with this _sendChannel.
+    /// 'note' is just a log note about what/who is sending the buffer.
+    /// @return true if the buffer was sent.
     bool _sendBuf(std::lock_guard<std::mutex> const& streamLock,
                   xrdsvc::StreamBuffer::Ptr& streamBuf, bool last,
                   std::string const& note);
@@ -221,12 +215,11 @@ private:
 
     int _taskCount = 0; ///< The number of tasks to be sent over this SendChannel.
     int _lastCount = 0; ///< Then number of 'last' buffers received.
-    std::atomic<bool> _lastRecvd = false; ///< The truly 'last' transmit message is in the queue.
-    std::atomic<bool> _firstTransmit = true; ///< True until the first transmit has been sent.
+    std::atomic<bool> _lastRecvd{false}; ///< The truly 'last' transmit message is in the queue.
+    std::atomic<bool> _firstTransmit{true}; ///< True until the first transmit has been sent.
 
     bool _threadStarted = false;
     std::thread _thread;
-
 };
 
 }}} // lsst::qserv::wbase

@@ -28,7 +28,8 @@
 #include <google/protobuf/arena.h>
 
 // Qserv headers
-
+#include "global/debugUtil.h"
+#include "util/StringHash.h"
 
 using namespace std;
 
@@ -37,23 +38,34 @@ namespace qserv {
 namespace wbase {
 
 
-TransmitData::TransmitData(shared_ptr<google::protobuf::Arena> const& arena) : _arena(arena) {
+TransmitData::TransmitData(qmeta::CzarId const& czarId_, shared_ptr<google::protobuf::Arena> const& arena)
+    : czarId(czarId_), _arena(arena) {
+    header = createHeader();
 }
 
 
-TransmitData::Ptr TransmitData::createTransmitData(shared_ptr<google::protobuf::Arena> const& arena) {
-    return make_shared<TransmitData>(arena);
+TransmitData::Ptr TransmitData::createTransmitData(qmeta::CzarId const& czarId_) {
+    shared_ptr<google::protobuf::Arena> arena = make_shared<google::protobuf::Arena>();
+    return shared_ptr<TransmitData>(new TransmitData(czarId_, arena));
 }
 
 
- proto::ProtoHeader* TransmitData::createHeader() {
-     return google::protobuf::Arena::CreateMessage<proto::ProtoHeader>(_arena.get());
- }
+proto::ProtoHeader* TransmitData::createHeader() {
+    proto::ProtoHeader* hdr = google::protobuf::Arena::CreateMessage<proto::ProtoHeader>(_arena.get());
+    hdr->set_protocol(2); // protocol 2: row-by-row message
+    hdr->set_size(0);
+    hdr->set_md5(util::StringHash::getMd5("", 0));
+    hdr->set_wname(getHostname());
+    hdr->set_largeresult(false);
+    hdr->set_endnodata(true);
+    return hdr;
+}
 
 
- proto::Result* TransmitData::createResult() {
-     return google::protobuf::Arena::CreateMessage<proto::Result>(_arena.get());
- }
+proto::Result* TransmitData::createResult() {
+    proto::Result* rst = google::protobuf::Arena::CreateMessage<proto::Result>(_arena.get());
+    return rst;
+}
 
 }}} // namespace lsst::qserv::wbase
 

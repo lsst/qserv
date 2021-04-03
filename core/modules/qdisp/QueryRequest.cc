@@ -109,6 +109,7 @@ public:
         {
             unique_lock<mutex> uLock(_mtx);
             // TODO: make timed wait, check for wedged, if weak pointers dead, log and give up.
+            // Hoping for  _state == DATAREADY1,
             _cv.wait(uLock, [this](){ return _state != State::STARTED0; });
             tWaiting.stop();
             // _mtx is locked at this point.
@@ -452,10 +453,41 @@ void QueryRequest::_processData(JobQuery::Ptr const& jq, int blen, bool last) {
     // Get a copy of the shared buffer pointer so askForResponseDataCmd can be deleted.
     ResponseHandler::BufPtr bufPtr = _askForResponseDataCmd->getBufPtr();
     _askForResponseDataCmd.reset(); // No longer need it, and don't want the destructor calling _errorFinish().
+
+    // The buffer has 2 parts.
+    // - The first (bytes = blen - ProtoHeaderWrap::getProtheaderSize())
+    //   is the result associated with the previously received header.
+    // - The second is the header for the next message.
+    int protoHeaderSize = ProtoHeaderWrap::getProtoheaderSize();
+    int respSize = blen - protoHeaderSize;
+    ResponseHandler::BufPtr nextHeaderBufPtr = make_shared<vector>(bufPtr->begin() + respSize, bufPtr->end());
+
+    // Read the result
     bool largeResult = false;
     int nextBufSize = 0;
-    bool flushOk = jq->getDescription()->respHandler()->flush(blen, bufPtr, last, largeResult, nextBufSize);
+    bool endNoData = false;
+    bool flushOk = jq->getDescription()->respHandler()->flush(respSize, bufPtr, last, largeResult,
+                                                              nextBufSize, endNoData);
+    bufPtr.reset(); // don't need it anymore
+    if (nextBufSize != protoHeaderSize) {
+        throw Bug("Unexpected header size from flush(result) call QID="
+                  + to_string(_qid) + "#" + to_string(_jobid));
+    }
     LOGS(_log, LOG_LVL_WARN, "&&& QueryRequest::_processData nextBufSize=" << nextBufSize);
+
+    if (!flushOk) {
+        _flushError(jq);
+        return;
+    }
+
+
+    // Read the next header
+    largeResult = false;
+    nextBufSize = 0;
+    endNoData = false;
+    flushOk = jq->getDescription()->respHandler()->flush(protoHeaderSize, nextHeaderBufPtr, last, largeResult,
+                                                         nextBufSize, endNoData);
+
     if (largeResult) {
         if (!_largeResult) LOGS(_log, LOG_LVL_DEBUG, "holdState largeResult set to true");
         _largeResult = true; // Once the worker indicates it's a large result, it stays that way.
@@ -463,9 +495,9 @@ void QueryRequest::_processData(JobQuery::Ptr const& jq, int blen, bool last) {
 
     if (flushOk) {
         if (last) {
-            if (last && nextBufSize != 0) {
-                LOGS(_log, LOG_LVL_WARN,
-                     "Connection closed when more information expected sz=" << nextBufSize);
+            if (!endNoData || nextBufSize != 0) {
+                throw Bug("processData !endNoData || nextBufSize != 0 QID="
+                          + to_string(_qid) + "#" + to_string(_jobid));
             }
             jq->getStatus()->updateInfo(_jobIdStr, JobStatus::COMPLETE);
             _finish();
@@ -478,14 +510,19 @@ void QueryRequest::_processData(JobQuery::Ptr const& jq, int blen, bool last) {
             _queueAskForResponse(_askForResponseDataCmd, jq, false);
         }
     } else {
-        LOGS(_log, LOG_LVL_DEBUG, "ProcessResponse data flush failed");
-        ResponseHandler::Error err = jq->getDescription()->respHandler()->getError();
-        jq->getStatus()->updateInfo(_jobIdStr, JobStatus::MERGE_ERROR, err.getCode(), err.getMsg());
-        // This error can be caused by errors in the SQL
-        _retried.store(true); // Do not retry
-        _errorFinish(true);
+        _flushError(jq);
+        return;
     }
     return;
+}
+
+
+void QueryRequest::_flushError(JobQuery::Ptr const& jq) {
+    ResponseHandler::Error err = jq->getDescription()->respHandler()->getError();
+    jq->getStatus()->updateInfo(_jobIdStr, JobStatus::MERGE_ERROR, err.getCode(), err.getMsg());
+    // This error can be caused by errors in the SQL
+    _retried = true; // Do not retry
+    _errorFinish(true);
 }
 
 
