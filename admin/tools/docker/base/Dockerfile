@@ -148,6 +148,7 @@ RUN dnf install -y 'dnf-command(config-manager)' \
         python3 \
         tree \
         vim \
+    && dnf module install -y mariadb/client \
     && dnf clean all \
     && rm -rf /var/cache/yum
 
@@ -166,6 +167,8 @@ COPY --from=lite-build /usr/local/bin/xrdfs /usr/local/bin/
 
 RUN echo /usr/local/lib > /etc/ld.so.conf.d/local.conf \
     && ldconfig
+
+RUN alternatives --set python /usr/bin/python3
 
 RUN pip3 install \
     backoff \
