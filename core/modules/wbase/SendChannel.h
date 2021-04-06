@@ -97,7 +97,7 @@ public:
 
     /// Kill this SendChannel
     /// @ return the previous value of _dead
-    bool kill() { return  _dead.exchange(true); }
+    bool kill();
 
     bool isDead() { return _dead; }
 
@@ -110,6 +110,7 @@ private:
 };
 
 
+//&&& TODO: must move this to its own header.
 /// A class that provides a SendChannel object with synchronization so it can be
 /// shared by across multiple threads. Due to what may be sent, the synchronization locking
 /// is needs to be available outside of the class.
@@ -122,19 +123,12 @@ public:
     using StreamGuard = std::lock_guard<std::mutex> const&;
 
     SendChannelShared()=delete;
-    SendChannelShared(std::shared_ptr<SendChannel> const& sendChannel) : _sendChannel(sendChannel) {
-        if (_sendChannel == nullptr) {
-            throw Bug("SendChannelShared constructor given nullptr");
-        }
-    }
+    SendChannelShared(SendChannelShared const&) = delete;
+    SendChannelShared& operator=(SendChannelShared const&) = delete;
+
+    static Ptr create(std::shared_ptr<SendChannel> const& sendChannel);
 
     ~SendChannelShared();
-
-    void run() {
-        std::thread thrd(&SendChannelShared::_transmitLoop, this);
-        _thread = std::move(thrd);
-        _threadStarted = true;
-    }
 
     /// Wrappers for SendChannel public functions that may need to be used
     /// by threads.
@@ -192,6 +186,17 @@ public:
     std::string makeIdStr(int qId, int jId);
 
 private:
+    /// Private constructor to protect shared pointer integrity.
+    SendChannelShared(std::shared_ptr<SendChannel> const& sendChannel) : _sendChannel(sendChannel) {
+        if (_sendChannel == nullptr) {
+            throw Bug("SendChannelShared constructor given nullptr");
+        }
+    }
+
+    /// Run the thread for _transmitLoop().
+    void _run();
+
+    /// &&& doc
     void _transmit();
 
     /// &&& doc
@@ -218,8 +223,9 @@ private:
     std::atomic<bool> _lastRecvd{false}; ///< The truly 'last' transmit message is in the queue.
     std::atomic<bool> _firstTransmit{true}; ///< True until the first transmit has been sent.
 
-    bool _threadStarted = false;
+    std::atomic<bool> _threadStarted{false};
     std::thread _thread;
+    Ptr _keepAlive; ///< Ensure that this object isn't destroyed before _transmitLoop is done.
 };
 
 }}} // lsst::qserv::wbase

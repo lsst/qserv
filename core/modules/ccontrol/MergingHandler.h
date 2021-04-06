@@ -79,7 +79,7 @@ public:
     /// then no more buffer() and flush() calls should occur.
     /// @return true if successful (no error)
     bool flush(int bLen, BufPtr const& bufPtr, bool& last, bool& largeResult,
-               int& nextBufSize, bool& endNoData) override;
+               int& nextBufSize) override;
 
     /// Signal an unrecoverable error condition. No further calls are expected.
     void errorFlush(std::string const& msg, int code) override;
@@ -104,9 +104,10 @@ public:
 
 private:
     void _initState();
-    bool _merge(bool last);
+    //&&&bool _merge(bool last);
+    bool _merge();
     void _setError(int code, std::string const& msg);
-    bool _setResult(BufPtr const& bufPtr);
+    bool _setResult(BufPtr const& bufPtr, int blen);
     bool _verifyResult(BufPtr const& bufPtr, int blen);
 
 

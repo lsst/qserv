@@ -111,7 +111,8 @@ message RowBundle {
 
 message Result {
     //&&&required bool continues = 1; // Cannot be known as more results may be in other tasks. use ProtoHeader endnodata.
-    optional int64 session = 2;
+    //&&&optional int64 session = 2;
+    optional int64 session = 1;
     required RowSchema rowschema = 3;
     optional int32 errorcode = 4;
     optional string errormsg = 5;

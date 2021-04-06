@@ -186,7 +186,7 @@ bool MergingHandler::flush(int bLen, BufPtr const& bufPtr, bool& last, bool& lar
 }
 */
 bool MergingHandler::flush(int bLen, BufPtr const& bufPtr, bool& last, bool& largeResult,
-                           int& nextBufSize, bool& endNoData) {
+                           int& nextBufSize) {
     LOGS(_log, LOG_LVL_DEBUG, "From:" << _wName << " flush state="
          << getStateStr(_state) << " blen=" << bLen << " last=" << last);
     LOGS(_log, LOG_LVL_WARN, "&&& flush From:" << _wName << " flush state="
@@ -220,31 +220,47 @@ bool MergingHandler::flush(int bLen, BufPtr const& bufPtr, bool& last, bool& lar
             _wName = _response->protoHeader.wname();
         }
 
-        LOGS(_log, LOG_LVL_DEBUG, "HEADER_SIZE_WAIT: From:" << _wName
-             << "Resizing buffer to " <<  _response->protoHeader.size());
-        nextBufSize = _response->protoHeader.size();
-        largeResult = _response->protoHeader.largeresult();
-        endNoData = _response->protoHeader.endnodata();
+        {
+            nextBufSize    = _response->protoHeader.size();
+            largeResult    = _response->protoHeader.largeresult();
+            bool endNoData = _response->protoHeader.endnodata();
+            LOGS(_log, LOG_LVL_DEBUG, "HEADER_SIZE_WAIT: From:" << _wName
+                << " nextBufSize=" << nextBufSize << " largeResult=" << largeResult
+                << " endNoData=" << endNoData);
+            LOGS(_log, LOG_LVL_INFO, "&&&HEADER_SIZE_WAIT: From:" << _wName
+                << " nextBufSize=" << nextBufSize << " largeResult=" << largeResult
+                << " endNoData=" << endNoData);
 
-
-        if (endNoData || nextBufSize != 0) {
-            _merge(last);
-            _infileMerger->mergeCompleteFor(_jobIds)
+            _state = MsgState::RESULT_WAIT;
+            if (endNoData || nextBufSize == 0) {
+                if (!endNoData || nextBufSize != 0 ) {
+                    throw Bug("inconsistent msg termination endNoData=" + std::to_string(endNoData)
+                    + " nextBufSize=" + std::to_string(nextBufSize));
+                }
+                // _merge(last); // &&& delete
+                // Nothing to merge, but some bookkeeping needs to be done.
+                _infileMerger->mergeCompleteFor(_jobIds);
+                last = true;
+                _state = MsgState::RESULT_RECV;
+            }
         }
-        _state = MsgState::RESULT_WAIT;
         return true;
     case MsgState::RESULT_WAIT:
         {
+            LOGS(_log, LOG_LVL_INFO, "&&& RESULT_WAIT a");
+            nextBufSize = proto::ProtoHeaderWrap::getProtoHeaderSize();
             auto jobQuery = getJobQuery().lock();
+            LOGS(_log, LOG_LVL_INFO, "&&& RESULT_WAIT b");
             if (!_verifyResult(bufPtr, bLen)) { return false; }
-            if (!_setResult(bufPtr)) {
+            LOGS(_log, LOG_LVL_INFO, "&&& RESULT_WAIT c");
+            if (!_setResult(bufPtr, bLen)) {
                 LOGS(_log, LOG_LVL_WARN, "setResult failure " << _wName);
                 return false;
             } // set _response->result
             //&&&largeResult = _response->result.largeresult();
             LOGS(_log, LOG_LVL_DEBUG, "From:" << _wName << " _mBuf " << util::prettyCharList(*bufPtr, 5));
             //&&&bool msgContinues = _response->result.continues();
-            _state = MsgState::HEADER_SIZE_WAIT;
+            _state = MsgState::HEADER_SIZE_WAIT; // &&& rename to HEADER_WAIT
             /* &&&
             if (msgContinues) {
                 LOGS(_log, LOG_LVL_TRACE, "Message continues, waiting for next header.");
@@ -255,17 +271,22 @@ bool MergingHandler::flush(int bLen, BufPtr const& bufPtr, bool& last, bool& lar
                 last = true;
             }
             */
-            int jobId = _response->result->jobid();
+            LOGS(_log, LOG_LVL_INFO, "&&& RESULT_WAIT d");
+            int jobId = _response->result.jobid();
             _jobIds.insert(jobId);
             LOGS(_log, LOG_LVL_DEBUG, "Flushed last=" << last << " for tableName=" << _tableName);
 
-            auto success = _merge(last); //&&& THIS COULD BE AN ISSUE 'last' hasn't been reliable in the past
+            //auto success = _merge(last); //&&& THIS COULD BE AN ISSUE 'last' hasn't been reliable in the past
+            LOGS(_log, LOG_LVL_INFO, "&&& RESULT_WAIT e");
+            auto success = _merge();
+            LOGS(_log, LOG_LVL_INFO, "&&& RESULT_WAIT f");
             /* &&&
             if (msgContinues) {
                 _response.reset(new WorkerResponse());
             }
             */
             _response.reset(new WorkerResponse());
+            LOGS(_log, LOG_LVL_INFO, "&&& RESULT_WAIT end success=" << success);
             return success;
         }
     case MsgState::RESULT_EXTRA: // &&& delete this state.
@@ -374,11 +395,11 @@ void MergingHandler::_setError(int code, std::string const& msg) {
     _error = Error(code, msg);
 }
 
-bool MergingHandler::_setResult(BufPtr const& bufPtr) {
+bool MergingHandler::_setResult(BufPtr const& bufPtr, int blen) {
     auto start = std::chrono::system_clock::now();
     std::lock_guard<std::mutex> lg(_setResultMtx);
     auto& buf = *bufPtr;
-    if (!ProtoImporter<proto::Result>::setMsgFrom(_response->result, &(buf[0]), buf.size())) {
+    if (!ProtoImporter<proto::Result>::setMsgFrom(_response->result, &(buf[0]), blen)) {
         LOGS(_log, LOG_LVL_ERROR, "_setResult decoding error");
         _setError(ccontrol::MSG_RESULT_DECODE, "Error decoding result msg");
         _state = MsgState::RESULT_ERR;
