@@ -71,7 +71,7 @@ public:
     void waitForDoneWithThis();
 
     ~StreamBuffer() override;
-
+    std::string getString() {return _dataStr;}; // &&& delete
 private:
     /// This constructor will invalidate 'input'.
     explicit StreamBuffer(std::string &input);

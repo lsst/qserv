@@ -192,7 +192,8 @@ void InfileMerger::_setQueryIdStr(std::string const& qIdStr) {
 }
 
 
-InfileMerger::mergeCompleteFor(vector<int> jobIds) {
+void InfileMerger::mergeCompleteFor(std::set<int> jobIds) {
+    std::lock_guard<std::mutex> resultSzLock(_mtxResultSizeMtx);
     for (int jobId:jobIds) {
         _totalResultSize += _perJobResultSize[jobId];
     }
@@ -214,7 +215,7 @@ bool InfileMerger::merge(std::shared_ptr<proto::WorkerResponse> response) {
     size_t resultSize = response->result.transmitsize();
     LOGS(_log, LOG_LVL_TRACE,
          "Executing InfileMerger::merge("
-         << " largeResult=" << response->result.largeresult()
+         // &&& << " largeResult=" << response->result.largeresult()
          << " sizes=" << static_cast<short>(response->headerSize)
          << ", " << response->protoHeader.size()
          << ", resultSize=" << resultSize

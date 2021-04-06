@@ -318,11 +318,16 @@ bool QueryRequest::_importStream(JobQuery::Ptr const& jq) {
         _askForResponseDataCmd->notifyFailed();
     }
 
+    // Get the first header from metadata.
     int expectedLen = proto::ProtoHeaderWrap::PROTO_HEADER_SIZE;
     int len = expectedLen;
     const char* buff = GetMetadata(len);
     if (len != expectedLen) {
         LOGS(_log, LOG_LVL_ERROR, "_importStream wrong header size=" << len << " expected=" << expectedLen);
+        // &&& TODO: IMPORTANT error response is wrong here, basically nothing happens, query in limbo.
+        // &&&       throw Bug may be reasonable. Can be reproduced by commenting out
+        // &&&       'nextHeaderString = proto::ProtoHeaderWrap::wrap(nextHeaderString);'
+        // &&&       in SendChannelShared::_transmitLoop()
         return false;
     }
     ResponseHandler::BufPtr bufPtr = make_shared<vector<char>>(len);
@@ -339,8 +344,14 @@ bool QueryRequest::_importStream(JobQuery::Ptr const& jq) {
         return false;
     }
 
-    _askForResponseDataCmd = make_shared<AskForResponseDataCmd>(shared_from_this(), jq, nextBufSize);
-    _queueAskForResponse(_askForResponseDataCmd, jq, true);
+    if (!last) {
+        _askForResponseDataCmd = make_shared<AskForResponseDataCmd>(shared_from_this(), jq, nextBufSize);
+        _queueAskForResponse(_askForResponseDataCmd, jq, true);
+    } else {
+        // This really shouldn't happen with the first header, even errors should have one result.
+        LOGS(_log, LOG_LVL_ERROR, "last true for metadata");
+        return false;
+    }
     LOGS(_log, LOG_LVL_WARN, "&&& QR::_importStream end");
     return true;
 }
@@ -458,17 +469,22 @@ void QueryRequest::_processData(JobQuery::Ptr const& jq, int blen, bool last) {
     // - The first (bytes = blen - ProtoHeaderWrap::getProtheaderSize())
     //   is the result associated with the previously received header.
     // - The second is the header for the next message.
-    int protoHeaderSize = ProtoHeaderWrap::getProtoheaderSize();
+    int protoHeaderSize = proto::ProtoHeaderWrap::getProtoHeaderSize();
     int respSize = blen - protoHeaderSize;
-    ResponseHandler::BufPtr nextHeaderBufPtr = make_shared<vector>(bufPtr->begin() + respSize, bufPtr->end());
+    ResponseHandler::BufPtr nextHeaderBufPtr =
+        make_shared<vector<char>>(bufPtr->begin() + respSize, bufPtr->end());
 
     // Read the result
     bool largeResult = false;
     int nextBufSize = 0;
-    bool endNoData = false;
-    bool flushOk = jq->getDescription()->respHandler()->flush(respSize, bufPtr, last, largeResult,
-                                                              nextBufSize, endNoData);
-    bufPtr.reset(); // don't need it anymore
+    bool flushOk = jq->getDescription()->respHandler()->flush(respSize, bufPtr, last,
+                                                              largeResult, nextBufSize);
+    if (last) {
+        throw Bug("_processData result had 'last' true, which cannot be allowed.");
+    }
+
+    bufPtr.reset(); // don't need the buffer anymore and it could be big.
+    LOGS(_log, LOG_LVL_INFO, "&&& _processData nextBufSize=" << nextBufSize);
     if (nextBufSize != protoHeaderSize) {
         throw Bug("Unexpected header size from flush(result) call QID="
                   + to_string(_qid) + "#" + to_string(_jobid));
@@ -480,13 +496,11 @@ void QueryRequest::_processData(JobQuery::Ptr const& jq, int blen, bool last) {
         return;
     }
 
-
     // Read the next header
     largeResult = false;
     nextBufSize = 0;
-    endNoData = false;
-    flushOk = jq->getDescription()->respHandler()->flush(protoHeaderSize, nextHeaderBufPtr, last, largeResult,
-                                                         nextBufSize, endNoData);
+    flushOk = jq->getDescription()->respHandler()->flush(protoHeaderSize, nextHeaderBufPtr, last,
+                                                         largeResult, nextBufSize);
 
     if (largeResult) {
         if (!_largeResult) LOGS(_log, LOG_LVL_DEBUG, "holdState largeResult set to true");
@@ -495,10 +509,6 @@ void QueryRequest::_processData(JobQuery::Ptr const& jq, int blen, bool last) {
 
     if (flushOk) {
         if (last) {
-            if (!endNoData || nextBufSize != 0) {
-                throw Bug("processData !endNoData || nextBufSize != 0 QID="
-                          + to_string(_qid) + "#" + to_string(_jobid));
-            }
             jq->getStatus()->updateInfo(_jobIdStr, JobStatus::COMPLETE);
             _finish();
             // At this point all blocks for this job have been read, there's no point in

@@ -107,9 +107,11 @@ public:
                   _reqP->doNotRetry();
                   // Fallthrough
              case RESP_ERROR:
+                  LOGS(_log, LOG_LVL_WARN, "&&& Agent::reply RESP_ERROR");
                   _ReplyError();
                   break;
              case RESP_STRERR:
+                  LOGS(_log, LOG_LVL_WARN, "&&& Agent::reply RESP_STRERR");
                   _noData = true;
                   _reqP->doNotRetry();  // Kill retries on stream errors
                   _ReplyStream();
@@ -148,6 +150,7 @@ public:
         ph->set_md5(std::string("d41d8cd98f00b204e9800998ecf8427"));
         ph->set_wname("localhost");
         ph->set_largeresult(false);
+        ph->set_endnodata(true);
         std::string pHdrString;
         ph->SerializeToString(&pHdrString);
         _msgBuf = lsst::qserv::proto::ProtoHeaderWrap::wrap(pHdrString);
@@ -183,7 +186,7 @@ private:
     }
 
     void _ReplyStream() {
-        auto stat = _setMetaData(_msgBuf.size()); // &&& what should be the value here, if anything.
+        auto stat = _setMetaData(_msgBuf.size());
         if (stat != Status::wasPosted) {
             LOGS(_log, LOG_LVL_ERROR, "Agent::_ReplyStream _setMetadata failed " << stat);
         }
@@ -225,6 +228,7 @@ private:
     Status _setMetaData(size_t sz) {
         string protoHeaderString;
         _protoHeader->set_size(sz);
+        _protoHeader->set_endnodata(sz == 0);
         _protoHeader->SerializeToString(&protoHeaderString);
         _metadata = lsst::qserv::proto::ProtoHeaderWrap::wrap(protoHeaderString);
         return SetMetadata(_metadata.data(), _metadata.size());

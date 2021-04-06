@@ -178,9 +178,9 @@ bool QueryRunner::runQuery() {
     bool connOk = _initConnection();
     if (!connOk) {
         // Transmit the mysql connection error to the czar, which should trigger a re-try.
-        _transmitData = _initTransmit();
+        _initTransmit();
         // Put the error from _initConnection in _transmitData via _multiError.
-        _buildDataMsg(_transmitData, 0, 0);
+        _buildDataMsg(0, 0);
         // Since there's an error, this will be the last transmit from this QueryRunner.
         if (!_transmit(true)) {
             LOGS(_log, LOG_LVL_WARN, " Could not report error to czar as sendChannel not accepting msgs.");
@@ -317,15 +317,14 @@ void QueryRunner::_transmit(bool inLast, unsigned int rowCount, size_t tSize) {
 /// Transmit result data with its header.
 /// If 'last' is true, this is the last message in the result set
 /// and flags are set accordingly.
-void QueryRunner::_buildDataMsg(wbase::TransmitData::Ptr const& tData,
-                                unsigned int rowCount, size_t tSize) {
+void QueryRunner::_buildDataMsg(unsigned int rowCount, size_t tSize) {
     QSERV_LOGCONTEXT_QUERY_JOB(_task->getQueryId(), _task->getJobId());
     LOGS(_log, LOG_LVL_INFO, "_transmitMgr=" << *_transmitMgr //&&& delete
          << " rowCount=" << rowCount << " tSize=" << tSize);
-    assert(tData != nullptr);
-    assert(tData->result != nullptr);
+    assert(_transmitData != nullptr);
+    assert(_transmitData->result != nullptr);
 
-    proto::Result* result = tData->result;
+    proto::Result* result = _transmitData->result;
     //&&&result->set_queryid(_task->getQueryId());
     //&&&result->set_jobid(_task->getJobId());
     //&&&result->set_continues(!inLast); // This cannot be know at this time -- &&& header -> endnodata
@@ -340,10 +339,11 @@ void QueryRunner::_buildDataMsg(wbase::TransmitData::Ptr const& tData,
         result->set_errormsg(msg);
         LOGS(_log, LOG_LVL_ERROR, msg);
     }
-    result->SerializeToString(&(tData->dataMsg));
+    result->SerializeToString(&(_transmitData->dataMsg));
     // Build the header for this message, but this message can't be transmitted until the
-    // next header has been built and appended to tData->dataMsg.
-    _buildHeader(tData);
+    // next header has been built and appended to _transmitData->dataMsg. That happens
+    // later in SendChannelShared.
+    _buildHeader();
 
 }
 
@@ -404,43 +404,61 @@ proto::ProtoHeader* QueryRunner::_initHeader() { // &&& move to TransmitData
 */
 
 
-wbase::TransmitData::Ptr QueryRunner::_initTransmit() {
-    wbase::TransmitData::Ptr tData = wbase::TransmitData::createTransmitData(_czarId);
-    tData->result = _initResult();
-    return tData;
+void QueryRunner::_initTransmit() {
+    LOGS(_log, LOG_LVL_INFO, "&&& _initTransmit() a");
+    LOGS(_log, LOG_LVL_INFO, "&&& _initTransmit() a " << _czarId);
+    _transmitData = wbase::TransmitData::createTransmitData(_czarId);
+    LOGS(_log, LOG_LVL_INFO, "&&& _initTransmit() b");
+    _transmitData->result = _initResult();
+    LOGS(_log, LOG_LVL_INFO, "&&& _initTransmit() end");
 }
 
 
 proto::Result* QueryRunner::_initResult() {
-    proto::Result* result = _transmitData->createResult();
+    LOGS(_log, LOG_LVL_INFO, "&&& _initResult() a");
+    //&&&proto::Result* result = _transmitData->createResult();
+    proto::Result* result = _transmitData->result;
+    LOGS(_log, LOG_LVL_INFO, "&&& _initResult() b");
     result->set_queryid(_task->getQueryId());
+    LOGS(_log, LOG_LVL_INFO, "&&& _initResult() c");
     result->set_jobid(_task->getJobId());
+    LOGS(_log, LOG_LVL_INFO, "&&& _initResult() d");
     _transmitData->result = result;
+    LOGS(_log, LOG_LVL_INFO, "&&& _initResult() e");
     result->mutable_rowschema();
+    LOGS(_log, LOG_LVL_INFO, "&&& _initResult() f");
     //&&& result->set_continues(0);
     if (_task->msg->has_session()) {
+        LOGS(_log, LOG_LVL_INFO, "&&& _initResult() g");
         result->set_session(_task->msg->session());
     }
+    LOGS(_log, LOG_LVL_INFO, "&&& _initResult() h");
     // Load schema from _schemaCols
     for(auto&& col:_schemaCols) {
+        LOGS(_log, LOG_LVL_INFO, "&&& _initResult() i");
         proto::ColumnSchema* cs = result->mutable_rowschema()->add_columnschema();
+        LOGS(_log, LOG_LVL_INFO, "&&& _initResult() j");
         cs->set_name(col.colName);
+        LOGS(_log, LOG_LVL_INFO, "&&& _initResult() k");
         cs->set_sqltype(col.colSqlType);
+        LOGS(_log, LOG_LVL_INFO, "&&& _initResult() l");
         cs->set_mysqltype(col.colMysqlType);
+        LOGS(_log, LOG_LVL_INFO, "&&& _initResult() m");
     }
+    LOGS(_log, LOG_LVL_INFO, "&&& _initResult() end");
     return result;
 }
 
 
-void QueryRunner::_buildHeader(wbase::TransmitData::Ptr const& tData) {  // &&& move to TransmitData
+void QueryRunner::_buildHeader() {
     LOGS(_log, LOG_LVL_DEBUG, "_buildHeaderThis");
 
-    proto::ProtoHeader* header = tData->header;
+    proto::ProtoHeader* header = _transmitData->header;
 
     // The size of the dataMsg must include space for the header for the next dataMsg.
-    header->set_size(tData->dataMsg.size() + proto::ProtoHeaderWrap::getProtoHeaderSize());
+    header->set_size(_transmitData->dataMsg.size() + proto::ProtoHeaderWrap::getProtoHeaderSize());
     // The md5 hash must not include the header for the next dataMsg.
-    header->set_md5(util::StringHash::getMd5(tData->dataMsg.data(), tData->dataMsg.size()));
+    header->set_md5(util::StringHash::getMd5(_transmitData->dataMsg.data(), _transmitData->dataMsg.size()));
     header->set_largeresult(_largeResult);
     header->set_endnodata(false);
 
@@ -506,8 +524,9 @@ private:
 bool QueryRunner::_fillRows(MYSQL_RES* result, wbase::TransmitData::Ptr const& tData,
                             int numFields, uint& rowCount, size_t& tSize) {
     MYSQL_ROW row;
-
+    LOGS(_log, LOG_LVL_INFO, "&&& _fillRows a");
     while ((row = mysql_fetch_row(result))) {
+        LOGS(_log, LOG_LVL_INFO, "&&& _fillRows b");
         auto lengths = mysql_fetch_lengths(result);
         proto::RowBundle* rawRow = tData->result->add_row();
         for(int i=0; i < numFields; ++i) {
@@ -527,13 +546,14 @@ bool QueryRunner::_fillRows(MYSQL_RES* result, wbase::TransmitData::Ptr const& t
 
         // This thread may have already been removed from the pool for
         // other reasons, such as taking too long.
+        LOGS(_log, LOG_LVL_INFO, "&&& _fillRows c");
         if (not _removedFromThreadPool) {
             // This query has been answered by the database and the
             // scheduler for this worker should stop waiting for it.
             // leavePool() will tell the scheduler this task is finished
             // and create a new thread in the pool to replace this one.
-            // This thread will wait for the czar to read the results of
-            // the query and then die.
+            // This thread will wait for the czar to read all of the
+            // results of the query and then die.
             auto pet = _task->getAndNullPoolEventThread();
             _removedFromThreadPool = true;
             if (pet != nullptr) {
@@ -544,10 +564,13 @@ bool QueryRunner::_fillRows(MYSQL_RES* result, wbase::TransmitData::Ptr const& t
         }
 
         // Each element needs to be mysql-sanitized
+        // Break the loop if the result is too big so this part can be transmitted.
         if (tSize > szLimit) {
+            LOGS(_log, LOG_LVL_INFO, "&&& _fillRows end false");
             return false;
         }
     }
+    LOGS(_log, LOG_LVL_INFO, "&&& _fillRows end true");
     return true;
 }
 
@@ -580,30 +603,39 @@ bool QueryRunner::_dispatchChannel() {
             sqlTimer.stop();
             LOGS(_log, LOG_LVL_DEBUG, " fragment time=" << sqlTimer.getElapsed() << " query=" << query);
             _fillSchema(res);
+            LOGS(_log, LOG_LVL_INFO, "&&& _dispatchChannel() a");
             numFields = mysql_num_fields(res);
+            LOGS(_log, LOG_LVL_INFO, "&&& _dispatchChannel() b");
             // TODO fritzm: revisit this error strategy
             // (see pull-request for DM-216)
             // Now get rows...
-            _transmitData = _initTransmit();
+            _initTransmit(); // set _initTransmit
+            LOGS(_log, LOG_LVL_INFO, "&&& _dispatchChannel() c");
             while (!_fillRows(res, _transmitData, numFields, rowCount, tSize)) {
+                LOGS(_log, LOG_LVL_INFO, "&&& _dispatchChannel() c1");
                 if (tSize > proto::ProtoHeaderWrap::PROTOBUFFER_HARD_LIMIT) {
                     LOGS_ERROR("Message single row too large to send using protobuffer");
                     erred = true;
                     break;
                 }
                 LOGS(_log, LOG_LVL_DEBUG, "Splitting message size=" << tSize << ", rowCount=" << rowCount);
-                _buildDataMsg(_transmitData, rowCount, tSize);
+                LOGS(_log, LOG_LVL_INFO, "&&& _dispatchChannel() d");
+                _buildDataMsg(rowCount, tSize);
+                LOGS(_log, LOG_LVL_INFO, "&&& _dispatchChannel() e");
                 if (!_transmit(false)) {
                     LOGS(_log, LOG_LVL_ERROR, "Could not transmit intermediate results.");
                     return false;
                 }
+                LOGS(_log, LOG_LVL_INFO, "&&& _dispatchChannel() f");
                 rowCount = 0;
                 tSize = 0;
-                _transmitData = _initTransmit();
+                _initTransmit(); // reset _initTransmit
+                LOGS(_log, LOG_LVL_INFO, "&&& _dispatchChannel() g");
             }
             // All rows have been read out or there was an error.
             // _transmit() transmit happens below
             _mysqlConn->freeResult();
+            LOGS(_log, LOG_LVL_INFO, "&&& _dispatchChannel() h");
         }
     } catch(sql::SqlErrorObject const& e) {
         LOGS(_log, LOG_LVL_ERROR, "dispatchChannel " << e.errMsg());
@@ -611,20 +643,26 @@ bool QueryRunner::_dispatchChannel() {
         _multiError.push_back(worker_err);
         erred = true;
     }
+    LOGS(_log, LOG_LVL_INFO, "&&& _dispatchChannel() i");
     if (!_cancelled) {
+        LOGS(_log, LOG_LVL_INFO, "&&& _dispatchChannel() j");
         // Send results. This needs to happen after the error check.
-        _buildDataMsg(_transmitData, rowCount, tSize);
+        _buildDataMsg(rowCount, tSize);
+        LOGS(_log, LOG_LVL_INFO, "&&& _dispatchChannel() k");
         if (!_transmit(true)) { // All remaining rows/errors for this QueryRunner should be in this transmit.
             LOGS(_log, LOG_LVL_ERROR, "Could not transmit last results.");
             return false;
         }
     } else {
+        LOGS(_log, LOG_LVL_INFO, "&&& _dispatchChannel() l");
         erred = true;
         // Set poison error, no point in sending.
         LOGS(_log, LOG_LVL_ERROR, "dispatchChannel Poisoned");
         _multiError.push_back(util::Error(-1, "Poisoned."));
         // Is more cleanup needed?
+        LOGS(_log, LOG_LVL_INFO, "&&& _dispatchChannel() m");
     }
+    LOGS(_log, LOG_LVL_INFO, "&&& _dispatchChannel() end");
     return !erred;
 }
 

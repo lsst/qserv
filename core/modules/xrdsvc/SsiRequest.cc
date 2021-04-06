@@ -139,9 +139,13 @@ void SsiRequest::execute(XrdSsiRequest& req) {
             // reference to this SsiRequest inside the reply channel for the task,
             // and after the call to BindRequest.
             auto sendChannelBase = std::make_shared<wbase::SendChannel>(shared_from_this());
-            auto sendChannel = std::make_shared<wbase::SendChannelShared>(sendChannelBase);
-            sendChannel->run();
+            LOGS(_log, LOG_LVL_INFO, "&&& SsiRequest::execute a");
+            auto sendChannel = wbase::SendChannelShared::create(sendChannelBase);
+            LOGS(_log, LOG_LVL_INFO, "&&& SsiRequest::execute b");
+            // &&& sendChannel->run();
+            LOGS(_log, LOG_LVL_INFO, "&&& SsiRequest::execute c");
             auto tasks = wbase::Task::createTasks(taskMsg, sendChannel);
+            LOGS(_log, LOG_LVL_INFO, "&&& SsiRequest::execute d");
 
             ReleaseRequestBuffer();
             t.start();

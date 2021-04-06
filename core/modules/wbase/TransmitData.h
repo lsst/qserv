@@ -53,14 +53,13 @@ public:
     static Ptr createTransmitData(qmeta::CzarId const& czarId_);
 
     /// Create a header for an empty result using our arena.
-    /// This does not set the 'header' member of this object as there are
+    /// This does not set the 'header' member of this object as there is a
     /// case where an empty header is needed to append to the result.
+    /// This should only be appended to the result of this->result as
+    /// the '_arena' will be deallocated when this object is destroyed.
+    /// &&& TODO: This can probably be made private with a public function
+    /// &&&       to end/finalize a TransmitData object.
     proto::ProtoHeader* createHeader();
-
-    /// Create a result using our arena.
-    /// This does not set the 'result' member of this object for consistency
-    /// and possible use cases.
-    proto::Result* createResult();
 
     // proto objects are instantiated as part of google protobuf arenas
     // and should not be deleted. They are deleted when the arena is deleted.
@@ -78,6 +77,11 @@ public:
 
 private:
     TransmitData(qmeta::CzarId const& czarId, std::shared_ptr<google::protobuf::Arena> const& arena);
+
+    /// Create a result using our arena.
+    /// This does not set the 'result' member of this object for consistency.
+    proto::Result* _createResult();
+
 
     std::shared_ptr<google::protobuf::Arena> _arena;
 };

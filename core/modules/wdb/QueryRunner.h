@@ -154,7 +154,7 @@ private:
     */
     //&&& proto::ProtoHeader* _initHeader();
     proto::Result* _initResult();
-    wbase::TransmitData::Ptr _initTransmit();
+    void _initTransmit();
 
 
 
@@ -173,8 +173,8 @@ private:
     bool _transmit(bool lastIn);
 
     /// Build a message in 'tData' based on the parameters provided
-     void _buildDataMsg(wbase::TransmitData::Ptr const& tData, unsigned int rowCount, size_t size); //&&& remove tData param
-     void _buildHeader(wbase::TransmitData::Ptr const& tData);
+     void _buildDataMsg(unsigned int rowCount, size_t size);
+     void _buildHeader();
 
     wbase::Task::Ptr const _task; ///< Actual task
 

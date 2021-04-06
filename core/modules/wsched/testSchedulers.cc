@@ -67,7 +67,7 @@ double const oneHr = 60.0;
 
 Task::Ptr makeTask(std::shared_ptr<TaskMsg> tm) {
     auto sendC = std::make_shared<SendChannel>();
-    auto sc = std::make_shared<SendChannelShared>(sendC);
+    auto sc = SendChannelShared::create(sendC);
     Task::Ptr task(new Task(tm, "", 0, sc));
     task->setSafeToMoveRunning(true); // Can't wait for MemMan in unit tests.
     return task;
