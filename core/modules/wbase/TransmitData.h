@@ -70,7 +70,6 @@ public:
     std::string dataMsg;
 
     qmeta::CzarId const czarId;
-    bool cancelled = false;
     bool erred = false;
     bool largeResult = false;
     bool scanInteractive = false;

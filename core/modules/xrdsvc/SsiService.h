@@ -42,6 +42,7 @@ namespace lsst {
 namespace qserv {
 namespace wcontrol {
   class Foreman;
+  class TransmitMgr;
 }
 namespace wpublish {
   class ChunkInventory;
@@ -75,8 +76,14 @@ private:
     void _initInventory();
     void _configure();
 
+    // &&& doc
     std::shared_ptr<wpublish::ChunkInventory> _chunkInventory;
+
+    // &&& doc
     std::shared_ptr<wcontrol::Foreman> _foreman;
+
+    // &&& doc
+    std::shared_ptr<wcontrol::TransmitMgr> _transmitMgr;
 
     mysql::MySqlConfig const _mySqlConfig;
 

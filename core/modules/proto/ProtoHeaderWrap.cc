@@ -57,14 +57,12 @@ std::string ProtoHeaderWrap::wrap(std::string const& protoHeaderString) {
     while (msgBuf.size() < PROTO_HEADER_SIZE) {
         msgBuf +='0'; // pad the buffer
     }
-    LOGS(_log, LOG_LVL_WARN, "&&&wrap msgBuf size=" << msgBuf.size() << " --> " << util::prettyCharList(msgBuf, 5));
     LOGS(_log, LOG_LVL_TRACE, "msgBuf size=" << msgBuf.size() << " --> " << util::prettyCharList(msgBuf, 5));
     return msgBuf;
 }
 
 bool ProtoHeaderWrap::unwrap(std::shared_ptr<WorkerResponse>& response, std::vector<char>& buffer) {
     response->headerSize = static_cast<unsigned char const>(buffer[0]);
-    LOGS(_log, LOG_LVL_WARN, "&&&wrap unwrap buffer size=" << buffer.size() << " --> " << util::prettyCharList(buffer, 5));
     if (!ProtoImporter<ProtoHeader>::setMsgFrom(response->protoHeader, &buffer[1], response->headerSize)) {
         return false;
     }

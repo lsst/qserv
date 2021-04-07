@@ -64,16 +64,10 @@ class StreamBuffer;
 
 namespace wcontrol {
 class SqlConnMgr;
-class TransmitMgr;
 }
 
 }}
 
-// &&& delete this block
-namespace google {
-namespace protobuf {
-class Arena;
-}}
 
 namespace lsst {
 namespace qserv {
@@ -92,22 +86,6 @@ public:
     int colMysqlType = 0; ///< MySQL type number
 };
 
-/* &&&
-struct TransmitData {
-    using Ptr = std::shared_ptr<TransmitData>;
-
-    // proto objects are instantiated as part of google protobuf arenas
-    // and should not be deleted. They are deleted when the arena is deleted.
-    proto::ProtoHeader* headerThis = nullptr;
-    proto::Result* result = nullptr;
-    proto::ProtoHeader* headerNext = nullptr;
-    std::string headerMsgThis;
-
-    /// Serialized string for result that is appended with wrapped string for headerNext.
-    std::string dataMsg;
-};
-*/
-
 
 /// On the worker, run a query related to a Task, writing the results to a table or supplied SendChannel.
 ///
@@ -117,8 +95,7 @@ public:
     static QueryRunner::Ptr newQueryRunner(wbase::Task::Ptr const& task,
                                            ChunkResourceMgr::Ptr const& chunkResourceMgr,
                                            mysql::MySqlConfig const& mySqlConfig,
-                                           std::shared_ptr<wcontrol::SqlConnMgr> const& sqlConnMgr,
-                                           std::shared_ptr<wcontrol::TransmitMgr> const& tansmitMgr);
+                                           std::shared_ptr<wcontrol::SqlConnMgr> const& sqlConnMgr);
     // Having more than one copy of this would making tracking its progress difficult.
     QueryRunner(QueryRunner const&) = delete;
     QueryRunner& operator=(QueryRunner const&) = delete;
@@ -132,8 +109,7 @@ protected:
     QueryRunner(wbase::Task::Ptr const& task,
                 ChunkResourceMgr::Ptr const& chunkResourceMgr,
                 mysql::MySqlConfig const& mySqlConfig,
-                std::shared_ptr<wcontrol::SqlConnMgr> const& sqlConnMgr,
-                std::shared_ptr<wcontrol::TransmitMgr> const& transmitMgr);
+                std::shared_ptr<wcontrol::SqlConnMgr> const& sqlConnMgr);
 private:
     bool _initConnection();
     void _setDb();
@@ -144,28 +120,11 @@ private:
     /// @return true if there are no more left in 'result'
     bool _fillRows(MYSQL_RES* result, wbase::TransmitData::Ptr const& tData,  //&&& remove tData param
                    int numFields, uint& rowCount, size_t& tsize);
-    //&&&bool _fillRows(MYSQL_RES* result, int numFields, uint& rowCount, size_t& tsize);
 
     /// Use the mysql 'result' to load _schemaCols with the schema.
     void _fillSchema(MYSQL_RES* result);
-    /* &&&
-    void _initMsgs();
-    void _initMsg();
-    */
-    //&&& proto::ProtoHeader* _initHeader();
     proto::Result* _initResult();
     void _initTransmit();
-
-
-
-    /* &&&
-    /// Send result 'streamBuf' to the czar. 'histo' and 'note' are for logging purposes only.
-    void _sendBuf(std::lock_guard<std::mutex> const& streamLock, //&&& delete this
-                  std::shared_ptr<xrdsvc::StreamBuffer>& streamBuf, bool last,
-                  util::TimerHistogram& histo, std::string const& note);
-    */
-    //&&& void _transmit(bool last, unsigned int rowCount, size_t size);
-    //&&& void _transmitHeader(std::lock_guard<std::mutex> const& streamLock,std::string& msg);
 
     /// The pass _transmitData to _sendChannel so it can be transmitted.
     /// 'lastIn' - True if this is the last transmit for this QueryRunner instance.
@@ -192,18 +151,16 @@ private:
 
     std::vector<SchemaCol> _schemaCols; ///< Description of columns for schema.
     wbase::TransmitData::Ptr _transmitData; ///< Data for this transmit.
-    //&&& TransmitData::Ptr _dataNext; ///< Data for next transmit.
     bool _largeResult = false; //< True for all transmits after the first transmit.
 
     /// Used to limit the number of open MySQL connections.
     std::shared_ptr<wcontrol::SqlConnMgr> const _sqlConnMgr;
 
-    /// Used to limit the number of transmits being sent to czars.
-    std::shared_ptr<wcontrol::TransmitMgr> const _transmitMgr;
-
+    /* &&&
     /// Buffer to hold header metadata. Once set by _transmitHeader, it
     /// must remain untouched until the transmit is complete.
     std::string _headerBuf;
+    */
 };
 
 }}} // namespace

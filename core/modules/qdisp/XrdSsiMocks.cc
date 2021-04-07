@@ -107,11 +107,9 @@ public:
                   _reqP->doNotRetry();
                   // Fallthrough
              case RESP_ERROR:
-                  LOGS(_log, LOG_LVL_WARN, "&&& Agent::reply RESP_ERROR");
                   _ReplyError();
                   break;
              case RESP_STRERR:
-                  LOGS(_log, LOG_LVL_WARN, "&&& Agent::reply RESP_STRERR");
                   _noData = true;
                   _reqP->doNotRetry();  // Kill retries on stream errors
                   _ReplyStream();
@@ -142,7 +140,6 @@ public:
 
         // Initialize a null message we will return as a response
         //
-        //&&& lsst::qserv::proto::ProtoHeader* ph = new lsst::qserv::proto::ProtoHeader;
         _protoHeader = google::protobuf::Arena::CreateMessage<lsst::qserv::proto::ProtoHeader>(_arena.get());
         lsst::qserv::proto::ProtoHeader* ph = _protoHeader;
         ph->set_protocol(2);
@@ -175,13 +172,11 @@ private:
     }
 
     void _ReplyData() {
-        LOGS(_log, LOG_LVL_WARN, "&&& Agent::_ReplyData");
         _rspBuf = "MockResponse";
         SetResponse(_rspBuf.data(), _rspBuf.size());
     }
 
     void _ReplyError(const char* eMsg="Mock Request Ignored!", int eNum=17) {
-        LOGS(_log, LOG_LVL_WARN, "&&& Agent::_ReplyError");
         SetErrResponse(eMsg, eNum);
     }
 
@@ -190,12 +185,10 @@ private:
         if (stat != Status::wasPosted) {
             LOGS(_log, LOG_LVL_ERROR, "Agent::_ReplyStream _setMetadata failed " << stat);
         }
-        LOGS(_log, LOG_LVL_WARN, "&&& Agent::_ReplyStream");
         SetResponse(this);
     }
 
     void _StrmResp(XrdSsiErrInfo* eP, char* buff, int blen) {
-        LOGS(_log, LOG_LVL_WARN, "&&& Agent::_StrmResp");
         std::cerr<<"Stream: cleint asks for " <<blen <<" bytes, have "
                  <<_bLen <<'\n' <<std::flush;
         bool last;
@@ -287,7 +280,6 @@ void XrdSsiServiceMock::ProcessRequest(XrdSsiRequest  &reqRef,
            {0, RESP_BADREQ}
     };
 
-    LOGS(_log, LOG_LVL_WARN, "&&& XrdSsiServiceMock::ProcessRequest a");
     int reqNum = totCount++;
 
     // Check if we should verify the resource name
@@ -298,12 +290,9 @@ void XrdSsiServiceMock::ProcessRequest(XrdSsiRequest  &reqRef,
        _aOK = false;
     }
 
-    LOGS(_log, LOG_LVL_WARN, "&&& XrdSsiServiceMock::ProcessRequest b");
     // Get the query request object for this request and process it.
-    //
     QueryRequest * r = dynamic_cast<QueryRequest *>(&reqRef);
     if (r) {
-        LOGS(_log, LOG_LVL_WARN, "&&& XrdSsiServiceMock::ProcessRequest c");
         Agent* aP = new Agent(r, resRef.rName, reqNum);
         RespType doResp;
         aP->BindRequest(reqRef);
@@ -319,7 +308,6 @@ void XrdSsiServiceMock::ProcessRequest(XrdSsiRequest  &reqRef,
 
         // Convert request to response type
         //
-        LOGS(_log, LOG_LVL_WARN, "&&& XrdSsiServiceMock::ProcessRequest d");
         int i = 0;
         while(reqTab[i].cmd && strcmp(reqTab[i].cmd, reqData)) i++;
         if (reqTab[i].cmd) {
@@ -337,7 +325,6 @@ void XrdSsiServiceMock::ProcessRequest(XrdSsiRequest  &reqRef,
         // Schedule a response
         //
         reqCount++;
-        LOGS(_log, LOG_LVL_WARN, "&&& XrdSsiServiceMock::ProcessRequest end");
         std::thread (&Agent::Reply, aP, doResp).detach();
     }
 }

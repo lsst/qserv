@@ -78,137 +78,27 @@ MergingHandler::~MergingHandler() {
 
 const char* MergingHandler::getStateStr(MsgState const& state) {
     switch(state) {
-    case MsgState::INVALID:          return "INVALID";
-    case MsgState::HEADER_SIZE_WAIT: return "HEADER_SIZE_WAIT";
-    case MsgState::RESULT_WAIT:      return "RESULT_WAIT";
-    case MsgState::RESULT_RECV:      return "RESULT_RECV";
-    case MsgState::RESULT_EXTRA:     return "RESULT_EXTRA";
-    case MsgState::HEADER_ERR:       return "HEADER_ERR";
-    case MsgState::RESULT_ERR:       return "RESULT_ERR";
+    case MsgState::HEADER_WAIT: return "HEADER_WAIT";
+    case MsgState::RESULT_WAIT: return "RESULT_WAIT";
+    case MsgState::RESULT_RECV: return "RESULT_RECV";
+    case MsgState::HEADER_ERR:  return "HEADER_ERR";
+    case MsgState::RESULT_ERR:  return "RESULT_ERR";
     }
     return "unknown";
 }
 
-/* &&&
-bool MergingHandler::flush(int bLen, BufPtr const& bufPtr, bool& last, bool& largeResult, int& nextBufSize, bool& endOfMsg) {
-    LOGS(_log, LOG_LVL_DEBUG, "From:" << _wName << " flush state="
-         << getStateStr(_state) << " blen=" << bLen << " last=" << last);
-    LOGS(_log, LOG_LVL_WARN, "&&& flush From:" << _wName << " flush state="
-             << getStateStr(_state) << " blen=" << bLen << " last=" << last);
-    if ((bLen < 0) || (bLen != (int)bufPtr->size())) {
-        if (_state != MsgState::RESULT_EXTRA) {
-            LOGS(_log, LOG_LVL_ERROR, "MergingRequester size mismatch: expected " <<
-                 bufPtr->size() << " got " << bLen);
-            // Worker sent corrupted data, or there is some other error.
-        }
-    }
-    switch(_state) {
-    case MsgState::HEADER_SIZE_WAIT:
-        _response->headerSize = static_cast<unsigned char>((*bufPtr)[0]);
-        if (!proto::ProtoHeaderWrap::unwrap(_response, *bufPtr)) {
-            std::string s = "From:" + _wName + "Error decoding proto header for " + getStateStr(_state);
-            _setError(ccontrol::MSG_RESULT_DECODE, s);
-            _state = MsgState::HEADER_ERR;
-            return false;
-        }
-        if (_wName == "~") {
-            _wName = _response->protoHeader.wname();
-        }
 
-        LOGS(_log, LOG_LVL_DEBUG, "HEADER_SIZE_WAIT: From:" << _wName
-             << "Resizing buffer to " <<  _response->protoHeader.size());
-        nextBufSize = _response->protoHeader.size();
-        largeResult = _response->protoHeader.largeresult();
-        endOfMsg = _response->
-        _state = MsgState::RESULT_WAIT;
-
-        return true;
-    case MsgState::RESULT_WAIT:
-        {
-            auto jobQuery = getJobQuery().lock();
-            if (!_verifyResult(bufPtr)) { return false; }
-            if (!_setResult(bufPtr)) {
-                LOGS(_log, LOG_LVL_WARN, "setResult failure " << _wName);
-                return false;
-            } // set _response->result
-            //&&&largeResult = _response->result.largeresult();
-            LOGS(_log, LOG_LVL_DEBUG, "From:" << _wName << " _mBuf " << util::prettyCharList(*bufPtr, 5));
-            bool msgContinues = _response->result.continues();
-            _state = MsgState::RESULT_RECV;
-            if (msgContinues) {
-                LOGS(_log, LOG_LVL_TRACE, "Message continues, waiting for next header.");
-                _state = MsgState::RESULT_EXTRA;
-                nextBufSize = proto::ProtoHeaderWrap::PROTO_HEADER_SIZE;
-            } else {
-                LOGS(_log, LOG_LVL_TRACE, "Message ends, setting last=true");
-                last = true;
-            }
-            LOGS(_log, LOG_LVL_DEBUG, "Flushed msgContinues=" << msgContinues
-                 << " last=" << last << " for tableName=" << _tableName);
-
-            auto success = _merge(last);
-            if (msgContinues) {
-                _response.reset(new WorkerResponse());
-            }
-            return success;
-        }
-    case MsgState::RESULT_EXTRA:
-        if (!proto::ProtoHeaderWrap::unwrap(_response, *bufPtr)) {
-            _setError(ccontrol::MSG_RESULT_DECODE,
-                      std::string("Error decoding proto header for ") + getStateStr(_state));
-            _state = MsgState::HEADER_ERR;
-            return false;
-        }
-        largeResult = _response->protoHeader.largeresult();
-        LOGS(_log, LOG_LVL_DEBUG, "RESULT_EXTRA: Resizing buffer to "
-             << _response->protoHeader.size() << " largeResult=" << largeResult);
-        nextBufSize = _response->protoHeader.size();
-        _state = MsgState::RESULT_WAIT;
-        return true;
-    case MsgState::RESULT_RECV:
-        // We shouldn't wind up here. _buffer.size(0) and last=true should end communication.
-        // fall-through
-    case MsgState::HEADER_ERR:
-    case MsgState::RESULT_ERR:
-         {
-            std::ostringstream eos;
-            eos << "Unexpected message From:" << _wName << " flush state="
-                << getStateStr(_state) << " last=" << last;
-            LOGS(_log, LOG_LVL_ERROR, eos.str());
-            _setError(ccontrol::MSG_RESULT_ERROR, eos.str());
-         }
-        return false;
-    default:
-        break;
-    }
-    _setError(ccontrol::MSG_RESULT_ERROR, "Unexpected message (invalid)");
-    return false;
-}
-*/
 bool MergingHandler::flush(int bLen, BufPtr const& bufPtr, bool& last, bool& largeResult,
                            int& nextBufSize) {
     LOGS(_log, LOG_LVL_DEBUG, "From:" << _wName << " flush state="
          << getStateStr(_state) << " blen=" << bLen << " last=" << last);
-    LOGS(_log, LOG_LVL_WARN, "&&& flush From:" << _wName << " flush state="
-             << getStateStr(_state) << " blen=" << bLen << " last=" << last);
 
-    /* &&&
-    if ((bLen < 0) || (bLen != (int)bufPtr->size())) {
-        if (_state != MsgState::RESULT_EXTRA) {
-            LOGS(_log, LOG_LVL_ERROR, "MergingRequester size mismatch: expected " <<
-                 bufPtr->size() << " got " << bLen);
-            // Worker sent corrupted data, or there is some other error.
-        }
-    }
-    */
     if (bLen < 0) {
-        LOGS(_log, LOG_LVL_ERROR, "MergingHandler invalid blen=" << bLen);
-        throw Bug("MergingHandler invalid blen=" + to_string(bLen)
-                  + " from " + _wName);
+        throw Bug("MergingHandler invalid blen=" + to_string(bLen) + " from " + _wName);
     }
 
     switch(_state) {
-    case MsgState::HEADER_SIZE_WAIT:
+    case MsgState::HEADER_WAIT:
         _response->headerSize = static_cast<unsigned char>((*bufPtr)[0]);
         if (!proto::ProtoHeaderWrap::unwrap(_response, *bufPtr)) {
             std::string sErr = "From:" + _wName + "Error decoding proto header for " + getStateStr(_state);
@@ -227,9 +117,6 @@ bool MergingHandler::flush(int bLen, BufPtr const& bufPtr, bool& last, bool& lar
             LOGS(_log, LOG_LVL_DEBUG, "HEADER_SIZE_WAIT: From:" << _wName
                 << " nextBufSize=" << nextBufSize << " largeResult=" << largeResult
                 << " endNoData=" << endNoData);
-            LOGS(_log, LOG_LVL_INFO, "&&&HEADER_SIZE_WAIT: From:" << _wName
-                << " nextBufSize=" << nextBufSize << " largeResult=" << largeResult
-                << " endNoData=" << endNoData);
 
             _state = MsgState::RESULT_WAIT;
             if (endNoData || nextBufSize == 0) {
@@ -237,7 +124,6 @@ bool MergingHandler::flush(int bLen, BufPtr const& bufPtr, bool& last, bool& lar
                     throw Bug("inconsistent msg termination endNoData=" + std::to_string(endNoData)
                     + " nextBufSize=" + std::to_string(nextBufSize));
                 }
-                // _merge(last); // &&& delete
                 // Nothing to merge, but some bookkeeping needs to be done.
                 _infileMerger->mergeCompleteFor(_jobIds);
                 last = true;
@@ -247,68 +133,29 @@ bool MergingHandler::flush(int bLen, BufPtr const& bufPtr, bool& last, bool& lar
         return true;
     case MsgState::RESULT_WAIT:
         {
-            LOGS(_log, LOG_LVL_INFO, "&&& RESULT_WAIT a");
             nextBufSize = proto::ProtoHeaderWrap::getProtoHeaderSize();
             auto jobQuery = getJobQuery().lock();
-            LOGS(_log, LOG_LVL_INFO, "&&& RESULT_WAIT b");
             if (!_verifyResult(bufPtr, bLen)) { return false; }
-            LOGS(_log, LOG_LVL_INFO, "&&& RESULT_WAIT c");
-            if (!_setResult(bufPtr, bLen)) {
+            if (!_setResult(bufPtr, bLen)) { // This sets _response->result
                 LOGS(_log, LOG_LVL_WARN, "setResult failure " << _wName);
                 return false;
-            } // set _response->result
-            //&&&largeResult = _response->result.largeresult();
-            LOGS(_log, LOG_LVL_DEBUG, "From:" << _wName << " _mBuf " << util::prettyCharList(*bufPtr, 5));
-            //&&&bool msgContinues = _response->result.continues();
-            _state = MsgState::HEADER_SIZE_WAIT; // &&& rename to HEADER_WAIT
-            /* &&&
-            if (msgContinues) {
-                LOGS(_log, LOG_LVL_TRACE, "Message continues, waiting for next header.");
-                _state = MsgState::RESULT_EXTRA;
-                nextBufSize = proto::ProtoHeaderWrap::PROTO_HEADER_SIZE;
-            } else {
-                LOGS(_log, LOG_LVL_TRACE, "Message ends, setting last=true");
-                last = true;
             }
-            */
-            LOGS(_log, LOG_LVL_INFO, "&&& RESULT_WAIT d");
+            LOGS(_log, LOG_LVL_DEBUG, "From:" << _wName << " _mBuf " << util::prettyCharList(*bufPtr, 5));
+            _state = MsgState::HEADER_WAIT;
+
             int jobId = _response->result.jobid();
             _jobIds.insert(jobId);
             LOGS(_log, LOG_LVL_DEBUG, "Flushed last=" << last << " for tableName=" << _tableName);
 
-            //auto success = _merge(last); //&&& THIS COULD BE AN ISSUE 'last' hasn't been reliable in the past
-            LOGS(_log, LOG_LVL_INFO, "&&& RESULT_WAIT e");
             auto success = _merge();
-            LOGS(_log, LOG_LVL_INFO, "&&& RESULT_WAIT f");
-            /* &&&
-            if (msgContinues) {
-                _response.reset(new WorkerResponse());
-            }
-            */
             _response.reset(new WorkerResponse());
-            LOGS(_log, LOG_LVL_INFO, "&&& RESULT_WAIT end success=" << success);
             return success;
         }
-    case MsgState::RESULT_EXTRA: // &&& delete this state.
-        throw Bug("MsgState::RESULT_EXTRA should be gone &&&");
-        /* &&&
-        if (!proto::ProtoHeaderWrap::unwrap(_response, *bufPtr)) {
-            _setError(ccontrol::MSG_RESULT_DECODE,
-                      std::string("Error decoding proto header for ") + getStateStr(_state));
-            _state = MsgState::HEADER_ERR;
-            return false;
-        }
-        largeResult = _response->protoHeader.largeresult();
-        LOGS(_log, LOG_LVL_DEBUG, "RESULT_EXTRA: Resizing buffer to "
-             << _response->protoHeader.size() << " largeResult=" << largeResult);
-        nextBufSize = _response->protoHeader.size();
-        _state = MsgState::RESULT_WAIT;
-        return true;
-        */
     case MsgState::RESULT_RECV:
         // We shouldn't wind up here. _buffer.size(0) and last=true should end communication.
-        // fall-through
+        [[fallthrough]];
     case MsgState::HEADER_ERR:
+        [[fallthrough]];
     case MsgState::RESULT_ERR:
          {
             std::ostringstream eos;
@@ -366,7 +213,7 @@ std::ostream& MergingHandler::print(std::ostream& os) const {
 ////////////////////////////////////////////////////////////////////////
 
 void MergingHandler::_initState() {
-    _state = MsgState::HEADER_SIZE_WAIT;
+    _state = MsgState::HEADER_WAIT;
     _setError(0, "");
 }
 

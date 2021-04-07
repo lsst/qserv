@@ -35,6 +35,7 @@
 // Qserv headers
 #include "global/Bug.h"
 #include "wbase/TransmitData.h"
+#include "wcontrol/TransmitMgr.h" // &&& only needed in SendChannelShared.h
 #include "xrdsvc/StreamBuffer.h"
 
 namespace lsst {
@@ -126,7 +127,7 @@ public:
     SendChannelShared(SendChannelShared const&) = delete;
     SendChannelShared& operator=(SendChannelShared const&) = delete;
 
-    static Ptr create(std::shared_ptr<SendChannel> const& sendChannel);
+    static Ptr create(SendChannel::Ptr const& sendChannel, wcontrol::TransmitMgr::Ptr const& transmitMgr);
 
     ~SendChannelShared();
 
@@ -187,7 +188,8 @@ public:
 
 private:
     /// Private constructor to protect shared pointer integrity.
-    SendChannelShared(std::shared_ptr<SendChannel> const& sendChannel) : _sendChannel(sendChannel) {
+    SendChannelShared(SendChannel::Ptr const& sendChannel, wcontrol::TransmitMgr::Ptr const& transmitMgr)
+                      : _sendChannel(sendChannel),  _transmitMgr(transmitMgr) {
         if (_sendChannel == nullptr) {
             throw Bug("SendChannelShared constructor given nullptr");
         }
@@ -222,6 +224,9 @@ private:
     int _lastCount = 0; ///< Then number of 'last' buffers received.
     std::atomic<bool> _lastRecvd{false}; ///< The truly 'last' transmit message is in the queue.
     std::atomic<bool> _firstTransmit{true}; ///< True until the first transmit has been sent.
+
+    /// Used to limit the number of transmits being sent to czars.
+    wcontrol::TransmitMgr::Ptr const _transmitMgr;
 
     std::atomic<bool> _threadStarted{false};
     std::thread _thread;

@@ -57,12 +57,10 @@ namespace ccontrol {
 class MergingHandler : public qdisp::ResponseHandler {
 public:
     /// Possible MergingHandler message state
-    enum class MsgState { INVALID,  // &&& delete INVALID
-                    HEADER_SIZE_WAIT,
-                    RESULT_WAIT,
-                    RESULT_EXTRA, // &&& delete
-                    RESULT_RECV,  // &&& delete
-                    HEADER_ERR, RESULT_ERR }; // &&& change to TRANSMIT_ERR
+    enum class MsgState { HEADER_WAIT, RESULT_WAIT,
+                          RESULT_RECV,
+                          HEADER_ERR, RESULT_ERR
+    };
     static const char* getStateStr(MsgState const& st);
 
     typedef std::shared_ptr<MergingHandler> Ptr;
@@ -103,12 +101,11 @@ public:
     void prepScrubResults(int jobId, int attempt) override;
 
 private:
-    void _initState();
-    //&&&bool _merge(bool last);
-    bool _merge();
-    void _setError(int code, std::string const& msg);
-    bool _setResult(BufPtr const& bufPtr, int blen);
-    bool _verifyResult(BufPtr const& bufPtr, int blen);
+    void _initState(); ///< Prepare for first call to flush()
+    bool _merge();     ///< Call Infile::merge to add the results to the result table.
+    void _setError(int code, std::string const& msg);   ///< Set error code and string
+    bool _setResult(BufPtr const& bufPtr, int blen);    ///< Extract the result from the protobuffer.
+    bool _verifyResult(BufPtr const& bufPtr, int blen); ///< Check the result against hash in the header.
 
 
     std::shared_ptr<MsgReceiver> _msgReceiver; ///< Message code receiver
