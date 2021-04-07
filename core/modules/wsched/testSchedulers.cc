@@ -37,8 +37,9 @@
 #include "proto/worker.pb.h"
 #include "util/Command.h"
 #include "util/EventThread.h"
-#include "wbase/Task.h"
 #include "wbase/SendChannel.h"
+#include "wbase/Task.h"
+#include "wcontrol/TransmitMgr.h"
 #include "wpublish/QueriesAndChunks.h"
 #include "wsched/ChunkDisk.h"
 #include "wsched/ChunkTasksQueue.h"
@@ -65,9 +66,12 @@ using lsst::qserv::wbase::SendChannelShared;
 
 double const oneHr = 60.0;
 
+lsst::qserv::wcontrol::TransmitMgr::Ptr locTransmitMgr =
+        std::make_shared<lsst::qserv::wcontrol::TransmitMgr>(50,10);
+
 Task::Ptr makeTask(std::shared_ptr<TaskMsg> tm) {
     auto sendC = std::make_shared<SendChannel>();
-    auto sc = SendChannelShared::create(sendC);
+    auto sc = SendChannelShared::create(sendC, locTransmitMgr);
     Task::Ptr task(new Task(tm, "", 0, sc));
     task->setSafeToMoveRunning(true); // Can't wait for MemMan in unit tests.
     return task;

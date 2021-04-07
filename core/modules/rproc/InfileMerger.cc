@@ -200,7 +200,6 @@ void InfileMerger::mergeCompleteFor(std::set<int> jobIds) {
 }
 
 
-//&&&bool InfileMerger::merge(std::shared_ptr<proto::WorkerResponse> response, bool last) {
 bool InfileMerger::merge(std::shared_ptr<proto::WorkerResponse> response) {
     if (!response) {
         return false;
@@ -215,7 +214,6 @@ bool InfileMerger::merge(std::shared_ptr<proto::WorkerResponse> response) {
     size_t resultSize = response->result.transmitsize();
     LOGS(_log, LOG_LVL_TRACE,
          "Executing InfileMerger::merge("
-         // &&& << " largeResult=" << response->result.largeresult()
          << " sizes=" << static_cast<short>(response->headerSize)
          << ", " << response->protoHeader.size()
          << ", resultSize=" << resultSize
@@ -261,11 +259,6 @@ bool InfileMerger::merge(std::shared_ptr<proto::WorkerResponse> response) {
         std::lock_guard<std::mutex> resultSzLock(_mtxResultSizeMtx);
         _perJobResultSize[jobId] += resultSize;
         tResultSize = _totalResultSize + _perJobResultSize[jobId];
-        /* &&&
-        if (last) {
-            _totalResultSize += _perJobResultSize[jobId];
-        }
-        */
     }
     if (tResultSize > _maxResultTableSizeBytes) {
         std::ostringstream os;

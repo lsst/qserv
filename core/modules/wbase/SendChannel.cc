@@ -187,16 +187,9 @@ bool SendChannel::kill() {
 
 
 bool SendChannel::sendStream(xrdsvc::StreamBuffer::Ptr const& sBuf, bool last) {
-    LOGS(_log, LOG_LVL_INFO, "&&& SendChanne::sendStream a");
-    LOGS(_log, LOG_LVL_INFO, "&&& SendChanne::sendStream last=" << last);
-    LOGS(_log, LOG_LVL_INFO, "&&& SendChanne::sendStream sBuf(size=" << sBuf->getSize() << " buf=" << util::prettyCharList(sBuf->getString(), 5));
-    LOGS(_log, LOG_LVL_INFO, "&&& SendChannel::sendStream _dead=" << _dead);
     if (isDead()) return false;
-    LOGS(_log, LOG_LVL_INFO, "&&& SendChanne::sendStream b");
     if (_ssiRequest->replyStream(sBuf, last)) return true;
-    LOGS(_log, LOG_LVL_INFO, "&&& SendChanne::sendStream c");
     kill();
-    LOGS(_log, LOG_LVL_INFO, "&&& SendChanne::sendStream end");
     return false;
 }
 
@@ -209,14 +202,10 @@ bool SendChannel::setMetadata(const char *buf, int blen) {
 
 
 
-SendChannelShared::Ptr SendChannelShared::create(std::shared_ptr<SendChannel> const& sendChannel) {
-    LOGS(_log, LOG_LVL_INFO, "&&& SendChannelShared::create a");
-    auto scs = shared_ptr<SendChannelShared>(new SendChannelShared(sendChannel));
-    LOGS(_log, LOG_LVL_INFO, "&&& SendChannelShared::create b");
+SendChannelShared::Ptr SendChannelShared::create(SendChannel::Ptr const& sendChannel, wcontrol::TransmitMgr::Ptr const& transmitMgr) {
+    auto scs = shared_ptr<SendChannelShared>(new SendChannelShared(sendChannel, transmitMgr));
     scs->_keepAlive = scs;
-    LOGS(_log, LOG_LVL_INFO, "&&& SendChannelShared::create c count=" << scs.use_count());
     scs->_run();
-    LOGS(_log, LOG_LVL_INFO, "&&& SendChannelShared::create end");
     return scs;
 }
 
@@ -249,7 +238,6 @@ bool SendChannelShared::transmitTaskLast(StreamGuard sLock, bool inLast) {
 
 bool SendChannelShared::kill(StreamGuard sLock) {
     LOGS(_log, LOG_LVL_DEBUG, "SendChannelShared::kill() called");
-    LOGS(_log, LOG_LVL_WARN, "&&&SendChannelShared::kill() called");
     bool ret = _sendChannel->kill();
     _lastRecvd = true;
     _queueCv.notify_all();
@@ -265,7 +253,6 @@ bool SendChannelShared::addTransmit(bool cancelled, bool erred, bool last, bool 
                                     TransmitData::Ptr const& tData, int qId, int jId) {
     QSERV_LOGCONTEXT_QUERY_JOB(qId, jId);
     assert(tData != nullptr);
-    LOGS(_log, LOG_LVL_INFO, "&&& addTransmit a");
 
     /// Wait if there are enough TransmitData objects already in the queue.
     bool reallyLast = _lastRecvd;
@@ -276,37 +263,26 @@ bool SendChannelShared::addTransmit(bool cancelled, bool erred, bool last, bool 
         LOGS(_log, LOG_LVL_WARN, "addTransmit getting messages after isDead or reallyLast " << idStr);
         _lastRecvd = true;
         _queueCv.notify_all();
-        LOGS(_log, LOG_LVL_INFO, "&&& addTransmit b");
         return false;
     }
-    LOGS(_log, LOG_LVL_INFO, "&&& addTransmit c");
     {
         lock_guard<mutex> streamLock(streamMutex);
-        LOGS(_log, LOG_LVL_INFO, "&&& addTransmit d");
         reallyLast = transmitTaskLast(streamLock, last);
     }
-    LOGS(_log, LOG_LVL_INFO, "&&& addTransmit e");
 
     // Can this addTransmit wait?
     // If erred or cancelled, this should be handled asap.
     std::unique_lock<std::mutex> qLock(_queueMtx);
-    LOGS(_log, LOG_LVL_INFO, "&&& addTransmit f");
     if (!erred && !cancelled) {
-        LOGS(_log, LOG_LVL_INFO, "&&& addTransmit g");
         _queueCv.wait(qLock, [this](){ return _transmitQueue.size() < 2; });
     }
-    LOGS(_log, LOG_LVL_INFO, "&&& addTransmit g");
     _transmitQueue.push(tData);
-    LOGS(_log, LOG_LVL_INFO, "&&& addTransmit h");
     if (reallyLast || erred || cancelled) {
-        LOGS(_log, LOG_LVL_INFO, "&&& addTransmit i");
         _lastRecvd = true;
     }
 
-    LOGS(_log, LOG_LVL_INFO, "&&& addTransmit j");
     qLock.unlock();
     _queueCv.notify_all();
-    LOGS(_log, LOG_LVL_INFO, "&&& addTransmit end");
     return true;
 }
 
@@ -323,7 +299,7 @@ void SendChannelShared::_run() {
 
 
 void SendChannelShared::_transmitLoop() {
-    LOGS(_log, LOG_LVL_INFO, "&&& _transmitLoop a");
+    LOGS(_log, LOG_LVL_DEBUG, "SendChannelShared _transmitLoop start");
     // Allow this thread and 'this' instance to die only
     // after this function exits.
     Ptr keepAlive = std::move(_keepAlive);
@@ -359,9 +335,7 @@ void SendChannelShared::_transmitLoop() {
         bool reallyLast = (_lastRecvd && sz == 0);
 
         proto::ProtoHeader* nextPHdr;
-        LOGS(_log, LOG_LVL_INFO, "&&& _transmitLoop i");
         if (sz == 0) {
-            LOGS(_log, LOG_LVL_INFO, "&&& _transmitLoop j");
             if (!_lastRecvd) {
                 LOGS(_log, LOG_LVL_ERROR, "Shared Trying _transmit first size=" << sz << " but not last");
                 throw Bug("SendChannelShared::_transmit() size=" + to_string(sz) + " but not last.");
@@ -370,50 +344,32 @@ void SendChannelShared::_transmitLoop() {
             // This is the signal to the czar that this SharedSendChannel is finished.
             nextPHdr = thisTransmit->createHeader();
         } else {
-            LOGS(_log, LOG_LVL_INFO, "&&& _transmitLoop k");
             auto nextT = _transmitQueue.front();
             nextPHdr = nextT->header;
         }
-        LOGS(_log, LOG_LVL_INFO, "&&& _transmitLoop l");
         nextPHdr->set_endnodata(reallyLast);
-        LOGS(_log, LOG_LVL_INFO, "&&& _transmitLoop m");
         string nextHeaderString;
         nextPHdr->SerializeToString(&nextHeaderString);
         thisTransmit->dataMsg += proto::ProtoHeaderWrap::wrap(nextHeaderString);
-        LOGS(_log, LOG_LVL_INFO, "&&& _transmitLoop o");
         if (reallyLast) loop = false;
         // Done with the queue for a while and this function may need to wait below.
         qLock.unlock();
         _queueCv.notify_all();
-        LOGS(_log, LOG_LVL_INFO, "&&& _transmitLoop p");
 
-        //&&& move all the TransmitMgr code here. ****** &&&&
-        /*&&& needs to happen in sendChannel
-         // Limit the number of concurrent transmits.
-         wcontrol::TransmitLock transmitLock(*_transmitMgr, _task->getScanInteractive(), _largeResult, czarId);
-
-         // Nothing else can use this sendChannel until this transmit is done.
-         lock_guard<mutex> streamLock(_task->sendChannel->streamMutex);
-
-         // Only set last to true if this is the final task using this sendChannel.
-         bool last = _task->sendChannel->transmitTaskLast(streamLock, inLast);
-
-         if (!_cancelled) {
-             &&&; if (firstLoop) set metadata
-             &&&; append next header to this result
-             // StreamBuffer::create invalidates resultString by using std::move()
-             xrdsvc::StreamBuffer::Ptr streamBuf(xrdsvc::StreamBuffer::createWithMove(resultString));
-             _sendBuf(streamLock, streamBuf, last, transmitHisto, "body");
-         } else {
-             LOGS(_log, LOG_LVL_DEBUG, "_transmit cancelled");
-         }
-         */
-
+        // Limit the number of concurrent transmits.
+        bool scanInteractive = thisTransmit->scanInteractive;
+        // If there was an error, give this high priority.
+        if (thisTransmit->erred) {
+            scanInteractive = true;
+        }
+        bool largeResult = thisTransmit->largeResult;
+        int czarId = thisTransmit->czarId;
+        // Do NOT create transmitLock this with a mutex locked. High risk of deadlock.
+        wcontrol::TransmitLock transmitLock(*_transmitMgr, scanInteractive, largeResult, czarId);
 
         // The first message needs to put its header data in metadata as there's
         // no previous message it could attach its header to.
         if (_firstTransmit.exchange(false)) {
-            LOGS(_log, LOG_LVL_INFO, "&&& _transmitLoop q");
             // Put the header for the first message in metadata
             // _metaDataBuf must remain valid until Finished() is called.
             proto::ProtoHeader* thisPHdr = thisTransmit->header;
@@ -421,43 +377,31 @@ void SendChannelShared::_transmitLoop() {
             thisPHdr->SerializeToString(&thisHeaderString);
             _metadataBuf = proto::ProtoHeaderWrap::wrap(thisHeaderString);
             lock_guard<mutex> streamLock(streamMutex);
-            LOGS(_log, LOG_LVL_INFO, "&&& _transmitLoop r");
             bool metaSet = _sendChannel->setMetadata(_metadataBuf.data(), _metadataBuf.size());
-            LOGS(_log, LOG_LVL_INFO, "&&& _transmitLoop s");
             if (!metaSet) {
-                LOGS(_log, LOG_LVL_INFO, "&&& _transmitLoop t");
                 LOGS(_log, LOG_LVL_ERROR, "Failed to setMeta " << idStr);
                 kill(streamLock);
                 return;
             }
-            LOGS(_log, LOG_LVL_INFO, "&&& _transmitLoop u");
         }
 
         // Put the data for the transmit in a StreamBuffer and send it.
         auto streamBuf = xrdsvc::StreamBuffer::createWithMove(thisTransmit->dataMsg);
-        LOGS(_log, LOG_LVL_INFO, "&&& _transmitLoop v");
         {
             lock_guard<mutex> streamLock(streamMutex);
-            LOGS(_log, LOG_LVL_INFO, "&&& _transmitLoop w");
             bool sent = _sendBuf(streamLock, streamBuf, reallyLast, "transmitLoop " + idStr);
-            LOGS(_log, LOG_LVL_INFO, "&&& _transmitLoop x");
             if (!sent) {
-                LOGS(_log, LOG_LVL_INFO, "&&& _transmitLoop y");
                 LOGS(_log, LOG_LVL_ERROR, "Failed to send " << idStr);
                 kill(streamLock);
                 return;
             }
         }
-        LOGS(_log, LOG_LVL_INFO, "&&& _transmitLoop z");
     }
-    LOGS(_log, LOG_LVL_INFO, "&&& _transmitLoop z1");
     {
         lock_guard<mutex> streamLock(streamMutex);
         kill(streamLock);
     }
     LOGS(_log, LOG_LVL_DEBUG, "transmitLoop end for " << idStr);
-    LOGS(_log, LOG_LVL_INFO, "&&& _transmitLoop end _keepAlive count=" << _keepAlive.use_count());
-    LOGS(_log, LOG_LVL_INFO, "&&& _transmitLoop end keepAlive count=" << keepAlive.use_count());
 }
 
 
@@ -467,14 +411,11 @@ util::TimerHistogram transmitHisto("transmit Hist", {0.1, 1, 5, 10, 20, 40});
 bool SendChannelShared::_sendBuf(lock_guard<mutex> const& streamLock,
                                  xrdsvc::StreamBuffer::Ptr& streamBuf, bool last,
                                  string const& note) {
-    LOGS(_log, LOG_LVL_INFO, "&&& SendChannelShared::_sendBuf a");
     bool sent = _sendChannel->sendStream(streamBuf, last);
-    LOGS(_log, LOG_LVL_INFO, "&&& SendChannelShared::_sendBuf b sent=" << sent);
     if (!sent) {
         LOGS(_log, LOG_LVL_ERROR, "Failed to transmit " << note << "!");
         return false;
     } else {
-        LOGS(_log, LOG_LVL_INFO, "&&& SendChannelShared::_sendBuf c");
         util::Timer t;
         t.start();
         LOGS(_log, LOG_LVL_DEBUG, "_sendbuf wait start");
@@ -484,7 +425,6 @@ bool SendChannelShared::_sendBuf(lock_guard<mutex> const& streamLock,
         auto logMsg = transmitHisto.addTime(t.getElapsed(), note);
         LOGS(_log, LOG_LVL_DEBUG, logMsg);
     }
-    LOGS(_log, LOG_LVL_INFO, "&&& SendChannelShared::_sendBuf end");
     return sent;
 }
 

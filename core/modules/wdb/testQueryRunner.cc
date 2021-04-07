@@ -71,6 +71,8 @@ using lsst::qserv::wdb::ChunkResourceMgr;
 using lsst::qserv::wdb::FakeBackend;
 using lsst::qserv::wdb::QueryRunner;
 
+TransmitMgr::Ptr locTransmitMgr = make_shared<TransmitMgr>(50,10);
+
 struct Fixture {
     shared_ptr<TaskMsg> newTaskMsg() {
         shared_ptr<TaskMsg> t = make_shared<TaskMsg>();
@@ -90,7 +92,7 @@ struct Fixture {
     shared_ptr<Task> newTask() {
         shared_ptr<TaskMsg> msg(newTaskMsg());
         shared_ptr<SendChannel> sc(SendChannel::newNopChannel());
-        auto scs = SendChannelShared::create(sc);
+        auto scs = SendChannelShared::create(sc, locTransmitMgr);
         Task::Ptr taskPtr(new Task(msg, "", 0, scs));
         return taskPtr;
     }
@@ -112,13 +114,12 @@ BOOST_FIXTURE_TEST_SUITE(Basic, Fixture)
 BOOST_AUTO_TEST_CASE(Simple) {
     shared_ptr<TaskMsg> msg(newTaskMsg());
     shared_ptr<SendChannel> sendC(SendChannel::newNopChannel());
-    auto sc = SendChannelShared::create(sendC);
+    auto sc = SendChannelShared::create(sendC, locTransmitMgr);
     Task::Ptr task(new Task(msg, "", 0, sc));
     FakeBackend::Ptr backend = make_shared<FakeBackend>();
     shared_ptr<ChunkResourceMgr> crm = ChunkResourceMgr::newMgr(backend);
     SqlConnMgr::Ptr sqlConnMgr = make_shared<SqlConnMgr>(20,15);
-    TransmitMgr::Ptr transmitMgr = make_shared<TransmitMgr>(50,10);
-    QueryRunner::Ptr a(QueryRunner::newQueryRunner(task, crm, newMySqlConfig(), sqlConnMgr, transmitMgr));
+    QueryRunner::Ptr a(QueryRunner::newQueryRunner(task, crm, newMySqlConfig(), sqlConnMgr));
     BOOST_CHECK(a->runQuery());
 }
 
@@ -126,13 +127,12 @@ BOOST_AUTO_TEST_CASE(Output) {
     string out;
     shared_ptr<TaskMsg> msg(newTaskMsg());
     shared_ptr<SendChannel> sendC(SendChannel::newStringChannel(out));
-    auto sc = SendChannelShared::create(sendC);
+    auto sc = SendChannelShared::create(sendC, locTransmitMgr);
     Task::Ptr task(new Task(msg, "", 0, sc));
     FakeBackend::Ptr backend = make_shared<FakeBackend>();
     shared_ptr<ChunkResourceMgr> crm = ChunkResourceMgr::newMgr(backend);
     SqlConnMgr::Ptr sqlConnMgr = make_shared<SqlConnMgr>(20,15);
-    TransmitMgr::Ptr transmitMgr = make_shared<TransmitMgr>(50,10);
-    QueryRunner::Ptr a(QueryRunner::newQueryRunner(task, crm, newMySqlConfig(), sqlConnMgr, transmitMgr));
+    QueryRunner::Ptr a(QueryRunner::newQueryRunner(task, crm, newMySqlConfig(), sqlConnMgr));
     BOOST_CHECK(a->runQuery());
 
     unsigned char phSize = *reinterpret_cast<unsigned char const*>(out.data());
