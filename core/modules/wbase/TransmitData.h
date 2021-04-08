@@ -57,8 +57,6 @@ public:
     /// case where an empty header is needed to append to the result.
     /// This should only be appended to the result of this->result as
     /// the '_arena' will be deallocated when this object is destroyed.
-    /// &&& TODO: This can probably be made private with a public function
-    /// &&&       to end/finalize a TransmitData object.
     proto::ProtoHeader* createHeader();
 
     // proto objects are instantiated as part of google protobuf arenas
@@ -80,7 +78,6 @@ private:
     /// Create a result using our arena.
     /// This does not set the 'result' member of this object for consistency.
     proto::Result* _createResult();
-
 
     std::shared_ptr<google::protobuf::Arena> _arena;
 };

@@ -34,7 +34,7 @@
 #include "proto/worker.pb.h"
 #include "proto/ProtoImporter.h"
 #include "util/StringHash.h"
-#include "wbase/SendChannel.h"
+#include "wbase/SendChannelShared.h"
 #include "wbase/Task.h"
 #include "wcontrol/SqlConnMgr.h"
 #include "wcontrol/TransmitMgr.h"
@@ -127,7 +127,7 @@ BOOST_AUTO_TEST_CASE(Output) {
     string out;
     shared_ptr<TaskMsg> msg(newTaskMsg());
     shared_ptr<SendChannel> sendC(SendChannel::newStringChannel(out));
-    auto sc = SendChannelShared::create(sendC, locTransmitMgr);
+    auto sc = SendChannelShared::create(sendC, locTransmitMgr, true);
     Task::Ptr task(new Task(msg, "", 0, sc));
     FakeBackend::Ptr backend = make_shared<FakeBackend>();
     shared_ptr<ChunkResourceMgr> crm = ChunkResourceMgr::newMgr(backend);
@@ -150,6 +150,7 @@ BOOST_AUTO_TEST_CASE(Output) {
     string computedMd5 = util::StringHash::getMd5(cursor, remain);
     BOOST_CHECK_EQUAL(ph.md5(), computedMd5);
     BOOST_CHECK_EQUAL(task->msg->session(), result.session());
+    sc->join();
 }
 
 BOOST_AUTO_TEST_SUITE_END()

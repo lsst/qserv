@@ -76,13 +76,13 @@ private:
     void _initInventory();
     void _configure();
 
-    // &&& doc
+    /// List of available chunks.
     std::shared_ptr<wpublish::ChunkInventory> _chunkInventory;
 
-    // &&& doc
+    // The Foreman contains essential structures for adding and running tasks.
     std::shared_ptr<wcontrol::Foreman> _foreman;
 
-    // &&& doc
+    /// Used to throttle outgoing massages to prevent czars from being overloaded.
     std::shared_ptr<wcontrol::TransmitMgr> _transmitMgr;
 
     mysql::MySqlConfig const _mySqlConfig;
