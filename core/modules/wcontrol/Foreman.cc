@@ -41,7 +41,7 @@
 #include "mysql/MySqlConfig.h"
 #include "proto/worker.pb.h"
 #include "wbase/Base.h"
-#include "wbase/SendChannel.h"
+#include "wbase/SendChannelShared.h"
 #include "wbase/WorkerCommand.h"
 #include "wcontrol/SqlConnMgr.h"
 #include "wdb/ChunkResource.h"
@@ -108,7 +108,7 @@ void Foreman::_setRunFunc(shared_ptr<wbase::Task> const& task) {
             }
         } else {
             auto qr = wdb::QueryRunner::newQueryRunner(task, _chunkResourceMgr, _mySqlConfig,
-                      _sqlConnMgr);
+                                                       _sqlConnMgr);
             bool success = false;
             try {
                 success = qr->runQuery();

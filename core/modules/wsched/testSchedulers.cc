@@ -37,7 +37,7 @@
 #include "proto/worker.pb.h"
 #include "util/Command.h"
 #include "util/EventThread.h"
-#include "wbase/SendChannel.h"
+#include "wbase/SendChannelShared.h"
 #include "wbase/Task.h"
 #include "wcontrol/TransmitMgr.h"
 #include "wpublish/QueriesAndChunks.h"
@@ -69,9 +69,12 @@ double const oneHr = 60.0;
 lsst::qserv::wcontrol::TransmitMgr::Ptr locTransmitMgr =
         std::make_shared<lsst::qserv::wcontrol::TransmitMgr>(50,10);
 
+std::vector<SendChannelShared::Ptr> locSendSharedPtrs;
+
 Task::Ptr makeTask(std::shared_ptr<TaskMsg> tm) {
     auto sendC = std::make_shared<SendChannel>();
-    auto sc = SendChannelShared::create(sendC, locTransmitMgr);
+    auto sc = SendChannelShared::create(sendC, locTransmitMgr, true);
+    locSendSharedPtrs.push_back(sc);
     Task::Ptr task(new Task(tm, "", 0, sc));
     task->setSafeToMoveRunning(true); // Can't wait for MemMan in unit tests.
     return task;
@@ -1120,6 +1123,24 @@ BOOST_AUTO_TEST_CASE(ChunkTasksQueueTest) {
     BOOST_CHECK(ctl.ready(true) == false);
     BOOST_CHECK(ctl.getActiveChunkId() == -1);
     LOGS(_log, LOG_LVL_DEBUG, "ChunkTasksQueueTest done");
+}
+
+BOOST_AUTO_TEST_CASE(JoinCleanup) {
+    // The tasks aren't sent anywhere, so the shared streams are left hanging.
+    LOGS(_log, LOG_LVL_INFO, "JoinCleanup start sz=" << locSendSharedPtrs.size());
+    unsigned int count = 0;
+
+    for (auto &&scs:locSendSharedPtrs) {
+        std::lock_guard<std::mutex> streamLock(scs->streamMutex);
+        scs->kill(streamLock);
+    }
+
+    for (auto &&scs:locSendSharedPtrs) {
+        scs->join();
+        ++count;
+        LOGS(_log, LOG_LVL_INFO, "JoinTest count=" << count << " sz=" << locSendSharedPtrs.size());
+    }
+    BOOST_CHECK(count == locSendSharedPtrs.size());
 }
 
 BOOST_AUTO_TEST_SUITE_END()

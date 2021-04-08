@@ -118,8 +118,7 @@ private:
 
     /// Use the mysql 'result' and other parameters to fill 'tData'.
     /// @return true if there are no more left in 'result'
-    bool _fillRows(MYSQL_RES* result, wbase::TransmitData::Ptr const& tData,  //&&& remove tData param
-                   int numFields, uint& rowCount, size_t& tsize);
+    bool _fillRows(MYSQL_RES* result, int numFields, uint& rowCount, size_t& tsize);
 
     /// Use the mysql 'result' to load _schemaCols with the schema.
     void _fillSchema(MYSQL_RES* result);
@@ -155,12 +154,6 @@ private:
 
     /// Used to limit the number of open MySQL connections.
     std::shared_ptr<wcontrol::SqlConnMgr> const _sqlConnMgr;
-
-    /* &&&
-    /// Buffer to hold header metadata. Once set by _transmitHeader, it
-    /// must remain untouched until the transmit is complete.
-    std::string _headerBuf;
-    */
 };
 
 }}} // namespace

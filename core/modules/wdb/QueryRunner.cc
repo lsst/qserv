@@ -66,7 +66,7 @@
 #include "util/Timer.h"
 #include "util/threadSafe.h"
 #include "wbase/Base.h"
-#include "wbase/SendChannel.h"
+#include "wbase/SendChannelShared.h"
 #include "wdb/ChunkResource.h"
 
 namespace {
@@ -368,12 +368,11 @@ private:
 /// Fill one row in the Result msg from one row in MYSQL_RES*
 /// If the message has gotten larger than the desired message size,
 /// return false. If all rows have been read, return true.
-bool QueryRunner::_fillRows(MYSQL_RES* result, wbase::TransmitData::Ptr const& tData,
-                            int numFields, uint& rowCount, size_t& tSize) {
+bool QueryRunner::_fillRows(MYSQL_RES* result, int numFields, uint& rowCount, size_t& tSize) {
     MYSQL_ROW row;
     while ((row = mysql_fetch_row(result))) {
         auto lengths = mysql_fetch_lengths(result);
-        proto::RowBundle* rawRow = tData->result->add_row();
+        proto::RowBundle* rawRow = _transmitData->result->add_row();
         for(int i=0; i < numFields; ++i) {
             if (row[i]) {
                 rawRow->add_column(row[i], lengths[i]);
@@ -449,7 +448,7 @@ bool QueryRunner::_dispatchChannel() {
             // (see pull-request for DM-216)
             // Now get rows...
             _initTransmit(); // set _initTransmit
-            while (!_fillRows(res, _transmitData, numFields, rowCount, tSize)) {
+            while (!_fillRows(res, numFields, rowCount, tSize)) {
                 if (tSize > proto::ProtoHeaderWrap::PROTOBUFFER_HARD_LIMIT) {
                     LOGS_ERROR("Message single row too large to send using protobuffer");
                     erred = true;
@@ -463,7 +462,7 @@ bool QueryRunner::_dispatchChannel() {
                 }
                 rowCount = 0;
                 tSize = 0;
-                _initTransmit(); // reset _initTransmit
+                _initTransmit(); // reset _transmitData
             }
             // All rows have been read out or there was an error.
             // _transmit() transmit happens below
