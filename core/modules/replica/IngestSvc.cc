@@ -80,7 +80,8 @@ void IngestSvc::run() {
     _beginAccept();
 
     // Launch all threads in the pool
-    vector<shared_ptr<thread>> threads(_serviceProvider->config()->loaderNumProcessingThreads());
+    vector<shared_ptr<thread>> threads(_serviceProvider->config()->get<size_t>(
+            "worker", "num_loader_processing_threads"));
     for (auto&& ptr: threads) {
         ptr = shared_ptr<thread>(new thread([&]() {
             _io_service.run();

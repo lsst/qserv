@@ -32,7 +32,6 @@
 // Qserv headers
 #include "global/intTypes.h"
 #include "replica/Configuration.h"
-#include "replica/ConfigurationTypes.h"
 #include "replica/DatabaseMySQL.h"
 #include "replica/DatabaseServices.h"
 #include "replica/QservMgtServices.h"
@@ -292,8 +291,8 @@ json HttpQservMonitorModule::_userQueries() {
     database::mysql::ConnectionHandler const h(
         database::mysql::Connection::open(
             database::mysql::ConnectionParams(
-                config->qservMasterDatabaseHost(),
-                config->qservMasterDatabasePort(),
+                config->get<string>("database", "qserv_master_host"),
+                config->get<uint16_t>("database", "qserv_master_port"),
                 "root",
                 Configuration::qservMasterDatabasePassword(),
                 "qservMeta"
@@ -410,8 +409,8 @@ json HttpQservMonitorModule::_getQueries(json& workerInfo) const {
     database::mysql::ConnectionHandler const h(
         database::mysql::Connection::open(
             database::mysql::ConnectionParams(
-                config->qservMasterDatabaseHost(),
-                config->qservMasterDatabasePort(),
+                config->get<string>("database", "qserv_master_host"),
+                config->get<uint16_t>("database", "qserv_master_port"),
                 "root",
                 Configuration::qservMasterDatabasePassword(),
                 "qservMeta"

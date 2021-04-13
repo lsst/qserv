@@ -28,36 +28,43 @@
 #include <iostream>
 #include <vector>
 
+// Third party headers
+#include "nlohmann/json.hpp"
+
 // Qserv headers
 #include "replica/Common.h"
-#include "replica/ConfigurationMySQL.h"
+#include "replica/Configuration.h"
 #include "util/TablePrinter.h"
 
+// LSST headers
+#include "lsst/log/Log.h"
+
 using namespace std;
+using json = nlohmann::json;
+using namespace lsst::qserv::replica;
+namespace util = lsst::qserv::util;
 
 namespace {
+
+LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.ConfigApp");
 
 string const description =
     "This application is the tool for viewing and manipulating"
     " the configuration data of the Replication system stored in the MySQL/MariaDB.";
 
 bool const injectDatabaseOptions = true;
-bool const boostProtobufVersionCheck = true;
-bool const enableServiceProvider = true;
+bool const boostProtobufVersionCheck = false;
+bool const enableServiceProvider = false;
 bool const injectXrootdOptions = false;
 
 /**
- * Register an option with a parser (which could also represent a command)
- *
- * @param parser
- *   the handler responsible for processing options
- *
- * @param struct_
- *   the option descriptor
+ * Register an option with a parser (which could also represent a command).
+ * @param parser The handler responsible for processing options
+ * @param param Parameter handler.`
  */
 template <class PARSER, typename T>
-void addCommandOption(PARSER& parser, T& struct_) {
-    parser.option(struct_.key, struct_.description, struct_.value);
+void addCommandOption(PARSER& parser, T& param) {
+    parser.option(param.key, param.description(), param.value);
 }
 
 } /// namespace
@@ -68,22 +75,12 @@ namespace qserv {
 namespace replica {
 
 ConfigApp::Ptr ConfigApp::create(int argc, char* argv[]) {
-    return Ptr(
-        new ConfigApp(argc, argv)
-    );
+    return Ptr(new ConfigApp(argc, argv));
 }
 
 
 ConfigApp::ConfigApp(int argc, char* argv[])
-    :   Application(
-            argc, argv,
-            description,
-            injectDatabaseOptions,
-            boostProtobufVersionCheck,
-            enableServiceProvider,
-            injectXrootdOptions
-        ),
-        _log(LOG_GET("lsst.qserv.replica.ConfigApp")) {
+    :   ConfigAppBase(argc, argv, description) {
 
     parser().commands(
         "command",
@@ -96,10 +93,6 @@ ConfigApp::ConfigApp(int argc, char* argv[])
          "ADD_TABLE", "DELETE_TABLE"
         },
         _command
-    ).flag(
-        "tables-vertical-separator",
-        "Print vertical separator when displaying tabular data in dumps.",
-        _verticalSeparator
     );
 
     parser().command(
@@ -110,10 +103,6 @@ ConfigApp::ConfigApp(int argc, char* argv[])
         " context. If no scope is specified then everything will be dumped.",
         _dumpScope,
         vector<string>({"GENERAL", "WORKERS", "FAMILIES", "DATABASES"})
-    ).flag(
-        "db-show-password",
-        "Show the actual database password when making the dump of the GENERAL parameters.",
-        _dumpDbShowPassword
     );
 
     parser().command(
@@ -121,9 +110,9 @@ ConfigApp::ConfigApp(int argc, char* argv[])
     ).required(
         "format",
         "The format of the initialization file to be produced with this option."
-        " Allowed values: MYSQL",
+        " Allowed values: JSON.",
         _format,
-        vector<string>({"MYSQL"})
+        vector<string>({"JSON"})
     );
 
     parser().command(
@@ -198,6 +187,18 @@ ConfigApp::ConfigApp(int argc, char* argv[])
         "worker-exporter-tmp-dir",
         "The name of a user account for a temporary folder of the worker's Data Exporting service.",
         _workerInfo.exporterTmpDir
+    ).option(
+        "worker-http-loader-host",
+        "The new DNS name or an IP address where the worker's Catalog REST-based Ingest service runs.",
+        _workerInfo.httpLoaderHost
+    ).option(
+        "worker-http-loader-port",
+        "The port number of the worker's Catalog REST-based Ingest service.",
+        _workerInfo.httpLoaderPort
+    ).option(
+        "worker-http-loader-tmp-dir",
+        "The name of a user account for a temporary folder of the worker's Catalog REST-based Ingest service.",
+        _workerInfo.httpLoaderTmpDir
     );
 
     parser().command(
@@ -210,7 +211,7 @@ ConfigApp::ConfigApp(int argc, char* argv[])
         "service-host",
         "The DNS name or an IP address where the worker runs.",
         _workerInfo.svcHost
-    ).required(
+    ).optional(
         "service-port",
         "The port number of the worker service",
         _workerInfo.svcPort
@@ -218,19 +219,19 @@ ConfigApp::ConfigApp(int argc, char* argv[])
         "fs-host",
         "The DNS name or an IP address where the worker's File Server runs.",
         _workerInfo.fsHost
-    ).required(
+    ).optional(
         "fs-port",
         "The port number of the worker's File Server.",
         _workerInfo.fsPort
-    ).required(
+    ).optional(
         "data-dir",
         "The data directory of the worker",
         _workerInfo.dataDir
-    ).required(
+    ).optional(
         "enabled",
         "Set to '0' if the worker is turned into disabled mode upon creation.",
         _workerInfo.isEnabled
-    ).required(
+    ).optional(
         "read-only",
         "Set to '0' if the worker is NOT turned into the read-only mode upon creation.",
         _workerInfo.isReadOnly
@@ -238,11 +239,11 @@ ConfigApp::ConfigApp(int argc, char* argv[])
         "db-host",
         "The DNS name or an IP address where the worker's Database Service runs.",
         _workerInfo.dbHost
-    ).required(
+    ).optional(
         "db-port",
         "The port number of the worker's Database Service.",
         _workerInfo.dbPort
-    ).required(
+    ).optional(
         "db-user",
         "The name of the MySQL user for the worker's Database Service",
         _workerInfo.dbUser
@@ -250,11 +251,11 @@ ConfigApp::ConfigApp(int argc, char* argv[])
         "loader-host",
         "The DNS name or an IP address where the worker's Catalog Ingest Server runs.",
         _workerInfo.loaderHost
-    ).required(
+    ).optional(
         "loader-port",
         "The port number of the worker's Catalog Ingest Server.",
         _workerInfo.loaderPort
-    ).required(
+    ).optional(
         "loader-tmp-dir",
         "The temporay directory of the worker's Ingest Service",
         _workerInfo.loaderTmpDir
@@ -262,14 +263,26 @@ ConfigApp::ConfigApp(int argc, char* argv[])
         "exporter-host",
         "The DNS name or an IP address where the worker's Data Exporting Server runs.",
         _workerInfo.exporterHost
-    ).required(
+    ).optional(
         "exporter-port",
         "The port number of the worker's Data Exporting Server.",
         _workerInfo.exporterPort
-    ).required(
+    ).optional(
         "exporter-tmp-dir",
         "The temporay directory of the worker's Data Exporting Service",
         _workerInfo.exporterTmpDir
+    ).required(
+        "http-loader-host",
+        "The DNS name or an IP address where the worker's HTTP-based Catalog Ingest Server runs.",
+        _workerInfo.httpLoaderHost
+    ).optional(
+        "http-loader-port",
+        "The port number of the worker's HTTP-based Catalog Ingest Server.",
+        _workerInfo.httpLoaderPort
+    ).optional(
+        "http-loader-tmp-dir",
+        "The temporay directory of the worker's HTTP-based Catalog Ingest Service",
+        _workerInfo.httpLoaderTmpDir
     );
 
 
@@ -279,27 +292,25 @@ ConfigApp::ConfigApp(int argc, char* argv[])
         _workerInfo.name
     );
 
+    // Add options for the general parameters named as:
+    //   --<category>.<param>=<string>
+    // Note that since no database connection is available at this time (that would have
+    // required knowing a value of the parameter 'configUrl', and no parsing has been made
+    // yet) then the loop below will set the default value of each option to be the empty
+    // string. Any changes from that will be detected when processing the input. 
     auto&& updateGeneralCmd = parser().command("UPDATE_GENERAL");
-    ::addCommandOption(updateGeneralCmd, _general.requestBufferSizeBytes);
-    ::addCommandOption(updateGeneralCmd, _general.retryTimeoutSec);
-    ::addCommandOption(updateGeneralCmd, _general.controllerThreads);
-    ::addCommandOption(updateGeneralCmd, _general.controllerHttpPort);
-    ::addCommandOption(updateGeneralCmd, _general.controllerHttpThreads);
-    ::addCommandOption(updateGeneralCmd, _general.controllerRequestTimeoutSec);
-    ::addCommandOption(updateGeneralCmd, _general.jobTimeoutSec);
-    ::addCommandOption(updateGeneralCmd, _general.jobHeartbeatTimeoutSec);
-    ::addCommandOption(updateGeneralCmd, _general.xrootdAutoNotify);
-    ::addCommandOption(updateGeneralCmd, _general.xrootdHost);
-    ::addCommandOption(updateGeneralCmd, _general.xrootdPort);
-    ::addCommandOption(updateGeneralCmd, _general.xrootdTimeoutSec);
-    ::addCommandOption(updateGeneralCmd, _general.databaseServicesPoolSize);
-    ::addCommandOption(updateGeneralCmd, _general.workerTechnology);
-    ::addCommandOption(updateGeneralCmd, _general.workerNumProcessingThreads);
-    ::addCommandOption(updateGeneralCmd, _general.fsNumProcessingThreads);
-    ::addCommandOption(updateGeneralCmd, _general.workerFsBufferSizeBytes);
-    ::addCommandOption(updateGeneralCmd, _general.loaderNumProcessingThreads);
-    ::addCommandOption(updateGeneralCmd, _general.exporterNumProcessingThreads);
-    ::addCommandOption(updateGeneralCmd, _general.httpLoaderNumProcessingThreads);
+    for (auto&& itr: ConfigurationSchema::parameters()) {
+        string const& category = itr.first;
+        for (auto&& param: itr.second) {
+            // The read-only parameters can't be updated programmatically.
+            if (ConfigurationSchema::readOnly(category, param)) continue;
+            _general[category][param] = string();
+            updateGeneralCmd.option(
+                category + "." + param,
+                ConfigurationSchema::description(category, param),
+                _general[category][param]);
+        }
+    }
 
     parser().command(
         "ADD_DATABASE_FAMILY"
@@ -427,11 +438,9 @@ ConfigApp::ConfigApp(int argc, char* argv[])
 }
 
 
-int ConfigApp::runImpl() {
+int ConfigApp::runSubclassImpl() {
 
     string const context = "ConfigApp::" + string(__func__) + "  ";
-
-    _config = Configuration::load(configUrl());
 
     if (_command == "DUMP")                   return _dump();
     if (_command == "CONFIG_INIT_FILE")       return _configInitFile();
@@ -453,358 +462,13 @@ int ConfigApp::runImpl() {
 
 
 int ConfigApp::_dump() const {
-
     string const indent = "  ";
-
-    cout << "\n"
-         << indent << "CONFIG_URL: " << _config->configUrl() << "\n";
-
-    if (_dumpScope.empty() or _dumpScope == "GENERAL") {
-        cout << "\n";
-        _dumpGeneralAsTable(indent);
-    }
-    if (_dumpScope.empty() or _dumpScope == "WORKERS") {
-        cout << "\n";
-        _dumpWorkersAsTable(indent);
-    }
-    if (_dumpScope.empty() or _dumpScope == "FAMILIES") {
-        cout << "\n";
-        _dumpFamiliesAsTable(indent);
-    }
-    if (_dumpScope.empty() or _dumpScope == "DATABASES") {
-        cout << "\n";
-        _dumpDatabasesAsTable(indent);
-    }
-    cout << endl;
-
+    cout << "\n" << indent << "CONFIG_URL: " << configUrl() << "\n" << "\n";
+    if (_dumpScope.empty() or _dumpScope == "GENERAL") dumpGeneralAsTable(indent);
+    if (_dumpScope.empty() or _dumpScope == "WORKERS") dumpWorkersAsTable(indent);
+    if (_dumpScope.empty() or _dumpScope == "FAMILIES") dumpFamiliesAsTable(indent);
+    if (_dumpScope.empty() or _dumpScope == "DATABASES") dumpDatabasesAsTable(indent);
     return 0;
-}
-
-void ConfigApp::_dumpGeneralAsTable(string const& indent) const {
-
-    // Extract general attributes and put them into the corresponding
-    // columns. Translate tables cell values into strings when required.
-
-    vector<string> parameter;
-    vector<string> value;
-    vector<string> description;
-
-    parameter.  push_back(_general.requestBufferSizeBytes.key);
-    value.      push_back(_general.requestBufferSizeBytes.str(_config));
-    description.push_back(_general.requestBufferSizeBytes.description);
-
-    parameter.  push_back(_general.retryTimeoutSec.key);
-    value.      push_back(_general.retryTimeoutSec.str(_config));
-    description.push_back(_general.retryTimeoutSec.description);
-
-    parameter.  push_back(_general.controllerThreads.key);
-    value.      push_back(_general.controllerThreads.str(_config));
-    description.push_back(_general.controllerThreads.description);
-
-    parameter.  push_back(_general.controllerHttpPort.key);
-    value.      push_back(_general.controllerHttpPort.str(_config));
-    description.push_back(_general.controllerHttpPort.description);
-
-    parameter.  push_back(_general.controllerHttpThreads.key);
-    value.      push_back(_general.controllerHttpThreads.str(_config));
-    description.push_back(_general.controllerHttpThreads.description);
-
-    parameter.  push_back(_general.controllerRequestTimeoutSec.key);
-    value.      push_back(_general.controllerRequestTimeoutSec.str(_config));
-    description.push_back(_general.controllerRequestTimeoutSec.description);
-
-    parameter.  push_back(_general.controllerEmptyChunksDir.key);
-    value.      push_back(_general.controllerEmptyChunksDir.str(_config));
-    description.push_back(_general.controllerEmptyChunksDir.description);
-
-    parameter.  push_back(_general.jobTimeoutSec.key);
-    value.      push_back(_general.jobTimeoutSec.str(_config));
-    description.push_back(_general.jobTimeoutSec.description);
-
-    parameter.  push_back(_general.jobHeartbeatTimeoutSec.key);
-    value.      push_back(_general.jobHeartbeatTimeoutSec.str(_config));
-    description.push_back(_general.jobHeartbeatTimeoutSec.description);
-
-    parameter.  push_back(_general.xrootdAutoNotify.key);
-    value.      push_back(_general.xrootdAutoNotify.str(_config));
-    description.push_back(_general.xrootdAutoNotify.description);
-
-    parameter.  push_back(_general.xrootdHost.key);
-    value.      push_back(_general.xrootdHost.str(_config));
-    description.push_back(_general.xrootdHost.description);
-
-    parameter.  push_back(_general.xrootdPort.key);
-    value.      push_back(_general.xrootdPort.str(_config));
-    description.push_back(_general.xrootdPort.description);
-
-    parameter.  push_back(_general.xrootdTimeoutSec.key);
-    value.      push_back(_general.xrootdTimeoutSec.str(_config));
-    description.push_back(_general.xrootdTimeoutSec.description);
-
-    parameter.  push_back(_general.databaseTechnology.key);
-    value.      push_back(_general.databaseTechnology.str(_config));
-    description.push_back(_general.databaseTechnology.description);
-
-    parameter.  push_back(_general.databaseHost.key);
-    value.      push_back(_general.databaseHost.str(_config));
-    description.push_back(_general.databaseHost.description);
-
-    parameter.  push_back(_general.databasePort.key);
-    value.      push_back(_general.databasePort.str(_config));
-    description.push_back(_general.databasePort.description);
-
-    parameter.  push_back(_general.databaseUser.key);
-    value.      push_back(_general.databaseUser.str(_config));
-    description.push_back(_general.databaseUser.description);
-
-    bool const scrambleDbPassword = not _dumpDbShowPassword;
-    parameter.  push_back(_general.databasePassword.key);
-    value.      push_back(_general.databasePassword.str(_config, scrambleDbPassword));
-    description.push_back(_general.databasePassword.description);
-
-    parameter.  push_back(_general.databaseName.key);
-    value.      push_back(_general.databaseName.str(_config));
-    description.push_back(_general.databaseName.description);
-
-    parameter.  push_back(_general.databaseServicesPoolSize.key);
-    value.      push_back(_general.databaseServicesPoolSize.str(_config));
-    description.push_back(_general.databaseServicesPoolSize.description);
-
-    parameter.  push_back(_general.qservMasterDatabaseHost.key);
-    value.      push_back(_general.qservMasterDatabaseHost.str(_config));
-    description.push_back(_general.qservMasterDatabaseHost.description);
-
-    parameter.  push_back(_general.qservMasterDatabasePort.key);
-    value.      push_back(_general.qservMasterDatabasePort.str(_config));
-    description.push_back(_general.qservMasterDatabasePort.description);
-
-    parameter.  push_back(_general.qservMasterDatabaseUser.key);
-    value.      push_back(_general.qservMasterDatabaseUser.str(_config));
-    description.push_back(_general.qservMasterDatabaseUser.description);
-
-    parameter.  push_back(_general.qservMasterDatabasePassword.key);
-    value.      push_back(_general.qservMasterDatabasePassword.str(_config, scrambleDbPassword));
-    description.push_back(_general.qservMasterDatabasePassword.description);
-
-    parameter.  push_back(_general.qservMasterDatabaseName.key);
-    value.      push_back(_general.qservMasterDatabaseName.str(_config));
-    description.push_back(_general.qservMasterDatabaseName.description);
-
-    parameter.  push_back(_general.qservMasterDatabaseServicesPoolSize.key);
-    value.      push_back(_general.qservMasterDatabaseServicesPoolSize.str(_config));
-    description.push_back(_general.qservMasterDatabaseServicesPoolSize.description);
-
-    parameter.  push_back(_general.qservMasterDatabaseTmpDir.key);
-    value.      push_back(_general.qservMasterDatabaseTmpDir.str(_config));
-    description.push_back(_general.qservMasterDatabaseTmpDir.description);
-
-    parameter.  push_back(_general.workerTechnology.key);
-    value.      push_back(_general.workerTechnology.str(_config));
-    description.push_back(_general.workerTechnology.description);
-
-    parameter.  push_back(_general.workerNumProcessingThreads.key);
-    value.      push_back(_general.workerNumProcessingThreads.str(_config));
-    description.push_back(_general.workerNumProcessingThreads.description);
-
-    parameter.  push_back(_general.fsNumProcessingThreads.key);
-    value.      push_back(_general.fsNumProcessingThreads.str(_config));
-    description.push_back(_general.fsNumProcessingThreads.description);
-
-    parameter.  push_back(_general.workerFsBufferSizeBytes.key);
-    value.      push_back(_general.workerFsBufferSizeBytes.str(_config));
-    description.push_back(_general.workerFsBufferSizeBytes.description);
-
-    parameter.  push_back(_general.loaderNumProcessingThreads.key);
-    value.      push_back(_general.loaderNumProcessingThreads.str(_config));
-    description.push_back(_general.loaderNumProcessingThreads.description);
-
-    parameter.  push_back(_general.exporterNumProcessingThreads.key);
-    value.      push_back(_general.exporterNumProcessingThreads.str(_config));
-    description.push_back(_general.exporterNumProcessingThreads.description);
-
-    parameter.  push_back(_general.httpLoaderNumProcessingThreads.key);
-    value.      push_back(_general.httpLoaderNumProcessingThreads.str(_config));
-    description.push_back(_general.httpLoaderNumProcessingThreads.description);
-
-    util::ColumnTablePrinter table("GENERAL PARAMETERS:", indent, _verticalSeparator);
-
-    table.addColumn("parameter",   parameter,   util::ColumnTablePrinter::LEFT);
-    table.addColumn("value",       value);
-    table.addColumn("description", description, util::ColumnTablePrinter::LEFT);
-
-    table.print(cout, false, false);
-}
-
-
-void ConfigApp::_dumpWorkersAsTable(string const& indent) const {
-
-    // Extract attributes of each worker and put them into the corresponding
-    // columns. Translate tables cell values into strings when required.
-
-    vector<string> name;
-    vector<string> isEnabled;
-    vector<string> isReadOnly;
-    vector<string> dataDir;
-    vector<string> svcHost;
-    vector<string> svcPort;
-    vector<string> fsHost;
-    vector<string> fsPort;
-    vector<string> dbHost;
-    vector<string> dbPort;
-    vector<string> dbUser;
-    vector<string> loaderHost;
-    vector<string> loaderPort;
-    vector<string> loaderTmpDir;
-    vector<string> exporterHost;
-    vector<string> exporterPort;
-    vector<string> exporterTmpDir;
-
-    for (auto&& worker: _config->allWorkers()) {
-        auto const wi = _config->workerInfo(worker);
-        name.push_back(wi.name);
-        isEnabled.push_back(wi.isEnabled  ? "yes" : "no");
-        isReadOnly.push_back(wi.isReadOnly ? "yes" : "no");
-        dataDir.push_back(wi.dataDir);
-        svcHost.push_back(wi.svcHost);
-        svcPort.push_back(to_string(wi.svcPort));
-        fsHost.push_back(wi.fsHost);
-        fsPort.push_back(to_string(wi.fsPort));
-        dbHost.push_back(wi.dbHost);
-        dbPort.push_back(to_string(wi.dbPort));
-        dbUser.push_back(wi.dbUser);
-        loaderHost.push_back(wi.loaderHost);
-        loaderPort.push_back(to_string(wi.loaderPort));
-        loaderTmpDir.push_back(wi.loaderTmpDir);
-        exporterHost.push_back(wi.exporterHost);
-        exporterPort.push_back(to_string(wi.exporterPort));
-        exporterTmpDir.push_back(wi.exporterTmpDir);
-    }
-
-    util::ColumnTablePrinter table("WORKERS:", indent, _verticalSeparator);
-
-    table.addColumn("name", name, util::ColumnTablePrinter::LEFT);
-    table.addColumn("enabled", isEnabled);
-    table.addColumn("read-only", isReadOnly);
-    table.addColumn("Data directory", dataDir, util::ColumnTablePrinter::LEFT);
-    table.addColumn("Replication server", svcHost, util::ColumnTablePrinter::LEFT);
-    table.addColumn(":port", svcPort);
-    table.addColumn("File server", fsHost, util::ColumnTablePrinter::LEFT);
-    table.addColumn(":port", fsPort);
-    table.addColumn("Database server", dbHost, util::ColumnTablePrinter::LEFT);
-    table.addColumn(":port", dbPort);
-    table.addColumn(":user", dbUser, util::ColumnTablePrinter::LEFT);
-    table.addColumn("Ingest server", loaderHost, util::ColumnTablePrinter::LEFT);
-    table.addColumn(":port", loaderPort);
-    table.addColumn(":tmp", loaderTmpDir, util::ColumnTablePrinter::LEFT);
-    table.addColumn("Export server", exporterHost, util::ColumnTablePrinter::LEFT);
-    table.addColumn(":port", exporterPort);
-    table.addColumn(":tmp", exporterTmpDir, util::ColumnTablePrinter::LEFT);
-
-    table.print(cout, false, false);
-}
-
-
-void ConfigApp::_dumpFamiliesAsTable(string const& indent) const {
-
-    // Extract attributes of each family and put them into the corresponding
-    // columns.
-
-    vector<string>       name;
-    vector<size_t>       replicationLevel;
-    vector<unsigned int> numStripes;
-    vector<unsigned int> numSubStripes;
-
-    for (auto&& family: _config->databaseFamilies()) {
-        auto const fi = _config->databaseFamilyInfo(family);
-        name            .push_back(fi.name);
-        replicationLevel.push_back(fi.replicationLevel);
-        numStripes      .push_back(fi.numStripes);
-        numSubStripes   .push_back(fi.numSubStripes);
-    }
-
-    util::ColumnTablePrinter table("DATABASE FAMILIES:", indent, _verticalSeparator);
-
-    table.addColumn("name", name, util::ColumnTablePrinter::LEFT);
-    table.addColumn("replication level", replicationLevel);
-    table.addColumn("stripes", numStripes);
-    table.addColumn("sub-stripes", numSubStripes);
-
-    table.print(cout, false, false);
-}
-
-
-void ConfigApp::_dumpDatabasesAsTable(string const& indent) const {
-
-    // Extract attributes of each database and put them into the corresponding
-    // columns.
-
-    vector<string> familyName;
-    vector<string> databaseName;
-    vector<string> isPublished;
-    vector<string> tableName;
-    vector<string> isPartitioned;
-    vector<string> isDirector;
-    vector<string> directorKey;
-    vector<string> chunkIdColName;
-    vector<string> subChunkIdColName;
-
-    string const noSpecificFamily;
-    bool const allDatabases = true;
-    for (auto&& database: _config->databases(noSpecificFamily, allDatabases)) {
-        auto const di = _config->databaseInfo(database);
-        for (auto& table: di.partitionedTables) {
-            familyName   .push_back(di.family);
-            databaseName .push_back(di.name);
-            isPublished  .push_back(di.isPublished ? "yes" : "no");
-            tableName    .push_back(table);
-            isPartitioned.push_back("yes");
-            if (table == di.directorTable) {
-                isDirector .push_back("yes");
-                directorKey.push_back(di.directorTableKey);
-            } else {
-                isDirector .push_back("no");
-                directorKey.push_back("");
-            }
-            chunkIdColName   .push_back(di.chunkIdColName);
-            subChunkIdColName.push_back(di.subChunkIdColName);
-        }
-        for (auto& table: di.regularTables) {
-            familyName   .push_back(di.family);
-            databaseName .push_back(di.name);
-            isPublished  .push_back(di.isPublished ? "yes" : "no");
-            tableName    .push_back(table);
-            isPartitioned.push_back("no");
-            isDirector   .push_back("no");
-            directorKey  .push_back("");
-            chunkIdColName   .push_back("");
-            subChunkIdColName.push_back("");
-        }
-        if (di.partitionedTables.empty() and di.regularTables.empty()) {
-            familyName   .push_back(di.family);
-            databaseName .push_back(di.name);
-            isPublished  .push_back(di.isPublished ? "yes" : "no");
-            tableName    .push_back("<no tables>");
-            isPartitioned.push_back("n/a");
-            isDirector   .push_back("n/a");
-            directorKey  .push_back("n/a");
-            chunkIdColName   .push_back("n/a");
-            subChunkIdColName.push_back("n/a");
-        }
-    }
-
-    util::ColumnTablePrinter table("DATABASES & TABLES:", indent, _verticalSeparator);
-
-    table.addColumn("family",       familyName,   util::ColumnTablePrinter::LEFT);
-    table.addColumn("database",     databaseName, util::ColumnTablePrinter::LEFT);
-    table.addColumn(":published",   isPublished);
-    table.addColumn("table",        tableName,    util::ColumnTablePrinter::LEFT);
-    table.addColumn(":partitioned", isPartitioned);
-    table.addColumn(":director",     isDirector);
-    table.addColumn(":director-key", directorKey);
-    table.addColumn(":chunk-id-key",     chunkIdColName);
-    table.addColumn(":sub-chunk-id-key", subChunkIdColName);
-
-    table.print(cout, false, false);
 }
 
 
@@ -813,7 +477,7 @@ int ConfigApp::_configInitFile() const {
     string const context = "ConfigApp::" + string(__func__) + "  ";
 
     try {
-        if ("MYSQL" == _format) { cout << ConfigurationMySQL::dump2init(_config) << endl; }
+        if ("JSON" == _format) { cout << config()->toJson().dump() << endl; }
         else {
             LOGS(_log, LOG_LVL_ERROR, context << "operation failed, unsupported format: " << _format);
             return 1;
@@ -828,27 +492,19 @@ int ConfigApp::_configInitFile() const {
 
 
 int ConfigApp::_updateGeneral() {
-
     string const context = "ConfigApp::" + string(__func__) + "  ";
-
     try {
-        _general.requestBufferSizeBytes     .save(_config);
-        _general.retryTimeoutSec            .save(_config);
-        _general.controllerThreads          .save(_config);
-        _general.controllerHttpPort         .save(_config);
-        _general.controllerHttpThreads      .save(_config);
-        _general.controllerRequestTimeoutSec.save(_config);
-        _general.jobTimeoutSec              .save(_config);
-        _general.jobHeartbeatTimeoutSec     .save(_config);
-        _general.xrootdAutoNotify           .save(_config);
-        _general.xrootdHost                 .save(_config);
-        _general.xrootdPort                 .save(_config);
-        _general.xrootdTimeoutSec           .save(_config);
-        _general.databaseServicesPoolSize   .save(_config);
-        _general.workerTechnology           .save(_config);
-        _general.workerNumProcessingThreads .save(_config);
-        _general.fsNumProcessingThreads     .save(_config);
-        _general.workerFsBufferSizeBytes    .save(_config);
+        // Note that options specified by a user will have non-empty values.
+        for (auto&& categoryItr: _general) {
+            string const& category = categoryItr.first;
+            for (auto&& paramItr: categoryItr.second) {
+                string const& param = paramItr.first;
+                string const& value = paramItr.second;
+                if (!value.empty()) {
+                    config()->setFromString(category, param, value);
+                }
+            }
+        }
     } catch (exception const& ex) {
         LOGS(_log, LOG_LVL_ERROR, context << "operation failed, exception: " << ex.what());
         return 1;
@@ -861,109 +517,44 @@ int ConfigApp::_updateWorker() const {
 
     string const context = "ConfigApp::" + string(__func__) + "  ";
 
-    if (not _config->isKnownWorker(_workerInfo.name)) {
+    if (!config()->isKnownWorker(_workerInfo.name)) {
         LOGS(_log, LOG_LVL_ERROR, context << "unknown worker: '" << _workerInfo.name << "'");
         return 1;
     }
-    auto const info = _config->workerInfo(_workerInfo.name);
 
+    // Configuration changes will be updated in the transient object obtained from
+    // the database and then be saved to the the persistent configuration.
     try {
-        if (not _workerInfo.svcHost.empty()
-            and _workerInfo.svcHost != info.svcHost) {
+        auto info = config()->workerInfo(_workerInfo.name);
 
-            _config->setWorkerSvcHost(_workerInfo.name,
-                                      _workerInfo.svcHost);
-        }
-        if (_workerInfo.svcPort != 0 and
-            _workerInfo.svcPort != info.svcPort) {
+        WorkerInfo::update(_workerEnable,   info.isEnabled);
+        WorkerInfo::update(_workerReadOnly, info.isReadOnly);
 
-            _config->setWorkerSvcPort(_workerInfo.name,
-                                      _workerInfo.svcPort);
-        }
-        if (not _workerInfo.fsHost.empty()
-            and _workerInfo.fsHost != info.fsHost) {
+        WorkerInfo::update(_workerInfo.svcHost, info.svcHost);
+        WorkerInfo::update(_workerInfo.svcPort, info.svcPort);
 
-            _config->setWorkerFsHost(_workerInfo.name,
-                                     _workerInfo.fsHost);
-        }
-        if (_workerInfo.fsPort != 0 and
-            _workerInfo.fsPort != info.fsPort) {
+        WorkerInfo::update(_workerInfo.fsHost,  info.fsHost);
+        WorkerInfo::update(_workerInfo.fsPort,  info.fsPort);
+        WorkerInfo::update(_workerInfo.dataDir, info.dataDir);
 
-            _config->setWorkerFsPort(_workerInfo.name,
-                                     _workerInfo.fsPort);
-        }
-        if (not _workerInfo.dataDir.empty()
-            and _workerInfo.dataDir != info.dataDir) {
+        WorkerInfo::update(_workerInfo.dbHost,  info.dbHost);
+        WorkerInfo::update(_workerInfo.dbPort,  info.dbPort);
+        WorkerInfo::update(_workerInfo.dbUser,  info.dbUser);
 
-            _config->setWorkerDataDir(_workerInfo.name,
-                                      _workerInfo.dataDir);
-        }
-        if (not _workerInfo.dbHost.empty()
-            and _workerInfo.dbHost != info.dbHost) {
+        WorkerInfo::update(_workerInfo.loaderHost,   info.loaderHost);
+        WorkerInfo::update(_workerInfo.loaderPort,   info.loaderPort);
+        WorkerInfo::update(_workerInfo.loaderTmpDir, info.loaderTmpDir);
 
-            _config->setWorkerDbHost(_workerInfo.name,
-                                     _workerInfo.dbHost);
-        }
-        if (_workerInfo.dbPort != 0 and
-            _workerInfo.dbPort != info.dbPort) {
+        WorkerInfo::update(_workerInfo.exporterHost,   info.exporterHost);
+        WorkerInfo::update(_workerInfo.exporterPort,   info.exporterPort);
+        WorkerInfo::update(_workerInfo.exporterTmpDir, info.exporterTmpDir);
 
-            _config->setWorkerDbPort(_workerInfo.name,
-                                     _workerInfo.dbPort);
-        }
-        if (not _workerInfo.dbUser.empty()
-            and _workerInfo.dbUser != info.dbUser) {
+        WorkerInfo::update(_workerInfo.httpLoaderHost,   info.httpLoaderHost);
+        WorkerInfo::update(_workerInfo.httpLoaderPort,   info.httpLoaderPort);
+        WorkerInfo::update(_workerInfo.httpLoaderTmpDir, info.httpLoaderTmpDir);
 
-            _config->setWorkerDbUser(_workerInfo.name,
-                                     _workerInfo.dbUser);
-        }
-        if (_workerEnable > 0 and not info.isEnabled) {
-            _config->disableWorker(_workerInfo.name, false);
-        }
-        if (_workerEnable == 0 and info.isEnabled) {
-            _config->disableWorker(_workerInfo.name);
-        }
-        if (_workerReadOnly > 0 and not info.isReadOnly) {
-            _config->setWorkerReadOnly(_workerInfo.name);
-        }
-        if (_workerReadOnly == 0 and info.isReadOnly) {
-            _config->setWorkerReadOnly(_workerInfo.name, false);
-        }
-        if (not _workerInfo.loaderHost.empty()
-            and _workerInfo.loaderHost != info.loaderHost) {
+        auto const updatedInfo = config()->updateWorker(info);
 
-            _config->setWorkerLoaderHost(_workerInfo.name,
-                                         _workerInfo.loaderHost);
-        }
-        if (_workerInfo.loaderPort != 0 and
-            _workerInfo.loaderPort != info.loaderPort) {
-
-            _config->setWorkerLoaderPort(_workerInfo.name,
-                                         _workerInfo.loaderPort);
-        }
-        if (not _workerInfo.loaderTmpDir.empty()
-            and _workerInfo.loaderTmpDir != _workerInfo.loaderTmpDir) {
-
-            _config->setWorkerLoaderTmpDir(_workerInfo.name,
-                                           _workerInfo.loaderTmpDir);
-        }
-        if (not _workerInfo.exporterHost.empty()
-            and _workerInfo.exporterHost != info.exporterHost) {
-
-            _config->setWorkerExporterHost(_workerInfo.name,
-                                           _workerInfo.exporterHost);
-        }
-        if (_workerInfo.exporterPort != 0 and
-            _workerInfo.exporterPort != info.exporterPort) {
-
-            _config->setWorkerExporterPort(_workerInfo.name,
-                                           _workerInfo.exporterPort);
-        }
-        if (not _workerInfo.exporterTmpDir.empty()
-            and _workerInfo.exporterTmpDir != _workerInfo.exporterTmpDir) {
-
-            _config->setWorkerExporterTmpDir(_workerInfo.name,
-                                             _workerInfo.exporterTmpDir);
-        }
     } catch (exception const& ex) {
         LOGS(_log, LOG_LVL_ERROR, context << "operation failed, exception: " << ex.what());
         return 1;
@@ -976,12 +567,12 @@ int ConfigApp::_addWorker() const {
 
     string const context = "ConfigApp::" + string(__func__) + "  ";
 
-    if (_config->isKnownWorker(_workerInfo.name)) {
+    if (config()->isKnownWorker(_workerInfo.name)) {
         LOGS(_log, LOG_LVL_ERROR, context << "the worker already exists: '" << _workerInfo.name << "'");
         return 1;
     }
     try {
-        _config->addWorker(_workerInfo);
+        config()->addWorker(_workerInfo);
     } catch (exception const& ex) {
         LOGS(_log, LOG_LVL_ERROR, context << "operation failed, exception: " << ex.what());
         return 1;
@@ -994,14 +585,14 @@ int ConfigApp::_deleteWorker() const {
 
     string const context = "ConfigApp::" + string(__func__) + "  ";
 
-    if (not _config->isKnownWorker(_workerInfo.name)) {
+    if (not config()->isKnownWorker(_workerInfo.name)) {
         LOGS(_log, LOG_LVL_ERROR, context << "the worker doesn't exists: '" << _workerInfo.name << "'");
         return 1;
     }
 
-    auto const info = _config->workerInfo(_workerInfo.name);
+    auto const info = config()->workerInfo(_workerInfo.name);
     try {
-        _config->deleteWorker(_workerInfo.name);
+        config()->deleteWorker(_workerInfo.name);
     } catch (exception const& ex) {
         LOGS(_log, LOG_LVL_ERROR, context << "operation failed, exception: " << ex.what());
         return 1;
@@ -1031,7 +622,7 @@ int ConfigApp::_addFamily() {
         return 1;
     }
     try {
-        _config->addDatabaseFamily(_familyInfo);
+        config()->addDatabaseFamily(_familyInfo);
     } catch (exception const& ex) {
         LOGS(_log, LOG_LVL_ERROR, context << "operation failed, exception: " << ex.what());
         return 1;
@@ -1049,7 +640,7 @@ int ConfigApp::_deleteFamily() {
         return 1;
     }
     try {
-        _config->deleteDatabaseFamily(_familyInfo.name);
+        config()->deleteDatabaseFamily(_familyInfo.name);
     } catch (exception const& ex) {
         LOGS(_log, LOG_LVL_ERROR, context << "operation failed, exception: " << ex.what());
         return 1;
@@ -1071,7 +662,7 @@ int ConfigApp::_addDatabase() {
         return 1;
     }
     try {
-        _config->addDatabase(_databaseInfo);
+        config()->addDatabase(_databaseInfo.name, _databaseInfo.family);
     } catch (exception const& ex) {
         LOGS(_log, LOG_LVL_ERROR, context << "operation failed, exception: " << ex.what());
         return 1;
@@ -1089,7 +680,7 @@ int ConfigApp::_publishDatabase() {
         return 1;
     }
     try {
-        _config->publishDatabase(_databaseInfo.name);
+        config()->publishDatabase(_databaseInfo.name);
     } catch (exception const& ex) {
         LOGS(_log, LOG_LVL_ERROR, context << "operation failed, exception: " << ex.what());
         return 1;
@@ -1107,7 +698,7 @@ int ConfigApp::_deleteDatabase() {
         return 1;
     }
     try {
-        _config->deleteDatabase(_databaseInfo.name);
+        config()->deleteDatabase(_databaseInfo.name);
     } catch (exception const& ex) {
         LOGS(_log, LOG_LVL_ERROR, context << "operation failed, exception: " << ex.what());
         return 1;
@@ -1130,7 +721,7 @@ int ConfigApp::_addTable() {
     }
     try {
         list<SqlColDef> noColumns;
-        _config->addTable(_database, _table, _isPartitioned, noColumns,
+        config()->addTable(_database, _table, _isPartitioned, noColumns,
                           _isDirector, _directorKey,
                           _chunkIdColName, _subChunkIdColName, _latitudeColName, _longitudeColName);
     } catch (exception const& ex) {
@@ -1154,7 +745,7 @@ int ConfigApp::_deleteTable() {
         return 1;
     }
     try {
-        _config->deleteTable(_database, _table);
+        config()->deleteTable(_database, _table);
     } catch (exception const& ex) {
         LOGS(_log, LOG_LVL_ERROR, context << "operation failed, exception: " << ex.what());
         return 1;

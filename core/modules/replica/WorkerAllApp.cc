@@ -119,7 +119,7 @@ int WorkerAllApp::runImpl() {
                 serviceProvider()->config()->qservWorkerDatabasePassword(),
                 ""
             ),
-            serviceProvider()->config()->databaseServicesPoolSize()
+            serviceProvider()->config()->get<size_t>("database", "services_pool_size")
         );
         workerRequestFactory[workerName] = make_shared<WorkerRequestFactory>(serviceProvider(), connectionPool);
     }

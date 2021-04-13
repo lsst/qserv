@@ -154,11 +154,11 @@ int MySQLTestApp::runImpl() {
 
     auto const config = serviceProvider()->config();
     database::mysql::ConnectionParams const connectionParams(
-        config->databaseHost(),
-        config->databasePort(),
-        config->databaseUser(),
-        config->databasePassword(),
-        config->databaseName()
+        config->get<string>("database", "host"),
+        config->get<uint16_t>("database", "port"),
+        config->get<string>("database", "user"),
+        config->get<string>("database", "password"),
+        config->get<string>("database", "name")
     );
     _conn = database::mysql::Connection::open(connectionParams);
 

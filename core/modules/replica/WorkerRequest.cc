@@ -96,7 +96,7 @@ WorkerRequest::WorkerRequest(ServiceProvider::Ptr const& serviceProvider,
         _priority(priority),
         _onExpired(onExpired),
         _requestExpirationIvalSec(requestExpirationIvalSec == 0
-            ? serviceProvider->config()->controllerRequestTimeoutSec()
+            ? serviceProvider->config()->get<unsigned int>("controller", "request_timeout_sec")
             : requestExpirationIvalSec),
         _requestExpirationTimer(serviceProvider->io_service()),
         _status(STATUS_NONE),

@@ -67,8 +67,8 @@ HttpProcessor::HttpProcessor(Controller::Ptr const& controller,
                              HttpProcessorConfig const& processorConfig,
                              HealthMonitorTask::Ptr const& healthMonitorTask)
     :   HttpSvc(controller->serviceProvider(),
-                controller->serviceProvider()->config()->controllerHttpPort(),
-                controller->serviceProvider()->config()->controllerHttpThreads(),
+                controller->serviceProvider()->config()->get<uint16_t>("controller", "http_server_port"),
+                controller->serviceProvider()->config()->get<size_t>("controller", "http_server_threads"),
                 processorConfig.authKey,
                 processorConfig.adminAuthKey),
         EventLogger(controller, taskName),
@@ -255,7 +255,7 @@ void HttpProcessor::registerServices() {
             }
     );
     httpServer()->addHandler(
-            "DELETE", "/replication/config/table/:table",
+            "DELETE", "/replication/config/table/:database/:table",
             [self](qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp) {
                 HttpConfigurationModule::process(
                         self->controller(), self->name(), self->_processorConfig,

@@ -228,12 +228,9 @@ void DeleteReplicaJob::startImpl(util::Lock const& lock) {
 
     // Notify Qserv about the change in a disposition of replicas
     // if the notification is required before actually deleting the replica.
-    //
     // ATTENTION: only for ACTUALLY participating databases
-
     ServiceProvider::Ptr const serviceProvider = controller()->serviceProvider();
-    if (not serviceProvider->config()->xrootdAutoNotify()) {
-
+    if (serviceProvider->config()->get<unsigned int>("xrootd", "auto_notify") != 0) {
         // Start right away
         _beginDeleteReplica(lock);
 

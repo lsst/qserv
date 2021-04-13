@@ -179,7 +179,7 @@ json HttpIngestModule::_addDatabase() {
     auto const databaseServices = controller()->serviceProvider()->databaseServices();
 
     DatabaseInfo databaseInfo;
-    databaseInfo.name = body().required<string>("database");
+    string const database = body().required<string>("database");
 
     auto const numStripes    = body().required<unsigned int>("num_stripes");
     auto const numSubStripes = body().required<unsigned int>("num_sub_stripes");
@@ -187,7 +187,7 @@ json HttpIngestModule::_addDatabase() {
     auto const enableAutoBuildSecondaryIndex = body().optional<unsigned int>("auto_build_secondary_index", 1);
     auto const enableLocalLoadSecondaryIndex = body().optional<unsigned int>("local_load_secondary_index", 0);
 
-    debug(__func__, "database="      + databaseInfo.name);
+    debug(__func__, "database="      + database);
     debug(__func__, "numStripes="    + to_string(numStripes));
     debug(__func__, "numSubStripes=" + to_string(numSubStripes));
     debug(__func__, "overlap="       + to_string(overlap));
@@ -199,24 +199,24 @@ json HttpIngestModule::_addDatabase() {
     // Find an appropriate database family for the database. If none
     // found then create a new one named after the database.
 
-    string familyName;
-    for (auto&& candidateFamilyName: config->databaseFamilies()) {
-        auto const familyInfo = config->databaseFamilyInfo(candidateFamilyName);
+    string family;
+    for (auto&& candidateFamily: config->databaseFamilies()) {
+        auto const familyInfo = config->databaseFamilyInfo(candidateFamily);
         if ((familyInfo.numStripes == numStripes) and (familyInfo.numSubStripes == numSubStripes)
             and (abs(familyInfo.overlap - overlap) <= numeric_limits<double>::epsilon())) {
-            familyName = candidateFamilyName;
+            family = candidateFamily;
         }
     }
-    if (familyName.empty()) {
+    if (family.empty()) {
 
         // When creating the family use partitioning attributes as the name of the family
         // as shown below:
         //
         //   layout_<numStripes>_<numSubStripes>
 
-        familyName = "layout_" + to_string(numStripes) + "_" + to_string(numSubStripes);
+        family = "layout_" + to_string(numStripes) + "_" + to_string(numSubStripes);
         DatabaseFamilyInfo familyInfo;
-        familyInfo.name = familyName;
+        familyInfo.name = family;
         familyInfo.replicationLevel = 1;
         familyInfo.numStripes = numStripes;
         familyInfo.numSubStripes = numSubStripes;
@@ -228,14 +228,14 @@ json HttpIngestModule::_addDatabase() {
 
     bool const allWorkers = true;
     auto const job = SqlCreateDbJob::create(
-        databaseInfo.name,
+        database,
         allWorkers,
         controller()
     );
     job->start();
-    logJobStartedEvent(SqlCreateDbJob::typeName(), job, familyName);
+    logJobStartedEvent(SqlCreateDbJob::typeName(), job, family);
     job->wait();
-    logJobFinishedEvent(SqlCreateDbJob::typeName(), job, familyName);
+    logJobFinishedEvent(SqlCreateDbJob::typeName(), job, family);
 
     string error = ::jobCompletionErrorIfAny(job, "database creation failed");
     if (not error.empty()) throw HttpError(__func__, error);
@@ -244,11 +244,7 @@ json HttpIngestModule::_addDatabase() {
     // Note, this operation will fail if the database with the name
     // already exists. Also, the new database won't have any tables
     // until they will be added as a separate step.
-
-    databaseInfo.family = familyName;
-    databaseInfo.isPublished = false;
-
-    databaseInfo = config->addDatabase(databaseInfo);
+    databaseInfo = config->addDatabase(database, family);
 
     // Register a requested mode for building the secondary index. If a value
     // of the parameter is set to 'true' (or '1' in the database) then contributions
@@ -710,7 +706,7 @@ void HttpIngestModule::_grantDatabaseAccess(DatabaseInfo const& databaseInfo,
     auto const config = controller()->serviceProvider()->config();
     auto const job = SqlGrantAccessJob::create(
         databaseInfo.name,
-        config->qservMasterDatabaseUser(),
+        config->get<string>("database", "qserv_master_user"),
         allWorkers,
         controller()
     );
@@ -849,7 +845,7 @@ void HttpIngestModule::_publishDatabaseInMaster(DatabaseInfo const& databaseInfo
 
         statements.push_back(
             "GRANT ALL ON " + h.conn->sqlId(databaseInfo.name) + ".* TO " +
-            h.conn->sqlValue(config->qservMasterDatabaseUser()) + "@" +
+            h.conn->sqlValue(config->get<string>("database", "qserv_master_user")) + "@" +
             h.conn->sqlValue("localhost"));
 
         h.conn->execute([&statements](decltype(h.conn) conn) {
@@ -1009,7 +1005,7 @@ json HttpIngestModule::_buildEmptyChunksListImpl(string const& database,
         });
     } else {
         auto const file = "empty_" + database + ".txt";
-        auto const filePath = fs::path(config->controllerEmptyChunksDir()) / file;
+        auto const filePath = fs::path(config->get<string>("controller", "empty_chunks_dir")) / file;
 
         if (not force) {
             boost::system::error_code ec;

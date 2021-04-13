@@ -69,8 +69,8 @@ database::mysql::Connection::Ptr HttpModule::qservMasterDbConnection(string cons
     auto const config = controller()->serviceProvider()->config();
     return database::mysql::Connection::open(
         database::mysql::ConnectionParams(
-            config->qservMasterDatabaseHost(),
-            config->qservMasterDatabasePort(),
+            config->get<string>("database", "qserv_master_host"),
+            config->get<uint16_t>("database", "qserv_master_port"),
             "root",
             Configuration::qservMasterDatabasePassword(),
             database
@@ -85,13 +85,13 @@ shared_ptr<css::CssAccess> HttpModule::qservCssAccess(bool readOnly) const {
     cssConfig["technology"] = "mysql";
     // Address translation is required because CSS MySQL connector doesn't set
     // the TCP protocol option for 'localhost' and tries to connect via UNIX socket.
-    cssConfig["hostname"] = config->qservMasterDatabaseHost() == "localhost" ?
-            "127.0.0.1" : config->qservMasterDatabaseHost();
-    cssConfig["port"] = to_string(config->qservMasterDatabasePort());
+    cssConfig["hostname"] = config->get<string>("database", "qserv_master_host") == "localhost" ?
+            "127.0.0.1" : config->get<string>("database", "qserv_master_host");
+    cssConfig["port"] = to_string(config->get<uint16_t>("database", "qserv_master_port"));
     cssConfig["username"] = "root";
     cssConfig["password"] = Configuration::qservMasterDatabasePassword();
     cssConfig["database"] = "qservCssData";
-    return css::CssAccess::createFromConfig(cssConfig, config->controllerEmptyChunksDir());
+    return css::CssAccess::createFromConfig(cssConfig, config->get<string>("controller", "empty_chunks_dir"));
 }
 
 
