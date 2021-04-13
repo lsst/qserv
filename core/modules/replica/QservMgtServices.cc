@@ -459,8 +459,8 @@ XrdSsiService* QservMgtServices::_xrdSsiService() {
     if (_service != nullptr) return _service;
 
     string const serviceProviderLocation =
-        _serviceProvider->config()->xrootdHost() + ":" +
-        to_string(_serviceProvider->config()->xrootdPort());
+        _serviceProvider->config()->get<string>("xrootd", "host") + ":" +
+        to_string(_serviceProvider->config()->get<uint16_t>("xrootd", "port"));
 
     XrdSsiErrInfo errInfo;
     unsigned int const intervalBetweenReconnectsMs = 1000;

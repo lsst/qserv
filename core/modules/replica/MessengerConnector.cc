@@ -81,13 +81,13 @@ MessengerConnector::MessengerConnector(ServiceProvider::Ptr const& serviceProvid
                                        string const& worker)
     :   _serviceProvider(serviceProvider),
         _workerInfo(serviceProvider->config()->workerInfo(worker)),
-        _bufferCapacityBytes(serviceProvider->config()->requestBufferSizeBytes()),
-        _timerIvalSec(serviceProvider->config()->retryTimeoutSec()),
+        _bufferCapacityBytes(serviceProvider->config()->get<size_t>("common", "request_buf_size_bytes")),
+        _timerIvalSec(serviceProvider->config()->get<unsigned int>("common", "request_retry_interval_sec")),
         _state(State::STATE_INITIAL),
         _resolver(io_service),
         _socket(io_service),
         _timer(io_service),
-        _inBuffer(serviceProvider->config()->requestBufferSizeBytes()) {
+        _inBuffer(serviceProvider->config()->get<size_t>("common", "request_buf_size_bytes")) {
 }
 
 

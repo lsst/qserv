@@ -38,7 +38,6 @@
 #include "global/constants.h"
 #include "replica/ChunkedTable.h"
 #include "replica/Configuration.h"
-#include "replica/ConfigurationIFace.h"
 #include "replica/DatabaseMySQL.h"
 #include "replica/DatabaseServices.h"
 #include "replica/FileUtils.h"
@@ -138,8 +137,7 @@ ExportServerConnection::ExportServerConnection(ServiceProvider::Ptr const& servi
         _workerInfo(serviceProvider->config()->workerInfo(workerName)),
         _socket(io_service),
         _bufferPtr(make_shared<ProtocolBuffer>(
-            serviceProvider->config()->requestBufferSizeBytes()
-        )) {
+            serviceProvider->config()->get<size_t>("common", "request_buf_size_bytes"))) {
 }
 
 

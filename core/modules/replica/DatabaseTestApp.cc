@@ -310,7 +310,7 @@ DatabaseTestApp::DatabaseTestApp(int argc, char* argv[])
 int DatabaseTestApp::runImpl() {
 
     if ("CONFIGURATION" == _operation) {
-        cout << serviceProvider()->config()->asString() << endl;
+        cout << serviceProvider()->config()->toJson().dump() << endl;
     } else if ("DATABASES" == _operation) {
         auto const databases = serviceProvider()->config()->databases(
             _databaseFamilyName,

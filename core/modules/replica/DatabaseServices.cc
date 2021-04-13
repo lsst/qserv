@@ -197,30 +197,17 @@ json DatabaseIngestParam::toJson() const {
 }
 
 
-DatabaseServices::Ptr DatabaseServices::create(Configuration::Ptr const& configuration) {
-
-    // If the configuration is pulled from a database then *try*
-    // using the corresponding technology.
-
-    if ("mysql" == configuration->databaseTechnology()) {
-        try {
-            return DatabaseServices::Ptr(new DatabaseServicesMySQL(configuration));
-        } catch (database::mysql::Error const& ex) {
-            LOGS(_log, LOG_LVL_ERROR,
-                 "DatabaseServices::" << __func__
-                 << "  failed to instantiate MySQL-based database services"
-                 << ", error: " << ex.what()
-                 << ", no such service will be available to the application.");
-             throw runtime_error(
-                    "DatabaseServices::" + string(__func__) +
-                    "  failed to instantiate MySQL-based database services, error: " +
-                    string(ex.what()));
-        }
+DatabaseServices::Ptr DatabaseServices::create(Configuration::Ptr const& config) {
+    try {
+        return DatabaseServices::Ptr(new DatabaseServicesMySQL(config));
+    } catch (exception const& ex) {
+        LOGS(_log, LOG_LVL_ERROR,
+                "DatabaseServices::" << __func__
+                << "  failed to instantiate MySQL-based database services"
+                << ", error: " << ex.what()
+                << ", no such service will be available to the application.");
+        throw;
     }
-    throw runtime_error(
-            "DatabaseServices::" + string(__func__) +
-            "  no suitable plugin found for database technology: " +
-            configuration->databaseTechnology());
 }
 
 }}} // namespace lsst::qserv::replica

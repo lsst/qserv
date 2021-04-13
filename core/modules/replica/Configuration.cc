@@ -22,19 +22,18 @@
 // Class header
 #include "replica/Configuration.h"
 
-// System headers
-#include <algorithm>
-#include <stdexcept>
-
 // Qserv headers
-#include "replica/ConfigurationBase.h"
-#include "replica/ConfigurationTypes.h"
+#include "replica/ConfigParserJSON.h"
+#include "replica/ConfigParserMySQL.h"
+#include "replica/DatabaseMySQL.h"
 
 // LSST headers
 #include "lsst/log/Log.h"
 
 using namespace std;
 using json = nlohmann::json;
+using namespace lsst::qserv::replica;
+namespace util = lsst::qserv::util;
 
 namespace {
 
@@ -46,795 +45,781 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
-// These parameters are allowed to be changed, and they are set globally
-// for an application (process).
-bool         Configuration::_databaseAllowReconnect        = true;
-unsigned int Configuration::_databaseConnectTimeoutSec     = 3600;
-unsigned int Configuration::_databaseMaxReconnects         = 1;
+// These (static) data members are allowed to be changed, and they are set
+// globally for an application (process).
+bool         Configuration::_databaseAllowReconnect = true;
+unsigned int Configuration::_databaseConnectTimeoutSec = 3600;
+unsigned int Configuration::_databaseMaxReconnects = 1;
 unsigned int Configuration::_databaseTransactionTimeoutSec = 3600;
-string       Configuration::_qservMasterDatabasePassword   = "";
-string       Configuration::_qservWorkerDatabasePassword   = "";
-bool         Configuration::_xrootdAllowReconnect          = true;
-unsigned int Configuration::_xrootdConnectTimeoutSec       = 3600;
+string       Configuration::_qservMasterDatabasePassword = "";
+string       Configuration::_qservWorkerDatabasePassword = "";
+bool         Configuration::_xrootdAllowReconnect = true;
+unsigned int Configuration::_xrootdConnectTimeoutSec = 3600;
 
 
-string Configuration::setQservMasterDatabasePassword(string const& newPassword) {
+void Configuration::setQservMasterDatabasePassword(string const& newPassword) {
     string result = newPassword;
     swap(result, _qservMasterDatabasePassword);
-    return result;
 }
 
 
-string Configuration::setQservWorkerDatabasePassword(string const& newPassword) {
+void Configuration::setQservWorkerDatabasePassword(string const& newPassword) {
     string result = newPassword;
     swap(result, _qservWorkerDatabasePassword);
-    return result;
 }
 
 
-bool Configuration::setDatabaseAllowReconnect(bool value) {
+void Configuration::setDatabaseAllowReconnect(bool value) {
     swap(value, _databaseAllowReconnect);
-    return value;
 }
 
 
-unsigned int Configuration::setDatabaseConnectTimeoutSec(unsigned int value) {
+void Configuration::setDatabaseConnectTimeoutSec(unsigned int value) {
     if (0 == value) {
         throw invalid_argument(
                 "Configuration::" + string(__func__) + "  0 is not allowed as a value");
     }
     swap(value, _databaseConnectTimeoutSec);
-    return value;
 }
 
 
-unsigned int Configuration::setDatabaseMaxReconnects(unsigned int value) {
+void Configuration::setDatabaseMaxReconnects(unsigned int value) {
     if (0 == value) {
         throw invalid_argument(
                 "Configuration::" + string(__func__) + "  0 is not allowed as a value");
     }
     swap(value, _databaseMaxReconnects);
-    return value;
 }
 
 
-unsigned int Configuration::setDatabaseTransactionTimeoutSec(unsigned int value) {
+void Configuration::setDatabaseTransactionTimeoutSec(unsigned int value) {
     if (0 == value) {
         throw invalid_argument(
                 "Configuration::" + string(__func__) + "  0 is not allowed as a value");
     }
     swap(value, _databaseTransactionTimeoutSec);
-    return value;
 }
 
 
-bool Configuration::setXrootdAllowReconnect(bool value) {
+void Configuration::setXrootdAllowReconnect(bool value) {
     swap(value, _xrootdAllowReconnect);
-    return value;
-
 }
 
 
-unsigned int Configuration::setXrootdConnectTimeoutSec(unsigned int value) {
+void Configuration::setXrootdConnectTimeoutSec(unsigned int value) {
     if (0 == value) {
         throw invalid_argument(
                 "Configuration::" + string(__func__) + "  0 is not allowed as a value");
     }
     swap(value, _xrootdConnectTimeoutSec);
-    return value;
-
-}
-
-
-json Configuration::toJson(Configuration::Ptr const& config) {
-
-    json configJson;
-
-    // General parameters
-
-    ConfigurationGeneralParams general;
-    configJson["general"] = general.toJson(config);
-
-    // Workers
-
-    json workersJson;
-    for (auto&& worker: config->allWorkers()) {
-        auto const wi = config->workerInfo(worker);
-        workersJson.push_back(wi.toJson());
-    }
-    configJson["workers"] = workersJson;
-
-    // Database families, databases, and tables
-
-    json familiesJson;
-    for (auto&& family: config->databaseFamilies()) {
-        auto const fi = config->databaseFamilyInfo(family);
-        json familyJson = fi.toJson();
-        bool const allDatabases = true;
-        for (auto&& database: config->databases(family, allDatabases)) {
-            auto const di = config->databaseInfo(database);
-            familyJson["databases"].push_back(di.toJson());
-        }
-        familiesJson.push_back(familyJson);
-    }
-    configJson["families"] = familiesJson;
-
-    return configJson;
 }
 
 
 Configuration::Ptr Configuration::load(string const& configUrl) {
-    return Ptr(new Configuration(ConfigurationBase::load(configUrl)));
+    Ptr const ptr(new Configuration());
+    util::Lock const lock(ptr->_mtx, _context(__func__));
+    bool const reset = false;
+    ptr->_load(lock, configUrl, reset);
+    return ptr;
 }
 
 
-Configuration::Ptr Configuration::load(map<string, string> const& kvMap) {
-    return Ptr(new Configuration(ConfigurationBase::load(kvMap)));
+Configuration::Ptr Configuration::load(json const& obj) {
+    Ptr const ptr(new Configuration());
+    util::Lock const lock(ptr->_mtx, _context(__func__));
+    bool const reset = false;
+    ptr->_load(lock, obj, reset);
+    return ptr;
+}
+
+
+string Configuration::_context(string const& func) {
+    return "CONFIG  " + func;
+}
+
+
+Configuration::Configuration()
+    :   _data(ConfigurationSchema::defaultConfigData()) {
 }
 
 
 void Configuration::reload() {
-    util::Lock lock(_mtx, context(__func__));
-    if (_impl->prefix() != "map") {
-        bool const showPassword = true;
-        _impl = ConfigurationBase::load(_impl->configUrl(showPassword));
+    util::Lock const lock(_mtx, _context(__func__));
+    if (!_configUrl.empty()) {
+        bool const reset = true;
+        _load(lock, _configUrl, reset);
     }
 }
 
 
 void Configuration::reload(string const& configUrl) {
-    util::Lock lock(_mtx, context(__func__));
-    _impl = ConfigurationBase::load(configUrl);
+    util::Lock const lock(_mtx, _context(__func__));
+    bool const reset = true;
+    _load(lock, configUrl, reset);
 }
 
 
-void Configuration::reload(std::map<std::string, std::string> const& kvMap) {
-    util::Lock lock(_mtx, context(__func__));
-    if (_impl->prefix() != "map") _impl = ConfigurationBase::load(kvMap);
-}
-
-    
-string Configuration::prefix() const {
-    util::Lock lock(_mtx, context(__func__));
-    return _impl->prefix();
+void Configuration::reload(json const& obj) {
+    util::Lock const lock(_mtx, _context(__func__));
+    bool const reset = true;
+    _load(lock, obj, reset);
 }
 
 
 string Configuration::configUrl(bool showPassword) const {
-    util::Lock lock(_mtx, context(__func__));
-    return _impl->configUrl(showPassword);    
+    util::Lock const lock(_mtx, _context(__func__));
+    if (_connectionPtr == nullptr) return string();
+    return _connectionParams.toString(showPassword);
 }
 
+
+map<string, set<string>> Configuration::parameters() const {
+    return ConfigurationSchema::parameters();
+}
+
+
+string Configuration::getAsString(string const& category, string const& param) const {
+    util::Lock const lock(_mtx, _context(__func__));
+    return ConfigurationSchema::json2string(
+            _context(__func__) + " category: '" + category + "' param: '" + param + "' ",
+            _get(lock, category, param));
+}
+
+
+void Configuration::setFromString(string const& category, string const& param,
+                                  string const& val, bool updatePersistentState) {
+    json obj;
+    {
+        util::Lock const lock(_mtx, _context(__func__));
+        obj = _get(lock, category, param);
+    }
+    if (obj.is_string()) {
+        Configuration::set<string>(category, param, val, updatePersistentState);
+    } else if (obj.is_number_unsigned()) {
+        Configuration::set<uint64_t>(category, param, stoull(val), updatePersistentState);
+    } else if (obj.is_number_integer()) {
+        Configuration::set<int64_t>(category, param, stoll(val), updatePersistentState);
+    } else if (obj.is_number_float()) {
+        Configuration::set<double>(category, param, stod(val), updatePersistentState);
+    } else {
+        throw invalid_argument(
+                _context(__func__) + " unsupported data type of category: '" + category + "' param: '" + param
+                + "' value: " + val + "'.");
+    }
+}
+
+
+void Configuration::_load(util::Lock const& lock, json const& obj, bool reset) {
+
+    if (reset) {
+        _data = ConfigurationSchema::defaultConfigData();
+        _workers.clear();
+    }
+    _configUrl = string();
+    _connectionPtr = nullptr;
+
+    // Validate and update configuration parameters.
+    // Catch exceptions for error reporting.
+    ConfigParserJSON parser(_data, _workers, _databaseFamilies, _databases);
+    parser.parse(obj);
+
+    bool const showPassword = false;
+    LOGS(_log, LOG_LVL_DEBUG, _context() << _toJson(lock, showPassword).dump());
+}
+
+
+void Configuration::_load(util::Lock const& lock, string const& configUrl, bool reset) {
+
+    if (reset) {
+        _data = ConfigurationSchema::defaultConfigData();
+        _workers.clear();
+    }
+    _configUrl = configUrl;
+
+    // When initializing the connection object use the current defaults for the relevant
+    // fields that are missing in the connection string. After that update the database
+    // info in the configuration to match values of the parameters that were parsed
+    // in the connection string.
+    _connectionParams = database::mysql::ConnectionParams::parse(
+            configUrl,
+            _get(lock, "database", "host").get<string>(),
+            _get(lock, "database", "port").get<uint16_t>(),
+            _get(lock, "database", "user").get<string>(),
+            _get(lock, "database", "password").get<string>()
+    );
+    _data["database"]["host"] = _connectionParams.host;
+    _data["database"]["port"] = _connectionParams.port;
+    _data["database"]["user"] = _connectionParams.user;
+    _data["database"]["password"] = _connectionParams.password;
+    _data["database"]["name"] = _connectionParams.database;
+
+    // Read data, validate and update configuration parameters.
+    _connectionPtr = database::mysql::Connection::open(_connectionParams);
+    _connectionPtr->executeInOwnTransaction([&](decltype(_connectionPtr) conn) {
+        ConfigParserMySQL parser(conn, _data, _workers, _databaseFamilies, _databases);
+        parser.parse();
+    });
+
+    bool const showPassword = false;
+    LOGS(_log, LOG_LVL_DEBUG, _context() << _toJson(lock, showPassword).dump());
+}
+
+
 vector<string> Configuration::workers(bool isEnabled, bool isReadOnly) const {
-    util::Lock lock(_mtx, context(__func__));
-    return _impl->workers(isEnabled, isReadOnly);
+    util::Lock const lock(_mtx, _context(__func__));
+    vector<string> names;
+    for (auto&& itr: _workers) {
+        string const& name = itr.first;
+        WorkerInfo const& info = itr.second;
+        if (isEnabled) {
+            if (info.isEnabled && (isReadOnly == info.isReadOnly)) {
+                names.push_back(name);
+            }
+        } else {
+            if (!info.isEnabled) {
+                names.push_back(name);
+            }
+        }
+    }
+    return names;
 }
 
 
 vector<string> Configuration::allWorkers() const {
-    util::Lock lock(_mtx, context(__func__));
-    return _impl->allWorkers();
-}
-
-
-size_t Configuration::requestBufferSizeBytes() const {
-    util::Lock lock(_mtx, context(__func__));
-    return _impl->requestBufferSizeBytes();
-}
-
-
-void Configuration::setRequestBufferSizeBytes(size_t val,
-                                              bool updatePersistentState) {
-    util::Lock lock(_mtx, context(__func__));
-    _impl->setRequestBufferSizeBytes(val, updatePersistentState);
-}
-
-
-unsigned int Configuration::retryTimeoutSec() const {
-    util::Lock lock(_mtx, context(__func__));
-    return _impl->retryTimeoutSec();
-}
-
-
-void Configuration::setRetryTimeoutSec(unsigned int val,
-                                       bool updatePersistentState) {
-    util::Lock lock(_mtx, context(__func__));
-    _impl->setRetryTimeoutSec(val, updatePersistentState);
-}
-
-
-size_t Configuration::controllerThreads() const {
-    util::Lock lock(_mtx, context(__func__));
-    return _impl->controllerThreads();
-}
-
-
-void Configuration::setControllerThreads(size_t val,
-                                         bool updatePersistentState) {
-    util::Lock lock(_mtx, context(__func__));
-    _impl->setControllerThreads(val, updatePersistentState);
-}
-
-
-uint16_t Configuration::controllerHttpPort() const {
-    util::Lock lock(_mtx, context(__func__));
-    return _impl->controllerHttpPort();
-}
-
-
-void Configuration::setControllerHttpPort(uint16_t val,
-                                          bool updatePersistentState) {
-    util::Lock lock(_mtx, context(__func__));
-    _impl->setControllerHttpPort(val, updatePersistentState);
-}
-
-
-size_t Configuration::controllerHttpThreads() const {
-    util::Lock lock(_mtx, context(__func__));
-    return _impl->controllerHttpThreads();
-}
-
-
-void Configuration::setControllerHttpThreads(size_t val,
-                                             bool updatePersistentState) {
-    util::Lock lock(_mtx, context(__func__));
-    _impl->setControllerHttpThreads(val, updatePersistentState);
-}
-
-
-unsigned int Configuration::controllerRequestTimeoutSec() const {
-    util::Lock lock(_mtx, context(__func__));
-    return _impl->controllerRequestTimeoutSec();
-}
-
-
-string Configuration::controllerEmptyChunksDir() const {
-    util::Lock lock(_mtx, context(__func__));
-    return _impl->controllerEmptyChunksDir();
-}
-
-
-void Configuration::setControllerRequestTimeoutSec(unsigned int val,
-                                                   bool updatePersistentState) {
-    util::Lock lock(_mtx, context(__func__));
-    _impl->setControllerRequestTimeoutSec(val, updatePersistentState);
-}
-
-
-unsigned int Configuration::jobTimeoutSec() const {
-    util::Lock lock(_mtx, context(__func__));
-    return _impl->jobTimeoutSec();
-}
-
-
-void Configuration::setJobTimeoutSec(unsigned int val,
-                                     bool updatePersistentState) {
-    util::Lock lock(_mtx, context(__func__));
-    _impl->setJobTimeoutSec(val, updatePersistentState);
-}
-
-
-unsigned int Configuration::jobHeartbeatTimeoutSec() const {
-    util::Lock lock(_mtx, context(__func__));
-    return _impl->jobHeartbeatTimeoutSec();
-}
-
-
-void Configuration::setJobHeartbeatTimeoutSec(unsigned int val,
-                                              bool updatePersistentState) {
-    util::Lock lock(_mtx, context(__func__));
-    _impl->setJobHeartbeatTimeoutSec(val, updatePersistentState);
-}
-
-
-bool Configuration::xrootdAutoNotify() const {
-    util::Lock lock(_mtx, context(__func__));
-    return _impl->xrootdAutoNotify();
-}
-
-
-void Configuration::setXrootdAutoNotify(bool val,
-                                        bool updatePersistentState) {
-    util::Lock lock(_mtx, context(__func__));
-    _impl->setXrootdAutoNotify(val, updatePersistentState);
-}
-
-
-string Configuration::xrootdHost() const {
-    util::Lock lock(_mtx, context(__func__));
-    return _impl->xrootdHost();
-}
-
-
-void Configuration::setXrootdHost(string const& val,
-                                  bool updatePersistentState) {
-    util::Lock lock(_mtx, context(__func__));
-    _impl->setXrootdHost(val, updatePersistentState);
-}
-
-
-uint16_t Configuration::xrootdPort() const {
-    util::Lock lock(_mtx, context(__func__));
-    return _impl->xrootdPort();
-}
-
-
-void Configuration::setXrootdPort(uint16_t val,
-                                  bool updatePersistentState) {
-    util::Lock lock(_mtx, context(__func__));
-    _impl->setXrootdPort(val, updatePersistentState);
-}
-
-
-unsigned int Configuration::xrootdTimeoutSec() const {
-    util::Lock lock(_mtx, context(__func__));
-    return _impl->xrootdTimeoutSec();
-}
-
-
-void Configuration::setXrootdTimeoutSec(unsigned int val,
-                                        bool updatePersistentState) {
-    util::Lock lock(_mtx, context(__func__));
-    _impl->setXrootdTimeoutSec(val, updatePersistentState);
-}
-
-
-string Configuration::databaseTechnology() const {
-    util::Lock lock(_mtx, context(__func__));
-    return _impl->databaseTechnology();
-}
-
-
-string Configuration::databaseHost() const {
-    util::Lock lock(_mtx, context(__func__));
-    return _impl->databaseHost();
-}
-
-
-uint16_t Configuration::databasePort() const {
-    util::Lock lock(_mtx, context(__func__));
-    return _impl->databasePort();
-}
-
-
-string Configuration::databaseUser() const {
-    util::Lock lock(_mtx, context(__func__));
-    return _impl->databaseUser();
-}
-
-
-string Configuration::databasePassword() const {
-    util::Lock lock(_mtx, context(__func__));
-    return _impl->databasePassword();
-}
-
-
-string Configuration::databaseName() const {
-    util::Lock lock(_mtx, context(__func__));
-    return _impl->databaseName();
-}
-
-
-size_t Configuration::databaseServicesPoolSize() const {
-    util::Lock lock(_mtx, context(__func__));
-    return _impl->databaseServicesPoolSize();
-}
-
-
-void Configuration::setDatabaseServicesPoolSize(size_t val,
-                                                bool updatePersistentState) {
-    util::Lock lock(_mtx, context(__func__));
-    _impl->setDatabaseServicesPoolSize(val, updatePersistentState);
-}
-
-
-string Configuration::qservMasterDatabaseHost() const {
-    util::Lock lock(_mtx, context(__func__));
-    return _impl->qservMasterDatabaseHost();
-}
-
-
-uint16_t Configuration::qservMasterDatabasePort() const {
-    util::Lock lock(_mtx, context(__func__));
-    return _impl->qservMasterDatabasePort();
-}
-
-
-string Configuration::qservMasterDatabaseUser() const {
-    util::Lock lock(_mtx, context(__func__));
-    return _impl->qservMasterDatabaseUser();
-}
-
-
-string Configuration::qservMasterDatabaseName() const {
-    util::Lock lock(_mtx, context(__func__));
-    return _impl->qservMasterDatabaseName();
-}
-
-
-size_t Configuration::qservMasterDatabaseServicesPoolSize() const {
-    util::Lock lock(_mtx, context(__func__));
-    return _impl->qservMasterDatabaseServicesPoolSize();
-}
-
-
-string Configuration::qservMasterDatabaseTmpDir() const {
-    util::Lock lock(_mtx, context(__func__));
-    return _impl->qservMasterDatabaseTmpDir();
+    util::Lock const lock(_mtx, _context(__func__));
+    vector<string> names;
+    for (auto&& itr: _workers) {
+        string const& name = itr.first;
+        names.push_back(name);
+    }
+    return names;
 }
 
 
 vector<string> Configuration::databaseFamilies() const {
-    util::Lock lock(_mtx, context(__func__));
-    return _impl->databaseFamilies();
+    util::Lock const lock(_mtx, _context(__func__));
+    vector<string> names;
+    for (auto&& itr: _databaseFamilies) {
+        string const& name = itr.first;
+        names.push_back(name);
+    }
+    return names;
 }
 
 
 bool Configuration::isKnownDatabaseFamily(string const& name) const {
-    util::Lock lock(_mtx, context(__func__));
-    return _impl->isKnownDatabaseFamily(name);
+    util::Lock const lock(_mtx, _context(__func__));
+    if (name.empty()) throw invalid_argument(_context(__func__) + " the family name is empty.");
+    return _databaseFamilies.count(name) != 0;
 }
 
 
 DatabaseFamilyInfo Configuration::databaseFamilyInfo(string const& name) const {
-    util::Lock lock(_mtx, context(__func__));
-    return _impl->databaseFamilyInfo(name);
+    util::Lock const lock(_mtx, _context(__func__));
+    return _databaseFamilyInfo(lock, name);
 }
 
 
 DatabaseFamilyInfo Configuration::addDatabaseFamily(DatabaseFamilyInfo const& info) {
-    util::Lock lock(_mtx, context(__func__));
-    return _impl->addDatabaseFamily(info);
+    util::Lock const lock(_mtx, _context(__func__));
+    if (info.name.empty()) throw invalid_argument(_context(__func__) + " the family name is empty.");
+    if (_databaseFamilies.find(info.name) != _databaseFamilies.end()) {
+        throw invalid_argument(_context(__func__) + " the family '" + info.name + "' already exists.");
+    }
+    string errors;
+    if (info.replicationLevel == 0) errors += " replicationLevel(0)";
+    if (info.numStripes       == 0) errors += " numStripes(0)";
+    if (info.numSubStripes    == 0) errors += " numSubStripes(0)";
+    if (info.overlap          <= 0) errors += " overlap(<=0)";
+    if (!errors.empty()) throw invalid_argument(_context(__func__) + errors);
+    if (_connectionPtr != nullptr) {
+        _connectionPtr->executeInOwnTransaction([&](decltype(_connectionPtr) conn) {
+            conn->executeInsertQuery("config_database_family",
+                                    info.name, info.replicationLevel,
+                                    info.numStripes, info.numSubStripes, info.overlap);
+        });
+    }
+    _databaseFamilies[info.name] = info;
+    return info;
 }
 
 
 void Configuration::deleteDatabaseFamily(string const& name) {
-    util::Lock lock(_mtx, context(__func__));
-    _impl->deleteDatabaseFamily(name);
+    util::Lock const lock(_mtx, _context(__func__));
+    DatabaseFamilyInfo& familyInfo = _databaseFamilyInfo(lock, name);
+    if (_connectionPtr != nullptr) {
+        _connectionPtr->executeInOwnTransaction([&](decltype(_connectionPtr) conn) {
+            conn->execute("DELETE FROM " + conn->sqlId("config_database_family") +
+                          " WHERE " + conn->sqlEqual("name", familyInfo.name));
+        });
+    }
+    // In order to maintain consistency of the persistent state also delete all
+    // dependent databases.
+    // NOTE: if using MySQL-based persistent backend the removal of the dependent 
+    //       tables from MySQL happens automatically since it's enforced by the PK/FK
+    //       relationship between the corresponding tables.
+    vector<string> databasesToBeRemoved;
+    for (auto&& itr: _databases) {
+        string const& database = itr.first;
+        DatabaseInfo const& info = itr.second;
+        if (info.family == familyInfo.name) {
+            databasesToBeRemoved.push_back(database);
+        }
+    }
+    for (string const& database: databasesToBeRemoved) {
+        _databases.erase(database);
+    }
+    _databaseFamilies.erase(familyInfo.name);
 }
 
 
 size_t Configuration::replicationLevel(string const& family) const {
-    util::Lock lock(_mtx, context(__func__));
-    return _impl->replicationLevel(family);
+    util::Lock const lock(_mtx, _context(__func__));
+    return _databaseFamilyInfo(lock, family).replicationLevel;
 }
 
 
 vector<string> Configuration::databases(string const& family, bool allDatabases, bool isPublished) const {
-    util::Lock lock(_mtx, context(__func__));
-    return _impl->databases(family, allDatabases, isPublished);
+    util::Lock const lock(_mtx, _context(__func__));
+    if (!family.empty()) {
+        if (_databaseFamilies.find(family) == _databaseFamilies.cend()) {
+            throw invalid_argument(_context(__func__) + " no such family '" + family + "'.");
+        }
+    }
+    vector<string> names;
+    for (auto&& itr: _databases) {
+        string const& name = itr.first;
+        DatabaseInfo const& info = itr.second;
+        if (!family.empty() && (family != info.family)) {
+            continue;
+        }
+        if (!allDatabases) {
+            if (isPublished != info.isPublished) continue;  
+        }
+        names.push_back(name);
+    }
+    return names;
 }
 
 
 bool Configuration::isKnownDatabase(string const& name) const {
-    util::Lock lock(_mtx, context(__func__));
-    return _impl->isKnownDatabase(name);
+    util::Lock const lock(_mtx, _context(__func__));
+    if (name.empty()) throw invalid_argument(_context(__func__) + " the database name is empty.");
+    return _databases.count(name) != 0;
 }
 
 
 DatabaseInfo Configuration::databaseInfo(string const& name) const {
-    util::Lock lock(_mtx, context(__func__));
-    return _impl->databaseInfo(name);
+    util::Lock const lock(_mtx, _context(__func__));
+    return _databaseInfo(lock, name);
 }
 
 
-DatabaseInfo Configuration::addDatabase(DatabaseInfo const& info) {
-    util::Lock lock(_mtx, context(__func__));
-    return _impl->addDatabase(info);
+DatabaseInfo Configuration::addDatabase(string const& database, std::string const& family) {
+    util::Lock const lock(_mtx, _context(__func__));
+    if (database.empty()) {
+        throw invalid_argument(_context(__func__) + " the database name can't be empty.");
+    }
+    auto itr = _databases.find(database);
+    if (itr != _databases.end()) {
+        throw invalid_argument(_context(__func__) + " the database '" + database + "' already exists.");
+    }
+    // This will throw an exception if the family isn't valid
+    _databaseFamilyInfo(lock, family);
+
+    // When a new database is being added only these fields are considered.
+    DatabaseInfo info;
+    info.name = database;
+    info.family = family;
+    info.isPublished = false;   // the new database can't be published at this time
+    info.chunkIdColName = string();
+    info.subChunkIdColName = string();
+
+    if (_connectionPtr != nullptr) {
+        _connectionPtr->executeInOwnTransaction([&info](decltype(_connectionPtr) conn) {
+            conn->executeInsertQuery("config_database",
+                                     info.name,
+                                     info.family,
+                                     info.isPublished ? 1 : 0,
+                                     info.chunkIdColName,
+                                     info.subChunkIdColName);
+        });
+    }
+    _databases[info.name] = info;
+    return info;
 }
 
 
 DatabaseInfo Configuration::publishDatabase(string const& name) {
-    util::Lock lock(_mtx, context(__func__));
-    return _impl->publishDatabase(name);
+    util::Lock const lock(_mtx, _context(__func__));
+    bool const publish = true;
+    return _publishDatabase(lock, name, publish);
 }
 
 
 DatabaseInfo Configuration::unPublishDatabase(string const& name) {
-    util::Lock lock(_mtx, context(__func__));
-    return _impl->unPublishDatabase(name);
+    util::Lock const lock(_mtx, _context(__func__));
+    bool const publish = false;
+    return _publishDatabase(lock, name, publish);
 }
 
 
 void Configuration::deleteDatabase(string const& name) {
-    util::Lock lock(_mtx, context(__func__));
-    _impl->deleteDatabase(name);
+    util::Lock const lock(_mtx, _context(__func__));
+    DatabaseInfo& info = _databaseInfo(lock, name);
+    if (_connectionPtr != nullptr) {
+        _connectionPtr->executeInOwnTransaction([&](decltype(_connectionPtr) conn) {
+            conn->execute("DELETE FROM " + conn->sqlId("config_database") +
+                          " WHERE " + conn->sqlEqual("database", info.name));
+        });
+    }
+    _databases.erase(info.name);
 }
 
 
-DatabaseInfo Configuration::addTable(string const& database, string const& table, bool isPartitioned,
-                                     list<SqlColDef> const& columns, bool isDirectorTable,
-                                     string const& directorTableKey, string const& chunkIdColName,
-                                     string const& subChunkIdColName, string const& latitudeColName,
-                                     string const& longitudeColName) {
-    util::Lock lock(_mtx, context(__func__));
-    return _impl->addTable(database, table, isPartitioned, columns,
-                           isDirectorTable, directorTableKey,
-                           chunkIdColName, subChunkIdColName, latitudeColName, longitudeColName);
+DatabaseInfo Configuration::addTable(
+        string const& database, string const& table, bool isPartitioned, list<SqlColDef> const& columns,
+        bool isDirectorTable, string const& directorTableKey, string const& chunkIdColName,
+        string const& subChunkIdColName, string const& latitudeColName, string const& longitudeColName) {
+
+    util::Lock const lock(_mtx, _context(__func__));
+    DatabaseInfo& databaseInfo = _databaseInfo(lock, database);
+    databaseInfo.addTable(table, columns, isPartitioned, isDirectorTable, directorTableKey,
+                          chunkIdColName, subChunkIdColName, latitudeColName, longitudeColName);
+    if (_connectionPtr != nullptr) {
+        _connectionPtr->executeInOwnTransaction([&](decltype(_connectionPtr) conn) {
+            conn->executeInsertQuery("config_database_table",
+                                     database, table, isPartitioned, isDirectorTable,
+                                     directorTableKey, latitudeColName, longitudeColName);
+            int colPosition = 0;
+            for (auto&& coldef: columns) {
+                conn->executeInsertQuery("config_database_table_schema",
+                                         database, table, colPosition++,  // column position
+                                         coldef.name, coldef.type);
+            }
+            if (isPartitioned) {
+                conn->executeSimpleUpdateQuery("config_database",
+                                               conn->sqlEqual("database", databaseInfo.name),
+                                               make_pair("chunk_id_key", chunkIdColName),
+                                               make_pair("sub_chunk_id_key", subChunkIdColName));
+            }
+        });
+    }
+    return databaseInfo;
 }
 
 
 DatabaseInfo Configuration::deleteTable(string const& database, string const& table) {
-    util::Lock lock(_mtx, context(__func__));
-    return _impl->deleteTable(database, table);
+    util::Lock const lock(_mtx, _context(__func__));
+    DatabaseInfo& databaseInfo = _databaseInfo(lock, database);
+    bool const isPartitioned = databaseInfo.isPartitioned(table);
+    bool const isDirector = databaseInfo.isDirector(table);
+    if (_connectionPtr != nullptr) {
+        _connectionPtr->executeInOwnTransaction([&](decltype(_connectionPtr) conn) {
+            conn->execute("DELETE FROM " + conn->sqlId("config_database_table") +
+                          " WHERE " + conn->sqlEqual("database", databaseInfo.name) +
+                          " AND " + conn->sqlEqual("table", table));
+        });
+    }
+    if (isPartitioned) {
+        databaseInfo.partitionedTables.erase(
+            find(databaseInfo.partitionedTables.begin(),
+                 databaseInfo.partitionedTables.end(),
+                 table)
+        );
+        if (isDirector) {
+            // These attributes are set for the director table only.
+            databaseInfo.directorTable = "";
+            databaseInfo.directorTableKey = "";
+            databaseInfo.chunkIdColName = "";
+            databaseInfo.subChunkIdColName = "";
+        }
+        databaseInfo.latitudeColName.erase(table);
+        databaseInfo.longitudeColName.erase(table);
+    } else {
+       databaseInfo.regularTables.erase(
+            find(databaseInfo.regularTables.begin(),
+                 databaseInfo.regularTables.end(),
+                 table)
+        );
+    }
+    databaseInfo.columns.erase(table);
+    return databaseInfo;
 }
 
 
 bool Configuration::isKnownWorker(string const& name) const {
-    util::Lock lock(_mtx, context(__func__));
-    return _impl->isKnownWorker(name);
+    util::Lock const lock(_mtx, _context(__func__));
+    return _workers.count(name) != 0;
 }
 
 
 WorkerInfo Configuration::workerInfo(string const& name) const {
-    util::Lock lock(_mtx, context(__func__));
-    return _impl->workerInfo(name);
+    util::Lock const lock(_mtx, _context(__func__));
+    auto const itr = _workers.find(name);
+    if (itr != _workers.cend()) return itr->second;
+    throw invalid_argument(_context(__func__) +" unknown worker '" + name + "'.");
 }
 
 
-string Configuration::workerTechnology() const {
-    util::Lock lock(_mtx, context(__func__));
-    return _impl->workerTechnology();
-}
-
-
-void Configuration::setWorkerTechnology(string const& val,
-                                        bool updatePersistentState) {
-    util::Lock lock(_mtx, context(__func__));
-    _impl->setWorkerTechnology(val, updatePersistentState);
-}
-
-
-void Configuration::addWorker(WorkerInfo const& info) {
-    util::Lock lock(_mtx, context(__func__));
-    return _impl->addWorker(info);
+WorkerInfo Configuration::addWorker(WorkerInfo const& info) {
+    util::Lock const lock(_mtx, _context(__func__));
+    if (_workers.find(info.name) == _workers.cend()) return _updateWorker(lock, info);
+    throw invalid_argument(_context(__func__) +" worker '" + info.name + "' already exists.");
 }
 
 
 void Configuration::deleteWorker(string const& name) {
-    util::Lock lock(_mtx, context(__func__));
-    return _impl->deleteWorker(name);
+    util::Lock const lock(_mtx, _context(__func__));
+    auto itr = _workers.find(name);
+    if (itr == _workers.end()) {
+        throw invalid_argument(_context(__func__) +" unknown worker '" + name + "'.");
+    }
+    if (_connectionPtr != nullptr) {
+        _connectionPtr->executeInOwnTransaction([&](decltype(_connectionPtr) conn) {
+            conn->execute("DELETE FROM " + conn->sqlId("config_worker") +
+                          " WHERE " + conn->sqlEqual("name", name));
+        });
+    }
+    _workers.erase(itr);
 }
 
 
-WorkerInfo Configuration::disableWorker(string const& name,
-                                        bool disable,
-                                        bool updatePersistentState) {
-    util::Lock lock(_mtx, context(__func__));
-    return _impl->disableWorker(name, disable, updatePersistentState);
+WorkerInfo Configuration::disableWorker(string const& name) {
+    util::Lock const lock(_mtx, _context(__func__));
+    auto itr = _workers.find(name);
+    if (itr == _workers.end()) {
+        throw invalid_argument(_context(__func__) +" unknown worker '" + name + "'.");
+    }
+    WorkerInfo& info = itr->second;
+    if (info.isEnabled) {
+        if (_connectionPtr != nullptr) {
+            _connectionPtr->executeInOwnTransaction([&info](decltype(_connectionPtr) conn) {
+                conn->executeSimpleUpdateQuery(
+                    "config_worker",
+                    conn->sqlEqual("name", info.name),
+                    make_pair("is_enabled", 0)
+                );
+            });
+        }
+        info.isEnabled = false;
+    }
+    return info;
 }
 
 
-WorkerInfo Configuration::setWorkerReadOnly(string const& name,
-                                            bool readOnly,
-                                            bool updatePersistentState) {
-    util::Lock lock(_mtx, context(__func__));
-    return _impl->setWorkerReadOnly(name, readOnly, updatePersistentState);
+WorkerInfo Configuration::updateWorker(WorkerInfo const& info) {
+    util::Lock const lock(_mtx, _context(__func__));
+    if (_workers.find(info.name) != _workers.end()) return _updateWorker(lock, info);
+    throw invalid_argument(_context(__func__) +" unknown worker '" + info.name + "'.");
 }
 
 
-WorkerInfo Configuration::setWorkerSvcHost(string const& name,
-                                           string const& host,
-                                           bool updatePersistentState) {
-    util::Lock lock(_mtx, context(__func__));
-    return _impl->setWorkerSvcHost(name, host, updatePersistentState);
+json Configuration::toJson(bool showPassword) const {
+    util::Lock const lock(_mtx, _context(__func__));
+    return _toJson(lock, showPassword);
 }
 
 
-WorkerInfo Configuration::setWorkerSvcPort(string const& name,
-                                           uint16_t port,
-                                           bool updatePersistentState) {
-    util::Lock lock(_mtx, context(__func__));
-    return _impl->setWorkerSvcPort(name, port, updatePersistentState);
+json Configuration::_toJson(util::Lock const& lock, bool showPassword) const {
+    json data;
+    data["general"] = _data;
+    json& workersJson = data["workers"];
+    for (auto&& itr: _workers) {
+        WorkerInfo const& info = itr.second;
+        workersJson.push_back(info.toJson());
+    }
+    json& databaseFamilies = data["database_families"];
+    for (auto&& itr: _databaseFamilies) {
+        DatabaseFamilyInfo const& info = itr.second;
+        databaseFamilies.push_back(info.toJson());
+    }
+    json& databases = data["databases"];
+    for (auto&& itr: _databases) {
+        DatabaseInfo const& info = itr.second;
+        databases.push_back(info.toJson());
+    }
+    return data;
+}
+
+json const& Configuration::_get(
+        util::Lock const& lock, string const& category, string const& param) const
+{
+    json::json_pointer const pointer("/" + category + "/" + param);
+    if (!_data.contains(pointer)) {
+        throw invalid_argument(
+                _context(__func__) + " no such parameter for category: '" + category
+                + "', param: '" + param + "'");
+    }
+    return _data.at(pointer);
 }
 
 
-WorkerInfo Configuration::setWorkerFsHost(string const& name,
-                                          string const& host,
-                                          bool updatePersistentState) {
-    util::Lock lock(_mtx, context(__func__));
-    return _impl->setWorkerFsHost(name, host, updatePersistentState);
+json& Configuration::_get(
+        util::Lock const& lock, string const& category, string const& param)
+{
+    return _data[json::json_pointer("/" + category + "/" + param)];
 }
 
 
-WorkerInfo Configuration::setWorkerFsPort(string const& name,
-                                          uint16_t port,
-                                          bool updatePersistentState) {
-    util::Lock lock(_mtx, context(__func__));
-    return _impl->setWorkerFsPort(name, port, updatePersistentState);
+void Configuration::_set(
+        string const& category, string const& param, string const& value) const
+{
+    _connectionPtr->executeInsertOrUpdate(
+        [&](decltype(_connectionPtr) conn) {
+            conn->executeInsertQuery("config", category, param, value);
+        },
+        [&](decltype(_connectionPtr) conn) {
+            conn->executeSimpleUpdateQuery(
+                "config",
+                conn->sqlEqual("category", category) + " AND " + conn->sqlEqual("param", param),
+                make_pair("value", value)
+            );
+        }
+    );
 }
 
 
-WorkerInfo Configuration::setWorkerDataDir(string const& name,
-                                           string const& dataDir,
-                                           bool updatePersistentState) {
-    util::Lock lock(_mtx, context(__func__));
-    return _impl->setWorkerDataDir(name, dataDir, updatePersistentState);
+WorkerInfo Configuration::_updateWorker(util::Lock const& lock, WorkerInfo const& inputInfo) {
+
+    // Make sure all required fields are set in the input worker descriptor.
+    // The only required fields are the name of the worker and the host name of
+    // of the Replication service. If the host names for other services will be
+    // found missing then the host name of the Replication service will be assumed.
+    if (inputInfo.name.empty() || inputInfo.svcHost.empty()) {
+       throw invalid_argument(
+                _context(__func__) + " incomplete definition of the worker: '" + inputInfo.name +"'.");
+    }
+
+    // Make an updated worker descriptor with optional fields completed using
+    // existing defaults for workers. This step is required to ensure user-provided
+    // descriptors are complete before making any changes to the Configuration's
+    // transient or persistent states.
+    WorkerInfo const completeInfo = WorkerInfo(inputInfo, _data.at("worker_defaults"));
+
+    // Make sure no host/port conflicts would exist in the transient configuration after
+    // adding/updating the worker. This step is not needed for the MySQL-based persistent
+    // backend due to the schema-enforced uniqueness constraints.
+    std::set<pair<string, uint16_t>> hostPort;
+    for (auto&& itr: _workers) {
+        string const& worker = itr.first;
+        WorkerInfo const& info = itr.second;
+        // Skip the target worker from the test to avoid comparing it to itself.
+        if (worker == completeInfo.name) continue;
+        hostPort.insert(make_pair(info.svcHost, info.svcPort));
+        hostPort.insert(make_pair(info.fsHost, info.fsPort));
+        hostPort.insert(make_pair(info.dbHost, info.dbPort));
+        hostPort.insert(make_pair(info.loaderHost, info.loaderPort));
+        hostPort.insert(make_pair(info.exporterHost, info.exporterPort));
+        hostPort.insert(make_pair(info.httpLoaderHost, info.httpLoaderPort));
+    }
+    bool const portConflictFound =
+            !hostPort.insert(make_pair(completeInfo.svcHost, completeInfo.svcPort)).second ||
+            !hostPort.insert(make_pair(completeInfo.fsHost, completeInfo.fsPort)).second ||
+            !hostPort.insert(make_pair(completeInfo.dbHost, completeInfo.dbPort)).second ||
+            !hostPort.insert(make_pair(completeInfo.loaderHost, completeInfo.loaderPort)).second ||
+            !hostPort.insert(make_pair(completeInfo.exporterHost, completeInfo.exporterPort)).second ||
+            !hostPort.insert(make_pair(completeInfo.httpLoaderHost, completeInfo.httpLoaderPort)).second;
+    if (portConflictFound) {
+        LOGS(_log, LOG_LVL_ERROR, _context() << " port/host conflict in worker: " << completeInfo);
+        throw invalid_argument(
+                _context(__func__) + " port conflict detected either between the updated worker: '"
+                + completeInfo.name + "' and one of the existing workers or within the updated worker itself.");
+    }
+
+    // Update the persistent state.
+    bool const update = _workers.count(completeInfo.name) != 0;
+    if (_connectionPtr != nullptr) {
+        _connectionPtr->executeInOwnTransaction([&](decltype(_connectionPtr) conn) {
+            if (update) {
+                conn->executeSimpleUpdateQuery(
+                    "config_worker",
+                    conn->sqlEqual("name", completeInfo.name),
+                    make_pair("is_enabled", completeInfo.isEnabled),
+                    make_pair("is_read_only", completeInfo.isReadOnly),
+                    make_pair("svc_host", completeInfo.svcHost),
+                    make_pair("svc_port", completeInfo.svcPort),
+                    make_pair("fs_host", completeInfo.fsHost),
+                    make_pair("fs_port", completeInfo.fsPort),
+                    make_pair("db_host", completeInfo.dbHost),
+                    make_pair("db_port", completeInfo.dbPort),
+                    make_pair("db_user", completeInfo.dbUser),
+                    make_pair("data_dir", completeInfo.dataDir),
+                    make_pair("loader_host", completeInfo.loaderHost),
+                    make_pair("loader_port", completeInfo.loaderPort),
+                    make_pair("loader_tmp_dir", completeInfo.loaderTmpDir),
+                    make_pair("exporter_host", completeInfo.exporterHost),
+                    make_pair("exporter_port", completeInfo.exporterPort),
+                    make_pair("exporter_tmp_dir", completeInfo.exporterTmpDir),
+                    make_pair("http_loader_host", completeInfo.httpLoaderHost),
+                    make_pair("http_loader_port", completeInfo.httpLoaderPort),
+                    make_pair("http_loader_tmp_dir", completeInfo.httpLoaderTmpDir)
+                );
+            } else {
+                conn->executeInsertQuery(
+                    "config_worker",
+                    completeInfo.name,
+                    completeInfo.isEnabled,
+                    completeInfo.isReadOnly,
+                    completeInfo.svcHost,
+                    completeInfo.svcPort,
+                    completeInfo.fsHost,
+                    completeInfo.fsPort,
+                    completeInfo.dataDir,
+                    completeInfo.dbHost,
+                    completeInfo.dbPort,
+                    completeInfo.dbUser,
+                    completeInfo.loaderHost,
+                    completeInfo.loaderPort,
+                    completeInfo.loaderTmpDir,
+                    completeInfo.exporterHost,
+                    completeInfo.exporterPort,
+                    completeInfo.exporterTmpDir,
+                    completeInfo.httpLoaderHost,
+                    completeInfo.httpLoaderPort,
+                    completeInfo.httpLoaderTmpDir
+                );
+            }
+        });
+    }
+    _workers[completeInfo.name] = completeInfo;
+    return completeInfo;
 }
 
 
-WorkerInfo Configuration::setWorkerDbHost(string const& name,
-                                          string const& host,
-                                          bool updatePersistentState) {
-    util::Lock lock(_mtx, context(__func__));
-    return _impl->setWorkerDbHost(name, host, updatePersistentState);
+DatabaseFamilyInfo& Configuration::_databaseFamilyInfo(util::Lock const& lock, string const& name) {
+    if (name.empty()) throw invalid_argument(_context(__func__) + " the database family name is empty.");
+    auto const itr = _databaseFamilies.find(name);
+    if (itr != _databaseFamilies.cend()) return itr->second;
+    throw invalid_argument(_context(__func__) + " no such database family '" + name + "'.");
 }
 
 
-WorkerInfo Configuration::setWorkerDbPort(string const& name,
-                                          uint16_t port,
-                                          bool updatePersistentState) {
-    util::Lock lock(_mtx, context(__func__));
-    return _impl->setWorkerDbPort(name, port, updatePersistentState);
+DatabaseInfo& Configuration::_databaseInfo(util::Lock const& lock, string const& name) {
+    if (name.empty()) throw invalid_argument(_context(__func__) + " the database name is empty.");
+    auto const itr = _databases.find(name);
+    if (itr != _databases.cend()) return itr->second;
+    throw invalid_argument(_context(__func__) + " no such database '" + name + "'.");
 }
 
 
-WorkerInfo Configuration::setWorkerDbUser(string const& name,
-                                          string const& user,
-                                          bool updatePersistentState) {
-    util::Lock lock(_mtx, context(__func__));
-    return _impl->setWorkerDbUser(name, user, updatePersistentState);
-}
-
-
-WorkerInfo Configuration::setWorkerLoaderHost(string const& name,
-                                              string const& host,
-                                              bool updatePersistentState) {
-    util::Lock lock(_mtx, context(__func__));
-    return _impl->setWorkerLoaderHost(name, host, updatePersistentState);
-}
-
-
-WorkerInfo Configuration::setWorkerLoaderPort(string const& name,
-                                              uint16_t port,
-                                              bool updatePersistentState) {
-    util::Lock lock(_mtx, context(__func__));
-    return _impl->setWorkerLoaderPort(name, port, updatePersistentState);
-}
-
-
-WorkerInfo Configuration::setWorkerLoaderTmpDir(string const& name,
-                                                string const& tmpDir,
-                                                bool updatePersistentState) {
-    util::Lock lock(_mtx, context(__func__));
-    return _impl->setWorkerLoaderTmpDir(name, tmpDir, updatePersistentState);
-}
-
-
-WorkerInfo Configuration::setWorkerExporterHost(string const& name,
-                                                string const& host,
-                                                bool updatePersistentState) {
-    util::Lock lock(_mtx, context(__func__));
-    return _impl->setWorkerExporterHost(name, host, updatePersistentState);
-}
-
-
-WorkerInfo Configuration::setWorkerExporterPort(string const& name,
-                                                uint16_t port,
-                                                bool updatePersistentState) {
-    util::Lock lock(_mtx, context(__func__));
-    return _impl->setWorkerExporterPort(name, port, updatePersistentState);
-}
-
-
-WorkerInfo Configuration::setWorkerExporterTmpDir(string const& name,
-                                                  string const& tmpDir,
-                                                  bool updatePersistentState) {
-    util::Lock lock(_mtx, context(__func__));
-    return _impl->setWorkerExporterTmpDir(name, tmpDir, updatePersistentState);
-}
-
-
-WorkerInfo Configuration::setWorkerHttpLoaderHost(string const& name,
-                                                  string const& host,
-                                                  bool updatePersistentState) {
-    util::Lock lock(_mtx, context(__func__));
-    return _impl->setWorkerHttpLoaderHost(name, host, updatePersistentState);
-}
-
-
-WorkerInfo Configuration::setWorkerHttpLoaderPort(string const& name,
-                                                  uint16_t port,
-                                                  bool updatePersistentState) {
-    util::Lock lock(_mtx, context(__func__));
-    return _impl->setWorkerHttpLoaderPort(name, port, updatePersistentState);
-}
-
-
-WorkerInfo Configuration::setWorkerHttpLoaderTmpDir(string const& name,
-                                                    string const& tmpDir,
-                                                    bool updatePersistentState) {
-    util::Lock lock(_mtx, context(__func__));
-    return _impl->setWorkerHttpLoaderTmpDir(name, tmpDir, updatePersistentState);
-}
-
-
-size_t Configuration::workerNumProcessingThreads() const {
-    util::Lock lock(_mtx, context(__func__));
-    return _impl->workerNumProcessingThreads();
-}
-
-
-void Configuration::setWorkerNumProcessingThreads(size_t val,
-                                                  bool updatePersistentState) {
-    util::Lock lock(_mtx, context(__func__));
-    _impl->setWorkerNumProcessingThreads(val, updatePersistentState);
-}
-
-
-size_t Configuration::fsNumProcessingThreads() const {
-    util::Lock lock(_mtx, context(__func__));
-    return _impl->fsNumProcessingThreads();
-}
-
-
-void Configuration::setFsNumProcessingThreads(size_t val,
-                                              bool updatePersistentState) {
-    util::Lock lock(_mtx, context(__func__));
-    _impl->setFsNumProcessingThreads(val, updatePersistentState);
-}
-
-
-size_t Configuration::workerFsBufferSizeBytes() const {
-    util::Lock lock(_mtx, context(__func__));
-    return _impl->workerFsBufferSizeBytes();
-}
-
-
-void Configuration::setWorkerFsBufferSizeBytes(size_t val,
-                                               bool updatePersistentState) {
-    util::Lock lock(_mtx, context(__func__));
-    _impl->setWorkerFsBufferSizeBytes(val, updatePersistentState);
-}
-
-
-size_t Configuration::loaderNumProcessingThreads() const {
-    util::Lock lock(_mtx, context(__func__));
-    return _impl->loaderNumProcessingThreads();
-}
-
-
-void Configuration::setLoaderNumProcessingThreads(size_t val,
-                                                  bool updatePersistentState) {
-    util::Lock lock(_mtx, context(__func__));
-    _impl->setLoaderNumProcessingThreads(val, updatePersistentState);
-}
-
-
-size_t Configuration::exporterNumProcessingThreads() const {
-    util::Lock lock(_mtx, context(__func__));
-    return _impl->exporterNumProcessingThreads();
-}
-
-
-void Configuration::setExporterNumProcessingThreads(size_t val,
-                                                    bool updatePersistentState) {
-    util::Lock lock(_mtx, context(__func__));
-    _impl->setExporterNumProcessingThreads(val, updatePersistentState);
-}
-
-
-size_t Configuration::httpLoaderNumProcessingThreads() const {
-    util::Lock lock(_mtx, context(__func__));
-    return _impl->httpLoaderNumProcessingThreads();
-}
-
-
-void Configuration::setHttpLoaderNumProcessingThreads(size_t val,
-                                                      bool updatePersistentState) {
-    util::Lock lock(_mtx, context(__func__));
-    _impl->setHttpLoaderNumProcessingThreads(val, updatePersistentState);
-}
-
-void Configuration::dumpIntoLogger() const {
-    util::Lock lock(_mtx, context(__func__));
-    _impl->dumpIntoLogger();
-}
-
-
-string Configuration::asString() const {
-    util::Lock lock(_mtx, context(__func__));
-    return _impl->asString();
+DatabaseInfo& Configuration::_publishDatabase(util::Lock const& lock, string const& name, bool publish) {
+    DatabaseInfo& databseInfo = _databaseInfo(lock, name);
+    if (publish && databseInfo.isPublished) {
+        throw logic_error(_context(__func__) + " database '" + databseInfo.name +"' is already published.");
+    } else if (!publish && !databseInfo.isPublished) {
+        throw logic_error(_context(__func__) + " database '" + databseInfo.name +"' is not published.");
+    }
+    if (_connectionPtr != nullptr) {
+        _connectionPtr->executeInOwnTransaction([&](decltype(_connectionPtr) conn) {
+            conn->executeSimpleUpdateQuery(
+                "config_database",
+                conn->sqlEqual("database", databseInfo.name),
+                make_pair("is_published", publish ? 1 : 0));
+        });
+    }
+    databseInfo.isPublished = publish;
+    return databseInfo;
 }
 
 }}} // namespace lsst::qserv::replica

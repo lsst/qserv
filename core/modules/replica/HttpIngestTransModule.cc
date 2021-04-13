@@ -418,7 +418,7 @@ void HttpIngestTransModule::_removePartitionFromSecondaryIndex(DatabaseInfo cons
             conn->execute(query);
             conn->commit();
         });
-    } catch (database::mysql::DropPartitionNonExistent const&) {
+    } catch (database::mysql::ER_DROP_PARTITION_NON_EXISTENT_ const&) {
         ;
     }
 }

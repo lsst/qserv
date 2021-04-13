@@ -247,7 +247,7 @@ json IngestHttpSvcMod::_readRemote(string const& database,
     size_t numBytes = 0;
     size_t numRows = 0;
 
-    // The configuration may be amended later if certificate bundles were loaded
+    // The configuration may be updated later if certificate bundles were loaded
     // by a client into the config store.
     auto fileConfig = _fileConfig(database);
 

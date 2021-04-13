@@ -111,8 +111,14 @@ Connection::Connection(ConnectionParams const& connectionParams,
 Connection::~Connection() {
 
     if (nullptr != _res)   mysql_free_result(_res);
-    if (nullptr != _mysql) mysql_close(_mysql);
-
+    if (nullptr != _mysql) {
+        // Resetting the connection would release all table locks, roll back any
+        // outstanding transactions, etc. See details at:
+        // https://dev.mysql.com/doc/c-api/8.0/en/mysql-reset-connection.html
+        // Ignore the status code returned by the method.
+        mysql_reset_connection(_mysql);
+        mysql_close(_mysql);
+    }
     LOGS(_log, LOG_LVL_DEBUG, "Connection[" + to_string(_id) + "]  destructed");
 }
 
@@ -237,47 +243,62 @@ void Connection::_processLastError(string const& context,
                     string(__func__) + "  inappropriate use of this method from context: " + msg);
 
         case ER_DUP_KEYNAME:
-            throw DuplicateKeyName(msg);
+            throw ER_DUP_KEYNAME_(msg);
 
         case ER_DUP_ENTRY:
-            throw DuplicateKeyError(msg);
+            throw ER_DUP_ENTRY_(msg);
 
         case ER_CANT_DROP_FIELD_OR_KEY:
-            throw CantDropFieldOrKey(msg);
+            throw ER_CANT_DROP_FIELD_OR_KEY_(msg);
+
+        case ER_BAD_DB_ERROR:
+            throw ER_BAD_DB_ERROR_(msg);
+
+        case ER_DB_CREATE_EXISTS:
+            throw ER_DB_CREATE_EXISTS_(msg);
+
+        case ER_DB_DROP_EXISTS:
+            throw ER_DB_DROP_EXISTS_(msg);
+
+        case ER_DBACCESS_DENIED_ERROR:
+            throw ER_DBACCESS_DENIED_ERROR_(msg);
+
+        case ER_ACCESS_DENIED_ERROR:
+            throw ER_ACCESS_DENIED_ERROR_(msg);
+
+        case ER_TABLE_EXISTS_ERROR:
+            throw ER_TABLE_EXISTS_ERROR_(msg);
+
+        case ER_BAD_TABLE_ERROR:
+            throw ER_BAD_TABLE_ERROR_(msg);
 
         case ER_NO_SUCH_TABLE:
-            throw NoSuchTable(msg);
+            throw ER_NO_SUCH_TABLE_(msg);
 
         case ER_PARTITION_MGMT_ON_NONPARTITIONED:
-            throw NotPartitionedTable(msg);
+            throw ER_PARTITION_MGMT_ON_NONPARTITIONED_(msg);
 
         case ER_UNKNOWN_PARTITION:
-            throw NoSuchPartition(msg);
+            throw ER_UNKNOWN_PARTITION_(msg);
 
         case ER_DROP_PARTITION_NON_EXISTENT:
-            throw DropPartitionNonExistent(msg);
+            throw ER_DROP_PARTITION_NON_EXISTENT_(msg);
 
         case ER_LOCK_DEADLOCK:
-            throw LockDeadlock(msg);
+            throw ER_LOCK_DEADLOCK_(msg);
 
         case ER_ABORTING_CONNECTION:
         case ER_NEW_ABORTING_CONNECTION:
-
         case ER_CONNECTION_ALREADY_EXISTS:      // MariaDB specific internal error
         case ER_CONNECTION_KILLED:              // MariaDB specific internal error
-
         case ER_FORCING_CLOSE:
-
-
         case ER_NORMAL_SHUTDOWN:
         case ER_SHUTDOWN_COMPLETE:
         case ER_SERVER_SHUTDOWN:
-
         case ER_NET_READ_ERROR:
         case ER_NET_READ_INTERRUPTED:
         case ER_NET_ERROR_ON_WRITE:
         case ER_NET_WRITE_INTERRUPTED:
-
         case CR_CONNECTION_ERROR:
         case CR_CONN_HOST_ERROR:
         case CR_LOCALHOST_CONNECTION:
@@ -288,20 +309,18 @@ void Connection::_processLastError(string const& context,
         case CR_SERVER_LOST_EXTENDED:
         case CR_TCP_CONNECTION:
         case CR_UNKNOWN_HOST:
-
             if (instantAutoReconnect) {
-
                 // Attempt to reconnect before notifying a client if the re-connection
                 // timeout is enabled during the connector's construction.
- 
                 if (_connectTimeoutSec > 0) {
                     _connect();
                     throw Reconnected(msg);
                 }
             }
             throw ConnectError(msg);
-
         default:
+            // For other error conditions encapsulate error message into a general
+            // database exception.
             throw Error(msg);
     }
 }
@@ -406,7 +425,7 @@ Connection::Ptr Connection::execute(function<void(Connection::Ptr)> const& scrip
                     context + "aborting script, exceeded effectiveMaxReconnects: " +
                     to_string(effectiveMaxReconnects);
 
-                LOGS(_log, LOG_LVL_ERROR, msg);
+                LOGS(_log, LOG_LVL_DEBUG, msg);
                 throw MaxReconnectsExceeded(msg, effectiveMaxReconnects);
             }
         }
@@ -420,8 +439,8 @@ Connection::Ptr Connection::execute(function<void(Connection::Ptr)> const& scrip
                 to_string(effectiveTimeoutSec) + ", elapsedTimeSec: " +
                 to_string(elapsedTimeMillisec/1000);
 
-            LOGS(_log, LOG_LVL_ERROR, msg);
-            throw ConnectTimeout(msg, effectiveTimeoutSec);
+            LOGS(_log, LOG_LVL_DEBUG, msg);
+            throw ConnectTimeoutError(msg, effectiveTimeoutSec);
         }
 
     } while (true);
@@ -453,7 +472,7 @@ Connection::Ptr Connection::executeInOwnTransaction(function<void(Ptr)> const& s
                     maxReconnects,
                     timeoutSec
                 );
-            } catch (LockDeadlock const& ex) {
+            } catch (ER_LOCK_DEADLOCK_ const& ex) {
                 if (conn->inTransaction()) conn->rollback();
                 if (numRetriesOnDeadLock < maxRetriesOnDeadLock) {
                     LOGS(_log, LOG_LVL_DEBUG, context << "exception: " << ex.what());
@@ -480,7 +499,7 @@ Connection::Ptr Connection::executeInsertOrUpdate(function<void(Ptr)> const& ins
                                                   unsigned int maxRetriesOnDeadLock) {
     try {
         return executeInOwnTransaction(insertScript, maxReconnects, timeoutSec, maxRetriesOnDeadLock);
-    } catch (database::mysql::DuplicateKeyError const&) {
+    } catch (database::mysql::ER_DUP_ENTRY_ const&) {
         return executeInOwnTransaction(updateScript, maxReconnects, timeoutSec, maxRetriesOnDeadLock);
     }
 }
@@ -627,14 +646,9 @@ void Connection::_connect() {
                 timeLapsedMilliseconds += delayBetweenReconnects.wait();
                 if (timeLapsedMilliseconds > 1000 * _connectTimeoutSec) {
                     string const msg = context + "connection timeout has expired";
-                    LOGS(_log, LOG_LVL_ERROR, msg);
-                    throw ConnectTimeout(msg, _connectTimeoutSec);
+                    LOGS(_log, LOG_LVL_DEBUG, msg);
+                    throw ConnectTimeoutError(msg, _connectTimeoutSec);
                 }
-    
-            } catch (Error const& ex) {
-    
-                LOGS(_log, LOG_LVL_ERROR, context << "unrecoverable error at: " << ex.what());
-                throw;
             }
         }
     }
@@ -903,7 +917,7 @@ ConnectionHandler::~ConnectionHandler() {
             conn->rollback();
         }
     } catch (exception const& ex) {
-        LOGS(_log, LOG_LVL_ERROR, context << "ex: " << ex.what());
+        LOGS(_log, LOG_LVL_DEBUG, context << "ex: " << ex.what());
     }
     if (nullptr != _pool) _pool->release(conn);
 }
