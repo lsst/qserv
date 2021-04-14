@@ -304,7 +304,7 @@ bool QueryRequest::_importStream(JobQuery::Ptr const& jq) {
     }
 
     // Get the first header from metadata.
-    int expectedLen = proto::ProtoHeaderWrap::PROTO_HEADER_SIZE;
+    int expectedLen = proto::ProtoHeaderWrap::getProtoHeaderSize();
     int len = expectedLen;
     const char* buff = GetMetadata(len);
     if (len != expectedLen) {
@@ -432,7 +432,7 @@ void QueryRequest::ProcessResponseData(XrdSsiErrInfo const& eInfo,
 }
 
 
-void QueryRequest::_processData(JobQuery::Ptr const& jq, int blen, bool last) {
+void QueryRequest::_processData(JobQuery::Ptr const& jq, int blen, bool xrdLast) {
     // It's possible jq and _jobQuery differ, so need to use jq.
     if (jq->isQueryCancelled()) {
         LOGS(_log, LOG_LVL_WARN, "QueryRequest::_processData job was cancelled.");
@@ -456,9 +456,11 @@ void QueryRequest::_processData(JobQuery::Ptr const& jq, int blen, bool last) {
     // Read the result
     bool largeResult = false;
     int nextBufSize = 0;
+    bool last = false;
     bool flushOk = jq->getDescription()->respHandler()->flush(respSize, bufPtr, last,
                                                               largeResult, nextBufSize);
     if (last) {
+        // Last should only be true when the header is read, not the result.
         throw Bug("_processData result had 'last' true, which cannot be allowed.");
     }
 
@@ -485,6 +487,10 @@ void QueryRequest::_processData(JobQuery::Ptr const& jq, int blen, bool last) {
     }
 
     if (flushOk) {
+        if (last != xrdLast) {
+            LOGS(_log, LOG_LVL_WARN, "processData disagreement between last=" << last
+                                     << " and xrdLast=" << xrdLast);
+        }
         if (last) {
             jq->getStatus()->updateInfo(_jobIdStr, JobStatus::COMPLETE);
             _finish();

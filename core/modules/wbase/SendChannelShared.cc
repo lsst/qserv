@@ -42,25 +42,9 @@ namespace qserv {
 namespace wbase {
 
 SendChannelShared::Ptr SendChannelShared::create(SendChannel::Ptr const& sendChannel,
-                                                 wcontrol::TransmitMgr::Ptr const& transmitMgr,
-                                                 bool joinable)  {
-    auto scs = shared_ptr<SendChannelShared>(new SendChannelShared(sendChannel, transmitMgr, joinable));
-    scs->_keepAlive = scs;
-    //scs->_run();
+                                                 wcontrol::TransmitMgr::Ptr const& transmitMgr)  {
+    auto scs = shared_ptr<SendChannelShared>(new SendChannelShared(sendChannel, transmitMgr));
     return scs;
-}
-
-
-SendChannelShared::~SendChannelShared() {
-    if (!_sendChannel->isDead()) {
-        LOGS(_log, LOG_LVL_ERROR, "SendChannelShared destructor called while _sendChannel still alive.");
-        _sendChannel->kill();
-    }
-    if (_threadStarted == true) {
-        _lastRecvd = true;
-        _qFrontCv.notify_all();
-        _qBackCv.notify_all();
-    }
 }
 
 
@@ -82,8 +66,6 @@ bool SendChannelShared::kill(StreamGuard sLock) {
     LOGS(_log, LOG_LVL_DEBUG, "SendChannelShared::kill() called");
     bool ret = _sendChannel->kill();
     _lastRecvd = true;
-    _qFrontCv.notify_all();
-    _qBackCv.notify_all();
     return ret;
 }
 
@@ -92,24 +74,27 @@ string SendChannelShared::makeIdStr(int qId, int jId) {
     return str;
 }
 
+
 bool SendChannelShared::addTransmit(bool cancelled, bool erred, bool last, bool largeResult,
                                     TransmitData::Ptr const& tData, int qId, int jId) {
     QSERV_LOGCONTEXT_QUERY_JOB(qId, jId);
     assert(tData != nullptr);
-    _run(); // Only starts the thread if it isn't already running.
 
-    /// Wait if there are enough TransmitData objects already in the queue.
+    // This lock may be held for a very long time.
+    std::unique_lock<std::mutex> qLock(_queueMtx);
+    _transmitQueue.push(tData);
+
+    // If _lastRecvd is true, the last message has already been transmitted and
+    // this SendChannel is effectively dead.
     bool reallyLast = _lastRecvd;
-
     string idStr(makeIdStr(qId, jId));
 
+    // If something bad already happened, just give up.
     if (reallyLast || isDead()) {
         // If there's been some kind of error, make sure that nothing hangs waiting
         // for this.
         LOGS(_log, LOG_LVL_WARN, "addTransmit getting messages after isDead or reallyLast " << idStr);
         _lastRecvd = true;
-        _qFrontCv.notify_all();
-        _qBackCv.notify_all();
         return false;
     }
     {
@@ -117,91 +102,52 @@ bool SendChannelShared::addTransmit(bool cancelled, bool erred, bool last, bool 
         reallyLast = transmitTaskLast(streamLock, last);
     }
 
-    // Can this addTransmit wait?
-    // If erred or cancelled, this should be handled asap.
-    std::unique_lock<std::mutex> qLock(_queueMtx);
-    if (!erred && !cancelled) {
-        _qBackCv.wait(qLock, [this](){ return _transmitQueue.size() < 2; });
-    }
-    _transmitQueue.push(tData);
     if (reallyLast || erred || cancelled) {
         _lastRecvd = true;
     }
 
-    qLock.unlock();
-    _qFrontCv.notify_one();
+    // If this is reallyLast or at least 2 items are in the queue, the transmit can happen
+    if (reallyLast || _transmitQueue.size() >= 2) {
+        bool scanInteractive = tData->scanInteractive;
+        // If there was an error, give this high priority.
+        if (erred) scanInteractive = true;
+        int czarId = tData->czarId;
+        // Don't wait if cancelled or error.
+        if (erred || cancelled) {
+            return _transmit(erred, largeResult, czarId);
+        }
+        // Limit the number of concurrent transmits.
+        wcontrol::TransmitLock transmitLock(*_transmitMgr, scanInteractive, largeResult, czarId);
+        return _transmit(erred, largeResult, czarId);
+    } else {
+        // Not enough information to transmit. Maybe there will be with the next call
+        // to addTransmit.
+    }
     return true;
 }
 
 
-void SendChannelShared::_run() {
-    if (_threadStarted.exchange(true)) {
-        return;
-    }
-    std::thread thrd(&SendChannelShared::_transmitLoop, this);
-    _thread = std::move(thrd);
-    if (!_joinable) {
-        // There's no good option for joining later on the worker.
-        _thread.detach();
-    }
-    _threadStarted = true;
-}
-
-void SendChannelShared::join(bool onlyJoinIfRunning) {
-    if (!_joinable) {
-        throw Bug("SendChannelShared::join called on a detached thread.");
-    }
-    // This is normally only used in unit tests to prevent segv.
-    if (onlyJoinIfRunning && !_threadStarted) {
-        return;
-    }
-    _thread.join();
-}
-
-
-void SendChannelShared::_transmitLoop() {
-    LOGS(_log, LOG_LVL_DEBUG, "SendChannelShared _transmitLoop start");
-    // Allow this thread and 'this' instance to die only
-    // after this function exits.
-    Ptr keepAlive = std::move(_keepAlive);
-
-    bool loop = true;
+bool SendChannelShared::_transmit(bool erred, bool largeResult, qmeta::CzarId czarId) {
     string idStr = "QID?";
-    while (loop) {
-        std::unique_lock<std::mutex> qLock(_queueMtx);
-        // Conditions:
-        //  - There are at least 2 messages in queue, which is the minimum to send a message
-        //  - Or _lastRecvd is true. This indicates no more messages will be added to this queue
-        //    either because the last TransmitData object for this SendChannel is already
-        //    in the queue, or the queue is empty due to cancellation or an error.
-        _qFrontCv.wait(qLock, [this](){ return (_transmitQueue.size() >= 2 || _lastRecvd); });
 
-        if (_transmitQueue.size() == 0) {
-            /// This may happen when a query is cancelled.
-            LOGS(_log, LOG_LVL_WARN, "_lastRecvd and nothing to transmit.");
-            return;
-        }
+    // keep looping until nothing more can be transmitted.
+    while(_transmitQueue.size() >= 2 || _lastRecvd) {
         TransmitData::Ptr thisTransmit = _transmitQueue.front();
         _transmitQueue.pop();
-        // If this function exits before _qBackCv.notify_one() is called, deadlock.
-        // throw Bug doesn't count as it should never happen and will crash the program anyway.
         if (thisTransmit == nullptr) {
             throw Bug("_transmitLoop() _transmitQueue had nullptr!");
         } else if (thisTransmit->result == nullptr) {
             throw Bug("_transmitLoop() had nullptr result!");
         }
-        idStr = makeIdStr(thisTransmit->result->queryid(), thisTransmit->result->jobid());
 
-        // Append the header for the next message to  thisTransmit->dataMsg.
+        idStr = makeIdStr(thisTransmit->result->queryid(), thisTransmit->result->jobid());
         auto sz = _transmitQueue.size();
-        // Is this really the last message for this SharedSendChannel.
+        // Is this really the last message for this SharedSendChannel?
         bool reallyLast = (_lastRecvd && sz == 0);
 
+        // Append the header for the next message to  thisTransmit->dataMsg.
         proto::ProtoHeader* nextPHdr;
         if (sz == 0) {
-            if (!_lastRecvd) {
-                throw Bug("SendChannelShared::_transmit() size=" + to_string(sz) + " but not last.");
-            }
             // Create a header for an empty result using the protobuf arena from thisTransmit.
             // This is the signal to the czar that this SharedSendChannel is finished.
             nextPHdr = thisTransmit->createHeader();
@@ -213,21 +159,6 @@ void SendChannelShared::_transmitLoop() {
         string nextHeaderString;
         nextPHdr->SerializeToString(&nextHeaderString);
         thisTransmit->dataMsg += proto::ProtoHeaderWrap::wrap(nextHeaderString);
-        if (reallyLast) loop = false;
-        // Done with the queue for a while and this function may need to wait below.
-        qLock.unlock();
-        _qBackCv.notify_one();
-
-        // Limit the number of concurrent transmits.
-        bool scanInteractive = thisTransmit->scanInteractive;
-        // If there was an error, give this high priority.
-        if (thisTransmit->erred) {
-            scanInteractive = true;
-        }
-        bool largeResult = thisTransmit->largeResult;
-        int czarId = thisTransmit->czarId;
-        // Do NOT create transmitLock this with a mutex locked. High risk of deadlock.
-        wcontrol::TransmitLock transmitLock(*_transmitMgr, scanInteractive, largeResult, czarId);
 
         // The first message needs to put its header data in metadata as there's
         // no previous message it could attach its header to.
@@ -243,7 +174,7 @@ void SendChannelShared::_transmitLoop() {
             if (!metaSet) {
                 LOGS(_log, LOG_LVL_ERROR, "Failed to setMeta " << idStr);
                 kill(streamLock);
-                return;
+                return false;
             }
         }
 
@@ -255,15 +186,14 @@ void SendChannelShared::_transmitLoop() {
             if (!sent) {
                 LOGS(_log, LOG_LVL_ERROR, "Failed to send " << idStr);
                 kill(streamLock);
-                return;
+                return false;
             }
         }
+
+        // If that was the last message, break the loop.
+        if (reallyLast) return true;
     }
-    {
-        lock_guard<mutex> streamLock(streamMutex);
-        kill(streamLock);
-    }
-    LOGS(_log, LOG_LVL_DEBUG, "transmitLoop end for " << idStr);
+    return true;
 }
 
 
