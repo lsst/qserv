@@ -28,6 +28,14 @@
 // Qserv headers
 #include "replica/ConfigAppBase.h"
 
+// Forward declarations
+namespace lsst {
+namespace qserv {
+namespace replica {
+namespace detail {
+    class Command;
+}}}}  // forward declarations
+
 // This header declarations
 namespace lsst {
 namespace qserv {
@@ -62,6 +70,13 @@ protected:
 private:
     /// @see ConfigApp::create()
     ConfigApp(int argc, char* argv[]);
+
+    /**
+     * Configure command-line options for the worker management commands
+     * 'ADD_WORKER' or 'UPDATE_WORKER'.
+     * @param command The parser's command to be configured.
+     */
+    void _configureWorkerOptions(detail::Command& command);
 
     /**
      * Dump the Configuration into the standard output stream

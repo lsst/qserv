@@ -97,6 +97,11 @@ ConfigApp::ConfigApp(int argc, char* argv[])
 
     parser().command(
         "DUMP"
+    ).description(
+        "Dump existing configuration parameters. The command allows specifying"
+        " an optional scope to limit the output. If the parameter 'scope' is"
+        " omitted then complete configuration will be printed. Allowed scopes:"
+        " 'GENERAL', 'WORKERS', 'FAMILIES', 'DATABASES'."
     ).optional(
         "scope",
         "This optional parameter narrows a scope of the operation down to a specific"
@@ -107,16 +112,21 @@ ConfigApp::ConfigApp(int argc, char* argv[])
 
     parser().command(
         "CONFIG_INIT_FILE"
+    ).description(
+        "Dump the configuration initialization script for the specified format."
+        " Note that the only format supported by this implementation is 'JSON'."
     ).required(
         "format",
         "The format of the initialization file to be produced with this option."
-        " Allowed values: JSON.",
+        " The only format supported by the implementation is: 'JSON'.",
         _format,
         vector<string>({"JSON"})
     );
 
-    parser().command(
+    auto& updateWorkerCommand = parser().command(
         "UPDATE_WORKER"
+    ).description(
+        "Update a configuration of a worker."
     ).required(
         "worker",
         "The name of a worker to be updated.",
@@ -125,84 +135,20 @@ ConfigApp::ConfigApp(int argc, char* argv[])
         "service-host",
         "The new DNS name or an IP address where the worker runs.",
         _workerInfo.svcHost
-    ).option(
-        "service-port",
-        "The port number of the worker service.",
-        _workerInfo.svcPort
-    ).option(
-        "fs-host",
-        "The new DNS name or an IP address where the worker's File Server runs.",
-        _workerInfo.fsHost
-    ).option(
-        "fs-port",
-        "The port number of the worker's File Server.",
-        _workerInfo.fsPort
-    ).option(
-        "data-dir",
-        "The data directory of the worker.",
-        _workerInfo.dataDir
-    ).option(
-        "db-host",
-        "The new DNS name or an IP address where the worker's database service runs.",
-        _workerInfo.dbHost
-    ).option(
-        "db-port",
-        "The port number of the worker's database service.",
-        _workerInfo.dbPort
-    ).option(
-        "db-user",
-        "The name of a user account for the worker's database service.",
-        _workerInfo.dbUser
-    ).option(
-        "enable",
-        "Enable the worker if 1 (or any positive number), disable if 0."
-        " Negative numbers are ignored.",
-        _workerEnable
-    ).option(
-        "read-only",
-        "Turn the worker into the read-write mode if 1 (or any positive number),"
-        ", turn it int the read-write mode if 0.",
-        _workerReadOnly
-    ).option(
-        "loader-host",
-        "The new DNS name or an IP address where the worker's Catalog Ingest service runs.",
-        _workerInfo.loaderHost
-    ).option(
-        "loader-port",
-        "The port number of the worker's Catalog Ingest service.",
-        _workerInfo.loaderPort
-    ).option(
-        "loader-tmp-dir",
-        "The name of a user account for a temporary folder of the worker's Catalog Ingest service.",
-        _workerInfo.loaderTmpDir
-    ).option(
-        "exporter-host",
-        "The new DNS name or an IP address where the worker's Data Exporting service runs.",
-        _workerInfo.exporterHost
-    ).option(
-        "exporter-port",
-        "The port number of the worker's Data Exporting service.",
-        _workerInfo.exporterPort
-    ).option(
-        "exporter-tmp-dir",
-        "The name of a user account for a temporary folder of the worker's Data Exporting service.",
-        _workerInfo.exporterTmpDir
-    ).option(
-        "http-loader-host",
-        "The new DNS name or an IP address where the worker's Catalog REST-based Ingest service runs.",
-        _workerInfo.httpLoaderHost
-    ).option(
-        "http-loader-port",
-        "The port number of the worker's Catalog REST-based Ingest service.",
-        _workerInfo.httpLoaderPort
-    ).option(
-        "http-loader-tmp-dir",
-        "The name of a user account for a temporary folder of the worker's Catalog REST-based Ingest service.",
-        _workerInfo.httpLoaderTmpDir
     );
+    _configureWorkerOptions(updateWorkerCommand);
 
-    parser().command(
+    auto& addWorkerCommand = parser().command(
         "ADD_WORKER"
+    ).description(
+        "Register a new worker in the configuration. Note that the minimal configuration"
+        " requires two mandatory parameters: the unique name (identifier) of the worker and"
+        " the DNS name (or an IP address) of a host where the worker service would run."
+        " Other parameters are optional. The following defines rules for the optional parameters."
+        " If no location will be given for some other service a location of the 'service-host' will"
+        " be assumed. If no specific port will be provided for a service then the corresponding"
+        " default port defined in the 'worker_defaults' of the general configuration category"
+        " will be assumed. The later rule also applies to the temporary folders of all services."
     ).required(
         "worker",
         "The name of a worker to be added.",
@@ -211,7 +157,220 @@ ConfigApp::ConfigApp(int argc, char* argv[])
         "service-host",
         "The DNS name or an IP address where the worker runs.",
         _workerInfo.svcHost
+    );
+    _configureWorkerOptions(addWorkerCommand);
+
+    parser().command("DELETE_WORKER").required(
+        "worker",
+        "The name of a worker to be deleted.",
+        _workerInfo.name
+    ).description(
+        "Remove the specified worker from the configuration. ATTENTION: any data associated"
+        " with the deleted worker will be automatically deleted from the database."
+        " This includes: replicas info and transaction contribution records."
+    );
+
+    // Add options for the general parameters named as:
+    //   --<category>.<param>=<string>
+    // Note that since no database connection is available at this time (that would have
+    // required knowing a value of the parameter 'configUrl', and no parsing has been made
+    // yet) then the loop below will set the default value of each option to be the empty
+    // string. Any changes from that will be detected when processing the input. 
+    auto&& updateGeneralCmd = parser().command(
+        "UPDATE_GENERAL"
+    ).description(
+        "Update the general configuration parameters."
+    );
+    for (auto&& itr: ConfigurationSchema::parameters()) {
+        string const& category = itr.first;
+        for (auto&& param: itr.second) {
+            // The read-only parameters can't be updated programmatically.
+            if (ConfigurationSchema::readOnly(category, param)) continue;
+            _general[category][param] = string();
+            updateGeneralCmd.option(
+                category + "." + param,
+                ConfigurationSchema::description(category, param),
+                _general[category][param]);
+        }
+    }
+
+    parser().command(
+        "ADD_DATABASE_FAMILY"
+    ).description(
+        "Register a new database family. Note that all parameters of this command are"
+        " mandatory and positional."
+    ).required(
+        "name",
+        "The name of a new database family.",
+        _familyInfo.name
+    ).required(
+        "replication-level",
+        "The minimum replication level desired (1..N).",
+        _familyInfo.replicationLevel
+    ).required(
+        "num-stripes",
+        "The number of stripes (from the CSS partitioning configuration).",
+        _familyInfo.numStripes
+    ).required(
+        "num-sub-stripes",
+        "The number of sub-stripes (from the CSS partitioning configuration).",
+        _familyInfo.numSubStripes
+    ).required(
+        "overlap",
+        "The default overlap for tables that do not specify their own overlap.",
+        _familyInfo.overlap
+    );
+
+    parser().command(
+        "DELETE_DATABASE_FAMILY"
+    ).description(
+        "Remove the specified database family from the configuration. ATTENTION:"
+        " any data associated with the deleted family will be automatically deleted from"
+        " the configuration. This includes: any metadata associated with databases - members"
+        " of the deleted family, replicas info, transaction contribution records, etc."
+    ).required(
+        "name",
+        "The name of an existing database family to be deleted. ATTENTION: all databases that"
+        " are members of the family will be deleted as well, along with the relevant info"
+        " about replicas of all chunks of the databases.",
+        _familyInfo.name
+    );
+    
+    parser().command(
+        "ADD_DATABASE"
+    ).description(
+        "Register a new database in the configuration. No tables or any other metadata, such"
+        " as the names of 'director' tables, etc. will be added by this operations. Those"
+        " can be added later when the corresponding tables will be registered in a scope"
+        " of the database."
+    ).required(
+        "name",
+        "The name of a new database.",
+        _databaseInfo.name
+    ).required(
+        "family",
+        "The name of an existing family the new database will join.",
+        _databaseInfo.family
+    );
+
+    parser().command(
+        "PUBLISH_DATABASE"
+    ).description(
+        "Change the current status of the database as being 'published'. Note that"
+        " databases in this state will be tracked by the Replication system to ensure"
+        " the sufficient number of replicas (as defined by the corresponding parameter"
+        " in the databases's family definition) will be maintained. Note that databases"
+        " are published only after they're fully ingested. Normally, the change of the"
+        " database status is made by the Ingest system, not by this tool."
+    ).required(
+        "name",
+        "The name of an existing database.",
+        _databaseInfo.name
+    );
+
+    parser().command(
+        "DELETE_DATABASE"
+    ).description(
+        "Remove the database and all relevant metadata from the configuration."
+    ).required(
+        "name",
+        "The name of an existing database to be deleted. ATTENTION: all relevant info that"
+        " is associated with the database (replicas of all chunks, etc.) will get deleted as well.",
+        _databaseInfo.name
+    );
+
+    parser().command(
+        "ADD_TABLE"
+    ).description(
+        "Register a new table a configuration of the given database."
+    ).required(
+        "database",
+        "The name of an existing database.",
+        _database
+    ).required(
+        "table",
+        "The name of a new table.",
+        _table
+    ).flag(
+        "partitioned",
+        "The flag indicating (if present) that a table is partitioned.",
+        _isPartitioned
+    ).flag(
+        "director",
+        "The flag indicating (if present) that this is a 'director' table of the database"
+        " Note that this flag only applies to the partitioned tables.",
+        _isDirector
     ).option(
+        "director-key",
+        "The name of a column in the 'director' table of the database."
+        " Note that this option must be provided for the 'director' tables.",
+        _directorKey
+    ).option(
+        "chunk-id-key",
+        "The name of a column in the 'partitioned' table indicating a column which"
+        " stores identifiers of chunks. Note that this option must be provided"
+        " for the 'partitioned' tables.",
+        _chunkIdColName
+    ).option(
+        "sub-chunk-id-key",
+        "The name of a column in the 'partitioned' table indicating a column which"
+        " stores identifiers of sub-chunks. Note that this option must be provided"
+        " for the 'partitioned' tables.",
+        _subChunkIdColName
+    ).option(
+        "latitude-key",
+        "The name of a column in the 'partitioned' table indicating a column which"
+        " stores latitude (declination) of the object/sources. This parameter is optional.",
+        _latitudeColName
+    ).option(
+        "longitude-key",
+        "The name of a column in the 'partitioned' table indicating a column which"
+        " stores longitude (right ascension) of the object/sources. This parameter is optional.",
+        _longitudeColName
+    );
+
+    parser().command(
+        "DELETE_TABLE"
+    ).description(
+        "Remove the table and all relevant metadata from the configuration."
+    ).required(
+        "database",
+        "The name of an existing database.",
+        _database
+    ).required(
+        "table",
+        "The name of an existing table to be deleted. ATTENTION: all relevant info that"
+        " is associated with the table (replicas of all chunks, etc.) will get deleted as well.",
+        _table
+    );
+}
+
+
+int ConfigApp::runSubclassImpl() {
+
+    string const context = "ConfigApp::" + string(__func__) + "  ";
+
+    if (_command == "DUMP")                   return _dump();
+    if (_command == "CONFIG_INIT_FILE")       return _configInitFile();
+    if (_command == "UPDATE_GENERAL")         return _updateGeneral();
+    if (_command == "UPDATE_WORKER")          return _updateWorker();
+    if (_command == "ADD_WORKER")             return _addWorker();
+    if (_command == "DELETE_WORKER")          return _deleteWorker();
+    if (_command == "ADD_DATABASE_FAMILY")    return _addFamily();
+    if (_command == "DELETE_DATABASE_FAMILY") return _deleteFamily();
+    if (_command == "ADD_DATABASE")           return _addDatabase();
+    if (_command == "PUBLISH_DATABASE")       return _publishDatabase();
+    if (_command == "DELETE_DATABASE")        return _deleteDatabase();
+    if (_command == "ADD_TABLE")              return _addTable();
+    if (_command == "DELETE_TABLE"   )        return _deleteTable();
+
+    LOGS(_log, LOG_LVL_ERROR, context << "unsupported command: '" + _command + "'");
+    return 1;
+}
+
+
+void ConfigApp::_configureWorkerOptions(detail::Command& command) {
+    command.option(
         "service-port",
         "The port number of the worker service",
         _workerInfo.svcPort
@@ -284,181 +443,7 @@ ConfigApp::ConfigApp(int argc, char* argv[])
         "The temporay directory of the worker's HTTP-based Catalog Ingest Service",
         _workerInfo.httpLoaderTmpDir
     );
-
-
-    parser().command("DELETE_WORKER").required(
-        "worker",
-        "The name of a worker to be deleted.",
-        _workerInfo.name
-    );
-
-    // Add options for the general parameters named as:
-    //   --<category>.<param>=<string>
-    // Note that since no database connection is available at this time (that would have
-    // required knowing a value of the parameter 'configUrl', and no parsing has been made
-    // yet) then the loop below will set the default value of each option to be the empty
-    // string. Any changes from that will be detected when processing the input. 
-    auto&& updateGeneralCmd = parser().command("UPDATE_GENERAL");
-    for (auto&& itr: ConfigurationSchema::parameters()) {
-        string const& category = itr.first;
-        for (auto&& param: itr.second) {
-            // The read-only parameters can't be updated programmatically.
-            if (ConfigurationSchema::readOnly(category, param)) continue;
-            _general[category][param] = string();
-            updateGeneralCmd.option(
-                category + "." + param,
-                ConfigurationSchema::description(category, param),
-                _general[category][param]);
-        }
-    }
-
-    parser().command(
-        "ADD_DATABASE_FAMILY"
-    ).required(
-        "name",
-        "The name of a new database family.",
-        _familyInfo.name
-    ).required(
-        "replication-level",
-        "The minimum replication level desired (1..N).",
-        _familyInfo.replicationLevel
-    ).required(
-        "num-stripes",
-        "The number of stripes (from the CSS partitioning configuration).",
-        _familyInfo.numStripes
-    ).required(
-        "num-sub-stripes",
-        "The number of sub-stripes (from the CSS partitioning configuration).",
-        _familyInfo.numSubStripes
-    ).required(
-        "overlap",
-        "The default overlap for tables that do not specify their own overlap.",
-        _familyInfo.overlap
-    );
-
-    parser().command(
-        "DELETE_DATABASE_FAMILY"
-    ).required(
-        "name",
-        "The name of an existing database family to be deleted. ATTENTION: all databases that"
-        " are members of the family will be deleted as well, along with the relevant info"
-        " about replicas of all chunks of the databases.",
-        _familyInfo.name
-    );
-    
-    parser().command(
-        "ADD_DATABASE"
-    ).required(
-        "name",
-        "The name of a new database.",
-        _databaseInfo.name
-    ).required(
-        "family",
-        "The name of an existing family the new database will join.",
-        _databaseInfo.family
-    );
-
-    parser().command(
-        "PUBLISH_DATABASE"
-    ).required(
-        "name",
-        "The name of an existing database.",
-        _databaseInfo.name
-    );
-
-    parser().command(
-        "DELETE_DATABASE"
-    ).required(
-        "name",
-        "The name of an existing database to be deleted. ATTENTION: all relevant info that"
-        " is associated with the database (replicas of all chunks, etc.) will get deleted as well.",
-        _databaseInfo.name
-    );
-
-    parser().command(
-        "ADD_TABLE"
-    ).required(
-        "database",
-        "The name of an existing database.",
-        _database
-    ).required(
-        "table",
-        "The name of a new table.",
-        _table
-    ).flag(
-        "partitioned",
-        "The flag indicating (if present) that a table is partitioned.",
-        _isPartitioned
-    ).flag(
-        "director",
-        "The flag indicating (if present) that this is a 'director' table of the database"
-        " Note that this flag only applies to the partitioned tables.",
-        _isDirector
-    ).option(
-        "director-key",
-        "The name of a column in the 'director' table of the database."
-        " Note that this option must be provided for the 'director' tables.",
-        _directorKey
-    ).option(
-        "chunk-id-key",
-        "The name of a column in the 'partitioned' table indicating a column which"
-        " stores identifiers of chunks. Note that this option must be provided"
-        " for the 'partitioned' tables.",
-        _chunkIdColName
-    ).option(
-        "sub-chunk-id-key",
-        "The name of a column in the 'partitioned' table indicating a column which"
-        " stores identifiers of sub-chunks. Note that this option must be provided"
-        " for the 'partitioned' tables.",
-        _subChunkIdColName
-    ).option(
-        "latitude-key",
-        "The name of a column in the 'partitioned' table indicating a column which"
-        " stores latitude (declination) of the object/sources. This parameter is optional.",
-        _latitudeColName
-    ).option(
-        "longitude-key",
-        "The name of a column in the 'partitioned' table indicating a column which"
-        " stores longitude (right ascension) of the object/sources. This parameter is optional.",
-        _longitudeColName
-    );
-
-    parser().command(
-        "DELETE_TABLE"
-    ).required(
-        "database",
-        "The name of an existing database.",
-        _database
-    ).required(
-        "table",
-        "The name of an existing table to be deleted. ATTENTION: all relevant info that"
-        " is associated with the table (replicas of all chunks, etc.) will get deleted as well.",
-        _table
-    );
-}
-
-
-int ConfigApp::runSubclassImpl() {
-
-    string const context = "ConfigApp::" + string(__func__) + "  ";
-
-    if (_command == "DUMP")                   return _dump();
-    if (_command == "CONFIG_INIT_FILE")       return _configInitFile();
-    if (_command == "UPDATE_GENERAL")         return _updateGeneral();
-    if (_command == "UPDATE_WORKER")          return _updateWorker();
-    if (_command == "ADD_WORKER")             return _addWorker();
-    if (_command == "DELETE_WORKER")          return _deleteWorker();
-    if (_command == "ADD_DATABASE_FAMILY")    return _addFamily();
-    if (_command == "DELETE_DATABASE_FAMILY") return _deleteFamily();
-    if (_command == "ADD_DATABASE")           return _addDatabase();
-    if (_command == "PUBLISH_DATABASE")       return _publishDatabase();
-    if (_command == "DELETE_DATABASE")        return _deleteDatabase();
-    if (_command == "ADD_TABLE")              return _addTable();
-    if (_command == "DELETE_TABLE"   )        return _deleteTable();
-
-    LOGS(_log, LOG_LVL_ERROR, context << "unsupported command: '" + _command + "'");
-    return 1;
-}
+} 
 
 
 int ConfigApp::_dump() const {
