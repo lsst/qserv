@@ -122,81 +122,81 @@ ConfigApp::ConfigApp(int argc, char* argv[])
         "The name of a worker to be updated.",
         _workerInfo.name
     ).option(
-        "worker-service-host",
+        "service-host",
         "The new DNS name or an IP address where the worker runs.",
         _workerInfo.svcHost
     ).option(
-        "worker-service-port",
+        "service-port",
         "The port number of the worker service.",
         _workerInfo.svcPort
     ).option(
-        "worker-fs-host",
+        "fs-host",
         "The new DNS name or an IP address where the worker's File Server runs.",
         _workerInfo.fsHost
     ).option(
-        "worker-fs-port",
+        "fs-port",
         "The port number of the worker's File Server.",
         _workerInfo.fsPort
     ).option(
-        "worker-data-dir",
+        "data-dir",
         "The data directory of the worker.",
         _workerInfo.dataDir
     ).option(
-        "worker-db-host",
+        "db-host",
         "The new DNS name or an IP address where the worker's database service runs.",
         _workerInfo.dbHost
     ).option(
-        "worker-db-port",
+        "db-port",
         "The port number of the worker's database service.",
         _workerInfo.dbPort
     ).option(
-        "worker-db-user",
+        "db-user",
         "The name of a user account for the worker's database service.",
         _workerInfo.dbUser
     ).option(
-        "worker-enable",
+        "enable",
         "Enable the worker if 1 (or any positive number), disable if 0."
         " Negative numbers are ignored.",
         _workerEnable
     ).option(
-        "worker-read-only",
+        "read-only",
         "Turn the worker into the read-write mode if 1 (or any positive number),"
         ", turn it int the read-write mode if 0.",
         _workerReadOnly
     ).option(
-        "worker-loader-host",
+        "loader-host",
         "The new DNS name or an IP address where the worker's Catalog Ingest service runs.",
         _workerInfo.loaderHost
     ).option(
-        "worker-loader-port",
+        "loader-port",
         "The port number of the worker's Catalog Ingest service.",
         _workerInfo.loaderPort
     ).option(
-        "worker-loader-tmp-dir",
+        "loader-tmp-dir",
         "The name of a user account for a temporary folder of the worker's Catalog Ingest service.",
         _workerInfo.loaderTmpDir
     ).option(
-        "worker-exporter-host",
+        "exporter-host",
         "The new DNS name or an IP address where the worker's Data Exporting service runs.",
         _workerInfo.exporterHost
     ).option(
-        "worker-exporter-port",
+        "exporter-port",
         "The port number of the worker's Data Exporting service.",
         _workerInfo.exporterPort
     ).option(
-        "worker-exporter-tmp-dir",
+        "exporter-tmp-dir",
         "The name of a user account for a temporary folder of the worker's Data Exporting service.",
         _workerInfo.exporterTmpDir
     ).option(
-        "worker-http-loader-host",
+        "http-loader-host",
         "The new DNS name or an IP address where the worker's Catalog REST-based Ingest service runs.",
         _workerInfo.httpLoaderHost
     ).option(
-        "worker-http-loader-port",
+        "http-loader-port",
         "The port number of the worker's Catalog REST-based Ingest service.",
         _workerInfo.httpLoaderPort
     ).option(
-        "worker-http-loader-tmp-dir",
+        "http-loader-tmp-dir",
         "The name of a user account for a temporary folder of the worker's Catalog REST-based Ingest service.",
         _workerInfo.httpLoaderTmpDir
     );
@@ -211,75 +211,75 @@ ConfigApp::ConfigApp(int argc, char* argv[])
         "service-host",
         "The DNS name or an IP address where the worker runs.",
         _workerInfo.svcHost
-    ).optional(
+    ).option(
         "service-port",
         "The port number of the worker service",
         _workerInfo.svcPort
-    ).required(
+    ).option(
         "fs-host",
         "The DNS name or an IP address where the worker's File Server runs.",
         _workerInfo.fsHost
-    ).optional(
+    ).option(
         "fs-port",
         "The port number of the worker's File Server.",
         _workerInfo.fsPort
-    ).optional(
+    ).option(
         "data-dir",
         "The data directory of the worker",
         _workerInfo.dataDir
-    ).optional(
+    ).option(
         "enabled",
         "Set to '0' if the worker is turned into disabled mode upon creation.",
         _workerInfo.isEnabled
-    ).optional(
+    ).option(
         "read-only",
         "Set to '0' if the worker is NOT turned into the read-only mode upon creation.",
         _workerInfo.isReadOnly
-    ).required(
+    ).option(
         "db-host",
         "The DNS name or an IP address where the worker's Database Service runs.",
         _workerInfo.dbHost
-    ).optional(
+    ).option(
         "db-port",
         "The port number of the worker's Database Service.",
         _workerInfo.dbPort
-    ).optional(
+    ).option(
         "db-user",
         "The name of the MySQL user for the worker's Database Service",
         _workerInfo.dbUser
-    ).required(
+    ).option(
         "loader-host",
         "The DNS name or an IP address where the worker's Catalog Ingest Server runs.",
         _workerInfo.loaderHost
-    ).optional(
+    ).option(
         "loader-port",
         "The port number of the worker's Catalog Ingest Server.",
         _workerInfo.loaderPort
-    ).optional(
+    ).option(
         "loader-tmp-dir",
         "The temporay directory of the worker's Ingest Service",
         _workerInfo.loaderTmpDir
-    ).required(
+    ).option(
         "exporter-host",
         "The DNS name or an IP address where the worker's Data Exporting Server runs.",
         _workerInfo.exporterHost
-    ).optional(
+    ).option(
         "exporter-port",
         "The port number of the worker's Data Exporting Server.",
         _workerInfo.exporterPort
-    ).optional(
+    ).option(
         "exporter-tmp-dir",
         "The temporay directory of the worker's Data Exporting Service",
         _workerInfo.exporterTmpDir
-    ).required(
+    ).option(
         "http-loader-host",
         "The DNS name or an IP address where the worker's HTTP-based Catalog Ingest Server runs.",
         _workerInfo.httpLoaderHost
-    ).optional(
+    ).option(
         "http-loader-port",
         "The port number of the worker's HTTP-based Catalog Ingest Server.",
         _workerInfo.httpLoaderPort
-    ).optional(
+    ).option(
         "http-loader-tmp-dir",
         "The temporay directory of the worker's HTTP-based Catalog Ingest Service",
         _workerInfo.httpLoaderTmpDir
