@@ -116,7 +116,7 @@ public:
     std::string makeIdStr(int qId, int jId);
 
     /// Join _thread. Only used in unit tests.
-    void join();
+    void join(bool onlyJoinIfRunning=true);
 
 private:
     /// Private constructor to protect shared pointer integrity.
@@ -128,7 +128,8 @@ private:
         }
     }
 
-    void _run(); ///< Run the thread for _transmitLoop().
+    /// Run the thread for _transmitLoop(), but only if it is not already running.
+    void _run();
 
     /// Encode TransmitData items from _transmitQueue and pass them to XrdSsi
     /// to be sent to the czar.
