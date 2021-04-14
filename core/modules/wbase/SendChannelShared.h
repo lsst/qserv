@@ -55,10 +55,9 @@ public:
     SendChannelShared(SendChannelShared const&) = delete;
     SendChannelShared& operator=(SendChannelShared const&) = delete;
 
-    static Ptr create(SendChannel::Ptr const& sendChannel, wcontrol::TransmitMgr::Ptr const& transmitMgr,
-                      bool joinable=false);
+    static Ptr create(SendChannel::Ptr const& sendChannel, wcontrol::TransmitMgr::Ptr const& transmitMgr);
 
-    ~SendChannelShared();
+    ~SendChannelShared() = default;
 
     /// Wrappers for SendChannel public functions that may need to be used
     /// by threads.
@@ -115,28 +114,22 @@ public:
     /// Return a normalized id string.
     std::string makeIdStr(int qId, int jId);
 
-    /// Join _thread. Only used in unit tests.
-    void join(bool onlyJoinIfRunning=true);
-
 private:
     /// Private constructor to protect shared pointer integrity.
-    SendChannelShared(SendChannel::Ptr const& sendChannel, wcontrol::TransmitMgr::Ptr const& transmitMgr,
-                      bool joinable)
-            : _transmitMgr(transmitMgr), _joinable(joinable), _sendChannel(sendChannel) {
+    SendChannelShared(SendChannel::Ptr const& sendChannel, wcontrol::TransmitMgr::Ptr const& transmitMgr)
+            : _transmitMgr(transmitMgr), _sendChannel(sendChannel) {
         if (_sendChannel == nullptr) {
             throw Bug("SendChannelShared constructor given nullptr");
         }
     }
-
-    /// Run the thread for _transmitLoop(), but only if it is not already running.
-    void _run();
 
     /// Encode TransmitData items from _transmitQueue and pass them to XrdSsi
     /// to be sent to the czar.
     /// The header for the 'nextTransmit' item is appended to the result of
     /// 'thisTransmit', with a specially constructed header appended for the
     /// 'reallyLast' transmit.
-    void _transmitLoop();
+    /// _queueMtx must be held before calling this.
+    bool _transmit(bool erred, bool largeResult, qmeta::CzarId czarId);
 
     /// Send the buffer 'streamBuffer' using xrdssi. L
     /// 'last' should only be true if this is the last buffer to be sent with this _sendChannel.
@@ -148,8 +141,6 @@ private:
 
     std::queue<TransmitData::Ptr> _transmitQueue; ///< Queue of data to be encoded and sent.
     std::mutex _queueMtx; ///< protects _transmitQueue, _taskCount, _lastCount
-    std::condition_variable _qFrontCv; ///< Used to notify threads that want to take from _transmitQueue.
-    std::condition_variable _qBackCv; ///< Used to notify threads that want to add to _transmitQueue.
 
     /// metadata buffer. Once set, it cannot change until after Finish() has been called.
     std::string _metadataBuf;
@@ -162,12 +153,6 @@ private:
     /// Used to limit the number of transmits being sent to czars.
     wcontrol::TransmitMgr::Ptr const _transmitMgr;
 
-    std::atomic<bool> _threadStarted{false};
-    std::thread _thread;
-    Ptr _keepAlive; ///< Ensure that this object isn't destroyed before _transmitLoop is done.
-    bool const _joinable = false; ///< If true, the thread must be joined later. Useful for unit tests.
-
-    // _sendChannel must be defined last or there are segv errors in unit tests.
     SendChannel::Ptr _sendChannel; ///< Used to pass encoded information to XrdSsi.
 };
 
