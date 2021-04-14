@@ -46,7 +46,7 @@ SendChannelShared::Ptr SendChannelShared::create(SendChannel::Ptr const& sendCha
                                                  bool joinable)  {
     auto scs = shared_ptr<SendChannelShared>(new SendChannelShared(sendChannel, transmitMgr, joinable));
     scs->_keepAlive = scs;
-    scs->_run();
+    //scs->_run();
     return scs;
 }
 
@@ -96,6 +96,7 @@ bool SendChannelShared::addTransmit(bool cancelled, bool erred, bool last, bool 
                                     TransmitData::Ptr const& tData, int qId, int jId) {
     QSERV_LOGCONTEXT_QUERY_JOB(qId, jId);
     assert(tData != nullptr);
+    _run(); // Only starts the thread if it isn't already running.
 
     /// Wait if there are enough TransmitData objects already in the queue.
     bool reallyLast = _lastRecvd;
@@ -135,7 +136,7 @@ bool SendChannelShared::addTransmit(bool cancelled, bool erred, bool last, bool 
 
 void SendChannelShared::_run() {
     if (_threadStarted.exchange(true)) {
-        throw Bug("SendChannelShared::run was already called");
+        return;
     }
     std::thread thrd(&SendChannelShared::_transmitLoop, this);
     _thread = std::move(thrd);
@@ -146,9 +147,13 @@ void SendChannelShared::_run() {
     _threadStarted = true;
 }
 
-void SendChannelShared::join() {
+void SendChannelShared::join(bool onlyJoinIfRunning) {
     if (!_joinable) {
         throw Bug("SendChannelShared::join called on a detached thread.");
+    }
+    // This is normally only used in unit tests to prevent segv.
+    if (onlyJoinIfRunning && !_threadStarted) {
+        return;
     }
     _thread.join();
 }
