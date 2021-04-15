@@ -27,6 +27,9 @@
 #include <ostream>
 #include <string>
 
+// Qserv headers
+#include "replica/FileUtils.h"
+
 // This header declarations
 namespace lsst {
 namespace qserv {
@@ -69,10 +72,10 @@ public:
      * @throw std::invalid_argument if the string can't be parsed
      */
     static ConnectionParams parse(std::string const& params,
-                                  std::string const& defaultHost,
-                                  uint16_t defaultPort,
-                                  std::string const& defaultUser,
-                                  std::string const& defaultPassword);
+                                  std::string const& defaultHost="localhost",
+                                  uint16_t defaultPort=3306,
+                                  std::string const& defaultUser=FileUtils::getEffectiveUser(),
+                                  std::string const& defaultPassword=std::string());
 
     /// Initialize connection parameters with default values
     ConnectionParams();
