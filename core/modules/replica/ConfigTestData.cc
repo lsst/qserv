@@ -53,10 +53,7 @@ map<string, set<string>> ConfigTestData::parameters() {
                 "user",
                 "password",
                 "name",
-                "qserv_master_host",
-                "qserv_master_port",
                 "qserv_master_user",
-                "qserv_master_name",
                 "qserv_master_services_pool_size",
                 "qserv_master_tmp_dir"
             }
@@ -118,10 +115,7 @@ json ConfigTestData::data() {
         {"user", "qsreplica"},
         {"password", "changeme"},
         {"name", "qservReplica"},
-        {"qserv_master_host", "localhost"},
-        {"qserv_master_port", 3306},
         {"qserv_master_user", "qsmaster"},
-        {"qserv_master_name", "qservMeta"},
         {"services_pool_size", 2},
         {"qserv_master_tmp_dir", "/qserv/data/ingest"}
     });

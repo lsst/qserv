@@ -126,12 +126,9 @@ BOOST_AUTO_TEST_CASE(ConfigurationTest) {
     BOOST_CHECK(config->get<string>("database", "password") == "changeme");
     BOOST_CHECK(config->get<string>("database", "name") == "qservReplica");
 
-    BOOST_CHECK(config->get<string>("database", "qserv_master_host") == "localhost");
-    BOOST_CHECK(config->get<uint16_t>("database", "qserv_master_port") == 3306);
     BOOST_CHECK(config->get<string>("database", "qserv_master_user") == "qsmaster");
     BOOST_CHECK(config->qservCzarDbUrl() == "mysql://qsreplica@localhost:3306/qservMeta");
     BOOST_CHECK(config->qservWorkerDbUrl() == "mysql://qsreplica@localhost:3306/qservw_worker");
-    BOOST_CHECK(config->get<string>("database", "qserv_master_name") == "qservMeta");
 
     BOOST_CHECK(config->get<size_t>("database", "services_pool_size") == 2);
 

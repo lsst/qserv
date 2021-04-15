@@ -435,10 +435,7 @@ bool ConfigTestApp::_testGeneral() {
         test.verify<std::string>(   "database", "user", "root");
         test.verify<std::string>(   "database", "password", "CHANGEME");
         test.verify<std::string>(   "database", "name", "qservReplica");
-        test.verify<std::string>(   "database", "qserv_master_host", "localhost");
-        test.verify<uint16_t>(      "database", "qserv_master_port", 3306);
         test.verify<std::string>(   "database", "qserv_master_user", "qsmaster");
-        test.verify<std::string>(   "database", "qserv_master_name", "qservMeta");
         test.verify<size_t>(        "database", "qserv_master_services_pool_size", 2);
         test.verify<std::string>(   "database", "qserv_master_tmp_dir", "/qserv/data/ingest");
         test.verify<unsigned int>(  "xrootd", "auto_notify", 1);
@@ -498,10 +495,7 @@ bool ConfigTestApp::_testGeneral() {
             config()->set<std::string>("database", "password", "CHANGEME");
             config()->set<std::string>("database", "name", "qservReplica");
         }
-        config()->set<std::string>(   "database", "qserv_master_host", "localhost-1");
-        config()->set<uint16_t>(      "database", "qserv_master_port", 3306 + 1);
         config()->set<std::string>(   "database", "qserv_master_user", "qsmaster-1");
-        config()->set<std::string>(   "database", "qserv_master_name", "qservMeta-1");
         config()->set<size_t>(        "database", "qserv_master_services_pool_size", 2 + 1);
         config()->set<std::string>(   "database", "qserv_master_tmp_dir", "/qserv/data/ingest-1");
         config()->set<unsigned int>(  "xrootd", "auto_notify", 0);
@@ -547,10 +541,7 @@ bool ConfigTestApp::_testGeneral() {
         test.verify<std::string>(   "database", "password", "CHANGEME");
         test.verify<std::string>(   "database", "name", "qservReplica");
 
-        test.verify<std::string>(   "database", "qserv_master_host", "localhost-1");
-        test.verify<uint16_t>(      "database", "qserv_master_port", 3306 + 1);
         test.verify<std::string>(   "database", "qserv_master_user", "qsmaster-1");
-        test.verify<std::string>(   "database", "qserv_master_name", "qservMeta-1");
         test.verify<size_t>(        "database", "qserv_master_services_pool_size", 2 + 1);
         test.verify<std::string>(   "database", "qserv_master_tmp_dir", "/qserv/data/ingest-1");
         test.verify<unsigned int>(  "xrootd", "auto_notify", 0);
