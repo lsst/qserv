@@ -289,15 +289,7 @@ json HttpQservMonitorModule::_userQueries() {
     // is automatically rolled-back in case of exceptions.
 
     database::mysql::ConnectionHandler const h(
-        database::mysql::Connection::open(
-            database::mysql::ConnectionParams(
-                config->get<string>("database", "qserv_master_host"),
-                config->get<uint16_t>("database", "qserv_master_port"),
-                "root",
-                Configuration::qservMasterDatabasePassword(),
-                "qservMeta"
-            )
-        )
+        database::mysql::Connection::open(Configuration::qservCzarDbParams("qservMeta"))
     );
 
     // NOTE: the roll-back for this transaction will happen automatically. It will
@@ -382,11 +374,8 @@ json HttpQservMonitorModule::_userQueries() {
 
 json HttpQservMonitorModule::_userQuery() {
     debug(__func__);
-
     auto const id = stoull(params().at("id"));
-
     debug(__func__, " id=" + to_string(id));
-
     return json::object();
 }
 
@@ -407,19 +396,10 @@ json HttpQservMonitorModule::_getQueries(json& workerInfo) const {
 
     auto const config = controller()->serviceProvider()->config();
     database::mysql::ConnectionHandler const h(
-        database::mysql::Connection::open(
-            database::mysql::ConnectionParams(
-                config->get<string>("database", "qserv_master_host"),
-                config->get<uint16_t>("database", "qserv_master_port"),
-                "root",
-                Configuration::qservMasterDatabasePassword(),
-                "qservMeta"
-            )
-        )
+        database::mysql::Connection::open(Configuration::qservCzarDbParams("qservMeta"))
     );
 
     // Extract descriptions of those queries from qservMeta
-
     json result;
     if (not qids.empty()) {
         h.conn->execute([&](decltype(h.conn) conn) {

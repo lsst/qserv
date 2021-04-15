@@ -39,6 +39,16 @@ namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.Configuration");
 
+/**
+ * @param connectionUrl The connection URL.
+ * @param database The optional name of a database to replace the one defined in the url.
+ * @return The MySQL connection descriptor.
+ */
+database::mysql::ConnectionParams connectionParams(string const& connectionUrl, string const& database) {
+    database::mysql::ConnectionParams params = database::mysql::ConnectionParams::parse(connectionUrl);
+    if (!database.empty()) params.database = database;
+    return params;
+}
 } // namespace
 
 namespace lsst {
@@ -51,26 +61,34 @@ bool         Configuration::_databaseAllowReconnect = true;
 unsigned int Configuration::_databaseConnectTimeoutSec = 3600;
 unsigned int Configuration::_databaseMaxReconnects = 1;
 unsigned int Configuration::_databaseTransactionTimeoutSec = 3600;
-string       Configuration::_qservMasterDatabasePassword = "";
-string       Configuration::_qservWorkerDatabasePassword = "";
+string       Configuration::_qservCzarDbUrl = "mysql://qsreplica@localhost:3306/qservMeta";
+string       Configuration::_qservWorkerDbUrl = "mysql://qsreplica@localhost:3306/qservw_worker";
 bool         Configuration::_xrootdAllowReconnect = true;
 unsigned int Configuration::_xrootdConnectTimeoutSec = 3600;
 
 
-void Configuration::setQservMasterDatabasePassword(string const& newPassword) {
-    string result = newPassword;
-    swap(result, _qservMasterDatabasePassword);
+void Configuration::setQservCzarDbUrl(string const& url) {
+    _qservCzarDbUrl = url;
 }
 
 
-void Configuration::setQservWorkerDatabasePassword(string const& newPassword) {
-    string result = newPassword;
-    swap(result, _qservWorkerDatabasePassword);
+database::mysql::ConnectionParams Configuration::qservCzarDbParams(string const& database) {
+    return connectionParams(_qservCzarDbUrl, database);
+}
+
+
+void Configuration::setQservWorkerDbUrl(string const& url) {
+    _qservWorkerDbUrl = url;
+}
+
+
+database::mysql::ConnectionParams Configuration::qservWorkerDbParams(string const& database) {
+    return connectionParams(_qservWorkerDbUrl, database);
 }
 
 
 void Configuration::setDatabaseAllowReconnect(bool value) {
-    swap(value, _databaseAllowReconnect);
+    _databaseAllowReconnect = value;
 }
 
 
@@ -79,7 +97,7 @@ void Configuration::setDatabaseConnectTimeoutSec(unsigned int value) {
         throw invalid_argument(
                 "Configuration::" + string(__func__) + "  0 is not allowed as a value");
     }
-    swap(value, _databaseConnectTimeoutSec);
+    _databaseConnectTimeoutSec = value;
 }
 
 
@@ -88,7 +106,7 @@ void Configuration::setDatabaseMaxReconnects(unsigned int value) {
         throw invalid_argument(
                 "Configuration::" + string(__func__) + "  0 is not allowed as a value");
     }
-    swap(value, _databaseMaxReconnects);
+    _databaseMaxReconnects = value;
 }
 
 
@@ -97,12 +115,12 @@ void Configuration::setDatabaseTransactionTimeoutSec(unsigned int value) {
         throw invalid_argument(
                 "Configuration::" + string(__func__) + "  0 is not allowed as a value");
     }
-    swap(value, _databaseTransactionTimeoutSec);
+    _databaseTransactionTimeoutSec = value;
 }
 
 
 void Configuration::setXrootdAllowReconnect(bool value) {
-    swap(value, _xrootdAllowReconnect);
+    _xrootdAllowReconnect  = value;
 }
 
 
@@ -111,7 +129,7 @@ void Configuration::setXrootdConnectTimeoutSec(unsigned int value) {
         throw invalid_argument(
                 "Configuration::" + string(__func__) + "  0 is not allowed as a value");
     }
-    swap(value, _xrootdConnectTimeoutSec);
+    _xrootdConnectTimeoutSec = value;
 }
 
 

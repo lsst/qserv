@@ -190,15 +190,7 @@ void IngestFileSvc::loadDataIntoTable() {
         // The RAII connection handler automatically aborts the active transaction
         // should an exception be thrown within the block.
         database::mysql::ConnectionHandler h(
-            database::mysql::Connection::open(
-                database::mysql::ConnectionParams(
-                    _workerInfo.dbHost,
-                    _workerInfo.dbPort,
-                    _workerInfo.dbUser,
-                    _serviceProvider->config()->qservWorkerDatabasePassword(),
-                    _databaseInfo.name
-                )
-            )
+            database::mysql::Connection::open(Configuration::qservWorkerDbParams(_databaseInfo.name))
         );
 
         string const sqlPartition = h.conn->sqlPartitionId(_transactionId);
