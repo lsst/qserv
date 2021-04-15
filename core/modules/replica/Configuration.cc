@@ -726,7 +726,6 @@ WorkerInfo Configuration::_updateWorker(util::Lock const& lock, WorkerInfo const
         if (worker == completeInfo.name) continue;
         hostPort.insert(make_pair(info.svcHost, info.svcPort));
         hostPort.insert(make_pair(info.fsHost, info.fsPort));
-        hostPort.insert(make_pair(info.dbHost, info.dbPort));
         hostPort.insert(make_pair(info.loaderHost, info.loaderPort));
         hostPort.insert(make_pair(info.exporterHost, info.exporterPort));
         hostPort.insert(make_pair(info.httpLoaderHost, info.httpLoaderPort));
@@ -734,7 +733,6 @@ WorkerInfo Configuration::_updateWorker(util::Lock const& lock, WorkerInfo const
     bool const portConflictFound =
             !hostPort.insert(make_pair(completeInfo.svcHost, completeInfo.svcPort)).second ||
             !hostPort.insert(make_pair(completeInfo.fsHost, completeInfo.fsPort)).second ||
-            !hostPort.insert(make_pair(completeInfo.dbHost, completeInfo.dbPort)).second ||
             !hostPort.insert(make_pair(completeInfo.loaderHost, completeInfo.loaderPort)).second ||
             !hostPort.insert(make_pair(completeInfo.exporterHost, completeInfo.exporterPort)).second ||
             !hostPort.insert(make_pair(completeInfo.httpLoaderHost, completeInfo.httpLoaderPort)).second;
@@ -759,9 +757,6 @@ WorkerInfo Configuration::_updateWorker(util::Lock const& lock, WorkerInfo const
                     make_pair("svc_port", completeInfo.svcPort),
                     make_pair("fs_host", completeInfo.fsHost),
                     make_pair("fs_port", completeInfo.fsPort),
-                    make_pair("db_host", completeInfo.dbHost),
-                    make_pair("db_port", completeInfo.dbPort),
-                    make_pair("db_user", completeInfo.dbUser),
                     make_pair("data_dir", completeInfo.dataDir),
                     make_pair("loader_host", completeInfo.loaderHost),
                     make_pair("loader_port", completeInfo.loaderPort),
@@ -784,9 +779,6 @@ WorkerInfo Configuration::_updateWorker(util::Lock const& lock, WorkerInfo const
                     completeInfo.fsHost,
                     completeInfo.fsPort,
                     completeInfo.dataDir,
-                    completeInfo.dbHost,
-                    completeInfo.dbPort,
-                    completeInfo.dbUser,
                     completeInfo.loaderHost,
                     completeInfo.loaderPort,
                     completeInfo.loaderTmpDir,

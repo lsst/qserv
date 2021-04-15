@@ -267,18 +267,6 @@ json const ConfigurationSchema::_schemaJson = json::object({
                 " service of Qserv worker stores its data."},
             {"default", "/qserv/data/mysql"}
         }},
-        {"db_port", {
-            {"description",
-                "The default port of the MySQL service of the adjustent Qserv worker. Certain"
-                " operations conducted by the Replication/Ingest require this."},
-            {"default", 3306}
-        }},
-        {"db_user", {
-            {"description",
-                "The default MySQL user account of the adjacent Qserv worker. Certain"
-                " operations conducted by the Replication/Ingest require this."},
-            {"default", "root"}
-        }},
         {"loader_port", {
             {"description",
                 "The default port for the worker's binary file ingest service."},

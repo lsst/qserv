@@ -167,10 +167,6 @@ json HttpConfigurationModule::_updateWorker() {
     updatePort(  __func__, "fs_port",  info.fsPort);
     updateString(__func__, "data_dir", info.dataDir);
 
-    updateString(__func__, "db_host", info.dbHost);
-    updatePort(  __func__, "db_port", info.dbPort);
-    updateString(__func__, "db_user", info.dbUser);
-
     updateString(__func__, "loader_host",    info.loaderHost);
     updatePort(  __func__, "loader_port",    info.loaderPort);
     updateString(__func__, "loader_tmp_dir", info.loaderTmpDir);
@@ -213,10 +209,6 @@ json HttpConfigurationModule::_addWorker() {
     info.fsPort  = body().optional<uint16_t>("fs_port", 0);
     info.dataDir = body().required<string>(  "data_dir", string());
 
-    info.dbHost = body().required<string>(  "db_host", string());
-    info.dbPort = body().optional<uint16_t>("db_port", 0);
-    info.dbUser = body().required<string>(  "db_user", string());
-
     info.loaderHost   = body().required<string>(  "loader_host", string());
     info.loaderPort   = body().optional<uint16_t>("loader_port", 0);
     info.loaderTmpDir = body().required<string>(  "loader_tmp_dir", string());
@@ -240,10 +232,6 @@ json HttpConfigurationModule::_addWorker() {
     debug(__func__, "fs_host="  +           info.fsHost);
     debug(__func__, "fs_port="  + to_string(info.fsPort));
     debug(__func__, "data_dir=" +           info.dataDir);        
-
-    debug(__func__, "db_host=" +           info.dbHost);
-    debug(__func__, "db_port=" + to_string(info.dbPort));
-    debug(__func__, "db_user=" +           info.dbUser);        
 
     debug(__func__, "loader_host="    +           info.loaderHost);
     debug(__func__, "loader_port="    + to_string(info.loaderPort));

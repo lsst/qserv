@@ -395,18 +395,6 @@ void ConfigApp::_configureWorkerOptions(detail::Command& command) {
         "Set to '0' if the worker is NOT turned into the read-only mode upon creation.",
         _workerInfo.isReadOnly
     ).option(
-        "db-host",
-        "The DNS name or an IP address where the worker's Database Service runs.",
-        _workerInfo.dbHost
-    ).option(
-        "db-port",
-        "The port number of the worker's Database Service.",
-        _workerInfo.dbPort
-    ).option(
-        "db-user",
-        "The name of the MySQL user for the worker's Database Service",
-        _workerInfo.dbUser
-    ).option(
         "loader-host",
         "The DNS name or an IP address where the worker's Catalog Ingest Server runs.",
         _workerInfo.loaderHost
@@ -521,10 +509,6 @@ int ConfigApp::_updateWorker() const {
         WorkerInfo::update(_workerInfo.fsHost,  info.fsHost);
         WorkerInfo::update(_workerInfo.fsPort,  info.fsPort);
         WorkerInfo::update(_workerInfo.dataDir, info.dataDir);
-
-        WorkerInfo::update(_workerInfo.dbHost,  info.dbHost);
-        WorkerInfo::update(_workerInfo.dbPort,  info.dbPort);
-        WorkerInfo::update(_workerInfo.dbUser,  info.dbUser);
 
         WorkerInfo::update(_workerInfo.loaderHost,   info.loaderHost);
         WorkerInfo::update(_workerInfo.loaderPort,   info.loaderPort);

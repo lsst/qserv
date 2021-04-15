@@ -28,5 +28,10 @@ cd /home/<user>/development/qserv
 # under the current user.
 
 TAG="qserv/replica:tools-$(git describe --dirty --always)" 
+
+# For a case when no user entry exists in the local /etc/passwd, /etc/group
+# files.
 admin/tools/docker/replication/container/tools/build.sh $PWD "$TAG"
+
+# If a user entry is present in /etc/passwd, /etc/group.
 admin/tools/docker/replication/container/tools/build.sh $PWD "$TAG" --local-user
