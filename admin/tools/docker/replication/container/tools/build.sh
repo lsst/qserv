@@ -16,7 +16,7 @@ fi
 PASSWD=$HOME/passwd
 GROUP=$HOME/group
 LOCAL_USER_FLAG="$3"
-if [ ! -z "$LOCAL_USER_FLAG" ]; then
+if [ -n "$LOCAL_USER_FLAG" ]; then
   if [ $LOCAL_USER_FLAG == "--local-user" ]; then
     PASSWD=/etc/passwd
     GROUP=/etc/group

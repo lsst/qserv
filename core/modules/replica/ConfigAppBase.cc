@@ -115,8 +115,6 @@ void ConfigAppBase::dumpWorkersAsTable(string const& indent, string const& capti
     vector<string> dataDir;
     vector<string> svcHostPort;
     vector<string> fsHostPort;
-    vector<string> dbHostPort;
-    vector<string> dbUser;
     vector<string> loaderHostPort;
     vector<string> loaderTmpDir;
     vector<string> exporterHostPort;
@@ -132,8 +130,6 @@ void ConfigAppBase::dumpWorkersAsTable(string const& indent, string const& capti
         dataDir.push_back(wi.dataDir);
         svcHostPort.push_back(wi.svcHost + ":" + to_string(wi.svcPort));
         fsHostPort.push_back(wi.fsHost + ":" + to_string(wi.fsPort));
-        dbHostPort.push_back(wi.dbHost + ":" + to_string(wi.dbPort));
-        dbUser.push_back(wi.dbUser);
         loaderHostPort.push_back(wi.loaderHost + ":" + to_string(wi.loaderPort));
         loaderTmpDir.push_back(wi.loaderTmpDir);
         exporterHostPort.push_back(wi.exporterHost + ":" + to_string(wi.exporterPort));
@@ -150,8 +146,6 @@ void ConfigAppBase::dumpWorkersAsTable(string const& indent, string const& capti
     table.addColumn("Qserv data directory", dataDir, util::ColumnTablePrinter::LEFT);
     table.addColumn("Repl. svc", svcHostPort, util::ColumnTablePrinter::LEFT);
     table.addColumn("File svc", fsHostPort, util::ColumnTablePrinter::LEFT);
-    table.addColumn("Qserv db", dbHostPort, util::ColumnTablePrinter::LEFT);
-    table.addColumn(":user", dbUser, util::ColumnTablePrinter::LEFT);
     table.addColumn("Binary ingest", loaderHostPort, util::ColumnTablePrinter::LEFT);
     table.addColumn(":tmp", loaderTmpDir, util::ColumnTablePrinter::LEFT);
     table.addColumn("Export svc", exporterHostPort, util::ColumnTablePrinter::LEFT);

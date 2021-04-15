@@ -109,9 +109,6 @@ void ConfigParserMySQL::_parseWorkers() {
         info.fsHost = _parseParam<string>("fs_host", info.svcHost);
         info.fsPort = _parseParam<uint16_t>("fs_port", defaults);
         info.dataDir = _parseParam<string>("data_dir", defaults);
-        info.dbHost = _parseParam<string>("db_host", info.svcHost);
-        info.dbPort = _parseParam<uint16_t>("db_port", defaults);
-        info.dbUser = _parseParam<string>("db_user", defaults);
         info.loaderHost = _parseParam<string>("loader_host", info.svcHost);
         info.loaderPort = _parseParam<uint16_t>("loader_port", defaults);
         info.loaderTmpDir = _parseParam<string>("loader_tmp_dir", defaults);

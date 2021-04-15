@@ -300,9 +300,9 @@ Query WorkerSqlRequest::_query(database::mysql::Connection::Ptr const& conn) con
             //   mysql.db;
             // Hence removing quotes from '*' an commenting the following statement:
             //   return "GRANT ALL ON " + conn->sqlId(_request.database()) + "." + conn->sqlId("*") +
-            //          " TO " + conn->sqlValue(_request.user()) + "@" + conn->sqlValue(workerInfo.dbHost);
+            //          " TO " + conn->sqlValue(_request.user()) + "@" + conn->sqlValue("localhost");
             return Query("GRANT ALL ON " + conn->sqlId(_request.database()) + ".* TO " +
-                         conn->sqlValue(_request.user()) + "@" + conn->sqlValue(workerInfo.dbHost));
+                         conn->sqlValue(_request.user()) + "@" + conn->sqlValue("localhost"));
 
         default:
 

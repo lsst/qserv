@@ -501,9 +501,6 @@ BOOST_AUTO_TEST_CASE(ConfigurationTest) {
     BOOST_CHECK(workerA.fsHost == "host-A");
     BOOST_CHECK(workerA.fsPort == 52001);
     BOOST_CHECK(workerA.dataDir == "/data/A");
-    BOOST_CHECK(workerA.dbHost == "host-A");
-    BOOST_CHECK(workerA.dbPort == 53306);
-    BOOST_CHECK(workerA.dbUser == "qsmaster");
     BOOST_CHECK(workerA.loaderHost == "host-A");
     BOOST_CHECK(workerA.loaderPort == 53002);
     BOOST_CHECK(workerA.loaderTmpDir == "/tmp/A");
@@ -524,9 +521,6 @@ BOOST_AUTO_TEST_CASE(ConfigurationTest) {
     BOOST_CHECK(workerB.fsHost == "host-B");
     BOOST_CHECK(workerB.fsPort == 52000);
     BOOST_CHECK(workerB.dataDir == "/data/B");
-    BOOST_CHECK(workerB.dbHost == "host-B");
-    BOOST_CHECK(workerB.dbPort == 3306);
-    BOOST_CHECK(workerB.dbUser == "root");
     BOOST_CHECK(workerB.loaderHost == "host-B");
     BOOST_CHECK(workerB.loaderPort == 53000);
     BOOST_CHECK(workerB.loaderTmpDir == "/tmp");
@@ -546,9 +540,6 @@ BOOST_AUTO_TEST_CASE(ConfigurationTest) {
     BOOST_CHECK(workerC.fsHost == "host-C");
     BOOST_CHECK(workerC.fsPort == 52000);
     BOOST_CHECK(workerC.dataDir == "/data");
-    BOOST_CHECK(workerC.dbHost == "host-C");
-    BOOST_CHECK(workerC.dbPort == 3306);
-    BOOST_CHECK(workerC.dbUser == "root");
     BOOST_CHECK(workerC.loaderHost  == "host-C");
     BOOST_CHECK(workerC.loaderPort == 53000);
     BOOST_CHECK(workerC.loaderTmpDir == "/tmp");
@@ -569,9 +560,6 @@ BOOST_AUTO_TEST_CASE(ConfigurationTest) {
     workerD.fsHost = "host-D";
     workerD.fsPort = 52001;
     workerD.dataDir = "/data/D";
-    workerD.dbHost = "host-D";
-    workerD.dbPort = 13306;
-    workerD.dbUser = "default";
     workerD.loaderHost = "host-D";
     workerD.loaderPort = 52002;
     workerD.loaderTmpDir = "/tmp/D";
@@ -592,9 +580,6 @@ BOOST_AUTO_TEST_CASE(ConfigurationTest) {
     BOOST_CHECK(workerD.fsHost == "host-D");
     BOOST_CHECK(workerD.fsPort == 52001);
     BOOST_CHECK(workerD.dataDir == "/data/D");
-    BOOST_CHECK(workerD.dbHost == "host-D");
-    BOOST_CHECK(workerD.dbPort == 13306);
-    BOOST_CHECK(workerD.dbUser == "default");
     BOOST_CHECK(workerD.loaderHost == "host-D");
     BOOST_CHECK(workerD.loaderPort == 52002);
     BOOST_CHECK(workerD.loaderTmpDir == "/tmp/D");
@@ -630,9 +615,6 @@ BOOST_AUTO_TEST_CASE(ConfigurationTest) {
     BOOST_CHECK(addedWorkerF.fsHost == workerF.svcHost);
     BOOST_CHECK(addedWorkerF.fsPort == config->get<uint16_t>("worker_defaults", "fs_port"));
     BOOST_CHECK(addedWorkerF.dataDir == config->get<string>("worker_defaults", "data_dir"));
-    BOOST_CHECK(addedWorkerF.dbHost == workerF.svcHost);
-    BOOST_CHECK(addedWorkerF.dbPort == config->get<uint16_t>("worker_defaults", "db_port"));
-    BOOST_CHECK(addedWorkerF.dbUser == config->get<string>("worker_defaults", "db_user"));
     BOOST_CHECK(addedWorkerF.loaderHost == workerF.svcHost);
     BOOST_CHECK(addedWorkerF.loaderPort == config->get<uint16_t>("worker_defaults", "loader_port"));
     BOOST_CHECK(addedWorkerF.loaderTmpDir == config->get<string>("worker_defaults", "loader_tmp_dir"));
@@ -688,9 +670,6 @@ BOOST_AUTO_TEST_CASE(ConfigurationTest) {
     updatedWorker.fsHost = "host-A1";
     updatedWorker.fsPort = 2;
     updatedWorker.dataDir = "/test";
-    updatedWorker.dbHost = "host-A1";
-    updatedWorker.dbPort = 3;
-    updatedWorker.dbUser = "user-A1";
     updatedWorker.loaderHost = "host-A1";
     updatedWorker.loaderPort = 4;
     updatedWorker.loaderTmpDir = "/tmp/A1";
@@ -706,9 +685,6 @@ BOOST_AUTO_TEST_CASE(ConfigurationTest) {
     BOOST_CHECK(updatedWorker.fsHost == "host-A1");
     BOOST_CHECK(updatedWorker.fsPort == 2);
     BOOST_CHECK(updatedWorker.dataDir == "/test");
-    BOOST_CHECK(updatedWorker.dbHost == "host-A1");
-    BOOST_CHECK(updatedWorker.dbPort == 3);
-    BOOST_CHECK(updatedWorker.dbUser == "user-A1");
     BOOST_CHECK(updatedWorker.loaderHost == "host-A1");
     BOOST_CHECK(updatedWorker.loaderPort == 4);
     BOOST_CHECK(updatedWorker.loaderTmpDir == "/tmp/A1");

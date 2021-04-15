@@ -92,10 +92,6 @@ WorkerInfo::WorkerInfo(json const& obj, json const& defaults) {
         parse<uint16_t>(fsPort, obj, "fs_port", defaults);
         parse<string>(dataDir, obj, "data_dir", defaults);
 
-        parse<string>(dbHost, obj, "db_host", svcHost);
-        parse<uint16_t>(dbPort, obj, "db_port", defaults);
-        parse<string>(dbUser, obj, "db_user", defaults);
-
         parse<string>(loaderHost, obj, "loader_host", svcHost);
         parse<uint16_t>(loaderPort, obj, "loader_port", defaults);
         parse<string>(loaderTmpDir, obj, "loader_tmp_dir", defaults);
@@ -138,10 +134,6 @@ WorkerInfo::WorkerInfo(WorkerInfo const& info, json const& defaults) {
         parsePort(fsPort, info.fsPort, defaults.at("fs_port"));
         parseStr(dataDir, info.dataDir, defaults.at("data_dir"));
 
-        parseHost(dbHost, info.dbHost, info.svcHost);
-        parsePort(dbPort, info.dbPort, defaults.at("db_port"));
-        parseStr(dbUser, info.dbUser, defaults.at("db_user"));
-
         parseHost(loaderHost, info.loaderHost, info.svcHost);
         parsePort(loaderPort, info.loaderPort, defaults.at("loader_port"));
         parseStr(loaderTmpDir, info.loaderTmpDir, defaults.at("loader_tmp_dir"));
@@ -170,9 +162,6 @@ json WorkerInfo::toJson() const {
     infoJson["fs_host"] = fsHost;
     infoJson["fs_port"] = fsPort;
     infoJson["data_dir"] = dataDir;
-    infoJson["db_host"] = dbHost;
-    infoJson["db_port"] = dbPort;
-    infoJson["db_user"] = dbUser;
     infoJson["loader_host"] = loaderHost;
     infoJson["loader_port"] = loaderPort;
     infoJson["loader_tmp_dir"] = loaderTmpDir;
