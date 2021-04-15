@@ -78,77 +78,74 @@ IndexApp::IndexApp(int argc, char* argv[])
     parser().required(
         "database",
         "The name of a database to inspect.",
-        _database);
-
-    parser().option(
+        _database
+    ).option(
         "transaction",
         "An identifier of a super-transaction corresponding to a MySQL partition of the"
         " 'director' table. If the option isn't used then the complete content of"
         " the table will be scanned, and the scan won't include the super-transaction"
         " column 'qserv_trans_id'.",
-        _transactionId);
-
-    parser().required(
+        _transactionId
+    ).required(
         "destination",
         "The destination type for the harvested data."
         " Allowed values: DISCARD, FILE, FOLDER, TABLE",
         _destination,
-        {"DISCARD", "FILE", "FOLDER", "TABLE"});
-
-    parser().option(
+        {"DISCARD", "FILE", "FOLDER", "TABLE"}
+    ).option(
         "destination-path",
         "A specific destination (depends on a value of parameter 'destination')"
         " where the 'secondary index' data received from workers would go",
-        _destinationPath);
-    parser().flag(
+        _destinationPath
+    ).flag(
         "local",
         "This flag is used together with the TABLE destination option to load"
         " contributions using 'LOAD DATA LOCAL INFILE' protocol instead of"
         " 'LOAD DATA INFILE'. See MySQL documentation for further details"
         " on this subject.",
-        _localFile);
-
-    parser().flag(
+        _localFile
+    ).flag(
         "all-workers",
         "The flag for selecting all workers regardless of their status (DISABLED or READ-ONLY).",
-        _allWorkers);
-
-    parser().option(
-        "qserv-db-password",
-        "A password for the MySQL 'root' account of the Qserv master database.",
-        _qservDbRootPassword);
-
-    parser().option(
+        _allWorkers
+    ).option(
+        "qserv-czar-db",
+        "A connection URL to the MySQL server of the Qserv master database.",
+        _qservCzarDbUrl
+    ).option(
         "worker-response-timeout",
         "Maximum timeout (seconds) to wait before the index data extraction requests sent"
         " to workers will finish. Setting this timeout to some reasonably low number would"
         " prevent the application from hanging for a substantial duration of time (which"
         " depends on the default Configuration) in case if some workers were down.",
-        _timeoutSec);
-
-    parser().flag(
+        _timeoutSec
+    ).flag(
         "detailed-report",
         "The flag triggering detailed report on the harvested 'secondary index' data."
         " The report will also include MySQL errors (f any) for each chunk.",
-        _detailedReport);
-
-    parser().option(
+        _detailedReport
+    ).option(
         "tables-page-size",
         "The number of rows in the table of chunks (0 means no pages).",
-        _pageSize);
-
-    parser().flag(
+        _pageSize
+    ).flag(
         "tables-vertical-separator",
         "Print vertical separator when displaying tabular data in reports.",
-        _verticalSeparator);
+        _verticalSeparator
+    );
 }
 
 
 int IndexApp::runImpl() {
 
-    Configuration::setQservMasterDatabasePassword(_qservDbRootPassword);
-
-    auto controller = Controller::create(serviceProvider());
+    if (!_qservCzarDbUrl.empty()) {
+        // IMPORTANT: set the connector, then clear it up to avoid
+        // contaminating the log files when logging command line arguments
+        // parsed by the application.
+        Configuration::setQservCzarDbUrl(_qservCzarDbUrl);
+        _qservCzarDbUrl = "******";
+    }
+    auto const controller = Controller::create(serviceProvider());
 
     // Limit execution timeout for requests if such limit was provided
     if (_timeoutSec != 0) {
