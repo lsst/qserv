@@ -173,26 +173,10 @@ json const ConfigurationSchema::_schemaJson = json::object({
                 "The pool size at the client database services connector for the Qserv Master database."},
             {"default", 2}
         }},
-        {"qserv_master_host", {
-            {"description",
-                "The host name of the MySQL server where Qserv 'czar' maintains its persistent state."},
-            {"default", "localhost"}
-        }},
-        {"qserv_master_port", {
-            {"description",
-                "The port number of the MySQL server where Qserv 'czar' maintains its persistent state."},
-            {"default", 3306}
-        }},
         {"qserv_master_user", {
             {"description",
                 "The MySQL user account of a service where Qserv 'czar' maintains its persistent state."},
             {"default", "qsmaster"}
-        }},
-        {"qserv_master_name", {
-            {"description",
-                "The name of the default MySQL database of a service where Qserv 'czar' maintains its"
-                " persistent state."},
-            {"default", lsst::qserv::SEC_INDEX_DB}
         }},
         {"qserv_master_tmp_dir", {
             {"description",
