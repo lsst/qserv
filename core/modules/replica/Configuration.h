@@ -159,7 +159,7 @@ public:
     static database::mysql::ConnectionParams qservCzarDbParams(std::string const& database=std::string());
 
     /// @return A connection string for accessing Qserv czar's database.
-    static std::string const& qservCzarDbUrl() { return _qservCzarDbUrl; }
+    static std::string qservCzarDbUrl();
 
     /// @param url A connection string for accessing Qserv czar's database.
     static void setQservCzarDbUrl(std::string const& url);
@@ -182,13 +182,13 @@ public:
      * Qserv worker.
      * @return A connection string for accessing Qserv worker's database.
      */
-    static std::string qservWorkerDbUrl() { return _qservWorkerDbUrl; }
+    static std::string qservWorkerDbUrl();
 
     /// @param url The new connection URL to be set.
     static void setQservWorkerDbUrl(std::string const& url);
 
     /// @return the default mode for database reconnects.
-    static bool databaseAllowReconnect() { return _databaseAllowReconnect; }
+    static bool databaseAllowReconnect();
 
     /**
      * Change the default value of a parameter defining a policy for handling
@@ -199,7 +199,7 @@ public:
     static void setDatabaseAllowReconnect(bool value);
 
     /// @return The default timeout for connecting to database servers.
-    static unsigned int databaseConnectTimeoutSec() { return _databaseConnectTimeoutSec; }
+    static unsigned int databaseConnectTimeoutSec();
 
     /**
      * Change the default value of a parameter specifying delays between automatic
@@ -213,7 +213,7 @@ public:
      * @return The default number of a maximum number of attempts to execute
      *   a query due to database connection failures and subsequent reconnects.
      */
-    static unsigned int databaseMaxReconnects() { return _databaseMaxReconnects; }
+    static unsigned int databaseMaxReconnects();
 
     /**
      * Change the default value of a parameter specifying the maximum number
@@ -226,7 +226,7 @@ public:
 
     /// @return The default timeout for executing transactions at a presence
     ///   of server reconnects.
-    static unsigned int databaseTransactionTimeoutSec() { return _databaseTransactionTimeoutSec; }
+    static unsigned int databaseTransactionTimeoutSec();
 
     /**
      * Change the default value of a parameter specifying a timeout for executing
@@ -237,7 +237,7 @@ public:
     static void setDatabaseTransactionTimeoutSec(unsigned int value);
 
     /// @return the default mode for xrootd reconnects.
-    static bool xrootdAllowReconnect() { return _xrootdAllowReconnect; }
+    static bool xrootdAllowReconnect();
 
     /**
      * Change the default value of a parameter defining a policy for handling
@@ -248,7 +248,7 @@ public:
     static void setXrootdAllowReconnect(bool value);
 
     /// @return The default timeout for connecting to the xrootd servers.
-    static unsigned int xrootdConnectTimeoutSec() { return _xrootdConnectTimeoutSec; }
+    static unsigned int xrootdConnectTimeoutSec();
 
     /**
      * Change the default value of a parameter specifying the maximum interval
@@ -259,9 +259,9 @@ public:
      */
     static void setXrootdConnectTimeoutSec(unsigned int value);
 
-    // ----------------------------------------------------------------------
+    // -----------------
     // The instance API.
-    // ----------------------------------------------------------------------
+    // -----------------
 
     Configuration(Configuration const&) = delete;
     Configuration& operator=(Configuration const&) = delete;
@@ -774,6 +774,9 @@ private:
     static std::string  _qservWorkerDbUrl;
     static bool         _xrootdAllowReconnect;
     static unsigned int _xrootdConnectTimeoutSec;
+
+    // For implementing static synchronized methods.
+    static util::Mutex _classMtx;
 
     // A source of the configuration.
     std::string _configUrl;

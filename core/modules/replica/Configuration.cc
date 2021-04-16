@@ -55,6 +55,7 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
+
 // These (static) data members are allowed to be changed, and they are set
 // globally for an application (process).
 bool         Configuration::_databaseAllowReconnect = true;
@@ -65,71 +66,136 @@ string       Configuration::_qservCzarDbUrl = "mysql://qsreplica@localhost:3306/
 string       Configuration::_qservWorkerDbUrl = "mysql://qsreplica@localhost:3306/qservw_worker";
 bool         Configuration::_xrootdAllowReconnect = true;
 unsigned int Configuration::_xrootdConnectTimeoutSec = 3600;
+util::Mutex  Configuration::_classMtx;
 
+
+// ---------------
+// The static API.
+// ---------------
 
 void Configuration::setQservCzarDbUrl(string const& url) {
+    if (url.empty()) {
+        throw invalid_argument("Configuration::" + string(__func__) + "  empty string is not allowed.");
+    }
+    util::Lock const lock(_classMtx, _context(__func__));
     _qservCzarDbUrl = url;
 }
 
 
+string Configuration::qservCzarDbUrl() {
+    util::Lock const lock(_classMtx, _context(__func__));
+    return _qservCzarDbUrl;
+}
+
+
 database::mysql::ConnectionParams Configuration::qservCzarDbParams(string const& database) {
+    util::Lock const lock(_classMtx, _context(__func__));
     return connectionParams(_qservCzarDbUrl, database);
 }
 
 
 void Configuration::setQservWorkerDbUrl(string const& url) {
+    if (url.empty()) {
+        throw invalid_argument("Configuration::" + string(__func__) + "  empty string is not allowed.");
+    }
+    util::Lock const lock(_classMtx, _context(__func__));
     _qservWorkerDbUrl = url;
 }
 
 
+string Configuration::qservWorkerDbUrl() {
+    util::Lock const lock(_classMtx, _context(__func__));
+    return _qservWorkerDbUrl;
+}
+
+
 database::mysql::ConnectionParams Configuration::qservWorkerDbParams(string const& database) {
+    util::Lock const lock(_classMtx, _context(__func__));
     return connectionParams(_qservWorkerDbUrl, database);
 }
 
 
 void Configuration::setDatabaseAllowReconnect(bool value) {
+    util::Lock const lock(_classMtx, _context(__func__));
     _databaseAllowReconnect = value;
 }
 
 
+bool Configuration::databaseAllowReconnect() {
+    util::Lock const lock(_classMtx, _context(__func__));
+    return _databaseAllowReconnect;
+}
+
+
 void Configuration::setDatabaseConnectTimeoutSec(unsigned int value) {
+    util::Lock const lock(_classMtx, _context(__func__));
     if (0 == value) {
-        throw invalid_argument(
-                "Configuration::" + string(__func__) + "  0 is not allowed as a value");
+        throw invalid_argument("Configuration::" + string(__func__) + "  0 is not allowed.");
     }
     _databaseConnectTimeoutSec = value;
 }
 
 
+unsigned int Configuration::databaseConnectTimeoutSec() {
+    util::Lock const lock(_classMtx, _context(__func__));
+    return _databaseConnectTimeoutSec;
+}
+
+
 void Configuration::setDatabaseMaxReconnects(unsigned int value) {
+    util::Lock const lock(_classMtx, _context(__func__));
     if (0 == value) {
-        throw invalid_argument(
-                "Configuration::" + string(__func__) + "  0 is not allowed as a value");
+        throw invalid_argument("Configuration::" + string(__func__) + "  0 is not allowed.");
     }
     _databaseMaxReconnects = value;
 }
 
 
+unsigned int Configuration::databaseMaxReconnects() {
+    util::Lock const lock(_classMtx, _context(__func__));
+    return _databaseMaxReconnects;
+}
+
+
 void Configuration::setDatabaseTransactionTimeoutSec(unsigned int value) {
+    util::Lock const lock(_classMtx, _context(__func__));
     if (0 == value) {
-        throw invalid_argument(
-                "Configuration::" + string(__func__) + "  0 is not allowed as a value");
+        throw invalid_argument("Configuration::" + string(__func__) + "  0 is not allowed.");
     }
     _databaseTransactionTimeoutSec = value;
 }
 
 
+unsigned int Configuration::databaseTransactionTimeoutSec() {
+    util::Lock const lock(_classMtx, _context(__func__));
+    return _databaseTransactionTimeoutSec;
+}
+
+
 void Configuration::setXrootdAllowReconnect(bool value) {
+    util::Lock const lock(_classMtx, _context(__func__));
     _xrootdAllowReconnect  = value;
 }
 
 
+bool Configuration::xrootdAllowReconnect() {
+    util::Lock const lock(_classMtx, _context(__func__));
+    return _xrootdAllowReconnect;
+}
+
+
 void Configuration::setXrootdConnectTimeoutSec(unsigned int value) {
+    util::Lock const lock(_classMtx, _context(__func__));
     if (0 == value) {
-        throw invalid_argument(
-                "Configuration::" + string(__func__) + "  0 is not allowed as a value");
+        throw invalid_argument("Configuration::" + string(__func__) + "  0 is not allowed.");
     }
     _xrootdConnectTimeoutSec = value;
+}
+
+
+unsigned int Configuration::xrootdConnectTimeoutSec() {
+    util::Lock const lock(_classMtx, _context(__func__));
+    return _xrootdConnectTimeoutSec;
 }
 
 
@@ -155,6 +221,10 @@ string Configuration::_context(string const& func) {
     return "CONFIG  " + func;
 }
 
+
+// -----------------
+// The instance API.
+// -----------------
 
 Configuration::Configuration()
     :   _data(ConfigurationSchema::defaultConfigData()) {
