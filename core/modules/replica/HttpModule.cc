@@ -76,7 +76,7 @@ shared_ptr<css::CssAccess> HttpModule::qservCssAccess(bool readOnly) const {
     auto const connectionParams = Configuration::qservCzarDbParams("qservCssData");
     map<string, string> cssConfig;
     cssConfig["technology"] = "mysql";
-    // Address translation is requird because CSS MySQL connector doesn't set
+    // Address translation is required because CSS MySQL connector doesn't set
     // the TCP protocol option for 'localhost' and tries to connect via UNIX socket.
     cssConfig["hostname"] = connectionParams.host == "localhost" ? "127.0.0.1" : connectionParams.host;
     cssConfig["port"] = to_string(connectionParams.port);

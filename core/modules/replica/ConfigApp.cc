@@ -49,8 +49,8 @@ namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.ConfigApp");
 
 string const description =
-    "This application is the tool for viewing and manipulating"
-    " the configuration data of the Replication system stored in the MySQL/MariaDB.";
+    "The command-line tool for viewing and manipulating the configuration data"
+    " of the Replication system stored in the MySQL/MariaDB database.";
 
 bool const injectDatabaseOptions = true;
 bool const boostProtobufVersionCheck = false;
@@ -350,19 +350,19 @@ int ConfigApp::runSubclassImpl() {
 
     string const context = "ConfigApp::" + string(__func__) + "  ";
 
-    if (_command == "DUMP")                   return _dump();
-    if (_command == "CONFIG_INIT_FILE")       return _configInitFile();
-    if (_command == "UPDATE_GENERAL")         return _updateGeneral();
-    if (_command == "UPDATE_WORKER")          return _updateWorker();
-    if (_command == "ADD_WORKER")             return _addWorker();
-    if (_command == "DELETE_WORKER")          return _deleteWorker();
-    if (_command == "ADD_DATABASE_FAMILY")    return _addFamily();
+    if (_command == "DUMP") return _dump();
+    if (_command == "CONFIG_INIT_FILE") return _configInitFile();
+    if (_command == "UPDATE_GENERAL") return _updateGeneral();
+    if (_command == "UPDATE_WORKER") return _updateWorker();
+    if (_command == "ADD_WORKER") return _addWorker();
+    if (_command == "DELETE_WORKER") return _deleteWorker();
+    if (_command == "ADD_DATABASE_FAMILY") return _addFamily();
     if (_command == "DELETE_DATABASE_FAMILY") return _deleteFamily();
-    if (_command == "ADD_DATABASE")           return _addDatabase();
-    if (_command == "PUBLISH_DATABASE")       return _publishDatabase();
-    if (_command == "DELETE_DATABASE")        return _deleteDatabase();
-    if (_command == "ADD_TABLE")              return _addTable();
-    if (_command == "DELETE_TABLE"   )        return _deleteTable();
+    if (_command == "ADD_DATABASE") return _addDatabase();
+    if (_command == "PUBLISH_DATABASE") return _publishDatabase();
+    if (_command == "DELETE_DATABASE") return _deleteDatabase();
+    if (_command == "ADD_TABLE") return _addTable();
+    if (_command == "DELETE_TABLE") return _deleteTable();
 
     LOGS(_log, LOG_LVL_ERROR, context << "unsupported command: '" + _command + "'");
     return 1;
@@ -372,7 +372,7 @@ int ConfigApp::runSubclassImpl() {
 void ConfigApp::_configureWorkerOptions(detail::Command& command) {
     command.option(
         "service-port",
-        "The port number of the worker service",
+        "The port number of the worker service.",
         _workerInfo.svcPort
     ).option(
         "fs-host",
@@ -384,7 +384,7 @@ void ConfigApp::_configureWorkerOptions(detail::Command& command) {
         _workerInfo.fsPort
     ).option(
         "data-dir",
-        "The data directory of the worker",
+        "The data directory of the worker.",
         _workerInfo.dataDir
     ).option(
         "enabled",
@@ -404,7 +404,7 @@ void ConfigApp::_configureWorkerOptions(detail::Command& command) {
         _workerInfo.loaderPort
     ).option(
         "loader-tmp-dir",
-        "The temporay directory of the worker's Ingest Service",
+        "The temporay directory of the worker's Ingest Service.",
         _workerInfo.loaderTmpDir
     ).option(
         "exporter-host",
@@ -416,7 +416,7 @@ void ConfigApp::_configureWorkerOptions(detail::Command& command) {
         _workerInfo.exporterPort
     ).option(
         "exporter-tmp-dir",
-        "The temporay directory of the worker's Data Exporting Service",
+        "The temporay directory of the worker's Data Exporting Service.",
         _workerInfo.exporterTmpDir
     ).option(
         "http-loader-host",
@@ -446,26 +446,21 @@ int ConfigApp::_dump() const {
 
 
 int ConfigApp::_configInitFile() const {
-
-    string const context = "ConfigApp::" + string(__func__) + "  ";
-
-    try {
-        if ("JSON" == _format) { cout << config()->toJson().dump() << endl; }
-        else {
-            LOGS(_log, LOG_LVL_ERROR, context << "operation failed, unsupported format: " << _format);
-            return 1;
-        }
-    } catch (exception const& ex) {
-        LOGS(_log, LOG_LVL_ERROR, context << "operation failed, exception: "
-              << ex.what());
+    if ("JSON" != _format) {
+        LOGS(_log, LOG_LVL_ERROR, "ConfigApp::" << __func__ << ": unsupported format '" << _format << "'.");
         return 1;
+    }
+    try {
+        cout << config()->toJson().dump() << endl;
+    } catch (exception const& ex) {
+        LOGS(_log, LOG_LVL_ERROR, "ConfigApp::" << __func__ << ": " << ex.what());
+        throw;
     }
     return 0;
 }
 
 
 int ConfigApp::_updateGeneral() {
-    string const context = "ConfigApp::" + string(__func__) + "  ";
     try {
         // Note that options specified by a user will have non-empty values.
         for (auto&& categoryItr: _general) {
@@ -479,245 +474,140 @@ int ConfigApp::_updateGeneral() {
             }
         }
     } catch (exception const& ex) {
-        LOGS(_log, LOG_LVL_ERROR, context << "operation failed, exception: " << ex.what());
-        return 1;
+        LOGS(_log, LOG_LVL_ERROR, "ConfigApp::" << __func__ << ": " << ex.what());
+        throw;
     }
     return 0;
 }
 
 
 int ConfigApp::_updateWorker() const {
-
-    string const context = "ConfigApp::" + string(__func__) + "  ";
-
-    if (!config()->isKnownWorker(_workerInfo.name)) {
-        LOGS(_log, LOG_LVL_ERROR, context << "unknown worker: '" << _workerInfo.name << "'");
-        return 1;
-    }
-
     // Configuration changes will be updated in the transient object obtained from
     // the database and then be saved to the the persistent configuration.
     try {
         auto info = config()->workerInfo(_workerInfo.name);
-
-        WorkerInfo::update(_workerEnable,   info.isEnabled);
+        WorkerInfo::update(_workerEnable, info.isEnabled);
         WorkerInfo::update(_workerReadOnly, info.isReadOnly);
-
         WorkerInfo::update(_workerInfo.svcHost, info.svcHost);
         WorkerInfo::update(_workerInfo.svcPort, info.svcPort);
-
-        WorkerInfo::update(_workerInfo.fsHost,  info.fsHost);
-        WorkerInfo::update(_workerInfo.fsPort,  info.fsPort);
+        WorkerInfo::update(_workerInfo.fsHost, info.fsHost);
+        WorkerInfo::update(_workerInfo.fsPort, info.fsPort);
         WorkerInfo::update(_workerInfo.dataDir, info.dataDir);
-
-        WorkerInfo::update(_workerInfo.loaderHost,   info.loaderHost);
-        WorkerInfo::update(_workerInfo.loaderPort,   info.loaderPort);
+        WorkerInfo::update(_workerInfo.loaderHost, info.loaderHost);
+        WorkerInfo::update(_workerInfo.loaderPort, info.loaderPort);
         WorkerInfo::update(_workerInfo.loaderTmpDir, info.loaderTmpDir);
-
-        WorkerInfo::update(_workerInfo.exporterHost,   info.exporterHost);
-        WorkerInfo::update(_workerInfo.exporterPort,   info.exporterPort);
+        WorkerInfo::update(_workerInfo.exporterHost, info.exporterHost);
+        WorkerInfo::update(_workerInfo.exporterPort, info.exporterPort);
         WorkerInfo::update(_workerInfo.exporterTmpDir, info.exporterTmpDir);
-
-        WorkerInfo::update(_workerInfo.httpLoaderHost,   info.httpLoaderHost);
-        WorkerInfo::update(_workerInfo.httpLoaderPort,   info.httpLoaderPort);
+        WorkerInfo::update(_workerInfo.httpLoaderHost, info.httpLoaderHost);
+        WorkerInfo::update(_workerInfo.httpLoaderPort, info.httpLoaderPort);
         WorkerInfo::update(_workerInfo.httpLoaderTmpDir, info.httpLoaderTmpDir);
-
         auto const updatedInfo = config()->updateWorker(info);
-
     } catch (exception const& ex) {
-        LOGS(_log, LOG_LVL_ERROR, context << "operation failed, exception: " << ex.what());
-        return 1;
+        LOGS(_log, LOG_LVL_ERROR, "ConfigApp::" << __func__ << ": " << ex.what());
+        throw;
     }
     return 0;
 }
 
 
 int ConfigApp::_addWorker() const {
-
-    string const context = "ConfigApp::" + string(__func__) + "  ";
-
-    if (config()->isKnownWorker(_workerInfo.name)) {
-        LOGS(_log, LOG_LVL_ERROR, context << "the worker already exists: '" << _workerInfo.name << "'");
-        return 1;
-    }
     try {
         config()->addWorker(_workerInfo);
     } catch (exception const& ex) {
-        LOGS(_log, LOG_LVL_ERROR, context << "operation failed, exception: " << ex.what());
-        return 1;
+        LOGS(_log, LOG_LVL_ERROR, "ConfigApp::" << __func__ << ": " << ex.what());
+        throw;
     }
     return 0;
 }
 
 
 int ConfigApp::_deleteWorker() const {
-
-    string const context = "ConfigApp::" + string(__func__) + "  ";
-
-    if (not config()->isKnownWorker(_workerInfo.name)) {
-        LOGS(_log, LOG_LVL_ERROR, context << "the worker doesn't exists: '" << _workerInfo.name << "'");
-        return 1;
-    }
-
-    auto const info = config()->workerInfo(_workerInfo.name);
     try {
         config()->deleteWorker(_workerInfo.name);
     } catch (exception const& ex) {
-        LOGS(_log, LOG_LVL_ERROR, context << "operation failed, exception: " << ex.what());
-        return 1;
+        LOGS(_log, LOG_LVL_ERROR, "ConfigApp::" << __func__ << ": " << ex.what());
+        throw;
     }
     return 0;
 }
 
 
-int ConfigApp::_addFamily() {
-
-    string const context = "ConfigApp::" + string(__func__) + "  ";
-    
-    if (_familyInfo.name.empty()) {
-        LOGS(_log, LOG_LVL_ERROR, context << "the family name can't be empty");
-        return 1;
-    }
-    if (_familyInfo.replicationLevel == 0) {
-        LOGS(_log, LOG_LVL_ERROR, context << "the replication level can't be 0");
-        return 1;
-    }
-    if (_familyInfo.numStripes == 0) {
-        LOGS(_log, LOG_LVL_ERROR, context << "the number of stripes level can't be 0");
-        return 1;
-    }
-    if (_familyInfo.numSubStripes == 0) {
-        LOGS(_log, LOG_LVL_ERROR, context << "the number of sub-stripes level can't be 0");
-        return 1;
-    }
+int ConfigApp::_addFamily() {    
     try {
         config()->addDatabaseFamily(_familyInfo);
     } catch (exception const& ex) {
-        LOGS(_log, LOG_LVL_ERROR, context << "operation failed, exception: " << ex.what());
-        return 1;
+        LOGS(_log, LOG_LVL_ERROR, "ConfigApp::" << __func__ << ": " << ex.what());
+        throw;
     }
     return 0;
 }
 
 
 int ConfigApp::_deleteFamily() {
-
-    string const context = "ConfigApp::" + string(__func__) + "  ";
-
-    if (_familyInfo.name.empty()) {
-        LOGS(_log, LOG_LVL_ERROR, context << "the family name can't be empty");
-        return 1;
-    }
     try {
         config()->deleteDatabaseFamily(_familyInfo.name);
     } catch (exception const& ex) {
-        LOGS(_log, LOG_LVL_ERROR, context << "operation failed, exception: " << ex.what());
-        return 1;
+        LOGS(_log, LOG_LVL_ERROR, "ConfigApp::" << __func__ << ": " << ex.what());
+        throw;
     }
     return 0;
 }
 
 
-int ConfigApp::_addDatabase() {
-
-    string const context = "ConfigApp::" + string(__func__) + "  ";
-    
-    if (_databaseInfo.name.empty()) {
-        LOGS(_log, LOG_LVL_ERROR, context << "the database name can't be empty");
-        return 1;
-    }
-    if (_databaseInfo.family.empty()) {
-        LOGS(_log, LOG_LVL_ERROR, context << "the family name can't be empty");
-        return 1;
-    }
+int ConfigApp::_addDatabase() {    
     try {
         config()->addDatabase(_databaseInfo.name, _databaseInfo.family);
     } catch (exception const& ex) {
-        LOGS(_log, LOG_LVL_ERROR, context << "operation failed, exception: " << ex.what());
-        return 1;
+        LOGS(_log, LOG_LVL_ERROR, "ConfigApp::" << __func__ << ": " << ex.what());
+        throw;
     }
     return 0;
 }
 
 
 int ConfigApp::_publishDatabase() {
-
-    string const context = "ConfigApp::" + string(__func__) + "  ";
-    
-    if (_databaseInfo.name.empty()) {
-        LOGS(_log, LOG_LVL_ERROR, context << "the database name can't be empty");
-        return 1;
-    }
     try {
         config()->publishDatabase(_databaseInfo.name);
     } catch (exception const& ex) {
-        LOGS(_log, LOG_LVL_ERROR, context << "operation failed, exception: " << ex.what());
-        return 1;
+        LOGS(_log, LOG_LVL_ERROR, "ConfigApp::" << __func__ << ": " << ex.what());
+        throw;
     }
     return 0;
 }
 
 
 int ConfigApp::_deleteDatabase() {
-
-    string const context = "ConfigApp::" + string(__func__) + "  ";
-
-    if (_databaseInfo.name.empty()) {
-        LOGS(_log, LOG_LVL_ERROR, context << "the database name can't be empty");
-        return 1;
-    }
     try {
         config()->deleteDatabase(_databaseInfo.name);
     } catch (exception const& ex) {
-        LOGS(_log, LOG_LVL_ERROR, context << "operation failed, exception: " << ex.what());
-        return 1;
+        LOGS(_log, LOG_LVL_ERROR, "ConfigApp::" << __func__ << ": " << ex.what());
+        throw;
     }
     return 0;
 }
 
 
 int ConfigApp::_addTable() {
-
-    string const context = "ConfigApp::" + string(__func__) + "  ";
-    
-    if (_database.empty()) {
-        LOGS(_log, LOG_LVL_ERROR, context << "the database name can't be empty");
-        return 1;
-    }
-    if (_table.empty()) {
-        LOGS(_log, LOG_LVL_ERROR, context << "the table name can't be empty");
-        return 1;
-    }
     try {
         list<SqlColDef> noColumns;
         config()->addTable(_database, _table, _isPartitioned, noColumns,
                           _isDirector, _directorKey,
                           _chunkIdColName, _subChunkIdColName, _latitudeColName, _longitudeColName);
     } catch (exception const& ex) {
-        LOGS(_log, LOG_LVL_ERROR, context << "operation failed, exception: " << ex.what());
-        return 1;
+        LOGS(_log, LOG_LVL_ERROR, "ConfigApp::" << __func__ << ": " << ex.what());
+        throw;
     }
     return 0;
 }
 
 
 int ConfigApp::_deleteTable() {
-
-    string const context = "ConfigApp::" + string(__func__) + "  ";
-
-    if (_database.empty()) {
-        LOGS(_log, LOG_LVL_ERROR, context << "the database name can't be empty");
-        return 1;
-    }
-    if (_table.empty()) {
-        LOGS(_log, LOG_LVL_ERROR, context << "the table name can't be empty");
-        return 1;
-    }
     try {
         config()->deleteTable(_database, _table);
     } catch (exception const& ex) {
-        LOGS(_log, LOG_LVL_ERROR, context << "operation failed, exception: " << ex.what());
-        return 1;
+        LOGS(_log, LOG_LVL_ERROR, "ConfigApp::" << __func__ << ": " << ex.what());
+        throw;
     }
     return 0;
 }
