@@ -97,6 +97,11 @@ ConfigApp::ConfigApp(int argc, char* argv[])
 
     parser().command(
         "DUMP"
+    ).description(
+        "Dump existing configuration parameters. The command allows specifying"
+        " an optional scope to limit the output. If the parameter 'scope' is"
+        " omitted then complete configuration will be printed. Allowed scopes:"
+        " 'GENERAL', 'WORKERS', 'FAMILIES', 'DATABASES'."
     ).optional(
         "scope",
         "This optional parameter narrows a scope of the operation down to a specific"
@@ -107,102 +112,43 @@ ConfigApp::ConfigApp(int argc, char* argv[])
 
     parser().command(
         "CONFIG_INIT_FILE"
+    ).description(
+        "Dump the configuration initialization script for the specified format."
+        " Note that the only format supported by this implementation is 'JSON'."
     ).required(
         "format",
         "The format of the initialization file to be produced with this option."
-        " Allowed values: JSON.",
+        " The only format supported by the implementation is: 'JSON'.",
         _format,
         vector<string>({"JSON"})
     );
 
-    parser().command(
+    auto& updateWorkerCommand = parser().command(
         "UPDATE_WORKER"
+    ).description(
+        "Update a configuration of a worker."
     ).required(
         "worker",
         "The name of a worker to be updated.",
         _workerInfo.name
     ).option(
-        "worker-service-host",
+        "service-host",
         "The new DNS name or an IP address where the worker runs.",
         _workerInfo.svcHost
-    ).option(
-        "worker-service-port",
-        "The port number of the worker service.",
-        _workerInfo.svcPort
-    ).option(
-        "worker-fs-host",
-        "The new DNS name or an IP address where the worker's File Server runs.",
-        _workerInfo.fsHost
-    ).option(
-        "worker-fs-port",
-        "The port number of the worker's File Server.",
-        _workerInfo.fsPort
-    ).option(
-        "worker-data-dir",
-        "The data directory of the worker.",
-        _workerInfo.dataDir
-    ).option(
-        "worker-db-host",
-        "The new DNS name or an IP address where the worker's database service runs.",
-        _workerInfo.dbHost
-    ).option(
-        "worker-db-port",
-        "The port number of the worker's database service.",
-        _workerInfo.dbPort
-    ).option(
-        "worker-db-user",
-        "The name of a user account for the worker's database service.",
-        _workerInfo.dbUser
-    ).option(
-        "worker-enable",
-        "Enable the worker if 1 (or any positive number), disable if 0."
-        " Negative numbers are ignored.",
-        _workerEnable
-    ).option(
-        "worker-read-only",
-        "Turn the worker into the read-write mode if 1 (or any positive number),"
-        ", turn it int the read-write mode if 0.",
-        _workerReadOnly
-    ).option(
-        "worker-loader-host",
-        "The new DNS name or an IP address where the worker's Catalog Ingest service runs.",
-        _workerInfo.loaderHost
-    ).option(
-        "worker-loader-port",
-        "The port number of the worker's Catalog Ingest service.",
-        _workerInfo.loaderPort
-    ).option(
-        "worker-loader-tmp-dir",
-        "The name of a user account for a temporary folder of the worker's Catalog Ingest service.",
-        _workerInfo.loaderTmpDir
-    ).option(
-        "worker-exporter-host",
-        "The new DNS name or an IP address where the worker's Data Exporting service runs.",
-        _workerInfo.exporterHost
-    ).option(
-        "worker-exporter-port",
-        "The port number of the worker's Data Exporting service.",
-        _workerInfo.exporterPort
-    ).option(
-        "worker-exporter-tmp-dir",
-        "The name of a user account for a temporary folder of the worker's Data Exporting service.",
-        _workerInfo.exporterTmpDir
-    ).option(
-        "worker-http-loader-host",
-        "The new DNS name or an IP address where the worker's Catalog REST-based Ingest service runs.",
-        _workerInfo.httpLoaderHost
-    ).option(
-        "worker-http-loader-port",
-        "The port number of the worker's Catalog REST-based Ingest service.",
-        _workerInfo.httpLoaderPort
-    ).option(
-        "worker-http-loader-tmp-dir",
-        "The name of a user account for a temporary folder of the worker's Catalog REST-based Ingest service.",
-        _workerInfo.httpLoaderTmpDir
     );
+    _configureWorkerOptions(updateWorkerCommand);
 
-    parser().command(
+    auto& addWorkerCommand = parser().command(
         "ADD_WORKER"
+    ).description(
+        "Register a new worker in the configuration. Note that the minimal configuration"
+        " requires two mandatory parameters: the unique name (identifier) of the worker and"
+        " the DNS name (or an IP address) of a host where the worker service would run."
+        " Other parameters are optional. The following defines rules for the optional parameters."
+        " If no location will be given for some other service a location of the 'service-host' will"
+        " be assumed. If no specific port will be provided for a service then the corresponding"
+        " default port defined in the 'worker_defaults' of the general configuration category"
+        " will be assumed. The later rule also applies to the temporary folders of all services."
     ).required(
         "worker",
         "The name of a worker to be added.",
@@ -211,85 +157,17 @@ ConfigApp::ConfigApp(int argc, char* argv[])
         "service-host",
         "The DNS name or an IP address where the worker runs.",
         _workerInfo.svcHost
-    ).optional(
-        "service-port",
-        "The port number of the worker service",
-        _workerInfo.svcPort
-    ).required(
-        "fs-host",
-        "The DNS name or an IP address where the worker's File Server runs.",
-        _workerInfo.fsHost
-    ).optional(
-        "fs-port",
-        "The port number of the worker's File Server.",
-        _workerInfo.fsPort
-    ).optional(
-        "data-dir",
-        "The data directory of the worker",
-        _workerInfo.dataDir
-    ).optional(
-        "enabled",
-        "Set to '0' if the worker is turned into disabled mode upon creation.",
-        _workerInfo.isEnabled
-    ).optional(
-        "read-only",
-        "Set to '0' if the worker is NOT turned into the read-only mode upon creation.",
-        _workerInfo.isReadOnly
-    ).required(
-        "db-host",
-        "The DNS name or an IP address where the worker's Database Service runs.",
-        _workerInfo.dbHost
-    ).optional(
-        "db-port",
-        "The port number of the worker's Database Service.",
-        _workerInfo.dbPort
-    ).optional(
-        "db-user",
-        "The name of the MySQL user for the worker's Database Service",
-        _workerInfo.dbUser
-    ).required(
-        "loader-host",
-        "The DNS name or an IP address where the worker's Catalog Ingest Server runs.",
-        _workerInfo.loaderHost
-    ).optional(
-        "loader-port",
-        "The port number of the worker's Catalog Ingest Server.",
-        _workerInfo.loaderPort
-    ).optional(
-        "loader-tmp-dir",
-        "The temporay directory of the worker's Ingest Service",
-        _workerInfo.loaderTmpDir
-    ).required(
-        "exporter-host",
-        "The DNS name or an IP address where the worker's Data Exporting Server runs.",
-        _workerInfo.exporterHost
-    ).optional(
-        "exporter-port",
-        "The port number of the worker's Data Exporting Server.",
-        _workerInfo.exporterPort
-    ).optional(
-        "exporter-tmp-dir",
-        "The temporay directory of the worker's Data Exporting Service",
-        _workerInfo.exporterTmpDir
-    ).required(
-        "http-loader-host",
-        "The DNS name or an IP address where the worker's HTTP-based Catalog Ingest Server runs.",
-        _workerInfo.httpLoaderHost
-    ).optional(
-        "http-loader-port",
-        "The port number of the worker's HTTP-based Catalog Ingest Server.",
-        _workerInfo.httpLoaderPort
-    ).optional(
-        "http-loader-tmp-dir",
-        "The temporay directory of the worker's HTTP-based Catalog Ingest Service",
-        _workerInfo.httpLoaderTmpDir
     );
-
+    _configureWorkerOptions(addWorkerCommand);
 
     parser().command("DELETE_WORKER").required(
         "worker",
         "The name of a worker to be deleted.",
         _workerInfo.name
+    ).description(
+        "Remove the specified worker from the configuration. ATTENTION: any data associated"
+        " with the deleted worker will be automatically deleted from the database."
+        " This includes: replicas info and transaction contribution records."
     );
 
     // Add options for the general parameters named as:
@@ -298,7 +176,11 @@ ConfigApp::ConfigApp(int argc, char* argv[])
     // required knowing a value of the parameter 'configUrl', and no parsing has been made
     // yet) then the loop below will set the default value of each option to be the empty
     // string. Any changes from that will be detected when processing the input. 
-    auto&& updateGeneralCmd = parser().command("UPDATE_GENERAL");
+    auto&& updateGeneralCmd = parser().command(
+        "UPDATE_GENERAL"
+    ).description(
+        "Update the general configuration parameters."
+    );
     for (auto&& itr: ConfigurationSchema::parameters()) {
         string const& category = itr.first;
         for (auto&& param: itr.second) {
@@ -314,6 +196,9 @@ ConfigApp::ConfigApp(int argc, char* argv[])
 
     parser().command(
         "ADD_DATABASE_FAMILY"
+    ).description(
+        "Register a new database family. Note that all parameters of this command are"
+        " mandatory and positional."
     ).required(
         "name",
         "The name of a new database family.",
@@ -338,6 +223,11 @@ ConfigApp::ConfigApp(int argc, char* argv[])
 
     parser().command(
         "DELETE_DATABASE_FAMILY"
+    ).description(
+        "Remove the specified database family from the configuration. ATTENTION:"
+        " any data associated with the deleted family will be automatically deleted from"
+        " the configuration. This includes: any metadata associated with databases - members"
+        " of the deleted family, replicas info, transaction contribution records, etc."
     ).required(
         "name",
         "The name of an existing database family to be deleted. ATTENTION: all databases that"
@@ -348,6 +238,11 @@ ConfigApp::ConfigApp(int argc, char* argv[])
     
     parser().command(
         "ADD_DATABASE"
+    ).description(
+        "Register a new database in the configuration. No tables or any other metadata, such"
+        " as the names of 'director' tables, etc. will be added by this operations. Those"
+        " can be added later when the corresponding tables will be registered in a scope"
+        " of the database."
     ).required(
         "name",
         "The name of a new database.",
@@ -360,6 +255,13 @@ ConfigApp::ConfigApp(int argc, char* argv[])
 
     parser().command(
         "PUBLISH_DATABASE"
+    ).description(
+        "Change the current status of the database as being 'published'. Note that"
+        " databases in this state will be tracked by the Replication system to ensure"
+        " the sufficient number of replicas (as defined by the corresponding parameter"
+        " in the databases's family definition) will be maintained. Note that databases"
+        " are published only after they're fully ingested. Normally, the change of the"
+        " database status is made by the Ingest system, not by this tool."
     ).required(
         "name",
         "The name of an existing database.",
@@ -368,6 +270,8 @@ ConfigApp::ConfigApp(int argc, char* argv[])
 
     parser().command(
         "DELETE_DATABASE"
+    ).description(
+        "Remove the database and all relevant metadata from the configuration."
     ).required(
         "name",
         "The name of an existing database to be deleted. ATTENTION: all relevant info that"
@@ -377,6 +281,8 @@ ConfigApp::ConfigApp(int argc, char* argv[])
 
     parser().command(
         "ADD_TABLE"
+    ).description(
+        "Register a new table a configuration of the given database."
     ).required(
         "database",
         "The name of an existing database.",
@@ -425,6 +331,8 @@ ConfigApp::ConfigApp(int argc, char* argv[])
 
     parser().command(
         "DELETE_TABLE"
+    ).description(
+        "Remove the table and all relevant metadata from the configuration."
     ).required(
         "database",
         "The name of an existing database.",
@@ -459,6 +367,83 @@ int ConfigApp::runSubclassImpl() {
     LOGS(_log, LOG_LVL_ERROR, context << "unsupported command: '" + _command + "'");
     return 1;
 }
+
+
+void ConfigApp::_configureWorkerOptions(detail::Command& command) {
+    command.option(
+        "service-port",
+        "The port number of the worker service",
+        _workerInfo.svcPort
+    ).option(
+        "fs-host",
+        "The DNS name or an IP address where the worker's File Server runs.",
+        _workerInfo.fsHost
+    ).option(
+        "fs-port",
+        "The port number of the worker's File Server.",
+        _workerInfo.fsPort
+    ).option(
+        "data-dir",
+        "The data directory of the worker",
+        _workerInfo.dataDir
+    ).option(
+        "enabled",
+        "Set to '0' if the worker is turned into disabled mode upon creation.",
+        _workerInfo.isEnabled
+    ).option(
+        "read-only",
+        "Set to '0' if the worker is NOT turned into the read-only mode upon creation.",
+        _workerInfo.isReadOnly
+    ).option(
+        "db-host",
+        "The DNS name or an IP address where the worker's Database Service runs.",
+        _workerInfo.dbHost
+    ).option(
+        "db-port",
+        "The port number of the worker's Database Service.",
+        _workerInfo.dbPort
+    ).option(
+        "db-user",
+        "The name of the MySQL user for the worker's Database Service",
+        _workerInfo.dbUser
+    ).option(
+        "loader-host",
+        "The DNS name or an IP address where the worker's Catalog Ingest Server runs.",
+        _workerInfo.loaderHost
+    ).option(
+        "loader-port",
+        "The port number of the worker's Catalog Ingest Server.",
+        _workerInfo.loaderPort
+    ).option(
+        "loader-tmp-dir",
+        "The temporay directory of the worker's Ingest Service",
+        _workerInfo.loaderTmpDir
+    ).option(
+        "exporter-host",
+        "The DNS name or an IP address where the worker's Data Exporting Server runs.",
+        _workerInfo.exporterHost
+    ).option(
+        "exporter-port",
+        "The port number of the worker's Data Exporting Server.",
+        _workerInfo.exporterPort
+    ).option(
+        "exporter-tmp-dir",
+        "The temporay directory of the worker's Data Exporting Service",
+        _workerInfo.exporterTmpDir
+    ).option(
+        "http-loader-host",
+        "The DNS name or an IP address where the worker's HTTP-based Catalog Ingest Server runs.",
+        _workerInfo.httpLoaderHost
+    ).option(
+        "http-loader-port",
+        "The port number of the worker's HTTP-based Catalog Ingest Server.",
+        _workerInfo.httpLoaderPort
+    ).option(
+        "http-loader-tmp-dir",
+        "The temporay directory of the worker's HTTP-based Catalog Ingest Service",
+        _workerInfo.httpLoaderTmpDir
+    );
+} 
 
 
 int ConfigApp::_dump() const {
