@@ -44,7 +44,6 @@ qmeta_smig_dir = "qmeta/schema"
 worker_smig_dir = "worker/schema"
 replication_controller_smig_dir = "replica/schema"
 
-replica_controller_cfg_template = "/usr/local/qserv/templates/repl-ctl/etc/replicaConfig.sql.jinja"
 replica_controller_cfg_path = "/config-etc/replicaConfig.sql"
 replica_controller_log_template = "/usr/local/qserv/templates/repl-ctl/etc/log4cxx.replication.properties.jinja"
 replica_controller_log_path = "/config-etc/log4cxx.replication.properties"
@@ -381,12 +380,15 @@ def enter_replication_controller(db_scheme, connection, repl_connection, workers
         )
     ))
 
-    # prepare the replica config sql and send it to the replica config database
-    apply_template_cfg_file(replica_controller_cfg_template, replica_controller_cfg_path)
-    with open(replica_controller_cfg_path) as f:
-        replicaConfig.applyConfiguration(connection=f"{db_scheme}://{repl_connection}", sql=f.read())
 
-    apply_template_cfg_file(replica_controller_log_template, replica_controller_log_path)
+    args = [
+        "qserv-replica-config",
+        "ADD_WORKER", 
+        "worker01",
+        "worker-xrootd"
+    ]
+    _run(args, run)
+
 
     env = dict(os.environ, LSST_LOG_CONFIG=replica_controller_log_path)
 
