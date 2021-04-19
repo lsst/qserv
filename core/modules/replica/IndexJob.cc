@@ -503,13 +503,7 @@ void IndexJob::_processRequestData(util::Lock const& lock,
             // Open the database connection if this is the first batch of data
             if (nullptr == _conn) {
                 _conn = database::mysql::Connection::open(
-                    database::mysql::ConnectionParams(
-                        config->get<string>("database", "qserv_master_host"),
-                        config->get<uint16_t>("database", "qserv_master_port"),
-                        "root",
-                        Configuration::qservMasterDatabasePassword(),
-                        lsst::qserv::SEC_INDEX_DB
-                    )
+                        Configuration::qservCzarDbParams(lsst::qserv::SEC_INDEX_DB)
                 );
             }
             string const query =

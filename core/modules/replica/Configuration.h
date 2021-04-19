@@ -146,26 +146,49 @@ public:
      */
     static Ptr load(std::string const& configUrl);
 
-    /// @return The database password for accessing Qserv czar's database.
-    static std::string const& qservMasterDatabasePassword() { return _qservMasterDatabasePassword; }
+    /**
+     * Return a connection object for the czar's MySQL service with the name of
+     * a database optionally rewritten from the one stored in the corresponding URL.
+     * This is done for the sake of convenience of clients to ensure a specific
+     * database is set as the default context.
+     * @param database The optional name of a database to assume if a non-empty
+     *   string was provided.
+     * @return The parsed connection object with the name of the database optionally
+     *   overwritten.
+     */
+    static database::mysql::ConnectionParams qservCzarDbParams(std::string const& database=std::string());
 
-    /// @param newPassword The new password to be set for accessing Qserv czar's database.
-    static void setQservMasterDatabasePassword(std::string const& newPassword);
+    /// @return A connection string for accessing Qserv czar's database.
+    static std::string qservCzarDbUrl();
+
+    /// @param url A connection string for accessing Qserv czar's database.
+    static void setQservCzarDbUrl(std::string const& url);
+
+    /**
+     * Return a connection object for the worker's MySQL service with the name of
+     * a database optionally rewritten from the one stored in the corresponding URL.
+     * This is done for the sake of convenience of clients to ensure a specific
+     * database is set as the default context.
+     * @param database The optional name of a database to assume if a non-empty
+     *   string was provided.
+     * @return The parsed connection object with the name of the database optionally
+     *   overwritten.
+     */
+     static database::mysql::ConnectionParams qservWorkerDbParams(std::string const& database=std::string());
 
     /**
      * This method is used by the Replication/Ingest system's workers when they need
      * to connect directly to the corresponding MySQL/MariaDB service of the corresponding
      * Qserv worker.
-     * @note The name of the corresponding database account is found in the Configuration.
-     * @return The current password for the database account.
+     * @return A connection string for accessing Qserv worker's database.
      */
-    static std::string qservWorkerDatabasePassword() { return _qservWorkerDatabasePassword; }
+    static std::string qservWorkerDbUrl();
 
-    /// @param newPassword The new password to be set.
-    static void setQservWorkerDatabasePassword(std::string const& newPassword);
+    /// @param url The new connection URL to be set.
+    static void setQservWorkerDbUrl(std::string const& url);
 
     /// @return the default mode for database reconnects.
-    static bool databaseAllowReconnect() { return _databaseAllowReconnect; }
+    static bool databaseAllowReconnect();
 
     /**
      * Change the default value of a parameter defining a policy for handling
@@ -176,7 +199,7 @@ public:
     static void setDatabaseAllowReconnect(bool value);
 
     /// @return The default timeout for connecting to database servers.
-    static unsigned int databaseConnectTimeoutSec() { return _databaseConnectTimeoutSec; }
+    static unsigned int databaseConnectTimeoutSec();
 
     /**
      * Change the default value of a parameter specifying delays between automatic
@@ -190,7 +213,7 @@ public:
      * @return The default number of a maximum number of attempts to execute
      *   a query due to database connection failures and subsequent reconnects.
      */
-    static unsigned int databaseMaxReconnects() { return _databaseMaxReconnects; }
+    static unsigned int databaseMaxReconnects();
 
     /**
      * Change the default value of a parameter specifying the maximum number
@@ -203,7 +226,7 @@ public:
 
     /// @return The default timeout for executing transactions at a presence
     ///   of server reconnects.
-    static unsigned int databaseTransactionTimeoutSec() { return _databaseTransactionTimeoutSec; }
+    static unsigned int databaseTransactionTimeoutSec();
 
     /**
      * Change the default value of a parameter specifying a timeout for executing
@@ -214,7 +237,7 @@ public:
     static void setDatabaseTransactionTimeoutSec(unsigned int value);
 
     /// @return the default mode for xrootd reconnects.
-    static bool xrootdAllowReconnect() { return _xrootdAllowReconnect; }
+    static bool xrootdAllowReconnect();
 
     /**
      * Change the default value of a parameter defining a policy for handling
@@ -225,7 +248,7 @@ public:
     static void setXrootdAllowReconnect(bool value);
 
     /// @return The default timeout for connecting to the xrootd servers.
-    static unsigned int xrootdConnectTimeoutSec() { return _xrootdConnectTimeoutSec; }
+    static unsigned int xrootdConnectTimeoutSec();
 
     /**
      * Change the default value of a parameter specifying the maximum interval
@@ -236,9 +259,9 @@ public:
      */
     static void setXrootdConnectTimeoutSec(unsigned int value);
 
-    // ----------------------------------------------------------------------
+    // -----------------
     // The instance API.
-    // ----------------------------------------------------------------------
+    // -----------------
 
     Configuration(Configuration const&) = delete;
     Configuration& operator=(Configuration const&) = delete;
@@ -747,10 +770,13 @@ private:
     static unsigned int _databaseConnectTimeoutSec;
     static unsigned int _databaseMaxReconnects;
     static unsigned int _databaseTransactionTimeoutSec;
-    static std::string  _qservMasterDatabasePassword;
-    static std::string  _qservWorkerDatabasePassword;
+    static std::string  _qservCzarDbUrl;
+    static std::string  _qservWorkerDbUrl;
     static bool         _xrootdAllowReconnect;
     static unsigned int _xrootdConnectTimeoutSec;
+
+    // For implementing static synchronized methods.
+    static util::Mutex _classMtx;
 
     // A source of the configuration.
     std::string _configUrl;

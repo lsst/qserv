@@ -181,9 +181,9 @@ MasterControllerHttpApp::MasterControllerHttpApp(int argc, char* argv[])
         " associated with the deleted workers.",
         _permanentDelete
     ).option(
-        "qserv-db-password",
-        "A password for the MySQL 'root' account of the Qserv master database.",
-        _qservDbRootPassword
+        "qserv-czar-db",
+        "A connection URL to the MySQL server of the Qserv master database.",
+        _qservCzarDbUrl
     ).option(
         "auth-key",
         "An authorization key for requests made via the REST API.",
@@ -198,12 +198,13 @@ MasterControllerHttpApp::MasterControllerHttpApp(int argc, char* argv[])
 
 int MasterControllerHttpApp::runImpl() {
 
-    // IMPORTANT: set the database password, then clear it up to avoid
-    // contaminating the log files when logging command line arguments
-    // parsed by the application.
-    Configuration::setQservMasterDatabasePassword(_qservDbRootPassword);
-    _qservDbRootPassword = "******";
-
+    if (!_qservCzarDbUrl.empty()) {
+        // IMPORTANT: set the connector, then clear it up to avoid
+        // contaminating the log files when logging command line arguments
+        // parsed by the application.
+        Configuration::setQservCzarDbUrl(_qservCzarDbUrl);
+        _qservCzarDbUrl = "******";
+    }
     _controller = Controller::create(serviceProvider());
 
     _logControllerStartedEvent();

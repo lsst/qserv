@@ -136,8 +136,8 @@ private:
     bool _forceQservSync;
     bool _permanentDelete;
 
-    /// A password for the MySQL 'root' account of the Qserv master database.
-    std::string _qservDbRootPassword;
+    /// A connection URL to the MySQL service of the Qserv master database.
+    std::string _qservCzarDbUrl;
 
     /// An authorization key for metadata operations requested via the REST API.
     std::string _authKey;

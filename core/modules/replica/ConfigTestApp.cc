@@ -276,9 +276,6 @@ public:
         _verify("fs_host", actual.fsHost, compareWithDefault ? desired.svcHost : desired.fsHost);
         _verify("fs_port", actual.fsPort, desired.fsPort, compareWithDefault);
         _verify("data_dir", actual.dataDir, desired.dataDir, compareWithDefault);
-        _verify("db_host", actual.dbHost, compareWithDefault ? desired.svcHost : desired.dbHost);
-        _verify("db_port", actual.dbPort, desired.dbPort, compareWithDefault);
-        _verify("db_user", actual.dbUser, desired.dbUser, compareWithDefault);
         _verify("loader_host", actual.loaderHost, compareWithDefault ? desired.svcHost : desired.loaderHost);
         _verify("loader_port", actual.loaderPort, desired.loaderPort, compareWithDefault);
         _verify("loader_tmp_dir", actual.loaderTmpDir, desired.loaderTmpDir, compareWithDefault);
@@ -435,10 +432,7 @@ bool ConfigTestApp::_testGeneral() {
         test.verify<std::string>(   "database", "user", "root");
         test.verify<std::string>(   "database", "password", "CHANGEME");
         test.verify<std::string>(   "database", "name", "qservReplica");
-        test.verify<std::string>(   "database", "qserv_master_host", "localhost");
-        test.verify<uint16_t>(      "database", "qserv_master_port", 3306);
         test.verify<std::string>(   "database", "qserv_master_user", "qsmaster");
-        test.verify<std::string>(   "database", "qserv_master_name", "qservMeta");
         test.verify<size_t>(        "database", "qserv_master_services_pool_size", 2);
         test.verify<std::string>(   "database", "qserv_master_tmp_dir", "/qserv/data/ingest");
         test.verify<unsigned int>(  "xrootd", "auto_notify", 1);
@@ -455,8 +449,6 @@ bool ConfigTestApp::_testGeneral() {
         test.verify<uint16_t>(      "worker_defaults", "svc_port", 25000);
         test.verify<uint16_t>(      "worker_defaults", "fs_port", 25001);
         test.verify<std::string>(   "worker_defaults", "data_dir", "/qserv/data/mysql");
-        test.verify<uint16_t>(      "worker_defaults", "db_port", 3306);
-        test.verify<std::string>(   "worker_defaults", "db_user", "root");
         test.verify<uint16_t>(      "worker_defaults", "loader_port", 25002);
         test.verify<std::string>(   "worker_defaults", "loader_tmp_dir", "/qserv/data/ingest");
         test.verify<uint16_t>(      "worker_defaults", "exporter_port", 25003);
@@ -498,10 +490,7 @@ bool ConfigTestApp::_testGeneral() {
             config()->set<std::string>("database", "password", "CHANGEME");
             config()->set<std::string>("database", "name", "qservReplica");
         }
-        config()->set<std::string>(   "database", "qserv_master_host", "localhost-1");
-        config()->set<uint16_t>(      "database", "qserv_master_port", 3306 + 1);
         config()->set<std::string>(   "database", "qserv_master_user", "qsmaster-1");
-        config()->set<std::string>(   "database", "qserv_master_name", "qservMeta-1");
         config()->set<size_t>(        "database", "qserv_master_services_pool_size", 2 + 1);
         config()->set<std::string>(   "database", "qserv_master_tmp_dir", "/qserv/data/ingest-1");
         config()->set<unsigned int>(  "xrootd", "auto_notify", 0);
@@ -518,8 +507,6 @@ bool ConfigTestApp::_testGeneral() {
         config()->set<uint16_t>(      "worker_defaults", "svc_port", 25000 + 1);
         config()->set<uint16_t>(      "worker_defaults", "fs_port", 25001 + 1);
         config()->set<std::string>(   "worker_defaults", "data_dir", "/qserv/data/mysql-1");
-        config()->set<uint16_t>(      "worker_defaults", "db_port", 3306 + 1);
-        config()->set<std::string>(   "worker_defaults", "db_user", "root-1");
         config()->set<uint16_t>(      "worker_defaults", "loader_port", 25002 + 1);
         config()->set<std::string>(   "worker_defaults", "loader_tmp_dir", "/qserv/data/ingest-1");
         config()->set<uint16_t>(      "worker_defaults", "exporter_port", 25003 + 1);
@@ -547,10 +534,7 @@ bool ConfigTestApp::_testGeneral() {
         test.verify<std::string>(   "database", "password", "CHANGEME");
         test.verify<std::string>(   "database", "name", "qservReplica");
 
-        test.verify<std::string>(   "database", "qserv_master_host", "localhost-1");
-        test.verify<uint16_t>(      "database", "qserv_master_port", 3306 + 1);
         test.verify<std::string>(   "database", "qserv_master_user", "qsmaster-1");
-        test.verify<std::string>(   "database", "qserv_master_name", "qservMeta-1");
         test.verify<size_t>(        "database", "qserv_master_services_pool_size", 2 + 1);
         test.verify<std::string>(   "database", "qserv_master_tmp_dir", "/qserv/data/ingest-1");
         test.verify<unsigned int>(  "xrootd", "auto_notify", 0);
@@ -567,8 +551,6 @@ bool ConfigTestApp::_testGeneral() {
         test.verify<uint16_t>(      "worker_defaults", "svc_port", 25000 + 1);
         test.verify<uint16_t>(      "worker_defaults", "fs_port", 25001 + 1);
         test.verify<std::string>(   "worker_defaults", "data_dir", "/qserv/data/mysql-1");
-        test.verify<uint16_t>(      "worker_defaults", "db_port", 3306 + 1);
-        test.verify<std::string>(   "worker_defaults", "db_user", "root-1");
         test.verify<uint16_t>(      "worker_defaults", "loader_port", 25002 + 1);
         test.verify<std::string>(   "worker_defaults", "loader_tmp_dir", "/qserv/data/ingest-1");
         test.verify<uint16_t>(      "worker_defaults", "exporter_port", 25003 + 1);
@@ -610,9 +592,6 @@ bool ConfigTestApp::_testWorkers() {
         workerSpec.fsHost = "host-A";
         workerSpec.fsPort = 15001;
         workerSpec.dataDir = "/data/A";
-        workerSpec.dbHost = "host-A";
-        workerSpec.dbPort = 13306;
-        workerSpec.dbUser = "default";
         workerSpec.loaderHost = "host-A";
         workerSpec.loaderPort = 15002;
         workerSpec.loaderTmpDir = "/tmp/A";

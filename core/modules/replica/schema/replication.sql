@@ -49,12 +49,6 @@ CREATE TABLE IF NOT EXISTS `config_worker` (
 
   `data_dir`     VARCHAR(255)       DEFAULT NULL ,  -- a file system path to the databases
 
-  -- Connection parameters for the Qserv worker database
-
-  `db_host`      VARCHAR(255)       DEFAULT NULL ,  -- the host name on which the worker database server runs
-  `db_port`      SMALLINT UNSIGNED  DEFAULT NULL ,  -- override for the global default
-  `db_user`      VARCHAR(255)       DEFAULT NULL ,  -- override for the global default
-
   -- Ingest service
 
   `loader_host`    VARCHAR(255)       DEFAULT NULL,     -- the host name on which the worker's ingest server runs
@@ -77,7 +71,6 @@ CREATE TABLE IF NOT EXISTS `config_worker` (
 
   UNIQUE  KEY (`svc_host`, `svc_port`) ,
   UNIQUE  KEY (`fs_host`,  `fs_port`) ,
-  UNIQUE  KEY (`db_host`,  `db_port`) ,
   UNIQUE  KEY (`loader_host`, `loader_port`),
   UNIQUE  KEY (`exporter_host`, `exporter_port`),
   UNIQUE  KEY (`http_loader_host`, `http_loader_port`)

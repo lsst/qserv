@@ -72,8 +72,7 @@ WorkerApp::WorkerApp(int argc, char* argv[])
             enableServiceProvider,
             injectXrootdOptions
         ),
-        _log(LOG_GET("lsst.qserv.replica.WorkerApp")),
-        _qservDbPassword(Configuration::qservWorkerDatabasePassword()) {
+        _log(LOG_GET("lsst.qserv.replica.WorkerApp")) {
 
     // Configure the command line parser
 
@@ -83,10 +82,9 @@ WorkerApp::WorkerApp(int argc, char* argv[])
         _worker);
 
     parser().option(
-        "qserv-db-password",
-        "A password for the MySQL account of the Qserv worker database. The account"
-        " name is found in the Configuration.",
-        _qservDbPassword
+        "qserv-worker-db",
+        "A connection url for the MySQL service of the Qserv worker database.",
+        _qservWorkerDbUrl
     ).option(
         "auth-key",
         "An authorization key for the catalog ingest operations.",
@@ -103,19 +101,18 @@ int WorkerApp::runImpl() {
 
     string const context = "WorkerApp::" + string(__func__) + "  ";
 
-    // Set the database password
-    Configuration::setQservWorkerDatabasePassword(_qservDbPassword);
+    if (!_qservWorkerDbUrl.empty()) {
+        // IMPORTANT: set the connector, then clear it up to avoid
+        // contaminating the log files when logging command line arguments
+        // parsed by the application.
+        Configuration::setQservWorkerDbUrl(_qservWorkerDbUrl);
+        _qservWorkerDbUrl = "******";
+    }
 
     // Configure the factory with a pool of persistent connectors
     auto const workerInfo = serviceProvider()->config()->workerInfo(_worker);
     auto const connectionPool = database::mysql::ConnectionPool::create(
-        database::mysql::ConnectionParams(
-            workerInfo.dbHost,
-            workerInfo.dbPort,
-            workerInfo.dbUser,
-            serviceProvider()->config()->qservWorkerDatabasePassword(),
-            ""
-        ),
+        Configuration::qservWorkerDbParams(),
         serviceProvider()->config()->get<size_t>("database", "services_pool_size")
     );
     WorkerRequestFactory requestFactory(serviceProvider(), connectionPool);

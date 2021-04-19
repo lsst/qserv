@@ -66,31 +66,23 @@ string HttpModule::context() const {
 
 
 database::mysql::Connection::Ptr HttpModule::qservMasterDbConnection(string const& database) const {
-    auto const config = controller()->serviceProvider()->config();
-    return database::mysql::Connection::open(
-        database::mysql::ConnectionParams(
-            config->get<string>("database", "qserv_master_host"),
-            config->get<uint16_t>("database", "qserv_master_port"),
-            "root",
-            Configuration::qservMasterDatabasePassword(),
-            database
-        )
-    );
+    return database::mysql::Connection::open(Configuration::qservCzarDbParams(database));
 }
 
 
 shared_ptr<css::CssAccess> HttpModule::qservCssAccess(bool readOnly) const {
     auto const config = controller()->serviceProvider()->config();
+    // Use all parmeters of the connection from the czar's MySQL connection parameters object.
+    auto const connectionParams = Configuration::qservCzarDbParams("qservCssData");
     map<string, string> cssConfig;
     cssConfig["technology"] = "mysql";
     // Address translation is required because CSS MySQL connector doesn't set
     // the TCP protocol option for 'localhost' and tries to connect via UNIX socket.
-    cssConfig["hostname"] = config->get<string>("database", "qserv_master_host") == "localhost" ?
-            "127.0.0.1" : config->get<string>("database", "qserv_master_host");
-    cssConfig["port"] = to_string(config->get<uint16_t>("database", "qserv_master_port"));
-    cssConfig["username"] = "root";
-    cssConfig["password"] = Configuration::qservMasterDatabasePassword();
-    cssConfig["database"] = "qservCssData";
+    cssConfig["hostname"] = connectionParams.host == "localhost" ? "127.0.0.1" : connectionParams.host;
+    cssConfig["port"] = to_string(connectionParams.port);
+    cssConfig["username"] = connectionParams.user;
+    cssConfig["password"] = connectionParams.password;
+    cssConfig["database"] = connectionParams.database;
     return css::CssAccess::createFromConfig(cssConfig, config->get<string>("controller", "empty_chunks_dir"));
 }
 

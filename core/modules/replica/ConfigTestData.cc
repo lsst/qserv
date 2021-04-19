@@ -53,10 +53,7 @@ map<string, set<string>> ConfigTestData::parameters() {
                 "user",
                 "password",
                 "name",
-                "qserv_master_host",
-                "qserv_master_port",
                 "qserv_master_user",
-                "qserv_master_name",
                 "qserv_master_services_pool_size",
                 "qserv_master_tmp_dir"
             }
@@ -82,8 +79,6 @@ map<string, set<string>> ConfigTestData::parameters() {
             {   "svc_port",
                 "fs_port",
                 "data_dir",
-                "db_port",
-                "db_user",
                 "loader_port",
                 "loader_tmp_dir",
                 "exporter_port",
@@ -118,10 +113,7 @@ json ConfigTestData::data() {
         {"user", "qsreplica"},
         {"password", "changeme"},
         {"name", "qservReplica"},
-        {"qserv_master_host", "localhost"},
-        {"qserv_master_port", 3306},
         {"qserv_master_user", "qsmaster"},
-        {"qserv_master_name", "qservMeta"},
         {"services_pool_size", 2},
         {"qserv_master_tmp_dir", "/qserv/data/ingest"}
     });
@@ -144,8 +136,6 @@ json ConfigTestData::data() {
         {"svc_port", 51000},
         {"fs_port", 52000},
         {"data_dir", "/data"},
-        {"db_port", 3306},
-        {"db_user", "root"},
         {"loader_port", 53000},
         {"loader_tmp_dir", "/tmp"},
         {"exporter_port", 54000},
@@ -165,9 +155,6 @@ json ConfigTestData::data() {
         {"fs_host", "host-A"},
         {"fs_port", 52001},
         {"data_dir", "/data/A"},
-        {"db_host", "host-A"},
-        {"db_port", 53306},
-        {"db_user", "qsmaster"},
         {"loader_host", "host-A"},
         {"loader_port", 53002},
         {"loader_tmp_dir", "/tmp/A"},
@@ -189,7 +176,6 @@ json ConfigTestData::data() {
         {"svc_host", "host-B"},
         {"fs_host", "host-B"},
         {"data_dir", "/data/B"},
-        {"db_host", "host-B"},
         {"loader_host", "host-B"},
         {"exporter_host", "host-B"},
         {"http_loader_host", "host-B"}
@@ -204,7 +190,6 @@ json ConfigTestData::data() {
         {"is_read_only", 0},
         {"svc_host", "host-C"},
         {"fs_host", "host-C"},
-        {"db_host", "host-C"},
         {"loader_host", "host-C"},
         {"exporter_host", "host-C"},
         {"http_loader_host", "host-C"}

@@ -85,8 +85,8 @@ private:
     /// on this subject.
     bool _localFile = false;
 
-    /// A password for the MySQL 'root' account of the Qserv master database
-    std::string _qservDbRootPassword;
+    /// A connection URL to the MySQL service of the Qserv master database.
+    std::string _qservCzarDbUrl;
 
     /// The flag which if set allows selecting all workers for the operation
     bool _allWorkers = false;

@@ -250,15 +250,12 @@ database::mysql::Connection::Ptr WorkerSqlRequest::_connector() const {
     auto const config = serviceProvider()->config();
     auto const workerInfo = config->workerInfo(worker());    
     bool const clientCredentials = _request.type() == ProtocolRequestSql::QUERY;
-    return database::mysql::Connection::open(
-        database::mysql::ConnectionParams(
-            workerInfo.dbHost,
-            workerInfo.dbPort,
-            clientCredentials ? _request.user() : workerInfo.dbUser,
-            clientCredentials ? _request.password() : config->qservWorkerDatabasePassword(),
-            ""
-        )
-    );
+    auto connectionParams = Configuration::qservWorkerDbParams();
+    if (clientCredentials) {
+        connectionParams.user = _request.user();
+        connectionParams.password = _request.password();
+    }
+    return database::mysql::Connection::open(connectionParams);
 }
 
 
@@ -267,7 +264,7 @@ Query WorkerSqlRequest::_query(database::mysql::Connection::Ptr const& conn) con
     auto const config = serviceProvider()->config();
     auto const workerInfo = config->workerInfo(worker());    
 
-    string const qservDbsTable = conn->sqlId("qservw_worker") + "." + conn->sqlId("Dbs");
+    string const qservDbsTable = conn->sqlId("qservw_worker", "Dbs");
 
     switch (_request.type()) {
 
@@ -303,9 +300,9 @@ Query WorkerSqlRequest::_query(database::mysql::Connection::Ptr const& conn) con
             //   mysql.db;
             // Hence removing quotes from '*' an commenting the following statement:
             //   return "GRANT ALL ON " + conn->sqlId(_request.database()) + "." + conn->sqlId("*") +
-            //          " TO " + conn->sqlValue(_request.user()) + "@" + conn->sqlValue(workerInfo.dbHost);
+            //          " TO " + conn->sqlValue(_request.user()) + "@" + conn->sqlValue("localhost");
             return Query("GRANT ALL ON " + conn->sqlId(_request.database()) + ".* TO " +
-                         conn->sqlValue(_request.user()) + "@" + conn->sqlValue(workerInfo.dbHost));
+                         conn->sqlValue(_request.user()) + "@" + conn->sqlValue("localhost"));
 
         default:
 

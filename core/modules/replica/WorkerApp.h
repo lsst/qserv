@@ -72,9 +72,8 @@ private:
     /// The name of a worker
     std::string _worker;
     
-    /// A password for the MySQL account of the Qserv worker database.
-    /// The account name is found in the Configuration.
-    std::string _qservDbPassword;
+    /// A connection url for the MySQL service of the Qserv worker database.
+    std::string _qservWorkerDbUrl;
 
     /// An authorization key for the catalog ingest operation.
     std::string _authKey;
