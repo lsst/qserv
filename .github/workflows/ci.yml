@@ -19,6 +19,9 @@ jobs:
         run: |
           echo "QSERV_IMAGE=$(git describe --dirty --always)" >> $GITHUB_ENV
           echo "Build and test Qserv image: ${{ env.QSERV_IMAGE }}"
+      - name: Build Qserv base images
+        run: |
+          ./admin/tools/docker/base/build.sh
       - name: Build Qserv image
         run: |
           ./admin/tools/docker/ci/build.sh
