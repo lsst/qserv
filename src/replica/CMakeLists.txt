@@ -388,8 +388,6 @@ target_sources(replica PRIVATE
     VerifyApp.h
     VerifyJob.cc
     VerifyJob.h
-    WorkerAllApp.cc
-    WorkerAllApp.h
     WorkerApp.cc
     WorkerApp.h
     WorkerDeleteRequest.cc
@@ -461,7 +459,6 @@ replica_utils(
     qserv-replica-job
     qserv-replica-master-http
     qserv-replica-test
-    qserv-replica-worker-all
     qserv-replica-worker-notify
     qserv-replica-worker
 )
