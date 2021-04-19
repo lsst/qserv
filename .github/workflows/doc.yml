@@ -1,0 +1,17 @@
+# Qserv CI workflow
+# FIXME: Github action runner are too weak to run e2e tests
+---
+name: "Documentation"
+on:
+  push:
+jobs:
+  doc:
+    name: Generate and upload documentation
+    runs-on: ubuntu-18.04
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+      - name: Generate and upload documentation
+        run: |
+          curl -fsSL https://raw.githubusercontent.com/lsst-dm/doc-container/master/run.sh | bash -s -- -p "${{ secrets.LTD_PASSWORD }}"  -u "${{ secrets.LTD_USERNAME }}" "$PWD"
+
