@@ -55,10 +55,6 @@ public:
     std::string dataDir;        // An absolute path to the data directory under which the MySQL
                                 // database folders are residing.
 
-    std::string dbHost;         // The host name (or IP address) of the database service for the worker
-    uint16_t    dbPort = 0;     // The port number of the worker database service
-    std::string dbUser;         // The name of a user account for connecting to the database service
-
     std::string loaderHost;     // The host name (or IP address) of the ingest (loader) service
     uint16_t    loaderPort = 0; // The port number of the ingest service
 

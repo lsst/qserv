@@ -446,29 +446,19 @@ void ExportServerConnection::_dumpTableIntoFile() const {
     // to the Configuration of the Replication system.
 
     try {
-        database::mysql::ConnectionHandler handler(
-            database::mysql::Connection::open(
-                database::mysql::ConnectionParams(
-                    _workerInfo.dbHost,
-                    _workerInfo.dbPort,
-                    _workerInfo.dbUser,
-                    _serviceProvider->config()->qservWorkerDatabasePassword(),
-                    ""
-                )
-            )
+        database::mysql::ConnectionHandler h(
+            database::mysql::Connection::open(Configuration::qservWorkerDbParams())
         );
         string const statement =
-            "SELECT * FROM " + handler.conn->sqlId(_databaseInfo.name) + "." +
-                handler.conn->sqlId(_isPartitioned ? ChunkedTable(_table, _chunk, _isOverlap).name() : _table) +
-            " INTO OUTFILE " + handler.conn->sqlValue(_fileName) +
-            " FIELDS TERMINATED BY " + handler.conn->sqlValue(string() + _columnSeparator);
+            "SELECT * FROM " + h.conn->sqlId(_databaseInfo.name) + "." +
+                h.conn->sqlId(_isPartitioned ? ChunkedTable(_table, _chunk, _isOverlap).name() : _table) +
+            " INTO OUTFILE " + h.conn->sqlValue(_fileName) +
+            " FIELDS TERMINATED BY " + h.conn->sqlValue(string() + _columnSeparator);
 
         LOGS(_log, LOG_LVL_DEBUG, context << __func__ << "  statement: " << statement);
 
-        handler.conn->execute([&statement](decltype(handler.conn) const& conn_) {
-            conn_->begin();
-            conn_->execute(statement);
-            conn_->commit();
+        h.conn->executeInOwnTransaction([&statement](decltype(h.conn) const& conn) {
+            conn->execute(statement);
         });
     } catch (exception const& ex) {
         LOGS(_log, LOG_LVL_ERROR, context << __func__ << "  exception: " << ex.what());

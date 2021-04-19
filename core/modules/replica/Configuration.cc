@@ -39,11 +39,22 @@ namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.Configuration");
 
+/**
+ * @param connectionUrl The connection URL.
+ * @param database The optional name of a database to replace the one defined in the url.
+ * @return The MySQL connection descriptor.
+ */
+database::mysql::ConnectionParams connectionParams(string const& connectionUrl, string const& database) {
+    database::mysql::ConnectionParams params = database::mysql::ConnectionParams::parse(connectionUrl);
+    if (!database.empty()) params.database = database;
+    return params;
+}
 } // namespace
 
 namespace lsst {
 namespace qserv {
 namespace replica {
+
 
 // These (static) data members are allowed to be changed, and they are set
 // globally for an application (process).
@@ -51,67 +62,140 @@ bool         Configuration::_databaseAllowReconnect = true;
 unsigned int Configuration::_databaseConnectTimeoutSec = 3600;
 unsigned int Configuration::_databaseMaxReconnects = 1;
 unsigned int Configuration::_databaseTransactionTimeoutSec = 3600;
-string       Configuration::_qservMasterDatabasePassword = "";
-string       Configuration::_qservWorkerDatabasePassword = "";
+string       Configuration::_qservCzarDbUrl = "mysql://qsreplica@localhost:3306/qservMeta";
+string       Configuration::_qservWorkerDbUrl = "mysql://qsreplica@localhost:3306/qservw_worker";
 bool         Configuration::_xrootdAllowReconnect = true;
 unsigned int Configuration::_xrootdConnectTimeoutSec = 3600;
+util::Mutex  Configuration::_classMtx;
 
 
-void Configuration::setQservMasterDatabasePassword(string const& newPassword) {
-    string result = newPassword;
-    swap(result, _qservMasterDatabasePassword);
+// ---------------
+// The static API.
+// ---------------
+
+void Configuration::setQservCzarDbUrl(string const& url) {
+    if (url.empty()) {
+        throw invalid_argument("Configuration::" + string(__func__) + "  empty string is not allowed.");
+    }
+    util::Lock const lock(_classMtx, _context(__func__));
+    _qservCzarDbUrl = url;
 }
 
 
-void Configuration::setQservWorkerDatabasePassword(string const& newPassword) {
-    string result = newPassword;
-    swap(result, _qservWorkerDatabasePassword);
+string Configuration::qservCzarDbUrl() {
+    util::Lock const lock(_classMtx, _context(__func__));
+    return _qservCzarDbUrl;
+}
+
+
+database::mysql::ConnectionParams Configuration::qservCzarDbParams(string const& database) {
+    util::Lock const lock(_classMtx, _context(__func__));
+    return connectionParams(_qservCzarDbUrl, database);
+}
+
+
+void Configuration::setQservWorkerDbUrl(string const& url) {
+    if (url.empty()) {
+        throw invalid_argument("Configuration::" + string(__func__) + "  empty string is not allowed.");
+    }
+    util::Lock const lock(_classMtx, _context(__func__));
+    _qservWorkerDbUrl = url;
+}
+
+
+string Configuration::qservWorkerDbUrl() {
+    util::Lock const lock(_classMtx, _context(__func__));
+    return _qservWorkerDbUrl;
+}
+
+
+database::mysql::ConnectionParams Configuration::qservWorkerDbParams(string const& database) {
+    util::Lock const lock(_classMtx, _context(__func__));
+    return connectionParams(_qservWorkerDbUrl, database);
 }
 
 
 void Configuration::setDatabaseAllowReconnect(bool value) {
-    swap(value, _databaseAllowReconnect);
+    util::Lock const lock(_classMtx, _context(__func__));
+    _databaseAllowReconnect = value;
+}
+
+
+bool Configuration::databaseAllowReconnect() {
+    util::Lock const lock(_classMtx, _context(__func__));
+    return _databaseAllowReconnect;
 }
 
 
 void Configuration::setDatabaseConnectTimeoutSec(unsigned int value) {
+    util::Lock const lock(_classMtx, _context(__func__));
     if (0 == value) {
-        throw invalid_argument(
-                "Configuration::" + string(__func__) + "  0 is not allowed as a value");
+        throw invalid_argument("Configuration::" + string(__func__) + "  0 is not allowed.");
     }
-    swap(value, _databaseConnectTimeoutSec);
+    _databaseConnectTimeoutSec = value;
+}
+
+
+unsigned int Configuration::databaseConnectTimeoutSec() {
+    util::Lock const lock(_classMtx, _context(__func__));
+    return _databaseConnectTimeoutSec;
 }
 
 
 void Configuration::setDatabaseMaxReconnects(unsigned int value) {
+    util::Lock const lock(_classMtx, _context(__func__));
     if (0 == value) {
-        throw invalid_argument(
-                "Configuration::" + string(__func__) + "  0 is not allowed as a value");
+        throw invalid_argument("Configuration::" + string(__func__) + "  0 is not allowed.");
     }
-    swap(value, _databaseMaxReconnects);
+    _databaseMaxReconnects = value;
+}
+
+
+unsigned int Configuration::databaseMaxReconnects() {
+    util::Lock const lock(_classMtx, _context(__func__));
+    return _databaseMaxReconnects;
 }
 
 
 void Configuration::setDatabaseTransactionTimeoutSec(unsigned int value) {
+    util::Lock const lock(_classMtx, _context(__func__));
     if (0 == value) {
-        throw invalid_argument(
-                "Configuration::" + string(__func__) + "  0 is not allowed as a value");
+        throw invalid_argument("Configuration::" + string(__func__) + "  0 is not allowed.");
     }
-    swap(value, _databaseTransactionTimeoutSec);
+    _databaseTransactionTimeoutSec = value;
+}
+
+
+unsigned int Configuration::databaseTransactionTimeoutSec() {
+    util::Lock const lock(_classMtx, _context(__func__));
+    return _databaseTransactionTimeoutSec;
 }
 
 
 void Configuration::setXrootdAllowReconnect(bool value) {
-    swap(value, _xrootdAllowReconnect);
+    util::Lock const lock(_classMtx, _context(__func__));
+    _xrootdAllowReconnect  = value;
+}
+
+
+bool Configuration::xrootdAllowReconnect() {
+    util::Lock const lock(_classMtx, _context(__func__));
+    return _xrootdAllowReconnect;
 }
 
 
 void Configuration::setXrootdConnectTimeoutSec(unsigned int value) {
+    util::Lock const lock(_classMtx, _context(__func__));
     if (0 == value) {
-        throw invalid_argument(
-                "Configuration::" + string(__func__) + "  0 is not allowed as a value");
+        throw invalid_argument("Configuration::" + string(__func__) + "  0 is not allowed.");
     }
-    swap(value, _xrootdConnectTimeoutSec);
+    _xrootdConnectTimeoutSec = value;
+}
+
+
+unsigned int Configuration::xrootdConnectTimeoutSec() {
+    util::Lock const lock(_classMtx, _context(__func__));
+    return _xrootdConnectTimeoutSec;
 }
 
 
@@ -137,6 +221,10 @@ string Configuration::_context(string const& func) {
     return "CONFIG  " + func;
 }
 
+
+// -----------------
+// The instance API.
+// -----------------
 
 Configuration::Configuration()
     :   _data(ConfigurationSchema::defaultConfigData()) {
@@ -708,7 +796,6 @@ WorkerInfo Configuration::_updateWorker(util::Lock const& lock, WorkerInfo const
         if (worker == completeInfo.name) continue;
         hostPort.insert(make_pair(info.svcHost, info.svcPort));
         hostPort.insert(make_pair(info.fsHost, info.fsPort));
-        hostPort.insert(make_pair(info.dbHost, info.dbPort));
         hostPort.insert(make_pair(info.loaderHost, info.loaderPort));
         hostPort.insert(make_pair(info.exporterHost, info.exporterPort));
         hostPort.insert(make_pair(info.httpLoaderHost, info.httpLoaderPort));
@@ -716,7 +803,6 @@ WorkerInfo Configuration::_updateWorker(util::Lock const& lock, WorkerInfo const
     bool const portConflictFound =
             !hostPort.insert(make_pair(completeInfo.svcHost, completeInfo.svcPort)).second ||
             !hostPort.insert(make_pair(completeInfo.fsHost, completeInfo.fsPort)).second ||
-            !hostPort.insert(make_pair(completeInfo.dbHost, completeInfo.dbPort)).second ||
             !hostPort.insert(make_pair(completeInfo.loaderHost, completeInfo.loaderPort)).second ||
             !hostPort.insert(make_pair(completeInfo.exporterHost, completeInfo.exporterPort)).second ||
             !hostPort.insert(make_pair(completeInfo.httpLoaderHost, completeInfo.httpLoaderPort)).second;
@@ -741,9 +827,6 @@ WorkerInfo Configuration::_updateWorker(util::Lock const& lock, WorkerInfo const
                     make_pair("svc_port", completeInfo.svcPort),
                     make_pair("fs_host", completeInfo.fsHost),
                     make_pair("fs_port", completeInfo.fsPort),
-                    make_pair("db_host", completeInfo.dbHost),
-                    make_pair("db_port", completeInfo.dbPort),
-                    make_pair("db_user", completeInfo.dbUser),
                     make_pair("data_dir", completeInfo.dataDir),
                     make_pair("loader_host", completeInfo.loaderHost),
                     make_pair("loader_port", completeInfo.loaderPort),
@@ -766,9 +849,6 @@ WorkerInfo Configuration::_updateWorker(util::Lock const& lock, WorkerInfo const
                     completeInfo.fsHost,
                     completeInfo.fsPort,
                     completeInfo.dataDir,
-                    completeInfo.dbHost,
-                    completeInfo.dbPort,
-                    completeInfo.dbUser,
                     completeInfo.loaderHost,
                     completeInfo.loaderPort,
                     completeInfo.loaderTmpDir,
