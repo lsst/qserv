@@ -438,11 +438,17 @@ bool SsiRequest::replyStream(StreamBuffer::Ptr const& sBuf, bool last) {
 
 bool SsiRequest::sendMetadata(const char *buf, int blen) {
     Status stat = SetMetadata(buf, blen);
-    if (stat == XrdSsiResponder::wasPosted) return true;
-    if (stat == XrdSsiResponder::notActive) {
+    switch (stat) {
+    case XrdSsiResponder::wasPosted:
+        return true;
+    case XrdSsiResponder::notActive:
         LOGS(_log, LOG_LVL_ERROR, "failed to setMetadata notActive");
-    } else {
+        break;
+    case XrdSsiResponder::notPosted:
         LOGS(_log, LOG_LVL_ERROR, "failed to setMetadata notPosted blen=" << blen);
+        break;
+    default:
+        LOGS(_log, LOG_LVL_ERROR, "failed to setMetadata unkown state blen=" << blen);
     }
     return false;
 }
