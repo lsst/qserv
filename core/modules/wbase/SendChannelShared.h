@@ -57,7 +57,7 @@ public:
 
     static Ptr create(SendChannel::Ptr const& sendChannel, wcontrol::TransmitMgr::Ptr const& transmitMgr);
 
-    ~SendChannelShared() = default;
+    ~SendChannelShared();
 
     /// Wrappers for SendChannel public functions that may need to be used
     /// by threads.
@@ -95,9 +95,12 @@ public:
 
     /// Try to transmit the data in tData.
     /// If the queue already has at least 2 TransmitData objects, addTransmit
-    /// may wait before returning. It's more efficient use of memory to
-    /// collect results from MariaDB as they are sent to the czar than
-    /// to read them all in at once.
+    /// may wait before returning. Result rows are read from the
+    /// database until there are no more rows or the buffer is
+    /// sufficiently full. addTransmit waits until that buffer has been
+    /// sent to the czar before reading more rows. Without the wait,
+    /// the worker may read in too many result rows, run out of memory,
+    /// and crash.
     bool addTransmit(bool cancelled, bool erred, bool last, bool largeResult,
                      TransmitData::Ptr const& tData, int qId, int jId);
 

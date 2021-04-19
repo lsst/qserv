@@ -48,6 +48,13 @@ SendChannelShared::Ptr SendChannelShared::create(SendChannel::Ptr const& sendCha
 }
 
 
+SendChannelShared::~SendChannelShared() {
+    if (_sendChannel != nullptr && !_sendChannel->isDead()) {
+        _sendChannel->kill();
+    }
+}
+
+
 void SendChannelShared::setTaskCount(int taskCount) {
     _taskCount = taskCount;
 }
