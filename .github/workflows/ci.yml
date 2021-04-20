@@ -17,8 +17,9 @@ jobs:
         id: vars
         shell: bash
         run: |
-          echo "QSERV_IMAGE=$(git describe --dirty --always)" >> $GITHUB_ENV
-          echo "Build and test Qserv image: ${{ env.QSERV_IMAGE }}"
+          QSERV_IMAGE="qserv/lite-qserv:$(git describe --dirty --always)"
+          echo "QSERV_IMAGE=${QSERV_IMAGE}" >> $GITHUB_ENV
+          echo "Build and test Qserv image: $QSERV_IMAGE"
       - name: Build Qserv base images
         run: |
           ./admin/tools/docker/base/build.sh
