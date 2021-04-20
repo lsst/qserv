@@ -60,7 +60,8 @@ public:
     /// Flush the retrieved buffer where bLen bytes were set. If last==true,
     /// then no more buffer() and flush() calls should occur.
     /// @return true if successful (no error)
-    virtual bool flush(int bLen, BufPtr const& bufPtr, bool& last, bool& largeResult, int& nextBufSize) = 0;
+    virtual bool flush(int bLen, BufPtr const& bufPtr, bool& last, bool& largeResult,
+                       int& nextBufSize) = 0;
 
     /// Signal an unrecoverable error condition. No further calls are expected.
     virtual void errorFlush(std::string const& msg, int code) = 0;

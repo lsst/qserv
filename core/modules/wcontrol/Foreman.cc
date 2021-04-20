@@ -41,10 +41,9 @@
 #include "mysql/MySqlConfig.h"
 #include "proto/worker.pb.h"
 #include "wbase/Base.h"
-#include "wbase/SendChannel.h"
+#include "wbase/SendChannelShared.h"
 #include "wbase/WorkerCommand.h"
 #include "wcontrol/SqlConnMgr.h"
-#include "wcontrol/TransmitMgr.h"
 #include "wdb/ChunkResource.h"
 #include "wdb/QueryRunner.h"
 
@@ -63,14 +62,12 @@ Foreman::Foreman(Scheduler::Ptr                  const& scheduler,
                  unsigned int                    maxPoolThreads,
                  mysql::MySqlConfig              const& mySqlConfig,
                  wpublish::QueriesAndChunks::Ptr const& queries,
-                 wcontrol::SqlConnMgr::Ptr       const& sqlConnMgr,
-                 wcontrol::TransmitMgr::Ptr      const& transmitMgr)
+                 wcontrol::SqlConnMgr::Ptr       const& sqlConnMgr)
 
     :   _scheduler  (scheduler),
         _mySqlConfig(mySqlConfig),
         _queries    (queries),
-        _sqlConnMgr (sqlConnMgr),
-        _transmitMgr(transmitMgr) {
+        _sqlConnMgr (sqlConnMgr) {
 
     // Make the chunk resource mgr
     // Creating backend makes a connection to the database for making temporary tables.
@@ -111,7 +108,7 @@ void Foreman::_setRunFunc(shared_ptr<wbase::Task> const& task) {
             }
         } else {
             auto qr = wdb::QueryRunner::newQueryRunner(task, _chunkResourceMgr, _mySqlConfig,
-                    _sqlConnMgr, _transmitMgr);
+                                                       _sqlConnMgr);
             bool success = false;
             try {
                 success = qr->runQuery();

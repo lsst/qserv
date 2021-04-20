@@ -50,8 +50,9 @@ public:
     ProtoHeaderWrap() {};
     virtual ~ProtoHeaderWrap() {};
 
-    static std::string wrap(std::string& protoHeaderString);
+    static std::string wrap(std::string const& protoHeaderString);
     static bool unwrap(std::shared_ptr<WorkerResponse>& response, std::vector<char>& buffer);
+    static size_t getProtoHeaderSize();
 };
 
 }}} // end namespace

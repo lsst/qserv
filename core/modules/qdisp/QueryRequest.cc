@@ -68,9 +68,10 @@ public:
     typedef shared_ptr<AskForResponseDataCmd> Ptr;
     enum class State { STARTED0, DATAREADY1, DONE2 };
     AskForResponseDataCmd(QueryRequest::Ptr const& qr, JobQuery::Ptr const& jq, size_t bufferSize)
-        : _qRequest(qr), _jQuery(jq), _qid(jq->getQueryId()), _jobid(jq->getIdInt()) {
-        _bufPtr.reset(new vector<char>(bufferSize));
+        : _qRequest(qr), _jQuery(jq), _qid(jq->getQueryId()), _jobid(jq->getIdInt()),
+          _bufPtr(new vector<char>(bufferSize)) {
     }
+
 
     void action(util::CmdData *data) override {
         // If everything is ok, call GetResponseData to have XrdSsi ask the worker for the data.
@@ -105,6 +106,7 @@ public:
         {
             unique_lock<mutex> uLock(_mtx);
             // TODO: make timed wait, check for wedged, if weak pointers dead, log and give up.
+            // Hoping for  _state == DATAREADY1,
             _cv.wait(uLock, [this](){ return _state != State::STARTED0; });
             tWaiting.stop();
             // _mtx is locked at this point.
@@ -180,8 +182,8 @@ private:
 
     ResponseHandler::BufPtr _bufPtr;
 
-    int _blen{-1};
-    bool _last{true};
+    int _blen = -1;
+    bool _last = true;
     util::InstanceCount _instCount{"AskForResponseDataCmd"};
 };
 
@@ -262,6 +264,7 @@ bool QueryRequest::ProcessResponse(XrdSsiErrInfo  const& eInfo, XrdSsiRespInfo c
         _errorFinish();
         return true;
     }
+
     switch(rInfo.rType) {
     case XrdSsiRespInfo::isNone: // All responses are non-null right now
         errorDesc += "Unexpected XrdSsiRespInfo.rType == isNone";
@@ -299,20 +302,46 @@ bool QueryRequest::_importStream(JobQuery::Ptr const& jq) {
         // Keep the previous object from wedging the pool.
         _askForResponseDataCmd->notifyFailed();
     }
-    _askForResponseDataCmd = make_shared<AskForResponseDataCmd>(
-                               shared_from_this(), jq, proto::ProtoHeaderWrap::PROTO_HEADER_SIZE);
-    _queueAskForResponse(_askForResponseDataCmd, jq, true);
+
+    // Get the first header from metadata.
+    int expectedLen = proto::ProtoHeaderWrap::getProtoHeaderSize();
+    int len = expectedLen;
+    const char* buff = GetMetadata(len);
+    if (len != expectedLen) {
+        throw Bug("_importStream wrong header size=" + to_string(len) + " expected=" + to_string(expectedLen));
+    }
+    ResponseHandler::BufPtr bufPtr = make_shared<vector<char>>(len);
+    memcpy(&(*bufPtr)[0], buff, len);
+
+    // Use flush to read the buffer and extract the header.
+    bool largeResult = false;
+    int nextBufSize = 0;
+    bool last = false;
+    bool flushOk = jq->getDescription()->respHandler()->flush(len, bufPtr, last, largeResult, nextBufSize);
+
+    if (!flushOk) {
+        LOGS(_log, LOG_LVL_ERROR, "_importStream not flushOk");
+        return false;
+    }
+
+    if (!last) {
+        _askForResponseDataCmd = make_shared<AskForResponseDataCmd>(shared_from_this(), jq, nextBufSize);
+        _queueAskForResponse(_askForResponseDataCmd, jq, true);
+    } else {
+        // This really shouldn't happen with the first header, even errors should have one result.
+        LOGS(_log, LOG_LVL_ERROR, "last true for metadata");
+        return false;
+    }
     return true;
 }
 
 
 void QueryRequest::_queueAskForResponse(AskForResponseDataCmd::Ptr const& cmd, JobQuery::Ptr const& jq, bool initialRequest) {
-    // ScanInfo::Rating { FASTEST = 0, FAST = 10, MEDIUM = 20, SLOW = 30, SLOWEST = 100 };
-    // Trying to get existing requests done before doing new ones.
-
+    // Interactive queries have highest priority.
     if (jq->getDescription()->getScanInteractive()) {
         _qdispPool->queCmd(cmd, 0);
     } else {
+        // Trying to get existing requests done before doing new ones.
         if (initialRequest) {
             _qdispPool->queCmd(cmd, 3);
         } else {
@@ -403,7 +432,7 @@ void QueryRequest::ProcessResponseData(XrdSsiErrInfo const& eInfo,
 }
 
 
-void QueryRequest::_processData(JobQuery::Ptr const& jq, int blen, bool last) {
+void QueryRequest::_processData(JobQuery::Ptr const& jq, int blen, bool xrdLast) {
     // It's possible jq and _jobQuery differ, so need to use jq.
     if (jq->isQueryCancelled()) {
         LOGS(_log, LOG_LVL_WARN, "QueryRequest::_processData job was cancelled.");
@@ -414,20 +443,55 @@ void QueryRequest::_processData(JobQuery::Ptr const& jq, int blen, bool last) {
     // Get a copy of the shared buffer pointer so askForResponseDataCmd can be deleted.
     ResponseHandler::BufPtr bufPtr = _askForResponseDataCmd->getBufPtr();
     _askForResponseDataCmd.reset(); // No longer need it, and don't want the destructor calling _errorFinish().
+
+    // The buffer has 2 parts.
+    // - The first (bytes = blen - ProtoHeaderWrap::getProtheaderSize())
+    //   is the result associated with the previously received header.
+    // - The second is the header for the next message.
+    int protoHeaderSize = proto::ProtoHeaderWrap::getProtoHeaderSize();
+    int respSize = blen - protoHeaderSize;
+    ResponseHandler::BufPtr nextHeaderBufPtr =
+        make_shared<vector<char>>(bufPtr->begin() + respSize, bufPtr->end());
+
+    // Read the result
     bool largeResult = false;
     int nextBufSize = 0;
-    bool flushOk = jq->getDescription()->respHandler()->flush(blen, bufPtr, last, largeResult, nextBufSize);
+    bool last = false;
+    bool flushOk = jq->getDescription()->respHandler()->flush(respSize, bufPtr, last,
+                                                              largeResult, nextBufSize);
+    if (last) {
+        // Last should only be true when the header is read, not the result.
+        throw Bug("_processData result had 'last' true, which cannot be allowed.");
+    }
+
+    bufPtr.reset(); // don't need the buffer anymore and it could be big.
+    if (nextBufSize != protoHeaderSize) {
+        throw Bug("Unexpected header size from flush(result) call QID="
+                  + to_string(_qid) + "#" + to_string(_jobid));
+    }
+
+    if (!flushOk) {
+        _flushError(jq);
+        return;
+    }
+
+    // Read the next header
+    largeResult = false;
+    nextBufSize = 0;
+    flushOk = jq->getDescription()->respHandler()->flush(protoHeaderSize, nextHeaderBufPtr, last,
+                                                         largeResult, nextBufSize);
+
     if (largeResult) {
         if (!_largeResult) LOGS(_log, LOG_LVL_DEBUG, "holdState largeResult set to true");
         _largeResult = true; // Once the worker indicates it's a large result, it stays that way.
     }
 
     if (flushOk) {
+        if (last != xrdLast) {
+            LOGS(_log, LOG_LVL_WARN, "processData disagreement between last=" << last
+                                     << " and xrdLast=" << xrdLast);
+        }
         if (last) {
-            if (last && nextBufSize != 0) {
-                LOGS(_log, LOG_LVL_WARN,
-                     "Connection closed when more information expected sz=" << nextBufSize);
-            }
             jq->getStatus()->updateInfo(_jobIdStr, JobStatus::COMPLETE);
             _finish();
             // At this point all blocks for this job have been read, there's no point in
@@ -439,14 +503,19 @@ void QueryRequest::_processData(JobQuery::Ptr const& jq, int blen, bool last) {
             _queueAskForResponse(_askForResponseDataCmd, jq, false);
         }
     } else {
-        LOGS(_log, LOG_LVL_DEBUG, "ProcessResponse data flush failed");
-        ResponseHandler::Error err = jq->getDescription()->respHandler()->getError();
-        jq->getStatus()->updateInfo(_jobIdStr, JobStatus::MERGE_ERROR, err.getCode(), err.getMsg());
-        // This error can be caused by errors in the SQL
-        _retried.store(true); // Do not retry
-        _errorFinish(true);
+        _flushError(jq);
+        return;
     }
     return;
+}
+
+
+void QueryRequest::_flushError(JobQuery::Ptr const& jq) {
+    ResponseHandler::Error err = jq->getDescription()->respHandler()->getError();
+    jq->getStatus()->updateInfo(_jobIdStr, JobStatus::MERGE_ERROR, err.getCode(), err.getMsg());
+    // This error can be caused by errors in the SQL
+    _retried = true; // Do not retry
+    _errorFinish(true);
 }
 
 
@@ -586,7 +655,6 @@ void QueryRequest::_finish() {
     } else {
         LOGS(_log, LOG_LVL_DEBUG, "QueryRequest::finish Finished() ok.");
     }
-
     _callMarkComplete(true);
     cleanup();
 }

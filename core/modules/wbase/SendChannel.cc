@@ -37,6 +37,10 @@
 #include "lsst/log/Log.h"
 
 // Qserv headers
+#include "proto/ProtoHeaderWrap.h"
+#include "global/LogContext.h"
+#include "util/common.h"
+#include "util/Timer.h"
 #include "xrdsvc/SsiRequest.h"
 
 namespace {
@@ -149,7 +153,7 @@ SendChannel::Ptr SendChannel::newStringChannel(string& d) {
 }
 
 
-/// This is the standard definition of SendChannel which acually does something!
+/// This is the standard definition of SendChannel which actually does something!
 /// We vector responses posted to SendChannel via the tightly bound SsiRequest
 /// object as this object knows how to effect Ssi responses.
 ///
@@ -179,6 +183,11 @@ bool SendChannel::sendFile(int fd, Size fSize) {
 }
 
 
+bool SendChannel::kill() {
+    return _dead.exchange(true);
+}
+
+
 bool SendChannel::sendStream(xrdsvc::StreamBuffer::Ptr const& sBuf, bool last) {
     if (isDead()) return false;
     if (_ssiRequest->replyStream(sBuf, last)) return true;
@@ -187,17 +196,12 @@ bool SendChannel::sendStream(xrdsvc::StreamBuffer::Ptr const& sBuf, bool last) {
 }
 
 
-void SendChannelShared::setTaskCount(int taskCount) {
-    _taskCount = taskCount;
+bool SendChannel::setMetadata(const char *buf, int blen) {
+    if (isDead()) return false;
+    if (_ssiRequest->sendMetadata(buf, blen)) return true;
+    return false;
 }
 
 
-bool SendChannelShared::transmitTaskLast(StreamGuard sLock, bool inLast) {
-    /// _caller must have locked _streamMutex before calling this.
-    if (not inLast) return false; // This wasn't the last message buffer for this task, so it doesn't matter.
-    ++_lastCount;
-    bool lastTaskDone = _lastCount >= _taskCount;
-    return lastTaskDone;
-}
+}}} // namespace lsst::qserv::wbase
 
-}}} // namespace

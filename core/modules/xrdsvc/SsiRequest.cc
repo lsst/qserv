@@ -41,7 +41,7 @@
 #include "proto/worker.pb.h"
 #include "util/Timer.h"
 #include "wbase/MsgProcessor.h"
-#include "wbase/SendChannel.h"
+#include "wbase/SendChannelShared.h"
 #include "wpublish/AddChunkGroupCommand.h"
 #include "wpublish/ChunkListCommand.h"
 #include "wpublish/GetChunkListCommand.h"
@@ -139,7 +139,7 @@ void SsiRequest::execute(XrdSsiRequest& req) {
             // reference to this SsiRequest inside the reply channel for the task,
             // and after the call to BindRequest.
             auto sendChannelBase = std::make_shared<wbase::SendChannel>(shared_from_this());
-            auto sendChannel = std::make_shared<wbase::SendChannelShared>(sendChannelBase);
+            auto sendChannel = wbase::SendChannelShared::create(sendChannelBase, _transmitMgr);
             auto tasks = wbase::Task::createTasks(taskMsg, sendChannel);
 
             ReleaseRequestBuffer();
@@ -433,6 +433,24 @@ bool SsiRequest::replyStream(StreamBuffer::Ptr const& sBuf, bool last) {
     // XrdSsi or Finished() will call Recycle().
     _stream->append(sBuf, last);
     return true;
+}
+
+
+bool SsiRequest::sendMetadata(const char *buf, int blen) {
+    Status stat = SetMetadata(buf, blen);
+    switch (stat) {
+    case XrdSsiResponder::wasPosted:
+        return true;
+    case XrdSsiResponder::notActive:
+        LOGS(_log, LOG_LVL_ERROR, "failed to setMetadata notActive");
+        break;
+    case XrdSsiResponder::notPosted:
+        LOGS(_log, LOG_LVL_ERROR, "failed to setMetadata notPosted blen=" << blen);
+        break;
+    default:
+        LOGS(_log, LOG_LVL_ERROR, "failed to setMetadata unkown state blen=" << blen);
+    }
+    return false;
 }
 
 

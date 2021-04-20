@@ -39,12 +39,13 @@
 #include "lsst/log/Log.h"
 
 // Qserv headers
+#include "global/Bug.h"
 #include "global/constants.h"
 #include "global/LogContext.h"
 #include "proto/TaskMsgDigest.h"
 #include "proto/worker.pb.h"
 #include "wbase/Base.h"
-#include "wbase/SendChannel.h"
+#include "wbase/SendChannelShared.h"
 
 namespace {
 

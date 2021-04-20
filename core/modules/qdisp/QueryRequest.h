@@ -141,6 +141,7 @@ private:
     void _finish();
     void _processData(JobQuery::Ptr const& jq, int blen, bool last);
     void _queueAskForResponse(std::shared_ptr<AskForResponseDataCmd> const& cmd, JobQuery::Ptr const& jq, bool initialRequest);
+    void _flushError(JobQuery::Ptr const& jq);
 
     /// _holdState indicates the data is being held by SSI for a large response using LargeResultMgr.
     /// If the state is NOT NO_HOLD0, then this instance has decremented the shared semaphore and it
