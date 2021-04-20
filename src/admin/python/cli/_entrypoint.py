@@ -139,11 +139,10 @@ def worker_wmgr(**kwargs):
 @repl_connection_option()
 @click.option(
     "--worker", "workers",
-    help="The settings for each worker in the system.",
+    help=("The settings for each worker in the system. "
+          "The value must be in the form 'key1=val1,key2=val,...'"),
     multiple=True,
 )
-@qserv_db_pswd_option()
-@http_server_port_option()
 @run_option()
 def replication_controller(**kwargs):
     script.enter_replication_controller(**kwargs)

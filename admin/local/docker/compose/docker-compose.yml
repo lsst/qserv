@@ -7,7 +7,7 @@ services:
     # manager-cmsd:
     #     image: "qserv/lite-qserv"
     #     command: entrypoint cmsd-manager
-    #     hostname: manager-cmsd    
+    #     hostname: manager-cmsd
     czar-db:
         image: "qserv/lite-mariadb"
         command: --port 3306
@@ -20,7 +20,7 @@ services:
               source: czar_0_data
               target: /qserv/data
             - type: bind
-              source: /home/npease/code/qserv/src/admin/templates/mariadb/etc/my.cnf # TODO
+              source: ../../../../src/admin/templates/mariadb/etc/my.cnf
               target: /etc/mysql/my.cnf
     czar-proxy:
         image: "qserv/lite-qserv"
@@ -44,7 +44,7 @@ services:
     #           source: worker_0_data
     #           target: /qserv/data
     #         - type: bind
-    #           source: /home/npease/code/qserv/src/admin/templates/mariadb/etc/my.cnf # TODO
+    #           source: ../../../../src/admin/templates/mariadb/etc/my.cnf
     #           target: /etc/mysql/my.cnf
     # worker-cmsd:
     #     image: "qserv/lite-qserv"
@@ -55,7 +55,7 @@ services:
     # worker-repl:
     #     image: "qserv/lite-qserv"
     #     command: entrypoint worker-repl --connection mysql://qsreplica@worker-db:3306/qservReplica --qserv-db-pswd CHANGEME --vnid worker_0 --instance-id npease_proj
-    #     volumes: 
+    #     volumes:
     #         - type: volume
     #           source: worker_0_data
     #           target: /qserv/data
@@ -74,11 +74,11 @@ services:
               source: repl_mgr_data
               target: /qserv/data
             - type: bind
-              source: /home/npease/code/qserv/src/admin/templates/repl-db/etc/my.cnf # TODO
+              source: ../../../../src/admin/templates/repl-db/etc/my.cnf
               target: /etc/mysql/my.cnf
-    repl-mgr-controller: 
+    repl-mgr-controller:
         image: "qserv/lite-qserv"
-        command: entrypoint --log-level DEBUG replication-controller --connection root:CHANGEME@repl-mgr-db:3306/qservReplica --repl-connection qsreplica@repl-mgr-db:3306/qservReplica  --instance-id npease_proj --qserv-db-pswd CHANGEME --http-server-port 25508 --worker exporter_port=25003,fs_port=25001,http_loader_port=25004,loader_port=25002,mysql_port=3306,svc_port=25000,vnid=worker_0,xrd_port=2131              
+        command: entrypoint --log-level DEBUG replication-controller --connection root:CHANGEME@repl-mgr-db:3306/qservReplica --repl-connection mysql://qsreplica@repl-mgr-db:3306/qservReplica  --instance-id npease_proj --worker name=worker01,host=worker-xrootd
 
 
 volumes:

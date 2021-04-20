@@ -341,7 +341,7 @@ def enter_proxy(db_scheme, connection, mysql_user_qserv, repl_ctl_dn, mysql_moni
 
 
 def enter_replication_controller(db_scheme, connection, repl_connection, workers,
-                                 instance_id, qserv_db_pswd, run, http_server_port):
+                                 instance_id, run):
     """Entrypoint script for the entrypoint controller.
 
     Parameters
@@ -362,49 +362,36 @@ def enter_replication_controller(db_scheme, connection, repl_connection, workers
         instance. This mechanism also prevents 'cross-talks' between two (or
         many) Replication System's setups in case of an accidental
         mis-configuration.
-    qserv_db_pswd : `str`
-        A password for the MySQL 'root' account of the Qserv master database.
-
     """
     if run:
         smig_replication_controller(f"{db_scheme}://{connection}")
-        # smig_replication_controller(f"{db_scheme}://{repl_connection}")
-
-    return
 
     workers = [dict(item.split("=") for item in worker.split(",")) for worker in workers]
-    save_template_cfg(dict(
-        workers=workers,
-        repl_manager=dict(
-            http_server_port=http_server_port,
-        )
-    ))
 
-
-    args = [
-        "qserv-replica-config",
-        "ADD_WORKER", 
-        "worker01",
-        "worker-xrootd"
-    ]
-    _run(args, run)
-
+    for worker in workers:
+        try:
+            name = worker.pop("name")
+            host = worker.pop("host")
+        except KeyError e:
+            raise RuntimeError("The worker option must contain entries 'name' and 'host'") from e
+        args = [
+            "qserv-replica-config",
+            "ADD_WORKER",
+            name,
+            host,
+        ]
+        args += [f"--{key}={val}" for key, val in worker.items()]
+        _log.debug(f"Calling {' '.join(args)}")
+        _run(args, run=run)
 
     env = dict(os.environ, LSST_LOG_CONFIG=replica_controller_log_path)
 
-    # TODO/NEXT 
-    # figure out if passing the qsreplica user here is enough. get it plumbed in. see if it works.
-
-    args = [ 
+    args = [
         "qserv-replica-master-http",
-        # f"--config=mysql://{connection}/{replicaConfig.replicaDb}",
-        f"--config=mysql://{repl_connection}",
+        f"--config={repl_connection}",
         f"--instance-id={instance_id}",
-        f"--qserv-db-password={qserv_db_pswd}",
     ]
-        # ">&",
-        # "/qserv/data/var/log/qserv-replica-master-http.log&"
-
+    _log.debug(f"Calling {' '.join(args)}")
     _run(args, env=env, run=run)
 
 
