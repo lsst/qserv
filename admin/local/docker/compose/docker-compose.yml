@@ -1,13 +1,13 @@
 version: "3.9"
 services:
-    # manager-xrootd:
-    #     image: "qserv/lite-qserv"
-    #     command: entrypoint xrootd-manager --cmsd-manager manager-cmsd
-    #     hostname: manager-xrootd
-    # manager-cmsd:
-    #     image: "qserv/lite-qserv"
-    #     command: entrypoint cmsd-manager
-    #     hostname: manager-cmsd
+    manager-xrootd:
+        image: "qserv/${QSERV_IMAGE}"
+        command: entrypoint xrootd-manager --cmsd-manager manager-cmsd
+        hostname: manager-xrootd
+    manager-cmsd:
+        image: "qserv/${QSERV_IMAGE}"
+        command: entrypoint cmsd-manager
+        hostname: manager-cmsd
     czar-db:
         image: "qserv/lite-mariadb"
         command: --port 3306
@@ -23,7 +23,7 @@ services:
               source: ../../../../src/admin/templates/mariadb/etc/my.cnf
               target: /etc/mysql/my.cnf
     czar-proxy:
-        image: "qserv/lite-qserv"
+        image: "qserv/${QSERV_IMAGE}"
         command: entrypoint --log-level DEBUG proxy --connection root:CHANGEME@czar-db:3306 --mysql-user-qserv qsmaster --xrootd-manager manager-xrootd
         volumes:
             - type: volume
@@ -32,36 +32,36 @@ services:
             - type: volume
               source: czar_0_cfg
               target: /config-etc
-    # worker-db:
-    #     image: "qserv/lite-mariadb"
-    #     command: --port 3306
-    #     expose:
-    #         - "3306"
-    #     environment:
-    #         MYSQL_ROOT_PASSWORD: CHANGEME
-    #     volumes:
-    #         - type: volume
-    #           source: worker_0_data
-    #           target: /qserv/data
-    #         - type: bind
-    #           source: ../../../../src/admin/templates/mariadb/etc/my.cnf
-    #           target: /etc/mysql/my.cnf
-    # worker-cmsd:
-    #     image: "qserv/lite-qserv"
-    #     command: entrypoint worker-cmsd --db-user root --db-pswd CHANGEME --db-host worker-db --db-port 3306 --xrd-port 2131 --vnid worker_0 --cmsd-manager manager-cmsd --repl-ctl-dn repl_mgr_domain_name --mysql-monitor-password CHANGEME_MONITOR
-    # worker-xrootd:
-    #     image: "qserv/lite-qserv"
-    #     command: entrypoint worker-xrootd --xrd-port 2131 --db-host worker-db --db-port 3306 --vnid worker_0 --cmsd-manager manager-cmsd
-    # worker-repl:
-    #     image: "qserv/lite-qserv"
-    #     command: entrypoint worker-repl --connection mysql://qsreplica@worker-db:3306/qservReplica --qserv-db-pswd CHANGEME --vnid worker_0 --instance-id npease_proj
-    #     volumes:
-    #         - type: volume
-    #           source: worker_0_data
-    #           target: /qserv/data
-    #         - type: volume
-    #           source: worker_0_repl_cfg
-    #           target: /config-etc
+    worker-db:
+        image: "qserv/lite-mariadb"
+        command: --port 3306
+        expose:
+            - "3306"
+        environment:
+            MYSQL_ROOT_PASSWORD: CHANGEME
+        volumes:
+            - type: volume
+              source: worker_0_data
+              target: /qserv/data
+            - type: bind
+              source: ../../../../src/admin/templates/mariadb/etc/my.cnf
+              target: /etc/mysql/my.cnf
+    worker-cmsd:
+        image: "qserv/${QSERV_IMAGE}"
+        command: entrypoint worker-cmsd --db-user root --db-pswd CHANGEME --db-host worker-db --db-port 3306 --xrd-port 2131 --vnid worker_0 --cmsd-manager manager-cmsd --repl-ctl-dn repl_mgr_domain_name --mysql-monitor-password CHANGEME_MONITOR
+    worker-xrootd:
+        image: "qserv/${QSERV_IMAGE}"
+        command: entrypoint worker-xrootd --xrd-port 2131 --db-host worker-db --db-port 3306 --vnid worker_0 --cmsd-manager manager-cmsd
+    worker-repl:
+        image: "qserv/${QSERV_IMAGE}"
+        command: entrypoint worker-repl --repl-connection mysql://qsreplica@repl-mgr-db:3306/qservReplica --vnid worker_0 --instance-id npease_proj
+        volumes:
+            - type: volume
+              source: worker_0_data
+              target: /qserv/data
+            - type: volume
+              source: worker_0_repl_cfg
+              target: /config-etc
     repl-mgr-db:
         image: "qserv/lite-mariadb"
         command: --port 3306
@@ -77,7 +77,7 @@ services:
               source: ../../../../src/admin/templates/repl-db/etc/my.cnf
               target: /etc/mysql/my.cnf
     repl-mgr-controller:
-        image: "qserv/lite-qserv"
+        image: "qserv/${QSERV_IMAGE}"
         command: entrypoint --log-level DEBUG replication-controller --connection root:CHANGEME@repl-mgr-db:3306/qservReplica --repl-connection mysql://qsreplica@repl-mgr-db:3306/qservReplica  --instance-id npease_proj --worker name=worker01,host=worker-xrootd
 
 
