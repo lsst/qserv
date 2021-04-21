@@ -110,6 +110,9 @@ QueryRunner::QueryRunner(wbase::Task::Ptr const& task,
 bool QueryRunner::_initConnection() {
     mysql::MySqlConfig localMySqlConfig(_mySqlConfig);
     localMySqlConfig.username = _task->user; // Override with czar-passed username.
+    if (_mysqlConn != nullptr) {
+        LOGS(_log, LOG_LVL_ERROR, "QueryRunner::_initConnection _mysqlConn not nullptr _mysqlConn=" << _mysqlConn.get());
+    }
     _mysqlConn.reset(new mysql::MySqlConnection(localMySqlConfig));
 
     if (not _mysqlConn->connect()) {
@@ -136,6 +139,11 @@ util::TimerHistogram memWaitHisto("memWait Hist", {1, 5, 10, 20, 40});
 bool QueryRunner::runQuery() {
     QSERV_LOGCONTEXT_QUERY_JOB(_task->getQueryId(), _task->getJobId());
     LOGS(_log, LOG_LVL_DEBUG, "QueryRunner::runQuery()");
+    if (_runQueryCalled.exchange(true)) {
+        LOGS(_log, LOG_LVL_ERROR, "QueryRunner::runQuery already called for task="
+                << _task->getQueryId() << " job=" <<  _task->getJobId());
+        throw Bug("runQuery called twice");
+    }
 
     // Make certain our Task knows that this object is no longer in use when this function exits.
     class Release {
@@ -494,13 +502,10 @@ bool QueryRunner::_dispatchChannel() {
 void QueryRunner::cancel() {
     LOGS(_log, LOG_LVL_WARN, "Trying QueryRunner::cancel() call");
     _cancelled = true;
-    // This could be called after the task has been completed, so sendChannel
-    // validation is needed.
-    auto sChannel = _task->sendChannel;
-    if (sChannel != nullptr) {
-        lock_guard<mutex> streamLock(sChannel->streamMutex);
-        sChannel->kill(streamLock);
-    }
+
+    // QueryRunner::cancel() should only be called by Task::cancel().
+    // Task::cancel() should handle cleaning up the sendChannel().
+
     if (!_mysqlConn.get()) {
         LOGS(_log, LOG_LVL_WARN, "QueryRunner::cancel() no MysqlConn");
         return;

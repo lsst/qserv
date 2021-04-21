@@ -139,9 +139,12 @@ public:
     // Note that manpage spec of "26 bytes"  is insufficient
 
     void cancel();
+    /* &&&
     bool isCancelled() const {
         return _cancelled;
     }
+    */
+    bool isCancelled();
 
     std::string getQueryString() { return _queryString; }
     int getQueryFragmentNum() { return _queryFragmentNum; }
