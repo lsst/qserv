@@ -196,10 +196,21 @@ void Task::cancel() {
         qr->cancel();
     }
 
+    // At this point, this code doesn't do anything.
+    // If the future, Task::cancel() may be called from other locations and
+    // this may be useful. &&&
     auto sched = _taskScheduler.lock();
     if (sched != nullptr) {
         sched->taskCancelled(this);
     }
+}
+
+bool Task::isCancelled() {
+    if (sendChannel == nullptr || sendChannel->isDead()) {
+        // The sendChannel is dead,  probably squashed by the czar.
+        cancel();
+    }
+    return _cancelled;
 }
 
 

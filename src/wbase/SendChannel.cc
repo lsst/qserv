@@ -188,6 +188,14 @@ bool SendChannel::kill() {
 }
 
 
+bool SendChannel::isDead() {
+    if (_dead) return true;
+    if (_ssiRequest == nullptr) return true;
+    if (_ssiRequest->isFinished()) kill();
+    return _dead;
+}
+
+
 bool SendChannel::sendStream(xrdsvc::StreamBuffer::Ptr const& sBuf, bool last) {
     if (isDead()) return false;
     if (_ssiRequest->replyStream(sBuf, last)) return true;

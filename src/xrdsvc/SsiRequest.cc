@@ -366,7 +366,7 @@ void SsiRequest::Finished(XrdSsiRequest& req, XrdSsiRespInfo const& rinfo, bool 
     {
         std::lock_guard<std::mutex> finLock(_finMutex);
         // Clean up _stream if it exists and don't add anything new to it either.
-        _finished = true;
+        _reqFinished = true;
         if (_stream != nullptr) {
             _stream->clearMsgs();
         }
@@ -453,7 +453,7 @@ bool SsiRequest::replyStream(StreamBuffer::Ptr const& sBuf, bool last) {
     // returns false, then it must call Recycle(). Otherwise, the scheduler will likely
     // wedge waiting for the buffer to be released.
     std::lock_guard<std::mutex> finLock(_finMutex);
-    if (_finished) {
+    if (_reqFinished) {
         // Finished() was called, give up.
         sBuf->Recycle();
         return false;

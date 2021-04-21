@@ -108,6 +108,8 @@ public:
                   XrdSsiRespInfo const& rinfo,
                   bool                  cancel=false) override;
 
+    bool isFinished() { return _reqFinished; }
+
     bool reply(char const* buf, int bufLen);
     bool replyError(std::string const& msg, int code);
     bool replyFile(int fd, long long fSize);
@@ -163,7 +165,7 @@ private:
     std::shared_ptr<wbase::MsgProcessor> _processor;    ///< actual msg processor
 
     std::mutex  _finMutex;  ///< Protects execute() from Finish(), _finished, and _stream
-    bool _finished = false;  ///< set to true when Finished called
+    std::atomic<bool> _reqFinished{false};  ///< set to true when Finished called
     std::string _resourceName; ///< chunk identifier
 
     std::shared_ptr<ChannelStream> _stream;
