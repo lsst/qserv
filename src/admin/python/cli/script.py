@@ -372,7 +372,7 @@ def enter_replication_controller(db_scheme, connection, repl_connection, workers
         try:
             name = worker.pop("name")
             host = worker.pop("host")
-        except KeyError e:
+        except KeyError as e:
             raise RuntimeError("The worker option must contain entries 'name' and 'host'") from e
         args = [
             "qserv-replica-config",
