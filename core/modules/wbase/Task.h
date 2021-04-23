@@ -138,13 +138,12 @@ public:
     char timestr[100]; ///< ::ctime_r(&t.entryTime, timestr)
     // Note that manpage spec of "26 bytes"  is insufficient
 
+    /// Cancel the query in progress and set set _cancelled.
     void cancel();
-    /* &&&
-    bool isCancelled() const {
-        return _cancelled;
-    }
-    */
-    bool isCancelled();
+
+    /// Check if this task should be cancelled and call cancel() as needed.
+    /// @return true if this task was or needed to be cancelled.
+    bool checkCancelled();
 
     std::string getQueryString() { return _queryString; }
     int getQueryFragmentNum() { return _queryFragmentNum; }

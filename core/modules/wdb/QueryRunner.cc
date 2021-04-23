@@ -156,7 +156,7 @@ bool QueryRunner::runQuery() {
     };
     Release release(_task, this);
 
-    if (_task->isCancelled()) {
+    if (_task->checkCancelled()) {
         LOGS(_log, LOG_LVL_DEBUG, "runQuery, task was cancelled before it started.");
         return false;
     }
@@ -171,7 +171,7 @@ bool QueryRunner::runQuery() {
     auto logMsg = memWaitHisto.addTime(memTimer.getElapsed(), _task->getIdStr());
     LOGS(_log, LOG_LVL_DEBUG, logMsg);
 
-    if (_task->isCancelled()) {
+    if (_task->checkCancelled()) {
         LOGS(_log, LOG_LVL_DEBUG, "runQuery, task was cancelled after locking tables.");
         return false;
     }
@@ -443,6 +443,7 @@ bool QueryRunner::_dispatchChannel() {
     // Collect the result in _transmitData. When a reasonable amount of data has been collected,
     // or there are no more rows to collect, pass _transmitData to _sendChannel.
     try {
+        _initTransmit(); // set _transmit
         if (!_cancelled &&  !_task->sendChannel->isDead()) {
             string const& query = _task->getQueryString();
             util::Timer sqlTimer;
@@ -455,7 +456,6 @@ bool QueryRunner::_dispatchChannel() {
             // TODO fritzm: revisit this error strategy
             // (see pull-request for DM-216)
             // Now get rows...
-            _initTransmit(); // set _initTransmit
             while (!_fillRows(res, numFields, rowCount, tSize)) {
                 if (tSize > proto::ProtoHeaderWrap::PROTOBUFFER_HARD_LIMIT) {
                     LOGS_ERROR("Message single row too large to send using protobuffer");
