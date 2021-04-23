@@ -7,8 +7,8 @@ on:
     branches:
       - master
 jobs:
-  build:
-    name: Build qserv
+  build:  
+    name: Build image
     runs-on: ubuntu-18.04
     steps:
       - name: Checkout code
@@ -17,29 +17,60 @@ jobs:
         id: vars
         shell: bash
         run: |
-          QSERV_IMAGE="qserv/lite-qserv:$(git describe --dirty --always)"
-          echo "QSERV_IMAGE=${QSERV_IMAGE}" >> $GITHUB_ENV
-          echo "Build and test Qserv image: $QSERV_IMAGE"
+          IMAGE="qserv/lite-qserv:$(git describe --dirty --always)"
+          echo "IMAGE=${IMAGE}" >> $GITHUB_ENV
+          echo "Build and test Qserv image: $IMAGE"
       - name: Build Qserv base images
         run: |
           ./admin/tools/docker/base/build.sh
       - name: Build Qserv image
         run: |
           ./admin/tools/docker/ci/build.sh
-      - name: Scan Qserv image
+          mkdir -p artifacts
+          docker save "${{ env.IMAGE }}" > artifacts/qserv-image.tar
+          echo "${{ env.IMAGE }}" > artifacts/qserv-image-tag
+      - uses: actions/upload-artifact@v2
+        with:
+          name: docker-artifact
+          path: artifacts
+  image-analysis:
+    name: Analyze image
+    runs-on: ubuntu-18.04
+    needs: build
+    steps:
+      - name: Download image
+        uses: actions/download-artifact@v2
+        with:
+          name: docker-artifact
+          path: artifacts
+      - name: Load image in local registry
+        run: |
+          docker load --input artifacts/qserv-image.tar
+          echo "IMAGE=$(cat artifacts/qserv-image-tag)" >> $GITHUB_ENV
+      - name: Scan operator image
         uses: anchore/scan-action@v2
         with:
-          image: "${{ env.QSERV_IMAGE }}"
+          image: "${{ env.IMAGE }}"
           acs-report-enable: true
       - name: upload Anchore scan SARIF report
         uses: github/codeql-action/upload-sarif@v1
         with:
-          sarif_file: results.sarifs
+          sarif_file: results.sarif
+  push:
+    name: Push Qserv image to registry
+    runs-on: ubuntu-20.04
+    needs: image-analysis
+    steps:
       - name: Login to DockerHub
         uses: docker/login-action@v1
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_TOKEN }}
+      - name: Download qserv-operator image
+        uses: actions/download-artifact@v2
+        with:
+          name: docker-artifact
+          path: artifacts
       - name: Push image to Docker Hub 
         run: |
           docker push ${{ env.QSERV_IMAGE }}
@@ -107,13 +138,3 @@ jobs:
   #       run: ./tests/tools/wait-qserv-ready.sh
   #     - name: Run E2E Tests
   #       run: ./tests/e2e/integration.sh
-  # doc:
-  #   name: Generate and upload documentation
-  #   runs-on: ubuntu-18.04
-  #   needs: e2e
-  #   steps:
-  #     - name: Checkout code
-  #       uses: actions/checkout@v2
-  #     - name: Generate and upload documentation
-  #       run: |
-  #         curl -fsSL https://raw.githubusercontent.com/lsst-dm/doc-container/master/run.sh | bash -s -- -p "${{ secrets.LTD_PASSWORD }}"  -u "${{ secrets.LTD_USERNAME }}" "$PWD"
