@@ -106,7 +106,6 @@ public:
     /// Cancel the action (in-progress). This should only be called
     /// by Task::cancel(). This should kill an in progress SQL command.
     void cancel() override;
-    bool isCancelled();
 
 protected:
     QueryRunner(wbase::Task::Ptr const& task,
