@@ -508,16 +508,11 @@ void QueryRequest::_processData(JobQuery::Ptr const& jq, int blen, bool xrdLast)
     ResponseHandler::BufPtr bufPtr = _askForResponseDataCmd->getBufPtr();
     _askForResponseDataCmd.reset(); // No longer need it, and don't want the destructor calling _errorFinish().
 
-    // The buffer has 2 parts.
-    // - The first (bytes = blen - ProtoHeaderWrap::getProtheaderSize())
-    //   is the result associated with the previously received header.
-    // - The second is the header for the next message.
-    int protoHeaderSize = proto::ProtoHeaderWrap::getProtoHeaderSize();
-    int respSize = blen - protoHeaderSize;
-    ResponseHandler::BufPtr nextHeaderBufPtr =
-        make_shared<vector<char>>(bufPtr->begin() + respSize, bufPtr->end());
 
-    // Read the result
+    int const protoHeaderSize = proto::ProtoHeaderWrap::getProtoHeaderSize();
+    ResponseHandler::BufPtr nextHeaderBufPtr;
+
+    // Values for these variables to be filled in by flush() calls.
     bool largeResult = false;
     int nextBufSize = 0;
     /* &&&
@@ -533,27 +528,45 @@ void QueryRequest::_processData(JobQuery::Ptr const& jq, int blen, bool xrdLast)
     bufPtr.reset(); // don't need it anymore
     */
     bool last = false;
-    bool flushOk = jq->getDescription()->respHandler()->flush(respSize, bufPtr, last,
-                                                              largeResult, nextBufSize);
-    if (last) {
-        // Last should only be true when the header is read, not the result.
-        throw Bug("_processData result had 'last' true, which cannot be allowed.");
-    }
 
-    bufPtr.reset(); // don't need the buffer anymore and it could be big.
-    if (nextBufSize != protoHeaderSize) {
-        throw Bug("Unexpected header size from flush(result) call QID="
-                  + to_string(_qid) + "#" + to_string(_jobid));
-    }
+    bool flushOk = false;
 
-    if (!flushOk) {
-        _flushError(jq);
-        return;
-    }
+    /* &&&
+    if (_firstFlushCall.exchange(false)) {
+        // The first message only contains a header, so no data to read.
+        nextHeaderBufPtr = make_shared<vector<char>>(bufPtr->begin(), bufPtr->end());
+    } else {
+    */
+        // The buffer has 2 parts.
+        // - The first (bytes = blen - ProtoHeaderWrap::getProtheaderSize())
+        //   is the result associated with the previously received header.
+        // - The second is the header for the next message.
+
+        int respSize = blen - protoHeaderSize;
+        nextHeaderBufPtr = make_shared<vector<char>>(bufPtr->begin() + respSize, bufPtr->end());
+
+        // Read the result
+        flushOk = jq->getDescription()->respHandler()->flush(respSize, bufPtr, last,
+                largeResult, nextBufSize);
+        if (last) {
+            // Last should only be true when the header is read, not the result.
+            throw Bug("_processData result had 'last' true, which cannot be allowed.");
+        }
+
+        bufPtr.reset(); // don't need the buffer anymore and it could be big.
+        if (nextBufSize != protoHeaderSize) {
+            throw Bug("Unexpected header size from flush(result) call QID="
+                    + to_string(_qid) + "#" + to_string(_jobid));
+        }
+
+        if (!flushOk) {
+            _flushError(jq);
+            return;
+        }
+    // &&&}
 
     // Read the next header
-    largeResult = false;
-    nextBufSize = 0;
+    // Values for largeResult and nextBufSize will be filled in by flush().
     flushOk = jq->getDescription()->respHandler()->flush(protoHeaderSize, nextHeaderBufPtr, last,
                                                          largeResult, nextBufSize);
 
@@ -565,7 +578,7 @@ void QueryRequest::_processData(JobQuery::Ptr const& jq, int blen, bool xrdLast)
     if (flushOk) {
         _totalRows += resultRows;
         if (last != xrdLast) {
-            LOGS(_log, LOG_LVL_WARN, "processData disagreement between last=" << last
+            LOGS(_log, LOG_LVL_DEBUG, "processData disagreement between last=" << last
                                      << " and xrdLast=" << xrdLast);
         }
         if (last) {
@@ -585,6 +598,7 @@ void QueryRequest::_processData(JobQuery::Ptr const& jq, int blen, bool xrdLast)
             _queueAskForResponse(_askForResponseDataCmd, jq, false);
         }
     } else {
+        LOGS(_log, LOG_LVL_WARN, "flushOk = false");
         _flushError(jq);
         return;
     }
@@ -635,7 +649,7 @@ bool QueryRequest::isQueryCancelled() {
 
 
 /// @return true if QueryRequest::cancel() has been called.
-/// QueryRequest::isCancelled() is a much better indicator of user query cancellation.
+/// QueryRequest::isQueryCancelled() is a much better indicator of user query cancellation.
 bool QueryRequest::isQueryRequestCancelled() {
     lock_guard<mutex> lock(_finishStatusMutex);
     return _cancelled;

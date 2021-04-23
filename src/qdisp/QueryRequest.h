@@ -168,7 +168,6 @@ private:
     QueryId _qid = 0;   // for logging
     int _jobid = -1;     // for logging
     std::string _jobIdStr {QueryIdHelper::makeIdStr(0, 0, true)}; ///< for debugging only.
-    //util::InstanceCount _instC{"QueryRequest"};
 
     std::atomic<bool> _finishedCalled{false};
 

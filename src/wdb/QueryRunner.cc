@@ -170,7 +170,7 @@ bool QueryRunner::runQuery() {
     };
     Release release(_task, this);
 
-    if (_task->isCancelled()) {
+    if (_task->checkCancelled()) {
         LOGS(_log, LOG_LVL_DEBUG, "runQuery, task was cancelled before it started.");
         return false;
     }
@@ -185,7 +185,7 @@ bool QueryRunner::runQuery() {
     auto logMsg = memWaitHisto.addTime(memTimer.getElapsed(), _task->getIdStr());
     LOGS(_log, LOG_LVL_DEBUG, logMsg);
 
-    if (_task->isCancelled()) {
+    if (_task->checkCancelled()) {
         LOGS(_log, LOG_LVL_DEBUG, "runQuery, task was cancelled after locking tables.");
         return false;
     }
@@ -781,22 +781,26 @@ bool QueryRunner::_dispatchChannel() {
     if (tMsg.fragment_size() < 1) {
         throw Bug("QueryRunner: No fragments to execute in TaskMsg");
     }
-    ChunkResourceRequest req(_chunkResourceMgr, tMsg);
-    ChunkResource cr(req.getResourceFragment(fragNum));
-    // TODO: Hold onto this for longer period of time as the odds of reuse are pretty low at this scale
-    //       Ideally, hold it until moving on to the next chunk. Try to clean up ChunkResource code.
 
     unsigned int rowCount = 0;
     size_t tSize = 0;
+    bool needToFreeRes = false;
 
     // Collect the result in _transmitData. When a reasonable amount of data has been collected,
     // or there are no more rows to collect, pass _transmitData to _sendChannel.
     try {
+        _initTransmit(); // set _transmit
+        ChunkResourceRequest req(_chunkResourceMgr, tMsg);
+        ChunkResource cr(req.getResourceFragment(fragNum));
+        // TODO: Hold onto this for longer period of time as the odds of reuse are pretty low at this scale
+        //       Ideally, hold it until moving on to the next chunk. Try to clean up ChunkResource code.
+
         if (!_cancelled &&  !_task->sendChannel->isDead()) {
             string const& query = _task->getQueryString();
             util::Timer sqlTimer;
             sqlTimer.start();
             MYSQL_RES* res = _primeResult(query); // This runs the SQL query, throws SqlErrorObj on failure.
+            needToFreeRes = true;
             sqlTimer.stop();
             LOGS(_log, LOG_LVL_DEBUG, " fragment time=" << sqlTimer.getElapsed() << " query=" << query);
             _fillSchema(res);
@@ -804,14 +808,13 @@ bool QueryRunner::_dispatchChannel() {
             // TODO fritzm: revisit this error strategy
             // (see pull-request for DM-216)
             // Now get rows...
-            _initTransmit(); // set _initTransmit
             while (!_fillRows(res, numFields, rowCount, tSize)) {
                 if (tSize > proto::ProtoHeaderWrap::PROTOBUFFER_HARD_LIMIT) {
                     LOGS_ERROR("Message single row too large to send using protobuffer");
                     erred = true;
                     break;
                 }
-                LOGS(_log, LOG_LVL_DEBUG, "Splitting message size=" << tSize << ", rowCount=" << rowCount);
+                LOGS(_log, LOG_LVL_TRACE, "Splitting message size=" << tSize << ", rowCount=" << rowCount);
                 _buildDataMsg(rowCount, tSize);
                 if (!_transmit(false)) {
                     LOGS(_log, LOG_LVL_ERROR, "Could not transmit intermediate results.");
@@ -821,9 +824,7 @@ bool QueryRunner::_dispatchChannel() {
                 tSize = 0;
                 _initTransmit(); // reset _transmitData
             }
-            // All rows have been read out or there was an error.
-            // _transmit() transmit happens below
-            _mysqlConn->freeResult();
+
         }
         /* &&&
         for(int i=0; i < m.fragment_size(); ++i) {
@@ -873,6 +874,11 @@ bool QueryRunner::_dispatchChannel() {
         _multiError.push_back(worker_err);
         erred = true;
     }
+    if (needToFreeRes) {
+        needToFreeRes = false;
+        // All rows have been read out or there was an error.
+        _mysqlConn->freeResult();
+    }
     if (!_cancelled) {
         // Send results. This needs to happen after the error check.
         //&&&_transmit(true, rowCount, tSize, transmitLock);
@@ -917,8 +923,8 @@ void QueryRunner::cancel() {
     */
    
 
-    // QueryRunner::cancel() should only be called by Task::cancel().
-    // Task::cancel() should handle cleaning up the sendChannel().
+    // QueryRunner::cancel() should only be called by Task::cancel()
+    // to keep the booking straight.
 
     if (!_mysqlConn.get()) {
         LOGS(_log, LOG_LVL_WARN, "QueryRunner::cancel() no MysqlConn");

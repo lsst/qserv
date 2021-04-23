@@ -101,7 +101,7 @@ void Foreman::_setRunFunc(shared_ptr<wbase::Task> const& task) {
         int const resultProtocol = 2; // See proto/worker.proto Result protocol
         if (!msg.has_protocol() || msg.protocol() < resultProtocol) {
             LOGS(_log, LOG_LVL_WARN, "processMsg Unsupported wire protocol");
-            if (!task->isCancelled()) {
+            if (!task->checkCancelled()) {
                 // We should not send anything back to xrootd if the task has been cancelled.
                 lock_guard<mutex> streamLock(task->sendChannel->streamMutex);
                 task->sendChannel->sendError(streamLock, "Unsupported wire protocol", 1);
@@ -118,7 +118,7 @@ void Foreman::_setRunFunc(shared_ptr<wbase::Task> const& task) {
             if (not success) {
                 lock_guard<mutex> streamLock(task->sendChannel->streamMutex);
                 LOGS(_log, LOG_LVL_ERROR, "runQuery failed " << *task);
-                if (not task->sendChannel->kill(streamLock)) {
+                if (not task->sendChannel->kill(streamLock, "Foreman::_setRunFunc")) {
                     LOGS(_log, LOG_LVL_WARN, "runQuery sendChannel killed");
                 }
             }

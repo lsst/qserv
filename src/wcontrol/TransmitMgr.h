@@ -163,12 +163,10 @@ private:
         friend class TransmitMgr;
         int _totalCount = 0;
         int _transmitCount = 0;
-        int _alreadyTransCount = 0;
         int _takeCalls = 0; ///< current number of calls to _take.
     };
 
     int const _maxTransmits;
-    int const _maxAlreadyTran;
     mutable std::mutex _mtx;
     std::condition_variable _tCv;
     std::map<int, TransmitInfo::Ptr> _czarTransmitMap; ///< map of information per czar.

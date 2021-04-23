@@ -184,6 +184,10 @@ private:
     ExecutiveConfig _config; ///< Personal copy of config
     std::atomic<bool> _empty{true};
     std::shared_ptr<MessageStore> _messageStore; ///< MessageStore for logging
+
+    /// RPC interface, static to avoid getting every time a user query starts and separate
+    /// from _xrdSsiService to avoid conflicts with XrdSsiServiceMock.
+    static XrdSsiService* _xrdSsiServiceStatic;
     XrdSsiService* _xrdSsiService; ///< RPC interface
     JobMap _jobMap; ///< Contains information about all jobs.
     JobMap _incompleteJobs; ///< Map of incomplete jobs.

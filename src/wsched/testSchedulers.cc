@@ -67,7 +67,7 @@ using lsst::qserv::wbase::SendChannelShared;
 double const oneHr = 60.0;
 
 lsst::qserv::wcontrol::TransmitMgr::Ptr locTransmitMgr =
-        std::make_shared<lsst::qserv::wcontrol::TransmitMgr>(50,10);
+        std::make_shared<lsst::qserv::wcontrol::TransmitMgr>(50);
 
 std::vector<SendChannelShared::Ptr> locSendSharedPtrs;
 

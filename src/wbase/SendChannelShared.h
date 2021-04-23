@@ -82,7 +82,7 @@ public:
     }
 
     /// @see SendChannel::kill
-    bool kill(StreamGuard sLock);
+    bool kill(StreamGuard sLock, std::string const& note);
 
     /// @see SendChannel::isDead
     bool isDead() {
@@ -135,7 +135,7 @@ private:
     /// 'thisTransmit', with a specially constructed header appended for the
     /// 'reallyLast' transmit.
     /// _queueMtx must be held before calling this.
-    bool _transmit(bool erred, bool largeResult, qmeta::CzarId czarId);
+    bool _transmit(bool erred, bool scanInteractive, bool largeResult, qmeta::CzarId czarId);
 
     /// Send the buffer 'streamBuffer' using xrdssi. L
     /// 'last' should only be true if this is the last buffer to be sent with this _sendChannel.

@@ -108,9 +108,10 @@ public:
     bool runQuery() override;
 
     /// Cancel the action (in-progress). This should only be called
-    /// by Task::cancel(). This should kill an in progress SQL command.
+    /// by Task::cancel(), so if this needs to be cancelled elsewhere,
+    /// call Task::cancel().
+    /// This should kill an in progress SQL command.
     void cancel() override;
-    bool isCancelled();
 
 protected:
     QueryRunner(wbase::Task::Ptr const& task,
@@ -176,7 +177,7 @@ private:
     std::weak_ptr<xrdsvc::StreamBuffer> _streamBuf; ///< used release condition variable on cancel.
     std::atomic<bool> _removedFromThreadPool{false};
     mysql::MySqlConfig const _mySqlConfig;
-    std::unique_ptr<mysql::MySqlConnection> _mysqlConn;
+    std::unique_ptr<mysql::MySqlConnection> _mysqlConn{nullptr};
 
     util::MultiError _multiError; // Error log
 
@@ -186,7 +187,7 @@ private:
 
     /// Used to limit the number of open MySQL connections.
     std::shared_ptr<wcontrol::SqlConnMgr> const _sqlConnMgr;
-    std::atomic<bool> _runQueryCalled{false};
+    std::atomic<bool> _runQueryCalled{false}; ///< If runQuery gets called twice, the scheduler messed up.
 };
 
 }}} // namespace

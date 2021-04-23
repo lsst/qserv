@@ -365,7 +365,7 @@ QueryState UserQuerySelect::join() {
     }
     if (successful) {
         _qMetaUpdateStatus(qmeta::QInfo::COMPLETED);
-        LOGS(_log, LOG_LVL_DEBUG, "Joined everything (success)");
+        LOGS(_log, LOG_LVL_INFO, "Joined everything (success)");
         return SUCCESS;
     } else if (_killed) {
         // status is already set to ABORTED
