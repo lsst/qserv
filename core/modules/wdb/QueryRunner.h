@@ -104,7 +104,9 @@ public:
     bool runQuery() override;
 
     /// Cancel the action (in-progress). This should only be called
-    /// by Task::cancel(). This should kill an in progress SQL command.
+    /// by Task::cancel(), so if this needs to be cancelled elsewhere,
+    /// call Task::cancel().
+    /// This should kill an in progress SQL command.
     void cancel() override;
 
 protected:

@@ -439,6 +439,7 @@ bool QueryRunner::_dispatchChannel() {
 
     unsigned int rowCount = 0;
     size_t tSize = 0;
+    bool needToFreeRes = false;
 
     // Collect the result in _transmitData. When a reasonable amount of data has been collected,
     // or there are no more rows to collect, pass _transmitData to _sendChannel.
@@ -449,6 +450,7 @@ bool QueryRunner::_dispatchChannel() {
             util::Timer sqlTimer;
             sqlTimer.start();
             MYSQL_RES* res = _primeResult(query); // This runs the SQL query, throws SqlErrorObj on failure.
+            needToFreeRes = true;
             sqlTimer.stop();
             LOGS(_log, LOG_LVL_DEBUG, " fragment time=" << sqlTimer.getElapsed() << " query=" << query);
             _fillSchema(res);
@@ -472,15 +474,18 @@ bool QueryRunner::_dispatchChannel() {
                 tSize = 0;
                 _initTransmit(); // reset _transmitData
             }
-            // All rows have been read out or there was an error.
-            // _transmit() transmit happens below
-            _mysqlConn->freeResult();
+
         }
     } catch(sql::SqlErrorObject const& e) {
         LOGS(_log, LOG_LVL_ERROR, "dispatchChannel " << e.errMsg());
         util::Error worker_err(e.errNo(), e.errMsg());
         _multiError.push_back(worker_err);
         erred = true;
+    }
+    if (needToFreeRes) {
+        needToFreeRes = false;
+        // All rows have been read out or there was an error.
+        _mysqlConn->freeResult();
     }
     if (!_cancelled) {
         // Send results. This needs to happen after the error check.
@@ -503,8 +508,8 @@ void QueryRunner::cancel() {
     LOGS(_log, LOG_LVL_WARN, "Trying QueryRunner::cancel() call");
     _cancelled = true;
 
-    // QueryRunner::cancel() should only be called by Task::cancel().
-    // Task::cancel() should handle cleaning up the sendChannel().
+    // QueryRunner::cancel() should only be called by Task::cancel()
+    // to keep the booking straight.
 
     if (!_mysqlConn.get()) {
         LOGS(_log, LOG_LVL_WARN, "QueryRunner::cancel() no MysqlConn");
