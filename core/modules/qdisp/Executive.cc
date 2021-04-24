@@ -70,14 +70,17 @@
 #include "qmeta/QStatus.h"
 #include "util/EventThread.h"
 
+
+using namespace std;
+
 extern XrdSsiProvider *XrdSsiProviderClient;
 
 namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.qdisp.Executive");
 
-std::string getErrorText(XrdSsiErrInfo & e) {
-    std::ostringstream os;
+string getErrorText(XrdSsiErrInfo & e) {
+    ostringstream os;
     int errCode;
     os << "XrdSsiError " << e.Get(errCode);
     os <<  " Code=" << errCode;
@@ -90,14 +93,18 @@ namespace lsst {
 namespace qserv {
 namespace qdisp {
 
+XrdSsiService* Executive::_xrdSsiServiceStatic = nullptr;
+mutex xrdSsiServiceMtx;
+
+
 ////////////////////////////////////////////////////////////////////////
 // class Executive implementation
 ////////////////////////////////////////////////////////////////////////
-Executive::Executive(ExecutiveConfig const& c, std::shared_ptr<MessageStore> const& ms,
-                     std::shared_ptr<QdispPool> const& qdispPool,
-                     std::shared_ptr<qmeta::QStatus> const& qStatus)
+Executive::Executive(ExecutiveConfig const& c, shared_ptr<MessageStore> const& ms,
+                     shared_ptr<QdispPool> const& qdispPool,
+                     shared_ptr<qmeta::QStatus> const& qStatus)
     : _config(c), _messageStore(ms), _qdispPool(qdispPool), _qMeta(qStatus) {
-    _secondsBetweenQMetaUpdates = std::chrono::seconds(_config.secondsBetweenChunkUpdates);
+    _secondsBetweenQMetaUpdates = chrono::seconds(_config.secondsBetweenChunkUpdates);
     _setup();
 }
 
@@ -108,9 +115,9 @@ Executive::~Executive() {
 }
 
 
-Executive::Ptr Executive::create(ExecutiveConfig const& c, std::shared_ptr<MessageStore> const& ms,
-                                 std::shared_ptr<QdispPool> const& qdispPool,
-                                 std::shared_ptr<qmeta::QStatus> const& qMeta) {
+Executive::Ptr Executive::create(ExecutiveConfig const& c, shared_ptr<MessageStore> const& ms,
+                                 shared_ptr<QdispPool> const& qdispPool,
+                                 shared_ptr<qmeta::QStatus> const& qMeta) {
     Executive::Ptr exec{new Executive(c, ms, qdispPool, qMeta)}; // make_shared dislikes private constructor.
     return exec;
 }
@@ -128,15 +135,15 @@ JobQuery::Ptr Executive::add(JobDescription::Ptr const& jobDesc) {
     JobQuery::Ptr jobQuery;
     {
         // Create the JobQuery and put it in the map.
-        JobStatus::Ptr jobStatus = std::make_shared<JobStatus>();
+        JobStatus::Ptr jobStatus = make_shared<JobStatus>();
         Ptr thisPtr = shared_from_this();
-        MarkCompleteFunc::Ptr mcf = std::make_shared<MarkCompleteFunc>(thisPtr, jobDesc->id());
+        MarkCompleteFunc::Ptr mcf = make_shared<MarkCompleteFunc>(thisPtr, jobDesc->id());
         jobQuery = JobQuery::create(thisPtr, jobDesc, jobStatus, mcf, _id);
 
         QSERV_LOGCONTEXT_QUERY_JOB(jobQuery->getQueryId(), jobQuery->getIdInt());
 
         {
-            std::lock_guard<std::recursive_mutex> lock(_cancelled.getMutex());
+            lock_guard<recursive_mutex> lock(_cancelled.getMutex());
             if (_cancelled) {
                 LOGS(_log, LOG_LVL_DEBUG, "Executive already cancelled, ignoring add("
                         << jobDesc->id() << ")");
@@ -184,7 +191,7 @@ void Executive::waitForAllJobsToStart() {
     while (true) {
         bool empty = _jobStartCmdList.empty();
         if (empty) break;
-        auto cmd = std::move(_jobStartCmdList.front());
+        auto cmd = move(_jobStartCmdList.front());
         _jobStartCmdList.pop_front();
         cmd->waitComplete();
     }
@@ -196,9 +203,9 @@ void Executive::waitForAllJobsToStart() {
 // If the executive has not been cancelled, then we simply start the query.
 // @return true if query was actually started (i.e. we were not cancelled)
 //
-bool Executive::startQuery(std::shared_ptr<JobQuery> const& jobQuery) {
+bool Executive::startQuery(shared_ptr<JobQuery> const& jobQuery) {
 
-    std::lock_guard<std::recursive_mutex> lock(_cancelled.getMutex());
+    lock_guard<recursive_mutex> lock(_cancelled.getMutex());
 
     // If we have been cancelled, then return false.
     //
@@ -229,8 +236,8 @@ bool Executive::startQuery(std::shared_ptr<JobQuery> const& jobQuery) {
 /// Return true if it was successfully added to the map.
 ///
 bool Executive::_addJobToMap(JobQuery::Ptr const& job) {
-    auto entry = std::pair<int, JobQuery::Ptr>(job->getIdInt(), job);
-    std::lock_guard<std::recursive_mutex> lockJobMap(_jobMapMtx);
+    auto entry = pair<int, JobQuery::Ptr>(job->getIdInt(), job);
+    lock_guard<recursive_mutex> lockJobMap(_jobMapMtx);
     bool res = _jobMap.insert(entry).second;
     _totalJobs = _jobMap.size();
     return res;
@@ -251,8 +258,8 @@ bool Executive::join() {
 
     int sCount = 0;
     {
-        std::lock_guard<std::recursive_mutex> lockJobMap(_jobMapMtx);
-        sCount = std::count_if(_jobMap.begin(), _jobMap.end(), successF::f);
+        lock_guard<recursive_mutex> lockJobMap(_jobMapMtx);
+        sCount = count_if(_jobMap.begin(), _jobMap.end(), successF::f);
     }
     if (sCount == _requestCount) {
         LOGS(_log, LOG_LVL_DEBUG, "Query execution succeeded: " << _requestCount
@@ -271,18 +278,18 @@ bool Executive::join() {
 
 void Executive::markCompleted(int jobId, bool success) {
     ResponseHandler::Error err;
-    std::string idStr = QueryIdHelper::makeIdStr(_id, jobId);
+    string idStr = QueryIdHelper::makeIdStr(_id, jobId);
     LOGS(_log, LOG_LVL_DEBUG, "Executive::markCompleted " << success);
     if (!success) {
         {
-            std::lock_guard<std::mutex> lock(_incompleteJobsMutex);
+            lock_guard<mutex> lock(_incompleteJobsMutex);
             auto iter = _incompleteJobs.find(jobId);
             if (iter != _incompleteJobs.end()) {
                 auto jobQuery =  iter->second;
                 err = jobQuery->getDescription()->respHandler()->getError();
             } else {
-                std::string msg = "Executive::markCompleted failed to find TRACKED " + idStr +
-                        " size=" + std::to_string(_incompleteJobs.size());
+                string msg = "Executive::markCompleted failed to find TRACKED " + idStr +
+                        " size=" + to_string(_incompleteJobs.size());
                 // If the user query has been cancelled, this is expected for jobs that have not yet
                 // been tracked. Otherwise, this indicates a serious problem.
                 if (!getCancelled()) {
@@ -297,13 +304,13 @@ void Executive::markCompleted(int jobId, bool success) {
         LOGS(_log, LOG_LVL_WARN, "Executive: error executing "
              << err << " (status: " << err.getStatus() << ")");
         {
-            std::lock_guard<std::recursive_mutex> lockJobMap(_jobMapMtx);
+            lock_guard<recursive_mutex> lockJobMap(_jobMapMtx);
             auto job = _jobMap[jobId];
-            std::string id = job->getIdStr() + "<>" + idStr;
+            string id = job->getIdStr() + "<>" + idStr;
             job->getStatus()->updateInfo(id, JobStatus::RESULT_ERROR, err.getCode(), err.getMsg());
         }
         {
-            std::lock_guard<std::mutex> lock(_errorsMutex);
+            lock_guard<mutex> lock(_errorsMutex);
             _multiError.push_back(err);
             LOGS(_log, LOG_LVL_TRACE, "Currently " << _multiError.size()
                  << " registered errors: " << _multiError);
@@ -326,9 +333,9 @@ void Executive::squash() {
     }
 
     LOGS(_log, LOG_LVL_INFO, "Executive::squash Trying to cancel all queries...");
-    std::deque<JobQuery::Ptr> jobsToCancel;
+    deque<JobQuery::Ptr> jobsToCancel;
     {
-        std::lock_guard<std::recursive_mutex> lockJobMap(_jobMapMtx);
+        lock_guard<recursive_mutex> lockJobMap(_jobMapMtx);
         for(auto const& jobEntry : _jobMap) {
             jobsToCancel.push_back(jobEntry.second);
         }
@@ -341,14 +348,14 @@ void Executive::squash() {
 }
 
 int Executive::getNumInflight() {
-    std::unique_lock<std::mutex> lock(_incompleteJobsMutex);
+    unique_lock<mutex> lock(_incompleteJobsMutex);
     return _incompleteJobs.size();
 }
 
-std::string Executive::getProgressDesc() const {
-    std::ostringstream os;
+string Executive::getProgressDesc() const {
+    ostringstream os;
     {
-        std::lock_guard<std::recursive_mutex> lockJobMap(_jobMapMtx);
+        lock_guard<recursive_mutex> lockJobMap(_jobMapMtx);
         auto first = true;
         for (auto entry : _jobMap) {
             JobQuery::Ptr job = entry.second;
@@ -358,10 +365,11 @@ std::string Executive::getProgressDesc() const {
 
         }
     }
-    std::string msg_progress = os.str();
+    string msg_progress = os.str();
     LOGS(_log, LOG_LVL_ERROR, msg_progress);
     return msg_progress;
 }
+
 
 void Executive::_setup() {
 
@@ -372,7 +380,14 @@ void Executive::_setup() {
     if (_config.serviceUrl.compare(_config.getMockStr()) == 0) {
         _xrdSsiService = new XrdSsiServiceMock(this);
     } else {
-        _xrdSsiService = XrdSsiProviderClient->GetService(eInfo, _config.serviceUrl.c_str()); // Step 1
+        if (_xrdSsiServiceStatic == nullptr) {
+            // In operations, this would be locked once per program run.
+            lock_guard<mutex> xrdSsiServLock(xrdSsiServiceMtx);
+            if (_xrdSsiServiceStatic == nullptr) {
+                _xrdSsiServiceStatic = XrdSsiProviderClient->GetService(eInfo, _config.serviceUrl.c_str());
+            }
+        }
+        _xrdSsiService = _xrdSsiServiceStatic; // Step 1
     }
     if (!_xrdSsiService) {
         LOGS(_log, LOG_LVL_DEBUG, _id << " Error obtaining XrdSsiService in Executive: "
@@ -390,10 +405,10 @@ void Executive::_setup() {
   *  @return true if (jobId,r) was added to _requesters
   *          false if this entry was previously in the map
   */
-bool Executive::_track(int jobId, std::shared_ptr<JobQuery> const& r) {
+bool Executive::_track(int jobId, shared_ptr<JobQuery> const& r) {
     int size = -1;
     {
-        std::lock_guard<std::mutex> lock(_incompleteJobsMutex);
+        lock_guard<mutex> lock(_incompleteJobsMutex);
         if (_incompleteJobs.find(jobId) != _incompleteJobs.end()) {
             LOGS(_log, LOG_LVL_WARN, "Attempt for TRACKING "
                  << " failed as jobId already found in incomplete jobs. "
@@ -410,9 +425,9 @@ bool Executive::_track(int jobId, std::shared_ptr<JobQuery> const& r) {
 void Executive::_unTrack(int jobId) {
     bool untracked = false;
     int incompleteJobs = _totalJobs;
-    std::string s;
+    string s;
     {
-        std::lock_guard<std::mutex> lock(_incompleteJobsMutex);
+        lock_guard<mutex> lock(_incompleteJobsMutex);
         auto i = _incompleteJobs.find(jobId);
         if (i != _incompleteJobs.end()) {
             _incompleteJobs.erase(i);
@@ -431,8 +446,8 @@ void Executive::_unTrack(int jobId) {
     // Important chunks to log: first, last, middle
     // limiting factors: no more than one update a minute (config)
     if (untracked) {
-        auto now = std::chrono::system_clock::now();
-        std::unique_lock<std::mutex> lastUpdateLock(_lastQMetaMtx);
+        auto now = chrono::system_clock::now();
+        unique_lock<mutex> lastUpdateLock(_lastQMetaMtx);
         if (now - _lastQMetaUpdate > _secondsBetweenQMetaUpdates
            || incompleteJobs == _totalJobs/2
            || incompleteJobs == 0) {
@@ -455,8 +470,8 @@ void Executive::_unTrack(int jobId) {
 /// _incompleteJobsMutex must be held before calling this function.
 /// @return: a string containing a list of incomplete jobs containing up to 'maxToList' jobs.
 ///          If maxToList is less than 0, all jobs are printed
-std::string Executive::_getIncompleteJobsString(int maxToList) {
-    std::ostringstream os;
+string Executive::_getIncompleteJobsString(int maxToList) {
+    ostringstream os;
     int c = 0;
     if (maxToList < 0) maxToList = _incompleteJobs.size();
     os << "_incompleteJobs listing first" << maxToList << " of size=" << _incompleteJobs.size() << " ";
@@ -476,11 +491,11 @@ std::string Executive::_getIncompleteJobsString(int maxToList) {
  */
 void Executive::_updateProxyMessages() {
     {
-        std::lock_guard<std::recursive_mutex> lockJobMap(_jobMapMtx);
+        lock_guard<recursive_mutex> lockJobMap(_jobMapMtx);
         for (auto const& entry : _jobMap) {
             JobQuery::Ptr const& job = entry.second;
             auto const& info = job->getStatus()->getInfo();
-            std::ostringstream os;
+            ostringstream os;
             os << info.state << " " << info.stateCode;
             if (!info.stateDesc.empty()) {
                 os << " (" << info.stateDesc << ")";
@@ -492,7 +507,7 @@ void Executive::_updateProxyMessages() {
         }
     }
     {
-        std::lock_guard<std::mutex> lock(_errorsMutex);
+        lock_guard<mutex> lock(_errorsMutex);
         if (not _multiError.empty()) {
             _messageStore->addErrorMessage(_multiError.toString());
         }
@@ -503,19 +518,19 @@ void Executive::_updateProxyMessages() {
 /// Typically the requesters are handled by markCompleted().
 /// _reapRequesters() deals with cases that involve errors.
 void Executive::_waitAllUntilEmpty() {
-    std::unique_lock<std::mutex> lock(_incompleteJobsMutex);
+    unique_lock<mutex> lock(_incompleteJobsMutex);
     int lastCount = -1;
     int count;
     int moreDetailThreshold = 10;
     int complainCount = 0;
-    const std::chrono::seconds statePrintDelay(5);
+    const chrono::seconds statePrintDelay(5);
     while(!_incompleteJobs.empty()) {
         count = _incompleteJobs.size();
         if (count != lastCount) {
             lastCount = count;
             ++complainCount;
             if (LOG_CHECK_LVL(_log, LOG_LVL_DEBUG)) {
-                std::ostringstream os;
+                ostringstream os;
                 if (complainCount > moreDetailThreshold) {
                     _printState(os);
                     os << "\n";
@@ -531,14 +546,14 @@ void Executive::_waitAllUntilEmpty() {
     }
 }
 
-std::ostream& operator<<(std::ostream& os, Executive::JobMap::value_type const& v) {
+ostream& operator<<(ostream& os, Executive::JobMap::value_type const& v) {
     JobStatus::Ptr status = v.second->getStatus();
     os << v.first << ": " << *status;
     return os;
 }
 
 /// precondition: _requestersMutex is held by current thread.
-void Executive::_printState(std::ostream& os) {
+void Executive::_printState(ostream& os) {
     for (auto const& entry : _incompleteJobs) {
         JobQuery::Ptr job = entry.second;
         os << *job << "\n";

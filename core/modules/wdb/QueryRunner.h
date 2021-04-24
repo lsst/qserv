@@ -102,8 +102,12 @@ public:
     ~QueryRunner();
 
     bool runQuery() override;
-    void cancel() override; ///< Cancel the action (in-progress)
-    bool isCancelled();
+
+    /// Cancel the action (in-progress). This should only be called
+    /// by Task::cancel(), so if this needs to be cancelled elsewhere,
+    /// call Task::cancel().
+    /// This should kill an in progress SQL command.
+    void cancel() override;
 
 protected:
     QueryRunner(wbase::Task::Ptr const& task,
@@ -154,6 +158,7 @@ private:
 
     /// Used to limit the number of open MySQL connections.
     std::shared_ptr<wcontrol::SqlConnMgr> const _sqlConnMgr;
+    std::atomic<bool> _runQueryCalled{false};
 };
 
 }}} // namespace

@@ -110,6 +110,9 @@ QueryRunner::QueryRunner(wbase::Task::Ptr const& task,
 bool QueryRunner::_initConnection() {
     mysql::MySqlConfig localMySqlConfig(_mySqlConfig);
     localMySqlConfig.username = _task->user; // Override with czar-passed username.
+    if (_mysqlConn != nullptr) {
+        LOGS(_log, LOG_LVL_ERROR, "QueryRunner::_initConnection _mysqlConn not nullptr _mysqlConn=" << _mysqlConn.get());
+    }
     _mysqlConn.reset(new mysql::MySqlConnection(localMySqlConfig));
 
     if (not _mysqlConn->connect()) {
@@ -136,6 +139,11 @@ util::TimerHistogram memWaitHisto("memWait Hist", {1, 5, 10, 20, 40});
 bool QueryRunner::runQuery() {
     QSERV_LOGCONTEXT_QUERY_JOB(_task->getQueryId(), _task->getJobId());
     LOGS(_log, LOG_LVL_DEBUG, "QueryRunner::runQuery()");
+    if (_runQueryCalled.exchange(true)) {
+        LOGS(_log, LOG_LVL_ERROR, "QueryRunner::runQuery already called for task="
+                << _task->getQueryId() << " job=" <<  _task->getJobId());
+        throw Bug("runQuery called twice");
+    }
 
     // Make certain our Task knows that this object is no longer in use when this function exits.
     class Release {
@@ -148,7 +156,7 @@ bool QueryRunner::runQuery() {
     };
     Release release(_task, this);
 
-    if (_task->isCancelled()) {
+    if (_task->checkCancelled()) {
         LOGS(_log, LOG_LVL_DEBUG, "runQuery, task was cancelled before it started.");
         return false;
     }
@@ -163,7 +171,7 @@ bool QueryRunner::runQuery() {
     auto logMsg = memWaitHisto.addTime(memTimer.getElapsed(), _task->getIdStr());
     LOGS(_log, LOG_LVL_DEBUG, logMsg);
 
-    if (_task->isCancelled()) {
+    if (_task->checkCancelled()) {
         LOGS(_log, LOG_LVL_DEBUG, "runQuery, task was cancelled after locking tables.");
         return false;
     }
@@ -431,15 +439,18 @@ bool QueryRunner::_dispatchChannel() {
 
     unsigned int rowCount = 0;
     size_t tSize = 0;
+    bool needToFreeRes = false;
 
     // Collect the result in _transmitData. When a reasonable amount of data has been collected,
     // or there are no more rows to collect, pass _transmitData to _sendChannel.
     try {
+        _initTransmit(); // set _transmit
         if (!_cancelled &&  !_task->sendChannel->isDead()) {
             string const& query = _task->getQueryString();
             util::Timer sqlTimer;
             sqlTimer.start();
             MYSQL_RES* res = _primeResult(query); // This runs the SQL query, throws SqlErrorObj on failure.
+            needToFreeRes = true;
             sqlTimer.stop();
             LOGS(_log, LOG_LVL_DEBUG, " fragment time=" << sqlTimer.getElapsed() << " query=" << query);
             _fillSchema(res);
@@ -447,7 +458,6 @@ bool QueryRunner::_dispatchChannel() {
             // TODO fritzm: revisit this error strategy
             // (see pull-request for DM-216)
             // Now get rows...
-            _initTransmit(); // set _initTransmit
             while (!_fillRows(res, numFields, rowCount, tSize)) {
                 if (tSize > proto::ProtoHeaderWrap::PROTOBUFFER_HARD_LIMIT) {
                     LOGS_ERROR("Message single row too large to send using protobuffer");
@@ -464,15 +474,18 @@ bool QueryRunner::_dispatchChannel() {
                 tSize = 0;
                 _initTransmit(); // reset _transmitData
             }
-            // All rows have been read out or there was an error.
-            // _transmit() transmit happens below
-            _mysqlConn->freeResult();
+
         }
     } catch(sql::SqlErrorObject const& e) {
         LOGS(_log, LOG_LVL_ERROR, "dispatchChannel " << e.errMsg());
         util::Error worker_err(e.errNo(), e.errMsg());
         _multiError.push_back(worker_err);
         erred = true;
+    }
+    if (needToFreeRes) {
+        needToFreeRes = false;
+        // All rows have been read out or there was an error.
+        _mysqlConn->freeResult();
     }
     if (!_cancelled) {
         // Send results. This needs to happen after the error check.
@@ -494,13 +507,10 @@ bool QueryRunner::_dispatchChannel() {
 void QueryRunner::cancel() {
     LOGS(_log, LOG_LVL_WARN, "Trying QueryRunner::cancel() call");
     _cancelled = true;
-    // This could be called after the task has been completed, so sendChannel
-    // validation is needed.
-    auto sChannel = _task->sendChannel;
-    if (sChannel != nullptr) {
-        lock_guard<mutex> streamLock(sChannel->streamMutex);
-        sChannel->kill(streamLock);
-    }
+
+    // QueryRunner::cancel() should only be called by Task::cancel()
+    // to keep the booking straight.
+
     if (!_mysqlConn.get()) {
         LOGS(_log, LOG_LVL_WARN, "QueryRunner::cancel() no MysqlConn");
         return;
