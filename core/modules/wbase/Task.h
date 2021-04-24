@@ -138,7 +138,7 @@ public:
     char timestr[100]; ///< ::ctime_r(&t.entryTime, timestr)
     // Note that manpage spec of "26 bytes"  is insufficient
 
-    /// Cancel the query in progress and set set _cancelled.
+    /// Cancel the query in progress and set _cancelled.
     void cancel();
 
     /// Check if this task should be cancelled and call cancel() as needed.
