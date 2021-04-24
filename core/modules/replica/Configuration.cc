@@ -600,8 +600,6 @@ DatabaseInfo Configuration::addTable(
 DatabaseInfo Configuration::deleteTable(string const& database, string const& table) {
     util::Lock const lock(_mtx, _context(__func__));
     DatabaseInfo& databaseInfo = _databaseInfo(lock, database);
-    bool const isPartitioned = databaseInfo.isPartitioned(table);
-    bool const isDirector = databaseInfo.isDirector(table);
     if (_connectionPtr != nullptr) {
         _connectionPtr->executeInOwnTransaction([&](decltype(_connectionPtr) conn) {
             conn->execute("DELETE FROM " + conn->sqlId("config_database_table") +
@@ -609,29 +607,7 @@ DatabaseInfo Configuration::deleteTable(string const& database, string const& ta
                           " AND " + conn->sqlEqual("table", table));
         });
     }
-    if (isPartitioned) {
-        databaseInfo.partitionedTables.erase(
-            find(databaseInfo.partitionedTables.begin(),
-                 databaseInfo.partitionedTables.end(),
-                 table)
-        );
-        if (isDirector) {
-            // These attributes are set for the director table only.
-            databaseInfo.directorTable = "";
-            databaseInfo.directorTableKey = "";
-            databaseInfo.chunkIdColName = "";
-            databaseInfo.subChunkIdColName = "";
-        }
-        databaseInfo.latitudeColName.erase(table);
-        databaseInfo.longitudeColName.erase(table);
-    } else {
-       databaseInfo.regularTables.erase(
-            find(databaseInfo.regularTables.begin(),
-                 databaseInfo.regularTables.end(),
-                 table)
-        );
-    }
-    databaseInfo.columns.erase(table);
+    databaseInfo.removeTable(table);
     return databaseInfo;
 }
 

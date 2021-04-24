@@ -117,6 +117,11 @@ public:
                   std::string const& latitudeColName_=std::string(),
                   std::string const& longitudeColName_=std::string());
 
+    /// Remove the specified table from the database
+    /// @throw std::invalid_argument If the empty string is passed as a value of
+    ///   the parameter 'table', or the table doesn't exist.
+    void removeTable(std::string const& table);
+
     /// @param The name of a table to be located and inspected
     /// @return 'true' if the table was found and it's 'partitioned'
     /// @throw std::invalid_argument if no such table is known
