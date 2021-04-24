@@ -23,6 +23,7 @@
 #include "replica/ConfigDatabase.h"
 
 // System headers
+#include <algorithm>
 #include <iostream>
 #include <stdexcept>
 
@@ -265,6 +266,35 @@ void DatabaseInfo::addTable(
         regularTables.push_back(table);
     }
     columns[table] = columns_;
+}
+
+
+void DatabaseInfo::removeTable(std::string const& table) {
+    bool const partitioned = isPartitioned(table);
+    bool const director = isDirector(table);
+    if (partitioned) {
+        partitionedTables.erase(
+            find(partitionedTables.begin(),
+                 partitionedTables.end(),
+                 table)
+        );
+        if (director) {
+            // These attributes are set for the director table only.
+            directorTable = "";
+            directorTableKey = "";
+            chunkIdColName = "";
+            subChunkIdColName = "";
+        }
+        latitudeColName.erase(table);
+        longitudeColName.erase(table);
+    } else {
+       regularTables.erase(
+            find(regularTables.begin(),
+                 regularTables.end(),
+                 table)
+        );
+    }
+    columns.erase(table);
 }
 
 
