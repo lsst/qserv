@@ -181,6 +181,16 @@ void IngestFileSvc::loadDataIntoTable() {
     // to the loading phase.
     _file.flush();
 
+    // Make sure no change in the state of the current transaction happened
+    // while the input file was being prepared for the ingest.
+    auto const transactionInfo = _serviceProvider->databaseServices()->transaction(_transactionId);
+    if (transactionInfo.state != TransactionInfo::STARTED) {
+        throw logic_error(
+                context_ + "transaction " + to_string(_transactionId)
+                + " changed state to " + TransactionInfo::state2string(transactionInfo.state)
+                + " while the input file was being prepared for the ingest.");
+    }
+
     // ATTENTION: the data loading method used in this implementation requires
     // that the MySQL server has (at least) the read-only access to files in
     // a folder in which the CSV file will be stored by this server. So, make
@@ -201,6 +211,11 @@ void IngestFileSvc::loadDataIntoTable() {
         tableMgtStatements.push_back(Query("UNLOCK TABLES"));
 
         string dataLoadQuery;
+
+        // The query to be executed after ingesting data into the table if the current
+        // (super-)transaction gets aborted during the ingest.
+        // The query will remove the corresponding MySQL partition.
+        Query partitionRemovalQuery;
 
         if (_isPartitioned) {
             
@@ -245,10 +260,14 @@ void IngestFileSvc::loadDataIntoTable() {
 
                 // An additional step for the current request's table
                 if (table == _table) {
+                    auto const sqlDestinationTable = _isOverlap ? sqlFullOverlapTable : sqlTable;
                     dataLoadQuery =
                         "LOAD DATA INFILE " + h.conn->sqlValue(_fileName) +
-                            " INTO TABLE " + (_isOverlap ? sqlFullOverlapTable : sqlTable) +
+                            " INTO TABLE " + sqlDestinationTable +
                             " FIELDS TERMINATED BY " + h.conn->sqlValue(string() + _columnSeparator);
+                    partitionRemovalQuery =
+                        Query("ALTER TABLE " + sqlDestinationTable + " DROP PARTITION " + sqlPartition,
+                              sqlDestinationTable);
                 }
             }
         } else {
@@ -265,6 +284,9 @@ void IngestFileSvc::loadDataIntoTable() {
                 "LOAD DATA INFILE " + h.conn->sqlValue(_fileName) +
                     " INTO TABLE " + sqlTable +
                     " FIELDS TERMINATED BY " + h.conn->sqlValue(string() + _columnSeparator);
+            partitionRemovalQuery =
+                Query("ALTER TABLE " + sqlTable + " DROP PARTITION " + sqlPartition,
+                      sqlTable);
         }
         for (auto&& statement: tableMgtStatements) {
             LOGS(_log, LOG_LVL_DEBUG, context_ << "query: " << statement.query);
@@ -305,6 +327,34 @@ void IngestFileSvc::loadDataIntoTable() {
         h.conn->executeInOwnTransaction([&dataLoadQuery](decltype(h.conn) const& conn_) {
             conn_->execute(dataLoadQuery);
         });
+
+        // Make the final check to ensure the current transaction wasn't aborted
+        // while the input file was being ingested into the table. If it was
+        // then make the best attempt to remove the partition.
+        auto const transactionInfo = _serviceProvider->databaseServices()->transaction(_transactionId);
+        if (transactionInfo.state == TransactionInfo::ABORTED) {
+            LOGS(_log, LOG_LVL_WARN, context_ << "transaction " << _transactionId
+                 << " was aborted during ingest. Removing the MySQL partition, query: "
+                 << partitionRemovalQuery.query);
+            try {
+                h.conn->executeInOwnTransaction(
+                    [&](decltype(h.conn) const& conn_) {
+                        util::Lock const lock(
+                                _serviceProvider->getNamedMutex(partitionRemovalQuery.mutexName),
+                                context_);
+                        conn_->execute(partitionRemovalQuery.query);
+                    },
+                    maxReconnects, timeoutSec, maxRetriesOnDeadLock
+                );
+            } catch (exception const& ex) {
+                // Just report the error and take no further actions.
+                LOGS(_log, LOG_LVL_ERROR, context_ << "partition removal query failed: "
+                     << partitionRemovalQuery.query << ", exception: " << ex.what());
+            }
+            throw logic_error(
+                    context_ + "transaction " + to_string(_transactionId)
+                    + " got aborted while the file was being ingested into the table.");
+        }
 
     } catch (exception const& ex) {
         LOGS(_log, LOG_LVL_ERROR, context_ << "exception: " << ex.what());
