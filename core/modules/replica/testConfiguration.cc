@@ -242,7 +242,8 @@ BOOST_AUTO_TEST_CASE(ConfigurationTest) {
     BOOST_CHECK(db1info.family == "production");
     BOOST_CHECK(db1info.isPublished == true);
     BOOST_CHECK(db1info.directorTable == "Table11");
-    BOOST_CHECK(db1info.directorTableKey == "id1");
+    BOOST_CHECK(db1info.directorTableKey.count("Table11") != 0);
+    BOOST_CHECK(db1info.directorTableKey.at("Table11") == "id11");
     BOOST_CHECK(db1info.chunkIdColName == "chunkId1");
     BOOST_CHECK(db1info.subChunkIdColName == "subChunkId1");
 
@@ -266,11 +267,14 @@ BOOST_AUTO_TEST_CASE(ConfigurationTest) {
     BOOST_CHECK(db2info.family == "production");
     BOOST_CHECK(db2info.isPublished == true);
     BOOST_CHECK(db2info.directorTable == "Table21");
-    BOOST_CHECK(db2info.directorTableKey == "id2");
+    BOOST_CHECK(db2info.directorTableKey.count("Table21") != 0);
+    BOOST_CHECK(db2info.directorTableKey.at("Table21") == "id21");
     BOOST_CHECK(db2info.chunkIdColName == "chunkId2");
     BOOST_CHECK(db2info.subChunkIdColName == "subChunkId2");
     BOOST_CHECK(db2info.isDirector("Table21"));
     BOOST_CHECK(!db2info.isDirector("Table22"));
+    BOOST_CHECK(db2info.directorTableKey.count("Table22") != 0);
+    BOOST_CHECK(db2info.directorTableKey.at("Table22") == "id22");
 
     tables = db2info.partitionedTables;
     sort(tables.begin(), tables.end());
@@ -288,9 +292,14 @@ BOOST_AUTO_TEST_CASE(ConfigurationTest) {
     BOOST_CHECK(db3info.family == "production");
     BOOST_CHECK(db3info.isPublished == true);
     BOOST_CHECK(db3info.directorTable == "Table31");
-    BOOST_CHECK(db3info.directorTableKey == "id3");
+    BOOST_CHECK(db3info.directorTableKey.count("Table31") != 0);
+    BOOST_CHECK(db3info.directorTableKey.at("Table31") == "id31");
     BOOST_CHECK(db3info.chunkIdColName == "chunkId3");
     BOOST_CHECK(db3info.subChunkIdColName == "subChunkId3");
+    BOOST_CHECK(db3info.directorTableKey.count("Table32") != 0);
+    BOOST_CHECK(db3info.directorTableKey.at("Table32") == "id32");
+    BOOST_CHECK(db3info.directorTableKey.count("Table33") != 0);
+    BOOST_CHECK(db3info.directorTableKey.at("Table33").empty());
 
     tables = db3info.partitionedTables;
     sort(tables.begin(), tables.end());
@@ -308,9 +317,12 @@ BOOST_AUTO_TEST_CASE(ConfigurationTest) {
     BOOST_CHECK(db4info.family == "test");
     BOOST_CHECK(db4info.isPublished == true);
     BOOST_CHECK(db4info.directorTable == "Table41");
-    BOOST_CHECK(db4info.directorTableKey == "id4");
+    BOOST_CHECK(db4info.directorTableKey.count("Table41") != 0);
+    BOOST_CHECK(db4info.directorTableKey.at("Table41") == "id41");
     BOOST_CHECK(db4info.chunkIdColName == "chunkId4");
     BOOST_CHECK(db4info.subChunkIdColName == "subChunkId4");
+    BOOST_CHECK(db4info.directorTableKey.count("Table42") != 0);
+    BOOST_CHECK(db4info.directorTableKey.at("Table42").empty());
 
     tables = db4info.partitionedTables;
     sort(tables.begin(), tables.end());
@@ -326,7 +338,8 @@ BOOST_AUTO_TEST_CASE(ConfigurationTest) {
     BOOST_CHECK(db5info.family == "test");
     BOOST_CHECK(db5info.isPublished == true);
     BOOST_CHECK(db5info.directorTable == "Table51");
-    BOOST_CHECK(db5info.directorTableKey == "id5");
+    BOOST_CHECK(db5info.directorTableKey.count("Table51") != 0);
+    BOOST_CHECK(db5info.directorTableKey.at("Table51") == "id51");
     BOOST_CHECK(db5info.chunkIdColName == "chunkId5");
     BOOST_CHECK(db5info.subChunkIdColName == "subChunkId5");
 
@@ -344,7 +357,8 @@ BOOST_AUTO_TEST_CASE(ConfigurationTest) {
     BOOST_CHECK(db6info.family == "test");
     BOOST_CHECK(db6info.isPublished == false);
     BOOST_CHECK(db6info.directorTable == "Table61");
-    BOOST_CHECK(db6info.directorTableKey == "id6");
+    BOOST_CHECK(db6info.directorTableKey.count("Table61") != 0);
+    BOOST_CHECK(db6info.directorTableKey.at("Table61") == "id61");
     BOOST_CHECK(db6info.chunkIdColName == "chunkId6");
     BOOST_CHECK(db6info.subChunkIdColName == "subChunkId6");
 
@@ -366,10 +380,12 @@ BOOST_AUTO_TEST_CASE(ConfigurationTest) {
         BOOST_CHECK(info.name == database);
         BOOST_CHECK(info.family == family);
         BOOST_CHECK(info.isPublished == false);
-        BOOST_CHECK(info.partitionedTables.size() == 0);
-        BOOST_CHECK(info.regularTables.size() == 0);
+        BOOST_CHECK(info.partitionedTables.empty());
+        BOOST_CHECK(info.regularTables.empty());
         BOOST_CHECK(info.directorTable == "");
-        BOOST_CHECK(info.directorTableKey == "");
+        BOOST_CHECK(info.directorTableKey.empty());
+        BOOST_CHECK(info.latitudeColName.empty());
+        BOOST_CHECK(info.longitudeColName.empty());
         BOOST_CHECK(info.chunkIdColName == "");
         BOOST_CHECK(info.subChunkIdColName == "");
         BOOST_CHECK_THROW(config->addDatabase(database, family), std::invalid_argument);
@@ -429,6 +445,9 @@ BOOST_AUTO_TEST_CASE(ConfigurationTest) {
             }) != columns.cend()
         );
         BOOST_CHECK((info.partitionedTables.size() == 1) && (info.partitionedTables[0] == "T1"));
+        BOOST_CHECK(info.directorTableKey.at("T1").empty());
+        BOOST_CHECK(info.latitudeColName.at("T1").empty());
+        BOOST_CHECK(info.longitudeColName.at("T1").empty());
     }
     BOOST_CHECK_THROW(config->addTable("new", "T1", true), std::invalid_argument);
     {
@@ -441,18 +460,29 @@ BOOST_AUTO_TEST_CASE(ConfigurationTest) {
         bool const isPartitioned = true;
         bool const isDirectorTable = true;
         string const directorTableKey = "idT2";
+        string const latitudeColName = "declT2";
+        string const longitudeColName = "raT2";
         DatabaseInfo info;
         BOOST_REQUIRE_NO_THROW(
             info = config->addTable("new", "T2", isPartitioned, coldefs, isDirectorTable, directorTableKey,
                     "chunkIdT2", "subChunkIdT2", "declT2", "raT2");
         );
         BOOST_CHECK(info.partitionedTables.size() == 2);
+        BOOST_CHECK(info.directorTableKey.count("T2") != 0);
+        BOOST_CHECK(info.directorTableKey.at("T2") == directorTableKey);
+        BOOST_CHECK(info.latitudeColName.count("T2") != 0);
+        BOOST_CHECK(info.latitudeColName.at("T2") == latitudeColName);
+        BOOST_CHECK(info.longitudeColName.count("T2") != 0);
+        BOOST_CHECK(info.longitudeColName.at("T2") == longitudeColName);
     }
     BOOST_CHECK_THROW(config->addTable("new", "T2", true), std::invalid_argument);
     {
         DatabaseInfo info;
         BOOST_REQUIRE_NO_THROW(info = config->addTable("new", "T3", false));
         BOOST_CHECK((info.regularTables.size() == 1) && (info.regularTables[0] == "T3"));
+        BOOST_CHECK(info.directorTableKey.count("T3") == 0);
+        BOOST_CHECK(info.latitudeColName.count("T3") == 0);
+        BOOST_CHECK(info.longitudeColName.count("T3") == 0);
     }
     BOOST_CHECK_THROW(config->addTable("new", "T3", false), std::invalid_argument);
     BOOST_REQUIRE_NO_THROW(config->deleteTable("new", "T3"));
