@@ -208,16 +208,21 @@ string WorkerIndexRequest::_query(database::mysql::Connection::Ptr const& conn) 
 
     auto const config = serviceProvider()->config();
     auto const databaseInfo = config->databaseInfo(_request.database());
+    string const& directorTable = databaseInfo.directorTable;
 
-    if (databaseInfo.directorTable.empty() or databaseInfo.directorTableKey.empty() or
+    if (directorTable.empty() or
+        (databaseInfo.directorTableKey.count(directorTable) == 0) or
+        databaseInfo.directorTableKey.at(directorTable).empty() or
         databaseInfo.chunkIdColName.empty() or databaseInfo.subChunkIdColName.empty()) {
         throw invalid_argument(
                 "director table has not been properly configured in database '" +
                 databaseInfo.name + "'");
     }
-    if (0 == databaseInfo.columns.count(databaseInfo.directorTable)) {
+    string const& directorTableKey = databaseInfo.directorTableKey.at(directorTable);
+
+    if (0 == databaseInfo.columns.count(directorTable)) {
         throw invalid_argument(
-                "no schema found for director table '" + databaseInfo.directorTable +
+                "no schema found for director table '" + directorTable +
                 "' of database '" + databaseInfo.name + "'");
     }
 
@@ -229,9 +234,9 @@ string WorkerIndexRequest::_query(database::mysql::Connection::Ptr const& conn) 
     string chunkIdColNameType;
     string subChunkIdColNameType;
 
-    for (auto&& coldef: databaseInfo.columns.at(databaseInfo.directorTable)) {
+    for (auto&& coldef: databaseInfo.columns.at(directorTable)) {
         if      (not qservTransId.empty() and coldef.name == qservTransId) qservTransIdType = coldef.type;
-        else if (coldef.name == databaseInfo.directorTableKey) directorTableKeyType = coldef.type;
+        else if (coldef.name == directorTableKey) directorTableKeyType = coldef.type;
         else if (coldef.name == databaseInfo.chunkIdColName) chunkIdColNameType = coldef.type;
         else if (coldef.name == databaseInfo.subChunkIdColName) subChunkIdColNameType = coldef.type;
     }
@@ -248,7 +253,7 @@ string WorkerIndexRequest::_query(database::mysql::Connection::Ptr const& conn) 
 
     string const columnsEscaped =
         (qservTransId.empty() ? string() : conn->sqlId(qservTransId) + ",") +
-        conn->sqlId(databaseInfo.directorTableKey) + "," +
+        conn->sqlId(directorTableKey) + "," +
         conn->sqlId(databaseInfo.chunkIdColName) + "," +
         conn->sqlId(databaseInfo.subChunkIdColName);
 
@@ -261,7 +266,7 @@ string WorkerIndexRequest::_query(database::mysql::Connection::Ptr const& conn) 
 
     string const orderByEscaped =
         (qservTransId.empty() ? string() : conn->sqlId(qservTransId) + ",") +
-        conn->sqlId(databaseInfo.directorTableKey);
+        conn->sqlId(directorTableKey);
 
     return
         "SELECT " + columnsEscaped +

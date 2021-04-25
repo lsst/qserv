@@ -358,7 +358,9 @@ public:
         verifyImpl("regular_tables.empty()", actual.regularTables.empty(), desired.regularTables.empty());
         verifyImpl("columns.empty()", actual.columns.empty(), desired.columns.empty());
         verifyImpl("director_table", actual.directorTable, desired.directorTable);
-        verifyImpl("director_key", actual.directorTableKey, desired.directorTableKey);
+        verifyImpl("director_key.size()", actual.directorTableKey.size(), desired.directorTableKey.size());
+        verifyImpl("latitude_key.size()", actual.latitudeColName.size(), desired.latitudeColName.size());
+        verifyImpl("longitude_key.size()", actual.longitudeColName.size(), desired.longitudeColName.size());
         verifyImpl("chunk_id_key", actual.chunkIdColName, desired.chunkIdColName);
         verifyImpl("sub_chunk_id_key", actual.subChunkIdColName, desired.subChunkIdColName);
     }

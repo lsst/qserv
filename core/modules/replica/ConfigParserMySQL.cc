@@ -157,8 +157,8 @@ void ConfigParserMySQL::_parseDatabases() {
         if (_parseParam<int>("is_partitioned") != 0) {
             if (_parseParam<int>("is_director") != 0) {
                 info.directorTable = table;
-                info.directorTableKey = _parseParam<string>("director_key");
             }
+            info.directorTableKey[table] = _parseParam<string>("director_key");
             info.latitudeColName[table] = _parseParam<string>("latitude_key");
             info.longitudeColName[table] = _parseParam<string>("longitude_key");
             info.partitionedTables.push_back(table);

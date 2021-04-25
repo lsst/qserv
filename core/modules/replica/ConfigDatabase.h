@@ -67,8 +67,14 @@ public:
     /// @return The names of all tables.
     std::vector<std::string> tables() const;
 
-    std::string directorTable;      // The name of the Qserv "director" table if any.
-    std::string directorTableKey;   // The name of the primary key column in the "director" table.
+    std::string directorTable;          // The name of the Qserv "director" table if any.
+    std::map<std::string,               // The table name (partitioned tables only!).
+        std::string> directorTableKey;  // The name of the table's key representing object identifiers.
+                                        // NOTES: (1) In the "dependent" tables the key represents the FK
+                                        // associated with the corresponding PK of the "director" table.
+                                        // (2) The key is allowed to be empty for the partitioned tables
+                                        // that don't have any objectId-based association with
+                                        // any "director" table.
 
     // Names of special columns of the partitioned tables.
 
