@@ -4,7 +4,7 @@ DEPS_TAG_PREFIX="deps"
 
 # Default version of Qserv dependencies image
 # Useful for travis-ci and local build
-DEPS_TAG_DEFAULT="deps_20210421_0122"
+DEPS_TAG_DEFAULT="deps_20210426_1747"
 
 # This file contains tag of latest locally built image
 # useful for lsst-dm-ci
