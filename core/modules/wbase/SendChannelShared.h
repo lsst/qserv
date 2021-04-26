@@ -85,7 +85,10 @@ public:
     bool kill(StreamGuard sLock);
 
     /// @see SendChannel::isDead
-    bool isDead() { return _sendChannel->isDead(); }
+    bool isDead() {
+        if (_sendChannel == nullptr) return true;
+        return _sendChannel->isDead();
+    }
 
 
     /// Set the number of Tasks that will be sent using this SendChannel.

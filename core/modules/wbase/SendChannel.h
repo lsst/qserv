@@ -92,7 +92,8 @@ public:
     /// @ return the previous value of _dead
     bool kill();
 
-    bool isDead() { return _dead; }
+    /// Return true if this sendChannel cannot send data back to the czar.
+    bool isDead();
 
 protected:
     std::function<void(void)> _release = [](){;}; ///< Function to release resources.

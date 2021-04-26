@@ -553,7 +553,7 @@ bool QueryRequest::isQueryCancelled() {
 
 
 /// @return true if QueryRequest::cancel() has been called.
-/// QueryRequest::isCancelled() is a much better indicator of user query cancellation.
+/// QueryRequest::isQueryCancelled() is a much better indicator of user query cancellation.
 bool QueryRequest::isQueryRequestCancelled() {
     lock_guard<mutex> lock(_finishStatusMutex);
     return _cancelled;

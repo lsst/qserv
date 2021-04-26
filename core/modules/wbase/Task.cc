@@ -190,22 +190,39 @@ void Task::cancel() {
         // Was already cancelled.
         return;
     }
-    auto qr = _taskQueryRunner; // Want a copy in case _taskQueryRunner is reset.
+    auto qr = _taskQueryRunner; // Need a copy in case _taskQueryRunner is reset.
     if (qr != nullptr) {
         qr->cancel();
     }
 
+    // At this point, this code doesn't do anything. It may be
+    // useful to remove this task from the scheduler, but it
+    // seems doubtful that that would improve performance.
     auto sched = _taskScheduler.lock();
     if (sched != nullptr) {
         sched->taskCancelled(this);
     }
 }
 
+bool Task::checkCancelled() {
+    // A czar doesn't directly tell the worker the query is dead.
+    // A czar has XrdSsi kill the SsiRequest, which kills the
+    // sendChannel used by this task. sendChannel can be killed
+    // in other ways, however, without the sendChannel, this task
+    // has no way to return anything to the originating czar and
+    // may as well give up now.
+    if (sendChannel == nullptr || sendChannel->isDead()) {
+        // The sendChannel is dead, probably squashed by the czar.
+        cancel();
+    }
+    return _cancelled;
+}
+
 
 /// @return true if task has already been cancelled.
 bool Task::setTaskQueryRunner(TaskQueryRunner::Ptr const& taskQueryRunner) {
     _taskQueryRunner = taskQueryRunner;
-    return isCancelled();
+    return checkCancelled();
 }
 
 void Task::freeTaskQueryRunner(TaskQueryRunner *tqr){
