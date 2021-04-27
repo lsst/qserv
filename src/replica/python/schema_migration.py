@@ -33,11 +33,14 @@ import os
 from lsst.db import utils
 from lsst.qserv.admin.backoff import on_smig_backoff
 from lsst.qserv.schema import SchemaMigMgr, Uninitialized
+from lsst.qserv.admin.template import save_template_cfg, apply_template_cfg
 
 
 _log = logging.getLogger(__name__)
 
 replicaDb = "qservReplica"
+
+repl_schema_version = "repl_schema_version"
 
 
 class MasterReplicationMigrationManager(SchemaMigMgr):
@@ -45,7 +48,8 @@ class MasterReplicationMigrationManager(SchemaMigMgr):
     controller database.
     """
 
-    def __init__(self, name, connection, scripts_dir):
+    def __init__(self, name, connection, scripts_dir, set_initial_configuration):
+        self.set_initial_configuartion = set_initial_configuration
         super().__init__(scripts_dir, connection)
 
     def current_version(self):
@@ -71,10 +75,10 @@ class MasterReplicationMigrationManager(SchemaMigMgr):
     def _set_version(self, version):
         """Set the version number stored in QMetadata."""
         # make sure that current version is updated in database
-        query = "UPDATE ReplicaMetadata SET value = {} WHERE metakey = 'version'".format(version)
         self.connection.database = replicaDb
         with closing(self.connection.cursor()) as cursor:
-            cursor.execute(query)
+            cursor.execute(f"UPDATE ReplicaMetadata SET value = {version} WHERE metakey = 'version'")
+        _log.info(f"Set replica schema version to {version}.")
         self.connection.commit()
 
         # read it back and compare with expected
@@ -96,12 +100,15 @@ class MasterReplicationMigrationManager(SchemaMigMgr):
         version : `int`
             The current version number after applying migrations.
         """
-        version = super().apply_migrations(migrations)
-        self._set_version(version)
-        return version
+        current_version = self.current_version()
+        to_version = super().apply_migrations(migrations)
+        if current_version == Uninitialized and self.set_initial_configuartion:
+            self.set_initial_configuartion()
+        self._set_version(to_version)
+        return to_version
 
 
-def make_migration_manager(name, connection, scripts_dir):
+def make_migration_manager(name, connection, scripts_dir, set_initial_configuration=None):
     """Factory method for master replication controller schema migration
     manager
 
@@ -116,5 +123,8 @@ def make_migration_manager(name, connection, scripts_dir):
     scripts_dir : `str`
         Path where migration scripts are located, this is system-level directory,
         per-module scripts are usually located in sub-directories.
+    set_initial_configuration : function or `None`
+        A function to be called to set the initial configuration of the repl database.
+        Will only be called if the schema is migrated from None to version 1. Optional.
     """
-    return MasterReplicationMigrationManager(name, connection, scripts_dir)
+    return MasterReplicationMigrationManager(name, connection, scripts_dir, set_initial_configuration)

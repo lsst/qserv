@@ -27,6 +27,7 @@ from functools import partial
 import importlib
 import logging
 import mysql.connector
+from _mysql_connector import MySQLInterfaceError
 import sqlalchemy
 from sqlalchemy.engine.url import make_url
 
@@ -39,7 +40,7 @@ _factory_method_name = "make_migration_manager"
 _log = logging.getLogger(__name__)
 
 
-def _load_migration_mgr(mod_name, connection, scripts_dir):
+def _load_migration_mgr(mod_name, connection, scripts_dir, **kwargs):
     """Dynamic loading of the migration manager based on module name.
 
     Parameters
@@ -51,6 +52,8 @@ def _load_migration_mgr(mod_name, connection, scripts_dir):
     scripts_dir : `str`
         Path where migration scripts are located, this is system-level directory,
         per-module scripts are usually located in sub-directories.
+    kwargs : `dict`
+        Optional; kwargs that will be expanded when calling the migration manager factory function.
 
     Returns
     -------
@@ -86,7 +89,7 @@ def _load_migration_mgr(mod_name, connection, scripts_dir):
         raise
 
     # call factory method, pass all needed arguments
-    mgr = factory(name=mod_name, connection=connection, scripts_dir=scripts_dir)
+    mgr = factory(name=mod_name, connection=connection, scripts_dir=scripts_dir, **kwargs)
 
     return mgr
 
@@ -140,6 +143,7 @@ def smig(
     config_file,
     config_section,
     module,
+    mig_mgr_args,
 ):
     """Execute schema migration.
 
@@ -190,7 +194,7 @@ def smig(
 
     # make an object which will manage migration process
 
-    with closing(_load_migration_mgr(module, connection=connection, scripts_dir=scripts)) as mgr:
+    with closing(_load_migration_mgr(module, connection=connection, scripts_dir=scripts, **mig_mgr_args)) as mgr:
         current = mgr.current_version()
         _log.info("Current {} schema version: {}".format(module, current))
 
@@ -218,3 +222,40 @@ def smig(
                 _log.info("Database was migrated to version {}".format(final))
             else:
                 _log.info("Database would be migrated to version {}".format(final))
+
+
+class VersionMismatchError(RuntimeError):
+    """Rasing a VersionMismatchError indicates that the schema do not match yet.
+    This can be handled by @backoff which may retry later.
+    """
+    def __init__(self, module, current, latest):
+        super().__init__(f"Module {module} schema is at version {current}, latest is {latest}")
+
+
+@backoff.on_exception(
+    backoff.expo,
+    (VersionMismatchError, mysql.connector.errors.DatabaseError, MySQLInterfaceError, mysql.connector.errors.ProgrammingError),
+    max_time=600, # Could be made tunable. For now default to 10 minutes.
+    on_backoff=on_smig_backoff(log=_log)
+)
+def smig_block(connection, scripts, module):
+    """Block waiting for another process to run schema migration on a database.
+
+    Parameters
+    ----------
+    connection : `str`
+        The database connection string.
+    scripts : `str`
+        The path to the migration scripts directory.
+    module : `str`
+        The name of the module whose database is being migrated.
+    """
+    if not connection:
+        raise RuntimeError("A connection is required.")
+
+    with closing(_load_migration_mgr(module, connection=connection, scripts_dir=scripts)) as mgr:
+        current = mgr.current_version()
+        latest = mgr.latest_version()
+        if current != latest:
+            raise VersionMismatchError(module=module, current=current, latest=latest)
+        _log.info(f"smig_block: module {module} is at the latest version: {current}, continuing.")

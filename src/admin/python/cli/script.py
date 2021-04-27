@@ -22,6 +22,7 @@
 import backoff
 from contextlib import closing
 import flask
+from functools import partial
 import logging
 import mysql.connector
 import os
@@ -33,7 +34,7 @@ from urllib.parse import urlparse
 from lsst.qserv.admin.backoff import max_backoff_seconds, on_smig_backoff
 from lsst.qserv.admin.template import apply_template_cfg, apply_template_cfg_file, save_template_cfg
 from lsst.qserv.replica import replicaConfig
-from lsst.qserv.schema import smig
+from lsst.qserv.schema import smig, smig_block
 
 smig_dir_env_var = "QSERV_SMIG_DIRECTORY"
 default_smig_dir = "/usr/local/qserv/smig"
@@ -66,13 +67,19 @@ worker_wgmr_config_path = "/config-etc/wmgr.cnf"
 cmsd_manager_cfg_template = "/usr/local/qserv/templates/xrootd/etc/cmsd-manager.cf.jinja"
 cmsd_manager_cfg_path = "/config-etc/cmsd-manager.cnf"
 
+cmsd_worker_cfg_template = "/usr/local/qserv/templates/xrootd/etc/cmsd-worker.cf.jinja"
+cmsd_worker_cfg_path = "/config-etc/cmsd-worker.cf"
+xrdssi_cfg_template = "/usr/local/qserv/templates/xrootd/etc/xrdssi.cf.jinja"
+xrdssi_cfg_path = "/config-etc/xrdssi-worker.cf"
+
+
 xrootd_manager_cfg_template = "/usr/local/qserv/templates/xrootd/etc/xrootd-manager.cf.jinja"
 xrootd_manager_cfg_path = "/config-etc/xrootd-manager.cf"
 
 _log = logging.getLogger(__name__)
 
 
-def _do_smig(module_smig_dir, module, connection):
+def _do_smig(module_smig_dir, module, connection, *, mig_mgr_args=None):
     smig(
         verbose=False,
         do_migrate=True,
@@ -82,6 +89,15 @@ def _do_smig(module_smig_dir, module, connection):
         connection=connection,
         config_file=None,  # could use this instead of connection string
         config_section=None,  # goes with config_file
+        module=module,
+        mig_mgr_args=mig_mgr_args,
+    )
+
+
+def _do_smig_block(module_smig_dir, module, connection):
+    smig_block(
+        scripts=os.path.join(os.environ.get(smig_dir_env_var, default_smig_dir), module_smig_dir),
+        connection=connection,
         module=module,
     )
 
@@ -114,33 +130,6 @@ def _get_vnid(connection):
             return res[0]
 
 
-def _wait_for_mysql_running():
-    """Wait for mysql to be running."""
-    pass
-    # TODO we don't have mysql installed on worker nodes, we have to use
-    # mysql connection lib. This can be rewritten to use that.
-    # However, is that the right way to go? Or do we want to just make our
-    # python to db calls robust against a not present database (retry?)
-
-
-    # while True:
-    #     result = subprocess.run(
-    #         [
-    #             "mysql",
-    #             "--socket",
-    #             f"\"{mysqld_socket}\"",
-    #             f"--user=\"{mysqld_user_qserv}\"",
-    #             "--skip-column-names",
-    #             "-e",
-    #             "SELECT CONCAT('Mariadb is up: ', version())",
-    #         ]
-    #     )
-    #     if result.returncode == 0:
-    #         break
-    #     else:
-    #         _log.info("Waiting for MySQL startup.")
-
-
 
 def smig_czar(connection):
     """Apply schema migration scripts to czar modules.
@@ -157,17 +146,6 @@ def smig_czar(connection):
         (qmeta_smig_dir, "qmeta"),
     ):
         _do_smig(module_smig_dir, module, connection)
-
-
-def smig_replication_controller(connection):
-    """Apply schema migration scripts the replication controller.
-
-    Parameters
-    ----------
-    connection : `str`
-        Connection string in format mysql://user:pass@host:port/database.
-    """
-    _do_smig(replication_controller_smig_dir, "replica", connection)
 
 
 def enter_cmsd_manager():
@@ -207,39 +185,26 @@ def enter_xrootd_manager(cmsd_manager):
     )
 
 
-def enter_worker_cmsd(cmsd_manager, vnid, db_scheme, db_user, db_pswd, db_host, db_port, debug_port,
-                      xrd_port, db_qserv_user, repl_ctl_dn, mysql_monitor_password):
+def enter_worker_cmsd(cmsd_manager, vnid, debug_port, connection):
 
+    parsed = urlparse(connection)
     save_template_cfg(dict(
-        host=socket.gethostname(), # nptodo is this used in setting VNID?
-        cmsd_manager=cmsd_manager,
-        db_scheme=db_scheme,
-        db_user=db_user,
-        db_pswd=db_pswd,
-        db_host=db_host,
-        db_port=db_port,
         vnid=vnid,
-        mysqld_user_qserv=db_qserv_user,
-        replication_controller_FQDN=repl_ctl_dn,
-        mysql_monitor_password=mysql_monitor_password,
+        cmsd_manager=cmsd_manager,
+        db_host=parsed.hostname,
+        db_port=parsed.port,
+        mysqld_user_qserv=parsed.username,
     ))
 
-    connection = apply_template_cfg("{{ db_scheme }}://{{ db_user }}:{{ db_pswd }}@{{ db_host }}:{{ db_port }}")
-    _log.debug(f"Worker database connection "
-               f"{apply_template_cfg('{{ db_scheme }}://{{ db_user }}:*****@{{ db_host }}:{{ db_port }}')}")
-    _do_smig(admin_smig_dir, "admin", connection),
-    _do_smig(worker_smig_dir, "worker", connection),
+    apply_template_cfg_file(cmsd_worker_cfg_template, cmsd_worker_cfg_path)
+    apply_template_cfg_file(xrdssi_cfg_template, xrdssi_cfg_path)
 
-    rendered_config_path = "/config-etc/cmsd-worker.cf"
-    apply_template_cfg_file("/usr/local/qserv/templates/xrootd/etc/cmsd-worker.cf.jinja",
-                            rendered_config_path)
-    rendered_xrdssi_config_path = "/config-etc/xrdssi-worker.cf"
-    apply_template_cfg_file("/usr/local/qserv/templates/xrootd/etc/xrdssi.cf.jinja",
-                            rendered_xrdssi_config_path)
+    _do_smig_block(admin_smig_dir, "admin", connection)
+
     args = [
         "cmsd",
         "-c",
-        rendered_config_path,
+        cmsd_worker_cfg_path,
         "-n",
         "worker",
         "-I",
@@ -247,15 +212,14 @@ def enter_worker_cmsd(cmsd_manager, vnid, db_scheme, db_user, db_pswd, db_host, 
         "-l",
         "@libXrdSsiLog.so",
         "-+xrdssi",
-        rendered_xrdssi_config_path,
+        xrdssi_cfg_path,
     ]
     sys.exit(_run(args, debug_port=debug_port))
 
 
-def enter_worker_xrootd(debug_port, xrd_port, db_host, db_port, vnid, cmsd_manager):
+def enter_worker_xrootd(debug_port, xrd_port, connection, vnid, cmsd_manager, repl_ctl_dn, mysql_monitor_password, db_qserv_user):
     """Entrypoint script for the xrootd container that runs on worker nodes.
     """
-    # enter_worker_cmsd smigs the worker db for that node
 
     # TODO This sets the amount of data that can be locked into memory to
     # almost the entire amount of memory on the machine. I think in a dev-env
@@ -266,26 +230,32 @@ def enter_worker_xrootd(debug_port, xrd_port, db_host, db_port, vnid, cmsd_manag
     # MLOCK_AMOUNT=$(grep MemTotal /proc/meminfo | awk '{printf("%.0f\n", $2 - 1000000)}')
     # ulimit -l "$MLOCK_AMOUNT"
 
+    parsed = urlparse(connection)
     save_template_cfg(dict(
         vnid=vnid,
         cmsd_manager=cmsd_manager,
-        db_host=db_host,
-        db_port=db_port,
+        db_host=parsed.hostname,
+        db_port=parsed.port,
+        mysqld_user_qserv=db_qserv_user,
+        replication_controller_FQDN=repl_ctl_dn,
+        mysql_monitor_password=mysql_monitor_password,
+        host=socket.gethostname(),
     ))
+
+    # enter_worker_cmsd smigs the worker db for that node
+    _do_smig(admin_smig_dir, "admin", connection),
+    _do_smig(worker_smig_dir, "worker", connection),
 
     # TODO worker (and manager) xrootd+cmsd pair should "share" the cfg file
     # it's in different pods but should be same source & processing.
     # Rename these files to be more agnostic.
-    rendered_config_path = "/config-etc/cmsd-worker.cf"
-    apply_template_cfg_file("/usr/local/qserv/templates/xrootd/etc/cmsd-worker.cf.jinja",
-                            rendered_config_path)
-    rendered_xrdssi_config_path = "/config-etc/xrdssi-worker.cf"
-    apply_template_cfg_file("/usr/local/qserv/templates/xrootd/etc/xrdssi.cf.jinja",
-                            rendered_xrdssi_config_path)
+    apply_template_cfg_file(cmsd_worker_cfg_template, cmsd_worker_cfg_path)
+    apply_template_cfg_file(xrdssi_cfg_template, xrdssi_cfg_path)
+
     args = [
         "xrootd",
         "-c",
-        rendered_config_path,
+        cmsd_worker_cfg_path,
         "-n",
         "worker",
         "-I",
@@ -293,18 +263,23 @@ def enter_worker_xrootd(debug_port, xrd_port, db_host, db_port, vnid, cmsd_manag
         "-l",
         "@libXrdSsiLog.so",
         "-+xrdssi",
-        rendered_xrdssi_config_path,
+        xrdssi_cfg_path,
     ]
     env = dict(os.environ, COMPONENT_NAME="worker")
     sys.exit(_run(args, debug_port=debug_port))
 
 
-def enter_worker_repl(vnid, connection, qserv_db_pswd, debug_port, run, instance_id):
+def enter_worker_repl(vnid, repl_connection, debug_port, run, instance_id):
+    # N.B. When the controller smigs the replication database, if it is migrating from Uninitialized
+    # it will also set initial configuration values in the replication database. It sets the schema
+    # version of the replica database *after* setting the config values, which allows us to wait here
+    # on the schema version to be sure that there are values in the database.
+    _do_smig_block(admin_smig_dir, "replica", repl_connection)
+
     args = [
         "qserv-replica-worker",
         vnid,
-        f"--config={connection}",
-        f"--qserv-db-password='{qserv_db_pswd}'",
+        f"--config={repl_connection}",
         "--debug",
         f"--instance-id={instance_id}",
     ]
@@ -363,26 +338,31 @@ def enter_replication_controller(db_scheme, connection, repl_connection, workers
         many) Replication System's setups in case of an accidental
         mis-configuration.
     """
+
+    def set_initial_configuartion(workers):
+        """Add the initial configuration to the replication database.
+        Should only be called if the replication database has newly been smigged to version 1."""
+        workers = [dict(item.split("=") for item in worker.split(",")) for worker in workers]
+        for worker in workers:
+            try:
+                name = worker.pop("name")
+                host = worker.pop("host")
+            except KeyError as e:
+                raise RuntimeError("The worker option must contain entries 'name' and 'host'") from e
+            args = [
+                "qserv-replica-config",
+                "ADD_WORKER",
+                name,
+                host,
+            ]
+            args += [f"--{key}={val}" for key, val in worker.items()]
+            _log.debug(f"Calling {' '.join(args)}")
+            _run(args, run=run)
+        _log.info(f"Finished setting initial configuration {workers}")
+
     if run:
-        smig_replication_controller(f"{db_scheme}://{connection}")
-
-    workers = [dict(item.split("=") for item in worker.split(",")) for worker in workers]
-
-    for worker in workers:
-        try:
-            name = worker.pop("name")
-            host = worker.pop("host")
-        except KeyError as e:
-            raise RuntimeError("The worker option must contain entries 'name' and 'host'") from e
-        args = [
-            "qserv-replica-config",
-            "ADD_WORKER",
-            name,
-            host,
-        ]
-        args += [f"--{key}={val}" for key, val in worker.items()]
-        _log.debug(f"Calling {' '.join(args)}")
-        _run(args, run=run)
+        mig_mgr_args = dict(set_initial_configuration=partial(set_initial_configuartion, workers))
+        _do_smig(replication_controller_smig_dir, "replica", connection, mig_mgr_args=mig_mgr_args)
 
     env = dict(os.environ, LSST_LOG_CONFIG=replica_controller_log_path)
 

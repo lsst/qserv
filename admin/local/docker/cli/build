@@ -38,13 +38,15 @@ qserv_root = os.getenv("QSERV_ROOT")
 @click.option("--cmake", help="Run the cmake build step.", is_flag=True)
 @click.option("--make", help="Run the make build step.", is_flag=True)
 @click.option("--container", help="Build the docker image.", is_flag=True)
+@click.option("-q", "--qserv-image", help="The name to give to the image. Defaults to $QSERV_IMAGE and then to 'lite-qserv'",
+              required=True)
 @click.option("--debug", is_flag=True)
 @click.option(
     "--qserv-run",
     help="Build the qserv-run container (from within the qserv-build container)",
     is_flag=True,
 )
-def build(cmake, make, container, qserv_run, debug):
+def build(cmake, make, container, qserv_run, debug, qserv_image):
     """Build qserv.
 
     If any of --cmake, --make, or --container are passed then only those that
@@ -94,7 +96,7 @@ def build(cmake, make, container, qserv_run, debug):
             [
                 "docker",
                 "build",
-                "--tag=qserv/lite-qserv",
+                f"--tag=qserv/{qserv_image}",
                 "-f",
                 "../../admin/tools/docker/run/Dockerfile",
                 ".",

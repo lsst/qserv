@@ -85,17 +85,9 @@ def xrootd_manager(**kwargs):
 
 
 @entrypoint.command()
-@db_scheme_option()
-@db_user_option()
-@db_password_option()
-@db_host_option()
-@db_port_option()
-@db_qserv_user_option()
+@connection_option()
 @vnid_option(required=True)
 @cmsd_manager_option(required=True)
-@xrd_port_option()
-@repl_ctrl_domain_name_option()
-@mysql_monitor_password_option()
 @debug_option()
 def worker_cmsd(**kwargs):
     script.enter_worker_cmsd(**kwargs)
@@ -104,10 +96,12 @@ def worker_cmsd(**kwargs):
 @entrypoint.command()
 @debug_option()
 @xrd_port_option()
-@db_host_option()
-@db_port_option()
+@connection_option()
 @vnid_option(required=True)
 @cmsd_manager_option(required=True)
+@repl_ctrl_domain_name_option()
+@mysql_monitor_password_option()
+@db_qserv_user_option()
 def worker_xrootd(**kwargs):
     script.enter_worker_xrootd(**kwargs)
 
@@ -115,8 +109,7 @@ def worker_xrootd(**kwargs):
 @entrypoint.command()
 @vnid_option(required=True)
 @instance_id_option(required=True)
-@connection_option()
-@qserv_db_pswd_option()
+@repl_connection_option()
 @debug_option()
 @run_option()
 def worker_repl(**kwargs):

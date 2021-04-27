@@ -10,6 +10,9 @@ from contextlib import closing
 import jinja2
 import logging
 import mysql.connector
+# MySQLInterfaceError can get thrown, we need to catch it.
+# It's not exposed as a public python object but *is* used in mysql.connector unit tests.
+from _mysql_connector import MySQLInterfaceError
 import os
 import re
 import socket
@@ -196,11 +199,10 @@ class SchemaMigMgr(metaclass=ABCMeta):
 
     @backoff.on_exception(
         backoff.expo,
-        mysql.connector.errors.DatabaseError,
+        # TODO should I add all the types of connector errors here? And to the other backoffs that depend on it?
+        (mysql.connector.errors.DatabaseError, MySQLInterfaceError, mysql.connector.errors.ProgrammingError),
         max_time=max_backoff_seconds,
         on_backoff=on_smig_backoff(log=_log),
-        # Do give up, unless error is that the connection was refused (assume db is starting up)
-        giveup=lambda e: e.errno != database_error_connection_refused_code,
     )
     def _connect(self, connection):
         c = urlparse(connection)
@@ -454,4 +456,3 @@ class SchemaMigMgr(metaclass=ABCMeta):
             if (dbName,) in cursor.fetchall():
                 return True
         return False
-

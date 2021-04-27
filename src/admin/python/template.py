@@ -107,8 +107,7 @@ def apply_template_cfg_file(src, dest):
     with open(src) as s:
         try:
             rendered = apply_template_cfg(s.read())
-        except e:
-            _log.ERROR(f"Failure rendering {src}.")
-            raise e
+        except jinja2.exceptions.UndefinedError as e:
+            raise RuntimeError(f"Failure rendering {src}.") from e
     with open(dest, "w") as d:
         d.write(rendered)
