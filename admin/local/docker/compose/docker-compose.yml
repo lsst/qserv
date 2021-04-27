@@ -48,10 +48,10 @@ services:
               target: /etc/mysql/my.cnf
     worker-cmsd:
         image: "qserv/${QSERV_IMAGE}"
-        command: entrypoint worker-cmsd --db-user root --db-pswd CHANGEME --db-host worker-db --db-port 3306 --xrd-port 2131 --vnid worker_0 --cmsd-manager manager-cmsd --repl-ctl-dn repl_mgr_domain_name --mysql-monitor-password CHANGEME_MONITOR
+        command: entrypoint worker-cmsd --connection mysql://root:CHANGEME@worker-db:3306 --vnid worker_0 --cmsd-manager manager-cmsd
     worker-xrootd:
         image: "qserv/${QSERV_IMAGE}"
-        command: entrypoint worker-xrootd --xrd-port 2131 --db-host worker-db --db-port 3306 --vnid worker_0 --cmsd-manager manager-cmsd
+        command: entrypoint worker-xrootd --xrd-port 2131 --connection mysql://root:CHANGEME@worker-db:3306 --vnid worker_0 --cmsd-manager manager-cmsd --mysql-monitor-password CHANGEME_MONITOR
     worker-repl:
         image: "qserv/${QSERV_IMAGE}"
         command: entrypoint worker-repl --repl-connection mysql://qsreplica@repl-mgr-db:3306/qservReplica --vnid worker_0 --instance-id npease_proj
@@ -78,7 +78,7 @@ services:
               target: /etc/mysql/my.cnf
     repl-mgr-controller:
         image: "qserv/${QSERV_IMAGE}"
-        command: entrypoint --log-level DEBUG replication-controller --connection root:CHANGEME@repl-mgr-db:3306/qservReplica --repl-connection mysql://qsreplica@repl-mgr-db:3306/qservReplica  --instance-id npease_proj --worker name=worker01,host=worker-xrootd
+        command: entrypoint --log-level DEBUG replication-controller --connection mysql://root:CHANGEME@repl-mgr-db:3306/qservReplica --repl-connection mysql://qsreplica@repl-mgr-db:3306/qservReplica  --instance-id npease_proj --worker name=worker_0,host=worker-xrootd
 
 
 volumes:
