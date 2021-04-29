@@ -42,6 +42,7 @@
 #include "global/stringTypes.h"
 #include "mysql/MySqlConfig.h"
 #include "util/ConfigStore.h"
+#include "util/Timer.h"
 
 namespace lsst {
 namespace qserv {
@@ -105,6 +106,9 @@ public:
      */
     qdisp::QdispPool::Ptr getQdispPool() { return _qdispPool; }
 
+    /// Remove all old tables in the qservResult database.
+    void removeOldResultTables();
+
 protected:
 
 private:
@@ -144,6 +148,9 @@ private:
     std::mutex _mutex;                  ///< protects _uqFactory, _clientToQuery, and _idToQuery
 
     qdisp::QdispPool::Ptr _qdispPool; ///< Thread pool for handling Responses from XrdSsi.
+
+    util::Timer _lastRemovedTimer; ///< Timer to limit table deletions.
+    std::mutex _lastRemovedMtx;    ///< protects _lastRemovedTimer
 };
 
 }}} // namespace lsst::qserv::czar
