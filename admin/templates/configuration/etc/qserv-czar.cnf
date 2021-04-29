@@ -22,6 +22,8 @@ unix_socket = {{MYSQLD_SOCK}}
 host =
 user = {{MYSQLD_USER_QSERV}}
 port = 0
+# Any table in resultdb that hasn't been updated in this many days is deleted.  
+oldestResultKeptDays = 7
 
 # maximum nuber of connection retries to SQL databse (per connection attempt)
 maxsqlconnectionattempts = 10

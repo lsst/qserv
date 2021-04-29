@@ -75,6 +75,7 @@ CzarConfig::CzarConfig(util::ConfigStore const& configStore)
       _maxSqlConnectionAttempts(configStore.getInt("resultdb.maxsqlconnectionattempts", 10)),
       _resultEngine(configStore.get("resultdb.engine", "myisam")),
       _resultMaxConnections(configStore.getInt("resultdb.maxconnections", 40)),
+      _oldestResultKeptDays(configStore.getInt("resultdb.oldestResultKeptDays", 30)),
       _cssConfigMap(configStore.getSectionConfigMap("css")),
       _mySqlQmetaConfig(configStore.get("qmeta.user", "qsmaster"),
                         configStore.get("qmeta.passwd"),

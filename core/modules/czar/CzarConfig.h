@@ -183,6 +183,8 @@ public:
     ///      priority that should be running concurrently
     std::string getQdispVectMinRunningSizes() const { return _qdispVectMinRunningSizes; }
 
+    int getOldestResultKeptDays() const { return _oldestResultKeptDays; }
+
 private:
 
     CzarConfig(util::ConfigStore const& ConfigStore);
@@ -196,6 +198,8 @@ private:
     int const         _maxSqlConnectionAttempts;
     std::string const _resultEngine;
     int const         _resultMaxConnections;
+    /// Any table in the result table not updated in this many days will be deleted.
+    int const         _oldestResultKeptDays;
 
     // Parameters below used in ccontrol::UserQueryFactory
     std::map<std::string, std::string> const _cssConfigMap;
@@ -214,6 +218,7 @@ private:
     int const _qdispMaxPriority;
     std::string const _qdispVectRunSizes; // No spaces, values separated by ':'
     std::string const _qdispVectMinRunningSizes; // No spaces, values separated by ':'
+
 };
 
 }}} // namespace lsst::qserv::czar
