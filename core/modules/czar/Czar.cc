@@ -45,10 +45,14 @@
 #include "rproc/InfileMerger.h"
 #include "sql/SqlConnection.h"
 #include "sql/SqlConnectionFactory.h"
+#include "sql/SqlResults.h"
 #include "util/common.h"
 #include "util/IterableFormatter.h"
 #include "XrdSsi/XrdSsiProvider.hh"
 #include "../util/StringHelper.h"
+
+
+using namespace std;
 
 
 extern XrdSsiProvider *XrdSsiProviderClient;
@@ -56,7 +60,7 @@ extern XrdSsiProvider *XrdSsiProviderClient;
 
 namespace {
 
-std::string const createAsyncResultTmpl("CREATE TABLE IF NOT EXISTS %1% "
+string const createAsyncResultTmpl("CREATE TABLE IF NOT EXISTS %1% "
     "(jobId BIGINT, resultLocation VARCHAR(1024))"
     "ENGINE=MEMORY;"
     "INSERT INTO %1% (jobId, resultLocation) "
@@ -73,13 +77,13 @@ namespace czar {
 
 Czar::Ptr Czar::_czar;
 
-Czar::Ptr Czar::createCzar(std::string const& configPath, std::string const& czarName) {
+Czar::Ptr Czar::createCzar(string const& configPath, string const& czarName) {
     _czar.reset(new Czar(configPath, czarName));
     return _czar;
 }
 
 // Constructors
-Czar::Czar(std::string const& configPath, std::string const& czarName)
+Czar::Czar(string const& configPath, string const& czarName)
     : _czarName(czarName), _czarConfig(configPath),
       _idCounter(), _uqFactory(), _clientToQuery(), _mutex() {
 
@@ -89,7 +93,7 @@ Czar::Czar(std::string const& configPath, std::string const& czarName)
     const int year = 60*60*24*365;
     _idCounter = uint64_t(tv.tv_sec % year)*1000 + tv.tv_usec/1000;
 
-    std::string logConfig = _czarConfig.getLogConfig();
+    string logConfig = _czarConfig.getLogConfig();
     if (not logConfig.empty()) {
         LOG_CONFIG(logConfig);
     }
@@ -102,14 +106,14 @@ Czar::Czar(std::string const& configPath, std::string const& czarName)
 
     int qPoolSize = _czarConfig.getQdispPoolSize();
     int maxPriority = std::max(0, _czarConfig.getQdispMaxPriority());
-    std::string vectRunSizesStr = _czarConfig.getQdispVectRunSizes();
-    std::vector<int> vectRunSizes = util::StringHelper::getIntVectFromStr(vectRunSizesStr, ":", 1);
-    std::string vectMinRunningSizesStr = _czarConfig.getQdispVectMinRunningSizes();
-    std::vector<int> vectMinRunningSizes = util::StringHelper::getIntVectFromStr(vectMinRunningSizesStr, ":", 0);
+    string vectRunSizesStr = _czarConfig.getQdispVectRunSizes();
+    vector<int> vectRunSizes = util::StringHelper::getIntVectFromStr(vectRunSizesStr, ":", 1);
+    string vectMinRunningSizesStr = _czarConfig.getQdispVectMinRunningSizes();
+    vector<int> vectMinRunningSizes = util::StringHelper::getIntVectFromStr(vectMinRunningSizesStr, ":", 0);
     LOGS(_log, LOG_LVL_INFO, "INFO qdisp config qPoolSize=" << qPoolSize << " maxPriority=" << maxPriority
             << " vectRunSizes=" << vectRunSizesStr << " -> " << util::prettyCharList(vectRunSizes)
             << " vectMinRunningSizes=" << vectMinRunningSizesStr << " -> " << util::prettyCharList(vectMinRunningSizes));
-    _qdispPool = std::make_shared<qdisp::QdispPool>(qPoolSize, maxPriority, vectRunSizes, vectMinRunningSizes);
+    _qdispPool = make_shared<qdisp::QdispPool>(qPoolSize, maxPriority, vectRunSizes, vectMinRunningSizes);
     int xrootdCBThreadsMax = _czarConfig.getXrootdCBThreadsMax();
     int xrootdCBThreadsInit = _czarConfig.getXrootdCBThreadsInit();
     LOGS(_log, LOG_LVL_INFO, "config xrootdCBThreadsMax=" << xrootdCBThreadsMax);
@@ -124,31 +128,34 @@ Czar::Czar(std::string const& configPath, std::string const& czarName)
 }
 
 SubmitResult
-Czar::submitQuery(std::string const& query,
-                  std::map<std::string, std::string> const& hints) {
+Czar::submitQuery(string const& query,
+                  map<string, string> const& hints) {
 
     LOGS(_log, LOG_LVL_DEBUG, "New query: " << query
          << ", hints: " << util::printable(hints));
 
+    // Most of the time, this should do nothing.
+    removeOldResultTables();
+
     util::ConfigStore hintsConfigStore(hints);
 
     // Analyze query hints
-    std::string clientId = hintsConfigStore.get("client_dst_name");
+    string clientId = hintsConfigStore.get("client_dst_name");
 
     // Not being able to get thread id is not fatal,
     // it just means query cannot be associate with particular
     // client/thread and will not be able to be killed later
     int threadId = hintsConfigStore.getInt("server_thread_id", -1);
 
-    std::string defaultDb = hintsConfigStore.get("db");
+    string defaultDb = hintsConfigStore.get("db");
     LOGS(_log, LOG_LVL_DEBUG, "Default database is \"" << defaultDb <<"\"");
 
     // make message table name
-    std::string userQueryId = std::to_string(_idCounter++);
+    string userQueryId = to_string(_idCounter++);
     LOGS(_log, LOG_LVL_DEBUG, "userQueryId: " << userQueryId);
-    std::string resultDb = _czarConfig.getMySqlResultConfig().dbName;
-    std::string const msgTableName = "message_" + userQueryId;
-    std::string const lockName = resultDb + "." + msgTableName;
+    string resultDb = _czarConfig.getMySqlResultConfig().dbName;
+    string const msgTableName = "message_" + userQueryId;
+    string const lockName = resultDb + "." + msgTableName;
 
     // Add logging context with user query ID
     LOG_MDC_SCOPE("TID", userQueryId);
@@ -168,7 +175,7 @@ Czar::submitQuery(std::string const& query,
     // this is atomic
     ccontrol::UserQuery::Ptr uq;
     {
-        std::lock_guard<std::mutex> lock(_mutex);
+        lock_guard<mutex> lock(_mutex);
         uq = _uqFactory->newUserQuery(query, defaultDb, getQdispPool(), userQueryId, msgTableName, resultDb);
     }
 
@@ -206,7 +213,7 @@ Czar::submitQuery(std::string const& query,
         }
     };
     LOGS(_log, LOG_LVL_DEBUG, "starting finalizer thread for query");
-    std::thread finalThread(finalizer);
+    thread finalThread(finalizer);
     finalThread.detach();
 
     // update/cleanup query map
@@ -216,8 +223,8 @@ Czar::submitQuery(std::string const& query,
     if (uq->isAsync()) {
         // make separate message and result tables to return info about ASYNC query,
         // we do not need to lock message because result is ready before we return
-        std::string const resultTableName = resultDb + ".result_async_" + userQueryId;
-        std::string const asyncLockName = resultDb + ".message_async_" + userQueryId;
+        string const resultTableName = resultDb + ".result_async_" + userQueryId;
+        string const asyncLockName = resultDb + ".message_async_" + userQueryId;
         MessageTable msgTable(asyncLockName, _czarConfig.getMySqlResultConfig());
         try {
             _makeAsyncResult(resultTableName, uq->getQueryId(), uq->getResultLocation());
@@ -248,7 +255,7 @@ Czar::submitQuery(std::string const& query,
 }
 
 void
-Czar::killQuery(std::string const& query, std::string const& clientId) {
+Czar::killQuery(string const& query, string const& clientId) {
 
     LOGS(_log, LOG_LVL_INFO, "KILL query: " << query << ", clientId: " << clientId);
 
@@ -268,7 +275,7 @@ Czar::killQuery(std::string const& query, std::string const& clientId) {
     QueryId queryId;
     if (ccontrol::UserQueryType::isKill(query, threadId)) {
         LOGS(_log, LOG_LVL_DEBUG, "thread ID: " << threadId);
-        std::lock_guard<std::mutex> lock(_mutex);
+        lock_guard<mutex> lock(_mutex);
 
         // find it in the client map based in client/thread id
         ClientThreadId ctId(clientId, threadId);
@@ -280,7 +287,7 @@ Czar::killQuery(std::string const& query, std::string const& clientId) {
         uq = iter->second.lock();
     } else if (ccontrol::UserQueryType::isCancel(query, queryId)) {
         LOGS(_log, LOG_LVL_DEBUG, "query ID: " << queryId);
-        std::lock_guard<std::mutex> lock(_mutex);
+        lock_guard<mutex> lock(_mutex);
 
         // find it in the client map based in client/thread id
         auto iter = _idToQuery.find(queryId);
@@ -298,7 +305,7 @@ Czar::killQuery(std::string const& query, std::string const& clientId) {
         LOGS(_log, LOG_LVL_DEBUG, "Killing query: " << uq->getQueryId());
         // query killing can potentially take very long and we do now want to block
         // proxy from serving other requests so run it in a detached thread
-        std::thread killThread([uq]() {
+        thread killThread([uq]() {
             uq->kill();
             LOGS(_log, LOG_LVL_DEBUG, "Finished killing query: " << uq->getQueryId());
         });
@@ -332,30 +339,30 @@ Czar::_cleanupQueryHistoryLocked() {
 
 void
 Czar::_cleanupQueryHistory() {
-    std::lock_guard<std::mutex> lock(_mutex);
+    lock_guard<mutex> lock(_mutex);
     _cleanupQueryHistoryLocked();
 }
 
 void
-Czar::_updateQueryHistory(std::string const& clientId,
+Czar::_updateQueryHistory(string const& clientId,
                           int threadId,
                           ccontrol::UserQuery::Ptr const& uq) {
 
-    std::lock_guard<std::mutex> lock(_mutex);
+    lock_guard<mutex> lock(_mutex);
 
     // first cleanup client query maps from completed queries
     _cleanupQueryHistoryLocked();
 
     // remember query (weak pointer) in case we want to kill query
     if (uq->getQueryId() != QueryId(0)) {
-        _idToQuery.insert(std::make_pair(uq->getQueryId(), uq));
+        _idToQuery.insert(make_pair(uq->getQueryId(), uq));
         LOGS(_log, LOG_LVL_DEBUG, "Remembering query ID: "
              << uq->getQueryId() << " (new map size: "
              << _idToQuery.size() << ")");
     }
     if (not clientId.empty() and threadId >= 0) {
         ClientThreadId ctId(clientId, threadId);
-        _clientToQuery.insert(std::make_pair(ctId, uq));
+        _clientToQuery.insert(make_pair(ctId, uq));
         LOGS(_log, LOG_LVL_DEBUG, "Remembering query: ("
              << clientId << ", " << threadId << ") (new map size: "
              << _clientToQuery.size() << ")");
@@ -363,28 +370,77 @@ Czar::_updateQueryHistory(std::string const& clientId,
 }
 
 void
-Czar::_makeAsyncResult(std::string const& asyncResultTable,
+Czar::_makeAsyncResult(string const& asyncResultTable,
                        QueryId queryId,
-                       std::string const& resultLoc) {
+                       string const& resultLoc) {
 
     auto sqlConn = sql::SqlConnectionFactory::make(_czarConfig.getMySqlResultConfig());
     LOGS(_log, LOG_LVL_DEBUG, "creating async result table " << asyncResultTable);
 
     sql::SqlErrorObject sqlErr;
-    std::string resultLocEscaped;
+    string resultLocEscaped;
     if (not sqlConn->escapeString(resultLoc, resultLocEscaped,sqlErr)) {
         SqlError exc(ERR_LOC, "Failure in escapString", sqlErr);
         LOGS(_log, LOG_LVL_ERROR, exc.message());
         throw exc;
     }
 
-    std::string query = (boost::format(::createAsyncResultTmpl)
+    string query = (boost::format(::createAsyncResultTmpl)
                     % asyncResultTable % queryId % resultLocEscaped).str();
 
     if (not sqlConn->runQuery(query, sqlErr)) {
         SqlError exc(ERR_LOC, "Failure creating async result table", sqlErr);
         LOGS(_log, LOG_LVL_ERROR, exc.message());
         throw exc;
+    }
+}
+
+
+void Czar::removeOldResultTables() {
+    // This only needs to run occasionally.
+    lock_guard<mutex> lockOldTblDel(_lastRemovedMtx);
+    _lastRemovedTimer.stop();
+    double oneHrSec = 60.0 * 60.0; // seconds in one hour
+    if (_lastRemovedTimer.getElapsed() < oneHrSec) {
+        return;
+    }
+    _lastRemovedTimer.start();
+
+    auto sqlConn = sql::SqlConnectionFactory::make(_czarConfig.getMySqlResultConfig());
+    string dbName = _czarConfig.getMySqlResultConfig().dbName;
+    string dStr = to_string(_czarConfig.getOldestResultKeptDays());
+
+    // Find result related tables that haven't been updated in a long time.
+    string sql = "SELECT table_name FROM information_schema.tables "
+                      "WHERE table_schema = '" + dbName + "' AND engine IS NOT NULL  "
+                      "AND ((update_time < (now() - INTERVAL " + dStr + " DAY)) "
+                            "OR (update_time IS NULL "
+                                "AND create_time < (now() - INTERVAL "+ dStr +" DAY)))";
+    sql::SqlResults results;
+    sql::SqlErrorObject err;
+    if (!sqlConn->runQuery(sql, results, err)) {
+        LOGS(_log, LOG_LVL_ERROR, "Query to find old result tables failed err=" << err.printErrMsg()
+                                  << " sql=" << sql);
+    }
+    vector<string> oldTables;
+    results.extractFirstColumn(oldTables, err);
+    for (auto iter=oldTables.begin(), end=oldTables.end(); iter != end;) { // iter increment in loop
+        // Delete in blocks of 30 to save time.
+        string dropTbl = "";
+        int count = 0;
+        while (iter != end && count < 30) {
+            string tbl = *iter;
+            ++iter;
+            dropTbl += "DROP TABLE " + dbName + "." + tbl + ";";
+            ++count;
+        }
+        if (count > 0) {
+            LOGS(_log, LOG_LVL_DEBUG, "trying:" << dropTbl);
+            if (!sqlConn->runQuery(dropTbl, err)) {
+                LOGS(_log, LOG_LVL_ERROR, "Could not delete old tables err=" << err.printErrMsg()
+                                          << " sql=" << dropTbl);
+            }
+        }
     }
 }
 
