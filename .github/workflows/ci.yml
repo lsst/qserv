@@ -83,7 +83,7 @@ jobs:
       - name: Load container image inside kind
         run: |
           kind load image-archive artifacts/qserv-image.tar
-          docker exec -ti -- kind-control-plane crictl image
+          docker exec -- kind-control-plane crictl image
       - run: |
           kubectl get nodes
       - name: Install kustomize
