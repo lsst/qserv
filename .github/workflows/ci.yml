@@ -70,13 +70,20 @@ jobs:
         run: |
           docker load --input artifacts/qserv-image.tar
           echo "IMAGE=$(cat artifacts/qserv-image-tag)" >> $GITHUB_ENV
+      - name: apparmor
+        run: |
+          set -x
+          sudo apt-get remove mysql-server --purge
+          sudo apt-get install apparmor-profiles
+          sudo apparmor_parser -R /etc/apparmor.d/usr.sbin.mysqld
       - name: Create k8s/kind cluster
         run: |
           git clone --depth 1 -b "k8s-v1.20.2" --single-branch https://github.com/k8s-school/kind-helper.git
           ./kind-helper/k8s-create.sh -s
       - name: Load container image inside kind
-        run:
+        run: |
           kind load image-archive artifacts/qserv-image.tar
+          docker exec -ti -- kind-control-plane crictl image
       - run: |
           kubectl get nodes
       - name: Install kustomize
@@ -105,10 +112,15 @@ jobs:
           spec:
             czar:
               image: $QSERV_IMAGE
+              dbImage: "qserv/lite-mariadb:2021.04.0"
+            dashboard:
+              image: qserv/dashboard:2021.04.0
             worker:
               image: $QSERV_IMAGE
+              dbImage: "qserv/lite-mariadb:2021.04.0"
             replication:
               image: $QSERV_IMAGE
+              dbImage: "qserv/lite-mariadb:2021.04.0"
             xrootd:
               image: $QSERV_IMAGE
           EOF

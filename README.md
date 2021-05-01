@@ -1,10 +1,11 @@
 # Qserv: petascale distributed database
 
-## Master branch status
+Build Qserv and run Qserv multi-node integration tests in k8s (using a fixed qserv-operator version)
 
-Continuous integration server launches Qserv build and also multi-node integration tests:
+| CI       | Status                                                                                                                                                           | Image build  | e2e tests | Documentation generation        | Static code analysis  | Image security scan |
+|----------|------------------------------------------------------------------------------------------------------------------------------------------------------------------|--------------|-----------|---------------------------------|-----------------------|---------------------|
+| Gihub    | [![Qserv CI](https://github.com/lsst/qserv/workflows/CI/badge.svg?branch=master)](https://github.com/lsst/qserv/actions?query=workflow%3A"CI") | Yes          | No        | https://qserv.lsst.io/ (obsolete) | Yes                   | Yes                 |
 
-[![Build Status](https://travis-ci.org/lsst/qserv.svg?branch=master)](https://travis-ci.org/lsst/qserv)
 
 ## Documentation
 
