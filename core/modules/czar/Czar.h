@@ -151,6 +151,10 @@ private:
 
     util::Timer _lastRemovedTimer; ///< Timer to limit table deletions.
     std::mutex _lastRemovedMtx;    ///< protects _lastRemovedTimer
+
+    /// Prevents multiple concurrent calls to _removeOldTables().
+    std::atomic<bool> _removingOldTables{false};
+    std::thread _oldTableRemovalThread; ///< thread needs to remain valid while running.
 };
 
 }}} // namespace lsst::qserv::czar
