@@ -2,16 +2,31 @@ version: "3.9"
 services:
     manager-xrootd:
         image: "qserv/${QSERV_IMAGE}"
-        command: entrypoint xrootd-manager --cmsd-manager manager-cmsd
+        command: entrypoint xrootd-manager --cmsd-manager manager-xrootd
         hostname: manager-xrootd
+        ports:
+            - "1094"
+            - "2131"
+        volumes:
+            - type: volume
+              source: manager_xrootd
+              target: /var/run/xrootd
+        networks:
+            default:
+                aliases:
+                    - manager-cmsd
     manager-cmsd:
         image: "qserv/${QSERV_IMAGE}"
-        command: entrypoint cmsd-manager
-        hostname: manager-cmsd
+        command: entrypoint cmsd-manager --cms-delay-servers 1
+        network_mode: "service:manager-xrootd"
+        volumes:
+            - type: volume
+              source: manager_xrootd
+              target: /var/run/xrootd
     czar-db:
         image: "qserv/lite-mariadb"
         command: --port 3306
-        expose:
+        ports:
             - "3306"
         environment:
             MYSQL_ROOT_PASSWORD: CHANGEME
@@ -35,7 +50,7 @@ services:
     worker-db:
         image: "qserv/lite-mariadb"
         command: --port 3306
-        expose:
+        ports:
             - "3306"
         environment:
             MYSQL_ROOT_PASSWORD: CHANGEME
@@ -48,13 +63,36 @@ services:
               target: /etc/mysql/my.cnf
     worker-cmsd:
         image: "qserv/${QSERV_IMAGE}"
-        command: entrypoint worker-cmsd --connection mysql://root:CHANGEME@worker-db:3306 --vnid worker_0 --cmsd-manager manager-cmsd
+        command: entrypoint worker-cmsd --connection mysql://root:CHANGEME@worker-db:3306 --vnid worker_0 --cmsd-manager manager-xrootd
+        volumes:
+            - type: volume
+              source: worker_0_xrootd
+              target: /var/run/xrootd
+        network_mode: "service:worker-xrootd"
+        # ports are published in worker-xrootd because this container uses that container's network stack.
     worker-xrootd:
         image: "qserv/${QSERV_IMAGE}"
-        command: entrypoint worker-xrootd --xrd-port 2131 --connection mysql://root:CHANGEME@worker-db:3306 --vnid worker_0 --cmsd-manager manager-cmsd --mysql-monitor-password CHANGEME_MONITOR
+        command: entrypoint worker-xrootd --xrd-port 2131 --connection mysql://root:CHANGEME@worker-db:3306 --vnid worker_0 --cmsd-manager manager-xrootd --mysql-monitor-password CHANGEME_MONITOR
+        ports:
+            - "1094"
+            - "2131"
+        volumes:
+            - type: volume
+              source: worker_0_xrootd
+              target: /var/run/xrootd
+        networks:
+            default:
+                aliases:
+                    - worker-cmsd
     worker-repl:
         image: "qserv/${QSERV_IMAGE}"
         command: entrypoint worker-repl --repl-connection mysql://qsreplica@repl-mgr-db:3306/qservReplica --vnid worker_0 --instance-id npease_proj
+        ports:
+            - "25000"
+            - "25001"
+            - "25002"
+            - "25003"
+            - "25004"
         volumes:
             - type: volume
               source: worker_0_data
@@ -65,7 +103,7 @@ services:
     repl-mgr-db:
         image: "qserv/lite-mariadb"
         command: --port 3306
-        expose:
+        ports:
             - "3306"
         environment:
             MYSQL_ROOT_PASSWORD: CHANGEME
@@ -78,12 +116,16 @@ services:
               target: /etc/mysql/my.cnf
     repl-mgr-controller:
         image: "qserv/${QSERV_IMAGE}"
-        command: entrypoint --log-level DEBUG replication-controller --connection mysql://root:CHANGEME@repl-mgr-db:3306/qservReplica --repl-connection mysql://qsreplica@repl-mgr-db:3306/qservReplica  --instance-id npease_proj --worker name=worker_0,host=worker-xrootd
+        command: entrypoint --log-level DEBUG replication-controller --connection mysql://root:CHANGEME@repl-mgr-db:3306/qservReplica --repl-connection mysql://qsreplica@repl-mgr-db:3306/qservReplica  --instance-id npease_proj --worker name=worker_0,host=worker-repl --xrootd-manager manager-xrootd
+        ports:
+            - "25081"
 
 
 volumes:
     worker_0_data:
     worker_0_repl_cfg:
+    worker_0_xrootd:
+    manager_xrootd:
     czar_0_data:
     czar_0_cfg:
     repl_mgr_data:

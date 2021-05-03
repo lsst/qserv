@@ -90,7 +90,7 @@ def _do_smig(module_smig_dir, module, connection, *, mig_mgr_args=None):
         config_file=None,  # could use this instead of connection string
         config_section=None,  # goes with config_file
         module=module,
-        mig_mgr_args=mig_mgr_args,
+        mig_mgr_args=mig_mgr_args or dict(),
     )
 
 
@@ -148,11 +148,12 @@ def smig_czar(connection):
         _do_smig(module_smig_dir, module, connection)
 
 
-def enter_cmsd_manager():
+def enter_manager_cmsd(cms_delay_servers):
     # TODO xrootd_managers needs to be passed in by execution env or mounted in /config-etc
     save_template_cfg(dict(
         xrootd_managers=["localhost"],
         cmsd_manager="UNUSED",
+        cms_delay_servers=cms_delay_servers,
     ))
     apply_template_cfg_file(cmsd_manager_cfg_template, cmsd_manager_cfg_path)
     args = [
@@ -239,7 +240,6 @@ def enter_worker_xrootd(debug_port, xrd_port, connection, vnid, cmsd_manager, re
         mysqld_user_qserv=db_qserv_user,
         replication_controller_FQDN=repl_ctl_dn,
         mysql_monitor_password=mysql_monitor_password,
-        host=socket.gethostname(),
     ))
 
     # enter_worker_cmsd smigs the worker db for that node
@@ -265,7 +265,6 @@ def enter_worker_xrootd(debug_port, xrd_port, connection, vnid, cmsd_manager, re
         "-+xrdssi",
         xrdssi_cfg_path,
     ]
-    env = dict(os.environ, COMPONENT_NAME="worker")
     sys.exit(_run(args, debug_port=debug_port))
 
 
@@ -316,7 +315,7 @@ def enter_proxy(db_scheme, connection, mysql_user_qserv, repl_ctl_dn, mysql_moni
 
 
 def enter_replication_controller(db_scheme, connection, repl_connection, workers,
-                                 instance_id, run):
+                                 instance_id, run, xrootd_manager):
     """Entrypoint script for the entrypoint controller.
 
     Parameters
@@ -337,11 +336,22 @@ def enter_replication_controller(db_scheme, connection, repl_connection, workers
         instance. This mechanism also prevents 'cross-talks' between two (or
         many) Replication System's setups in case of an accidental
         mis-configuration.
+    xrootd_manager : `str`
+        The host name of the xrootd manager node.
     """
 
-    def set_initial_configuartion(workers):
+    def set_initial_configuartion(workers, xrootd_manager):
         """Add the initial configuration to the replication database.
         Should only be called if the replication database has newly been smigged to version 1."""
+        args = [
+            "qserv-replica-config",
+            "UPDATE_GENERAL",
+            f"--config={repl_connection}",
+            f"--xrootd.host={xrootd_manager}",
+        ]
+        _log.debug(f"Calling {' '.join(args)}")
+        _run(args, run=run)
+
         workers = [dict(item.split("=") for item in worker.split(",")) for worker in workers]
         for worker in workers:
             try:
@@ -352,6 +362,7 @@ def enter_replication_controller(db_scheme, connection, repl_connection, workers
             args = [
                 "qserv-replica-config",
                 "ADD_WORKER",
+                f"--config={repl_connection}",
                 name,
                 host,
             ]
@@ -361,7 +372,7 @@ def enter_replication_controller(db_scheme, connection, repl_connection, workers
         _log.info(f"Finished setting initial configuration {workers}")
 
     if run:
-        mig_mgr_args = dict(set_initial_configuration=partial(set_initial_configuartion, workers))
+        mig_mgr_args = dict(set_initial_configuration=partial(set_initial_configuartion, workers, xrootd_manager))
         _do_smig(replication_controller_smig_dir, "replica", connection, mig_mgr_args=mig_mgr_args)
 
     env = dict(os.environ, LSST_LOG_CONFIG=replica_controller_log_path)

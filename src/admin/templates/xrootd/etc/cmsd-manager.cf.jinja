@@ -1,7 +1,7 @@
 all.role manager
 
 # Path to write logging and other information
-all.adminpath /tmp/xrd
+all.adminpath /var/run/xrootd
 
 # Do not change. This specifies valid virtual paths that can be accessed.
 # "nolock" directive prevents write-locking and is important for qserv
@@ -12,6 +12,10 @@ all.export / nolock
 # Indeed current configuration doesn't expect to be dynamically
 # written to, but export the space in R/W mode
 cms.space 1k 2k
+
+# Specify the minimum number of servers that must be subscribed for load
+# balancing to be effective.
+cms.delay servers {{ cms_delay_servers }}
 
 # ssi.loglib libxrdlog.so
 

@@ -74,8 +74,11 @@ def proxy(**kwargs):
 
 
 @entrypoint.command()
-def cmsd_manager():
-    script.enter_cmsd_manager()
+@click.option("--cms-delay-servers",
+              help="The value for 'cms.delay servers' in the cmsd-manager.cf file.",
+              default="80%")
+def cmsd_manager(**kwargs):
+    script.enter_manager_cmsd(**kwargs)
 
 
 @entrypoint.command()
@@ -135,6 +138,10 @@ def worker_wmgr(**kwargs):
     help=("The settings for each worker in the system. "
           "The value must be in the form 'key1=val1,key2=val,...'"),
     multiple=True,
+)
+@click.option(
+    "--xrootd-manager",
+    help="The host name of the xrootd manager node.",
 )
 @run_option()
 def replication_controller(**kwargs):
