@@ -26,6 +26,9 @@
 #ifndef LSST_QSERV_QDISP_EXECUTIVE_H
 #define LSST_QSERV_QDISP_EXECUTIVE_H
 
+//&&& replace with better enable/disable feature.
+#define uberJobsEnabled 0
+
 // System headers
 #include <atomic>
 #include <mutex>

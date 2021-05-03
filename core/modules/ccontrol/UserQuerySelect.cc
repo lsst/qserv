@@ -85,6 +85,7 @@
 #include "proto/ProtoImporter.h"
 #include "qdisp/Executive.h"
 #include "qdisp/MessageStore.h"
+#include "qdisp/UberJob.h"
 #include "qmeta/QMeta.h"
 #include "qmeta/Exceptions.h"
 #include "qproc/geomAdapter.h"
@@ -103,6 +104,8 @@
 #include "sql/Schema.h"
 #include "util/IterableFormatter.h"
 #include "util/ThreadPriority.h"
+
+using namespace std;
 
 namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.ccontrol.UserQuerySelect");
@@ -323,9 +326,89 @@ void UserQuerySelect::submit() {
             _executive->add(jobDesc);
         };
 
+
         auto cmd = std::make_shared<qdisp::PriorityCommand>(funcBuildJob);
-        _executive->queueJobStart(cmd);
+        if (!uberJobsEnabled) { // &&&
+            _executive->queueJobStart(cmd);
+        } else {
+            _executive->addJobToUberList(cmd); //&&& need to add the job without running it.
+        }
         ++sequence;
+    }
+
+    class WorkerResource { // &&& TODO: relocate class def
+    public:
+        string resourceName;
+        set<int> chunkIdSet; ///< this will be destroyed as UberJobs are created. TODO: maybe also have one that isn't destroyed.
+        /// Fills the chunk idSet with chunk ids for this resource.
+        void fillChunkIdSet() { throw Bug("&&&NEED_CODE to fill chunkIdSet, from db"); }
+    };
+
+    if (uberJobsEnabled) {
+        vector<qdisp::UberJob::Ptr> uberJobs;
+        vector<WorkerResource> workers; // &&& delete and replace with a real list of workers
+        throw Bug("&&&NEED_CODE to find all workers"); // workers = all workers found in database
+        for (auto&& worker:workers) {
+            worker.fillChunkIdSet();
+        }
+
+        // &&& make a map of all jobs in the executive.
+        // &&& TODO: for now, just using ints. At some point, need to check that ResourceUnit databases can be found for all databases in the query
+        std::map<int, qdisp::JobQuery> chunksInQuery = _executive->makeChunkJobMapCopy();
+
+        // &&& TODO: skipping in proof of concept: get a list of all databases in jobs (all jobs should use the same databases) Use this to check for conflicts
+
+        // &&& assign jobs to uberJobs
+        int maxChunksPerUber = 10;
+        // keep cycling through workers until no more chunks to place.
+        list<std::reference_wrapper<WorkerResource>> tmpWorkerList;
+        for(auto&& worker:workers) {
+            tmpWorkerList.push_back(worker);
+        }
+
+        // Keep making UberJobs until either all chunks in the query have been assigned or there are no more chunks on workers.
+        for(auto&& workerIter = tmpWorkerList.begin(); !(chunksInQuery.empty() || tmpWorkerList.empty());) {
+            ///  TODO: One issue here that shouldn't be in a problem in the final version, there are 3 replicas here.
+            ///        The final version should only have LeadChunks, so there shuoldn't be any duplicates. For every hit
+            ///        on the worker, there will be 2 misses. That will probably hurt significantly.
+
+            auto uJob = qdisp::UberJob::create();
+
+            int chunksInUber = 0;
+            WorkerResource& wr = *workerIter;
+            auto& wChunkIdSet = wr.chunkIdSet;
+            for(auto&& wcIter = wChunkIdSet.begin();
+                wcIter != wChunkIdSet.end && !_chunksInQuery.empty() && chunksInUber < maxChunksPerUber;) {
+
+                int chunkIdWorker = *wcIter;
+                auto oldIter = wcIter;
+                ++wcIter;
+                wChunkIdSet.erase(oldIter);
+                auto found = chunksInQuery.find(chunkIdWorker);
+                if (found != chunksInQuery.end()) {
+                    uJob->addJob(found->second);
+                    ++chunksInUber;
+                    chunksInQuery.erase(found);
+                }
+            }
+
+            if (chunksInUber > 0) {
+                uberJobs.push_back(uJob);
+            }
+
+            // If this worker has no more chunks, remove it from the list.
+            auto oldWorkerIter = workerIter;
+            ++workerIter;
+            if (wChunkIdSet.empty()) {
+                tmpWorkerList.erase(oldWorkerIter);
+            }
+
+        }
+        _executive->addUberJobs(uberJobs);
+        for (auto&& uJob:uberJobs) {
+            uJob->start();
+        }
+        _executive->startRemainingJobs();
     }
 
     // attempt to restore original thread priority, requires root

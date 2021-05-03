@@ -87,6 +87,8 @@ public:
 
     std::shared_ptr<QdispPool> getQdispPool() { return _qdispPool; }
 
+    virtual std::ostream& dump(std::ostream &os) const;
+    std::string dump() const;
     friend std::ostream& operator<<(std::ostream& os, JobQuery const& jq);
 
     /// Make a copy of the job description. JobQuery::_setup() must be called after creation.

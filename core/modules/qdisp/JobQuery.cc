@@ -170,8 +170,21 @@ bool JobQuery::isQueryCancelled() {
     return exec->getCancelled();
 }
 
-std::ostream& operator<<(std::ostream& os, JobQuery const& jq) {
-    return os << "{" << jq.getIdStr() << jq._jobDescription << " " << *jq._jobStatus << "}";
+
+std::ostream& JobQuery::dump(std::ostream &os) const {
+    return os << "{" << getIdStr() << _jobDescription << " " << _jobStatus << "}";
+}
+
+
+std::string JobQuery::dump() const {
+    std::ostringstream os;
+    dump(os);
+    return os.str();
+}
+
+
+std::ostream& operator<<(std::ostream &os, JobQuery const& jobQuery) {
+    return JobQuery.dump(os);
 }
 
 
