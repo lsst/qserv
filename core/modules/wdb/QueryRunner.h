@@ -148,7 +148,7 @@ private:
     std::atomic<bool> _cancelled{false};
     std::atomic<bool> _removedFromThreadPool{false};
     mysql::MySqlConfig const _mySqlConfig;
-    std::unique_ptr<mysql::MySqlConnection> _mysqlConn;
+    std::unique_ptr<mysql::MySqlConnection> _mysqlConn{nullptr};
 
     util::MultiError _multiError; // Error log
 
@@ -158,7 +158,7 @@ private:
 
     /// Used to limit the number of open MySQL connections.
     std::shared_ptr<wcontrol::SqlConnMgr> const _sqlConnMgr;
-    std::atomic<bool> _runQueryCalled{false};
+    std::atomic<bool> _runQueryCalled{false}; ///< If runQuery gets called twice, the scheduler messed up.
 };
 
 }}} // namespace
