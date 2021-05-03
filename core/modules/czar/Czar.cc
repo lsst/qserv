@@ -400,48 +400,56 @@ void Czar::removeOldResultTables() {
     // This only needs to run occasionally.
     lock_guard<mutex> lockOldTblDel(_lastRemovedMtx);
     _lastRemovedTimer.stop();
-    double oneHrSec = 60.0 * 60.0; // seconds in one hour
-    if (_lastRemovedTimer.getElapsed() < oneHrSec) {
+    double oneDaySec = 60.0 * 60.0 * 24.0; // seconds in one hour
+    if (_lastRemovedTimer.getElapsed() < oneDaySec || _removingOldTables) {
         return;
     }
     _lastRemovedTimer.start();
+    _removingOldTables = true;
+    // Run in a separate thread in the off chance this takes a while.
+    thread t([this](){
+        LOGS(_log, LOG_LVL_INFO, "Removing old result database tables.");
+        auto sqlConn = sql::SqlConnectionFactory::make(_czarConfig.getMySqlResultConfig());
+        string dbName = _czarConfig.getMySqlResultConfig().dbName;
+        string dStr = to_string(_czarConfig.getOldestResultKeptDays());
 
-    auto sqlConn = sql::SqlConnectionFactory::make(_czarConfig.getMySqlResultConfig());
-    string dbName = _czarConfig.getMySqlResultConfig().dbName;
-    string dStr = to_string(_czarConfig.getOldestResultKeptDays());
-
-    // Find result related tables that haven't been updated in a long time.
-    string sql = "SELECT table_name FROM information_schema.tables "
-                      "WHERE table_schema = '" + dbName + "' AND engine IS NOT NULL  "
-                      "AND ((update_time < (now() - INTERVAL " + dStr + " DAY)) "
-                            "OR (update_time IS NULL "
-                                "AND create_time < (now() - INTERVAL "+ dStr +" DAY)))";
-    sql::SqlResults results;
-    sql::SqlErrorObject err;
-    if (!sqlConn->runQuery(sql, results, err)) {
-        LOGS(_log, LOG_LVL_ERROR, "Query to find old result tables failed err=" << err.printErrMsg()
-                                  << " sql=" << sql);
-    }
-    vector<string> oldTables;
-    results.extractFirstColumn(oldTables, err);
-    for (auto iter=oldTables.begin(), end=oldTables.end(); iter != end;) { // iter increment in loop
-        // Delete in blocks of 30 to save time.
-        string dropTbl = "";
-        int count = 0;
-        while (iter != end && count < 30) {
-            string tbl = *iter;
-            ++iter;
-            dropTbl += "DROP TABLE " + dbName + "." + tbl + ";";
-            ++count;
+        // Find result related tables that haven't been updated in a long time.
+        string sql = "SELECT table_name FROM information_schema.tables "
+                "WHERE table_schema = '" + dbName + "' AND engine IS NOT NULL  "
+                "AND ((update_time < (now() - INTERVAL " + dStr + " DAY)) "
+                "OR (update_time IS NULL "
+                     "AND create_time < (now() - INTERVAL "+ dStr +" DAY)))";
+        sql::SqlResults results;
+        sql::SqlErrorObject err;
+        if (!sqlConn->runQuery(sql, results, err)) {
+            LOGS(_log, LOG_LVL_ERROR, "Query to find old result tables failed err=" << err.printErrMsg()
+                    << " sql=" << sql);
         }
-        if (count > 0) {
-            LOGS(_log, LOG_LVL_DEBUG, "trying:" << dropTbl);
-            if (!sqlConn->runQuery(dropTbl, err)) {
-                LOGS(_log, LOG_LVL_ERROR, "Could not delete old tables err=" << err.printErrMsg()
-                                          << " sql=" << dropTbl);
+        vector<string> oldTables;
+        results.extractFirstColumn(oldTables, err);
+        for (auto iter=oldTables.begin(), end=oldTables.end(); iter != end;) { // iter increment in loop
+            // Delete in blocks of 30 to save time.
+            string dropTbl = "";
+            int count = 0;
+            while (iter != end && count < 30) {
+                string tbl = *iter;
+                ++iter;
+                dropTbl += "DROP TABLE " + dbName + "." + tbl + ";";
+                ++count;
+            }
+            if (count > 0) {
+                LOGS(_log, LOG_LVL_DEBUG, "trying:" << dropTbl);
+                if (!sqlConn->runQuery(dropTbl, err)) {
+                    LOGS(_log, LOG_LVL_ERROR, "Could not delete old tables err=" << err.printErrMsg()
+                            << " sql=" << dropTbl);
+                }
             }
         }
-    }
+        _removingOldTables = false;
+    });
+    t.detach();
+    _oldTableRemovalThread = std::move(t);
 }
+
 
 }}} // namespace lsst::qserv::czar
