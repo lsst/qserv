@@ -1,5 +1,124 @@
 version: "3.9"
+x-worker-db:
+    &worker-db
+    image: "qserv/lite-mariadb"
+    command: --port 3306
+    ports:
+        - "3306"
+    environment:
+        MYSQL_ROOT_PASSWORD: CHANGEME
+x-worker-db-cnf-volume:
+    &worker-db-cnf-volume
+    - type: bind
+      source: ../../../../src/admin/templates/mariadb/etc/my.cnf
+      target: /etc/mysql/my.cnf
+x-worker-cmsd:
+    &worker-cmsd
+    image: "qserv/${QSERV_IMAGE}"
+    # ports are published in worker-xrootd because this container uses that container's network stack.
+x-worker-xrootd:
+    &worker-xrootd
+    image: "qserv/${QSERV_IMAGE}"
+    ports:
+        - "1094"
+        - "2131"
+x-worker-repl:
+    &worker-repl
+    image: "qserv/${QSERV_IMAGE}"
+    ports:
+        - "25000"
+        - "25001"
+        - "25002"
+        - "25003"
+        - "25004"
+
+volumes:
+    worker_0_data:
+    worker_0_repl_cfg:
+    worker_0_xrootd:
+    worker_1_data:
+    worker_1_repl_cfg:
+    worker_1_xrootd:
+    manager_xrootd:
+    czar_0_data:
+    czar_0_cfg:
+    repl_mgr_data:
+
+
 services:
+    worker-db-0:
+        << : *worker-db
+        volumes:
+            - << : *worker-db-cnf-volume
+            - type: volume
+              source: worker_0_data
+              target: /qserv/data
+    worker-db-1:
+        << : *worker-db
+        volumes:
+            - << : *worker-db-cnf-volume
+            - type: volume
+              source: worker_1_data
+              target: /qserv/data
+    worker-cmsd-0:
+        << : *worker-cmsd
+        command: entrypoint worker-cmsd --connection mysql://root:CHANGEME@worker-db-0:3306 --vnid worker_0 --cmsd-manager manager-xrootd
+        network_mode: "service:worker-xrootd-0"
+        volumes:
+            - type: volume
+              source: worker_0_xrootd
+              target: /var/run/xrootd
+    worker-cmsd-1:
+        << : *worker-cmsd
+        command: entrypoint worker-cmsd --connection mysql://root:CHANGEME@worker-db-1:3306 --vnid worker_1 --cmsd-manager manager-xrootd
+        network_mode: "service:worker-xrootd-1"
+        volumes:
+            - type: volume
+              source: worker_1_xrootd
+              target: /var/run/xrootd
+    worker-xrootd-0:
+        << : *worker-xrootd
+        command: entrypoint worker-xrootd --xrd-port 2131 --connection mysql://root:CHANGEME@worker-db-0:3306 --vnid worker_0 --cmsd-manager manager-xrootd --mysql-monitor-password CHANGEME_MONITOR
+        volumes:
+            - type: volume
+              source: worker_0_xrootd
+              target: /var/run/xrootd
+        networks:
+            default:
+                aliases:
+                    - worker-cmsd-0
+    worker-xrootd-1:
+        << : *worker-xrootd
+        command: entrypoint worker-xrootd --xrd-port 2131 --connection mysql://root:CHANGEME@worker-db-1:3306 --vnid worker_1 --cmsd-manager manager-xrootd --mysql-monitor-password CHANGEME_MONITOR
+        volumes:
+            - type: volume
+              source: worker_1_xrootd
+              target: /var/run/xrootd
+        networks:
+            default:
+                aliases:
+                    - worker-cmsd-1
+    worker-repl-0:
+        << : *worker-repl
+        command: entrypoint worker-repl --repl-connection mysql://qsreplica@repl-mgr-db:3306/qservReplica --vnid worker_0 --instance-id qserv_proj
+        volumes:
+            - type: volume
+              source: worker_0_data
+              target: /qserv/data
+            - type: volume
+              source: worker_0_repl_cfg
+              target: /config-etc
+    worker-repl-1:
+        << : *worker-repl
+        command: entrypoint worker-repl --repl-connection mysql://qsreplica@repl-mgr-db:3306/qservReplica --vnid worker_1 --instance-id qserv_proj
+        volumes:
+            - type: volume
+              source: worker_1_data
+              target: /qserv/data
+            - type: volume
+              source: worker_1_repl_cfg
+              target: /config-etc
+
     manager-xrootd:
         image: "qserv/${QSERV_IMAGE}"
         command: entrypoint xrootd-manager --cmsd-manager manager-xrootd
@@ -17,7 +136,7 @@ services:
                     - manager-cmsd
     manager-cmsd:
         image: "qserv/${QSERV_IMAGE}"
-        command: entrypoint cmsd-manager --cms-delay-servers 1
+        command: entrypoint cmsd-manager --cms-delay-servers 2
         network_mode: "service:manager-xrootd"
         volumes:
             - type: volume
@@ -47,59 +166,6 @@ services:
             - type: volume
               source: czar_0_cfg
               target: /config-etc
-    worker-db:
-        image: "qserv/lite-mariadb"
-        command: --port 3306
-        ports:
-            - "3306"
-        environment:
-            MYSQL_ROOT_PASSWORD: CHANGEME
-        volumes:
-            - type: volume
-              source: worker_0_data
-              target: /qserv/data
-            - type: bind
-              source: ../../../../src/admin/templates/mariadb/etc/my.cnf
-              target: /etc/mysql/my.cnf
-    worker-cmsd:
-        image: "qserv/${QSERV_IMAGE}"
-        command: entrypoint worker-cmsd --connection mysql://root:CHANGEME@worker-db:3306 --vnid worker_0 --cmsd-manager manager-xrootd
-        volumes:
-            - type: volume
-              source: worker_0_xrootd
-              target: /var/run/xrootd
-        network_mode: "service:worker-xrootd"
-        # ports are published in worker-xrootd because this container uses that container's network stack.
-    worker-xrootd:
-        image: "qserv/${QSERV_IMAGE}"
-        command: entrypoint worker-xrootd --xrd-port 2131 --connection mysql://root:CHANGEME@worker-db:3306 --vnid worker_0 --cmsd-manager manager-xrootd --mysql-monitor-password CHANGEME_MONITOR
-        ports:
-            - "1094"
-            - "2131"
-        volumes:
-            - type: volume
-              source: worker_0_xrootd
-              target: /var/run/xrootd
-        networks:
-            default:
-                aliases:
-                    - worker-cmsd
-    worker-repl:
-        image: "qserv/${QSERV_IMAGE}"
-        command: entrypoint worker-repl --repl-connection mysql://qsreplica@repl-mgr-db:3306/qservReplica --vnid worker_0 --instance-id npease_proj
-        ports:
-            - "25000"
-            - "25001"
-            - "25002"
-            - "25003"
-            - "25004"
-        volumes:
-            - type: volume
-              source: worker_0_data
-              target: /qserv/data
-            - type: volume
-              source: worker_0_repl_cfg
-              target: /config-etc
     repl-mgr-db:
         image: "qserv/lite-mariadb"
         command: --port 3306
@@ -116,16 +182,6 @@ services:
               target: /etc/mysql/my.cnf
     repl-mgr-controller:
         image: "qserv/${QSERV_IMAGE}"
-        command: entrypoint --log-level DEBUG replication-controller --connection mysql://root:CHANGEME@repl-mgr-db:3306/qservReplica --repl-connection mysql://qsreplica@repl-mgr-db:3306/qservReplica  --instance-id npease_proj --worker name=worker_0,host=worker-repl --xrootd-manager manager-xrootd
+        command: entrypoint --log-level DEBUG replication-controller --connection mysql://root:CHANGEME@repl-mgr-db:3306/qservReplica --repl-connection mysql://qsreplica@repl-mgr-db:3306/qservReplica  --instance-id qserv_proj --worker name=worker_0,host=worker-repl-0 --worker name=worker_1,host=worker-repl-1 --xrootd-manager manager-xrootd
         ports:
             - "25081"
-
-
-volumes:
-    worker_0_data:
-    worker_0_repl_cfg:
-    worker_0_xrootd:
-    manager_xrootd:
-    czar_0_data:
-    czar_0_cfg:
-    repl_mgr_data:
