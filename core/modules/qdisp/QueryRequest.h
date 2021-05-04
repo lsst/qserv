@@ -37,7 +37,8 @@
 
 // Local headers
 #include "czar/Czar.h"
-#include "qdisp/JobQuery.h"
+//&&& #include "qdisp/JobQuery.h"
+#include "qdisp/JobBase.h"
 #include "qdisp/QdispPool.h"
 
 namespace lsst {
@@ -96,8 +97,15 @@ class QueryRequest : public XrdSsiRequest, public std::enable_shared_from_this<Q
 public:
     typedef std::shared_ptr<QueryRequest> Ptr;
 
+    /* &&&
     static Ptr create(std::shared_ptr<JobQuery> const& jobQuery) {
         Ptr newQueryRequest(new QueryRequest(jobQuery));
+        return newQueryRequest;
+    }
+    */
+
+    static Ptr create(std::shared_ptr<JobBase> const& JobBase) {
+        Ptr newQueryRequest(new QueryRequest(JobBase));
         return newQueryRequest;
     }
 
@@ -132,16 +140,16 @@ public:
     friend std::ostream& operator<<(std::ostream& os, QueryRequest const& r);
 private:
     // Private constructor to safeguard enable_shared_from_this construction.
-    QueryRequest(std::shared_ptr<JobQuery> const& jobQuery);
+    QueryRequest(std::shared_ptr<JobBase> const& job);
 
     void _callMarkComplete(bool success);
-    bool _importStream(JobQuery::Ptr const& jq);
+    bool _importStream(JobBase::Ptr const& jq);
     bool _importError(std::string const& msg, int code);
     bool _errorFinish(bool shouldCancel=false);
     void _finish();
-    void _processData(JobQuery::Ptr const& jq, int blen, bool last);
-    void _queueAskForResponse(std::shared_ptr<AskForResponseDataCmd> const& cmd, JobQuery::Ptr const& jq, bool initialRequest);
-    void _flushError(JobQuery::Ptr const& jq);
+    void _processData(JobBase::Ptr const& jq, int blen, bool last);
+    void _queueAskForResponse(std::shared_ptr<AskForResponseDataCmd> const& cmd, JobBase::Ptr const& jq, bool initialRequest);
+    void _flushError(JobBase::Ptr const& jq);
 
     /// _holdState indicates the data is being held by SSI for a large response using LargeResultMgr.
     /// If the state is NOT NO_HOLD0, then this instance has decremented the shared semaphore and it
@@ -153,7 +161,8 @@ private:
     /// Job information. Not using a weak_ptr as Executive could drop its JobQuery::Ptr before we're done with it.
     /// A call to cancel() could reset _jobQuery early, so copy or protect _jobQuery with _finishStatusMutex
     /// as needed. If (_finishStatus == ACTIVE) _jobQuery should be good.
-    std::shared_ptr<JobQuery> _jobQuery;
+    //&&& std::shared_ptr<JobQuery> _jobQuery;
+    std::shared_ptr<JobBase> _job;
 
     std::atomic<bool> _retried {false}; ///< Protect against multiple retries of _jobQuery from a 
                                         /// single QueryRequest.

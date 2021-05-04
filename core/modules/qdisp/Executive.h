@@ -64,6 +64,7 @@ namespace qdisp {
 class JobQuery;
 class LargeResultMgr;
 class MessageStore;
+class UberJob;
 
 struct ExecutiveConfig {
     typedef std::shared_ptr<ExecutiveConfig> Ptr;
@@ -83,6 +84,8 @@ class Executive : public std::enable_shared_from_this<Executive> {
 public:
     typedef std::shared_ptr<Executive> Ptr;
     typedef std::unordered_map<int, std::shared_ptr<JobQuery>> JobMap;
+    typedef int ChunkIdType; //&&& TODO: probably needs to be ResourceUnit
+    typedef std::map<ChunkIdType, JobQuery*> ChunkIdJobMapType;
 
     /// Construct an Executive.
     /// If c->serviceUrl == ExecutiveConfig::getMockStr(), then use XrdSsiServiceMock
@@ -135,6 +138,11 @@ public:
     std::shared_ptr<QdispPool> getQdispPool() { return _qdispPool; }
 
     bool startQuery(std::shared_ptr<JobQuery> const& jobQuery);
+
+    ///&&& TODO: UberJob
+    void addUberJobs(std::vector<std::shared_ptr<UberJob>> const& jobsToAdd);
+    ChunkIdJobMapType& getChunkJobMapAndInvalidate();
+    bool startUberJob(std::shared_ptr<UberJob> const& uJob);
 
 private:
     Executive(ExecutiveConfig const& c, std::shared_ptr<MessageStore> const& ms,
@@ -198,6 +206,17 @@ private:
     std::mutex _lastQMetaMtx; ///< protects _lastQMetaUpdate.
 
     bool _scanInteractive = false; ///< true for interactive scans.
+
+    // &&& TODO UberJob
+    void _addToChunkJobMap(std::shared_ptr<JobQuery> const& job);
+    /// _chunkToJobMap is created once and then destroyed when used.
+    std::atomic<bool> _chunkToJobMapInvalid{false}; ///< true indicates the map is no longer valid.
+    std::mutex _chunkToJobMapMtx; ///< protects _chunkToJobMap
+    ChunkIdJobMapType _chunkToJobMap; ///< Map of jobs ordered by chunkId
+
+
+    std::vector<std::shared_ptr<UberJob>> _uberJobs; ///< List of UberJobs
+    std::mutex _uberJobsMtx; ///< protects _uberJobs.
 };
 
 class MarkCompleteFunc {

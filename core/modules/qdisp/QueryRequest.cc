@@ -191,12 +191,12 @@ private:
 ////////////////////////////////////////////////////////////////////////
 // QueryRequest
 ////////////////////////////////////////////////////////////////////////
-QueryRequest::QueryRequest(JobQuery::Ptr const& jobQuery) :
-  _jobQuery(jobQuery),
-  _qid(jobQuery->getQueryId()),
-  _jobid(jobQuery->getIdInt()),
-  _jobIdStr(jobQuery->getIdStr()),
-  _qdispPool(_jobQuery->getQdispPool()){
+QueryRequest::QueryRequest(JobBase::Ptr const& job) :
+  _job(job),
+  _qid(job->getQueryId()),
+  _jobid(job->getIdInt()),
+  _jobIdStr(job->getIdStr()),
+  _qdispPool(_job->getQdispPool()){
     QSERV_LOGCONTEXT_QUERY_JOB(_qid, _jobid);
     LOGS(_log, LOG_LVL_TRACE, "New QueryRequest");
 }
@@ -219,16 +219,18 @@ QueryRequest::~QueryRequest() {
 char* QueryRequest::GetRequest(int& requestLength) {
     QSERV_LOGCONTEXT_QUERY_JOB(_qid, _jobid);
     lock_guard<mutex> lock(_finishStatusMutex);
-    auto jq = _jobQuery;
+    auto jq = _job;
     if (_finishStatus != ACTIVE || jq == nullptr) {
         LOGS(_log, LOG_LVL_DEBUG, "QueryRequest::GetRequest called after job finished (cancelled?)");
         requestLength = 0;
         return const_cast<char*>("");
     }
-    requestLength = jq->getDescription()->payload().size();
+    //&&& requestLength = jq->getDescription()->payload().size();
+    requestLength = jq->getPayload().size();
     LOGS(_log, LOG_LVL_DEBUG, "Requesting, payload size: " << requestLength);
     // Andy promises that his code won't corrupt it.
-    return const_cast<char*>(jq->getDescription()->payload().data());
+    //&&& return const_cast<char*>(jq->getDescription()->payload().data());
+    return const_cast<char*>(jq->getPayload().data());
 }
 
 // precondition: rInfo.rType != isNone
@@ -246,7 +248,7 @@ bool QueryRequest::ProcessResponse(XrdSsiErrInfo  const& eInfo, XrdSsiRespInfo c
     }
 
     // Make a copy of the _jobQuery shared_ptr in case _jobQuery gets reset by a call to  cancel()
-    auto jq = _jobQuery;
+    auto jq = _job;
     {
         lock_guard<mutex> lock(_finishStatusMutex);
         if ((_finishStatus != ACTIVE) || (jq == nullptr)) {
@@ -259,7 +261,8 @@ bool QueryRequest::ProcessResponse(XrdSsiErrInfo  const& eInfo, XrdSsiRespInfo c
         ostringstream os;
         os << _jobIdStr << "ProcessResponse request failed "
            << getSsiErr(eInfo, nullptr) << " " << GetEndPoint();
-        jq->getDescription()->respHandler()->errorFlush(os.str(), -1);
+        //&&& jq->getDescription()->respHandler()->errorFlush(os.str(), -1);
+        jq->getRespHandler()->errorFlush(os.str(), -1);
         jq->getStatus()->updateInfo(_jobIdStr, JobStatus::RESPONSE_ERROR);
         _errorFinish();
         return true;
@@ -296,7 +299,7 @@ bool QueryRequest::ProcessResponse(XrdSsiErrInfo  const& eInfo, XrdSsiRespInfo c
 
 /// Retrieve and process results in using the XrdSsi stream mechanism
 /// Uses a copy of JobQuery::Ptr instead of _jobQuery as a call to cancel() would reset _jobQuery.
-bool QueryRequest::_importStream(JobQuery::Ptr const& jq) {
+bool QueryRequest::_importStream(JobBase::Ptr const& jq) {
     if (_askForResponseDataCmd != nullptr) {
         LOGS(_log, LOG_LVL_ERROR, "_importStream There's already an _askForResponseDataCmd object!!");
         // Keep the previous object from wedging the pool.
@@ -317,7 +320,7 @@ bool QueryRequest::_importStream(JobQuery::Ptr const& jq) {
     bool largeResult = false;
     int nextBufSize = 0;
     bool last = false;
-    bool flushOk = jq->getDescription()->respHandler()->flush(len, bufPtr, last, largeResult, nextBufSize);
+    bool flushOk = jq->getRespHandler()->flush(len, bufPtr, last, largeResult, nextBufSize);
 
     if (!flushOk) {
         LOGS(_log, LOG_LVL_ERROR, "_importStream not flushOk");
@@ -336,9 +339,10 @@ bool QueryRequest::_importStream(JobQuery::Ptr const& jq) {
 }
 
 
-void QueryRequest::_queueAskForResponse(AskForResponseDataCmd::Ptr const& cmd, JobQuery::Ptr const& jq, bool initialRequest) {
+void QueryRequest::_queueAskForResponse(AskForResponseDataCmd::Ptr const& cmd, JobBase::Ptr const& jq, bool initialRequest) {
     // Interactive queries have highest priority.
-    if (jq->getDescription()->getScanInteractive()) {
+    //&&&if (jq->getDescription()->getScanInteractive()) {
+    if (jq->getScanInteractive()) {
         _qdispPool->queCmd(cmd, 0);
     } else {
         // Trying to get existing requests done before doing new ones.
@@ -352,7 +356,7 @@ void QueryRequest::_queueAskForResponse(AskForResponseDataCmd::Ptr const& cmd, J
 
 /// Process an incoming error.
 bool QueryRequest::_importError(string const& msg, int code) {
-    auto jq = _jobQuery;
+    auto jq = _job;
     {
         lock_guard<mutex> lock(_finishStatusMutex);
         if (_finishStatus != ACTIVE || jq == nullptr) {
@@ -360,7 +364,7 @@ bool QueryRequest::_importError(string const& msg, int code) {
                       << " msg=" << msg << " not passed");
             return false;
         }
-        jq->getDescription()->respHandler()->errorFlush(msg, code);
+        jq->getRespHandler()->errorFlush(msg, code);
     }
     _errorFinish();
     return true;
@@ -389,7 +393,7 @@ void QueryRequest::ProcessResponseData(XrdSsiErrInfo const& eInfo,
     }
 
     // Work with a copy of _jobQuery so it doesn't get reset underneath us by a call to cancel().
-    JobQuery::Ptr jq = _jobQuery;
+    auto jq = _job;
     bool jobFinished = false;
     {
         lock_guard<mutex> lock(_finishStatusMutex);
@@ -414,7 +418,7 @@ void QueryRequest::ProcessResponseData(XrdSsiErrInfo const& eInfo,
         jq->getStatus()->updateInfo(_jobIdStr, JobStatus::RESPONSE_DATA_NACK, eCode, reason);
         LOGS(_log, LOG_LVL_ERROR, "ProcessResponse[data] error(" << eCode
              << " " << reason << ")");
-        jq->getDescription()->respHandler()->errorFlush(
+        jq->getRespHandler()->errorFlush(
             "Couldn't retrieve response data:" + reason + " " + _jobIdStr, eCode);
 
         // Let the AskForResponseDataCmd end.
@@ -432,7 +436,7 @@ void QueryRequest::ProcessResponseData(XrdSsiErrInfo const& eInfo,
 }
 
 
-void QueryRequest::_processData(JobQuery::Ptr const& jq, int blen, bool xrdLast) {
+void QueryRequest::_processData(JobBase::Ptr const& jq, int blen, bool xrdLast) {
     // It's possible jq and _jobQuery differ, so need to use jq.
     if (jq->isQueryCancelled()) {
         LOGS(_log, LOG_LVL_WARN, "QueryRequest::_processData job was cancelled.");
@@ -464,8 +468,14 @@ void QueryRequest::_processData(JobQuery::Ptr const& jq, int blen, bool xrdLast)
     nextHeaderBufPtr = make_shared<vector<char>>(bufPtr->begin() + respSize, bufPtr->end());
 
     // Read the result
+    /* &&& rebase
     flushOk = jq->getDescription()->respHandler()->flush(respSize, bufPtr, last,
             largeResult, nextBufSize);
+    */
+    bool largeResult = false;
+    int nextBufSize = 0;
+    bool last = false;
+    bool flushOk = jq->getRespHandler()->flush(respSize, bufPtr, last, largeResult, nextBufSize);
     if (last) {
         // Last should only be true when the header is read, not the result.
         throw Bug("_processData result had 'last' true, which cannot be allowed.");
@@ -483,9 +493,14 @@ void QueryRequest::_processData(JobQuery::Ptr const& jq, int blen, bool xrdLast)
     }
 
     // Read the next header
+    /* &&& rebase
     // Values for largeResult, last, and nextBufSize will be filled in by flush().
     flushOk = jq->getDescription()->respHandler()->flush(protoHeaderSize, nextHeaderBufPtr, last,
                                                          largeResult, nextBufSize);
+    */
+    largeResult = false;
+    nextBufSize = 0;
+    flushOk = jq->getRespHandler()->flush(protoHeaderSize, nextHeaderBufPtr, last, largeResult, nextBufSize);
 
     if (largeResult) {
         if (!_largeResult) LOGS(_log, LOG_LVL_DEBUG, "holdState largeResult set to true");
@@ -518,7 +533,7 @@ void QueryRequest::_processData(JobQuery::Ptr const& jq, int blen, bool xrdLast)
 
 
 void QueryRequest::_flushError(JobQuery::Ptr const& jq) {
-    ResponseHandler::Error err = jq->getDescription()->respHandler()->getError();
+    ResponseHandler::Error err = jq->getRespHandler()->getError();
     jq->getStatus()->updateInfo(_jobIdStr, JobStatus::MERGE_ERROR, err.getCode(), err.getMsg());
     // This error can be caused by errors in the SQL
     _retried = true; // Do not retry
@@ -539,7 +554,7 @@ bool QueryRequest::cancel() {
         _retried.store(true); // Prevent retries.
         // Only call the following if the job is NOT already done.
         if (_finishStatus == ACTIVE) {
-            auto jq = _jobQuery;
+            auto jq = _job;
             if (jq != nullptr) jq->getStatus()->updateInfo(_jobIdStr, JobStatus::CANCEL);
         }
     }
@@ -550,7 +565,7 @@ bool QueryRequest::cancel() {
 /// @return true if this object's JobQuery, or its Executive has been cancelled.
 /// It takes time for the Executive to flag all jobs as being cancelled
 bool QueryRequest::isQueryCancelled() {
-    auto jq = _jobQuery;
+    auto jq = _job;
     if (jq == nullptr) {
         // Need to check if _jobQuery is null due to cancellation.
         return isQueryRequestCancelled();
@@ -583,7 +598,7 @@ void QueryRequest::cleanup() {
     // _finishStatusMutex before it is unlocked.
     // This should reset _jobquery and _keepAlive without risk of either being deleted
     // before being reset.
-    shared_ptr<JobQuery> jq(move(_jobQuery));
+    shared_ptr<JobBase> jq(move(_job));
     shared_ptr<QueryRequest> keep(move(_keepAlive));
 }
 
@@ -595,7 +610,20 @@ void QueryRequest::cleanup() {
 /// @return true if this QueryRequest object had the authority to make changes.
 bool QueryRequest::_errorFinish(bool shouldCancel) {
     LOGS(_log, LOG_LVL_DEBUG, "_errorFinish() shouldCancel=" << shouldCancel);
-    auto jq = _jobQuery;
+
+    auto jbase = _job;
+    JobQuery::Ptr jq = dynamic_cast<JobQuery>(jbase);
+    if (jq == nullptr) {
+        //&&& TODO: THIS NEEDS WORK - UberJob failures are different than JobQuery failures.
+        UberJob::Ptr uberJob = dynamic_cast<UberJob>(jbase);
+        if (uberJob != nullptr) {
+            throw Bug("&&&NEED_CODE for _errorFinish to work correctly with UberJob");
+            // UberJobs breakup into their JobQueries when they fail and run the jobs directly.
+        }
+        return false;
+    }
+
+    // Normal JobQuery error handling.
     {
         // Running _errorFinish more than once could cause errors.
         lock_guard<mutex> lock(_finishStatusMutex);
@@ -670,8 +698,9 @@ void QueryRequest::_finish() {
 // Call MarkCompleteFunc only once, it should only be called from _finish() or _errorFinish.
 void QueryRequest::_callMarkComplete(bool success) {
     if (!_calledMarkComplete.exchange(true)) {
-        auto jq = _jobQuery;
-        if (jq != nullptr) jq->getMarkCompleteFunc()->operator()(success);
+        auto jq = _job;
+        //&&&if (jq != nullptr) jq->getMarkCompleteFunc()->operator()(success);
+        if (jq != nullptr) jq->callMarkCompleteFunc(success);
     }
 }
 

@@ -159,6 +159,8 @@ JobQuery::Ptr Executive::add(JobDescription::Ptr const& jobDesc) {
                 LOGS(_log, LOG_LVL_ERROR, "Executive ignoring duplicate track add");
                 return jobQuery;
             }
+
+            _addToChunkJobMap(jobQuery);
         }
 
         if (_empty.exchange(false)) {
@@ -170,7 +172,7 @@ JobQuery::Ptr Executive::add(JobDescription::Ptr const& jobDesc) {
     QSERV_LOGCONTEXT_QUERY_JOB(jobQuery->getQueryId(), jobQuery->getIdInt());
 
     LOGS(_log, LOG_LVL_DEBUG, "Executive::add with path=" << jobDesc->resource().path());
-    jobQuery->runJob();
+    //&&& jobQuery->runJob(); // &&& remove this line, replace with funct
     return jobQuery;
 }
 
@@ -551,11 +553,72 @@ void Executive::_waitAllUntilEmpty() {
     }
 }
 
+
+void Executive::_addToChunkJobMap(JobQuery::Ptr const& job) {
+    int chunkId = job->getDescription()->resource().chunk();
+    auto entry = pair<ChunkIdType, JobQuery*>(chunkId, job.get());
+    lock_guard<mutex> lck(_chunkToJobMapMtx);
+    if (_chunkToJobMapInvalid) {
+        throw Bug("map insert FAILED, map is already invalid");
+    }
+    bool inserted = _chunkToJobMap.insert(entry).second;
+    if (!inserted) {
+        throw Bug("map insert FAILED ChunkId=" + to_string(chunkId) + " already existed");
+    }
+}
+
+
+ChunkIdJobMapType& Executive::getChunkJobMapAndInvalidate() {
+    lock_guard<mutex> lck(_chunkToJobMapMtx);
+    if (_chunkToJobMapInvalid.exchange(true)) {
+        throw Bug("getChunkJobMapInvalidate called when map already invalid");
+    }
+    return _chunkToJobMap;
+}
+
+
+void Executive::addUberJobs(std::vector<std::shared_ptr<UberJob>> const& uJobsToAdd) {
+    lock_guard<mutex> lck(_uberJobsMtx);
+    for (auto const& uJob:uJobsToAdd) {
+        _uberJobs.push_back(uJob);
+    }
+}
+
+
+bool Executive::startUberJob(std::shared_ptr<UberJob> const& uJob) {
+
+    lock_guard<recursive_mutex> lock(_cancelled.getMutex());
+
+    // If we have been cancelled, then return false.
+    //
+    if (_cancelled) return false;
+
+    // Construct a temporary resource object to pass to ProcessRequest().
+    //&&&XrdSsiResource jobResource(jobQuery->getDescription()->resource().path(), "", jobQuery->getIdStr(), "", 0, affinity);
+    // Affinity should be meaningless here as there should only be one instance of each worker.
+    XrdSsiResource::Affinity affinity = XrdSsiResource::Affinity::Default;
+    XrdSsiResource uJobResource(uJob->getResource(), "", uJob->getIdStr(), "", 0, affinity);
+
+    // Now construct the actual query request and tie it to the jobQuery. The
+    // shared pointer is used by QueryRequest to keep itself alive, sloppy design.
+    // Note that JobQuery calls StartQuery that then calls JobQuery, yech!
+    //
+    QueryRequest::Ptr qr = QueryRequest::create(uJob);
+    uJob->setQueryRequest(qr);
+
+    // Start the query. The rest is magically done in the background.
+    //
+    getXrdSsiService()->ProcessRequest(*(qr.get()), uJobResource);
+    return true;
+}
+
+
 ostream& operator<<(ostream& os, Executive::JobMap::value_type const& v) {
     JobStatus::Ptr status = v.second->getStatus();
     os << v.first << ": " << *status;
     return os;
 }
+
 
 /// precondition: _requestersMutex is held by current thread.
 void Executive::_printState(ostream& os) {

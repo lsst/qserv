@@ -300,6 +300,7 @@ void UserQuerySelect::submit() {
             i != e && !_executive->getCancelled(); ++i) {
         auto& chunkSpec = *i;
 
+        /* &&&
         std::function<void(util::CmdData*)> funcBuildJob =
                 [this, sequence,     // sequence must be a copy
                  &chunkSpec, &queryTemplates,
@@ -326,12 +327,41 @@ void UserQuerySelect::submit() {
             _executive->add(jobDesc);
         };
 
-
         auto cmd = std::make_shared<qdisp::PriorityCommand>(funcBuildJob);
-        if (!uberJobsEnabled) { // &&&
+        _executive->queueJobStart(cmd);
+         */
+
+        // Make the JobQuery now
+        QSERV_LOGCONTEXT_QUERY(_qMetaQueryId);
+
+        qproc::ChunkQuerySpec::Ptr cs;
+        {
+            std::lock_guard<std::mutex> lock(chunksMtx);
+            cs = _qSession->buildChunkQuerySpec(queryTemplates, chunkSpec);
+            chunks.push_back(cs->chunkId);
+        }
+        std::string chunkResultName = ttn.make(cs->chunkId);
+
+        std::shared_ptr<ChunkMsgReceiver> cmr = ChunkMsgReceiver::newInstance(cs->chunkId, _messageStore);
+        ResourceUnit ru;
+        ru.setAsDbChunk(cs->db, cs->chunkId);
+        qdisp::JobDescription::Ptr jobDesc = qdisp::JobDescription::create(_qMetaCzarId,
+                _executive->getId(), sequence, ru,
+                std::make_shared<MergingHandler>(cmr, _infileMerger, chunkResultName),
+                taskMsgFactory, cs, chunkResultName);
+        auto job = _executive->add(jobDesc);
+
+        if (!uberJobsEnabled) {
+            std::function<void(util::CmdData*)> funcBuildJob =
+                    [this, sequence,     // sequence must be a copy
+                     &job](util::CmdData*) {
+
+                QSERV_LOGCONTEXT_QUERY(_qMetaQueryId);
+                job->runJob();
+            };
+            auto cmd = std::make_shared<qdisp::PriorityCommand>(funcBuildJob);
             _executive->queueJobStart(cmd);
-        } else {
-            _executive->addJobToUberList(cmd); //&&& need to add the job without running it.
+
         }
         ++sequence;
     }
@@ -354,7 +384,7 @@ void UserQuerySelect::submit() {
 
         // &&& make a map of all jobs in the executive.
         // &&& TODO: for now, just using ints. At some point, need to check that ResourceUnit databases can be found for all databases in the query
-        std::map<int, qdisp::JobQuery> chunksInQuery = _executive->makeChunkJobMapCopy();
+        qdisp::Executive::ChunkIdJobMapType chunksInQuery = _executive->getChunkJobMapAndInvalidate();
 
         // &&& TODO: skipping in proof of concept: get a list of all databases in jobs (all jobs should use the same databases) Use this to check for conflicts
 
@@ -378,7 +408,7 @@ void UserQuerySelect::submit() {
             WorkerResource& wr = *workerIter;
             auto& wChunkIdSet = wr.chunkIdSet;
             for(auto&& wcIter = wChunkIdSet.begin();
-                wcIter != wChunkIdSet.end && !_chunksInQuery.empty() && chunksInUber < maxChunksPerUber;) {
+                wcIter != wChunkIdSet.end() && !chunksInQuery.empty() && chunksInUber < maxChunksPerUber;) {
 
                 int chunkIdWorker = *wcIter;
                 auto oldIter = wcIter;
@@ -406,7 +436,7 @@ void UserQuerySelect::submit() {
         }
         _executive->addUberJobs(uberJobs);
         for (auto&& uJob:uberJobs) {
-            uJob->start();
+            uJob->runUberJob();
         }
         _executive->startRemainingJobs();
     }

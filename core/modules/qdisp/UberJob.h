@@ -25,6 +25,8 @@
 
 
 // Qserv headers
+#include "qdisp/Executive.h"
+#include "qdisp/JobBase.h"
 #include "qdisp/JobQuery.h"
 
 // This header declarations
@@ -33,17 +35,24 @@ namespace qserv {
 namespace qdisp {
 
 
-class UberJob {
+class UberJob : public JobBase, std::enable_shared_from_this<UberJob> {
 public:
     using Ptr = std::shared_ptr<UberJob>;
 
-    static Ptr create();
+    static Ptr create(Executive::Ptr const& executive,
+                      std::shared_ptr<ResponseHandler> const& respHandler);
+    UberJob() = delete;
     UberJob(UberJob const&) = delete;
     UberJob& operator=(UberJob const&) = delete;
 
     virtual ~UberJob() {};
 
-    bool addJob(JobQuery::Ptr const& job);
+    bool addJob(JobQuery* job);
+    void runUberJob();
+    std::string getIdStr() { return _idStr; }
+
+    /// &&& TODO: may not need,
+    void prepScrubResults();
 
     std::string workerResource; // TODO: private
 
@@ -53,9 +62,21 @@ public:
     friend std::ostream& operator<<(std::ostream &out, UberJob const& uberJob);
 
 private:
-    UberJob() {}
+    UberJob(Executive::Ptr const& executive,
+            std::shared_ptr<ResponseHandler> const& respHandler,
+            int queryId, int uberJobId);
 
-    std::vector<JobQuery::Ptr> _jobs;
+    std::vector<JobQuery*> _jobs;
+    std::atomic<bool> _started{false};
+    bool _inSsi = false;
+    JobStatus::Ptr _jobStatus;
+
+
+    std::weak_ptr<Executive> _executive;
+    std::shared_ptr<ResponseHandler> _respHandler;
+    int const _queryId;
+    int const _uberJobId;
+    std::string const _idStr;
 };
 
 
