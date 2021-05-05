@@ -58,6 +58,7 @@ class DataDuplicator:
         self._outDirname = out_dir
         self._tables = data_reader.duplicatedTables
         self._directorTable = data_reader.directors[0]
+        self._dataExt = data_reader.dataExt
 
     def run(self):
         self._runIndex()
@@ -69,15 +70,15 @@ class DataDuplicator:
         """
 
         for table in self._tables:
-            if os.path.isfile(os.path.join(self._cfgDirname, table + '.json')) is False:
+            config_file = os.path.join(self._cfgDirname, "partition", table + ".json")
+            if os.path.isfile(config_file) is False:
                 self.logger.error("Path to indexing config file not found")
 
             self.logger.info("Running indexer with output for %r to %r" % (table, self._outDirname))
             commons.run_command(["sph-htm-index",
-                                 "--config-file=" +
-                                 os.path.join(self._cfgDirname, table + ".json"),
-                                 "--config-file=" + os.path.join(self._cfgDirname, "common.json"),
-                                 "--in.path=" + os.path.join(self._cfgDirname, table + ".txt"),
+                                 "--config-file=" + config_file,
+                                 "--config-file=" + os.path.join(self._cfgDirname, "partition", "common.json"),
+                                 "--in.path=" + os.path.join(self._cfgDirname, table + self._dataExt),
                                  "--out.dir=" + os.path.join(self._outDirname, "index/", table)])
 
     def _runDuplicate(self):
@@ -86,15 +87,15 @@ class DataDuplicator:
         """
 
         for table in self._tables:
-            if os.path.isfile(os.path.join(self._cfgDirname, 'common.json')) is False:
+            if os.path.isfile(os.path.join(self._cfgDirname, "partition", 'common.json')) is False:
                 self.logger.error("Path to duplicator config file not found")
 
             self.logger.info("Running duplicator for table %r" % table)
             index_param = os.path.join(self._outDirname, "index", table, "htm_index.bin")
             part_index_param = os.path.join(self._outDirname, "index", self._directorTable, "htm_index.bin")
             commons.run_command(["sph-duplicate",
-                                 "--config-file=" + os.path.join(self._cfgDirname, table + ".json"),
-                                 "--config-file=" + os.path.join(self._cfgDirname, "common.json"),
+                                 "--config-file=" + os.path.join(self._cfgDirname, "partition", table + ".json"),
+                                 "--config-file=" + os.path.join(self._cfgDirname, "partition", "common.json"),
                                  "--index=" + index_param,
                                  "--part.index=" + part_index_param,
                                  "--out.dir=" + os.path.join(self._outDirname, "chunks/", table)])
