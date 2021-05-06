@@ -112,20 +112,12 @@ def worker_xrootd(**kwargs):
 @entrypoint.command()
 @vnid_option(required=True)
 @instance_id_option(required=True)
+@connection_option()
 @repl_connection_option()
 @debug_option()
 @run_option()
 def worker_repl(**kwargs):
     script.enter_worker_repl(**kwargs)
-
-
-@entrypoint.command()
-@db_password_option()
-@db_port_option()
-@click.option("--czar-domain-name", help="The domain name of the czar.")
-@click.option("--wmgr-secret", help="The username:password pair for the wmgr.")
-def worker_wmgr(**kwargs):
-    script.enter_worker_wmgr(**kwargs)
 
 
 @entrypoint.command()
@@ -142,6 +134,10 @@ def worker_wmgr(**kwargs):
 @click.option(
     "--xrootd-manager",
     help="The host name of the xrootd manager node.",
+)
+@click.option(
+    "--qserv-czar-db",
+    help="The connection string for the czar database."
 )
 @run_option()
 def replication_controller(**kwargs):

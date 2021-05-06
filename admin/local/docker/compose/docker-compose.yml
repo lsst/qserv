@@ -3,7 +3,7 @@ x-worker-db:
     &worker-db
     image: "qserv/lite-mariadb"
     command: --port 3306
-    ports:
+    expose:
         - "3306"
     environment:
         MYSQL_ROOT_PASSWORD: CHANGEME
@@ -19,13 +19,13 @@ x-worker-cmsd:
 x-worker-xrootd:
     &worker-xrootd
     image: "qserv/${QSERV_IMAGE}"
-    ports:
+    expose:
         - "1094"
         - "2131"
 x-worker-repl:
     &worker-repl
     image: "qserv/${QSERV_IMAGE}"
-    ports:
+    expose:
         - "25000"
         - "25001"
         - "25002"
@@ -44,6 +44,12 @@ volumes:
     czar_0_cfg:
     repl_mgr_data:
 
+networks:
+    default:
+        ipam:
+            driver: default
+            config:
+                - subnet: 192.168.3.0/24
 
 services:
     worker-db-0:
@@ -100,7 +106,9 @@ services:
                     - worker-cmsd-1
     worker-repl-0:
         << : *worker-repl
-        command: entrypoint worker-repl --repl-connection mysql://qsreplica@repl-mgr-db:3306/qservReplica --vnid worker_0 --instance-id qserv_proj
+        command: entrypoint worker-repl --connection mysql://root:CHANGEME@worker-db-0:3306/qservw_worker --repl-connection mysql://qsreplica@repl-mgr-db:3306/qservReplica --vnid worker_0 --instance-id qserv_proj
+        environment:
+            LSST_LOG_CONFIG: /config-etc/log/log.cfg
         volumes:
             - type: volume
               source: worker_0_data
@@ -108,6 +116,9 @@ services:
             - type: volume
               source: worker_0_repl_cfg
               target: /config-etc
+            - type: bind
+              source: ./
+              target: /config-etc/log/
     worker-repl-1:
         << : *worker-repl
         command: entrypoint worker-repl --repl-connection mysql://qsreplica@repl-mgr-db:3306/qservReplica --vnid worker_1 --instance-id qserv_proj
@@ -123,7 +134,7 @@ services:
         image: "qserv/${QSERV_IMAGE}"
         command: entrypoint xrootd-manager --cmsd-manager manager-xrootd
         hostname: manager-xrootd
-        ports:
+        expose:
             - "1094"
             - "2131"
         volumes:
@@ -136,7 +147,8 @@ services:
                     - manager-cmsd
     manager-cmsd:
         image: "qserv/${QSERV_IMAGE}"
-        command: entrypoint cmsd-manager --cms-delay-servers 2
+        # NOTE!! cms-delay-servers must match the number of workers being launched!
+        command: entrypoint cmsd-manager --cms-delay-servers 1
         network_mode: "service:manager-xrootd"
         volumes:
             - type: volume
@@ -145,7 +157,7 @@ services:
     czar-db:
         image: "qserv/lite-mariadb"
         command: --port 3306
-        ports:
+        expose:
             - "3306"
         environment:
             MYSQL_ROOT_PASSWORD: CHANGEME
@@ -169,7 +181,7 @@ services:
     repl-mgr-db:
         image: "qserv/lite-mariadb"
         command: --port 3306
-        ports:
+        expose:
             - "3306"
         environment:
             MYSQL_ROOT_PASSWORD: CHANGEME
@@ -182,6 +194,12 @@ services:
               target: /etc/mysql/my.cnf
     repl-mgr-controller:
         image: "qserv/${QSERV_IMAGE}"
-        command: entrypoint --log-level DEBUG replication-controller --connection mysql://root:CHANGEME@repl-mgr-db:3306/qservReplica --repl-connection mysql://qsreplica@repl-mgr-db:3306/qservReplica  --instance-id qserv_proj --worker name=worker_0,host=worker-repl-0 --worker name=worker_1,host=worker-repl-1 --xrootd-manager manager-xrootd
-        ports:
+        command: entrypoint --log-level DEBUG replication-controller --connection mysql://root:CHANGEME@repl-mgr-db:3306/qservReplica --repl-connection mysql://qsreplica@repl-mgr-db:3306/qservReplica --qserv-czar-db mysql://root:CHANGEME@czar-db:3306/qservMeta --instance-id qserv_proj --worker name=worker_0,host=worker-repl-0 --worker name=worker_1,host=worker-repl-1 --xrootd-manager manager-xrootd
+        environment:
+            LSST_LOG_CONFIG: /config-etc/log/log.cfg
+        expose:
             - "25081"
+        volumes:
+            - type: bind
+              source: ./
+              target: /config-etc/log/

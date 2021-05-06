@@ -268,7 +268,7 @@ def enter_worker_xrootd(debug_port, xrd_port, connection, vnid, cmsd_manager, re
     sys.exit(_run(args, debug_port=debug_port))
 
 
-def enter_worker_repl(vnid, repl_connection, debug_port, run, instance_id):
+def enter_worker_repl(vnid, connection, repl_connection, debug_port, run, instance_id):
     # N.B. When the controller smigs the replication database, if it is migrating from Uninitialized
     # it will also set initial configuration values in the replication database. It sets the schema
     # version of the replica database *after* setting the config values, which allows us to wait here
@@ -279,6 +279,7 @@ def enter_worker_repl(vnid, repl_connection, debug_port, run, instance_id):
         "qserv-replica-worker",
         vnid,
         f"--config={repl_connection}",
+        f"--qserv-worker-db={connection}",
         "--debug",
         f"--instance-id={instance_id}",
     ]
@@ -315,7 +316,7 @@ def enter_proxy(db_scheme, connection, mysql_user_qserv, repl_ctl_dn, mysql_moni
 
 
 def enter_replication_controller(db_scheme, connection, repl_connection, workers,
-                                 instance_id, run, xrootd_manager):
+                                 instance_id, run, xrootd_manager, qserv_czar_db):
     """Entrypoint script for the entrypoint controller.
 
     Parameters
@@ -338,6 +339,8 @@ def enter_replication_controller(db_scheme, connection, repl_connection, workers
         mis-configuration.
     xrootd_manager : `str`
         The host name of the xrootd manager node.
+    qserv_czar_db : `str`
+        The URI connection string for the czar database.
     """
 
     def set_initial_configuartion(workers, xrootd_manager):
@@ -381,6 +384,7 @@ def enter_replication_controller(db_scheme, connection, repl_connection, workers
         "qserv-replica-master-http",
         f"--config={repl_connection}",
         f"--instance-id={instance_id}",
+        f"--qserv-czar-db={qserv_czar_db}"
     ]
     _log.debug(f"Calling {' '.join(args)}")
     _run(args, env=env, run=run)
@@ -397,5 +401,6 @@ def _run(args, env=None, debug_port=None, run=True):
         stdout=sys.stdout,
         stderr=sys.stderr,
         env=env,
+        cwd="/home/qserv"
     )
     return result.returncode
