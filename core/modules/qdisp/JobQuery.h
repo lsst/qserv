@@ -74,7 +74,7 @@ public:
     JobDescription::Ptr getDescription() { return _jobDescription; }
     JobStatus::Ptr getStatus() override { return _jobStatus; }
 
-    void setQueryRequest(std::shared_ptr<QueryRequest> const& qr) {
+    void setQueryRequest(std::shared_ptr<QueryRequest> const& qr) override {
         std::lock_guard<std::recursive_mutex> lock(_rmutex);
         _queryRequestPtr = qr;
     }
@@ -93,9 +93,7 @@ public:
 
     std::shared_ptr<QdispPool> getQdispPool() override { return _qdispPool; }
 
-    virtual std::ostream& dump(std::ostream &os) const;
-    std::string dump() const;
-    friend std::ostream& operator<<(std::ostream& os, JobQuery const& jq);
+    std::ostream& dumpOS(std::ostream &os) const override;
 
     /// Make a copy of the job description. JobQuery::_setup() must be called after creation.
     /// Do not call this directly, use create.
@@ -103,7 +101,8 @@ public:
         JobStatus::Ptr const& jobStatus, std::shared_ptr<MarkCompleteFunc> const& markCompleteFunc,
         QueryId qid);
 
-    /// &&& TODO: UberJob functions
+    /// &&& TODO:UJ UberJob functions
+    void setInUberJob(bool inUberJob) { _inUberJob = inUberJob; };
     bool inUberJob() const { return _inUberJob; }
 
 protected:
@@ -143,8 +142,8 @@ protected:
 
     std::shared_ptr<QdispPool> _qdispPool;
 
-    /// &&& TODO: UberJob
-    bool _inUberJob = false;
+    /// &&& TODO:UJ UberJob
+    std::atomic<bool> _inUberJob{false}; ///< TODO:UJ There are probably several places this should be checked
 };
 
 }}} // end namespace

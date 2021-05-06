@@ -179,7 +179,7 @@ std::string UserQuerySelect::getError() const {
     return _qSession->getError() + div + _errorExtra;
 }
 
-/// Attempt to kill in progress.
+/// Attempt to kill query in progress.
 void UserQuerySelect::kill() {
     LOGS(_log, LOG_LVL_DEBUG, "UserQuerySelect kill");
     std::lock_guard<std::mutex> lock(_killMutex);
@@ -342,6 +342,7 @@ void UserQuerySelect::submit() {
         }
         std::string chunkResultName = ttn.make(cs->chunkId);
 
+        //&&& TODO:UJ for UberJobs, cmr and MerginHandler wont be needed unless the uber job fails. could probably save some time.
         std::shared_ptr<ChunkMsgReceiver> cmr = ChunkMsgReceiver::newInstance(cs->chunkId, _messageStore);
         ResourceUnit ru;
         ru.setAsDbChunk(cs->db, cs->chunkId);
@@ -366,10 +367,10 @@ void UserQuerySelect::submit() {
         ++sequence;
     }
 
-    class WorkerResource { // &&& TODO: relocate class def
+    class WorkerResource { // &&& TODO:UJ relocate class def
     public:
         string resourceName;
-        set<int> chunkIdSet; ///< this will be destroyed as UberJobs are created. TODO: maybe also have one that isn't destroyed.
+        set<int> chunkIdSet; ///< this will be destroyed as UberJobs are created. TODO:UJ maybe also have one that isn't destroyed.
         /// Fills the chunk idSet with chunk ids for this resource.
         void fillChunkIdSet() { throw Bug("&&&NEED_CODE to fill chunkIdSet, from db"); }
     };
@@ -383,10 +384,10 @@ void UserQuerySelect::submit() {
         }
 
         // &&& make a map of all jobs in the executive.
-        // &&& TODO: for now, just using ints. At some point, need to check that ResourceUnit databases can be found for all databases in the query
+        // &&& TODO:UJ for now, just using ints. At some point, need to check that ResourceUnit databases can be found for all databases in the query
         qdisp::Executive::ChunkIdJobMapType chunksInQuery = _executive->getChunkJobMapAndInvalidate();
 
-        // &&& TODO: skipping in proof of concept: get a list of all databases in jobs (all jobs should use the same databases) Use this to check for conflicts
+        // &&& TODO:UJ skipping in proof of concept: get a list of all databases in jobs (all jobs should use the same databases) Use this to check for conflicts
 
         // &&& assign jobs to uberJobs
         int maxChunksPerUber = 10;
@@ -396,13 +397,23 @@ void UserQuerySelect::submit() {
             tmpWorkerList.push_back(worker);
         }
 
+        // TODO:UJ So UberJobIds don't conflict with chunk numbers or jobIds, start at a large number.
+        //       This could use some refinement.
+        int uberJobId = qdisp::UberJob::getFirstIdNumber();
+
         // Keep making UberJobs until either all chunks in the query have been assigned or there are no more chunks on workers.
         for(auto&& workerIter = tmpWorkerList.begin(); !(chunksInQuery.empty() || tmpWorkerList.empty());) {
-            ///  TODO: One issue here that shouldn't be in a problem in the final version, there are 3 replicas here.
+            ///  TODO:UJ One issue here that shouldn't be in a problem in the final version, there are 3 replicas here.
             ///        The final version should only have LeadChunks, so there shuoldn't be any duplicates. For every hit
             ///        on the worker, there will be 2 misses. That will probably hurt significantly.
 
-            auto uJob = qdisp::UberJob::create();
+            ///&&& TODO:UJ cs->chunkId in cmr, replacing with uberJobId for now
+            ///&&& TODO:UJ MergingHandler result name looks like it is only used for log messages.
+            string uberResultName = "uber_" + to_string(uberJobId);
+            std::shared_ptr<ChunkMsgReceiver> cmr = ChunkMsgReceiver::newInstance(uberJobId, _messageStore);
+            auto respHandler = std::make_shared<MergingHandler>(cmr, _infileMerger, uberResultName);
+
+            auto uJob = qdisp::UberJob::create(_executive, respHandler, _qMetaQueryId, uberJobId++);
 
             int chunksInUber = 0;
             WorkerResource& wr = *workerIter;
@@ -433,6 +444,10 @@ void UserQuerySelect::submit() {
                 tmpWorkerList.erase(oldWorkerIter);
             }
 
+            // Wrap back to the first worker at athe end of the list.
+            if (workerIter == tmpWorkerList.end()) {
+                workerIter = tmpWorkerList.begin();
+            }
         }
         _executive->addUberJobs(uberJobs);
         for (auto&& uJob:uberJobs) {

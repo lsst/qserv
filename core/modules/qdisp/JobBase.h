@@ -35,10 +35,11 @@ namespace qdisp {
 
 class JobStatus;
 class QdispPool;
-class ResponseHandler
+class ResponseHandler;
+class QueryRequest;
 
 /// Base class for JobQuery and UberJob.
-/// TODO: This could use a lot of cleanup.
+/// TODO:UJ This could use a lot of cleanup.
 class JobBase {
 public:
     using Ptr = std::shared_ptr<JobBase>;
@@ -52,13 +53,18 @@ public:
     virtual int getIdInt() const = 0;
     virtual std::string const& getIdStr() const = 0;
     virtual std::shared_ptr<QdispPool> getQdispPool() = 0;
-    virtual std::string getPayload() = 0;
+    virtual std::string getPayload() const = 0;
     virtual std::shared_ptr<ResponseHandler> getRespHandler() = 0;
     virtual std::shared_ptr<JobStatus> getStatus() = 0;
     virtual bool getScanInteractive() const = 0;
     virtual bool isQueryCancelled() = 0;
     virtual void callMarkCompleteFunc(bool success) = 0;
+    virtual void setQueryRequest(std::shared_ptr<QueryRequest> const& qr) = 0;
 
+    virtual std::ostream& dumpOS(std::ostream &os) const;
+
+    std::string dump() const;
+    friend std::ostream& operator<<(std::ostream& os, JobBase const& jb);
 };
 
 

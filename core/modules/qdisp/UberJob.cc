@@ -26,7 +26,10 @@
 #include <stdexcept>
 
 // Qserv headers
-
+#include "global/LogContext.h"
+#include "proto/ProtoImporter.h"
+#include "proto/worker.pb.h"
+#include "qdisp/JobQuery.h"
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -41,11 +44,19 @@ namespace lsst {
 namespace qserv {
 namespace qdisp {
 
+UberJob::Ptr UberJob::create(Executive::Ptr const& executive,
+                  std::shared_ptr<ResponseHandler> const& respHandler,
+                  int queryId, int uberJobId) {
+    UberJob::Ptr uJob(new UberJob(executive, respHandler, queryId, uberJobId)); //&&& replace with make_shared
+    return uJob;
+}
+
 UberJob::UberJob(Executive::Ptr const& executive,
          std::shared_ptr<ResponseHandler> const& respHandler,
          int queryId, int uberJobId)
-    : _executive(executive), _respHandler(respHandler), _queryId(queryId), _uberJobId(uberJobId),
+    : JobBase(), _executive(executive), _respHandler(respHandler), _queryId(queryId), _uberJobId(uberJobId),
       _idStr("QID=" + to_string(_queryId) + ":uber=" + to_string(uberJobId)) {
+    _qdispPool = executive->getQdispPool();
 }
 
 
@@ -63,7 +74,7 @@ bool UberJob::addJob(JobQuery* job) {
 
 bool UberJob::runUberJob() {
     throw Bug("&&&NEED_CODE - at this point, all the jobs in UberJob must be in the payload. this can be done in this function");
-    QSERV_LOGCONTEXT_QUERY_JOB(getQueryId());
+    QSERV_LOGCONTEXT_QUERY_JOB(getQueryId(), getIdInt());
     auto executive = _executive.lock();
     if (executive == nullptr) {
         LOGS(_log, LOG_LVL_ERROR, "runUberJob failed executive==nullptr");
@@ -71,20 +82,18 @@ bool UberJob::runUberJob() {
     }
     bool cancelled = executive->getCancelled();
     bool handlerReset = _respHandler->reset();
-    bool started = _started.exchange(true)
+    bool started = _started.exchange(true);
     if (!cancelled && handlerReset && !started) {
         auto criticalErr = [this, &executive](std::string const& msg) {
             LOGS(_log, LOG_LVL_ERROR, msg << " "
-                    << _jobDescription << " Canceling user query!");
+                    << *this << " Canceling user query!");
             executive->squash(); // This should kill all jobs in this user query.
         };
 
         LOGS(_log, LOG_LVL_DEBUG, "runUberJob verifying payloads");
-        for(auto const& job:_jobs) {
-            if (!job->verifyPayload()) {
-                criticalErr("bad payload");
-                return false;
-            }
+        if (!verifyPayload()) {
+            criticalErr("bad payload");
+            return false;
         }
 
         // At this point we are all set to actually run the queries. We create a
@@ -95,7 +104,7 @@ bool UberJob::runUberJob() {
         LOGS(_log, LOG_LVL_TRACE, "runJob calls StartQuery()");
         std::shared_ptr<UberJob> uJob(shared_from_this());
         _inSsi = true;
-        if (executive->startQuery(uJob)) {
+        if (executive->startUberJob(uJob)) {
             _jobStatus->updateInfo(_idStr, JobStatus::REQUEST);
             return true;
         }
@@ -112,7 +121,39 @@ void UberJob::prepScrubResults() {
 }
 
 
-std::ostream& UberJob::dump(std::ostream &os) const {
+bool UberJob::isQueryCancelled() {
+    QSERV_LOGCONTEXT_QUERY_JOB(getQueryId(), getIdInt());
+    auto exec = _executive.lock();
+    if (exec == nullptr) {
+        LOGS(_log, LOG_LVL_WARN, "_executive == nullptr");
+        return true; // Safer to assume the worst.
+    }
+    return exec->getCancelled();
+}
+
+
+bool UberJob::verifyPayload() const {
+    proto::ProtoImporter<proto::UberJobMsg> pi;
+    if (!pi.messageAcceptable(_payload)) {
+        LOGS(_log, LOG_LVL_DEBUG, _idStr << " Error serializing UberJobMsg.");
+        return false;
+    }
+    return true;
+}
+
+
+void UberJob::callMarkCompleteFunc(bool success) {
+    LOGS(_log, LOG_LVL_DEBUG, "UberJob::callMarkCompleteFunc success=" << success);
+    if (!success) {
+        throw Bug("&&&NEED_CODE may need code to properly handle failed uberjob");
+    }
+    for (auto&& job:_jobs) {
+        job->callMarkCompleteFunc(success);
+    }
+}
+
+
+std::ostream& UberJob::dumpOS(std::ostream &os) const {
     os << "(workerResource=" << workerResource
        << " jobs sz=" << _jobs.size() << "(";
     for (auto const& job:_jobs) {
@@ -122,18 +163,6 @@ std::ostream& UberJob::dump(std::ostream &os) const {
     }
     os << "))";
     return os;
-}
-
-
-std::string UberJob::dump() const {
-    std::ostringstream os;
-    dump(os);
-    return os.str();
-}
-
-
-std::ostream& operator<<(std::ostream &os, UberJob const& uberJob) {
-    return uberJob.dump(os);
 }
 
 

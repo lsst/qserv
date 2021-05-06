@@ -28,38 +28,55 @@
 #include "qdisp/Executive.h"
 #include "qdisp/JobBase.h"
 #include "qdisp/JobQuery.h"
+#include "qdisp/QueryRequest.h"
 
 // This header declarations
 namespace lsst {
 namespace qserv {
 namespace qdisp {
 
-
 class UberJob : public JobBase, std::enable_shared_from_this<UberJob> {
 public:
     using Ptr = std::shared_ptr<UberJob>;
 
     static Ptr create(Executive::Ptr const& executive,
-                      std::shared_ptr<ResponseHandler> const& respHandler);
+                      std::shared_ptr<ResponseHandler> const& respHandler,
+                      int queryId, int uberJobId);
     UberJob() = delete;
     UberJob(UberJob const&) = delete;
     UberJob& operator=(UberJob const&) = delete;
 
     virtual ~UberJob() {};
 
+    static int getFirstIdNumber() { return 9'000'000; }
+
     bool addJob(JobQuery* job);
-    void runUberJob();
-    std::string getIdStr() { return _idStr; }
+    bool runUberJob();
+
+    QueryId getQueryId() const override { return _queryId; } //TODO:UJ relocate to JobBase
+    int getIdInt() const override { return _uberJobId; }
+    std::string const& getIdStr() const override { return _idStr; }
+    std::shared_ptr<QdispPool> getQdispPool() override { return _qdispPool; } //TODO:UJ relocate to JobBase
+    std::string getPayload() const override { return _payload; }
+    std::shared_ptr<ResponseHandler> getRespHandler() override { return _respHandler; }
+    std::shared_ptr<JobStatus> getStatus() override { return _jobStatus; } //TODO:UJ relocate to JobBase
+    bool getScanInteractive() const override { return false; } ///< UberJobs are never interactive.
+    bool isQueryCancelled() override; //TODO:UJ relocate to JobBase
+    void callMarkCompleteFunc(bool success) override;
+
+    void setQueryRequest(std::shared_ptr<QueryRequest> const& qr) override {
+        std::lock_guard<std::mutex> lock(_qrMtx);
+        _queryRequestPtr = qr;
+    }
+
+    bool verifyPayload() const;
 
     /// &&& TODO: may not need,
     void prepScrubResults();
 
-    std::string workerResource; // TODO: private
+    std::string workerResource; // TODO:UJ make private
 
-
-    virtual std::ostream& dump(std::ostream &os) const;
-    std::string dump() const;
-    friend std::ostream& operator<<(std::ostream &out, UberJob const& uberJob);
+    std::ostream& dumpOS(std::ostream &os) const override;
 
 private:
     UberJob(Executive::Ptr const& executive,
@@ -71,12 +88,17 @@ private:
     bool _inSsi = false;
     JobStatus::Ptr _jobStatus;
 
+    std::shared_ptr<QueryRequest> _queryRequestPtr;
+    std::mutex _qrMtx;
+
+    std::string _payload{"&&& NEED_REAL_PAYLOAD"};
 
     std::weak_ptr<Executive> _executive;
     std::shared_ptr<ResponseHandler> _respHandler;
     int const _queryId;
     int const _uberJobId;
     std::string const _idStr;
+    std::shared_ptr<QdispPool> _qdispPool;
 };
 
 

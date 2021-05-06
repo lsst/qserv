@@ -171,20 +171,8 @@ bool JobQuery::isQueryCancelled() {
 }
 
 
-std::ostream& JobQuery::dump(std::ostream &os) const {
+std::ostream& JobQuery::dumpOS(std::ostream &os) const {
     return os << "{" << getIdStr() << _jobDescription << " " << _jobStatus << "}";
-}
-
-
-std::string JobQuery::dump() const {
-    std::ostringstream os;
-    dump(os);
-    return os.str();
-}
-
-
-std::ostream& operator<<(std::ostream &os, JobQuery const& jobQuery) {
-    return JobQuery.dump(os);
 }
 
 

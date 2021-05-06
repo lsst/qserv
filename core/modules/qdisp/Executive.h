@@ -84,7 +84,7 @@ class Executive : public std::enable_shared_from_this<Executive> {
 public:
     typedef std::shared_ptr<Executive> Ptr;
     typedef std::unordered_map<int, std::shared_ptr<JobQuery>> JobMap;
-    typedef int ChunkIdType; //&&& TODO: probably needs to be ResourceUnit
+    typedef int ChunkIdType; //&&& TODO:UJ probably needs to be ResourceUnit
     typedef std::map<ChunkIdType, JobQuery*> ChunkIdJobMapType;
 
     /// Construct an Executive.
@@ -139,7 +139,10 @@ public:
 
     bool startQuery(std::shared_ptr<JobQuery> const& jobQuery);
 
-    ///&&& TODO: UberJob
+    /// Start any jobs that were not started as part of UberJobs.
+    void startRemainingJobs();
+
+    ///&&& TODO:UJ UberJob
     void addUberJobs(std::vector<std::shared_ptr<UberJob>> const& jobsToAdd);
     ChunkIdJobMapType& getChunkJobMapAndInvalidate();
     bool startUberJob(std::shared_ptr<UberJob> const& uJob);

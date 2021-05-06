@@ -45,7 +45,10 @@
 #include "global/LogContext.h"
 #include "proto/ProtoHeaderWrap.h"
 #include "proto/ScanTableInfo.h"
+#include "qdisp/JobBase.h"
+#include "qdisp/JobQuery.h"
 #include "qdisp/JobStatus.h"
+#include "qdisp/UberJob.h"
 #include "qdisp/ResponseHandler.h"
 #include "util/common.h"
 #include "util/InstanceCount.h"
@@ -67,8 +70,8 @@ class QueryRequest::AskForResponseDataCmd : public PriorityCommand {
 public:
     typedef shared_ptr<AskForResponseDataCmd> Ptr;
     enum class State { STARTED0, DATAREADY1, DONE2 };
-    AskForResponseDataCmd(QueryRequest::Ptr const& qr, JobQuery::Ptr const& jq, size_t bufferSize)
-        : _qRequest(qr), _jQuery(jq), _qid(jq->getQueryId()), _jobid(jq->getIdInt()),
+    AskForResponseDataCmd(QueryRequest::Ptr const& qr, JobBase::Ptr const& jq, size_t bufferSize)
+        : _qRequest(qr), _jBase(jq), _qid(jq->getQueryId()), _jobid(jq->getIdInt()),
           _bufPtr(new vector<char>(bufferSize)) {
     }
 
@@ -80,7 +83,7 @@ public:
         util::Timer tTotal;
         {
             tTotal.start();
-            auto jq = _jQuery.lock();
+            auto jq = _jBase.lock();
             auto qr = _qRequest.lock();
             if (jq == nullptr || qr == nullptr) {
                 LOGS(_log, LOG_LVL_WARN, "AskForResp null before GetResponseData");
@@ -126,7 +129,7 @@ public:
         // If more data needs to be sent, _processData will make a new AskForResponseDataCmd
         // object and queue it.
         {
-            auto jq = _jQuery.lock();
+            auto jq = _jBase.lock();
             auto qr = _qRequest.lock();
             if (jq == nullptr || qr == nullptr) {
                 _setState(State::DONE2);
@@ -173,7 +176,7 @@ private:
 
 
     weak_ptr<QueryRequest> _qRequest;
-    weak_ptr<JobQuery> _jQuery;
+    weak_ptr<JobBase> _jBase;
     QueryId _qid;
     int _jobid;
     mutable mutex _mtx;
@@ -532,7 +535,7 @@ void QueryRequest::_processData(JobBase::Ptr const& jq, int blen, bool xrdLast) 
 }
 
 
-void QueryRequest::_flushError(JobQuery::Ptr const& jq) {
+void QueryRequest::_flushError(JobBase::Ptr const& jq) {
     ResponseHandler::Error err = jq->getRespHandler()->getError();
     jq->getStatus()->updateInfo(_jobIdStr, JobStatus::MERGE_ERROR, err.getCode(), err.getMsg());
     // This error can be caused by errors in the SQL
@@ -612,10 +615,10 @@ bool QueryRequest::_errorFinish(bool shouldCancel) {
     LOGS(_log, LOG_LVL_DEBUG, "_errorFinish() shouldCancel=" << shouldCancel);
 
     auto jbase = _job;
-    JobQuery::Ptr jq = dynamic_cast<JobQuery>(jbase);
+    JobQuery::Ptr jq = dynamic_pointer_cast<JobQuery>(jbase);
     if (jq == nullptr) {
-        //&&& TODO: THIS NEEDS WORK - UberJob failures are different than JobQuery failures.
-        UberJob::Ptr uberJob = dynamic_cast<UberJob>(jbase);
+        //&&& TODO:UJ THIS NEEDS WORK - UberJob failures are different than JobQuery failures.
+        UberJob::Ptr uberJob = dynamic_pointer_cast<UberJob>(jbase);
         if (uberJob != nullptr) {
             throw Bug("&&&NEED_CODE for _errorFinish to work correctly with UberJob");
             // UberJobs breakup into their JobQueries when they fail and run the jobs directly.

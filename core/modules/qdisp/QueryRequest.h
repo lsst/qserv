@@ -37,9 +37,9 @@
 
 // Local headers
 #include "czar/Czar.h"
-//&&& #include "qdisp/JobQuery.h"
 #include "qdisp/JobBase.h"
 #include "qdisp/QdispPool.h"
+#include "util/InstanceCount.h"
 
 namespace lsst {
 namespace qserv {
