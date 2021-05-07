@@ -173,7 +173,6 @@ JobQuery::Ptr Executive::add(JobDescription::Ptr const& jobDesc) {
     QSERV_LOGCONTEXT_QUERY_JOB(jobQuery->getQueryId(), jobQuery->getIdInt());
 
     LOGS(_log, LOG_LVL_DEBUG, "Executive::add with path=" << jobDesc->resource().path());
-    //&&& jobQuery->runJob(); // &&& remove this line, replace with funct
     return jobQuery;
 }
 
@@ -558,6 +557,7 @@ void Executive::_waitAllUntilEmpty() {
 void Executive::_addToChunkJobMap(JobQuery::Ptr const& job) {
     int chunkId = job->getDescription()->resource().chunk();
     auto entry = pair<ChunkIdType, JobQuery*>(chunkId, job.get());
+    LOGS(_log, LOG_LVL_WARN, "&&& _addToChunkJobMap chunkId=" << chunkId);
     lock_guard<mutex> lck(_chunkToJobMapMtx);
     if (_chunkToJobMapInvalid) {
         throw Bug("map insert FAILED, map is already invalid");

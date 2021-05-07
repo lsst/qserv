@@ -102,7 +102,7 @@ bool UberJob::runUberJob() {
         // whether or not we are in SSI as cancellation handling differs.
         //
         LOGS(_log, LOG_LVL_TRACE, "runJob calls StartQuery()");
-        std::shared_ptr<UberJob> uJob(shared_from_this());
+        std::shared_ptr<UberJob> uJob(dynamic_pointer_cast<UberJob>(shared_from_this()));
         _inSsi = true;
         if (executive->startUberJob(uJob)) {
             _jobStatus->updateInfo(_idStr, JobStatus::REQUEST);

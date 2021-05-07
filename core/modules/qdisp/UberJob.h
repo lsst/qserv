@@ -35,7 +35,7 @@ namespace lsst {
 namespace qserv {
 namespace qdisp {
 
-class UberJob : public JobBase, std::enable_shared_from_this<UberJob> {
+class UberJob : public JobBase {
 public:
     using Ptr = std::shared_ptr<UberJob>;
 

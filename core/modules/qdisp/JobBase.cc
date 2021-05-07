@@ -42,6 +42,11 @@ namespace qserv {
 namespace qdisp {
 
 
+std::ostream& JobBase::dumpOS(std::ostream &os) const {
+    os << "JobBase no data members";
+    return os;
+}
+
 std::string JobBase::dump() const {
     std::ostringstream os;
     dumpOS(os);

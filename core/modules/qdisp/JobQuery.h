@@ -48,7 +48,7 @@ class QueryRequest;
 /** This class is used to describe, monitor, and control a single query to a worker.
  *
  */
-class JobQuery : public JobBase, std::enable_shared_from_this<JobQuery> {
+class JobQuery : public JobBase {
 public:
     typedef std::shared_ptr<JobQuery> Ptr;
 
@@ -83,7 +83,7 @@ public:
         return _queryRequestPtr;
     }
 
-    std::shared_ptr<MarkCompleteFunc> getMarkCompleteFunc() { return _markCompleteFunc; } // &&& delete
+    //std::shared_ptr<MarkCompleteFunc> getMarkCompleteFunc() { return _markCompleteFunc; } // &&& delete
     void callMarkCompleteFunc(bool success) override { _markCompleteFunc->operator ()(success); }
 
     bool cancel();
@@ -107,7 +107,8 @@ public:
 
 protected:
     void _setup() {
-        _jobDescription->respHandler()->setJobQuery(shared_from_this());
+        JobBase::Ptr jbPtr = shared_from_this();
+        _jobDescription->respHandler()->setJobQuery(jbPtr);
     }
 
     int _getRunAttemptsCount() const {

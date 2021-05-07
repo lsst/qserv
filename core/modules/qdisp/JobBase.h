@@ -40,7 +40,7 @@ class QueryRequest;
 
 /// Base class for JobQuery and UberJob.
 /// TODO:UJ This could use a lot of cleanup.
-class JobBase {
+class JobBase : public std::enable_shared_from_this<JobBase> {
 public:
     using Ptr = std::shared_ptr<JobBase>;
 
