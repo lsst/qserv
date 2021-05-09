@@ -36,6 +36,7 @@
 
 // Qserv headers
 #include "css/CssAccess.h"
+#include "css/CssError.h"
 #include "css/DbInterfaceMySql.h"
 #include "global/constants.h"
 #include "replica/ChunkedTable.h"
@@ -619,11 +620,18 @@ json HttpIngestModule::_deleteTable() {
 
     // Remove table entry from czar's databases if it's still there
 
-    if (cssAccess->containsDb(databaseInfo.name)) {
-        if (cssAccess->containsTable(databaseInfo.name, table)) {
-            cssAccess->dropTable(databaseInfo.name, databaseInfo.name);
+    try {
+        if (cssAccess->containsDb(databaseInfo.name)) {
+            if (cssAccess->containsTable(databaseInfo.name, table)) {
+                cssAccess->dropTable(databaseInfo.name, table);
+            }
         }
+    } catch (css::NoSuchTable const& ex) {
+        // The table may have already been deleted by another request while this one
+        // was checking for the table status in the CSS.
+        ;
     }
+
     database::mysql::ConnectionHandler const h(qservMasterDbConnection("qservCssData"));
     h.conn->executeInOwnTransaction([&databaseInfo, &table](decltype(h.conn) conn) {
         // Remove table entry from czar's MySQL
