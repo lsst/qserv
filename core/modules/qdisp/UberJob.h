@@ -57,7 +57,7 @@ public:
     int getIdInt() const override { return _uberJobId; }
     std::string const& getIdStr() const override { return _idStr; }
     std::shared_ptr<QdispPool> getQdispPool() override { return _qdispPool; } //TODO:UJ relocate to JobBase
-    std::string getPayload() const override { return _payload; }
+    std::string const& getPayload() const override { return _payload; }
     std::shared_ptr<ResponseHandler> getRespHandler() override { return _respHandler; }
     std::shared_ptr<JobStatus> getStatus() override { return _jobStatus; } //TODO:UJ relocate to JobBase
     bool getScanInteractive() const override { return false; } ///< UberJobs are never interactive.
@@ -71,7 +71,7 @@ public:
 
     bool verifyPayload() const;
 
-    /// &&& TODO: may not need,
+    /// &&& TODO:UJ may not need,
     void prepScrubResults();
 
     std::string workerResource; // TODO:UJ make private

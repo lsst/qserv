@@ -140,6 +140,7 @@ public:
             // _processData will have created another AskForResponseDataCmd object if was needed.
             tTotal.stop();
         }
+        LOGS(_log, LOG_LVL_WARN, "&&& QR after _processData");
         _setState(State::DONE2);
         LOGS(_log, LOG_LVL_DEBUG, "Ask data is done wait=" << tWaiting.getElapsed() <<
                 " total=" << tTotal.getElapsed());
@@ -228,11 +229,9 @@ char* QueryRequest::GetRequest(int& requestLength) {
         requestLength = 0;
         return const_cast<char*>("");
     }
-    //&&& requestLength = jq->getDescription()->payload().size();
     requestLength = jq->getPayload().size();
     LOGS(_log, LOG_LVL_DEBUG, "Requesting, payload size: " << requestLength);
     // Andy promises that his code won't corrupt it.
-    //&&& return const_cast<char*>(jq->getDescription()->payload().data());
     return const_cast<char*>(jq->getPayload().data());
 }
 
@@ -264,7 +263,6 @@ bool QueryRequest::ProcessResponse(XrdSsiErrInfo  const& eInfo, XrdSsiRespInfo c
         ostringstream os;
         os << _jobIdStr << "ProcessResponse request failed "
            << getSsiErr(eInfo, nullptr) << " " << GetEndPoint();
-        //&&& jq->getDescription()->respHandler()->errorFlush(os.str(), -1);
         jq->getRespHandler()->errorFlush(os.str(), -1);
         jq->getStatus()->updateInfo(_jobIdStr, JobStatus::RESPONSE_ERROR);
         _errorFinish();
@@ -344,7 +342,6 @@ bool QueryRequest::_importStream(JobBase::Ptr const& jq) {
 
 void QueryRequest::_queueAskForResponse(AskForResponseDataCmd::Ptr const& cmd, JobBase::Ptr const& jq, bool initialRequest) {
     // Interactive queries have highest priority.
-    //&&&if (jq->getDescription()->getScanInteractive()) {
     if (jq->getScanInteractive()) {
         _qdispPool->queCmd(cmd, 0);
     } else {
@@ -700,11 +697,17 @@ void QueryRequest::_finish() {
 /// Inform the Executive that this query completed, and
 // Call MarkCompleteFunc only once, it should only be called from _finish() or _errorFinish.
 void QueryRequest::_callMarkComplete(bool success) {
+    LOGS(_log, LOG_LVL_WARN, "&&& QueryRequest::_callMarkComplete a _calledMarkComplete=" << _calledMarkComplete);
     if (!_calledMarkComplete.exchange(true)) {
+        LOGS(_log, LOG_LVL_WARN, "&&& QueryRequest::_callMarkComplete b");
         auto jq = _job;
         //&&&if (jq != nullptr) jq->getMarkCompleteFunc()->operator()(success);
-        if (jq != nullptr) jq->callMarkCompleteFunc(success);
+        if (jq != nullptr) {
+            LOGS(_log, LOG_LVL_WARN, "&&& QueryRequest::_callMarkComplete c");
+            jq->callMarkCompleteFunc(success);
+        }
     }
+    LOGS(_log, LOG_LVL_WARN, "&&& QueryRequest::_callMarkComplete end");
 }
 
 ostream& operator<<(ostream& os, QueryRequest const& qr) {

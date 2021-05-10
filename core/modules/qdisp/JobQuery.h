@@ -66,7 +66,8 @@ public:
 
     QueryId getQueryId() const override {return _qid; }
     int getIdInt() const override { return _jobDescription->id(); }
-    std::string getPayload() const override { return _jobDescription->payload(); }
+    //&&& std::string getPayload() const override { return _jobDescription->payload(); }
+    std::string const& getPayload() const override;
     std::string const& getIdStr() const override { return _idStr; }
     std::shared_ptr<ResponseHandler> getRespHandler() override { return _jobDescription->respHandler(); }
     bool getScanInteractive() const override { return _jobDescription->getScanInteractive(); }
@@ -83,8 +84,7 @@ public:
         return _queryRequestPtr;
     }
 
-    //std::shared_ptr<MarkCompleteFunc> getMarkCompleteFunc() { return _markCompleteFunc; } // &&& delete
-    void callMarkCompleteFunc(bool success) override { _markCompleteFunc->operator ()(success); }
+    void callMarkCompleteFunc(bool success) override;
 
     bool cancel();
     bool isQueryCancelled() override;

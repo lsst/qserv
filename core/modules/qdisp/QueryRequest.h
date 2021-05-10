@@ -158,10 +158,9 @@ private:
     void _setHoldState(HoldState state);
     HoldState _holdState{NO_HOLD0};
 
-    /// Job information. Not using a weak_ptr as Executive could drop its JobQuery::Ptr before we're done with it.
-    /// A call to cancel() could reset _jobQuery early, so copy or protect _jobQuery with _finishStatusMutex
-    /// as needed. If (_finishStatus == ACTIVE) _jobQuery should be good.
-    //&&& std::shared_ptr<JobQuery> _jobQuery;
+    /// Job information. Not using a weak_ptr as Executive could drop its JobBase::Ptr before we're done with it.
+    /// A call to cancel() could reset _job early, so copy or protect _job with _finishStatusMutex
+    /// as needed. If (_finishStatus == ACTIVE) _job should be good.
     std::shared_ptr<JobBase> _job;
 
     std::atomic<bool> _retried {false}; ///< Protect against multiple retries of _jobQuery from a 

@@ -206,7 +206,7 @@ void Executive::waitForAllJobsToStart() {
 // @return true if query was actually started (i.e. we were not cancelled)
 //
 bool Executive::startQuery(shared_ptr<JobQuery> const& jobQuery) {
-
+    LOGS(_log, LOG_LVL_WARN, "&&& Executive::startQuery");
     lock_guard<recursive_mutex> lock(_cancelled.getMutex());
 
     // If we have been cancelled, then return false.
@@ -238,6 +238,7 @@ bool Executive::startQuery(shared_ptr<JobQuery> const& jobQuery) {
 /// Return true if it was successfully added to the map.
 ///
 bool Executive::_addJobToMap(JobQuery::Ptr const& job) {
+    LOGS(_log, LOG_LVL_WARN, "&&& Executive::_addJobToMap jobId=" << job->getIdInt());
     auto entry = pair<int, JobQuery::Ptr>(job->getIdInt(), job);
     lock_guard<recursive_mutex> lockJobMap(_jobMapMtx);
     bool res = _jobMap.insert(entry).second;
@@ -279,6 +280,7 @@ bool Executive::join() {
 }
 
 void Executive::markCompleted(int jobId, bool success) {
+    LOGS(_log, LOG_LVL_WARN, "&&& Executive::markCompleted jobId=" << jobId << " success=" << success);
     ResponseHandler::Error err;
     string idStr = QueryIdHelper::makeIdStr(_id, jobId);
     LOGS(_log, LOG_LVL_DEBUG, "Executive::markCompleted " << success);

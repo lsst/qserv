@@ -85,7 +85,6 @@ public:
     std::weak_ptr<JobBase> getJobBase() { return _jobBase; }
 
 private:
-    //&&&std::weak_ptr<JobQuery> _jobQuery;
     std::weak_ptr<JobBase> _jobBase;
 };
 

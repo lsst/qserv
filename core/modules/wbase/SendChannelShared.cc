@@ -149,6 +149,7 @@ bool SendChannelShared::_transmit(bool erred, bool scanInteractive, bool largeRe
         auto sz = _transmitQueue.size();
         // Is this really the last message for this SharedSendChannel?
         bool reallyLast = (_lastRecvd && sz == 0);
+        LOGS(_log, LOG_LVL_WARN, "&&& reallyLast=" << reallyLast << " _lastRecvd=" << _lastRecvd << " sz=" << sz);
 
         // Append the header for the next message to  thisTransmit->dataMsg.
         proto::ProtoHeader* nextPHdr;

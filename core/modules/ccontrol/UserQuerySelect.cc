@@ -354,12 +354,10 @@ void UserQuerySelect::submit() {
 
         if (!uberJobsEnabled) {
             std::function<void(util::CmdData*)> funcBuildJob =
-                    [this, sequence,     // sequence must be a copy
-                     &job](util::CmdData*) {
-
-                QSERV_LOGCONTEXT_QUERY(_qMetaQueryId);
-                job->runJob();
-            };
+                [this, sequence, job{move(job)}](util::CmdData*) { // references in captures cause races
+                    QSERV_LOGCONTEXT_QUERY(_qMetaQueryId);
+                    job->runJob();
+                };
             auto cmd = std::make_shared<qdisp::PriorityCommand>(funcBuildJob);
             _executive->queueJobStart(cmd);
 
