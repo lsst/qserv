@@ -411,7 +411,8 @@ void UserQuerySelect::submit() {
             std::shared_ptr<ChunkMsgReceiver> cmr = ChunkMsgReceiver::newInstance(uberJobId, _messageStore);
             auto respHandler = std::make_shared<MergingHandler>(cmr, _infileMerger, uberResultName);
 
-            auto uJob = qdisp::UberJob::create(_executive, respHandler, _qMetaQueryId, uberJobId++);
+            auto uJob = qdisp::UberJob::create(_executive, respHandler, _qMetaQueryId,
+                                               uberJobId++, _qMetaCzarId);
 
             int chunksInUber = 0;
             WorkerResource& wr = *workerIter;

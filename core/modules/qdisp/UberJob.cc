@@ -25,6 +25,9 @@
 // System headers
 #include <stdexcept>
 
+// Third-party headers
+#include <google/protobuf/arena.h>
+
 // Qserv headers
 #include "global/LogContext.h"
 #include "proto/ProtoImporter.h"
@@ -46,16 +49,16 @@ namespace qdisp {
 
 UberJob::Ptr UberJob::create(Executive::Ptr const& executive,
                   std::shared_ptr<ResponseHandler> const& respHandler,
-                  int queryId, int uberJobId) {
-    UberJob::Ptr uJob(new UberJob(executive, respHandler, queryId, uberJobId)); //&&& replace with make_shared
+                  int queryId, int uberJobId, qmeta::CzarId czarId) {
+    UberJob::Ptr uJob(new UberJob(executive, respHandler, queryId, uberJobId, czarId));
     return uJob;
 }
 
 UberJob::UberJob(Executive::Ptr const& executive,
          std::shared_ptr<ResponseHandler> const& respHandler,
-         int queryId, int uberJobId)
+         int queryId, int uberJobId, qmeta::CzarId czarId)
     : JobBase(), _executive(executive), _respHandler(respHandler), _queryId(queryId), _uberJobId(uberJobId),
-      _idStr("QID=" + to_string(_queryId) + ":uber=" + to_string(uberJobId)) {
+      _czarId(czarId), _idStr("QID=" + to_string(_queryId) + ":uber=" + to_string(uberJobId)) {
     _qdispPool = executive->getQdispPool();
 }
 
@@ -73,8 +76,23 @@ bool UberJob::addJob(JobQuery* job) {
 
 
 bool UberJob::runUberJob() {
-    throw Bug("&&&NEED_CODE - at this point, all the jobs in UberJob must be in the payload. this can be done in this function");
     QSERV_LOGCONTEXT_QUERY_JOB(getQueryId(), getIdInt());
+    // Build the uberjob payload.
+    // TODO:UJ For simplicity in the first pass, just make a TaskMsg for each Job and append it to the UberJobMsg.
+    //         This is terribly inefficient and should be replaced by using a template and list of chunks that the
+    //         worker fills in, much like subchunks are done now.
+    {
+        google::protobuf::Arena arena;
+        proto::UberJobMsg *ujMsg = google::protobuf::Arena::CreateMessage<proto::UberJobMsg>(&arena);
+        ujMsg->set_queryid(getQueryId());
+        ujMsg->set_czarid(_czarId);
+        for (auto&& job:_jobs) {
+            proto::TaskMsg* tMsg = ujMsg->add_taskmsg();
+            job->getDescription()->fillTaskMsg(tMsg);
+        }
+        ujMsg->SerializeToString(&_payload);
+    }
+
     auto executive = _executive.lock();
     if (executive == nullptr) {
         LOGS(_log, LOG_LVL_ERROR, "runUberJob failed executive==nullptr");

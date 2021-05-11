@@ -81,7 +81,9 @@ message TaskMsg {
 //         with chunkId numbers which the worker would then expand into full queries. Much
 //         like how subchunks are now handled.
 message UberJobMsg {
-	repeated TaskMsg taskMsg = 1;
+	required uint64 queryid = 1;
+	required uint32 czarid = 2;
+	repeated TaskMsg taskMsg = 3;
 }
 
 // Result message received from worker

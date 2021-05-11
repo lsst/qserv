@@ -29,6 +29,8 @@
 #include "qdisp/JobBase.h"
 #include "qdisp/JobQuery.h"
 #include "qdisp/QueryRequest.h"
+#include "qmeta/types.h"
+
 
 // This header declarations
 namespace lsst {
@@ -41,7 +43,7 @@ public:
 
     static Ptr create(Executive::Ptr const& executive,
                       std::shared_ptr<ResponseHandler> const& respHandler,
-                      int queryId, int uberJobId);
+                      int queryId, int uberJobId, qmeta::CzarId czarId);
     UberJob() = delete;
     UberJob(UberJob const&) = delete;
     UberJob& operator=(UberJob const&) = delete;
@@ -81,7 +83,7 @@ public:
 private:
     UberJob(Executive::Ptr const& executive,
             std::shared_ptr<ResponseHandler> const& respHandler,
-            int queryId, int uberJobId);
+            int queryId, int uberJobId, qmeta::CzarId czarId);
 
     std::vector<JobQuery*> _jobs;
     std::atomic<bool> _started{false};
@@ -91,12 +93,14 @@ private:
     std::shared_ptr<QueryRequest> _queryRequestPtr;
     std::mutex _qrMtx;
 
-    std::string _payload{"&&& NEED_REAL_PAYLOAD"};
+    std::string _payload; ///< XrdSsi message to be sent to the worker resource.
 
     std::weak_ptr<Executive> _executive;
     std::shared_ptr<ResponseHandler> _respHandler;
     int const _queryId;
     int const _uberJobId;
+    qmeta::CzarId _czarId;
+
     std::string const _idStr;
     std::shared_ptr<QdispPool> _qdispPool;
 };
