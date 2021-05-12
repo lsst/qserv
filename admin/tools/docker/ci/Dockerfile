@@ -34,6 +34,8 @@ RUN mkdir -p /qserv/data /config-etc /qserv/run/tmp \
     && chown qserv:qserv /qserv/data /config-etc /qserv/run/tmp
 
 RUN setcap cap_ipc_lock=+ep /usr/local/bin/xrootd
+RUN setcap cap_ipc_lock=+ep /usr/local/bin/cmsd
+RUN setcap cap_sys_resource=+ep /usr/local/bin/xrootd
 USER qserv
 
 VOLUME /home/qserv
