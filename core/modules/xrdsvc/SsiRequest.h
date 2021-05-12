@@ -44,6 +44,12 @@
 // Forward declarations
 class XrdSsiService;
 
+
+namespace google {
+namespace protobuf {
+class Arena;
+}}
+
 namespace lsst {
 namespace qserv {
 namespace wbase {
@@ -154,6 +160,10 @@ private:
     wbase::WorkerCommand::Ptr parseWorkerCommand(char const* reqData, int reqSize);
 
 private:
+    /// Convert the UberJobMsg into its component TaskMsgs and run them.
+    /// uberJobMsg must be in memory held by gArena.
+    void _handleUberJob(proto::UberJobMsg* uberJobMsg,
+                        std::shared_ptr<google::protobuf::Arena> const& gArena);
 
     /// Counters of the database/chunk requests which are being used
     static std::shared_ptr<wpublish::ResourceMonitor> _resourceMonitor;

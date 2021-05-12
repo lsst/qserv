@@ -83,11 +83,11 @@ bool UberJob::runUberJob() {
     //         worker fills in, much like subchunks are done now.
     {
         google::protobuf::Arena arena;
-        proto::UberJobMsg *ujMsg = google::protobuf::Arena::CreateMessage<proto::UberJobMsg>(&arena);
+        proto::UberJobMsg* ujMsg = google::protobuf::Arena::CreateMessage<proto::UberJobMsg>(&arena);
         ujMsg->set_queryid(getQueryId());
         ujMsg->set_czarid(_czarId);
         for (auto&& job:_jobs) {
-            proto::TaskMsg* tMsg = ujMsg->add_taskmsg();
+            proto::TaskMsg* tMsg = ujMsg->add_taskmsgs();
             job->getDescription()->fillTaskMsg(tMsg);
         }
         ujMsg->SerializeToString(&_payload);

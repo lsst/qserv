@@ -71,26 +71,27 @@ lsst::qserv::wcontrol::TransmitMgr::Ptr locTransmitMgr =
 
 std::vector<SendChannelShared::Ptr> locSendSharedPtrs;
 
-Task::Ptr makeTask(std::shared_ptr<TaskMsg> tm) {
+auto gArena = std::make_shared<google::protobuf::Arena>();
+
+Task::Ptr makeTask(TaskMsg* tm) {
     auto sendC = std::make_shared<SendChannel>();
     auto sc = SendChannelShared::create(sendC, locTransmitMgr);
     locSendSharedPtrs.push_back(sc);
-    Task::Ptr task(new Task(tm, "", 0, sc));
+    Task::Ptr task(new Task(*tm, "", 0, sc, gArena));
     task->setSafeToMoveRunning(true); // Can't wait for MemMan in unit tests.
     return task;
 }
 
 
 struct SchedulerFixture {
-    typedef std::shared_ptr<TaskMsg> TaskMsgPtr;
 
     SchedulerFixture(void) {
         counter = 20;
     }
     ~SchedulerFixture(void) { }
 
-    TaskMsgPtr newTaskMsg(int seq, lsst::qserv::QueryId qId, int jobId) {
-        TaskMsgPtr t = std::make_shared<TaskMsg>();
+    TaskMsg* newTaskMsg(int seq, lsst::qserv::QueryId qId, int jobId) {
+        TaskMsg* t = google::protobuf::Arena::CreateMessage<TaskMsg>(gArena.get());
         t->set_session(123456);
         t->set_queryid(qId);
         t->set_jobid(jobId);
@@ -106,8 +107,8 @@ struct SchedulerFixture {
         return t;
     }
 
-    TaskMsgPtr newTaskMsgSimple(int seq, lsst::qserv::QueryId qId, int jobId) {
-        TaskMsgPtr t = std::make_shared<TaskMsg>();
+    TaskMsg* newTaskMsgSimple(int seq, lsst::qserv::QueryId qId, int jobId) {
+        TaskMsg* t = google::protobuf::Arena::CreateMessage<TaskMsg>(gArena.get());
         t->set_session(123456);
         t->set_queryid(qId);
         t->set_jobid(jobId);
@@ -118,9 +119,9 @@ struct SchedulerFixture {
     }
 
 
-    TaskMsgPtr newTaskMsgScan(int seq, int priority, lsst::qserv::QueryId qId, int jobId,
+    TaskMsg* newTaskMsgScan(int seq, int priority, lsst::qserv::QueryId qId, int jobId,
                               std::string const& tableName="whatever") {
-        auto taskMsg = newTaskMsg(seq, qId, jobId);
+        TaskMsg* taskMsg = newTaskMsg(seq, qId, jobId);
         taskMsg->set_scanpriority(priority);
         auto sTbl = taskMsg->add_scantable();
         sTbl->set_db("elephant");

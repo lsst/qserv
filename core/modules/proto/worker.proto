@@ -83,7 +83,7 @@ message TaskMsg {
 message UberJobMsg {
 	required uint64 queryid = 1;
 	required uint32 czarid = 2;
-	repeated TaskMsg taskMsg = 3;
+	repeated TaskMsg taskMsgs = 3;
 }
 
 // Result message received from worker

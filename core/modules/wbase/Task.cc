@@ -77,16 +77,16 @@ namespace wbase {
 // Task::ChunkEqual functor
 bool Task::ChunkEqual::operator()(Task::Ptr const& x, Task::Ptr const& y) {
     if (!x || !y) { return false; }
-    if ((!x->msg) || (!y->msg)) { return false; }
-    return x->msg->has_chunkid() && y->msg->has_chunkid()
-        && x->msg->chunkid()  == y->msg->chunkid();
+    //&&& if ((!x->msg) || (!y->msg)) { return false; }
+    return x->msg.has_chunkid() && y->msg.has_chunkid()
+        && x->msg.chunkid()  == y->msg.chunkid();
 }
 
 // Task::PtrChunkIdGreater functor
 bool Task::ChunkIdGreater::operator()(Task::Ptr const& x, Task::Ptr const& y) {
     if (!x || !y) { return false; }
-    if ((!x->msg) || (!y->msg)) { return false; }
-    return x->msg->chunkid()  > y->msg->chunkid();
+    //&&&if ((!x->msg) || (!y->msg)) { return false; }
+    return x->msg.chunkid()  > y->msg.chunkid();
 }
 
 
@@ -99,19 +99,21 @@ IdSet Task::allIds{};
 /// available to define the action to take when this task is run, so
 /// Command::setFunc() is used set the action later. This is why
 /// the util::CommandThreadPool is not called here.
-Task::Task(TaskMsgPtr const& t, std::string const& query, int fragmentNumber,
-        std::shared_ptr<SendChannelShared> const& sc)
+Task::Task(proto::TaskMsg const& t, std::string const& query, int fragmentNumber,
+           std::shared_ptr<SendChannelShared> const& sc,
+           std::shared_ptr<google::protobuf::Arena> const& gArena)
     : msg(t), sendChannel(sc),
-      _qId(t->queryid()), _jId(t->jobid()), _attemptCount(t->attemptcount()),
+      _qId(t.queryid()), _jId(t.jobid()), _attemptCount(t.attemptcount()),
       _idStr(QueryIdHelper::makeIdStr(_qId, _jId)),
       _queryString(query),
-      _queryFragmentNum(fragmentNumber) {
+      _queryFragmentNum(fragmentNumber),
+      _gArena(gArena) {
 
 
-    hash = hashTaskMsg(*t);
+    hash = hashTaskMsg(t);
 
-    if (t->has_user()) {
-        user = t->user();
+    if (t.has_user()) {
+        user = t.user();
     } else {
         user = defaultUser;
     }
@@ -121,13 +123,13 @@ Task::Task(TaskMsgPtr const& t, std::string const& query, int fragmentNumber,
     LOGS(_log, LOG_LVL_DEBUG, "Task(...) " << "this=" << this << " : " << allIds);
 
     // Determine which major tables this task will use.
-    int const size = msg->scantable_size();
+    int const size = msg.scantable_size();
     for(int j=0; j < size; ++j) {
-        _scanInfo.infoTables.push_back(proto::ScanTableInfo(msg->scantable(j)));
+        _scanInfo.infoTables.push_back(proto::ScanTableInfo(msg.scantable(j)));
     }
-    _scanInfo.scanRating = msg->scanpriority();
+    _scanInfo.scanRating = msg.scanpriority();
     _scanInfo.sortTablesSlowestFirst();
-    _scanInteractive = msg->scaninteractive();
+    _scanInteractive = msg.scaninteractive();
 }
 
 Task::~Task() {
@@ -136,18 +138,19 @@ Task::~Task() {
 }
 
 
-std::vector<Task::Ptr> Task::createTasks(std::shared_ptr<proto::TaskMsg> const& taskMsg,
-                                         std::shared_ptr<wbase::SendChannelShared> const& sendChannel) {
-    QSERV_LOGCONTEXT_QUERY_JOB(taskMsg->queryid(), taskMsg->jobid());
+std::vector<Task::Ptr> Task::createTasks(proto::TaskMsg const& taskMsg,
+                                         std::shared_ptr<wbase::SendChannelShared> const& sendChannel,
+                                         std::shared_ptr<google::protobuf::Arena> const& gArena) {
+    QSERV_LOGCONTEXT_QUERY_JOB(taskMsg.queryid(), taskMsg.jobid());
     std::vector<Task::Ptr> vect;
 
     /// Make one task for each fragment.
-    int fragmentCount = taskMsg->fragment_size();
+    int fragmentCount = taskMsg.fragment_size();
     if (fragmentCount < 1) {
         throw Bug("Task::createTasks No fragments to execute in TaskMsg");
     }
     for (int fragNum=0; fragNum<fragmentCount; ++fragNum) {
-        proto::TaskMsg_Fragment const& fragment = taskMsg->fragment(fragNum);
+        proto::TaskMsg_Fragment const& fragment = taskMsg.fragment(fragNum);
         for (const std::string queryStr: fragment.query()) {
             // fragment.has_subchunks() == true and fragment.subchunks().id().empty() == false
             // is apparently valid and must go to the else clause.
@@ -156,11 +159,11 @@ std::vector<Task::Ptr> Task::createTasks(std::shared_ptr<proto::TaskMsg> const& 
                 for (auto subchunkId : fragment.subchunks().id()) {
                     std::string qs(queryStr);
                     boost::algorithm::replace_all(qs, SUBCHUNK_TAG, std::to_string(subchunkId));
-                    auto task = std::make_shared<wbase::Task>(taskMsg, qs, fragNum, sendChannel);
+                    auto task = std::make_shared<wbase::Task>(taskMsg, qs, fragNum, sendChannel, gArena);
                     vect.push_back(task);
                 }
             } else {
-                auto task = std::make_shared<wbase::Task>(taskMsg, queryStr, fragNum, sendChannel);
+                auto task = std::make_shared<wbase::Task>(taskMsg, queryStr, fragNum, sendChannel, gArena);
                 //TODO: Maybe? Is it better to move fragment info from
                 //      ChunkResource getResourceFragment(int i) to here???
                 //      It looks like Task should contain a ChunkResource::Info object
@@ -177,8 +180,8 @@ std::vector<Task::Ptr> Task::createTasks(std::shared_ptr<proto::TaskMsg> const& 
 
 /// @return the chunkId for this task. If the task has no chunkId, return -1.
 int Task::getChunkId() {
-    if (msg->has_chunkid()) {
-        return msg->chunkid();
+    if (msg.has_chunkid()) {
+        return msg.chunkid();
     }
     return -1;
 }
@@ -319,7 +322,7 @@ memman::MemMan::Status Task::getMemHandleStatus() {
 
 
 std::ostream& operator<<(std::ostream& os, Task const& t) {
-    proto::TaskMsg& m = *t.msg;
+    proto::TaskMsg const& m = t.msg;
     os << "Task: "
        << "msg: " << t._idStr
        << " session=" << m.session()

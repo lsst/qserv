@@ -103,7 +103,7 @@ QueryRunner::QueryRunner(wbase::Task::Ptr const& task,
       _sqlConnMgr(sqlConnMgr) {
     int rc = mysql_thread_init();
     assert(rc == 0);
-    assert(_task->msg);
+    //&&& assert(_task->msg);
 }
 
 /// Initialize the db connection
@@ -124,10 +124,10 @@ bool QueryRunner::_initConnection() {
     return true;
 }
 
-/// Override _dbName with _msg->db() if available.
+/// Override _dbName with _msg.db() if available.
 void QueryRunner::_setDb() {
-    if (_task->msg->has_db()) {
-        _dbName = _task->msg->db();
+    if (_task->msg.has_db()) {
+        _dbName = _task->msg.db();
         LOGS(_log, LOG_LVL_DEBUG, "QueryRunner overriding dbName with " << _dbName);
     }
 }
@@ -161,7 +161,7 @@ bool QueryRunner::runQuery() {
         return false;
     }
 
-    _czarId = _task->msg->czarid();
+    _czarId = _task->msg.czarid();
 
     // Wait for memman to finish reserving resources. This can take several seconds.
     util::Timer memTimer;
@@ -193,8 +193,8 @@ bool QueryRunner::runQuery() {
         return false;
     }
 
-    if (_task->msg->has_protocol()) {
-        switch(_task->msg->protocol()) {
+    if (_task->msg.has_protocol()) {
+        switch(_task->msg.protocol()) {
         case 2:
             return _dispatchChannel(); // Run the query and send the results back.
         case 1:
@@ -249,7 +249,7 @@ void QueryRunner::_buildDataMsg(unsigned int rowCount, size_t tSize) {
     result->set_attemptcount(_task->getAttemptCount());
 
     if (!_multiError.empty()) {
-        string chunkId = to_string(_task->msg->chunkid());
+        string chunkId = to_string(_task->msg.chunkid());
         string msg = "Error(s) in result for chunk #" + chunkId + ": " + _multiError.toOneLineString();
         result->set_errormsg(msg);
         LOGS(_log, LOG_LVL_ERROR, msg);
@@ -299,8 +299,8 @@ proto::Result* QueryRunner::_initResult() {
     result->set_jobid(_task->getJobId());
     _transmitData->result = result;
     result->mutable_rowschema();
-    if (_task->msg->has_session()) {
-        result->set_session(_task->msg->session());
+    if (_task->msg.has_session()) {
+        result->set_session(_task->msg.session());
     }
     // Load schema from _schemaCols
     for(auto&& col:_schemaCols) {
@@ -426,7 +426,7 @@ bool QueryRunner::_fillRows(MYSQL_RES* result, int numFields, uint& rowCount, si
 
 bool QueryRunner::_dispatchChannel() {
     int const fragNum = _task->getQueryFragmentNum();
-    proto::TaskMsg& tMsg = *_task->msg;
+    proto::TaskMsg const& tMsg = _task->msg;
     bool erred = false;
     int numFields = -1;
     if (tMsg.fragment_size() < 1) {

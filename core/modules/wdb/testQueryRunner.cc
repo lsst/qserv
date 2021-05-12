@@ -73,9 +73,11 @@ using lsst::qserv::wdb::QueryRunner;
 
 TransmitMgr::Ptr locTransmitMgr = make_shared<TransmitMgr>(50);
 
+auto gArena = std::make_shared<google::protobuf::Arena>();
+
 struct Fixture {
-    shared_ptr<TaskMsg> newTaskMsg() {
-        shared_ptr<TaskMsg> t = make_shared<TaskMsg>();
+    TaskMsg* newTaskMsg() {
+        TaskMsg* t = google::protobuf::Arena::CreateMessage<TaskMsg>(gArena.get());
         t->set_protocol(2);
         t->set_session(123456);
         t->set_chunkid(3240); // hardcoded
@@ -90,10 +92,11 @@ struct Fixture {
         return t;
     }
     shared_ptr<Task> newTask() {
-        shared_ptr<TaskMsg> msg(newTaskMsg());
+        //&&&shared_ptr<TaskMsg> msg(newTaskMsg());
+        TaskMsg* msg = newTaskMsg();
         shared_ptr<SendChannel> sc(SendChannel::newNopChannel());
         auto scs = SendChannelShared::create(sc, locTransmitMgr);
-        Task::Ptr taskPtr(new Task(msg, "", 0, scs));
+        Task::Ptr taskPtr(new Task(*msg, "", 0, scs, gArena));
         return taskPtr;
     }
 
@@ -112,10 +115,10 @@ struct Fixture {
 BOOST_FIXTURE_TEST_SUITE(Basic, Fixture)
 
 BOOST_AUTO_TEST_CASE(Simple) {
-    shared_ptr<TaskMsg> msg(newTaskMsg());
+    TaskMsg* msg = newTaskMsg();
     shared_ptr<SendChannel> sendC(SendChannel::newNopChannel());
     auto sc = SendChannelShared::create(sendC, locTransmitMgr);
-    Task::Ptr task(new Task(msg, "", 0, sc));
+    Task::Ptr task(new Task(*msg, "", 0, sc, gArena));
     FakeBackend::Ptr backend = make_shared<FakeBackend>();
     shared_ptr<ChunkResourceMgr> crm = ChunkResourceMgr::newMgr(backend);
     SqlConnMgr::Ptr sqlConnMgr = make_shared<SqlConnMgr>(20,15);
@@ -125,10 +128,10 @@ BOOST_AUTO_TEST_CASE(Simple) {
 
 BOOST_AUTO_TEST_CASE(Output) {
     string out;
-    shared_ptr<TaskMsg> msg(newTaskMsg());
+    TaskMsg* msg = newTaskMsg();
     shared_ptr<SendChannel> sendC(SendChannel::newStringChannel(out));
     auto sc = SendChannelShared::create(sendC, locTransmitMgr);
-    Task::Ptr task(new Task(msg, "", 0, sc));
+    Task::Ptr task(new Task(*msg, "", 0, sc, gArena));
     FakeBackend::Ptr backend = make_shared<FakeBackend>();
     shared_ptr<ChunkResourceMgr> crm = ChunkResourceMgr::newMgr(backend);
     SqlConnMgr::Ptr sqlConnMgr = make_shared<SqlConnMgr>(20,15);
@@ -149,7 +152,7 @@ BOOST_AUTO_TEST_CASE(Output) {
     result.PrintDebugString();
     string computedMd5 = util::StringHash::getMd5(cursor, remain);
     BOOST_CHECK_EQUAL(ph.md5(), computedMd5);
-    BOOST_CHECK_EQUAL(task->msg->session(), result.session());
+    BOOST_CHECK_EQUAL(task->msg.session(), result.session());
 }
 
 BOOST_AUTO_TEST_SUITE_END()
