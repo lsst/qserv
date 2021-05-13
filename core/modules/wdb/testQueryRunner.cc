@@ -40,6 +40,7 @@
 #include "wcontrol/TransmitMgr.h"
 #include "wdb/ChunkResource.h"
 #include "wdb/QueryRunner.h"
+#include "wpublish/ResourceMonitor.h"
 
 // Boost unit test header
 #define BOOST_TEST_MODULE QueryRunner
@@ -70,10 +71,14 @@ using lsst::qserv::wdb::ChunkResource;
 using lsst::qserv::wdb::ChunkResourceMgr;
 using lsst::qserv::wdb::FakeBackend;
 using lsst::qserv::wdb::QueryRunner;
+using lsst::qserv::wpublish::ResourceMonitor;
+using lsst::qserv::wpublish::ResourceMonitorLock;
 
 TransmitMgr::Ptr locTransmitMgr = make_shared<TransmitMgr>(50);
 
 auto gArena = std::make_shared<google::protobuf::Arena>();
+
+shared_ptr<ResourceMonitor> resourceMonitor(new ResourceMonitor());
 
 struct Fixture {
     TaskMsg* newTaskMsg() {
@@ -92,11 +97,11 @@ struct Fixture {
         return t;
     }
     shared_ptr<Task> newTask() {
-        //&&&shared_ptr<TaskMsg> msg(newTaskMsg());
+
         TaskMsg* msg = newTaskMsg();
         shared_ptr<SendChannel> sc(SendChannel::newNopChannel());
         auto scs = SendChannelShared::create(sc, locTransmitMgr);
-        Task::Ptr taskPtr(new Task(*msg, "", 0, scs, gArena));
+        Task::Ptr taskPtr(new Task(*msg, "", 0, scs, gArena, getRmLock()));
         return taskPtr;
     }
 
@@ -110,6 +115,12 @@ struct Fixture {
         }
         return mySqlConfig;
     }
+
+    /// Just need a dummy ResourceMonitorLock as it is irrelevant to what is being tested.
+    shared_ptr<ResourceMonitorLock> getRmLock() {
+        auto resourceLock = make_shared<ResourceMonitorLock>(*(resourceMonitor.get()), "/dummyRes/1234");
+        return resourceLock;
+    }
 };
 
 BOOST_FIXTURE_TEST_SUITE(Basic, Fixture)
@@ -118,7 +129,7 @@ BOOST_AUTO_TEST_CASE(Simple) {
     TaskMsg* msg = newTaskMsg();
     shared_ptr<SendChannel> sendC(SendChannel::newNopChannel());
     auto sc = SendChannelShared::create(sendC, locTransmitMgr);
-    Task::Ptr task(new Task(*msg, "", 0, sc, gArena));
+    Task::Ptr task(new Task(*msg, "", 0, sc, gArena, getRmLock()));
     FakeBackend::Ptr backend = make_shared<FakeBackend>();
     shared_ptr<ChunkResourceMgr> crm = ChunkResourceMgr::newMgr(backend);
     SqlConnMgr::Ptr sqlConnMgr = make_shared<SqlConnMgr>(20,15);
@@ -131,7 +142,7 @@ BOOST_AUTO_TEST_CASE(Output) {
     TaskMsg* msg = newTaskMsg();
     shared_ptr<SendChannel> sendC(SendChannel::newStringChannel(out));
     auto sc = SendChannelShared::create(sendC, locTransmitMgr);
-    Task::Ptr task(new Task(*msg, "", 0, sc, gArena));
+    Task::Ptr task(new Task(*msg, "", 0, sc, gArena, getRmLock()));
     FakeBackend::Ptr backend = make_shared<FakeBackend>();
     shared_ptr<ChunkResourceMgr> crm = ChunkResourceMgr::newMgr(backend);
     SqlConnMgr::Ptr sqlConnMgr = make_shared<SqlConnMgr>(20,15);

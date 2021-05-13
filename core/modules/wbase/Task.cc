@@ -101,13 +101,15 @@ IdSet Task::allIds{};
 /// the util::CommandThreadPool is not called here.
 Task::Task(proto::TaskMsg const& t, std::string const& query, int fragmentNumber,
            std::shared_ptr<SendChannelShared> const& sc,
-           std::shared_ptr<google::protobuf::Arena> const& gArena)
+           std::shared_ptr<google::protobuf::Arena> const& gArena,
+           std::shared_ptr<wpublish::ResourceMonitorLock> const& rmLock)
     : msg(t), sendChannel(sc),
       _qId(t.queryid()), _jId(t.jobid()), _attemptCount(t.attemptcount()),
       _idStr(QueryIdHelper::makeIdStr(_qId, _jId)),
       _queryString(query),
       _queryFragmentNum(fragmentNumber),
-      _gArena(gArena) {
+      _gArena(gArena),
+      _resourceMonitorLock(rmLock) {
 
 
     hash = hashTaskMsg(t);
@@ -140,7 +142,8 @@ Task::~Task() {
 
 std::vector<Task::Ptr> Task::createTasks(proto::TaskMsg const& taskMsg,
                                          std::shared_ptr<wbase::SendChannelShared> const& sendChannel,
-                                         std::shared_ptr<google::protobuf::Arena> const& gArena) {
+                                         std::shared_ptr<google::protobuf::Arena> const& gArena,
+                                         std::shared_ptr<wpublish::ResourceMonitorLock> const& rmLock) {
     QSERV_LOGCONTEXT_QUERY_JOB(taskMsg.queryid(), taskMsg.jobid());
     std::vector<Task::Ptr> vect;
 
@@ -159,11 +162,11 @@ std::vector<Task::Ptr> Task::createTasks(proto::TaskMsg const& taskMsg,
                 for (auto subchunkId : fragment.subchunks().id()) {
                     std::string qs(queryStr);
                     boost::algorithm::replace_all(qs, SUBCHUNK_TAG, std::to_string(subchunkId));
-                    auto task = std::make_shared<wbase::Task>(taskMsg, qs, fragNum, sendChannel, gArena);
+                    auto task = std::make_shared<wbase::Task>(taskMsg, qs, fragNum, sendChannel, gArena, rmLock);
                     vect.push_back(task);
                 }
             } else {
-                auto task = std::make_shared<wbase::Task>(taskMsg, queryStr, fragNum, sendChannel, gArena);
+                auto task = std::make_shared<wbase::Task>(taskMsg, queryStr, fragNum, sendChannel, gArena, rmLock);
                 //TODO: Maybe? Is it better to move fragment info from
                 //      ChunkResource getResourceFragment(int i) to here???
                 //      It looks like Task should contain a ChunkResource::Info object
@@ -262,6 +265,11 @@ void Task::started(std::chrono::system_clock::time_point const& now) {
 /// Set values associated with the Task being finished.
 /// @return milliseconds to complete the Task, system clock time.
 std::chrono::milliseconds Task::finished(std::chrono::system_clock::time_point const& now) {
+
+    /// Freeing the ResourceMonitorLock should have already happened, but doing so
+    /// again is harmless and it may have been missed if there was an exception.
+    freeResourceMonitorLock();
+
     std::chrono::milliseconds duration;
     {
         std::lock_guard<std::mutex> guard(_stateMtx);

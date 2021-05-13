@@ -41,6 +41,7 @@
 #include "wbase/Task.h"
 #include "wcontrol/TransmitMgr.h"
 #include "wpublish/QueriesAndChunks.h"
+#include "wpublish/ResourceMonitor.h"
 #include "wsched/ChunkDisk.h"
 #include "wsched/ChunkTasksQueue.h"
 #include "wsched/BlendScheduler.h"
@@ -63,6 +64,8 @@ using lsst::qserv::proto::TaskMsg;
 using lsst::qserv::wbase::Task;
 using lsst::qserv::wbase::SendChannel;
 using lsst::qserv::wbase::SendChannelShared;
+using lsst::qserv::wpublish::ResourceMonitor;
+using lsst::qserv::wpublish::ResourceMonitorLock;
 
 double const oneHr = 60.0;
 
@@ -73,11 +76,20 @@ std::vector<SendChannelShared::Ptr> locSendSharedPtrs;
 
 auto gArena = std::make_shared<google::protobuf::Arena>();
 
+std::shared_ptr<ResourceMonitor> resourceMonitor(new ResourceMonitor());
+
+/// Just need a dummy ResourceMonitorLock as it is irrelevant to what is being tested.
+std::shared_ptr<ResourceMonitorLock> getRmLock() {
+    auto resourceLock = std::make_shared<ResourceMonitorLock>(*(resourceMonitor.get()), "/dummyRes/1234");
+    return resourceLock;
+}
+
+
 Task::Ptr makeTask(TaskMsg* tm) {
     auto sendC = std::make_shared<SendChannel>();
     auto sc = SendChannelShared::create(sendC, locTransmitMgr);
     locSendSharedPtrs.push_back(sc);
-    Task::Ptr task(new Task(*tm, "", 0, sc, gArena));
+    Task::Ptr task(new Task(*tm, "", 0, sc, gArena, getRmLock()));
     task->setSafeToMoveRunning(true); // Can't wait for MemMan in unit tests.
     return task;
 }

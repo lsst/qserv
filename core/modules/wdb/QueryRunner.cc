@@ -452,6 +452,7 @@ bool QueryRunner::_dispatchChannel() {
             sqlTimer.start();
             MYSQL_RES* res = _primeResult(query); // This runs the SQL query, throws SqlErrorObj on failure.
             needToFreeRes = true;
+            _task->freeResourceMonitorLock();
             sqlTimer.stop();
             LOGS(_log, LOG_LVL_DEBUG, " fragment time=" << sqlTimer.getElapsed() << " query=" << query);
             _fillSchema(res);

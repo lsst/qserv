@@ -115,7 +115,8 @@ void SsiRequest::execute(XrdSsiRequest& req) {
         case ResourceUnit::DBCHUNK: {
 
             // Increment the counter of the database/chunk resources in use
-            _resourceMonitor->increment(_resourceName);
+            //&&& _resourceMonitor->increment(_resourceName);
+            auto resourceLock = std::make_shared<wpublish::ResourceMonitorLock>(*(_resourceMonitor.get()), _resourceName);
 
             // reqData has the entire request, so we can unpack it without waiting for
             // more data.
@@ -148,7 +149,7 @@ void SsiRequest::execute(XrdSsiRequest& req) {
             // and after the call to BindRequest.
             auto sendChannelBase = make_shared<wbase::SendChannel>(shared_from_this());
             auto sendChannel = wbase::SendChannelShared::create(sendChannelBase, _transmitMgr);
-            auto tasks = wbase::Task::createTasks(*taskMsg, sendChannel, gArena);
+            auto tasks = wbase::Task::createTasks(*taskMsg, sendChannel, gArena, resourceLock);
 
             ReleaseRequestBuffer();
             t.start();
@@ -370,9 +371,12 @@ void SsiRequest::Finished(XrdSsiRequest& req, XrdSsiRespInfo const& rinfo, bool 
 
     // Decrement the counter of the database/chunk resources in use
     ResourceUnit ru(_resourceName);
+
+    /* &&&
     if (ru.unitType() == ResourceUnit::DBCHUNK) {
         _resourceMonitor->decrement(_resourceName);
     }
+    */
 
     // We can't do much other than close the file.
     // It should work (on linux) to unlink the file after we open it, though.
@@ -513,9 +517,16 @@ void SsiRequest::_handleUberJob(proto::UberJobMsg* uberJobMsg,
         string db = taskMsg.db();
         int chunkId = taskMsg.chunkid();
         //&&& make a ResourceUnit with this info and register with _resourceMonitor->increment(_resourceName);
+        string resourcePath = "/" + db + "/" + to_string(chunkId);
+        ResourceUnit ru(resourcePath);
+        if (ru.db() != db || ru.chunk() != chunkId) {
+            throw Bug("&&& resource path didn't match ru");
+        }
+        //&&&_resourceMonitor->increment(resourcePath); /// &&& when is this released?
+        auto resourceLock = std::make_shared<wpublish::ResourceMonitorLock>(*(_resourceMonitor.get()), resourcePath);
 
         // If the query uses subchunks, the taskMsg will return multiple Tasks. Otherwise, one task.
-        auto nTasks = wbase::Task::createTasks(taskMsg, sendChannel, gArena);
+        auto nTasks = wbase::Task::createTasks(taskMsg, sendChannel, gArena, resourceLock);
         // Move nTasks into tasks
         tasks.insert(tasks.end(), std::make_move_iterator(nTasks.begin()),
                      std::make_move_iterator(nTasks.end()));
