@@ -137,7 +137,7 @@ private:
     /**
      * Grant SELECT authorizations for the new database to Qserv
      * MySQL account(s) at workers.
-     * 
+     *
      * @param databaseInfo database descriptor
      * @param allWorkers  'true' if all workers should be involved into the operation
      * @throws HttpError if the operation failed
@@ -148,7 +148,7 @@ private:
     /**
      * Enable this database in Qserv workers by adding an entry
      * to table 'qservw_worker.Dbs' at workers.
-     * 
+     *
      * @param databaseInfo database descriptor
      * @param allWorkers 'true' if all workers should be involved into the operation
      * @throws HttpError if the operation failed
@@ -162,7 +162,7 @@ private:
      * tables have chunks representations for all registered chunks, even though some
      * of the chunks may be empty. This stage enforces structural consistency across
      * partitioned tables.
-     * 
+     *
      * @param databaseInfo database descriptor
      * @param allWorkers 'true' if all workers should be involved into the operation
      * @throws HttpError if the operation failed
@@ -172,7 +172,7 @@ private:
 
     /**
      * Consolidate MySQL partitioned tables at workers by removing partitions.
-     * 
+     *
      * @param databaseInfo database descriptor
      * @param allWorkers 'true' if all workers should be involved into the operation
      * @throws HttpError if operation failed
@@ -258,7 +258,7 @@ private:
     static std::string const _partitionByColumn;
     static std::string const _partitionByColumnType;
 };
-    
+
 }}} // namespace lsst::qserv::replica
 
 #endif // LSST_QSERV_HTTPINGESTMODULE_H
