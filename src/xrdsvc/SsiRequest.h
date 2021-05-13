@@ -139,16 +139,16 @@ private:
             _mySqlConfig(mySqlConfig),
             _transmitMgr(transmitMgr){
     }
-    
+
     /// For internal error reporting
     void reportError (std::string const& errStr);
 
     /**
      * Parse a Protobuf request into the corresponding command
-     * 
+     *
      * @param reqData - pointer to the Protobuf data buffer
      * @param reqSize - size of the data buffer
-     * 
+     *
      * @return smart pointer to the corresponding command object or nullptr if failed
      */
     wbase::WorkerCommand::Ptr parseWorkerCommand(char const* reqData, int reqSize);
