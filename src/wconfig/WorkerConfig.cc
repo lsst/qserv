@@ -32,7 +32,9 @@
 
 // Qserv headers
 #include "mysql/MySqlConfig.h"
+#include "util/ConfigStoreError.h"
 #include "wsched/BlendScheduler.h"
+
 
 namespace {
 
@@ -46,10 +48,7 @@ namespace qserv {
 namespace wconfig {
 
 WorkerConfig::WorkerConfig(const util::ConfigStore& configStore)
-    : _mySqlConfig(configStore.getRequired("mysql.username"),
-            configStore.get("mysql.password"),
-            configStore.getRequired("mysql.socket")),
-      _memManClass(configStore.get("memman.class", "MemManReal")),
+    : _memManClass(configStore.get("memman.class", "MemManReal")),
       _memManSizeMb(configStore.getInt("memman.memory", 1000)),
       _memManLocation(configStore.getRequired("memman.location")),
       _threadPoolSize(configStore.getInt("scheduler.thread_pool_size", wsched::BlendScheduler::getMinPoolSize())),
@@ -77,6 +76,18 @@ WorkerConfig::WorkerConfig(const util::ConfigStore& configStore)
       _ReservedInteractiveSqlConnections(configStore.getInt("sqlconnections.reservedinteractivesqlconn", 50)),
       _maxTransmits(configStore.getInt("transmit.maxtransmits", 50)),
       _maxAlreadyTransmitting(configStore.getInt("transmit.maxalreadytransmitting", 10)) {
+    try {
+        _mySqlConfig = mysql::MySqlConfig(configStore.getRequired("mysql.username"),
+                                          configStore.get("mysql.password"),
+                                          configStore.getRequired("mysql.socket"));
+    } catch (util::KeyNotFoundError& e) {
+        _mySqlConfig = mysql::MySqlConfig(configStore.getRequired("mysql.username"),
+                                          configStore.get("mysql.password"),
+                                          configStore.getRequired("mysql.hostname"),
+                                          configStore.getIntRequired("mysql.port"),
+                                          "",  // socket
+                                          ""); // dbname
+    }
 }
 
 std::ostream& operator<<(std::ostream &out, WorkerConfig const& workerConfig) {

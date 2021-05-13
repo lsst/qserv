@@ -1,0 +1,16 @@
+#
+# Configuration file for log4cxx
+# used by Qserv-czar
+#
+
+log4j.rootLogger=WARN, CONSOLE
+
+# Use this appender to interlace xrootd debug messages with Qserv-czar standard
+# logs. stdout/stderr are redirected to console
+# This workaround is required because Qserv-czar can only outputs xrootd debug
+# message on stderr
+log4j.appender.CONSOLE=org.apache.log4j.ConsoleAppender
+log4j.appender.CONSOLE.layout=org.apache.log4j.PatternLayout
+# Follow RFC3339 data format (see http://tools.ietf.org/html/rfc3339)
+log4j.appender.CONSOLE.layout.ConversionPattern=[%d{yyyy-MM-ddTHH:mm:ss.SSSZ}] [LWP:%X{LWP}] %-5p %c{2} (%F:%L) - %m%n
+
