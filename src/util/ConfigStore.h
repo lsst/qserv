@@ -115,6 +115,16 @@ public:
      */
     int getInt(std::string const& key, int const& defaultValue = 0) const;
 
+    /** Get value for a configuration key
+     *
+     * @param key configuration key
+     * @return the integer value for a key
+     *
+     * @throw InvalidIntegerValue if value can not be converted to an integer
+     * @throw KeyNotFoundError if required is true and key is not found
+     */
+    int getIntRequired(std::string const& key) const;
+
     /** Get a collection of (key, value) related to a configuration section
      *
      *  All ConfigStore entries having key like "section.param_key" are returned

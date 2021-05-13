@@ -29,7 +29,7 @@ RUN dnf install -y 'dnf-command(config-manager)' \
         patch \
         protobuf-compiler \
         protobuf-devel \
-        python3-devel \
+        python38-devel \
         tree \
         vim \
     && dnf clean all \
@@ -104,6 +104,8 @@ RUN echo /usr/local/lib > /etc/ld.so.conf.d/local.conf \
 RUN pip3 install \
     click \
     deprecated \
+    docker-compose \
+    jinja2 \
     pybind11[global] \
     pyyaml \
     sqlalchemy
@@ -145,7 +147,7 @@ RUN dnf install -y 'dnf-command(config-manager)' \
         mariadb-connector-c \
         openssl \
         protobuf \
-        python3 \
+        python38 \
         tree \
         vim \
     && dnf module install -y mariadb/client \
