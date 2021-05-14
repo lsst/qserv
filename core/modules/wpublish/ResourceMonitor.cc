@@ -68,6 +68,7 @@ unsigned int ResourceMonitor::count(int chunk, vector<string> const& dbs) const 
 
 
 json ResourceMonitor::statusToJson() const {
+    lock_guard<mutex> lock(_mtx);
     json result = json::array();
     for (auto&& entry: _resourceCounter) {
         result.push_back({entry.first, entry.second});
