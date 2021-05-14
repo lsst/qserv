@@ -27,17 +27,8 @@
 // Qserv headers
 #include "global/ResourceUnit.h"
 
-// LSST headers
-#include "lsst/log/Log.h"
-
 using namespace std;
 using namespace nlohmann;
-
-namespace {
-
-LOG_LOGGER _log = LOG_GET("lsst.qserv.wpublish.ResourceMonitor");
-
-} // anonymous namespace
 
 namespace lsst {
 namespace qserv {
@@ -62,14 +53,12 @@ unsigned int ResourceMonitor::count(string const& resource) const {
 }
 
 
-unsigned int ResourceMonitor::count(int chunk,
-                                    string const& db) const {
+unsigned int ResourceMonitor::count(int chunk, string const& db) const {
     return count(ResourceUnit::makePath(chunk, db));
 }
 
 
-unsigned int ResourceMonitor::count(int chunk,
-                                    vector<string> const& dbs) const {
+unsigned int ResourceMonitor::count(int chunk, vector<string> const& dbs) const {
     unsigned int result = 0;
     for (string const& db: dbs) {
         result += count(chunk, db);
@@ -78,16 +67,8 @@ unsigned int ResourceMonitor::count(int chunk,
 }
 
 
-ResourceMonitor::ResourceCounter ResourceMonitor::resourceCounter() const {
-
-    // Make a copy of the map while under protection of the lock guard.
-    lock_guard<mutex> lock(_mtx);
-    ResourceCounter result = _resourceCounter;
-    return result;
-}
-
-
 json ResourceMonitor::statusToJson() const {
+    lock_guard<mutex> lock(_mtx);
     json result = json::array();
     for (auto&& entry: _resourceCounter) {
         result.push_back({entry.first, entry.second});
