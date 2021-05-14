@@ -41,72 +41,56 @@ namespace wpublish {
   * which are in use at any given moment by the application.
   */
 class ResourceMonitor {
-
 public:
-
     /// The ResourceCounter type definition maps resources to the number of uses
     /// of each resource.
     using ResourceCounter = std::map<std::string, unsigned int>;
 
-    // The copy semantics is prohibited
     ResourceMonitor& operator=(ResourceMonitor const&) = delete;
     ResourceMonitor(ResourceMonitor const&) = delete;
-
-
     ResourceMonitor() = default;
-
     ~ResourceMonitor() = default;
 
     /**
-     * Increment resource usage counter by 1
-     *
-     * @param resource  name of a resource affected by the operation
+     * Increment resource usage counter by 1.
+     * @param resource The name of a resource affected by the operation.
      */
     void increment(std::string const& resource);
 
     /**
-     * Decrement resource usage counter by 1
-     *
-     * @param resource  name of a resource affected by the operation
+     * Decrement resource usage counter by 1.
+     * @param resource The name of a resource affected by the operation.
      */
     void decrement(std::string const& resource);
 
     /**
-     * Return the counter of resource uses (by resource name)
-     *
-     * @param resource  name of a resource
+     * @param resource The name of a resource.
+     * @return The counter of resource uses (by resource name).
      */
     unsigned int count(std::string const& resource) const;
 
     /**
-     * Return the counter of resource uses (by database name and chunk number)
      *
-     * @param chunk  chunk number
-     * @param db     name of a database
+     * @param chunk The chunk number.
+     * @param db The name of a database.
+     * @return The counter of resource uses (by database name and chunk number).
      */
-    unsigned int count(int chunk,
-                       std::string const& db) const;
+    unsigned int count(int chunk, std::string const& db) const;
 
     /**
-     * Return the counter of a group of related resources uses
-     *
-     * ATTENTION: the method will return a sum of counters for all uses
-     * of the chunk across all databases.
-     * 
-     * @param chunk  chunk number
-     * @param dbs    names of database
+     * The method will returns  a sum of counters for all uses of the chunk
+     * across all databases.
+     &
+     * @param chunk The chunk number.
+     * @param dbs The names of databases.
+     * @return The counter of a group of related resources uses.
      */
-    unsigned int count(int chunk,
-                       std::vector<std::string> const& dbs) const;
+    unsigned int count(int chunk, std::vector<std::string> const& dbs) const;
 
-    /// @return resource usage counter
-    ResourceCounter resourceCounter() const;
-
-    /// @return a JSON representation of the object's status for the monitoring
+    /// @return The JSON representation of the object's status for the monitoring.
     nlohmann::json statusToJson() const;
 
 private:
-
     /// Number of uses for each resource
     ResourceCounter _resourceCounter;
     
