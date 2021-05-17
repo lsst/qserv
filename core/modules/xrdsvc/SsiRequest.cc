@@ -78,6 +78,9 @@ void SsiRequest::reportError (string const& errStr) {
     ReleaseRequestBuffer();
 }
 
+
+set<string> resourceNames; // &&& delete when done
+
 // Step 4
 /// Called by XrdSsi to actually process a request.
 void SsiRequest::execute(XrdSsiRequest& req) {
@@ -115,8 +118,18 @@ void SsiRequest::execute(XrdSsiRequest& req) {
         case ResourceUnit::DBCHUNK: {
 
             // Increment the counter of the database/chunk resources in use
-            //&&& _resourceMonitor->increment(_resourceName);
-            auto resourceLock = std::make_shared<wpublish::ResourceMonitorLock>(*(_resourceMonitor.get()), _resourceName);
+            auto resourceLock =
+                    make_shared<wpublish::ResourceMonitorLock>(*(_resourceMonitor.get()), _resourceName);
+
+            { /// &&& delete block when done
+                resourceNames.insert(_resourceName);
+                LOGS(_log, LOG_LVL_WARN, "&&& resourceName=" << _resourceName);
+                string rstr = "&&& resources:\n";
+                for (auto const& rN:resourceNames) {
+                    rstr += rN+ '\n';
+                }
+                LOGS(_log, LOG_LVL_WARN, "&&&" << rstr);
+            }
 
             // reqData has the entire request, so we can unpack it without waiting for
             // more data.
@@ -372,12 +385,6 @@ void SsiRequest::Finished(XrdSsiRequest& req, XrdSsiRespInfo const& rinfo, bool 
     // Decrement the counter of the database/chunk resources in use
     ResourceUnit ru(_resourceName);
 
-    /* &&&
-    if (ru.unitType() == ResourceUnit::DBCHUNK) {
-        _resourceMonitor->decrement(_resourceName);
-    }
-    */
-
     // We can't do much other than close the file.
     // It should work (on linux) to unlink the file after we open it, though.
     // With the optimizer on '-Og', there was a double free for a SsiRequest.
@@ -497,7 +504,7 @@ void SsiRequest::_handleUberJob(proto::UberJobMsg* uberJobMsg,
     LOGS(_log, LOG_LVL_INFO, "&&& _handleUberJob qId=" << qId << " czarId=" << czarId);
 
     int tSize = uberJobMsg->taskmsgs_size();
-    if (tSize == 0) { //&&& probably don't need this
+    if (tSize == 0) {
         return;
     }
 
@@ -516,13 +523,12 @@ void SsiRequest::_handleUberJob(proto::UberJobMsg* uberJobMsg,
         }
         string db = taskMsg.db();
         int chunkId = taskMsg.chunkid();
-        //&&& make a ResourceUnit with this info and register with _resourceMonitor->increment(_resourceName);
-        string resourcePath = "/" + db + "/" + to_string(chunkId);
+        //&&&string resourcePath = "/" + db + "/" + to_string(chunkId);
+        string resourcePath = ResourceUnit::makePath(chunkId, db);
         ResourceUnit ru(resourcePath);
         if (ru.db() != db || ru.chunk() != chunkId) {
-            throw Bug("&&& resource path didn't match ru");
+            throw Bug("resource path didn't match ru");
         }
-        //&&&_resourceMonitor->increment(resourcePath); /// &&& when is this released?
         auto resourceLock = std::make_shared<wpublish::ResourceMonitorLock>(*(_resourceMonitor.get()), resourcePath);
 
         // If the query uses subchunks, the taskMsg will return multiple Tasks. Otherwise, one task.

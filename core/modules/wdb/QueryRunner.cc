@@ -178,7 +178,8 @@ bool QueryRunner::runQuery() {
 
     _setDb();
     LOGS(_log, LOG_LVL_DEBUG,  "Exec in flight for Db=" << _dbName
-        << " sqlConnMgr total" << _sqlConnMgr->getTotalCount() << " conn=" << _sqlConnMgr->getSqlConnCount());
+        << " sqlConnMgr total=" << _sqlConnMgr->getTotalCount()
+        << " conn=" << _sqlConnMgr->getSqlConnCount());
     wcontrol::SqlConnLock sqlConnLock(*_sqlConnMgr, not _task->getScanInteractive());
     bool connOk = _initConnection();
     if (!connOk) {

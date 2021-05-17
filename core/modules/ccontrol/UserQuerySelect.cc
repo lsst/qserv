@@ -78,6 +78,7 @@
 #include "ccontrol/MergingHandler.h"
 #include "ccontrol/TmpTableName.h"
 #include "ccontrol/UserQueryError.h"
+#include "czar/WorkerResources.h"
 #include "global/constants.h"
 #include "global/LogContext.h"
 #include "global/MsgReceiver.h"
@@ -296,6 +297,9 @@ void UserQuerySelect::submit() {
 
     _executive->setScanInteractive(_qSession->getScanInteractive());
 
+    string dbName(""); // it isn't easy to set this
+    bool dbNameSet = false;
+
     for(auto i = _qSession->cQueryBegin(), e = _qSession->cQueryEnd();
             i != e && !_executive->getCancelled(); ++i) {
         auto& chunkSpec = *i;
@@ -342,6 +346,16 @@ void UserQuerySelect::submit() {
         }
         std::string chunkResultName = ttn.make(cs->chunkId);
 
+        // This should only need to be set once as all jobs should have the same database name.
+        if (cs->db != dbName) {
+            LOGS(_log, LOG_LVL_WARN, "&&& dbName change from " << dbName << " to " << cs->db);
+            if (dbNameSet) {
+                throw Bug("Multiple database names in UBerJob");
+            }
+            dbName = cs->db;
+            dbNameSet = true;
+        }
+
         //&&& TODO:UJ for UberJobs, cmr and MerginHandler wont be needed unless the uber job fails. could probably save some time.
         std::shared_ptr<ChunkMsgReceiver> cmr = ChunkMsgReceiver::newInstance(cs->chunkId, _messageStore);
         ResourceUnit ru;
@@ -365,21 +379,18 @@ void UserQuerySelect::submit() {
         ++sequence;
     }
 
-    class WorkerResource { // &&& TODO:UJ relocate class def
-    public:
-        string resourceName;
-        set<int> chunkIdSet; ///< this will be destroyed as UberJobs are created. TODO:UJ maybe also have one that isn't destroyed.
-        /// Fills the chunk idSet with chunk ids for this resource.
-        void fillChunkIdSet() { throw Bug("&&&NEED_CODE to fill chunkIdSet, from db"); }
-    };
-
     if (uberJobsEnabled) {
         vector<qdisp::UberJob::Ptr> uberJobs;
-        vector<WorkerResource> workers; // &&& delete and replace with a real list of workers
+        /* &&&
+        vector<czar::WorkerResource> workers; // &&& delete and replace with a real list of workers
         throw Bug("&&&NEED_CODE to find all workers"); // workers = all workers found in database
         for (auto&& worker:workers) {
             worker.fillChunkIdSet();
         }
+        */
+
+        czar::WorkerResources workerResources;
+        workerResources.setMonoNodeTest(); //&&& TODO:UJ only good for mono-node test.
 
         // &&& make a map of all jobs in the executive.
         // &&& TODO:UJ for now, just using ints. At some point, need to check that ResourceUnit databases can be found for all databases in the query
@@ -387,13 +398,19 @@ void UserQuerySelect::submit() {
 
         // &&& TODO:UJ skipping in proof of concept: get a list of all databases in jobs (all jobs should use the same databases) Use this to check for conflicts
 
-        // &&& assign jobs to uberJobs
+        // assign jobs to uberJobs
         int maxChunksPerUber = 10;
         // keep cycling through workers until no more chunks to place.
-        list<std::reference_wrapper<WorkerResource>> tmpWorkerList;
+
+        /// make a map<worker, deque<chunkId> that will be destroyed as chunks are checked/used
+        map<string, deque<int>> tmpWorkerList = workerResources.getDequesFor(dbName);
+
+        /* &&&
+        list<std::reference_wrapper<czar::WorkerResource>> tmpWorkerList;
         for(auto&& worker:workers) {
             tmpWorkerList.push_back(worker);
         }
+        */
 
         // TODO:UJ So UberJobIds don't conflict with chunk numbers or jobIds, start at a large number.
         //       This could use some refinement.
@@ -415,7 +432,7 @@ void UserQuerySelect::submit() {
                                                uberJobId++, _qMetaCzarId);
 
             int chunksInUber = 0;
-            WorkerResource& wr = *workerIter;
+            czar::WorkerResource& wr = *workerIter;
             auto& wChunkIdSet = wr.chunkIdSet;
             for(auto&& wcIter = wChunkIdSet.begin();
                 wcIter != wChunkIdSet.end() && !chunksInQuery.empty() && chunksInUber < maxChunksPerUber;) {

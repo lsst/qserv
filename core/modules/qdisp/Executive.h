@@ -27,7 +27,7 @@
 #define LSST_QSERV_QDISP_EXECUTIVE_H
 
 //&&& replace with better enable/disable feature.
-#define uberJobsEnabled 0
+#define uberJobsEnabled 1 //&&&
 
 // System headers
 #include <atomic>
@@ -85,7 +85,8 @@ public:
     typedef std::shared_ptr<Executive> Ptr;
     typedef std::unordered_map<int, std::shared_ptr<JobQuery>> JobMap;
     typedef int ChunkIdType; //&&& TODO:UJ probably needs to be ResourceUnit
-    typedef std::map<ChunkIdType, JobQuery*> ChunkIdJobMapType;
+    //&&&typedef std::map<ChunkIdType, JobQuery*> ChunkIdJobMapType;
+    typedef std::unordered_map<ChunkIdType, JobQuery*> ChunkIdJobMapType;
 
     /// Construct an Executive.
     /// If c->serviceUrl == ExecutiveConfig::getMockStr(), then use XrdSsiServiceMock
