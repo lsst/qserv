@@ -72,23 +72,24 @@ bool WorkerResource::insert(string const& dbChunkResourceName) {
     lock_guard<mutex> lg(_dbMtx);
     auto iter = _dbResources.find(dbName);
     if (iter == _dbResources.end()) {
-        auto result = _dbResources.emplace(dbName, DbResource(dbName));
+        DbResource::Ptr dbR = make_shared<DbResource>(dbName);
+        auto result = _dbResources.emplace(dbName, dbR);
         iter = result.first;
     }
-    DbResource& dbR = *iter;
-    dbR.insert(chunkId);
+    DbResource::Ptr const& dbR = iter->second;
+    return dbR->insert(chunkId);
 }
 
 
 deque<int> WorkerResource::getDequeFor(string const& dbName) {
-    deque<int> dq
+    deque<int> dq;
     lock_guard<mutex> lg(_dbMtx);
     auto iter = _dbResources.find(dbName);
     if (iter == _dbResources.end()) {
         return dq;
     }
-    DbResource& dbR = iter->second;
-    dq = dbR.getDeque();
+    DbResource::Ptr const& dbR = iter->second;
+    dq = dbR->getDeque();
     return dq;
 }
 
@@ -98,9 +99,9 @@ map<string, deque<int>> WorkerResources::getDequesFor(string const& dbName) {
     map<string, deque<int>> dqMap;
     for (auto&& elem:_workers) {
         string wName = elem.first;
-        WorkerResource& wr = elem.second;
+        WorkerResource::Ptr const& wr = elem.second;
         //&&& deque<int> dq = wr.getDequeFor(dbName);
-        dqMap.emplace(wName, wr.getDequeFor(dbName));
+        dqMap.emplace(wName, wr->getDequeFor(dbName));
     }
     return dqMap;
 }
@@ -114,11 +115,11 @@ void WorkerResources::setMonoNodeTest() {
     if (iter == _workers.end()) {
         throw Bug("setMonoNodeTest Failed to find " + wName);
     }
-    WorkerResource& wr = *iter;
+    WorkerResource::Ptr const& wr = iter->second;
 
     deque<string> dq = fillChunkIdSet();
     for(auto const& res:dq) {
-        wr.insert(res);
+        wr->insert(res);
     }
 }
 

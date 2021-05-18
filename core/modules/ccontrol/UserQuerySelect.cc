@@ -432,7 +432,9 @@ void UserQuerySelect::submit() {
                                                uberJobId++, _qMetaCzarId);
 
             int chunksInUber = 0;
-            czar::WorkerResource& wr = *workerIter;
+            //&&&czar::WorkerResource& wr = *workerIter;
+            deque<int>& dq = workerIter->second;
+            /* &&&
             auto& wChunkIdSet = wr.chunkIdSet;
             for(auto&& wcIter = wChunkIdSet.begin();
                 wcIter != wChunkIdSet.end() && !chunksInQuery.empty() && chunksInUber < maxChunksPerUber;) {
@@ -448,6 +450,17 @@ void UserQuerySelect::submit() {
                     chunksInQuery.erase(found);
                 }
             }
+            */
+            while (!dq.empty() && !chunksInQuery.empty() && chunksInUber < maxChunksPerUber) {
+                int chunkIdWorker = dq.front();
+                dq.pop_front();
+                auto found = chunksInQuery.find(chunkIdWorker);
+                if (found != chunksInQuery.end()) {
+                    uJob->addJob(found->second);
+                    ++chunksInUber;
+                    chunksInQuery.erase(found);
+                }
+            }
 
             if (chunksInUber > 0) {
                 uberJobs.push_back(uJob);
@@ -456,11 +469,11 @@ void UserQuerySelect::submit() {
             // If this worker has no more chunks, remove it from the list.
             auto oldWorkerIter = workerIter;
             ++workerIter;
-            if (wChunkIdSet.empty()) {
+            if (dq.empty()) {
                 tmpWorkerList.erase(oldWorkerIter);
             }
 
-            // Wrap back to the first worker at athe end of the list.
+            // Wrap back to the first worker at the end of the list.
             if (workerIter == tmpWorkerList.end()) {
                 workerIter = tmpWorkerList.begin();
             }

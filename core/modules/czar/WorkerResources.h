@@ -66,6 +66,7 @@ private:
 /// determined how this information will be collected and cached.
 class WorkerResource {
 public:
+    using Ptr = std::shared_ptr<WorkerResource>;
     WorkerResource(std::string const& name) : _resourceName(name) {}
 
     bool insert(std::string const& dbChunkResourceName);
@@ -74,7 +75,7 @@ public:
 
 private:
     std::string _resourceName;
-    std::map<std::string, DbResource> _dbResources; /// Map of databases on the worker (key is dbName).
+    std::map<std::string, DbResource::Ptr> _dbResources; /// Map of databases on the worker (key is dbName).
     std::mutex _dbMtx;
 };
 
@@ -87,7 +88,7 @@ public:
 
     ~WorkerResources() = default;
 
-    std::pair<WorkerResource&, bool> insertWorker(std::string const& wResourceName) {
+    std::pair<WorkerResource::Ptr, bool> insertWorker(std::string const& wResourceName) {
         std::lock_guard<std::mutex> lg(_workerMapMtx);
         return _insertWorker(wResourceName);
     }
@@ -100,14 +101,14 @@ public:
 
 private:
     /// Insert a new worker into the map. Must lock _workerMapMtx before calling
-    std::pair<WorkerResource&, bool> _insertWorker(std::string const& wResourceName) {
-        auto result = _workers.emplace(wResourceName, WorkerResource(wResourceName));
+    std::pair<WorkerResource::Ptr, bool> _insertWorker(std::string const& wResourceName) {
+        WorkerResource::Ptr  newWr = std::make_shared<WorkerResource>(wResourceName);
+        auto result = _workers.emplace(wResourceName, newWr);
         auto iter = result.first;
-        WorkerResource& wr = iter->second;
-        return std::pair<WorkerResource&, bool>(wr, result.second);
+        return std::pair<WorkerResource::Ptr, bool>(iter->second, result.second);
     }
 
-    std::map<std::string, WorkerResource> _workers;
+    std::map<std::string, WorkerResource::Ptr> _workers;
     std::mutex _workerMapMtx;
 };
 
