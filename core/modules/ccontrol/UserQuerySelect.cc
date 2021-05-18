@@ -432,25 +432,8 @@ void UserQuerySelect::submit() {
                                                uberJobId++, _qMetaCzarId);
 
             int chunksInUber = 0;
-            //&&&czar::WorkerResource& wr = *workerIter;
             deque<int>& dq = workerIter->second;
-            /* &&&
-            auto& wChunkIdSet = wr.chunkIdSet;
-            for(auto&& wcIter = wChunkIdSet.begin();
-                wcIter != wChunkIdSet.end() && !chunksInQuery.empty() && chunksInUber < maxChunksPerUber;) {
 
-                int chunkIdWorker = *wcIter;
-                auto oldIter = wcIter;
-                ++wcIter;
-                wChunkIdSet.erase(oldIter);
-                auto found = chunksInQuery.find(chunkIdWorker);
-                if (found != chunksInQuery.end()) {
-                    uJob->addJob(found->second);
-                    ++chunksInUber;
-                    chunksInQuery.erase(found);
-                }
-            }
-            */
             while (!dq.empty() && !chunksInQuery.empty() && chunksInUber < maxChunksPerUber) {
                 int chunkIdWorker = dq.front();
                 dq.pop_front();
