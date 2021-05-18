@@ -69,7 +69,7 @@ int TransmitMgr::getAlreadyTransCount(qmeta::CzarId czarId) const {
 
 void TransmitMgr::_take(bool interactive, bool alreadyTransmitting, qmeta::CzarId czarId) {
     unique_lock<mutex> uLock(_mtx);
-    LOGS(_log, LOG_LVL_DEBUG, "TransmitMgr take locking " << dump());
+    LOGS(_log, LOG_LVL_INFO, "TransmitMgr take locking " << dump()); //&&& revert to debug
     TransmitInfo& info = _czarTransmitMap[czarId];
     ++(info._takeCalls);
     ++(info._totalCount);
@@ -100,7 +100,7 @@ void TransmitMgr::_take(bool interactive, bool alreadyTransmitting, qmeta::CzarI
     }
     ++(info._transmitCount);
     --(info._takeCalls);
-    LOGS(_log, LOG_LVL_DEBUG, "TransmitMgr take locking done " << dump());
+    LOGS(_log, LOG_LVL_INFO, "TransmitMgr take locking done " << dump()); //&&& revert to debug
 }
 
 void TransmitMgr::_release(bool interactive, bool alreadyTransmitting, qmeta::CzarId czarId) {

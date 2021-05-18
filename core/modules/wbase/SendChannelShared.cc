@@ -121,11 +121,13 @@ bool SendChannelShared::addTransmit(bool cancelled, bool erred, bool last, bool 
         int czarId = tData->czarId;
         // Don't wait if cancelled or error.
         if (erred || cancelled) {
-            return _transmit(erred, largeResult, czarId);
+            return _transmit(erred, true, largeResult, czarId);
         }
+        /* &&&
         // Limit the number of concurrent transmits.
         wcontrol::TransmitLock transmitLock(*_transmitMgr, scanInteractive, largeResult, czarId);
-        return _transmit(erred, largeResult, czarId);
+        */
+        return _transmit(erred, scanInteractive, largeResult, czarId);
     } else {
         // Not enough information to transmit. Maybe there will be with the next call
         // to addTransmit.
@@ -134,7 +136,7 @@ bool SendChannelShared::addTransmit(bool cancelled, bool erred, bool last, bool 
 }
 
 
-bool SendChannelShared::_transmit(bool erred, bool largeResult, qmeta::CzarId czarId) {
+bool SendChannelShared::_transmit(bool erred, bool scanInteractive, bool largeResult, qmeta::CzarId czarId) {
     string idStr = "QID?";
 
     // keep looping until nothing more can be transmitted.
@@ -188,6 +190,8 @@ bool SendChannelShared::_transmit(bool erred, bool largeResult, qmeta::CzarId cz
         // Put the data for the transmit in a StreamBuffer and send it.
         auto streamBuf = xrdsvc::StreamBuffer::createWithMove(thisTransmit->dataMsg);
         {
+            // Limit the number of concurrent transmits.
+            wcontrol::TransmitLock transmitLock(*_transmitMgr, scanInteractive, largeResult, czarId);
             lock_guard<mutex> streamLock(streamMutex);
             bool sent = _sendBuf(streamLock, streamBuf, reallyLast, "transmitLoop " + idStr);
             if (!sent) {
