@@ -90,6 +90,7 @@ void StreamBuffer::Recycle() {
 
 // Wait until recycle is called.
 void StreamBuffer::waitForDoneWithThis() {
+    util::InstanceCount ic("SB::waitForDoneWithThis"); //&&&
     std::unique_lock<std::mutex> uLock(_mtx);
     _cv.wait(uLock, [this](){ return _doneWithThis == true; });
 }

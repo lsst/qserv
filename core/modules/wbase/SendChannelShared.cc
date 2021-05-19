@@ -123,10 +123,6 @@ bool SendChannelShared::addTransmit(bool cancelled, bool erred, bool last, bool 
         if (erred || cancelled) {
             return _transmit(erred, true, largeResult, czarId);
         }
-        /* &&&
-        // Limit the number of concurrent transmits.
-        wcontrol::TransmitLock transmitLock(*_transmitMgr, scanInteractive, largeResult, czarId);
-        */
         return _transmit(erred, scanInteractive, largeResult, czarId);
     } else {
         // Not enough information to transmit. Maybe there will be with the next call

@@ -33,6 +33,7 @@
 
 // Qserv headers
 #include "qmeta/types.h"
+#include "util/InstanceCount.h" // &&&
 
 
 namespace lsst {
@@ -131,6 +132,8 @@ private:
     bool _interactive;
     bool _alreadyTransmitting;
     qmeta::CzarId _czarId;
+
+    util::InstanceCount _ic{"TransmitLock"}; // &&&
 };
 
 
