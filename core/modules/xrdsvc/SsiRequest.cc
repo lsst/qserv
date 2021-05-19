@@ -404,7 +404,6 @@ bool SsiRequest::replyFile(int fd, long long fSize) {
 
 
 bool SsiRequest::replyStream(StreamBuffer::Ptr const& sBuf, bool last) {
-    // Create a streaming object if not already created.
     LOGS(_log, LOG_LVL_DEBUG, "replyStream, checking stream size=" << sBuf->getSize() << " last=" << last);
 
     // Normally, XrdSsi would call Recycle() when it is done with sBuf, but if this function
@@ -413,9 +412,11 @@ bool SsiRequest::replyStream(StreamBuffer::Ptr const& sBuf, bool last) {
     std::lock_guard<std::mutex> finLock(_finMutex);
     if (_reqFinished) {
         // Finished() was called, give up.
+        LOGS(_log, LOG_LVL_ERROR, "replyStream called after reqFinished.");
         sBuf->Recycle();
         return false;
     }
+    // Create a stream if needed.
     if (!_stream) {
         _stream = std::make_shared<ChannelStream>();
         if (SetResponse(_stream.get()) != XrdSsiResponder::Status::wasPosted) {

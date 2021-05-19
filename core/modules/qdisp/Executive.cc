@@ -426,6 +426,7 @@ void Executive::_unTrack(int jobId) {
     bool untracked = false;
     int incompleteJobs = _totalJobs;
     string s;
+    bool logSome = false;
     {
         lock_guard<mutex> lock(_incompleteJobsMutex);
         auto i = _incompleteJobs.find(jobId);
@@ -435,13 +436,17 @@ void Executive::_unTrack(int jobId) {
             incompleteJobs = _incompleteJobs.size();
             if (_incompleteJobs.empty()) _allJobsComplete.notify_all();
         }
-        if (!untracked || LOG_CHECK_LVL(_log, LOG_LVL_DEBUG)) {
+        auto sz = _incompleteJobs.size();
+        logSome = (sz < 100) || (sz%100 == 0) || !untracked;
+        if (logSome || LOG_CHECK_LVL(_log, LOG_LVL_DEBUG)) {
             // Log up to 5 incomplete jobs. Very useful when jobs do not finish.
             s = _getIncompleteJobsString(5);
         }
     }
-    LOGS(_log, (untracked ? LOG_LVL_DEBUG : LOG_LVL_WARN),
-         "Executive UNTRACKING " << (untracked ? "success":"failed") << "::" << s);
+    auto logLvl = logSome ? LOG_LVL_INFO : LOG_LVL_DEBUG;
+    LOGS(_log, (untracked ? logLvl : LOG_LVL_WARN),
+         "Executive UNTRACKING job=" << jobId << (untracked ? " success":" failed") << "::" << s);
+
     // Every time a chunk completes, consider sending an update to QMeta.
     // Important chunks to log: first, last, middle
     // limiting factors: no more than one update a minute (config)
@@ -474,7 +479,7 @@ string Executive::_getIncompleteJobsString(int maxToList) {
     ostringstream os;
     int c = 0;
     if (maxToList < 0) maxToList = _incompleteJobs.size();
-    os << "_incompleteJobs listing first" << maxToList << " of size=" << _incompleteJobs.size() << " ";
+    os << "_incompleteJobs listing first" << maxToList << " of (size=" << _incompleteJobs.size() << ") ";
     for(auto j = _incompleteJobs.begin(), e = _incompleteJobs.end(); j != e && c < maxToList; ++j, ++c) {
         os << j->first << " ";
     }

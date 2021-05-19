@@ -57,49 +57,29 @@ int TransmitMgr::getTransmitCount(qmeta::CzarId czarId) const {
 }
 
 
-int TransmitMgr::getAlreadyTransCount(qmeta::CzarId czarId) const {
-    unique_lock<mutex> uLock(_mtx);
-    auto const& iter = _czarTransmitMap.find(czarId);
-    if (iter != _czarTransmitMap.end()) {
-        return iter->second._alreadyTransCount;
-    }
-    return 0;
-}
-
-
 void TransmitMgr::_take(bool interactive, bool alreadyTransmitting, qmeta::CzarId czarId) {
     unique_lock<mutex> uLock(_mtx);
     LOGS(_log, LOG_LVL_DEBUG, "TransmitMgr take locking " << dump());
     TransmitInfo& info = _czarTransmitMap[czarId];
+
     ++(info._takeCalls);
     ++(info._totalCount);
-    // Check if the caller needs to wait.
-    // This is trying to prioritize transmits that are 'alreadyTransmitting' so
-    // they finish and stop using system resources on the czar (with czarId).
-    // '_maxAlreadyTran' should be significantly smaller than '_maxTransmits', which
-    // causes all new transmits to have to wait until some of the already transmitting
-    // items have cleared.
-    // '_maxTransmits' may be 50 while '_maxAlreadyTran' may be 10.
-    // Interactive transmits never need to wait.
-    if (not interactive
-        || info._transmitCount >= _maxTransmits
-        || info._alreadyTransCount >= _maxAlreadyTran) {
-        // If not alreadyTransmitting, it needs to wait until the number of already transmitting
-        // jobs drops below _maxAlreadyTran before it can start transmitting.
-        if (alreadyTransmitting) {
-            ++(info._alreadyTransCount);
-            LOGS(_log, LOG_LVL_DEBUG, "czar=" << czarId
-                 << " ++_alreadyTransCount=" << info._alreadyTransCount);
+    if (not interactive) {
+        // Check if the caller needs to wait.
+        // This is trying to prioritize transmits that are 'alreadyTransmitting' so
+        // they finish and stop using system resources on the czar (with czarId).
+        // '_maxAlreadyTran' should be significantly smaller than '_maxTransmits', which
+        // causes all new transmits to have to wait until some of the already transmitting
+        // items have cleared.
+        // '_maxTransmits' may be 50 while '_maxAlreadyTran' may be 10.
+        // Interactive transmits never need to wait.
+        if (info._transmitCount >= _maxTransmits) {
             _tCv.wait(uLock, [this, &info](){ return info._transmitCount < _maxTransmits; });
-        } else {
-            _tCv.wait(uLock, [this, &info](){
-                return (info._transmitCount < _maxTransmits)
-                        && (info._alreadyTransCount < _maxAlreadyTran);
-            });
         }
+        ++(info._transmitCount);
     }
-    ++(info._transmitCount);
     --(info._takeCalls);
+
     LOGS(_log, LOG_LVL_DEBUG, "TransmitMgr take locking done " << dump());
 }
 
@@ -113,14 +93,10 @@ void TransmitMgr::_release(bool interactive, bool alreadyTransmitting, qmeta::Cz
             auto& info = iter->second;
             --(info._totalCount);
             --(info._transmitCount);
-            if (not interactive && alreadyTransmitting) {
-                --(info._alreadyTransCount);
-            }
             // If _doNotDelete is false and all the counts are 0, delete it from the map.
             // it is possible for _takeCalls to be >0 and all other values be zero if
             // _take is waiting.
-            if (info._takeCalls == 0 && info._totalCount == 0
-                && info._transmitCount == 0 && info._alreadyTransCount == 0) {
+            if (info._takeCalls == 0 && info._totalCount == 0 && info._transmitCount == 0) {
                 eraseInfo = true;
             }
         }
@@ -152,14 +128,13 @@ std::string TransmitMgr::dump() const {
 
 ostream& TransmitMgr::dumpBase(ostream &os) const {
     // Thread must hold _mtx before calling this.
-    os << "maxTransmits=" << _maxTransmits << " maxAlreadyTransmitting=" << _maxAlreadyTran;
+    os << "maxTransmits=" << _maxTransmits;
     for (auto const& iter:_czarTransmitMap) {
         auto const& czarId = iter.first;
         auto const& info = iter.second;
         os << "(czar=" << czarId
            << " totalC=" << info._totalCount
            << " transmitC=" << info._transmitCount
-           << " alreadyTransC=" << info._alreadyTransCount
            << " takeCalls=" << info._takeCalls << ")";
     }
     return os;

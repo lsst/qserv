@@ -31,7 +31,6 @@
 #include <mutex>
 
 // Qserv headers
-#include "util/InstanceCount.h"
 
 
 namespace lsst {
@@ -101,8 +100,6 @@ public:
 
 private:
     SqlConnMgr& _sqlConnMgr;
-
-    util::InstanceCount _ic{"SqlConnLock"}; //&&&
 };
 
 

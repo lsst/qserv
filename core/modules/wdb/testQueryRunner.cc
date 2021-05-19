@@ -71,7 +71,7 @@ using lsst::qserv::wdb::ChunkResourceMgr;
 using lsst::qserv::wdb::FakeBackend;
 using lsst::qserv::wdb::QueryRunner;
 
-TransmitMgr::Ptr locTransmitMgr = make_shared<TransmitMgr>(50,10);
+TransmitMgr::Ptr locTransmitMgr = make_shared<TransmitMgr>(50);
 
 struct Fixture {
     shared_ptr<TaskMsg> newTaskMsg() {

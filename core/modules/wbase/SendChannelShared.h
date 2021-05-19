@@ -82,7 +82,7 @@ public:
     }
 
     /// @see SendChannel::kill
-    bool kill(StreamGuard sLock);
+    bool kill(StreamGuard sLock, std::string const& note);
 
     /// @see SendChannel::isDead
     bool isDead() {

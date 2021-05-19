@@ -118,7 +118,7 @@ void Foreman::_setRunFunc(shared_ptr<wbase::Task> const& task) {
             if (not success) {
                 lock_guard<mutex> streamLock(task->sendChannel->streamMutex);
                 LOGS(_log, LOG_LVL_ERROR, "runQuery failed " << *task);
-                if (not task->sendChannel->kill(streamLock)) {
+                if (not task->sendChannel->kill(streamLock, "Foreman::_setRunFunc")) {
                     LOGS(_log, LOG_LVL_WARN, "runQuery sendChannel killed");
                 }
             }

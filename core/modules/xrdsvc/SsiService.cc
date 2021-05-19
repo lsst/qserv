@@ -156,8 +156,7 @@ SsiService::SsiService(XrdSsiLogger* log, wconfig::WorkerConfig const& workerCon
     LOGS(_log, LOG_LVL_WARN, "config sqlConnMgr" << *sqlConnMgr);
 
     int const maxTransmits = workerConfig.getMaxTransmits();
-    int const maxAlreadyTransmitting =  workerConfig.getMaxAlreadyTransmitting();
-    _transmitMgr = make_shared<wcontrol::TransmitMgr>(maxTransmits, maxAlreadyTransmitting);
+    _transmitMgr = make_shared<wcontrol::TransmitMgr>(maxTransmits);
     LOGS(_log, LOG_LVL_WARN, "config transmitMgr" << *_transmitMgr);
 
     _foreman = make_shared<wcontrol::Foreman>(

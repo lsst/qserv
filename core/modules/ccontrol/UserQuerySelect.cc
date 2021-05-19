@@ -365,7 +365,7 @@ QueryState UserQuerySelect::join() {
     }
     if (successful) {
         _qMetaUpdateStatus(qmeta::QInfo::COMPLETED);
-        LOGS(_log, LOG_LVL_DEBUG, "Joined everything (success)");
+        LOGS(_log, LOG_LVL_INFO, "Joined everything (success)");
         return SUCCESS;
     } else if (_killed) {
         // status is already set to ABORTED
@@ -408,7 +408,7 @@ void UserQuerySelect::discard() {
         // Silence merger discarding errors, because this object is being released.
         // client no longer cares about merger errors.
     }
-    LOGS(_log, LOG_LVL_DEBUG, "Discarded UserQuerySelect");
+    LOGS(_log, LOG_LVL_INFO, "Discarded UserQuerySelect");
 }
 
 /// Setup merger (for results handling and aggregation)

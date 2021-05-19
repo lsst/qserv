@@ -26,6 +26,7 @@
 
 // Qserv headers
 #include "global/LogContext.h"
+#include "proto/ProtoHeaderWrap.h"
 #include "util/Timer.h"
 
 // LSST headers
@@ -49,8 +50,11 @@ SendChannelShared::Ptr SendChannelShared::create(SendChannel::Ptr const& sendCha
 
 
 SendChannelShared::~SendChannelShared() {
-    if (_sendChannel != nullptr && !_sendChannel->isDead()) {
-        _sendChannel->kill();
+    if (_sendChannel != nullptr) {
+        _sendChannel->setDestroying();
+        if (!_sendChannel->isDead()) {
+            _sendChannel->kill("~SendChannelShared()");
+        }
     }
 }
 
@@ -69,9 +73,9 @@ bool SendChannelShared::transmitTaskLast(StreamGuard sLock, bool inLast) {
 }
 
 
-bool SendChannelShared::kill(StreamGuard sLock) {
-    LOGS(_log, LOG_LVL_DEBUG, "SendChannelShared::kill() called");
-    bool ret = _sendChannel->kill();
+bool SendChannelShared::kill(StreamGuard sLock, std::string const& note) {
+    LOGS(_log, LOG_LVL_DEBUG, "SendChannelShared::kill() called " << note);
+    bool ret = _sendChannel->kill(note);
     _lastRecvd = true;
     return ret;
 }
@@ -114,15 +118,11 @@ bool SendChannelShared::addTransmit(bool cancelled, bool erred, bool last, bool 
     }
 
     // If this is reallyLast or at least 2 items are in the queue, the transmit can happen
-    if (reallyLast || _transmitQueue.size() >= 2) {
+    if (_lastRecvd || _transmitQueue.size() >= 2) {
         bool scanInteractive = tData->scanInteractive;
         // If there was an error, give this high priority.
-        if (erred) scanInteractive = true;
+        if (erred || cancelled) scanInteractive = true;
         int czarId = tData->czarId;
-        // Don't wait if cancelled or error.
-        if (erred || cancelled) {
-            return _transmit(erred, true, largeResult, czarId);
-        }
         return _transmit(erred, scanInteractive, largeResult, czarId);
     } else {
         // Not enough information to transmit. Maybe there will be with the next call
@@ -178,7 +178,7 @@ bool SendChannelShared::_transmit(bool erred, bool scanInteractive, bool largeRe
             bool metaSet = _sendChannel->setMetadata(_metadataBuf.data(), _metadataBuf.size());
             if (!metaSet) {
                 LOGS(_log, LOG_LVL_ERROR, "Failed to setMeta " << idStr);
-                kill(streamLock);
+                kill(streamLock, "metadata");
                 return false;
             }
         }
@@ -192,7 +192,7 @@ bool SendChannelShared::_transmit(bool erred, bool scanInteractive, bool largeRe
             bool sent = _sendBuf(streamLock, streamBuf, reallyLast, "transmitLoop " + idStr);
             if (!sent) {
                 LOGS(_log, LOG_LVL_ERROR, "Failed to send " << idStr);
-                kill(streamLock);
+                kill(streamLock, "SendChannelShared::_transmit b");
                 return false;
             }
         }

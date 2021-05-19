@@ -132,7 +132,7 @@ Task::Task(TaskMsgPtr const& t, std::string const& query, int fragmentNumber,
 
 Task::~Task() {
     allIds.remove(std::to_string(_qId) + "_" + std::to_string(_jId));
-    LOGS(_log, LOG_LVL_DEBUG, "~Task() : " << allIds);
+    LOGS(_log, LOG_LVL_TRACE, "~Task() : " << allIds);
 }
 
 
