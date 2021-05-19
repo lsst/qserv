@@ -28,6 +28,8 @@ from functools import partial
 import logging
 import socket
 
+from . import _load
+from . import _query
 from .options import (
     cmsd_manager_option,
     connection_option,
@@ -60,6 +62,20 @@ from ..template import save_template_cfg
 @log_level_option()
 def entrypoint(log_level):
     logging.basicConfig(level=log_level)
+
+
+@entrypoint.command()
+@click.option("-d", "--delete", is_flag=True, help="Remove the test database from qserv.")
+def load(**kwargs):
+    "Load a small test dataset into qserv."
+    _load.load(**kwargs)
+
+
+@entrypoint.command()
+@click.argument("STATEMENT")
+def query(**kwargs):
+    """Run an sql statement and print the results."""
+    script.query(**kwargs)
 
 
 @entrypoint.command()

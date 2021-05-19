@@ -187,7 +187,6 @@ def enter_xrootd_manager(cmsd_manager):
 
 
 def enter_worker_cmsd(cmsd_manager, vnid, debug_port, connection):
-
     parsed = urlparse(connection)
     save_template_cfg(dict(
         vnid=vnid,

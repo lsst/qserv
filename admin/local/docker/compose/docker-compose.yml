@@ -81,6 +81,7 @@ services:
             default:
                 aliases:
                     - worker-cmsd-0
+                    - worker-db-0
     worker-cmsd-0:
         << : *worker-cmsd
         command: entrypoint worker-cmsd --connection mysql://root:CHANGEME@worker-db-0:3306 --vnid worker_0 --cmsd-manager manager-xrootd
@@ -115,7 +116,7 @@ services:
         network_mode: "service:worker-xrootd-1"
     worker-xrootd-1:
         << : *worker-xrootd
-        command: entrypoint worker-xrootd --xrd-port 2131 --connection mysql://root:CHANGEME@worker-db-1:3306 --vnid worker_1 --cmsd-manager manager-xrootd --mysql-monitor-password CHANGEME_MONITOR
+        command: entrypoint worker-xrootd --xrd-port 2131 --connection mysql://root:CHANGEME@127.0.0.1:3306 --vnid worker_1 --cmsd-manager manager-xrootd --mysql-monitor-password CHANGEME_MONITOR
         environment:
             << : *log-environment
         volumes:
@@ -127,6 +128,7 @@ services:
             default:
                 aliases:
                     - worker-cmsd-1
+                    - worker-db-1
     worker-cmsd-1:
         << : *worker-cmsd
         command: entrypoint worker-cmsd --connection mysql://root:CHANGEME@worker-db-1:3306 --vnid worker_1 --cmsd-manager manager-xrootd
@@ -184,8 +186,7 @@ services:
     czar-db:
         image: "qserv/lite-mariadb"
         command: --port 3306
-        expose:
-            - "3306"
+        network_mode: "service:czar-proxy"
         environment:
             MYSQL_ROOT_PASSWORD: CHANGEME
         volumes:
@@ -197,7 +198,7 @@ services:
               target: /etc/mysql/my.cnf
     czar-proxy:
         image: "qserv/${QSERV_IMAGE}"
-        command: entrypoint --log-level DEBUG proxy --connection root:CHANGEME@czar-db:3306 --mysql-user-qserv qsmaster --xrootd-manager manager-xrootd --czar-db-host czar-db --czar-db-port 3306
+        command: entrypoint --log-level DEBUG proxy --connection root:CHANGEME@127.0.0.1:3306 --mysql-user-qserv qsmaster --xrootd-manager manager-xrootd --czar-db-host czar-db --czar-db-port 3306
         environment:
             << : *log-environment
         volumes:
@@ -209,7 +210,12 @@ services:
               target: /config-etc
             - << : *log-volume
         expose:
+            - "3306" # for czar-db
             - "4040"
+        networks:
+            default:
+                aliases:
+                    - czar-db
         # ports:
         #     - "127.0.0.1:4040:4040"
     repl-mgr-db:
