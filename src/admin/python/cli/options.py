@@ -42,27 +42,6 @@ connection_option = partial(
 )
 
 
-db_host_option = partial(
-    click.option,
-    "--db-host",
-    help="Database host name.",
-)
-
-
-db_password_option = partial(
-    click.option,
-    "--db-pswd",
-    help="Database password.",
-)
-
-
-db_port_option = partial(
-    click.option,
-    "--db-port",
-    help="Database port number.",
-)
-
-
 db_qserv_user_option = partial(
     click.option,
     "--db-qserv-user",
@@ -79,25 +58,11 @@ db_scheme_option = partial(
 )
 
 
-db_user_option = partial(
-    click.option,
-    "--db-user",
-    help="Database user name.",
-)
-
-
 debug_option = partial(
     click.option,
     "--debug",
     "debug_port",
     help="Run gdbserver with the application arguments.",
-)
-
-
-http_server_port_option = partial(
-    click.option,
-    "--http-server-port",
-    help="The sever port (for the replication manager. and others? TBD)"
 )
 
 
@@ -133,13 +98,6 @@ mysql_user_qserv_option = partial(
 )
 
 
-qserv_db_pswd_option = partial(
-    click.option,
-    "--qserv-db-pswd",
-    help="A password for the MySQL 'root' account of the Qserv master database."
-)
-
-
 repl_connection_option = partial(
     click.option,
     "--repl-connection",
@@ -151,6 +109,13 @@ repl_ctrl_domain_name_option = partial(
     click.option,
     "--repl-ctl-dn",
     help="The fully qualified domain name of the replication controller."
+)
+
+
+repl_ctrl_port_option = partial(
+    click.option,
+    "--repl-ctl-port",
+    help="The port that the replication controller is listening on."
 )
 
 

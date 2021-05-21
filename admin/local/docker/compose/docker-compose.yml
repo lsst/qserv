@@ -50,6 +50,7 @@ volumes:
     czar_0_data:
     czar_0_cfg:
     repl_mgr_data:
+    dashboard_cfg:
 
 networks:
     default:
@@ -241,3 +242,22 @@ services:
             - "25081"
         volumes:
             - << : *log-volume
+    dashboard:
+        command: nginx -c /config-etc/nginx.conf
+        image: nginx:1.20-alpine
+        volumes:
+            - type: volume
+              source: dashboard_cfg
+              target: /config-etc
+            - type: bind
+              source: ./dashboard/dashboard_wait.sh
+              target: /docker-entrypoint.d/dashboard_wait.sh
+        ports:
+            - "0.0.0.0:${DASHBOARD_PORT}:80"
+    init_dashboard:
+        command: entrypoint init-dashboard --dashboard-port 80 --dashboard-html /config-etc/www
+        image: "qserv/${QSERV_IMAGE}"
+        volumes:
+            - type: volume
+              source: dashboard_cfg
+              target: /config-etc

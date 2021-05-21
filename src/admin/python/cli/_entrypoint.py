@@ -33,21 +33,16 @@ from . import _query
 from .options import (
     cmsd_manager_option,
     connection_option,
-    db_host_option,
-    db_password_option,
-    db_port_option,
     db_qserv_user_option,
     db_scheme_option,
-    db_user_option,
     debug_option,
-    http_server_port_option,
     instance_id_option,
     log_level_option,
     mysql_monitor_password_option,
     mysql_user_qserv_option,
-    qserv_db_pswd_option,
     repl_connection_option,
     repl_ctrl_domain_name_option,
+    repl_ctrl_port_option,
     run_option,
     vnid_option,
     xrd_port_option,
@@ -163,3 +158,18 @@ def worker_repl(**kwargs):
 @run_option()
 def replication_controller(**kwargs):
     script.enter_replication_controller(**kwargs)
+
+
+@entrypoint.command()
+@click.option(
+    "--dashboard-port",
+    help="The port the dashboard will serve on.",
+)
+@click.option(
+    "--dashboard-html",
+    help="The path to the folder with the html sources for the nginx dashboard."
+)
+@repl_ctrl_domain_name_option()
+@repl_ctrl_port_option()
+def init_dashboard(**kwargs):
+    script.init_dashboard(**kwargs)

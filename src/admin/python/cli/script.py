@@ -28,6 +28,7 @@ import mysql.connector
 import os
 import socket
 import subprocess
+import shutil
 import sys
 from urllib.parse import urlparse
 
@@ -49,11 +50,6 @@ replica_controller_cfg_path = "/config-etc/replicaConfig.sql"
 replica_controller_log_template = "/usr/local/qserv/templates/repl-ctl/etc/log4cxx.replication.properties.jinja"
 replica_controller_log_path = "/config-etc/log4cxx.replication.properties"
 
-nginx_controller_cfg_template = "/usr/local/qserv/templates/dashboard/etc/nginx.conf.jinja"
-nginx_controller_cfg_path = "/config-etc/nginx.conf"
-
-mysqld_socket = "/qserv/data/mysql/mysql.sock" # I think this can be deleted; no longer used.
-
 mysqld_user_qserv = "qsmaster"
 
 proxy_empty_chunk_path = "/qserv/data/qserv"
@@ -72,9 +68,15 @@ cmsd_worker_cfg_path = "/config-etc/cmsd-worker.cf"
 xrdssi_cfg_template = "/usr/local/qserv/templates/xrootd/etc/xrdssi.cf.jinja"
 xrdssi_cfg_path = "/config-etc/xrdssi-worker.cf"
 
-
 xrootd_manager_cfg_template = "/usr/local/qserv/templates/xrootd/etc/xrootd-manager.cf.jinja"
 xrootd_manager_cfg_path = "/config-etc/xrootd-manager.cf"
+
+nginx_controller_cfg_template = "/usr/local/qserv/templates/dashboard/etc/nginx.conf.jinja"
+nginx_controller_cfg_path = "/config-etc/nginx.conf"
+dashboard_files_src = "/usr/local/qserv/dashboard/www"
+dashboard_files_dst = "/config-etc/www"
+dashboard_launch_gate = "/config-etc/goahead"
+
 
 _log = logging.getLogger(__name__)
 
@@ -130,7 +132,6 @@ def _get_vnid(connection):
             return res[0]
 
 
-
 def smig_czar(connection):
     """Apply schema migration scripts to czar modules.
 
@@ -146,6 +147,36 @@ def smig_czar(connection):
         (qmeta_smig_dir, "qmeta"),
     ):
         _do_smig(module_smig_dir, module, connection)
+
+
+def init_dashboard(dashboard_port, dashboard_html, repl_ctl_dn, repl_ctl_port):
+    """Initialize the dashboard configuration files by copying the config files
+    into a a shared volume. Finish by creating a file that signals the dashboard
+    container init script that it may proceed.
+    """
+    if os.path.exists(dashboard_launch_gate):
+        print(f"{dashboard_launch_gate} exists; exiting without making changes.")
+        return
+
+    save_template_cfg(dict(
+        dashboard=dict(
+            port=dashboard_port,
+            html=dashboard_html,
+        ),
+        repl_manager=dict(
+            domain_name=repl_ctl_dn,
+            http_server_port=repl_ctl_port,
+        ),
+    ))
+    apply_template_cfg_file(nginx_controller_cfg_template, nginx_controller_cfg_path)
+
+    shutil.copytree(
+        src=dashboard_files_src,
+        dst=dashboard_files_dst)
+    with open(dashboard_launch_gate, "w") as f:
+        pass
+    print(f"Copied dashboard files to {dashboard_files_dst} and wrote the nginx controller config to {nginx_controller_cfg_path}; exiting.")
+
 
 
 def enter_manager_cmsd(cms_delay_servers):

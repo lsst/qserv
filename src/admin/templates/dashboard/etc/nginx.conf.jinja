@@ -1,65 +1,15 @@
-user  nginx;
-worker_processes  auto;
-
 daemon off;
 
-error_log  /var/log/nginx/error.log warn;
-pid        /var/run/nginx.pid;
-
-
-events {
-    worker_connections  1024;
-}
+events {}
 
 http {
-    include       /etc/nginx/mime.types;
-    default_type  application/octet-stream;
-
-    log_format  main  '$remote_addr - $remote_user [$time_local] "$request" '
-                      '$status $body_bytes_sent "$http_referer" '
-                      '"$http_user_agent" "$http_x_forwarded_for"';
-
-    access_log /dev/stdout;
-
-    sendfile        on;
-    #tcp_nopush     on;
-
-    keepalive_timeout  65;
-
-    #gzip  on;
-
     server {
-        listen       {{ dashboard.port }};
-        server_name  localhost;
+        listen 0.0.0.0:{{ dashboard.port }};
+        server_name  lsst-qserv-master02;
+
         location / {
-            root   /www;
+            root   {{ dashboard.html }};
             index  index.html index.htm;
         }
-        # FIXME /export/ and /meta/ are not used yet by qserv_web application
-        location ~ ^/(export|ingest|meta|replication)/ {
-            # Resolve DNS at location level so that nginx can start
-            # even if replication service is not ready yet
-            set $proxy_host {{ repl_manager.domain_name }};
-            proxy_pass http://$proxy_host:{{ repl_manager.http_server_port }};
-        }
-        error_page 500 502 503 504  /50x.html;
-        location = /50x.html {
-            root /usr/share/nginx/html;
-        }
     }
-
-    # The default configuration of the reverse proxies. Note that any of these
-    # parameters can be overwritten in specific proxy definitions.
-    proxy_redirect          off;
-    proxy_set_header        Host              $host;
-    proxy_set_header        Referer           $http_referer;
-    proxy_set_header        X-Real-IP         $remote_addr;
-    proxy_set_header        X-Forwarded-For   $proxy_add_x_forwarded_for;
-    proxy_set_header        X-Forwarded-Proto $scheme;
-    client_max_body_size    1024m;
-    client_body_buffer_size 128k;
-    proxy_connect_timeout   600;    # 10 minutes
-    proxy_send_timeout      600;    # 10 minutes
-    proxy_read_timeout      86400;  # 24 hours
-    proxy_buffers           32 4k;
 }
