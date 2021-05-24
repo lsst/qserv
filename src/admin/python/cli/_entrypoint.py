@@ -68,9 +68,11 @@ def load(**kwargs):
 
 @entrypoint.command()
 @click.argument("STATEMENT")
+@click.option("-h", "--host", help="The sql server.", required=True)
+@click.option("-p", "--port", help="The sql server port.", required=True, type=click.INT)
 def query(**kwargs):
     """Run an sql statement and print the results."""
-    script.query(**kwargs)
+    _query.query(**kwargs)
 
 
 @entrypoint.command()

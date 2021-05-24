@@ -21,12 +21,10 @@
 
 import backoff
 from contextlib import closing
-import flask
 from functools import partial
 import logging
 import mysql.connector
 import os
-import socket
 import subprocess
 import shutil
 import sys

@@ -19,10 +19,20 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+from contextlib import closing
+import logging
 import mysql.connector
 
-def query(statement):
-    connection = mysql.connector.connect(user="qsmaster", host="czar-proxy", port=4040)
-    cursor = connection.cursor()
-    cursor.execute("select * from test101.Object")
-    width = max(cursor.column_names)
+
+_log = logging.getLogger(__name__)
+
+
+def query(statement, host, port):
+    with closing(mysql.connector.connect(user="qsmaster", host=host, port=port)) as connection:
+        cursor = connection.cursor()
+        cursor.execute(statement)
+        print(cursor.column_names)
+        print(cursor.fetchall())
+
+# TODO needs output formatting similar to astropy.table
+#    width = max(cursor.column_names)
