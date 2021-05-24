@@ -14,6 +14,7 @@ RUN dnf install -y 'dnf-command(config-manager)' \
         flex \
         gcc-c++ \
         gdb \
+        gdb-gdbserver \
         git \
         glib2-devel \
         java-devel \
@@ -137,8 +138,6 @@ RUN dnf install -y 'dnf-command(config-manager)' \
         boost-regex \
         boost-system \
         boost-thread \
-        gdb \
-        gdb-gdbserver \
         glib2 \
         jemalloc \
         libevent \
