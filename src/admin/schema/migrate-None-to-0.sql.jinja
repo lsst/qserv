@@ -4,6 +4,9 @@ CREATE USER '{{ mysqld_user_qserv }}'@'%';
 GRANT ALL ON qservResult.* TO '{{ mysqld_user_qserv }}'@'localhost';
 GRANT ALL ON qservResult.* TO '{{ mysqld_user_qserv }}'@'%';
 
+GRANT SELECT ON *.* TO '{{ mysqld_user_qserv }}'@'%';
+GRANT SELECT ON *.* TO '{{ mysqld_user_qserv }}'@'localhost';
+
 -- Secondary index database (i.e. objectId/chunkId relation)
 -- created by integration test script/loader for now
 GRANT ALL ON qservMeta.* TO '{{ mysqld_user_qserv }}'@'localhost';
