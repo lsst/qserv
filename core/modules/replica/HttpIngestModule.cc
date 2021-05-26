@@ -935,7 +935,7 @@ void HttpIngestModule::_publishDatabaseInMaster(DatabaseInfo const& databaseInfo
             css::PartTableParams const partParams(
                 databaseInfo.name,
                 databaseInfo.directorTable,
-                databaseInfo.directorTableKey,
+                databaseInfo.directorTableKey.at(table),
                 databaseInfo.latitudeColName.at(table),
                 databaseInfo.longitudeColName.at(table),
                 overlap,
@@ -1075,15 +1075,19 @@ string HttpIngestModule::_reconfigureWorkers(DatabaseInfo const& databaseInfo,
 
 void HttpIngestModule::_createSecondaryIndex(DatabaseInfo const& databaseInfo) const {
 
-    if (databaseInfo.directorTable.empty() or databaseInfo.directorTableKey.empty() or
+    string const& directorTable = databaseInfo.directorTable;
+    if (directorTable.empty() or
+        (databaseInfo.directorTableKey.count(directorTable) == 0) or
+        databaseInfo.directorTableKey.at(directorTable).empty() or
         databaseInfo.chunkIdColName.empty() or databaseInfo.subChunkIdColName.empty()) {
         throw logic_error(
                 "director table has not been properly configured in database '" +
                 databaseInfo.name + "'");
     }
-    if (0 == databaseInfo.columns.count(databaseInfo.directorTable)) {
+    string const& directorTableKey = databaseInfo.directorTableKey.at(directorTable);
+    if (0 == databaseInfo.columns.count(directorTable)) {
         throw logic_error(
-                "no schema found for director table '" + databaseInfo.directorTable +
+                "no schema found for director table '" + directorTable +
                 "' of database '" + databaseInfo.name + "'");
     }
 
@@ -1093,23 +1097,23 @@ void HttpIngestModule::_createSecondaryIndex(DatabaseInfo const& databaseInfo) c
     string chunkIdColNameType;
     string subChunkIdColNameType;
 
-    for (auto&& coldef: databaseInfo.columns.at(databaseInfo.directorTable)) {
-        if      (coldef.name == databaseInfo.directorTableKey)  directorTableKeyType  = coldef.type;
-        else if (coldef.name == databaseInfo.chunkIdColName)    chunkIdColNameType    = coldef.type;
+    for (auto&& coldef: databaseInfo.columns.at(directorTable)) {
+        if (coldef.name == directorTableKey) directorTableKeyType = coldef.type;
+        else if (coldef.name == databaseInfo.chunkIdColName) chunkIdColNameType = coldef.type;
         else if (coldef.name == databaseInfo.subChunkIdColName) subChunkIdColNameType = coldef.type;
     }
     if (directorTableKeyType.empty() or chunkIdColNameType.empty() or subChunkIdColNameType.empty()) {
         throw logic_error(
                 "column definitions for the Object identifier or chunk/sub-chunk identifier"
                 " columns are missing in the director table schema for table '" +
-                databaseInfo.directorTable + "' of database '" + databaseInfo.name + "'");
+                directorTable + "' of database '" + databaseInfo.name + "'");
     }
     
     // Manage the new connection via the RAII-style handler to ensure the transaction
     // is automatically rolled-back in case of exceptions.
 
     database::mysql::ConnectionHandler const h(qservMasterDbConnection("qservMeta"));
-    auto const escapedTableName = h.conn->sqlId(databaseInfo.name + "__" + databaseInfo.directorTable);
+    auto const escapedTableName = h.conn->sqlId(databaseInfo.name + "__" + directorTable);
 
     vector<string> queries;
     queries.push_back(
@@ -1117,12 +1121,12 @@ void HttpIngestModule::_createSecondaryIndex(DatabaseInfo const& databaseInfo) c
     );
     queries.push_back(
         "CREATE TABLE IF NOT EXISTS " + escapedTableName +
-        " (" + h.conn->sqlId(_partitionByColumn)            + " " + _partitionByColumnType + "," +
-               h.conn->sqlId(databaseInfo.directorTableKey) + " " + directorTableKeyType   + "," +
-               h.conn->sqlId(databaseInfo.chunkIdColName)       + " " + chunkIdColNameType         + "," +
-               h.conn->sqlId(databaseInfo.subChunkIdColName)    + " " + subChunkIdColNameType      + ","
-               " UNIQUE KEY (" + h.conn->sqlId(_partitionByColumn) + "," + h.conn->sqlId(databaseInfo.directorTableKey) + "),"
-               " KEY (" + h.conn->sqlId(databaseInfo.directorTableKey) + ")"
+        " (" + h.conn->sqlId(_partitionByColumn) + " " + _partitionByColumnType + "," +
+               h.conn->sqlId(directorTableKey) + " " + directorTableKeyType   + "," +
+               h.conn->sqlId(databaseInfo.chunkIdColName) + " " + chunkIdColNameType     + "," +
+               h.conn->sqlId(databaseInfo.subChunkIdColName) + " " + subChunkIdColNameType  + ","
+               " UNIQUE KEY (" + h.conn->sqlId(_partitionByColumn) + "," + h.conn->sqlId(directorTableKey) + "),"
+               " KEY (" + h.conn->sqlId(directorTableKey) + ")"
         ") ENGINE=InnoDB PARTITION BY LIST (" + h.conn->sqlId(_partitionByColumn) +
         ") (PARTITION `p0` VALUES IN (0) ENGINE=InnoDB)"
     );

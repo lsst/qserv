@@ -88,17 +88,22 @@ json HttpIngestIndexModule::_buildSecondaryIndex() {
         throw HttpError(__func__, "database '" + databaseInfo.name +
                 "' is already published. Use 'allow_for_published' option to override the restriction.");
     }
-    if (databaseInfo.directorTable.empty() or databaseInfo.directorTableKey.empty() or
+    string const& directorTable = databaseInfo.directorTable;
+    if (directorTable.empty() or
+        (databaseInfo.directorTableKey.count(directorTable) == 0) or
+        databaseInfo.directorTableKey.at(directorTable).empty() or
         databaseInfo.chunkIdColName.empty() or databaseInfo.subChunkIdColName.empty()) {
         throw HttpError(
                 __func__,
                 "director table has not been properly configured in database '" +
                 databaseInfo.name + "'");
     }
-    if (0 == databaseInfo.columns.count(databaseInfo.directorTable)) {
+    string const& directorTableKey = databaseInfo.directorTableKey.at(directorTable);
+
+    if (0 == databaseInfo.columns.count(directorTable)) {
         throw HttpError(
                 __func__,
-                "no schema found for director table '" + databaseInfo.directorTable +
+                "no schema found for director table '" + directorTable +
                 "' of database '" + databaseInfo.name + "'");
     }
 
@@ -108,8 +113,8 @@ json HttpIngestIndexModule::_buildSecondaryIndex() {
     string chunkIdColNameType;
     string subChunkIdColNameType;
 
-    for (auto&& coldef: databaseInfo.columns.at(databaseInfo.directorTable)) {
-        if      (coldef.name == databaseInfo.directorTableKey)  directorTableKeyType  = coldef.type;
+    for (auto&& coldef: databaseInfo.columns.at(directorTable)) {
+        if      (coldef.name == directorTableKey)  directorTableKeyType  = coldef.type;
         else if (coldef.name == databaseInfo.chunkIdColName)    chunkIdColNameType    = coldef.type;
         else if (coldef.name == databaseInfo.subChunkIdColName) subChunkIdColNameType = coldef.type;
     }
@@ -118,14 +123,14 @@ json HttpIngestIndexModule::_buildSecondaryIndex() {
                 __func__,
                 "column definitions for the Object identifier or chunk/sub-chunk identifier"
                 " columns are missing in the director table schema for table '" +
-                databaseInfo.directorTable + "' of database '" + databaseInfo.name + "'");
+                directorTable + "' of database '" + databaseInfo.name + "'");
     }
 
     // Manage the new connection via the RAII-style handler to ensure the transaction
     // is automatically rolled-back in case of exceptions.
 
     database::mysql::ConnectionHandler const h(qservMasterDbConnection("qservMeta"));
-    auto const tableName = databaseInfo.name + "__" + databaseInfo.directorTable;
+    auto const tableName = databaseInfo.name + "__" + directorTable;
     auto const escapedTableName = h.conn->sqlId(tableName);
 
     // (Re-)create the index table. Note that the table creation statement (the way it's
@@ -135,11 +140,11 @@ json HttpIngestIndexModule::_buildSecondaryIndex() {
     if (rebuild) queries.push_back("DROP TABLE IF EXISTS " + escapedTableName);
     queries.push_back(
         "CREATE TABLE " + escapedTableName +
-        " (" + h.conn->sqlId(databaseInfo.directorTableKey) + " " + directorTableKeyType + "," +
+        " (" + h.conn->sqlId(directorTableKey) + " " + directorTableKeyType + "," +
                h.conn->sqlId(databaseInfo.chunkIdColName) + " " + chunkIdColNameType + "," +
                h.conn->sqlId(databaseInfo.subChunkIdColName) + " " + subChunkIdColNameType + ","
-               " UNIQUE KEY (" + h.conn->sqlId(databaseInfo.directorTableKey) + "),"
-               " KEY (" + h.conn->sqlId(databaseInfo.directorTableKey) + ")"
+               " UNIQUE KEY (" + h.conn->sqlId(directorTableKey) + "),"
+               " KEY (" + h.conn->sqlId(directorTableKey) + ")"
         ") ENGINE=InnoDB"
     );
     h.conn->execute([&queries](decltype(h.conn) conn) {
