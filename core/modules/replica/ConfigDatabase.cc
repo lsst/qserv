@@ -23,6 +23,7 @@
 #include "replica/ConfigDatabase.h"
 
 // System headers
+#include <algorithm>
 #include <iostream>
 #include <stdexcept>
 
@@ -72,6 +73,7 @@ DatabaseInfo::DatabaseInfo(json const& obj,
                 bool const isPartitioned = tableJson.at("is_partitioned").get<int>() != 0;
                 if (isPartitioned) {
                     partitionedTables.push_back(table);
+                    directorTableKey[table] = tableJson.at("director_key").get<string>();
                     latitudeColName[table]  = tableJson.at("latitude_key").get<string>();
                     longitudeColName[table] = tableJson.at("longitude_key").get<string>();
                 } else {
@@ -93,7 +95,6 @@ DatabaseInfo::DatabaseInfo(json const& obj,
             }
         }
         directorTable     = obj.at("director_table").get<string>();
-        directorTableKey  = obj.at("director_key").get<string>();
         chunkIdColName    = obj.at("chunk_id_key").get<string>();
         subChunkIdColName = obj.at("sub_chunk_id_key").get<string>();
     } catch (exception const& ex) {
@@ -119,6 +120,7 @@ json DatabaseInfo::toJson() const {
         infoJson["tables"][name] = json::object({
             {"name", name},
             {"is_partitioned", 1},
+            {"director_key", directorTableKey.at(name)},
             {"latitude_key", latitudeColName.at(name)},
             {"longitude_key", longitudeColName.at(name)}
         });
@@ -144,7 +146,6 @@ json DatabaseInfo::toJson() const {
         infoJson["columns"][table] = coldefsJson;
     }
     infoJson["director_table"] = directorTable;
-    infoJson["director_key"] = directorTableKey;
     infoJson["chunk_id_key"] = chunkIdColName;
     infoJson["sub_chunk_id_key"] = subChunkIdColName;
     return infoJson;
@@ -198,10 +199,22 @@ void DatabaseInfo::addTable(
         throw invalid_argument(context + "table '" + table + "' already exists.");
     }
     if (isPartitioned) {
-        map<string, string> const colDefs = {
+        if (isDirectorTable) {
+            if (directorTableKey_.empty()) {
+                throw invalid_argument(
+                        context + "a valid column name must be provided"
+                        " for the 'director' table");
+            }
+        }
+        map<string, string> colDefs = {
             {"chunkIdColName", chunkIdColName_},
             {"subChunkIdColName", subChunkIdColName_}
         };
+        if (!directorTableKey_.empty()) {
+            // The FK->PK association with the "director" table is optional for the "dependent"
+            // tables.
+            colDefs.insert({"directorTableKey", directorTableKey_});
+        }
         for (auto&& entry: colDefs) {
             string const& role = entry.first;
             string const& colName = entry.second;
@@ -223,17 +236,6 @@ void DatabaseInfo::addTable(
                         context + "another table '" + directorTable +
                         "' was already claimed as the 'director' table.");
             }
-            if (directorTableKey_.empty()) {
-                throw invalid_argument(
-                        context + "a valid column name must be provided"
-                        " for the 'director' table");
-            }
-            if (!columnInSchema(directorTableKey_, columns_)) {
-                throw invalid_argument(
-                        context + "a value of parameter 'directorTableKey'"
-                        " provided for the 'director' table '" + table + "' doesn't match any column"
-                        " in the table schema");
-            }
             if (!latitudeColName_.empty()) {
                 if (!columnInSchema(latitudeColName_, columns_)) {
                     throw invalid_argument(
@@ -251,10 +253,10 @@ void DatabaseInfo::addTable(
                 }
             }
             directorTable = table;
-            directorTableKey = directorTableKey_;
             chunkIdColName = chunkIdColName_;
             subChunkIdColName = subChunkIdColName_;
         }
+        directorTableKey[table] = directorTableKey_;
         latitudeColName[table] = latitudeColName_;
         longitudeColName[table] = longitudeColName_;
         partitionedTables.push_back(table);
@@ -265,6 +267,35 @@ void DatabaseInfo::addTable(
         regularTables.push_back(table);
     }
     columns[table] = columns_;
+}
+
+
+void DatabaseInfo::removeTable(std::string const& table) {
+    bool const partitioned = isPartitioned(table);
+    bool const director = isDirector(table);
+    if (partitioned) {
+        partitionedTables.erase(
+            find(partitionedTables.begin(),
+                 partitionedTables.end(),
+                 table)
+        );
+        if (director) {
+            // These attributes are set for the director table only.
+            directorTable = "";
+            chunkIdColName = "";
+            subChunkIdColName = "";
+        }
+        directorTableKey.erase(table);
+        latitudeColName.erase(table);
+        longitudeColName.erase(table);
+    } else {
+       regularTables.erase(
+            find(regularTables.begin(),
+                 regularTables.end(),
+                 table)
+        );
+    }
+    columns.erase(table);
 }
 
 

@@ -544,11 +544,14 @@ public:
      * @param isDirectorTable An (optional) flag indicating if this is the "director"
      *   table of the catalog. Note there could be only one such table in a catalog,
      *   and this table must be "partitioned".
-     * @param directorTableKey The (optional) name of a column in the "director"
-     *   table which is used as an "object" identifier for astronomical objects.
-     *   This parameter applies to the director tables only. And if provided (and
-     *   allowed) the column must be found among the names of columns in a value
-     *   of parameter "columns".
+     * @param directorTableKey The (optional) name of a column representing object identifiers.
+     *   The parameter only applies to the partitioned tables. For the "dependent" tables
+     *   this would be the FK for the corresponding PK of the "director" table.
+     *   The key is mandatory for the "director" tables only. The key is optional for
+     *   the "dependent" tables. If the key is empty then the "dependent" table won't
+     *   have any objectId-based association with any "director" table.
+     *   If provided (and allowed) the column must be found among the names of columns
+     *   specified in the parameter "columns".
      * @param chunkIdColName The (optional) name of a column which stores identifiers
      *   of "chunks". This parameter applies to all "partitioned" tables, and if
      *   provided the column must be found among the names of columns in a value
@@ -569,7 +572,7 @@ public:
                           bool isPartitioned,
                           std::list<SqlColDef> const& columns=std::list<SqlColDef>(),
                           bool isDirectorTable=false,
-                          std::string const& directorTableKey="objectId",
+                          std::string const& directorTableKey="",
                           std::string const& chunkIdColName=lsst::qserv::CHUNK_COLUMN,
                           std::string const& subChunkIdColName=lsst::qserv::SUB_CHUNK_COLUMN,
                           std::string const& latitudeColName=std::string(),

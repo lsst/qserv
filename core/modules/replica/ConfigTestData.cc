@@ -213,13 +213,13 @@ json ConfigTestData::data() {
         {"family_name", "production"},
         {"is_published", 1},
         {"director_table", "Table11"},
-        {"director_key", "id1"},
         {"chunk_id_key", "chunkId1"},
         {"sub_chunk_id_key", "subChunkId1"},
         {"tables", {
             {"Table11", {
                 {"name", "Table11"},
                 {"is_partitioned", 1},
+                {"director_key",  "id11"},
                 {"latitude_key",  "decl11"},
                 {"longitude_key", "ra11"},
                 {"columns", {}}
@@ -235,13 +235,13 @@ json ConfigTestData::data() {
         {"family_name", "production"},
         {"is_published", 1},
         {"director_table", "Table21"},
-        {"director_key", "id2"},
         {"chunk_id_key", "chunkId2"},
         {"sub_chunk_id_key", "subChunkId2"},
         {"tables", {
             {"Table21", {
                 {"name", "Table21"},
                 {"is_partitioned", 1},
+                {"director_key",  "id21"},
                 {"latitude_key",  "decl21"},
                 {"longitude_key", "ra21"},
                 {"columns", {}}
@@ -249,6 +249,7 @@ json ConfigTestData::data() {
             {"Table22", {
                 {"name", "Table22"},
                 {"is_partitioned", 1},
+                {"director_key",  "id22"},
                 {"latitude_key",  "decl22"},
                 {"longitude_key", "ra22"},
                 {"columns", {}}
@@ -268,13 +269,13 @@ json ConfigTestData::data() {
         {"family_name", "production"},
         {"is_published", 1},
         {"director_table", "Table31"},
-        {"director_key", "id3"},
         {"chunk_id_key", "chunkId3"},
         {"sub_chunk_id_key", "subChunkId3"},
         {"tables", {
             {"Table31", {
                 {"name", "Table31"},
                 {"is_partitioned", 1},
+                {"director_key",  "id31"},
                 {"latitude_key",  "decl31"},
                 {"longitude_key", "ra31"},
                 {"columns", {}}
@@ -282,6 +283,7 @@ json ConfigTestData::data() {
             {"Table32", {
                 {"name", "Table32"},
                 {"is_partitioned", 1},
+                {"director_key",  "id32"},
                 {"latitude_key",  "decl32"},
                 {"longitude_key", "ra32"},
                 {"columns", {}}
@@ -289,6 +291,7 @@ json ConfigTestData::data() {
             {"Table33", {
                 {"name", "Table33"},
                 {"is_partitioned", 1},
+                {"director_key",  ""},
                 {"latitude_key",  "decl33"},
                 {"longitude_key", "ra33"},
                 {"columns", {}}
@@ -312,13 +315,13 @@ json ConfigTestData::data() {
         {"family_name", "test"},
         {"is_published", 1},
         {"director_table", "Table41"},
-        {"director_key", "id4"},
         {"chunk_id_key", "chunkId4"},
         {"sub_chunk_id_key", "subChunkId4"},
         {"tables", {
             {"Table41", {
                 {"name", "Table41"},
                 {"is_partitioned", 1},
+                {"director_key",  "id41"},
                 {"latitude_key",  "decl41"},
                 {"longitude_key", "ra41"},
                 {"columns", {}}
@@ -326,6 +329,7 @@ json ConfigTestData::data() {
             {"Table42", {
                 {"name", "Table42"},
                 {"is_partitioned", 1},
+                {"director_key",  ""},
                 {"latitude_key",  "decl42"},
                 {"longitude_key", "ra42"},
                 {"columns", {}}
@@ -337,13 +341,13 @@ json ConfigTestData::data() {
         {"family_name", "test"},
         {"is_published", 1},
         {"director_table", "Table51"},
-        {"director_key", "id5"},
         {"chunk_id_key", "chunkId5"},
         {"sub_chunk_id_key", "subChunkId5"},
         {"tables", {
             {"Table51", {
                 {"name", "Table51"},
                 {"is_partitioned", 1},
+                {"director_key",  "id51"},
                 {"latitude_key",  "decl51"},
                 {"longitude_key", "decl51"},
                 {"columns", {}}
@@ -355,13 +359,13 @@ json ConfigTestData::data() {
         {"family_name", "test"},
         {"is_published", 0},
         {"director_table", "Table61"},
-        {"director_key", "id6"},
         {"chunk_id_key", "chunkId6"},
         {"sub_chunk_id_key", "subChunkId6"},
         {"tables", {
             {"Table61", {
                 {"name", "Table61"},
                 {"is_partitioned", 1},
+                {"director_key",  "id61"},
                 {"latitude_key",  "decl61"},
                 {"longitude_key", "ra61"},
                 {"columns", {}}

@@ -215,7 +215,7 @@ void ConfigAppBase::dumpDatabasesAsTable(string const& indent, string const& cap
             isPartitioned.push_back("yes");
             if (table == di.directorTable) {
                 isDirector.push_back("yes");
-                directorKey.push_back(di.directorTableKey);
+                directorKey.push_back(di.directorTableKey.at(table));
             } else {
                 isDirector.push_back("no");
                 directorKey.push_back("");
