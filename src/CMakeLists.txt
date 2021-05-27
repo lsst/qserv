@@ -13,7 +13,7 @@ find_package(Boost REQUIRED
     unit_test_framework REQUIRED
 )
 
-add_compile_options(-Og -Wall -Wextra -Wno-unused-parameter)
+add_compile_options(-Og -g -Wall -Wextra -Wno-unused-parameter)
 add_compile_definitions(BOOST_TEST_DYN_LINK=1)
 
 include_directories(
