@@ -16,11 +16,20 @@ target_sources(qhttp PRIVATE
 )
 
 target_link_libraries(qhttp PUBLIC
-    boost_filesystem
-    boost_regex
-    boost_system
+    Boost::filesystem
+    Boost::regex
+    Boost::system
 )
 
-install(
-    TARGETS qhttp
+install(TARGETS qhttp)
+
+add_executable(testqhttp testqhttp.cc)
+
+target_link_libraries(testqhttp PUBLIC 
+    qhttp
+    Boost::unit_test_framework
+    Threads::Threads
+    curl
 )
+
+add_test(NAME test_qhttp COMMAND testqhttp)

@@ -3,7 +3,18 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
+find_package(Threads REQUIRED)
+
+find_package(Boost REQUIRED
+    filesystem REQUIRED
+    program_options REQUIRED
+    regex REQUIRED
+    system REQUIRED
+    unit_test_framework REQUIRED
+)
+
 add_compile_options(-Og -Wall -Wextra -Wno-unused-parameter)
+add_compile_definitions(BOOST_TEST_DYN_LINK=1)
 
 include_directories(
     ${CMAKE_CURRENT_SOURCE_DIR}

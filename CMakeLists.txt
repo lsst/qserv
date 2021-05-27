@@ -6,6 +6,8 @@ project(Qserv
     LANGUAGES CXX
 )
 
+enable_testing()
+
 include(GNUInstallDirs)
 set(CMAKE_INSTALL_PREFIX ${PROJECT_BINARY_DIR}/install)
 
@@ -20,4 +22,7 @@ add_subdirectory(extern/utils)
 add_subdirectory(src)
 
 # TODO do we want to add cmake capability to the qserv_web project?
-install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/extern/qserv_web/www DESTINATION ${CMAKE_INSTALL_PREFIX}/qserv/dashboard)
+install(
+    DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/extern/qserv_web/www 
+    DESTINATION ${CMAKE_INSTALL_PREFIX}/qserv/dashboard
+)

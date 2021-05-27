@@ -44,8 +44,7 @@
 
 // Boost unit test header
 #define BOOST_TEST_MODULE ValueExpr
-#include "boost/test/data/test_case.hpp"
-#include "boost/test/included/unit_test.hpp"
+#include "boost/test/unit_test.hpp"
 
 
 using namespace lsst::qserv::query;

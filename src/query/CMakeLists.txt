@@ -87,3 +87,34 @@ target_link_libraries(query PUBLIC
     log
     sphgeom
 )
+
+FUNCTION(QUERY_TESTS)
+    FOREACH(TEST IN ITEMS ${ARGV})
+        add_executable(${TEST} ${TEST}.cc)
+        target_link_libraries(${TEST} PUBLIC
+            query
+            ccontrol
+            parser
+            qana
+            qdisp
+            qproc
+            qserv_css
+            qserv_meta
+            rproc
+            Boost::unit_test_framework
+            Threads::Threads
+        )
+        add_test(NAME ${TEST} COMMAND ${TEST})
+    ENDFOREACH()
+ENDFUNCTION()
+
+query_tests(
+    testAreaRestrictor
+    testColumnRef
+    testOrderBy
+    testQueryContext
+    testRepr
+    testSecIdxRestrictor
+    testTableRef
+    testValueExpr
+)
