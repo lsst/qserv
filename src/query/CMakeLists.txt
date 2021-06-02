@@ -92,7 +92,6 @@ FUNCTION(QUERY_TESTS)
     FOREACH(TEST IN ITEMS ${ARGV})
         add_executable(${TEST} ${TEST}.cc)
         target_link_libraries(${TEST} PUBLIC
-            query
             ccontrol
             parser
             qana
@@ -100,6 +99,7 @@ FUNCTION(QUERY_TESTS)
             qproc
             qserv_css
             qserv_meta
+            query
             rproc
             Boost::unit_test_framework
             Threads::Threads

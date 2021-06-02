@@ -48,6 +48,16 @@ target_link_libraries(qmetaLib PRIVATE
 
 #-----------------------------------------------------------------------------
 
+add_executable(testQMeta testQMeta.cc)
+target_link_libraries(testQMeta
+    qserv_meta
+    Boost::unit_test_framework
+    Threads::Threads
+)
+add_test(NAME testQMeta COMMAND testQMeta)
+
+#-----------------------------------------------------------------------------
+
 install(DIRECTORY python/ DESTINATION ${CMAKE_INSTALL_PREFIX}/python/lsst/qserv/qmeta)
 install(TARGETS qmetaLib DESTINATION ${CMAKE_INSTALL_PREFIX}/python/lsst/qserv/qmeta)
 install(DIRECTORY schema/ DESTINATION ${CMAKE_INSTALL_PREFIX}/qserv/smig/qmeta/schema/)

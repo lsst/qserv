@@ -469,3 +469,33 @@ install(DIRECTORY schema/ DESTINATION ${CMAKE_INSTALL_PREFIX}/qserv/smig/replica
 install(
     TARGETS replica
 )
+
+
+FUNCTION(REPLICA_TESTS)
+    FOREACH(TEST IN ITEMS ${ARGV})
+        add_executable(${TEST} ${TEST}.cc)
+        target_link_libraries(${TEST} PUBLIC
+            replica
+            Boost::unit_test_framework
+            Threads::Threads
+        )
+        add_test(NAME ${TEST} COMMAND ${TEST})
+    ENDFOREACH()
+ENDFUNCTION()
+
+replica_tests(
+    testApplicationParser
+    testChunkLocker
+    testChunkNumber
+    testChunkedTable
+    testConnectionParams
+    testFileIngestApp
+    testFileUtils
+    testJson
+    testNamedMutexRegistry
+    testReplicaInfo
+    testSemanticMap
+    testSqlSchemaUtils
+    testUrl
+    testConfiguration
+)

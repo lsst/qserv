@@ -57,3 +57,63 @@ target_sources(util PRIVATE
 target_link_libraries(util PUBLIC
     log
 )
+
+
+add_executable(testCommon testCommon.cc)
+target_link_libraries(testCommon
+    crypto
+    util
+    Boost::unit_test_framework
+    Threads::Threads
+)
+add_test(NAME testCommon COMMAND testCommon)
+
+
+add_executable(testEventThread testEventThread.cc)
+target_link_libraries(testEventThread
+    crypto
+    util
+    Boost::unit_test_framework
+    Threads::Threads
+)
+add_test(NAME testEventThread COMMAND testEventThread)
+
+
+add_executable(testIterableFormatter testIterableFormatter.cc)
+target_link_libraries(testIterableFormatter
+    crypto
+    util
+    Boost::unit_test_framework
+    Threads::Threads
+)
+add_test(NAME testIterableFormatter COMMAND testIterableFormatter)
+
+
+add_executable(testMultiError testMultiError.cc)
+target_link_libraries(testMultiError
+    crypto
+    util
+    Boost::unit_test_framework
+    Threads::Threads
+)
+add_test(NAME testMultiError COMMAND testMultiError)
+
+
+add_executable(testMutex testMutex.cc)
+target_link_libraries(testMutex
+    crypto
+    util
+    Boost::unit_test_framework
+    Threads::Threads
+)
+add_test(NAME testMutex COMMAND testMutex)
+
+
+add_executable(testTablePrinter testTablePrinter.cc)
+target_link_libraries(testTablePrinter
+    crypto
+    util
+    Boost::unit_test_framework
+    Threads::Threads
+)
+add_test(NAME testTablePrinter COMMAND testTablePrinter)

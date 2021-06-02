@@ -3,7 +3,7 @@ find_package(antlr4-runtime REQUIRED)
 add_library(ccontrol OBJECT)
 add_dependencies(ccontrol proto)
 
-target_include_directories(ccontrol PRIVATE 
+target_include_directories(ccontrol PRIVATE
     ${ANTLR4_INCLUDE_DIR}
 )
 
@@ -58,3 +58,54 @@ target_link_libraries(ccontrol PUBLIC
     parser
     sphgeom
 )
+
+
+add_executable(testAntlr4GeneratedIR testAntlr4GeneratedIR.cc)
+target_link_libraries(testAntlr4GeneratedIR
+    ccontrol
+    parser
+    qana
+    qdisp
+    qproc
+    qserv_css
+    qserv_meta
+    query
+    rproc
+    Boost::unit_test_framework
+    Threads::Threads
+)
+add_test(NAME testAntlr4GeneratedIR COMMAND testAntlr4GeneratedIR)
+
+
+add_executable(testCControl testCControl.cc)
+target_link_libraries(testCControl
+    ccontrol
+    parser
+    qana
+    qdisp
+    qproc
+    qserv_css
+    qserv_meta
+    query
+    rproc
+    Boost::unit_test_framework
+    Threads::Threads
+)
+add_test(NAME testCControl COMMAND testCControl)
+
+
+add_executable(testUserQueryType testUserQueryType.cc)
+target_link_libraries(testUserQueryType
+    ccontrol
+    qdisp
+    parser
+    qana
+    qproc
+    qserv_css
+    qserv_meta
+    query
+    rproc
+    Boost::unit_test_framework
+    Threads::Threads
+)
+add_test(NAME testUserQueryType COMMAND testUserQueryType)

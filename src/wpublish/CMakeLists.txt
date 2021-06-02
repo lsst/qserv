@@ -49,3 +49,12 @@ target_link_libraries(wpublish PUBLIC
     log
     XrdSsiLib
 )
+
+
+add_executable(testChunkInventory testChunkInventory.cc)
+target_link_libraries(testChunkInventory PUBLIC
+    xrdsvc
+    Boost::unit_test_framework
+    Threads::Threads
+)
+add_test(NAME testChunkInventory COMMAND testChunkInventory)

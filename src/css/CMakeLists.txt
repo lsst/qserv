@@ -49,6 +49,35 @@ target_link_libraries(cssLib PRIVATE
 
 #-----------------------------------------------------------------------------
 
+add_executable(testEmptyChunks testEmptyChunks.cc)
+target_link_libraries(testEmptyChunks
+    qserv_css
+    Boost::unit_test_framework
+)
+add_test(NAME testEmptyChunks COMMAND testEmptyChunks)
+
+add_executable(testKvInterfaceImpl testKvInterfaceImpl.cc)
+target_link_libraries(testKvInterfaceImpl
+    qserv_css
+    Boost::unit_test_framework
+)
+add_test(NAME testKvInterfaceImpl COMMAND testKvInterfaceImpl.cc)
+
+add_executable(testKvInterfaceImplMySql testKvInterfaceImplMySql.cc)
+target_link_libraries(testKvInterfaceImplMySql
+    qserv_css
+    Boost::unit_test_framework
+)
+add_test(NAME testKvInterfaceImplMySql COMMAND testKvInterfaceImplMySql.cc)
+
+add_executable(testCssAccess testCssAccess.cc)
+target_link_libraries(testCssAccess
+    qserv_css
+    Boost::unit_test_framework
+)
+add_test(NAME testCssAccess COMMAND testCssAccess.cc)
+#-----------------------------------------------------------------------------
+
 install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/python/ DESTINATION ${CMAKE_INSTALL_PREFIX}/python/lsst/qserv/css)
 install(DIRECTORY schema/ DESTINATION ${CMAKE_INSTALL_PREFIX}/qserv/smig/css/schema/)
 install(TARGETS cssLib DESTINATION ${CMAKE_INSTALL_PREFIX}/python/lsst/qserv/css)

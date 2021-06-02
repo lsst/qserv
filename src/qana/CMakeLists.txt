@@ -39,3 +39,54 @@ target_sources(qana PRIVATE
 target_link_libraries(qana PUBLIC
     log
 )
+
+
+add_executable(testDuplSelectExprPlugin testDuplSelectExprPlugin.cc)
+target_link_libraries(testDuplSelectExprPlugin
+    ccontrol
+    parser
+    qana
+    qdisp
+    qproc
+    query
+    qserv_css
+    qserv_meta
+    rproc
+    Boost::unit_test_framework
+    Threads::Threads
+)
+add_test(NAME testDuplSelectExprPlugin COMMAND testDuplSelectExprPlugin)
+
+
+add_executable(testPlugins testPlugins.cc)
+target_link_libraries(testPlugins
+    ccontrol
+    parser
+    qana
+    qdisp
+    qproc
+    query
+    qserv_css
+    qserv_meta
+    rproc
+    Boost::unit_test_framework
+    Threads::Threads
+)
+add_test(NAME testPlugins COMMAND testPlugins)
+
+
+add_executable(testTablePlugin testTablePlugin.cc)
+target_link_libraries(testTablePlugin
+    ccontrol
+    parser
+    qana
+    qdisp
+    qproc
+    query
+    qserv_css
+    qserv_meta
+    rproc
+    Boost::unit_test_framework
+    Threads::Threads
+)
+add_test(NAME testTablePlugin COMMAND testTablePlugin)

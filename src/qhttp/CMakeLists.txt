@@ -25,11 +25,11 @@ install(TARGETS qhttp)
 
 add_executable(testqhttp testqhttp.cc)
 
-target_link_libraries(testqhttp PUBLIC 
+target_link_libraries(testqhttp PUBLIC
+    curl
     qhttp
     Boost::unit_test_framework
     Threads::Threads
-    curl
 )
 
 add_test(NAME test_qhttp COMMAND testqhttp)

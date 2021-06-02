@@ -30,3 +30,29 @@ target_sources(sql PRIVATE
 target_link_libraries(sql PUBLIC
     log
 )
+
+
+add_executable(testSqlConnection testSqlConnection.cc)
+target_link_libraries(testSqlConnection
+    sql
+    global
+    util
+    crypto
+    mysql
+    Boost::unit_test_framework
+    Threads::Threads
+)
+add_test(NAME testSqlConnection COMMAND testSqlConnection)
+
+
+add_executable(testSqlTransaction testSqlTransaction.cc)
+target_link_libraries(testSqlTransaction
+    sql
+    global
+    util
+    crypto
+    mysql
+    Boost::unit_test_framework
+    Threads::Threads
+)
+add_test(NAME testSqlTransaction COMMAND testSqlTransaction)

@@ -26,3 +26,13 @@ target_link_libraries(proto PUBLIC
     log
     protobuf
 )
+
+
+add_executable(testProtocol testProtocol.cc)
+target_link_libraries(testProtocol
+    crypto
+    ssl
+    proto
+    Boost::unit_test_framework
+)
+add_test(NAME testProtocol COMMAND testProtocol)
