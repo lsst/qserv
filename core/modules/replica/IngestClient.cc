@@ -156,6 +156,7 @@ void IngestClient::send() {
         // Read and analyze the response
         ProtocolIngestResponse response;
         _readResponse(response);
+        _retryAllowed = response.retry_allowed();
 
         switch (response.status()) {
             case ProtocolIngestResponse::READY_TO_READ_DATA:
@@ -192,6 +193,12 @@ void IngestClient::send() {
 
     _sent = true;
     _closeConnection();
+}
+
+
+bool IngestClient::retryAllowed() const {
+    if (!_sent) throw logic_error(_context(__func__) + "the request hasn't been sent");
+    return _retryAllowed;
 }
 
 

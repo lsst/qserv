@@ -34,7 +34,6 @@
 // Qserv headers
 #include "global/constants.h"
 #include "replica/Configuration.h"
-#include "replica/DatabaseServices.h"
 #include "replica/ReplicaInfo.h"
 #include "replica/ServiceProvider.h"
 
@@ -180,6 +179,14 @@ void IngestSvcConn::_handshakeReceived(boost::system::error_code const& ec,
     }
 
     try {
+        _contrib = serviceProvider()->databaseServices()->beginTransactionContrib(
+            request.transaction_id(),
+            request.table(),
+            request.chunk(),
+            request.is_overlap(),
+            workerInfo().name,
+            request.url()
+        );
         openFile(request.transaction_id(),
                  request.table(),
                  request.column_separator() == ProtocolIngestHandshakeRequest::COMMA ? ',' : '\t',
@@ -263,12 +270,20 @@ void IngestSvcConn::_dataReceived(boost::system::error_code const& ec,
         auto&& row = request.rows(i);
         writeRowIntoFile(row);
         rowSize = max(rowSize, row.size());
+        // Update contribution counters
+        _contrib.numBytes += rowSize;
+        _contrib.numRows++;
     }
 
     ProtocolIngestResponse response;
     if (request.last()) {
         try {
+            // Irreversible changes to the destination table are about to be made.
+            _retryAllowed = false;
             loadDataIntoTable();
+            // Save update contribution info in the database
+            _contrib.success = true;
+            serviceProvider()->databaseServices()->endTransactionContrib(_contrib);
             _finished();
         } catch(exception const& ex) {
             string const error = string("data load failed: ") + ex.what();
@@ -291,6 +306,7 @@ void IngestSvcConn::_reply(ProtocolIngestResponse::Status status,
     response.set_status(status);
     response.set_error(msg);
     response.set_max_rows(maxRows);
+    response.set_retry_allowed(_retryAllowed);
 
     _bufferPtr->resize();
     _bufferPtr->serialize(response);
