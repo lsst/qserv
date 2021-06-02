@@ -25,6 +25,9 @@
 // System headers
 #include <fstream>
 
+// Third party headers
+#include "boost/filesystem.hpp"
+
 // Qserv headers
 #include "replica/ProtocolBuffer.h"
 #include "replica/protocol.pb.h"
@@ -33,6 +36,7 @@
 #include "lsst/log/Log.h"
 
 using namespace std;
+namespace fs = boost::filesystem;
 
 namespace {
 
@@ -209,6 +213,12 @@ void IngestClient::_connectImpl() {
     boost::asio::connect(_socket, iter, ec);
     _assertErrorCode(ec, __func__, "server connect");
 
+    string const host = boost::asio::ip::host_name(ec);
+    _assertErrorCode(ec, __func__, "get the name of the local host");
+
+    fs::path const inputFilePathAbsolute = fs::canonical(fs::path(_inputFilePath), ec);
+    _assertErrorCode(ec, __func__, "absolute file path");
+
     // Make the handshake with the server and wait for the reply.
     ProtocolIngestHandshakeRequest request;
     request.set_transaction_id(_transactionId);
@@ -219,6 +229,7 @@ void IngestClient::_connectImpl() {
                                  ProtocolIngestHandshakeRequest::COMMA :
                                  ProtocolIngestHandshakeRequest::TAB);
     request.set_auth_key(_authKey);
+    request.set_url("file://" + host + inputFilePathAbsolute.string());
 
     _bufferPtr->resize();
     _bufferPtr->serialize(request);
