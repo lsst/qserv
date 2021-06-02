@@ -127,6 +127,10 @@ public:
     /// @return the number of bytes read from an input file
     size_t sizeBytes() const { return _sizeBytes; }
 
+    /// @return the flag indicating if the failed attempt is allowed to be retried
+    /// @throws std::logic_error if the request hasn't been completed
+    bool retryAllowed() const;
+
 private:
     IngestClient(std::string const& workerHost,
                  uint16_t workerPort,
@@ -220,8 +224,8 @@ private:
     boost::asio::io_service      _io_service;
     boost::asio::ip::tcp::socket _socket;
 
-    bool _sent = false;     /// Set to 'true' after a successful completion of
-                            /// the ingest.
+    bool _sent = false;         /// Set to 'true' after a successful completion of the ingest.
+    bool _retryAllowed = false; /// Set to 'true' to indicate that failed request may be retried.
 
     size_t _totalNumRows = 0;   /// The number of rows sent to a server
     size_t _sizeBytes = 0;      /// The number of bytes read from an input file
