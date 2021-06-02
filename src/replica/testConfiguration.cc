@@ -44,7 +44,7 @@
 
 // Boost unit test header
 #define BOOST_TEST_MODULE Configuration
-#include "boost/test/included/unit_test.hpp"
+#include <boost/test/unit_test.hpp>
 
 using namespace std;
 namespace test = boost::test_tools;
@@ -85,7 +85,7 @@ BOOST_AUTO_TEST_CASE(ConfigurationTest) {
     sort(workers2.begin(), workers2.end());
     BOOST_CHECK(workers2.size() == 1);
     BOOST_CHECK(workers2 == workers1);
- 
+
     // Fetch names of all the read-only workers.
     isEnabled  = true;
     isReadOnly = true;
@@ -94,7 +94,7 @@ BOOST_AUTO_TEST_CASE(ConfigurationTest) {
     sort(workers3.begin(), workers3.end());
     BOOST_CHECK(workers3.size() == 1);
     BOOST_CHECK(workers3 == vector<string>({"worker-B"}));
- 
+
     // Fetch names of all the disabled workers.
     isEnabled  = false;
     vector<string> workers4;
@@ -183,7 +183,7 @@ BOOST_AUTO_TEST_CASE(ConfigurationTest) {
     BOOST_REQUIRE_THROW(config->deleteDatabaseFamily(""), std::invalid_argument);
     BOOST_REQUIRE_THROW(config->deleteDatabaseFamily("non-existing"), std::invalid_argument);
 
-    // Database selectors. 
+    // Database selectors.
     vector<string> databases1;
     BOOST_REQUIRE_NO_THROW(databases1 = config->databases());
     sort(databases1.begin(), databases1.end());
@@ -231,7 +231,7 @@ BOOST_AUTO_TEST_CASE(ConfigurationTest) {
     BOOST_CHECK(databases8.size() == 3);
     BOOST_CHECK(databases8 == vector<string>({"db4", "db5", "db6"}));
     for (auto&& name: vector<string>({"db1", "db2", "db3", "db4", "db5", "db6"})) {
-        BOOST_CHECK(config->isKnownDatabase(name));  
+        BOOST_CHECK(config->isKnownDatabase(name));
     }
 
     // Probing database parameters.
@@ -540,7 +540,7 @@ BOOST_AUTO_TEST_CASE(ConfigurationTest) {
     BOOST_CHECK(workerA.httpLoaderHost == "host-A");
     BOOST_CHECK(workerA.httpLoaderPort == 53004);
     BOOST_CHECK(workerA.httpLoaderTmpDir == "/tmp/http/A");
- 
+
     WorkerInfo workerB;
     BOOST_REQUIRE_NO_THROW(workerB = config->workerInfo("worker-B"));
     BOOST_CHECK(workerB.name =="worker-B");
