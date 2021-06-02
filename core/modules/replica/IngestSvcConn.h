@@ -29,6 +29,7 @@
 
 // Qserv headers
 #include "replica/Common.h"
+#include "replica/DatabaseServices.h"
 #include "replica/IngestFileSvc.h"
 #include "replica/protocol.pb.h"
 #include "replica/ProtocolBuffer.h"
@@ -241,6 +242,17 @@ private:
     /// Buffer management class facilitating serialization/de-serialization
     /// of data sent over the network
     std::shared_ptr<ProtocolBuffer> const _bufferPtr;
+
+    /// A value of this flag is sent to a client in a response message in case of
+    /// a failure to indicate if the contribution could be retried. The flag is set
+    /// to 'false' when irreversible changes to the content of the destination table
+    /// are about to be made.
+    bool _retryAllowed = true;
+
+    // The row and size counters of the object get updated as more data received
+    // from a client. The object gets synchronized with the database after finishing
+    // the ingest.
+    TransactionContribInfo _contrib;
 };
 
 }}} // namespace lsst::qserv::replica
