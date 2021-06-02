@@ -882,6 +882,10 @@ message ProtocolIngestHandshakeRequest {
 
     /// An authorization key which should match the one known to a server
     optional string auth_key = 6 [default = ""];
+
+    /// The file URL for bookkeeping. The URL is expected to include the name of
+    /// the client's host: 'file://<host>/<path>'.
+    required string url = 7;
 }
 
 /// A message which is meant for sending rows to a server after receiving
@@ -904,8 +908,9 @@ message ProtocolIngestResponse {
     }
     required Status status = 1;
 
-    optional uint32 max_rows = 2 [default = 1]; /// sent with READY_TO_READ_DATA
-    optional string error = 3 [default = ""];   /// sent with FAILED
+    optional uint32 max_rows = 2 [default = 1];         /// sent with READY_TO_READ_DATA
+    optional string error = 3 [default = ""];           /// sent with FAILED
+    optional bool retry_allowed = 4 [default = false];  /// sent with FAILED
 }
 
 //////////////////////////////////////////////
