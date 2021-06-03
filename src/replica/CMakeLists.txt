@@ -492,10 +492,19 @@ replica_tests(
     testFileIngestApp
     testFileUtils
     testJson
-    testNamedMutexRegistry
     testReplicaInfo
     testSemanticMap
     testSqlSchemaUtils
     testUrl
     testConfiguration
+)
+
+
+# Don't add this test, it takes too long to run. Only compile it.
+# DM-30559: Reduce the run-time of the replication system's test testNamedMutexRegistry
+add_executable(testNamedMutexRegistry testNamedMutexRegistry.cc)
+target_link_libraries(testNamedMutexRegistry PUBLIC
+    replica
+    Boost::unit_test_framework
+    Threads::Threads
 )

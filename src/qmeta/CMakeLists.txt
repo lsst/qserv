@@ -54,7 +54,8 @@ target_link_libraries(testQMeta
     Boost::unit_test_framework
     Threads::Threads
 )
-add_test(NAME testQMeta COMMAND testQMeta)
+# don't add test, needs fix; DM-30562: fix Qserv unit tests that prompt for an sql connection
+# add_test(NAME testQMeta COMMAND testQMeta)
 
 #-----------------------------------------------------------------------------
 

@@ -42,7 +42,8 @@ target_link_libraries(testSqlConnection
     Boost::unit_test_framework
     Threads::Threads
 )
-add_test(NAME testSqlConnection COMMAND testSqlConnection)
+# don't add test, needs fix; DM-30562: fix Qserv unit tests that prompt for an sql connection
+# add_test(NAME testSqlConnection COMMAND testSqlConnection)
 
 
 add_executable(testSqlTransaction testSqlTransaction.cc)
@@ -55,4 +56,5 @@ target_link_libraries(testSqlTransaction
     Boost::unit_test_framework
     Threads::Threads
 )
-add_test(NAME testSqlTransaction COMMAND testSqlTransaction)
+# don't add test, needs fix; DM-30562: fix Qserv unit tests that prompt for an sql connection
+# add_test(NAME testSqlTransaction COMMAND testSqlTransaction)
