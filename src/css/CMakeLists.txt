@@ -61,21 +61,21 @@ target_link_libraries(testKvInterfaceImpl
     qserv_css
     Boost::unit_test_framework
 )
-add_test(NAME testKvInterfaceImpl COMMAND testKvInterfaceImpl.cc)
+add_test(NAME testKvInterfaceImpl COMMAND testKvInterfaceImpl)
 
 add_executable(testKvInterfaceImplMySql testKvInterfaceImplMySql.cc)
 target_link_libraries(testKvInterfaceImplMySql
     qserv_css
     Boost::unit_test_framework
 )
-add_test(NAME testKvInterfaceImplMySql COMMAND testKvInterfaceImplMySql.cc)
+add_test(NAME testKvInterfaceImplMySql COMMAND testKvInterfaceImplMySql)
 
 add_executable(testCssAccess testCssAccess.cc)
 target_link_libraries(testCssAccess
     qserv_css
     Boost::unit_test_framework
 )
-add_test(NAME testCssAccess COMMAND testCssAccess.cc)
+add_test(NAME testCssAccess COMMAND testCssAccess)
 #-----------------------------------------------------------------------------
 
 install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/python/ DESTINATION ${CMAKE_INSTALL_PREFIX}/python/lsst/qserv/css)
