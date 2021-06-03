@@ -25,6 +25,9 @@
 // System headers
 #include <fstream>
 
+// Third party headers
+#include "boost/filesystem.hpp"
+
 // Qserv headers
 #include "replica/ProtocolBuffer.h"
 #include "replica/protocol.pb.h"
@@ -33,6 +36,7 @@
 #include "lsst/log/Log.h"
 
 using namespace std;
+namespace fs = boost::filesystem;
 
 namespace {
 
@@ -152,6 +156,7 @@ void IngestClient::send() {
         // Read and analyze the response
         ProtocolIngestResponse response;
         _readResponse(response);
+        _retryAllowed = response.retry_allowed();
 
         switch (response.status()) {
             case ProtocolIngestResponse::READY_TO_READ_DATA:
@@ -191,6 +196,12 @@ void IngestClient::send() {
 }
 
 
+bool IngestClient::retryAllowed() const {
+    if (!_sent) throw logic_error(_context(__func__) + "the request hasn't been sent");
+    return _retryAllowed;
+}
+
+
 void IngestClient::_connectImpl() {
 
     LOGS(_log, LOG_LVL_DEBUG, _context(__func__));
@@ -209,6 +220,12 @@ void IngestClient::_connectImpl() {
     boost::asio::connect(_socket, iter, ec);
     _assertErrorCode(ec, __func__, "server connect");
 
+    string const host = boost::asio::ip::host_name(ec);
+    _assertErrorCode(ec, __func__, "get the name of the local host");
+
+    fs::path const inputFilePathAbsolute = fs::canonical(fs::path(_inputFilePath), ec);
+    _assertErrorCode(ec, __func__, "absolute file path");
+
     // Make the handshake with the server and wait for the reply.
     ProtocolIngestHandshakeRequest request;
     request.set_transaction_id(_transactionId);
@@ -219,6 +236,7 @@ void IngestClient::_connectImpl() {
                                  ProtocolIngestHandshakeRequest::COMMA :
                                  ProtocolIngestHandshakeRequest::TAB);
     request.set_auth_key(_authKey);
+    request.set_url("file://" + host + inputFilePathAbsolute.string());
 
     _bufferPtr->resize();
     _bufferPtr->serialize(request);
