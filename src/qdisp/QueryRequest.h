@@ -178,6 +178,8 @@ private:
     int _totalRows = 0; ///< number of rows in query added to the result table.
 
     std::atomic<int> _rowsIgnored{0}; ///< Limit log messages about rows being ignored.
+
+    std::atomic<uint> _respCount{0}; ///< number of responses created
 };
 
 std::ostream& operator<<(std::ostream& os, QueryRequest const& r);

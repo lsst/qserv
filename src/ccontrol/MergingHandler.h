@@ -78,7 +78,6 @@ public:
     /// @return true if successful (no error)
     bool flush(int bLen, BufPtr const& bufPtr, bool& last, bool& largeResult,
                int& nextBufSize, int& resultRows) override;
-               // &&& int& nextBufSize, bool& endNoData) override;
 
     /// Signal an unrecoverable error condition. No further calls are expected.
     void errorFlush(std::string const& msg, int code) override;

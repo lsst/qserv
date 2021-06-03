@@ -113,7 +113,7 @@ public:
     bool reply(char const* buf, int bufLen);
     bool replyError(std::string const& msg, int code);
     bool replyFile(int fd, long long fSize);
-    bool replyStream(StreamBuffer::Ptr const& sbuf, bool last);
+    bool replyStream(StreamBuffer::Ptr const& sbuf, bool last, int scsSeq);
 
     bool sendMetadata(const char *buf, int blen);
 
@@ -124,6 +124,8 @@ public:
     /// SsiRequest is guaranteed to live to the end of
     /// the function call.
     Ptr freeSelfKeepAlive();
+
+    uint64_t getSeq() const;
 
 private:
 

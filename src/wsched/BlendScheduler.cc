@@ -230,6 +230,8 @@ void BlendScheduler::queCmd(std::vector<util::Command::Ptr> const& cmds) {
         task->setTaskScheduler(targSched);
         _queries->queuedTask(task);
         taskCmds.push_back(task);
+        LOGS(_log, LOG_LVL_INFO, "BlendScheduler::queCmd<vect> added tid=" << task->getIdStr()
+                                 << " sched=" << targSched->getName());
     }
 
     if (!taskCmds.empty()) {
@@ -330,6 +332,7 @@ bool BlendScheduler::_ready() {
         }
     }
 
+    // IF nothing ready on the schedulers, check if the thread pool size should be changed.
     if (!ready) {
         ready = _ctrlCmdQueue.ready();
     }
@@ -368,8 +371,10 @@ util::Command::Ptr BlendScheduler::getCmd(bool wait) {
         if (ready && (_readySched != nullptr)) {
             cmd = _readySched->getCmd(false);
             if (cmd != nullptr) {
-                LOGS(_log, LOG_LVL_DEBUG, "Blend getCmd() using cmd from " << _readySched->getName());
                 wbase::Task::Ptr task = dynamic_pointer_cast<wbase::Task>(cmd);
+                LOGS(_log, LOG_LVL_DEBUG, "Blend getCmd() using cmd from " << _readySched->getName()
+                        << " chunkId=" << task->getChunkId()
+                        << " QID=" << task->getIdStr());
             }
             _readySched.reset();
             _sortScanSchedulers();

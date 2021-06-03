@@ -24,6 +24,9 @@
 // Class header
 #include "wcontrol/SqlConnMgr.h"
 
+// qserv headers
+#include "wbase/SendChannelShared.h"
+
 #include "lsst/log/Log.h"
 
 namespace {
@@ -36,22 +39,84 @@ namespace lsst {
 namespace qserv {
 namespace wcontrol {
 
-void SqlConnMgr::_take(bool scanQuery) {
+
+SqlConnMgr::ConnType SqlConnMgr::_take(bool scanQuery,
+                                       std::shared_ptr<wbase::SendChannelShared> const& sendChannelShared,
+                                       bool firstChannelSqlConn) {
     ++_totalCount;
     std::unique_lock<std::mutex> uLock(_mtx);
-    _tCv.wait(uLock, [this, scanQuery](){
-        bool ok = _sqlConnCount < _maxScanSqlConnections;
-        if (not scanQuery) {
-            ok = _sqlConnCount < _maxSqlConnections;
+
+    SqlConnMgr::ConnType connType = SCAN;
+    if (not scanQuery) {
+        // high priority interactive queries
+        connType = INTERACTIVE;
+    } else if (firstChannelSqlConn) {
+        // normal shared scan, low priority as far as SqlConnMgr is concerned.
+        connType = SCAN;
+    } else {
+        // SendChannelShared, every SQL connection after the first one.
+        // High priority to SqlConnMgr as these need to run to free up resources.
+        if (sendChannelShared != nullptr) {
+            connType = SHARED;
+        } else {
+            connType = SCAN;
+        }
+    }
+
+    _tCv.wait(uLock, [this, scanQuery, sendChannelShared, connType](){
+        bool ok = false;
+        switch (connType) {
+            case INTERACTIVE:
+                ok = _sqlSharedConnCount < _maxSqlSharedConnections;
+                break;
+            case SHARED:
+                // High priority, but only if at least one has already gotten
+                // a connection.
+                if (sendChannelShared->getSqlConnectionCount() > 0) {
+                    ok = _sqlSharedConnCount < _maxSqlSharedConnections;
+                } else {
+                    ok = false;
+                }
+                break;
+            case SCAN:
+                // _maxSqlScanConnections should be much smaller than _maxSqlSharedConnections
+                ok = _sqlScanConnCount < _maxSqlScanConnections;
+                break;
+            default:
+                throw Bug("SqlConnMgr::_take unexpected type " + to_string(connType));
         }
         return ok;
     });
-    ++_sqlConnCount;
+
+    // requestor got its sql connection, increment counts
+    if (sendChannelShared != nullptr) {
+        int newCount = sendChannelShared->incrSqlConnectionCount();
+        LOGS(_log, LOG_LVL_DEBUG, "SqlConnMgr::_take newCount=" << newCount);
+    }
+
+    if (connType == SCAN) {
+        ++_sqlScanConnCount;
+    } else {
+        ++_sqlSharedConnCount;
+    }
+    return connType;
 }
 
 
-void SqlConnMgr::_release() {
-    --_sqlConnCount;
+void SqlConnMgr::_release(SqlConnMgr::ConnType connType) {
+    // The sendChannelShared count does not get decremented. Once it has started
+    // transmitting sendChannelShared must be allowed to continue or xrootd could
+    // block and lead to deadlock.
+    // Decrementing the sendChannelShared count could result in the count
+    // being 0 before all transmits on the sendChannelShared have finished,
+    // causing _take() to block when it really should not.
+    // When the SendChannel is finished, it is thrown away, effectively clearing
+    // its count.
+    if (connType == SCAN) {
+        --_sqlScanConnCount;
+    } else {
+        --_sqlSharedConnCount;
+    }
     --_totalCount;
     // All threads threads must be checked as nothing will happen if one thread is
     // notified and it is waiting for _maxScanSqlConnections, but a different
@@ -67,9 +132,10 @@ void SqlConnMgr::_release() {
 
 ostream& SqlConnMgr::dump(ostream &os) const {
     os << "(totalCount=" << _totalCount
-       << " sqlConnCount=" << _sqlConnCount
-       << ":max=" << _maxSqlConnections
-       << " maxScanSqlConnections=" << _maxScanSqlConnections << ")";
+       << " sqlScanConnCount=" << _sqlScanConnCount
+       << ":max=" << _maxSqlScanConnections
+       << " sqlSharedConnCount=" << _sqlSharedConnCount
+       << ":max=" << _maxSqlSharedConnections << ")";
     return os;
 }
 
@@ -84,5 +150,17 @@ string SqlConnMgr::dump() const {
 ostream& operator<<(ostream &os, SqlConnMgr const& mgr) {
     return mgr.dump(os);
 }
+
+
+SqlConnLock::SqlConnLock(SqlConnMgr& sqlConnMgr, bool scanQuery,
+            std::shared_ptr<wbase::SendChannelShared> const& sendChannelShared)
+  : _sqlConnMgr(sqlConnMgr) {
+    bool firstChannelSqlConn = true;
+    if (sendChannelShared != nullptr) {
+        firstChannelSqlConn = sendChannelShared->getFirstChannelSqlConn();
+    }
+    _connType = _sqlConnMgr._take(scanQuery, sendChannelShared, firstChannelSqlConn);
+}
+
 
 }}} // namespace lsst::qserv::wcontrol

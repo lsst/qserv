@@ -50,7 +50,12 @@ namespace wsched {
 class ChunkTasks {
 public:
     using Ptr = std::shared_ptr<ChunkTasks>;
-    enum class ReadyState {READY, NOT_READY, NO_RESOURCES};
+    enum class ReadyState {
+        READY = 0,
+        NOT_READY = 1,
+        NO_RESOURCES = 2
+    };
+    static std::string toStr(ReadyState);
 
     ChunkTasks(int chunkId, memman::MemMan::Ptr const& memMan) : _chunkId{chunkId}, _memMan{memMan} {}
     ChunkTasks() = delete;
@@ -71,6 +76,8 @@ public:
     int getChunkId() { return _chunkId; }
 
     wbase::Task::Ptr removeTask(wbase::Task::Ptr const& task);
+
+    std::string cInfo() const;
 
     /// Class that keeps the slowest tables at the front of the heap.
     class SlowTableHeap {
@@ -147,14 +154,19 @@ public:
     void taskComplete(wbase::Task::Ptr const& task) override;
 
     bool setResourceStarved(bool starved) override;
-    bool nextTaskDifferentChunkId() override;
     int getActiveChunkId(); ///< return the active chunk id, or -1 if there isn't one.
 
     wbase::Task::Ptr removeTask(wbase::Task::Ptr const& task) override;
 
+    std::string queueInfo() const override {
+        std::lock_guard<std::mutex> lck(_mapMx);
+        return _queueInfo();
+    }
+
 private:
     bool _ready(bool useFlexibleLock);
     bool _empty() const { return _chunkMap.empty(); }
+    std::string _queueInfo() const; ///< _mapMx must be locked before calling
 
     mutable std::mutex _mapMx; ///< Protects _chunkMap, _activeChunk, and _readyChunk.
     ChunkMap _chunkMap; ///< map by chunk Id.

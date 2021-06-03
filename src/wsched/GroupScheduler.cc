@@ -119,7 +119,7 @@ void GroupScheduler::queCmd(util::Command::Ptr const& cmd) {
         auto group = std::make_shared<GroupQueue>(_maxGroupSize, t);
         _queue.push_back(group);
     }
-    auto uqCount = _incrCountForUserQuery(t->getQueryId());
+    auto uqCount = _incrCountForUserQuery(t->getQueryId(), 1);
     LOGS(_log, LOG_LVL_DEBUG, getName() << " queCmd uqCount=" << uqCount
         << " rating=" << t->getScanInfo().scanRating << " interactive=" << t->getScanInteractive());
     util::CommandQueue::_cv.notify_one();

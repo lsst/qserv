@@ -147,30 +147,6 @@ private:
     std::condition_variable _tCv;
 
     QidMgr _qidMgr{_maxTransmits, _maxPerQid};
-
-    /* &&&
-    void _take(bool interactive, bool alreadyTransmitting, int czarId);
-
-    void _release(bool interactive, bool alreadyTransmitting, qmeta::CzarId czarId);
-
-    /// This class is used to store transmit information for a czar
-    class TransmitInfo {
-    public:
-        TransmitInfo() = default;
-        TransmitInfo(TransmitInfo const&) = default;
-        TransmitInfo& operator=(TransmitInfo const&) = default;
-    private:
-        friend class TransmitMgr;
-        int _totalCount = 0;
-        int _transmitCount = 0;
-        int _takeCalls = 0; ///< current number of calls to _take.
-    };
-
-    int const _maxTransmits;
-    mutable std::mutex _mtx;
-    std::condition_variable _tCv;
-    std::map<int, TransmitInfo::Ptr> _czarTransmitMap; ///< map of information per czar.
-    */
 };
 
 
@@ -180,7 +156,7 @@ public:
     using Ptr = std::shared_ptr<TransmitLock>;
     TransmitLock(TransmitMgr& transmitMgr, bool interactive, QueryId const qid)
       : _transmitMgr(transmitMgr), _interactive(interactive), _qid(qid) {
-        _transmitMgr._qidMgr._take(_qid);
+        //_transmitMgr._qidMgr._take(_qid);
         _transmitMgr._take(_interactive);
     }
 
@@ -190,7 +166,7 @@ public:
 
     ~TransmitLock() {
         _transmitMgr._release(_interactive);
-        _transmitMgr._qidMgr._release(_qid);
+        //_transmitMgr._qidMgr._release(_qid);
     }
 
 private:

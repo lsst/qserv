@@ -148,38 +148,6 @@ void SsiRequest::execute(XrdSsiRequest& req) {
             t.stop();
             LOGS(_log, LOG_LVL_DEBUG, "Enqueued TaskMsg for " << ru << " in "
                                       << t.getElapsed() << " seconds");
-
-            /* &&&
-            if (!taskMsg->has_db() || !taskMsg->has_chunkid()
-                || (ru.db()    != taskMsg->db())
-                || (ru.chunk() != taskMsg->chunkid())) {
-                reportError("Mismatched db/chunk in TaskMsg on resource db=" + ru.db() +
-                            " chunkId=" + std::to_string(ru.chunk()));
-                return;
-            }
-
-            //&&& At this point, the task needs to be broken up into multiple tasks if it
-            //&&& has more than one fragment. All these task should be added as an atomic
-            //&&& operation so they will be run on a single pass of a chunk.
-
-            //&&& Should their be one send channel or multiple send channels? Looks like 1.
-
-            // Now that the request is decoded (successfully or not), release the
-            // xrootd request buffer. To avoid data races, this must happen before
-            // the task is handed off to another thread for processing, as there is a
-            // reference to this SsiRequest inside the reply channel for the task,
-            // and after the call to BindRequest.
-            auto task = std::make_shared<wbase::Task>(
-                                taskMsg,
-                                std::make_shared<wbase::SendChannel>(shared_from_this()));
-            _task = task;
-            ReleaseRequestBuffer();
-            t.start();
-            _processor->processTask(task); // Queues task to be run later. //&&& processTask needs to take vector of Tasks
-            t.stop();
-            LOGS(_log, LOG_LVL_DEBUG, "Enqueued TaskMsg for " << ru <<
-                 " in " << t.getElapsed() << " seconds");
-            */
             break;
         }
         case ResourceUnit::WORKER: {
@@ -445,8 +413,9 @@ bool SsiRequest::replyFile(int fd, long long fSize) {
 }
 
 
-bool SsiRequest::replyStream(StreamBuffer::Ptr const& sBuf, bool last) {
-    LOGS(_log, LOG_LVL_DEBUG, "replyStream, checking stream size=" << sBuf->getSize() << " last=" << last);
+bool SsiRequest::replyStream(StreamBuffer::Ptr const& sBuf, bool last, int scsSeq) {
+    LOGS(_log, LOG_LVL_DEBUG, "replyStream, checking stream size=" << sBuf->getSize()
+                              << " last=" << last << " scsseq=" << scsSeq);
 
     // Normally, XrdSsi would call Recycle() when it is done with sBuf, but if this function
     // returns false, then it must call Recycle(). Otherwise, the scheduler will likely
@@ -474,7 +443,8 @@ bool SsiRequest::replyStream(StreamBuffer::Ptr const& sBuf, bool last) {
         return false;
     }
     // XrdSsi or Finished() will call Recycle().
-    _stream->append(sBuf, last);
+    LOGS(_log, LOG_LVL_INFO, "SsiRequest::replyStream seq=" << getSeq() << " scsseq=" << scsSeq);
+    _stream->append(sBuf, last, scsSeq);
     return true;
 }
 
@@ -502,5 +472,10 @@ SsiRequest::Ptr SsiRequest::freeSelfKeepAlive() {
     return keepAlive;
 }
 
+
+uint64_t SsiRequest::getSeq() const {
+    if (_stream == nullptr) return 0;
+    return _stream->getSeq();
+}
 
 }}} // namespace

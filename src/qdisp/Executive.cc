@@ -102,18 +102,11 @@ mutex xrdSsiServiceMtx;
 ////////////////////////////////////////////////////////////////////////
 // class Executive implementation
 ////////////////////////////////////////////////////////////////////////
-/* &&&
-Executive::Executive(ExecutiveConfig const& c, std::shared_ptr<MessageStore> const& ms,
-                     std::shared_ptr<QdispPool> const& qdispPool,
-                     std::shared_ptr<qmeta::QStatus> const& qStatus,
-                     std::shared_ptr<qproc::QuerySession> const& querySession)
-    : _config(c), _messageStore(ms), _qdispPool(qdispPool), _qMeta(qStatus), _querySession(querySession) {
-    _secondsBetweenQMetaUpdates = std::chrono::seconds(_config.secondsBetweenChunkUpdates);
-*/
 Executive::Executive(ExecutiveConfig const& c, shared_ptr<MessageStore> const& ms,
                      shared_ptr<QdispPool> const& qdispPool,
-                     shared_ptr<qmeta::QStatus> const& qStatus)
-    : _config(c), _messageStore(ms), _qdispPool(qdispPool), _qMeta(qStatus) {
+                     shared_ptr<qmeta::QStatus> const& qStatus,
+                     shared_ptr<qproc::QuerySession> const& querySession)
+    : _config(c), _messageStore(ms), _qdispPool(qdispPool), _qMeta(qStatus), _querySession(querySession) {
     _secondsBetweenQMetaUpdates = chrono::seconds(_config.secondsBetweenChunkUpdates);
     _setup();
     _setupLimit();
@@ -125,17 +118,12 @@ Executive::~Executive() {
     delete dynamic_cast<XrdSsiServiceMock *>(_xrdSsiService);
 }
 
-/* &&&
-Executive::Ptr Executive::create(ExecutiveConfig const& c, std::shared_ptr<MessageStore> const& ms,
-                                 std::shared_ptr<QdispPool> const& qdispPool,
-                                 std::shared_ptr<qmeta::QStatus> const& qMeta,
-                                 std::shared_ptr<qproc::QuerySession> const& querySession) {
-    Executive::Ptr exec{new Executive(c, ms, qdispPool, qMeta, querySession)}; // make_shared dislikes private constructor.
-*/
+
 Executive::Ptr Executive::create(ExecutiveConfig const& c, shared_ptr<MessageStore> const& ms,
                                  shared_ptr<QdispPool> const& qdispPool,
-                                 shared_ptr<qmeta::QStatus> const& qMeta) {
-    Executive::Ptr exec{new Executive(c, ms, qdispPool, qMeta)}; // make_shared dislikes private constructor.
+                                 shared_ptr<qmeta::QStatus> const& qMeta,
+                                 shared_ptr<qproc::QuerySession> const& querySession) {
+    Executive::Ptr exec(new Executive(c, ms, qdispPool, qMeta, querySession)); // make_shared dislikes private constructor.
     return exec;
 }
 
@@ -278,12 +266,8 @@ bool Executive::join() {
 
     int sCount = 0;
     {
-/* &&&
-        std::lock_guard<std::recursive_mutex> lockJobMap(_jobMapMtx);
-        sCount = std::count_if(_jobMap.begin(), _jobMap.end(), successF::func);
-*/
         lock_guard<recursive_mutex> lockJobMap(_jobMapMtx);
-        sCount = count_if(_jobMap.begin(), _jobMap.end(), successF::f);
+        sCount = count_if(_jobMap.begin(), _jobMap.end(), successF::func);
     }
     if (sCount == _requestCount) {
         LOGS(_log, LOG_LVL_INFO, "Query execution succeeded all: " << _requestCount
@@ -381,9 +365,9 @@ void Executive::_squashSuperfluous() {
     }
 
     LOGS(_log, LOG_LVL_INFO, "Executive::squashSuperflous Trying to cancel incomplete jobs");
-    std::deque<JobQuery::Ptr> jobsToCancel;
+    deque<JobQuery::Ptr> jobsToCancel;
     {
-        std::lock_guard<std::recursive_mutex> lockJobMap(_jobMapMtx);
+        lock_guard<recursive_mutex> lockJobMap(_jobMapMtx);
         for(auto const& jobEntry : _jobMap) {
             JobQuery::Ptr jq = jobEntry.second;
             // It's important that none of the cancelled queries
@@ -492,7 +476,7 @@ void Executive::_unTrack(int jobId) {
             if (_incompleteJobs.empty()) _allJobsComplete.notify_all();
         }
         auto sz = _incompleteJobs.size();
-        logSome = (sz < 100) || (sz%100 == 0) || !untracked;
+        logSome = (sz < 50) || (sz%1000 == 0) || !untracked;
         if (logSome || LOG_CHECK_LVL(_log, LOG_LVL_DEBUG)) {
             // Log up to 5 incomplete jobs. Very useful when jobs do not finish.
             s = _getIncompleteJobsString(5);
@@ -501,11 +485,6 @@ void Executive::_unTrack(int jobId) {
     bool logDebug = untracked || isLimitRowComplete();
     LOGS(_log, (logDebug ? LOG_LVL_DEBUG :  LOG_LVL_WARN),
          "Executive UNTRACKING " << (untracked ? "success":"failed") << "::" << s);
-/* &&&
-    auto logLvl = logSome ? LOG_LVL_INFO : LOG_LVL_DEBUG;
-    LOGS(_log, (untracked ? logLvl : LOG_LVL_WARN),
-         "Executive UNTRACKING job=" << jobId << (untracked ? " success":" failed") << "::" << s);
-*/
     // Every time a chunk completes, consider sending an update to QMeta.
     // Important chunks to log: first, last, middle
     // limiting factors: no more than one update a minute (config)
@@ -645,7 +624,7 @@ void Executive::checkLimitRowComplete() {
 }
 
 
-std::ostream& operator<<(std::ostream& os, Executive::JobMap::value_type const& v) {
+ostream& operator<<(ostream& os, Executive::JobMap::value_type const& v) {
     JobStatus::Ptr status = v.second->getStatus();
     os << v.first << ": " << *status;
     return os;

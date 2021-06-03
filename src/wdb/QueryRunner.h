@@ -64,10 +64,7 @@ class StreamBuffer;
 
 namespace wcontrol {
 class SqlConnMgr;
-/* &&&
 class TransmitMgr;
-class TransmitLock;
-*/ 
 }
 
 }}
@@ -99,7 +96,8 @@ public:
     static QueryRunner::Ptr newQueryRunner(wbase::Task::Ptr const& task,
                                            ChunkResourceMgr::Ptr const& chunkResourceMgr,
                                            mysql::MySqlConfig const& mySqlConfig,
-                                           std::shared_ptr<wcontrol::SqlConnMgr> const& sqlConnMgr);
+                                           std::shared_ptr<wcontrol::SqlConnMgr> const& sqlConnMgr,
+                                           std::shared_ptr<wcontrol::TransmitMgr> const& transmitMgr);
     // Having more than one copy of this would making tracking its progress difficult.
     QueryRunner(QueryRunner const&) = delete;
     QueryRunner& operator=(QueryRunner const&) = delete;
@@ -117,19 +115,17 @@ protected:
     QueryRunner(wbase::Task::Ptr const& task,
                 ChunkResourceMgr::Ptr const& chunkResourceMgr,
                 mysql::MySqlConfig const& mySqlConfig,
-                std::shared_ptr<wcontrol::SqlConnMgr> const& sqlConnMgr);
+                std::shared_ptr<wcontrol::SqlConnMgr> const& sqlConnMgr,
+                std::shared_ptr<wcontrol::TransmitMgr> const& transmitMgr);
 private:
     bool _initConnection();
     void _setDb();
 
     /// Dispatch with output sent through a SendChannel
-    bool _dispatchChannel(std::shared_ptr<wcontrol::TransmitLock>& transmitLock);
+    bool _dispatchChannel();
     MYSQL_RES* _primeResult(std::string const& query); ///< Obtain a result handle for a query.
 
-/* &&&
-    bool _fillRows(MYSQL_RES* result, int numFields, uint& rowCount, size_t& tsize,
-                   std::shared_ptr<wcontrol::TransmitLock>& transmitLock);
-*/
+
     /// Use the mysql 'result' and other parameters to fill 'tData'.
     /// @return true if there are no more left in 'result'
     bool _fillRows(MYSQL_RES* result, int numFields, uint& rowCount, size_t& tsize);
@@ -140,22 +136,7 @@ private:
     void _initTransmit();
 
 
-
-    /* &&&
-    /// Send result 'streamBuf' to the czar. 'histo' and 'note' are for logging purposes only.
-    void _sendBuf(std::lock_guard<std::mutex> const& streamLock, //&&& delete this
-                  std::shared_ptr<xrdsvc::StreamBuffer>& streamBuf, bool last,
-                  util::TimerHistogram& histo, std::string const& note);
-    void _transmit(bool last, unsigned int rowCount, size_t size,
-                   std::shared_ptr<wcontrol::TransmitLock>& transmitLock);
-    void _transmitHeader(std::string& msg);
     static size_t _getDesiredLimit();
-
-    void _transmit(bool last, unsigned int rowCount, size_t size);
-    void _transmitHeader(std::lock_guard<std::mutex> const& streamLock,std::string& msg);
-    */
-    //&&& void _transmit(bool last, unsigned int rowCount, size_t size);
-    //&&& void _transmitHeader(std::lock_guard<std::mutex> const& streamLock,std::string& msg);
 
     /// The pass _transmitData to _sendChannel so it can be transmitted.
     /// 'lastIn' - True if this is the last transmit for this QueryRunner instance.
@@ -188,6 +169,9 @@ private:
     /// Used to limit the number of open MySQL connections.
     std::shared_ptr<wcontrol::SqlConnMgr> const _sqlConnMgr;
     std::atomic<bool> _runQueryCalled{false}; ///< If runQuery gets called twice, the scheduler messed up.
+
+    /// Used to limit the number of transmits being sent to czars.
+    std::shared_ptr<wcontrol::TransmitMgr> const _transmitMgr;
 };
 
 }}} // namespace

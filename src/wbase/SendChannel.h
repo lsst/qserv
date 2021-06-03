@@ -64,7 +64,7 @@ public:
 
     /// Send a bucket of bytes.
     /// @param last true if no more sendStream calls will be invoked.
-    virtual bool sendStream(xrdsvc::StreamBuffer::Ptr const& sBuf, bool last);
+    virtual bool sendStream(xrdsvc::StreamBuffer::Ptr const& sBuf, bool last, int scsSeq=-1);
 
     ///
     /// ******************************************************************
@@ -98,6 +98,8 @@ public:
     /// Set just before destorying this object to prevent pointless error messages.
     void setDestroying() { _destroying = true; }
 
+    uint64_t getSeq() const;
+
 protected:
     std::function<void(void)> _release = [](){;}; ///< Function to release resources.
 
@@ -107,134 +109,6 @@ private:
     std::atomic<bool> _destroying{false};
 };
 
-/* &&&
-//&&& TODO: must move this to its own header.
-/// A class that provides a SendChannel object with synchronization so it can be
-/// shared by across multiple threads. Due to what may be sent, the synchronization locking
-/// is needs to be available outside of the class.
-class SendChannelShared {
-public:
-    using Ptr = std::shared_ptr<SendChannelShared>;
-
-    /// To help ensure that _streamMutex is locked before calling,
-    /// many member functions require a StreamGuard argument.
-    using StreamGuard = std::lock_guard<std::mutex> const&;
-
-    SendChannelShared()=delete;
-    SendChannelShared(SendChannelShared const&) = delete;
-    SendChannelShared& operator=(SendChannelShared const&) = delete;
-
-    static Ptr create(SendChannel::Ptr const& sendChannel, wcontrol::TransmitMgr::Ptr const& transmitMgr);
-
-    ~SendChannelShared();
-
-    /// Wrappers for SendChannel public functions that may need to be used
-    /// by threads.
-    /// @see SendChannel::send
-    bool send(StreamGuard sLock, char const* buf, int bufLen) {
-        return _sendChannel->send(buf, bufLen);
-    }
-
-    /// @see SendChannel::sendError
-    bool sendError(StreamGuard sLock, std::string const& msg, int code) {
-        return _sendChannel->sendError(msg, code);
-    }
-
-    /// @see SendChannel::sendFile
-    bool sendFile(StreamGuard sLock, int fd, SendChannel::Size fSize) {
-        return _sendChannel->sendFile(fd, fSize);
-    }
-
-    /// @see SendChannel::sendStream
-    bool sendStream(StreamGuard sLock, xrdsvc::StreamBuffer::Ptr const& sBuf, bool last) {
-        return _sendChannel->sendStream(sBuf, last);
-    }
-
-    /// @see SendChannel::setMetadata
-    bool setMetadata(StreamGuard sLock, const char *buf, int blen) {
-        return _sendChannel->setMetadata(buf, blen);
-    }
-
-    /// @see SendChannel::kill
-    bool kill(StreamGuard sLock);
-
-    /// @see SendChannel::isDead
-    bool isDead() { return _sendChannel->isDead(); }
-
-
-    /// Set the number of Tasks that will be sent using this SendChannel.
-    /// This should not be changed once set.
-    void setTaskCount(int taskCount);
-
-
-    /// Try to transmit the data in tData.
-    /// If the queue already has at least 2 TransmitData objects, addTransmit
-    /// may wait before returning. It's more efficient use of memory to
-    /// collect results from MariaDB as they are sent to the czar than
-    /// to read them all in at once.
-    bool addTransmit(bool cancelled, bool erred, bool last, bool largeResult,
-                     TransmitData::Ptr const& tData, int qId, int jId);
-
-    ///
-    /// @return true if inLast is true and this is the last task to call this
-    ///              with inLast == true.
-    /// The calling Thread must hold 'streamMutex' before calling this.
-    bool transmitTaskLast(StreamGuard sLock, bool inLast);
-
-    /// streamMutex is used to protect _lastCount and messages that are sent
-    /// using SendChannelShared.
-    std::mutex streamMutex;
-
-    /// Return a normalized id string.
-    std::string makeIdStr(int qId, int jId);
-
-private:
-    /// Private constructor to protect shared pointer integrity.
-    SendChannelShared(SendChannel::Ptr const& sendChannel, wcontrol::TransmitMgr::Ptr const& transmitMgr)
-                      : _sendChannel(sendChannel),  _transmitMgr(transmitMgr) {
-        if (_sendChannel == nullptr) {
-            throw Bug("SendChannelShared constructor given nullptr");
-        }
-    }
-
-    /// Run the thread for _transmitLoop().
-    void _run();
-
-    /// &&& doc
-    void _transmit();
-
-    /// &&& doc
-    void _transmitLoop();
-
-    /// Send the buffer 'streamBuffer' using xrdssi. L
-    /// 'last' should only be true if this is the last buffer to be sent with this _sendChannel.
-    /// 'note' is just a log note about what/who is sending the buffer.
-    /// @return true if the buffer was sent.
-    bool _sendBuf(std::lock_guard<std::mutex> const& streamLock,
-                  xrdsvc::StreamBuffer::Ptr& streamBuf, bool last,
-                  std::string const& note);
-
-    SendChannel::Ptr _sendChannel;
-    std::queue<TransmitData::Ptr> _transmitQueue;
-    std::mutex _queueMtx;
-    std::condition_variable _queueCv; // &&& once working with one, try using one cv for add and another cv for loop. notify_all becomes notify_one
-
-    /// metadata buffer. Once set, it cannot change until after Finish() has been called.
-    std::string _metadataBuf;
-
-    int _taskCount = 0; ///< The number of tasks to be sent over this SendChannel.
-    int _lastCount = 0; ///< Then number of 'last' buffers received.
-    std::atomic<bool> _lastRecvd{false}; ///< The truly 'last' transmit message is in the queue.
-    std::atomic<bool> _firstTransmit{true}; ///< True until the first transmit has been sent.
-
-    /// Used to limit the number of transmits being sent to czars.
-    wcontrol::TransmitMgr::Ptr const _transmitMgr;
-
-    std::atomic<bool> _threadStarted{false};
-    std::thread _thread;
-    Ptr _keepAlive; ///< Ensure that this object isn't destroyed before _transmitLoop is done.
-};
-*/
 
 }}} // lsst::qserv::wbase
 #endif // LSST_QSERV_WBASE_SENDCHANNEL_H

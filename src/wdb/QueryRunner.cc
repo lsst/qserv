@@ -82,8 +82,9 @@ namespace wdb {
 QueryRunner::Ptr QueryRunner::newQueryRunner(wbase::Task::Ptr const& task,
                                              ChunkResourceMgr::Ptr const& chunkResourceMgr,
                                              mysql::MySqlConfig const& mySqlConfig,
-                                             shared_ptr<wcontrol::SqlConnMgr> const& sqlConnMgr) {
-    Ptr qr(new QueryRunner(task, chunkResourceMgr, mySqlConfig, sqlConnMgr)); // Private constructor.
+                                             shared_ptr<wcontrol::SqlConnMgr> const& sqlConnMgr,
+                                             std::shared_ptr<wcontrol::TransmitMgr> const& transmitMgr) {
+    Ptr qr(new QueryRunner(task, chunkResourceMgr, mySqlConfig, sqlConnMgr, transmitMgr)); // Private constructor.
     // Let the Task know this is its QueryRunner.
     bool cancelled = qr->_task->setTaskQueryRunner(qr);
     if (cancelled) {
@@ -98,7 +99,8 @@ QueryRunner::Ptr QueryRunner::newQueryRunner(wbase::Task::Ptr const& task,
 QueryRunner::QueryRunner(wbase::Task::Ptr const& task,
                          ChunkResourceMgr::Ptr const& chunkResourceMgr,
                          mysql::MySqlConfig const& mySqlConfig,
-                         shared_ptr<wcontrol::SqlConnMgr> const& sqlConnMgr)
+                         shared_ptr<wcontrol::SqlConnMgr> const& sqlConnMgr,
+                         std::shared_ptr<wcontrol::TransmitMgr> const& transmitMgr)
     : _task(task), _chunkResourceMgr(chunkResourceMgr), _mySqlConfig(mySqlConfig),
       _arena(make_unique<google::protobuf::Arena>()),
       _sqlConnMgr(sqlConnMgr), _transmitMgr(transmitMgr) {
@@ -149,10 +151,9 @@ size_t QueryRunner::_getDesiredLimit() {
 
 util::TimerHistogram memWaitHisto("memWait Hist", {1, 5, 10, 20, 40});
 
-
 bool QueryRunner::runQuery() {
     QSERV_LOGCONTEXT_QUERY_JOB(_task->getQueryId(), _task->getJobId());
-    LOGS(_log, LOG_LVL_DEBUG, "QueryRunner::runQuery()");
+    LOGS(_log, LOG_LVL_INFO, "QueryRunner::runQuery() tid=" << _task->getIdStr());
     if (_runQueryCalled.exchange(true)) {
         LOGS(_log, LOG_LVL_ERROR, "QueryRunner::runQuery already called for task="
                 << _task->getQueryId() << " job=" <<  _task->getJobId());
@@ -190,27 +191,13 @@ bool QueryRunner::runQuery() {
         return false;
     }
 
-    std::shared_ptr<wcontrol::TransmitLock> transmitLock;
-
     _setDb();
-    LOGS(_log, LOG_LVL_DEBUG,  "Exec in flight for Db=" << _dbName
-        << " sqlConnMgr total" << _sqlConnMgr->getTotalCount() << " conn=" << _sqlConnMgr->getSqlConnCount());
-    wcontrol::SqlConnLock sqlConnLock(*_sqlConnMgr, not _task->getScanInteractive());
+    LOGS(_log, LOG_LVL_DEBUG,  "Exec in flight for Db=" << _dbName << " sqlConnMgr " << _sqlConnMgr->dump());
+    wcontrol::SqlConnLock sqlConnLock(*_sqlConnMgr, not _task->getScanInteractive(), _task->sendChannel);
     bool connOk = _initConnection();
     if (!connOk) {
         // Transmit the mysql connection error to the czar, which should trigger a re-try.
         // _initConnection should have added an error message to _multiError.
-        /* &&&
-        _initMsgs();
-        _transmit(true, 0, 0, trasnmitLock); // no rows, no bytes in rows. //&&& this is probably broken
-        */
-        /* &&&
-        _transmitData = _createTransmitData();
-        _buildDataMsg(_transmitData, true, 0, 0);
-        //&&& probably not needed. _dataThis->protoHeaderNext = _initHeader(); // Header indicating no more data
-        _transmit();
-        */ 
-        // &&& _transmitData = _initTransmit();
         _initTransmit();
         // Put the error from _initConnection in _transmitData via _multiError.
         _buildDataMsg(0, 0);
@@ -224,7 +211,7 @@ bool QueryRunner::runQuery() {
     if (_task->msg->has_protocol()) {
         switch(_task->msg->protocol()) {
         case 2:
-            return _dispatchChannel(transmitLock); // Run the query and send the results back.
+            return _dispatchChannel(); // Run the query and send the results back.
         case 1:
             throw UnsupportedError(_task->getIdStr() + " QueryRunner: Expected protocol > 1 in TaskMsg");
         default:
@@ -233,7 +220,6 @@ bool QueryRunner::runQuery() {
     } else {
         throw UnsupportedError(_task->getIdStr() + " QueryRunner: Expected protocol > 1 in TaskMsg");
     }
-    LOGS(_log, LOG_LVL_DEBUG, "QueryRunner::runQuery() END");
     return false;
 }
 
@@ -261,166 +247,6 @@ void QueryRunner::_fillSchema(MYSQL_RES* result) {
     }
 }
 
-/* &&& this copy from master before fritz/john merge...
-
-/// Fill one row in the Result msg from one row in MYSQL_RES*
-/// If the message has gotten larger than the desired message size,
-/// it will be transmitted with a flag set indicating the result
-/// continues in later messages.
-bool QueryRunner::_fillRows(MYSQL_RES* result, int numFields, uint& rowCount, size_t& tSize,
-                            wcontrol::TransmitLock::Ptr& transmitLock) {
-    MYSQL_ROW row;
-
-    while ((row = mysql_fetch_row(result))) {
-        if (_cancelled) {
-            return false;
-        }
-        auto lengths = mysql_fetch_lengths(result);
-        proto::RowBundle* rawRow =_result->add_row();
-        for(int i=0; i < numFields; ++i) {
-            if (row[i]) {
-                rawRow->add_column(row[i], lengths[i]);
-                rawRow->add_isnull(false);
-            } else {
-                rawRow->add_column();
-                rawRow->add_isnull(true);
-            }
-        }
-        tSize += rawRow->ByteSizeLong();
-        ++rowCount;
-
-        unsigned int szLimit = std::min(_getDesiredLimit(),
-                                        proto::ProtoHeaderWrap::PROTOBUFFER_HARD_LIMIT);
-
-        // for some to finish, otherwise
-        if (not _removedFromThreadPool) {
-            // This query has been answered by the database and the
-            // scheduler for this worker should stop waiting for it.
-            // leavePool() will tell the scheduler this task is finished
-            // and create a new thread in the pool to replace this one.
-            auto pet = _task->getAndNullPoolEventThread();
-            _removedFromThreadPool = true;
-            if (pet != nullptr) {
-                pet->leavePool();
-            } else {
-                LOGS(_log, LOG_LVL_WARN, "Result PoolEventThread was null. Probably already moved.");
-            }
-        }
-
-        // Each element needs to be mysql-sanitized
-        if (tSize > szLimit) {
-            if (tSize > proto::ProtoHeaderWrap::PROTOBUFFER_HARD_LIMIT) {
-                LOGS_ERROR("Message single row too large to send using protobuffer");
-                return false;
-            }
-            LOGS(_log, LOG_LVL_DEBUG, "Large message size=" << tSize
-                 << ", splitting message rowCount=" << rowCount);
-            _transmit(false, rowCount, tSize, transmitLock);
-            rowCount = 0;
-            tSize = 0;
-            _initMsg();
-        }
-    }
-    unsigned int mysqlErrNo = _mysqlConn->getErrno();
-    if (mysqlErrNo) {
-        sql::SqlErrorObject errObj;
-        errObj.setErrNo(mysqlErrNo);
-        errObj.addErrMsg("fetch row error " + _mysqlConn->getError());
-        throw errObj;
-    }
-    return true;
-}
-*/
-
-
-
-/* &&&
-/// Transmit result data with its header.
-/// If 'last' is true, this is the last message in the result set
-/// and flags are set accordingly.
-void QueryRunner::_transmit(bool last, unsigned int rowCount, size_t tSize,
-                            wcontrol::TransmitLock::Ptr& transmitLock) {
-    QSERV_LOGCONTEXT_QUERY_JOB(_task->getQueryId(), _task->getJobId());
-    LOGS(_log, LOG_LVL_INFO, "_transmitMgr=" << *_transmitMgr
-         << " last=" << last << " rowCount=" << rowCount << " tSize=" << tSize);
-    //wcontrol::TransmitLock transmitLock(*_transmitMgr, _task->getScanInteractive(), _largeResult);
-    if (transmitLock == nullptr) {
-        transmitLock.reset(new wcontrol::TransmitLock(*_transmitMgr, _task->getScanInteractive(),
-                                                      _task->getQueryId()));
-    }
-
-    std::string resultString;
-*/
-/* &&&
-    if (_task->sendChannel->isDead()) {
-        LOGS(_log, LOG_LVL_INFO, "aborting transmit since sendChannel is dead.");
-        return;
-    }
-*/
-
-/* &&&
-    // Get the czar id number, if there is one.
-    qmeta::CzarId const czarId = _task->msg->czarid();
-
-    // Limit the number of concurrent transmits.
-    wcontrol::TransmitLock transmitLock(*_transmitMgr, _task->getScanInteractive(), _largeResult, czarId);
-
-    // Nothing else can use this sendChannel until this transmit is done.
-    lock_guard<mutex> streamLock(_task->sendChannel->streamMutex);
-
-    // Only set last to true if this is the final task using this sendChannel.
-    bool last = _task->sendChannel->transmitTaskLast(streamLock, inLast);
-    string resultString;
-*/
-    _result->set_queryid(_task->getQueryId());
-    _result->set_jobid(_task->getJobId());
-    _result->set_continues(!last);
-    _result->set_largeresult(_largeResult);
-    _result->set_rowcount(rowCount);
-    _result->set_transmitsize(tSize);
-    _result->set_attemptcount(_task->getAttemptCount());
-
-    if (!_multiError.empty()) {
-        string chunkId = to_string(_task->msg->chunkid());
-        string msg = "Error(s) in result for chunk #" + chunkId + ": " + _multiError.toOneLineString();
-        _result->set_errormsg(msg);
-        LOGS(_log, LOG_LVL_ERROR, msg);
-    }
-    _result->SerializeToString(&resultString);
-    _transmitHeader(streamLock, resultString);
-    LOGS(_log, LOG_LVL_DEBUG, "_transmit last=" << last
-         << " resultString=" << util::prettyCharList(resultString, 5));
-
-    if (!_cancelled) {
-        // StreamBuffer::create invalidates resultString by using std::move()
-        xrdsvc::StreamBuffer::Ptr streamBuf(xrdsvc::StreamBuffer::createWithMove(resultString));
-        _streamBuf = streamBuf;
-        _sendBuf(streamBuf, last, transmitHisto, "body");
-        // &&& _sendBuf(streamLock, streamBuf, last, transmitHisto, "body");
-    } else {
-        LOGS(_log, LOG_LVL_DEBUG, "_transmit cancelled");
-
-/* &&&
-    {
-        // Nothing else can use this channel until this transmit is done.
-        lock_guard<mutex> streamLock(task->sendChannel->getStreamMutexRef());
-        _transmitHeader(resultString);
-        LOGS(_log, LOG_LVL_DEBUG, "_transmit last=" << last
-                << " resultString=" << util::prettyCharList(resultString, 5));
-
-        if (!_cancelled) {
-            // StreamBuffer::create invalidates resultString by using std::move()
-            xrdsvc::StreamBuffer::Ptr streamBuf(xrdsvc::StreamBuffer::createWithMove(resultString));
-            _sendBuf(streamBuf, last, transmitHisto, "body");
-        } else {
-            LOGS(_log, LOG_LVL_DEBUG, "_transmit cancelled");
-        }
-*/
-
-    }
-    _largeResult = true; // Transmits after the first are considered large results.
-}
-
 
 /// Transmit result data with its header.
 /// If 'last' is true, this is the last message in the result set
@@ -440,22 +266,27 @@ void QueryRunner::_buildDataMsg(unsigned int rowCount, size_t tSize) {
         string chunkId = to_string(_task->msg->chunkid());
         string msg = "Error(s) in result for chunk #" + chunkId + ": " + _multiError.toOneLineString();
         result->set_errormsg(msg);
-        LOGS(_log, LOG_LVL_ERROR, msg);
+        LOGS(_log, LOG_LVL_ERROR, "buildDataMsg adding " << msg);
     }
     result->SerializeToString(&(_transmitData->dataMsg));
     // Build the header for this message, but this message can't be transmitted until the
     // next header has been built and appended to _transmitData->dataMsg. That happens
     // later in SendChannelShared.
     _buildHeader();
-
 }
 
 
 bool QueryRunner::_transmit(bool lastIn) {
+    QSERV_LOGCONTEXT_QUERY_JOB(_task->getQueryId(), _task->getJobId());
+    LOGS(_log, LOG_LVL_DEBUG, "_transmit lastIn=" << lastIn);
     if (_task->sendChannel->isDead()) {
         LOGS(_log, LOG_LVL_INFO, "aborting transmit since sendChannel is dead.");
         return false;
     }
+
+
+    _task->sendChannel->waitTransmitLock(*_transmitMgr, _task->getScanInteractive(),
+                                         _task->getQueryId());
 
     // Have all rows already been read, or an error?
     bool erred = _transmitData->result->has_errormsg();
@@ -474,70 +305,12 @@ bool QueryRunner::_transmit(bool lastIn) {
     return success;
 }
 
-/* &&&
-void QueryRunner::_sendBuf(lock_guard<mutex> const& streamLock,
-                           xrdsvc::StreamBuffer::Ptr& streamBuf, bool last,
-                           util::TimerHistogram& histo, string const& note) {
-    bool sent = _task->sendChannel->sendStream(streamLock, streamBuf, last);
-    if (!sent) {
-        LOGS(_log, LOG_LVL_ERROR, "Failed to transmit " << note << "!");
-        _cancelled = true;
-    } else {
-        util::Timer t;
-        t.start();
-        LOGS(_log, LOG_LVL_DEBUG, "_sendbuf wait start");
-        bool success = false;
-        {
-            util::InstanceCount("waitForDoneWithThis QID:" + std::to_string(_task->getQueryId())
-                                + "#" + std::to_string(_task->getJobId()));
-            success = streamBuf->waitForDoneWithThis(); // Block until this buffer has been sent.
-        }
-        LOGS(_log, LOG_LVL_DEBUG, "_sendbuf wait end");
-        t.stop();
-        if (!success) {
-            LOG(_log, LOG_LVL_WARN, "stream buffer was cancelled");
-            _cancelled = true;
-        }
-        auto logMsg = histo.addTime(t.getElapsed(), _task->getIdStr());
-        LOGS(_log, LOG_LVL_DEBUG, logMsg);
-    }
-}
-*/
-
-
-// &&& util::TimerHistogram transHeaderHisto("transHeader Hist", {0.1, 1, 5, 10, 20, 40});
-
-/*&&&
-proto::ProtoHeader* QueryRunner::_initHeader() { // &&& move to TransmitData
-    proto::ProtoHeader* header = google::protobuf::Arena::CreateMessage<proto::ProtoHeader>(_arena.get());
-    header->set_protocol(2); // protocol 2: row-by-row message
-    header->set_size(0);
-    header->set_md5(util::StringHash::getMd5("", 0));
-    header->set_wname(getHostname());
-    header->set_largeresult(false);
-    return header;
-}
-*/
-
 
 void QueryRunner::_initTransmit() {
     _transmitData = wbase::TransmitData::createTransmitData(_czarId);
     _transmitData->result = _initResult();
 }
 
-/* &&& 
-/// Transmit the protoHeader
-void QueryRunner::_transmitHeader(lock_guard<mutex> const& streamLock, string& msg) {
-    LOGS(_log, LOG_LVL_DEBUG, "_transmitHeader");
-    // Set header
-    _protoHeader->set_protocol(2); // protocol 2: row-by-row message
-    _protoHeader->set_size(msg.size());
-    _protoHeader->set_md5(util::StringHash::getMd5(msg.data(), msg.size()));
-    _protoHeader->set_wname(getHostname());
-    _protoHeader->set_largeresult(_largeResult);
-    string protoHeaderString;
-    _protoHeader->SerializeToString(&protoHeaderString);
-*/
 
 proto::Result* QueryRunner::_initResult() {
     proto::Result* result = _transmitData->result;
@@ -570,37 +343,6 @@ void QueryRunner::_buildHeader() {
     header->set_md5(util::StringHash::getMd5(_transmitData->dataMsg.data(), _transmitData->dataMsg.size()));
     header->set_largeresult(_largeResult);
     header->set_endnodata(false);
-}
-*/
-
-/// Transmit the protoHeader
-void QueryRunner::_transmitHeader(lock_guard<mutex> const& streamLock, string& msg) {
-    LOGS(_log, LOG_LVL_DEBUG, "_transmitHeader");
-    // Set header
-    _protoHeader->set_protocol(2); // protocol 2: row-by-row message
-    _protoHeader->set_size(msg.size());
-    _protoHeader->set_md5(util::StringHash::getMd5(msg.data(), msg.size()));
-    _protoHeader->set_wname(getHostname());
-    _protoHeader->set_largeresult(_largeResult);
-    string protoHeaderString;
-    _protoHeader->SerializeToString(&protoHeaderString);
-
-    // Flush to channel.
-    // Make sure protoheader size can be encoded in a byte.
-    assert(protoHeaderString.size() < 255);
-    if (!_cancelled) {
-        _headerBuf = proto::ProtoHeaderWrap::wrap(protoHeaderString);
-        //&&& xrdsvc::StreamBuffer::Ptr streamBuf(xrdsvc::StreamBuffer::createWithMove(_headerBuf)); // invalidates _headerBuf
-        //&&&_sendBuf(streamLock, streamBuf, false, transHeaderHisto, "header");
-        LOGS(_log, LOG_LVL_WARN, "&&& _transmitHeader sz=" << _headerBuf.size() << "\n " << _headerBuf << "\n");
-        if (!_task->sendChannel->setMetadata(streamLock, _headerBuf.data(), _headerBuf.size())) {
-            LOGS(_log, LOG_LVL_ERROR, "QR transmitHeader failed");
-        }
-    } else {
-        _headerBuf = "";
-        LOGS(_log, LOG_LVL_DEBUG, "_transmitHeader cancelled");
-    }
-    LOGS(_log, LOG_LVL_WARN, "&&& _transmitHeader end");
 }
 
 
@@ -649,70 +391,6 @@ private:
     proto::TaskMsg const& _msg;
 };
 
-/* &&&
-bool QueryRunner::_fillRows(MYSQL_RES* result, int numFields, uint& rowCount, size_t& tSize) {
-    MYSQL_ROW row;
-
-    while ((row = mysql_fetch_row(result))) {
-        auto lengths = mysql_fetch_lengths(result);
-        proto::RowBundle* rawRow =_result->add_row();
-        for(int i=0; i < numFields; ++i) {
-            if (row[i]) {
-                rawRow->add_column(row[i], lengths[i]);
-                rawRow->add_isnull(false);
-            } else {
-                rawRow->add_column();
-                rawRow->add_isnull(true);
-            }
-        }
-        tSize += rawRow->ByteSizeLong();
-        ++rowCount;
-
-        unsigned int szLimit = std::min(proto::ProtoHeaderWrap::PROTOBUFFER_DESIRED_LIMIT,
-                                        proto::ProtoHeaderWrap::PROTOBUFFER_HARD_LIMIT);
-
-        // This thread may have already been removed from the pool for
-        // other reasons, such as taking too long.
-        if (not _removedFromThreadPool) {
-            // This query has been answered by the database and the
-            // scheduler for this worker should stop waiting for it.
-            // leavePool() will tell the scheduler this task is finished
-            // and create a new thread in the pool to replace this one.
-            // This thread will wait for the czar to read the results of
-            // the query and then die.
-            auto pet = _task->getAndNullPoolEventThread();
-            _removedFromThreadPool = true;
-            if (pet != nullptr) {
-                pet->leavePool();
-            } else {
-                LOGS(_log, LOG_LVL_WARN, "Result PoolEventThread was null. Probably already moved.");
-            }
-        }
-
-        // Each element needs to be mysql-sanitized
-        if (tSize > szLimit) {
-            if (tSize > proto::ProtoHeaderWrap::PROTOBUFFER_HARD_LIMIT) {
-                LOGS_ERROR("Message single row too large to send using protobuffer");
-                return false;
-            }
-            LOGS(_log, LOG_LVL_DEBUG, "Large message size=" << tSize
-                 << ", splitting message rowCount=" << rowCount);
-            _transmit(false, rowCount, tSize);
-            rowCount = 0;
-            tSize = 0;
-            _initMsg();
-        }
-    }
-    unsigned int mysqlErrNo = _mysqlConn->getErrno();
-    if (mysqlErrNo) {
-        sql::SqlErrorObject errObj;
-        errObj.setErrNo(mysqlErrNo);
-        errObj.addErrMsg("fetch row error " + _mysqlConn->getError());
-        throw errObj;
-    }
-    return true;
-}
-*/
 
 /// Fill one row in the Result msg from one row in MYSQL_RES*
 /// If the message has gotten larger than the desired message size,
@@ -764,18 +442,13 @@ bool QueryRunner::_fillRows(MYSQL_RES* result, int numFields, uint& rowCount, si
     return true;
 }
 
+/// Histograms to log subchunk creation time and query run time.
+util::TimerHistogram qrPrimeHist("qrPrimeHist", {0.01, 0.1, 1.0, 2.0, 5.0, 10.0, 20.0, 60.0});
+util::TimerHistogram qrSubChunkHist("qrSubChunkHist", {0.01, 0.1, 1.0, 2.0, 5.0, 10.0, 20.0, 60.0});
 
-bool QueryRunner::_dispatchChannel(wcontrol::TransmitLock::Ptr& transmitLock) {
-/* &&&
 bool QueryRunner::_dispatchChannel() {
-*/
-    int fragNum = _task->getQueryFragmentNum();
-    proto::TaskMsg& m = *_task->msg;
-    /* &&&
     int const fragNum = _task->getQueryFragmentNum();
     proto::TaskMsg& tMsg = *_task->msg;
-    */
-    // &&& _initMsgs();
     bool erred = false;
     int numFields = -1;
     if (tMsg.fragment_size() < 1) {
@@ -790,8 +463,13 @@ bool QueryRunner::_dispatchChannel() {
     // or there are no more rows to collect, pass _transmitData to _sendChannel.
     try {
         _initTransmit(); // set _transmit
+        util::Timer subChunkT;
+        subChunkT.start();
         ChunkResourceRequest req(_chunkResourceMgr, tMsg);
         ChunkResource cr(req.getResourceFragment(fragNum));
+        subChunkT.stop();
+        auto logSubChunk = qrSubChunkHist.addTime(subChunkT.getElapsed(), "");
+        LOGS(_log, LOG_LVL_DEBUG, "subchunk time=" << subChunkT.getElapsed() << " " << logSubChunk);
         // TODO: Hold onto this for longer period of time as the odds of reuse are pretty low at this scale
         //       Ideally, hold it until moving on to the next chunk. Try to clean up ChunkResource code.
 
@@ -799,10 +477,14 @@ bool QueryRunner::_dispatchChannel() {
             string const& query = _task->getQueryString();
             util::Timer sqlTimer;
             sqlTimer.start();
+            util::Timer primeT;
+            primeT.start();
             MYSQL_RES* res = _primeResult(query); // This runs the SQL query, throws SqlErrorObj on failure.
+            primeT.stop();
+            auto logPrime = qrPrimeHist.addTime(primeT.getElapsed(), "");
             needToFreeRes = true;
             sqlTimer.stop();
-            LOGS(_log, LOG_LVL_DEBUG, " fragment time=" << sqlTimer.getElapsed() << " query=" << query);
+            LOGS(_log, LOG_LVL_DEBUG, " query time=" << sqlTimer.getElapsed() << " " << logPrime << " query=" << query);
             _fillSchema(res);
             numFields = mysql_num_fields(res);
             // TODO fritzm: revisit this error strategy
@@ -816,6 +498,7 @@ bool QueryRunner::_dispatchChannel() {
                 }
                 LOGS(_log, LOG_LVL_TRACE, "Splitting message size=" << tSize << ", rowCount=" << rowCount);
                 _buildDataMsg(rowCount, tSize);
+                // false indicates that more result rows will follow from this thread.
                 if (!_transmit(false)) {
                     LOGS(_log, LOG_LVL_ERROR, "Could not transmit intermediate results.");
                     return false;
@@ -824,50 +507,7 @@ bool QueryRunner::_dispatchChannel() {
                 tSize = 0;
                 _initTransmit(); // reset _transmitData
             }
-
         }
-        /* &&&
-        for(int i=0; i < m.fragment_size(); ++i) {
-            if (_cancelled) {
-                break;
-            }
-            proto::TaskMsg_Fragment const& fragment(m.fragment(i));
-            std::vector<std::string> queries;
-            for (const std::string queryStr: fragment.query()) {
-                if (fragment.has_subchunks() && false == fragment.subchunks().id().empty()) {
-                    for (auto subchunkId : fragment.subchunks().id()) {
-                        std::string s(queryStr);
-                        boost::algorithm::replace_all(s, SUBCHUNK_TAG, std::to_string(subchunkId));
-                        queries.push_back(s);
-                    }
-                } else {
-                    queries.push_back(queryStr);
-                }
-            }
-            ChunkResource cr(req.getResourceFragment(i)); /// &&& hold onto this for longer period of time
-            // Use query fragment as-is, funnel results.
-            for(auto const& query : queries) {
-                util::Timer sqlTimer;
-                sqlTimer.start();
-                MYSQL_RES* res = _primeResult(query); // This runs the SQL query, throws SqlErrorObj on failure.
-                sqlTimer.stop();
-                LOGS(_log, LOG_LVL_DEBUG, " fragment time=" << sqlTimer.getElapsed() << " query=" << query);
-                if (firstResult) {
-                    firstResult = false;
-                    _fillSchema(res);
-                    numFields = mysql_num_fields(res);
-                } // TODO: may want to confirm (cheaply) that
-                // successive queries have the same result schema.
-                // TODO fritzm: revisit this error strategy
-                // (see pull-request for DM-216)
-                // Now get rows...
-                if (!_fillRows(res, numFields, rowCount, tSize, transmitLock)) {
-                    erred = true;
-                }
-                _mysqlConn->freeResult();
-            } // Each query in a fragment
-        } // Each fragment in a msg.
-             */
     } catch(sql::SqlErrorObject const& e) {
         LOGS(_log, LOG_LVL_ERROR, "dispatchChannel " << e.errMsg());
         util::Error worker_err(e.errNo(), e.errMsg());
@@ -881,13 +521,8 @@ bool QueryRunner::_dispatchChannel() {
     }
     if (!_cancelled) {
         // Send results. This needs to happen after the error check.
-        //&&&_transmit(true, rowCount, tSize, transmitLock);
-        /* &&&
-        _buildDataMsg(_dataNext, true, rowCount, tSize);
-        _transmit();
-        */
-        // &&& _buildDataMsg(_transmitData, rowCount, tSize);
         _buildDataMsg(rowCount, tSize);
+        // true indicates this will be the last transmit from this thread,
         if (!_transmit(true)) { // All remaining rows/errors for this QueryRunner should be in this transmit.
             LOGS(_log, LOG_LVL_ERROR, "Could not transmit last results.");
             return false;
@@ -903,28 +538,25 @@ bool QueryRunner::_dispatchChannel() {
 }
 
 void QueryRunner::cancel() {
+    // QueryRunner::cancel() should only be called by Task::cancel()
+    // to keep the bookkeeping straight.
     LOGS(_log, LOG_LVL_WARN, "Trying QueryRunner::cancel() call");
-    _cancelled.store(true);
+    _cancelled = true;
 
     auto streamB = _streamBuf.lock();
     if (streamB != nullptr) {
         streamB->cancel();
     }
 
-    /* &&&
-    _cancelled = true;
     // This could be called after the task has been completed, so sendChannel
     // validation is needed.
     auto sChannel = _task->sendChannel;
     if (sChannel != nullptr) {
         lock_guard<mutex> streamLock(sChannel->streamMutex);
-        sChannel->kill(streamLock);
+        sChannel->kill(streamLock, "QueryRunner cancel");
     }
-    */
-   
 
-    // QueryRunner::cancel() should only be called by Task::cancel()
-    // to keep the booking straight.
+
 
     if (!_mysqlConn.get()) {
         LOGS(_log, LOG_LVL_WARN, "QueryRunner::cancel() no MysqlConn");

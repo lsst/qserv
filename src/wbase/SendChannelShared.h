@@ -34,10 +34,16 @@
 #include "global/Bug.h"
 #include "wbase/SendChannel.h"
 #include "wbase/TransmitData.h"
-#include "wcontrol/TransmitMgr.h"
+
 
 namespace lsst {
 namespace qserv {
+
+namespace wcontrol {
+class TransmitMgr;
+class TransmitLock;
+}
+
 namespace wbase {
 
 /// A class that provides a SendChannel object with synchronization so it can be
@@ -55,7 +61,8 @@ public:
     SendChannelShared(SendChannelShared const&) = delete;
     SendChannelShared& operator=(SendChannelShared const&) = delete;
 
-    static Ptr create(SendChannel::Ptr const& sendChannel, wcontrol::TransmitMgr::Ptr const& transmitMgr);
+    static Ptr create(SendChannel::Ptr const& sendChannel,
+                      std::shared_ptr<wcontrol::TransmitMgr> const& transmitMgr);
 
     ~SendChannelShared();
 
@@ -77,8 +84,8 @@ public:
     }
 
     /// @see SendChannel::sendStream
-    bool sendStream(StreamGuard sLock, xrdsvc::StreamBuffer::Ptr const& sBuf, bool last) {
-        return _sendChannel->sendStream(sBuf, last);
+    bool sendStream(StreamGuard sLock, xrdsvc::StreamBuffer::Ptr const& sBuf, bool last, int scsSeq=-1) {
+        return _sendChannel->sendStream(sBuf, last, scsSeq);
     }
 
     /// @see SendChannel::kill
@@ -104,6 +111,7 @@ public:
     /// sent to the czar before reading more rows. Without the wait,
     /// the worker may read in too many result rows, run out of memory,
     /// and crash.
+    ///  @see SendChannelShared::_transmit code for further explanation.
     bool addTransmit(bool cancelled, bool erred, bool last, bool largeResult,
                      TransmitData::Ptr const& tData, int qId, int jId);
 
@@ -120,10 +128,28 @@ public:
     /// Return a normalized id string.
     std::string makeIdStr(int qId, int jId);
 
+    /// Items to share one TransmitLock across all Task's using this
+    /// SendChannelShared. If all Task's using this channel are not
+    /// allowed to complete, deadlock is likely.
+    void waitTransmitLock(wcontrol::TransmitMgr& transmitMgr, bool interactive, QueryId const& qId);
+
+    /// @return the channel sequence number
+    uint64_t getSeq() const { return _sendChannel->getSeq(); }
+
+    /// @return the current sql connection count
+    int getSqlConnectionCount() { return _sqlConnectionCount; }
+
+    /// @return the sql connection count after incrementing by 1.
+    int incrSqlConnectionCount() { return ++_sqlConnectionCount; }
+
+    /// @return true if this is the first time this function has been called.
+    bool getFirstChannelSqlConn() { return _firstChannelSqlConn.exchange(false); }
+
 private:
     /// Private constructor to protect shared pointer integrity.
-    SendChannelShared(SendChannel::Ptr const& sendChannel, wcontrol::TransmitMgr::Ptr const& transmitMgr)
-            : _transmitMgr(transmitMgr), _sendChannel(sendChannel) {
+    SendChannelShared(SendChannel::Ptr const& sendChannel,
+                      std::shared_ptr<wcontrol::TransmitMgr> const& transmitMgr)
+            : _sendChannel(sendChannel), _transmitMgr(transmitMgr) {
         if (_sendChannel == nullptr) {
             throw Bug("SendChannelShared constructor given nullptr");
         }
@@ -134,8 +160,11 @@ private:
     /// The header for the 'nextTransmit' item is appended to the result of
     /// 'thisTransmit', with a specially constructed header appended for the
     /// 'reallyLast' transmit.
+    /// The specially constructed header for the 'reallyLast' transmit just
+    /// says that there's no more data, this stream is done.
     /// _queueMtx must be held before calling this.
-    bool _transmit(bool erred, bool scanInteractive, bool largeResult, qmeta::CzarId czarId);
+    /// @see SendChannel::_transmit code for further explanation.
+    bool _transmit(bool erred, bool scanInteractive, QueryId const qid, qmeta::CzarId czarId);
 
     /// Send the buffer 'streamBuffer' using xrdssi. L
     /// 'last' should only be true if this is the last buffer to be sent with this _sendChannel.
@@ -143,7 +172,7 @@ private:
     /// @return true if the buffer was sent.
     bool _sendBuf(std::lock_guard<std::mutex> const& streamLock,
                   xrdsvc::StreamBuffer::Ptr& streamBuf, bool last,
-                  std::string const& note);
+                  std::string const& note, int scsSeq);
 
     std::queue<TransmitData::Ptr> _transmitQueue; ///< Queue of data to be encoded and sent.
     std::mutex _queueMtx; ///< protects _transmitQueue, _taskCount, _lastCount
@@ -156,10 +185,22 @@ private:
     std::atomic<bool> _lastRecvd{false}; ///< The truly 'last' transmit message is in the queue.
     std::atomic<bool> _firstTransmit{true}; ///< True until the first transmit has been sent.
 
-    /// Used to limit the number of transmits being sent to czars.
-    wcontrol::TransmitMgr::Ptr const _transmitMgr;
-
     SendChannel::Ptr _sendChannel; ///< Used to pass encoded information to XrdSsi.
+
+    std::atomic<bool> _firstTransmitLock{true}; ///< True until the first thread tries to lock transmitLock.
+    std::shared_ptr<wcontrol::TransmitLock> _transmitLock; ///< Hold onto transmitLock until finished.
+    std::mutex _transmitLockMtx;
+    std::condition_variable _transmitLockCv;
+    std::shared_ptr<wcontrol::TransmitMgr> _transmitMgr; ///< Pointer to the TransmitMgr
+    std::atomic<uint32_t> _scsSeq{0}; ///< SendChannelSharedsequence number for transmit.
+
+    /// The number of sql connections opened to handle the Tasks using this SendChannelShared.
+    /// Once this is greater than 0, this object needs free access to sql connections to avoid
+    // system deadlock. @see SqlConnMgr::_take() and SqlConnMgr::_release().
+    std::atomic<int> _sqlConnectionCount{0};
+
+    /// true until getFirstChannelSqlConn() is called.
+    std::atomic<bool> _firstChannelSqlConn{true};
 };
 
 }}} // namespace lsst::qserv::wbase

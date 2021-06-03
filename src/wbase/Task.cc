@@ -93,6 +93,7 @@ bool Task::ChunkIdGreater::operator()(Task::Ptr const& x, Task::Ptr const& y) {
 std::string const Task::defaultUser = "qsmaster";
 IdSet Task::allIds{};
 
+std::atomic<uint32_t> taskSequence{0};
 
 
 /// When the constructor is called, there is not enough information
@@ -102,8 +103,9 @@ IdSet Task::allIds{};
 Task::Task(TaskMsgPtr const& t, std::string const& query, int fragmentNumber,
         std::shared_ptr<SendChannelShared> const& sc)
     : msg(t), sendChannel(sc),
+      tSeq(++taskSequence),
       _qId(t->queryid()), _jId(t->jobid()), _attemptCount(t->attemptcount()),
-      _idStr(QueryIdHelper::makeIdStr(_qId, _jId)),
+      _idStr(QueryIdHelper::makeIdStr(_qId, _jId)+"tseq="+std::to_string(tSeq)+":"),
       _queryString(query),
       _queryFragmentNum(fragmentNumber) {
 

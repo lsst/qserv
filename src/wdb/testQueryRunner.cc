@@ -68,7 +68,7 @@ using lsst::qserv::wdb::ChunkResourceMgr;
 using lsst::qserv::wdb::FakeBackend;
 using lsst::qserv::wdb::QueryRunner;
 
-TransmitMgr::Ptr locTransmitMgr = make_shared<TransmitMgr>(50);
+TransmitMgr::Ptr locTransmitMgr = make_shared<TransmitMgr>(50, 4);
 
 struct Fixture {
     shared_ptr<TaskMsg> newTaskMsg() {
@@ -118,7 +118,6 @@ BOOST_AUTO_TEST_CASE(Simple) {
     SqlConnMgr::Ptr sqlConnMgr = make_shared<SqlConnMgr>(20, 15);
     TransmitMgr::Ptr transmitMgr = make_shared<TransmitMgr>(50, 4);
     QueryRunner::Ptr a(QueryRunner::newQueryRunner(task, crm, newMySqlConfig(), sqlConnMgr, transmitMgr));
-// &&&    QueryRunner::Ptr a(QueryRunner::newQueryRunner(task, crm, newMySqlConfig(), sqlConnMgr));
     BOOST_CHECK(a->runQuery());
 }
 
@@ -133,7 +132,6 @@ BOOST_AUTO_TEST_CASE(Output) {
     SqlConnMgr::Ptr sqlConnMgr = make_shared<SqlConnMgr>(20, 15);
     TransmitMgr::Ptr transmitMgr = make_shared<TransmitMgr>(50, 4);
     QueryRunner::Ptr a(QueryRunner::newQueryRunner(task, crm, newMySqlConfig(), sqlConnMgr, transmitMgr));
-// &&& QueryRunner::Ptr a(QueryRunner::newQueryRunner(task, crm, newMySqlConfig(), sqlConnMgr));
     BOOST_CHECK(a->runQuery());
 
     unsigned char phSize = *reinterpret_cast<unsigned char const*>(out.data());

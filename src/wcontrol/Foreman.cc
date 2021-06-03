@@ -44,6 +44,7 @@
 #include "wbase/SendChannelShared.h"
 #include "wbase/WorkerCommand.h"
 #include "wcontrol/SqlConnMgr.h"
+#include "wcontrol/TransmitMgr.h"
 #include "wdb/ChunkResource.h"
 #include "wdb/QueryRunner.h"
 
@@ -62,12 +63,14 @@ Foreman::Foreman(Scheduler::Ptr                  const& scheduler,
                  unsigned int                    maxPoolThreads,
                  mysql::MySqlConfig              const& mySqlConfig,
                  wpublish::QueriesAndChunks::Ptr const& queries,
-                 wcontrol::SqlConnMgr::Ptr       const& sqlConnMgr)
+                 wcontrol::SqlConnMgr::Ptr       const& sqlConnMgr,
+                 wcontrol::TransmitMgr::Ptr      const& transmitMgr)
 
     :   _scheduler  (scheduler),
         _mySqlConfig(mySqlConfig),
         _queries    (queries),
-        _sqlConnMgr (sqlConnMgr) {
+        _sqlConnMgr (sqlConnMgr),
+        _transmitMgr(transmitMgr) {
 
     // Make the chunk resource mgr
     // Creating backend makes a connection to the database for making temporary tables.
@@ -108,7 +111,7 @@ void Foreman::_setRunFunc(shared_ptr<wbase::Task> const& task) {
             }
         } else {
             auto qr = wdb::QueryRunner::newQueryRunner(task, _chunkResourceMgr, _mySqlConfig,
-                                                       _sqlConnMgr);
+                                                       _sqlConnMgr, _transmitMgr);
             bool success = false;
             try {
                 success = qr->runQuery();
@@ -143,44 +146,6 @@ void Foreman::processTasks(vector<wbase::Task::Ptr> const& tasks) {
         cmds.push_back(task);
     }
     _scheduler->queCmd(cmds);
-}
-
-// &&& delete with parents ???
-/// Put the task on the scheduler to be run later.
-void Foreman::processTask(shared_ptr<wbase::Task> const& task) {
-    LOGS(_log, LOG_LVL_INFO, "&&& processTask");
-    /* &&&
-    auto func = [this, task](util::CmdData*){
-        proto::TaskMsg const& msg = *task->msg;
-        int const resultProtocol = 2; // See proto/worker.proto Result protocol
-        if (!msg.has_protocol() || msg.protocol() < resultProtocol) {
-            LOGS(_log, LOG_LVL_WARN, "processMsg Unsupported wire protocol");
-            if (!task->getCancelled()) {
-                // We should not send anything back to xrootd if the task has been cancelled.
-                task->sendChannel->sendError("Unsupported wire protocol", 1);
-            }
-        } else {
-            auto qr = wdb::QueryRunner::newQueryRunner(task, _chunkResourceMgr, _mySqlConfig,
-                                                       _sqlConnMgr, _transmitMgr);
-            bool success = false;
-            try {
-                success = qr->runQuery();
-            } catch (UnsupportedError const& e) {
-                LOGS(_log, LOG_LVL_ERROR, "runQuery threw UnsupportedError " << e.what() << *task);
-            }
-            if (not success) {
-                LOGS(_log, LOG_LVL_WARN, "runQuery failed " << *task);
-            }
-        }
-        // Transmission is done, but 'task' contains statistics that are still useful.
-        task->sendChannel.reset(); // Frees its xrdsvc::SsiRequest object.
-    };
-
-    task->setFunc(func);
-    */
-    _setRunFunc(task);
-    _queries->addTask(task);
-    _scheduler->queCmd(task);
 }
 
 

@@ -92,6 +92,8 @@ message ProtoHeader {
     optional string wname = 4;
     required bool largeresult = 5;
     required bool endnodata = 6; // True if this header is the end, no more data. size should be 0.
+    optional uint32 seq = 7; // sequence number from SendChannel
+    optional int32 scsseq = 8; // sequence number from SendChannelShared, can be -1
 }
 
 message ColumnSchema {

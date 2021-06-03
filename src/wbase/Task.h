@@ -171,10 +171,12 @@ public:
     void setSafeToMoveRunning(bool val) { _safeToMoveRunning = val; } ///< For testing only.
 
     static IdSet allIds; // set of all task jobId numbers that are not complete.
-    std::string getIdStr() const {return _idStr;}
+    std::string getIdStr() const { return _idStr; }
 
     /// @return true if qId and jId match this task's query and job ids.
-    bool idsMatch(QueryId qId, int jId) { return (_qId == qId && _jId == jId); }
+    bool idsMatch(QueryId qId, int jId, uint32_t tseq) const {
+        return (_qId == qId && _jId == jId && tseq == tSeq);
+    }
 
     // Functions for tracking task state and statistics.
     State getState() const;
@@ -183,11 +185,14 @@ public:
     void started(std::chrono::system_clock::time_point const& now);
     std::chrono::milliseconds finished(std::chrono::system_clock::time_point const& now);
 
+    uint32_t const tSeq; ///< identifier for the specific task, useful in near-neighbor debugging. &&& make private
+
 private:
     QueryId  const    _qId = 0; ///< queryId from czar
     int      const    _jId = 0; ///< jobId from czar
     int      const    _attemptCount = 0; // attemptCount from czar
-    std::string const _idStr = QueryIdHelper::makeIdStr(0, 0, true); // < for logging only
+    /// _idStr for logging only.
+    std::string const _idStr = QueryIdHelper::makeIdStr(0, 0, true)+std::to_string(tSeq)+":";
     std::string _queryString; ///< The query this task will run.
     int _queryFragmentNum = 0; ///< The fragment number of the query in the task message.
 

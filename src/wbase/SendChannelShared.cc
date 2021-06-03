@@ -28,6 +28,7 @@
 #include "global/LogContext.h"
 #include "proto/ProtoHeaderWrap.h"
 #include "util/Timer.h"
+#include "wcontrol/TransmitMgr.h"
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -41,6 +42,7 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.wbase.SendChannelShared");
 namespace lsst {
 namespace qserv {
 namespace wbase {
+
 
 SendChannelShared::Ptr SendChannelShared::create(SendChannel::Ptr const& sendChannel,
                                                  wcontrol::TransmitMgr::Ptr const& transmitMgr)  {
@@ -86,6 +88,25 @@ string SendChannelShared::makeIdStr(int qId, int jId) {
 }
 
 
+void SendChannelShared::waitTransmitLock(wcontrol::TransmitMgr& transmitMgr, bool interactive, QueryId const& qId) {
+    if (_transmitLock != nullptr) {
+        return;
+    }
+
+    {
+        unique_lock<mutex> uLock(_transmitLockMtx);
+        bool first = _firstTransmitLock.exchange(false);
+        if (first) {
+            // This will wait until TransmitMgr has resources available.
+            _transmitLock.reset(new wcontrol::TransmitLock(transmitMgr, interactive, qId));
+        } else {
+            _transmitLockCv.wait(uLock, [this](){ return _transmitLock != nullptr; });
+        }
+    }
+    _transmitLockCv.notify_one();
+}
+
+
 bool SendChannelShared::addTransmit(bool cancelled, bool erred, bool last, bool largeResult,
                                     TransmitData::Ptr const& tData, int qId, int jId) {
     QSERV_LOGCONTEXT_QUERY_JOB(qId, jId);
@@ -115,6 +136,8 @@ bool SendChannelShared::addTransmit(bool cancelled, bool erred, bool last, bool 
 
     if (reallyLast || erred || cancelled) {
         _lastRecvd = true;
+        LOGS(_log, LOG_LVL_DEBUG, "addTransmit lastRecvd=" << _lastRecvd << " really=" << reallyLast
+                                  << " erred=" << erred << " cancelled=" << cancelled);
     }
 
     // If this is reallyLast or at least 2 items are in the queue, the transmit can happen
@@ -132,10 +155,31 @@ bool SendChannelShared::addTransmit(bool cancelled, bool erred, bool last, bool 
 }
 
 
-bool SendChannelShared::_transmit(bool erred, bool scanInteractive, bool largeResult, qmeta::CzarId czarId) {
+util::TimerHistogram scsTransmitSend("scsTransmitSend", {0.01, 0.1, 1.0, 2.0, 5.0, 10.0, 20.0});
+
+bool SendChannelShared::_transmit(bool erred, bool scanInteractive, QueryId const qid, qmeta::CzarId czarId) {
     string idStr = "QID?";
 
-    // keep looping until nothing more can be transmitted.
+    // Result data is transmitted in messages containing data and headers.
+    // data - is the result data
+    // header - contains information about the next chunk of result data,
+    //          most importantly the size of the next data message.
+    //          The header has a fixed size (about 255 bytes)
+    // header_END - indicates there will be no more msg.
+    // msg - contains data and header.
+    // metadata - special xrootd buffer that can only be set once per SendChannelShared
+    //            instance. It is used to send the first header.
+    // A complete set of results to the czar looks like
+    //    metadata[header_A] -> msg_A[data_A, header_END]
+    // or
+    //    metadata[header_A] -> msg_A[data_A, header_B]
+    //          -> msg_B[data_B, header_C] -> ... -> msg_X[data_x, header_END]
+    //
+    // Since you can't send msg_A until you know the size of data_B, you can't
+    // transmit until there are at least 2 msg in the queue, or you know
+    // that msg_A is the last msg in the queue.
+    // Note that the order of result rows does not matter, but data_B must come after header_B.
+    // Keep looping until nothing more can be transmitted.
     while(_transmitQueue.size() >= 2 || _lastRecvd) {
         TransmitData::Ptr thisTransmit = _transmitQueue.front();
         _transmitQueue.pop();
@@ -160,43 +204,53 @@ bool SendChannelShared::_transmit(bool erred, bool scanInteractive, bool largeRe
             auto nextT = _transmitQueue.front();
             nextPHdr = nextT->header;
         }
+        uint32_t seq = _sendChannel->getSeq();
+        int scsSeq = ++_scsSeq;
+        string seqStr = string("seq=" + to_string(seq) + " scsseq=" + to_string(scsSeq));
         nextPHdr->set_endnodata(reallyLast);
+        nextPHdr->set_seq(seq);
+        nextPHdr->set_scsseq(scsSeq);
         string nextHeaderString;
         nextPHdr->SerializeToString(&nextHeaderString);
         thisTransmit->dataMsg += proto::ProtoHeaderWrap::wrap(nextHeaderString);
 
         // The first message needs to put its header data in metadata as there's
         // no previous message it could attach its header to.
-        if (_firstTransmit.exchange(false)) {
-            // Put the header for the first message in metadata
-            // _metaDataBuf must remain valid until Finished() is called.
-            proto::ProtoHeader* thisPHdr = thisTransmit->header;
-            string thisHeaderString;
-            thisPHdr->SerializeToString(&thisHeaderString);
-            _metadataBuf = proto::ProtoHeaderWrap::wrap(thisHeaderString);
-            lock_guard<mutex> streamLock(streamMutex);
-            bool metaSet = _sendChannel->setMetadata(_metadataBuf.data(), _metadataBuf.size());
-            if (!metaSet) {
-                LOGS(_log, LOG_LVL_ERROR, "Failed to setMeta " << idStr);
-                kill(streamLock, "metadata");
-                return false;
-            }
-        }
-
-        // Put the data for the transmit in a StreamBuffer and send it.
-        auto streamBuf = xrdsvc::StreamBuffer::createWithMove(thisTransmit->dataMsg);
         {
-            // Limit the number of concurrent transmits.
-            wcontrol::TransmitLock transmitLock(*_transmitMgr, scanInteractive, largeResult, czarId);
-            lock_guard<mutex> streamLock(streamMutex);
-            bool sent = _sendBuf(streamLock, streamBuf, reallyLast, "transmitLoop " + idStr);
-            if (!sent) {
-                LOGS(_log, LOG_LVL_ERROR, "Failed to send " << idStr);
-                kill(streamLock, "SendChannelShared::_transmit b");
-                return false;
+            lock_guard<mutex> streamLock(streamMutex); // Must keep meta and buffer together.
+            if (_firstTransmit.exchange(false)) {
+                // Put the header for the first message in metadata
+                // _metaDataBuf must remain valid until Finished() is called.
+                proto::ProtoHeader* thisPHdr = thisTransmit->header;
+                thisPHdr->set_seq(seq);
+                thisPHdr->set_scsseq(scsSeq - 1); // should always be 0
+                string thisHeaderString;
+                thisPHdr->SerializeToString(&thisHeaderString);
+                _metadataBuf = proto::ProtoHeaderWrap::wrap(thisHeaderString);
+                bool metaSet = _sendChannel->setMetadata(_metadataBuf.data(), _metadataBuf.size());
+                if (!metaSet) {
+                    LOGS(_log, LOG_LVL_ERROR, "Failed to setMeta " << idStr);
+                    kill(streamLock, "metadata");
+                    return false;
+                }
+            }
+
+            // Put the data for the transmit in a StreamBuffer and send it.
+            auto streamBuf = xrdsvc::StreamBuffer::createWithMove(thisTransmit->dataMsg);
+            {
+                util::Timer sendTimer;
+                sendTimer.start();
+                bool sent = _sendBuf(streamLock, streamBuf, reallyLast, "transmitLoop " + idStr + " " + seqStr, scsSeq);
+                sendTimer.stop();
+                auto logMsgSend = scsTransmitSend.addTime(sendTimer.getElapsed(), idStr);
+                LOGS(_log, LOG_LVL_INFO, logMsgSend);
+                if (!sent) {
+                    LOGS(_log, LOG_LVL_ERROR, "Failed to send " << idStr);
+                    kill(streamLock, "SendChannelShared::_transmit b");
+                    return false;
+                }
             }
         }
-
         // If that was the last message, break the loop.
         if (reallyLast) return true;
     }
@@ -209,8 +263,8 @@ util::TimerHistogram transmitHisto("transmit Hist", {0.1, 1, 5, 10, 20, 40});
 
 bool SendChannelShared::_sendBuf(lock_guard<mutex> const& streamLock,
                                  xrdsvc::StreamBuffer::Ptr& streamBuf, bool last,
-                                 string const& note) {
-    bool sent = _sendChannel->sendStream(streamBuf, last);
+                                 string const& note, int scsSeq) {
+    bool sent = _sendChannel->sendStream(streamBuf, last, scsSeq);
     if (!sent) {
         LOGS(_log, LOG_LVL_ERROR, "Failed to transmit " << note << "!");
         return false;
