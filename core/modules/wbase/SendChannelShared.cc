@@ -186,7 +186,7 @@ bool SendChannelShared::_transmit(bool erred, bool scanInteractive, bool largeRe
         // Put the data for the transmit in a StreamBuffer and send it.
         auto streamBuf = xrdsvc::StreamBuffer::createWithMove(thisTransmit->dataMsg);
         {
-            // Limit the number of concurrent transmits.
+            // Limit the number of concurrent transmits. See xrdssu.cnf [transmits] maxtransmits.
             wcontrol::TransmitLock transmitLock(*_transmitMgr, scanInteractive, largeResult, czarId);
             lock_guard<mutex> streamLock(streamMutex);
             bool sent = _sendBuf(streamLock, streamBuf, reallyLast, "transmitLoop " + idStr);

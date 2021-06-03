@@ -455,42 +455,35 @@ void QueryRequest::_processData(JobQuery::Ptr const& jq, int blen, bool xrdLast)
 
     bool flushOk = false;
 
-    /* &&&
-    if (_firstFlushCall.exchange(false)) {
-        // The first message only contains a header, so no data to read.
-        nextHeaderBufPtr = make_shared<vector<char>>(bufPtr->begin(), bufPtr->end());
-    } else {
-    */
-        // The buffer has 2 parts.
-        // - The first (bytes = blen - ProtoHeaderWrap::getProtheaderSize())
-        //   is the result associated with the previously received header.
-        // - The second is the header for the next message.
+    // The buffer has 2 parts.
+    // - The first (bytes = blen - ProtoHeaderWrap::getProtheaderSize())
+    //   is the result associated with the previously received header.
+    // - The second is the header for the next message.
 
-        int respSize = blen - protoHeaderSize;
-        nextHeaderBufPtr = make_shared<vector<char>>(bufPtr->begin() + respSize, bufPtr->end());
+    int respSize = blen - protoHeaderSize;
+    nextHeaderBufPtr = make_shared<vector<char>>(bufPtr->begin() + respSize, bufPtr->end());
 
-        // Read the result
-        flushOk = jq->getDescription()->respHandler()->flush(respSize, bufPtr, last,
-                largeResult, nextBufSize);
-        if (last) {
-            // Last should only be true when the header is read, not the result.
-            throw Bug("_processData result had 'last' true, which cannot be allowed.");
-        }
+    // Read the result
+    flushOk = jq->getDescription()->respHandler()->flush(respSize, bufPtr, last,
+            largeResult, nextBufSize);
+    if (last) {
+        // Last should only be true when the header is read, not the result.
+        throw Bug("_processData result had 'last' true, which cannot be allowed.");
+    }
 
-        bufPtr.reset(); // don't need the buffer anymore and it could be big.
-        if (nextBufSize != protoHeaderSize) {
-            throw Bug("Unexpected header size from flush(result) call QID="
-                    + to_string(_qid) + "#" + to_string(_jobid));
-        }
+    bufPtr.reset(); // don't need the buffer anymore and it could be big.
+    if (nextBufSize != protoHeaderSize) {
+        throw Bug("Unexpected header size from flush(result) call QID="
+                + to_string(_qid) + "#" + to_string(_jobid));
+    }
 
-        if (!flushOk) {
-            _flushError(jq);
-            return;
-        }
-    // &&&}
+    if (!flushOk) {
+        _flushError(jq);
+        return;
+    }
 
     // Read the next header
-    // Values for largeResult and nextBufSize will be filled in by flush().
+    // Values for largeResult, last, and nextBufSize will be filled in by flush().
     flushOk = jq->getDescription()->respHandler()->flush(protoHeaderSize, nextHeaderBufPtr, last,
                                                          largeResult, nextBufSize);
 

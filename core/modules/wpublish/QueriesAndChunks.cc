@@ -219,8 +219,10 @@ void QueriesAndChunks::removeDead() {
     for (auto const& dead : dList) {
         removeDead(dead);
     }
-    lock_guard<mutex> gdend(_deadMtx);
-    LOGS(_log, LOG_LVL_DEBUG, "QueriesAndChunks::removeDead end deadQueries size=" << _deadQueries.size());
+    if (LOG_CHECK_LVL(_log, LOG_LVL_DEBUG)) {
+        lock_guard<mutex> gdend(_deadMtx);
+        LOGS(_log, LOG_LVL_DEBUG, "QueriesAndChunks::removeDead end deadQueries size=" << _deadQueries.size());
+    }
 }
 
 

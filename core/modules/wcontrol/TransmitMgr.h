@@ -126,7 +126,6 @@ private:
     bool _interactive;
     bool _alreadyTransmitting;
     qmeta::CzarId _czarId;
-
 };
 
 

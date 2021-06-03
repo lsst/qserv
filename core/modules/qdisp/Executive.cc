@@ -437,7 +437,7 @@ void Executive::_unTrack(int jobId) {
             if (_incompleteJobs.empty()) _allJobsComplete.notify_all();
         }
         auto sz = _incompleteJobs.size();
-        logSome = (sz < 100) || (sz%100 == 0) || !untracked;
+        logSome = (sz < 50) || (sz%1000 == 0) || !untracked;
         if (logSome || LOG_CHECK_LVL(_log, LOG_LVL_DEBUG)) {
             // Log up to 5 incomplete jobs. Very useful when jobs do not finish.
             s = _getIncompleteJobsString(5);

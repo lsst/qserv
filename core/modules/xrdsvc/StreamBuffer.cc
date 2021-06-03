@@ -61,7 +61,8 @@ StreamBuffer::StreamBuffer(std::string &input) {
     next = 0;
 
     _totalBytes += _dataStr.size();
-    LOGS(_log, LOG_LVL_DEBUG, "StreamBuffer::_totalBytes=" << _totalBytes << " thisSize=" << _dataStr.size());
+    LOGS(_log, LOG_LVL_DEBUG, "StreamBuffer::_totalBytes=" << _totalBytes
+                              << " thisSize=" << _dataStr.size());
 }
 
 

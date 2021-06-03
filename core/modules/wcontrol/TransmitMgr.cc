@@ -66,12 +66,6 @@ void TransmitMgr::_take(bool interactive, bool alreadyTransmitting, qmeta::CzarI
     ++(info._totalCount);
     if (not interactive) {
         // Check if the caller needs to wait.
-        // This is trying to prioritize transmits that are 'alreadyTransmitting' so
-        // they finish and stop using system resources on the czar (with czarId).
-        // '_maxAlreadyTran' should be significantly smaller than '_maxTransmits', which
-        // causes all new transmits to have to wait until some of the already transmitting
-        // items have cleared.
-        // '_maxTransmits' may be 50 while '_maxAlreadyTran' may be 10.
         // Interactive transmits never need to wait.
         if (info._transmitCount >= _maxTransmits) {
             _tCv.wait(uLock, [this, &info](){ return info._transmitCount < _maxTransmits; });
