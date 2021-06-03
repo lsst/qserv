@@ -29,12 +29,6 @@ target_link_libraries(wdb PUBLIC
 add_executable(testChunkResource testChunkResource.cc)
 target_link_libraries(testChunkResource PRIVATE
     crypto
-    global
-    mysql
-    proto
-    util
-    wbase
-    ssl
     xrdsvc
     Boost::unit_test_framework
     Threads::Threads
@@ -48,12 +42,6 @@ target_include_directories(testQueryRunner PRIVATE
 )
 target_link_libraries(testQueryRunner PRIVATE
     crypto
-    global
-    mysql
-    proto
-    util
-    wbase
-    ssl
     xrdsvc
     Boost::unit_test_framework
     Threads::Threads
@@ -64,12 +52,6 @@ add_test(NAME testQueryRunner COMMAND testQueryRunner)
 add_executable(testQuerySql testQuerySql.cc)
 target_link_libraries(testQuerySql PRIVATE
     crypto
-    global
-    mysql
-    proto
-    util
-    wbase
-    ssl
     xrdsvc
     Boost::unit_test_framework
     Threads::Threads
