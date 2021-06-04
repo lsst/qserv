@@ -26,6 +26,7 @@
 #include <memory>
 #include <mutex>
 #include <random>
+#include <iostream>
 #include <thread>
 #include <vector>
 
@@ -43,7 +44,7 @@
 #include "boost/test/included/unit_test.hpp"
 
 using namespace std;
-namespace test = boost::test_tools;
+using namespace boost::unit_test;
 using namespace lsst::qserv::replica;
 namespace util = lsst::qserv::util;
 
@@ -171,6 +172,24 @@ BOOST_AUTO_TEST_CASE(NamedMutexRegistryTest2) {
 
 BOOST_AUTO_TEST_CASE(NamedMutexRegistryTest3) {
 
+    // The optional test that makes use a lot of CPU resources. The test would
+    // be running far greater number of threads than the number of the hardware threads
+    // available on a machine. The test is excluded from the default run mode of the application
+    // in order to keep the unit testing reasonably fast. One may still run the test by
+    // passing the corresponding command-line option intercepted below. If enabled
+    // the run time of the application will be prolonged by a factor of 100.
+    bool testMaxCpuUsage = false;
+    for (int i = 1; i < framework::master_test_suite().argc; ++i) {
+        string const arg = string(framework::master_test_suite().argv[i]);
+        if (arg == "--max-cpu-usage") {
+            testMaxCpuUsage = true;
+        } else {
+            cerr << "error: unknown command line argument: " << arg << "\n"
+                 << "Usage: " << framework::master_test_suite().argv[0] << " -- [--max-cpu-usage]" << endl;
+            std::exit(1);
+        }
+    }
+
     // This is a more sophisticated test that would exercise the "garbage collection"
     // algorithm of the Registry. The test would make N objects of KeyCounterContext
     // type that encapsulate the unique name of a mutex along with a numeric counter
@@ -278,7 +297,7 @@ BOOST_AUTO_TEST_CASE(NamedMutexRegistryTest3) {
         plan.waitAfterReleaseLockTimeMs = 0;
         test(plan);
     }
-     {
+    if (testMaxCpuUsage) {
         TestPlan plan;
         plan.name = "MAX_CPU_USAGE";
         plan.numMutexes = 128;
