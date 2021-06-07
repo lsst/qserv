@@ -141,12 +141,13 @@ public:
     bool startQuery(std::shared_ptr<JobQuery> const& jobQuery);
 
     /// Start any jobs that were not started as part of UberJobs.
-    void startRemainingJobs();
+    void startRemainingJobs(ChunkIdJobMapType& remainingJobs); // &&& delete
 
     ///&&& TODO:UJ UberJob
     void addUberJobs(std::vector<std::shared_ptr<UberJob>> const& jobsToAdd);
     ChunkIdJobMapType& getChunkJobMapAndInvalidate();
     bool startUberJob(std::shared_ptr<UberJob> const& uJob);
+    std::shared_ptr<JobQuery> getSharedPtrForRawJobPtr(JobQuery* jqRaw);
 
 private:
     Executive(ExecutiveConfig const& c, std::shared_ptr<MessageStore> const& ms,

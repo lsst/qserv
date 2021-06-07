@@ -368,31 +368,24 @@ void UserQuerySelect::submit() {
 
         if (!uberJobsEnabled) {
             std::function<void(util::CmdData*)> funcBuildJob =
-                [this, sequence, job{move(job)}](util::CmdData*) { // references in captures cause races
+                //&&&[this, sequence, job{move(job)}](util::CmdData*) { // references in captures cause races
+                [this, job{move(job)}](util::CmdData*) { // references in captures cause races
                     QSERV_LOGCONTEXT_QUERY(_qMetaQueryId);
                     job->runJob();
                 };
             auto cmd = std::make_shared<qdisp::PriorityCommand>(funcBuildJob);
             _executive->queueJobStart(cmd);
-
         }
         ++sequence;
     }
 
     if (uberJobsEnabled) {
         vector<qdisp::UberJob::Ptr> uberJobs;
-        /* &&&
-        vector<czar::WorkerResource> workers; // &&& delete and replace with a real list of workers
-        throw Bug("&&&NEED_CODE to find all workers"); // workers = all workers found in database
-        for (auto&& worker:workers) {
-            worker.fillChunkIdSet();
-        }
-        */
 
         czar::WorkerResources workerResources;
-        workerResources.setMonoNodeTest(); //&&& TODO:UJ only good for mono-node test.
+        workerResources.setMonoNodeTest(); //&&& TODO:UJ only good for mono-node test. Need a real list of workers and their chunks. ******
 
-        // &&& make a map of all jobs in the executive.
+        // Make a map of all jobs in the executive.
         // &&& TODO:UJ for now, just using ints. At some point, need to check that ResourceUnit databases can be found for all databases in the query
         qdisp::Executive::ChunkIdJobMapType chunksInQuery = _executive->getChunkJobMapAndInvalidate();
 
@@ -404,13 +397,6 @@ void UserQuerySelect::submit() {
 
         /// make a map<worker, deque<chunkId> that will be destroyed as chunks are checked/used
         map<string, deque<int>> tmpWorkerList = workerResources.getDequesFor(dbName);
-
-        /* &&&
-        list<std::reference_wrapper<czar::WorkerResource>> tmpWorkerList;
-        for(auto&& worker:workers) {
-            tmpWorkerList.push_back(worker);
-        }
-        */
 
         // TODO:UJ So UberJobIds don't conflict with chunk numbers or jobIds, start at a large number.
         //       This could use some refinement.
@@ -461,26 +447,49 @@ void UserQuerySelect::submit() {
                 workerIter = tmpWorkerList.begin();
             }
         }
+        LOGS(_log, LOG_LVL_INFO, "&&& submit m");
         _executive->addUberJobs(uberJobs);
+        LOGS(_log, LOG_LVL_INFO, "&&& submit n");
         for (auto&& uJob:uberJobs) {
+            LOGS(_log, LOG_LVL_INFO, "&&& submit o");
             uJob->runUberJob();
+            LOGS(_log, LOG_LVL_INFO, "&&& submit p");
         }
-        _executive->startRemainingJobs();
+        LOGS(_log, LOG_LVL_INFO, "&&& submit q");
+        // If any chunks in the query were not found on a worker's list, run them individually.
+        //&&&_executive->startRemainingJobs(chunksInQuery); //&&& delete func in Executive.
+        for (auto& ciq:chunksInQuery) {
+            qdisp::JobQuery* jqRaw = ciq.second;
+            qdisp::JobQuery::Ptr job = _executive->getSharedPtrForRawJobPtr(jqRaw);
+            std::function<void(util::CmdData*)> funcBuildJob =
+                    [this, job{move(job)}](util::CmdData*) { // references in captures cause races
+                QSERV_LOGCONTEXT_QUERY(_qMetaQueryId);
+                job->runJob();
+            };
+            auto cmd = std::make_shared<qdisp::PriorityCommand>(funcBuildJob);
+            _executive->queueJobStart(cmd);
+        }
+
+        LOGS(_log, LOG_LVL_INFO, "&&& submit r");
     }
 
     // attempt to restore original thread priority, requires root
     if (increaseThreadPriority) {
         threadPriority.restoreOriginalValues();
     }
+    LOGS(_log, LOG_LVL_INFO, "&&& submit s");
 
     LOGS(_log, LOG_LVL_DEBUG, "total jobs in query=" << sequence);
     _executive->waitForAllJobsToStart();
+    LOGS(_log, LOG_LVL_INFO, "&&& submit t");
 
     // we only care about per-chunk info for ASYNC queries
     if (_async) {
+        LOGS(_log, LOG_LVL_INFO, "&&& submit u");
         std::lock_guard<std::mutex> lock(chunksMtx);
         _qMetaAddChunks(chunks);
     }
+    LOGS(_log, LOG_LVL_INFO, "&&& submit v");
 }
 
 

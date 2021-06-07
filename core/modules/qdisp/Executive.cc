@@ -246,6 +246,20 @@ bool Executive::_addJobToMap(JobQuery::Ptr const& job) {
     return res;
 }
 
+
+JobQuery::Ptr Executive::getSharedPtrForRawJobPtr(JobQuery* jqRaw) {
+    assert(jqRaw != nullptr);
+    int jobId = jqRaw->getIdInt();
+    lock_guard<recursive_mutex> lockJobMap(_jobMapMtx);
+    auto iter = _jobMap.find(jobId);
+    if (iter == _jobMap.end()) {
+        throw Bug("Could not find the entry for jobId=" + to_string(jobId));
+    }
+    JobQuery::Ptr jq = iter->second;
+    return jq;
+}
+
+
 bool Executive::join() {
     // To join, we make sure that all of the chunks added so far are complete.
     // Check to see if _requesters is empty, if not, then sleep on a condition.
@@ -616,7 +630,7 @@ bool Executive::startUberJob(UberJob::Ptr const& uJob) {
 }
 
 
-void Executive::startRemainingJobs() {
+void Executive::startRemainingJobs(ChunkIdJobMapType& remainingChunks) {
     throw Bug("&&&NEED_CODE executive start remaining jobs");
 }
 

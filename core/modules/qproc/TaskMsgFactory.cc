@@ -114,6 +114,7 @@ bool TaskMsgFactory::fillTaskMsg(proto::TaskMsg* taskMsg, ChunkQuerySpec const& 
         _addFragment(*taskMsg, resultTable, chunkQuerySpec.subChunkTables,
                      chunkQuerySpec.subChunkIds, chunkQuerySpec.queries);
     }
+    LOGS(_log, LOG_LVL_WARN, "&&& _makeMsg end chunkId=" << chunkQuerySpec.chunkId);
     return true;
 }
 
