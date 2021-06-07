@@ -52,11 +52,9 @@ class TransmitMgr {
 public:
     using Ptr = std::shared_ptr<TransmitMgr>;
 
-    TransmitMgr(int maxTransmits, int maxAlreadyTran)
-        : _maxTransmits(maxTransmits),  _maxAlreadyTran(maxAlreadyTran) {
+    TransmitMgr(int maxTransmits)
+        : _maxTransmits(maxTransmits) {
         assert(_maxTransmits >= 1);
-        assert(_maxAlreadyTran >= 1);
-        assert(_maxTransmits >= _maxAlreadyTran);
     }
     TransmitMgr() = delete;
     TransmitMgr(TransmitMgr const&) = delete;
@@ -65,7 +63,6 @@ public:
 
     int getTotalCount(qmeta::CzarId czarId) const;
     int getTransmitCount(qmeta::CzarId czarId) const;
-    int getAlreadyTransCount(qmeta::CzarId czarId) const;
 
     /// Class methods, that have already locked '_mtx', should call 'dumpBase'.
     std::ostream& dump(std::ostream &os) const;
@@ -98,12 +95,10 @@ private:
         friend class TransmitMgr;
         int _totalCount = 0;
         int _transmitCount = 0;
-        int _alreadyTransCount = 0;
         int _takeCalls = 0; ///< current number of calls to _take.
     };
 
     int const _maxTransmits;
-    int const _maxAlreadyTran;
     mutable std::mutex _mtx;
     std::condition_variable _tCv;
     std::map<qmeta::CzarId, TransmitInfo> _czarTransmitMap; ///< map of information per czar.

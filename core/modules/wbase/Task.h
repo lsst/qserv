@@ -39,7 +39,6 @@
 #include "global/intTypes.h"
 #include "memman/MemMan.h"
 #include "proto/ScanTableInfo.h"
-#include "util/InstanceCount.h"
 #include "util/ThreadPool.h"
 #include "util/threadSafe.h"
 
@@ -209,7 +208,6 @@ private:
     std::chrono::system_clock::time_point _finishTime;
     size_t _totalSize = 0; ///< Total size of the result so far.
 
-    util::InstanceCount _ic{"Task"}; ///< Count of existing Task objects.
 };
 
 }}} // namespace lsst::qserv::wbase

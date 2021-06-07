@@ -53,7 +53,15 @@ void SqlConnMgr::_take(bool scanQuery) {
 void SqlConnMgr::_release() {
     --_sqlConnCount;
     --_totalCount;
-    _tCv.notify_one();
+    // All threads threads must be checked as nothing will happen if one thread is
+    // notified and it is waiting for _maxScanSqlConnections, but a different
+    // thread could use _maxSqlConnections.
+    // This shouldn't  hurt performance too much, since at any given time,
+    // very few threads should be waiting. (They can only wait when first scheduled
+    // and the scheduler is limited to about 20-30 threads.)
+    // If things are backed up, it's terribly important to run any runable
+    // threads found.
+    _tCv.notify_all();
 }
 
 

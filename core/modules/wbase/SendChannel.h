@@ -90,10 +90,13 @@ public:
 
     /// Kill this SendChannel
     /// @ return the previous value of _dead
-    bool kill();
+    bool kill(std::string const& note);
 
     /// Return true if this sendChannel cannot send data back to the czar.
     bool isDead();
+
+    /// Set just before destorying this object to prevent pointless error messages.
+    void setDestroying() { _destroying = true; }
 
 protected:
     std::function<void(void)> _release = [](){;}; ///< Function to release resources.
@@ -101,6 +104,7 @@ protected:
 private:
     std::shared_ptr<xrdsvc::SsiRequest> _ssiRequest;
     std::atomic<bool> _dead{false}; ///< True if there were any failures using this SendChanel.
+    std::atomic<bool> _destroying{false};
 };
 
 }}} // lsst::qserv::wbase

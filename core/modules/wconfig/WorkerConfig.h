@@ -277,10 +277,6 @@ public:
      unsigned int getMaxTransmits() const {
          return _maxTransmits;
      }
-     /// @return the maximum number of tasks that can be transmitting large results.
-     unsigned int getMaxAlreadyTransmitting() const {
-         return _maxAlreadyTransmitting;
-     }
 
 
     /** Overload output operator for current class
@@ -330,7 +326,6 @@ private:
     unsigned int const _maxSqlConnections;
     unsigned int const _ReservedInteractiveSqlConnections;
     unsigned int const _maxTransmits;
-    unsigned int const _maxAlreadyTransmitting;
 };
 
 }}} // namespace qserv::core::wconfig

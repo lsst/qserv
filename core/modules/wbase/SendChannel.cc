@@ -66,7 +66,7 @@ public:
     }
 
     bool sendError(string const& msg, int code) override {
-        if (kill()) return false;
+        if (kill("NopChannel")) return false;
         cout << "NopChannel sendError(\"" << msg
              << "\", " << code << ");\n";
         return true;
@@ -102,7 +102,7 @@ public:
     }
 
     bool sendError(string const& msg, int code) override {
-        if (kill()) return false;
+        if (kill("StringChannel")) return false;
         ostringstream os;
         os << "(" << code << "," << msg << ")";
         _dest.append(os.str());
@@ -160,14 +160,14 @@ SendChannel::Ptr SendChannel::newStringChannel(string& d) {
 bool SendChannel::send(char const* buf, int bufLen) {
     if (isDead()) return false;
     if (_ssiRequest->reply(buf, bufLen)) return true;
-    kill();
+    kill("SendChannel::send");
     return false;
 }
 
 
 bool SendChannel::sendError(string const& msg, int code) {
     // Kill this send channel. If it wasn't already dead, send the error.
-    if (kill()) return false;
+    if (kill("SendChannel::sendError")) return false;
     if (_ssiRequest->replyError(msg.c_str(), code)) return true;
     return false;
 }
@@ -177,21 +177,25 @@ bool SendChannel::sendFile(int fd, Size fSize) {
     if (!isDead()) {
         if (_ssiRequest->replyFile(fSize, fd)) return true;
     }
-    kill();
+    kill("SendChannel::sendFile");
     release();
     return false;
 }
 
 
-bool SendChannel::kill() {
-    return _dead.exchange(true);
+bool SendChannel::kill(std::string const& note) {
+    bool oldVal = _dead.exchange(true);
+    if (!oldVal && !_destroying) {
+        LOGS(_log, LOG_LVL_WARN, "SendChannel first kill call " << note);
+    }
+    return oldVal;
 }
 
 
 bool SendChannel::isDead() {
     if (_dead) return true;
     if (_ssiRequest == nullptr) return true;
-    if (_ssiRequest->isFinished()) kill();
+    if (_ssiRequest->isFinished()) kill("SendChannel::isDead");
     return _dead;
 }
 
@@ -199,7 +203,8 @@ bool SendChannel::isDead() {
 bool SendChannel::sendStream(xrdsvc::StreamBuffer::Ptr const& sBuf, bool last) {
     if (isDead()) return false;
     if (_ssiRequest->replyStream(sBuf, last)) return true;
-    kill();
+    LOGS(_log, LOG_LVL_ERROR, "_ssiRequest->replyStream failed, killing.");
+    kill("SendChannel::sendStream");
     return false;
 }
 

@@ -444,21 +444,28 @@ void QueryRequest::_processData(JobQuery::Ptr const& jq, int blen, bool xrdLast)
     ResponseHandler::BufPtr bufPtr = _askForResponseDataCmd->getBufPtr();
     _askForResponseDataCmd.reset(); // No longer need it, and don't want the destructor calling _errorFinish().
 
+
+    int const protoHeaderSize = proto::ProtoHeaderWrap::getProtoHeaderSize();
+    ResponseHandler::BufPtr nextHeaderBufPtr;
+
+    // Values for these variables to be filled in by flush() calls.
+    bool largeResult = false;
+    int nextBufSize = 0;
+    bool last = false;
+
+    bool flushOk = false;
+
     // The buffer has 2 parts.
     // - The first (bytes = blen - ProtoHeaderWrap::getProtheaderSize())
     //   is the result associated with the previously received header.
     // - The second is the header for the next message.
-    int protoHeaderSize = proto::ProtoHeaderWrap::getProtoHeaderSize();
+
     int respSize = blen - protoHeaderSize;
-    ResponseHandler::BufPtr nextHeaderBufPtr =
-        make_shared<vector<char>>(bufPtr->begin() + respSize, bufPtr->end());
+    nextHeaderBufPtr = make_shared<vector<char>>(bufPtr->begin() + respSize, bufPtr->end());
 
     // Read the result
-    bool largeResult = false;
-    int nextBufSize = 0;
-    bool last = false;
-    bool flushOk = jq->getDescription()->respHandler()->flush(respSize, bufPtr, last,
-                                                              largeResult, nextBufSize);
+    flushOk = jq->getDescription()->respHandler()->flush(respSize, bufPtr, last,
+            largeResult, nextBufSize);
     if (last) {
         // Last should only be true when the header is read, not the result.
         throw Bug("_processData result had 'last' true, which cannot be allowed.");
@@ -467,7 +474,7 @@ void QueryRequest::_processData(JobQuery::Ptr const& jq, int blen, bool xrdLast)
     bufPtr.reset(); // don't need the buffer anymore and it could be big.
     if (nextBufSize != protoHeaderSize) {
         throw Bug("Unexpected header size from flush(result) call QID="
-                  + to_string(_qid) + "#" + to_string(_jobid));
+                + to_string(_qid) + "#" + to_string(_jobid));
     }
 
     if (!flushOk) {
@@ -476,8 +483,7 @@ void QueryRequest::_processData(JobQuery::Ptr const& jq, int blen, bool xrdLast)
     }
 
     // Read the next header
-    largeResult = false;
-    nextBufSize = 0;
+    // Values for largeResult, last, and nextBufSize will be filled in by flush().
     flushOk = jq->getDescription()->respHandler()->flush(protoHeaderSize, nextHeaderBufPtr, last,
                                                          largeResult, nextBufSize);
 
@@ -488,7 +494,7 @@ void QueryRequest::_processData(JobQuery::Ptr const& jq, int blen, bool xrdLast)
 
     if (flushOk) {
         if (last != xrdLast) {
-            LOGS(_log, LOG_LVL_WARN, "processData disagreement between last=" << last
+            LOGS(_log, LOG_LVL_DEBUG, "processData disagreement between last=" << last
                                      << " and xrdLast=" << xrdLast);
         }
         if (last) {
@@ -503,6 +509,7 @@ void QueryRequest::_processData(JobQuery::Ptr const& jq, int blen, bool xrdLast)
             _queueAskForResponse(_askForResponseDataCmd, jq, false);
         }
     } else {
+        LOGS(_log, LOG_LVL_WARN, "flushOk = false");
         _flushError(jq);
         return;
     }

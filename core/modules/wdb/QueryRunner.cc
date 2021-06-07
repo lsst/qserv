@@ -432,10 +432,6 @@ bool QueryRunner::_dispatchChannel() {
     if (tMsg.fragment_size() < 1) {
         throw Bug("QueryRunner: No fragments to execute in TaskMsg");
     }
-    ChunkResourceRequest req(_chunkResourceMgr, tMsg);
-    ChunkResource cr(req.getResourceFragment(fragNum));
-    // TODO: Hold onto this for longer period of time as the odds of reuse are pretty low at this scale
-    //       Ideally, hold it until moving on to the next chunk. Try to clean up ChunkResource code.
 
     unsigned int rowCount = 0;
     size_t tSize = 0;
@@ -445,6 +441,11 @@ bool QueryRunner::_dispatchChannel() {
     // or there are no more rows to collect, pass _transmitData to _sendChannel.
     try {
         _initTransmit(); // set _transmit
+        ChunkResourceRequest req(_chunkResourceMgr, tMsg);
+        ChunkResource cr(req.getResourceFragment(fragNum));
+        // TODO: Hold onto this for longer period of time as the odds of reuse are pretty low at this scale
+        //       Ideally, hold it until moving on to the next chunk. Try to clean up ChunkResource code.
+
         if (!_cancelled &&  !_task->sendChannel->isDead()) {
             string const& query = _task->getQueryString();
             util::Timer sqlTimer;
@@ -464,7 +465,7 @@ bool QueryRunner::_dispatchChannel() {
                     erred = true;
                     break;
                 }
-                LOGS(_log, LOG_LVL_DEBUG, "Splitting message size=" << tSize << ", rowCount=" << rowCount);
+                LOGS(_log, LOG_LVL_TRACE, "Splitting message size=" << tSize << ", rowCount=" << rowCount);
                 _buildDataMsg(rowCount, tSize);
                 if (!_transmit(false)) {
                     LOGS(_log, LOG_LVL_ERROR, "Could not transmit intermediate results.");

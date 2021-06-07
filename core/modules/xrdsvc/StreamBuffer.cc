@@ -61,7 +61,8 @@ StreamBuffer::StreamBuffer(std::string &input) {
     next = 0;
 
     _totalBytes += _dataStr.size();
-    LOGS(_log, LOG_LVL_DEBUG, "StreamBuffer::_totalBytes=" << _totalBytes);
+    LOGS(_log, LOG_LVL_DEBUG, "StreamBuffer::_totalBytes=" << _totalBytes
+                              << " thisSize=" << _dataStr.size());
 }
 
 
@@ -79,7 +80,6 @@ void StreamBuffer::Recycle() {
     }
     _cv.notify_all();
 
-    // delete this;
     // Effectively reset _selfKeepAlive, and if nobody else was
     // referencing this, this object will delete itself when
     // this function is done.

@@ -78,7 +78,5 @@ reservedinteractivesqlconn = 20
 
 [transmits]
 # Maximum number of concurrent transmits to a czar.
-maxtransmits = 50
-# If more than this number of large transmits is happening at once, wait to
-# start more transmits until some are done.
-maxalreadytransmitting = 10
+maxtransmits = 40
+
