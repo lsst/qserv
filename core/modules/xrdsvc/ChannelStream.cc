@@ -46,12 +46,12 @@ namespace qserv {
 namespace xrdsvc {
 
 /// Provide each Channel stream with a unique identifier.
-static atomic<uint32_t> localSeq(0);
+atomic<uint64_t> ChannelStream::_sequenceSource{0};
 
 /// Constructor
 ChannelStream::ChannelStream()
     : XrdSsiStream(isActive),
-      _closed(false), _seq(localSeq++) {}
+      _closed(false), _seq(_sequenceSource++) {}
 
 /// Destructor
 ChannelStream::~ChannelStream() {
