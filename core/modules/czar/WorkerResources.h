@@ -84,7 +84,8 @@ class WorkerResources {
 public:
 
     WorkerResources() = default;
-    //&&& other constructors
+    WorkerResources(WorkerResources const&) = delete;
+    WorkerResources& operator=(WorkerResources const&) = delete;
 
     ~WorkerResources() = default;
 

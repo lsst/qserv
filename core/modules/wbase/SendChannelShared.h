@@ -93,11 +93,6 @@ public:
         return _sendChannel->isDead();
     }
 
-
-    /// Set the number of Tasks that will be sent using this SendChannel.
-    /// This should not be changed once set.
-    void setTaskCount(int taskCount);
-
     /// All of the tasks that use this SendChannel must be added
     /// to the scheduler queue at the same time or it risks a race condition.
     void incrTaskCountBy(int subCount);

@@ -70,7 +70,6 @@ JobQuery::~JobQuery() {
 bool JobQuery::runJob() {
     QSERV_LOGCONTEXT_QUERY_JOB(getQueryId(), getIdInt());
     LOGS(_log, LOG_LVL_DEBUG, " runJob " << *this);
-    LOGS(_log, LOG_LVL_WARN, "&&& runJob " << *this);
     auto executive = _executive.lock();
     if (executive == nullptr) {
         LOGS(_log, LOG_LVL_ERROR, "runJob failed executive==nullptr");

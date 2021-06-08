@@ -80,7 +80,6 @@ bool UberJob::addJob(JobQuery* job) {
 
 bool UberJob::runUberJob() {
     QSERV_LOGCONTEXT_QUERY_JOB(getQueryId(), getIdInt());
-    LOGS(_log, LOG_LVL_INFO, "&&& runUberJob a");
     // Build the uberjob payload.
     // TODO:UJ For simplicity in the first pass, just make a TaskMsg for each Job and append it to the UberJobMsg.
     //         This is terribly inefficient and should be replaced by using a template and list of chunks that the
@@ -90,32 +89,22 @@ bool UberJob::runUberJob() {
         proto::UberJobMsg* ujMsg = google::protobuf::Arena::CreateMessage<proto::UberJobMsg>(&arena);
         ujMsg->set_queryid(getQueryId());
         ujMsg->set_czarid(_czarId);
-        LOGS(_log, LOG_LVL_INFO, "&&& runUberJob b");
         for (auto&& job:_jobs) {
-            LOGS(_log, LOG_LVL_INFO, "&&& runUberJob b1");
             proto::TaskMsg* tMsg = ujMsg->add_taskmsgs();
-            LOGS(_log, LOG_LVL_INFO, "&&& runUberJob b2");
             job->getDescription()->fillTaskMsg(tMsg);
-            LOGS(_log, LOG_LVL_INFO, "&&& runUberJob b3");
         }
-        LOGS(_log, LOG_LVL_INFO, "&&& runUberJob c");
         ujMsg->SerializeToString(&_payload);
-        LOGS(_log, LOG_LVL_INFO, "&&& runUberJob d");
     }
 
-    LOGS(_log, LOG_LVL_INFO, "&&& runUberJob e");
     auto executive = _executive.lock();
     if (executive == nullptr) {
         LOGS(_log, LOG_LVL_ERROR, "runUberJob failed executive==nullptr");
         return false;
     }
-    LOGS(_log, LOG_LVL_INFO, "&&& runUberJob f");
     bool cancelled = executive->getCancelled();
     bool handlerReset = _respHandler->reset();
     bool started = _started.exchange(true);
-    LOGS(_log, LOG_LVL_INFO, "&&& runUberJob g");
     if (!cancelled && handlerReset && !started) {
-        LOGS(_log, LOG_LVL_INFO, "&&& runUberJob h");
         auto criticalErr = [this, &executive](std::string const& msg) {
             LOGS(_log, LOG_LVL_ERROR, msg << " "
                     << *this << " Canceling user query!");
@@ -128,7 +117,6 @@ bool UberJob::runUberJob() {
             return false;
         }
 
-        LOGS(_log, LOG_LVL_INFO, "&&& runUberJob i");
         // At this point we are all set to actually run the queries. We create a
         // a shared pointer to this object to prevent it from escaping while we
         // are trying to start this whole process. We also make sure we record
@@ -136,12 +124,9 @@ bool UberJob::runUberJob() {
         //
         LOGS(_log, LOG_LVL_TRACE, "runUberJob calls StartQuery()");
         std::shared_ptr<UberJob> uJob(dynamic_pointer_cast<UberJob>(shared_from_this()));
-        LOGS(_log, LOG_LVL_INFO, "&&& runUberJob j");
         _inSsi = true;
         if (executive->startUberJob(uJob)) {
-            LOGS(_log, LOG_LVL_INFO, "&&& runUberJob k");
             _jobStatus->updateInfo(_idStr, JobStatus::REQUEST);
-            LOGS(_log, LOG_LVL_INFO, "&&& runUberJob l");
             return true;
         }
         _inSsi = false;

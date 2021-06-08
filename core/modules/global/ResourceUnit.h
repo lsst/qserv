@@ -48,13 +48,6 @@ public:
     class Checker;
     enum UnitType {GARBAGE, DBCHUNK, CQUERY, UNKNOWN, RESULT, WORKER};
 
-    /* &&&
-    static std::string makeChunkResourceName(std::string const& db, int chunkId) {
-        std::string str = "/chk/" + db + "/" + std::to_string(chunkId);
-        return str;
-    }
-    */
-
     ResourceUnit() : _unitType(GARBAGE), _chunk(-1) {}
 
     explicit ResourceUnit(std::string const& path);

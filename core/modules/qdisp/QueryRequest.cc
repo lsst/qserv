@@ -140,7 +140,6 @@ public:
             // _processData will have created another AskForResponseDataCmd object if was needed.
             tTotal.stop();
         }
-        LOGS(_log, LOG_LVL_WARN, "&&& QR after _processData");
         _setState(State::DONE2);
         LOGS(_log, LOG_LVL_DEBUG, "Ask data is done wait=" << tWaiting.getElapsed() <<
                 " total=" << tTotal.getElapsed());
@@ -222,7 +221,6 @@ QueryRequest::~QueryRequest() {
 // content of request data
 char* QueryRequest::GetRequest(int& requestLength) {
     QSERV_LOGCONTEXT_QUERY_JOB(_qid, _jobid);
-    LOGS(_log, LOG_LVL_INFO, "&&& QueryRequest::GetRequest");
     lock_guard<mutex> lock(_finishStatusMutex);
     auto jq = _job;
     if (_finishStatus != ACTIVE || jq == nullptr) {
@@ -449,7 +447,6 @@ void QueryRequest::_processData(JobBase::Ptr const& jq, int blen, bool xrdLast) 
     ResponseHandler::BufPtr bufPtr = _askForResponseDataCmd->getBufPtr();
     _askForResponseDataCmd.reset(); // No longer need it, and don't want the destructor calling _errorFinish().
 
-    LOGS(_log, LOG_LVL_INFO, "&&&QueryRequest::_processData a");
     int const protoHeaderSize = proto::ProtoHeaderWrap::getProtoHeaderSize();
     ResponseHandler::BufPtr nextHeaderBufPtr;
 
@@ -466,18 +463,9 @@ void QueryRequest::_processData(JobBase::Ptr const& jq, int blen, bool xrdLast) 
     // - The second is the header for the next message.
     int respSize = blen - protoHeaderSize;
     nextHeaderBufPtr = make_shared<vector<char>>(bufPtr->begin() + respSize, bufPtr->end());
-    LOGS(_log, LOG_LVL_INFO, "&&&QueryRequest::_processData b");
     // Read the result
-    /* &&& rebase
-    flushOk = jq->getDescription()->respHandler()->flush(respSize, bufPtr, last,
-            largeResult, nextBufSize);
-    */
-    //&&& bool largeResult = false;
-    //&&& int nextBufSize = 0;
-    //&&& bool last = false;
     // Values for last, largeResult, and nextBufSize filled in by flush
     flushOk = jq->getRespHandler()->flush(respSize, bufPtr, last, largeResult, nextBufSize);
-    LOGS(_log, LOG_LVL_INFO, "&&&QueryRequest::_processData c");
     if (last) {
         // Last should only be true when the header is read, not the result.
         throw Bug("_processData result had 'last' true, which cannot be allowed.");
@@ -488,25 +476,14 @@ void QueryRequest::_processData(JobBase::Ptr const& jq, int blen, bool xrdLast) 
         throw Bug("Unexpected header size from flush(result) call QID="
                 + to_string(_qid) + "#" + to_string(_jobid));
     }
-    LOGS(_log, LOG_LVL_INFO, "&&&QueryRequest::_processData d");
     if (!flushOk) {
         _flushError(jq);
         return;
     }
 
     // Read the next header
-    /* &&& rebase
-    // Values for largeResult, last, and nextBufSize will be filled in by flush().
-    flushOk = jq->getDescription()->respHandler()->flush(protoHeaderSize, nextHeaderBufPtr, last,
-                                                         largeResult, nextBufSize);
-
-    largeResult = false;
-    nextBufSize = 0;
-    */
     // Values for last, largeResult, and nextBufSize filled in by flush
-    LOGS(_log, LOG_LVL_INFO, "&&&QueryRequest::_processData e");
     flushOk = jq->getRespHandler()->flush(protoHeaderSize, nextHeaderBufPtr, last, largeResult, nextBufSize);
-    LOGS(_log, LOG_LVL_INFO, "&&&QueryRequest::_processData f");
     if (largeResult) {
         if (!_largeResult) LOGS(_log, LOG_LVL_DEBUG, "holdState largeResult set to true");
         _largeResult = true; // Once the worker indicates it's a large result, it stays that way.
@@ -517,28 +494,22 @@ void QueryRequest::_processData(JobBase::Ptr const& jq, int blen, bool xrdLast) 
             LOGS(_log, LOG_LVL_DEBUG, "processData disagreement between last=" << last
                                      << " and xrdLast=" << xrdLast);
         }
-        LOGS(_log, LOG_LVL_INFO, "&&&QueryRequest::_processData g");
         if (last) {
-            LOGS(_log, LOG_LVL_INFO, "&&&QueryRequest::_processData h");
             jq->getStatus()->updateInfo(_jobIdStr, JobStatus::COMPLETE);
             _finish();
             // At this point all blocks for this job have been read, there's no point in
             // having XrdSsi wait for anything.
             return;
         } else {
-            LOGS(_log, LOG_LVL_INFO, "&&&QueryRequest::_processData i");
             _askForResponseDataCmd = make_shared<AskForResponseDataCmd>(shared_from_this(), jq, nextBufSize);
             LOGS(_log, LOG_LVL_DEBUG, "queuing askForResponseDataCmd bufSize=" << nextBufSize);
-            LOGS(_log, LOG_LVL_INFO, "&&&QueryRequest::_processData j");
             _queueAskForResponse(_askForResponseDataCmd, jq, false);
         }
     } else {
-        LOGS(_log, LOG_LVL_INFO, "&&&QueryRequest::_processData k");
         LOGS(_log, LOG_LVL_WARN, "flushOk = false");
         _flushError(jq);
         return;
     }
-    LOGS(_log, LOG_LVL_INFO, "&&&QueryRequest::_processData end");
     return;
 }
 
@@ -708,17 +679,12 @@ void QueryRequest::_finish() {
 /// Inform the Executive that this query completed, and
 // Call MarkCompleteFunc only once, it should only be called from _finish() or _errorFinish.
 void QueryRequest::_callMarkComplete(bool success) {
-    LOGS(_log, LOG_LVL_WARN, "&&& QueryRequest::_callMarkComplete a _calledMarkComplete=" << _calledMarkComplete);
     if (!_calledMarkComplete.exchange(true)) {
-        LOGS(_log, LOG_LVL_WARN, "&&& QueryRequest::_callMarkComplete b");
         auto jq = _job;
-        //&&&if (jq != nullptr) jq->getMarkCompleteFunc()->operator()(success);
         if (jq != nullptr) {
-            LOGS(_log, LOG_LVL_WARN, "&&& QueryRequest::_callMarkComplete c");
             jq->callMarkCompleteFunc(success);
         }
     }
-    LOGS(_log, LOG_LVL_WARN, "&&& QueryRequest::_callMarkComplete end");
 }
 
 ostream& operator<<(ostream& os, QueryRequest const& qr) {

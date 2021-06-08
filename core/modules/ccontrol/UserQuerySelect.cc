@@ -304,37 +304,6 @@ void UserQuerySelect::submit() {
             i != e && !_executive->getCancelled(); ++i) {
         auto& chunkSpec = *i;
 
-        /* &&&
-        std::function<void(util::CmdData*)> funcBuildJob =
-                [this, sequence,     // sequence must be a copy
-                 &chunkSpec, &queryTemplates,
-                 &chunks, &chunksMtx, &ttn,
-                 &taskMsgFactory](util::CmdData*) {
-
-            QSERV_LOGCONTEXT_QUERY(_qMetaQueryId);
-
-            qproc::ChunkQuerySpec::Ptr cs;
-            {
-                std::lock_guard<std::mutex> lock(chunksMtx);
-                cs = _qSession->buildChunkQuerySpec(queryTemplates, chunkSpec);
-                chunks.push_back(cs->chunkId);
-            }
-            std::string chunkResultName = ttn.make(cs->chunkId);
-
-            std::shared_ptr<ChunkMsgReceiver> cmr = ChunkMsgReceiver::newInstance(cs->chunkId, _messageStore);
-            ResourceUnit ru;
-            ru.setAsDbChunk(cs->db, cs->chunkId);
-            qdisp::JobDescription::Ptr jobDesc = qdisp::JobDescription::create(_qMetaCzarId,
-                    _executive->getId(), sequence, ru,
-                    std::make_shared<MergingHandler>(cmr, _infileMerger, chunkResultName),
-                    taskMsgFactory, cs, chunkResultName);
-            _executive->add(jobDesc);
-        };
-
-        auto cmd = std::make_shared<qdisp::PriorityCommand>(funcBuildJob);
-        _executive->queueJobStart(cmd);
-         */
-
         // Make the JobQuery now
         QSERV_LOGCONTEXT_QUERY(_qMetaQueryId);
 
@@ -368,7 +337,6 @@ void UserQuerySelect::submit() {
 
         if (!uberJobsEnabled) {
             std::function<void(util::CmdData*)> funcBuildJob =
-                //&&&[this, sequence, job{move(job)}](util::CmdData*) { // references in captures cause races
                 [this, job{move(job)}](util::CmdData*) { // references in captures cause races
                     QSERV_LOGCONTEXT_QUERY(_qMetaQueryId);
                     job->runJob();
@@ -447,56 +415,37 @@ void UserQuerySelect::submit() {
                 workerIter = tmpWorkerList.begin();
             }
         }
-        LOGS(_log, LOG_LVL_INFO, "&&& submit m");
         _executive->addUberJobs(uberJobs);
-        LOGS(_log, LOG_LVL_INFO, "&&& submit n");
         for (auto&& uJob:uberJobs) {
-            LOGS(_log, LOG_LVL_INFO, "&&& submit o");
             uJob->runUberJob();
-            LOGS(_log, LOG_LVL_INFO, "&&& submit p");
         }
-        LOGS(_log, LOG_LVL_INFO, "&&& submit q");
         // If any chunks in the query were not found on a worker's list, run them individually.
-        //&&&_executive->startRemainingJobs(chunksInQuery); //&&& delete func in Executive.
         for (auto& ciq:chunksInQuery) {
-            LOGS(_log, LOG_LVL_INFO, "&&& submit q1");
             qdisp::JobQuery* jqRaw = ciq.second;
-            LOGS(_log, LOG_LVL_INFO, "&&& submit q2");
             qdisp::JobQuery::Ptr job = _executive->getSharedPtrForRawJobPtr(jqRaw);
-            LOGS(_log, LOG_LVL_INFO, "&&& submit q3");
             std::function<void(util::CmdData*)> funcBuildJob =
                     [this, job{move(job)}](util::CmdData*) { // references in captures cause races
                 QSERV_LOGCONTEXT_QUERY(_qMetaQueryId);
-                LOGS(_log, LOG_LVL_INFO, "&&& submit q run1");
                 job->runJob();
-                LOGS(_log, LOG_LVL_INFO, "&&& submit q run2");
             };
             auto cmd = std::make_shared<qdisp::PriorityCommand>(funcBuildJob);
-            LOGS(_log, LOG_LVL_INFO, "&&& submit q4");
             _executive->queueJobStart(cmd);
-            LOGS(_log, LOG_LVL_INFO, "&&& submit q5");
         }
-
-        LOGS(_log, LOG_LVL_INFO, "&&& submit r");
     }
 
     // attempt to restore original thread priority, requires root
     if (increaseThreadPriority) {
         threadPriority.restoreOriginalValues();
     }
-    LOGS(_log, LOG_LVL_INFO, "&&& submit s");
 
     LOGS(_log, LOG_LVL_DEBUG, "total jobs in query=" << sequence);
     _executive->waitForAllJobsToStart();
-    LOGS(_log, LOG_LVL_INFO, "&&& submit t");
 
     // we only care about per-chunk info for ASYNC queries
     if (_async) {
-        LOGS(_log, LOG_LVL_INFO, "&&& submit u");
         std::lock_guard<std::mutex> lock(chunksMtx);
         _qMetaAddChunks(chunks);
     }
-    LOGS(_log, LOG_LVL_INFO, "&&& submit v");
 }
 
 

@@ -100,7 +100,6 @@ map<string, deque<int>> WorkerResources::getDequesFor(string const& dbName) {
     for (auto&& elem:_workers) {
         string wName = elem.first;
         WorkerResource::Ptr const& wr = elem.second;
-        //&&& deque<int> dq = wr.getDequeFor(dbName);
         dqMap.emplace(wName, wr->getDequeFor(dbName));
     }
     return dqMap;

@@ -206,7 +206,6 @@ void Executive::waitForAllJobsToStart() {
 // @return true if query was actually started (i.e. we were not cancelled)
 //
 bool Executive::startQuery(shared_ptr<JobQuery> const& jobQuery) {
-    LOGS(_log, LOG_LVL_WARN, "&&& Executive::startQuery");
     lock_guard<recursive_mutex> lock(_cancelled.getMutex());
 
     // If we have been cancelled, then return false.
@@ -238,7 +237,6 @@ bool Executive::startQuery(shared_ptr<JobQuery> const& jobQuery) {
 /// Return true if it was successfully added to the map.
 ///
 bool Executive::_addJobToMap(JobQuery::Ptr const& job) {
-    LOGS(_log, LOG_LVL_WARN, "&&& Executive::_addJobToMap jobId=" << job->getIdInt());
     auto entry = pair<int, JobQuery::Ptr>(job->getIdInt(), job);
     lock_guard<recursive_mutex> lockJobMap(_jobMapMtx);
     bool res = _jobMap.insert(entry).second;
@@ -611,7 +609,6 @@ bool Executive::startUberJob(UberJob::Ptr const& uJob) {
     if (_cancelled) return false;
 
     // Construct a temporary resource object to pass to ProcessRequest().
-    //&&&XrdSsiResource jobResource(jobQuery->getDescription()->resource().path(), "", jobQuery->getIdStr(), "", 0, affinity);
     // Affinity should be meaningless here as there should only be one instance of each worker.
     XrdSsiResource::Affinity affinity = XrdSsiResource::Affinity::Default;
     LOGS(_log, LOG_LVL_INFO, "&&& uJob->workerResource=" << uJob->getWorkerResource());
@@ -630,10 +627,6 @@ bool Executive::startUberJob(UberJob::Ptr const& uJob) {
     return true;
 }
 
-
-void Executive::startRemainingJobs(ChunkIdJobMapType& remainingChunks) {
-    throw Bug("&&&NEED_CODE executive start remaining jobs");
-}
 
 ostream& operator<<(ostream& os, Executive::JobMap::value_type const& v) {
     JobStatus::Ptr status = v.second->getStatus();

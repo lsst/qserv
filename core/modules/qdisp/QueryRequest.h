@@ -97,13 +97,6 @@ class QueryRequest : public XrdSsiRequest, public std::enable_shared_from_this<Q
 public:
     typedef std::shared_ptr<QueryRequest> Ptr;
 
-    /* &&&
-    static Ptr create(std::shared_ptr<JobQuery> const& jobQuery) {
-        Ptr newQueryRequest(new QueryRequest(jobQuery));
-        return newQueryRequest;
-    }
-    */
-
     static Ptr create(std::shared_ptr<JobBase> const& JobBase) {
         Ptr newQueryRequest(new QueryRequest(JobBase));
         return newQueryRequest;

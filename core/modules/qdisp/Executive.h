@@ -85,7 +85,6 @@ public:
     typedef std::shared_ptr<Executive> Ptr;
     typedef std::unordered_map<int, std::shared_ptr<JobQuery>> JobMap;
     typedef int ChunkIdType; //&&& TODO:UJ probably needs to be ResourceUnit
-    //&&&typedef std::map<ChunkIdType, JobQuery*> ChunkIdJobMapType;
     typedef std::unordered_map<ChunkIdType, JobQuery*> ChunkIdJobMapType;
 
     /// Construct an Executive.
@@ -140,10 +139,7 @@ public:
 
     bool startQuery(std::shared_ptr<JobQuery> const& jobQuery);
 
-    /// Start any jobs that were not started as part of UberJobs.
-    void startRemainingJobs(ChunkIdJobMapType& remainingJobs); // &&& delete
-
-    ///&&& TODO:UJ UberJob
+    /// Add UbjerJobs to this user query.
     void addUberJobs(std::vector<std::shared_ptr<UberJob>> const& jobsToAdd);
     ChunkIdJobMapType& getChunkJobMapAndInvalidate();
     bool startUberJob(std::shared_ptr<UberJob> const& uJob);
@@ -212,7 +208,7 @@ private:
 
     bool _scanInteractive = false; ///< true for interactive scans.
 
-    // &&& TODO UberJob
+    // Add a job to the _chunkToJobMap
     void _addToChunkJobMap(std::shared_ptr<JobQuery> const& job);
     /// _chunkToJobMap is created once and then destroyed when used.
     std::atomic<bool> _chunkToJobMapInvalid{false}; ///< true indicates the map is no longer valid.

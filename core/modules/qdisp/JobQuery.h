@@ -66,7 +66,6 @@ public:
 
     QueryId getQueryId() const override {return _qid; }
     int getIdInt() const override { return _jobDescription->id(); }
-    //&&& std::string getPayload() const override { return _jobDescription->payload(); }
     std::string const& getPayload() const override;
     std::string const& getIdStr() const override { return _idStr; }
     std::shared_ptr<ResponseHandler> getRespHandler() override { return _jobDescription->respHandler(); }
@@ -101,8 +100,10 @@ public:
         JobStatus::Ptr const& jobStatus, std::shared_ptr<MarkCompleteFunc> const& markCompleteFunc,
         QueryId qid);
 
-    /// &&& TODO:UJ UberJob functions
+    /// Set to true if this job is part of an UberJob
     void setInUberJob(bool inUberJob) { _inUberJob = inUberJob; };
+
+    /// @return true if this job is part of an UberJob.
     bool inUberJob() const { return _inUberJob; }
 
 protected:
@@ -143,7 +144,7 @@ protected:
 
     std::shared_ptr<QdispPool> _qdispPool;
 
-    /// &&& TODO:UJ UberJob
+    /// True if this job is part of an UberJob.
     std::atomic<bool> _inUberJob{false}; ///< TODO:UJ There are probably several places this should be checked
 };
 

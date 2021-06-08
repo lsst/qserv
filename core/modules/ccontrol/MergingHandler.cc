@@ -97,10 +97,8 @@ bool MergingHandler::flush(int bLen, BufPtr const& bufPtr, bool& last, bool& lar
         throw Bug("MergingHandler invalid blen=" + to_string(bLen) + " from " + _wName);
     }
 
-    LOGS(_log, LOG_LVL_INFO, "&&& MH::flush a");
     switch(_state) {
     case MsgState::HEADER_WAIT:
-        LOGS(_log, LOG_LVL_INFO, "&&& MH::flush b");
         _response->headerSize = static_cast<unsigned char>((*bufPtr)[0]);
         if (!proto::ProtoHeaderWrap::unwrap(_response, *bufPtr)) {
             std::string sErr = "From:" + _wName + "Error decoding proto header for " + getStateStr(_state);
@@ -121,17 +119,13 @@ bool MergingHandler::flush(int bLen, BufPtr const& bufPtr, bool& last, bool& lar
                 << " endNoData=" << endNoData);
 
             _state = MsgState::RESULT_WAIT;
-            LOGS(_log, LOG_LVL_INFO, "&&& MH::flush c");
             if (endNoData || nextBufSize == 0) {
-                LOGS(_log, LOG_LVL_INFO, "&&& MH::flush d");
                 if (!endNoData || nextBufSize != 0 ) {
                     throw Bug("inconsistent msg termination endNoData=" + std::to_string(endNoData)
                     + " nextBufSize=" + std::to_string(nextBufSize));
                 }
-                LOGS(_log, LOG_LVL_INFO, "&&& MH::flush e");
                 // Nothing to merge, but some bookkeeping needs to be done.
                 _infileMerger->mergeCompleteFor(_jobIds);
-                LOGS(_log, LOG_LVL_INFO, "&&& MH::flush f");
                 last = true;
                 _state = MsgState::RESULT_RECV;
             }
@@ -139,11 +133,9 @@ bool MergingHandler::flush(int bLen, BufPtr const& bufPtr, bool& last, bool& lar
         return true;
     case MsgState::RESULT_WAIT:
         {
-            LOGS(_log, LOG_LVL_INFO, "&&& MH::flush g");
             nextBufSize = proto::ProtoHeaderWrap::getProtoHeaderSize();
             auto job = getJobBase().lock();
             if (!_verifyResult(bufPtr, bLen)) { return false; }
-            LOGS(_log, LOG_LVL_INFO, "&&& MH::flush h");
             if (!_setResult(bufPtr, bLen)) { // This sets _response->result
                 LOGS(_log, LOG_LVL_WARN, "setResult failure " << _wName);
                 return false;
@@ -155,9 +147,7 @@ bool MergingHandler::flush(int bLen, BufPtr const& bufPtr, bool& last, bool& lar
             _jobIds.insert(jobId);
             LOGS(_log, LOG_LVL_DEBUG, "Flushed last=" << last << " for tableName=" << _tableName);
 
-            LOGS(_log, LOG_LVL_INFO, "&&& MH::flush i");
             auto success = _merge();
-            LOGS(_log, LOG_LVL_INFO, "&&& MH::flush j");
             _response.reset(new WorkerResponse());
             return success;
         }
@@ -228,16 +218,12 @@ void MergingHandler::_initState() {
 }
 
 bool MergingHandler::_merge() {
-    LOGS(_log, LOG_LVL_INFO, "&&& MH::_merge a");
     auto job = getJobBase().lock();
     if (job != nullptr) {
-        LOGS(_log, LOG_LVL_INFO, "&&& MH::_merge b");
         if (_flushed) {
             throw Bug("MergingRequester::_merge : already flushed");
         }
-        LOGS(_log, LOG_LVL_INFO, "&&& MH::_merge c");
         bool success = _infileMerger->merge(_response);
-        LOGS(_log, LOG_LVL_INFO, "&&& MH::_merge d");
         if (!success) {
             LOGS(_log, LOG_LVL_WARN, "_merge() failed");
             rproc::InfileMergerError const& err = _infileMerger->getError();
@@ -245,7 +231,6 @@ bool MergingHandler::_merge() {
             _state = MsgState::RESULT_ERR;
         }
         _response.reset();
-        LOGS(_log, LOG_LVL_INFO, "&&& MH::_merge end");
         return success;
     }
     LOGS(_log, LOG_LVL_ERROR, "MergingHandler::_merge() failed, jobQuery was NULL");
