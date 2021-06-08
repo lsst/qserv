@@ -37,24 +37,22 @@ namespace replica {
 
 /**
  * Class HttpFileReader is a simple interface for pulling files over the HTTP protocol.
- * The implementation of the class breaks an input byte stream into lines and
- * invokes a user-supplied callback (lambda) function for each such line.
- * 
- * The file is required to be ended with the newline character.
+ * The implementation of the class invokes a user-supplied callback (lambda) function for
+ * each sequence of bytes read from the input stream.
  * 
  * Here is an example of using the class to pull a file and dump its content on
  * to the standard output stream:
  * @code
  *   HttpFileReader reader("GET", "http://my.host.domain/data/chunk_0.txt");
- *   reader.read([](std::string const& line) {
- *       std::cout << line << "\n";
+ *   reader.read([](char const* buf, size_t size) {
+ *       std::cout << str::string(buf, size);
  *   });
  * @code
  */
 class HttpFileReader {
 public:
-    /// The function type for notifications on each line parsed in the input stream.
-    typedef std::function<void(std::string const&)> CallbackType;
+    /// The function type for notifications on each record retrieved from the input stream.
+    typedef std::function<void(char const*, size_t)> CallbackType;
 
     // No copy semantics for this class.
     HttpFileReader() = delete;
@@ -79,19 +77,16 @@ public:
 
     /**
      * Begin processing a request. The whole content of a file (or a data source)
-     * refferred to by a URL passed into the constructor will be read. The stream will
-     * get split into lines. A callback for each such line will be called once
-     * the newline character has been encountered. The neline character is not
-     * included into a string passed into the callback function.
+     * refferred to by a URL passed into the constructor will be read. A callback
+     * for each record retrieved from the inoput stream will be called.
      *
      * @note This method is safe to be called multiple times.
-     * @param onEachLine A pointer to a function to be called on each line read from an
-     *   input stream.
+     * @param onDataRead A pointer to a function to be called on each sequence of bytes
+     *   read from an input stream.
      * @throw std::invalid_argument If a non-valid (empty) function pointer was provided.
-     * @throw std::runtime_error If the file didn't have the newline character in its end.
-     *   The same exception is thrown for any errors encountered during a file retrieval.
+     * @throw std::runtime_error For any errors encountered during data retrieval.
      */
-    void read(CallbackType const& onEachLine);
+    void read(CallbackType const& onDataRead);
  
 private:
     /**
@@ -129,12 +124,11 @@ private:
     std::vector<std::string> const _headers;
     HttpFileReaderConfig const _fileReaderConfig;
 
-    CallbackType _onEachLine;   ///< set by method read() before pulling a file
+    CallbackType _onDataRead;   ///< set by method read() before pulling a file
 
     // Cached members
     CURL* _hcurl = nullptr;
     curl_slist* _hlist = nullptr;
-    std::string _line;
 };
 
 }}} // namespace lsst::qserv::replica

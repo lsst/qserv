@@ -151,7 +151,7 @@ int HttpFileReaderApp::runImpl() {
         if (_file.empty()) {
             osPtr = &cout;
         } else {
-            fs.open(_file, ios::out|ios::trunc);
+            fs.open(_file, ios::out|ios::trunc|ios::binary);
             if (!fs.is_open()) {
                 throw runtime_error(context + "failed to open/create file: " + _file);
             }
@@ -159,8 +159,8 @@ int HttpFileReaderApp::runImpl() {
         }
     }
     HttpFileReader reader(_method, _url, _data, headers, _fileReaderConfig);
-    reader.read([&](string const& line) {
-        if (nullptr != osPtr) *osPtr << line << "\n";
+    reader.read([&](char const* record, size_t size) {
+        if (nullptr != osPtr) *osPtr << string(record, size) << "\n";
     });
     if (nullptr != osPtr) {
         osPtr->flush();

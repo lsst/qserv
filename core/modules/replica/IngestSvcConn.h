@@ -28,7 +28,7 @@
 #include "boost/asio.hpp"
 
 // Qserv headers
-#include "replica/Common.h"
+#include "replica/Csv.h"
 #include "replica/DatabaseServices.h"
 #include "replica/IngestFileSvc.h"
 #include "replica/protocol.pb.h"
@@ -62,7 +62,6 @@ namespace replica {
 class IngestSvcConn: public IngestFileSvc,
                      public std::enable_shared_from_this<IngestSvcConn> {
 public:
-
     typedef std::shared_ptr<IngestSvcConn> Ptr;
 
     /// This parameter determines a suggested size of the messages sent by clients
@@ -197,15 +196,6 @@ private:
                        size_t bytes_transferred);
 
     /**
-     * Send back a message with an invitation to a client to send more data.
-     *
-     * @param maxRows  the maximum number of rows to be requested from a client
-     */
-    void _sendReadyToReadData(size_t maxRows) {
-        _reply(ProtocolIngestResponse::READY_TO_READ_DATA, std::string(), maxRows);
-    }
-
-    /**
      * Send back a message with status FAILED and the error message.
      *
      * @param msg  a message to be delivered to a client
@@ -229,8 +219,7 @@ private:
      * @param maxRows (optional) the maximum number of rows to be requested from a client
      */
     void _reply(ProtocolIngestResponse::Status status,
-                std::string const& msg=std::string(),
-                size_t maxRows=1);
+                std::string const& msg=std::string());
 
     // Input parameters
 
@@ -249,10 +238,14 @@ private:
     /// are about to be made.
     bool _retryAllowed = true;
 
-    // The row and size counters of the object get updated as more data received
-    // from a client. The object gets synchronized with the database after finishing
-    // the ingest.
+    /// The row and size counters of the object get updated as more data received
+    /// from a client are being processed. The object gets synchronized with the database
+    /// after finishing the ingest.
     TransactionContribInfo _contrib;
+
+    /// The parse of the input stream as configured for the CSV dialect reported
+    /// by a client.
+    std::unique_ptr<csv::Parser> _parser;
 };
 
 }}} // namespace lsst::qserv::replica

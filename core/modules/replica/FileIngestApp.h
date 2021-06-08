@@ -31,7 +31,7 @@
 
 // Qserv headers
 #include "replica/Application.h"
-#include "replica/Common.h"
+#include "replica/IngestClient.h"
 
 // This header declarations
 
@@ -43,11 +43,8 @@ namespace replica {
  * Class FileIngestApp implements a tool which acts as a catalog data loading
  * client of the Replication system's catalog data ingest server.
  */
-class FileIngestApp : public Application {
-
+class FileIngestApp: public Application {
 public:
-
-    /// The pointer type for instances of the class
     typedef std::shared_ptr<FileIngestApp> Ptr;
 
     /**
@@ -181,7 +178,12 @@ private:
     std::string _command;       /// 'FILE' or 'FILE-LIST' ingest scenarios
     std::string _fileListName;  /// The name of a file to read info for 'FILE-LIST' scenario
 
-    std::string _columnsSeparator = "COMMA";    /// columns separator to be sent to ingest servers
+    std::string _fieldsTerminatedBy = csv::Dialect::defaultFieldsTerminatedBy;
+    std::string _fieldsEnclosedBy   = csv::Dialect::defaultFieldsEnclosedBy;
+    std::string _fieldsEscapedBy    = csv::Dialect::defaultFieldsEscapedBy;
+    std::string _linesTerminatedBy  = csv::Dialect::defaultLinesTerminatedBy;
+
+    size_t _recordSizeBytes = IngestClient::defaultRecordSizeBytes;
 
     /// An authorization key which should also be known to servers
     std::string _authKey;

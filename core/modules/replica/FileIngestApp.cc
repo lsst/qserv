@@ -36,7 +36,6 @@
 #include "boost/filesystem.hpp"
 
 // Qserv headers
-#include "replica/IngestClient.h"
 #include "replica/Performance.h"
 #include "util/File.h"
 
@@ -82,16 +81,6 @@ T parse(string const& context, json const& jsonObj, string const& key, T minValu
                 + to_string(numeric_limits<T>::max()) + ".");
     }
     return (T)num;
-}
-
-
-IngestClient::ColumnSeparator translateColumnsSeparator(string const& context, string const& str) {
-    if ("COMMA" == str) {
-        return IngestClient::ColumnSeparator::COMMA;
-    } else if ("TAB" == str) {
-        return IngestClient::ColumnSeparator::TAB;
-    }
-    throw invalid_argument(context + "unsupported columns separator: " + str);
 }
 
 } /// namespace
@@ -199,10 +188,27 @@ FileIngestApp::FileIngestApp(int argc, char* argv[])
         {"FILE", "FILE-LIST", "FILE-LIST-TRANS"},
         _command
     ).option(
-        "columns-separator",
-        "The columns separator option. A value of the parameter is sent to ingest"
-        " services. Allowed options: COMMA, TAB.",
-        _columnsSeparator
+        "fields-terminated-by",
+        "An optional character which separates fields within a row.",
+        _fieldsTerminatedBy
+    ).option(
+        "fields-enclosed-by",
+        "An optional character which is used to quote fields within a row.",
+        _fieldsEnclosedBy
+     ).option(
+        "fields-escaped-by",
+        "An optional character which is used to escape special characters (reserved by MySQL)"
+        " within a row",
+        _fieldsEscapedBy
+    ).option(
+        "lines-terminated-by",
+        "An optional character which is used to terminate lines.",
+        _linesTerminatedBy
+    ).option(
+        "record-size-bytes",
+        "An optional parameter specifying the record size for reading from the input"
+        " file and for sending data to a server.",
+        _recordSizeBytes
     ).option(
         "auth-key",
         "An authorization key which should also be known to servers.",
@@ -399,8 +405,12 @@ void FileIngestApp::_ingest(FileIngestSpec const& file) const {
         chunkContribution.chunk,
         chunkContribution.isOverlap,
         file.inFileName,
-        ::translateColumnsSeparator(context, _columnsSeparator),
-        _authKey
+        _authKey,
+        _fieldsTerminatedBy,
+        _fieldsEnclosedBy,
+        _fieldsEscapedBy,
+        _linesTerminatedBy,
+        _recordSizeBytes
     );
     ptr->send();
     uint64_t const finishedMs = PerformanceUtils::now();
@@ -408,7 +418,6 @@ void FileIngestApp::_ingest(FileIngestSpec const& file) const {
     if (_verbose) {
         uint64_t const elapsedMs  = max(1UL, finishedMs - startedMs);
         double   const elapsedSec = elapsedMs / 1000;
-        double   const rowsPerSec = ptr->totalNumRows() / elapsedSec;
         double   const megaBytesPerSec = ptr->sizeBytes() / 1000000 / elapsedSec;
         cout << "Ingest service location: " << file.workerHost << ":" << file.workerPort << "\n"
              << " Transaction identifier: " << file.transactionId << "\n"
@@ -419,9 +428,7 @@ void FileIngestApp::_ingest(FileIngestSpec const& file) const {
              << "            Start  time: " << PerformanceUtils::toDateTimeString(chrono::milliseconds(startedMs)) << "\n"
              << "            Finish time: " << PerformanceUtils::toDateTimeString(chrono::milliseconds(finishedMs)) << "\n"
              << "           Elapsed time: " << elapsedSec << " sec\n"
-             << "             Rows  sent: " << ptr->totalNumRows() << "\n"
              << "             Bytes sent: " << ptr->sizeBytes() << "\n"
-             << "               Rows/sec: " << rowsPerSec << "\n"
              << "              MByte/sec: " << megaBytesPerSec << "\n"
              << endl;
     }

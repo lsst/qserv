@@ -35,6 +35,13 @@
 #include "replica/IngestFileSvc.h"
 #include "replica/ServiceProvider.h"
 
+// Forward declarations
+namespace lsst {
+namespace qserv {
+namespace replica {
+namespace Csv {
+    class Parser;
+}}}}
 
 // This header declarations
 namespace lsst {
@@ -48,6 +55,9 @@ namespace replica {
 class IngestHttpSvcMod: public HttpModuleBase,
                         public IngestFileSvc {
 public:
+    /// The default record size when reading from an input file.
+    constexpr static size_t defaultRecordSizeBytes = 1048576;
+
     IngestHttpSvcMod() = delete;
     IngestHttpSvcMod(IngestHttpSvcMod const&) = delete;
     IngestHttpSvcMod& operator=(IngestHttpSvcMod const&) = delete;
@@ -94,24 +104,28 @@ private:
     /**
      * Read a local file and preprocess it.
      * @param filename The name of a file to be ingested.
+     * @param parser CSV parser for interpreting and preprocessing the input data stream.
      * @return An object with statistics on the amount of data read from the file.
      */
-    nlohmann::json _readLocal(std::string const& filename);
+    nlohmann::json _readLocal(csv::Parser& parser,
+                              std::string const& filename);
 
     /**
      * Pull an input file from a remote HTTP service and preprocess it.
+     * @param parser CSV parser for interpreting and preprocessing the input data stream.
      * @param database The name of a database.
      * @param method An HTTP method for a request.
      * @param url A location of a file to be ingested.
-     * @param data Optional data to be sent with a  request (depends on the HTTP headers).
-     * @param headers Optional HTTP headers to be send with a request.
+     * @param data Data to be sent with a  request (depends on the HTTP headers).
+     * @param headers HTTP headers to be send with a request.
      * @return An object with statistics on the amount of data read from the file.
      */
-    nlohmann::json _readRemote(std::string const& database,
+    nlohmann::json _readRemote(csv::Parser& parser,
+                               std::string const& database,
                                std::string const& method,
                                std::string const& url,
-                               std::string const& data=std::string(),
-                               std::vector<std::string> const& headers=std::vector<std::string>());
+                               std::string const& data,
+                               std::vector<std::string> const& headers);
 
     /**
      * Pull file reader's configuration from the config store.

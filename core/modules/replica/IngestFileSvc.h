@@ -26,8 +26,8 @@
 #include <memory>
 
 // Qserv headers
-#include "replica/Common.h"
 #include "replica/Configuration.h"
+#include "replica/Csv.h"
 #include "replica/ServiceProvider.h"
 
 // This header declarations
@@ -64,7 +64,8 @@ protected:
      *
      * @param transactionId  An identifier of a "super-transaction" defining a context of the operation.
      * @param table  The base (or the final) name of a table where to upload the file.
-     * @param columnSeparator  The separator is needed for extending rows and for file uploading intp MySQL.
+     * @param dialect  The CSV dialect configured for interpreting the input stream, post-processing
+     *   the data, and uploading the data into MySQL.
      * @param chunk  The number of a chunk (applies to partitioned tables only).
      * @param isOverlap  A kind of the table (applies to partitioned tables only).
      * @throw logic_error  For calling method in a wrong context (non-active trandaction, etc.)
@@ -73,15 +74,18 @@ protected:
      */
     void openFile(TransactionId transactionId,
                   std::string const& table,
-                  char columnSeparator,
+                  csv::Dialect const& dialect,
                   unsigned int chunk=0,
                   bool isOverlap=false);
 
     /**
      * @note Each row will be prepended with an identifier of a transaction before being written.
-     * @param A row to be written.
+     * @note Rows are supposed to be terminated according to the csv::Dialect specified when
+     *   opening the file.
+     * @param buf A pointer to a row to be written.
+     * @param size The length of the row, including the line terminator.
      */
-    void writeRowIntoFile(std::string const& row);
+    void writeRowIntoFile(char const* buf, size_t size);
 
     /// Load the content of the current file into a database table
     void loadDataIntoTable();
@@ -103,11 +107,13 @@ private:
     std::string   _fileName;
     TransactionId _transactionId = 0;
     std::string   _table;
-    char          _columnSeparator = ',';
+    csv::Dialect  _dialect;
     bool          _isPartitioned = false;
     unsigned int  _chunk = 0;
     bool          _isOverlap = false;
     DatabaseInfo  _databaseInfo;    ///< Derived from the transaction identifier
+
+    std::string _transactionIdField;    ///< The terminated field to be prepend at each row
 
     std::ofstream _file;
 
