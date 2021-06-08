@@ -414,12 +414,12 @@ void UserQuerySelect::submit() {
             std::shared_ptr<ChunkMsgReceiver> cmr = ChunkMsgReceiver::newInstance(uberJobId, _messageStore);
             auto respHandler = std::make_shared<MergingHandler>(cmr, _infileMerger, uberResultName);
 
+            string workerResourceName = workerIter->first;
+            deque<int>& dq = workerIter->second;
             auto uJob = qdisp::UberJob::create(_executive, respHandler, _qMetaQueryId,
-                                               uberJobId++, _qMetaCzarId);
+                                               uberJobId++, _qMetaCzarId, workerResourceName);
 
             int chunksInUber = 0;
-            deque<int>& dq = workerIter->second;
-
             while (!dq.empty() && !chunksInQuery.empty() && chunksInUber < maxChunksPerUber) {
                 int chunkIdWorker = dq.front();
                 dq.pop_front();
@@ -459,15 +459,22 @@ void UserQuerySelect::submit() {
         // If any chunks in the query were not found on a worker's list, run them individually.
         //&&&_executive->startRemainingJobs(chunksInQuery); //&&& delete func in Executive.
         for (auto& ciq:chunksInQuery) {
+            LOGS(_log, LOG_LVL_INFO, "&&& submit q1");
             qdisp::JobQuery* jqRaw = ciq.second;
+            LOGS(_log, LOG_LVL_INFO, "&&& submit q2");
             qdisp::JobQuery::Ptr job = _executive->getSharedPtrForRawJobPtr(jqRaw);
+            LOGS(_log, LOG_LVL_INFO, "&&& submit q3");
             std::function<void(util::CmdData*)> funcBuildJob =
                     [this, job{move(job)}](util::CmdData*) { // references in captures cause races
                 QSERV_LOGCONTEXT_QUERY(_qMetaQueryId);
+                LOGS(_log, LOG_LVL_INFO, "&&& submit q run1");
                 job->runJob();
+                LOGS(_log, LOG_LVL_INFO, "&&& submit q run2");
             };
             auto cmd = std::make_shared<qdisp::PriorityCommand>(funcBuildJob);
+            LOGS(_log, LOG_LVL_INFO, "&&& submit q4");
             _executive->queueJobStart(cmd);
+            LOGS(_log, LOG_LVL_INFO, "&&& submit q5");
         }
 
         LOGS(_log, LOG_LVL_INFO, "&&& submit r");

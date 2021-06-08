@@ -614,7 +614,8 @@ bool Executive::startUberJob(UberJob::Ptr const& uJob) {
     //&&&XrdSsiResource jobResource(jobQuery->getDescription()->resource().path(), "", jobQuery->getIdStr(), "", 0, affinity);
     // Affinity should be meaningless here as there should only be one instance of each worker.
     XrdSsiResource::Affinity affinity = XrdSsiResource::Affinity::Default;
-    XrdSsiResource uJobResource(uJob->workerResource, "", uJob->getIdStr(), "", 0, affinity);
+    LOGS(_log, LOG_LVL_INFO, "&&& uJob->workerResource=" << uJob->getWorkerResource());
+    XrdSsiResource uJobResource(uJob->getWorkerResource(), "", uJob->getIdStr(), "", 0, affinity);
 
     // Now construct the actual query request and tie it to the jobQuery. The
     // shared pointer is used by QueryRequest to keep itself alive, sloppy design.

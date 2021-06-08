@@ -108,7 +108,7 @@ map<string, deque<int>> WorkerResources::getDequesFor(string const& dbName) {
 
 
 void WorkerResources::setMonoNodeTest() {
-    string wName("/worker/worker");
+    string wName("/worker/5257fbab-c49c-11eb-ba7a-1856802308a2");
     std::lock_guard<std::mutex> lg(_workerMapMtx);
     _insertWorker(wName);
     auto iter = _workers.find(wName);

@@ -63,6 +63,10 @@ void SendChannelShared::setTaskCount(int taskCount) {
     _taskCount = taskCount;
 }
 
+void SendChannelShared::incrTaskCountBy(int partialCount) {
+    _taskCount += partialCount;
+}
+
 
 bool SendChannelShared::transmitTaskLast(StreamGuard sLock, bool inLast) {
     /// _caller must have locked _streamMutex before calling this.

@@ -166,6 +166,7 @@ std::vector<Task::Ptr> Task::createTasks(proto::TaskMsg const& taskMsg,
                     vect.push_back(task);
                 }
             } else {
+                LOGS(_log, LOG_LVL_INFO, "&&& Task::createTasks queryStr=" << queryStr);
                 auto task = std::make_shared<wbase::Task>(taskMsg, queryStr, fragNum, sendChannel, gArena, rmLock);
                 //TODO: Maybe? Is it better to move fragment info from
                 //      ChunkResource getResourceFragment(int i) to here???
@@ -176,7 +177,9 @@ std::vector<Task::Ptr> Task::createTasks(proto::TaskMsg const& taskMsg,
 
         }
     }
-    sendChannel->setTaskCount(vect.size());
+    LOGS(_log, LOG_LVL_INFO, "&&& Task::createTasks vect.size=" << vect.size());
+    //&&&sendChannel->setTaskCount(vect.size());
+    sendChannel->incrTaskCountBy(vect.size());
     return vect;
 }
 

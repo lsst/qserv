@@ -49,15 +49,17 @@ namespace qdisp {
 
 UberJob::Ptr UberJob::create(Executive::Ptr const& executive,
                   std::shared_ptr<ResponseHandler> const& respHandler,
-                  int queryId, int uberJobId, qmeta::CzarId czarId) {
-    UberJob::Ptr uJob(new UberJob(executive, respHandler, queryId, uberJobId, czarId));
+                  int queryId, int uberJobId, qmeta::CzarId czarId, string const& workerResource) {
+    UberJob::Ptr uJob(new UberJob(executive, respHandler, queryId, uberJobId, czarId, workerResource));
+    uJob->_setup();
     return uJob;
 }
 
 UberJob::UberJob(Executive::Ptr const& executive,
          std::shared_ptr<ResponseHandler> const& respHandler,
-         int queryId, int uberJobId, qmeta::CzarId czarId)
-    : JobBase(), _executive(executive), _respHandler(respHandler), _queryId(queryId), _uberJobId(uberJobId),
+         int queryId, int uberJobId, qmeta::CzarId czarId, string const& workerResource)
+    : JobBase(), _workerResource(workerResource),  _executive(executive),
+      _respHandler(respHandler), _queryId(queryId), _uberJobId(uberJobId),
       _czarId(czarId), _idStr("QID=" + to_string(_queryId) + ":uber=" + to_string(uberJobId)) {
     _qdispPool = executive->getQdispPool();
     _jobStatus = make_shared<JobStatus>();
@@ -182,13 +184,15 @@ void UberJob::callMarkCompleteFunc(bool success) {
         throw Bug("&&&NEED_CODE may need code to properly handle failed uberjob");
     }
     for (auto&& job:_jobs) {
+        string idStr = job->getIdStr();
+        job->getStatus()->updateInfo(idStr, JobStatus::COMPLETE);
         job->callMarkCompleteFunc(success);
     }
 }
 
 
 std::ostream& UberJob::dumpOS(std::ostream &os) const {
-    os << "(workerResource=" << workerResource
+    os << "(workerResource=" << _workerResource
        << " jobs sz=" << _jobs.size() << "(";
     for (auto const& job:_jobs) {
         JobDescription::Ptr desc = job->getDescription();

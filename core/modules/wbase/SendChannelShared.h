@@ -43,6 +43,9 @@ namespace wbase {
 /// A class that provides a SendChannel object with synchronization so it can be
 /// shared by across multiple threads. Due to what may be sent, the synchronization locking
 /// is needs to be available outside of the class.
+/// Note: Tasks on a SendChannelShared cannot start processing until the total number of
+///       Tasks using the SendChannelShared is know. Otherwise, there is a race condition
+///       which could close the channel too soon.
 class SendChannelShared {
 public:
     using Ptr = std::shared_ptr<SendChannelShared>;
@@ -95,6 +98,9 @@ public:
     /// This should not be changed once set.
     void setTaskCount(int taskCount);
 
+    /// All of the tasks that use this SendChannel must be added
+    /// to the scheduler queue at the same time or it risks a race condition.
+    void incrTaskCountBy(int subCount);
 
     /// Try to transmit the data in tData.
     /// If the queue already has at least 2 TransmitData objects, addTransmit
@@ -151,7 +157,7 @@ private:
     /// metadata buffer. Once set, it cannot change until after Finish() has been called.
     std::string _metadataBuf;
 
-    int _taskCount = 0; ///< The number of tasks to be sent over this SendChannel.
+    std::atomic<int> _taskCount{0}; ///< The number of tasks to be sent over this SendChannel.
     int _lastCount = 0; ///< Then number of 'last' buffers received.
     std::atomic<bool> _lastRecvd{false}; ///< The truly 'last' transmit message is in the queue.
     std::atomic<bool> _firstTransmit{true}; ///< True until the first transmit has been sent.

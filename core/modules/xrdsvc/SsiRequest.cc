@@ -513,7 +513,9 @@ void SsiRequest::_handleUberJob(proto::UberJobMsg* uberJobMsg,
 
     // Make a Task for each TaskMsg in the UberJobMsg
     vector<wbase::Task::Ptr> tasks;
+    LOGS(_log, LOG_LVL_INFO, "&&& SsiRequest::_hUJ  tSize=" << tSize);
     for (int j=0; j < tSize; ++j) {
+        LOGS(_log, LOG_LVL_INFO, "&&& SsiRequest::_hUJ j=" << j);
         proto::TaskMsg const& taskMsg = uberJobMsg->taskmsgs(j);
 
         if (!taskMsg.has_db() || !taskMsg.has_chunkid())  {
@@ -525,6 +527,7 @@ void SsiRequest::_handleUberJob(proto::UberJobMsg* uberJobMsg,
         int chunkId = taskMsg.chunkid();
         //&&&string resourcePath = "/" + db + "/" + to_string(chunkId);
         string resourcePath = ResourceUnit::makePath(chunkId, db);
+        LOGS(_log, LOG_LVL_INFO, "&&& SsiRequest::_hUJ resourcePath=" << resourcePath);
         ResourceUnit ru(resourcePath);
         if (ru.db() != db || ru.chunk() != chunkId) {
             throw Bug("resource path didn't match ru");
@@ -532,6 +535,7 @@ void SsiRequest::_handleUberJob(proto::UberJobMsg* uberJobMsg,
         auto resourceLock = std::make_shared<wpublish::ResourceMonitorLock>(*(_resourceMonitor.get()), resourcePath);
 
         // If the query uses subchunks, the taskMsg will return multiple Tasks. Otherwise, one task.
+        LOGS(_log, LOG_LVL_INFO, "&&& SsiRequest::_hUJ creating tasks");
         auto nTasks = wbase::Task::createTasks(taskMsg, sendChannel, gArena, resourceLock);
         // Move nTasks into tasks
         tasks.insert(tasks.end(), std::make_move_iterator(nTasks.begin()),

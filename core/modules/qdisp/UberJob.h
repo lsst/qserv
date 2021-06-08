@@ -43,7 +43,7 @@ public:
 
     static Ptr create(Executive::Ptr const& executive,
                       std::shared_ptr<ResponseHandler> const& respHandler,
-                      int queryId, int uberJobId, qmeta::CzarId czarId);
+                      int queryId, int uberJobId, qmeta::CzarId czarId, std::string const& workerResource);
     UberJob() = delete;
     UberJob(UberJob const&) = delete;
     UberJob& operator=(UberJob const&) = delete;
@@ -73,17 +73,22 @@ public:
 
     bool verifyPayload() const;
 
+    std::string getWorkerResource() { return _workerResource; }
+
     /// &&& TODO:UJ may not need,
     void prepScrubResults();
-
-    std::string workerResource; // TODO:UJ make private
 
     std::ostream& dumpOS(std::ostream &os) const override;
 
 private:
     UberJob(Executive::Ptr const& executive,
             std::shared_ptr<ResponseHandler> const& respHandler,
-            int queryId, int uberJobId, qmeta::CzarId czarId);
+            int queryId, int uberJobId, qmeta::CzarId czarId, std::string const& workerResource);
+
+    void _setup() {
+        JobBase::Ptr jbPtr = shared_from_this();
+        _respHandler->setJobQuery(jbPtr);
+    }
 
     std::vector<JobQuery*> _jobs;
     std::atomic<bool> _started{false};
@@ -93,7 +98,8 @@ private:
     std::shared_ptr<QueryRequest> _queryRequestPtr;
     std::mutex _qrMtx;
 
-    std::string _payload; ///< XrdSsi message to be sent to the worker resource.
+    std::string const _workerResource;
+    std::string _payload; ///< XrdSsi message to be sent to the _workerResource.
 
     std::weak_ptr<Executive> _executive;
     std::shared_ptr<ResponseHandler> _respHandler;
