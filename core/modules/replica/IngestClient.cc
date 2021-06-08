@@ -58,9 +58,13 @@ IngestClient::Ptr IngestClient::connect(
         unsigned int chunk,
         bool isOverlap,
         string const& inputFilePath,
-        ColumnSeparator columnSeparator,
-        string const& authKey) {
-    IngestClient::Ptr ptr(new IngestClient(
+        string const& authKey,
+        string const& fieldsTerminatedBy,
+        string const& fieldsEnclosedBy,
+        string const& fieldsEscapedBy,
+        string const& linesTerminatedBy,
+        size_t recordSizeBytes) {
+    IngestClient::Ptr const ptr(new IngestClient(
         workerHost,
         workerPort,
         transactionId,
@@ -68,8 +72,12 @@ IngestClient::Ptr IngestClient::connect(
         chunk,
         isOverlap,
         inputFilePath,
-        columnSeparator,
-        authKey
+        authKey,
+        fieldsTerminatedBy,
+        fieldsEnclosedBy,
+        fieldsEscapedBy,
+        linesTerminatedBy,
+        recordSizeBytes
     ));
     ptr->_connectImpl();
     return ptr;
@@ -83,8 +91,12 @@ IngestClient::IngestClient(string const& workerHost,
                            unsigned int chunk,
                            bool isOverlap,
                            string const& inputFilePath,
-                           ColumnSeparator columnSeparator,
-                           string const& authKey)
+                           string const& authKey,
+                           string const& fieldsTerminatedBy,
+                           string const& fieldsEnclosedBy,
+                           string const& fieldsEscapedBy,
+                           string const& linesTerminatedBy,
+                           size_t recordSizeBytes)
     :   _workerHost(workerHost),
         _workerPort(workerPort),
         _transactionId(transactionId),
@@ -92,9 +104,12 @@ IngestClient::IngestClient(string const& workerHost,
         _chunk(chunk),
         _isOverlap(isOverlap),
         _inputFilePath(inputFilePath),
-        _columnSeparator(columnSeparator),
         _authKey(authKey),
-        _bufferCapacity(defaultBufferCapacity),
+        _fieldsTerminatedBy(fieldsTerminatedBy),
+        _fieldsEnclosedBy(fieldsEnclosedBy),
+        _fieldsEscapedBy(fieldsEscapedBy),
+        _linesTerminatedBy(linesTerminatedBy),
+        _recordSizeBytes(recordSizeBytes),
         _bufferPtr(new ProtocolBuffer(defaultBufferCapacity)),
         _io_service(),
         _socket(_io_service) {
@@ -122,23 +137,18 @@ void IngestClient::send() {
         _abort(__func__, "failed to open the file: " + _inputFilePath);
     }
     
+    unique_ptr<char*> record = new char[_recordSizeBytes];
     bool eof = false;
     do {
-
-        // Read up to the maximum number of lines requested by the server
-        // into a data message
         ProtocolIngestData data;
-        string row;
-        while (data.rows_size() < _numRowsPerSend) {
-            if (getline(file, row)) {
-                data.add_rows(row);
-                _sizeBytes += row.size();
-            } else {
-                eof = true;
-                break;
-            }
+        if (file.read(*record, _recordSizeBytes)) {
+            size_t const num = file.gcount();
+            data.set_data(*record, num);
+            _sizeBytes += num;
+        } else {
+            eof = true;
+            break;
         }
-        _totalNumRows += data.rows_size();
         data.set_last(eof);
 
         // Send the message, even if the number of rows is zero
@@ -164,10 +174,6 @@ void IngestClient::send() {
                     _abort(__func__, "protocol error: the server is still waiting for data"
                            " after receiving the last batch of rows.");
                 }
-                _numRowsPerSend = response.max_rows();
-                if (_numRowsPerSend == 0) {
-                    _abort(__func__, "protocol error: the number of rows requested by the server is 0.");
-                }
                 break;
 
             case ProtocolIngestResponse::FINISHED:
@@ -188,8 +194,7 @@ void IngestClient::send() {
 
     } while (not eof);
 
-    LOGS(_log, LOG_LVL_DEBUG, _context(__func__) << "_totalNumRows: " << _totalNumRows
-         << " _sizeBytes: " << _sizeBytes);
+    LOGS(_log, LOG_LVL_DEBUG, _context(__func__) << "_sizeBytes: " << _sizeBytes);
 
     _sent = true;
     _closeConnection();
@@ -232,12 +237,12 @@ void IngestClient::_connectImpl() {
     request.set_table(_tableName);
     request.set_chunk(_chunk);
     request.set_is_overlap(_isOverlap);
-    request.set_column_separator(_columnSeparator == COMMA ?
-                                 ProtocolIngestHandshakeRequest::COMMA :
-                                 ProtocolIngestHandshakeRequest::TAB);
     request.set_auth_key(_authKey);
     request.set_url("file://" + host + inputFilePathAbsolute.string());
-
+    request.set_fields_terminated_by(fieldsTerminatedBy);
+    request.set_fields_enclosed_by(fieldsEnclosedBy);
+    request.set_fields_escaped_by(fieldsEscapedBy);
+    request.set_lines_terminated_by(set_linesTerminatedBy);
     _bufferPtr->resize();
     _bufferPtr->serialize(request);
 
@@ -254,8 +259,6 @@ void IngestClient::_connectImpl() {
     if (response.status() != ProtocolIngestResponse::READY_TO_READ_DATA) {
         _abort(__func__, "handshake receive, server error: " + response.error());
     }
-    _numRowsPerSend = response.max_rows();
-    LOGS(_log, LOG_LVL_DEBUG, _context(__func__) << "_numRowsPerSend: " << _numRowsPerSend);
 }
 
 
