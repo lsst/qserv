@@ -28,6 +28,7 @@
 // Qserv headers
 #include "qhttp/Request.h"
 #include "qhttp/Response.h"
+#include "replica/Configuration.h"
 #include "replica/EventLogger.h"
 #include "replica/HttpModuleBase.h"
 #include "replica/HttpProcessorConfig.h"
@@ -116,6 +117,23 @@ protected:
      *   documentation for further explanation of the protocol.
      */
     bool localLoadSecondaryIndex(std::string const& database) const;
+
+    /**
+     * Get database info for a database that was specified in a request, either explicitly
+     * in attribute "database" or implicitly in attribute "transation_id". The method may
+     * do an optional check on the database state as directed by the optional parameter
+     * 'throwIfPublished'.
+     *
+     * @param func The name of a method called the operation.
+     * @param throwIfPublished The optional flag that if 'true' will tell the method to check
+     *   the state of the database and throw an exception if it's already published.
+     * @return The database info object.
+     * @throw std::invalid_argument If neither obe the above-mentioned attributes were
+     *    provided in a request.
+     * @throw HttpError If the database is already "published" and a value of
+     *   the parameter 'throwIfPublished' is set to 'true'.
+     */
+    DatabaseInfo getDatabaseInfo(std::string const& func, bool throwIfPublished=true) const;
 
 private:
     HttpProcessorConfig const _processorConfig;
