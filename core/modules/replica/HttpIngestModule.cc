@@ -679,16 +679,8 @@ json HttpIngestModule::_buildEmptyChunksList() {
 json HttpIngestModule::_getRegular() {
     debug(__func__);
 
-    auto const databaseServices = controller()->serviceProvider()->databaseServices();
     auto const config = controller()->serviceProvider()->config();
-
-    auto const id = stoul(params().at("id"));
-    debug(__func__, "id="    + to_string(id));
-
-    auto const transaction = databaseServices->transaction(id);
-    if (transaction.state != TransactionInfo::STARTED) {
-        throw invalid_argument("transaction has already ended");
-    }
+    DatabaseInfo const databaseInfo = getDatabaseInfo(__func__);
 
     json resultLocations = json::array();
     for (auto&& worker: config->workers()) {
