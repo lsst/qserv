@@ -28,6 +28,7 @@
 #include "replica/Controller.h"
 #include "replica/DatabaseMySQL.h"
 #include "replica/DatabaseServices.h"
+#include "replica/HttpExceptions.h"
 #include "replica/ServiceProvider.h"
 
 // LSST headers
@@ -110,6 +111,35 @@ bool HttpModule::localLoadSecondaryIndex(string const& database) const {
         info(__func__, "the secondary index local-load mode was not specified");
     }
     return false;
+}
+
+
+DatabaseInfo HttpModule::getDatabaseInfo(string const& func, bool throwIfPublished) const {
+    debug(func);
+    auto const databaseServices = controller()->serviceProvider()->databaseServices();
+    auto const config = controller()->serviceProvider()->config();
+    string database;
+    if (body().has("database")) {
+        database = body().required<string>("database");
+    } else {
+        if (!body().has("transaction_id")) {
+            throw invalid_argument(
+                    context() + "::" + func + " this service expects either 'database' or "
+                    " 'transaction_id' to be provided to define a scope of the request.");
+        }
+        TransactionId const transactionId = body().required<TransactionId>("transaction_id");
+        debug(func, "transactionId=" + to_string(transactionId));
+        auto const transactionInfo = databaseServices->transaction(transactionId);
+        database = transactionInfo.database;
+    }
+    debug(func, "database=" + database);
+
+    auto const databaseInfo = config->databaseInfo(database);
+    if (throwIfPublished && databaseInfo.isPublished) {
+        throw HttpError(
+                context() + "::" + func, "database '" + databaseInfo.name + " is already published.");
+    }
+    return databaseInfo;
 }
 
 }}}  // namespace lsst::qserv::replica

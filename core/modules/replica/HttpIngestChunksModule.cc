@@ -178,7 +178,7 @@ json HttpIngestChunksModule::_addChunk() {
     unsigned int const chunk = body().required<unsigned int>("chunk");
     debug(__func__, "chunk=" + to_string(chunk));
 
-    auto const databaseInfo = _getDatabaseInfo(__func__);
+    auto const databaseInfo = getDatabaseInfo(__func__);
     auto const databaseFamilyInfo = config->databaseFamilyInfo(databaseInfo.family);
 
     ChunkNumberQservValidator const validator(databaseFamilyInfo.numStripes,
@@ -295,7 +295,7 @@ json HttpIngestChunksModule::_addChunks() {
     auto const chunks = body().requiredColl<unsigned int>("chunks");
     debug(__func__, "chunks.size()=" + chunks.size());
 
-    auto const databaseInfo = _getDatabaseInfo(__func__);
+    auto const databaseInfo = getDatabaseInfo(__func__);
     auto const databaseFamilyInfo = config->databaseFamilyInfo(databaseInfo.family);
 
     // Make sure chunk numbers are valid for the given
@@ -503,35 +503,6 @@ json HttpIngestChunksModule::_getChunks() {
         result["replica"].push_back(replicaResult);
     }
     return result;
-}
-
-
-DatabaseInfo HttpIngestChunksModule::_getDatabaseInfo(string const& func) const {
-    debug(func);
-    auto const databaseServices = controller()->serviceProvider()->databaseServices();
-    auto const config = controller()->serviceProvider()->config();
-    string database;
-    if (body().has("database")) {
-        database = body().required<string>("database");
-    } else {
-        if (!body().has("transaction_id")) {
-            throw invalid_argument(
-                    context() + "::" + func + " this service expects either 'database' or "
-                    " 'transaction_id' to be provided to define a scope of the request.");
-        }
-        TransactionId const transactionId = body().required<TransactionId>("transaction_id");
-        debug(func, "transactionId=" + to_string(transactionId));
-        auto const transactionInfo = databaseServices->transaction(transactionId);
-        database = transactionInfo.database;
-    }
-    debug(func, "database=" + database);
-
-    auto const databaseInfo = config->databaseInfo(database);
-    if (databaseInfo.isPublished) {
-        throw HttpError(
-                context() + "::" + func, "database '" + databaseInfo.name + " is already published.");
-    }
-    return databaseInfo;
 }
 
 
