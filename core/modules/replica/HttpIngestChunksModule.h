@@ -30,7 +30,6 @@
 
 // Qserv headers
 #include "replica/Common.h"
-#include "replica/Configuration.h"
 #include "replica/HttpModule.h"
 #include "util/Mutex.h"
 
@@ -94,17 +93,6 @@ private:
      * from chunk to chunk) where data of each chunk will need to be ingested.
      */
     nlohmann::json _addChunks();
-
-    /**
-     * Get database info for a database that was specified in a request, either explicitly
-     * in attribute "database" or implicitly in attribute "transation_id".
-     * @param func The name of a method called the operation.
-     * @return The database info object.
-     * @throw std::invalid_argument If neither obe the above-mentioned attributes were
-     *    provided in a request.
-     * @throw HttpError If the database is already "published".
-     */
-    DatabaseInfo _getDatabaseInfo(std::string const& func) const;
 
     /**
      * Register new chunk in a collection of known replicas.
