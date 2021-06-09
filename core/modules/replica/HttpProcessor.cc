@@ -515,7 +515,7 @@ void HttpProcessor::registerServices() {
             }
     );
     httpServer()->addHandler(
-            "GET", "/ingest/regular/:id",
+            "GET", "/ingest/regular",
             [self](qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp) {
                 HttpIngestModule::process(
                         self->controller(), self->name(), self->_processorConfig,
