@@ -44,7 +44,7 @@
 namespace {
 
 // Current version of QMeta schema
-char const VERSION_STR[] = "3";
+char const VERSION_STR[] = "4";
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.qmeta.QMetaMysql");
 
