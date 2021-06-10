@@ -137,21 +137,6 @@ def qserv():
     pass
 
 
-@qserv.command()
-@config_file_option("cfg_file")
-@click.option(
-    "--num-workers",
-    help="The number of workers to add to the configuration. By default will create 1 worker.",
-    default=1,
-)
-def make_config(**kwargs):
-    """Make a qserv configuration file.
-
-    After generation this file can be edited as desired.
-    """
-    launch.make_config(**kwargs)
-
-
 @qserv.group()
 def rm(**kwargs):
     """Remove qserv containers and volumes.

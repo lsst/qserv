@@ -415,6 +415,10 @@ def enter_replication_controller(db_scheme, connection, repl_connection, workers
             _run(args, run=run)
         _log.info(f"Finished setting initial configuration {workers}")
 
+    # The replication controller depends on this folder existing and does not create it if it's missing.
+    # It should get fixed in DM-30074. For now we create it here.
+    os.makedirs("/qserv/data/ingest", exist_ok=True)
+
     if run:
         mig_mgr_args = dict(set_initial_configuration=partial(set_initial_configuartion, workers, xrootd_manager))
         _do_smig(replication_controller_smig_dir, "replica", connection, mig_mgr_args=mig_mgr_args)

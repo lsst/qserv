@@ -26,7 +26,8 @@
 import click
 from functools import partial
 import logging
-import socket
+
+from click.exceptions import ClickException
 
 from . import _load
 from . import _query
@@ -48,9 +49,12 @@ from .options import (
     xrd_port_option,
     xrootd_manager_option,
 )
-from . import script
+from . import script, _integration_test
 from .utils import split_kv
 from ..template import save_template_cfg
+
+
+_log = logging.getLogger(__name__)
 
 
 @click.group()
@@ -60,10 +64,112 @@ def entrypoint(log_level):
 
 
 @entrypoint.command()
-@click.option("-d", "--delete", is_flag=True, help="Remove the test database from qserv.")
-def load(**kwargs):
+def load_simple(**kwargs):
     "Load a small test dataset into qserv."
-    _load.load(**kwargs)
+    _load.load_simple(**kwargs)
+
+
+@entrypoint.command()
+@click.option(
+    "--tests-yaml",
+    help="Path to the yaml that contains settings for integration test execution.",
+    default="/usr/local/etc/integration_tests.yaml",
+    show_default=True,
+)
+@click.option(
+    "--case", "cases",
+    help="Run this/these test cases only. If omitted will run all the cases.",
+    multiple=True,
+)
+@click.option(
+    "--pull",
+    help="Pull a new copy of qserv_testdata. Will remove the old copy if it exists.",
+    is_flag=True,
+)
+@click.option(
+    "--load",
+    help="Load qserv_testdata into qserv and the reference database. Will run after unload if both are passed.",
+    is_flag=True,
+)
+@click.option(
+    "--unload",
+    help="Unload qserv_testdata from qserv and the reference database. Will run before load if both are passed.",
+    is_flag=True,
+)
+@click.option(
+    "--reload",
+    help="Remove and reload testdata. Same as passing '--unload --load'.",
+    is_flag=True,
+)
+@click.option(
+    "--run-tests/--no-run-tests",
+    help="Run or skip test execution. Defaults to '--run-tests'.",
+    is_flag=True,
+    default=True,
+)
+@click.option(
+    "--compare-results/--no-compare-results",
+    help="Run or skip query output comparison. Defaults to '--compare-results'",
+    is_flag=True,
+    default=True,
+)
+def integration_test(**kwargs):
+    """Run integration tests using ingested test data.
+
+    TESTS_YAML is the yaml file paths that contains connection information & describes tests to load and run.
+    """
+    success = _integration_test.run_integration_tests(**kwargs)
+    if success == False:
+        raise ClickException("Tests failed.")
+    if success == True:
+        _log.info("Tests passed.")
+    if success == None:
+        _log.info("Did not compare test output.")
+
+
+@entrypoint.command()
+@click.argument("DATABASE", nargs=1)
+@click.option(
+    "--table", "table_file",
+    help="The json file that contains the table configuration or a "
+         "folder of json files named `<TableName>.json`.",
+)
+@click.option(
+    "--chunks", "chunks_folder",
+    help="If the --table is a single .json file then --chunks must "
+         "indicate the folder that contains the chunk info json and "
+         "the chunk files. If --table is a folder of .json files "
+         "then --chunks must be a folder of folders whose names "
+         "match the name of the `<TableName>.json files that contain "
+         "the chunk info json and chunk files."
+)
+def ingest_table(**kwargs):
+    """Ingest table data prepared by the qserv partitioner.
+
+    DATABASE is the path to the databse json file.
+    """
+    _load.ingest_table(**kwargs)
+
+
+@entrypoint.command()
+@click.argument("DATABASE", nargs=-1)
+@click.option(
+    "--admin",
+    help="Use the admin insetad of user auth key.",
+    is_flag=True
+)
+def delete_database(**kwargs):
+    """Remove a database. !!DOES NOT VERIFY!!
+
+    This deletes a named database from a qserv instance.
+    Does not verify or ask the user to confirm
+
+    IN THE FUTURE we should add a credential check.
+
+    DATABASE is the name of the database to remove."
+    _load.delete_database(**kwargs)
+    """
+    _load.delete_database(**kwargs)
 
 
 @entrypoint.command()

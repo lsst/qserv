@@ -20,18 +20,18 @@ x-log-environment:
     LSST_LOG_CONFIG: /config-etc/log/log.cfg
 x-worker-cmsd:
     &worker-cmsd
-    image: "qserv/${QSERV_IMAGE}"
+    image: "qserv/${QSERV_IMAGE:?err}"
     # ports are published in worker-xrootd because this container uses that container's network stack.
 x-worker-xrootd:
     &worker-xrootd
-    image: "qserv/${QSERV_IMAGE}"
+    image: "qserv/${QSERV_IMAGE:?err}"
     expose:
         - "1094"
         - "2131"
         - "3306" # for the worker db, which shares this container's network stack.
 x-worker-repl:
     &worker-repl
-    image: "qserv/${QSERV_IMAGE}"
+    image: "qserv/${QSERV_IMAGE:?err}"
     expose:
         - "25000"
         - "25001"
@@ -51,6 +51,10 @@ volumes:
     czar_0_cfg:
     repl_mgr_data:
     dashboard_cfg:
+    integration_test_ref_db_data:
+    qserv_testdata_volume:
+        external: true
+        name: "${QSERV_TESTDATA_VOLUME:?err}"
 
 networks:
     default:
@@ -155,7 +159,7 @@ services:
               target: /config-etc
             - << : *log-volume
     manager-xrootd:
-        image: "qserv/${QSERV_IMAGE}"
+        image: "qserv/${QSERV_IMAGE:?err}"
         command: entrypoint xrootd-manager --cmsd-manager manager-xrootd
         hostname: manager-xrootd
         environment:
@@ -173,7 +177,7 @@ services:
                 aliases:
                     - manager-cmsd
     manager-cmsd:
-        image: "qserv/${QSERV_IMAGE}"
+        image: "qserv/${QSERV_IMAGE:?err}"
         # NOTE!! cms-delay-servers must match the number of workers being launched!
         command: entrypoint cmsd-manager --cms-delay-servers 2
         network_mode: "service:manager-xrootd"
@@ -198,7 +202,7 @@ services:
               source: ../../../../src/admin/templates/mariadb/etc/my.cnf
               target: /etc/mysql/my.cnf
     czar-proxy:
-        image: "qserv/${QSERV_IMAGE}"
+        image: "qserv/${QSERV_IMAGE:?err}"
         command: entrypoint --log-level DEBUG proxy --connection root:CHANGEME@127.0.0.1:3306 --mysql-user-qserv qsmaster --xrootd-manager manager-xrootd --czar-db-host czar-db --czar-db-port 3306
         environment:
             << : *log-environment
@@ -234,7 +238,7 @@ services:
               source: ../../../../src/admin/templates/repl-db/etc/my.cnf
               target: /etc/mysql/my.cnf
     repl-mgr-controller:
-        image: "qserv/${QSERV_IMAGE}"
+        image: "qserv/${QSERV_IMAGE:?err}"
         command: entrypoint --log-level DEBUG replication-controller --connection mysql://root:CHANGEME@repl-mgr-db:3306/qservReplica --repl-connection mysql://qsreplica@repl-mgr-db:3306/qservReplica --qserv-czar-db mysql://root:CHANGEME@czar-db:3306/qservMeta --instance-id qserv_proj --worker name=worker_0,host=worker-repl-0 --worker name=worker_1,host=worker-repl-1 --xrootd-manager manager-xrootd
         environment:
             << : *log-environment
@@ -253,11 +257,35 @@ services:
               source: ./dashboard/dashboard_wait.sh
               target: /docker-entrypoint.d/dashboard_wait.sh
         ports:
-            - "0.0.0.0:${DASHBOARD_PORT}:80"
+            - "0.0.0.0:${DASHBOARD_PORT:-25080}:80"
     init_dashboard:
         command: entrypoint init-dashboard --dashboard-port 80 --dashboard-html /config-etc/www
-        image: "qserv/${QSERV_IMAGE}"
+        image: "qserv/${QSERV_IMAGE:?err}"
         volumes:
             - type: volume
               source: dashboard_cfg
               target: /config-etc
+    integration-test-reference:
+        image: "qserv/lite-mariadb"
+        command: --port 3306
+        expose:
+            - "3306"
+        environment:
+            MYSQL_ROOT_PASSWORD: CHANGEME
+        volumes:
+            - type: volume
+              source: integration_test_ref_db_data
+              target: /qserv/data
+            - type: bind
+              source: ../../../../src/admin/templates/integration-test/etc/my.cnf
+              target: /etc/mysql/my.cnf
+    integration-test-runner:
+        image: "qserv/${QSERV_IMAGE:?err}"
+        volumes:
+            - type: volume
+              source: qserv_testdata_volume
+              target: /qserv/data
+            # TEMP
+            - type: bind
+              source: /qserv/npease/code/qserv/build/install/python/lsst
+              target: /usr/local/python/lsst

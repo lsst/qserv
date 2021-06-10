@@ -259,10 +259,6 @@ def _get_qserv_volumes(name_like):
     return [i for i in result.stdout.decode("utf-8").strip().split("\n") if i]
 
 
-def make_config(cfg_file, num_workers):
-    systemCfg.make_config(cfg_file=cfg_file, num_workers=num_workers)
-
-
 def rm_all(dry_run):
     rm_container(("all",), dry_run=dry_run)
     rm_volume(("all",), dry_run=dry_run)
