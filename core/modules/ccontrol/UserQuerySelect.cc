@@ -78,6 +78,7 @@
 #include "ccontrol/MergingHandler.h"
 #include "ccontrol/TmpTableName.h"
 #include "ccontrol/UserQueryError.h"
+#include "czar/Czar.h"
 #include "global/constants.h"
 #include "global/LogContext.h"
 #include "global/MsgReceiver.h"
@@ -349,8 +350,13 @@ void UserQuerySelect::submit() {
     if (uberJobsEnabled) {
         vector<qdisp::UberJob::Ptr> uberJobs;
 
+        /* &&& For mononode integration tests
         czar::WorkerResourceLists workerResources;
         workerResources.setMonoNodeTest(); //&&& TODO:UJ only good for mono-node test. Need a real list of workers and their chunks. ******
+        */
+        auto czarPtr = czar::Czar::getCzar();
+        auto workerResources = czarPtr->getWorkerResourceLists();
+
 
         // Make a map of all jobs in the executive.
         // &&& TODO:UJ for now, just using ints. At some point, need to check that ResourceUnit databases can be found for all databases in the query
@@ -363,7 +369,7 @@ void UserQuerySelect::submit() {
         // keep cycling through workers until no more chunks to place.
 
         /// make a map<worker, deque<chunkId> that will be destroyed as chunks are checked/used
-        map<string, deque<int>> tmpWorkerList = workerResources.getDequesFor(dbName);
+        map<string, deque<int>> tmpWorkerList = workerResources->getDequesFor(dbName);
 
         // TODO:UJ So UberJobIds don't conflict with chunk numbers or jobIds, start at a large number.
         //       This could use some refinement.

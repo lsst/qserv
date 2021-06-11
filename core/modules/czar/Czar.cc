@@ -454,8 +454,8 @@ void Czar::removeOldResultTables() {
 
 
 bool Czar::setupWorkerResources(std::string const& fName) {
-    _workerResources = std::make_shared<WorkerResourceLists>();
-    return _workerResources->readIn(fName);
+    _workerResourceLists = std::make_shared<WorkerResourceLists>();
+    return _workerResourceLists->readIn(fName);
 }
 
 

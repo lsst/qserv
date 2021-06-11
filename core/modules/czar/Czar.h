@@ -112,6 +112,7 @@ public:
     void removeOldResultTables();
 
     bool setupWorkerResources(std::string const& fName); // &&& TODO:UJ remove ???
+    std::shared_ptr<WorkerResourceLists> getWorkerResourceLists() { return _workerResourceLists; } // TODO:UJ
 
 protected:
 
@@ -160,7 +161,7 @@ private:
     std::atomic<bool> _removingOldTables{false};
     std::thread _oldTableRemovalThread; ///< thread needs to remain valid while running.
 
-    std::shared_ptr<WorkerResourceLists> _workerResources; // &&& TODO:UJ remove ???
+    std::shared_ptr<WorkerResourceLists> _workerResourceLists; // &&& TODO:UJ remove ???
 };
 
 }}} // namespace lsst::qserv::czar
