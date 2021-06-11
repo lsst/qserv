@@ -20,10 +20,12 @@
  */
 
 // Class header
-#include "czar/WorkerResources.h"
+#include "WorkerResourceLists.h"
 
-// System headers
 #include <deque>
+#include <fstream>
+#include <map>
+#include <set>
 
 // Third-party headers
 
@@ -65,6 +67,36 @@ deque<int> DbResource::getDeque() {
 }
 
 
+std::ostream& DbResource::dumpOS(std::ostream &os) const {
+    lock_guard<mutex>  lg(_mtx);
+    os << "DBResource:" << _dbName << " sz=" << _getSize() << " {";
+    bool first = true;
+    for (int chunkId:_chunkSet) {
+        if (first) {
+            first = false;
+        } else {
+            os << ",";
+        }
+        os << chunkId;
+    }
+    os << "}";
+    return os;
+}
+
+
+std::string DbResource::dump() const {
+    std::ostringstream os;
+    dumpOS(os);
+    return os.str();
+}
+
+
+std::ostream& operator<<(std::ostream &os, DbResource const& dbr) {
+    return dbr.dumpOS(os);
+}
+
+
+
 bool WorkerResource::insert(string const& dbChunkResourceName) {
     ResourceUnit ru(dbChunkResourceName);
     string dbName = ru.db();
@@ -94,7 +126,29 @@ deque<int> WorkerResource::getDequeFor(string const& dbName) {
 }
 
 
-map<string, deque<int>> WorkerResources::getDequesFor(string const& dbName) {
+std::ostream& WorkerResource::dumpOS(std::ostream &os) const {
+    lock_guard<mutex>  lg(_dbMtx);
+    os << "WorkerResource:" << _resourceName;
+    for (auto const& dbRes:_dbResources) {
+        os << "{db=" << dbRes.first << "{" << *(dbRes.second) << "}}";
+    }
+    return os;
+}
+
+
+std::string WorkerResource::dump() const {
+    std::ostringstream os;
+    dumpOS(os);
+    return os.str();
+}
+
+
+std::ostream& operator<<(std::ostream &os, WorkerResource const& wr) {
+    return wr.dumpOS(os);
+}
+
+
+map<string, deque<int>> WorkerResourceLists::getDequesFor(string const& dbName) {
     std::lock_guard<std::mutex> lg(_workerMapMtx);
     map<string, deque<int>> dqMap;
     for (auto&& elem:_workers) {
@@ -106,15 +160,110 @@ map<string, deque<int>> WorkerResources::getDequesFor(string const& dbName) {
 }
 
 
-void WorkerResources::setMonoNodeTest() {
+bool WorkerResourceLists::readIn(std::string const& fName) {
+    LOGS(_log, LOG_LVL_INFO, "&&& WorkerResources::readIn " << fName);
+
+    // TODO:UJ THIS IS HARD CODED to wise_01 database. This would change
+    //         to use chunk resource information for all databases
+    //         pulled from a database or something similar.
+    //         The final version would need to determine xrootd affinity
+    //         and match the chunk list to that so 'leadChunks' are consistent.
+    //         Possible way to determine affinity:
+    //             Send out chunk resource requests with 'affinity' message
+    //             instead of task message. The affinity message tell
+    //             the worker it has the 'leadChunk' for that resource,
+    //             and it sends back its worker id to the czar. These are
+    //             both time stamped and cached -> sent back to central db
+    //             Repeat individually when cache value is old, inaccurate,
+    //             and/or refresh db oportunistically.
+
+    fstream fs;
+    fs.open(fName,ios::in);
+
+    // working sets
+    map<string, set<int>> workerChunkMap;
+    set<int> foundChunks;
+
+    // final map. The chunks should be in numerical order for each worker.
+    map<string, deque<string>> resourceMap;
+    if (fs.is_open()){
+       string line;
+       while(getline(fs, line)) {
+           auto pos = line.find_first_of(" ");
+           string wNameShort = line.substr(0, pos);
+           string chunkIdStr = line.substr(pos+1);
+           int chunkId = std::stoi(chunkIdStr);
+           LOGS(_log, LOG_LVL_INFO, "&&& line='" << line << "' name=" << wNameShort << " chunk=" << chunkIdStr << " c=" << chunkId);
+
+           // Avoid making duplicate chunk entries
+           auto ret = foundChunks.insert(chunkId);
+           bool elementWasInserted = ret.second;
+           if (elementWasInserted) {
+               // need to add entry to the worker
+               set<int>& chunkSet = workerChunkMap[wNameShort];
+               chunkSet.insert(chunkId);
+           }
+       }
+       // At this point, there's a map of short worker names and integer chunkIds.
+       // This needs to be turned in to a map of sets of chunk resource name keyed by
+       // worker resource name.
+       LOGS(_log, LOG_LVL_INFO, "&&& workerChunkMap sz=" << workerChunkMap.size());
+       for (auto const& elem:workerChunkMap) {
+           string shortName = elem.first;
+           set<int> const& chunkInts = elem.second;
+           string workerResourceN = "/worker/worker-" + shortName;
+           auto& chunkStrs = resourceMap[workerResourceN];
+           for (int j:chunkInts) {
+               string chunkResourceN = "/chk/wise_01/" + to_string(j);
+               chunkStrs.push_back(chunkResourceN);
+               //LOGS(_log, LOG_LVL_INFO, "&&& wRN=" << workerResourceN << " cRN=" << chunkResourceN);
+           }
+           LOGS(_log, LOG_LVL_INFO, "&&& wRes=" << workerResourceN << " chunks sz=" << chunkStrs.size());
+       }
+
+
+       // Finally, use resourceMap to load _workers.
+       // It is expected that information from databases will
+       // arrive in workerResourceName + chunkResourceName format.
+       {
+           std::lock_guard<std::mutex> lg(_workerMapMtx);
+           LOGS(_log, LOG_LVL_INFO, "&&& resourceMap size=" << resourceMap.size());
+           for (auto const& elem:resourceMap) {
+               string wName = elem.first;
+               auto res = _insertWorker(wName);
+               WorkerResource::Ptr const& wr = res.first;
+               deque<string> const& dq = elem.second;
+               for(auto const& res:dq) {
+                   wr->insert(res);
+                   LOGS(_log, LOG_LVL_INFO, "&&& wName=" << wName << " res=" << res);
+               }
+           }
+       }
+
+       fs.close(); //close the file object.
+
+       LOGS(_log, LOG_LVL_INFO, "&&& readIn " << *this);
+       return true;
+    }
+    return false;
+}
+
+
+
+
+
+void WorkerResourceLists::setMonoNodeTest() {
     string wName("/worker/5257fbab-c49c-11eb-ba7a-1856802308a2");
     std::lock_guard<std::mutex> lg(_workerMapMtx);
-    _insertWorker(wName);
+    auto res = _insertWorker(wName);
+    /* &&&
     auto iter = _workers.find(wName);
     if (iter == _workers.end()) {
         throw Bug("setMonoNodeTest Failed to find " + wName);
     }
     WorkerResource::Ptr const& wr = iter->second;
+    */
+    WorkerResource::Ptr const& wr = res.first;
 
     deque<string> dq = fillChunkIdSet();
     for(auto const& res:dq) {
@@ -122,7 +271,7 @@ void WorkerResources::setMonoNodeTest() {
     }
 }
 
-deque<string> WorkerResources::fillChunkIdSet() {
+deque<string> WorkerResourceLists::fillChunkIdSet() {
     // &&& values for mono node test. TODO:UJ fill from database table or ?
     // &&& Make a function to convert these to dbName and chunkID using ResourceUnit and insert into the map.
 
@@ -365,6 +514,28 @@ deque<string> WorkerResources::fillChunkIdSet() {
     LOGS(_log, LOG_LVL_WARN, "&&& chunkIdset size=" << dq.size());
     return dq;
 }
+
+
+std::ostream& WorkerResourceLists::dumpOS(std::ostream &os) const {
+    lock_guard<mutex>  lg(_workerMapMtx);
+    os << "WorkerResourceLists:\n";
+    for (auto const& worker:_workers) {
+        os << "{worker=" << worker.first << "{" << *(worker.second) << "}}\n";
+    }
+    return os;
+}
+
+std::string WorkerResourceLists::dump() const {
+    std::ostringstream os;
+    dumpOS(os);
+    return os.str();
+}
+
+
+std::ostream& operator<<(std::ostream &os, WorkerResourceLists const& wrs) {
+    return wrs.dumpOS(os);
+}
+
 
 }}} // namespace lsst::qserv::czar
 

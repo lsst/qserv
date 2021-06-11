@@ -74,11 +74,10 @@
 // LSST headers
 #include "lsst/log/Log.h"
 
-// Qserv headers
+#include "../czar/WorkerResourceLists.h"
 #include "ccontrol/MergingHandler.h"
 #include "ccontrol/TmpTableName.h"
 #include "ccontrol/UserQueryError.h"
-#include "czar/WorkerResources.h"
 #include "global/constants.h"
 #include "global/LogContext.h"
 #include "global/MsgReceiver.h"
@@ -350,7 +349,7 @@ void UserQuerySelect::submit() {
     if (uberJobsEnabled) {
         vector<qdisp::UberJob::Ptr> uberJobs;
 
-        czar::WorkerResources workerResources;
+        czar::WorkerResourceLists workerResources;
         workerResources.setMonoNodeTest(); //&&& TODO:UJ only good for mono-node test. Need a real list of workers and their chunks. ******
 
         // Make a map of all jobs in the executive.
