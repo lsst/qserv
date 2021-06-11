@@ -68,7 +68,7 @@ void ChannelStream::append(StreamBuffer::Ptr const& streamBuffer, bool last) {
          << " " << util::prettyCharBuf(streamBuffer->data, streamBuffer->getSize(), 5));
     {
         unique_lock<mutex> lock(_mutex);
-        LOGS(_log, LOG_LVL_DEBUG, "seq=" << to_string(_seq) << " Trying to append message (flowing)");
+        LOGS(_log, LOG_LVL_INFO, "seq=" << to_string(_seq) << " Trying to append message (flowing)");
 
         _msgs.push_back(streamBuffer);
         _closed = last; // if last is true, then we are closed.
@@ -82,7 +82,7 @@ XrdSsiStream::Buffer* ChannelStream::GetBuff(XrdSsiErrInfo &eInfo, int &dlen, bo
     unique_lock<mutex> lock(_mutex);
     while(_msgs.empty() && !_closed) { // No msgs, but we aren't done
         // wait.
-        LOGS(_log, LOG_LVL_DEBUG, "seq=" << to_string(_seq) << " Waiting, no data ready");
+        LOGS(_log, LOG_LVL_INFO, "seq=" << to_string(_seq) << " Waiting, no data ready");
         _hasDataCondition.wait(lock);
     }
     if (_msgs.empty() && _closed) {
@@ -97,7 +97,7 @@ XrdSsiStream::Buffer* ChannelStream::GetBuff(XrdSsiErrInfo &eInfo, int &dlen, bo
     dlen = sb->getSize();
     _msgs.pop_front();
     last = _closed && _msgs.empty();
-    LOGS(_log, LOG_LVL_DEBUG, "seq=" << to_string(_seq)
+    LOGS(_log, LOG_LVL_INFO, "seq=" << to_string(_seq)
                            << " returning buffer (" << dlen << ", " << (last ? "(last)" : "(more)") << ")");
     return sb.get();
 }
