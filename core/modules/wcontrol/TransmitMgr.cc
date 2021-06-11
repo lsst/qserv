@@ -86,7 +86,9 @@ void TransmitMgr::_release(bool interactive, bool alreadyTransmitting, qmeta::Cz
         if (iter != _czarTransmitMap.end()) {
             auto& info = iter->second;
             --(info._totalCount);
-            --(info._transmitCount);
+            if (not interactive) {
+                --(info._transmitCount);
+            }
             // If _doNotDelete is false and all the counts are 0, delete it from the map.
             // it is possible for _takeCalls to be >0 and all other values be zero if
             // _take is waiting.
