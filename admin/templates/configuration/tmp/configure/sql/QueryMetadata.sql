@@ -38,16 +38,16 @@ CREATE TABLE IF NOT EXISTS `QInfo` (
   `qType` ENUM('SYNC', 'ASYNC') NOT NULL COMMENT 'Query type, either SYNC or ASYNC.',
   `czarId` INT NOT NULL COMMENT 'ID of the \"responsible czar\" of this query',
   `user` CHAR(63) NOT NULL COMMENT 'Name (id) of the user submitting this query',
-  `query` TEXT NOT NULL COMMENT 'Original query text as was submitted by client.',
-  `qTemplate` TEXT NOT NULL COMMENT 'Query template, string used to build final per-chunk query.',
-  `qMerge` TEXT NULL COMMENT 'Merge (or aggregate) query to be executed on results table, result of this query is stored in merge table. If NULL then it is equivalent to SELECT *.',
+  `query` MEDIUMTEXT NOT NULL COMMENT 'Original query text as was submitted by client.',
+  `qTemplate` MEDIUMTEXT NOT NULL COMMENT 'Query template, string used to build final per-chunk query.',
+  `qMerge` MEDIUMTEXT NULL COMMENT 'Merge (or aggregate) query to be executed on results table, result of this query is stored in merge table. If NULL then it is equivalent to SELECT *.',
   `status` ENUM('EXECUTING', 'COMPLETED', 'FAILED', 'ABORTED') NOT NULL DEFAULT 'EXECUTING' COMMENT 'Status of query processing.',
   `submitted` TIMESTAMP NOT NULL DEFAULT  CURRENT_TIMESTAMP COMMENT 'Time when query was submitted (received from client)',
   `completed` TIMESTAMP NULL COMMENT 'Time when query processing is completed - either the results were collected into czar-side result table or failure is detected.',
   `returned` TIMESTAMP NULL COMMENT 'Time when result is sent back to user. NULL if not completed yet.',
   `messageTable` CHAR(63) NULL COMMENT 'Name of the message table for the ASYNC query',
   `resultLocation` TEXT NULL COMMENT 'Result destination - table name, file name, etc.',
-  `resultQuery` TEXT NULL COMMENT 'Query to be used by mysqlproxy to get final results.',
+  `resultQuery` MEDIUMTEXT NULL COMMENT 'Query to be used by mysqlproxy to get final results.',
   PRIMARY KEY (`queryId`),
   INDEX `QInfo_czarId_index` (`czarId` ASC),
   CONSTRAINT `QInfo_cid`
@@ -184,7 +184,10 @@ COMMENT = 'Metadata about database as a whole, bunch of key-value pairs';
 -- Version 1 introduced QMetadata table and altered schema for QInfo table
 -- Version 2 added query progress data to ProcessList tables.
 -- Version 3 added storing the result query in QMeta.
-INSERT INTO `QMetadata` (`metakey`, `value`) VALUES ('version', '3');
+-- Version 4 migrated 4 TEXT columns `query`, `qTemplate`, `qMerge`
+--   and `resultQuery` of QInfo to the MySQL type MEDIUMTEXT to allow larger
+--   storage capacity.
+INSERT INTO `QMetadata` (`metakey`, `value`) VALUES ('version', '4');
 
 SET SQL_MODE=@OLD_SQL_MODE;
 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS;
