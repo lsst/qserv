@@ -135,8 +135,6 @@ DuplSelectExprPlugin::getDuplicateSelectErrors(query::SelectStmt const& stmt) co
         std::string alias = ve.getAlias();
         if (!alias.empty()) {
             name = alias;
-        } else if (ve.isColumnRef()) {
-            name = ve.getColumnRef()->getColumn();
         } else {
             name = ve.sqlFragment(query::QueryTemplate::DEFINE_VALUE_ALIAS_USE_TABLE_ALIAS);
         }
