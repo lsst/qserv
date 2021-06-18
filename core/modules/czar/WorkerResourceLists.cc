@@ -26,6 +26,7 @@
 #include <fstream>
 #include <map>
 #include <set>
+#include <list>
 
 // Third-party headers
 
@@ -188,13 +189,15 @@ bool WorkerResourceLists::readIn(std::string const& fName) {
     map<string, deque<string>> resourceMap;
     if (fs.is_open()){
        string line;
+       map<string, set<int>> tmpMap;
        while(getline(fs, line)) {
            auto pos = line.find_first_of(" ");
            string wNameShort = line.substr(0, pos);
            string chunkIdStr = line.substr(pos+1);
            int chunkId = std::stoi(chunkIdStr);
-           LOGS(_log, LOG_LVL_INFO, "&&& line='" << line << "' name=" << wNameShort << " chunk=" << chunkIdStr << " c=" << chunkId);
+           //LOGS(_log, LOG_LVL_INFO, "&&& line='" << line << "' name=" << wNameShort << " chunk=" << chunkIdStr << " c=" << chunkId);
 
+           /* &&&
            // Avoid making duplicate chunk entries
            auto ret = foundChunks.insert(chunkId);
            bool elementWasInserted = ret.second;
@@ -203,7 +206,53 @@ bool WorkerResourceLists::readIn(std::string const& fName) {
                set<int>& chunkSet = workerChunkMap[wNameShort];
                chunkSet.insert(chunkId);
            }
+           */
+           // need to add entry to the worker
+           tmpMap[wNameShort].insert(chunkId);
+
        }
+
+       // Try to make fairly even distribution accross workers.
+       list<string> workerNames;
+       for (auto const& elem:tmpMap) {
+           string name = elem.first;
+           workerNames.push_back(name);
+       }
+
+       while (!workerNames.empty()) {
+           for (auto wIter = workerNames.begin(); wIter != workerNames.end();) {
+               auto wIterAdvanced = false;
+               string wName = *wIter;
+               set<int>& tmpChunkSet = tmpMap[wName];
+               set<int>& chunkSet = workerChunkMap[wName];
+               bool done = false;
+               auto cIter = tmpChunkSet.begin();
+               for (int j=0; j<10 && !done;) {
+                   if (cIter == tmpChunkSet.end()) {
+                       // no more chunks on this worker
+                       done = true;
+                       LOGS(_log, LOG_LVL_INFO, "&&& worker empty " << wName << " elemCount=" << chunkSet.size());
+                       auto wIterToDel = wIter++;
+                       wIterAdvanced = true;
+                       workerNames.erase(wIterToDel);
+                   } else {
+                       int chunkId = *cIter;
+                       auto ret = foundChunks.insert(chunkId);
+                       bool elementInserted = ret.second;
+                       if (elementInserted) {
+                           ++j;
+                           chunkSet.insert(chunkId);
+                       }
+                       auto cIterToDel = cIter++;
+                       tmpChunkSet.erase(cIterToDel);
+                   }
+               }
+               if (!wIterAdvanced) ++wIter;
+           }
+       }
+
+
+
        // At this point, there's a map of short worker names and integer chunkIds.
        // This needs to be turned in to a map of sets of chunk resource name keyed by
        // worker resource name.
@@ -211,7 +260,7 @@ bool WorkerResourceLists::readIn(std::string const& fName) {
        for (auto const& elem:workerChunkMap) {
            string shortName = elem.first;
            set<int> const& chunkInts = elem.second;
-           string workerResourceN = "/worker/worker-" + shortName;
+           string workerResourceN = "/worker/" + shortName;
            auto& chunkStrs = resourceMap[workerResourceN];
            for (int j:chunkInts) {
                string chunkResourceN = "/chk/wise_01/" + to_string(j);
@@ -235,7 +284,6 @@ bool WorkerResourceLists::readIn(std::string const& fName) {
                deque<string> const& dq = elem.second;
                for(auto const& res:dq) {
                    wr->insert(res);
-                   LOGS(_log, LOG_LVL_INFO, "&&& wName=" << wName << " res=" << res);
                }
            }
        }

@@ -89,6 +89,9 @@ bool UberJob::runUberJob() {
         proto::UberJobMsg* ujMsg = google::protobuf::Arena::CreateMessage<proto::UberJobMsg>(&arena);
         ujMsg->set_queryid(getQueryId());
         ujMsg->set_czarid(_czarId);
+        ujMsg->set_uberjobid(_uberJobId);
+        ujMsg->set_magicnumber(UberJob::getMagicNumber());
+        LOGS(_log, LOG_LVL_INFO, "&&& runUberJob sz=" << _jobs.size());
         for (auto&& job:_jobs) {
             proto::TaskMsg* tMsg = ujMsg->add_taskmsgs();
             job->getDescription()->fillTaskMsg(tMsg);

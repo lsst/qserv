@@ -70,7 +70,7 @@ bool TaskMsgFactory::fillTaskMsg(proto::TaskMsg* taskMsg, ChunkQuerySpec const& 
     taskMsg->set_jobid(jobId);
     taskMsg->set_attemptcount(attemptCount);
     taskMsg->set_czarid(czarId);
-    LOGS(_log, LOG_LVL_INFO, "&&& _makeMsg ses=" << _session << " db=" << chunkQuerySpec.db << " qId=" << queryId << " jId=" << jobId << " att=" << attemptCount << " cz=" << czarId);
+    //LOGS(_log, LOG_LVL_INFO, "&&& _makeMsg ses=" << _session << " db=" << chunkQuerySpec.db << " qId=" << queryId << " jId=" << jobId << " att=" << attemptCount << " cz=" << czarId);
     // scanTables (for shared scans)
     // check if more than 1 db in scanInfo
     std::string db;
@@ -87,7 +87,6 @@ bool TaskMsgFactory::fillTaskMsg(proto::TaskMsg* taskMsg, ChunkQuerySpec const& 
 
     taskMsg->set_scanpriority(chunkQuerySpec.scanInfo.scanRating);
     taskMsg->set_scaninteractive(chunkQuerySpec.scanInteractive);
-    LOGS(_log, LOG_LVL_WARN, "&&& _makeMsg scanR=" << chunkQuerySpec.scanInfo.scanRating << " scanI=" << chunkQuerySpec.scanInteractive << " chunkId=" << chunkQuerySpec.chunkId);
 
     // per-chunk
     taskMsg->set_chunkid(chunkQuerySpec.chunkId);
@@ -114,7 +113,6 @@ bool TaskMsgFactory::fillTaskMsg(proto::TaskMsg* taskMsg, ChunkQuerySpec const& 
         _addFragment(*taskMsg, resultTable, chunkQuerySpec.subChunkTables,
                      chunkQuerySpec.subChunkIds, chunkQuerySpec.queries);
     }
-    LOGS(_log, LOG_LVL_WARN, "&&& _makeMsg end chunkId=" << chunkQuerySpec.chunkId);
     return true;
 }
 

@@ -292,7 +292,7 @@ bool Executive::join() {
 }
 
 void Executive::markCompleted(int jobId, bool success) {
-    LOGS(_log, LOG_LVL_WARN, "&&& Executive::markCompleted jobId=" << jobId << " success=" << success);
+    //LOGS(_log, LOG_LVL_WARN, "&&& Executive::markCompleted jobId=" << jobId << " success=" << success);
     ResponseHandler::Error err;
     string idStr = QueryIdHelper::makeIdStr(_id, jobId);
     LOGS(_log, LOG_LVL_DEBUG, "Executive::markCompleted " << success);
@@ -571,7 +571,7 @@ void Executive::_waitAllUntilEmpty() {
 void Executive::_addToChunkJobMap(JobQuery::Ptr const& job) {
     int chunkId = job->getDescription()->resource().chunk();
     auto entry = pair<ChunkIdType, JobQuery*>(chunkId, job.get());
-    LOGS(_log, LOG_LVL_WARN, "&&& _addToChunkJobMap chunkId=" << chunkId);
+    //LOGS(_log, LOG_LVL_WARN, "&&& _addToChunkJobMap chunkId=" << chunkId);
     lock_guard<mutex> lck(_chunkToJobMapMtx);
     if (_chunkToJobMapInvalid) {
         throw Bug("map insert FAILED, map is already invalid");
@@ -611,7 +611,7 @@ bool Executive::startUberJob(UberJob::Ptr const& uJob) {
     // Construct a temporary resource object to pass to ProcessRequest().
     // Affinity should be meaningless here as there should only be one instance of each worker.
     XrdSsiResource::Affinity affinity = XrdSsiResource::Affinity::Default;
-    LOGS(_log, LOG_LVL_INFO, "&&& uJob->workerResource=" << uJob->getWorkerResource());
+    LOGS(_log, LOG_LVL_INFO, "&&& startUberJob uJob->workerResource=" << uJob->getWorkerResource());
     XrdSsiResource uJobResource(uJob->getWorkerResource(), "", uJob->getIdStr(), "", 0, affinity);
 
     // Now construct the actual query request and tie it to the jobQuery. The

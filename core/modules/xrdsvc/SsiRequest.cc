@@ -40,6 +40,7 @@
 #include "global/ResourceUnit.h"
 #include "proto/FrameBuffer.h"
 #include "proto/worker.pb.h"
+#include "qdisp/UberJob.h"
 #include "qmeta/types.h"
 #include "util/Timer.h"
 #include "wbase/MsgProcessor.h"
@@ -211,6 +212,14 @@ void SsiRequest::execute(XrdSsiRequest& req) {
     // Note that upon exit the _finMutex will be unlocked allowing Finished()
     // to actually do something once everything is actually setup.
 }
+
+
+uint64_t SsiRequest::getSeq() const {
+    if (_stream == nullptr) return 0;
+    return _stream->getSeq();
+}
+
+
 
 wbase::WorkerCommand::Ptr SsiRequest::parseWorkerCommand(char const* reqData, int reqSize) {
 
@@ -437,7 +446,7 @@ bool SsiRequest::replyFile(int fd, long long fSize) {
 
 
 bool SsiRequest::replyStream(StreamBuffer::Ptr const& sBuf, bool last) {
-    LOGS(_log, LOG_LVL_DEBUG, "replyStream, checking stream size=" << sBuf->getSize() << " last=" << last);
+    LOGS(_log, LOG_LVL_INFO, "replyStream, checking stream size=" << sBuf->getSize() << " last=" << last); // &&& debug
 
     // Normally, XrdSsi would call Recycle() when it is done with sBuf, but if this function
     // returns false, then it must call Recycle(). Otherwise, the scheduler will likely
@@ -464,6 +473,7 @@ bool SsiRequest::replyStream(StreamBuffer::Ptr const& sBuf, bool last) {
         sBuf->Recycle();
         return false;
     }
+    LOGS(_log, LOG_LVL_WARN, "&&& SsiRequest::replyStream _stream seq=" << getSeq());
     // XrdSsi or Finished() will call Recycle().
     _stream->append(sBuf, last);
     return true;
@@ -501,7 +511,15 @@ void SsiRequest::_handleUberJob(proto::UberJobMsg* uberJobMsg,
     //         Check the purpose of _finMutex, as it is locked before this is called.
     qmeta::CzarId czarId = uberJobMsg->czarid();
     QueryId qId = uberJobMsg->queryid();
+    uint32_t uberJobId = uberJobMsg->uberjobid();
+    uint32_t magicNumber = uberJobMsg->magicnumber();
+
+    if (magicNumber != qdisp::UberJob::getMagicNumber()) {
+        throw Bug("UberJob incorrect magic number");
+    }
     LOGS(_log, LOG_LVL_INFO, "&&& _handleUberJob qId=" << qId << " czarId=" << czarId);
+
+    std::vector<int> jobIds;
 
     int tSize = uberJobMsg->taskmsgs_size();
     if (tSize == 0) {
@@ -515,7 +533,7 @@ void SsiRequest::_handleUberJob(proto::UberJobMsg* uberJobMsg,
     vector<wbase::Task::Ptr> tasks;
     LOGS(_log, LOG_LVL_INFO, "&&& SsiRequest::_hUJ  tSize=" << tSize);
     for (int j=0; j < tSize; ++j) {
-        LOGS(_log, LOG_LVL_INFO, "&&& SsiRequest::_hUJ j=" << j);
+        //LOGS(_log, LOG_LVL_INFO, "&&& SsiRequest::_hUJ j=" << j);
         proto::TaskMsg const& taskMsg = uberJobMsg->taskmsgs(j);
 
         if (!taskMsg.has_db() || !taskMsg.has_chunkid())  {
@@ -523,11 +541,12 @@ void SsiRequest::_handleUberJob(proto::UberJobMsg* uberJobMsg,
                     " chunkId=" + to_string(taskMsg.chunkid()));
             return;
         }
+        int jobId = taskMsg.jobid();
+        jobIds.push_back(jobId);
         string db = taskMsg.db();
         int chunkId = taskMsg.chunkid();
-        //&&&string resourcePath = "/" + db + "/" + to_string(chunkId);
         string resourcePath = ResourceUnit::makePath(chunkId, db);
-        LOGS(_log, LOG_LVL_INFO, "&&& SsiRequest::_hUJ resourcePath=" << resourcePath);
+        //LOGS(_log, LOG_LVL_INFO, "&&& SsiRequest::_hUJ resourcePath=" << resourcePath);
         ResourceUnit ru(resourcePath);
         if (ru.db() != db || ru.chunk() != chunkId) {
             throw Bug("resource path didn't match ru");
@@ -535,12 +554,30 @@ void SsiRequest::_handleUberJob(proto::UberJobMsg* uberJobMsg,
         auto resourceLock = std::make_shared<wpublish::ResourceMonitorLock>(*(_resourceMonitor.get()), resourcePath);
 
         // If the query uses subchunks, the taskMsg will return multiple Tasks. Otherwise, one task.
-        LOGS(_log, LOG_LVL_INFO, "&&& SsiRequest::_hUJ creating tasks");
+        //LOGS(_log, LOG_LVL_INFO, "&&& SsiRequest::_hUJ creating tasks");
         auto nTasks = wbase::Task::createTasks(taskMsg, sendChannel, gArena, resourceLock);
         // Move nTasks into tasks
         tasks.insert(tasks.end(), std::make_move_iterator(nTasks.begin()),
                      std::make_move_iterator(nTasks.end()));
     }
+
+    // make a log message showing which jobs in the uberjob
+    string qIdStr = to_string(qId);
+    string logMsg = "uberJob={QID," + qIdStr + "#" + to_string(uberJobId);
+    logMsg += "} channel=" + to_string(sendChannel->getId());
+    logMsg += " taskC=" + to_string(sendChannel->getTaskCount());
+    logMsg += " lastC=" + to_string(sendChannel->getLastCount());
+    logMsg += " jobs=(";
+    bool firstMsg = true;
+    for (auto const& jobId:jobIds) {
+        if (!firstMsg) {
+            logMsg += ",";
+            firstMsg = false;
+        }
+        logMsg += "{QID," + qIdStr + "#" + to_string(jobId) + "}";
+    }
+    logMsg += ")";
+    LOGS(_log, LOG_LVL_INFO, logMsg);
 
     _processor->processTasks(tasks); // Queues tasks to be run later.
 

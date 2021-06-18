@@ -365,7 +365,7 @@ void UserQuerySelect::submit() {
         // &&& TODO:UJ skipping in proof of concept: get a list of all databases in jobs (all jobs should use the same databases) Use this to check for conflicts
 
         // assign jobs to uberJobs
-        int maxChunksPerUber = 10;
+        int maxChunksPerUber = 50;
         // keep cycling through workers until no more chunks to place.
 
         /// make a map<worker, deque<chunkId> that will be destroyed as chunks are checked/used
@@ -404,6 +404,7 @@ void UserQuerySelect::submit() {
                 }
             }
 
+            //LOGS(_log, LOG_LVL_INFO, "&&& making UberJob " << uberResultName << " chunks=" << chunksInUber);
             if (chunksInUber > 0) {
                 uberJobs.push_back(uJob);
             }
@@ -424,10 +425,13 @@ void UserQuerySelect::submit() {
         for (auto&& uJob:uberJobs) {
             uJob->runUberJob();
         }
+        LOGS(_log, LOG_LVL_INFO, "&&& All UberJobs sent.");
         // If any chunks in the query were not found on a worker's list, run them individually.
         for (auto& ciq:chunksInQuery) {
+            LOGS(_log, LOG_LVL_INFO, "&&& running remaining jobs ");
             qdisp::JobQuery* jqRaw = ciq.second;
             qdisp::JobQuery::Ptr job = _executive->getSharedPtrForRawJobPtr(jqRaw);
+            LOGS(_log, LOG_LVL_INFO, "&&& running remaining jobs " << job->getIdStr());
             std::function<void(util::CmdData*)> funcBuildJob =
                     [this, job{move(job)}](util::CmdData*) { // references in captures cause races
                 QSERV_LOGCONTEXT_QUERY(_qMetaQueryId);

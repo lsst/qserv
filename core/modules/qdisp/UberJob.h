@@ -41,6 +41,8 @@ class UberJob : public JobBase {
 public:
     using Ptr = std::shared_ptr<UberJob>;
 
+    static uint32_t getMagicNumber() { return 93452; }
+
     static Ptr create(Executive::Ptr const& executive,
                       std::shared_ptr<ResponseHandler> const& respHandler,
                       int queryId, int uberJobId, qmeta::CzarId czarId, std::string const& workerResource);

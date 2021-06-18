@@ -188,9 +188,11 @@ bool QueryRunner::runQuery() {
         // Put the error from _initConnection in _transmitData via _multiError.
         _buildDataMsg(0, 0);
         // Since there's an error, this will be the last transmit from this QueryRunner.
+        //LOGS(_log, LOG_LVL_INFO, "&&&QR::_dispatch transmit err start");
         if (!_transmit(true)) {
             LOGS(_log, LOG_LVL_WARN, " Could not report error to czar as sendChannel not accepting msgs.");
         }
+        //LOGS(_log, LOG_LVL_INFO, "&&&QR::_dispatch transmit err end");
         return false;
     }
 
@@ -206,7 +208,7 @@ bool QueryRunner::runQuery() {
     } else {
         throw UnsupportedError(_task->getIdStr() + " QueryRunner: Expected protocol > 1 in TaskMsg");
     }
-    LOGS(_log, LOG_LVL_DEBUG, "QueryRunner::runQuery() END");
+    LOGS(_log, LOG_LVL_INFO, "QueryRunner::runQuery() END"); //&&& revert to DEBUG
     return false;
 }
 
@@ -279,7 +281,9 @@ bool QueryRunner::_transmit(bool lastIn) {
 
     int qId = _task->getQueryId();
     int jId = _task->getJobId();
+    //LOGS(_log, LOG_LVL_INFO, "&&&QR::_transmit start lastIn=" << lastIn);
     bool success = _task->sendChannel->addTransmit(_cancelled, erred, lastIn, _largeResult, _transmitData, qId, jId);
+    //LOGS(_log, LOG_LVL_INFO, "&&&QR::_transmit end lastIn=" << lastIn);
 
     // Large results get priority, but new large results should not get priority until
     // after they have started transmitting.
@@ -462,6 +466,7 @@ bool QueryRunner::_dispatchChannel() {
             // (see pull-request for DM-216)
             // Now get rows...
             while (!_fillRows(res, numFields, rowCount, tSize)) {
+                //LOGS(_log, LOG_LVL_INFO, "&&&QR::_dispatch loop start");
                 if (tSize > proto::ProtoHeaderWrap::PROTOBUFFER_HARD_LIMIT) {
                     LOGS_ERROR("Message single row too large to send using protobuffer");
                     erred = true;
@@ -469,13 +474,16 @@ bool QueryRunner::_dispatchChannel() {
                 }
                 LOGS(_log, LOG_LVL_TRACE, "Splitting message size=" << tSize << ", rowCount=" << rowCount);
                 _buildDataMsg(rowCount, tSize);
+                //LOGS(_log, LOG_LVL_INFO, "&&&QR::_dispatch transmit false start");
                 if (!_transmit(false)) {
                     LOGS(_log, LOG_LVL_ERROR, "Could not transmit intermediate results.");
                     return false;
                 }
+                //LOGS(_log, LOG_LVL_INFO, "&&&QR::_dispatch transmit false end");
                 rowCount = 0;
                 tSize = 0;
                 _initTransmit(); // reset _transmitData
+                //LOGS(_log, LOG_LVL_INFO, "&&&QR::_dispatch loop end");
             }
 
         }
@@ -491,12 +499,15 @@ bool QueryRunner::_dispatchChannel() {
         _mysqlConn->freeResult();
     }
     if (!_cancelled) {
+        //util::InstanceCount icTransmit("_dispatchChannel::Transmit&&&");
         // Send results. This needs to happen after the error check.
         _buildDataMsg(rowCount, tSize);
+        //LOGS(_log, LOG_LVL_INFO, "&&&QR::_dispatch transmit true start");
         if (!_transmit(true)) { // All remaining rows/errors for this QueryRunner should be in this transmit.
             LOGS(_log, LOG_LVL_ERROR, "Could not transmit last results.");
             return false;
         }
+        //LOGS(_log, LOG_LVL_INFO, "&&&QR::_dispatch transmit true end");
     } else {
         erred = true;
         // Set poison error, no point in sending.

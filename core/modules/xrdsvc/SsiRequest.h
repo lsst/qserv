@@ -122,6 +122,8 @@ public:
 
     bool sendMetadata(const char *buf, int blen);
 
+    uint64_t getSeq() const;
+
     /// Call this to allow object to die after it truly is no longer needed.
     /// i.e. It is know Finish() will not be called.
     /// NOTE: It is important that any non-static SsiRequest member
