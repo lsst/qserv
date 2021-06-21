@@ -64,7 +64,7 @@ void ChannelStream::append(StreamBuffer::Ptr const& streamBuffer, bool last) {
     if (_closed) {
         throw Bug("ChannelStream::append: Stream closed, append(...,last=true) already received");
     }
-    LOGS(_log, LOG_LVL_DEBUG, "seq=" << to_string(_seq) << " ChannelStream::append last=" << last
+    LOGS(_log, LOG_LVL_DEBUG, "seq=" << to_string(_seq) << " ChannelStream::append last=" << last // &&& make seq= and channel= easier to track
          << " " << util::prettyCharBuf(streamBuffer->data, streamBuffer->getSize(), 5));
     {
         unique_lock<mutex> lock(_mutex);
@@ -79,6 +79,7 @@ void ChannelStream::append(StreamBuffer::Ptr const& streamBuffer, bool last) {
 
 /// Pull out a data packet as a Buffer object (called by XrdSsi code)
 XrdSsiStream::Buffer* ChannelStream::GetBuff(XrdSsiErrInfo &eInfo, int &dlen, bool &last) {
+    util::InstanceCount ic("ChannelStream::GetBuff&&& seq=" + to_string(_seq));
     unique_lock<mutex> lock(_mutex);
     while(_msgs.empty() && !_closed) { // No msgs, but we aren't done
         // wait.

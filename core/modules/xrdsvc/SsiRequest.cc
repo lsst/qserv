@@ -73,6 +73,13 @@ void SsiRequest::reportError (std::string const& errStr) {
     ReleaseRequestBuffer();
 }
 
+
+uint64_t SsiRequest::getSeq() const {
+    if (_stream == nullptr) return 0;
+    return _stream->getSeq();
+}
+
+
 // Step 4
 /// Called by XrdSsi to actually process a request.
 void SsiRequest::execute(XrdSsiRequest& req) {

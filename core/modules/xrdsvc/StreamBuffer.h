@@ -81,7 +81,7 @@ private:
     std::condition_variable _cv;
     bool _doneWithThis{false};
     Ptr _selfKeepAlive; ///< keep this object alive until after Recycle() is called.
-    util::InstanceCount _ic{"StreamBuffer"}; ///< Useful as it indicates amount of waiting for czar.
+    //&&& util::InstanceCount _ic{"StreamBuffer"}; ///< Useful as it indicates amount of waiting for czar.
 
     static std::atomic<size_t> _totalBytes;
 };

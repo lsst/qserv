@@ -79,6 +79,7 @@ public:
         util::Timer tWaiting;
         util::Timer tTotal;
         {
+            util::InstanceCount ic("AskFor_A&&&");
             tTotal.start();
             auto jq = _jQuery.lock();
             auto qr = _qRequest.lock();
@@ -107,7 +108,9 @@ public:
             unique_lock<mutex> uLock(_mtx);
             // TODO: make timed wait, check for wedged, if weak pointers dead, log and give up.
             // Hoping for  _state == DATAREADY1,
+            util::InstanceCount icc1("AskFor_B1&&&");
             _cv.wait(uLock, [this](){ return _state != State::STARTED0; });
+            util::InstanceCount icc2("AskFor_B2&&&");
             tWaiting.stop();
             // _mtx is locked at this point.
             LOGS(_log, LOG_LVL_TRACE, "AskForResp should be DATAREADY1 " << (int)_state);
@@ -184,7 +187,7 @@ private:
 
     int _blen = -1;
     bool _last = true;
-    util::InstanceCount _instCount{"AskForResponseDataCmd"};
+    //&&&util::InstanceCount _instCount{"AskForResponseDataCmd"};
 };
 
 
@@ -378,6 +381,7 @@ void QueryRequest::_setHoldState(HoldState state) {
 void QueryRequest::ProcessResponseData(XrdSsiErrInfo const& eInfo,
                                        char *buff, int blen, bool last) { // Step 7
     QSERV_LOGCONTEXT_QUERY_JOB(_qid, _jobid);
+    util::InstanceCount ic("QR::ProcessResponseData&&&");
     // buff is ignored here. It points to jq->getDescription()->respHandler()->_mBuf, which
     // is accessed directly by the respHandler. _mBuf is a member of MergingHandler.
     LOGS(_log, LOG_LVL_DEBUG, "ProcessResponseData with buflen=" << blen
