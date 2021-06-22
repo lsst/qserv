@@ -35,7 +35,7 @@
 
 // Boost unit test header
 #define BOOST_TEST_MODULE FileUtils
-#include "boost/test/included/unit_test.hpp"
+#include <boost/test/unit_test.hpp>
 
 using namespace std;
 namespace fs = boost::filesystem;
@@ -116,7 +116,7 @@ BOOST_AUTO_TEST_CASE(FileUtils_createTemporaryFile) {
     // representing a hexadecimal digit: ['0'-'f']. This will make the temporary
     // file creation utility to fail on any of of those 16 files due to
     // exceeding the total number of retries.
-    
+
     vector<string> const digits = {
         "0", "1", "2", "3", "4", "5", "6", "7", "8", "9",
         "a", "b", "c", "d", "e", "f"

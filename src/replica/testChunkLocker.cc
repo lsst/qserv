@@ -35,7 +35,7 @@
 
 // Boost unit test header
 #define BOOST_TEST_MODULE ChunkLocker
-#include "boost/test/included/unit_test.hpp"
+#include <boost/test/unit_test.hpp>
 
 using namespace std;
 namespace test = boost::test_tools;
@@ -148,7 +148,7 @@ BOOST_AUTO_TEST_CASE(ChunkLockerTest) {
 
         unsigned int const num = 200000UL;
         map<string, size_t> numTestsFailedByOwner;
-    
+
         // This function will attempt to ingest 'num' locks on behalf
         // of 'thisOwner'. In case if that's not possible for a particular
         // chunk a further test will be made to ensure that the chunk was already
@@ -181,7 +181,7 @@ BOOST_AUTO_TEST_CASE(ChunkLockerTest) {
         t2.join();
 
         // Test and report failures
-    
+
         BOOST_CHECK_EQUAL(numTestsFailedByOwner["qserv"], 0UL);
         BOOST_CHECK_EQUAL(numTestsFailedByOwner["root"],  0UL);
 
@@ -189,9 +189,9 @@ BOOST_AUTO_TEST_CASE(ChunkLockerTest) {
 
         ChunkLocker::OwnerToChunks const ownerToChunks = locker.locked();
         unsigned int const numOwners = ownerToChunks.size();
-    
+
         BOOST_CHECK((1 <= numOwners) and (numOwners <= 2));
-    
+
         unsigned int numChunks = 0UL;
         for (auto&& entry: ownerToChunks) {
             numChunks += entry.second.size();

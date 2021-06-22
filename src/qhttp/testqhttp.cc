@@ -21,7 +21,7 @@
  */
 
 #define BOOST_TEST_MODULE qhttp
-#include "boost/test/included/unit_test.hpp"
+#include "boost/test/unit_test.hpp"
 
 #include <chrono>
 #include <fstream>

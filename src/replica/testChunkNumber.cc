@@ -36,7 +36,7 @@
 
 // Boost unit test header
 #define BOOST_TEST_MODULE ChunkNumber
-#include "boost/test/included/unit_test.hpp"
+#include <boost/test/unit_test.hpp>
 
 using namespace std;
 namespace test = boost::test_tools;
@@ -53,7 +53,7 @@ BOOST_AUTO_TEST_CASE(ChunkNumberTest) {
 
     ChunkNumberValidator::Ptr const validator1 = make_shared<ChunkNumberSingleRangeValidator>(0, 1000);
     ChunkNumberValidator::Ptr const validator2 = make_shared<ChunkNumberSingleRangeValidator>(0, 1000);
-    
+
     BOOST_CHECK(*validator1 == *validator1);
     BOOST_CHECK(*validator1 != *validator2);
 
@@ -68,7 +68,7 @@ BOOST_AUTO_TEST_CASE(ChunkNumberTest) {
         make_shared<ChunkNumberSingleRangeValidator>(beginRange, endRange);
 
     // Overflow values are always valid
-    
+
     BOOST_CHECK(validator10to20->valid(   validator10to20->overflowValue()));
     BOOST_CHECK(validator10to20->overflow(validator10to20->overflowValue()));
 

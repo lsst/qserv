@@ -45,7 +45,7 @@
 
 // Boost unit test header
 #define BOOST_TEST_MODULE QMeta_1
-#include "boost/test/included/unit_test.hpp"
+#include <boost/test/unit_test.hpp>
 
 using lsst::qserv::mysql::MySqlConfig;
 using namespace lsst::qserv::qmeta;
