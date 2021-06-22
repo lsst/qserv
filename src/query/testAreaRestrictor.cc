@@ -25,6 +25,7 @@
 #include <stdexcept>
 #include <string>
 #include <vector>
+#include <list>
 
 // Qserv headers
 #include "qproc/geomAdapter.h"
@@ -38,8 +39,7 @@
 
 // Boost unit test header
 #define BOOST_TEST_MODULE AreaRestrictor
-#include "boost/test/data/test_case.hpp"
-#include "boost/test/included/unit_test.hpp"
+#include "boost/test/unit_test.hpp"
 
 
 using namespace lsst::qserv;

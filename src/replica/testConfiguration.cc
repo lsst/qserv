@@ -46,7 +46,7 @@
 
 // Boost unit test header
 #define BOOST_TEST_MODULE Configuration
-#include "boost/test/included/unit_test.hpp"
+#include <boost/test/unit_test.hpp>
 
 using namespace std;
 namespace test = boost::test_tools;
@@ -305,7 +305,7 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestWorkerParameters) {
     BOOST_CHECK(workerA.httpLoaderHost == "host-A");
     BOOST_CHECK(workerA.httpLoaderPort == 53004);
     BOOST_CHECK(workerA.httpLoaderTmpDir == "/tmp/http/A");
- 
+
     WorkerInfo workerB;
     BOOST_REQUIRE_NO_THROW(workerB = config->workerInfo("worker-B"));
     BOOST_CHECK(workerB.name =="worker-B");

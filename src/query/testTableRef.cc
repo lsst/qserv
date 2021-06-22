@@ -30,7 +30,7 @@
 #include <fstream>
 
 // list must be included before boost/test/data/test_case.hpp, because it is used there but not included.
-// (or that file could be included after boost/test/included/unit_test.hpp, which does cause list to be
+// (or that file could be included after boost/test/unit_test.hpp, which does cause list to be
 // included. But, we like to include our headers alphabetically so I'm including list here.
 #include <list>
 #include <stdexcept>
@@ -41,8 +41,8 @@
 
 // Boost unit test header
 #define BOOST_TEST_MODULE TableRef
+#include "boost/test/unit_test.hpp"
 #include "boost/test/data/test_case.hpp"
-#include "boost/test/included/unit_test.hpp"
 
 
 using namespace lsst::qserv::query;

@@ -27,9 +27,6 @@
   * @author Daniel L. Wang, SLAC
   */
 
-// LSST headers
-#include "lsst/log/Log.h"
-
 // Qserv headers
 #include "proto/worker.pb.h"
 #include "proto/ProtoImporter.h"
@@ -43,7 +40,7 @@
 
 // Boost unit test header
 #define BOOST_TEST_MODULE QueryRunner
-#include "boost/test/included/unit_test.hpp"
+#include <boost/test/unit_test.hpp>
 
 using namespace std;
 

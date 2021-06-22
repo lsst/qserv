@@ -29,7 +29,7 @@
 
 // Boost unit test header
 #define BOOST_TEST_MODULE Url
-#include "boost/test/included/unit_test.hpp"
+#include <boost/test/unit_test.hpp>
 
 using namespace std;
 namespace test = boost::test_tools;
@@ -61,7 +61,7 @@ BOOST_AUTO_TEST_CASE(UrlTest) {
         ptr.reset(new Url("https://"));
     }, invalid_argument);
 
-    // Check for non-supported resources 
+    // Check for non-supported resources
     BOOST_CHECK_THROW({
         ptr.reset(new Url("other:///////"));
     }, invalid_argument);

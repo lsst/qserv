@@ -44,7 +44,7 @@
 
 // Boost unit test header
 #define BOOST_TEST_MODULE QueryAnaDuplicateSelectExpr
-#include "boost/test/included/unit_test.hpp"
+#include <boost/test/unit_test.hpp>
 
 // LSST headers
 #include "lsst/log/Log.h"

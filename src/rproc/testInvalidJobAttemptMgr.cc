@@ -33,7 +33,7 @@
 
 // Boost unit test header
 #define BOOST_TEST_MODULE InvalidJobAttemptMgr_1
-#include "boost/test/included/unit_test.hpp"
+#include <boost/test/unit_test.hpp>
 
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.rproc.testInvalidJobAttemptMgr");

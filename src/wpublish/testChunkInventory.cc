@@ -30,7 +30,7 @@
 
 // Boost unit test header
 #define BOOST_TEST_MODULE ChunkInventory_1
-#include "boost/test/included/unit_test.hpp"
+#include <boost/test/unit_test.hpp>
 
 namespace test = boost::test_tools;
 using lsst::qserv::sql::MockSql;
@@ -60,7 +60,7 @@ struct ChunkSql : public MockSql {
 
         Tuple t;
         t.push_back("LSST");
-        _selectDbTuples.push_back(t);        
+        _selectDbTuples.push_back(t);
     }
     virtual std::string getActiveDb() const {
         return std::string("LSST");
@@ -169,7 +169,7 @@ BOOST_AUTO_TEST_CASE(ChunkInvDiff) {
 
     ChunkInventory::ExistMap inOneOnly = oneInv - twoInv;
     ChunkInventory::ExistMap inTwoOnly = twoInv - oneInv;
- 
+
     BOOST_CHECK(inOneOnly.size() == 1);
     BOOST_CHECK(inOneOnly.count("db2") == 1);
     BOOST_CHECK(inOneOnly["db2"].count(5) == 1);

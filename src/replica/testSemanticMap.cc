@@ -38,7 +38,7 @@
 
 // Boost unit test header
 #define BOOST_TEST_MODULE SemanticMaps
-#include "boost/test/included/unit_test.hpp"
+#include <boost/test/unit_test.hpp>
 
 using namespace std;
 namespace test = boost::test_tools;
@@ -50,7 +50,7 @@ BOOST_AUTO_TEST_CASE(SemanticMapsTest) {
 
     LOGS_INFO("SemanticMaps test begins");
 
-    
+
     vector<unsigned int> chunkNumbers;
     for (unsigned int chunk = 0; chunk < 10; ++chunk) {
         chunkNumbers.push_back(chunk);
@@ -71,16 +71,16 @@ BOOST_AUTO_TEST_CASE(SemanticMapsTest) {
 
         BOOST_CHECK(chunkMap.size() == 0);
         BOOST_CHECK(constChunkMap.size() == 0);
-    
+
         BOOST_CHECK(chunkMap.empty());
         BOOST_CHECK(constChunkMap.empty());
-    
+
         BOOST_CHECK(not chunkMap.chunkExists(0));
         BOOST_CHECK(not constChunkMap.chunkExists(0));
-    
+
         BOOST_CHECK(chunkMap.chunkNumbers().size() == 0);
         BOOST_CHECK(constChunkMap.chunkNumbers().size() == 0);
-        
+
         BOOST_CHECK(chunkMap.empty());
     });
     BOOST_CHECK_THROW(chunkMap.chunk(0), out_of_range);
@@ -102,13 +102,13 @@ BOOST_AUTO_TEST_CASE(SemanticMapsTest) {
 
             BOOST_CHECK(chunkMap.size() == (chunk + 1));
             BOOST_CHECK(constChunkMap.size() == (chunk + 1));
-        
+
             BOOST_CHECK(not chunkMap.empty());
             BOOST_CHECK(not constChunkMap.empty());
-        
+
             BOOST_CHECK(chunkMap.chunkExists(chunk));
             BOOST_CHECK(constChunkMap.chunkExists(chunk));
-        
+
             BOOST_CHECK(chunkMap.chunkNumbers().size() == (chunk + 1));
             BOOST_CHECK(constChunkMap.chunkNumbers().size() == (chunk + 1));
         });
@@ -151,13 +151,13 @@ BOOST_AUTO_TEST_CASE(SemanticMapsTest) {
 
             BOOST_CHECK(chunkMap.size() == (chunk + 1));
             BOOST_CHECK(constChunkMap.size() == (chunk + 1));
-        
+
             BOOST_CHECK(not chunkMap.empty());
             BOOST_CHECK(not constChunkMap.empty());
-        
+
             BOOST_CHECK(chunkMap.chunkExists(chunk));
             BOOST_CHECK(constChunkMap.chunkExists(chunk));
-        
+
             BOOST_CHECK(chunkMap.chunkNumbers().size() == (chunk + 1));
             BOOST_CHECK(constChunkMap.chunkNumbers().size() == (chunk + 1));
         });
@@ -207,7 +207,7 @@ BOOST_AUTO_TEST_CASE(SemanticMapsTest) {
             for (auto&& database: databaseNames) {
                 auto& chunkMap = databaseChunkMap.database(database);
                 BOOST_CHECK(chunkMap.size() == chunkNumbers.size());
-                
+
                 for (auto&& chunk: chunkNumbers) {
                     BOOST_CHECK(chunkMap.chunkExists(chunk));
                     BOOST_CHECK(chunkMap.chunk(chunk) == chunk * 30.);

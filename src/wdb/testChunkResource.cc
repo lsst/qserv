@@ -27,6 +27,7 @@
   */
 
 // System headers
+#include <iostream>
 #include <memory>
 
 // Qserv headers
@@ -34,7 +35,7 @@
 
 // Boost unit test header
 #define BOOST_TEST_MODULE ChunkResource_1
-#include "boost/test/included/unit_test.hpp"
+#include <boost/test/unit_test.hpp>
 
 namespace test = boost::test_tools;
 

@@ -35,7 +35,7 @@
 
 // Boost unit test header
 #define BOOST_TEST_MODULE ApplicationParser
-#include "boost/test/included/unit_test.hpp"
+#include <boost/test/unit_test.hpp>
 
 using namespace std;
 namespace test = boost::test_tools;
@@ -130,7 +130,7 @@ BOOST_AUTO_TEST_CASE(ApplicationParser2) {
                   " f1=" + string(f1 ? "true" : "false") +
                   " f2=" + string(f2 ? "true" : "false") +
                   " f3=" + string(f3 ? "true" : "false"));
-        
+
         BOOST_CHECK_EQUAL(r1, "1");
         BOOST_CHECK_EQUAL(r2, 2);
         BOOST_CHECK_EQUAL(r3, 3u);
@@ -144,7 +144,7 @@ BOOST_AUTO_TEST_CASE(ApplicationParser2) {
         BOOST_CHECK(not f2);
         BOOST_CHECK(not f3);
     });
-    
+
     LOGS_INFO("ApplicationParser2 test ends");
 }
 
@@ -239,7 +239,7 @@ BOOST_AUTO_TEST_CASE(ApplicationParser4) {
                   " c1r1=" + c1r1 +
                   " o1="   + o1 +
                   " c1o1=" + to_string(c1o1));
-        
+
         BOOST_CHECK_EQUAL(command, "C1");
         BOOST_CHECK_EQUAL(r1, "1");
         BOOST_CHECK_EQUAL(r2, 2);
@@ -328,7 +328,7 @@ BOOST_AUTO_TEST_CASE(ApplicationParser4) {
     //
     // Values of the input arguments tested:
     //
-    //  "C3"  1    2     3     4.4   5.5   1             "o1"   31 
+    //  "C3"  1    2     3     4.4   5.5   1             "o1"   31
 
     int c3o1 = -1;
 

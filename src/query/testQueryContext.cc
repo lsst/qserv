@@ -25,7 +25,7 @@
 #include <fstream>
 
 // list must be included before boost/test/data/test_case.hpp, because it is used there but not included.
-// (or that file could be included after boost/test/included/unit_test.hpp, which does cause list to be
+// (or that file could be included after boost/test/unit_test.hpp, which does cause list to be
 // included. But, we like to include our headers alphabetically so I'm including list here.
 #include <list>
 #include <stdexcept>
@@ -41,18 +41,70 @@
 
 // Boost unit test header
 #define BOOST_TEST_MODULE TableRef
-#include "boost/test/data/test_case.hpp"
-#include "boost/test/included/unit_test.hpp"
+#include "boost/test/unit_test.hpp"
 
 
 using namespace lsst::qserv::query;
 
 
+const std::string testPlugins(R"BEGINEND({
+    "\/css_meta": "",
+    "\/css_meta\/version": "1",
+    "\/DBS": "",
+    "\/DBS\/LSST": "READY",
+    "\/DBS\/LSST\/LOCK": "",
+    "\/DBS\/LSST\/LOCK\/comments": "",
+    "\/DBS\/LSST\/LOCK\/estimatedDuration": "",
+    "\/DBS\/LSST\/LOCK\/lockedBy": "",
+    "\/DBS\/LSST\/LOCK\/lockedTime": "",
+    "\/DBS\/LSST\/LOCK\/mode": "",
+    "\/DBS\/LSST\/LOCK\/reason": "",
+    "\/DBS\/LSST\/partitioningId": "0000000000",
+    "\/DBS\/LSST\/releaseStatus": "UNRELEASED",
+    "\/DBS\/LSST\/storageClass": "L2",
+    "\/DBS\/LSST\/TABLES": "",
+    "\/DBS\/LSST\/TABLES\/Object": "READY",
+    "\/DBS\/LSST\/TABLES\/Object\/compression": "0",
+    "\/DBS\/LSST\/TABLES\/Object\/match": "0",
+    "\/DBS\/LSST\/TABLES\/Object\/partitioning": "",
+    "\/DBS\/LSST\/TABLES\/Object\/partitioning\/dirColName": "objectIdObjTest",
+    "\/DBS\/LSST\/TABLES\/Object\/partitioning\/dirTable": "Object",
+    "\/DBS\/LSST\/TABLES\/Object\/partitioning\/latColName": "decl_Test",
+    "\/DBS\/LSST\/TABLES\/Object\/partitioning\/lonColName": "ra_Test",
+    "\/DBS\/LSST\/TABLES\/Object\/partitioning\/subChunks": "1",
+    "\/DBS\/LSST\/TABLES\/Source": "READY",
+    "\/DBS\/LSST\/TABLES\/Source\/compression": "0",
+    "\/DBS\/LSST\/TABLES\/Source\/match": "0",
+    "\/DBS\/LSST\/TABLES\/Source\/partitioning": "",
+    "\/DBS\/LSST\/TABLES\/Source\/partitioning\/dirColName": "objectIdSourceTest",
+    "\/DBS\/LSST\/TABLES\/Source\/partitioning\/dirTable": "Object",
+    "\/DBS\/LSST\/TABLES\/Source\/partitioning\/latColName": "declObjectTest",
+    "\/DBS\/LSST\/TABLES\/Source\/partitioning\/lonColName": "raObjectTest",
+    "\/DBS\/LSST\/TABLES\/Source\/partitioning\/subChunks": "0",
+    "\/DBS\/Somedb": "READY",
+    "\/DBS\/Somedb\/LOCK": "",
+    "\/DBS\/Somedb\/LOCK\/comments": "",
+    "\/DBS\/Somedb\/LOCK\/estimatedDuration": "",
+    "\/DBS\/Somedb\/LOCK\/lockedBy": "",
+    "\/DBS\/Somedb\/LOCK\/lockedTime": "",
+    "\/DBS\/Somedb\/LOCK\/mode": "",
+    "\/DBS\/Somedb\/LOCK\/reason": "",
+    "\/DBS\/Somedb\/partitioningId": "0000000001",
+    "\/DBS\/Somedb\/releaseStatus": "UNRELEASED",
+    "\/DBS\/Somedb\/storageClass": "L2",
+    "\/DBS\/Somedb\/TABLES": "",
+    "\/DBS\/Somedb\/TABLES\/Bar": "READY",
+    "\/PARTITIONING": "",
+    "\/PARTITIONING\/_0000000000": "",
+    "\/PARTITIONING\/_0000000000\/nStripes": "60",
+    "\/PARTITIONING\/_0000000000\/nSubStripes": "18",
+    "\/PARTITIONING\/_0000000000\/overlap": "0.025"
+})BEGINEND");
+
+
 struct TestFixture {
     TestFixture(void) : metaSession(0) {
-        std::string kvMapPath = "./core/modules/qana/testPlugins.kvmap";
-        std::ifstream stream(kvMapPath);
-        css = lsst::qserv::css::CssAccess::createFromStream(stream, ".");
+        css = lsst::qserv::css::CssAccess::createFromData(testPlugins, ".");
     }
 
     ~TestFixture(void) {}

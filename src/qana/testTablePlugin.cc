@@ -52,7 +52,7 @@
 // Boost unit test header
 #define BOOST_TEST_MODULE TablePlugin
 #include "boost/test/data/test_case.hpp"
-#include "boost/test/included/unit_test.hpp"
+#include <boost/test/unit_test.hpp>
 
 using namespace lsst::qserv;
 using lsst::qserv::query::TestFactory;

@@ -25,6 +25,7 @@
 #include <stdexcept>
 #include <string>
 #include <vector>
+#include <list>
 
 // Qserv headers
 #include "query/BetweenPredicate.h"
@@ -37,8 +38,7 @@
 
 // Boost unit test header
 #define BOOST_TEST_MODULE TableRef
-#include "boost/test/data/test_case.hpp"
-#include "boost/test/included/unit_test.hpp"
+#include "boost/test/unit_test.hpp"
 
 
 using namespace lsst::qserv;

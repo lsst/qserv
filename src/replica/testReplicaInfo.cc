@@ -32,7 +32,7 @@
 
 // Boost unit test header
 #define BOOST_TEST_MODULE ReplicaInfo
-#include "boost/test/included/unit_test.hpp"
+#include <boost/test/unit_test.hpp>
 
 using namespace std;
 namespace test = boost::test_tools;
@@ -62,14 +62,14 @@ BOOST_AUTO_TEST_CASE(ReplicaInfoTest) {
     BOOST_CHECK(diff(one, two, inFirstOnly));
     BOOST_CHECK(inFirstOnly.size() == 2);
     BOOST_CHECK(inFirstOnly.size() == 2 &&
-                (inFirstOnly[0].chunk == 1) && (inFirstOnly[0].database == "db2") && 
+                (inFirstOnly[0].chunk == 1) && (inFirstOnly[0].database == "db2") &&
                 (inFirstOnly[1].chunk == 3) && (inFirstOnly[1].database == "db3"));
 
     QservReplicaCollection inSecondOnly;
     BOOST_CHECK(diff(two, one, inSecondOnly));
     BOOST_CHECK(inSecondOnly.size() == 2);
     BOOST_CHECK(inSecondOnly.size() == 2 &&
-                (inSecondOnly[0].chunk == 3) && (inSecondOnly[0].database == "db2") && 
+                (inSecondOnly[0].chunk == 3) && (inSecondOnly[0].database == "db2") &&
                 (inSecondOnly[1].chunk == 4) && (inSecondOnly[1].database == "db3"));
 
     // Two-way comparison
@@ -77,11 +77,11 @@ BOOST_AUTO_TEST_CASE(ReplicaInfoTest) {
     BOOST_CHECK(diff2(one, two, inFirstOnly, inSecondOnly));
     BOOST_CHECK(inFirstOnly.size() == 2);
     BOOST_CHECK(inFirstOnly.size() == 2 &&
-                (inFirstOnly[0].chunk == 1) && (inFirstOnly[0].database == "db2") && 
+                (inFirstOnly[0].chunk == 1) && (inFirstOnly[0].database == "db2") &&
                 (inFirstOnly[1].chunk == 3) && (inFirstOnly[1].database == "db3"));
     BOOST_CHECK(inSecondOnly.size() == 2);
     BOOST_CHECK(inSecondOnly.size() == 2 &&
-                (inSecondOnly[0].chunk == 3) && (inSecondOnly[0].database == "db2") && 
+                (inSecondOnly[0].chunk == 3) && (inSecondOnly[0].database == "db2") &&
                 (inSecondOnly[1].chunk == 4) && (inSecondOnly[1].database == "db3"));
 
     LOGS_INFO("ReplicaInfo test ends");

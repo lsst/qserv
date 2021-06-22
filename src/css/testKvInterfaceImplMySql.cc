@@ -44,6 +44,7 @@
   */
 
 // System headers
+#include <iomanip>
 #include <iostream>
 #include <sstream>
 #include <string>
@@ -56,7 +57,7 @@
 
 // Boost unit test header
 #define BOOST_TEST_MODULE Css_1
-#include "boost/test/included/unit_test.hpp"
+#include <boost/test/unit_test.hpp>
 
 // Qserv headers
 #include "css/CssError.h"

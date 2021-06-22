@@ -28,7 +28,7 @@
 
 // Boost unit test header
 #define BOOST_TEST_MODULE ConnectionParamsTest
-#include "boost/test/included/unit_test.hpp"
+#include <boost/test/unit_test.hpp>
 
 using namespace std;
 namespace test = boost::test_tools;
@@ -85,7 +85,7 @@ BOOST_AUTO_TEST_CASE(ConnectionParamsTest) {
     database::mysql::ConnectionParams assigned;
     assigned = normallyConstructed;
     BOOST_CHECK(assigned == normallyConstructed);
- 
+
     // The minimal connection string. Only the name of a database is
     // required. The rest is filled with the default values passed into
     // the constructor. These default values will be used through the rest
@@ -317,8 +317,8 @@ BOOST_AUTO_TEST_CASE(ConnectionParamsTest) {
             LOGS_INFO("ConnectionParamsTest  expected exception: " << ex.what());
             throw;
         }
-    }, invalid_argument);    
-        
+    }, invalid_argument);
+
     LOGS_INFO("ConnectionParamsTest test ends");
 }
 
