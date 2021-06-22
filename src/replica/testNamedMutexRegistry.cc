@@ -41,7 +41,7 @@
 
 // Boost unit test header
 #define BOOST_TEST_MODULE NamedMutexRegistry
-#include "boost/test/included/unit_test.hpp"
+#include <boost/test/unit_test.hpp>
 
 using namespace std;
 using namespace boost::unit_test;
@@ -216,14 +216,14 @@ BOOST_AUTO_TEST_CASE(NamedMutexRegistryTest3) {
         LOGS_INFO("NamedMutexRegistryTest3 [" << plan.name << "] numThreads: " << plan.numThreads);
         LOGS_INFO("NamedMutexRegistryTest3 [" << plan.name << "] keepLockTimeMs: " << plan.keepLockTimeMs);
         LOGS_INFO("NamedMutexRegistryTest3 [" << plan.name << "] waitAfterReleaseLockTimeMs: " << plan.waitAfterReleaseLockTimeMs);
- 
+
         unique_ptr<NamedMutexRegistry> registry;
         BOOST_REQUIRE_NO_THROW({
             registry = make_unique<NamedMutexRegistry>();
         });
         if (registry != nullptr) {
 
-            // Contexts simulate data objects (simple counters) protected by mutexes. 
+            // Contexts simulate data objects (simple counters) protected by mutexes.
             struct KeyCounterContext {
                 string const key = Generators::uniqueId();
                 unsigned int counter = 0;

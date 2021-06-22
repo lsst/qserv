@@ -36,7 +36,7 @@
 
 // Boost unit test header
 #define BOOST_TEST_MODULE JsonLibrary
-#include "boost/test/included/unit_test.hpp"
+#include <boost/test/unit_test.hpp>
 
 using namespace std;
 namespace test = boost::test_tools;

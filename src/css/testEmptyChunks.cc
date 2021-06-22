@@ -23,6 +23,8 @@
 
 // System headers
 #include <cassert>
+#include <fstream>
+#include <iostream>
 #include <unistd.h>
 
 // Third-party headers
@@ -33,7 +35,7 @@
 
 // Boost unit test header
 #define BOOST_TEST_MODULE testEmptyChunks
-#include "boost/test/included/unit_test.hpp"
+#include <boost/test/unit_test.hpp>
 
 namespace test = boost::test_tools;
 
@@ -125,4 +127,3 @@ BOOST_AUTO_TEST_CASE(Basic) {
 }
 
 BOOST_AUTO_TEST_SUITE_END()
-

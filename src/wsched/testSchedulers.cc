@@ -50,7 +50,7 @@
 
 // Boost unit test header
 #define BOOST_TEST_MODULE WorkerScheduler
-#include "boost/test/included/unit_test.hpp"
+#include "boost/test/unit_test.hpp"
 
 namespace test = boost::test_tools;
 namespace wsched = lsst::qserv::wsched;
@@ -102,6 +102,9 @@ struct SchedulerFixture {
             f->mutable_subchunks()->add_id(100+i);
             f->set_resulttable("r_341");
         }
+        t->set_scaninteractive(false);
+        t->set_attemptcount(0);
+        t->set_czarid(0);
         ++counter;
         return t;
     }
@@ -113,6 +116,9 @@ struct SchedulerFixture {
         t->set_jobid(jobId);
         t->set_chunkid(seq);
         t->set_db("moose");
+        t->set_scaninteractive(false);
+        t->set_attemptcount(0);
+        t->set_czarid(0);
         ++counter;
         return t;
     }
