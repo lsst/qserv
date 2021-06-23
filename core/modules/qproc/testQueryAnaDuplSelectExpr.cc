@@ -108,7 +108,7 @@ BOOST_AUTO_TEST_CASE(Alias) {
 BOOST_AUTO_TEST_CASE(CaseInsensitive) {
     std::string sql = "select chunkId, CHUNKID from LSST.Object where bMagF > 20.0 GROUP BY chunkId;";
 
-    std::string expected_err_msg = build_exception_msg("2", "chunkid", " 1 2");
+    std::string expected_err_msg = build_exception_msg("2", "`chunkid`", " 1 2");
 
     std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, sql, true);
     BOOST_CHECK_EQUAL(qs->getError(), expected_err_msg);
@@ -136,18 +136,5 @@ BOOST_AUTO_TEST_CASE(Simple) {
     BOOST_CHECK(context);
 }
 
-BOOST_AUTO_TEST_CASE(SameNameDifferentTable) {
-    std::string sql = "SELECT o1.objectId, o2.objectId, scisql_angSep(o1.ra_PS, o1.decl_PS, o2.ra_PS, o2.decl_PS) AS distance "
-            "FROM Object o1, Object o2 "
-            "WHERE scisql_angSep(o1.ra_PS, o1.decl_PS, o2.ra_PS, o2.decl_PS) < 0.05 "
-            "AND  o1.objectId <> o2.objectId;";
-
-    std::string expected_err_msg = build_exception_msg("2", "objectid", " 1 2");
-
-     std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, sql, true);
-     BOOST_CHECK_EQUAL(qs->getError(), expected_err_msg);
-     std::shared_ptr<QueryContext> context = qs->dbgGetContext();
-     BOOST_CHECK(context);
-}
 
 BOOST_AUTO_TEST_SUITE_END()
