@@ -1,0 +1,7 @@
+{
+    "image": "qserv-build",
+	"workspaceFolder": "/home/qserv",
+    "mounts": ["source=qserv-user-volume,target=/home/qserv,type=volume",
+               "source=/var/run/docker.sock,target=/var/run/docker.sock,type=bind"],
+    "runArgs": ["--network=host", "--security-opt", "seccomp=unconfined", "--privileged"],
+}

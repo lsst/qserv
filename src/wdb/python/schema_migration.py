@@ -8,7 +8,6 @@ __all__ = ["make_migration_manager"]
 #--------------------------------
 import logging
 import os
-import re
 
 #-----------------------------
 # Imports for other modules --
@@ -31,10 +30,6 @@ class WdbMigrationManager(SchemaMigMgr):
     """Class implementing schema migration for qservw_worker database.
     """
 
-    # migration script has name "migrate-N-to-M.sql" or "migrate-N-to-M-something.sql"
-    # when applying scripts for any given version N the names are sorted first.
-    _mig_name_re = re.compile(r"migrate-(?P<from>\d+)-to-(?P<to>\d+)(-.*)?.sql")
-
     def __init__(self, name, engine, scripts_dir):
 
         SchemaMigMgr.__init__(self)
@@ -45,29 +40,16 @@ class WdbMigrationManager(SchemaMigMgr):
         scripts_dir = os.path.join(scripts_dir, name)
 
         # find all migration scripts, add full script path to each
-        scripts = self.findScripts(scripts_dir, self._script_match)
+        scripts = self.find_scripts(scripts_dir, self.script_match)
         self.scripts = [(v0, v1, fname, os.path.join(scripts_dir, fname))
                         for v0, v1, fname in scripts]
-
-    @classmethod
-    def _script_match(cls, fname):
-        """Match script name against pattern.
-        Returns
-        -------
-        None if no match, pair of version numbers if there is match.
-        """
-        match = cls._mig_name_re.match(fname)
-        if match:
-            v_from = int(match.group('from'))
-            v_to = int(match.group('to'))
-            return (v_from, v_to)
-        return None
 
     def current_version(self):
         """Returns current schema version.
         Returns
         -------
-        Integer number
+        version : `int` or ``Uninitialized``
+            The current schema version.
         """
 
         # Initial qservw_worker implementation did not have version number stored at all,
@@ -83,32 +65,6 @@ class WdbMigrationManager(SchemaMigMgr):
             if row:
                 _log.debug("found version in database: %s", row[0])
                 return int(row[0])
-
-    def latest_version(self):
-        """Returns latest known schema version.
-        Returns
-        -------
-        Integer number
-        """
-        if self.scripts:
-            version = max(script[1] for script in self.scripts)
-            _log.debug("latest version from migration scripts: %s", version)
-        else:
-            # no migration scripts - current version is latest
-            version = self.current_version()
-            _log.debug("no migration scripts, returning current version %s", version)
-        return version
-
-    def migrations(self):
-        """Returns all known migrations.
-        Returns
-        -------
-        List of tuples, each tuple contains three elements:
-        - starting schema version (int)
-        - final schema version (usually starting + 1)
-        - migration script name (or any arbitrary string)
-        """
-        return [script[:3] for script in self.scripts]
 
     def migrate(self, version=None, do_migrate=False):
         """Perform schema migration from current version to given version.

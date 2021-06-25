@@ -30,6 +30,7 @@
 #include <cassert>
 #include <deque>
 #include <iostream>
+#include <thread>
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -62,17 +63,23 @@ void fetchDbs(string const& instanceName,
 
     string const query = "SELECT db FROM qservw_" + instanceName + ".Dbs";
 
-    LOGS(_log, LOG_LVL_DEBUG, "Launching query: " << query);
-
-    shared_ptr<SqlResultIter> resultP = sc.getQueryIter(query);
-    assert(resultP.get());
-
-    if (resultP->getErrorObject().isSet()) {
-        SqlErrorObject& seo = resultP->getErrorObject();
-        LOGS(_log, LOG_LVL_ERROR, "ChunkInventory can't get list of publishable dbs.");
-        LOGS(_log, LOG_LVL_ERROR, seo.printErrMsg());
-        return;
+    shared_ptr<SqlResultIter> resultP;
+    // TODO we probably want a more elegant backoff mechanism than this.
+    // However, normally xrootd will fail & exit here if it can't connect so
+    // this is maybe just a little bit better than that.
+    while (true) {
+        LOGS(_log, LOG_LVL_DEBUG, "Launching query: " << query);
+        resultP = sc.getQueryIter(query);
+        assert(resultP.get());
+        if (resultP->getErrorObject().isSet()) {
+            SqlErrorObject& seo = resultP->getErrorObject();
+            LOGS(_log, LOG_LVL_WARN, "Waiting to get list of publishable dbs: " << seo.errNo() << ": " << seo.errMsg());
+            this_thread::sleep_for(1s);
+        } else {
+            break;
+        }
     }
+
     bool nothing = true;
     for(; !resultP->done(); ++(*resultP)) {
         dbs.push_back((**resultP)[0]);
