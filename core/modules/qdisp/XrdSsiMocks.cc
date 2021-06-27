@@ -140,14 +140,13 @@ public:
 
         // Initialize a null message we will return as a response
         //
-        _protoHeader = google::protobuf::Arena::CreateMessage<lsst::qserv::proto::ProtoHeader>(_arena.get());
-        lsst::qserv::proto::ProtoHeader* ph = _protoHeader;
+        lsst::qserv::proto::ProtoHeader* ph =
+                                         new lsst::qserv::proto::ProtoHeader;
         ph->set_protocol(2);
         ph->set_size(0);
         ph->set_md5(std::string("d41d8cd98f00b204e9800998ecf8427"));
         ph->set_wname("localhost");
         ph->set_largeresult(false);
-        ph->set_endnodata(true);
         std::string pHdrString;
         ph->SerializeToString(&pHdrString);
         _msgBuf = lsst::qserv::proto::ProtoHeaderWrap::wrap(pHdrString);
@@ -180,13 +179,7 @@ private:
         SetErrResponse(eMsg, eNum);
     }
 
-    void _ReplyStream() {
-        auto stat = _setMetaData(_msgBuf.size());
-        if (stat != Status::wasPosted) {
-            LOGS(_log, LOG_LVL_ERROR, "Agent::_ReplyStream _setMetadata failed " << stat);
-        }
-        SetResponse(this);
-    }
+    void _ReplyStream() {SetResponse(this);}
 
     void _StrmResp(XrdSsiErrInfo* eP, char* buff, int blen) {
         std::cerr<<"Stream: cleint asks for " <<blen <<" bytes, have "
@@ -218,16 +211,6 @@ private:
         _isCancelled(false);
     }
 
-    Status _setMetaData(size_t sz) {
-        string protoHeaderString;
-        _protoHeader->set_size(sz);
-        _protoHeader->set_endnodata(sz == 0);
-        _protoHeader->SerializeToString(&protoHeaderString);
-        _metadata = lsst::qserv::proto::ProtoHeaderWrap::wrap(protoHeaderString);
-        return SetMetadata(_metadata.data(), _metadata.size());
-    }
-
-
     std::recursive_mutex _rrMutex;
     lsst::qserv::qdisp::QueryRequest* _reqP;
     std::string _rName;
@@ -239,9 +222,6 @@ private:
     bool        _noData;
     bool        _isFIN;
     bool        _active;
-    std::string _metadata;
-    lsst::qserv::proto::ProtoHeader* _protoHeader;
-    std::unique_ptr<google::protobuf::Arena> _arena{make_unique<google::protobuf::Arena>()};
 };
 }
 
@@ -291,6 +271,7 @@ void XrdSsiServiceMock::ProcessRequest(XrdSsiRequest  &reqRef,
     }
 
     // Get the query request object for this request and process it.
+    //
     QueryRequest * r = dynamic_cast<QueryRequest *>(&reqRef);
     if (r) {
         Agent* aP = new Agent(r, resRef.rName, reqNum);

@@ -129,6 +129,7 @@ protected:
 
     // Cancellation
     std::atomic<bool> _cancelled {false}; ///< Lock to make sure cancel() is only called once.
+    util::InstanceCount _instC{"JobQuery"};
 
     std::shared_ptr<QdispPool> _qdispPool;
 };

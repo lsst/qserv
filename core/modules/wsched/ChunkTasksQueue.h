@@ -28,7 +28,6 @@
 #include <list>
 #include <map>
 #include <mutex>
-#include <vector>
 
 // Qserv headers
 #include "memman/MemMan.h"
@@ -139,7 +138,6 @@ public:
     ChunkTasksQueue& operator=(ChunkTasksQueue const&) = delete;
 
     void queueTask(wbase::Task::Ptr const& task) override;
-    void queueTask(std::vector<wbase::Task::Ptr> const& tasks) override;
     wbase::Task::Ptr getTask(bool useFlexibleLock) override;
     bool empty() const override;
     std::size_t getSize() const override { return _taskCount; }

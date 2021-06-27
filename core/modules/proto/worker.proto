@@ -73,7 +73,6 @@ message TaskMsg {
     required int32 jobid = 11;
     required bool scaninteractive = 12;
     required int32 attemptcount = 13;
-    required uint32 czarid = 14;
 }
 
 // Result message received from worker
@@ -91,13 +90,14 @@ message ProtoHeader {
     optional bytes md5 = 3;
     optional string wname = 4;
     required bool largeresult = 5;
-    required bool endnodata = 6; // True if this header is the end, no more data. size should be 0.
 }
 
 message ColumnSchema {
     optional string name = 1; // Optional to allow type-only transmission
-    required string sqltype = 2;
-    optional int32 mysqltype = 3;
+    required bool deprecated_hasdefault = 2; // DEPRECATED (but 'required', so will have to continue to be set)
+    optional bytes deprecated_defaultvalue = 3; // DEPRECATED
+    required string sqltype = 4;
+    optional int32 mysqltype = 5;
 }
 message RowSchema {
     repeated ColumnSchema columnschema = 1;
@@ -108,16 +108,18 @@ message RowBundle {
 }
 
 message Result {
-    optional int64 session = 1;
-    required RowSchema rowschema = 2;
-    optional int32 errorcode = 3;
-    optional string errormsg = 4;
-    repeated RowBundle row = 5;
-    required uint64 queryid = 6;
-    required int32 jobid = 7;
-    required uint32 rowcount = 8;
-    required uint64 transmitsize = 9;
-    required int32 attemptcount = 10;
+    required bool continues = 1; // Are there additional Result messages
+    optional int64 session = 2;
+    required RowSchema rowschema = 3;
+    optional int32 errorcode = 4;
+    optional string errormsg = 5;
+    repeated RowBundle row = 6;
+    required uint64 queryid = 7;
+    required int32 jobid = 8;
+    required bool largeresult = 9;
+    required uint32 rowcount = 10;
+    required uint64 transmitsize = 11;
+    required int32 attemptcount = 12;
 }
 
 // Result protocol 2:

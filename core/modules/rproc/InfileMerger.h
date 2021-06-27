@@ -195,11 +195,8 @@ public:
     /// Size of ProtoHeader message
     /// ProtoHeader message
     /// Result message
-    /// @return true if merge was successfully imported.
-    bool merge(std::shared_ptr<proto::WorkerResponse> response);
-
-    /// Indicate the the merge for all of the jobs in jobIds is complete.
-    void mergeCompleteFor(std::set<int> jobIds);
+    /// @return true if merge was successfully imported (queued)
+    bool merge(std::shared_ptr<proto::WorkerResponse> response, bool last);
 
     /// @return error details if finalize() returns false
     InfileMergerError const& getError() const { return _error; }

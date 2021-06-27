@@ -57,7 +57,6 @@ public:
 
     // Queue management
     void queueTask(wbase::Task::Ptr const& a) override;
-    void queueTask(std::vector<wbase::Task::Ptr> const& tasks) override;
     wbase::Task::Ptr getTask(bool useFlexibleLock) override;
     bool empty() const override;
     bool ready(bool useFlexibleLock) override;

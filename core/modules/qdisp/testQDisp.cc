@@ -83,7 +83,7 @@ public:
         : TaskMsgFactory(0), mockPayload(mockPayload_) {}
     void serializeMsg(ChunkQuerySpec const& s,
                       std::string const& chunkResultName,
-                      QueryId queryId, int jobId, int attemptCount, qmeta::CzarId czarId,
+                      uint64_t queryId, int jobId, int attemptCount,
                       std::ostream& os) override {
         os << mockPayload;
     }
@@ -99,9 +99,8 @@ qdisp::JobDescription::Ptr makeMockJobDescription(qdisp::Executive::Ptr const& e
     auto mockTaskMsgFactory = std::make_shared<qproc::MockTaskMsgFactory>(msg);
     auto cqs = std::make_shared<qproc::ChunkQuerySpec>(); // dummy, unused in this case.
     std::string chunkResultName = "dummyResultTableName";
-    qmeta::CzarId const czarId = 1;
-    auto job = qdisp::JobDescription::create(czarId, ex->getId(), sequence, ru, mHandler,
-                                             mockTaskMsgFactory, cqs, chunkResultName, true);
+    auto job = qdisp::JobDescription::create(ex->getId(), sequence, ru, mHandler,
+                                                        mockTaskMsgFactory, cqs, chunkResultName, true);
     return job;
 }
 

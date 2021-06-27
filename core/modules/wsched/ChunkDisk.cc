@@ -89,13 +89,6 @@ wbase::Task::Ptr ChunkDisk::MinHeap::pop() {
 }
 
 
-void ChunkDisk::queueTask(std::vector<wbase::Task::Ptr> const& tasks) {
-    for (auto const& task:tasks) {
-        queueTask(task);
-    }
-}
-
-
 void ChunkDisk::queueTask(wbase::Task::Ptr const& a) {
     std::lock_guard<std::mutex> lock(_queueMutex);
     int chunkId = a->getChunkId();

@@ -207,7 +207,7 @@ void QueriesAndChunks::removeDead() {
         while (iter != _deadQueries.end()) {
             auto const& statPtr = iter->second;
             if (statPtr->isDead(_deadAfter, now)) {
-                LOGS(_log, LOG_LVL_TRACE, "QueriesAndChunks::removeDead added to list");
+                LOGS(_log, LOG_LVL_DEBUG, "QueriesAndChunks::removeDead added to list");
                 dList.push_back(statPtr);
                 iter = _deadQueries.erase(iter);
             } else {
@@ -219,10 +219,6 @@ void QueriesAndChunks::removeDead() {
     for (auto const& dead : dList) {
         removeDead(dead);
     }
-    if (LOG_CHECK_LVL(_log, LOG_LVL_DEBUG)) {
-        lock_guard<mutex> gdend(_deadMtx);
-        LOGS(_log, LOG_LVL_DEBUG, "QueriesAndChunks::removeDead end deadQueries size=" << _deadQueries.size());
-    }
 }
 
 
@@ -233,7 +229,7 @@ void QueriesAndChunks::removeDead(QueryStatistics::Ptr const& queryStats) {
     unique_lock<mutex> gS(queryStats->_qStatsMtx);
     QueryId qId = queryStats->_queryId;
     gS.unlock();
-    LOGS(_log, LOG_LVL_TRACE, "Queries::removeDead");
+    LOGS(_log, LOG_LVL_DEBUG, "Queries::removeDead");
 
     lock_guard<mutex> gQ(_queryStatsMtx);
     _queryStats.erase(qId);

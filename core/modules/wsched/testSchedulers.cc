@@ -35,11 +35,8 @@
 #include "memman/MemManNone.h"
 #include "proto/ScanTableInfo.h"
 #include "proto/worker.pb.h"
-#include "util/Command.h"
 #include "util/EventThread.h"
-#include "wbase/SendChannelShared.h"
 #include "wbase/Task.h"
-#include "wcontrol/TransmitMgr.h"
 #include "wpublish/QueriesAndChunks.h"
 #include "wsched/ChunkDisk.h"
 #include "wsched/ChunkTasksQueue.h"
@@ -62,25 +59,14 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.wsched.testSchedulers");
 using lsst::qserv::proto::TaskMsg;
 using lsst::qserv::wbase::Task;
 using lsst::qserv::wbase::SendChannel;
-using lsst::qserv::wbase::SendChannelShared;
 
 double const oneHr = 60.0;
 
-lsst::qserv::wcontrol::TransmitMgr::Ptr locTransmitMgr =
-        std::make_shared<lsst::qserv::wcontrol::TransmitMgr>(50);
-
-std::vector<SendChannelShared::Ptr> locSendSharedPtrs;
-
 Task::Ptr makeTask(std::shared_ptr<TaskMsg> tm) {
-    auto sendC = std::make_shared<SendChannel>();
-    auto sc = SendChannelShared::create(sendC, locTransmitMgr);
-    locSendSharedPtrs.push_back(sc);
-    Task::Ptr task(new Task(tm, "", 0, sc));
+    Task::Ptr task(new Task(tm, std::shared_ptr<SendChannel>()));
     task->setSafeToMoveRunning(true); // Can't wait for MemMan in unit tests.
     return task;
 }
-
-
 struct SchedulerFixture {
     typedef std::shared_ptr<TaskMsg> TaskMsgPtr;
 
@@ -692,8 +678,7 @@ BOOST_AUTO_TEST_CASE(BlendScheduleThreadLimitingTest) {
     BOOST_CHECK(f.blend->ready() == false);
     std::vector<Task::Ptr> scanTasks;
     for (int j=0; j<7; ++j) {
-        auto tsk = makeTask(newTaskMsgScan(j, lsst::qserv::proto::ScanInfo::Rating::MEDIUM, f.qIdInc++, 0));
-        f.blend->queCmd(tsk);
+        f.blend->queCmd(makeTask(newTaskMsgScan(j, lsst::qserv::proto::ScanInfo::Rating::MEDIUM, f.qIdInc++, 0)));
         if (j < 6) {
             BOOST_CHECK(f.blend->ready() == true);
             auto cmd = f.blend->getCmd(false);
@@ -1124,6 +1109,5 @@ BOOST_AUTO_TEST_CASE(ChunkTasksQueueTest) {
     BOOST_CHECK(ctl.getActiveChunkId() == -1);
     LOGS(_log, LOG_LVL_DEBUG, "ChunkTasksQueueTest done");
 }
-
 
 BOOST_AUTO_TEST_SUITE_END()

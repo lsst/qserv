@@ -138,108 +138,81 @@ void BlendScheduler::_sortScanSchedulers() {
 
 
 void BlendScheduler::queCmd(util::Command::Ptr const& cmd) {
-    std::vector<util::Command::Ptr> vect;
-    vect.push_back(cmd);
-    queCmd(vect);
-}
-
-
-void BlendScheduler::queCmd(std::vector<util::Command::Ptr> const& cmds) {
-    // Do the book keeping and determine which queue the tasks in 'cmds'
-    // should be added to. All tasks in 'cmds' must belong to the same
-    // user query and will go to the same scheduler.
-    bool first = true;
-    std::vector<util::Command::Ptr> taskCmds;
-    SchedulerBase::Ptr targSched = nullptr;
-    bool onInteractive = false;
-    for (auto const& cmd : cmds) {
-        wbase::Task::Ptr task = dynamic_pointer_cast<wbase::Task>(cmd);
-        if (task == nullptr) {
-            // These should be few and far between.
-            LOGS(_log, LOG_LVL_INFO, "BlendScheduler::queCmd got control command");
-            if (cmds.size() > 1) {
-                throw Bug("BlendScheduler::queCmd cmds.size() > 1 when no task was set.");
-            }
-            {
-                util::LockGuardTimed guard(util::CommandQueue::_mx, "BlendScheduler::queCmd a");
-                _ctrlCmdQueue.queCmd(cmd);
-            }
-            notify(true); // notify all=true
-            continue;
+    wbase::Task::Ptr task = dynamic_pointer_cast<wbase::Task>(cmd);
+    if (task == nullptr) {
+        LOGS(_log, LOG_LVL_INFO, "BlendScheduler::queCmd got control command");
+        {
+            util::LockGuardTimed guard(util::CommandQueue::_mx, "BlendScheduler::queCmd a");
+            _ctrlCmdQueue.queCmd(cmd);
         }
-
-        if (first) {
-            QSERV_LOGCONTEXT_QUERY_JOB(task->getQueryId(), task->getJobId());
-        }
-        if (task->msg == nullptr) {
-            throw Bug("BlendScheduler::queCmd task with null message!");
-        }
-
-        util::LockGuardTimed guard(util::CommandQueue::_mx, "BlendScheduler::queCmd b");
-        // Check for scan tables. The information for all tasks should be the same
-        // as they all belong to the same query, so only examine the first task.
-        if (first) {
-            first = false;
-
-            auto const& scanTables = task->getScanInfo().infoTables;
-            bool interactive = task->getScanInteractive();
-            if (scanTables.size() <= 0 || interactive) {
-                // If there are no scan tables, no point in putting on a shared scan.
-                LOGS(_log, LOG_LVL_DEBUG, "Blend chose group scanTables.size=" << scanTables.size()
-                        << " interactive=" << interactive);
-                onInteractive = true;
-                targSched = _group;
-            } else {
-                onInteractive = false;
-                int scanPriority = task->getScanInfo().scanRating;
-                if (LOG_CHECK_LVL(_log, LOG_LVL_DEBUG)) {
-                    ostringstream ss;
-                    ss << "Blend chose scan for priority=" << scanPriority << " : ";
-                    for (auto scanTbl : scanTables) {
-                        ss << scanTbl.db + "." + scanTbl.table + " ";
-                    }
-                    LOGS(_log, LOG_LVL_DEBUG, ss.str());
-                }
-                {   // Find the scheduler responsible for this 'scanPriority'.
-                    lock_guard<mutex> lg(_schedMtx);
-                    for (auto const& sched : _schedulers) {
-                        ScanScheduler::Ptr scan = dynamic_pointer_cast<ScanScheduler>(sched);
-                        if (scan != nullptr) {
-                            if (scan->isRatingInRange(scanPriority)) {
-                                targSched = scan;
-                                break;
-                            }
-                        }
-                    }
-                }
-                // If the user query for this task has been booted, put this task on the snail scheduler.
-                auto queryStats = _queries->getStats(task->getQueryId());
-                if (queryStats && queryStats->getQueryBooted()) {
-                    targSched = _scanSnail;
-                }
-                if (targSched == nullptr) {
-                    // Task wasn't assigned with a scheduler, assuming it is terribly slow.
-                    // Assign it to the slowest scheduler so it does the least damage to other queries.
-                    LOGS_WARN("Task had unexpected scanRating="
-                            << scanPriority << " adding to scanSnail");
-                    targSched = _scanSnail;
-                }
-            }
-        }
-        task->setOnInteractive(onInteractive);
-        task->setTaskScheduler(targSched);
-        _queries->queuedTask(task);
-        taskCmds.push_back(task);
-    }
-
-    if (!taskCmds.empty()) {
-        LOGS(_log, LOG_LVL_DEBUG, "Blend queCmd");
-        targSched->queCmd(taskCmds);
-        _infoChanged = true;
         notify(true); // notify all=true
+        return;
     }
-}
 
+    QSERV_LOGCONTEXT_QUERY_JOB(task->getQueryId(), task->getJobId());
+
+    if (task->msg == nullptr) {
+        throw Bug("BlendScheduler::queCmd task with null message!");
+    }
+    LOGS(_log, LOG_LVL_DEBUG, "BlendScheduler::queCmd");
+
+    util::LockGuardTimed guard(util::CommandQueue::_mx, "BlendScheduler::queCmd b");
+    // Check for scan tables
+    SchedulerBase::Ptr s{nullptr};
+    auto const& scanTables = task->getScanInfo().infoTables;
+    bool interactive = task->getScanInteractive();
+    if (scanTables.size() <= 0 || interactive) {
+        // If there are no scan tables, no point in putting on a shared scan.
+        LOGS(_log, LOG_LVL_DEBUG, "Blend chose group scanTables.size=" << scanTables.size()
+             << " interactive=" << interactive);
+        task->setOnInteractive(true);
+        s = _group;
+    } else {
+        task->setOnInteractive(false);
+        int scanPriority = task->getScanInfo().scanRating;
+        if (LOG_CHECK_LVL(_log, LOG_LVL_DEBUG)) {
+            ostringstream ss;
+            ss << "Blend chose scan for priority=" << scanPriority << " : ";
+            for (auto scanTbl : scanTables) {
+                ss << scanTbl.db + "." + scanTbl.table + " ";
+            }
+            LOGS(_log, LOG_LVL_DEBUG, ss.str());
+        }
+
+        {
+            lock_guard<mutex> lg(_schedMtx);
+            for (auto const& sched : _schedulers) {
+                ScanScheduler::Ptr scan = dynamic_pointer_cast<ScanScheduler>(sched);
+                if (scan != nullptr) {
+                    if (scan->isRatingInRange(scanPriority)) {
+                        s = scan;
+                        break;
+                    }
+                }
+            }
+        }
+
+        // If the user query for this task has been booted, put this task on the snail scheduler.
+        auto queryStats = _queries->getStats(task->getQueryId());
+        if (queryStats && queryStats->getQueryBooted()) {
+            s = _scanSnail;
+        }
+        if (s == nullptr) {
+            // Task wasn't assigned with a scheduler, assuming it is terribly slow.
+            // Assign it to the slowest scheduler so it does the least damage to other queries.
+            LOGS_WARN("Task had unexpected scanRating="
+                      << scanPriority << " adding to scanSnail");
+            s = _scanSnail;
+        }
+    }
+    task->setTaskScheduler(s);
+
+    LOGS(_log, LOG_LVL_DEBUG, "Blend queCmd");
+    s->queCmd(task);
+    _queries->queuedTask(task);
+    _infoChanged = true;
+    notify(true); // notify all=true
+}
 
 void BlendScheduler::commandStart(util::Command::Ptr const& cmd) {
     auto t = dynamic_pointer_cast<wbase::Task>(cmd);
