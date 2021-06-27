@@ -41,17 +41,16 @@
 #include "mysql/MySqlConfig.h"
 #include "proto/worker.pb.h"
 #include "wbase/Base.h"
-#include "wbase/SendChannelShared.h"
+#include "wbase/SendChannel.h"
 #include "wbase/WorkerCommand.h"
 #include "wcontrol/SqlConnMgr.h"
+#include "wcontrol/TransmitMgr.h"
 #include "wdb/ChunkResource.h"
 #include "wdb/QueryRunner.h"
 
 namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.wcontrol.Foreman");
 }
-
-using namespace std;
 
 namespace lsst {
 namespace qserv {
@@ -62,19 +61,21 @@ Foreman::Foreman(Scheduler::Ptr                  const& scheduler,
                  unsigned int                    maxPoolThreads,
                  mysql::MySqlConfig              const& mySqlConfig,
                  wpublish::QueriesAndChunks::Ptr const& queries,
-                 wcontrol::SqlConnMgr::Ptr       const& sqlConnMgr)
+                 wcontrol::SqlConnMgr::Ptr       const& sqlConnMgr,
+                 wcontrol::TransmitMgr::Ptr      const& transmitMgr)
 
     :   _scheduler  (scheduler),
         _mySqlConfig(mySqlConfig),
         _queries    (queries),
-        _sqlConnMgr (sqlConnMgr) {
+        _sqlConnMgr (sqlConnMgr),
+        _transmitMgr(transmitMgr) {
 
     // Make the chunk resource mgr
     // Creating backend makes a connection to the database for making temporary tables.
     // It will delete temporary tables that it can identify as being created by a worker.
     // Previous instances of the worker will terminate when they try to use or create temporary tables.
     // Previous instances of the worker should be terminated before a new worker is started.
-    _backend = make_shared<wdb::SQLBackend>(_mySqlConfig);
+    _backend = std::make_shared<wdb::SQLBackend>(_mySqlConfig);
     _chunkResourceMgr = wdb::ChunkResourceMgr::newMgr(_backend);
 
     assert(_scheduler); // Cannot operate without scheduler.
@@ -82,7 +83,7 @@ Foreman::Foreman(Scheduler::Ptr                  const& scheduler,
     LOGS(_log, LOG_LVL_DEBUG, "poolSize=" << poolSize << " maxPoolThreads=" << maxPoolThreads);
     _pool = util::ThreadPool::newThreadPool(poolSize,  maxPoolThreads, _scheduler);
 
-    _workerCommandQueue = make_shared<util::CommandQueue>();
+    _workerCommandQueue = std::make_shared<util::CommandQueue>();
     _workerCommandPool  = util::ThreadPool::newThreadPool(poolSize, _workerCommandQueue);
 
 }
@@ -94,21 +95,21 @@ Foreman::~Foreman() {
     _pool->shutdownPool();
 }
 
+/// Put the task on the scheduler to be run later.
+void Foreman::processTask(std::shared_ptr<wbase::Task> const& task) {
 
-void Foreman::_setRunFunc(shared_ptr<wbase::Task> const& task) {
     auto func = [this, task](util::CmdData*){
         proto::TaskMsg const& msg = *task->msg;
         int const resultProtocol = 2; // See proto/worker.proto Result protocol
         if (!msg.has_protocol() || msg.protocol() < resultProtocol) {
             LOGS(_log, LOG_LVL_WARN, "processMsg Unsupported wire protocol");
-            if (!task->checkCancelled()) {
+            if (!task->getCancelled()) {
                 // We should not send anything back to xrootd if the task has been cancelled.
-                lock_guard<mutex> streamLock(task->sendChannel->streamMutex);
-                task->sendChannel->sendError(streamLock, "Unsupported wire protocol", 1);
+                task->sendChannel->sendError("Unsupported wire protocol", 1);
             }
         } else {
             auto qr = wdb::QueryRunner::newQueryRunner(task, _chunkResourceMgr, _mySqlConfig,
-                                                       _sqlConnMgr);
+                                                       _sqlConnMgr, _transmitMgr);
             bool success = false;
             try {
                 success = qr->runQuery();
@@ -116,37 +117,20 @@ void Foreman::_setRunFunc(shared_ptr<wbase::Task> const& task) {
                 LOGS(_log, LOG_LVL_ERROR, "runQuery threw UnsupportedError " << e.what() << *task);
             }
             if (not success) {
-                lock_guard<mutex> streamLock(task->sendChannel->streamMutex);
                 LOGS(_log, LOG_LVL_ERROR, "runQuery failed " << *task);
-                if (not task->sendChannel->kill(streamLock, "Foreman::_setRunFunc")) {
-                    LOGS(_log, LOG_LVL_WARN, "runQuery sendChannel killed");
-                }
             }
         }
-        // Transmission is done, but 'task' contains statistics that are still useful, but
-        // the resources used by sendChannel need to be freed quickly.
-        //   The QueryRunner class access to sendChannel for results is over by this point,
-        //   so this wont be an issue there.
+        // Transmission is done, but 'task' contains statistics that are still useful.
         task->sendChannel.reset(); // Frees its xrdsvc::SsiRequest object.
     };
 
     task->setFunc(func);
+    _queries->addTask(task);
+    _scheduler->queCmd(task);
 }
 
 
-/// Put the task on the scheduler to be run later.
-void Foreman::processTasks(vector<wbase::Task::Ptr> const& tasks) {
-    std::vector<util::Command::Ptr> cmds;
-    for (auto const& task:tasks) {
-        _setRunFunc(task);
-        _queries->addTask(task);
-        cmds.push_back(task);
-    }
-    _scheduler->queCmd(cmds);
-}
-
-
-void Foreman::processCommand(shared_ptr<wbase::WorkerCommand> const& command) {
+void Foreman::processCommand(std::shared_ptr<wbase::WorkerCommand> const& command) {
     _workerCommandQueue->queCmd(command);
 }
 

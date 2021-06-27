@@ -39,6 +39,7 @@
 #include "global/intTypes.h"
 #include "memman/MemMan.h"
 #include "proto/ScanTableInfo.h"
+#include "util/InstanceCount.h"
 #include "util/ThreadPool.h"
 #include "util/threadSafe.h"
 
@@ -47,7 +48,7 @@ namespace lsst {
 namespace qserv {
 namespace wbase {
     struct ScriptMeta;
-    class SendChannelShared;
+    class SendChannel;
 }
 namespace proto {
     class TaskMsg;
@@ -119,33 +120,22 @@ public:
         bool operator()(Ptr const& x, Ptr const& y);
     };
 
-    explicit Task(TaskMsgPtr const& t, std::string const& query, int fragmentNumber,
-                  std::shared_ptr<SendChannelShared> const& sc);
+    explicit Task(TaskMsgPtr const& t, std::shared_ptr<SendChannel> const& sc);
     Task& operator=(const Task&) = delete;
     Task(const Task&) = delete;
     virtual ~Task();
 
-    /// Read 'taskMsg' to generate a vector of one or more task objects all using the same 'sendChannel'
-    static std::vector<Ptr> createTasks(std::shared_ptr<proto::TaskMsg> const& taskMsg,
-                                        std::shared_ptr<SendChannelShared> const& sendChannel);
-
     TaskMsgPtr msg; ///< Protobufs Task spec
-    std::shared_ptr<SendChannelShared> sendChannel; ///< For result reporting
+    std::shared_ptr<SendChannel> sendChannel; ///< For result reporting
     std::string hash; ///< hash of TaskMsg
     std::string user; ///< Incoming username
     time_t entryTime {0}; ///< Timestamp for task admission
     char timestr[100]; ///< ::ctime_r(&t.entryTime, timestr)
     // Note that manpage spec of "26 bytes"  is insufficient
 
-    /// Cancel the query in progress and set _cancelled.
     void cancel();
+    bool getCancelled() const { return _cancelled; }
 
-    /// Check if this task should be cancelled and call cancel() as needed.
-    /// @return true if this task was or needed to be cancelled.
-    bool checkCancelled();
-
-    std::string getQueryString() { return _queryString; }
-    int getQueryFragmentNum() { return _queryFragmentNum; }
     bool setTaskQueryRunner(TaskQueryRunner::Ptr const& taskQueryRunner); ///< return true if already cancelled.
     void freeTaskQueryRunner(TaskQueryRunner *tqr);
     void setTaskScheduler(TaskScheduler::Ptr const& scheduler) { _taskScheduler = scheduler; }
@@ -184,12 +174,10 @@ public:
     std::chrono::milliseconds finished(std::chrono::system_clock::time_point const& now);
 
 private:
-    QueryId  const    _qId = 0; ///< queryId from czar
-    int      const    _jId = 0; ///< jobId from czar
-    int      const    _attemptCount = 0; // attemptCount from czar
-    std::string const _idStr = QueryIdHelper::makeIdStr(0, 0, true); // < for logging only
-    std::string _queryString; ///< The query this task will run.
-    int _queryFragmentNum = 0; ///< The fragment number of the query in the task message.
+    QueryId  const    _qId{0}; //< queryId from czar
+    int      const    _jId{0}; //< jobId from czar
+    int      const    _attemptCount{0}; // attemptCount from czar
+    std::string const _idStr{QueryIdHelper::makeIdStr(0, 0, true)}; // < for logging only
 
     std::atomic<bool> _cancelled{false};
     std::atomic<bool> _safeToMoveRunning{false}; ///< false until done with waitForMemMan().
@@ -208,6 +196,7 @@ private:
     std::chrono::system_clock::time_point _finishTime;
     size_t _totalSize = 0; ///< Total size of the result so far.
 
+    util::InstanceCount _ic{"Task"}; ///< Count of existing Task objects.
 };
 
 }}} // namespace lsst::qserv::wbase

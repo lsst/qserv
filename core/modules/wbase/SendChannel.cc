@@ -37,17 +37,11 @@
 #include "lsst/log/Log.h"
 
 // Qserv headers
-#include "proto/ProtoHeaderWrap.h"
-#include "global/LogContext.h"
-#include "util/common.h"
-#include "util/Timer.h"
 #include "xrdsvc/SsiRequest.h"
 
 namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.wbase.SendChannel");
 }
-
-using namespace std;
 
 namespace lsst {
 namespace qserv {
@@ -60,32 +54,31 @@ public:
     NopChannel() {}
 
     bool send(char const* buf, int bufLen) override {
-        cout << "NopChannel send(" << (void*) buf
-             << ", " << bufLen << ");\n";
-        return !isDead();
+        std::cout << "NopChannel send(" << (void*) buf
+                  << ", " << bufLen << ");\n";
+        return true;
     }
 
-    bool sendError(string const& msg, int code) override {
-        if (kill("NopChannel")) return false;
-        cout << "NopChannel sendError(\"" << msg
-             << "\", " << code << ");\n";
+    bool sendError(std::string const& msg, int code) override {
+        std::cout << "NopChannel sendError(\"" << msg
+                  << "\", " << code << ");\n";
         return true;
     }
     bool sendFile(int fd, Size fSize) override {
-        cout << "NopChannel sendFile(" << fd
-             << ", " << fSize << ");\n";
-        return !isDead();
+        std::cout << "NopChannel sendFile(" << fd
+                  << ", " << fSize << ");\n";
+        return true;
     }
     bool sendStream(xrdsvc::StreamBuffer::Ptr const& sBuf, bool last) override {
-        cout << "NopChannel sendStream(" << (void*) sBuf.get()
-             << ", " << (last ? "true" : "false") << ");\n";
-        return !isDead();
+        std::cout << "NopChannel sendStream(" << (void*) sBuf.get()
+                  << ", " << (last ? "true" : "false") << ");\n";
+        return true;
     }
 };
 
 
 SendChannel::Ptr SendChannel::newNopChannel() {
-    return make_shared<NopChannel>();
+    return std::make_shared<NopChannel>();
 }
 
 
@@ -93,35 +86,32 @@ SendChannel::Ptr SendChannel::newNopChannel() {
 /// remembers what it has received.
 class StringChannel : public SendChannel {
 public:
-    StringChannel(string& dest) : _dest(dest) {}
+    StringChannel(std::string& dest) : _dest(dest) {}
 
-    bool send(char const* buf, int bufLen) override {
-        if (isDead()) return false;
+    virtual bool send(char const* buf, int bufLen) {
         _dest.append(buf, bufLen);
         return true;
     }
 
-    bool sendError(string const& msg, int code) override {
-        if (kill("StringChannel")) return false;
-        ostringstream os;
+    virtual bool sendError(std::string const& msg, int code) {
+        std::ostringstream os;
         os << "(" << code << "," << msg << ")";
         _dest.append(os.str());
         return true;
     }
 
-    bool sendFile(int fd, Size fSize) override {
-        if (isDead()) return false;
-        vector<char> buf(fSize);
+    virtual bool sendFile(int fd, Size fSize) {
+        std::vector<char> buf(fSize);
         Size remain = fSize;
         while(remain > 0) {
             Size frag = ::read(fd, buf.data(), remain);
             if (frag < 0) {
-                cout << "ERROR reading from fd during "
-                     << "StringChannel::sendFile(" << "," << fSize << ")";
+                std::cout << "ERROR reading from fd during "
+                          << "StringChannel::sendFile(" << "," << fSize << ")";
                 return false;
             } else if (frag == 0) {
-                cout << "ERROR unexpected 0==read() during "
-                     << "StringChannel::sendFile(" << "," << fSize << ")";
+                std::cout << "ERROR unexpected 0==read() during "
+                          << "StringChannel::sendFile(" << "," << fSize << ")";
                 return false;
             }
             _dest.append(buf.data(), frag);
@@ -131,90 +121,47 @@ public:
         return true;
     }
 
-    bool sendStream(xrdsvc::StreamBuffer::Ptr const& sBuf, bool last) override {
-        if (isDead()) return false;
-        char const* buf = sBuf->data;
-        size_t bufLen = sBuf->getSize();
+    virtual bool sendStream(char const* buf, int bufLen, bool last) {
         _dest.append(buf, bufLen);
-        cout << "StringChannel sendStream(" << (void*) buf
-             << ", " << bufLen << ", "
-             << (last ? "true" : "false") << ");\n";
+        std::cout << "StringChannel sendStream(" << (void*) buf
+                  << ", " << bufLen << ", "
+                  << (last ? "true" : "false") << ");\n";
         return true;
     }
-
 private:
-    string& _dest;
+    std::string& _dest;
 };
 
 
-SendChannel::Ptr SendChannel::newStringChannel(string& d) {
-    return make_shared<StringChannel>(d);
+SendChannel::Ptr SendChannel::newStringChannel(std::string& d) {
+    return std::make_shared<StringChannel>(d);
 
 }
 
 
-/// This is the standard definition of SendChannel which actually does something!
+/// This is the standard definition of SendChannel which acually does something!
 /// We vector responses posted to SendChannel via the tightly bound SsiRequest
 /// object as this object knows how to effect Ssi responses.
 ///
 bool SendChannel::send(char const* buf, int bufLen) {
-    if (isDead()) return false;
-    if (_ssiRequest->reply(buf, bufLen)) return true;
-    kill("SendChannel::send");
-    return false;
+    return _ssiRequest->reply(buf, bufLen);
 }
 
 
-bool SendChannel::sendError(string const& msg, int code) {
-    // Kill this send channel. If it wasn't already dead, send the error.
-    if (kill("SendChannel::sendError")) return false;
-    if (_ssiRequest->replyError(msg.c_str(), code)) return true;
-    return false;
+bool SendChannel::sendError(std::string const& msg, int code) {
+    return _ssiRequest->replyError(msg.c_str(), code);
 }
 
 
 bool SendChannel::sendFile(int fd, Size fSize) {
-    if (!isDead()) {
-        if (_ssiRequest->replyFile(fSize, fd)) return true;
-    }
-    kill("SendChannel::sendFile");
+    if (_ssiRequest->replyFile(fSize, fd)) return true;
     release();
     return false;
 }
 
 
-bool SendChannel::kill(std::string const& note) {
-    bool oldVal = _dead.exchange(true);
-    if (!oldVal && !_destroying) {
-        LOGS(_log, LOG_LVL_WARN, "SendChannel first kill call " << note);
-    }
-    return oldVal;
-}
-
-
-bool SendChannel::isDead() {
-    if (_dead) return true;
-    if (_ssiRequest == nullptr) return true;
-    if (_ssiRequest->isFinished()) kill("SendChannel::isDead");
-    return _dead;
-}
-
-
 bool SendChannel::sendStream(xrdsvc::StreamBuffer::Ptr const& sBuf, bool last) {
-    if (isDead()) return false;
-    if (_ssiRequest->replyStream(sBuf, last)) return true;
-    LOGS(_log, LOG_LVL_ERROR, "_ssiRequest->replyStream failed, killing.");
-    kill("SendChannel::sendStream");
-    return false;
+    return _ssiRequest->replyStream(sBuf, last);
 }
 
-
-bool SendChannel::setMetadata(const char *buf, int blen) {
-    if (isDead()) return false;
-    if (_ssiRequest->sendMetadata(buf, blen)) return true;
-    return false;
-}
-
-
-}}} // namespace lsst::qserv::wbase
-
+}}} // namespace

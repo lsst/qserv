@@ -55,7 +55,7 @@ public:
     void clearMsgs();
 
     /// Pull out a data packet as a Buffer object (called by XrdSsi code)
-    Buffer *GetBuff(XrdSsiErrInfo &eInfo, int &dlen, bool &last) override;
+    virtual Buffer *GetBuff(XrdSsiErrInfo &eInfo, int &dlen, bool &last);
 
     bool closed() const { return _closed; }
 
@@ -65,8 +65,6 @@ private:
     std::deque<StreamBuffer::Ptr> _msgs; ///< Message queue
     std::mutex _mutex; ///< _msgs protection
     std::condition_variable _hasDataCondition; ///< _msgs condition
-    uint64_t const _seq; ///< Unique identifier for this instance.
-    static std::atomic<uint64_t> _sequenceSource; ///< Source of unique identifiers.
 };
 
 }}} // namespace lsst::qserv::xrdsvc

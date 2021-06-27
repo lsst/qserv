@@ -90,7 +90,6 @@ bool SQLBackend::load(ScTableVector const& v, sql::SqlErrorObject& err) {
                 % i->chunkId % i->subChunkId).str();
 
         if (!_sqlConn->runQuery(create, err)) {
-            LOGS(_log, LOG_LVL_ERROR, "sql query err=" << err.errMsg() << " with '" << create << "'");
             _discard(v.begin(), i);
             return false;
         }

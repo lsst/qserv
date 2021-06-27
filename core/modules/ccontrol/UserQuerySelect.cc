@@ -316,7 +316,7 @@ void UserQuerySelect::submit() {
             std::shared_ptr<ChunkMsgReceiver> cmr = ChunkMsgReceiver::newInstance(cs->chunkId, _messageStore);
             ResourceUnit ru;
             ru.setAsDbChunk(cs->db, cs->chunkId);
-            qdisp::JobDescription::Ptr jobDesc = qdisp::JobDescription::create(_qMetaCzarId,
+            qdisp::JobDescription::Ptr jobDesc = qdisp::JobDescription::create(
                     _executive->getId(), sequence, ru,
                     std::make_shared<MergingHandler>(cmr, _infileMerger, chunkResultName),
                     taskMsgFactory, cs, chunkResultName);
@@ -365,7 +365,7 @@ QueryState UserQuerySelect::join() {
     }
     if (successful) {
         _qMetaUpdateStatus(qmeta::QInfo::COMPLETED);
-        LOGS(_log, LOG_LVL_INFO, "Joined everything (success)");
+        LOGS(_log, LOG_LVL_DEBUG, "Joined everything (success)");
         return SUCCESS;
     } else if (_killed) {
         // status is already set to ABORTED
@@ -408,7 +408,7 @@ void UserQuerySelect::discard() {
         // Silence merger discarding errors, because this object is being released.
         // client no longer cares about merger errors.
     }
-    LOGS(_log, LOG_LVL_INFO, "Discarded UserQuerySelect");
+    LOGS(_log, LOG_LVL_DEBUG, "Discarded UserQuerySelect");
 }
 
 /// Setup merger (for results handling and aggregation)

@@ -64,14 +64,8 @@ public:
 
     bool empty();
 
-    /// util::CommandQueue overrides
-    /// Do task bookkeeping and add to queue.
+    // util::CommandQueue overrides
     void queCmd(util::Command::Ptr const& cmd) override;
-
-    /// Queuing atomically doesn't matter for GroupScheduler (and is extremely rare),
-    /// so just split 'cmds' and use queCmd(util::Command::Ptr const& cmd)
-    void queCmd(std::vector<util::Command::Ptr> const& cmds) override;
-
     util::Command::Ptr getCmd(bool wait) override;
     void commandFinish(util::Command::Ptr const&) override;
 

@@ -156,11 +156,12 @@ SsiService::SsiService(XrdSsiLogger* log, wconfig::WorkerConfig const& workerCon
     LOGS(_log, LOG_LVL_WARN, "config sqlConnMgr" << *sqlConnMgr);
 
     int const maxTransmits = workerConfig.getMaxTransmits();
-    _transmitMgr = make_shared<wcontrol::TransmitMgr>(maxTransmits);
-    LOGS(_log, LOG_LVL_WARN, "config transmitMgr" << *_transmitMgr);
+    int const maxAlreadyTransmitting =  workerConfig.getMaxAlreadyTransmitting();
+    auto transmitMgr = make_shared<wcontrol::TransmitMgr>(maxTransmits, maxAlreadyTransmitting);
+    LOGS(_log, LOG_LVL_WARN, "config transmitMgr" << *transmitMgr);
 
     _foreman = make_shared<wcontrol::Foreman>(
-        blendSched, poolSize, maxPoolThreads, workerConfig.getMySqlConfig(), queries, sqlConnMgr);
+        blendSched, poolSize, maxPoolThreads, workerConfig.getMySqlConfig(), queries, sqlConnMgr, transmitMgr);
 }
 
 SsiService::~SsiService() {
@@ -169,7 +170,7 @@ SsiService::~SsiService() {
 
 void SsiService::ProcessRequest(XrdSsiRequest &reqRef, XrdSsiResource &resRef) {
     LOGS(_log, LOG_LVL_DEBUG, "Got request call where rName is: " << resRef.rName);
-    auto request = SsiRequest::newSsiRequest(resRef.rName, _chunkInventory, _foreman, _mySqlConfig, _transmitMgr);
+    auto request = SsiRequest::newSsiRequest(resRef.rName, _chunkInventory, _foreman, _mySqlConfig);
 
     // Continue execution in the session object as SSI gave us a new thread.
     // Object deletes itself when finished is called.

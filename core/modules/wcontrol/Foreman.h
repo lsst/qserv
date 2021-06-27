@@ -50,6 +50,7 @@ namespace qserv {
 namespace wcontrol {
 
 class SqlConnMgr;
+class TransmitMgr;
 
 /// An abstract scheduler interface. Foreman objects use Scheduler instances
 /// to determine what tasks to launch upon triggering events.
@@ -92,7 +93,8 @@ public:
             unsigned int                    maxPoolThreads,
             mysql::MySqlConfig              const& mySqlConfig,
             wpublish::QueriesAndChunks::Ptr const& queries,
-            std::shared_ptr<wcontrol::SqlConnMgr>  const& sqlConnMgr);
+            std::shared_ptr<wcontrol::SqlConnMgr>  const& sqlConnMgr,
+            std::shared_ptr<wcontrol::TransmitMgr> const& transmitMgr);
 
     virtual ~Foreman();
 
@@ -101,20 +103,23 @@ public:
     Foreman(Foreman const&) = delete;
     Foreman& operator=(Foreman const&) = delete;
 
+    /**
+     * Implement the corresponding method of the base class
+     *
+     * @see MsgProcessor::processTask()
+     */
+    void processTask(std::shared_ptr<wbase::Task> const& task) override;
 
-    /// Process a group of query processing tasks.
-    /// @see sgProcessor::processTask()
-    void processTasks(std::vector<std::shared_ptr<wbase::Task>> const& tasks) override;
-
-    ///Implement the corresponding method of the base class
-    /// @see MsgProcessor::processCommand()
+   /**
+     * Implement the corresponding method of the base class
+     *
+     * @see MsgProcessor::processCommand()
+     */
     void processCommand(std::shared_ptr<wbase::WorkerCommand> const& command) override;
 
     nlohmann::json statusToJson() override;
 
 private:
-    /// Set the function called when it is time to process the task.
-    void _setRunFunc(std::shared_ptr<wbase::Task> const& task);
 
     std::shared_ptr<wdb::SQLBackend>       _backend;
     std::shared_ptr<wdb::ChunkResourceMgr> _chunkResourceMgr;
@@ -130,6 +135,9 @@ private:
 
     /// For limiting the number of MySQL connections used for tasks.
     std::shared_ptr<wcontrol::SqlConnMgr> _sqlConnMgr;
+
+    /// For limiting the number of transmits back to czars
+    std::shared_ptr<wcontrol::TransmitMgr> _transmitMgr;
 };
 
 }}}  // namespace lsst::qserv::wcontrol

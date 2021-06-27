@@ -1,5 +1,7 @@
+// -*- LSST-C++ -*-
 /*
  * LSST Data Management System
+ * Copyright 2015-2018 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -26,8 +28,10 @@
 #include <functional>
 #include <memory>
 #include <string>
+#include <stdexcept>
 
 // Qserv headers
+#include "global/Bug.h"
 #include "xrdsvc/StreamBuffer.h"
 
 namespace lsst {
@@ -84,27 +88,11 @@ public:
     /// provided by reference at construction.
     static SendChannel::Ptr newStringChannel(std::string& dest);
 
-    /// @return true if metadata was set.
-    /// buff must remain valid until the transmit is complete.
-    bool setMetadata(const char *buf, int blen);
-
-    /// Kill this SendChannel
-    /// @ return the previous value of _dead
-    bool kill(std::string const& note);
-
-    /// Return true if this sendChannel cannot send data back to the czar.
-    bool isDead();
-
-    /// Set just before destorying this object to prevent pointless error messages.
-    void setDestroying() { _destroying = true; }
-
 protected:
     std::function<void(void)> _release = [](){;}; ///< Function to release resources.
 
 private:
     std::shared_ptr<xrdsvc::SsiRequest> _ssiRequest;
-    std::atomic<bool> _dead{false}; ///< True if there were any failures using this SendChanel.
-    std::atomic<bool> _destroying{false};
 };
 
 }}} // lsst::qserv::wbase

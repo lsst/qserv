@@ -51,8 +51,6 @@
 #include "util/InstanceCount.h"
 #include "util/Timer.h"
 
-using namespace std;
-
 namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.qdisp.QueryRequest");
 }
@@ -65,13 +63,12 @@ namespace qdisp {
 // Run action() when the system expects to have time to accept data.
 class QueryRequest::AskForResponseDataCmd : public PriorityCommand {
 public:
-    typedef shared_ptr<AskForResponseDataCmd> Ptr;
+    typedef std::shared_ptr<AskForResponseDataCmd> Ptr;
     enum class State { STARTED0, DATAREADY1, DONE2 };
     AskForResponseDataCmd(QueryRequest::Ptr const& qr, JobQuery::Ptr const& jq, size_t bufferSize)
-        : _qRequest(qr), _jQuery(jq), _qid(jq->getQueryId()), _jobid(jq->getIdInt()),
-          _bufPtr(new vector<char>(bufferSize)) {
+        : _qRequest(qr), _jQuery(jq), _qid(jq->getQueryId()), _jobid(jq->getIdInt()) {
+        _bufPtr.reset(new std::vector<char>(bufferSize));
     }
-
 
     void action(util::CmdData *data) override {
         // If everything is ok, call GetResponseData to have XrdSsi ask the worker for the data.
@@ -95,7 +92,7 @@ public:
                 _setState(State::DONE2);
                 return;
             }
-            vector<char>& buffer = *_bufPtr;
+            std::vector<char>& buffer = *_bufPtr;
             LOGS(_log, LOG_LVL_TRACE, "AskForResp GetResponseData size=" << buffer.size());
             tWaiting.start();
             qr->GetResponseData(&buffer[0], buffer.size());
@@ -104,9 +101,8 @@ public:
         // Wait for XrdSsi to call ProcessResponseData with the data,
         // which will notify this wait with a call to receivedProcessResponseDataParameters.
         {
-            unique_lock<mutex> uLock(_mtx);
+            std::unique_lock<std::mutex> uLock(_mtx);
             // TODO: make timed wait, check for wedged, if weak pointers dead, log and give up.
-            // Hoping for  _state == DATAREADY1,
             _cv.wait(uLock, [this](){ return _state != State::STARTED0; });
             tWaiting.stop();
             // _mtx is locked at this point.
@@ -144,7 +140,7 @@ public:
 
     void notifyDataSuccess(int blen, bool last) {
         {
-            lock_guard<mutex> lg(_mtx);
+            std::lock_guard<std::mutex> lg(_mtx);
             _blen = blen;
             _last = last;
             _state = State::DATAREADY1;
@@ -159,7 +155,7 @@ public:
     }
 
     State getState() const {
-        lock_guard<mutex> lg(_mtx);
+        std::lock_guard<std::mutex> lg(_mtx);
         return _state;
     }
 
@@ -167,23 +163,23 @@ public:
 
 private:
     void _setState(State const state) {
-        lock_guard<mutex> lg(_mtx);
+        std::lock_guard<std::mutex> lg(_mtx);
         _state = State::DONE2;
     }
 
 
-    weak_ptr<QueryRequest> _qRequest;
-    weak_ptr<JobQuery> _jQuery;
+    std::weak_ptr<QueryRequest> _qRequest;
+    std::weak_ptr<JobQuery> _jQuery;
     QueryId _qid;
     int _jobid;
-    mutable mutex _mtx;
-    condition_variable _cv;
+    mutable std::mutex _mtx;
+    std::condition_variable _cv;
     State _state = State::STARTED0;
 
     ResponseHandler::BufPtr _bufPtr;
 
-    int _blen = -1;
-    bool _last = true;
+    int _blen{-1};
+    bool _last{true};
     util::InstanceCount _instCount{"AskForResponseDataCmd"};
 };
 
@@ -218,7 +214,7 @@ QueryRequest::~QueryRequest() {
 // content of request data
 char* QueryRequest::GetRequest(int& requestLength) {
     QSERV_LOGCONTEXT_QUERY_JOB(_qid, _jobid);
-    lock_guard<mutex> lock(_finishStatusMutex);
+    std::lock_guard<std::mutex> lock(_finishStatusMutex);
     auto jq = _jobQuery;
     if (_finishStatus != ACTIVE || jq == nullptr) {
         LOGS(_log, LOG_LVL_DEBUG, "QueryRequest::GetRequest called after job finished (cancelled?)");
@@ -238,7 +234,7 @@ char* QueryRequest::GetRequest(int& requestLength) {
 bool QueryRequest::ProcessResponse(XrdSsiErrInfo  const& eInfo, XrdSsiRespInfo const& rInfo) {
     QSERV_LOGCONTEXT_QUERY_JOB(_qid, _jobid);
     LOGS(_log, LOG_LVL_DEBUG, "workerName=" << GetEndPoint() << " ProcessResponse");
-    string errorDesc = _jobIdStr + " ";
+    std::string errorDesc = _jobIdStr + " ";
     if (isQueryCancelled()) {
         LOGS(_log, LOG_LVL_WARN, "QueryRequest::ProcessResponse job already cancelled");
         cancel(); // calls _errorFinish()
@@ -248,7 +244,7 @@ bool QueryRequest::ProcessResponse(XrdSsiErrInfo  const& eInfo, XrdSsiRespInfo c
     // Make a copy of the _jobQuery shared_ptr in case _jobQuery gets reset by a call to  cancel()
     auto jq = _jobQuery;
     {
-        lock_guard<mutex> lock(_finishStatusMutex);
+        std::lock_guard<std::mutex> lock(_finishStatusMutex);
         if ((_finishStatus != ACTIVE) || (jq == nullptr)) {
             LOGS(_log, LOG_LVL_WARN,
                  "QueryRequest::GetRequest called after job finished (cancelled?)");
@@ -256,21 +252,20 @@ bool QueryRequest::ProcessResponse(XrdSsiErrInfo  const& eInfo, XrdSsiRespInfo c
         }
     }
     if (eInfo.hasError()) {
-        ostringstream os;
+        std::ostringstream os;
         os << _jobIdStr << "ProcessResponse request failed "
-           << getSsiErr(eInfo, nullptr) << " " << GetEndPoint();
+           << getSsiErr(eInfo, nullptr);
         jq->getDescription()->respHandler()->errorFlush(os.str(), -1);
         jq->getStatus()->updateInfo(_jobIdStr, JobStatus::RESPONSE_ERROR);
         _errorFinish();
         return true;
     }
-
     switch(rInfo.rType) {
     case XrdSsiRespInfo::isNone: // All responses are non-null right now
         errorDesc += "Unexpected XrdSsiRespInfo.rType == isNone";
         break;
     case XrdSsiRespInfo::isData: // Local-only for Mock tests!
-        if (string(rInfo.buff, rInfo.blen) == "MockResponse") {
+        if (std::string(rInfo.buff, rInfo.blen) == "MockResponse") {
            jq->getStatus()->updateInfo(_jobIdStr, JobStatus::COMPLETE);
            _finish();
            return true;
@@ -279,8 +274,8 @@ bool QueryRequest::ProcessResponse(XrdSsiErrInfo  const& eInfo, XrdSsiRespInfo c
         break;
     case XrdSsiRespInfo::isError:
         jq->getStatus()->updateInfo(_jobIdStr, JobStatus::RESPONSE_ERROR,
-                                    rInfo.eNum, string(rInfo.eMsg));
-        return _importError(string(rInfo.eMsg), rInfo.eNum);
+                                    rInfo.eNum, std::string(rInfo.eMsg));
+        return _importError(std::string(rInfo.eMsg), rInfo.eNum);
     case XrdSsiRespInfo::isFile: // Local-only
         errorDesc += "Unexpected XrdSsiRespInfo.rType == isFile";
         break;
@@ -302,46 +297,20 @@ bool QueryRequest::_importStream(JobQuery::Ptr const& jq) {
         // Keep the previous object from wedging the pool.
         _askForResponseDataCmd->notifyFailed();
     }
-
-    // Get the first header from metadata.
-    int expectedLen = proto::ProtoHeaderWrap::getProtoHeaderSize();
-    int len = expectedLen;
-    const char* buff = GetMetadata(len);
-    if (len != expectedLen) {
-        throw Bug("_importStream wrong header size=" + to_string(len) + " expected=" + to_string(expectedLen));
-    }
-    ResponseHandler::BufPtr bufPtr = make_shared<vector<char>>(len);
-    memcpy(&(*bufPtr)[0], buff, len);
-
-    // Use flush to read the buffer and extract the header.
-    bool largeResult = false;
-    int nextBufSize = 0;
-    bool last = false;
-    bool flushOk = jq->getDescription()->respHandler()->flush(len, bufPtr, last, largeResult, nextBufSize);
-
-    if (!flushOk) {
-        LOGS(_log, LOG_LVL_ERROR, "_importStream not flushOk");
-        return false;
-    }
-
-    if (!last) {
-        _askForResponseDataCmd = make_shared<AskForResponseDataCmd>(shared_from_this(), jq, nextBufSize);
-        _queueAskForResponse(_askForResponseDataCmd, jq, true);
-    } else {
-        // This really shouldn't happen with the first header, even errors should have one result.
-        LOGS(_log, LOG_LVL_ERROR, "last true for metadata");
-        return false;
-    }
+    _askForResponseDataCmd = std::make_shared<AskForResponseDataCmd>(
+                               shared_from_this(), jq, proto::ProtoHeaderWrap::PROTO_HEADER_SIZE);
+    _queueAskForResponse(_askForResponseDataCmd, jq, true);
     return true;
 }
 
 
 void QueryRequest::_queueAskForResponse(AskForResponseDataCmd::Ptr const& cmd, JobQuery::Ptr const& jq, bool initialRequest) {
-    // Interactive queries have highest priority.
+    // ScanInfo::Rating { FASTEST = 0, FAST = 10, MEDIUM = 20, SLOW = 30, SLOWEST = 100 };
+    // Trying to get existing requests done before doing new ones.
+
     if (jq->getDescription()->getScanInteractive()) {
         _qdispPool->queCmd(cmd, 0);
     } else {
-        // Trying to get existing requests done before doing new ones.
         if (initialRequest) {
             _qdispPool->queCmd(cmd, 3);
         } else {
@@ -351,10 +320,10 @@ void QueryRequest::_queueAskForResponse(AskForResponseDataCmd::Ptr const& cmd, J
 }
 
 /// Process an incoming error.
-bool QueryRequest::_importError(string const& msg, int code) {
+bool QueryRequest::_importError(std::string const& msg, int code) {
     auto jq = _jobQuery;
     {
-        lock_guard<mutex> lock(_finishStatusMutex);
+        std::lock_guard<std::mutex> lock(_finishStatusMutex);
         if (_finishStatus != ACTIVE || jq == nullptr) {
             LOGS(_log, LOG_LVL_WARN, "QueryRequest::_importError code=" << code
                       << " msg=" << msg << " not passed");
@@ -392,7 +361,7 @@ void QueryRequest::ProcessResponseData(XrdSsiErrInfo const& eInfo,
     JobQuery::Ptr jq = _jobQuery;
     bool jobFinished = false;
     {
-        lock_guard<mutex> lock(_finishStatusMutex);
+        std::lock_guard<std::mutex> lock(_finishStatusMutex);
         jobFinished = _finishStatus != ACTIVE || jq == nullptr;
     }
     if (jobFinished) {
@@ -410,7 +379,7 @@ void QueryRequest::ProcessResponseData(XrdSsiErrInfo const& eInfo,
     // If there's an error, it makes sense to handle it immediately.
     if (blen < 0) { // error, check errinfo object.
         int eCode;
-        string reason(getSsiErr(eInfo, &eCode) + " " + GetEndPoint());
+        auto reason = getSsiErr(eInfo, &eCode);
         jq->getStatus()->updateInfo(_jobIdStr, JobStatus::RESPONSE_DATA_NACK, eCode, reason);
         LOGS(_log, LOG_LVL_ERROR, "ProcessResponse[data] error(" << eCode
              << " " << reason << ")");
@@ -432,7 +401,7 @@ void QueryRequest::ProcessResponseData(XrdSsiErrInfo const& eInfo,
 }
 
 
-void QueryRequest::_processData(JobQuery::Ptr const& jq, int blen, bool xrdLast) {
+void QueryRequest::_processData(JobQuery::Ptr const& jq, int blen, bool last) {
     // It's possible jq and _jobQuery differ, so need to use jq.
     if (jq->isQueryCancelled()) {
         LOGS(_log, LOG_LVL_WARN, "QueryRequest::_processData job was cancelled.");
@@ -443,86 +412,39 @@ void QueryRequest::_processData(JobQuery::Ptr const& jq, int blen, bool xrdLast)
     // Get a copy of the shared buffer pointer so askForResponseDataCmd can be deleted.
     ResponseHandler::BufPtr bufPtr = _askForResponseDataCmd->getBufPtr();
     _askForResponseDataCmd.reset(); // No longer need it, and don't want the destructor calling _errorFinish().
-
-
-    int const protoHeaderSize = proto::ProtoHeaderWrap::getProtoHeaderSize();
-    ResponseHandler::BufPtr nextHeaderBufPtr;
-
-    // Values for these variables to be filled in by flush() calls.
     bool largeResult = false;
     int nextBufSize = 0;
-    bool last = false;
-
-    bool flushOk = false;
-
-    // The buffer has 2 parts.
-    // - The first (bytes = blen - ProtoHeaderWrap::getProtheaderSize())
-    //   is the result associated with the previously received header.
-    // - The second is the header for the next message.
-
-    int respSize = blen - protoHeaderSize;
-    nextHeaderBufPtr = make_shared<vector<char>>(bufPtr->begin() + respSize, bufPtr->end());
-
-    // Read the result
-    flushOk = jq->getDescription()->respHandler()->flush(respSize, bufPtr, last,
-            largeResult, nextBufSize);
-    if (last) {
-        // Last should only be true when the header is read, not the result.
-        throw Bug("_processData result had 'last' true, which cannot be allowed.");
-    }
-
-    bufPtr.reset(); // don't need the buffer anymore and it could be big.
-    if (nextBufSize != protoHeaderSize) {
-        throw Bug("Unexpected header size from flush(result) call QID="
-                + to_string(_qid) + "#" + to_string(_jobid));
-    }
-
-    if (!flushOk) {
-        _flushError(jq);
-        return;
-    }
-
-    // Read the next header
-    // Values for largeResult, last, and nextBufSize will be filled in by flush().
-    flushOk = jq->getDescription()->respHandler()->flush(protoHeaderSize, nextHeaderBufPtr, last,
-                                                         largeResult, nextBufSize);
-
+    bool flushOk = jq->getDescription()->respHandler()->flush(blen, bufPtr, last, largeResult, nextBufSize);
     if (largeResult) {
         if (!_largeResult) LOGS(_log, LOG_LVL_DEBUG, "holdState largeResult set to true");
         _largeResult = true; // Once the worker indicates it's a large result, it stays that way.
     }
 
     if (flushOk) {
-        if (last != xrdLast) {
-            LOGS(_log, LOG_LVL_DEBUG, "processData disagreement between last=" << last
-                                     << " and xrdLast=" << xrdLast);
-        }
         if (last) {
+            if (last && nextBufSize != 0) {
+                LOGS(_log, LOG_LVL_WARN,
+                     "Connection closed when more information expected sz=" << nextBufSize);
+            }
             jq->getStatus()->updateInfo(_jobIdStr, JobStatus::COMPLETE);
             _finish();
             // At this point all blocks for this job have been read, there's no point in
             // having XrdSsi wait for anything.
             return;
         } else {
-            _askForResponseDataCmd = make_shared<AskForResponseDataCmd>(shared_from_this(), jq, nextBufSize);
+            _askForResponseDataCmd = std::make_shared<AskForResponseDataCmd>(shared_from_this(), jq, nextBufSize);
             LOGS(_log, LOG_LVL_DEBUG, "queuing askForResponseDataCmd bufSize=" << nextBufSize);
             _queueAskForResponse(_askForResponseDataCmd, jq, false);
         }
     } else {
-        LOGS(_log, LOG_LVL_WARN, "flushOk = false");
-        _flushError(jq);
-        return;
+        LOGS(_log, LOG_LVL_DEBUG, "ProcessResponse data flush failed");
+        ResponseHandler::Error err = jq->getDescription()->respHandler()->getError();
+        jq->getStatus()->updateInfo(_jobIdStr, JobStatus::MERGE_ERROR, err.getCode(), err.getMsg());
+        // This error can be caused by errors in the SQL
+        _retried.store(true); // Do not retry
+        _errorFinish(true);
     }
     return;
-}
-
-
-void QueryRequest::_flushError(JobQuery::Ptr const& jq) {
-    ResponseHandler::Error err = jq->getDescription()->respHandler()->getError();
-    jq->getStatus()->updateInfo(_jobIdStr, JobStatus::MERGE_ERROR, err.getCode(), err.getMsg());
-    // This error can be caused by errors in the SQL
-    _retried = true; // Do not retry
-    _errorFinish(true);
 }
 
 
@@ -530,7 +452,7 @@ void QueryRequest::_flushError(JobQuery::Ptr const& jq) {
 bool QueryRequest::cancel() {
     LOGS(_log, LOG_LVL_DEBUG, "QueryRequest::cancel");
     {
-        lock_guard<mutex> lock(_finishStatusMutex);
+        std::lock_guard<std::mutex> lock(_finishStatusMutex);
         if (_cancelled) {
             LOGS(_log, LOG_LVL_DEBUG, "QueryRequest::cancel already cancelled, ignoring");
             return false; // Don't do anything if already cancelled.
@@ -560,9 +482,9 @@ bool QueryRequest::isQueryCancelled() {
 
 
 /// @return true if QueryRequest::cancel() has been called.
-/// QueryRequest::isQueryCancelled() is a much better indicator of user query cancellation.
+/// QueryRequest::isCancelled() is a much better indicator of user query cancellation.
 bool QueryRequest::isQueryRequestCancelled() {
-    lock_guard<mutex> lock(_finishStatusMutex);
+    std::lock_guard<std::mutex> lock(_finishStatusMutex);
     return _cancelled;
 }
 
@@ -572,7 +494,7 @@ bool QueryRequest::isQueryRequestCancelled() {
 void QueryRequest::cleanup() {
     LOGS(_log, LOG_LVL_TRACE, "QueryRequest::cleanup()");
     {
-        lock_guard<mutex> lock(_finishStatusMutex);
+        std::lock_guard<std::mutex> lock(_finishStatusMutex);
         if (_finishStatus == ACTIVE) {
             LOGS(_log, LOG_LVL_ERROR, "QueryRequest::cleanup called before _finish or _errorFinish");
             return;
@@ -583,8 +505,8 @@ void QueryRequest::cleanup() {
     // _finishStatusMutex before it is unlocked.
     // This should reset _jobquery and _keepAlive without risk of either being deleted
     // before being reset.
-    shared_ptr<JobQuery> jq(move(_jobQuery));
-    shared_ptr<QueryRequest> keep(move(_keepAlive));
+    std::shared_ptr<JobQuery> jq(std::move(_jobQuery));
+    std::shared_ptr<QueryRequest> keep(std::move(_keepAlive));
 }
 
 
@@ -598,7 +520,7 @@ bool QueryRequest::_errorFinish(bool shouldCancel) {
     auto jq = _jobQuery;
     {
         // Running _errorFinish more than once could cause errors.
-        lock_guard<mutex> lock(_finishStatusMutex);
+        std::lock_guard<std::mutex> lock(_finishStatusMutex);
         if (_finishStatus != ACTIVE || jq == nullptr) {
             // Either _finish or _errorFinish has already been called.
             LOGS_DEBUG("_errorFinish() job no longer ACTIVE, ignoring "
@@ -646,7 +568,7 @@ void QueryRequest::_finish() {
     LOGS(_log, LOG_LVL_TRACE, "QueryRequest::_finish");
     {
         // Running _finish more than once would cause errors.
-        lock_guard<mutex> lock(_finishStatusMutex);
+        std::lock_guard<std::mutex> lock(_finishStatusMutex);
         if (_finishStatus != ACTIVE) {
             // Either _finish or _errorFinish has already been called.
             LOGS(_log, LOG_LVL_WARN, "QueryRequest::_finish called when not ACTIVE, ignoring");
@@ -662,6 +584,7 @@ void QueryRequest::_finish() {
     } else {
         LOGS(_log, LOG_LVL_DEBUG, "QueryRequest::finish Finished() ok.");
     }
+
     _callMarkComplete(true);
     cleanup();
 }
@@ -675,7 +598,7 @@ void QueryRequest::_callMarkComplete(bool success) {
     }
 }
 
-ostream& operator<<(ostream& os, QueryRequest const& qr) {
+std::ostream& operator<<(std::ostream& os, QueryRequest const& qr) {
     os << "QueryRequest " << qr._jobIdStr;
     return os;
 }
@@ -683,13 +606,13 @@ ostream& operator<<(ostream& os, QueryRequest const& qr) {
 
 /// @return The error text and code that SSI set.
 /// if eCode != nullptr, it is set to the error code set by SSI.
-string QueryRequest::getSsiErr(XrdSsiErrInfo const& eInfo, int* eCode) {
+std::string QueryRequest::getSsiErr(XrdSsiErrInfo const& eInfo, int* eCode) {
     int errNum;
-    string errText = eInfo.Get(errNum);
+    std::string errText = eInfo.Get(errNum);
     if (eCode != nullptr) {
         *eCode = errNum;
     }
-    ostringstream os;
+    std::ostringstream os;
     os << "SSI_Error(" << errNum << ":" << errText << ")";
     return os.str();
 }

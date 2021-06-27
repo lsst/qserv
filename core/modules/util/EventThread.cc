@@ -42,17 +42,6 @@ namespace lsst {
 namespace qserv {
 namespace util {
 
-
-void CommandQueue::queCmd(std::vector<Command::Ptr> const& cmds) {
-    {
-        std::lock_guard<std::mutex> lock(_mx);
-        for (auto const& cmd:cmds) {
-            _qu.push_back(cmd);
-        }
-    }
-    notify(cmds.size() > 1); // notify all if more than 1 command, otherwise notify 1.
-}
-
 /// Handle commands as they arrive until queEnd() is called.
 void EventThread::handleCmds() {
     startup();
