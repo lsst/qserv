@@ -259,7 +259,7 @@ bool InfileMerger::merge(std::shared_ptr<proto::WorkerResponse> response, bool l
     if (tResultSize > _maxResultTableSizeBytes) {
         std::ostringstream os;
         os << queryIdJobStr << " cancelling the query, queryResult table " << _mergeTable
-           << " is too large at " << tResultSize << "bytes, max allowed size is " << _maxResultTableSizeBytes
+           << " is too large at " << tResultSize << " bytes, max allowed size is " << _maxResultTableSizeBytes
            << " bytes";
         LOGS(_log, LOG_LVL_ERROR, os.str());
         _error = util::Error(-1, os.str(), -1);
