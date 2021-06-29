@@ -97,7 +97,7 @@ std::string getTimeStampId() {
 }
 
 const char JOB_ID_BASE_NAME[] = "jobId";
-
+size_t const MB_SIZE_BYTES = 1024 * 1024;
 } // anonymous namespace
 
 
@@ -116,7 +116,7 @@ InfileMerger::InfileMerger(InfileMergerConfig const& c,
       _databaseModels(dm),
       _jobIdColName(JOB_ID_BASE_NAME),
       _maxSqlConnectionAttempts(_config.czarConfig.getMaxSqlConnectionAttempts()),
-      _maxResultTableSizeBytes(_config.czarConfig.getMaxTableSizeMB()*1024*1024),
+      _maxResultTableSizeBytes(_config.czarConfig.getMaxTableSizeMB()*MB_SIZE_BYTES),
       _semaMgrConn(semaMgrConn) {
     _fixupTargetName();
     _setEngineFromStr(_config.czarConfig.getResultEngine());
