@@ -12,6 +12,7 @@ ADD bin/* /qserv/bin/
 ADD lib/lib*.so* /qserv/lib/
 
 COPY bin/lsst /home/qserv
+RUN chmod -R o+rwx /home/qserv
 
 USER 1000
 
