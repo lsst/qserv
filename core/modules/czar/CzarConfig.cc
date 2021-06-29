@@ -97,6 +97,7 @@ CzarConfig::CzarConfig(util::ConfigStore const& configStore)
       _xrootdSpread(configStore.getInt("tuning.xrootdSpread", 4)),
       _qMetaSecsBetweenChunkCompletionUpdates(configStore.getInt(
                                                "tuning.qMetaSecsBetweenChunkCompletionUpdates", 60)),
+      _queryDistributionTestVer(configStore.getInt("tuning.queryDistributionTestVer", 0)),
       _qdispPoolSize(configStore.getInt("qdisppool.poolSize", 1000)),
       _qdispMaxPriority(configStore.getInt("qdisppool.largestPriority", 2)),
       _qdispVectRunSizes(configStore.get("qdisppool.vectRunSizes", "50:50:50:50")),

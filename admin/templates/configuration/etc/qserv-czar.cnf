@@ -99,6 +99,11 @@ xrootdSpread = 0
 # This is per user query and important milestones ignore this limit.
 qMetaSecsBetweenChunkCompletionUpdates = 59
 
+# Set queryDistributionTestVer to non-zero to treat simple queries,
+# such as "SELECT COUNT(*) FROM <table>" as interactive queries to stress test
+# czar communications with workers.
+queryDistributionTestVer = 0
+
 #[debug]
 #chunkLimit = -1
 

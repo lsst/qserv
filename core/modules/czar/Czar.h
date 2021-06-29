@@ -109,6 +109,10 @@ public:
     /// Remove all old tables in the qservResult database.
     void removeOldResultTables();
 
+    /// @return true if trivial queries should be treated as
+    ///         interactive queries to stress test the czar.
+    bool getQueryDistributionTestVer() { return _queryDistributionTestVer; }
+
 protected:
 
 private:
@@ -155,6 +159,8 @@ private:
     /// Prevents multiple concurrent calls to _removeOldTables().
     std::atomic<bool> _removingOldTables{false};
     std::thread _oldTableRemovalThread; ///< thread needs to remain valid while running.
+
+    bool _queryDistributionTestVer; ///< True if config says this is distribution test version.
 };
 
 }}} // namespace lsst::qserv::czar

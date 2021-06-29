@@ -145,6 +145,10 @@ public:
         return _xrootdCBThreadsInit;
     }
 
+    bool getQueryDistributionTestVer() const {
+        return _queryDistributionTestVer;
+    }
+
     /*
      * @return A value of the "spread" parameter. This may improve a performance
      * of xrootd for catalogs with the large number of chunks. The default value
@@ -212,6 +216,7 @@ private:
     int const _xrootdCBThreadsInit;
     int const _xrootdSpread;
     int const _qMetaSecsBetweenChunkCompletionUpdates;
+    int const _queryDistributionTestVer;
 
     // Parameters for QdispPool configuration
     int const _qdispPoolSize;
