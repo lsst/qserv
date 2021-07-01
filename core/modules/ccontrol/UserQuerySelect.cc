@@ -318,7 +318,7 @@ void UserQuerySelect::submit() {
             ru.setAsDbChunk(cs->db, cs->chunkId);
             qdisp::JobDescription::Ptr jobDesc = qdisp::JobDescription::create(
                     _executive->getId(), sequence, ru,
-                    std::make_shared<MergingHandler>(cmr, _infileMerger, chunkResultName),
+                    std::make_shared<MergingHandler>(cmr, _infileMerger, chunkResultName, _executive), // &&& is there another way to do this?
                     taskMsgFactory, cs, chunkResultName);
             _executive->add(jobDesc);
         };

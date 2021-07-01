@@ -403,7 +403,15 @@ void QueryRequest::ProcessResponseData(XrdSsiErrInfo const& eInfo,
 
 void QueryRequest::_processData(JobQuery::Ptr const& jq, int blen, bool last) {
     // It's possible jq and _jobQuery differ, so need to use jq.
+    /* &&&
     if (jq->isQueryCancelled()) {
+        LOGS(_log, LOG_LVL_WARN, "QueryRequest::_processData job was cancelled.");
+        _errorFinish(true);
+        return;
+    }
+    */
+    auto executive = _jobQuery->getExecutive();
+    if (executive == nullptr || executive->getCancelled()) {
         LOGS(_log, LOG_LVL_WARN, "QueryRequest::_processData job was cancelled.");
         _errorFinish(true);
         return;
@@ -414,23 +422,27 @@ void QueryRequest::_processData(JobQuery::Ptr const& jq, int blen, bool last) {
     _askForResponseDataCmd.reset(); // No longer need it, and don't want the destructor calling _errorFinish().
     bool largeResult = false;
     int nextBufSize = 0;
-    bool flushOk = jq->getDescription()->respHandler()->flush(blen, bufPtr, last, largeResult, nextBufSize);
+    int resultRows = 0;
+    bool flushOk = jq->getDescription()->respHandler()->flush(blen, bufPtr, last,
+                                                              largeResult, nextBufSize, resultRows);
     if (largeResult) {
         if (!_largeResult) LOGS(_log, LOG_LVL_DEBUG, "holdState largeResult set to true");
         _largeResult = true; // Once the worker indicates it's a large result, it stays that way.
     }
 
     if (flushOk) {
+        _totalRows += resultRows;
         if (last) {
             if (last && nextBufSize != 0) {
                 LOGS(_log, LOG_LVL_WARN,
                      "Connection closed when more information expected sz=" << nextBufSize);
             }
             jq->getStatus()->updateInfo(_jobIdStr, JobStatus::COMPLETE);
+            executive->addResultRows(_totalRows);
             _finish();
             // At this point all blocks for this job have been read, there's no point in
             // having XrdSsi wait for anything.
-            return;
+            executive->checkLimitRowComplete();
         } else {
             _askForResponseDataCmd = std::make_shared<AskForResponseDataCmd>(shared_from_this(), jq, nextBufSize);
             LOGS(_log, LOG_LVL_DEBUG, "queuing askForResponseDataCmd bufSize=" << nextBufSize);
@@ -458,7 +470,7 @@ bool QueryRequest::cancel() {
             return false; // Don't do anything if already cancelled.
         }
         _cancelled = true;
-        _retried.store(true); // Prevent retries.
+        _retried = true; // Prevent retries.
         // Only call the following if the job is NOT already done.
         if (_finishStatus == ACTIVE) {
             auto jq = _jobQuery;

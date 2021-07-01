@@ -34,7 +34,7 @@ namespace proto {
 
 struct WorkerResponse {
     unsigned char headerSize;
-    ProtoHeader protoHeader;
+    ProtoHeader protoHeader;  // &&& is this ok with protobufs?
     Result result;
 };
 

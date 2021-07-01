@@ -174,6 +174,8 @@ private:
     bool _largeResult{false}; ///< True if the worker flags this job as having a large result.
     QdispPool::Ptr _qdispPool;
     std::shared_ptr<AskForResponseDataCmd> _askForResponseDataCmd;
+
+    int _totalRows = 0; ///< number of rows in query added to the result table.
 };
 
 std::ostream& operator<<(std::ostream& os, QueryRequest const& r);

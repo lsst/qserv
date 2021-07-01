@@ -242,7 +242,7 @@ bool Executive::join() {
     _waitAllUntilEmpty();
     // Okay to merge. probably not the Executive's responsibility
     struct successF {
-        static bool f(Executive::JobMap::value_type const& entry) {
+        static bool func(Executive::JobMap::value_type const& entry) {
             JobStatus::Info const& esI = entry.second->getStatus()->getInfo();
             LOGS(_log, LOG_LVL_TRACE, "entry state:" << (void*)entry.second.get() << " " << esI);
             return (esI.state == JobStatus::RESPONSE_DONE) || (esI.state == JobStatus::COMPLETE);
@@ -252,11 +252,14 @@ bool Executive::join() {
     int sCount = 0;
     {
         std::lock_guard<std::recursive_mutex> lockJobMap(_jobMapMtx);
-        sCount = std::count_if(_jobMap.begin(), _jobMap.end(), successF::f);
+        sCount = std::count_if(_jobMap.begin(), _jobMap.end(), successF::func);
     }
     if (sCount == _requestCount) {
-        LOGS(_log, LOG_LVL_DEBUG, "Query execution succeeded: " << _requestCount
+        LOGS(_log, LOG_LVL_INFO, "Query execution succeeded all: " << _requestCount
              << " jobs dispatched and completed.");
+    } else if (_limitRowComplete) {
+        LOGS(_log, LOG_LVL_INFO, "Query execution succeeded enough: " << sCount
+             << " jobs out of " << _requestCount << " completed.");
     } else {
         LOGS(_log, LOG_LVL_ERROR, "Query execution failed: " << _requestCount
              << " jobs dispatched, but only " << sCount << " jobs completed");
@@ -339,6 +342,7 @@ void Executive::squash() {
     }
     LOGS(_log, LOG_LVL_DEBUG, "Executive::squash done");
 }
+
 
 int Executive::getNumInflight() {
     std::unique_lock<std::mutex> lock(_incompleteJobsMutex);
@@ -498,6 +502,7 @@ void Executive::_updateProxyMessages() {
         }
     }
 }
+
 
 /// This function blocks until it has reaped all the requesters.
 /// Typically the requesters are handled by markCompleted().

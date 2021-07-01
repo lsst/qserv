@@ -133,6 +133,16 @@ public:
 
     bool startQuery(std::shared_ptr<JobQuery> const& jobQuery);
 
+    /// Add 'rowCount' to the total number of rows in the result table.
+    void addResultRows(int rowCount) { _totalResultRows += rowCount; }
+
+    /// Check if conditions are met for the query to be complete with the
+    /// rows already read in.
+    void checkLimitRowComplete();
+
+    /// @return previous value of _limitRowComplete while setting it to true.
+    bool setLimitRowComplete() { return _limitRowComplete.exchange(true); }
+
 private:
     Executive(ExecutiveConfig const& c, std::shared_ptr<MessageStore> const& ms,
               std::shared_ptr<QdispPool> const& qdispPool, std::shared_ptr<qmeta::QStatus> const& qStatus);
@@ -191,6 +201,12 @@ private:
     std::mutex _lastQMetaMtx; ///< protects _lastQMetaUpdate.
 
     bool _scanInteractive = false; ///< true for interactive scans.
+
+    /// True if enough rows were read to satisfy a LIMIT query with
+    /// no ORDER BY or GROUP BY clauses.
+    std::atomic<bool> _limitRowComplete{false};
+
+    std::atomic<int64_t> _totalResultRows{0};
 };
 
 class MarkCompleteFunc {
