@@ -184,7 +184,7 @@ ScanTablePlugin::_findScanTables(query::SelectStmt& stmt,
     }
 
     auto czar = czar::Czar::getCzar();
-    bool queryDistributionTestVer = czar->getQueryDistributionTestVer();
+    bool queryDistributionTestVer = (czar == nullptr) ? 0 : czar->getQueryDistributionTestVer();
 
     StringPairVector scanTables;
     // Even trivial queries need to use full table scans to avoid crippling the czar
