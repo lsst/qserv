@@ -122,10 +122,12 @@ Czar::Czar(string const& configPath, string const& czarName)
     int const xrootdSpread = _czarConfig.getXrootdSpread();
     LOGS(_log, LOG_LVL_INFO, "config xrootdSpread=" << xrootdSpread);
     XrdSsiProviderClient->SetSpread(xrootdSpread);
+    _queryDistributionTestVer = _czarConfig.getQueryDistributionTestVer();
 
     LOGS(_log, LOG_LVL_INFO, "Creating czar instance with name " << czarName);
     LOGS(_log, LOG_LVL_INFO, "Czar config: " << _czarConfig);
 }
+
 
 SubmitResult
 Czar::submitQuery(string const& query,

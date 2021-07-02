@@ -40,6 +40,7 @@
 #include "lsst/log/Log.h"
 
 // Qserv headers
+#include "czar/Czar.h"
 #include "global/stringTypes.h"
 #include "proto/ScanTableInfo.h"
 #include "query/ColumnRef.h"
@@ -130,7 +131,6 @@ ScanTablePlugin::_findScanTables(query::SelectStmt& stmt,
 
     bool hasSelectColumnRef = false; // Requires row-reading for
                                      // results
-    bool hasSelectStar = false; // Requires reading all columns
     bool hasWhereColumnRef = false; // Makes count(*) non-trivial
     bool hasSecondaryKey = false; // Using secondaryKey to restrict
                                   // coverage, e.g., via objectId=123
@@ -182,13 +182,19 @@ ScanTablePlugin::_findScanTables(query::SelectStmt& stmt,
             hasSelectColumnRef = true;
         }
     }
-    // FIXME hasSelectStar is not populated right now. Do we need it?
+
+    auto czar = czar::Czar::getCzar();
+    bool queryDistributionTestVer = (czar == nullptr) ? 0 : czar->getQueryDistributionTestVer();
 
     StringPairVector scanTables;
-    // Right now, queries involving less than a threshold number of
-    // chunks have their scanTables squashed as non-scanning in the
-    // plugin's applyFinal
-    if (hasSelectColumnRef || hasSelectStar) {
+    // Even trivial queries need to use full table scans to avoid crippling the czar
+    // with heaps of high priority, but very simple queries. Unless there are
+    // factors that greatly restrict how many chunks need to be read, it needs to be
+    // a table scan.
+    // For system testing, it is useful to see how the system handles large numbers
+    // trivial queries as the amount of work done by the workers is minimal. This
+    // highlights the cost of czar-worker communications.
+    if (!queryDistributionTestVer || hasSelectColumnRef) {
         if (hasSecondaryKey) {
             LOGS(_log, LOG_LVL_TRACE, "**** Not a scan ****");
             // Not a scan? Leave scanTables alone
@@ -203,6 +209,7 @@ ScanTablePlugin::_findScanTables(query::SelectStmt& stmt,
         LOGS(_log, LOG_LVL_TRACE, "**** SCAN (filter) ****");
         scanTables = filterPartitioned(stmt.getFromList().getTableRefList());
     }
+
 
     // Ask css if any of the tables should be locked in memory and their scan rating.
     // Use this information to determine scanPriority.
