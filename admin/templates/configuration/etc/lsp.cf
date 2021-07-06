@@ -77,6 +77,9 @@ xrd.port {{XROOTD_PORT}}
 
 # Uncomment the following line for detailed xrootd debugging
 # xrootd.trace all debug
+xrootd.trace fs request response
+
+ssi.trace all debug
 
 # Set limits for the number of threads open by XRootD services
 # See more details on these parameters at:

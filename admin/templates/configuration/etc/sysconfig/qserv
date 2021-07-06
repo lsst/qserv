@@ -53,8 +53,8 @@ ulimit -c unlimited
 export PYTHONUNBUFFERED=1
 
 export XRD_LOGLEVEL=Debug
-unset XRDSSIDEBUG
-#export XRDSSIDEBUG=0
+#unset XRDSSIDEBUG
+export XRDSSIDEBUG=1
 
 # Increase timeouts, without that, long-running queries fail.
 # The proper fix is coming, see DM-3433
