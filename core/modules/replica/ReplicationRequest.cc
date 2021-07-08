@@ -109,9 +109,9 @@ ReplicationRequest::ReplicationRequest(
         _onFinish(onFinish),
         _replicaInfo() {
 
-    Request::serviceProvider()->assertWorkerIsValid(sourceWorker);
-    Request::serviceProvider()->assertWorkersAreDifferent(sourceWorker, worker);
-    Request::serviceProvider()->assertDatabaseIsValid(database);
+    Request::serviceProvider()->config()->assertWorkerIsValid(sourceWorker);
+    Request::serviceProvider()->config()->assertWorkersAreDifferent(sourceWorker, worker);
+    Request::serviceProvider()->config()->assertDatabaseIsValid(database);
 }
 
 

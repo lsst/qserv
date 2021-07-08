@@ -101,7 +101,7 @@ FindRequest::FindRequest(ServiceProvider::Ptr const& serviceProvider,
         _computeCheckSum(computeCheckSum),
         _onFinish(onFinish) {
 
-    Request::serviceProvider()->assertDatabaseIsValid(database);
+    Request::serviceProvider()->config()->assertDatabaseIsValid(database);
 }
 
 

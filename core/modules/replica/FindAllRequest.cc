@@ -96,7 +96,7 @@ FindAllRequest::FindAllRequest(ServiceProvider::Ptr const& serviceProvider,
         _saveReplicaInfo(saveReplicaInfo),
         _onFinish(onFinish) {
 
-    Request::serviceProvider()->assertDatabaseIsValid(database);
+    Request::serviceProvider()->config()->assertDatabaseIsValid(database);
 }
 
 

@@ -482,6 +482,13 @@ public:
                                        bool isPublished=true) const;
 
     /**
+     * Make sure this database is known in the configuration
+     * @param name The name of a database.
+     * @throws std::invalid_argument if the database is unknown
+     */
+    void assertDatabaseIsValid(std::string const& name);
+
+    /**
      * @param name The name of a database.
      * @return 'true' if the specified database is known in the Configuration.
      */
@@ -588,6 +595,23 @@ public:
      */
     DatabaseInfo deleteTable(std::string const& database,
                              std::string const& table);
+
+    /**
+     * Make sure this worker is known in the configuration
+     * @param name The name of a worker.
+     * @throws std::invalid_argument if the worker is unknown
+     */
+    void assertWorkerIsValid(std::string const& name);
+
+    /**
+     * Make sure workers are not known in the configuration and they're different.
+     * @param workerOneName The name of the first worker in the comparison.
+     * @param workerTwoName The name of the second worker in the comparison.
+     * @throws std::invalid_argument If either worker is unknown, or if the workers
+     *   are the same.
+     */
+    void assertWorkersAreDifferent(std::string const& workerOneName,
+                                   std::string const& workerTwoName);
 
     /**
      * @param name The name of a worker.
