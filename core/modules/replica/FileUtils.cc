@@ -279,6 +279,44 @@ string FileUtils::createTemporaryFile(string const& baseDir,
 }
 
 
+void FileUtils::verifyFolders(string const& requestorContext,
+                              vector<string> const& folders,
+                              bool createMissingFolders) {
+    string const context = "FileUtils::" + string(__func__) + "(" + requestorContext + ") ";
+    for (auto&& folder: folders) {
+        if (folder.empty()) {
+            throw invalid_argument(context + " the empty folder name found in the collection.");
+        }
+        fs::path const path(folder);
+        if (!path.is_absolute()) {
+            throw invalid_argument(context + " non-absolute path '" + folder + "' found in the collection.");
+        }
+        boost::system::error_code ec;
+        if (createMissingFolders) {
+            if (!fs::create_directories(path, ec)) {
+                if (ec.value() != 0) {
+                    throw runtime_error(
+                            context + " failed to create folder '" + folder
+                            + "' or its intermediate subfolders, error: " + ec.message());
+                }
+
+            }
+        }
+
+        // Create a temporary file to test write permissions set for the folder.
+        // The file will get removed upon the completion of the test.
+        try {
+            string const tmpFileName = createTemporaryFile(folder, ".test-write-permissions-");
+            fs::remove(fs::path(tmpFileName), ec);
+         } catch(exception const& ex) {
+                throw runtime_error(
+                        context + " failed to create the temporary file at folder '" + folder
+                        + "' to test write permissions for the folder, ex: " + ex.what());
+         }
+    }
+}
+
+
 /////////////////////////////////////
 //    class FileCsComputeEngine    //
 /////////////////////////////////////
