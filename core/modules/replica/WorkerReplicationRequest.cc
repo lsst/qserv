@@ -92,8 +92,8 @@ WorkerReplicationRequest::WorkerReplicationRequest(
             requestExpirationIvalSec),
         _request(request) {
 
-    serviceProvider->assertWorkerIsValid(request.worker());
-    serviceProvider->assertWorkersAreDifferent(worker, request.worker());
+    serviceProvider->config()->assertWorkerIsValid(request.worker());
+    serviceProvider->config()->assertWorkersAreDifferent(worker, request.worker());
 }
 
 

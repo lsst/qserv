@@ -80,6 +80,10 @@ private:
 
     /// An "administrator"-level authorization key.
     std::string _adminAuthKey;
+
+    /// The worker will create missing folders unless told not to do so by
+    /// passing the corresponding command-line flag.
+    bool _doNotCreateMissingFolders = false;
 };
 
 }}} // namespace lsst::qserv::replica

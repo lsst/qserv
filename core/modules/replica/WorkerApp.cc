@@ -93,6 +93,11 @@ WorkerApp::WorkerApp(int argc, char* argv[])
         "admin-auth-key",
         "An administrator-level authorization key for the catalog ingest operations.",
         _adminAuthKey
+    ).flag(
+        "do-not-create-folders",
+        "Do not attempt creating missing folders used by the worker services."
+        " Specify this flag in the production deployments of the Replication/Ingest system.",
+        _doNotCreateMissingFolders
     );
 }
 
@@ -109,8 +114,21 @@ int WorkerApp::runImpl() {
         _qservWorkerDbUrl = "******";
     }
 
-    // Configure the factory with a pool of persistent connectors
+    // Make sure the worker exists
     auto const workerInfo = serviceProvider()->config()->workerInfo(_worker);
+
+    // ATTENTION: Worker services depend on a number of folders that are used for
+    // storing intermediate files of various sizes. Locations (absolute path names)
+    // of the folders are set in the corresponding configuration parameters.
+    // Desired characteristics (including size, I/O latency, I/O bandwidth, etc.) of
+    // the folders may vary depending on the service type and a scale of a particular
+    // Qserv deployment. Note that the overall performance and scalability greately
+    // depends on the quality of of the underlying filesystems. Usually, in
+    // the large-scale deployments, the folders should be pre-created and be placed
+    // at the large-capacity high-performance filesystems at the Qserv deployment time.
+    workerInfo.verifyFolders(!_doNotCreateMissingFolders);
+
+    // Configure the factory with a pool of persistent connectors
     auto const connectionPool = database::mysql::ConnectionPool::create(
         Configuration::qservWorkerDbParams(),
         serviceProvider()->config()->get<size_t>("database", "services_pool_size")

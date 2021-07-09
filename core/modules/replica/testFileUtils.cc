@@ -156,4 +156,86 @@ BOOST_AUTO_TEST_CASE(FileUtils_createTemporaryFile) {
     LOGS_INFO("FileUtils::createTemporaryFile test ends");
 }
 
+BOOST_AUTO_TEST_CASE(FileUtils_verifyFolders) {
+
+    LOGS_INFO("FileUtils::verifyFolders test begins");
+
+    bool const createMissingFolders = true;
+
+    {
+        vector<string> const folders = {string()};
+        BOOST_CHECK_THROW({
+            FileUtils::verifyFolders("TEST", folders);
+        }, invalid_argument);
+    }
+    {
+        vector<string> const folders = {"relative/path"};
+        BOOST_CHECK_THROW({
+            FileUtils::verifyFolders("TEST", folders);
+        }, invalid_argument);
+    }
+
+    string const pattern = "/tmp/test-folder-%%%%-%%%%-%%%%-%%%%";
+
+    // This test is allowed to be repeated one time in a very unlikely case
+    // if the randomly generated folder name is already taken.
+    unsigned int const maxRetries = 1;
+    unsigned int numRetriesLeft = maxRetries;
+
+    bool success = false;
+
+    while (numRetriesLeft-- > 0) {
+
+        boost::system::error_code ec;
+
+        // Generate a unique path for the folder to be tested/created
+        fs::path const uniqueFolderPath = fs::unique_path(pattern, ec);
+        if (ec.value() != 0) {
+            throw runtime_error(
+                    "Failed to generate a unique name for pattern: '" + pattern
+                    + "', error: " + ec.message());
+        }
+
+        // Make sure the folder (or a file) doesn't exist. Otherwise make another
+        // attempt.
+        fs::file_status const stat = fs::status(uniqueFolderPath, ec);
+        if (stat.type() == fs::status_error) {
+            throw runtime_error(
+                    "Failed to check a status of the temporary folder: '" + uniqueFolderPath.string()
+                    + "', error: " + ec.message());
+        }
+        if (fs::exists(stat)) continue;
+
+        LOGS_INFO("FileUtils::verifyFolders temporary folder: " + uniqueFolderPath.string());
+
+        // At the very first run of the method do not attempt to create
+        // the missing folder.
+        vector<string> const folders = {uniqueFolderPath.string()};
+        BOOST_CHECK_THROW({
+            FileUtils::verifyFolders("TEST", folders, !createMissingFolders);
+        }, exception);
+
+        // Now launch the method to force create the folder.
+        BOOST_REQUIRE_NO_THROW({
+            FileUtils::verifyFolders("TEST", folders, createMissingFolders);
+        });
+
+        // Make another run w/o attempting creating a folder
+        BOOST_REQUIRE_NO_THROW({
+            FileUtils::verifyFolders("TEST", folders, !createMissingFolders);
+        });
+
+        // Now, make the best attempt to delete the folder. Ignore any errors.
+        fs::remove(fs::path(uniqueFolderPath), ec);
+ 
+        success = true;
+        break;
+    }
+    if (!success) {
+        throw runtime_error(
+                "The maximum number of attempts to generate a unique folder name has exceeded the limit.");
+    }
+    LOGS_INFO("FileUtils::verifyFolders test ends");
+}
+
 BOOST_AUTO_TEST_SUITE_END()

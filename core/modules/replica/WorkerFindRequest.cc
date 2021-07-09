@@ -91,7 +91,7 @@ WorkerFindRequest::WorkerFindRequest(
             requestExpirationIvalSec),
         _request(request) {
 
-    serviceProvider->assertDatabaseIsValid(request.database());
+    serviceProvider->config()->assertDatabaseIsValid(request.database());
 }
 
 

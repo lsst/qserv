@@ -172,34 +172,6 @@ void ServiceProvider::stop() {
 }
 
 
-void ServiceProvider::assertWorkerIsValid(string const& name) {
-    if (not _configuration->isKnownWorker(name)) {
-        throw invalid_argument(
-                "ServiceProvider::" + string(__func__) + "  worker name is not valid: " + name);
-    }
-}
-
-
-void ServiceProvider::assertWorkersAreDifferent(string const& firstName,
-                                                string const& secondName) {
-    assertWorkerIsValid(firstName);
-    assertWorkerIsValid(secondName);
-
-    if (firstName == secondName) {
-        throw invalid_argument(
-                "ServiceProvider::" + string(__func__) + "  worker names are the same: " + firstName);
-    }
-}
-
-
-void ServiceProvider::assertDatabaseIsValid(string const& name) {
-    if (not _configuration->isKnownDatabase(name)) {
-        throw invalid_argument(
-                "ServiceProvider::" + string(__func__) + "  database name is not valid: " + name);
-    }
-}
-
-
 string ServiceProvider::_context() const {
     return "SERVICE-PROVIDER  ";
 }

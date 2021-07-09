@@ -192,6 +192,11 @@ MasterControllerHttpApp::MasterControllerHttpApp(int argc, char* argv[])
         "admin-auth-key",
         "An administrator-level authorization key for requests made via the REST API.",
         _adminAuthKey
+    ).flag(
+        "do-not-create-folders",
+        "Do not attempt creating missing folders used by the Controller."
+        " Specify this flag in the production deployments of the Replication/Ingest system.",
+        _doNotCreateMissingFolders
     );
 }
 
@@ -206,6 +211,17 @@ int MasterControllerHttpApp::runImpl() {
         _qservCzarDbUrl = "******";
     }
     _controller = Controller::create(serviceProvider());
+
+    // ATTENTION: Controller depends on a number of folders that are used for
+    // storing intermediate files of various sizes. Locations (absolute path names)
+    // of the folders are set in the corresponding configuration parameters.
+    // Desired characteristics (including size, I/O latency, I/O bandwidth, etc.) of
+    // the folders may vary depending on a type of the Controller's operation and
+    // a scale of a particular Qserv deployment. Note that the overall performance
+    // and scalability greately depends on the quality of of the underlying filesystems.
+    // Usually, in the large-scale deployments, the folders should be pre-created and be placed
+    // at the large-capacity high-performance filesystems at the Qserv deployment time.
+    _controller->verifyFolders(!_doNotCreateMissingFolders);
 
     _logControllerStartedEvent();
 

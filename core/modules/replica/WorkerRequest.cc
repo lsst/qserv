@@ -104,7 +104,7 @@ WorkerRequest::WorkerRequest(ServiceProvider::Ptr const& serviceProvider,
         _performance(),
         _durationMillisec(0) {
 
-    serviceProvider->assertWorkerIsValid(worker);
+    serviceProvider->config()->assertWorkerIsValid(worker);
 }
 
 

@@ -126,7 +126,7 @@ Request::Request(ServiceProvider::Ptr const& serviceProvider,
                 "controller", "request_timeout_sec")),
         _requestExpirationTimer(io_service) {
 
-    _serviceProvider->assertWorkerIsValid(worker);
+    _serviceProvider->config()->assertWorkerIsValid(worker);
 
     // This report is used solely for debugging purposes to allow tracking
     // potential memory leaks within applications.

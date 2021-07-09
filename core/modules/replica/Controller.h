@@ -282,6 +282,15 @@ public:
 
     boost::asio::io_service& io_service() { return serviceProvider()->io_service(); }
 
+    /**
+     * Check if required folders exist and they're write-enabled for an effective user
+     * of the current process. Create missing folders if needed.
+     * @param createMissingFolders The optional flag telling the method to create missing folders.
+     * @throw std::runtime_error If any folder can't be created, or if any folder is not
+     *   write-enabled for the current user.
+     */
+    void verifyFolders(bool createMissingFolders=false) const;
+
     ReplicationRequestPtr replicate(
             std::string const& workerName,
             std::string const& sourceWorkerName,

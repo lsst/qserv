@@ -145,6 +145,10 @@ private:
     /// An "administrator"-level authorization key.
     std::string _adminAuthKey;
 
+    /// The Controller will create missing folders unless told not to do so by
+    /// passing the corresponding command-line flag.
+    bool _doNotCreateMissingFolders = false;
+
     /// This flag will be raised by any thread if a non-recoverable
     /// catastrophic failure will be detected.
     OneWayFailer _isFailed;

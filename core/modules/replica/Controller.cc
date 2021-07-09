@@ -35,6 +35,7 @@
 #include "replica/DeleteRequest.h"
 #include "replica/DisposeRequest.h"
 #include "replica/EchoRequest.h"
+#include "replica/FileUtils.h"
 #include "replica/FindRequest.h"
 #include "replica/FindAllRequest.h"
 #include "replica/IndexRequest.h"
@@ -102,6 +103,14 @@ Controller::Controller(ServiceProvider::Ptr const& serviceProvider)
 string Controller::_context(string const& func) const {
     return "R-CONTR " + _identity.id + "  " + _identity.host +
            "[" + to_string(_identity.pid) + "]  " + func;
+}
+
+
+void Controller::verifyFolders(bool createMissingFolders) const {
+    vector<string> const folders = {
+        serviceProvider()->config()->get<string>("database", "qserv_master_tmp_dir")
+    };
+    FileUtils::verifyFolders("CONTROLLER", folders, createMissingFolders);
 }
 
 

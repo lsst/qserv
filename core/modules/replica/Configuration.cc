@@ -490,6 +490,13 @@ vector<string> Configuration::databases(string const& family, bool allDatabases,
 }
 
 
+void Configuration::assertDatabaseIsValid(string const& name) {
+    if (!isKnownDatabase(name)) {
+        throw invalid_argument(_context(__func__) + " database name is not valid: " + name);
+    }
+}
+
+
 bool Configuration::isKnownDatabase(string const& name) const {
     util::Lock const lock(_mtx, _context(__func__));
     if (name.empty()) throw invalid_argument(_context(__func__) + " the database name is empty.");
@@ -609,6 +616,24 @@ DatabaseInfo Configuration::deleteTable(string const& database, string const& ta
     }
     databaseInfo.removeTable(table);
     return databaseInfo;
+}
+
+
+void Configuration::assertWorkerIsValid(string const& name) {
+    if (!isKnownWorker(name)) {
+        throw invalid_argument(_context(__func__) + " worker name is not valid: " + name);
+    }
+}
+
+
+void Configuration::assertWorkersAreDifferent(string const& firstName,
+                                              string const& secondName) {
+    assertWorkerIsValid(firstName);
+    assertWorkerIsValid(secondName);
+
+    if (firstName == secondName) {
+        throw invalid_argument(_context(__func__) + " worker names are the same: " + firstName);
+    }
 }
 
 

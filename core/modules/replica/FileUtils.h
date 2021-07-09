@@ -172,6 +172,24 @@ public:
                                            std::string const& suffix=std::string(),
                                            unsigned int maxRetries=1);
 
+    /**
+     * Check if each folder (given by its absolute path) in the input collection exists
+     * and is write-enabled for an effective user of the current process. Create missing
+     * folders if needed.
+     *
+     * @param requestorContext a context from which the operation was requested
+     *   can be provided to improve error reporting and diagnostics
+     * @param folders a collection of folders to be created/verified
+     * @param createMissingFolders (optional) flag telling the method to create missing folders
+     * @throws std::invalid_argument for empty or non-absolute path names found in
+     *   the input collection
+     * @throws std::runtime_error if any folder can't be created, or if it's not
+     *   write-enabled for the effective current user
+     */
+    static void verifyFolders(std::string const& requestorContext,
+                              std::vector<std::string> const& folders,
+                              bool createMissingFolders=false);
+
 private:
     /// For thread synchronization of the temporary file creation
     static std::mutex _tmpFileMtx;

@@ -101,7 +101,7 @@ DeleteRequest::DeleteRequest(ServiceProvider::Ptr const& serviceProvider,
         _chunk(chunk),
         _onFinish(onFinish) {
 
-    Request::serviceProvider()->assertDatabaseIsValid(database);
+    Request::serviceProvider()->config()->assertDatabaseIsValid(database);
 }
 
 
