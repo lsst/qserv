@@ -22,6 +22,9 @@
 // Class header
 #include "replica/ConfigWorker.h"
 
+// Qserv headers
+#include "replica/FileUtils.h"
+
 // System headers
 #include <iostream>
 #include <stdexcept>
@@ -149,6 +152,12 @@ WorkerInfo::WorkerInfo(WorkerInfo const& info, json const& defaults) {
     } catch (exception const& ex) {
         throw invalid_argument(context + "the JSON object is not valid, ex: " + string(ex.what()));
     }
+}
+
+
+void WorkerInfo::verifyFolders(bool createMissingFolders) const {
+    vector<string> const folders = {dataDir, loaderTmpDir, exporterTmpDir, httpLoaderTmpDir};
+    FileUtils::verifyFolders("WORKER", folders, createMissingFolders);
 }
 
 
