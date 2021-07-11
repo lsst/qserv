@@ -42,6 +42,7 @@ target_include_directories(testQDisp PRIVATE
 
 target_link_libraries(testQDisp
     ccontrol
+    czar
     parser
     qana
     qdisp

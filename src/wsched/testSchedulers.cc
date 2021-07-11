@@ -90,7 +90,6 @@ struct SchedulerFixture {
         }
         t->set_scaninteractive(false);
         t->set_attemptcount(0);
-        t->set_czarid(0);
         ++counter;
         return t;
     }
@@ -104,7 +103,6 @@ struct SchedulerFixture {
         t->set_db("moose");
         t->set_scaninteractive(false);
         t->set_attemptcount(0);
-        t->set_czarid(0);
         ++counter;
         return t;
     }

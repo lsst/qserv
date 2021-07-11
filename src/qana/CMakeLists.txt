@@ -45,6 +45,7 @@ FUNCTION(QANA_TESTS)
         add_executable(${TEST} ${TEST}.cc)
         target_link_libraries(${TEST} PUBLIC
             ccontrol
+            czar
             parser
             qana
             qdisp

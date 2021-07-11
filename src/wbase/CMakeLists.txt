@@ -7,12 +7,8 @@ target_sources(wbase PRIVATE
     MsgProcessor.h
     SendChannel.cc
     SendChannel.h
-    SendChannelShared.cc
-    SendChannelShared.h
     Task.cc
     Task.h
-    TransmitData.cc
-    TransmitData.h
     WorkerCommand.cc
     WorkerCommand.h
 )
