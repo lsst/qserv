@@ -54,6 +54,7 @@
 #include "replica/SqlCreateTablesJob.h"
 #include "replica/SqlDeleteDbJob.h"
 #include "replica/SqlDeleteTableJob.h"
+#include "replica/SqlDisableDbJob.h"
 #include "replica/SqlGrantAccessJob.h"
 #include "replica/SqlEnableDbJob.h"
 #include "replica/SqlRemoveTablePartitionsJob.h"
@@ -388,14 +389,24 @@ json HttpIngestModule::_deleteDatabase() {
         }
     });
 
-    // Delete database entries at workers
-    auto const job = SqlDeleteDbJob::create(databaseInfo.name, allWorkers, controller());
-    job->start();
-    logJobStartedEvent(SqlDeleteDbJob::typeName(), job, databaseInfo.family);
-    job->wait();
-    logJobFinishedEvent(SqlDeleteDbJob::typeName(), job, databaseInfo.family);
+    // Delete entries (if any still exist) for database and its chunks from worker
+    // metadata tables. This will prevents Qserv workers from publishing the those
+    // as XROOTD "resources".
+    // NOTE: Ignore any errors should any be reported by the job.
+    auto const dasableDbJob = SqlDisableDbJob::create(databaseInfo.name, allWorkers, controller());
+    dasableDbJob->start();
+    logJobStartedEvent(SqlDisableDbJob::typeName(), dasableDbJob, databaseInfo.family);
+    dasableDbJob->wait();
+    logJobFinishedEvent(SqlDisableDbJob::typeName(), dasableDbJob, databaseInfo.family);
 
-    string error = ::jobCompletionErrorIfAny(job, "database deletion failed");
+    // Delete database entries at workers
+    auto const deleteDbJob = SqlDeleteDbJob::create(databaseInfo.name, allWorkers, controller());
+    deleteDbJob->start();
+    logJobStartedEvent(SqlDeleteDbJob::typeName(), deleteDbJob, databaseInfo.family);
+    deleteDbJob->wait();
+    logJobFinishedEvent(SqlDeleteDbJob::typeName(), deleteDbJob, databaseInfo.family);
+
+    string error = ::jobCompletionErrorIfAny(deleteDbJob, "database deletion failed");
     if (not error.empty()) throw HttpError(__func__, error);
 
     // Remove database entry from the Configuration. This will also eliminate all
