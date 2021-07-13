@@ -23,6 +23,7 @@
 
 // System headers
 #include <string>
+#include <vector>
 
 // Qserv headers
 #include "replica/protocol.pb.h"
@@ -117,15 +118,15 @@ private:
 
     /**
      * The query generator for simple requests uses parameters of a request
-     * to compose a desired query.
-     * @note this method is only used to generate a single query for
-     *   the non-batch requests.
+     * to compose a collection of desired queries.
+     * @note this method is capable of generating a single or multiple queries
+     *   as needed by the corresponding non-batch requests.
      * @param conn A reference to the database connector is needed to process
      *   arguments to meet requirements of the database query processing engine.
-     * @return A query as per the input request.
+     * @return A collection of queries to be executed as per the input request.
      * @throw std::invalid_argument For unsupported requests types supported.
      */
-    Query _query(std::shared_ptr<database::mysql::Connection> const& conn) const;
+    std::vector<Query> _queries(std::shared_ptr<database::mysql::Connection> const& conn) const;
 
     /**
      * The query generator for queries which have a target table.

@@ -196,17 +196,21 @@ bool WorkerSqlRequest::execute() {
             }
 
         } else {
+            // TODO: the algorithm will only report a result set of the last query
+            // from the multi-query collections. The implementations of the corresponding
+            // requests should take this into account.
             database::mysql::ConnectionHandler const h(connection);
             h.conn->execute([&](decltype(h.conn) const& conn_) {
                 conn_->begin();
-                auto const query = _query(conn_);
-                if (query.mutexName.empty()) {
-                    conn_->execute(query.query);
-                } else {
-                    util::Lock const lock(serviceProvider()->getNamedMutex(query.mutexName), context_);
-                    conn_->execute(query.query);
+                for (auto const& query: _queries(conn_)) {
+                    if (query.mutexName.empty()) {
+                        conn_->execute(query.query);
+                    } else {
+                        util::Lock const lock(serviceProvider()->getNamedMutex(query.mutexName), context_);
+                        conn_->execute(query.query);
+                    }
+                    _extractResultSet(lock, conn_);
                 }
-                _extractResultSet(lock, conn_);
                 conn_->commit();
             });
             setStatus(lock, STATUS_SUCCEEDED);
@@ -259,34 +263,54 @@ database::mysql::Connection::Ptr WorkerSqlRequest::_connector() const {
 }
 
 
-Query WorkerSqlRequest::_query(database::mysql::Connection::Ptr const& conn) const {
+vector<Query> WorkerSqlRequest::_queries(database::mysql::Connection::Ptr const& conn) const {
+
+    vector<Query> queries;
 
     auto const config = serviceProvider()->config();
     auto const workerInfo = config->workerInfo(worker());    
 
+    string const qservChunksTable = conn->sqlId("qservw_worker", "Chunks");
     string const qservDbsTable = conn->sqlId("qservw_worker", "Dbs");
 
     switch (_request.type()) {
 
         case ProtocolRequestSql::QUERY:
-            return Query(_request.query());
+            queries.emplace_back(Query(_request.query()));
+            break;
 
         case ProtocolRequestSql::CREATE_DATABASE:
-            return Query("CREATE DATABASE IF NOT EXISTS " + conn->sqlId(_request.database()));
+            queries.emplace_back(Query(
+                "CREATE DATABASE IF NOT EXISTS " + conn->sqlId(_request.database())
+            ));
+            break;
 
         case ProtocolRequestSql::DROP_DATABASE:
-            return Query("DROP DATABASE IF EXISTS " + conn->sqlId(_request.database()));
+            queries.emplace_back(Query(
+                "DROP DATABASE IF EXISTS " + conn->sqlId(_request.database())
+            ));
+            break;
 
         case ProtocolRequestSql::ENABLE_DATABASE:
 
             // Using REPLACE instead of INSERT to avoid hitting the DUPLICATE KEY error
             // if such entry already exists in the table.
-            return Query("REPLACE INTO " + qservDbsTable +
-                         " VALUES ("    + conn->sqlValue(_request.database()) + ")");
+            queries.emplace_back(Query(
+                "REPLACE INTO " + qservDbsTable +
+                " VALUES ("    + conn->sqlValue(_request.database()) + ")"
+            ));
+            break;
 
         case ProtocolRequestSql::DISABLE_DATABASE:
-            return Query("DELETE FROM " + qservDbsTable +
-                         " WHERE "      + conn->sqlEqual("db", _request.database()));
+            queries.emplace_back(Query(
+                "DELETE FROM " + qservChunksTable +
+                " WHERE "      + conn->sqlEqual("db", _request.database())
+            ));
+            queries.emplace_back(Query(
+                "DELETE FROM " + qservDbsTable +
+                " WHERE "      + conn->sqlEqual("db", _request.database())
+            ));
+            break;
 
         case ProtocolRequestSql::GRANT_ACCESS:
 
@@ -301,15 +325,20 @@ Query WorkerSqlRequest::_query(database::mysql::Connection::Ptr const& conn) con
             // Hence removing quotes from '*' an commenting the following statement:
             //   return "GRANT ALL ON " + conn->sqlId(_request.database()) + "." + conn->sqlId("*") +
             //          " TO " + conn->sqlValue(_request.user()) + "@" + conn->sqlValue("localhost");
-            return Query("GRANT ALL ON " + conn->sqlId(_request.database()) + ".* TO " +
-                         conn->sqlValue(_request.user()) + "@" + conn->sqlValue("localhost"));
+            queries.emplace_back(Query(
+                "GRANT ALL ON " + conn->sqlId(_request.database()) + ".* TO " +
+                conn->sqlValue(_request.user()) + "@" + conn->sqlValue("localhost")
+            ));
+            break;
 
         default:
 
             // The remaining remaining types of requests require the name of a table
             // affected by the operation.
-            return _query(conn, _request.table());
+            queries.emplace_back(_query(conn, _request.table()));
+            break;
     }
+    return queries;
 }
 
 
