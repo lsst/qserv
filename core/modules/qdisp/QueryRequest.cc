@@ -403,14 +403,7 @@ void QueryRequest::ProcessResponseData(XrdSsiErrInfo const& eInfo,
 
 void QueryRequest::_processData(JobQuery::Ptr const& jq, int blen, bool last) {
     // It's possible jq and _jobQuery differ, so need to use jq.
-    /* &&&
-    if (jq->isQueryCancelled()) {
-        LOGS(_log, LOG_LVL_WARN, "QueryRequest::_processData job was cancelled.");
-        _errorFinish(true);
-        return;
-    }
-    */
-    auto executive = _jobQuery->getExecutive();
+    auto executive = jq->getExecutive();
     if (executive == nullptr || executive->getCancelled() || executive->isLimitRowComplete()) {
         if (executive == nullptr || executive->getCancelled()) {
             LOGS(_log, LOG_LVL_WARN, "QueryRequest::_processData job was cancelled.");
