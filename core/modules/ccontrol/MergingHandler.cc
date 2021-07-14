@@ -230,12 +230,6 @@ bool MergingHandler::_merge(bool last) {
         if (_flushed) {
             throw Bug("MergingRequester::_merge : already flushed");
         }
-        /* &&&
-        if (exec->isLimitRowComplete()) {
-            LOGS(_log, LOG_LVL_INFO, "skipping merge, LIMIT result already ready");
-            return true;
-        }
-        */
         bool success = _infileMerger->merge(_response, last);
         if (!success) {
             LOGS(_log, LOG_LVL_WARN, "_merge() failed");
@@ -245,13 +239,6 @@ bool MergingHandler::_merge(bool last) {
         }
         _response.reset();
 
-        /* &&&
-        // &&& the 'last' check may not be needed, but partial query
-        // results could cause issues.
-        if (last && success && _infileMerger->limitRowComplete()) {
-            throw Bug("&&& NEED CODE to call Executive::setLimitRowComplete() and then squash()");
-        }
-        */
         return success;
     }
     LOGS(_log, LOG_LVL_ERROR, "MergingHandler::_merge() failed, jobQuery was NULL");

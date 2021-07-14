@@ -263,18 +263,17 @@ bool Executive::join() {
         LOGS(_log, LOG_LVL_INFO, "Query execution succeeded all: " << _requestCount
              << " jobs dispatched and completed.");
     } else if (isLimitRowComplete()) {
-        LOGS(_log, LOG_LVL_INFO, "Query execution succeeded enough: " << sCount
+        LOGS(_log, LOG_LVL_INFO, "Query execution succeeded enough (LIMIT): " << sCount
              << " jobs out of " << _requestCount << " completed.");
     } else {
         LOGS(_log, LOG_LVL_ERROR, "Query execution failed: " << _requestCount
              << " jobs dispatched, but only " << sCount << " jobs completed");
     }
     _updateProxyMessages();
-    bool empty = (sCount == _requestCount);
-    _empty.store(empty);
-    LOGS(_log, LOG_LVL_DEBUG, "Flag set to _empty=" << empty << ", sCount=" << sCount
+    _empty = (sCount == _requestCount);
+    LOGS(_log, LOG_LVL_DEBUG, "Flag set to _empty=" << _empty << ", sCount=" << sCount
          << ", requestCount=" << _requestCount);
-    return empty;
+    return _empty || isLimitRowComplete();
 }
 
 void Executive::markCompleted(int jobId, bool success) {
@@ -464,7 +463,8 @@ void Executive::_unTrack(int jobId) {
             s = _getIncompleteJobsString(5);
         }
     }
-    LOGS(_log, (untracked ? LOG_LVL_DEBUG : LOG_LVL_WARN),
+    bool logDebug = untracked || isLimitRowComplete();
+    LOGS(_log, (logDebug ? LOG_LVL_DEBUG :  LOG_LVL_WARN),
          "Executive UNTRACKING " << (untracked ? "success":"failed") << "::" << s);
     // Every time a chunk completes, consider sending an update to QMeta.
     // Important chunks to log: first, last, middle
@@ -597,10 +597,11 @@ void Executive::checkLimitRowComplete() {
         // already squashing etc, just return
         return;
     }
-    // Set flags so queries can be squashed without canceling the entire query. &&&
-
-
-    squash();
+    // Set flags so queries can be squashed without canceling the entire query.
+    // To explain WARN messages in the log related to this action, this
+    // message is LOG_LVL_WARN.
+    LOGS(_log, LOG_LVL_WARN, "LIMIT query has enough rows, canceling superfluous jobs.");
+    _squashSuperfluous();
 }
 
 

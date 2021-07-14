@@ -137,7 +137,7 @@ private:
     void _callMarkComplete(bool success);
     bool _importStream(JobQuery::Ptr const& jq);
     bool _importError(std::string const& msg, int code);
-    bool _errorFinish(bool shouldCancel=false);
+    bool _errorFinish(bool stopTrying=false);
     void _finish();
     void _processData(JobQuery::Ptr const& jq, int blen, bool last);
     void _queueAskForResponse(std::shared_ptr<AskForResponseDataCmd> const& cmd, JobQuery::Ptr const& jq, bool initialRequest);

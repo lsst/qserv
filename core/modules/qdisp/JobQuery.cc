@@ -141,7 +141,9 @@ bool JobQuery::cancel(bool superfluous) {
             std::ostringstream os;
             os << _idStr << " cancel QueryRequest=" << _queryRequestPtr ;
             LOGS(_log, LOG_LVL_DEBUG, os.str());
-            getDescription()->respHandler()->errorFlush(os.str(), -1);
+            if (!superfluous) {
+                getDescription()->respHandler()->errorFlush(os.str(), -1);
+            }
             auto executive = _executive.lock();
             if (executive == nullptr) {
                 LOGS(_log, LOG_LVL_ERROR, " can't markComplete cancelled, executive == nullptr");

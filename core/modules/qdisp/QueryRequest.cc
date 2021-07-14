@@ -411,8 +411,12 @@ void QueryRequest::_processData(JobQuery::Ptr const& jq, int blen, bool last) {
     }
     */
     auto executive = _jobQuery->getExecutive();
-    if (executive == nullptr || executive->getCancelled()) {
-        LOGS(_log, LOG_LVL_WARN, "QueryRequest::_processData job was cancelled.");
+    if (executive == nullptr || executive->getCancelled() || executive->isLimitRowComplete()) {
+        if (executive == nullptr || executive->getCancelled()) {
+            LOGS(_log, LOG_LVL_WARN, "QueryRequest::_processData job was cancelled.");
+        } else {
+            LOGS(_log, LOG_LVL_INFO, "QueryRequest::_processData ignoring, enough rows already");
+        }
         _errorFinish(true);
         return;
     }
@@ -530,8 +534,8 @@ void QueryRequest::cleanup() {
 /// a local shared pointer for this QueryRequest and/or its owner JobQuery.
 /// See QueryRequest::cleanup()
 /// @return true if this QueryRequest object had the authority to make changes.
-bool QueryRequest::_errorFinish(bool shouldCancel) {
-    LOGS(_log, LOG_LVL_DEBUG, "_errorFinish() shouldCancel=" << shouldCancel);
+bool QueryRequest::_errorFinish(bool stopTrying) {
+    LOGS(_log, LOG_LVL_DEBUG, "_errorFinish() shouldCancel=" << stopTrying);
     auto jq = _jobQuery;
     {
         // Running _errorFinish more than once could cause errors.
@@ -547,8 +551,8 @@ bool QueryRequest::_errorFinish(bool shouldCancel) {
     }
 
     // Make the calls outside of the mutex lock.
-    LOGS(_log, LOG_LVL_DEBUG, "calling Finished(shouldCancel=" << shouldCancel << ")");
-    bool ok = Finished(shouldCancel);
+    LOGS(_log, LOG_LVL_DEBUG, "calling Finished(shouldCancel=" << stopTrying << ")");
+    bool ok = Finished(stopTrying);
     _finishedCalled = true;
     if (!ok) {
         LOGS(_log, LOG_LVL_ERROR,  "QueryRequest::_errorFinish !ok ");
@@ -556,7 +560,7 @@ bool QueryRequest::_errorFinish(bool shouldCancel) {
         LOGS(_log, LOG_LVL_DEBUG, "QueryRequest::_errorFinish ok");
     }
 
-    if (!_retried.exchange(true) && !shouldCancel) {
+    if (!_retried.exchange(true) && !stopTrying) {
         // There's a slight race condition here. _jobQuery::runJob() creates a
         // new QueryRequest object which will replace this one in _jobQuery.
         // The replacement could show up before this one's cleanup() is called,

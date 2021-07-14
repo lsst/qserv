@@ -146,7 +146,9 @@ public:
     /// rows already read in.
     void checkLimitRowComplete();
 
-    bool isLimitRowComplete() { return _limitRowComplete; }
+    /// @return _limitRowComplete, which can only be meaningful if the
+    ///         user query has not been cancelled.
+    bool isLimitRowComplete() { return _limitRowComplete && !_cancelled; }
 
 private:
     Executive(ExecutiveConfig const& c, std::shared_ptr<MessageStore> const& ms,

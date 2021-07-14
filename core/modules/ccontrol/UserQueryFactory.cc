@@ -101,8 +101,6 @@ UserQueryFactory::UserQueryFactory(czar::CzarConfig const& czarConfig,
                                    std::string const& czarName)
         :  _userQuerySharedResources(makeUserQuerySharedResources(czarConfig, dbModels, czarName)) {
 
-    //&&& ::putenv((char*)"XRDDEBUG=1");
-
     _executiveConfig = std::make_shared<qdisp::ExecutiveConfig>(
             czarConfig.getXrootdFrontendUrl(), czarConfig.getQMetaSecondsBetweenChunkUpdates());
 
