@@ -52,8 +52,13 @@ class XrdSsiService;
 
 namespace lsst {
 namespace qserv {
+
 namespace qmeta {
 class QStatus;
+}
+
+namespace qproc {
+class QuerySession;
 }
 
 namespace qdisp {
@@ -85,7 +90,8 @@ public:
     /// If c->serviceUrl == ExecutiveConfig::getMockStr(), then use XrdSsiServiceMock
     /// instead of a real XrdSsiService
     static Executive::Ptr create(ExecutiveConfig const& c, std::shared_ptr<MessageStore> const& ms,
-                std::shared_ptr<QdispPool> const& qdispPool, std::shared_ptr<qmeta::QStatus> const& qMeta);
+                std::shared_ptr<QdispPool> const& qdispPool, std::shared_ptr<qmeta::QStatus> const& qMeta,
+                std::shared_ptr<qproc::QuerySession> const& querySession);
 
     ~Executive();
 
@@ -140,14 +146,16 @@ public:
     /// rows already read in.
     void checkLimitRowComplete();
 
-    /// @return previous value of _limitRowComplete while setting it to true.
-    bool setLimitRowComplete() { return _limitRowComplete.exchange(true); }
+    bool isLimitRowComplete() { return _limitRowComplete; }
 
 private:
     Executive(ExecutiveConfig const& c, std::shared_ptr<MessageStore> const& ms,
-              std::shared_ptr<QdispPool> const& qdispPool, std::shared_ptr<qmeta::QStatus> const& qStatus);
+              std::shared_ptr<QdispPool> const& qdispPool,
+              std::shared_ptr<qmeta::QStatus> const& qStatus,
+              std::shared_ptr<qproc::QuerySession> const& querySession);
 
     void _setup();
+    void _setupLimit();
 
     bool _track(int refNum, std::shared_ptr<JobQuery> const& r);
     void _unTrack(int refNum);
@@ -157,6 +165,13 @@ private:
     void _updateProxyMessages();
 
     void _waitAllUntilEmpty();
+
+    void _squashSuperfluous();
+
+    /// @return previous value of _limitRowComplete while setting it to true.
+    ///  This indicates that enough rows have been read to complete the user query
+    ///  with a LIMIT clause, and no group by or order by clause.
+    bool _setLimitRowComplete() { return _limitRowComplete.exchange(true); }
 
     // for debugging
     void _printState(std::ostream& os);
@@ -207,6 +222,11 @@ private:
     std::atomic<bool> _limitRowComplete{false};
 
     std::atomic<int64_t> _totalResultRows{0};
+    std::weak_ptr<qproc::QuerySession> _querySession;
+    int64_t _limit = 0; ///< Limit to number of rows to return. 0 means no limit.
+
+    ///< true if query can be returned as soon as _limit rows have been read.
+    bool _limitApplies = false;
 };
 
 class MarkCompleteFunc {

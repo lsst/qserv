@@ -101,7 +101,7 @@ UserQueryFactory::UserQueryFactory(czar::CzarConfig const& czarConfig,
                                    std::string const& czarName)
         :  _userQuerySharedResources(makeUserQuerySharedResources(czarConfig, dbModels, czarName)) {
 
-    ::putenv((char*)"XRDDEBUG=1");
+    //&&& ::putenv((char*)"XRDDEBUG=1");
 
     _executiveConfig = std::make_shared<qdisp::ExecutiveConfig>(
             czarConfig.getXrootdFrontendUrl(), czarConfig.getQMetaSecondsBetweenChunkUpdates());
@@ -209,7 +209,7 @@ UserQueryFactory::newUserQuery(std::string const& aQuery,
         std::shared_ptr<rproc::InfileMergerConfig> infileMergerConfig;
         if (sessionValid) {
             executive = qdisp::Executive::create(*_executiveConfig, messageStore,
-                                                 qdispPool, _userQuerySharedResources->queryStatsData);
+                                                 qdispPool, _userQuerySharedResources->queryStatsData, qs);
             infileMergerConfig = std::make_shared<rproc::InfileMergerConfig>(
                     _userQuerySharedResources->czarConfig,
                     _userQuerySharedResources->mysqlResultConfig);

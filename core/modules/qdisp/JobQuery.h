@@ -80,7 +80,7 @@ public:
 
     std::shared_ptr<MarkCompleteFunc> getMarkCompleteFunc() { return _markCompleteFunc; }
 
-    bool cancel();
+    bool cancel(bool superfluous=false);
     bool isQueryCancelled();
 
     Executive::Ptr getExecutive() { return _executive.lock(); }
