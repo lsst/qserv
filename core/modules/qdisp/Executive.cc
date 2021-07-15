@@ -168,7 +168,10 @@ JobQuery::Ptr Executive::add(JobDescription::Ptr const& jobDesc) {
     QSERV_LOGCONTEXT_QUERY_JOB(jobQuery->getQueryId(), jobQuery->getIdInt());
 
     LOGS(_log, LOG_LVL_DEBUG, "Executive::add with path=" << jobDesc->resource().path());
-    jobQuery->runJob();
+    bool started = jobQuery->runJob();
+    if (!started && isLimitRowComplete()) {
+        markCompleted(jobQuery->getIdInt(), false);
+    }
     return jobQuery;
 }
 
