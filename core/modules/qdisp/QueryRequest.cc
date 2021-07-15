@@ -544,11 +544,11 @@ bool QueryRequest::_errorFinish(bool stopTrying) {
     }
 
     // Make the calls outside of the mutex lock.
-    LOGS(_log, LOG_LVL_DEBUG, "calling Finished(shouldCancel=" << stopTrying << ")");
+    LOGS(_log, LOG_LVL_DEBUG, "calling Finished(stopTrying=" << stopTrying << ")");
     bool ok = Finished(stopTrying);
     _finishedCalled = true;
     if (!ok) {
-        LOGS(_log, LOG_LVL_ERROR,  "QueryRequest::_errorFinish !ok ");
+        LOGS(_log, LOG_LVL_ERROR,  "QueryRequest::_errorFinish NOT ok");
     } else {
         LOGS(_log, LOG_LVL_DEBUG, "QueryRequest::_errorFinish ok");
     }

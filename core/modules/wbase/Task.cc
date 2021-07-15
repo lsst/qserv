@@ -138,6 +138,7 @@ int Task::getChunkId() {
 
 /// Flag the Task as cancelled, try to stop the SQL query, and try to remove it from the schedule.
 void Task::cancel() {
+    LOGS(_log, LOG_LVL_INFO, "Task::cancel " << _idStr);
     if (_cancelled.exchange(true)) {
         // Was already cancelled.
         return;

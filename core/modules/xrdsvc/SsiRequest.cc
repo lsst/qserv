@@ -141,6 +141,7 @@ void SsiRequest::execute(XrdSsiRequest& req) {
             auto task = std::make_shared<wbase::Task>(
                                 taskMsg,
                                 std::make_shared<wbase::SendChannel>(shared_from_this()));
+            _task = task;
             ReleaseRequestBuffer();
             t.start();
             _processor->processTask(task); // Queues task to be run later.
@@ -318,6 +319,14 @@ wbase::WorkerCommand::Ptr SsiRequest::parseWorkerCommand(char const* reqData, in
 
 /// Called by SSI to free resources.
 void SsiRequest::Finished(XrdSsiRequest& req, XrdSsiRespInfo const& rinfo, bool cancel) { // Step 8
+    if (cancel) {
+        // Try to cancel the task, if there is one.
+        auto task = _task.lock();
+        if (task != nullptr) {
+            task->cancel();
+        }
+    }
+
     // This call is sync (blocking).
     // client finished retrieving response, or cancelled.
     // release response resources (e.g. buf)
@@ -331,6 +340,8 @@ void SsiRequest::Finished(XrdSsiRequest& req, XrdSsiRespInfo const& rinfo, bool 
             _stream->clearMsgs();
         }
     }
+
+
 
     auto keepAlive = freeSelfKeepAlive();
 

@@ -48,6 +48,7 @@ namespace lsst {
 namespace qserv {
 namespace wbase {
 struct MsgProcessor;
+class Task;
 }
 namespace wpublish {
 class ResourceMonitor;
@@ -158,6 +159,7 @@ private:
 
     std::shared_ptr<ChannelStream> _stream;
 
+    std::weak_ptr<wbase::Task> _task;
 
     mysql::MySqlConfig const _mySqlConfig;
 
