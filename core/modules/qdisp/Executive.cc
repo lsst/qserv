@@ -420,8 +420,6 @@ void Executive::_setup() {
 }
 
 
-
-
 /** Add (jobId,r) entry to _requesters map if not here yet
   *  else leave _requesters untouched.
   *

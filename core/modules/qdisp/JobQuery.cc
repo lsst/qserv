@@ -114,7 +114,7 @@ bool JobQuery::runJob() {
         }
         _inSsi = false;
     }
-    LOGS(_log, LOG_LVL_WARN, "runJob failed. cancelled=" << cancelled
+    LOGS(_log, (superfluous ? LOG_LVL_DEBUG : LOG_LVL_WARN), "runJob failed. cancelled=" << cancelled
               << " reset=" << handlerReset);
     return false;
 }
