@@ -95,6 +95,8 @@ public:
         JobStatus::Ptr const& jobStatus, std::shared_ptr<MarkCompleteFunc> const& markCompleteFunc,
         QueryId qid);
 
+    bool isCancelled() { return _cancelled; }
+
 protected:
     void _setup() {
         _jobDescription->respHandler()->setJobQuery(shared_from_this());

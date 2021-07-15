@@ -86,7 +86,7 @@ public:
                 return;
             }
 
-            if (qr->isQueryCancelled()) {
+            if (qr->isQueryCancelled() || jq->isCancelled()) {
                 LOGS(_log, LOG_LVL_DEBUG, "AskForResp query was cancelled");
                 qr->_errorFinish(true);
                 _setState(State::DONE2);
