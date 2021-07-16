@@ -544,6 +544,11 @@ function read_query_result(inj)
         local queryErrorCount = 0
         local error_msg = ""
         local row
+        local countUnknown = 0
+        local countCancel = 0
+        local countResponseData = 0
+        local countComplete = 0
+        local countOther = 0
         for row in inj.resultset.rows do
             local severity = tonumber(row[4])
             if (severity == MSG_ERROR) then
@@ -554,10 +559,27 @@ function read_query_result(inj)
                     error_msg = "\n-- WARN multiple errors"
                 end
             else
-                czarProxy.log("mysql-proxy", "INFO", "   chunkId: " .. row[1] .. ", code: " .. row[2] ..
-                              ", msg: " .. tostring(row[3]) .. ", timestamp: " .. row[5])
+                --czarProxy.log("mysql-proxy", "INFO", "   chunkId: " .. row[1] .. ", code: " .. row[2] ..
+                --              ", msg: " .. tostring(row[3]) .. ", timestamp: " .. row[5])
+                local code = row[2]
+		 if (code == '0') then
+		     countUnknown = countUnknown + 1
+		 elseif (code == '1211') then
+		     countCancel = countCancel + 1 
+                elseif (code == '1206') then
+                    countResponseData = countResponseData + 1
+                elseif (code == '2000') then
+                    countComplete = countComplete + 1
+                else
+                    countOther = countOther + 1
+                    czarProxy.log("mysql-proxy", "INFO", "   chunkId: " .. row[1] .. ", code: " .. row[2] ..
+                                  ", msg: " .. tostring(row[3]) .. ", timestamp: " .. row[5])
+                end 
             end
         end
+        czarProxy.log("mysql-proxy", "INFO", "counts Complete:" .. countComplete ..
+                      " ResponseData:" .. countResponseData .. " Cancel:" .. countCancel ..
+                      " Unknown:" .. countUnknown .. " other:" .. countOther)
         if (queryErrorCount > 0) then
             -- return error code but also drop result table
             qProc.dropResults(proxy)

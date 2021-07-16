@@ -117,7 +117,7 @@ void Foreman::processTask(std::shared_ptr<wbase::Task> const& task) {
                 LOGS(_log, LOG_LVL_ERROR, "runQuery threw UnsupportedError " << e.what() << *task);
             }
             if (not success) {
-                LOGS(_log, LOG_LVL_ERROR, "runQuery failed " << *task);
+                LOGS(_log, LOG_LVL_WARN, "runQuery failed " << *task);
             }
         }
         // Transmission is done, but 'task' contains statistics that are still useful.

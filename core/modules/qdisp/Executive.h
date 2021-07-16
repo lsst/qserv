@@ -150,6 +150,9 @@ public:
     ///         user query has not been cancelled.
     bool isLimitRowComplete() { return _limitRowComplete && !_cancelled; }
 
+    /// @return the value of _dataIgnoredCount
+    int incrDataIgnoredCount() { return ++_dataIgnoredCount; }
+
 private:
     Executive(ExecutiveConfig const& c, std::shared_ptr<MessageStore> const& ms,
               std::shared_ptr<QdispPool> const& qdispPool,
@@ -229,6 +232,9 @@ private:
 
     ///< true if query can be returned as soon as _limit rows have been read.
     bool _limitApplies = false;
+
+    /// Number of time data has been ignored for for this user query.
+    std::atomic<int> _dataIgnoredCount{0};
 };
 
 class MarkCompleteFunc {

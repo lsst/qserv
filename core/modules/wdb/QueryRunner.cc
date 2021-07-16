@@ -245,6 +245,9 @@ bool QueryRunner::_fillRows(MYSQL_RES* result, int numFields, uint& rowCount, si
     MYSQL_ROW row;
 
     while ((row = mysql_fetch_row(result))) {
+        if (_cancelled) {
+            return false;
+        }
         auto lengths = mysql_fetch_lengths(result);
         proto::RowBundle* rawRow =_result->add_row();
         for(int i=0; i < numFields; ++i) {
@@ -529,10 +532,10 @@ void QueryRunner::cancel() {
     int status = _mysqlConn->cancel();
     switch (status) {
       case -1:
-          LOGS(_log, LOG_LVL_ERROR, "QueryRunner::cancel() NOP");
+          LOGS(_log, LOG_LVL_WARN, "QueryRunner::cancel() NOP");
           break;
       case 0:
-          LOGS(_log, LOG_LVL_ERROR, "QueryRunner::cancel() success");
+          LOGS(_log, LOG_LVL_WARN, "QueryRunner::cancel() success");
           break;
       case 1:
           LOGS(_log, LOG_LVL_ERROR, "QueryRunner::cancel() Error connecting to kill query.");

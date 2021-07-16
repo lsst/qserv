@@ -408,7 +408,11 @@ void QueryRequest::_processData(JobQuery::Ptr const& jq, int blen, bool last) {
         if (executive == nullptr || executive->getCancelled()) {
             LOGS(_log, LOG_LVL_WARN, "QueryRequest::_processData job was cancelled.");
         } else {
-            LOGS(_log, LOG_LVL_INFO, "QueryRequest::_processData ignoring, enough rows already");
+            int dataIgnored = (executive->incrDataIgnoredCount());
+            if ((dataIgnored - 1)%1000 == 0) {
+                LOGS(_log, LOG_LVL_INFO, "QueryRequest::_processData ignoring, enough rows already "
+                                      << "dataIgnored=" << dataIgnored);
+            }
         }
         _errorFinish(true);
         return;
