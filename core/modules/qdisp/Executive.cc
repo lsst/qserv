@@ -66,8 +66,10 @@
 #include "qdisp/QueryRequest.h"
 #include "qdisp/ResponseHandler.h"
 #include "qdisp/XrdSsiMocks.h"
+#include "qproc/QuerySession.h"
 #include "qmeta/Exceptions.h"
 #include "qmeta/QStatus.h"
+#include "query/SelectStmt.h"
 #include "util/EventThread.h"
 
 extern XrdSsiProvider *XrdSsiProviderClient;
@@ -95,10 +97,12 @@ namespace qdisp {
 ////////////////////////////////////////////////////////////////////////
 Executive::Executive(ExecutiveConfig const& c, std::shared_ptr<MessageStore> const& ms,
                      std::shared_ptr<QdispPool> const& qdispPool,
-                     std::shared_ptr<qmeta::QStatus> const& qStatus)
-    : _config(c), _messageStore(ms), _qdispPool(qdispPool), _qMeta(qStatus) {
+                     std::shared_ptr<qmeta::QStatus> const& qStatus,
+                     std::shared_ptr<qproc::QuerySession> const& querySession)
+    : _config(c), _messageStore(ms), _qdispPool(qdispPool), _qMeta(qStatus), _querySession(querySession) {
     _secondsBetweenQMetaUpdates = std::chrono::seconds(_config.secondsBetweenChunkUpdates);
     _setup();
+    _setupLimit();
 }
 
 
@@ -110,8 +114,9 @@ Executive::~Executive() {
 
 Executive::Ptr Executive::create(ExecutiveConfig const& c, std::shared_ptr<MessageStore> const& ms,
                                  std::shared_ptr<QdispPool> const& qdispPool,
-                                 std::shared_ptr<qmeta::QStatus> const& qMeta) {
-    Executive::Ptr exec{new Executive(c, ms, qdispPool, qMeta)}; // make_shared dislikes private constructor.
+                                 std::shared_ptr<qmeta::QStatus> const& qMeta,
+                                 std::shared_ptr<qproc::QuerySession> const& querySession) {
+    Executive::Ptr exec{new Executive(c, ms, qdispPool, qMeta, querySession)}; // make_shared dislikes private constructor.
     return exec;
 }
 
@@ -163,7 +168,10 @@ JobQuery::Ptr Executive::add(JobDescription::Ptr const& jobDesc) {
     QSERV_LOGCONTEXT_QUERY_JOB(jobQuery->getQueryId(), jobQuery->getIdInt());
 
     LOGS(_log, LOG_LVL_DEBUG, "Executive::add with path=" << jobDesc->resource().path());
-    jobQuery->runJob();
+    bool started = jobQuery->runJob();
+    if (!started && isLimitRowComplete()) {
+        markCompleted(jobQuery->getIdInt(), false);
+    }
     return jobQuery;
 }
 
@@ -242,7 +250,7 @@ bool Executive::join() {
     _waitAllUntilEmpty();
     // Okay to merge. probably not the Executive's responsibility
     struct successF {
-        static bool f(Executive::JobMap::value_type const& entry) {
+        static bool func(Executive::JobMap::value_type const& entry) {
             JobStatus::Info const& esI = entry.second->getStatus()->getInfo();
             LOGS(_log, LOG_LVL_TRACE, "entry state:" << (void*)entry.second.get() << " " << esI);
             return (esI.state == JobStatus::RESPONSE_DONE) || (esI.state == JobStatus::COMPLETE);
@@ -252,28 +260,30 @@ bool Executive::join() {
     int sCount = 0;
     {
         std::lock_guard<std::recursive_mutex> lockJobMap(_jobMapMtx);
-        sCount = std::count_if(_jobMap.begin(), _jobMap.end(), successF::f);
+        sCount = std::count_if(_jobMap.begin(), _jobMap.end(), successF::func);
     }
     if (sCount == _requestCount) {
-        LOGS(_log, LOG_LVL_DEBUG, "Query execution succeeded: " << _requestCount
+        LOGS(_log, LOG_LVL_INFO, "Query execution succeeded all: " << _requestCount
              << " jobs dispatched and completed.");
+    } else if (isLimitRowComplete()) {
+        LOGS(_log, LOG_LVL_INFO, "Query execution succeeded enough (LIMIT): " << sCount
+             << " jobs out of " << _requestCount << " completed.");
     } else {
         LOGS(_log, LOG_LVL_ERROR, "Query execution failed: " << _requestCount
              << " jobs dispatched, but only " << sCount << " jobs completed");
     }
     _updateProxyMessages();
-    bool empty = (sCount == _requestCount);
-    _empty.store(empty);
-    LOGS(_log, LOG_LVL_DEBUG, "Flag set to _empty=" << empty << ", sCount=" << sCount
+    _empty = (sCount == _requestCount);
+    LOGS(_log, LOG_LVL_DEBUG, "Flag set to _empty=" << _empty << ", sCount=" << sCount
          << ", requestCount=" << _requestCount);
-    return empty;
+    return _empty || isLimitRowComplete();
 }
 
 void Executive::markCompleted(int jobId, bool success) {
     ResponseHandler::Error err;
     std::string idStr = QueryIdHelper::makeIdStr(_id, jobId);
     LOGS(_log, LOG_LVL_DEBUG, "Executive::markCompleted " << success);
-    if (!success) {
+    if (!success && !isLimitRowComplete()) {
         {
             std::lock_guard<std::mutex> lock(_incompleteJobsMutex);
             auto iter = _incompleteJobs.find(jobId);
@@ -310,7 +320,7 @@ void Executive::markCompleted(int jobId, bool success) {
         }
     }
     _unTrack(jobId);
-    if (!success) {
+    if (!success && !isLimitRowComplete()) {
         LOGS(_log, LOG_LVL_ERROR, "Executive: requesting squash, cause: "
              << " failed (code=" << err.getCode() << " " << err.getMsg() << ")");
         squash(); // ask to squash
@@ -335,10 +345,38 @@ void Executive::squash() {
     }
 
     for (auto const& job : jobsToCancel) {
-            job->cancel();
+        job->cancel();
     }
     LOGS(_log, LOG_LVL_DEBUG, "Executive::squash done");
 }
+
+
+void Executive::_squashSuperfluous() {
+    if (_cancelled) {
+        LOGS(_log, LOG_LVL_INFO, "squashSuperfluous() irrelevant as query already cancelled");
+        return;
+    }
+
+    LOGS(_log, LOG_LVL_INFO, "Executive::squashSuperflous Trying to cancel incomplete jobs");
+    std::deque<JobQuery::Ptr> jobsToCancel;
+    {
+        std::lock_guard<std::recursive_mutex> lockJobMap(_jobMapMtx);
+        for(auto const& jobEntry : _jobMap) {
+            JobQuery::Ptr jq = jobEntry.second;
+            // It's important that none of the cancelled queries
+            // try to remove their rows from the result.
+            if (jq->getStatus()->getInfo().state  != JobStatus::COMPLETE) {
+                jobsToCancel.push_back(jobEntry.second);
+            }
+        }
+    }
+
+    for (auto const& job : jobsToCancel) {
+        job->cancel(true);
+    }
+    LOGS(_log, LOG_LVL_DEBUG, "Executive::squashSuperfluous done");
+}
+
 
 int Executive::getNumInflight() {
     std::unique_lock<std::mutex> lock(_incompleteJobsMutex);
@@ -380,6 +418,7 @@ void Executive::_setup() {
     }
     assert(_xrdSsiService);
 }
+
 
 /** Add (jobId,r) entry to _requesters map if not here yet
   *  else leave _requesters untouched.
@@ -425,7 +464,8 @@ void Executive::_unTrack(int jobId) {
             s = _getIncompleteJobsString(5);
         }
     }
-    LOGS(_log, (untracked ? LOG_LVL_DEBUG : LOG_LVL_WARN),
+    bool logDebug = untracked || isLimitRowComplete();
+    LOGS(_log, (logDebug ? LOG_LVL_DEBUG :  LOG_LVL_WARN),
          "Executive UNTRACKING " << (untracked ? "success":"failed") << "::" << s);
     // Every time a chunk completes, consider sending an update to QMeta.
     // Important chunks to log: first, last, middle
@@ -499,6 +539,7 @@ void Executive::_updateProxyMessages() {
     }
 }
 
+
 /// This function blocks until it has reaped all the requesters.
 /// Typically the requesters are handled by markCompleted().
 /// _reapRequesters() deals with cases that involve errors.
@@ -530,6 +571,40 @@ void Executive::_waitAllUntilEmpty() {
         _allJobsComplete.wait_for(lock, statePrintDelay);
     }
 }
+
+
+void Executive::_setupLimit() {
+    // Figure out the limit situation.
+    auto qSession = _querySession.lock();
+    // if qSession is nullptr, this is probably a unit test.
+    if (qSession == nullptr) return;
+    auto const& selectStatement = qSession->getStmt();
+    bool groupBy = selectStatement.hasGroupBy();
+    bool orderBy = selectStatement.hasOrderBy();
+    bool hasLimit = selectStatement.hasLimit();
+    if (hasLimit) {
+        _limit = selectStatement.getLimit();
+        if (_limit <=0) hasLimit = false;
+    }
+    _limitApplies = hasLimit && !(groupBy || orderBy);
+}
+
+
+void Executive::checkLimitRowComplete() {
+    if (!_limitApplies) return;
+    if (_totalResultRows < _limit) return;
+    bool previousVal = _setLimitRowComplete();
+    if (previousVal) {
+        // already squashing etc, just return
+        return;
+    }
+    // Set flags so queries can be squashed without canceling the entire query.
+    // To explain WARN messages in the log related to this action, this
+    // message is LOG_LVL_WARN.
+    LOGS(_log, LOG_LVL_WARN, "LIMIT query has enough rows, canceling superfluous jobs.");
+    _squashSuperfluous();
+}
+
 
 std::ostream& operator<<(std::ostream& os, Executive::JobMap::value_type const& v) {
     JobStatus::Ptr status = v.second->getStatus();

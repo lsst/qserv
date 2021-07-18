@@ -86,7 +86,7 @@ public:
                 return;
             }
 
-            if (qr->isQueryCancelled()) {
+            if (qr->isQueryCancelled() || jq->isCancelled()) {
                 LOGS(_log, LOG_LVL_DEBUG, "AskForResp query was cancelled");
                 qr->_errorFinish(true);
                 _setState(State::DONE2);
@@ -403,8 +403,17 @@ void QueryRequest::ProcessResponseData(XrdSsiErrInfo const& eInfo,
 
 void QueryRequest::_processData(JobQuery::Ptr const& jq, int blen, bool last) {
     // It's possible jq and _jobQuery differ, so need to use jq.
-    if (jq->isQueryCancelled()) {
-        LOGS(_log, LOG_LVL_WARN, "QueryRequest::_processData job was cancelled.");
+    auto executive = jq->getExecutive();
+    if (executive == nullptr || executive->getCancelled() || executive->isLimitRowComplete()) {
+        if (executive == nullptr || executive->getCancelled()) {
+            LOGS(_log, LOG_LVL_WARN, "QueryRequest::_processData job was cancelled.");
+        } else {
+            int dataIgnored = (executive->incrDataIgnoredCount());
+            if ((dataIgnored - 1)%1000 == 0) {
+                LOGS(_log, LOG_LVL_INFO, "QueryRequest::_processData ignoring, enough rows already "
+                                      << "dataIgnored=" << dataIgnored);
+            }
+        }
         _errorFinish(true);
         return;
     }
@@ -414,23 +423,30 @@ void QueryRequest::_processData(JobQuery::Ptr const& jq, int blen, bool last) {
     _askForResponseDataCmd.reset(); // No longer need it, and don't want the destructor calling _errorFinish().
     bool largeResult = false;
     int nextBufSize = 0;
-    bool flushOk = jq->getDescription()->respHandler()->flush(blen, bufPtr, last, largeResult, nextBufSize);
+    int resultRows = 0;
+    bool flushOk = jq->getDescription()->respHandler()->flush(blen, bufPtr, last,
+                                                              largeResult, nextBufSize, resultRows);
     if (largeResult) {
         if (!_largeResult) LOGS(_log, LOG_LVL_DEBUG, "holdState largeResult set to true");
         _largeResult = true; // Once the worker indicates it's a large result, it stays that way.
     }
 
     if (flushOk) {
+        _totalRows += resultRows;
         if (last) {
             if (last && nextBufSize != 0) {
                 LOGS(_log, LOG_LVL_WARN,
                      "Connection closed when more information expected sz=" << nextBufSize);
             }
             jq->getStatus()->updateInfo(_jobIdStr, JobStatus::COMPLETE);
+            executive->addResultRows(_totalRows);
             _finish();
             // At this point all blocks for this job have been read, there's no point in
             // having XrdSsi wait for anything.
-            return;
+
+            // If the query meets the limit row complete complete criteria, it will start
+            // squashing superfluous results so the answer can be returned quickly.
+            executive->checkLimitRowComplete();
         } else {
             _askForResponseDataCmd = std::make_shared<AskForResponseDataCmd>(shared_from_this(), jq, nextBufSize);
             LOGS(_log, LOG_LVL_DEBUG, "queuing askForResponseDataCmd bufSize=" << nextBufSize);
@@ -458,7 +474,7 @@ bool QueryRequest::cancel() {
             return false; // Don't do anything if already cancelled.
         }
         _cancelled = true;
-        _retried.store(true); // Prevent retries.
+        _retried = true; // Prevent retries.
         // Only call the following if the job is NOT already done.
         if (_finishStatus == ACTIVE) {
             auto jq = _jobQuery;
@@ -515,8 +531,8 @@ void QueryRequest::cleanup() {
 /// a local shared pointer for this QueryRequest and/or its owner JobQuery.
 /// See QueryRequest::cleanup()
 /// @return true if this QueryRequest object had the authority to make changes.
-bool QueryRequest::_errorFinish(bool shouldCancel) {
-    LOGS(_log, LOG_LVL_DEBUG, "_errorFinish() shouldCancel=" << shouldCancel);
+bool QueryRequest::_errorFinish(bool stopTrying) {
+    LOGS(_log, LOG_LVL_DEBUG, "_errorFinish() shouldCancel=" << stopTrying);
     auto jq = _jobQuery;
     {
         // Running _errorFinish more than once could cause errors.
@@ -532,16 +548,16 @@ bool QueryRequest::_errorFinish(bool shouldCancel) {
     }
 
     // Make the calls outside of the mutex lock.
-    LOGS(_log, LOG_LVL_DEBUG, "calling Finished(shouldCancel=" << shouldCancel << ")");
-    bool ok = Finished(shouldCancel);
+    LOGS(_log, LOG_LVL_DEBUG, "calling Finished(stopTrying=" << stopTrying << ")");
+    bool ok = Finished(stopTrying);
     _finishedCalled = true;
     if (!ok) {
-        LOGS(_log, LOG_LVL_ERROR,  "QueryRequest::_errorFinish !ok ");
+        LOGS(_log, LOG_LVL_ERROR,  "QueryRequest::_errorFinish NOT ok");
     } else {
         LOGS(_log, LOG_LVL_DEBUG, "QueryRequest::_errorFinish ok");
     }
 
-    if (!_retried.exchange(true) && !shouldCancel) {
+    if (!_retried.exchange(true) && !stopTrying) {
         // There's a slight race condition here. _jobQuery::runJob() creates a
         // new QueryRequest object which will replace this one in _jobQuery.
         // The replacement could show up before this one's cleanup() is called,

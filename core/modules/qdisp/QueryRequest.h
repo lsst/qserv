@@ -137,7 +137,7 @@ private:
     void _callMarkComplete(bool success);
     bool _importStream(JobQuery::Ptr const& jq);
     bool _importError(std::string const& msg, int code);
-    bool _errorFinish(bool shouldCancel=false);
+    bool _errorFinish(bool stopTrying=false);
     void _finish();
     void _processData(JobQuery::Ptr const& jq, int blen, bool last);
     void _queueAskForResponse(std::shared_ptr<AskForResponseDataCmd> const& cmd, JobQuery::Ptr const& jq, bool initialRequest);
@@ -174,6 +174,10 @@ private:
     bool _largeResult{false}; ///< True if the worker flags this job as having a large result.
     QdispPool::Ptr _qdispPool;
     std::shared_ptr<AskForResponseDataCmd> _askForResponseDataCmd;
+
+    int _totalRows = 0; ///< number of rows in query added to the result table.
+
+    std::atomic<int> _rowsIgnored{0}; ///< Limit log messages about rows being ignored.
 };
 
 std::ostream& operator<<(std::ostream& os, QueryRequest const& r);

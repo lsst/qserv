@@ -60,7 +60,13 @@ public:
     /// Flush the retrieved buffer where bLen bytes were set. If last==true,
     /// then no more buffer() and flush() calls should occur.
     /// @return true if successful (no error)
-    virtual bool flush(int bLen, BufPtr const& bufPtr, bool& last, bool& largeResult, int& nextBufSize) = 0;
+    /// last, largeResult, nextBufSize, and resultRows are set in flush.
+    /// last - true if no more messages for this job.
+    /// largeResult - true if there is more than 1 message in the result.
+    /// nextBufSize - size of the next buffer
+    /// resultRows - number of result rows in this result.
+    virtual bool flush(int bLen, BufPtr const& bufPtr, bool& last, bool& largeResult,
+                       int& nextBufSize, int& resultRows) = 0;
 
     /// Signal an unrecoverable error condition. No further calls are expected.
     virtual void errorFlush(std::string const& msg, int code) = 0;

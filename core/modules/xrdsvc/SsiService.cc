@@ -160,6 +160,8 @@ SsiService::SsiService(XrdSsiLogger* log, wconfig::WorkerConfig const& workerCon
     auto transmitMgr = make_shared<wcontrol::TransmitMgr>(maxTransmits, maxAlreadyTransmitting);
     LOGS(_log, LOG_LVL_WARN, "config transmitMgr" << *transmitMgr);
 
+    LOGS(_log, LOG_LVL_WARN, "maxPoolThreads=" << maxPoolThreads);
+
     _foreman = make_shared<wcontrol::Foreman>(
         blendSched, poolSize, maxPoolThreads, workerConfig.getMySqlConfig(), queries, sqlConnMgr, transmitMgr);
 }

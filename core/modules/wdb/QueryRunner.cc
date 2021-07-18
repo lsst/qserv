@@ -89,7 +89,7 @@ QueryRunner::Ptr QueryRunner::newQueryRunner(wbase::Task::Ptr const& task,
     // Let the Task know this is its QueryRunner.
     bool cancelled = qr->_task->setTaskQueryRunner(qr);
     if (cancelled) {
-        qr->_cancelled.store(true);
+        qr->_cancelled = true;
         // runQuery will return quickly if the Task has been cancelled.
     }
     return qr;
@@ -245,6 +245,9 @@ bool QueryRunner::_fillRows(MYSQL_RES* result, int numFields, uint& rowCount, si
     MYSQL_ROW row;
 
     while ((row = mysql_fetch_row(result))) {
+        if (_cancelled) {
+            return false;
+        }
         auto lengths = mysql_fetch_lengths(result);
         proto::RowBundle* rawRow =_result->add_row();
         for(int i=0; i < numFields; ++i) {
@@ -335,6 +338,7 @@ void QueryRunner::_transmit(bool last, unsigned int rowCount, size_t tSize) {
     if (!_cancelled) {
         // StreamBuffer::create invalidates resultString by using std::move()
         xrdsvc::StreamBuffer::Ptr streamBuf(xrdsvc::StreamBuffer::createWithMove(resultString));
+        _streamBuf = streamBuf;
         _sendBuf(streamBuf, last, transmitHisto, "body");
     } else {
         LOGS(_log, LOG_LVL_DEBUG, "_transmit cancelled");
@@ -353,9 +357,13 @@ void QueryRunner::_sendBuf(xrdsvc::StreamBuffer::Ptr& streamBuf, bool last,
         util::Timer t;
         t.start();
         LOGS(_log, LOG_LVL_DEBUG, "_sendbuf wait start");
-        streamBuf->waitForDoneWithThis(); // Block until this buffer has been sent.
+        bool success = streamBuf->waitForDoneWithThis(); // Block until this buffer has been sent.
         LOGS(_log, LOG_LVL_DEBUG, "_sendbuf wait end");
         t.stop();
+        if (!success) {
+            LOG(_log, LOG_LVL_WARN, "stream buffer was cancelled");
+            _cancelled = true;
+        }
         auto logMsg = histo.addTime(t.getElapsed(), _task->getIdStr());
         LOGS(_log, LOG_LVL_DEBUG, logMsg);
     }
@@ -511,6 +519,12 @@ bool QueryRunner::_dispatchChannel() {
 void QueryRunner::cancel() {
     LOGS(_log, LOG_LVL_WARN, "Trying QueryRunner::cancel() call");
     _cancelled.store(true);
+
+    auto streamB = _streamBuf.lock();
+    if (streamB != nullptr) {
+        streamB->cancel();
+    }
+
     if (!_mysqlConn.get()) {
         LOGS(_log, LOG_LVL_WARN, "QueryRunner::cancel() no MysqlConn");
         return;
@@ -518,10 +532,10 @@ void QueryRunner::cancel() {
     int status = _mysqlConn->cancel();
     switch (status) {
       case -1:
-          LOGS(_log, LOG_LVL_ERROR, "QueryRunner::cancel() NOP");
+          LOGS(_log, LOG_LVL_WARN, "QueryRunner::cancel() NOP");
           break;
       case 0:
-          LOGS(_log, LOG_LVL_ERROR, "QueryRunner::cancel() success");
+          LOGS(_log, LOG_LVL_WARN, "QueryRunner::cancel() success");
           break;
       case 1:
           LOGS(_log, LOG_LVL_ERROR, "QueryRunner::cancel() Error connecting to kill query.");

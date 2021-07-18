@@ -408,7 +408,7 @@ void UserQuerySelect::discard() {
         // Silence merger discarding errors, because this object is being released.
         // client no longer cares about merger errors.
     }
-    LOGS(_log, LOG_LVL_DEBUG, "Discarded UserQuerySelect");
+    LOGS(_log, LOG_LVL_INFO, "Discarded UserQuerySelect");
 }
 
 /// Setup merger (for results handling and aggregation)

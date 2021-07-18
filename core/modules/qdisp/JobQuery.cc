@@ -72,9 +72,10 @@ bool JobQuery::runJob() {
         LOGS(_log, LOG_LVL_ERROR, "runJob failed executive==nullptr");
         return false;
     }
+    bool superfluous = executive->isLimitRowComplete();
     bool cancelled = executive->getCancelled();
     bool handlerReset = _jobDescription->respHandler()->reset();
-    if (!cancelled && handlerReset) {
+    if (!(cancelled || superfluous) && handlerReset) {
         auto criticalErr = [this, &executive](std::string const& msg) {
             LOGS(_log, LOG_LVL_ERROR, msg << " "
                  << _jobDescription << " Canceling user query!");
@@ -113,13 +114,13 @@ bool JobQuery::runJob() {
         }
         _inSsi = false;
     }
-    LOGS(_log, LOG_LVL_WARN, "runJob failed. cancelled=" << cancelled
+    LOGS(_log, (superfluous ? LOG_LVL_DEBUG : LOG_LVL_WARN), "runJob failed. cancelled=" << cancelled
               << " reset=" << handlerReset);
     return false;
 }
 
 /// Cancel response handling. Return true if this is the first time cancel has been called.
-bool JobQuery::cancel() {
+bool JobQuery::cancel(bool superfluous) {
     QSERV_LOGCONTEXT_QUERY_JOB(getQueryId(), getIdInt());
     LOGS(_log, LOG_LVL_DEBUG, "JobQuery::cancel()");
     if (_cancelled.exchange(true) == false) {
@@ -140,7 +141,9 @@ bool JobQuery::cancel() {
             std::ostringstream os;
             os << _idStr << " cancel QueryRequest=" << _queryRequestPtr ;
             LOGS(_log, LOG_LVL_DEBUG, os.str());
-            getDescription()->respHandler()->errorFlush(os.str(), -1);
+            if (!superfluous) {
+                getDescription()->respHandler()->errorFlush(os.str(), -1);
+            }
             auto executive = _executive.lock();
             if (executive == nullptr) {
                 LOGS(_log, LOG_LVL_ERROR, " can't markComplete cancelled, executive == nullptr");
@@ -148,7 +151,9 @@ bool JobQuery::cancel() {
             }
             executive->markCompleted(getIdInt(), false);
         }
-        _jobDescription->respHandler()->processCancel();
+        if (!superfluous) {
+            _jobDescription->respHandler()->processCancel();
+        }
         return true;
     }
     LOGS(_log, LOG_LVL_TRACE, "cancel, skipping, already cancelled.");

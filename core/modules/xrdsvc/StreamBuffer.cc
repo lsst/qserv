@@ -88,10 +88,27 @@ void StreamBuffer::Recycle() {
     Ptr keepAlive = std::move(_selfKeepAlive);
 }
 
+
+void StreamBuffer::cancel() {
+    // Recycle may still need to be called by XrdSsi or there will be a memory
+    // leak. XrdSsi calling Recycle is beyond what can be controlled here, but
+    // better a possible leak than corrupted memory or a permanently wedged
+    // thread in a limited pool.
+    // In any case, this code having an effect should be extremely rare.
+    {
+        std::lock_guard<std::mutex> lg(_mtx);
+        _doneWithThis = true;
+        _cancelled = true;
+    }
+    _cv.notify_all();
+}
+
+
 // Wait until recycle is called.
-void StreamBuffer::waitForDoneWithThis() {
+bool StreamBuffer::waitForDoneWithThis() {
     std::unique_lock<std::mutex> uLock(_mtx);
     _cv.wait(uLock, [this](){ return _doneWithThis == true; });
+    return !_cancelled;
 }
 
 }}} // namespace lsst::qserv::xrdsvc

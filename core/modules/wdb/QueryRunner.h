@@ -124,6 +124,7 @@ private:
     ChunkResourceMgr::Ptr _chunkResourceMgr;
     std::string _dbName;
     std::atomic<bool> _cancelled{false};
+    std::weak_ptr<xrdsvc::StreamBuffer> _streamBuf; ///< used release condition variable on cancel.
     std::atomic<bool> _removedFromThreadPool{false};
     mysql::MySqlConfig const _mySqlConfig;
     std::unique_ptr<mysql::MySqlConnection> _mysqlConn;

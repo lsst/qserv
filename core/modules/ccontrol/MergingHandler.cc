@@ -87,7 +87,8 @@ const char* MergingHandler::getStateStr(MsgState const& state) {
     return "unknown";
 }
 
-bool MergingHandler::flush(int bLen, BufPtr const& bufPtr, bool& last, bool& largeResult, int& nextBufSize) {
+bool MergingHandler::flush(int bLen, BufPtr const& bufPtr, bool& last, bool& largeResult, int& nextBufSize, int& resultRows) {
+    resultRows = 0;
     LOGS(_log, LOG_LVL_DEBUG, "From:" << _wName << " flush state="
          << getStateStr(_state) << " blen=" << bLen << " last=" << last);
     if ((bLen < 0) || (bLen != (int)bufPtr->size())) {
@@ -128,6 +129,7 @@ bool MergingHandler::flush(int bLen, BufPtr const& bufPtr, bool& last, bool& lar
             largeResult = _response->result.largeresult();
             LOGS(_log, LOG_LVL_DEBUG, "From:" << _wName << " _mBuf " << util::prettyCharList(*bufPtr, 5));
             bool msgContinues = _response->result.continues();
+            resultRows = _response->result.row_size();
             _state = MsgState::RESULT_RECV;
             if (msgContinues) {
                 LOGS(_log, LOG_LVL_TRACE, "Message continues, waiting for next header.");
@@ -236,6 +238,7 @@ bool MergingHandler::_merge(bool last) {
             _state = MsgState::RESULT_ERR;
         }
         _response.reset();
+
         return success;
     }
     LOGS(_log, LOG_LVL_ERROR, "MergingHandler::_merge() failed, jobQuery was NULL");

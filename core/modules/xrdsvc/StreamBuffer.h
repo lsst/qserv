@@ -68,7 +68,11 @@ public:
     void Recycle() override;
 
     /// Wait until Recycle() is called.
-    void waitForDoneWithThis();
+    /// @return true if there is data in the buffer.
+    bool waitForDoneWithThis();
+
+    /// Unblock the condition variable on cancel.
+    void cancel();
 
     ~StreamBuffer() override;
 
@@ -79,7 +83,8 @@ private:
     std::string _dataStr;
     std::mutex _mtx;
     std::condition_variable _cv;
-    bool _doneWithThis{false};
+    bool _doneWithThis = false;
+    bool _cancelled = false;
     Ptr _selfKeepAlive; ///< keep this object alive until after Recycle() is called.
     util::InstanceCount _ic{"StreamBuffer"}; ///< Useful as it indicates amount of waiting for czar.
 

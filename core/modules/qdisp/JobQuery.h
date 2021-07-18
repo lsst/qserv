@@ -80,7 +80,7 @@ public:
 
     std::shared_ptr<MarkCompleteFunc> getMarkCompleteFunc() { return _markCompleteFunc; }
 
-    bool cancel();
+    bool cancel(bool superfluous=false);
     bool isQueryCancelled();
 
     Executive::Ptr getExecutive() { return _executive.lock(); }
@@ -94,6 +94,8 @@ public:
     JobQuery(Executive::Ptr const& executive, JobDescription::Ptr const& jobDescription,
         JobStatus::Ptr const& jobStatus, std::shared_ptr<MarkCompleteFunc> const& markCompleteFunc,
         QueryId qid);
+
+    bool isCancelled() { return _cancelled; }
 
 protected:
     void _setup() {
