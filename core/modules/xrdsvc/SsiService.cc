@@ -102,6 +102,9 @@ SsiService::SsiService(XrdSsiLogger* log, wconfig::WorkerConfig const& workerCon
         throw wconfig::WorkerConfigError("Unrecognized memory manager.");
     }
 
+    int64_t bufferMaxTotalBytes = workerConfig.getBufferMaxTotalGB() * 1'000'000'000;
+    StreamBuffer::setMaxTotalBytes(bufferMaxTotalBytes);
+
     // Set thread pool size.
     unsigned int poolSize = max(workerConfig.getThreadPoolSize(), thread::hardware_concurrency());
     unsigned int maxPoolThreads = max(workerConfig.getMaxPoolThreads(), poolSize);

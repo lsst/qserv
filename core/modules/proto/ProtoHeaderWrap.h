@@ -45,13 +45,15 @@ namespace proto {
 class ProtoHeaderWrap {
 public:
     static const size_t PROTO_HEADER_SIZE;
-    static const size_t PROTOBUFFER_DESIRED_LIMIT;
     static const size_t PROTOBUFFER_HARD_LIMIT;
     ProtoHeaderWrap() {};
     virtual ~ProtoHeaderWrap() {};
 
     static std::string wrap(std::string& protoHeaderString);
     static bool unwrap(std::shared_ptr<WorkerResponse>& response, std::vector<char>& buffer);
+
+private:
+    static const size_t _PROTOBUFFER_DESIRED_LIMIT;
 };
 
 }}} // end namespace

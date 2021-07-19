@@ -273,6 +273,11 @@ public:
          return _ReservedInteractiveSqlConnections;
      }
 
+     /// @return the maximum number of gigabytes that can be used by StreamBuffers.
+     unsigned int getBufferMaxTotalGB() const {
+         return _bufferMaxTotalGB;
+     }
+
      /// @return the maximum number of concurrent transmits to a czar.
      unsigned int getMaxTransmits() const {
          return _maxTransmits;
@@ -329,6 +334,7 @@ private:
 
     unsigned int const _maxSqlConnections;
     unsigned int const _ReservedInteractiveSqlConnections;
+    unsigned int const _bufferMaxTotalGB;
     unsigned int const _maxTransmits;
     unsigned int const _maxAlreadyTransmitting;
 };

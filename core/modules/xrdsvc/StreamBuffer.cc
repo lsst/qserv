@@ -38,17 +38,42 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.xrdsvc.StreamBuffer");
 }
 
 
+using namespace std;
+
+
 namespace lsst {
 namespace qserv {
 namespace xrdsvc {
 
-std::atomic<size_t> StreamBuffer::_totalBytes(0);
+
+atomic<int64_t> StreamBuffer::_maxTotalBytes{40'000'000'000};
+atomic<int64_t> StreamBuffer::_totalBytes(0);
+mutex StreamBuffer::_createMtx;
+condition_variable StreamBuffer::_createCv;
+
+
+static void StreamBuffer::setMaxTotalBytes(int64_t maxBytes) {
+    LOGS(_log, LOG_LVL_INFO, "StreamBuffer::setMaxTotalBytes maxBytes=" << maxBytes);
+    if (maxBytes < 0) {
+        throw invalid_argument("StreamBuffer::setMaxTotalBytes negative " + to_string(maxBytes));
+    }
+    if (maxBytes < 1.0e9) {
+        LOGS(_log, LOG_LVL_ERROR, "Very small value for StreamBuffer::maxTotalBytes " << maxBytes);
+    }
+    _maxTotalBytes = maxBytes;
+}
+
 
 // Factory function, because this should be able to delete itself when Recycle() is called.
 StreamBuffer::Ptr StreamBuffer::createWithMove(std::string &input) {
-     Ptr ptr(new StreamBuffer(input));
-     ptr->_selfKeepAlive = ptr;
-     return ptr;
+    unique_lock<mutex> uLock(_createMtx);
+    if (_totalBytes >= _maxTotalBytes) {
+        LOGS(_log, LOG_LVL_WARN, "StreamBuffer at memory limit " << _totalBytes);
+    }
+    _createCv.wait(uLock, [](){ return _totalBytes < _maxTotalBytes; });
+    Ptr ptr(new StreamBuffer(input));
+    ptr->_selfKeepAlive = ptr;
+    return ptr;
  }
 
 
@@ -107,7 +132,7 @@ void StreamBuffer::cancel() {
 // Wait until recycle is called.
 bool StreamBuffer::waitForDoneWithThis() {
     std::unique_lock<std::mutex> uLock(_mtx);
-    _cv.wait(uLock, [this](){ return _doneWithThis == true; });
+    _cv.wait(uLock, [this](){ return _doneWithThis || _cancelled; });
     return !_cancelled;
 }
 

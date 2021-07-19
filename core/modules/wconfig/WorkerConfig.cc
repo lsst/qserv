@@ -75,6 +75,7 @@ WorkerConfig::WorkerConfig(const util::ConfigStore& configStore)
       _maxTasksBootedPerUserQuery(configStore.getInt("scheduler.maxtasksbootedperuserquery", 5)),
       _maxSqlConnections(configStore.getInt("sqlconnections.maxsqlconn", 800)),
       _ReservedInteractiveSqlConnections(configStore.getInt("sqlconnections.reservedinteractivesqlconn", 50)),
+      _bufferMaxTotalGB(configStore.getInt("transmit.buffermaxtotalgb", 41)),
       _maxTransmits(configStore.getInt("transmit.maxtransmits", 50)),
       _maxAlreadyTransmitting(configStore.getInt("transmit.maxalreadytransmitting", 10)) {
 }

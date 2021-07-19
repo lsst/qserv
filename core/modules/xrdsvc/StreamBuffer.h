@@ -56,8 +56,14 @@ public:
     StreamBuffer& operator=(StreamBuffer const&) = delete;
 
     /// Factory function, because this should be able to delete itself when Recycle() is called.
-    //  The constructor uses move to avoid copying the string.
+    /// The constructor uses move to avoid copying the string.
     static StreamBuffer::Ptr createWithMove(std::string &input);
+
+    /// Set the maximum number of bytes that can be used by all instances of this class.
+    static void setMaxTotalBytes(int64_t maxBytes);
+
+    /// @return the percent of totalBytes used out of _maxTotalByes.
+    static double percentOfMaxTotalBytesUsed();
 
     size_t getSize() const { return _dataStr.size(); }
 
@@ -88,7 +94,11 @@ private:
     Ptr _selfKeepAlive; ///< keep this object alive until after Recycle() is called.
     util::InstanceCount _ic{"StreamBuffer"}; ///< Useful as it indicates amount of waiting for czar.
 
-    static std::atomic<size_t> _totalBytes;
+    // Members associated with limiting memory use.
+    static std::atomic<int64_t> _totalBytes; ///< Total bytes currently in use by all StreamBuffer instances.
+    static std::atomic<int64_t> _maxTotalBytes;
+    static std::mutex _createMtx;
+    static std::condition_variable _createCv;
 };
 
 
