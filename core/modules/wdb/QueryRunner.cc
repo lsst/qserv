@@ -134,6 +134,20 @@ void QueryRunner::_setDb() {
 }
 
 
+size_t QueryRunner::_getDesiredLimit() {
+    double percent = xrdsvc::StreamBuffer::percentOfMaxTotalBytesUsed();
+    size_t minLimit = 1'000'000;
+    size_t maxLimit = proto::ProtoHeaderWrap::PROTOBUFFER_DESIRED_LIMIT;
+    if (percent < 0.1) return maxLimit;
+    double reduce = 1.0 - (percent + 0.2); // force minLimit when 80% of memory used.
+    if (reduce < 0.0) reduce = 0.0;
+    size_t lim = maxLimit * reduce;
+    if (lim < minLimit) lim = minLimit;
+    LOGS(_log, LOG_LVL_WARN, "&&& percent=" << percent << " reduce=" << reduce << " lim=" << lim);
+    return lim;
+}
+
+
 util::TimerHistogram memWaitHisto("memWait Hist", {1, 5, 10, 20, 40});
 
 
@@ -262,7 +276,7 @@ bool QueryRunner::_fillRows(MYSQL_RES* result, int numFields, uint& rowCount, si
         tSize += rawRow->ByteSizeLong();
         ++rowCount;
 
-        unsigned int szLimit = std::min(proto::ProtoHeaderWrap::PROTOBUFFER_DESIRED_LIMIT,
+        unsigned int szLimit = std::min(_getDesiredLimit(),
                                         proto::ProtoHeaderWrap::PROTOBUFFER_HARD_LIMIT);
 
         // for some to finish, otherwise
@@ -396,6 +410,7 @@ void QueryRunner::_transmitHeader(std::string& msg) {
         LOGS(_log, LOG_LVL_DEBUG, "_transmitHeader cancelled");
     }
 }
+
 
 class ChunkResourceRequest {
 public:
@@ -548,6 +563,9 @@ void QueryRunner::cancel() {
           break;
     }
 }
+
+
+
 
 QueryRunner::~QueryRunner() {
 }

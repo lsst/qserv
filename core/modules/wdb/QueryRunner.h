@@ -117,6 +117,7 @@ private:
                   util::TimerHistogram& histo, std::string const& note);
     void _transmit(bool last, unsigned int rowCount, size_t size);
     void _transmitHeader(std::string& msg);
+    static size_t _getDesiredLimit();
 
     wbase::Task::Ptr const _task; ///< Actual task
 
