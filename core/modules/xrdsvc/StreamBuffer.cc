@@ -52,7 +52,7 @@ mutex StreamBuffer::_createMtx;
 condition_variable StreamBuffer::_createCv;
 
 
-static void StreamBuffer::setMaxTotalBytes(int64_t maxBytes) {
+void StreamBuffer::setMaxTotalBytes(int64_t maxBytes) {
     LOGS(_log, LOG_LVL_INFO, "StreamBuffer::setMaxTotalBytes maxBytes=" << maxBytes);
     if (maxBytes < 0) {
         throw invalid_argument("StreamBuffer::setMaxTotalBytes negative " + to_string(maxBytes));
@@ -61,6 +61,14 @@ static void StreamBuffer::setMaxTotalBytes(int64_t maxBytes) {
         LOGS(_log, LOG_LVL_ERROR, "Very small value for StreamBuffer::maxTotalBytes " << maxBytes);
     }
     _maxTotalBytes = maxBytes;
+}
+
+
+double StreamBuffer::percentOfMaxTotalBytesUsed() {
+    double percent = _totalBytes/_maxTotalBytes;
+    if (percent < 0.0) percent = 0.0;
+    if (percent > 1.0) percent = 1.0;
+    return percent;
 }
 
 
