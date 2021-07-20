@@ -43,7 +43,8 @@ namespace proto {
 const size_t ProtoHeaderWrap::PROTO_HEADER_SIZE = 256;
 // Google protobuffers are more efficient below 2MB, but xrootd is faster with larger limits.
 // Reducing max to 2MB as it reduces the probablity of running out of memory.
-const size_t ProtoHeaderWrap::PROTOBUFFER_DESIRED_LIMIT = 25000000;
+//&&&const size_t ProtoHeaderWrap::PROTOBUFFER_DESIRED_LIMIT = 25000000;
+const size_t ProtoHeaderWrap::PROTOBUFFER_DESIRED_LIMIT = 10000000;
 // A single Google protobuffer can't be larger than this.
 const size_t ProtoHeaderWrap::PROTOBUFFER_HARD_LIMIT = 64000000;
 
