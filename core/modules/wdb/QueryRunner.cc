@@ -138,6 +138,7 @@ size_t QueryRunner::_getDesiredLimit() {
     double percent = xrdsvc::StreamBuffer::percentOfMaxTotalBytesUsed();
     size_t minLimit = 1'000'000;
     size_t maxLimit = proto::ProtoHeaderWrap::PROTOBUFFER_DESIRED_LIMIT;
+    LOGS(_log, LOG_LVL_WARN, "&&& precent=" << percent << " min=" << minLimit << " max=" << maxLimit);
     if (percent < 0.1) return maxLimit;
     double reduce = 1.0 - (percent + 0.2); // force minLimit when 80% of memory used.
     if (reduce < 0.0) reduce = 0.0;

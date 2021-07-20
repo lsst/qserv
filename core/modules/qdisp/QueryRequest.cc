@@ -202,7 +202,7 @@ QueryRequest::~QueryRequest() {
     LOGS(_log, LOG_LVL_TRACE, "~QueryRequest");
     if (_askForResponseDataCmd != nullptr) {
         // This shouldn't really happen, but we really don't want to leave this blocking the pool.
-        LOGS(_log, LOG_LVL_WARN, "~QueryRequest cleaning up _askForResponseDataCmd");
+        LOGS(_log, LOG_LVL_INFO, "~QueryRequest cleaning up _askForResponseDataCmd");
         _askForResponseDataCmd->notifyFailed();
     }
     if (!_finishedCalled) {
