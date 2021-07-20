@@ -116,7 +116,8 @@ public:
             // TODO: make timed wait, check for wedged, if weak pointers dead, log and give up.
             // Hoping for  _state == DATAREADY1, waiting for call to QueryRequest::ProcessResponseData
             util::InstanceCount icc1("AskFor_B1&&&");
-            _cv.wait(uLock, [this](){ return _state != State::STARTED0; });
+            //&&&_cv.wait(uLock, [this](){ return _state != State::STARTED0; });
+            _lockWaitQrA(uLock);
             util::InstanceCount icc2("AskFor_B2&&&");
             tWaiting.stop();
             // _mtx is locked at this point.
@@ -183,6 +184,10 @@ private:
     void _setState(State const state) {
         lock_guard<mutex> lg(_mtx);
         _state = State::DONE2;
+    }
+
+    void _lockWaitQrA(unique_lock<mutex>& uLock) {
+        _cv.wait(uLock, [this](){ return _state != State::STARTED0; });
     }
 
 
