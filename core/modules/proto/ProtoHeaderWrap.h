@@ -45,8 +45,8 @@ namespace proto {
 class ProtoHeaderWrap {
 public:
     static const size_t PROTO_HEADER_SIZE;
-    static const size_t PROTOBUFFER_DESIRED_LIMIT;
     static const size_t PROTOBUFFER_HARD_LIMIT;
+    static const size_t PROTOBUFFER_DESIRED_LIMIT;
     ProtoHeaderWrap() {};
     virtual ~ProtoHeaderWrap() {};
 

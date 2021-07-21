@@ -211,7 +211,7 @@ private:
 
     QueryId _id{0}; ///< Unique identifier for this query.
     std::string _idStr{QueryIdHelper::makeIdStr(0, true)};
-    util::InstanceCount _instC{"Executive"};
+    //util::InstanceCount _instC{"Executive"};
 
     std::shared_ptr<qmeta::QStatus> _qMeta;
     /// Last time Executive updated QMeta, defaults to epoch for clock.

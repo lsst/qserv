@@ -36,7 +36,7 @@ namespace lsst {
 namespace qserv {
 namespace wcontrol {
 
-
+/* &&&
 void TransmitMgr::_take(bool interactive, bool alreadyTransmitting) {
     LOGS(_log, LOG_LVL_DEBUG, "TransmitMgr::_take locking " << *this);
     unique_lock<mutex> uLock(_mtx);
@@ -83,6 +83,41 @@ ostream& TransmitMgr::dump(ostream &os) const {
        << ":max=" << _maxTransmits
        << " alreadyTransCount=" << _alreadyTransCount
        << ":max=" << _maxAlreadyTran << ")";
+    return os;
+}
+*/
+
+
+void TransmitMgr::_take(bool interactive) {
+    LOGS(_log, LOG_LVL_DEBUG, "TransmitMgr::_take locking " << *this);
+    unique_lock<mutex> uLock(_mtx);
+    ++_totalCount;
+    if (not interactive || _transmitCount >= _maxTransmits) {
+        _tCv.wait(uLock, [this](){ return (_transmitCount < _maxTransmits); });
+    }
+    ++_transmitCount;
+    LOGS(_log, LOG_LVL_DEBUG, "TransmitMgr::_take locking done " << *this);
+}
+
+
+void TransmitMgr::_release(bool interactive) {
+    LOGS(_log, LOG_LVL_DEBUG, "TransmitMgr::_release locking " << *this);
+    {
+        unique_lock<mutex> uLock(_mtx);
+        --_totalCount;
+        --_transmitCount;
+    }
+    // There could be several threads waiting on _alreadyTransCount or
+    // it needs to make sure to wake the thread waiting only on _transmitCount.
+    LOGS(_log, LOG_LVL_DEBUG, "TransmitMgr::_release locking done " << *this);
+    _tCv.notify_all();
+}
+
+
+ostream& TransmitMgr::dump(ostream &os) const {
+    os << "(totalCount=" << _totalCount
+       << " transmitCount=" << _transmitCount
+       << ":max=" << _maxTransmits << ")";
     return os;
 }
 
