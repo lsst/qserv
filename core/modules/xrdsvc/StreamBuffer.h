@@ -92,7 +92,7 @@ private:
     bool _doneWithThis = false;
     bool _cancelled = false;
     Ptr _selfKeepAlive; ///< keep this object alive until after Recycle() is called.
-    util::InstanceCount _ic{"StreamBuffer"}; ///< Useful as it indicates amount of waiting for czar.
+    //util::InstanceCount _ic{"StreamBuffer"}; ///< Useful as it indicates amount of waiting for czar.
 
     // Members associated with limiting memory use.
     static std::atomic<int64_t> _totalBytes; ///< Total bytes currently in use by all StreamBuffer instances.

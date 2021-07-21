@@ -114,7 +114,7 @@ BOOST_AUTO_TEST_CASE(Simple) {
     FakeBackend::Ptr backend = make_shared<FakeBackend>();
     shared_ptr<ChunkResourceMgr> crm = ChunkResourceMgr::newMgr(backend);
     SqlConnMgr::Ptr sqlConnMgr = make_shared<SqlConnMgr>(20,15);
-    TransmitMgr::Ptr transmitMgr = make_shared<TransmitMgr>(50,10);
+    TransmitMgr::Ptr transmitMgr = make_shared<TransmitMgr>(50);
     QueryRunner::Ptr a(QueryRunner::newQueryRunner(task, crm, newMySqlConfig(), sqlConnMgr, transmitMgr));
     BOOST_CHECK(a->runQuery());
 }
@@ -127,7 +127,7 @@ BOOST_AUTO_TEST_CASE(Output) {
     FakeBackend::Ptr backend = make_shared<FakeBackend>();
     shared_ptr<ChunkResourceMgr> crm = ChunkResourceMgr::newMgr(backend);
     SqlConnMgr::Ptr sqlConnMgr = make_shared<SqlConnMgr>(20,15);
-    TransmitMgr::Ptr transmitMgr = make_shared<TransmitMgr>(50,10);
+    TransmitMgr::Ptr transmitMgr = make_shared<TransmitMgr>(50);
     QueryRunner::Ptr a(QueryRunner::newQueryRunner(task, crm, newMySqlConfig(), sqlConnMgr, transmitMgr));
     BOOST_CHECK(a->runQuery());
 

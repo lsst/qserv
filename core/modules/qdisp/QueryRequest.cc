@@ -101,9 +101,11 @@ public:
         // Wait for XrdSsi to call ProcessResponseData with the data,
         // which will notify this wait with a call to receivedProcessResponseDataParameters.
         {
+            util::InstanceCount("GetResponseData called QID:" + std::to_string(_qid) + "#" + std::to_string(_jobid));
             std::unique_lock<std::mutex> uLock(_mtx);
             // TODO: make timed wait, check for wedged, if weak pointers dead, log and give up.
-            _cv.wait(uLock, [this](){ return _state != State::STARTED0; });
+            //&&&_cv.wait(uLock, [this](){ return _state != State::STARTED0; });
+            _lockWaitQrA(uLock);
             tWaiting.stop();
             // _mtx is locked at this point.
             LOGS(_log, LOG_LVL_TRACE, "AskForResp should be DATAREADY1 " << (int)_state);
@@ -167,6 +169,11 @@ private:
         _state = State::DONE2;
     }
 
+    void _lockWaitQrA(std::unique_lock<std::mutex>& uLock) {
+        _cv.wait(uLock, [this](){ return _state != State::STARTED0; });
+    }
+
+
 
     std::weak_ptr<QueryRequest> _qRequest;
     std::weak_ptr<JobQuery> _jQuery;
@@ -180,7 +187,7 @@ private:
 
     int _blen{-1};
     bool _last{true};
-    util::InstanceCount _instCount{"AskForResponseDataCmd"};
+    //util::InstanceCount _instCount{"AskForResponseDataCmd"};
 };
 
 

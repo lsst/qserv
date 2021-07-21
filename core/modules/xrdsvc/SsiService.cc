@@ -159,8 +159,7 @@ SsiService::SsiService(XrdSsiLogger* log, wconfig::WorkerConfig const& workerCon
     LOGS(_log, LOG_LVL_WARN, "config sqlConnMgr" << *sqlConnMgr);
 
     int const maxTransmits = workerConfig.getMaxTransmits();
-    int const maxAlreadyTransmitting =  workerConfig.getMaxAlreadyTransmitting();
-    auto transmitMgr = make_shared<wcontrol::TransmitMgr>(maxTransmits, maxAlreadyTransmitting);
+    auto transmitMgr = make_shared<wcontrol::TransmitMgr>(maxTransmits);
     LOGS(_log, LOG_LVL_WARN, "config transmitMgr" << *transmitMgr);
 
     LOGS(_log, LOG_LVL_WARN, "maxPoolThreads=" << maxPoolThreads);

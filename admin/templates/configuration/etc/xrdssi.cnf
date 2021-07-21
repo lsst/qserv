@@ -76,11 +76,9 @@ maxsqlconn = 800
 # Number of SQL connections reserved for interactive queries (must be less than maxsqlconn)
 reservedinteractivesqlconn = 20
 
-[transmits]
+[transmit]
 # Maximum number of gigabytes to be used by all StreamBuffer instances.
 buffermaxtotalgb = 50
 # Maximum number of concurrent transmits to a czar.
-maxtransmits = 50
-# If more than this number of large transmits is happening at once, wait to
-# start more transmits until some are done.
-maxalreadytransmitting = 10
+maxtransmits = 10
+

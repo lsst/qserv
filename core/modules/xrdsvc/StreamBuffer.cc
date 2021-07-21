@@ -65,7 +65,7 @@ void StreamBuffer::setMaxTotalBytes(int64_t maxBytes) {
 
 
 double StreamBuffer::percentOfMaxTotalBytesUsed() {
-    double percent = _totalBytes/_maxTotalBytes;
+    double percent = ((double)_totalBytes)/((double)_maxTotalBytes);
     if (percent < 0.0) percent = 0.0;
     if (percent > 1.0) percent = 1.0;
     return percent;

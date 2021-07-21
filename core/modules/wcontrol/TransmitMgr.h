@@ -51,12 +51,19 @@ class TransmitMgr {
 public:
     using Ptr = std::shared_ptr<TransmitMgr>;
 
+    /* &&&
     TransmitMgr(int maxTransmits, int maxAlreadyTran)
         : _maxTransmits(maxTransmits),  _maxAlreadyTran(maxAlreadyTran) {
         assert(_maxTransmits > 1);
         assert(_maxAlreadyTran > 1);
         assert(_maxTransmits >= _maxAlreadyTran);
     }
+    */
+    TransmitMgr(int maxTransmits)
+        : _maxTransmits(maxTransmits) {
+        assert(_maxTransmits > 1);
+    }
+
     TransmitMgr() = delete;
     TransmitMgr(TransmitMgr const&) = delete;
     TransmitMgr& operator=(TransmitMgr const&) = delete;
@@ -64,7 +71,7 @@ public:
 
     int getTotalCount() { return _totalCount; }
     int getTransmitCount() { return _transmitCount; }
-    int getAlreadyTransCount() { return _alreadyTransCount; }
+    //&&&int getAlreadyTransCount() { return _alreadyTransCount; }
 
     virtual std::ostream& dump(std::ostream &os) const;
     std::string dump() const;
@@ -73,15 +80,20 @@ public:
     friend class TransmitLock;
 
 private:
+    /* &&&
     void _take(bool interactive, bool alreadyTransmitting);
 
     void _release(bool interactive, bool alreadyTransmitting);
+    */
+    void _take(bool interactive);
+
+    void _release(bool interactive);
 
     std::atomic<int> _totalCount{0};
     std::atomic<int> _transmitCount{0};
-    std::atomic<int> _alreadyTransCount{0};
+    //&&&std::atomic<int> _alreadyTransCount{0};
     int const _maxTransmits;
-    int const _maxAlreadyTran;
+    //int const _maxAlreadyTran; // &&& delete
     std::mutex _mtx;
     std::condition_variable _tCv;
 };
@@ -90,23 +102,32 @@ private:
 /// RAII class to support TransmitMgr
 class TransmitLock {
 public:
+    using Ptr = std::shared_ptr<TransmitLock>;
+    /*&&&
     TransmitLock(TransmitMgr& transmitMgr, bool interactive, bool alreadyTransmitting)
       : _transmitMgr(transmitMgr), _interactive(interactive),
         _alreadyTransmitting(alreadyTransmitting) {
         _transmitMgr._take(_interactive, _alreadyTransmitting);
     }
+    */
+    TransmitLock(TransmitMgr& transmitMgr, bool interactive)
+      : _transmitMgr(transmitMgr), _interactive(interactive) {
+        _transmitMgr._take(_interactive);
+    }
+
     TransmitLock() = delete;
     TransmitLock(TransmitLock const&) = delete;
     TransmitLock& operator=(TransmitLock const&) = delete;
 
     ~TransmitLock() {
-        _transmitMgr._release(_interactive, _alreadyTransmitting);
+        //&&&_transmitMgr._release(_interactive, _alreadyTransmitting);
+        _transmitMgr._release(_interactive);
     }
 
 private:
     TransmitMgr& _transmitMgr;
     bool _interactive;
-    bool _alreadyTransmitting;
+    //&&&bool _alreadyTransmitting;
 };
 
 
