@@ -53,19 +53,20 @@ condition_variable StreamBuffer::_createCv;
 
 
 void StreamBuffer::setMaxTotalBytes(int64_t maxBytes) {
-    LOGS(_log, LOG_LVL_INFO, "StreamBuffer::setMaxTotalBytes maxBytes=" << maxBytes);
+    string const context = "StreamBuffer::" + string(__func__) + " ";
+    LOGS(_log, LOG_LVL_INFO, context << "maxBytes=" << maxBytes);
     if (maxBytes < 0) {
-        throw invalid_argument("StreamBuffer::setMaxTotalBytes negative " + to_string(maxBytes));
+        throw invalid_argument(context + "negative " + to_string(maxBytes));
     }
-    if (maxBytes < 1.0e9) {
-        LOGS(_log, LOG_LVL_ERROR, "Very small value for StreamBuffer::maxTotalBytes " << maxBytes);
+    if (maxBytes < 1'000'000'000LL) {
+        LOGS(_log, LOG_LVL_ERROR, "Very small value for " << context << maxBytes);
     }
     _maxTotalBytes = maxBytes;
 }
 
 
 double StreamBuffer::percentOfMaxTotalBytesUsed() {
-    double percent = _totalBytes/_maxTotalBytes;
+    double percent = ((double)_totalBytes)/((double)_maxTotalBytes);
     if (percent < 0.0) percent = 0.0;
     if (percent > 1.0) percent = 1.0;
     return percent;

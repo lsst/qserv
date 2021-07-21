@@ -138,13 +138,11 @@ size_t QueryRunner::_getDesiredLimit() {
     double percent = xrdsvc::StreamBuffer::percentOfMaxTotalBytesUsed();
     size_t minLimit = 1'000'000;
     size_t maxLimit = proto::ProtoHeaderWrap::PROTOBUFFER_DESIRED_LIMIT;
-    LOGS(_log, LOG_LVL_WARN, "&&& precent=" << percent << " min=" << minLimit << " max=" << maxLimit);
     if (percent < 0.1) return maxLimit;
     double reduce = 1.0 - (percent + 0.2); // force minLimit when 80% of memory used.
     if (reduce < 0.0) reduce = 0.0;
     size_t lim = maxLimit * reduce;
     if (lim < minLimit) lim = minLimit;
-    LOGS(_log, LOG_LVL_WARN, "&&& percent=" << percent << " reduce=" << reduce << " lim=" << lim);
     return lim;
 }
 
@@ -185,6 +183,8 @@ bool QueryRunner::runQuery() {
         return false;
     }
 
+    std::shared_ptr<wcontrol::TransmitLock> transmitLock;
+
     _setDb();
     LOGS(_log, LOG_LVL_DEBUG,  "Exec in flight for Db=" << _dbName
         << " sqlConnMgr total" << _sqlConnMgr->getTotalCount() << " conn=" << _sqlConnMgr->getSqlConnCount());
@@ -194,14 +194,14 @@ bool QueryRunner::runQuery() {
         // Transmit the mysql connection error to the czar, which should trigger a re-try.
         // _initConnection should have added an error message to _multiError.
         _initMsgs();
-        _transmit(true, 0, 0); // no rows, no bytes in rows.
+        _transmit(true, 0, 0, transmitLock); // no rows, no bytes in rows.
         return false;
     }
 
     if (_task->msg->has_protocol()) {
         switch(_task->msg->protocol()) {
         case 2:
-            return _dispatchChannel(); // Run the query and send the results back.
+            return _dispatchChannel(transmitLock); // Run the query and send the results back.
         case 1:
             throw UnsupportedError(_task->getIdStr() + " QueryRunner: Expected protocol > 1 in TaskMsg");
         default:
@@ -256,7 +256,8 @@ void QueryRunner::_fillSchema(MYSQL_RES* result) {
 /// If the message has gotten larger than the desired message size,
 /// it will be transmitted with a flag set indicating the result
 /// continues in later messages.
-bool QueryRunner::_fillRows(MYSQL_RES* result, int numFields, uint& rowCount, size_t& tSize) {
+bool QueryRunner::_fillRows(MYSQL_RES* result, int numFields, uint& rowCount, size_t& tSize,
+                            wcontrol::TransmitLock::Ptr& transmitLock) {
     MYSQL_ROW row;
 
     while ((row = mysql_fetch_row(result))) {
@@ -303,7 +304,7 @@ bool QueryRunner::_fillRows(MYSQL_RES* result, int numFields, uint& rowCount, si
             }
             LOGS(_log, LOG_LVL_DEBUG, "Large message size=" << tSize
                  << ", splitting message rowCount=" << rowCount);
-            _transmit(false, rowCount, tSize);
+            _transmit(false, rowCount, tSize, transmitLock);
             rowCount = 0;
             tSize = 0;
             _initMsg();
@@ -326,10 +327,16 @@ util::TimerHistogram transmitHisto("transmit Hist", {0.1, 1, 5, 10, 20, 40});
 /// Transmit result data with its header.
 /// If 'last' is true, this is the last message in the result set
 /// and flags are set accordingly.
-void QueryRunner::_transmit(bool last, unsigned int rowCount, size_t tSize) {
+void QueryRunner::_transmit(bool last, unsigned int rowCount, size_t tSize,
+                            wcontrol::TransmitLock::Ptr& transmitLock) {
     LOGS(_log, LOG_LVL_INFO, "_transmitMgr=" << *_transmitMgr
          << " last=" << last << " rowCount=" << rowCount << " tSize=" << tSize);
-    wcontrol::TransmitLock transmitLock(*_transmitMgr, _task->getScanInteractive(), _largeResult);
+    //wcontrol::TransmitLock transmitLock(*_transmitMgr, _task->getScanInteractive(), _largeResult);
+    if (transmitLock == nullptr) {
+        transmitLock.reset(new wcontrol::TransmitLock(*_transmitMgr, _task->getScanInteractive(),
+                                                      _task->getQueryId()));
+    }
+
     std::string resultString;
     _result->set_queryid(_task->getQueryId());
     _result->set_jobid(_task->getJobId());
@@ -372,7 +379,12 @@ void QueryRunner::_sendBuf(xrdsvc::StreamBuffer::Ptr& streamBuf, bool last,
         util::Timer t;
         t.start();
         LOGS(_log, LOG_LVL_DEBUG, "_sendbuf wait start");
-        bool success = streamBuf->waitForDoneWithThis(); // Block until this buffer has been sent.
+        bool success = false;
+        {
+            util::InstanceCount("waitForDoneWithThis QID:" + std::to_string(_task->getQueryId())
+                                + "#" + std::to_string(_task->getJobId()));
+            success = streamBuf->waitForDoneWithThis(); // Block until this buffer has been sent.
+        }
         LOGS(_log, LOG_LVL_DEBUG, "_sendbuf wait end");
         t.stop();
         if (!success) {
@@ -458,7 +470,7 @@ private:
     proto::TaskMsg const& _msg;
 };
 
-bool QueryRunner::_dispatchChannel() {
+bool QueryRunner::_dispatchChannel(wcontrol::TransmitLock::Ptr& transmitLock) {
     proto::TaskMsg& m = *_task->msg;
     _initMsgs();
     bool firstResult = true;
@@ -507,7 +519,7 @@ bool QueryRunner::_dispatchChannel() {
                 // TODO fritzm: revisit this error strategy
                 // (see pull-request for DM-216)
                 // Now get rows...
-                if (!_fillRows(res, numFields, rowCount, tSize)) {
+                if (!_fillRows(res, numFields, rowCount, tSize, transmitLock)) {
                     erred = true;
                 }
                 _mysqlConn->freeResult();
@@ -521,7 +533,7 @@ bool QueryRunner::_dispatchChannel() {
     }
     if (!_cancelled) {
         // Send results.
-        _transmit(true, rowCount, tSize);
+        _transmit(true, rowCount, tSize, transmitLock);
     } else {
         erred = true;
         // Send poison error.

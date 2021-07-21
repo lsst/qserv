@@ -29,8 +29,10 @@
 #include <atomic>
 #include <condition_variable>
 #include <mutex>
+#include <map>
 
 // Qserv headers
+#include "global/intTypes.h"
 
 
 namespace lsst {
@@ -38,6 +40,44 @@ namespace qserv {
 namespace wcontrol {
 
 class TransmitLock;
+class QidMgr;
+
+class LockCount {
+public:
+    LockCount() = default;
+
+    friend QidMgr;
+private:
+    int _take(); /// @return _totalCount.
+    int _release(); /// @return _totalCount.
+
+    std::atomic<int> _totalCount{0};
+    std::atomic<int> _count{0};
+    std::atomic<int> _maxCount{1};
+    std::mutex _lMtx;
+    std::condition_variable _lCv;
+};
+
+
+/// Limit the number of transmitting tasks sharing the same query id number.
+class QidMgr {
+public:
+    QidMgr() = default;
+    QidMgr(QidMgr const&) = delete;
+    QidMgr& operator=(QidMgr const&) = delete;
+    virtual ~QidMgr() = default;
+
+    friend class TransmitLock;
+
+private:
+    void _take(QueryId const& qid);
+    void _release(QueryId const& qid);
+
+    std::mutex _mapMtx;
+    std::map<QueryId, LockCount> _qidLocks;
+};
+
+
 /// A way to limit the number of concurrent
 /// transmits. 'interactive queries' are not blocked.
 /// New tasks cannot transmit to the czar until the number of jobs
@@ -51,12 +91,11 @@ class TransmitMgr {
 public:
     using Ptr = std::shared_ptr<TransmitMgr>;
 
-    TransmitMgr(int maxTransmits, int maxAlreadyTran)
-        : _maxTransmits(maxTransmits),  _maxAlreadyTran(maxAlreadyTran) {
-        assert(_maxTransmits > 1);
-        assert(_maxAlreadyTran > 1);
-        assert(_maxTransmits >= _maxAlreadyTran);
+    TransmitMgr(int maxTransmits)
+        : _maxTransmits(maxTransmits) {
+        assert(_maxTransmits > 0);
     }
+
     TransmitMgr() = delete;
     TransmitMgr(TransmitMgr const&) = delete;
     TransmitMgr& operator=(TransmitMgr const&) = delete;
@@ -64,7 +103,6 @@ public:
 
     int getTotalCount() { return _totalCount; }
     int getTransmitCount() { return _transmitCount; }
-    int getAlreadyTransCount() { return _alreadyTransCount; }
 
     virtual std::ostream& dump(std::ostream &os) const;
     std::string dump() const;
@@ -73,40 +111,43 @@ public:
     friend class TransmitLock;
 
 private:
-    void _take(bool interactive, bool alreadyTransmitting);
+    void _take(bool interactive);
 
-    void _release(bool interactive, bool alreadyTransmitting);
+    void _release(bool interactive);
 
     std::atomic<int> _totalCount{0};
     std::atomic<int> _transmitCount{0};
-    std::atomic<int> _alreadyTransCount{0};
     int const _maxTransmits;
-    int const _maxAlreadyTran;
     std::mutex _mtx;
     std::condition_variable _tCv;
+
+    QidMgr _qidMgr;
 };
 
 
 /// RAII class to support TransmitMgr
 class TransmitLock {
 public:
-    TransmitLock(TransmitMgr& transmitMgr, bool interactive, bool alreadyTransmitting)
-      : _transmitMgr(transmitMgr), _interactive(interactive),
-        _alreadyTransmitting(alreadyTransmitting) {
-        _transmitMgr._take(_interactive, _alreadyTransmitting);
+    using Ptr = std::shared_ptr<TransmitLock>;
+    TransmitLock(TransmitMgr& transmitMgr, bool interactive, QueryId const qid)
+      : _transmitMgr(transmitMgr), _interactive(interactive), _qid(qid) {
+        _transmitMgr._qidMgr._take(_qid);
+        _transmitMgr._take(_interactive);
     }
+
     TransmitLock() = delete;
     TransmitLock(TransmitLock const&) = delete;
     TransmitLock& operator=(TransmitLock const&) = delete;
 
     ~TransmitLock() {
-        _transmitMgr._release(_interactive, _alreadyTransmitting);
+        _transmitMgr._release(_interactive);
+        _transmitMgr._qidMgr._release(_qid);
     }
 
 private:
     TransmitMgr& _transmitMgr;
-    bool _interactive;
-    bool _alreadyTransmitting;
+    bool const _interactive;
+    QueryId const _qid;
 };
 
 

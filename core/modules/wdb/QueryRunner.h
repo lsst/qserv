@@ -64,6 +64,7 @@ class StreamBuffer;
 namespace wcontrol {
 class SqlConnMgr;
 class TransmitMgr;
+class TransmitLock;
 }
 
 }}
@@ -104,10 +105,13 @@ protected:
 private:
     bool _initConnection();
     void _setDb();
-    bool _dispatchChannel(); ///< Dispatch with output sent through a SendChannel
+
+    /// Dispatch with output sent through a SendChannel
+    bool _dispatchChannel(std::shared_ptr<wcontrol::TransmitLock>& transmitLock);
     MYSQL_RES* _primeResult(std::string const& query); ///< Obtain a result handle for a query.
 
-    bool _fillRows(MYSQL_RES* result, int numFields, uint& rowCount, size_t& tsize);
+    bool _fillRows(MYSQL_RES* result, int numFields, uint& rowCount, size_t& tsize,
+                   std::shared_ptr<wcontrol::TransmitLock>& transmitLock);
     void _fillSchema(MYSQL_RES* result);
     void _initMsgs();
     void _initMsg();
@@ -115,7 +119,8 @@ private:
     /// Send result 'streamBuf' to the czar. 'histo' and 'note' are for logging purposes only.
     void _sendBuf(std::shared_ptr<xrdsvc::StreamBuffer>& streamBuf, bool last,
                   util::TimerHistogram& histo, std::string const& note);
-    void _transmit(bool last, unsigned int rowCount, size_t size);
+    void _transmit(bool last, unsigned int rowCount, size_t size,
+                   std::shared_ptr<wcontrol::TransmitLock>& transmitLock);
     void _transmitHeader(std::string& msg);
     static size_t _getDesiredLimit();
 
