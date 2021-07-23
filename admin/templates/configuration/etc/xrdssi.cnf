@@ -81,4 +81,5 @@ reservedinteractivesqlconn = 20
 buffermaxtotalgb = 50
 # Maximum number of concurrent transmits to a czar.
 maxtransmits = 10
+maxperqid = 3
 

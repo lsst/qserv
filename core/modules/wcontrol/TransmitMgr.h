@@ -45,6 +45,9 @@ class QidMgr;
 class LockCount {
 public:
     LockCount() = default;
+    LockCount(LockCount const&) = delete;
+    LockCount& operator=(LockCount const&) = delete;
+    ~LockCount() = default;
 
     friend QidMgr;
 private:
@@ -62,7 +65,9 @@ private:
 /// Limit the number of transmitting tasks sharing the same query id number.
 class QidMgr {
 public:
-    QidMgr() = default;
+    QidMgr() = delete;
+    QidMgr(int maxTransmits, int maxPerQid)
+        : _maxTransmits(maxTransmits), _maxPerQid(maxPerQid) { _setMaxCount(0); }
     QidMgr(QidMgr const&) = delete;
     QidMgr& operator=(QidMgr const&) = delete;
     virtual ~QidMgr() = default;
@@ -70,9 +75,19 @@ public:
     friend class TransmitLock;
 
 private:
+    /// Set _maxCount according to members and uniqueQidCounts
+    /// _mapMtx must be held before calling this function (aside from constructor).
+    void _setMaxCount(int uniqueQidCount);
+
     void _take(QueryId const& qid);
     void _release(QueryId const& qid);
 
+    int const _maxTransmits; ///< Maximum number of transmits per czar connection
+
+    ///< Absolute maximum number of Transmits per unique QID + czarID (TODO: change map to string &&&)
+    int const _maxPerQid;
+    int _prevUniqueQidCount = -1; ///< previous number of unique QID's, invalid value to start.
+    std::atomic<int> _maxCount{1};
     std::mutex _mapMtx;
     std::map<QueryId, LockCount> _qidLocks;
 };
@@ -91,8 +106,8 @@ class TransmitMgr {
 public:
     using Ptr = std::shared_ptr<TransmitMgr>;
 
-    TransmitMgr(int maxTransmits)
-        : _maxTransmits(maxTransmits) {
+    TransmitMgr(int maxTransmits, int maxPerQid)
+        : _maxTransmits(maxTransmits), _maxPerQid(maxPerQid) {
         assert(_maxTransmits > 0);
     }
 
@@ -118,10 +133,11 @@ private:
     std::atomic<int> _totalCount{0};
     std::atomic<int> _transmitCount{0};
     int const _maxTransmits;
+    int const _maxPerQid;
     std::mutex _mtx;
     std::condition_variable _tCv;
 
-    QidMgr _qidMgr;
+    QidMgr _qidMgr{_maxTransmits, _maxPerQid}; //&&& use config file value
 };
 
 
