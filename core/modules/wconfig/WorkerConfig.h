@@ -283,6 +283,10 @@ public:
          return _maxTransmits;
      }
 
+     int getMaxPerQid() const {
+         return _maxPerQid;
+     }
+
     /** Overload output operator for current class
      *
      * @param out
@@ -331,6 +335,7 @@ private:
     unsigned int const _ReservedInteractiveSqlConnections;
     unsigned int const _bufferMaxTotalGB;
     unsigned int const _maxTransmits;
+    int const          _maxPerQid;
 };
 
 }}} // namespace qserv::core::wconfig
