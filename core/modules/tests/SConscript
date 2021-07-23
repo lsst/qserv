@@ -16,7 +16,7 @@ import os.path
 bin_cc_files = {}
 path = "."
 for f in env.Glob(os.path.join(path, "qserv-*.cc"), source=True, strings=True):
-    bin_cc_files[f] = ["qserv_common","util","protobuf","log","log4cxx"]
+    bin_cc_files[f] = ["qserv_common","util","protobuf","xrdsvc","log","log4cxx"]
 
 # Initiate the standard sequence of actions for this module by excluding
 # the above discovered binary sources

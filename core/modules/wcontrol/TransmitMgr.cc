@@ -24,6 +24,9 @@
 // Class header
 #include "wcontrol/TransmitMgr.h"
 
+// Qserv headers
+#include "global/Bug.h"
+
 #include "lsst/log/Log.h"
 
 using namespace std;
@@ -36,39 +39,85 @@ namespace lsst {
 namespace qserv {
 namespace wcontrol {
 
+int LockCount::_take() {
+    {
+        unique_lock<mutex> uLock(_lMtx);
+        ++_totalCount;
+        _lCv.wait(uLock, [this](){ return (_count < _maxCount); });
+        ++_count;
+    }
+    return _totalCount;
+}
 
-void TransmitMgr::_take(bool interactive, bool alreadyTransmitting) {
+
+int LockCount::_release() {
+    int totalCount = 0;
+    {
+        unique_lock<mutex> uLock(_lMtx);
+        --_totalCount;
+        --_count;
+        if (_totalCount <=0 && _count > 0) {
+            throw Bug("LockCount::_release() _count > _totalCount "
+                      + to_string(_count ) + " > " + to_string(_totalCount) );
+        }
+        totalCount = _totalCount;
+    }
+    _lCv.notify_one();
+    return totalCount;
+}
+
+
+void QidMgr::_take(QueryId const& qid) {
+    LockCount* lockCount;
+    {
+        lock_guard<mutex> uLock(_mapMtx);
+        lockCount = &(_qidLocks[qid]);
+    }
+    lockCount->_take();
+}
+
+
+void QidMgr::_release(QueryId const& qid) {
+    LockCount* lockCount;
+    bool changed = false;
+    int qidsSize = 0;
+    int tCount = 0;
+    {
+        lock_guard<mutex> uLock(_mapMtx);
+        lockCount = &(_qidLocks[qid]);
+        tCount = lockCount->_release();
+        if (tCount == 0) {
+            _qidLocks.erase(qid);
+            changed = true;
+            qidsSize = _qidLocks.size();
+        }
+    }
+    if (changed) {
+        LOGS(_log, LOG_LVL_DEBUG, "QidMgr::_release freed counts for " << qid << " diffQids=" << qidsSize);
+    } else {
+        LOGS(_log, LOG_LVL_DEBUG, "QidMgr::_release total counts for " << qid << " =" << tCount);
+    }
+}
+
+
+void TransmitMgr::_take(bool interactive) {
     LOGS(_log, LOG_LVL_DEBUG, "TransmitMgr::_take locking " << *this);
     unique_lock<mutex> uLock(_mtx);
     ++_totalCount;
-    if (not interactive || _transmitCount >= _maxTransmits || _alreadyTransCount >= _maxAlreadyTran) {
-        // If not alreadyTransmitting, it needs to wait until the number of already transmitting
-        // jobs drops below _maxAlreadyTran before it can start transmitting.
-        if (alreadyTransmitting) {
-            ++_alreadyTransCount;
-            LOGS(_log, LOG_LVL_DEBUG, " ++_alreadyTransCount=" << _alreadyTransCount);
-            _tCv.wait(uLock, [this](){ return _transmitCount < _maxTransmits; });
-        } else {
-            _tCv.wait(uLock, [this](){
-                return (_transmitCount < _maxTransmits) && (_alreadyTransCount < _maxAlreadyTran);
-            });
-        }
+    if (not interactive || _transmitCount >= _maxTransmits) {
+        _tCv.wait(uLock, [this](){ return (_transmitCount < _maxTransmits); });
     }
     ++_transmitCount;
     LOGS(_log, LOG_LVL_DEBUG, "TransmitMgr::_take locking done " << *this);
 }
 
 
-void TransmitMgr::_release(bool interactive, bool alreadyTransmitting) {
+void TransmitMgr::_release(bool interactive) {
     LOGS(_log, LOG_LVL_DEBUG, "TransmitMgr::_release locking " << *this);
     {
         unique_lock<mutex> uLock(_mtx);
         --_totalCount;
         --_transmitCount;
-        if (not interactive && alreadyTransmitting) {
-            --_alreadyTransCount;
-            LOGS(_log, LOG_LVL_DEBUG, "--_alreadyTransCount=" << _alreadyTransCount);
-        }
     }
     // There could be several threads waiting on _alreadyTransCount or
     // it needs to make sure to wake the thread waiting only on _transmitCount.
@@ -80,9 +129,7 @@ void TransmitMgr::_release(bool interactive, bool alreadyTransmitting) {
 ostream& TransmitMgr::dump(ostream &os) const {
     os << "(totalCount=" << _totalCount
        << " transmitCount=" << _transmitCount
-       << ":max=" << _maxTransmits
-       << " alreadyTransCount=" << _alreadyTransCount
-       << ":max=" << _maxAlreadyTran << ")";
+       << ":max=" << _maxTransmits << ")";
     return os;
 }
 
