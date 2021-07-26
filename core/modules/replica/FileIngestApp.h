@@ -160,6 +160,11 @@ private:
     FileIngestApp(int argc, char* argv[]);
 
     /**
+     * Parse the input file t locate rows as per the specifications.
+     */
+    void _parseFile() const;
+
+    /**
      * Read ingest specifications from a file supplied via the corresponding
      * command line parameter with command 'FILE-LIST'.
      * @param shortFormat the flag which is 'true' would omit reading transaction
@@ -189,6 +194,9 @@ private:
     std::string _authKey;
 
     FileIngestSpec _file;       /// File specification for the single file ingest ('FILE'))
+
+    std::string _inFileName;    /// The name of a file to read from.
+    std::string _outFileName;   /// The name of a file to write into.
 
     bool _verbose = false;      /// Print various stats upon a completion of the ingest
 };

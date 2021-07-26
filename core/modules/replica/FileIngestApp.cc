@@ -27,6 +27,7 @@
 #include <cctype>
 #include <fstream>
 #include <streambuf>
+#include <iomanip>
 #include <iostream>
 #include <limits>
 #include <regex>
@@ -36,6 +37,7 @@
 #include "boost/filesystem.hpp"
 
 // Qserv headers
+#include "replica/Csv.h"
 #include "replica/Performance.h"
 #include "util/File.h"
 
@@ -185,7 +187,7 @@ FileIngestApp::FileIngestApp(int argc, char* argv[])
 
     parser().commands(
         "command",
-        {"FILE", "FILE-LIST", "FILE-LIST-TRANS"},
+        {"PARSE", "FILE", "FILE-LIST", "FILE-LIST-TRANS"},
         _command
     ).option(
         "fields-terminated-by",
@@ -217,6 +219,22 @@ FileIngestApp::FileIngestApp(int argc, char* argv[])
         "verbose",
         "Print various stats upon a completion of the ingest",
         _verbose
+    );
+
+    parser().command(
+        "PARSE"
+    ).description(
+        "Parse the 'infile' to locate rows according to the specified field terminator,"
+        " field quotation, escape and line terminator strings. Print each row onto"
+        " 'outfile'. The row will be preceeded by the row number."
+    ).required(
+        "infile",
+        "A path to an input file to be parsed.",
+        _inFileName
+    ).required(
+        "outfile",
+        "A path to the oputput file to write the result.",
+        _outFileName
     );
 
     parser().command(
@@ -309,6 +327,10 @@ FileIngestApp::FileIngestApp(int argc, char* argv[])
 int FileIngestApp::runImpl() {
     string const context = "FileIngestApp::" + string(__func__) + "  ";
 
+    if (_command == "PARSE") {
+        _parseFile();
+        return 0;
+    }
     list<FileIngestSpec> files;
     if (_command == "FILE") {
         files.push_back(_file);
@@ -325,6 +347,55 @@ int FileIngestApp::runImpl() {
         _ingest(file);
     }
     return 0;
+}
+
+
+void FileIngestApp::_parseFile() const {
+    string const context = "FileIngestApp::" + string(__func__) + "  ";
+    ifstream infile(_inFileName, ios::binary);
+    if (!infile.good()) {
+        throw invalid_argument(context + "Failed to open file: '" + _inFileName + "'.");
+    }
+    ofstream outfile(_outFileName, ios::trunc|ios::binary);
+    if (!outfile.good()) {
+        throw invalid_argument(context + "Failed to create file: '" + _outFileName + "'.");
+    }
+    csv::Parser parser(
+        csv::Dialect(
+            _fieldsTerminatedBy,
+            _fieldsEnclosedBy,
+            _fieldsEscapedBy,
+            _linesTerminatedBy
+        )
+    );
+    size_t inNumBytes = 0;
+    size_t outNumBytes = 0;
+    size_t numLines = 0;
+    unique_ptr<char[]> const record(new char[_recordSizeBytes]);
+    bool eof = false;
+    do {
+        eof = !infile.read(record.get(), _recordSizeBytes);
+        if (eof && !infile.eof()) {
+            runtime_error(context + "Failed to read the file '" + _inFileName
+                          + "', error: '" + strerror(errno) + "', errno: " + to_string(errno)
+                          + ".");
+        }
+        size_t const num = infile.gcount();
+        inNumBytes += num;
+        // Flush on the end of file
+        parser.parse(record.get(), num, eof, [&](char const* buf, size_t size) {
+            if (!outfile.write(buf, size)) {
+                runtime_error(context + "Failed to write into the file '" + _outFileName
+                            + "', error: '" + strerror(errno) + "', errno: " + to_string(errno)
+                            + ".");
+            }
+            outNumBytes += size;
+            numLines++;
+        });
+    } while (!eof);
+    cout << "read: " << inNumBytes << " bytes, "
+         << "wrote: " << outNumBytes << " bytes, "
+         << "lines: " << numLines << endl;
 }
 
 
@@ -362,16 +433,16 @@ list<FileIngestApp::FileIngestSpec> FileIngestApp::_readFileList(bool shortForma
 void FileIngestApp::_ingest(FileIngestSpec const& file) const {
     string const context = "FileIngestApp::" + string(__func__) + "  ";
 
-    // Analyze the file to make sure it's a regular file, and it can be read.
-
-    fs::path const path = file.inFileName;
-    boost::system::error_code ec;
-    fs::file_status const status = fs::status(path, ec);
-    if (ec.value() != 0) {
-        throw invalid_argument(context + "file doesn't exist: " + path.string());
+    if (file.inFileName.empty()) {
+        throw invalid_argument(context + "the filename is empty");
     }
-    if (not fs::is_regular(status)) {
-        throw invalid_argument(context + "not a regular file: " + path.string());
+    boost::system::error_code ec;
+    fs::file_status const status = fs::status(fs::path(file.inFileName), ec);
+    if (ec.value() != 0) {
+        throw runtime_error(context + "file doesn't exist: " + file.inFileName);
+    }
+    if (!fs::is_regular(status)) {
+        throw runtime_error(context + "not a regular file: " + file.inFileName);
     }
     
     // For partitioned tables analyze file name and extract a chunk number and
@@ -379,7 +450,7 @@ void FileIngestApp::_ingest(FileIngestSpec const& file) const {
     ChunkContribution chunkContribution;
     if (file.tableType == "P") {
         // Remove a base path (if any) from the file name before parsing the name
-        chunkContribution = parseChunkContribution(fs::absolute(path).filename().string());
+        chunkContribution = parseChunkContribution(fs::absolute(fs::path(file.inFileName)).filename().string());
     } else if (file.tableType == "R") {
         // No special requirements for the names of the regular files
         ;
