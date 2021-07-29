@@ -43,10 +43,8 @@ int LockCount::_take() {
     {
         unique_lock<mutex> uLock(_lMtx);
         ++_totalCount;
-        LOGS(_log, LOG_LVL_DEBUG, "&&& LockCount::_take total=" << _totalCount << " c=" << _count);
         _lCv.wait(uLock, [this](){ return (_count < _maxCount); });
         ++_count;
-        LOGS(_log, LOG_LVL_DEBUG, "&&& LockCount::_take total=" << _totalCount << " c=" << _count);
     }
     return _totalCount;
 }
@@ -55,7 +53,6 @@ int LockCount::_take() {
 int LockCount::_release() {
     int totalCount = 0;
     {
-        LOGS(_log, LOG_LVL_DEBUG, "&&& LockCount::_release _total=" << _totalCount << " c=" << _count);
         unique_lock<mutex> uLock(_lMtx);
         --_totalCount;
         --_count;
@@ -64,7 +61,6 @@ int LockCount::_release() {
                       + to_string(_count ) + " > " + to_string(_totalCount) );
         }
         totalCount = _totalCount;
-        LOGS(_log, LOG_LVL_DEBUG, "&&& LockCount::_release total=" << _totalCount << " c=" << _count);
     }
     _lCv.notify_one();
     return totalCount;
@@ -75,18 +71,14 @@ void QidMgr::_setMaxCount(int uniqueQidCount) {
     // There's no point in doing anything for uniqueQidCount < 1
     if (uniqueQidCount <= 0) uniqueQidCount = 1;
     // If nothing changed, return.
-    LOGS(_log, LOG_LVL_INFO, "&&& QidMgr::_setMaxCount a unique=" << uniqueQidCount << " prev=" << _prevUniqueQidCount);
     if (uniqueQidCount == _prevUniqueQidCount) return;
     _prevUniqueQidCount = uniqueQidCount;
     // _maxCount must be > 0 and <= _maxPerQid
     // Otherwise, it should try to give an equal number of transmits to each QID
     int maxCount = _maxTransmits / uniqueQidCount;
-    //LOGS(_log, LOG_LVL_INFO, "&&& QidMgr::_setMaxCount maxC=" << maxCount << " maxT=" << _maxTransmits << " uniqueQ=" << uniqueQidCount);
     if (maxCount < 1) maxCount = 1;
     if (maxCount > _maxPerQid) maxCount = _maxPerQid;
-    //LOGS(_log, LOG_LVL_INFO, "&&& QidMgr::_setMaxCount maxC=" << maxCount << " maxPerQ=" << _maxPerQid);
     if (_maxCount == maxCount) return;
-    LOGS(_log, LOG_LVL_INFO, "&&& QidMgr::_setMaxCount changed max to " << _maxCount);
     bool notify = maxCount > _maxCount;
     _maxCount = maxCount;
     // send the new value to all LockCounts in the map.
@@ -99,7 +91,6 @@ void QidMgr::_setMaxCount(int uniqueQidCount) {
 
 
 void QidMgr::_take(QueryId const& qid) {
-    LOGS(_log, LOG_LVL_INFO, "&&& QidMgr:_take");
     LockCount* lockCount;
     {
         lock_guard<mutex> uLock(_mapMtx);
@@ -108,12 +99,10 @@ void QidMgr::_take(QueryId const& qid) {
         _setMaxCount(_qidLocks.size());
     }
     lockCount->_take();
-    LOGS(_log, LOG_LVL_INFO, "&&& QidMgr:_take done");
 }
 
 
 void QidMgr::_release(QueryId const& qid) {
-    LOGS(_log, LOG_LVL_INFO, "&&& QidMgr:_release");
     LockCount* lockCount;
     bool changed = false;
     int qidsSize = 0;
