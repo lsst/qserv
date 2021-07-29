@@ -84,7 +84,7 @@ private:
 
     int const _maxTransmits; ///< Maximum number of transmits per czar connection
 
-    ///< Absolute maximum number of Transmits per unique QID + czarID (TODO: change map to string &&&)
+    ///< Absolute maximum number of Transmits per unique QID + czarID
     int const _maxPerQid;
     int _prevUniqueQidCount = -1; ///< previous number of unique QID's, invalid value to start.
     std::atomic<int> _maxCount{1};
@@ -137,7 +137,7 @@ private:
     std::mutex _mtx;
     std::condition_variable _tCv;
 
-    QidMgr _qidMgr{_maxTransmits, _maxPerQid}; //&&& use config file value
+    QidMgr _qidMgr{_maxTransmits, _maxPerQid};
 };
 
 
