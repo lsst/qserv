@@ -29,8 +29,9 @@
 #include <ctime>
 #include <functional>
 #include <mutex>
-#include <thread>
+#include <sstream>
 #include <stdexcept>
+#include <thread>
 
 // Third party headers
 #include "boost/filesystem.hpp"
@@ -79,18 +80,30 @@ IngestFileSvc::~IngestFileSvc() {
 
 void IngestFileSvc::openFile(TransactionId transactionId,
                              string const& table,
-                             char columnSeparator,
+                             csv::Dialect const& dialect,
                              unsigned int chunk,
                              bool isOverlap) {
 
     string const context_ = context + string(__func__) + " ";
     LOGS(_log, LOG_LVL_DEBUG, context_);
 
-    _transactionId   = transactionId;
-    _table           = table;
-    _columnSeparator = columnSeparator;
-    _chunk           = chunk;
-    _isOverlap       = isOverlap;
+    _transactionId = transactionId;
+    _table = table;
+    _dialect = dialect;
+    _chunk = chunk;
+    _isOverlap = isOverlap;
+
+    // Construct and cache the transaction identifier field to be prepended at
+    // the begining of each row. Note that the prefix will be the same for each
+    // row of the file.
+    stringstream ss;
+    if (dialect.fieldsEnclosedBy() == '\0') {
+        ss << transactionId;
+    } else {
+        ss << dialect.fieldsEnclosedBy() << transactionId << dialect.fieldsEnclosedBy();
+    }
+    ss << dialect.fieldsTerminatedBy();
+    _transactionIdField = ss.str();
 
     // Check if a context of the request is valid
     try {
@@ -157,7 +170,7 @@ void IngestFileSvc::openFile(TransactionId transactionId,
         raiseRetryAllowedError(context_,
                 "failed to generate a unique name for a temporary file, ex: " + string(ex.what()));
     }
-    _file.open(_fileName, ofstream::out);
+    _file.open(_fileName, ios::out|ios::trunc|ios::binary);
     if (not _file.is_open()) {
         raiseRetryAllowedError(context_,
                 "failed to create a temporary file '" + _fileName
@@ -166,8 +179,15 @@ void IngestFileSvc::openFile(TransactionId transactionId,
 }
 
 
-void IngestFileSvc::writeRowIntoFile(string const& row) {
-    _file << _transactionId << _columnSeparator << row << "\n";
+void IngestFileSvc::writeRowIntoFile(char const* buf, size_t size) {
+    if (!_file.write(_transactionIdField.data(), _transactionIdField.size()) ||
+        !_file.write(buf, size)) {
+        string const context_ = context + string(__func__) + " ";
+        raiseRetryAllowedError(context_,
+                "failed to write into the temporary file '" + _fileName
+                + "', error: '" + strerror(errno) + "', errno: " + to_string(errno)
+                + ".");
+    }
     ++_totalNumRows;
 }
 
@@ -263,8 +283,7 @@ void IngestFileSvc::loadDataIntoTable() {
                     auto const sqlDestinationTable = _isOverlap ? sqlFullOverlapTable : sqlTable;
                     dataLoadQuery =
                         "LOAD DATA INFILE " + h.conn->sqlValue(_fileName) +
-                            " INTO TABLE " + sqlDestinationTable +
-                            " FIELDS TERMINATED BY " + h.conn->sqlValue(string() + _columnSeparator);
+                            " INTO TABLE " + sqlDestinationTable + _dialect.sqlOptions();
                     partitionRemovalQuery =
                         Query("ALTER TABLE " + sqlDestinationTable + " DROP PARTITION " + sqlPartition,
                               sqlDestinationTable);
@@ -282,8 +301,7 @@ void IngestFileSvc::loadDataIntoTable() {
             );
             dataLoadQuery =
                 "LOAD DATA INFILE " + h.conn->sqlValue(_fileName) +
-                    " INTO TABLE " + sqlTable +
-                    " FIELDS TERMINATED BY " + h.conn->sqlValue(string() + _columnSeparator);
+                    " INTO TABLE " + sqlTable + _dialect.sqlOptions();
             partitionRemovalQuery =
                 Query("ALTER TABLE " + sqlTable + " DROP PARTITION " + sqlPartition,
                       sqlTable);

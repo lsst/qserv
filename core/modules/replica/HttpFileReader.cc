@@ -63,10 +63,10 @@ HttpFileReader::~HttpFileReader() {
 }
 
 
-void HttpFileReader::read(CallbackType const& onEachLine) {
-    assert(onEachLine != nullptr);  // no callback function provided
+void HttpFileReader::read(CallbackType const& onDataRead) {
+    assert(onDataRead != nullptr);  // no callback function provided
     string const context = "HttpFileReader::" + string(__func__) + " ";
-    _onEachLine = onEachLine;
+    _onDataRead = onDataRead;
     _errorChecked("curl_easy_setopt(CURLOPT_URL)", curl_easy_setopt(_hcurl, CURLOPT_URL, _url.c_str()));
     _errorChecked("curl_easy_setopt(CURLOPT_CUSTOMREQUEST)", curl_easy_setopt(_hcurl, CURLOPT_CUSTOMREQUEST, nullptr));
     if (_method == "GET") {
@@ -119,9 +119,7 @@ void HttpFileReader::read(CallbackType const& onEachLine) {
     _errorChecked("curl_easy_setopt(CURLOPT_FAILONERROR)", curl_easy_setopt(_hcurl, CURLOPT_FAILONERROR, 1L));
     _errorChecked("curl_easy_setopt(CURLOPT_WRITEFUNCTION)", curl_easy_setopt(_hcurl, CURLOPT_WRITEFUNCTION, forwardToHttpFileReader));
     _errorChecked("curl_easy_setopt(CURLOPT_WRITEDATA)", curl_easy_setopt(_hcurl, CURLOPT_WRITEDATA, this));
-    _line.erase();
     _errorChecked("curl_easy_perform()", curl_easy_perform(_hcurl));
-    if (!_line.empty()) raiseRetryAllowedError(context, "no newline in the end of the input stream");
 }
 
 
@@ -140,23 +138,7 @@ void HttpFileReader::_errorChecked(string const& scope, CURLcode errnum) {
 
 
 void HttpFileReader::_store(char const* ptr, size_t nchars) {
-    char const* begin = ptr;
-    char const* end = ptr + nchars;
-    char const* current = begin;
-    while (current < end) {
-        char const c = *(current++);
-        if (c == '\n') {
-            // Don't push the newline character into the line.
-            _line.append(begin, current - begin - 1);
-            _onEachLine(_line);
-            _line.erase();
-            begin = current;
-        }
-    }
-    // Store the begining of the next string (if any) which hasn't been terminated yet
-    // with the newline character. This string will get completed when the next chunk of
-    // the input data will arrive.
-    if (current != begin) _line.append(begin, current - begin);
+    _onDataRead(ptr, nchars);
 }
 
 }}} // namespace lsst::qserv::replica

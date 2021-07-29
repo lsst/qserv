@@ -31,7 +31,7 @@
 #include "boost/asio.hpp"
 
 // Qserv headers
-#include "replica/Common.h"
+#include "replica/Csv.h"
 
 // Forward declarations
 namespace lsst {
@@ -59,15 +59,12 @@ public:
  * Class IngestClient is a client-side API for the point-to-point catalog
  * data ingest service.
  */
-class IngestClient : public std::enable_shared_from_this<IngestClient>  {
+class IngestClient: public std::enable_shared_from_this<IngestClient>  {
 public:
-
     typedef std::shared_ptr<IngestClient> Ptr;
 
-    enum ColumnSeparator {
-        COMMA,
-        TAB
-    };
+    /// The default record size when reading from an input file.
+    constexpr static size_t defaultRecordSizeBytes = 1048576;
 
     /**
      * Establish a connection to the remote service. If the operation is successful
@@ -88,8 +85,14 @@ public:
      *   The parameter is ignored for non-partitioned tables.
      * @param inputFilePath the path (relative or absolute) name for a file
      *   whose content will be transferred to to the remote service.
-     * @param columnSeparator a character which separates columns within each row
      * @param authKey  an authorization key which should also be known to the server.
+     * @param fieldsTerminatedBy an optional character which separates fields within a row
+     * @param fieldsEnclosedBy an optional character which is used to quote fields within a row
+     * @param fieldsEscapedBy an optional character which is used to escape special
+     *   characters (reserved by MySQL) within a row
+     * @param linesTerminatedBy an optional character which is used to terminate lines
+     * @param recordSizeBytes  an optional parameter specifying the record size for
+     *   reading from the input file and for sending data to a server. 
      * @throws IngestClientError for any problem occurred when establishing
      *   a connection or during the initial handshake with the server
      */
@@ -100,8 +103,12 @@ public:
                        unsigned int chunk,
                        bool isOverlap,
                        std::string const& inputFilePath,
-                       ColumnSeparator columnSeparator=COMMA,
-                       std::string const& authKey=std::string());
+                       std::string const& authKey=std::string(),
+                       std::string const& fieldsTerminatedBy=csv::Dialect::defaultFieldsTerminatedBy,
+                       std::string const& fieldsEnclosedBy=csv::Dialect::defaultFieldsEnclosedBy,
+                       std::string const& fieldsEscapedBy=csv::Dialect::defaultFieldsEscapedBy,
+                       std::string const& linesTerminatedBy=csv::Dialect::defaultLinesTerminatedBy,
+                       size_t recordSizeBytes=defaultRecordSizeBytes);
 
     // Default construction and copy semantics are prohibited
 
@@ -121,9 +128,6 @@ public:
      */
     void send();
 
-    /// @return the number of rows sent to a server
-    size_t totalNumRows() const { return _totalNumRows; }
-
     /// @return the number of bytes read from an input file
     size_t sizeBytes() const { return _sizeBytes; }
 
@@ -139,8 +143,12 @@ private:
                  unsigned int chunk,
                  bool isOverlap,
                  std::string const& inputFilePath,
-                 ColumnSeparator columnSeparator,
-                 std::string const& authKey);
+                 std::string const& authKey,
+                 std::string const& fieldsTerminatedBy,
+                 std::string const& fieldsEnclosedBy,
+                 std::string const& fieldsEscapedBy,
+                 std::string const& linesTerminatedBy,
+                 size_t recordSizeBytes);
 
     /// @return a context string for the logger and exceptions
     std::string _context(std::string const& func) const {
@@ -201,33 +209,28 @@ private:
 
     // Input parameters
 
-    std::string     const _workerHost;
-    uint16_t        const _workerPort;
-    TransactionId   const _transactionId;
-    std::string     const _tableName;
-    unsigned int    const _chunk;
-    bool            const _isOverlap;
-    std::string     const _inputFilePath;
-    ColumnSeparator const _columnSeparator;
-    std::string     const _authKey;
+    std::string   const _workerHost;
+    uint16_t      const _workerPort;
+    TransactionId const _transactionId;
+    std::string   const _tableName;
+    unsigned int  const _chunk;
+    bool          const _isOverlap;
+    std::string   const _inputFilePath;
+    std::string   const _authKey;
+    std::string   const _fieldsTerminatedBy;
+    std::string   const _fieldsEnclosedBy;
+    std::string   const _fieldsEscapedBy;
+    std::string   const _linesTerminatedBy;
+    size_t        const _recordSizeBytes;
 
-    // Buffer for data moved over the network. The initial buffer capacity
-    // would be adjusted during the initial handshake with the server.
-
-    size_t _bufferCapacity;
+    /// Buffer for data moved over the network.
     std::unique_ptr<ProtocolBuffer> _bufferPtr;
-
-    /// The maximum number of rows to be sent to the server. A value of
-    /// this parameter is adjusted during the initial handshake with the server.
-    long _numRowsPerSend = 1;
 
     boost::asio::io_service      _io_service;
     boost::asio::ip::tcp::socket _socket;
 
     bool _sent = false;         /// Set to 'true' after a successful completion of the ingest.
     bool _retryAllowed = false; /// Set to 'true' to indicate that failed request may be retried.
-
-    size_t _totalNumRows = 0;   /// The number of rows sent to a server
     size_t _sizeBytes = 0;      /// The number of bytes read from an input file
 };
 

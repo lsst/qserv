@@ -33,7 +33,7 @@
 #include "boost/filesystem.hpp"
 
 // Qserv headers
-#include "replica/Common.h"
+#include "replica/Csv.h"
 #include "replica/DatabaseServices.h"
 #include "replica/FileUtils.h"
 #include "replica/HttpExceptions.h"
@@ -139,11 +139,24 @@ json IngestHttpSvcMod::executeImpl(string const& subModuleName) {
     }
     TransactionId const transactionId = body().required<uint32_t>("transaction_id");
     string const table = body().required<string>("table");
-    string const columnSeparatorStr = body().required<string>("column_separator");
-    if (columnSeparatorStr.empty() || columnSeparatorStr.size() != 1) {
-        throw invalid_argument(string(__func__) + " column separator must be a single character string");
-    }
-    char const columnSeparator = columnSeparatorStr[0];
+
+    // Allow "column_separator" for the sake of the backward compatibility with the older
+    // version of the API. The parameter "column_separator" if present will override the one
+    // of "fields_terminated_by"
+    string const fieldsTerminatedBy = body().optional<string>(
+        "column_separator",
+        body().optional<string>("fields_terminated_by", csv::Dialect::defaultFieldsTerminatedBy)
+    );
+    string const fieldsEnclosedBy   = body().optional<string>("fields_enclosed_by",  csv::Dialect::defaultFieldsEnclosedBy);
+    string const fieldsEscapedBy    = body().optional<string>("fields_escaped_by",   csv::Dialect::defaultFieldsEscapedBy);
+    string const linesTerminatedBy  = body().optional<string>("lines_terminated_by", csv::Dialect::defaultLinesTerminatedBy);
+
+    csv::Dialect const dialect(
+        fieldsTerminatedBy,
+        fieldsEnclosedBy,
+        fieldsEscapedBy,
+        linesTerminatedBy
+    );
     unsigned int const chunk = body().required<unsigned int>("chunk");
     bool const isOverlap = body().required<int>("overlap") != 0;
     string const url = body().required<string>("url");
@@ -153,7 +166,10 @@ json IngestHttpSvcMod::executeImpl(string const& subModuleName) {
 
     debug(__func__, "transactionId: " + to_string(transactionId));
     debug(__func__, "table: '" + table + "'");
-    debug(__func__, "columnSeparator: '" + to_string(columnSeparator) + "'");
+    debug(__func__, "fields_terminated_by: '" + fieldsTerminatedBy + "'");
+    debug(__func__, "fields_enclosed_by: '" + fieldsEnclosedBy + "'");
+    debug(__func__, "fields_escaped_by: '" + fieldsEscapedBy + "'");
+    debug(__func__, "lines_terminated_by: '" + linesTerminatedBy + "'");
     debug(__func__, "chunk: " + to_string(chunk));
     debug(__func__, "isOverlap: " + string(isOverlap ? "1": "0"));
     debug(__func__, "url: '" + url + "'");
@@ -177,18 +193,19 @@ json IngestHttpSvcMod::executeImpl(string const& subModuleName) {
     // file ingested). Timestamps represent the number of milliseconds since UNIX EPOCH
     json stats = json::object();
     json perf = json::object();
-    openFile(transactionId, table, columnSeparator, chunk, isOverlap);
+    openFile(transactionId, table, dialect, chunk, isOverlap);
+    csv::Parser parser(dialect);
     try {
         Url const resource(url);
 
         perf["begin_file_read_ms"] = PerformanceUtils::now();
         switch(resource.scheme()) {
             case Url::FILE:
-                stats = _readLocal(resource.filePath());
+                stats = _readLocal(parser, resource.filePath());
                 break;
             case Url::HTTP:
             case Url::HTTPS:
-                stats = _readRemote(trans.database, httpMethod, resource.url(), httpData, httpHeaders);
+                stats = _readRemote(parser, trans.database, httpMethod, resource.url(), httpData, httpHeaders);
                 break;
             default:
                 throw invalid_argument(string(__func__) + " unsupported url '" + url + "'");
@@ -217,20 +234,34 @@ json IngestHttpSvcMod::executeImpl(string const& subModuleName) {
 }
 
 
-json IngestHttpSvcMod::_readLocal(string const& filename) {
+json IngestHttpSvcMod::_readLocal(csv::Parser& parser,
+                                  string const& filename) {
     debug(__func__);
+
     size_t numBytes = 0;
     size_t numRows = 0;
-    ifstream infile(filename);
+    unique_ptr<char[]> const record(new char[defaultRecordSizeBytes]);
+    ifstream infile(filename, ios::binary);
     if (!infile.is_open()) {
-        raiseRetryAllowedError(__func__, "failed to open file '" + filename
+        raiseRetryAllowedError(__func__, "failed to open the file '" + filename
                 + "', error: '" + strerror(errno) + "', errno: " + to_string(errno));
     }
-    for (string row; getline(infile, row);) {
-        writeRowIntoFile(row);
-        numBytes += row.size() + 1;     // counting the newline character
-        ++numRows;
-    }
+    bool eof = false;
+    do {
+        eof = !infile.read(record.get(), defaultRecordSizeBytes);
+        if (eof && !infile.eof()) {
+            raiseRetryAllowedError(__func__, "failed to read the file '" + filename
+                    + "', error: '" + strerror(errno) + "', errno: " + to_string(errno));
+        }
+        size_t const num = infile.gcount();
+        numBytes += num;
+        // Flush the last record if the end of the file.
+        parser.parse(record.get(), num, eof, [&](char const* buf, size_t size) {
+            writeRowIntoFile(buf, size);
+            ++numRows;
+        });
+    } while (!eof);
+
     json result = json::object();
     result["num_bytes"] = numBytes;
     result["num_rows"] = numRows;
@@ -238,7 +269,8 @@ json IngestHttpSvcMod::_readLocal(string const& filename) {
 }
 
 
-json IngestHttpSvcMod::_readRemote(string const& database,
+json IngestHttpSvcMod::_readRemote(csv::Parser& parser,
+                                   string const& database,
                                    string const& method,
                                    string const& url,
                                    string const& data,
@@ -246,6 +278,10 @@ json IngestHttpSvcMod::_readRemote(string const& database,
     debug(__func__);
     size_t numBytes = 0;
     size_t numRows = 0;
+    auto const reportRow = [&](char const* buf, size_t size) {
+        writeRowIntoFile(buf, size);
+        ++numRows;
+    };
 
     // The configuration may be updated later if certificate bundles were loaded
     // by a client into the config store.
@@ -271,13 +307,17 @@ json IngestHttpSvcMod::_readRemote(string const& database,
                 workerInfo().httpLoaderTmpDir, database, fileConfig.proxyCaInfoVal);
     }
 
-    // Read the file from the data source
+    // Read and parse data from the data source
+    bool const flush = true;
     HttpFileReader reader(method, url, data, headers, fileConfig);
-    reader.read([this, &numBytes, &numRows](string const& row) {
-        this->writeRowIntoFile(row);
-        numBytes += row.size() + 1;     // counting the newline character
-        ++numRows;
+    reader.read([&](char const* record, size_t size) {
+        parser.parse(record, size, !flush, reportRow);
+        numBytes += size;
     });
+    // Flush the last non-terminated line stored in the parser (if any).
+    string const emptyRecord;
+    parser.parse(emptyRecord.data(), emptyRecord.size(), flush, reportRow);
+
     json result = json::object();
     result["num_bytes"] = numBytes;
     result["num_rows"] = numRows;

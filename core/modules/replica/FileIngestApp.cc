@@ -27,6 +27,7 @@
 #include <cctype>
 #include <fstream>
 #include <streambuf>
+#include <iomanip>
 #include <iostream>
 #include <limits>
 #include <regex>
@@ -36,7 +37,7 @@
 #include "boost/filesystem.hpp"
 
 // Qserv headers
-#include "replica/IngestClient.h"
+#include "replica/Csv.h"
 #include "replica/Performance.h"
 #include "util/File.h"
 
@@ -82,16 +83,6 @@ T parse(string const& context, json const& jsonObj, string const& key, T minValu
                 + to_string(numeric_limits<T>::max()) + ".");
     }
     return (T)num;
-}
-
-
-IngestClient::ColumnSeparator translateColumnsSeparator(string const& context, string const& str) {
-    if ("COMMA" == str) {
-        return IngestClient::ColumnSeparator::COMMA;
-    } else if ("TAB" == str) {
-        return IngestClient::ColumnSeparator::TAB;
-    }
-    throw invalid_argument(context + "unsupported columns separator: " + str);
 }
 
 } /// namespace
@@ -196,13 +187,30 @@ FileIngestApp::FileIngestApp(int argc, char* argv[])
 
     parser().commands(
         "command",
-        {"FILE", "FILE-LIST", "FILE-LIST-TRANS"},
+        {"PARSE", "FILE", "FILE-LIST", "FILE-LIST-TRANS"},
         _command
     ).option(
-        "columns-separator",
-        "The columns separator option. A value of the parameter is sent to ingest"
-        " services. Allowed options: COMMA, TAB.",
-        _columnsSeparator
+        "fields-terminated-by",
+        "An optional character which separates fields within a row.",
+        _fieldsTerminatedBy
+    ).option(
+        "fields-enclosed-by",
+        "An optional character which is used to quote fields within a row.",
+        _fieldsEnclosedBy
+     ).option(
+        "fields-escaped-by",
+        "An optional character which is used to escape special characters (reserved by MySQL)"
+        " within a row",
+        _fieldsEscapedBy
+    ).option(
+        "lines-terminated-by",
+        "An optional character which is used to terminate lines.",
+        _linesTerminatedBy
+    ).option(
+        "record-size-bytes",
+        "An optional parameter specifying the record size for reading from the input"
+        " file and for sending data to a server.",
+        _recordSizeBytes
     ).option(
         "auth-key",
         "An authorization key which should also be known to servers.",
@@ -211,6 +219,22 @@ FileIngestApp::FileIngestApp(int argc, char* argv[])
         "verbose",
         "Print various stats upon a completion of the ingest",
         _verbose
+    );
+
+    parser().command(
+        "PARSE"
+    ).description(
+        "Parse the 'infile' to locate rows according to the specified field terminator,"
+        " field quotation, escape and line terminator strings. Print each row onto"
+        " 'outfile'. The row will be preceeded by the row number."
+    ).required(
+        "infile",
+        "A path to an input file to be parsed.",
+        _inFileName
+    ).required(
+        "outfile",
+        "A path to the oputput file to write the result.",
+        _outFileName
     );
 
     parser().command(
@@ -303,6 +327,10 @@ FileIngestApp::FileIngestApp(int argc, char* argv[])
 int FileIngestApp::runImpl() {
     string const context = "FileIngestApp::" + string(__func__) + "  ";
 
+    if (_command == "PARSE") {
+        _parseFile();
+        return 0;
+    }
     list<FileIngestSpec> files;
     if (_command == "FILE") {
         files.push_back(_file);
@@ -319,6 +347,55 @@ int FileIngestApp::runImpl() {
         _ingest(file);
     }
     return 0;
+}
+
+
+void FileIngestApp::_parseFile() const {
+    string const context = "FileIngestApp::" + string(__func__) + "  ";
+    ifstream infile(_inFileName, ios::binary);
+    if (!infile.good()) {
+        throw invalid_argument(context + "Failed to open file: '" + _inFileName + "'.");
+    }
+    ofstream outfile(_outFileName, ios::trunc|ios::binary);
+    if (!outfile.good()) {
+        throw invalid_argument(context + "Failed to create file: '" + _outFileName + "'.");
+    }
+    csv::Parser parser(
+        csv::Dialect(
+            _fieldsTerminatedBy,
+            _fieldsEnclosedBy,
+            _fieldsEscapedBy,
+            _linesTerminatedBy
+        )
+    );
+    size_t inNumBytes = 0;
+    size_t outNumBytes = 0;
+    size_t numLines = 0;
+    unique_ptr<char[]> const record(new char[_recordSizeBytes]);
+    bool eof = false;
+    do {
+        eof = !infile.read(record.get(), _recordSizeBytes);
+        if (eof && !infile.eof()) {
+            runtime_error(context + "Failed to read the file '" + _inFileName
+                          + "', error: '" + strerror(errno) + "', errno: " + to_string(errno)
+                          + ".");
+        }
+        size_t const num = infile.gcount();
+        inNumBytes += num;
+        // Flush on the end of file
+        parser.parse(record.get(), num, eof, [&](char const* buf, size_t size) {
+            if (!outfile.write(buf, size)) {
+                runtime_error(context + "Failed to write into the file '" + _outFileName
+                            + "', error: '" + strerror(errno) + "', errno: " + to_string(errno)
+                            + ".");
+            }
+            outNumBytes += size;
+            numLines++;
+        });
+    } while (!eof);
+    cout << "read: " << inNumBytes << " bytes, "
+         << "wrote: " << outNumBytes << " bytes, "
+         << "lines: " << numLines << endl;
 }
 
 
@@ -356,16 +433,16 @@ list<FileIngestApp::FileIngestSpec> FileIngestApp::_readFileList(bool shortForma
 void FileIngestApp::_ingest(FileIngestSpec const& file) const {
     string const context = "FileIngestApp::" + string(__func__) + "  ";
 
-    // Analyze the file to make sure it's a regular file, and it can be read.
-
-    fs::path const path = file.inFileName;
-    boost::system::error_code ec;
-    fs::file_status const status = fs::status(path, ec);
-    if (ec.value() != 0) {
-        throw invalid_argument(context + "file doesn't exist: " + path.string());
+    if (file.inFileName.empty()) {
+        throw invalid_argument(context + "the filename is empty");
     }
-    if (not fs::is_regular(status)) {
-        throw invalid_argument(context + "not a regular file: " + path.string());
+    boost::system::error_code ec;
+    fs::file_status const status = fs::status(fs::path(file.inFileName), ec);
+    if (ec.value() != 0) {
+        throw runtime_error(context + "file doesn't exist: " + file.inFileName);
+    }
+    if (!fs::is_regular(status)) {
+        throw runtime_error(context + "not a regular file: " + file.inFileName);
     }
     
     // For partitioned tables analyze file name and extract a chunk number and
@@ -373,7 +450,7 @@ void FileIngestApp::_ingest(FileIngestSpec const& file) const {
     ChunkContribution chunkContribution;
     if (file.tableType == "P") {
         // Remove a base path (if any) from the file name before parsing the name
-        chunkContribution = parseChunkContribution(fs::absolute(path).filename().string());
+        chunkContribution = parseChunkContribution(fs::absolute(fs::path(file.inFileName)).filename().string());
     } else if (file.tableType == "R") {
         // No special requirements for the names of the regular files
         ;
@@ -399,8 +476,12 @@ void FileIngestApp::_ingest(FileIngestSpec const& file) const {
         chunkContribution.chunk,
         chunkContribution.isOverlap,
         file.inFileName,
-        ::translateColumnsSeparator(context, _columnsSeparator),
-        _authKey
+        _authKey,
+        _fieldsTerminatedBy,
+        _fieldsEnclosedBy,
+        _fieldsEscapedBy,
+        _linesTerminatedBy,
+        _recordSizeBytes
     );
     ptr->send();
     uint64_t const finishedMs = PerformanceUtils::now();
@@ -408,7 +489,6 @@ void FileIngestApp::_ingest(FileIngestSpec const& file) const {
     if (_verbose) {
         uint64_t const elapsedMs  = max(1UL, finishedMs - startedMs);
         double   const elapsedSec = elapsedMs / 1000;
-        double   const rowsPerSec = ptr->totalNumRows() / elapsedSec;
         double   const megaBytesPerSec = ptr->sizeBytes() / 1000000 / elapsedSec;
         cout << "Ingest service location: " << file.workerHost << ":" << file.workerPort << "\n"
              << " Transaction identifier: " << file.transactionId << "\n"
@@ -419,9 +499,7 @@ void FileIngestApp::_ingest(FileIngestSpec const& file) const {
              << "            Start  time: " << PerformanceUtils::toDateTimeString(chrono::milliseconds(startedMs)) << "\n"
              << "            Finish time: " << PerformanceUtils::toDateTimeString(chrono::milliseconds(finishedMs)) << "\n"
              << "           Elapsed time: " << elapsedSec << " sec\n"
-             << "             Rows  sent: " << ptr->totalNumRows() << "\n"
              << "             Bytes sent: " << ptr->sizeBytes() << "\n"
-             << "               Rows/sec: " << rowsPerSec << "\n"
              << "              MByte/sec: " << megaBytesPerSec << "\n"
              << endl;
     }

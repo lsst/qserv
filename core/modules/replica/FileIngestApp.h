@@ -31,7 +31,7 @@
 
 // Qserv headers
 #include "replica/Application.h"
-#include "replica/Common.h"
+#include "replica/IngestClient.h"
 
 // This header declarations
 
@@ -43,11 +43,8 @@ namespace replica {
  * Class FileIngestApp implements a tool which acts as a catalog data loading
  * client of the Replication system's catalog data ingest server.
  */
-class FileIngestApp : public Application {
-
+class FileIngestApp: public Application {
 public:
-
-    /// The pointer type for instances of the class
     typedef std::shared_ptr<FileIngestApp> Ptr;
 
     /**
@@ -163,6 +160,11 @@ private:
     FileIngestApp(int argc, char* argv[]);
 
     /**
+     * Parse the input file t locate rows as per the specifications.
+     */
+    void _parseFile() const;
+
+    /**
      * Read ingest specifications from a file supplied via the corresponding
      * command line parameter with command 'FILE-LIST'.
      * @param shortFormat the flag which is 'true' would omit reading transaction
@@ -181,12 +183,20 @@ private:
     std::string _command;       /// 'FILE' or 'FILE-LIST' ingest scenarios
     std::string _fileListName;  /// The name of a file to read info for 'FILE-LIST' scenario
 
-    std::string _columnsSeparator = "COMMA";    /// columns separator to be sent to ingest servers
+    std::string _fieldsTerminatedBy = csv::Dialect::defaultFieldsTerminatedBy;
+    std::string _fieldsEnclosedBy   = csv::Dialect::defaultFieldsEnclosedBy;
+    std::string _fieldsEscapedBy    = csv::Dialect::defaultFieldsEscapedBy;
+    std::string _linesTerminatedBy  = csv::Dialect::defaultLinesTerminatedBy;
+
+    size_t _recordSizeBytes = IngestClient::defaultRecordSizeBytes;
 
     /// An authorization key which should also be known to servers
     std::string _authKey;
 
     FileIngestSpec _file;       /// File specification for the single file ingest ('FILE'))
+
+    std::string _inFileName;    /// The name of a file to read from.
+    std::string _outFileName;   /// The name of a file to write into.
 
     bool _verbose = false;      /// Print various stats upon a completion of the ingest
 };

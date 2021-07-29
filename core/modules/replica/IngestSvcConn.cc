@@ -187,9 +187,16 @@ void IngestSvcConn::_handshakeReceived(boost::system::error_code const& ec,
             workerInfo().name,
             request.url()
         );
+        csv::Dialect const dialect(
+            request.fields_terminated_by(),
+            request.fields_enclosed_by(),
+            request.fields_escaped_by(),
+            request.lines_terminated_by()
+        );
+        _parser.reset(new csv::Parser(dialect));
         openFile(request.transaction_id(),
                  request.table(),
-                 request.column_separator() == ProtocolIngestHandshakeRequest::COMMA ? ',' : '\t',
+                 dialect,
                  request.chunk(),
                  request.is_overlap());
     } catch (exception const& ex) {
@@ -197,9 +204,8 @@ void IngestSvcConn::_handshakeReceived(boost::system::error_code const& ec,
         return;
     }
 
-    // Ask a client to send 1 row to begin with. An optimal number of rows will be
-    // calculated based later upon a completion of that row and measuring its size.
-    _sendReadyToReadData(1);
+    // Ask a client to begin sending data.
+    _reply(ProtocolIngestResponse::READY_TO_READ_DATA);
 }
 
 
@@ -260,20 +266,22 @@ void IngestSvcConn::_dataReceived(boost::system::error_code const& ec,
         return;
     }
 
-    // Prepend each row with the transaction identifier and write it into the output file.
-    // Compute the maximum length of the rows. It's value will be used on the next step
-    // to advise a client on the most optimal number of rows to be sent with the next
-    // batch (of rows).
+    // Parse and process the input data, write the processed data into
+    // the output file to be ingested into MySQL.
+    _parser->parse(
+        request.data().data(),
+        request.data().size(),
+        request.last(),
+        [&](char const* buf, size_t size) {
+            writeRowIntoFile(buf, size);
+            _contrib.numRows++;
+        }
+    );
+    _contrib.numBytes += request.data().size(); // count unmodified input data
 
-    size_t rowSize = 0;
-    for (int i = 0, num = request.rows_size(); i < num; ++i) {
-        auto&& row = request.rows(i);
-        writeRowIntoFile(row);
-        rowSize = max(rowSize, row.size());
-        // Update contribution counters
-        _contrib.numBytes += rowSize;
-        _contrib.numRows++;
-    }
+
+
+
 
     ProtocolIngestResponse response;
     if (request.last()) {
@@ -291,21 +299,16 @@ void IngestSvcConn::_dataReceived(boost::system::error_code const& ec,
             _failed(error);
         }
     } else {
-
-        size_t maxRows = 1;
-        if (rowSize != 0) maxRows = max(maxRows, networkBufSizeBytes / rowSize);
-        _sendReadyToReadData(maxRows);
+        _reply(ProtocolIngestResponse::READY_TO_READ_DATA);
     }
 }
 
 
 void IngestSvcConn::_reply(ProtocolIngestResponse::Status status,
-                           string const& msg,
-                           size_t maxRows) {
+                           string const& msg) {
     ProtocolIngestResponse response;
     response.set_status(status);
     response.set_error(msg);
-    response.set_max_rows(maxRows);
     response.set_retry_allowed(_retryAllowed);
 
     _bufferPtr->resize();
