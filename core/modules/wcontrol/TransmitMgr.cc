@@ -39,32 +39,6 @@ namespace lsst {
 namespace qserv {
 namespace wcontrol {
 
-int LockCount::_take() {
-    {
-        unique_lock<mutex> uLock(_lMtx);
-        ++_totalCount;
-        _lCv.wait(uLock, [this](){ return (_count < _maxCount); });
-        ++_count;
-    }
-    return _totalCount;
-}
-
-
-int LockCount::_release() {
-    int totalCount = 0;
-    {
-        unique_lock<mutex> uLock(_lMtx);
-        --_totalCount;
-        --_count;
-        if (_totalCount <=0 && _count > 0) {
-            throw Bug("LockCount::_release() _count > _totalCount "
-                      + to_string(_count ) + " > " + to_string(_totalCount) );
-        }
-        totalCount = _totalCount;
-    }
-    _lCv.notify_one();
-    return totalCount;
-}
 
 // _mapMtx must be locked before calling, except for constructor.
 void QidMgr::_setMaxCount(int uniqueQidCount) {
@@ -83,22 +57,21 @@ void QidMgr::_setMaxCount(int uniqueQidCount) {
     _maxCount = maxCount;
     // send the new value to all LockCounts in the map.
     for (auto&& elem:_qidLocks) {
-        LockCount* lc = &(elem.second);
-        lc->_maxCount.store(_maxCount);
-        if (notify) lc->_lCv.notify_one();
+        LockCount& lc = elem.second;
+        lc.lcMaxCount.store(_maxCount);
+        if (notify) lc.lcCv.notify_one();
     }
 }
 
 
 void QidMgr::_take(QueryId const& qid) {
-    LockCount* lockCount;
-    {
-        lock_guard<mutex> uLock(_mapMtx);
-        lockCount = &(_qidLocks[qid]);
-        lockCount->_maxCount.store(_maxCount);
-        _setMaxCount(_qidLocks.size());
-    }
-    lockCount->_take();
+    unique_lock<mutex> uLock(_mapMtx);
+    LockCount& lockCount = _qidLocks[qid];
+    lockCount.lcMaxCount.store(_maxCount);
+    _setMaxCount(_qidLocks.size());
+    uLock.unlock();
+
+    lockCount.take();
 }
 
 
@@ -110,7 +83,7 @@ void QidMgr::_release(QueryId const& qid) {
     {
         lock_guard<mutex> uLock(_mapMtx);
         lockCount = &(_qidLocks[qid]);
-        tCount = lockCount->_release();
+        tCount = lockCount->release();
         if (tCount == 0) {
             _qidLocks.erase(qid);
             changed = true;
@@ -123,6 +96,34 @@ void QidMgr::_release(QueryId const& qid) {
     } else {
         LOGS(_log, LOG_LVL_DEBUG, "QidMgr::_release total counts for " << qid << " =" << tCount);
     }
+}
+
+
+int QidMgr::LockCount::take() {
+    {
+        unique_lock<mutex> uLock(lcMtx);
+        ++lcTotalCount;
+        lcCv.wait(uLock, [this](){ return (lcCount < lcMaxCount); });
+        ++lcCount;
+    }
+    return lcTotalCount;
+}
+
+
+int QidMgr::LockCount::release() {
+    int totalCount = 0;
+    {
+        unique_lock<mutex> uLock(lcMtx);
+        --lcTotalCount;
+        --lcCount;
+        if (lcTotalCount <=0 && lcCount > 0) {
+            throw Bug("LockCount::_release() _count > _totalCount "
+                      + to_string(lcCount ) + " > " + to_string(lcTotalCount) );
+        }
+        totalCount = lcTotalCount;
+    }
+    lcCv.notify_one();
+    return totalCount;
 }
 
 

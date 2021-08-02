@@ -42,25 +42,6 @@ namespace wcontrol {
 class TransmitLock;
 class QidMgr;
 
-class LockCount {
-public:
-    LockCount() = default;
-    LockCount(LockCount const&) = delete;
-    LockCount& operator=(LockCount const&) = delete;
-    ~LockCount() = default;
-
-    friend QidMgr;
-private:
-    int _take(); /// @return _totalCount.
-    int _release(); /// @return _totalCount.
-
-    std::atomic<int> _totalCount{0};
-    std::atomic<int> _count{0};
-    std::atomic<int> _maxCount{1};
-    std::mutex _lMtx;
-    std::condition_variable _lCv;
-};
-
 
 /// Limit the number of transmitting tasks sharing the same query id number.
 class QidMgr {
@@ -89,6 +70,23 @@ private:
     int _prevUniqueQidCount = -1; ///< previous number of unique QID's, invalid value to start.
     std::atomic<int> _maxCount{1};
     std::mutex _mapMtx;
+
+    class LockCount {
+    public:
+        LockCount() = default;
+        LockCount(LockCount const&) = delete;
+        LockCount& operator=(LockCount const&) = delete;
+        ~LockCount() = default;
+
+        int take(); /// @return _totalCount.
+        int release(); /// @return _totalCount.
+        std::atomic<int> lcTotalCount{0};
+        std::atomic<int> lcCount{0};
+        std::atomic<int> lcMaxCount{1};
+        std::mutex lcMtx;
+        std::condition_variable lcCv;
+    };
+
     std::map<QueryId, LockCount> _qidLocks;
 };
 
