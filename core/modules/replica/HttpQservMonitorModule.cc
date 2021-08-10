@@ -24,6 +24,7 @@
 
 // System headers
 #include <map>
+#include <sstream>
 #include <stdexcept>
 
 // Third party headers
@@ -248,9 +249,17 @@ json HttpQservMonitorModule::_userQueries() {
 
     auto const config = controller()->serviceProvider()->config();
 
+    string const queryStatus = query().optionalString("query_status", string());
+    string const queryType = query().optionalString("query_type", string());
+    unsigned int const queryAgeSec = query().optionalUInt("query_age", 0);
+    unsigned int const minElapsedSec = query().optionalUInt("min_elapsed_sec", 0);
     unsigned int const timeoutSec = query().optionalUInt("timeout_sec", workerResponseTimeoutSec());
     unsigned int const limit4past = query().optionalUInt("limit4past", 1);
 
+    debug(__func__, "query_status=" + queryStatus);
+    debug(__func__, "query_type=" + queryType);
+    debug(__func__, "query_age=" + to_string(queryAgeSec));
+    debug(__func__, "min_elapsed_sec=" + to_string(minElapsedSec));
     debug(__func__, "timeout_sec=" + to_string(timeoutSec));
     debug(__func__, "limit4past=" + to_string(limit4past));
 
@@ -334,13 +343,30 @@ json HttpQservMonitorModule::_userQueries() {
             result["queries"].push_back(resultRow);
         }
     }
+    ostringstream constraint;
+    if (queryStatus.empty()) {
+        constraint << h.conn->sqlNotEqual("status", "EXECUTING");
+    } else {
+        constraint << h.conn->sqlEqual("status", queryStatus);
+    }
+    if (!queryType.empty()) {
+        constraint << " AND " + h.conn->sqlEqual("qType", queryType);
+    }
+    if (queryAgeSec > 0) {
+        constraint << "AND TIMESTAMPDIFF(SECOND," << h.conn->sqlId("submitted") << ",NOW()) > "
+                   << h.conn->sqlValue(queryAgeSec);
+    }
+    if (minElapsedSec > 0) {
+        constraint << " AND TIMESTAMPDIFF(SECOND," << h.conn->sqlId("submitted") << "," << h.conn->sqlId("completed") << ") > "
+                   << h.conn->sqlValue(minElapsedSec);
+    }
     h.conn->execute(
         "SELECT *,"
         "UNIX_TIMESTAMP(" + h.conn->sqlId("submitted") + ") AS " + h.conn->sqlId("submitted_sec") + "," +
         "UNIX_TIMESTAMP(" + h.conn->sqlId("completed") + ") AS " + h.conn->sqlId("completed_sec") + ","
         "UNIX_TIMESTAMP(" + h.conn->sqlId("returned")  + ") AS " + h.conn->sqlId("returned_sec") +
         " FROM "  + h.conn->sqlId("QInfo") +
-        " WHERE " + h.conn->sqlNotEqual("status", "EXECUTING") +
+        " WHERE " + constraint.str() +
         " ORDER BY " + h.conn->sqlId("submitted") + " DESC" +
         (limit4past == 0 ? "" : " LIMIT " + to_string(limit4past))
     );
