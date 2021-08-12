@@ -151,7 +151,10 @@ public:
     std::list<ControllerEvent> readControllerEvents(std::string const& controllerId,
                                                     uint64_t fromTimeStamp,
                                                     uint64_t toTimeStamp,
-                                                    size_t maxEntries) final;
+                                                    size_t maxEntries,
+                                                    std::string const& task,
+                                                    std::string const& operation,
+                                                    std::string const& operationStatus) final;
 
     ControllerInfo controller(std::string const& id) final;
 
@@ -337,7 +340,10 @@ private:
                                                      std::string const& controllerId,
                                                      uint64_t fromTimeStamp,
                                                      uint64_t toTimeStamp,
-                                                     size_t maxEntries);
+                                                     size_t maxEntries,
+                                                     std::string const& task,
+                                                     std::string const& operation,
+                                                     std::string const& operationStatus);
 
     ControllerInfo _controller(util::Lock const& lock,
                                std::string const& id);
