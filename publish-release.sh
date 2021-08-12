@@ -43,7 +43,7 @@ if [ $# -ne 0 ] ; then
 fi
 
 git add .
-git commit -m "Release $releasetag"
+git commit -m "Release $releasetag" || echo "Nothing to commit"
 git tag -a "$releasetag" -m "Version $releasetag"
 git push --tag
 "$DIR/admin/tools/docker"/2_build-git-image.sh  "$DIR"
