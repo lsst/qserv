@@ -9,3 +9,9 @@ Continuous integration server launches Qserv build and also multi-node integrati
 ## Documentation
 
 [Documentation for master branch](https://qserv.lsst.io/)
+
+## How to publish a new release
+
+```
+RELEASE="2021.8.1-rc1"
+./publish-release.sh -t "$RELEASE"

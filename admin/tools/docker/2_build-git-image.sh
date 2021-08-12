@@ -94,9 +94,9 @@ SRC_DIRS=$(echo "${SRC_DIRS}" | sed -e 's/^[[:space:]]*//')
 
 # Last product in the list should be qserv, if not change the tag
 if [ "$PRODUCT" = "qserv" ]; then
-    GIT_REF=$(cd "$HOST_SRC_DIR" && git rev-parse --abbrev-ref HEAD)
+    GIT_REF=$(cd "$HOST_SRC_DIR" && git describe --dirty --always)
 else
-    GIT_REF=$(cd "$HOST_SRC_DIR" && git rev-parse --abbrev-ref HEAD)
+    GIT_REF=$(cd "$HOST_SRC_DIR" && git describe --dirty --always)
     GIT_REF="${PRODUCT}_${GIT_REF}"
 fi
 
