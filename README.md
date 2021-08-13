@@ -14,4 +14,4 @@ Continuous integration server launches Qserv build and also multi-node integrati
 
 ```
 RELEASE="2021.8.1-rc1"
-./publish-release.sh -t "$RELEASE"
+./publish-release.sh "$RELEASE"
