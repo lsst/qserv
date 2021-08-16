@@ -157,6 +157,8 @@ public:
                                                     std::string const& operation,
                                                     std::string const& operationStatus) final;
 
+    nlohmann::json readControllerEventDict(std::string const& controllerId) final;
+
     ControllerInfo controller(std::string const& id) final;
 
     std::list<ControllerInfo> controllers(uint64_t fromTimeStamp,

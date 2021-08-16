@@ -326,6 +326,13 @@ list<ControllerEvent> DatabaseServicesPool::readControllerEvents(
 }
 
 
+json DatabaseServicesPool::readControllerEventDict(string const& controllerId) {
+    ServiceAllocator service(shared_from_base<DatabaseServicesPool>());
+    return service()->readControllerEventDict(controllerId);
+
+}
+
+
 ControllerInfo DatabaseServicesPool::controller(string const& id) {
     ServiceAllocator service(shared_from_base<DatabaseServicesPool>());
     return service()->controller(id);

@@ -743,6 +743,16 @@ public:
                                             std::string const& operationStatus=std::string()) = 0;
 
     /**
+     * @param controllerId (optional) a unique identifier of a Controller whose events will
+     *   be analyzed. The default value (the empty string) doesn't impose any filtering
+     *   in this context and results in events scanned for all controllers launched in the
+     *   past.
+     * @return a dictionary of distinct values of the controller's event attributes
+     *   obtained from the persistent log.
+     */
+    virtual nlohmann::json readControllerEventDict(std::string const& controllerId=std::string()) = 0;
+
+    /**
      * Find an information on a controller.
      * 
      * @param id a unique identifier of the Controller

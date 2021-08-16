@@ -1375,6 +1375,50 @@ list<ControllerEvent> DatabaseServicesMySQL::_readControllerEvents(
 }
 
 
+json DatabaseServicesMySQL::readControllerEventDict(string const& controllerId) {
+    string const context =
+         "DatabaseServicesMySQL::" + string(__func__) + " " +
+         " controllerId="  + controllerId + " ";
+
+    LOGS(_log, LOG_LVL_DEBUG, context);
+    util::Lock lock(_mtx, context);
+    json dict;
+    try {
+        _conn->executeInOwnTransaction(
+            [&](decltype(_conn) conn) {
+                dict = _readControllerEventDict(lock, controllerId);
+            }
+        );
+    } catch (exception const& ex) {
+        LOGS(_log, LOG_LVL_ERROR, context << "failed, exception: " << ex.what());
+        throw;
+    }
+    LOGS(_log, LOG_LVL_DEBUG, context + "** DONE **");
+    return dict;
+}
+
+
+json DatabaseServicesMySQL::_readControllerEventDict(util::Lock const& lock,
+                                                     string const& controllerId) {
+    string const controllerIdSelector =
+        controllerId.empty() ? string() : " WHERE " + _conn->sqlEqual("controller_id", controllerId);
+    json dict;
+    for (const char* col: {"task", "operation", "status"}) {
+        _conn->execute("SELECT DISTINCT " + _conn->sqlId(col) +
+                       " FROM " + _conn->sqlId("controller_log") + controllerIdSelector);
+        json& colValues = dict[col];
+        database::mysql::Row row;
+        while (_conn->next(row)) {
+            string val;
+            row.get(col, val);
+            // Skip both NULL and the empty string
+            if (!val.empty()) colValues.push_back(val);
+        }
+    }
+    return dict;
+}
+
+
 ControllerInfo DatabaseServicesMySQL::controller(string const& id) {
 
     string const context =
