@@ -141,6 +141,15 @@ void HttpProcessor::registerServices() {
             }
     );
     httpServer()->addHandler(
+            "GET", "/replication/controller/:id/dict",
+            [self](qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp) {
+                HttpControllersModule::process(
+                        self->controller(), self->name(), self->_processorConfig,
+                        req, resp,
+                        "LOG-DICT");
+            }
+    );
+    httpServer()->addHandler(
             "GET", "/replication/request",
             [self](qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp) {
                 HttpRequestsModule::process(

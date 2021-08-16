@@ -45,9 +45,11 @@ public:
     typedef std::shared_ptr<HttpControllersModule> Ptr;
 
     /**
-     * @note supported values for parameter 'subModuleName' are
-     * the empty string (for pulling info on all known Controllers),
-     * or 'SELECT-ONE-BY-ID' for a single controller.
+     * Supported values for parameter 'subModuleName':
+     *
+     *   the empty string  for pulling info on all known Controllers
+     *   SELECT-ONE-BY-ID  for extended info (including events log) a single controller
+     *   LOG-DICT          for a dictionary of unique keys from controller's events log
      *
      * @throws std::invalid_argument for unknown values of parameter 'subModuleName'
      */
@@ -77,6 +79,7 @@ private:
 
     nlohmann::json _controllers();
     nlohmann::json _oneController();
+    nlohmann::json _eventLogDict();
 };
     
 }}} // namespace lsst::qserv::replica

@@ -61,6 +61,7 @@ HttpControllersModule::HttpControllersModule(Controller::Ptr const& controller,
 json HttpControllersModule::executeImpl(string const& subModuleName) {
     if (subModuleName.empty()) return _controllers();
     else if (subModuleName == "SELECT-ONE-BY-ID") return _oneController();
+    else if (subModuleName == "LOG-DICT") return _eventLogDict();
     throw invalid_argument(
             context() + "::" + string(__func__) +
             "  unsupported sub-module: '" + subModuleName + "'");
@@ -104,8 +105,7 @@ json HttpControllersModule::_controllers() {
 json HttpControllersModule::_oneController() {
     debug(__func__);
 
-    auto const id = params().at("id");
-
+    string   const id = params().at("id");
     bool     const log = query().optionalBool("log");
     bool     const logCurrentController = query().optionalBool("log_current_controller");
     string   const logTask = query().optionalString("log_task");
@@ -115,6 +115,7 @@ json HttpControllersModule::_oneController() {
     uint64_t const toTimeStamp = query().optionalUInt64("log_to", numeric_limits<uint64_t>::max());
     size_t   const maxEvents = query().optionalUInt64("log_max_events");
 
+    debug(string(__func__) + " id=" + id);
     debug(string(__func__) + " log=" + bool2str(log));
     debug(string(__func__) + " log_current_controller=" + bool2str(logCurrentController));
     debug(string(__func__) + " log_task=" + logTask);
@@ -156,6 +157,26 @@ json HttpControllersModule::_oneController() {
         throw HttpError(__func__, "no such controller found");
     }
     return result;
+}
+
+json HttpControllersModule::_eventLogDict() {
+    debug(__func__);
+    string const id = params().at("id");
+    bool const logCurrentController = query().optionalBool("log_current_controller");
+    debug(string(__func__) + " id=" + id);
+    debug(string(__func__) + " log_current_controller=" + bool2str(logCurrentController));
+    json result;
+    try {
+        auto const databaseServices = controller()->serviceProvider()->databaseServices();
+        auto const controllerInfo = databaseServices->controller(id);
+        bool const isCurrent = controllerInfo.id == controller()->identity().id;
+        result["controller"] = controllerInfo.toJson(isCurrent);
+        result["log_dict"] = databaseServices->readControllerEventDict(logCurrentController ? id : string());
+    } catch (DatabaseServicesNotFound const& ex) {
+        throw HttpError(__func__, "no such controller found");
+    }
+    return result;
+
 }
 
 }}}  // namespace lsst::qserv::replica
