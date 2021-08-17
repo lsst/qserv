@@ -310,13 +310,26 @@ list<ControllerEvent> DatabaseServicesPool::readControllerEvents(
                                                     string const& controllerId,
                                                     uint64_t fromTimeStamp,
                                                     uint64_t toTimeStamp,
-                                                    size_t maxEntries) {
+                                                    size_t maxEntries,
+                                                    string const& task,
+                                                    string const& operation,
+                                                    string const& operationStatus) {
 
     ServiceAllocator service(shared_from_base<DatabaseServicesPool>());
     return service()->readControllerEvents(controllerId,
                                            fromTimeStamp,
                                            toTimeStamp,
-                                           maxEntries);
+                                           maxEntries,
+                                           task,
+                                           operation,
+                                           operationStatus);
+}
+
+
+json DatabaseServicesPool::readControllerEventDict(string const& controllerId) {
+    ServiceAllocator service(shared_from_base<DatabaseServicesPool>());
+    return service()->readControllerEventDict(controllerId);
+
 }
 
 

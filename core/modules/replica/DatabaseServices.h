@@ -716,20 +716,41 @@ public:
     /**
      * Search the log of controller events for events in the specified time range.
      *
-     * @param controllerId a unique identifier of a Controller whose events will
-     *   be searched
+     * @param controllerId (optional) a unique identifier of a Controller whose events will
+     *   be searched for. The default value (the empty string) doesn't impose any filtering
+     *   in this context and results in events reported by all controllers launched in the
+     *   past.
      * @param fromTimeStamp (optional) the oldest (inclusive) timestamp for the search.
      * @param toTimeStamp (optional) the most recent (inclusive) timestamp for the search.
      * @param maxEntries (optional) the maximum number of events to be reported. The default
      *   values of 0 doesn't impose any limits.
+     * @param task (optional) the filter for desired tasks. The default value (the empty
+     *   string) doesn't impose any filtering in this context.
+     * @param operation (optional) the filter for desired operations. The default
+     *   value (the empty string) doesn't impose any filtering in this context.
+     * @param operationStatus (optional) the filter for desired operation statuses.
+     *   The default value (the empty string) doesn't impose any filtering in this context.
      *
      * @return a collection of events found within the specified time interval
      */
     virtual std::list<ControllerEvent> readControllerEvents(
-                                            std::string const& controllerId,
+                                            std::string const& controllerId=std::string(),
                                             uint64_t fromTimeStamp=0,
                                             uint64_t toTimeStamp=std::numeric_limits<uint64_t>::max(),
-                                            size_t maxEntries=0) = 0;
+                                            size_t maxEntries=0,
+                                            std::string const& task=std::string(),
+                                            std::string const& operation=std::string(),
+                                            std::string const& operationStatus=std::string()) = 0;
+
+    /**
+     * @param controllerId (optional) a unique identifier of a Controller whose events will
+     *   be analyzed. The default value (the empty string) doesn't impose any filtering
+     *   in this context and results in events scanned for all controllers launched in the
+     *   past.
+     * @return a dictionary of distinct values of the controller's event attributes
+     *   obtained from the persistent log.
+     */
+    virtual nlohmann::json readControllerEventDict(std::string const& controllerId=std::string()) = 0;
 
     /**
      * Find an information on a controller.

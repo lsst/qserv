@@ -1252,13 +1252,19 @@ list<ControllerEvent> DatabaseServicesMySQL::readControllerEvents(
                                                     string const& controllerId,
                                                     uint64_t fromTimeStamp,
                                                     uint64_t toTimeStamp,
-                                                    size_t maxEntries) {
+                                                    size_t maxEntries,
+                                                    string const& task,
+                                                    string const& operation,
+                                                    string const& operationStatus) {
     string const context =
          "DatabaseServicesMySQL::" + string(__func__) + " " +
          " controllerId="  + controllerId +
          " fromTimeStamp=" + to_string(fromTimeStamp) +
          " toTimeStamp="   + to_string(toTimeStamp) +
-         " maxEntries="    + to_string(maxEntries) + " ";
+         " maxEntries="    + to_string(maxEntries) +
+         " task="          + task +
+         " maxEntries="    + operation +
+         " maxEntries="    + operationStatus + " ";
 
     LOGS(_log, LOG_LVL_DEBUG, context);
 
@@ -1273,7 +1279,10 @@ list<ControllerEvent> DatabaseServicesMySQL::readControllerEvents(
                     controllerId,
                     fromTimeStamp,
                     toTimeStamp,
-                    maxEntries
+                    maxEntries,
+                    task,
+                    operation,
+                    operationStatus
                 );
             }
         );
@@ -1292,12 +1301,10 @@ list<ControllerEvent> DatabaseServicesMySQL::_readControllerEvents(
                                                     string const& controllerId,
                                                     uint64_t fromTimeStamp,
                                                     uint64_t toTimeStamp,
-                                                    size_t maxEntries) {
-    if (controllerId.empty()) {
-        throw invalid_argument(
-                "DatabaseServicesMySQL::" + string(__func__) + " parameter"
-                " controllerId can't be empty");
-    }
+                                                    size_t maxEntries,
+                                                    string const& task,
+                                                    string const& operation,
+                                                    string const& operationStatus) {
     if (fromTimeStamp > toTimeStamp) {
         throw invalid_argument(
                 "DatabaseServicesMySQL::" + string(__func__) + " illegal time range"
@@ -1306,13 +1313,25 @@ list<ControllerEvent> DatabaseServicesMySQL::_readControllerEvents(
 
     list<ControllerEvent> events;
 
-    string const query =
+    string query =
         "SELECT * FROM " + _conn->sqlId("controller_log") +
-        "  WHERE "       + _conn->sqlEqual("controller_id", controllerId) +
-        "    AND "       + _conn->sqlGreaterOrEqual("time", fromTimeStamp) +
-        "    AND "       + _conn->sqlLessOrEqual("time", toTimeStamp != 0 ? toTimeStamp : numeric_limits<uint64_t>::max()) +
-        "  ORDER BY "    + _conn->sqlId("time") + " DESC" + (maxEntries == 0 ? "" :
-        "  LIMIT "       + to_string(maxEntries));
+        "  WHERE "       + _conn->sqlGreaterOrEqual("time", fromTimeStamp) +
+        "    AND "       + _conn->sqlLessOrEqual("time", toTimeStamp != 0 ? toTimeStamp : numeric_limits<uint64_t>::max());
+    if (!controllerId.empty()) {
+        query += " AND " + _conn->sqlEqual("controller_id", controllerId);
+    }
+    if (!task.empty()) {
+        query += " AND " + _conn->sqlEqual("task", task);
+    }
+    if (!operation.empty()) {
+        query += " AND " + _conn->sqlEqual("operation", operation);
+    }
+    if (!operationStatus.empty()) {
+        query += " AND " + _conn->sqlEqual("status", operationStatus);
+    }
+    query +=
+        "  ORDER BY " + _conn->sqlId("time") + " DESC" + (maxEntries == 0 ? "" :
+        "  LIMIT "    + to_string(maxEntries));
 
     _conn->execute(query);
     if (_conn->hasResult()) {
@@ -1353,6 +1372,50 @@ list<ControllerEvent> DatabaseServicesMySQL::_readControllerEvents(
         }
     }
     return events;
+}
+
+
+json DatabaseServicesMySQL::readControllerEventDict(string const& controllerId) {
+    string const context =
+         "DatabaseServicesMySQL::" + string(__func__) + " " +
+         " controllerId="  + controllerId + " ";
+
+    LOGS(_log, LOG_LVL_DEBUG, context);
+    util::Lock lock(_mtx, context);
+    json dict;
+    try {
+        _conn->executeInOwnTransaction(
+            [&](decltype(_conn) conn) {
+                dict = _readControllerEventDict(lock, controllerId);
+            }
+        );
+    } catch (exception const& ex) {
+        LOGS(_log, LOG_LVL_ERROR, context << "failed, exception: " << ex.what());
+        throw;
+    }
+    LOGS(_log, LOG_LVL_DEBUG, context + "** DONE **");
+    return dict;
+}
+
+
+json DatabaseServicesMySQL::_readControllerEventDict(util::Lock const& lock,
+                                                     string const& controllerId) {
+    string const controllerIdSelector =
+        controllerId.empty() ? string() : " WHERE " + _conn->sqlEqual("controller_id", controllerId);
+    json dict;
+    for (const char* col: {"task", "operation", "status"}) {
+        _conn->execute("SELECT DISTINCT " + _conn->sqlId(col) +
+                       " FROM " + _conn->sqlId("controller_log") + controllerIdSelector);
+        json& colValues = dict[col];
+        database::mysql::Row row;
+        while (_conn->next(row)) {
+            string val;
+            row.get(col, val);
+            // Skip both NULL and the empty string
+            if (!val.empty()) colValues.push_back(val);
+        }
+    }
+    return dict;
 }
 
 

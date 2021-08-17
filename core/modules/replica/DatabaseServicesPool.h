@@ -152,7 +152,12 @@ public:
     std::list<ControllerEvent> readControllerEvents(std::string const& controllerId,
                                                     uint64_t fromTimeStamp,
                                                     uint64_t toTimeStamp,
-                                                    size_t maxEntries) final;
+                                                    size_t maxEntries,
+                                                    std::string const& task,
+                                                    std::string const& operation,
+                                                    std::string const& operationStatus) final;
+
+    nlohmann::json readControllerEventDict(std::string const& controllerId) final;
 
     ControllerInfo controller(std::string const& id) final;
 

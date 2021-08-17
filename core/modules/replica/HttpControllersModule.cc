@@ -61,6 +61,7 @@ HttpControllersModule::HttpControllersModule(Controller::Ptr const& controller,
 json HttpControllersModule::executeImpl(string const& subModuleName) {
     if (subModuleName.empty()) return _controllers();
     else if (subModuleName == "SELECT-ONE-BY-ID") return _oneController();
+    else if (subModuleName == "LOG-DICT") return _eventLogDict();
     throw invalid_argument(
             context() + "::" + string(__func__) +
             "  unsupported sub-module: '" + subModuleName + "'");
@@ -71,12 +72,14 @@ json HttpControllersModule::_controllers() {
     debug(__func__);
 
     uint64_t const fromTimeStamp = query().optionalUInt64("from");
-    uint64_t const toTimeStamp   = query().optionalUInt64("to", numeric_limits<uint64_t>::max());
-    size_t   const maxEntries    = query().optionalUInt64("max_entries");
+    uint64_t const toTimeStamp = query().optionalUInt64("to", numeric_limits<uint64_t>::max());
+    size_t   const maxEntries = query().optionalUInt64("max_entries");
+    bool     const currentOnly = query().optionalBool("current_only", false);
 
-    debug(__func__, "from="        + to_string(fromTimeStamp));
-    debug(__func__, "to="          + to_string(toTimeStamp));
+    debug(__func__, "from=" + to_string(fromTimeStamp));
+    debug(__func__, "to=" + to_string(toTimeStamp));
     debug(__func__, "max_entries=" + to_string(maxEntries));
+    debug(__func__, "current_only=" + bool2str(currentOnly));
 
     // Just descriptions of the Controllers. No persistent logs in this
     // report.
@@ -90,6 +93,7 @@ json HttpControllersModule::_controllers() {
     json controllersJson;
     for (auto&& info: controllers) {
         bool const isCurrent = info.id == controller()->identity().id;
+        if (currentOnly && !isCurrent) continue;
         controllersJson.push_back(info.toJson(isCurrent));
     }
     json result;
@@ -101,16 +105,24 @@ json HttpControllersModule::_controllers() {
 json HttpControllersModule::_oneController() {
     debug(__func__);
 
-    auto const id = params().at("id");
-
-    bool     const log           = query().optionalBool(  "log");
+    string   const id = params().at("id");
+    bool     const log = query().optionalBool("log");
+    bool     const logCurrentController = query().optionalBool("log_current_controller");
+    string   const logTask = query().optionalString("log_task");
+    string   const logOperation = query().optionalString("log_operation");
+    string   const logOperationStatus = query().optionalString("log_operation_status");
     uint64_t const fromTimeStamp = query().optionalUInt64("log_from");
-    uint64_t const toTimeStamp   = query().optionalUInt64("log_to", numeric_limits<uint64_t>::max());
-    size_t   const maxEvents     = query().optionalUInt64("log_max_events");
+    uint64_t const toTimeStamp = query().optionalUInt64("log_to", numeric_limits<uint64_t>::max());
+    size_t   const maxEvents = query().optionalUInt64("log_max_events");
 
-    debug(string(__func__) + " log="            +  bool2str(log));
-    debug(string(__func__) + " log_from="       + to_string(fromTimeStamp));
-    debug(string(__func__) + " log_to="         + to_string(toTimeStamp));
+    debug(string(__func__) + " id=" + id);
+    debug(string(__func__) + " log=" + bool2str(log));
+    debug(string(__func__) + " log_current_controller=" + bool2str(logCurrentController));
+    debug(string(__func__) + " log_task=" + logTask);
+    debug(string(__func__) + " log_operation=" + logOperation);
+    debug(string(__func__) + " log_operation_status=" + logOperationStatus);
+    debug(string(__func__) + " log_from=" + to_string(fromTimeStamp));
+    debug(string(__func__) + " log_to=" + to_string(toTimeStamp));
     debug(string(__func__) + " log_max_events=" + to_string(maxEvents));
 
     json result;
@@ -127,10 +139,13 @@ json HttpControllersModule::_oneController() {
         json jsonLog = json::array();
         if (log) {
             auto const events = databaseServices->readControllerEvents(
-                id,
+                logCurrentController ? id : string(),
                 fromTimeStamp,
                 toTimeStamp,
-                maxEvents
+                maxEvents,
+                logTask,
+                logOperation,
+                logOperationStatus
             );
             for (auto&& event: events) {
                 jsonLog.push_back(event.toJson());
@@ -142,6 +157,26 @@ json HttpControllersModule::_oneController() {
         throw HttpError(__func__, "no such controller found");
     }
     return result;
+}
+
+json HttpControllersModule::_eventLogDict() {
+    debug(__func__);
+    string const id = params().at("id");
+    bool const logCurrentController = query().optionalBool("log_current_controller");
+    debug(string(__func__) + " id=" + id);
+    debug(string(__func__) + " log_current_controller=" + bool2str(logCurrentController));
+    json result;
+    try {
+        auto const databaseServices = controller()->serviceProvider()->databaseServices();
+        auto const controllerInfo = databaseServices->controller(id);
+        bool const isCurrent = controllerInfo.id == controller()->identity().id;
+        result["controller"] = controllerInfo.toJson(isCurrent);
+        result["log_dict"] = databaseServices->readControllerEventDict(logCurrentController ? id : string());
+    } catch (DatabaseServicesNotFound const& ex) {
+        throw HttpError(__func__, "no such controller found");
+    }
+    return result;
+
 }
 
 }}}  // namespace lsst::qserv::replica
