@@ -255,6 +255,10 @@ shlibs["qserv_czar"] = dict(mods="""ccontrol czar parser qana query qdisp qproc 
                             libs="""qserv_css qserv_qmeta qserv_common antlr4-runtime sphgeom
                                  log XrdSsiLib boost_regex""")
 
+# library implementing the worker-side result cache.
+shlibs["qcache"] = dict(mods="""qcache""",
+                        libs="""qserv_common boost_filesystem boost_system log log4cxx""")
+
 # library implementing core functionality of the replication subsystem, tests and
 # binary applications of the replication subsystem
 shlibs["replica"] = dict(mods="""replica""",
