@@ -116,6 +116,13 @@ void HttpFileReader::read(CallbackType const& onDataRead) {
     } else {
         _errorChecked("curl_easy_setopt(CURLOPT_PROXY_SSL_VERIFYPEER)", curl_easy_setopt(_hcurl, CURLOPT_PROXY_SSL_VERIFYPEER, 0L));
     }
+
+    // Optional settings for timing and performance of the transfer
+    _errorChecked("curl_easy_setopt(CURLOPT_CONNECTTIMEOUT)", curl_easy_setopt(_hcurl, CURLOPT_CONNECTTIMEOUT, _fileReaderConfig.connectTimeout));
+    _errorChecked("curl_easy_setopt(CURLOPT_TIMEOUT)", curl_easy_setopt(_hcurl, CURLOPT_TIMEOUT, _fileReaderConfig.timeout));
+    _errorChecked("curl_easy_setopt(CURLOPT_LOW_SPEED_LIMIT)", curl_easy_setopt(_hcurl, CURLOPT_LOW_SPEED_LIMIT, _fileReaderConfig.lowSpeedLimit));
+    _errorChecked("curl_easy_setopt(CURLOPT_LOW_SPEED_TIME)", curl_easy_setopt(_hcurl, CURLOPT_LOW_SPEED_TIME, _fileReaderConfig.lowSpeedTime));
+
     _errorChecked("curl_easy_setopt(CURLOPT_FAILONERROR)", curl_easy_setopt(_hcurl, CURLOPT_FAILONERROR, 1L));
     _errorChecked("curl_easy_setopt(CURLOPT_WRITEFUNCTION)", curl_easy_setopt(_hcurl, CURLOPT_WRITEFUNCTION, forwardToHttpFileReader));
     _errorChecked("curl_easy_setopt(CURLOPT_WRITEDATA)", curl_easy_setopt(_hcurl, CURLOPT_WRITEDATA, this));

@@ -123,6 +123,32 @@ HttpFileReaderApp::HttpFileReaderApp(int argc, char* argv[])
         " This option is ignored if flag --no-proxy-ssl-verify-peer is specified.",
         _fileReaderConfig.proxyCaInfo
     ).option(
+        "connect-timeout",
+        "Timeout for the connect phase. It should contain the maximum time in seconds that"
+        " you allow the connection phase to the server to take. This only limits the connection"
+        " phase, it has no impact once it has connected. Set to zero to switch to the default"
+        " built-in connection timeout - 300 seconds.",
+        _fileReaderConfig.connectTimeout
+    ).option(
+        "timeout",
+        "Set maximum time the request is allowed to take. Pass a long as parameter containing"
+        " timeout - the maximum time in seconds that you allow the libcurl transfer operation"
+        " to take. Normally, name lookups can take a considerable time and limiting operations"
+        " risk aborting perfectly normal operations.",
+        _fileReaderConfig.timeout
+    ).option(
+        "low-speed-limit",
+        "Set low speed limit in bytes per second. Pass a long as parameter. It contains the average"
+        " transfer speed in bytes per second that the transfer should be below during"
+        " --low-speed-time=<seconds> for libcurl to consider it to be too slow and abort.",
+        _fileReaderConfig.lowSpeedLimit
+    ).option(
+        "low-speed-time",
+        "Set low speed limit time period. Pass a long as parameter. It contains the time in number"
+        " seconds that the transfer speed should be below the --low-speed-limit=<bps> for the library"
+        " to consider it too slow and abort.",
+        _fileReaderConfig.lowSpeedTime
+    ).option(
         "file",
         "A path to an output file where the content received from a remote source will be written."
         "  If the option is not specified then the content will be printed onto the standard output"

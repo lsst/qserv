@@ -327,29 +327,38 @@ json IngestHttpSvcMod::_readRemote(csv::Parser& parser,
 
 HttpFileReaderConfig IngestHttpSvcMod::_fileConfig(string const& database) const {
     auto const databaseServices = serviceProvider()->databaseServices();
-    auto const getBoolParam = [&databaseServices, &database](bool& val, string const& key) {
+
+    auto const getString = [&databaseServices, &database](string& val, string const& key) -> bool {
         try {
-            val = stoi(databaseServices->ingestParam(
-                    database, HttpFileReaderConfig::category, key).value) != 0;
-        } catch (DatabaseServicesNotFound const&) {}
+            val = databaseServices->ingestParam(database, HttpFileReaderConfig::category, key).value;
+        } catch (DatabaseServicesNotFound const&) {
+            return false;
+        }
+        return true;
     };
-    auto const getStringParam = [&databaseServices, &database](string& val, string const& key) {
-        try {
-            val = databaseServices->ingestParam(
-                    database, HttpFileReaderConfig::category, key).value;
-        } catch (DatabaseServicesNotFound const&) {}
+    auto const getBool = [&getString](bool& val, string const& key) {
+        string str;
+        if (getString(str, key)) val = stoi(str) != 0;
+    };
+    auto const getLong = [&getString](long& val, string const& key) {
+        string str;
+        if (getString(str, key)) val = stol(str);
     };
     HttpFileReaderConfig fileConfig;
-    getBoolParam(fileConfig.sslVerifyHost, HttpFileReaderConfig::sslVerifyHostKey);
-    getBoolParam(fileConfig.sslVerifyPeer, HttpFileReaderConfig::sslVerifyPeerKey);
-    getStringParam(fileConfig.caPath, HttpFileReaderConfig::caPathKey);
-    getStringParam(fileConfig.caInfo, HttpFileReaderConfig::caInfoKey);
-    getStringParam(fileConfig.caInfoVal, HttpFileReaderConfig::caInfoValKey);
-    getBoolParam(fileConfig.proxySslVerifyHost, HttpFileReaderConfig::proxySslVerifyHostKey);
-    getBoolParam(fileConfig.proxySslVerifyPeer, HttpFileReaderConfig::proxySslVerifyPeerKey);
-    getStringParam(fileConfig.proxyCaPath, HttpFileReaderConfig::proxyCaPathKey);
-    getStringParam(fileConfig.proxyCaInfo, HttpFileReaderConfig::proxyCaInfoKey);
-    getStringParam(fileConfig.proxyCaInfoVal, HttpFileReaderConfig::proxyCaInfoValKey);
+    getBool(  fileConfig.sslVerifyHost,      HttpFileReaderConfig::sslVerifyHostKey);
+    getBool(  fileConfig.sslVerifyPeer,      HttpFileReaderConfig::sslVerifyPeerKey);
+    getString(fileConfig.caPath,             HttpFileReaderConfig::caPathKey);
+    getString(fileConfig.caInfo,             HttpFileReaderConfig::caInfoKey);
+    getString(fileConfig.caInfoVal,          HttpFileReaderConfig::caInfoValKey);
+    getBool(  fileConfig.proxySslVerifyHost, HttpFileReaderConfig::proxySslVerifyHostKey);
+    getBool(  fileConfig.proxySslVerifyPeer, HttpFileReaderConfig::proxySslVerifyPeerKey);
+    getString(fileConfig.proxyCaPath,        HttpFileReaderConfig::proxyCaPathKey);
+    getString(fileConfig.proxyCaInfo,        HttpFileReaderConfig::proxyCaInfoKey);
+    getString(fileConfig.proxyCaInfoVal,     HttpFileReaderConfig::proxyCaInfoValKey);
+    getLong(  fileConfig.connectTimeout,     HttpFileReaderConfig::connectTimeoutKey);
+    getLong(  fileConfig.timeout,            HttpFileReaderConfig::timeoutKey);
+    getLong(  fileConfig.lowSpeedLimit,      HttpFileReaderConfig::lowSpeedLimitKey);
+    getLong(  fileConfig.lowSpeedTime,       HttpFileReaderConfig::lowSpeedTimeKey);
     return fileConfig;
 }
 

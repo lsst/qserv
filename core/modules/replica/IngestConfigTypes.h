@@ -82,6 +82,32 @@ public:
     /// at workers, or make them directly readable by worker's ingest services otherwise.
     static std::string const proxyCaInfoValKey;
 
+    // --------------------------------------------------------
+    // The group of parameters affecting timing of the requests
+    // --------------------------------------------------------
+
+    /// A value of the connection timeout set with 'CURLOPT_CONNECTTIMEOUT'.
+    /// @note the default value is of the timeout is 300 seconds. Setting a value
+    ///   of this parameter to 0 will reset it to the default.
+    static std::string const connectTimeoutKey;
+
+    /// Set maximum time the request is allowed to take ('CURLOPT_TIMEOUT').
+    /// @note by default, there is no timeout. Setting a value of this parameter
+    ///   to 0 will reset it to the default.
+    static std::string const timeoutKey;
+
+    /// Set low speed limit in bytes per second ('CURLOPT_LOW_SPEED_LIMIT').
+    /// The parameter is normally used together with 'CURLOPT_LOW_SPEED_TIME'.
+    /// @note the default value of the parameter is 0, that puts no limit
+    ///   on the minimally desired data transfer speed.
+    static std::string const lowSpeedLimitKey;
+
+    /// Set low speed limit time period in seconds ('CURLOPT_LOW_SPEED_TIME').
+    /// The parameter is normally used together with 'CURLOPT_LOW_SPEED_LIMIT'.
+    /// @note the default value of the parameter is 0, that puts no limit
+    ///   on the minimally desired interval for measuring the data transfer speed.
+    static std::string const lowSpeedTimeKey;
+
     // Objects of this class can be trivially constructed, copied or deleted.
     // The default state of an object corresponds to not having any of the options
     // carried by the class be set when using 'libcurl' API.
@@ -104,6 +130,11 @@ public:
     std::string proxyCaPath;
     std::string proxyCaInfo;
     std::string proxyCaInfoVal;
+
+    long connectTimeout = 0;    ///< corresponds to the default (300 seconds)
+    long timeout = 0;           ///< corresponds to the default (no timeout)
+    long lowSpeedLimit = 0;     ///< corresponds to the default (no limit)
+    long lowSpeedTime = 0;      ///< corresponds to the default (no limit)
 };
 
 }}} // namespace lsst::qserv::replica
