@@ -42,4 +42,9 @@ string const HttpFileReaderConfig::proxyCaPathKey    = "PROXY_CAPATH";
 string const HttpFileReaderConfig::proxyCaInfoKey    = "PROXY_CAINFO";
 string const HttpFileReaderConfig::proxyCaInfoValKey = "PROXY_CAINFO_VAL";
 
+string const HttpFileReaderConfig::connectTimeoutKey = "CONNECTTIMEOUT";
+string const HttpFileReaderConfig::timeoutKey        = "TIMEOUT";
+string const HttpFileReaderConfig::lowSpeedLimitKey  = "LOW_SPEED_LIMIT";
+string const HttpFileReaderConfig::lowSpeedTimeKey   = "LOW_SPEED_TIME";
+
 }}}  // namespace lsst::qserv::replica

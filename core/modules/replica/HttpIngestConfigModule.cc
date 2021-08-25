@@ -87,6 +87,12 @@ json HttpIngestConfigModule::_get() {
                     databaseInfo.name, HttpFileReaderConfig::category, key).value);
         } catch (DatabaseServicesNotFound const&) {}
     };
+    auto const getLong = [&databaseServices, &databaseInfo](json& obj, string const& key) {
+        try {
+            obj[key] = stol(databaseServices->ingestParam(
+                    databaseInfo.name, HttpFileReaderConfig::category, key).value);
+        } catch (DatabaseServicesNotFound const&) {}
+    };
     auto const getStr = [&databaseServices, &databaseInfo](json& obj, string const& key) {
         try {
             obj[key] = databaseServices->ingestParam(
@@ -108,48 +114,59 @@ json HttpIngestConfigModule::_get() {
     getStr(result, HttpFileReaderConfig::proxyCaInfoKey);
     getStr(result, HttpFileReaderConfig::proxyCaInfoValKey);
 
+    getLong(result, HttpFileReaderConfig::connectTimeoutKey);
+    getLong(result, HttpFileReaderConfig::timeoutKey);
+    getLong(result, HttpFileReaderConfig::lowSpeedLimitKey);
+    getLong(result, HttpFileReaderConfig::lowSpeedTimeKey);
+
     return json({{"config", result}});
 }
 
 
 json HttpIngestConfigModule::_update() {
-    debug(__func__);
+    string const context = __func__;
+    debug(context);
+
+    auto const database = body().required<string>("database");
+    debug(context, "database=" + database);
 
     auto const config = controller()->serviceProvider()->config();
     auto const databaseServices = controller()->serviceProvider()->databaseServices();
-
-    auto const database = body().required<string>("database");
     auto const databaseInfo = config->databaseInfo(database);
 
-    debug(__func__, "database=" + database);
-
-    auto const updateInt = [&](string const& context, string const& key) {
-        if (body().has(key)) {
-            string const val = to_string(body().required<int>(key));
-            debug(context, key + "=" + val);
-            databaseServices->saveIngestParam(
-                    databaseInfo.name, HttpFileReaderConfig::category, key, val);
-        }
+    auto const update = [&](string const& key, string const& val) {
+        debug(context, key + "=" + val);
+        databaseServices->saveIngestParam(
+            databaseInfo.name,
+            HttpFileReaderConfig::category,
+            key,
+            val);
     };
-    auto const updateStr = [&](string const& context, string const& key) {
-        if (body().has(key)) {
-            string const val = body().required<string>(key);
-            debug(context, key + "=" + val);
-            databaseServices->saveIngestParam(
-                    databaseInfo.name, HttpFileReaderConfig::category, key, val);
-        }
+    auto const updateInt = [&](string const& key) {
+        if (body().has(key)) update(key, to_string(body().required<int>(key)));
     };
-    updateInt(__func__, HttpFileReaderConfig::sslVerifyHostKey);
-    updateInt(__func__, HttpFileReaderConfig::sslVerifyPeerKey);
-    updateStr(__func__, HttpFileReaderConfig::caPathKey);
-    updateStr(__func__, HttpFileReaderConfig::caInfoKey);
-    updateStr(__func__, HttpFileReaderConfig::caInfoValKey);
+    auto const updateLong = [&](string const& key) {
+        if (body().has(key)) update(key, to_string(body().required<long>(key)));
+    };
+    auto const updateStr = [&](string const& key) {
+        if (body().has(key)) update(key, body().required<string>(key));
+    };
+    updateInt(HttpFileReaderConfig::sslVerifyHostKey);
+    updateInt(HttpFileReaderConfig::sslVerifyPeerKey);
+    updateStr(HttpFileReaderConfig::caPathKey);
+    updateStr(HttpFileReaderConfig::caInfoKey);
+    updateStr(HttpFileReaderConfig::caInfoValKey);
 
-    updateInt(__func__, HttpFileReaderConfig::proxySslVerifyHostKey);
-    updateInt(__func__, HttpFileReaderConfig::proxySslVerifyPeerKey);
-    updateStr(__func__, HttpFileReaderConfig::proxyCaPathKey);
-    updateStr(__func__, HttpFileReaderConfig::proxyCaInfoKey);
-    updateStr(__func__, HttpFileReaderConfig::proxyCaInfoValKey);
+    updateInt(HttpFileReaderConfig::proxySslVerifyHostKey);
+    updateInt(HttpFileReaderConfig::proxySslVerifyPeerKey);
+    updateStr(HttpFileReaderConfig::proxyCaPathKey);
+    updateStr(HttpFileReaderConfig::proxyCaInfoKey);
+    updateStr(HttpFileReaderConfig::proxyCaInfoValKey);
+
+    updateLong(HttpFileReaderConfig::connectTimeoutKey);
+    updateLong(HttpFileReaderConfig::timeoutKey);
+    updateLong(HttpFileReaderConfig::lowSpeedLimitKey);
+    updateLong(HttpFileReaderConfig::lowSpeedTimeKey);
 
     return json::object();
 }
