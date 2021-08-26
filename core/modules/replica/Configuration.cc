@@ -808,7 +808,6 @@ WorkerInfo Configuration::_updateWorker(util::Lock const& lock, WorkerInfo const
             !hostPort.insert(make_pair(completeInfo.exporterHost, completeInfo.exporterPort)).second ||
             !hostPort.insert(make_pair(completeInfo.httpLoaderHost, completeInfo.httpLoaderPort)).second;
     if (portConflictFound) {
-        LOGS(_log, LOG_LVL_ERROR, _context() << " port/host conflict in worker: " << completeInfo);
         throw invalid_argument(
                 _context(__func__) + " port conflict detected either between the updated worker: '"
                 + completeInfo.name + "' and one of the existing workers or within the updated worker itself.");
