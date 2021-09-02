@@ -90,10 +90,27 @@ WorkerReplicationRequest::WorkerReplicationRequest(
             priority,
             onExpired,
             requestExpirationIvalSec),
-        _request(request) {
+        _request(request),
+        _sourceWorkerHostPort(request.worker_host() + ":" + to_string(request.worker_port())) {
 
     serviceProvider->config()->assertWorkerIsValid(request.worker());
     serviceProvider->config()->assertWorkersAreDifferent(worker, request.worker());
+    if (request.worker_host().empty()) {
+        throw invalid_argument(
+                "WorkerReplicationRequest::" + string(__func__)
+                + " the DNS name or an IP address of the worker not provided.");
+    }
+    if (request.worker_port() > std::numeric_limits<uint16_t>::max()) {
+        throw overflow_error(
+                "WorkerReplicationRequest::" + string(__func__) + " the port number "
+                + to_string(request.worker_port()) + " is not in the valid range of 0.."
+                + to_string(std::numeric_limits<uint16_t>::max()));
+    }
+    if (request.worker_data_dir().empty()) {
+        throw invalid_argument(
+                "WorkerReplicationRequest::" + string(__func__)
+                + " the data path name at the remote worker not provided.");
+    }
 }
 
 
@@ -104,7 +121,7 @@ void WorkerReplicationRequest::setInfo(ProtocolResponseReplicate& response) cons
     util::Lock lock(_mtx, context(__func__));
 
     response.set_allocated_target_performance(performance().info().release());
-    response.set_allocated_replica_info(_replicaInfo.info().release());
+    response.set_allocated_replica_info(replicaInfo.info().release());
 
     *(response.mutable_request()) = _request;
 }
@@ -113,20 +130,15 @@ void WorkerReplicationRequest::setInfo(ProtocolResponseReplicate& response) cons
 bool WorkerReplicationRequest::execute() {
 
    LOGS(_log, LOG_LVL_DEBUG, context(__func__)
-         << "  sourceWorker: " << sourceWorker()
-         << "  db: "           << database()
-         << "  chunk: "        << chunk());
-
-    // TODO: provide the actual implementation instead of the dummy one.
+         << "  sourceWorkerHostPort: " << sourceWorkerHostPort()
+         << "  db: " << database()
+         << "  chunk: " << chunk());
 
     bool const complete = WorkerRequest::execute();
     if (complete) {
-        _replicaInfo = ReplicaInfo(ReplicaInfo::COMPLETE,
-                                   worker(),
-                                   database(),
-                                   chunk(),
-                                   PerformanceUtils::now(),
-                                   ReplicaInfo::FileInfoCollection());
+        replicaInfo = ReplicaInfo(
+                ReplicaInfo::COMPLETE, worker(), database(), chunk(),
+                PerformanceUtils::now(), ReplicaInfo::FileInfoCollection());
     }
     return complete;
 }
@@ -178,9 +190,10 @@ WorkerReplicationRequestPOSIX::WorkerReplicationRequestPOSIX(
 bool WorkerReplicationRequestPOSIX::execute () {
 
     LOGS(_log, LOG_LVL_DEBUG, context(__func__)
-         << "  sourceWorker: " << sourceWorker()
-         << "  database: "     << database()
-         << "  chunk: "        << chunk());
+         << "  sourceWorkerHostPort: " << sourceWorkerHostPort()
+         << "  sourceWorkerDataDir: " << sourceWorkerDataDir()
+         << "  database: " << database()
+         << "  chunk: " << chunk());
 
     util::Lock lock(_mtx, context(__func__));
 
@@ -201,11 +214,10 @@ bool WorkerReplicationRequestPOSIX::execute () {
     //   files, checking for folders and files, renaming files, creating folders, etc.)
     //   are guarded by acquiring util::Lock lock(_mtxDataFolderOperations) where it's needed.
 
-    WorkerInfo   const inWorkerInfo  = _serviceProvider->config()->workerInfo(sourceWorker());
     WorkerInfo   const outWorkerInfo = _serviceProvider->config()->workerInfo(worker());
     DatabaseInfo const databaseInfo  = _serviceProvider->config()->databaseInfo(database());
 
-    fs::path const inDir  = fs::path(inWorkerInfo.dataDir)  / database();
+    fs::path const inDir  = fs::path(sourceWorkerDataDir()) / database();
     fs::path const outDir = fs::path(outWorkerInfo.dataDir) / database();
 
     vector<string> const files = FileUtils::partitionedFiles(databaseInfo, chunk());
@@ -450,7 +462,6 @@ WorkerReplicationRequestFS::WorkerReplicationRequestFS(
             onExpired,
             requestExpirationIvalSec,
             request),
-        _inWorkerInfo(_serviceProvider->config()->workerInfo(request.worker())),
         _outWorkerInfo(_serviceProvider->config()->workerInfo(worker)),
         _databaseInfo(_serviceProvider->config()->databaseInfo(request.database())),
         _initialized(false),
@@ -470,9 +481,9 @@ WorkerReplicationRequestFS::~WorkerReplicationRequestFS() {
 bool WorkerReplicationRequestFS::execute () {
 
     LOGS(_log, LOG_LVL_DEBUG, context(__func__)
-         << "  sourceWorker: " << sourceWorker()
-         << "  database: "     << database()
-         << "  chunk: "        << chunk());
+         << "  sourceWorkerHostPort: " << sourceWorkerHostPort()
+         << "  database: " << database()
+         << "  chunk: " << chunk());
 
     util::Lock lock(_mtx, context(__func__));
 
@@ -547,15 +558,17 @@ bool WorkerReplicationRequestFS::execute () {
 
                 // Open the file on the remote server in the no-content-read mode
                 FileClient::Ptr inFilePtr = FileClient::stat(_serviceProvider,
-                                                             _inWorkerInfo.name,
+                                                             sourceWorkerHost(),
+                                                             sourceWorkerPort(),
                                                              _databaseInfo.name,
                                                              file);
                 errorContext = errorContext
                     or reportErrorIf(
                         not inFilePtr,
                         ExtendedCompletionStatus::EXT_STATUS_FILE_ROPEN,
-                        "failed to open input file on remote worker: " + _inWorkerInfo.name +
-                        ", database: " + _databaseInfo.name +
+                        "failed to open input file on remote worker: " + sourceWorker() +
+                        " (" + sourceWorkerHostPort() +
+                        "), database: " + _databaseInfo.name +
                         ", file: " + file);
 
                 if (errorContext.failed) {
@@ -728,8 +741,8 @@ bool WorkerReplicationRequestFS::execute () {
                 or reportErrorIf(
                     true,
                     ExtendedCompletionStatus::EXT_STATUS_FILE_READ,
-                    "failed to read input file from remote worker: " + _inWorkerInfo.name +
-                    ", database: " + _databaseInfo.name +
+                    "failed to read input file from remote worker: " + sourceWorker() + " (" + sourceWorkerHostPort() +
+                    "), database: " + _databaseInfo.name +
                     ", file: " + *_fileItr);
         }
 
@@ -739,8 +752,8 @@ bool WorkerReplicationRequestFS::execute () {
             or reportErrorIf(
                 _file2descr[*_fileItr].inSizeBytes != _file2descr[*_fileItr].outSizeBytes,
                 ExtendedCompletionStatus::EXT_STATUS_FILE_READ,
-                "short read of the input file from remote worker: " + _inWorkerInfo.name +
-                ", database: " + _databaseInfo.name +
+                "short read of the input file from remote worker: " + sourceWorker() + " (" + sourceWorkerHostPort() +
+                "), database: " + _databaseInfo.name +
                 ", file: " + *_fileItr);
 
         if (errorContext.failed) {
@@ -777,24 +790,25 @@ bool WorkerReplicationRequestFS::execute () {
 bool WorkerReplicationRequestFS::_openFiles(util::Lock const& lock) {
 
     LOGS(_log, LOG_LVL_DEBUG, context(__func__)
-         << "  sourceWorker: " << sourceWorker()
-         << "  database: "     << database()
-         << "  chunk: "        << chunk()
-         << "  file: "         << *_fileItr);
+         << "  sourceWorkerHostPort: " << sourceWorkerHostPort()
+         << "  database: " << database()
+         << "  chunk: " << chunk()
+         << "  file: " << *_fileItr);
 
     WorkerRequest::ErrorContext errorContext;
 
     // Open the input file on the remote server
     _inFilePtr = FileClient::open(_serviceProvider,
-                                  _inWorkerInfo.name,
+                                  sourceWorkerHost(),
+                                  sourceWorkerPort(),
                                   _databaseInfo.name,
                                   *_fileItr);
     errorContext = errorContext
         or reportErrorIf(
             not _inFilePtr,
             ExtendedCompletionStatus::EXT_STATUS_FILE_ROPEN,
-            "failed to open input file on remote worker: " + _inWorkerInfo.name +
-            ", database: " + _databaseInfo.name +
+            "failed to open input file on remote worker: " + sourceWorker() + " (" + sourceWorkerHostPort() +
+            "), database: " + _databaseInfo.name +
             ", file: " + *_fileItr);
 
     if (errorContext.failed) {
@@ -829,9 +843,9 @@ bool WorkerReplicationRequestFS::_openFiles(util::Lock const& lock) {
 bool WorkerReplicationRequestFS::_finalize(util::Lock const& lock) {
 
     LOGS(_log, LOG_LVL_DEBUG, context(__func__)
-         << "  sourceWorker: " << sourceWorker()
-         << "  database: "     << database()
-         << "  chunk: "        << chunk());
+         << "  sourceWorkerHostPort: " << sourceWorkerHostPort()
+         << "  database: " << database()
+         << "  chunk: " << chunk());
 
     // Unconditionally regardless of the completion of the file renaming attempt
     _releaseResources(lock);
@@ -908,13 +922,8 @@ void WorkerReplicationRequestFS::_updateInfo(util::Lock const& lock) {
 
     // Fill in the info on the chunk before finishing the operation
 
-    _replicaInfo = ReplicaInfo(
-        status,
-        worker(),
-        database(),
-        chunk(),
-        PerformanceUtils::now(),
-        fileInfoCollection);
+    WorkerReplicationRequest::replicaInfo = ReplicaInfo(
+            status, worker(), database(), chunk(), PerformanceUtils::now(), fileInfoCollection);
 }
 
 

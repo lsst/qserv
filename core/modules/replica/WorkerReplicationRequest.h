@@ -99,6 +99,10 @@ public:
     std::string const& database() const { return _request.database(); }
     unsigned int chunk() const { return _request.chunk(); }
     std::string const& sourceWorker() const { return _request.worker(); }
+    std::string const& sourceWorkerHost() const { return _request.worker_host(); }
+    uint16_t sourceWorkerPort() const { return _request.worker_port(); }
+    std::string const& sourceWorkerHostPort() const { return _sourceWorkerHostPort; }
+    std::string const& sourceWorkerDataDir() const { return _request.worker_data_dir(); }
 
     /**
      * Extract request status into the Protobuf response object.
@@ -117,12 +121,15 @@ protected:
                              unsigned int requestExpirationIvalSec,
                              ProtocolRequestReplicate const& request);
 
-    // Input parameters
+    /// Result of the operation
+    ReplicaInfo replicaInfo;
 
+private:
+    // Input parameters
     ProtocolRequestReplicate const _request;
 
-    /// Result of the operation
-    ReplicaInfo _replicaInfo;
+    /// The cached connection parameters for the source worker (for error reporting and debugging).
+    std::string const _sourceWorkerHostPort;
 };
 
 /**
@@ -238,10 +245,6 @@ private:
      * @param lock A lock to be acquired before calling this method
      */
     void _updateInfo(util::Lock const& lock);
-
-
-    /// Cached descriptor of the input worker obtained from the Configuration
-    WorkerInfo const _inWorkerInfo;
 
     /// Cached descriptor of the output worker obtained from the Configuration
     WorkerInfo const _outWorkerInfo;

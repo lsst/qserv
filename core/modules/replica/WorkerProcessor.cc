@@ -223,7 +223,10 @@ void WorkerProcessor::enqueueForReplication(
         << "  id: "     << id
         << "  db: "     << request.database()
         << "  chunk: "  << request.chunk()
-        << "  worker: " << request.worker());
+        << "  worker: " << request.worker()
+        << "  worker_host: "     << request.worker_host()
+        << "  worker_port: "     << request.worker_port()
+        << "  worker_data_dir: " << request.worker_data_dir());
 
     util::Lock lock(_mtx, _context(__func__));
 
