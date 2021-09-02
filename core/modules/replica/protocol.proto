@@ -133,6 +133,12 @@ message ProtocolRequestReplicate {
     required string database = 2;
     required uint32 chunk    = 3;
     required string worker   = 4;
+    required string worker_host = 5;
+    required uint32 worker_port = 6;    // Using extended range type to store the 16-bit unsigned due
+                                        // to a lack of uint16 in the Protobuf. It's up to a client code
+                                        // to ensure the actul value won't exceed the limitations of
+                                        // the in-memory representations of the 16-bit unsigned type.
+    required string worker_data_dir = 7;
 }
 
 // This is a replica deletion request. The message defines a scope of the request

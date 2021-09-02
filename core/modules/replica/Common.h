@@ -176,6 +176,9 @@ public:
     std::string  database;
     unsigned int chunk = 0;
     std::string  sourceWorker;
+    std::string  sourceWorkerHost;
+    uint16_t     sourceWorkerPort;
+    std::string  sourceWorkerDataDir;
 
     ReplicationRequestParams() = default;
 
