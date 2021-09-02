@@ -30,8 +30,6 @@
 #include <stdexcept>
 
 // Qserv headers
-#include "replica/Configuration.h"
-#include "replica/Controller.h"
 #include "replica/FileClient.h"
 
 using namespace std;
@@ -55,9 +53,7 @@ namespace qserv {
 namespace replica {
 
 FileReadApp::Ptr FileReadApp::create(int argc, char* argv[]) {
-    return Ptr(
-        new FileReadApp(argc, argv)
-    );
+    return Ptr(new FileReadApp(argc, argv));
 }
 
 
@@ -74,35 +70,35 @@ FileReadApp::FileReadApp(int argc, char* argv[])
     // Configure the command line parser
 
     parser().required(
-        "worker",
-        "The name of a worker where the input file is located.",
-        _workerName);
-
-    parser().required(
+        "worker-host",
+        "The host name or an IP address of a worker where the input file is located.",
+        _workerHost
+    ).required(
+        "worker-port",
+        "The port number for the worker service where the input file is located.",
+        _workerPort
+    ).required(
         "database",
         "The name of a database.",
-        _databaseName);
-
-    parser().required(
+        _databaseName
+    ).required(
         "infile",
         "The name of an input file to be copied from the worker. The name should not"
         " include any directories.",
-        _inFileName);
-
-    parser().required(
+        _inFileName
+    ).required(
         "outfile",
         "The name of a local file to be created and populated with received data.",
-        _outFileName);
-
-    parser().option(
+        _outFileName
+    ).option(
         "record-size-bytes",
         "The maximum number of bytes to be read from a server at each request.",
-        _recordSizeBytes);
-
-    parser().flag(
+        _recordSizeBytes
+    ).flag(
         "verbose",
         "Report on a progress of the operation.",
-        _verbose);
+        _verbose
+    );
 }
 
 
@@ -116,7 +112,7 @@ int FileReadApp::runImpl() {
     FILE* fp = 0;
     try {
         if (FileClient::Ptr const file =
-            FileClient::open(serviceProvider(), _workerName, _databaseName, _inFileName)) {
+            FileClient::open(serviceProvider(), _workerHost, _workerPort, _databaseName, _inFileName)) {
 
             size_t const fileSize = file->size();
             if (_verbose) {

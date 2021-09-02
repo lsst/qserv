@@ -30,11 +30,8 @@
 // Qserv headers
 #include "replica/Application.h"
 
-// LSST headers
-#include "lsst/log/Log.h"
 
 // This header declarations
-
 namespace lsst {
 namespace qserv {
 namespace replica {
@@ -43,26 +40,18 @@ namespace replica {
  * Class FileReadApp implements a tool which acts as a read-only client of
  * the Replication system's file server.
  */
-class FileReadApp : public Application {
-
+class FileReadApp: public Application {
 public:
-
-    /// The pointer type for instances of the class
     typedef std::shared_ptr<FileReadApp> Ptr;
 
     /**
      * The factory method is the only way of creating objects of this class
      * because of the very base class's inheritance from 'enable_shared_from_this'.
      *
-     * @param argc
-     *   the number of command-line arguments
-     *
-     * @param argv
-     *   the vector of command-line arguments
+     * @param argc The number of command-line arguments.
+     * @param argv The vector of command-line arguments.
      */
     static Ptr create(int argc, char* argv[]);
-
-    // Default construction and copy semantics are prohibited
 
     FileReadApp()=delete;
     FileReadApp(FileReadApp const&)=delete;
@@ -71,35 +60,23 @@ public:
     ~FileReadApp() override=default;
 
 protected:
-
     /// @see Application::runImpl()
     int runImpl() final;
 
 private:
-
     /// @see FileReadApp::create()
     FileReadApp(int argc, char* argv[]);
 
-    /// The name of a worker
-    std::string _workerName;
+    std::string _workerHost;    ///< The DNS name or an IP address of a worker.
+    uint16_t    _workerPort;    ///< The port number for the worker service where the input file is located.
+    std::string _databaseName;  ///< The name of a database.
+    std::string _inFileName;    ///< The name of an input file to be copied from the worker.
+    std::string _outFileName;   ///< The name of a local file to be created and populated with received data
 
-    /// The name of a database
-    std::string _databaseName;
+    bool   _verbose = false;              ///< The flag triggering (if 'true') a report on a progress of the operation.
+    size_t _recordSizeBytes = 1024*1024;  ///< The maximum number of bytes to be read from a server at each request.
 
-    /// The name of an input file to be copied from the worker
-    std::string _inFileName;
-
-    /// The name of a local file to be created and populated with received data
-    std::string _outFileName;
-
-    /// The flag triggering (if 'true') a report on a progress of the operation
-    bool _verbose = false;
-
-    /// The maximum number of bytes to be read from a server at each request
-    size_t _recordSizeBytes = 1024*1024;
-
-    /// The data buffer for receiving data records from a file server
-    std::vector<uint8_t> _buf;
+    std::vector<uint8_t> _buf;  ///< The data buffer for receiving data records from a file server.
 };
 
 }}} // namespace lsst::qserv::replica
