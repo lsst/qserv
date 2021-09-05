@@ -104,10 +104,10 @@ then
 fi
 
 export SRC_DIRS
-# docker run -e SRC_DIRS --name "$CONTAINER" -t -u root \
-#     -v "$DIR"/git/scripts:/home/qserv/bin \
-#     $OPT_MOUNT -- "$DEPS_IMAGE" \
-#     su -c 'bash -lc "/home/qserv/bin/eups-builder.sh"' qserv
+docker run -e SRC_DIRS --name "$CONTAINER" -t -u root \
+    -v "$DIR"/git/scripts:/home/qserv/bin \
+    $OPT_MOUNT -- "$DEPS_IMAGE" \
+    su -c 'bash -lc "/home/qserv/bin/eups-builder.sh"' qserv
 
 if [ -z "$QSERV_IMAGE" ]; then
 
