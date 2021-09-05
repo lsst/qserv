@@ -92,14 +92,6 @@ done
 # Remove leading whitespace
 SRC_DIRS=$(echo "${SRC_DIRS}" | sed -e 's/^[[:space:]]*//')
 
-# Last product in the list should be qserv, if not change the tag
-if [ "$PRODUCT" = "qserv" ]; then
-    GIT_REF=$(cd "$HOST_SRC_DIR" && git describe --dirty --always)
-else
-    GIT_REF=$(cd "$HOST_SRC_DIR" && git describe --dirty --always)
-    GIT_REF="${PRODUCT}_${GIT_REF}"
-fi
-
 CONTAINER="qserv_build"
 
 HOST_UID=$(id -u)
@@ -112,12 +104,25 @@ then
 fi
 
 export SRC_DIRS
-docker run -e SRC_DIRS --name "$CONTAINER" -t -u root \
-    -v "$DIR"/git/scripts:/home/qserv/bin \
-    $OPT_MOUNT -- "$DEPS_IMAGE" \
-    su -c 'bash -lc "/home/qserv/bin/eups-builder.sh"' qserv
+# docker run -e SRC_DIRS --name "$CONTAINER" -t -u root \
+#     -v "$DIR"/git/scripts:/home/qserv/bin \
+#     $OPT_MOUNT -- "$DEPS_IMAGE" \
+#     su -c 'bash -lc "/home/qserv/bin/eups-builder.sh"' qserv
 
 if [ -z "$QSERV_IMAGE" ]; then
+
+    # Last product in the list should be qserv, if not change the tag
+
+    BRANCH=$(cd "$HOST_SRC_DIR" && git rev-parse --abbrev-ref HEAD)
+    if [ "$BRANCH" != "master" ]; then
+        GIT_REF="$BRANCH"
+    else
+        GIT_REF=$(cd "$HOST_SRC_DIR" && git describe --dirty --always)
+    fi
+
+    if [ "$PRODUCT" != "qserv" ]; then
+        GIT_REF="${PRODUCT}_${GIT_REF}"
+    fi
     # Docker tags must not contain '/'
     TAG=$(echo "$GIT_REF" | tr '/' '_')
     QSERV_IMAGE="$DOCKER_REPO:$TAG"
