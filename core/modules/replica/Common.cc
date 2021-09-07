@@ -190,7 +190,10 @@ string Generators::uniqueId() {
 ReplicationRequestParams::ReplicationRequestParams(ProtocolRequestReplicate const& request)
     :   database(request.database()),
         chunk(request.chunk()),
-        sourceWorker(request.worker()) {
+        sourceWorker(request.worker()),
+        sourceWorkerHost(request.worker_host()),
+        sourceWorkerPort(request.worker_port()),
+        sourceWorkerDataDir(request.worker_data_dir()) {
 }
 
 

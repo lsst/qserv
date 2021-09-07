@@ -119,6 +119,8 @@ void ReplicationRequest::startImpl(util::Lock const& lock) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
+    WorkerInfo const sourceWorkerInfo = serviceProvider()->config()->workerInfo(sourceWorker());
+
     // Serialize the Request message header and the request itself into
     // the network buffer.
 
@@ -138,6 +140,9 @@ void ReplicationRequest::startImpl(util::Lock const& lock) {
     message.set_database(database());
     message.set_chunk(chunk());
     message.set_worker(sourceWorker());
+    message.set_worker_host(sourceWorkerInfo.fsHost);
+    message.set_worker_port(sourceWorkerInfo.fsPort);
+    message.set_worker_data_dir(sourceWorkerInfo.dataDir);
 
     buffer()->serialize(message);
 

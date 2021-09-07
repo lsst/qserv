@@ -66,7 +66,7 @@ public:
   * Class FileClient is a client-side API for the point-to-point file migration
   * service.
   */
-class FileClient : public std::enable_shared_from_this<FileClient>  {
+class FileClient: public std::enable_shared_from_this<FileClient>  {
 public:
     /// The pointer type for instances of the class
     typedef std::shared_ptr<FileClient> Ptr;
@@ -78,17 +78,20 @@ public:
      * Otherwise return the null pointer.
      *
      * @param serviceProvider for configuration, etc. services
-     * @param workerName the name of a worker where the file resides
+     * @param workerHost the host name or an IP address of a worker where the file resides
+     * @param workerPort the port number of the worker service where the file resides
      * @param databaseName the name of a database the file belongs to
      * @param fileName the file to read or examine
      */
     static Ptr open(ServiceProvider::Ptr const& serviceProvider,
-                    std::string const& workerName,
+                    std::string const& workerHost,
+                    uint16_t workerPort,
                     std::string const& databaseName,
                     std::string const& fileName) {
 
         return instance(serviceProvider,
-                        workerName,
+                        workerHost,
+                        workerPort,
                         databaseName,
                         fileName,
                         true /* readContent */);
@@ -107,17 +110,20 @@ public:
      *   throwing FileClientError.
      *
      * @param serviceProvider for configuration, etc. services
-     * @param workerName the name of a worker where the file resides
+     * @param workerHost the DNS name or an IP address of a worker where the file resides
+     * @param workerPort the port number of the worker service where the file resides
      * @param databaseName the name of a database the file belongs to
      * @param fileName the file to read or examine
      */
     static Ptr stat(ServiceProvider::Ptr const& serviceProvider,
-                    std::string const& workerName,
+                    std::string const& workerHost,
+                    uint16_t workerPort,
                     std::string const& databaseName,
                     std::string const& fileName) {
 
         return instance(serviceProvider,
-                        workerName,
+                        workerHost,
+                        workerPort,
                         databaseName,
                         fileName,
                         false /* do NOT readContent */);
@@ -133,7 +139,9 @@ public:
 
     // Trivial get methods
 
-    std::string const& worker() const;
+    std::string const& workerHost() const { return _workerHost; }
+    uint16_t workerPort() const { return _workerPort; }
+    std::string const& workerHostPort() const { return _workerHostPort; }
     std::string const& database() const;
     std::string const& file() const;
 
@@ -172,14 +180,16 @@ private:
      * @see FileClient::stat()
      */
     static Ptr instance(ServiceProvider::Ptr const& serviceProvider,
-                        std::string const& workerName,
+                        std::string const& workerHost,
+                        uint16_t workerPort,
                         std::string const& databaseName,
                         std::string const& fileName,
                         bool readContent);
 
     /// @see FileClient::instance()
     FileClient(ServiceProvider::Ptr const& serviceProvider,
-               std::string const& workerName,
+               std::string const& workerHost,
+               uint16_t workerPort,
                std::string const& databaseName,
                std::string const& fileName,
                bool readContent);
@@ -192,11 +202,13 @@ private:
 
     // Input parameters
 
+    std::string const _workerHost;
+    uint16_t    const _workerPort;
     std::string const _fileName;
     bool        const _readContent;
 
-    /// Cached worker descriptors obtained from the Configuration
-    WorkerInfo const _workerInfo;
+    /// Cached connection string for error reporting an debugging
+    std::string const _workerHostPort;
 
     /// Cached database descriptors obtained from the Configuration
     DatabaseInfo const _databaseInfo;

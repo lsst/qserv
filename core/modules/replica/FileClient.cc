@@ -44,14 +44,16 @@ namespace qserv {
 namespace replica {
 
 FileClient::Ptr FileClient::instance(ServiceProvider::Ptr const& serviceProvider,
-                                     string const& workerName,
+                                     string const& workerHost,
+                                     uint16_t workerPort,
                                      string const& databaseName,
                                      string const& fileName,
                                      bool readContent) {
     try {
         FileClient::Ptr ptr(
             new FileClient(serviceProvider,
-                           workerName,
+                           workerHost,
+                           workerPort,
                            databaseName,
                            fileName,
                            readContent));
@@ -61,7 +63,7 @@ FileClient::Ptr FileClient::instance(ServiceProvider::Ptr const& serviceProvider
     } catch (exception const& ex) {
         LOGS(_log, LOG_LVL_ERROR, "FileClient::" << __func__
              << "  failed to construct an object for "
-             << "worker: " << workerName
+             << "worker: " << workerHost << ":" << workerPort
              << "database: " << databaseName
              << "file: " << fileName
              << ", error: " << ex.what());
@@ -71,13 +73,16 @@ FileClient::Ptr FileClient::instance(ServiceProvider::Ptr const& serviceProvider
 
 
 FileClient::FileClient(ServiceProvider::Ptr const& serviceProvider,
-                       string const& workerName,
+                       string const& workerHost,
+                       uint16_t workerPort,
                        string const& databaseName,
                        string const& fileName,
                        bool readContent)
-    :   _fileName(fileName),
+    :   _workerHost(workerHost),
+        _workerPort(workerPort),
+        _fileName(fileName),
         _readContent(readContent),
-        _workerInfo(serviceProvider->config()->workerInfo(workerName)),
+        _workerHostPort(workerHost + ":" + to_string(workerPort)),
         _databaseInfo(serviceProvider->config()->databaseInfo(databaseName)),
         _instanceId(serviceProvider->instanceId()),
         _bufferPtr(new ProtocolBuffer(
@@ -87,11 +92,6 @@ FileClient::FileClient(ServiceProvider::Ptr const& serviceProvider,
         _size(0),
         _mtime(0),
         _eof(false) {
-}
-
-
-string const& FileClient::worker() const {
-    return _workerInfo.name;
 }
 
 
@@ -117,27 +117,27 @@ bool FileClient::_openImpl() {
     // instead of exceptions.
 
     boost::asio::ip::tcp::resolver::query query(
-        _workerInfo.svcHost,
-        to_string(_workerInfo.fsPort)
+        workerHost(),
+        to_string(workerPort())
     );
     boost::asio::ip::tcp::resolver resolver(_io_service);
     boost::asio::ip::tcp::resolver::iterator iter =
         resolver.resolve(
             boost::asio::ip::tcp::resolver::query(
-                _workerInfo.svcHost,
-                to_string(_workerInfo.fsPort)),
+                workerHost(),
+                to_string(workerPort())),
         ec
     );
     if (ec.value() != 0) {
         LOGS(_log, LOG_LVL_ERROR, context << "failed to resolve the server: "
-             << _workerInfo.svcHost << ":" << _workerInfo.fsPort
+             << workerHostPort()
              << ", error: " << ec.message());
         return false;
     }
     boost::asio::connect(_socket, iter, ec);
     if (ec.value() != 0) {
         LOGS(_log, LOG_LVL_ERROR, context << "failed to connect to the server: "
-             << _workerInfo.svcHost << ":" << _workerInfo.fsPort
+             << workerHostPort()
              << ", error: " << ec.message());
         return false;
     }
@@ -176,7 +176,7 @@ bool FileClient::_openImpl() {
         if (ec.value() != 0) {
             LOGS(_log, LOG_LVL_ERROR, context
                  << "failed to send the file open request to the server: "
-                 << _workerInfo.svcHost << ":" << _workerInfo.fsPort
+                 << workerHostPort()
                  << ", database: " << database() << ", file: " << file()
                  << ", error: " << ec.message());
             return false;
@@ -203,7 +203,7 @@ bool FileClient::_openImpl() {
         if (ec.value() != 0) {
             LOGS(_log, LOG_LVL_ERROR, context
                  << "failed to receive the file open response frame header from the server: "
-                 << _workerInfo.svcHost << ":" << _workerInfo.fsPort
+                 << workerHostPort()
                  << ", database: " << database() << ", file: " << file()
                  << ", error: " << ec.message());
             return false;
@@ -228,7 +228,7 @@ bool FileClient::_openImpl() {
         if (ec.value() != 0) {
             LOGS(_log, LOG_LVL_ERROR, context
                  << "failed to receive the file open response from the server: "
-                 << _workerInfo.svcHost << ":" << _workerInfo.fsPort
+                 << workerHostPort()
                  << ", database: " << database() << ", file: " << file()
                  << ", error: " << ec.message());
             return false;
@@ -247,7 +247,7 @@ bool FileClient::_openImpl() {
         if (response.foreign_instance()) {
             LOGS(_log, LOG_LVL_ERROR, context
                  << "an error occurred while processing response from the server: "
-                 << _workerInfo.svcHost << ":" << _workerInfo.fsPort
+                 << workerHostPort()
                  << ", database: " << database() << ", file: " << file()
                  << ", error: the server belongs to a different Qserv instance");
         }
@@ -255,7 +255,7 @@ bool FileClient::_openImpl() {
     } catch (exception const& ex) {
         LOGS(_log, LOG_LVL_ERROR, context
              << "an exception occurred while processing response from the server: "
-             << _workerInfo.svcHost << ":" << _workerInfo.fsPort
+             << workerHostPort()
              << ", database: " << database() << ", file: " << file()
              << ", error: " << ex.what());
     }
@@ -272,7 +272,7 @@ size_t FileClient::read(uint8_t* buf, size_t bufSize) {
     if (not _readContent) {
         throw FileClientError(
                 context + "this file was open in 'stat' mode, server: "
-                + _workerInfo.svcHost + ":" + to_string(_workerInfo.fsPort) +
+                + workerHostPort() +
                 ", database: " + database() +
                 ", file: " + file());
     }
@@ -305,7 +305,7 @@ size_t FileClient::read(uint8_t* buf, size_t bufSize) {
         } else {
             throw FileClientError(
                     "failed to receive a data record from the server: " +
-                    _workerInfo.svcHost + ":" + to_string(_workerInfo.fsPort) +
+                    workerHostPort() +
                     ", database: " + database() +
                     ", file: " + file() +
                     ", bufSize: " + to_string(bufSize) +
