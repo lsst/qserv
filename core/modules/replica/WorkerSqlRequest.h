@@ -161,7 +161,7 @@ private:
      *   creating a result set.
      */    
     void _reportFailure(util::Lock const& lock,
-                        ExtendedCompletionStatus statusExt,
+                        ProtocolStatusExt statusExt,
                         std::string const& error);
 
     // @return A mutable pointer to the current result set

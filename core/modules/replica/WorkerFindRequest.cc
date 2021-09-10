@@ -220,11 +220,11 @@ bool WorkerFindRequestPOSIX::execute() {
         errorContext = errorContext
             or reportErrorIf(
                     stat.type() == fs::status_error,
-                    ExtendedCompletionStatus::EXT_STATUS_FOLDER_STAT,
+                    ProtocolStatusExt::FOLDER_STAT,
                     "failed to check the status of directory: " + dataDir.string())
             or reportErrorIf(
                     not fs::exists(stat),
-                    ExtendedCompletionStatus::EXT_STATUS_NO_FOLDER,
+                    ProtocolStatusExt::NO_FOLDER,
                     "the directory does not exists: " + dataDir.string());
 
         if (errorContext.failed) {
@@ -255,7 +255,7 @@ bool WorkerFindRequestPOSIX::execute() {
             errorContext = errorContext
                 or reportErrorIf(
                         stat.type() == fs::status_error,
-                        ExtendedCompletionStatus::EXT_STATUS_FILE_STAT,
+                        ProtocolStatusExt::FILE_STAT,
                         "failed to check the status of file: " + path.string());
 
             if (fs::exists(stat)) {
@@ -268,14 +268,14 @@ bool WorkerFindRequestPOSIX::execute() {
                     errorContext = errorContext
                         or reportErrorIf(
                                 ec.value() != 0,
-                                ExtendedCompletionStatus::EXT_STATUS_FILE_SIZE,
+                                ProtocolStatusExt::FILE_SIZE,
                                 "failed to read file size: " + path.string());
 
                     const time_t mtime = fs::last_write_time(path, ec);
                     errorContext = errorContext
                         or reportErrorIf(
                                 ec.value() != 0,
-                                ExtendedCompletionStatus::EXT_STATUS_FILE_MTIME,
+                                ProtocolStatusExt::FILE_MTIME,
                                 "failed to read file mtime: " + path.string());
 
                     fileInfoCollection.emplace_back(
@@ -351,7 +351,7 @@ bool WorkerFindRequestPOSIX::execute() {
                 errorContext = errorContext
                     or reportErrorIf(
                             ec.value() != 0,
-                            ExtendedCompletionStatus::EXT_STATUS_FILE_MTIME,
+                            ProtocolStatusExt::FILE_MTIME,
                             "failed to read file mtime: " + path.string());
 
                 fileInfoCollection.emplace_back(
@@ -401,7 +401,7 @@ bool WorkerFindRequestPOSIX::execute() {
         errorContext = errorContext
             or reportErrorIf(
                     true,
-                    ExtendedCompletionStatus::EXT_STATUS_FILE_READ,
+                    ProtocolStatusExt::FILE_READ,
                     ex.what());
 
         setStatus(lock, STATUS_FAILED, errorContext.extendedStatus);

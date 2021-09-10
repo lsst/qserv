@@ -404,36 +404,28 @@ private:
         // results of the request. Note that the operation doesn't care
         // about the global state of the request (wether it's already finished
         // or not)
-
         util::Lock lock(_mtx, context() + __func__);
 
         // Extract target request-specific parameters from the response if available
-
         POLICY::extractTargetRequestParams(message, _targetRequestParams);
 
         // Extract request-specific data from the response regardless of
         // the completion status of the request.
-
         POLICY::extractResponseData(message, _responseData);
 
         // Always get the latest status reported by the remote server
-
-        setExtendedServerStatus(lock,
-                                replica::translate(message.status_ext()));
+        setExtendedServerStatus(lock, message.status_ext());
 
         // Always update performance counters obtained from the worker service
-
         mutablePerformance().update(message.performance());
 
         // Set the optional performance of the target operation
-
         if (message.has_target_performance()) {
             _targetPerformance.update(message.target_performance());
         }
 
         // Field 'status' of a type returned by the current method always
         // be defined in all types of request-specific responses.
-
         return message.status();
     }
 

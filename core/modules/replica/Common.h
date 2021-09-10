@@ -50,53 +50,8 @@ namespace replica {
 /// The number of the 'overflow' chunks
 unsigned int const overflowChunkNumber = 1234567890;
 
-/// Extended completion status of the worker side file operations
-enum ExtendedCompletionStatus {
-    EXT_STATUS_NONE,            // unspecified problem
-    EXT_STATUS_INVALID_PARAM,   // invalid parameter(s) of a request
-    EXT_STATUS_INVALID_ID,      // an invalid request identifier
-    EXT_STATUS_DUPLICATE,       // a duplicate request
-    EXT_STATUS_FOLDER_STAT,     // failed to obtain fstat() for a folder
-    EXT_STATUS_FOLDER_CREATE,   // failed to create a folder
-    EXT_STATUS_FILE_STAT,       // failed to obtain fstat() for a file
-    EXT_STATUS_FILE_SIZE,       // failed to obtain a size of a file
-    EXT_STATUS_FOLDER_READ,     // failed to read the contents of a folder
-    EXT_STATUS_FILE_READ,       // failed to read the contents of a file
-    EXT_STATUS_FILE_ROPEN,      // failed to open a remote file
-    EXT_STATUS_FILE_CREATE,     // failed to create a file
-    EXT_STATUS_FILE_OPEN,       // failed to open a file
-    EXT_STATUS_FILE_RESIZE,     // failed to resize a file
-    EXT_STATUS_FILE_WRITE,      // failed to write into a file
-    EXT_STATUS_FILE_COPY,       // failed to copy a file
-    EXT_STATUS_FILE_DELETE,     // failed to delete a file
-    EXT_STATUS_FILE_RENAME,     // failed to rename a file
-    EXT_STATUS_FILE_EXISTS,     // file already exists
-    EXT_STATUS_SPACE_REQ,       // space availability request failed
-    EXT_STATUS_NO_FOLDER,       // folder doesn't exist
-    EXT_STATUS_NO_FILE,         // file doesn't exist
-    EXT_STATUS_NO_ACCESS,       // no access to a file or a folder
-    EXT_STATUS_NO_SPACE,        // no space left on a device as required by an operation
-    EXT_STATUS_FILE_MTIME,      // get/set 'mtime' operation failed
-    EXT_STATUS_MYSQL_ERROR,     // MySQL operation failed
-    EXT_STATUS_LARGE_RESULT,    // result exceeds a limit set in a request
-    EXT_STATUS_NO_SUCH_TABLE,   // a reason why a MySQL operation failed 
-    EXT_STATUS_NOT_PARTITIONED_TABLE,   // why a MySQL operation for removing partitions failed
-    EXT_STATUS_NO_SUCH_PARTITION,       // why a MySQL operation for for selecting data from a table failed
-    EXT_STATUS_MULTIPLE,                // multiple errors encountered when processing a request
-    EXT_STATUS_OTHER_EXCEPTION, // other exception
-    EXT_STATUS_FOREIGN_INSTANCE,// detected a request from a Controller serving an unrelated Qserv
-    EXT_STATUS_DUPLICATE_KEY,   // duplicate key found when creating an index or altering a table schema
-    EXT_STATUS_CANT_DROP_KEY    // can't drop a field or a key which doesn't exist
-};
-
 /// Return the string representation of the extended status
-std::string status2string(ExtendedCompletionStatus status);
-
-/// Translate Protobuf status into the transient one
-ExtendedCompletionStatus translate(ProtocolStatusExt status);
-
-/// Translate transient extended status into the Protobuf one
-ProtocolStatusExt translate(ExtendedCompletionStatus status);
+std::string status2string(ProtocolStatusExt status);
 
 /**
  * Class Generators is the utility class for generating a set of unique

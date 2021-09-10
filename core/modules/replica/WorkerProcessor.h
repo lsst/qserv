@@ -314,7 +314,7 @@ public:
 
                 // The status field is present in all response types
                 response.set_status(             translate(ptr->status()));
-                response.set_status_ext(replica::translate(ptr->extendedStatus()));
+                response.set_status_ext(ptr->extendedStatus());
 
             } catch (std::logic_error const& ex) {
                 ;
@@ -346,7 +346,7 @@ public:
 
                 // The status field is present in all response types
                 response.set_status(             translate(ptr->status()));
-                response.set_status_ext(replica::translate(ptr->extendedStatus()));
+                response.set_status_ext(ptr->extendedStatus());
 
             } catch (std::logic_error const&) {
                 ;

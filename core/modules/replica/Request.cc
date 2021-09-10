@@ -94,7 +94,7 @@ string Request::state2string(State state,
 
 string Request::state2string(State state,
                              ExtendedState extendedState,
-                             replica::ExtendedCompletionStatus serverStatus) {
+                             replica::ProtocolStatusExt serverStatus) {
     return state2string(state, extendedState) + "::" + replica::status2string(serverStatus);
 }
 
@@ -116,7 +116,7 @@ Request::Request(ServiceProvider::Ptr const& serviceProvider,
         _disposeRequired(disposeRequired),
         _state(CREATED),
         _extendedState(NONE),
-        _extendedServerStatus(ExtendedCompletionStatus::EXT_STATUS_NONE),
+        _extendedServerStatus(ProtocolStatusExt::NONE),
         _bufferPtr(new ProtocolBuffer(
                 serviceProvider->config()->get<size_t>("common", "request_buf_size_bytes"))),
         _workerInfo(serviceProvider->config()->workerInfo(worker)),

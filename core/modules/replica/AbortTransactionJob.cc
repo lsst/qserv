@@ -116,7 +116,7 @@ list<pair<string,string>> AbortTransactionJob::persistentLogData() const {
             "status",
             "worker=" + worker +
             " table=" + table +
-            " completed=" + bool2str(resultSet.extendedStatus == ExtendedCompletionStatus::EXT_STATUS_NONE) +
+            " completed=" + bool2str(resultSet.extendedStatus == ProtocolStatusExt::NONE) +
             " error=" + resultSet.error
         );
     });

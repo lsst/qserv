@@ -79,7 +79,7 @@ json result2json(SqlJobResult const& jobResultSet, string const& context) {
                              SqlResultSet::ResultSet const& resultSet) {
         // Ignoring failed or empty results for now. They will be analyzed and reported
         // in the extended error channel.
-        if (resultSet.extendedStatus != ExtendedCompletionStatus::EXT_STATUS_NONE) return;
+        if (resultSet.extendedStatus != ProtocolStatusExt::NONE) return;
         if (not resultSet.hasResult) return;
 
         // Compute indexes just once and save it for analyzing this and other result sets.

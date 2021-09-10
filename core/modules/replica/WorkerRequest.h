@@ -83,7 +83,7 @@ public:
 
     /// @return the string representation of the full status
     static std::string status2string(CompletionStatus status,
-                                     ExtendedCompletionStatus extendedStatus);
+                                     ProtocolStatusExt extendedStatus);
 
     WorkerRequest() = delete;
     WorkerRequest(WorkerRequest const&) = delete;
@@ -106,7 +106,7 @@ public:
 
     CompletionStatus status() const { return _status; }
 
-    ExtendedCompletionStatus extendedStatus() const { return _extendedStatus; }
+    ProtocolStatusExt extendedStatus() const { return _extendedStatus; }
 
     /// @return the performance info
     const WorkerPerformance& performance() const { return _performance; }
@@ -240,7 +240,7 @@ protected:
      */
     void setStatus(util::Lock const& lock,
                    CompletionStatus status,
-                   ExtendedCompletionStatus extendedStatus=ExtendedCompletionStatus::EXT_STATUS_NONE);
+                   ProtocolStatusExt extendedStatus=ProtocolStatusExt::NONE);
 
     /**
      * Structure ErrorContext is used for tracking errors reported by
@@ -250,11 +250,11 @@ protected:
 
         // State of the object
         bool failed;
-        ExtendedCompletionStatus extendedStatus;
+        ProtocolStatusExt extendedStatus;
 
         ErrorContext()
             :   failed(false),
-                extendedStatus(ExtendedCompletionStatus::EXT_STATUS_NONE) {
+                extendedStatus(ProtocolStatusExt::NONE) {
         }
 
         /**
@@ -290,7 +290,7 @@ protected:
      *   'condition' and 'extendedStatus'
      */
     ErrorContext reportErrorIf(bool condition,
-                               ExtendedCompletionStatus extendedStatus,
+                               ProtocolStatusExt extendedStatus,
                                std::string const& errorMsg);
 
     /// Return shared pointer of the desired subclass (no dynamic type checking)
@@ -324,8 +324,8 @@ protected:
 
     // 2-layer state of a request
 
-    std::atomic<CompletionStatus>         _status;
-    std::atomic<ExtendedCompletionStatus> _extendedStatus;
+    std::atomic<CompletionStatus>  _status;
+    std::atomic<ProtocolStatusExt> _extendedStatus;
 
     /// Performance counters
     WorkerPerformance _performance;

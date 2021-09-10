@@ -77,7 +77,7 @@ string WorkerRequest::status2string(CompletionStatus status) {
 
 
 string WorkerRequest::status2string(CompletionStatus status,
-                                    ExtendedCompletionStatus extendedStatus) {
+                                    ProtocolStatusExt extendedStatus) {
     return status2string(status) + "::" + replica::status2string(extendedStatus);
 }
 
@@ -100,7 +100,7 @@ WorkerRequest::WorkerRequest(ServiceProvider::Ptr const& serviceProvider,
             : requestExpirationIvalSec),
         _requestExpirationTimer(serviceProvider->io_service()),
         _status(STATUS_NONE),
-        _extendedStatus(ExtendedCompletionStatus::EXT_STATUS_NONE),
+        _extendedStatus(ProtocolStatusExt::NONE),
         _performance(),
         _durationMillisec(0) {
 
@@ -115,7 +115,7 @@ WorkerRequest::~WorkerRequest() {
 
 WorkerRequest::ErrorContext WorkerRequest::reportErrorIf(
                                                 bool errorCondition,
-                                                ExtendedCompletionStatus extendedStatus,
+                                                ProtocolStatusExt extendedStatus,
                                                 string const& errorMsg) {
     WorkerRequest::ErrorContext errorContext;
     if (errorCondition) {
@@ -259,7 +259,7 @@ void WorkerRequest::dispose() noexcept {
 
 void WorkerRequest::setStatus(util::Lock const& lock,
                               CompletionStatus status,
-                              ExtendedCompletionStatus extendedStatus) {
+                              ProtocolStatusExt extendedStatus) {
     LOGS(_log, LOG_LVL_DEBUG, context(__func__) << "  "
          << WorkerRequest::status2string(_status, _extendedStatus) << " -> "
          << WorkerRequest::status2string( status,  extendedStatus));

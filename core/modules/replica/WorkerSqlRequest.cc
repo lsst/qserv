@@ -190,7 +190,7 @@ bool WorkerSqlRequest::execute() {
                 }
             }
             if (numFailures > 0) {
-                setStatus(lock, STATUS_FAILED, EXT_STATUS_MULTIPLE);
+                setStatus(lock, STATUS_FAILED, ProtocolStatusExt::MULTIPLE);
             } else {
                 setStatus(lock, STATUS_SUCCEEDED);
             }
@@ -217,28 +217,28 @@ bool WorkerSqlRequest::execute() {
         }
 
     } catch(database::mysql::ER_NO_SUCH_TABLE_ const& ex) {
-        _reportFailure(lock, EXT_STATUS_NO_SUCH_TABLE, ex.what());
+        _reportFailure(lock, ProtocolStatusExt::NO_SUCH_TABLE, ex.what());
 
     } catch(database::mysql::ER_PARTITION_MGMT_ON_NONPARTITIONED_ const& ex) {
-        _reportFailure(lock, EXT_STATUS_NOT_PARTITIONED_TABLE, ex.what());
+        _reportFailure(lock, ProtocolStatusExt::NOT_PARTITIONED_TABLE, ex.what());
 
     } catch(database::mysql::ER_DUP_KEYNAME_ const& ex) {
-        _reportFailure(lock, EXT_STATUS_DUPLICATE_KEY, ex.what());
+        _reportFailure(lock, ProtocolStatusExt::DUPLICATE_KEY, ex.what());
 
     } catch(database::mysql::ER_CANT_DROP_FIELD_OR_KEY_ const& ex) {
-        _reportFailure(lock, EXT_STATUS_CANT_DROP_KEY, ex.what());
+        _reportFailure(lock, ProtocolStatusExt::CANT_DROP_KEY, ex.what());
 
     } catch(database::mysql::Error const& ex) {
-        _reportFailure(lock, EXT_STATUS_MYSQL_ERROR, ex.what());
+        _reportFailure(lock, ProtocolStatusExt::MYSQL_ERROR, ex.what());
 
     } catch (invalid_argument const& ex) {
-        _reportFailure(lock, EXT_STATUS_INVALID_PARAM, ex.what());
+        _reportFailure(lock, ProtocolStatusExt::INVALID_PARAM, ex.what());
 
     } catch (out_of_range const& ex) {
-        _reportFailure(lock, EXT_STATUS_LARGE_RESULT, ex.what());
+        _reportFailure(lock, ProtocolStatusExt::LARGE_RESULT, ex.what());
 
     } catch (exception const& ex) {
-        _reportFailure(lock, EXT_STATUS_OTHER_EXCEPTION, ex.what());
+        _reportFailure(lock, ProtocolStatusExt::OTHER_EXCEPTION, ex.what());
     }
     return true;
 }
@@ -455,7 +455,7 @@ void WorkerSqlRequest::_extractResultSet(util::Lock const& lock,
 
 
 void WorkerSqlRequest::_reportFailure(util::Lock const& lock,
-                                      ExtendedCompletionStatus statusExt,
+                                      ProtocolStatusExt statusExt,
                                       string const& error) {
 
     LOGS(_log, LOG_LVL_ERROR, context(__func__) << "  exception: " << error);
@@ -467,11 +467,11 @@ void WorkerSqlRequest::_reportFailure(util::Lock const& lock,
 
     auto resultSet = _currentResultSet(lock);
 
-    resultSet->set_status_ext(translate(statusExt));
+    resultSet->set_status_ext(statusExt);
     resultSet->set_error(error);
 
     setStatus(lock, STATUS_FAILED,
-              _batchMode() ? statusExt : EXT_STATUS_MULTIPLE);
+              _batchMode() ? statusExt : ProtocolStatusExt::MULTIPLE);
 }
 
 

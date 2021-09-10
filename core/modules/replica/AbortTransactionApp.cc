@@ -112,12 +112,12 @@ int AbortTransactionApp::runImpl() {
 
         auto&& resultData = job->getResultData();
         size_t numSucceeded = 0;
-        map<ExtendedCompletionStatus,size_t> numFailed;
+        map<ProtocolStatusExt,size_t> numFailed;
         resultData.iterate(
             [&numFailed, &numSucceeded](SqlJobResult::Worker const& worker,
                                         SqlJobResult::Scope const& table,
                                         SqlResultSet::ResultSet const& resultSet) {
-                if (resultSet.extendedStatus == ExtendedCompletionStatus::EXT_STATUS_NONE) {
+                if (resultSet.extendedStatus == ProtocolStatusExt::NONE) {
                     numSucceeded++;
                 } else {
                     numFailed[resultSet.extendedStatus]++;

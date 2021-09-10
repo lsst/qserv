@@ -140,7 +140,7 @@ json SqlJob::getExtendedErrorReport() const {
         [&report](SqlJobResult::Worker const& worker,
                   SqlJobResult::Scope const& object,
                   SqlResultSet::ResultSet const& resultSet) {
-            if (resultSet.extendedStatus != ExtendedCompletionStatus::EXT_STATUS_NONE) {
+            if (resultSet.extendedStatus != ProtocolStatusExt::NONE) {
                 report["workers"][worker][object]["request_status"] = status2string(resultSet.extendedStatus);
                 report["workers"][worker][object]["request_error"] = resultSet.error;
             }
@@ -228,12 +228,12 @@ void SqlJob::onRequestFinish(SqlRequest::Ptr const& request) {
                     // This too may also count as a success since the table might be processed
                     // before, when this job was ran.
                     if (ignoreNonPartitioned() and
-                            ptr->extendedServerStatus() == ExtendedCompletionStatus::EXT_STATUS_MULTIPLE) {
+                            ptr->extendedServerStatus() == ProtocolStatusExt::MULTIPLE) {
                         auto&& responseData = request->responseData();
                         if (responseData.hasErrors() and responseData.allErrorsOf(
-                                ExtendedCompletionStatus::EXT_STATUS_NOT_PARTITIONED_TABLE)) {
+                                ProtocolStatusExt::NOT_PARTITIONED_TABLE)) {
                             LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "  id=" << request->id()
-                                 << " [ignoreNonPartitioned & EXT_STATUS_NOT_PARTITIONED_TABLE]");
+                                 << " [ignoreNonPartitioned & NOT_PARTITIONED_TABLE]");
                             numSuccess++;
                         }
                     }
