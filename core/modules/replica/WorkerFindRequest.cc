@@ -184,8 +184,8 @@ bool WorkerFindRequestPOSIX::execute() {
 
     // Abort the operation right away if that's the case
 
-    if (_status == STATUS_IS_CANCELLING) {
-        setStatus(lock, STATUS_CANCELLED);
+    if (_status == ProtocolStatus::IS_CANCELLING) {
+        setStatus(lock, ProtocolStatus::CANCELLED);
         throw WorkerRequestCancelled();
     }
 
@@ -228,7 +228,7 @@ bool WorkerFindRequestPOSIX::execute() {
                     "the directory does not exists: " + dataDir.string());
 
         if (errorContext.failed) {
-            setStatus(lock, STATUS_FAILED, errorContext.extendedStatus);
+            setStatus(lock, ProtocolStatus::FAILED, errorContext.extendedStatus);
             return true;
         }
 
@@ -297,7 +297,7 @@ bool WorkerFindRequestPOSIX::execute() {
             }
         }
         if (errorContext.failed) {
-            setStatus(lock, STATUS_FAILED, errorContext.extendedStatus);
+            setStatus(lock, ProtocolStatus::FAILED, errorContext.extendedStatus);
             return true;
         }
 
@@ -321,7 +321,7 @@ bool WorkerFindRequestPOSIX::execute() {
                 PerformanceUtils::now(),
                 fileInfoCollection);
 
-            setStatus(lock, STATUS_SUCCEEDED);
+            setStatus(lock, ProtocolStatus::SUCCESS);
 
             return true;
         }
@@ -367,7 +367,7 @@ bool WorkerFindRequestPOSIX::execute() {
                 );
             }
             if (errorContext.failed) {
-                setStatus(lock, STATUS_FAILED, errorContext.extendedStatus);
+                setStatus(lock, ProtocolStatus::FAILED, errorContext.extendedStatus);
                 return true;
             }
 
@@ -393,7 +393,7 @@ bool WorkerFindRequestPOSIX::execute() {
                 PerformanceUtils::now(),
                 fileInfoCollection);
 
-            setStatus(lock, STATUS_SUCCEEDED);
+            setStatus(lock, ProtocolStatus::SUCCESS);
         }
 
     } catch (exception const& ex) {
@@ -404,7 +404,7 @@ bool WorkerFindRequestPOSIX::execute() {
                     ProtocolStatusExt::FILE_READ,
                     ex.what());
 
-        setStatus(lock, STATUS_FAILED, errorContext.extendedStatus);
+        setStatus(lock, ProtocolStatus::FAILED, errorContext.extendedStatus);
     }
 
     // If done (either way) then get rid of the engine right away because

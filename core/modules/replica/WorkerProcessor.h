@@ -313,7 +313,7 @@ public:
                 _setInfo(ptr, response);
 
                 // The status field is present in all response types
-                response.set_status(             translate(ptr->status()));
+                response.set_status(ptr->status());
                 response.set_status_ext(ptr->extendedStatus());
 
             } catch (std::logic_error const& ex) {
@@ -345,7 +345,7 @@ public:
                 _setInfo(ptr, response);
 
                 // The status field is present in all response types
-                response.set_status(             translate(ptr->status()));
+                response.set_status(ptr->status());
                 response.set_status_ext(ptr->extendedStatus());
 
             } catch (std::logic_error const&) {
@@ -389,10 +389,7 @@ private:
                     WorkerRequestFactory const& requestFactory,
                     std::string const& worker);
 
-
     static std::string _classMethodContext(std::string const& func);
-
-    static ProtocolStatus translate(WorkerRequest::CompletionStatus status);
 
     /**
      * Return the next request which is ready to be processed

@@ -94,8 +94,8 @@ void WorkerSqlRequest::setInfo(ProtocolResponseSql& response) const {
     // Carry over the result of the query only after the request
     // has finished (or failed).
     switch (status()) {
-        case STATUS_SUCCEEDED:
-        case STATUS_FAILED:
+        case ProtocolStatus::SUCCESS:
+        case ProtocolStatus::FAILED:
             *(response.mutable_result_sets()) = _response.result_sets();
             break;
         default:
@@ -112,9 +112,9 @@ bool WorkerSqlRequest::execute() {
     util::Lock lock(_mtx, context_);
 
     switch (status()) {
-        case STATUS_IN_PROGRESS: break;
-        case STATUS_IS_CANCELLING:
-            setStatus(lock, STATUS_CANCELLED);
+        case ProtocolStatus::IN_PROGRESS: break;
+        case ProtocolStatus::IS_CANCELLING:
+            setStatus(lock, ProtocolStatus::CANCELLED);
             throw WorkerRequestCancelled();
         default:
             throw logic_error(
@@ -190,9 +190,9 @@ bool WorkerSqlRequest::execute() {
                 }
             }
             if (numFailures > 0) {
-                setStatus(lock, STATUS_FAILED, ProtocolStatusExt::MULTIPLE);
+                setStatus(lock, ProtocolStatus::FAILED, ProtocolStatusExt::MULTIPLE);
             } else {
-                setStatus(lock, STATUS_SUCCEEDED);
+                setStatus(lock, ProtocolStatus::SUCCESS);
             }
 
         } else {
@@ -213,7 +213,7 @@ bool WorkerSqlRequest::execute() {
                 }
                 conn_->commit();
             });
-            setStatus(lock, STATUS_SUCCEEDED);
+            setStatus(lock, ProtocolStatus::SUCCESS);
         }
 
     } catch(database::mysql::ER_NO_SUCH_TABLE_ const& ex) {
@@ -470,7 +470,7 @@ void WorkerSqlRequest::_reportFailure(util::Lock const& lock,
     resultSet->set_status_ext(statusExt);
     resultSet->set_error(error);
 
-    setStatus(lock, STATUS_FAILED,
+    setStatus(lock, ProtocolStatus::FAILED,
               _batchMode() ? statusExt : ProtocolStatusExt::MULTIPLE);
 }
 

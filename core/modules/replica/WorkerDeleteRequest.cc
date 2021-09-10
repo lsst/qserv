@@ -212,11 +212,11 @@ bool WorkerDeleteRequestPOSIX::execute() {
         }
     }
     if (errorContext.failed) {
-        setStatus(lock, STATUS_FAILED, errorContext.extendedStatus);
+        setStatus(lock, ProtocolStatus::FAILED, errorContext.extendedStatus);
         return true;
     }
 
-    setStatus(lock, STATUS_SUCCEEDED);
+    setStatus(lock, ProtocolStatus::SUCCESS);
     return true;
 }
 

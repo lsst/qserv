@@ -370,13 +370,14 @@ message ProtocolPerformance {
 // Service management requests have their own set of status values.
 //
 enum ProtocolStatus {
-    SUCCESS       = 0;
-    QUEUED        = 1;
-    IN_PROGRESS   = 2;
-    IS_CANCELLING = 3;
-    BAD           = 4;
-    FAILED        = 5;
-    CANCELLED     = 6;
+    CREATED       = 0;
+    SUCCESS       = 1;
+    QUEUED        = 2;
+    IN_PROGRESS   = 3;
+    IS_CANCELLING = 4;
+    BAD           = 5;
+    FAILED        = 6;
+    CANCELLED     = 7;
 }
 enum ProtocolStatusExt {
     NONE = 0;                   // unspecified problem
@@ -465,7 +466,7 @@ message ProtocolReplicaInfo {
 message ProtocolResponseReplicate {
 
     /// The completion status of the operation
-    required ProtocolStatus status = 1;
+    required ProtocolStatus status = 8;
 
     /// Extended status of this operation
     optional ProtocolStatusExt status_ext = 2 [default = NONE];
@@ -497,7 +498,7 @@ message ProtocolResponseReplicate {
 message ProtocolResponseDelete {
 
     /// The completion status of the operation
-    required ProtocolStatus status = 1;
+    required ProtocolStatus status = 8;
 
     /// Extended status of this operation
     optional ProtocolStatusExt status_ext = 2 [default = NONE];
@@ -530,7 +531,7 @@ message ProtocolResponseDelete {
 message ProtocolResponseFind {
 
     /// The completion status of the operation
-    required ProtocolStatus status = 1;
+    required ProtocolStatus status = 7;
 
     /// Extended status of this operation
     optional ProtocolStatusExt status_ext = 2 [default = NONE];
@@ -559,7 +560,7 @@ message ProtocolResponseFind {
 message ProtocolResponseFindAll {
 
     /// The completion status of the operation
-    required ProtocolStatus status = 1;
+    required ProtocolStatus status = 7;
 
     /// Extended status of this operation
     optional ProtocolStatusExt status_ext = 2 [default = NONE];
@@ -591,7 +592,7 @@ message ProtocolResponseFindAll {
 message ProtocolResponseEcho {
 
     /// The completion status of the operation
-    required ProtocolStatus status = 1;
+    required ProtocolStatus status = 7;
 
     /// Extended status of this operation
     optional ProtocolStatusExt status_ext = 2 [default = NONE];
@@ -691,7 +692,7 @@ message ProtocolResponseSqlResultSet {
 message ProtocolResponseSql {
 
     /// The completion status of the operation
-    required ProtocolStatus status = 1;
+    required ProtocolStatus status = 12;
 
     /// Extended status of an operation
     optional ProtocolStatusExt status_ext = 2 [default = NONE];
@@ -720,7 +721,7 @@ message ProtocolResponseSql {
 message ProtocolResponseIndex {
 
     /// The completion status of the operation
-    required ProtocolStatus status = 1;
+    required ProtocolStatus status = 8;
 
     /// Extended status of this operation
     optional ProtocolStatusExt status_ext = 2 [default = NONE];
@@ -769,7 +770,7 @@ message ProtocolResponseDispose {
     repeated ProtocolResponseDisposeStatus ids = 1;
 
     /// The completion status of the operation
-    optional ProtocolStatus status = 2 [default = SUCCESS];
+    optional ProtocolStatus status = 4 [default = SUCCESS];
 
     /// Extended status of this operation
     optional ProtocolStatusExt status_ext = 3 [default = NONE];
@@ -791,7 +792,7 @@ message ProtocolServiceResponseInfo {
 message ProtocolServiceResponse {
 
     /// The completion status of the operation
-    required ProtocolStatus status = 12;
+    required ProtocolStatus status = 14;
 
     /// Extended status of this operation
     optional ProtocolStatusExt status_ext = 13 [default = NONE];

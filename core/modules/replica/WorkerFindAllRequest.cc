@@ -262,7 +262,7 @@ bool WorkerFindAllRequestPOSIX::execute() {
         }
     }
     if (errorContext.failed) {
-        setStatus(lock, STATUS_FAILED, errorContext.extendedStatus);
+        setStatus(lock, ProtocolStatus::FAILED, errorContext.extendedStatus);
         return true;
     }
 
@@ -284,7 +284,7 @@ bool WorkerFindAllRequestPOSIX::execute() {
                 chunk2fileInfoCollection[chunk]);
     }
 
-    setStatus(lock, STATUS_SUCCEEDED);
+    setStatus(lock, ProtocolStatus::SUCCESS);
     return true;
 }
 

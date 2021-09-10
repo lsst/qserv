@@ -352,7 +352,7 @@ bool WorkerReplicationRequestPOSIX::execute () {
                     "not enough free space available at output folder: " + outDir.string());
     }
     if (errorContext.failed) {
-        setStatus(lock, STATUS_FAILED, errorContext.extendedStatus);
+        setStatus(lock, ProtocolStatus::FAILED, errorContext.extendedStatus);
         return true;
     }
 
@@ -372,7 +372,7 @@ bool WorkerReplicationRequestPOSIX::execute () {
                     "failed to copy file: " + inFile.string() + " into: " + tmpFile.string());
     }
     if (errorContext.failed) {
-        setStatus(lock, STATUS_FAILED, errorContext.extendedStatus);
+        setStatus(lock, ProtocolStatus::FAILED, errorContext.extendedStatus);
         return true;
     }
 
@@ -410,14 +410,14 @@ bool WorkerReplicationRequestPOSIX::execute () {
         }
     }
     if (errorContext.failed) {
-        setStatus(lock, STATUS_FAILED, errorContext.extendedStatus);
+        setStatus(lock, ProtocolStatus::FAILED, errorContext.extendedStatus);
         return true;
     }
 
     // For now (before finalizing the progress reporting protocol) just return
     // the percentage of the total amount of data moved
 
-    setStatus(lock, STATUS_SUCCEEDED);
+    setStatus(lock, ProtocolStatus::SUCCESS);
     return true;
 }
 
@@ -489,8 +489,8 @@ bool WorkerReplicationRequestFS::execute () {
 
     // Abort the operation right away if that's the case
 
-    if (_status == STATUS_IS_CANCELLING) {
-        setStatus(lock, STATUS_CANCELLED);
+    if (_status == ProtocolStatus::IS_CANCELLING) {
+        setStatus(lock, ProtocolStatus::CANCELLED);
         throw WorkerRequestCancelled();
     }
 
@@ -572,7 +572,7 @@ bool WorkerReplicationRequestFS::execute () {
                         ", file: " + file);
 
                 if (errorContext.failed) {
-                    setStatus(lock, STATUS_FAILED, errorContext.extendedStatus);
+                    setStatus(lock, ProtocolStatus::FAILED, errorContext.extendedStatus);
                     return true;
                 }
                 file2size[file] = inFilePtr->size();
@@ -680,7 +680,7 @@ bool WorkerReplicationRequestFS::execute () {
             }
         }
         if (errorContext.failed) {
-            setStatus(lock, STATUS_FAILED, errorContext.extendedStatus);
+            setStatus(lock, ProtocolStatus::FAILED, errorContext.extendedStatus);
             return true;
         }
 
@@ -757,7 +757,7 @@ bool WorkerReplicationRequestFS::execute () {
                 ", file: " + *_fileItr);
 
         if (errorContext.failed) {
-            setStatus(lock, STATUS_FAILED, errorContext.extendedStatus);
+            setStatus(lock, ProtocolStatus::FAILED, errorContext.extendedStatus);
             _releaseResources(lock);
             return true;
         }
@@ -812,7 +812,7 @@ bool WorkerReplicationRequestFS::_openFiles(util::Lock const& lock) {
             ", file: " + *_fileItr);
 
     if (errorContext.failed) {
-        setStatus(lock, STATUS_FAILED, errorContext.extendedStatus);
+        setStatus(lock, ProtocolStatus::FAILED, errorContext.extendedStatus);
         return false;
     }
 
@@ -829,7 +829,7 @@ bool WorkerReplicationRequestFS::_openFiles(util::Lock const& lock) {
             "failed to open temporary file: " + tmpFile.string() +
             ", error: " + strerror(errno));
     if (errorContext.failed) {
-        setStatus(lock, STATUS_FAILED, errorContext.extendedStatus);
+        setStatus(lock, ProtocolStatus::FAILED, errorContext.extendedStatus);
         return false;
     }
     rewind(_tmpFilePtr);
@@ -885,10 +885,10 @@ bool WorkerReplicationRequestFS::_finalize(util::Lock const& lock) {
     }
 
     if (errorContext.failed) {
-        setStatus(lock, STATUS_FAILED, errorContext.extendedStatus);
+        setStatus(lock, ProtocolStatus::FAILED, errorContext.extendedStatus);
         return true;
     }
-    setStatus(lock, STATUS_SUCCEEDED);
+    setStatus(lock, ProtocolStatus::SUCCESS);
     return true;
 }
 
