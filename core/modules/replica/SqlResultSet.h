@@ -181,6 +181,7 @@ public:
 
     /// @return 'true' if all errors are of the specified 'status'
     /// @note this method should be used together with method SqlResultSet::hasErrors().
+    /// @note ProtocolStatusExt::NONE is not treated as an error.
     bool allErrorsOf(ProtocolStatusExt status) const;
     
     /**

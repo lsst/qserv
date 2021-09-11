@@ -240,7 +240,8 @@ bool SqlResultSet::hasErrors() const {
 
 bool SqlResultSet::allErrorsOf(ProtocolStatusExt status) const {
     return not any_of(queryResultSet.cbegin(), queryResultSet.cend(), [status](auto const& elem) {
-        return elem.second.extendedStatus != status;
+        return !((elem.second.extendedStatus == ProtocolStatusExt::NONE) ||
+                 (elem.second.extendedStatus == status));
     });
 }
 
