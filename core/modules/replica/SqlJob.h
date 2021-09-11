@@ -67,6 +67,7 @@ public:
 
     bool allWorkers() const { return _allWorkers; }
     bool ignoreNonPartitioned() const { return _ignoreNonPartitioned; }
+    bool ignoreDuplicateKey() const { return _ignoreDuplicateKey; }
 
     /**
      * Return the combined result of the operation
@@ -121,8 +122,11 @@ protected:
      * @param jobName The name of a job in the persistent state of the Replication system.
      * @param options The optional parameters defining the job's priority, etc.
      * @param ignoreNonPartitioned The optional flag which if 'true' then don't report as
-     *   errors tables that don't have MySQL partitions. The flag can be useful when those
-     *   partitions may have already been removed . 
+     *   errors tables for which ProtocolStatusExt::NOT_PARTITIONED_TABLE was reported.
+     *   The flag can be useful for tables in which the partitions may have already been removed.
+     * @param ignoreDuplicateKey The optional flag which if 'true' then don't report as
+     *   errors tables for which ProtocolStatusExt::DUPLICATE_KEY was reported.
+     *   The flag can be useful for tables in which the index may already exist.
      */
     SqlJob(uint64_t maxRows,
            bool allWorkers,
@@ -130,7 +134,8 @@ protected:
            std::string const& parentJobId,
            std::string const& jobName,
            Job::Options const& options,
-           bool ignoreNonPartitioned=false);
+           bool ignoreNonPartitioned=false,
+           bool ignoreDuplicateKey=false);
 
     virtual void startImpl(util::Lock const& lock) final;
     virtual void cancelImpl(util::Lock const& lock) final;
@@ -269,6 +274,7 @@ private:
     uint64_t const _maxRows;
     bool     const _allWorkers;
     bool     const _ignoreNonPartitioned;
+    bool     const _ignoreDuplicateKey;
 
     /// A collection of requests implementing the operation
     std::vector<SqlRequest::Ptr> _requests;

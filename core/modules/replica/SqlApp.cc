@@ -379,6 +379,11 @@ void SqlApp::_configureTableCommands() {
         "comment",
         "The optional comment explaining an index.",
         _indexComment
+    ).flag(
+        "ignore-duplicate-key",
+        "To allow running the index creation tool job multiple times without failing on tables"
+        " that may already have the desired indexe created by the previous run of the job.",
+        _ignoreDuplicateKey
     );
 
     parser().command(
@@ -438,7 +443,7 @@ int SqlApp::runImpl() {
                                           _indexName,
                                           _indexComment,
                                           SqlSchemaUtils::readIndexSpecFromTextFile(_indexColumnsFile),
-                                         _allWorkers, controller);
+                                         _allWorkers, _ignoreDuplicateKey, controller);
     } else if(_command == "DROP_INDEXES") {
         job = SqlDropIndexesJob::create(_database, _table, _overlap,
                                         _indexName,

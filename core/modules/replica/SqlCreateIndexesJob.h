@@ -80,6 +80,9 @@ public:
      *   workers regardless of their status. If the flag is set to 'false' then
      *   only 'ENABLED' workers which are not in the 'READ-ONLY' state will be
      *   involved into the operation.
+     * @param ignoreDuplicateKey The flag which if 'true' then don't report as
+     *   errors tables for which ProtocolStatusExt::DUPLICATE_KEY was reported.
+     *   The flag can be useful for tables in which the index may already exist. 
      * @param controller This is needed launching requests and accessing the Configuration.
      * @param parentJobId (optional) An identifier of a parent job.
      * @param onFinish (optional) A callback function to be called upon a completion of the job.
@@ -94,6 +97,7 @@ public:
                       std::string const& indexComment,
                       std::vector<SqlIndexColumn> const& indexColumns,
                       bool allWorkers,
+                      bool ignoreDuplicateKey,
                       Controller::Ptr const& controller,
                       std::string const& parentJobId=std::string(),
                       CallbackType const& onFinish=nullptr,
@@ -134,6 +138,7 @@ private:
                         std::string const& indexComment,
                         std::vector<SqlIndexColumn> const& indexColumns,
                         bool allWorkers,
+                        bool ignoreDuplicateKey,
                         Controller::Ptr const& controller,
                         std::string const& parentJobId,
                         CallbackType const& onFinish,

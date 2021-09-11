@@ -84,6 +84,10 @@ private:
     bool _ignoreNonPartitioned = false; /// To allow (if 'true') running the partitions removal
                                         /// job multiple times.
 
+    bool _ignoreDuplicateKey = false;   /// To allow (if 'true') running the index creation tool
+                                        /// job multiple times without failing on tables that may already
+                                        /// have the desired indexe created by the previous run of the job.
+
     unsigned int _timeoutSec = 300; /// When waiting for the completion of the queries
 
     size_t _pageSize = 100; /// Rows per page in the printout
