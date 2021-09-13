@@ -101,22 +101,6 @@ string WorkerProcessor::state2string(State state) {
 }
 
 
-ProtocolStatus WorkerProcessor::translate(WorkerRequest::CompletionStatus status) {
-    switch (status) {
-        case WorkerRequest::STATUS_NONE:          return ProtocolStatus::QUEUED;
-        case WorkerRequest::STATUS_IN_PROGRESS:   return ProtocolStatus::IN_PROGRESS;
-        case WorkerRequest::STATUS_IS_CANCELLING: return ProtocolStatus::IS_CANCELLING;
-        case WorkerRequest::STATUS_CANCELLED:     return ProtocolStatus::CANCELLED;
-        case WorkerRequest::STATUS_SUCCEEDED:     return ProtocolStatus::SUCCESS;
-        case WorkerRequest::STATUS_FAILED:        return ProtocolStatus::FAILED;
-        default:
-            throw logic_error(
-                    _classMethodContext(__func__) +
-                    "unhandled status " + WorkerRequest::status2string(status));
-    }
-}
-
-
 WorkerProcessor::Ptr WorkerProcessor::create(ServiceProvider::Ptr const& serviceProvider,
                                              WorkerRequestFactory const& requestFactory,
                                              string const& worker) {
@@ -578,7 +562,7 @@ WorkerRequest::Ptr WorkerProcessor::_dequeueOrCancelImpl(util::Lock const& lock,
             ptr->cancel();
 
             switch (ptr->status()) {
-                case WorkerRequest::STATUS_CANCELLED: {
+                case ProtocolStatus::CANCELLED: {
                     _newRequests.remove(id);
                     _finishedRequests[ptr->id()] = ptr;
                     return ptr;
@@ -606,8 +590,8 @@ WorkerRequest::Ptr WorkerProcessor::_dequeueOrCancelImpl(util::Lock const& lock,
         switch (ptr->status()) {
 
             // These are the most typical states for request in this queue
-            case WorkerRequest::STATUS_CANCELLED:
-            case WorkerRequest::STATUS_IS_CANCELLING:
+            case ProtocolStatus::CANCELLED:
+            case ProtocolStatus::IS_CANCELLING:
 
             // The following two states are also allowed here because
             // in-progress requests are still allowed to progress to the completed
@@ -617,8 +601,8 @@ WorkerRequest::Ptr WorkerProcessor::_dequeueOrCancelImpl(util::Lock const& lock,
             // util::Lock lock(_mtx) held by the current method. We shouldn't worry
             // about this situation here. The request will be moved into the next
             // queue as soon as util::Lock lock(_mtx) will be released.
-            case WorkerRequest::STATUS_SUCCEEDED:
-            case WorkerRequest::STATUS_FAILED:
+            case ProtocolStatus::SUCCESS:
+            case ProtocolStatus::FAILED:
                 return ptr;
 
             default:
@@ -636,9 +620,9 @@ WorkerRequest::Ptr WorkerProcessor::_dequeueOrCancelImpl(util::Lock const& lock,
         // reporting the completion status of the request. It's up to a client
         // to figure out what to do about this situation.
         switch (ptr->status()) {
-            case WorkerRequest::STATUS_CANCELLED:
-            case WorkerRequest::STATUS_SUCCEEDED:
-            case WorkerRequest::STATUS_FAILED:
+            case ProtocolStatus::CANCELLED:
+            case ProtocolStatus::SUCCESS:
+            case ProtocolStatus::FAILED:
                 return ptr;
             default:
                 throw logic_error(
@@ -662,7 +646,7 @@ WorkerRequest::Ptr WorkerProcessor::_checkStatusImpl(util::Lock const& lock,
         if (ptr->id() == id) {
             switch (ptr->status()) {
                 // This state requirement is strict for the non-active requests
-                case WorkerRequest::STATUS_NONE:
+                case ProtocolStatus::CREATED:
                     return ptr;
                 default:
                     throw logic_error(
@@ -679,8 +663,8 @@ WorkerRequest::Ptr WorkerProcessor::_checkStatusImpl(util::Lock const& lock,
         switch (ptr->status()) {
 
             // These are the most typical states for request in this queue
-            case WorkerRequest::STATUS_IS_CANCELLING:
-            case WorkerRequest::STATUS_IN_PROGRESS:
+            case ProtocolStatus::IS_CANCELLING:
+            case ProtocolStatus::IN_PROGRESS:
 
             // The following three states are also allowed here because
             // in-progress requests are still allowed to progress to the completed
@@ -690,9 +674,9 @@ WorkerRequest::Ptr WorkerProcessor::_checkStatusImpl(util::Lock const& lock,
             // util::Lock lock(_mtx) held by the current method. We shouldn't worry
             // about this situation here. The request will be moved into the next
             // queue as soon as util::Lock lock(_mtx) will be released.
-            case WorkerRequest::STATUS_CANCELLED:
-            case WorkerRequest::STATUS_SUCCEEDED:
-            case WorkerRequest::STATUS_FAILED:
+            case ProtocolStatus::CANCELLED:
+            case ProtocolStatus::SUCCESS:
+            case ProtocolStatus::FAILED:
                 return ptr;
             default:
                 throw logic_error(
@@ -707,9 +691,9 @@ WorkerRequest::Ptr WorkerProcessor::_checkStatusImpl(util::Lock const& lock,
         auto ptr = itrFinished->second;
         switch (ptr->status()) {
             // This state requirement is strict for the completed requests
-            case WorkerRequest::STATUS_CANCELLED:
-            case WorkerRequest::STATUS_SUCCEEDED:
-            case WorkerRequest::STATUS_FAILED:
+            case ProtocolStatus::CANCELLED:
+            case ProtocolStatus::SUCCESS:
+            case ProtocolStatus::FAILED:
                 return ptr;
             default:
                 throw logic_error(

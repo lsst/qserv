@@ -116,9 +116,9 @@ bool WorkerIndexRequest::execute() {
     util::Lock lock(_mtx, context(__func__));
 
     switch (status()) {
-        case STATUS_IN_PROGRESS: break;
-        case STATUS_IS_CANCELLING:
-            setStatus(lock, STATUS_CANCELLED);
+        case ProtocolStatus::IN_PROGRESS: break;
+        case ProtocolStatus::IS_CANCELLING:
+            setStatus(lock, ProtocolStatus::CANCELLED);
             throw WorkerRequestCancelled();
         default:
             throw logic_error(
@@ -140,7 +140,7 @@ bool WorkerIndexRequest::execute() {
         if (ec.value() != 0) {
             _error = "failed to create folder '" + tmpDirPath.string();
             LOGS(_log, LOG_LVL_ERROR, context(__func__) << "  " << _error);
-            setStatus(lock, STATUS_FAILED, EXT_STATUS_FOLDER_CREATE);
+            setStatus(lock, ProtocolStatus::FAILED, ProtocolStatusExt::FOLDER_CREATE);
         }
  
         // The name of a temporary file where the index data will be dumped into
@@ -148,7 +148,7 @@ bool WorkerIndexRequest::execute() {
         if (ec.value() != 0) {
             _error = "failed to create temporary file at '" + tmpDirPath.string();
             LOGS(_log, LOG_LVL_ERROR, context(__func__) << "  " << _error);
-            setStatus(lock, STATUS_FAILED, EXT_STATUS_FILE_CREATE);
+            setStatus(lock, ProtocolStatus::FAILED, ProtocolStatusExt::FILE_CREATE);
         }
         _fileName = (tmpDirPath / tmpFileName).string(); 
 
@@ -167,37 +167,37 @@ bool WorkerIndexRequest::execute() {
             fileReadSuccess = self->_readFile();
             conn->commit();
         });
-        if (fileReadSuccess) setStatus(lock, STATUS_SUCCEEDED);
-        else                 setStatus(lock, STATUS_FAILED, EXT_STATUS_FILE_READ);        
+        if (fileReadSuccess) setStatus(lock, ProtocolStatus::SUCCESS);
+        else                 setStatus(lock, ProtocolStatus::FAILED, ProtocolStatusExt::FILE_READ);
 
     } catch(database::mysql::ER_NO_SUCH_TABLE_ const& ex) {
         LOGS(_log, LOG_LVL_ERROR, context(__func__) << "  MySQL error: " << ex.what());
         _error = ex.what();
-        setStatus(lock, STATUS_FAILED, EXT_STATUS_NO_SUCH_TABLE);
+        setStatus(lock, ProtocolStatus::FAILED, ProtocolStatusExt::NO_SUCH_TABLE);
     } catch(database::mysql::ER_PARTITION_MGMT_ON_NONPARTITIONED_ const& ex) {
         LOGS(_log, LOG_LVL_ERROR, context(__func__) << "  MySQL error: " << ex.what());
         _error = ex.what();
-        setStatus(lock, STATUS_FAILED, EXT_STATUS_NOT_PARTITIONED_TABLE);
+        setStatus(lock, ProtocolStatus::FAILED, ProtocolStatusExt::NOT_PARTITIONED_TABLE);
     } catch(database::mysql::ER_UNKNOWN_PARTITION_ const& ex) {
         LOGS(_log, LOG_LVL_ERROR, context(__func__) << "  MySQL error: " << ex.what());
         _error = ex.what();
-        setStatus(lock, STATUS_FAILED, EXT_STATUS_NO_SUCH_PARTITION);
+        setStatus(lock, ProtocolStatus::FAILED, ProtocolStatusExt::NO_SUCH_PARTITION);
     } catch(database::mysql::Error const& ex) {
         LOGS(_log, LOG_LVL_ERROR, context(__func__) << "  MySQL error: " << ex.what());
         _error = ex.what();
-        setStatus(lock, STATUS_FAILED, EXT_STATUS_MYSQL_ERROR);
+        setStatus(lock, ProtocolStatus::FAILED, ProtocolStatusExt::MYSQL_ERROR);
     } catch (invalid_argument const& ex) {
         LOGS(_log, LOG_LVL_ERROR, context(__func__) << "  exception: " << ex.what());
         _error = ex.what();
-        setStatus(lock, STATUS_FAILED, EXT_STATUS_INVALID_PARAM);
+        setStatus(lock, ProtocolStatus::FAILED, ProtocolStatusExt::INVALID_PARAM);
     } catch (out_of_range const& ex) {
         LOGS(_log, LOG_LVL_ERROR, context(__func__) << "  exception: " << ex.what());
         _error = ex.what();
-        setStatus(lock, STATUS_FAILED, EXT_STATUS_LARGE_RESULT);
+        setStatus(lock, ProtocolStatus::FAILED, ProtocolStatusExt::LARGE_RESULT);
     } catch (exception const& ex) {
         LOGS(_log, LOG_LVL_ERROR, context(__func__) << "  exception: " << ex.what());
         _error = "Exception: " + string(ex.what());
-        setStatus(lock, STATUS_FAILED);
+        setStatus(lock, ProtocolStatus::FAILED);
     }
     return true;
 }

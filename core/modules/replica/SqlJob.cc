@@ -68,11 +68,13 @@ SqlJob::SqlJob(uint64_t maxRows,
                string const& parentJobId,
                std::string const& jobName,
                Job::Options const& options,
-               bool ignoreNonPartitioned)
+               bool ignoreNonPartitioned,
+               bool ignoreDuplicateKey)
     :   Job(controller, parentJobId, jobName, options),
         _maxRows(maxRows),
         _allWorkers(allWorkers),
-        _ignoreNonPartitioned(ignoreNonPartitioned) {
+        _ignoreNonPartitioned(ignoreNonPartitioned),
+        _ignoreDuplicateKey(ignoreDuplicateKey) {
 }
 
 
@@ -140,7 +142,7 @@ json SqlJob::getExtendedErrorReport() const {
         [&report](SqlJobResult::Worker const& worker,
                   SqlJobResult::Scope const& object,
                   SqlResultSet::ResultSet const& resultSet) {
-            if (resultSet.extendedStatus != ExtendedCompletionStatus::EXT_STATUS_NONE) {
+            if (resultSet.extendedStatus != ProtocolStatusExt::NONE) {
                 report["workers"][worker][object]["request_status"] = status2string(resultSet.extendedStatus);
                 report["workers"][worker][object]["request_error"] = resultSet.error;
             }
@@ -224,17 +226,21 @@ void SqlJob::onRequestFinish(SqlRequest::Ptr const& request) {
             for (auto&& ptr: _requests) {
                 if (ptr->extendedState() == Request::ExtendedState::SUCCESS) {
                     numSuccess++;
-                } else {
-                    // This too may also count as a success since the table might be processed
-                    // before, when this job was ran.
-                    if (ignoreNonPartitioned() and
-                            ptr->extendedServerStatus() == ExtendedCompletionStatus::EXT_STATUS_MULTIPLE) {
-                        auto&& responseData = request->responseData();
-                        if (responseData.hasErrors() and responseData.allErrorsOf(
-                                ExtendedCompletionStatus::EXT_STATUS_NOT_PARTITIONED_TABLE)) {
-                            LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "  id=" << request->id()
-                                 << " [ignoreNonPartitioned & EXT_STATUS_NOT_PARTITIONED_TABLE]");
-                            numSuccess++;
+                } else if (ptr->extendedServerStatus() == ProtocolStatusExt::MULTIPLE) {
+                    // These special conditions are counted as a success for tables
+                    // that might be successfully processed before by another instance
+                    // the same job.
+                    auto&& responseData = request->responseData();
+                    if (responseData.hasErrors()) {
+                        if (ignoreNonPartitioned()) {
+                            if (responseData.allErrorsOf(ProtocolStatusExt::NOT_PARTITIONED_TABLE)) {
+                                numSuccess++;
+                            }
+                        }
+                        if (ignoreDuplicateKey()) {
+                            if (responseData.allErrorsOf(ProtocolStatusExt::DUPLICATE_KEY)) {
+                                numSuccess++;
+                            }
                         }
                     }
                 }

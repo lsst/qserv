@@ -64,7 +64,7 @@ json SqlJobResult::toJson() const {
     iterate([&result](Worker const& worker,
                       Scope const& scope,
                       SqlResultSet::ResultSet const& resultSet) {
-        result["completed"][worker][scope] = resultSet.extendedStatus == ExtendedCompletionStatus::EXT_STATUS_NONE ? 1 : 0;
+        result["completed"][worker][scope] = resultSet.extendedStatus == ProtocolStatusExt::NONE ? 1 : 0;
         result["error"    ][worker][scope] = resultSet.error;
     });
     return result;
@@ -86,7 +86,7 @@ util::ColumnTablePrinter SqlJobResult::toColumnTable(
     iterate([&](Worker const& worker,
                 Scope const& scope,
                 SqlResultSet::ResultSet const& resultSet) {
-        if (reportAll or resultSet.extendedStatus != ExtendedCompletionStatus::EXT_STATUS_NONE) {
+        if (reportAll or resultSet.extendedStatus != ProtocolStatusExt::NONE) {
             workers.push_back(worker);
             scopes.push_back(scope);
             statuses.push_back(status2string(resultSet.extendedStatus));
@@ -121,7 +121,7 @@ util::ColumnTablePrinter SqlJobResult::summaryToColumnTable(
              size_t numFailed = 0;
              for (auto&& queryResultSetItr: workerResultSet.queryResultSet) {
                 auto&& resultSet = queryResultSetItr.second;
-                if (resultSet.extendedStatus == ExtendedCompletionStatus::EXT_STATUS_NONE) {
+                if (resultSet.extendedStatus == ProtocolStatusExt::NONE) {
                     numSucceeded++;
                 } else {
                     numFailed++;

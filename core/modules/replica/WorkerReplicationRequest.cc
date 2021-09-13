@@ -263,25 +263,25 @@ bool WorkerReplicationRequestPOSIX::execute () {
             errorContext = errorContext
                 or reportErrorIf(
                         stat.type() == fs::status_error,
-                        ExtendedCompletionStatus::EXT_STATUS_FILE_STAT,
+                        ProtocolStatusExt::FILE_STAT,
                         "failed to check the status of input file: " + file.string())
                 or reportErrorIf(
                         not fs::exists(stat),
-                        ExtendedCompletionStatus::EXT_STATUS_NO_FILE,
+                        ProtocolStatusExt::NO_FILE,
                         "the input file does not exist: " + file.string());
 
             totalBytes += fs::file_size(file, ec);
             errorContext = errorContext
                 or reportErrorIf(
                         ec.value() != 0,
-                        ExtendedCompletionStatus::EXT_STATUS_FILE_SIZE,
+                        ProtocolStatusExt::FILE_SIZE,
                         "failed to get the size of input file: " + file.string());
 
             inFile2mtime[file] = fs::last_write_time(file, ec);
             errorContext = errorContext
                 or reportErrorIf(
                         ec.value() != 0,
-                        ExtendedCompletionStatus::EXT_STATUS_FILE_MTIME,
+                        ProtocolStatusExt::FILE_MTIME,
                         "failed to get the mtime of input file: " + file.string());
         }
 
@@ -291,11 +291,11 @@ bool WorkerReplicationRequestPOSIX::execute () {
         errorContext = errorContext
             or reportErrorIf(
                     ec.value() != 0,
-                    ExtendedCompletionStatus::EXT_STATUS_FOLDER_STAT,
+                    ProtocolStatusExt::FOLDER_STAT,
                     "failed to check the status of output directory: " + outDir.string())
             or reportErrorIf(
                     not outDirExists,
-                    ExtendedCompletionStatus::EXT_STATUS_NO_FOLDER,
+                    ProtocolStatusExt::NO_FOLDER,
                     "the output directory doesn't exist: " + outDir.string());
 
         // The files with canonical(!) names should NOT exist at the destination
@@ -306,11 +306,11 @@ bool WorkerReplicationRequestPOSIX::execute () {
             errorContext = errorContext
                 or reportErrorIf(
                         stat.type() == fs::status_error,
-                        ExtendedCompletionStatus::EXT_STATUS_FILE_STAT,
+                        ProtocolStatusExt::FILE_STAT,
                         "failed to check the status of output file: " + file.string())
                 or reportErrorIf(
                         fs::exists(stat),
-                        ExtendedCompletionStatus::EXT_STATUS_FILE_EXISTS,
+                        ProtocolStatusExt::FILE_EXISTS,
                         "the output file already exists: " + file.string());
         }
 
@@ -322,7 +322,7 @@ bool WorkerReplicationRequestPOSIX::execute () {
             errorContext = errorContext
                 or reportErrorIf(
                         stat.type() == fs::status_error,
-                        ExtendedCompletionStatus::EXT_STATUS_FILE_STAT,
+                        ProtocolStatusExt::FILE_STAT,
                         "failed to check the status of temporary file: " + file.string());
 
             if (fs::exists(stat)) {
@@ -330,7 +330,7 @@ bool WorkerReplicationRequestPOSIX::execute () {
                 errorContext = errorContext
                     or reportErrorIf(
                             ec.value() != 0,
-                            ExtendedCompletionStatus::EXT_STATUS_FILE_DELETE,
+                            ProtocolStatusExt::FILE_DELETE,
                             "failed to remove temporary file: " + file.string());
             }
         }
@@ -344,15 +344,15 @@ bool WorkerReplicationRequestPOSIX::execute () {
         errorContext = errorContext
             or reportErrorIf(
                     ec.value() != 0,
-                    ExtendedCompletionStatus::EXT_STATUS_SPACE_REQ,
+                    ProtocolStatusExt::SPACE_REQ,
                     "failed to obtain space information at output folder: " + outDir.string())
             or reportErrorIf(
                     space.available < totalBytes,
-                    ExtendedCompletionStatus::EXT_STATUS_NO_SPACE,
+                    ProtocolStatusExt::NO_SPACE,
                     "not enough free space available at output folder: " + outDir.string());
     }
     if (errorContext.failed) {
-        setStatus(lock, STATUS_FAILED, errorContext.extendedStatus);
+        setStatus(lock, ProtocolStatus::FAILED, errorContext.extendedStatus);
         return true;
     }
 
@@ -368,11 +368,11 @@ bool WorkerReplicationRequestPOSIX::execute () {
         errorContext = errorContext
             or reportErrorIf(
                     ec.value() != 0,
-                    ExtendedCompletionStatus::EXT_STATUS_FILE_COPY,
+                    ProtocolStatusExt::FILE_COPY,
                     "failed to copy file: " + inFile.string() + " into: " + tmpFile.string());
     }
     if (errorContext.failed) {
-        setStatus(lock, STATUS_FAILED, errorContext.extendedStatus);
+        setStatus(lock, ProtocolStatus::FAILED, errorContext.extendedStatus);
         return true;
     }
 
@@ -398,26 +398,26 @@ bool WorkerReplicationRequestPOSIX::execute () {
             errorContext = errorContext
                 or reportErrorIf(
                         ec.value() != 0,
-                        ExtendedCompletionStatus::EXT_STATUS_FILE_RENAME,
+                        ProtocolStatusExt::FILE_RENAME,
                         "failed to rename file: " + tmpFile.string());
 
             fs::last_write_time(outFile, inFile2mtime[inFile], ec);
             errorContext = errorContext
                 or reportErrorIf(
                         ec.value() != 0,
-                        ExtendedCompletionStatus::EXT_STATUS_FILE_MTIME,
+                        ProtocolStatusExt::FILE_MTIME,
                         "failed to set the mtime of output file: " + outFile.string());
         }
     }
     if (errorContext.failed) {
-        setStatus(lock, STATUS_FAILED, errorContext.extendedStatus);
+        setStatus(lock, ProtocolStatus::FAILED, errorContext.extendedStatus);
         return true;
     }
 
     // For now (before finalizing the progress reporting protocol) just return
     // the percentage of the total amount of data moved
 
-    setStatus(lock, STATUS_SUCCEEDED);
+    setStatus(lock, ProtocolStatus::SUCCESS);
     return true;
 }
 
@@ -489,8 +489,8 @@ bool WorkerReplicationRequestFS::execute () {
 
     // Abort the operation right away if that's the case
 
-    if (_status == STATUS_IS_CANCELLING) {
-        setStatus(lock, STATUS_CANCELLED);
+    if (_status == ProtocolStatus::IS_CANCELLING) {
+        setStatus(lock, ProtocolStatus::CANCELLED);
         throw WorkerRequestCancelled();
     }
 
@@ -565,14 +565,14 @@ bool WorkerReplicationRequestFS::execute () {
                 errorContext = errorContext
                     or reportErrorIf(
                         not inFilePtr,
-                        ExtendedCompletionStatus::EXT_STATUS_FILE_ROPEN,
+                        ProtocolStatusExt::FILE_ROPEN,
                         "failed to open input file on remote worker: " + sourceWorker() +
                         " (" + sourceWorkerHostPort() +
                         "), database: " + _databaseInfo.name +
                         ", file: " + file);
 
                 if (errorContext.failed) {
-                    setStatus(lock, STATUS_FAILED, errorContext.extendedStatus);
+                    setStatus(lock, ProtocolStatus::FAILED, errorContext.extendedStatus);
                     return true;
                 }
                 file2size[file] = inFilePtr->size();
@@ -588,11 +588,11 @@ bool WorkerReplicationRequestFS::execute () {
             errorContext = errorContext
                 or reportErrorIf(
                         ec.value() != 0,
-                        ExtendedCompletionStatus::EXT_STATUS_FOLDER_STAT,
+                        ProtocolStatusExt::FOLDER_STAT,
                         "failed to check the status of output directory: " + outDir.string())
                 or reportErrorIf(
                         not outDirExists,
-                        ExtendedCompletionStatus::EXT_STATUS_NO_FOLDER,
+                        ProtocolStatusExt::NO_FOLDER,
                         "the output directory doesn't exist: " + outDir.string());
 
             // The files with canonical(!) names should NOT exist at the destination
@@ -603,11 +603,11 @@ bool WorkerReplicationRequestFS::execute () {
                 errorContext = errorContext
                     or reportErrorIf(
                             stat.type() == fs::status_error,
-                            ExtendedCompletionStatus::EXT_STATUS_FILE_STAT,
+                            ProtocolStatusExt::FILE_STAT,
                             "failed to check the status of output file: " + file.string())
                     or reportErrorIf(
                             fs::exists(stat),
-                            ExtendedCompletionStatus::EXT_STATUS_FILE_EXISTS,
+                            ProtocolStatusExt::FILE_EXISTS,
                             "the output file already exists: " + file.string());
             }
 
@@ -619,7 +619,7 @@ bool WorkerReplicationRequestFS::execute () {
                 errorContext = errorContext
                     or reportErrorIf(
                             stat.type() == fs::status_error,
-                            ExtendedCompletionStatus::EXT_STATUS_FILE_STAT,
+                            ProtocolStatusExt::FILE_STAT,
                             "failed to check the status of temporary file: " + file.string());
 
                 if (fs::exists(stat)) {
@@ -627,7 +627,7 @@ bool WorkerReplicationRequestFS::execute () {
                     errorContext = errorContext
                         or reportErrorIf(
                                 ec.value() != 0,
-                                ExtendedCompletionStatus::EXT_STATUS_FILE_DELETE,
+                                ProtocolStatusExt::FILE_DELETE,
                                 "failed to remove temporary file: " + file.string());
                 }
             }
@@ -641,11 +641,11 @@ bool WorkerReplicationRequestFS::execute () {
             errorContext = errorContext
                 or reportErrorIf(
                         ec.value() != 0,
-                        ExtendedCompletionStatus::EXT_STATUS_SPACE_REQ,
+                        ProtocolStatusExt::SPACE_REQ,
                         "failed to obtaine space information at output folder: " + outDir.string())
                 or reportErrorIf(
                         space.available < totalBytes,
-                        ExtendedCompletionStatus::EXT_STATUS_NO_SPACE,
+                        ProtocolStatusExt::NO_SPACE,
                         "not enough free space availble at output folder: " + outDir.string());
 
             // Pre-create temporary files with the final size to assert disk space
@@ -661,7 +661,7 @@ bool WorkerReplicationRequestFS::execute () {
                 errorContext = errorContext
                     or reportErrorIf(
                             not tmpFilePtr,
-                            ExtendedCompletionStatus::EXT_STATUS_FILE_CREATE,
+                            ProtocolStatusExt::FILE_CREATE,
                             "failed to open/create temporary file: " + tmpFile.string() +
                             ", error: " + strerror(errno));
                 if (tmpFilePtr) {
@@ -675,12 +675,12 @@ bool WorkerReplicationRequestFS::execute () {
                 errorContext = errorContext
                     or reportErrorIf(
                             ec.value() != 0,
-                            ExtendedCompletionStatus::EXT_STATUS_FILE_RESIZE,
+                            ProtocolStatusExt::FILE_RESIZE,
                             "failed to resize the temporary file: " + tmpFile.string());
             }
         }
         if (errorContext.failed) {
-            setStatus(lock, STATUS_FAILED, errorContext.extendedStatus);
+            setStatus(lock, ProtocolStatus::FAILED, errorContext.extendedStatus);
             return true;
         }
 
@@ -731,7 +731,7 @@ bool WorkerReplicationRequestFS::execute () {
                 errorContext = errorContext
                     or reportErrorIf(
                         true,
-                        ExtendedCompletionStatus::EXT_STATUS_FILE_WRITE,
+                        ProtocolStatusExt::FILE_WRITE,
                         "failed to write into temporary file: " + _file2descr[*_fileItr].tmpFile.string() +
                         ", error: " + strerror(errno));
             }
@@ -740,7 +740,7 @@ bool WorkerReplicationRequestFS::execute () {
             errorContext = errorContext
                 or reportErrorIf(
                     true,
-                    ExtendedCompletionStatus::EXT_STATUS_FILE_READ,
+                    ProtocolStatusExt::FILE_READ,
                     "failed to read input file from remote worker: " + sourceWorker() + " (" + sourceWorkerHostPort() +
                     "), database: " + _databaseInfo.name +
                     ", file: " + *_fileItr);
@@ -751,13 +751,13 @@ bool WorkerReplicationRequestFS::execute () {
         errorContext = errorContext
             or reportErrorIf(
                 _file2descr[*_fileItr].inSizeBytes != _file2descr[*_fileItr].outSizeBytes,
-                ExtendedCompletionStatus::EXT_STATUS_FILE_READ,
+                ProtocolStatusExt::FILE_READ,
                 "short read of the input file from remote worker: " + sourceWorker() + " (" + sourceWorkerHostPort() +
                 "), database: " + _databaseInfo.name +
                 ", file: " + *_fileItr);
 
         if (errorContext.failed) {
-            setStatus(lock, STATUS_FAILED, errorContext.extendedStatus);
+            setStatus(lock, ProtocolStatus::FAILED, errorContext.extendedStatus);
             _releaseResources(lock);
             return true;
         }
@@ -806,13 +806,13 @@ bool WorkerReplicationRequestFS::_openFiles(util::Lock const& lock) {
     errorContext = errorContext
         or reportErrorIf(
             not _inFilePtr,
-            ExtendedCompletionStatus::EXT_STATUS_FILE_ROPEN,
+            ProtocolStatusExt::FILE_ROPEN,
             "failed to open input file on remote worker: " + sourceWorker() + " (" + sourceWorkerHostPort() +
             "), database: " + _databaseInfo.name +
             ", file: " + *_fileItr);
 
     if (errorContext.failed) {
-        setStatus(lock, STATUS_FAILED, errorContext.extendedStatus);
+        setStatus(lock, ProtocolStatus::FAILED, errorContext.extendedStatus);
         return false;
     }
 
@@ -825,11 +825,11 @@ bool WorkerReplicationRequestFS::_openFiles(util::Lock const& lock) {
     errorContext = errorContext
         or reportErrorIf(
             not _tmpFilePtr,
-            ExtendedCompletionStatus::EXT_STATUS_FILE_OPEN,
+            ProtocolStatusExt::FILE_OPEN,
             "failed to open temporary file: " + tmpFile.string() +
             ", error: " + strerror(errno));
     if (errorContext.failed) {
-        setStatus(lock, STATUS_FAILED, errorContext.extendedStatus);
+        setStatus(lock, ProtocolStatus::FAILED, errorContext.extendedStatus);
         return false;
     }
     rewind(_tmpFilePtr);
@@ -873,22 +873,22 @@ bool WorkerReplicationRequestFS::_finalize(util::Lock const& lock) {
         errorContext = errorContext
             or reportErrorIf (
                     ec.value() != 0,
-                    ExtendedCompletionStatus::EXT_STATUS_FILE_RENAME,
+                    ProtocolStatusExt::FILE_RENAME,
                     "failed to rename file: " + tmpFile.string());
 
         fs::last_write_time(outFile, _file2descr[file].mtime, ec);
         errorContext = errorContext
             or reportErrorIf (
                     ec.value() != 0,
-                    ExtendedCompletionStatus::EXT_STATUS_FILE_MTIME,
+                    ProtocolStatusExt::FILE_MTIME,
                     "failed to change 'mtime' of file: " + tmpFile.string());
     }
 
     if (errorContext.failed) {
-        setStatus(lock, STATUS_FAILED, errorContext.extendedStatus);
+        setStatus(lock, ProtocolStatus::FAILED, errorContext.extendedStatus);
         return true;
     }
-    setStatus(lock, STATUS_SUCCEEDED);
+    setStatus(lock, ProtocolStatus::SUCCESS);
     return true;
 }
 

@@ -34,6 +34,7 @@
 // Qserv headers
 #include "replica/Common.h"
 #include "replica/Performance.h"
+#include "replica/protocol.pb.h"
 #include "replica/ServiceProvider.h"
 #include "util/Mutex.h"
 
@@ -60,7 +61,7 @@ public:
   * environment (network, disk I/O, etc.). Generally speaking, all requests
   * which can't be implemented instantaneously fall into this category.
   */
-class WorkerRequest : public std::enable_shared_from_this<WorkerRequest> {
+class WorkerRequest: public std::enable_shared_from_this<WorkerRequest> {
 public:
     typedef std::shared_ptr<WorkerRequest> Ptr;
 
@@ -68,22 +69,12 @@ public:
     /// given its unique identifier.
     typedef std::function<void(std::string const&)> ExpirationCallbackType;
 
-    /// Completion status of the request processing operation
-    enum CompletionStatus {
-        STATUS_NONE,           /// no processing has been attempted
-        STATUS_IN_PROGRESS,
-        STATUS_IS_CANCELLING,
-        STATUS_CANCELLED,
-        STATUS_SUCCEEDED,
-        STATUS_FAILED
-    };
-
     /// @return the string representation of the status
-    static std::string status2string(CompletionStatus status);
+    static std::string status2string(ProtocolStatus status);
 
     /// @return the string representation of the full status
-    static std::string status2string(CompletionStatus status,
-                                     ExtendedCompletionStatus extendedStatus);
+    static std::string status2string(ProtocolStatus status,
+                                     ProtocolStatusExt extendedStatus);
 
     WorkerRequest() = delete;
     WorkerRequest(WorkerRequest const&) = delete;
@@ -104,16 +95,16 @@ public:
 
     int priority() const { return _priority; }
 
-    CompletionStatus status() const { return _status; }
+    ProtocolStatus status() const { return _status; }
 
-    ExtendedCompletionStatus extendedStatus() const { return _extendedStatus; }
+    ProtocolStatusExt extendedStatus() const { return _extendedStatus; }
 
     /// @return the performance info
     const WorkerPerformance& performance() const { return _performance; }
 
 
     /**
-     * This method is called from the initial state STATUS_NONE in order
+     * This method is called from the initial state ProtocolStatus::CREATED in order
      * to start the request expiration timer. It's safe to call this operation
      * multiple times. Each invocation of the method will result in cancelling
      * the previously set timer (if any) and starting a new one.
@@ -121,10 +112,10 @@ public:
     void init();
 
     /**
-     * This method is called from the initial state STATUS_NONE in order
+     * This method is called from the initial state ProtocolStatus::CREATED in order
      * to prepare the request for processing (to respond to methods 'execute',
      * 'cancel', 'rollback' or 'reset'. The final state upon the completion
-     * of the method should be STATUS_IN_PROGRESS.
+     * of the method should be ProtocolStatus::IN_PROGRESS.
      */
     void start();
     
@@ -134,7 +125,7 @@ public:
      * may mean both success or failure, depending on the completion status
      * of the request.
      *
-     * This method is required to be called while the request state is STATUS_IN_PROGRESS.
+     * This method is required to be called while the request state is ProtocolStatus::IN_PROGRESS.
      *
      * The method will throw custom exception WorkerRequestCancelled when
      * it detects a cancellation request.
@@ -154,9 +145,9 @@ public:
      * the request. The default (the base class's implementation) assumes
      * the following transitions:
      *
-     *   STATUS_NONE or STATUS_CANCELLED             - transition to state STATUS_CANCELLED
-     *   STATUS_IN_PROGRESS or STATUS_IS_CANCELLING  - transition to state STATUS_IS_CANCELLING
-     *   other                                       - throwing std::logic_error
+     *   ProtocolStatus::CREATED or ProtocolStatus::CANCELLED          - transition to state ProtocolStatus::CANCELLED
+     *   ProtocolStatus::IN_PROGRESS or ProtocolStatus::IS_CANCELLING  - transition to state ProtocolStatus::IS_CANCELLING
+     *   other                                                         - throwing std::logic_error
 
      */
     virtual void cancel();
@@ -169,15 +160,15 @@ public:
      * the request. The default (the base class's implementation) assumes
      * the following transitions:
      *
-     *   STATUS_NONE or STATUS_IN_PROGRESS - transition to STATUS_NONE
-     *   STATUS_IS_CANCELLING              - transition to STATUS_CANCELLED and throwing WorkerRequestCancelled
-     *   other                             - throwing std::logic_error
+     *   ProtocolStatus::CREATED or ProtocolStatus::IN_PROGRESS - transition to ProtocolStatus::CREATED
+     *   ProtocolStatus::IS_CANCELLING                          - transition to ProtocolStatus::CANCELLED and throwing WorkerRequestCancelled
+     *   other                                                  - throwing std::logic_error
      */
     virtual void rollback();
 
     /**
      * This method is called from *ANY* initial state in order to turn
-     * the request back into the initial STATUS_NONE.
+     * the request back into the initial ProtocolStatus::CREATED.
      * 
      * @param func (optional) the name of a function/method which requested
      *   the context string
@@ -239,8 +230,8 @@ protected:
      * @param extendedStatus secondary status to be set
      */
     void setStatus(util::Lock const& lock,
-                   CompletionStatus status,
-                   ExtendedCompletionStatus extendedStatus=ExtendedCompletionStatus::EXT_STATUS_NONE);
+                   ProtocolStatus status,
+                   ProtocolStatusExt extendedStatus=ProtocolStatusExt::NONE);
 
     /**
      * Structure ErrorContext is used for tracking errors reported by
@@ -250,11 +241,11 @@ protected:
 
         // State of the object
         bool failed;
-        ExtendedCompletionStatus extendedStatus;
+        ProtocolStatusExt extendedStatus;
 
         ErrorContext()
             :   failed(false),
-                extendedStatus(ExtendedCompletionStatus::EXT_STATUS_NONE) {
+                extendedStatus(ProtocolStatusExt::NONE) {
         }
 
         /**
@@ -290,7 +281,7 @@ protected:
      *   'condition' and 'extendedStatus'
      */
     ErrorContext reportErrorIf(bool condition,
-                               ExtendedCompletionStatus extendedStatus,
+                               ProtocolStatusExt extendedStatus,
                                std::string const& errorMsg);
 
     /// Return shared pointer of the desired subclass (no dynamic type checking)
@@ -324,8 +315,8 @@ protected:
 
     // 2-layer state of a request
 
-    std::atomic<CompletionStatus>         _status;
-    std::atomic<ExtendedCompletionStatus> _extendedStatus;
+    std::atomic<ProtocolStatus>    _status;
+    std::atomic<ProtocolStatusExt> _extendedStatus;
 
     /// Performance counters
     WorkerPerformance _performance;

@@ -107,14 +107,14 @@ bool WorkerEchoRequest::execute() {
 
     switch (status()) {
 
-        case STATUS_IN_PROGRESS:
+        case ProtocolStatus::IN_PROGRESS:
             break;
 
-        case STATUS_IS_CANCELLING:
+        case ProtocolStatus::IS_CANCELLING:
 
             // Abort the operation right away
 
-            setStatus(lock, STATUS_CANCELLED);
+            setStatus(lock, ProtocolStatus::CANCELLED);
             throw WorkerRequestCancelled();
 
         default:
@@ -133,7 +133,7 @@ bool WorkerEchoRequest::execute() {
 
     // Done if have reached or exceeded the initial delay
     if (0 == _delayLeft) {
-        setStatus(lock, STATUS_SUCCEEDED);
+        setStatus(lock, ProtocolStatus::SUCCESS);
         return true;
     }
     return false;

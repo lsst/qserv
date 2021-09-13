@@ -379,6 +379,11 @@ void SqlApp::_configureTableCommands() {
         "comment",
         "The optional comment explaining an index.",
         _indexComment
+    ).flag(
+        "ignore-duplicate-key",
+        "To allow running the index creation tool job multiple times without failing on tables"
+        " that may already have the desired indexe created by the previous run of the job.",
+        _ignoreDuplicateKey
     );
 
     parser().command(
@@ -438,7 +443,7 @@ int SqlApp::runImpl() {
                                           _indexName,
                                           _indexComment,
                                           SqlSchemaUtils::readIndexSpecFromTextFile(_indexColumnsFile),
-                                         _allWorkers, controller);
+                                         _allWorkers, _ignoreDuplicateKey, controller);
     } else if(_command == "DROP_INDEXES") {
         job = SqlDropIndexesJob::create(_database, _table, _overlap,
                                         _indexName,
@@ -459,12 +464,12 @@ int SqlApp::runImpl() {
 
         auto&& resultData = job->getResultData();
         size_t numSucceeded = 0;
-        map<ExtendedCompletionStatus,size_t> numFailed;
+        map<ProtocolStatusExt,size_t> numFailed;
         resultData.iterate(
             [&numFailed, &numSucceeded](SqlJobResult::Worker const& worker,
                                         SqlJobResult::Scope const& object,
                                         SqlResultSet::ResultSet const& resultSet) {
-                if (resultSet.extendedStatus == ExtendedCompletionStatus::EXT_STATUS_NONE) {
+                if (resultSet.extendedStatus == ProtocolStatusExt::NONE) {
                     numSucceeded++;
                 } else {
                     numFailed[resultSet.extendedStatus]++;
@@ -506,7 +511,7 @@ int SqlApp::runImpl() {
                     string const caption =
                         worker + ":" + scope + ":" + status2string(resultSet.extendedStatus)
                         + ":" + resultSet.error;
-                    if (resultSet.extendedStatus != ExtendedCompletionStatus::EXT_STATUS_NONE) {
+                    if (resultSet.extendedStatus != ProtocolStatusExt::NONE) {
                         cout << caption << endl;
                     } else {
                         auto const table = resultSet.toColumnTable(

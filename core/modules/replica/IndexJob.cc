@@ -401,7 +401,7 @@ void IndexJob::_onRequestFinish(IndexRequest::Ptr const& request) {
 
     bool hasData = true;
     if (request->extendedState() != Request::SUCCESS) {
-        if (request->extendedServerStatus() == EXT_STATUS_NO_SUCH_PARTITION) {
+        if (request->extendedServerStatus() == ProtocolStatusExt::NO_SUCH_PARTITION) {
             // OK to proceed. We just don't have any contribution into the
             // partition.
             hasData = false;

@@ -62,22 +62,13 @@ namespace replica {
 util::Mutex WorkerRequest::_mtxDataFolderOperations;
 
 
-string WorkerRequest::status2string(CompletionStatus status) {
-    switch (status) {
-        case STATUS_NONE:          return "STATUS_NONE";
-        case STATUS_IN_PROGRESS:   return "STATUS_IN_PROGRESS";
-        case STATUS_IS_CANCELLING: return "STATUS_IS_CANCELLING";
-        case STATUS_CANCELLED:     return "STATUS_CANCELLED";
-        case STATUS_SUCCEEDED:     return "STATUS_SUCCEEDED";
-        case STATUS_FAILED:        return "STATUS_FAILED";
-    }
-    throw logic_error(
-            "WorkerRequest::" + string(__func__) + "  unhandled status: " + to_string(status));
+string WorkerRequest::status2string(ProtocolStatus status) {
+    return ProtocolStatus_Name(status);
 }
 
 
-string WorkerRequest::status2string(CompletionStatus status,
-                                    ExtendedCompletionStatus extendedStatus) {
+string WorkerRequest::status2string(ProtocolStatus status,
+                                    ProtocolStatusExt extendedStatus) {
     return status2string(status) + "::" + replica::status2string(extendedStatus);
 }
 
@@ -99,8 +90,8 @@ WorkerRequest::WorkerRequest(ServiceProvider::Ptr const& serviceProvider,
             ? serviceProvider->config()->get<unsigned int>("controller", "request_timeout_sec")
             : requestExpirationIvalSec),
         _requestExpirationTimer(serviceProvider->io_service()),
-        _status(STATUS_NONE),
-        _extendedStatus(ExtendedCompletionStatus::EXT_STATUS_NONE),
+        _status(ProtocolStatus::CREATED),
+        _extendedStatus(ProtocolStatusExt::NONE),
         _performance(),
         _durationMillisec(0) {
 
@@ -115,7 +106,7 @@ WorkerRequest::~WorkerRequest() {
 
 WorkerRequest::ErrorContext WorkerRequest::reportErrorIf(
                                                 bool errorCondition,
-                                                ExtendedCompletionStatus extendedStatus,
+                                                ProtocolStatusExt extendedStatus,
                                                 string const& errorMsg) {
     WorkerRequest::ErrorContext errorContext;
     if (errorCondition) {
@@ -131,7 +122,7 @@ void WorkerRequest::init() {
     LOGS(_log, LOG_LVL_DEBUG, context(__func__));    
     util::Lock lock(_mtx, context(__func__));
 
-    if (status() != STATUS_NONE) return;
+    if (status() != ProtocolStatus::CREATED) return;
 
     // Start the expiration timer
 
@@ -151,8 +142,8 @@ void WorkerRequest::start() {
     util::Lock lock(_mtx, context(__func__));
 
     switch (status()) {
-        case STATUS_NONE:
-            setStatus(lock, STATUS_IN_PROGRESS);
+        case ProtocolStatus::CREATED:
+            setStatus(lock, ProtocolStatus::IN_PROGRESS);
             break;
         default:
             throw logic_error(
@@ -171,10 +162,10 @@ bool WorkerRequest::execute() {
     // Success/failure modes will be also simulated using the corresponding generator.
 
    switch (status()) {
-        case STATUS_IN_PROGRESS:
+        case ProtocolStatus::IN_PROGRESS:
             break;
-        case STATUS_IS_CANCELLING:
-            setStatus(lock, STATUS_CANCELLED);
+        case ProtocolStatus::IS_CANCELLING:
+            setStatus(lock, ProtocolStatus::CANCELLED);
             throw WorkerRequestCancelled();
         default:
             throw logic_error(
@@ -187,8 +178,8 @@ bool WorkerRequest::execute() {
     if (_durationMillisec < ::maxDurationMillisec) return false;
 
     setStatus(lock, ::successRateGenerator.success() ?
-                        STATUS_SUCCEEDED :
-                        STATUS_FAILED);
+                        ProtocolStatus::SUCCESS :
+                        ProtocolStatus::FAILED);
     return true;
 }
 
@@ -198,18 +189,18 @@ void WorkerRequest::cancel() {
     util::Lock lock(_mtx, context(__func__));
 
     switch (status()) {
-        case STATUS_NONE:
-        case STATUS_CANCELLED:
-            setStatus(lock, STATUS_CANCELLED);
+        case ProtocolStatus::CREATED:
+        case ProtocolStatus::CANCELLED:
+            setStatus(lock, ProtocolStatus::CANCELLED);
             break;
-        case STATUS_IN_PROGRESS:
-        case STATUS_IS_CANCELLING:
-            setStatus(lock, STATUS_IS_CANCELLING);
+        case ProtocolStatus::IN_PROGRESS:
+        case ProtocolStatus::IS_CANCELLING:
+            setStatus(lock, ProtocolStatus::IS_CANCELLING);
             break;
 
-        /* Nothing to be done to completed requests */
-        case WorkerRequest::STATUS_SUCCEEDED:
-        case WorkerRequest::STATUS_FAILED:
+        // Nothing to be done to the completed requests
+        case ProtocolStatus::SUCCESS:
+        case ProtocolStatus::FAILED:
             break;
     }
 }
@@ -220,12 +211,12 @@ void WorkerRequest::rollback() {
     util::Lock lock(_mtx, context(__func__));
 
     switch (status()) {
-        case STATUS_NONE:
-        case STATUS_IN_PROGRESS:
-            setStatus(lock, STATUS_NONE);
+        case ProtocolStatus::CREATED:
+        case ProtocolStatus::IN_PROGRESS:
+            setStatus(lock, ProtocolStatus::CREATED);
             break;
-        case STATUS_IS_CANCELLING:
-            setStatus(lock, STATUS_CANCELLED);
+        case ProtocolStatus::IS_CANCELLING:
+            setStatus(lock, ProtocolStatus::CANCELLED);
             throw WorkerRequestCancelled();
             break;
         default:
@@ -239,7 +230,7 @@ void WorkerRequest::rollback() {
 void WorkerRequest::stop() {
     LOGS(_log, LOG_LVL_DEBUG, context(__func__));    
     util::Lock lock(_mtx, context(__func__));
-    setStatus(lock, STATUS_NONE);
+    setStatus(lock, ProtocolStatus::CREATED);
 }
 
 
@@ -258,24 +249,24 @@ void WorkerRequest::dispose() noexcept {
 
 
 void WorkerRequest::setStatus(util::Lock const& lock,
-                              CompletionStatus status,
-                              ExtendedCompletionStatus extendedStatus) {
+                              ProtocolStatus status,
+                              ProtocolStatusExt extendedStatus) {
     LOGS(_log, LOG_LVL_DEBUG, context(__func__) << "  "
          << WorkerRequest::status2string(_status, _extendedStatus) << " -> "
          << WorkerRequest::status2string( status,  extendedStatus));
 
     switch (status) {
-        case STATUS_NONE:
+        case ProtocolStatus::CREATED:
             _performance.start_time  = 0;
             _performance.finish_time = 0;
             break;
-        case STATUS_IN_PROGRESS:
+        case ProtocolStatus::IN_PROGRESS:
             _performance.setUpdateStart();
             _performance.finish_time = 0;
             break;
-        case STATUS_IS_CANCELLING:
+        case ProtocolStatus::IS_CANCELLING:
             break;
-        case STATUS_CANCELLED:
+        case ProtocolStatus::CANCELLED:
 
             // Set the start time to some meaningful value in case if the request was
             // cancelled while sitting in the input queue
@@ -285,8 +276,8 @@ void WorkerRequest::setStatus(util::Lock const& lock,
             _performance.setUpdateFinish();
             break;
 
-        case STATUS_SUCCEEDED:
-        case STATUS_FAILED:
+        case ProtocolStatus::SUCCESS:
+        case ProtocolStatus::FAILED:
             _performance.setUpdateFinish();
             break;
         default:

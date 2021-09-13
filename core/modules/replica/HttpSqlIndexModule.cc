@@ -79,7 +79,7 @@ json result2json(SqlJobResult const& jobResultSet, string const& context) {
                              SqlResultSet::ResultSet const& resultSet) {
         // Ignoring failed or empty results for now. They will be analyzed and reported
         // in the extended error channel.
-        if (resultSet.extendedStatus != ExtendedCompletionStatus::EXT_STATUS_NONE) return;
+        if (resultSet.extendedStatus != ProtocolStatusExt::NONE) return;
         if (not resultSet.hasResult) return;
 
         // Compute indexes just once and save it for analyzing this and other result sets.
@@ -189,6 +189,7 @@ json HttpSqlIndexModule::_createIndexes() {
     );
     json const columnsJson = body().required<json>("columns");
     bool const overlap = body().optional<int>("overlap", 0) != 0;
+    bool const ignoreDuplicateKey = body().optional<int>("ignore_duplicate_key", 1) != 0;
 
     debug(__func__, "database=" + database);
     debug(__func__, "table=" + table);
@@ -197,6 +198,7 @@ json HttpSqlIndexModule::_createIndexes() {
     debug(__func__, "spec=" + spec.str());
     debug(__func__, "columns.size()=" + columnsJson.size());
     debug(__func__, "overlap=" + bool2str(overlap));
+    debug(__func__, "ignore_duplicate_key=" + bool2str(ignoreDuplicateKey));
 
     auto const config = controller()->serviceProvider()->config();
     auto const databaseInfo = config->databaseInfo(database);
@@ -239,7 +241,7 @@ json HttpSqlIndexModule::_createIndexes() {
 
     bool const allWorkers = true;
     auto const job = SqlCreateIndexesJob::create(database, table, overlap, spec, index, comment, columns,
-                                                 allWorkers, controller());
+                                                 allWorkers, ignoreDuplicateKey, controller());
     job->start();
     logJobStartedEvent(SqlCreateIndexesJob::typeName(), job, databaseInfo.family);
     job->wait();

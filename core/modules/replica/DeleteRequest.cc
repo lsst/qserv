@@ -223,7 +223,7 @@ void DeleteRequest::_analyze(bool success,
 
     // Always get the latest status reported by the remote server
 
-    setExtendedServerStatus(lock, replica::translate(message.status_ext()));
+    setExtendedServerStatus(lock, message.status_ext());
 
     // Performance counters are updated from either of two sources,
     // depending on the availability of the 'target' performance counters
@@ -274,7 +274,7 @@ void DeleteRequest::_analyze(bool success,
 
             // Special treatment of the duplicate requests if allowed
 
-            if (extendedServerStatus() == ExtendedCompletionStatus::EXT_STATUS_DUPLICATE) {
+            if (extendedServerStatus() == ProtocolStatusExt::DUPLICATE) {
 
                 setDuplicateRequestId(lock, message.duplicate_request_id());
 

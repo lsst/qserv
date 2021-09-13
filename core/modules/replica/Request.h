@@ -133,7 +133,7 @@ public:
     /// @return the string representation of the combined state
     static std::string state2string(State state,
                                     ExtendedState extendedState,
-                                    ExtendedCompletionStatus extendedServerStatus);
+                                    ProtocolStatusExt extendedServerStatus);
 
     // Default construction and copy semantics are prohibited
 
@@ -174,7 +174,7 @@ public:
     ExtendedState extendedState() const { return _extendedState; }
 
     /// @return a status code received from a worker server
-    ExtendedCompletionStatus extendedServerStatus() const { return _extendedServerStatus; }
+    ProtocolStatusExt extendedServerStatus() const { return _extendedServerStatus; }
 
     /// @return the performance info
     Performance performance() const;
@@ -367,7 +367,7 @@ protected:
      * @param status The new status to be set.
      */
     void setExtendedServerStatus(util::Lock const& lock,
-                                 ExtendedCompletionStatus status) { _extendedServerStatus = status; }
+                                 ProtocolStatusExt status) { _extendedServerStatus = status; }
 
     /**
      * Set an effective identifier of a remote (worker-side) request
@@ -571,7 +571,7 @@ private:
     std::atomic<ExtendedState> _extendedState;
 
     /// Request status reported by a worker (where this applies)
-    std::atomic<ExtendedCompletionStatus> _extendedServerStatus;
+    std::atomic<ProtocolStatusExt> _extendedServerStatus;
 
     /// Performance counters
     Performance _performance;

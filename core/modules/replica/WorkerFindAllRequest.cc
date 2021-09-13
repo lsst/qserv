@@ -202,11 +202,11 @@ bool WorkerFindAllRequestPOSIX::execute() {
         errorContext = errorContext
             or reportErrorIf(
                     stat.type() == fs::status_error,
-                    ExtendedCompletionStatus::EXT_STATUS_FOLDER_STAT,
+                    ProtocolStatusExt::FOLDER_STAT,
                     "failed to check the status of directory: " + dataDir.string())
             or reportErrorIf(
                     not fs::exists(stat),
-                    ExtendedCompletionStatus::EXT_STATUS_NO_FOLDER,
+                    ProtocolStatusExt::NO_FOLDER,
                     "the directory does not exists: " + dataDir.string());
         try {
             for (fs::directory_entry &entry: fs::directory_iterator(dataDir)) {
@@ -227,14 +227,14 @@ bool WorkerFindAllRequestPOSIX::execute() {
                     errorContext = errorContext
                         or reportErrorIf(
                                 ec.value() != 0,
-                                ExtendedCompletionStatus::EXT_STATUS_FILE_SIZE,
+                                ProtocolStatusExt::FILE_SIZE,
                                 "failed to read file size: " + entry.path().string());
 
                     time_t const mtime = fs::last_write_time(entry.path(), ec);
                     errorContext = errorContext
                         or reportErrorIf(
                                 ec.value() != 0,
-                                ExtendedCompletionStatus::EXT_STATUS_FILE_MTIME,
+                                ProtocolStatusExt::FILE_MTIME,
                                 "failed to read file mtime: " + entry.path().string());
 
                     unsigned const chunk = get<1>(parsed);
@@ -256,13 +256,13 @@ bool WorkerFindAllRequestPOSIX::execute() {
             errorContext = errorContext
                 or reportErrorIf(
                         true,
-                        ExtendedCompletionStatus::EXT_STATUS_FOLDER_READ,
+                        ProtocolStatusExt::FOLDER_READ,
                         "failed to read the directory: " + dataDir.string() +
                         ", error: " + string(ex.what()));
         }
     }
     if (errorContext.failed) {
-        setStatus(lock, STATUS_FAILED, errorContext.extendedStatus);
+        setStatus(lock, ProtocolStatus::FAILED, errorContext.extendedStatus);
         return true;
     }
 
@@ -284,7 +284,7 @@ bool WorkerFindAllRequestPOSIX::execute() {
                 chunk2fileInfoCollection[chunk]);
     }
 
-    setStatus(lock, STATUS_SUCCEEDED);
+    setStatus(lock, ProtocolStatus::SUCCESS);
     return true;
 }
 

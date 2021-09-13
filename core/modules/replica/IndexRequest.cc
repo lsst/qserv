@@ -264,7 +264,7 @@ void IndexRequest::_analyze(bool success,
 
     // Always use  the latest status reported by the remote server
 
-    setExtendedServerStatus(lock, replica::translate(message.status_ext()));
+    setExtendedServerStatus(lock, message.status_ext());
 
     // Performance counters are updated from either of two sources,
     // depending on the availability of the 'target' performance counters

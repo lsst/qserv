@@ -56,6 +56,7 @@ SqlCreateIndexesJob::Ptr SqlCreateIndexesJob::create(
         string const& indexComment,
         vector<SqlIndexColumn> const& indexColumns,
         bool allWorkers,
+        bool ignoreDuplicateKey,
         Controller::Ptr const& controller,
         string const& parentJobId,
         CallbackType const& onFinish,
@@ -69,6 +70,7 @@ SqlCreateIndexesJob::Ptr SqlCreateIndexesJob::create(
         indexComment,
         indexColumns,
         allWorkers,
+        ignoreDuplicateKey,
         controller,
         parentJobId,
         onFinish,
@@ -86,6 +88,7 @@ SqlCreateIndexesJob::SqlCreateIndexesJob(
         string const& indexComment,
         vector<SqlIndexColumn> const& indexColumns,
         bool allWorkers,
+        bool ignoreDuplicateKey,
         Controller::Ptr const& controller,
         string const& parentJobId,
         CallbackType const& onFinish,
@@ -95,7 +98,9 @@ SqlCreateIndexesJob::SqlCreateIndexesJob(
                controller,
                parentJobId,
                "SQL_CREATE_TABLE_INDEXES",
-               options),
+               options,
+               false, /* ignoreNonPartitioned */
+               ignoreDuplicateKey),
         _database(database),
         _table(table),
         _overlap(overlap),
@@ -117,6 +122,7 @@ list<pair<string,string>> SqlCreateIndexesJob::extendedPersistentState() const {
     result.emplace_back("index_comment", indexComment());
     result.emplace_back("index_num_columns", to_string(indexColumns().size()));
     result.emplace_back("all_workers", bool2str(allWorkers()));
+    result.emplace_back("ignore_duplicate_key", bool2str(ignoreDuplicateKey()));
     return result;
 }
 
