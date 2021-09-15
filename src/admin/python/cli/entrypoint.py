@@ -54,6 +54,7 @@ from .options import (
     xrootd_manager_option,
 )
 from . import script
+from ..watcher import watch
 
 
 @click.group()
@@ -262,6 +263,47 @@ def replication_controller(**kwargs):
 @repl_ctrl_port_option()
 def init_dashboard(**kwargs):
     script.init_dashboard(**kwargs)
+
+
+@entrypoint.command()
+@click.option(
+    "--cluster-id",
+    required=True,
+    help="The name/identifier of the cluster to show in alerts and log messages.",
+)
+@click.option(
+    "--notify-url-file",
+    help="The path to the file that contains the url to receive alerts. "
+    "Accepts 'None' to not send notifications (useful for debugging).",
+    required=True,
+    callback=lambda ctx, par, val: None if val == "None" else val,
+)
+@click.option(
+    "--qserv",
+    default="qserv://qsmaster@czar-proxy:4040",
+    help="The url to the qserv instance to watch.",
+)
+@click.option(
+    "--timeout-sec",
+    help="The threshold time, in seconds, queries taking longer than this will trigger an alert.",
+    default=600,  # 10 minutes
+)
+@click.option(
+    "--interval-sec",
+    help="How long to wait (in seconds) between checks.",
+    default=60,  # 1 minute
+)
+@click.option(
+    "--show-query",
+    help="Show the query in alerts.",
+    default=False,
+    show_default=True,
+    is_flag=True,
+)
+def watcher(**kwargs):
+    """Run a watcher algorithm that sends notifications if querys appear to stop
+    processing."""
+    watch(**kwargs)
 
 
 @entrypoint.command()
