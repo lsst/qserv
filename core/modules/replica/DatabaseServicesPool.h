@@ -203,14 +203,17 @@ public:
                                                             std::string const& table=std::string(),
                                                             std::string const& worker=std::string()) final;
 
-    TransactionContribInfo beginTransactionContrib(TransactionId transactionId,
-                                                   std::string const& table,
-                                                   unsigned int chunk,
-                                                   bool isOverlap,
-                                                   std::string const& worker,
-                                                   std::string const& url) final;
+    TransactionContribInfo createdTransactionContrib(TransactionContribInfo const& info,
+                                                     bool failed=false) final;
 
-    TransactionContribInfo endTransactionContrib(TransactionContribInfo const& info) final;
+    TransactionContribInfo startedTransactionContrib(TransactionContribInfo const& info,
+                                                     bool failed=false) final;
+
+    TransactionContribInfo readTransactionContrib(TransactionContribInfo const& info,
+                                                  bool failed=false) final;
+
+    TransactionContribInfo loadedTransactionContrib(TransactionContribInfo const& info,
+                                                    bool failed=false) final;
 
     DatabaseIngestParam ingestParam(std::string const& database,
                                     std::string const& category,

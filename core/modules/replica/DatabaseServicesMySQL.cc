@@ -2243,57 +2243,64 @@ vector<TransactionContribInfo> DatabaseServicesMySQL::transactionContribs(
 }
 
 
-TransactionContribInfo DatabaseServicesMySQL::beginTransactionContrib(
-        TransactionId transactionId,
-        string const& table,
-        unsigned int chunk,
-        bool isOverlap,
-        string const& worker,
-        string const& url) {
+TransactionContribInfo DatabaseServicesMySQL::createdTransactionContrib(
+        TransactionContribInfo const& info,
+        bool failed) {
 
-    string const context = _context(__func__) + "transactionId="  + to_string(transactionId)
-            + " table=" + table + " chunk=" + to_string(chunk) + " isOverlap=" + bool2str(isOverlap)
-            + " worker=" + worker + " " + " url=" + url;
+    string const context = _context(__func__) + "transactionId="  + to_string(info.transactionId)
+            + " table=" + info.table + " chunk=" + to_string(info.chunk)
+            + " isOverlap=" + bool2str(info.isOverlap)
+            + " worker=" + info.worker + " " + " url=" + info.url
+            + " failed=" + bool2str(failed) + " ";
 
     LOGS(_log, LOG_LVL_DEBUG, context);
-
     util::Lock lock(_mtx, context);
 
-    uint64_t const beginTime = PerformanceUtils::now();
-    uint64_t const endTime = 0;
     uint64_t const numBytes = 0;
     uint64_t const numRows = 0;
-    int      const success = 0;
 
-    TransactionContribInfo info;
+    uint64_t const createTime = PerformanceUtils::now();
+    uint64_t const startTime = 0;
+    uint64_t const readTime = 0;
+    uint64_t const loadTime = 0;
+
+    TransactionContribInfo::Status const status = failed ?
+        TransactionContribInfo::Status::CREATE_FAILED : TransactionContribInfo::Status::IN_PROGRESS;
+
+    TransactionContribInfo updatedInfo;
     try {
         auto const predicate = _conn->sqlEqual("id", database::mysql::Function::LAST_INSERT_ID);
         _conn->executeInOwnTransaction(
             [&](decltype(_conn) conn) {
-
-                // This will throw the exception DatabaseServicesNotFound if the transaction
-                // won't be found.
-                bool const includeContext = false;
-                TransactionInfo const transactionInfo =
-                        _findTransactionImpl(lock, conn->sqlEqual("id", transactionId), includeContext);
-
                 conn->executeInsertQuery(
                     "transaction_contrib",
                     database::mysql::Keyword::SQL_NULL,
-                    transactionId,
-                    worker,
-                    transactionInfo.database,
-                    table,
-                    chunk,
-                    isOverlap ? 1 : 0,
-                    url,
-                    beginTime,
-                    endTime,
+                    info.transactionId,
+                    info.worker,
+                    info.database,
+                    info.table,
+                    info.chunk,
+                    info.isOverlap ? 1 : 0,
+                    info.url,
+                    info.async ? "ASYNC" : "SYNC",
+                    info.expirationTimeoutSec,
+                    info.fieldsTerminatedBy,
+                    info.fieldsEnclosedBy,
+                    info.fieldsEscapedBy,
+                    info.linesTerminatedBy,
                     numBytes,
                     numRows,
-                    success
+                    createTime,
+                    startTime,
+                    readTime,
+                    loadTime,
+                    TransactionContribInfo::status2str(status),
+                    failed ? info.httpError : 0,
+                    failed ? info.systemError : 0,
+                    failed ? info.error : string(),
+                    (failed ? info.retryAllowed : false) ? 1 : 0
                 );
-                info = _transactionContribImpl(lock, predicate);
+                updatedInfo = _transactionContribImpl(lock, predicate);
             }
         );
 
@@ -2302,16 +2309,64 @@ TransactionContribInfo DatabaseServicesMySQL::beginTransactionContrib(
         throw;
     }
     LOGS(_log, LOG_LVL_DEBUG, context + "** DONE **");
-    return info;
+    return updatedInfo;
 }
 
 
-TransactionContribInfo DatabaseServicesMySQL::endTransactionContrib(
-        TransactionContribInfo const& info) {
+TransactionContribInfo DatabaseServicesMySQL::startedTransactionContrib(
+        TransactionContribInfo const& info,
+        bool failed) {
 
-    string const context = _context(__func__) +
-            "id="  + to_string(info.id) + " transactionId=" + to_string(info.transactionId) + " ";
+    return _updateTransactionContribAt(
+        __func__,
+        info,
+        "start_time",
+        failed,
+        TransactionContribInfo::Status::IN_PROGRESS,
+        TransactionContribInfo::Status::START_FAILED
+    );
+}
 
+
+TransactionContribInfo DatabaseServicesMySQL::readTransactionContrib(
+        TransactionContribInfo const& info,
+        bool failed) {
+
+    return _updateTransactionContribAt(
+        __func__,
+        info,
+        "read_time",
+        failed,
+        TransactionContribInfo::Status::IN_PROGRESS,
+        TransactionContribInfo::Status::READ_FAILED
+    );
+}
+
+
+TransactionContribInfo DatabaseServicesMySQL::loadedTransactionContrib(
+        TransactionContribInfo const& info,
+        bool failed) {
+
+    return _updateTransactionContribAt(
+        __func__,
+        info,
+        "load_time",
+        failed,
+        TransactionContribInfo::Status::FINISHED,
+        TransactionContribInfo::Status::LOAD_FAILED
+    );
+}
+
+
+TransactionContribInfo DatabaseServicesMySQL::_updateTransactionContribAt(
+        string const& func,
+        TransactionContribInfo const& info,
+        string const& timestamp,
+        bool failed,
+        TransactionContribInfo::Status successStatus,
+        TransactionContribInfo::Status failedStatus) {
+ 
+    string const context = _context(func) + "id="  + to_string(info.id) + " failed=" + bool2str(failed) + " ";
     LOGS(_log, LOG_LVL_DEBUG, context);
 
     util::Lock lock(_mtx, context);
@@ -2324,10 +2379,14 @@ TransactionContribInfo DatabaseServicesMySQL::endTransactionContrib(
                 conn->executeSimpleUpdateQuery(
                     "transaction_contrib",
                     predicate,
-                    make_pair("end_time",  PerformanceUtils::now()),
-                    make_pair("num_bytes", info.numBytes),
-                    make_pair("num_rows",  info.numRows),
-                    make_pair("success",   info.success ? 1 : 0)
+                    make_pair("num_bytes",     info.numBytes),
+                    make_pair("num_rows",      info.numRows),
+                    make_pair(timestamp,       PerformanceUtils::now()),
+                    make_pair("status",        TransactionContribInfo::status2str(failed ? failedStatus : successStatus)),
+                    make_pair("http_error",    failed ? info.httpError: 0),
+                    make_pair("system_error",  failed ? info.systemError : 0),
+                    make_pair("error",         failed ? info.error : string()),
+                    make_pair("retry_allowed", failed ? info.retryAllowed : false)
                 );
                 updatedInfo = _transactionContribImpl(lock, predicate);
             }
@@ -2338,7 +2397,7 @@ TransactionContribInfo DatabaseServicesMySQL::endTransactionContrib(
         throw;
     }
     LOGS(_log, LOG_LVL_DEBUG, context + "** DONE **");
-    return updatedInfo;
+    return info;
 }
 
 
@@ -2386,11 +2445,34 @@ vector<TransactionContribInfo> DatabaseServicesMySQL::_transactionContribsImpl(
             row.get("chunk",      info.chunk);
             row.get("is_overlap", info.isOverlap);
             row.get("url",        info.url);
-            row.get("begin_time", info.beginTime);
-            row.get("end_time",   info.endTime);
-            row.get("num_bytes",  info.numBytes);
-            row.get("num_rows",   info.numRows);
-            row.get("success",    info.success);
+
+            string type;
+            row.get("type", type);
+            info.async = (type == "ASYNC");
+
+            row.get("expiration_timeout_sec", info.expirationTimeoutSec);
+
+            row.get("fields_terminated_by", info.fieldsTerminatedBy);
+            row.get("fields_enclosed_by",   info.fieldsEnclosedBy);
+            row.get("fields_escaped_by",    info.fieldsEscapedBy);
+            row.get("lines_terminated_by",  info.linesTerminatedBy);
+
+            row.get("num_bytes", info.numBytes);
+            row.get("num_rows",  info.numRows);
+
+            row.get("create_time", info.createTime);
+            row.get("start_time",  info.startTime);
+            row.get("read_time",   info.readTime);
+            row.get("load_time",   info.loadTime);
+
+            string str;
+            row.get("status", str);
+            info.status = TransactionContribInfo::str2status(str);
+
+            row.get("http_error",    info.httpError);
+            row.get("system_error",  info.systemError);
+            row.get("error",         info.error);
+            row.get("retry_allowed", info.retryAllowed);
 
             collection.push_back(info);
         }

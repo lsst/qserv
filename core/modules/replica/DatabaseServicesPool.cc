@@ -446,28 +446,35 @@ vector<TransactionContribInfo> DatabaseServicesPool::transactionContribs(
 }
 
 
-TransactionContribInfo DatabaseServicesPool::beginTransactionContrib(
-        TransactionId transactionId,
-        string const& table,
-        unsigned int chunk,
-        bool isOverlap,
-        string const& worker,
-        string const& url) {
+TransactionContribInfo DatabaseServicesPool::createdTransactionContrib(
+        TransactionContribInfo const& info,
+        bool failed) {
     ServiceAllocator service(shared_from_base<DatabaseServicesPool>());
-    return service()->beginTransactionContrib(
-            transactionId,
-            table,
-            chunk,
-            isOverlap,
-            worker,
-            url);
+    return service()->createdTransactionContrib(info, failed);
 }
 
 
-TransactionContribInfo DatabaseServicesPool::endTransactionContrib(
-        TransactionContribInfo const& info) {
+TransactionContribInfo DatabaseServicesPool::startedTransactionContrib(
+        TransactionContribInfo const& info,
+        bool failed) {
     ServiceAllocator service(shared_from_base<DatabaseServicesPool>());
-    return service()->endTransactionContrib(info);
+    return service()->startedTransactionContrib(info, failed);
+}
+
+
+TransactionContribInfo DatabaseServicesPool::readTransactionContrib(
+        TransactionContribInfo const& info,
+        bool failed) {
+    ServiceAllocator service(shared_from_base<DatabaseServicesPool>());
+    return service()->readTransactionContrib(info, failed);
+}
+
+
+TransactionContribInfo DatabaseServicesPool::loadedTransactionContrib(
+        TransactionContribInfo const& info,
+        bool failed) {
+    ServiceAllocator service(shared_from_base<DatabaseServicesPool>());
+    return service()->loadedTransactionContrib(info, failed);
 }
 
 

@@ -35,10 +35,45 @@
 
 using namespace std;
 using json = nlohmann::json;
+using namespace lsst::qserv::replica;
 
 namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.DatabaseServices");
+
+map<TransactionContribInfo::Status,string> const transactionContribStatus2str = {
+    {TransactionContribInfo::Status::IN_PROGRESS,   "IN_PROGRESS"},
+    {TransactionContribInfo::Status::CREATE_FAILED, "CREATE_FAILED"},
+    {TransactionContribInfo::Status::START_FAILED,  "START_FAILED"},
+    {TransactionContribInfo::Status::READ_FAILED,   "READ_FAILED"},
+    {TransactionContribInfo::Status::LOAD_FAILED,   "LOAD_FAILED"},
+    {TransactionContribInfo::Status::CANCELLED,     "CANCELLED"},
+    {TransactionContribInfo::Status::EXPIRED,       "EXPIRED"},
+    {TransactionContribInfo::Status::FINISHED,      "FINISHED"}
+};
+
+map<string, TransactionContribInfo::Status> const transactionContribStr2status = {
+    {"IN_PROGRESS",   TransactionContribInfo::Status::IN_PROGRESS},
+    {"CREATE_FAILED", TransactionContribInfo::Status::CREATE_FAILED},
+    {"START_FAILED",  TransactionContribInfo::Status::START_FAILED},
+    {"READ_FAILED",   TransactionContribInfo::Status::READ_FAILED},
+    {"LOAD_FAILED",   TransactionContribInfo::Status::LOAD_FAILED},
+    {"CANCELLED",     TransactionContribInfo::Status::CANCELLED},
+    {"EXPIRED",       TransactionContribInfo::Status::EXPIRED},
+    {"FINISHED",      TransactionContribInfo::Status::FINISHED}
+};
+
+
+vector<TransactionContribInfo::Status> const transactionContribStatusCodes = {
+    TransactionContribInfo::Status::IN_PROGRESS,
+    TransactionContribInfo::Status::CREATE_FAILED,
+    TransactionContribInfo::Status::START_FAILED,
+    TransactionContribInfo::Status::READ_FAILED,
+    TransactionContribInfo::Status::LOAD_FAILED,
+    TransactionContribInfo::Status::CANCELLED,
+    TransactionContribInfo::Status::EXPIRED,
+    TransactionContribInfo::Status::FINISHED
+};
 
 } /// namespace
 
@@ -168,21 +203,63 @@ json TransactionInfo::toJson() const {
 }
 
 
+string const& TransactionContribInfo::status2str(TransactionContribInfo::Status status) {
+    auto itr = ::transactionContribStatus2str.find(status);
+    if (itr == ::transactionContribStatus2str.cend()) {
+        throw invalid_argument(
+                "DatabaseServices::" + string(__func__) + "  unknown status: " + to_string(status));
+    }
+    return itr->second;
+}
+
+
+TransactionContribInfo::Status TransactionContribInfo::str2status(string const& str) {
+    auto itr = ::transactionContribStr2status.find(str);
+    if (itr == ::transactionContribStr2status.cend()) {
+        throw invalid_argument(
+                "DatabaseServices::" + string(__func__) + "  unknown status: " + str);
+    }
+    return itr->second;
+}
+
+
+static std::vector<TransactionContribInfo::Status> const& TransactionContribInfo::statusCodes() {
+    return transactionContribStatusCodes;
+}
+
+
 json TransactionContribInfo::toJson() const {
     json info;
     info["id"] = id;
     info["transaction_id"] = transactionId;
-    info["worker"]     = worker;
-    info["database"]   = database;
-    info["table"]      = table;
-    info["chunk"]      = chunk;
-    info["overlap"]    = isOverlap ? 1 : 0;
-    info["url"]        = url;
-    info["begin_time"] = beginTime;
-    info["end_time"]   = endTime;
-    info["num_bytes"]  = numBytes;
-    info["num_rows"]   = numRows;
-    info["success"]    = success ? 1 : 0;
+    info["worker"]   = worker;
+    info["database"] = database;
+    info["table"]    = table;
+    info["chunk"]    = chunk;
+    info["overlap"]  = isOverlap ? 1 : 0;
+    info["url"]      = url;
+
+    info["async"] = async ? 1 : 0;
+    info["expiration_timeout_sec"] = expirationTimeoutSec;
+
+    info["fields_terminated_by"] = fieldsTerminatedBy;
+    info["fields_enclosed_by"]   = fieldsEnclosedBy;
+    info["fields_escaped_by"]    = fieldsEscapedBy;
+    info["lines_terminated_by"]  = linesTerminatedBy;
+
+    info["num_bytes"] = numBytes;
+    info["num_rows"]  = numRows;
+
+    info["create_time"] = createTime;
+    info["start_time"]  = startTime;
+    info["read_time"]   = readTime;
+    info["load_time"]   = loadTime;
+
+    info["status"]        = TransactionContribInfo::status2str(status);
+    info["http_error"]    = httpError;
+    info["system_error"]  = systemError;
+    info["error"]         = error;
+    info["retry_allowed"] = retryAllowed ? 1 : 0;
     return info;
 }
 
