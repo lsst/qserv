@@ -1,0 +1,29 @@
+CREATE USER '{{ mysqld_user_qserv }}'@'localhost';
+CREATE USER '{{ mysqld_user_qserv }}'@'%';
+
+GRANT ALL ON qservResult.* TO '{{ mysqld_user_qserv }}'@'localhost';
+GRANT ALL ON qservResult.* TO '{{ mysqld_user_qserv }}'@'%';
+
+GRANT SELECT ON *.* TO '{{ mysqld_user_qserv }}'@'%';
+GRANT SELECT ON *.* TO '{{ mysqld_user_qserv }}'@'localhost';
+
+-- Director index database (i.e. objectId/chunkId relation)
+-- created by integration test script/loader for now
+GRANT ALL ON qservMeta.* TO '{{ mysqld_user_qserv }}'@'localhost';
+GRANT ALL ON qservMeta.* TO '{{ mysqld_user_qserv }}'@'%';
+
+-- CSS database
+GRANT ALL ON qservCssData.* TO '{{ mysqld_user_qserv }}'@'localhost';
+GRANT ALL ON qservCssData.* TO '{{ mysqld_user_qserv }}'@'%';
+
+-- TODO FIGURE OUT HOW TO HANDLE THE POD NAME IN CONTAINER-LAND
+-- -- Grant root access to replication controller pod
+-- GRANT ALL ON *.* TO 'root'@'{{ replication_controller_FQDN }}' IDENTIFIED BY 'CHANGEME' WITH GRANT OPTION;
+
+-- Create user for external monitoring applications
+CREATE USER 'monitor'@'localhost' IDENTIFIED BY "{{ mysql_monitor_password }}";
+CREATE USER 'monitor'@'%' IDENTIFIED BY "{{ mysql_monitor_password }}";
+GRANT PROCESS ON *.* TO 'monitor'@'localhost';
+GRANT PROCESS ON *.* TO 'monitor'@'%';
+
+FLUSH PRIVILEGES;

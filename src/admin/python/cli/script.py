@@ -132,9 +132,7 @@ def _do_smig(
         do_migrate=True,
         check=False,
         final=None,
-        scripts=os.path.join(
-            os.environ.get(smig_dir_env_var, default_smig_dir), module_smig_dir
-        ),
+        scripts=os.path.join(smig_dir(), module_smig_dir),
         connection=connection,
         module=module,
         mig_mgr_args=mig_mgr_args or dict(),
@@ -159,9 +157,7 @@ def _do_smig_block(module_smig_dir: str, module: str, connection: str):
         The uri to the database that will be affected.
         """
     smig_block(
-        scripts=os.path.join(
-            os.environ.get(smig_dir_env_var, default_smig_dir), module_smig_dir
-        ),
+        scripts=os.path.join(smig_dir(), module_smig_dir),
         connection=connection,
         module=module,
     )

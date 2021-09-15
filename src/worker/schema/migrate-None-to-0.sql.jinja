@@ -1,0 +1,71 @@
+-- WARN all '<user>'@'%' must be removed in production
+
+CREATE USER IF NOT EXISTS 'qsmaster'@'localhost';
+CREATE USER IF NOT EXISTS 'qsmaster'@'%';
+GRANT ALL ON `q\_memoryLockDb`.* TO 'qsmaster'@'localhost';
+GRANT ALL ON `q\_memoryLockDb`.* TO 'qsmaster'@'%';
+-- Subchunks databases
+GRANT ALL ON `Subchunks\_%`.* TO 'qsmaster'@'localhost';
+GRANT ALL ON `Subchunks\_%`.* TO 'qsmaster'@'%';
+
+-- Create user for external monitoring applications
+CREATE USER IF NOT EXISTS 'monitor'@'localhost' IDENTIFIED BY '<MYSQL_MONITOR_PASSWORD>';
+CREATE USER IF NOT EXISTS 'monitor'@'%' IDENTIFIED BY '<MYSQL_MONITOR_PASSWORD>';
+GRANT PROCESS ON *.* TO 'monitor'@'localhost';
+GRANT PROCESS ON *.* TO 'monitor'@'%';
+
+FLUSH PRIVILEGES;
+
+-- Used by xrootd Qserv plugin:
+-- to publish LSST databases and chunks
+
+DROP DATABASE IF EXISTS qservw_worker;
+CREATE DATABASE qservw_worker;
+
+GRANT ALL ON qservw_worker.* TO 'qsmaster'@'localhost';
+GRANT ALL ON qservw_worker.* TO 'qsmaster'@'%';
+
+CREATE TABLE qservw_worker.Dbs (
+
+  `db` CHAR(200) NOT NULL,
+
+  PRIMARY KEY (`db`)
+
+) ENGINE=InnoDB;
+
+CREATE TABLE qservw_worker.Chunks (
+
+  `db`    CHAR(200)    NOT NULL,
+  `chunk` INT UNSIGNED NOT NULL,
+
+  UNIQUE KEY(`db`,`chunk`)
+
+) ENGINE=InnoDB;
+
+CREATE TABLE qservw_worker.Id (
+
+  `id`      VARCHAR(64)  NOT NULL,
+  `type`    ENUM('UUID') DEFAULT 'UUID',
+  `created` TIMESTAMP    DEFAULT CURRENT_TIMESTAMP,
+
+  UNIQUE KEY (`type`)
+
+) ENGINE=InnoDB;
+
+INSERT INTO qservw_worker.Id (`id`) VALUES ('{{ vnid }}');
+
+CREATE TABLE IF NOT EXISTS qservw_worker.QMetadata (
+
+  `metakey` CHAR(64) NOT NULL COMMENT 'Key string',
+  `value`   TEXT         NULL COMMENT 'Value string',
+
+  PRIMARY KEY (`metakey`)
+
+) ENGINE = InnoDB COMMENT = 'Metadata about database as a whole, key-value pairs';
+
+INSERT INTO qservw_worker.QMetadata (`metakey`, `value`) VALUES ('version', '2');
+
+-- GRANT ALL ON `q\_memoryLockDb`.* TO 'qsmaster'@'localhost';
+
+-- Subchunks databases
+-- GRANT ALL ON `Subchunks\_%`.* TO 'qsmaster'@'localhost';
