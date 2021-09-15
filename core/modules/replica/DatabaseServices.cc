@@ -41,40 +41,6 @@ namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.DatabaseServices");
 
-map<TransactionContribInfo::Status,string> const transactionContribStatus2str = {
-    {TransactionContribInfo::Status::IN_PROGRESS,   "IN_PROGRESS"},
-    {TransactionContribInfo::Status::CREATE_FAILED, "CREATE_FAILED"},
-    {TransactionContribInfo::Status::START_FAILED,  "START_FAILED"},
-    {TransactionContribInfo::Status::READ_FAILED,   "READ_FAILED"},
-    {TransactionContribInfo::Status::LOAD_FAILED,   "LOAD_FAILED"},
-    {TransactionContribInfo::Status::CANCELLED,     "CANCELLED"},
-    {TransactionContribInfo::Status::EXPIRED,       "EXPIRED"},
-    {TransactionContribInfo::Status::FINISHED,      "FINISHED"}
-};
-
-map<string, TransactionContribInfo::Status> const transactionContribStr2status = {
-    {"IN_PROGRESS",   TransactionContribInfo::Status::IN_PROGRESS},
-    {"CREATE_FAILED", TransactionContribInfo::Status::CREATE_FAILED},
-    {"START_FAILED",  TransactionContribInfo::Status::START_FAILED},
-    {"READ_FAILED",   TransactionContribInfo::Status::READ_FAILED},
-    {"LOAD_FAILED",   TransactionContribInfo::Status::LOAD_FAILED},
-    {"CANCELLED",     TransactionContribInfo::Status::CANCELLED},
-    {"EXPIRED",       TransactionContribInfo::Status::EXPIRED},
-    {"FINISHED",      TransactionContribInfo::Status::FINISHED}
-};
-
-
-vector<TransactionContribInfo::Status> const transactionContribStatusCodes = {
-    TransactionContribInfo::Status::IN_PROGRESS,
-    TransactionContribInfo::Status::CREATE_FAILED,
-    TransactionContribInfo::Status::START_FAILED,
-    TransactionContribInfo::Status::READ_FAILED,
-    TransactionContribInfo::Status::LOAD_FAILED,
-    TransactionContribInfo::Status::CANCELLED,
-    TransactionContribInfo::Status::EXPIRED,
-    TransactionContribInfo::Status::FINISHED
-};
-
 } /// namespace
 
 namespace lsst {
@@ -203,28 +169,65 @@ json TransactionInfo::toJson() const {
 }
 
 
+map<TransactionContribInfo::Status,string> const TransactionContribInfo::_transactionContribStatus2str = {
+    {TransactionContribInfo::Status::IN_PROGRESS,   "IN_PROGRESS"},
+    {TransactionContribInfo::Status::CREATE_FAILED, "CREATE_FAILED"},
+    {TransactionContribInfo::Status::START_FAILED,  "START_FAILED"},
+    {TransactionContribInfo::Status::READ_FAILED,   "READ_FAILED"},
+    {TransactionContribInfo::Status::LOAD_FAILED,   "LOAD_FAILED"},
+    {TransactionContribInfo::Status::CANCELLED,     "CANCELLED"},
+    {TransactionContribInfo::Status::EXPIRED,       "EXPIRED"},
+    {TransactionContribInfo::Status::FINISHED,      "FINISHED"}
+};
+
+
+map<string, TransactionContribInfo::Status> const TransactionContribInfo::_transactionContribStr2status = {
+    {"IN_PROGRESS",   TransactionContribInfo::Status::IN_PROGRESS},
+    {"CREATE_FAILED", TransactionContribInfo::Status::CREATE_FAILED},
+    {"START_FAILED",  TransactionContribInfo::Status::START_FAILED},
+    {"READ_FAILED",   TransactionContribInfo::Status::READ_FAILED},
+    {"LOAD_FAILED",   TransactionContribInfo::Status::LOAD_FAILED},
+    {"CANCELLED",     TransactionContribInfo::Status::CANCELLED},
+    {"EXPIRED",       TransactionContribInfo::Status::EXPIRED},
+    {"FINISHED",      TransactionContribInfo::Status::FINISHED}
+};
+
+
+vector<TransactionContribInfo::Status> const TransactionContribInfo::_transactionContribStatusCodes = {
+    TransactionContribInfo::Status::IN_PROGRESS,
+    TransactionContribInfo::Status::CREATE_FAILED,
+    TransactionContribInfo::Status::START_FAILED,
+    TransactionContribInfo::Status::READ_FAILED,
+    TransactionContribInfo::Status::LOAD_FAILED,
+    TransactionContribInfo::Status::CANCELLED,
+    TransactionContribInfo::Status::EXPIRED,
+    TransactionContribInfo::Status::FINISHED
+};
+
+
 string const& TransactionContribInfo::status2str(TransactionContribInfo::Status status) {
-    auto itr = ::transactionContribStatus2str.find(status);
-    if (itr == ::transactionContribStatus2str.cend()) {
+    auto itr = _transactionContribStatus2str.find(status);
+    if (itr == _transactionContribStatus2str.cend()) {
         throw invalid_argument(
-                "DatabaseServices::" + string(__func__) + "  unknown status: " + to_string(status));
+                "DatabaseServices::" + string(__func__) + "  unknown status code: "
+                + to_string(static_cast<int>(status)));
     }
     return itr->second;
 }
 
 
 TransactionContribInfo::Status TransactionContribInfo::str2status(string const& str) {
-    auto itr = ::transactionContribStr2status.find(str);
-    if (itr == ::transactionContribStr2status.cend()) {
+    auto itr = _transactionContribStr2status.find(str);
+    if (itr == _transactionContribStr2status.cend()) {
         throw invalid_argument(
-                "DatabaseServices::" + string(__func__) + "  unknown status: " + str);
+                "DatabaseServices::" + string(__func__) + "  unknown status name: " + str);
     }
     return itr->second;
 }
 
 
-static std::vector<TransactionContribInfo::Status> const& TransactionContribInfo::statusCodes() {
-    return transactionContribStatusCodes;
+std::vector<TransactionContribInfo::Status> const& TransactionContribInfo::statusCodes() {
+    return _transactionContribStatusCodes;
 }
 
 

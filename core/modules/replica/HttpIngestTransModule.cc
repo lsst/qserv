@@ -451,7 +451,7 @@ json HttpIngestTransModule::_getTransactionContributions(TransactionInfo const& 
 
         // Don't count incomplete or non-successful contributions for the summary stats.
         // 
-        if (!contrib.success) {
+        if (contrib.status != TransactionContribInfo::Status::FINISHED) {
             numFailedFiles++;
             continue;
         }
@@ -518,8 +518,8 @@ json HttpIngestTransModule::_getTransactionContributions(TransactionInfo const& 
         numRows += contrib.numRows;
         incrementBy<unsigned int>(objWorker, "num_rows", contrib.numRows);
 
-        firstContribBeginTime = min(firstContribBeginTime, contrib.beginTime);
-        lastContribEndTime = max(lastContribEndTime, contrib.endTime);
+        firstContribBeginTime = min(firstContribBeginTime, contrib.createTime);
+        lastContribEndTime = max(lastContribEndTime, contrib.loadTime);
     }
     json resultJson;
     resultJson["summary"] = json::object({

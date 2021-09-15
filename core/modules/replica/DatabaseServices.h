@@ -338,8 +338,8 @@ public:
     /// The current (or completion) status of the ingest operation.
     /// @note The completion status values 'CANCELLED' and 'EXPIRED' are meant to be used
     //    for processing requests in the asynchronous mode.
-    enum Status {
-        IN_PROGRESS,        // The transient state of a request before it's FINISHED or failed
+    enum class Status:int {
+        IN_PROGRESS = 0,    // The transient state of a request before it's FINISHED or failed
         CREATE_FAILED,      // The request was received and rejected right away (incorrect parameters, etc.)
         START_FAILED,       // The request couldn't start after being pulled from a queue due to changed conditions
         READ_FAILED,        // Reading/preprocessing of the input file failed
@@ -372,6 +372,10 @@ public:
 
     /// @return JSON representation of the object
     nlohmann::json toJson() const;
+private:
+    static std::map<TransactionContribInfo::Status,std::string> const _transactionContribStatus2str;
+    static std::map<std::string, TransactionContribInfo::Status> const _transactionContribStr2status;
+    static std::vector<TransactionContribInfo::Status> const _transactionContribStatusCodes;
 };
 
 
