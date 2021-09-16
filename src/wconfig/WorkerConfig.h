@@ -299,7 +299,7 @@ private:
 
     WorkerConfig(util::ConfigStore const& configStore);
 
-    mysql::MySqlConfig const _mySqlConfig;
+    mysql::MySqlConfig _mySqlConfig;
 
     std::string const _memManClass;
     uint64_t const _memManSizeMb;

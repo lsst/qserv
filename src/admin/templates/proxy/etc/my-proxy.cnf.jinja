@@ -1,0 +1,8 @@
+[mysql-proxy]
+
+proxy-address = :4040
+proxy-backend-addresses = {{ backend_host }}:{{ backend_port }}
+
+log-level=debug
+
+proxy-connect-timeout=30

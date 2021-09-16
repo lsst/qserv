@@ -1,0 +1,107 @@
+[frontend]
+
+xrootd={{ xrootd_manager }}:1094
+
+#[mgmtdb]
+#db=qservMeta
+# Steal resultdb settings for now.
+
+[css]
+technology = mysql
+hostname = {{ czar_db_host }}
+port = {{ czar_db_port }}
+username = qsmaster
+password =
+database = qservCssData
+socket = {{ czar_db_socket }}
+
+[resultdb]
+passwd =
+db = qservResult
+unix_socket = {{ czar_db_socket }}
+host = {{ czar_db_host }}
+user = qsmaster
+port = {{ czar_db_port }}
+
+# Any table in resultdb that hasn't been updated in this many days is deleted.  
+oldestResultKeptDays = 7
+
+# maximum number of connection retries to SQL databse (per connection attempt)
+maxsqlconnectionattempts = 10
+
+# maximum user query result size in MB
+maxtablesize_mb = 5100
+
+# database connection for QMeta database
+[qmeta]
+passwd =
+db = qservMeta
+unix_socket = {{ czar_db_socket }}
+host = {{ czar_db_host }}
+user = qsmaster
+port = {{ czar_db_port }}
+
+# database connection for QStatusData
+# Using qmeta for now. May move this qservResult or make its own instance
+# databse based on what happens with multiple czars.
+[qstatus]
+passwd =
+#db = qservStatusData
+db = qservMeta
+user = qsmaster
+host = {{ czar_db_host }}
+port = {{ czar_db_port }}
+
+[partitioner]
+# emptyChunkPath is used to check existence of empty_$DBNAME.txt
+emptyChunkPath = {{ empty_chunk_path }}
+
+# If emptyChunkPath isn't defined or emptyChunkPath/empty_$DBNAME.txt
+# doesn't exist then emptyChunkListFile is used for queries on $DBNAME
+emptyChunkListFile = {{ empty_chunk_path }}/emptyChunks.txt
+
+[tuning]
+#memoryEngine = yes
+#largeResultConcurrentMerges = 3
+largeResultConcurrentMerges = 6
+# xrootdCBThreadsInit must be less than xrootdCBThreadsMax
+xrootdCBThreadsMax = 500
+xrootdCBThreadsInit = 50
+
+# INSTRUCTIONS:
+#
+#   Allowed range: 1 - 1024. Any number above 1024 will be truncated to 1024.
+#   The deafault value of the parameter in xrootd is 4. Set it higher in
+#   Qserv deployments with the large number of chunks per catalog, or/and
+#   for use cases where many queries are processed by Qserv simultaneously,
+#   even for a modest number of chunks per catalog.
+#
+#   Set the parameter to 0 to enable auto-tuning.
+#
+#   The general formula for auto-tuning implies incrementing a value of the parameter
+#   by 1 for every 65,000 "in-flight" requests.
+#
+#   The value set below has been tested to work for 80 simultaneous "shared scan" queries
+#   of 150,000 chunks each.
+xrootdSpread = 0
+
+# Seconds between updates the czar sends to qmeta for completed chunks.
+# This is per user query and important milestones ignore this limit.
+qMetaSecsBetweenChunkCompletionUpdates = 59
+
+#[debug]
+#chunkLimit = -1
+
+# Please see qdisp/QdispPool.h QdispPool::QdispPool for more information
+[qdisppool]
+#size of the pool
+poolSize = 50
+# Low numbers are higher priority. Largest priority 3 creates 4 priority queues 0, 1, 2, 3
+#     Must be greater than 0.
+largestPriority = 3
+# Maximum number of threads running for each queue. No spaces. Values separated by ':'
+#   Using largestPriority = 2  and   vectRunsizes = 3:5:8
+#    queue 0 would have runSize 3, queue 1 would have runSize 5, and queue 2 would have runSize 8.
+vectRunSizes = 50:50:50:50
+# Minimum number of threads running for each queue. No spaces. Values separated by ':'
+vectMinRunningSizes = 0:1:3:3

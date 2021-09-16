@@ -95,24 +95,32 @@ std::string ConfigStore::get(std::string const& key,
     }
 }
 
+
 int ConfigStore::getInt(std::string const& key, int const& defaultValue) const {
+    try {
+        return getIntRequired(key);
+    } catch (util::KeyNotFoundError const& e) {
+        LOGS( _log, LOG_LVL_DEBUG, "Returning default value: \"" << defaultValue << "\"");
+    }
+    return defaultValue;
+}
+
+
+int ConfigStore::getIntRequired(std::string const& key) const {
 	std::map<std::string, std::string>::const_iterator i = _configMap.find(key);
-    int result = defaultValue;
     if (i != _configMap.end() and not i->second.empty()) {
         try {
             // tried to use std::stoi() here but it returns OK for strings like "0xFSCK"
-            result = boost::lexical_cast<int>(i->second);
-            return result;
+            return boost::lexical_cast<int>(i->second);
         } catch (boost::bad_lexical_cast const& exc) {
             LOGS( _log, LOG_LVL_WARN, "Unable to cast string \"" << i->second << "\" to integer");
             throw InvalidIntegerValue(key, i->second);
         }
-    } else {
-        LOGS( _log, LOG_LVL_DEBUG, "[" << key << "] key does not exist or has empty string value");
-        LOGS( _log, LOG_LVL_DEBUG, "Returning default value: \"" << defaultValue << "\"");
     }
-    return result;
+    LOGS( _log, LOG_LVL_DEBUG, "[" << key << "] key does not exist or has empty string value");
+    throw util::KeyNotFoundError(key);
 }
+
 
 std::map<std::string, std::string> ConfigStore::getSectionConfigMap(std::string sectionName) const {
     // find all css.* parameters and copy to new map (dropping css.)

@@ -32,7 +32,9 @@
 
 // Qserv headers
 #include "mysql/MySqlConfig.h"
+#include "util/ConfigStoreError.h"
 #include "wsched/BlendScheduler.h"
+
 
 namespace {
 
@@ -46,10 +48,7 @@ namespace qserv {
 namespace wconfig {
 
 WorkerConfig::WorkerConfig(const util::ConfigStore& configStore)
-    : _mySqlConfig(configStore.getRequired("mysql.username"),
-            configStore.get("mysql.password"),
-            configStore.getRequired("mysql.socket")),
-      _memManClass(configStore.get("memman.class", "MemManReal")),
+    : _memManClass(configStore.get("memman.class", "MemManReal")),
       _memManSizeMb(configStore.getInt("memman.memory", 1000)),
       _memManLocation(configStore.getRequired("memman.location")),
       _threadPoolSize(configStore.getInt("scheduler.thread_pool_size", wsched::BlendScheduler::getMinPoolSize())),
@@ -78,6 +77,17 @@ WorkerConfig::WorkerConfig(const util::ConfigStore& configStore)
       _bufferMaxTotalGB(configStore.getInt("transmit.buffermaxtotalgb", 41)),
       _maxTransmits(configStore.getInt("transmit.maxtransmits", 40)),
       _maxPerQid(configStore.getInt("transmit.maxperqid", 3)) {
+    int mysqlPort = configStore.getInt("mysql.port");
+    std::string mysqlSocket = configStore.get("mysql.socket");
+    if (mysqlPort == 0 && mysqlSocket.empty()) {
+        throw std::runtime_error("At least one of mysql.port or mysql.socket is required in the configuration file.");
+    }
+    _mySqlConfig = mysql::MySqlConfig(configStore.getRequired("mysql.username"),
+                                        configStore.get("mysql.password"),
+                                        configStore.getRequired("mysql.hostname"),
+                                        mysqlPort,
+                                        mysqlSocket,
+                                        ""); // dbname
 }
 
 std::ostream& operator<<(std::ostream &out, WorkerConfig const& workerConfig) {
@@ -99,5 +109,3 @@ std::ostream& operator<<(std::ostream &out, WorkerConfig const& workerConfig) {
 }
 
 }}} // namespace lsst::qserv::wconfig
-
-
