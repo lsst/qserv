@@ -27,25 +27,32 @@ import click
 import logging
 
 from .options import (
+    case_option,
     cmsd_manager_option,
+    compare_results_option,
     connection_option,
     czar_connection_option,
     db_qserv_user_option,
     db_scheme_option,
     debug_option,
     instance_id_option,
+    load_option,
     log_level_option,
     mysql_monitor_password_option,
     mysql_user_qserv_option,
+    pull_option,
+    reload_option,
     repl_connection_option,
     repl_ctrl_domain_name_option,
     repl_ctrl_port_option,
     run_option,
+    run_tests_option,
+    tests_yaml_option,
+    unload_option,
     vnid_option,
     worker_connection_option,
     xrootd_manager_option,
 )
-
 from . import script
 
 
@@ -67,6 +74,28 @@ def load_simple(**kwargs):
     REPL_CTRL_URI is the uri to the replication controller.
     """
     script.load_simple(**kwargs)
+
+
+@entrypoint.command()
+@repl_connection_option(
+    help=repl_connection_option.keywords["help"]
+    + " If provided will wait for the replication system to be responsive before loading data (does not guarantee system readyness)."
+)
+@pull_option()
+@load_option()
+@unload_option()
+@reload_option()
+@run_tests_option()
+@compare_results_option()
+@case_option()
+@tests_yaml_option()
+def integration_test(**kwargs):
+    """Run integration tests using ingested test data.
+
+    TESTS_YAML is the yaml file paths that contains connection information & describes tests to load and run.
+    """
+    results = script.integration_test(**kwargs)
+    click.echo(str(results))
 
 
 @entrypoint.command()

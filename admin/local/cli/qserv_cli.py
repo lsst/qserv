@@ -55,6 +55,9 @@ from opt import (
     dashboard_port_option,
     do_build_image_option,
     dry_option,
+    itest_container_name_option,
+    itest_file_option,
+    itest_volume_option,
     jobs_option,
     make_option,
     mariadb_image_ev,
@@ -90,6 +93,8 @@ help_order = [
     "up",
     "down",
     "update-schema",
+    "itest",
+    "itest-rm",
     "run-dev",
     "run-build",
     "run-debug",
@@ -329,6 +334,87 @@ def run_debug(
             dry,
         )
     )
+
+
+@qserv.command()
+@qserv_image_option()
+@mariadb_image_option(
+    help=mariadb_image_ev.help("The name of the database image to use for the reference database.")
+)
+@qserv_root_option()
+@project_option()
+@itest_container_name_option()
+@itest_volume_option()
+@bind_option()
+@itest_file_option()
+@pull_option()
+@load_option()
+@unload_option()
+@reload_option()
+@run_tests_option()
+@compare_results_option()
+@case_option()
+@tests_yaml_option()
+@click.option(
+    "--wait",
+    help="How many seconds to wait before running load and test. "
+    "This is useful for allowing qserv to boot if the qserv containers "
+    "are started at the same time as this container. "
+    f"Default is {click.style('0', fg='green', bold=True)}.",
+    default=0,
+)
+@dry_option()
+def itest(
+    qserv_root: str,
+    mariadb_image: str,
+    itest_container: str,
+    itest_volume: str,
+    qserv_image: str,
+    bind: List[str],
+    itest_file: str,
+    dry: bool,
+    project: str,
+    pull: Optional[bool],
+    unload: bool,
+    load: Optional[bool],
+    reload: bool,
+    cases: List[str],
+    run_tests: bool,
+    tests_yaml: str,
+    compare_results: bool,
+    wait: int,
+) -> None:
+    """Run integration tests.
+
+    Launches a lite-qserv container and uses it to run integration tests."""
+    launch.itest(
+        qserv_root=qserv_root,
+        mariadb_image=mariadb_image,
+        itest_container=itest_container,
+        itest_volume=itest_volume,
+        qserv_image=qserv_image,
+        bind=bind,
+        itest_file=itest_file,
+        dry=dry,
+        project=project,
+        pull=pull,
+        unload=unload,
+        load=load,
+        reload=reload,
+        cases=cases,
+        run_tests=run_tests,
+        tests_yaml=tests_yaml,
+        compare_results=compare_results,
+        wait=wait,
+    )
+
+
+@qserv.command()
+@itest_volume_option()
+@dry_option()
+def itest_rm(itest_volume: str, dry: bool) -> None:
+    """Remove volumes created by itest."""
+    launch.itest_rm(itest_volume, dry)
 
 
 # These defaults match connection options used in

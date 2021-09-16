@@ -26,6 +26,9 @@ import logging
 import os
 import pwd
 import subprocess
+import time
+from urllib.parse import urlparse
+import yaml
 from typing import Dict, List, Optional
 
 from opt import (
@@ -650,6 +653,289 @@ def run_debug(
     else:
         _log.debug('Running "%s"', " ".join(args))
         subprocess.run(args, check=True)
+
+
+def itest_ref(
+    qserv_root: str,
+    itest_file: str,
+    itest_volume: str,
+    project: str,
+    mariadb_image: str,
+    dry: bool,
+) -> str:
+    """Launch the reference database used by integration tests.
+
+    Parameters
+    ----------
+    qserv_root : `str`
+        The path to the qserv source folder.
+    itest_file : `str` or `None`
+        The path to the yaml file that contains integration test execution data.
+    itest_volume : `str`
+        The name of the volume that holds integration test data. Also used to
+        derive other database volume names.
+    project : `str`
+        The name used for qserv instance customizations.
+    mariadb_image : `str`
+        The name of the database image to run.
+    dry : `bool`
+        If True do not run the command; print what would have been run.
+
+    Returns
+    -------
+    container_name : `str`
+        The name of the container that was launched (or if dry == True the name
+        of the contianer that would have been launched).
+    """
+    with open(itest_file) as f:
+        tests_data = yaml.safe_load(f.read())
+    ref_db = urlparse(tests_data["reference-db-uri"])
+    hostname = str(ref_db.hostname)
+    cnf_src = os.path.join(
+        qserv_root, "src/admin/templates/integration-test/etc/my.cnf"
+    )
+
+    args = [
+        "docker",
+        "run",
+        "--init",
+        "-d",
+        "--name",
+        hostname,
+        "--expose",
+        str(ref_db.port),
+        "--mount",
+        f"src={itest_volume},dst=/qserv/data,type=volume",
+        "--mount",
+        f"src={cnf_src},dst=/etc/mysql/my.cnf,type=bind",
+        "--mount",
+        f"src={itest_volume}_lib,dst=/var/lib/mysql,type=volume",
+        "-e",
+        "MYSQL_ROOT_PASSWORD=CHANGEME",
+    ]
+    add_network_option(args, project)
+    args.extend(
+        [
+            mariadb_image,
+            "--port",
+            str(ref_db.port),
+        ]
+    )
+    if dry:
+        print(" ".join(args))
+        return hostname
+    _log.debug(f"Running {' '.join(args)}")
+    result = subprocess.run(args)
+    result.check_returncode()
+    return hostname
+
+
+def stop_itest_ref(container_name: str, dry: bool) -> None:
+    """Stop the integration test reference database.
+
+    Parameters
+    ----------
+    container_name : `str`
+        The name of the container running the integration test reference
+        database.
+    dry : `bool`
+        If True do not run the command; print what would have been run.
+    """
+    args = ["docker", "rm", "-f", container_name]
+    if dry:
+        print(" ".join(args))
+        return
+    _log.debug(f"Running {' '.join(args)}")
+    result = subprocess.run(args)
+    result.check_returncode()
+
+
+def integration_test(
+    qserv_root: str,
+    itest_container: str,
+    itest_volume: str,
+    qserv_image: str,
+    bind: List[str],
+    itest_file: str,
+    dry: bool,
+    project: str,
+    pull: Optional[bool],
+    unload: bool,
+    load: Optional[bool],
+    reload: bool,
+    cases: List[str],
+    run_tests: bool,
+    tests_yaml: str,
+    compare_results: bool,
+    wait: int,
+) -> None:
+    """Run integration tests.
+
+    Parameters
+    ----------
+    qserv_root : `str`
+        The path to the qserv source folder.
+    itest_container : `str`
+        The name to give the container.
+    itest_volume : `str`
+        The name of the volume used to host integration test data.
+    qserv_image : `str`
+        The name of the image to run.
+    bind : `List[str]`
+        One of ["all", "python", "bin", "lib64", "lua", "qserv", "etc"].
+        If provided, selected build artifact directories will be bound into
+        their install locations in the container. If "all" is provided then all
+        the locations will be bound. Allows for local iterative build & test
+        without having to rebuild the docker image.
+    itest_file : `str`
+        The path to the yaml file that contains integration test execution data.
+    dry : `bool`
+        If True do not run the command; print what would have been run.
+    project : `str`
+        The name used for qserv instance customizations.
+    pull : Optional[bool]
+        True forces pull of a new copy of qserv_testdata, False prohibits it.
+        None will pull if testdata has not yet been pulled. Will remove the old
+        copy if it exists. Will be handled before `load` or `unload.
+    unload : bool
+        If True, unload qserv_testdata from qserv and the reference database.
+    load : Optional[bool]
+        Force qserv_testdata to be loaded (if True) or not loaded (if False)
+        into qserv and the reference database. Will handle `unload` first. If
+        `load==None` and `unload` is passed will not load databases, otherwise
+        will load test databases that are not loaded yet.
+    reload : bool
+        Remove and reload test data. Same as passing `unload=True` and `load=True`.
+    cases : List[str]
+        Run this/these test cases only. If list is empty list will run all the cases.
+    run_tests : bool
+        If False will skip test execution.
+    tests_yaml : str
+        Path to the yaml that contains settings for integration test execution.
+    compare_results : bool
+        If False will skip comparing test results.
+    wait : `int`
+        How many seconds to wait before launching the integration test container.
+    """
+    if wait:
+        _log.info(f"Waiting {wait} seconds for qserv to stabilize.")
+        time.sleep(wait)
+        _log.info("Continuing.")
+
+    args = [
+        "docker",
+        "run",
+        "--init",
+        "--rm",
+        "--name",
+        itest_container,
+        "--mount",
+        f"src={itest_file},dst=/usr/local/etc/integration_tests.yaml,type=bind",
+        "--mount",
+        f"src={itest_volume},dst=/qserv/data,type=volume",
+    ]
+    if bind:
+        args.extend(bind_args(qserv_root=qserv_root, bind_names=bind))
+    add_network_option(args, project)
+    args.extend([qserv_image, "entrypoint", "--log-level", "DEBUG", "integration-test"])
+    for opt, var in (
+        ("--unload", unload),
+        ("--reload", reload),
+        ("--run-tests", run_tests),
+        ("--compare-results", compare_results),
+    ):
+        if var:
+            args.append(opt)
+    for true_opt, false_opt, var in (
+        ("--pull", "--no-pull", pull),
+        ("--load", "--no-load", load),
+    ):
+        if var == True:
+            args.append(true_opt)
+        if var == False:
+            args.append(false_opt)
+    if tests_yaml:
+        args.extend(["--tests-yaml", tests_yaml])
+    for case in cases:
+        args.extend(["--case", case])
+    if dry:
+        print(" ".join(args))
+        return
+    _log.debug(f"Running {' '.join(args)}")
+    result = subprocess.run(args)
+    result.check_returncode()
+
+
+def itest(
+    qserv_root: str,
+    mariadb_image: str,
+    itest_container: str,
+    itest_volume: str,
+    qserv_image: str,
+    bind: List[str],
+    itest_file: str,
+    dry: bool,
+    project: str,
+    pull: Optional[bool],
+    unload: bool,
+    load: Optional[bool],
+    reload: bool,
+    cases: List[str],
+    run_tests: bool,
+    tests_yaml: str,
+    compare_results: bool,
+    wait: int,
+) -> None:
+    """Run integration tests.
+
+    Parameters
+    ----------
+    Similar to `integration_test`
+    """
+    ref_db_container_name = itest_ref(
+        qserv_root, itest_file, itest_volume, project, mariadb_image, dry
+    )
+    try:
+        integration_test(
+            qserv_root,
+            itest_container,
+            itest_volume,
+            qserv_image,
+            bind,
+            itest_file,
+            dry,
+            project,
+            pull,
+            unload,
+            load,
+            reload,
+            cases,
+            run_tests,
+            tests_yaml,
+            compare_results,
+            wait,
+        )
+    finally:
+        stop_itest_ref(ref_db_container_name, dry)
+
+
+def itest_rm(itest_volume: str, dry: bool) -> None:
+    """Remove integration test volumes.
+
+    Parameters
+    ----------
+    itest_volume : `str`
+        The name of the volume used for integration tests.
+    dry : `bool`
+        If True do not run the command; print what would have been run.
+    """
+    args = ["docker", "volume", "rm", itest_volume, f"{itest_volume}_lib"]
+    if dry:
+        print(" ".join(args))
+        return
+    _log.debug(f"Running {' '.join(args)}")
+    result = subprocess.run(args)
+    result.check_returncode()
 
 
 def update_schema(

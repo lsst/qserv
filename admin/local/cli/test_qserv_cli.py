@@ -115,7 +115,7 @@ def itest_args(**kwargs):
     """
     args = dict(
         qserv_root=ANY,
-        db_image=ANY,
+        mariadb_image=ANY,
         itest_container=ANY,
         itest_volume=ANY,
         qserv_image=ANY,
