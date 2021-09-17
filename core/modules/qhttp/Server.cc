@@ -46,9 +46,9 @@ namespace qhttp {
 #define DEFAULT_REQUEST_TIMEOUT_MSECS 300000 // 5 minutes
 
 
-Server::Ptr Server::create(asio::io_service& io_service, unsigned short port)
+Server::Ptr Server::create(asio::io_service& io_service, unsigned short port, int backlog)
 {
-    return std::shared_ptr<Server>(new Server(io_service, port));
+    return std::shared_ptr<Server>(new Server(io_service, port, backlog));
 }
 
 
@@ -58,9 +58,10 @@ unsigned short Server::getPort()
 }
 
 
-Server::Server(asio::io_service& io_service, unsigned short port)
+Server::Server(asio::io_service& io_service, unsigned short port, int backlog)
 :
     _io_service(io_service),
+    _backlog(backlog),
     _acceptorEndpoint(ip::tcp::v4(), port),
     _acceptor(io_service),
     _requestTimeout(std::chrono::milliseconds(DEFAULT_REQUEST_TIMEOUT_MSECS))
@@ -149,7 +150,7 @@ void Server::start()
     _acceptor.set_option(ip::tcp::acceptor::reuse_address(true));
     _acceptor.bind(_acceptorEndpoint);
     _acceptorEndpoint.port(_acceptor.local_endpoint().port()); // preserve assigned port
-    _acceptor.listen();
+    _acceptor.listen(_backlog);
     _accept();
 }
 
