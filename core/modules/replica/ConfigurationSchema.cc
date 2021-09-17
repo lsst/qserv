@@ -22,6 +22,9 @@
 // Class header
 #include "replica/ConfigurationSchema.h"
 
+// Third-party headers
+#include "boost/asio.hpp"
+
 // Qserv headers
 #include "global/constants.h"
 #include "replica/Common.h"
@@ -116,6 +119,12 @@ json const ConfigurationSchema::_schemaJson = json::object({
             {"description",
                 "The port number for the controller's HTTP server. Must be greater than 0."},
             {"default", 25081}
+        }},
+        {"http_max_listen_conn", {
+            {"description",
+                "The maximum length of the queue of pending connections sent to the controller's HTTP server."
+                " Must be greater than 0."},
+            {"default", boost::asio::socket_base::max_listen_connections}
         }},
         {"empty_chunks_dir", {
             {"description",
@@ -247,6 +256,12 @@ json const ConfigurationSchema::_schemaJson = json::object({
             {"description",
                 "The number of request processing threads in each Replication worker's HTTP-based ingest service."},
             {"default", 2}
+        }},
+        {"http_max_listen_conn", {
+            {"description",
+                "The maximum length of the queue of pending connections sent to the Replication worker's"
+                " HTTP-based ingest service. Must be greater than 0."},
+            {"default", boost::asio::socket_base::max_listen_connections}
         }}
     }},
     {"worker_defaults", {
