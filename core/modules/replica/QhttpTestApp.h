@@ -25,6 +25,9 @@
 #include <memory>
 #include <string>
 
+// Third party headers
+#include "boost/asio.hpp"
+
 // Qserv headers
 #include "replica/Application.h"
 
@@ -70,6 +73,10 @@ private:
 
     /// A port number for listening for incoming connections
     uint16_t _port;
+
+    /// The maximum length of the queue of pending connections to a socket open
+    /// by the server.
+    int _backlog = boost::asio::socket_base::max_listen_connections;
 
     /// The number of the BOOST ASIO threads to run the server
     size_t _numThreads = 1;
