@@ -99,13 +99,17 @@ QhttpTestApp::QhttpTestApp(int argc, char* argv[])
         "A port number for listening for incoming connections.",
         _port
     ).option(
+        "backlog",
+        "The maximum length of the queue of pending connections to a socket open by the server."
+        " Must be greater than 0.",
+        _backlog
+    ).option(
         "num-threads",
         "The number of the BOOST ASIO threads to run the server.",
         _numThreads
     ).option(
         "report-interval-ms",
         "An interval (milliseconds) for reporting the performance counters. Must be greater than 0.",
-     
         _reportIntervalMs
     ).flag(
         "verbose",
@@ -132,7 +136,7 @@ int QhttpTestApp::runImpl() {
     uniform_int_distribution<> distr(minBytes, maxBytes);
 
     boost::asio::io_service io_service;
-    qhttp::Server::Ptr const httpServer = qhttp::Server::create(io_service, _port);
+    qhttp::Server::Ptr const httpServer = qhttp::Server::create(io_service, _port, _backlog);
     httpServer->addHandlers({
         {"GET", "/service/receive",
             [&](qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp) {

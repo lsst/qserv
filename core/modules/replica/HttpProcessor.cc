@@ -68,6 +68,7 @@ HttpProcessor::HttpProcessor(Controller::Ptr const& controller,
                              HealthMonitorTask::Ptr const& healthMonitorTask)
     :   HttpSvc(controller->serviceProvider(),
                 controller->serviceProvider()->config()->get<uint16_t>("controller", "http_server_port"),
+                controller->serviceProvider()->config()->get<unsigned int>("controller", "http_max_listen_conn"),
                 controller->serviceProvider()->config()->get<size_t>("controller", "http_server_threads"),
                 processorConfig.authKey,
                 processorConfig.adminAuthKey),

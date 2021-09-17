@@ -79,12 +79,15 @@ protected:
      *
      * @param serviceProvider For configuration, etc. services.
      * @param port The number of a port to bind to.
+     * @param backlog The maximum length of the queue of pending connections to a socket
+     *   open by the server.
      * @param numThreads The number of BOOST ASIO threads.
      * @param authKey An authorization key.
      * @param adminAuthKey An administrator-level authorization key.
      */
     HttpSvc(ServiceProvider::Ptr const& serviceProvider,
             uint16_t port,
+            unsigned int backlog,
             size_t numThreads,
             std::string const& authKey,
             std::string const& adminAuthKey);
@@ -109,6 +112,7 @@ protected:
 private:
     ServiceProvider::Ptr const _serviceProvider;
     uint16_t const _port;
+    unsigned int const _backlog;
     size_t const _numThreads;
     std::string const _authKey;
     std::string const _adminAuthKey;

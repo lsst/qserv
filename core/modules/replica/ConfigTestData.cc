@@ -40,6 +40,7 @@ map<string, set<string>> ConfigTestData::parameters() {
             {   "num_threads",
                 "http_server_threads",
                 "http_server_port",
+                "http_max_listen_conn",
                 "request_timeout_sec",
                 "job_timeout_sec",
                 "job_heartbeat_sec",
@@ -72,7 +73,8 @@ map<string, set<string>> ConfigTestData::parameters() {
                 "fs_buf_size_bytes",
                 "num_loader_processing_threads",
                 "num_exporter_processing_threads",
-                "num_http_loader_processing_threads"
+                "num_http_loader_processing_threads",
+                "http_max_listen_conn"
             }
         },
         {   "worker_defaults", 
@@ -101,6 +103,7 @@ json ConfigTestData::data() {
     generalObj["controller"] = json::object({
         {"num_threads", 2},
         {"http_server_port", 8080},
+        {"http_max_listen_conn", 256},
         {"http_server_threads", 3},
         {"request_timeout_sec", 100},
         {"job_timeout_sec", 200},
@@ -130,7 +133,8 @@ json ConfigTestData::data() {
         {"fs_buf_size_bytes", 1024},
         {"num_loader_processing_threads", 6},
         {"num_exporter_processing_threads", 7},
-        {"num_http_loader_processing_threads", 8}
+        {"num_http_loader_processing_threads", 8},
+        {"http_max_listen_conn", 512}
     });
     generalObj["worker_defaults"] = json::object({
         {"svc_port", 51000},

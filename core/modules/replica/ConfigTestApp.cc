@@ -30,6 +30,9 @@
 #include <stdexcept>
 #include <vector>
 
+// Third-party headers
+#include "boost/asio.hpp"
+
 // Qserv headers
 #include "replica/Common.h"
 #include "replica/Configuration.h"
@@ -415,7 +418,7 @@ bool ConfigTestApp::_testGeneral() {
     bool success = true;
 
     // Testing reading the default values using the generic API. results will be reported
-    // asa table onto the standard output.  Note that the last argument in each
+    // as a table onto the standard output.  Note that the last argument in each
     // call represents an expected value of the parameter's value.
     {
         TestGeneral test(config(), "READING DEAFULT STATE OF THE GENERAL PARAMETERS:", indent, verticalSeparator());
@@ -424,6 +427,8 @@ bool ConfigTestApp::_testGeneral() {
         test.verify<size_t>(        "controller", "num_threads", 2);
         test.verify<size_t>(        "controller", "http_server_threads", 2);
         test.verify<uint16_t>(      "controller", "http_server_port", 25081);
+        test.verify<unsigned int>(  "controller", "http_max_listen_conn",
+                                    boost::asio::socket_base::max_listen_connections);
         test.verify<unsigned int>(  "controller", "request_timeout_sec", 600);
         test.verify<unsigned int>(  "controller", "job_timeout_sec", 600);
         test.verify<unsigned int>(  "controller", "job_heartbeat_sec", 0);
@@ -448,6 +453,8 @@ bool ConfigTestApp::_testGeneral() {
         test.verify<size_t>(        "worker", "num_loader_processing_threads", 2);
         test.verify<size_t>(        "worker", "num_exporter_processing_threads", 2);
         test.verify<size_t>(        "worker", "num_http_loader_processing_threads", 2);
+        test.verify<unsigned int>(  "worker", "http_max_listen_conn",
+                                    boost::asio::socket_base::max_listen_connections);
         test.verify<uint16_t>(      "worker_defaults", "svc_port", 25000);
         test.verify<uint16_t>(      "worker_defaults", "fs_port", 25001);
         test.verify<std::string>(   "worker_defaults", "data_dir", "/qserv/data/mysql");
@@ -478,6 +485,8 @@ bool ConfigTestApp::_testGeneral() {
         config()->set<size_t>(        "controller", "num_threads", 2 + 1);
         config()->set<size_t>(        "controller", "http_server_threads", 2 + 1);
         config()->set<uint16_t>(      "controller", "http_server_port", 25081 + 1);
+        config()->set<unsigned int>(  "controller", "http_max_listen_conn",
+                                      boost::asio::socket_base::max_listen_connections * 2);
         config()->set<unsigned int>(  "controller", "request_timeout_sec", 600 + 1);
         config()->set<unsigned int>(  "controller", "job_timeout_sec", 600 + 1);
         config()->set<unsigned int>(  "controller", "job_heartbeat_sec", 0 + 1);
@@ -506,6 +515,8 @@ bool ConfigTestApp::_testGeneral() {
         config()->set<size_t>(        "worker", "num_loader_processing_threads", 2 + 1);
         config()->set<size_t>(        "worker", "num_exporter_processing_threads", 2 + 1);
         config()->set<size_t>(        "worker", "num_http_loader_processing_threads", 2 + 1);
+        config()->set<unsigned int>(  "worker", "http_max_listen_conn",
+                                      boost::asio::socket_base::max_listen_connections * 4);
         config()->set<uint16_t>(      "worker_defaults", "svc_port", 25000 + 1);
         config()->set<uint16_t>(      "worker_defaults", "fs_port", 25001 + 1);
         config()->set<std::string>(   "worker_defaults", "data_dir", "/qserv/data/mysql-1");
@@ -523,6 +534,8 @@ bool ConfigTestApp::_testGeneral() {
         test.verify<size_t>(        "controller", "num_threads", 2 + 1);
         test.verify<size_t>(        "controller", "http_server_threads", 2 + 1);
         test.verify<uint16_t>(      "controller", "http_server_port", 25081 + 1);
+        test.verify<unsigned int>(  "controller", "http_max_listen_conn",
+                                    boost::asio::socket_base::max_listen_connections * 2);
         test.verify<unsigned int>(  "controller", "request_timeout_sec", 600 + 1);
         test.verify<unsigned int>(  "controller", "job_timeout_sec", 600 + 1);
         test.verify<unsigned int>(  "controller", "job_heartbeat_sec", 0 + 1);
@@ -550,6 +563,8 @@ bool ConfigTestApp::_testGeneral() {
         test.verify<size_t>(        "worker", "num_loader_processing_threads", 2 + 1);
         test.verify<size_t>(        "worker", "num_exporter_processing_threads", 2 + 1);
         test.verify<size_t>(        "worker", "num_http_loader_processing_threads", 2 + 1);
+        test.verify<unsigned int>(  "worker", "http_max_listen_conn",
+                                    boost::asio::socket_base::max_listen_connections * 4);
         test.verify<uint16_t>(      "worker_defaults", "svc_port", 25000 + 1);
         test.verify<uint16_t>(      "worker_defaults", "fs_port", 25001 + 1);
         test.verify<std::string>(   "worker_defaults", "data_dir", "/qserv/data/mysql-1");

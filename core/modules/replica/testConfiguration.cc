@@ -32,6 +32,7 @@
 #include <vector>
 
 // Third party headers
+#include "boost/asio.hpp"
 #include "nlohmann/json.hpp"
 
 // LSST headers
@@ -91,6 +92,7 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestReadingGeneralParameters) {
 
     BOOST_CHECK(config->get<size_t>("controller", "num_threads") == 2);
     BOOST_CHECK(config->get<uint16_t>("controller", "http_server_port") == 8080);
+    BOOST_CHECK(config->get<unsigned int>("controller", "http_max_listen_conn") == 256);
     BOOST_CHECK(config->get<size_t>("controller", "http_server_threads") == 3);
     BOOST_CHECK(config->get<unsigned int>("controller", "request_timeout_sec") == 100);
     BOOST_CHECK(config->get<string>("controller", "empty_chunks_dir") == "/qserv/data/qserv");
@@ -121,6 +123,7 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestReadingGeneralParameters) {
     BOOST_CHECK(config->get<size_t>("worker", "num_loader_processing_threads") == 6);
     BOOST_CHECK(config->get<size_t>("worker", "num_exporter_processing_threads") == 7);
     BOOST_CHECK(config->get<size_t>("worker", "num_http_loader_processing_threads") == 8);
+    BOOST_CHECK(config->get<unsigned int>("worker", "http_max_listen_conn") == 512);
 }
 
 
@@ -142,6 +145,10 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestModifyingGeneralParameters) {
     BOOST_CHECK_THROW(config->set<uint16_t>("controller", "http_server_port", 0), std::invalid_argument);
     BOOST_REQUIRE_NO_THROW(config->set<uint16_t>("controller", "http_server_port", 8081));
     BOOST_CHECK(config->get<uint16_t>("controller", "http_server_port") == 8081);
+
+    BOOST_CHECK_THROW(config->set<unsigned int>("controller", "http_max_listen_conn", 0), std::invalid_argument);
+    BOOST_REQUIRE_NO_THROW(config->set<unsigned int>("controller", "http_max_listen_conn", 1024));
+    BOOST_CHECK(config->get<unsigned int>("controller", "http_max_listen_conn") == 1024);
 
     BOOST_CHECK_THROW(config->set<size_t>("controller", "http_server_threads", 0), std::invalid_argument);
     BOOST_REQUIRE_NO_THROW(config->set<size_t>("controller", "http_server_threads", 4));
@@ -210,6 +217,10 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestModifyingGeneralParameters) {
     BOOST_CHECK_THROW(config->set<size_t>("worker", "num_http_loader_processing_threads", 0), std::invalid_argument);
     BOOST_REQUIRE_NO_THROW(config->set<size_t>("worker", "num_http_loader_processing_threads", 9));
     BOOST_CHECK(config->get<size_t>("worker", "num_http_loader_processing_threads") == 9);
+
+    BOOST_CHECK_THROW(config->set<unsigned int>("worker", "http_max_listen_conn", 0), std::invalid_argument);
+    BOOST_REQUIRE_NO_THROW(config->set<unsigned int>("worker", "http_max_listen_conn", 2048));
+    BOOST_CHECK(config->get<unsigned int>("worker", "http_max_listen_conn") == 2048);
 }
 
 
