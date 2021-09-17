@@ -44,11 +44,13 @@ namespace replica {
 
 HttpSvc::HttpSvc(ServiceProvider::Ptr const& serviceProvider,
                  uint16_t port,
+                 unsigned int backlog,
                  size_t numThreads,
                  string const& authKey,
                  string const& adminAuthKey)
     :   _serviceProvider(serviceProvider),
         _port(port),
+        _backlog(backlog),
         _numThreads(numThreads),
         _authKey(authKey),
         _adminAuthKey(adminAuthKey),
@@ -67,7 +69,7 @@ void HttpSvc::run() {
     if (_httpServer != nullptr) {
         throw logic_error(context() + string(__func__) + ": service is already running.");
     }
-    _httpServer = qhttp::Server::create(_io_service, _port);
+    _httpServer = qhttp::Server::create(_io_service, _port, _backlog);
  
     // Make sure the services were registered and the server  started before launching
     // any BOOST ASIO threads. This will prevent threads from finishing due to a lack of
