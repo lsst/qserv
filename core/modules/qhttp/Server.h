@@ -73,9 +73,11 @@ public:
     //      constructed server will install asynchronous event handlers as necessary.  Optionally pass a TCP
     //      port on which the server should listen for incoming requests; if 0 is passed as the port, a free
     //      port will be selected by the operating system (in which case getPort() may subsequently be called
-    //      after start() to discover the assigned port).
+    //      after start() to discover the assigned port). Parameter 'backlog' of the method specifies the
+    //      maximum length of the queue of pending connections.
 
-    static Ptr create(boost::asio::io_service& io_service, unsigned short port);
+    static Ptr create(boost::asio::io_service& io_service, unsigned short port,
+                      int backlog=boost::asio::socket_base::max_listen_connections);
     unsigned short getPort();
 
     ~Server();
@@ -118,7 +120,7 @@ private:
     Server(Server const&) = delete;
     Server& operator=(Server const&) = delete;
 
-    Server(boost::asio::io_service& io_service, unsigned short port);
+    Server(boost::asio::io_service& io_service, unsigned short port, int backlog);
 
     void _accept();
 
@@ -133,6 +135,7 @@ private:
     std::unordered_map<std::string, std::vector<PathHandler>> _pathHandlersByMethod;
 
     boost::asio::io_service& _io_service;
+    int const _backlog;
     boost::asio::ip::tcp::endpoint _acceptorEndpoint;
     boost::asio::ip::tcp::acceptor _acceptor;
 
