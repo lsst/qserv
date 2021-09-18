@@ -52,6 +52,9 @@ BOOST_AUTO_TEST_CASE(UrlTest) {
         ptr.reset(new Url("file:///"));
     }, invalid_argument);
     BOOST_CHECK_THROW({
+        ptr.reset(new Url("file://h/"));
+    }, invalid_argument);
+    BOOST_CHECK_THROW({
         ptr.reset(new Url("http://"));
     }, invalid_argument);
     BOOST_CHECK_THROW({
@@ -63,11 +66,11 @@ BOOST_AUTO_TEST_CASE(UrlTest) {
         ptr.reset(new Url("other:///////"));
     }, invalid_argument);
 
-    // Test file-based URLs
-    string const fileUrl = "file:///a";
-    //BOOST_REQUIRE_NO_THROW({
+    // Test file-based URLs that have no hostname
+    string fileUrl = "file:///a";
+    BOOST_REQUIRE_NO_THROW({
         ptr.reset(new Url(fileUrl));
-    //});
+    });
     BOOST_REQUIRE_NO_THROW({
         BOOST_CHECK_EQUAL(ptr->url(), fileUrl);
     });
@@ -76,6 +79,24 @@ BOOST_AUTO_TEST_CASE(UrlTest) {
     });
     BOOST_REQUIRE_NO_THROW({
         BOOST_CHECK_EQUAL(ptr->filePath(), "/a");
+    });
+
+    // Test file-based URLs that have the name of a host
+    fileUrl = "file://h/b";
+    BOOST_REQUIRE_NO_THROW({
+        ptr.reset(new Url(fileUrl));
+    });
+    BOOST_REQUIRE_NO_THROW({
+        BOOST_CHECK_EQUAL(ptr->url(), fileUrl);
+    });
+    BOOST_REQUIRE_NO_THROW({
+        BOOST_CHECK_EQUAL(ptr->scheme(), Url::Scheme::FILE);
+    });
+    BOOST_REQUIRE_NO_THROW({
+        BOOST_CHECK_EQUAL(ptr->fileHost(), "h");
+    });
+    BOOST_REQUIRE_NO_THROW({
+        BOOST_CHECK_EQUAL(ptr->filePath(), "/b");
     });
 
     // Test HTTP-based URLs

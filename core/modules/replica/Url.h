@@ -59,6 +59,12 @@ public:
     std::string const& url() const { return _url; }
 
     /**
+     * @return A host name part (if present) of a url based on Scheme::FILE
+     * @throw std::logic_error If attempting to call for non-file urls.
+     */
+    std::string const& fileHost() const;
+
+    /**
      * @return A file path part of a url based on Scheme::FILE
      * @throw std::logic_error If attempting to call for non-file urls.
      */
@@ -86,6 +92,7 @@ private:
 
     // Cached state
     Scheme _scheme = Scheme::FILE;
+    std::string _fileHost;   ///< the host name for a file (FILE scheme only)
     std::string _filePath;   ///< local path to a file (FILE scheme only)
 };
 
