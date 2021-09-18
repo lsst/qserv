@@ -93,6 +93,9 @@ protected:
     /// Make sure the currently open/created file gets closed and deleted
     void closeFile();
 
+    /// @return The status of the file
+    bool isOpen() const { return _file.is_open(); }
+
 private:
     // Input parameters
 

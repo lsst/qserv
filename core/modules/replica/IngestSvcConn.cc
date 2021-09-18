@@ -296,6 +296,7 @@ void IngestSvcConn::_responseSent(boost::system::error_code const& ec,
 
     LOGS(_log, LOG_LVL_DEBUG, context << __func__);
 
+    if (!isOpen()) return;
     if (::isErrorCode(ec, __func__)) {
         auto const databaseServices = serviceProvider()->databaseServices();
         bool const failed = true;
@@ -329,6 +330,8 @@ void IngestSvcConn::_dataReceived(boost::system::error_code const& ec,
                                   size_t bytes_transferred) {
 
     LOGS(_log, LOG_LVL_DEBUG, context << __func__);
+
+    if (!isOpen()) return;
 
     auto const databaseServices = serviceProvider()->databaseServices();
     bool const failed = true;
