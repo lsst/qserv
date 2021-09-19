@@ -434,7 +434,6 @@ json HttpIngestTransModule::_getTransactionContributions(TransactionInfo const& 
     unsigned int numRegularFiles = 0;
     unsigned int numChunkFiles = 0;
     unsigned int numChunkOverlapFiles = 0;
-    unsigned int numFailedFiles = 0;
     float dataSizeGb = 0;
     uint64_t numRows = 0;
     uint64_t firstContribBeginTime = numeric_limits<uint64_t>::max();
@@ -444,15 +443,22 @@ json HttpIngestTransModule::_getTransactionContributions(TransactionInfo const& 
     json workerContribJson = json::object();
     json transContribFilesJson = json::array();
 
+    json numFilesByStatusJson = json::object();
+    for (auto status: TransactionContribInfo::statusCodes()) {
+        numFilesByStatusJson[TransactionContribInfo::status2str(status)] = 0;
+    }
+
     for (auto&& contrib: databaseServices->transactionContribs(transactionInfo.id)) {
 
         // Always include detailed into on the contributions
         if (longContribFormat) transContribFilesJson.push_back(contrib.toJson());
 
-        // Don't count incomplete or non-successful contributions for the summary stats.
-        // 
+        // Count numbers of files in any state
+        numFilesByStatusJson[TransactionContribInfo::status2str(contrib.status)] =
+                numFilesByStatusJson[TransactionContribInfo::status2str(contrib.status)].get<int>() + 1;
+
+        // Don't count incomplete or non-successful contributions for the summary statistics.
         if (contrib.status != TransactionContribInfo::Status::FINISHED) {
-            numFailedFiles++;
             continue;
         }
         uniqueWorkers.insert(contrib.worker);
@@ -524,7 +530,7 @@ json HttpIngestTransModule::_getTransactionContributions(TransactionInfo const& 
     json resultJson;
     resultJson["summary"] = json::object({
         {"num_workers", uniqueWorkers.size()},
-        {"num_failed_files", numFailedFiles},
+        {"num_files_by_status", numFilesByStatusJson},
         {"num_regular_files", numRegularFiles},
         {"num_chunk_files", numChunkFiles},
         {"num_chunk_overlap_files", numChunkOverlapFiles},
