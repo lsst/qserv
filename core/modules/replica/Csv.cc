@@ -76,15 +76,15 @@ char parseParam(string const& name,
     }
    if (allowedValues.cend() == find(allowedValues.cbegin(), allowedValues.cend(), value)) {
         throw invalid_argument(
-                context + "the value '" + value + "' of the parameter '" + name + "'."
-                + " is not allowed for the given parameter."
+                context + "the value '" + value + "' of the parameter '" + name
+                + "' is not allowed for the given parameter."
         );
     }
     auto const itr = inTranslationMap.find(value);
     if (inTranslationMap.cend() == itr) {
         throw invalid_argument(
-                context + "the value '" + value + "' of the parameter '" + name + "'."
-                + " is not supported by the Parser."
+                context + "the value '" + value + "' of the parameter '" + name
+                + "' is not supported by the Parser."
         );
     }
     return itr->second;

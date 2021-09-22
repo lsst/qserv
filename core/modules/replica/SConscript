@@ -38,3 +38,7 @@ for f in env.Glob(os.path.join(path, "qserv-*.cc"), source=True, strings=True):
 # the above discovered binary sources
 
 standardModule(env, bin_cc_files=bin_cc_files, unit_tests="", test_libs="curl")
+
+# install schema files
+build_data = DefaultEnvironment()['build_data']
+build_data['install'] += env.Install("$prefix/share/qserv/schema/replica", env.Glob("schema/*.sql"))

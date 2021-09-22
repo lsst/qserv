@@ -37,6 +37,12 @@ Url::Url(string const& url)
 }
 
 
+string const& Url::fileHost() const {
+    if (_scheme == FILE) return _fileHost;
+    throw logic_error(_error(__func__, "not a file resource."));
+}
+
+
 string const& Url::filePath() const {
     if (_scheme == FILE) return _filePath;
     throw logic_error(_error(__func__, "not a file resource."));
@@ -51,14 +57,32 @@ string Url::_error(string const& func, string const& msg) {
 void Url::_translate() {
     if (_url.empty()) throw invalid_argument(_error(__func__, "url is empty."));
 
-    // Note that the path should be always absolute in the URL. It's impossible to
-    // pass a relative location of a file in this scheme. See details:
-    // https://en.wikipedia.org/wiki/File_URI_scheme
-    string scheme = "file:///";
+    // Note that the file path should be always absolute in the URL. It's impossible to
+    // pass a relative location of a file in this scheme. The file path is required to
+    // have at least one character besides the root folder.
+    // See details: https://en.wikipedia.org/wiki/File_URI_scheme
+    string scheme = "file://";
     if ((_url.length() > scheme.length()) && (_url.substr(0, scheme.length()) == scheme)) {
-        _scheme = FILE;
-        _filePath = _url.substr(scheme.length() - 1);
-        return;
+        string const hostFilePath = _url.substr(scheme.length());
+        string::size_type const pos = hostFilePath.find_first_of('/');
+        if (pos != string::npos) {
+            if (pos == 0) {
+                // This URL doesn't have the host name: file:///<path>
+                if (hostFilePath.length() > 1) {
+                    _scheme = FILE;
+                    _filePath = hostFilePath;
+                    return;
+                }
+            } else {
+                // This URL has the host name: file://<host>/<path>
+                if (hostFilePath.length() > pos + 1) {
+                    _scheme = FILE;
+                    _fileHost = hostFilePath.substr(0, pos);
+                    _filePath = hostFilePath.substr(pos);
+                    return;
+                }
+            }
+        }
     }
     scheme = "http://";
     if ((_url.length() > scheme.length()) && (_url.substr(0, scheme.length()) == scheme)) {

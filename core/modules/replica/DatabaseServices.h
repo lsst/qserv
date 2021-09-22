@@ -36,6 +36,7 @@
 
 // Qserv headers
 #include "replica/Common.h"
+#include "replica/Csv.h"
 #include "replica/Job.h"
 #include "replica/ReplicaInfo.h"
 
@@ -272,47 +273,109 @@ public:
     /// The unique identifier of a parent transaction.
     TransactionId transactionId = std::numeric_limits<TransactionId>::max();
 
-    std::string worker;         /// The name name of a worker
+    std::string worker;         ///< The name name of a worker
 
-    std::string database;       /// The name of a database
-    std::string table;          /// The base name of a table where the contribution was made
+    std::string database;       ///< The name of a database
+    std::string table;          ///< The base name of a table where the contribution was made
 
-    unsigned int chunk = 0;     /// (optional) The chunk number (partitioned tables only)
-    bool isOverlap = false;     /// (optional) A flavor of the chunked table (partitioned tables only)
+    unsigned int chunk = 0;     ///< (optional) The chunk number (partitioned tables only)
+    bool isOverlap = false;     ///< (optional) A flavor of the chunked table (partitioned tables only)
 
-    std::string url;            /// The data source specification
+    std::string url;            ///< The data source specification
 
-    // ---------------------------------------------------------------------------
-    // These data members are meant to be used for tracking a status of an operation
-    // as it's being progressing and for the performance analysis.
+    bool async = false;         ///< The type of the request
+
+    unsigned int expirationTimeoutSec = 0;  ///< Request expiration timeout (ASYNC)
+
+    // Parameters needed for parsing the contribution.
+
+    std::string fieldsTerminatedBy = csv::Dialect::defaultFieldsTerminatedBy;
+    std::string fieldsEnclosedBy   = csv::Dialect::defaultFieldsEnclosedBy;
+    std::string fieldsEscapedBy    = csv::Dialect::defaultFieldsEscapedBy;
+    std::string linesTerminatedBy  = csv::Dialect::defaultLinesTerminatedBy;
+
+    // These counters are set only in case of the successful completion of the request
+    // indicated by the status code 'FINISHED'.
+
+    uint64_t numBytes = 0;      ///< The total number of bytes read from the source
+    uint64_t numRows = 0;       ///< The total number of rows read from the source
+
+    // -------------------------------------------------------------------------------
+    // These data members are meant to be used for tracking the on-going or completion
+    // status of an operation as it's being processed by the Ingest system. These are
+    // meant to be used for error or the performance analysis. These are the notes on
+    // how to interpret timestamps.
     //
-    //   beginTime - is set after the initial recording of the info in the database
-    //   endTime   - is set after finishing (regardless of an outcome) the operation
+    //   'createTime'
+    //     The timestamp is never 0 as it's set after receiving a request. Note that
+    //     the request may fail at this stage due to incorrect parameters, etc.
+    //     In this case the status 'CREATE_FAILED' will be set. Should this be the case
+    //     values of all other timestamps will be set to 0.
     //
-    //      IMPORTANT:
-    //         It's possible for the 'endTime' attribute to be never set in case of
-    //         a catastrophic failure of the worker ingest service. This may
-    //         create a potential ambiguity in interpreting a state of
-    //         the contribution before its parent transaction finishes.
-    //         Seeing the default value of 0 while the transaction is still
-    //         open may indicate an on-going ingest, or a failed ingest.
-    //         Once the transaction finishes zero value would always indicate
-    //         a failure.
-    //         The same rules apply to attrubutes 'numBytes', 'numRows' and 'success'
+    //   'startTime'
+    //     A time when the request processing started (normally by pulling a file
+    //     from the input data source specified by 'url'). Note that the request
+    //     may not start due to changing conditions, such an incorrect state of
+    //     the corresponding transaction, a lack of resources, etc. Should this be
+    //     the case the status code 'START_FAILED' will be set. Values of the timestamps
+    //     'readTime' and 'loadTime' will be also set to 0.
     //
-    //   numBytes  - is set upon the successful completion of the operation
-    //   numRows   - is set upon the successful completion of the operation
-    //   success   - is set to 'true' if the operation has succeeded
+    //   'readTime'
+    //     A time when the input file was completely read and preprocessed, or in case
+    //     of any failure of the operation. In the latter case the status code 'READ_FAILED'
+    //     will be set. In this case a value of the timestamp 'loadTime' will be set to 0.
+    //
+    //   'loadTime'
+    //    A time when loading of the (preprocessed) input file into MySQL finished or
+    //    failed. Should the latter be the case the status code 'LOAD_FAILED' will be set. 
+    //
 
-    uint64_t beginTime = 0;     /// The timestamp (milliseconds) when the ingest started
-    uint64_t endTime = 0;       /// The timestamp (milliseconds) when the ingest finished
-    uint64_t numBytes = 0;      /// The total number of bytes read from the source
-    uint64_t numRows = 0;       /// The total number of rows read from the source
+    uint64_t createTime = 0;    ///< The timestamp (milliseconds) when the request was received
+    uint64_t startTime = 0;     ///< The timestamp (milliseconds) when the request processing started
+    uint64_t readTime = 0;      ///< The timestamp (milliseconds) when finished reading/preprocessing the input file
+    uint64_t loadTime = 0;      ///< The timestamp (milliseconds) when finished loading the file into MySQL
 
-    bool success = false;       /// The completion status of the ingest operation
+    /// The current (or completion) status of the ingest operation.
+    /// @note The completion status values 'CANCELLED' and 'EXPIRED' are meant to be used
+    //    for processing requests in the asynchronous mode.
+    enum class Status:int {
+        IN_PROGRESS = 0,    // The transient state of a request before it's FINISHED or failed
+        CREATE_FAILED,      // The request was received and rejected right away (incorrect parameters, etc.)
+        START_FAILED,       // The request couldn't start after being pulled from a queue due to changed conditions
+        READ_FAILED,        // Reading/preprocessing of the input file failed
+        LOAD_FAILED,        // Loading into MySQL failed
+        CANCELLED,          // The request was explicitly cancelled by the ingest workflow (ASYNC)
+        EXPIRED,            // The optional request's expiration timeout was reached (ASYNC)
+        FINISHED            // The request succeeded
+    } status;
+
+    // The error context (if any).
+
+    int httpError = 0;      ///< An HTTP response code, if applies to the request
+    int systemError = 0;    ///< The UNIX errno captured at a point where a problem occurred
+    std::string error;      ///< The human-readable explanation of the error
+
+    /// @return The string representation of the status code.
+    /// @throws std::invalid_argument If the status code isn't supported by the implementation.
+    static std::string const& status2str(Status status);
+
+    /// @return The status code corresponding to the input string.
+    /// @throws std::invalid_argument If the string didn't match any known code.
+    static Status str2status(std::string const& str);
+
+    /// @return An ordered collection of all known status codes
+    static std::vector<Status> const& statusCodes();
+
+    /// Set to 'true' if the request could be retried w/o restarting the corresponding
+    /// super-transaction.
+    bool retryAllowed = false;
 
     /// @return JSON representation of the object
     nlohmann::json toJson() const;
+private:
+    static std::map<TransactionContribInfo::Status,std::string> const _transactionContribStatus2str;
+    static std::map<std::string, TransactionContribInfo::Status> const _transactionContribStr2status;
+    static std::vector<TransactionContribInfo::Status> const _transactionContribStatusCodes;
 };
 
 
@@ -897,27 +960,81 @@ public:
                                                                     std::string const& table=std::string(),
                                                                     std::string const& worker=std::string()) = 0;
 
-    /// Insert the initial record on the contribution before its size and the operation's
-    /// outcome will be known. For the later use method endTransactionContrib.
-    /// @param transactionId a unique identifier of the transaction
-    /// @param table the base name of a table
-    /// @param chunk the chunk number (ignored for non-partitioned tables)
-    /// @param isOverlap the kind of a table (ignored for non-partitioned tables)
-    /// @param worker the name of a worker
-    /// @param url the data source specification
-    /// @return the initial record on the contribution
-    virtual TransactionContribInfo beginTransactionContrib(TransactionId transactionId,
-                                                           std::string const& table,
-                                                           unsigned int chunk,
-                                                           bool isOverlap,
-                                                           std::string const& worker,
-                                                           std::string const& url) = 0;
+    /**
+     * Insert the initial record on the contribution.
+     *
+     * @note The initial state of the contribution will be set to 'IN_PROGRESS' unless
+     * flag \param failed will set to 'true'. In this case the status code
+     * 'CREATE_FAILED' will be stored.
+     *
+     * @note The next method to be called to indicate further progress (unless failed)
+     * on processing the contribution should be 'startedTransactionContrib'.
+     *
+     * @param info The transient state of the contribution to be synched.
+     * @param failed (optional) The flag to indicate a failure.
+     *
+     * @return The initial record on the contribution.
+     */
+    virtual TransactionContribInfo createdTransactionContrib(TransactionContribInfo const& info,
+                                                             bool failed=false) = 0;
 
-    /// Update or finalize the contribution status
-    /// @param info the transient state of the contribution to be synched with
-    ///   the persistent store
-    /// @return the updated record on the contribution
-    virtual TransactionContribInfo endTransactionContrib(TransactionContribInfo const& info) = 0;
+    /**
+     * Update the persistent status of the contribution to indicate that it started
+     * to be processed (or failed to be started).
+     *
+     * @note If a value of \param failed is set to 'true' the status of the contribution
+     * will be switched to the final state 'START_FAILED'. In case of a failure
+     * the following attributes from the input object will be also synced: 'httpError',
+     * 'systemError', 'error', 'retryAllowed'.
+     * 
+     * @note The next method to be called to indicate further progress (unless failed)
+     * on processing the contribution should be 'readTransactionContrib'.
+     *
+     * @param info The transient state of the contribution to be synched.
+     * @param failed (optional) The flag to indicate a failure.
+     *
+     * @return The updated record on the contribution.
+     */
+    virtual TransactionContribInfo startedTransactionContrib(TransactionContribInfo const& info,
+                                                             bool failed=false) = 0;
+
+    /**
+     * Update the persistent status of the contribution to indicate that it the input
+     * data file has been read/presprocessed (or failed to be read).
+     *
+     * @note If a value of \param failed is set to 'true' the status of the contribution
+     * will be switched to the final state 'READ_FAILED'. In case of a failure
+     * the following attributes from the input object will be also synced: 'httpError',
+     * 'systemError', 'error', 'retryAllowed'.
+     * 
+     * @note The next method to be called to indicate further progress (unless failed)
+     * on processing the contribution should be 'loadedTransactionContrib'.
+     *
+     * @param info The transient state of the contribution to be synched.
+     * @param failed (optional) The flag which if set to 'true' would indicate a error
+     * @return The updated record on the contribution.
+     */
+    virtual TransactionContribInfo readTransactionContrib(TransactionContribInfo const& info,
+                                                          bool failed=false) = 0;
+
+    /**
+     * Update the persistent status of the contribution to indicate that it the input
+     * data file has been loaded into MySQL (or failed to be read).
+     *
+     * @note If a value of \param failed is set to 'true' the status of the contribution
+     * will be switched to the final state 'LOAD_FAILED'. In case of a failure
+     * the following attributes from the input object will be also synced: 'httpError',
+     * 'systemError', 'error', 'retryAllowed'.
+     * 
+     * @note This is the final method to be called to indicate a progress
+     * on processing the contribution.
+     *
+     * @param info The transient state of the contribution to be synched.
+     * @param failed (optional) The flag which if set to 'true' would indicate a error
+     * @return The updated record on the contribution.
+     */
+    virtual TransactionContribInfo loadedTransactionContrib(TransactionContribInfo const& info,
+                                                            bool failed=false) = 0;
 
     /// @return A descriptor of the parameter
     /// @throws DatabaseServicesNotFound If no such parameter found.

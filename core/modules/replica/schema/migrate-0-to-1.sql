@@ -1,8 +1,3 @@
--- This schema file is meant to be used for initializing the replication system's
--- database with the latest version of the schema. An alternative approach would
--- be to use the schema migration tool 'smig'. The 'smig' support has been added
--- to this package as well. See the version specific files for further details.
-
 CREATE TABLE IF NOT EXISTS `config` (
   `category` VARCHAR(255) NOT NULL ,
   `param`    VARCHAR(255) NOT NULL ,
@@ -351,46 +346,19 @@ COMMENT = 'The super-transactions created by the ingest system';
 
 
 CREATE TABLE IF NOT EXISTS `transaction_contrib` (
-  `id`              INT UNSIGNED  NOT NULL AUTO_INCREMENT,  -- a unique identifier of the contribution
-  `transaction_id`  INT UNSIGNED  NOT NULL ,                -- FK to the parent transaction
-  `worker`          VARCHAR(255)  NOT NULL ,
-  `database`        VARCHAR(255)  NOT NULL ,
-  `table`           VARCHAR(255)  NOT NULL ,
-  `chunk`           INT UNSIGNED  NOT NULL ,
-  `is_overlap`      BOOLEAN       NOT NULL ,
-  `url`             TEXT          NOT NULL ,
-
-  `type`  ENUM ('SYNC', 'ASYNC') NOT NULL DEFAULT 'SYNC' ,
-
-  `expiration_timeout_sec`  INT UNSIGNED      NOT NULL DEFAULT 0 ,  -- request expiration timeout if not 0 (ASYNC)
-  `fields_terminated_by`    VARCHAR(255)      NOT NULL DEFAULT '\t' ,
-  `fields_enclosed_by`      VARCHAR(255)      NOT NULL DEFAULT '' ,
-  `fields_escaped_by`       VARCHAR(255)      NOT NULL DEFAULT '\\' ,
-  `lines_terminated_by`     VARCHAR(255)      NOT NULL DEFAULT '\n' ,
-  `num_bytes`               BIGINT UNSIGNED   NOT NULL DEFAULT 0 ,
-  `num_rows`                BIGINT UNSIGNED   NOT NULL DEFAULT 0 ,
-  `create_time`             BIGINT UNSIGNED   NOT NULL DEFAULT 0 ,    -- the time a request was received and (possibly) queued
-  `start_time`              BIGINT UNSIGNED   NOT NULL DEFAULT 0 ,    -- the time the request processing started (by reading/loading input data)
-  `read_time`               BIGINT UNSIGNED   NOT NULL DEFAULT 0 ,    -- the time the input data file was read and preprocessed
-  `load_time`               BIGINT UNSIGNED   NOT NULL DEFAULT 0 ,    -- the time the contiribution was fully loaded
-
-  `status` ENUM ('IN_PROGRESS',   -- the transient state of a request before it's FINISHED or failed
-                 'CREATE_FAILED', -- the request was received but rejected right away (incorrect parameters, etc.)
-                 'START_FAILED',  -- the request couldn't start after being pulled from a queue due to changed conditions
-                 'READ_FAILED',   -- reading/preprocessing of the input file failed
-                 'LOAD_FAILED',   -- loading into MySQL failed
-                 'CANCELLED',     -- the request was explicitly cancelled by the ingest workflow (ASYNC)
-                 'EXPIRED',       -- the optional request's expiration timeout was reached (ASYNC)
-                 'FINISHED'       -- the request succeeded
-                ) NOT NULL DEFAULT 'IN_PROGRESS' ,
-
-  -- Columns for storing the extended info on a problem that prevented a request
-  -- from succeeding.
-  `http_error`    INT     NOT NULL DEFAULT 0 ,  -- HTTP response code, if applies to a request
-  `system_error`  INT     NOT NULL DEFAULT 0 ,  -- the UNIX errno captured at a point where a problem occurred
-  `error`         TEXT    NOT NULL DEFAULT '' , -- the human-readable message
-  `retry_allowed` BOOLEAN NOT NULL DEFAULT 0 ,  -- a client was informed that the request could be re-tried or not
-
+  `id`              INT UNSIGNED    NOT NULL AUTO_INCREMENT,  -- a unique identifier of the contribution
+  `transaction_id`  INT UNSIGNED    NOT NULL ,                -- FK to the parent transaction
+  `worker`          VARCHAR(255)    NOT NULL ,
+  `database`        VARCHAR(255)    NOT NULL ,
+  `table`           VARCHAR(255)    NOT NULL ,
+  `chunk`           INT UNSIGNED    NOT NULL ,
+  `is_overlap`      BOOLEAN         NOT NULL ,
+  `url`             TEXT            NOT NULL ,
+  `begin_time`      BIGINT UNSIGNED NOT NULL DEFAULT 0 ,
+  `end_time`        BIGINT UNSIGNED NOT NULL DEFAULT 0 ,
+  `num_bytes`       BIGINT UNSIGNED NOT NULL DEFAULT 0 ,
+  `num_rows`        BIGINT UNSIGNED NOT NULL DEFAULT 0 ,
+  `success`         BOOLEAN         NOT NULL DEFAULT 0 ,
   PRIMARY KEY (`id`) ,
   CONSTRAINT `transaction_contrib_fk_1`
     FOREIGN KEY (`transaction_id`)
@@ -438,4 +406,4 @@ COMMENT = 'Metadata about database as a whole, key-value pairs' ;
 
 -- Add record for schema version, migration script expects this record to exist
 
-INSERT INTO `QMetadata` (`metakey`, `value`) VALUES ('version', '2');
+INSERT INTO `QMetadata` (`metakey`, `value`) VALUES ('version', '1');

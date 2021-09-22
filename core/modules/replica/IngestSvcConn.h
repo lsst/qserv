@@ -200,10 +200,7 @@ private:
      *
      * @param msg  a message to be delivered to a client
      */
-    void _failed(std::string const& msg) {
-        closeFile();
-        _reply(ProtocolIngestResponse::FAILED, msg);
-    }
+    void _failed(std::string const& msg);
 
     /// Send back a message with status FINISHED and no error message.
     void _finished() {

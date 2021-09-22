@@ -31,17 +31,24 @@
 #include <thread>
 #include <stdexcept>
 
+
+// Third party headers
+#include "nlohmann/json.hpp"
+
 // Qserv headers
 #include "global/constants.h"
 #include "replica/Configuration.h"
+#include "replica/HttpExceptions.h"
 #include "replica/ReplicaInfo.h"
 #include "replica/ServiceProvider.h"
+#include "replica/Url.h"
 
 // LSST headers
 #include "lsst/log/Log.h"
 
 using namespace std;
 using namespace std::placeholders;
+using json = nlohmann::json;
 using namespace lsst::qserv::replica;
 
 namespace {
@@ -178,29 +185,92 @@ void IngestSvcConn::_handshakeReceived(boost::system::error_code const& ec,
         return;
     }
 
+    // Initialize parameters of the contribution descriptor
+    _contrib.transactionId = request.transaction_id();
+    _contrib.table = request.table();
+    _contrib.chunk = request.chunk();
+    _contrib.isOverlap = request.is_overlap();
+    _contrib.worker = workerInfo().name;
+    _contrib.url = request.url();
+    _contrib.fieldsTerminatedBy = request.fields_terminated_by();
+    _contrib.fieldsEnclosedBy = request.fields_enclosed_by();
+    _contrib.fieldsEscapedBy = request.fields_escaped_by();
+    _contrib.linesTerminatedBy = request.lines_terminated_by();
+    _contrib.retryAllowed = true;   // stays like this before loading data into MySQL
+
+    // Attempts to pass invalid transaction identifiers or tables are not recorded
+    // as transaction contributions since it's impossible to determine a context
+    // of these operations.
+    auto const config = serviceProvider()->config();
+    auto const databaseServices = serviceProvider()->databaseServices();
+
+    auto const trans = databaseServices->transaction(_contrib.transactionId);
+    _contrib.database = trans.database;
+
+    if (!config->databaseInfo(_contrib.database).hasTable(_contrib.table)) {
+        _failed("no such table '" + _contrib.table + "' in database '" + _contrib.database + "'.");
+    }
+
+    // Prescreen parameters of the request to ensure they're valid in the given
+    // contex. Check the state of the transaction. Refuse to proceed with the request
+    // if any issues were detected.
+
+    bool const failed = true;
+
+    if (trans.state != TransactionInfo::STARTED) {
+        _contrib.error =
+                context + string(__func__) + " transactionId=" + to_string(_contrib.transactionId)
+                + " is not active";
+        _contrib = databaseServices->createdTransactionContrib(_contrib, failed);
+        _failed(_contrib.error);
+        return;
+    }
+
+    csv::Dialect dialect;
     try {
-        _contrib = serviceProvider()->databaseServices()->beginTransactionContrib(
-            request.transaction_id(),
-            request.table(),
-            request.chunk(),
-            request.is_overlap(),
-            workerInfo().name,
-            request.url()
-        );
-        csv::Dialect const dialect(
-            request.fields_terminated_by(),
-            request.fields_enclosed_by(),
-            request.fields_escaped_by(),
-            request.lines_terminated_by()
+        Url const resource(_contrib.url);
+        if (resource.scheme() != Url::FILE) {
+            throw invalid_argument(context + string(__func__) + " unsupported url '" + _contrib.url + "'");
+        }
+
+        dialect = csv::Dialect(
+            _contrib.fieldsTerminatedBy,
+            _contrib.fieldsEnclosedBy,
+            _contrib.fieldsEscapedBy,
+            _contrib.linesTerminatedBy
         );
         _parser.reset(new csv::Parser(dialect));
-        openFile(request.transaction_id(),
-                 request.table(),
-                 dialect,
-                 request.chunk(),
-                 request.is_overlap());
+
     } catch (exception const& ex) {
-        _failed(ex.what());
+        _contrib.error = ex.what();
+        _contrib = databaseServices->createdTransactionContrib(_contrib, failed);
+        _failed(_contrib.error);
+        return;
+    }
+
+    // Register the contribution
+    _contrib = databaseServices->createdTransactionContrib(_contrib);
+
+    // This is where the actual processing of the request begins. 
+    try {
+        openFile(_contrib.transactionId, _contrib.table, dialect, _contrib.chunk, _contrib.isOverlap);
+        _contrib = databaseServices->startedTransactionContrib(_contrib);
+    } catch (HttpError const& ex) {
+        json const errorExt = ex.errorExt();
+        if (!errorExt.empty()) {
+            _contrib.httpError = errorExt["http_error"];
+            _contrib.systemError = errorExt["system_error"];
+            _contrib.retryAllowed = errorExt["retry_allowed"].get<int>() != 0;
+        }
+        _contrib.error = ex.what();
+        _contrib = databaseServices->startedTransactionContrib(_contrib, failed);
+        _failed(_contrib.error);
+        return;
+    } catch (exception const& ex) {
+        _contrib.systemError = errno;
+        _contrib.error = ex.what();
+        _contrib = databaseServices->startedTransactionContrib(_contrib, failed);
+        _failed(_contrib.error);
         return;
     }
 
@@ -226,7 +296,13 @@ void IngestSvcConn::_responseSent(boost::system::error_code const& ec,
 
     LOGS(_log, LOG_LVL_DEBUG, context << __func__);
 
+    if (!isOpen()) return;
     if (::isErrorCode(ec, __func__)) {
+        auto const databaseServices = serviceProvider()->databaseServices();
+        bool const failed = true;
+        _contrib.error = context + string(__func__) + " " + ec.message();
+        _contrib.systemError = ec.value();
+        _contrib = databaseServices->readTransactionContrib(_contrib, failed);
         closeFile();
         return;
     }
@@ -255,13 +331,27 @@ void IngestSvcConn::_dataReceived(boost::system::error_code const& ec,
 
     LOGS(_log, LOG_LVL_DEBUG, context << __func__);
 
+    if (!isOpen()) return;
+
+    auto const databaseServices = serviceProvider()->databaseServices();
+    bool const failed = true;
+
     if (::isErrorCode(ec, __func__)) {
+        _contrib.error =
+                context + string(__func__) + " failed to receive the data packet from the client, error: "
+                + ec.message();
+        _contrib.systemError = ec.value();
+        _contrib = databaseServices->readTransactionContrib(_contrib, failed);
         closeFile();
         return;
     }
 
     ProtocolIngestData request;
     if (not ::readMessage(_socket, _bufferPtr, _bufferPtr->parseLength(), request)) {
+        _contrib.error =
+                context + string(__func__) + " failed to parse the data packet received from the client";
+        _contrib.systemError = errno;
+        _contrib = databaseServices->readTransactionContrib(_contrib, failed);
         closeFile();
         return;
     }
@@ -279,28 +369,33 @@ void IngestSvcConn::_dataReceived(boost::system::error_code const& ec,
     );
     _contrib.numBytes += request.data().size(); // count unmodified input data
 
-
-
-
-
     ProtocolIngestResponse response;
     if (request.last()) {
+        // Finished reading and preprocessing the input file.
+        _contrib = databaseServices->readTransactionContrib(_contrib);
+        // Irreversible changes to the destination table are about to be made.
+        _retryAllowed = false;
+        _contrib.retryAllowed = false;
         try {
-            // Irreversible changes to the destination table are about to be made.
-            _retryAllowed = false;
             loadDataIntoTable();
-            // Save update contribution info in the database
-            _contrib.success = true;
-            serviceProvider()->databaseServices()->endTransactionContrib(_contrib);
+            serviceProvider()->databaseServices()->loadedTransactionContrib(_contrib);
             _finished();
         } catch(exception const& ex) {
-            string const error = string("data load failed: ") + ex.what();
-            LOGS(_log, LOG_LVL_ERROR, context << __func__ << "  " << error);
-            _failed(error);
+            _contrib.error = context + string(__func__) + string(" data load failed: ") + ex.what();
+            _contrib.systemError = errno;
+            serviceProvider()->databaseServices()->loadedTransactionContrib(_contrib, failed);
+            _failed(_contrib.error);
         }
     } else {
         _reply(ProtocolIngestResponse::READY_TO_READ_DATA);
     }
+}
+
+
+void IngestSvcConn::_failed(std::string const& msg) {
+    LOGS(_log, LOG_LVL_ERROR, msg);
+    closeFile();
+    _reply(ProtocolIngestResponse::FAILED, msg);
 }
 
 

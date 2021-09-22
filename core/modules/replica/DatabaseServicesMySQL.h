@@ -207,14 +207,17 @@ public:
                                               std::string const& table=std::string(),
                                               std::string const& worker=std::string()) final;
 
-    TransactionContribInfo beginTransactionContrib(TransactionId transactionId,
-                                                   std::string const& table,
-                                                   unsigned int chunk,
-                                                   bool isOverlap,
-                                                   std::string const& worker,
-                                                   std::string const& url) final;
+    TransactionContribInfo createdTransactionContrib(TransactionContribInfo const& info,
+                                                     bool failed=false) final;
 
-    TransactionContribInfo endTransactionContrib(TransactionContribInfo const& info) final;
+    TransactionContribInfo startedTransactionContrib(TransactionContribInfo const& info,
+                                                     bool failed=false) final;
+
+    TransactionContribInfo readTransactionContrib(TransactionContribInfo const& info,
+                                                  bool failed=false) final;
+
+    TransactionContribInfo loadedTransactionContrib(TransactionContribInfo const& info,
+                                                    bool failed=false) final;
 
     DatabaseIngestParam ingestParam(std::string const& database,
                                     std::string const& category,
@@ -390,6 +393,26 @@ private:
 
     std::vector<TransactionContribInfo> _transactionContribsImpl(util::Lock const& lock,
                                                                  std::string const& predicate);
+
+    /**
+     * Update the persistent state of the transaction contribution at the
+     * given stage. The stage is specified by the name in \param timestamp.
+     *
+     * @param func The context from which the operation was called.
+     * @param info The contribution descriptor.
+     * @param timestamp The name of the timestamp to be updated.
+     * @param failed The flag indicating if the stage has failed or succeeded.
+     * @param successStatus The new state if the stage has succeeded.
+     * @param failureStatus The new state if the stage has failed.
+     *
+     * @return The updated contribution descriptor. 
+     */
+    TransactionContribInfo _updateTransactionContribAt(std::string const& func,
+                                                       TransactionContribInfo const& info,
+                                                       std::string const& timestamp,
+                                                       bool failed,
+                                                       TransactionContribInfo::Status successStatus,
+                                                       TransactionContribInfo::Status failedStatus);
 
     DatabaseIngestParam _ingestParamImpl(util::Lock const& lock,
                                          std::string const& predicate);
