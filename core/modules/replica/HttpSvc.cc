@@ -54,7 +54,7 @@ HttpSvc::HttpSvc(ServiceProvider::Ptr const& serviceProvider,
         _numThreads(numThreads),
         _authKey(authKey),
         _adminAuthKey(adminAuthKey),
-        _io_service() {
+        _io_service_ptr(new boost::asio::io_service()) {
 }
 
 
@@ -69,7 +69,7 @@ void HttpSvc::run() {
     if (_httpServer != nullptr) {
         throw logic_error(context() + string(__func__) + ": service is already running.");
     }
-    _httpServer = qhttp::Server::create(_io_service, _port, _backlog);
+    _httpServer = qhttp::Server::create(*_io_service_ptr, _port, _backlog);
  
     // Make sure the services were registered and the server  started before launching
     // any BOOST ASIO threads. This will prevent threads from finishing due to a lack of
@@ -82,7 +82,7 @@ void HttpSvc::run() {
     vector<shared_ptr<thread>> threads(_numThreads);
     for (auto&& ptr: threads) {
         ptr = shared_ptr<thread>(new thread([self]() {
-            self->_io_service.run();
+            self->_io_service_ptr->run();
         }));
     }
     for (auto&& ptr: threads) {

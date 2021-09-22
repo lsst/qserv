@@ -33,6 +33,7 @@ namespace qserv {
 namespace replica {
 
 void IngestHttpSvcMod::process(ServiceProvider::Ptr const& serviceProvider,
+                               IngestRequestMgr::Ptr const& ingestRequestMgr,
                                string const& workerName,
                                string const& authKey,
                                string const& adminAuthKey,
@@ -40,12 +41,15 @@ void IngestHttpSvcMod::process(ServiceProvider::Ptr const& serviceProvider,
                                qhttp::Response::Ptr const& resp,
                                string const& subModuleName,
                                HttpModuleBase::AuthType const authType) {
-    IngestHttpSvcMod module(serviceProvider, workerName, authKey, adminAuthKey, req, resp);
+    IngestHttpSvcMod module(serviceProvider, ingestRequestMgr,
+                            workerName, authKey, adminAuthKey,
+                            req, resp);
     module.execute(subModuleName, authType);
 }
 
 
 IngestHttpSvcMod::IngestHttpSvcMod(ServiceProvider::Ptr const& serviceProvider,
+                                   IngestRequestMgr::Ptr const& ingestRequestMgr,
                                    string const& workerName,
                                    string const& authKey,
                                    string const& adminAuthKey,
@@ -53,6 +57,7 @@ IngestHttpSvcMod::IngestHttpSvcMod(ServiceProvider::Ptr const& serviceProvider,
                                    qhttp::Response::Ptr const& resp)
         :   HttpModuleBase(authKey, adminAuthKey, req, resp),
             _serviceProvider(serviceProvider),
+            _ingestRequestMgr(ingestRequestMgr),
             _workerName(workerName) {
 }
 
@@ -65,6 +70,11 @@ string IngestHttpSvcMod::context() const {
 json IngestHttpSvcMod::executeImpl(string const& subModuleName) {
     debug(__func__, "subModuleName: '" + subModuleName + "'");
     if (subModuleName == "SYNC-PROCESS") return _syncProcessRequest();
+    else if (subModuleName == "ASYNC-SUBMIT") return _asyncSubmitRequest();
+    else if (subModuleName == "ASYNC-STATUS-BY-ID") return _asyncRequest();
+    else if (subModuleName == "ASYNC-CANCEL-BY-ID") return _asyncCancelRequest();
+    else if (subModuleName == "ASYNC-STATUS-BY-TRANS-ID") return _asyncTransRequests();
+    else if (subModuleName == "ASYNC-CANCEL-BY-TRANS-ID") return _asyncTransCancelRequests();
     throw invalid_argument(
             context() + "::" + string(__func__) +
             "  unsupported sub-module: '" + subModuleName + "'");
@@ -72,30 +82,74 @@ json IngestHttpSvcMod::executeImpl(string const& subModuleName) {
 
 
 json IngestHttpSvcMod::_syncProcessRequest() const {
-    bool const async = false;
-    auto const request = _createRequst(async);
+    auto const request = _createRequst();
     request->process();
-    auto const contrib = request->transactionContribInfo();
-
-    // Performance and statistics of the ingest operations (collected for each
-    // file ingested). Timestamps represent the number of milliseconds since UNIX EPOCH.
     return json::object({
-        {"stats", {
-            {"num_bytes", contrib.numBytes},
-            {"num_rows",  contrib.numRows}
-        }},
-        {"perf", {
-            {"begin_file_read_ms",   contrib.startTime},
-            {"end_file_read_ms",     contrib.readTime},
-            {"begin_file_ingest_ms", contrib.readTime},
-            {"end_file_ingest_ms",   contrib.loadTime}
-        }}
+        {"contrib", request->transactionContribInfo().toJson()}
+    });
+}
+
+
+json IngestHttpSvcMod::_asyncSubmitRequest() const {
+    bool const async = true;
+    auto const request = _createRequst(async);
+    _ingestRequestMgr->submit(request);
+    return json::object({
+        {"contrib", request->transactionContribInfo().toJson()}
+    });
+}
+
+
+json IngestHttpSvcMod::_asyncRequest() const {
+    auto const id = stoul(params().at("id"));
+    auto const contrib = _ingestRequestMgr->find(id);
+    return json::object({
+        {"contrib", contrib.toJson()}
+    });
+}
+
+
+json IngestHttpSvcMod::_asyncCancelRequest() const {
+    auto const id = stoul(params().at("id"));
+    auto const contrib = _ingestRequestMgr->cancel(id);
+    return json::object({
+        {"contrib", contrib.toJson()}
+    });
+}
+
+
+json IngestHttpSvcMod::_asyncTransRequests() const {
+    TransactionId const transactionId = stoul(params().at("id"));
+    string const anyTable;
+    auto const contribs = _serviceProvider->databaseServices()->transactionContribs(
+            transactionId, anyTable, _workerName, TransactionContribInfo::TypeSelector::ASYNC);
+    json contribsJson = json::array();
+    for (auto& contrib: contribs) {
+        contribsJson.push_back(contrib.toJson());
+    }
+    return json::object({
+        {"contribs", contribsJson}
+    });
+}
+
+
+json IngestHttpSvcMod::_asyncTransCancelRequests() const {
+    TransactionId const transactionId = stoul(params().at("id"));
+    string const anyTable;
+    auto const contribs = _serviceProvider->databaseServices()->transactionContribs(
+            transactionId, anyTable, _workerName, TransactionContribInfo::TypeSelector::ASYNC);
+    json contribsJson = json::array();
+    for (auto& contrib: contribs) {
+        contribsJson.push_back(_ingestRequestMgr->cancel(contrib.id).toJson());
+    }
+    return json::object({
+        {"contribs", contribsJson}
     });
 }
 
 
 IngestRequest::Ptr IngestHttpSvcMod::_createRequst(bool async) const {
-    TransactionId const transactionId = body().required<uint32_t>("transaction_id");
+    TransactionId const transactionId = body().required<TransactionId>("transaction_id");
     string const table = body().required<string>("table");
     unsigned int const chunk = body().required<unsigned int>("chunk");
     bool const isOverlap = body().required<int>("overlap") != 0;
