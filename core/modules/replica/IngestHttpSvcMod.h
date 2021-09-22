@@ -31,17 +31,8 @@
 #include "qhttp/Request.h"
 #include "qhttp/Response.h"
 #include "replica/HttpModuleBase.h"
-#include "replica/IngestConfigTypes.h"
-#include "replica/IngestFileSvc.h"
+#include "replica/IngestRequest.h"
 #include "replica/ServiceProvider.h"
-
-// Forward declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
-namespace Csv {
-    class Parser;
-}}}}
 
 // This header declarations
 namespace lsst {
@@ -52,12 +43,8 @@ namespace replica {
  * Class IngestHttpSvcMod processes chunk/table contribution requests made over HTTP.
  * The class is used by the HTTP server build into the worker Ingest service.
  */
-class IngestHttpSvcMod: public HttpModuleBase,
-                        public IngestFileSvc {
+class IngestHttpSvcMod: public HttpModuleBase {
 public:
-    /// The default record size when reading from an input file.
-    constexpr static size_t defaultRecordSizeBytes = 1048576;
-
     IngestHttpSvcMod() = delete;
     IngestHttpSvcMod(IngestHttpSvcMod const&) = delete;
     IngestHttpSvcMod& operator=(IngestHttpSvcMod const&) = delete;
@@ -65,7 +52,22 @@ public:
     virtual ~IngestHttpSvcMod() = default;
 
     /**
-     * @note the only supported value of parameter 'subModuleName' is the empty string.
+     * Process a request.
+     *
+     * Supported values for parameter 'subModuleName':
+     *
+     *   SYNC-PROCESS  for synchronous execution of the table contribution requests
+     *
+     * @param serviceProvider The provider of services is needed to access
+     *   the configuration and the database services.
+     * @param workerName The name of a worker this service is acting upon (used to pull
+     *   worker-specific configuration options for the service).
+     * @param authKey An authorization key for the catalog ingest operation.
+     * @param adminAuthKey An administrator-level authorization key.
+     * @param req The HTTP request.
+     * @param resp The HTTP response channel.
+     * @param subModuleName The name of a submodule to be called. 
+     * @param authType The authorization requirements for the module
      * @throws std::invalid_argument for unknown values of parameter 'subModuleName'
      */
     static void process(ServiceProvider::Ptr const& serviceProvider,
@@ -74,7 +76,7 @@ public:
                         std::string const& adminAuthKey,
                         qhttp::Request::Ptr const& req,
                         qhttp::Response::Ptr const& resp,
-                        std::string const& subModuleName=std::string(),
+                        std::string const& subModuleName="SYNC-PROCESS",
                         HttpModuleBase::AuthType const authType=HttpModuleBase::AUTH_REQUIRED);
 
 protected:
@@ -85,15 +87,7 @@ protected:
     virtual nlohmann::json executeImpl(std::string const& subModuleName) final;
 
 private:
-    /**
-     * @param serviceProvider  The provider of services is needed to access Configuration.
-     * @param workerName  The name of a worker this service is acting upon (used to pull
-     *   worker-specific configuration options for the service).
-     * @param authKey  An authorization key for the catalog ingest operation.
-     * @param adminAuthKey  An administrator-level authorization key.
-     * @param req  The HTTP request.
-     * @param resp  The HTTP response channel.
-     */
+    /// @see method IngestHttpSvcMod::create()
     IngestHttpSvcMod(ServiceProvider::Ptr const& serviceProvider,
                      std::string const& workerName,
                      std::string const& authKey,
@@ -101,38 +95,23 @@ private:
                      qhttp::Request::Ptr const& req,
                      qhttp::Response::Ptr const& resp);
 
-    /**
-     * Read a local file and preprocess it.
-     * @param filename The name of a file to be ingested.
-     * @param parser CSV parser for interpreting and preprocessing the input data stream.
-     * @return An object with statistics on the amount of data read from the file.
-     */
-    nlohmann::json _readLocal(csv::Parser& parser,
-                              std::string const& filename);
+    /// Process table contribution requests (SYNC)
+    nlohmann::json _syncProcessRequest() const;
 
     /**
-     * Pull an input file from a remote HTTP service and preprocess it.
-     * @param parser CSV parser for interpreting and preprocessing the input data stream.
-     * @param database The name of a database.
-     * @param method An HTTP method for a request.
-     * @param url A location of a file to be ingested.
-     * @param data Data to be sent with a  request (depends on the HTTP headers).
-     * @param headers HTTP headers to be send with a request.
-     * @return An object with statistics on the amount of data read from the file.
+     * Process request parameters and create table contribution request
+     * of the specified type.
+     * @note The method may throw exceptions in case of any problems with
+     *   the parameters of the request, or other issues encountered during
+     *   request creation (interaction with external services). 
+     * @param async The type of a request to be created.
+     * @return A pointer to the request.
      */
-    nlohmann::json _readRemote(csv::Parser& parser,
-                               std::string const& database,
-                               std::string const& method,
-                               std::string const& url,
-                               std::string const& data,
-                               std::vector<std::string> const& headers);
+    IngestRequest::Ptr _createRequst(bool async) const;
 
-    /**
-     * Pull file reader's configuration from the config store.
-     * @param database The name of a database to be ingested.
-     * @return The configuration object.
-     */
-    HttpFileReaderConfig _fileConfig(std::string const& database) const;
+    // Input parameters
+    ServiceProvider::Ptr const _serviceProvider;
+    std::string const _workerName;
 };
     
 }}} // namespace lsst::qserv::replica

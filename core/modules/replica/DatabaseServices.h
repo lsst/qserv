@@ -294,6 +294,12 @@ public:
     std::string fieldsEscapedBy    = csv::Dialect::defaultFieldsEscapedBy;
     std::string linesTerminatedBy  = csv::Dialect::defaultLinesTerminatedBy;
 
+    // Optional parameters needed for pulling contributions over the HTTP/HTTPS protocol
+
+    std::string httpMethod;
+    std::string httpData;
+    std::vector<std::string> httpHeaders;
+
     // These counters are set only in case of the successful completion of the request
     // indicated by the status code 'FINISHED'.
 
@@ -348,6 +354,12 @@ public:
         EXPIRED,            // The optional request's expiration timeout was reached (ASYNC)
         FINISHED            // The request succeeded
     } status;
+
+    /// The temportary file that was created to store pre-processed content of the input
+    /// file before ingesting it into MySQL. The file is supposed to be deleted after finishing
+    /// ingesting the contribution or in case of any failures. Though, in some failure modes
+    /// the file may stay on disk and it may need to be cleaned up by the ingest service.
+    std::string tmpFile;
 
     // The error context (if any).
 

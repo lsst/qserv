@@ -78,11 +78,11 @@ IngestFileSvc::~IngestFileSvc() {
 }
 
 
-void IngestFileSvc::openFile(TransactionId transactionId,
-                             string const& table,
-                             csv::Dialect const& dialect,
-                             unsigned int chunk,
-                             bool isOverlap) {
+string const& IngestFileSvc::openFile(TransactionId transactionId,
+                                      string const& table,
+                                      csv::Dialect const& dialect,
+                                      unsigned int chunk,
+                                      bool isOverlap) {
 
     string const context_ = context + string(__func__) + " ";
     LOGS(_log, LOG_LVL_DEBUG, context_);
@@ -176,6 +176,7 @@ void IngestFileSvc::openFile(TransactionId transactionId,
                 "failed to create a temporary file '" + _fileName
                 + "', error: '" + strerror(errno) + "', errno: " + to_string(errno));
     }
+    return _fileName;
 }
 
 

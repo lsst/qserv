@@ -250,6 +250,10 @@ json TransactionContribInfo::toJson() const {
     info["fields_escaped_by"]    = fieldsEscapedBy;
     info["lines_terminated_by"]  = linesTerminatedBy;
 
+    info["http_method"]  = httpMethod;
+    info["http_data"]    = httpData;
+    info["http_headers"] = json(httpHeaders);
+
     info["num_bytes"] = numBytes;
     info["num_rows"]  = numRows;
 
@@ -259,6 +263,7 @@ json TransactionContribInfo::toJson() const {
     info["load_time"]   = loadTime;
 
     info["status"]        = TransactionContribInfo::status2str(status);
+    info["tmp_file"]      = tmpFile;
     info["http_error"]    = httpError;
     info["system_error"]  = systemError;
     info["error"]         = error;
