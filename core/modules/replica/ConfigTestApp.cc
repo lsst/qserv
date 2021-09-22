@@ -453,6 +453,9 @@ bool ConfigTestApp::_testGeneral() {
         test.verify<size_t>(        "worker", "num_loader_processing_threads", 2);
         test.verify<size_t>(        "worker", "num_exporter_processing_threads", 2);
         test.verify<size_t>(        "worker", "num_http_loader_processing_threads", 2);
+        test.verify<size_t>(        "worker", "num_async_loader_processing_threads", 2);
+        test.verify<unsigned int>(  "worker", "async_loader_auto_resume", 1);
+        test.verify<unsigned int>(  "worker", "async_loader_cleanup_on_resume", 1);
         test.verify<unsigned int>(  "worker", "http_max_listen_conn",
                                     boost::asio::socket_base::max_listen_connections);
         test.verify<uint16_t>(      "worker_defaults", "svc_port", 25000);
@@ -515,6 +518,9 @@ bool ConfigTestApp::_testGeneral() {
         config()->set<size_t>(        "worker", "num_loader_processing_threads", 2 + 1);
         config()->set<size_t>(        "worker", "num_exporter_processing_threads", 2 + 1);
         config()->set<size_t>(        "worker", "num_http_loader_processing_threads", 2 + 1);
+        config()->set<size_t>(        "worker", "num_async_loader_processing_threads", 2 + 1);
+        config()->set<unsigned int>(  "worker", "async_loader_auto_resume", 0);
+        config()->set<unsigned int>(  "worker", "async_loader_cleanup_on_resume", 0);
         config()->set<unsigned int>(  "worker", "http_max_listen_conn",
                                       boost::asio::socket_base::max_listen_connections * 4);
         config()->set<uint16_t>(      "worker_defaults", "svc_port", 25000 + 1);
@@ -563,6 +569,9 @@ bool ConfigTestApp::_testGeneral() {
         test.verify<size_t>(        "worker", "num_loader_processing_threads", 2 + 1);
         test.verify<size_t>(        "worker", "num_exporter_processing_threads", 2 + 1);
         test.verify<size_t>(        "worker", "num_http_loader_processing_threads", 2 + 1);
+        test.verify<size_t>(        "worker", "num_async_loader_processing_threads", 2 + 1);
+        test.verify<unsigned int>(  "worker", "async_loader_auto_resume", 0);
+        test.verify<unsigned int>(  "worker", "async_loader_cleanup_on_resume", 0);
         test.verify<unsigned int>(  "worker", "http_max_listen_conn",
                                     boost::asio::socket_base::max_listen_connections * 4);
         test.verify<uint16_t>(      "worker_defaults", "svc_port", 25000 + 1);

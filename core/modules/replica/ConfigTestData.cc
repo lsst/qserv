@@ -74,6 +74,9 @@ map<string, set<string>> ConfigTestData::parameters() {
                 "num_loader_processing_threads",
                 "num_exporter_processing_threads",
                 "num_http_loader_processing_threads",
+                "num_async_loader_processing_threads",
+                "async_loader_auto_resume",
+                "async_loader_cleanup_on_resume",
                 "http_max_listen_conn"
             }
         },
@@ -134,6 +137,9 @@ json ConfigTestData::data() {
         {"num_loader_processing_threads", 6},
         {"num_exporter_processing_threads", 7},
         {"num_http_loader_processing_threads", 8},
+        {"num_async_loader_processing_threads", 9},
+        {"async_loader_auto_resume", 0},
+        {"async_loader_cleanup_on_resume", 0},
         {"http_max_listen_conn", 512}
     });
     generalObj["worker_defaults"] = json::object({
