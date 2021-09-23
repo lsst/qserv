@@ -208,16 +208,24 @@ public:
                                               std::string const& worker=std::string()) final;
 
     TransactionContribInfo createdTransactionContrib(TransactionContribInfo const& info,
-                                                     bool failed=false) final;
+                                                     bool failed=false,
+                                                     TransactionContribInfo::Status statusOnFailed=
+                                                            TransactionContribInfo::Status::CREATE_FAILED) final;
 
     TransactionContribInfo startedTransactionContrib(TransactionContribInfo const& info,
-                                                     bool failed=false) final;
+                                                     bool failed=false,
+                                                     TransactionContribInfo::Status statusOnFailed=
+                                                            TransactionContribInfo::Status::START_FAILED) final;
 
     TransactionContribInfo readTransactionContrib(TransactionContribInfo const& info,
-                                                  bool failed=false) final;
+                                                  bool failed=false,
+                                                  TransactionContribInfo::Status statusOnFailed=
+                                                          TransactionContribInfo::Status::READ_FAILED) final;
 
     TransactionContribInfo loadedTransactionContrib(TransactionContribInfo const& info,
-                                                    bool failed=false) final;
+                                                    bool failed=false,
+                                                    TransactionContribInfo::Status statusOnFailed=
+                                                            TransactionContribInfo::Status::LOAD_FAILED) final;
 
     DatabaseIngestParam ingestParam(std::string const& database,
                                     std::string const& category,

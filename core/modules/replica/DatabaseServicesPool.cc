@@ -448,33 +448,37 @@ vector<TransactionContribInfo> DatabaseServicesPool::transactionContribs(
 
 TransactionContribInfo DatabaseServicesPool::createdTransactionContrib(
         TransactionContribInfo const& info,
-        bool failed) {
+        bool failed,
+        TransactionContribInfo::Status statusOnFailed) {
     ServiceAllocator service(shared_from_base<DatabaseServicesPool>());
-    return service()->createdTransactionContrib(info, failed);
+    return service()->createdTransactionContrib(info, failed, statusOnFailed);
 }
 
 
 TransactionContribInfo DatabaseServicesPool::startedTransactionContrib(
         TransactionContribInfo const& info,
-        bool failed) {
+        bool failed,
+        TransactionContribInfo::Status statusOnFailed) {
     ServiceAllocator service(shared_from_base<DatabaseServicesPool>());
-    return service()->startedTransactionContrib(info, failed);
+    return service()->startedTransactionContrib(info, failed, statusOnFailed);
 }
 
 
 TransactionContribInfo DatabaseServicesPool::readTransactionContrib(
         TransactionContribInfo const& info,
-        bool failed) {
+        bool failed,
+        TransactionContribInfo::Status statusOnFailed) {
     ServiceAllocator service(shared_from_base<DatabaseServicesPool>());
-    return service()->readTransactionContrib(info, failed);
+    return service()->readTransactionContrib(info, failed, statusOnFailed);
 }
 
 
 TransactionContribInfo DatabaseServicesPool::loadedTransactionContrib(
         TransactionContribInfo const& info,
-        bool failed) {
+        bool failed,
+        TransactionContribInfo::Status statusOnFailed) {
     ServiceAllocator service(shared_from_base<DatabaseServicesPool>());
-    return service()->loadedTransactionContrib(info, failed);
+    return service()->loadedTransactionContrib(info, failed, statusOnFailed);
 }
 
 

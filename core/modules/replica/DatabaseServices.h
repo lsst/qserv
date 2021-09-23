@@ -988,7 +988,9 @@ public:
      * @return The initial record on the contribution.
      */
     virtual TransactionContribInfo createdTransactionContrib(TransactionContribInfo const& info,
-                                                             bool failed=false) = 0;
+                                                             bool failed=false,
+                                                             TransactionContribInfo::Status statusOnFailed=
+                                                                    TransactionContribInfo::Status::CREATE_FAILED) = 0;
 
     /**
      * Update the persistent status of the contribution to indicate that it started
@@ -1008,7 +1010,9 @@ public:
      * @return The updated record on the contribution.
      */
     virtual TransactionContribInfo startedTransactionContrib(TransactionContribInfo const& info,
-                                                             bool failed=false) = 0;
+                                                             bool failed=false,
+                                                             TransactionContribInfo::Status statusOnFailed=
+                                                                    TransactionContribInfo::Status::START_FAILED) = 0;
 
     /**
      * Update the persistent status of the contribution to indicate that it the input
@@ -1027,7 +1031,9 @@ public:
      * @return The updated record on the contribution.
      */
     virtual TransactionContribInfo readTransactionContrib(TransactionContribInfo const& info,
-                                                          bool failed=false) = 0;
+                                                          bool failed=false,
+                                                          TransactionContribInfo::Status statusOnFailed=
+                                                                TransactionContribInfo::Status::READ_FAILED) = 0;
 
     /**
      * Update the persistent status of the contribution to indicate that it the input
@@ -1046,7 +1052,9 @@ public:
      * @return The updated record on the contribution.
      */
     virtual TransactionContribInfo loadedTransactionContrib(TransactionContribInfo const& info,
-                                                            bool failed=false) = 0;
+                                                            bool failed=false,
+                                                            TransactionContribInfo::Status statusOnFailed=
+                                                                    TransactionContribInfo::Status::LOAD_FAILED) = 0;
 
     /// @return A descriptor of the parameter
     /// @throws DatabaseServicesNotFound If no such parameter found.

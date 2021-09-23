@@ -2245,7 +2245,8 @@ vector<TransactionContribInfo> DatabaseServicesMySQL::transactionContribs(
 
 TransactionContribInfo DatabaseServicesMySQL::createdTransactionContrib(
         TransactionContribInfo const& info,
-        bool failed) {
+        bool failed,
+        TransactionContribInfo::Status statusOnFailed) {
 
     string const context = _context(__func__) + "transactionId="  + to_string(info.transactionId)
             + " table=" + info.table + " chunk=" + to_string(info.chunk)
@@ -2265,7 +2266,7 @@ TransactionContribInfo DatabaseServicesMySQL::createdTransactionContrib(
     uint64_t const loadTime = 0;
 
     TransactionContribInfo::Status const status = failed ?
-        TransactionContribInfo::Status::CREATE_FAILED : TransactionContribInfo::Status::IN_PROGRESS;
+        statusOnFailed : TransactionContribInfo::Status::IN_PROGRESS;
 
     TransactionContribInfo updatedInfo;
     try {
@@ -2315,7 +2316,8 @@ TransactionContribInfo DatabaseServicesMySQL::createdTransactionContrib(
 
 TransactionContribInfo DatabaseServicesMySQL::startedTransactionContrib(
         TransactionContribInfo const& info,
-        bool failed) {
+        bool failed,
+        TransactionContribInfo::Status statusOnFailed) {
 
     return _updateTransactionContribAt(
         __func__,
@@ -2323,14 +2325,15 @@ TransactionContribInfo DatabaseServicesMySQL::startedTransactionContrib(
         "start_time",
         failed,
         TransactionContribInfo::Status::IN_PROGRESS,
-        TransactionContribInfo::Status::START_FAILED
+        statusOnFailed
     );
 }
 
 
 TransactionContribInfo DatabaseServicesMySQL::readTransactionContrib(
         TransactionContribInfo const& info,
-        bool failed) {
+        bool failed,
+        TransactionContribInfo::Status statusOnFailed) {
 
     return _updateTransactionContribAt(
         __func__,
@@ -2338,14 +2341,15 @@ TransactionContribInfo DatabaseServicesMySQL::readTransactionContrib(
         "read_time",
         failed,
         TransactionContribInfo::Status::IN_PROGRESS,
-        TransactionContribInfo::Status::READ_FAILED
+        statusOnFailed
     );
 }
 
 
 TransactionContribInfo DatabaseServicesMySQL::loadedTransactionContrib(
         TransactionContribInfo const& info,
-        bool failed) {
+        bool failed,
+        TransactionContribInfo::Status statusOnFailed) {
 
     return _updateTransactionContribAt(
         __func__,
@@ -2353,7 +2357,7 @@ TransactionContribInfo DatabaseServicesMySQL::loadedTransactionContrib(
         "load_time",
         failed,
         TransactionContribInfo::Status::FINISHED,
-        TransactionContribInfo::Status::LOAD_FAILED
+        statusOnFailed
     );
 }
 
