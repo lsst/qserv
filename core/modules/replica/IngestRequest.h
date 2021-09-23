@@ -104,6 +104,24 @@ public:
                                      std::string const& httpData=std::string(),
                                      std::vector<std::string> const& httpHeaders=std::vector<std::string>());
 
+    /**
+     * The factory method for instantiating the request from an existing contribution.
+     *
+     * - Parameters of the request will be still validated to ensure the request is in
+     *   the clean state. Though, unlike method create() the request won't be re-created
+     *   in the database.
+     *
+     * @param serviceProvider The provider is needed to access various services of
+     *   the Replication system's framework, such as the Configuration service,
+     *   the Database service, etc.
+     * @param workerName The name of a worker this service is acting upon.
+     * @param contribId A unique identifier of an existing contribution request.
+     * @return A newly created instance of the request object.
+     */
+    static IngestRequest::Ptr resume(ServiceProvider::Ptr const& serviceProvider,
+                                     std::string const& workerName,
+                                     unsigned int contribId);
+
     /// @return The descriptor of the request.
     TransactionContribInfo transactionContribInfo() const;
 
@@ -150,6 +168,11 @@ private:
                   std::string const& httpMethod,
                   std::string const& httpData,
                   std::vector<std::string> const& httpHeaders);
+
+    /// @see method IngestRequest::resume()
+    IngestRequest(ServiceProvider::Ptr const& serviceProvider,
+                  std::string const& workerName,
+                  TransactionContribInfo const& contrib);
 
     // Three processing stages of the request
 

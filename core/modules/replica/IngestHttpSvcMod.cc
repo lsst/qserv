@@ -100,7 +100,6 @@ IngestRequest::Ptr IngestHttpSvcMod::_createRequst(bool async) const {
     unsigned int const chunk = body().required<unsigned int>("chunk");
     bool const isOverlap = body().required<int>("overlap") != 0;
     string const url = body().required<string>("url");
-    unsigned int const expirationTimeoutSec = body().optional<unsigned int>("expiration_timeout_sec", 0);
 
     // Allow "column_separator" for the sake of the backward compatibility with the older
     // version of the API. The parameter "column_separator" if present will override the one
@@ -129,7 +128,6 @@ IngestRequest::Ptr IngestHttpSvcMod::_createRequst(bool async) const {
     debug(__func__, "http_method: '"           + httpMethod + "'");
     debug(__func__, "http_data: '"             + httpData + "'");
     debug(__func__, "http_headers.size(): "    + to_string(httpHeaders.size()));
-    debug(__func__, "expiration_timeout_sec: " + to_string(expirationTimeoutSec));
 
     IngestRequest::Ptr const request = IngestRequest::create(
         _serviceProvider,
@@ -140,7 +138,6 @@ IngestRequest::Ptr IngestHttpSvcMod::_createRequst(bool async) const {
         isOverlap,
         url,
         async,
-        expirationTimeoutSec,
         fieldsTerminatedBy,
         fieldsEnclosedBy,
         fieldsEscapedBy,
