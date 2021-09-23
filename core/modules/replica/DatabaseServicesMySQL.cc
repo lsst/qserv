@@ -1960,28 +1960,15 @@ TransactionInfo DatabaseServicesMySQL::transaction(TransactionId id,
 
 vector<TransactionInfo> DatabaseServicesMySQL::transactions(string const& databaseName,
                                                             bool includeContext) {
+    auto const predicate = databaseName.empty() ? "" : _conn->sqlEqual("database", databaseName);
+    return _transactions(predicate, includeContext);
+}
 
-    string const context = _context(__func__) + "database="  + databaseName + " ";
 
-    LOGS(_log, LOG_LVL_DEBUG, context);
-
-    util::Lock lock(_mtx, context);
-
-    vector<TransactionInfo> collection;
-    try {
-        auto const predicate = databaseName.empty() ? "" : _conn->sqlEqual("database", databaseName);
-        _conn->executeInOwnTransaction(
-            [&](decltype(_conn) conn) {
-                collection = _findTransactionsImpl(lock, predicate, includeContext);
-            }
-        );
-
-    } catch (exception const& ex) {
-        LOGS(_log, LOG_LVL_ERROR, context << "failed, exception: " << ex.what());
-        throw;
-    }
-    LOGS(_log, LOG_LVL_DEBUG, context + "** DONE **");
-    return collection;
+vector<TransactionInfo> DatabaseServicesMySQL::transactions(TransactionInfo::State state,
+                                                            bool includeContext) {
+    auto const predicate = _conn->sqlEqual("state", TransactionInfo::state2string(state));
+    return _transactions(predicate, includeContext);
 }
 
 
@@ -2110,6 +2097,27 @@ TransactionInfo DatabaseServicesMySQL::updateTransaction(TransactionId id,
 }
 
 
+vector<TransactionInfo> DatabaseServicesMySQL::_transactions(string const& predicate,
+                                                             bool includeContext) {
+    string const context = _context(__func__) + "predicate="  + predicate + " ";
+    LOGS(_log, LOG_LVL_DEBUG, context);
+    util::Lock lock(_mtx, context);
+    vector<TransactionInfo> collection;
+    try {
+        _conn->executeInOwnTransaction(
+            [&](decltype(_conn) conn) {
+                collection = _findTransactionsImpl(lock, predicate, includeContext);
+            }
+        );
+    } catch (exception const& ex) {
+        LOGS(_log, LOG_LVL_ERROR, context << "failed, exception: " << ex.what());
+        throw;
+    }
+    LOGS(_log, LOG_LVL_DEBUG, context + "** DONE **");
+    return collection;
+}
+
+
 TransactionInfo DatabaseServicesMySQL::_findTransactionImpl(util::Lock const& lock,
                                                             string const& predicate,
                                                             bool includeContext) {
@@ -2178,13 +2186,8 @@ vector<TransactionInfo> DatabaseServicesMySQL::_findTransactionsImpl(util::Lock 
 }
 
 
-vector<TransactionContribInfo> DatabaseServicesMySQL::transactionContribs(
-        TransactionId transactionId,
-        string const& table,
-        string const& worker) {
-
-    string const context = _context(__func__) + "transactionId="  + to_string(transactionId)
-            + " table=" + table + " worker=" + worker + " ";
+TransactionContribInfo DatabaseServicesMySQL::transactionContrib(unsigned int id) {
+    string const context = _context(__func__) + "id="  + to_string(id) + " ";
 
     LOGS(_log, LOG_LVL_DEBUG, context);
 
@@ -2192,54 +2195,74 @@ vector<TransactionContribInfo> DatabaseServicesMySQL::transactionContribs(
 
     vector<TransactionContribInfo> collection;
     try {
-        auto const predicate = _conn->sqlEqual("transaction_id", transactionId)
-                + (table.empty() ? "" : " AND " + _conn->sqlEqual("table", table))
-                + (worker.empty() ? "" : " AND " + _conn->sqlEqual("worker", worker));
-        _conn->executeInOwnTransaction(
-            [&](decltype(_conn) conn) {
-                collection = _transactionContribsImpl(lock, predicate);
-            }
-        );
-
-    } catch (exception const& ex) {
+        _conn->executeInOwnTransaction([&](decltype(_conn) conn) {
+            collection = _transactionContribsImpl(lock, conn->sqlEqual("id", id));
+        });
+     } catch (exception const& ex) {
         LOGS(_log, LOG_LVL_ERROR, context << "failed, exception: " << ex.what());
         throw;
     }
+    if (collection.size() == 0) {
+        throw DatabaseServicesNotFound(context + "no such contribution");
+    } else if (collection.size() != 1) {
+        string const msg = context + "database schema problem - contribution identifiers aren't unique.";
+        LOGS(_log, LOG_LVL_FATAL, msg);
+        throw runtime_error(msg);
+    }
     LOGS(_log, LOG_LVL_DEBUG, context + "** DONE **");
-    return collection;
+    return collection[0];
+}
+
+
+vector<TransactionContribInfo> DatabaseServicesMySQL::transactionContribs(
+        TransactionId transactionId,
+        string const& table,
+        string const& worker,
+        TransactionContribInfo::TypeSelector typeSelector) {
+
+    return _transactionContribs(
+        _conn->sqlEqual("transaction_id", transactionId)
+        + (table.empty() ? "" : " AND " + _conn->sqlEqual("table", table))
+        + (worker.empty() ? "" : " AND " + _conn->sqlEqual("worker", worker))
+        + (typeSelector == TransactionContribInfo::TypeSelector::SYNC_OR_ASYNC ? "" :
+                " AND " + _conn->sqlEqual("type", typeSelector == TransactionContribInfo::TypeSelector::SYNC ? "SYNC" : "ASYNC"))
+        + (worker.empty() ? "" : " AND " + _conn->sqlEqual("worker", worker))
+    );
+}
+
+
+vector<TransactionContribInfo> DatabaseServicesMySQL::transactionContribs(
+        TransactionId transactionId,
+        TransactionContribInfo::Status status,
+        string const& table,
+        string const& worker,
+        TransactionContribInfo::TypeSelector typeSelector) {
+
+    return _transactionContribs(
+        _conn->sqlEqual("transaction_id", transactionId)
+        + " AND " + _conn->sqlEqual("status", TransactionContribInfo::status2str(status))
+        + (table.empty() ? "" : " AND " + _conn->sqlEqual("table", table))
+        + (worker.empty() ? "" : " AND " + _conn->sqlEqual("worker", worker))
+        + (typeSelector == TransactionContribInfo::TypeSelector::SYNC_OR_ASYNC ? "" :
+                " AND " + _conn->sqlEqual("type", typeSelector == TransactionContribInfo::TypeSelector::SYNC ? "SYNC" : "ASYNC"))
+    );
 }
 
 
 vector<TransactionContribInfo> DatabaseServicesMySQL::transactionContribs(
         string const& database,
         string const& table,
-        string const& worker) {
+        string const& worker,
+        TransactionContribInfo::TypeSelector typeSelector) {
 
-    string const context = _context(__func__) + "database="  + database
-            + " table=" + table + " worker=" + worker + " ";
-
-    LOGS(_log, LOG_LVL_DEBUG, context);
-
-    util::Lock lock(_mtx, context);
-
-    vector<TransactionContribInfo> collection;
-    try {
-        auto const predicate = _conn->sqlEqual("database", database)
-                + (table.empty() ? "" : " AND " + _conn->sqlEqual("table", table))
-                + (worker.empty() ? "" : " AND " + _conn->sqlEqual("worker", worker));
-        _conn->executeInOwnTransaction(
-            [&](decltype(_conn) conn) {
-                collection = _transactionContribsImpl(lock, predicate);
-            }
-        );
-
-    } catch (exception const& ex) {
-        LOGS(_log, LOG_LVL_ERROR, context << "failed, exception: " << ex.what());
-        throw;
-    }
-    LOGS(_log, LOG_LVL_DEBUG, context + "** DONE **");
-    return collection;
-
+    return _transactionContribs(
+        _conn->sqlEqual("database", database)
+        + (table.empty() ? "" : " AND " + _conn->sqlEqual("table", table))
+        + (worker.empty() ? "" : " AND " + _conn->sqlEqual("worker", worker))
+        + (typeSelector == TransactionContribInfo::TypeSelector::SYNC_OR_ASYNC ? "" :
+                " AND " + _conn->sqlEqual("type", typeSelector == TransactionContribInfo::TypeSelector::SYNC ? "SYNC" : "ASYNC"))
+        + (worker.empty() ? "" : " AND " + _conn->sqlEqual("worker", worker))
+    );
 }
 
 
@@ -2284,11 +2307,6 @@ TransactionContribInfo DatabaseServicesMySQL::createdTransactionContrib(
                     info.isOverlap ? 1 : 0,
                     info.url,
                     info.async ? "ASYNC" : "SYNC",
-                    info.expirationTimeoutSec,
-                    info.fieldsTerminatedBy,
-                    info.fieldsEnclosedBy,
-                    info.fieldsEscapedBy,
-                    info.linesTerminatedBy,
                     numBytes,
                     numRows,
                     createTime,
@@ -2296,11 +2314,37 @@ TransactionContribInfo DatabaseServicesMySQL::createdTransactionContrib(
                     readTime,
                     loadTime,
                     TransactionContribInfo::status2str(status),
+                    info.tmpFile,
                     failed ? info.httpError : 0,
                     failed ? info.systemError : 0,
                     failed ? info.error : string(),
                     (failed ? info.retryAllowed : false) ? 1 : 0
                 );
+
+                // Write extended parameters (if any)
+                conn->executeInsertQuery(
+                    "transaction_contrib_ext",
+                    database::mysql::Function::LAST_INSERT_ID, "fields_terminated_by", info.fieldsTerminatedBy);
+                conn->executeInsertQuery(
+                    "transaction_contrib_ext",
+                    database::mysql::Function::LAST_INSERT_ID, "fields_enclosed_by", info.fieldsEnclosedBy);
+                conn->executeInsertQuery(
+                    "transaction_contrib_ext",
+                    database::mysql::Function::LAST_INSERT_ID, "fields_escaped_by", info.fieldsEscapedBy);
+                conn->executeInsertQuery(
+                    "transaction_contrib_ext",
+                    database::mysql::Function::LAST_INSERT_ID, "lines_terminated_by", info.linesTerminatedBy);
+                conn->executeInsertQuery(
+                    "transaction_contrib_ext",
+                    database::mysql::Function::LAST_INSERT_ID, "http_method", info.httpMethod);
+                conn->executeInsertQuery(
+                    "transaction_contrib_ext",
+                    database::mysql::Function::LAST_INSERT_ID, "http_data", info.httpData);
+                for (string const& header: info.httpHeaders) {
+                    conn->executeInsertQuery(
+                        "transaction_contrib_ext",
+                        database::mysql::Function::LAST_INSERT_ID, "http_headers", header);
+                }
                 updatedInfo = _transactionContribImpl(lock, predicate);
             }
         );
@@ -2314,63 +2358,10 @@ TransactionContribInfo DatabaseServicesMySQL::createdTransactionContrib(
 }
 
 
-TransactionContribInfo DatabaseServicesMySQL::startedTransactionContrib(
-        TransactionContribInfo const& info,
-        bool failed,
-        TransactionContribInfo::Status statusOnFailed) {
+TransactionContribInfo DatabaseServicesMySQL::updateTransactionContrib(
+        TransactionContribInfo const& info) {
 
-    return _updateTransactionContribAt(
-        __func__,
-        info,
-        "start_time",
-        failed,
-        TransactionContribInfo::Status::IN_PROGRESS,
-        statusOnFailed
-    );
-}
-
-
-TransactionContribInfo DatabaseServicesMySQL::readTransactionContrib(
-        TransactionContribInfo const& info,
-        bool failed,
-        TransactionContribInfo::Status statusOnFailed) {
-
-    return _updateTransactionContribAt(
-        __func__,
-        info,
-        "read_time",
-        failed,
-        TransactionContribInfo::Status::IN_PROGRESS,
-        statusOnFailed
-    );
-}
-
-
-TransactionContribInfo DatabaseServicesMySQL::loadedTransactionContrib(
-        TransactionContribInfo const& info,
-        bool failed,
-        TransactionContribInfo::Status statusOnFailed) {
-
-    return _updateTransactionContribAt(
-        __func__,
-        info,
-        "load_time",
-        failed,
-        TransactionContribInfo::Status::FINISHED,
-        statusOnFailed
-    );
-}
-
-
-TransactionContribInfo DatabaseServicesMySQL::_updateTransactionContribAt(
-        string const& func,
-        TransactionContribInfo const& info,
-        string const& timestamp,
-        bool failed,
-        TransactionContribInfo::Status successStatus,
-        TransactionContribInfo::Status failedStatus) {
- 
-    string const context = _context(func) + "id="  + to_string(info.id) + " failed=" + bool2str(failed) + " ";
+    string const context = _context(__func__) + "id="  + to_string(info.id) + " ";
     LOGS(_log, LOG_LVL_DEBUG, context);
 
     util::Lock lock(_mtx, context);
@@ -2385,12 +2376,15 @@ TransactionContribInfo DatabaseServicesMySQL::_updateTransactionContribAt(
                     predicate,
                     make_pair("num_bytes",     info.numBytes),
                     make_pair("num_rows",      info.numRows),
-                    make_pair(timestamp,       PerformanceUtils::now()),
-                    make_pair("status",        TransactionContribInfo::status2str(failed ? failedStatus : successStatus)),
-                    make_pair("http_error",    failed ? info.httpError: 0),
-                    make_pair("system_error",  failed ? info.systemError : 0),
-                    make_pair("error",         failed ? info.error : string()),
-                    make_pair("retry_allowed", failed ? info.retryAllowed : false)
+                    make_pair("start_time",    info.startTime),
+                    make_pair("read_time",     info.readTime),
+                    make_pair("load_time",     info.loadTime),
+                    make_pair("status",        TransactionContribInfo::status2str(info.status)),
+                    make_pair("tmp_file",      info.tmpFile),
+                    make_pair("http_error",    info.httpError),
+                    make_pair("system_error",  info.systemError),
+                    make_pair("error",         info.error),
+                    make_pair("retry_allowed", info.retryAllowed)
                 );
                 updatedInfo = _transactionContribImpl(lock, predicate);
             }
@@ -2401,17 +2395,36 @@ TransactionContribInfo DatabaseServicesMySQL::_updateTransactionContribAt(
         throw;
     }
     LOGS(_log, LOG_LVL_DEBUG, context + "** DONE **");
-    return info;
+    return updatedInfo;
+}
+
+
+vector<TransactionContribInfo> DatabaseServicesMySQL::_transactionContribs(string const& predicate) {
+
+    string const context = _context(__func__) + "predicate=" + predicate + " ";
+    LOGS(_log, LOG_LVL_DEBUG, context);
+    util::Lock lock(_mtx, context);
+    vector<TransactionContribInfo> collection;
+    try {
+        _conn->executeInOwnTransaction(
+            [&](decltype(_conn) conn) {
+                collection = _transactionContribsImpl(lock, predicate);
+            }
+        );
+    } catch (exception const& ex) {
+        LOGS(_log, LOG_LVL_ERROR, context << "failed, exception: " << ex.what());
+        throw;
+    }
+    LOGS(_log, LOG_LVL_DEBUG, context + "** DONE **");
+    return collection;
 }
 
 
 TransactionContribInfo DatabaseServicesMySQL::_transactionContribImpl(util::Lock const& lock,
                                                                       string const& predicate) {
-
     string const context = _context(__func__) + "predicate=" + predicate + " ";
     auto   const collection = _transactionContribsImpl(lock, predicate);
     size_t const num = collection.size();
-
     if (num == 1) return collection[0];
     if (num == 0) throw DatabaseServicesNotFound(context + "no such transaction contribution");
     throw DatabaseServicesError(context + "two many transaction contributions found: " + to_string(num));
@@ -2423,16 +2436,13 @@ vector<TransactionContribInfo> DatabaseServicesMySQL::_transactionContribsImpl(
         string const& predicate) {
 
     string const context = _context(__func__) + "predicate=" + predicate + " ";
-
     LOGS(_log, LOG_LVL_DEBUG, context);
 
     vector<TransactionContribInfo> collection;
 
-    string const query =
+    _conn->execute(
             "SELECT * FROM " + _conn->sqlId("transaction_contrib") +
-            (predicate.empty() ? "" : " WHERE " + predicate);
-
-    _conn->execute(query);
+            (predicate.empty() ? "" : " WHERE " + predicate));
 
     if (_conn->hasResult()) {
 
@@ -2454,16 +2464,8 @@ vector<TransactionContribInfo> DatabaseServicesMySQL::_transactionContribsImpl(
             row.get("type", type);
             info.async = (type == "ASYNC");
 
-            row.get("expiration_timeout_sec", info.expirationTimeoutSec);
-
-            row.get("fields_terminated_by", info.fieldsTerminatedBy);
-            row.get("fields_enclosed_by",   info.fieldsEnclosedBy);
-            row.get("fields_escaped_by",    info.fieldsEscapedBy);
-            row.get("lines_terminated_by",  info.linesTerminatedBy);
-
-            row.get("num_bytes", info.numBytes);
-            row.get("num_rows",  info.numRows);
-
+            row.get("num_bytes",   info.numBytes);
+            row.get("num_rows",    info.numRows);
             row.get("create_time", info.createTime);
             row.get("start_time",  info.startTime);
             row.get("read_time",   info.readTime);
@@ -2473,12 +2475,45 @@ vector<TransactionContribInfo> DatabaseServicesMySQL::_transactionContribsImpl(
             row.get("status", str);
             info.status = TransactionContribInfo::str2status(str);
 
+            row.get("tmp_file",      info.tmpFile);
             row.get("http_error",    info.httpError);
             row.get("system_error",  info.systemError);
             row.get("error",         info.error);
             row.get("retry_allowed", info.retryAllowed);
 
             collection.push_back(info);
+        }
+    }
+    for (auto& contrib: collection) {
+        _conn->execute(
+                "SELECT " + _conn->sqlId("key") + "," + _conn->sqlId("val") +
+                " FROM " + _conn->sqlId("transaction_contrib_ext") +
+                " WHERE " + _conn->sqlEqual("contrib_id", contrib.id));
+        if (_conn->hasResult()) {
+            database::mysql::Row row;
+            while (_conn->next(row)) {
+
+                string key;
+                row.get("key", key);
+                if (key.empty()) continue;
+
+                string val;
+                row.get("val", val);
+                if (val.empty()) continue;
+
+                if      (key == "fields_terminated_by") contrib.fieldsTerminatedBy = val;
+                else if (key == "fields_enclosed_by")   contrib.fieldsEnclosedBy = val;
+                else if (key == "fields_escaped_by")    contrib.fieldsEscapedBy = val;
+                else if (key == "lines_terminated_by")  contrib.linesTerminatedBy = val;
+                else if (key == "http_method")          contrib.httpMethod = val;
+                else if (key == "http_data")            contrib.httpData = val;
+                else if (key == "http_headers")         contrib.httpHeaders.emplace_back(val);
+                else {
+                    throw DatabaseServicesError(
+                            context + "unexpected extended parameter '" + key + "' for contribution id="
+                            + to_string(contrib.id));
+                }
+            }
         }
     }
     return collection;

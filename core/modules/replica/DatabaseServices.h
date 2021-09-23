@@ -283,9 +283,14 @@ public:
 
     std::string url;            ///< The data source specification
 
-    bool async = false;         ///< The type of the request
+    // The type selector is used in the where the tri-state is required.
+    enum TypeSelector {
+        SYNC,
+        ASYNC,
+        SYNC_OR_ASYNC
+    };
 
-    unsigned int expirationTimeoutSec = 0;  ///< Request expiration timeout (ASYNC)
+    bool async = false;         ///< The type of the request
 
     // Parameters needed for parsing the contribution.
 
@@ -294,7 +299,8 @@ public:
     std::string fieldsEscapedBy    = csv::Dialect::defaultFieldsEscapedBy;
     std::string linesTerminatedBy  = csv::Dialect::defaultLinesTerminatedBy;
 
-    // Optional parameters needed for pulling contributions over the HTTP/HTTPS protocol
+    // Optional extended parameters needed for pulling contributions over
+    // the HTTP/HTTPS protocol.
 
     std::string httpMethod;
     std::string httpData;
@@ -342,7 +348,7 @@ public:
     uint64_t loadTime = 0;      ///< The timestamp (milliseconds) when finished loading the file into MySQL
 
     /// The current (or completion) status of the ingest operation.
-    /// @note The completion status values 'CANCELLED' and 'EXPIRED' are meant to be used
+    /// @note The completion status value 'CANCELLED' is meant to be used
     //    for processing requests in the asynchronous mode.
     enum class Status:int {
         IN_PROGRESS = 0,    // The transient state of a request before it's FINISHED or failed
@@ -351,7 +357,6 @@ public:
         READ_FAILED,        // Reading/preprocessing of the input file failed
         LOAD_FAILED,        // Loading into MySQL failed
         CANCELLED,          // The request was explicitly cancelled by the ingest workflow (ASYNC)
-        EXPIRED,            // The optional request's expiration timeout was reached (ASYNC)
         FINISHED            // The request succeeded
     } status;
 
@@ -927,6 +932,12 @@ public:
     virtual std::vector<TransactionInfo> transactions(std::string const& databaseName=std::string(),
                                                       bool includeContext=false) = 0;
 
+    /// @param state the desired state of the transactions
+    /// @param includeContext (optional) flag that (if 'true') would pull the transacion context
+    /// @return a collection of super-transactions (all of them or for the specified database only)
+    virtual std::vector<TransactionInfo> transactions(TransactionInfo::State state,
+                                                      bool includeContext=false) = 0;
+
     /// @param databaseName the name of a database
     /// @param transactionContext (optional) a user-define context explaining the transaction.
     ///   Note that a serialized value of this attribute could be as large as 16 MB as defined by
@@ -956,21 +967,45 @@ public:
     virtual TransactionInfo updateTransaction(TransactionId id,
                                               nlohmann::json const& transactionContext=nlohmann::json::object()) = 0;
 
+    /// @return the desired contribution into a super-transaction (if found)
+    /// @param id a unique identifier of the contribution
+    /// @throws DatabaseServicesNotFound if no contribution was found for the specified identifier
+    virtual TransactionContribInfo transactionContrib(unsigned int id) = 0;
+ 
     /// @return contributions into a super-transaction for the given selectors
     /// @param transactionId a unique identifier of the transaction
     /// @param table (optional) the base name of a table (all tables if not provided)
     /// @param worker (optional) the name of a worker (all workers if not provided)
+    /// @param typeSelector (optional) type of the contributions
     virtual std::vector<TransactionContribInfo> transactionContribs(TransactionId transactionId,
                                                                     std::string const& table=std::string(),
-                                                                    std::string const& worker=std::string()) = 0;
+                                                                    std::string const& worker=std::string(),
+                                                                    TransactionContribInfo::TypeSelector typeSelector=
+                                                                            TransactionContribInfo::TypeSelector::SYNC_OR_ASYNC) = 0;
+
+    /// @return contributions into a super-transaction for the given selectors
+    /// @param transactionId a unique identifier of the transaction
+    /// @param status the desired status of the contributions
+    /// @param table (optional) the base name of a table (all tables if not provided)
+    /// @param worker (optional) the name of a worker (all workers if not provided)
+    /// @param typeSelector (optional) type of the contributions
+    virtual std::vector<TransactionContribInfo> transactionContribs(TransactionId transactionId,
+                                                                    TransactionContribInfo::Status status,
+                                                                    std::string const& table=std::string(),
+                                                                    std::string const& worker=std::string(),
+                                                                    TransactionContribInfo::TypeSelector typeSelector=
+                                                                            TransactionContribInfo::TypeSelector::SYNC_OR_ASYNC) = 0;
 
     /// @return contributions into super-transactions for the given selectors
     /// @param database the name of a database
     /// @param table (optional) the base name of a table (all tables if not provided)
     /// @param worker (optional) the name of a worker (all workers if not provided)
+    /// @param typeSelector (optional) type of the contributions
     virtual std::vector<TransactionContribInfo> transactionContribs(std::string const& database,
                                                                     std::string const& table=std::string(),
-                                                                    std::string const& worker=std::string()) = 0;
+                                                                    std::string const& worker=std::string(),
+                                                                    TransactionContribInfo::TypeSelector typeSelector=
+                                                                            TransactionContribInfo::TypeSelector::SYNC_OR_ASYNC) = 0;
 
     /**
      * Insert the initial record on the contribution.
@@ -1009,10 +1044,10 @@ public:
      *
      * @return The updated record on the contribution.
      */
-    virtual TransactionContribInfo startedTransactionContrib(TransactionContribInfo const& info,
-                                                             bool failed=false,
-                                                             TransactionContribInfo::Status statusOnFailed=
-                                                                    TransactionContribInfo::Status::START_FAILED) = 0;
+    TransactionContribInfo startedTransactionContrib(TransactionContribInfo info,
+                                                     bool failed=false,
+                                                     TransactionContribInfo::Status statusOnFailed=
+                                                            TransactionContribInfo::Status::START_FAILED);
 
     /**
      * Update the persistent status of the contribution to indicate that it the input
@@ -1030,10 +1065,10 @@ public:
      * @param failed (optional) The flag which if set to 'true' would indicate a error
      * @return The updated record on the contribution.
      */
-    virtual TransactionContribInfo readTransactionContrib(TransactionContribInfo const& info,
-                                                          bool failed=false,
-                                                          TransactionContribInfo::Status statusOnFailed=
-                                                                TransactionContribInfo::Status::READ_FAILED) = 0;
+    TransactionContribInfo readTransactionContrib(TransactionContribInfo info,
+                                                  bool failed=false,
+                                                  TransactionContribInfo::Status statusOnFailed=
+                                                        TransactionContribInfo::Status::READ_FAILED);
 
     /**
      * Update the persistent status of the contribution to indicate that it the input
@@ -1051,10 +1086,17 @@ public:
      * @param failed (optional) The flag which if set to 'true' would indicate a error
      * @return The updated record on the contribution.
      */
-    virtual TransactionContribInfo loadedTransactionContrib(TransactionContribInfo const& info,
-                                                            bool failed=false,
-                                                            TransactionContribInfo::Status statusOnFailed=
-                                                                    TransactionContribInfo::Status::LOAD_FAILED) = 0;
+    TransactionContribInfo loadedTransactionContrib(TransactionContribInfo info,
+                                                    bool failed=false,
+                                                    TransactionContribInfo::Status statusOnFailed=
+                                                            TransactionContribInfo::Status::LOAD_FAILED);
+
+    /**
+     * Update mutable parameters of the contribution request in the database.
+     * @param info The transient state of the contribution to be synched.
+     * @return The updated record on the contribution.
+     */
+    virtual TransactionContribInfo updateTransactionContrib(TransactionContribInfo const& info) = 0;
 
     /// @return A descriptor of the parameter
     /// @throws DatabaseServicesNotFound If no such parameter found.

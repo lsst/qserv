@@ -188,6 +188,9 @@ public:
     std::vector<TransactionInfo> transactions(std::string const& databaseName=std::string(),
                                               bool includeContext=false) final;
 
+    std::vector<TransactionInfo> transactions(TransactionInfo::State state,
+                                              bool includeContext=false) final;
+
     TransactionInfo beginTransaction(std::string const& databaseName,
                                      nlohmann::json const& transactionContext=nlohmann::json::object()) final;
 
@@ -197,35 +200,35 @@ public:
     TransactionInfo updateTransaction(TransactionId id,
                                       nlohmann::json const& transactionContext=nlohmann::json::object()) final;
 
+    TransactionContribInfo transactionContrib(unsigned int id) final;
+
     std::vector<TransactionContribInfo> transactionContribs(
                                               TransactionId transactionId,
                                               std::string const& table=std::string(),
-                                              std::string const& worker=std::string()) final;
+                                              std::string const& worker=std::string(),
+                                              TransactionContribInfo::TypeSelector typeSelector=
+                                                      TransactionContribInfo::TypeSelector::SYNC_OR_ASYNC) final;
+
+    std::vector<TransactionContribInfo> transactionContribs(TransactionId transactionId,
+                                                            TransactionContribInfo::Status status,
+                                                            std::string const& table=std::string(),
+                                                            std::string const& worker=std::string(),
+                                                            TransactionContribInfo::TypeSelector typeSelector=
+                                                                    TransactionContribInfo::TypeSelector::SYNC_OR_ASYNC) final;
 
     std::vector<TransactionContribInfo> transactionContribs(
                                               std::string const& database,
                                               std::string const& table=std::string(),
-                                              std::string const& worker=std::string()) final;
+                                              std::string const& worker=std::string(),
+                                              TransactionContribInfo::TypeSelector typeSelector=
+                                                      TransactionContribInfo::TypeSelector::SYNC_OR_ASYNC) final;
 
     TransactionContribInfo createdTransactionContrib(TransactionContribInfo const& info,
                                                      bool failed=false,
                                                      TransactionContribInfo::Status statusOnFailed=
                                                             TransactionContribInfo::Status::CREATE_FAILED) final;
 
-    TransactionContribInfo startedTransactionContrib(TransactionContribInfo const& info,
-                                                     bool failed=false,
-                                                     TransactionContribInfo::Status statusOnFailed=
-                                                            TransactionContribInfo::Status::START_FAILED) final;
-
-    TransactionContribInfo readTransactionContrib(TransactionContribInfo const& info,
-                                                  bool failed=false,
-                                                  TransactionContribInfo::Status statusOnFailed=
-                                                          TransactionContribInfo::Status::READ_FAILED) final;
-
-    TransactionContribInfo loadedTransactionContrib(TransactionContribInfo const& info,
-                                                    bool failed=false,
-                                                    TransactionContribInfo::Status statusOnFailed=
-                                                            TransactionContribInfo::Status::LOAD_FAILED) final;
+    TransactionContribInfo updateTransactionContrib(TransactionContribInfo const& info) final;
 
     DatabaseIngestParam ingestParam(std::string const& database,
                                     std::string const& category,
@@ -388,6 +391,9 @@ private:
                              uint64_t toTimeStamp,
                              size_t maxEntries);
 
+    std::vector<TransactionInfo> _transactions(std::string const& predicate,
+                                               bool includeContext);
+
     TransactionInfo _findTransactionImpl(util::Lock const& lock,
                                          std::string const& predicate,
                                          bool includeContext);
@@ -396,31 +402,13 @@ private:
                                                        std::string const& predicate,
                                                        bool includeContext);
 
+    std::vector<TransactionContribInfo> _transactionContribs(std::string const& predicate);
+
     TransactionContribInfo _transactionContribImpl(util::Lock const& lock,
                                                    std::string const& predicate);
 
     std::vector<TransactionContribInfo> _transactionContribsImpl(util::Lock const& lock,
                                                                  std::string const& predicate);
-
-    /**
-     * Update the persistent state of the transaction contribution at the
-     * given stage. The stage is specified by the name in \param timestamp.
-     *
-     * @param func The context from which the operation was called.
-     * @param info The contribution descriptor.
-     * @param timestamp The name of the timestamp to be updated.
-     * @param failed The flag indicating if the stage has failed or succeeded.
-     * @param successStatus The new state if the stage has succeeded.
-     * @param failureStatus The new state if the stage has failed.
-     *
-     * @return The updated contribution descriptor. 
-     */
-    TransactionContribInfo _updateTransactionContribAt(std::string const& func,
-                                                       TransactionContribInfo const& info,
-                                                       std::string const& timestamp,
-                                                       bool failed,
-                                                       TransactionContribInfo::Status successStatus,
-                                                       TransactionContribInfo::Status failedStatus);
 
     DatabaseIngestParam _ingestParamImpl(util::Lock const& lock,
                                          std::string const& predicate);

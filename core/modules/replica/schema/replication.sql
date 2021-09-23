@@ -340,6 +340,7 @@ CREATE TABLE IF NOT EXISTS `transaction` (
   `context`     MEDIUMBLOB      DEFAULT '' ,
   UNIQUE KEY (`id`) ,
   PRIMARY KEY (`id`,`database`) ,
+  KEY (`state`) ,
   CONSTRAINT `transaction_fk_1`
     FOREIGN KEY (`database` )
     REFERENCES `config_database` (`database`)
@@ -362,17 +363,12 @@ CREATE TABLE IF NOT EXISTS `transaction_contrib` (
 
   `type`  ENUM ('SYNC', 'ASYNC') NOT NULL DEFAULT 'SYNC' ,
 
-  `expiration_timeout_sec`  INT UNSIGNED      NOT NULL DEFAULT 0 ,  -- request expiration timeout if not 0 (ASYNC)
-  `fields_terminated_by`    VARCHAR(255)      NOT NULL DEFAULT '\t' ,
-  `fields_enclosed_by`      VARCHAR(255)      NOT NULL DEFAULT '' ,
-  `fields_escaped_by`       VARCHAR(255)      NOT NULL DEFAULT '\\' ,
-  `lines_terminated_by`     VARCHAR(255)      NOT NULL DEFAULT '\n' ,
-  `num_bytes`               BIGINT UNSIGNED   NOT NULL DEFAULT 0 ,
-  `num_rows`                BIGINT UNSIGNED   NOT NULL DEFAULT 0 ,
-  `create_time`             BIGINT UNSIGNED   NOT NULL DEFAULT 0 ,    -- the time a request was received and (possibly) queued
-  `start_time`              BIGINT UNSIGNED   NOT NULL DEFAULT 0 ,    -- the time the request processing started (by reading/loading input data)
-  `read_time`               BIGINT UNSIGNED   NOT NULL DEFAULT 0 ,    -- the time the input data file was read and preprocessed
-  `load_time`               BIGINT UNSIGNED   NOT NULL DEFAULT 0 ,    -- the time the contiribution was fully loaded
+  `num_bytes`   BIGINT UNSIGNED   NOT NULL DEFAULT 0 ,
+  `num_rows`    BIGINT UNSIGNED   NOT NULL DEFAULT 0 ,
+  `create_time` BIGINT UNSIGNED   NOT NULL DEFAULT 0 ,    -- the time a request was received and (possibly) queued
+  `start_time`  BIGINT UNSIGNED   NOT NULL DEFAULT 0 ,    -- the time the request processing started (by reading/loading input data)
+  `read_time`   BIGINT UNSIGNED   NOT NULL DEFAULT 0 ,    -- the time the input data file was read and preprocessed
+  `load_time`   BIGINT UNSIGNED   NOT NULL DEFAULT 0 ,    -- the time the contiribution was fully loaded
 
   `status` ENUM ('IN_PROGRESS',   -- the transient state of a request before it's FINISHED or failed
                  'CREATE_FAILED', -- the request was received but rejected right away (incorrect parameters, etc.)
@@ -380,9 +376,10 @@ CREATE TABLE IF NOT EXISTS `transaction_contrib` (
                  'READ_FAILED',   -- reading/preprocessing of the input file failed
                  'LOAD_FAILED',   -- loading into MySQL failed
                  'CANCELLED',     -- the request was explicitly cancelled by the ingest workflow (ASYNC)
-                 'EXPIRED',       -- the optional request's expiration timeout was reached (ASYNC)
                  'FINISHED'       -- the request succeeded
                 ) NOT NULL DEFAULT 'IN_PROGRESS' ,
+
+  `tmp_file` TEXT NOT NULL ,  -- the temporary file open to store preprocessed data
 
   -- Columns for storing the extended info on a problem that prevented a request
   -- from succeeding.
@@ -392,6 +389,8 @@ CREATE TABLE IF NOT EXISTS `transaction_contrib` (
   `retry_allowed` BOOLEAN NOT NULL DEFAULT 0 ,  -- a client was informed that the request could be re-tried or not
 
   PRIMARY KEY (`id`) ,
+  KEY (`type`) ,
+  KEY (`status`) ,
   CONSTRAINT `transaction_contrib_fk_1`
     FOREIGN KEY (`transaction_id`)
     REFERENCES `transaction` (`id`)
@@ -410,6 +409,20 @@ CREATE TABLE IF NOT EXISTS `transaction_contrib` (
 )
 ENGINE = InnoDB
 COMMENT = 'Table/chunk contributions made in a context of the super-transactions during ingests';
+
+
+CREATE TABLE IF NOT EXISTS `transaction_contrib_ext` (
+  `contrib_id` INT UNSIGNED NOT NULL ,
+  `key`        VARCHAR(255) NOT NULL ,
+  `val`        TEXT         NOT NULL ,
+  CONSTRAINT `transaction_contrib_ext_fk_1`
+    FOREIGN KEY (`contrib_id`)
+    REFERENCES `transaction_contrib` (`id`)
+    ON DELETE CASCADE
+    ON UPDATE CASCADE
+)
+ENGINE = InnoDB
+COMMENT = 'Extended attributes for the corresponding transaction contributions';
 
 
 CREATE TABLE IF NOT EXISTS `database_ingest` (
@@ -438,4 +451,4 @@ COMMENT = 'Metadata about database as a whole, key-value pairs' ;
 
 -- Add record for schema version, migration script expects this record to exist
 
-INSERT INTO `QMetadata` (`metakey`, `value`) VALUES ('version', '2');
+INSERT INTO `QMetadata` (`metakey`, `value`) VALUES ('version', '3');

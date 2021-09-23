@@ -401,6 +401,13 @@ vector<TransactionInfo> DatabaseServicesPool::transactions(string const& databas
 }
 
 
+vector<TransactionInfo> DatabaseServicesPool::transactions(TransactionInfo::State state,
+                                                           bool includeContext) {
+    ServiceAllocator service(shared_from_base<DatabaseServicesPool>());
+    return service()->transactions(state, includeContext);
+}
+
+
 TransactionInfo DatabaseServicesPool::beginTransaction(string const& databaseName,
                                                        json const& transactionContext) {
     ServiceAllocator service(shared_from_base<DatabaseServicesPool>());
@@ -422,27 +429,40 @@ TransactionInfo DatabaseServicesPool::updateTransaction(TransactionId id,
 }
 
 
+TransactionContribInfo DatabaseServicesPool::transactionContrib(unsigned int id) {
+    ServiceAllocator service(shared_from_base<DatabaseServicesPool>());
+    return service()->transactionContrib(id);
+}
+
+
 vector<TransactionContribInfo> DatabaseServicesPool::transactionContribs(
         TransactionId transactionId,
         string const& table,
-        string const& worker) {
+        string const& worker,
+        TransactionContribInfo::TypeSelector typeSelector) {
     ServiceAllocator service(shared_from_base<DatabaseServicesPool>());
-    return service()->transactionContribs(
-            transactionId,
-            table,
-            worker);
+    return service()->transactionContribs(transactionId, table, worker, typeSelector);
+}
+
+
+vector<TransactionContribInfo> DatabaseServicesPool::transactionContribs(
+        TransactionId transactionId,
+        TransactionContribInfo::Status status,
+        string const& table,
+        string const& worker,
+        TransactionContribInfo::TypeSelector typeSelector) {
+    ServiceAllocator service(shared_from_base<DatabaseServicesPool>());
+    return service()->transactionContribs(transactionId, status, table, worker, typeSelector);
 }
 
 
 vector<TransactionContribInfo> DatabaseServicesPool::transactionContribs(
         string const& database,
         string const& table,
-        string const& worker) {
+        string const& worker,
+        TransactionContribInfo::TypeSelector typeSelector) {
     ServiceAllocator service(shared_from_base<DatabaseServicesPool>());
-    return service()->transactionContribs(
-            database,
-            table,
-            worker);
+    return service()->transactionContribs(database, table, worker, typeSelector);
 }
 
 
@@ -455,30 +475,10 @@ TransactionContribInfo DatabaseServicesPool::createdTransactionContrib(
 }
 
 
-TransactionContribInfo DatabaseServicesPool::startedTransactionContrib(
-        TransactionContribInfo const& info,
-        bool failed,
-        TransactionContribInfo::Status statusOnFailed) {
+TransactionContribInfo DatabaseServicesPool::updateTransactionContrib(
+        TransactionContribInfo const& info) {
     ServiceAllocator service(shared_from_base<DatabaseServicesPool>());
-    return service()->startedTransactionContrib(info, failed, statusOnFailed);
-}
-
-
-TransactionContribInfo DatabaseServicesPool::readTransactionContrib(
-        TransactionContribInfo const& info,
-        bool failed,
-        TransactionContribInfo::Status statusOnFailed) {
-    ServiceAllocator service(shared_from_base<DatabaseServicesPool>());
-    return service()->readTransactionContrib(info, failed, statusOnFailed);
-}
-
-
-TransactionContribInfo DatabaseServicesPool::loadedTransactionContrib(
-        TransactionContribInfo const& info,
-        bool failed,
-        TransactionContribInfo::Status statusOnFailed) {
-    ServiceAllocator service(shared_from_base<DatabaseServicesPool>());
-    return service()->loadedTransactionContrib(info, failed, statusOnFailed);
+    return service()->updateTransactionContrib(info);
 }
 
 
