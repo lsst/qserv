@@ -186,7 +186,8 @@ IngestRequest::Ptr IngestRequest::resume(
     // Make sure the state is clear (except the contrib.id and contrib.createTime
     // which need to be retained)
     contrib.startTime = 0;
-    contrib.error = string();
+    contrib.tmpFile.clear();
+    contrib.error.clear();
     contrib.httpError = 0;
     contrib.systemError = 0;
     contrib.retryAllowed = false;
