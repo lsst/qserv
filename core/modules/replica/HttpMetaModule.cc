@@ -35,7 +35,7 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
-unsigned int const HttpMetaModule::version = 5;
+unsigned int const HttpMetaModule::version = 6;
 
 
 void HttpMetaModule::process(Controller::Ptr const& controller,
