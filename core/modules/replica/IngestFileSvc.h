@@ -68,15 +68,16 @@ protected:
      *   the data, and uploading the data into MySQL.
      * @param chunk  The number of a chunk (applies to partitioned tables only).
      * @param isOverlap  A kind of the table (applies to partitioned tables only).
+     * @return The name of the open file.
      * @throw logic_error  For calling method in a wrong context (non-active trandaction, etc.)
      * @throw invalid_argument  For incorrect parameters on the input.
      * @throw runtime_error  Error wile creating, or opening a file.
      */
-    void openFile(TransactionId transactionId,
-                  std::string const& table,
-                  csv::Dialect const& dialect,
-                  unsigned int chunk=0,
-                  bool isOverlap=false);
+    std::string const& openFile(TransactionId transactionId,
+                                std::string const& table,
+                                csv::Dialect const& dialect,
+                                unsigned int chunk=0,
+                                bool isOverlap=false);
 
     /**
      * @note Each row will be prepended with an identifier of a transaction before being written.

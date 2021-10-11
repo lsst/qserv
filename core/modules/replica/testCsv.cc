@@ -34,6 +34,7 @@
 
 // Qserv headers
 #include "replica/Csv.h"
+#include "replica/protocol.pb.h"
 
 // Boost unit test header
 #define BOOST_TEST_MODULE JsonLibrary
@@ -44,6 +45,28 @@ namespace test = boost::test_tools;
 using namespace lsst::qserv::replica;
 
 BOOST_AUTO_TEST_SUITE(Suite)
+
+BOOST_AUTO_TEST_CASE(TestCsvDialectInput) {
+    LOGS_INFO("TestCsvDialectInput test begins");
+    csv::DialectInput dialectInput;
+    dialectInput.fieldsTerminatedBy = "a";
+    dialectInput.fieldsEnclosedBy = "b";
+    dialectInput.fieldsEscapedBy = "c";
+    dialectInput.linesTerminatedBy = "d";
+    BOOST_REQUIRE_NO_THROW({
+        unique_ptr<ProtocolDialectInput> const ptr = dialectInput.toProto();
+        BOOST_CHECK_EQUAL(dialectInput.fieldsTerminatedBy, ptr->fields_terminated_by());
+        BOOST_CHECK_EQUAL(dialectInput.fieldsEnclosedBy, ptr->fields_enclosed_by());
+        BOOST_CHECK_EQUAL(dialectInput.fieldsEscapedBy, ptr->fields_escaped_by());
+        BOOST_CHECK_EQUAL(dialectInput.linesTerminatedBy, ptr->lines_terminated_by());
+        csv::DialectInput const dialectInputToo(*(ptr.get()));
+        BOOST_CHECK_EQUAL(dialectInput.fieldsTerminatedBy, dialectInputToo.fieldsTerminatedBy);
+        BOOST_CHECK_EQUAL(dialectInput.fieldsEnclosedBy, dialectInputToo.fieldsEnclosedBy);
+        BOOST_CHECK_EQUAL(dialectInput.fieldsEscapedBy, dialectInputToo.fieldsEscapedBy);
+        BOOST_CHECK_EQUAL(dialectInput.linesTerminatedBy, dialectInputToo.linesTerminatedBy);
+    });
+    LOGS_INFO("TestCsvDialectInput test ends");
+}
 
 BOOST_AUTO_TEST_CASE(TestCsvDialect) {
     LOGS_INFO("TestCsvDialect test begins");
@@ -57,8 +80,12 @@ BOOST_AUTO_TEST_CASE(TestCsvDialect) {
         BOOST_CHECK(!dialect.sqlOptions().empty());
     });
     BOOST_REQUIRE_THROW({
-        string const empty;
-        csv::Dialect const dialect(empty, empty, empty, empty);
+        csv::DialectInput emptyDialectInput;
+        emptyDialectInput.fieldsTerminatedBy.clear();
+        emptyDialectInput.fieldsEnclosedBy.clear();
+        emptyDialectInput.fieldsEscapedBy.clear();
+        emptyDialectInput.linesTerminatedBy.clear();
+        csv::Dialect const dialect(emptyDialectInput);
     }, std::invalid_argument);
     LOGS_INFO("TestCsvDialect test ends");
 }

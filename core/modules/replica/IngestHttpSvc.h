@@ -24,10 +24,18 @@
 // System headers
 #include <memory>
 #include <string>
+#include <thread>
 
 // Qserv headers
 #include "replica/HttpSvc.h"
 #include "replica/ServiceProvider.h"
+
+// Forward declarations
+namespace lsst {
+namespace qserv {
+namespace replica {
+    class IngestRequestMgr;
+}}} // namespace lsst::qserv::replica
 
 // This header declarations
 namespace lsst {
@@ -82,9 +90,17 @@ private:
                   std::string const& authKey,
                   std::string const& adminAuthKey);
 
-   // Input parameters
-
+    // Input parameters
     std::string const _workerName;
+
+    /// The manager maintains a collection of the ASYNC requests processed by
+    /// the threads of the thread pool. The corresponding REST services interact
+    /// with the manager to implement operations (submit, inspect, cancel, etc.)
+    /// over requests on behalf of the user ingest workflows.
+    std::shared_ptr<IngestRequestMgr> const _requestMgr;
+
+    /// The thread pool for processing ASYNC requests.
+    std::vector<std::unique_ptr<std::thread>> _threads;
 };
 
 }}} // namespace lsst::qserv::replica

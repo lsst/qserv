@@ -192,10 +192,7 @@ void IngestSvcConn::_handshakeReceived(boost::system::error_code const& ec,
     _contrib.isOverlap = request.is_overlap();
     _contrib.worker = workerInfo().name;
     _contrib.url = request.url();
-    _contrib.fieldsTerminatedBy = request.fields_terminated_by();
-    _contrib.fieldsEnclosedBy = request.fields_enclosed_by();
-    _contrib.fieldsEscapedBy = request.fields_escaped_by();
-    _contrib.linesTerminatedBy = request.lines_terminated_by();
+    _contrib.dialectInput = csv::DialectInput(request.dialect_input());
     _contrib.retryAllowed = true;   // stays like this before loading data into MySQL
 
     // Attempts to pass invalid transaction identifiers or tables are not recorded
@@ -232,15 +229,8 @@ void IngestSvcConn::_handshakeReceived(boost::system::error_code const& ec,
         if (resource.scheme() != Url::FILE) {
             throw invalid_argument(context + string(__func__) + " unsupported url '" + _contrib.url + "'");
         }
-
-        dialect = csv::Dialect(
-            _contrib.fieldsTerminatedBy,
-            _contrib.fieldsEnclosedBy,
-            _contrib.fieldsEscapedBy,
-            _contrib.linesTerminatedBy
-        );
+        dialect = csv::Dialect(_contrib.dialectInput);
         _parser.reset(new csv::Parser(dialect));
-
     } catch (exception const& ex) {
         _contrib.error = ex.what();
         _contrib = databaseServices->createdTransactionContrib(_contrib, failed);

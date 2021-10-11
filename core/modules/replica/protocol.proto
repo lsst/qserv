@@ -865,6 +865,16 @@ message ProtocolFileResponse {
 //         The IngestServer protocol        //
 //////////////////////////////////////////////
 
+/// Parameters related to a format of the input CSV/TSV files. For further explanation
+/// see MySQL documentation at: https://dev.mysql.com/doc/refman/8.0/en/load-data.html
+/// Note that values of the parameters will be parsed and validated by the server.
+message ProtocolDialectInput {
+    required string fields_terminated_by = 1;
+    required string fields_enclosed_by = 2;
+    required string fields_escaped_by = 3;
+    required string lines_terminated_by = 4;
+}
+
 /// Sent once by a client after establishing a connection with a server
 message ProtocolIngestHandshakeRequest {
 
@@ -887,13 +897,8 @@ message ProtocolIngestHandshakeRequest {
     /// the client's host: 'file://<host>/<path>'.
     required string url = 7;
 
-    /// Parameters related to a format of the input CSV/TSV files. For further explanation
-    /// see MySQL documentation at: https://dev.mysql.com/doc/refman/8.0/en/load-data.html
-    /// Note that values of the parameters will be parsed and validated by the server.
-    required string fields_terminated_by = 8;
-    required string fields_enclosed_by = 9;
-    required string fields_escaped_by = 10;
-    required string lines_terminated_by = 11;
+    /// The input parameteres for a dialect of the input file.
+    required ProtocolDialectInput dialect_input = 12;
 }
 
 /// A message which is meant for sending a byte stream to a server after receiving

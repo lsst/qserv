@@ -37,7 +37,6 @@
 #include "boost/filesystem.hpp"
 
 // Qserv headers
-#include "replica/Csv.h"
 #include "replica/Performance.h"
 #include "util/File.h"
 
@@ -192,20 +191,20 @@ FileIngestApp::FileIngestApp(int argc, char* argv[])
     ).option(
         "fields-terminated-by",
         "An optional character which separates fields within a row.",
-        _fieldsTerminatedBy
+        _dialectInput.fieldsTerminatedBy
     ).option(
         "fields-enclosed-by",
         "An optional character which is used to quote fields within a row.",
-        _fieldsEnclosedBy
+        _dialectInput.fieldsEnclosedBy
      ).option(
         "fields-escaped-by",
         "An optional character which is used to escape special characters (reserved by MySQL)"
         " within a row",
-        _fieldsEscapedBy
+        _dialectInput.fieldsEscapedBy
     ).option(
         "lines-terminated-by",
         "An optional character which is used to terminate lines.",
-        _linesTerminatedBy
+        _dialectInput.linesTerminatedBy
     ).option(
         "record-size-bytes",
         "An optional parameter specifying the record size for reading from the input"
@@ -360,14 +359,8 @@ void FileIngestApp::_parseFile() const {
     if (!outfile.good()) {
         throw invalid_argument(context + "Failed to create file: '" + _outFileName + "'.");
     }
-    csv::Parser parser(
-        csv::Dialect(
-            _fieldsTerminatedBy,
-            _fieldsEnclosedBy,
-            _fieldsEscapedBy,
-            _linesTerminatedBy
-        )
-    );
+    csv::Dialect dialect(_dialectInput);
+    csv::Parser parser(dialect);
     size_t inNumBytes = 0;
     size_t outNumBytes = 0;
     size_t numLines = 0;
@@ -477,10 +470,7 @@ void FileIngestApp::_ingest(FileIngestSpec const& file) const {
         chunkContribution.isOverlap,
         file.inFileName,
         _authKey,
-        _fieldsTerminatedBy,
-        _fieldsEnclosedBy,
-        _fieldsEscapedBy,
-        _linesTerminatedBy,
+        _dialectInput,
         _recordSizeBytes
     );
     ptr->send();

@@ -186,6 +186,9 @@ public:
     std::vector<TransactionInfo> transactions(std::string const& databaseName=std::string(),
                                               bool includeContext=false) final;
 
+    std::vector<TransactionInfo> transactions(TransactionInfo::State state,
+                                              bool includeContext=false) final;
+
     TransactionInfo beginTransaction(std::string const& databaseName,
                                      nlohmann::json const& transactionContext=nlohmann::json::object()) final;
 
@@ -195,25 +198,33 @@ public:
     TransactionInfo updateTransaction(TransactionId id,
                                       nlohmann::json const& transactionContext=nlohmann::json::object()) final;
 
+    TransactionContribInfo transactionContrib(unsigned int id) final;
+
     std::vector<TransactionContribInfo> transactionContribs(TransactionId transactionId,
                                                             std::string const& table=std::string(),
-                                                            std::string const& worker=std::string()) final;
+                                                            std::string const& worker=std::string(),
+                                                            TransactionContribInfo::TypeSelector typeSelector=
+                                                                    TransactionContribInfo::TypeSelector::SYNC_OR_ASYNC) final;
+
+    std::vector<TransactionContribInfo> transactionContribs(TransactionId transactionId,
+                                                            TransactionContribInfo::Status status,
+                                                            std::string const& table=std::string(),
+                                                            std::string const& worker=std::string(),
+                                                            TransactionContribInfo::TypeSelector typeSelector=
+                                                                      TransactionContribInfo::TypeSelector::SYNC_OR_ASYNC) final;
 
     std::vector<TransactionContribInfo> transactionContribs(std::string const& database,
                                                             std::string const& table=std::string(),
-                                                            std::string const& worker=std::string()) final;
+                                                            std::string const& worker=std::string(),
+                                                            TransactionContribInfo::TypeSelector typeSelector=
+                                                                    TransactionContribInfo::TypeSelector::SYNC_OR_ASYNC) final;
 
     TransactionContribInfo createdTransactionContrib(TransactionContribInfo const& info,
-                                                     bool failed=false) final;
+                                                     bool failed=false,
+                                                     TransactionContribInfo::Status statusOnFailed=
+                                                            TransactionContribInfo::Status::CREATE_FAILED) final;
 
-    TransactionContribInfo startedTransactionContrib(TransactionContribInfo const& info,
-                                                     bool failed=false) final;
-
-    TransactionContribInfo readTransactionContrib(TransactionContribInfo const& info,
-                                                  bool failed=false) final;
-
-    TransactionContribInfo loadedTransactionContrib(TransactionContribInfo const& info,
-                                                    bool failed=false) final;
+    TransactionContribInfo updateTransactionContrib(TransactionContribInfo const& info) final;
 
     DatabaseIngestParam ingestParam(std::string const& database,
                                     std::string const& category,

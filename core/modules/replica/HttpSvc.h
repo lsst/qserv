@@ -45,7 +45,7 @@ namespace replica {
   *   parameter of the class's constructor.
   * @note The implementation of the class is not thread-safe.
   */
-class HttpSvc: public std::enable_shared_from_this<HttpSvc>  {
+class HttpSvc: public std::enable_shared_from_this<HttpSvc> {
 public:
     typedef std::shared_ptr<HttpSvc> Ptr;
 
@@ -96,6 +96,7 @@ protected:
     std::string const& authKey() const { return _authKey; }
     std::string const& adminAuthKey() const { return _adminAuthKey; }
     qhttp::Server::Ptr const& httpServer() const { return _httpServer; }
+    std::shared_ptr<boost::asio::io_service> const& io_service_ptr() { return _io_service_ptr; }
 
     /// @return A shared pointer of the desired subclass (no dynamic type checking)
     template <class T>
@@ -117,7 +118,7 @@ private:
     std::string const _authKey;
     std::string const _adminAuthKey;
 
-    boost::asio::io_service _io_service;
+    std::shared_ptr<boost::asio::io_service> const _io_service_ptr;
     qhttp::Server::Ptr _httpServer;
 };
 

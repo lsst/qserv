@@ -123,6 +123,9 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestReadingGeneralParameters) {
     BOOST_CHECK(config->get<size_t>("worker", "num_loader_processing_threads") == 6);
     BOOST_CHECK(config->get<size_t>("worker", "num_exporter_processing_threads") == 7);
     BOOST_CHECK(config->get<size_t>("worker", "num_http_loader_processing_threads") == 8);
+    BOOST_CHECK(config->get<size_t>("worker", "num_async_loader_processing_threads") == 9);
+    BOOST_CHECK(config->get<size_t>("worker", "async_loader_auto_resume") == 0);
+    BOOST_CHECK(config->get<size_t>("worker", "async_loader_cleanup_on_resume") == 0);
     BOOST_CHECK(config->get<unsigned int>("worker", "http_max_listen_conn") == 512);
 }
 
@@ -217,6 +220,20 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestModifyingGeneralParameters) {
     BOOST_CHECK_THROW(config->set<size_t>("worker", "num_http_loader_processing_threads", 0), std::invalid_argument);
     BOOST_REQUIRE_NO_THROW(config->set<size_t>("worker", "num_http_loader_processing_threads", 9));
     BOOST_CHECK(config->get<size_t>("worker", "num_http_loader_processing_threads") == 9);
+
+    BOOST_CHECK_THROW(config->set<size_t>("worker", "num_async_loader_processing_threads", 0), std::invalid_argument);
+    BOOST_REQUIRE_NO_THROW(config->set<size_t>("worker", "num_async_loader_processing_threads", 10));
+    BOOST_CHECK(config->get<size_t>("worker", "num_async_loader_processing_threads") == 10);
+
+    BOOST_REQUIRE_NO_THROW(config->set<unsigned int>("worker", "async_loader_auto_resume", 1));
+    BOOST_CHECK(config->get<unsigned int>("worker", "async_loader_auto_resume") != 0);
+    BOOST_REQUIRE_NO_THROW(config->set<unsigned int>("worker", "async_loader_auto_resume", 0));
+    BOOST_CHECK(config->get<unsigned int>("worker", "async_loader_auto_resume") == 0);
+
+    BOOST_REQUIRE_NO_THROW(config->set<unsigned int>("worker", "async_loader_cleanup_on_resume", 1));
+    BOOST_CHECK(config->get<unsigned int>("worker", "async_loader_cleanup_on_resume") != 0);
+    BOOST_REQUIRE_NO_THROW(config->set<unsigned int>("worker", "async_loader_cleanup_on_resume", 0));
+    BOOST_CHECK(config->get<unsigned int>("worker", "async_loader_cleanup_on_resume") == 0);
 
     BOOST_CHECK_THROW(config->set<unsigned int>("worker", "http_max_listen_conn", 0), std::invalid_argument);
     BOOST_REQUIRE_NO_THROW(config->set<unsigned int>("worker", "http_max_listen_conn", 2048));

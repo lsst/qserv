@@ -189,6 +189,7 @@ void WorkerRequest::cancel() {
     util::Lock lock(_mtx, context(__func__));
 
     switch (status()) {
+        case ProtocolStatus::QUEUED:
         case ProtocolStatus::CREATED:
         case ProtocolStatus::CANCELLED:
             setStatus(lock, ProtocolStatus::CANCELLED);
@@ -200,6 +201,7 @@ void WorkerRequest::cancel() {
 
         // Nothing to be done to the completed requests
         case ProtocolStatus::SUCCESS:
+        case ProtocolStatus::BAD:
         case ProtocolStatus::FAILED:
             break;
     }

@@ -29,6 +29,7 @@
 #include "replica/Configuration.h"
 #include "replica/DatabaseMySQL.h"
 #include "replica/DatabaseServicesMySQL.h"
+#include "replica/Performance.h"
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -176,7 +177,6 @@ map<TransactionContribInfo::Status,string> const TransactionContribInfo::_transa
     {TransactionContribInfo::Status::READ_FAILED,   "READ_FAILED"},
     {TransactionContribInfo::Status::LOAD_FAILED,   "LOAD_FAILED"},
     {TransactionContribInfo::Status::CANCELLED,     "CANCELLED"},
-    {TransactionContribInfo::Status::EXPIRED,       "EXPIRED"},
     {TransactionContribInfo::Status::FINISHED,      "FINISHED"}
 };
 
@@ -188,7 +188,6 @@ map<string, TransactionContribInfo::Status> const TransactionContribInfo::_trans
     {"READ_FAILED",   TransactionContribInfo::Status::READ_FAILED},
     {"LOAD_FAILED",   TransactionContribInfo::Status::LOAD_FAILED},
     {"CANCELLED",     TransactionContribInfo::Status::CANCELLED},
-    {"EXPIRED",       TransactionContribInfo::Status::EXPIRED},
     {"FINISHED",      TransactionContribInfo::Status::FINISHED}
 };
 
@@ -200,7 +199,6 @@ vector<TransactionContribInfo::Status> const TransactionContribInfo::_transactio
     TransactionContribInfo::Status::READ_FAILED,
     TransactionContribInfo::Status::LOAD_FAILED,
     TransactionContribInfo::Status::CANCELLED,
-    TransactionContribInfo::Status::EXPIRED,
     TransactionContribInfo::Status::FINISHED
 };
 
@@ -243,12 +241,12 @@ json TransactionContribInfo::toJson() const {
     info["url"]      = url;
 
     info["async"] = async ? 1 : 0;
-    info["expiration_timeout_sec"] = expirationTimeoutSec;
 
-    info["fields_terminated_by"] = fieldsTerminatedBy;
-    info["fields_enclosed_by"]   = fieldsEnclosedBy;
-    info["fields_escaped_by"]    = fieldsEscapedBy;
-    info["lines_terminated_by"]  = linesTerminatedBy;
+    info["dialect_input"] = dialectInput.toJson();
+
+    info["http_method"]  = httpMethod;
+    info["http_data"]    = httpData;
+    info["http_headers"] = json(httpHeaders);
 
     info["num_bytes"] = numBytes;
     info["num_rows"]  = numRows;
@@ -259,6 +257,7 @@ json TransactionContribInfo::toJson() const {
     info["load_time"]   = loadTime;
 
     info["status"]        = TransactionContribInfo::status2str(status);
+    info["tmp_file"]      = tmpFile;
     info["http_error"]    = httpError;
     info["system_error"]  = systemError;
     info["error"]         = error;
@@ -288,6 +287,39 @@ DatabaseServices::Ptr DatabaseServices::create(Configuration::Ptr const& config)
                 << ", no such service will be available to the application.");
         throw;
     }
+}
+
+
+TransactionContribInfo DatabaseServices::startedTransactionContrib(
+        TransactionContribInfo info,
+        bool failed,
+        TransactionContribInfo::Status statusOnFailed) {
+
+    info.startTime = PerformanceUtils::now();
+    info.status = failed ? statusOnFailed : TransactionContribInfo::Status::IN_PROGRESS;
+    return updateTransactionContrib(info);
+}
+
+
+TransactionContribInfo DatabaseServices::readTransactionContrib(
+        TransactionContribInfo info,
+        bool failed,
+        TransactionContribInfo::Status statusOnFailed) {
+
+    info.readTime = PerformanceUtils::now();
+    info.status = failed ? statusOnFailed : TransactionContribInfo::Status::IN_PROGRESS;
+    return updateTransactionContrib(info);
+}
+
+
+TransactionContribInfo DatabaseServices::loadedTransactionContrib(
+        TransactionContribInfo info,
+        bool failed,
+        TransactionContribInfo::Status statusOnFailed) {
+
+    info.loadTime = PerformanceUtils::now();
+    info.status = failed ? statusOnFailed : TransactionContribInfo::Status::FINISHED;
+    return updateTransactionContrib(info);
 }
 
 }}} // namespace lsst::qserv::replica

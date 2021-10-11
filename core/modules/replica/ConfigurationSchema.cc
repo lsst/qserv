@@ -257,6 +257,32 @@ json const ConfigurationSchema::_schemaJson = json::object({
                 "The number of request processing threads in each Replication worker's HTTP-based ingest service."},
             {"default", 2}
         }},
+        {"num_async_loader_processing_threads", {
+            {"description",
+                "The number of request processing threads in each Replication worker's ASYNC ingest service."},
+            {"default", 2}
+        }},
+        {"async_loader_auto_resume", {
+            {"description",
+                "The flag controlling the behavior of Replication worker's ASYNC ingest service after"
+                " a restart of the service. If the value of the parameter is not 0 the service will resume"
+                " processing incomplete (queued or on-going) requests. Note that requests that were in the final"
+                " state of loading data into MySQL before the restart won't be resumed. These will be marked as failed."
+                " Seeting a value of the parameter to 0 will result in failing all incomplete contribution"
+                " requests existed before restart. Note that requests failed in the last (loading) stage"
+                " require aborting the corresponding super-transaction."},
+            {"empty-allowed", 1},
+            {"default", 1}
+        }},
+        {"async_loader_cleanup_on_resume", {
+            {"description",
+                "The flag controlling the behavior of Replication worker's ASYNC ingest service after"
+                " a restart of the service. If the value of the parameter is not 0 the service will"
+                " try cleaning up temporary files that might be left on disk by incomplete (queued or on-going)"
+                " requests. This option may be disabled to allow debugging the service."},
+            {"empty-allowed", 1},
+            {"default", 1}
+        }},
         {"http_max_listen_conn", {
             {"description",
                 "The maximum length of the queue of pending connections sent to the Replication worker's"

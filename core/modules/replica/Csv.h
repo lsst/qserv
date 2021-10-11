@@ -25,8 +25,12 @@
 #include <functional>
 #include <memory>
 
+// Third party headers
+#include "nlohmann/json.hpp"
+
 // Qserv headers
 #include "replica/Common.h"
+#include "replica/protocol.pb.h"
 
 // This header declarations
 namespace lsst {
@@ -36,6 +40,10 @@ namespace csv {
 
 /// The maximum number of characters (including the terminator character) in a row.
 constexpr size_t const MAX_ROW_LENGTH = 16 * 1024 * 1024;
+
+/// The class DialectInput stores unprocessed input for the corresponding
+/// parameters of class Dialect.
+class DialectInput;
 
 /**
  * The class Dialect stores parameters needed to correctly interpret
@@ -72,18 +80,12 @@ public:
      * statement 'LOAD DATA INFILE'. 
      * @note Values of the parameters can't be empty. Use the corresponding default
      *   values if needed.
-     * @param fieldsTerminatedBy A character separating fields within a row.
-     * @param fieldsEnclosedBy  A character quoting fields within a row.
-     * @param fieldsEscapedBy A character which is used to escape special characters.
-     * @param linesTerminatedBy A character terminating the lines.
+     * @param dialectInput The unprocessed input for the corresponding parameters of the dialect.
      * @throws std::invalid_argument For incorrect input that can't be parsed into
      *   a subset of characters recognized by MySQL or into a restricted subset of
      *   the last one as implemented by the class.
      */
-    Dialect(std::string const& fieldsTerminatedBy,
-            std::string const& fieldsEnclosedBy,
-            std::string const& fieldsEscapedBy,
-            std::string const& linesTerminatedBy);
+    explicit Dialect(DialectInput const& dialectInput);
 
     Dialect(Dialect const&) = default;
     Dialect& operator=(Dialect const&) = default;
@@ -122,6 +124,30 @@ private:
     char _fieldsEnclosedBy;
     char _fieldsEscapedBy;
     char _linesTerminatedBy;
+};
+
+
+/// @see class Dialect
+class DialectInput {
+public:
+    /// Convert from the Protobuf object
+    explicit DialectInput(ProtocolDialectInput const& obj);
+
+    DialectInput() = default;
+    DialectInput(DialectInput const&) = default;
+    DialectInput& operator=(DialectInput const&) = default;
+    ~DialectInput() = default;
+
+    /// @return Protobuf representation of the object
+    std::unique_ptr<ProtocolDialectInput> toProto() const;
+
+    /// @return JSON representation of the object
+    nlohmann::json toJson() const;
+
+    std::string fieldsTerminatedBy = Dialect::defaultFieldsTerminatedBy;
+    std::string fieldsEnclosedBy = Dialect::defaultFieldsEnclosedBy;
+    std::string fieldsEscapedBy = Dialect::defaultFieldsEscapedBy;
+    std::string linesTerminatedBy = Dialect::defaultLinesTerminatedBy;
 };
 
 

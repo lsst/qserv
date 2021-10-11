@@ -30,11 +30,16 @@
 #include "qhttp/Response.h"
 #include "replica/Configuration.h"
 #include "replica/IngestHttpSvcMod.h"
+#include "replica/IngestRequestMgr.h"
+
+// LSST headers
+#include "lsst/log/Log.h"
 
 using namespace std;
 
 namespace {
 string const context_ = "INGEST-HTTP-SVC  ";
+LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.IngestHttpSvc");
 }
 
 namespace lsst {
@@ -59,7 +64,9 @@ IngestHttpSvc::IngestHttpSvc(ServiceProvider::Ptr const& serviceProvider,
                 serviceProvider->config()->get<size_t>("worker", "num_http_loader_processing_threads"),
                 authKey,
                 adminAuthKey),
-        _workerName(workerName) {
+        _workerName(workerName),
+        _requestMgr(IngestRequestMgr::create(serviceProvider, workerName)),
+        _threads(serviceProvider->config()->get<size_t>("worker", "num_async_loader_processing_threads")) {
 }
 
 
@@ -72,11 +79,76 @@ void IngestHttpSvc::registerServices() {
         {"POST", "/ingest/file",
             [self](qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp) {
                 IngestHttpSvcMod::process(
-                        self->serviceProvider(), self->_workerName, self->authKey(), self->adminAuthKey(),
-                        req, resp);
+                        self->serviceProvider(), self->_requestMgr,
+                        self->_workerName, self->authKey(), self->adminAuthKey(),
+                        req, resp,
+                        "SYNC-PROCESS");
+            }
+        },
+        {"POST", "/ingest/file-async",
+            [self](qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp) {
+                IngestHttpSvcMod::process(
+                        self->serviceProvider(), self->_requestMgr,
+                        self->_workerName, self->authKey(), self->adminAuthKey(),
+                        req, resp,
+                        "ASYNC-SUBMIT");
+            }
+        },
+        {"GET", "/ingest/file-async/:id",
+            [self](qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp) {
+                IngestHttpSvcMod::process(
+                        self->serviceProvider(), self->_requestMgr,
+                        self->_workerName, self->authKey(), self->adminAuthKey(),
+                        req, resp,
+                        "ASYNC-STATUS-BY-ID",
+                        HttpModuleBase::AUTH_NONE);
+            }
+        },
+        {"DELETE", "/ingest/file-async/:id",
+            [self](qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp) {
+                IngestHttpSvcMod::process(
+                        self->serviceProvider(), self->_requestMgr,
+                        self->_workerName, self->authKey(), self->adminAuthKey(),
+                        req, resp,
+                        "ASYNC-CANCEL-BY-ID");
+            }
+        },
+        {"GET", "/ingest/file-async/trans/:id",
+            [self](qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp) {
+                IngestHttpSvcMod::process(
+                        self->serviceProvider(), self->_requestMgr,
+                        self->_workerName, self->authKey(), self->adminAuthKey(),
+                        req, resp,
+                        "ASYNC-STATUS-BY-TRANS-ID",
+                        HttpModuleBase::AUTH_NONE);
+            }
+        },
+        {"DELETE", "/ingest/file-async/trans/:id",
+            [self](qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp) {
+                IngestHttpSvcMod::process(
+                        self->serviceProvider(), self->_requestMgr,
+                        self->_workerName, self->authKey(), self->adminAuthKey(),
+                        req, resp,
+                        "ASYNC-CANCEL-BY-TRANS-ID");
             }
         }
     });
+
+    // Create the thread pool for processing asynchronous loading requests.
+    for (auto&& ptr: _threads) {
+        ptr.reset(new thread([self]() {
+            while (true) {
+                auto const request = self->_requestMgr->next();
+                try {
+                    request->process();
+                } catch (exception const& ex) {
+                    LOGS(_log, LOG_LVL_ERROR, "IngestHttpSvc::" << __func__ << " request failed: "
+                        << request->transactionContribInfo().toJson().dump() << ", ex: " << ex.what());
+                }
+                self->_requestMgr->completed(request->transactionContribInfo().id);
+            }
+        }));
+    }
 }
 
 }}} // namespace lsst::qserv::replica
