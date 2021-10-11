@@ -2324,16 +2324,16 @@ TransactionContribInfo DatabaseServicesMySQL::createdTransactionContrib(
                 // Write extended parameters (if any)
                 conn->executeInsertQuery(
                     "transaction_contrib_ext",
-                    database::mysql::Function::LAST_INSERT_ID, "fields_terminated_by", info.fieldsTerminatedBy);
+                    database::mysql::Function::LAST_INSERT_ID, "fields_terminated_by", info.dialectInput.fieldsTerminatedBy);
                 conn->executeInsertQuery(
                     "transaction_contrib_ext",
-                    database::mysql::Function::LAST_INSERT_ID, "fields_enclosed_by", info.fieldsEnclosedBy);
+                    database::mysql::Function::LAST_INSERT_ID, "fields_enclosed_by", info.dialectInput.fieldsEnclosedBy);
                 conn->executeInsertQuery(
                     "transaction_contrib_ext",
-                    database::mysql::Function::LAST_INSERT_ID, "fields_escaped_by", info.fieldsEscapedBy);
+                    database::mysql::Function::LAST_INSERT_ID, "fields_escaped_by", info.dialectInput.fieldsEscapedBy);
                 conn->executeInsertQuery(
                     "transaction_contrib_ext",
-                    database::mysql::Function::LAST_INSERT_ID, "lines_terminated_by", info.linesTerminatedBy);
+                    database::mysql::Function::LAST_INSERT_ID, "lines_terminated_by", info.dialectInput.linesTerminatedBy);
                 conn->executeInsertQuery(
                     "transaction_contrib_ext",
                     database::mysql::Function::LAST_INSERT_ID, "http_method", info.httpMethod);
@@ -2501,10 +2501,10 @@ vector<TransactionContribInfo> DatabaseServicesMySQL::_transactionContribsImpl(
                 row.get("val", val);
                 if (val.empty()) continue;
 
-                if      (key == "fields_terminated_by") contrib.fieldsTerminatedBy = val;
-                else if (key == "fields_enclosed_by")   contrib.fieldsEnclosedBy = val;
-                else if (key == "fields_escaped_by")    contrib.fieldsEscapedBy = val;
-                else if (key == "lines_terminated_by")  contrib.linesTerminatedBy = val;
+                if      (key == "fields_terminated_by") contrib.dialectInput.fieldsTerminatedBy = val;
+                else if (key == "fields_enclosed_by")   contrib.dialectInput.fieldsEnclosedBy = val;
+                else if (key == "fields_escaped_by")    contrib.dialectInput.fieldsEscapedBy = val;
+                else if (key == "lines_terminated_by")  contrib.dialectInput.linesTerminatedBy = val;
                 else if (key == "http_method")          contrib.httpMethod = val;
                 else if (key == "http_data")            contrib.httpData = val;
                 else if (key == "http_headers")         contrib.httpHeaders.emplace_back(val);

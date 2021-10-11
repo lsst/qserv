@@ -294,10 +294,7 @@ public:
 
     // Parameters needed for parsing the contribution.
 
-    std::string fieldsTerminatedBy = csv::Dialect::defaultFieldsTerminatedBy;
-    std::string fieldsEnclosedBy   = csv::Dialect::defaultFieldsEnclosedBy;
-    std::string fieldsEscapedBy    = csv::Dialect::defaultFieldsEscapedBy;
-    std::string linesTerminatedBy  = csv::Dialect::defaultLinesTerminatedBy;
+    csv::DialectInput dialectInput;
 
     // Optional extended parameters needed for pulling contributions over
     // the HTTP/HTTPS protocol.

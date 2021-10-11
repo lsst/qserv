@@ -60,10 +60,7 @@ IngestClient::Ptr IngestClient::connect(
         bool isOverlap,
         string const& inputFilePath,
         string const& authKey,
-        string const& fieldsTerminatedBy,
-        string const& fieldsEnclosedBy,
-        string const& fieldsEscapedBy,
-        string const& linesTerminatedBy,
+        csv::DialectInput const& dialectInput,
         size_t recordSizeBytes) {
     IngestClient::Ptr const ptr(new IngestClient(
         workerHost,
@@ -74,10 +71,7 @@ IngestClient::Ptr IngestClient::connect(
         isOverlap,
         inputFilePath,
         authKey,
-        fieldsTerminatedBy,
-        fieldsEnclosedBy,
-        fieldsEscapedBy,
-        linesTerminatedBy,
+        dialectInput,
         recordSizeBytes
     ));
     ptr->_connectImpl();
@@ -93,10 +87,7 @@ IngestClient::IngestClient(string const& workerHost,
                            bool isOverlap,
                            string const& inputFilePath,
                            string const& authKey,
-                           string const& fieldsTerminatedBy,
-                           string const& fieldsEnclosedBy,
-                           string const& fieldsEscapedBy,
-                           string const& linesTerminatedBy,
+                           csv::DialectInput const& dialectInput,
                            size_t recordSizeBytes)
     :   _workerHost(workerHost),
         _workerPort(workerPort),
@@ -106,10 +97,7 @@ IngestClient::IngestClient(string const& workerHost,
         _isOverlap(isOverlap),
         _inputFilePath(inputFilePath),
         _authKey(authKey),
-        _fieldsTerminatedBy(fieldsTerminatedBy),
-        _fieldsEnclosedBy(fieldsEnclosedBy),
-        _fieldsEscapedBy(fieldsEscapedBy),
-        _linesTerminatedBy(linesTerminatedBy),
+        _dialectInput(dialectInput),
         _recordSizeBytes(recordSizeBytes),
         _bufferPtr(new ProtocolBuffer(defaultBufferCapacity)),
         _io_service(),
@@ -239,10 +227,7 @@ void IngestClient::_connectImpl() {
     request.set_is_overlap(_isOverlap);
     request.set_auth_key(_authKey);
     request.set_url("file://" + host + inputFilePathAbsolute.string());
-    request.set_fields_terminated_by(_fieldsTerminatedBy);
-    request.set_fields_enclosed_by(_fieldsEnclosedBy);
-    request.set_fields_escaped_by(_fieldsEscapedBy);
-    request.set_lines_terminated_by(_linesTerminatedBy);
+    request.set_allocated_dialect_input(_dialectInput.toProto().release());
     _bufferPtr->resize();
     _bufferPtr->serialize(request);
 

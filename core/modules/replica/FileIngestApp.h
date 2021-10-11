@@ -31,10 +31,10 @@
 
 // Qserv headers
 #include "replica/Application.h"
+#include "replica/Csv.h"
 #include "replica/IngestClient.h"
 
 // This header declarations
-
 namespace lsst {
 namespace qserv {
 namespace replica {
@@ -183,10 +183,7 @@ private:
     std::string _command;       /// 'FILE' or 'FILE-LIST' ingest scenarios
     std::string _fileListName;  /// The name of a file to read info for 'FILE-LIST' scenario
 
-    std::string _fieldsTerminatedBy = csv::Dialect::defaultFieldsTerminatedBy;
-    std::string _fieldsEnclosedBy   = csv::Dialect::defaultFieldsEnclosedBy;
-    std::string _fieldsEscapedBy    = csv::Dialect::defaultFieldsEscapedBy;
-    std::string _linesTerminatedBy  = csv::Dialect::defaultLinesTerminatedBy;
+    csv::DialectInput _dialectInput;
 
     size_t _recordSizeBytes = IngestClient::defaultRecordSizeBytes;
 

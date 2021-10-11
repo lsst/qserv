@@ -109,10 +109,7 @@ IngestRequest::Ptr IngestRequest::create(
         bool isOverlap,
         string const& url,
         bool async,
-        string const& fieldsTerminatedBy,
-        string const& fieldsEnclosedBy,
-        string const& fieldsEscapedBy,
-        string const& linesTerminatedBy,
+        csv::DialectInput const& dialectInput,
         string const& httpMethod,
         string const& httpData,
         vector<string> const& httpHeaders) {
@@ -125,10 +122,7 @@ IngestRequest::Ptr IngestRequest::create(
             isOverlap,
             url,
             async,
-            fieldsTerminatedBy,
-            fieldsEnclosedBy,
-            fieldsEscapedBy,
-            linesTerminatedBy,
+            dialectInput,
             httpMethod,
             httpData,
             httpHeaders
@@ -206,10 +200,7 @@ IngestRequest::IngestRequest(
         bool isOverlap,
         string const& url,
         bool async,
-        string const& fieldsTerminatedBy,
-        string const& fieldsEnclosedBy,
-        string const& fieldsEscapedBy,
-        string const& linesTerminatedBy,
+        csv::DialectInput const& dialectInput,
         string const& httpMethod,
         string const& httpData,
         vector<string> const& httpHeaders)
@@ -223,10 +214,7 @@ IngestRequest::IngestRequest(
     _contrib.worker = workerInfo().name;
     _contrib.url = url;
     _contrib.async = async;
-    _contrib.fieldsTerminatedBy = fieldsTerminatedBy;
-    _contrib.fieldsEnclosedBy = fieldsEnclosedBy;
-    _contrib.fieldsEscapedBy = fieldsEscapedBy;
-    _contrib.linesTerminatedBy = linesTerminatedBy;
+    _contrib.dialectInput = dialectInput;
     _contrib.httpMethod = httpMethod;
     _contrib.httpData = httpData;
     _contrib.httpHeaders = httpHeaders;
@@ -260,12 +248,7 @@ IngestRequest::IngestRequest(
             default:
                 throw invalid_argument(context + " unsupported url '" + _contrib.url + "'");
         }
-        _dialect = csv::Dialect(
-            _contrib.fieldsTerminatedBy,
-            _contrib.fieldsEnclosedBy,
-            _contrib.fieldsEscapedBy,
-            _contrib.linesTerminatedBy
-        );
+        _dialect = csv::Dialect(dialectInput);
         _parser.reset(new csv::Parser(_dialect));
     } catch (exception const& ex) {
         _contrib.error = string(ex.what());
@@ -286,8 +269,7 @@ IngestRequest::IngestRequest(
     // This contructor assumes a valid contribution object obtained from a database
     // was passed into the method.
     _resource.reset(new Url(_contrib.url));
-    _dialect = csv::Dialect(_contrib.fieldsTerminatedBy, _contrib.fieldsEnclosedBy,
-                            _contrib.fieldsEscapedBy, _contrib.linesTerminatedBy);
+    _dialect = csv::Dialect(_contrib.dialectInput);
     _parser.reset(new csv::Parser(_dialect));
 }
 

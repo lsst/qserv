@@ -22,6 +22,9 @@
 // Class header
 #include "replica/IngestHttpSvcMod.h"
 
+// Qserv header
+#include "replica/Csv.h"
+
 // System headers
 #include <stdexcept>
 
@@ -155,16 +158,17 @@ IngestRequest::Ptr IngestHttpSvcMod::_createRequst(bool async) const {
     bool const isOverlap = body().required<int>("overlap") != 0;
     string const url = body().required<string>("url");
 
+    csv::DialectInput dialectInput;
     // Allow "column_separator" for the sake of the backward compatibility with the older
     // version of the API. The parameter "column_separator" if present will override the one
     // of "fields_terminated_by"
-    string const fieldsTerminatedBy = body().optional<string>(
+    dialectInput.fieldsTerminatedBy = body().optional<string>(
         "column_separator",
         body().optional<string>("fields_terminated_by", csv::Dialect::defaultFieldsTerminatedBy)
     );
-    string const fieldsEnclosedBy  = body().optional<string>("fields_enclosed_by",  csv::Dialect::defaultFieldsEnclosedBy);
-    string const fieldsEscapedBy   = body().optional<string>("fields_escaped_by",   csv::Dialect::defaultFieldsEscapedBy);
-    string const linesTerminatedBy = body().optional<string>("lines_terminated_by", csv::Dialect::defaultLinesTerminatedBy);
+    dialectInput.fieldsEnclosedBy  = body().optional<string>("fields_enclosed_by",  csv::Dialect::defaultFieldsEnclosedBy);
+    dialectInput.fieldsEscapedBy   = body().optional<string>("fields_escaped_by",   csv::Dialect::defaultFieldsEscapedBy);
+    dialectInput.linesTerminatedBy = body().optional<string>("lines_terminated_by", csv::Dialect::defaultLinesTerminatedBy);
 
     string const httpMethod = body().optional<string>("http_method", "GET");
     string const httpData = body().optional<string>("http_data", string());
@@ -172,10 +176,10 @@ IngestRequest::Ptr IngestHttpSvcMod::_createRequst(bool async) const {
 
     debug(__func__, "transactionId: "          + to_string(transactionId));
     debug(__func__, "table: '"                 + table + "'");
-    debug(__func__, "fields_terminated_by: '"  + fieldsTerminatedBy + "'");
-    debug(__func__, "fields_enclosed_by: '"    + fieldsEnclosedBy + "'");
-    debug(__func__, "fields_escaped_by: '"     + fieldsEscapedBy + "'");
-    debug(__func__, "lines_terminated_by: '"   + linesTerminatedBy + "'");
+    debug(__func__, "fields_terminated_by: '"  + dialectInput.fieldsTerminatedBy + "'");
+    debug(__func__, "fields_enclosed_by: '"    + dialectInput.fieldsEnclosedBy + "'");
+    debug(__func__, "fields_escaped_by: '"     + dialectInput.fieldsEscapedBy + "'");
+    debug(__func__, "lines_terminated_by: '"   + dialectInput.linesTerminatedBy + "'");
     debug(__func__, "chunk: "                  + to_string(chunk));
     debug(__func__, "isOverlap: "              + string(isOverlap ? "1": "0"));
     debug(__func__, "url: '"                   + url + "'");
@@ -192,10 +196,7 @@ IngestRequest::Ptr IngestHttpSvcMod::_createRequst(bool async) const {
         isOverlap,
         url,
         async,
-        fieldsTerminatedBy,
-        fieldsEnclosedBy,
-        fieldsEscapedBy,
-        linesTerminatedBy,
+        dialectInput,
         httpMethod,
         httpData,
         httpHeaders

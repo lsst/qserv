@@ -96,10 +96,7 @@ public:
                                      bool isOverlap,
                                      std::string const& url,
                                      bool async,
-                                     std::string const& fieldsTerminatedBy,
-                                     std::string const& fieldsEnclosedBy,
-                                     std::string const& fieldsEscapedBy,
-                                     std::string const& linesTerminatedBy,
+                                     csv::DialectInput const& dialectInput,
                                      std::string const& httpMethod="GET",
                                      std::string const& httpData=std::string(),
                                      std::vector<std::string> const& httpHeaders=std::vector<std::string>());
@@ -161,10 +158,7 @@ private:
                   bool isOverlap,
                   std::string const& url,
                   bool async,
-                  std::string const& fieldsTerminatedBy,
-                  std::string const& fieldsEnclosedBy,
-                  std::string const& fieldsEscapedBy,
-                  std::string const& linesTerminatedBy,
+                  csv::DialectInput const& dialectInput,
                   std::string const& httpMethod,
                   std::string const& httpData,
                   std::vector<std::string> const& httpHeaders);

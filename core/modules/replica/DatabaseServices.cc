@@ -242,10 +242,7 @@ json TransactionContribInfo::toJson() const {
 
     info["async"] = async ? 1 : 0;
 
-    info["fields_terminated_by"] = fieldsTerminatedBy;
-    info["fields_enclosed_by"]   = fieldsEnclosedBy;
-    info["fields_escaped_by"]    = fieldsEscapedBy;
-    info["lines_terminated_by"]  = linesTerminatedBy;
+    info["dialect_input"] = dialectInput.toJson();
 
     info["http_method"]  = httpMethod;
     info["http_data"]    = httpData;

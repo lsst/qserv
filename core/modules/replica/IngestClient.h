@@ -86,11 +86,7 @@ public:
      * @param inputFilePath the path (relative or absolute) name for a file
      *   whose content will be transferred to to the remote service.
      * @param authKey  an authorization key which should also be known to the server.
-     * @param fieldsTerminatedBy an optional character which separates fields within a row
-     * @param fieldsEnclosedBy an optional character which is used to quote fields within a row
-     * @param fieldsEscapedBy an optional character which is used to escape special
-     *   characters (reserved by MySQL) within a row
-     * @param linesTerminatedBy an optional character which is used to terminate lines
+     * @param dialectInput optional parameteres specifying a dialect of the input file
      * @param recordSizeBytes  an optional parameter specifying the record size for
      *   reading from the input file and for sending data to a server. 
      * @throws IngestClientError for any problem occurred when establishing
@@ -104,10 +100,7 @@ public:
                        bool isOverlap,
                        std::string const& inputFilePath,
                        std::string const& authKey=std::string(),
-                       std::string const& fieldsTerminatedBy=csv::Dialect::defaultFieldsTerminatedBy,
-                       std::string const& fieldsEnclosedBy=csv::Dialect::defaultFieldsEnclosedBy,
-                       std::string const& fieldsEscapedBy=csv::Dialect::defaultFieldsEscapedBy,
-                       std::string const& linesTerminatedBy=csv::Dialect::defaultLinesTerminatedBy,
+                       csv::DialectInput const& dialectInput=csv::DialectInput(),
                        size_t recordSizeBytes=defaultRecordSizeBytes);
 
     // Default construction and copy semantics are prohibited
@@ -144,10 +137,7 @@ private:
                  bool isOverlap,
                  std::string const& inputFilePath,
                  std::string const& authKey,
-                 std::string const& fieldsTerminatedBy,
-                 std::string const& fieldsEnclosedBy,
-                 std::string const& fieldsEscapedBy,
-                 std::string const& linesTerminatedBy,
+                csv::DialectInput const& dialectInput,
                  size_t recordSizeBytes);
 
     /// @return a context string for the logger and exceptions
@@ -217,10 +207,7 @@ private:
     bool          const _isOverlap;
     std::string   const _inputFilePath;
     std::string   const _authKey;
-    std::string   const _fieldsTerminatedBy;
-    std::string   const _fieldsEnclosedBy;
-    std::string   const _fieldsEscapedBy;
-    std::string   const _linesTerminatedBy;
+    csv::DialectInput const _dialectInput;
     size_t        const _recordSizeBytes;
 
     /// Buffer for data moved over the network.
