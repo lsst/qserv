@@ -265,12 +265,13 @@ json const ConfigurationSchema::_schemaJson = json::object({
         {"async_loader_auto_resume", {
             {"description",
                 "The flag controlling the behavior of Replication worker's ASYNC ingest service after"
-                " a restart of the service. If the value of the parameter is not 0 the service will resume"
-                " processing incomplete (queued or on-going) requests. Note that requests that were in the final"
-                " state of loading data into MySQL before the restart won't be resumed. These will be marked as failed."
-                " Seeting a value of the parameter to 0 will result in failing all incomplete contribution"
-                " requests existed before restart. Note that requests failed in the last (loading) stage"
-                " require aborting the corresponding super-transaction."},
+                " its (deliberate or accidental) restarts. If the value of the parameter is not 0 then"
+                " the service will resume processing incomplete (queued or on-going) requests."
+                " Note that requests that were in the final state of loading data into MySQL before"
+                " the restart won't be resumed. These will be marked as failed."
+                " Setting a value of the parameter to 0 will result in failing all incomplete contribution"
+                " requests existed before the restart. Note that requests failed in the last (loading) stage"
+                " can't be resumed, and they will require aborting the corresponding super-transaction."},
             {"empty-allowed", 1},
             {"default", 1}
         }},
