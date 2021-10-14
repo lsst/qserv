@@ -143,7 +143,14 @@ json IngestHttpSvcMod::_asyncTransCancelRequests() const {
             transactionId, anyTable, _workerName, TransactionContribInfo::TypeSelector::ASYNC);
     json contribsJson = json::array();
     for (auto& contrib: contribs) {
-        contribsJson.push_back(_ingestRequestMgr->cancel(contrib.id).toJson());
+        try {
+            contribsJson.push_back(_ingestRequestMgr->cancel(contrib.id).toJson());
+        } catch (IngestRequestNotFound const& ex) {
+            // Ignore the false-positive error condition for the inactive requests that don't
+            // have in-memory representation. These requests only exist in the persistent state
+            // of the system. They still need to be included into the service's response.
+            contribsJson.push_back(contrib.toJson());
+        }
     }
     return json::object({
         {"contribs", contribsJson}
