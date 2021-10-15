@@ -223,8 +223,6 @@ json ConfigTestData::data() {
         {"family_name", "production"},
         {"is_published", 1},
         {"director_table", "Table11"},
-        {"chunk_id_key", "chunkId1"},
-        {"sub_chunk_id_key", "subChunkId1"},
         {"tables", {
             {"Table11", {
                 {"name", "Table11"},
@@ -245,8 +243,6 @@ json ConfigTestData::data() {
         {"family_name", "production"},
         {"is_published", 1},
         {"director_table", "Table21"},
-        {"chunk_id_key", "chunkId2"},
-        {"sub_chunk_id_key", "subChunkId2"},
         {"tables", {
             {"Table21", {
                 {"name", "Table21"},
@@ -279,8 +275,6 @@ json ConfigTestData::data() {
         {"family_name", "production"},
         {"is_published", 1},
         {"director_table", "Table31"},
-        {"chunk_id_key", "chunkId3"},
-        {"sub_chunk_id_key", "subChunkId3"},
         {"tables", {
             {"Table31", {
                 {"name", "Table31"},
@@ -325,8 +319,6 @@ json ConfigTestData::data() {
         {"family_name", "test"},
         {"is_published", 1},
         {"director_table", "Table41"},
-        {"chunk_id_key", "chunkId4"},
-        {"sub_chunk_id_key", "subChunkId4"},
         {"tables", {
             {"Table41", {
                 {"name", "Table41"},
@@ -351,8 +343,6 @@ json ConfigTestData::data() {
         {"family_name", "test"},
         {"is_published", 1},
         {"director_table", "Table51"},
-        {"chunk_id_key", "chunkId5"},
-        {"sub_chunk_id_key", "subChunkId5"},
         {"tables", {
             {"Table51", {
                 {"name", "Table51"},
@@ -369,8 +359,6 @@ json ConfigTestData::data() {
         {"family_name", "test"},
         {"is_published", 0},
         {"director_table", "Table61"},
-        {"chunk_id_key", "chunkId6"},
-        {"sub_chunk_id_key", "subChunkId6"},
         {"tables", {
             {"Table61", {
                 {"name", "Table61"},

@@ -32,6 +32,7 @@
 #include "boost/filesystem.hpp"
 
 // Qserv headers
+#include "global/constants.h"
 #include "replica/Configuration.h"
 #include "replica/DatabaseMySQL.h"
 #include "replica/Performance.h"
@@ -212,8 +213,7 @@ string WorkerIndexRequest::_query(database::mysql::Connection::Ptr const& conn) 
 
     if (directorTable.empty() or
         (databaseInfo.directorTableKey.count(directorTable) == 0) or
-        databaseInfo.directorTableKey.at(directorTable).empty() or
-        databaseInfo.chunkIdColName.empty() or databaseInfo.subChunkIdColName.empty()) {
+        databaseInfo.directorTableKey.at(directorTable).empty()) {
         throw invalid_argument(
                 "director table has not been properly configured in database '" +
                 databaseInfo.name + "'");
@@ -237,8 +237,8 @@ string WorkerIndexRequest::_query(database::mysql::Connection::Ptr const& conn) 
     for (auto&& coldef: databaseInfo.columns.at(directorTable)) {
         if      (not qservTransId.empty() and coldef.name == qservTransId) qservTransIdType = coldef.type;
         else if (coldef.name == directorTableKey) directorTableKeyType = coldef.type;
-        else if (coldef.name == databaseInfo.chunkIdColName) chunkIdColNameType = coldef.type;
-        else if (coldef.name == databaseInfo.subChunkIdColName) subChunkIdColNameType = coldef.type;
+        else if (coldef.name == lsst::qserv::CHUNK_COLUMN) chunkIdColNameType = coldef.type;
+        else if (coldef.name == lsst::qserv::SUB_CHUNK_COLUMN) subChunkIdColNameType = coldef.type;
     }
     if ((not qservTransId.empty() and qservTransIdType.empty()) or
         directorTableKeyType.empty() or
@@ -254,8 +254,8 @@ string WorkerIndexRequest::_query(database::mysql::Connection::Ptr const& conn) 
     string const columnsEscaped =
         (qservTransId.empty() ? string() : conn->sqlId(qservTransId) + ",") +
         conn->sqlId(directorTableKey) + "," +
-        conn->sqlId(databaseInfo.chunkIdColName) + "," +
-        conn->sqlId(databaseInfo.subChunkIdColName);
+        conn->sqlId(lsst::qserv::CHUNK_COLUMN) + "," +
+        conn->sqlId(lsst::qserv::SUB_CHUNK_COLUMN);
 
     string const databaseTableEscaped =
         conn->sqlId(databaseInfo.name) + "." +

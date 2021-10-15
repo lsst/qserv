@@ -364,8 +364,6 @@ public:
         verifyImpl("director_key.size()", actual.directorTableKey.size(), desired.directorTableKey.size());
         verifyImpl("latitude_key.size()", actual.latitudeColName.size(), desired.latitudeColName.size());
         verifyImpl("longitude_key.size()", actual.longitudeColName.size(), desired.longitudeColName.size());
-        verifyImpl("chunk_id_key", actual.chunkIdColName, desired.chunkIdColName);
-        verifyImpl("sub_chunk_id_key", actual.subChunkIdColName, desired.subChunkIdColName);
     }
 };
 

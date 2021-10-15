@@ -460,8 +460,6 @@ json HttpIngestModule::_addTable() {
     auto const schema        = body().required<json>("schema");
     auto const isDirector    = body().required<int>("is_director") != 0;
     auto const directorKey   = body().optional<string>("director_key", "");
-    auto const chunkIdColName    = body().optional<string>("chunk_id_key", "");
-    auto const subChunkIdColName = body().optional<string>("sub_chunk_id_key", "");
     auto const latitudeColName  = body().optional<string>("latitude_key",  "");
     auto const longitudeColName = body().optional<string>("longitude_key", "");
 
@@ -471,8 +469,6 @@ json HttpIngestModule::_addTable() {
     debug(__func__, "schema="        + schema.dump());
     debug(__func__, "isDirector="    + bool2str(isDirector));
     debug(__func__, "directorKey="   + directorKey);
-    debug(__func__, "chunkIdColName="    + chunkIdColName);
-    debug(__func__, "subChunkIdColName=" + subChunkIdColName);
     debug(__func__, "latitudeColName="  + latitudeColName);
     debug(__func__, "longitudeColName=" + longitudeColName);
 
@@ -567,7 +563,7 @@ json HttpIngestModule::_addTable() {
     json result;
     result["database"] = config->addTable(
         databaseInfo.name, table, isPartitioned, columns, isDirector,
-        directorKey, chunkIdColName, subChunkIdColName,
+        directorKey,
         latitudeColName, longitudeColName
     ).toJson();
 
@@ -1081,8 +1077,7 @@ void HttpIngestModule::_createSecondaryIndex(DatabaseInfo const& databaseInfo) c
     string const& directorTable = databaseInfo.directorTable;
     if (directorTable.empty() or
         (databaseInfo.directorTableKey.count(directorTable) == 0) or
-        databaseInfo.directorTableKey.at(directorTable).empty() or
-        databaseInfo.chunkIdColName.empty() or databaseInfo.subChunkIdColName.empty()) {
+        databaseInfo.directorTableKey.at(directorTable).empty()) {
         throw logic_error(
                 "director table has not been properly configured in database '" +
                 databaseInfo.name + "'");
@@ -1102,8 +1097,8 @@ void HttpIngestModule::_createSecondaryIndex(DatabaseInfo const& databaseInfo) c
 
     for (auto&& coldef: databaseInfo.columns.at(directorTable)) {
         if (coldef.name == directorTableKey) directorTableKeyType = coldef.type;
-        else if (coldef.name == databaseInfo.chunkIdColName) chunkIdColNameType = coldef.type;
-        else if (coldef.name == databaseInfo.subChunkIdColName) subChunkIdColNameType = coldef.type;
+        else if (coldef.name == lsst::qserv::CHUNK_COLUMN) chunkIdColNameType = coldef.type;
+        else if (coldef.name == lsst::qserv::SUB_CHUNK_COLUMN) subChunkIdColNameType = coldef.type;
     }
     if (directorTableKeyType.empty() or chunkIdColNameType.empty() or subChunkIdColNameType.empty()) {
         throw logic_error(
@@ -1126,8 +1121,8 @@ void HttpIngestModule::_createSecondaryIndex(DatabaseInfo const& databaseInfo) c
         "CREATE TABLE IF NOT EXISTS " + escapedTableName +
         " (" + h.conn->sqlId(_partitionByColumn) + " " + _partitionByColumnType + "," +
                h.conn->sqlId(directorTableKey) + " " + directorTableKeyType   + "," +
-               h.conn->sqlId(databaseInfo.chunkIdColName) + " " + chunkIdColNameType     + "," +
-               h.conn->sqlId(databaseInfo.subChunkIdColName) + " " + subChunkIdColNameType  + ","
+               h.conn->sqlId(lsst::qserv::CHUNK_COLUMN) + " " + chunkIdColNameType     + "," +
+               h.conn->sqlId(lsst::qserv::SUB_CHUNK_COLUMN) + " " + subChunkIdColNameType  + ","
                " UNIQUE KEY (" + h.conn->sqlId(_partitionByColumn) + "," + h.conn->sqlId(directorTableKey) + "),"
                " KEY (" + h.conn->sqlId(directorTableKey) + ")"
         ") ENGINE=InnoDB PARTITION BY LIST (" + h.conn->sqlId(_partitionByColumn) +

@@ -91,8 +91,7 @@ json HttpIngestIndexModule::_buildSecondaryIndex() {
     string const& directorTable = databaseInfo.directorTable;
     if (directorTable.empty() or
         (databaseInfo.directorTableKey.count(directorTable) == 0) or
-        databaseInfo.directorTableKey.at(directorTable).empty() or
-        databaseInfo.chunkIdColName.empty() or databaseInfo.subChunkIdColName.empty()) {
+        databaseInfo.directorTableKey.at(directorTable).empty()) {
         throw HttpError(
                 __func__,
                 "director table has not been properly configured in database '" +
@@ -114,9 +113,9 @@ json HttpIngestIndexModule::_buildSecondaryIndex() {
     string subChunkIdColNameType;
 
     for (auto&& coldef: databaseInfo.columns.at(directorTable)) {
-        if      (coldef.name == directorTableKey)  directorTableKeyType  = coldef.type;
-        else if (coldef.name == databaseInfo.chunkIdColName)    chunkIdColNameType    = coldef.type;
-        else if (coldef.name == databaseInfo.subChunkIdColName) subChunkIdColNameType = coldef.type;
+        if      (coldef.name == directorTableKey) directorTableKeyType  = coldef.type;
+        else if (coldef.name == lsst::qserv::CHUNK_COLUMN) chunkIdColNameType = coldef.type;
+        else if (coldef.name == lsst::qserv::SUB_CHUNK_COLUMN) subChunkIdColNameType = coldef.type;
     }
     if (directorTableKeyType.empty() or chunkIdColNameType.empty() or subChunkIdColNameType.empty()) {
         throw HttpError(
@@ -141,8 +140,8 @@ json HttpIngestIndexModule::_buildSecondaryIndex() {
     queries.push_back(
         "CREATE TABLE " + escapedTableName +
         " (" + h.conn->sqlId(directorTableKey) + " " + directorTableKeyType + "," +
-               h.conn->sqlId(databaseInfo.chunkIdColName) + " " + chunkIdColNameType + "," +
-               h.conn->sqlId(databaseInfo.subChunkIdColName) + " " + subChunkIdColNameType + ","
+               h.conn->sqlId(lsst::qserv::CHUNK_COLUMN) + " " + chunkIdColNameType + "," +
+               h.conn->sqlId(lsst::qserv::SUB_CHUNK_COLUMN) + " " + subChunkIdColNameType + ","
                " UNIQUE KEY (" + h.conn->sqlId(directorTableKey) + "),"
                " KEY (" + h.conn->sqlId(directorTableKey) + ")"
         ") ENGINE=InnoDB"

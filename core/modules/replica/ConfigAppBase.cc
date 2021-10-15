@@ -200,8 +200,6 @@ void ConfigAppBase::dumpDatabasesAsTable(string const& indent, string const& cap
     vector<string> isPartitioned;
     vector<string> isDirector;
     vector<string> directorKey;
-    vector<string> chunkIdColName;
-    vector<string> subChunkIdColName;
 
     string const noSpecificFamily;
     bool const allDatabases = true;
@@ -220,9 +218,7 @@ void ConfigAppBase::dumpDatabasesAsTable(string const& indent, string const& cap
                 isDirector.push_back("no");
                 directorKey.push_back("");
             }
-            chunkIdColName.push_back(di.chunkIdColName);
-            subChunkIdColName.push_back(di.subChunkIdColName);
-        }
+       }
         for (auto& table: di.regularTables) {
             familyName.push_back(di.family);
             databaseName.push_back(di.name);
@@ -231,8 +227,6 @@ void ConfigAppBase::dumpDatabasesAsTable(string const& indent, string const& cap
             isPartitioned.push_back("no");
             isDirector.push_back("no");
             directorKey.push_back("");
-            chunkIdColName.push_back("");
-            subChunkIdColName.push_back("");
         }
         if (di.partitionedTables.empty() and di.regularTables.empty()) {
             familyName.push_back(di.family);
@@ -242,8 +236,6 @@ void ConfigAppBase::dumpDatabasesAsTable(string const& indent, string const& cap
             isPartitioned.push_back("n/a");
             isDirector.push_back("n/a");
             directorKey.push_back("n/a");
-            chunkIdColName.push_back("n/a");
-            subChunkIdColName.push_back("n/a");
         }
     }
 
@@ -256,8 +248,6 @@ void ConfigAppBase::dumpDatabasesAsTable(string const& indent, string const& cap
     table.addColumn(":partitioned", isPartitioned);
     table.addColumn(":director", isDirector);
     table.addColumn(":director-key", directorKey);
-    table.addColumn(":chunk-id-key", chunkIdColName);
-    table.addColumn(":sub-chunk-id-key", subChunkIdColName);
 
     table.print(cout, false, false);
     cout << endl;

@@ -207,16 +207,6 @@ private:
     /// Note that this option must be provided for the 'director' tables.
     std::string _directorKey;
 
-    /// The name of a column in the 'partitioned' table indicating a column which
-    /// stores identifiers of chunks. Note that this option must be provided
-    /// for the 'partitioned' tables.
-    std::string _chunkIdColName;
-
-    /// The name of a column in the 'partitioned' table indicating a column which
-    /// stores identifiers of sub-chunks. Note that this option must be provided
-    /// for the 'partitioned' tables.
-    std::string _subChunkIdColName;
-
     /// The name of an optional column in the 'partitioned' table representing
     /// latitude (declination)
     std::string _latitudeColName;

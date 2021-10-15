@@ -39,6 +39,7 @@
 #include "lsst/log/Log.h"
 
 // Qserv headers
+#include "global/constants.h"
 #include "replica/Common.h"
 #include "replica/ConfigTestData.h"
 #include "replica/Configuration.h"
@@ -616,8 +617,6 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestReadingTables) {
     BOOST_CHECK(db1info.directorTable == "Table11");
     BOOST_CHECK(db1info.directorTableKey.count("Table11") != 0);
     BOOST_CHECK(db1info.directorTableKey.at("Table11") == "id11");
-    BOOST_CHECK(db1info.chunkIdColName == "chunkId1");
-    BOOST_CHECK(db1info.subChunkIdColName == "subChunkId1");
 
     tables = db1info.partitionedTables;
     sort(tables.begin(), tables.end());
@@ -641,8 +640,6 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestReadingTables) {
     BOOST_CHECK(db2info.directorTable == "Table21");
     BOOST_CHECK(db2info.directorTableKey.count("Table21") != 0);
     BOOST_CHECK(db2info.directorTableKey.at("Table21") == "id21");
-    BOOST_CHECK(db2info.chunkIdColName == "chunkId2");
-    BOOST_CHECK(db2info.subChunkIdColName == "subChunkId2");
     BOOST_CHECK(db2info.isDirector("Table21"));
     BOOST_CHECK(!db2info.isDirector("Table22"));
     BOOST_CHECK(db2info.directorTableKey.count("Table22") != 0);
@@ -666,8 +663,6 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestReadingTables) {
     BOOST_CHECK(db3info.directorTable == "Table31");
     BOOST_CHECK(db3info.directorTableKey.count("Table31") != 0);
     BOOST_CHECK(db3info.directorTableKey.at("Table31") == "id31");
-    BOOST_CHECK(db3info.chunkIdColName == "chunkId3");
-    BOOST_CHECK(db3info.subChunkIdColName == "subChunkId3");
     BOOST_CHECK(db3info.directorTableKey.count("Table32") != 0);
     BOOST_CHECK(db3info.directorTableKey.at("Table32") == "id32");
     BOOST_CHECK(db3info.directorTableKey.count("Table33") != 0);
@@ -691,8 +686,6 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestReadingTables) {
     BOOST_CHECK(db4info.directorTable == "Table41");
     BOOST_CHECK(db4info.directorTableKey.count("Table41") != 0);
     BOOST_CHECK(db4info.directorTableKey.at("Table41") == "id41");
-    BOOST_CHECK(db4info.chunkIdColName == "chunkId4");
-    BOOST_CHECK(db4info.subChunkIdColName == "subChunkId4");
     BOOST_CHECK(db4info.directorTableKey.count("Table42") != 0);
     BOOST_CHECK(db4info.directorTableKey.at("Table42").empty());
 
@@ -712,8 +705,6 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestReadingTables) {
     BOOST_CHECK(db5info.directorTable == "Table51");
     BOOST_CHECK(db5info.directorTableKey.count("Table51") != 0);
     BOOST_CHECK(db5info.directorTableKey.at("Table51") == "id51");
-    BOOST_CHECK(db5info.chunkIdColName == "chunkId5");
-    BOOST_CHECK(db5info.subChunkIdColName == "subChunkId5");
 
     tables = db5info.partitionedTables;
     sort(tables.begin(), tables.end());
@@ -731,8 +722,6 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestReadingTables) {
     BOOST_CHECK(db6info.directorTable == "Table61");
     BOOST_CHECK(db6info.directorTableKey.count("Table61") != 0);
     BOOST_CHECK(db6info.directorTableKey.at("Table61") == "id61");
-    BOOST_CHECK(db6info.chunkIdColName == "chunkId6");
-    BOOST_CHECK(db6info.subChunkIdColName == "subChunkId6");
 
     tables = db6info.partitionedTables;
     sort(tables.begin(), tables.end());
@@ -763,8 +752,6 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestAddingDatabases) {
         BOOST_CHECK(info.directorTableKey.empty());
         BOOST_CHECK(info.latitudeColName.empty());
         BOOST_CHECK(info.longitudeColName.empty());
-        BOOST_CHECK(info.chunkIdColName == "");
-        BOOST_CHECK(info.subChunkIdColName == "");
         BOOST_CHECK_THROW(config->addDatabase(database, family), std::invalid_argument);
     }
     BOOST_CHECK_THROW(config->addDatabase("", ""), std::invalid_argument);
@@ -800,15 +787,14 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestModifyingTables) {
     LOGS_INFO("Testing modifying tables");
     {
         list<SqlColDef> coldefs;
-        coldefs.emplace_back("chunkIdT1", "INT");
-        coldefs.emplace_back("subChunkIdT1", "INT");
+        coldefs.emplace_back(lsst::qserv::CHUNK_COLUMN, "INT");
+        coldefs.emplace_back(lsst::qserv::SUB_CHUNK_COLUMN, "INT");
         bool const isPartitioned = true;
         bool const isDirectorTable = false;
         string const directorTableKey;
         DatabaseInfo info;
         BOOST_REQUIRE_NO_THROW(
-            info = config->addTable("new", "T1", isPartitioned, coldefs, isDirectorTable, directorTableKey,
-                    "chunkIdT1", "subChunkIdT1");
+            info = config->addTable("new", "T1", isPartitioned, coldefs, isDirectorTable, directorTableKey);
         );
         BOOST_CHECK(info.columns.count("T1") == 1);
         std::list<SqlColDef> columns;
@@ -818,12 +804,12 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestModifyingTables) {
         BOOST_CHECK(columns.size() == 2);
         BOOST_CHECK(
             find_if(columns.cbegin(), columns.cend(), [](SqlColDef const& coldef) {
-                return (coldef.name == "chunkIdT1") && (coldef.type == "INT");
+                return (coldef.name == lsst::qserv::CHUNK_COLUMN) && (coldef.type == "INT");
             }) != columns.cend()
         );
         BOOST_CHECK(
             find_if(columns.cbegin(), columns.cend(), [](SqlColDef const& coldef) {
-                return (coldef.name == "subChunkIdT1") && (coldef.type == "INT");
+                return (coldef.name == lsst::qserv::SUB_CHUNK_COLUMN) && (coldef.type == "INT");
             }) != columns.cend()
         );
         BOOST_CHECK((info.partitionedTables.size() == 1) && (info.partitionedTables[0] == "T1"));
@@ -835,8 +821,8 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestModifyingTables) {
     {
         list<SqlColDef> coldefs;
         coldefs.emplace_back("idT2", "VARCHAR(255)");
-        coldefs.emplace_back("chunkIdT2", "INT");
-        coldefs.emplace_back("subChunkIdT2", "INT");
+        coldefs.emplace_back(lsst::qserv::CHUNK_COLUMN, "INT");
+        coldefs.emplace_back(lsst::qserv::SUB_CHUNK_COLUMN, "INT");
         coldefs.emplace_back("declT2", "DOUBLE");
         coldefs.emplace_back("raT2", "DOUBLE");
         bool const isPartitioned = true;
@@ -847,7 +833,7 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestModifyingTables) {
         DatabaseInfo info;
         BOOST_REQUIRE_NO_THROW(
             info = config->addTable("new", "T2", isPartitioned, coldefs, isDirectorTable, directorTableKey,
-                    "chunkIdT2", "subChunkIdT2", "declT2", "raT2");
+                    "declT2", "raT2");
         );
         BOOST_CHECK(info.partitionedTables.size() == 2);
         BOOST_CHECK(info.directorTableKey.count("T2") != 0);

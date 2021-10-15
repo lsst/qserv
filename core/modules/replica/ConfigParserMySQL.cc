@@ -144,8 +144,6 @@ void ConfigParserMySQL::_parseDatabases() {
         info.name = _parseParam<string>("database");
         info.family = _parseParam<string>("family_name");
         info.isPublished = _parseParam<int>("is_published") != 0;
-        info.chunkIdColName = _parseParam<string>("chunk_id_key");
-        info.subChunkIdColName = _parseParam<string>("sub_chunk_id_key");
         _databases[info.name] = info;
     }
     // Read database-specific table definitions and extend the corresponding database entries.

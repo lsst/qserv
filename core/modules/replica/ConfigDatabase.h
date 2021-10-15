@@ -68,6 +68,7 @@ public:
     std::vector<std::string> tables() const;
 
     std::string directorTable;          // The name of the Qserv "director" table if any.
+
     std::map<std::string,               // The table name (partitioned tables only!).
         std::string> directorTableKey;  // The name of the table's key representing object identifiers.
                                         // NOTES: (1) In the "dependent" tables the key represents the FK
@@ -77,9 +78,6 @@ public:
                                         // any "director" table.
 
     // Names of special columns of the partitioned tables.
-
-    std::string chunkIdColName;     // Same name for all partitioned tables.
-    std::string subChunkIdColName;  // Same name for all partitioned tables.
 
     std::map<std::string,                   // table name
              std::string> latitudeColName;  // latitude (declination) column name
@@ -118,8 +116,6 @@ public:
                   bool isPartitioned=false,
                   bool isDirectorTable=false,
                   std::string const& directorTableKey_=std::string(),
-                  std::string const& chunkIdColName_=std::string(),
-                  std::string const& subChunkIdColName_=std::string(),
                   std::string const& latitudeColName_=std::string(),
                   std::string const& longitudeColName_=std::string());
 

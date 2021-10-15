@@ -86,8 +86,6 @@ CREATE TABLE IF NOT EXISTS `config_database` (
   `database`          VARCHAR(255)  NOT NULL ,
   `family_name`       VARCHAR(255)  NOT NULL ,
   `is_published`      BOOLEAN DEFAULT TRUE ,
-  `chunk_id_key`      VARCHAR(255)  DEFAULT "" ,
-  `sub_chunk_id_key`  VARCHAR(255)  DEFAULT "" ,
   PRIMARY KEY (`database`) ,
   UNIQUE  KEY (`database`,`family_name`) ,  -- a database is allowed to belong to one family only
   CONSTRAINT `config_database_fk_1`

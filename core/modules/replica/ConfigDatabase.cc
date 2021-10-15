@@ -28,6 +28,7 @@
 #include <stdexcept>
 
 // Qserv headers
+#include "global/constants.h"
 #include "replica/ConfigDatabaseFamily.h"
 
 using namespace std;
@@ -95,8 +96,6 @@ DatabaseInfo::DatabaseInfo(json const& obj,
             }
         }
         directorTable     = obj.at("director_table").get<string>();
-        chunkIdColName    = obj.at("chunk_id_key").get<string>();
-        subChunkIdColName = obj.at("sub_chunk_id_key").get<string>();
     } catch (exception const& ex) {
         throw invalid_argument(context + "the JSON object is not valid, ex: " + string(ex.what()));
     }
@@ -146,8 +145,6 @@ json DatabaseInfo::toJson() const {
         infoJson["columns"][table] = coldefsJson;
     }
     infoJson["director_table"] = directorTable;
-    infoJson["chunk_id_key"] = chunkIdColName;
-    infoJson["sub_chunk_id_key"] = subChunkIdColName;
     return infoJson;
 }
 
@@ -190,7 +187,6 @@ bool DatabaseInfo::hasTable(std::string const& table) const {
 void DatabaseInfo::addTable(
         string const& table, list<SqlColDef> const& columns_,
         bool isPartitioned, bool isDirectorTable, string const& directorTableKey_,
-        string const& chunkIdColName_, string const& subChunkIdColName_,
         string const& latitudeColName_, string const& longitudeColName_) {
 
     string const context = "DatabaseInfo::" + string(__func__) + " ";
@@ -207,8 +203,8 @@ void DatabaseInfo::addTable(
             }
         }
         map<string, string> colDefs = {
-            {"chunkIdColName", chunkIdColName_},
-            {"subChunkIdColName", subChunkIdColName_}
+            {"chunkIdColName", lsst::qserv::CHUNK_COLUMN},
+            {"subChunkIdColName", lsst::qserv::SUB_CHUNK_COLUMN}
         };
         if (!directorTableKey_.empty()) {
             // The FK->PK association with the "director" table is optional for the "dependent"
@@ -253,8 +249,6 @@ void DatabaseInfo::addTable(
                 }
             }
             directorTable = table;
-            chunkIdColName = chunkIdColName_;
-            subChunkIdColName = subChunkIdColName_;
         }
         directorTableKey[table] = directorTableKey_;
         latitudeColName[table] = latitudeColName_;
@@ -282,8 +276,6 @@ void DatabaseInfo::removeTable(std::string const& table) {
         if (director) {
             // These attributes are set for the director table only.
             directorTable = "";
-            chunkIdColName = "";
-            subChunkIdColName = "";
         }
         directorTableKey.erase(table);
         latitudeColName.erase(table);

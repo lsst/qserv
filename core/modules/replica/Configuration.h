@@ -559,14 +559,6 @@ public:
      *   have any objectId-based association with any "director" table.
      *   If provided (and allowed) the column must be found among the names of columns
      *   specified in the parameter "columns".
-     * @param chunkIdColName The (optional) name of a column which stores identifiers
-     *   of "chunks". This parameter applies to all "partitioned" tables, and if
-     *   provided the column must be found among the names of columns in a value
-     *   of parameter "columns".
-     * @param subChunkIdColName The (optional) name of a column which stores
-     *   identifiers of "sub-chunks". This parameter applies to all "partitioned"
-     *   tables, and if provided the column must be found among the names of
-     *   columns in a value of parameter "columns".
      * @param latitudeColName The (optional) name of a column which stores the latitude.
      * @param longitudeColName The (optional) name of a column which stores the longitude.
      * @return A database descriptor of the updated database.
@@ -580,8 +572,6 @@ public:
                           std::list<SqlColDef> const& columns=std::list<SqlColDef>(),
                           bool isDirectorTable=false,
                           std::string const& directorTableKey="",
-                          std::string const& chunkIdColName=lsst::qserv::CHUNK_COLUMN,
-                          std::string const& subChunkIdColName=lsst::qserv::SUB_CHUNK_COLUMN,
                           std::string const& latitudeColName=std::string(),
                           std::string const& longitudeColName=std::string());
 
