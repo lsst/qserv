@@ -259,6 +259,7 @@ EchoRequest::Ptr Controller::echo(
 IndexRequest::Ptr Controller::index(
         string const& workerName,
         string const& database,
+        string const& directorTable,
         unsigned int chunk,
         bool hasTransactions,
         TransactionId transactionId,
@@ -272,11 +273,13 @@ IndexRequest::Ptr Controller::index(
 
     return _submit<IndexRequest,
                    decltype(database),
+                   decltype(directorTable),
                    decltype(chunk),
                    decltype(hasTransactions),
                    decltype(transactionId)>(
         workerName,
         database,
+        directorTable,
         chunk,
         hasTransactions,
         transactionId,

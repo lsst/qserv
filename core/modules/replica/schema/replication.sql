@@ -102,8 +102,8 @@ CREATE TABLE IF NOT EXISTS `config_database_table` (
   `database`        VARCHAR(255)  NOT NULL ,
   `table`           VARCHAR(255)  NOT NULL ,
   `is_partitioned`  BOOLEAN NOT NULL ,
-  `is_director`     BOOLEAN NOT NULL ,
-  `director_key`    VARCHAR(255) DEFAULT "" ,
+  `director_table`  VARCHAR(255) DEFAULT "" , -- The name of the corresponding 'director' table (if any)
+  `director_key`    VARCHAR(255) DEFAULT "" , -- The name of the table's FK key linking to the PK of the `director` table (if any)
   `latitude_key`    VARCHAR(255) DEFAULT "" , -- The name for latitude (declination) column in this table
   `longitude_key`   VARCHAR(255) DEFAULT "" , -- The name for longitude (right ascension) column in this table
   PRIMARY KEY (`database`, `table`) ,

@@ -80,6 +80,7 @@ IndexRequest::Ptr IndexRequest::create(ServiceProvider::Ptr const& serviceProvid
                                        boost::asio::io_service& io_service,
                                        string const& worker,
                                        string const& database,
+                                       string const& directorTable,
                                        unsigned int chunk,
                                        bool hasTransactions,
                                        TransactionId transactionId,
@@ -91,6 +92,7 @@ IndexRequest::Ptr IndexRequest::create(ServiceProvider::Ptr const& serviceProvid
         io_service,
         worker,
         database,
+        directorTable,
         chunk,
         hasTransactions,
         transactionId,
@@ -106,6 +108,7 @@ IndexRequest::IndexRequest(ServiceProvider::Ptr const& serviceProvider,
                            boost::asio::io_service& io_service,
                            string const& worker,
                            string const& database,
+                           string const& directorTable,
                            unsigned int chunk,
                            bool hasTransactions,
                            TransactionId transactionId,
@@ -123,6 +126,7 @@ IndexRequest::IndexRequest(ServiceProvider::Ptr const& serviceProvider,
                          true,  // disposeRequired
                          messenger),
         _database(database),
+        _directorTable(directorTable),
         _chunk(chunk),
         _hasTransactions(hasTransactions),
         _transactionId(transactionId),
@@ -142,6 +146,7 @@ void IndexRequest::startImpl(util::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << " "
          << " worker: "          << worker()
          << " database: "        << database()
+         << " directorTable: "   << directorTable()
          << " chunk: "           << chunk()
          << " hasTransactions: " << (hasTransactions() ? "true" : "false")
          << " transactionId: "   << transactionId());
@@ -163,6 +168,7 @@ void IndexRequest::startImpl(util::Lock const& lock) {
 
     ProtocolRequestIndex message;
     message.set_database(database());
+    message.set_director_table(directorTable());
     message.set_chunk(chunk());
     message.set_has_transactions(hasTransactions());
     message.set_transaction_id(transactionId());
@@ -220,21 +226,14 @@ void IndexRequest::_awaken(boost::system::error_code const& ec) {
 
 
 void IndexRequest::_send(util::Lock const& lock) {
-
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
-
     auto self = shared_from_base<IndexRequest>();
-
     messenger()->send<ProtocolResponseIndex>(
         worker(),
         id(),
         buffer(),
-        [self] (string const& id,
-                bool success,
-                ProtocolResponseIndex const& response) {
-
-            self->_analyze(success,
-                           response);
+        [self] (string const& id, bool success, ProtocolResponseIndex const& response) {
+            self->_analyze(success, response);
         }
     );
 }
@@ -342,6 +341,7 @@ void IndexRequest::savePersistentState(util::Lock const& lock) {
 list<pair<string,string>> IndexRequest::extendedPersistentState() const {
     list<pair<string,string>> result;
     result.emplace_back("database",         database());
+    result.emplace_back("director_table",   directorTable());
     result.emplace_back("chunk",            to_string(chunk()));
     result.emplace_back("has_transactions", bool2str(hasTransactions()));
     result.emplace_back("transaction_id",   to_string(transactionId()));

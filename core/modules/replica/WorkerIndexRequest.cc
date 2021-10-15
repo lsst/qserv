@@ -209,13 +209,18 @@ string WorkerIndexRequest::_query(database::mysql::Connection::Ptr const& conn) 
 
     auto const config = serviceProvider()->config();
     auto const databaseInfo = config->databaseInfo(_request.database());
-    string const& directorTable = databaseInfo.directorTable;
+    string const& directorTable = _request.director_table();
 
-    if (directorTable.empty() or
-        (databaseInfo.directorTableKey.count(directorTable) == 0) or
+    if (!databaseInfo.isDirector(directorTable)) {
+        throw invalid_argument(
+                "table '" + directorTable + "' is not been configured as director in database '" +
+                databaseInfo.name + "'");
+
+    }
+    if ((databaseInfo.directorTableKey.count(directorTable) == 0) or
         databaseInfo.directorTableKey.at(directorTable).empty()) {
         throw invalid_argument(
-                "director table has not been properly configured in database '" +
+                "director table '" + directorTable + "' has not been properly configured in database '" +
                 databaseInfo.name + "'");
     }
     string const& directorTableKey = databaseInfo.directorTableKey.at(directorTable);
@@ -245,7 +250,7 @@ string WorkerIndexRequest::_query(database::mysql::Connection::Ptr const& conn) 
         throw invalid_argument(
                 "column definitions for the Object identifier or sub-chunk identifier"
                 " columns are missing in the director table schema for table '" +
-                databaseInfo.directorTable + "' of database '" + databaseInfo.name + "'");
+                directorTable + "' of database '" + databaseInfo.name + "'");
     }
 
     // NOTE: injecting the chunk number into each row of the result set because
@@ -253,12 +258,12 @@ string WorkerIndexRequest::_query(database::mysql::Connection::Ptr const& conn) 
     string const columnsEscaped =
         (qservTransId.empty() ? string() : conn->sqlId(qservTransId) + ",") +
         conn->sqlId(directorTableKey) + "," +
-        conn->sqlValue(_request.chunk()) + "," +
+        to_string(_request.chunk()) + "," +
         conn->sqlId(lsst::qserv::SUB_CHUNK_COLUMN);
 
     string const databaseTableEscaped =
         conn->sqlId(databaseInfo.name) + "." +
-        conn->sqlId(databaseInfo.directorTable + "_" + to_string(_request.chunk()));
+        conn->sqlId(directorTable + "_" + to_string(_request.chunk()));
 
     string const partitionRestrictorEscaped =
         qservTransId.empty() ? string() : "PARTITION (" + conn->sqlPartitionId(_request.transaction_id()) + ")";

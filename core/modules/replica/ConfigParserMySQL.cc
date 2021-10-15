@@ -75,7 +75,7 @@ void ConfigParserMySQL::_parseGeneral() {
         try {
             obj = _data.at(category).at(param);
         } catch (exception const& ex) {
-            throw std::invalid_argument(
+            throw invalid_argument(
                     _context + " no transient schema match for the parameter, category: '"
                     + category + "' param: '" + param + "'.");
         }
@@ -153,15 +153,58 @@ void ConfigParserMySQL::_parseDatabases() {
         string const table = _parseParam<string>("table");
         DatabaseInfo& info = _databases[database];
         if (_parseParam<int>("is_partitioned") != 0) {
-            if (_parseParam<int>("is_director") != 0) {
-                info.directorTable = table;
-            }
+            info.directorTable[table] = _parseParam<string>("director_table");
             info.directorTableKey[table] = _parseParam<string>("director_key");
+            if (info.directorTableKey[table].empty()) {
+                throw ConfigError(
+                    _context + " the key 'director_key' of the partitioned table: '"
+                    + table + "' is empty.");
+            }
             info.latitudeColName[table] = _parseParam<string>("latitude_key");
             info.longitudeColName[table] = _parseParam<string>("longitude_key");
+            if (info.directorTable[table].empty()) {
+                if (info.latitudeColName[table].empty() || info.longitudeColName[table].empty()) {
+                    throw ConfigError(
+                        _context + " one of the spatial coordinate keys 'latitude_key' or 'longitude_key'"
+                        " of the director table: '" + table + "' is empty.");
+                }
+            } else {
+                if (info.latitudeColName[table].empty() != info.longitudeColName[table].empty()) {
+                    throw ConfigError(
+                        _context + " inconsistent definition of the spatial coordinate keys 'latitude_key'"
+                        " and 'longitude_key' of the dependent table: '" + table + "'. Both keys need to be"
+                        " either empty or be defined.");
+                }
+            }
             info.partitionedTables.push_back(table);
         } else {
             info.regularTables.push_back(table);
+        }
+    }
+
+    // Validate referential integrity between the "director" and "dependent" tables
+    // to ensure each dependent table has a valid "director".
+    for (auto&& databaseItr: _databases) {
+        string const& database = databaseItr.first;
+        DatabaseInfo& info = databaseItr.second;
+        for (auto&& itr: info.directorTable) {
+            string const& table = itr.first;
+            string const& director = itr.second;
+            if (!director.empty()) {
+                if (!info.directorTable.count(director)) {
+                    throw ConfigError(
+                        _context + " the director table '" + director + "' of database '" + database
+                        + "' required by the dependent table '" + table
+                        + "' is not found in the configuration.");
+                } else {
+                    if (!info.directorTable.at(director).empty()) {
+                        throw ConfigError(
+                            _context + " the table: '" + table + "' of database '" + database
+                            + "' is defined as depending on another dependent table '" + director
+                            + "' instead of a valid director table.");
+                    }
+                }
+            }
         }
     }
 

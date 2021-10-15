@@ -222,13 +222,13 @@ json ConfigTestData::data() {
         {"database", "db1"},
         {"family_name", "production"},
         {"is_published", 1},
-        {"director_table", "Table11"},
         {"tables", {
             {"Table11", {
                 {"name", "Table11"},
                 {"is_partitioned", 1},
-                {"director_key",  "id11"},
-                {"latitude_key",  "decl11"},
+                {"director", ""},
+                {"director_key", "id11"},
+                {"latitude_key", "decl11"},
                 {"longitude_key", "ra11"},
                 {"columns", {}}
             }},
@@ -242,21 +242,22 @@ json ConfigTestData::data() {
         {"database", "db2"},
         {"family_name", "production"},
         {"is_published", 1},
-        {"director_table", "Table21"},
         {"tables", {
             {"Table21", {
                 {"name", "Table21"},
                 {"is_partitioned", 1},
-                {"director_key",  "id21"},
-                {"latitude_key",  "decl21"},
+                {"director", ""},
+                {"director_key", "id21"},
+                {"latitude_key", "decl21"},
                 {"longitude_key", "ra21"},
                 {"columns", {}}
             }},
             {"Table22", {
                 {"name", "Table22"},
                 {"is_partitioned", 1},
-                {"director_key",  "id22"},
-                {"latitude_key",  "decl22"},
+                {"director", "Table21"},
+                {"director_key", "id22"},
+                {"latitude_key", "decl22"},
                 {"longitude_key", "ra22"},
                 {"columns", {}}
             }},
@@ -274,30 +275,32 @@ json ConfigTestData::data() {
         {"database", "db3"},
         {"family_name", "production"},
         {"is_published", 1},
-        {"director_table", "Table31"},
         {"tables", {
             {"Table31", {
                 {"name", "Table31"},
                 {"is_partitioned", 1},
-                {"director_key",  "id31"},
-                {"latitude_key",  "decl31"},
+                {"director", ""},
+                {"director_key", "id31"},
+                {"latitude_key", "decl31"},
                 {"longitude_key", "ra31"},
                 {"columns", {}}
             }},
             {"Table32", {
                 {"name", "Table32"},
                 {"is_partitioned", 1},
-                {"director_key",  "id32"},
-                {"latitude_key",  "decl32"},
+                {"director", "Table31"},
+                {"director_key", "id32"},
+                {"latitude_key", "decl32"},
                 {"longitude_key", "ra32"},
                 {"columns", {}}
             }},
             {"Table33", {
                 {"name", "Table33"},
                 {"is_partitioned", 1},
-                {"director_key",  ""},
-                {"latitude_key",  "decl33"},
-                {"longitude_key", "ra33"},
+                {"director", "Table31"},
+                {"director_key", "id33"},
+                {"latitude_key", ""},
+                {"longitude_key", ""},
                 {"columns", {}}
             }},
             {"MetaTable31", {
@@ -318,11 +321,11 @@ json ConfigTestData::data() {
         {"database", "db4"},
         {"family_name", "test"},
         {"is_published", 1},
-        {"director_table", "Table41"},
         {"tables", {
             {"Table41", {
                 {"name", "Table41"},
                 {"is_partitioned", 1},
+                {"director", ""},
                 {"director_key",  "id41"},
                 {"latitude_key",  "decl41"},
                 {"longitude_key", "ra41"},
@@ -331,7 +334,8 @@ json ConfigTestData::data() {
             {"Table42", {
                 {"name", "Table42"},
                 {"is_partitioned", 1},
-                {"director_key",  ""},
+                {"director", ""},
+                {"director_key",  "id42"},
                 {"latitude_key",  "decl42"},
                 {"longitude_key", "ra42"},
                 {"columns", {}}
@@ -342,14 +346,14 @@ json ConfigTestData::data() {
         {"database", "db5"},
         {"family_name", "test"},
         {"is_published", 1},
-        {"director_table", "Table51"},
         {"tables", {
             {"Table51", {
                 {"name", "Table51"},
                 {"is_partitioned", 1},
+                {"director", ""},
                 {"director_key",  "id51"},
                 {"latitude_key",  "decl51"},
-                {"longitude_key", "decl51"},
+                {"longitude_key", "ra51"},
                 {"columns", {}}
             }}
         }}
@@ -358,11 +362,11 @@ json ConfigTestData::data() {
         {"database", "db6"},
         {"family_name", "test"},
         {"is_published", 0},
-        {"director_table", "Table61"},
         {"tables", {
             {"Table61", {
                 {"name", "Table61"},
                 {"is_partitioned", 1},
+                {"director", ""},
                 {"director_key",  "id61"},
                 {"latitude_key",  "decl61"},
                 {"longitude_key", "ra61"},

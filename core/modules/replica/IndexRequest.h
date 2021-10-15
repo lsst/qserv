@@ -82,6 +82,7 @@ public:
     // Trivial get methods
 
     std::string const& database()        const { return _database; }
+    std::string const& directorTable()   const { return _directorTable; }
     unsigned int       chunk()           const { return _chunk; }
     bool               hasTransactions() const { return _hasTransactions; }
     TransactionId      transactionId()   const { return _transactionId; }
@@ -108,47 +109,28 @@ public:
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
      *
-     * @param serviceProvider
-     *   a host of services for various communications
-     *
-     * @param worker
-     *   the identifier of a worker node (the one where the chunks
+     * @param serviceProvider  a host of services for various communications
+     * @param worker  the identifier of a worker node (the one where the chunks
      *   expected to be located)
-     *
-     * @param database
-     *   the name of a database
-     *
-     * @param chunk
-     *   the number of a chunk to be inspected
-     *
-     * @param hasTransactions
-     *   if set to 'true' then the result will also include a column which
+     * @param database  the name of a database
+     * @param directorTable the name of the director table
+     * @param chunk  the number of a chunk to be inspected
+     * @param hasTransactions  if set to 'true' then the result will also include a column which
      *   stores a value of the corresponding super-transaction
-     *
-     * @param transactionId
-     *   (optional) identifier of a super-transaction. This parameter is used
+     * @param transactionId  (optional) identifier of a super-transaction. This parameter is used
      *   only if the above defined flag 'hasTransactions' is set.
-     *
-     * @param onFinish
-     *   an optional callback function to be called upon a completion of
+     * @param onFinish  an optional callback function to be called upon a completion of
      *   the request
-     * 
-     * @param priority
-     *   a priority level of the request
-     *
-     * @param keepTracking
-     *   keep tracking the request before it finishes or fails
-     *
-     * @param messenger
-     *   an interface for communicating with workers
-     *
-     * @return
-     *   pointer to the created object
+     * @param priority  a priority level of the request
+     * @param keepTracking  keep tracking the request before it finishes or fails
+     * @param messenger  an interface for communicating with workers
+     * @return  pointer to the created object
      */
     static Ptr create(ServiceProvider::Ptr const& serviceProvider,
                       boost::asio::io_service& io_service,
                       std::string const& worker,
                       std::string const& database,
+                      std::string const& directorTable,
                       unsigned int chunk,
                       bool hasTransactions,
                       TransactionId transactionId,
@@ -171,6 +153,7 @@ private:
                  boost::asio::io_service& io_service,
                  std::string const& worker,
                  std::string const& database,
+                 std::string const& directorTable,
                  unsigned int chunk,
                  bool hasTransactions,
                  TransactionId transactionId,
@@ -215,6 +198,7 @@ private:
     // Input parameters
 
     std::string   const _database;
+    std::string   const _directorTable;
     unsigned int  const _chunk;
     bool          const _hasTransactions;
     TransactionId const _transactionId;

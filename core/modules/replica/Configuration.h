@@ -551,6 +551,9 @@ public:
      * @param isDirectorTable An (optional) flag indicating if this is the "director"
      *   table of the catalog. Note there could be only one such table in a catalog,
      *   and this table must be "partitioned".
+     * @param directorTable The (optional) name of the director table.
+     *   The parameter only applies to the partitioned tables which are also the "dependent"
+     *   ones of some existing "director" table.
      * @param directorTableKey The (optional) name of a column representing object identifiers.
      *   The parameter only applies to the partitioned tables. For the "dependent" tables
      *   this would be the FK for the corresponding PK of the "director" table.
@@ -571,7 +574,8 @@ public:
                           bool isPartitioned,
                           std::list<SqlColDef> const& columns=std::list<SqlColDef>(),
                           bool isDirectorTable=false,
-                          std::string const& directorTableKey="",
+                          std::string const& directorTable=std::string(),
+                          std::string const& directorTableKey=std::string(),
                           std::string const& latitudeColName=std::string(),
                           std::string const& longitudeColName=std::string());
 

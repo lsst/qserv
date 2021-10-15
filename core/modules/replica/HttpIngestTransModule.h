@@ -103,18 +103,22 @@ private:
      * corresponding to the specified transaction identifier.
      * @param databaseInfo defines a scope of the operation
      * @param transactionId unique identifier of a super-transaction
+     * @param directorTable the name of the director table to build the index for
      */
     void _addPartitionToSecondaryIndex(DatabaseInfo const& databaseInfo,
-                                       TransactionId transactionId) const;
+                                       TransactionId transactionId,
+                                       std::string const& directorTable) const;
 
    /**
      * Shrink an existing "secondary index" table by removing a MySQL partition
      * corresponding to the specified transaction identifier from the table.
      * @param databaseInfo defines a scope of the operation
      * @param transactionId unique identifier of a super-transaction
+     * @param directorTable the name of the director table to remove the index from
      */
     void _removePartitionFromSecondaryIndex(DatabaseInfo const& databaseInfo,
-                                            TransactionId transactionId) const;
+                                            TransactionId transactionId,
+                                            std::string const& directorTable) const;
 
     /**
      * Extract contributions into a transaction.

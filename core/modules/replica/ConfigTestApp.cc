@@ -360,7 +360,8 @@ public:
         verifyImpl("partitioned_tables.empty()", actual.partitionedTables.empty(), desired.partitionedTables.empty());
         verifyImpl("regular_tables.empty()", actual.regularTables.empty(), desired.regularTables.empty());
         verifyImpl("columns.empty()", actual.columns.empty(), desired.columns.empty());
-        verifyImpl("director_table", actual.directorTable, desired.directorTable);
+        verifyImpl("director_table.size()", actual.directorTable.size(), desired.directorTable.size());
+        verifyImpl("director_tables.size()", actual.directorTables().size(), desired.directorTables().size());
         verifyImpl("director_key.size()", actual.directorTableKey.size(), desired.directorTableKey.size());
         verifyImpl("latitude_key.size()", actual.latitudeColName.size(), desired.latitudeColName.size());
         verifyImpl("longitude_key.size()", actual.longitudeColName.size(), desired.longitudeColName.size());
@@ -385,29 +386,31 @@ ConfigTestApp::ConfigTestApp(int argc, char* argv[])
     parser().optional(
         "scope",
         "This optional parameter narrows a scope of the operation down to a specific"
-        " context. If no scope is specified then everything will be tested.",
+        " context. Allowed values: ALL, GENERAL, WORKERS, DATABASES_AND_FAMILIES, TABLES.",
         _testScope,
-        vector<string>({"GENERAL", "WORKERS", "DATABASES_AND_FAMILIES"})
+        vector<string>({"ALL", "GENERAL", "WORKERS", "DATABASES_AND_FAMILIES", "TABLES"})
     );
 }
 
 
 int ConfigTestApp::runSubclassImpl() {
-    string const context = "ConfigTestApp::" + string(__func__) + "  ";
-
-    bool success = true;
-    if (_testScope.empty() or _testScope == "GENERAL") {
-        success = success && _testGeneral();
+    int result = 0;
+    if (_testScope == "ALL") {
+        result += _testGeneral() ? 0 : 1;
+        result += _testWorkers() ? 0 : 1;
+        result += _testDatabasesAndFamilies()  ? 0 : 1;
+        result += _testTables() ? 0 : 1;
+    } else if (_testScope == "GENERAL") {
+        result += _testGeneral() ? 0 : 1;
+    } else if (_testScope == "WORKERS") {
+        result += _testWorkers() ? 0 : 1;
+    } else if (_testScope == "DATABASES_AND_FAMILIES") {
+        result += _testDatabasesAndFamilies() ? 0 : 1;
+    } else if (_testScope == "TABLES") {
+        result += _testTables() ? 0 : 1;
     }
-    if (_testScope.empty() or _testScope == "WORKERS") {
-        success = success && _testWorkers();
-    }
-    if (_testScope.empty() or _testScope == "DATABASES_AND_FAMILIES") {
-        success = success && _testDatabasesAndFamilies();
-    }
-    return success ? 0 : 1;
+    return result;
 }
-
 
 
 bool ConfigTestApp::_testGeneral() {
@@ -870,7 +873,7 @@ bool ConfigTestApp::_testDatabasesAndFamilies() {
         success = success && passed;
     }
 
-   // No database should exist at this point
+    // No database should exist at this point
     {
         string const family;    // all families if empty
         bool const allDatabases = true;
@@ -1073,6 +1076,274 @@ bool ConfigTestApp::_testDatabasesAndFamilies() {
         cout << (passed ? PASSED_STR : FAILED_STR ) << " NO DATABASE OF ANY FAMILY AND IN ANY STATE SHOULD EXIST" << "\n";
         dumpDatabasesAsTable(indent, "");
         success = success && passed;
+    }
+
+    // Remove the remaining family
+    {
+        string const name = "test";
+        string error;
+        try {
+            config()->deleteDatabaseFamily(name);
+            config()->reload();
+        } catch (exception const& ex) {
+            error = "failed to delete database family '" + name + "', ex: " + string(ex.what());
+        }
+        success = success && error.empty();
+        cout << (error.empty() ? PASSED_STR : FAILED_STR) << " DELETING DATABASE FAMILIES" << "\n";
+        if (!error.empty()) {
+            cout << "\n";
+            cout << indent << " ERROR: " << error << "\n";
+            cout << "\n";
+        }
+    }
+
+    // No families should exist at this point.
+    {
+        vector<string> const families = config()->databaseFamilies();
+        bool const passed = families.empty();
+        cout << (passed ? PASSED_STR : FAILED_STR) << " NO FAMILIES SHOULD EXIST AFTER THE CLEANUP!" << "\n";
+        dumpFamiliesAsTable(indent, "");
+        success = success && passed;
+    }
+
+    return success;
+}
+
+
+bool ConfigTestApp::_testTables() {
+
+    // IMPORTANT: This test involves operatons on database families, databases and tables
+    // due to a dependency of the later to the former.
+
+    bool success = true;
+    string const indent = "";
+
+    // No families should exist right after initializing the configuration.
+    {
+        vector<string> const families = config()->databaseFamilies();
+        if (!families.empty()) {
+            cout << FAILED_STR << " NO FAMILIES SHOULD EXIST BEFORE THE TEST OF TABLES" << "\n";
+            dumpFamiliesAsTable(indent, "");
+            return false;
+        }
+    }
+
+    // No database should exist at this point
+    {
+        string const family;    // all families if empty
+        bool const allDatabases = true;
+        vector<string> const databases = config()->databases(family, allDatabases);
+        if (!databases.empty()) {
+            cout << PASSED_STR << " NO DATABASE OF ANY FAMILY AND IN ANY STATE SHOULD EXIST BEFORE THE TEST OF TABLES" << "\n";
+            dumpDatabasesAsTable(indent, "");
+            return false;
+        }
+    }
+
+    // Adding the family
+    string const family = "test";
+    {
+        DatabaseFamilyInfo familySpec;
+        familySpec.name = family;
+        familySpec.replicationLevel = 1;
+        familySpec.numStripes = 340;
+        familySpec.numSubStripes = 3;
+        familySpec.overlap = 0.01667;
+        try {
+            config()->addDatabaseFamily(familySpec);
+            config()->reload();
+            DatabaseFamilyInfo const addedFamily = config()->databaseFamilyInfo(familySpec.name);
+        } catch (exception const& ex) {
+            cout << "\n";
+            cout << indent << " ERROR: " << "failed to add family '" << familySpec.name << "', ex: "
+                << string(ex.what()) << ", ABORTING THE TEST OF TABLES\n";
+            cout << "\n";
+            return false;
+        }
+    }
+
+    // Adding a database that will depend on the previously created family
+    string const database = "db1";
+    {
+        DatabaseInfo databaseSpec;
+        databaseSpec.name = database;
+        databaseSpec.family = family;
+        try {
+            config()->addDatabase(databaseSpec.name, databaseSpec.family);
+            config()->reload();
+            DatabaseInfo const addedDatabase = config()->databaseInfo(databaseSpec.name);
+        } catch (exception const& ex) {
+            cout << "\n";
+            cout << indent << " ERROR: " << "failed to add database '" << databaseSpec.name << "', ex: "
+                << string(ex.what()) << ", ABORTING THE TEST OF TABLES\n";
+
+            cout << "\n";
+            return false;
+        }
+    }
+
+    auto const addTable = [&](string const& database, string const& table,
+                              bool isPartitioned, bool isDirector, string const& directorTable,
+                              string const& directorTableKey, string const& latitudeColName,
+                              string const& longitudeColName, list<SqlColDef> const& coldefs) -> bool {
+        try {
+            config()->addTable(database, table, isPartitioned, coldefs,
+                               isDirector, directorTable, directorTableKey,
+                               latitudeColName, longitudeColName);
+            config()->reload();
+            DatabaseInfo const updatedDatabase = config()->databaseInfo(database);
+            return true;
+        } catch (exception const& ex) {
+            cout << "\n";
+            cout << indent << " ERROR: " << "failed to add table '" << table << "' to database '" << database << "', ex: "
+                << string(ex.what()) << ", ABORTING THE TEST OF TABLES\n";
+            cout << "\n";
+            return false;
+        }
+    };
+
+    // Adding the first director table to the database. This is is going to be the "stand-alone"
+    // director that won't have any dependents.
+    string const table1 = "director-1";
+    bool const isPartitioned1 = true;
+    bool isDirector1 = true;
+    string const directorTable1;
+    string const directorTableKey1 = "objectId";
+    string const latitudeColName1 = "decl";
+    string const longitudeColName1 = "ra";
+    list<SqlColDef> coldefs1;
+    coldefs1.emplace_back(directorTableKey1, "INT UNSIGNED");
+    coldefs1.emplace_back(latitudeColName1, "DOUBLE");
+    coldefs1.emplace_back(longitudeColName1, "DOUBLE");
+    coldefs1.emplace_back(lsst::qserv::SUB_CHUNK_COLUMN, "INT");
+
+    success = success && addTable(database, table1, isPartitioned1, isDirector1, directorTable1,
+                                  directorTableKey1, latitudeColName1, longitudeColName1, coldefs1);
+    {
+        DatabaseInfo const databaseInfo = config()->databaseInfo(database);
+        auto const tables = databaseInfo.tables();
+        bool const passed = (tables.size() == 1)
+                && (find(tables.cbegin(), tables.cend(), table1) != tables.cend())
+                && (databaseInfo.isPartitioned(table1) == isPartitioned1)
+                && (databaseInfo.isDirector(table1) == isDirector1)
+                && databaseInfo.directorTable.at(table1).empty()
+                && (databaseInfo.directorTableKey.at(table1) == directorTableKey1)
+                && (databaseInfo.latitudeColName.at(table1) == latitudeColName1)
+                && (databaseInfo.longitudeColName.at(table1) == longitudeColName1)
+                && (databaseInfo.columns.at(table1).size() == coldefs1.size());
+        cout << (passed ? PASSED_STR : FAILED_STR ) << " EXACTLY 1 TABLE SHOULD EXIST NOW" << "\n";
+        dumpDatabasesAsTable(indent, "");
+        success = success && passed;
+    }
+
+    // Adding the second director table to the database. This table will have dependents.
+    string const table2 = "director-2";
+    bool const isPartitioned2 = true;
+    bool isDirector2 = true;
+    string const directorTable2;
+    string const directorTableKey2 = "id";
+    string const latitudeColName2 = "coord_decl";
+    string const longitudeColName2 = "coord_ra";
+    list<SqlColDef> coldefs2;
+    coldefs2.emplace_back(directorTableKey2, "INT UNSIGNED");
+    coldefs2.emplace_back(latitudeColName2, "DOUBLE");
+    coldefs2.emplace_back(longitudeColName2, "DOUBLE");
+    coldefs2.emplace_back(lsst::qserv::SUB_CHUNK_COLUMN, "INT");
+
+    success = success && addTable(database, table2, isPartitioned2, isDirector2, directorTable2,
+                                  directorTableKey2, latitudeColName2, longitudeColName2, coldefs2);
+    {
+        DatabaseInfo const databaseInfo = config()->databaseInfo(database);
+        auto const tables = databaseInfo.tables();
+        bool const passed = (tables.size() == 2)
+                && (find(tables.cbegin(), tables.cend(), table2) != tables.cend())
+                && (databaseInfo.isPartitioned(table2) == isPartitioned2)
+                && (databaseInfo.isDirector(table2) == isDirector2)
+                && databaseInfo.directorTable.at(table2).empty()
+                && (databaseInfo.directorTableKey.at(table2) == directorTableKey2)
+                && (databaseInfo.latitudeColName.at(table2) == latitudeColName2)
+                && (databaseInfo.longitudeColName.at(table2) == longitudeColName2)
+                && (databaseInfo.columns.at(table2).size() == coldefs2.size());
+        cout << (passed ? PASSED_STR : FAILED_STR ) << " EXACTLY 2 TABLES SHOULD EXIST NOW" << "\n";
+        dumpDatabasesAsTable(indent, "");
+        success = success && passed;
+    }
+
+    // Adding the first dependent table connected to the second director.
+    string const table12 = "dependent-1-of-2";
+    bool const isPartitioned12 = true;
+    bool isDirector12 = false;
+    string const directorTable12 = "director-2";
+    string const directorTableKey12 = "director_id";
+    string const latitudeColName12 = "";
+    string const longitudeColName12 = "";
+    list<SqlColDef> coldefs12;
+    coldefs12.emplace_back(directorTableKey12, "INT UNSIGNED");
+
+    success = success && addTable(database, table12, isPartitioned12, isDirector12, directorTable12,
+                                  directorTableKey12, latitudeColName12, longitudeColName12, coldefs12);
+    {
+        DatabaseInfo const databaseInfo = config()->databaseInfo(database);
+        auto const tables = databaseInfo.tables();
+        bool const passed = (tables.size() == 3)
+                && (find(tables.cbegin(), tables.cend(), table12) != tables.cend())
+                && (databaseInfo.isPartitioned(table12) == isPartitioned12)
+                && (databaseInfo.isDirector(table12) == isDirector12)
+                && (databaseInfo.directorTable.at(table12) == directorTable12)
+                && (databaseInfo.directorTableKey.at(table12) == directorTableKey12)
+                && (databaseInfo.latitudeColName.at(table12) == latitudeColName12)
+                && (databaseInfo.longitudeColName.at(table12) == longitudeColName12)
+                && (databaseInfo.columns.at(table12).size() == coldefs12.size());
+        cout << (passed ? PASSED_STR : FAILED_STR ) << " EXACTLY 3 TABLES SHOULD EXIST NOW" << "\n";
+        dumpDatabasesAsTable(indent, "");
+        success = success && passed;
+    }
+
+    // Adding the second dependent table connected to the second director.
+    string const table22 = "dependent-2-of-2";
+    bool const isPartitioned22 = true;
+    bool isDirector22 = false;
+    string const directorTable22 = "director-2";
+    string const directorTableKey22 = "director_id_key";
+    string const latitudeColName22 = "decl";
+    string const longitudeColName22 = "ra";
+    list<SqlColDef> coldefs22;
+    coldefs22.emplace_back(directorTableKey22, "INT UNSIGNED");
+    coldefs22.emplace_back(latitudeColName22, "DOUBLE");
+    coldefs22.emplace_back(longitudeColName22, "DOUBLE");
+
+    success = success && addTable(database, table22, isPartitioned22, isDirector22, directorTable22,
+                                  directorTableKey22, latitudeColName22, longitudeColName22, coldefs22);
+    {
+        DatabaseInfo const databaseInfo = config()->databaseInfo(database);
+        auto const tables = databaseInfo.tables();
+        bool const passed = (tables.size() == 4)
+                && (find(tables.cbegin(), tables.cend(), table22) != tables.cend())
+                && (databaseInfo.isPartitioned(table22) == isPartitioned22)
+                && (databaseInfo.isDirector(table22) == isDirector22)
+                && (databaseInfo.directorTable.at(table22) == directorTable22)
+                && (databaseInfo.directorTableKey.at(table22) == directorTableKey22)
+                && (databaseInfo.latitudeColName.at(table22) == latitudeColName22)
+                && (databaseInfo.longitudeColName.at(table22) == longitudeColName22)
+                && (databaseInfo.columns.at(table22).size() == coldefs22.size());
+        cout << (passed ? PASSED_STR : FAILED_STR ) << " EXACTLY 4 TABLES SHOULD EXIST NOW" << "\n";
+        dumpDatabasesAsTable(indent, "");
+        success = success && passed;
+    }
+
+    // Remove the database family to clean up everything created by this test
+    {
+        string error;
+        try {
+            config()->deleteDatabaseFamily(family);
+            config()->reload();
+        } catch (exception const& ex) {
+            cout << "\n";
+            cout << indent << " ERROR: " << "failed to delete database family '" << family << "', ex: "
+                << string(ex.what()) << "\n";
+            cout << "\n";
+            return false;
+        }
     }
     return success;
 }

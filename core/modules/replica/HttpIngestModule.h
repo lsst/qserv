@@ -226,15 +226,19 @@ private:
      * corresponding to super-transactions open during catalog ingest sessions will
      * be added later.
      * @param databaseInfo defines a scope of the operation
+     * @param directorTable the name of the director table
      */
-    void _createSecondaryIndex(DatabaseInfo const& databaseInfo) const;
+    void _createSecondaryIndex(DatabaseInfo const& databaseInfo,
+                               std::string const& directorTable) const;
 
     /**
      * Remove MySQL partitions from the "secondary index" table by turning it
      * into a regular monolithic table.
      * @param databaseInfo  defines a scope of the operation
+     * @param directorTable the name of the director table
      */
-    void _consolidateSecondaryIndex(DatabaseInfo const& databaseInfo) const;
+    void _consolidateSecondaryIndex(DatabaseInfo const& databaseInfo,
+                                    std::string const& directorTable) const;
 
     /**
      * This operation is called in a context of publishing new databases.

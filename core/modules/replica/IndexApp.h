@@ -68,6 +68,9 @@ private:
     /// The name of a database
     std::string _database;
 
+    /// The name of the director table
+    std::string _table;
+
     /// A unique identifier of a super-transaction (not used if its value stays default)
     TransactionId _transactionId = std::numeric_limits<TransactionId>::max();
 

@@ -104,6 +104,7 @@ public:
      *
      * @param database the name of a database for which the "secondary index"
      *   is built.
+     * @param directorTable the name of the director table
      * @param hasTransactions  if 'true' then the database's "director" tables
      *   are expected to be partitioned, and the job will extract data (including
      *   column "qserv_trans_id") from a specific MySQL partition.
@@ -138,6 +139,7 @@ public:
      * @param options (optional) defines the job priority, etc.
      */
     static Ptr create(std::string const& database,
+                      std::string const& directorTable,
                       bool hasTransactions,
                       TransactionId transactionId,
                       bool allWorkers,
@@ -162,13 +164,13 @@ public:
     // Trivial get methods
 
     std::string const& database()        const { return _databaseInfo.name; }
+    std::string const& directorTable()   const { return _directorTable; }
     bool               hasTransactions() const { return _hasTransactions; }
     TransactionId      transactionId()   const { return _transactionId; }
     bool               allWorkers()      const { return _allWorkers; }
     Destination        destination()     const { return _destination; }
     std::string const& destinationPath() const { return _destinationPath; }
     bool               localFile()       const { return _localFile; }
-    std::string const& directorTable()   const { return _databaseInfo.directorTable; }
 
     /**
      * Return the combined result of the operation
@@ -194,6 +196,7 @@ protected:
 
 private:
     IndexJob(std::string const& database,
+             std::string const& directorTable,
              bool hasTransactions,
              TransactionId transactionId,
              bool allWorkers,
@@ -248,6 +251,7 @@ private:
 private:
     // Input parameters
 
+    std::string   const _directorTable;
     bool          const _hasTransactions;
     TransactionId const _transactionId;
     bool          const _allWorkers;

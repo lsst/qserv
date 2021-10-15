@@ -74,13 +74,39 @@ DatabaseInfo::DatabaseInfo(json const& obj,
                 bool const isPartitioned = tableJson.at("is_partitioned").get<int>() != 0;
                 if (isPartitioned) {
                     partitionedTables.push_back(table);
-                    directorTableKey[table] = tableJson.at("director_key").get<string>();
-                    latitudeColName[table]  = tableJson.at("latitude_key").get<string>();
-                    longitudeColName[table] = tableJson.at("longitude_key").get<string>();
+                    string const director = tableJson.at("director").get<string>();
+                    string const directorKey = tableJson.at("director_key").get<string>();
+                    string const latitudeCol = tableJson.at("latitude_key").get<string>();
+                    string const longitudeCol = tableJson.at("longitude_key").get<string>();
+                    if (directorKey.empty()) {
+                        throw invalid_argument(
+                            context + "the director key of the partitioned table '" + table
+                            + "' can't be empty.");
+                    }
+                    if (director.empty()) {
+                        if (latitudeCol.empty()) {
+                            throw invalid_argument(
+                                context + "the latitude column of the director table '" + table
+                                + "' can't be empty.");
+                        }
+                        if (longitudeCol.empty()) {
+                            throw invalid_argument(
+                                context + "the longitude column of the director table '" + table
+                                + "' can't be empty.");
+                        }
+                    } else {
+                        if (latitudeCol.empty() != longitudeCol.empty()) {
+                            throw invalid_argument(
+                                context + "inconsistent values of the latitude and longitude columns of the dependent table '"
+                                + table + "'. The columns must be both defined or not defined.");
+                        }
+                    }
+                    directorTable[table] = director;
+                    directorTableKey[table] = directorKey;
+                    latitudeColName[table] = latitudeCol;
+                    longitudeColName[table] = longitudeCol;
                 } else {
                     regularTables.push_back(table);
-                    latitudeColName[table]  = string();
-                    longitudeColName[table] = string();
                 }
             }
         }
@@ -95,7 +121,6 @@ DatabaseInfo::DatabaseInfo(json const& obj,
                 }
             }
         }
-        directorTable     = obj.at("director_table").get<string>();
     } catch (exception const& ex) {
         throw invalid_argument(context + "the JSON object is not valid, ex: " + string(ex.what()));
     }
@@ -105,6 +130,16 @@ DatabaseInfo::DatabaseInfo(json const& obj,
 vector<string> DatabaseInfo::tables() const {
     vector<string> result = partitionedTables;
     result.insert(result.end(), regularTables.begin(), regularTables.end());
+    return result;
+}
+
+
+vector<std::string> DatabaseInfo::directorTables() const {
+    vector<string> result;
+    for (auto&& itr: directorTable) {
+        // "Director" tables can't have "directors"
+        if (itr.second.empty()) result.push_back(itr.first);
+    }
     return result;
 }
 
@@ -119,6 +154,7 @@ json DatabaseInfo::toJson() const {
         infoJson["tables"][name] = json::object({
             {"name", name},
             {"is_partitioned", 1},
+            {"director", directorTable.at(name)},
             {"director_key", directorTableKey.at(name)},
             {"latitude_key", latitudeColName.at(name)},
             {"longitude_key", longitudeColName.at(name)}
@@ -127,9 +163,7 @@ json DatabaseInfo::toJson() const {
     for (auto&& name: regularTables) {
         infoJson["tables"][name] = json::object({
             {"name", name},
-            {"is_partitioned", 0},
-            {"latitude_key", ""},
-            {"longitude_key", ""}
+            {"is_partitioned", 0}
         });
     }
     for (auto&& columnsEntry: columns) {
@@ -144,7 +178,6 @@ json DatabaseInfo::toJson() const {
         }
         infoJson["columns"][table] = coldefsJson;
     }
-    infoJson["director_table"] = directorTable;
     return infoJson;
 }
 
@@ -160,8 +193,8 @@ string DatabaseInfo::schema4css(string const& table) const {
 
 
 bool DatabaseInfo::isPartitioned(string const& table) const {
-    if (partitionedTables.end() != find(partitionedTables.begin(), partitionedTables.end(), table))  return true;
-    if (regularTables.end() != find(regularTables.begin(), regularTables.end(), table)) return false;
+    if (partitionedTables.cend() != find(partitionedTables.cbegin(), partitionedTables.cend(), table)) return true;
+    if (regularTables.cend() != find(regularTables.cbegin(), regularTables.cend(), table)) return false;
     throw invalid_argument(
             "DatabaseInfo::" + string(__func__) +
             "no such table '" + table + "' found in database '" + name + "'");
@@ -169,10 +202,7 @@ bool DatabaseInfo::isPartitioned(string const& table) const {
 
 
 bool DatabaseInfo::isDirector(string const& table) const {
-    // This test will also ensure the table is known. Otherwise, an exception
-    // will be thrown.
-    if (not isPartitioned(table)) return false;
-    return table == directorTable;
+    return isPartitioned(table) && directorTable.at(table).empty();
 }
 
 
@@ -186,7 +216,7 @@ bool DatabaseInfo::hasTable(std::string const& table) const {
 
 void DatabaseInfo::addTable(
         string const& table, list<SqlColDef> const& columns_,
-        bool isPartitioned, bool isDirectorTable, string const& directorTableKey_,
+        bool isPartitioned, bool isDirector, string const& directorTable_, string const& directorTableKey_,
         string const& latitudeColName_, string const& longitudeColName_) {
 
     string const context = "DatabaseInfo::" + string(__func__) + " ";
@@ -195,22 +225,50 @@ void DatabaseInfo::addTable(
         throw invalid_argument(context + "table '" + table + "' already exists.");
     }
     if (isPartitioned) {
-        if (isDirectorTable) {
-            if (directorTableKey_.empty()) {
+        // This will get populated with special columns required for the table, depeniding
+        // on its type (director or dependent).
+        map<string, string> colDefs;
+
+        // Required for both director and dependent tables in order to establish
+        // the direct FK-PK association between them.
+        colDefs.insert({"directorTableKey", directorTableKey_});
+
+        if (isDirector) {
+            if (!directorTable_.empty()) {
                 throw invalid_argument(
-                        context + "a valid column name must be provided"
-                        " for the 'director' table");
+                        context + "the director table '" + table +
+                        "' can't be the dependent table of another director table '" + directorTable_ + "'.");
+            }
+
+            // This column is required for all partitioned tables for materializing
+            // sub-chunks.
+            colDefs.insert({"subChunkIdColName", lsst::qserv::SUB_CHUNK_COLUMN});
+
+            // These are required for the director tables
+            colDefs.insert({"latitudeColName", latitudeColName_});
+            colDefs.insert({"longitudeColName", longitudeColName_});
+
+        } else {
+            if (directorTable_.empty()) {
+                throw invalid_argument(
+                        context + "the dependent table '" + table +
+                        "' requires the name of the corresponding 'director' table to be provided.");
+            }
+
+            // The dependent table is allowed not to have the spatial coordinates since
+            // it's guaranteed to have the direct association with its director table
+            // via FK -> PK (see the test above for the value of the directorTableKey_).
+            // However, if the coordinates are provided then they must be provided both.
+            // The following will enforce the consistency later during the column
+            // verification stage.
+            if (!latitudeColName_.empty() || !longitudeColName_.empty()) {
+                colDefs.insert({"latitudeColName", latitudeColName_});
+                colDefs.insert({"longitudeColName", longitudeColName_});
             }
         }
-        map<string, string> colDefs = {
-            {"chunkIdColName", lsst::qserv::CHUNK_COLUMN},
-            {"subChunkIdColName", lsst::qserv::SUB_CHUNK_COLUMN}
-        };
-        if (!directorTableKey_.empty()) {
-            // The FK->PK association with the "director" table is optional for the "dependent"
-            // tables.
-            colDefs.insert({"directorTableKey", directorTableKey_});
-        }
+        partitionedTables.push_back(table);
+
+        // Verify if the special columns exist in the schema provided the method
         for (auto&& entry: colDefs) {
             string const& role = entry.first;
             string const& colName = entry.second;
@@ -226,38 +284,16 @@ void DatabaseInfo::addTable(
                         "' of the partitioned table: '" + table + "'");
             }
         }
-        if (isDirectorTable) {
-            if (!directorTable.empty()) {
-                throw invalid_argument(
-                        context + "another table '" + directorTable +
-                        "' was already claimed as the 'director' table.");
-            }
-            if (!latitudeColName_.empty()) {
-                if (!columnInSchema(latitudeColName_, columns_)) {
-                    throw invalid_argument(
-                            context + "a value '" + latitudeColName_ + "' of parameter 'latitudeColName'"
-                            " provided for the partitioned table '" + table + "' doesn't match any column"
-                            " in the table schema");
-                }
-            }
-            if (!longitudeColName_.empty()) {
-                if (!columnInSchema(longitudeColName_, columns_)) {
-                    throw invalid_argument(
-                            context + "a value '" + longitudeColName_ + "' of parameter 'longitudeColName'"
-                            " provided for the partitioned table '" + table + "' doesn't match any column"
-                            " in the table schema");
-                }
-            }
-            directorTable = table;
-        }
+
+        // Each partitioned table, regardless of its type will have an entry in each
+        // collection even if the right value may be empty. Those special cases (of
+        // the empty values have already been verified above).
+        directorTable[table] = directorTable_;
         directorTableKey[table] = directorTableKey_;
         latitudeColName[table] = latitudeColName_;
         longitudeColName[table] = longitudeColName_;
-        partitionedTables.push_back(table);
+
     } else {
-        if (isDirectorTable) {
-            throw invalid_argument(context + "non-partitioned tables can't be the 'director' ones");
-        }
         regularTables.push_back(table);
     }
     columns[table] = columns_;
@@ -265,27 +301,26 @@ void DatabaseInfo::addTable(
 
 
 void DatabaseInfo::removeTable(std::string const& table) {
+    string const context = "DatabaseInfo::" + string(__func__) + " ";
     bool const partitioned = isPartitioned(table);
     bool const director = isDirector(table);
     if (partitioned) {
-        partitionedTables.erase(
-            find(partitionedTables.begin(),
-                 partitionedTables.end(),
-                 table)
-        );
         if (director) {
-            // These attributes are set for the director table only.
-            directorTable = "";
+            for (auto const& itr: directorTable) {
+                if (itr.second == table) {
+                    throw invalid_argument(
+                            context + "can't removed the director table '" + table
+                            + "' because it has dependent tables, including '" + itr.second + "'.");
+                }
+            }
         }
+        partitionedTables.erase(find(partitionedTables.begin(), partitionedTables.end(), table));
+        directorTable.erase(table);
         directorTableKey.erase(table);
         latitudeColName.erase(table);
         longitudeColName.erase(table);
     } else {
-       regularTables.erase(
-            find(regularTables.begin(),
-                 regularTables.end(),
-                 table)
-        );
+       regularTables.erase(find(regularTables.begin(), regularTables.end(), table));
     }
     columns.erase(table);
 }

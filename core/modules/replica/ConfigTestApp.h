@@ -69,9 +69,10 @@ private:
     bool _testGeneral();
     bool _testWorkers();
     bool _testDatabasesAndFamilies();
+    bool _testTables();
 
     /// An optional scope for the test
-    std::string _testScope;
+    std::string _testScope = "ALL";
 };
 
 }}} // namespace lsst::qserv::replica
