@@ -231,30 +231,29 @@ string WorkerIndexRequest::_query(database::mysql::Connection::Ptr const& conn) 
     string const qservTransId = _request.has_transactions() ? "qserv_trans_id" : string();
     string qservTransIdType;
     string directorTableKeyType;
-    string chunkIdColNameType;
     string subChunkIdColNameType;
 
     for (auto&& coldef: databaseInfo.columns.at(directorTable)) {
         if      (not qservTransId.empty() and coldef.name == qservTransId) qservTransIdType = coldef.type;
         else if (coldef.name == directorTableKey) directorTableKeyType = coldef.type;
-        else if (coldef.name == lsst::qserv::CHUNK_COLUMN) chunkIdColNameType = coldef.type;
         else if (coldef.name == lsst::qserv::SUB_CHUNK_COLUMN) subChunkIdColNameType = coldef.type;
     }
     if ((not qservTransId.empty() and qservTransIdType.empty()) or
         directorTableKeyType.empty() or
-        chunkIdColNameType.empty() or
         subChunkIdColNameType.empty()) {
 
         throw invalid_argument(
-                "column definitions for the Object identifier or chunk/sub-chunk identifier"
+                "column definitions for the Object identifier or sub-chunk identifier"
                 " columns are missing in the director table schema for table '" +
                 databaseInfo.directorTable + "' of database '" + databaseInfo.name + "'");
     }
 
+    // NOTE: injecting the chunk number into each row of the result set because
+    // the chunk-id column is optional.
     string const columnsEscaped =
         (qservTransId.empty() ? string() : conn->sqlId(qservTransId) + ",") +
         conn->sqlId(directorTableKey) + "," +
-        conn->sqlId(lsst::qserv::CHUNK_COLUMN) + "," +
+        conn->sqlValue(_request.chunk()) + "," +
         conn->sqlId(lsst::qserv::SUB_CHUNK_COLUMN);
 
     string const databaseTableEscaped =
