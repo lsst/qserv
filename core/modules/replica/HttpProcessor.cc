@@ -318,7 +318,7 @@ void HttpProcessor::registerServices() {
             }
     );
     httpServer()->addHandler(
-            "GET", "/replication/sql/table/schema",
+            "GET", "/replication/sql/table/schema/:database/:table",
             [self](qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp) {
                 HttpSqlSchemaModule::process(
                         self->controller(), self->name(), self->_processorConfig,
@@ -327,7 +327,7 @@ void HttpProcessor::registerServices() {
             }
     );
     httpServer()->addHandler(
-            "PUT", "/replication/sql/table/schema",
+            "PUT", "/replication/sql/table/schema/:database/:table",
             [self](qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp) {
                 HttpSqlSchemaModule::process(
                         self->controller(), self->name(), self->_processorConfig,
