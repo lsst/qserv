@@ -104,6 +104,9 @@ public:
         /// server-side error.
         SERVER_ERROR,
 
+        /// The request was just created and is being waited to be queued for processing by the server
+        SERVER_CREATED,
+
         /// The request is queued for processing by the server
         SERVER_QUEUED,
 

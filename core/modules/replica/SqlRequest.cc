@@ -275,6 +275,11 @@ void SqlRequest::_analyze(bool success,
             finish(lock, SUCCESS);
             break;
 
+        case ProtocolStatus::CREATED:
+            if (keepTracking()) _waitAsync(lock);
+            else                finish(lock, SERVER_CREATED);
+            break;
+
         case ProtocolStatus::QUEUED:
             if (keepTracking()) _waitAsync(lock);
             else                finish(lock, SERVER_QUEUED);

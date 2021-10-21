@@ -74,6 +74,7 @@ string Request::state2string(ExtendedState state) {
         case CLIENT_ERROR:         return "CLIENT_ERROR";
         case SERVER_BAD:           return "SERVER_BAD";
         case SERVER_ERROR:         return "SERVER_ERROR";
+        case SERVER_CREATED:       return "SERVER_CREATED";
         case SERVER_QUEUED:        return "SERVER_QUEUED";
         case SERVER_IN_PROGRESS:   return "SERVER_IN_PROGRESS";
         case SERVER_IS_CANCELLING: return "SERVER_IS_CANCELLING";

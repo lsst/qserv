@@ -255,6 +255,11 @@ void DeleteRequest::_analyze(bool success,
             finish(lock, SUCCESS);
             break;
 
+        case ProtocolStatus::CREATED:
+            if (keepTracking()) _wait(lock);
+            else                finish(lock, SERVER_CREATED);
+            break;
+
         case ProtocolStatus::QUEUED:
             if (keepTracking()) _wait(lock);
             else                finish(lock, SERVER_QUEUED);
