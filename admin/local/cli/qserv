@@ -33,20 +33,23 @@ import sys
 # src/admin/cli/options.py to be imported and used by the qserv command.
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../src/admin/python")))
 
-from lsst.qserv.admin.qservCli.qserv_log import log_level_flag, default_log_level
-
+from lsst.qserv.admin.qservCli.qserv_log import log_level_from_args
 
 if __name__ == "__main__":
-    log_level = sys.argv[sys.argv.index(log_level_flag)+1].upper() if log_level_flag in sys.argv else default_log_level
-    logging.basicConfig(
-        level=log_level,
-        format="%(asctime)s %(levelname)-8s %(message)s",
-        datefmt="%Y-%m-%d %H:%M:%S"
-    )
+    success, levelMsg = log_level_from_args(sys.argv)
+    if success:
+        logging.basicConfig(
+            level=levelMsg,
+            format="%(asctime)s %(levelname)-8s %(message)s",
+            datefmt="%Y-%m-%d %H:%M:%S",
+        )
+    else:
+        print(levelMsg)
+        sys.exit(1)
 
 # import qserv *after* initializing logging.
 from lsst.qserv.admin.qservCli.qserv_cli import qserv
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     sys.exit(qserv())

@@ -34,6 +34,7 @@ from ..cli.options import (
     czar_connection_option,
     pull_option,
     load_option,
+    log_level_option,
     unload_option,
     reload_option,
     run_tests_option,
@@ -118,12 +119,7 @@ class QservCommandGroup(click.Group):
 
 
 @click.group(cls=QservCommandGroup)
-@click.option(
-    qserv_log.log_level_flag,
-    default=qserv_log.default_log_level,
-    type=click.Choice(qserv_log.log_level_choices, case_sensitive=True),
-    help=f"The logging level. Supported levels are [{'|'.join(qserv_log.log_level_choices)}]",
-    show_default=True,
+@log_level_option(
     expose_value=False,
 )
 def qserv() -> None:
