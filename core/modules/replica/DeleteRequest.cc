@@ -134,27 +134,14 @@ void DeleteRequest::startImpl(util::Lock const& lock) {
 }
 
 
-void DeleteRequest::_wait(util::Lock const& lock) {
-
-    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
-
-    // Always need to set the interval before launching the timer.
-
-    timer().expires_from_now(boost::posix_time::milliseconds(nextTimeIvalMsec()));
-    timer().async_wait(bind(&DeleteRequest::_awaken, shared_from_base<DeleteRequest>(), _1));
-}
-
-
-void DeleteRequest::_awaken(boost::system::error_code const& ec) {
+void DeleteRequest::awaken(boost::system::error_code const& ec) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     if (isAborted(ec)) return;
 
     if (state() == State::FINISHED) return;
-
     util::Lock lock(_mtx, context() + __func__);
-
     if (state() == State::FINISHED) return;
 
     // Serialize the Status message header and the request itself into
@@ -181,26 +168,17 @@ void DeleteRequest::_awaken(boost::system::error_code const& ec) {
 
 
 void DeleteRequest::_send(util::Lock const& lock) {
-
     auto self = shared_from_base<DeleteRequest>();
-
     messenger()->send<ProtocolResponseDelete>(
-        worker(),
-        id(),
-        buffer(),
-        [self] (string const& id,
-                bool success,
-                ProtocolResponseDelete const& response) {
-
-            self->_analyze(success,
-                           response);
+        worker(), id(), buffer(),
+        [self] (string const& id, bool success, ProtocolResponseDelete const& response) {
+            self->_analyze(success, response);
         }
     );
 }
 
 
-void DeleteRequest::_analyze(bool success,
-                             ProtocolResponseDelete const& message) {
+void DeleteRequest::_analyze(bool success, ProtocolResponseDelete const& message) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "  success=" << (success ? "true" : "false"));
 
@@ -209,11 +187,8 @@ void DeleteRequest::_analyze(bool success,
     // client of _analyze(). So, we should take care of proper locking and watch
     // for possible state transition which might occur while the async I/O was
     // still in a progress.
-
     if (state() == State::FINISHED) return;
-
     util::Lock lock(_mtx, context() + __func__);
-
     if (state() == State::FINISHED) return;
 
     if (not success) {
@@ -222,14 +197,12 @@ void DeleteRequest::_analyze(bool success,
     }
 
     // Always get the latest status reported by the remote server
-
     setExtendedServerStatus(lock, message.status_ext());
 
     // Performance counters are updated from either of two sources,
     // depending on the availability of the 'target' performance counters
     // filled in by the 'STATUS' queries. If the later is not available
     // then fallback to the one of the current request.
-
     if (message.has_target_performance()) {
         mutablePerformance().update(message.target_performance());
     } else {
@@ -238,7 +211,6 @@ void DeleteRequest::_analyze(bool success,
 
     // Always extract extended data regardless of the completion status
     // reported by the worker service.
-
     _replicaInfo = ReplicaInfo(&(message.replica_info()));
 
     // Extract target request type-specific parameters from the response
@@ -248,43 +220,33 @@ void DeleteRequest::_analyze(bool success,
     switch (message.status()) {
 
         case ProtocolStatus::SUCCESS:
-
-            // Save the replica state
             serviceProvider()->databaseServices()->saveReplicaInfo(_replicaInfo);
-
             finish(lock, SUCCESS);
             break;
 
         case ProtocolStatus::CREATED:
-            if (keepTracking()) _wait(lock);
-            else                finish(lock, SERVER_CREATED);
+            keepTrackingOrFinish(lock, SERVER_CREATED);
             break;
 
         case ProtocolStatus::QUEUED:
-            if (keepTracking()) _wait(lock);
-            else                finish(lock, SERVER_QUEUED);
+            keepTrackingOrFinish(lock, SERVER_QUEUED);
             break;
 
         case ProtocolStatus::IN_PROGRESS:
-            if (keepTracking()) _wait(lock);
-            else                finish(lock, SERVER_IN_PROGRESS);
+            keepTrackingOrFinish(lock, SERVER_IN_PROGRESS);
             break;
 
         case ProtocolStatus::IS_CANCELLING:
-            if (keepTracking()) _wait(lock);
-            else                finish(lock, SERVER_IS_CANCELLING);
+            keepTrackingOrFinish(lock, SERVER_IS_CANCELLING);
             break;
 
         case ProtocolStatus::BAD:
-
             // Special treatment of the duplicate requests if allowed
-
             if (extendedServerStatus() == ProtocolStatusExt::DUPLICATE) {
-
                 setDuplicateRequestId(lock, message.duplicate_request_id());
-
                 if (allowDuplicate() && keepTracking()) {
-                    _wait(lock);
+                    timer().expires_from_now(boost::posix_time::milliseconds(nextTimeIvalMsec()));
+                    timer().async_wait(bind(&DeleteRequest::awaken, shared_from_base<DeleteRequest>(), _1));
                     return;
                 }
             }

@@ -75,9 +75,8 @@ public:
  *
  * @note Requests of this type don't have any persistent states. 
  */
-class DisposeRequest : public RequestMessenger  {
+class DisposeRequest: public RequestMessenger  {
 public:
-    /// The pointer type for instances of the class
     typedef std::shared_ptr<DisposeRequest> Ptr;
 
     /// The function type for notifications on the completion of the request
@@ -89,14 +88,12 @@ public:
 
     ~DisposeRequest() final = default;
 
-    // Trivial get methods
-
     std::vector<std::string> const& targetIds() const { return _targetIds; }
 
     /**
-     * @return a reference to a result obtained from a remote service
      * @note This operation will return a sensible result only if the operation
      *   finishes with status FINISHED::SUCCESS
+     * @return a reference to a result obtained from a remote service
      */
     DisposeRequestResult const& responseData() const;
 
@@ -133,10 +130,14 @@ public:
                       std::shared_ptr<Messenger> const& messenger);
 
 protected:
+    /// @see Request::startImpl
     void startImpl(util::Lock const& lock) final;
+
+    /// @see Request::notify
     void notify(util::Lock const& lock) final;
 
-    /// No persistent state for this type of requests
+    /// @note No persistent state for this type of requests
+    /// @see Request::savePersistentState
     void savePersistentState(util::Lock const& lock) final {}
 
 private:
@@ -151,7 +152,6 @@ private:
 
     /**
      * Send the serialized content of the buffer to a worker
-     *
      * @param lock a lock on Request::_mtx must be acquired before calling
      *   this method
      */
@@ -159,18 +159,16 @@ private:
 
     /**
      * Process the completion of the requested operation
-     *
      * @param success 'true' indicates a successful response from a worker
      * @param message response from a worker (if success)
      */
-    void _analyze(bool success,
-                  ProtocolResponseDispose const& message);
+    void _analyze(bool success, ProtocolResponseDispose const& message);
 
     // Input parameters
 
     std::vector<std::string> const _targetIds;
 
-    CallbackType _onFinish; /// @note is reset when the request finishes
+    CallbackType _onFinish; ///< @note is reset when the request finishes
 
     /// The transient representation of the data received from a worker
     /// upon a successful completion of a request.

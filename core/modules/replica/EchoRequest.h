@@ -49,25 +49,18 @@ namespace replica {
   * the controller-worker protocol and the worker-side framework.
   * These requests have no side effects.
   */
-class EchoRequest : public RequestMessenger  {
-
+class EchoRequest: public RequestMessenger  {
 public:
-
-    /// The pointer type for instances of the class
     typedef std::shared_ptr<EchoRequest> Ptr;
 
     /// The function type for notifications on the completion of the request
     typedef std::function<void(Ptr)> CallbackType;
-
-    // Default construction and copy semantics are prohibited
 
     EchoRequest() = delete;
     EchoRequest(EchoRequest const&) = delete;
     EchoRequest& operator=(EchoRequest const&) = delete;
 
     ~EchoRequest() final = default;
-
-    // Trivial get methods
 
     std::string const& data()  const { return _data; }
     uint64_t           delay() const { return _delay; }
@@ -76,12 +69,9 @@ public:
     EchoRequestParams const& targetRequestParams() const { return _targetRequestParams; }
 
     /**
-     * @return
-     *   a reference to a result obtained from a remote service.
-     *
-     * @note
-     *   This operation will return a sensible result only if the operation
+     * @note This operation will return a sensible result only if the operation
      *   finishes with status FINISHED::SUCCESS
+     * @return a reference to a result obtained from a remote service.
      */
     std::string const& responseData() const;
 
@@ -92,32 +82,15 @@ public:
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
      *
-     * @param serviceProvider
-     *   provider of various services
-     *
-     * @param worker
-     *   identifier of a worker node
-     *
-     * @param data
-     *   data string to be echoed back by a worker
-     *
-     * @param delay
-     *   execution time (milliseconds) of the request at worker
-     *
-     * @param onFinish
-     *   (optional) callback function to call upon completion of the request
-     *
-     * @param priority
-     *   priority level of the request
-     *
-     * @param keepTracking
-     *   keep tracking the request before it finishes or fails
-     *
-     * @param messenger
-     *   interface for communicating with workers
-     *
-     * @return
-     *   pointer to the created object
+     * @param serviceProvider provider of various services
+     * @param worker identifier of a worker node
+     * @param data data string to be echoed back by a worker
+     * @param delay execution time (milliseconds) of the request at worker
+     * @param onFinish (optional) callback function to call upon completion of the request
+     * @param priority priority level of the request
+     * @param keepTracking keep tracking the request before it finishes or fails
+     * @param messenger interface for communicating with workers
+     * @return pointer to the created object
      */
     static Ptr create(ServiceProvider::Ptr const& serviceProvider,
                       boost::asio::io_service& io_service,
@@ -133,7 +106,6 @@ public:
     std::list<std::pair<std::string,std::string>> extendedPersistentState() const override;
 
 protected:
-
     /// @see Request::startImpl()
     void startImpl(util::Lock const& lock) final;
 
@@ -143,8 +115,10 @@ protected:
     /// @see Request::savePersistentState()
     void savePersistentState(util::Lock const& lock) final;
 
-private:
+    /// @see Request::awaken()
+    void awaken(boost::system::error_code const& ec) final;
 
+private:
     /// @see EchoRequest::create()
     EchoRequest(ServiceProvider::Ptr const& serviceProvider,
                 boost::asio::io_service& io_service,
@@ -157,47 +131,23 @@ private:
                 std::shared_ptr<Messenger> const& messenger);
 
     /**
-     * Start the timer before attempting the previously failed
-     * or successful (if a status check is needed) step.
-     *
-     * @param lock
-     *   a lock on Request::_mtx must be acquired before calling this method
-     */
-    void _wait(util::Lock const& lock);
-
-    /**
-     * Callback handler for the asynchronous operation
-     *
-     * @param ec
-     *   error code to be checked
-     */
-    void _awaken(boost::system::error_code const& ec);
-
-    /**
      * Send the serialized content of the buffer to a worker
-     *
-     * @param lock
-     *   a lock on Request::_mtx must be acquired before calling this method
+     * @param lock a lock on Request::_mtx must be acquired before calling this method
      */
     void _send(util::Lock const& lock);
 
     /**
      * Process the completion of the requested operation
-     *
-     * @param success
-     *   'true' indicates a successful response from a worker
-     *
-     * @param message
-     *   response from a worker (if success)
+     * @param success 'true' indicates a successful response from a worker
+     * @param message response from a worker (if success)
      */
-    void _analyze(bool success,
-                  ProtocolResponseEcho const& message);
+    void _analyze(bool success, ProtocolResponseEcho const& message);
 
     // Input parameters
 
     std::string const _data;
     uint64_t    const _delay;
-    CallbackType      _onFinish;    /// @note is reset when the request finishes
+    CallbackType      _onFinish;    ///< @note is reset when the request finishes
 
     /// Request-specific parameters of the target request
     EchoRequestParams _targetRequestParams;
