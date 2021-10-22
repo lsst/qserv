@@ -147,7 +147,9 @@ class FlagEnvVal(EV):
             The complete help text for this item.
         """
         msg = preamble
-        msg += f" Can be set with environment variable {click.style(self.env_var, bold=True)}; current value is "
+        msg += (
+            f" Can be set with environment variable {click.style(self.env_var, bold=True)}; current value is "
+        )
         var = os.getenv(self.env_var, None)
         if var is not None:
             msg += click.style(var, fg="green", bold=True)
@@ -164,9 +166,7 @@ run_base_dockerfile = "admin/tools/docker/base/Dockerfile"
 mariadb_dockerfile = "admin/tools/docker/mariadb/Dockerfile"
 
 
-def tagged_image_name(
-    image_name: str, dockerfiles: Optional[List[str]]
-) -> Optional[str]:
+def tagged_image_name(image_name: str, dockerfiles: Optional[List[str]]) -> Optional[str]:
     """Get the image name to use, tagged with a tag indicating the changelist
     when the dockerfiles were most recently changed.
 
@@ -194,9 +194,7 @@ qserv_root_ev = FlagEnvVal(
     "QSERV_ROOT",
     os.path.abspath(os.path.join(__file__, "../../../../")),
 )
-image_tag_ev = EnvVal(
-    env_var="QSERV_IMAGE_TAG", description="the tag of all qserv image names"
-)
+image_tag_ev = EnvVal(env_var="QSERV_IMAGE_TAG", description="the tag of all qserv image names")
 qserv_image_ev = FlagEnvVal(
     "--qserv-image",
     "QSERV_IMAGE",
@@ -220,20 +218,14 @@ build_image_ev = FlagEnvVal(
 user_build_image_ev = FlagEnvVal(
     "--user-build-image",
     "QSERV_USER_BUILD_IMAGE",
-    tagged_image_name(
-        f"qserv/lite-build-{getpass.getuser()}", [base_dockerfile, user_dockerfile]
-    ),
+    tagged_image_name(f"qserv/lite-build-{getpass.getuser()}", [base_dockerfile, user_dockerfile]),
 )
 # qserv root default is derived by the relative path to the qserv folder from
 # the locaiton of this file.
-qserv_build_root_ev = FlagEnvVal(
-    "--qserv-build-root", "QSERV_BUILD_ROOT", "/home/{user}/code/qserv"
-)
+qserv_build_root_ev = FlagEnvVal("--qserv-build-root", "QSERV_BUILD_ROOT", "/home/{user}/code/qserv")
 project_ev = FlagEnvVal("--project", "QSERV_PROJECT", getpass.getuser())
 dashboard_port_ev = FlagEnvVal("--dashboard-port", "QSERV_DASHBOARD_PORT", None)
-dh_user_ev = EnvVal(
-    "QSERV_DH_USER", "CI only; the dockerhub user for pushing and pulling images"
-)
+dh_user_ev = EnvVal("QSERV_DH_USER", "CI only; the dockerhub user for pushing and pulling images")
 dh_token_ev = EnvVal(
     "QSERV_DH_TOKEN",
     "CI only; the dockerhub user token for pushing and pulling images",
@@ -341,9 +333,7 @@ compose_file_default = OptDefault(
     opt=["--file", "yaml_file"],
     default=None,
     ev=qserv_root_ev,
-    val=lambda ev_val: os.path.join(
-        ev_val, "admin/local/docker/compose/docker-compose.yml"
-    ),
+    val=lambda ev_val: os.path.join(ev_val, "admin/local/docker/compose/docker-compose.yml"),
 )
 build_container_default = OptDefault(
     opt=["--build-container-name"],
@@ -403,9 +393,7 @@ class DefaultValues:
         ret = ""
         for default in self.defaults:
             val = default.val()
-            ret += (
-                f" {default.opt[0]} using {click.style(default.ev.env_var, bold=True)} "
-            )
+            ret += f" {default.opt[0]} using {click.style(default.ev.env_var, bold=True)} "
             if val is None:
                 ret += f"({click.style('not defined', fg='red')}), "
             else:
@@ -526,9 +514,7 @@ qserv_root_option = partial(
 qserv_build_root_option = partial(
     click.option,
     qserv_build_root_ev.opt,
-    help=qserv_build_root_ev.help(
-        "Location of the qserv sources folder inside the build container."
-    ),
+    help=qserv_build_root_ev.help("Location of the qserv sources folder inside the build container."),
     default=qserv_build_root_ev.default,
 )
 
@@ -580,9 +566,7 @@ project_option = partial(
 compose_file_option = partial(
     click.option,
     *compose_file_default.opt,
-    help=compose_file_default.help(
-        "The location of the yaml file that describes the compose cluster."
-    ),
+    help=compose_file_default.help("The location of the yaml file that describes the compose cluster."),
     default=compose_file_default.val(),
     required=True,
 )
@@ -591,9 +575,7 @@ compose_file_option = partial(
 itest_container_name_option = partial(
     click.option,
     *itest_container_default.opt,
-    help=itest_container_default.help(
-        "The name to give the integration test container."
-    ),
+    help=itest_container_default.help("The name to give the integration test container."),
     default=itest_container_default.val(),
     required=True,
 )
@@ -602,9 +584,7 @@ itest_container_name_option = partial(
 itest_file_option = partial(
     click.option,
     *itest_default.opt,
-    help=itest_default.help(
-        "Path to an yaml file that describes how to run the integration tests."
-    ),
+    help=itest_default.help("Path to an yaml file that describes how to run the integration tests."),
     default=itest_default.val(),
     required=True,
 )
@@ -613,9 +593,7 @@ itest_file_option = partial(
 itest_volume_option = partial(
     click.option,
     *itest_volume_default.opt,
-    help=itest_volume_default.help(
-        "The name of the volume used to hold integration test data."
-    ),
+    help=itest_volume_default.help("The name of the volume used to hold integration test data."),
     default=itest_volume_default.val(),
     required=True,
 )

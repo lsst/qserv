@@ -33,11 +33,7 @@ import sys
 
 # Adding the src/admin/python path to sys.path allows options declared in
 # src/admin/cli/options.py to be imported and used by the qserv command.
-sys.path.append(
-    os.path.abspath(
-        os.path.join(os.path.dirname(__file__), "../../../src/admin/python")
-    )
-)
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../src/admin/python")))
 
 from qserv_cli import qserv
 
@@ -160,9 +156,7 @@ class QservCliTestCase(unittest.TestCase):
         variable.
         """
         fake_root = "/foo/bar/qserv"
-        res = self.runner.invoke(
-            qserv, ["build"], env=env_without_qserv(QSERV_ROOT=fake_root)
-        )
+        res = self.runner.invoke(qserv, ["build"], env=env_without_qserv(QSERV_ROOT=fake_root))
         self.assertEqual(res.exit_code, 0)
         build_mock.assert_called_once()
         build_mock.assert_called_with(**build_args(qserv_root=fake_root))
@@ -191,9 +185,7 @@ class QservCliTestCase(unittest.TestCase):
         res = self.runner.invoke(qserv, ["itest"], env=env_without_qserv())
         self.assertEqual(res.exit_code, 0)
         itest_mock.assert_called_once()
-        expected = os.path.abspath(
-            os.path.join(__file__, "../../../../src/admin/etc/integration_tests.yaml")
-        )
+        expected = os.path.abspath(os.path.join(__file__, "../../../../src/admin/etc/integration_tests.yaml"))
         itest_mock.assert_called_with(**itest_args(itest_file=expected))
 
     def test_env(self):

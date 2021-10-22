@@ -10,6 +10,7 @@ from contextlib import closing
 import jinja2
 import logging
 import mysql.connector
+
 # MySQLInterfaceError can get thrown, we need to catch it.
 # It's not exposed as a public python object but *is* used in mysql.connector unit tests.
 from _mysql_connector import MySQLInterfaceError
@@ -31,7 +32,8 @@ class SchemaUpdateRequired(RuntimeError):
     It may be raised when the update could not be performed because necessary
     arguments (e.g. update=True) were not passed.
     """
-    pass;
+
+    pass
 
 
 class Uninitialized:
@@ -52,9 +54,7 @@ class Version:
             self.value = value.value
             return
         if not isinstance(value, int) and value is not Uninitialized:
-            raise RuntimeError(
-                f"Version value must be an int or Uninitialized, not {value}"
-            )
+            raise RuntimeError(f"Version value must be an int or Uninitialized, not {value}")
         self.value = value
 
     @staticmethod
@@ -82,11 +82,7 @@ class Version:
         return (
             self.value is Uninitialized
             and otherVal is not Uninitialized
-            or (
-                self.value is not Uninitialized
-                and otherVal is not Uninitialized
-                and self.value < otherVal
-            )
+            or (self.value is not Uninitialized and otherVal is not Uninitialized and self.value < otherVal)
         )
 
     def __gt__(self, other):
@@ -184,9 +180,7 @@ class SchemaMigMgr(metaclass=ABCMeta):
     # be an integer or "None" (without quotes). Note that to use a different re
     # with the SchemaMigMgr implementation of current_version, the re must
     # include named capture groups for the "from" and "to" migration versions.
-    mig_name_re = re.compile(
-        r"migrate-(?P<from>\d+|None)-to-(?P<to>\d+)(-.*)?.sql(\.jinja)?\Z"
-    )
+    mig_name_re = re.compile(r"migrate-(?P<from>\d+|None)-to-(?P<to>\d+)(-.*)?.sql(\.jinja)?\Z")
 
     def __init__(self, scripts_dir, connection=None):
         # find all migration scripts, add full script path to each
@@ -286,7 +280,9 @@ class SchemaMigMgr(metaclass=ABCMeta):
                     for result in cursor.execute(stmt, multi=True):
                         pass
                 else:
-                    _log.warn("Migration statement was empty, nothing to execute.") # empty migration files are used for testing.
+                    _log.warn(
+                        "Migration statement was empty, nothing to execute."
+                    )  # empty migration files are used for testing.
                 self.connection.commit()
                 _log.info("+++ Script %s completed successfully", migration.name)
         return migration.to_version
@@ -326,8 +322,7 @@ class SchemaMigMgr(metaclass=ABCMeta):
         migrations = self.migration_path(from_version, to_version, self.migrations)
         if not migrations:
             raise ValueError(
-                "No known scripts to migrate from version "
-                f"{from_version} to version {to_version}."
+                "No known scripts to migrate from version " f"{from_version} to version {to_version}."
             )
         if do_migrate:
             return self.apply_migrations(migrations)
@@ -358,10 +353,7 @@ class SchemaMigMgr(metaclass=ABCMeta):
         """
         # First see if any migrations exactly match our from and to versions.
         for migration in migrations:
-            if (
-                migration.from_version == from_version
-                and migration.to_version == to_version
-            ):
+            if migration.from_version == from_version and migration.to_version == to_version:
                 return [migration]
         # See if there are intermedate migrations that go to our to_version and
         # start at a from_version that is higher than our desired from_version
@@ -370,16 +362,11 @@ class SchemaMigMgr(metaclass=ABCMeta):
         # the shortest one.
         mig = None
         for migration in migrations:
-            if (
-                migration.to_version == to_version
-                and migration.from_version > from_version
-            ):
+            if migration.to_version == to_version and migration.from_version > from_version:
                 intermediate_mig = SchemaMigMgr.migration_path(
                     from_version, migration.from_version, migrations
                 )
-                if intermediate_mig and (
-                    mig is None or len(intermediate_mig) + 1 < len(mig)
-                ):
+                if intermediate_mig and (mig is None or len(intermediate_mig) + 1 < len(mig)):
                     mig = intermediate_mig
                     mig.append(migration)
         return mig or []
@@ -453,11 +440,12 @@ class SchemaMigMgr(metaclass=ABCMeta):
                 v_from, v_to = match
                 _log.debug("matching script %s: %s -> %s", fname, v_from, v_to)
                 if v_from == v_to:
-                    _log.warn("script %s has identical versions, skipping", os.path.join(scripts_dir, fname))
-                else:
-                    migrations.append(
-                        Migration(v_from, v_to, fname, os.path.join(scripts_dir, fname))
+                    _log.warn(
+                        "script %s has identical versions, skipping",
+                        os.path.join(scripts_dir, fname),
                     )
+                else:
+                    migrations.append(Migration(v_from, v_to, fname, os.path.join(scripts_dir, fname)))
         return migrations
 
     def databaseExists(self, dbName):

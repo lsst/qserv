@@ -141,9 +141,7 @@ def get_last_change(fname: str, cwd: str) -> str:
         errors="replace",
     )
     if res.returncode != 0:
-        raise RuntimeError(
-            f"Failed to get git sha of most recent change to {fname}: {res.stderr}"
-        )
+        raise RuntimeError(f"Failed to get git sha of most recent change to {fname}: {res.stderr}")
     sha = res.stdout.strip()
     _log.debug(f"The most recent change to %s was in %s", fname, sha)
     return sha
@@ -212,9 +210,7 @@ def get_most_recent(shas: List[str], cwd: str) -> str:
         else:
             history = git_log(other, newest, cwd)
             if not history:
-                raise RuntimeError(
-                    f"Could not establish a relationship between shas {newest} and {other}."
-                )
+                raise RuntimeError(f"Could not establish a relationship between shas {newest} and {other}.")
     _log.debug(f"The newest sha out of %s is %s", shas, newest)
     return newest
 
@@ -268,9 +264,7 @@ def dh_image_exists(image_name: str, user: str, token: str) -> bool:
     """
     repo, tag = image_name.split(":")
     exists = tag in dh_get_repo_tags(repo, dh_get_token(repo, user, token))
-    _log.debug(
-        "%s %s exist in dockerhub.", image_name, "does" if exists else "does not"
-    )
+    _log.debug("%s %s exist in dockerhub.", image_name, "does" if exists else "does not")
     return exists
 
 

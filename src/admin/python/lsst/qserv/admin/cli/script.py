@@ -109,7 +109,12 @@ def _wait_for_update(smig_func: Callable[[], None]) -> None:
 
 
 def _do_smig(
-    module_smig_dir: str, module: str, connection: str, update: bool, *, mig_mgr_args: Dict[str, str] = None
+    module_smig_dir: str,
+    module: str,
+    connection: str,
+    update: bool,
+    *,
+    mig_mgr_args: Dict[str, str] = None,
 ):
     """Run schema migration on a module's database.
 
@@ -155,7 +160,7 @@ def _do_smig_block(module_smig_dir: str, module: str, connection: str):
         The name of the module whose schema is being migrated.
     connection : str
         The uri to the database that will be affected.
-        """
+    """
     smig_block(
         scripts=os.path.join(smig_dir(), module_smig_dir),
         connection=connection,

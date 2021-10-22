@@ -51,9 +51,7 @@ mariadb_image_subdir = "admin/tools/docker/mariadb"
 _log = logging.getLogger(__name__)
 
 
-def do_pull_image(
-    image_name: str, dh_user: Optional[str], dh_token: Optional[str], dry: bool
-) -> bool:
+def do_pull_image(image_name: str, dh_user: Optional[str], dh_token: Optional[str], dry: bool) -> bool:
     """Attempt to pull an image. If valid dockerhub credentials are provided
     check the registry for the image first. If they are not provided then just
     try to pull the image and accept any failure as 'image does not exist'.
@@ -75,9 +73,9 @@ def do_pull_image(
         True if the images was pulled, else False.
     """
     did_pull = False
-    if (
-        dh_user and dh_token and images.dh_image_exists(image_name, dh_user, dh_token)
-    ) or (not dh_user and not dh_token):
+    if (dh_user and dh_token and images.dh_image_exists(image_name, dh_user, dh_token)) or (
+        not dh_user and not dh_token
+    ):
         did_pull = images.dh_pull_image(image_name, dry)
     _log.debug("%s %s", "Pulled" if did_pull else "Could not pull", image_name)
     return did_pull
@@ -202,9 +200,7 @@ def do_update_submodules(
     subprocess.run(args, check=True)
 
 
-def cmake(
-    qserv_root: str, qserv_build_root: str, build_image: str, user: str, dry: bool
-) -> None:
+def cmake(qserv_root: str, qserv_build_root: str, build_image: str, user: str, dry: bool) -> None:
     """Run cmake on qserv.
 
     Parameters
@@ -348,19 +344,13 @@ def build(
     user : `str`
         The name of the user to run the build container as.
     """
-    if pull_image and do_pull_image(
-        qserv_image, dh_user_ev.val(), dh_token_ev.val(), dry
-    ):
+    if pull_image and do_pull_image(qserv_image, dh_user_ev.val(), dh_token_ev.val(), dry):
         return
 
-    if update_submodules is True or (
-        update_submodules is None and not submodules_initalized(qserv_root)
-    ):
+    if update_submodules is True or (update_submodules is None and not submodules_initalized(qserv_root)):
         do_update_submodules(qserv_root, qserv_build_root, user_build_image, user, dry)
 
-    if run_cmake is True or (
-        run_cmake is None and not os.path.exists(build_dir(qserv_root))
-    ):
+    if run_cmake is True or (run_cmake is None and not os.path.exists(build_dir(qserv_root))):
         # Make sure the build dir exists because it will be the working dir of a
         # future `docker run` command, and if it does not exist it will be
         # created but the owner will be root, and we need the owner to be the
@@ -378,9 +368,7 @@ def build(
         image_name=qserv_image,
         run_dir=os.path.join(qserv_root, "build", "install"),
         dockerfile=os.path.join(qserv_root, run_image_build_subdir, "Dockerfile"),
-        options=["--build-arg", f"QSERV_RUN_BASE={run_base_image}"]
-        if run_base_image
-        else None,
+        options=["--build-arg", f"QSERV_RUN_BASE={run_base_image}"] if run_base_image else None,
         target=None,
         dry=dry,
     )
@@ -407,9 +395,7 @@ def build_build_image(
     pull_image: `bool`
         Pull the lite-qserv image from dockerhub if it exists there.
     """
-    if pull_image and do_pull_image(
-        build_image, dh_user_ev.val(), dh_token_ev.val(), dry
-    ):
+    if pull_image and do_pull_image(build_image, dh_user_ev.val(), dh_token_ev.val(), dry):
         return
     images.build_image(
         image_name=build_image,
@@ -454,9 +440,7 @@ def build_run_base_image(
     run_base_image: str, qserv_root: str, dry: bool, push_image: bool, pull_image: bool
 ) -> None:
     """Build the qserv lite-run-base image."""
-    if pull_image and do_pull_image(
-        run_base_image, dh_user_ev.val(), dh_token_ev.val(), dry
-    ):
+    if pull_image and do_pull_image(run_base_image, dh_user_ev.val(), dh_token_ev.val(), dry):
         return
     images.build_image(
         image_name=run_base_image,
@@ -472,9 +456,7 @@ def build_mariadb_image(
     mariadb_image: str, qserv_root: str, dry: bool, push_image: bool, pull_image: bool
 ) -> None:
     """Build the mariadb image."""
-    if pull_image and do_pull_image(
-        mariadb_image, dh_user_ev.val(), dh_token_ev.val(), dry
-    ):
+    if pull_image and do_pull_image(mariadb_image, dh_user_ev.val(), dh_token_ev.val(), dry):
         return
     images.build_image(
         image_name=mariadb_image,
@@ -504,24 +486,12 @@ def bind_args(qserv_root: str, bind_names: List[str]) -> List[str]:
     """
     SrcDst = namedtuple("SrcDst", "src dst")
     src_dst = dict(
-        python=SrcDst(
-            os.path.join(qserv_root, "build", "install", "python"), "/usr/local/python/"
-        ),
-        bin=SrcDst(
-            os.path.join(qserv_root, "build", "install", "bin"), "/usr/local/bin/"
-        ),
-        lib64=SrcDst(
-            os.path.join(qserv_root, "build", "install", "lib64"), "/usr/local/lib64/"
-        ),
-        lua=SrcDst(
-            os.path.join(qserv_root, "build", "install", "lua"), "/usr/local/lua/"
-        ),
-        qserv=SrcDst(
-            os.path.join(qserv_root, "build", "install", "qserv"), "/usr/local/qserv/"
-        ),
-        etc=SrcDst(
-            os.path.join(qserv_root, "build", "install", "etc"), "/usr/local/etc/"
-        ),
+        python=SrcDst(os.path.join(qserv_root, "build", "install", "python"), "/usr/local/python/"),
+        bin=SrcDst(os.path.join(qserv_root, "build", "install", "bin"), "/usr/local/bin/"),
+        lib64=SrcDst(os.path.join(qserv_root, "build", "install", "lib64"), "/usr/local/lib64/"),
+        lua=SrcDst(os.path.join(qserv_root, "build", "install", "lua"), "/usr/local/lua/"),
+        qserv=SrcDst(os.path.join(qserv_root, "build", "install", "qserv"), "/usr/local/qserv/"),
+        etc=SrcDst(os.path.join(qserv_root, "build", "install", "etc"), "/usr/local/etc/"),
     )
     flag = "--mount"
     val = "src={src},dst={dst},type=bind"
@@ -530,9 +500,7 @@ def bind_args(qserv_root: str, bind_names: List[str]) -> List[str]:
         if "all" in bind_names
         else [sd for name, sd in src_dst.items() if name in bind_names]
     )
-    return [
-        t.format(src=loc.src, dst=loc.dst) for loc in locations for t in (flag, val)
-    ]
+    return [t.format(src=loc.src, dst=loc.dst) for loc in locations for t in (flag, val)]
 
 
 def run_dev(
@@ -693,9 +661,7 @@ def itest_ref(
         tests_data = yaml.safe_load(f.read())
     ref_db = urlparse(tests_data["reference-db-uri"])
     hostname = str(ref_db.hostname)
-    cnf_src = os.path.join(
-        qserv_root, "src/admin/templates/integration-test/etc/my.cnf"
-    )
+    cnf_src = os.path.join(qserv_root, "src/admin/templates/integration-test/etc/my.cnf")
 
     args = [
         "docker",
@@ -909,10 +875,7 @@ def itest(
     returncode : `int`
         The returncode of "entrypoint integration-test".
     """
-    ref_db_container_name = itest_ref(
-        qserv_root, itest_file, itest_volume, project, mariadb_image, dry
-    )
-    returncode = 1
+    ref_db_container_name = itest_ref(qserv_root, itest_file, itest_volume, project, mariadb_image, dry)
     try:
         returncode = integration_test(
             qserv_root,
@@ -1074,9 +1037,7 @@ def up(
         print(f"{env_str} {' '.join(args)}")
     else:
         env = get_env(env_override)
-        _log.debug(
-            "Running %s with environment overrides %s", " ".join(args), env_override
-        )
+        _log.debug("Running %s with environment overrides %s", " ".join(args), env_override)
         subprocess.run(args, env=env, check=True)
 
 
