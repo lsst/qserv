@@ -91,6 +91,7 @@ IndexJob::Destination IndexJob::fromString(string const& str) {
 
 
 IndexJob::Ptr IndexJob::create(string const& database,
+                               string const& directorTable,
                                bool hasTransactions,
                                TransactionId transactionId,
                                bool allWorkers,
@@ -103,6 +104,7 @@ IndexJob::Ptr IndexJob::create(string const& database,
                                Job::Options const& options) {
     return Ptr(new IndexJob(
         database,
+        directorTable,
         hasTransactions,
         transactionId,
         allWorkers,
@@ -118,6 +120,7 @@ IndexJob::Ptr IndexJob::create(string const& database,
 
 
 IndexJob::IndexJob(string const& database,
+                   string const& directorTable,
                    bool hasTransactions,
                    TransactionId transactionId,
                    bool allWorkers,
@@ -129,6 +132,7 @@ IndexJob::IndexJob(string const& database,
                    CallbackType const& onFinish,
                    Job::Options const& options)
     :   Job(controller, parentJobId, "INDEX", options),
+        _directorTable(directorTable),
         _hasTransactions(hasTransactions),
         _transactionId(transactionId),
         _allWorkers(allWorkers),
@@ -140,10 +144,10 @@ IndexJob::IndexJob(string const& database,
     // Get and verify database status
     try {
         _databaseInfo = controller->serviceProvider()->config()->databaseInfo(database);
-        if (_databaseInfo.directorTable.empty()) {
+        if (!_databaseInfo.isDirector(directorTable)) {
             throw runtime_error(
-                context() + "::" + string(__func__) + " no director table found in the database: '"
-                + database + "'.");
+                context() + "::" + string(__func__) + " no such director table '" + directorTable
+                + "' in the database: '" + database + "'.");
         }
     } catch (exception const& ex) {
         LOGS(_log, LOG_LVL_ERROR, ex.what());
@@ -569,6 +573,7 @@ list<IndexRequest::Ptr> IndexJob::_launchRequests(util::Lock const& lock,
             controller()->index(
                 worker,
                 database(),
+                directorTable(),
                 chunk,
                 hasTransactions(),
                 transactionId(),

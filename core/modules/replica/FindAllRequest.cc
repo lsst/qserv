@@ -133,27 +133,14 @@ void FindAllRequest::startImpl(util::Lock const& lock) {
 }
 
 
-void FindAllRequest::_wait(util::Lock const& lock) {
-
-    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
-
-    // Always need to set the interval before launching the timer.
-
-    timer().expires_from_now(boost::posix_time::milliseconds(nextTimeIvalMsec()));
-    timer().async_wait(bind(&FindAllRequest::_awaken, shared_from_base<FindAllRequest>(),_1));
-}
-
-
-void FindAllRequest::_awaken(boost::system::error_code const& ec) {
+void FindAllRequest::awaken(boost::system::error_code const& ec) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     if (isAborted(ec)) return;
 
     if (state() == State::FINISHED) return;
-
     util::Lock lock(_mtx, context() + __func__);
-
     if (state() == State::FINISHED) return;
 
     // Serialize the Status message header and the request itself into
@@ -176,7 +163,6 @@ void FindAllRequest::_awaken(boost::system::error_code const& ec) {
     buffer()->serialize(message);
 
     // Send the message
-
     _send(lock);
 }
 
@@ -186,22 +172,15 @@ void FindAllRequest::_send(util::Lock const& lock) {
     auto self = shared_from_base<FindAllRequest>();
 
     messenger()->send<ProtocolResponseFindAll>(
-        worker(),
-        id(),
-        buffer(),
-        [self] (string const& id,
-                bool success,
-                ProtocolResponseFindAll const& response) {
-
-            self->_analyze(success,
-                           response);
+        worker(), id(), buffer(),
+        [self] (string const& id, bool success, ProtocolResponseFindAll const& response) {
+            self->_analyze(success, response);
         }
     );
 }
 
 
-void FindAllRequest::_analyze(bool success,
-                              ProtocolResponseFindAll const& message) {
+void FindAllRequest::_analyze(bool success, ProtocolResponseFindAll const& message) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "  success=" << (success ? "true" : "false"));
 
@@ -210,11 +189,8 @@ void FindAllRequest::_analyze(bool success,
     // client of _analyze(). So, we should take care of proper locking and watch
     // for possible state transition which might occur while the async I/O was
     // still in a progress.
-
     if (state() == State::FINISHED) return;
-
     util::Lock lock(_mtx, context() + __func__);
-
     if (state() == State::FINISHED) return;
 
     if (not success) {
@@ -223,14 +199,12 @@ void FindAllRequest::_analyze(bool success,
     }
 
     // Always use the latest status reported by the remote server
-
     setExtendedServerStatus(lock, message.status_ext());
 
     // Performance counters are updated from either of two sources,
     // depending on the availability of the 'target' performance counters
     // filled in by the 'STATUS' queries. If the later is not available
     // then fallback to the one of the current request.
-
     if (message.has_target_performance()) {
         mutablePerformance().update(message.target_performance());
     } else {
@@ -239,7 +213,6 @@ void FindAllRequest::_analyze(bool success,
 
     // Always extract extended data regardless of the completion status
     // reported by the worker service.
-
     for (int num = message.replica_info_many_size(), idx = 0; idx < num; ++idx) {
         _replicaInfoCollection.emplace_back(&(message.replica_info_many(idx)));
     }
@@ -251,29 +224,27 @@ void FindAllRequest::_analyze(bool success,
     switch (message.status()) {
 
         case ProtocolStatus::SUCCESS:
-
             if (saveReplicaInfo()) {
                 serviceProvider()->databaseServices()->saveReplicaInfoCollection(
-                                                            worker(),
-                                                            database(),
-                                                            _replicaInfoCollection);
+                        worker(), database(), _replicaInfoCollection);
             }
             finish(lock, SUCCESS);
             break;
 
+        case ProtocolStatus::CREATED:
+            keepTrackingOrFinish(lock, SERVER_CREATED);
+            break;
+
         case ProtocolStatus::QUEUED:
-            if (keepTracking()) _wait(lock);
-            else                finish(lock, SERVER_QUEUED);
+            keepTrackingOrFinish(lock, SERVER_QUEUED);
             break;
 
         case ProtocolStatus::IN_PROGRESS:
-            if (keepTracking()) _wait(lock);
-            else                finish(lock, SERVER_IN_PROGRESS);
+            keepTrackingOrFinish(lock, SERVER_IN_PROGRESS);
             break;
 
         case ProtocolStatus::IS_CANCELLING:
-            if (keepTracking()) _wait(lock);
-            else                finish(lock, SERVER_IS_CANCELLING);
+            keepTrackingOrFinish(lock, SERVER_IS_CANCELLING);
             break;
 
         case ProtocolStatus::BAD:
@@ -297,9 +268,7 @@ void FindAllRequest::_analyze(bool success,
 
 
 void FindAllRequest::notify(util::Lock const& lock) {
-
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
-
     notifyDefaultImpl<FindAllRequest>(lock, _onFinish);
 }
 

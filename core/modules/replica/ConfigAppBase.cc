@@ -199,9 +199,11 @@ void ConfigAppBase::dumpDatabasesAsTable(string const& indent, string const& cap
     vector<string> tableName;
     vector<string> isPartitioned;
     vector<string> isDirector;
+    vector<string> directorTable;
     vector<string> directorKey;
-    vector<string> chunkIdColName;
-    vector<string> subChunkIdColName;
+    vector<string> latitudeColName;
+    vector<string> longitudeColName;
+    vector<string> numColumns;
 
     string const noSpecificFamily;
     bool const allDatabases = true;
@@ -213,16 +215,18 @@ void ConfigAppBase::dumpDatabasesAsTable(string const& indent, string const& cap
             isPublished.push_back(di.isPublished ? "yes" : "no");
             tableName.push_back(table);
             isPartitioned.push_back("yes");
-            if (table == di.directorTable) {
+            if (di.isDirector(table)) {
                 isDirector.push_back("yes");
-                directorKey.push_back(di.directorTableKey.at(table));
+                directorTable.push_back("");
             } else {
                 isDirector.push_back("no");
-                directorKey.push_back("");
+                directorTable.push_back(di.directorTable.at(table));
             }
-            chunkIdColName.push_back(di.chunkIdColName);
-            subChunkIdColName.push_back(di.subChunkIdColName);
-        }
+            directorKey.push_back(di.directorTableKey.at(table));
+            latitudeColName.push_back(di.latitudeColName.at(table));
+            longitudeColName.push_back(di.longitudeColName.at(table));
+            numColumns.push_back(to_string(di.columns.at(table).size()));
+       }
         for (auto& table: di.regularTables) {
             familyName.push_back(di.family);
             databaseName.push_back(di.name);
@@ -230,9 +234,11 @@ void ConfigAppBase::dumpDatabasesAsTable(string const& indent, string const& cap
             tableName.push_back(table);
             isPartitioned.push_back("no");
             isDirector.push_back("no");
+            directorTable.push_back("");
             directorKey.push_back("");
-            chunkIdColName.push_back("");
-            subChunkIdColName.push_back("");
+            latitudeColName.push_back("");
+            longitudeColName.push_back("");
+            numColumns.push_back(to_string(di.columns.at(table).size()));
         }
         if (di.partitionedTables.empty() and di.regularTables.empty()) {
             familyName.push_back(di.family);
@@ -241,9 +247,11 @@ void ConfigAppBase::dumpDatabasesAsTable(string const& indent, string const& cap
             tableName.push_back("<no tables>");
             isPartitioned.push_back("n/a");
             isDirector.push_back("n/a");
+            directorTable.push_back("n/a");
             directorKey.push_back("n/a");
-            chunkIdColName.push_back("n/a");
-            subChunkIdColName.push_back("n/a");
+            latitudeColName.push_back("n/a");
+            longitudeColName.push_back("n/a");
+            numColumns.push_back("n/a");
         }
     }
 
@@ -255,9 +263,11 @@ void ConfigAppBase::dumpDatabasesAsTable(string const& indent, string const& cap
     table.addColumn("table", tableName, util::ColumnTablePrinter::LEFT);
     table.addColumn(":partitioned", isPartitioned);
     table.addColumn(":director", isDirector);
+    table.addColumn(":director-table", directorTable);
     table.addColumn(":director-key", directorKey);
-    table.addColumn(":chunk-id-key", chunkIdColName);
-    table.addColumn(":sub-chunk-id-key", subChunkIdColName);
+    table.addColumn(":latitude-key", latitudeColName);
+    table.addColumn(":longitude-key", longitudeColName);
+    table.addColumn(":num-columns", numColumns);
 
     table.print(cout, false, false);
     cout << endl;

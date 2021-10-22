@@ -551,6 +551,9 @@ public:
      * @param isDirectorTable An (optional) flag indicating if this is the "director"
      *   table of the catalog. Note there could be only one such table in a catalog,
      *   and this table must be "partitioned".
+     * @param directorTable The (optional) name of the director table.
+     *   The parameter only applies to the partitioned tables which are also the "dependent"
+     *   ones of some existing "director" table.
      * @param directorTableKey The (optional) name of a column representing object identifiers.
      *   The parameter only applies to the partitioned tables. For the "dependent" tables
      *   this would be the FK for the corresponding PK of the "director" table.
@@ -559,14 +562,6 @@ public:
      *   have any objectId-based association with any "director" table.
      *   If provided (and allowed) the column must be found among the names of columns
      *   specified in the parameter "columns".
-     * @param chunkIdColName The (optional) name of a column which stores identifiers
-     *   of "chunks". This parameter applies to all "partitioned" tables, and if
-     *   provided the column must be found among the names of columns in a value
-     *   of parameter "columns".
-     * @param subChunkIdColName The (optional) name of a column which stores
-     *   identifiers of "sub-chunks". This parameter applies to all "partitioned"
-     *   tables, and if provided the column must be found among the names of
-     *   columns in a value of parameter "columns".
      * @param latitudeColName The (optional) name of a column which stores the latitude.
      * @param longitudeColName The (optional) name of a column which stores the longitude.
      * @return A database descriptor of the updated database.
@@ -579,9 +574,8 @@ public:
                           bool isPartitioned,
                           std::list<SqlColDef> const& columns=std::list<SqlColDef>(),
                           bool isDirectorTable=false,
-                          std::string const& directorTableKey="",
-                          std::string const& chunkIdColName=lsst::qserv::CHUNK_COLUMN,
-                          std::string const& subChunkIdColName=lsst::qserv::SUB_CHUNK_COLUMN,
+                          std::string const& directorTable=std::string(),
+                          std::string const& directorTableKey=std::string(),
                           std::string const& latitudeColName=std::string(),
                           std::string const& longitudeColName=std::string());
 

@@ -214,10 +214,6 @@ json HttpIngestTransModule::_beginTransaction() {
         if (databaseInfo.isPublished) {
             throw HttpError(__func__, "the database is already published");
         }
-        if (databaseInfo.directorTable.empty()) {
-            throw HttpError(__func__, "director table has not been configured in database '" +
-                            databaseInfo.name + "'");
-        }
 
         // Get chunks stats to be reported with the request's result object
         bool const allWorkers = true;
@@ -232,7 +228,9 @@ json HttpIngestTransModule::_beginTransaction() {
             // This operation can be vetoed by a catalog ingest workflow at the database
             // registration time.
             if (autoBuildSecondaryIndex(databaseInfo.name)) {
-                _addPartitionToSecondaryIndex(databaseInfo, transaction.id);
+                for (auto&& directorTable: databaseInfo.directorTables()) {
+                    _addPartitionToSecondaryIndex(databaseInfo, transaction.id, directorTable);
+                }
             }
         } catch (...) {
             bool const abort = true;
@@ -321,7 +319,9 @@ json HttpIngestTransModule::_endTransaction() {
             // This operation in a context of the "secondary index" table can be vetoed by
             // a catalog ingest workflow at the database registration time.
             if (autoBuildSecondaryIndex(databaseInfo.name)) {
-                _removePartitionFromSecondaryIndex(databaseInfo, transaction.id);
+                for (auto&& directorTable: databaseInfo.directorTables()) {
+                    _removePartitionFromSecondaryIndex(databaseInfo, transaction.id, directorTable);
+                }
             }
 
         } else {
@@ -329,23 +329,28 @@ json HttpIngestTransModule::_endTransaction() {
             // Make the best attempt to build a layer at the "secondary index" if requested
             // by a catalog ingest workflow at the database registration time.
             if (autoBuildSecondaryIndex(databaseInfo.name)) {
-                bool const hasTransactions = true;
-                string const destinationPath = transaction.database + "__" + databaseInfo.directorTable;
-                auto const job = IndexJob::create(
-                    transaction.database,
-                    hasTransactions,
-                    transaction.id,
-                    allWorkers,
-                    IndexJob::TABLE,
-                    destinationPath,
-                    localLoadSecondaryIndex(databaseInfo.name),
-                    controller()
-                );
-                job->start();
-                logJobStartedEvent(IndexJob::typeName(), job, databaseInfo.family);
-                job->wait();
-                logJobFinishedEvent(IndexJob::typeName(), job, databaseInfo.family);
-                result["secondary-index-build-success"] = job->extendedState() == Job::SUCCESS ? 1 : 0;
+                bool secondaryIndexBuildSuccess = true;
+                for (auto&& directorTable: databaseInfo.directorTables()) {
+                    bool const hasTransactions = true;
+                    string const destinationPath = transaction.database + "__" + directorTable;
+                    auto const job = IndexJob::create(
+                        transaction.database,
+                        directorTable,
+                        hasTransactions,
+                        transaction.id,
+                        allWorkers,
+                        IndexJob::TABLE,
+                        destinationPath,
+                        localLoadSecondaryIndex(databaseInfo.name),
+                        controller()
+                    );
+                    job->start();
+                    logJobStartedEvent(IndexJob::typeName(), job, databaseInfo.family);
+                    job->wait();
+                    logJobFinishedEvent(IndexJob::typeName(), job, databaseInfo.family);
+                    secondaryIndexBuildSuccess = secondaryIndexBuildSuccess && (job->extendedState() == Job::SUCCESS);
+                }
+                result["secondary-index-build-success"] = secondaryIndexBuildSuccess ? 1 : 0;
             }
 
             // TODO: replicate MySQL partition associated with the transaction
@@ -366,11 +371,12 @@ json HttpIngestTransModule::_endTransaction() {
 
 
 void HttpIngestTransModule::_addPartitionToSecondaryIndex(DatabaseInfo const& databaseInfo,
-                                                          TransactionId transactionId) const {
-    if (databaseInfo.directorTable.empty()) {
+                                                          TransactionId transactionId,
+                                                          string const& directorTable) const {
+    if (!databaseInfo.isDirector(directorTable)) {
         throw logic_error(
-                "director table has not been properly configured in database '" +
-                databaseInfo.name + "'");
+                "table '" + directorTable + "' is not configured in database '" +
+                databaseInfo.name + "' as the director table");
     }
 
     // Manage the new connection via the RAII-style handler to ensure the transaction
@@ -378,7 +384,7 @@ void HttpIngestTransModule::_addPartitionToSecondaryIndex(DatabaseInfo const& da
 
     database::mysql::ConnectionHandler const h(qservMasterDbConnection("qservMeta"));
     string const query =
-        "ALTER TABLE " + h.conn->sqlId(databaseInfo.name + "__" + databaseInfo.directorTable) +
+        "ALTER TABLE " + h.conn->sqlId(databaseInfo.name + "__" + directorTable) +
         " ADD PARTITION (PARTITION `p" + to_string(transactionId) + "` VALUES IN (" + to_string(transactionId) +
         ") ENGINE=InnoDB)";
 
@@ -393,11 +399,12 @@ void HttpIngestTransModule::_addPartitionToSecondaryIndex(DatabaseInfo const& da
 
 
 void HttpIngestTransModule::_removePartitionFromSecondaryIndex(DatabaseInfo const& databaseInfo,
-                                                               TransactionId transactionId) const {
-    if (databaseInfo.directorTable.empty()) {
+                                                               TransactionId transactionId,
+                                                               string const& directorTable) const {
+    if (!databaseInfo.isDirector(directorTable)) {
         throw logic_error(
-                "director table has not been properly configured in database '" +
-                databaseInfo.name + "'");
+                "table '" + directorTable + "' is not configured in database '" +
+                databaseInfo.name + "' as the director table");
     }
 
     // Manage the new connection via the RAII-style handler to ensure the transaction
@@ -405,7 +412,7 @@ void HttpIngestTransModule::_removePartitionFromSecondaryIndex(DatabaseInfo cons
 
     database::mysql::ConnectionHandler const h(qservMasterDbConnection("qservMeta"));
     string const query =
-        "ALTER TABLE " + h.conn->sqlId(databaseInfo.name + "__" + databaseInfo.directorTable) +
+        "ALTER TABLE " + h.conn->sqlId(databaseInfo.name + "__" + directorTable) +
         " DROP PARTITION `p" + to_string(transactionId) + "`";
 
     debug(__func__, query);

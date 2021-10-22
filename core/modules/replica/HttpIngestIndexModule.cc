@@ -74,11 +74,13 @@ json HttpIngestIndexModule::_buildSecondaryIndex() {
     auto const config = controller()->serviceProvider()->config();
 
     string const database = body().required<string>("database");
+    string const directorTable = body().optional<string>("director_table", string());
     bool const allowForPublished = body().optional<int>("allow_for_published", 0) != 0;
     bool const rebuild = body().optional<int>("rebuild", 0) != 0;
     bool const localFile = body().optional<int>("local", 0) != 0;
 
     debug(__func__, "database=" + database);
+    debug(__func__, "director_table=" + directorTable);
     debug(__func__, "allow_for_published=" + bool2str(allowForPublished));
     debug(__func__, "rebuild=" + bool2str(rebuild));
     debug(__func__, "local=" + bool2str(localFile));
@@ -88,108 +90,125 @@ json HttpIngestIndexModule::_buildSecondaryIndex() {
         throw HttpError(__func__, "database '" + databaseInfo.name +
                 "' is already published. Use 'allow_for_published' option to override the restriction.");
     }
-    string const& directorTable = databaseInfo.directorTable;
-    if (directorTable.empty() or
-        (databaseInfo.directorTableKey.count(directorTable) == 0) or
-        databaseInfo.directorTableKey.at(directorTable).empty() or
-        databaseInfo.chunkIdColName.empty() or databaseInfo.subChunkIdColName.empty()) {
-        throw HttpError(
-                __func__,
-                "director table has not been properly configured in database '" +
-                databaseInfo.name + "'");
-    }
-    string const& directorTableKey = databaseInfo.directorTableKey.at(directorTable);
+    vector<string> const directorTables = directorTable.empty() ?
+            databaseInfo.directorTables() : vector<string>({directorTable});
 
-    if (0 == databaseInfo.columns.count(directorTable)) {
-        throw HttpError(
-                __func__,
-                "no schema found for director table '" + directorTable +
-                "' of database '" + databaseInfo.name + "'");
-    }
+    // Pre-screen parameters of the table(s).
+    map<string, string> directorTableKey;
+    map<string, string> directorTableKeyType;
+    map<string, string> chunkIdColNameType;
+    map<string, string> subChunkIdColNameType;
 
-    // Find types of the secondary index table's columns
-
-    string directorTableKeyType;
-    string chunkIdColNameType;
-    string subChunkIdColNameType;
-
-    for (auto&& coldef: databaseInfo.columns.at(directorTable)) {
-        if      (coldef.name == directorTableKey)  directorTableKeyType  = coldef.type;
-        else if (coldef.name == databaseInfo.chunkIdColName)    chunkIdColNameType    = coldef.type;
-        else if (coldef.name == databaseInfo.subChunkIdColName) subChunkIdColNameType = coldef.type;
-    }
-    if (directorTableKeyType.empty() or chunkIdColNameType.empty() or subChunkIdColNameType.empty()) {
-        throw HttpError(
-                __func__,
-                "column definitions for the Object identifier or chunk/sub-chunk identifier"
-                " columns are missing in the director table schema for table '" +
-                directorTable + "' of database '" + databaseInfo.name + "'");
-    }
-
-    // Manage the new connection via the RAII-style handler to ensure the transaction
-    // is automatically rolled-back in case of exceptions.
-
-    database::mysql::ConnectionHandler const h(qservMasterDbConnection("qservMeta"));
-    auto const tableName = databaseInfo.name + "__" + directorTable;
-    auto const escapedTableName = h.conn->sqlId(tableName);
-
-    // (Re-)create the index table. Note that the table creation statement (the way it's
-    // written below) would fail if the table already exists. Hence, dropping it in
-    // the 'rebuild' mode should be explicitly requested by a client to avoid the problem.
-    vector<string> queries;
-    if (rebuild) queries.push_back("DROP TABLE IF EXISTS " + escapedTableName);
-    queries.push_back(
-        "CREATE TABLE " + escapedTableName +
-        " (" + h.conn->sqlId(directorTableKey) + " " + directorTableKeyType + "," +
-               h.conn->sqlId(databaseInfo.chunkIdColName) + " " + chunkIdColNameType + "," +
-               h.conn->sqlId(databaseInfo.subChunkIdColName) + " " + subChunkIdColNameType + ","
-               " UNIQUE KEY (" + h.conn->sqlId(directorTableKey) + "),"
-               " KEY (" + h.conn->sqlId(directorTableKey) + ")"
-        ") ENGINE=InnoDB"
-    );
-    h.conn->execute([&queries](decltype(h.conn) conn) {
-        conn->begin();
-        for (auto&& query: queries) {
-            conn->execute(query);
+    for (auto&& table: directorTables) {
+        if (!databaseInfo.isDirector(table)) {
+            throw HttpError(
+                    __func__,
+                    "table '" + table + "' is not configured as the director table in database '" +
+                    databaseInfo.name + "'");
         }
-        conn->commit();
-    });
+        if ((databaseInfo.directorTableKey.count(table) == 0) || databaseInfo.directorTableKey.at(table).empty()) {
+            throw HttpError(
+                    __func__,
+                    "director table has not been properly configured in database '" +
+                    databaseInfo.name + "'");
+        }
+        directorTableKey[table] = databaseInfo.directorTableKey.at(table);
+
+        if (0 == databaseInfo.columns.count(table)) {
+            throw HttpError(
+                    __func__,
+                    "no schema found for director table '" + table +
+                    "' of database '" + databaseInfo.name + "'");
+        }
+
+        // Find types of the secondary index table's columns
+        directorTableKeyType[table] = string();
+        chunkIdColNameType[table] = "INT";
+        subChunkIdColNameType[table] = string();
+        for (auto&& coldef: databaseInfo.columns.at(table)) {
+            if      (coldef.name == directorTableKey[table]) directorTableKeyType[table]  = coldef.type;
+            else if (coldef.name == lsst::qserv::SUB_CHUNK_COLUMN) subChunkIdColNameType[table] = coldef.type;
+        }
+        if (directorTableKeyType[table].empty() || subChunkIdColNameType[table].empty()) {
+            throw HttpError(
+                    __func__,
+                    "column definitions for the director key or sub-chunk identifier"
+                    " columns are missing in the director table schema for table '" +
+                    table + "' of database '" + databaseInfo.name + "'");
+        }
+    }
+
+    // Build/rebuild the index(es).
 
     bool const noTransactions = false;
     bool const allWorkers = true;
     TransactionId const noTransactionId = 0;
-    auto const job = IndexJob::create(
-        databaseInfo.name,
-        noTransactions,
-        noTransactionId,
-        allWorkers,
-        IndexJob::TABLE,
-        tableName,
-        localFile,
-        controller()
-    );
-    job->start();
-    logJobStartedEvent(IndexJob::typeName(), job, databaseInfo.family);
-    job->wait();
-    logJobFinishedEvent(IndexJob::typeName(), job, databaseInfo.family);
-
-    // Nothing to report in case of success
-    if (job->extendedState() == Job::SUCCESS) return json::object();
-
-    // Extended error reporting in case of failures
-    IndexJobResult const& jobResultData = job->getResultData();
-
     json extError = json::object();
-    for (auto&& workerItr: jobResultData.error) {
-        string const& worker = workerItr.first;
-        extError[worker] = json::object();
-        json& workerError = extError[worker];
-        for (auto&& chunkItr: workerItr.second) {
-            // JSON library requires string type keys
-            workerError[to_string(chunkItr.first)] = chunkItr.second;
+    bool failed = false;
+    for (auto&& table: directorTables) {
+
+        // The entry will have the empty object for the tables if no problems will be
+        // encountered during the construction of the index.
+        extError[table] = json::object();
+
+        // Manage the new connection via the RAII-style handler to ensure the transaction
+        // is automatically rolled-back in case of exceptions.
+        database::mysql::ConnectionHandler const h(qservMasterDbConnection("qservMeta"));
+        auto const indexTableName = databaseInfo.name + "__" + table;
+        auto const escapedIndexTableName = h.conn->sqlId(indexTableName);
+
+        // (Re-)create the index table. Note that the table creation statement (the way it's
+        // written below) would fail if the table already exists. Hence, dropping it in
+        // the 'rebuild' mode should be explicitly requested by a client to avoid the problem.
+        vector<string> queries;
+        if (rebuild) queries.push_back("DROP TABLE IF EXISTS " + escapedIndexTableName);
+        queries.push_back(
+            "CREATE TABLE " + escapedIndexTableName +
+            " (" + h.conn->sqlId(directorTableKey[table]) + " " + directorTableKeyType[table] + "," +
+                h.conn->sqlId(lsst::qserv::CHUNK_COLUMN) + " " + chunkIdColNameType[table] + "," +
+                h.conn->sqlId(lsst::qserv::SUB_CHUNK_COLUMN) + " " + subChunkIdColNameType[table] + ","
+                " UNIQUE KEY (" + h.conn->sqlId(directorTableKey[table]) + "),"
+                " KEY (" + h.conn->sqlId(directorTableKey[table]) + ")"
+            ") ENGINE=InnoDB"
+        );
+        h.conn->executeInOwnTransaction([&queries](decltype(h.conn) conn) {
+            for (auto&& query: queries) {
+                conn->execute(query);
+            }
+        });
+        auto const job = IndexJob::create(
+            databaseInfo.name,
+            table,
+            noTransactions,
+            noTransactionId,
+            allWorkers,
+            IndexJob::TABLE,
+            indexTableName,
+            localFile,
+            controller()
+        );
+        job->start();
+        logJobStartedEvent(IndexJob::typeName(), job, databaseInfo.family);
+        job->wait();
+        logJobFinishedEvent(IndexJob::typeName(), job, databaseInfo.family);
+
+        // Extended error reporting in case of failures
+        if (job->extendedState() != Job::SUCCESS) {
+            failed = true;
+            IndexJobResult const& jobResultData = job->getResultData();
+            for (auto&& workerItr: jobResultData.error) {
+                string const& worker = workerItr.first;
+                extError[table][worker] = json::object();
+                json& workerError = extError[table][worker];
+                for (auto&& chunkItr: workerItr.second) {
+                    // JSON library requires string type keys
+                    workerError[to_string(chunkItr.first)] = chunkItr.second;
+                }
+            }
         }
     }
-    throw HttpError(__func__, "index creation failed", extError);
+    if (failed) throw HttpError(__func__, "index creation failed", extError);
+    return json::object();
 }
 
 }}}  // namespace lsst::qserv::replica

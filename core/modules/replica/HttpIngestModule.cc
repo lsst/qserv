@@ -302,8 +302,10 @@ json HttpIngestModule::_publishDatabase() {
     // The operation can be vetoed by the corresponding workflow parameter requested
     // by a catalog ingest workflow at the database creation time.
     if (autoBuildSecondaryIndex(database) and consolidateSecondayIndex) {
-        // This operation may take a while if the table has a large number of entries.
-        _consolidateSecondaryIndex(databaseInfo);
+        for (auto&& table: databaseInfo.directorTables()) {
+            // This operation may take a while if the table has a large number of entries.
+            _consolidateSecondaryIndex(databaseInfo, table);
+        }
     }
     _grantDatabaseAccess(databaseInfo, allWorkers);
     _enableDatabase(databaseInfo, allWorkers);
@@ -364,8 +366,10 @@ json HttpIngestModule::_deleteDatabase() {
     // configuration, or from CSS. It's okay not to have those tables if they weren't yet
     // created during the initial catalog ingest.
     // NOTE: Qserv allows more than one 'director' table. 
-    set<string> directorTables; 
-    directorTables.insert(databaseInfo.directorTable);
+    set<string> directorTables;
+    for (auto&& table: databaseInfo.directorTables()) {
+        directorTables.insert(table);
+    }
     if (cssAccess->containsDb(databaseInfo.name)) {
         for (auto const table: cssAccess->getTableNames(databaseInfo.name)) {
             auto const partTableParams = cssAccess->getPartTableParams(databaseInfo.name, table);
@@ -373,7 +377,7 @@ json HttpIngestModule::_deleteDatabase() {
         }
     }
 
-    // Remove related database etries from czar's MySQL if anyting is still there
+    // Remove related database entries from czar's MySQL if anyting is still there
 
     if (cssAccess->containsDb(databaseInfo.name)) {
         cssAccess->dropDb(databaseInfo.name);
@@ -457,24 +461,22 @@ json HttpIngestModule::_addTable() {
     auto const database      = body().required<string>("database");
     auto const table         = body().required<string>("table");
     auto const isPartitioned = body().required<int>("is_partitioned") != 0;
-    auto const schema        = body().required<json>("schema");
-    auto const isDirector    = body().required<int>("is_director") != 0;
-    auto const directorKey   = body().optional<string>("director_key", "");
-    auto const chunkIdColName    = body().optional<string>("chunk_id_key", "");
-    auto const subChunkIdColName = body().optional<string>("sub_chunk_id_key", "");
-    auto const latitudeColName  = body().optional<string>("latitude_key",  "");
-    auto const longitudeColName = body().optional<string>("longitude_key", "");
+    auto const directorTable = body().optional<string>("director_table", "");
+    auto const isDirector    = isPartitioned && directorTable.empty();
+    auto const directorKey   = isPartitioned ? body().required<string>("director_key") : "";
+    auto const latitudeColName  = isDirector ? body().required<string>("latitude_key")  : body().optional<string>("latitude_key", "");
+    auto const longitudeColName = isDirector ? body().required<string>("longitude_key") : body().optional<string>("longitude_key", "");
+    auto const schema = body().required<json>("schema");
 
     debug(__func__, "database="      + database);
     debug(__func__, "table="         + table);
     debug(__func__, "isPartitioned=" + bool2str(isPartitioned));
-    debug(__func__, "schema="        + schema.dump());
     debug(__func__, "isDirector="    + bool2str(isDirector));
+    debug(__func__, "directorTable=" + directorTable);
     debug(__func__, "directorKey="   + directorKey);
-    debug(__func__, "chunkIdColName="    + chunkIdColName);
-    debug(__func__, "subChunkIdColName=" + subChunkIdColName);
     debug(__func__, "latitudeColName="  + latitudeColName);
     debug(__func__, "longitudeColName=" + longitudeColName);
+    debug(__func__, "schema="        + schema.dump());
 
     // Make sure the database is known and it's not PUBLISHED yet
 
@@ -567,7 +569,7 @@ json HttpIngestModule::_addTable() {
     json result;
     result["database"] = config->addTable(
         databaseInfo.name, table, isPartitioned, columns, isDirector,
-        directorKey, chunkIdColName, subChunkIdColName,
+        directorTable, directorKey,
         latitudeColName, longitudeColName
     ).toJson();
 
@@ -577,7 +579,9 @@ json HttpIngestModule::_addTable() {
     // This operation can be vetoed by a catalog ingest workflow at the database
     // registration time.
     if (autoBuildSecondaryIndex(databaseInfo.name)) {
-        if (isPartitioned and isDirector) _createSecondaryIndex(config->databaseInfo(databaseInfo.name));
+        if (isPartitioned && isDirector) {
+            _createSecondaryIndex(config->databaseInfo(databaseInfo.name), table);
+        }
     }
 
     // This step is needed to get workers' Configuration in-sync with its
@@ -937,7 +941,7 @@ void HttpIngestModule::_publishDatabaseInMaster(DatabaseInfo const& databaseInfo
 
             css::PartTableParams const partParams(
                 databaseInfo.name,
-                databaseInfo.directorTable,
+                databaseInfo.directorTable.at(table),
                 databaseInfo.directorTableKey.at(table),
                 databaseInfo.latitudeColName.at(table),
                 databaseInfo.longitudeColName.at(table),
@@ -1076,15 +1080,18 @@ string HttpIngestModule::_reconfigureWorkers(DatabaseInfo const& databaseInfo,
 }
 
 
-void HttpIngestModule::_createSecondaryIndex(DatabaseInfo const& databaseInfo) const {
+void HttpIngestModule::_createSecondaryIndex(DatabaseInfo const& databaseInfo,
+                                             string const& directorTable) const {
 
-    string const& directorTable = databaseInfo.directorTable;
-    if (directorTable.empty() or
-        (databaseInfo.directorTableKey.count(directorTable) == 0) or
-        databaseInfo.directorTableKey.at(directorTable).empty() or
-        databaseInfo.chunkIdColName.empty() or databaseInfo.subChunkIdColName.empty()) {
+    if (!databaseInfo.isDirector(directorTable)) {
         throw logic_error(
-                "director table has not been properly configured in database '" +
+                "table '" + directorTable + "' is not configured in database '" +
+                databaseInfo.name + "' as the director table");
+    }
+    if ((databaseInfo.directorTableKey.count(directorTable) == 0) or
+        databaseInfo.directorTableKey.at(directorTable).empty()) {
+        throw logic_error(
+                "director key of table '" + directorTable + "' is not configured in database '" +
                 databaseInfo.name + "'");
     }
     string const& directorTableKey = databaseInfo.directorTableKey.at(directorTable);
@@ -1097,18 +1104,16 @@ void HttpIngestModule::_createSecondaryIndex(DatabaseInfo const& databaseInfo) c
     // Find types of the secondary index table's columns
 
     string directorTableKeyType;
-    string chunkIdColNameType;
-    string subChunkIdColNameType;
+    string const chunkIdColNameType = "INT";
+    string const subChunkIdColNameType = "INT";
 
     for (auto&& coldef: databaseInfo.columns.at(directorTable)) {
         if (coldef.name == directorTableKey) directorTableKeyType = coldef.type;
-        else if (coldef.name == databaseInfo.chunkIdColName) chunkIdColNameType = coldef.type;
-        else if (coldef.name == databaseInfo.subChunkIdColName) subChunkIdColNameType = coldef.type;
     }
-    if (directorTableKeyType.empty() or chunkIdColNameType.empty() or subChunkIdColNameType.empty()) {
+    if (directorTableKeyType.empty()) {
         throw logic_error(
-                "column definitions for the Object identifier or chunk/sub-chunk identifier"
-                " columns are missing in the director table schema for table '" +
+                "column definition for the director key column '" + directorTableKey +
+                "' is missing in the director table schema for table '" +
                 directorTable + "' of database '" + databaseInfo.name + "'");
     }
     
@@ -1125,11 +1130,11 @@ void HttpIngestModule::_createSecondaryIndex(DatabaseInfo const& databaseInfo) c
     queries.push_back(
         "CREATE TABLE IF NOT EXISTS " + escapedTableName +
         " (" + h.conn->sqlId(_partitionByColumn) + " " + _partitionByColumnType + "," +
-               h.conn->sqlId(directorTableKey) + " " + directorTableKeyType   + "," +
-               h.conn->sqlId(databaseInfo.chunkIdColName) + " " + chunkIdColNameType     + "," +
-               h.conn->sqlId(databaseInfo.subChunkIdColName) + " " + subChunkIdColNameType  + ","
-               " UNIQUE KEY (" + h.conn->sqlId(_partitionByColumn) + "," + h.conn->sqlId(directorTableKey) + "),"
-               " KEY (" + h.conn->sqlId(directorTableKey) + ")"
+            h.conn->sqlId(directorTableKey) + " " + directorTableKeyType   + "," +
+            h.conn->sqlId(lsst::qserv::CHUNK_COLUMN) + " " + chunkIdColNameType     + "," +
+            h.conn->sqlId(lsst::qserv::SUB_CHUNK_COLUMN) + " " + subChunkIdColNameType  + ","
+            " UNIQUE KEY (" + h.conn->sqlId(_partitionByColumn) + "," + h.conn->sqlId(directorTableKey) + "),"
+            " KEY (" + h.conn->sqlId(directorTableKey) + ")"
         ") ENGINE=InnoDB PARTITION BY LIST (" + h.conn->sqlId(_partitionByColumn) +
         ") (PARTITION `p0` VALUES IN (0) ENGINE=InnoDB)"
     );
@@ -1144,12 +1149,13 @@ void HttpIngestModule::_createSecondaryIndex(DatabaseInfo const& databaseInfo) c
 }
 
 
-void HttpIngestModule::_consolidateSecondaryIndex(DatabaseInfo const& databaseInfo) const {
+void HttpIngestModule::_consolidateSecondaryIndex(DatabaseInfo const& databaseInfo,
+                                                  string const& directorTable) const {
 
-    if (databaseInfo.directorTable.empty()) {
+    if (!databaseInfo.isDirector(directorTable)) {
         throw logic_error(
-                "director table has not been properly configured in database '" +
-                databaseInfo.name + "'");
+                "table '" + directorTable + "' is not configured in database '" +
+                databaseInfo.name + "' as the director table");
     }
 
     // Manage the new connection via the RAII-style handler to ensure the transaction
@@ -1157,7 +1163,7 @@ void HttpIngestModule::_consolidateSecondaryIndex(DatabaseInfo const& databaseIn
 
     database::mysql::ConnectionHandler const h(qservMasterDbConnection("qservMeta"));
     string const query =
-        "ALTER TABLE " + h.conn->sqlId(databaseInfo.name + "__" + databaseInfo.directorTable) +
+        "ALTER TABLE " + h.conn->sqlId(databaseInfo.name + "__" + directorTable) +
         " REMOVE PARTITIONING";
 
     debug(__func__, query);

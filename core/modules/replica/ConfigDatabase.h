@@ -67,19 +67,30 @@ public:
     /// @return The names of all tables.
     std::vector<std::string> tables() const;
 
-    std::string directorTable;          // The name of the Qserv "director" table if any.
+    /// @return The names of the "director" tables.
+    std::vector<std::string> directorTables() const;
+
+    /// Reverse dependencies from the "dependent" tables to the corresponding
+    /// "directors". The "director" tables also have entries here, although they are
+    /// guaranteed to have the empty values. The "dependent" tables are guaranteed
+    /// to have non-empty values.
+    std::map<std::string,               // The table name (partitioned tables only!).
+        std::string> directorTable;     // The name of the Qserv "director" table if any.
+
+    /// Each partitioned table will have an entry here. The key is required for
+    /// both "director" and the "dependent" tables.
     std::map<std::string,               // The table name (partitioned tables only!).
         std::string> directorTableKey;  // The name of the table's key representing object identifiers.
-                                        // NOTES: (1) In the "dependent" tables the key represents the FK
-                                        // associated with the corresponding PK of the "director" table.
-                                        // (2) The key is allowed to be empty for the partitioned tables
-                                        // that don't have any objectId-based association with
-                                        // any "director" table.
+                                        // NOTES: (1) In the "director" table this is the unique
+                                        // PK identifying table rows, (2) In the "dependent" tables
+                                        // the key represents the FK associated with the corresponding
+                                        // PK of the "director" table.
 
-    // Names of special columns of the partitioned tables.
-
-    std::string chunkIdColName;     // Same name for all partitioned tables.
-    std::string subChunkIdColName;  // Same name for all partitioned tables.
+    // Names of special columns of the partitioned tables. Each partitioned tables has
+    // an entry in both maps. Non-empty values are required for the "director" tables.
+    // Empty values are allowed for the "dependent" tables since they must have
+    // the direct association with the corresponding "director" tables via
+    // the FK -> PK relation.
 
     std::map<std::string,                   // table name
              std::string> latitudeColName;  // latitude (declination) column name
@@ -116,10 +127,9 @@ public:
     void addTable(std::string const& table,
                   std::list<SqlColDef> const& columns_=std::list<SqlColDef>(),
                   bool isPartitioned=false,
-                  bool isDirectorTable=false,
+                  bool isDirector=false,
+                  std::string const& directorTable_=std::string(),
                   std::string const& directorTableKey_=std::string(),
-                  std::string const& chunkIdColName_=std::string(),
-                  std::string const& subChunkIdColName_=std::string(),
                   std::string const& latitudeColName_=std::string(),
                   std::string const& longitudeColName_=std::string());
 

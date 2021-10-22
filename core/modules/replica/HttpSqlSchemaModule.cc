@@ -79,8 +79,8 @@ json HttpSqlSchemaModule::executeImpl(string const& subModuleName) {
 json HttpSqlSchemaModule::_getTableSchema() {
     debug(__func__);
 
-    string const database = body().required<string>("database");
-    string const table = body().required<string>("table");
+    string const database = params().at("database");
+    string const table = params().at("table");
 
     debug(__func__, "database=" + database);
     debug(__func__, "table=" + table);
@@ -88,32 +88,50 @@ json HttpSqlSchemaModule::_getTableSchema() {
     auto const config = controller()->serviceProvider()->config();
     auto const databaseInfo = config->databaseInfo(database);
 
-    // Extract schema from Master database
     json schemaJson;
-    database::mysql::ConnectionHandler const h(qservMasterDbConnection(database));
-    h.conn->executeInOwnTransaction([&](decltype(h.conn) const& conn) {
-        conn->execute("SELECT * FROM " + conn->sqlId("information_schema", "columns") +
-                      " WHERE " + conn->sqlEqual("TABLE_SCHEMA", database) +
-                      "   AND " + conn->sqlEqual("TABLE_NAME", table));
-        database::mysql::Row row;
-        while (conn->next(row)) {
-            size_t precision;
-            bool const hasPrecision = row.get("NUMERIC_PRECISION", precision);
-            size_t charMaxLength;
-            bool const hasCharMaxLength = row.get("CHARACTER_MAXIMUM_LENGTH", charMaxLength);
+    if (databaseInfo.isPublished) {
+        // Extract schema from czar's MySQL database.
+        database::mysql::ConnectionHandler const h(qservMasterDbConnection(database));
+        h.conn->executeInOwnTransaction([&](decltype(h.conn) const& conn) {
+            conn->execute("SELECT * FROM " + conn->sqlId("information_schema", "columns") +
+                        " WHERE " + conn->sqlEqual("TABLE_SCHEMA", database) +
+                        "   AND " + conn->sqlEqual("TABLE_NAME", table));
+            database::mysql::Row row;
+            while (conn->next(row)) {
+                size_t precision;
+                bool const hasPrecision = row.get("NUMERIC_PRECISION", precision);
+                size_t charMaxLength;
+                bool const hasCharMaxLength = row.get("CHARACTER_MAXIMUM_LENGTH", charMaxLength);
+                schemaJson.push_back(json::object({
+                    {"ORDINAL_POSITION",         row.getAs<size_t>("ORDINAL_POSITION")},
+                    {"COLUMN_NAME",              row.getAs<string>("COLUMN_NAME")},
+                    {"COLUMN_TYPE",              row.getAs<string>("COLUMN_TYPE")},
+                    {"DATA_TYPE",                row.getAs<string>("DATA_TYPE")},
+                    {"NUMERIC_PRECISION",        hasPrecision     ? to_string(precision)     : "NULL"},
+                    {"CHARACTER_MAXIMUM_LENGTH", hasCharMaxLength ? to_string(charMaxLength) : "NULL"},
+                    {"IS_NULLABLE",              row.getAs<string>("IS_NULLABLE")},
+                    {"COLUMN_DEFAULT",           row.getAs<string>("COLUMN_DEFAULT", "NULL")},
+                    {"COLUMN_COMMENT",           row.getAs<string>("COLUMN_COMMENT")}
+                }));
+            }
+        });
+    } else {
+        // Pull schema info from the Replication/Ingest system's database.
+        size_t ordinalPosition = 1;
+        for (auto const& coldef: databaseInfo.columns.at(table)) {
             schemaJson.push_back(json::object({
-                {"ORDINAL_POSITION",         row.getAs<size_t>("ORDINAL_POSITION")},
-                {"COLUMN_NAME",              row.getAs<string>("COLUMN_NAME")},
-                {"COLUMN_TYPE",              row.getAs<string>("COLUMN_TYPE")},
-                {"DATA_TYPE",                row.getAs<string>("DATA_TYPE")},
-                {"NUMERIC_PRECISION",        hasPrecision     ? to_string(precision)     : "NULL"},
-                {"CHARACTER_MAXIMUM_LENGTH", hasCharMaxLength ? to_string(charMaxLength) : "NULL"},
-                {"IS_NULLABLE",              row.getAs<string>("IS_NULLABLE")},
-                {"COLUMN_DEFAULT",           row.getAs<string>("COLUMN_DEFAULT", "NULL")},
-                {"COLUMN_COMMENT",           row.getAs<string>("COLUMN_COMMENT")}
+                {"ORDINAL_POSITION",         ordinalPosition++},
+                {"COLUMN_NAME",              coldef.name},
+                {"COLUMN_TYPE",              coldef.type},
+                {"DATA_TYPE",                string()},
+                {"NUMERIC_PRECISION",        string()},
+                {"CHARACTER_MAXIMUM_LENGTH", string()},
+                {"IS_NULLABLE",              string()},
+                {"COLUMN_DEFAULT",           string()},
+                {"COLUMN_COMMENT",           string()}
             }));
         }
-    });
+    }
     json result;
     result["schema"][database][table] = schemaJson;
     return result;
@@ -123,8 +141,8 @@ json HttpSqlSchemaModule::_getTableSchema() {
 json HttpSqlSchemaModule::_alterTableSchema() {
     debug(__func__);
 
-    string const database = body().required<string>("database");
-    string const table = body().required<string>("table");
+    string const database = params().at("database");
+    string const table = params().at("table");
     string const spec = body().required<string>("spec");
 
     debug(__func__, "database=" + database);

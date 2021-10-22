@@ -51,25 +51,18 @@ namespace replica {
   * Class ReplicationRequest represents a transient state of requests
   * within the master controller for creating replicas.
   */
-class ReplicationRequest : public RequestMessenger  {
-
+class ReplicationRequest: public RequestMessenger  {
 public:
-
-    /// The pointer type for instances of the class
     typedef std::shared_ptr<ReplicationRequest> Ptr;
 
     /// The function type for notifications on the completion of the request
     typedef std::function<void(Ptr)> CallbackType;
-
-    // Default construction and copy semantics are prohibited
 
     ReplicationRequest() = delete;
     ReplicationRequest(ReplicationRequest const&) = delete;
     ReplicationRequest& operator=(ReplicationRequest const&) = delete;
 
     ~ReplicationRequest() final = default;
-
-    // Trivial get methods
 
     std::string const& database()     const { return _database; }
     unsigned int       chunk()        const { return _chunk; }
@@ -79,8 +72,7 @@ public:
     ReplicationRequestParams const& targetRequestParams() const { return _targetRequestParams; }
 
     /**
-     * @return
-     *   request-specific extended data reported upon a successful
+     * @return request-specific extended data reported upon a successful
      *   completion of the request
      */
     ReplicaInfo const& responseData() const { return _replicaInfo; }
@@ -92,42 +84,19 @@ public:
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
      *
-     * @param serviceProvider
-     *   a host of services for various communications
-     *
-     * @param io_service
-     *   BOOST ASIO API
-     *
-     * @param worker
-     *   the identifier of a worker node (the one to be affected by the replication)
+     * @param serviceProvider a host of services for various communications
+     * @param io_service BOOST ASIO API
+     * @param worker the identifier of a worker node (the one to be affected by the replication)
      *   at a destination of the chunk
-     *
-     * @param sourceWorker
-     *   the identifier of a worker node at a source of the chunk
-     *
-     * @param database
-     *   the name of a database
-     *
-     * @param chunk
-     *   the number of a chunk to replicate (implies all relevant tables)
-     *
-     * @param allowDuplicate
-     *   follow a previously made request if the current one duplicates it
-     *
-     * @param onFinish
-     *   an optional callback function to be called upon a completion of the request.
-     *
-     * @param priority
-     *   a priority level of the request
-     *
-     * @param keepTracking
-     *   keep tracking the request before it finishes or fails
-     *
-     * @param messenger
-     *   worker messaging service
-     *
-     * @return
-     *   pointer to the created object
+     * @param sourceWorker the identifier of a worker node at a source of the chunk
+     * @param database the name of a database
+     * @param chunk the number of a chunk to replicate (implies all relevant tables)
+     * @param allowDuplicate follow a previously made request if the current one duplicates it
+     * @param onFinish an optional callback function to be called upon a completion of the request.
+     * @param priority a priority level of the request
+     * @param keepTracking keep tracking the request before it finishes or fails
+     * @param messenger worker messaging service
+     * @return pointer to the created object
      */
     static Ptr create(ServiceProvider::Ptr const& serviceProvider,
                       boost::asio::io_service& io_service,
@@ -145,7 +114,6 @@ public:
     std::list<std::pair<std::string,std::string>> extendedPersistentState() const override;
 
 protected:
-
     /// @see Request::startImpl()
     void startImpl(util::Lock const& lock) final;
 
@@ -155,8 +123,10 @@ protected:
     /// @see Request::savePersistentState()
     void savePersistentState(util::Lock const& lock) final;
 
-private:
+    /// @see Request::awaken()
+    void awaken(boost::system::error_code const& ec) final;
 
+private:
     /// @see ReplicationRequest::create()
     ReplicationRequest(ServiceProvider::Ptr const& serviceProvider,
                        boost::asio::io_service& io_service,
@@ -171,43 +141,24 @@ private:
                        std::shared_ptr<Messenger> const& messenger);
 
     /**
-     * Start the timer before attempting the previously failed
-     * or successful (if a status check is needed) step.
-     *
-     * @param lock
-     *   a lock on Request::_mtx must be acquired before calling this method
-     */
-    void _wait(util::Lock const& lock);
-
-    /// Callback handler for the asynchronous operation
-    void _awaken(boost::system::error_code const& ec);
-
-    /**
      * Send the serialized content of the buffer to a worker
-     *
-     * @param lock
-     *   a lock on Request::_mtx must be acquired before calling this method
+     * @param lock a lock on Request::_mtx must be acquired before calling this method
      */
     void _send(util::Lock const& lock);
 
     /**
      * Process the completion of the requested operation
-     *
-     * @param success
-     *   'true' indicates a successful response from a worker
-     * 
-     * @param message
-     *   worker response (if success)
+     * @param success 'true' indicates a successful response from a worker
+     * @param message worker response (if success)
      */
-    void _analyze(bool success,
-                  ProtocolResponseReplicate const& message);
+    void _analyze(bool success, ProtocolResponseReplicate const& message);
 
     // Input parameters
 
     std::string  const _database;
     unsigned int const _chunk;
     std::string  const _sourceWorker;
-    CallbackType       _onFinish;       /// @note reset when the request is finished
+    CallbackType       _onFinish;       ///< @note reset when the request is finished
 
     /// Request-specific parameters of the target request
     ReplicationRequestParams _targetRequestParams;

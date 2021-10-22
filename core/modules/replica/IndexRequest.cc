@@ -80,6 +80,7 @@ IndexRequest::Ptr IndexRequest::create(ServiceProvider::Ptr const& serviceProvid
                                        boost::asio::io_service& io_service,
                                        string const& worker,
                                        string const& database,
+                                       string const& directorTable,
                                        unsigned int chunk,
                                        bool hasTransactions,
                                        TransactionId transactionId,
@@ -91,6 +92,7 @@ IndexRequest::Ptr IndexRequest::create(ServiceProvider::Ptr const& serviceProvid
         io_service,
         worker,
         database,
+        directorTable,
         chunk,
         hasTransactions,
         transactionId,
@@ -106,6 +108,7 @@ IndexRequest::IndexRequest(ServiceProvider::Ptr const& serviceProvider,
                            boost::asio::io_service& io_service,
                            string const& worker,
                            string const& database,
+                           string const& directorTable,
                            unsigned int chunk,
                            bool hasTransactions,
                            TransactionId transactionId,
@@ -123,6 +126,7 @@ IndexRequest::IndexRequest(ServiceProvider::Ptr const& serviceProvider,
                          true,  // disposeRequired
                          messenger),
         _database(database),
+        _directorTable(directorTable),
         _chunk(chunk),
         _hasTransactions(hasTransactions),
         _transactionId(transactionId),
@@ -142,6 +146,7 @@ void IndexRequest::startImpl(util::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << " "
          << " worker: "          << worker()
          << " database: "        << database()
+         << " directorTable: "   << directorTable()
          << " chunk: "           << chunk()
          << " hasTransactions: " << (hasTransactions() ? "true" : "false")
          << " transactionId: "   << transactionId());
@@ -163,6 +168,7 @@ void IndexRequest::startImpl(util::Lock const& lock) {
 
     ProtocolRequestIndex message;
     message.set_database(database());
+    message.set_director_table(directorTable());
     message.set_chunk(chunk());
     message.set_has_transactions(hasTransactions());
     message.set_transaction_id(transactionId());
@@ -173,27 +179,14 @@ void IndexRequest::startImpl(util::Lock const& lock) {
 }
 
 
-void IndexRequest::_wait(util::Lock const& lock) {
-
-    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
-
-    // Always need to set the interval before launching the timer.
-
-    timer().expires_from_now(boost::posix_time::milliseconds(nextTimeIvalMsec()));
-    timer().async_wait(bind(&IndexRequest::_awaken, shared_from_base<IndexRequest>(), _1));
-}
-
-
-void IndexRequest::_awaken(boost::system::error_code const& ec) {
+void IndexRequest::awaken(boost::system::error_code const& ec) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     if (isAborted(ec)) return;
 
     if (state() == State::FINISHED) return;
-
     util::Lock lock(_mtx, context() + __func__);
-
     if (state() == State::FINISHED) return;
 
     // Serialize the Status message header and the request itself into
@@ -220,28 +213,18 @@ void IndexRequest::_awaken(boost::system::error_code const& ec) {
 
 
 void IndexRequest::_send(util::Lock const& lock) {
-
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
-
     auto self = shared_from_base<IndexRequest>();
-
     messenger()->send<ProtocolResponseIndex>(
-        worker(),
-        id(),
-        buffer(),
-        [self] (string const& id,
-                bool success,
-                ProtocolResponseIndex const& response) {
-
-            self->_analyze(success,
-                           response);
+        worker(), id(), buffer(),
+        [self] (string const& id, bool success, ProtocolResponseIndex const& response) {
+            self->_analyze(success, response);
         }
     );
 }
 
 
-void IndexRequest::_analyze(bool success,
-                            ProtocolResponseIndex const& message) {
+void IndexRequest::_analyze(bool success, ProtocolResponseIndex const& message) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "  success=" << (success ? "true" : "false"));
 
@@ -250,11 +233,8 @@ void IndexRequest::_analyze(bool success,
     // client of analyze(). So, we should take care of proper locking and watch
     // for possible state transition which might occur while the async I/O was
     // still in a progress.
-
     if (state() == State::FINISHED) return;
-
     util::Lock lock(_mtx, context() + __func__);
-
     if (state() == State::FINISHED) return;
 
     if (not success) {
@@ -263,14 +243,12 @@ void IndexRequest::_analyze(bool success,
     }
 
     // Always use  the latest status reported by the remote server
-
     setExtendedServerStatus(lock, message.status_ext());
 
     // Performance counters are updated from either of two sources,
     // depending on the availability of the 'target' performance counters
     // filled in by the 'STATUS' queries. If the later is not available
     // then fallback to the one of the current request.
-
     if (message.has_target_performance()) {
         mutablePerformance().update(message.target_performance());
     } else {
@@ -279,7 +257,6 @@ void IndexRequest::_analyze(bool success,
 
     // Always extract extended data regardless of the completion status
     // reported by the worker service.
-
     _indexInfo.error = message.error();
     _indexInfo.data  = message.data();
 
@@ -293,19 +270,20 @@ void IndexRequest::_analyze(bool success,
             finish(lock, SUCCESS);
             break;
 
+        case ProtocolStatus::CREATED:
+            keepTrackingOrFinish(lock, SERVER_CREATED);
+            break;
+
         case ProtocolStatus::QUEUED:
-            if (keepTracking()) _wait(lock);
-            else                finish(lock, SERVER_QUEUED);
+            keepTrackingOrFinish(lock, SERVER_QUEUED);
             break;
 
         case ProtocolStatus::IN_PROGRESS:
-            if (keepTracking()) _wait(lock);
-            else                finish(lock, SERVER_IN_PROGRESS);
+            keepTrackingOrFinish(lock, SERVER_IN_PROGRESS);
             break;
 
         case ProtocolStatus::IS_CANCELLING:
-            if (keepTracking()) _wait(lock);
-            else                finish(lock, SERVER_IS_CANCELLING);
+            keepTrackingOrFinish(lock, SERVER_IS_CANCELLING);
             break;
 
         case ProtocolStatus::BAD:
@@ -342,6 +320,7 @@ void IndexRequest::savePersistentState(util::Lock const& lock) {
 list<pair<string,string>> IndexRequest::extendedPersistentState() const {
     list<pair<string,string>> result;
     result.emplace_back("database",         database());
+    result.emplace_back("director_table",   directorTable());
     result.emplace_back("chunk",            to_string(chunk()));
     result.emplace_back("has_transactions", bool2str(hasTransactions()));
     result.emplace_back("transaction_id",   to_string(transactionId()));

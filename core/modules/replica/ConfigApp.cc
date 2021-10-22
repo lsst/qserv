@@ -306,18 +306,6 @@ ConfigApp::ConfigApp(int argc, char* argv[])
         " Note that this option must be provided for the 'director' tables.",
         _directorKey
     ).option(
-        "chunk-id-key",
-        "The name of a column in the 'partitioned' table indicating a column which"
-        " stores identifiers of chunks. Note that this option must be provided"
-        " for the 'partitioned' tables.",
-        _chunkIdColName
-    ).option(
-        "sub-chunk-id-key",
-        "The name of a column in the 'partitioned' table indicating a column which"
-        " stores identifiers of sub-chunks. Note that this option must be provided"
-        " for the 'partitioned' tables.",
-        _subChunkIdColName
-    ).option(
         "latitude-key",
         "The name of a column in the 'partitioned' table indicating a column which"
         " stores latitude (declination) of the object/sources. This parameter is optional.",
@@ -593,7 +581,7 @@ int ConfigApp::_addTable() {
         list<SqlColDef> noColumns;
         config()->addTable(_database, _table, _isPartitioned, noColumns,
                           _isDirector, _directorKey,
-                          _chunkIdColName, _subChunkIdColName, _latitudeColName, _longitudeColName);
+                          _latitudeColName, _longitudeColName);
     } catch (exception const& ex) {
         LOGS(_log, LOG_LVL_ERROR, "ConfigApp::" << __func__ << ": " << ex.what());
         throw;

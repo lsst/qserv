@@ -150,27 +150,14 @@ void ReplicationRequest::startImpl(util::Lock const& lock) {
 }
 
 
-void ReplicationRequest::_wait(util::Lock const& lock) {
-
-    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
-
-    // Always need to set the interval before launching the timer.
-
-    timer().expires_from_now(boost::posix_time::milliseconds(nextTimeIvalMsec()));
-    timer().async_wait(bind(&ReplicationRequest::_awaken, shared_from_base<ReplicationRequest>(), _1));
-}
-
-
-void ReplicationRequest::_awaken(boost::system::error_code const& ec) {
+void ReplicationRequest::awaken(boost::system::error_code const& ec) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     if (isAborted(ec)) return;
 
     if (state() == State::FINISHED) return;
-
     util::Lock lock(_mtx, context() + __func__);
-
     if (state() == State::FINISHED) return;
 
     // Serialize the Status message header and the request itself into
@@ -197,26 +184,17 @@ void ReplicationRequest::_awaken(boost::system::error_code const& ec) {
 
 
 void ReplicationRequest::_send(util::Lock const& lock) {
-
     auto self = shared_from_base<ReplicationRequest>();
-
     messenger()->send<ProtocolResponseReplicate>(
-        worker(),
-        id(),
-        buffer(),
-        [self] (string const& id,
-                bool success,
-                ProtocolResponseReplicate const& response) {
-
-            self->_analyze(success,
-                           response);
+        worker(), id(), buffer(),
+        [self] (string const& id, bool success, ProtocolResponseReplicate const& response) {
+            self->_analyze(success, response);
         }
     );
 }
 
 
-void ReplicationRequest::_analyze(bool success,
-                                  ProtocolResponseReplicate const& message) {
+void ReplicationRequest::_analyze(bool success, ProtocolResponseReplicate const& message) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "  success=" << (success ? "true" : "false"));
 
@@ -225,11 +203,8 @@ void ReplicationRequest::_analyze(bool success,
     // client of analyze(). So, we should take care of proper locking and watch
     // for possible state transition which might occur while the async I/O was
     // still in a progress.
-
     if (state() == State::FINISHED) return;
-
     util::Lock lock(_mtx, context() + __func__);
-
     if (state() == State::FINISHED) return;
 
     if (not success) {
@@ -238,7 +213,6 @@ void ReplicationRequest::_analyze(bool success,
     }
 
     // Always get the latest status reported by the remote server
-
     setExtendedServerStatus(lock, message.status_ext());
 
     // Performance counters are updated from either of two sources,
@@ -251,7 +225,6 @@ void ReplicationRequest::_analyze(bool success,
 
     // Always extract extended data regardless of the completion status
     // reported by the worker service.
-
     _replicaInfo = ReplicaInfo(&(message.replica_info()));
 
     // Extract target request type-specific parameters from the response
@@ -261,37 +234,34 @@ void ReplicationRequest::_analyze(bool success,
     switch (message.status()) {
 
         case ProtocolStatus::SUCCESS:
-
             serviceProvider()->databaseServices()->saveReplicaInfo(_replicaInfo);
-
             finish(lock, SUCCESS);
             break;
 
+        case ProtocolStatus::CREATED:
+            keepTrackingOrFinish(lock, SERVER_CREATED);
+            break;
+
         case ProtocolStatus::QUEUED:
-            if (keepTracking()) _wait(lock);
-            else                finish(lock, SERVER_QUEUED);
+            keepTrackingOrFinish(lock, SERVER_QUEUED);
             break;
 
         case ProtocolStatus::IN_PROGRESS:
-            if (keepTracking()) _wait(lock);
-            else                finish(lock, SERVER_IN_PROGRESS);
+            keepTrackingOrFinish(lock, SERVER_IN_PROGRESS);
             break;
 
         case ProtocolStatus::IS_CANCELLING:
-            if (keepTracking()) _wait(lock);
-            else                finish(lock, SERVER_IS_CANCELLING);
+            keepTrackingOrFinish(lock, SERVER_IS_CANCELLING);
             break;
 
         case ProtocolStatus::BAD:
 
             // Special treatment of the duplicate requests if allowed
-
             if (extendedServerStatus() == ProtocolStatusExt::DUPLICATE) {
-
                 setDuplicateRequestId(lock, message.duplicate_request_id());
-
                 if (allowDuplicate() && keepTracking()) {
-                    _wait(lock);
+                    timer().expires_from_now(boost::posix_time::milliseconds(nextTimeIvalMsec()));
+                    timer().async_wait(bind(&ReplicationRequest::awaken, shared_from_base<ReplicationRequest>(), _1));
                     return;
                 }
             }

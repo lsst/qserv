@@ -57,13 +57,9 @@ namespace replica {
  * In case of a successful completion of a request an object of this request class
  * will receive a result set (if any) of the query.
  */
-class SqlRequest : public RequestMessenger  {
+class SqlRequest: public RequestMessenger  {
 public:
-
-    /// The pointer type for instances of the class
     typedef std::shared_ptr<SqlRequest> Ptr;
-
-    // Default construction and copy semantics are prohibited
 
     SqlRequest() = delete;
     SqlRequest(SqlRequest const&) = delete;
@@ -71,19 +67,15 @@ public:
 
     ~SqlRequest() override = default;
 
-    // Trivial get methods
-
     uint64_t maxRows() const { return requestBody.max_rows(); }
 
     /// @return target request specific parameters
     SqlRequestParams const& targetRequestParams() const { return _targetRequestParams; }
 
     /**
-     * @return a reference to a result obtained from a remote service.
-     *
-     * @note
-     *   This operation will return a sensible result only if the operation
+     * @note This operation will return a sensible result only if the operation
      *   finishes with status FINISHED::SUCCESS
+     * @return a reference to a result obtained from a remote service.
      */
     SqlResultSet const& responseData() const;
 
@@ -93,41 +85,26 @@ public:
     /**
      * Make an extended print of the request which would include a result set.
      * The method will also make a call to Request::defaultPrinter().
-     * 
      * @param ptr  an object to be printed
      */
     static void extendedPrinter(Ptr const& ptr);
 
 protected:
-
     /**
      * Create a new request with specified parameters.
      *
-     * @param serviceProvider
-     *   is needed to access the Configuration and the Controller for communicating
-     *   with the worker
-     *
-     * @param io_service
-     *   a communication end-point
-     *
-     * @param worker
-     *   identifier of a worker node
-
-     * @param maxRows
-     *   (optional) limit for the maximum number of rows to be returned with the request.
+     * @param serviceProvider is needed to access the Configuration and the Controller
+     *   for communicating with the worker.
+     * @param io_service  a communication end-point
+     * @param worker identifier of a worker node
+     * @param maxRows (optional) limit for the maximum number of rows to be returned with the request.
      *   Leaving the default value of the parameter to 0 will result in not imposing any
      *   explicit restrictions on a size of the result set. Note that other, resource-defined
      *   restrictions will still apply. The later includes the maximum size of the Google Protobuf
      *   objects, the amount of available memory, etc.
-
-     * @param priority
-     *   priority level of the request
-     *
-     * @param keepTracking
-     *   keep tracking the request before it finishes or fails
-     *
-     * @param messenger
-     *   interface for communicating with workers
+     * @param priority priority level of the request
+     * @param keepTracking keep tracking the request before it finishes or fails
+     * @param messenger interface for communicating with workers
      */
     SqlRequest(ServiceProvider::Ptr const& serviceProvider,
                boost::asio::io_service& io_service,
@@ -144,6 +121,9 @@ protected:
     /// @see Request::savePersistentState()
     void savePersistentState(util::Lock const& lock) final;
 
+    /// @see Request::awaken()
+    void awaken(boost::system::error_code const& ec) final;
+
     /**
      * Request body to be sent to the worker. The content of the request is partially
      * set by this class's constructor, and it's fully initialized by the constructor
@@ -152,44 +132,18 @@ protected:
     ProtocolRequestSql requestBody;
 
 private:
-
-    /**
-     * Start the timer before attempting the previously failed
-     * or successful (if a status check is needed) step.
-     *
-     * @param lock
-     *   a lock on Request::_mtx must be acquired before calling this method
-     */
-    void _waitAsync(util::Lock const& lock);
-
-    /**
-     * Callback handler for the asynchronous operation. This method gets called
-     * when a timer started by method _waitAsync
-     *
-     * @param ec
-     *   error code to be checked
-     */
-    void _awaken(boost::system::error_code const& ec);
-
     /**
      * Send the serialized content of the buffer to a worker
-     *
-     * @param lock
-     *   a lock on Request::_mtx must be acquired before calling this method
+     * @param lock a lock on Request::_mtx must be acquired before calling this method
      */
     void _send(util::Lock const& lock);
 
     /**
      * Analyze the completion status of the requested operation
-     *
-     * @param success
-     *   'true' indicates a successful response from a worker
-     *
-     * @param response
-     *   response from a worker (if success)
+     * @param success 'true' indicates a successful response from a worker
+     * @param response response from a worker (if success)
      */
-    void _analyze(bool success,
-                  ProtocolResponseSql const& response);
+    void _analyze(bool success, ProtocolResponseSql const& response);
 
     /// Request-specific parameters of the target request
     SqlRequestParams _targetRequestParams;

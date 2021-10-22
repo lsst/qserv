@@ -41,14 +41,9 @@ namespace replica {
   * Class StatusRequestBase represents the base class for a family of requests
   * pulling a status of on-going operation.
   */
-class StatusRequestBase : public RequestMessenger {
-
+class StatusRequestBase: public RequestMessenger {
 public:
-
-    /// The pointer type for instances of the class
     typedef std::shared_ptr<StatusRequestBase> Ptr;
-
-    // Default construction and copy semantics are prohibited
 
     StatusRequestBase() = delete;
     StatusRequestBase(StatusRequestBase const&) = delete;
@@ -65,37 +60,19 @@ public:
     std::string toString(bool extended = false) const override;
 
 protected:
-
     /**
      * Construct the request
      *
-     * @param serviceProvider
-     *   a host of services for various communications
-     * 
-     * @param io_service
-     *   network communication service
-     * 
-     * @param requestName
-     *   the name of a request
-     * 
-     * @param worker
-     *   the name of a worker node (the one to be affected by the request)
-     * 
-     * @param targetRequestId
-     *   an identifier of the target request whose remote status
+     * @param serviceProvider a host of services for various communications
+     * @param io_service communication services
+     * @param requestName the name of a request
+     * @param worker the name of a worker node (the one to be affected by the request)
+     * @param targetRequestId an identifier of the target request whose remote status
      *   is going to be inspected
-     *
-     * @param targetRequestType
-     *   type of a request affected by the operation
-     *
-     * @param priority
-     *   priority level of the request
-     *
-     * @param keepTracking
-     *   keep tracking the request before it finishes or fails
-     * 
-     * @param messenger
-     *   an interface for communicating with workers
+     * @param targetRequestType type of a request affected by the operation
+     * @param priority priority level of the request
+     * @param keepTracking keep tracking the request before it finishes or fails
+     * @param messenger an interface for communicating with workers
      */
     StatusRequestBase(ServiceProvider::Ptr const& serviceProvider,
                       boost::asio::io_service& io_service,
@@ -110,26 +87,22 @@ protected:
     /// @see Request::startImpl()
     void startImpl(util::Lock const& lock) final;
 
+    /// @see Request::awaken()
+    void awaken(boost::system::error_code const& ec) final;
+
     /**
      * Initiate request-specific send. This method must be implemented
      * by subclasses.
-     *
-     * @param lock
-     *   a lock on Request::_mtx must be acquired before calling this method
+     * @param lock a lock on Request::_mtx must be acquired before calling this method
      */
     virtual void send(util::Lock const& lock) = 0;
 
     /**
      * Process the worker response to the requested operation.
-     *
-     * @param success
-     *   'true' indicates a successful response from a worker
-     * 
-     * @param status
-     *   a response from the worker service (only valid if success is 'true')
+     * @param success 'true' indicates a successful response from a worker
+     * @param status a response from the worker service (only valid if success is 'true')
      */
-    void analyze(bool success,
-                 ProtocolStatus status=ProtocolStatus::FAILED);
+    void analyze(bool success, ProtocolStatus status=ProtocolStatus::FAILED);
 
      /**
       * Initiate request-specific operation with the persistent state
@@ -143,29 +116,9 @@ protected:
     Performance _targetPerformance;
 
 private:
-
-    /**
-     * Start the timer before attempting the previously failed
-     * or successful (if a status check is needed) step.
-     *
-     * @param lock
-     *   a lock on Request::_mtx must be acquired before calling this method
-     */
-    void _wait(util::Lock const& lock);
-
-    /**
-     * Callback handler for the asynchronous operation
-     *
-     * @param ec
-     *   error condition to check
-     */
-    void _awaken(boost::system::error_code const& ec);
-
    /**
      * Serialize request data into a network buffer and send the message to a worker
-     *
-     * @param lock
-     *   a lock on Request::_mtx must be acquired before calling this method
+     * @param lock a lock on Request::_mtx must be acquired before calling this method
      */
     void _sendImpl(util::Lock const& lock);
 

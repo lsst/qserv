@@ -348,6 +348,7 @@ public:
     IndexRequestPtr index(
             std::string const& workerName,
             std::string const& database,
+            std::string const& directorTable,
             unsigned int chunk,
             bool hasTransactions,
             TransactionId transactionId,

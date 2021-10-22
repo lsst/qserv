@@ -74,6 +74,7 @@ string Request::state2string(ExtendedState state) {
         case CLIENT_ERROR:         return "CLIENT_ERROR";
         case SERVER_BAD:           return "SERVER_BAD";
         case SERVER_ERROR:         return "SERVER_ERROR";
+        case SERVER_CREATED:       return "SERVER_CREATED";
         case SERVER_QUEUED:        return "SERVER_QUEUED";
         case SERVER_IN_PROGRESS:   return "SERVER_IN_PROGRESS";
         case SERVER_IS_CANCELLING: return "SERVER_IS_CANCELLING";
@@ -86,17 +87,15 @@ string Request::state2string(ExtendedState state) {
 }
 
 
-string Request::state2string(State state,
-                             ExtendedState extendedState) {
+string Request::state2string(State state, ExtendedState extendedState) {
     return state2string(state) + "::" + state2string(extendedState);
 }
 
 
-string Request::state2string(State state,
-                             ExtendedState extendedState,
-                             replica::ProtocolStatusExt serverStatus) {
+string Request::state2string(State state, ExtendedState extendedState, replica::ProtocolStatusExt serverStatus) {
     return state2string(state, extendedState) + "::" + replica::status2string(serverStatus);
 }
+
 
 Request::Request(ServiceProvider::Ptr const& serviceProvider,
                  boost::asio::io_service& io_service,
@@ -197,14 +196,11 @@ string Request::toString(bool extended) const {
 
 
 void Request::start(shared_ptr<Controller> const& controller,
-                    string const& jobId,
-                    unsigned int requestExpirationIvalSec) {
+                    string const& jobId, unsigned int requestExpirationIvalSec) {
 
     util::Lock lock(_mtx, context() + __func__);
 
-    assertState(lock,
-                CREATED,
-                context() + __func__);
+    assertState(lock, CREATED, context() + __func__);
 
     // Change the expiration interval if requested
     if (requestExpirationIvalSec) {
@@ -266,13 +262,10 @@ void Request::expired(boost::system::error_code const& ec) {
          << (ec == boost::asio::error::operation_aborted ? "  ** ABORTED **" : ""));
 
     // Ignore this event if the timer was aborted
-
     if (ec == boost::asio::error::operation_aborted) return;
 
     if (state() == State::FINISHED) return;
-
     util::Lock lock(_mtx, context() + __func__);
-
     if (state() == State::FINISHED) return;
 
     finish(lock, TIMEOUT_EXPIRED);
@@ -284,56 +277,58 @@ void Request::cancel() {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     if (state() == State::FINISHED) return;
-
     util::Lock lock(_mtx, context() + __func__);
-
     if (state() == FINISHED) return;
 
     finish(lock, CANCELLED);
 }
 
 
-void Request::finish(util::Lock const& lock,
-                     ExtendedState extendedState) {
+void Request::keepTrackingOrFinish(util::Lock const& lock, ExtendedState extendedState) {
+    if (keepTracking()) {
+        timer().expires_from_now(boost::posix_time::milliseconds(nextTimeIvalMsec()));
+        timer().async_wait(bind(&Request::awaken, shared_from_this(), _1));
+    } else {
+        finish(lock, extendedState);
+    }
+}
+
+
+void Request::awaken(boost::system::error_code const& ec) {
+    throw runtime_error(context() + string(__func__) + "  the default implementation is not allowed.");
+}
+
+
+void Request::finish(util::Lock const& lock, ExtendedState extendedState) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     // Check if it's not too late for this operation
-
     if (state() == FINISHED) return;
 
     // We have to update the timestamp before making a state transition
     // to ensure a client gets a consistent view onto the object's state.
-
     _performance.setUpdateFinish();
 
     // Set new state to make sure all event handlers will recognize
     // this scenario and avoid making any modifications to the request's state.
-
-    setState(lock,
-             FINISHED,
-             extendedState);
+    setState(lock, FINISHED, extendedState);
 
     // Stop the timer if the one is still running
-
     _requestExpirationTimer.cancel();
 
     // Let a subclass to run its own finalization if needed
-
     finishImpl(lock);
-
     notify(lock);
 
     // Unblock threads (if any) waiting on the synchronization call
     // to method Request::wait()
-
     _finished = true;
     _onFinishCv.notify_all();
 }
 
 
 bool Request::isAborted(boost::system::error_code const& ec) const {
-
     if (ec == boost::asio::error::operation_aborted) {
         LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "  ** ABORTED **");
         return true;
@@ -342,10 +337,7 @@ bool Request::isAborted(boost::system::error_code const& ec) const {
 }
 
 
-void Request::assertState(util::Lock const& lock,
-                          State desiredState,
-                          string const& context) const {
-
+void Request::assertState(util::Lock const& lock, State desiredState, string const& context) const {
     if (desiredState != state()) {
         throw logic_error(
                 context + ": wrong state " + state2string(state()) + " instead of " +
@@ -354,17 +346,13 @@ void Request::assertState(util::Lock const& lock,
 }
 
 
-void Request::setState(util::Lock const& lock,
-                       State newState,
-                       ExtendedState newExtendedState)
+void Request::setState(util::Lock const& lock, State newState, ExtendedState newExtendedState)
 {
-    LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "  "
-         << state2string(newState, newExtendedState));
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "  "  << state2string(newState, newExtendedState));
 
     // ATTENTION: ensure the top-level state is the last to change in
     // in the transient state transition in order to guarantee a consistent
     // view on to the object's state from the client's prospective.
-
     {
         unique_lock<mutex> onFinishLock(_onFinishMtx);
         _extendedState = newExtendedState;

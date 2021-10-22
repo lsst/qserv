@@ -24,6 +24,7 @@
 // System headers
 #include <atomic>
 #include <condition_variable>
+#include <functional>
 #include <map>
 #include <memory>
 #include <iostream>
@@ -56,7 +57,7 @@ namespace replica {
   * Class Request is a base class for a family of requests within
   * the master server.
   */
-class Request : public std::enable_shared_from_this<Request>  {
+class Request: public std::enable_shared_from_this<Request>  {
 public:
     /// The pointer type for instances of the class
     typedef std::shared_ptr<Request> Ptr;
@@ -103,6 +104,9 @@ public:
         /// The request could not be implemented due to an unrecoverable
         /// server-side error.
         SERVER_ERROR,
+
+        /// The request was just created and is being waited to be queued for processing by the server
+        SERVER_CREATED,
 
         /// The request is queued for processing by the server
         SERVER_QUEUED,
@@ -192,7 +196,6 @@ public:
      *
      * @note Only the first call with the non-default pointer to the Controller
      *   will be considering for building an association with the Controller.
-     *
      * @param controller A (optional) pointer to an instance of the Controller.
      * @param jobId An (optional) identifier of a job specifying a context
      *   in which a request will be executed.
@@ -209,7 +212,6 @@ public:
 
     /**
      * Return an identifier if the owning job (if the request has started)
-     *
      * @throws std::logic_error If the request hasn't started.
      */
     std::string const& jobId() const;
@@ -218,7 +220,6 @@ public:
      * Explicitly cancel any asynchronous operation(s) and put the object into
      * the FINISHED::CANCELLED state. This operation is very similar to the
      * timeout-based request expiration, except it's requested explicitly.
-     *
      * @note This operation won't affect the remote (server-side) state
      *   of the operation in case if the request was queued.
      */
@@ -231,14 +232,13 @@ public:
     std::string context() const;
 
     /**
-     * @return a dictionary of parameters and the corresponding values to
-     *   be stored in a database for a request.
-     *
      * @note This method will be called only if the previously defined
      *   method Request::savePersistentState() has a non-trivial
      *   implementation by a subclass. Also, this method is supposed to
      *   be "lock-free" as it returns extended parameters of sub-classes
      *   which (he parameters) are set by constructors of the classes.
+     * @return a dictionary of parameters and the corresponding values to
+     *   be stored in a database for a request.
      */
     virtual std::list<std::pair<std::string,std::string>> extendedPersistentState() const {
         return std::list<std::pair<std::string,std::string>>();
@@ -261,8 +261,7 @@ public:
      */
     virtual std::string toString(bool extended = false) const;
 
-    void print(std::ostream& os = std::cout,
-               bool extended = false) const {
+    void print(std::ostream& os = std::cout, bool extended = false) const {
         os << toString(extended);
     }
 
@@ -307,6 +306,23 @@ protected:
         return std::static_pointer_cast<T>(shared_from_this());
     }
 
+    /**
+     * Based on a configuration of the request, the method would either continue tracking
+     * a progress of the request via a series of the asynchronous invocations or finish
+     * processing the request right away with the specified extended state.
+     * @param lock The lock on Request::_mtx must be acquired before calling this method.
+     * @param extendedState The finalization state to be set if the request should not resume.
+     */
+    void keepTrackingOrFinish(util::Lock const& lock, ExtendedState extendedState);
+
+    /// Callback handler for the asynchronous operation. It's invoked in a series
+    /// of the timer-triggered events to track a progress of the request.
+    /// @note The metgod must get the subclass-specif implementation for cases
+    ///  where the subclass enables the tracking.
+    /// @see request::keepTracking
+    /// @throw std::runtime_error If the default implementation of the method is called.
+    virtual void awaken(boost::system::error_code const& ec);
+
     /// @return If 'true' then track request completion (queued requests only)
     bool keepTracking() const { return _keepTracking; }
 
@@ -339,7 +355,7 @@ protected:
      * @see Request::timerIvalSec()
      *
      * After that the above mentioned (fixed) interval will always be used
-     * untill the request finishes or fails (or gets cancelled, expires, etc.)
+     * until the request finishes or fails (or gets cancelled, expires, etc.)
      *
      * This algorithm addresses three problems:
      * - it allows nearly real-time response for quick requests
@@ -362,7 +378,6 @@ protected:
 
     /**
      * Update a state of the extended status variable
-     *
      * @param lock A lock on Request::_mtx must be acquired before calling this method
      * @param status The new status to be set.
      */
@@ -371,7 +386,6 @@ protected:
 
     /**
      * Set an effective identifier of a remote (worker-side) request
-     *
      * @param lock A lock on Request::_mtx must be acquired before calling this method.
      * @param id An identifier to be set.
      */
@@ -381,9 +395,7 @@ protected:
     /**
      * This method is supposed to be provided by subclasses for additional
      * subclass-specific actions to begin processing the request.
-     *
      * @param lock A lock on Request::_mtx must be acquired before calling this method.
-     *
      */
     virtual void startImpl(util::Lock const& lock) = 0;
 
@@ -391,17 +403,14 @@ protected:
      * Request expiration timer's handler. The expiration interval (if any)
      * is configured via the configuration service. When the request expires
      * it finishes with completion status FINISHED::TIMEOUT_EXPIRED.
-     *
      * @param ec A error code to be checked.
      */
     void expired(boost::system::error_code const& ec);
 
     /**
      * Finalize request processing (as reported by subclasses)
-     *
      * @note This is supposed to be the last operation to be called by subclasses
      *   upon a completion of the request.
-     *
      * @param lock A lock on Request::_mtx must be acquired before calling this method.
      * @param extendedState The new extended state.
      */
@@ -411,7 +420,6 @@ protected:
     /**
      * This method is supposed to be provided by subclasses
      * to finalize request processing as required by the subclass.
-     *
      * @param lock A lock on Request::_mtx must be acquired before calling this method.
      */
     virtual void finishImpl(util::Lock const& lock) = 0;
@@ -436,7 +444,6 @@ protected:
      *   the caller is supposed to quit right away. It will be up to a code
      *   which initiated the abort to take care of putting the object into
      *   a proper state.
-     *
      * @param ec A error code to be checked
      * @return 'true' if the code corresponds to the operation abort
      */
@@ -448,7 +455,6 @@ protected:
      *
      * @note Normally this condition should never be seen unless there is a problem
      *   with the application implementation or the underlying run-time system.
-     *
      * @param lock A lock on Request::_mtx must be acquired before calling this method.
      * @param desiredState The desired state.
      * @param context A context from which the state test is requested.

@@ -77,8 +77,12 @@ IndexApp::IndexApp(int argc, char* argv[])
 
     parser().required(
         "database",
-        "The name of a database to inspect.",
+        "The name of a database.",
         _database
+    ).required(
+        "table",
+        "The name of the director table.",
+        _table
     ).option(
         "transaction",
         "An identifier of a super-transaction corresponding to a MySQL partition of the"
@@ -156,6 +160,7 @@ int IndexApp::runImpl() {
 
     auto const job = IndexJob::create(
         _database,
+        _table,
         _transactionId != numeric_limits<TransactionId>::max(),
         _transactionId,
         _allWorkers,

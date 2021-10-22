@@ -274,7 +274,8 @@ message ProtocolRequestSql {
 message ProtocolRequestIndex {
 
     required string database = 2;
-    required uint32 chunk    = 3;
+    required string director_table = 6;
+    required uint32 chunk = 3;
     required bool   has_transactions = 4;
 
     // An identifier of a super-transaction corresponding to a MySQL partition

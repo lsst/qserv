@@ -89,27 +89,14 @@ void StopRequestBase::startImpl(util::Lock const& lock) {
 }
 
 
-void StopRequestBase::_wait(util::Lock const& lock) {
-
-    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
-
-    // Always need to set the interval before launching the timer.
-
-    timer().expires_from_now(boost::posix_time::seconds(timerIvalSec()));
-    timer().async_wait(bind(&StopRequestBase::_awaken, shared_from_base<StopRequestBase>(), _1));
-}
-
-
-void StopRequestBase::_awaken(boost::system::error_code const& ec) {
+void StopRequestBase::awaken(boost::system::error_code const& ec) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     if (isAborted(ec)) return;
 
     if (state() == State::FINISHED) return;
-
     util::Lock lock(_mtx, context() + __func__);
-
     if (state() == State::FINISHED) return;
 
     _sendImpl(lock);
@@ -143,8 +130,7 @@ void StopRequestBase::_sendImpl(util::Lock const& lock) {
 }
 
 
-void StopRequestBase::analyze(bool success,
-                              ProtocolStatus status) {
+void StopRequestBase::analyze(bool success, ProtocolStatus status) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "  success=" << (success ? "true" : "false"));
 
@@ -153,11 +139,8 @@ void StopRequestBase::analyze(bool success,
     // client of analyze(). So, we should take care of proper locking and watch
     // for possible state transition which might occur while the async I/O was
     // still in a progress.
-
     if (state() == State::FINISHED) return;
-
     util::Lock lock(_mtx, context() + __func__);
-
     if (state() == State::FINISHED) return;
 
     if (not success) {
@@ -168,25 +151,24 @@ void StopRequestBase::analyze(bool success,
     switch (status) {
 
         case ProtocolStatus::SUCCESS:
-
             saveReplicaInfo();
-
             finish(lock, SUCCESS);
             break;
 
+        case ProtocolStatus::CREATED:
+            keepTrackingOrFinish(lock, SERVER_CREATED);
+            break;
+
         case ProtocolStatus::QUEUED:
-            if (keepTracking()) _wait(lock);
-            else                finish(lock, SERVER_QUEUED);
+            keepTrackingOrFinish(lock, SERVER_QUEUED);
             break;
 
         case ProtocolStatus::IN_PROGRESS:
-            if (keepTracking()) _wait(lock);
-            else                finish(lock, SERVER_IN_PROGRESS);
+            keepTrackingOrFinish(lock, SERVER_IN_PROGRESS);
             break;
 
         case ProtocolStatus::IS_CANCELLING:
-            if (keepTracking()) _wait(lock);
-            else                finish(lock, SERVER_IS_CANCELLING);
+            keepTrackingOrFinish(lock, SERVER_IS_CANCELLING);
             break;
 
         case ProtocolStatus::BAD:

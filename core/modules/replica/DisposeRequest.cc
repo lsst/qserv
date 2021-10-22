@@ -146,9 +146,7 @@ void DisposeRequest::startImpl(util::Lock const& lock) {
 void DisposeRequest::_send(util::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
     messenger()->send<ProtocolResponseDispose>(
-        worker(),
-        id(),
-        buffer(),
+        worker(), id(), buffer(),
         // Don't forward the first parameter (request's identifier) of the callback
         // to the response's analyzer. A value of the identifier is already known
         // in a context of the method.
@@ -157,19 +155,15 @@ void DisposeRequest::_send(util::Lock const& lock) {
 }
 
 
-void DisposeRequest::_analyze(bool success,
-                              ProtocolResponseDispose const& message) {
+void DisposeRequest::_analyze(bool success, ProtocolResponseDispose const& message) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "  success=" << (success ? "true" : "false"));
 
     if (state() == State::FINISHED) return;
-
     util::Lock lock(_mtx, context() + __func__);
-
     if (state() == State::FINISHED) return;
 
     // This type of request (if delivered to a worker and if a response from
     // the worker is received) is always considered as "successful".
-
     if (success) {
         _responseData = DisposeRequestResult(message);
     }

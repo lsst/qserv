@@ -575,6 +575,10 @@ void ControllerApp::_configureParserCommandINDEX() {
         "The name of an existing database where the table is residing.",
         _sqlDatabase
     ).required(
+        "table",
+        "The name of an existing 'director' table to be affected by the operation.",
+        _sqlTable
+    ).required(
         "chunk",
         "The chunk number.",
         _chunkNumber
@@ -770,7 +774,7 @@ int ControllerApp::runImpl() {
         bool const hasTransactions = _transactionId != numeric_limits<TransactionId>::max();
 
         request = controller->index(
-            _workerName, _sqlDatabase, _chunkNumber, hasTransactions, _transactionId,
+            _workerName, _sqlDatabase, _sqlTable, _chunkNumber, hasTransactions, _transactionId,
             [&] (IndexRequest::Ptr const& request_) {
                 Request::defaultPrinter(request_);
                 request_->responseData().print(_indexFileName);

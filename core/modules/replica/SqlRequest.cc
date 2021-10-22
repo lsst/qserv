@@ -158,27 +158,14 @@ void SqlRequest::startImpl(util::Lock const& lock) {
 }
 
 
-void SqlRequest::_waitAsync(util::Lock const& lock) {
-
-    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
-
-    // Always need to set the interval before launching the timer.
-
-    timer().expires_from_now(boost::posix_time::milliseconds(nextTimeIvalMsec()));
-    timer().async_wait(bind(&SqlRequest::_awaken, shared_from_base<SqlRequest>(),_1));
-}
-
-
-void SqlRequest::_awaken(boost::system::error_code const& ec) {
+void SqlRequest::awaken(boost::system::error_code const& ec) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     if (isAborted(ec)) return;
 
     if (state() == State::FINISHED) return;
-
     util::Lock lock(_mtx, context() + __func__);
-
     if (state() == State::FINISHED) return;
 
     // Serialize the Status message header and the status request's body into
@@ -205,15 +192,10 @@ void SqlRequest::_awaken(boost::system::error_code const& ec) {
 
 
 void SqlRequest::_send(util::Lock const& lock) {
-
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
-
     auto self = shared_from_base<SqlRequest>();
-
     messenger()->send<ProtocolResponseSql>(
-        worker(),
-        id(),
-        buffer(),
+        worker(), id(), buffer(),
         [self] (string const& id, bool success, ProtocolResponseSql const& response) {
             self->_analyze(success, response);
         }
@@ -221,8 +203,7 @@ void SqlRequest::_send(util::Lock const& lock) {
 }
 
 
-void SqlRequest::_analyze(bool success,
-                          ProtocolResponseSql const& response) {
+void SqlRequest::_analyze(bool success, ProtocolResponseSql const& response) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "  success=" << (success ? "true" : "false"));
 
@@ -231,11 +212,8 @@ void SqlRequest::_analyze(bool success,
     // client of _analyze(). So, we should take care of proper locking and watch
     // for possible state transition which might occur while the async I/O was
     // still in a progress.
-
     if (state() == State::FINISHED) return;
-
     util::Lock lock(_mtx, context() + __func__);
-
     if (state() == State::FINISHED) return;
 
     if (not success) {
@@ -244,14 +222,12 @@ void SqlRequest::_analyze(bool success,
     }
 
     // Always use  the latest status reported by the remote server
-
     setExtendedServerStatus(lock, response.status_ext());
 
     // Performance counters are updated from either of two sources,
     // depending on the availability of the 'target' performance counters
     // filled in by the 'STATUS' queries. If the later is not available
     // then fallback to the one of the current request.
-
     if (response.has_target_performance()) {
         mutablePerformance().update(response.target_performance());
     } else {
@@ -260,10 +236,8 @@ void SqlRequest::_analyze(bool success,
 
     // Always extract extended data regardless of the completion status
     // reported by the worker service.
-
     _responseData.set(response);
-    _responseData.performanceSec =
-        (PerformanceUtils::now() - performance(lock).c_create_time) / 1000.;
+    _responseData.performanceSec = (PerformanceUtils::now() - performance(lock).c_create_time) / 1000.;
 
     // Extract target request type-specific parameters from the response
     if (response.has_request()) {
@@ -275,19 +249,20 @@ void SqlRequest::_analyze(bool success,
             finish(lock, SUCCESS);
             break;
 
+        case ProtocolStatus::CREATED:
+            keepTrackingOrFinish(lock, SERVER_CREATED);
+            break;
+
         case ProtocolStatus::QUEUED:
-            if (keepTracking()) _waitAsync(lock);
-            else                finish(lock, SERVER_QUEUED);
+            keepTrackingOrFinish(lock, SERVER_QUEUED);
             break;
 
         case ProtocolStatus::IN_PROGRESS:
-            if (keepTracking()) _waitAsync(lock);
-            else                finish(lock, SERVER_IN_PROGRESS);
+            keepTrackingOrFinish(lock, SERVER_IN_PROGRESS);
             break;
 
         case ProtocolStatus::IS_CANCELLING:
-            if (keepTracking()) _waitAsync(lock);
-            else                finish(lock, SERVER_IS_CANCELLING);
+            keepTrackingOrFinish(lock, SERVER_IS_CANCELLING);
             break;
 
         case ProtocolStatus::BAD:

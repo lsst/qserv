@@ -32,6 +32,7 @@
 #include "boost/filesystem.hpp"
 
 // Qserv headers
+#include "global/constants.h"
 #include "replica/Configuration.h"
 #include "replica/DatabaseMySQL.h"
 #include "replica/Performance.h"
@@ -208,14 +209,18 @@ string WorkerIndexRequest::_query(database::mysql::Connection::Ptr const& conn) 
 
     auto const config = serviceProvider()->config();
     auto const databaseInfo = config->databaseInfo(_request.database());
-    string const& directorTable = databaseInfo.directorTable;
+    string const& directorTable = _request.director_table();
 
-    if (directorTable.empty() or
-        (databaseInfo.directorTableKey.count(directorTable) == 0) or
-        databaseInfo.directorTableKey.at(directorTable).empty() or
-        databaseInfo.chunkIdColName.empty() or databaseInfo.subChunkIdColName.empty()) {
+    if (!databaseInfo.isDirector(directorTable)) {
         throw invalid_argument(
-                "director table has not been properly configured in database '" +
+                "table '" + directorTable + "' is not been configured as director in database '" +
+                databaseInfo.name + "'");
+
+    }
+    if ((databaseInfo.directorTableKey.count(directorTable) == 0) or
+        databaseInfo.directorTableKey.at(directorTable).empty()) {
+        throw invalid_argument(
+                "director table '" + directorTable + "' has not been properly configured in database '" +
                 databaseInfo.name + "'");
     }
     string const& directorTableKey = databaseInfo.directorTableKey.at(directorTable);
@@ -231,35 +236,34 @@ string WorkerIndexRequest::_query(database::mysql::Connection::Ptr const& conn) 
     string const qservTransId = _request.has_transactions() ? "qserv_trans_id" : string();
     string qservTransIdType;
     string directorTableKeyType;
-    string chunkIdColNameType;
     string subChunkIdColNameType;
 
     for (auto&& coldef: databaseInfo.columns.at(directorTable)) {
         if      (not qservTransId.empty() and coldef.name == qservTransId) qservTransIdType = coldef.type;
         else if (coldef.name == directorTableKey) directorTableKeyType = coldef.type;
-        else if (coldef.name == databaseInfo.chunkIdColName) chunkIdColNameType = coldef.type;
-        else if (coldef.name == databaseInfo.subChunkIdColName) subChunkIdColNameType = coldef.type;
+        else if (coldef.name == lsst::qserv::SUB_CHUNK_COLUMN) subChunkIdColNameType = coldef.type;
     }
     if ((not qservTransId.empty() and qservTransIdType.empty()) or
         directorTableKeyType.empty() or
-        chunkIdColNameType.empty() or
         subChunkIdColNameType.empty()) {
 
         throw invalid_argument(
-                "column definitions for the Object identifier or chunk/sub-chunk identifier"
+                "column definitions for the Object identifier or sub-chunk identifier"
                 " columns are missing in the director table schema for table '" +
-                databaseInfo.directorTable + "' of database '" + databaseInfo.name + "'");
+                directorTable + "' of database '" + databaseInfo.name + "'");
     }
 
+    // NOTE: injecting the chunk number into each row of the result set because
+    // the chunk-id column is optional.
     string const columnsEscaped =
         (qservTransId.empty() ? string() : conn->sqlId(qservTransId) + ",") +
         conn->sqlId(directorTableKey) + "," +
-        conn->sqlId(databaseInfo.chunkIdColName) + "," +
-        conn->sqlId(databaseInfo.subChunkIdColName);
+        to_string(_request.chunk()) + "," +
+        conn->sqlId(lsst::qserv::SUB_CHUNK_COLUMN);
 
     string const databaseTableEscaped =
         conn->sqlId(databaseInfo.name) + "." +
-        conn->sqlId(databaseInfo.directorTable + "_" + to_string(_request.chunk()));
+        conn->sqlId(directorTable + "_" + to_string(_request.chunk()));
 
     string const partitionRestrictorEscaped =
         qservTransId.empty() ? string() : "PARTITION (" + conn->sqlPartitionId(_request.transaction_id()) + ")";

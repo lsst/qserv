@@ -527,17 +527,13 @@ DatabaseInfo Configuration::addDatabase(string const& database, std::string cons
     info.name = database;
     info.family = family;
     info.isPublished = false;   // the new database can't be published at this time
-    info.chunkIdColName = string();
-    info.subChunkIdColName = string();
 
     if (_connectionPtr != nullptr) {
         _connectionPtr->executeInOwnTransaction([&info](decltype(_connectionPtr) conn) {
             conn->executeInsertQuery("config_database",
                                      info.name,
                                      info.family,
-                                     info.isPublished ? 1 : 0,
-                                     info.chunkIdColName,
-                                     info.subChunkIdColName);
+                                     info.isPublished ? 1 : 0);
         });
     }
     _databases[info.name] = info;
@@ -574,29 +570,24 @@ void Configuration::deleteDatabase(string const& name) {
 
 DatabaseInfo Configuration::addTable(
         string const& database, string const& table, bool isPartitioned, list<SqlColDef> const& columns,
-        bool isDirectorTable, string const& directorTableKey, string const& chunkIdColName,
-        string const& subChunkIdColName, string const& latitudeColName, string const& longitudeColName) {
+        bool isDirectorTable, string const& directorTable, string const& directorTableKey,
+        string const& latitudeColName, string const& longitudeColName) {
 
     util::Lock const lock(_mtx, _context(__func__));
     DatabaseInfo& databaseInfo = _databaseInfo(lock, database);
-    databaseInfo.addTable(table, columns, isPartitioned, isDirectorTable, directorTableKey,
-                          chunkIdColName, subChunkIdColName, latitudeColName, longitudeColName);
+    databaseInfo.addTable(table, columns, isPartitioned,
+                          isDirectorTable, directorTable, directorTableKey,
+                          latitudeColName, longitudeColName);
     if (_connectionPtr != nullptr) {
         _connectionPtr->executeInOwnTransaction([&](decltype(_connectionPtr) conn) {
             conn->executeInsertQuery("config_database_table",
-                                     database, table, isPartitioned, isDirectorTable,
-                                     directorTableKey, latitudeColName, longitudeColName);
+                                     database, table, isPartitioned,
+                                     directorTable, directorTableKey, latitudeColName, longitudeColName);
             int colPosition = 0;
             for (auto&& coldef: columns) {
                 conn->executeInsertQuery("config_database_table_schema",
                                          database, table, colPosition++,  // column position
                                          coldef.name, coldef.type);
-            }
-            if (isPartitioned) {
-                conn->executeSimpleUpdateQuery("config_database",
-                                               conn->sqlEqual("database", databaseInfo.name),
-                                               make_pair("chunk_id_key", chunkIdColName),
-                                               make_pair("sub_chunk_id_key", subChunkIdColName));
             }
         });
     }
@@ -607,6 +598,7 @@ DatabaseInfo Configuration::addTable(
 DatabaseInfo Configuration::deleteTable(string const& database, string const& table) {
     util::Lock const lock(_mtx, _context(__func__));
     DatabaseInfo& databaseInfo = _databaseInfo(lock, database);
+    databaseInfo.removeTable(table);
     if (_connectionPtr != nullptr) {
         _connectionPtr->executeInOwnTransaction([&](decltype(_connectionPtr) conn) {
             conn->execute("DELETE FROM " + conn->sqlId("config_database_table") +
@@ -614,7 +606,6 @@ DatabaseInfo Configuration::deleteTable(string const& database, string const& ta
                           " AND " + conn->sqlEqual("table", table));
         });
     }
-    databaseInfo.removeTable(table);
     return databaseInfo;
 }
 
