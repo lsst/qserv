@@ -127,7 +127,7 @@ protected:
      * @param requestName  The name of a request.
      * @param worker  The name of a worker.
      * @param requestType  A type of a request.
-     * @param onFinish  The callback function to be called upon a completion of the request.
+     * @param priority  A priority level of a request.
      * @param messenger  The messaging service for workers.
      */
     ServiceManagementRequestBase(ServiceProvider::Ptr const& serviceProvider,
@@ -135,6 +135,7 @@ protected:
                                  char const* requestName,
                                  std::string const& worker,
                                  ProtocolServiceRequestType requestType,
+                                 int priority,
                                  std::shared_ptr<Messenger> const& messenger);
 
     /// @see Request::startImpl()

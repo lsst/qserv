@@ -213,6 +213,7 @@ void ClusterHealthJob::startImpl(util::Lock const& lock) {
             [self] (ServiceStatusRequest::Ptr request) {
                 self->_onRequestFinish(request);
             },
+            options(lock).priority,
             id(),   /* jobId */
             timeoutSec()
         );

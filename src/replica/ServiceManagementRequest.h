@@ -125,8 +125,9 @@ public:
      * low-level pointers).
      *
      * @param serviceProvider provides various services for the application
-     * @param worker identifier of a worker node (the one to be affected by the request)
      * @param io_service network communication service (BOOST ASIO)
+     * @param worker identifier of a worker node (the one to be affected by the request)
+     * @param priority a priority level of the request
      * @param onFinish callback function to be called upon a completion of the request
      * @param messenger messenger service for workers
      */
@@ -134,6 +135,7 @@ public:
                       boost::asio::io_service& io_service,
                       std::string const& worker,
                       CallbackType const& onFinish,
+                      int priority,
                       std::shared_ptr<Messenger> const& messenger) {
         return ServiceManagementRequest<POLICY>::Ptr(
             new ServiceManagementRequest<POLICY>(
@@ -142,6 +144,7 @@ public:
                 POLICY::requestName(),
                 worker,
                 POLICY::requestType(),
+                priority,
                 onFinish,
                 messenger));
     }
@@ -157,6 +160,7 @@ private:
                              char const* requestName,
                              std::string const& worker,
                              ProtocolServiceRequestType requestType,
+                             int priority,
                              CallbackType const& onFinish,
                              std::shared_ptr<Messenger> const& messenger)
         :   ServiceManagementRequestBase(serviceProvider,
@@ -164,6 +168,7 @@ private:
                                          requestName,
                                          worker,
                                          requestType,
+                                         priority,
                                          messenger),
             _onFinish(onFinish) {
     }

@@ -45,10 +45,19 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
-// Constants
-
 /// The number of the 'overflow' chunks
 unsigned int const overflowChunkNumber = 1234567890;
+
+// Standard priorities for requests and jobs. Activities that can be run in background
+// should be started with the lowest priority. Urgent operations may need to assume
+// one of the high priority levels. The default priority level should be set
+// to PRIORITY_NORMAL.
+
+int const PRIORITY_VERY_LOW  = 1;
+int const PRIORITY_LOW       = 2;
+int const PRIORITY_NORMAL    = 3;
+int const PRIORITY_HIGH      = 4;
+int const PRIORITY_VERY_HIGH = 5;
 
 /// Return the string representation of the extended status
 std::string status2string(ProtocolStatusExt status);

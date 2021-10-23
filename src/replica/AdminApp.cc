@@ -70,7 +70,31 @@ AdminApp::AdminApp(int argc, char* argv[])
     parser().commands(
         "operation",
         {"STATUS", "SUSPEND", "RESUME", "REQUESTS", "DRAIN"},
-        _operation);
+        _operation
+    ).option(
+        "priority",
+        "The priority level of the request.",
+        _priority
+    ).option(
+        "timeout",
+        "Maximum timeout (seconds) for the management requests.",
+        _requestExpirationIvalSec
+    ).flag(
+        "all-workers",
+        "The flag for selecting all workers regardless of their status (DISABLED or READ-ONLY).",
+        _allWorkers
+    ).flag(
+        "progress-report",
+        "The flag triggering progress report when executing batches of requests.",
+        _progressReport
+    ).flag(
+        "error-report",
+        "The flag triggering detailed report on failed requests.",
+        _errorReport
+    ).flag(
+        "tables-vertical-separator",
+        "Print vertical separator when displaying tabular data in reports.",
+        _verticalSeparator);
 
     parser().command("STATUS").description(
         "Retrieve and display the status of each worker.");
@@ -85,40 +109,14 @@ AdminApp::AdminApp(int argc, char* argv[])
 
     parser().command("REQUESTS").description(
         "Retrieve and display the information of all (regardless of their processing status)"
-        " requests from all workers.");
-
-    parser().command("REQUESTS").flag(
+        " requests from all workers."
+    ).flag(
         "dump-request-info",
         "Print detailed info on requests obtained from the workers.",
         _dumpRequestInfo);
 
     parser().command("DRAIN").description(
         "Cancel the in-progress (if any) requests on all workers, then empty all queues.");
-
-    parser().option(
-        "timeout",
-        "Maximum timeout (seconds) for the management request.s",
-        _requestExpirationIvalSec);
-
-    parser().flag(
-        "all-workers",
-        "The flag for selecting all workers regardless of their status (DISABLED or READ-ONLY).",
-        _allWorkers);
-
-    parser().flag(
-        "progress-report",
-        "The flag triggering progress report when executing batches of requests.",
-        _progressReport);
-
-    parser().flag(
-        "error-report",
-        "The flag triggering detailed report on failed requests.",
-        _errorReport);
-
-    parser().flag(
-        "tables-vertical-separator",
-        "Print vertical separator when displaying tabular data in reports.",
-        _verticalSeparator);
 }
 
 
@@ -143,6 +141,7 @@ int AdminApp::runImpl() {
                 controller->statusOfWorkerService(
                     worker,
                     [&tracker] (ServiceStatusRequest::Ptr const& ptr) { tracker.onFinish(ptr); },
+                    _priority,
                     emptyJobId,
                     _requestExpirationIvalSec));
 
@@ -151,6 +150,7 @@ int AdminApp::runImpl() {
                 controller->suspendWorkerService(
                     worker,
                     [&tracker] (ServiceSuspendRequest::Ptr const& ptr) { tracker.onFinish(ptr); },
+                    _priority,
                     emptyJobId,
                     _requestExpirationIvalSec));
 
@@ -159,6 +159,7 @@ int AdminApp::runImpl() {
                 controller->resumeWorkerService(
                     worker,
                     [&tracker] (ServiceResumeRequest::Ptr const& ptr) { tracker.onFinish(ptr); },
+                    _priority,
                     emptyJobId,
                     _requestExpirationIvalSec));
 
@@ -167,6 +168,7 @@ int AdminApp::runImpl() {
                 controller->requestsOfWorkerService(
                     worker,
                     [&tracker] (ServiceRequestsRequest::Ptr const& ptr) { tracker.onFinish(ptr); },
+                    _priority,
                     emptyJobId,
                     _requestExpirationIvalSec));
 
@@ -175,6 +177,7 @@ int AdminApp::runImpl() {
                 controller->drainWorkerService(
                     worker,
                     [&tracker] (ServiceDrainRequest::Ptr const& ptr) { tracker.onFinish(ptr); },
+                    _priority,
                     emptyJobId,
                     _requestExpirationIvalSec));
 

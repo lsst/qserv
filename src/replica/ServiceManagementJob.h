@@ -228,12 +228,14 @@ protected:
 
     /// @see ServiceManagementBaseJob::submitRequest()
     ServiceManagementRequestBase::Ptr submitRequest(std::string const& worker) final {
+        util::Lock const lock(_mtx, context() + std::string(__func__) + " worker='" + worker + "'");
         auto const self = shared_from_base<ServiceManagementJob<REQUEST>>();
         return controller()->template workerServiceRequest<REQUEST>(
             worker,
             [self] (typename REQUEST::Ptr const& ptr) {
                 self->onRequestFinish(ptr);
             },
+            options(lock).priority,
             id(),
             requestExpirationIvalSec()
         );

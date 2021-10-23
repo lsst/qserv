@@ -182,12 +182,13 @@ ServiceManagementRequestBase::ServiceManagementRequestBase(
                                     char const* requestName,
                                     string const& worker,
                                     ProtocolServiceRequestType requestType,
+                                    int priority,
                                     shared_ptr<Messenger> const& messenger)
     :   RequestMessenger(serviceProvider,
                          io_service,
                          requestName,
                          worker,
-                         0,     // priority
+                         priority,
                          false, // keepTracking
                          false, // allowDuplicate
                          false, // disposeRequired
