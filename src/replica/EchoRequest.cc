@@ -171,7 +171,7 @@ void EchoRequest::_send(util::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
     auto self = shared_from_base<EchoRequest>();
     messenger()->send<ProtocolResponseEcho>(
-        worker(), id(), buffer(),
+        worker(), id(), priority(), buffer(),
         [self] (string const& id, bool success, ProtocolResponseEcho const& response) {
             self->_analyze(success, response);
         }

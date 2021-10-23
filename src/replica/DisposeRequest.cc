@@ -146,7 +146,7 @@ void DisposeRequest::startImpl(util::Lock const& lock) {
 void DisposeRequest::_send(util::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
     messenger()->send<ProtocolResponseDispose>(
-        worker(), id(), buffer(),
+        worker(), id(), priority(), buffer(),
         // Don't forward the first parameter (request's identifier) of the callback
         // to the response's analyzer. A value of the identifier is already known
         // in a context of the method.

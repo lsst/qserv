@@ -186,7 +186,7 @@ void ReplicationRequest::awaken(boost::system::error_code const& ec) {
 void ReplicationRequest::_send(util::Lock const& lock) {
     auto self = shared_from_base<ReplicationRequest>();
     messenger()->send<ProtocolResponseReplicate>(
-        worker(), id(), buffer(),
+        worker(), id(), priority(), buffer(),
         [self] (string const& id, bool success, ProtocolResponseReplicate const& response) {
             self->_analyze(success, response);
         }
@@ -219,7 +219,6 @@ void ReplicationRequest::_analyze(bool success, ProtocolResponseReplicate const&
     // depending on the availability of the 'target' performance counters
     // filled in by the 'STATUS' queries. If the later is not available
     // then fallback to the one of the current request.
-
     if (message.has_target_performance()) mutablePerformance().update(message.target_performance());
     else                                  mutablePerformance().update(message.performance());
 

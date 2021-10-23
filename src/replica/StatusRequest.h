@@ -282,12 +282,12 @@ protected:
     void send(util::Lock const& lock) final {
         auto self = shared_from_base<StatusRequest<POLICY>>();
         messenger()->send<typename POLICY::ResponseMessageType>(
-            worker(), id(), buffer(),
-            [self] (std::string const& id, bool success,
-                    typename POLICY::ResponseMessageType const& response) {
-                if (success) self->analyze(true, self->_parseResponse(response));
-                else self->analyze(false);
-            }
+                worker(), id(), priority(), buffer(),
+                [self] (std::string const& id, bool success,
+                        typename POLICY::ResponseMessageType const& response) {
+                    if (success) self->analyze(true, self->_parseResponse(response));
+                    else self->analyze(false);
+                }
         );
     }
 
