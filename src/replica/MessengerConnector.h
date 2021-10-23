@@ -22,17 +22,21 @@
 #define LSST_QSERV_REPLICA_MESSENGERCONNECTOR_H
 
 // System headers
+#include <algorithm>
 #include <functional>
 #include <list>
+#include <map>
 #include <memory>
 #include <stdexcept>
 #include <string>
+#include <vector>
 
 // Third party headers
 #include "boost/asio.hpp"
 
 // Qserv headers
 #include "replica/Configuration.h"
+#include "replica/MessageQueue.h"
 #include "replica/protocol.pb.h"
 #include "replica/ProtocolBuffer.h"
 #include "replica/ServiceProvider.h"
@@ -62,6 +66,9 @@ public:
     /// @return A unique identifier of the request.
     std::string const& id() const { return _id; }
 
+    /// @return The priority lane of the request.
+    int priority() const { return _priority; }
+
     /// @return A pointer onto a buffer with a serialized request.
     std::shared_ptr<ProtocolBuffer> const& requestBufferPtr() const { return _requestBufferPtr; }
 
@@ -90,24 +97,25 @@ protected:
      * need to set this state explicitly unless a request turns out to be
      * a success.
      * @param id  A unique identifier of the request.
+     * @param priority  The priority level of a request.
      * @param requestBufferPtr  The input buffer with serialized request.
      * @param responseBufferCapacityBytes  The initial capacity of the response buffer.
      */
     MessageWrapperBase(std::string const& id,
-                std::shared_ptr<ProtocolBuffer> const& requestBufferPtr,
-                size_t responseBufferCapacityBytes)
+                       int priority,
+                       std::shared_ptr<ProtocolBuffer> const& requestBufferPtr,
+                       size_t responseBufferCapacityBytes)
         :   _success(false),
             _id(id),
+            _priority(priority),
             _requestBufferPtr(requestBufferPtr),
             _responseBuffer(responseBufferCapacityBytes) {
     }
 
 private:
-    /// The completion status to be returned to a subscriber.
-    bool _success;
-
-    /// A unique identifier of the request.
-    std::string _id;
+    bool        _success;   ///< The completion status to be returned to a subscriber.
+    std::string _id;        ///< A unique identifier of the request.
+    int         _priority;  ///< The priority level of a request.
 
     /// The buffer with a serialized request.
     std::shared_ptr<ProtocolBuffer> _requestBufferPtr;
@@ -122,7 +130,7 @@ private:
  * treatment (including serialization) of responses from workers.
  */
 template <class RESPONSE_TYPE>
-class MessageWrapper : public MessageWrapperBase {
+class MessageWrapper: public MessageWrapperBase {
 public:
     typedef std::function<void(std::string const&, bool, RESPONSE_TYPE const&)> CallbackType;
 
@@ -135,16 +143,18 @@ public:
     /**
      * The constructor.
      * @param id  A unique identifier of the request.
+     * @param priority  The priority level of a request.
      * @param requestBufferPtr  A request serialized into a network buffer.
      * @param responseBufferCapacityBytes  The initial size of the response buffer.
      * @param onFinish  An asynchronous callback function called upon the completion
      *    or failure of the operation.
      */
     MessageWrapper(std::string const& id,
+                   int priority,
                    std::shared_ptr<ProtocolBuffer> const& requestBufferPtr,
                    size_t responseBufferCapacityBytes,
                    CallbackType const& onFinish)
-        :   MessageWrapperBase(id, requestBufferPtr, responseBufferCapacityBytes),
+        :   MessageWrapperBase(id, priority, requestBufferPtr, responseBufferCapacityBytes),
             _onFinish(onFinish) {
     }
 
@@ -236,17 +246,18 @@ public:
      * request 'id'.
      *
      * @param id  A unique identifier of a request.
+     * @param priority  The priority level of a request.
      * @param requestBufferPtr  A request serialized into a network buffer.
      * @param onFinish  An asynchronous callback function called upon a completion
      *   or failure of the operation.
      */
     template <class RESPONSE_TYPE>
     void send(std::string const& id,
+              int priority,
               std::shared_ptr<ProtocolBuffer> const& requestBufferPtr,
               typename MessageWrapper<RESPONSE_TYPE>::CallbackType const& onFinish) {
-
         _sendImpl(std::make_shared<MessageWrapper<RESPONSE_TYPE>>(
-                id, requestBufferPtr, _bufferCapacityBytes, onFinish));
+                id, priority, requestBufferPtr, _bufferCapacityBytes, onFinish));
     }
 
     /**
@@ -448,17 +459,6 @@ private:
     /// @return the worker-specific context string
     std::string _context() const;
 
-    /**
-     * Find a request matching the specified identifier.
-    * @param lock  A lock on MessengerConnector::_mtx must be acquired before
-     *   calling this method.
-     * @param id  An identifier of the request.
-     * @return  A pointer to the request if found, or an empty pointer otherwise.
-     */
-    MessageWrapperBase::Ptr _find(util::Lock const& lock,
-                                  std::string const& id) const;
-
-
     // Input parameters.
 
     ServiceProvider::Ptr const _serviceProvider;
@@ -487,8 +487,8 @@ private:
     /// and threads submitting requests.
     mutable util::Mutex _mtx;
 
-    /// The queue (FIFO) of requests.
-    std::list<MessageWrapperBase::Ptr> _requests;
+    /// The priority-based queue of requests.
+    MessageQueue<MessageWrapperBase> _requests;
 
     /// The currently processed (being sent) request (if any, otherwise
     /// the pointer is set to nullptr).

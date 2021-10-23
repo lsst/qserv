@@ -22,10 +22,6 @@
 // Class header
 #include "replica/MessengerConnector.h"
 
-// System headers
-#include <functional>
-#include <stdexcept>
-
 // Third party headers
 #include "boost/date_time/posix_time/posix_time.hpp"
 
@@ -125,8 +121,11 @@ void MessengerConnector::stop() {
                 }
 
                 // Also cancel the queued requests and notify their owners
-                for (auto&& ptr: _requests) requests2notify.push_back(ptr);
-                _requests.clear();
+                while (true) {
+                    auto const ptr = _requests.front();
+                    if (ptr == nullptr) break;
+                    requests2notify.push_back(ptr);
+                }
                 break;
     
             default:
@@ -152,11 +151,7 @@ void MessengerConnector::cancel(string const& id) {
          << "  id=" << id);
 
     // Remove request from the queue (if it's still there)
-    _requests.remove_if(
-        [&id] (MessageWrapperBase::Ptr const& ptr) {
-            return ptr->id() == id;
-        }
-    );
+    _requests.remove(id);
 
     // Also, if the request is already being processed then terminate all
     // communications with a worker.
@@ -179,7 +174,7 @@ bool MessengerConnector::exists(string const& id) const {
          << "  _currentRequest=" << (_currentRequest ? _currentRequest->id() : "")
          << "  _requests.size=" << _requests.size()
          << "  id=" << id);
-    return _find(lock, id) != nullptr;
+    return _requests.find(id) != nullptr;
 }
 
 
@@ -192,10 +187,10 @@ void MessengerConnector::_sendImpl(MessageWrapperBase::Ptr const& ptr) {
          << "  _requests.size=" << _requests.size()
          << "  id=" << ptr->id());
 
-    if (_find(lock, ptr->id()) != nullptr) {
+    if (_requests.find(ptr->id()) != nullptr) {
         throw logic_error(
-                "MessengerConnector::" + string(__func__) +
-                "  the request is already registered for id:" + ptr->id());
+                "MessengerConnector::" + string(__func__)
+                + "  the request is already registered for id:" + ptr->id());
     }
 
     // Register the request
@@ -383,7 +378,6 @@ void MessengerConnector::_sendRequest(util::Lock const& lock) {
     // Pull the next available request (if any) from the queue.
     if (_requests.empty()) return;
     _currentRequest = _requests.front();
-    _requests.pop_front();
 
     LOGS(_log, LOG_LVL_DEBUG, _context() << __func__ << ":1"
          << "  _currentRequest=" << (_currentRequest ? _currentRequest->id() : "")
@@ -609,17 +603,6 @@ bool MessengerConnector::_failed(boost::system::error_code const& ec) const {
 string MessengerConnector::_context() const {
     return "MESSENGER-CONNECTION [worker=" + _workerInfo.name + ", state=" +
             _state2string(_state) + "]  ";
-}
-
-
-MessageWrapperBase::Ptr MessengerConnector::_find(util::Lock const& lock,
-                                                  string const& id) const {
-    auto itr = find_if(_requests.begin(), _requests.end(),
-                       [&id] (MessageWrapperBase::Ptr const& ptr) {
-                           return ptr->id() == id;
-                       });
-
-    return _requests.end() == itr ? MessageWrapperBase::Ptr() : *itr;
 }
 
 }}} // namespace lsst::qserv::replica

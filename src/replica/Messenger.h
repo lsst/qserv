@@ -90,6 +90,7 @@ public:
      * 
      * @param worker  The name of a worker.
      * @param id  A unique identifier of a request.
+     * @param priority  The priority level of a request.
      * @param requestBufferPtr  A request serialized into a network buffer.
      * @param onFinish  An asynchronous callback function called upon a completion
      *   or failure of the operation
@@ -97,9 +98,10 @@ public:
     template <class RESPONSE_TYPE>
     void send(std::string const& worker,
               std::string const& id,
+              int priority,
               std::shared_ptr<ProtocolBuffer> const& requestBufferPtr,
               std::function<void(std::string const&, bool, RESPONSE_TYPE const&)> onFinish) {
-        _connector(worker)->send<RESPONSE_TYPE>(id, requestBufferPtr, onFinish);
+        _connector(worker)->send<RESPONSE_TYPE>(id, priority, requestBufferPtr, onFinish);
     }
 
     /**
