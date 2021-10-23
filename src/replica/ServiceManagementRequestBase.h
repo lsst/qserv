@@ -55,8 +55,8 @@ struct ServiceState {
     // Its state
     enum State {
         SUSPEND_IN_PROGRESS = 0,
-        SUSPENDED           = 1,
-        RUNNING             = 2
+        SUSPENDED = 1,
+        RUNNING = 2
     };
     State state;
 
@@ -91,19 +91,13 @@ std::ostream& operator<< (std::ostream &os, const ServiceState &ss);
  * managing worker-side replication service. The only variable parameter of this
  * class is a specific type of the management request.
  *
- * @note
- *   that this class can't be instantiated directly. It serves as an implementation
+ * @note  That this class can't be instantiated directly. It serves as an implementation
  *   of the protocol. All final customizations and type-specific operations are
  *   provided via a generic subclass.
  */
-class ServiceManagementRequestBase : public RequestMessenger {
-
+class ServiceManagementRequestBase: public RequestMessenger {
 public:
-
-    /// The pointer type for instances of the class
     typedef std::shared_ptr<ServiceManagementRequestBase> Ptr;
-
-    // Default construction and copy semantics are prohibited
 
     ServiceManagementRequestBase() = delete;
     ServiceManagementRequestBase(ServiceManagementRequestBase const&) = delete;
@@ -112,48 +106,29 @@ public:
     ~ServiceManagementRequestBase() override = default;
 
     /**
-     * @return
-     *   the state of the worker-side service
-     * 
-     * @throw std::logic_error
-     *   if the request's primary state is not 'FINISHED' and its extended state
-     *   is neither 'SUCCESS' or 'SERVER_ERROR'.
+     * @throw std::logic_error If the request's primary state is not 'FINISHED' and its
+     *   extended state is neither 'SUCCESS' or 'SERVER_ERROR'.
+     * @return  The state of the worker-side service.
      */
     ServiceState const& getServiceState() const;
 
     /**
      * Make an extended print of the request which would include a result set.
-     * The method will also make a call to Request::defaultPrinter().
-     * 
-     * @param ptr  an object to be printed
+     * The method will also make a call to Request::defaultPrinter(). 
+     * @param ptr  An object to be printed.
      */
     static void extendedPrinter(Ptr const& ptr);
 
 protected:
-
     /**
      * Construct the request with the pointer to the services provider.
-     *
-     * @param serviceProvider
-     *   provides various services for the application
-     *
-     * @param io_service
-     *   network communication service (BOOST ASIO)
-     *
-     * @param requestName
-     *   name of a request
-     *
-     * @param worker
-     *   name of a worker
-     *
-     * @param requestType
-     *   type of a request
-     *
-     * @param onFinish
-     *   callback function to be called upon a completion of the request
-     *
-     * @param messenger
-     *   messaging service for workers
+     * @param serviceProvider  Provides various services for the application.
+     * @param io_service  The asynchronous I/O communication services (BOOST ASIO).
+     * @param requestName  The name of a request.
+     * @param worker  The name of a worker.
+     * @param requestType  A type of a request.
+     * @param onFinish  The callback function to be called upon a completion of the request.
+     * @param messenger  The messaging service for workers.
      */
     ServiceManagementRequestBase(ServiceProvider::Ptr const& serviceProvider,
                                  boost::asio::io_service& io_service,
@@ -161,6 +136,7 @@ protected:
                                  std::string const& worker,
                                  ProtocolServiceRequestType requestType,
                                  std::shared_ptr<Messenger> const& messenger);
+
     /// @see Request::startImpl()
     void startImpl(util::Lock const& lock) final;
 
@@ -168,18 +144,12 @@ protected:
     void savePersistentState(util::Lock const& lock) final;
 
 private:
-
     /**
      * Process the worker response to the requested operation.
-     *
-     * @param success
-     *   'true' indicates a successful response from a worker
-     *
-     * @param message
-     *   a response from the worker service (if success is 'true')
+     * @param success 'true' indicates a successful response from a worker.
+     * @param message  A response message from the worker service (if success is 'true').
      */
-    void _analyze(bool success,
-                  ProtocolServiceResponse const& message);
+    void _analyze(bool success,  ProtocolServiceResponse const& message);
 
     /// Request type
     ProtocolServiceRequestType const _requestType;

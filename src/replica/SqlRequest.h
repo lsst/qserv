@@ -92,7 +92,6 @@ public:
 protected:
     /**
      * Create a new request with specified parameters.
-     *
      * @param serviceProvider is needed to access the Configuration and the Controller
      *   for communicating with the worker.
      * @param io_service  a communication end-point

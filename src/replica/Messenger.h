@@ -49,14 +49,9 @@ namespace replica {
  * to and from worker services. It provides connection multiplexing and automatic
  * reconnects.
  */
-class Messenger : public std::enable_shared_from_this<Messenger> {
-
+class Messenger: public std::enable_shared_from_this<Messenger> {
 public:
-
-    /// The pointer type for instances of the class
     typedef std::shared_ptr<Messenger> Ptr;
-
-    // Default construction and copy semantics are prohibited
 
     Messenger() = delete;
     Messenger(Messenger const&) = delete;
@@ -71,16 +66,11 @@ public:
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
      *
-     * @param serviceProvider
-     *   a host of services for various communications
-     *
-     * @param io_service
-     *   the I/O service for communication. The lifespan of
+     * @param serviceProvider  Services of the Replication Framework.
+     * @param io_service  The I/O service for communication. The lifespan of
      *   the object must exceed the one of this instance
      *   of the Messenger.
-     *
-     * @return
-     *   pointer to the created object
+     * @return  A pointer to the created object.
      */
     static Ptr create(ServiceProvider::Ptr const& serviceProvider,
                       boost::asio::io_service& io_service);
@@ -94,101 +84,60 @@ public:
      * Initiate sending a message
      *
      * The response message will be initialized only in case of successful completion
-     * of the transaction. The method may throw exception std::invalid_argument if
+     * of the request. The method may throw exception std::invalid_argument if
      * the worker name is not valid, and std::logic_error if the Messenger already
-     * has another transaction registered with the same transaction 'id'.
+     * has another request registered with the same request 'id'.
      * 
-     * @param worker
-     *   the name of a worker
-     *
-     * @param id
-     *   a unique identifier of a request
-     *
-     * @param requestBufferPtr
-     *   a request serialized into a network buffer
-     *
-     * @param onFinish
-     *   an asynchronous callback function called upon a completion
+     * @param worker  The name of a worker.
+     * @param id  A unique identifier of a request.
+     * @param requestBufferPtr  A request serialized into a network buffer.
+     * @param onFinish  An asynchronous callback function called upon a completion
      *   or failure of the operation
      */
     template <class RESPONSE_TYPE>
-    void send(std::string  const& worker,
-              std::string  const& id,
+    void send(std::string const& worker,
+              std::string const& id,
               std::shared_ptr<ProtocolBuffer> const& requestBufferPtr,
-              std::function<void(std::string const&,
-                                 bool,
-                                 RESPONSE_TYPE const&)> onFinish) {
-
-        // Forward the request to the corresponding worker
-        _connector(worker)->send<RESPONSE_TYPE>(id,
-                                                requestBufferPtr,
-                                                onFinish);
+              std::function<void(std::string const&, bool, RESPONSE_TYPE const&)> onFinish) {
+        _connector(worker)->send<RESPONSE_TYPE>(id, requestBufferPtr, onFinish);
     }
 
     /**
-     * Cancel an outstanding transaction
+     * Cancel an outstanding request
      *
      * If this call succeeds there won't be any 'onFinish' callback made
      * as provided to the 'onFinish' method in method 'send'.
      *
      * For unknown worker names exception std::invalid_argument will be
      * thrown. The method may also throw std::logic_error if the Messenger
-     * doesn't have a transaction registered with the specified transaction 'id'.
+     * doesn't have a request registered with the specified request 'id'.
      *
-     * @param worker
-     *   the name of a worker
-     *
-     * @param id
-     *   a unique identifier of a request
-     *
-     * @return
-     *   the completion status of the operation
+     * @param worker  The name of a worker.
+     * @param id  A unique identifier of a request.
+     * @return  The completion status of the operation.
      */
-    void cancel(std::string const& worker,
-                std::string const& id);
+    void cancel(std::string const& worker, std::string const& id);
 
     /**
      * Return 'true' if the specified request is known to the Messenger
      *
-     * @param worker
-     *   the name of a worker
-     *
-     * @param id
-     *   a unique identifier of a request
+     * @param worker The name of a worker.
+     * @param id  A unique identifier of a request.
      */
-    bool exists(std::string const& worker,
-                std::string const& id) const;
+    bool exists(std::string const& worker, std::string const& id) const;
 
 private:
-
-    /**
-     * The constructor
-     *
-     * @param serviceProvider
-     *   a host of services for various communications
-     *
-     * @param io_service
-     *   the I/O service for communication. The lifespan of
-     *   the object must exceed the one of this instance
-     *   of the Messenger.
-     */
+    /// @see Messenger::create()
     Messenger(ServiceProvider::Ptr const& serviceProvider,
               boost::asio::io_service& io_service);
 
     /**
      * Locate and return a connector for the specified worker
-     *
-     * @param
-     *   the name of a worker
-     *
-     * @return
-     *   a pointer to the connector
-     *
-     * @throw std::invalid_argument
-     *   if the worker is unknown.
+     * @param  The name of a worker.
+     * @return  A pointer to the connector.
+     * @throw std::invalid_argument  If the worker is unknown.
      */
     MessengerConnector::Ptr const& _connector(std::string const& worker) const;
-
 
     /// Connection providers for individual workers
     std::map<std::string, MessengerConnector::Ptr> _workerConnector;

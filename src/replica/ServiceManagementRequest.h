@@ -101,12 +101,11 @@ public:
   * to allow further policy-based customization of specific requests.
   */
 template <typename POLICY>
-class ServiceManagementRequest : public ServiceManagementRequestBase {
+class ServiceManagementRequest: public ServiceManagementRequestBase {
 public:
     /// Inject the into a namespace of the class
     typedef POLICY Policy;
 
-    /// The pointer type for instances of the class
     typedef std::shared_ptr<ServiceManagementRequest<POLICY>> Ptr;
 
     /// The function type for notifications on the completion of the request
@@ -136,7 +135,6 @@ public:
                       std::string const& worker,
                       CallbackType const& onFinish,
                       std::shared_ptr<Messenger> const& messenger) {
-
         return ServiceManagementRequest<POLICY>::Ptr(
             new ServiceManagementRequest<POLICY>(
                 serviceProvider,

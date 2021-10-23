@@ -44,7 +44,6 @@ namespace replica {
  */
 class SqlDropIndexesRequest: public SqlRequest {
 public:
-    /// The pointer type for instances of the class
     typedef std::shared_ptr<SqlDropIndexesRequest> Ptr;
 
     /// The function type for notifications on the completion of the request
@@ -104,7 +103,7 @@ private:
                           bool keepTracking,
                           std::shared_ptr<Messenger> const& messenger);
 
-    CallbackType _onFinish; /// @note is reset when the request finishes
+    CallbackType _onFinish; ///< @note is reset when the request finishes
 };
 
 }}} // namespace lsst::qserv::replica

@@ -37,26 +37,17 @@ namespace replica {
  * Class AdminApp implements a Controller application for launching
  * worker management requests.
  */
-class AdminApp : public Application {
-
+class AdminApp: public Application {
 public:
-
-    /// The pointer type for instances of the class
     typedef std::shared_ptr<AdminApp> Ptr;
 
     /**
      * The factory method is the only way of creating objects of this class
      * because of the very base class's inheritance from 'enable_shared_from_this'.
-     *
-     * @param argc
-     *   the number of command-line arguments
-     *
-     * @param argv
-     *   the vector of command-line arguments
+     * @param argc  The number of command-line arguments.
+     * @param argv  The vector of command-line arguments.
      */
     static Ptr create(int argc, char* argv[]);
-
-    // Default construction and copy semantics are prohibited
 
     AdminApp() = delete;
     AdminApp(AdminApp const&) = delete;
@@ -65,35 +56,32 @@ public:
     ~AdminApp() override = default;
 
 protected:
-
     /// @see Application::runImpl()
     int runImpl() final;
 
 private:
-
     /// @see AdminApp::create()
     AdminApp(int argc, char* argv[]);
 
-
-    /// The name of an operation to execute
+    /// The name of an operation to execute.
     std::string _operation;
 
-    /// The flag which if set allows selecting all workers for the operation
+    /// The flag which if set allows selecting all workers for the operation.
     bool _allWorkers = false;
 
-    /// The flag which if set will trigger detailed report on remote requests
+    /// The flag which if set will trigger detailed report on remote requests.
     bool _dumpRequestInfo = false;
 
-    /// The maximum timeout for the management requests
+    /// The maximum timeout for the management requests.
     unsigned int _requestExpirationIvalSec = 10;
 
-    /// the flag triggering progress report when executing batches of requests
+    /// The flag triggering progress report when executing batches of requests.
     bool _progressReport = false;
 
-    /// the flag triggering detailed report on failed requests
+    /// The flag triggering detailed report on failed requests.
     bool _errorReport = false;
 
-    /// Print vertical separator in tables
+    /// Print vertical separator in tables.
     bool _verticalSeparator = false;
 };
 

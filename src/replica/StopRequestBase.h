@@ -65,8 +65,7 @@ public:
 
 protected:
     /**
-     * Construct the request
-     *
+     * Construct the request.
      * @param serviceProvider a host of services for accessing Configuration, saving request's
      *   state in the database, etc.
      * @param io_service communication services
@@ -98,8 +97,7 @@ protected:
     void awaken(boost::system::error_code const& ec) final;
 
     /**
-     * Initiate request-specific send. This method must be implemented
-     * by subclasses.
+     * Initiate request-specific send.
      * @param lock a lock on Request::_mtx must be acquired before calling this method
      */
     virtual void send(util::Lock const& lock) = 0;
@@ -114,8 +112,6 @@ protected:
     /**
      * Initiate request-specific operation with the persistent state
      * service to store replica status.
-     *
-     * This method must be implemented by subclasses.
      */
     virtual void saveReplicaInfo() = 0;
 

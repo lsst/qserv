@@ -43,7 +43,7 @@ namespace replica {
  * Class GetStatusQservMgtRequest is a request for obtaining various info
  * (status, counters, monitoring) reported the Qserv workers.
  */
-class GetStatusQservMgtRequest : public QservMgtRequest {
+class GetStatusQservMgtRequest: public QservMgtRequest {
 public:
     typedef std::shared_ptr<GetStatusQservMgtRequest> Ptr;
 
@@ -60,7 +60,6 @@ public:
      * Static factory method is needed to prevent issues with the lifespan
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
-     *
      * @param serviceProvider A reference to a provider of services for accessing
      *   Configuration, saving the request's persistent state to the database.
      * @param worker The name of a worker to send the request to.
@@ -99,7 +98,6 @@ private:
 
     /**
      * Carry over results of the request into a local storage.
-     * 
      * @param lock A lock on QservMgtRequest::_mtx must be acquired by a caller of the method.
      * @param info The data string returned by a worker.
      */
@@ -109,7 +107,7 @@ private:
     // Input parameters
 
     std::string const _data;
-    CallbackType      _onFinish;    /// @note this object is reset after finishing the request
+    CallbackType      _onFinish;    ///< @note this object is reset after finishing the request
 
     /// A request to the remote services
     wpublish::GetStatusQservRequest::Ptr _qservRequest;

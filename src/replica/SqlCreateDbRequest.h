@@ -38,16 +38,12 @@ namespace replica {
  * Class SqlCreateDbRequest represents Controller-side requests for initiating
  * queries for creating databases at a remote worker nodes.
  */
-class SqlCreateDbRequest : public SqlRequest {
+class SqlCreateDbRequest: public SqlRequest {
 public:
-
-    /// The pointer type for instances of the class
     typedef std::shared_ptr<SqlCreateDbRequest> Ptr;
 
     /// The function type for notifications on the completion of the request
     typedef std::function<void(Ptr)> CallbackType;
-
-    // Default construction and copy semantics are prohibited
 
     SqlCreateDbRequest() = delete;
     SqlCreateDbRequest(SqlCreateDbRequest const&) = delete;
@@ -64,33 +60,15 @@ public:
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
      *
-     * @param serviceProvider
-     *   is needed to access the Configuration and the Controller for communicating
-     *   with the worker
-     *
-     * @param io_service
-     *   a communication end-point
-     *
-     * @param worker
-     *   identifier of a worker node
-     *
-     * @param database
-     *   the name of a database to be created
-     *
-     * @param onFinish
-     *   (optional) callback function to call upon completion of the request
-     *
-     * @param priority
-     *   priority level of the request
-     *
-     * @param keepTracking
-     *   keep tracking the request before it finishes or fails
-     *
-     * @param messenger
-     *   interface for communicating with workers
-     *
-     * @return
-     *   pointer to the created object
+     * @param serviceProvider  Services of the Replication framework.
+     * @param io_service  Asynchronous communication services.
+     * @param worker  A unique identifier of a worker node.
+     * @param database  The name of a database to be created.
+     * @param onFinish  The (optional) callback function to call upon completion of the request.
+     * @param priority  A priority level of the request.
+     * @param keepTracking  Keep tracking the request before it finishes or fails.
+     * @param messenger  An service for communications with workers.
+     * @return A pointer to the created object.
      */
     static Ptr create(ServiceProvider::Ptr const& serviceProvider,
                       boost::asio::io_service& io_service,
@@ -102,12 +80,10 @@ public:
                       std::shared_ptr<Messenger> const& messenger);
 
 protected:
-
     /// @see Request::notify()
     void notify(util::Lock const& lock) final;
 
 private:
-
     /// @see SqlCreateDbRequest::create()
     SqlCreateDbRequest(ServiceProvider::Ptr const& serviceProvider,
                        boost::asio::io_service& io_service,
@@ -118,7 +94,7 @@ private:
                        bool keepTracking,
                        std::shared_ptr<Messenger> const& messenger);
 
-    CallbackType _onFinish; /// @note is reset when the request finishes
+    CallbackType _onFinish; ///< @note is reset when the request finishes
 };
 
 }}} // namespace lsst::qserv::replica

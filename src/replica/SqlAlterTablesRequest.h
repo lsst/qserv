@@ -44,7 +44,6 @@ namespace replica {
  */
 class SqlAlterTablesRequest: public SqlRequest {
 public:
-    /// The pointer type for instances of the class
     typedef std::shared_ptr<SqlAlterTablesRequest> Ptr;
 
     /// The function type for notifications on the completion of the request
@@ -58,7 +57,6 @@ public:
 
     /**
      * Create a new request with specified parameters.
-     *
      * @param serviceProvider Is needed to access the Configuration and
      *   the Controller for communicating with the worker.
      * @param io_service The BOOST ASIO communication end-point.
@@ -71,7 +69,6 @@ public:
      * @param priority A priority level of the request.
      * @param keepTracking Keep tracking the request before it finishes or fails.
      * @param messenger An interface for communicating with workers.
-     *
      * @return A smart pointer to the created object.
      */
     static Ptr create(ServiceProvider::Ptr const& serviceProvider,
@@ -100,7 +97,7 @@ private:
                           bool keepTracking,
                           std::shared_ptr<Messenger> const& messenger);
 
-    CallbackType _onFinish; /// @note is reset when the request finishes
+    CallbackType _onFinish; ///< @note is reset when the request finishes
 };
 
 }}} // namespace lsst::qserv::replica
