@@ -46,16 +46,6 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
-Job::Options const& PurgeJob::defaultOptions() {
-    static Job::Options const options{
-        -1,     /* priority */
-        false,  /* exclusive */
-        true    /* exclusive */
-    };
-    return options;
-}
-
-
 string PurgeJob::typeName() { return "PurgeJob"; }
 
 
@@ -65,14 +55,14 @@ PurgeJob::Ptr PurgeJob::create(
                         Controller::Ptr const& controller,
                         string const& parentJobId,
                         CallbackType const& onFinish,
-                        Job::Options const& options) {
+                        int priority) {
     return PurgeJob::Ptr(
         new PurgeJob(databaseFamily,
                      numReplicas,
                      controller,
                      parentJobId,
                      onFinish,
-                     options));
+                     priority));
 }
 
 
@@ -81,11 +71,11 @@ PurgeJob::PurgeJob(string const& databaseFamily,
                    Controller::Ptr const& controller,
                    string const& parentJobId,
                    CallbackType const& onFinish,
-                   Job::Options const& options)
+                   int priority)
     :   Job(controller,
             parentJobId,
             "PURGE",
-            options),
+            priority),
         _databaseFamily(databaseFamily),
         _numReplicas(numReplicas ?
                      numReplicas :
@@ -184,7 +174,8 @@ void PurgeJob::startImpl(util::Lock const& lock) {
         id(),
         [self] (FindAllJob::Ptr job) {
             self->_onPrecursorJobFinish();
-        }
+        },
+        priority()
     );
     _findAllJob->start();
 }
@@ -467,7 +458,7 @@ size_t PurgeJob::_launchNext(util::Lock const& lock,
             [self] (DeleteReplicaJob::Ptr const& job) {
                 self->_onDeleteJobFinish(job);
             },
-            options(lock)   // inherit from the current job
+            priority()  // inherit from the current job
         );
         job->start();
         _jobs.push_back(job);

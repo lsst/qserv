@@ -94,10 +94,14 @@ PurgeApp::PurgeApp(int argc, char* argv[])
 
 int PurgeApp::runImpl() {
 
+    string const noParentJobId;
     auto const job = PurgeJob::create(
         _databaseFamily,
         _replicas,
-        Controller::create(serviceProvider())
+        Controller::create(serviceProvider()),
+        noParentJobId,
+        nullptr,    // no callback
+        PRIORITY_NORMAL
     );
     job->start();
     job->wait();

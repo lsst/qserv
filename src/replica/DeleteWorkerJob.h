@@ -89,9 +89,6 @@ public:
     /// The function type for notifications on the completion of the request
     typedef std::function<void(Ptr)> CallbackType;
 
-    /// @return default options object for this type of a request
-    static Job::Options const& defaultOptions();
-
     /// @return the unique name distinguishing this class from other types of jobs
     static std::string typeName();
 
@@ -111,20 +108,20 @@ public:
      *   for launching requests
      *
      * @param parentJobId
-     *   optional identifier of a parent job
+     *   an identifier of the parent job
      *
      * @param onFinish
-     *   optional callback function to be called upon a completion of the job
+     *   the callback function to be called upon a completion of the job
      *
-     * @param options
-     *   (optional) job options
+     * @param priority
+     *   the priority level of the job
      */
     static Ptr create(std::string const& worker,
                       bool permanentDelete,
                       Controller::Ptr const& controller,
-                      std::string const& parentJobId=std::string(),
-                      CallbackType const& onFinish=nullptr,
-                      Job::Options const& options=defaultOptions());
+                      std::string const& parentJobId,
+                      CallbackType const& onFinish,
+                      int priority);
 
     // Default construction and copy semantics are prohibited
 
@@ -186,7 +183,7 @@ private:
                     Controller::Ptr const& controller,
                     std::string const& parentJobId,
                     CallbackType const& onFinish,
-                    Job::Options const& options);
+                    int priority);
 
     /**
      * Begin the actual sequence of actions for removing the worker

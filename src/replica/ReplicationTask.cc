@@ -59,22 +59,24 @@ bool ReplicationTask::onRun() {
 
     bool const saveReplicaInfo = true;
     bool const allWorkers = false;
+    int const priority =
+            serviceProvider()->config()->get<int>("controller", "catalog_management_priority_level");
 
-    launch<FindAllJob>(saveReplicaInfo, allWorkers);
+    launch<FindAllJob>(priority, saveReplicaInfo, allWorkers);
     sync(_qservSyncTimeoutSec);
 
-    launch<FixUpJob>();
+    launch<FixUpJob>(priority);
     sync(_qservSyncTimeoutSec);
 
-    launch<ReplicateJob>(_numReplicas);
+    launch<ReplicateJob>(priority, _numReplicas);
     sync(_qservSyncTimeoutSec);
 
     bool const estimateOnly = false;
-    launch<RebalanceJob>(estimateOnly);
+    launch<RebalanceJob>(priority, estimateOnly);
     sync(_qservSyncTimeoutSec);
 
     if (_purge) {
-        launch<PurgeJob>(_numReplicas);
+        launch<PurgeJob>(priority, _numReplicas);
         sync(_qservSyncTimeoutSec);
     }
 

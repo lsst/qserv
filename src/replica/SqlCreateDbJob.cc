@@ -56,7 +56,7 @@ SqlCreateDbJob::Ptr SqlCreateDbJob::create(
         Controller::Ptr const& controller,
         string const& parentJobId,
         CallbackType const& onFinish,
-        Job::Options const& options) {
+        int priority) {
 
     return Ptr(new SqlCreateDbJob(
         database,
@@ -64,7 +64,7 @@ SqlCreateDbJob::Ptr SqlCreateDbJob::create(
         controller,
         parentJobId,
         onFinish,
-        options
+        priority
     ));
 }
 
@@ -74,13 +74,13 @@ SqlCreateDbJob::SqlCreateDbJob(string const& database,
                                Controller::Ptr const& controller,
                                string const& parentJobId,
                                CallbackType const& onFinish,
-                               Job::Options const& options)
+                               int priority)
     :   SqlJob(0,
                allWorkers,
                controller,
                parentJobId,
                "SQL_CREATE_DATABASE",
-               options),
+               priority),
         _database(database),
         _onFinish(onFinish) {
 }
@@ -111,7 +111,7 @@ list<SqlRequest::Ptr> SqlCreateDbJob::launchRequests(util::Lock const& lock,
                 [self] (SqlCreateDbRequest::Ptr const& request) {
                     self->onRequestFinish(request);
                 },
-                options(lock).priority,
+                priority(),
                 true,   /* keepTracking*/
                 id()    /* jobId */
             )

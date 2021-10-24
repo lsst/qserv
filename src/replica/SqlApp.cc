@@ -406,51 +406,72 @@ int SqlApp::runImpl() {
     }
 
     auto const controller = Controller::create(serviceProvider());
+    string const noParentJobId;
     SqlJob::Ptr job;
     if(_command == "ALTER_TABLES") {
-        job = SqlAlterTablesJob::create(_database, _table, _alterSpec, _allWorkers, controller);
+        job = SqlAlterTablesJob::create(
+                _database, _table, _alterSpec, _allWorkers, controller,
+                noParentJobId, nullptr, PRIORITY_NORMAL);
     } else if(_command == "QUERY") {
-        job = SqlQueryJob::create(_query, _mysqlUser, _mysqlPassword, _maxRows,
-                                  _allWorkers, controller);
+        job = SqlQueryJob::create(
+                _query, _mysqlUser, _mysqlPassword, _maxRows, _allWorkers, controller,
+                noParentJobId, nullptr, PRIORITY_NORMAL);
     } else if(_command == "CREATE_DATABASE") {
-        job = SqlCreateDbJob::create(_database, _allWorkers, controller);
+        job = SqlCreateDbJob::create(
+                _database, _allWorkers, controller,
+                noParentJobId, nullptr, PRIORITY_NORMAL);
     } else if(_command == "DELETE_DATABASE") {
-        job = SqlDeleteDbJob::create(_database, _allWorkers, controller);
+        job = SqlDeleteDbJob::create(
+                _database, _allWorkers, controller,
+                noParentJobId, nullptr, PRIORITY_NORMAL);
     } else if(_command == "ENABLE_DATABASE") {
-        job = SqlEnableDbJob::create(_database, _allWorkers, controller);
+        job = SqlEnableDbJob::create(
+                _database, _allWorkers, controller,
+                noParentJobId, nullptr, PRIORITY_NORMAL);
     } else if(_command == "DISABLE_DATABASE") {
-        job = SqlDisableDbJob::create(_database, _allWorkers, controller);
+        job = SqlDisableDbJob::create(
+                _database, _allWorkers, controller,
+                noParentJobId, nullptr, PRIORITY_NORMAL);
     } else if(_command == "GRANT_ACCESS") {
-        job = SqlGrantAccessJob::create(_database, _mysqlUser, _allWorkers, controller);
+        job = SqlGrantAccessJob::create(
+                _database, _mysqlUser, _allWorkers, controller,
+                noParentJobId, nullptr, PRIORITY_NORMAL);
     } else if(_command == "CREATE_TABLE") {
-        job = SqlCreateTableJob::create(_database, _table, _engine, _partitionByColumn,
-                                        SqlSchemaUtils::readFromTextFile(_schemaFile),
-                                        _allWorkers, controller);
+        job = SqlCreateTableJob::create(
+                _database, _table, _engine, _partitionByColumn,
+                SqlSchemaUtils::readFromTextFile(_schemaFile), _allWorkers, controller,
+                noParentJobId, nullptr, PRIORITY_NORMAL);
     } else if(_command == "CREATE_TABLES") {
-        job = SqlCreateTablesJob::create(_database, _table, _engine, _partitionByColumn,
-                                         SqlSchemaUtils::readFromTextFile(_schemaFile),
-                                         _allWorkers, controller);
+        job = SqlCreateTablesJob::create(
+                _database, _table, _engine, _partitionByColumn,
+                SqlSchemaUtils::readFromTextFile(_schemaFile), _allWorkers, controller,
+                noParentJobId, nullptr, PRIORITY_NORMAL);
     } else if(_command == "DELETE_TABLE") {
-        job = SqlDeleteTableJob::create(_database, _table, _allWorkers, controller);
+        job = SqlDeleteTableJob::create(
+                _database, _table, _allWorkers, controller,
+                noParentJobId, nullptr, PRIORITY_NORMAL);
     } else if(_command == "REMOVE_TABLE_PARTITIONS") {
-        job = SqlRemoveTablePartitionsJob::create(_database, _table, _allWorkers, _ignoreNonPartitioned,
-                                                  controller);
+        job = SqlRemoveTablePartitionsJob::create(
+                _database, _table, _allWorkers, _ignoreNonPartitioned, controller,
+                noParentJobId, nullptr, PRIORITY_NORMAL);
     } else if(_command == "DELETE_TABLE_PARTITION") {
-        job = SqlDeleteTablePartitionJob::create(_transactionId, _table, _allWorkers, controller);
+        job = SqlDeleteTablePartitionJob::create(
+                _transactionId, _table, _allWorkers, controller,
+                noParentJobId, nullptr, PRIORITY_NORMAL);
     } else if(_command == "CREATE_INDEXES") {
-        job = SqlCreateIndexesJob::create(_database, _table, _overlap,
-                                          SqlRequestParams::IndexSpec(_indexSpecStr),
-                                          _indexName,
-                                          _indexComment,
-                                          SqlSchemaUtils::readIndexSpecFromTextFile(_indexColumnsFile),
-                                         _allWorkers, _ignoreDuplicateKey, controller);
+        job = SqlCreateIndexesJob::create(
+                _database, _table, _overlap, SqlRequestParams::IndexSpec(_indexSpecStr),
+                _indexName, _indexComment, SqlSchemaUtils::readIndexSpecFromTextFile(_indexColumnsFile),
+                _allWorkers, _ignoreDuplicateKey, controller,
+                noParentJobId, nullptr, PRIORITY_NORMAL);
     } else if(_command == "DROP_INDEXES") {
-        job = SqlDropIndexesJob::create(_database, _table, _overlap,
-                                        _indexName,
-                                        _allWorkers, controller);
+        job = SqlDropIndexesJob::create(
+                _database, _table, _overlap, _indexName, _allWorkers, controller,
+                noParentJobId, nullptr, PRIORITY_NORMAL);
     } else if(_command == "GET_INDEXES") {
-        job = SqlGetIndexesJob::create(_database, _table, _overlap,
-                                       _allWorkers, controller);
+        job = SqlGetIndexesJob::create(
+                _database, _table, _overlap, _allWorkers, controller,
+                noParentJobId, nullptr, PRIORITY_NORMAL);
     } else {
         throw logic_error(
                 "SqlApp::" + string(__func__) + "  command='" + _command + "' is not supported");

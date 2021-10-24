@@ -52,25 +52,15 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
-Job::Options const& SqlJob::defaultOptions() {
-    static Job::Options const options{
-        2,      /* priority */
-        false,  /* exclusive */
-        true    /* preemptable */
-    };
-    return options;
-}
-
-
 SqlJob::SqlJob(uint64_t maxRows,
                bool allWorkers,
                Controller::Ptr const& controller,
                string const& parentJobId,
                std::string const& jobName,
-               Job::Options const& options,
+               int priority,
                bool ignoreNonPartitioned,
                bool ignoreDuplicateKey)
-    :   Job(controller, parentJobId, jobName, options),
+    :   Job(controller, parentJobId, jobName, priority),
         _maxRows(maxRows),
         _allWorkers(allWorkers),
         _ignoreNonPartitioned(ignoreNonPartitioned),

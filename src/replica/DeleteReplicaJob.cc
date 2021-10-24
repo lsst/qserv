@@ -53,23 +53,13 @@ namespace replica {
 string DeleteReplicaJob::typeName() { return "DeleteReplicaJob"; }
 
 
-Job::Options const& DeleteReplicaJob::defaultOptions() {
-    static Job::Options const options{
-        -2,     /* priority */
-        false,  /* exclusive */
-        true    /* exclusive */
-    };
-    return options;
-}
-
-
 DeleteReplicaJob::Ptr DeleteReplicaJob::create(string const& databaseFamily,
                                                unsigned int chunk,
                                                string const& worker,
                                                Controller::Ptr const& controller,
                                                string const& parentJobId,
                                                CallbackType const& onFinish,
-                                               Job::Options const& options) {
+                                               int priority) {
     return DeleteReplicaJob::Ptr(
         new DeleteReplicaJob(databaseFamily,
                              chunk,
@@ -77,7 +67,7 @@ DeleteReplicaJob::Ptr DeleteReplicaJob::create(string const& databaseFamily,
                              controller,
                              parentJobId,
                              onFinish,
-                             options));
+                             priority));
 }
 
 
@@ -87,11 +77,11 @@ DeleteReplicaJob::DeleteReplicaJob(string const& databaseFamily,
                                    Controller::Ptr const& controller,
                                    string const& parentJobId,
                                    CallbackType const& onFinish,
-                                   Job::Options const& options)
+                                   int priority)
     :   Job(controller,
             parentJobId,
             "DELETE_REPLICA",
-            options),
+            priority),
         _databaseFamily(databaseFamily),
         _chunk(chunk),
         _worker(worker),
@@ -303,7 +293,7 @@ void DeleteReplicaJob::cancelImpl(util::Lock const& lock) {
                 worker(),
                 ptr->id(),
                 nullptr,    /* onFinish */
-                options(lock).priority,
+                priority(),
                 true,       /* keepTracking */
                 id()        /* jobId */);
     }
@@ -333,7 +323,7 @@ void DeleteReplicaJob::_beginDeleteReplica(util::Lock const& lock) {
                 [self] (DeleteRequest::Ptr ptr) {
                     self->_onRequestFinish(ptr);
                 },
-                options(lock).priority,
+                priority(),
                 true,   /* keepTracking */
                 true,   /* allowDuplicate */
                 id()    /* jobId */

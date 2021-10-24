@@ -45,15 +45,6 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
-Job::Options const& FindAllJob::defaultOptions() {
-    static Job::Options const options{
-        0,      /* priority */
-        false,  /* exclusive */
-        true    /* exclusive */
-    };
-    return options;
-}
-
 
 string FindAllJob::typeName() { return "FindAllJob"; }
 
@@ -64,7 +55,7 @@ FindAllJob::Ptr FindAllJob::create(string const& databaseFamily,
                                    Controller::Ptr const& controller,
                                    string const& parentJobId,
                                    CallbackType const& onFinish,
-                                   Job::Options const& options) {
+                                   int priority) {
     return FindAllJob::Ptr(
         new FindAllJob(databaseFamily,
                        saveReplicaInfo,
@@ -72,7 +63,7 @@ FindAllJob::Ptr FindAllJob::create(string const& databaseFamily,
                        controller,
                        parentJobId,
                        onFinish,
-                       options));
+                       priority));
 }
 
 
@@ -82,11 +73,11 @@ FindAllJob::FindAllJob(string const& databaseFamily,
                        Controller::Ptr const& controller,
                        string const& parentJobId,
                        CallbackType const& onFinish,
-                       Job::Options const& options)
+                       int priority)
     :   Job(controller,
             parentJobId,
             "FIND_ALL",
-            options),
+            priority),
         _databaseFamily(databaseFamily),
         _saveReplicaInfo(saveReplicaInfo),
         _allWorkers(allWorkers),
@@ -205,7 +196,7 @@ void FindAllJob::startImpl(util::Lock const& lock) {
                     [self] (FindAllRequest::Ptr request) {
                         self->_onRequestFinish(request);
                     },
-                    options(lock).priority,
+                    priority(),
                     true,   /* keepTracking*/
                     id()    /* jobId */
                 )
@@ -236,7 +227,7 @@ void FindAllJob::cancelImpl(util::Lock const& lock) {
                 ptr->worker(),
                 ptr->id(),
                 nullptr,    /* onFinish */
-                options(lock).priority,
+                priority(),
                 true,       /* keepTracking */
                 id()        /* jobId */);
         }

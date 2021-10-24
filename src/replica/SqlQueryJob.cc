@@ -58,7 +58,7 @@ SqlQueryJob::Ptr SqlQueryJob::create(string const& query,
                                      Controller::Ptr const& controller,
                                      string const& parentJobId,
                                      CallbackType const& onFinish,
-                                     Job::Options const& options) {
+                                     int priority) {
     return Ptr(new SqlQueryJob(
         query,
         user,
@@ -68,7 +68,7 @@ SqlQueryJob::Ptr SqlQueryJob::create(string const& query,
         controller,
         parentJobId,
         onFinish,
-        options
+        priority
     ));
 }
 
@@ -81,13 +81,13 @@ SqlQueryJob::SqlQueryJob(string const& query,
                          Controller::Ptr const& controller,
                          string const& parentJobId,
                          CallbackType const& onFinish,
-                         Job::Options const& options)
+                         int priority)
     :   SqlJob(maxRows,
                allWorkers,
                controller,
                parentJobId,
                "SQL_QUERY",
-               options),
+               priority),
         _query(query),
         _user(user),
         _password(password),
@@ -125,7 +125,7 @@ list<SqlRequest::Ptr> SqlQueryJob::launchRequests(util::Lock const& lock,
                 [self] (SqlQueryRequest::Ptr const& request) {
                     self->onRequestFinish(request);
                 },
-                options(lock).priority,
+                priority(),
                 true,   /* keepTracking*/
                 id()    /* jobId */
             )

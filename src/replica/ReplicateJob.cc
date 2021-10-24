@@ -48,18 +48,7 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
-Job::Options const& ReplicateJob::defaultOptions() {
-    static Job::Options const options{
-        1,      /* priority */
-        true,   /* exclusive */
-        true    /* exclusive */
-    };
-    return options;
-}
-
-
 string ReplicateJob::typeName() { return "ReplicateJob"; }
-
 
 ReplicateJob::Ptr ReplicateJob::create(
                             string const& databaseFamily,
@@ -67,14 +56,14 @@ ReplicateJob::Ptr ReplicateJob::create(
                             Controller::Ptr const& controller,
                             string const& parentJobId,
                             CallbackType const& onFinish,
-                            Job::Options const& options) {
+                            int priority) {
     return ReplicateJob::Ptr(
         new ReplicateJob(databaseFamily,
                          numReplicas,
                          controller,
                          parentJobId,
                          onFinish,
-                         options));
+                         priority));
 }
 
 
@@ -83,11 +72,11 @@ ReplicateJob::ReplicateJob(string const& databaseFamily,
                            Controller::Ptr const& controller,
                            string const& parentJobId,
                            CallbackType const& onFinish,
-                           Job::Options const& options)
+                           int priority)
     :   Job(controller,
             parentJobId,
             "REPLICATE",
-            options),
+            priority),
         _databaseFamily(databaseFamily),
         _numReplicas(numReplicas ?
                      numReplicas :
@@ -180,7 +169,8 @@ void ReplicateJob::startImpl(util::Lock const& lock) {
         id(),
         [self] (FindAllJob::Ptr job) {
             self->_onPrecursorJobFinish();
-        }
+        },
+        priority()
     );
     _findAllJob->start();
 }
@@ -430,7 +420,7 @@ void ReplicateJob::_onPrecursorJobFinish() {
                 [self] (CreateReplicaJob::Ptr const& job) {
                     self->_onCreateJobFinish(job);
                 },
-                options(lock)   // inherit from the current job
+                priority()  // inherit from the current job
             );
             _jobs.push_back(ptr);
 

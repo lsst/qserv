@@ -158,6 +158,7 @@ int IndexApp::runImpl() {
                 "controller", "request_timeout_sec", _timeoutSec, updatePersistentState);
     }
 
+    string const noParentJobId;
     auto const job = IndexJob::create(
         _database,
         _table,
@@ -167,7 +168,10 @@ int IndexApp::runImpl() {
         IndexJob::fromString(_destination),
         _destinationPath,
         _localFile,
-        controller
+        controller,
+        noParentJobId,
+        nullptr,    // no callback
+        PRIORITY_NORMAL
     );
     job->start();
     job->wait();

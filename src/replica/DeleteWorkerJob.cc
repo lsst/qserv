@@ -53,29 +53,19 @@ namespace replica {
 string DeleteWorkerJob::typeName() { return "DeleteWorkerJob"; }
 
 
-Job::Options const& DeleteWorkerJob::defaultOptions() {
-    static Job::Options const options{
-        2,      /* priority */
-        true,   /* exclusive */
-        false   /* exclusive */
-    };
-    return options;
-}
-
-
 DeleteWorkerJob::Ptr DeleteWorkerJob::create(string const& worker,
                                              bool permanentDelete,
                                              Controller::Ptr const& controller,
                                              string const& parentJobId,
                                              CallbackType const& onFinish,
-                                             Job::Options const& options) {
+                                             int priority) {
     return DeleteWorkerJob::Ptr(
         new DeleteWorkerJob(worker,
                             permanentDelete,
                             controller,
                             parentJobId,
                             onFinish,
-                            options));
+                            priority));
 }
 
 
@@ -84,11 +74,11 @@ DeleteWorkerJob::DeleteWorkerJob(string const& worker,
                                  Controller::Ptr const& controller,
                                  string const& parentJobId,
                                  CallbackType const& onFinish,
-                                 Job::Options const& options)
+                                 int priority)
     :   Job(controller,
             parentJobId,
             "DELETE_WORKER",
-            options),
+            priority),
         _worker(worker),
         _permanentDelete(permanentDelete),
         _onFinish(onFinish) {
@@ -167,7 +157,7 @@ void DeleteWorkerJob::startImpl(util::Lock const& lock) {
     auto const statusRequest = controller()->statusOfWorkerService(
         worker(),
         nullptr,/* onFinish */
-        options(lock).priority,
+        priority(),
         id(),   /* jobId */
         60      /* requestExpirationIvalSec */
     );
@@ -181,7 +171,7 @@ void DeleteWorkerJob::startImpl(util::Lock const& lock) {
             auto const drainRequest = controller()->drainWorkerService(
                 worker(),
                 nullptr,/* onFinish */
-                options(lock).priority,
+                priority(),
                 id(),   /* jobId */
                 60      /* requestExpirationIvalSec */
             );
@@ -202,7 +192,7 @@ void DeleteWorkerJob::startImpl(util::Lock const& lock) {
                             [self] (FindAllRequest::Ptr const& request) {
                                 self->_onRequestFinish(request);
                             },
-                            options(lock).priority
+                            priority()
                         );
                         _findAllRequests.push_back(request);
                         _numLaunched++;
@@ -235,7 +225,7 @@ void DeleteWorkerJob::cancelImpl(util::Lock const& lock) {
                 ptr->worker(),
                 ptr->id(),
                 nullptr,    /* onFinish */
-                options(lock).priority,
+                priority(),
                 true,       /* keepTracking */
                 id()        /* jobId */
             );
@@ -297,7 +287,7 @@ void DeleteWorkerJob::_disableWorker(util::Lock const& lock) {
             [self] (ReplicateJob::Ptr job) {
                 self->_onJobFinish(job);
             },
-            options()
+            priority()
         );
         job->start();
         _replicateJobs.push_back(job);

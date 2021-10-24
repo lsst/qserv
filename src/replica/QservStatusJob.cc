@@ -45,32 +45,21 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
-Job::Options const& QservStatusJob::defaultOptions() {
-    static Job::Options const options{
-        0,      /* priority */
-        false,  /* exclusive */
-        true    /* preemptive */
-    };
-    return options;
-}
-
-
 string QservStatusJob::typeName() { return "QservStatusJob"; }
-
 
 QservStatusJob::Ptr QservStatusJob::create(unsigned int timeoutSec,
                                            bool allWorkers,
                                            Controller::Ptr const& controller,
                                            string const& parentJobId,
                                            CallbackType const& onFinish,
-                                           Job::Options const& options) {
+                                           int priority) {
     return QservStatusJob::Ptr(
         new QservStatusJob(timeoutSec,
                            allWorkers,
                            controller,
                            parentJobId,
                            onFinish,
-                           options));
+                           priority));
 }
 
 
@@ -79,11 +68,11 @@ QservStatusJob::QservStatusJob(unsigned int timeoutSec,
                                Controller::Ptr const& controller,
                                string const& parentJobId,
                                CallbackType const& onFinish,
-                               Job::Options const& options)
+                               int priority)
     :   Job(controller,
             parentJobId,
             "QSERV_STATUS",
-            options),
+            priority),
         _timeoutSec(timeoutSec == 0
                 ? controller->serviceProvider()->config()->get<unsigned int>("controller", "request_timeout_sec")
                 : timeoutSec),

@@ -90,12 +90,12 @@ string Job::state2string(ExtendedState state) {
 Job::Job(Controller::Ptr const& controller,
          string const& parentJobId,
          string const& type,
-         Options const& options)
+         int priority)
     :   _id(Generators::uniqueId()),
         _controller(controller),
         _parentJobId(parentJobId),
         _type(type),
-        _options(options),
+        _priority(priority),
         _state(State::CREATED),
         _extendedState(ExtendedState::NONE),
         _beginTime(0),
@@ -124,21 +124,6 @@ string Job::state2string() const {
 }
 
 
-Job::Options Job::options() const {
-
-    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
-
-    util::Lock lock(_mtx, context() + __func__);
-
-    return options(lock);
-}
-
-
-Job::Options Job::options(util::Lock const& lock) const {
-    return _options;
-}
-
-
 list<pair<string,string>> Job::persistentLogData() const {
 
     LOGS(_log, LOG_LVL_DEBUG, context());
@@ -148,19 +133,6 @@ list<pair<string,string>> Job::persistentLogData() const {
     throw logic_error(
             "Job::" + string(__func__)
             + "  the method can't be called while the job hasn't finished");
-}
-
-
-Job::Options Job::setOptions(Options const& newOptions) {
-
-    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
-
-    util::Lock lock(_mtx, context() + __func__);
-
-    Options options = newOptions;
-    swap(_options, options);
-
-    return options;
 }
 
 
@@ -186,7 +158,7 @@ void Job::start() {
     // may depend on this job's state.
 
     _beginTime = PerformanceUtils::now();
-    controller()->serviceProvider()->databaseServices()->saveState(*this, options(lock));
+    controller()->serviceProvider()->databaseServices()->saveState(*this);
 
     // Start timers if configured
 
@@ -255,7 +227,7 @@ void Job::finish(util::Lock const& lock,
 
     if (newExtendedState != ExtendedState::SUCCESS) cancelImpl(lock);
 
-    controller()->serviceProvider()->databaseServices()->saveState(*this, options(lock));
+    controller()->serviceProvider()->databaseServices()->saveState(*this);
 
     // Stop timers if they're still running
 
@@ -381,7 +353,7 @@ void Job::setState(util::Lock const& lock,
         _extendedState = newExtendedState;
         _state = newState;
     }
-    controller()->serviceProvider()->databaseServices()->saveState(*this, options(lock));
+    controller()->serviceProvider()->databaseServices()->saveState(*this);
 }
 
 
@@ -462,13 +434,6 @@ void Job::_expired(boost::system::error_code const& ec) {
     if (state() == State::FINISHED) return;
 
     finish(lock, ExtendedState::TIMEOUT_EXPIRED);
-}
-
-
-bool JobCompare::operator()(Job::Ptr const& lhs,
-                            Job::Ptr const& rhs) const {
-    LOGS(_log, LOG_LVL_DEBUG, "JobCompare::operator()(" << lhs->id() << "," << rhs->id() + ")");
-    return lhs->options().priority < rhs->options().priority;
 }
 
 }}} // namespace lsst::qserv::replica

@@ -57,15 +57,6 @@ namespace replica {
 
 string IndexJob::typeName() { return "IndexJob"; }
 
-Job::Options const& IndexJob::defaultOptions() {
-    static Job::Options const options{
-        2,      /* priority */
-        false,  /* exclusive */
-        true    /* preemptable */
-    };
-    return options;
-}
-
 
 string IndexJob::toString(Destination destination) {
     switch (destination) {
@@ -101,7 +92,7 @@ IndexJob::Ptr IndexJob::create(string const& database,
                                Controller::Ptr const& controller,
                                string const& parentJobId,
                                CallbackType const& onFinish,
-                               Job::Options const& options) {
+                               int priority) {
     return Ptr(new IndexJob(
         database,
         directorTable,
@@ -114,7 +105,7 @@ IndexJob::Ptr IndexJob::create(string const& database,
         controller,
         parentJobId,
         onFinish,
-        options
+        priority
     ));
 }
 
@@ -130,8 +121,8 @@ IndexJob::IndexJob(string const& database,
                    Controller::Ptr const& controller,
                    string const& parentJobId,
                    CallbackType const& onFinish,
-                   Job::Options const& options)
-    :   Job(controller, parentJobId, "INDEX", options),
+                   int priority)
+    :   Job(controller, parentJobId, "INDEX", priority),
         _directorTable(directorTable),
         _hasTransactions(hasTransactions),
         _transactionId(transactionId),
@@ -367,7 +358,7 @@ void IndexJob::cancelImpl(util::Lock const& lock) {
                 ptr->worker(),
                 ptr->id(),
                 nullptr,    /* onFinish */
-                options(lock).priority,
+                priority(),
                 true,       /* keepTracking */
                 id()        /* jobId */
             );
@@ -580,7 +571,7 @@ list<IndexRequest::Ptr> IndexJob::_launchRequests(util::Lock const& lock,
                 [self] (IndexRequest::Ptr const& request) {
                     self->_onRequestFinish(request);
                 },
-                options(lock).priority,
+                priority(),
                 true,   /* keepTracking*/
                 id()    /* jobId */
             )

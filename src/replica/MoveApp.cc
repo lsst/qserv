@@ -109,13 +109,17 @@ MoveApp::MoveApp(int argc, char* argv[])
 
 int MoveApp::runImpl() {
 
+    string const noParentJobId;
     auto const job = MoveReplicaJob::create(
         _databaseFamily,
         _chunk,
         _sourceWorker,
         _destinationWorker,
         _purge,
-        Controller::create(serviceProvider())
+        Controller::create(serviceProvider()),
+        noParentJobId,
+        nullptr,    // no callback
+        PRIORITY_NORMAL
     );
     job->start();
     job->wait();

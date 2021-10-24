@@ -229,11 +229,10 @@ json HttpIngestModule::_addDatabase() {
     // Create the database at all QServ workers
 
     bool const allWorkers = true;
+    string const noParentJobId;
     auto const job = SqlCreateDbJob::create(
-        database,
-        allWorkers,
-        controller()
-    );
+            database, allWorkers, controller(), noParentJobId, nullptr,
+            config->get<int>("controller", "ingest_priority_level"));
     job->start();
     logJobStartedEvent(SqlCreateDbJob::typeName(), job, family);
     job->wait();
@@ -397,14 +396,19 @@ json HttpIngestModule::_deleteDatabase() {
     // metadata tables. This will prevents Qserv workers from publishing the those
     // as XROOTD "resources".
     // NOTE: Ignore any errors should any be reported by the job.
-    auto const dasableDbJob = SqlDisableDbJob::create(databaseInfo.name, allWorkers, controller());
+    string const noParentJobId;
+    auto const dasableDbJob = SqlDisableDbJob::create(
+            databaseInfo.name, allWorkers, controller(), noParentJobId, nullptr,
+            config->get<int>("controller", "catalog_management_priority_level"));
     dasableDbJob->start();
     logJobStartedEvent(SqlDisableDbJob::typeName(), dasableDbJob, databaseInfo.family);
     dasableDbJob->wait();
     logJobFinishedEvent(SqlDisableDbJob::typeName(), dasableDbJob, databaseInfo.family);
 
     // Delete database entries at workers
-    auto const deleteDbJob = SqlDeleteDbJob::create(databaseInfo.name, allWorkers, controller());
+    auto const deleteDbJob = SqlDeleteDbJob::create(
+            databaseInfo.name, allWorkers, controller(), noParentJobId, nullptr,
+            config->get<int>("controller", "catalog_management_priority_level"));
     deleteDbJob->start();
     logJobStartedEvent(SqlDeleteDbJob::typeName(), deleteDbJob, databaseInfo.family);
     deleteDbJob->wait();
@@ -536,6 +540,7 @@ json HttpIngestModule::_addTable() {
 
     bool const allWorkers = true;
     string const engine = "MyISAM";
+    string const noParentJobId;
 
     vector<string> tables;
     tables.push_back(table);
@@ -547,14 +552,9 @@ json HttpIngestModule::_addTable() {
     }
     for (auto&& table: tables) {
         auto const job = SqlCreateTableJob::create(
-            databaseInfo.name,
-            table,
-            engine,
-            _partitionByColumn,
-            columns,
-            allWorkers,
-            controller()
-        );
+            databaseInfo.name, table, engine, _partitionByColumn, columns,
+            allWorkers, controller(), noParentJobId, nullptr,
+            config->get<int>("controller", "ingest_priority_level"));
         job->start();
         logJobStartedEvent(SqlCreateTableJob::typeName(), job, databaseInfo.family);
         job->wait();
@@ -654,7 +654,10 @@ json HttpIngestModule::_deleteTable() {
     });
 
     // Delete table entries at workers
-    auto const job = SqlDeleteTableJob::create(databaseInfo.name, table, allWorkers, controller());
+    string const noParentJobId;
+    auto const job = SqlDeleteTableJob::create(
+            databaseInfo.name, table, allWorkers, controller(), noParentJobId, nullptr,
+            config->get<int>("controller", "catalog_management_priority_level"));
     job->start();
     logJobStartedEvent(SqlDeleteTableJob::typeName(), job, databaseInfo.family);
     job->wait();
@@ -718,13 +721,12 @@ void HttpIngestModule::_grantDatabaseAccess(DatabaseInfo const& databaseInfo,
                                             bool allWorkers) const {
     debug(__func__);
 
+    string const noParentJobId;
     auto const config = controller()->serviceProvider()->config();
     auto const job = SqlGrantAccessJob::create(
-        databaseInfo.name,
-        config->get<string>("database", "qserv_master_user"),
-        allWorkers,
-        controller()
-    );
+            databaseInfo.name, config->get<string>("database", "qserv_master_user"),
+            allWorkers, controller(), noParentJobId, nullptr,
+            config->get<int>("controller", "ingest_priority_level"));
     job->start();
     logJobStartedEvent(SqlGrantAccessJob::typeName(), job, databaseInfo.family);
     job->wait();
@@ -739,12 +741,11 @@ void HttpIngestModule::_enableDatabase(DatabaseInfo const& databaseInfo,
                                        bool allWorkers) const {
     debug(__func__);
 
+    string const noParentJobId;
     auto const config = controller()->serviceProvider()->config();
     auto const job = SqlEnableDbJob::create(
-        databaseInfo.name,
-        allWorkers,
-        controller()
-    );
+            databaseInfo.name, allWorkers, controller(), noParentJobId, nullptr,
+            config->get<int>("controller", "ingest_priority_level"));
     job->start();
     logJobStartedEvent(SqlEnableDbJob::typeName(), job, databaseInfo.family);
     job->wait();
@@ -761,22 +762,17 @@ void HttpIngestModule::_createMissingChunkTables(DatabaseInfo const& databaseInf
     debug(__func__);
 
     string const engine = "MyISAM";
+    string const noParentJobId;
 
     for (auto&& table: databaseInfo.partitionedTables) {
-
         auto const columnsItr = databaseInfo.columns.find(table);
         if (columnsItr == databaseInfo.columns.cend()) {
             throw HttpError( __func__, "schema is empty for table: '" + table + "'");
         }
         auto const job = SqlCreateTablesJob::create(
-            databaseInfo.name,
-            table,
-            engine,
-            _partitionByColumn,
-            columnsItr->second,
-            allWorkers,
-            controller()
-        );
+                databaseInfo.name, table, engine, _partitionByColumn, columnsItr->second,
+                allWorkers, controller(), noParentJobId, nullptr,
+                controller()->serviceProvider()->config()->get<int>("controller", "ingest_priority_level"));
         job->start();
         logJobStartedEvent(SqlCreateTablesJob::typeName(), job, databaseInfo.family);
         job->wait();
@@ -795,25 +791,21 @@ void HttpIngestModule::_removeMySQLPartitions(DatabaseInfo const& databaseInfo,
     // Ignore tables which may have already been processed at a previous attempt
     // of running this algorithm.
     bool const ignoreNonPartitioned = true;
-
+    string const noParentJobId;
     string error;
     for (auto const table: databaseInfo.tables()) {
         auto const job = SqlRemoveTablePartitionsJob::create(
-            databaseInfo.name,
-            table,
-            allWorkers,
-            ignoreNonPartitioned,
-            controller()
-        );
+                databaseInfo.name, table, allWorkers, ignoreNonPartitioned,
+                controller(), noParentJobId, nullptr,
+                controller()->serviceProvider()->config()->get<int>("controller", "ingest_priority_level"));
         job->start();
         logJobStartedEvent(SqlRemoveTablePartitionsJob::typeName(), job, databaseInfo.family);
         job->wait();
         logJobFinishedEvent(SqlRemoveTablePartitionsJob::typeName(), job, databaseInfo.family);
 
         error += ::jobCompletionErrorIfAny(
-                        job,
-                        "MySQL partitions removal failed for database: " +
-                        databaseInfo.name + ", table: " + table);
+                job, "MySQL partitions removal failed for database: " + databaseInfo.name
+                + ", table: " + table);
     }
     if (not error.empty()) throw HttpError(__func__, error);
 }
@@ -863,12 +855,10 @@ void HttpIngestModule::_publishDatabaseInMaster(DatabaseInfo const& databaseInfo
             h.conn->sqlValue(config->get<string>("database", "qserv_master_user")) + "@" +
             h.conn->sqlValue("localhost"));
 
-        h.conn->execute([&statements](decltype(h.conn) conn) {
-            conn->begin();
+        h.conn->executeInOwnTransaction([&statements](decltype(h.conn) conn) {
             for (auto const& query: statements) {
                 conn->execute(query);
             }
-            conn->commit();
         });
     }
 
@@ -1011,12 +1001,10 @@ json HttpIngestModule::_buildEmptyChunksListImpl(string const& database,
                 statements.push_back(h.conn->sqlInsertQuery(table, chunk));
             }
         }
-        h.conn->execute([&statements](decltype(h.conn) conn) {
-            conn->begin();
+        h.conn->executeInOwnTransaction([&statements](decltype(h.conn) conn) {
             for (auto const& query: statements) {
                 conn->execute(query);
             }
-            conn->commit();
         });
     } else {
         auto const file = "empty_" + database + ".txt";
@@ -1056,12 +1044,10 @@ json HttpIngestModule::_buildEmptyChunksListImpl(string const& database,
 string HttpIngestModule::_reconfigureWorkers(DatabaseInfo const& databaseInfo,
                                              bool allWorkers,
                                              unsigned int workerResponseTimeoutSec) const {
-
+    string const noParentJobId;
     auto const job = ServiceReconfigJob::create(
-        allWorkers,
-        workerResponseTimeoutSec,
-        controller()
-    );
+            allWorkers, workerResponseTimeoutSec, controller(), noParentJobId, nullptr,
+            controller()->serviceProvider()->config()->get<int>("controller", "ingest_priority_level"));
     job->start();
     logJobStartedEvent(ServiceReconfigJob::typeName(), job, databaseInfo.family);
     job->wait();
@@ -1139,12 +1125,10 @@ void HttpIngestModule::_createSecondaryIndex(DatabaseInfo const& databaseInfo,
         ") (PARTITION `p0` VALUES IN (0) ENGINE=InnoDB)"
     );
 
-    h.conn->execute([&queries](decltype(h.conn) conn) {
-        conn->begin();
+    h.conn->executeInOwnTransaction([&queries](decltype(h.conn) conn) {
         for (auto&& query: queries) {
             conn->execute(query);
         }
-        conn->commit();
     });
 }
 
@@ -1168,25 +1152,22 @@ void HttpIngestModule::_consolidateSecondaryIndex(DatabaseInfo const& databaseIn
 
     debug(__func__, query);
 
-    h.conn->execute([&query](decltype(h.conn) conn) {
-        conn->begin();
+    h.conn->executeInOwnTransaction([&query](decltype(h.conn) conn) {
         conn->execute(query);
-        conn->commit();
     });
 }
 
 
 void HttpIngestModule::_qservSync(DatabaseInfo const& databaseInfo,
                                   bool allWorkers) const {
+
     debug(__func__);
 
     bool const saveReplicaInfo = true;
+    string const noParentJobId;
     auto const findAlljob = FindAllJob::create(
-        databaseInfo.family,
-        saveReplicaInfo,
-        allWorkers,
-        controller()
-    );
+            databaseInfo.family,saveReplicaInfo, allWorkers, controller(), noParentJobId, nullptr,
+            controller()->serviceProvider()->config()->get<int>("controller", "ingest_priority_level"));
     findAlljob->start();
     logJobStartedEvent(FindAllJob::typeName(), findAlljob, databaseInfo.family);
     findAlljob->wait();
@@ -1198,11 +1179,7 @@ void HttpIngestModule::_qservSync(DatabaseInfo const& databaseInfo,
 
     bool const force = false;
     auto const qservSyncJob = QservSyncJob::create(
-        databaseInfo.family,
-        force,
-        qservSyncTimeoutSec(),
-        controller()
-    );
+            databaseInfo.family, force, qservSyncTimeoutSec(), controller());
     qservSyncJob->start();
     logJobStartedEvent(QservSyncJob::typeName(), qservSyncJob, databaseInfo.family);
     qservSyncJob->wait();

@@ -53,16 +53,6 @@ namespace replica {
 string CreateReplicaJob::typeName() { return "CreateReplicaJob"; }
 
 
-Job::Options const& CreateReplicaJob::defaultOptions() {
-    static Job::Options const options{
-        -2,     /* priority */
-        false,  /* exclusive */
-        true    /* exclusive */
-    };
-    return options;
-}
-
-
 CreateReplicaJob::Ptr CreateReplicaJob::create(string const& databaseFamily,
                                                unsigned int chunk,
                                                string const& sourceWorker,
@@ -70,7 +60,7 @@ CreateReplicaJob::Ptr CreateReplicaJob::create(string const& databaseFamily,
                                                Controller::Ptr const& controller,
                                                string const& parentJobId,
                                                CallbackType const& onFinish,
-                                               Job::Options const& options) {
+                                               int priority) {
     return CreateReplicaJob::Ptr(
         new CreateReplicaJob(databaseFamily,
                            chunk,
@@ -79,7 +69,7 @@ CreateReplicaJob::Ptr CreateReplicaJob::create(string const& databaseFamily,
                            controller,
                            parentJobId,
                            onFinish,
-                           options));
+                           priority));
 }
 
 
@@ -90,11 +80,11 @@ CreateReplicaJob::CreateReplicaJob(string const& databaseFamily,
                                    Controller::Ptr const& controller,
                                    string const& parentJobId,
                                    CallbackType const& onFinish,
-                                   Job::Options const& options)
+                                   int priority)
     :   Job(controller,
             parentJobId,
             "CREATE_REPLICA",
-            options),
+            priority),
         _databaseFamily(databaseFamily),
         _chunk(chunk),
         _sourceWorker(sourceWorker),
@@ -293,7 +283,7 @@ void CreateReplicaJob::startImpl(util::Lock const& lock) {
                 [self] (ReplicationRequest::Ptr ptr) {
                     self->_onRequestFinish(ptr);
                 },
-                options(lock).priority,
+                priority(),
                 true,   /* keepTracking */
                 true,   /* allowDuplicate */
                 id()    /* jobId */
@@ -321,7 +311,7 @@ void CreateReplicaJob::cancelImpl(util::Lock const& lock) {
                 destinationWorker(),
                 ptr->id(),
                 nullptr,    /* onFinish */
-                options(lock).priority,
+                priority(),
                 true,       /* keepTracking */
                 id()        /* jobId */);
     }

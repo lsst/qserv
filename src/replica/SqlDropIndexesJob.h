@@ -78,9 +78,9 @@ public:
      *   only 'ENABLED' workers which are not in the 'READ-ONLY' state will be
      *   involved into the operation.
      * @param controller This is needed launching requests and accessing the Configuration.
-     * @param parentJobId (optional) An identifier of a parent job.
-     * @param onFinish (optional) A callback function to be called upon a completion of the job.
-     * @param options (optional) A collection of parameters defining the job priority, etc.
+     * @param parentJobId An identifier of a parent job.
+     * @param onFinish A callback function to be called upon a completion of the job.
+     * @param priority The priority level of the job.
      * @return A pointer to the created object.
      */
     static Ptr create(std::string const& database,
@@ -89,9 +89,9 @@ public:
                       std::string const& indexName,
                       bool allWorkers,
                       Controller::Ptr const& controller,
-                      std::string const& parentJobId=std::string(),
-                      CallbackType const& onFinish=nullptr,
-                      Job::Options const& options=defaultOptions());
+                      std::string const& parentJobId,
+                      CallbackType const& onFinish,
+                      int priority);
 
     SqlDropIndexesJob() = delete;
     SqlDropIndexesJob(SqlDropIndexesJob const&) = delete;
@@ -125,7 +125,7 @@ private:
                       Controller::Ptr const& controller,
                       std::string const& parentJobId,
                       CallbackType const& onFinish,
-                      Job::Options const& options);
+                      int priority);
 
     // Input parameters
 

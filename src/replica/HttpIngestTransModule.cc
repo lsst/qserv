@@ -307,10 +307,13 @@ json HttpIngestTransModule::_endTransaction() {
         result["databases"][transaction.database]["num_chunks"] = chunks.size();
         result["secondary-index-build-success"] = 0;
 
+        string const noParentJobId;
         if (abort) {
 
             // Drop the transaction-specific MySQL partition from the relevant tables
-            auto const job = AbortTransactionJob::create(transaction.id, allWorkers, controller());
+            auto const job = AbortTransactionJob::create(
+                    transaction.id, allWorkers, controller(), noParentJobId, nullptr,
+                    config->get<int>("controller", "ingest_priority_level"));
             job->start();
             logJobStartedEvent(AbortTransactionJob::typeName(), job, databaseInfo.family);
             job->wait();
@@ -342,7 +345,10 @@ json HttpIngestTransModule::_endTransaction() {
                         IndexJob::TABLE,
                         destinationPath,
                         localLoadSecondaryIndex(databaseInfo.name),
-                        controller()
+                        controller(),
+                        noParentJobId,
+                        nullptr,        // no callback
+                        config->get<int>("controller", "ingest_priority_level")
                     );
                     job->start();
                     logJobStartedEvent(IndexJob::typeName(), job, databaseInfo.family);

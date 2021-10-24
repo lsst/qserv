@@ -109,10 +109,10 @@ public:
      *   that don't have MySQL partitions. Those partitions may have already been
      *   removed by a previous attempt to run this algorithm. 
      * @param controller is needed launching requests and accessing the Configuration
-     * @param parentJobId (optional) identifier of a parent job
-     * @param onFinish (optional) callback function to be called upon a completion
+     * @param parentJobId an identifier of the parent job
+     * @param onFinish a callback function to be called upon a completion
      *   of the job
-     * @param options (optional) defines the job priority, etc.
+     * @param priority defines the job priority
      * @return a pointer to the created object
      */
     static Ptr create(std::string const& database,
@@ -120,9 +120,9 @@ public:
                       bool allWorkers,
                       bool ignoreNonPartitioned,
                       Controller::Ptr const& controller,
-                      std::string const& parentJobId=std::string(),
-                      CallbackType const& onFinish=nullptr,
-                      Job::Options const& options=defaultOptions());
+                      std::string const& parentJobId,
+                      CallbackType const& onFinish,
+                      int priority);
 
     SqlRemoveTablePartitionsJob() = delete;
     SqlRemoveTablePartitionsJob(SqlRemoveTablePartitionsJob const&) = delete;
@@ -155,7 +155,7 @@ private:
                                 Controller::Ptr const& controller,
                                 std::string const& parentJobId,
                                 CallbackType const& onFinish,
-                                Job::Options const& options);
+                                int priority);
 
     // Input parameters
 

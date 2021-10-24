@@ -91,16 +91,6 @@ void ClusterHealth::_updateSummaryState() {
 }
 
 
-Job::Options const& ClusterHealthJob::defaultOptions() {
-    static Job::Options const options{
-        3,      /* priority */
-        false,  /* exclusive */
-        true    /* preemptive */
-    };
-    return options;
-}
-
-
 // -------------------------
 //  Class: ClusterHealthJob
 // -------------------------
@@ -113,14 +103,14 @@ ClusterHealthJob::Ptr ClusterHealthJob::create(unsigned int timeoutSec,
                                                Controller::Ptr const& controller,
                                                string const& parentJobId,
                                                CallbackType const& onFinish,
-                                               Job::Options const& options) {
+                                               int priority) {
     return ClusterHealthJob::Ptr(
         new ClusterHealthJob(timeoutSec,
                              allWorkers,
                              controller,
                              parentJobId,
                              onFinish,
-                             options));
+                             priority));
 }
 
 
@@ -129,11 +119,11 @@ ClusterHealthJob::ClusterHealthJob(unsigned int timeoutSec,
                                    Controller::Ptr const& controller,
                                    string const& parentJobId,
                                    CallbackType const& onFinish,
-                                   Job::Options const& options)
+                                   int priority)
     :   Job(controller,
             parentJobId,
             "CLUSTER_HEALTH",
-            options),
+            priority),
         _timeoutSec(timeoutSec == 0
                 ? controller->serviceProvider()->config()->get<unsigned int>("controller", "request_timeout_sec")
                 : timeoutSec),
@@ -213,7 +203,7 @@ void ClusterHealthJob::startImpl(util::Lock const& lock) {
             [self] (ServiceStatusRequest::Ptr request) {
                 self->_onRequestFinish(request);
             },
-            options(lock).priority,
+            priority(),
             id(),   /* jobId */
             timeoutSec()
         );

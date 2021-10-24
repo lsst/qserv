@@ -109,20 +109,6 @@ public:
         return state2string(state) + "::" + state2string(extendedState);
     }
 
-    /// The job options container.
-    struct Options {
-        /// The priority level.
-        int priority;
-
-        /// the flag indicating of this job can't be run simultaneously
-        /// along with other jobs.
-        bool exclusive;
-
-        /// the flag indicating if the job is allowed to be interrupted by some
-        /// by other jobs.
-        bool preemptable;
-    };
-
     Job() = delete;
     Job(Job const&) = delete;
     Job& operator=(Job const&) = delete;
@@ -150,15 +136,8 @@ public:
     /// @return  The string representation of the combined state of the object.
     std::string state2string() const;
 
-    /// @return  The job options.
-    Options options() const;
-
-    /**
-     * Modify job options.
-     * @param newOptions  New options to be set.
-     * @return  The previous state of the options.
-     */
-    Options setOptions(Options const& newOptions);
+    /// @return  The priority level.
+    int priority() const { return _priority; }
 
     /**
      * @return  The start time (milliseconds since UNIX Epoch) or 0 before method start()
@@ -211,24 +190,18 @@ protected:
      * @param parentJobId  An optional identifier of the parent job.
      * @param type  The type name of the job. The name is reported in the log files,
      *   and it's also logged into the persistent state of the Replication system.
-     * @param options  The desired options of the job.
+     * @param priority  The priority level of the job.
      */
     Job(Controller::Ptr const& controller,
         std::string const& parentJobId,
         std::string const& type,
-        Options const& options);
+        int priority);
 
     /// @return  A shared pointer of the desired subclass (no dynamic type checking).
     template <class T>
     std::shared_ptr<T> shared_from_base() {
         return std::static_pointer_cast<T>(shared_from_this());
     }
-
-    /**
-     * @return  The job options.
-     * @param lock  A lock on Job::_mtx must be acquired by a caller of the method.
-     */
-    Options options(util::Lock const& lock) const;
 
     /**
       * This method is supposed to be provided by subclasses for additional
@@ -424,8 +397,8 @@ private:
     /// The type of the job.
     std::string const _type;
 
-    /// Job options.
-    Options _options;
+    /// The priority level.
+    int const _priority;
 
     /// Primary state of the job.
     std::atomic<State> _state;
@@ -457,12 +430,6 @@ private:
     std::atomic<bool> _finished{false};
     std::mutex _onFinishMtx;
     std::condition_variable _onFinishCv;
-};
-
-/// Comparison type for strict weak ordering required by std::priority_queue.
-struct JobCompare {
-    /// Order jobs by their priorities.
-    bool operator()(Job::Ptr const& lhs, Job::Ptr const& rhs) const;
 };
 
 }}} // namespace lsst::qserv::replica

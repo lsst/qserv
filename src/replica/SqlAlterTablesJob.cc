@@ -55,7 +55,7 @@ SqlAlterTablesJob::Ptr SqlAlterTablesJob::create(
         Controller::Ptr const& controller,
         string const& parentJobId,
         CallbackType const& onFinish,
-        Job::Options const& options) {
+        int priority) {
     return Ptr(new SqlAlterTablesJob(
         database,
         table,
@@ -64,7 +64,7 @@ SqlAlterTablesJob::Ptr SqlAlterTablesJob::create(
         controller,
         parentJobId,
         onFinish,
-        options
+        priority
     ));
 }
 
@@ -77,13 +77,13 @@ SqlAlterTablesJob::SqlAlterTablesJob(
         Controller::Ptr const& controller,
         string const& parentJobId,
         CallbackType const& onFinish,
-        Job::Options const& options)
+        int priority)
     :   SqlJob(0,
                allWorkers,
                controller,
                parentJobId,
                "SQL_ALTER_TABLES",
-               options),
+               priority),
         _database(database),
         _table(table),
         _alterSpec(alterSpec),
@@ -129,7 +129,7 @@ list<SqlRequest::Ptr> SqlAlterTablesJob::launchRequests(util::Lock const& lock,
                 [self] (SqlAlterTablesRequest::Ptr const& request) {
                     self->onRequestFinish(request);
                 },
-                options(lock).priority,
+                priority(),
                 true,   /* keepTracking*/
                 id()    /* jobId */
             )

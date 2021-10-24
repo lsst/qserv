@@ -116,7 +116,8 @@ string Task::context() const {
 
 void Task::sync(unsigned int qservSyncTimeoutSec,
                 bool forceQservSync) {
-    launch<QservSyncJob>(qservSyncTimeoutSec,
+    launch<QservSyncJob>(PRIORITY_NORMAL,
+                         qservSyncTimeoutSec,
                          forceQservSync);
 }
 

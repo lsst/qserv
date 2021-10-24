@@ -111,9 +111,6 @@ public:
     /// The function type for notifications on the completion of the request.
     typedef std::function<void(Ptr)> CallbackType;
 
-    /// @return  The default options object for this type of a request.
-    static Job::Options const& defaultOptions();
-
     /// @return  The unique name distinguishing this class from other types of jobs.
     static std::string typeName();
 
@@ -128,18 +125,17 @@ public:
      * @param allWorkers  The flag that if 'true' then send probes to all workers,
      *   otherwise the enabled workers will be considered only.
      * @param controller  The service for launching requests.
-     * @param parentJobId  The (optional) identifier of a parent job.
-     * @param onFinish  The (optional) callback function to be called upon a completion
-     *   of the job.
-     * @param options  The (optional) job options.
+     * @param parentJobId  An identifier of the parent job.
+     * @param onFinish  A callback function to be called upon a completion of the job.
+     * @param priority  The priority of the job.
      * @return  A pointer to the created object.
      */
     static Ptr create(unsigned int timeoutSec,
                       bool allWorkers,
                       Controller::Ptr const& controller,
-                      std::string const& parentJobId=std::string(),
-                      CallbackType const& onFinish=nullptr,
-                      Job::Options const& options=defaultOptions());
+                      std::string const& parentJobId,
+                      CallbackType const& onFinish,
+                      int priority);
 
     ClusterHealthJob() = delete;
     ClusterHealthJob(ClusterHealthJob const&) = delete;
@@ -183,7 +179,7 @@ private:
                      Controller::Ptr const& controller,
                      std::string const& parentJobId,
                      CallbackType const& onFinish,
-                     Job::Options const& options);
+                     int priority);
 
     /**
      * The callback function to be invoked on a completion of the Replication worker probes.

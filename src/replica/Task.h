@@ -256,15 +256,12 @@ protected:
      * Launch and track a job of the specified type per each known database
      * family. Note that parameters of the job are passed as variadic arguments
      * to the method.
-     *
-     * @param Fargs
-     *   job-specific variadic parameters
-     * 
-     * @throws
-     *   TaskStopped when the task cancellation request was detected
+     * @param priority  The priority level of the job.
+     * @param Fargs  Job-specific variadic parameters.
+     * @throws  TaskStopped when the task cancellation request was detected
      */
     template <class T, typename...Targs>
-    void launch(Targs... Fargs) {
+    void launch(int priority, Targs... Fargs) {
 
         info(T::typeName());
 
@@ -286,7 +283,8 @@ protected:
                 [self](typename T::Ptr const& job) {
                     self->_numFinishedJobs++;
                     // FIXME: analyze job status and report it here
-                }
+                },
+                priority
             );
             job->start();
             jobs.push_back(job);
@@ -307,17 +305,10 @@ protected:
 
    /**
      * Launch Qserv synchronization jobs.
-     *
-     * @param qservSyncTimeoutSec
-     *   the number of seconds to wait before a completion of the synchronization
-     *   operation.
-     * 
-     * @param forceQservSync
-     *   (optional) force Qserv synchronization if 'true'
-     * 
-     * @throws
-     *   TaskStopped when the task cancellation request was detected
-     *
+     * @param qservSyncTimeoutSec  The number of seconds to wait before a completion of
+     *   the synchronization operation.
+     * @param forceQservSync (optional) The flag to force Qserv synchronization if 'true'.
+     * @throws TaskStopped when the task cancellation request was detected.
      * @see QservSyncJob
      */
     void sync(unsigned int qservSyncTimeoutSec,

@@ -121,8 +121,7 @@ void DatabaseServicesMySQL::saveState(ControllerIdentity const& identity,
 }
 
 
-void DatabaseServicesMySQL::saveState(Job const& job,
-                                      Job::Options const& options) {
+void DatabaseServicesMySQL::saveState(Job const& job) {
 
     string const context = "DatabaseServicesMySQL::" + string(__func__) + "[Job::" + job.type() + "] ";
 
@@ -148,9 +147,7 @@ void DatabaseServicesMySQL::saveState(Job const& job,
                                       job.beginTime(),
                                       job.endTime(),
                     PerformanceUtils::now(),    // heartbeat
-                    options.priority,
-                    options.exclusive,
-                    options.preemptable
+                    job.priority()
                 );
         
                 // Extended state (if any provided by a specific job class) is recorded
@@ -1785,8 +1782,6 @@ JobInfo DatabaseServicesMySQL::_job(util::Lock const& lock,
             row.get("heartbeat_time", info.heartbeatTime);
 
             row.get("priority",       info.priority);
-            row.get("exclusive",      info.exclusive);
-            row.get("preemptable",    info.preemptable);
 
             _conn->execute(
                 "SELECT * FROM " + _conn->sqlId("job_ext") +
@@ -1901,8 +1896,6 @@ list<JobInfo> DatabaseServicesMySQL::_jobs(util::Lock const& lock,
             row.get("heartbeat_time", info.heartbeatTime);
 
             row.get("priority",       info.priority);
-            row.get("exclusive",      info.exclusive);
-            row.get("preemptable",    info.preemptable);
 
             collection.push_back(info);
         }

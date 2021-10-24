@@ -41,18 +41,7 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
-Job::Options const& ServiceManagementBaseJob::defaultOptions() {
-    static Job::Options const options{
-        0,      /* priority */
-        false,  /* exclusive */
-        true    /* exclusive */
-    };
-    return options;
-}
-
-
 string ServiceManagementBaseJob::typeName() { return "ServiceManagementBaseJob"; }
-
 
 ServiceManagementBaseJob::ServiceManagementBaseJob(
         string const& requestName,
@@ -60,11 +49,11 @@ ServiceManagementBaseJob::ServiceManagementBaseJob(
         unsigned int requestExpirationIvalSec,
         Controller::Ptr const& controller,
         string const& parentJobId,
-        Job::Options const& options)
+        int priority)
     :   Job(controller,
             parentJobId,
             requestName,
-            options),
+            priority),
         _allWorkers(allWorkers),
         _requestExpirationIvalSec(requestExpirationIvalSec) {
 }

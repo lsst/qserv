@@ -43,16 +43,6 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
-Job::Options const& MoveReplicaJob::defaultOptions() {
-    static Job::Options const options{
-        -2,     /* priority */
-        false,  /* exclusive */
-        true    /* exclusive */
-    };
-    return options;
-}
-
-
 string MoveReplicaJob::typeName() { return "MoveReplicaJob"; }
 
 
@@ -64,7 +54,7 @@ MoveReplicaJob::Ptr MoveReplicaJob::create(string const& databaseFamily,
                                            Controller::Ptr const& controller,
                                            string const& parentJobId,
                                            CallbackType const& onFinish,
-                                           Job::Options const& options) {
+                                           int priority) {
     return MoveReplicaJob::Ptr(
         new MoveReplicaJob(databaseFamily,
                            chunk,
@@ -74,7 +64,7 @@ MoveReplicaJob::Ptr MoveReplicaJob::create(string const& databaseFamily,
                            controller,
                            parentJobId,
                            onFinish,
-                           options));
+                           priority));
 }
 
 
@@ -86,11 +76,11 @@ MoveReplicaJob::MoveReplicaJob(string const& databaseFamily,
                                Controller::Ptr const& controller,
                                string const& parentJobId,
                                CallbackType const& onFinish,
-                               Job::Options const& options)
+                               int priority)
     :   Job(controller,
             parentJobId,
             "MOVE_REPLICA",
-            options),
+            priority),
         _databaseFamily(databaseFamily),
         _chunk(chunk),
         _sourceWorker(sourceWorker),
@@ -203,7 +193,7 @@ void MoveReplicaJob::startImpl(util::Lock const& lock) {
         [self] (CreateReplicaJob::Ptr const& job) {
             self->_onCreateJobFinish();
         },
-        options(lock)   // inherit from the current job
+        priority()  // inherit from the current job
     );
     _createReplicaJob->start();
 }
@@ -260,7 +250,7 @@ void MoveReplicaJob::_onCreateJobFinish() {
                 [self] (DeleteReplicaJob::Ptr const& job) {
                     self->_onDeleteJobFinish();
                 },
-                options(lock)   // inherit from the current job
+                priority()  // inherit from the current job
             );
             _deleteReplicaJob->start();
         } else {

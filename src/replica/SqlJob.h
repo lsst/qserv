@@ -52,9 +52,6 @@ class SqlJob : public Job {
 public:
     typedef std::shared_ptr<SqlJob> Ptr;
 
-    /// @return default options object for this type of a request
-    static Job::Options const& defaultOptions();
-
     SqlJob() = delete;
     SqlJob(SqlJob const&) = delete;
     SqlJob& operator=(SqlJob const&) = delete;
@@ -120,7 +117,7 @@ protected:
      * @param controller Is needed launching requests and accessing the Configuration.
      * @param parentJobId An optional identifier of a parent job.
      * @param jobName The name of a job in the persistent state of the Replication system.
-     * @param options The optional parameters defining the job's priority, etc.
+     * @param priority The priority level of the job.
      * @param ignoreNonPartitioned The optional flag which if 'true' then don't report as
      *   errors tables for which ProtocolStatusExt::NOT_PARTITIONED_TABLE was reported.
      *   The flag can be useful for tables in which the partitions may have already been removed.
@@ -133,7 +130,7 @@ protected:
            Controller::Ptr const& controller,
            std::string const& parentJobId,
            std::string const& jobName,
-           Job::Options const& options,
+           int priority,
            bool ignoreNonPartitioned=false,
            bool ignoreDuplicateKey=false);
 
@@ -179,7 +176,7 @@ protected:
             request->worker(),
             request->id(),
             nullptr,    /* onFinish */
-            options(lock).priority,
+            priority(),
             true,       /* keepTracking */
             id()        /* jobId */
         );

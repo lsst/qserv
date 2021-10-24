@@ -175,18 +175,8 @@ ostream& operator<<(ostream& os, ReplicaDiff const& ri) {
 ///                VerifyJob                  ///
 /////////////////////////////////////////////////
 
-Job::Options const& VerifyJob::defaultOptions() {
-    static Job::Options const options{
-        0,      /* priority */
-        false,  /* exclusive */
-        true    /* exclusive */
-    };
-    return options;
-}
-
 
 string VerifyJob::typeName() { return "VerifyJob"; }
-
 
 VerifyJob::Ptr VerifyJob::create(size_t maxReplicas,
                                  bool computeCheckSum,
@@ -194,15 +184,10 @@ VerifyJob::Ptr VerifyJob::create(size_t maxReplicas,
                                  Controller::Ptr const& controller,
                                  string const& parentJobId,
                                  CallbackType const& onFinish,
-                                 Job::Options const& options) {
-    return VerifyJob::Ptr(
-        new VerifyJob(maxReplicas,
-                      computeCheckSum,
-                      onReplicaDifference,
-                      controller,
-                      parentJobId,
-                      onFinish,
-                      options));
+                                 int priority) {
+    return VerifyJob::Ptr(new VerifyJob(
+            maxReplicas, computeCheckSum, onReplicaDifference, controller,
+            parentJobId, onFinish, priority));
 }
 
 
@@ -212,11 +197,11 @@ VerifyJob::VerifyJob(size_t maxReplicas,
                      Controller::Ptr const& controller,
                      string const& parentJobId,
                      CallbackType const& onFinish,
-                     Job::Options const& options)
+                     int priority)
     :   Job(controller,
             parentJobId,
             "VERIFY",
-            options),
+            priority),
         _maxReplicas(maxReplicas),
         _computeCheckSum(computeCheckSum),
         _onFinish(onFinish),
@@ -268,7 +253,7 @@ void VerifyJob::startImpl(util::Lock const& lock) {
             [self] (FindRequest::Ptr request) {
                 self->_onRequestFinish(request);
             },
-            options(lock).priority,     /* inherited from the one of the current job */
+            priority(),                 /* inherited from the one of the current job */
             computeCheckSum(),
             true,                       /* keepTracking*/
             id()                        /* jobId */
@@ -295,7 +280,7 @@ void VerifyJob::cancelImpl(util::Lock const& lock) {
                 request->worker(),
                 request->id(),
                 nullptr,    /* onFinish */
-                options(lock).priority,
+                priority(),
                 true,       /* keepTracking */
                 id()        /* jobId */);
         }
@@ -414,7 +399,7 @@ void VerifyJob::_onRequestFinish(FindRequest::Ptr const& request) {
             [self] (FindRequest::Ptr request) {
                 self->_onRequestFinish(request);
             },
-            options(lock).priority, /* inherited from the one of the current job */
+            priority(),             /* inherited from the one of the current job */
             computeCheckSum(),
             true,                   /* keepTracking*/
             id()                    /* jobId */

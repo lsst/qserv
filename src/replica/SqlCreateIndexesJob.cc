@@ -60,7 +60,7 @@ SqlCreateIndexesJob::Ptr SqlCreateIndexesJob::create(
         Controller::Ptr const& controller,
         string const& parentJobId,
         CallbackType const& onFinish,
-        Job::Options const& options) {
+        int priority) {
     return Ptr(new SqlCreateIndexesJob(
         database,
         table,
@@ -74,7 +74,7 @@ SqlCreateIndexesJob::Ptr SqlCreateIndexesJob::create(
         controller,
         parentJobId,
         onFinish,
-        options
+        priority
     ));
 }
 
@@ -92,13 +92,13 @@ SqlCreateIndexesJob::SqlCreateIndexesJob(
         Controller::Ptr const& controller,
         string const& parentJobId,
         CallbackType const& onFinish,
-        Job::Options const& options)
+        int priority)
     :   SqlJob(0,
                allWorkers,
                controller,
                parentJobId,
                "SQL_CREATE_TABLE_INDEXES",
-               options,
+               priority,
                false, /* ignoreNonPartitioned */
                ignoreDuplicateKey),
         _database(database),
@@ -158,7 +158,7 @@ list<SqlRequest::Ptr> SqlCreateIndexesJob::launchRequests(util::Lock const& lock
                 [self] (SqlCreateIndexesRequest::Ptr const& request) {
                     self->onRequestFinish(request);
                 },
-                options(lock).priority,
+                priority(),
                 true,   /* keepTracking*/
                 id()    /* jobId */
             )

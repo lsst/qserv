@@ -56,15 +56,14 @@ SqlDisableDbJob::Ptr SqlDisableDbJob::create(
         Controller::Ptr const& controller,
         string const& parentJobId,
         CallbackType const& onFinish,
-        Job::Options const& options) {
-
+        int priority) {
     return Ptr(new SqlDisableDbJob(
         database,
         allWorkers,
         controller,
         parentJobId,
         onFinish,
-        options
+        priority
     ));
 }
 
@@ -74,13 +73,13 @@ SqlDisableDbJob::SqlDisableDbJob(string const& database,
                                  Controller::Ptr const& controller,
                                  string const& parentJobId,
                                  CallbackType const& onFinish,
-                                 Job::Options const& options)
+                                 int priority)
     :   SqlJob(0,
                allWorkers,
                controller,
                parentJobId,
                "SQL_DISABLE_DATABASE",
-               options),
+               priority),
         _database(database),
         _onFinish(onFinish) {
 }
@@ -111,7 +110,7 @@ list<SqlRequest::Ptr> SqlDisableDbJob::launchRequests(util::Lock const& lock,
                 [self] (SqlDisableDbRequest::Ptr const& request) {
                     self->onRequestFinish(request);
                 },
-                options(lock).priority,
+                priority(),
                 true,   /* keepTracking*/
                 id()    /* jobId */
             )

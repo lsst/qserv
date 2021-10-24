@@ -133,10 +133,14 @@ RebalanceApp::RebalanceApp(int argc, char* argv[])
 
 int RebalanceApp::runImpl() {
 
+    string const noParentJobId;
     auto const job = RebalanceJob::create(
         _databaseFamily,
         _estimateOnly,
-        Controller::create(serviceProvider())
+        Controller::create(serviceProvider()),
+        noParentJobId,
+        nullptr,    // no callback
+        PRIORITY_NORMAL
     );
     job->start();
     job->wait();

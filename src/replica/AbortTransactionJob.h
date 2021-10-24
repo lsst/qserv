@@ -57,9 +57,6 @@ public:
     /// @return the unique name distinguishing this class from other types of jobs
     static std::string typeName();
 
-    /// @return default options object for this type of a job
-    static Job::Options const& defaultOptions();
-
     /**
      * Static factory method is needed to prevent issue with the lifespan
      * and memory management of instances created otherwise (as values or via
@@ -72,18 +69,18 @@ public:
      *   If the flag is set to 'false' then only 'ENABLED' workers which are
      *   not in the 'READ-ONLY' state will be involved into the operation.
      * @param controller is needed launching requests and accessing the Configuration
-     * @param parentJobId (optional) identifier of a parent job
-     * @param onFinish (optional) callback function to be called upon a completion
+     * @param parentJobId an identifier of the parent job
+     * @param onFinish a callback function to be called upon a completion
      *   of the job
-     * @param options (optional) defines the job priority, etc.
+     * @param priority the the priority level of the job
      * @return pointer to the created object
      */
     static Ptr create(TransactionId transactionId,
                       bool allWorkers,
                       Controller::Ptr const& controller,
-                      std::string const& parentJobId=std::string(),
-                      CallbackType const& onFinish=nullptr,
-                      Job::Options const& options=defaultOptions());
+                      std::string const& parentJobId,
+                      CallbackType const& onFinish,
+                      int priority);
 
     AbortTransactionJob() = delete;
     AbortTransactionJob(AbortTransactionJob const&) = delete;
@@ -125,8 +122,7 @@ private:
                         Controller::Ptr const& controller,
                         std::string const& parentJobId,
                         CallbackType const& onFinish,
-                        Job::Options const& options);
-
+                        int priority);
 
     void _onChildJobFinish(SqlDeleteTablePartitionJob::Ptr const& job);
  

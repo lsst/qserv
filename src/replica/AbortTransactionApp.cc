@@ -97,11 +97,14 @@ AbortTransactionApp::AbortTransactionApp(int argc, char* argv[])
 
 
 int AbortTransactionApp::runImpl() {
-
+    string const noParentJobId;
     auto const job = AbortTransactionJob::create(
         _transactionId,
         _allWorkers,
-        Controller::create(serviceProvider())
+        Controller::create(serviceProvider()),
+        noParentJobId,
+        nullptr,        // no callback
+        PRIORITY_NORMAL
     );
     job->start();
     job->wait();

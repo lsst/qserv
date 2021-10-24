@@ -152,9 +152,6 @@ public:
                                ReplicaDiff const&,
                                std::vector<ReplicaDiff> const&)> CallbackTypeOnDiff;
 
-   /// @return default options object for this type of a request
-   static Job::Options const& defaultOptions();
-
     /// @return the unique name distinguishing this class from other types of jobs
     static std::string typeName();
 
@@ -177,13 +174,13 @@ public:
      *   for launching requests
      *
      * @param parentJobId
-     *   (optional) identifier of a parent job
+     *   an identifier of a parent job
      *
      * @param onFinish
-     *   (optional) callback function to be called upon a completion of the job
+     *   a callback function to be called upon a completion of the job
      *
-     * @param options
-     *   (optional) job options
+     * @param priority
+     *   the priority level of the job
      *
      * @return
      *   pointer to the created object
@@ -195,9 +192,9 @@ public:
                       bool computeCheckSum,
                       CallbackTypeOnDiff const& onReplicaDifference,
                       Controller::Ptr const& controller,
-                      std::string const& parentJobId=std::string(),
-                      CallbackType const& onFinish=nullptr,
-                      Job::Options const& options=defaultOptions());
+                      std::string const& parentJobId,
+                      CallbackType const& onFinish,
+                      int priority);
 
     // Default construction and copy semantics are prohibited
 
@@ -236,7 +233,7 @@ private:
               Controller::Ptr const& controller,
               std::string const& parentJobId,
               CallbackType const& onFinish,
-              Job::Options const& options);
+              int priority);
 
     /**
      * The callback function to be invoked on a completion of each request.

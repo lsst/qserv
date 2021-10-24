@@ -56,7 +56,7 @@ SqlDropIndexesJob::Ptr SqlDropIndexesJob::create(
         Controller::Ptr const& controller,
         string const& parentJobId,
         CallbackType const& onFinish,
-        Job::Options const& options) {
+        int priority) {
     return Ptr(new SqlDropIndexesJob(
         database,
         table,
@@ -66,7 +66,7 @@ SqlDropIndexesJob::Ptr SqlDropIndexesJob::create(
         controller,
         parentJobId,
         onFinish,
-        options
+        priority
     ));
 }
 
@@ -80,13 +80,13 @@ SqlDropIndexesJob::SqlDropIndexesJob(
         Controller::Ptr const& controller,
         string const& parentJobId,
         CallbackType const& onFinish,
-        Job::Options const& options)
+        int priority)
     :   SqlJob(0,
                allWorkers,
                controller,
                parentJobId,
                "SQL_DROP_TABLE_INDEXES",
-               options),
+               priority),
         _database(database),
         _table(table),
         _overlap(overlap),
@@ -134,7 +134,7 @@ list<SqlRequest::Ptr> SqlDropIndexesJob::launchRequests(util::Lock const& lock,
                 [self] (SqlDropIndexesRequest::Ptr const& request) {
                     self->onRequestFinish(request);
                 },
-                options(lock).priority,
+                priority(),
                 true,   /* keepTracking*/
                 id()    /* jobId */
             )

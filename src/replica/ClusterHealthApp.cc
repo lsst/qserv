@@ -90,10 +90,14 @@ int ClusterHealthApp::runImpl() {
 
     // Send probes to workers of both types
 
+    string const noParentJobId;
     auto const job = ClusterHealthJob::create(
         _timeoutSec,
         _allWorkers,
-        Controller::create(serviceProvider())
+        Controller::create(serviceProvider()),
+        noParentJobId,
+        nullptr,        // no callback
+        PRIORITY_NORMAL
     );
     job->start();
     job->wait();

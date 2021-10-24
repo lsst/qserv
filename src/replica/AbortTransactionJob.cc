@@ -50,26 +50,16 @@ namespace replica {
 string AbortTransactionJob::typeName() { return "AbortTransactionJob"; }
 
 
-Job::Options const& AbortTransactionJob::defaultOptions() {
-    static Job::Options const options{
-        2,      /* priority */
-        false,  /* exclusive */
-        true    /* preemptable */
-    };
-    return options;
-}
-
-
 AbortTransactionJob::Ptr AbortTransactionJob::create(TransactionId transactionId,
                                                      bool allWorkers,
                                                      Controller::Ptr const& controller,
                                                      string const& parentJobId,
                                                      CallbackType const& onFinish,
-                                                     Job::Options const& options) {
+                                                     int priority) {
     return AbortTransactionJob::Ptr(
             new AbortTransactionJob(
                 transactionId, allWorkers, controller, parentJobId,
-                onFinish, options
+                onFinish, priority
             ));
 }
 
@@ -79,11 +69,11 @@ AbortTransactionJob::AbortTransactionJob(TransactionId transactionId,
                                          Controller::Ptr const& controller,
                                          string const& parentJobId,
                                          CallbackType const& onFinish,
-                                         Job::Options const& options)
+                                         int priority)
     :   Job(controller,
             parentJobId,
             "ABORT_TRANSACTION",
-            options),
+            priority),
         _transactionId(transactionId),
         _allWorkers(allWorkers),
         _onFinish(onFinish) {
@@ -177,7 +167,7 @@ void AbortTransactionJob::startImpl(util::Lock const& lock) {
             controller(),
             id(),
             bind(&AbortTransactionJob::_onChildJobFinish, self, _1),
-            defaultOptions()
+            priority()
         );
         job->start();
         _jobs.push_back(job);
