@@ -41,12 +41,14 @@ public:
                                  unsigned int qservSyncTimeoutSec_=0,
                                  unsigned int workerReconfigTimeoutSec_=0,
                                  std::string const& authKey_=std::string(),
-                                 std::string const& adminAuthKey_=std::string())
+                                 std::string const& adminAuthKey_=std::string(),
+                                 std::string const& httpRoot_=std::string())
         :   workerResponseTimeoutSec(workerResponseTimeoutSec_),
             qservSyncTimeoutSec(qservSyncTimeoutSec_),
             workerReconfigTimeoutSec(workerReconfigTimeoutSec_),
             authKey(authKey_),
-            adminAuthKey(adminAuthKey_) {
+            adminAuthKey(adminAuthKey_),
+            httpRoot(httpRoot_) {
     }
     HttpProcessorConfig(HttpProcessorConfig const&) = default;
     HttpProcessorConfig& operator=(HttpProcessorConfig const&) = default;
@@ -73,6 +75,10 @@ public:
 
     /// An "administrator"-level authorization key.
     std::string adminAuthKey;
+
+    /// The root folder for the static content to be served by the built-in
+    /// HTTP service.
+    std::string httpRoot;
 };
     
 }}} // namespace lsst::qserv::replica
