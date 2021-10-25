@@ -145,6 +145,10 @@ private:
     /// An "administrator"-level authorization key.
     std::string _adminAuthKey;
 
+    /// The root folder for the static content to be served by the built-in
+    /// HTTP service.
+    std::string _httpRoot;
+
     /// The Controller will create missing folders unless told not to do so by
     /// passing the corresponding command-line flag.
     bool _doNotCreateMissingFolders = false;

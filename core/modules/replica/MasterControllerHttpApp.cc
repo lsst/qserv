@@ -192,6 +192,10 @@ MasterControllerHttpApp::MasterControllerHttpApp(int argc, char* argv[])
         "admin-auth-key",
         "An administrator-level authorization key for requests made via the REST API.",
         _adminAuthKey
+    ).option(
+        "http-root",
+        "The root folder for the static content to be served by the built-in HTTP service.",
+        _httpRoot
     ).flag(
         "do-not-create-folders",
         "Do not attempt creating missing folders used by the Controller."
@@ -260,7 +264,7 @@ int MasterControllerHttpApp::runImpl() {
         _controller,
         HttpProcessorConfig(
                 _workerResponseTimeoutSec, _qservSyncTimeoutSec, _workerReconfigTimeoutSec,
-                _authKey, _adminAuthKey
+                _authKey, _adminAuthKey, _httpRoot
         ),
         _healthMonitorTask
     );

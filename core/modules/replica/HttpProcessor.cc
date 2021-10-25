@@ -45,7 +45,14 @@
 #include "replica/HttpQservSqlModule.h"
 #include "replica/ServiceProvider.h"
 
+// System headers
+#include <stdexcept>
+
+// Third party headers
+#include "boost/filesystem.hpp"
+
 using namespace std;
+namespace fs = boost::filesystem;
 
 namespace {
 string const taskName = "HTTP-PROCESSOR";
@@ -88,7 +95,12 @@ string const& HttpProcessor::context() const { return taskName; }
 
 void HttpProcessor::registerServices() {
     logOnStartEvent();
+
+    // IMPORTANT: qhttp matches requests to handlers in the order they are installed.
+    // Therefore all REST services with specific path names should be done first.
     auto const self = shared_from_base<HttpProcessor>();
+
+    // Register REST services first.
     httpServer()->addHandler(
             "GET", "/meta/version",
             [self](qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp) {
@@ -551,6 +563,26 @@ void HttpProcessor::registerServices() {
                         "TABLES", HttpModule::AUTH_REQUIRED);
             }
     );
+
+    // Pass-through for the static content
+    if (!self->_processorConfig.httpRoot.empty()) {
+        string const context_ = context() + " " + string(__func__) + " ";
+        boost::system::error_code ec;
+        fs::path const p(self->_processorConfig.httpRoot);
+        bool const isDirectory = fs::is_directory(p, ec);
+        if (ec.value() != 0) {
+            throw runtime_error(
+                    context_+ "failed to validate a value of the httpRoot parameter '"
+                    + self->_processorConfig.httpRoot + "', error: " + ec.message());
+        }
+        if (!isDirectory) {
+            throw runtime_error(
+                    context_ + "a value of the httpRoot parameter '"
+                    + self->_processorConfig.httpRoot + "' doesn't refer to a folder."); 
+        }
+        httpServer()->addStaticContent("/*", self->_processorConfig.httpRoot);
+    }
+
 }
 
 }}} // namespace lsst::qserv::replica
