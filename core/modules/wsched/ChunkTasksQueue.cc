@@ -342,7 +342,13 @@ bool ChunkTasks::empty() const {
 
 /// This is ready to advance when _activeTasks is empty and no Tasks are in flight.
 bool ChunkTasks::readyToAdvance() {
-    return _activeTasks.empty() && _inFlightTasks.empty();
+    LOGS(_log, LOG_LVL_TRACE, "ChunkTasks::readyToAdvance chunkId=" << _chunkId
+            << " _activeTasks.sz=" << _activeTasks.size()
+            << " _inFlightTasks.sz=" << _inFlightTasks.size()
+            << " _readyTask==null=" << (_readyTask==nullptr)
+            << " advance=" << (_activeTasks.empty() && _inFlightTasks.empty() && _readyTask == nullptr));
+    // There is a rare case where _activeTasks and _inFlightTasks are empty but _readyTask in not null.
+    return _activeTasks.empty() && _inFlightTasks.empty() && _readyTask == nullptr;
 }
 
 
