@@ -434,6 +434,11 @@ bool ConfigTestApp::_testGeneral() {
         test.verify<unsigned int>(  "controller", "job_timeout_sec", 600);
         test.verify<unsigned int>(  "controller", "job_heartbeat_sec", 0);
         test.verify<std::string>(   "controller", "empty_chunks_dir", "/qserv/data/qserv");
+        test.verify<int>(           "controller", "worker_evict_priority_level", PRIORITY_VERY_HIGH);
+        test.verify<int>(           "controller", "health_monitor_priority_level", PRIORITY_VERY_HIGH);
+        test.verify<int>(           "controller", "ingest_priority_level", PRIORITY_HIGH);
+        test.verify<int>(           "controller", "catalog_management_priority_level", PRIORITY_LOW);
+
         test.verify<size_t>(        "database", "services_pool_size", 2);
         test.verify<std::string>(   "database", "host", "localhost");
         test.verify<uint16_t>(      "database", "port", 23306);
@@ -495,6 +500,11 @@ bool ConfigTestApp::_testGeneral() {
         config()->set<unsigned int>(  "controller", "job_timeout_sec", 600 + 1);
         config()->set<unsigned int>(  "controller", "job_heartbeat_sec", 0 + 1);
         config()->set<std::string>(   "controller", "empty_chunks_dir", "/qserv/data/qserv-1");
+        config()->set<int>(           "controller", "worker_evict_priority_level", PRIORITY_VERY_HIGH + 1);
+        config()->set<int>(           "controller", "health_monitor_priority_level", PRIORITY_VERY_HIGH + 1);
+        config()->set<int>(           "controller", "ingest_priority_level", PRIORITY_HIGH + 1);
+        config()->set<int>(           "controller", "catalog_management_priority_level", PRIORITY_LOW + 1);
+
         config()->set<size_t>(        "database", "services_pool_size", 2 + 1);
         // These 5 parameters are deduced from 'configUrl'. Changing them here won't make
         // a sense since they're not stored within MySQL.
@@ -547,6 +557,10 @@ bool ConfigTestApp::_testGeneral() {
         test.verify<unsigned int>(  "controller", "job_timeout_sec", 600 + 1);
         test.verify<unsigned int>(  "controller", "job_heartbeat_sec", 0 + 1);
         test.verify<std::string>(   "controller", "empty_chunks_dir", "/qserv/data/qserv-1");
+        test.verify<int>(           "controller", "worker_evict_priority_level", PRIORITY_VERY_HIGH + 1);
+        test.verify<int>(           "controller", "health_monitor_priority_level", PRIORITY_VERY_HIGH + 1);
+        test.verify<int>(           "controller", "ingest_priority_level", PRIORITY_HIGH + 1);
+        test.verify<int>(           "controller", "catalog_management_priority_level", PRIORITY_LOW + 1);
         test.verify<size_t>(        "database", "services_pool_size", 2 + 1);
 
         // These 5 parameters deduced from 'configUrl' shouldn't be changed.

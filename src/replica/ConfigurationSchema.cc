@@ -45,6 +45,9 @@ T _attributeValue(json const& schemaJson, string const& category, string const& 
     }
     return defaultValue;
 }
+
+auto const max_listen_connections = boost::asio::socket_base::max_listen_connections;
+
 }
 
 namespace lsst {
@@ -124,12 +127,39 @@ json const ConfigurationSchema::_schemaJson = json::object({
             {"description",
                 "The maximum length of the queue of pending connections sent to the controller's HTTP server."
                 " Must be greater than 0."},
-            {"default", boost::asio::socket_base::max_listen_connections}
+            {"default", max_listen_connections}
         }},
         {"empty_chunks_dir", {
             {"description",
                 "A path to a folder where Qserv master stores its empty chunk lists. Must be non-empty."},
             {"default", "/qserv/data/qserv"}
+        }},
+        {"worker_evict_priority_level", {
+            {"description",
+                "The priority level of the worker eviction task that is run to compensate for"
+                " the missing chunk replicas should be a worker became offline for an extended"
+                " period of time."},
+            {"empty-allowed", 1},
+            {"default", PRIORITY_VERY_HIGH}
+        }},
+        {"health_monitor_priority_level", {
+            {"description",
+                "The priority level of the Cluster Health Monitoring task."},
+            {"empty-allowed", 1},
+            {"default", PRIORITY_VERY_HIGH}
+        }},
+        {"ingest_priority_level", {
+            {"description",
+                "The priority level of the time-critical catalog ingest activities."},
+            {"empty-allowed", 1},
+            {"default", PRIORITY_HIGH}
+        }},
+        {"catalog_management_priority_level", {
+            {"description",
+                "The priority level of the routine catalog management activities, such as scanning"
+                " and recording replica dispositions, fixing up missing replicas, etc."},
+            {"empty-allowed", 1},
+            {"default", PRIORITY_LOW}
         }}
     }},
     {"database", {
@@ -288,7 +318,7 @@ json const ConfigurationSchema::_schemaJson = json::object({
             {"description",
                 "The maximum length of the queue of pending connections sent to the Replication worker's"
                 " HTTP-based ingest service. Must be greater than 0."},
-            {"default", boost::asio::socket_base::max_listen_connections}
+            {"default", max_listen_connections}
         }}
     }},
     {"worker_defaults", {
