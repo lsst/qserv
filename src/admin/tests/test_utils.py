@@ -1,4 +1,4 @@
-# This file is part of daf_butler.
+# This file is part of qserv.
 #
 # Developed for the LSST Data Management System.
 # This product includes software developed by the LSST Project
