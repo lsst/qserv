@@ -284,7 +284,7 @@ wbase::Task::Ptr ChunkTasks::removeTask(wbase::Task::Ptr const& task) {
     auto eraseFunc = [this, &task](std::vector<wbase::Task::Ptr> &vect)->wbase::Task::Ptr {
         auto queryId = task->getQueryId();
         auto jobId = task->getJobId();
-        auto tseq = task->tSeq;
+        auto tseq = task->getTSeq();
         for (auto iter = vect.begin(); iter != vect.end(); ++iter) {
             if ((*iter)->idsMatch(queryId, jobId, tseq)) {
                 auto ret = *iter;

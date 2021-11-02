@@ -102,10 +102,10 @@ std::atomic<uint32_t> taskSequence{0};
 /// the util::CommandThreadPool is not called here.
 Task::Task(TaskMsgPtr const& t, std::string const& query, int fragmentNumber,
         std::shared_ptr<SendChannelShared> const& sc)
-    : msg(t), sendChannel(sc),
-      tSeq(++taskSequence),
+    : msg(t), _sendChannel(sc),
+      _tSeq(++taskSequence),
       _qId(t->queryid()), _jId(t->jobid()), _attemptCount(t->attemptcount()),
-      _idStr(QueryIdHelper::makeIdStr(_qId, _jId)+"tseq="+std::to_string(tSeq)+":"),
+      _idStr(makeIdStr()),
       _queryString(query),
       _queryFragmentNum(fragmentNumber) {
 
@@ -214,7 +214,7 @@ bool Task::checkCancelled() {
     // in other ways, however, without the sendChannel, this task
     // has no way to return anything to the originating czar and
     // may as well give up now.
-    if (sendChannel == nullptr || sendChannel->isDead()) {
+    if (_sendChannel == nullptr || _sendChannel->isDead()) {
         // The sendChannel is dead, probably squashed by the czar.
         cancel();
     }

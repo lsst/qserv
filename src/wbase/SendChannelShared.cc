@@ -43,12 +43,23 @@ namespace lsst {
 namespace qserv {
 namespace wbase {
 
+atomic<uint64_t> SendChannelShared::scsSeqId{0};
+
 
 SendChannelShared::Ptr SendChannelShared::create(SendChannel::Ptr const& sendChannel,
                                                  wcontrol::TransmitMgr::Ptr const& transmitMgr)  {
     auto scs = shared_ptr<SendChannelShared>(new SendChannelShared(sendChannel, transmitMgr));
     return scs;
 }
+
+
+SendChannelShared::SendChannelShared(SendChannel::Ptr const& sendChannel,
+                   std::shared_ptr<wcontrol::TransmitMgr> const& transmitMgr)
+         : _sendChannel(sendChannel), _transmitMgr(transmitMgr), _scsId(scsSeqId++) {
+     if (_sendChannel == nullptr) {
+         throw Bug("SendChannelShared constructor given nullptr");
+     }
+ }
 
 
 SendChannelShared::~SendChannelShared() {
@@ -206,7 +217,8 @@ bool SendChannelShared::_transmit(bool erred, bool scanInteractive, QueryId cons
         }
         uint32_t seq = _sendChannel->getSeq();
         int scsSeq = ++_scsSeq;
-        string seqStr = string("seq=" + to_string(seq) + " scsseq=" + to_string(scsSeq));
+        string seqStr = string("seq=" + to_string(seq) + " scsseq=" + to_string(scsSeq)
+                               + " scsId=" + to_string(_scsId));
         nextPHdr->set_endnodata(reallyLast);
         nextPHdr->set_seq(seq);
         nextPHdr->set_scsseq(scsSeq);
@@ -271,7 +283,7 @@ bool SendChannelShared::_sendBuf(lock_guard<mutex> const& streamLock,
     } else {
         util::Timer t;
         t.start();
-        LOGS(_log, LOG_LVL_DEBUG, "_sendbuf wait start");
+        LOGS(_log, LOG_LVL_INFO, "_sendbuf wait start " << note);
         streamBuf->waitForDoneWithThis(); // Block until this buffer has been sent.
         t.stop();
         auto logMsg = transmitHisto.addTime(t.getElapsed(), note);

@@ -130,7 +130,8 @@ public:
                                         std::shared_ptr<SendChannelShared> const& sendChannel);
 
     TaskMsgPtr msg; ///< Protobufs Task spec
-    std::shared_ptr<SendChannelShared> sendChannel; ///< For result reporting
+    std::shared_ptr<SendChannelShared> getSendChannel() const { return _sendChannel; }
+    void resetSendChannel() { _sendChannel.reset(); } ///< reset the shared pointer for SendChannelShared
     std::string hash; ///< hash of TaskMsg
     std::string user; ///< Incoming username
     time_t entryTime {0}; ///< Timestamp for task admission
@@ -174,8 +175,8 @@ public:
     std::string getIdStr() const { return _idStr; }
 
     /// @return true if qId and jId match this task's query and job ids.
-    bool idsMatch(QueryId qId, int jId, uint32_t tseq) const {
-        return (_qId == qId && _jId == jId && tseq == tSeq);
+    bool idsMatch(QueryId qId, int jId, uint64_t tseq) const {
+        return (_qId == qId && _jId == jId && tseq == _tSeq);
     }
 
     // Functions for tracking task state and statistics.
@@ -185,14 +186,18 @@ public:
     void started(std::chrono::system_clock::time_point const& now);
     std::chrono::milliseconds finished(std::chrono::system_clock::time_point const& now);
 
-    uint32_t const tSeq; ///< identifier for the specific task, useful in near-neighbor debugging. &&& make private
+    uint64_t getTSeq() const { return _tSeq; }
+
+    std::string makeIdStr(bool invalid=false) const { return QueryIdHelper::makeIdStr(_qId, _jId, invalid)+std::to_string(_tSeq)+":"; }
 
 private:
-    QueryId  const    _qId = 0; ///< queryId from czar
-    int      const    _jId = 0; ///< jobId from czar
+    std::shared_ptr<SendChannelShared> _sendChannel;
+    uint64_t const    _tSeq = 0; ///< identifier for the specific task
+    QueryId  const    _qId = 0;  ///< queryId from czar
+    int      const    _jId = 0;  ///< jobId from czar
     int      const    _attemptCount = 0; // attemptCount from czar
     /// _idStr for logging only.
-    std::string const _idStr = QueryIdHelper::makeIdStr(0, 0, true)+std::to_string(tSeq)+":";
+    std::string const _idStr = makeIdStr(true);
     std::string _queryString; ///< The query this task will run.
     int _queryFragmentNum = 0; ///< The fragment number of the query in the task message.
 

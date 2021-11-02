@@ -53,6 +53,8 @@ class SendChannelShared {
 public:
     using Ptr = std::shared_ptr<SendChannelShared>;
 
+    static std::atomic<uint64_t> scsSeqId; ///< Source for unique _scsId numbers
+
     /// To help ensure that _streamMutex is locked before calling,
     /// many member functions require a StreamGuard argument.
     using StreamGuard = std::lock_guard<std::mutex> const&;
@@ -133,8 +135,12 @@ public:
     /// allowed to complete, deadlock is likely.
     void waitTransmitLock(wcontrol::TransmitMgr& transmitMgr, bool interactive, QueryId const& qId);
 
-    /// @return the channel sequence number
+    /// @return the channel sequence number (this will not be valid until after
+    ///         the channel is open.)
     uint64_t getSeq() const { return _sendChannel->getSeq(); }
+
+    /// @return the sendChannelShared sequence number, which is always valid.
+    uint64_t getScsId() const { return _scsId; }
 
     /// @return the current sql connection count
     int getSqlConnectionCount() { return _sqlConnectionCount; }
@@ -148,12 +154,7 @@ public:
 private:
     /// Private constructor to protect shared pointer integrity.
     SendChannelShared(SendChannel::Ptr const& sendChannel,
-                      std::shared_ptr<wcontrol::TransmitMgr> const& transmitMgr)
-            : _sendChannel(sendChannel), _transmitMgr(transmitMgr) {
-        if (_sendChannel == nullptr) {
-            throw Bug("SendChannelShared constructor given nullptr");
-        }
-    }
+                      std::shared_ptr<wcontrol::TransmitMgr> const& transmitMgr);
 
     /// Encode TransmitData items from _transmitQueue and pass them to XrdSsi
     /// to be sent to the czar.
@@ -192,6 +193,7 @@ private:
     std::mutex _transmitLockMtx;
     std::condition_variable _transmitLockCv;
     std::shared_ptr<wcontrol::TransmitMgr> _transmitMgr; ///< Pointer to the TransmitMgr
+    uint64_t const _scsId; ///< id number for this SendChannelShared
     std::atomic<uint32_t> _scsSeq{0}; ///< SendChannelSharedsequence number for transmit.
 
     /// The number of sql connections opened to handle the Tasks using this SendChannelShared.

@@ -153,7 +153,8 @@ util::TimerHistogram memWaitHisto("memWait Hist", {1, 5, 10, 20, 40});
 
 bool QueryRunner::runQuery() {
     QSERV_LOGCONTEXT_QUERY_JOB(_task->getQueryId(), _task->getJobId());
-    LOGS(_log, LOG_LVL_INFO, "QueryRunner::runQuery() tid=" << _task->getIdStr());
+    LOGS(_log, LOG_LVL_INFO, "QueryRunner::runQuery() tid=" << _task->getIdStr()
+         << " scsId=" << _task->getSendChannel()->getScsId());
     if (_runQueryCalled.exchange(true)) {
         LOGS(_log, LOG_LVL_ERROR, "QueryRunner::runQuery already called for task="
                 << _task->getQueryId() << " job=" <<  _task->getJobId());
@@ -193,7 +194,7 @@ bool QueryRunner::runQuery() {
 
     _setDb();
     LOGS(_log, LOG_LVL_DEBUG,  "Exec in flight for Db=" << _dbName << " sqlConnMgr " << _sqlConnMgr->dump());
-    wcontrol::SqlConnLock sqlConnLock(*_sqlConnMgr, not _task->getScanInteractive(), _task->sendChannel);
+    wcontrol::SqlConnLock sqlConnLock(*_sqlConnMgr, not _task->getScanInteractive(), _task->getSendChannel());
     bool connOk = _initConnection();
     if (!connOk) {
         // Transmit the mysql connection error to the czar, which should trigger a re-try.
@@ -279,13 +280,13 @@ void QueryRunner::_buildDataMsg(unsigned int rowCount, size_t tSize) {
 bool QueryRunner::_transmit(bool lastIn) {
     QSERV_LOGCONTEXT_QUERY_JOB(_task->getQueryId(), _task->getJobId());
     LOGS(_log, LOG_LVL_DEBUG, "_transmit lastIn=" << lastIn);
-    if (_task->sendChannel->isDead()) {
+    if (_task->getSendChannel()->isDead()) {
         LOGS(_log, LOG_LVL_INFO, "aborting transmit since sendChannel is dead.");
         return false;
     }
 
 
-    _task->sendChannel->waitTransmitLock(*_transmitMgr, _task->getScanInteractive(),
+    _task->getSendChannel()->waitTransmitLock(*_transmitMgr, _task->getScanInteractive(),
                                          _task->getQueryId());
 
     // Have all rows already been read, or an error?
@@ -297,7 +298,7 @@ bool QueryRunner::_transmit(bool lastIn) {
 
     int qId = _task->getQueryId();
     int jId = _task->getJobId();
-    bool success = _task->sendChannel->addTransmit(_cancelled, erred, lastIn, _largeResult, _transmitData, qId, jId);
+    bool success = _task->getSendChannel()->addTransmit(_cancelled, erred, lastIn, _largeResult, _transmitData, qId, jId);
 
     // Large results get priority, but new large results should not get priority until
     // after they have started transmitting.
@@ -473,7 +474,7 @@ bool QueryRunner::_dispatchChannel() {
         // TODO: Hold onto this for longer period of time as the odds of reuse are pretty low at this scale
         //       Ideally, hold it until moving on to the next chunk. Try to clean up ChunkResource code.
 
-        if (!_cancelled &&  !_task->sendChannel->isDead()) {
+        if (!_cancelled &&  !_task->getSendChannel()->isDead()) {
             string const& query = _task->getQueryString();
             util::Timer sqlTimer;
             sqlTimer.start();
@@ -550,7 +551,7 @@ void QueryRunner::cancel() {
 
     // This could be called after the task has been completed, so sendChannel
     // validation is needed.
-    auto sChannel = _task->sendChannel;
+    auto sChannel = _task->getSendChannel();
     if (sChannel != nullptr) {
         lock_guard<mutex> streamLock(sChannel->streamMutex);
         sChannel->kill(streamLock, "QueryRunner cancel");
