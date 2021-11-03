@@ -3,17 +3,10 @@
 
 __all__ = ["make_migration_manager"]
 
-import backoff
-from functools import partial
-import logging
-import mysql.connector
-import os
 
-from lsst.db import utils
 from lsst.qserv.schema import SchemaMigMgr, Uninitialized
 
 
-_log = logging.getLogger(__name__)
 qservw_db = "qservw_worker"
 
 
