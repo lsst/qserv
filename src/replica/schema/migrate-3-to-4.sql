@@ -11,7 +11,6 @@ ALTER TABLE `config_database_table` ADD COLUMN `director_table` TEXT NOT NULL DE
 DROP TABLE IF EXISTS `database_director_table` ;
 CREATE TABLE IF NOT EXISTS `database_director_table` SELECT `database`,`table` FROM `config_database_table` WHERE `is_director` != 0 ;
 DROP FUNCTION IF EXISTS SetDirectorTableF ;
-DELIMITER //
 CREATE FUNCTION SetDirectorTableF(`database_name` VARCHAR(255), `table_name` VARCHAR(255)) RETURNS INT
 BEGIN
   UPDATE `config_database_table`
@@ -21,8 +20,7 @@ BEGIN
       AND `is_partitioned` != 0
       AND `is_director` = 0 ;
   RETURN 1 ;
-END //
-DELIMITER ;
+END;
 SELECT SetDirectorTableF(`database`, `table`) FROM `database_director_table` ;
 DROP FUNCTION IF EXISTS SetDirectorTableF ;
 DROP TABLE IF EXISTS `database_director_table` ;
