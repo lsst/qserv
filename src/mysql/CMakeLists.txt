@@ -1,0 +1,28 @@
+add_library(mysql OBJECT)
+add_dependencies(mysql proto)
+
+target_sources(mysql PRIVATE
+    LocalInfile.cc
+    MySqlConfig.cc
+    MySqlConnection.cc
+    RowBuffer.cc
+    SchemaFactory.cc
+)
+
+target_link_libraries(mysql PUBLIC
+    log
+    mysqlclient_r
+)
+
+add_executable(testLocalInfile testLocalInfile.cc)
+
+target_link_libraries(testLocalInfile
+    mysql
+    Boost::unit_test_framework
+)
+
+# Even though the test is commented out, leave this so it's findable by searching for
+# text similar to other WILL_FAIL tests.
+# WILL_FAIL does not work, I think because it exits with an error "Failed to connect to MySQL: Error"
+# add_test(NAME testLocalInfile COMMAND testLocalInfile)
+# set_tests_properties(testLocalInfile PROPERTIES WILL_FAIL 1)

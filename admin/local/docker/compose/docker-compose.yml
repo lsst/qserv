@@ -1,0 +1,375 @@
+version: "3.9"
+x-worker-db:
+    &worker-db
+    image: "${QSERV_MARIADB_IMAGE:?err}"
+    init: true
+    command: --port 3306
+    environment:
+        MYSQL_ROOT_PASSWORD: CHANGEME
+x-worker-db-cnf-volume:
+    &worker-db-cnf-volume
+    - type: bind
+      source: ../../../../src/admin/templates/mariadb/etc/my.cnf
+      target: /etc/mysql/my.cnf
+x-log-volume:
+    &log-volume
+    - type: bind
+      source: ./log/
+      target: /config-etc/log/
+x-log-environment:
+    &log-environment
+    LSST_LOG_CONFIG: /config-etc/log/log.cfg
+x-worker-cmsd:
+    &worker-cmsd
+    image: "${QSERV_IMAGE:?err}"
+    init: true
+    # ports are published in worker-xrootd because this container uses that container's network stack.
+x-worker-xrootd:
+    &worker-xrootd
+    image: "${QSERV_IMAGE:?err}"
+    init: true
+    expose:
+        - "1094"
+        - "2131"
+        - "3306" # for the worker db, which shares this container's network stack.
+x-worker-repl:
+    &worker-repl
+    image: "${QSERV_IMAGE:?err}"
+    init: true
+    expose:
+        - "25000"
+        - "25001"
+        - "25002"
+        - "25003"
+        - "25004"
+
+volumes:
+    worker_0_data:
+    worker_0_repl_cfg:
+    worker_0_xrootd:
+    worker_0_home:
+    worker_0_mariadb_lib:
+    worker_1_data:
+    worker_1_repl_cfg:
+    worker_1_xrootd:
+    worker_1_home:
+    worker_1_mariadb_lib:
+    manager_xrootd:
+    manager_home:
+    czar_0_data:
+    czar_0_cfg:
+    czar_0_home:
+    czar_0_mariadb_lib:
+    repl_mgr_data:
+    repl_mgr_home:
+    repl_mgr_mariadb_lib:
+    dashboard_cfg:
+    dashboard_home:
+
+networks:
+    default:
+        ipam:
+            driver: default
+            config:
+                - subnet: 192.168.3.0/24
+
+services:
+    worker-db-0:
+        << : *worker-db
+        volumes:
+            - << : *worker-db-cnf-volume
+            - type: volume
+              source: worker_0_data
+              target: /qserv/data
+            - type: volume
+              source: worker_0_mariadb_lib
+              target: /var/lib/mysql
+        network_mode: "service:worker-xrootd-0"
+    worker-xrootd-0:
+        << : *worker-xrootd
+        command: >
+          entrypoint worker-xrootd
+          --connection mysql://root:CHANGEME@127.0.0.1:3306
+          --vnid worker_0
+          --cmsd-manager manager-xrootd
+          --mysql-monitor-password CHANGEME_MONITOR
+        environment:
+            << : *log-environment
+        volumes:
+            - type: volume
+              source: worker_0_xrootd
+              target: /var/run/xrootd
+            - type: volume
+              source: worker_0_home
+              target: /home/qserv
+            - << : *log-volume
+        networks:
+            default:
+                aliases:
+                    - worker-cmsd-0
+                    - worker-db-0
+    worker-cmsd-0:
+        << : *worker-cmsd
+        command: >
+          entrypoint worker-cmsd
+          --connection mysql://root:CHANGEME@worker-db-0:3306
+          --vnid worker_0
+          --cmsd-manager manager-xrootd
+        network_mode: "service:worker-xrootd-0"
+        environment:
+            << : *log-environment
+        volumes:
+            - type: volume
+              source: worker_0_xrootd
+              target: /var/run/xrootd
+            - type: volume
+              source: worker_0_home
+              target: /home/qserv
+            - << : *log-volume
+    worker-repl-0:
+        << : *worker-repl
+        command: >
+          entrypoint worker-repl
+          --connection mysql://root:CHANGEME@worker-db-0:3306/qservw_worker
+          --repl-connection mysql://qsreplica@repl-mgr-db:3306/qservReplica
+          --vnid worker_0
+          --instance-id qserv_proj
+        environment:
+            << : *log-environment
+        volumes:
+            - type: volume
+              source: worker_0_data
+              target: /qserv/data
+            - type: volume
+              source: worker_0_repl_cfg
+              target: /config-etc
+            - type: volume
+              source: worker_0_home
+              target: /home/qserv
+            - << : *log-volume
+    worker-db-1:
+        << : *worker-db
+        volumes:
+            - << : *worker-db-cnf-volume
+            - type: volume
+              source: worker_1_data
+              target: /qserv/data
+            - type: volume
+              source: worker_1_mariadb_lib
+              target: /var/lib/mysql
+        network_mode: "service:worker-xrootd-1"
+    worker-xrootd-1:
+        << : *worker-xrootd
+        command: >
+          entrypoint worker-xrootd
+          --connection mysql://root:CHANGEME@127.0.0.1:3306
+          --vnid worker_1
+          --cmsd-manager manager-xrootd
+          --mysql-monitor-password CHANGEME_MONITOR
+        environment:
+            << : *log-environment
+        volumes:
+            - type: volume
+              source: worker_1_xrootd
+              target: /var/run/xrootd
+            - type: volume
+              source: worker_1_home
+              target: /home/qserv
+            - << : *log-volume
+        networks:
+            default:
+                aliases:
+                    - worker-cmsd-1
+                    - worker-db-1
+    worker-cmsd-1:
+        << : *worker-cmsd
+        command: >
+          entrypoint worker-cmsd
+          --connection mysql://root:CHANGEME@worker-db-1:3306
+          --vnid worker_1
+          --cmsd-manager manager-xrootd
+        network_mode: "service:worker-xrootd-1"
+        environment:
+            << : *log-environment
+        volumes:
+            - type: volume
+              source: worker_1_xrootd
+              target: /var/run/xrootd
+            - type: volume
+              source: worker_1_home
+              target: /home/qserv
+            - << : *log-volume
+    worker-repl-1:
+        << : *worker-repl
+        command: >
+          entrypoint worker-repl
+          --connection mysql://root:CHANGEME@worker-db-1:3306/qservw_worker
+          --repl-connection mysql://qsreplica@repl-mgr-db:3306/qservReplica
+          --vnid worker_1
+          --instance-id qserv_proj
+        environment:
+            << : *log-environment
+        volumes:
+            - type: volume
+              source: worker_1_data
+              target: /qserv/data
+            - type: volume
+              source: worker_1_repl_cfg
+              target: /config-etc
+            - type: volume
+              source: worker_1_home
+              target: /home/qserv
+            - << : *log-volume
+    manager-xrootd:
+        image: "${QSERV_IMAGE:?err}"
+        init: true
+        command: entrypoint xrootd-manager --cmsd-manager manager-xrootd
+        hostname: manager-xrootd
+        environment:
+            << : *log-environment
+        expose:
+            - "1094"
+            - "2131"
+        volumes:
+            - type: volume
+              source: manager_xrootd
+              target: /var/run/xrootd
+            - type: volume
+              source: worker_1_home
+              target: /home/qserv
+            - << : *log-volume
+        networks:
+            default:
+                aliases:
+                    - manager-cmsd
+    manager-cmsd:
+        image: "${QSERV_IMAGE:?err}"
+        init: true
+        # NOTE!! cms-delay-servers must match the number of workers being launched!
+        command: entrypoint cmsd-manager --cms-delay-servers 2
+        network_mode: "service:manager-xrootd"
+        environment:
+            << : *log-environment
+        volumes:
+            - type: volume
+              source: manager_xrootd
+              target: /var/run/xrootd
+            - type: volume
+              source: manager_home
+              target: /home/qserv
+            - << : *log-volume
+    czar-db:
+        image: "${QSERV_MARIADB_IMAGE:?err}"
+        init: true
+        command: --port 3306
+        network_mode: "service:czar-proxy"
+        environment:
+            MYSQL_ROOT_PASSWORD: CHANGEME
+        volumes:
+            - type: volume
+              source: czar_0_data
+              target: /qserv/data
+            - type: bind
+              source: ../../../../src/admin/templates/mariadb/etc/my.cnf
+              target: /etc/mysql/my.cnf
+            - type: volume
+              source: czar_0_mariadb_lib
+              target: /var/lib/mysql
+    czar-proxy:
+        image: "${QSERV_IMAGE:?err}"
+        init: true
+        command: >
+          entrypoint --log-level DEBUG proxy
+          --connection root:CHANGEME@127.0.0.1:3306
+          --mysql-user-qserv qsmaster
+          --xrootd-manager manager-xrootd
+          --czar-db-host czar-db
+          --czar-db-port 3306
+        environment:
+            << : *log-environment
+        volumes:
+            - type: volume
+              source: czar_0_data
+              target: /qserv/data
+            - type: volume
+              source: czar_0_cfg
+              target: /config-etc
+            - type: volume
+              source: czar_0_home
+              target: /home/qserv
+            - << : *log-volume
+        expose:
+            - "3306" # for czar-db
+            - "4040"
+        networks:
+            default:
+                aliases:
+                    - czar-db
+        # ports:
+        #     - "127.0.0.1:4040:4040"
+    repl-mgr-db:
+        image: "${QSERV_MARIADB_IMAGE:?err}"
+        init: true
+        command: --port 3306
+        expose:
+            - "3306"
+        environment:
+            MYSQL_ROOT_PASSWORD: CHANGEME
+        volumes:
+            - type: volume
+              source: repl_mgr_data
+              target: /qserv/data
+            - type: bind
+              source: ../../../../src/admin/templates/repl-db/etc/my.cnf
+              target: /etc/mysql/my.cnf
+            - type: volume
+              source: repl_mgr_mariadb_lib
+              target: /var/lib/mysql
+    repl-mgr-controller:
+        image: "${QSERV_IMAGE:?err}"
+        init: true
+        command: >
+          entrypoint --log-level DEBUG replication-controller
+          --connection mysql://root:CHANGEME@repl-mgr-db:3306/qservReplica
+          --repl-connection mysql://qsreplica@repl-mgr-db:3306/qservReplica
+          --qserv-czar-db mysql://root:CHANGEME@czar-db:3306/qservMeta
+          --instance-id qserv_proj
+          --worker name=worker_0,host=worker-repl-0
+          --worker name=worker_1,host=worker-repl-1
+          --xrootd-manager manager-xrootd
+        environment:
+            << : *log-environment
+        expose:
+            - "25081"
+        volumes:
+            - type: volume
+              source: repl_mgr_data
+              target: /qserv/data
+            - type: volume
+              source: repl_mgr_home
+              target: /home/qserv
+            - << : *log-volume
+    dashboard:
+        command: nginx -c /config-etc/nginx.conf
+        image: nginx:1.20-alpine
+        init: true
+        volumes:
+            - type: volume
+              source: dashboard_cfg
+              target: /config-etc
+            - type: bind
+              source: ./dashboard/dashboard_wait.sh
+              target: /docker-entrypoint.d/dashboard_wait.sh
+        ports:
+            - "0.0.0.0:${QSERV_DASHBOARD_PORT:-25080}:80"
+    init_dashboard:
+        command: entrypoint init-dashboard --dashboard-port 80 --dashboard-html /config-etc/www
+        image: "${QSERV_IMAGE:?err}"
+        init: true
+        volumes:
+            - type: volume
+              source: dashboard_cfg
+              target: /config-etc
+            - type: volume
+              source: dashboard_home
+              target: /home/qserv

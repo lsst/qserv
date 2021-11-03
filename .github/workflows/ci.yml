@@ -1,0 +1,249 @@
+# Qserv CI workflow
+---
+name: "CI"
+on:
+  push:
+  pull_request:
+    branches:
+      - master
+jobs:
+  build:
+    name: Build image
+    runs-on: ubuntu-20.04
+    steps:
+      - name: Install python
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.x'
+
+      - name: Install click
+        run: |
+          python -m pip install --upgrade pip
+          pip install click pyyaml requests
+
+      - name: Checkout code
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 0  # 0 is "all history and branch tags"
+
+      - name: Login to DockerHub
+        uses: docker/login-action@v1
+        with:
+          username: ${{ secrets.FM_DOCKERHUB_TOKEN_USER }}
+          password: ${{ secrets.FM_DOCKERHUB_TOKEN }}
+
+      - name: Prepare lite-build image
+        run: |
+          ./admin/local/cli/qserv --log-level DEBUG build-build-image \
+          --pull-image \
+          --push-image
+        env:
+          QSERV_DH_USER: ${{ secrets.FM_DOCKERHUB_TOKEN_USER }}
+          QSERV_DH_TOKEN: ${{ secrets.FM_DOCKERHUB_TOKEN }}
+
+      - name: Prepare lite-run-base image
+        run: |
+          ./admin/local/cli/qserv --log-level DEBUG build-run-base-image \
+          --pull-image \
+          --push-image
+        env:
+          QSERV_DH_USER: ${{ secrets.FM_DOCKERHUB_TOKEN_USER }}
+          QSERV_DH_TOKEN: ${{ secrets.FM_DOCKERHUB_TOKEN }}
+
+      - name: Prepare user build image
+        run: |
+          ./admin/local/cli/qserv --log-level DEBUG build-user-build-image \
+          --group docker_outer
+
+      - name: Prepare maraidb image
+        run: |
+          ./admin/local/cli/qserv --log-level DEBUG build-mariadb-image \
+          --pull-image \
+          --push-image
+        env:
+          QSERV_DH_USER: ${{ secrets.FM_DOCKERHUB_TOKEN_USER }}
+          QSERV_DH_TOKEN: ${{ secrets.FM_DOCKERHUB_TOKEN }}
+
+      # Pull-image on this stage should only ever have an effect when rerunnning a job from
+      # the github actions web page. This is useful for re-running integration tests on
+      # a successful build to sniff out intermittent integration test issues.
+      # To rerun the whole build, push a new sha to the branch.
+      #
+      # Specify -j2 because the github actions virutal machine has 2 cores, so restrict the
+      # number of jobs to the same.
+      - name: Build lite-qserv image
+        run: |
+          ./admin/local/cli/qserv --log-level DEBUG build \
+          --pull-image \
+          --push-image \
+          -j2
+        env:
+          QSERV_DH_USER: ${{ secrets.FM_DOCKERHUB_TOKEN_USER }}
+          QSERV_DH_TOKEN: ${{ secrets.FM_DOCKERHUB_TOKEN }}
+
+      - name: Launch qserv
+        run: |
+          ./admin/local/cli/qserv --log-level DEBUG up
+
+      - name: Run integration tests
+        run: |
+          ./admin/local/cli/qserv --log-level DEBUG itest \
+          --wait 180
+
+      - name: Remove integration test volumes
+        run: |
+          ./admin/local/cli/qserv --log-level DEBUG itest-rm
+
+      - name: Shut down qserv
+        run: |
+          ./admin/local/cli/qserv --log-level DEBUG down \
+          -v
+
+
+
+
+# @npease says: this GitHub actions CI code was originally written by @fjammes.
+# I changed it, basically entirely, but I didn't want to lose what he had
+# written, at least not right away. As part of our process to keep commits
+# organized & targeted I was afraid it would get lost in a fixup or squash
+# during a rebase. This workflow contains end-to-end test steps that we may want
+# to re-enable.
+
+#       - name: Declare Version Variables
+#         id: vars
+#         shell: bash
+#         run: |
+#           IMAGE="qserv/lite-qserv:$(git describe --dirty --always)"
+#           echo "IMAGE=${IMAGE}" >> $GITHUB_ENV
+#           echo "Build and test Qserv image: $IMAGE"
+#       - name: Build Qserv base images
+#         run: |
+#           ./admin/tools/docker/base/build.sh
+#       - name: Build Qserv image
+#         run: |
+#           ./admin/tools/docker/ci/build.sh
+#           mkdir -p artifacts
+#           docker save "${{ env.IMAGE }}" > artifacts/qserv-image.tar
+#           echo "${{ env.IMAGE }}" > artifacts/qserv-image-tag
+#       - uses: actions/upload-artifact@v2
+#         with:
+#           name: qserv-image
+#           path: artifacts
+  # image-analysis:
+  #   name: Analyze image
+  #   runs-on: ubuntu-18.04
+  #   needs: build
+  #   steps:
+  #     - name: Download image
+  #       uses: actions/download-artifact@v2
+  #       with:
+  #         name: qserv-image
+  #         path: artifacts
+  #     - name: Load image in local registry
+  #       run: |
+  #         docker load --input artifacts/qserv-image.tar
+  #         echo "IMAGE=$(cat artifacts/qserv-image-tag)" >> $GITHUB_ENV
+  #     - name: Scan operator image
+  #       uses: anchore/scan-action@v2
+  #       with:
+  #         image: "${{ env.IMAGE }}"
+  #         acs-report-enable: true
+  #     - name: upload Anchore scan SARIF report
+  #       uses: github/codeql-action/upload-sarif@v1
+  #       with:
+  #         sarif_file: results.sarif
+  # e2e:
+  #   name: Run end to end test on qserv
+  #   runs-on: ubuntu-18.04
+  #   needs: build
+  #   steps:
+  #     - name: Download image
+  #       uses: actions/download-artifact@v2
+  #       with:
+  #         name: qserv-image
+  #         path: artifacts
+  #     - name: Load image in local registry
+  #       run: |
+  #         docker load --input artifacts/qserv-image.tar
+  #         echo "IMAGE=$(cat artifacts/qserv-image-tag)" >> $GITHUB_ENV
+  #     - name: apparmor
+  #       run: |
+  #         set -x
+  #         sudo apt-get remove mysql-server --purge
+  #         sudo apt-get install apparmor-profiles
+  #         sudo apparmor_parser -R /etc/apparmor.d/usr.sbin.mysqld
+  #     - name: Create k8s/kind cluster
+  #       run: |
+  #         git clone --depth 1 -b "k8s-v1.20.2" --single-branch https://github.com/k8s-school/kind-helper.git
+  #         ./kind-helper/k8s-create.sh -s
+  #     - name: Load container image inside kind
+  #       run: |
+  #         kind load image-archive artifacts/qserv-image.tar
+  #         docker exec -- kind-control-plane crictl image
+  #     - run: |
+  #         kubectl get nodes
+  #     - name: Install kustomize
+  #       run: |
+  #         VERSION="4.0.5"
+  #         curl -lO "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh"
+  #         chmod +x ./install_kustomize.sh
+  #         sudo rm -f /usr/local/bin/kustomize
+  #         sudo ./install_kustomize.sh "$VERSION" /usr/local/bin
+  #     - name: Checkout qserv-operator code
+  #       uses: actions/checkout@v2
+  #       with:
+  #         repository: "lsst/qserv-operator"
+  #         ref: "DM-29567-0"
+  #     - name: Deploy Qserv operator
+  #       run: |
+  #         kubectl apply -f manifests/operator.yaml
+  #     - name: Deploy Qserv
+  #       run: |
+  #         QSERV_IMAGE="${{ env.IMAGE }}"
+  #         cat <<EOF > manifests/base/image.yaml
+  #         apiVersion: qserv.lsst.org/v1alpha1
+  #         kind: Qserv
+  #         metadata:
+  #           name: qserv
+  #         spec:
+  #           czar:
+  #             image: $QSERV_IMAGE
+  #             dbImage: "qserv/lite-mariadb:2021.04.0"
+  #           dashboard:
+  #             image: qserv/dashboard:2021.04.0
+  #           worker:
+  #             image: $QSERV_IMAGE
+  #             dbImage: "qserv/lite-mariadb:2021.04.0"
+  #           replication:
+  #             image: $QSERV_IMAGE
+  #             dbImage: "qserv/lite-mariadb:2021.04.0"
+  #           xrootd:
+  #             image: $QSERV_IMAGE
+  #         EOF
+  #         kubectl apply -k manifests/base
+  #     - name: Wait for Qserv to start
+  #       run: ./tests/tools/wait-qserv-ready.sh
+  #     - name: Run E2E Tests
+  #       run: ./tests/e2e/integration.sh
+  # push:
+  #   name: Push Qserv image to registry
+  #   runs-on: ubuntu-20.04
+  #   needs: e2e
+  #   steps:
+  #     - name: Login to DockerHub
+  #       uses: docker/login-action@v1
+  #       with:
+  #         username: ${{ secrets.DOCKER_USERNAME }}
+  #         password: ${{ secrets.DOCKER_TOKEN }}
+  #     - name: Download qserv-operator image
+  #       uses: actions/download-artifact@v2
+  #       with:
+  #         name: qserv-image
+  #         path: artifacts
+  #     - name: Load image in local registry
+  #       run: |
+  #         docker load --input artifacts/qserv-image.tar
+  #         echo "IMAGE=$(cat artifacts/qserv-image-tag)" >> $GITHUB_ENV
+  #     - name: Push image to Docker Hub
+  #       run: |
+  #         docker push ${{ env.IMAGE }}

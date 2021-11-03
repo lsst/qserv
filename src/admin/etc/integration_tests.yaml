@@ -1,0 +1,163 @@
+---
+reference-db-uri: mysql://qsmaster@integration-test-reference:3306
+reference-db-admin-uri: mysql://root:CHANGEME@integration-test-reference:3306
+replication-controller-uri: repl://@repl-mgr-controller:25081
+qserv-uri: qserv://qsmaster@czar-proxy:4040
+czar-db-admin-uri: mysql://root:CHANGEME@czar-db:3306
+# the folder where the testdata repo will be downladed:
+qserv-testdata-dir: /qserv/data/qserv_testdata
+# location where a tarball can be downloaded from:
+qserv-testdata-repo: https://github.com/lsst/qserv_testdata/tarball/master
+# relative path in the repo to the test case folders:
+qserv-testdata-test-case-dir: datasets
+testdata-output: /qserv/data/integration_test/
+test_cases:
+  - id: case01
+    root: /qserv/data/qserv_testdata/datasets/case01
+    data: data/{table_name}.tsv.gz
+    schema: data/schema/{table_name}.schema
+    partition:
+      config:
+        - data/partition/{table_name}.json
+        - data/partition/common.json
+      output: partition/case01/{table_name}
+    ingest:
+      database: data/ingest/database.json
+      table: data/ingest/{table_name}.json
+    tables:
+      - Object  # director table
+      - Filter
+      - LeapSeconds
+      - Logs
+      - RefSrcMatch
+      # - Science_Ccd_Exposure
+      - sdqa_Metric
+      - SimRefObject
+      - Source
+    skip_numbers:
+      - "0012"  # depends on a table that has currently unloadable values
+      - "0012.1"  # depends on a table that has currently unloadable values
+      - "0012.2"  # depends on a table that has currently unloadable values
+      - "0012.3"  # depends on a table that has currently unloadable values
+      - "1011"  # depends on a table that has currently unloadable values
+      - "1060"  # depends on a table that has currently unloadable values
+      - "1080"  # depends on a table that has currently unloadable values
+      - "1084"  # has select * (qserv currently returns internal column names)
+      - "1095"  # has select *
+      - "1096"  # has select *
+      - "1097"  # has select *
+      - "1103"  # has select *
+  - id: case02
+    root: /qserv/data/qserv_testdata/datasets/case02
+    data: data/{table_name}.csv.gz
+    schema: data/schema/{table_name}.schema
+    partition:
+      config:
+        - data/partition/{table_name}.json
+        - data/partition/common.json
+      output: partition/case02/{table_name}
+    ingest:
+      database: data/ingest/database.json
+      table: data/ingest/{table_name}.json
+    tables:
+      - Object
+      - Source
+    skip_numbers:
+      - "0002"  # has select *
+  - id: case03
+    root: /qserv/data/qserv_testdata/datasets/case03
+    data: data/{table_name}.csv.gz
+    schema: data/schema/{table_name}.schema
+    partition:
+      config:
+        - data/partition/{table_name}.json
+        - data/partition/common.json
+      output: partition/case03/{table_name}
+    ingest:
+      database: data/ingest/database.json
+      table: data/ingest/{table_name}.json
+    tables:
+      - RunDeepSource  # director, must come first.
+      - AvgForcedPhot
+      - AvgForcedPhotYearly
+      # - DeepCoadd  # error: Incorrect double value: ... for column
+      # `qservTest_case03_qserv`.`DeepCoadd`.`fluxMag0` at row 1, errno: 1366\n"
+      - DeepCoadd_Metadata
+      - DeepCoadd_To_Htm10
+      - Filter
+      - LeapSeconds
+      - RefDeepSrcMatch
+      - RefObject
+      - RunDeepForcedSource
+      # - Science_Ccd_Exposure error: Incorrect double value: ... for column
+      # `qservTest_case03_qserv`.`Science_Ccd_Exposure`.`taiMjd`
+      # at row 1, errno: 1366\n"
+      - Science_Ccd_Exposure_Metadata
+      - Science_Ccd_Exposure_Metadata_coadd_r
+      - Science_Ccd_Exposure_To_Htm10_coadd_r
+      # - Science_Ccd_Exposure_coadd_r error: Incorrect double value: ... for
+      # column `qservTest_case03_qserv`.`Science_Ccd_Exposure_coadd_r`.`taiMjd`
+      # at row 1, errno: 1366\n"
+      - ZZZ_Db_Description
+    skip_numbers:
+      - "0031"  # has select *
+      - "0002.1"  # depends on Science_Ccd_Exposure
+      - "0002.2"  # depends on Science_Ccd_Exposure
+      - "0006"  # depends on Science_Ccd_Exposure
+      - "0009"  # depends on Science_Ccd_Exposure
+      - "0022"  # depends on Science_Ccd_Exposure
+      - "0023"  # depends on Science_Ccd_Exposure
+      - "0025"  # depends on Science_Ccd_Exposure
+      - "0028"  # depends on Science_Ccd_Exposure
+      - "0031"  # depends on Science_Ccd_Exposure
+      - "0032"  # depends on Science_Ccd_Exposure
+      - "0011"  # depends on DeepCoadd
+      - "0012"  # depends on DeepCoadd
+      - "0013"  # depends on DeepCoadd
+      - "0014"  # depends on DeepCoadd
+      - "0014"  # depends on DeepCoadd
+      - "0018"  # depends on DeepCoadd
+      - "0019.1"  # depends on DeepCoadd
+      - "0019.1"  # depends on DeepCoadd
+      - "0019.2"  # depends on DeepCoadd
+      - "0019.2"  # depends on DeepCoadd
+  - id: case04
+    root: /qserv/data/qserv_testdata/datasets/case04
+    data: data/{table_name}.csv.gz
+    schema: data/schema/{table_name}.schema
+    partition:
+      config:
+        - data/partition/{table_name}.json
+        - data/partition/common.json
+      output: partition/case04/{table_name}
+    ingest:
+      database: data/ingest/database.json
+      table: data/ingest/{table_name}.json
+    tables:
+      - DeepSource  # director, must come first.
+      # - DeepCoadd error: Incorrect integer value
+      # - DeepForcedSource incorrect integer value
+      # - Science_Ccd_Exposure incorrect integer value
+    skip_numbers:
+      - "0015"  # depends on DeepCoadd
+      - "0018"  # depends on DeepCoadd
+      - "0003"  # depends on DeepForcedSource and Science_Ccd_Exposure
+      - "0030"  # depends on DeepForcedSource
+      - "0030"  # depends on DeepForcedSource
+  - id: case05
+    root: /qserv/data/qserv_testdata/datasets/case05
+    data: data/{table_name}.csv
+    schema: data/schema/{table_name}.schema
+    partition:
+      config:
+        - data/partition/{table_name}.json
+        - data/partition/common.json
+      output: partition/case05/{table_name}
+    ingest:
+      database: data/ingest/database.json
+      table: data/ingest/{table_name}.json
+    tables:
+      - Object
+      - Source
+    skip_numbers:
+      - "0002"  # has select *

@@ -1,0 +1,49 @@
+all.role manager
+
+# Path to write logging and other information
+all.adminpath /var/run/xrootd
+
+# Do not change. This specifies valid virtual paths that can be accessed.
+# "nolock" directive prevents write-locking and is important for qserv
+# qserv is hardcoded for these paths.
+all.export / nolock
+
+# Specify that no significant free space is required on servers
+# Indeed current configuration doesn't expect to be dynamically
+# written to, but export the space in R/W mode
+cms.space 1k 2k
+
+# Specify the minimum number of servers that must be subscribed for load
+# balancing to be effective.
+cms.delay servers {{ cms_delay_servers }}
+
+# ssi.loglib libxrdlog.so
+
+# Optional: Prevent dns resolution in logs.
+# This may speed up request processing.
+xrd.network nodnr
+
+# This causes hostname resolution to occur at run-time not configuration time
+# This is required by k8s
+# Andy H. still have to modify the local IP-to-Name cache to account
+# for dynamic DNS (it doesn't now). Unfortunately, it's a non-ABI compatible
+# change so it will go into Release 5 branch not git master. The caching
+# shouldn't really be a problem but if causes you grief simply turn it off by
+# also specifying "xrd.network cache 0". Once Andy H. fixes the cache it will work
+# correctly with a dynamic DNS with no side-effects (though it's unlikely any of
+# them are observed as it is).
+xrd.network dyndns
+xrd.network cache 0
+
+all.manager {{ cmsd_manager }}:2131
+
+# - cmsd redirector runs on port 2131
+# - cmsd server does not open server socket
+#   but only client connection to cmsd redirector
+# - xrootd default port is 1094
+if exec cmsd
+    xrd.port 2131
+fi
+
+# Uncomment the following line for detailed xrootd debugging
+# xrootd.trace all debug

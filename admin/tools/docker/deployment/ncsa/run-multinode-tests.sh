@@ -1,1 +1,0 @@
-../parallel/run-multinode-tests.sh

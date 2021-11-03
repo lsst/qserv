@@ -1,1 +1,0 @@
-../parallel/status.sh
