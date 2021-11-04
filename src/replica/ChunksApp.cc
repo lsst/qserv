@@ -239,12 +239,15 @@ int ChunksApp::runImpl() {
     // ATTENTION: jobs are allowed to be partially successful if some
     // workers are offline.
 
-
+    string const noParentJobId;
     auto findAllJob = FindAllJob::create(
         _databaseFamily,
         not _doNotSaveReplicaInfo,
         _allWorkers,
-        controller
+        controller,
+        noParentJobId,
+        nullptr,        // no callback
+        PRIORITY_NORMAL
     );
     findAllJob->start();
 
@@ -255,7 +258,10 @@ int ChunksApp::runImpl() {
             _databaseFamily,
             inUseOnly,
             _allWorkers,
-            controller
+            controller,
+            noParentJobId,
+            nullptr,        // no callback
+            PRIORITY_NORMAL
         );
         qservGetReplicasJob->start();
         qservGetReplicasJob->wait();

@@ -79,8 +79,6 @@ bool HealthMonitorTask::onRun() {
  
     string const context = "HealthMonitorTask::" + string(__func__);
 
-    string const parentJobId;  // no parent jobs
-
     // Probe hosts. Wait for completion or expiration of the job
     // before analyzing its findings.
 
@@ -89,6 +87,7 @@ bool HealthMonitorTask::onRun() {
     _numFinishedJobs = 0;
 
     auto self = shared_from_base<HealthMonitorTask>();
+    string const noParentJobId;
 
     vector<ClusterHealthJob::Ptr> jobs;
     jobs.emplace_back(
@@ -96,10 +95,11 @@ bool HealthMonitorTask::onRun() {
             _workerResponseTimeoutSec,
             true, /* allWorkers */
             controller(),
-            parentJobId,
+            noParentJobId,
             [self](ClusterHealthJob::Ptr const& job) {
                 self->_numFinishedJobs++;
-            }
+            },
+            serviceProvider()->config()->get<int>("controller", "health_monitor_priority_level")
         )
     );
     jobs[0]->start();

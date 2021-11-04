@@ -35,9 +35,7 @@
 using namespace std;
 
 namespace {
-
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.Messenger");
-
 } /// namespace
 
 namespace lsst {
@@ -46,9 +44,7 @@ namespace replica {
 
 Messenger::Ptr Messenger::create(ServiceProvider::Ptr const& serviceProvider,
                                  boost::asio::io_service& io_service) {
-    return Messenger::Ptr(
-        new Messenger(serviceProvider,
-                      io_service));
+    return Messenger::Ptr(new Messenger(serviceProvider, io_service));
 }
 
 
@@ -56,9 +52,8 @@ Messenger::Messenger(ServiceProvider::Ptr const& serviceProvider,
                      boost::asio::io_service& io_service) {
 
     for (auto&& worker: serviceProvider->config()->allWorkers()) {
-        _workerConnector[worker] = MessengerConnector::create(serviceProvider,
-                                                              io_service,
-                                                              worker);
+        _workerConnector[worker] =
+                MessengerConnector::create(serviceProvider, io_service, worker);
     }
 }
 
@@ -70,24 +65,17 @@ void Messenger::stop() {
 }
 
 
-void Messenger::cancel(string const& worker,
-                       string const& id) {
-
-    // Forward the request to the corresponding worker
+void Messenger::cancel(string const& worker, string const& id) {
     _connector(worker)->cancel(id);
 }
 
 
-bool Messenger::exists(string const& worker,
-                       string const& id) const {
-
-    // Forward the request to the corresponding worker
+bool Messenger::exists(string const& worker, string const& id) const {
     return _connector(worker)->exists(id);
 }
 
 
 MessengerConnector::Ptr const& Messenger::_connector(string const& worker)  const {
-
     if (0 == _workerConnector.count(worker))
         throw invalid_argument(
                  "Messenger::" + string(__func__) + "   unknown worker: " + worker);

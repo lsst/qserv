@@ -69,19 +69,19 @@ public:
      *   If the flag is set to 'false' then only 'ENABLED' workers which are not
      *   in the 'READ-ONLY' sub-state will be involved into the operation.
      * @param controller is needed launching requests and accessing the Configuration
-     * @param parentJobId (optional) identifier of a parent job
-     * @param onFinish (optional) callback function to be called upon a completion
+     * @param parentJobId an identifier of a parent job
+     * @param onFinish a callback function to be called upon a completion
      *   of the job
-     * @param options (optional) defines the job priority, etc.
+     * @param priority defines the job priority
      * @return pointer to the created object
      */
     static Ptr create(std::string const& database,
                       std::string const& table,
                       bool allWorkers,
                       Controller::Ptr const& controller,
-                      std::string const& parentJobId=std::string(),
-                      CallbackType const& onFinish=nullptr,
-                      Job::Options const& options=defaultOptions());
+                      std::string const& parentJobId,
+                      CallbackType const& onFinish,
+                      int priority);
 
     SqlDeleteTableJob() = delete;
     SqlDeleteTableJob(SqlDeleteTableJob const&) = delete;
@@ -113,7 +113,7 @@ private:
                       Controller::Ptr const& controller,
                       std::string const& parentJobId,
                       CallbackType const& onFinish,
-                      Job::Options const& options);
+                      int priority);
 
     // Input parameters
 

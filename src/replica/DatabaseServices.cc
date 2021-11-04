@@ -123,8 +123,6 @@ json JobInfo::toJson() const {
     info["begin_time"]     = beginTime;
     info["heartbeat_time"] = heartbeatTime;
     info["priority"]       = priority;
-    info["exclusive"]      = exclusive   ? 1 : 0;
-    info["preemptable"]    = preemptable ? 1 : 0;
 
     json extended;
     for (auto&& itr: kvInfo) {

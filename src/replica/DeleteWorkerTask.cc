@@ -67,10 +67,9 @@ DeleteWorkerTask::DeleteWorkerTask(Controller::Ptr const& controller,
 
 void DeleteWorkerTask::onStart() {
 
-    string const parentJobId;  // no parent jobs
-
     info(DeleteWorkerJob::typeName());
 
+    string const noParentJobId;
     atomic<size_t> numFinishedJobs{0};
     vector<DeleteWorkerJob::Ptr> jobs;
     jobs.emplace_back(
@@ -78,10 +77,11 @@ void DeleteWorkerTask::onStart() {
             _worker,
             _permanentDelete,
             controller(),
-            parentJobId,
+            noParentJobId,
             [&numFinishedJobs](DeleteWorkerJob::Ptr const& job) {
                 ++numFinishedJobs;
-            }
+            },
+            serviceProvider()->config()->get<int>("controller", "worker_evict_priority_level")
         )
     );
     jobs[0]->start();

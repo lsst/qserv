@@ -55,8 +55,7 @@ SqlRemoveTablePartitionsJob::Ptr SqlRemoveTablePartitionsJob::create(
         Controller::Ptr const& controller,
         string const& parentJobId,
         CallbackType const& onFinish,
-        Job::Options const& options) {
-
+        int priority) {
     return Ptr(new SqlRemoveTablePartitionsJob(
         database,
         table,
@@ -65,7 +64,7 @@ SqlRemoveTablePartitionsJob::Ptr SqlRemoveTablePartitionsJob::create(
         controller,
         parentJobId,
         onFinish,
-        options
+        priority
     ));
 }
 
@@ -78,13 +77,13 @@ SqlRemoveTablePartitionsJob::SqlRemoveTablePartitionsJob(
         Controller::Ptr const& controller,
         string const& parentJobId,
         CallbackType const& onFinish,
-        Job::Options const& options)
+        int priority)
     :   SqlJob(0,
                allWorkers,
                controller,
                parentJobId,
                "SQL_REMOVE_TABLE_PARTITIONING",
-               options,
+               priority,
                ignoreNonPartitioned),
         _database(database),
         _table(table),
@@ -128,7 +127,7 @@ list<SqlRequest::Ptr> SqlRemoveTablePartitionsJob::launchRequests(util::Lock con
                 [self] (SqlRemoveTablePartitionsRequest::Ptr const& request) {
                     self->onRequestFinish(request);
                 },
-                options(lock).priority,
+                priority(),
                 true,   /* keepTracking*/
                 id()    /* jobId */
             )

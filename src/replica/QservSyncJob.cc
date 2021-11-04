@@ -47,18 +47,7 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
-Job::Options const& QservSyncJob::defaultOptions() {
-    static Job::Options const options{
-        2,      /* priority */
-        true,   /* exclusive */
-        false   /* preemptive */
-    };
-    return options;
-}
-
-
 string QservSyncJob::typeName() { return "QservSyncJob"; }
-
 
 QservSyncJob::Ptr QservSyncJob::create(string const& databaseFamily,
                                        unsigned int requestExpirationIvalSec,
@@ -66,7 +55,7 @@ QservSyncJob::Ptr QservSyncJob::create(string const& databaseFamily,
                                        Controller::Ptr const& controller,
                                        string const& parentJobId,
                                        CallbackType const& onFinish,
-                                       Job::Options const& options) {
+                                       int priority) {
     return QservSyncJob::Ptr(
         new QservSyncJob(databaseFamily,
                          requestExpirationIvalSec,
@@ -74,7 +63,7 @@ QservSyncJob::Ptr QservSyncJob::create(string const& databaseFamily,
                          controller,
                          parentJobId,
                          onFinish,
-                         options));
+                         priority));
 }
 
 
@@ -84,11 +73,11 @@ QservSyncJob::QservSyncJob(string const& databaseFamily,
                            Controller::Ptr const& controller,
                            string const& parentJobId,
                            CallbackType const& onFinish,
-                           Job::Options const& options)
+                           int priority)
     :   Job(controller,
             parentJobId,
             "QSERV_SYNC",
-            options),
+            priority),
         _databaseFamily(databaseFamily),
         _requestExpirationIvalSec(requestExpirationIvalSec),
         _force(force),

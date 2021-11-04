@@ -105,11 +105,10 @@ void DatabaseServicesPool::saveState(ControllerIdentity const& identity,
 }
 
 
-void DatabaseServicesPool::saveState(Job const& job,
-                                      Job::Options const& options) {
+void DatabaseServicesPool::saveState(Job const& job) {
 
     ServiceAllocator service(shared_from_base<DatabaseServicesPool>());
-    service()->saveState(job, options);
+    service()->saveState(job);
 }
 
 

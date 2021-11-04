@@ -61,18 +61,17 @@ public:
 
 protected:
     /**
-     * Construct the request
-     *
-     * @param serviceProvider a host of services for various communications
-     * @param io_service communication services
-     * @param requestName the name of a request
-     * @param worker the name of a worker node (the one to be affected by the request)
-     * @param targetRequestId an identifier of the target request whose remote status
-     *   is going to be inspected
-     * @param targetRequestType type of a request affected by the operation
-     * @param priority priority level of the request
-     * @param keepTracking keep tracking the request before it finishes or fails
-     * @param messenger an interface for communicating with workers
+     * Construct the request.
+     * @param serviceProvider  Services of the Replicaion framework.
+     * @param io_service  Network communication services.
+     * @param requestName  The name of a request.
+     * @param worker  The name of a worker node (the one to be affected by the request).
+     * @param targetRequestId  An identifier of the target request whose remote status
+     *   is going to be inspected.
+     * @param targetRequestType  The type of a request affected by the operation.
+     * @param priority   A priority level of a request.
+     * @param keepTracking  Keep tracking the request before it finishes or fails.
+     * @param messenger  A service for communicating with workers.
      */
     StatusRequestBase(ServiceProvider::Ptr const& serviceProvider,
                       boost::asio::io_service& io_service,
@@ -91,9 +90,8 @@ protected:
     void awaken(boost::system::error_code const& ec) final;
 
     /**
-     * Initiate request-specific send. This method must be implemented
-     * by subclasses.
-     * @param lock a lock on Request::_mtx must be acquired before calling this method
+     * Initiate request-specific send.
+     * @param lock  A lock on Request::_mtx must be acquired before calling this method.
      */
     virtual void send(util::Lock const& lock) = 0;
 
@@ -105,10 +103,8 @@ protected:
     void analyze(bool success, ProtocolStatus status=ProtocolStatus::FAILED);
 
      /**
-      * Initiate request-specific operation with the persistent state
-      * service to store replica status.
-      *
-      * This method must be implemented by subclasses.
+      * Initiate request-specific operation with the persistent state service
+      * to store replica status.
       */
      virtual void saveReplicaInfo() = 0;
 
@@ -117,8 +113,8 @@ protected:
 
 private:
    /**
-     * Serialize request data into a network buffer and send the message to a worker
-     * @param lock a lock on Request::_mtx must be acquired before calling this method
+     * Serialize request data into a network buffer and send the message to a worker.
+     * @param lock  A lock on Request::_mtx must be acquired before calling this method.
      */
     void _sendImpl(util::Lock const& lock);
 

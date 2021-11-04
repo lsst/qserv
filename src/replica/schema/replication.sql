@@ -158,11 +158,7 @@ CREATE TABLE IF NOT EXISTS `job` (
   `begin_time`      BIGINT UNSIGNED NOT NULL ,
   `end_time`        BIGINT UNSIGNED NOT NULL ,
   `heartbeat_time`  BIGINT UNSIGNED NOT NULL ,
-
-  -- Job options
-  `priority`    INT     NOT NULL ,
-  `exclusive`   BOOLEAN NOT NULL ,
-  `preemptable` BOOLEAN NOT NULL ,
+  `priority`        INT             NOT NULL ,  -- the priority level of the job
 
   PRIMARY KEY (`id`) ,
   CONSTRAINT `job_fk_1`
@@ -449,4 +445,4 @@ COMMENT = 'Metadata about database as a whole, key-value pairs' ;
 
 -- Add record for schema version, migration script expects this record to exist
 
-INSERT INTO `QMetadata` (`metakey`, `value`) VALUES ('version', '3');
+INSERT INTO `QMetadata` (`metakey`, `value`) VALUES ('version', '5');

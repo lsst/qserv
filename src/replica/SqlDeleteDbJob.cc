@@ -56,7 +56,7 @@ SqlDeleteDbJob::Ptr SqlDeleteDbJob::create(
         Controller::Ptr const& controller,
         string const& parentJobId,
         CallbackType const& onFinish,
-        Job::Options const& options) {
+        int priority) {
 
     return Ptr(new SqlDeleteDbJob(
         database,
@@ -64,7 +64,7 @@ SqlDeleteDbJob::Ptr SqlDeleteDbJob::create(
         controller,
         parentJobId,
         onFinish,
-        options
+        priority
     ));
 }
 
@@ -74,13 +74,13 @@ SqlDeleteDbJob::SqlDeleteDbJob(string const& database,
                                Controller::Ptr const& controller,
                                string const& parentJobId,
                                CallbackType const& onFinish,
-                               Job::Options const& options)
+                               int priority)
     :   SqlJob(0,
                allWorkers,
                controller,
                parentJobId,
                "SQL_DROP_DATABASE",
-               options),
+               priority),
         _database(database),
         _onFinish(onFinish) {
 }
@@ -111,7 +111,7 @@ list<SqlRequest::Ptr> SqlDeleteDbJob::launchRequests(util::Lock const& lock,
                 [self] (SqlDeleteDbRequest::Ptr const& request) {
                     self->onRequestFinish(request);
                 },
-                options(lock).priority,
+                priority(),
                 true,   /* keepTracking*/
                 id()    /* jobId */
             )

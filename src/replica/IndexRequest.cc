@@ -216,7 +216,7 @@ void IndexRequest::_send(util::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
     auto self = shared_from_base<IndexRequest>();
     messenger()->send<ProtocolResponseIndex>(
-        worker(), id(), buffer(),
+        worker(), id(), priority(), buffer(),
         [self] (string const& id, bool success, ProtocolResponseIndex const& response) {
             self->_analyze(success, response);
         }

@@ -39,9 +39,8 @@ namespace replica {
  * Class SqlRemoveTablePartitionsRequest represents Controller-side requests for initiating
  * queries for removing MySQL partitions from tables at a remote worker nodes.
  */
-class SqlRemoveTablePartitionsRequest : public SqlRequest  {
+class SqlRemoveTablePartitionsRequest: public SqlRequest  {
 public:
-    /// The pointer type for instances of the class
     typedef std::shared_ptr<SqlRemoveTablePartitionsRequest> Ptr;
 
     /// The function type for notifications on the completion of the request
@@ -61,7 +60,6 @@ public:
      * Static factory method is needed to prevent issue with the lifespan
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
-     *
      * @param serviceProvider is needed to access the Configuration and the Controller
      *   for communicating with the worker
      * @param io_service a communication end-point
@@ -98,7 +96,7 @@ private:
                                     bool keepTracking,
                                     std::shared_ptr<Messenger> const& messenger);
 
-    CallbackType _onFinish; /// @note is reset when the request finishes
+    CallbackType _onFinish; ///< @note is reset when the request finishes
 };
 
 }}} // namespace lsst::qserv::replica

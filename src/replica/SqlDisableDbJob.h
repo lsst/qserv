@@ -69,13 +69,13 @@ public:
      *   is needed launching requests and accessing the Configuration
      *
      * @param parentJobId
-     *   (optional) identifier of a parent job
+     *   an identifier of a parent job
      *
      * @param onFinish
-     *   (optional) callback function to be called upon a completion of the job
+     *   a callback function to be called upon a completion of the job
      *
-     * @param options
-     *   (optional) defines the job priority, etc.
+     * @param priority
+     *   defines the job priority
      *
      * @return
      *   pointer to the created object
@@ -83,9 +83,9 @@ public:
     static Ptr create(std::string const& database,
                       bool allWorkers,
                       Controller::Ptr const& controller,
-                      std::string const& parentJobId=std::string(),
-                      CallbackType const& onFinish=nullptr,
-                      Job::Options const& options=defaultOptions());
+                      std::string const& parentJobId,
+                      CallbackType const& onFinish,
+                      int priority);
 
     // Default construction and copy semantics are prohibited
 
@@ -122,7 +122,7 @@ private:
                     Controller::Ptr const& controller,
                     std::string const& parentJobId,
                     CallbackType const& onFinish,
-                    Job::Options const& options);
+                    int priority);
 
     // Input parameters
 

@@ -72,8 +72,7 @@ public:
     void saveState(ControllerIdentity const& identity,
                    uint64_t startTime) final;
 
-    void saveState(Job const& job,
-                   Job::Options const& options) final;
+    void saveState(Job const& job) final;
 
      void updateHeartbeatTime(Job const& job) final;
 

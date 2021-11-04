@@ -182,12 +182,13 @@ ServiceManagementRequestBase::ServiceManagementRequestBase(
                                     char const* requestName,
                                     string const& worker,
                                     ProtocolServiceRequestType requestType,
+                                    int priority,
                                     shared_ptr<Messenger> const& messenger)
     :   RequestMessenger(serviceProvider,
                          io_service,
                          requestName,
                          worker,
-                         0,     // priority
+                         priority,
                          false, // keepTracking
                          false, // allowDuplicate
                          false, // disposeRequired
@@ -214,24 +215,17 @@ void ServiceManagementRequestBase::startImpl(util::Lock const& lock) {
     buffer()->serialize(hdr);
 
     // Send the message
-
     auto self = shared_from_base<ServiceManagementRequestBase>();
-
     messenger()->send<ProtocolServiceResponse>(
-        worker(),
-        id(),
-        buffer(),
-        [self] (string const& id,
-                bool success,
-                ProtocolServiceResponse const& response) {
+        worker(), id(), priority(), buffer(),
+        [self] (string const& id, bool success, ProtocolServiceResponse const& response) {
             self->_analyze(success, response);
         }
     );
 }
 
 
-void ServiceManagementRequestBase::_analyze(bool success,
-                                            ProtocolServiceResponse const& message) {
+void ServiceManagementRequestBase::_analyze(bool success, ProtocolServiceResponse const& message) {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "  success=" << (success ? "true" : "false"));
 
@@ -240,11 +234,8 @@ void ServiceManagementRequestBase::_analyze(bool success,
     // client of _analyze(). So, we should take care of proper locking and watch
     // for possible state transition which might occur while the async I/O was
     // still in a progress.
-
     if (state() == State::FINISHED) return;
-
     util::Lock lock(_mtx, context() + __func__);
-
     if (state() == State::FINISHED) return;
 
     if (not success) {
@@ -252,21 +243,16 @@ void ServiceManagementRequestBase::_analyze(bool success,
         return;
     }
 
-    // Update performance counters
-
+    // Update performance counters.
     mutablePerformance().update(message.performance());
 
-    // Capture the general status of the operation
-
+    // Capture the general status of the operation.
     switch (message.status()) {
 
         case ProtocolStatus::SUCCESS:
-
             // Transfer the state of the remote service into a local data member
             // before initiating state transition of the request object.
-
             _serviceState.set(message);
-
             finish(lock, SUCCESS);
             break;
 
@@ -274,7 +260,6 @@ void ServiceManagementRequestBase::_analyze(bool success,
             finish(lock, SERVER_ERROR);
             break;
     }
-
 }
 
 

@@ -73,21 +73,15 @@ public:
     using TargetRequestParamsType = ReplicationRequestParams;
 
     static char const* requestName();
-
     static ProtocolQueuedRequestType targetRequestType();
-
-    static void extractResponseData(ResponseMessageType const& msg,
-                                    ResponseDataType& data);
-
-    static void extractTargetRequestParams(ResponseMessageType const& msg,
-                                           TargetRequestParamsType& params);
+    static void extractResponseData(ResponseMessageType const& msg, ResponseDataType& data);
+    static void extractTargetRequestParams(ResponseMessageType const& msg, TargetRequestParamsType& params);
 
     template <class REQUEST_PTR>
     static void saveReplicaInfo(REQUEST_PTR const& request) {
         request->serviceProvider()->databaseServices()->saveReplicaInfo(request->responseData());
-        request->serviceProvider()->databaseServices()->updateRequestState(*request,
-                                                                           request->targetRequestId(),
-                                                                           request->targetPerformance());
+        request->serviceProvider()->databaseServices()->updateRequestState(
+                *request, request->targetRequestId(), request->targetPerformance());
     }
 };
 
@@ -98,21 +92,15 @@ public:
     using TargetRequestParamsType = DeleteRequestParams;
 
     static char const* requestName();
-
     static ProtocolQueuedRequestType targetRequestType();
-
-    static void extractResponseData(ResponseMessageType const& msg,
-                                    ResponseDataType& data);
-
-    static void extractTargetRequestParams(ResponseMessageType const& msg,
-                                           TargetRequestParamsType& params);
+    static void extractResponseData(ResponseMessageType const& msg, ResponseDataType& data);
+    static void extractTargetRequestParams(ResponseMessageType const& msg, TargetRequestParamsType& params);
 
     template <class REQUEST_PTR>
     static void saveReplicaInfo(REQUEST_PTR const& request) {
         request->serviceProvider()->databaseServices()->saveReplicaInfo(request->responseData());
-        request->serviceProvider()->databaseServices()->updateRequestState(*request,
-                                                                           request->targetRequestId(),
-                                                                           request->targetPerformance());
+        request->serviceProvider()->databaseServices()->updateRequestState(
+                *request, request->targetRequestId(), request->targetPerformance());
     }
 };
 
@@ -123,21 +111,15 @@ public:
     using TargetRequestParamsType = FindRequestParams;
 
     static char const* requestName();
-
     static ProtocolQueuedRequestType targetRequestType();
-
-    static void extractResponseData(ResponseMessageType const& msg,
-                                    ResponseDataType& data);
-
-    static void extractTargetRequestParams(ResponseMessageType const& msg,
-                                           TargetRequestParamsType& params);
+    static void extractResponseData(ResponseMessageType const& msg, ResponseDataType& data);
+    static void extractTargetRequestParams(ResponseMessageType const& msg, TargetRequestParamsType& params);
 
     template <class REQUEST_PTR>
     static void saveReplicaInfo(REQUEST_PTR const& request) {
         request->serviceProvider()->databaseServices()->saveReplicaInfo(request->responseData());
-        request->serviceProvider()->databaseServices()->updateRequestState(*request,
-                                                                           request->targetRequestId(),
-                                                                           request->targetPerformance());
+        request->serviceProvider()->databaseServices()->updateRequestState(
+                *request, request->targetRequestId(), request->targetPerformance());
     }
 };
 
@@ -148,24 +130,16 @@ public:
     using TargetRequestParamsType = FindAllRequestParams;
 
     static char const* requestName();
-
     static ProtocolQueuedRequestType targetRequestType();
-
-    static void extractResponseData(ResponseMessageType const& msg,
-                                    ResponseDataType& data);
-
-    static void extractTargetRequestParams(ResponseMessageType const& msg,
-                                           TargetRequestParamsType& params);
+    static void extractResponseData(ResponseMessageType const& msg, ResponseDataType& data);
+    static void extractTargetRequestParams(ResponseMessageType const& msg, TargetRequestParamsType& params);
 
     template <class REQUEST_PTR>
     static void saveReplicaInfo(REQUEST_PTR const& request) {
         request->serviceProvider()->databaseServices()->saveReplicaInfoCollection(
-            request->worker(),
-            request->targetRequestParams().database,
-            request->responseData());
-        request->serviceProvider()->databaseServices()->updateRequestState(*request,
-                                                                           request->targetRequestId(),
-                                                                           request->targetPerformance());
+                request->worker(), request->targetRequestParams().database, request->responseData());
+        request->serviceProvider()->databaseServices()->updateRequestState(
+                *request, request->targetRequestId(), request->targetPerformance());
     }
 };
 
@@ -176,20 +150,14 @@ public:
     using TargetRequestParamsType = EchoRequestParams;
 
     static char const* requestName();
-
     static ProtocolQueuedRequestType targetRequestType();
-
-    static void extractResponseData(ResponseMessageType const& msg,
-                                    ResponseDataType& data);
-
-    static void extractTargetRequestParams(ResponseMessageType const& msg,
-                                           TargetRequestParamsType& params);
+    static void extractResponseData(ResponseMessageType const& msg, ResponseDataType& data);
+    static void extractTargetRequestParams(ResponseMessageType const& msg, TargetRequestParamsType& params);
 
     template <class REQUEST_PTR>
     static void saveReplicaInfo(REQUEST_PTR const& request) {
-        request->serviceProvider()->databaseServices()->updateRequestState(*request,
-                                                                           request->targetRequestId(),
-                                                                           request->targetPerformance());
+        request->serviceProvider()->databaseServices()->updateRequestState(
+                *request, request->targetRequestId(), request->targetPerformance());
     }
 };
 
@@ -200,20 +168,14 @@ public:
     using TargetRequestParamsType = IndexRequestParams;
 
     static char const* requestName();
-
     static ProtocolQueuedRequestType targetRequestType();
-
-    static void extractResponseData(ResponseMessageType const& msg,
-                                    ResponseDataType& data);
-
-    static void extractTargetRequestParams(ResponseMessageType const& msg,
-                                           TargetRequestParamsType& params);
+    static void extractResponseData(ResponseMessageType const& msg, ResponseDataType& data);
+    static void extractTargetRequestParams(ResponseMessageType const& msg, TargetRequestParamsType& params);
 
     template <class REQUEST_PTR>
     static void saveReplicaInfo(REQUEST_PTR const& request) {
-        request->serviceProvider()->databaseServices()->updateRequestState(*request,
-                                                                           request->targetRequestId(),
-                                                                           request->targetPerformance());
+        request->serviceProvider()->databaseServices()->updateRequestState(
+                *request, request->targetRequestId(), request->targetPerformance());
     }
 };
 
@@ -224,32 +186,24 @@ public:
     using TargetRequestParamsType = SqlRequestParams;
 
     static char const* requestName();
-
     static ProtocolQueuedRequestType targetRequestType();
-
-    static void extractResponseData(ResponseMessageType const& msg,
-                                    ResponseDataType& data);
-
-    static void extractTargetRequestParams(ResponseMessageType const& msg,
-                                           TargetRequestParamsType& params);
+    static void extractResponseData(ResponseMessageType const& msg, ResponseDataType& data);
+    static void extractTargetRequestParams(ResponseMessageType const& msg, TargetRequestParamsType& params);
 
     template <class REQUEST_PTR>
     static void saveReplicaInfo(REQUEST_PTR const& request) {
-        request->serviceProvider()->databaseServices()->updateRequestState(*request,
-                                                                           request->targetRequestId(),
-                                                                           request->targetPerformance());
+        request->serviceProvider()->databaseServices()->updateRequestState(
+                *request, request->targetRequestId(), request->targetPerformance());
     }
 };
 
 /**
-  * Generic class StopRequest extends its base class
-  * to allow further policy-based customization of specific requests.
+  * Generic class StopRequest extends its base class to allow further policy-based
+  * customization of specific requests.
   */
 template <typename POLICY>
-class StopRequest : public StopRequestBase {
+class StopRequest: public StopRequestBase {
 public:
-
-    /// The pointer type for instances of the class
     typedef std::shared_ptr<StopRequest<POLICY>> Ptr;
 
     /// The function type for notifications on the completion of the request
@@ -267,8 +221,8 @@ public:
     }
 
     /**
-     * @return request-specific extended data reported upon a successful
-     *   completion of the request
+     * @return The request-specific extended data reported upon a successful
+     *   completion of the request.
      */
     typename POLICY::ResponseDataType const& responseData() const {
         return _responseData;
@@ -280,7 +234,6 @@ public:
      * Static factory method is needed to prevent issue with the lifespan
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
-     *
      * @param serviceProvider a host of services for various communications
      * @param worker the identifier of a worker node (the one to be affected by the request)
      * @param io_service network communication service
@@ -291,7 +244,7 @@ public:
      * @param priority priority level of the request
      * @param keepTracking keep tracking the request before it finishes or fails
      * @param messenger an interface for communicating with workers
-     * @return pointer to the created object
+     * @return  A pointer to the created object.
      */
     static Ptr create(ServiceProvider::Ptr const& serviceProvider,
                       boost::asio::io_service& io_service,
@@ -301,25 +254,15 @@ public:
                       int priority,
                       bool keepTracking,
                       std::shared_ptr<Messenger> const& messenger) {
-        return StopRequest<POLICY>::Ptr(
-            new StopRequest<POLICY>(
-                serviceProvider,
-                io_service,
-                POLICY::requestName(),
-                worker,
-                targetRequestId,
-                POLICY::targetRequestType(),
-                onFinish,
-                priority,
-                keepTracking,
-                messenger));
+        return StopRequest<POLICY>::Ptr(new StopRequest<POLICY>(
+                serviceProvider, io_service, POLICY::requestName(), worker, targetRequestId,
+                POLICY::targetRequestType(), onFinish, priority, keepTracking, messenger));
     }
 
     /**
      * Make an extended print of the request which would include a result set.
      * The method will also make a call to Request::defaultPrinter().
-     * 
-     * @param ptr an object to be printed
+     * @param ptr  An object to be printed.
      */
     static void extendedPrinter(Ptr const& ptr) {
         Request::defaultPrinter(ptr);
@@ -332,21 +275,14 @@ protected:
     }
 
     void send(util::Lock const& lock) final {
-
         auto self = shared_from_base<StopRequest<POLICY>>();
-
-        std::shared_ptr<Messenger> const m = messenger();
-        m->send<typename POLICY::ResponseMessageType>(
-            worker(),
-            id(),
-            buffer(),
-            [self] (std::string const& id,
-                    bool success,
-                    typename POLICY::ResponseMessageType const& response) {
-
-                if (success) self->analyze(true, self->_parseResponse(response));
-                else         self->analyze(false);
-            }
+        messenger()->send<typename POLICY::ResponseMessageType>(
+                worker(), id(), priority(), buffer(),
+                [self] (std::string const& id, bool success,
+                        typename POLICY::ResponseMessageType const& response) {
+                    if (success) self->analyze(true, self->_parseResponse(response));
+                    else self->analyze(false);
+                }
         );
     }
 
@@ -366,46 +302,38 @@ private:
                 int priority,
                 bool keepTracking,
                 std::shared_ptr<Messenger> const& messenger)
-        :   StopRequestBase(serviceProvider,
-                            io_service,
-                            requestName,
-                            worker,
-                            targetRequestId,
-                            targetRequestType,
-                            priority,
-                            keepTracking,
-                            messenger),
+        :   StopRequestBase(serviceProvider, io_service, requestName, worker, targetRequestId,
+                            targetRequestType, priority, keepTracking, messenger),
             _onFinish(onFinish) {
     }
 
     /**
-     * Parse request-specific reply
-     *
-     * @param message message to parse
-     * @return status of the operation reported by a server
+     * Parse request-specific reply.
+     * @param message  A message to be parsed.
+     * @return  The status of the operation reported by a server.
      */
     ProtocolStatus _parseResponse(typename POLICY::ResponseMessageType const& message) {
 
         // This lock must be acquired because the method is going to modify
         // results of the request. Note that the operation doesn't care
         // about the global state of the request (wether it's already finished
-        // or not)
+        // or not).
         util::Lock lock(_mtx, context() + __func__);
 
-        // Extract target request-specific parameters from the response if available
+        // Extract target request-specific parameters from the response if available.
         POLICY::extractTargetRequestParams(message, _targetRequestParams);
 
         // Extract request-specific data from the response regardless of
         // the completion status of the request.
         POLICY::extractResponseData(message, _responseData);
 
-        // Always get the latest status reported by the remote server
+        // Always get the latest status reported by the remote server.
         setExtendedServerStatus(lock, message.status_ext());
 
-        // Always update performance counters obtained from the worker service
+        // Always update performance counters obtained from the worker service.
         mutablePerformance().update(message.performance());
 
-        // Set the optional performance of the target operation
+        // Set the optional performance of the target operation.
         if (message.has_target_performance()) {
             _targetPerformance.update(message.target_performance());
         }

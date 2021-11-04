@@ -97,10 +97,14 @@ ReplicateApp::ReplicateApp(int argc, char* argv[])
 
 int ReplicateApp::runImpl() {
 
+    string const noParentJobId;
     auto const job = ReplicateJob::create(
         _databaseFamily,
         _replicas,
-        Controller::create(serviceProvider())
+        Controller::create(serviceProvider()),
+        noParentJobId,
+        nullptr,    // no callback
+        PRIORITY_NORMAL
     );
     job->start();
     job->wait();

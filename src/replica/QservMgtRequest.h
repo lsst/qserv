@@ -200,7 +200,6 @@ public:
 protected:
     /**
      * Construct the request with the pointer to the services provider.
-     *
      * @param serviceProvider Is required to access configuration services.
      * @param type The type name of he request (used for debugging and error reporting).
      * @param worker The name of a worker.
@@ -221,7 +220,6 @@ protected:
     /**
      * This method is supposed to be provided by subclasses for additional
      * subclass-specific actions to begin processing the request.
-     *
      * @param lock A lock on QservMgtRequest::_mtx must be acquired before calling
      *   this method.
      */
@@ -231,7 +229,6 @@ protected:
      * Request expiration timer's handler. The expiration interval (if any)
      * is configured via the configuration service. When the request expires
      * it finishes with completion status FINISHED::TIMEOUT_EXPIRED.
-     *
      * @param ec A error code to be checked.
      */
     void expired(boost::system::error_code const& ec);
@@ -254,7 +251,6 @@ protected:
     /**
      * This method is supposed to be provided by subclasses
      * to finalize request processing as required by the subclass.
-     *
      * @param lock A lock on QservMgtRequest::_mtx must be acquired before calling
      *   this method.
      */
@@ -287,13 +283,11 @@ protected:
      * The helper function which pushes up-stream notifications on behalf of
      * subclasses. Upon a completion of this method the callback function
      * object will get reset to 'nullptr'.
-     *
      * @note This default implementation works for callback functions which
      *   accept a single parameter - a smart reference onto an object of
      *   the corresponding subclass. Subclasses with more complex signatures of
      *   their callbacks should have their own implementations which may look
      *   similarly to this one.
-     *
      * @param lock A lock on QservMgtRequest::_mtx must be acquired before calling
      *   this method.
      * @param onFinish A callback function (if set) to be called.
@@ -301,22 +295,14 @@ protected:
     template <class T>
     void notifyDefaultImpl(util::Lock const& lock,
                            typename T::CallbackType& onFinish) {    
-    
         if (nullptr != onFinish) {
-    
             // Clearing the stored callback after finishing the up-stream notification
             // has two purposes:
-            //
             // 1. it guaranties (exactly) one time notification
             // 2. it breaks the up-stream dependency on a caller object if a shared
             //    pointer to the object was mentioned as the lambda-function's closure
-    
             serviceProvider()->io_service().post(
-                std::bind(
-                    std::move(onFinish),
-                    shared_from_base<T>()
-                )
-            );
+                std::bind(std::move(onFinish), shared_from_base<T>()));
             onFinish = nullptr;
         }
     }
@@ -324,16 +310,13 @@ protected:
     /**
      * Ensure the object is in the desired internal state. Throw an
      * exception otherwise.
-     *
      * @note Normally this condition should never been seen unless there is a problem with
      *   the application implementation or the underlying run-time system.
-     *
      * @param desiredState The desired state of the request.
      * @param context A context from which the state test is requested.
      * @throws std::logic_error
      */
-    void assertState(State desiredState,
-                     std::string const& context) const;
+    void assertState(State desiredState, std::string const& context) const;
 
     /**
      * Set the desired primary and extended state.
@@ -348,8 +331,7 @@ protected:
      * @param state The primary state of the request.
      * @param extendedState The extended state of the request.
      */
-    void setState(util::Lock const& lock,
-                  State state,
+    void setState(util::Lock const& lock, State state,
                   ExtendedState extendedState=ExtendedState::NONE);
 
     /**

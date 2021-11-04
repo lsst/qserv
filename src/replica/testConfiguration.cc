@@ -99,6 +99,10 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestReadingGeneralParameters) {
     BOOST_CHECK(config->get<string>("controller", "empty_chunks_dir") == "/qserv/data/qserv");
     BOOST_CHECK(config->get<unsigned int>("controller", "job_timeout_sec") == 200);
     BOOST_CHECK(config->get<unsigned int>("controller", "job_heartbeat_sec") == 300);
+    BOOST_CHECK(config->get<int>("controller", "worker_evict_priority_level") == 1);
+    BOOST_CHECK(config->get<int>("controller", "health_monitor_priority_level") == 2);
+    BOOST_CHECK(config->get<int>("controller", "ingest_priority_level") == 3);
+    BOOST_CHECK(config->get<int>("controller", "catalog_management_priority_level") == 4);
 
     BOOST_CHECK(config->get<unsigned int>("xrootd", "auto_notify") == 0);
     BOOST_CHECK(config->get<string>("xrootd", "host") == "localhost");
@@ -171,6 +175,30 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestModifyingGeneralParameters) {
 
     BOOST_REQUIRE_NO_THROW(config->set<unsigned int>("controller", "job_heartbeat_sec", 0));
     BOOST_CHECK(config->get<unsigned int>("controller", "job_heartbeat_sec") == 0);
+
+    BOOST_REQUIRE_NO_THROW(config->set<int>("controller", "worker_evict_priority_level", 1));
+    BOOST_CHECK(config->get<int>("controller", "worker_evict_priority_level") == 1);
+
+    BOOST_REQUIRE_NO_THROW(config->set<int>("controller", "worker_evict_priority_level", 0));
+    BOOST_CHECK(config->get<int>("controller", "worker_evict_priority_level") == 0);
+
+    BOOST_REQUIRE_NO_THROW(config->set<int>("controller", "health_monitor_priority_level", 2));
+    BOOST_CHECK(config->get<int>("controller", "health_monitor_priority_level") == 2);
+
+    BOOST_REQUIRE_NO_THROW(config->set<int>("controller", "health_monitor_priority_level", 0));
+    BOOST_CHECK(config->get<int>("controller", "health_monitor_priority_level") == 0);
+
+    BOOST_REQUIRE_NO_THROW(config->set<int>("controller", "ingest_priority_level", 3));
+    BOOST_CHECK(config->get<int>("controller", "ingest_priority_level") == 3);
+
+    BOOST_REQUIRE_NO_THROW(config->set<int>("controller", "ingest_priority_level", 0));
+    BOOST_CHECK(config->get<int>("controller", "ingest_priority_level") == 0);
+
+    BOOST_REQUIRE_NO_THROW(config->set<int>("controller", "catalog_management_priority_level", 4));
+    BOOST_CHECK(config->get<int>("controller", "catalog_management_priority_level") == 4);
+
+    BOOST_REQUIRE_NO_THROW(config->set<int>("controller", "catalog_management_priority_level", 0));
+    BOOST_CHECK(config->get<int>("controller", "catalog_management_priority_level") == 0);
 
     BOOST_REQUIRE_NO_THROW(config->set<unsigned int>("xrootd", "auto_notify", 1));
     BOOST_CHECK(config->get<unsigned int>("xrootd", "auto_notify") != 0);

@@ -88,9 +88,13 @@ FixUpApp::FixUpApp(int argc, char* argv[])
 
 int FixUpApp::runImpl() {
 
+    string const noParentJobId;
     auto const job = FixUpJob::create(
         _databaseFamily,
-        Controller::create(serviceProvider())
+        Controller::create(serviceProvider()),
+        noParentJobId,
+        nullptr,    // no callback
+        PRIORITY_NORMAL
     );
     job->start();
     job->wait();

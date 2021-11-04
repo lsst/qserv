@@ -71,9 +71,6 @@ public:
     /// The function type for notifications on the completion of the job
     typedef std::function<void(Ptr)> CallbackType;
 
-    /// @return default options object for this type of a job
-    static Job::Options const& defaultOptions();
-
     /// @return the unique name distinguishing this class from other types of jobs
     static std::string typeName();
 
@@ -88,18 +85,18 @@ public:
      *   for each chunk. If the parameter is set to 0 then the corresponding
      *   configuration option for the database family will be assumed.
      * @param controller for launching jobs
-     * @param parentJobId optional identifier of a parent job
-     * @param onFinish optional callback function to be called upon a completion
+     * @param parentJobId an identifier of the parent job
+     * @param onFinish a callback function to be called upon a completion
      *   of the job
-     * @param options (optional) job options
+     * @param priority the priority level of the job
      * @return pointer to the created object
      */
     static Ptr create(std::string const& databaseFamily,
                       unsigned int numReplicas,
                       Controller::Ptr const& controller,
-                      std::string const& parentJobId=std::string(),
-                      CallbackType const& onFinish=nullptr,
-                      Job::Options const& options=defaultOptions());
+                      std::string const& parentJobId,
+                      CallbackType const& onFinish,
+                      int priority);
 
     PurgeJob() = delete;
     PurgeJob(PurgeJob const&) = delete;
@@ -148,7 +145,7 @@ private:
              Controller::Ptr const& controller,
              std::string const& parentJobId,
              CallbackType const& onFinish,
-             Job::Options const& options);
+             int priority);
 
     /**
      * The callback function to be invoked on a completion of the precursor job

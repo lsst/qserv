@@ -50,84 +50,64 @@ namespace replica {
   * Class Job is a base class for a family of replication jobs within
   * the master server.
   */
-class Job : public std::enable_shared_from_this<Job>  {
-
+class Job: public std::enable_shared_from_this<Job>  {
 public:
-
-    /// The pointer type for instances of the class
     typedef std::shared_ptr<Job> Ptr;
 
-    /// Primary public state of the job
+    /// Primary public state of the job.
     enum State {
 
         /// The job has been constructed, and no attempt to execute it has
         /// been made.
         CREATED,
 
-        /// The job is in a progress
+        /// The job is in a progress.
         IN_PROGRESS,
 
         /// The job is finished. See extended status for more details
-        /// (the completion status, etc.)
+        /// (the completion status, etc.).
         FINISHED
     };
 
-    /// Return the string representation of the primary state
+    /// Return the string representation of the primary state.
     static std::string state2string(State state);
 
     /// Refined public sub-state of the job once it's FINISHED as per
     /// the above defined primary state.
     enum ExtendedState {
 
-        /// No extended state exists at this time
+        /// No extended state exists at this time.
         NONE,
 
-        /// The job has been fully implemented
+        /// The job has been fully implemented.
         SUCCESS,
 
-        /// Problems with job configuration found
+        /// Problems with job configuration found.
         CONFIG_ERROR,
 
-        /// The job has failed
+        /// The job has failed.
         FAILED,
 
-        /// Qserv notification failed
+        /// Qserv notification failed.
         QSERV_FAILED,
 
-        /// Qserv reported that the source chunk is in use and couldn't be removed
+        /// Qserv reported that the source chunk is in use and couldn't be removed.
         QSERV_CHUNK_IN_USE,
 
-        /// Expired due to a timeout (as per the Configuration)
+        /// Expired due to a timeout (as per the Configuration).
         TIMEOUT_EXPIRED,
 
-        /// Explicitly cancelled on the client-side (similar to TIMEOUT_EXPIRED)
+        /// Explicitly cancelled on the client-side (similar to TIMEOUT_EXPIRED).
         CANCELLED
     };
 
-    /// @return string representation of the extended state
+    /// @return  The string representation of the extended state.
     static std::string state2string(ExtendedState state);
 
-    /// @return string representation of the combined state
+    /// @return  The string representation of the combined state.
     static std::string state2string(State state, ExtendedState extendedState) {
         return state2string(state) + "::" + state2string(extendedState);
     }
-
-    /// The job options container
-    struct Options {
-
-        /// the priority level
-        int  priority;
-
-        /// the flag indicating of this job can't be run simultaneously
-        /// along with other jobs.
-        bool exclusive;
-
-        /// the flag indicating if the job is allowed to be interrupted by some
-        /// by other jobs.
-        bool preemptable;
-    };
-
-    // Default construction and copy semantics are prohibited
 
     Job() = delete;
     Job(Job const&) = delete;
@@ -135,51 +115,38 @@ public:
 
     virtual ~Job();
 
-    /// @return a reference to the Controller,
+    /// @return  A reference to the Controller.
     Controller::Ptr const& controller() const { return _controller; }
 
-    /// @return the optional identifier of a parent job
+    /// @return  The optional identifier of the parent job.
     std::string const& parentJobId() const { return _parentJobId; }
 
-    /// @return a string representing a type of a job.
+    /// @return  A string representing a type of a job.
     std::string const& type() const { return _type; }
 
-    /// @return a unique identifier of the job
+    /// @return  A unique identifier of the job.
     std::string const& id() const { return _id; }
 
-    /// @return the primary status of the job
+    /// @return  The primary status of the job.
     State state() const { return _state; }
 
-    /// @return the extended state of the job when it's finished
+    /// @return  The extended state of the job when it's finished.
     ExtendedState extendedState() const { return _extendedState; }
 
-    /// @return string representation of the combined state of the object
+    /// @return  The string representation of the combined state of the object.
     std::string state2string() const;
 
-    /// @return job options
-    Options options() const;
+    /// @return  The priority level.
+    int priority() const { return _priority; }
 
     /**
-     * Modify job options
-     *
-     * @param newOptions
-     *   new options to be set
-     *
-     * @return
-     *   the previous state of the options
-     */
-    Options setOptions(Options const& newOptions);
-
-    /**
-     * @return
-     *   a start time (milliseconds since UNIX Epoch) or 0 before method start()
+     * @return  The start time (milliseconds since UNIX Epoch) or 0 before method start()
      *   is called to actually begin executing the job.
      */
     uint64_t beginTime() const { return _beginTime; }
 
     /**
-     * @return
-     *   the end time (milliseconds since UNIX Epoch) or 0 before job
+     * @return  The end time (milliseconds since UNIX Epoch) or 0 before job
      *   is finished.
      */
     uint64_t endTime() const { return _endTime; }
@@ -189,7 +156,7 @@ public:
      */
     void start();
 
-    /// Wait for the completion of the job
+    /// Wait for the completion of the job.
     void wait();
 
     /**
@@ -198,12 +165,11 @@ public:
      */
     void cancel();
 
-    /// @return the context string for debugging and diagnostic printouts
+    /// @return  The context string for debugging and diagnostic printouts.
     std::string context() const;
 
     /**
-     * @return
-     *   a collection of parameters and the corresponding values to
+     * @return  A collection of parameters and the corresponding values to
      *   be stored in a database for a job.
      */
     virtual std::list<std::pair<std::string,std::string>> extendedPersistentState() const {
@@ -211,102 +177,56 @@ public:
     }
 
     /**
-     * @return
-     *   a collection of job's results to be recorded in a persistent log for
+     * @return  A collection of job's results to be recorded in a persistent log for
      *   a job. The method is supposed to be called upon a completion of the job.
-     * 
-     * @throws std::logic_error
-     *   if the method is called when the job hasn't finished
+     * @throws std::logic_error  If the method is called when the job hasn't finished.
      */
     virtual std::list<std::pair<std::string,std::string>> persistentLogData() const;
 
 protected:
-
     /**
      * Construct the request with the pointer to the services provider.
-     *
-     * @param controller
-     *   for launching requests
-     *
-     * @param parentJobId
-     *   optional identifier of a parent job
-     *
-     * @param type
-     *   its type name. The name is reported in the log files, and it's also
-     *   logged into the persistent state of the Replication system.
-     *
-     * @param priority
-     *   set the desired job priority (larger values
-     *   mean higher priorities). A job with the highest
-     *   priority will be select from an input queue by
-     *   the JobScheduler.
-     *
-     * @param exclusive
-     *   set to 'true' to indicate that the job can't be
-     *   running simultaneously alongside other jobs.
-     *
-     * @param preemptable
-     *   set to 'true' to indicate that this job can be
-     *   interrupted to give a way to some other job with
-     *   higher priority.
+     * @param controller  For launching requests.
+     * @param parentJobId  An optional identifier of the parent job.
+     * @param type  The type name of the job. The name is reported in the log files,
+     *   and it's also logged into the persistent state of the Replication system.
+     * @param priority  The priority level of the job.
      */
     Job(Controller::Ptr const& controller,
         std::string const& parentJobId,
         std::string const& type,
-        Options const& options);
+        int priority);
 
-    /// @return a shared pointer of the desired subclass (no dynamic type checking)
+    /// @return  A shared pointer of the desired subclass (no dynamic type checking).
     template <class T>
     std::shared_ptr<T> shared_from_base() {
         return std::static_pointer_cast<T>(shared_from_this());
     }
 
     /**
-     * @return
-     *   job options
-     *
-     * @param lock
-     *   the lock on Job::_mtx must be acquired by a caller of the method
-     */
-    Options options(util::Lock const& lock) const;
-
-    /**
       * This method is supposed to be provided by subclasses for additional
       * subclass-specific actions to begin processing the request.
-      *
-      * @param lock
-     *   the lock on Job::_mtx must be acquired by a caller of the method
+      * @param lock  A lock on Job::_mtx must be acquired by a caller of the method.
       */
     virtual void startImpl(util::Lock const& lock) = 0;
 
     /**
      * The sequence of actions to be executed when the job is transitioning into
      * the finished state (regardless of a specific extended state).
-     *
-     * @note:
-     *   Normally this is mandatory method which is supposed to be called either
+     * @note Normally this is mandatory method which is supposed to be called either
      *   internally within this class on the job expiration (internal timer) or
      *   cancellation (as requested externally by a user).
-     * 
-     * @note
-     *   The only methods which are allowed to turn objects into the FINISHED
+     * @note The only methods which are allowed to turn objects into the FINISHED
      *   extended state are user-provided methods startImpl().
-     *
-     * @param lock
-     *   the lock on Job::_mtx must be acquired by a caller of the method
-     *
-     * @param extendedState
-     *   specific state to be set upon the completion
+     * @param lock  A lock on Job::_mtx must be acquired by a caller of the method.
+     * @param extendedState  A specific state to be set upon the completion.
      */
-    void finish(util::Lock const& lock,
-                ExtendedState extendedState);
+    void finish(util::Lock const& lock, ExtendedState extendedState);
 
     /**
-      * This method is supposed to be provided by subclasses
-      * to finalize request processing as required by the subclass.
-      *
-      * @param lock
-     *   the lock on Job::_mtx must be acquired by a caller of the method
+      * This method is supposed to be provided by subclasses to finalize request
+      * processing as required by the subclass.
+      * @param lock  A lock on Job::_mtx must be acquired by a caller of the method.
       */
     virtual void cancelImpl(util::Lock const& lock) = 0;
 
@@ -328,9 +248,7 @@ protected:
      *   }
      * @code
      * @see Job::notifyDefaultImpl
-     *
-     * @param lock
-     *   the lock on Job::_mtx must be acquired by a caller of the method
+     * @param lock  A lock on Job::_mtx must be acquired by a caller of the method.
      */
     virtual void notify(util::Lock const& lock) = 0;
 
@@ -344,54 +262,31 @@ protected:
      * the corresponding subclass. Subclasses with more complex signatures of
      * their callbacks should have their own implementations which may look
      * similarly to this one.
-     *
-     * @param lock
-     *   the lock on Job::_mtx must be acquired by a caller of the method
-     * 
-     * @param onFinish
-     *   callback function (if set) to be called
+     * @param lock  A lock on Job::_mtx must be acquired by a caller of the method.
+     * @param onFinish  A callback function (if set) to be called.
      */
     template <class T>
-    void notifyDefaultImpl(util::Lock const& lock,
-                           typename T::CallbackType& onFinish) {    
-    
+    void notifyDefaultImpl(util::Lock const& lock, typename T::CallbackType& onFinish) {    
         if (nullptr != onFinish) {
-    
             // Clearing the stored callback after finishing the up-stream notification
             // has two purposes:
-            //
             // 1. it guaranties (exactly) one time notification
             // 2. it breaks the up-stream dependency on a caller object if a shared
             //    pointer to the object was mentioned as the lambda-function's closure
-    
             controller()->serviceProvider()->io_service().post(
-                std::bind(
-                    std::move(onFinish),
-                    shared_from_base<T>()
-                )
-            );
+                std::bind(std::move(onFinish), shared_from_base<T>()));
             onFinish = nullptr;
         }
     }
 
     /**
      * Notify Qserv about a new chunk added to its database.
-     *
-     * @param lock
-     *   the lock on Job::_mtx must be acquired by a caller of the method
-     *
-     * @param chunk
-     *   chunk whose replicas are added
-     *
-     * @param databases
-     *   the names of databases involved into the operation
-     *
-     * @param worker
-     *   the name of a worker to be notified
-     *
-     * @param onFinish
-     *   (optional) callback function to be called upon completion
-     *   of the operation
+     * @param lock  A lock on Job::_mtx must be acquired by a caller of the method.
+     * @param chunk  The chunk whose replicas are added.
+     * @param databases  The names of databases involved into the operation.
+     * @param worker  The name of a worker to be notified.
+     * @param onFinish  An (optional) callback function to be called upon completion
+     *   of the operation.
      */
     void qservAddReplica(util::Lock const& lock,
                          unsigned int chunk,
@@ -401,26 +296,14 @@ protected:
 
     /**
      * Notify Qserv about a new chunk added to its database.
-     *
-     * @param lock
-     *   the lock on Job::_mtx must be acquired by a caller of the method
-     *
-     * @param chunk
-     *   chunk whose replicas are removed from the worker
-     *
-     * @param databases
-     *   the names of databases involved into the operation
-     *
-     * @param worker
-     *   the name of a worker to be notified
-     *
-     * @param force
-     *   the flag indicating of the removal should be done regardless
-     *   of the usage status of the replica
-     *
-     * @param onFinish
-     *   (optional) callback function to be called upon completion
-     *   of the operation
+     * @param lock  A lock on Job::_mtx must be acquired by a caller of the method.
+     * @param chunk  A chunk whose replicas are removed from the worker.
+     * @param databases  The names of databases involved into the operation.
+     * @param worker  The name of a worker to be notified.
+     * @param force  The flag indicating of the removal should be done regardless
+     *   of the usage status of the replica.
+     * @param onFinish  An (optional) callback function to be called upon completion
+     *   of the operation.
      */
     void qservRemoveReplica(util::Lock const& lock,
                             unsigned int chunk,
@@ -434,45 +317,27 @@ protected:
      *
      * The change of the state is done via a method to allow extra actions
      * at this step, such as:
-     *
      * - reporting change state in a debug stream
      * - verifying the correctness of the state transition
      *
-     * @param lock
-     *   the lock on Job::_mtx must be acquired by a caller of the method
-     *
-     * @param state
-     *   the new primary state
-     *
-     * @param extendedState
-     *   (optional) new extended state
+     * @param lock  A lock on Job::_mtx must be acquired by a caller of the method.
+     * @param state  The new primary state.
+     * @param extendedState The (optional) new extended state.
      */
     void setState(util::Lock const& lock,
                   State state,
                   ExtendedState extendedState=ExtendedState::NONE);
 
 private:
-
     /**
-     * Ensure the object is in the desired internal state. Throw an
-     * exception otherwise.
-     *
-     * @note
-     *   Normally this condition should never been seen unless
+     * Ensure the object is in the desired internal state. Throw an exception otherwise.
+     * @note Normally this condition should never been seen unless
      *   there is a problem with the application implementation
      *   or the underlying run-time system.
-     *
-     * @param lock
-     *   the lock on Job::_mtx must be acquired by a caller of the method
-     *
-     * @param desiredState
-     *   desired state
-     *
-     * @param context
-     *   context from which the state test is requested
-     *
-     * @throw std::logic_error
-     *   if the desired state requirement is not met
+     * @param lock  A lock on Job::_mtx must be acquired by a caller of the method.
+     * @param desiredState  The desired state.
+     * @param context  A context from which the state test is requested.
+     * @throw std::logic_error  If the desired state requirement is not met.
      */
     void _assertState(util::Lock const& lock,
                       State desiredState,
@@ -482,9 +347,7 @@ private:
      * Start the timer (if the corresponding Configuration parameter is set`).
      * When the time will expire then the callback method heartbeat() which is
      * defined below will be called.
-     *
-     * @param lock
-     *   the lock on Job::_mtx must be acquired by a caller of the method
+     * @param lock  A lock on Job::_mtx must be acquired by a caller of the method.
      */
     void _startHeartbeatTimer(util::Lock const& lock);
 
@@ -493,9 +356,7 @@ private:
      * is configured via the configuration service. When the timer expires
      * the job would update the corresponding field in a database and restart
      * the timer.
-     *
-     * @param ec
-     *   error code to be evaluated
+     * @param ec  An error code to be evaluated.
      */
     void _heartbeat(boost::system::error_code const& ec);
 
@@ -503,9 +364,7 @@ private:
      * Start the timer (if the corresponding Configuration parameter is set`).
      * When the time will expire then the callback method expired() which is
      * defined below will be called.
-     *
-     * @param lock
-     *   the lock on Job::_mtx must be acquired by a caller of the method
+     * @param lock  A lock on Job::_mtx must be acquired by a caller of the method.
      */
     void _startExpirationTimer(util::Lock const& lock);
 
@@ -513,50 +372,47 @@ private:
      * Job expiration timer's handler. The expiration interval (if any)
      * is configured via the configuration service. When the job expires
      * it finishes with completion status FINISHED::TIMEOUT_EXPIRED.
-     *
-     * @param ec
-     *   error code to be evaluated
+     * @param ec  An error code to be evaluated.
      */
     void _expired(boost::system::error_code const& ec);
 
 protected:
-
-    /// Mutex guarding internal state. This object is also used by subclasses
+    /// Mutex guarding internal state. This object is also used by subclasses.
     mutable util::Mutex _mtx;
 
 private:
 
-    /// The global counter for the number of instances of any subclasses
+    /// The global counter for the number of instances of any subclasses.
     static std::atomic<size_t> _numClassInstances;
 
-    /// The unique identifier of the job
+    /// The unique identifier of the job.
     std::string const _id;
 
-    /// The Controller for performing requests
+    /// The Controller for performing requests.
     Controller::Ptr const _controller;
 
-    /// The unique identifier of the parent job
+    /// The unique identifier of the parent job.
     std::string const _parentJobId;
 
-    /// The type of the job
+    /// The type of the job.
     std::string const _type;
 
-    /// Job options
-    Options _options;
+    /// The priority level.
+    int const _priority;
 
-    /// Primary state of the job
+    /// Primary state of the job.
     std::atomic<State> _state;
 
     /// Extended state of the job
     std::atomic<ExtendedState> _extendedState;
 
-    // Start and end times (milliseconds since UNIX Epoch)
+    // Start and end times (milliseconds since UNIX Epoch).
 
     uint64_t _beginTime;
     uint64_t _endTime;
 
     // The timer is used to update the corresponding timestamp within
-    // the database for easier tracking of the dead jobs
+    // the database for easier tracking of the dead jobs.
     unsigned int _heartbeatTimerIvalSec;
     std::unique_ptr<boost::asio::deadline_timer> _heartbeatTimerPtr;
 
@@ -569,19 +425,11 @@ private:
     unsigned int _expirationIvalSec;
     std::unique_ptr<boost::asio::deadline_timer> _expirationTimerPtr;
 
-    // Synchronization primitives for implementing Job::wait()
+    // Synchronization primitives for implementing Job::wait().
 
     std::atomic<bool> _finished{false};
     std::mutex _onFinishMtx;
     std::condition_variable _onFinishCv;
-};
-
-/// Comparison type for strict weak ordering required by std::priority_queue
-struct JobCompare {
-
-    /// Order jobs by their priorities
-    bool operator()(Job::Ptr const& lhs,
-                    Job::Ptr const& rhs) const;
 };
 
 }}} // namespace lsst::qserv::replica

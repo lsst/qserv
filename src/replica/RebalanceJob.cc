@@ -48,18 +48,7 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
-Job::Options const& RebalanceJob::defaultOptions() {
-    static Job::Options const options{
-        -2,     /* priority */
-        false,  /* exclusive */
-        true    /* exclusive */
-    };
-    return options;
-}
-
-
 string RebalanceJob::typeName() { return "RebalanceJob"; }
-
 
 RebalanceJob::Ptr RebalanceJob::create(
                             string const& databaseFamily,
@@ -67,14 +56,14 @@ RebalanceJob::Ptr RebalanceJob::create(
                             Controller::Ptr const& controller,
                             string const& parentJobId,
                             CallbackType const& onFinish,
-                            Job::Options const& options) {
+                            int priority) {
     return RebalanceJob::Ptr(
         new RebalanceJob(databaseFamily,
                          estimateOnly,
                          controller,
                          parentJobId,
                          onFinish,
-                         options));
+                         priority));
 }
 
 
@@ -83,11 +72,11 @@ RebalanceJob::RebalanceJob(string const& databaseFamily,
                            Controller::Ptr const& controller,
                            string const& parentJobId,
                            CallbackType const& onFinish,
-                           Job::Options const& options)
+                           int priority)
     :   Job(controller,
             parentJobId,
             "REBALANCE",
-            options),
+            priority),
         _databaseFamily(databaseFamily),
         _estimateOnly(estimateOnly),
         _onFinish(onFinish) {
@@ -184,7 +173,8 @@ void RebalanceJob::startImpl(util::Lock const& lock) {
         id(),
         [self] (FindAllJob::Ptr job) {
             self->_onPrecursorJobFinish();
-        }
+        },
+        priority()
     );
     _findAllJob->start();
 }
@@ -539,7 +529,8 @@ void RebalanceJob::_onPrecursorJobFinish() {
                 id(),
                 [self](MoveReplicaJob::Ptr job) {
                     self->_onJobFinish(job);
-                }
+                },
+                priority()
             );
             _jobs.push_back(job);
         }

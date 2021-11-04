@@ -75,9 +75,6 @@ public:
     /// The function type for notifications on the completion of the request
     typedef std::function<void(Ptr)> CallbackType;
 
-    /// @return default options object for this type of a request
-    static Job::Options const& defaultOptions();
-
     /// @return the unique name distinguishing this class from other types of jobs
     static std::string typeName();
 
@@ -134,9 +131,9 @@ public:
      *   the local option requires the server be properly configured to allow this
      *   mechanism. The flag is ignored for other destination options.
      * @param controller is needed launching requests and accessing the Configuration
-     * @param parentJobId (optional) identifier of a parent job
-     * @param onFinish (optional) a function to be called upon a completion of the job
-     * @param options (optional) defines the job priority, etc.
+     * @param parentJobId an identifier of the parent job
+     * @param onFinish a function to be called upon a completion of the job
+     * @param priority the priority level of the job
      */
     static Ptr create(std::string const& database,
                       std::string const& directorTable,
@@ -147,9 +144,9 @@ public:
                       std::string const& destinationPath,
                       bool localFile,
                       Controller::Ptr const& controller,
-                      std::string const& parentJobId=std::string(),
-                      CallbackType const& onFinish=nullptr,
-                      Job::Options const& options=defaultOptions());
+                      std::string const& parentJobId,
+                      CallbackType const& onFinish,
+                      int priority);
 
     // Default construction and copy semantics are prohibited
 
@@ -206,7 +203,7 @@ private:
              Controller::Ptr const& controller,
              std::string const& parentJobId,
              CallbackType const& onFinish,
-             Job::Options const& options);
+             int priority);
 
     /**
      * The callback function to be invoked on a completion of requests

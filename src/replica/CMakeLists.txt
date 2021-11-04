@@ -223,6 +223,7 @@ target_sources(replica PRIVATE
     Job.h
     MasterControllerHttpApp.cc
     MasterControllerHttpApp.h
+    MessageQueue.h
     Messenger.cc
     Messenger.h
     MessengerConnector.cc
@@ -495,6 +496,7 @@ replica_tests(
     testFileIngestApp
     testFileUtils
     testJson
+    testMessageQueue
     testNamedMutexRegistry
     testReplicaInfo
     testSemanticMap

@@ -187,13 +187,7 @@ public:
     uint64_t endTime = 0;       /// The timestamp (ms) when the job finished
     uint64_t heartbeatTime = 0; /// The optional timestamp (ms) when the job refreshed its state as "still alive"
 
-    int priority = 0;   /// The priority level
-
-    bool exclusive = false; /// The scheduling parameter of the job allowing it to run w/o
-                            /// interfering with other jobs in relevant execution contexts
-
-    bool preemptable = true;    /// The scheduling parameter allowing the job to be cancelled
-                                /// by job schedulers if needed
+    int priority = PRIORITY_NORMAL; /// The priority level
 
     std::list<std::pair<std::string, std::string>> kvInfo;  /// The optional collection (key-value pairs)
                                                             /// of extended attributes
@@ -462,15 +456,9 @@ public:
     /**
      * Save the state of the Job. This operation can be called many times for
      * a particular instance of the Job.
-     *
-     * The Job::Option object is explicitly passed as a parameter to avoid
-     * making a blocked call back to the job which may create a deadlock.
-     *
      * @param job a reference to a Job object
-     * @param options a reference to a Job options object
      */
-    virtual void saveState(Job const& job,
-                           Job::Options const& options) = 0;
+    virtual void saveState(Job const& job) = 0;
 
     /**
      * Update the heartbeat timestamp for the job's entry

@@ -91,6 +91,7 @@ int VerifyApp::runImpl() {
     // Once started this job will run indefinitely or until it fails and throws
     // an exception.
 
+    string const noParentJobId;
     auto const job = VerifyJob::create (
         _maxReplicas,
         _computeCheckSum,
@@ -116,7 +117,10 @@ int VerifyApp::runImpl() {
                          << endl;
                 }
         },
-        Controller::create(serviceProvider())
+        Controller::create(serviceProvider()),
+        noParentJobId,
+        nullptr,    // no callback
+        PRIORITY_NORMAL
     );
     job->start();
     job->wait();

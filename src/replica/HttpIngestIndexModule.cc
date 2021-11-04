@@ -176,6 +176,7 @@ json HttpIngestIndexModule::_buildSecondaryIndex() {
                 conn->execute(query);
             }
         });
+        string const noParentJobId;
         auto const job = IndexJob::create(
             databaseInfo.name,
             table,
@@ -185,7 +186,10 @@ json HttpIngestIndexModule::_buildSecondaryIndex() {
             IndexJob::TABLE,
             indexTableName,
             localFile,
-            controller()
+            controller(),
+            noParentJobId,
+            nullptr,        // no callback
+            config->get<int>("controller", "catalog_management_priority_level")
         );
         job->start();
         logJobStartedEvent(IndexJob::typeName(), job, databaseInfo.family);

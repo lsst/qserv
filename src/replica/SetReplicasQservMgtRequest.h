@@ -58,7 +58,6 @@ public:
      * Static factory method is needed to prevent issues with the lifespan
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
-     *
      * @param serviceProvider A reference to a provider of services for accessing
      *   Configuration, saving the request's persistent state to the database.
      * @param worker The name of a worker to send the request to.
@@ -113,14 +112,13 @@ private:
 
     /**
      * Carry over results of the request into a local collection.
-     *
      * @param lock A lock on QservMgtRequest::_mtx must be acquired before calling this method.
      * @param collection The input collection of replicas.
      */
     void _setReplicas(util::Lock const& lock,
                       wpublish::SetChunkListQservRequest::ChunkCollection const& collection);
 
-    // Input parameters
+    // Input parameters.
 
     QservReplicaCollection const _newReplicas;
     std::vector<std::string> const _databases;
@@ -128,10 +126,10 @@ private:
     bool const   _force;
     CallbackType _onFinish;
 
-    /// A request to the remote services
+    /// A request to the remote services.
     wpublish::SetChunkListQservRequest::Ptr _qservRequest;
 
-    /// A collection of replicas reported by the Qservr worker
+    /// A collection of replicas reported by the Qserv worker.
     QservReplicaCollection _replicas;
 };
 

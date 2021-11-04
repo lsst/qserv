@@ -45,18 +45,7 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
-Job::Options const& QservGetReplicasJob::defaultOptions() {
-    static Job::Options const options{
-        0,      /* priority */
-        false,  /* exclusive */
-        true    /* exclusive */
-    };
-    return options;
-}
-
-
 string QservGetReplicasJob::typeName() { return "QservGetReplicasJob"; }
-
 
 QservGetReplicasJob::Ptr QservGetReplicasJob::create(
                                     string const& databaseFamily,
@@ -65,7 +54,7 @@ QservGetReplicasJob::Ptr QservGetReplicasJob::create(
                                     Controller::Ptr const& controller,
                                     string const& parentJobId,
                                     CallbackType const& onFinish,
-                                    Job::Options const& options) {
+                                    int priority) {
     return QservGetReplicasJob::Ptr(
         new QservGetReplicasJob(databaseFamily,
                                 inUseOnly,
@@ -73,7 +62,7 @@ QservGetReplicasJob::Ptr QservGetReplicasJob::create(
                                 controller,
                                 parentJobId,
                                 onFinish,
-                                options));
+                                priority));
 }
 
 
@@ -84,11 +73,11 @@ QservGetReplicasJob::QservGetReplicasJob(
                        Controller::Ptr const& controller,
                        string const& parentJobId,
                        CallbackType const& onFinish,
-                       Job::Options const& options)
+                       int priority)
     :   Job(controller,
             parentJobId,
             "QSERV_GET_REPLICAS",
-            options),
+            priority),
         _databaseFamily(databaseFamily),
         _inUseOnly(inUseOnly),
         _allWorkers(allWorkers),

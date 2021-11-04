@@ -57,8 +57,7 @@ SqlGrantAccessJob::Ptr SqlGrantAccessJob::create(
         Controller::Ptr const& controller,
         string const& parentJobId,
         CallbackType const& onFinish,
-        Job::Options const& options) {
-
+        int priority) {
     return Ptr(new SqlGrantAccessJob(
         database,
         user,
@@ -66,7 +65,7 @@ SqlGrantAccessJob::Ptr SqlGrantAccessJob::create(
         controller,
         parentJobId,
         onFinish,
-        options
+        priority
     ));
 }
 
@@ -77,13 +76,13 @@ SqlGrantAccessJob::SqlGrantAccessJob(string const& database,
                                      Controller::Ptr const& controller,
                                      string const& parentJobId,
                                      CallbackType const& onFinish,
-                                     Job::Options const& options)
+                                     int priority)
     :   SqlJob(0,
                allWorkers,
                controller,
                parentJobId,
                "SQL_GRANT_ACCESS",
-               options),
+               priority),
         _database(database),
         _user(user),
         _onFinish(onFinish) {
@@ -117,7 +116,7 @@ list<SqlRequest::Ptr> SqlGrantAccessJob::launchRequests(util::Lock const& lock,
                 [self] (SqlGrantAccessRequest::Ptr const& request) {
                     self->onRequestFinish(request);
                 },
-                options(lock).priority,
+                priority(),
                 true,   /* keepTracking*/
                 id()    /* jobId */
             )

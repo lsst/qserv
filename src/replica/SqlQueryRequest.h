@@ -39,16 +39,12 @@ namespace replica {
  * Class SqlQueryRequest represents Controller-side requests for initiating
  * arbitrary database queries at a remote worker nodes.
  */
-class SqlQueryRequest : public SqlRequest {
+class SqlQueryRequest: public SqlRequest {
 public:
-
-    /// The pointer type for instances of the class
     typedef std::shared_ptr<SqlQueryRequest> Ptr;
 
     /// The function type for notifications on the completion of the request
     typedef std::function<void(Ptr)> CallbackType;
-
-    // Default construction and copy semantics are prohibited
 
     SqlQueryRequest() = delete;
     SqlQueryRequest(SqlQueryRequest const&) = delete;
@@ -66,47 +62,24 @@ public:
      * Static factory method is needed to prevent issue with the lifespan
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
-     *
-     * @param serviceProvider
-     *   is needed to access the Configuration and the Controller for communicating
-     *   with the worker
-     *
-     * @param io_service
-     *   a communication end-point
-     *
-     * @param worker
-     *   identifier of a worker node
-     *
-     * @param query
-     *   the query to be executed
-     *
-     * @param user
-     *   the name of a database account for connecting to the database service
-     *
-     * @param password
-     *   a database for connecting to the database service
-     *
-     * @param maxRows
-     *   (optional) limit for the maximum number of rows to be returned with the request.
-     *   Leaving the default value of the parameter to 0 will result in not imposing any
-     *   explicit restrictions on a size of the result set. Note that other, resource-defined
+     * @param serviceProvider Is needed to access the Configuration and
+     *   the Controller for communicating with the worker.
+     * @param io_service The BOOST ASIO communication end-point.
+     * @param worker An identifier of a worker node.
+     * @param query The query to be executed.
+     * @param user  The name of a database account for connecting to the database service.
+     * @param password The database account password for connecting to the database service.
+     * @param maxRows  The (optional) limit for the maximum number of rows to be returned with
+     *   the request. Leaving the default value of the parameter to 0 will result in not imposing 
+     *   any explicit restrictions on a size of the result set. Note that other, resource-defined
      *   restrictions will still apply. The later includes the maximum size of the Google Protobuf
      *   objects, the amount of available memory, etc.
-     *
-     * @param onFinish
-     *   (optional) callback function to call upon completion of the request
-     *
-     * @param priority
-     *   priority level of the request
-     *
-     * @param keepTracking
-     *   keep tracking the request before it finishes or fails
-     *
-     * @param messenger
-     *   interface for communicating with workers
-     *
-     * @return
-     *   pointer to the created object
+     * @param onFinish  The (optional) callback function to call upon completion of
+     *   the request.
+     * @param priority  The priority level of the request.
+     * @param keepTracking  Keep tracking the request before it finishes or fails.
+     * @param messenger An interface for communicating with workers.
+     * @return A pointer to the created object.
      */
     static Ptr create(ServiceProvider::Ptr const& serviceProvider,
                       boost::asio::io_service& io_service,
@@ -121,12 +94,10 @@ public:
                       std::shared_ptr<Messenger> const& messenger);
 
 protected:
-
     /// @see Request::notify()
     void notify(util::Lock const& lock) final;
 
 private:
-
     /// @see SqlQueryRequest::create()
     SqlQueryRequest(ServiceProvider::Ptr const& serviceProvider,
                     boost::asio::io_service& io_service,
@@ -140,7 +111,7 @@ private:
                     bool keepTracking,
                     std::shared_ptr<Messenger> const& messenger);
 
-    CallbackType _onFinish; /// @note is reset when the request finishes
+    CallbackType _onFinish; ///< @note is reset when the request finishes
 };
 
 }}} // namespace lsst::qserv::replica

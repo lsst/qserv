@@ -740,6 +740,7 @@ DisposeRequest::Ptr Controller::dispose(
 ServiceSuspendRequest::Ptr Controller::suspendWorkerService(
         string const& workerName,
         ServiceSuspendRequest::CallbackType const& onFinish,
+        int priority,
         string const& jobId,
         unsigned int requestExpirationIvalSec) {
 
@@ -748,6 +749,7 @@ ServiceSuspendRequest::Ptr Controller::suspendWorkerService(
     return _submit<ServiceSuspendRequest>(
         workerName,
         onFinish,
+        priority,
         jobId,
         requestExpirationIvalSec);
 }
@@ -756,6 +758,7 @@ ServiceSuspendRequest::Ptr Controller::suspendWorkerService(
 ServiceResumeRequest::Ptr Controller::resumeWorkerService(
         string const& workerName,
         ServiceResumeRequest::CallbackType const& onFinish,
+        int priority,
         string const& jobId,
         unsigned int requestExpirationIvalSec) {
 
@@ -764,6 +767,7 @@ ServiceResumeRequest::Ptr Controller::resumeWorkerService(
     return _submit<ServiceResumeRequest>(
         workerName,
         onFinish,
+        priority,
         jobId,
         requestExpirationIvalSec);
 }
@@ -772,6 +776,7 @@ ServiceResumeRequest::Ptr Controller::resumeWorkerService(
 ServiceStatusRequest::Ptr Controller::statusOfWorkerService(
         string const& workerName,
         ServiceStatusRequest::CallbackType const& onFinish,
+        int priority,
         string const& jobId,
         unsigned int requestExpirationIvalSec) {
 
@@ -780,6 +785,7 @@ ServiceStatusRequest::Ptr Controller::statusOfWorkerService(
     return _submit<ServiceStatusRequest>(
         workerName,
         onFinish,
+        priority,
         jobId,
         requestExpirationIvalSec);
 }
@@ -788,6 +794,7 @@ ServiceStatusRequest::Ptr Controller::statusOfWorkerService(
 ServiceRequestsRequest::Ptr Controller::requestsOfWorkerService(
         string const& workerName,
         ServiceRequestsRequest::CallbackType const& onFinish,
+        int priority,
         string const& jobId,
         unsigned int requestExpirationIvalSec) {
 
@@ -796,6 +803,7 @@ ServiceRequestsRequest::Ptr Controller::requestsOfWorkerService(
     return _submit<ServiceRequestsRequest>(
         workerName,
         onFinish,
+        priority,
         jobId,
         requestExpirationIvalSec);
 }
@@ -804,6 +812,7 @@ ServiceRequestsRequest::Ptr Controller::requestsOfWorkerService(
 ServiceDrainRequest::Ptr Controller::drainWorkerService(
         string const& workerName,
         ServiceDrainRequest::CallbackType const& onFinish,
+        int priority,
         string const& jobId,
         unsigned int requestExpirationIvalSec) {
 
@@ -812,6 +821,7 @@ ServiceDrainRequest::Ptr Controller::drainWorkerService(
     return _submit<ServiceDrainRequest>(
         workerName,
         onFinish,
+        priority,
         jobId,
         requestExpirationIvalSec);
 }
@@ -820,6 +830,7 @@ ServiceDrainRequest::Ptr Controller::drainWorkerService(
 ServiceReconfigRequest::Ptr Controller::reconfigWorkerService(
         string const& workerName,
         ServiceReconfigRequest::CallbackType const& onFinish,
+        int priority,
         string const& jobId,
         unsigned int requestExpirationIvalSec) {
 
@@ -828,6 +839,7 @@ ServiceReconfigRequest::Ptr Controller::reconfigWorkerService(
     return _submit<ServiceReconfigRequest>(
         workerName,
         onFinish,
+        priority,
         jobId,
         requestExpirationIvalSec);
 }

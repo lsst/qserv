@@ -208,7 +208,10 @@ json HttpSqlSchemaModule::_alterTableSchema() {
 
     // Modify all relevant tables at all Qserv workers
     bool const allWorkers = true;
-    auto const job = SqlAlterTablesJob::create(databaseInfo.name, table, spec, allWorkers, controller());
+    string const noParentJobId;
+    auto const job = SqlAlterTablesJob::create(
+            databaseInfo.name, table, spec, allWorkers, controller(), noParentJobId, nullptr,
+            config->get<int>("controller", "catalog_management_priority_level"));
     job->start();
     logJobStartedEvent(SqlAlterTablesJob::typeName(), job, databaseInfo.family);
     job->wait();

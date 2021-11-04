@@ -66,49 +66,22 @@ public:
      * Static factory method is needed to prevent issue with the lifespan
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
-     *
-     * @param serviceProvider
-     *   is needed to access the Configuration and the Controller for communicating
-     *   with the worker
-     *
-     * @param io_service
-     *   a communication end-point
-     *
-     * @param worker
-     *   identifier of a worker node
-     *
-     * @param database
-     *   the name of an existing database where the new table will be created
-     *
-     * @param table
-     *   the name of a table to be created
-     *
-     * @param engine
-     *   the name of the MySQL engine for the new table
-     *
-     * @pram partitionByColumn
-     *   (optional, if not empty) the name of a column which will be used
-     *   as a key to configure MySQL partitions for the new table.
+     * @param serviceProvider  Services of the Replication framework.
+     * @param io_service  Asynchronous communication services.
+     * @param worker  A unique identifier of a worker node.
+     * @param database  The name of an existing database where the new table will be created.
+     * @param table  The name of a table to be created.
+     * @param engine  The name of the MySQL engine for the new table.
+     * @param partitionByColumn  (optional, if not empty) The name of a column which
+     *   will be used as a key to configure MySQL partitions for the new table.
      *   This variation of table schema will be used for the super-transaction-based
      *   ingest into the table.
-     *
-     * @param columns
-     *   column definitions (name,type) of the table
-     *
-     * @param onFinish
-     *   (optional) callback function to call upon completion of the request
-     *
-     * @param priority
-     *   priority level of the request
-     *
-     * @param keepTracking
-     *   keep tracking the request before it finishes or fails
-     *
-     * @param messenger
-     *   interface for communicating with workers
-     *
-     * @return
-     *   pointer to the created object
+     * @param columns  Column definitions (name,type) of the table.
+     * @param onFinish  The (optional) callback function to call upon completion of the request.
+     * @param priority  A priority level of the request.
+     * @param keepTracking  Keep tracking the request before it finishes or fails.
+     * @param messenger  An service for communications with workers.
+     * @return A pointer to the created object.
      */
     static Ptr create(ServiceProvider::Ptr const& serviceProvider,
                       boost::asio::io_service& io_service,
@@ -124,12 +97,10 @@ public:
                       std::shared_ptr<Messenger> const& messenger);
 
 protected:
-
     /// @see Request::notify()
     void notify(util::Lock const& lock) final;
 
 private:
-
     /// @see SqlCreateTableRequest::create()
     SqlCreateTableRequest(ServiceProvider::Ptr const& serviceProvider,
                           boost::asio::io_service& io_service,
@@ -144,7 +115,7 @@ private:
                           bool keepTracking,
                           std::shared_ptr<Messenger> const& messenger);
 
-    CallbackType _onFinish; /// @note is reset when the request finishes
+    CallbackType _onFinish; ///< @note is reset when the request finishes
 };
 
 }}} // namespace lsst::qserv::replica

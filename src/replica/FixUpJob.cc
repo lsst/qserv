@@ -46,15 +46,6 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
-Job::Options const& FixUpJob::defaultOptions() {
-    static Job::Options const options{
-        1,      /* priority */
-        true,   /* exclusive */
-        true    /* exclusive */
-    };
-    return options;
-}
-
 
 string FixUpJob::typeName() { return "FixUpJob"; }
 
@@ -63,13 +54,13 @@ FixUpJob::Ptr FixUpJob::create(string const& databaseFamily,
                                Controller::Ptr const& controller,
                                string const& parentJobId,
                                CallbackType const& onFinish,
-                               Job::Options const& options) {
+                               int priority) {
     return FixUpJob::Ptr(
         new FixUpJob(databaseFamily,
                      controller,
                      parentJobId,
                      onFinish,
-                     options));
+                     priority));
 }
 
 
@@ -77,11 +68,11 @@ FixUpJob::FixUpJob(string const& databaseFamily,
                    Controller::Ptr const& controller,
                    string const& parentJobId,
                    CallbackType const& onFinish,
-                   Job::Options const& options)
+                   int priority)
     :   Job(controller,
             parentJobId,
             "FIXUP",
-            options),
+            priority),
         _databaseFamily(databaseFamily),
         _onFinish(onFinish) {
 }
@@ -170,7 +161,8 @@ void FixUpJob::startImpl(util::Lock const& lock) {
         id(),
         [self] (FindAllJob::Ptr job) {
             self->_onPrecursorJobFinish();
-        }
+        },
+        priority()
     );
     _findAllJob->start();
 }
@@ -199,7 +191,7 @@ void FixUpJob::cancelImpl(util::Lock const& lock) {
                 ptr->worker(),
                 ptr->id(),
                 nullptr,    /* onFinish */
-                options(lock).priority,
+                priority(),
                 true,       /* keepTracking */
                 id()        /* jobId */);
     }

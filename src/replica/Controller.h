@@ -297,7 +297,7 @@ public:
             std::string const& database,
             unsigned int chunk,
             std::function<void(ReplicationRequestPtr)> const& onFinish=nullptr,
-            int priority=0,
+            int priority=PRIORITY_NORMAL,
             bool keepTracking=true,
             bool allowDuplicate=true,
             std::string const& jobId="",
@@ -308,7 +308,7 @@ public:
             std::string const& database,
             unsigned int chunk,
             std::function<void(DeleteRequestPtr)> const& onFinish=nullptr,
-            int priority=0,
+            int priority=PRIORITY_NORMAL,
             bool keepTracking=true,
             bool allowDuplicate=true,
             std::string const& jobId="",
@@ -319,7 +319,7 @@ public:
             std::string const& database,
             unsigned int chunk,
             std::function<void(FindRequestPtr)> const& onFinish=nullptr,
-            int priority=0,
+            int priority=PRIORITY_NORMAL,
             bool computeCheckSum=false,
             bool keepTracking=true,
             std::string const& jobId="",
@@ -330,7 +330,7 @@ public:
             std::string const& database,
             bool saveReplicaInfo=true,
             std::function<void(FindAllRequestPtr)> const& onFinish=nullptr,
-            int priority=0,
+            int priority=PRIORITY_NORMAL,
             bool keepTracking=true,
             std::string const& jobId="",
             unsigned int requestExpirationIvalSec=0);
@@ -340,7 +340,7 @@ public:
             std::string const& data,
             uint64_t delay,
             std::function<void(EchoRequestPtr)> const& onFinish=nullptr,
-            int priority=0,
+            int priority=PRIORITY_NORMAL,
             bool keepTracking=true,
             std::string const& jobId="",
             unsigned int requestExpirationIvalSec=0);
@@ -353,7 +353,7 @@ public:
             bool hasTransactions,
             TransactionId transactionId,
             std::function<void(IndexRequestPtr)> const& onFinish=nullptr,
-            int priority=0,
+            int priority=PRIORITY_NORMAL,
             bool keepTracking=true,
             std::string const& jobId="",
             unsigned int requestExpirationIvalSec=0);
@@ -364,7 +364,7 @@ public:
             std::vector<std::string> const& tables,
             std::string const& alterSpec,
             std::function<void(SqlAlterTablesRequestPtr)> const& onFinish=nullptr,
-            int priority=0,
+            int priority=PRIORITY_NORMAL,
             bool keepTracking=true,
             std::string const& jobId="",
             unsigned int requestExpirationIvalSec=0);
@@ -376,7 +376,7 @@ public:
             std::string const& password,
             uint64_t maxRows,
             std::function<void(SqlQueryRequestPtr)> const& onFinish=nullptr,
-            int priority=0,
+            int priority=PRIORITY_NORMAL,
             bool keepTracking=true,
             std::string const& jobId="",
             unsigned int requestExpirationIvalSec=0);
@@ -385,7 +385,7 @@ public:
             std::string const& workerName,
             std::string const& database,
             std::function<void(SqlCreateDbRequestPtr)> const& onFinish=nullptr,
-            int priority=0,
+            int priority=PRIORITY_NORMAL,
             bool keepTracking=true,
             std::string const& jobId="",
             unsigned int requestExpirationIvalSec=0);
@@ -394,7 +394,7 @@ public:
             std::string const& workerName,
             std::string const& database,
             std::function<void(SqlDeleteDbRequestPtr)> const& onFinish=nullptr,
-            int priority=0,
+            int priority=PRIORITY_NORMAL,
             bool keepTracking=true,
             std::string const& jobId="",
             unsigned int requestExpirationIvalSec=0);
@@ -403,7 +403,7 @@ public:
             std::string const& workerName,
             std::string const& database,
             std::function<void(SqlEnableDbRequestPtr)>  const& onFinish=nullptr,
-            int priority=0,
+            int priority=PRIORITY_NORMAL,
             bool keepTracking=true,
             std::string const& jobId="",
             unsigned int requestExpirationIvalSec=0);
@@ -412,7 +412,7 @@ public:
             std::string const& workerName,
             std::string const& database,
             std::function<void(SqlDisableDbRequestPtr)> const& onFinish=nullptr,
-            int priority=0,
+            int priority=PRIORITY_NORMAL,
             bool keepTracking=true,
             std::string const& jobId="",
             unsigned int requestExpirationIvalSec=0);
@@ -422,7 +422,7 @@ public:
             std::string const& database,
             std::string const& user,
             std::function<void(SqlGrantAccessRequestPtr)> const& onFinish=nullptr,
-            int priority=0,
+            int priority=PRIORITY_NORMAL,
             bool keepTracking=true,
             std::string const& jobId="",
             unsigned int requestExpirationIvalSec=0);
@@ -436,7 +436,7 @@ public:
             std::string const& indexComment,
             std::vector<SqlIndexColumn> const& indexColumns,
             std::function<void(SqlCreateIndexesRequestPtr)> const& onFinish=nullptr,
-            int priority=0,
+            int priority=PRIORITY_NORMAL,
             bool keepTracking=true,
             std::string const& jobId="",
             unsigned int requestExpirationIvalSec=0);
@@ -449,7 +449,7 @@ public:
             std::string const& partitionByColumn,
             std::list<SqlColDef> const& columns,
             std::function<void(SqlCreateTableRequestPtr)> const& onFinish=nullptr,
-            int priority=0,
+            int priority=PRIORITY_NORMAL,
             bool keepTracking=true,
             std::string const& jobId="",
             unsigned int requestExpirationIvalSec=0);
@@ -462,7 +462,7 @@ public:
             std::string const& partitionByColumn,
             std::list<SqlColDef> const& columns,
             std::function<void(SqlCreateTablesRequestPtr)> const& onFinish=nullptr,
-            int priority=0,
+            int priority=PRIORITY_NORMAL,
             bool keepTracking=true,
             std::string const& jobId="",
             unsigned int requestExpirationIvalSec=0);
@@ -472,7 +472,7 @@ public:
             std::string const& database,
             std::vector<std::string> const& tables,
             std::function<void(SqlDeleteTableRequestPtr)> const& onFinish=nullptr,
-            int priority=0,
+            int priority=PRIORITY_NORMAL,
             bool keepTracking=true,
             std::string const& jobId="",
             unsigned int requestExpirationIvalSec=0);
@@ -482,7 +482,7 @@ public:
             std::string const& database,
             std::vector<std::string> const& tables,
             std::function<void(SqlRemoveTablePartitionsRequestPtr)> const& onFinish=nullptr,
-            int priority=0,
+            int priority=PRIORITY_NORMAL,
             bool keepTracking=true,
             std::string const& jobId="",
             unsigned int requestExpirationIvalSec=0);
@@ -493,7 +493,7 @@ public:
             std::vector<std::string> const& tables,
             TransactionId transactionId,
             std::function<void(SqlDeleteTablePartitionRequestPtr)> const& onFinish=nullptr,
-            int priority=0,
+            int priority=PRIORITY_NORMAL,
             bool keepTracking=true,
             std::string const& jobId="",
             unsigned int requestExpirationIvalSec=0);
@@ -504,7 +504,7 @@ public:
             std::vector<std::string> const& tables,
             std::string const& indexName,
             std::function<void(SqlDropIndexesRequestPtr)> const& onFinish=nullptr,
-            int priority=0,
+            int priority=PRIORITY_NORMAL,
             bool keepTracking=true,
             std::string const& jobId="",
             unsigned int requestExpirationIvalSec=0);
@@ -514,7 +514,7 @@ public:
             std::string const& database,
             std::vector<std::string> const& tables,
             std::function<void(SqlGetIndexesRequestPtr)> const& onFinish=nullptr,
-            int priority=0,
+            int priority=PRIORITY_NORMAL,
             bool keepTracking=true,
             std::string const& jobId="",
             unsigned int requestExpirationIvalSec=0);
@@ -523,7 +523,7 @@ public:
             std::string const& workerName,
             std::vector<std::string> const& targetIds,
             std::function<void(DisposeRequestPtr)> const& onFinish=nullptr,
-            int priority=0,
+            int priority=PRIORITY_NORMAL,
             bool keepTracking=true,
             std::string const& jobId="",
             unsigned int requestExpirationIvalSec=0);
@@ -533,7 +533,7 @@ public:
             std::string const& workerName,
             std::string const& targetRequestId,
             typename REQUEST::CallbackType const& onFinish=nullptr,
-            int priority=0,
+            int priority=PRIORITY_NORMAL,
             bool keepTracking=true,
             std::string const& jobId="",
             unsigned int requestExpirationIvalSec=0) {
@@ -556,7 +556,7 @@ public:
             std::string const& workerName,
             std::string const& targetRequestId,
             typename REQUEST::CallbackType const& onFinish=nullptr,
-            int priority=0,
+            int priority=PRIORITY_NORMAL,
             bool keepTracking=true,
             std::string const& jobId="",
             unsigned int requestExpirationIvalSec=0) {
@@ -577,36 +577,42 @@ public:
     ServiceSuspendRequestPtr suspendWorkerService(
             std::string const& workerName,
             std::function<void(ServiceSuspendRequestPtr)> const& onFinish=nullptr,
+            int priority=PRIORITY_VERY_HIGH,
             std::string const& jobId="",
             unsigned int requestExpirationIvalSec=0);
 
     ServiceResumeRequestPtr resumeWorkerService(
             std::string const& workerName,
             std::function<void(ServiceResumeRequestPtr)> const& onFinish=nullptr,
+            int priority=PRIORITY_VERY_HIGH,
             std::string const& jobId="",
             unsigned int requestExpirationIvalSec=0);
 
     ServiceStatusRequestPtr statusOfWorkerService(
             std::string const& workerName,
             std::function<void(ServiceStatusRequestPtr)> const& onFinish=nullptr,
+            int priority=PRIORITY_VERY_HIGH,
             std::string const& jobId="",
             unsigned int requestExpirationIvalSec=0);
 
     ServiceRequestsRequestPtr requestsOfWorkerService(
             std::string const& workerName,
             std::function<void(ServiceRequestsRequestPtr)> const& onFinish=nullptr,
+            int priority=PRIORITY_VERY_HIGH,
             std::string const& jobId="",
             unsigned int requestExpirationIvalSec=0);
 
     ServiceDrainRequestPtr drainWorkerService(
             std::string const& workerName,
             std::function<void(ServiceDrainRequestPtr)> const& onFinish=nullptr,
+            int priority=PRIORITY_VERY_HIGH,
             std::string const& jobId="",
             unsigned int requestExpirationIvalSec=0);
 
     ServiceReconfigRequestPtr reconfigWorkerService(
             std::string const& workerName,
             std::function<void(ServiceReconfigRequestPtr)> const& onFinish=nullptr,
+            int priority=PRIORITY_VERY_HIGH,
             std::string const& jobId="",
             unsigned int requestExpirationIvalSec=0);
 
@@ -628,6 +634,7 @@ public:
     typename REQUEST::Ptr workerServiceRequest(
             std::string const& workerName,
             typename REQUEST::CallbackType const& onFinish=nullptr,
+            int priority=PRIORITY_VERY_HIGH,
             std::string const& jobId="",
             unsigned int requestExpirationIvalSec=0) {
 
@@ -636,6 +643,7 @@ public:
         return _submit<REQUEST>(
                 workerName,
                 onFinish,
+                priority,
                 jobId,
                 requestExpirationIvalSec);
     }
@@ -794,6 +802,7 @@ private:
     typename REQUEST::Ptr _submit(
             std::string const& workerName,
             typename REQUEST::CallbackType const& onFinish,
+            int priority,
             std::string const& jobId,
             unsigned int requestExpirationIvalSec) {
 
@@ -809,6 +818,7 @@ private:
             [controller] (typename REQUEST::Ptr const& request) {
                 controller->_finish(request->id());
             },
+            priority,
             serviceProvider()->messenger()
         );
 

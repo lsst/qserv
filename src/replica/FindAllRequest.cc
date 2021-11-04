@@ -168,11 +168,9 @@ void FindAllRequest::awaken(boost::system::error_code const& ec) {
 
 
 void FindAllRequest::_send(util::Lock const& lock) {
-
     auto self = shared_from_base<FindAllRequest>();
-
     messenger()->send<ProtocolResponseFindAll>(
-        worker(), id(), buffer(),
+        worker(), id(), priority(), buffer(),
         [self] (string const& id, bool success, ProtocolResponseFindAll const& response) {
             self->_analyze(success, response);
         }

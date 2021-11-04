@@ -57,10 +57,8 @@ public:
      * Static factory method is needed to prevent issues with the lifespan
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
-     *
      * @param serviceProvider A reference to a provider of services for accessing
      *   Configuration, saving the request's persistent state to the database.
-     *
      * @param worker The name of a worker to send the request to.
      * @param data The data string to be echoed back by the worker (if successful).
      * @param onFinish (optional) callback function to be called upon request completion.
@@ -103,7 +101,6 @@ private:
 
     /**
      * Carry over results of the request into a local storage.
-     * 
      * @param lock A lock on QservMgtRequest::_mtx must be acquired by a caller
      *   of the method.
      * @param data The data string returned by a worker.
@@ -114,12 +111,12 @@ private:
     // Input parameters
 
     std::string const _data;
-    CallbackType      _onFinish;    /// @note this object is reset after finishing the request
+    CallbackType      _onFinish;    ///< @note this object is reset after finishing the request
 
     /// A request to the remote services
     wpublish::TestEchoQservRequest::Ptr _qservRequest;
 
-    /// The data string returned by the Qservr worker
+    /// The data string returned by the Qserv worker
     std::string _dataEcho;
 };
 

@@ -44,7 +44,11 @@ map<string, set<string>> ConfigTestData::parameters() {
                 "request_timeout_sec",
                 "job_timeout_sec",
                 "job_heartbeat_sec",
-                "empty_chunks_dir"
+                "empty_chunks_dir",
+                "worker_evict_priority_level",
+                "health_monitor_priority_level",
+                "ingest_priority_level",
+                "catalog_management_priority_level"
             }
         },
         {   "database",
@@ -111,7 +115,11 @@ json ConfigTestData::data() {
         {"request_timeout_sec", 100},
         {"job_timeout_sec", 200},
         {"job_heartbeat_sec", 300},
-        {"empty_chunks_dir", "/qserv/data/qserv"}
+        {"empty_chunks_dir", "/qserv/data/qserv"},
+        {"worker_evict_priority_level", 1},
+        {"health_monitor_priority_level", 2},
+        {"ingest_priority_level", 3},
+        {"catalog_management_priority_level", 4}
     });
     generalObj["database"] = json::object({
         {"host", "localhost"},

@@ -62,9 +62,6 @@ public:
     /// The pointer type for instances of the class
     typedef std::shared_ptr<ServiceManagementBaseJob> Ptr;
 
-    /// @return default options object for this type of a request
-    static Job::Options const& defaultOptions();
-
     /// @return the unique name distinguishing this class from other types of jobs
     static std::string typeName();
 
@@ -125,17 +122,17 @@ protected:
      *   is needed launching requests and accessing the Configuration
      *
      * @param parentJobId
-     *   (optional) identifier of a parent job
+     *   an identifier of a parent job
      *
-     * @param options
-     *   (optional) defines the job priority, etc.
+     * @param priority
+     *   defines the job priority
      */
     ServiceManagementBaseJob(std::string const& requestName,
                              bool allWorkers,
                              unsigned int requestExpirationIvalSec,
                              Controller::Ptr const& controller,
                              std::string const& parentJobId,
-                             Job::Options const& options);
+                             int priority);
 
     /**
      * Submit type-specific request
@@ -199,9 +196,9 @@ public:
     static Ptr create(bool allWorkers,
                       unsigned int requestExpirationIvalSec,
                       Controller::Ptr const& controller,
-                      std::string const& parentJobId=std::string(),
-                      CallbackType const& onFinish=nullptr,
-                      Job::Options const& options=defaultOptions()) {
+                      std::string const& parentJobId,
+                      CallbackType const& onFinish,
+                      int priority) {
         return Ptr(
             new ServiceManagementJob(
                 allWorkers,
@@ -209,7 +206,7 @@ public:
                 controller,
                 parentJobId,
                 onFinish,
-                options));
+                priority));
     }
 
     // Default construction and copy semantics are prohibited
@@ -234,6 +231,7 @@ protected:
             [self] (typename REQUEST::Ptr const& ptr) {
                 self->onRequestFinish(ptr);
             },
+            priority(),
             id(),
             requestExpirationIvalSec()
         );
@@ -247,13 +245,13 @@ private:
                          Controller::Ptr const& controller,
                          std::string const& parentJobId,
                          CallbackType const& onFinish,
-                         Job::Options const& options)
+                         int priority)
         :   ServiceManagementBaseJob(REQUEST::Policy::requestName(),
                                      allWorkers,
                                      requestExpirationIvalSec,
                                      controller,
                                      parentJobId,
-                                     options),
+                                     priority),
             _onFinish(onFinish) {
     }
 

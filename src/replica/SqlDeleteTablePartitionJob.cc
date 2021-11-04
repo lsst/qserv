@@ -58,7 +58,7 @@ SqlDeleteTablePartitionJob::Ptr SqlDeleteTablePartitionJob::create(
         Controller::Ptr const& controller,
         string const& parentJobId,
         CallbackType const& onFinish,
-        Job::Options const& options) {
+        int priority) {
 
     return Ptr(new SqlDeleteTablePartitionJob(
         transactionId,
@@ -67,7 +67,7 @@ SqlDeleteTablePartitionJob::Ptr SqlDeleteTablePartitionJob::create(
         controller,
         parentJobId,
         onFinish,
-        options
+        priority
     ));
 }
 
@@ -79,13 +79,13 @@ SqlDeleteTablePartitionJob::SqlDeleteTablePartitionJob(
         Controller::Ptr const& controller,
         string const& parentJobId,
         CallbackType const& onFinish,
-        Job::Options const& options)
+        int priority)
     :   SqlJob(0,
                allWorkers,
                controller,
                parentJobId,
                "SQL_DROP_TABLE_PARTITION",
-               options),
+               priority),
         _transactionId(transactionId),
         _table(table),
         _onFinish(onFinish) {
@@ -155,7 +155,7 @@ list<SqlRequest::Ptr> SqlDeleteTablePartitionJob::launchRequests(util::Lock cons
                 [self] (SqlDeleteTablePartitionRequest::Ptr const& request) {
                     self->onRequestFinish(request);
                 },
-                options(lock).priority,
+                priority(),
                 keepTracking,
                 jobId
             )

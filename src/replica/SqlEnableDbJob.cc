@@ -56,15 +56,14 @@ SqlEnableDbJob::Ptr SqlEnableDbJob::create(
         Controller::Ptr const& controller,
         string const& parentJobId,
         CallbackType const& onFinish,
-        Job::Options const& options) {
-
+        int priority) {
     return Ptr(new SqlEnableDbJob(
         database,
         allWorkers,
         controller,
         parentJobId,
         onFinish,
-        options
+        priority
     ));
 }
 
@@ -74,13 +73,13 @@ SqlEnableDbJob::SqlEnableDbJob(string const& database,
                                Controller::Ptr const& controller,
                                string const& parentJobId,
                                CallbackType const& onFinish,
-                               Job::Options const& options)
+                               int priority)
     :   SqlJob(0,
                allWorkers,
                controller,
                parentJobId,
                "SQL_ENABLE_DATABASE",
-               options),
+               priority),
         _database(database),
         _onFinish(onFinish) {
 }
@@ -111,7 +110,7 @@ list<SqlRequest::Ptr> SqlEnableDbJob::launchRequests(util::Lock const& lock,
                 [self] (SqlEnableDbRequest::Ptr const& request) {
                     self->onRequestFinish(request);
                 },
-                options(lock).priority,
+                priority(),
                 true,   /* keepTracking*/
                 id()    /* jobId */
             )

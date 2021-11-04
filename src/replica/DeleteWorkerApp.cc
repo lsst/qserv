@@ -91,10 +91,14 @@ DeleteWorkerApp::DeleteWorkerApp(int argc, char* argv[])
 
 int DeleteWorkerApp::runImpl() {
 
+    string const noParentJobId;
     auto const job = DeleteWorkerJob::create(
         _workerName,
         _permanentDelete,
-        Controller::create(serviceProvider())
+        Controller::create(serviceProvider()),
+        noParentJobId,
+        nullptr,        // no callback
+        PRIORITY_NORMAL
     );
     job->start();
     job->wait();

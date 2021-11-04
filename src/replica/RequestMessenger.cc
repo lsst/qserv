@@ -104,6 +104,7 @@ void RequestMessenger::finishImpl(util::Lock const& lock) {
         _messenger->send<ProtocolResponseDispose>(
             worker(),
             id(),
+            priority(),
             buffer(),
             // Don't require any callback notification for the completion of
             // the operation. This will also prevent incrementing a shared pointer

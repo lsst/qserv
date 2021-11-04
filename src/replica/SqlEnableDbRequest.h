@@ -38,16 +38,12 @@ namespace replica {
  * Class SqlEnableDbRequest represents Controller-side requests for initiating
  * queries for enabling databases in Qserv at a remote worker nodes.
  */
-class SqlEnableDbRequest : public SqlRequest {
+class SqlEnableDbRequest: public SqlRequest {
 public:
-
-    /// The pointer type for instances of the class
     typedef std::shared_ptr<SqlEnableDbRequest> Ptr;
 
     /// The function type for notifications on the completion of the request
     typedef std::function<void(Ptr)> CallbackType;
-
-    // Default construction and copy semantics are prohibited
 
     SqlEnableDbRequest() = delete;
     SqlEnableDbRequest(SqlEnableDbRequest const&) = delete;
@@ -63,34 +59,17 @@ public:
      * Static factory method is needed to prevent issue with the lifespan
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
-     *
-     * @param serviceProvider
-     *   is needed to access the Configuration and the Controller for communicating
-     *   with the worker
-     *
-     * @param io_service
-     *   a communication end-point
-     *
-     * @param worker
-     *   identifier of a worker node
-     *
-     * @param database
-     *   the name of a database to be enabled
-     *
-     * @param onFinish
-     *   (optional) callback function to call upon completion of the request
-     *
-     * @param priority
-     *   priority level of the request
-     *
-     * @param keepTracking
-     *   keep tracking the request before it finishes or fails
-     *
-     * @param messenger
-     *   interface for communicating with workers
-     *
-     * @return
-     *   pointer to the created object
+     * @param serviceProvider Is needed to access the Configuration and
+     *   the Controller for communicating with the worker.
+     * @param io_service The BOOST ASIO communication end-point.
+     * @param worker An identifier of a worker node.
+     * @param database The name of an existing database to be enabled.
+     * @param onFinish  The (optional) callback function to call upon completion of
+     *   the request.
+     * @param priority  The priority level of the request.
+     * @param keepTracking  Keep tracking the request before it finishes or fails.
+     * @param messenger An interface for communicating with workers.
+     * @return A pointer to the created object.
      */
     static Ptr create(ServiceProvider::Ptr const& serviceProvider,
                       boost::asio::io_service& io_service,
@@ -102,12 +81,10 @@ public:
                       std::shared_ptr<Messenger> const& messenger);
 
 protected:
-
     /// @see Request::notify()
     void notify(util::Lock const& lock) final;
 
 private:
-
     /// @see SqlEnableDbRequest::create()
     SqlEnableDbRequest(ServiceProvider::Ptr const& serviceProvider,
                        boost::asio::io_service& io_service,
@@ -118,7 +95,7 @@ private:
                        bool keepTracking,
                        std::shared_ptr<Messenger> const& messenger);
 
-    CallbackType _onFinish; /// @note is reset when the request finishes
+    CallbackType _onFinish; ///< @note is reset when the request finishes
 };
 
 }}} // namespace lsst::qserv::replica

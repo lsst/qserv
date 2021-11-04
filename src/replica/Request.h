@@ -59,7 +59,6 @@ namespace replica {
   */
 class Request: public std::enable_shared_from_this<Request>  {
 public:
-    /// The pointer type for instances of the class
     typedef std::shared_ptr<Request> Ptr;
 
     /**
@@ -139,8 +138,6 @@ public:
                                     ExtendedState extendedState,
                                     ProtocolStatusExt extendedServerStatus);
 
-    // Default construction and copy semantics are prohibited
-
     Request() = delete;
     Request(Request const&) = delete;
     Request& operator=(Request const&) = delete;
@@ -160,7 +157,6 @@ public:
      * Normally this is the same request as the one a request object is created with
      * unless allowing to track duplicate requests (see constructor's options: 'keepTracking'
      * and 'allowDuplicate') and after the one is found.
-     *
      * @return an effective identifier of a remote (worker-side) request.
      */
     std::string const& remoteId() const;
@@ -425,14 +421,14 @@ protected:
     virtual void finishImpl(util::Lock const& lock) = 0;
 
     /**
-      * This method is supposed to be provided by subclasses to save the request's
-      * state into a database.
-      *
-      * The default implementation of the method is intentionally left empty
-      * to allow requests not to have the persistent state.
-      * 
-      * @param lock A lock on Request::_mtx must be acquired before calling this method.
-      */
+     * This method is supposed to be provided by subclasses to save the request's
+     * state into a database.
+     *
+     * The default implementation of the method is intentionally left empty
+     * to allow requests not to have the persistent state.
+     * 
+     * @param lock A lock on Request::_mtx must be acquired before calling this method.
+     */
     virtual void savePersistentState(util::Lock const& lock) {}
 
     /**
@@ -518,24 +514,15 @@ protected:
      * @param onFinish A callback function (if set) to be called.
      */
     template <class T>
-    void notifyDefaultImpl(util::Lock const& lock,
-                           typename T::CallbackType& onFinish) {    
-    
+    void notifyDefaultImpl(util::Lock const& lock, typename T::CallbackType& onFinish) {    
         if (nullptr != onFinish) {
-    
             // Clearing the stored callback after finishing the up-stream notification
             // has two purposes:
-            //
             // 1. it guaranties (exactly) one time notification
             // 2. it breaks the up-stream dependency on a caller object if a shared
             //    pointer to the object was mentioned as the lambda-function's closure
-    
             serviceProvider()->io_service().post(
-                std::bind(
-                    std::move(onFinish),
-                    shared_from_base<T>()
-                )
-            );
+                std::bind(std::move(onFinish), shared_from_base<T>()));
             onFinish = nullptr;
         }
     }
