@@ -94,6 +94,7 @@ struct SchedulerFixture {
         t->set_queryid(qId);
         t->set_jobid(jobId);
         t->set_chunkid(seq);
+        t->set_czarid(1);
         t->set_db("elephant");
         for(int i=0; i < 3; ++i) {
             TaskMsg::Fragment* f = t->add_fragment();
@@ -113,6 +114,7 @@ struct SchedulerFixture {
         t->set_queryid(qId);
         t->set_jobid(jobId);
         t->set_chunkid(seq);
+        t->set_czarid(1);
         t->set_db("moose");
         t->set_scaninteractive(false);
         t->set_attemptcount(0);

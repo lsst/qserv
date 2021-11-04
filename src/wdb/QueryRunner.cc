@@ -102,7 +102,6 @@ QueryRunner::QueryRunner(wbase::Task::Ptr const& task,
                          shared_ptr<wcontrol::SqlConnMgr> const& sqlConnMgr,
                          std::shared_ptr<wcontrol::TransmitMgr> const& transmitMgr)
     : _task(task), _chunkResourceMgr(chunkResourceMgr), _mySqlConfig(mySqlConfig),
-      _arena(make_unique<google::protobuf::Arena>()),
       _sqlConnMgr(sqlConnMgr), _transmitMgr(transmitMgr) {
     [[maybe_unused]] int rc = mysql_thread_init();
     assert(rc == 0);

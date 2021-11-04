@@ -3,7 +3,6 @@ add_dependencies(wsched proto)
 
 target_sources(wsched PRIVATE
     BlendScheduler.cc
-    ChunkDisk.cc
     ChunkTasksQueue.cc
     GroupScheduler.cc
     ScanScheduler.cc
