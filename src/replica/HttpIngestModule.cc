@@ -482,19 +482,14 @@ json HttpIngestModule::_addTable() {
     debug(__func__, "longitudeColName=" + longitudeColName);
     debug(__func__, "schema="        + schema.dump());
 
-    // Make sure the database is known and it's not PUBLISHED yet
-
     auto databaseInfo = config->databaseInfo(database);
     if (databaseInfo.isPublished) throw HttpError(__func__, "the database is already published");
-
-    // Make sure the table doesn't exist in the Configuration
 
     for (auto&& existingTable: databaseInfo.tables()) {
         if (table == existingTable) throw HttpError(__func__, "table already exists");
     }
 
     // Translate table schema
-
     if (schema.is_null()) throw HttpError( __func__, "table schema is empty");
     if (not schema.is_array()) throw HttpError(__func__, "table schema is not defined as an array");
 
@@ -528,6 +523,14 @@ json HttpIngestModule::_addTable() {
         }
         columns.emplace_back(colName, colType);
     }
+
+    // Register table in the Configuration
+    json result;
+    result["database"] = config->addTable(
+        databaseInfo.name, table, isPartitioned, columns, isDirector,
+        directorTable, directorKey,
+        latitudeColName, longitudeColName
+    ).toJson();
 
     // Create template and special (if the partitioned table requested) tables on all
     // workers. These tables will be used to create chunk-specific tables before
@@ -564,15 +567,6 @@ json HttpIngestModule::_addTable() {
         if (not error.empty()) throw HttpError(__func__, error);
     }
 
-    // Register table in the Configuration
-
-    json result;
-    result["database"] = config->addTable(
-        databaseInfo.name, table, isPartitioned, columns, isDirector,
-        directorTable, directorKey,
-        latitudeColName, longitudeColName
-    ).toJson();
-
     // Create the secondary index table using an updated version of
     // the database descriptor.
     //
@@ -586,7 +580,6 @@ json HttpIngestModule::_addTable() {
 
     // This step is needed to get workers' Configuration in-sync with its
     // persistent state.
-
     string const error = _reconfigureWorkers(databaseInfo, allWorkers, workerReconfigTimeoutSec());
     if (not error.empty()) throw HttpError(__func__, error);
 

@@ -254,6 +254,13 @@ void DatabaseInfo::addTable(
                         context + "the dependent table '" + table +
                         "' requires the name of the corresponding 'director' table to be provided.");
             }
+            auto const directors = directorTables();
+            if (directors.cend() == find(directors.cbegin(), directors.cend(), directorTable_)) {
+                throw invalid_argument(
+                        context + "the dependent  table '" + table + "' requires the director table '" +
+                        directorTable_ + "' that is not registered yet in Qserv. Please, make sure the"
+                        " director tables get registered before the corresponding dependent tables.");
+            }
 
             // The dependent table is allowed not to have the spatial coordinates since
             // it's guaranteed to have the direct association with its director table
