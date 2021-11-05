@@ -505,22 +505,38 @@ void DatabaseServicesPool::saveIngestParam(string const& database,
 }
 
 
+TableRowStats DatabaseServicesPool::tableRowStats(
+        string const& database, string const& table, TransactionId transactionId) {
+    ServiceAllocator service(shared_from_base<DatabaseServicesPool>());
+    return service()->tableRowStats(database, table, transactionId);
+}
+
+
+void DatabaseServicesPool::saveTableRowStats(TableRowStats const& stats)  {
+    ServiceAllocator service(shared_from_base<DatabaseServicesPool>());
+    service()->saveTableRowStats(stats);
+}
+
+
+void DatabaseServicesPool::deleteTableRowStats(
+        string const& database, string const& table, ChunkOverlapSelector overlapSelector) {
+    ServiceAllocator service(shared_from_base<DatabaseServicesPool>());
+    service()->deleteTableRowStats(database, table, overlapSelector); 
+}
+
+
 DatabaseServices::Ptr DatabaseServicesPool::_allocateService() {
 
     string const context = "DatabaseServicesPool::" + string(__func__) + "  ";
-
     LOGS(_log, LOG_LVL_DEBUG, context);
 
     unique_lock<mutex> lock(_mtx);
-
     auto self = shared_from_base<DatabaseServicesPool>();
-
     _available.wait(lock, [self]() {
         return not self->_availableServices.empty();
     });
     
     // Get the next request and move it between queues.
-
     DatabaseServices::Ptr service = _availableServices.front();
     _availableServices.pop_front();
     _usedServices.push_back(service);
@@ -532,30 +548,24 @@ DatabaseServices::Ptr DatabaseServicesPool::_allocateService() {
 void DatabaseServicesPool::_releaseService(DatabaseServices::Ptr const& service) {
 
     string const context = "DatabaseServicesPool::" + string(__func__) + "  ";
-
     LOGS(_log, LOG_LVL_DEBUG, context);
-
     unique_lock<mutex> lock(_mtx);
 
     // Move it between queues.
-
     size_t numRemoved = 0;
-    _usedServices.remove_if(
-        [&numRemoved, &service] (DatabaseServices::Ptr const& ptr) {
-            if (ptr == service) {
-                numRemoved++;
-                return true;
-            }
-            return false;
+    _usedServices.remove_if([&numRemoved, &service] (DatabaseServices::Ptr const& ptr) {
+        if (ptr == service) {
+            numRemoved++;
+            return true;
         }
-    );
+        return false;
+    });
     if (1 != numRemoved) {
         throw logic_error(context + "inappropriate use of the method");
     }
     _availableServices.push_back(service);
 
     // Notify one client (if any) waiting for a service
-
     lock.unlock();
     _available.notify_one();
 }

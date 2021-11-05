@@ -24,6 +24,7 @@
 
 // System headers
 #include <stdexcept>
+#include <type_traits>
 
 // Third party headers
 #include "boost/uuid/uuid.hpp"
@@ -40,6 +41,34 @@ namespace replica {
 
 string status2string(ProtocolStatusExt status) {
     return ProtocolStatusExt_Name(status);
+}
+
+
+string overlapSelector2str(ChunkOverlapSelector selector) {
+    switch(selector) {
+        case ChunkOverlapSelector::CHUNK: return "CHUNK";
+        case ChunkOverlapSelector::OVERLAP: return "OVERLAP";
+        case ChunkOverlapSelector::CHUNK_AND_OVERLAP: return "CHUNK_AND_OVERLAP";
+    }
+    throw invalid_argument(
+            "lsst::qserv::replica::" + string(__func__) + " unhandled selector: "
+            + to_string(static_cast<typename std::underlying_type<ChunkOverlapSelector>::type>(selector)));
+}
+
+
+ostream& operator<<(ostream& os, ChunkOverlapSelector selector) {
+    os << overlapSelector2str(selector);
+    return os;
+}
+
+
+ChunkOverlapSelector str2overlapSelector(string const& str) {
+    if (str == "CHUNK") return ChunkOverlapSelector::CHUNK;
+    else if (str == "OVERLAP") return ChunkOverlapSelector::OVERLAP;
+    else if (str == "CHUNK_AND_OVERLAP") return ChunkOverlapSelector::CHUNK_AND_OVERLAP;
+    throw invalid_argument(
+            "lsst::qserv::replica::" + string(__func__) + " the input string '" + str
+            + "' doesn't match any selector.");
 }
 
 

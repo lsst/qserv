@@ -237,6 +237,16 @@ public:
                          std::string const& param,
                          std::string const& value) final;
 
+    TableRowStats tableRowStats(std::string const& database,
+                                std::string const& table,
+                                TransactionId transactionId=0) final;
+
+    void saveTableRowStats(TableRowStats const& stats) final;
+
+    void deleteTableRowStats(
+            std::string const& database, std::string const& table,
+            ChunkOverlapSelector overlapSelector=ChunkOverlapSelector::CHUNK_AND_OVERLAP) final;
+
 private:
     /**
      * @param configuration the configuration service

@@ -23,6 +23,14 @@
 
 // Qserv headers
 #include "replica/Application.h"
+#include "replica/Common.h"
+
+// Forward declaratons
+namespace lsst {
+namespace qserv {
+namespace replica {
+    class TableRowStats;
+}}} // namespace lsst::qserv::replica
 
 // This header declarations
 namespace lsst {
@@ -33,9 +41,8 @@ namespace replica {
  * Class DatabaseTestApp implements a tool for testing the DatabaseServices API
  * used by the Replication system implementation.
  */
-class DatabaseTestApp : public Application {
+class DatabaseTestApp: public Application {
 public:
-    /// The pointer type for instances of the class
     typedef std::shared_ptr<DatabaseTestApp> Ptr;
 
     /**
@@ -59,6 +66,8 @@ protected:
 private:
     DatabaseTestApp(int argc, char* argv[]);
 
+    void _dump(TableRowStats const& stats);
+
     /// The name of a test
     std::string _operation;
 
@@ -69,19 +78,16 @@ private:
     /// the Replication system.
     bool _enabledWorkersOnly = false;
 
-    /// The chunk numbers
     unsigned int _chunk  = 0;
     unsigned int _chunk1 = 0;
     unsigned int _chunk2 = 0;
 
-    /// The name of a worker
     std::string _workerName;
-
-    /// The name of a database
     std::string _databaseName;
-
-    /// The name of a database family
     std::string _databaseFamilyName;
+    std::string _tableName;
+
+    TransactionId _transactionId = 0;
 
     /// Report all databases regardless if they're PUBLISHED or not
     bool _allDatabases = false;
@@ -89,8 +95,11 @@ private:
     /// Report a subset of PUBLISHED databases only
     bool _isPublished = false;
 
-    /// The number of rows in the table of replicas (0 means no pages)
-    size_t _pageSize = 20;
+    /// The number of rows in the tables (0 means no pages)
+    size_t _pageSize = 0;
+
+    // Display vertical separator.
+    bool _verticalSeparator = false;
 };
 
 }}} // namespace lsst::qserv::replica

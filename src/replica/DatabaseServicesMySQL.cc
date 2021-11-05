@@ -2376,6 +2376,125 @@ void DatabaseServicesMySQL::_findChunksImpl(
     }
 }
 
+TableRowStats DatabaseServicesMySQL::tableRowStats(
+        string const& database, string const& table, TransactionId transactionId) {
+
+    auto const context = "DatabaseServicesMySQL::" + string(__func__) + " ";
+    LOGS(_log, LOG_LVL_DEBUG, context);
+
+    util::Lock lock(_mtx, context);
+    TableRowStats stats;
+    try {
+        _conn->executeInOwnTransaction([&](decltype(_conn) conn) {
+            stats = _tableRowStats(lock, database, table, transactionId);
+        });
+    } catch (exception const& ex) {
+        LOGS(_log, LOG_LVL_ERROR, context << "failed, exception: " << ex.what());
+        throw;
+    }
+    LOGS(_log, LOG_LVL_DEBUG, context + "** DONE **");
+    return stats;
+}
+
+
+void DatabaseServicesMySQL::saveTableRowStats(TableRowStats const& stats)  {
+
+    auto const context = "DatabaseServicesMySQL::" + string(__func__) + " ";
+    LOGS(_log, LOG_LVL_DEBUG, context);
+
+    try {
+        _conn->executeInOwnTransaction([&](decltype(_conn) conn) {
+            for (auto&& e: stats.entries) {
+                conn->execute(
+                        "INSERT INTO " + _conn->sqlId("stats_table_rows")
+                        + " ("
+                        + _conn->sqlId("database") + ","
+                        + _conn->sqlId("table") + ","
+                        + (e.transactionId == 0 ? string() : _conn->sqlId("transaction_id") + ",")
+                        + _conn->sqlId("chunk") + ","
+                        + _conn->sqlId("is_overlap") + ","
+                        + _conn->sqlId("num_rows") + ","
+                        + _conn->sqlId("update_time")
+                        + ") VALUES ("
+                        + _conn->sqlValue(stats.database) + ","
+                        + _conn->sqlValue(stats.table) + ","
+                        + (e.transactionId == 0 ? string() : _conn->sqlValue(e.transactionId) + ",")
+                        + _conn->sqlValue(e.chunk) + ","
+                        + _conn->sqlValue(e.isOverlap) + ","
+                        + _conn->sqlValue(e.numRows) + ","
+                        + _conn->sqlValue(e.updateTime)
+                        + ") ON DUPLICATE KEY UPDATE "
+                        + _conn->sqlEqual("num_rows", e.numRows) + ","
+                        + _conn->sqlEqual("update_time", e.updateTime));
+            }
+        });
+    } catch (exception const& ex) {
+        LOGS(_log, LOG_LVL_ERROR, context << "failed, exception: " << ex.what());
+        throw;
+    }
+    LOGS(_log, LOG_LVL_DEBUG, context + "** DONE **");
+}
+
+
+TableRowStats DatabaseServicesMySQL::_tableRowStats(
+        util::Lock const& lock, string const& database, string const& table,
+        TransactionId transactionId) {
+
+    auto const context = "DatabaseServicesMySQL::" + string(__func__) + " ";
+    LOGS(_log, LOG_LVL_DEBUG, context);
+
+    TableRowStats stats(database, table);
+
+    _conn->execute(
+            "SELECT * FROM " + _conn->sqlId("stats_table_rows")
+            + " WHERE " + _conn->sqlEqual("database", database)
+            + " AND " + _conn->sqlEqual("table", table)
+            + (transactionId == 0 ? "" : " AND " + _conn->sqlEqual("transaction_id", transactionId)));
+    if (_conn->hasResult()) {
+        database::mysql::Row row;
+        while (_conn->next(row)) {
+            TransactionId rowTransactionId;
+            unsigned int chunk;
+            bool  isOverlap;
+            size_t numRows;
+            uint64_t updateTime;
+            row.get("transaction_id", rowTransactionId);
+            row.get("chunk", chunk);
+            row.get("is_overlap",  isOverlap);
+            row.get("num_rows", numRows);
+            row.get("update_time", updateTime);
+            stats.entries.emplace_back(TableRowStatsEntry(
+                    rowTransactionId, chunk,  isOverlap, numRows, updateTime));
+        }
+    }
+    return stats;
+}
+
+
+void DatabaseServicesMySQL::deleteTableRowStats(
+        string const& database, string const& table, ChunkOverlapSelector overlapSelector) {
+
+    auto const context = "DatabaseServicesMySQL::" + string(__func__) + " ";
+    LOGS(_log, LOG_LVL_DEBUG, context);
+
+    string query =
+            "DELETE FROM " + _conn->sqlId("stats_table_rows")
+            + " WHERE " + _conn->sqlEqual("database", database)
+            + " AND " + _conn->sqlEqual("table", table);
+    if (_configuration->databaseInfo(database).isPartitioned(table) &&
+        overlapSelector != ChunkOverlapSelector::CHUNK_AND_OVERLAP) {
+        query += " AND " + _conn->sqlEqual(
+                "is_overlap", overlapSelector == ChunkOverlapSelector::OVERLAP ? 1 : 0);
+    }
+    try {
+        _conn->executeInOwnTransaction([&query](decltype(_conn) conn) { conn->execute(query); });
+    } catch (exception const& ex) {
+        LOGS(_log, LOG_LVL_ERROR, context << "failed, exception: " << ex.what());
+        throw;
+    }
+    LOGS(_log, LOG_LVL_DEBUG, context + "** DONE **");
+}
+
 
 string DatabaseServicesMySQL::_context(string const& func) const {
     return "DatabaseServicesMySQL::" + func + " ";

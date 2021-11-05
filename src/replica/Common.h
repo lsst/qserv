@@ -59,8 +59,27 @@ int const PRIORITY_NORMAL    = 3;
 int const PRIORITY_HIGH      = 4;
 int const PRIORITY_VERY_HIGH = 5;
 
-/// Return the string representation of the extended status
+/// @return The string representation of the extended status.
 std::string status2string(ProtocolStatusExt status);
+
+/// The chunk overlap selector is used where the tri-state is required.
+enum class ChunkOverlapSelector: int {
+    CHUNK = 1,
+    OVERLAP = 2,
+    CHUNK_AND_OVERLAP = 3
+};
+
+/// @param selector The selector to be translated.
+/// @return The string representation of the selector.
+/// @throw std::invalid_argument If the selector is not valid.
+std::string overlapSelector2str(ChunkOverlapSelector selector);
+
+std::ostream& operator<<(std::ostream& os, ChunkOverlapSelector selector);
+
+/// @param str The input string to be parsed.
+/// @return ChunkOverlapSelector The selector's value.
+/// @throw std::invalid_argument If the string doesn't match any value.
+ChunkOverlapSelector str2overlapSelector(std::string const& str);
 
 /**
  * Class Generators is the utility class for generating a set of unique
@@ -71,7 +90,6 @@ class Generators {
 public:
     /// @return next unique identifier
     static std::string uniqueId();
-
 private:
     /// For thread safety where it's required
     static util::Mutex _mtx;
@@ -84,19 +102,15 @@ private:
  */
 class SqlColDef {
 public:
-
     SqlColDef() = default;
     SqlColDef(std::string const name_,
               std::string const type_)
         :    name(name_),
              type(type_) {
     }
-
     SqlColDef(SqlColDef const&) = default;
     SqlColDef& operator=(SqlColDef const&) = default;
-
     ~SqlColDef() = default;
-
 
     std::string name;
     std::string type;
@@ -109,7 +123,6 @@ public:
  */
 class SqlIndexColumn {
 public:
-
     SqlIndexColumn() = default;
     SqlIndexColumn(std::string const name_,
                    size_t length_,
@@ -118,12 +131,9 @@ public:
             length(length_),
             ascending(ascending_) {
     }
-
     SqlIndexColumn(SqlIndexColumn const&) = default;
     SqlIndexColumn& operator=(SqlIndexColumn const&) = default;
-
     ~SqlIndexColumn() = default;
-
 
     std::string name;
     size_t length = 0;

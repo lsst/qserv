@@ -404,6 +404,53 @@ public:
 
 
 /**
+ * Row counter for the table entry.
+ */
+class TableRowStatsEntry {
+public:
+    TransactionId transactionId = 0;
+    unsigned int chunk = 0;     ///< The optional parameter for the "regular" tables.
+    bool isOverlap = false;     ///< The optional parameter for the "regular" tables.
+    size_t numRows = 0;
+    uint64_t updateTime = 0;
+
+    TableRowStatsEntry(
+            TransactionId transactionId_, unsigned int chunk_, bool isOverlap_,
+            size_t numRows_, uint64_t updateTime_);
+
+    TableRowStatsEntry() = default;
+    TableRowStatsEntry(TableRowStatsEntry const&) = default;
+    TableRowStatsEntry& operator=(TableRowStatsEntry const&) = default;
+    ~TableRowStatsEntry() = default;
+
+    /// @return JSON representation of the object.
+    nlohmann::json toJson() const;
+};
+
+
+/**
+ * Class TableRowStats represents a containers for the statistics captured
+ * in a scope of a table.
+ */
+class TableRowStats {
+public:
+    std::string database;   /// The name of a database.
+    std::string table;      /// The base name of a table.
+    std::list<TableRowStatsEntry> entries;
+
+    TableRowStats(std::string const& database_, std::string const& table_);
+
+    TableRowStats() = default;
+    TableRowStats(TableRowStats const&) = default;
+    TableRowStats& operator=(TableRowStats const&) = default;
+    ~TableRowStats() = default;
+
+    /// @return JSON representation of the object.
+    nlohmann::json toJson() const;
+};
+
+
+/**
   * Class DatabaseServices is a high-level interface to the database services
   * for replication entities: Controller, Job and Request.
   *
@@ -1122,6 +1169,34 @@ public:
     void saveIngestParam(DatabaseIngestParam const& info) {
         saveIngestParam(info.database, info.category, info.param, info.value);
     }
+
+    /**
+     * Retreive statistics for a table.
+     * @param database The name of a database.
+     * @param table The name of a table.
+     * @param transactionId The optional identifier of a transaction.
+     *   If the default value is used then entries accross all transactions
+     *   will be reported.
+     */
+    virtual TableRowStats tableRowStats(std::string const& database,
+                                        std::string const& table,
+                                        TransactionId transactionId=0) = 0;
+
+    /**
+     * Save/update statistics of a table.
+     * @param stats A collection to be saved.
+     */
+    virtual void saveTableRowStats(TableRowStats const& stats) = 0;
+
+    /**
+     * Delete statistics of a table.
+     * @param database The name of a database.
+     * @param table The name of a table.
+     * @param overlapSelector The optional flavor of a table (partitioned tables only).
+     */
+    virtual void deleteTableRowStats(
+            std::string const& database, std::string const& table,
+            ChunkOverlapSelector overlapSelector=ChunkOverlapSelector::CHUNK_AND_OVERLAP) = 0;
 
 protected:
 
