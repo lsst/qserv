@@ -36,6 +36,9 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
+int const ConfigParserMySQL::expectedSchemaVersion = 6;
+
+
 ConfigParserMySQL::ConfigParserMySQL(database::mysql::Connection::Ptr const& conn,
                                      json& data,
                                      map<string, WorkerInfo>& workers,
@@ -50,6 +53,9 @@ ConfigParserMySQL::ConfigParserMySQL(database::mysql::Connection::Ptr const& con
 
 
 void ConfigParserMySQL::parse() {
+
+    _parseVersion();
+
     // Read and update the transient state the general parameters and defaults
     // shared by all components of the Replication system. The table also provides
     // default values for some critical parameters of the worker-side services.
@@ -59,6 +65,33 @@ void ConfigParserMySQL::parse() {
     _parseWorkers();
     _parseDatabaseFamilies();
     _parseDatabases();
+}
+
+
+void ConfigParserMySQL::_parseVersion() {
+    string const table = "QMetadata";
+    if (!_conn->tableExists(table)) {
+        throw ConfigError(
+                _context + " the metadata table '" + table + "' doesn't exist in the database '"
+                + _conn->connectionParams().database + "'.");
+    }
+    string const colname = "value";
+    string version;
+    bool const isNotNull = _conn->executeSingleValueSelect(
+        "SELECT " + _conn->sqlId(colname) + " FROM " + _conn->sqlId(table)
+        + " WHERE " + _conn->sqlEqual("metakey", "version"),
+        colname,
+        version);
+    if (!isNotNull) {
+        throw ConfigError(_context + " no schema version info found in the metadata table '" + table + "'.");
+    }
+    string const expectedSchemaVersionStr = to_string(expectedSchemaVersion);
+    if (version != expectedSchemaVersionStr) {
+        throw ConfigError(
+                _context + " schema version '" + version + "' found in the metadata table '" + table
+                + "' doesn't match the expected version '" + expectedSchemaVersionStr
+                + "'. Please, run the schema upgrade application.");
+    }
 }
 
 
