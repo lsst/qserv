@@ -59,18 +59,18 @@ class MasterReplicationMigrationManager(SchemaMigMgr):
 
         self.connection.database = replicaDb
         with closing(self.connection.cursor()) as cursor:
-            cursor.execute("SELECT value FROM ReplicaMetadata WHERE metakey = 'version'")
+            cursor.execute("SELECT value FROM QMetadata WHERE metakey = 'version'")
             result = cursor.fetchone()
         if not result:
             return Uninitialized
         return int(result[0])
 
     def _set_version(self, version):
-        """Set the version number stored in ReplicaMetadata."""
+        """Set the version number stored in QMetadata."""
         # make sure that current version is updated in database
         self.connection.database = replicaDb
         with closing(self.connection.cursor()) as cursor:
-            cursor.execute(f"UPDATE ReplicaMetadata SET value = {version} WHERE metakey = 'version'")
+            cursor.execute(f"UPDATE QMetadata SET value = {version} WHERE metakey = 'version'")
         _log.info(f"Set replica schema version to {version}.")
         self.connection.commit()
 
