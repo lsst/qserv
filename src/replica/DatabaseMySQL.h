@@ -217,7 +217,7 @@ public:
     // -------------------------------------------------
 
     template <typename T>
-    T           sqlValue(T const&            val) const { return val; }
+    std::string sqlValue(T const&            val) const { return std::to_string(val); }
     std::string sqlValue(std::string const&  val) const { return "'" + escape(val) + "'"; }
     std::string sqlValue(char const*         val) const { return sqlValue(std::string(val)); }
     std::string sqlValue(DoNotProcess const& val) const { return val.name; }
