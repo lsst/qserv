@@ -1,8 +1,3 @@
--- This schema file is meant to be used for initializing the replication system's
--- database with the latest version of the schema. An alternative approach would
--- be to use the schema migration tool 'smig'. The 'smig' support has been added
--- to this package as well. See the version specific files for further details.
-
 CREATE TABLE IF NOT EXISTS `config` (
   `category` VARCHAR(255) NOT NULL ,
   `param`    VARCHAR(255) NOT NULL ,
