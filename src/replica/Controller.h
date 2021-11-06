@@ -68,29 +68,6 @@ namespace replica {
     class SqlDeleteTablePartitionRequest;
     class DisposeRequest;
 
-    typedef std::shared_ptr<ReplicationRequest> ReplicationRequestPtr;
-    typedef std::shared_ptr<DeleteRequest>      DeleteRequestPtr;
-    typedef std::shared_ptr<FindRequest>    FindRequestPtr;
-    typedef std::shared_ptr<FindAllRequest> FindAllRequestPtr;
-    typedef std::shared_ptr<EchoRequest> EchoRequestPtr;
-    typedef std::shared_ptr<IndexRequest> IndexRequestPtr;
-    typedef std::shared_ptr<SqlAlterTablesRequest>           SqlAlterTablesRequestPtr;
-    typedef std::shared_ptr<SqlQueryRequest>                 SqlQueryRequestPtr;
-    typedef std::shared_ptr<SqlCreateDbRequest>              SqlCreateDbRequestPtr;
-    typedef std::shared_ptr<SqlDeleteDbRequest>              SqlDeleteDbRequestPtr;
-    typedef std::shared_ptr<SqlEnableDbRequest>              SqlEnableDbRequestPtr;
-    typedef std::shared_ptr<SqlDisableDbRequest>             SqlDisableDbRequestPtr;
-    typedef std::shared_ptr<SqlGrantAccessRequest>           SqlGrantAccessRequestPtr;
-    typedef std::shared_ptr<SqlCreateIndexesRequest>         SqlCreateIndexesRequestPtr;
-    typedef std::shared_ptr<SqlCreateTableRequest>           SqlCreateTableRequestPtr;
-    typedef std::shared_ptr<SqlCreateTablesRequest>          SqlCreateTablesRequestPtr;
-    typedef std::shared_ptr<SqlDeleteTableRequest>           SqlDeleteTableRequestPtr;
-    typedef std::shared_ptr<SqlDropIndexesRequest>           SqlDropIndexesRequestPtr;
-    typedef std::shared_ptr<SqlGetIndexesRequest>            SqlGetIndexesRequestPtr;
-    typedef std::shared_ptr<SqlRemoveTablePartitionsRequest> SqlRemoveTablePartitionsRequestPtr;
-    typedef std::shared_ptr<SqlDeleteTablePartitionRequest>  SqlDeleteTablePartitionRequestPtr;
-    typedef std::shared_ptr<DisposeRequest> DisposeRequestPtr;
-
     class StopReplicationRequestPolicy;
     class StopDeleteRequestPolicy;
     class StopFindRequestPolicy;
@@ -122,28 +99,6 @@ namespace replica {
     using StopSqlGetIndexesRequest  = StopRequest<StopSqlRequestPolicy>;
     using StopSqlRemoveTablePartitionsRequest = StopRequest<StopSqlRequestPolicy>;
     using StopSqlDeleteTablePartitionRequest  = StopRequest<StopSqlRequestPolicy>;
-
-    typedef std::shared_ptr<StopReplicationRequest> StopReplicationRequestPtr;
-    typedef std::shared_ptr<StopDeleteRequest>      StopDeleteRequestPtr;
-    typedef std::shared_ptr<StopFindRequest>        StopFindRequestPtr;
-    typedef std::shared_ptr<StopFindAllRequest>     StopFindAllRequestPtr;
-    typedef std::shared_ptr<StopEchoRequest>        StopEchoRequestPtr;
-    typedef std::shared_ptr<StopIndexRequest>       StopIndexRequestPtr;
-    typedef std::shared_ptr<StopSqlAlterTablesRequest> StopSqlAlterTablesRequestPtr;
-    typedef std::shared_ptr<StopSqlQueryRequest>       StopSqlQueryRequestPtr;
-    typedef std::shared_ptr<StopSqlCreateDbRequest>    StopSqlCreateDbRequestPtr;
-    typedef std::shared_ptr<StopSqlDeleteDbRequest>    StopSqlDeleteDbRequestPtr;
-    typedef std::shared_ptr<StopSqlEnableDbRequest>    StopSqlEnableDbRequestPtr;
-    typedef std::shared_ptr<StopSqlDisableDbRequest>   StopSqlDisableDbRequestPtr;
-    typedef std::shared_ptr<StopSqlGrantAccessRequest> StopSqlGrantAccessRequestPtr;
-    typedef std::shared_ptr<StopSqlCreateIndexesRequest> StopSqlCreateIndexesRequestPtr;
-    typedef std::shared_ptr<StopSqlCreateTableRequest> StopSqlCreateTableRequestPtr;
-    typedef std::shared_ptr<StopSqlCreateTablesRequest> StopSqlCreateTablesRequestPtr;
-    typedef std::shared_ptr<StopSqlDeleteTableRequest> StopSqlDeleteTableRequestPtr;
-    typedef std::shared_ptr<StopSqlDropIndexesRequest> StopSqlDropIndexesRequestPtr;
-    typedef std::shared_ptr<StopSqlGetIndexesRequest>  StopSqlGetIndexesRequestPtr;
-    typedef std::shared_ptr<StopSqlRemoveTablePartitionsRequest> StopSqlRemoveTablePartitionsRequestPtr;
-    typedef std::shared_ptr<StopSqlDeleteTablePartitionRequest>  StopSqlDeleteTablePartitionRequestPtr;
 
     class StatusReplicationRequestPolicy;
     class StatusDeleteRequestPolicy;
@@ -177,28 +132,6 @@ namespace replica {
     using StatusSqlRemoveTablePartitionsRequest = StatusRequest<StatusSqlRequestPolicy>;
     using StatusSqlDeleteTablePartitionRequest  = StatusRequest<StatusSqlRequestPolicy>;
 
-    typedef std::shared_ptr<StatusReplicationRequest> StatusReplicationRequestPtr;
-    typedef std::shared_ptr<StatusDeleteRequest>      StatusDeleteRequestPtr;
-    typedef std::shared_ptr<StatusFindRequest>        StatusFindRequestPtr;
-    typedef std::shared_ptr<StatusFindAllRequest>     StatusFindAllRequestPtr;
-    typedef std::shared_ptr<StatusEchoRequest>        StatusEchoRequestPtr;
-    typedef std::shared_ptr<StatusIndexRequest>       StatusIndexRequestPtr;
-    typedef std::shared_ptr<StatusSqlAlterTablesRequest> StatusSqlAlterTablesRequestPtr;
-    typedef std::shared_ptr<StatusSqlQueryRequest>       StatusSqlQueryRequestPtr;
-    typedef std::shared_ptr<StatusSqlCreateDbRequest>    StatusSqlCreateDbRequestPtr;
-    typedef std::shared_ptr<StatusSqlDeleteDbRequest>    StatusSqlDeleteDbRequestPtr;
-    typedef std::shared_ptr<StatusSqlEnableDbRequest>    StatusSqlEnableDbRequestPtr;
-    typedef std::shared_ptr<StatusSqlDisableDbRequest>   StatusSqlDisableDbRequestPtr;
-    typedef std::shared_ptr<StatusSqlGrantAccessRequest> StatusSqlGrantAccessRequestPtr;
-    typedef std::shared_ptr<StatusSqlCreateIndexesRequest> StatusSqlCreateIndexesRequestPtr;
-    typedef std::shared_ptr<StatusSqlCreateTableRequest> StatusSqlCreateTableRequestPtr;
-    typedef std::shared_ptr<StatusSqlCreateTablesRequest> StatusSqlCreateTablesRequestPtr;
-    typedef std::shared_ptr<StatusSqlDeleteTableRequest> StatusSqlDeleteTableRequestPtr;
-    typedef std::shared_ptr<StatusSqlDropIndexesRequest> StatusSqlDropIndexesRequestPtr;
-    typedef std::shared_ptr<StatusSqlGetIndexesRequest>  StatusSqlGetIndexesRequestPtr;
-    typedef std::shared_ptr<StatusSqlRemoveTablePartitionsRequest> StatusSqlRemoveTablePartitionsRequestPtr;
-    typedef std::shared_ptr<StatusSqlDeleteTablePartitionRequest>  StatusSqlDeleteTablePartitionRequestPtr;
-
     class ServiceSuspendRequestPolicy;
     class ServiceResumeRequestPolicy;
     class ServiceStatusRequestPolicy;
@@ -214,13 +147,6 @@ namespace replica {
     using ServiceRequestsRequest = ServiceManagementRequest<ServiceRequestsRequestPolicy>;
     using ServiceDrainRequest    = ServiceManagementRequest<ServiceDrainRequestPolicy>;
     using ServiceReconfigRequest = ServiceManagementRequest<ServiceReconfigRequestPolicy>;
-
-    typedef std::shared_ptr<ServiceSuspendRequest>  ServiceSuspendRequestPtr;
-    typedef std::shared_ptr<ServiceResumeRequest>   ServiceResumeRequestPtr;
-    typedef std::shared_ptr<ServiceStatusRequest>   ServiceStatusRequestPtr;
-    typedef std::shared_ptr<ServiceRequestsRequest> ServiceRequestsRequestPtr;
-    typedef std::shared_ptr<ServiceDrainRequest>    ServiceDrainRequestPtr;
-    typedef std::shared_ptr<ServiceReconfigRequest> ServiceReconfigRequestPtr;
 }}}  // Forward declarations
 
 // This header declarations
@@ -236,9 +162,9 @@ namespace replica {
  */
 class ControllerIdentity {
 public:
-    std::string id;     // A unique identifier of the Controller
-    std::string host;   // The name of a host where it runs
-    pid_t pid;          // An identifier of a process
+    std::string id;     ///< A unique identifier of the Controller
+    std::string host;   ///< The name of a host where it runs
+    pid_t pid;          ///< An identifier of a process
 };
 
 std::ostream& operator <<(std::ostream& os, ControllerIdentity const& identity);
@@ -258,12 +184,9 @@ std::ostream& operator <<(std::ostream& os, ControllerIdentity const& identity);
  * std::invalid_argument if the specified worker names are not found
  * in the configuration.
  */
-class Controller : public std::enable_shared_from_this<Controller> {
-
+class Controller: public std::enable_shared_from_this<Controller> {
 public:
-
     friend class ControllerImpl;
-
     typedef std::shared_ptr<Controller> Ptr;
 
     static Ptr create(ServiceProvider::Ptr const& serviceProvider);
@@ -271,7 +194,6 @@ public:
     Controller() = delete;
     Controller(Controller const&) = delete;
     Controller& operator=(Controller const&) = delete;
-
     ~Controller() = default;
 
     ControllerIdentity const& identity() const { return _identity; }
@@ -291,143 +213,143 @@ public:
      */
     void verifyFolders(bool createMissingFolders=false) const;
 
-    ReplicationRequestPtr replicate(
+    std::shared_ptr<ReplicationRequest> replicate(
             std::string const& workerName,
             std::string const& sourceWorkerName,
             std::string const& database,
             unsigned int chunk,
-            std::function<void(ReplicationRequestPtr)> const& onFinish=nullptr,
+            std::function<void(std::shared_ptr<ReplicationRequest>)> const& onFinish=nullptr,
             int priority=PRIORITY_NORMAL,
             bool keepTracking=true,
             bool allowDuplicate=true,
             std::string const& jobId="",
             unsigned int requestExpirationIvalSec=0);
 
-    DeleteRequestPtr deleteReplica(
+    std::shared_ptr<DeleteRequest> deleteReplica(
             std::string const& workerName,
             std::string const& database,
             unsigned int chunk,
-            std::function<void(DeleteRequestPtr)> const& onFinish=nullptr,
+            std::function<void(std::shared_ptr<DeleteRequest>)> const& onFinish=nullptr,
             int priority=PRIORITY_NORMAL,
             bool keepTracking=true,
             bool allowDuplicate=true,
             std::string const& jobId="",
             unsigned int requestExpirationIvalSec=0);
 
-    FindRequestPtr findReplica(
+    std::shared_ptr<FindRequest> findReplica(
             std::string const& workerName,
             std::string const& database,
             unsigned int chunk,
-            std::function<void(FindRequestPtr)> const& onFinish=nullptr,
+            std::function<void(std::shared_ptr<FindRequest>)> const& onFinish=nullptr,
             int priority=PRIORITY_NORMAL,
             bool computeCheckSum=false,
             bool keepTracking=true,
             std::string const& jobId="",
             unsigned int requestExpirationIvalSec=0);
 
-    FindAllRequestPtr findAllReplicas(
+    std::shared_ptr<FindAllRequest> findAllReplicas(
             std::string const& workerName,
             std::string const& database,
             bool saveReplicaInfo=true,
-            std::function<void(FindAllRequestPtr)> const& onFinish=nullptr,
+            std::function<void(std::shared_ptr<FindAllRequest>)> const& onFinish=nullptr,
             int priority=PRIORITY_NORMAL,
             bool keepTracking=true,
             std::string const& jobId="",
             unsigned int requestExpirationIvalSec=0);
 
-    EchoRequestPtr echo(
+    std::shared_ptr<EchoRequest> echo(
             std::string const& workerName,
             std::string const& data,
             uint64_t delay,
-            std::function<void(EchoRequestPtr)> const& onFinish=nullptr,
+            std::function<void(std::shared_ptr<EchoRequest>)> const& onFinish=nullptr,
             int priority=PRIORITY_NORMAL,
             bool keepTracking=true,
             std::string const& jobId="",
             unsigned int requestExpirationIvalSec=0);
 
-    IndexRequestPtr index(
+    std::shared_ptr<IndexRequest> index(
             std::string const& workerName,
             std::string const& database,
             std::string const& directorTable,
             unsigned int chunk,
             bool hasTransactions,
             TransactionId transactionId,
-            std::function<void(IndexRequestPtr)> const& onFinish=nullptr,
+            std::function<void(std::shared_ptr<IndexRequest>)> const& onFinish=nullptr,
             int priority=PRIORITY_NORMAL,
             bool keepTracking=true,
             std::string const& jobId="",
             unsigned int requestExpirationIvalSec=0);
 
-    SqlAlterTablesRequestPtr sqlAlterTables(
+    std::shared_ptr<SqlAlterTablesRequest> sqlAlterTables(
             std::string const& workerName,
             std::string const& database,
             std::vector<std::string> const& tables,
             std::string const& alterSpec,
-            std::function<void(SqlAlterTablesRequestPtr)> const& onFinish=nullptr,
+            std::function<void(std::shared_ptr<SqlAlterTablesRequest>)> const& onFinish=nullptr,
             int priority=PRIORITY_NORMAL,
             bool keepTracking=true,
             std::string const& jobId="",
             unsigned int requestExpirationIvalSec=0);
 
-    SqlQueryRequestPtr sqlQuery(
+    std::shared_ptr<SqlQueryRequest> sqlQuery(
             std::string const& workerName,
             std::string const& query,
             std::string const& user,
             std::string const& password,
             uint64_t maxRows,
-            std::function<void(SqlQueryRequestPtr)> const& onFinish=nullptr,
+            std::function<void(std::shared_ptr<SqlQueryRequest>)> const& onFinish=nullptr,
             int priority=PRIORITY_NORMAL,
             bool keepTracking=true,
             std::string const& jobId="",
             unsigned int requestExpirationIvalSec=0);
 
-    SqlCreateDbRequestPtr sqlCreateDb(
+    std::shared_ptr<SqlCreateDbRequest> sqlCreateDb(
             std::string const& workerName,
             std::string const& database,
-            std::function<void(SqlCreateDbRequestPtr)> const& onFinish=nullptr,
+            std::function<void(std::shared_ptr<SqlCreateDbRequest>)> const& onFinish=nullptr,
             int priority=PRIORITY_NORMAL,
             bool keepTracking=true,
             std::string const& jobId="",
             unsigned int requestExpirationIvalSec=0);
 
-    SqlDeleteDbRequestPtr sqlDeleteDb(
+    std::shared_ptr<SqlDeleteDbRequest> sqlDeleteDb(
             std::string const& workerName,
             std::string const& database,
-            std::function<void(SqlDeleteDbRequestPtr)> const& onFinish=nullptr,
+            std::function<void(std::shared_ptr<SqlDeleteDbRequest>)> const& onFinish=nullptr,
             int priority=PRIORITY_NORMAL,
             bool keepTracking=true,
             std::string const& jobId="",
             unsigned int requestExpirationIvalSec=0);
 
-    SqlEnableDbRequestPtr sqlEnableDb(
+    std::shared_ptr<SqlEnableDbRequest> sqlEnableDb(
             std::string const& workerName,
             std::string const& database,
-            std::function<void(SqlEnableDbRequestPtr)>  const& onFinish=nullptr,
+            std::function<void(std::shared_ptr<SqlEnableDbRequest>)>  const& onFinish=nullptr,
             int priority=PRIORITY_NORMAL,
             bool keepTracking=true,
             std::string const& jobId="",
             unsigned int requestExpirationIvalSec=0);
 
-    SqlDisableDbRequestPtr sqlDisableDb(
+    std::shared_ptr<SqlDisableDbRequest> sqlDisableDb(
             std::string const& workerName,
             std::string const& database,
-            std::function<void(SqlDisableDbRequestPtr)> const& onFinish=nullptr,
+            std::function<void(std::shared_ptr<SqlDisableDbRequest>)> const& onFinish=nullptr,
             int priority=PRIORITY_NORMAL,
             bool keepTracking=true,
             std::string const& jobId="",
             unsigned int requestExpirationIvalSec=0);
 
-    SqlGrantAccessRequestPtr sqlGrantAccess(
+    std::shared_ptr<SqlGrantAccessRequest> sqlGrantAccess(
             std::string const& workerName,
             std::string const& database,
             std::string const& user,
-            std::function<void(SqlGrantAccessRequestPtr)> const& onFinish=nullptr,
+            std::function<void(std::shared_ptr<SqlGrantAccessRequest>)> const& onFinish=nullptr,
             int priority=PRIORITY_NORMAL,
             bool keepTracking=true,
             std::string const& jobId="",
             unsigned int requestExpirationIvalSec=0);
 
-    SqlCreateIndexesRequestPtr sqlCreateTableIndexes(
+    std::shared_ptr<SqlCreateIndexesRequest> sqlCreateTableIndexes(
             std::string const& workerName,
             std::string const& database,
             std::vector<std::string> const& tables,
@@ -435,94 +357,94 @@ public:
             std::string const& indexName,
             std::string const& indexComment,
             std::vector<SqlIndexColumn> const& indexColumns,
-            std::function<void(SqlCreateIndexesRequestPtr)> const& onFinish=nullptr,
+            std::function<void(std::shared_ptr<SqlCreateIndexesRequest>)> const& onFinish=nullptr,
             int priority=PRIORITY_NORMAL,
             bool keepTracking=true,
             std::string const& jobId="",
             unsigned int requestExpirationIvalSec=0);
 
-    SqlCreateTableRequestPtr sqlCreateTable(
+    std::shared_ptr<SqlCreateTableRequest> sqlCreateTable(
             std::string const& workerName,
             std::string const& database,
             std::string const& table,
             std::string const& engine,
             std::string const& partitionByColumn,
             std::list<SqlColDef> const& columns,
-            std::function<void(SqlCreateTableRequestPtr)> const& onFinish=nullptr,
+            std::function<void(std::shared_ptr<SqlCreateTableRequest>)> const& onFinish=nullptr,
             int priority=PRIORITY_NORMAL,
             bool keepTracking=true,
             std::string const& jobId="",
             unsigned int requestExpirationIvalSec=0);
 
-    SqlCreateTablesRequestPtr sqlCreateTables(
+    std::shared_ptr<SqlCreateTablesRequest> sqlCreateTables(
             std::string const& workerName,
             std::string const& database,
             std::vector<std::string> const& tables,
             std::string const& engine,
             std::string const& partitionByColumn,
             std::list<SqlColDef> const& columns,
-            std::function<void(SqlCreateTablesRequestPtr)> const& onFinish=nullptr,
+            std::function<void(std::shared_ptr<SqlCreateTablesRequest>)> const& onFinish=nullptr,
             int priority=PRIORITY_NORMAL,
             bool keepTracking=true,
             std::string const& jobId="",
             unsigned int requestExpirationIvalSec=0);
 
-    SqlDeleteTableRequestPtr sqlDeleteTable(
+    std::shared_ptr<SqlDeleteTableRequest> sqlDeleteTable(
             std::string const& workerName,
             std::string const& database,
             std::vector<std::string> const& tables,
-            std::function<void(SqlDeleteTableRequestPtr)> const& onFinish=nullptr,
+            std::function<void(std::shared_ptr<SqlDeleteTableRequest>)> const& onFinish=nullptr,
             int priority=PRIORITY_NORMAL,
             bool keepTracking=true,
             std::string const& jobId="",
             unsigned int requestExpirationIvalSec=0);
 
-    SqlRemoveTablePartitionsRequestPtr sqlRemoveTablePartitions(
+    std::shared_ptr<SqlRemoveTablePartitionsRequest> sqlRemoveTablePartitions(
             std::string const& workerName,
             std::string const& database,
             std::vector<std::string> const& tables,
-            std::function<void(SqlRemoveTablePartitionsRequestPtr)> const& onFinish=nullptr,
+            std::function<void(std::shared_ptr<SqlRemoveTablePartitionsRequest>)> const& onFinish=nullptr,
             int priority=PRIORITY_NORMAL,
             bool keepTracking=true,
             std::string const& jobId="",
             unsigned int requestExpirationIvalSec=0);
 
-    SqlDeleteTablePartitionRequestPtr sqlDeleteTablePartition(
+    std::shared_ptr<SqlDeleteTablePartitionRequest> sqlDeleteTablePartition(
             std::string const& workerName,
             std::string const& database,
             std::vector<std::string> const& tables,
             TransactionId transactionId,
-            std::function<void(SqlDeleteTablePartitionRequestPtr)> const& onFinish=nullptr,
+            std::function<void(std::shared_ptr<SqlDeleteTablePartitionRequest>)> const& onFinish=nullptr,
             int priority=PRIORITY_NORMAL,
             bool keepTracking=true,
             std::string const& jobId="",
             unsigned int requestExpirationIvalSec=0);
 
-    SqlDropIndexesRequestPtr sqlDropTableIndexes(
+    std::shared_ptr<SqlDropIndexesRequest> sqlDropTableIndexes(
             std::string const& workerName,
             std::string const& database,
             std::vector<std::string> const& tables,
             std::string const& indexName,
-            std::function<void(SqlDropIndexesRequestPtr)> const& onFinish=nullptr,
+            std::function<void(std::shared_ptr<SqlDropIndexesRequest>)> const& onFinish=nullptr,
             int priority=PRIORITY_NORMAL,
             bool keepTracking=true,
             std::string const& jobId="",
             unsigned int requestExpirationIvalSec=0);
 
-    SqlGetIndexesRequestPtr sqlGetTableIndexes(
+    std::shared_ptr<SqlGetIndexesRequest> sqlGetTableIndexes(
             std::string const& workerName,
             std::string const& database,
             std::vector<std::string> const& tables,
-            std::function<void(SqlGetIndexesRequestPtr)> const& onFinish=nullptr,
+            std::function<void(std::shared_ptr<SqlGetIndexesRequest>)> const& onFinish=nullptr,
             int priority=PRIORITY_NORMAL,
             bool keepTracking=true,
             std::string const& jobId="",
             unsigned int requestExpirationIvalSec=0);
 
-    DisposeRequestPtr dispose(
+    std::shared_ptr<DisposeRequest> dispose(
             std::string const& workerName,
             std::vector<std::string> const& targetIds,
-            std::function<void(DisposeRequestPtr)> const& onFinish=nullptr,
+            std::function<void(std::shared_ptr<DisposeRequest>)> const& onFinish=nullptr,
             int priority=PRIORITY_NORMAL,
             bool keepTracking=true,
             std::string const& jobId="",
@@ -537,18 +459,10 @@ public:
             bool keepTracking=true,
             std::string const& jobId="",
             unsigned int requestExpirationIvalSec=0) {
-
         _debug(__func__, "targetRequestId: " + targetRequestId);
-
-        return _submit<REQUEST,
-                       decltype(targetRequestId)>(
-            workerName,
-            targetRequestId,
-            onFinish,
-            priority,
-            keepTracking,
-            jobId,
-            requestExpirationIvalSec);        
+        return _submit<REQUEST, decltype(targetRequestId)>(
+                workerName, targetRequestId, onFinish, priority, keepTracking,
+                jobId, requestExpirationIvalSec);        
     }
 
     template <class REQUEST>
@@ -560,58 +474,50 @@ public:
             bool keepTracking=true,
             std::string const& jobId="",
             unsigned int requestExpirationIvalSec=0) {
-
         _debug(__func__, "targetRequestId: " + targetRequestId);
-
-        return _submit<REQUEST,
-                       decltype(targetRequestId)>(
-            workerName,
-            targetRequestId,
-            onFinish,
-            priority,
-            keepTracking,
-            jobId,
-            requestExpirationIvalSec);
+        return _submit<REQUEST, decltype(targetRequestId)>(
+                workerName, targetRequestId, onFinish, priority, keepTracking,
+                jobId, requestExpirationIvalSec);
     }
 
-    ServiceSuspendRequestPtr suspendWorkerService(
+    std::shared_ptr<ServiceSuspendRequest> suspendWorkerService(
             std::string const& workerName,
-            std::function<void(ServiceSuspendRequestPtr)> const& onFinish=nullptr,
+            std::function<void(std::shared_ptr<ServiceSuspendRequest>)> const& onFinish=nullptr,
             int priority=PRIORITY_VERY_HIGH,
             std::string const& jobId="",
             unsigned int requestExpirationIvalSec=0);
 
-    ServiceResumeRequestPtr resumeWorkerService(
+    std::shared_ptr<ServiceResumeRequest> resumeWorkerService(
             std::string const& workerName,
-            std::function<void(ServiceResumeRequestPtr)> const& onFinish=nullptr,
+            std::function<void(std::shared_ptr<ServiceResumeRequest>)> const& onFinish=nullptr,
             int priority=PRIORITY_VERY_HIGH,
             std::string const& jobId="",
             unsigned int requestExpirationIvalSec=0);
 
-    ServiceStatusRequestPtr statusOfWorkerService(
+    std::shared_ptr<ServiceStatusRequest> statusOfWorkerService(
             std::string const& workerName,
-            std::function<void(ServiceStatusRequestPtr)> const& onFinish=nullptr,
+            std::function<void(std::shared_ptr<ServiceStatusRequest>)> const& onFinish=nullptr,
             int priority=PRIORITY_VERY_HIGH,
             std::string const& jobId="",
             unsigned int requestExpirationIvalSec=0);
 
-    ServiceRequestsRequestPtr requestsOfWorkerService(
+    std::shared_ptr<ServiceRequestsRequest> requestsOfWorkerService(
             std::string const& workerName,
-            std::function<void(ServiceRequestsRequestPtr)> const& onFinish=nullptr,
+            std::function<void(std::shared_ptr<ServiceRequestsRequest>)> const& onFinish=nullptr,
             int priority=PRIORITY_VERY_HIGH,
             std::string const& jobId="",
             unsigned int requestExpirationIvalSec=0);
 
-    ServiceDrainRequestPtr drainWorkerService(
+    std::shared_ptr<ServiceDrainRequest> drainWorkerService(
             std::string const& workerName,
-            std::function<void(ServiceDrainRequestPtr)> const& onFinish=nullptr,
+            std::function<void(std::shared_ptr<ServiceDrainRequest>)> const& onFinish=nullptr,
             int priority=PRIORITY_VERY_HIGH,
             std::string const& jobId="",
             unsigned int requestExpirationIvalSec=0);
 
-    ServiceReconfigRequestPtr reconfigWorkerService(
+    std::shared_ptr<ServiceReconfigRequest> reconfigWorkerService(
             std::string const& workerName,
-            std::function<void(ServiceReconfigRequestPtr)> const& onFinish=nullptr,
+            std::function<void(std::shared_ptr<ServiceReconfigRequest>)> const& onFinish=nullptr,
             int priority=PRIORITY_VERY_HIGH,
             std::string const& jobId="",
             unsigned int requestExpirationIvalSec=0);
@@ -621,7 +527,6 @@ public:
      * management requests. This is an alternative request launching method
      * for the above defined operations. It allows upstream template specialization
      * in those cases when a generic code is desired.
-     * 
      * @see Controller::suspendWorkerService()
      * @see Controller::resumeWorkerService()
      * @see Controller::statusOfWorkerService()
@@ -637,15 +542,8 @@ public:
             int priority=PRIORITY_VERY_HIGH,
             std::string const& jobId="",
             unsigned int requestExpirationIvalSec=0) {
-
         _logManagementRequest(REQUEST::Policy::requestName(), workerName);
-
-        return _submit<REQUEST>(
-                workerName,
-                onFinish,
-                priority,
-                jobId,
-                requestExpirationIvalSec);
+        return _submit<REQUEST>(workerName, onFinish, priority, jobId, requestExpirationIvalSec);
     }
 
     template <class REQUEST>
@@ -665,7 +563,9 @@ public:
         size_t result(0);
         for (auto&& itr: _registry) {
             if (typename REQUEST::Ptr request =
-                std::dynamic_pointer_cast<REQUEST>(itr.second->request())) { ++result; }
+                std::dynamic_pointer_cast<REQUEST>(itr.second->request())) {
+                ++result;
+            }
         }
         return result;
     }
@@ -697,11 +597,10 @@ public:
      * @see class RequestWrapper
      */
     template <class T>
-    class RequestWrapperImpl : public RequestWrapper {
+    class RequestWrapperImpl: public RequestWrapper {
     public:
         void notify() override {
             if (nullptr != _onFinish) {
-
                 // Clearing the stored callback after finishing the up-stream notification
                 // has two purposes:
                 // 1. it guaranties (exactly) one time notification
@@ -715,10 +614,7 @@ public:
 
         RequestWrapperImpl(typename T::Ptr const& request,
                            typename T::CallbackType const& onFinish)
-            :   RequestWrapper(),
-                _request(request),
-                _onFinish(onFinish) {
-        }
+            :   RequestWrapper(), _request(request), _onFinish(onFinish) {}
 
         ~RequestWrapperImpl() override = default;
 
@@ -729,22 +625,15 @@ public:
         typename T::CallbackType _onFinish;
     };
 
-
 private:
-
     explicit Controller(ServiceProvider::Ptr const& serviceProvider);
 
     std::string _context(std::string const& func=std::string()) const;
-
     void _debug(std::string const& func, std::string const& msg=std::string()) const;
-
     void _finish(std::string const& id);
-
     void _assertIsRunning() const;
 
-    /**
-     * Logger for the management requests
-     */
+    /// Logger for the management requests.
     void _logManagementRequest(std::string const& requestName,
                                std::string const& workerName);
 
@@ -761,36 +650,21 @@ private:
             bool keepTracking,
             std::string const& jobId,
             unsigned int requestExpirationIvalSec) {
-
         _assertIsRunning();
-
         util::Lock lock(_mtx, _context(__func__));
-
         auto const controller = shared_from_this();
         auto const request = REQUEST::create(
-            serviceProvider(),
-            serviceProvider()->io_service(),
-            workerName,
-            Fargs...,
-            [controller] (typename REQUEST::Ptr const& request) {
-                controller->_finish(request->id());
-            },
-            priority,
-            keepTracking,
-            serviceProvider()->messenger()
-        );
+                serviceProvider(), serviceProvider()->io_service(), workerName, Fargs...,
+                [controller] (typename REQUEST::Ptr const& request) { controller->_finish(request->id()); },
+                priority, keepTracking, serviceProvider()->messenger());
 
         // Register the request (along with its callback) by its unique
         // identifier in the local registry. Once it's complete it'll
         // be automatically removed from the Registry.
-
-        _registry[request->id()] =
-            std::make_shared<RequestWrapperImpl<REQUEST>>(request, onFinish);
+        _registry[request->id()] = std::make_shared<RequestWrapperImpl<REQUEST>>(request, onFinish);
 
         // Initiate the request
-
         request->start(controller, jobId, requestExpirationIvalSec);
-
         return request;
     }
 
@@ -805,46 +679,35 @@ private:
             int priority,
             std::string const& jobId,
             unsigned int requestExpirationIvalSec) {
-
         _assertIsRunning();
-
         util::Lock lock(_mtx, _context(__func__));
-
         auto const controller = shared_from_this();
-        auto const request = REQUEST::create(
-            serviceProvider(),
-            serviceProvider()->io_service(),
-            workerName,
-            [controller] (typename REQUEST::Ptr const& request) {
-                controller->_finish(request->id());
-            },
-            priority,
-            serviceProvider()->messenger()
-        );
+        auto const request = REQUEST::create(serviceProvider(), serviceProvider()->io_service(), workerName,
+                [controller] (typename REQUEST::Ptr const& request) { controller->_finish(request->id()); },
+                priority, serviceProvider()->messenger());
 
         // Register the request (along with its callback) by its unique
         // identifier in the local registry. Once it's complete it'll
         // be automatically removed from the Registry.
-
-        _registry[request->id()] =
-            std::make_shared<RequestWrapperImpl<REQUEST>>(request, onFinish);
+        _registry[request->id()] = std::make_shared<RequestWrapperImpl<REQUEST>>(request, onFinish);
 
         // Initiate the request
-
         request->start(controller, jobId, requestExpirationIvalSec);
-
         return request;
     }
 
-    ControllerIdentity const _identity;     /// The unique identity of the instance
+    /// The unique identity of the instance/
+    ControllerIdentity const _identity;
 
-    uint64_t const _startTime;  /// The number of milliseconds since UNIX Epoch when
-                                /// an instance of the Controller was created.
+    /// The number of milliseconds since UNIX Epoch when an instance of
+    /// the Controller was created.
+    uint64_t const _startTime;
 
     ServiceProvider::Ptr const _serviceProvider;
 
-    mutable util::Mutex _mtx;   /// for thread safety of the class's public API
-                                /// and internal operations.
+   /// For enforcing thread safety of the class's public API
+   /// and internal operations.
+    mutable util::Mutex _mtx;
 
     std::map<std::string, std::shared_ptr<RequestWrapper>> _registry;
 };
