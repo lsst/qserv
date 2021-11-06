@@ -186,6 +186,7 @@ def smig_czar(connection, update):
 
 def smig_replication_controller(
     connection: str,
+    repl_connection: Optional[str],
     update: Optional[bool],
     set_initial_configuration: Optional[Callable[[], None]] = None,
 ):
@@ -195,6 +196,10 @@ def smig_replication_controller(
     ----------
     connection : `str`
         Connection string in format mysql://user:pass@host:port/database
+    repl_connection : `str`, optional
+        The connection string for the replication manager database for the
+        non-admin user. Required when initializing the database, not needed
+        when upgrading the database.
     update : bool, optional
         False if workers may only be smigged from an `Uninitialized` state, or
         True if they maybe upgraded from a (previously initialized) version, by
@@ -209,7 +214,10 @@ def smig_replication_controller(
         "replica",
         connection,
         update,
-        mig_mgr_args=dict(set_initial_configuration=set_initial_configuration)
+        mig_mgr_args=dict(
+            set_initial_configuration=set_initial_configuration,
+            repl_connection=repl_connection,
+        )
         if set_initial_configuration
         else None,
     )
@@ -662,6 +670,7 @@ def enter_replication_controller(
     if run:
         smig_replication_controller(
             connection,
+            repl_connection=repl_connection,
             update=False,
             set_initial_configuration=partial(set_initial_configuartion, workers, xrootd_manager),
         )
@@ -698,7 +707,7 @@ def smig_update(czar_connection: str, worker_connections: List[str], repl_connec
         for c in worker_connections:
             smig_worker(connection=c, update=True)
     if repl_connection:
-        smig_replication_controller(repl_connection, update=True)
+        smig_replication_controller(repl_connection, repl_connection=None, update=True)
 
 
 def _run(

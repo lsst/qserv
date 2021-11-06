@@ -15,7 +15,7 @@ import mysql.connector
 from _mysql_connector import MySQLInterfaceError
 import os
 import re
-from urllib.parse import urlparse
+from sqlalchemy.engine.url import make_url
 
 from lsst.qserv.admin.template import get_template_cfg
 from lsst.qserv.admin.qserv_backoff import max_backoff_sec, on_backoff
@@ -213,12 +213,15 @@ class SchemaMigMgr(metaclass=ABCMeta):
         max_time=max_backoff_sec,
     )
     def _connect(self, connection):
-        c = urlparse(connection)
+        url = make_url(connection)
+        # The database is not always guaranteed to exist yet (sometimes we connect and then create it)
+        # so cache it, and it can be set in the connection before use when it is known to exist.
+        self.database = url.database
         self.connection = mysql.connector.connect(
-            user=c.username,
-            password=c.password,
-            host=c.hostname,
-            port=c.port,
+            user=url.username,
+            password=url.password,
+            host=url.host,
+            port=url.port,
         )
 
     @backoff.on_exception(

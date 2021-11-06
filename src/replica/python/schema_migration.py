@@ -25,13 +25,13 @@ __all__ = ["make_migration_manager"]
 
 from contextlib import closing
 import logging
+from sqlalchemy.engine.url import make_url
 
 from lsst.qserv.schema import SchemaMigMgr, Uninitialized
 
 
 _log = logging.getLogger(__name__)
 
-replicaDb = "qservReplica"
 
 repl_schema_version = "repl_schema_version"
 
@@ -39,11 +39,20 @@ repl_schema_version = "repl_schema_version"
 class MasterReplicationMigrationManager(SchemaMigMgr):
     """Class implementing schema migration for the master replication
     controller database.
+
+    Parameters
+    ----------
+    Same as make_migration_manager
     """
 
-    def __init__(self, name, connection, scripts_dir, set_initial_configuration):
+    def __init__(self, name, connection, scripts_dir, set_initial_configuration, repl_connection):
+        self.repl_connection = repl_connection
         self.set_initial_configuartion = set_initial_configuration
         super().__init__(scripts_dir, connection)
+        if not self.database:
+            raise RuntimeError(
+                "The name of the replication database must be provided in the connection URI."
+            )
 
     def current_version(self):
         """Returns current schema version.
@@ -54,23 +63,26 @@ class MasterReplicationMigrationManager(SchemaMigMgr):
             The current schema version.
         """
         # If the database does not exist then the version is `Uninitialized`.
-        if not self.databaseExists(replicaDb):
+        if not self.databaseExists(self.database):
             return Uninitialized
 
-        self.connection.database = replicaDb
+        self.connection.database = self.database
         with closing(self.connection.cursor()) as cursor:
-            cursor.execute("SELECT value FROM ReplicaMetadata WHERE metakey = 'version'")
+            cursor.execute("SELECT value FROM QMetadata WHERE metakey = 'version'")
             result = cursor.fetchone()
         if not result:
             return Uninitialized
         return int(result[0])
 
     def _set_version(self, version):
-        """Set the version number stored in ReplicaMetadata."""
+        """Set the version number stored in QMetadata."""
         # make sure that current version is updated in database
-        self.connection.database = replicaDb
+        self.connection.database = self.database
         with closing(self.connection.cursor()) as cursor:
-            cursor.execute(f"UPDATE ReplicaMetadata SET value = {version} WHERE metakey = 'version'")
+            cursor.execute(f"UPDATE QMetadata SET value = {version} WHERE metakey = 'version'")
+            warnings = cursor.fetchwarnings()
+            if warnings:
+                _log.warn("Warnings were issued when updating version to %s", version)
         _log.info(f"Set replica schema version to {version}.")
         self.connection.commit()
 
@@ -79,6 +91,46 @@ class MasterReplicationMigrationManager(SchemaMigMgr):
         if current != version:
             raise RuntimeError(
                 f"Failed to update version number in database to {version}, current version is now {current}")
+
+    def _create_database(self):
+        """Create the replication controller database.
+        """
+        with closing(self.connection.cursor()) as cursor:
+            cursor.execute(f"CREATE DATABASE {self.database};")
+            warnings = cursor.fetchwarnings()
+            if warnings:
+                _log.warn("Warnings were creating database %s", self.database)
+        _log.info(f"Created database {self.database}.")
+        self.connection.commit()
+
+    def _create_users(self):
+        """Create the users for the replication controller database.
+        """
+        if not self.repl_connection:
+            raise RuntimeError(
+                "A non-admin replication database connection uri must be provided to initialize the "
+                "replication database."
+            )
+        user = make_url(self.repl_connection).username
+        if not user:
+            raise RuntimeError(
+                "To initialize the replication database, the non-admin connection uri must contain a user "
+                "name."
+            )
+        for stmt in [
+            f"CREATE USER IF NOT EXISTS {user}@localhost;",
+            f"CREATE USER IF NOT EXISTS {user}@'%';",
+            f"GRANT ALL ON qservReplica.* TO  {user}@localhost;",
+            f"GRANT ALL ON qservReplica.* TO  {user}@'%';",
+            f"FLUSH PRIVILEGES;",
+        ]:
+            with closing(self.connection.cursor()) as cursor:
+                _log.info(f"executing: {stmt}")
+                cursor.execute(stmt)
+                warnings = cursor.fetchwarnings()
+                if warnings:
+                    _log.warn("Warnings were issued when creating user %s", {user})
+        self.connection.commit()
 
     def apply_migrations(self, migrations):
         """Apply migrations.
@@ -94,6 +146,13 @@ class MasterReplicationMigrationManager(SchemaMigMgr):
             The current version number after applying migrations.
         """
         current_version = self.current_version()
+        # The replica migrate-from-None scripts do not create the database or
+        # the non-admin user, so if we are initializing the replica database
+        # schema, first create them.
+        if current_version == Uninitialized:
+            self._create_database()
+            self._create_users()
+        self.connection.database = self.database
         to_version = super().apply_migrations(migrations)
         if current_version == Uninitialized and self.set_initial_configuartion:
             self.set_initial_configuartion()
@@ -101,7 +160,13 @@ class MasterReplicationMigrationManager(SchemaMigMgr):
         return to_version
 
 
-def make_migration_manager(name, connection, scripts_dir, set_initial_configuration=None):
+def make_migration_manager(
+    name,
+    connection,
+    scripts_dir,
+    set_initial_configuration=None,
+    repl_connection=None,
+):
     """Factory method for master replication controller schema migration
     manager
 
@@ -119,5 +184,13 @@ def make_migration_manager(name, connection, scripts_dir, set_initial_configurat
     set_initial_configuration : function or `None`
         A function to be called to set the initial configuration of the repl database.
         Will only be called if the schema is migrated from None to version 1. Optional.
+    repl_connection : `str`
+        Database connection string for the non-admin user.
     """
-    return MasterReplicationMigrationManager(name, connection, scripts_dir, set_initial_configuration)
+    return MasterReplicationMigrationManager(
+        name,
+        connection,
+        scripts_dir,
+        set_initial_configuration,
+        repl_connection,
+    )
