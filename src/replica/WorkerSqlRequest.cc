@@ -410,6 +410,29 @@ Query WorkerSqlRequest::_query(database::mysql::Connection::Ptr const& conn,
             return Query("ALTER TABLE " + databaseTable + " " + _request.alter_spec(),
                          databaseTable);
 
+        case ProtocolRequestSql::TABLE_ROW_STATS: {
+            // The transaction identifier column is not required to be present in
+            // the legacy catalogs (ingested w/o super-transactions), or in (the narrow) tables
+            // in which the column was removed to save disk space. The query generator
+            // implemented below accounts for this scenario by consulting MySQL's
+            // information schema. If the column isn't present then the default transaction
+            // identifier 0 will be injected into the result set.
+            string const colname = "count";
+            string const query =
+                    "SELECT COUNT(*) AS " + conn->sqlId(colname) + " FROM information_schema.COLUMNS "
+                    + "WHERE " + conn->sqlEqual("TABLE_SCHEMA", _request.database())
+                    +  " AND " + conn->sqlEqual("TABLE_NAME",   table) +
+                    +  " AND " + conn->sqlEqual("COLUMN_NAME", "qserv_trans_id");
+            int count = 0;
+            conn->executeSingleValueSelect(query, colname, count);
+            if (count == 0) {
+                return Query("SELECT 0 AS " + conn->sqlId("qserv_trans_id")
+                             + ",COUNT(*) AS " + conn->sqlId("num_rows") + " FROM " + databaseTable);
+            }
+            return Query("SELECT " + conn->sqlId("qserv_trans_id")
+                         + ",COUNT(*) AS " + conn->sqlId("num_rows") + " FROM " + databaseTable
+                         + " GROUP BY " + conn->sqlId("qserv_trans_id"));
+        }
         default:
             throw invalid_argument(
                     "WorkerSqlRequest::" + string(__func__) +

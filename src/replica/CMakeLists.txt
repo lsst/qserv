@@ -366,6 +366,10 @@ target_sources(replica PRIVATE
     SqlRequest.h
     SqlResultSet.cc
     SqlResultSet.h
+    SqlRowStatsJob.cc
+    SqlRowStatsJob.h
+    SqlRowStatsRequest.cc
+    SqlRowStatsRequest.h
     SqlSchemaUtils.cc
     SqlSchemaUtils.h
     StatusRequest.cc
@@ -501,6 +505,7 @@ replica_tests(
     testReplicaInfo
     testSemanticMap
     testSqlSchemaUtils
+    testTypes
     testUrl
     testConfiguration
 )

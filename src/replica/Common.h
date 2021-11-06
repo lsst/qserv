@@ -237,7 +237,8 @@ public:
         GET_TABLE_INDEX,
         CREATE_TABLE_INDEX,
         DROP_TABLE_INDEX,
-        ALTER_TABLE
+        ALTER_TABLE,
+        TABLE_ROW_STATS
     };
     Type type = QUERY;
 

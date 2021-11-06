@@ -59,6 +59,7 @@
 #include "replica/SqlEnableDbRequest.h"
 #include "replica/SqlGrantAccessRequest.h"
 #include "replica/SqlRemoveTablePartitionsRequest.h"
+#include "replica/SqlRowStatsRequest.h"
 #include "replica/StatusRequest.h"
 #include "replica/StopRequest.h"
 
@@ -353,6 +354,17 @@ SqlGetIndexesRequest::Ptr Controller::sqlGetTableIndexes(
         bool keepTracking, string const& jobId, unsigned int requestExpirationIvalSec) {
     LOGS(_log, LOG_LVL_TRACE, _context(__func__));
     return _submit<SqlGetIndexesRequest, decltype(database), decltype(tables)>(
+            workerName, database, tables, onFinish, priority, keepTracking, jobId,
+            requestExpirationIvalSec);
+}
+
+
+SqlRowStatsRequest::Ptr Controller::sqlRowStats(
+        std::string const& workerName, string const& database, std::vector<std::string> const& tables,
+        std::function<void(std::shared_ptr<SqlRowStatsRequest>)> const& onFinish, int priority,
+        bool keepTracking, std::string const& jobId, unsigned int requestExpirationIvalSec) {
+    LOGS(_log, LOG_LVL_TRACE, _context(__func__));
+    return _submit<SqlRowStatsRequest, decltype(database), decltype(tables)>(
             workerName, database, tables, onFinish, priority, keepTracking, jobId,
             requestExpirationIvalSec);
 }

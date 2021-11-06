@@ -28,6 +28,7 @@
 #include <stdexcept>
 
 // Qserv headers
+#include "replica/ChunkedTable.h"
 #include "replica/DeleteRequest.h"
 #include "replica/DisposeRequest.h"
 #include "replica/EchoRequest.h"
@@ -52,6 +53,7 @@
 #include "replica/SqlGrantAccessRequest.h"
 #include "replica/SqlQueryRequest.h"
 #include "replica/SqlRemoveTablePartitionsRequest.h"
+#include "replica/SqlRowStatsRequest.h"
 #include "replica/SqlSchemaUtils.h"
 #include "replica/StatusRequest.h"
 #include "replica/StopRequest.h"
@@ -173,6 +175,7 @@ void ControllerApp::_configureParser() {
             "SQL_CREATE_TABLE", "SQL_CREATE_TABLES", "SQL_DELETE_TABLE",
             "SQL_REMOVE_TABLE_PARTITIONS", "SQL_DELETE_TABLE_PARTITION",
             "SQL_CREATE_TABLE_INDEXES", "SQL_DROP_TABLE_INDEXES", "SQL_GET_TABLE_INDEXES",
+            "SQL_TABLE_ROW_STATS",
             "INDEX", "STATUS", "STOP", "DISPOSE",
             "SERVICE_SUSPEND", "SERVICE_RESUME", "SERVICE_STATUS",
             "SERVICE_REQUESTS", "SERVICE_DRAIN", "SERVICE_RECONFIG"
@@ -564,6 +567,27 @@ void ControllerApp::_configureParserCommandSQL() {
         "The name of an existing table to be affected by the operation.",
         _sqlTable
     );
+
+    parser().command(
+        "SQL_TABLE_ROW_STATS"
+    ).required(
+        "database",
+        "The name of an existing database where the table is residing.",
+        _sqlDatabase
+    ).required(
+        "table",
+        "The base name of an existing table to be affected by the operation.",
+        _sqlTable
+    ).option(
+        "chunk",
+        "The chunk number if this is the partitioned table. The parameter is ignored"
+        " for the regular tables.",
+        _chunkNumber
+    ).flag(
+        "overlap",
+        "The flag that defines a type of a table (partitioned tables only).",
+        _isOverlap
+    );
 }
 
 
@@ -911,6 +935,19 @@ int ControllerApp::runImpl() {
 
         vector<string> const tables = {_sqlTable};
         request = controller->sqlGetTableIndexes(
+            _workerName, _sqlDatabase, tables,
+            SqlRequest::extendedPrinter,
+            _priority, not _doNotTrackRequest
+        );
+
+    } else if ("SQL_TABLE_ROW_STATS" == _requestType) {
+
+        auto const databaseInfo = controller->serviceProvider()->config()->databaseInfo(_sqlDatabase);
+        bool const isPartitioned = databaseInfo.isPartitioned(_sqlTable);
+        vector<string> const tables = {
+            isPartitioned ? ChunkedTable(_sqlTable, _chunkNumber, _isOverlap).name() : _sqlTable
+        };
+        request = controller->sqlRowStats(
             _workerName, _sqlDatabase, tables,
             SqlRequest::extendedPrinter,
             _priority, not _doNotTrackRequest

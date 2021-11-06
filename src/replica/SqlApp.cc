@@ -48,6 +48,7 @@
 #include "replica/SqlQueryJob.h"
 #include "replica/SqlRemoveTablePartitionsJob.h"
 #include "replica/SqlResultSet.h"
+#include "replica/SqlRowStatsJob.h"
 #include "replica/SqlSchemaUtils.h"
 
 using namespace std;
@@ -96,7 +97,8 @@ SqlApp::SqlApp(int argc, char* argv[])
          "CREATE_DATABASE", "DELETE_DATABASE", "ENABLE_DATABASE", "DISABLE_DATABASE",
          "GRANT_ACCESS",
          "CREATE_TABLE", "CREATE_TABLES", "DELETE_TABLE", "REMOVE_TABLE_PARTITIONS", "DELETE_TABLE_PARTITION",
-         "CREATE_INDEXES", "DROP_INDEXES", "GET_INDEXES"},
+         "CREATE_INDEXES", "DROP_INDEXES", "GET_INDEXES",
+         "ROW_STATS"},
         _command
     ).flag(
         "all-workers",
@@ -319,7 +321,7 @@ void SqlApp::_configureTableCommands() {
     // The additional positional (required and/or optional) parameters will be
     // appended for each command at the next step.
 
-    for (auto&& command: {"ALTER_TABLES", "CREATE_INDEXES", "DROP_INDEXES", "GET_INDEXES"}) {
+    for (auto&& command: {"ALTER_TABLES", "CREATE_INDEXES", "DROP_INDEXES", "GET_INDEXES", "ROW_STATS"}) {
         parser().command(
             command
         ).required(
@@ -392,6 +394,20 @@ void SqlApp::_configureTableCommands() {
         "name",
         "The name of an index to be dropped.",
         _indexName
+    );
+
+    parser().command(
+        "ROW_STATS"
+    ).option(
+        "overlap-selector",
+        "The optional selector for a flavor of the overlap tables. The parameter applies"
+        " to the partitioned tables only. Allowed values: CHUNK, OVERLAP, CHUNK_AND_OVERLAP.",
+        _overlapSelector
+    ).option(
+        "state-update-policy",
+        "The policy for updating the persistent state of the row counters. Allowed"
+        " values: DISABLED, ENABLED or FORCED.",
+        _stateUpdatePolicy
     );
 }
 
@@ -472,6 +488,11 @@ int SqlApp::runImpl() {
         job = SqlGetIndexesJob::create(
                 _database, _table, _overlap, _allWorkers, controller,
                 noParentJobId, nullptr, PRIORITY_NORMAL);
+    } else if(_command == "ROW_STATS") {
+        job = SqlRowStatsJob::create(
+                _database, _table, str2overlapSelector(_overlapSelector),
+                SqlRowStatsJob::str2policy(_stateUpdatePolicy), _allWorkers, controller, noParentJobId,
+                nullptr, PRIORITY_NORMAL);
     } else {
         throw logic_error(
                 "SqlApp::" + string(__func__) + "  command='" + _command + "' is not supported");
@@ -486,17 +507,15 @@ int SqlApp::runImpl() {
         auto&& resultData = job->getResultData();
         size_t numSucceeded = 0;
         map<ProtocolStatusExt,size_t> numFailed;
-        resultData.iterate(
-            [&numFailed, &numSucceeded](SqlJobResult::Worker const& worker,
-                                        SqlJobResult::Scope const& object,
-                                        SqlResultSet::ResultSet const& resultSet) {
-                if (resultSet.extendedStatus == ProtocolStatusExt::NONE) {
-                    numSucceeded++;
-                } else {
-                    numFailed[resultSet.extendedStatus]++;
-                }
+        resultData.iterate([&numFailed, &numSucceeded](
+                SqlJobResult::Worker const& worker, SqlJobResult::Scope const& object,
+                SqlResultSet::ResultSet const& resultSet) {
+            if (resultSet.extendedStatus == ProtocolStatusExt::NONE) {
+                numSucceeded++;
+            } else {
+                numFailed[resultSet.extendedStatus]++;
             }
-        );
+        });
         cout << "Object processing summary:\n"
              << "  succeeded: " << numSucceeded << "\n";
         if (numFailed.size() == 0) {
@@ -526,9 +545,9 @@ int SqlApp::runImpl() {
 
         if (_reportLevel > 1) {
             if (_command == "QUERY") {
-                resultData.iterate([&](SqlJobResult::Worker const& worker,
-                                       SqlJobResult::Scope const& scope,
-                                       SqlResultSet::ResultSet const& resultSet) {
+                resultData.iterate([&](
+                        SqlJobResult::Worker const& worker, SqlJobResult::Scope const& scope,
+                        SqlResultSet::ResultSet const& resultSet) {
                     string const caption =
                         worker + ":" + scope + ":" + status2string(resultSet.extendedStatus)
                         + ":" + resultSet.error;

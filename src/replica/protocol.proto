@@ -219,6 +219,7 @@ message ProtocolRequestSql {
         CREATE_TABLE_INDEX = 11;
         DROP_TABLE_INDEX = 12;
         ALTER_TABLE = 13;
+        TABLE_ROW_STATS = 14;
     }
     required Type type = 6;
 

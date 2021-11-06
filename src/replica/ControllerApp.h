@@ -104,6 +104,9 @@ private:
     /// The number of a chunk
     unsigned int _chunkNumber = 0;
 
+    /// The flag that defines a type of a table.
+    bool _isOverlap = false;
+
     /// The data string to be sent to a worker in the ECHO request
     std::string _echoData;
 

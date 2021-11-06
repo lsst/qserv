@@ -66,6 +66,7 @@ namespace replica {
     class SqlGetIndexesRequest;
     class SqlRemoveTablePartitionsRequest;
     class SqlDeleteTablePartitionRequest;
+    class SqlRowStatsRequest;
     class DisposeRequest;
 
     class StopReplicationRequestPolicy;
@@ -99,6 +100,7 @@ namespace replica {
     using StopSqlGetIndexesRequest  = StopRequest<StopSqlRequestPolicy>;
     using StopSqlRemoveTablePartitionsRequest = StopRequest<StopSqlRequestPolicy>;
     using StopSqlDeleteTablePartitionRequest  = StopRequest<StopSqlRequestPolicy>;
+    using StopSqlRowStatsRequest = StopRequest<StopSqlRequestPolicy>;
 
     class StatusReplicationRequestPolicy;
     class StatusDeleteRequestPolicy;
@@ -131,6 +133,7 @@ namespace replica {
     using StatusSqlGetIndexesRequest  = StatusRequest<StatusSqlRequestPolicy>;
     using StatusSqlRemoveTablePartitionsRequest = StatusRequest<StatusSqlRequestPolicy>;
     using StatusSqlDeleteTablePartitionRequest  = StatusRequest<StatusSqlRequestPolicy>;
+    using StatusSqlRowStatsRequest = StatusRequest<StatusSqlRequestPolicy>;
 
     class ServiceSuspendRequestPolicy;
     class ServiceResumeRequestPolicy;
@@ -436,6 +439,16 @@ public:
             std::string const& database,
             std::vector<std::string> const& tables,
             std::function<void(std::shared_ptr<SqlGetIndexesRequest>)> const& onFinish=nullptr,
+            int priority=PRIORITY_NORMAL,
+            bool keepTracking=true,
+            std::string const& jobId="",
+            unsigned int requestExpirationIvalSec=0);
+
+    std::shared_ptr<SqlRowStatsRequest> sqlRowStats(
+            std::string const& workerName,
+            std::string const& database,
+            std::vector<std::string> const& tables,
+            std::function<void(std::shared_ptr<SqlRowStatsRequest>)> const& onFinish=nullptr,
             int priority=PRIORITY_NORMAL,
             bool keepTracking=true,
             std::string const& jobId="",
