@@ -56,17 +56,11 @@ public:
 
     /// Primary public state of the job.
     enum State {
-
-        /// The job has been constructed, and no attempt to execute it has
-        /// been made.
-        CREATED,
-
-        /// The job is in a progress.
-        IN_PROGRESS,
-
-        /// The job is finished. See extended status for more details
-        /// (the completion status, etc.).
-        FINISHED
+        CREATED,        ///< The job has been constructed, and no attempt to execute
+                        ///  it has been made.
+        IN_PROGRESS,    ///< The job is in a progress.
+        FINISHED        ///< The job is finished. See extended status for more details
+                        ///  (the completion status, etc.).
     };
 
     /// Return the string representation of the primary state.
@@ -75,30 +69,17 @@ public:
     /// Refined public sub-state of the job once it's FINISHED as per
     /// the above defined primary state.
     enum ExtendedState {
-
-        /// No extended state exists at this time.
-        NONE,
-
-        /// The job has been fully implemented.
-        SUCCESS,
-
-        /// Problems with job configuration found.
-        CONFIG_ERROR,
-
-        /// The job has failed.
-        FAILED,
-
-        /// Qserv notification failed.
-        QSERV_FAILED,
-
-        /// Qserv reported that the source chunk is in use and couldn't be removed.
-        QSERV_CHUNK_IN_USE,
-
-        /// Expired due to a timeout (as per the Configuration).
-        TIMEOUT_EXPIRED,
-
-        /// Explicitly cancelled on the client-side (similar to TIMEOUT_EXPIRED).
-        CANCELLED
+        NONE,               ///< No extended state exists at this time.
+        SUCCESS,            ///< The job has been fully implemented.
+        CONFIG_ERROR,       ///< Problems with job configuration found.
+        FAILED,             ///< The job has failed.
+        QSERV_FAILED,       ///< Qserv notification failed.
+        QSERV_CHUNK_IN_USE, ///< Qserv reported that the source chunk is in use and
+                            ///  couldn't be removed.
+        BAD_RESULT,         ///< Incorrect or unexpected result set received by a job.
+        TIMEOUT_EXPIRED,    ///< Expired due to a timeout (as per the Configuration).
+        CANCELLED           ///< Explicitly cancelled on the client-side
+                            ///  (similar to TIMEOUT_EXPIRED).
     };
 
     /// @return  The string representation of the extended state.
@@ -381,7 +362,6 @@ protected:
     mutable util::Mutex _mtx;
 
 private:
-
     /// The global counter for the number of instances of any subclasses.
     static std::atomic<size_t> _numClassInstances;
 
@@ -407,7 +387,6 @@ private:
     std::atomic<ExtendedState> _extendedState;
 
     // Start and end times (milliseconds since UNIX Epoch).
-
     uint64_t _beginTime;
     uint64_t _endTime;
 
@@ -426,7 +405,6 @@ private:
     std::unique_ptr<boost::asio::deadline_timer> _expirationTimerPtr;
 
     // Synchronization primitives for implementing Job::wait().
-
     std::atomic<bool> _finished{false};
     std::mutex _onFinishMtx;
     std::condition_variable _onFinishCv;
