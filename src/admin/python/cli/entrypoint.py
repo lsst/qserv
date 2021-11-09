@@ -252,21 +252,6 @@ def replication_controller(**kwargs):
 
 @entrypoint.command()
 @click.option(
-    "--dashboard-port",
-    help="The port the dashboard will serve on.",
-)
-@click.option(
-    "--dashboard-html",
-    help="The path to the folder with the html sources for the nginx dashboard.",
-)
-@repl_ctrl_domain_name_option()
-@repl_ctrl_port_option()
-def init_dashboard(**kwargs):
-    script.init_dashboard(**kwargs)
-
-
-@entrypoint.command()
-@click.option(
     "--cluster-id",
     required=True,
     help="The name/identifier of the cluster to show in alerts and log messages.",

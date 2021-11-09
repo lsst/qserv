@@ -60,6 +60,7 @@ replica_controller_log_template = (
     "/usr/local/qserv/templates/repl-ctl/etc/log4cxx.replication.properties.jinja"
 )
 replica_controller_log_path = "/config-etc/log4cxx.replication.properties"
+replica_controller_http_root = "/usr/local/qserv/dashboard/www"
 
 mysqld_user_qserv = "qsmaster"
 
@@ -81,13 +82,6 @@ xrdssi_cfg_path = "/config-etc/xrdssi-worker.cf"
 
 xrootd_manager_cfg_template = "/usr/local/qserv/templates/xrootd/etc/xrootd-manager.cf.jinja"
 xrootd_manager_cfg_path = "/config-etc/xrootd-manager.cf"
-
-nginx_controller_cfg_template = "/usr/local/qserv/templates/dashboard/etc/nginx.conf.jinja"
-nginx_controller_cfg_path = "/config-etc/nginx.conf"
-dashboard_files_src = "/usr/local/qserv/dashboard/www"
-dashboard_files_dst = "/config-etc/www"
-dashboard_launch_gate = "/config-etc/goahead"
-
 
 _log = logging.getLogger(__name__)
 
@@ -237,48 +231,6 @@ def smig_worker(connection: str, update: bool = False):
     """
     _do_smig(admin_smig_dir, "admin", connection, update),
     _do_smig(worker_smig_dir, "worker", connection, update),
-
-
-def init_dashboard(dashboard_port: int, dashboard_html: str, repl_ctl_dn: str, repl_ctl_port: int):
-    """Initialize the dashboard configuration files by copying the config files
-    into a a shared volume. Finish by creating a file that signals the dashboard
-    container init script that it may proceed.
-
-    Parameters
-    ----------
-    dashboard_port : int
-        The port the dashboard will serve on.
-    dashboard_html : str
-        The path to the folder with the html sources for the nginx dashboard.
-    repl_ctl_dn : str
-        The fully qualified domain name of the replication controller.
-    repl_ctl_port : int
-        The port that the replication controller is listening on.
-    """
-    if os.path.exists(dashboard_launch_gate):
-        print(f"{dashboard_launch_gate} exists; exiting without making changes.")
-        return
-
-    save_template_cfg(
-        dict(
-            dashboard=dict(
-                port=dashboard_port,
-                html=dashboard_html,
-            ),
-            repl_manager=dict(
-                domain_name=repl_ctl_dn,
-                http_server_port=repl_ctl_port,
-            ),
-        )
-    )
-    apply_template_cfg_file(nginx_controller_cfg_template, nginx_controller_cfg_path)
-
-    shutil.copytree(src=dashboard_files_src, dst=dashboard_files_dst)
-    with open(dashboard_launch_gate, "w") as f:
-        pass
-    print(
-        f"Copied dashboard files to {dashboard_files_dst} and wrote the nginx controller config to {nginx_controller_cfg_path}; exiting."
-    )
 
 
 def enter_manager_cmsd(cms_delay_servers: str):
@@ -682,6 +634,7 @@ def enter_replication_controller(
         f"--config={repl_connection}",
         f"--instance-id={instance_id}",
         f"--qserv-czar-db={qserv_czar_db}",
+        f"--http-root={replica_controller_http_root}",
     ]
     _log.debug(f"Calling {' '.join(args)}")
     sys.exit(_run(args, env=env, run=run))

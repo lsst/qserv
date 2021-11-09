@@ -63,8 +63,6 @@ volumes:
     repl_mgr_data:
     repl_mgr_home:
     repl_mgr_mariadb_lib:
-    dashboard_cfg:
-    dashboard_home:
 
 networks:
     default:
@@ -341,6 +339,8 @@ services:
             << : *log-environment
         expose:
             - "25081"
+        ports:
+            - "0.0.0.0:${QSERV_DASHBOARD_PORT:-25081}:25081"
         volumes:
             - type: volume
               source: repl_mgr_data
@@ -349,27 +349,3 @@ services:
               source: repl_mgr_home
               target: /home/qserv
             - << : *log-volume
-    dashboard:
-        command: nginx -c /config-etc/nginx.conf
-        image: nginx:1.20-alpine
-        init: true
-        volumes:
-            - type: volume
-              source: dashboard_cfg
-              target: /config-etc
-            - type: bind
-              source: ./dashboard/dashboard_wait.sh
-              target: /docker-entrypoint.d/dashboard_wait.sh
-        ports:
-            - "0.0.0.0:${QSERV_DASHBOARD_PORT:-25080}:80"
-    init_dashboard:
-        command: entrypoint init-dashboard --dashboard-port 80 --dashboard-html /config-etc/www
-        image: "${QSERV_IMAGE:?err}"
-        init: true
-        volumes:
-            - type: volume
-              source: dashboard_cfg
-              target: /config-etc
-            - type: volume
-              source: dashboard_home
-              target: /home/qserv
