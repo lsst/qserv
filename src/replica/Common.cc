@@ -23,6 +23,7 @@
 #include "replica/Common.h"
 
 // System headers
+#include <limits>
 #include <stdexcept>
 #include <type_traits>
 
@@ -310,6 +311,14 @@ IndexRequestParams::IndexRequestParams(ProtocolRequestIndex const& request)
         chunk(request.chunk()),
         hasTransactions(request.has_transactions()),
         transactionId(request.transaction_id()) {
+}
+
+
+
+unsigned int stoui(string const& str, size_t* idx, int base) {
+    unsigned long u = stoul(str, idx, base);
+    if (u > numeric_limits<unsigned int>::max()) throw out_of_range(str);
+    return static_cast<unsigned int>(u);
 }
 
 }}} // namespace lsst::qserv::replica

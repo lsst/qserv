@@ -367,6 +367,12 @@ public:
     std::string mutexName;
 };
 
+
+/**
+ * The function that is not present in the Standard library.
+ */
+unsigned int stoui(std::string const& str, size_t *idx = 0, int base = 10);
+
 }}} // namespace lsst::qserv::replica
 
 #endif // LSST_QSERV_REPLICA_COMMON_H
