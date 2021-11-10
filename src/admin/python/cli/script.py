@@ -60,7 +60,7 @@ replica_controller_log_template = (
     "/usr/local/qserv/templates/repl-ctl/etc/log4cxx.replication.properties.jinja"
 )
 replica_controller_log_path = "/config-etc/log4cxx.replication.properties"
-replica_controller_http_root = "/usr/local/qserv/dashboard/www"
+replica_controller_http_root = "/usr/local/qserv/www"
 
 mysqld_user_qserv = "qsmaster"
 

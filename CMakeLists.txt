@@ -16,12 +16,7 @@ install(CODE "execute_process(COMMAND pip3 install ${CMAKE_CURRENT_SOURCE_DIR}/e
 
 add_subdirectory(extern/log)
 add_subdirectory(extern/partition)
+add_subdirectory(extern/qserv_web)
 add_subdirectory(extern/sphgeom)
 
 add_subdirectory(src)
-
-# TODO do we want to add cmake capability to the qserv_web project?
-install(
-    DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/extern/qserv_web/www
-    DESTINATION ${CMAKE_INSTALL_PREFIX}/qserv/dashboard
-)
