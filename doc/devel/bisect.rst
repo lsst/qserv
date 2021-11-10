@@ -28,4 +28,4 @@ returns 0 if successful.
 With git bisect
 ***************
 
-`git bisect` is a powerful tool which allow to track the commit which introduced a bug in a given branch. Please see online help for instructions.
+``git bisect`` is a powerful tool which allow to track the commit which introduced a bug in a given branch. Please see online help for instructions.

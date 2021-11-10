@@ -63,9 +63,9 @@ Once Qserv dependencies are installed in eups stack, please use next commands in
    scons install
 
 .. note::
+
    In above commands ``scons`` can be replaced with 
-   ``eupspkg -e PREFIX=$PWD`` which will compute the number of processor on your system
-   and launch a parallel build using all of them (see `scons -j` option).
+   ``eupspkg -e PREFIX=$PWD`` which will compute the number of processor on your system and launch a parallel build using all of them (see ``scons -j`` option).
 
 For complete list of supported scons targets see :ref:`scons-targets`.
 
