@@ -110,12 +110,3 @@ source and run directory located on a development machine.
    -u dev \
    fjammes/qserv:work-uid \
    /bin/sh -c "/home/dev/scripts/build.sh && /qserv/scripts/mono-node-test.sh"
-
-***************
-Useful commands
-***************
-
-.. literalinclude:: ../../../admin/tools/docker/useful-cmd.sh
-   :language: bash
-   :linenos:
-
