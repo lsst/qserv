@@ -501,6 +501,33 @@ void HttpProcessor::registerServices() {
             }
     );
     httpServer()->addHandler(
+            "POST", "/ingest/table-stats",
+            [self](qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp) {
+                HttpIngestModule::process(
+                        self->controller(), self->name(), self->_processorConfig,
+                        req, resp,
+                        "SCAN-TABLE-STATS", HttpModule::AUTH_REQUIRED);
+            }
+    );
+    httpServer()->addHandler(
+            "DELETE", "/ingest/table-stats/:database/:table",
+            [self](qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp) {
+                HttpIngestModule::process(
+                        self->controller(), self->name(), self->_processorConfig,
+                        req, resp,
+                        "DELETE-TABLE-STATS", HttpModule::AUTH_REQUIRED);
+            }
+    );
+    httpServer()->addHandler(
+            "GET", "/ingest/table-stats/:database/:table",
+            [self](qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp) {
+                HttpIngestModule::process(
+                        self->controller(), self->name(), self->_processorConfig,
+                        req, resp,
+                        "TABLE-STATS");
+            }
+    );
+    httpServer()->addHandler(
             "POST", "/ingest/chunk",
             [self](qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp) {
                 HttpIngestChunksModule::process(
