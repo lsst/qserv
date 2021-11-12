@@ -123,7 +123,7 @@ bool MergingHandler::flush(int bLen, BufPtr const& bufPtr, bool& last, bool& lar
             if (_response->protoHeader.has_scsseq()) {
                 scsSeq = _response->protoHeader.scsseq();
             }
-            LOGS(_log, LOG_LVL_DEBUG, "HEADER_SIZE_WAIT: From:" << _wName
+            LOGS(_log, LOG_LVL_DEBUG, "HEADER_WAIT: From:" << _wName
                 << " nextBufSize=" << nextBufSize << " largeResult=" << largeResult
                 << " endNoData=" << endNoData << " seq=" << seq << " scsseq=" << scsSeq);
 

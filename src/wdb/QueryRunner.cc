@@ -397,6 +397,10 @@ private:
 /// return false. If all rows have been read, return true.
 bool QueryRunner::_fillRows(MYSQL_RES* result, int numFields, uint& rowCount, size_t& tSize) {
     MYSQL_ROW row;
+
+    unsigned int szLimit = std::min(proto::ProtoHeaderWrap::PROTOBUFFER_DESIRED_LIMIT,
+                                    proto::ProtoHeaderWrap::PROTOBUFFER_HARD_LIMIT);
+
     while ((row = mysql_fetch_row(result))) {
         auto lengths = mysql_fetch_lengths(result);
         proto::RowBundle* rawRow = _transmitData->result->add_row();
@@ -411,27 +415,6 @@ bool QueryRunner::_fillRows(MYSQL_RES* result, int numFields, uint& rowCount, si
         }
         tSize += rawRow->ByteSizeLong();
         ++rowCount;
-
-        unsigned int szLimit = std::min(proto::ProtoHeaderWrap::PROTOBUFFER_DESIRED_LIMIT,
-                                        proto::ProtoHeaderWrap::PROTOBUFFER_HARD_LIMIT);
-
-        // This thread may have already been removed from the pool for
-        // other reasons, such as taking too long.
-        if (not _removedFromThreadPool) {
-            // This query has been answered by the database and the
-            // scheduler for this worker should stop waiting for it.
-            // leavePool() will tell the scheduler this task is finished
-            // and create a new thread in the pool to replace this one.
-            // This thread will wait for the czar to read all of the
-            // results of the query and then die.
-            auto pet = _task->getAndNullPoolEventThread();
-            _removedFromThreadPool = true;
-            if (pet != nullptr) {
-                pet->leavePool();
-            } else {
-                LOGS(_log, LOG_LVL_WARN, "Result PoolEventThread was null. Probably already moved.");
-            }
-        }
 
         // Each element needs to be mysql-sanitized
         // Break the loop if the result is too big so this part can be transmitted.
@@ -490,6 +473,25 @@ bool QueryRunner::_dispatchChannel() {
             // TODO fritzm: revisit this error strategy
             // (see pull-request for DM-216)
             // Now get rows...
+
+            // This thread may have already been removed from the pool for
+            // other reasons, such as taking too long.
+            if (not _removedFromThreadPool) {
+                // This query has been answered by the database and the
+                // scheduler for this worker should stop waiting for it.
+                // leavePool() will tell the scheduler this task is finished
+                // and create a new thread in the pool to replace this one.
+                // This thread will wait for the czar to read all of the
+                // results of the query and then die.
+                auto pet = _task->getAndNullPoolEventThread();
+                _removedFromThreadPool = true;
+                if (pet != nullptr) {
+                    pet->leavePool();
+                } else {
+                    LOGS(_log, LOG_LVL_WARN, "Result PoolEventThread was null. Probably already moved.");
+                }
+            }
+
             while (!_fillRows(res, numFields, rowCount, tSize)) {
                 if (tSize > proto::ProtoHeaderWrap::PROTOBUFFER_HARD_LIMIT) {
                     LOGS_ERROR("Message single row too large to send using protobuffer");
@@ -552,8 +554,7 @@ void QueryRunner::cancel() {
     // validation is needed.
     auto sChannel = _task->getSendChannel();
     if (sChannel != nullptr) {
-        lock_guard<mutex> streamLock(sChannel->streamMutex);
-        sChannel->kill(streamLock, "QueryRunner cancel");
+        sChannel->kill("QueryRunner cancel");
     }
 
 

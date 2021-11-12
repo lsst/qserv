@@ -64,6 +64,7 @@ public:
 
     /// Send a bucket of bytes.
     /// @param last true if no more sendStream calls will be invoked.
+    /// @param scsSeq - is the SendChannelShared sequence number, if there is one.
     virtual bool sendStream(xrdsvc::StreamBuffer::Ptr const& sBuf, bool last, int scsSeq=-1);
 
     ///

@@ -46,9 +46,7 @@ namespace util {
 void CommandQueue::queCmd(std::vector<Command::Ptr> const& cmds) {
     {
         std::lock_guard<std::mutex> lock(_mx);
-        for (auto const& cmd:cmds) {
-            _qu.push_back(cmd);
-        }
+        _qu.insert(_qu.end(), cmds.begin(), cmds.end());
     }
     notify(cmds.size() > 1); // notify all if more than 1 command, otherwise notify 1.
 }

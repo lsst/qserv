@@ -35,6 +35,7 @@
 #include "lsst/log/Log.h"
 
 // Qserv headers
+#include "global/Bug.h"
 #include "proto/worker.pb.h"
 
 ////////////////////////////////////////////////////////////////////////
@@ -124,6 +125,9 @@ void ProtoRowBuffer::_initSchema() {
         sql::ColSchema cs;
         if (pcs.has_name()) {
             cs.name = pcs.name();
+        }
+        if (not pcs.has_sqltype()) {
+            throw Bug("_initSchema _result missing sqltype");
         }
         cs.colType.sqlType = pcs.sqltype();
         if (pcs.has_mysqltype()) {

@@ -225,9 +225,7 @@ void ScanScheduler::queCmd(vector<util::Command::Ptr> const& cmds) {
     for (auto const& cmd:cmds) {
         wbase::Task::Ptr t = dynamic_pointer_cast<wbase::Task>(cmd);
         if (t == nullptr) {
-            LOGS(_log, LOG_LVL_ERROR, getName()
-                    << " queCmd could not be converted to Task or was nullptr");
-            return;
+            throw Bug(getName() + " queCmd could not be converted to Task or was nullptr");
         }
         if (first) {
             first = false;

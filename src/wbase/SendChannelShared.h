@@ -71,27 +71,34 @@ public:
     /// Wrappers for SendChannel public functions that may need to be used
     /// by threads.
     /// @see SendChannel::send
-    bool send(StreamGuard sLock, char const* buf, int bufLen) {
-        return _sendChannel->send(buf, bufLen);
+    bool send(char const* buf, int bufLen) {
+        std::lock_guard<std::mutex> sLock(_streamMutex);
+        return _send(sLock, buf, bufLen);
     }
 
     /// @see SendChannel::sendError
-    bool sendError(StreamGuard sLock, std::string const& msg, int code) {
-        return _sendChannel->sendError(msg, code);
+    bool sendError(std::string const& msg, int code) {
+        std::lock_guard<std::mutex> sLock(_streamMutex);
+        return _sendError(sLock, msg, code);
     }
 
     /// @see SendChannel::sendFile
-    bool sendFile(StreamGuard sLock, int fd, SendChannel::Size fSize) {
-        return _sendChannel->sendFile(fd, fSize);
+    bool sendFile(int fd, SendChannel::Size fSize) {
+        std::lock_guard<std::mutex> sLock(_streamMutex);
+        return _sendFile(sLock, fd, fSize);
     }
 
     /// @see SendChannel::sendStream
-    bool sendStream(StreamGuard sLock, xrdsvc::StreamBuffer::Ptr const& sBuf, bool last, int scsSeq=-1) {
-        return _sendChannel->sendStream(sBuf, last, scsSeq);
+    bool sendStream(xrdsvc::StreamBuffer::Ptr const& sBuf, bool last, int scsSeq=-1) {
+        std::lock_guard<std::mutex> sLock(_streamMutex);
+        return _sendStream(sLock, sBuf, last, scsSeq);
     }
 
     /// @see SendChannel::kill
-    bool kill(StreamGuard sLock, std::string const& note);
+    bool kill(std::string const& note) {
+        std::lock_guard<std::mutex> sLock(_streamMutex);
+        return _kill(sLock, note);
+    }
 
     /// @see SendChannel::isDead
     bool isDead() {
@@ -123,10 +130,6 @@ public:
     /// The calling Thread must hold 'streamMutex' before calling this.
     bool transmitTaskLast(StreamGuard sLock, bool inLast);
 
-    /// streamMutex is used to protect _lastCount and messages that are sent
-    /// using SendChannelShared.
-    std::mutex streamMutex;
-
     /// Return a normalized id string.
     std::string makeIdStr(int qId, int jId);
 
@@ -156,6 +159,33 @@ private:
     SendChannelShared(SendChannel::Ptr const& sendChannel,
                       std::shared_ptr<wcontrol::TransmitMgr> const& transmitMgr);
 
+    /// Wrappers for SendChannel public functions that may need to be used
+    /// by threads.
+    /// @see SendChannel::send
+    bool _send(StreamGuard sLock, char const* buf, int bufLen) {
+        return _sendChannel->send(buf, bufLen);
+    }
+
+    /// @see SendChannel::sendError
+    bool _sendError(StreamGuard sLock, std::string const& msg, int code) {
+        return _sendChannel->sendError(msg, code);
+    }
+
+    /// @see SendChannel::sendFile
+    bool _sendFile(StreamGuard sLock, int fd, SendChannel::Size fSize) {
+        return _sendChannel->sendFile(fd, fSize);
+    }
+
+    /// @see SendChannel::sendStream
+    bool _sendStream(StreamGuard sLock, xrdsvc::StreamBuffer::Ptr const& sBuf, bool last, int scsSeq=-1) {
+        return _sendChannel->sendStream(sBuf, last, scsSeq);
+    }
+
+    /// @see SendChannel::kill
+    bool _kill(StreamGuard sLock, std::string const& note);
+
+
+
     /// Encode TransmitData items from _transmitQueue and pass them to XrdSsi
     /// to be sent to the czar.
     /// The header for the 'nextTransmit' item is appended to the result of
@@ -167,13 +197,17 @@ private:
     /// @see SendChannel::_transmit code for further explanation.
     bool _transmit(bool erred, bool scanInteractive, QueryId const qid, qmeta::CzarId czarId);
 
-    /// Send the buffer 'streamBuffer' using xrdssi. L
+    /// Send the buffer 'streamBuffer' using xrdssi.
     /// 'last' should only be true if this is the last buffer to be sent with this _sendChannel.
     /// 'note' is just a log note about what/who is sending the buffer.
     /// @return true if the buffer was sent.
     bool _sendBuf(std::lock_guard<std::mutex> const& streamLock,
                   xrdsvc::StreamBuffer::Ptr& streamBuf, bool last,
                   std::string const& note, int scsSeq);
+
+    /// streamMutex is used to protect _lastCount and messages that are sent
+    /// using SendChannelShared.
+    std::mutex _streamMutex;
 
     std::queue<TransmitData::Ptr> _transmitQueue; ///< Queue of data to be encoded and sent.
     std::mutex _queueMtx; ///< protects _transmitQueue, _taskCount, _lastCount
@@ -182,7 +216,7 @@ private:
     std::string _metadataBuf;
 
     int _taskCount = 0; ///< The number of tasks to be sent over this SendChannel.
-    int _lastCount = 0; ///< Then number of 'last' buffers received.
+    int _lastCount = 0; ///< The number of 'last' buffers received.
     std::atomic<bool> _lastRecvd{false}; ///< The truly 'last' transmit message is in the queue.
     std::atomic<bool> _firstTransmit{true}; ///< True until the first transmit has been sent.
 

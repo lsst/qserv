@@ -192,7 +192,7 @@ void InfileMerger::_setQueryIdStr(std::string const& qIdStr) {
 }
 
 
-void InfileMerger::mergeCompleteFor(std::set<int> jobIds) {
+void InfileMerger::mergeCompleteFor(std::set<int> const& jobIds) {
     std::lock_guard<std::mutex> resultSzLock(_mtxResultSizeMtx);
     for (int jobId:jobIds) {
         _totalResultSize += _perJobResultSize[jobId];
@@ -200,11 +200,23 @@ void InfileMerger::mergeCompleteFor(std::set<int> jobIds) {
 }
 
 
-bool InfileMerger::merge(std::shared_ptr<proto::WorkerResponse> response) {
+bool InfileMerger::merge(std::shared_ptr<proto::WorkerResponse> const& response) {
     if (!response) {
+        LOGS(_log, LOG_LVL_ERROR, "merge response unset");
         return false;
     }
     // TODO: Check session id (once session id mgmt is implemented)
+    if (not (response->result.has_jobid() && response->result.has_rowcount()
+             && response->result.has_transmitsize() && response->result.has_attemptcount()
+             && response->result.has_rowschema())) {
+        LOGS(_log, LOG_LVL_ERROR, "merge response missing required field"
+                                  << " jobid:" << response->result.has_jobid()
+                                  << " rowcount:" << response->result.has_rowcount()
+                                  << " transmitsize:" << response->result.has_transmitsize()
+                                  << " attemptcount:" << response->result.has_attemptcount()
+                                  << " rowschema:" << response->result.has_rowschema());
+        return false;
+    }
     int const jobId = response->result.jobid();
     std::string queryIdJobStr =
         QueryIdHelper::makeIdStr(response->result.queryid(), jobId);

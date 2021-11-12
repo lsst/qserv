@@ -133,6 +133,18 @@ void SsiRequest::execute(XrdSsiRequest& req) {
                 return;
             }
 
+            if (not (taskMsg->has_queryid() && taskMsg->has_jobid()
+                     && taskMsg->has_scaninteractive() && taskMsg->has_attemptcount()
+                     && taskMsg->has_czarid())) {
+                reportError(std::string("taskMsg missing required field ")
+                          + " queryid:" + std::to_string(taskMsg->has_queryid())
+                          + " jobid:" + std::to_string(taskMsg->has_jobid())
+                          + " scaninteractive:" + std::to_string(taskMsg->has_scaninteractive())
+                          + " attemptcount:" + std::to_string(taskMsg->has_attemptcount())
+                          + " czarid:" + std::to_string(taskMsg->has_czarid()));
+                return;
+            }
+
             // Now that the request is decoded (successfully or not), release the
             // xrootd request buffer. To avoid data races, this must happen before
             // the task is handed off to another thread for processing, as there is a

@@ -74,6 +74,7 @@ namespace lsst {
 namespace qserv {
 namespace wdb {
 
+/// This class stores properties for one column in the schema.
 class SchemaCol {
 public:
     SchemaCol() = default;
@@ -158,7 +159,7 @@ private:
     std::weak_ptr<xrdsvc::StreamBuffer> _streamBuf; ///< used release condition variable on cancel.
     std::atomic<bool> _removedFromThreadPool{false};
     mysql::MySqlConfig const _mySqlConfig;
-    std::unique_ptr<mysql::MySqlConnection> _mysqlConn{nullptr};
+    std::unique_ptr<mysql::MySqlConnection> _mysqlConn;
 
     util::MultiError _multiError; // Error log
 

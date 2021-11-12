@@ -106,8 +106,7 @@ void Foreman::_setRunFunc(shared_ptr<wbase::Task> const& task) {
             LOGS(_log, LOG_LVL_WARN, "processMsg Unsupported wire protocol");
             if (!task->checkCancelled()) {
                 // We should not send anything back to xrootd if the task has been cancelled.
-                lock_guard<mutex> streamLock(task->getSendChannel()->streamMutex);
-                task->getSendChannel()->sendError(streamLock, "Unsupported wire protocol", 1);
+                task->getSendChannel()->sendError("Unsupported wire protocol", 1);
             }
         } else {
             auto qr = wdb::QueryRunner::newQueryRunner(task, _chunkResourceMgr, _mySqlConfig,
@@ -119,9 +118,8 @@ void Foreman::_setRunFunc(shared_ptr<wbase::Task> const& task) {
                 LOGS(_log, LOG_LVL_ERROR, "runQuery threw UnsupportedError " << e.what() << *task);
             }
             if (not success) {
-                lock_guard<mutex> streamLock(task->getSendChannel()->streamMutex);
                 LOGS(_log, LOG_LVL_ERROR, "runQuery failed " << *task);
-                if (not task->getSendChannel()->kill(streamLock, "Foreman::_setRunFunc")) {
+                if (not task->getSendChannel()->kill("Foreman::_setRunFunc")) {
                     LOGS(_log, LOG_LVL_WARN, "runQuery sendChannel killed");
                 }
             }

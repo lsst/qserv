@@ -25,8 +25,8 @@
 #define LSST_QSERV_WCONTROL_SQLCONNMGR_H
 
 // System headers
-#include <assert.h>
 #include <atomic>
+#include <exception>
 #include <condition_variable>
 #include <memory>
 #include <mutex>
@@ -66,13 +66,24 @@ public:
 
     using Ptr = std::shared_ptr<SqlConnMgr>;
     SqlConnMgr(int maxSqlConnections, int maxScanSqlConnections) {
-        assert( maxSqlConnections > 1);
-        assert( maxScanSqlConnections > 1);
-        assert( maxSqlConnections >= maxScanSqlConnections);
+        if (maxSqlConnections <= 1
+            || maxScanSqlConnections <= 1
+            || maxSqlConnections < maxScanSqlConnections) {
+            throw std::invalid_argument(
+                std::string("SqlConnMgr maxSqlConnections must be >= maxScanSqlConnections ")
+                          + " and both must be greater than 1."
+                          + " maxSqlConnections=" + std::to_string(maxSqlConnections)
+                          + " maxScanSqlConnections=" + std::to_string(maxScanSqlConnections));
+        }
         //TODO Change configuration files to use normal values.
         _maxSqlScanConnections = maxScanSqlConnections;
         _maxSqlSharedConnections = maxSqlConnections - maxScanSqlConnections;
-        assert (_maxSqlSharedConnections > _maxSqlScanConnections);
+        if (_maxSqlSharedConnections <= _maxSqlScanConnections) {
+            throw std::invalid_argument(
+               std::string("_maxSqlSharedConnections must be greater than _maxSqlScanConnections")
+                         + " maxSqlConnections=" + std::to_string(maxSqlConnections)
+                         + " maxScanSqlConnections=" + std::to_string(maxScanSqlConnections));
+        }
     }
     SqlConnMgr() = delete;
     SqlConnMgr(SqlConnMgr const&) = delete;

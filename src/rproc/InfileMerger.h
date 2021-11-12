@@ -196,10 +196,10 @@ public:
     /// ProtoHeader message
     /// Result message
     /// @return true if merge was successfully imported.
-    bool merge(std::shared_ptr<proto::WorkerResponse> response);
+    bool merge(std::shared_ptr<proto::WorkerResponse> const& response);
 
     /// Indicate the the merge for all of the jobs in jobIds is complete.
-    void mergeCompleteFor(std::set<int> jobIds);
+    void mergeCompleteFor(std::set<int> const& jobIds);
 
     /// @return error details if finalize() returns false
     InfileMergerError const& getError() const { return _error; }

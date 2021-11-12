@@ -75,8 +75,11 @@ public:
     std::size_t size() const { return _activeTasks.size() + _pendingTasks.size(); }
     int getChunkId() { return _chunkId; }
 
+    // Remove 'task' from this instance.
+    // @return a pointer to the removed Task.
     wbase::Task::Ptr removeTask(wbase::Task::Ptr const& task);
 
+    /// @return a string describing this instance for the log file.
     std::string cInfo() const;
 
     /// Class that keeps the slowest tables at the front of the heap.

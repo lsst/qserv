@@ -95,9 +95,6 @@ namespace lsst {
 namespace qserv {
 namespace qdisp {
 
-XrdSsiService* Executive::_xrdSsiServiceStatic = nullptr;
-mutex xrdSsiServiceMtx;
-
 
 ////////////////////////////////////////////////////////////////////////
 // class Executive implementation
@@ -418,14 +415,9 @@ void Executive::_setup() {
     if (_config.serviceUrl.compare(_config.getMockStr()) == 0) {
         _xrdSsiService = new XrdSsiServiceMock(this);
     } else {
-        if (_xrdSsiServiceStatic == nullptr) {
-            // In operations, this would be locked once per program run.
-            lock_guard<mutex> xrdSsiServLock(xrdSsiServiceMtx);
-            if (_xrdSsiServiceStatic == nullptr) {
-                _xrdSsiServiceStatic = XrdSsiProviderClient->GetService(eInfo, _config.serviceUrl.c_str());
-            }
-        }
-        _xrdSsiService = _xrdSsiServiceStatic; // Step 1
+        static XrdSsiService* xrdSsiServiceStatic = XrdSsiProviderClient->GetService(eInfo, _config.serviceUrl);
+        _xrdSsiService = xrdSsiServiceStatic;
+
     }
     if (!_xrdSsiService) {
         LOGS(_log, LOG_LVL_DEBUG, _id << " Error obtaining XrdSsiService in Executive: "

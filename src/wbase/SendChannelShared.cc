@@ -86,7 +86,7 @@ bool SendChannelShared::transmitTaskLast(StreamGuard sLock, bool inLast) {
 }
 
 
-bool SendChannelShared::kill(StreamGuard sLock, std::string const& note) {
+bool SendChannelShared::_kill(StreamGuard sLock, std::string const& note) {
     LOGS(_log, LOG_LVL_DEBUG, "SendChannelShared::kill() called " << note);
     bool ret = _sendChannel->kill(note);
     _lastRecvd = true;
@@ -141,7 +141,7 @@ bool SendChannelShared::addTransmit(bool cancelled, bool erred, bool last, bool 
         return false;
     }
     {
-        lock_guard<mutex> streamLock(streamMutex);
+        lock_guard<mutex> streamLock(_streamMutex);
         reallyLast = transmitTaskLast(streamLock, last);
     }
 
@@ -229,7 +229,7 @@ bool SendChannelShared::_transmit(bool erred, bool scanInteractive, QueryId cons
         // The first message needs to put its header data in metadata as there's
         // no previous message it could attach its header to.
         {
-            lock_guard<mutex> streamLock(streamMutex); // Must keep meta and buffer together.
+            lock_guard<mutex> streamLock(_streamMutex); // Must keep meta and buffer together.
             if (_firstTransmit.exchange(false)) {
                 // Put the header for the first message in metadata
                 // _metaDataBuf must remain valid until Finished() is called.
@@ -242,7 +242,7 @@ bool SendChannelShared::_transmit(bool erred, bool scanInteractive, QueryId cons
                 bool metaSet = _sendChannel->setMetadata(_metadataBuf.data(), _metadataBuf.size());
                 if (!metaSet) {
                     LOGS(_log, LOG_LVL_ERROR, "Failed to setMeta " << idStr);
-                    kill(streamLock, "metadata");
+                    _kill(streamLock, "metadata");
                     return false;
                 }
             }
@@ -258,7 +258,7 @@ bool SendChannelShared::_transmit(bool erred, bool scanInteractive, QueryId cons
                 LOGS(_log, LOG_LVL_INFO, logMsgSend);
                 if (!sent) {
                     LOGS(_log, LOG_LVL_ERROR, "Failed to send " << idStr);
-                    kill(streamLock, "SendChannelShared::_transmit b");
+                    _kill(streamLock, "SendChannelShared::_transmit b");
                     return false;
                 }
             }

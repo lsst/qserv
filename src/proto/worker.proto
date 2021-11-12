@@ -69,11 +69,11 @@ message TaskMsg {
         required int32 scanRating = 4;
     }
     repeated ScanTable scantable = 9;
-    required uint64 queryid = 10;
-    required int32 jobid = 11;
-    required bool scaninteractive = 12;
-    required int32 attemptcount = 13;
-    required uint32 czarid = 14;
+    optional uint64 queryid = 10;
+    optional int32 jobid = 11;
+    optional bool scaninteractive = 12;
+    optional int32 attemptcount = 13;
+    optional uint32 czarid = 14;
 }
 
 // Result message received from worker
@@ -87,18 +87,18 @@ message TaskMsg {
 // transmitted as an unsigned char.
 message ProtoHeader {
     optional fixed32 protocol = 1;
-    required sfixed32 size = 2; // protobufs discourages messages > megabytes
+    optional sfixed32 size = 2; // protobufs discourages messages > megabytes
     optional bytes md5 = 3;
     optional string wname = 4;
-    required bool largeresult = 5;
-    required bool endnodata = 6; // True if this header is the end, no more data. size should be 0.
+    optional bool largeresult = 5;
+    optional bool endnodata = 6; // True if this header is the end, no more data. size should be 0.
     optional uint32 seq = 7; // sequence number from SendChannel
     optional int32 scsseq = 8; // sequence number from SendChannelShared, can be -1
 }
 
 message ColumnSchema {
     optional string name = 1; // Optional to allow type-only transmission
-    required string sqltype = 2;
+    optional string sqltype = 2;
     optional int32 mysqltype = 3;
 }
 message RowSchema {
@@ -111,15 +111,15 @@ message RowBundle {
 
 message Result {
     optional int64 session = 1;
-    required RowSchema rowschema = 2;
+    optional RowSchema rowschema = 2;
     optional int32 errorcode = 3;
     optional string errormsg = 4;
     repeated RowBundle row = 5;
-    required uint64 queryid = 6;
-    required int32 jobid = 7;
-    required uint32 rowcount = 8;
-    required uint64 transmitsize = 9;
-    required int32 attemptcount = 10;
+    optional uint64 queryid = 6;
+    optional int32 jobid = 7;
+    optional uint32 rowcount = 8;
+    optional uint64 transmitsize = 9;
+    optional int32 attemptcount = 10;
 }
 
 // Result protocol 2:

@@ -54,6 +54,9 @@ namespace ccontrol {
 /// fragment instead of performing buffer size and offset
 /// management. Fully-constructed protocol messages are then passed towards an
 /// InfileMerger.
+/// Do to the way the code works, MerginHandler is effectively single threaded.
+/// The worker can only send the data for this job back over a single channel
+/// and it can only send one transmit on that channel at a time.
 class MergingHandler : public qdisp::ResponseHandler {
 public:
     /// Possible MergingHandler message state
@@ -118,7 +121,9 @@ private:
     bool _flushed {false}; ///< flushed to InfileMerger?
     std::string _wName {"~"}; ///< worker name
     std::mutex _setResultMtx; //< Allow only one call to ParseFromArray at a time from _seResult.
-    std::set<int> _jobIds; ///< Set of jobIds added in this request.
+    /// Set of jobIds added in this request. Using std::set to prevent duplicates when the same
+    /// jobId has multiple merge calls.
+    std::set<int> _jobIds;
 };
 
 }}} // namespace lsst::qserv::qdisp

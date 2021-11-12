@@ -319,8 +319,7 @@ bool QueryRequest::_importStream(JobQuery::Ptr const& jq) {
     if (len != expectedLen) {
         throw Bug("_importStream wrong header size=" + to_string(len) + " expected=" + to_string(expectedLen));
     }
-    ResponseHandler::BufPtr bufPtr = make_shared<vector<char>>(len);
-    memcpy(&(*bufPtr)[0], buff, len);
+    ResponseHandler::BufPtr bufPtr = make_shared<vector<char>>(buff, buff + len);
 
     // Use flush to read the buffer and extract the header.
     bool largeResult = false;
@@ -335,9 +334,10 @@ bool QueryRequest::_importStream(JobQuery::Ptr const& jq) {
     }
 
     if (resultRows != 0) {
-        LOGS(_log, LOG_LVL_WARN, "_importStream resultRows != 0");
+        // There should not be any result rows in the header.
+        LOGS(_log, LOG_LVL_ERROR, "_importStream resultRows != 0 in the header");
+        return false;
     }
-    _totalRows += resultRows;
 
     if (!last) {
         _askForResponseDataCmd = make_shared<AskForResponseDataCmd>(shared_from_this(), ++_respCount, jq, nextBufSize);
@@ -508,6 +508,8 @@ void QueryRequest::_processData(JobQuery::Ptr const& jq, int blen, bool xrdLast)
 
     if (flushOk) {
         if (last != xrdLast) {
+            // xrdLast is essentially ignored as it is inconsistent. It may provide some
+            // insight into some errors in the future. 'last' is authoratative.
             LOGS(_log, LOG_LVL_DEBUG, "processData disagreement between last=" << last
                                      << " and xrdLast=" << xrdLast);
         }
