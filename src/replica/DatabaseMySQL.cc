@@ -166,6 +166,29 @@ string Connection::charSetName() const {
 }
 
 
+bool Connection::tableExists(string const& table, string const& proposedDatabase) {
+    string const context =
+            "Connection[" + to_string(_id) + "]::" + string(__func__) + "(_inTransaction=" +
+            to_string(_inTransaction ? 1: 0) + "  ";
+    if (table.empty()) {
+        throw invalid_argument(context + "the table name can't be empty.");
+    }
+    string database = proposedDatabase;
+    if (database.empty()) {
+        string const colname = "database";
+        if (!executeSingleValueSelect("SELECT DATABASE() AS " + sqlId(colname), colname, database)) {
+            throw Error(context + "the name of a database is not set on this connection.");
+        }
+    }
+    string const colname = "count";
+    size_t count = 0;
+    return executeSingleValueSelect(
+            "SELECT COUNT(*) AS " + sqlId(colname) + " FROM " + sqlId("information_schema", "TABLES")
+            + " WHERE " + sqlEqual("TABLE_SCHEMA", database) + " AND " + sqlEqual("TABLE_NAME", table),
+            colname, count) && count != 0;
+}
+
+
 string Connection::sqlValue(vector<string> const& coll) const {
     ostringstream values;
     for (auto&& val: coll) {

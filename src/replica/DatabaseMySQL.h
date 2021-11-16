@@ -77,7 +77,7 @@ namespace mysql {
 /**
  * Class Connection provides the main API to the database.
  */
-class Connection : public std::enable_shared_from_this<Connection> {
+class Connection: public std::enable_shared_from_this<Connection> {
 public:
     typedef std::shared_ptr<Connection> Ptr;
 
@@ -191,6 +191,26 @@ public:
 
     std::string escape(std::string const& str) const;
     std::string charSetName() const;
+
+    // --------------------------------------
+    // Operations with the information schema
+    // --------------------------------------
+
+    /**
+     * @brief Check if the table exists in a scope of a database.
+     * 
+     * The name of the database can be specified in the optional parameter
+     * \param proposedDatabase. If the value of the parameter will be found
+     * empty the current database (the one specified in the ConnectionParams
+     * object or set by the subsequent query "USE <database>") will be assumed.
+     *
+     * @param table The name of a table to check.
+     * @param proposedDatabase The optional name of a database.
+     * @return true if the table exists.
+     * @throws std::invalid_argument If the name of the table is empty.
+     * @throws Error If no valid database could be deduced from any source.
+     */
+    bool tableExists(std::string const& table, std::string const& proposedDatabase=std::string());
 
     // -------------------------------------------------
     // Helper methods for simplifying query preparation
