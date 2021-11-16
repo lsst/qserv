@@ -150,6 +150,7 @@ def _load_ref_data(
     with closing(cnx.cursor()) as cursor:
         cursor.execute(f"USE {db}")
         cursor.execute(sql)
+        _log.info(f"inserted {cursor.rowcount} rows into {db}.{table}")
         warnings = cursor.fetchwarnings()
         if warnings:
             _log.warn(
