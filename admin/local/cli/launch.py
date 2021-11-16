@@ -768,7 +768,7 @@ def integration_test(
     tests_yaml: str,
     compare_results: bool,
     wait: int,
-) -> None:
+) -> int:
     """Run integration tests.
 
     Parameters
@@ -816,6 +816,11 @@ def integration_test(
         If False will skip comparing test results.
     wait : `int`
         How many seconds to wait before launching the integration test container.
+
+    Returns
+    -------
+    returncode : `int`
+        The returncode of "entrypoint integration-test".
     """
     if wait:
         _log.info(f"Waiting {wait} seconds for qserv to stabilize.")
@@ -863,7 +868,7 @@ def integration_test(
         return
     _log.debug(f"Running {' '.join(args)}")
     result = subprocess.run(args)
-    result.check_returncode()
+    return result.returncode
 
 
 def itest(
@@ -885,18 +890,24 @@ def itest(
     tests_yaml: str,
     compare_results: bool,
     wait: int,
-) -> None:
+) -> int:
     """Run integration tests.
 
     Parameters
     ----------
     Similar to `integration_test`
+
+    Returns
+    -------
+    returncode : `int`
+        The returncode of "entrypoint integration-test".
     """
     ref_db_container_name = itest_ref(
         qserv_root, itest_file, itest_volume, project, mariadb_image, dry
     )
+    returncode = 1
     try:
-        integration_test(
+        returncode = integration_test(
             qserv_root,
             itest_container,
             itest_volume,
@@ -917,6 +928,7 @@ def itest(
         )
     finally:
         stop_itest_ref(ref_db_container_name, dry)
+    return returncode
 
 
 def itest_rm(itest_volume: str, dry: bool) -> None:

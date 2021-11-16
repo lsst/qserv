@@ -27,6 +27,7 @@ information.
 
 
 import click
+import sys
 from typing import List, Optional
 
 from cli.options import (
@@ -387,7 +388,7 @@ def itest(
     """Run integration tests.
 
     Launches a lite-qserv container and uses it to run integration tests."""
-    launch.itest(
+    returncode = launch.itest(
         qserv_root=qserv_root,
         mariadb_image=mariadb_image,
         itest_container=itest_container,
@@ -407,6 +408,7 @@ def itest(
         compare_results=compare_results,
         wait=wait,
     )
+    sys.exit(returncode)
 
 
 @qserv.command()
