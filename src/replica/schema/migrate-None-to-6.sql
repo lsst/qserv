@@ -1,3 +1,8 @@
+-- This schema file is meant to be used for initializing the replication system's
+-- database with the latest version of the schema. An alternative approach would
+-- be to use the schema migration tool 'smig'. The 'smig' support has been added
+-- to this package as well. See the version specific files for further details.
+
 CREATE TABLE IF NOT EXISTS `config` (
   `category` VARCHAR(255) NOT NULL ,
   `param`    VARCHAR(255) NOT NULL ,
@@ -430,6 +435,40 @@ ENGINE = InnoDB
 COMMENT = 'Parameters and a state of the catalog ingests';
 
 
+CREATE TABLE IF NOT EXISTS `stats_table_rows` (
+  `database` VARCHAR(255) NOT NULL ,
+  `table`    VARCHAR(255) NOT NULL ,
+
+  -- NULL is used to support tables that don't have transaction identifiers,
+  -- which would be a case of catalogs where the transactions were eliminated,
+  -- or where it never existed (legacy data).
+  `transaction_id` INT UNSIGNED DEFAULT NULL ,
+
+  `chunk`       INT    UNSIGNED NOT NULL ,
+  `is_overlap`  BOOLEAN         NOT NULL ,
+  `num_rows`    BIGINT UNSIGNED DEFAULT 0 ,
+  `update_time` BIGINT UNSIGNED NOT NULL ,
+
+  UNIQUE KEY (`database`, `table`, `transaction_id`, `chunk`, `is_overlap`) ,
+  KEY (`database`, `table`, `transaction_id`) ,
+  KEY (`database`, `table`) ,
+  CONSTRAINT `stats_table_rows_fk_1`
+    FOREIGN KEY (`database`, `table`)
+    REFERENCES `config_database_table` (`database`, `table`)
+    ON DELETE CASCADE
+    ON UPDATE CASCADE ,
+  CONSTRAINT `stats_table_rows_fk_2`
+    FOREIGN KEY (`transaction_id`)
+    REFERENCES `transaction` (`id`)
+    ON DELETE CASCADE
+    ON UPDATE CASCADE
+)
+ENGINE = InnoDB
+COMMENT = 'Row counters for the internal tables. The table is supposed to be populated
+  by the ingest system when publishing the catalog, or afterwards by the special
+  table scanner.';
+
+
 CREATE TABLE IF NOT EXISTS `QMetadata` (
   `metakey` CHAR(64) NOT NULL COMMENT 'Key string' ,
   `value`   TEXT         NULL COMMENT 'Value string' ,
@@ -439,5 +478,4 @@ ENGINE = InnoDB
 COMMENT = 'Metadata about database as a whole, key-value pairs' ;
 
 -- Add record for schema version, migration script expects this record to exist
-
-INSERT INTO `QMetadata` (`metakey`, `value`) VALUES ('version', '5');
+INSERT INTO `QMetadata` (`metakey`, `value`) VALUES ('version', '6');

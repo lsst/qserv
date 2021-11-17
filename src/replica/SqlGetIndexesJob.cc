@@ -82,7 +82,7 @@ SqlGetIndexesJob::SqlGetIndexesJob(
                allWorkers,
                controller,
                parentJobId,
-               "SQL_DROP_TABLE_INDEXES",
+               "SQL_GET_TABLE_INDEXES",
                priority),
         _database(database),
         _table(table),

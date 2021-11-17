@@ -31,6 +31,7 @@
 // Qserv headers
 #include "replica/Common.h"
 #include "replica/HttpModule.h"
+#include "replica/SqlRowStatsJob.h"
 
 // Forward declarations
 namespace lsst {
@@ -62,6 +63,9 @@ public:
      *   TABLES                    for retreiving the names of tables in a scope of a database
      *   ADD-TABLE                 for adding a new table for the data ingest
      *   DELETE-TABLE              for deleting a table from a database'
+     *   SCAN-TABLE-STATS          for scanning worker tables and obtaining row counters
+     *   DELETE-TABLE-STATS        for deleting existing stats on row counters
+     *   TABLE-STATS               for retreiving existing stats on the row counters
      *   BUILD-CHUNK-LIST          for building (or rebuilding) an "empty chunk list"
      *   REGULAR                   for reporting connection parameters of the ingest servers
      *                             required to load the regular tables
@@ -125,6 +129,48 @@ private:
      */
     nlohmann::json _deleteTable();
 
+    /**
+     * @brief Scan internal tables of a given table to collect row counters
+     *   and return this information to a caller.
+     * 
+     * Depending on parameters of the method, the service may also update
+     * the persistent state of the counters in the Replication systems database
+     * and deploy the counters at Qserv's czar database. 
+     */
+    nlohmann::json _scanTableStats();
+
+    /**
+     * @brief Implement scanning internal tables of a given table to collect row counters
+     *   and return this information to a caller.
+     * @note The operaton can be optimized in some curcumstances. In particular,
+     *   if the \param forceRescan is set to 'false' and the persistent state
+     *   of the counters within the system is not empty then no scan will be made.
+     * @param database The name of a database.
+     * @param table The name of an existing table.
+     * @param overlapSelector The selector (applies to the partitioned tables only)
+     *   indicating which kind of the partitioned tables to be affected by
+     *   the operation.
+     * @param stateUpdatePolicy The policy for updating the persistent state of the row
+     *   counters in the Replication system database.
+     * @param deployAtQserv The flag that triggers deploying the counters at czar's metadata.
+     * @param forceRescan The flag that forced the rescan at Qserv workers.
+     * @param allWorkers The flag should be set to 'true' if no worker filtering is required.
+     *   Otherwise only the "enabled" workers will be involved into the operation.
+     * @param priority The priority level of the Replication Framework's jobs and requests
+     *   submitted by the method.
+     * @return nlohmann::json The extended error object that will be empty of no errors ocurred.
+     */
+    nlohmann::json _scanTableStatsImpl(
+            std::string const& database, std::string const& table, ChunkOverlapSelector overlapSelector,
+            SqlRowStatsJob::StateUpdatePolicy stateUpdatePolicy, bool deployAtQserv,
+            bool forceRescan, bool allWorkers, int priority);
+
+    /// Delete existing stats on the row counters
+    nlohmann::json _deleteTableStats();
+
+    /// Get existing stats on the row counters
+    nlohmann::json _tableStats();
+
     /// (Re-)build the "empty chunks list" for a database.
     nlohmann::json _buildEmptyChunksList();
 
@@ -133,6 +179,17 @@ private:
      * where the regular tables would have to be loaded.
      */
     nlohmann::json _getRegular();
+
+    /**
+     * @brief Retreive and validate database and table names from the service's URL.
+     * 
+     * @param func A scope from which the method is called (for logging and error reporting).
+     * @param database The name of a database.
+     * @param table The name of a table.
+     * @throws std::invalid_argument For unknown databases or tables.
+     */
+    void _getRequiredParameters(
+            std::string const& func, std::string& database, std::string& table);
 
     /**
      * Grant SELECT authorizations for the new database to Qserv

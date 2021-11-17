@@ -23,7 +23,9 @@
 #include "replica/Common.h"
 
 // System headers
+#include <limits>
 #include <stdexcept>
+#include <type_traits>
 
 // Third party headers
 #include "boost/uuid/uuid.hpp"
@@ -40,6 +42,34 @@ namespace replica {
 
 string status2string(ProtocolStatusExt status) {
     return ProtocolStatusExt_Name(status);
+}
+
+
+string overlapSelector2str(ChunkOverlapSelector selector) {
+    switch(selector) {
+        case ChunkOverlapSelector::CHUNK: return "CHUNK";
+        case ChunkOverlapSelector::OVERLAP: return "OVERLAP";
+        case ChunkOverlapSelector::CHUNK_AND_OVERLAP: return "CHUNK_AND_OVERLAP";
+    }
+    throw invalid_argument(
+            "lsst::qserv::replica::" + string(__func__) + " unhandled selector: "
+            + to_string(static_cast<typename std::underlying_type<ChunkOverlapSelector>::type>(selector)));
+}
+
+
+ostream& operator<<(ostream& os, ChunkOverlapSelector selector) {
+    os << overlapSelector2str(selector);
+    return os;
+}
+
+
+ChunkOverlapSelector str2overlapSelector(string const& str) {
+    if (str == "CHUNK") return ChunkOverlapSelector::CHUNK;
+    else if (str == "OVERLAP") return ChunkOverlapSelector::OVERLAP;
+    else if (str == "CHUNK_AND_OVERLAP") return ChunkOverlapSelector::CHUNK_AND_OVERLAP;
+    throw invalid_argument(
+            "lsst::qserv::replica::" + string(__func__) + " the input string '" + str
+            + "' doesn't match any selector.");
 }
 
 
@@ -112,6 +142,7 @@ SqlRequestParams::SqlRequestParams(ProtocolRequestSql const& request)
         case ProtocolRequestSql::CREATE_TABLE_INDEX:        type = CREATE_TABLE_INDEX; break;
         case ProtocolRequestSql::DROP_TABLE_INDEX:          type = DROP_TABLE_INDEX; break;
         case ProtocolRequestSql::ALTER_TABLE:               type = ALTER_TABLE; break;
+        case ProtocolRequestSql::TABLE_ROW_STATS:           type = TABLE_ROW_STATS; break;
         default:
             throw runtime_error(
                     "SqlRequestParams::" + string(__func__) +
@@ -162,6 +193,7 @@ string SqlRequestParams::type2str() const {
         case CREATE_TABLE_INDEX:        return "CREATE_TABLE_INDEX";
         case DROP_TABLE_INDEX:          return "DROP_TABLE_INDEX";
         case ALTER_TABLE:               return "ALTER_TABLE";
+        case TABLE_ROW_STATS:           return "TABLE_ROW_STATS";
     }
     throw runtime_error(
             "SqlRequestParams::" + string(__func__) + "  unsupported request type");
@@ -281,6 +313,14 @@ IndexRequestParams::IndexRequestParams(ProtocolRequestIndex const& request)
         chunk(request.chunk()),
         hasTransactions(request.has_transactions()),
         transactionId(request.transaction_id()) {
+}
+
+
+
+unsigned int stoui(string const& str, size_t* idx, int base) {
+    unsigned long u = stoul(str, idx, base);
+    if (u > numeric_limits<unsigned int>::max()) throw out_of_range(str);
+    return static_cast<unsigned int>(u);
 }
 
 }}} // namespace lsst::qserv::replica

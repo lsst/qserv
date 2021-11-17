@@ -46,6 +46,10 @@ namespace replica {
  */
 class ConfigParserMySQL {
 public:
+    /// This number is required to match the schema version stored
+    /// in the database.
+    static int const expectedSchemaVersion;
+
     ConfigParserMySQL() = delete;
     ConfigParserMySQL(ConfigParserMySQL const&) = delete;
     ConfigParserMySQL& operator=(ConfigParserMySQL const&) = delete;
@@ -72,6 +76,15 @@ public:
     void parse();
 
 private:
+
+    /**
+     * Read schema version from the database. Make sure it matches the one
+     * expected by this application.
+     * @see ConfigParserMySQL::expectedSchemaVersion
+     * @throw ConfigError If no version info is found in the database, or if
+     *   the version doesn't meet expectations.
+     */
+    void _parseVersion();
 
     /// Parse general (category/parameter) parameters.
     void _parseGeneral();

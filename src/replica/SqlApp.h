@@ -95,6 +95,12 @@ private:
     unsigned int _reportLevel = 0;
 
     bool _overlap = false;  /// Specifies a subset of the partitioned tables
+
+    std::string _overlapSelector = "CHUNK_AND_OVERLAP"; ///< The optional selector for a flavor of
+                                                        /// the overlap tables.
+
+    std::string _stateUpdatePolicy = "DISABLED";    ///< The policy for updating the persistent
+                                                    ///  state of the row counters.
 };
 
 }}} // namespace lsst::qserv::replica

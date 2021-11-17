@@ -36,6 +36,7 @@
 #include "replica/Configuration.h"
 #include "replica/DatabaseServices.h"
 #include "replica/ReplicaInfo.h"
+#include "util/TablePrinter.h"
 
 using namespace std;
 using namespace lsst::qserv::replica;
@@ -59,13 +60,10 @@ string asString(time_t t) {
 
 
 string asString(uint64_t ms) {
-
     // Milliseconds since Epoch
     chrono::time_point<chrono::system_clock> tp((chrono::milliseconds(ms)));
-
     // Convert to system time
     time_t t = chrono::system_clock::to_time_t(tp);
-
     return asString(t);
 }
 
@@ -137,13 +135,18 @@ DatabaseTestApp::DatabaseTestApp(int argc, char* argv[])
          "FIND_WORKER_REPLICAS_1",
          "FIND_WORKER_REPLICAS_2",
          "FIND_WORKER_REPLICAS_3",
-         "FIND_WORKER_REPLICAS_4"
+         "FIND_WORKER_REPLICAS_4",
+         "TABLE_ROW_STATS"
         },
         _operation
     ).option(
         "tables-page-size",
         "The number of rows in the table of replicas (0 means no pages).",
         _pageSize
+    ).flag(
+        "tables-vertical-separator",
+        "Print vertical separator when displaying tabular data in dumps.",
+        _verticalSeparator
     );
 
     parser().command(
@@ -304,6 +307,26 @@ DatabaseTestApp::DatabaseTestApp(int argc, char* argv[])
         " or all families. This flag is used only if flag --all is not used.",
         _isPublished
     );
+
+    parser().command(
+        "TABLE_ROW_STATS"
+    ).description(
+        "Report table stats (numers of rows) from the internal tables."
+    ).required(
+        "database",
+        "The name of a database.",
+        _databaseName
+    ).required(
+        "table",
+        "The name of a table.",
+        _tableName
+    ).optional(
+        "transaction-id",
+        "A unique identifier of a transaction. NOTE: using the transaction 0 (which is also"
+        " the default value of this optional parameter) would result in reporting stats"
+        " across all transactions.",
+        _transactionId
+    );
 }
 
 
@@ -311,73 +334,95 @@ int DatabaseTestApp::runImpl() {
 
     if ("CONFIGURATION" == _operation) {
         cout << serviceProvider()->config()->toJson().dump() << endl;
-    } else if ("DATABASES" == _operation) {
+        return 0;
+    }
+    if ("DATABASES" == _operation) {
         auto const databases = serviceProvider()->config()->databases(
-            _databaseFamilyName,
-            _allDatabases,
-            _isPublished);
+                _databaseFamilyName, _allDatabases, _isPublished);
         for (auto&& database: databases) {
             cout << database << "\n";
         }
         cout << endl;
-    } else {
-        vector<ReplicaInfo> replicas;
-
-        if ("FIND_OLDEST_REPLICAS" == _operation) {
-            serviceProvider()->databaseServices()->findOldestReplicas(
-                replicas,
-                _maxReplicas,
-                _enabledWorkersOnly
-            );
-        } else if ("FIND_REPLICAS" == _operation) {
-            serviceProvider()->databaseServices()->findReplicas(
-                replicas,
-                _chunk,
-                _databaseName,
-                _enabledWorkersOnly
-            );
-        } else if ("FIND_REPLICAS_1" == _operation) {
-            vector<unsigned int> chunks;
-            chunks.push_back(_chunk1);
-            chunks.push_back(_chunk2);
-            serviceProvider()->databaseServices()->findReplicas(
-                replicas,
-                chunks,
-                _databaseName,
-                _enabledWorkersOnly
-            );
-        } else if ("FIND_WORKER_REPLICAS_1" == _operation) {
-            serviceProvider()->databaseServices()->findWorkerReplicas(
-                replicas,
-                _workerName
-            );
-        } else if ("FIND_WORKER_REPLICAS_2" == _operation) {
-            serviceProvider()->databaseServices()->findWorkerReplicas(
-                replicas,
-                _workerName,
-                _databaseName
-            );
-        } else if ("FIND_WORKER_REPLICAS_3" == _operation) {
-            serviceProvider()->databaseServices()->findWorkerReplicas(
-                replicas,
-                _chunk,
-                _workerName
-            );
-        } else if ("FIND_WORKER_REPLICAS_4" == _operation) {
-            serviceProvider()->databaseServices()->findWorkerReplicas(
-                replicas,
-                _chunk,
-                _workerName,
-                _databaseFamilyName,
-                _allDatabases,
-                _isPublished
-            );
-        } else {
-            throw logic_error(string(__func__) + ": unsupported operation: " + _operation);
-        }
-        ::dump(replicas);
+        return 0;
     }
+    if ("TABLE_ROW_STATS" == _operation) {
+        _dump(serviceProvider()->databaseServices()->tableRowStats(
+                _databaseName, _tableName, _transactionId));
+        return 0;
+    }
+
+    vector<ReplicaInfo> replicas;
+    if ("FIND_OLDEST_REPLICAS" == _operation) {
+        serviceProvider()->databaseServices()->findOldestReplicas(
+                replicas, _maxReplicas, _enabledWorkersOnly);
+    } else if ("FIND_REPLICAS" == _operation) {
+        serviceProvider()->databaseServices()->findReplicas(
+                replicas, _chunk, _databaseName, _enabledWorkersOnly);
+    } else if ("FIND_REPLICAS_1" == _operation) {
+        vector<unsigned int> chunks;
+        chunks.push_back(_chunk1);
+        chunks.push_back(_chunk2);
+        serviceProvider()->databaseServices()->findReplicas(
+            replicas, chunks, _databaseName, _enabledWorkersOnly);
+    } else if ("FIND_WORKER_REPLICAS_1" == _operation) {
+        serviceProvider()->databaseServices()->findWorkerReplicas(
+                replicas, _workerName);
+    } else if ("FIND_WORKER_REPLICAS_2" == _operation) {
+        serviceProvider()->databaseServices()->findWorkerReplicas(
+                replicas, _workerName, _databaseName);
+    } else if ("FIND_WORKER_REPLICAS_3" == _operation) {
+        serviceProvider()->databaseServices()->findWorkerReplicas(
+                replicas, _chunk, _workerName);
+    } else if ("FIND_WORKER_REPLICAS_4" == _operation) {
+        serviceProvider()->databaseServices()->findWorkerReplicas(
+                replicas, _chunk, _workerName, _databaseFamilyName, _allDatabases,
+                _isPublished);
+    } else {
+        throw logic_error(string(__func__) + ": unsupported operation: " + _operation);
+    }
+    ::dump(replicas);
     return 0;
+}
+
+
+void DatabaseTestApp::_dump(TableRowStats const& stats) {
+
+    vector<string> transactionId;
+    transactionId.reserve(stats.entries.size());
+
+    vector<string> chunk;
+    chunk.reserve(stats.entries.size());
+
+    vector<string> isOverlap;
+    isOverlap.reserve(stats.entries.size());
+
+    vector<string> numRows;
+    numRows.reserve(stats.entries.size());
+
+    vector<string> updateTime;
+    updateTime.reserve(stats.entries.size());
+
+    for (auto&& e: stats.entries) {
+        transactionId.emplace_back(to_string(e.transactionId));
+        chunk.emplace_back(to_string(e.chunk));
+        isOverlap.emplace_back(replica::bool2str(e.isOverlap));
+        numRows.emplace_back(to_string(e.numRows));
+        updateTime.emplace_back(to_string(e.updateTime));
+    }
+
+    string const caption = "DATABASE: " + stats.database + ", TABLE: " + stats.table;
+    string const indent;
+    util::ColumnTablePrinter table(caption, indent, _verticalSeparator);
+    table.addColumn("transaction-id", transactionId);
+    table.addColumn("chunk", chunk);
+    table.addColumn("is_overlap", isOverlap);
+    table.addColumn("rows", numRows);
+    table.addColumn("updated", updateTime);
+
+    bool const topSeparator = false;
+    bool const bottomSeparator = false;
+    bool const repeatedHeader = false;
+    table.print(cout, topSeparator, bottomSeparator, _pageSize, repeatedHeader);
 }
 
 }}} // namespace lsst::qserv::replica

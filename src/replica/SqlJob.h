@@ -183,6 +183,20 @@ protected:
     }
 
     /**
+     * This method lets a request type-specific subclass a chance to process
+     * results of the job before transitioning to the finished state.
+     *
+     * @note The default implementation of the method won't do any processing.
+     *   Class-specific implementations may change the extended state if any
+     *   problems with the results will be encountered.
+     *
+     * @param lock  A lock on Job::_mtx must be acquired by a caller of the method.
+     * @param extendedState  A specific state to be set upon the completion.
+     * @return A collection of requests launched.
+     */
+    virtual void processResultAndFinish(util::Lock const& lock, ExtendedState extendedState);
+
+    /**
      * Find out which tables corresponding to the name are expected to exist
      * at the worker as per the Configuration and persistent records for
      * the replicas (for the partitioned tables only). Normally this method
@@ -253,6 +267,14 @@ protected:
     static std::vector<std::vector<std::string>> distributeTables(
             std::vector<std::string> const& allTables,
             size_t numBins);
+
+    /**
+     * @brief Get a copy of the result data object in its current state, even if it's
+     *   not complete.
+     * @param lock A lock on Job::_mtx must be acquired by a caller of the method.
+     * @return SqlJobResult The current state of the result.
+     */
+    SqlJobResult getResultData(util::Lock const& lock) const { return _resultData; }
 
 private:
 

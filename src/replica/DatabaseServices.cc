@@ -274,6 +274,42 @@ json DatabaseIngestParam::toJson() const {
 }
 
 
+TableRowStatsEntry::TableRowStatsEntry(
+        TransactionId transactionId_, unsigned int chunk_, bool isOverlap_,
+        size_t numRows_, uint64_t updateTime_)
+    :   transactionId(transactionId_), chunk(chunk_), isOverlap(isOverlap_),
+        numRows(numRows_), updateTime(updateTime_) {
+}
+
+
+json TableRowStatsEntry::toJson() const {
+    return json::object({
+        {"transaction_id", transactionId},
+        {"chunk",  chunk},
+        {"is_overlap", isOverlap ? 1 : 0},
+        {"num_rows", numRows},
+        {"update_time", updateTime}
+    });
+}
+
+
+TableRowStats::TableRowStats(string const& database_, string const& table_)
+    :   database(database_), table(table_) {
+}
+
+
+json TableRowStats::toJson() const {
+    json result = json::object({
+        {"database", database},
+        {"table", table},
+        {"entries", json::array()}
+    });
+    json& entriesJson = result["entries"];
+    for (auto&& e: entries) entriesJson.push_back(e.toJson());
+    return result;
+}
+
+
 DatabaseServices::Ptr DatabaseServices::create(Configuration::Ptr const& config) {
     try {
         return DatabaseServices::Ptr(new DatabaseServicesMySQL(config));

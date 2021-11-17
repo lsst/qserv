@@ -163,11 +163,18 @@ json HttpCatalogsModule::_databaseStats(string const& database) const {
         }
     }
     for (auto&& table: config->databaseInfo(database).partitionedTables) {
+        size_t numRowsInChunks = 0;
+        size_t numRowsInOverlaps = 0;
+        auto const tableRowStats = databaseServices->tableRowStats(database, table);
+        for (auto&& e: tableRowStats.entries) {
+            if (e.isOverlap) numRowsInOverlaps += e.numRows;
+            else numRowsInChunks += e.numRows;
+        }
         auto&& statsTable = stats[table];
         auto&& resultTable = result["tables"][table];
         resultTable["is_partitioned"] = 1;
-        resultTable["rows"]["in_chunks"]   = 0;
-        resultTable["rows"]["in_overlaps"] = 0;
+        resultTable["rows"]["in_chunks"]   = numRowsInChunks;
+        resultTable["rows"]["in_overlaps"] = numRowsInOverlaps;
         resultTable["data"]["unique"]["in_chunks"]["data"]    = statsTable["data_unique_in_chunks_data"];
         resultTable["data"]["unique"]["in_chunks"]["index"]   = statsTable["data_unique_in_chunks_index"];
         resultTable["data"]["unique"]["in_overlaps"]["data"]  = statsTable["data_unique_in_overlaps_data"];
@@ -186,9 +193,14 @@ json HttpCatalogsModule::_databaseStats(string const& database) const {
         size_t data_with_replicas_data  = 0;
         size_t data_with_replicas_index = 0;
 
+        size_t numRows = 0;
+        auto const tableRowStats = databaseServices->tableRowStats(database, table);
+        for (auto&& e: tableRowStats.entries) {
+            numRows += e.numRows;
+        }
         auto&& resultTable = result["tables"][table];
         resultTable["is_partitioned"] = 0;
-        resultTable["rows"] = 0;
+        resultTable["rows"] = numRows;
         resultTable["data"]["unique"]["data"]  = data_unique_data;
         resultTable["data"]["unique"]["index"] = data_unique_index;
         resultTable["data"]["with_replicas"]["data"]  = data_with_replicas_data;

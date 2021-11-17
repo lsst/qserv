@@ -52,14 +52,10 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
-SqlJob::SqlJob(uint64_t maxRows,
-               bool allWorkers,
-               Controller::Ptr const& controller,
-               string const& parentJobId,
-               std::string const& jobName,
-               int priority,
-               bool ignoreNonPartitioned,
-               bool ignoreDuplicateKey)
+SqlJob::SqlJob(
+        uint64_t maxRows, bool allWorkers, Controller::Ptr const& controller,
+        string const& parentJobId, std::string const& jobName, int priority,
+        bool ignoreNonPartitioned, bool ignoreDuplicateKey)
     :   Job(controller, parentJobId, jobName, priority),
         _maxRows(maxRows),
         _allWorkers(allWorkers),
@@ -69,11 +65,8 @@ SqlJob::SqlJob(uint64_t maxRows,
 
 
 SqlJobResult const& SqlJob::getResultData() const {
-
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
-
     if (state() == State::FINISHED) return _resultData;
-
     throw logic_error(
             "SqlJob::" + string(__func__) +
             "  the method can't be called while the job hasn't finished");
@@ -81,13 +74,10 @@ SqlJobResult const& SqlJob::getResultData() const {
 
 
 list<pair<string,string>> SqlJob::persistentLogData() const {
-
     list<pair<string,string>> result;
-
     auto const& resultData = getResultData();
 
     // Per-worker stats
-
     for (auto&& workerItr: resultData.resultSets) {
         auto&& worker = workerItr.first;
         auto&& workerResultSets = workerItr.second;
@@ -143,9 +133,7 @@ json SqlJob::getExtendedErrorReport() const {
 
 
 void SqlJob::startImpl(util::Lock const& lock) {
-
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
-
     auto const workerNames = allWorkers() ?
         controller()->serviceProvider()->config()->allWorkers() :
         controller()->serviceProvider()->config()->workers();
@@ -153,7 +141,6 @@ void SqlJob::startImpl(util::Lock const& lock) {
     // Launch the initial batch of requests in the number which won't exceed
     // the number of the service processing threads at each worker multiplied
     // by the number of workers involved into the operation.
-
     size_t const maxRequestsPerWorker =
         controller()->serviceProvider()->config()->get<size_t>("worker", "num_svc_processing_threads");
 
@@ -165,22 +152,17 @@ void SqlJob::startImpl(util::Lock const& lock) {
 
     // In case if no workers or database are present in the Configuration
     // at this time.
-
-    if (_requests.size() == 0) finish(lock, ExtendedState::SUCCESS);
+    if (_requests.size() == 0) processResultAndFinish(lock, ExtendedState::SUCCESS);
 }
 
 
 void SqlJob::cancelImpl(util::Lock const& lock) {
-
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
-
     // The algorithm will also clear resources taken by various
     // locally created objects.
-
     // To ensure no lingering "side effects" will be left after cancelling this
     // job the request cancellation should be also followed (where it makes a sense)
     // by stopping the request at corresponding worker service.
-
     for (auto&& ptr: _requests) {
         ptr->cancel();
         if (ptr->state() != Request::State::FINISHED) stopRequest(lock, ptr);
@@ -190,24 +172,17 @@ void SqlJob::cancelImpl(util::Lock const& lock) {
 
 
 void SqlJob::onRequestFinish(SqlRequest::Ptr const& request) {
-
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "  worker=" << request->worker());
-
     if (state() == State::FINISHED) return;
-
     util::Lock lock(_mtx, context() + __func__);
-
     if (state() == State::FINISHED) return;
-
     _numFinished++;
-
     // Update stats, including the result sets since they may carry
     // MySQL-specific errors reported by failed queries.
     _resultData.resultSets[request->worker()].push_back(request->responseData());
 
     // Try submitting a replacement request for the same worker. If none
     // would be launched then evaluate for the completion condition of the job.
-
     auto const requests = launchRequests(lock, request->worker());
     auto itr = _requests.insert(_requests.cend(), requests.cbegin(), requests.cend());
     if (_requests.cend() == itr) {
@@ -235,20 +210,25 @@ void SqlJob::onRequestFinish(SqlRequest::Ptr const& request) {
                     }
                 }
             }
-            finish(lock, numSuccess == _numFinished ? ExtendedState::SUCCESS :
-                                                      ExtendedState::FAILED);
+            processResultAndFinish(lock,
+                    numSuccess == _numFinished ? ExtendedState::SUCCESS : ExtendedState::FAILED);
         }
     }
 }
 
 
-vector<vector<string>> SqlJob::distributeTables(vector<string> const& allTables,
-                                                size_t numBins) {
+void SqlJob::processResultAndFinish(
+        util::Lock const& lock, ExtendedState extendedState) {
+    finish(lock, extendedState);
+}
+
+
+vector<vector<string>> SqlJob::distributeTables(
+        vector<string> const& allTables, size_t numBins) {
 
     // If the total number of tables if less than the number of bins
     // then we won't be constructing empty bins.
     vector<vector<string>> tablesPerBin(min(numBins, allTables.size()));
-
     if (not tablesPerBin.empty()) {
         // The trivial 'round-robin' 
         for (size_t i=0; i<allTables.size(); ++i) {
@@ -260,11 +240,10 @@ vector<vector<string>> SqlJob::distributeTables(vector<string> const& allTables,
 }
 
 
-vector<string> SqlJob::workerTables(string const& worker,
-                                    string const& database,
-                                    string const& table,
-                                    bool allTables,
-                                    bool overlapTablesOnly) const {
+vector<string> SqlJob::workerTables(
+        string const& worker, string const& database, string const& table,
+        bool allTables, bool overlapTablesOnly) const {
+
     vector<string> tables;
     if (_isPartitioned(database, table)) {
 
@@ -285,7 +264,7 @@ vector<string> SqlJob::workerTables(string const& worker,
         // to build names of the corresponding chunk-specific partitioned tables.
         vector<ReplicaInfo> replicas;
         controller()->serviceProvider()->databaseServices()->findWorkerReplicas(
-            replicas, worker, database);
+                replicas, worker, database);
 
         for (auto&& replica: replicas) {
             auto const chunk = replica.chunk();
@@ -307,13 +286,11 @@ vector<string> SqlJob::workerTables(string const& worker,
 }
 
 
-vector<string> SqlJob::workerTables(string const& worker,
-                                    TransactionId const& transactionId,
-                                    string const& table,
-                                    bool allTables,
-                                    bool overlapTablesOnly) const {
-    vector<string> tables;
+vector<string> SqlJob::workerTables(
+        string const& worker, TransactionId const& transactionId,
+        string const& table, bool allTables, bool overlapTablesOnly) const {
 
+    vector<string> tables;
     auto const databaseServices = controller()->serviceProvider()->databaseServices();
     TransactionInfo const transactionInfo = databaseServices->transaction(transactionId);
 
@@ -356,8 +333,7 @@ vector<string> SqlJob::workerTables(string const& worker,
 }
 
 
-bool SqlJob::_isPartitioned(string const& database,
-                            string const& table) const {
+bool SqlJob::_isPartitioned(string const& database, string const& table) const {
 
     // Determine the type of the table
     auto const info = controller()->serviceProvider()->config()->databaseInfo(database);
