@@ -677,3 +677,11 @@ build_container_name_option = partial(
     help=build_container_default.help("The name to give the build container."),
     default=build_container_default.val(),
 )
+
+
+remove_option = partial(
+    click.option,
+    "--remove/--no-remove",
+    help="Remove docker container(s) after execution.",
+    default=True,
+)

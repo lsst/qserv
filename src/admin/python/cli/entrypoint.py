@@ -25,6 +25,7 @@
 
 import click
 import logging
+import sys
 
 from .options import (
     case_option,
@@ -97,6 +98,7 @@ def integration_test(**kwargs):
     """
     results = script.integration_test(**kwargs)
     click.echo(str(results))
+    sys.exit(0 if results.passed else 1)
 
 
 @entrypoint.command()

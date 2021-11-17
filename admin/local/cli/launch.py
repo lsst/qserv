@@ -768,7 +768,8 @@ def integration_test(
     tests_yaml: str,
     compare_results: bool,
     wait: int,
-) -> None:
+    remove: bool,
+) -> int:
     """Run integration tests.
 
     Parameters
@@ -816,6 +817,13 @@ def integration_test(
         If False will skip comparing test results.
     wait : `int`
         How many seconds to wait before launching the integration test container.
+    remove : `bool`
+        True if the containers should be removed after executing tests.
+
+    Returns
+    -------
+    returncode : `int`
+        The returncode of "entrypoint integration-test".
     """
     if wait:
         _log.info(f"Waiting {wait} seconds for qserv to stabilize.")
@@ -826,7 +834,6 @@ def integration_test(
         "docker",
         "run",
         "--init",
-        "--rm",
         "--name",
         itest_container,
         "--mount",
@@ -834,6 +841,8 @@ def integration_test(
         "--mount",
         f"src={itest_volume},dst=/qserv/data,type=volume",
     ]
+    if remove:
+        args.append("--rm")
     if bind:
         args.extend(bind_args(qserv_root=qserv_root, bind_names=bind))
     add_network_option(args, project)
@@ -863,7 +872,7 @@ def integration_test(
         return
     _log.debug(f"Running {' '.join(args)}")
     result = subprocess.run(args)
-    result.check_returncode()
+    return result.returncode
 
 
 def itest(
@@ -885,18 +894,25 @@ def itest(
     tests_yaml: str,
     compare_results: bool,
     wait: int,
-) -> None:
+    remove: bool,
+) -> int:
     """Run integration tests.
 
     Parameters
     ----------
     Similar to `integration_test`
+
+    Returns
+    -------
+    returncode : `int`
+        The returncode of "entrypoint integration-test".
     """
     ref_db_container_name = itest_ref(
         qserv_root, itest_file, itest_volume, project, mariadb_image, dry
     )
+    returncode = 1
     try:
-        integration_test(
+        returncode = integration_test(
             qserv_root,
             itest_container,
             itest_volume,
@@ -914,9 +930,12 @@ def itest(
             tests_yaml,
             compare_results,
             wait,
+            remove,
         )
     finally:
-        stop_itest_ref(ref_db_container_name, dry)
+        if remove:
+            stop_itest_ref(ref_db_container_name, dry)
+    return returncode
 
 
 def itest_rm(itest_volume: str, dry: bool) -> None:

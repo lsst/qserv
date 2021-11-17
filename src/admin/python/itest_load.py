@@ -27,11 +27,12 @@ import gzip
 import json
 import logging
 import mysql.connector
+from mysql.connector.cursor import MySQLCursor
 import os
 import shutil
 import subprocess
 from tempfile import TemporaryDirectory
-from typing import Any, Dict, Generator, List, NamedTuple, Optional
+from typing import Any, Dict, Generator, List, NamedTuple, Optional, Sequence, Union
 import yaml
 
 from .qserv_backoff import on_backoff, max_backoff_sec
@@ -51,6 +52,23 @@ def unzip(source: str, destination: str) -> None:
     os.makedirs(os.path.dirname(destination), exist_ok=True)
     with gzip.open(source, "rb") as _source, open(destination, "wb") as _target:
         shutil.copyfileobj(_source, _target)
+
+
+def execute(cursor: MySQLCursor, stmt: str, multi: bool = False) -> Sequence[Sequence[Union[str, int]]]:
+    """Execute a statement in a cursor, and clean up the cursor
+    so it can be closed."""
+    if multi:
+        results = cursor.execute(stmt, multi=True)
+        warnings = []
+        for result in results:
+            if result.with_rows:
+                result.fetchall()
+            w = cursor.fetchwarnings()
+            if w:
+                warnings.append(w)
+    else:
+        cursor.execute(stmt, multi)
+        return (cursor.fetchwarnings(),)
 
 
 @backoff.on_exception(
@@ -86,52 +104,53 @@ def _create_ref_db(ref_db_admin: str, name: str) -> None:
             stmt = stmt.format(name=name)
             _log.debug("_create_ref_db stmt:%s", stmt)
             with closing(cnx.cursor()) as cursor:
-                cursor.execute(stmt)
-                warnings = cursor.fetchwarnings()
+                warnings = execute(cursor, stmt)
                 if warnings:
                     _log.warn("Warnings were issued when creating db %s, %s", name, warnings)
 
 
-def _create_ref_table(uri: str, db: str, schema_file: str) -> None:
+def _create_ref_table(cnx: mysql.connector.connection, db: str, schema_file: str) -> None:
     """Create a table in the mysql database used for integration test reference.
 
     Parameters
     ----------
-    uri : `str`
-        The URI to the reference database for a user that has permission to
-        create a table.
+    cnx : `mysql.connector.connection`
+        Connection to the reference database that has permission to create a
+        table.
     db : `str`
         The name of the database to create the table in.
     schema_file : `str`
         Absolute path to a file that contains the schema used to create the
         table.
     """
-    with closing(mysql_connection(uri)) as cnx:
-        _log.debug("_create_ref_table in db %s schema_file:%s", db, schema_file)
-        if not cnx.is_connected():
-            cnx.connect()
-        with closing(cnx.cursor()) as cursor:
-            cursor.execute(f"USE {db}")
-            with open(schema_file) as f:
-                cursor.execute(f.read(), multi=True)
-                warnings = cursor.fetchwarnings()
-                if warnings:
-                    _log.warn(
-                        "Warnings were issued when creating table in db %s from schema file %s; %s",
-                        db,
-                        schema_file,
-                        warnings,
-                    )
+    _log.debug("_create_ref_table in db %s schema_file:%s", db, schema_file)
+    if not cnx.is_connected():
+        cnx.connect()
+    with closing(cnx.cursor()) as cursor:
+        stmt = f"USE {db}"
+        warnings = execute(cursor, stmt)
+        if warnings: _log.warn("Warnings were issued when running %s", stmt)
+        with open(schema_file) as f:
+            warnings = execute(cursor, f.read(), multi=True)
+            if warnings:
+                _log.warn(
+                    "Warnings were issued when creating table in db %s from schema file %s; %s",
+                    db,
+                    schema_file,
+                    warnings,
+                )
 
 
-def _load_ref_data(uri: str, data_file: str, db: str, table: str, field_sep: str) -> None:
+def _load_ref_data(
+    cnx: mysql.connector.connection, data_file: str, db: str, table: str, field_sep: str
+) -> None:
     """Load database data into the reference database.
 
     Parameters
     ----------
-    uri : `str`
-        The URI to the reference database for a user that has permission to load
-        data into the table.
+    cnx : `mysql.connector.connection`
+        Connection to the reference database that has permission to load data
+        into the table.
     data_file : `str`
         The path to the file that contains data to be loaded via LOAD DATA LOCAL
         INFILE.
@@ -142,23 +161,24 @@ def _load_ref_data(uri: str, data_file: str, db: str, table: str, field_sep: str
     field_sep : `str`
         The data separator used in the data_file.
     """
-    with closing(mysql_connection(uri, local_infile=True)) as cnx:
-        sql = f"LOAD DATA LOCAL INFILE '{data_file}' INTO TABLE {table} FIELDS TERMINATED BY '{field_sep}'"
-        _log.debug("_load_ref_data sql:%s", sql)
-        if not cnx.is_connected():
-            cnx.connect()
-        with closing(cnx.cursor()) as cursor:
-            cursor.execute(f"USE {db}")
-            cursor.execute(sql)
-            warnings = cursor.fetchwarnings()
-            if warnings:
-                _log.warn(
-                    "Warnings were issued loading data into db %s table %s from file %s; %s",
-                    db,
-                    table,
-                    data_file,
-                    warnings,
-                )
+    sql = f"LOAD DATA LOCAL INFILE '{data_file}' INTO TABLE {table} FIELDS TERMINATED BY '{field_sep}'"
+    _log.debug("_load_ref_data sql:%s", sql)
+    if not cnx.is_connected():
+        cnx.connect()
+    with closing(cnx.cursor()) as cursor:
+        stmt = f"USE {db}"
+        warnings = execute(cursor, stmt)
+        if warnings: _log.warn("Warnings were issued when running %s", sql)
+        warnings = execute(cursor, sql)
+        if warnings:
+            _log.warn(
+                "Warnings were issued loading data into db %s table %s from file %s; %s",
+                db,
+                table,
+                data_file,
+                warnings,
+            )
+        _log.info(f"inserted {cursor.rowcount} rows into {db}.{table}")
 
 
 @dataclass
@@ -332,56 +352,57 @@ def _load_database(load_db: LoadDb, ref_db_uri: str, ref_db_admin: str, repl_ctr
     _create_ref_db(ref_db_admin, load_db.name)
 
     for table in load_db.iter_tables():
-        _create_ref_table(ref_db_admin, load_db.name, table.ref_db_table_schema_file)
-        # TODO maybe we should be cosuming more info from each case's description.yaml (like field sep)
+        with closing(mysql_connection(ref_db_admin, local_infile=True)) as cnx:
+            _create_ref_table(cnx, load_db.name, table.ref_db_table_schema_file)
+            # TODO maybe we should be cosuming more info from each case's description.yaml (like field sep)
 
-        with TemporaryDirectory(dir=qserv_data_dir) as tmp_dir:
-            if table.is_gzipped:
-                data_file = os.path.join(tmp_dir, os.path.splitext(os.path.basename(table.data_file))[0])
-                unzip(source=table.data_file, destination=data_file)
-            else:
-                data_file = table.data_file
-            # Create partition the partitioned table data into chunks
-            staging_dir = os.path.join(tmp_dir, table.data_staging_dir)
-            if table.is_partitioned:
-                _partition(staging_dir, table, data_file)
+            with TemporaryDirectory(dir=qserv_data_dir) as tmp_dir:
+                if table.is_gzipped:
+                    data_file = os.path.join(tmp_dir, os.path.splitext(os.path.basename(table.data_file))[0])
+                    unzip(source=table.data_file, destination=data_file)
+                else:
+                    data_file = table.data_file
+                # Create partition the partitioned table data into chunks
+                staging_dir = os.path.join(tmp_dir, table.data_staging_dir)
+                if table.is_partitioned:
+                    _partition(staging_dir, table, data_file)
 
-            # Assume data is either comma separated (with csv) otherwise tab separated.
-            data_file_ext = os.path.splitext(data_file)[1]
-            _load_ref_data(
-                ref_db_uri,
-                data_file,
-                load_db.name,
-                table.table_name,
-                "," if data_file_ext == ".csv" else "\\t",
-            )
-
-            @backoff.on_exception(
-                exception=ReplicationInterface.CommandError,
-                wait_gen=backoff.expo,
-                on_backoff=on_backoff(log=_log),
-                max_time=max_backoff_sec,
-            )
-            def do_ingest_table_config() -> None:
-                repl.ingest_table_config(json.dumps(table.ingest_config))
-
-            do_ingest_table_config()
-
-            transaction_id = repl.start_transaction(load_db.name)
-            if table.is_partitioned:
-                repl.ingest_chunks_data(
-                    transaction_id=transaction_id,
-                    table_name=table.table_name,
-                    chunks_folder=staging_dir,
-                    chunk_info_file=os.path.join(staging_dir, chunk_info_file),
+                # Assume data is either comma separated (with csv) otherwise tab separated.
+                data_file_ext = os.path.splitext(data_file)[1]
+                _load_ref_data(
+                    cnx,
+                    data_file,
+                    load_db.name,
+                    table.table_name,
+                    "," if data_file_ext == ".csv" else "\\t",
                 )
-            else:
-                repl.ingest_table_data(
-                    transaction_id=transaction_id,
-                    table_name=table.table_name,
-                    data_file=data_file,
+
+                @backoff.on_exception(
+                    exception=ReplicationInterface.CommandError,
+                    wait_gen=backoff.expo,
+                    on_backoff=on_backoff(log=_log),
+                    max_time=max_backoff_sec,
                 )
-            repl.commit_transaction(transaction_id)
+                def do_ingest_table_config() -> None:
+                    repl.ingest_table_config(json.dumps(table.ingest_config))
+
+                do_ingest_table_config()
+
+                transaction_id = repl.start_transaction(load_db.name)
+                if table.is_partitioned:
+                    repl.ingest_chunks_data(
+                        transaction_id=transaction_id,
+                        table_name=table.table_name,
+                        chunks_folder=staging_dir,
+                        chunk_info_file=os.path.join(staging_dir, chunk_info_file),
+                    )
+                else:
+                    repl.ingest_table_data(
+                        transaction_id=transaction_id,
+                        table_name=table.table_name,
+                        data_file=data_file,
+                    )
+                repl.commit_transaction(transaction_id)
 
     repl.publish_database(load_db.name)
 
@@ -407,7 +428,8 @@ def _remove_database(case_data: Dict[Any, Any], ref_db_connection: str, repl_ctr
     sql = f"DROP DATABASE IF EXISTS {remove_db.name}"
     with closing(mysql_connection(uri=ref_db_connection)) as cnx:
         with closing(cnx.cursor()) as cursor:
-            cursor.execute(sql)
+            warnings = execute(cursor, sql)
+            if warnings: _log.warn("Warnings were issued when running %s", sql)
 
 
 def _get_cases(cases: Optional[List[str]], test_cases_data: List[Dict[Any, Any]]) -> List[Dict[Any, Any]]:

@@ -132,6 +132,7 @@ def itest_args(**kwargs):
         tests_yaml=ANY,
         compare_results=ANY,
         wait=ANY,
+        remove=ANY,
     )
     args.update(kwargs)
     return args
@@ -182,7 +183,7 @@ class QservCliTestCase(unittest.TestCase):
         build_mock.assert_called_once()
         build_mock.assert_called_with(**build_args(qserv_root=flag_root))
 
-    @patch.object(launch, "itest")
+    @patch.object(launch, "itest", return_value=0)
     def test_OptDefault_default(self, itest_mock):
         """Verify that an `opt.OptDefault` option value can be inferred from its
         associated environment variable.
