@@ -27,11 +27,12 @@ import gzip
 import json
 import logging
 import mysql.connector
+from mysql.connector.cursor import MySQLCursor
 import os
 import shutil
 import subprocess
 from tempfile import TemporaryDirectory
-from typing import Any, Dict, Generator, List, NamedTuple, Optional
+from typing import Any, Dict, Generator, List, NamedTuple, Optional, Sequence, Union
 import yaml
 
 from .qserv_backoff import on_backoff, max_backoff_sec
@@ -51,6 +52,23 @@ def unzip(source: str, destination: str) -> None:
     os.makedirs(os.path.dirname(destination), exist_ok=True)
     with gzip.open(source, "rb") as _source, open(destination, "wb") as _target:
         shutil.copyfileobj(_source, _target)
+
+
+def execute(cursor: MySQLCursor, stmt: str, multi: bool = False) -> Sequence[Sequence[Union[str, int]]]:
+    """Execute a statement in a cursor, and clean up the cursor
+    so it can be closed."""
+    if multi:
+        results = cursor.execute(stmt, multi=True)
+        warnings = []
+        for result in results:
+            if result.with_rows:
+                result.fetchall()
+            w = cursor.fetchwarnings()
+            if w:
+                warnings.append(w)
+    else:
+        cursor.execute(stmt, multi)
+        return (cursor.fetchwarnings(),)
 
 
 @backoff.on_exception(
@@ -86,8 +104,7 @@ def _create_ref_db(ref_db_admin: str, name: str) -> None:
             stmt = stmt.format(name=name)
             _log.debug("_create_ref_db stmt:%s", stmt)
             with closing(cnx.cursor()) as cursor:
-                cursor.execute(stmt)
-                warnings = cursor.fetchwarnings()
+                warnings = execute(cursor, stmt)
                 if warnings:
                     _log.warn("Warnings were issued when creating db %s, %s", name, warnings)
 
@@ -110,10 +127,11 @@ def _create_ref_table(cnx: mysql.connector.connection, db: str, schema_file: str
     if not cnx.is_connected():
         cnx.connect()
     with closing(cnx.cursor()) as cursor:
-        cursor.execute(f"USE {db}")
+        stmt = f"USE {db}"
+        warnings = execute(cursor, stmt)
+        if warnings: _log.warn("Warnings were issued when running %s", stmt)
         with open(schema_file) as f:
-            cursor.execute(f.read(), multi=True)
-            warnings = cursor.fetchwarnings()
+            warnings = execute(cursor, f.read(), multi=True)
             if warnings:
                 _log.warn(
                     "Warnings were issued when creating table in db %s from schema file %s; %s",
@@ -148,10 +166,10 @@ def _load_ref_data(
     if not cnx.is_connected():
         cnx.connect()
     with closing(cnx.cursor()) as cursor:
-        cursor.execute(f"USE {db}")
-        cursor.execute(sql)
-        _log.info(f"inserted {cursor.rowcount} rows into {db}.{table}")
-        warnings = cursor.fetchwarnings()
+        stmt = f"USE {db}"
+        warnings = execute(cursor, stmt)
+        if warnings: _log.warn("Warnings were issued when running %s", sql)
+        warnings = execute(cursor, sql)
         if warnings:
             _log.warn(
                 "Warnings were issued loading data into db %s table %s from file %s; %s",
@@ -160,6 +178,7 @@ def _load_ref_data(
                 data_file,
                 warnings,
             )
+        _log.info(f"inserted {cursor.rowcount} rows into {db}.{table}")
 
 
 @dataclass
@@ -409,7 +428,8 @@ def _remove_database(case_data: Dict[Any, Any], ref_db_connection: str, repl_ctr
     sql = f"DROP DATABASE IF EXISTS {remove_db.name}"
     with closing(mysql_connection(uri=ref_db_connection)) as cnx:
         with closing(cnx.cursor()) as cursor:
-            cursor.execute(sql)
+            warnings = execute(cursor, sql)
+            if warnings: _log.warn("Warnings were issued when running %s", sql)
 
 
 def _get_cases(cases: Optional[List[str]], test_cases_data: List[Dict[Any, Any]]) -> List[Dict[Any, Any]]:
