@@ -132,6 +132,7 @@ def itest_args(**kwargs):
         tests_yaml=ANY,
         compare_results=ANY,
         wait=ANY,
+        remove=ANY,
     )
     args.update(kwargs)
     return args

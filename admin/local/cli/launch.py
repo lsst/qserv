@@ -768,6 +768,7 @@ def integration_test(
     tests_yaml: str,
     compare_results: bool,
     wait: int,
+    remove: bool,
 ) -> int:
     """Run integration tests.
 
@@ -816,6 +817,8 @@ def integration_test(
         If False will skip comparing test results.
     wait : `int`
         How many seconds to wait before launching the integration test container.
+    remove : `bool`
+        True if the containers should be removed after executing tests.
 
     Returns
     -------
@@ -831,7 +834,6 @@ def integration_test(
         "docker",
         "run",
         "--init",
-        "--rm",
         "--name",
         itest_container,
         "--mount",
@@ -839,6 +841,8 @@ def integration_test(
         "--mount",
         f"src={itest_volume},dst=/qserv/data,type=volume",
     ]
+    if remove:
+        args.append("--rm")
     if bind:
         args.extend(bind_args(qserv_root=qserv_root, bind_names=bind))
     add_network_option(args, project)
@@ -890,6 +894,7 @@ def itest(
     tests_yaml: str,
     compare_results: bool,
     wait: int,
+    remove: bool,
 ) -> int:
     """Run integration tests.
 
@@ -925,9 +930,11 @@ def itest(
             tests_yaml,
             compare_results,
             wait,
+            remove,
         )
     finally:
-        stop_itest_ref(ref_db_container_name, dry)
+        if remove:
+            stop_itest_ref(ref_db_container_name, dry)
     return returncode
 
 

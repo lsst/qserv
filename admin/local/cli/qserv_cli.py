@@ -72,6 +72,7 @@ from opt import (
     qserv_env_vals,
     qserv_image_ev,
     qserv_image_option,
+    remove_option,
     user_build_image_option,
     user_option,
     run_base_image_option,
@@ -364,6 +365,7 @@ def run_debug(
     f"Default is {click.style('0', fg='green', bold=True)}.",
     default=0,
 )
+@remove_option()
 @dry_option()
 def itest(
     qserv_root: str,
@@ -384,6 +386,7 @@ def itest(
     tests_yaml: str,
     compare_results: bool,
     wait: int,
+    remove: bool,
 ) -> None:
     """Run integration tests.
 
@@ -407,6 +410,7 @@ def itest(
         tests_yaml=tests_yaml,
         compare_results=compare_results,
         wait=wait,
+        remove=remove,
     )
     sys.exit(returncode)
 
