@@ -283,9 +283,10 @@ def make(
         build_dir(qserv_build_root.format(user=user)),
         build_image,
         "make",
-        (f"-j{jobs}" if jobs else "-j"),
-        "install",
     ]
+    if jobs:
+        args.append(f"-j{jobs}")
+    args.append("install"),
     if unit_test:
         args.append("test")
     if dry:

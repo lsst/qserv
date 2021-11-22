@@ -54,21 +54,32 @@ def unzip(source: str, destination: str) -> None:
         shutil.copyfileobj(_source, _target)
 
 
-def execute(cursor: MySQLCursor, stmt: str, multi: bool = False) -> Sequence[Sequence[Union[str, int]]]:
-    """Execute a statement in a cursor, and clean up the cursor
-    so it can be closed."""
+def execute(cursor: MySQLCursor, stmt: str, multi: bool = False):
+    """Execute a statement in a cursor, and clean up the cursor so it can be
+    closed without causing warnings on the server."""
+    warnings = []
+    results = []
+    # cursors may contain results objects (if multi==True) or a MySQLCursor (if
+    # multi==False)
+    cursors = []
+
     if multi:
-        results = cursor.execute(stmt, multi=True)
-        warnings = []
-        for result in results:
-            if result.with_rows:
-                result.fetchall()
-            w = cursor.fetchwarnings()
-            if w:
-                warnings.append(w)
+        cursors = cursor.execute(stmt, multi=True)
     else:
-        cursor.execute(stmt, multi)
-        return (cursor.fetchwarnings(),)
+        cursor.execute(stmt, multi=False)
+        cursors = [cursor]
+
+    for cursor in cursors:
+        if cursor.with_rows:
+            for row in cursor.fetchall():
+                results.append(row)
+            if (w := cursor.fetchwarnings()):
+                warnings.append(w)
+
+    if warnings:
+        _log.warn("Warnings were issued when executing \"%s\": %s", stmt, warnings)
+    if results:
+        _log.info("Results were returned when executing \"%s\": %s", results, stmt)
 
 
 @backoff.on_exception(
@@ -104,9 +115,7 @@ def _create_ref_db(ref_db_admin: str, name: str) -> None:
             stmt = stmt.format(name=name)
             _log.debug("_create_ref_db stmt:%s", stmt)
             with closing(cnx.cursor()) as cursor:
-                warnings = execute(cursor, stmt)
-                if warnings:
-                    _log.warn("Warnings were issued when creating db %s, %s", name, warnings)
+                execute(cursor, stmt)
 
 
 def _create_ref_table(cnx: mysql.connector.connection, db: str, schema_file: str) -> None:
@@ -128,17 +137,9 @@ def _create_ref_table(cnx: mysql.connector.connection, db: str, schema_file: str
         cnx.connect()
     with closing(cnx.cursor()) as cursor:
         stmt = f"USE {db}"
-        warnings = execute(cursor, stmt)
-        if warnings: _log.warn("Warnings were issued when running %s", stmt)
+        execute(cursor, stmt)
         with open(schema_file) as f:
-            warnings = execute(cursor, f.read(), multi=True)
-            if warnings:
-                _log.warn(
-                    "Warnings were issued when creating table in db %s from schema file %s; %s",
-                    db,
-                    schema_file,
-                    warnings,
-                )
+            execute(cursor, f.read(), multi=True)
 
 
 def _load_ref_data(
@@ -167,17 +168,8 @@ def _load_ref_data(
         cnx.connect()
     with closing(cnx.cursor()) as cursor:
         stmt = f"USE {db}"
-        warnings = execute(cursor, stmt)
-        if warnings: _log.warn("Warnings were issued when running %s", sql)
-        warnings = execute(cursor, sql)
-        if warnings:
-            _log.warn(
-                "Warnings were issued loading data into db %s table %s from file %s; %s",
-                db,
-                table,
-                data_file,
-                warnings,
-            )
+        execute(cursor, stmt)
+        execute(cursor, sql)
         _log.info(f"inserted {cursor.rowcount} rows into {db}.{table}")
 
 
@@ -428,8 +420,7 @@ def _remove_database(case_data: Dict[Any, Any], ref_db_connection: str, repl_ctr
     sql = f"DROP DATABASE IF EXISTS {remove_db.name}"
     with closing(mysql_connection(uri=ref_db_connection)) as cnx:
         with closing(cnx.cursor()) as cursor:
-            warnings = execute(cursor, sql)
-            if warnings: _log.warn("Warnings were issued when running %s", sql)
+            execute(cursor, sql)
 
 
 def _get_cases(cases: Optional[List[str]], test_cases_data: List[Dict[Any, Any]]) -> List[Dict[Any, Any]]:
