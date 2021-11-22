@@ -563,7 +563,7 @@ jobs_option = partial(
     click.option,
     "-j",
     "--jobs",
-    help="Same as the gnu make -j option; the number of make recipies to execute at once. Default: -j",
+    help="Same as the gnu make -j option; the number of make recipies to execute at once.",
     type=int,
 )
 
