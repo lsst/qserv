@@ -99,6 +99,10 @@ Foreman::~Foreman() {
 
 
 void Foreman::_setRunFunc(shared_ptr<wbase::Task> const& task) {
+
+    // If there are no problems, this lambda function creates
+    // a QueryRunner instance for this Task and then runs
+    // QueryRunner::runQuery() for the Task.
     auto func = [this, task](util::CmdData*){
         proto::TaskMsg const& msg = *task->msg;
         int const resultProtocol = 2; // See proto/worker.proto Result protocol
@@ -124,10 +128,9 @@ void Foreman::_setRunFunc(shared_ptr<wbase::Task> const& task) {
                 }
             }
         }
-        // Transmission is done, but 'task' contains statistics that are still useful, but
-        // the resources used by sendChannel need to be freed quickly.
-        //   The QueryRunner class access to sendChannel for results is over by this point,
-        //   so this wont be an issue there.
+        // Transmission is done, but 'task' contains statistics that are still useful.
+        // However, the resources used by sendChannel need to be freed quickly.
+        // The QueryRunner class access to sendChannel for results is over by this point.
         task->resetSendChannel(); // Frees its xrdsvc::SsiRequest object.
     };
 

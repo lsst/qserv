@@ -536,8 +536,6 @@ void QueryRequest::_processData(JobQuery::Ptr const& jq, int blen, bool xrdLast)
 void QueryRequest::_flushError(JobQuery::Ptr const& jq) {
     ResponseHandler::Error err = jq->getDescription()->respHandler()->getError();
     jq->getStatus()->updateInfo(_jobIdStr, JobStatus::MERGE_ERROR, err.getCode(), err.getMsg());
-    // This error can be caused by errors in the SQL
-    _retried = true; // Do not retry
     _errorFinish(true);
 }
 
