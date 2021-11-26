@@ -5,7 +5,7 @@ on:
   push:
   pull_request:
     branches:
-      - master
+      - main
 jobs:
   build:
     name: Build image
@@ -185,7 +185,7 @@ jobs:
   #     - name: Install kustomize
   #       run: |
   #         VERSION="4.0.5"
-  #         curl -lO "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh"
+  #         curl -lO "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/main/hack/install_kustomize.sh"
   #         chmod +x ./install_kustomize.sh
   #         sudo rm -f /usr/local/bin/kustomize
   #         sudo ./install_kustomize.sh "$VERSION" /usr/local/bin
