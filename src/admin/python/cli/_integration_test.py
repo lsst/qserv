@@ -60,7 +60,7 @@ def _pull_testdata(destination: str, qserv_testdata_repo: str) -> None:
         _log.warn("Removing existing qserv_testdata files and pulling new ones.")
         shutil.rmtree(destination)
     os.makedirs(destination)
-    tar_filename = os.path.join(destination, "master.tar")
+    tar_filename = os.path.join(destination, "main.tar")
 
     # Get a tarball of the testdata repo
     response = requests.get(qserv_testdata_repo, stream=True)
@@ -70,7 +70,7 @@ def _pull_testdata(destination: str, qserv_testdata_repo: str) -> None:
         shutil.copyfileobj(response.raw, f)
 
     # Extract the tarball
-    args = ["tar", "xpvf", "master.tar", "--strip-components", "1"]
+    args = ["tar", "xpvf", "main.tar", "--strip-components", "1"]
     result = subprocess.run(args, cwd=destination, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     result.check_returncode()
 
