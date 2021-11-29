@@ -7,7 +7,7 @@ czar-db-admin-uri: mysql://root:CHANGEME@czar-db:3306
 # the folder where the testdata repo will be downladed:
 qserv-testdata-dir: /qserv/data/qserv_testdata
 # location where a tarball can be downloaded from:
-qserv-testdata-repo: https://github.com/lsst/qserv_testdata/tarball/master
+qserv-testdata-repo: https://github.com/lsst/qserv_testdata/tarball/main
 # relative path in the repo to the test case folders:
 qserv-testdata-test-case-dir: datasets
 testdata-output: /qserv/data/integration_test/
