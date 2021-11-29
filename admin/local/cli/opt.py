@@ -160,7 +160,7 @@ class FlagEnvVal(EV):
 
 base_dockerfile = "admin/tools/docker/base/Dockerfile"
 user_dockerfile = "admin/tools/docker/build-user/Dockerfile"
-run_base_dockerfile = "admin/tools/docker/run/Dockerfile"
+run_base_dockerfile = "admin/tools/docker/base/Dockerfile"
 mariadb_dockerfile = "admin/tools/docker/mariadb/Dockerfile"
 
 
