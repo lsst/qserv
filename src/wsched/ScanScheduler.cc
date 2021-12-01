@@ -66,7 +66,6 @@ ScanScheduler::ScanScheduler(string const& name, int maxThreads, int maxReserve,
     : SchedulerBase{name, maxThreads, maxReserve, maxActiveChunks, priority},
       _memMan{memMan}, _minRating{minRating}, _maxRating{maxRating},
       _maxTimeMinutes{maxTimeMinutes} {
-    //_taskQueue = make_shared<ChunkDisk>(_memMan); // keeping for testing.
     _taskQueue = make_shared<ChunkTasksQueue>(this, _memMan);
     assert(_minRating <= _maxRating);
 }

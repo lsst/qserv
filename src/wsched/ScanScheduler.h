@@ -37,7 +37,6 @@ namespace lsst {
 namespace qserv {
 namespace wsched {
     class BlendScheduler;
-    class ChunkDisk;
 }}} // End of forward declarations
 
 

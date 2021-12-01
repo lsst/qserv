@@ -455,6 +455,21 @@ void QueryRequest::_processData(JobQuery::Ptr const& jq, int blen, bool xrdLast)
         _errorFinish(true);
         return;
     }
+    auto executive = jq->getExecutive();
+    if (executive == nullptr || executive->getCancelled() || executive->isLimitRowComplete()) {
+        if (executive == nullptr || executive->getCancelled()) {
+            LOGS(_log, LOG_LVL_WARN, "QueryRequest::_processData job was cancelled.");
+        } else {
+            int dataIgnored = (executive->incrDataIgnoredCount());
+            if ((dataIgnored - 1)%1000 == 0) {
+                LOGS(_log, LOG_LVL_INFO, "QueryRequest::_processData ignoring, enough rows already "
+                                      << "dataIgnored=" << dataIgnored);
+            }
+        }
+        _errorFinish(true);
+        return;
+    }
+
 
     // Get a copy of the shared buffer pointer so askForResponseDataCmd can be deleted.
     ResponseHandler::BufPtr bufPtr = _askForResponseDataCmd->getBufPtr();
@@ -518,6 +533,10 @@ void QueryRequest::_processData(JobQuery::Ptr const& jq, int blen, bool xrdLast)
             _finish();
             // At this point all blocks for this job have been read, there's no point in
             // having XrdSsi wait for anything.
+
+            // If the query meets the limit row complete complete criteria, it will start
+            // squashing superfluous results so the answer can be returned quickly.
+            executive->checkLimitRowComplete();
             return;
         } else {
             _askForResponseDataCmd = make_shared<AskForResponseDataCmd>(shared_from_this(), ++_respCount, jq, nextBufSize);
