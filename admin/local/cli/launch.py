@@ -574,9 +574,10 @@ def run_dev(
         "docker",
         "run",
         "--init",
+        "--rm",
         "--name",
         test_container,
-        "-dit",
+        "-it",
     ]
     if bind:
         args.extend(bind_args(qserv_root=qserv_root, bind_names=bind))
