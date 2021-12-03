@@ -20,24 +20,30 @@
 
 
 import backoff
+from contextlib import closing
 from functools import partial
 import json
 import logging
+import mysql.connector
 import os
 from pathlib import Path
+from sqlalchemy.engine.url import URL
 import subprocess
-import shutil
 import sys
 import time
-from typing import Callable, Dict, List, Optional, Union
-from urllib.parse import urlparse
+from typing import Callable, Dict, List, Optional, Sequence, Union
+from urllib.parse import ParseResult, urlparse
+from sqlalchemy.engine.url import make_url
 
 from lsst.qserv.admin.qserv_backoff import on_backoff
 from lsst.qserv.admin.template import apply_template_cfg_file, save_template_cfg
 from lsst.qserv.schema import smig, smig_block
 from lsst.qserv.schema.schemaMigMgr import SchemaUpdateRequired
 from lsst.qserv.admin.replicationInterface import ReplicationInterface
-from . import _integration_test
+from . import (
+    _integration_test,
+    options,
+)
 
 
 smig_dir_env_var = "QSERV_SMIG_DIRECTORY"
@@ -157,6 +163,70 @@ def _do_smig_block(module_smig_dir: str, module: str, connection: str):
     )
 
 
+class InvalidQueryParameter(RuntimeError):
+    """Raised when a URI contains query keys that are not supported for that
+    URI.
+    """
+    pass
+
+
+def _process_uri(uri: str, query_keys: Sequence[str], option: str, block: bool) -> URL:
+    """Convert a string URI to a sqlalchemy URL. Verify query keys are valid.
+    If indicated by block==True and a hostname and port are provided, wait until
+    the database at `uri` is processing connection requests (even if they are
+    rejected, if the socket is open the database is running).
+
+    Parameters
+    ----------
+    uri : str
+        The uri string to process.
+    query_keys : Sequence[str]
+        The keys that are allowed to be in the query.
+    option : str
+        The option name that is associated with the URI.
+    block : bool
+        If true and the a hostname and port are in the uri, then block until the
+        the server is processing TCP connections.
+
+    Raises
+    ------
+    InvalidQueryParameter
+        Raised if there are values in `keys` that are not in `query_keys`
+
+    Returns
+    -------
+    url : sqlalchemy.engine.url.URL
+        The `URL` object derived from the parsed `uri`.
+    """
+    @backoff.on_exception(
+        exception=mysql.connector.errors.DatabaseError,
+        wait_gen=backoff.expo,
+        on_backoff=on_backoff(log=_log),
+    )
+    def wait_for_db(url: URL):
+        try:
+            with closing(
+                mysql.connector.connect(
+                    user=url.username or "",
+                    password=url.password or "",
+                    host=url.host or "",
+                    port=url.port or "",
+                )
+            ):
+                pass
+        except mysql.connector.errors.ProgrammingError:
+            # ProgrammingError is raised if we don't have permission to connect (yet...).
+            # This is ok; the db is active & reachable and that's all we're waiting for here.
+            pass
+
+    url = make_url(uri)
+    if (any(remainders := set(url.query.keys()) - set(query_keys))):
+        raise InvalidQueryParameter(f"Invalid query key(s) ({remainders}); {option} accepts {query_keys or 'no keys'}.")
+    if block and url.host and url.port:
+        wait_for_db(url)
+    return url
+
+
 def smig_czar(connection, update):
     """Apply schema migration scripts to czar modules.
 
@@ -179,8 +249,8 @@ def smig_czar(connection, update):
 
 
 def smig_replication_controller(
-    connection: str,
-    repl_connection: Optional[str],
+    db_uri: Optional[str],
+    db_admin_uri: str,
     update: Optional[bool],
     set_initial_configuration: Optional[Callable[[], None]] = None,
 ):
@@ -188,12 +258,12 @@ def smig_replication_controller(
 
     Parameters
     ----------
-    connection : `str`
-        Connection string in format mysql://user:pass@host:port/database
-    repl_connection : `str`, optional
+    db_uri : `str`, optional
         The connection string for the replication manager database for the
         non-admin user. Required when initializing the database, not needed
         when upgrading the database.
+    db_admin_uri : `str`
+        Connection string in format mysql://user:pass@host:port/database
     update : bool, optional
         False if workers may only be smigged from an `Uninitialized` state, or
         True if they maybe upgraded from a (previously initialized) version, by
@@ -206,11 +276,11 @@ def smig_replication_controller(
     _do_smig(
         replication_controller_smig_dir,
         "replica",
-        connection,
+        db_admin_uri,
         update,
         mig_mgr_args=dict(
             set_initial_configuration=set_initial_configuration,
-            repl_connection=repl_connection,
+            repl_connection=db_uri,
         )
         if set_initial_configuration
         else None,
@@ -291,7 +361,7 @@ def enter_xrootd_manager(cmsd_manager: str):
     )
 
 
-def enter_worker_cmsd(cmsd_manager: str, vnid: str, debug_port: Optional[int], connection: str):
+def enter_worker_cmsd(cmsd_manager: str, vnid: str, debug_port: Optional[int], db_uri: str):
     """Start a worker cmsd node.
 
     Parameters
@@ -302,24 +372,30 @@ def enter_worker_cmsd(cmsd_manager: str, vnid: str, debug_port: Optional[int], c
         The virtual network id for this component.
     debug_port : int or None
         If not None, indicates that gdbserver should be run on the given port number.
-    connection : str
-        Connection string to the worker database.
+    db_uri : str
+        The non-admin URI to the worker's databse.
     """
-    parsed = urlparse(connection)
+    url = _process_uri(
+        uri=db_uri,
+        query_keys=("socket",),
+        option=options.db_uri_option.args[0],
+        block=True,
+    )
     save_template_cfg(
         dict(
             vnid=vnid,
             cmsd_manager=cmsd_manager,
-            db_host=parsed.hostname,
-            db_port=parsed.port,
-            mysqld_user_qserv=parsed.username,
+            db_host=url.host,
+            db_port=url.port or "",
+            db_socket=url.query.get("socket", ""),
+            mysqld_user_qserv=url.username,
         )
     )
 
     apply_template_cfg_file(cmsd_worker_cfg_template, cmsd_worker_cfg_path)
     apply_template_cfg_file(xrdssi_cfg_template, xrdssi_cfg_path)
 
-    _do_smig_block(admin_smig_dir, "admin", connection)
+    _do_smig_block(admin_smig_dir, "admin", db_uri)
 
     args = [
         "cmsd",
@@ -339,7 +415,8 @@ def enter_worker_cmsd(cmsd_manager: str, vnid: str, debug_port: Optional[int], c
 
 def enter_worker_xrootd(
     debug_port: Optional[int],
-    connection: str,
+    db_uri: str,
+    db_admin_uri: str,
     vnid: str,
     cmsd_manager: str,
     repl_ctl_dn: str,
@@ -352,8 +429,10 @@ def enter_worker_xrootd(
     ----------
     debug_port : int or None
         If not None, indicates that gdbserver should be run on the given port number.
-    connection : str
-        Connection string to the worker database.
+    db_uri : str
+        The non-admin URI to the proxy's databse.
+    db_admin_uri : str
+        The admin URI to the proxy's database.
     vnid : str
         The virtual network id for this component.
     cmsd_manager : str
@@ -375,13 +454,25 @@ def enter_worker_xrootd(
     # MLOCK_AMOUNT=$(grep MemTotal /proc/meminfo | awk '{printf("%.0f\n", $2 - 1000000)}')
     # ulimit -l "$MLOCK_AMOUNT"
 
-    parsed = urlparse(connection)
+    url = _process_uri(
+        uri=db_uri,
+        query_keys=("socket",),
+        option=options.db_uri_option.args[0],
+        block=True,
+    )
+    _ = _process_uri(
+        uri=db_admin_uri,
+        query_keys=("socket",),
+        option=options.db_admin_uri_option.args[0],
+        block=True,
+    )
     save_template_cfg(
         dict(
             vnid=vnid,
             cmsd_manager=cmsd_manager,
-            db_host=parsed.hostname,
-            db_port=parsed.port,
+            db_host=url.host,
+            db_port=url.port or "",
+            db_socket=url.query.get("socket", ""),
             mysqld_user_qserv=db_qserv_user,
             replication_controller_FQDN=repl_ctl_dn,
             mysql_monitor_password=mysql_monitor_password,
@@ -389,7 +480,7 @@ def enter_worker_xrootd(
     )
 
     # enter_worker_cmsd smigs the worker db for that node
-    smig_worker(connection, update=False)
+    smig_worker(db_admin_uri, update=False)
 
     # TODO worker (and manager) xrootd+cmsd pair should "share" the cfg file
     # it's in different pods but should be same source & processing.
@@ -414,14 +505,14 @@ def enter_worker_xrootd(
 
 
 def enter_worker_repl(
-    connection: str, repl_connection: str, debug_port: Optional[int], run: bool, instance_id: str
+    db_admin_uri: str, repl_connection: str, debug_port: Optional[int], run: bool, instance_id: str
 ):
     """Start a worker replication node.
 
     Parameters
     ----------
-    connection : str
-        Connection string to the worker database.
+    db_admin_uri : str
+        The admin URI to the worker's database.
     repl_connection : `str`
         The connection string for the replication manager database for the
         non-admin user (created using the `connection`), the user is typically
@@ -439,6 +530,19 @@ def enter_worker_repl(
         many) Replication System's setups in case of an accidental
         mis-configuration.
     """
+    _ = _process_uri(
+        uri=db_admin_uri,
+        query_keys=(),
+        option=options.db_admin_uri_option.args[0],
+        block=True,
+    )
+    _ = _process_uri(
+        uri=repl_connection,
+        query_keys=(),
+        option=options.db_admin_uri_option.args[0],
+        block=True,
+    )
+
     # N.B. When the controller smigs the replication database, if it is migrating from Uninitialized
     # it will also set initial configuration values in the replication database. It sets the schema
     # version of the replica database *after* setting the config values, which allows us to wait here
@@ -452,7 +556,7 @@ def enter_worker_repl(
     args = [
         "qserv-replica-worker",
         f"--config={repl_connection}",
-        f"--qserv-worker-db={connection}",
+        f"--qserv-worker-db={db_admin_uri}",
         "--debug",
         f"--instance-id={instance_id}",
     ]
@@ -472,65 +576,64 @@ def enter_worker_repl(
 
 
 def enter_proxy(
-    db_scheme: str,
-    connection: str,
-    mysql_user_qserv: str,
+    db_uri: str,
+    db_admin_uri: str,
     repl_ctl_dn: str,
     mysql_monitor_password: str,
     xrootd_manager: str,
-    czar_db_host: str,
-    czar_db_port: int,
-    czar_db_socket: str,
+    proxy_backend_address: str,
 ):
     """Entrypoint script for the proxy container.
 
     Parameters
     ----------
-    db_scheme : str
-        The scheme for the proxy backend address.
-    connection : str
-        The rest of the connection string (in addition to `db_scheme`) for the proxy backend address.
-    mysql_user_qserv : str
-        The qserv user to use for the mysql database.
+    db_uri : str
+        The non-admin URI to the proxy's databse.
+    db_admin_uri : str
+        The admin URI to the proxy's database.
     repl_ctl_dn : str
         The fully qualified domain name of the replication controller.
     mysql_monitor_password : str
         The password used by applications that monitor via the worker database.
     xrootd_manager : `str`
         The host name of the xrootd manager node.
-    czar_db_host : str
-        The name of the czar database host.
-    czar_db_port : int
-        The port the czar database is serving on.
-    czar_db_socket : str
-        The unix socket of the czar database host. This can be used if the proxy
-        container and the database are running on the same filesystem (e.g. in a
-        pod).
+    proxy_backend_address : `str`
+        A colon-separated ip address and port number (e.g. "127.0.0.1:3306")
+        substituded into my-proxy.cnf.jinja, used by mysql proxy.
     """
-    connection = f"{db_scheme}://{connection}"
-    parsed = urlparse(connection)
+    url = _process_uri(
+        uri=db_uri,
+        query_keys=("socket",),
+        option=options.db_uri_option.args[0],
+        block=True,
+    )
+    _ = _process_uri(
+        uri=db_admin_uri,
+        query_keys=("socket",),
+        option=options.db_admin_uri_option.args[0],
+        block=True,
+    )
 
     # TODO the empty chunk path should be defined in some default configuration
     # somewhere/somehow. TBD. Note that it must be created in the dockerfile
     # by the root user and chown'd to the qserv user.
     save_template_cfg(
         dict(
-            mysqld_user_qserv=mysql_user_qserv,
+            mysqld_user_qserv=url.username,
             replication_controller_FQDN=repl_ctl_dn,
             mysql_monitor_password=mysql_monitor_password,
             empty_chunk_path="/qserv/data/qserv",
             xrootd_manager=xrootd_manager,
-            backend_host=parsed.hostname,
-            backend_port=parsed.port,
-            czar_db_host=czar_db_host,
-            czar_db_port=czar_db_port,
-            czar_db_socket=czar_db_socket,
+            proxy_backend_address=proxy_backend_address,
+            czar_db_host=url.host or "",
+            czar_db_port=url.port or "",
+            czar_db_socket=url.query.get("socket", ""),
         )
     )
     apply_template_cfg_file(czar_proxy_config_template, czar_proxy_config_path)
     apply_template_cfg_file(czar_config_template, czar_config_path)
 
-    smig_czar(connection, update=False)
+    smig_czar(db_admin_uri, update=False)
 
     env = dict(os.environ, QSERV_CONFIG=czar_config_path)
 
@@ -544,8 +647,8 @@ def enter_proxy(
 
 
 def enter_replication_controller(
-    connection: str,
-    repl_connection: str,
+    db_uri: str,
+    db_admin_uri: str,
     workers: List[str],
     instance_id: str,
     run: bool,
@@ -556,13 +659,13 @@ def enter_replication_controller(
 
     Parameters
     ----------
-    connection : `str`
-        The connection string for the replication manager database for the
-        administrative (typically root) user.
-    repl_connection : `str`
+    db_uri : `str`
         The connection string for the replication manager database for the
         non-admin user (created using the `connection`), the user is typically
         "qsreplica".
+    db_admin_uri : `str`
+        The connection string for the replication manager database for the
+        administrative (typically root) user.
     workers : `list` [`str`]
         A list of parameters for each worker in the format "key=value,..."
     instance_id : `str`
@@ -587,7 +690,7 @@ def enter_replication_controller(
         args = [
             "qserv-replica-config",
             "UPDATE_GENERAL",
-            f"--config={repl_connection}",
+            f"--config={db_uri}",
             f"--xrootd.host={xrootd_manager}",
         ]
         _log.debug(f"Calling {' '.join(args)}")
@@ -603,7 +706,7 @@ def enter_replication_controller(
             args = [
                 "qserv-replica-config",
                 "ADD_WORKER",
-                f"--config={repl_connection}",
+                f"--config={db_uri}",
                 name,
                 host,
             ]
@@ -612,14 +715,27 @@ def enter_replication_controller(
             _run(args, run=run, check_returncode=True)
         _log.info(f"Finished setting initial configuration {workers}")
 
+    _ = _process_uri(
+        uri=db_uri,
+        query_keys=(),
+        option=options.db_uri_option.args[0],
+        block=True,
+    )
+    _ = _process_uri(
+        uri=db_admin_uri,
+        query_keys=("socket",),
+        option=options.db_admin_uri_option.args[0],
+        block=True,
+    )
+
     # The replication controller depends on this folder existing and does not create it if it's missing.
     # It should get fixed in DM-30074. For now we create it here.
     os.makedirs("/qserv/data/ingest", exist_ok=True)
 
     if run:
         smig_replication_controller(
-            connection,
-            repl_connection=repl_connection,
+            db_admin_uri=db_admin_uri,
+            db_uri=db_uri,
             update=False,
             set_initial_configuration=partial(set_initial_configuartion, workers, xrootd_manager),
         )
@@ -628,7 +744,7 @@ def enter_replication_controller(
 
     args = [
         "qserv-replica-master-http",
-        f"--config={repl_connection}",
+        f"--config={db_uri}",
         f"--instance-id={instance_id}",
         f"--qserv-czar-db={qserv_czar_db}",
         f"--http-root={replica_controller_http_root}",
@@ -648,7 +764,7 @@ def smig_update(czar_connection: str, worker_connections: List[str], repl_connec
         Connection string to the czar database.
     worker_connections : `list` [ `str` ]
         Connection strings to the worker databases.
-    repl_ctrl_connection : `str`
+    repl_connection : `str`
         Connection string replication controller database.
     """
     if czar_connection:
@@ -657,7 +773,7 @@ def smig_update(czar_connection: str, worker_connections: List[str], repl_connec
         for c in worker_connections:
             smig_worker(connection=c, update=True)
     if repl_connection:
-        smig_replication_controller(repl_connection, repl_connection=None, update=True)
+        smig_replication_controller(db_admin_uri=repl_connection, db_uri=None, update=True)
 
 
 def _run(
