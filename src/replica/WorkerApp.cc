@@ -76,11 +76,6 @@ WorkerApp::WorkerApp(int argc, char* argv[])
 
     // Configure the command line parser
 
-    parser().required(
-        "worker",
-        "The name of a worker.",
-        _worker);
-
     parser().option(
         "qserv-worker-db",
         "A connection url for the MySQL service of the Qserv worker database.",
@@ -114,8 +109,25 @@ int WorkerApp::runImpl() {
         _qservWorkerDbUrl = "******";
     }
 
+    // Read a unique identifier of the worker from Qserv's worker database.
+    string worker;
+    {
+        // The RAII-style connection handler will rollback a transaction
+        // and close the MySQL connection in case of exceptions.
+        database::mysql::ConnectionHandler const handler(
+                database::mysql::Connection::open(Configuration::qservWorkerDbParams("qservw_worker")));
+        handler.conn->executeInOwnTransaction([&worker,&context](decltype(handler.conn) conn) {
+            string const colname = "id";
+            string const query = "SELECT " + conn->sqlId(colname) + " FROM " + conn->sqlId("Id");
+            if (!conn->executeSingleValueSelect(query, colname, worker)) {
+                throw invalid_argument(context + "worker identity is not set in the Qserv worker database.");
+            }
+        });
+        LOGS(_log, LOG_LVL_INFO, context << "worker: " << worker);
+    }
+
     // Make sure the worker exists
-    auto const workerInfo = serviceProvider()->config()->workerInfo(_worker);
+    auto const workerInfo = serviceProvider()->config()->workerInfo(worker);
 
     // ATTENTION: Worker services depend on a number of folders that are used for
     // storing intermediate files of various sizes. Locations (absolute path names)
@@ -135,27 +147,27 @@ int WorkerApp::runImpl() {
     );
     WorkerRequestFactory requestFactory(serviceProvider(), connectionPool);
 
-    auto const reqProcSvr = WorkerServer::create(serviceProvider(), requestFactory, _worker);
+    auto const reqProcSvr = WorkerServer::create(serviceProvider(), requestFactory, worker);
     thread reqProcSvrThread([reqProcSvr] () {
         reqProcSvr->run();
     });
 
-    auto const fileSvr = FileServer::create(serviceProvider(), _worker);
+    auto const fileSvr = FileServer::create(serviceProvider(), worker);
     thread fileSvrThread([fileSvr]() {
         fileSvr->run();
     });
 
-    auto const ingestSvr = IngestSvc::create(serviceProvider(), _worker, _authKey);
+    auto const ingestSvr = IngestSvc::create(serviceProvider(), worker, _authKey);
     thread ingestSvrThread([ingestSvr]() {
         ingestSvr->run();
     });
 
-    auto const ingestHttpSvr = IngestHttpSvc::create(serviceProvider(), _worker, _authKey, _adminAuthKey);
+    auto const ingestHttpSvr = IngestHttpSvc::create(serviceProvider(), worker, _authKey, _adminAuthKey);
     thread ingestHttpSvrThread([ingestHttpSvr]() {
         ingestHttpSvr->run();
     });
 
-    auto const exportSvr = ExportServer::create(serviceProvider(), _worker, _authKey);
+    auto const exportSvr = ExportServer::create(serviceProvider(), worker, _authKey);
     thread exportSvrThread([exportSvr]() {
         exportSvr->run();
     });
