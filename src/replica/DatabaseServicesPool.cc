@@ -528,7 +528,7 @@ void DatabaseServicesPool::deleteTableRowStats(
 DatabaseServices::Ptr DatabaseServicesPool::_allocateService() {
 
     string const context = "DatabaseServicesPool::" + string(__func__) + "  ";
-    LOGS(_log, LOG_LVL_DEBUG, context);
+    LOGS(_log, LOG_LVL_TRACE, context);
 
     unique_lock<mutex> lock(_mtx);
     auto self = shared_from_base<DatabaseServicesPool>();
@@ -548,7 +548,7 @@ DatabaseServices::Ptr DatabaseServicesPool::_allocateService() {
 void DatabaseServicesPool::_releaseService(DatabaseServices::Ptr const& service) {
 
     string const context = "DatabaseServicesPool::" + string(__func__) + "  ";
-    LOGS(_log, LOG_LVL_DEBUG, context);
+    LOGS(_log, LOG_LVL_TRACE, context);
     unique_lock<mutex> lock(_mtx);
 
     // Move it between queues.
