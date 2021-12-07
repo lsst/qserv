@@ -414,14 +414,12 @@ def enter_worker_xrootd(
 
 
 def enter_worker_repl(
-    vnid: str, connection: str, repl_connection: str, debug_port: Optional[int], run: bool, instance_id: str
+    connection: str, repl_connection: str, debug_port: Optional[int], run: bool, instance_id: str
 ):
     """Start a worker replication node.
 
     Parameters
     ----------
-    vnid : str
-        The virtual network id for this component.
     connection : str
         Connection string to the worker database.
     repl_connection : `str`
@@ -453,7 +451,6 @@ def enter_worker_repl(
 
     args = [
         "qserv-replica-worker",
-        vnid,
         f"--config={repl_connection}",
         f"--qserv-worker-db={connection}",
         "--debug",
