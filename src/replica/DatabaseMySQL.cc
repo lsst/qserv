@@ -104,7 +104,7 @@ Connection::Connection(ConnectionParams const& connectionParams,
         _fields(nullptr),
         _numFields(0) {
 
-    LOGS(_log, LOG_LVL_DEBUG, "Connection[" + to_string(_id) + "]  constructed");
+    LOGS(_log, LOG_LVL_TRACE, "Connection[" + to_string(_id) + "]  constructed");
 }
 
 
@@ -119,7 +119,7 @@ Connection::~Connection() {
         mysql_reset_connection(_mysql);
         mysql_close(_mysql);
     }
-    LOGS(_log, LOG_LVL_DEBUG, "Connection[" + to_string(_id) + "]  destructed");
+    LOGS(_log, LOG_LVL_TRACE, "Connection[" + to_string(_id) + "]  destructed");
 }
 
 
@@ -202,7 +202,7 @@ Connection::Ptr Connection::begin() {
 
     string const context =
         "Connection[" + to_string(_id) + "]::" + string(__func__) + "(_inTransaction=" +
-        to_string(_inTransaction ? 1: 0) + "  ";
+        to_string(_inTransaction ? 1: 0) + ")  ";
 
     LOGS(_log, LOG_LVL_DEBUG, context);
 
@@ -217,7 +217,7 @@ Connection::Ptr Connection::commit() {
 
     string const context =
         "Connection[" + to_string(_id) + "]::" + string(__func__) + "(_inTransaction=" +
-        to_string(_inTransaction ? 1: 0) + "  ";
+        to_string(_inTransaction ? 1: 0) + ")  ";
 
     LOGS(_log, LOG_LVL_DEBUG, context);
 
@@ -232,7 +232,7 @@ Connection::Ptr Connection::rollback() {
 
     string const context =
         "Connection[" + to_string(_id) + "]::" + string(__func__) + "(_inTransaction=" +
-        to_string(_inTransaction ? 1: 0) + "  ";
+        to_string(_inTransaction ? 1: 0) + ")  ";
 
     LOGS(_log, LOG_LVL_DEBUG, context);
 
@@ -249,8 +249,6 @@ void Connection::_processLastError(string const& context,
     string const msg =
         context + ", error: " + string(mysql_error(_mysql)) +
         ", errno: " + to_string(mysql_errno(_mysql));
-
-    LOGS(_log, LOG_LVL_DEBUG, context);
 
     // Note, that according to the MariaDB documentation:
     //
@@ -422,8 +420,6 @@ Connection::Ptr Connection::execute(function<void(Connection::Ptr)> const& scrip
         ",effectiveMaxReconnects=" + to_string(effectiveMaxReconnects) +
         ",effectiveTimeoutSec=" + to_string(effectiveTimeoutSec) +")  ";
 
-    LOGS(_log, LOG_LVL_DEBUG, context);
-
     auto conn = shared_from_this();
 
     unsigned int numReconnects = 0;
@@ -576,8 +572,6 @@ void Connection::exportField(ProtocolResponseSqlField* ptr,
             "Connection::" + string(__func__) + "  idx: " + to_string(idx) +
             " range: [0," + to_string(_numFields) + "]  ";
     
-     LOGS(_log, LOG_LVL_DEBUG, context);
-
     if (idx >= _numFields) {
         throw out_of_range(context + " error: index is out of range");
     }
@@ -594,8 +588,6 @@ void Connection::exportField(ProtocolResponseSqlField* ptr,
     ptr->set_flags(     field.flags);
     ptr->set_decimals(  field.decimals);
     ptr->set_type(      field.type);
-
-    LOGS(_log, LOG_LVL_DEBUG, context + "  ** DONE **");
 }
 
 
@@ -690,7 +682,7 @@ void Connection::_connectOnce() {
 
     LOGS(_log, LOG_LVL_DEBUG, context);
 
-    // Clean up a context of the previous connecton (if any)
+    // Clean up a context of the previous connection (if any)
 
     _inTransaction = false;
     _columnNames.clear();
@@ -815,7 +807,7 @@ void Connection::_assertQueryContext() const {
         "Connection[" + to_string(_id) + "]::" + string(__func__) + "(_inTransaction=" +
         to_string(_inTransaction ? 1: 0) + ")  ";
 
-    LOGS(_log, LOG_LVL_DEBUG, context);
+    LOGS(_log, LOG_LVL_TRACE, context);
 
     if (_mysql == nullptr) throw Error(context + "not connected to the MySQL service");
     if (_res   == nullptr) throw Error(context + "no prior query made");
@@ -829,7 +821,7 @@ void Connection::_assertTransaction(bool inTransaction) const {
         to_string(_inTransaction ? 1: 0) + ",inTransaction=" +
         to_string(inTransaction ? 1: 0) + ")  ";
 
-    LOGS(_log, LOG_LVL_DEBUG, context);
+    LOGS(_log, LOG_LVL_TRACE, context);
 
     if (inTransaction != _inTransaction) {
         throw logic_error(
@@ -855,7 +847,7 @@ Connection::Ptr ConnectionPool::allocate() {
 
     string const context = "ConnectionPool::" + string(__func__) + "  ";
 
-    LOGS(_log, LOG_LVL_DEBUG, context);
+    LOGS(_log, LOG_LVL_TRACE, context);
 
     unique_lock<mutex> lock(_mtx);
 
@@ -894,7 +886,7 @@ void ConnectionPool::release(Connection::Ptr const& conn) {
 
     string const context = "ConnectionPool::" + string(__func__) + "  ";
 
-    LOGS(_log, LOG_LVL_DEBUG, context);
+    LOGS(_log, LOG_LVL_TRACE, context);
 
     unique_lock<mutex> lock(_mtx);
 
@@ -940,7 +932,7 @@ ConnectionHandler::~ConnectionHandler() {
             conn->rollback();
         }
     } catch (exception const& ex) {
-        LOGS(_log, LOG_LVL_DEBUG, context << "ex: " << ex.what());
+        LOGS(_log, LOG_LVL_TRACE, context << "ex: " << ex.what());
     }
     if (nullptr != _pool) _pool->release(conn);
 }

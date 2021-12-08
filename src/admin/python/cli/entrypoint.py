@@ -216,7 +216,6 @@ def worker_xrootd(**kwargs):
 
 
 @entrypoint.command()
-@vnid_option(required=True)
 @instance_id_option(required=True)
 @connection_option()
 @repl_connection_option()

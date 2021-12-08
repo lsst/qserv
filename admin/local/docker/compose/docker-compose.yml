@@ -130,7 +130,6 @@ services:
           entrypoint worker-repl
           --connection mysql://root:CHANGEME@worker-db-0:3306/qservw_worker
           --repl-connection mysql://qsreplica@repl-mgr-db:3306/qservReplica
-          --vnid worker_0
           --instance-id qserv_proj
         environment:
             << : *log-environment
@@ -203,7 +202,6 @@ services:
           entrypoint worker-repl
           --connection mysql://root:CHANGEME@worker-db-1:3306/qservw_worker
           --repl-connection mysql://qsreplica@repl-mgr-db:3306/qservReplica
-          --vnid worker_1
           --instance-id qserv_proj
         environment:
             << : *log-environment

@@ -68,9 +68,6 @@ private:
 
     /// Logger stream
     LOG_LOGGER _log;
-
-    /// The name of a worker
-    std::string _worker;
     
     /// A connection url for the MySQL service of the Qserv worker database.
     std::string _qservWorkerDbUrl;

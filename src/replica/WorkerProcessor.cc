@@ -852,7 +852,7 @@ WorkerRequest::Ptr WorkerProcessor::_fetchNextForProcessing(
         WorkerProcessorThread::Ptr const& processorThread,
         unsigned int timeoutMilliseconds) {
 
-    LOGS(_log, LOG_LVL_DEBUG, _context(__func__)
+    LOGS(_log, LOG_LVL_TRACE, _context(__func__)
         << "  thread: " << processorThread->id()
         << "  timeout: " << timeoutMilliseconds);
 
