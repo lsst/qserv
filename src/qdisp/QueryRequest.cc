@@ -61,6 +61,107 @@ namespace lsst {
 namespace qserv {
 namespace qdisp {
 
+/// This class only allows the last _maxRunningCount elements
+/// to run at any given time. The _runningCount is decremented
+/// by the Element destructor, so care needs to be taken that
+/// the element is destroyed at an appropriate time.
+/// PseudoFifo must outlive all of its Elements.
+class PseudoFifo {
+public:
+    using Ptr = std::shared_ptr<PseudoFifo>;
+
+    class Element {
+    public:
+        using Ptr = std::shared_ptr<Element>;
+        Element() = delete;
+        Element(PseudoFifo& pseudoF) : sid(seq++), _pseudoF(pseudoF) {}
+
+        ~Element() {
+            if (_go) {
+                _pseudoF._finished();
+            }
+        }
+
+        void wait() {
+            LOGS(_log, LOG_LVL_WARN, "&&& w elemSid=" << sid);
+            std::unique_lock<std::mutex> eLock(_eMtx);
+            _eCv.wait(eLock, [this](){ return _go; });
+            LOGS(_log, LOG_LVL_WARN, "&&& g elemSid=" << sid);
+        }
+
+        void go() {
+            {
+                std::unique_lock<std::mutex> eLock(_eMtx);
+                _go = true;
+            }
+            _eCv.notify_one();
+        }
+
+        static uint32_t seq;  //&&&
+        uint32_t const sid; //&&&
+
+    private:
+        bool _go = false;
+        std::mutex _eMtx;
+        std::condition_variable _eCv;
+        PseudoFifo& _pseudoF;
+    };
+
+
+    PseudoFifo() = default;
+    PseudoFifo(PseudoFifo const&) = delete;
+    PseudoFifo& operator=(PseudoFifo const&) = delete;
+
+    /// Put this element on the queue. It will need to wait until fewer
+    /// than _maxRunningCount items are running and it has reached the
+    /// front of the queue, before it can go.
+    /// The returned pointer should not be reset until this element
+    /// has finished running.
+    Element::Ptr queueAndWait() {
+        Element::Ptr thisElem = std::make_shared<Element>(*this);
+        {
+            std::unique_lock<std::mutex> qLock(_qMtx);
+            _queue.push_back(thisElem);
+            _runSomeElements();
+        }
+        thisElem->wait(); // wait until _runSomeElements pops this from the queue.
+        return thisElem;
+    }
+
+
+private:
+    /// _qMtx must be held before calling this function.
+    /// pop and run elements until the maximum number of elements
+    /// are running.
+    void _runSomeElements() {
+        LOGS(_log, LOG_LVL_WARN, "&&& _runSomeElements start _running=" << _runningCount << " q=" << _queue.size());
+        while (_runningCount < _maxRunningCount && !_queue.empty()) {
+            Element::Ptr qElem = _queue.front();
+            _queue.pop_front();
+            ++_runningCount;
+            qElem->go();
+        }
+        LOGS(_log, LOG_LVL_WARN, "&&& _runSomeElements start _running=" << _runningCount << " q=" << _queue.size());
+    }
+
+    /// This is called by the Element destructor.
+    void _finished() {
+        std::unique_lock<std::mutex> qLock(_qMtx);
+        --_runningCount;
+        _runSomeElements();
+    }
+
+    int _runningCount = 0;
+    int _maxRunningCount = 300;
+
+    std::deque<Element::Ptr> _queue;
+    std::mutex _qMtx;
+};
+
+uint32_t PseudoFifo::Element::seq = 0; // &&& delete
+
+PseudoFifo localPseudoFifo; /// &&& where should this be defined?
+
 
 // Run action() when the system expects to have time to accept data.
 class QueryRequest::AskForResponseDataCmd : public PriorityCommand {
@@ -78,6 +179,7 @@ public:
         QSERV_LOGCONTEXT_QUERY_JOB(_qid, _jobid);
         util::Timer tWaiting;
         util::Timer tTotal;
+        PseudoFifo::Element::Ptr pseudoFifoElem;
         {
             tTotal.start();
             auto jq = _jQuery.lock();
@@ -98,6 +200,10 @@ public:
             vector<char>& buffer = *_bufPtr;
             LOGS(_log, LOG_LVL_TRACE, "AskForResp GetResponseData size=" << buffer.size()
                                      << " expectedscsseq=" << _respCount);
+
+            // enter a queue and wait our turn &&&
+            pseudoFifoElem = localPseudoFifo.queueAndWait();
+
             tWaiting.start();
             qr->GetResponseData(&buffer[0], buffer.size());
         }
@@ -110,6 +216,7 @@ public:
             // TODO: make timed wait, check for wedged, if weak pointers dead, log and give up.
             // The only purpose of the below being in a function is make this easier to find in gdb.
             _lockWaitQrA(uLock);
+            pseudoFifoElem.reset(); /// forces call to PseudoFifo::_finished() now.
             // Hoping for  _state == DATAREADY1,
             tWaiting.stop();
             // _mtx is locked at this point.
