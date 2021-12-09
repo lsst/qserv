@@ -30,7 +30,7 @@ from unittest.mock import patch
 
 from lsst.qserv.admin.cli import script
 from lsst.qserv.qmeta.schema_migration import QMetaMigrationManager
-from lsst.qserv.schema.schemaMigMgr import SchemaUpdateRequired, Uninitialized
+from lsst.qserv.schema import SchemaMigMgr, SchemaUpdateRequired, Uninitialized
 
 
 migration_files = [
@@ -50,7 +50,6 @@ previous_qmeta_schema_version = 4
 qmeta_migrate_uninit_to_newest = migration_files[4]
 # This is the file that migrates from previous to latest
 qmeta_migrate_previous_to_newest = migration_files[5]
-
 
 
 class SmigTestCase(unittest.TestCase):
@@ -74,7 +73,8 @@ class SmigTestCase(unittest.TestCase):
 
     @patch.object(QMetaMigrationManager, "current_version", return_value=Uninitialized)
     @patch.object(QMetaMigrationManager, "apply_migrations", return_value=latest_qmeta_schema_version)
-    def test_proxy_init(self, apply_migrations_mock, current_version_mock):
+    @patch.object(SchemaMigMgr, "_connect", return_value=None)
+    def test_proxy_init(self, connect_mock, apply_migrations_mock, current_version_mock):
         """Test using smig to initialize a new qserv instance.
 
         Mocks the qmeta "current version" and smig execution functions to verify
@@ -85,7 +85,7 @@ class SmigTestCase(unittest.TestCase):
             script._do_smig(
                 module_smig_dir=script.qmeta_smig_dir,
                 module="qmeta",
-                connection=None,
+                connection="fake-connection-uri",
                 update=False,
             )
         current_version_mock.assert_called()
@@ -98,7 +98,8 @@ class SmigTestCase(unittest.TestCase):
         # Don't bother comparing the migration path, it assumes a certain install environment.
 
     @patch.object(QMetaMigrationManager, "current_version", return_value=1)
-    def test_proxy_needs_upgrade(self, current_version_mock):
+    @patch.object(SchemaMigMgr, "_connect", return_value=None)
+    def test_proxy_needs_upgrade(self, connect_mock, current_version_mock):
         """Test that smig causes the entrypoint script to abort if a schema upgrade is needed.
 
         Mocks the qmeta "current version" function to verify that if the a
@@ -113,14 +114,15 @@ class SmigTestCase(unittest.TestCase):
                 script._do_smig(
                     module_smig_dir=script.qmeta_smig_dir,
                     module="qmeta",
-                    connection=None,
+                    connection="fake-connection-uri",
                     update=False,
                 )
         current_version_mock.assert_called()
 
     @patch.object(QMetaMigrationManager, "current_version", return_value=latest_qmeta_schema_version)
     @patch.object(QMetaMigrationManager, "apply_migrations", return_value=latest_qmeta_schema_version)
-    def test_proxy_does_not_need_upgrade(self, apply_migrations_mock, current_version_mock):
+    @patch.object(SchemaMigMgr, "_connect", return_value=None)
+    def test_proxy_does_not_need_upgrade(self, connect_mock, apply_migrations_mock, current_version_mock):
         """Test that smig identifies that an upgrade is not needed and does not
         call the apply migrations function.
         """
@@ -128,7 +130,7 @@ class SmigTestCase(unittest.TestCase):
             script._do_smig(
                 module_smig_dir=script.qmeta_smig_dir,
                 module="qmeta",
-                connection=None,
+                connection="fake-connection-uri",
                 update=True,
             )
         current_version_mock.assert_called()
@@ -136,13 +138,14 @@ class SmigTestCase(unittest.TestCase):
 
     @patch.object(QMetaMigrationManager, "current_version", return_value=previous_qmeta_schema_version)
     @patch.object(QMetaMigrationManager, "apply_migrations", return_value=latest_qmeta_schema_version)
-    def test_upgrade_proxy(self, apply_migrations_mock, current_version_mock):
+    @patch.object(SchemaMigMgr, "_connect", return_value=None)
+    def test_upgrade_proxy(self, connect_mock, apply_migrations_mock, current_version_mock):
         """Tests that the proxy is upgraded when the upgrade flags are passed."""
         with patch.dict(os.environ, {script.smig_dir_env_var: self.qserv_smig_dir}):
             script._do_smig(
                 module_smig_dir=script.qmeta_smig_dir,
                 module="qmeta",
-                connection=None,
+                connection="fake-connection-uri",
                 update=True,
             )
         current_version_mock.assert_called()

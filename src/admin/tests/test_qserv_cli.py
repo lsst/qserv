@@ -27,15 +27,8 @@ import os
 import unittest
 from unittest.mock import patch, ANY
 
-import launch
-
-import sys
-
-# Adding the src/admin/python path to sys.path allows options declared in
-# src/admin/cli/options.py to be imported and used by the qserv command.
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../src/admin/python")))
-
-from qserv_cli import qserv
+from lsst.qserv.admin.qservCli import launch
+from lsst.qserv.admin.qservCli.qserv_cli import qserv
 
 
 def env_without_qserv(**kwargs):
@@ -81,6 +74,7 @@ def build_args(**kwargs):
         jobs=ANY,
         run_cmake=ANY,
         run_make=ANY,
+        run_mypy=ANY,
         user_build_image=ANY,
         qserv_image=ANY,
         run_base_image=ANY,
@@ -141,16 +135,6 @@ class QservCliTestCase(unittest.TestCase):
         self.runner = CliRunner()
 
     @patch.object(launch, "build")
-    def test_qserv_root_inferred(self, build_mock):
-        """ "Verfy that the QSERV_ROOT environment variable can be inferred
-        from the location of the qserv script."""
-        res = self.runner.invoke(qserv, ["build"], env=env_without_qserv())
-        self.assertEqual(res.exit_code, 0)
-        build_mock.assert_called_once()
-        expected = os.path.abspath(os.path.join(__file__, "../../../.."))
-        build_mock.assert_called_with(**build_args(qserv_root=expected))
-
-    @patch.object(launch, "build")
     def test_EnvVal_var(self, build_mock):
         """Verify that an `opt.FlagEnvVal` option can be set using the environment
         variable.
@@ -185,8 +169,14 @@ class QservCliTestCase(unittest.TestCase):
         res = self.runner.invoke(qserv, ["itest"], env=env_without_qserv())
         self.assertEqual(res.exit_code, 0)
         itest_mock.assert_called_once()
-        expected = os.path.abspath(os.path.join(__file__, "../../../../src/admin/etc/integration_tests.yaml"))
-        itest_mock.assert_called_with(**itest_args(itest_file=expected))
+        expected = os.path.abspath(
+            # This is the location of the path *inside* the build container,
+            # because that's where the unit tests run. This is from the install
+            # location of the unit tests back up the tree to the root qserv
+            # folder.
+            os.path.join(__file__, "../../../../../..")
+        )
+        itest_mock.assert_called_with(**itest_args(qserv_root=expected))
 
     def test_env(self):
         """Test that `qserv env` runs without throwing.
