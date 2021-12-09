@@ -42,7 +42,7 @@ RUN chmod a+r /tmp/scisql/build/deploy.mysql
 # off-the-shelf mariadb image.  This produces a generic "mariadb with scisql installed" container image. 
 #-------------------------------------------------------------------------------------------------------------
 
-FROM mariadb:10.4 AS mariadb-scisql
+FROM mariadb:10.6 AS mariadb-scisql
 COPY --from=mariadb-scisql-builder /tmp/scisql/build/libscisql-scisql_0.3.so /usr/lib/mysql/plugin
 COPY --from=mariadb-scisql-builder /tmp/scisql/build/deploy.mysql /docker-entrypoint-initdb.d/scisql.sql
 
