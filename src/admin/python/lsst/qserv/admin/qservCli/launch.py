@@ -285,6 +285,8 @@ def make(
     args.append("install")
     if unit_test:
         args.append("test")
+    if jobs:
+        args.append(f"ARGS=-j{jobs}")
     if dry:
         print(" ".join(args))
         return
