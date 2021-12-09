@@ -23,7 +23,7 @@ import jinja2
 import logging
 import os
 import stat
-from typing import Any, Dict
+from typing import Any, Dict, List, Union
 import yaml
 
 
@@ -34,8 +34,16 @@ default_cfg_file_path = "/config-etc/qserv-template.cfg"
 
 cfg_file_path = os.environ.get("QSERV_CFG", default_cfg_file_path)
 
+_template_cfg_types = Dict[
+    str,
+    Union[
+        str,
+        Dict[str, str],
+        List[str],
+    ]
+]
 
-def save_template_cfg(values: Dict[str, str]) -> None:
+def save_template_cfg(values: _template_cfg_types) -> None:
     """Save a dict of key-value pairs to the template config parameter file.
 
     Parameters

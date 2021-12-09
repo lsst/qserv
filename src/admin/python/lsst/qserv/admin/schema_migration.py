@@ -25,17 +25,20 @@
 __all__ = ["make_migration_manager"]
 
 
-from ..schema import SchemaMigMgr, Uninitialized
+from typing import Optional, Sequence
+
+
+from ..schema import Migration, SchemaMigMgr, Uninitialized
 
 
 class AdminMigrationManager(SchemaMigMgr):
     """Class implementing schema migration for QMeta database."""
 
     # scripts are located in qmeta/ sub-dir
-    def __init__(self, name, connection, scripts_dir):
+    def __init__(self, name: str, connection: str, scripts_dir: str):
         super().__init__(scripts_dir, connection)
 
-    def current_version(self):
+    def current_version(self) -> Optional[int]:
         """Returns current schema version.
 
         Returns
@@ -60,7 +63,7 @@ class AdminMigrationManager(SchemaMigMgr):
             )
         return Uninitialized if count == 0 else 0
 
-    def apply_migrations(self, migrations):
+    def apply_migrations(self, migrations: Sequence[Migration]) -> int:
         """Apply migrations.
 
         Parameters
@@ -82,7 +85,7 @@ class AdminMigrationManager(SchemaMigMgr):
         return cur
 
 
-def make_migration_manager(name, connection, scripts_dir):
+def make_migration_manager(name: str, connection: str, scripts_dir: str) -> AdminMigrationManager:
     """Factory method for admin schema migration manager
 
     This method is needed to support dynamic loading in `qserv-smig` script.
@@ -91,8 +94,8 @@ def make_migration_manager(name, connection, scripts_dir):
     ----------
     name : `str`
         Module name, e.g. "admin"
-    connection : dbapi connection
-        Database connection instance.
+    connection : `str`
+        The uri to the module database.
     scripts_dir : `str`
         Path where migration scripts are located, this is system-level directory,
         per-module scripts are usually located in sub-directories.

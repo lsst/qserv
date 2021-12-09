@@ -31,14 +31,14 @@ from urllib.parse import urlparse
 import yaml
 from typing import Dict, List, Optional, Sequence
 
-from opt import (
+from .opt import (
     dashboard_port_ev,
     mariadb_image_ev,
     qserv_image_ev,
     dh_user_ev,
     dh_token_ev,
 )
-import images
+from . import images
 
 
 # The location where the lite-build and run-base images should be built from:
@@ -282,7 +282,7 @@ def make(
     ]
     if jobs:
         args.append(f"-j{jobs}")
-    args.append("install"),
+    args.append("install")
     if unit_test:
         args.append("test")
     if dry:
@@ -880,21 +880,25 @@ def integration_test(
     ):
         if var:
             args.append(opt)
-    for true_opt, false_opt, var in (
-        ("--pull", "--no-pull", pull),
-        ("--load", "--no-load", load),
-    ):
-        if var == True:
-            args.append(true_opt)
-        if var == False:
-            args.append(false_opt)
+
+    def add_flag_if(val: Optional[bool], true_flag: str, false_flag: str, args: List[str]) -> None:
+        """Add a do-or-do-not flag to `args` if `val` is `True` or `False`, do
+        not add if `val` is `None`."""
+        if val == True:
+            args.append(true_flag)
+        elif val == False:
+            args.append(false_flag)
+
+    add_flag_if(pull, "--pull", "--no-pull", args)
+    add_flag_if(load, "--load", "--no-load", args)
+
     if tests_yaml:
         args.extend(["--tests-yaml", tests_yaml])
     for case in cases:
         args.extend(["--case", case])
     if dry:
         print(" ".join(args))
-        return
+        return 0
     _log.debug(f"Running {' '.join(args)}")
     result = subprocess.run(args)
     return result.returncode

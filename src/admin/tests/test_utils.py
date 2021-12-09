@@ -31,16 +31,16 @@ from lsst.qserv.admin.cli import utils
 class SplitKvTestCase(unittest.TestCase):
 
     def test_split_kv(self):
-        self.assertEquals(utils.split_kv(None, None, []), dict())
-        self.assertEquals(utils.split_kv(None, None, ["a=1"]), dict(a="1"))
-        self.assertEquals(utils.split_kv(None, None, ["a=1,b=2"]), dict(a="1", b="2"))
-        self.assertEquals(utils.split_kv(None, None, ["a=1,b=2", "c=3"]), dict(a="1", b="2", c="3"))
+        self.assertEquals(utils.split_kv([]), dict())
+        self.assertEquals(utils.split_kv(["a=1"]), dict(a="1"))
+        self.assertEquals(utils.split_kv(["a=1,b=2"]), dict(a="1", b="2"))
+        self.assertEquals(utils.split_kv(["a=1,b=2", "c=3"]), dict(a="1", b="2", c="3"))
 
     def test_invalid_input(self):
         with self.assertRaises(RuntimeError):
-            utils.split_kv(None, None, ["a"])
+            utils.split_kv(["a"])
         with self.assertRaises(RuntimeError):
-            utils.split_kv(None, None, ["a=b=c"])
+            utils.split_kv(["a=b=c"])
 
 
 if __name__ == "__main__":

@@ -26,8 +26,14 @@ __all__ = ["make_migration_manager"]
 from contextlib import closing
 import logging
 from sqlalchemy.engine.url import make_url
+from typing import Callable, List, Optional
 
-from lsst.qserv.schema import SchemaMigMgr, Uninitialized
+from lsst.qserv.schema import (
+    Migration,
+    SchemaMigMgr,
+    Version,
+    Uninitialized,
+)
 
 
 _log = logging.getLogger(__name__)
@@ -45,7 +51,14 @@ class MasterReplicationMigrationManager(SchemaMigMgr):
     Same as make_migration_manager
     """
 
-    def __init__(self, name, connection, scripts_dir, set_initial_configuration, repl_connection):
+    def __init__(
+        self,
+        name: str,
+        connection: str,
+        scripts_dir: str,
+        set_initial_configuration: Optional[Callable[[], None]],
+        repl_connection: Optional[str],
+    ):
         self.repl_connection = repl_connection
         self.set_initial_configuartion = set_initial_configuration
         super().__init__(scripts_dir, connection)
@@ -54,7 +67,7 @@ class MasterReplicationMigrationManager(SchemaMigMgr):
                 "The name of the replication database must be provided in the connection URI."
             )
 
-    def current_version(self):
+    def current_version(self) -> Version:
         """Returns current schema version.
 
         Returns
@@ -64,17 +77,17 @@ class MasterReplicationMigrationManager(SchemaMigMgr):
         """
         # If the database does not exist then the version is `Uninitialized`.
         if not self.databaseExists(self.database):
-            return Uninitialized
+            return Version(Uninitialized)
 
         self.connection.database = self.database
         with closing(self.connection.cursor()) as cursor:
             cursor.execute("SELECT value FROM QMetadata WHERE metakey = 'version'")
             result = cursor.fetchone()
         if not result:
-            return Uninitialized
-        return int(result[0])
+            return Version(Uninitialized)
+        return Version(int(result[0]))
 
-    def _set_version(self, version):
+    def _set_version(self, version: int) -> None:
         """Set the version number stored in QMetadata."""
         # make sure that current version is updated in database
         self.connection.database = self.database
@@ -92,7 +105,7 @@ class MasterReplicationMigrationManager(SchemaMigMgr):
             raise RuntimeError(
                 f"Failed to update version number in database to {version}, current version is now {current}")
 
-    def _create_database(self):
+    def _create_database(self) -> None:
         """Create the replication controller database.
         """
         with closing(self.connection.cursor()) as cursor:
@@ -103,7 +116,7 @@ class MasterReplicationMigrationManager(SchemaMigMgr):
         _log.info(f"Created database {self.database}.")
         self.connection.commit()
 
-    def _create_users(self):
+    def _create_users(self) -> None:
         """Create the users for the replication controller database.
         """
         if not self.repl_connection:
@@ -132,7 +145,7 @@ class MasterReplicationMigrationManager(SchemaMigMgr):
                     _log.warn("Warnings were issued when creating user %s", {user})
         self.connection.commit()
 
-    def apply_migrations(self, migrations):
+    def apply_migrations(self, migrations: List[Migration]) -> Version:
         """Apply migrations.
 
         Parameters
@@ -142,7 +155,7 @@ class MasterReplicationMigrationManager(SchemaMigMgr):
 
         Returns
         -------
-        version : `int`
+        version : `Version`
             The current version number after applying migrations.
         """
         current_version = self.current_version()
@@ -157,16 +170,16 @@ class MasterReplicationMigrationManager(SchemaMigMgr):
         if current_version == Uninitialized and self.set_initial_configuartion:
             self.set_initial_configuartion()
         self._set_version(to_version)
-        return to_version
+        return Version(to_version)
 
 
 def make_migration_manager(
-    name,
-    connection,
-    scripts_dir,
-    set_initial_configuration=None,
-    repl_connection=None,
-):
+    name: str,
+    connection: str,
+    scripts_dir: str,
+    set_initial_configuration: Optional[Callable[[], None]] = None,
+    repl_connection: Optional[str] = None,
+) -> SchemaMigMgr:
     """Factory method for master replication controller schema migration
     manager
 
@@ -176,12 +189,12 @@ def make_migration_manager(
     ----------
     name : `str`
         Module name, e.g. "admin"
-    connection : dbapi connection
-        Database connection instance.
+    connection : `str`
+        The uri to the module database.
     scripts_dir : `str`
         Path where migration scripts are located, this is system-level directory,
         per-module scripts are usually located in sub-directories.
-    set_initial_configuration : function or `None`
+    set_initial_configuration : function, optional.
         A function to be called to set the initial configuration of the repl database.
         Will only be called if the schema is migrated from None to version 1. Optional.
     repl_connection : `str`

@@ -40,7 +40,7 @@ database_error_connection_refused_code = 2003
     # Do give up, unless error is that the connection was refused (assume db is starting up)
     giveup=lambda e: e.errno != database_error_connection_refused_code,
 )
-def applyConfiguration(connection, sql):
+def applyConfiguration(connection: str, sql: str) -> None:
     """Apply configuration sql to the replication controller database."""
     c = urlparse(connection)
     with closing(
@@ -50,10 +50,10 @@ def applyConfiguration(connection, sql):
             host=c.hostname,
             port=c.port,
         )
-    ) as connection:
-        connection.database = replicaDb
-        with closing(connection.cursor()) as cursor:
+    ) as cnx:
+        cnx.database = replicaDb
+        with closing(cnx.cursor()) as cursor:
             for result in cursor.execute(sql, multi=True):
                 pass
-        connection.commit()
+        cnx.commit()
     _log.debug(f"Applied configuration: \n{sql}")

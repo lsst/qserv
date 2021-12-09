@@ -30,7 +30,7 @@ import click
 import sys
 from typing import List, Optional, Sequence
 
-from cli.options import (
+from ..cli.options import (
     czar_connection_option,
     pull_option,
     load_option,
@@ -44,10 +44,10 @@ from cli.options import (
     worker_connection_option,
 )
 
-import launch
-import qserv_log
+from . import launch
+from . import qserv_log
 
-from opt import (
+from .opt import (
     bind_option,
     build_container_name_option,
     build_image_option,
@@ -333,13 +333,11 @@ def run_debug(
 
     CONTAINER_NAME is the name of the container to connect to for debugging.
     """
-    click.echo(
-        launch.run_debug(
-            container_name,
-            build_image,
-            project,
-            dry,
-        )
+    launch.run_debug(
+        container_name,
+        build_image,
+        project,
+        dry,
     )
 
 
@@ -551,7 +549,7 @@ def down(
 @qserv_image_option()
 @dry_option()
 def entrypoint_help(
-    command: Sequence[str],
+    command: str,
     qserv_image: str,
     dry: bool,
 ) -> None:

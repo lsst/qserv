@@ -63,7 +63,7 @@ def get_tag(dockerfiles: Optional[List[str]], cwd: str) -> str:
     # todo handle if one of the dockerfiles is dirty
     if dockerfiles is not None:
         shas = [get_last_change(fname, cwd) for fname in dockerfiles]
-        sha = get_most_recent(shas, cwd)
+        sha: Optional[str] = get_most_recent(shas, cwd)
     else:
         sha = None
     tag = describe(sha, cwd)

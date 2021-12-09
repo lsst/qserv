@@ -20,8 +20,8 @@ add_test(NAME test_smig
 set_tests_properties(test_smig PROPERTIES ENVIRONMENT QSERV_SMIG_DIRECTORY=${CMAKE_INSTALL_PREFIX}/qserv/smig)
 
 add_test(NAME test_qserv_cli
-  COMMAND python3 -m unittest test_qserv_cli
-  WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/../../admin/local/cli
+  COMMAND python3 -m unittest tests.admin.test_qserv_cli
+  WORKING_DIRECTORY ${CMAKE_INSTALL_PREFIX}/python/
 )
 
 add_test(NAME test_itest

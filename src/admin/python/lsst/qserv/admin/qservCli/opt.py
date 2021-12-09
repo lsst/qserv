@@ -32,7 +32,7 @@ import os
 from typing import Callable, List, Optional, Union
 
 
-from images import get_tag
+from .images import get_tag
 
 
 _log = logging.getLogger(__name__)
@@ -164,6 +164,8 @@ base_dockerfile = "admin/tools/docker/base/Dockerfile"
 user_dockerfile = "admin/tools/docker/build-user/Dockerfile"
 run_base_dockerfile = "admin/tools/docker/base/Dockerfile"
 mariadb_dockerfile = "admin/tools/docker/mariadb/Dockerfile"
+# The location of the root directory ("qserv root") relative to this file:
+relative_qserv_root = "../../../../../../../../"
 
 
 def tagged_image_name(image_name: str, dockerfiles: Optional[List[str]]) -> Optional[str]:
@@ -192,7 +194,7 @@ def tagged_image_name(image_name: str, dockerfiles: Optional[List[str]]) -> Opti
 qserv_root_ev = FlagEnvVal(
     "--qserv-root",
     "QSERV_ROOT",
-    os.path.abspath(os.path.join(__file__, "../../../../")),
+    os.path.abspath(os.path.join(__file__, relative_qserv_root)),
 )
 image_tag_ev = EnvVal(env_var="QSERV_IMAGE_TAG", description="the tag of all qserv image names")
 qserv_image_ev = FlagEnvVal(

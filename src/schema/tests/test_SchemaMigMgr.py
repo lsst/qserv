@@ -25,7 +25,7 @@ from tempfile import TemporaryDirectory
 import unittest
 from unittest.mock import MagicMock
 
-from lsst.qserv.schema.schemaMigMgr import Migration, SchemaMigMgr, Uninitialized, Version
+from lsst.qserv.schema import MigMatch, Migration, SchemaMigMgr, Uninitialized, Version
 
 
 def makeFiles(directory, *names):
@@ -35,18 +35,18 @@ def makeFiles(directory, *names):
 
 
 class SchemaMigMgrTestCase(unittest.TestCase):
-
     def test_script_match(self):
         """Verify script_match uses the regex function to match expected
         filename strings and not unexpected ones."""
-        self.assertEqual(SchemaMigMgr.script_match("migrate-0-to-1.sql"), (0, 1))
-        self.assertEqual(SchemaMigMgr.script_match("migrate-foo-to-1.sql"), None)
+        self.maxDiff = None
         self.assertEqual(
-            SchemaMigMgr.script_match("migrate-None-to-4.sql"), (Uninitialized, 4)
+            SchemaMigMgr.script_match("migrate-0-to-1.sql"), MigMatch(from_version=0, to_version=1)
         )
+        self.assertEqual(SchemaMigMgr.script_match("migrate-foo-to-1.sql"), None)
+        self.assertEqual(SchemaMigMgr.script_match("migrate-None-to-4.sql"), MigMatch(Uninitialized, 4))
         self.assertEqual(
             SchemaMigMgr.script_match("migrate-None-to-4-somedescriptor.sql"),
-            (Uninitialized, 4),
+            MigMatch(Uninitialized, 4),
         )
 
     def test_scripts(self):
@@ -58,6 +58,9 @@ class SchemaMigMgrTestCase(unittest.TestCase):
             def current_version(self):
                 pass
 
+            def _connect(self, connection: str) -> None:
+                self.connection = None
+
             def apply_migrations(self, migrations):
                 pass
 
@@ -68,14 +71,12 @@ class SchemaMigMgrTestCase(unittest.TestCase):
 
         with TemporaryDirectory() as tmpDir:
             makeFiles(tmpDir, noneToTwo, oneToTwo, twoToTwo, "unused.sql")
-            migMgr = TestMigMgr(tmpDir)
+            migMgr = TestMigMgr(tmpDir, "connection-uri")
             self.assertEqual(
                 set(migMgr.migrations),
                 set(
                     (
-                        Migration(
-                            Uninitialized, 2, noneToTwo, os.path.join(tmpDir, noneToTwo)
-                        ),
+                        Migration(Uninitialized, 2, noneToTwo, os.path.join(tmpDir, noneToTwo)),
                         Migration(1, 2, oneToTwo, os.path.join(tmpDir, oneToTwo)),
                     )
                 ),
@@ -111,39 +112,39 @@ class SchemaMigMgrTestCase(unittest.TestCase):
 
         # test uninit to 4 alone
         self.assertEqual(
-            SchemaMigMgr.migration_path(Uninitialized, 4, [uninitToFour]),
+            SchemaMigMgr.migration_path(Version(Uninitialized), Version(4), [uninitToFour]),
             [uninitToFour],
         )
         # test uninit to 2, 2 to 4.
         self.assertEqual(
-            SchemaMigMgr.migration_path(Uninitialized, 4, [uninitToTwo, twoToFour]),
+            SchemaMigMgr.migration_path(Version(Uninitialized), Version(4), [uninitToTwo, twoToFour]),
             [uninitToTwo, twoToFour],
         )
         # test that uninit to 4 is chosen over uninit to 2 with 2 to 4
         self.assertEqual(
             SchemaMigMgr.migration_path(
-                Uninitialized, 4, [uninitToTwo, twoToFour, uninitToFour]
+                Version(Uninitialized), Version(4), [uninitToTwo, twoToFour, uninitToFour]
             ),
             [uninitToFour],
         )
         # test that uninit to 2, 2 to 4 is chosen over uninit to 1, 1 to 2, 2 to 4.
         self.assertEqual(
             SchemaMigMgr.migration_path(
-                Uninitialized, 4, [uninitToOne, uninitToTwo, twoToFour]
+                Version(Uninitialized), Version(4), [uninitToOne, uninitToTwo, twoToFour]
             ),
             [uninitToTwo, twoToFour],
         )
         # test 2 to 4 out of the crowded field.
         self.assertEqual(
             SchemaMigMgr.migration_path(
-                2, 4, [uninitToOne, uninitToTwo, twoToFour, uninitToFour]
+                Version(2), Version(4), [uninitToOne, uninitToTwo, twoToFour, uninitToFour]
             ),
             [twoToFour],
         )
         # test going to an unsupported version.
         self.assertEqual(
             SchemaMigMgr.migration_path(
-                2, 5, [uninitToOne, uninitToTwo, twoToFour, uninitToFour]
+                Version(2), Version(5), [uninitToOne, uninitToTwo, twoToFour, uninitToFour]
             ),
             [],
         )
@@ -158,7 +159,10 @@ class SchemaMigMgrTestCase(unittest.TestCase):
         class TestMigMgr(SchemaMigMgr):
             def __init__(self, current_version, scripts_dir):
                 self._current_version = current_version
-                super().__init__(scripts_dir)
+                super().__init__(scripts_dir, "connection-uri")
+
+            def _connect(self, connection: str) -> None:
+                self.connection = None
 
             def current_version(self):
                 return self._current_version
@@ -191,10 +195,7 @@ class SchemaMigMgrTestCase(unittest.TestCase):
                 "migrate-2-to-3.sql",
                 os.path.join(scriptsDir, "migrate-2-to-3.sql"),
             )
-            makeFiles(
-                scriptsDir,
-                *[m.filepath for m in [noneToThree, noneToOne, oneToTwo, twoToThree]]
-            )
+            makeFiles(scriptsDir, *[m.filepath for m in [noneToThree, noneToOne, oneToTwo, twoToThree]])
 
             mgr = TestMigMgr(Uninitialized, scriptsDir)
             mgr.migrate(to_version=3, do_migrate=True)
@@ -236,7 +237,6 @@ class SchemaMigMgrTestCase(unittest.TestCase):
 
 
 class VersionTestCase(unittest.TestCase):
-
     def test_copy(self):
         """Test that __new__ works to create new types of Version."""
         a = Version(1)
