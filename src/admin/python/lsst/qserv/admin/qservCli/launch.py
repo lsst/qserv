@@ -292,6 +292,57 @@ def make(
     subprocess.run(args, check=True)
 
 
+def mypy(
+    qserv_root: str,
+    qserv_build_root: str,
+    build_image: str,
+    user: str,
+    dry: bool,
+) -> None:
+    """Run mypy on python files.
+
+    Parameters
+    ----------
+    qserv_root : `str`
+        The path to the qserv source folder.
+    qserv_build_root : `str`
+        The path to mount the qserv source folder inside the build container.
+    build_image : `str`
+        The name of the image to use to run make.
+    user : `str`
+        The name of the user to run the build container as.
+    dry : `bool`
+        If True do not run the command; print what would have been run.
+    """
+    # qserv_py_modules is relative to the build folder inside the build container:
+    qserv_py_modules = "install/python/lsst/qserv"
+    args = [
+        "docker",
+        "run",
+        "--init",
+        "--rm",
+        "-u",
+        user,
+        "--mount",
+        root_mount(qserv_root, qserv_build_root, user),
+        "-w",
+        build_dir(qserv_build_root.format(user=user)),
+        build_image,
+        "mypy",
+        qserv_py_modules,
+        "--exclude",
+        "testing",
+    ]
+    mypy_ini_file = os.path.join(qserv_build_root.format(user=user), "mypy.ini")
+    args.extend(["--config-file", mypy_ini_file])
+    if dry:
+        print(" ".join(args))
+        return
+    _log.debug('Running "%s"', " ".join(args))
+    print("Running mypy on all qserv python modules except 'testing'...")
+    subprocess.run(args, check=True)
+
+
 def build(
     qserv_root: str,
     qserv_build_root: str,
@@ -300,6 +351,7 @@ def build(
     jobs: Optional[int],
     run_cmake: bool,
     run_make: bool,
+    run_mypy: bool,
     user_build_image: str,
     qserv_image: str,
     run_base_image: str,
@@ -325,6 +377,8 @@ def build(
         of the build direcetory.
     run_make : `bool`
         True if `make` should be called.
+    run_mypy : `bool`
+        True if `mypy` should be run.
     user_build_image : `str`
         The name of the lite-build image to use to run cmake and make.
     qserv_image : `str`
@@ -360,6 +414,9 @@ def build(
 
     if run_make:
         make(qserv_root, qserv_build_root, unit_test, user_build_image, user, dry, jobs)
+
+    if run_mypy:
+        mypy(qserv_root, qserv_build_root, user_build_image, user, dry)
 
     if not do_build_image:
         return

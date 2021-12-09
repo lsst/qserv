@@ -63,6 +63,7 @@ from opt import (
     make_option,
     mariadb_image_ev,
     mariadb_image_option,
+    mypy_option,
     project_option,
     pull_image_option,
     push_image_option,
@@ -162,6 +163,7 @@ def show_qserv_environment() -> None:
 @cmake_option()
 @make_option()
 @unit_test_option()
+@mypy_option()
 @do_build_image_option()
 @jobs_option()
 @dry_option()
@@ -173,6 +175,7 @@ def build(
     jobs: Optional[int],
     run_cmake: bool,
     run_make: bool,
+    run_mypy: bool,
     user_build_image: str,
     qserv_image: str,
     run_base_image: str,
@@ -191,6 +194,7 @@ def build(
         jobs=jobs,
         run_cmake=run_cmake,
         run_make=run_make,
+        run_mypy=run_mypy,
         user_build_image=user_build_image,
         qserv_image=qserv_image,
         run_base_image=run_base_image,

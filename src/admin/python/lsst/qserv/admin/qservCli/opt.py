@@ -663,3 +663,12 @@ remove_option = partial(
     help="Remove docker container(s) after execution.",
     default=True,
 )
+
+
+mypy_option = partial(
+    click.option,
+    "--mypy/--no-mypy",
+    "run_mypy",
+    help="Run mypy on python files.",
+    default=True,
+)
