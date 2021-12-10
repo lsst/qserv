@@ -211,7 +211,14 @@ bool QueryRunner::runQuery() {
     if (_task->msg->has_protocol()) {
         switch(_task->msg->protocol()) {
         case 2:
-            return _dispatchChannel(); // Run the query and send the results back.
+            //&&&return _dispatchChannel(); // Run the query and send the results back.
+       {
+           bool dispatchSuccess = _dispatchChannel();
+            if (!dispatchSuccess) {
+                LOGS(_log, LOG_LVL_ERROR, "&&& _dispatchChannel failed.");
+            }
+            return dispatchSuccess;
+        }
         case 1:
             throw UnsupportedError(_task->getIdStr() + " QueryRunner: Expected protocol > 1 in TaskMsg");
         default:
