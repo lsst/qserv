@@ -39,6 +39,7 @@ from .options import (
     instance_id_option,
     load_option,
     log_level_option,
+    options_file_option,
     mysql_monitor_password_option,
     pull_option,
     reload_option,
@@ -227,6 +228,7 @@ def delete_database(**kwargs):
     help="This is the same as the proxy-backend-address option to mysql proxy. This value is substitued "
     "into the proxy-backend-address parameter in 'my-proxy.cnf.jinja'."
 )
+@options_file_option()
 def proxy(**kwargs):
     try:
         script.enter_proxy(**kwargs)
@@ -241,6 +243,7 @@ def proxy(**kwargs):
     help="The value for 'cms.delay servers' in the cmsd-manager.cf file.",
     default="80%",
 )
+@options_file_option()
 def cmsd_manager(**kwargs):
     "Start as a cmsd manager node."
     script.enter_manager_cmsd(**kwargs)
@@ -248,6 +251,7 @@ def cmsd_manager(**kwargs):
 
 @entrypoint.command()
 @cmsd_manager_option(required=True)
+@options_file_option()
 def xrootd_manager(**kwargs):
     "Start as an xrootd manager node."
     script.enter_xrootd_manager(**kwargs)
@@ -258,6 +262,7 @@ def xrootd_manager(**kwargs):
 @vnid_option(required=True)
 @cmsd_manager_option(required=True)
 @debug_option()
+@options_file_option()
 def worker_cmsd(**kwargs):
     script.enter_worker_cmsd(**kwargs)
 
@@ -271,6 +276,7 @@ def worker_cmsd(**kwargs):
 @repl_ctrl_domain_name_option()
 @mysql_monitor_password_option()
 @db_qserv_user_option()
+@options_file_option()
 def worker_xrootd(**kwargs):
     script.enter_worker_xrootd(**kwargs)
 
@@ -281,6 +287,7 @@ def worker_xrootd(**kwargs):
 @repl_connection_option()
 @debug_option()
 @run_option()
+@options_file_option()
 def worker_repl(**kwargs):
     script.enter_worker_repl(**kwargs)
 
@@ -313,6 +320,7 @@ def worker_repl(**kwargs):
     help="The connection string for the czar database.",
 )
 @run_option()
+@options_file_option()
 def replication_controller(**kwargs):
     "Start as a replication controller node."
     script.enter_replication_controller(**kwargs)
@@ -363,6 +371,7 @@ def watcher(**kwargs):
 @czar_connection_option()
 @worker_connection_option()
 @repl_connection_option()
+@options_file_option()
 def smig_update(**kwargs):
     """Run schema update on nodes."""
     script.smig_update(**kwargs)
