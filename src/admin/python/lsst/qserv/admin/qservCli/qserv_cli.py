@@ -51,6 +51,7 @@ from . import qserv_log
 from .opt import (
     bind_option,
     build_container_name_option,
+    build_image_ev,
     build_image_option,
     cmake_option,
     compose_file_option,
@@ -75,6 +76,7 @@ from .opt import (
     qserv_image_ev,
     qserv_image_option,
     remove_option,
+    user_build_image_ev,
     user_build_image_option,
     user_option,
     run_base_image_option,
@@ -127,8 +129,36 @@ def qserv() -> None:
 
 
 @qserv.command("env")
-def show_qserv_environment() -> None:
-    """Show qserv environment variables and values."""
+@click.option(qserv_image_ev.opt, is_flag=True)
+@click.option(build_image_ev.opt, is_flag=True)
+@click.option(user_build_image_ev.opt, is_flag=True)
+@click.option(run_base_image_ev.opt, is_flag=True)
+@click.option(mariadb_image_ev.opt, is_flag=True)
+def show_qserv_environment(
+    qserv_image: bool,
+    build_image: bool,
+    user_build_image: bool,
+    run_base_image: bool,
+    mariadb_image: bool,
+) -> None:
+    """Show qserv environment variables and default option values.
+
+    If any of the option flags are passed, only the default/environment-based
+    value for each of those flags is returned. This can be used with github
+    actions or other scripted tools.
+    """
+    if qserv_image:
+        click.echo(qserv_image_ev.val())
+    if build_image:
+        click.echo(build_image_ev.val())
+    if user_build_image:
+        click.echo(user_build_image_ev.val())
+    if run_base_image:
+        click.echo(run_base_image_ev.val())
+    if mariadb_image:
+        click.echo(mariadb_image_ev.val())
+    if any((qserv_image, build_image, user_build_image, run_base_image, mariadb_image)):
+        return
     click.echo("Environment variables used for options:")
     click.echo(qserv_env_vals.describe())
     click.echo("Values determined for options:")
