@@ -33,3 +33,8 @@ add_test(NAME test_utils
   COMMAND python3 -m unittest tests.admin.test_utils
   WORKING_DIRECTORY ${CMAKE_INSTALL_PREFIX}/python/
 )
+
+add_test(NAME test_options_file_option
+  COMMAND python3 -m unittest tests.admin.test_optionsFileOption
+  WORKING_DIRECTORY ${CMAKE_INSTALL_PREFIX}/python/
+)

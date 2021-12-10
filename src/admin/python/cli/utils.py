@@ -22,7 +22,12 @@
 """
 
 import click
-from typing import cast, Dict, List, Tuple
+import logging
+from typing import cast, Any, Dict, List, Tuple, Union
+import yaml
+
+
+_log = logging.getLogger(__name__)
 
 
 def split_kv(
@@ -60,3 +65,49 @@ def split_kv(
     split_pairs = (cast(Tuple[str, str], pair.split("=")) for pair in pairs)
     # and finally, make a dict:
     return dict(split_pairs)
+
+
+def yaml_presets(ctx: click.Context, param: str, value: str) -> None:
+    """Update a click context with defaults from a yaml file.
+
+    Parameters
+    ----------
+    ctx : click.Context
+        The click context to update.
+    param : str
+        The name of the parameter.
+    value : str
+        The value of the parameter.
+    """
+    ctx.default_map = ctx.default_map or {}
+    cmd_name = ctx.info_name
+    if value:
+        try:
+            overrides = _read_yaml_presets(value, cmd_name)
+        except Exception as e:
+            raise click.BadOptionUsage(param.name, f"Error reading overrides file: {e}", ctx)
+        # Override the defaults for this subcommand
+        ctx.default_map.update(overrides)
+
+
+def _read_yaml_presets(file, cmd_name) -> Dict[str, Union[str, int, bool]]:
+    """Read file command line overrides from YAML config file.
+
+    Parameters
+    ----------
+    file : `str`
+        Path to override YAML file containing the command line overrides.
+        They should be grouped by command name. The option name should
+        NOT include prefix dashes.
+    cmd_name : `str`
+        The subcommand name that is being modified.
+
+    Returns
+    -------
+    overrides : `dict` of [str, Union[`str`, `int`, `bool`]]
+        The relevant command line options read from the override file.
+    """
+    _log.debug("Reading command line overrides for subcommand %s from URI %s", cmd_name, file)
+    with open(file) as f:
+        presets = yaml.safe_load(f.read())
+    return presets.get(cmd_name, dict())
