@@ -207,7 +207,12 @@ class SchemaMigMgr(metaclass=ABCMeta):
         return max(m.to_version for m in self.migrations)
 
     @backoff.on_exception(
-        exception=(mysql.connector.errors.DatabaseError, MySQLInterfaceError, mysql.connector.errors.ProgrammingError),
+        exception=(
+            mysql.connector.errors.DatabaseError,
+            MySQLInterfaceError,
+            mysql.connector.errors.InterfaceError,
+            mysql.connector.errors.ProgrammingError,
+        ),
         wait_gen=backoff.expo,
         on_backoff=on_backoff(log=_log),
         max_time=max_backoff_sec,
@@ -217,12 +222,15 @@ class SchemaMigMgr(metaclass=ABCMeta):
         # The database is not always guaranteed to exist yet (sometimes we connect and then create it)
         # so cache it, and it can be set in the connection before use when it is known to exist.
         self.database = url.database
-        self.connection = mysql.connector.connect(
+        kwargs = dict(
             user=url.username,
             password=url.password,
-            host=url.host,
-            port=url.port,
         )
+        if "socket" in url.query:
+            kwargs["unix_socket"] = url.query["socket"]
+        else:
+            kwargs.update(host=url.host, port=url.port)
+        self.connection = mysql.connector.connect(**kwargs)
 
     @backoff.on_exception(
         exception=mysql.connector.errors.DatabaseError,

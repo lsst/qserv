@@ -31,21 +31,19 @@ from .options import (
     case_option,
     cmsd_manager_option,
     compare_results_option,
-    connection_option,
     czar_connection_option,
+    db_uri_option,
+    db_admin_uri_option,
     db_qserv_user_option,
-    db_scheme_option,
     debug_option,
     instance_id_option,
     load_option,
     log_level_option,
     mysql_monitor_password_option,
-    mysql_user_qserv_option,
     pull_option,
     reload_option,
     repl_connection_option,
     repl_ctrl_domain_name_option,
-    repl_ctrl_port_option,
     run_option,
     run_tests_option,
     tests_yaml_option,
@@ -58,7 +56,63 @@ from . import script
 from ..watcher import watch
 
 
-@click.group()
+socket_option_help = f"""Accepts query key {click.style('socket',
+bold=True)}: The path to a socket file used to connect to the database.
+"""
+
+socket_option_description = f"""For URI options that accept a socket: if
+{click.style('host', bold=True)} and {click.style('port', bold=True)} are
+provided then node excution will be paused early, until the database TCP
+connection is available for connections. If {click.style('socket', bold=True)}
+is provided then the {click.style('host', bold=True)} and
+{click.style('port', bold=True)} part of the URI are not required. If
+{click.style('host', bold=True)}, {click.style('port', bold=True)}, and
+{click.style('socket', bold=True)} are provided then node excution will be
+paused until the database is available via TCP connection, and the
+{click.style('socket', bold=True)} will be used for subsequent database
+communication."""
+
+
+worker_db_help = "Non-admin URI to the worker database. " + socket_option_help
+admin_worker_db_help = "Admin URI to the worker database. " + socket_option_help
+
+
+help_order  =[
+  "proxy",
+  "cmsd-manager",
+  "xrootd-manager",
+  "worker-cmsd",
+  "worker-repl",
+  "worker-xrootd",
+  "replication-controller",
+  "smig-update",
+  "integration-test",
+  "delete-database",
+  "ingest-table",
+  "load-simple",
+  "watcher",
+]
+
+
+class EntrypointCommandGroup(click.Group):
+    """Group class for custom entrypoint command behaviors."""
+
+    def list_commands(self, ctx):
+        """List the qserv commands in the order specified by help_order.
+
+        Returns
+        -------
+        commands : Sequence [ str ]
+            The list of commands, in the order they should appear in --help.
+        """
+        # make sure that all the commands are named in our help_order list:
+        missing = set(help_order).symmetric_difference(self.commands.keys())
+        if missing:
+            raise RuntimeError(f"{missing} is found in help_order or commands but not both.")
+        return help_order
+
+
+@click.group(cls=EntrypointCommandGroup)
 @log_level_option()
 def entrypoint(log_level):
     logging.basicConfig(
@@ -154,28 +208,31 @@ def delete_database(**kwargs):
     script.delete_database(**kwargs)
 
 
-@entrypoint.command()
-@connection_option()
-@db_scheme_option()
-@mysql_user_qserv_option()
+@entrypoint.command(help=f"Start as a qserv proxy node.\n\n{socket_option_description}")
+@db_uri_option(
+    help="The non-admin URI to the proxy's database, used for non-smig purposes. " + socket_option_help,
+    required=True,
+)
+@db_admin_uri_option(
+    help="The admin URI to the proxy's database, used for schema initialization. " + socket_option_help,
+    required=True,
+)
 @mysql_monitor_password_option()
 @repl_ctrl_domain_name_option()
-@xrootd_manager_option()
-@click.option("--czar-db-host", help="The name of the czar database host.", default="")
+@xrootd_manager_option(required=True)
 @click.option(
-    "--czar-db-port",
-    help="The port number of the czar database host.",
-    default="",
-)
-@click.option(
-    "--czar-db-socket",
-    help="""The unix socket of the czar database host.
-This can be used if the proxy container and the database are running on the same filesystem (e.g. in a pod).
-""",
-    default="",
+    "--proxy-backend-address",
+    default="127.0.0.1:3306",
+    show_default=True,
+    help="This is the same as the proxy-backend-address option to mysql proxy. This value is substitued "
+    "into the proxy-backend-address parameter in 'my-proxy.cnf.jinja'."
 )
 def proxy(**kwargs):
-    script.enter_proxy(**kwargs)
+    try:
+        script.enter_proxy(**kwargs)
+    except script.InvalidQueryParameter as e:
+        print(e)
+    return 1
 
 
 @entrypoint.command()
@@ -185,17 +242,19 @@ def proxy(**kwargs):
     default="80%",
 )
 def cmsd_manager(**kwargs):
+    "Start as a cmsd manager node."
     script.enter_manager_cmsd(**kwargs)
 
 
 @entrypoint.command()
 @cmsd_manager_option(required=True)
 def xrootd_manager(**kwargs):
+    "Start as an xrootd manager node."
     script.enter_xrootd_manager(**kwargs)
 
 
-@entrypoint.command()
-@connection_option()
+@entrypoint.command(help=f"Start as a worker cmsd node.\n\n{socket_option_description}")
+@db_uri_option(help=worker_db_help)
 @vnid_option(required=True)
 @cmsd_manager_option(required=True)
 @debug_option()
@@ -203,9 +262,10 @@ def worker_cmsd(**kwargs):
     script.enter_worker_cmsd(**kwargs)
 
 
-@entrypoint.command()
+@entrypoint.command(help=f"Start as a worker xrootd node.\n\n{socket_option_description}")
 @debug_option()
-@connection_option()
+@db_uri_option(help=worker_db_help)
+@db_admin_uri_option(help=admin_worker_db_help)
 @vnid_option(required=True)
 @cmsd_manager_option(required=True)
 @repl_ctrl_domain_name_option()
@@ -215,9 +275,9 @@ def worker_xrootd(**kwargs):
     script.enter_worker_xrootd(**kwargs)
 
 
-@entrypoint.command()
+@entrypoint.command(help=f"Start as a replication worker node.\n\n{socket_option_description}")
 @instance_id_option(required=True)
-@connection_option()
+@db_admin_uri_option(help="The admin URI to the worker's database, used for replication and ingest. " + socket_option_help)
 @repl_connection_option()
 @debug_option()
 @run_option()
@@ -225,10 +285,16 @@ def worker_repl(**kwargs):
     script.enter_worker_repl(**kwargs)
 
 
-@entrypoint.command()
+@entrypoint.command(help=f"Start as a replication controller node.\n\n{socket_option_description}")
 @instance_id_option(required=True)
-@connection_option()
-@repl_connection_option()
+@db_uri_option(
+    help="The non-admin URI to the replication controller's database, used for non-smig purposes.",
+    required=True,
+)
+@db_admin_uri_option(
+    help="The admin URI to the proxy's database, used for schema initialization. " + socket_option_help,
+    required=True,
+)
 @click.option(
     "--worker",
     "workers",
@@ -248,6 +314,7 @@ def worker_repl(**kwargs):
 )
 @run_option()
 def replication_controller(**kwargs):
+    "Start as a replication controller node."
     script.enter_replication_controller(**kwargs)
 
 
@@ -297,5 +364,5 @@ def watcher(**kwargs):
 @worker_connection_option()
 @repl_connection_option()
 def smig_update(**kwargs):
-    """Run smig on nodes."""
+    """Run schema update on nodes."""
     script.smig_update(**kwargs)

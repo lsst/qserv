@@ -25,20 +25,11 @@
 import click
 from functools import partial
 
-from .utils import split_kv
-
 
 cmsd_manager_option = partial(
     click.option,
     "--cmsd-manager",
     help="The host name of the cmsd manager.",
-)
-
-
-connection_option = partial(
-    click.option,
-    "--connection",
-    help="Connection string in format user:pass@host:port/database.",
 )
 
 
@@ -63,14 +54,6 @@ db_qserv_user_option = partial(
     "--db-qserv-user",
     default="qsmaster",
     help="The user to use for mysql database.",
-)
-
-
-db_scheme_option = partial(
-    click.option,
-    "--db-scheme",
-    help="The scheme part of the connection string.",
-    default="mysql+mysqlconnector",
 )
 
 
@@ -108,13 +91,6 @@ mysql_monitor_password_option = partial(
 )
 
 
-mysql_user_qserv_option = partial(
-    click.option,
-    "--mysql-user-qserv",
-    help="The qserv db user.",
-)
-
-
 repl_connection_option = partial(
     click.option,
     "--repl-connection",
@@ -126,13 +102,6 @@ repl_ctrl_domain_name_option = partial(
     click.option,
     "--repl-ctl-dn",
     help="The fully qualified domain name of the replication controller.",
-)
-
-
-repl_ctrl_port_option = partial(
-    click.option,
-    "--repl-ctl-port",
-    help="The port that the replication controller is listening on.",
 )
 
 
@@ -238,4 +207,18 @@ compare_results_option = partial(
     help="Run or skip query output comparison. Defaults to --compare-results",
     is_flag=True,
     default=True,
+)
+
+
+db_uri_option = partial(
+    click.option,
+    "--db-uri",
+    help="The URI to the database."
+)
+
+
+db_admin_uri_option = partial(
+    click.option,
+    "--db-admin-uri",
+    help="The admin URI to the database."
 )

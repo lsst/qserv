@@ -29,7 +29,7 @@ import subprocess
 import time
 from urllib.parse import urlparse
 import yaml
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Sequence
 
 from opt import (
     dashboard_port_ev,
@@ -574,9 +574,10 @@ def run_dev(
         "docker",
         "run",
         "--init",
+        "--rm",
         "--name",
         test_container,
-        "-dit",
+        "-it",
     ]
     if bind:
         args.extend(bind_args(qserv_root=qserv_root, bind_names=bind))
@@ -1125,3 +1126,37 @@ def down(
         }
     )
     subprocess.run(args, env=env, check=True)
+
+
+def entrypoint_help(
+    command: str,
+    qserv_image: str,
+    dry: bool,
+) -> None:
+    """Print the entrypoint CLI help output.
+
+    Parameters
+    ----------
+    command : Sequence[str]
+        The commands to get help for.
+    qserv_image : `str`
+        The name of the image to run.
+    dry : `bool`
+        If True do not run the command; print what would have been run.
+    """
+    args = [
+        "docker",
+        "run",
+        "--init",
+        "--rm",
+        qserv_image,
+        "entrypoint",
+    ]
+    if command:
+        args.append(command)
+    args.append("--help")
+    if dry:
+        print(" ".join(args))
+    else:
+        _log.debug('Running "%s"', " ".join(args))
+        subprocess.run(args, check=True)

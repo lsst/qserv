@@ -28,7 +28,7 @@ information.
 
 import click
 import sys
-from typing import List, Optional
+from typing import List, Optional, Sequence
 
 from cli.options import (
     czar_connection_option,
@@ -100,6 +100,7 @@ help_order = [
     "run-dev",
     "run-build",
     "run-debug",
+    "entrypoint-help"
 ]
 
 
@@ -538,4 +539,25 @@ def down(
         project=project,
         qserv_image=qserv_image,
         mariadb_image=mariadb_image,
+    )
+
+
+@qserv.command()
+@click.argument("COMMAND", required=False)
+@qserv_image_option()
+@dry_option()
+def entrypoint_help(
+    command: Sequence[str],
+    qserv_image: str,
+    dry: bool,
+) -> None:
+    """Show the help output of the entrypoint command inside a run container.
+
+    COMMAND is the entrypoint subcommand to get help for. If not provided, shows
+    help output for the entrypoint command.
+    """
+    launch.entrypoint_help(
+        command=command,
+        qserv_image=qserv_image,
+        dry=dry,
     )

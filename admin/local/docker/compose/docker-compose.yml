@@ -54,12 +54,14 @@ volumes:
     worker_1_xrootd:
     worker_1_home:
     worker_1_mariadb_lib:
+    worker_1_mariadb_run:
     manager_xrootd:
     manager_home:
     czar_0_data:
     czar_0_cfg:
     czar_0_home:
     czar_0_mariadb_lib:
+    czar_0_mariadb_run:
     repl_mgr_data:
     repl_mgr_home:
     repl_mgr_mariadb_lib:
@@ -72,6 +74,7 @@ networks:
                 - subnet: 192.168.3.0/24
 
 services:
+    # worker 0 uses ip+port to connect to the worker-db
     worker-db-0:
         << : *worker-db
         volumes:
@@ -87,7 +90,8 @@ services:
         << : *worker-xrootd
         command: >
           entrypoint worker-xrootd
-          --connection mysql://root:CHANGEME@127.0.0.1:3306
+          --db-uri mysql://qsmaster@127.0.0.1:3306
+          --db-admin-uri mysql://root:CHANGEME@127.0.0.1:3306
           --vnid worker_0
           --cmsd-manager manager-xrootd
           --mysql-monitor-password CHANGEME_MONITOR
@@ -110,7 +114,7 @@ services:
         << : *worker-cmsd
         command: >
           entrypoint worker-cmsd
-          --connection mysql://root:CHANGEME@worker-db-0:3306
+          --db-uri mysql://qsmaster@worker-db-0:3306
           --vnid worker_0
           --cmsd-manager manager-xrootd
         network_mode: "service:worker-xrootd-0"
@@ -128,7 +132,7 @@ services:
         << : *worker-repl
         command: >
           entrypoint worker-repl
-          --connection mysql://root:CHANGEME@worker-db-0:3306/qservw_worker
+          --db-admin-uri mysql://root:CHANGEME@worker-db-0:3306/qservw_worker
           --repl-connection mysql://qsreplica@repl-mgr-db:3306/qservReplica
           --instance-id qserv_proj
         environment:
@@ -144,6 +148,7 @@ services:
               source: worker_0_home
               target: /home/qserv
             - << : *log-volume
+    # worker 1 uses socket file (where possible) to connect to the worker-db
     worker-db-1:
         << : *worker-db
         volumes:
@@ -154,12 +159,16 @@ services:
             - type: volume
               source: worker_1_mariadb_lib
               target: /var/lib/mysql
+            - type: volume
+              source: worker_1_mariadb_run
+              target: /var/run/mysqld  # This is where the mariadb container puts the socket file
         network_mode: "service:worker-xrootd-1"
     worker-xrootd-1:
         << : *worker-xrootd
         command: >
-          entrypoint worker-xrootd
-          --connection mysql://root:CHANGEME@127.0.0.1:3306
+          entrypoint --log-level DEBUG worker-xrootd
+          --db-uri mysql://qsmaster@127.0.0.1:3306?socket=/qserv/mariadb/run/mysqld.sock
+          --db-admin-uri mysql://root:CHANGEME@127.0.0.1:3306?socket=/qserv/mariadb/run/mysqld.sock
           --vnid worker_1
           --cmsd-manager manager-xrootd
           --mysql-monitor-password CHANGEME_MONITOR
@@ -172,6 +181,9 @@ services:
             - type: volume
               source: worker_1_home
               target: /home/qserv
+            - type: volume
+              source: worker_1_mariadb_run
+              target: /qserv/mariadb/run  # This matches the ?socket=... location in --db-uri and --db-admin-uri
             - << : *log-volume
         networks:
             default:
@@ -181,8 +193,8 @@ services:
     worker-cmsd-1:
         << : *worker-cmsd
         command: >
-          entrypoint worker-cmsd
-          --connection mysql://root:CHANGEME@worker-db-1:3306
+          entrypoint --log-level DEBUG worker-cmsd
+          --db-uri mysql://qsmaster@worker-db-1:3306?socket=/qserv/mariadb/run/mysqld.sock
           --vnid worker_1
           --cmsd-manager manager-xrootd
         network_mode: "service:worker-xrootd-1"
@@ -195,12 +207,16 @@ services:
             - type: volume
               source: worker_1_home
               target: /home/qserv
+            - type: volume
+              source: worker_1_mariadb_run
+              target: /qserv/mariadb/run
             - << : *log-volume
     worker-repl-1:
         << : *worker-repl
+        # qserv-replica-worker app does not support socket file yet.
         command: >
           entrypoint worker-repl
-          --connection mysql://root:CHANGEME@worker-db-1:3306/qservw_worker
+          --db-admin-uri mysql://root:CHANGEME@worker-db-1:3306/qservw_worker
           --repl-connection mysql://qsreplica@repl-mgr-db:3306/qservReplica
           --instance-id qserv_proj
         environment:
@@ -271,16 +287,17 @@ services:
             - type: volume
               source: czar_0_mariadb_lib
               target: /var/lib/mysql
+            - type: volume
+              source: czar_0_mariadb_run
+              target: /var/run/mysqld
     czar-proxy:
         image: "${QSERV_IMAGE:?err}"
         init: true
         command: >
           entrypoint --log-level DEBUG proxy
-          --connection root:CHANGEME@127.0.0.1:3306
-          --mysql-user-qserv qsmaster
+          --db-uri mysql://qsmaster@127.0.0.1:3306?socket=/qserv/mariadb/run/mysqld.sock
+          --db-admin-uri mysql://root:CHANGEME@127.0.0.1:3306?socket=/qserv/mariadb/run/mysqld.sock
           --xrootd-manager manager-xrootd
-          --czar-db-host czar-db
-          --czar-db-port 3306
         environment:
             << : *log-environment
         volumes:
@@ -293,6 +310,9 @@ services:
             - type: volume
               source: czar_0_home
               target: /home/qserv
+            - type: volume
+              source: czar_0_mariadb_run
+              target: /qserv/mariadb/run
             - << : *log-volume
         expose:
             - "3306" # for czar-db
@@ -326,8 +346,8 @@ services:
         init: true
         command: >
           entrypoint --log-level DEBUG replication-controller
-          --connection mysql://root:CHANGEME@repl-mgr-db:3306/qservReplica
-          --repl-connection mysql://qsreplica@repl-mgr-db:3306/qservReplica
+          --db-uri mysql://qsreplica@repl-mgr-db:3306/qservReplica
+          --db-admin-uri mysql://root:CHANGEME@repl-mgr-db:3306/qservReplica
           --qserv-czar-db mysql://root:CHANGEME@czar-db:3306/qservMeta
           --instance-id qserv_proj
           --worker name=worker_0,host=worker-repl-0
