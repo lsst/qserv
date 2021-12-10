@@ -25,6 +25,8 @@
 import click
 from functools import partial
 
+from .utils import yaml_presets
+
 
 cmsd_manager_option = partial(
     click.option,
@@ -221,4 +223,16 @@ db_admin_uri_option = partial(
     click.option,
     "--db-admin-uri",
     help="The admin URI to the database."
+)
+
+
+options_file_option = partial(
+    click.option,
+    "--options-file", "-@",
+    expose_value=False,  # This option should not be forwarded
+    help="""Path to a YAML file containing overrides of command line options.
+The YAML should be organized as a hierarchy with subcommand names at the top
+level, options names and values (as key-value pairs) for that subcommand
+below. The option name should NOT include prefix dashes.""",
+    callback=yaml_presets,
 )
