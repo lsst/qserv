@@ -55,7 +55,7 @@ jobs:
           ./admin/local/cli/qserv --log-level DEBUG build-user-build-image \
           --group docker_outer
 
-      - name: Prepare maraidb image
+      - name: Prepare mariadb image
         run: |
           ./admin/local/cli/qserv --log-level DEBUG build-mariadb-image \
           --pull-image \
@@ -98,9 +98,6 @@ jobs:
         run: |
           ./admin/local/cli/qserv --log-level DEBUG down \
           -v
-
-
-
 
 # @npease says: this GitHub actions CI code was originally written by @fjammes.
 # I changed it, basically entirely, but I didn't want to lose what he had
