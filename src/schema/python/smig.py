@@ -26,30 +26,35 @@ import importlib
 import logging
 import mysql.connector
 from _mysql_connector import MySQLInterfaceError
+from typing import Optional, Type, Union
 
-from lsst.qserv.admin.qserv_backoff import max_backoff_sec, on_backoff
-from lsst.qserv.schema.schemaMigMgr import SchemaUpdateRequired, Uninitialized
+from ..admin.qserv_backoff import max_backoff_sec, on_backoff
+from . import MigMgrArgs, Migration, SchemaMigMgr, SchemaUpdateRequired, Uninitialized, Version
 
 
 _mig_module_name = "schema_migration"
 _factory_method_name = "make_migration_manager"
-
 _log = logging.getLogger(__name__)
 
 
-def _load_migration_mgr(mod_name, connection, scripts_dir, **kwargs):
+def _load_migration_mgr(
+    mod_name: str,
+    connection: str,
+    scripts_dir: str,
+    mig_mgr_args: MigMgrArgs = dict(),
+) -> SchemaMigMgr:
     """Dynamic loading of the migration manager based on module name.
 
     Parameters
     ----------
     mod_name : `str`
         Module name, e.g. "qmeta"
-    connection : dbapi connection
-        The database connection to use.
+    connection : `str`
+        The uri to the module database.
     scripts_dir : `str`
         Path where migration scripts are located, this is system-level directory,
         per-module scripts are usually located in sub-directories.
-    kwargs : `dict`
+    mig_mgr_args: MigMgrArgs
         Optional; kwargs that will be expanded when calling the migration manager factory function.
 
     Returns
@@ -86,7 +91,7 @@ def _load_migration_mgr(mod_name, connection, scripts_dir, **kwargs):
         raise
 
     # call factory method, pass all needed arguments
-    mgr = factory(name=mod_name, connection=connection, scripts_dir=scripts_dir, **kwargs)
+    mgr = factory(name=mod_name, connection=connection, scripts_dir=scripts_dir, **mig_mgr_args)
 
     return mgr
 
@@ -131,15 +136,15 @@ def _load_migration_mgr(mod_name, connection, scripts_dir, **kwargs):
 
 
 def smig(
-    do_migrate,
-    check,
-    final,
-    scripts,
-    connection,
-    module,
-    mig_mgr_args,
-    update,
-):
+    do_migrate: bool,
+    check: bool,
+    final: int,
+    scripts: str,
+    connection: str,
+    module: str,
+    mig_mgr_args: MigMgrArgs,
+    update: bool,
+) -> Optional[int]:
     """Execute schema migration.
 
     Parameters
@@ -157,7 +162,7 @@ def smig(
         Connection string in format mysql://user:pass@host:port/database.
     module : `str`
         Name of Qserv module for which to update schema, e.g. qmeta.
-    mig_mgr_args : `list` [ `str` ]
+    mig_mgr_args : `MigMgrArgs`
         List of arguments to forward to the module migration manager.
     update : `bool`
         `True` if modules may be upgraded from an integer version (or from
@@ -167,7 +172,7 @@ def smig(
 
     Returns
     -------
-    current : `int`
+    current : `int` or `None`
         If `check == True`: 0 if schema is current, or 1 if schema needs upgrading.
         Otherwise returns `None`.
 
@@ -208,14 +213,21 @@ def smig(
 
     # make an object which will manage migration process
 
-    with closing(_load_migration_mgr(module, connection=connection, scripts_dir=scripts, **mig_mgr_args)) as mgr:
+    with closing(
+        _load_migration_mgr(
+            module,
+            connection=connection,
+            scripts_dir=scripts,
+            mig_mgr_args=mig_mgr_args,
+        )
+    ) as mgr:
         current = mgr.current_version()
         _log.info("Current {} schema version: {}".format(module, current))
 
         latest = mgr.latest_version()
         _log.info("Latest {} schema version: {}".format(module, latest))
 
-        def format_migration(migration):
+        def format_migration(migration: Migration) -> str:
             tag = " (X)" if migration.from_version >= current else ""
             return f"{migration.from_version} -> {migration.to_version} : {migration.name}{tag}"
 
@@ -234,21 +246,22 @@ def smig(
             raise RuntimeError(f"Did not find any migrations for {module}")
 
         # do the migrations
-        final = mgr.migrate(final, do_migrate)
-        if final is None:
+        migrated_to = mgr.migrate(final, do_migrate)
+        if migrated_to is None:
             _log.info("No migration was needed")
         else:
             if do_migrate:
-                _log.info("Database was migrated to version {}".format(final))
+                _log.info("Database was migrated to version {}".format(migrated_to))
             else:
-                _log.info("Database would be migrated to version {}".format(final))
+                _log.info("Database would be migrated to version {}".format(migrated_to))
+    return None
 
 
 class VersionMismatchError(RuntimeError):
     """Rasing a VersionMismatchError indicates that the schema do not match yet.
     This can be handled by @backoff which may retry later.
     """
-    def __init__(self, module, current, latest):
+    def __init__(self, module: str, current: Union[int, Type[Uninitialized]], latest: Version):
         super().__init__(f"Module {module} schema is at version {current}, latest is {latest}")
 
 
@@ -258,7 +271,7 @@ class VersionMismatchError(RuntimeError):
     on_backoff=on_backoff(log=_log),
     max_time=max_backoff_sec,
 )
-def smig_block(connection, scripts, module):
+def smig_block(connection: str, scripts: str, module: str) -> None:
     """Block waiting for another process to run schema migration on a database.
 
     Parameters

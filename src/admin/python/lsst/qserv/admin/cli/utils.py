@@ -23,27 +23,19 @@
 
 import click
 import logging
-from typing import cast, Any, Dict, List, Tuple, Union
+from typing import cast, Dict, Sequence, Tuple, Union
 import yaml
 
 
 _log = logging.getLogger(__name__)
 
 
-def split_kv(
-    ctx: click.Context, param: click.core.Option, values: List[str]
-) -> Dict[str, str]:
+def split_kv(values: Sequence[str]) -> Dict[str, str]:
     """Split muliple groups of comma-separated key=value pairs into a dict.
 
     Parameters
     ----------
-    context : `click.Context` or `None`
-        The current execution context. Unused, but Click always passes it to
-        callbacks.
-    param : `click.core.Option` or `None`
-        The parameter being handled. Unused, but Click always passes it to
-        callbacks.
-    values : `list` [`str`]
+    values : `Sequence` [`str`]
         Each item in the list should be a string in the form "key=value" or
         "key=value,key=value,..."
 
@@ -60,37 +52,40 @@ def split_kv(
     # verify each pair has exactly one equal sign
     for pair in pairs:
         if pair.count("=") != 1:
-            raise RuntimeError("Each key-value pair must be separated by '='.")
+            raise RuntimeError(f"Each key-value pair must be separated by '='.")
     # split each pair on the equal sign:
     split_pairs = (cast(Tuple[str, str], pair.split("=")) for pair in pairs)
     # and finally, make a dict:
     return dict(split_pairs)
 
 
-def yaml_presets(ctx: click.Context, param: str, value: str) -> None:
+def yaml_presets(ctx: click.Context, param: click.core.Option, value: str) -> None:
     """Update a click context with defaults from a yaml file.
 
     Parameters
     ----------
-    ctx : click.Context
+    ctx : `click.Context`
         The click context to update.
-    param : str
+    param : `click.core.Option`
         The name of the parameter.
-    value : str
+    value : `str`
         The value of the parameter.
     """
     ctx.default_map = ctx.default_map or {}
     cmd_name = ctx.info_name
+    if not cmd_name:
+        return
+    _log.debug("Applying command line overrides for subcommand %s from URI %s", cmd_name, value)
     if value:
         try:
             overrides = _read_yaml_presets(value, cmd_name)
         except Exception as e:
-            raise click.BadOptionUsage(param.name, f"Error reading overrides file: {e}", ctx)
+            raise click.BadOptionUsage(cmd_name, f"Error reading overrides file: {e}", ctx)
         # Override the defaults for this subcommand
         ctx.default_map.update(overrides)
 
 
-def _read_yaml_presets(file, cmd_name) -> Dict[str, Union[str, int, bool]]:
+def _read_yaml_presets(file: str, cmd_name: str) -> Dict[str, Union[str, int, bool]]:
     """Read file command line overrides from YAML config file.
 
     Parameters
@@ -107,7 +102,6 @@ def _read_yaml_presets(file, cmd_name) -> Dict[str, Union[str, int, bool]]:
     overrides : `dict` of [str, Union[`str`, `int`, `bool`]]
         The relevant command line options read from the override file.
     """
-    _log.debug("Reading command line overrides for subcommand %s from URI %s", cmd_name, file)
     with open(file) as f:
         presets = yaml.safe_load(f.read())
     return presets.get(cmd_name, dict())

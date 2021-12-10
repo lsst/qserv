@@ -54,7 +54,7 @@ def unzip(source: str, destination: str) -> None:
         shutil.copyfileobj(_source, _target)
 
 
-def execute(cursor: MySQLCursor, stmt: str, multi: bool = False):
+def execute(cursor: MySQLCursor, stmt: str, multi: bool = False) -> None:
     """Execute a statement in a cursor, and clean up the cursor so it can be
     closed without causing warnings on the server."""
     warnings = []

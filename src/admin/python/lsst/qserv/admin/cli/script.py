@@ -32,25 +32,23 @@ import subprocess
 import sys
 import time
 from typing import Callable, Dict, List, Optional, Sequence, Union
-from urllib.parse import ParseResult, urlparse
 from sqlalchemy.engine.url import make_url
 
-from lsst.qserv.admin.qserv_backoff import on_backoff
-from lsst.qserv.admin.template import apply_template_cfg_file, save_template_cfg
-from lsst.qserv.schema import smig, smig_block
-from lsst.qserv.schema.schemaMigMgr import SchemaUpdateRequired
-from lsst.qserv.admin.replicationInterface import ReplicationInterface
-from . import (
-    _integration_test,
-    options,
-)
+from .utils import split_kv
+from ..itest import ITestResults
+from ..qserv_backoff import on_backoff
+from ..template import apply_template_cfg_file, save_template_cfg
+from ...schema import smig, smig_block
+from ...schema import MigMgrArgs, SchemaUpdateRequired
+from ..replicationInterface import ReplicationInterface
+from . import _integration_test, options
 
 
 smig_dir_env_var = "QSERV_SMIG_DIRECTORY"
 default_smig_dir = "/usr/local/qserv/smig"
 
 
-def smig_dir():
+def smig_dir() -> str:
     return os.environ.get(smig_dir_env_var, default_smig_dir)
 
 
@@ -92,13 +90,17 @@ xrootd_manager_cfg_path = "/config-etc/xrootd-manager.cf"
 _log = logging.getLogger(__name__)
 
 
+def _jitter(f: float) -> float:
+    return 0.0
+
+
 @backoff.on_exception(
     exception=SchemaUpdateRequired,
     on_backoff=on_backoff(log=_log),
     wait_gen=backoff.constant,
     interval=10,  # Wait 10 seconds between retries.
-    jitter=None,  # Don't add jitter (random small changes up or down) to the wait time.
-    giveup=lambda e: os.environ.get("UNIT_TEST", False),
+    jitter=_jitter,  # Don't add jitter (random small changes up or down) to the wait time.
+    giveup=lambda e: bool(os.environ.get("UNIT_TEST", False)),
 )
 def _wait_for_update(smig_func: Callable[[], None]) -> None:
     """Wrapper for a smig function that includes a backoff for the case where
@@ -109,8 +111,13 @@ def _wait_for_update(smig_func: Callable[[], None]) -> None:
 
 
 def _do_smig(
-    module_smig_dir: str, module: str, connection: str, update: bool, *, mig_mgr_args: Dict[str, str] = None
-):
+    module_smig_dir: str,
+    module: str,
+    connection: str,
+    update: bool,
+    *,
+    mig_mgr_args: MigMgrArgs = None,
+) -> None:
     """Run schema migration on a module's database.
 
     Parameters
@@ -123,7 +130,7 @@ def _do_smig(
         The uri to the database that will be affected.
     update : bool
         If the database is already initialized, do run any available updates.
-    mig_mgr_args : Dict[str, str], optional
+    mig_mgr_args : MigMgrArgs
         Arguments to the __init__ function of the `SchemaMigMgr` subclass, by
         default None
     """
@@ -144,7 +151,7 @@ def _do_smig(
         _wait_for_update(smig_func)
 
 
-def _do_smig_block(module_smig_dir: str, module: str, connection: str):
+def _do_smig_block(module_smig_dir: str, module: str, connection: str) -> None:
     """Wait for a module's schema to be updated to the latest version.
 
     Parameters
@@ -155,7 +162,7 @@ def _do_smig_block(module_smig_dir: str, module: str, connection: str):
         The name of the module whose schema is being migrated.
     connection : str
         The uri to the database that will be affected.
-        """
+    """
     smig_block(
         scripts=os.path.join(smig_dir(), module_smig_dir),
         connection=connection,
@@ -203,7 +210,7 @@ def _process_uri(uri: str, query_keys: Sequence[str], option: str, block: bool) 
         wait_gen=backoff.expo,
         on_backoff=on_backoff(log=_log),
     )
-    def wait_for_db(url: URL):
+    def wait_for_db(url: URL) -> None:
         try:
             with closing(
                 mysql.connector.connect(
@@ -227,17 +234,16 @@ def _process_uri(uri: str, query_keys: Sequence[str], option: str, block: bool) 
     return url
 
 
-def smig_czar(connection, update):
+def smig_czar(connection: str, update: bool) -> None:
     """Apply schema migration scripts to czar modules.
 
     Parameters
     ----------
     connection : `str`
         Connection string in format mysql://user:pass@host:port/database
-    update : bool, optional
+    update : bool
         False if workers may only be smigged from an `Uninitialized` state, or
-        True if they maybe upgraded from a (previously initialized) version, by
-        default False.
+        True if they maybe upgraded from a (previously initialized) version.
     """
     for module_smig_dir, module in (
         (admin_smig_dir, "admin"),
@@ -251,9 +257,9 @@ def smig_czar(connection, update):
 def smig_replication_controller(
     db_uri: Optional[str],
     db_admin_uri: str,
-    update: Optional[bool],
+    update: bool,
     set_initial_configuration: Optional[Callable[[], None]] = None,
-):
+) -> None:
     """Apply schema migration scripts to the replication controller.
 
     Parameters
@@ -264,10 +270,9 @@ def smig_replication_controller(
         when upgrading the database.
     db_admin_uri : `str`
         Connection string in format mysql://user:pass@host:port/database
-    update : bool, optional
+    update : bool
         False if workers may only be smigged from an `Uninitialized` state, or
-        True if they maybe upgraded from a (previously initialized) version, by
-        default False.
+        True if they maybe upgraded from a (previously initialized) version.
     set_initial_configuration : `Callable[[], None]`
         A function that takes no arguments and returns nothing that can be used
         by the replication controller migration manager to initialize the
@@ -287,7 +292,7 @@ def smig_replication_controller(
     )
 
 
-def smig_worker(connection: str, update: bool = False):
+def smig_worker(connection: str, update: bool = False) -> None:
     """Apply schema migration scripts to the worker modules.
 
     Parameters
@@ -299,11 +304,11 @@ def smig_worker(connection: str, update: bool = False):
         True if they maybe upgraded from a (previously initialized) version, by
         default False.
     """
-    _do_smig(admin_smig_dir, "admin", connection, update),
-    _do_smig(worker_smig_dir, "worker", connection, update),
+    _do_smig(admin_smig_dir, "admin", connection, update)
+    _do_smig(worker_smig_dir, "worker", connection, update)
 
 
-def enter_manager_cmsd(cms_delay_servers: str):
+def enter_manager_cmsd(cms_delay_servers: str) -> None:
     """Start a cmsd manager qserv node.
 
     Parameters
@@ -320,7 +325,7 @@ def enter_manager_cmsd(cms_delay_servers: str):
         )
     )
     apply_template_cfg_file(cmsd_manager_cfg_template, cmsd_manager_cfg_path)
-    args = [
+    args: List[Union[str, int]] = [
         "cmsd",
         "-c",
         cmsd_manager_cfg_path,
@@ -332,7 +337,7 @@ def enter_manager_cmsd(cms_delay_servers: str):
     sys.exit(_run(args))
 
 
-def enter_xrootd_manager(cmsd_manager: str):
+def enter_xrootd_manager(cmsd_manager: str) -> None:
     """Start an xrootd manager qserv node.
 
     Parameters
@@ -361,7 +366,7 @@ def enter_xrootd_manager(cmsd_manager: str):
     )
 
 
-def enter_worker_cmsd(cmsd_manager: str, vnid: str, debug_port: Optional[int], db_uri: str):
+def enter_worker_cmsd(cmsd_manager: str, vnid: str, debug_port: Optional[int], db_uri: str) -> None:
     """Start a worker cmsd node.
 
     Parameters
@@ -422,7 +427,7 @@ def enter_worker_xrootd(
     repl_ctl_dn: str,
     mysql_monitor_password: str,
     db_qserv_user: str,
-):
+) -> None:
     """Start a worker xrootd node.
 
     Parameters
@@ -470,8 +475,8 @@ def enter_worker_xrootd(
         dict(
             vnid=vnid,
             cmsd_manager=cmsd_manager,
-            db_host=url.host,
-            db_port=url.port or "",
+            db_host=url.host or "",
+            db_port=str(url.port) or "",
             db_socket=url.query.get("socket", ""),
             mysqld_user_qserv=db_qserv_user,
             replication_controller_FQDN=repl_ctl_dn,
@@ -506,7 +511,7 @@ def enter_worker_xrootd(
 
 def enter_worker_repl(
     db_admin_uri: str, repl_connection: str, debug_port: Optional[int], run: bool, instance_id: str
-):
+) -> None:
     """Start a worker replication node.
 
     Parameters
@@ -582,7 +587,7 @@ def enter_proxy(
     mysql_monitor_password: str,
     xrootd_manager: str,
     proxy_backend_address: str,
-):
+) -> None:
     """Entrypoint script for the proxy container.
 
     Parameters
@@ -654,7 +659,7 @@ def enter_replication_controller(
     run: bool,
     xrootd_manager: str,
     qserv_czar_db: str,
-):
+) -> None:
     """Entrypoint script for the entrypoint controller.
 
     Parameters
@@ -668,6 +673,8 @@ def enter_replication_controller(
         administrative (typically root) user.
     workers : `list` [`str`]
         A list of parameters for each worker in the format "key=value,..."
+        For example:
+        `["name=worker_0,host=worker-repl-0", "name=worker_1,host=worker-repl-1"]
     instance_id : `str`
         A unique identifier of a Qserv instance served by the Replication
         System. Its value will be passed along various internal communication
@@ -684,7 +691,7 @@ def enter_replication_controller(
         print the command and arguments that would have been run.
     """
 
-    def set_initial_configuartion(workers, xrootd_manager):
+    def set_initial_configuartion(workers: Sequence[str], xrootd_manager: str) -> None:
         """Add the initial configuration to the replication database.
         Should only be called if the replication database has newly been smigged to version 1."""
         args = [
@@ -696,8 +703,8 @@ def enter_replication_controller(
         _log.debug(f"Calling {' '.join(args)}")
         _run(args, run=run, check_returncode=True)
 
-        workers = [dict(item.split("=") for item in worker.split(",")) for worker in workers]
-        for worker in workers:
+        workers_ = [split_kv((w,)) for w in workers]
+        for worker in workers_:
             try:
                 name = worker.pop("name")
                 host = worker.pop("host")
@@ -713,7 +720,7 @@ def enter_replication_controller(
             args += [f"--{key}={val}" for key, val in worker.items()]
             _log.debug(f"Calling {' '.join(args)}")
             _run(args, run=run, check_returncode=True)
-        _log.info(f"Finished setting initial configuration {workers}")
+        _log.info(f"Finished setting initial configuration {workers_}")
 
     _ = _process_uri(
         uri=db_uri,
@@ -753,7 +760,7 @@ def enter_replication_controller(
     sys.exit(_run(args, env=env, run=run))
 
 
-def smig_update(czar_connection: str, worker_connections: List[str], repl_connection: str):
+def smig_update(czar_connection: str, worker_connections: List[str], repl_connection: str) -> None:
     """Update smig on nodes that need it.
 
     All connection strings are in format mysql://user:pass@host:port/database
@@ -777,11 +784,11 @@ def smig_update(czar_connection: str, worker_connections: List[str], repl_connec
 
 
 def _run(
-    args: List[Union[str, int]],
+    args: Sequence[Union[str, int]],
     env: Dict[str, str] = None,
     debug_port: Optional[int] = None,
     run: bool = True,
-    check_returncode = False,
+    check_returncode: bool = False,
 ) -> int:
     """Run a command in a subprocess.
 
@@ -812,12 +819,13 @@ def _run(
     exit_code : `int`
         The exit code of the command that was run.
     """
+    str_args = [str(a) for a in args]
     if debug_port:
-        args = ["gdbserver", f"localhost:{debug_port}"] + args
+        str_args = ["gdbserver", f"localhost:{debug_port}"] + str_args
     if not run:
-        print(" ".join(args))
+        print(" ".join(str_args))
         return 0
-    result = subprocess.run(args, env=env, cwd="/home/qserv")
+    result = subprocess.run(str_args, env=env, cwd="/home/qserv")
     if check_returncode:
         result.check_returncode
     return result.returncode
@@ -891,7 +899,7 @@ def load_simple(repl_ctrl_uri: str) -> None:
         ),
     )
     transaction_id = repl.start_transaction(database=database)
-    chunk_location = repl.ingest_chunk_config(transaction_id, 0)
+    chunk_location = repl.ingest_chunk_config(transaction_id, "0")
     repl.ingest_data_file(
         transaction_id,
         chunk_location.host,
@@ -904,8 +912,27 @@ def load_simple(repl_ctrl_uri: str) -> None:
     repl.publish_database(database)
 
 
-def integration_test(**kwargs):
-    repl_connection = kwargs.pop("repl_connection", None)
+def integration_test(
+    repl_connection: str,
+    pull: Optional[bool],
+    unload: bool,
+    load: Optional[bool],
+    reload: bool,
+    cases: List[str],
+    run_tests: bool,
+    tests_yaml: str,
+    compare_results: bool,
+) -> ITestResults:
     if repl_connection is not None:
-        _do_smig_block(admin_smig_dir, "replica", kwargs["repl_connection"])
-    return _integration_test.run_integration_tests(mysqld_user=mysqld_user_qserv, **kwargs)
+        _do_smig_block(admin_smig_dir, "replica", repl_connection)
+    return _integration_test.run_integration_tests(
+        pull=pull,
+        unload=unload,
+        load=load,
+        reload=reload,
+        cases=cases,
+        run_tests=run_tests,
+        tests_yaml=tests_yaml,
+        compare_results=compare_results,
+        mysqld_user=mysqld_user_qserv,
+    )

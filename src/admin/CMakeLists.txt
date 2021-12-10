@@ -1,4 +1,4 @@
-install(DIRECTORY python/ DESTINATION ${CMAKE_INSTALL_PREFIX}/python/lsst/qserv/admin)
+install(DIRECTORY python/lsst/qserv/admin DESTINATION ${CMAKE_INSTALL_PREFIX}/python/lsst/qserv)
 install(FILES bin/entrypoint DESTINATION ${CMAKE_INSTALL_BINDIR} PERMISSIONS OWNER_READ OWNER_EXECUTE WORLD_READ WORLD_EXECUTE)
 install(DIRECTORY schema/ DESTINATION ${CMAKE_INSTALL_PREFIX}/qserv/smig/admin/schema/)
 install(DIRECTORY etc/ DESTINATION ${CMAKE_INSTALL_PREFIX}/etc FILE_PERMISSIONS OWNER_READ OWNER_WRITE WORLD_READ WORLD_WRITE)
@@ -20,8 +20,8 @@ add_test(NAME test_smig
 set_tests_properties(test_smig PROPERTIES ENVIRONMENT QSERV_SMIG_DIRECTORY=${CMAKE_INSTALL_PREFIX}/qserv/smig)
 
 add_test(NAME test_qserv_cli
-  COMMAND python3 -m unittest test_qserv_cli
-  WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/../../admin/local/cli
+  COMMAND python3 -m unittest tests.admin.test_qserv_cli
+  WORKING_DIRECTORY ${CMAKE_INSTALL_PREFIX}/python/
 )
 
 add_test(NAME test_itest
@@ -36,5 +36,10 @@ add_test(NAME test_utils
 
 add_test(NAME test_options_file_option
   COMMAND python3 -m unittest tests.admin.test_optionsFileOption
+  WORKING_DIRECTORY ${CMAKE_INSTALL_PREFIX}/python/
+)
+
+add_test(NAME test_qserv_log
+  COMMAND python3 -m unittest tests.admin.test_qserv_log
   WORKING_DIRECTORY ${CMAKE_INSTALL_PREFIX}/python/
 )

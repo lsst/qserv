@@ -30,10 +30,11 @@ import click
 import sys
 from typing import List, Optional, Sequence
 
-from cli.options import (
+from ..cli.options import (
     czar_connection_option,
     pull_option,
     load_option,
+    log_level_option,
     unload_option,
     reload_option,
     run_tests_option,
@@ -44,10 +45,10 @@ from cli.options import (
     worker_connection_option,
 )
 
-import launch
-import qserv_log
+from . import launch
+from . import qserv_log
 
-from opt import (
+from .opt import (
     bind_option,
     build_container_name_option,
     build_image_option,
@@ -63,6 +64,7 @@ from opt import (
     make_option,
     mariadb_image_ev,
     mariadb_image_option,
+    mypy_option,
     project_option,
     pull_image_option,
     push_image_option,
@@ -117,12 +119,7 @@ class QservCommandGroup(click.Group):
 
 
 @click.group(cls=QservCommandGroup)
-@click.option(
-    qserv_log.log_level_flag,
-    default=qserv_log.default_log_level,
-    type=click.Choice(qserv_log.log_level_choices, case_sensitive=True),
-    help=f"The logging level. Supported levels are [{'|'.join(qserv_log.log_level_choices)}]",
-    show_default=True,
+@log_level_option(
     expose_value=False,
 )
 def qserv() -> None:
@@ -162,6 +159,7 @@ def show_qserv_environment() -> None:
 @cmake_option()
 @make_option()
 @unit_test_option()
+@mypy_option()
 @do_build_image_option()
 @jobs_option()
 @dry_option()
@@ -173,6 +171,7 @@ def build(
     jobs: Optional[int],
     run_cmake: bool,
     run_make: bool,
+    run_mypy: bool,
     user_build_image: str,
     qserv_image: str,
     run_base_image: str,
@@ -191,6 +190,7 @@ def build(
         jobs=jobs,
         run_cmake=run_cmake,
         run_make=run_make,
+        run_mypy=run_mypy,
         user_build_image=user_build_image,
         qserv_image=qserv_image,
         run_base_image=run_base_image,
@@ -329,13 +329,11 @@ def run_debug(
 
     CONTAINER_NAME is the name of the container to connect to for debugging.
     """
-    click.echo(
-        launch.run_debug(
-            container_name,
-            build_image,
-            project,
-            dry,
-        )
+    launch.run_debug(
+        container_name,
+        build_image,
+        project,
+        dry,
     )
 
 
@@ -547,7 +545,7 @@ def down(
 @qserv_image_option()
 @dry_option()
 def entrypoint_help(
-    command: Sequence[str],
+    command: str,
     qserv_image: str,
     dry: bool,
 ) -> None:

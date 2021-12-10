@@ -26,7 +26,7 @@ from contextlib import closing
 import logging
 import requests
 from time import sleep
-from typing import List, Set, Tuple, Type, Union
+from typing import List, Sequence, Set, Type, Union
 
 _log = logging.getLogger(__name__)
 
@@ -90,7 +90,7 @@ class Watcher:
         show_query: bool,
     ):
         self.cluster_id = cluster_id
-        self.prev_failed_ids: Set[int] = set()
+        self.prev_failed_ids: Set[str] = set()
         self.first_check = True
         self.qserv = qserv
         self.timeout_sec = timeout_sec
@@ -168,7 +168,7 @@ class Watcher:
             _log.error(f"Failed to send notification {msg}, exception: {e}")
         _log.debug(f"Sent notification: {msg}")
 
-    def query(self, uri: str, stmt: str) -> List[Tuple[str]]:
+    def query(self, uri: str, stmt: str) -> List[Sequence[str]]:
         """Execute a mysql query at the provided URI
 
         Parameters
@@ -269,7 +269,7 @@ def watch(
     timeout_sec: int,
     interval_sec: int,
     show_query: bool,
-):
+) -> None:
     watcher = Watcher(
         cluster_id, notify_url_file, qserv, timeout_sec, interval_sec, show_query
     )

@@ -123,15 +123,20 @@ RUN echo /usr/local/lib > /etc/ld.so.conf.d/local.conf \
 
 RUN pip3 install \
     backoff \
+    backoff-stubs \
     click \
     deprecated \
     docker-compose \
     jinja2 \
+    mypy \
     mysql-connector-python \
     numpy \
     pybind11[global] \
     pyyaml \
-    sqlalchemy
+    sqlalchemy \
+    sqlalchemy-stubs \
+    types-PyYAML \
+    types-requests
 
 RUN useradd --create-home --uid 1000 --shell /bin/bash qserv
 
