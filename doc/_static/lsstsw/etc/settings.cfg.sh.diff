@@ -1,0 +1,11 @@
+--- settings.cfg.sh.orig	2014-09-01 11:03:40.000000000 +0200
++++ settings.cfg.sh	2014-09-01 11:02:55.000000000 +0200
+@@ -27,7 +27,7 @@
+ # the location of source repositories
+ BASE='git://git.lsstcorp.org/LSST'
+ SBASE='https://stash.lsstcorp.org/scm'
+-export REPOSITORY_PATTERN="$SBASE/sim/%(product)s.git|$BASE/sims/%(product)s.git|$BASE/DMS/%(product)s.git|$BASE/DMS/devenv/%(product)s.git|$BASE/DMS/testdata/%(product)s.git|$BASE/external/%(product)s.git"
++export REPOSITORY_PATTERN="$BASE/sims/%(product)s.git|$BASE/DMS/%(product)s.git|$BASE/DMS/devenv/%(product)s.git|$BASE/DMS/testdata/%(product)s.git|$BASE/external/%(product)s.git"
+ 
+ # location of the build directory
+ export BUILDDIR=$LSSTSW/build

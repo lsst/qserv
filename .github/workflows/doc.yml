@@ -7,6 +7,9 @@ jobs:
   doc:
     name: Generate and upload documentation
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: doc
 
     steps:
       - uses: actions/checkout@v2
@@ -19,30 +22,19 @@ jobs:
       - name: Install Python dependencies
         run: |
           pip install --upgrade pip
-          pip install \
-            documenteer \
-            ltd-conveyor \
-            sphinx-rtd-theme
-
-      - name: Install Cmake
-        run: sudo apt-get install -y cmake
-
-      - name: Configure
-        run: |
-          mkdir build
-          cd build
-          cmake ..
+          pip install -r requirements.txt
+          pip install ltd-conveyor
 
       - name: Check links
         run: |
-          make docs-linkcheck
+          make linkcheck
 
       - name: Build docs
         run: |
-          make docs-html
+          make html
 
       - name: Upload docs
         env:
           LTD_USERNAME: ${{ secrets.LTD_USERNAME }}
           LTD_PASSWORD: ${{ secrets.LTD_PASSWORD }}
-        run: ltd upload --product qserv --gh --dir build/doc/html
+        run: ltd upload --product qserv --gh --dir _build/html
