@@ -26,6 +26,4 @@ target_link_libraries(testqhttp PUBLIC
     Threads::Threads
 )
 
-add_test(NAME test_qhttp COMMAND testqhttp)
-
-set_tests_properties(test_qhttp PROPERTIES WILL_FAIL 1)
+add_test(NAME testqhttp COMMAND testqhttp -- --data=${CMAKE_CURRENT_SOURCE_DIR}/testdata/)
