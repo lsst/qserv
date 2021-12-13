@@ -140,7 +140,7 @@ private:
     boost::asio::ip::tcp::acceptor _acceptor;
 
     std::chrono::milliseconds _requestTimeout;
-    
+
     std::vector<std::weak_ptr<boost::asio::ip::tcp::socket>> _activeSockets;
     std::mutex _activeSocketsMutex;
 

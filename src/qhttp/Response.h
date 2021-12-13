@@ -55,7 +55,7 @@ public:
 
     //----- Response status code and additional headers may also be set with these members, and will be
     //      included/observed by the send methods above (sendStatus and sendFile will override status set
-    //      here, though; sendFile will override any Content0Type header set here.)
+    //      here, though; sendFile will override any Content-Type header set here.)
 
     unsigned int status = { 200 };
     std::unordered_map<std::string, std::string> headers;
