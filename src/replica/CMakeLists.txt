@@ -424,6 +424,7 @@ target_sources(replica PRIVATE
     WorkerServerConnection.h
     WorkerSqlRequest.cc
     WorkerSqlRequest.h
+    XrdCmsgetVnId.cc
 )
 
 target_include_directories(replica PRIVATE
