@@ -178,6 +178,7 @@ bool MySqlConnection::runQuery(char const* query,
                                int qSize,
                                SqlResults& results,
                                SqlErrorObject& errObj) {
+    LOGS(_log, LOG_LVL_INFO, "&&& MySqlConnection::runQuery " << query);
     std::string queryPiece(query, qSize);
     if (!connectToDb(errObj)) {
         LOGS(_log, LOG_LVL_ERROR, "runQuery failed connectToDb: " << queryPiece);

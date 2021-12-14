@@ -122,14 +122,10 @@ void Foreman::_setRunFunc(shared_ptr<wbase::Task> const& task) {
                 LOGS(_log, LOG_LVL_ERROR, "runQuery threw UnsupportedError " << e.what() << *task);
             }
             if (not success) {
-                LOGS(_log, LOG_LVL_ERROR, "&&&runQuery failed a");
                 LOGS(_log, LOG_LVL_ERROR, "runQuery failed " << *task);
                 if (not task->getSendChannel()->kill("Foreman::_setRunFunc")) {
                     LOGS(_log, LOG_LVL_WARN, "runQuery sendChannel killed");
                 }
-                LOGS(_log, LOG_LVL_ERROR, "&&&runQuery failed b");
-            } else { //&&&
-                LOGS(_log, LOG_LVL_WARN, "&&&runQuery success");
             }
         }
         // Transmission is done, but 'task' contains statistics that are still useful.

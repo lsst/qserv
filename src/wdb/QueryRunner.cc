@@ -211,14 +211,12 @@ bool QueryRunner::runQuery() {
     if (_task->msg->has_protocol()) {
         switch(_task->msg->protocol()) {
         case 2:
-            //&&&return _dispatchChannel(); // Run the query and send the results back.
-       {
-           bool dispatchSuccess = _dispatchChannel();
-            if (!dispatchSuccess) {
-                LOGS(_log, LOG_LVL_ERROR, "&&& _dispatchChannel failed.");
+            // Run the query and send the results back.
+            if (!_dispatchChannel()) {
+                LOGS(_log, LOG_LVL_WARN, "_dispatchChannel failed.");
+                return false;
             }
-            return dispatchSuccess;
-        }
+            return true;
         case 1:
             throw UnsupportedError(_task->getIdStr() + " QueryRunner: Expected protocol > 1 in TaskMsg");
         default:
@@ -447,7 +445,10 @@ bool QueryRunner::_dispatchChannel() {
 
     unsigned int rowCount = 0;
     size_t tSize = 0;
-    bool needToFreeRes = false;
+
+    // Remains true as long as there are no problems with reading/transmitting.
+    int readRowsOk = true;
+    bool needToFreeRes = false; // set to true once there are results to be freed.
 
     // Collect the result in _transmitData. When a reasonable amount of data has been collected,
     // or there are no more rows to collect, pass _transmitData to _sendChannel.
@@ -499,7 +500,8 @@ bool QueryRunner::_dispatchChannel() {
                 }
             }
 
-            while (!_fillRows(res, numFields, rowCount, tSize)) {
+            // _fillRows() false indicates that more result rows will follow.
+            while (readRowsOk && !_fillRows(res, numFields, rowCount, tSize)) {
                 if (tSize > proto::ProtoHeaderWrap::PROTOBUFFER_HARD_LIMIT) {
                     LOGS_ERROR("Message single row too large to send using protobuffer");
                     erred = true;
@@ -507,10 +509,11 @@ bool QueryRunner::_dispatchChannel() {
                 }
                 LOGS(_log, LOG_LVL_TRACE, "Splitting message size=" << tSize << ", rowCount=" << rowCount);
                 _buildDataMsg(rowCount, tSize);
-                // false indicates that more result rows will follow from this thread.
+                //&&& If readRowsOk==false, empty out the rows but don't bother trying to transmit.
+                //&&& if (readRowsOk && !_transmit(false)) {
                 if (!_transmit(false)) {
                     LOGS(_log, LOG_LVL_ERROR, "Could not transmit intermediate results.");
-                    return false;
+                    readRowsOk = false; // Empty the fillRows data and then return false.
                 }
                 rowCount = 0;
                 tSize = 0;
@@ -523,10 +526,15 @@ bool QueryRunner::_dispatchChannel() {
         _multiError.push_back(worker_err);
         erred = true;
     }
+    // IMPORTANT, do not leave this function before this check has been made.
     if (needToFreeRes) {
         needToFreeRes = false;
         // All rows have been read out or there was an error.
         _mysqlConn->freeResult();
+    }
+    if (!readRowsOk) {
+        LOGS(_log, LOG_LVL_ERROR, "Failed to read and transmit rows.");
+        return false;
     }
     if (!_cancelled) {
         // Send results. This needs to happen after the error check.

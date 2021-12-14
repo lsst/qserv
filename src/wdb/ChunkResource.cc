@@ -234,37 +234,35 @@ public:
     /// Release a resource, flushing if no more users need it.
     void release(std::string const& db, DbTableSet const& dbTableSet,
                  IntVector const& sc, SQLBackend::Ptr backend) {
-        {
-            std::lock_guard<std::mutex> lock(_mutex);
-            backend->memLockRequireOwnership();
-            StringVector::const_iterator ti, te;
-            LOGS(_log, LOG_LVL_DEBUG, "SubChunk release refC=" << _refCount
-                    << " db=" << db
-                    << " dbTableSet[" << util::printable(dbTableSet) << "]"
-                    << " sc[" << util::printable(sc) << "]");
-            for(auto const& dbTbl : dbTableSet) {
-                SubChunkMap& scm = _tableMap[dbTbl]; // Should be in there.
-                IntVector::const_iterator i, e;
-                for(i=sc.begin(), e=sc.end(); i != e; ++i) {
-                    SubChunkMap::iterator it = scm.find(*i); // Should be there
-                    if (it == scm.end()) {
-                        throw Bug("ChunkResource ChunkEntry::release: Error releasing un-acquired resource");
-                    }
-                    scm[*i] = it->second - 1; // write new value
-                } // All subchunks
-            } // All tables
-            --_refCount;
-        }
-        flush(db, backend); // Discard resources no longer needed by anyone.
+        std::lock_guard<std::mutex> lock(_mutex);
+        backend->memLockRequireOwnership();
+        StringVector::const_iterator ti, te;
+        LOGS(_log, LOG_LVL_DEBUG, "SubChunk release refC=" << _refCount
+                << " db=" << db
+                << " dbTableSet[" << util::printable(dbTableSet) << "]"
+                << " sc[" << util::printable(sc) << "]");
+        for(auto const& dbTbl : dbTableSet) {
+            SubChunkMap& scm = _tableMap[dbTbl]; // Should be in there.
+            IntVector::const_iterator i, e;
+            for(i=sc.begin(), e=sc.end(); i != e; ++i) {
+                SubChunkMap::iterator it = scm.find(*i); // Should be there
+                if (it == scm.end()) {
+                    throw Bug("ChunkResource ChunkEntry::release: Error releasing un-acquired resource");
+                }
+                scm[*i] = it->second - 1; // write new value
+            } // All subchunks
+        } // All tables
+        --_refCount;
+        _flush(db, backend); // Discard resources no longer needed by anyone.
         // flush could be detached from the release function, to be called at a
         // high-water mark and/or on periodic intervals
     }
 
+
+private:
     /// Flush resources no longer needed by anybody
-    void flush(std::string const& db, SQLBackend::Ptr backend) {
+    void _flush(std::string const& db, SQLBackend::Ptr backend) {
         ScTableVector discardable;
-        std::lock_guard<std::mutex> lock(_mutex);
-        backend->memLockRequireOwnership();
         for(auto& elem : _tableMap) {
             IntVector mapDiscardable;
             SubChunkMap& scm = elem.second;
@@ -292,7 +290,6 @@ public:
     }
 
 
-private:
     void _release(ScTableVector const& needed) {
         // _mutex should be held.
         // Release subChunkId for the right table
