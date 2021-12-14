@@ -500,8 +500,8 @@ bool QueryRunner::_dispatchChannel() {
                 }
             }
 
-            // _fillRows() false indicates that more result rows will follow.
-            while (readRowsOk && !_fillRows(res, numFields, rowCount, tSize)) {
+            // _fillRows() false indicates that more result rows follow.
+            while (!_fillRows(res, numFields, rowCount, tSize)) {
                 if (tSize > proto::ProtoHeaderWrap::PROTOBUFFER_HARD_LIMIT) {
                     LOGS_ERROR("Message single row too large to send using protobuffer");
                     erred = true;
@@ -509,9 +509,9 @@ bool QueryRunner::_dispatchChannel() {
                 }
                 LOGS(_log, LOG_LVL_TRACE, "Splitting message size=" << tSize << ", rowCount=" << rowCount);
                 _buildDataMsg(rowCount, tSize);
-                //&&& If readRowsOk==false, empty out the rows but don't bother trying to transmit.
-                //&&& if (readRowsOk && !_transmit(false)) {
-                if (!_transmit(false)) {
+                // If readRowsOk==false, empty out the rows but don't bother trying to transmit.
+                // This needs to be done or mariadb won't properly release the resources.
+                if (readRowsOk && !_transmit(false)) {
                     LOGS(_log, LOG_LVL_ERROR, "Could not transmit intermediate results.");
                     readRowsOk = false; // Empty the fillRows data and then return false.
                 }
