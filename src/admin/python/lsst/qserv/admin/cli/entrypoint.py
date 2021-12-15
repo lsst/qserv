@@ -51,6 +51,7 @@ from .options import (
     tests_yaml_option,
     unload_option,
     vnid_option,
+    vnid_config_option,
     worker_connection_option,
     xrootd_manager_option,
 )
@@ -269,12 +270,23 @@ def xrootd_manager(cmsd_manager: str) -> None:
 @entrypoint.command(help=f"Start as a worker cmsd node.\n\n{socket_option_description}")
 @db_uri_option(help=worker_db_help)
 @vnid_option(required=True)
+@vnid_config_option(required=True)
 @cmsd_manager_option(required=True)
 @debug_option()
 @options_file_option()
-def worker_cmsd(cmsd_manager: str, vnid: str, debug_port: Optional[int], db_uri: str) -> None:
+def worker_cmsd(
+    cmsd_manager: str,
+    vnid: str,
+    vnid_config: str,
+    debug_port: Optional[int],
+    db_uri: str
+) -> None:
     script.enter_worker_cmsd(
-        cmsd_manager=cmsd_manager, vnid=vnid, debug_port=debug_port, db_uri=db_uri
+        cmsd_manager=cmsd_manager,
+        vnid=vnid,
+        vnid_config=vnid_config,
+        debug_port=debug_port,
+        db_uri=db_uri,
     )
 
 
@@ -283,6 +295,7 @@ def worker_cmsd(cmsd_manager: str, vnid: str, debug_port: Optional[int], db_uri:
 @db_uri_option(help=worker_db_help)
 @db_admin_uri_option(help=admin_worker_db_help)
 @vnid_option(required=True)
+@vnid_config_option(required=True)
 @cmsd_manager_option(required=True)
 @repl_ctrl_domain_name_option()
 @mysql_monitor_password_option()
@@ -293,6 +306,7 @@ def worker_xrootd(
     db_uri: str,
     db_admin_uri: str,
     vnid: str,
+    vnid_config: str,
     cmsd_manager: str,
     repl_ctl_dn: str,
     mysql_monitor_password: str,
@@ -303,6 +317,7 @@ def worker_xrootd(
         db_uri=db_uri,
         db_admin_uri=db_admin_uri,
         vnid=vnid,
+        vnid_config=vnid_config,
         cmsd_manager=cmsd_manager,
         repl_ctl_dn=repl_ctl_dn,
         mysql_monitor_password=mysql_monitor_password,

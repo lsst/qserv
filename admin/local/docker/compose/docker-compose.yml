@@ -93,6 +93,7 @@ services:
           --db-uri mysql://qsmaster@127.0.0.1:3306
           --db-admin-uri mysql://root:CHANGEME@127.0.0.1:3306
           --vnid worker_0
+          --vnid-config "@/usr/local/lib64/libreplica.so mysql://qsmaster@127.0.0.1:3306/qservw_worker 0 0"
           --cmsd-manager manager-xrootd
           --mysql-monitor-password CHANGEME_MONITOR
         environment:
@@ -116,6 +117,7 @@ services:
           entrypoint worker-cmsd
           --db-uri mysql://qsmaster@worker-db-0:3306
           --vnid worker_0
+          --vnid-config "@/usr/local/lib64/libreplica.so mysql://qsmaster@127.0.0.1:3306/qservw_worker 0 0"
           --cmsd-manager manager-xrootd
         network_mode: "service:worker-xrootd-0"
         environment:
@@ -170,6 +172,7 @@ services:
           --db-uri mysql://qsmaster@127.0.0.1:3306?socket=/qserv/mariadb/run/mysqld.sock
           --db-admin-uri mysql://root:CHANGEME@127.0.0.1:3306?socket=/qserv/mariadb/run/mysqld.sock
           --vnid worker_1
+          --vnid-config "@/usr/local/lib64/libreplica.so mysql://root:CHANGEME@localhost:3306/qservw_worker 0 0"
           --cmsd-manager manager-xrootd
           --mysql-monitor-password CHANGEME_MONITOR
         environment:
@@ -196,6 +199,7 @@ services:
           entrypoint --log-level DEBUG worker-cmsd
           --db-uri mysql://qsmaster@worker-db-1:3306?socket=/qserv/mariadb/run/mysqld.sock
           --vnid worker_1
+          --vnid-config "@/usr/local/lib64/libreplica.so mysql://root:CHANGEME@localhost:3306/qservw_worker 0 0"
           --cmsd-manager manager-xrootd
         network_mode: "service:worker-xrootd-1"
         environment:

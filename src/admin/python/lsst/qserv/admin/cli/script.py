@@ -366,7 +366,13 @@ def enter_xrootd_manager(cmsd_manager: str) -> None:
     )
 
 
-def enter_worker_cmsd(cmsd_manager: str, vnid: str, debug_port: Optional[int], db_uri: str) -> None:
+def enter_worker_cmsd(
+    cmsd_manager: str,
+    vnid: str,
+    vnid_config: str,
+    debug_port: Optional[int],
+    db_uri: str
+) -> None:
     """Start a worker cmsd node.
 
     Parameters
@@ -375,10 +381,13 @@ def enter_worker_cmsd(cmsd_manager: str, vnid: str, debug_port: Optional[int], d
         The host name of the cmsd manager.
     vnid : str
         The virtual network id for this component.
+    vnid_config : str
+        The config parameters used by the qserv cmsd to get the vnid
+        from the specified source (static string, a file or worker database).
     debug_port : int or None
         If not None, indicates that gdbserver should be run on the given port number.
     db_uri : str
-        The non-admin URI to the worker's databse.
+        The non-admin URI to the worker's database.
     """
     url = _process_uri(
         uri=db_uri,
@@ -389,6 +398,7 @@ def enter_worker_cmsd(cmsd_manager: str, vnid: str, debug_port: Optional[int], d
     save_template_cfg(
         dict(
             vnid=vnid,
+            vnid_config=vnid_config,
             cmsd_manager=cmsd_manager,
             db_host=url.host,
             db_port=url.port or "",
@@ -423,6 +433,7 @@ def enter_worker_xrootd(
     db_uri: str,
     db_admin_uri: str,
     vnid: str,
+    vnid_config: str,
     cmsd_manager: str,
     repl_ctl_dn: str,
     mysql_monitor_password: str,
@@ -435,11 +446,14 @@ def enter_worker_xrootd(
     debug_port : int or None
         If not None, indicates that gdbserver should be run on the given port number.
     db_uri : str
-        The non-admin URI to the proxy's databse.
+        The non-admin URI to the proxy's database.
     db_admin_uri : str
         The admin URI to the proxy's database.
     vnid : str
         The virtual network id for this component.
+    vnid_config : str
+        The config parameters used by the qserv cmsd to get the vnid
+        from the specified source (static string, a file or worker database).
     cmsd_manager : str
         The host name of the cmsd manager.
     repl_ctl_dn : str
@@ -474,6 +488,7 @@ def enter_worker_xrootd(
     save_template_cfg(
         dict(
             vnid=vnid,
+            vnid_config=vnid_config,
             cmsd_manager=cmsd_manager,
             db_host=url.host or "",
             db_port=str(url.port) or "",
