@@ -495,6 +495,7 @@ replica_tests(
     testChunkLocker
     testChunkNumber
     testChunkedTable
+    testCommonStr
     testConnectionParams
     testCsv
     testFileIngestApp
