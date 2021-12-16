@@ -91,7 +91,7 @@ def _load_migration_mgr(
         raise
 
     # call factory method, pass all needed arguments
-    mgr = factory(name=mod_name, connection=connection, scripts_dir=scripts_dir, **mig_mgr_args)
+    mgr = factory(connection=connection, scripts_dir=scripts_dir, **mig_mgr_args)
 
     return mgr
 

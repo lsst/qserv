@@ -26,6 +26,3 @@ DROP FUNCTION IF EXISTS SetDirectorTableF ;
 DROP TABLE IF EXISTS `database_director_table` ;
 -- Get rid of this column as it's no longer needed.
 ALTER TABLE `config_database_table` DROP COLUMN `is_director` ;
-
--- Update the schema version
-UPDATE `QMetadata` SET `value` = '4' WHERE `metakey` = 'version' ;

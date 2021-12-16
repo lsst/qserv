@@ -30,6 +30,3 @@ ENGINE = InnoDB
 COMMENT = 'Row counters for the internal tables. The table is supposed to be populated
   by the ingest system when publishing the catalog, or afterwards by the special
   table scanner.';
-
--- Update the schema version
-UPDATE `QMetadata` SET `value` = '6' WHERE `metakey` = 'version' ;

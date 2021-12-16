@@ -50,7 +50,3 @@ ALTER TABLE `transaction_contrib` ADD  COLUMN `retry_allowed` BOOLEAN NOT NULL D
 ALTER TABLE `transaction_contrib` DROP COLUMN `begin_time` ;
 ALTER TABLE `transaction_contrib` DROP COLUMN `end_time` ;
 ALTER TABLE `transaction_contrib` DROP COLUMN `success` ;
-
--- Update the schema version
-
-UPDATE `QMetadata` SET `value` = '2' WHERE `metakey` = 'version' ;
