@@ -118,13 +118,6 @@ run_option = partial(
 )
 
 
-vnid_option = partial(
-    click.option,
-    "--vnid",
-    help="The virtual network identifier for this component.",
-)
-
-
 vnid_config_option = partial(
     click.option,
     "--vnid-config",

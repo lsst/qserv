@@ -92,7 +92,6 @@ services:
           entrypoint worker-xrootd
           --db-uri mysql://qsmaster@127.0.0.1:3306
           --db-admin-uri mysql://root:CHANGEME@127.0.0.1:3306
-          --vnid worker_0
           --vnid-config "@/usr/local/lib64/libreplica.so mysql://qsmaster@127.0.0.1:3306/qservw_worker 0 0"
           --cmsd-manager manager-xrootd
           --mysql-monitor-password CHANGEME_MONITOR
@@ -116,7 +115,6 @@ services:
         command: >
           entrypoint worker-cmsd
           --db-uri mysql://qsmaster@worker-db-0:3306
-          --vnid worker_0
           --vnid-config "@/usr/local/lib64/libreplica.so mysql://qsmaster@127.0.0.1:3306/qservw_worker 0 0"
           --cmsd-manager manager-xrootd
         network_mode: "service:worker-xrootd-0"
@@ -171,7 +169,6 @@ services:
           entrypoint --log-level DEBUG worker-xrootd
           --db-uri mysql://qsmaster@127.0.0.1:3306?socket=/qserv/mariadb/run/mysqld.sock
           --db-admin-uri mysql://root:CHANGEME@127.0.0.1:3306?socket=/qserv/mariadb/run/mysqld.sock
-          --vnid worker_1
           --vnid-config "@/usr/local/lib64/libreplica.so mysql://root:CHANGEME@localhost:3306/qservw_worker 0 0"
           --cmsd-manager manager-xrootd
           --mysql-monitor-password CHANGEME_MONITOR
@@ -198,7 +195,6 @@ services:
         command: >
           entrypoint --log-level DEBUG worker-cmsd
           --db-uri mysql://qsmaster@worker-db-1:3306?socket=/qserv/mariadb/run/mysqld.sock
-          --vnid worker_1
           --vnid-config "@/usr/local/lib64/libreplica.so mysql://root:CHANGEME@localhost:3306/qservw_worker 0 0"
           --cmsd-manager manager-xrootd
         network_mode: "service:worker-xrootd-1"
@@ -354,8 +350,8 @@ services:
           --db-admin-uri mysql://root:CHANGEME@repl-mgr-db:3306/qservReplica
           --qserv-czar-db mysql://root:CHANGEME@czar-db:3306/qservMeta
           --instance-id qserv_proj
-          --worker name=worker_0,host=worker-repl-0
-          --worker name=worker_1,host=worker-repl-1
+          --worker qserv_worker_db=mysql://qsmaster@worker-db-0:3306/qservw_worker,host=worker-repl-0
+          --worker qserv_worker_db=mysql://qsmaster@worker-db-1:3306/qservw_worker,host=worker-repl-1
           --xrootd-manager manager-xrootd
         environment:
             << : *log-environment

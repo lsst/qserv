@@ -52,7 +52,7 @@ CREATE TABLE qservw_worker.Id (
 
 ) ENGINE=InnoDB;
 
-INSERT INTO qservw_worker.Id (`id`) VALUES ('{{ vnid }}');
+INSERT INTO qservw_worker.Id (`id`) VALUES (UUID());
 
 CREATE TABLE IF NOT EXISTS qservw_worker.QMetadata (
 
