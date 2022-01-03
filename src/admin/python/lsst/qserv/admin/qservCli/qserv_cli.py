@@ -70,6 +70,7 @@ from .opt import (
     pull_image_option,
     push_image_option,
     qserv_default_vals,
+    qserv_group_option,
     qserv_root_option,
     qserv_build_root_option,
     qserv_env_vals,
@@ -94,6 +95,7 @@ help_order = [
     "build-user-build-image",
     "build-run-base-image",
     "build-mariadb-image",
+    "build-images",
     "build",
     "env",
     "up",
@@ -233,7 +235,7 @@ def build(
 
 
 @qserv.command()
-@build_image_option()
+@build_image_option(help=build_image_ev.help("The name of the build base image to create."))
 @push_image_option()
 @pull_image_option()
 @qserv_root_option()
@@ -250,6 +252,7 @@ def build_build_image(
 @build_image_option()
 @qserv_root_option()
 @click.option("--group", help="The name of the user's primary group.")
+@qserv_group_option()
 @dry_option()
 def build_user_build_image(
     qserv_root: str, build_image: str, user_build_image: str, group: str, dry: bool
@@ -293,6 +296,38 @@ def build_mariadb_image(
         qserv_root=qserv_root,
         dry=dry,
     )
+
+
+@qserv.command()
+@build_image_option(help=build_image_ev.help("The name of the build base image to create."))
+@user_build_image_option(help=run_base_image_ev.help("The name of the lite-run-base image to create."))
+@qserv_group_option()
+@run_base_image_option(help=run_base_image_ev.help("The name of the lite-run-base image to create."))
+@mariadb_image_option(help=mariadb_image_ev.help("The name of the mariadb image to create."))
+@push_image_option(help="Push base images to dockerhub if they do not exist. Requires login to dockerhub first.")
+@pull_image_option(help="Pull images from dockerhub if they exist.")
+@qserv_root_option()
+@dry_option()
+def build_images(
+    build_image: str,
+    user_build_image: str,
+    group: str,
+    run_base_image: str,
+    mariadb_image: str,
+    push_image: bool,
+    pull_image: bool,
+    qserv_root: str,
+    dry: bool,
+) -> None:
+    """Build or pull the non-run qserv images.
+
+    Builds or pulls the build base, run base, and mariadb images.
+    Builds the user build image.
+    """
+    launch.build_build_image(build_image, qserv_root, dry, push_image, pull_image)
+    launch.build_user_build_image(qserv_root, build_image, user_build_image, group, dry)
+    launch.build_run_base_image(run_base_image, qserv_root, dry, push_image, pull_image)
+    launch.build_mariadb_image(mariadb_image, qserv_root, dry, push_image, pull_image)
 
 
 @qserv.command()
