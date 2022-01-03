@@ -96,9 +96,12 @@ void Server::addHandlers(std::initializer_list<HandlerSpec> handlers)
 }
 
 
-void Server::addStaticContent(std::string const& pattern, std::string const& rootDirectory)
+void Server::addStaticContent(
+    std::string const& pattern,
+    std::string const& rootDirectory,
+    boost::system::error_code& ec)
 {
-    StaticContent::add(*this, pattern, rootDirectory);
+    StaticContent::add(*this, pattern, rootDirectory, ec);
 }
 
 
@@ -147,13 +150,17 @@ void Server::_accept()
 }
 
 
-void Server::start()
+void Server::start(boost::system::error_code& ec)
 {
-    _acceptor.open(_acceptorEndpoint.protocol());
-    _acceptor.set_option(ip::tcp::acceptor::reuse_address(true));
-    _acceptor.bind(_acceptorEndpoint);
+    _acceptor.open(_acceptorEndpoint.protocol(), ec);
+    if (ec) return;
+    _acceptor.set_option(ip::tcp::acceptor::reuse_address(true), ec);
+    if (ec) return;
+    _acceptor.bind(_acceptorEndpoint, ec);
+    if (ec) return;
     _acceptorEndpoint.port(_acceptor.local_endpoint().port()); // preserve assigned port
-    _acceptor.listen(_backlog);
+    _acceptor.listen(_backlog, ec);
+    if (ec) return;
     _accept();
 }
 

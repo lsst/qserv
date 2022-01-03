@@ -26,6 +26,9 @@
 // System headers
 #include <string>
 
+// Third-party headers
+#include "boost/system/error_code.hpp"
+
 // Local headers
 #include "qhttp/Server.h"
 
@@ -46,7 +49,12 @@ public:
     //      list of these.)  Note that the Server::addStaticContent() convenience method would typically be
     //      called in preference to calling the add() method here directly.
 
-    static void add(Server& server, std::string const& path, std::string const& rootDirectory);
+    static void add(
+        Server& server,
+        std::string const& path,
+        std::string const& rootDirectory,
+        boost::system::error_code& ec
+    );
 
 };
 

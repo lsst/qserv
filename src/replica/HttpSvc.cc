@@ -75,7 +75,9 @@ void HttpSvc::run() {
     // any BOOST ASIO threads. This will prevent threads from finishing due to a lack of
     // work to be done.
     registerServices();
-    _httpServer->start();
+
+    boost::system::error_code ec;
+    _httpServer->start(ec);
 
     // Launch all threads in a dedicated pool.
     auto const self = shared_from_this();

@@ -74,9 +74,23 @@ namespace qserv {
 namespace qhttp {
 
 
-void StaticContent::add(Server& server, std::string const& pattern, std::string const& rootDirectory)
+void StaticContent::add(
+    Server& server,
+    std::string const& pattern,
+    std::string const& rootDirectory,
+    boost::system::error_code& ec)
 {
-    fs::path rootPath = fs::canonical(rootDirectory);
+    fs::path rootPath = fs::canonical(rootDirectory, ec);
+    if (ec) return;
+
+    bool isDirectory = fs::is_directory(rootDirectory, ec);
+    if (ec) return;
+
+    if (!isDirectory) {
+        ec = boost::system::errc::make_error_code(boost::system::errc::not_a_directory);
+        return;
+    }
+
     server.addHandler("GET", pattern, [rootPath](Request::Ptr request, Response::Ptr response) {
 
         // Don't let resource paths with embedded nulls past this point, since boost::filesystem
