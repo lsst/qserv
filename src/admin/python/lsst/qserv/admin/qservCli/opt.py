@@ -521,6 +521,13 @@ qserv_build_root_option = partial(
 )
 
 
+qserv_group_option = partial(
+    click.option,
+    "--group",
+    help="The name of the user's primary group.",
+)
+
+
 dashboard_port_option = partial(
     click.option,
     dashboard_port_ev.opt,
