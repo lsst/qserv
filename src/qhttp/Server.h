@@ -53,7 +53,9 @@ public:
     using Ptr = std::shared_ptr<Server>;
 
     //----- The server dispatches incoming HTTP requests to Handlers.  A Handler is a callable that receives
-    //      shared ptrs to Request and Response objects.
+    //      shared ptrs to Request and Response objects.  Exceptions thrown from handlers will be caught by
+    //      the server and translated to appropriate HTTP error responses (typically 500 Internal Server
+    //      Error).
 
     using Handler = std::function<void(Request::Ptr, Response::Ptr)>;
 

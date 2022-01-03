@@ -1,41 +1,40 @@
 # qhttp
 
-This is a somewhat bare-bones C++ HTTP server, inspired by things like Express (http://expressjs.com/) and 
+This is a somewhat bare-bones C++ HTTP server, inspired by things like Express (http://expressjs.com/) and
 Martini (https://github.com/go-martini/martini).
 
 The intended use-case is embedding a light-duty HTTP server within C++ back-end services, to conveniently
-provide utility services (ReST APIs, served status pages, small browser applications, etc.) for diagnostics 
-and monitoring.  It was endeavored to keep the code size small and code complexity low.  Some design 
-decisions toward that end:
+provide utility services (ReST APIs, served status pages, small browser applications, etc.) for diagnostics
+and monitoring.  It was endeavored to keep the code size small and code complexity low.  Some design decisions
+toward that end:
 
-* Asynchronous, but single threaded.  Leverages boost::asio's event proactor, and keeps complexity low by 
-avoiding many synchronization requirements in handlers and dispatch.  Since the server is asynchronous, 
-multiple simultaneous connections are supported robustly, but since it is also single-threaded, throughput 
-will likely not scale to hundreds or thousands of simultaneous connections.
+* Leverages boost::asio's event proactor for a fully asyncrhonous server, so multiple simultaneous connections
+  are supported robustly even when run in a single thread.  Running single-threaded can significantly reduce
+  synchronization complications in handler codes, though throughput scaling may be limited in this case.
 
-* Express and Martini style "middlewares" were not implemented to keep complexity low.  This could be added 
-at a later time if desired.  For now, perceived-to-be-commonly-used functionalities are wired directly into 
-the server.
+* Express and Martini style "middlewares" were not implemented to keep complexity low.  This could be added at
+  a later time if desired.  For now, perceived-to-be-commonly-used functionalities are wired directly into the
+  server.
 
 * Parsed HTTP request headers and URL parameters are stored in simple std::maps, rather than std::multimaps,
-which means repeated headers and repeated URL parameters are not supported (only the last parsed instance of
-any given header or URL parameter will be recorded).  This choice was made consciously to keep client code
-simpler, and becuase the repeated header or URL parameter use case was perceived to be uncommon.
+  which means repeated headers and repeated URL parameters are not supported (only the last parsed instance of
+  any given header or URL parameter will be recorded).  This choice was made consciously to keep client code
+  simpler, and becuase the repeated header or URL parameter use case was perceived to be uncommon.
 
 #### Features currently supported
 
 * Static content serving out of file system directories, with file-extension-based automatic Content-Type
-detection.
+  detection.
 
-* Installable handlers taking Express and Martini style Request and Response objects, and URL path 
-specifiers with wildcarding and parameter capture, for conveniently implementing REST services.
+* Installable handlers taking Express and Martini style Request and Response objects, and URL path specifiers
+  with wildcarding and parameter capture, for conveniently implementing REST services.
 
-* AJAX endpoint helpers: push a JSON string to the server-side endpoint at any time, and all currently 
-pending clients will be updated.
+* AJAX endpoint helpers: push a JSON string to the server-side endpoint at any time, and all currently pending
+  clients will be updated.
 
 * HTTP 1.1 persistent connections.
 
-* Can piggy-back on existing single-threaded asio::io_service instance from hosting application if desired.
+* Can piggy-back on existing asio::io_service instance from hosting application if desired.
 
 #### Overview / Usage
 
@@ -45,9 +44,10 @@ A simple web server, serving static content from a single directory:
 int main(int argc, char *argv[])
 {
     boost::asio::io_service service;
+    boost::system::error_code ec;
     qhttp::Server::Ptr server = qhttp::Server::create(service, 80);
-    server->addStaticContent("/*", "/path/to/web/content/dir");
-    server->accept();
+    server->addStaticContent("/*", "/path/to/web/content/dir", ec);
+    server->start(ec);
     service.run();
     return 0;
 }
@@ -87,21 +87,25 @@ captured from the query portion of the URL are made available in the passed Requ
 Response object provides methods for simple numeric status responses (which will get a default auto-generated
 HTML body) or the sending of strings or files.
 
+The server attempts to be exception-safe, since unhandled exceptions ocurring in asio service threads could be
+problematic for a hosting applications.  In particular, any exceptions thrown from user-handler code are be
+caught by the server and translated to approprate HTTP responses (typically, 500 Internal Server Error).
+
 To install an AJAX endpoint:
 
 ```C++
 qhttp::AjaxEndpoint::Ptr foosAjax = server->addAjaxEndpoint("/api/v1/foos/ajax");
 ```
 
-This will then accumulate incoming requests, leaving the associated responses pending.  At any later point,
-a JSON string may be pushed to the endpoint:
+This will then accumulate incoming requests, leaving the associated responses pending.  At any later point, a
+JSON string may be pushed to the endpoint:
 
 ```C++
 foosAjax.update(someJSON);
 ```
 
-All currently pending requests on the endpoint will be responded to with the JSON, and the endpoint will
-reset and begin accumulating incoming requests again.  The update operation is thread safe.
+All currently pending requests on the endpoint will be responded to with the JSON, and the endpoint will reset
+and begin accumulating incoming requests again.  The update operation is thread safe.
 
 For more details on supported URL patterns, request and response utility methods, etc. please see the
 appropriate class headers in this directory.
