@@ -33,6 +33,7 @@
 
 #include "boost/asio.hpp"
 #include "boost/algorithm/string/join.hpp"
+#include "boost/format.hpp"
 #include "boost/range/adaptors.hpp"
 #include "curl/curl.h"
 
@@ -591,10 +592,55 @@ BOOST_FIXTURE_TEST_CASE(relative_url_containment, QhttpFixture)
 
     //----- test relative path containment
 
-    content = asioHttpGet("/..", 401, "text/html");
-    BOOST_TEST(content.find("401") != std::string::npos);
-    content = asioHttpGet("/css/../..", 401, "text/html");
-    BOOST_TEST(content.find("401") != std::string::npos);
+    content = asioHttpGet("/..", 403, "text/html");
+    BOOST_TEST(content.find("403") != std::string::npos);
+    content = asioHttpGet("/css/../..", 403, "text/html");
+    BOOST_TEST(content.find("403") != std::string::npos);
+}
+
+
+BOOST_FIXTURE_TEST_CASE(exception_handling, QhttpFixture)
+{
+    boost::system::error_code ec;
+    std::string content;
+
+    server->addStaticContent("/etc/*", "/etc/", ec);
+    BOOST_TEST(!ec);
+
+    server->addHandler("GET", "/throw/:errno", [](qhttp::Request::Ptr req, qhttp::Response::Ptr resp){
+        int ev = std::stoi(req->params["errno"]); // will throw if can't parse int
+        throw(boost::system::system_error(ev, boost::system::generic_category()));
+    });
+
+    server->addHandler("GET", "/throw-after-send", [](qhttp::Request::Ptr req, qhttp::Response::Ptr resp){
+        resp->sendStatus(200);
+        throw std::runtime_error("test");
+    });
+
+    start();
+
+    // Test EACCESS thrown from static file handler
+
+    content = asioHttpGet("/etc/shadow", 403, "text/html");
+    BOOST_TEST(content.find("403") != std::string::npos);
+
+    // Test exceptions thrown from user handler
+
+    content = asioHttpGet((boost::format("/throw/%1%") % EACCES).str(), 403, "text/html");
+    BOOST_TEST(content.find("403") != std::string::npos);
+
+    content = asioHttpGet((boost::format("/throw/%1%") % ENOENT).str(), 500, "text/html");
+    BOOST_TEST(content.find("500") != std::string::npos);
+
+    content = asioHttpGet("/throw/make-stoi-throw-invalid-argument", 500, "text/html");
+    BOOST_TEST(content.find("500") != std::string::npos);
+
+    // Test exception thrown in user handler after calling a request send() method.  This would be a user
+    // programming error, but we defend against it anyway.  From the point of view of the HTTP client, the
+    // response provided by the handler before the exception goes through.
+
+    content = asioHttpGet("/throw-after-send", 200, "text/html");
+    BOOST_TEST(content.find("200") != std::string::npos);
 }
 
 

@@ -260,7 +260,22 @@ void Server::_dispatchRequest(Request::Ptr request, Response::Ptr response)
         for(auto& pathHandler : pathHandlersIt->second) {
             if (boost::regex_match(request->path, pathMatch, pathHandler.path.regex)) {
                 pathHandler.path.updateParamsFromMatch(request, pathMatch);
-                pathHandler.handler(request, response);
+                try {
+                    pathHandler.handler(request, response);
+                }
+                catch(boost::system::system_error const& e) {
+                    switch(e.code().value()) {
+                    case boost::system::errc::permission_denied:
+                        response->sendStatus(403);
+                        break;
+                    default:
+                        response->sendStatus(500);
+                        break;
+                    }
+                }
+                catch(std::exception const& e) {
+                    response->sendStatus(500);
+                }
                 return;
             }
         }

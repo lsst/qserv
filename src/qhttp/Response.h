@@ -24,6 +24,7 @@
 #define LSST_QSERV_QHTTP_RESPONSE_H
 
 // System headers
+#include <atomic>
 #include <functional>
 #include <iostream>
 #include <memory>
@@ -81,6 +82,7 @@ private:
 
     std::shared_ptr<boost::asio::ip::tcp::socket> _socket;
     boost::asio::streambuf _responsebuf;
+    std::atomic_flag _transmissionStarted;
 
     DoneCallback _doneCallback;
 
