@@ -71,6 +71,8 @@ void StaticContent::add(
         }
 
         // Redirect directory paths without trailing "/", and default to "index.html" within directory paths.
+        // Note: according to boost documentation, fs:is_directory() returns false and does not throw on a
+        // file not found condition; in that case we will fall through to the next block below.
         if (fs::is_directory(requestPath)) {
             if (!boost::ends_with(request->path, "/")) {
                 response->headers["Location"] = request->path + "/";
