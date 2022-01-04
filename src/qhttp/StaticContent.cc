@@ -29,59 +29,33 @@
 
 namespace fs = boost::filesystem;
 
-namespace {
-
-// Utility function used to expand and canonicalize a boost filesystem path.
-// Similar to fs::canonical(), but doesn't blow up if the tail
-// of the path doesn't exist on disk right now.  Used below to disallow serving
-// static content above/outside of root location.
-
-fs::path normalize(fs::path const& path) {
-    fs::path result;
-
-    // Start by transforming to an absolute path.
-    auto absPath = fs::absolute(path);
-
-    // Walk existing part of the path, then call canonical() on it.  This removes any
-    // symlinks, ".", or ".." from existing part, correctly handling the fiddly details
-    // about ".." in the possible presence of symlinks.
-    auto it = absPath.begin();
-    for (; exists(result / *it) && it != absPath.end(); ++it) {
-        result /= *it;
-    }
-    result = fs::canonical(result);
-
-    // Existing part is now absolute, expanded, and symlink free.  Now we can walk and
-    // add any remainder, snapping any "." or ".." by simple relative motion within
-    // the accumulating result.
-    for (; it != absPath.end(); ++it) {
-        if (*it == "..") {
-            result = result.parent_path();
-        } else if (*it == ".") {
-            continue;
-        } else {
-            result /= *it;
-        }
-    }
-
-    return result;
-}
-
-} // anon. namespace
-
 namespace lsst {
 namespace qserv {
 namespace qhttp {
 
 
-void StaticContent::add(Server& server, std::string const& pattern, std::string const& rootDirectory)
+void StaticContent::add(
+    Server& server,
+    std::string const& pattern,
+    std::string const& rootDirectory,
+    boost::system::error_code& ec)
 {
-    fs::path rootPath = fs::canonical(rootDirectory);
+    fs::path rootPath = fs::canonical(rootDirectory, ec);
+    if (ec) return;
+
+    bool isDirectory = fs::is_directory(rootDirectory, ec);
+    if (ec) return;
+
+    if (!isDirectory) {
+        ec = boost::system::errc::make_error_code(boost::system::errc::not_a_directory);
+        return;
+    }
+
     server.addHandler("GET", pattern, [rootPath](Request::Ptr request, Response::Ptr response) {
 
-        // Don't let resource paths with embedded nulls past this point, since boost::filesystem
-        // does not treat them consistently.  Assume we aren't intentionally serving any static
-        // content with embedded nulls in the path, and just return a 404 if we find any.
+        // Don't let resource paths with embedded nulls past this point, since boost::filesystem does not
+        // treat them consistently.  Assume we aren't intentionally serving any static content with embedded
+        // nulls in the path, and just return a 404 if we find any.
         if (request->path.find('\0') != std::string::npos) {
             response->sendStatus(404);
             return;
@@ -89,15 +63,16 @@ void StaticContent::add(Server& server, std::string const& pattern, std::string 
 
         // Defend against relative paths attempting to traverse above root directory.
         fs::path requestPath = rootPath;
-        requestPath /= request->path;
-        requestPath = normalize(requestPath);
+        requestPath /= request->params["0"];
+        requestPath = fs::weakly_canonical(requestPath);
         if (!boost::starts_with(requestPath, rootPath)) {
-            response->sendStatus(401);
+            response->sendStatus(403);
             return;
         }
 
-        // Redirect directory paths without trailing "/", and default to "index.html"
-        // within directory paths otherwise.
+        // Redirect directory paths without trailing "/", and default to "index.html" within directory paths.
+        // Note: according to boost documentation, fs:is_directory() returns false and does not throw on a
+        // file not found condition; in that case we will fall through to the next block below.
         if (fs::is_directory(requestPath)) {
             if (!boost::ends_with(request->path, "/")) {
                 response->headers["Location"] = request->path + "/";
@@ -107,6 +82,14 @@ void StaticContent::add(Server& server, std::string const& pattern, std::string 
             requestPath /= "index.htm";
         }
 
+        // Handle the oft-expected 404 case here explicitly, rather than as an exception.
+        if (!fs::exists(requestPath)) {
+            response->sendStatus(404);
+            return;
+        }
+
+        // Other error cases are unexpected/unusual; Response::sendFile() can throw an exceptions to be caught
+        // by top-level handler in Server::_dispatchRequest() if anything else goes wrong.
         response->sendFile(requestPath);
     });
 }

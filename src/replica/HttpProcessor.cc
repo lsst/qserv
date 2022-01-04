@@ -607,7 +607,12 @@ void HttpProcessor::registerServices() {
                     context_ + "a value of the httpRoot parameter '"
                     + self->_processorConfig.httpRoot + "' doesn't refer to a folder."); 
         }
-        httpServer()->addStaticContent("/*", self->_processorConfig.httpRoot);
+        httpServer()->addStaticContent("/*", self->_processorConfig.httpRoot, ec);
+        if (ec.value() != 0) {
+            throw runtime_error(
+                    context_+ "failed to install static handler for httpRoot parameter '"
+                    + self->_processorConfig.httpRoot + "', error: " + ec.message());
+        }
     }
 
 }

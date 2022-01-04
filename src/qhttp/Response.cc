@@ -98,6 +98,7 @@ Response::Response(
     _socket(socket),
     _doneCallback(doneCallback)
 {
+    _transmissionStarted.clear();
 }
 
 
@@ -124,41 +125,46 @@ void Response::send(std::string const& content, std::string const& contentType)
     std::ostream responseStream(&_responsebuf);
     responseStream << _headers() << "\r\n" << content;
 
-    auto self = shared_from_this();
-    asio::async_write(*_socket, _responsebuf,
-        [self](boost::system::error_code const& ec, std::size_t sent) {
-            if (self->_doneCallback) {
-                self->_doneCallback(ec, sent);
+    if (!_transmissionStarted.test_and_set()) {
+        auto self = shared_from_this();
+        asio::async_write(*_socket, _responsebuf,
+            [self](boost::system::error_code const& ec, std::size_t sent) {
+                if (self->_doneCallback) {
+                    self->_doneCallback(ec, sent);
+                }
             }
-        }
-    );
+        );
+    }
 }
 
 
 void Response::sendFile(fs::path const& path)
 {
-    if (!fs::exists(path)) {
-        sendStatus(404);
-        return;
-    }
-
     auto ct = contentTypesByExtension.find(path.extension().string());
     headers["Content-Type"] = (ct != contentTypesByExtension.end()) ? ct->second : "text/plain";
 
     headers["Content-Length"] = std::to_string(fs::file_size(path));
+
+    // Try to open the file for streaming input. Throw if we hit a snag; exception expected to be caught by
+    // top-level handler in Server::_dispatchRequest().
     fs::ifstream responseFile(path);
+    if (!responseFile) {
+        throw(boost::system::system_error(errno, boost::system::generic_category()));
+    }
 
     std::ostream responseStream(&_responsebuf);
     responseStream << _headers() << "\r\n" << responseFile.rdbuf();
 
-    auto self = shared_from_this();
-    asio::async_write(*_socket, _responsebuf,
-        [self](boost::system::error_code const& ec, std::size_t sent) {
-            if (self->_doneCallback) {
-                self->_doneCallback(ec, sent);
+    if (!_transmissionStarted.test_and_set()) {
+        auto self = shared_from_this();
+        asio::async_write(*_socket, _responsebuf,
+            [self](boost::system::error_code const& ec, std::size_t sent) {
+                if (self->_doneCallback) {
+                    self->_doneCallback(ec, sent);
+                }
             }
-        }
-    );
+        );
+    }
 }
 
 

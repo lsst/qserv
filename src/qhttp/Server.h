@@ -53,7 +53,9 @@ public:
     using Ptr = std::shared_ptr<Server>;
 
     //----- The server dispatches incoming HTTP requests to Handlers.  A Handler is a callable that receives
-    //      shared ptrs to Request and Response objects.
+    //      shared ptrs to Request and Response objects.  Exceptions thrown from handlers will be caught by
+    //      the server and translated to appropriate HTTP error responses (typically 500 Internal Server
+    //      Error).
 
     using Handler = std::function<void(Request::Ptr, Response::Ptr)>;
 
@@ -93,7 +95,12 @@ public:
     //      header files for details.  Convenience functions are provided here to instantiate and install
     //      these.
 
-    void addStaticContent(std::string const& path, std::string const& rootDirectory);
+    void addStaticContent(
+        std::string const& path,
+        std::string const& rootDirectory,
+        boost::system::error_code& ec
+    );
+
     AjaxEndpoint::Ptr addAjaxEndpoint(std::string const& path);
 
     //----- setRequestTimeout() allows the user to override the default 5 minute start-of-request to
@@ -106,7 +113,7 @@ public:
     //      Server execution may be halted either calling stop(), or by calling asio::io_service::stop()
     //      on the associated asio::io_service.
 
-    void start();
+    void start(boost::system::error_code& ec);
 
     //----- stop() shuts down the server by closing all active sockets, including the server listening
     //      socket.  No new connections will be accepted, and handlers in progress will err out the next
