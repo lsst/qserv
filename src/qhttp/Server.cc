@@ -24,6 +24,7 @@
 #include "qhttp/Server.h"
 
 // System headers
+#include <chrono>
 #include <memory>
 #include <string>
 
@@ -39,11 +40,13 @@
 namespace asio = boost::asio;
 namespace ip = boost::asio::ip;
 
+using namespace std::literals;
+
 namespace lsst {
 namespace qserv {
 namespace qhttp {
 
-#define DEFAULT_REQUEST_TIMEOUT_MSECS 300000 // 5 minutes
+#define DEFAULT_REQUEST_TIMEOUT 5min
 
 
 Server::Ptr Server::create(asio::io_service& io_service, unsigned short port, int backlog)
@@ -64,7 +67,7 @@ Server::Server(asio::io_service& io_service, unsigned short port, int backlog)
     _backlog(backlog),
     _acceptorEndpoint(ip::tcp::v4(), port),
     _acceptor(io_service),
-    _requestTimeout(std::chrono::milliseconds(DEFAULT_REQUEST_TIMEOUT_MSECS))
+    _requestTimeout(DEFAULT_REQUEST_TIMEOUT)
 {
 }
 
