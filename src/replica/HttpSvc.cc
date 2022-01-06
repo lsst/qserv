@@ -64,10 +64,11 @@ HttpSvc::~HttpSvc() {
 
 
 void HttpSvc::run() {
-    LOGS(_log, LOG_LVL_INFO, context() << __func__);
+    string const context_ = context() + " " + string(__func__) + " ";
+    LOGS(_log, LOG_LVL_TRACE, context_);
 
     if (_httpServer != nullptr) {
-        throw logic_error(context() + string(__func__) + ": service is already running.");
+        throw logic_error(context_ + "service is already running.");
     }
     _httpServer = qhttp::Server::create(*_io_service_ptr, _port, _backlog);
  
@@ -78,6 +79,9 @@ void HttpSvc::run() {
 
     boost::system::error_code ec;
     _httpServer->start(ec);
+    if (ec.value() != 0) {
+        throw runtime_error(context_+ "failed to start the service, error: " + ec.message());
+    }
 
     // Launch all threads in a dedicated pool.
     auto const self = shared_from_this();
@@ -93,9 +97,10 @@ void HttpSvc::run() {
 }
 
 void HttpSvc::stop() {
-    LOGS(_log, LOG_LVL_INFO, context() << __func__);
+    string const context_ = context() + " " + string(__func__) + " ";
+    LOGS(_log, LOG_LVL_TRACE, context_);
     if (_httpServer == nullptr) {
-        throw logic_error(context() + string(__func__) + ": service is not running.");
+        throw logic_error(context_ + "service is not running.");
     }
     _httpServer->stop();
 }
