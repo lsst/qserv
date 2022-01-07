@@ -51,10 +51,8 @@ class ConfigVersionMismatch: public ConfigError {
 public:
     int const version;
     int const requiredVersion;
-    explicit ConfigVersionMismatch(int version_, int requiredVersion_)
-        :   ConfigError("Configuration version " + std::to_string(version_) + " found in"
-                        + " the persistent state or a JSON object doesn't match the required"
-                        + " version " + std::to_string(requiredVersion_) + "."),
+    explicit ConfigVersionMismatch(std::string const& msg, int version_=0, int requiredVersion_=0)
+        :   ConfigError(msg),
             version(version_),
             requiredVersion(requiredVersion_) {
     }
