@@ -66,7 +66,6 @@ replica_controller_log_template = (
     "/usr/local/qserv/templates/repl-ctl/etc/log4cxx.replication.properties.jinja"
 )
 replica_controller_log_path = "/config-etc/log4cxx.replication.properties"
-replica_controller_http_root = "/usr/local/qserv/www"
 
 mysqld_user_qserv = "qsmaster"
 
@@ -524,12 +523,19 @@ def enter_worker_xrootd(
 
 
 def enter_worker_repl(
-    db_admin_uri: str, repl_connection: str, debug_port: Optional[int], run: bool, instance_id: str
+    replica_worker_args: List[str],
+    db_admin_uri: str,
+    repl_connection: str,
+    debug_port: Optional[int],
+    run: bool,
 ) -> None:
     """Start a worker replication node.
 
     Parameters
     ----------
+    replic_worker_args : `list` [ `str` ]
+        A list of options and arguments that will be passed directly to the
+        replica worker app.
     db_admin_uri : str
         The admin URI to the worker's database.
     repl_connection : `str`
@@ -574,11 +580,9 @@ def enter_worker_repl(
 
     args = [
         "qserv-replica-worker",
-        f"--config={repl_connection}",
         f"--qserv-worker-db={db_admin_uri}",
-        "--debug",
-        f"--instance-id={instance_id}",
     ]
+    args.extend(replica_worker_args)
     while True:
         # This loop exists because it is possible for qserv-replica-worker to
         # register itself with the replica controller before the call to
@@ -666,18 +670,19 @@ def enter_proxy(
 
 
 def enter_replication_controller(
+    replica_master_args: List[str],
     db_uri: str,
     db_admin_uri: str,
     workers: List[str],
-    instance_id: str,
     run: bool,
-    xrootd_manager: str,
-    qserv_czar_db: str,
 ) -> None:
     """Entrypoint script for the entrypoint controller.
 
     Parameters
     ----------
+    replica_master_args: `list` [ `str` ]
+        A list of options and arguments that will be passed directly to the
+        replica master app.
     db_uri : `str`
         The connection string for the replication manager database for the
         non-admin user (created using the `connection`), the user is typically
@@ -689,17 +694,6 @@ def enter_replication_controller(
         A list of parameters for each worker in the format "key=value,..."
         For example:
         `["name=worker_0,host=worker-repl-0", "name=worker_1,host=worker-repl-1"]
-    instance_id : `str`
-        A unique identifier of a Qserv instance served by the Replication
-        System. Its value will be passed along various internal communication
-        lines of the system to ensure that all services are related to the same
-        instance. This mechanism also prevents 'cross-talks' between two (or
-        many) Replication System's setups in case of an accidental
-        mis-configuration.
-    xrootd_manager : `str`
-        The host name of the xrootd manager node.
-    qserv_czar_db : `str`
-        The URI connection string for the czar database.
     run : `bool`
         Run the subcommand that is executed by entrypoint if `True`. Otherwise,
         print the command and arguments that would have been run.
@@ -792,11 +786,8 @@ def enter_replication_controller(
     args = [
         "qserv-replica-master-http",
         f"--config={db_uri}",
-        f"--instance-id={instance_id}",
-        f"--qserv-czar-db={qserv_czar_db}",
-        f"--http-root={replica_controller_http_root}",
-        f"--xrootd-host={xrootd_manager}",
     ]
+    args.extend(replica_master_args)
     _log.debug(f"Calling {' '.join(args)}")
     sys.exit(_run(args, env=env, run=run))
 

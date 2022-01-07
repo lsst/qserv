@@ -24,9 +24,12 @@
 
 
 import click
+from dataclasses import dataclass, field
 import logging
 import sys
 from typing import List, Optional
+
+from click.decorators import pass_context
 
 from .options import (
     case_option,
@@ -74,6 +77,9 @@ paused until the database is available via TCP connection, and the
 {click.style('socket', bold=True)} will be used for subsequent database
 communication."""
 
+extended_args_description = """Options and arguments may be passed directly to
+{app} by adding '--', and then adding those options and arguments."""
+
 
 worker_db_help = "Non-admin URI to the worker database. " + socket_option_help
 admin_worker_db_help = "Admin URI to the worker database. " + socket_option_help
@@ -90,14 +96,49 @@ help_order  =[
   "smig-update",
   "integration-test",
   "delete-database",
-  "ingest-table",
   "load-simple",
   "watcher",
 ]
 
 
+class EntrypointCommandExArgs(click.Command):
+    """Command class for custom entrypoint subcommand behaviors.
+
+    * Provides command support for the "--" option pass-thru arguments; removes
+      all args after "--" and puts the args (without the "--") into the context
+      for separate handling by the command function. (use the `@pass_context`
+      decorator on the command function to be passed the context)
+    """
+
+    @dataclass
+    class ContextObj:
+        """Click allows for the context to have a `obj` parameter, opaque to
+        click, for passing data to command functions.
+        This is the context object type for EntrypointExtendedArgs.
+        (Factor this dataclass and/or command class as you need for greater
+        command type polymorphism.)
+        """
+        extended_args: List[str] = field(default_factory=list)
+
+    def parse_args(self, ctx: click.Context, args: List[str]) -> List[str]:
+        """Remove args after "--" and put them in the context, then parse as
+        normal.
+        """
+        separator = "--"
+        ctx.obj = self.ContextObj()
+        if separator in args:
+            if separator in args:
+                ctx.obj.extended_args = args[args.index(separator)+1:]
+                args = args[:args.index(separator)]
+        args = super().parse_args(ctx, args)
+        return args
+
+
 class EntrypointCommandGroup(click.Group):
-    """Group class for custom entrypoint command behaviors."""
+    """Group class for custom entrypoint command behaviors.
+
+    * Provides ordering for list of subcommands in --help
+    """
 
     def list_commands(self, ctx: click.Context) -> List[str]:
         """List the qserv commands in the order specified by help_order.
@@ -318,22 +359,29 @@ def worker_xrootd(
     )
 
 
-@entrypoint.command(help=f"Start as a replication worker node.\n\n{socket_option_description}")
-@instance_id_option(required=True)
+@entrypoint.command(
+    help="Start as a replication worker node.\n\n"
+         "{socket_option_description}\n\n"
+         f"{extended_args_description.format(app='qserv-replica-worker')}",
+    cls=EntrypointCommandExArgs,
+)
+@pass_context
 @db_admin_uri_option(help="The admin URI to the worker's database, used for replication and ingest. " + socket_option_help)
-@repl_connection_option()
+@repl_connection_option(
+    help=f"{repl_connection_option.keywords['help']} {socket_option_help}"
+)
 @debug_option()
 @run_option()
 @options_file_option()
 def worker_repl(
-    instance_id: str,
+    ctx: click.Context,
     db_admin_uri: str,
     repl_connection: str,
     debug_port: Optional[int],
     run: bool,
 ) -> None:
     script.enter_worker_repl(
-        instance_id=instance_id,
+        replica_worker_args=ctx.obj.extended_args,
         db_admin_uri=db_admin_uri,
         repl_connection=repl_connection,
         debug_port=debug_port,
@@ -341,8 +389,12 @@ def worker_repl(
     )
 
 
-@entrypoint.command(help=f"Start as a replication controller node.\n\n{socket_option_description}")
-@instance_id_option(required=True)
+@entrypoint.command(
+    help=f"Start as a replication controller node.\n\n{socket_option_description}\n\n"
+         f"{extended_args_description.format(app='qserv-replica-master-http')}",
+    cls=EntrypointCommandExArgs,
+)
+@pass_context
 @db_uri_option(
     help="The non-admin URI to the replication controller's database, used for non-smig purposes.",
     required=True,
@@ -360,34 +412,22 @@ def worker_repl(
     ),
     multiple=True,
 )
-@click.option(
-    "--xrootd-manager",
-    help="The host name of the xrootd manager node.",
-)
-@click.option(
-    "--qserv-czar-db",
-    help="The connection string for the czar database.",
-)
 @run_option()
 @options_file_option()
 def replication_controller(
-    instance_id: str,
+    ctx: click.Context,
     db_uri: str,
     db_admin_uri: str,
     workers: List[str],
-    xrootd_manager: str,
-    qserv_czar_db: str,
     run: bool,
 ) -> None:
     """Start as a replication controller node."""
     script.enter_replication_controller(
+        replica_master_args=ctx.obj.extended_args,
         db_uri=db_uri,
         db_admin_uri=db_admin_uri,
         workers=workers,
-        instance_id=instance_id,
         run=run,
-        xrootd_manager=xrootd_manager,
-        qserv_czar_db=qserv_czar_db
     )
 
 

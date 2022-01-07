@@ -134,7 +134,10 @@ services:
           entrypoint worker-repl
           --db-admin-uri mysql://root:CHANGEME@worker-db-0:3306/qservw_worker
           --repl-connection mysql://qsreplica@repl-mgr-db:3306/qservReplica
-          --instance-id qserv_proj
+          --
+          --instance-id=qserv_proj
+          --config=mysql://qsreplica@repl-mgr-db:3306/qservReplica
+          --debug
         environment:
             << : *log-environment
         volumes:
@@ -218,7 +221,10 @@ services:
           entrypoint worker-repl
           --db-admin-uri mysql://root:CHANGEME@worker-db-1:3306/qservw_worker
           --repl-connection mysql://qsreplica@repl-mgr-db:3306/qservReplica
-          --instance-id qserv_proj
+          --
+          --instance-id=qserv_proj
+          --config=mysql://qsreplica@repl-mgr-db:3306/qservReplica
+          --debug
         environment:
             << : *log-environment
         volumes:
@@ -348,11 +354,13 @@ services:
           entrypoint --log-level DEBUG replication-controller
           --db-uri mysql://qsreplica@repl-mgr-db:3306/qservReplica
           --db-admin-uri mysql://root:CHANGEME@repl-mgr-db:3306/qservReplica
-          --qserv-czar-db mysql://root:CHANGEME@czar-db:3306/qservMeta
-          --instance-id qserv_proj
           --worker qserv_worker_db=mysql://qsmaster@worker-db-0:3306/qservw_worker,host=worker-repl-0
           --worker qserv_worker_db=mysql://qsmaster@worker-db-1:3306/qservw_worker,host=worker-repl-1
-          --xrootd-manager manager-xrootd
+          --
+          --instance-id=qserv_proj
+          --qserv-czar-db=mysql://root:CHANGEME@czar-db:3306/qservMeta
+          --http-root=/usr/local/qserv/www
+          --xrootd-host=manager-xrootd
         environment:
             << : *log-environment
         expose:
