@@ -62,6 +62,8 @@ bool         Configuration::_databaseAllowReconnect = true;
 unsigned int Configuration::_databaseConnectTimeoutSec = 3600;
 unsigned int Configuration::_databaseMaxReconnects = 1;
 unsigned int Configuration::_databaseTransactionTimeoutSec = 3600;
+bool         Configuration::_schemaUpgradeWait = true;
+unsigned int Configuration::_schemaUpgradeWaitTimeoutSec = 3600;
 string       Configuration::_qservCzarDbUrl = "mysql://qsreplica@localhost:3306/qservMeta";
 string       Configuration::_qservWorkerDbUrl = "mysql://qsreplica@localhost:3306/qservw_worker";
 bool         Configuration::_xrootdAllowReconnect = true;
@@ -169,6 +171,33 @@ void Configuration::setDatabaseTransactionTimeoutSec(unsigned int value) {
 unsigned int Configuration::databaseTransactionTimeoutSec() {
     util::Lock const lock(_classMtx, _context(__func__));
     return _databaseTransactionTimeoutSec;
+}
+
+
+bool Configuration::schemaUpgradeWait() {
+    util::Lock const lock(_classMtx, _context(__func__));
+    return _schemaUpgradeWait;
+}
+
+
+void Configuration::setSchemaUpgradeWait(bool value) {
+    util::Lock const lock(_classMtx, _context(__func__));
+    _schemaUpgradeWait = value;
+}
+
+
+unsigned int Configuration::schemaUpgradeWaitTimeoutSec() {
+    util::Lock const lock(_classMtx, _context(__func__));
+    return _schemaUpgradeWaitTimeoutSec;
+}
+
+
+void Configuration::setSchemaUpgradeWaitTimeoutSec(unsigned int value) {
+    util::Lock const lock(_classMtx, _context(__func__));
+    if (0 == value) {
+        throw invalid_argument("Configuration::" + string(__func__) + "  0 is not allowed.");
+    }
+    _schemaUpgradeWaitTimeoutSec = value;
 }
 
 

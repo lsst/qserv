@@ -236,6 +236,40 @@ public:
      */
     static void setDatabaseTransactionTimeoutSec(unsigned int value);
 
+    /**
+     * @brief This option, if set, allows tracking schema version status.
+     * 
+     * If the tracking is enabled then an application will keep re-checking
+     * a state of the persistent store for a duration of time specified in
+     * the parameter Configuration::schemaUpgradeWaitTimeoutSec() up to a point
+     * where the schema gets upgraded to the expected version or the timeout
+     * expires.
+     * @return the state of the option.
+     */
+    static bool schemaUpgradeWait();
+
+    /**
+     * Change the default value of a parameter defining a policy for tracking
+     * schema version status. Setting 'true' will enable the tracking.
+     * @see Configuration::schemaUpgradeWaitTimeoutSec()
+     * @param value The new value of the parameter.
+     */
+    static void setSchemaUpgradeWait(bool value);
+
+    /**
+     * @return A duration of time to wait for the schema upgrade (if enabled
+     *   in option Configuration::schemaUpgradeWait()).
+     */
+    static unsigned int schemaUpgradeWaitTimeoutSec();
+
+    /**
+     * Change the default value of a parameter specifying a timeout for tracking
+     * schema version status.
+     * @param value The new value of the parameter (must be strictly greater than 0).
+     * @throws std::invalid_argument If the new value of the parameter is 0.
+     */
+    static void setSchemaUpgradeWaitTimeoutSec(unsigned int value);
+
     /// @return the default mode for xrootd reconnects.
     static bool xrootdAllowReconnect();
 
@@ -791,6 +825,8 @@ private:
     static unsigned int _databaseConnectTimeoutSec;
     static unsigned int _databaseMaxReconnects;
     static unsigned int _databaseTransactionTimeoutSec;
+    static bool         _schemaUpgradeWait;
+    static unsigned int _schemaUpgradeWaitTimeoutSec;
     static std::string  _qservCzarDbUrl;
     static std::string  _qservWorkerDbUrl;
     static bool         _xrootdAllowReconnect;
