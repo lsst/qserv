@@ -100,10 +100,13 @@ namespace qdisp {
 // class Executive implementation
 ////////////////////////////////////////////////////////////////////////
 Executive::Executive(ExecutiveConfig const& c, shared_ptr<MessageStore> const& ms,
-                     shared_ptr<QdispPool> const& qdispPool,
+                     SharedResources::Ptr const& sharedResources,
                      shared_ptr<qmeta::QStatus> const& qStatus,
                      shared_ptr<qproc::QuerySession> const& querySession)
-    : _config(c), _messageStore(ms), _qdispPool(qdispPool), _qMeta(qStatus), _querySession(querySession) {
+    : _config(c), _messageStore(ms),
+      _qdispPool(sharedResources->getQdispPool()),
+      _queryRequestPseudoFifo(sharedResources->getQueryRequestPseudoFifo()),
+      _qMeta(qStatus), _querySession(querySession) {
     _secondsBetweenQMetaUpdates = chrono::seconds(_config.secondsBetweenChunkUpdates);
     _setup();
     _setupLimit();
@@ -117,10 +120,10 @@ Executive::~Executive() {
 
 
 Executive::Ptr Executive::create(ExecutiveConfig const& c, shared_ptr<MessageStore> const& ms,
-                                 shared_ptr<QdispPool> const& qdispPool,
+                                 SharedResources::Ptr const& sharedResources,
                                  shared_ptr<qmeta::QStatus> const& qMeta,
                                  shared_ptr<qproc::QuerySession> const& querySession) {
-    Executive::Ptr exec(new Executive(c, ms, qdispPool, qMeta, querySession)); // make_shared dislikes private constructor.
+    Executive::Ptr exec(new Executive(c, ms, sharedResources, qMeta, querySession)); // make_shared dislikes private constructor.
     return exec;
 }
 
@@ -227,7 +230,7 @@ bool Executive::startQuery(shared_ptr<JobQuery> const& jobQuery) {
     // shared pointer is used by QueryRequest to keep itself alive, sloppy design.
     // Note that JobQuery calls StartQuery that then calls JobQuery, yech!
     //
-    QueryRequest::Ptr qr = QueryRequest::create(jobQuery);
+    QueryRequest::Ptr qr = QueryRequest::create(jobQuery, _queryRequestPseudoFifo);
     jobQuery->setQueryRequest(qr);
 
     // Start the query. The rest is magically done in the background.

@@ -39,7 +39,9 @@
 #include "qdisp/Executive.h"
 #include "qdisp/JobQuery.h"
 #include "qdisp/MessageStore.h"
+#include "qdisp/PseudoFifo.h"
 #include "qdisp/QueryRequest.h"
+#include "qdisp/SharedResources.h"
 #include "qdisp/XrdSsiMocks.h"
 #include "qproc/ChunkQuerySpec.h"
 #include "qproc/TaskMsgFactory.h"
@@ -181,6 +183,8 @@ class SetupTest {
     qdisp::ExecutiveConfig::Ptr conf;
     std::shared_ptr<qdisp::MessageStore> ms;
     qdisp::QdispPool::Ptr qdispPool;
+    qdisp::PseudoFifo::Ptr pseudoFifo;
+    qdisp::SharedResources::Ptr sharedResources;
     qdisp::Executive::Ptr ex;
     std::shared_ptr<qdisp::JobQuery> jqTest; // used only when needed
 
@@ -191,8 +195,11 @@ class SetupTest {
          conf = std::make_shared<qdisp::ExecutiveConfig>(str, 0); // No updating of QMeta.
          ms = std::make_shared<qdisp::MessageStore>();
          qdispPool = std::make_shared<qdisp::QdispPool>(true);
+         pseudoFifo = qdisp::PseudoFifo::Ptr(new qdisp::PseudoFifo(300));
+         sharedResources = qdisp::SharedResources::create(qdispPool, pseudoFifo);
+
          std::shared_ptr<qmeta::QStatus> qStatus; // No updating QStatus, nullptr
-         ex = qdisp::Executive::create(*conf, ms, qdispPool, qStatus, nullptr);
+         ex = qdisp::Executive::create(*conf, ms, sharedResources, qStatus, nullptr);
     }
     ~SetupTest() {}
 };

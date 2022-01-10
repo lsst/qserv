@@ -101,7 +101,8 @@ CzarConfig::CzarConfig(util::ConfigStore const& configStore)
       _qdispPoolSize(configStore.getInt("qdisppool.poolSize", 1000)),
       _qdispMaxPriority(configStore.getInt("qdisppool.largestPriority", 2)),
       _qdispVectRunSizes(configStore.get("qdisppool.vectRunSizes", "50:50:50:50")),
-      _qdispVectMinRunningSizes(configStore.get("qdisppool.vectMinRunningSizes", "0:1:3:3")) {
+      _qdispVectMinRunningSizes(configStore.get("qdisppool.vectMinRunningSizes", "0:1:3:3")),
+      _qReqPseudoFifoMaxRunning(configStore.getInt("qdisppool.qReqPseudoFifoMaxRunning", 300)) {
 }
 
 std::ostream& operator<<(std::ostream &out, CzarConfig const& czarConfig) {

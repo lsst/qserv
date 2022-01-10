@@ -157,7 +157,6 @@ UserQuerySelect::UserQuerySelect(std::shared_ptr<qproc::QuerySession> const& qs,
                                  std::shared_ptr<qmeta::QStatus> const& queryStatsData,
                                  std::shared_ptr<util::SemaMgr> const& semaMgrConn,
                                  qmeta::CzarId czarId,
-                                 std::shared_ptr<qdisp::QdispPool> const& qdispPool,
                                  std::string const& errorExtra,
                                  bool async,
                                  std::string const& resultDb)
@@ -166,7 +165,7 @@ UserQuerySelect::UserQuerySelect(std::shared_ptr<qproc::QuerySession> const& qs,
        _secondaryIndex(secondaryIndex),
        _queryMetadata(queryMetadata), _queryStatsData(queryStatsData),
        _semaMgrConn(semaMgrConn),
-       _qMetaCzarId(czarId), _qdispPool(qdispPool),
+       _qMetaCzarId(czarId),
        _errorExtra(errorExtra), _resultDb(resultDb), _async(async) {
 }
 

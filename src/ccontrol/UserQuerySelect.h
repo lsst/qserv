@@ -41,6 +41,7 @@
 // Qserv headers
 #include "ccontrol/UserQuery.h"
 #include "css/StripingParams.h"
+#include "qdisp/SharedResources.h"
 #include "qmeta/QInfo.h"
 #include "qmeta/QStatus.h"
 #include "qmeta/types.h"
@@ -95,7 +96,6 @@ public:
                     std::shared_ptr<qmeta::QStatus> const& queryStatsData,
                     std::shared_ptr<util::SemaMgr> const& semaMgrConn,
                     qmeta::CzarId czarId,
-                    std::shared_ptr<qdisp::QdispPool> const& qdispPool,
                     std::string const& errorExtra,
                     bool async,
                     std::string const& resultDb);
@@ -184,7 +184,6 @@ private:
 
     qmeta::CzarId _qMetaCzarId; ///< Czar ID in QMeta database
     QueryId _qMetaQueryId{0};      ///< Query ID in QMeta database
-    std::shared_ptr<qdisp::QdispPool> _qdispPool;
     /// QueryId in a standard string form, initially set to unknown.
     std::string _queryIdStr{QueryIdHelper::makeIdStr(0, true)};
     bool _killed{false};

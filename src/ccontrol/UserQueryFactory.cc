@@ -119,7 +119,7 @@ UserQueryFactory::UserQueryFactory(czar::CzarConfig const& czarConfig,
 UserQuery::Ptr
 UserQueryFactory::newUserQuery(std::string const& aQuery,
                                std::string const& defaultDb,
-                               qdisp::QdispPool::Ptr const& qdispPool,
+                               qdisp::SharedResources::Ptr const& qdispSharedResources,
                                std::string const& userQueryId,
                                std::string const& msgTableName,
                                std::string const& resultDb) {
@@ -207,7 +207,8 @@ UserQueryFactory::newUserQuery(std::string const& aQuery,
         std::shared_ptr<rproc::InfileMergerConfig> infileMergerConfig;
         if (sessionValid) {
             executive = qdisp::Executive::create(*_executiveConfig, messageStore,
-                                                 qdispPool, _userQuerySharedResources->queryStatsData, qs);
+                                                 qdispSharedResources,
+                                                 _userQuerySharedResources->queryStatsData, qs);
             infileMergerConfig = std::make_shared<rproc::InfileMergerConfig>(
                     _userQuerySharedResources->czarConfig,
                     _userQuerySharedResources->mysqlResultConfig);
@@ -219,7 +220,7 @@ UserQueryFactory::newUserQuery(std::string const& aQuery,
                 _userQuerySharedResources->secondaryIndex, _userQuerySharedResources->queryMetadata,
                 _userQuerySharedResources->queryStatsData, _userQuerySharedResources->semaMgrConnections,
                 _userQuerySharedResources->qMetaCzarId,
-                qdispPool, errorExtra, async, resultDb);
+                errorExtra, async, resultDb);
         if (sessionValid) {
             uq->qMetaRegister(resultLocation, msgTableName);
             uq->setupChunking();

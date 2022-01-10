@@ -40,6 +40,7 @@
 #include "qdisp/JobDescription.h"
 #include "qdisp/JobStatus.h"
 #include "qdisp/ResponseHandler.h"
+#include "qdisp/SharedResources.h"
 #include "qdisp/QdispPool.h"
 #include "util/EventThread.h"
 #include "util/InstanceCount.h"
@@ -66,6 +67,7 @@ namespace qdisp {
 class JobQuery;
 class LargeResultMgr;
 class MessageStore;
+class PseudoFifo;
 
 struct ExecutiveConfig {
     typedef std::shared_ptr<ExecutiveConfig> Ptr;
@@ -90,7 +92,7 @@ public:
     /// If c->serviceUrl == ExecutiveConfig::getMockStr(), then use XrdSsiServiceMock
     /// instead of a real XrdSsiService
     static Executive::Ptr create(ExecutiveConfig const& c, std::shared_ptr<MessageStore> const& ms,
-                std::shared_ptr<QdispPool> const& qdispPool, std::shared_ptr<qmeta::QStatus> const& qMeta,
+                SharedResources::Ptr const& sharedResources, std::shared_ptr<qmeta::QStatus> const& qMeta,
                 std::shared_ptr<qproc::QuerySession> const& querySession);
 
     ~Executive();
@@ -155,7 +157,7 @@ public:
 
 private:
     Executive(ExecutiveConfig const& c, std::shared_ptr<MessageStore> const& ms,
-              std::shared_ptr<QdispPool> const& qdispPool,
+              SharedResources::Ptr const& sharedResources,
               std::shared_ptr<qmeta::QStatus> const& qStatus,
               std::shared_ptr<qproc::QuerySession> const& querySession);
 
@@ -194,6 +196,9 @@ private:
     /// The correct value is set when it is available.
     std::atomic<int> _totalJobs{1};
     QdispPool::Ptr _qdispPool; ///< Shared thread pool for handling commands to and from workers.
+
+    /// Used to prevent czar from calling the most recent (and possibly critcal) QueryRequests first.
+    std::shared_ptr<PseudoFifo> _queryRequestPseudoFifo;
 
     std::deque<PriorityCommand::Ptr> _jobStartCmdList; ///< list of jobs to start.
 

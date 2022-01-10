@@ -96,8 +96,9 @@ class QueryRequest : public XrdSsiRequest, public std::enable_shared_from_this<Q
 public:
     typedef std::shared_ptr<QueryRequest> Ptr;
 
-    static Ptr create(std::shared_ptr<JobQuery> const& jobQuery) {
-        Ptr newQueryRequest(new QueryRequest(jobQuery));
+    static Ptr create(std::shared_ptr<JobQuery> const& jobQuery,
+                      std::shared_ptr<PseudoFifo> const& queryRequestPseudoFifo) {
+        Ptr newQueryRequest(new QueryRequest(jobQuery, queryRequestPseudoFifo));
         return newQueryRequest;
     }
 
@@ -132,7 +133,8 @@ public:
     friend std::ostream& operator<<(std::ostream& os, QueryRequest const& r);
 private:
     // Private constructor to safeguard enable_shared_from_this construction.
-    QueryRequest(std::shared_ptr<JobQuery> const& jobQuery);
+    QueryRequest(std::shared_ptr<JobQuery> const& jobQuery,
+                 std::shared_ptr<PseudoFifo> const& queryRequestPseudoFifo);
 
     void _callMarkComplete(bool success);
     bool _importStream(JobQuery::Ptr const& jq);
@@ -180,6 +182,8 @@ private:
     std::atomic<int> _rowsIgnored{0}; ///< Limit log messages about rows being ignored.
 
     std::atomic<uint> _respCount{0}; ///< number of responses created
+
+    std::shared_ptr<PseudoFifo> _pseudoFifo;
 };
 
 std::ostream& operator<<(std::ostream& os, QueryRequest const& r);
