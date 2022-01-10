@@ -70,27 +70,26 @@ void ConfigParserMySQL::parse() {
 
 void ConfigParserMySQL::_parseVersion() {
     string const table = "QMetadata";
+    string const databaseTableSql = _conn->sqlId(_conn->connectionParams().database, table);
     if (!_conn->tableExists(table)) {
-        throw ConfigError(
-                _context + " the metadata table '" + table + "' doesn't exist in the database '"
-                + _conn->connectionParams().database + "'.");
+        throw ConfigVersionMismatch(
+                _context + " the metadata table " + databaseTableSql + " doesn't exist.");
     }
     string const colname = "value";
-    string version;
+    int version;
     bool const isNotNull = _conn->executeSingleValueSelect(
-        "SELECT " + _conn->sqlId(colname) + " FROM " + _conn->sqlId(table)
-        + " WHERE " + _conn->sqlEqual("metakey", "version"),
-        colname,
-        version);
+            "SELECT " + _conn->sqlId(colname) + " FROM " + databaseTableSql + " WHERE "
+            + _conn->sqlEqual("metakey", "version"),
+            colname, version);
     if (!isNotNull) {
-        throw ConfigError(_context + " no schema version info found in the metadata table '" + table + "'.");
+        throw ConfigVersionMismatch(
+                _context + " the metadata table " + databaseTableSql + " doesn't have the schema version.");
     }
-    string const expectedSchemaVersionStr = to_string(expectedSchemaVersion);
-    if (version != expectedSchemaVersionStr) {
-        throw ConfigError(
-                _context + " schema version '" + version + "' found in the metadata table '" + table
-                + "' doesn't match the expected version '" + expectedSchemaVersionStr
-                + "'. Please, run the schema upgrade application.");
+    if (version != expectedSchemaVersion) {
+        throw ConfigVersionMismatch(
+                _context + " schema version " + to_string(version) + " found in the metadata table "
+                + databaseTableSql + " doesn't match the required version " + to_string(expectedSchemaVersion) + ".",
+                version, expectedSchemaVersion);
     }
 }
 

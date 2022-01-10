@@ -22,15 +22,21 @@
 // Class header
 #include "replica/Configuration.h"
 
+// System headers
+#include <chrono>
+#include <thread>
+
 // Qserv headers
 #include "replica/ConfigParserJSON.h"
 #include "replica/ConfigParserMySQL.h"
 #include "replica/DatabaseMySQL.h"
+#include "util/Timer.h"
 
 // LSST headers
 #include "lsst/log/Log.h"
 
 using namespace std;
+using namespace std::chrono_literals;
 using json = nlohmann::json;
 using namespace lsst::qserv::replica;
 namespace util = lsst::qserv::util;
@@ -62,6 +68,8 @@ bool         Configuration::_databaseAllowReconnect = true;
 unsigned int Configuration::_databaseConnectTimeoutSec = 3600;
 unsigned int Configuration::_databaseMaxReconnects = 1;
 unsigned int Configuration::_databaseTransactionTimeoutSec = 3600;
+bool         Configuration::_schemaUpgradeWait = true;
+unsigned int Configuration::_schemaUpgradeWaitTimeoutSec = 3600;
 string       Configuration::_qservCzarDbUrl = "mysql://qsreplica@localhost:3306/qservMeta";
 string       Configuration::_qservWorkerDbUrl = "mysql://qsreplica@localhost:3306/qservw_worker";
 bool         Configuration::_xrootdAllowReconnect = true;
@@ -169,6 +177,33 @@ void Configuration::setDatabaseTransactionTimeoutSec(unsigned int value) {
 unsigned int Configuration::databaseTransactionTimeoutSec() {
     util::Lock const lock(_classMtx, _context(__func__));
     return _databaseTransactionTimeoutSec;
+}
+
+
+bool Configuration::schemaUpgradeWait() {
+    util::Lock const lock(_classMtx, _context(__func__));
+    return _schemaUpgradeWait;
+}
+
+
+void Configuration::setSchemaUpgradeWait(bool value) {
+    util::Lock const lock(_classMtx, _context(__func__));
+    _schemaUpgradeWait = value;
+}
+
+
+unsigned int Configuration::schemaUpgradeWaitTimeoutSec() {
+    util::Lock const lock(_classMtx, _context(__func__));
+    return _schemaUpgradeWaitTimeoutSec;
+}
+
+
+void Configuration::setSchemaUpgradeWaitTimeoutSec(unsigned int value) {
+    util::Lock const lock(_classMtx, _context(__func__));
+    if (0 == value) {
+        throw invalid_argument("Configuration::" + string(__func__) + "  0 is not allowed.");
+    }
+    _schemaUpgradeWaitTimeoutSec = value;
 }
 
 
@@ -341,13 +376,47 @@ void Configuration::_load(util::Lock const& lock, string const& configUrl, bool 
     _data["database"]["password"] = _connectionParams.password;
     _data["database"]["name"] = _connectionParams.database;
 
+    // The schema upgrade timer is used for limiting a duration of time when
+    // tracking (if enabled) the schema upgrade. The timeout includes
+    // the connect (or reconnect) time.
+    util::Timer schemaUpgradeTimer;
+    schemaUpgradeTimer.start();
+
     // Read data, validate and update configuration parameters.
     _connectionPtr = database::mysql::Connection::open(_connectionParams);
-    _connectionPtr->executeInOwnTransaction([&](decltype(_connectionPtr) conn) {
-        ConfigParserMySQL parser(conn, _data, _workers, _databaseFamilies, _databases);
-        parser.parse();
-    });
-
+    while (true) {
+        try {
+            _connectionPtr->executeInOwnTransaction([&](decltype(_connectionPtr) conn) {
+                ConfigParserMySQL parser(conn, _data, _workers, _databaseFamilies, _databases);
+                parser.parse();
+            });
+            break;
+        } catch (ConfigVersionMismatch const& ex) {
+            if (Configuration::schemaUpgradeWait()) {
+                if (ex.version > ex.requiredVersion) {
+                    LOGS(_log, LOG_LVL_ERROR, _context() << "Database schema version is newer than"
+                        << " the one required by the application, ex: " << ex.what());
+                        throw;
+                }
+                schemaUpgradeTimer.stop();
+                if (schemaUpgradeTimer.getElapsed() > Configuration::schemaUpgradeWaitTimeoutSec()) {
+                    LOGS(_log, LOG_LVL_ERROR, _context() << "The maximum duration of time ("
+                        << Configuration::schemaUpgradeWaitTimeoutSec() << " seconds) has expired"
+                        << " while waiting for the database schema upgrade. The schema version is still older than"
+                        << " the one required by the application, ex: " << ex.what());
+                    throw;
+                } else {
+                    LOGS(_log, LOG_LVL_WARN, _context() << "Database schema version is still older than the one"
+                        << " required by the application after " << schemaUpgradeTimer.getElapsed()
+                        << " seconds of waiting for the schema upgrade, ex: " << ex.what());
+                }
+            } else {
+                LOGS(_log, LOG_LVL_ERROR, _context() << ex.what());
+                throw;
+            }
+        }
+        std::this_thread::sleep_for(5000ms);
+    }
     bool const showPassword = false;
     LOGS(_log, LOG_LVL_DEBUG, _context() << _toJson(lock, showPassword).dump());
 }

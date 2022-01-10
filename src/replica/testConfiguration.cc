@@ -62,6 +62,49 @@ namespace {
 BOOST_AUTO_TEST_SUITE(Suite)
 
 
+BOOST_AUTO_TEST_CASE(ConfigurationTestStaticParameters) {
+    LOGS_INFO("Testing static parameters");
+
+    BOOST_CHECK_THROW(Configuration::setQservCzarDbUrl(""), std::invalid_argument);
+    BOOST_CHECK_THROW(Configuration::setQservWorkerDbUrl(""), std::invalid_argument);
+
+    BOOST_REQUIRE_NO_THROW(Configuration::setDatabaseAllowReconnect(true));
+    BOOST_CHECK(Configuration::databaseAllowReconnect() == true);
+    BOOST_REQUIRE_NO_THROW(Configuration::setDatabaseAllowReconnect(false));
+    BOOST_CHECK(Configuration::databaseAllowReconnect() == false);
+
+    BOOST_CHECK_THROW(Configuration::setDatabaseConnectTimeoutSec(0), std::invalid_argument);
+    BOOST_REQUIRE_NO_THROW(Configuration::setDatabaseConnectTimeoutSec(1));
+    BOOST_CHECK(Configuration::databaseConnectTimeoutSec() == 1);
+
+    BOOST_CHECK_THROW(Configuration::setDatabaseMaxReconnects(0), std::invalid_argument);
+    BOOST_REQUIRE_NO_THROW(Configuration::setDatabaseMaxReconnects(2));
+    BOOST_CHECK(Configuration::databaseMaxReconnects() == 2);
+
+    BOOST_CHECK_THROW(Configuration::setDatabaseTransactionTimeoutSec(0), std::invalid_argument);
+    BOOST_REQUIRE_NO_THROW(Configuration::setDatabaseTransactionTimeoutSec(3));
+    BOOST_CHECK(Configuration::databaseTransactionTimeoutSec() == 3);
+
+    BOOST_REQUIRE_NO_THROW(Configuration::setSchemaUpgradeWait(true));
+    BOOST_CHECK(Configuration::schemaUpgradeWait() == true);
+    BOOST_REQUIRE_NO_THROW(Configuration::setSchemaUpgradeWait(false));
+    BOOST_CHECK(Configuration::schemaUpgradeWait() == false);
+
+    BOOST_CHECK_THROW(Configuration::setSchemaUpgradeWaitTimeoutSec(0), std::invalid_argument);
+    BOOST_REQUIRE_NO_THROW(Configuration::setSchemaUpgradeWaitTimeoutSec(4));
+    BOOST_CHECK(Configuration::schemaUpgradeWaitTimeoutSec() == 4);
+
+    BOOST_REQUIRE_NO_THROW(Configuration::setXrootdAllowReconnect(true));
+    BOOST_CHECK(Configuration::xrootdAllowReconnect() == true);
+    BOOST_REQUIRE_NO_THROW(Configuration::setXrootdAllowReconnect(false));
+    BOOST_CHECK(Configuration::xrootdAllowReconnect() == false);
+
+
+    BOOST_CHECK_THROW(Configuration::setXrootdConnectTimeoutSec(0), std::invalid_argument);
+    BOOST_REQUIRE_NO_THROW(Configuration::setXrootdConnectTimeoutSec(5));
+    BOOST_CHECK(Configuration::xrootdConnectTimeoutSec() == 5);
+}
+
 BOOST_AUTO_TEST_CASE(ConfigurationInitTestJSON) {
     LOGS_INFO("Testing JSON initialization");
 

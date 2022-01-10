@@ -27,6 +27,7 @@
 
 // Qserv headers
 #include "replica/Configuration.h"
+#include "replica/ConfigParserMySQL.h"
 #include "replica/protocol.pb.h"
 #include "util/Issue.h"
 
@@ -62,7 +63,9 @@ Application::Application(int argc,
         _databaseMaxReconnects        (Configuration::databaseMaxReconnects()),
         _databaseTransactionTimeoutSec(Configuration::databaseTransactionTimeoutSec()),
         _xrootdAllowReconnect         (Configuration::xrootdAllowReconnect() ? 1 : 0),
-        _xrootdConnectTimeoutSec      (Configuration::xrootdConnectTimeoutSec()) {
+        _xrootdConnectTimeoutSec      (Configuration::xrootdConnectTimeoutSec()),
+        _schemaUpgradeWait            (Configuration::schemaUpgradeWait() ? 1 : 0),
+        _schemaUpgradeWaitTimeoutSec  (Configuration::schemaUpgradeWaitTimeoutSec()) {
 
     // Verify that the version of the library that we linked against is
     // compatible with the version of the headers we compiled against.
@@ -105,6 +108,20 @@ int Application::run() {
             "Change the default value limiting a duration of each attempt to execute"
             " a database transaction before to fail.",
             _databaseTransactionTimeoutSec
+        ).option(
+            "schema-upgrade-wait",
+            "If the value of the option is 0 and the schema version of the Replication/Ingest system's"
+            " database is either not available or is less than " + to_string(ConfigParserMySQL::expectedSchemaVersion) +
+            " then the application will fail right away. Otherwise, the application will keep"
+            " tracking schema version for a duration specified by the option --schema-upgrade-wait-timeout."
+            " Note that if the schema version found in the database is higher than the expected one"
+            " then the application will fail right away regardless of a value of either options.",
+            _schemaUpgradeWait
+        ).option(
+            "schema-upgrade-wait-timeout",
+            "This option specifies a duration of time to wait for the schema upgrade in case"
+            " if this feature is enabled in the option --schema-upgrade-wait.",
+            _schemaUpgradeWaitTimeoutSec
         );
     }
     if (_enableServiceProvider) {
@@ -161,6 +178,8 @@ int Application::run() {
         Configuration::setDatabaseConnectTimeoutSec(_databaseConnectTimeoutSec);
         Configuration::setDatabaseMaxReconnects(_databaseMaxReconnects);
         Configuration::setDatabaseTransactionTimeoutSec(_databaseTransactionTimeoutSec);
+        Configuration::setSchemaUpgradeWait(_schemaUpgradeWait != 0);
+        Configuration::setSchemaUpgradeWaitTimeoutSec(_schemaUpgradeWaitTimeoutSec);
     }
     if (_enableServiceProvider) {
 

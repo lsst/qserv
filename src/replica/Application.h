@@ -155,6 +155,11 @@ private:
     unsigned int _xrootdAllowReconnect;
     unsigned int _xrootdConnectTimeoutSec;
 
+    // Schema upgrade waiting options
+
+    unsigned int _schemaUpgradeWait;
+    unsigned int _schemaUpgradeWaitTimeoutSec;
+
     /// The provider of the Configuration and other services
     ServiceProvider::Ptr _serviceProvider;
 };
