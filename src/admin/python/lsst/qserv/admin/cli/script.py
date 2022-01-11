@@ -43,6 +43,8 @@ from ...schema import MigMgrArgs, SchemaUpdateRequired
 from ..replicationInterface import ReplicationInterface
 from . import _integration_test, options
 
+from ..mysql_connection import mysql_connection
+
 
 smig_dir_env_var = "QSERV_SMIG_DIRECTORY"
 default_smig_dir = "/usr/local/qserv/smig"
@@ -366,19 +368,25 @@ def enter_xrootd_manager(cmsd_manager: str) -> None:
     )
 
 
-def enter_worker_cmsd(cmsd_manager: str, vnid: str, debug_port: Optional[int], db_uri: str) -> None:
+def enter_worker_cmsd(
+    cmsd_manager: str,
+    vnid_config: str,
+    debug_port: Optional[int],
+    db_uri: str
+) -> None:
     """Start a worker cmsd node.
 
     Parameters
     ----------
     cmsd_manager : str
         The host name of the cmsd manager.
-    vnid : str
-        The virtual network id for this component.
+    vnid_config : str
+        The config parameters used by the qserv cmsd to get the vnid
+        from the specified source (static string, a file or worker database).
     debug_port : int or None
         If not None, indicates that gdbserver should be run on the given port number.
     db_uri : str
-        The non-admin URI to the worker's databse.
+        The non-admin URI to the worker's database.
     """
     url = _process_uri(
         uri=db_uri,
@@ -388,7 +396,7 @@ def enter_worker_cmsd(cmsd_manager: str, vnid: str, debug_port: Optional[int], d
     )
     save_template_cfg(
         dict(
-            vnid=vnid,
+            vnid_config=vnid_config,
             cmsd_manager=cmsd_manager,
             db_host=url.host,
             db_port=url.port or "",
@@ -401,6 +409,10 @@ def enter_worker_cmsd(cmsd_manager: str, vnid: str, debug_port: Optional[int], d
     apply_template_cfg_file(xrdssi_cfg_template, xrdssi_cfg_path)
 
     _do_smig_block(admin_smig_dir, "admin", db_uri)
+
+    # wait before worker database will be fully initialized as needed
+    # for the vnid plugin to function correctly
+    _do_smig_block(worker_smig_dir, "worker", db_uri)
 
     args = [
         "cmsd",
@@ -422,7 +434,7 @@ def enter_worker_xrootd(
     debug_port: Optional[int],
     db_uri: str,
     db_admin_uri: str,
-    vnid: str,
+    vnid_config: str,
     cmsd_manager: str,
     repl_ctl_dn: str,
     mysql_monitor_password: str,
@@ -435,11 +447,12 @@ def enter_worker_xrootd(
     debug_port : int or None
         If not None, indicates that gdbserver should be run on the given port number.
     db_uri : str
-        The non-admin URI to the proxy's databse.
+        The non-admin URI to the proxy's database.
     db_admin_uri : str
         The admin URI to the proxy's database.
-    vnid : str
-        The virtual network id for this component.
+    vnid_config : str
+        The config parameters used by the qserv cmsd to get the vnid
+        from the specified source (static string, a file or worker database).
     cmsd_manager : str
         The host name of the cmsd manager.
     repl_ctl_dn : str
@@ -473,7 +486,7 @@ def enter_worker_xrootd(
     )
     save_template_cfg(
         dict(
-            vnid=vnid,
+            vnid_config=vnid_config,
             cmsd_manager=cmsd_manager,
             db_host=url.host or "",
             db_port=str(url.port) or "",
@@ -485,6 +498,7 @@ def enter_worker_xrootd(
     )
 
     # enter_worker_cmsd smigs the worker db for that node
+    # this this step is also needed for the vnid plugin to function correctly
     smig_worker(db_admin_uri, update=False)
 
     # TODO worker (and manager) xrootd+cmsd pair should "share" the cfg file
@@ -593,7 +607,7 @@ def enter_proxy(
     Parameters
     ----------
     db_uri : str
-        The non-admin URI to the proxy's databse.
+        The non-admin URI to the proxy's database.
     db_admin_uri : str
         The admin URI to the proxy's database.
     repl_ctl_dn : str
@@ -691,7 +705,42 @@ def enter_replication_controller(
         print the command and arguments that would have been run.
     """
 
-    def set_initial_configuartion(workers: Sequence[str], xrootd_manager: str) -> None:
+    def get_worker_id(qserv_worker_db: str) -> str:
+        """Fetch worker identifier from the Qserv worker database.
+
+        Parameters
+        ----------
+        qserv_worker_db : `str`
+            The connection string for the Qserv worker database for the
+            non-admin user (the user is typically "qsmaster").
+        """
+
+        # wait before the worker database will be fully initialized
+        _ = _process_uri(
+            uri=qserv_worker_db,
+            query_keys=(),
+            option=options.db_uri_option.args[0],
+            block=True,
+        )
+        _do_smig_block(worker_smig_dir, "worker", qserv_worker_db)
+
+        results = []
+        query = "SELECT id FROM qservw_worker.Id"
+        try:
+            with closing(mysql_connection(qserv_worker_db)) as cnx:
+                with closing(cnx.cursor()) as cursor:
+                    res = cursor.execute(query)
+                    results = cursor.fetchall()
+        except Exception as e:
+            _log.error(f"Failed to execute the query {query} at {qserv_worker_db}, exception: {e}")
+
+        if len(results) != 1:
+            raise RuntimeError(f"Failed to get worker identifier using {qserv_worker_db}")
+        worker_id = results[0][0]
+        _log.info(f"get_worker_id: {worker_id}")
+        return worker_id
+
+    def set_initial_configuration(workers: Sequence[str], xrootd_manager: str) -> None:
         """Add the initial configuration to the replication database.
         Should only be called if the replication database has newly been smigged to version 1."""
         args = [
@@ -706,15 +755,15 @@ def enter_replication_controller(
         workers_ = [split_kv((w,)) for w in workers]
         for worker in workers_:
             try:
-                name = worker.pop("name")
+                qserv_worker_db = worker.pop("qserv_worker_db")
                 host = worker.pop("host")
             except KeyError as e:
-                raise RuntimeError("The worker option must contain entries 'name' and 'host'") from e
+                raise RuntimeError("The worker option must contain entries 'qserv_worker_db' and 'host'") from e
             args = [
                 "qserv-replica-config",
                 "ADD_WORKER",
                 f"--config={db_uri}",
-                name,
+                get_worker_id(qserv_worker_db),
                 host,
             ]
             args += [f"--{key}={val}" for key, val in worker.items()]
@@ -744,7 +793,7 @@ def enter_replication_controller(
             db_admin_uri=db_admin_uri,
             db_uri=db_uri,
             update=False,
-            set_initial_configuration=partial(set_initial_configuartion, workers, xrootd_manager),
+            set_initial_configuration=partial(set_initial_configuration, workers, xrootd_manager),
         )
 
     env = dict(os.environ, LSST_LOG_CONFIG=replica_controller_log_path)

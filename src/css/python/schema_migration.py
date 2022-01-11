@@ -20,7 +20,7 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 
-"""Module defining methods used in schema migration of css database.
+"""Module defining methods used in schema migration of the CSS database.
 """
 
 __all__ = ["make_migration_manager"]
@@ -29,14 +29,14 @@ __all__ = ["make_migration_manager"]
 from ..schema import SchemaMigMgr, Uninitialized, Version
 
 
-qservCssDb = "qservCssData"
+database = "qservCssData"
 
 
 class CssMigrationManager(SchemaMigMgr):
-    """Class implementing schema migration for Css database.
+    """Class implementing schema migration for the CSS database.
     """
 
-    def __init__(self, name: str, connection: str, scripts_dir: str):
+    def __init__(self, connection: str, scripts_dir: str):
         super().__init__(scripts_dir, connection)
 
     def current_version(self) -> Version:
@@ -49,7 +49,7 @@ class CssMigrationManager(SchemaMigMgr):
         """
 
         # If the css database does not exist then css is Uninitialized.
-        if not self.databaseExists(qservCssDb):
+        if not self.databaseExists(database):
             return Version(Uninitialized)
 
         # css does not have multiple versions yet, so if the database exists
@@ -57,19 +57,17 @@ class CssMigrationManager(SchemaMigMgr):
         return Version(0)
 
 
-def make_migration_manager(name: str, connection: str, scripts_dir: str) -> SchemaMigMgr:
+def make_migration_manager(connection: str, scripts_dir: str) -> SchemaMigMgr:
     """Factory method for schema migration manager
 
     This method is needed to support dynamic loading in `qserv-smig` script.
 
     Parameters
     ----------
-    name : `str`
-        Module name, e.g. "admin"
     connection : `str`
         The uri to the module database.
     scripts_dir : `str`
         Path where migration scripts are located, this is system-level directory,
         per-module scripts are usually located in sub-directories.
     """
-    return CssMigrationManager(name, connection, scripts_dir)
+    return CssMigrationManager(connection, scripts_dir)

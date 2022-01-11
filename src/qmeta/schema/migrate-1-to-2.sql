@@ -77,8 +77,3 @@ CREATE OR REPLACE
         LEFT OUTER JOIN `QWorker` USING (`queryId`)
         LEFT OUTER JOIN `QStatsTmp` USING (`queryId`)
   GROUP BY `QInfo`.`queryId`;
-
-
-
--- Update record for schema version, migration script expects this record to exist
-UPDATE `QMetadata` SET `value` = '2' WHERE `metakey` = 'version';

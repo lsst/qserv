@@ -374,6 +374,17 @@ public:
  */
 unsigned int stoui(std::string const& str, size_t *idx = 0, int base = 10);
 
+/**
+ * @brief Split the input string into words separated by the delimiter.
+ * 
+ * @param str The input string.
+ * @param delimiter The delimiter character.
+ * @return std::vector<std::string> A collection of words found in the string. The words
+ *   are guaranteed not to have delimiters. The collection is guaranteed not to have
+ *   empty strings.
+ */
+std::vector<std::string> strsplit(std::string const& str, char delimiter=' ');
+
 }}} // namespace lsst::qserv::replica
 
 #endif // LSST_QSERV_REPLICA_COMMON_H

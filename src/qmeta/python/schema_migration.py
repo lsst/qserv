@@ -13,15 +13,14 @@ from lsst.qserv.schema import Migration, SchemaMigMgr, Uninitialized, Version
 
 
 _log = logging.getLogger(__name__)
-qservMetaDb = "qservMeta"
 
+database = "qservMeta"
 
 class QMetaMigrationManager(SchemaMigMgr):
     """Class implementing schema migration for QMeta database.
     """
 
-    # scripts are located in qmeta/ sub-dir
-    def __init__(self, name: str, connection: str, scripts_dir: str):
+    def __init__(self, connection: str, scripts_dir: str):
         super().__init__(scripts_dir, connection)
 
     def current_version(self) -> Version:
@@ -33,21 +32,17 @@ class QMetaMigrationManager(SchemaMigMgr):
             The current schema version.
         """
 
-        # If the `qservMeta` database does not exist then QMeta is
-        # Uninitialized.
-        cursor = self.connection.cursor()
-        cursor.execute("SHOW DATABASES")
-        if ('qservMeta',) not in cursor.fetchall():
+        # If the database does not exist then it's Uninitialized.
+        if not self.databaseExists(database):
             return Version(Uninitialized)
 
-        # Initial QMeta implementation did not have version number stored at all,
+        # Initial database schema implementation did not have version number stored at all,
         # and we call this version 0. Since version=1 version number is stored in
         # QMetadata table with key="version"
-        cursor.execute("select 1 from INFORMATION_SCHEMA.TABLES where TABLE_NAME = 'QMetadata';")
-        if not cursor.fetchone():
+        if not self.tableExists(database, 'QMetadata'):
             return 0
 
-        self.connection.database = qservMetaDb
+        self.connection.database = database
         cursor = self.connection.cursor()
         cursor.execute("SELECT value FROM QMetadata WHERE metakey = 'version'")
         result = cursor.fetchone()
@@ -63,18 +58,17 @@ class QMetaMigrationManager(SchemaMigMgr):
     )
     def _set_version(self, version: int) -> None:
         """Set the version number stored in QMetadata."""
-        # make sure that current version is updated in database
-        query = f"UPDATE QMetadata SET value = {version} WHERE metakey = 'version'"
-        self.connection.database = qservMetaDb
+        # make sure that current version is updated in the database
+        self.connection.database = database
         cursor = self.connection.cursor()
-        cursor.execute(query)
+        cursor.execute(f"UPDATE QMetadata SET value = {version} WHERE metakey = 'version'")
         self.connection.commit()
 
         # read it back and compare with expected
         current = self.current_version()
         if current != version:
             raise RuntimeError(
-                f"Failed to update version number in database to {version}, current version is now {current}")
+                f"Failed to update database {database} to {version}, current version is {current}")
 
     def apply_migrations(self, migrations: Sequence[Migration]) -> Version:
         """Apply migrations.
@@ -94,19 +88,17 @@ class QMetaMigrationManager(SchemaMigMgr):
         return Version(version)
 
 
-def make_migration_manager(name: str, connection: str, scripts_dir: str) -> SchemaMigMgr:
+def make_migration_manager(connection: str, scripts_dir: str) -> SchemaMigMgr:
     """Factory method for admin schema migration manager
 
     This method is needed to support dynamic loading in `qserv-smig` script.
 
     Parameters
     ----------
-    name : `str`
-        Module name, e.g. "admin"
     connection : `str`
         The uri to the module database.
     scripts_dir : `str`
         Path where migration scripts are located, this is system-level directory,
         per-module scripts are usually located in sub-directories.
     """
-    return QMetaMigrationManager(name, connection, scripts_dir)
+    return QMetaMigrationManager(connection, scripts_dir)

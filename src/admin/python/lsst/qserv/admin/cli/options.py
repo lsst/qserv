@@ -118,10 +118,11 @@ run_option = partial(
 )
 
 
-vnid_option = partial(
+vnid_config_option = partial(
     click.option,
-    "--vnid",
-    help="The virtual network identifier for this component.",
+    "--vnid-config",
+    help="The config parameters used by the qserv cmsd to get the vnid from the specified "
+    " source (static string, a file or worker database)."
 )
 
 

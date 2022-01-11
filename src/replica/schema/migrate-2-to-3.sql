@@ -46,6 +46,3 @@ ALTER TABLE `transaction_contrib` ADD COLUMN `tmp_file` TEXT NOT NULL DEFAULT ''
 -- Add indexes to the transaction contribution table
 ALTER TABLE `transaction_contrib` ADD KEY (`type`);
 ALTER TABLE `transaction_contrib` ADD KEY (`status`);
-
--- Update the schema version
-UPDATE `QMetadata` SET `value` = '3' WHERE `metakey` = 'version' ;

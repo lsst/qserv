@@ -34,8 +34,7 @@ from ..schema import Migration, SchemaMigMgr, Uninitialized
 class AdminMigrationManager(SchemaMigMgr):
     """Class implementing schema migration for QMeta database."""
 
-    # scripts are located in qmeta/ sub-dir
-    def __init__(self, name: str, connection: str, scripts_dir: str):
+    def __init__(self, connection: str, scripts_dir: str):
         super().__init__(scripts_dir, connection)
 
     def current_version(self) -> Optional[int]:
@@ -85,19 +84,17 @@ class AdminMigrationManager(SchemaMigMgr):
         return cur
 
 
-def make_migration_manager(name: str, connection: str, scripts_dir: str) -> AdminMigrationManager:
+def make_migration_manager(connection: str, scripts_dir: str) -> AdminMigrationManager:
     """Factory method for admin schema migration manager
 
     This method is needed to support dynamic loading in `qserv-smig` script.
 
     Parameters
     ----------
-    name : `str`
-        Module name, e.g. "admin"
     connection : `str`
         The uri to the module database.
     scripts_dir : `str`
         Path where migration scripts are located, this is system-level directory,
         per-module scripts are usually located in sub-directories.
     """
-    return AdminMigrationManager(name, connection, scripts_dir)
+    return AdminMigrationManager(connection, scripts_dir)

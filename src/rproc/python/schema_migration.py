@@ -20,7 +20,7 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 
-"""Module defining methods used in schema migration of rproc database.
+"""Module defining methods used in schema migration of results processing database.
 """
 
 
@@ -30,15 +30,14 @@ __all__ = ["make_migration_manager"]
 from lsst.qserv.schema import SchemaMigMgr, Uninitialized, Version
 
 
-qservResultDb = "qservResult"
+database = "qservResult"
 
 
 class RprocMigrationManager(SchemaMigMgr):
-    """Class implementing schema migration for rproc database.
+    """Class implementing schema migration for results processing database.
     """
 
-    # scripts are located in qmeta/ sub-dir
-    def __init__(self, name: str, connection: str, scripts_dir: str):
+    def __init__(self, connection: str, scripts_dir: str):
         super().__init__(scripts_dir, connection)
 
     def current_version(self) -> Version:
@@ -50,28 +49,26 @@ class RprocMigrationManager(SchemaMigMgr):
             The current schema version.
         """
 
-        # If the result database does not exist then rproc is Uninitialized.
-        if not self.databaseExists(qservResultDb):
+        # If the database does not exist then it's Uninitialized.
+        if not self.databaseExists(database):
             return Uninitialized
 
-        # rproc does not have multiple versions yet, so if the database exists
+        # The database does not have multiple versions yet, so if it doesn't exists
         # then assume version 0.
         return Version(0)
 
 
-def make_migration_manager(name: str, connection: str, scripts_dir: str) -> SchemaMigMgr:
+def make_migration_manager(connection: str, scripts_dir: str) -> SchemaMigMgr:
     """Factory method for schema migration manager
 
     This method is needed to support dynamic loading in `qserv-smig` script.
 
     Parameters
     ----------
-    name : `str`
-        Module name, e.g. "admin"
     connection : `str`
         The uri to the module database.
     scripts_dir : `str`
         Path where migration scripts are located, this is system-level directory,
         per-module scripts are usually located in sub-directories.
     """
-    return RprocMigrationManager(name, connection, scripts_dir)
+    return RprocMigrationManager(connection, scripts_dir)

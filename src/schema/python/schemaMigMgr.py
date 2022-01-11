@@ -338,7 +338,7 @@ class SchemaMigMgr(metaclass=ABCMeta):
                 else:
                     with open(migration.filepath, "r") as f:
                         stmt = f.read()
-                _log.debug(f"Migration statment: {stmt}")
+                _log.debug(f"Migration statement: {stmt}")
                 if stmt:
                     for result in cursor.execute(stmt, multi=True):
                         pass
@@ -546,3 +546,24 @@ class SchemaMigMgr(metaclass=ABCMeta):
             if (dbName,) in cursor.fetchall():
                 return True
         return False
+
+    def tableExists(self, dbName: str, tableName: str) -> bool:
+        """Determine if a table exists
+
+        Parameters
+        ----------
+        dbName : `str`
+            The name of the database.
+        tableName : `str`
+            The name of the table.
+
+        Returns
+        -------
+        exists : `bool`
+            True if the table exists, else False.
+        """
+        with closing(self.connection.cursor()) as cursor:
+            cursor.execute(f"SELECT 1 FROM information_schema.TABLES WHERE TABLE_SCHEMA = '{dbName}' AND TABLE_NAME = '{tableName}'")
+            if not cursor.fetchone():
+                return False
+        return True
