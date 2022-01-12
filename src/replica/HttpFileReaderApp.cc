@@ -46,7 +46,6 @@ string const description =
 bool const injectDatabaseOptions = false;
 bool const boostProtobufVersionCheck = false;
 bool const enableServiceProvider = false;
-bool const injectXrootdOptions = false;
 
 } /// namespace
 
@@ -65,8 +64,7 @@ HttpFileReaderApp::HttpFileReaderApp(int argc, char* argv[])
             description,
             injectDatabaseOptions,
             boostProtobufVersionCheck,
-            enableServiceProvider,
-            injectXrootdOptions
+            enableServiceProvider
         ) {
 
     parser().required(

@@ -49,12 +49,10 @@ Application::Application(int argc,
                          string const& description,
                          bool const injectDatabaseOptions,
                          bool const boostProtobufVersionCheck,
-                         bool const enableServiceProvider,
-                         bool const injectXrootdOptions)
+                         bool const enableServiceProvider)
     :   _injectDatabaseOptions    (injectDatabaseOptions),
         _boostProtobufVersionCheck(boostProtobufVersionCheck),
         _enableServiceProvider    (enableServiceProvider),
-        _injectXrootdOptions      (injectXrootdOptions),
         _parser   (argc,argv, description),
         _debugFlag(false),
         _config   ("mysql://qsreplica@localhost:3306/qservReplica"),
@@ -137,10 +135,7 @@ int Application::run() {
             " This mechanism also prevents 'cross-talks' between two (or many) Replication"
             " System's setups in case of an accidental mis-configuration.",
             _instanceId
-        );
-    }
-    if (_injectXrootdOptions) {
-        parser().option(
+        ).option(
             "xrootd-allow-reconnect",
             "Change the default XROOTD connection handling node. Set 0 to disable"
             " automatic reconnects. Any other number would allow reconnects.",
@@ -190,9 +185,8 @@ int Application::run() {
         // the asynchronous activities will be run by a thread from the pool.
         _serviceProvider = ServiceProvider::create(_config, _instanceId);
         _serviceProvider->run();
-    }
-    // Change default parameters of the XROOTD connectors
-    if (_injectXrootdOptions) {
+
+        // Change default parameters of the XROOTD connectors
         Configuration::setXrootdAllowReconnect(_xrootdAllowReconnect != 0);
         Configuration::setXrootdConnectTimeoutSec(_xrootdConnectTimeoutSec);
     }

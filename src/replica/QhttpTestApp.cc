@@ -55,7 +55,6 @@ string const description =
 bool const injectDatabaseOptions = false;
 bool const boostProtobufVersionCheck = false;
 bool const enableServiceProvider = false;
-bool const injectXrootdOptions = false;
 
 double const millisecondsInSecond = 1000.;
 double const KiB = 1024.;
@@ -91,8 +90,7 @@ QhttpTestApp::QhttpTestApp(int argc, char* argv[])
             description,
             injectDatabaseOptions,
             boostProtobufVersionCheck,
-            enableServiceProvider,
-            injectXrootdOptions
+            enableServiceProvider
         ) {
     parser().required(
         "port",

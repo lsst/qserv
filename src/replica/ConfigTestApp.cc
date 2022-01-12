@@ -53,11 +53,6 @@ string const description =
     " ATTENTION: Plan carefully when using this flag to avoid destroying any"
     " valuable data. Avoid running this command in the production environment.";
 
-bool const injectDatabaseOptions = true;
-bool const boostProtobufVersionCheck = false;
-bool const enableServiceProvider = false;
-bool const injectXrootdOptions = false;
-
 /**
  * Register an option with a parser (which could also represent a command).
  * @param parser The handler responsible for processing options

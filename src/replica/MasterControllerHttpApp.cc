@@ -80,7 +80,6 @@ string const description =
 bool const injectDatabaseOptions = true;
 bool const boostProtobufVersionCheck = true;
 bool const enableServiceProvider = true;
-bool const injectXrootdOptions = true;
 
 } /// namespace
 
@@ -101,8 +100,7 @@ MasterControllerHttpApp::MasterControllerHttpApp(int argc, char* argv[])
             description,
             injectDatabaseOptions,
             boostProtobufVersionCheck,
-            enableServiceProvider,
-            injectXrootdOptions
+            enableServiceProvider
         ),
         _healthProbeIntervalSec  (::defaultOptions.healthProbeIntervalSec),
         _replicationIntervalSec  (::defaultOptions.replicationIntervalSec),

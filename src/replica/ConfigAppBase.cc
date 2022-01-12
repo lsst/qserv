@@ -39,7 +39,6 @@ namespace {
 bool const injectDatabaseOptions = true;
 bool const boostProtobufVersionCheck = false;
 bool const enableServiceProvider = false;
-bool const injectXrootdOptions = false;
 
 } /// namespace
 
@@ -54,8 +53,7 @@ ConfigAppBase::ConfigAppBase(int argc, char* argv[], string const& description)
             description,
             injectDatabaseOptions,
             boostProtobufVersionCheck,
-            enableServiceProvider,
-            injectXrootdOptions
+            enableServiceProvider
         ),
         _configUrl("mysql://qsreplica@localhost:3306/qservReplica") {
 

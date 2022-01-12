@@ -52,11 +52,6 @@ string const description =
     "The command-line tool for viewing and manipulating the configuration data"
     " of the Replication system stored in the MySQL/MariaDB database.";
 
-bool const injectDatabaseOptions = true;
-bool const boostProtobufVersionCheck = false;
-bool const enableServiceProvider = false;
-bool const injectXrootdOptions = false;
-
 /**
  * Register an option with a parser (which could also represent a command).
  * @param parser The handler responsible for processing options

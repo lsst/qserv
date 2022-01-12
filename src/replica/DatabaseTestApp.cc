@@ -50,7 +50,6 @@ string const description =
 bool const injectDatabaseOptions = true;
 bool const boostProtobufVersionCheck = false;
 bool const enableServiceProvider = true;
-bool const injectXrootdOptions = false;
 
 string asString(time_t t) {
     ostringstream ss;
@@ -119,8 +118,7 @@ DatabaseTestApp::DatabaseTestApp(int argc, char* argv[])
             description,
             injectDatabaseOptions,
             boostProtobufVersionCheck,
-            enableServiceProvider,
-            injectXrootdOptions
+            enableServiceProvider
         ) {
 
     // Configure the command line parser
