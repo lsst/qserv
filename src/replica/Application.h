@@ -22,6 +22,7 @@
 #define LSST_QSERV_REPLICA_APPLICATION_H
 
 // System headers
+#include <map>
 #include <memory>
 #include <string>
 
@@ -148,13 +149,14 @@ private:
     unsigned int _databaseConnectTimeoutSec;
     unsigned int _databaseMaxReconnects;
     unsigned int _databaseTransactionTimeoutSec;
-    unsigned int _xrootdAllowReconnect;
-    unsigned int _xrootdConnectTimeoutSec;
 
     // Schema upgrade waiting options
 
     unsigned int _schemaUpgradeWait;
     unsigned int _schemaUpgradeWaitTimeoutSec;
+
+    /// General parameters
+    std::map<std::string, std::map<std::string, std::string>> _generalParams;
 
     /// The provider of the Configuration and other services
     ServiceProvider::Ptr _serviceProvider;

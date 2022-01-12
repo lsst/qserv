@@ -61,8 +61,6 @@ Application::Application(int argc,
         _databaseConnectTimeoutSec    (Configuration::databaseConnectTimeoutSec()),
         _databaseMaxReconnects        (Configuration::databaseMaxReconnects()),
         _databaseTransactionTimeoutSec(Configuration::databaseTransactionTimeoutSec()),
-        _xrootdAllowReconnect         (ConfigurationSchema::defaultValue<unsigned int>("xrootd", "allow_reconnect")),
-        _xrootdConnectTimeoutSec      (ConfigurationSchema::defaultValue<unsigned int>("xrootd", "reconnect_timeout")),
         _schemaUpgradeWait            (Configuration::schemaUpgradeWait() ? 1 : 0),
         _schemaUpgradeWaitTimeoutSec  (Configuration::schemaUpgradeWaitTimeoutSec()) {
 
@@ -136,15 +134,20 @@ int Application::run() {
             " This mechanism also prevents 'cross-talks' between two (or many) Replication"
             " System's setups in case of an accidental mis-configuration.",
             _instanceId
-        ).option(
-            "xrootd-allow-reconnect",
-            ConfigurationSchema::description("xrootd", "allow_reconnect"),
-            _xrootdAllowReconnect
-        ).option(
-            "xrootd-reconnect-timeout",
-            ConfigurationSchema::description("xrootd", "reconnect_timeout"),
-            _xrootdConnectTimeoutSec
         );
+        // Inject options for th egeneral configuration parameters.
+        for (auto&& itr: ConfigurationSchema::parameters()) {
+            string const& category = itr.first;
+            for (auto&& param: itr.second) {
+                // The read-only parameters can't be updated programmatically.
+                if (ConfigurationSchema::readOnly(category, param)) continue;
+                _generalParams[category][param] = ConfigurationSchema::defaultValueAsString(category, param);
+                parser().option(
+                    category + "-" + param,
+                    ConfigurationSchema::description(category, param),
+                    _generalParams[category][param]);
+            }
+        }
     }
     try {
         int const code = parser().parse();
@@ -175,12 +178,20 @@ int Application::run() {
         Configuration::setSchemaUpgradeWaitTimeoutSec(_schemaUpgradeWaitTimeoutSec);
     }
     if (_enableServiceProvider) {
-
-        // Create the provider and update configuration parameters for the XRootD/SSI
-        // connection handler.
         _serviceProvider = ServiceProvider::create(_config, _instanceId);
-        _serviceProvider->config()->set<unsigned int>("xrootd", "allow_reconnect", _xrootdAllowReconnect);
-        _serviceProvider->config()->set<unsigned int>("xrootd", "reconnect_timeout", _xrootdConnectTimeoutSec);
+
+        // Update general configuration parameters.
+        // Note that options specified by a user will have non-empty values.
+        for (auto&& categoryItr: _generalParams) {
+            string const& category = categoryItr.first;
+            for (auto&& paramItr: categoryItr.second) {
+                string const& param = paramItr.first;
+                string const& value = paramItr.second;
+                if (!value.empty()) {
+                    _serviceProvider->config()->setFromString(category, param, value);
+                }
+            }
+        }
 
         // Start the provider in its own thread pool before performing any asynchronous
         // operations via BOOST ASIO.

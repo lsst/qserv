@@ -181,11 +181,11 @@ ConfigApp::ConfigApp(int argc, char* argv[])
         for (auto&& param: itr.second) {
             // The read-only parameters can't be updated programmatically.
             if (ConfigurationSchema::readOnly(category, param)) continue;
-            _general[category][param] = string();
+            _generalParams[category][param] = ConfigurationSchema::defaultValueAsString(category, param);
             updateGeneralCmd.option(
-                category + "." + param,
+                category + "-" + param,
                 ConfigurationSchema::description(category, param),
-                _general[category][param]);
+                _generalParams[category][param]);
         }
     }
 
@@ -446,7 +446,7 @@ int ConfigApp::_configInitFile() const {
 int ConfigApp::_updateGeneral() {
     try {
         // Note that options specified by a user will have non-empty values.
-        for (auto&& categoryItr: _general) {
+        for (auto&& categoryItr: _generalParams) {
             string const& category = categoryItr.first;
             for (auto&& paramItr: categoryItr.second) {
                 string const& param = paramItr.first;

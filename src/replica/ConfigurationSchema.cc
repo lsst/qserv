@@ -391,13 +391,20 @@ string ConfigurationSchema::description(string const& category, string const& pa
 }
 
 
-bool ConfigurationSchema::readOnly(std::string const& category, std::string const& param) {
+bool ConfigurationSchema::readOnly(string const& category, string const& param) {
     return _attributeValue<unsigned int>(category, param, "read-only", 0) != 0;
 }
 
 
-bool ConfigurationSchema::securityContext(std::string const& category, std::string const& param) {
+bool ConfigurationSchema::securityContext(string const& category, string const& param) {
     return _attributeValue<unsigned int>(category, param, "security-context", 0) != 0;
+}
+
+
+string ConfigurationSchema::defaultValueAsString(string const& category, string const& param) {
+    return json2string(
+            "ConfigurationSchema::" + string(__func__) + " category: '" + category + "' param: '" + param + "' ",
+            _attributeValueJson(category, param, "default"));
 }
 
 
@@ -448,6 +455,25 @@ bool ConfigurationSchema::_emptyAllowed(string const& category, string const& pa
 
 json ConfigurationSchema::_restrictor(string const& category, string const& param) {
     return _attributeValue<json>(category, param, "restricted", json());
+}
+
+
+json ConfigurationSchema::_attributeValueJson(string const& category, string const& param,
+                                              string const& attr) {
+    auto const categoryItr = _schemaJson.find(category);
+    if (categoryItr != _schemaJson.end()) {
+        auto const paramItr = categoryItr->find(param);
+        if (paramItr != categoryItr->end()) {
+            auto const attrItr = paramItr->find(attr);
+            if (attrItr != paramItr->end()) return *attrItr;
+            throw invalid_argument(
+                    "ConfigurationSchema::" + string(__func__) + " unknown attribute " + attr +
+                    " of parameter " + category + "." + param + ".");
+        }
+    }
+    throw invalid_argument(
+            "ConfigurationSchema::" + string(__func__) + " unknown parameter "
+            + category + "." + param + ".");
 }
 
 }}} // namespace lsst::qserv::replica
