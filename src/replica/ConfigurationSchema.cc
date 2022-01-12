@@ -33,21 +33,7 @@ using namespace std;
 using json = nlohmann::json;
 
 namespace {
-template <typename T>
-T _attributeValue(json const& schemaJson, string const& category, string const& param,
-                  string const& attr, T const& defaultValue) {
-    if (schemaJson.count(category)) {
-        json const& categoryJson = schemaJson.at(category);
-        if (categoryJson.count(param)) {
-            json const& paramJson = categoryJson.at(param);
-            if (paramJson.count(attr)) return paramJson.at(attr).get<T>();
-        }
-    }
-    return defaultValue;
-}
-
 auto const max_listen_connections = boost::asio::socket_base::max_listen_connections;
-
 }
 
 namespace lsst {
@@ -245,6 +231,27 @@ json const ConfigurationSchema::_schemaJson = json::object({
             {"description",
                 "A port number for the XRootD/SSI service needed for communications with Qserv."},
             {"default", 1094}
+        }},
+        {"allow_reconnect", {
+            {"description",
+                "XRootD/SSI connection handling mode. Set 0 to disable automatic reconnects."
+                " Any other number would allow reconnects."},
+            {"empty-allowed", 1},
+            {"default", 1}
+        }},
+        {"allow_reconnect", {
+            {"description",
+                "XRootD/SSI connection handling mode. Set 0 to disable automatic reconnects."
+                " Any other number would allow reconnects."},
+            {"empty-allowed", 1},
+            {"default", 1}
+        }},
+        {"reconnect_timeout", {
+            {"description",
+                "The default value limiting a duration of time for making automatic"
+                " reconnects to the XRootD/SSI services before failing and reporting error"
+                " (if the server is not up, or if it's not reachable for some reason)"},
+            {"default", 3600}
         }}
     }},
     {"worker", {
@@ -380,17 +387,17 @@ json const ConfigurationSchema::_schemaJson = json::object({
 
 
 string ConfigurationSchema::description(string const& category, string const& param) {
-    return _attributeValue<string>(_schemaJson, category, param, "description", "");
+    return _attributeValue<string>(category, param, "description", "");
 }
 
 
 bool ConfigurationSchema::readOnly(std::string const& category, std::string const& param) {
-    return _attributeValue<unsigned int>(_schemaJson, category, param, "read-only", 0) != 0;
+    return _attributeValue<unsigned int>(category, param, "read-only", 0) != 0;
 }
 
 
 bool ConfigurationSchema::securityContext(std::string const& category, std::string const& param) {
-    return _attributeValue<unsigned int>(_schemaJson, category, param, "security-context", 0) != 0;
+    return _attributeValue<unsigned int>(category, param, "security-context", 0) != 0;
 }
 
 
@@ -435,12 +442,12 @@ string ConfigurationSchema::json2string(string const& context, json const& obj) 
 
 
 bool ConfigurationSchema::_emptyAllowed(string const& category, string const& param) {
-    return _attributeValue<unsigned int>(_schemaJson, category, param, "empty-allowed", 0) != 0;
+    return _attributeValue<unsigned int>(category, param, "empty-allowed", 0) != 0;
 }
 
 
 json ConfigurationSchema::_restrictor(string const& category, string const& param) {
-    return _attributeValue<json>(_schemaJson, category, param, "restricted", json());
+    return _attributeValue<json>(category, param, "restricted", json());
 }
 
 }}} // namespace lsst::qserv::replica

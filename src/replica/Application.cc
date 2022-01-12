@@ -28,6 +28,7 @@
 // Qserv headers
 #include "replica/Configuration.h"
 #include "replica/ConfigParserMySQL.h"
+#include "replica/ConfigurationSchema.h"
 #include "replica/protocol.pb.h"
 #include "util/Issue.h"
 
@@ -60,8 +61,8 @@ Application::Application(int argc,
         _databaseConnectTimeoutSec    (Configuration::databaseConnectTimeoutSec()),
         _databaseMaxReconnects        (Configuration::databaseMaxReconnects()),
         _databaseTransactionTimeoutSec(Configuration::databaseTransactionTimeoutSec()),
-        _xrootdAllowReconnect         (Configuration::xrootdAllowReconnect() ? 1 : 0),
-        _xrootdConnectTimeoutSec      (Configuration::xrootdConnectTimeoutSec()),
+        _xrootdAllowReconnect         (ConfigurationSchema::defaultValue<unsigned int>("xrootd", "allow_reconnect")),
+        _xrootdConnectTimeoutSec      (ConfigurationSchema::defaultValue<unsigned int>("xrootd", "reconnect_timeout")),
         _schemaUpgradeWait            (Configuration::schemaUpgradeWait() ? 1 : 0),
         _schemaUpgradeWaitTimeoutSec  (Configuration::schemaUpgradeWaitTimeoutSec()) {
 
@@ -137,14 +138,11 @@ int Application::run() {
             _instanceId
         ).option(
             "xrootd-allow-reconnect",
-            "Change the default XROOTD connection handling node. Set 0 to disable"
-            " automatic reconnects. Any other number would allow reconnects.",
+            ConfigurationSchema::description("xrootd", "allow_reconnect"),
             _xrootdAllowReconnect
         ).option(
             "xrootd-reconnect-timeout",
-            "Change the default value limiting a duration of time for making automatic"
-            " reconnects to the XROOTD servers before failing and reporting error"
-            " (if the server is not up, or if it's not reachable for some reason)",
+            ConfigurationSchema::description("xrootd", "reconnect_timeout"),
             _xrootdConnectTimeoutSec
         );
     }
@@ -178,17 +176,17 @@ int Application::run() {
     }
     if (_enableServiceProvider) {
 
-        // Create and then start the provider in its own thread pool before
-        // performing any asynchronous operations via BOOST ASIO.
-        //
+        // Create the provider and update configuration parameters for the XRootD/SSI
+        // connection handler.
+        _serviceProvider = ServiceProvider::create(_config, _instanceId);
+        _serviceProvider->config()->set<unsigned int>("xrootd", "allow_reconnect", _xrootdAllowReconnect);
+        _serviceProvider->config()->set<unsigned int>("xrootd", "reconnect_timeout", _xrootdConnectTimeoutSec);
+
+        // Start the provider in its own thread pool before performing any asynchronous
+        // operations via BOOST ASIO.
         // Note that onFinish callbacks which are activated upon the completion of
         // the asynchronous activities will be run by a thread from the pool.
-        _serviceProvider = ServiceProvider::create(_config, _instanceId);
         _serviceProvider->run();
-
-        // Change default parameters of the XROOTD connectors
-        Configuration::setXrootdAllowReconnect(_xrootdAllowReconnect != 0);
-        Configuration::setXrootdConnectTimeoutSec(_xrootdConnectTimeoutSec);
     }
 
     // Let the user's code to do its job

@@ -270,29 +270,6 @@ public:
      */
     static void setSchemaUpgradeWaitTimeoutSec(unsigned int value);
 
-    /// @return the default mode for xrootd reconnects.
-    static bool xrootdAllowReconnect();
-
-    /**
-     * Change the default value of a parameter defining a policy for handling
-     * automatic reconnects to the xrootd server. Setting 'true' will enable
-     * reconnects.
-     * @param value The new value of the parameter.
-     */
-    static void setXrootdAllowReconnect(bool value);
-
-    /// @return The default timeout for connecting to the xrootd servers.
-    static unsigned int xrootdConnectTimeoutSec();
-
-    /**
-     * Change the default value of a parameter specifying the maximum interval
-     * of time (seconds) to wait for connecting to the xrootd servers before
-     * giving up (should this be enabled by the corresponding reconnect policy).
-     * @param value The new value of the parameter (must be strictly greater than 0).
-     * @throws std::invalid_argument If the new value of the parameter is 0.
-     */
-    static void setXrootdConnectTimeoutSec(unsigned int value);
-
     // -----------------
     // The instance API.
     // -----------------
@@ -829,8 +806,6 @@ private:
     static unsigned int _schemaUpgradeWaitTimeoutSec;
     static std::string  _qservCzarDbUrl;
     static std::string  _qservWorkerDbUrl;
-    static bool         _xrootdAllowReconnect;
-    static unsigned int _xrootdConnectTimeoutSec;
 
     // For implementing static synchronized methods.
     static util::Mutex _classMtx;

@@ -79,6 +79,13 @@ public:
     ///   sensitive information in log files, reports, etc.
     static bool securityContext(std::string const& category, std::string const& param);
 
+    /// @return The default value of the specified parameter.
+    /// @throws std::invalid_argument If the parameter is unknown.
+    template <typename T>
+    static T defaultValue(std::string const& category, std::string const& param) {
+        return _attributeValue<T>(category, param, "default");
+    }
+
     /// @return The default configuration data as per the current JSON schema to be loaded
     ///   into the transient state of the class Configuration upon its initialization.
     static nlohmann::json defaultConfigData();
@@ -131,6 +138,60 @@ public:
     }
 
 private:
+    /**
+     * @brief Retreive a value of the parameter's attribute (allow default value).
+     * 
+     * @tparam T The type of the attribute's value.
+     * @param category The name of the parameter's category.
+     * @param param The name of the parameter within its category.
+     * @param attr The name of the attribute.
+     * @param defaultValue The default value to be returned if no such parameter
+     *   or its attribute was found.
+     * @return T The value of the attribute (or the default value).
+     */
+    template <typename T>
+    static T _attributeValue(std::string const& category, std::string const& param,
+                             std::string const& attr, T const& defaultValue) {
+        auto const categoryItr = _schemaJson.find(category);
+        if (categoryItr != _schemaJson.end()) {
+            auto const paramItr = categoryItr->find(param);
+            if (paramItr != categoryItr->end()) {
+                auto const attrItr = paramItr->find(attr);
+                if (attrItr != paramItr->end()) return attrItr->get<T>();
+            }
+        }
+        return defaultValue;
+    }
+
+    /**
+     * @brief Retreive a value of the parameter's attribute.
+     * 
+     * @tparam T The type of the attribute's value.
+     * @param category The name of the parameter's category.
+     * @param param The name of the parameter within its category.
+     * @param attr The name of the attribute.
+     * @return T The value of the attribute.
+     * @throws std::invalid_argument For unknown parameters or attributes.
+     */
+    template <typename T>
+    static T _attributeValue(std::string const& category, std::string const& param,
+                             std::string const& attr) {
+        if (_schemaJson.count(category)) {
+            nlohmann::json const& categoryJson = _schemaJson.at(category);
+            if (categoryJson.count(param)) {
+                nlohmann::json const& paramJson = categoryJson.at(param);
+                if (paramJson.count(attr)) return paramJson.at(attr).get<T>();
+                throw std::invalid_argument(
+                        "ConfigurationSchema::" + std::string(__func__) + " unknown attribute " + attr +
+                        " of parameter " + category + "." + param + ".");
+            }
+        }
+        throw std::invalid_argument(
+                "ConfigurationSchema::" + std::string(__func__)
+                 + " unknown parameter "
+                + category + "." + param + ".");
+    }
+
     /// @return A 'true' if, depending on the actual type of the parameter, the empty
     ///   string (for strings) or zero value (for numeric parameters) is allowed.
     ///   This information is used by class Configuration to validate input values

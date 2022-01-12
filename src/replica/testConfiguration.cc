@@ -93,16 +93,6 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestStaticParameters) {
     BOOST_CHECK_THROW(Configuration::setSchemaUpgradeWaitTimeoutSec(0), std::invalid_argument);
     BOOST_REQUIRE_NO_THROW(Configuration::setSchemaUpgradeWaitTimeoutSec(4));
     BOOST_CHECK(Configuration::schemaUpgradeWaitTimeoutSec() == 4);
-
-    BOOST_REQUIRE_NO_THROW(Configuration::setXrootdAllowReconnect(true));
-    BOOST_CHECK(Configuration::xrootdAllowReconnect() == true);
-    BOOST_REQUIRE_NO_THROW(Configuration::setXrootdAllowReconnect(false));
-    BOOST_CHECK(Configuration::xrootdAllowReconnect() == false);
-
-
-    BOOST_CHECK_THROW(Configuration::setXrootdConnectTimeoutSec(0), std::invalid_argument);
-    BOOST_REQUIRE_NO_THROW(Configuration::setXrootdConnectTimeoutSec(5));
-    BOOST_CHECK(Configuration::xrootdConnectTimeoutSec() == 5);
 }
 
 BOOST_AUTO_TEST_CASE(ConfigurationInitTestJSON) {
@@ -151,6 +141,8 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestReadingGeneralParameters) {
     BOOST_CHECK(config->get<string>("xrootd", "host") == "localhost");
     BOOST_CHECK(config->get<uint16_t>("xrootd", "port") == 1104);
     BOOST_CHECK(config->get<unsigned int>("xrootd", "request_timeout_sec") == 400);
+    BOOST_CHECK(config->get<unsigned int>("xrootd", "allow_reconnect") == 0);
+    BOOST_CHECK(config->get<unsigned int>("xrootd", "reconnect_timeout") == 500);
 
     BOOST_CHECK(config->get<string>("database", "host") == "localhost");
     BOOST_CHECK(config->get<uint16_t>("database", "port") == 13306);
@@ -260,6 +252,16 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestModifyingGeneralParameters) {
     BOOST_CHECK_THROW(config->set<unsigned int>("xrootd", "request_timeout_sec", 0), std::invalid_argument);
     BOOST_REQUIRE_NO_THROW(config->set<unsigned int>("xrootd", "request_timeout_sec", 401));
     BOOST_CHECK(config->get<unsigned int>("xrootd", "request_timeout_sec") == 401);
+
+    BOOST_REQUIRE_NO_THROW(config->set<unsigned int>("xrootd", "allow_reconnect", 1));
+    BOOST_CHECK(config->get<unsigned int>("xrootd", "allow_reconnect") != 0);
+
+    BOOST_REQUIRE_NO_THROW(config->set<unsigned int>("xrootd", "allow_reconnect", 0));
+    BOOST_CHECK(config->get<unsigned int>("xrootd", "allow_reconnect") == 0);
+
+    BOOST_CHECK_THROW(config->set<unsigned int>("xrootd", "reconnect_timeout", 0), std::invalid_argument);
+    BOOST_REQUIRE_NO_THROW(config->set<unsigned int>("xrootd", "reconnect_timeout", 403));
+    BOOST_CHECK(config->get<unsigned int>("xrootd", "reconnect_timeout") == 403);
 
     BOOST_CHECK_THROW(config->set<size_t>("database", "services_pool_size", 0), std::invalid_argument);
     BOOST_REQUIRE_NO_THROW(config->set<size_t>("database", "services_pool_size", 3));

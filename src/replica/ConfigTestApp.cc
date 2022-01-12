@@ -447,6 +447,8 @@ bool ConfigTestApp::_testGeneral() {
         test.verify<unsigned int>(  "xrootd", "request_timeout_sec", 180);
         test.verify<std::string>(   "xrootd", "host", "localhost");
         test.verify<uint16_t>(      "xrootd", "port", 1094);
+        test.verify<unsigned int>(  "xrootd", "allow_reconnect", 1);
+        test.verify<unsigned int>(  "xrootd", "reconnect_timeout", 3600);
         test.verify<std::string>(   "worker", "technology", "FS");
         test.verify<size_t>(        "worker", "num_svc_processing_threads", 2);
         test.verify<size_t>(        "worker", "num_fs_processing_threads", 2);
@@ -517,6 +519,8 @@ bool ConfigTestApp::_testGeneral() {
         config()->set<unsigned int>(  "xrootd", "request_timeout_sec", 180 + 1);
         config()->set<std::string>(   "xrootd", "host", "localhost-1");
         config()->set<uint16_t>(      "xrootd", "port", 1094 + 1);
+        config()->set<unsigned int>(  "xrootd", "allow_reconnect", 0);
+        config()->set<unsigned int>(  "xrootd", "reconnect_timeout", 120);
         config()->set<std::string>(   "worker", "technology", "POSIX");
         config()->set<size_t>(        "worker", "num_svc_processing_threads", 2 + 1);
         config()->set<size_t>(        "worker", "num_fs_processing_threads", 2 + 1);
@@ -572,6 +576,8 @@ bool ConfigTestApp::_testGeneral() {
         test.verify<unsigned int>(  "xrootd", "request_timeout_sec", 180 + 1);
         test.verify<std::string>(   "xrootd", "host", "localhost-1");
         test.verify<uint16_t>(      "xrootd", "port", 1094 + 1);
+        test.verify<unsigned int>(  "xrootd", "allow_reconnect", 0);
+        test.verify<unsigned int>(  "xrootd", "reconnect_timeout", 120);
         test.verify<std::string>(   "worker", "technology", "POSIX");
         test.verify<size_t>(        "worker", "num_svc_processing_threads", 2 + 1);
         test.verify<size_t>(        "worker", "num_fs_processing_threads", 2 + 1);

@@ -72,8 +72,6 @@ bool         Configuration::_schemaUpgradeWait = true;
 unsigned int Configuration::_schemaUpgradeWaitTimeoutSec = 3600;
 string       Configuration::_qservCzarDbUrl = "mysql://qsreplica@localhost:3306/qservMeta";
 string       Configuration::_qservWorkerDbUrl = "mysql://qsreplica@localhost:3306/qservw_worker";
-bool         Configuration::_xrootdAllowReconnect = true;
-unsigned int Configuration::_xrootdConnectTimeoutSec = 3600;
 util::Mutex  Configuration::_classMtx;
 
 
@@ -204,33 +202,6 @@ void Configuration::setSchemaUpgradeWaitTimeoutSec(unsigned int value) {
         throw invalid_argument("Configuration::" + string(__func__) + "  0 is not allowed.");
     }
     _schemaUpgradeWaitTimeoutSec = value;
-}
-
-
-void Configuration::setXrootdAllowReconnect(bool value) {
-    util::Lock const lock(_classMtx, _context(__func__));
-    _xrootdAllowReconnect  = value;
-}
-
-
-bool Configuration::xrootdAllowReconnect() {
-    util::Lock const lock(_classMtx, _context(__func__));
-    return _xrootdAllowReconnect;
-}
-
-
-void Configuration::setXrootdConnectTimeoutSec(unsigned int value) {
-    util::Lock const lock(_classMtx, _context(__func__));
-    if (0 == value) {
-        throw invalid_argument("Configuration::" + string(__func__) + "  0 is not allowed.");
-    }
-    _xrootdConnectTimeoutSec = value;
-}
-
-
-unsigned int Configuration::xrootdConnectTimeoutSec() {
-    util::Lock const lock(_classMtx, _context(__func__));
-    return _xrootdConnectTimeoutSec;
 }
 
 

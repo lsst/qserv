@@ -67,7 +67,9 @@ map<string, set<string>> ConfigTestData::parameters() {
             {   "auto_notify",
                 "request_timeout_sec",
                 "host",
-                "port"
+                "port",
+                "allow_reconnect",
+                "reconnect_timeout"
             }
         },
         {   "worker", 
@@ -135,7 +137,9 @@ json ConfigTestData::data() {
         {"auto_notify", 0},
         {"host", "localhost"},
         {"port", 1104},
-        {"request_timeout_sec", 400}
+        {"request_timeout_sec", 400},
+        {"allow_reconnect", 0},
+        {"reconnect_timeout", 500}
     });
     generalObj["worker"] = json::object({
         {"technology", "POSIX"},
