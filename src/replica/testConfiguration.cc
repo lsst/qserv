@@ -151,8 +151,8 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestReadingGeneralParameters) {
     BOOST_CHECK(config->get<string>("database", "name") == "qservReplica");
 
     BOOST_CHECK(config->get<string>("database", "qserv_master_user") == "qsmaster");
-    BOOST_CHECK(config->qservCzarDbUrl() == "mysql://qsreplica@localhost:3306/qservMeta");
-    BOOST_CHECK(config->qservWorkerDbUrl() == "mysql://qsreplica@localhost:3306/qservw_worker");
+    BOOST_CHECK(config->qservCzarDbUrl() == "mysql://qsmaster@localhost:3306/qservMeta");
+    BOOST_CHECK(config->qservWorkerDbUrl() == "mysql://qsmaster@localhost:3306/qservw_worker");
 
     BOOST_CHECK(config->get<size_t>("database", "services_pool_size") == 2);
 

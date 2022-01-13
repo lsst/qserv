@@ -111,7 +111,8 @@ MasterControllerHttpApp::MasterControllerHttpApp(int argc, char* argv[])
         _workerReconfigTimeoutSec(::defaultOptions.workerReconfigTimeoutSec),
         _purge                   (::defaultOptions.purge),
         _forceQservSync          (::defaultOptions.forceQservSync),
-        _permanentDelete         (::defaultOptions.permanentDelete) {
+        _permanentDelete         (::defaultOptions.permanentDelete),
+        _qservCzarDbUrl          (Configuration::qservCzarDbUrl()) {
 
     // Configure the command line parser
 

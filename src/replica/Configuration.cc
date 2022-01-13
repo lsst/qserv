@@ -70,8 +70,8 @@ unsigned int Configuration::_databaseMaxReconnects = 1;
 unsigned int Configuration::_databaseTransactionTimeoutSec = 3600;
 bool         Configuration::_schemaUpgradeWait = true;
 unsigned int Configuration::_schemaUpgradeWaitTimeoutSec = 3600;
-string       Configuration::_qservCzarDbUrl = "mysql://qsreplica@localhost:3306/qservMeta";
-string       Configuration::_qservWorkerDbUrl = "mysql://qsreplica@localhost:3306/qservw_worker";
+string       Configuration::_qservCzarDbUrl = "mysql://qsmaster@localhost:3306/qservMeta";
+string       Configuration::_qservWorkerDbUrl = "mysql://qsmaster@localhost:3306/qservw_worker";
 util::Mutex  Configuration::_classMtx;
 
 

@@ -22,6 +22,9 @@
 // Class header
 #include "replica/ConfigurationSchema.h"
 
+// System headers
+#include <thread>
+
 // Third-party headers
 #include "boost/asio.hpp"
 
@@ -33,7 +36,8 @@ using namespace std;
 using json = nlohmann::json;
 
 namespace {
-auto const max_listen_connections = boost::asio::socket_base::max_listen_connections;
+int const max_listen_connections = boost::asio::socket_base::max_listen_connections;
+int const num_threads = std::thread::hardware_concurrency();
 }
 
 namespace lsst {
@@ -81,17 +85,17 @@ json const ConfigurationSchema::_schemaJson = json::object({
         {"num_threads", {
             {"description",
                 "The number of threads managed by BOOST ASIO. Must be greater than 0."},
-            {"default", 2}
+            {"default", 2 * num_threads}
         }},
         {"request_timeout_sec", {
             {"description",
                 "The default timeout for completing worker requests. Must be greater than 0."},
-            {"default", 600}
+            {"default", 3600}
         }},
         {"job_timeout_sec", {
             {"description",
                 "The default timeout for completing jobs. Must be greater than 0."},
-            {"default", 600}
+            {"default", 3600}
         }},
         {"job_heartbeat_sec", {
             {"description",
@@ -102,7 +106,7 @@ json const ConfigurationSchema::_schemaJson = json::object({
         {"http_server_threads", {
             {"description",
                 "The number of threads managed by BOOST ASIO for the HTTP server. Must be greater than 0."},
-            {"default", 2}
+            {"default", 2 * num_threads}
         }},
         {"http_server_port", {
             {"description",
@@ -151,7 +155,7 @@ json const ConfigurationSchema::_schemaJson = json::object({
     {"database", {
         {"services_pool_size", {
             {"description", "The pool size at the client database services connector."},
-            {"default", 2}
+            {"default", 4 * num_threads}
         }},
         {"host", {
             {"description",
@@ -219,7 +223,7 @@ json const ConfigurationSchema::_schemaJson = json::object({
         {"request_timeout_sec", {
             {"description",
                 "The default timeout for communications with Qserv over XRootD/SSI."},
-            {"default", 180}
+            {"default", 1800}
         }},
         {"host", {
             {"description",
@@ -231,13 +235,6 @@ json const ConfigurationSchema::_schemaJson = json::object({
             {"description",
                 "A port number for the XRootD/SSI service needed for communications with Qserv."},
             {"default", 1094}
-        }},
-        {"allow_reconnect", {
-            {"description",
-                "XRootD/SSI connection handling mode. Set 0 to disable automatic reconnects."
-                " Any other number would allow reconnects."},
-            {"empty-allowed", 1},
-            {"default", 1}
         }},
         {"allow_reconnect", {
             {"description",
@@ -267,12 +264,12 @@ json const ConfigurationSchema::_schemaJson = json::object({
         {"num_svc_processing_threads", {
             {"description",
                 "The number of request processing threads in each Replication worker service."},
-            {"default", 2}
+            {"default", num_threads}
         }},
         {"num_fs_processing_threads", {
             {"description",
                 "The number of request processing threads in each Replication worker's file service."},
-            {"default", 2}
+            {"default", num_threads}
         }},
         {"fs_buf_size_bytes", {
             {"description",
@@ -282,22 +279,22 @@ json const ConfigurationSchema::_schemaJson = json::object({
         {"num_loader_processing_threads", {
             {"description",
                 "The number of request processing threads in each Replication worker's ingest service."},
-            {"default", 2}
+            {"default", 2 * num_threads}
         }},
         {"num_exporter_processing_threads", {
             {"description",
                 "The number of request processing threads in each Replication worker's data exporting service."},
-            {"default", 2}
+            {"default", 2 * num_threads}
         }},
         {"num_http_loader_processing_threads", {
             {"description",
                 "The number of request processing threads in each Replication worker's HTTP-based ingest service."},
-            {"default", 2}
+            {"default", 2 * num_threads}
         }},
         {"num_async_loader_processing_threads", {
             {"description",
                 "The number of request processing threads in each Replication worker's ASYNC ingest service."},
-            {"default", 2}
+            {"default", 2 * num_threads}
         }},
         {"async_loader_auto_resume", {
             {"description",

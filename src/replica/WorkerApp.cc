@@ -70,7 +70,8 @@ WorkerApp::WorkerApp(int argc, char* argv[])
             boostProtobufVersionCheck,
             enableServiceProvider
         ),
-        _log(LOG_GET("lsst.qserv.replica.WorkerApp")) {
+        _log(LOG_GET("lsst.qserv.replica.WorkerApp")),
+        _qservWorkerDbUrl(Configuration::qservWorkerDbUrl()) {
 
     // Configure the command line parser
 
