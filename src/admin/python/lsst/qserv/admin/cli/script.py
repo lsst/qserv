@@ -740,18 +740,9 @@ def enter_replication_controller(
         _log.info(f"get_worker_id: {worker_id}")
         return worker_id
 
-    def set_initial_configuration(workers: Sequence[str], xrootd_manager: str) -> None:
+    def set_initial_configuration(workers: Sequence[str]) -> None:
         """Add the initial configuration to the replication database.
         Should only be called if the replication database has newly been smigged to version 1."""
-        args = [
-            "qserv-replica-config",
-            "UPDATE_GENERAL",
-            f"--config={db_uri}",
-            f"--xrootd.host={xrootd_manager}",
-        ]
-        _log.debug(f"Calling {' '.join(args)}")
-        _run(args, run=run, check_returncode=True)
-
         workers_ = [split_kv((w,)) for w in workers]
         for worker in workers_:
             try:
@@ -793,7 +784,7 @@ def enter_replication_controller(
             db_admin_uri=db_admin_uri,
             db_uri=db_uri,
             update=False,
-            set_initial_configuration=partial(set_initial_configuration, workers, xrootd_manager),
+            set_initial_configuration=partial(set_initial_configuration, workers),
         )
 
     env = dict(os.environ, LSST_LOG_CONFIG=replica_controller_log_path)
@@ -804,6 +795,7 @@ def enter_replication_controller(
         f"--instance-id={instance_id}",
         f"--qserv-czar-db={qserv_czar_db}",
         f"--http-root={replica_controller_http_root}",
+        f"--xrootd-host={xrootd_manager}",
     ]
     _log.debug(f"Calling {' '.join(args)}")
     sys.exit(_run(args, env=env, run=run))
