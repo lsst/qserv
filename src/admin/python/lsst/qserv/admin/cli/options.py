@@ -25,7 +25,7 @@
 import click
 from functools import partial
 
-from .utils import yaml_presets
+from .utils import process_targs, yaml_presets
 
 
 cmsd_manager_option = partial(
@@ -236,4 +236,37 @@ The YAML should be organized as a hierarchy with subcommand names at the top
 level, options names and values (as key-value pairs) for that subcommand
 below. The option name should NOT include prefix dashes.""",
     callback=yaml_presets,
+)
+
+
+cmd_option = partial(
+    click.option,
+    "--cmd",
+    help="""The command template (in jinja2 format) that will be used to call
+    the command that this function executes.""",
+    show_default=True,
+)
+
+
+targs_option = partial(
+    click.option,
+    "--targs",
+    help="""Key=value pairs to be applied to templates. Value may be a comma-separated list.""",
+    multiple=True,
+    callback=process_targs,
+)
+
+
+targs_file_option = partial(
+    click.option,
+    "--targs-file",
+    help="""Path to a yaml file that contains key-value pairs to apply to templates.""",
+)
+
+
+log_cfg_file_option = partial(
+    click.option,
+    "--log-cfg-file",
+    help="Path to the log4cxx config file.",
+    show_default=True,
 )

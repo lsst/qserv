@@ -22,11 +22,13 @@
 import backoff
 from contextlib import closing
 from functools import partial
+import jinja2
 import json
 import logging
 import mysql.connector
 import os
 from pathlib import Path
+import shlex
 from sqlalchemy.engine.url import URL
 import subprocess
 import sys
@@ -34,7 +36,7 @@ import time
 from typing import Callable, Dict, List, Optional, Sequence, Union
 from sqlalchemy.engine.url import make_url
 
-from .utils import split_kv
+from .utils import split_kv, Targs
 from ..itest import ITestResults
 from ..qserv_backoff import on_backoff
 from ..template import apply_template_cfg_file, save_template_cfg
@@ -61,32 +63,9 @@ qmeta_smig_dir = "qmeta/schema"
 worker_smig_dir = "worker/schema"
 replication_controller_smig_dir = "replica/schema"
 
-replica_controller_cfg_path = "/config-etc/replicaConfig.sql"
-replica_controller_log_template = (
-    "/usr/local/qserv/templates/repl-ctl/etc/log4cxx.replication.properties.jinja"
-)
-replica_controller_log_path = "/config-etc/log4cxx.replication.properties"
-
 mysqld_user_qserv = "qsmaster"
 
 proxy_empty_chunk_path = "/qserv/data/qserv"
-
-czar_proxy_config_template = "/usr/local/qserv/templates/proxy/etc/my-proxy.cnf.jinja"
-czar_proxy_config_path = "/config-etc/my-proxy.cnf"
-czar_config_template = "/usr/local/qserv/templates/proxy/etc/qserv-czar.cnf.jinja"
-czar_config_path = "/config-etc/qserv-czar.cnf"
-worker_wgmr_config_path = "/config-etc/wmgr.cnf"
-
-cmsd_manager_cfg_template = "/usr/local/qserv/templates/xrootd/etc/cmsd-manager.cf.jinja"
-cmsd_manager_cfg_path = "/config-etc/cmsd-manager.cnf"
-
-cmsd_worker_cfg_template = "/usr/local/qserv/templates/xrootd/etc/cmsd-worker.cf.jinja"
-cmsd_worker_cfg_path = "/config-etc/cmsd-worker.cf"
-xrdssi_cfg_template = "/usr/local/qserv/templates/xrootd/etc/xrdssi.cf.jinja"
-xrdssi_cfg_path = "/config-etc/xrdssi-worker.cf"
-
-xrootd_manager_cfg_template = "/usr/local/qserv/templates/xrootd/etc/xrootd-manager.cf.jinja"
-xrootd_manager_cfg_path = "/config-etc/xrootd-manager.cf"
 
 _log = logging.getLogger(__name__)
 
@@ -293,7 +272,7 @@ def smig_replication_controller(
     )
 
 
-def smig_worker(connection: str, update: bool = False) -> None:
+def smig_worker(connection: str, update: bool) -> None:
     """Apply schema migration scripts to the worker modules.
 
     Parameters
@@ -309,69 +288,61 @@ def smig_worker(connection: str, update: bool = False) -> None:
     _do_smig(worker_smig_dir, "worker", connection, update)
 
 
-def enter_manager_cmsd(cms_delay_servers: str) -> None:
+def enter_manager_cmsd(
+    targs: Targs,
+    cmsd_manager_cfg_file: str,
+    cmsd_manager_cfg_path: str,
+    cmd: str,
+) -> None:
     """Start a cmsd manager qserv node.
 
     Parameters
     ----------
-    cms_delay_servers : str
-        Percentage value for 'cms.delay servers' in the cmsd-manager.cf file.
+    targs : `Targs`
+        The arguments for template expansion.
+    cmsd_manager_cfg_file : str
+        Path to the cmsd manager config file.
+    cmsd_manager_cfg_path : str
+        Location to render cmsd_manager_cfg_template.
+    cmd : str
+        The jinja2 template for the command for this function to execute.
     """
-    # TODO xrootd_managers needs to be passed in by execution env or mounted in /config-etc
-    save_template_cfg(
-        dict(
-            xrootd_managers=["localhost"],
-            cmsd_manager="UNUSED",
-            cms_delay_servers=cms_delay_servers,
-        )
-    )
-    apply_template_cfg_file(cmsd_manager_cfg_template, cmsd_manager_cfg_path)
-    args: List[Union[str, int]] = [
-        "cmsd",
-        "-c",
-        cmsd_manager_cfg_path,
-        "-n",
-        "manager",
-        "-I",
-        "v4",
-    ]
-    sys.exit(_run(args))
+    apply_template_cfg_file(cmsd_manager_cfg_file, cmsd_manager_cfg_path, targs)
+    sys.exit(_run(args=None, template=cmd, targs=targs))
 
 
-def enter_xrootd_manager(cmsd_manager: str) -> None:
+def enter_xrootd_manager(
+    targs: Targs,
+    xrootd_manager_cfg_file: str,
+    xrootd_manager_cfg_path: str,
+    cmd: str,
+) -> None:
     """Start an xrootd manager qserv node.
 
     Parameters
     ----------
-    cmsd_manager : str
-        The host name of the cmsd manager.
+    targs : Targs
+        The arguments for template expansion.
+    xrootd_manager_cfg_file : str
+        Path to the cmsd manager config file.
+    xrootd_manager_cfg_path : str
+        Location to render cmsd_manager_cfg_template.
+    cmd : str
+        The jinja2 template for the command for this function to execute.
     """
-    save_template_cfg(
-        dict(
-            cmsd_manager=cmsd_manager,
-        )
-    )
-    apply_template_cfg_file(xrootd_manager_cfg_template, xrootd_manager_cfg_path)
-    sys.exit(
-        _run(
-            [
-                "xrootd",
-                "-c",
-                xrootd_manager_cfg_path,
-                "-n",
-                "manager",
-                "-I",
-                "v4",
-            ],
-        )
-    )
+    apply_template_cfg_file(xrootd_manager_cfg_file, xrootd_manager_cfg_path, targs)
+    sys.exit(_run(args=None, template=cmd, targs=targs))
 
 
 def enter_worker_cmsd(
-    cmsd_manager: str,
-    vnid_config: str,
+    targs: Targs,
     debug_port: Optional[int],
-    db_uri: str
+    db_uri: str,
+    cmsd_worker_cfg_file: str,
+    cmsd_worker_cfg_path: str,
+    xrdssi_cfg_file: str,
+    xrdssi_cfg_path: str,
+    cmd: str,
 ) -> None:
     """Start a worker cmsd node.
 
@@ -382,10 +353,22 @@ def enter_worker_cmsd(
     vnid_config : str
         The config parameters used by the qserv cmsd to get the vnid
         from the specified source (static string, a file or worker database).
+    targs : Targs
+        The arguments for template expansion.
     debug_port : int or None
         If not None, indicates that gdbserver should be run on the given port number.
     db_uri : str
         The non-admin URI to the worker's database.
+    cmsd_worker_cfg_file : str
+        The path to the worker cmsd config file.
+    cmsd_worker_cfg_path : str
+        The location to render the worker cmsd config file.
+    xrdssi_cfg_file : str
+        The path to the xrdssi config file.
+    xrdssi_cfg_path : str
+        The location to render the the xrdssi config file.
+    cmd : str
+        The jinja2 template for the command for this function to execute.
     """
     url = _process_uri(
         uri=db_uri,
@@ -393,43 +376,23 @@ def enter_worker_cmsd(
         option=options.db_uri_option.args[0],
         block=True,
     )
-    save_template_cfg(
-        dict(
-            vnid_config=vnid_config,
-            cmsd_manager=cmsd_manager,
-            db_host=url.host,
-            db_port=url.port or "",
-            db_socket=url.query.get("socket", ""),
-            mysqld_user_qserv=url.username,
-        )
-    )
+    targs["db_host"] = url.host
+    targs["db_port"] = url.port or ""
+    targs["db_socket"] = url.query.get("socket", "")
 
-    apply_template_cfg_file(cmsd_worker_cfg_template, cmsd_worker_cfg_path)
-    apply_template_cfg_file(xrdssi_cfg_template, xrdssi_cfg_path)
+    apply_template_cfg_file(cmsd_worker_cfg_file, cmsd_worker_cfg_path, targs)
+    apply_template_cfg_file(xrdssi_cfg_file, xrdssi_cfg_path, targs)
 
     _do_smig_block(admin_smig_dir, "admin", db_uri)
-
     # wait before worker database will be fully initialized as needed
     # for the vnid plugin to function correctly
     _do_smig_block(worker_smig_dir, "worker", db_uri)
 
-    args = [
-        "cmsd",
-        "-c",
-        cmsd_worker_cfg_path,
-        "-n",
-        "worker",
-        "-I",
-        "v4",
-        "-l",
-        "@libXrdSsiLog.so",
-        "-+xrdssi",
-        xrdssi_cfg_path,
-    ]
-    sys.exit(_run(args, debug_port=debug_port))
+    sys.exit(_run(args=None, template=cmd, targs=targs))
 
 
 def enter_worker_xrootd(
+    targs: Targs,
     debug_port: Optional[int],
     db_uri: str,
     db_admin_uri: str,
@@ -438,11 +401,18 @@ def enter_worker_xrootd(
     repl_ctl_dn: str,
     mysql_monitor_password: str,
     db_qserv_user: str,
+    cmsd_worker_cfg_file: str,
+    cmsd_worker_cfg_path: str,
+    xrdssi_cfg_file: str,
+    xrdssi_cfg_path: str,
+    cmd: str,
 ) -> None:
     """Start a worker xrootd node.
 
     Parameters
     ----------
+    targs : Targs
+        The arguments for template expansion.
     debug_port : int or None
         If not None, indicates that gdbserver should be run on the given port number.
     db_uri : str
@@ -460,6 +430,16 @@ def enter_worker_xrootd(
         The password used by applications that monitor via the worker database.
     db_qserv_user : str
         The qserv user to use for the mysql database.
+    cmsd_worker_cfg_file : str
+        The path to the worker cmsd config file.
+    cmsd_worker_cfg_path : str
+        The location to render to the worker cmsd config file.
+    xrdssi_cfg_file : str
+        The path to the xrdssi config file.
+    xrdssi_cfg_path : str
+        The location to render to the xrdssi config file.
+    cmd : `str`
+        The jinja2 template for the command for this function to execute.
     """
 
     # TODO This sets the amount of data that can be locked into memory to
@@ -481,58 +461,42 @@ def enter_worker_xrootd(
         uri=db_admin_uri,
         query_keys=("socket",),
         option=options.db_admin_uri_option.args[0],
-        block=True,
-    )
-    save_template_cfg(
-        dict(
-            vnid_config=vnid_config,
-            cmsd_manager=cmsd_manager,
-            db_host=url.host or "",
-            db_port=str(url.port) or "",
-            db_socket=url.query.get("socket", ""),
-            mysqld_user_qserv=db_qserv_user,
-            replication_controller_FQDN=repl_ctl_dn,
-            mysql_monitor_password=mysql_monitor_password,
-        )
+        block=False,
     )
 
-    # enter_worker_cmsd smigs the worker db for that node
-    # this this step is also needed for the vnid plugin to function correctly
+    targs["db_host"] = url.host
+    targs["db_port"] = url.port or ""
+    targs["db_socket"] = url.query.get("socket", "")
+
+    save_template_cfg(targs)
+    save_template_cfg({"mysqld_user_qserv": mysqld_user_qserv})
+    save_template_cfg({"replication_controller_FQDN": repl_ctl_dn})
+
     smig_worker(db_admin_uri, update=False)
 
     # TODO worker (and manager) xrootd+cmsd pair should "share" the cfg file
     # it's in different pods but should be same source & processing.
     # Rename these files to be more agnostic.
-    apply_template_cfg_file(cmsd_worker_cfg_template, cmsd_worker_cfg_path)
-    apply_template_cfg_file(xrdssi_cfg_template, xrdssi_cfg_path)
+    apply_template_cfg_file(cmsd_worker_cfg_file, cmsd_worker_cfg_path)
+    apply_template_cfg_file(xrdssi_cfg_file, xrdssi_cfg_path)
 
-    args = [
-        "xrootd",
-        "-c",
-        cmsd_worker_cfg_path,
-        "-n",
-        "worker",
-        "-I",
-        "v4",
-        "-l",
-        "@libXrdSsiLog.so",
-        "-+xrdssi",
-        xrdssi_cfg_path,
-    ]
-    sys.exit(_run(args, debug_port=debug_port))
+    sys.exit(_run(args=None, template=cmd, targs=targs))
 
 
 def enter_worker_repl(
-    replica_worker_args: List[str],
+    targs: Targs,
     db_admin_uri: str,
     repl_connection: str,
     debug_port: Optional[int],
+    cmd: str,
     run: bool,
 ) -> None:
     """Start a worker replication node.
 
     Parameters
     ----------
+    targs : Targs
+        The arguments for template expansion.
     replic_worker_args : `list` [ `str` ]
         A list of options and arguments that will be passed directly to the
         replica worker app.
@@ -544,6 +508,8 @@ def enter_worker_repl(
         "qsreplica".
     debug_port : int or None
         If not None, indicates that gdbserver should be run on the given port number.
+    cmd : `str`
+        The jinja2 template for the command for this function to execute.
     run : `bool`
         Run the subcommand that is executed by entrypoint if `True`. Otherwise,
         print the command and arguments that would have been run.
@@ -578,11 +544,6 @@ def enter_worker_repl(
     if not os.path.exists(ingest_folder):
         os.makedirs(ingest_folder)
 
-    args = [
-        "qserv-replica-worker",
-        f"--qserv-worker-db={db_admin_uri}",
-    ]
-    args.extend(replica_worker_args)
     while True:
         # This loop exists because it is possible for qserv-replica-worker to
         # register itself with the replica controller before the call to
@@ -593,36 +554,48 @@ def enter_worker_repl(
         # qserv-replica-worker returned then by definition it failed, and we
         # just wait a moment and restart it.
         # This is recorded in DM-31252
-        _run(args, debug_port=debug_port, run=run)
+        _run(args=None, template=cmd, targs=targs, run=run)
         _log.info("qserv-replica-worker exited. waiting 5 seconds and restarting.")
         time.sleep(5)
 
 
 def enter_proxy(
+    targs: Targs,
     db_uri: str,
     db_admin_uri: str,
     repl_ctl_dn: str,
-    mysql_monitor_password: str,
-    xrootd_manager: str,
     proxy_backend_address: str,
+    proxy_cfg_file: str,
+    proxy_cfg_path: str,
+    czar_cfg_file: str,
+    czar_cfg_path: str,
+    cmd: str,
 ) -> None:
     """Entrypoint script for the proxy container.
 
     Parameters
     ----------
+    targs : Targs
+        The arguments for template expansion.
     db_uri : str
         The non-admin URI to the proxy's database.
     db_admin_uri : str
         The admin URI to the proxy's database.
     repl_ctl_dn : str
         The fully qualified domain name of the replication controller.
-    mysql_monitor_password : str
-        The password used by applications that monitor via the worker database.
-    xrootd_manager : `str`
-        The host name of the xrootd manager node.
     proxy_backend_address : `str`
         A colon-separated ip address and port number (e.g. "127.0.0.1:3306")
         substituded into my-proxy.cnf.jinja, used by mysql proxy.
+    proxy_cfg_file : `str`
+        Path to the mysql proxy config file.
+    proxy_cfg_path : `str`
+        Location to render the mysql proxy config file.
+    czar_cfg_file : `str`
+        Path to the czar config file.
+    czar_cfg_path : `str`
+        Location to render the czar config file.
+    cmd : `str`
+        The jinja2 template for the command for this function to execute.
     """
     url = _process_uri(
         uri=db_uri,
@@ -637,52 +610,52 @@ def enter_proxy(
         block=True,
     )
 
-    # TODO the empty chunk path should be defined in some default configuration
-    # somewhere/somehow. TBD. Note that it must be created in the dockerfile
-    # by the root user and chown'd to the qserv user.
-    save_template_cfg(
-        dict(
-            mysqld_user_qserv=url.username,
-            replication_controller_FQDN=repl_ctl_dn,
-            mysql_monitor_password=mysql_monitor_password,
-            empty_chunk_path="/qserv/data/qserv",
-            xrootd_manager=xrootd_manager,
-            proxy_backend_address=proxy_backend_address,
-            czar_db_host=url.host or "",
-            czar_db_port=url.port or "",
-            czar_db_socket=url.query.get("socket", ""),
-        )
-    )
-    apply_template_cfg_file(czar_proxy_config_template, czar_proxy_config_path)
-    apply_template_cfg_file(czar_config_template, czar_config_path)
 
+    save_template_cfg(targs)
+    save_template_cfg(
+        {
+            "proxy_backend_address": proxy_backend_address,
+            "mysqld_user_qserv": url.username,
+            "replication_controller_FQDN": repl_ctl_dn,
+            "empty_chunk_path": "/qserv/data/qserv",
+            "czar_db_host": url.host or "",
+            "czar_db_port": url.port or "",
+            "czar_db_socket": url.query.get("socket", ""),
+        }
+    )
+
+    # uses vars: proxy_backend_address
+    apply_template_cfg_file(proxy_cfg_file, proxy_cfg_path)
+    # uses vars: czar_db_host, czar_db_port, czar_db_socket, empty_chunk_path,
+    apply_template_cfg_file(czar_cfg_file, czar_cfg_path)
+
+    # czar smigs these modules, that have templated values:
+    #  admin: mysqld_user_qserv, replication_controller_FQDN, mysql_monitor_password
+    #  css: (no templated values)
+    #  rproc: (no templated values)
+    #  qmeta: mysqld_user_qserv
     smig_czar(db_admin_uri, update=False)
 
-    env = dict(os.environ, QSERV_CONFIG=czar_config_path)
+    env = dict(os.environ, QSERV_CONFIG=czar_cfg_path)
 
-    args = [
-        "mysql-proxy",
-        "--proxy-lua-script=/usr/local/lua/qserv/scripts/mysqlProxy.lua",
-        "--lua-cpath=/usr/local/lua/qserv/lib/czarProxy.so",
-        f"--defaults-file={czar_proxy_config_path}",
-    ]
-    sys.exit(_run(args, env=env))
+    sys.exit(_run(args=None, template=cmd, env=env, targs=targs))
 
 
 def enter_replication_controller(
-    replica_master_args: List[str],
+    targs: Targs,
     db_uri: str,
     db_admin_uri: str,
     workers: List[str],
+    log_cfg_file: str,
+    cmd: str,
     run: bool,
 ) -> None:
     """Entrypoint script for the entrypoint controller.
 
     Parameters
     ----------
-    replica_master_args: `list` [ `str` ]
-        A list of options and arguments that will be passed directly to the
-        replica master app.
+    targs : Targs
+        The arguments for template expansion.
     db_uri : `str`
         The connection string for the replication manager database for the
         non-admin user (created using the `connection`), the user is typically
@@ -694,6 +667,10 @@ def enter_replication_controller(
         A list of parameters for each worker in the format "key=value,..."
         For example:
         `["name=worker_0,host=worker-repl-0", "name=worker_1,host=worker-repl-1"]
+    log_cfg_file : `str`
+        The path to the log4cxx config file.
+    cmd : `str`
+        The jinja2 template for the command for this function to execute.
     run : `bool`
         Run the subcommand that is executed by entrypoint if `True`. Otherwise,
         print the command and arguments that would have been run.
@@ -781,15 +758,8 @@ def enter_replication_controller(
             set_initial_configuration=partial(set_initial_configuration, workers),
         )
 
-    env = dict(os.environ, LSST_LOG_CONFIG=replica_controller_log_path)
-
-    args = [
-        "qserv-replica-master-http",
-        f"--config={db_uri}",
-    ]
-    args.extend(replica_master_args)
-    _log.debug(f"Calling {' '.join(args)}")
-    sys.exit(_run(args, env=env, run=run))
+    env = dict(os.environ, LSST_LOG_CONFIG=log_cfg_file)
+    sys.exit(_run(args=None, template=cmd, targs=targs, env=env, run=run))
 
 
 def smig_update(czar_connection: str, worker_connections: List[str], repl_connection: str) -> None:
@@ -816,7 +786,9 @@ def smig_update(czar_connection: str, worker_connections: List[str], repl_connec
 
 
 def _run(
-    args: Sequence[Union[str, int]],
+    args: Optional[Sequence[Union[str, int]]],
+    template: str = None,
+    targs: Targs = None,
     env: Dict[str, str] = None,
     debug_port: Optional[int] = None,
     run: bool = True,
@@ -827,7 +799,12 @@ def _run(
     Parameters
     ----------
     args : List[Union[str, int]]
-        The command and arguments to the command.
+        The command and arguments to the command. Mutually exclusive with `template`.
+    template : str, optional
+        The command and arguments in jinja template form. Mutually exclusive with `args`.
+    tvars: Dict[str, str], optional
+        The values for the `template`. If `template` is passed in, must not be `None`.
+        Mutually exclusive with `args`.
     env : Dict[str, str], optional
         The environment variables to run the command with, by default None which
         uses the same environment as the current shell.
@@ -851,13 +828,29 @@ def _run(
     exit_code : `int`
         The exit code of the command that was run.
     """
-    str_args = [str(a) for a in args]
-    if debug_port:
-        str_args = ["gdbserver", f"localhost:{debug_port}"] + str_args
-    if not run:
-        print(" ".join(str_args))
-        return 0
-    result = subprocess.run(str_args, env=env, cwd="/home/qserv")
+    if args and (template is not None or targs is not None):
+        raise RuntimeError("Invalid use of `args` and `template` or `targs`.")
+    if template is not None and args is not None:
+        raise RuntimeError("If `template` is not `None`, `args` must not be `None`.")
+    if args:
+        str_args = [str(a) for a in args]
+        if debug_port:
+            str_args = ["gdbserver", f"localhost:{debug_port}"] + str_args
+        if not run:
+            print(" ".join(str_args))
+            return 0
+        result = subprocess.run(str_args, env=env, cwd="/home/qserv")
+    if template:
+        while "{{" in template:
+            t = jinja2.Template(template, undefined=jinja2.StrictUndefined)
+            try:
+                rendered = t.render(targs)
+            except jinja2.exceptions.UndefinedError as e:
+                _log.error(f"Missing template value: {str(e)}")
+                raise
+            template = rendered
+        args = shlex.split(rendered)
+        result = subprocess.run(args, env=env, cwd="/home/qserv")
     if check_returncode:
         result.check_returncode
     return result.returncode

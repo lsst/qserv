@@ -23,9 +23,10 @@ import jinja2
 import logging
 import os
 import stat
-from typing import Any, Dict, List, Union
+from typing import Any, Dict, List, Optional, Sequence, Union
 import yaml
 
+from .cli.utils import Targs
 
 _log = logging.getLogger(__name__)
 
@@ -34,16 +35,8 @@ default_cfg_file_path = "/config-etc/qserv-template.cfg"
 
 cfg_file_path = os.environ.get("QSERV_CFG", default_cfg_file_path)
 
-_template_cfg_types = Dict[
-    str,
-    Union[
-        str,
-        Dict[str, str],
-        List[str],
-    ]
-]
 
-def save_template_cfg(values: _template_cfg_types) -> None:
+def save_template_cfg(values: Targs) -> None:
     """Save a dict of key-value pairs to the template config parameter file.
 
     Parameters
@@ -75,7 +68,7 @@ def get_template_cfg() -> Dict[Any, Any]:
     return cfg
 
 
-def apply_template_cfg(template: str) -> str:
+def apply_template_cfg(template: str, targs: Optional[Targs] = None) -> str:
     """Apply template values as found in the config parameter file to a
     template.
 
@@ -88,6 +81,9 @@ def apply_template_cfg(template: str) -> str:
     -------
     result : `str`
         The result of having applied template values to the template.
+    targs : `dict` [`str`, `str`], optional
+        The template arguments to use. If None, will read from the config
+        parameter file.
 
     Raises
     ------
@@ -99,13 +95,19 @@ def apply_template_cfg(template: str) -> str:
         undefined=jinja2.StrictUndefined,
     )
     try:
-        return t.render(**get_template_cfg())
+        if targs:
+            return t.render(targs)
+        else:
+            return t.render(**get_template_cfg())
     except jinja2.exceptions.UndefinedError as e:
         _log.error(f"Missing template value: {str(e)}")
         raise
 
 
-def apply_template_cfg_file(src: str, dest: str) -> None:
+def apply_template_cfg_file(
+    src: str,
+    dest: str,
+    targs: Optional[Targs] = None) -> None:
     """Open and read a template file, apply the config values to it, and write
     the rendered version to a file.
 
@@ -115,10 +117,13 @@ def apply_template_cfg_file(src: str, dest: str) -> None:
         The path to the template file.
     dest : `str`
         The path to the file where the rendered template should be written.
+    targs : `dict` [`str`, `str`], optional
+        The template arguments to use. If None, will read from the config
+        parameter file.
     """
     with open(src) as s:
         try:
-            rendered = apply_template_cfg(s.read())
+            rendered = apply_template_cfg(s.read(), targs)
         except jinja2.exceptions.UndefinedError as e:
             raise RuntimeError(f"Failure rendering {src}.") from e
     with open(dest, "w") as d:

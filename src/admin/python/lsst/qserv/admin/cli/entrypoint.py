@@ -25,14 +25,17 @@
 
 import click
 from dataclasses import dataclass, field
+from functools import partial
 import logging
+import os
 import sys
-from typing import List, Optional
+from typing import Dict, List, Optional
 
 from click.decorators import pass_context
 
 from .options import (
     case_option,
+    cmd_option,
     cmsd_manager_option,
     compare_results_option,
     czar_connection_option,
@@ -42,6 +45,7 @@ from .options import (
     debug_option,
     instance_id_option,
     load_option,
+    log_cfg_file_option,
     log_level_option,
     options_file_option,
     mysql_monitor_password_option,
@@ -51,14 +55,31 @@ from .options import (
     repl_ctrl_domain_name_option,
     run_option,
     run_tests_option,
+    targs_option,
+    targs_file_option,
     tests_yaml_option,
     unload_option,
     vnid_config_option,
     worker_connection_option,
     xrootd_manager_option,
 )
+from . import utils
 from . import script
 from ..watcher import watch
+
+template_dir = "/usr/local/qserv/templates/"
+mysql_proxy_cfg_template = os.path.join(template_dir, "proxy/etc/my-proxy.cnf.jinja")
+czar_cfg_template = os.path.join(template_dir, "proxy/etc/qserv-czar.cnf.jinja")
+cmsd_manager_cfg_template = os.path.join(template_dir, "xrootd/etc/cmsd-manager.cf.jinja")
+cmsd_worker_cfg_template = os.path.join(template_dir, "xrootd/etc/cmsd-worker.cf.jinja")
+xrdssi_cfg_template = os.path.join(template_dir, "xrootd/etc/xrdssi.cf.jinja")
+xrootd_manager_cfg_template = os.path.join(template_dir, "xrootd/etc/xrootd-manager.cf.jinja")
+
+
+cmsd_manager_cfg_path = "/config-etc/cmsd-manager.cnf"
+xrootd_manager_cfg_path = "/config-etc/xrootd-manager.cf"
+cmsd_worker_cfg_path = "/config-etc/cmsd-worker.cf"
+xrdssi_cfg_path = "/config-etc/xrdssi-worker.cf"
 
 
 socket_option_help = f"""Accepts query key {click.style('socket',
@@ -81,7 +102,13 @@ extended_args_description = """Options and arguments may be passed directly to
 {app} by adding '--', and then adding those options and arguments."""
 
 
-worker_db_help = "Non-admin URI to the worker database. " + socket_option_help
+worker_db_help = f"""Non-admin URI to the worker database. {socket_option_help}
+ Populates 'hostname', 'port', and 'socket' under '[mysql]' in the xrdssi config
+file. Also used to wait for schema to be at the correct version in this
+database.
+"""
+
+
 admin_worker_db_help = "Admin URI to the worker database. " + socket_option_help
 
 
@@ -99,6 +126,42 @@ help_order  =[
   "load-simple",
   "watcher",
 ]
+
+
+cmsd_worker_cfg_file_option = partial(
+    click.option,
+    "--cmsd-worker-cfg-file",
+    help="Path to the cmsd worker config file.",
+    default=cmsd_worker_cfg_template,
+    show_default=True,
+)
+
+
+cmsd_worker_cfg_path_option = partial(
+    click.option,
+    "--cmsd-worker-cfg-path",
+    help="Location to render cmsd_worker_cfg_file.",
+    default=cmsd_worker_cfg_path,
+    show_default=True,
+)
+
+
+xrdssi_cfg_file_option = partial(
+    click.option,
+    "--xrdssi-cfg-file",
+    help="Path to the xrdssi config file.",
+    default=xrdssi_cfg_template,
+    show_default=True,
+)
+
+
+xrdssi_cfg_path_option = partial(
+    click.option,
+    "--xrdssi-cfg-path",
+    help="Location to render xrdssi-cfg-file.",
+    default=xrdssi_cfg_path,
+    show_default=True,
+)
 
 
 class EntrypointCommandExArgs(click.Command):
@@ -246,6 +309,7 @@ def delete_database(repl_ctrl_uri: str, database: str, admin: bool) -> None:
 
 
 @entrypoint.command(help=f"Start as a qserv proxy node.\n\n{socket_option_description}")
+@pass_context
 @db_uri_option(
     help="The non-admin URI to the proxy's database, used for non-smig purposes. " + socket_option_help,
     required=True,
@@ -264,70 +328,192 @@ def delete_database(repl_ctrl_uri: str, database: str, admin: bool) -> None:
     help="This is the same as the proxy-backend-address option to mysql proxy. This value is substitued "
     "into the proxy-backend-address parameter in 'my-proxy.cnf.jinja'."
 )
+@click.option(
+    "--proxy-cfg-file",
+    help="Path to the mysql proxy config file.",
+    default=mysql_proxy_cfg_template,
+    show_default=True,
+)
+@click.option(
+    "--proxy-cfg-path",
+    help="Location to render the mysql proxy config file.",
+    default=mysql_proxy_cfg_template,
+    show_default=True,
+)
+@click.option(
+    "--czar-cfg-file",
+    help="Path to the czar config file.",
+    default=czar_cfg_template,
+    show_default=True,
+)
+@click.option(
+    "--czar-cfg-path",
+    help="Location to render the czar config file.",
+    default=czar_cfg_template,
+    show_default=True,
+)
+@targs_option()
+@targs_file_option()
+@cmd_option(default="mysql-proxy --proxy-lua-script=/usr/local/lua/qserv/scripts/mysqlProxy.lua "
+"--lua-cpath=/usr/local/lua/qserv/lib/czarProxy.so --defaults-file={{proxy_cfg_path}}")
 @options_file_option()
 def proxy(
+    ctx: click.Context,
     db_uri: str,
     db_admin_uri: str,
     mysql_monitor_password: str,
     repl_ctl_dn: str,
     xrootd_manager: str,
     proxy_backend_address: str,
+    proxy_cfg_file: str,
+    proxy_cfg_path: str,
+    czar_cfg_file: str,
+    czar_cfg_path: str,
+    targs: Dict[str, str],
+    targs_file: str,
+    cmd: str,
 ) -> None:
     """Start as a qserv-proxy node.
     """
     script.enter_proxy(
+        targs=utils.targs(ctx),
         db_uri=db_uri,
         db_admin_uri=db_admin_uri,
         repl_ctl_dn=repl_ctl_dn,
-        mysql_monitor_password=mysql_monitor_password,
-        xrootd_manager=xrootd_manager,
         proxy_backend_address=proxy_backend_address,
+        proxy_cfg_file=proxy_cfg_file,
+        proxy_cfg_path=proxy_cfg_path,
+        czar_cfg_file=czar_cfg_file,
+        czar_cfg_path=czar_cfg_path,
+        cmd=cmd,
     )
 
 
 @entrypoint.command()
+@pass_context
 @click.option(
     "--cms-delay-servers",
-    help="The value for 'cms.delay servers' in the cmsd-manager.cf file.",
-    default="80%",
+    help="Populates 'cms.delay servers' in the cmsd manager config file.",
 )
+@click.option(
+    "--cmsd_manager_cfg_file",
+    help="Path to the cmsd manager config file.",
+    default=cmsd_manager_cfg_template,
+    show_default=True,
+)
+@click.option(
+    "--cmsd-manager-cfg-path",
+    help="Location to render cmsd_manager_cfg_file",
+    default=cmsd_manager_cfg_path,
+    show_default=True,
+)
+@targs_option()
+@targs_file_option()
+@cmd_option(default="cmsd -c {{cmsd_manager_cfg_path}} -n manager -I v4")
 @options_file_option()
-def cmsd_manager(cms_delay_servers: str) -> None:
+def cmsd_manager(
+    ctx: click.Context,
+    cms_delay_servers: int,
+    cmsd_manager_cfg_file: str,
+    cmsd_manager_cfg_path: str,
+    targs: Dict[str, str],
+    targs_file: str,
+    cmd: str,
+) -> None:
     """Start as a cmsd manager node.
     """
-    script.enter_manager_cmsd(cms_delay_servers=cms_delay_servers)
+    script.enter_manager_cmsd(
+        targs=utils.targs(ctx),
+        cmsd_manager_cfg_file=cmsd_manager_cfg_file,
+        cmsd_manager_cfg_path=cmsd_manager_cfg_path,
+        cmd=cmd,
+    )
 
 
 @entrypoint.command()
-@cmsd_manager_option(required=True)
+@pass_context
+@cmsd_manager_option(
+    help="Populates 'all.manager' in the xrootd manager config file.",
+)
+@click.option(
+    "--xrootd_manager-cfg-file",
+    help="Path to the xrootd manager config file.",
+    default=xrootd_manager_cfg_template,
+    show_default=True,
+)
+@click.option(
+    "--xrootd-manager-cfg-path",
+    help="Location to render xrootd_manager_cfg_file.",
+    default=xrootd_manager_cfg_path,
+    show_default=True,
+)
+@targs_option()
+@targs_file_option()
+@cmd_option(default="xrootd -c {{xrootd_manager_cfg_path}} -n manager -I v4")
 @options_file_option()
-def xrootd_manager(cmsd_manager: str) -> None:
+def xrootd_manager(
+    ctx: click.Context,
+    cmsd_manager: str,
+    xrootd_manager_cfg_file: str,
+    xrootd_manager_cfg_path: str,
+    targs: Dict[str, str],
+    targs_file: str,
+    cmd: str,
+) -> None:
     """Start as an xrootd manager node.
     """
-    script.enter_xrootd_manager(cmsd_manager=cmsd_manager)
+    script.enter_xrootd_manager(
+        targs=utils.targs(ctx),
+        xrootd_manager_cfg_file=xrootd_manager_cfg_file,
+        xrootd_manager_cfg_path=xrootd_manager_cfg_path,
+        cmd=cmd,
+    )
 
 
 @entrypoint.command(help=f"Start as a worker cmsd node.\n\n{socket_option_description}")
+@pass_context
 @db_uri_option(help=worker_db_help)
 @vnid_config_option(required=True)
-@cmsd_manager_option(required=True)
+@cmsd_manager_option(
+    help="Populates 'all.manager' in the cmsd worker config file.",
+)
 @debug_option()
+@cmsd_worker_cfg_file_option()
+@cmsd_worker_cfg_path_option()
+@xrdssi_cfg_file_option()
+@xrdssi_cfg_path_option()
+@targs_option()
+@targs_file_option()
+@cmd_option(default="cmsd -c {{cmsd_worker_cfg_path}} -n worker -I v4 -l @libXrdSsiLog.so -+xrdssi {{xrdssi_cfg_path}}")
 @options_file_option()
 def worker_cmsd(
+    ctx: click.Context,
     cmsd_manager: str,
     vnid_config: str,
     debug_port: Optional[int],
-    db_uri: str
+    db_uri: str,
+    cmsd_worker_cfg_file: str,
+    cmsd_worker_cfg_path: str,
+    xrdssi_cfg_file: str,
+    xrdssi_cfg_path: str,
+    targs: Dict[str, str],
+    targs_file: str,
+    cmd: str,
 ) -> None:
     script.enter_worker_cmsd(
-        cmsd_manager=cmsd_manager,
-        vnid_config=vnid_config,
+        targs=utils.targs(ctx),
         debug_port=debug_port,
         db_uri=db_uri,
+        cmsd_worker_cfg_file=cmsd_worker_cfg_file,
+        cmsd_worker_cfg_path=cmsd_worker_cfg_path,
+        xrdssi_cfg_file=xrdssi_cfg_file,
+        xrdssi_cfg_path=xrdssi_cfg_path,
+        cmd=cmd,
     )
 
 
 @entrypoint.command(help=f"Start as a worker xrootd node.\n\n{socket_option_description}")
+@pass_context
 @debug_option()
 @db_uri_option(help=worker_db_help)
 @db_admin_uri_option(help=admin_worker_db_help)
@@ -336,8 +522,16 @@ def worker_cmsd(
 @repl_ctrl_domain_name_option()
 @mysql_monitor_password_option()
 @db_qserv_user_option()
+@cmsd_worker_cfg_file_option()
+@cmsd_worker_cfg_path_option()
+@xrdssi_cfg_file_option()
+@xrdssi_cfg_path_option()
+@targs_option()
+@targs_file_option()
+@cmd_option(default="xrootd -c {{cmsd_worker_cfg_path}} -n worker -I v4 -l @libXrdSsiLog.so -+xrdssi {{xrdssi_cfg_path}}")
 @options_file_option()
 def worker_xrootd(
+    ctx: click.Context,
     debug_port: Optional[int],
     db_uri: str,
     db_admin_uri: str,
@@ -346,8 +540,16 @@ def worker_xrootd(
     repl_ctl_dn: str,
     mysql_monitor_password: str,
     db_qserv_user: str,
+    cmsd_worker_cfg_file: str,
+    cmsd_worker_cfg_path: str,
+    xrdssi_cfg_file: str,
+    xrdssi_cfg_path: str,
+    targs: Dict[str, str],
+    targs_file: str,
+    cmd: str,
 ) -> None:
     script.enter_worker_xrootd(
+        targs=utils.targs(ctx),
         debug_port=debug_port,
         db_uri=db_uri,
         db_admin_uri=db_admin_uri,
@@ -356,6 +558,11 @@ def worker_xrootd(
         repl_ctl_dn=repl_ctl_dn,
         mysql_monitor_password=mysql_monitor_password,
         db_qserv_user=db_qserv_user,
+        cmsd_worker_cfg_file=cmsd_worker_cfg_file,
+        cmsd_worker_cfg_path=cmsd_worker_cfg_path,
+        xrdssi_cfg_file=xrdssi_cfg_file,
+        xrdssi_cfg_path=xrdssi_cfg_path,
+        cmd=cmd,
     )
 
 
@@ -371,6 +578,9 @@ def worker_xrootd(
     help=f"{repl_connection_option.keywords['help']} {socket_option_help}"
 )
 @debug_option()
+@cmd_option(default="qserv-replica-worker --qserv-worker-db={{db_admin_uri}} {% for arg in extended_args %}{{arg}}  {% endfor %}")
+@targs_option()
+@targs_file_option()
 @run_option()
 @options_file_option()
 def worker_repl(
@@ -378,13 +588,17 @@ def worker_repl(
     db_admin_uri: str,
     repl_connection: str,
     debug_port: Optional[int],
+    cmd: str,
+    targs: Dict[str, str],
+    targs_file: str,
     run: bool,
 ) -> None:
     script.enter_worker_repl(
-        replica_worker_args=ctx.obj.extended_args,
+        targs=utils.targs(ctx),
         db_admin_uri=db_admin_uri,
         repl_connection=repl_connection,
         debug_port=debug_port,
+        cmd=cmd,
         run=run,
     )
 
@@ -409,9 +623,18 @@ def worker_repl(
     help=(
         "The settings for each worker in the system. "
         "The value must be in the form 'key1=val1,key2=val,...'"
+        f"\ntarg key name is {click.style('workers', bold=True)}"
     ),
     multiple=True,
 )
+@click.option(
+    "--xrootd-manager",
+    help="The host name of the xrootd manager node.",
+)
+@log_cfg_file_option(default="/config-etc/log4cxx.replication.properties")
+@cmd_option(default="qserv-replica-master-http --config={{db_uri}} {% for arg in extended_args %}{{arg}}  {% endfor %}")
+@targs_option()
+@targs_file_option()
 @run_option()
 @options_file_option()
 def replication_controller(
@@ -419,14 +642,21 @@ def replication_controller(
     db_uri: str,
     db_admin_uri: str,
     workers: List[str],
+    xrootd_manager: str,
+    log_cfg_file: str,
+    targs: Dict[str, str],
+    targs_file: str,
+    cmd: str,
     run: bool,
 ) -> None:
     """Start as a replication controller node."""
     script.enter_replication_controller(
-        replica_master_args=ctx.obj.extended_args,
+        targs=utils.targs(ctx),
         db_uri=db_uri,
         db_admin_uri=db_admin_uri,
         workers=workers,
+        log_cfg_file=log_cfg_file,
+        cmd=cmd,
         run=run,
     )
 
