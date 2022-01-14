@@ -76,7 +76,8 @@ bool GroupQueue::queTask(wbase::Task::Ptr const& task) {
         return false; // Reject since chunk ids don't match.
     }
     // Accept if not already full
-    if (_accepted < _maxAccepted) {
+    //&&&if (_accepted < _maxAccepted) {
+    if (true) { /// &&& remove if it works, remove _maxAccepted as well
         ++_accepted;
         _tasks.push_back(task);
         return true;
@@ -98,14 +99,14 @@ wbase::Task::Ptr GroupQueue::peekTask() {
 
 /// Queue a Task in the GroupScheduler.
 /// Tasks in the same chunk are grouped together.
-void GroupScheduler::queCmd(util::Command::Ptr const& cmd) {
+void GroupScheduler::_queCmd(util::Command::Ptr const& cmd) {
     wbase::Task::Ptr t = std::dynamic_pointer_cast<wbase::Task>(cmd);
     if (t == nullptr) {
         LOGS(_log, LOG_LVL_WARN, getName() << " queCmd could not be converted to Task or was nullptr");
         return;
     }
     QSERV_LOGCONTEXT_QUERY_JOB(t->getQueryId(), t->getJobId());
-    std::lock_guard<std::mutex> lock(util::CommandQueue::_mx);
+    //&&&std::lock_guard<std::mutex> lock(util::CommandQueue::_mx);
     // Start at the front of the queue looking for a group to accept the task.
     bool queued = false;
     for(auto iter = _queue.begin(), end = _queue.end(); iter != end && !queued; ++iter) {
@@ -127,9 +128,15 @@ void GroupScheduler::queCmd(util::Command::Ptr const& cmd) {
 
 
 void GroupScheduler::queCmd(std::vector<util::Command::Ptr> const& cmds) {
+    std::lock_guard<std::mutex> lock(util::CommandQueue::_mx);
     for (auto const& cmd:cmds) {
-        queCmd(cmd);
+        _queCmd(cmd);
     }
+}
+
+void GroupScheduler::queCmd(util::Command::Ptr const& cmd) {
+    std::lock_guard<std::mutex> lock(util::CommandQueue::_mx);
+    _queCmd(cmd);
 }
 
 /// Return a Task from the front of the queue. If no message is available, wait until one is.

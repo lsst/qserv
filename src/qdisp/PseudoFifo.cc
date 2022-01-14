@@ -44,8 +44,10 @@ uint32_t PseudoFifo::Element::seq = 0;
 
 
 void PseudoFifo::Element::wait() {
+    LOGS(_log, LOG_LVL_INFO, "&&& wait a");
     std::unique_lock<std::mutex> eLock(_eMtx);
     _eCv.wait(eLock, [this](){ return _go; });
+    LOGS(_log, LOG_LVL_INFO, "&&& wait b");
 }
 
 
@@ -71,10 +73,12 @@ PseudoFifo::Element::Ptr PseudoFifo::queueAndWait() {
 
 
 void PseudoFifo::_runSomeElements() {
+    LOGS(_log, LOG_LVL_INFO, "&&& a _runningCount=" << _runningCount << " max=" << _maxRunningCount);
     while (_runningCount < _maxRunningCount && !_queue.empty()) {
         Element::Ptr qElem = _queue.front();
         _queue.pop_front();
         ++_runningCount;
+        LOGS(_log, LOG_LVL_INFO, "&&& b _runningCount=" << _runningCount);
         qElem->go();
     }
 }

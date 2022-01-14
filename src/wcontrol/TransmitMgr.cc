@@ -127,7 +127,7 @@ int QidMgr::LockCount::release() {
 
 
 void TransmitMgr::_take(bool interactive) {
-    LOGS(_log, LOG_LVL_DEBUG, "TransmitMgr::_take locking " << *this);
+    LOGS(_log, LOG_LVL_INFO, "&&&TransmitMgr::_take locking " << *this); //&&& revert debug
     unique_lock<mutex> uLock(_mtx);
     ++_totalCount;
     if (not interactive || _transmitCount >= _maxTransmits) {
@@ -139,7 +139,7 @@ void TransmitMgr::_take(bool interactive) {
 
 
 void TransmitMgr::_release(bool interactive) {
-    LOGS(_log, LOG_LVL_DEBUG, "TransmitMgr::_release locking " << *this);
+    LOGS(_log, LOG_LVL_INFO, "&&&TransmitMgr::_release locking " << *this); //&&& revert debug
     {
         unique_lock<mutex> uLock(_mtx);
         --_totalCount;

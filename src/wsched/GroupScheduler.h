@@ -81,6 +81,8 @@ public:
 
 
 private:
+    /// util::CommandQueue::_mx must be locked before calling this function.
+    void _queCmd(util::Command::Ptr const& cmd);
     bool _ready();
 
     std::deque<GroupQueue::Ptr> _queue;

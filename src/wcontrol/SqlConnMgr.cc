@@ -63,6 +63,8 @@ SqlConnMgr::ConnType SqlConnMgr::_take(bool scanQuery,
         }
     }
 
+    LOGS(_log, LOG_LVL_INFO, "&&& SqlConnMgr take I:0,SC:1,SH:2 t=" << connType << " scanQ=" << scanQuery << " first=" << firstChannelSqlConn << " " << dump());
+
     _tCv.wait(uLock, [this, scanQuery, sendChannelShared, connType](){
         bool ok = false;
         switch (connType) {
@@ -110,8 +112,9 @@ void SqlConnMgr::_release(SqlConnMgr::ConnType connType) {
     // Decrementing the sendChannelShared count could result in the count
     // being 0 before all transmits on the sendChannelShared have finished,
     // causing _take() to block when it really should not.
-    // When the SendChannel is finished, it is thrown away, effectively clearing
-    // its count.
+    // When the SendChannelShared is finished, it is thrown away, effectively
+    // clearing its count.
+    LOGS(_log, LOG_LVL_INFO, "&&& SqlConnMgr release" << dump());
     if (connType == SCAN) {
         --_sqlScanConnCount;
     } else {
@@ -124,7 +127,7 @@ void SqlConnMgr::_release(SqlConnMgr::ConnType connType) {
     // This shouldn't  hurt performance too much, since at any given time,
     // very few threads should be waiting. (They can only wait when first scheduled
     // and the scheduler is limited to about 20-30 threads.)
-    // If things are backed up, it's terribly important to run any runable
+    // If things are backed up, it's terribly important to run any runnable
     // threads found.
     _tCv.notify_all();
 }
