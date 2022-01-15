@@ -43,7 +43,6 @@ string const description =
 bool const injectDatabaseOptions = true;
 bool const boostProtobufVersionCheck = false;
 bool const enableServiceProvider = true;
-bool const injectXrootdOptions = false;
 
 } /// namespace
 
@@ -65,8 +64,7 @@ TransactionsApp::TransactionsApp(int argc, char* argv[])
             description,
             injectDatabaseOptions,
             boostProtobufVersionCheck,
-            enableServiceProvider,
-            injectXrootdOptions
+            enableServiceProvider
         ) {
 
     // Configure the command line parser

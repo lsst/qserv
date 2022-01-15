@@ -368,7 +368,7 @@ void CreateReplicaJob::_onRequestFinish(ReplicationRequest::Ptr const& request) 
             }
 
             ServiceProvider::Ptr const serviceProvider = controller()->serviceProvider();
-            if (serviceProvider->config()->get<unsigned int>("xrootd", "auto_notify") != 0) {
+            if (serviceProvider->config()->get<unsigned int>("xrootd", "auto-notify") != 0) {
                 qservAddReplica(lock, chunk(), databases, destinationWorker());
             }
             finish(lock, ExtendedState::SUCCESS);

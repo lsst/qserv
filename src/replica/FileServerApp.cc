@@ -40,7 +40,6 @@ string const description =
 bool const injectDatabaseOptions = true;
 bool const boostProtobufVersionCheck = true;
 bool const enableServiceProvider = true;
-bool const injectXrootdOptions = false;
 
 } /// namespace
 
@@ -62,8 +61,7 @@ FileServerApp::FileServerApp(int argc, char* argv[])
             description,
             injectDatabaseOptions,
             boostProtobufVersionCheck,
-            enableServiceProvider,
-            injectXrootdOptions
+            enableServiceProvider
         ),
         _log(LOG_GET("lsst.qserv.replica.tools.qserv-replica-file-server")) {
 

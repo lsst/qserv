@@ -93,7 +93,7 @@ QservMgtRequest::QservMgtRequest(ServiceProvider::Ptr const& serviceProvider,
         _extendedState(ExtendedState::NONE),
         _service(nullptr),
         _requestExpirationIvalSec(serviceProvider->config()->get<unsigned int>(
-                "xrootd", "request_timeout_sec")),
+                "xrootd", "request-timeout-sec")),
         _requestExpirationTimer(serviceProvider->io_service()) {
 
     // This report is used solely for debugging purposes to allow tracking

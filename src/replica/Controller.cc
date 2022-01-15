@@ -103,7 +103,7 @@ string Controller::_context(string const& func) const {
 
 void Controller::verifyFolders(bool createMissingFolders) const {
     vector<string> const folders = {
-        serviceProvider()->config()->get<string>("database", "qserv_master_tmp_dir")
+        serviceProvider()->config()->get<string>("database", "qserv-master-tmp-dir")
     };
     FileUtils::verifyFolders("CONTROLLER", folders, createMissingFolders);
 }

@@ -86,7 +86,7 @@ FileClient::FileClient(ServiceProvider::Ptr const& serviceProvider,
         _databaseInfo(serviceProvider->config()->databaseInfo(databaseName)),
         _instanceId(serviceProvider->instanceId()),
         _bufferPtr(new ProtocolBuffer(
-                serviceProvider->config()->get<size_t>("common", "request_buf_size_bytes"))),
+                serviceProvider->config()->get<size_t>("common", "request-buf-size-bytes"))),
         _io_service(),
         _socket(_io_service),
         _size(0),

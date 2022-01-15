@@ -48,7 +48,6 @@ string const description =
 bool const injectDatabaseOptions = true;
 bool const boostProtobufVersionCheck = true;
 bool const enableServiceProvider = true;
-bool const injectXrootdOptions = true;
 
 /**
  * Dump the replica info
@@ -159,8 +158,7 @@ ChunksApp::ChunksApp(int argc, char* argv[])
             description,
             injectDatabaseOptions,
             boostProtobufVersionCheck,
-            enableServiceProvider,
-            injectXrootdOptions
+            enableServiceProvider
         ) {
 
     // Configure the command line parser
@@ -226,9 +224,9 @@ int ChunksApp::runImpl() {
     if (_timeoutSec != 0) {
         bool const updatePersistentState = false;
         serviceProvider()->config()->set<unsigned int>(
-                "controller", "request_timeout_sec", _timeoutSec, updatePersistentState);
+                "controller", "request-timeout-sec", _timeoutSec, updatePersistentState);
         serviceProvider()->config()->set<unsigned int>(
-                "xrootd", "request_timeout_sec", _timeoutSec, updatePersistentState);
+                "xrootd", "request-timeout-sec", _timeoutSec, updatePersistentState);
     }
 
     ///////////////////////////////////////////////////////////////////

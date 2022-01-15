@@ -60,8 +60,8 @@ IngestRequestMgr::Ptr IngestRequestMgr::create(ServiceProvider::Ptr const& servi
     // left before the service was shut down. The algorithms looks for
     // contributions in the open transactions.
     auto const databaseServices = serviceProvider->databaseServices();
-    bool const cleanupOnResume = serviceProvider->config()->get<unsigned int>("worker", "async_loader_cleanup_on_resume") != 0;
-    bool const autoResume = serviceProvider->config()->get<unsigned int>("worker", "async_loader_auto_resume") != 0;
+    bool const cleanupOnResume = serviceProvider->config()->get<unsigned int>("worker", "async-loader-cleanup-on-resume") != 0;
+    bool const autoResume = serviceProvider->config()->get<unsigned int>("worker", "async-loader-auto-resume") != 0;
     string const anyTable; 
 
     // Contribution requests are sorted (ASC) by the creation time globally across

@@ -63,7 +63,6 @@ string const description =
 bool const injectDatabaseOptions = true;
 bool const boostProtobufVersionCheck = true;
 bool const enableServiceProvider = true;
-bool const injectXrootdOptions = false;
 
 } // namespace
 
@@ -84,8 +83,7 @@ SqlApp::SqlApp(int argc, char* argv[])
             description,
             injectDatabaseOptions,
             boostProtobufVersionCheck,
-            enableServiceProvider,
-            injectXrootdOptions
+            enableServiceProvider
         ) {
 
     // Configure the command line parser
@@ -418,7 +416,7 @@ int SqlApp::runImpl() {
     if (_timeoutSec != 0) {
         bool const updatePersistentState = false;
         serviceProvider()->config()->set<unsigned int>(
-                "controller", "request_timeout_sec", _timeoutSec, updatePersistentState);
+                "controller", "request-timeout-sec", _timeoutSec, updatePersistentState);
     }
 
     auto const controller = Controller::create(serviceProvider());

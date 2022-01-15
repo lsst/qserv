@@ -91,7 +91,7 @@ DatabaseServicesPool::Ptr DatabaseServicesPool::create(Configuration::Ptr const&
 
 DatabaseServicesPool::DatabaseServicesPool(Configuration::Ptr const& configuration)
     :   DatabaseServices() {
-    for (size_t i = 0; i < configuration->get<size_t>("database", "services_pool_size"); ++i) {
+    for (size_t i = 0; i < configuration->get<size_t>("database", "services-pool-size"); ++i) {
         _availableServices.push_back(DatabaseServices::create(configuration));
     }
 }

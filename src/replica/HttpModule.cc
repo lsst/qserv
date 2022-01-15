@@ -84,7 +84,7 @@ shared_ptr<css::CssAccess> HttpModule::qservCssAccess(bool readOnly) const {
     cssConfig["username"] = connectionParams.user;
     cssConfig["password"] = connectionParams.password;
     cssConfig["database"] = connectionParams.database;
-    return css::CssAccess::createFromConfig(cssConfig, config->get<string>("controller", "empty_chunks_dir"));
+    return css::CssAccess::createFromConfig(cssConfig, config->get<string>("controller", "empty-chunks-dir"));
 }
 
 

@@ -141,7 +141,7 @@ IngestSvcConn::IngestSvcConn(ServiceProvider::Ptr const& serviceProvider,
         _authKey(authKey),
         _socket(io_service),
         _bufferPtr(make_shared<ProtocolBuffer>(
-            serviceProvider->config()->get<size_t>("common", "request_buf_size_bytes"))) {
+            serviceProvider->config()->get<size_t>("common", "request-buf-size-bytes"))) {
 }
 
 

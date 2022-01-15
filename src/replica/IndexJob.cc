@@ -322,7 +322,7 @@ void IndexJob::startImpl(util::Lock const& lock) {
     // previous batch were being sent back to the Controller.
 
     size_t const maxRequestsPerWorker =
-        8 * controller()->serviceProvider()->config()->get<size_t>("worker", "num_svc_processing_threads");
+        8 * controller()->serviceProvider()->config()->get<size_t>("worker", "num-svc-processing-threads");
 
     for (auto&& worker: workerNames) {
         for (auto&& ptr: _launchRequests(lock, worker, maxRequestsPerWorker)) {
@@ -490,7 +490,7 @@ void IndexJob::_processRequestData(util::Lock const& lock,
             // TODO: consider using the named pipe (FIFO)
 
             string const filePath =
-                config->get<string>("database", "qserv_master_tmp_dir") + "/" + database() + "_" +
+                config->get<string>("database", "qserv-master-tmp-dir") + "/" + database() + "_" +
                 to_string(request->chunk()) +
                 (_hasTransactions ? "_p" + to_string(_transactionId) : "");
             writeIntoFile(filePath, ios::out|ios::trunc, request->responseData().data);

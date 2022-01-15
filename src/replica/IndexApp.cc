@@ -47,7 +47,6 @@ string const description =
 bool const injectDatabaseOptions = true;
 bool const boostProtobufVersionCheck = true;
 bool const enableServiceProvider = true;
-bool const injectXrootdOptions = false;
 
 } /// namespace
 
@@ -69,8 +68,7 @@ IndexApp::IndexApp(int argc, char* argv[])
             description,
             injectDatabaseOptions,
             boostProtobufVersionCheck,
-            enableServiceProvider,
-            injectXrootdOptions
+            enableServiceProvider
         ) {
 
     // Configure the command line parser
@@ -155,7 +153,7 @@ int IndexApp::runImpl() {
     if (_timeoutSec != 0) {
         bool const updatePersistentState = false;
         serviceProvider()->config()->set<unsigned int>(
-                "controller", "request_timeout_sec", _timeoutSec, updatePersistentState);
+                "controller", "request-timeout-sec", _timeoutSec, updatePersistentState);
     }
 
     string const noParentJobId;

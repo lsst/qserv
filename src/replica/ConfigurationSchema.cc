@@ -22,6 +22,9 @@
 // Class header
 #include "replica/ConfigurationSchema.h"
 
+// System headers
+#include <thread>
+
 // Third-party headers
 #include "boost/asio.hpp"
 
@@ -33,21 +36,8 @@ using namespace std;
 using json = nlohmann::json;
 
 namespace {
-template <typename T>
-T _attributeValue(json const& schemaJson, string const& category, string const& param,
-                  string const& attr, T const& defaultValue) {
-    if (schemaJson.count(category)) {
-        json const& categoryJson = schemaJson.at(category);
-        if (categoryJson.count(param)) {
-            json const& paramJson = categoryJson.at(param);
-            if (paramJson.count(attr)) return paramJson.at(attr).get<T>();
-        }
-    }
-    return defaultValue;
-}
-
-auto const max_listen_connections = boost::asio::socket_base::max_listen_connections;
-
+int const max_listen_connections = boost::asio::socket_base::max_listen_connections;
+int const num_threads = std::thread::hardware_concurrency();
 }
 
 namespace lsst {
@@ -80,61 +70,61 @@ namespace replica {
  */
 json const ConfigurationSchema::_schemaJson = json::object({
     {"common", {
-        {"request_buf_size_bytes", {
+        {"request-buf-size-bytes", {
             {"description",
                 "The default buffer size for network communications. Must be greater than 0."},
             {"default", 131072}
         }},
-        {"request_retry_interval_sec", {
+        {"request-retry-interval-sec", {
             {"description",
                 "The default retry timeout for network communications. Must be greater than 0."},
             {"default", 1}
         }}
     }},
     {"controller", {
-        {"num_threads", {
+        {"num-threads", {
             {"description",
                 "The number of threads managed by BOOST ASIO. Must be greater than 0."},
-            {"default", 2}
+            {"default", 2 * num_threads}
         }},
-        {"request_timeout_sec", {
+        {"request-timeout-sec", {
             {"description",
                 "The default timeout for completing worker requests. Must be greater than 0."},
-            {"default", 600}
+            {"default", 3600}
         }},
-        {"job_timeout_sec", {
+        {"job-timeout-sec", {
             {"description",
                 "The default timeout for completing jobs. Must be greater than 0."},
-            {"default", 600}
+            {"default", 3600}
         }},
-        {"job_heartbeat_sec", {
+        {"job-heartbeat-sec", {
             {"description",
                 "The heartbeat interval for jobs. A value of 0 disables heartbeats."},
             {"empty-allowed", 1},
             {"default", 0}
         }},
-        {"http_server_threads", {
+        {"http-server-threads", {
             {"description",
                 "The number of threads managed by BOOST ASIO for the HTTP server. Must be greater than 0."},
-            {"default", 2}
+            {"default", 2 * num_threads}
         }},
-        {"http_server_port", {
+        {"http-server-port", {
             {"description",
                 "The port number for the controller's HTTP server. Must be greater than 0."},
             {"default", 25081}
         }},
-        {"http_max_listen_conn", {
+        {"http-max-listen-conn", {
             {"description",
                 "The maximum length of the queue of pending connections sent to the controller's HTTP server."
                 " Must be greater than 0."},
             {"default", max_listen_connections}
         }},
-        {"empty_chunks_dir", {
+        {"empty-chunks-dir", {
             {"description",
                 "A path to a folder where Qserv master stores its empty chunk lists. Must be non-empty."},
             {"default", "/qserv/data/qserv"}
         }},
-        {"worker_evict_priority_level", {
+        {"worker-evict-priority-level", {
             {"description",
                 "The priority level of the worker eviction task that is run to compensate for"
                 " the missing chunk replicas should be a worker became offline for an extended"
@@ -142,19 +132,19 @@ json const ConfigurationSchema::_schemaJson = json::object({
             {"empty-allowed", 1},
             {"default", PRIORITY_VERY_HIGH}
         }},
-        {"health_monitor_priority_level", {
+        {"health-monitor-priority-level", {
             {"description",
                 "The priority level of the Cluster Health Monitoring task."},
             {"empty-allowed", 1},
             {"default", PRIORITY_VERY_HIGH}
         }},
-        {"ingest_priority_level", {
+        {"ingest-priority-level", {
             {"description",
                 "The priority level of the time-critical catalog ingest activities."},
             {"empty-allowed", 1},
             {"default", PRIORITY_HIGH}
         }},
-        {"catalog_management_priority_level", {
+        {"catalog-management-priority-level", {
             {"description",
                 "The priority level of the routine catalog management activities, such as scanning"
                 " and recording replica dispositions, fixing up missing replicas, etc."},
@@ -163,9 +153,9 @@ json const ConfigurationSchema::_schemaJson = json::object({
         }}
     }},
     {"database", {
-        {"services_pool_size", {
+        {"services-pool-size", {
             {"description", "The pool size at the client database services connector."},
-            {"default", 2}
+            {"default", 4 * num_threads}
         }},
         {"host", {
             {"description",
@@ -207,33 +197,33 @@ json const ConfigurationSchema::_schemaJson = json::object({
             {"read-only", 1},
             {"default", "qservReplica"}
         }},
-        {"qserv_master_services_pool_size", {
+        {"qserv-master-services-pool-size", {
             {"description",
                 "The pool size at the client database services connector for the Qserv Master database."},
             {"default", 2}
         }},
-        {"qserv_master_user", {
+        {"qserv-master-user", {
             {"description",
                 "The MySQL user account of a service where Qserv 'czar' maintains its persistent state."},
             {"default", "qsmaster"}
         }},
-        {"qserv_master_tmp_dir", {
+        {"qserv-master-tmp-dir", {
             {"description",
                 "The temporary folder for exchanging data with the Qserv 'czar' database service."},
             {"default", "/qserv/data/ingest"}
         }}
     }},
     {"xrootd", {
-        {"auto_notify", {
+        {"auto-notify", {
             {"description",
                 "Automatically notify Qserv on changes in replica disposition."},
             {"empty-allowed", 1},
             {"default", 1}
         }},
-        {"request_timeout_sec", {
+        {"request-timeout-sec", {
             {"description",
                 "The default timeout for communications with Qserv over XRootD/SSI."},
-            {"default", 180}
+            {"default", 1800}
         }},
         {"host", {
             {"description",
@@ -245,6 +235,20 @@ json const ConfigurationSchema::_schemaJson = json::object({
             {"description",
                 "A port number for the XRootD/SSI service needed for communications with Qserv."},
             {"default", 1094}
+        }},
+        {"allow-reconnect", {
+            {"description",
+                "XRootD/SSI connection handling mode. Set 0 to disable automatic reconnects."
+                " Any other number would allow reconnects."},
+            {"empty-allowed", 1},
+            {"default", 1}
+        }},
+        {"reconnect-timeout", {
+            {"description",
+                "The default value limiting a duration of time for making automatic"
+                " reconnects to the XRootD/SSI services before failing and reporting error"
+                " (if the server is not up, or if it's not reachable for some reason)"},
+            {"default", 3600}
         }}
     }},
     {"worker", {
@@ -257,42 +261,42 @@ json const ConfigurationSchema::_schemaJson = json::object({
             }},
             {"default", "FS"}
         }},
-        {"num_svc_processing_threads", {
+        {"num-svc-processing-threads", {
             {"description",
                 "The number of request processing threads in each Replication worker service."},
-            {"default", 2}
+            {"default", num_threads}
         }},
-        {"num_fs_processing_threads", {
+        {"num-fs-processing-threads", {
             {"description",
                 "The number of request processing threads in each Replication worker's file service."},
-            {"default", 2}
+            {"default", num_threads}
         }},
-        {"fs_buf_size_bytes", {
+        {"fs-buf-size-bytes", {
             {"description",
                 "The default buffer size for file and network operations at Replication worker's file service."},
             {"default", 4194304}
         }},
-        {"num_loader_processing_threads", {
+        {"num-loader-processing-threads", {
             {"description",
                 "The number of request processing threads in each Replication worker's ingest service."},
-            {"default", 2}
+            {"default", 2 * num_threads}
         }},
-        {"num_exporter_processing_threads", {
+        {"num-exporter-processing-threads", {
             {"description",
                 "The number of request processing threads in each Replication worker's data exporting service."},
-            {"default", 2}
+            {"default", 2 * num_threads}
         }},
-        {"num_http_loader_processing_threads", {
+        {"num-http-loader-processing-threads", {
             {"description",
                 "The number of request processing threads in each Replication worker's HTTP-based ingest service."},
-            {"default", 2}
+            {"default", 2 * num_threads}
         }},
-        {"num_async_loader_processing_threads", {
+        {"num-async-loader-processing-threads", {
             {"description",
                 "The number of request processing threads in each Replication worker's ASYNC ingest service."},
-            {"default", 2}
+            {"default", 2 * num_threads}
         }},
-        {"async_loader_auto_resume", {
+        {"async-loader-auto-resume", {
             {"description",
                 "The flag controlling the behavior of Replication worker's ASYNC ingest service after"
                 " its (deliberate or accidental) restarts. If the value of the parameter is not 0 then"
@@ -305,7 +309,7 @@ json const ConfigurationSchema::_schemaJson = json::object({
             {"empty-allowed", 1},
             {"default", 1}
         }},
-        {"async_loader_cleanup_on_resume", {
+        {"async-loader-cleanup-on-resume", {
             {"description",
                 "The flag controlling the behavior of Replication worker's ASYNC ingest service after"
                 " a restart of the service. If the value of the parameter is not 0 the service will"
@@ -314,14 +318,14 @@ json const ConfigurationSchema::_schemaJson = json::object({
             {"empty-allowed", 1},
             {"default", 1}
         }},
-        {"http_max_listen_conn", {
+        {"http-max-listen-conn", {
             {"description",
                 "The maximum length of the queue of pending connections sent to the Replication worker's"
                 " HTTP-based ingest service. Must be greater than 0."},
             {"default", max_listen_connections}
         }}
     }},
-    {"worker_defaults", {
+    {"worker-defaults", {
         {"svc_port", {
             {"description",
                 "The default port for the worker's replication service."},
@@ -380,24 +384,31 @@ json const ConfigurationSchema::_schemaJson = json::object({
 
 
 string ConfigurationSchema::description(string const& category, string const& param) {
-    return _attributeValue<string>(_schemaJson, category, param, "description", "");
+    return _attributeValue<string>(category, param, "description", "");
 }
 
 
-bool ConfigurationSchema::readOnly(std::string const& category, std::string const& param) {
-    return _attributeValue<unsigned int>(_schemaJson, category, param, "read-only", 0) != 0;
+bool ConfigurationSchema::readOnly(string const& category, string const& param) {
+    return _attributeValue<unsigned int>(category, param, "read-only", 0) != 0;
 }
 
 
-bool ConfigurationSchema::securityContext(std::string const& category, std::string const& param) {
-    return _attributeValue<unsigned int>(_schemaJson, category, param, "security-context", 0) != 0;
+bool ConfigurationSchema::securityContext(string const& category, string const& param) {
+    return _attributeValue<unsigned int>(category, param, "security-context", 0) != 0;
+}
+
+
+string ConfigurationSchema::defaultValueAsString(string const& category, string const& param) {
+    return json2string(
+            "ConfigurationSchema::" + string(__func__) + " category: '" + category + "' param: '" + param + "' ",
+            _attributeValueJson(category, param, "default"));
 }
 
 
 json ConfigurationSchema::defaultConfigData() {
     json result = json::object();
     vector<string> const generalCategories =
-            {"common", "controller", "database", "xrootd", "worker", "worker_defaults"};
+            {"common", "controller", "database", "xrootd", "worker", "worker-defaults"};
     for (string const& category: generalCategories) {
         json const& inCategoryJson = _schemaJson.at(category);
         json& outCategoryJson = result[category];
@@ -435,12 +446,31 @@ string ConfigurationSchema::json2string(string const& context, json const& obj) 
 
 
 bool ConfigurationSchema::_emptyAllowed(string const& category, string const& param) {
-    return _attributeValue<unsigned int>(_schemaJson, category, param, "empty-allowed", 0) != 0;
+    return _attributeValue<unsigned int>(category, param, "empty-allowed", 0) != 0;
 }
 
 
 json ConfigurationSchema::_restrictor(string const& category, string const& param) {
-    return _attributeValue<json>(_schemaJson, category, param, "restricted", json());
+    return _attributeValue<json>(category, param, "restricted", json());
+}
+
+
+json ConfigurationSchema::_attributeValueJson(string const& category, string const& param,
+                                              string const& attr) {
+    auto const categoryItr = _schemaJson.find(category);
+    if (categoryItr != _schemaJson.end()) {
+        auto const paramItr = categoryItr->find(param);
+        if (paramItr != categoryItr->end()) {
+            auto const attrItr = paramItr->find(attr);
+            if (attrItr != paramItr->end()) return *attrItr;
+            throw invalid_argument(
+                    "ConfigurationSchema::" + string(__func__) + " unknown attribute " + attr +
+                    " of parameter " + category + "." + param + ".");
+        }
+    }
+    throw invalid_argument(
+            "ConfigurationSchema::" + string(__func__) + " unknown parameter "
+            + category + "." + param + ".");
 }
 
 }}} // namespace lsst::qserv::replica

@@ -53,11 +53,6 @@ string const description =
     " ATTENTION: Plan carefully when using this flag to avoid destroying any"
     " valuable data. Avoid running this command in the production environment.";
 
-bool const injectDatabaseOptions = true;
-bool const boostProtobufVersionCheck = false;
-bool const enableServiceProvider = false;
-bool const injectXrootdOptions = false;
-
 /**
  * Register an option with a parser (which could also represent a command).
  * @param parser The handler responsible for processing options
@@ -296,7 +291,7 @@ public:
                  T const& expectedValue,
                  bool compareWithDefault=false) {
         verifyImpl<T>(attribute, actualValue,
-                      compareWithDefault ? _config->get<T>("worker_defaults", attribute) : expectedValue);
+                      compareWithDefault ? _config->get<T>("worker-defaults", attribute) : expectedValue);
     }
 
 private:
@@ -423,56 +418,58 @@ bool ConfigTestApp::_testGeneral() {
     // call represents an expected value of the parameter's value.
     {
         TestGeneral test(config(), "READING DEAFULT STATE OF THE GENERAL PARAMETERS:", indent, verticalSeparator());
-        test.verify<size_t>(        "common", "request_buf_size_bytes", 131072);
-        test.verify<unsigned int>(  "common", "request_retry_interval_sec", 1);
-        test.verify<size_t>(        "controller", "num_threads", 2);
-        test.verify<size_t>(        "controller", "http_server_threads", 2);
-        test.verify<uint16_t>(      "controller", "http_server_port", 25081);
-        test.verify<unsigned int>(  "controller", "http_max_listen_conn",
+        test.verify<size_t>(        "common", "request-buf-size-bytes", 131072);
+        test.verify<unsigned int>(  "common", "request-retry-interval-sec", 1);
+        test.verify<size_t>(        "controller", "num-threads", 2);
+        test.verify<size_t>(        "controller", "http-server-threads", 2);
+        test.verify<uint16_t>(      "controller", "http-server-port", 25081);
+        test.verify<unsigned int>(  "controller", "http-max-listen-conn",
                                     boost::asio::socket_base::max_listen_connections);
-        test.verify<unsigned int>(  "controller", "request_timeout_sec", 600);
-        test.verify<unsigned int>(  "controller", "job_timeout_sec", 600);
-        test.verify<unsigned int>(  "controller", "job_heartbeat_sec", 0);
-        test.verify<std::string>(   "controller", "empty_chunks_dir", "/qserv/data/qserv");
-        test.verify<int>(           "controller", "worker_evict_priority_level", PRIORITY_VERY_HIGH);
-        test.verify<int>(           "controller", "health_monitor_priority_level", PRIORITY_VERY_HIGH);
-        test.verify<int>(           "controller", "ingest_priority_level", PRIORITY_HIGH);
-        test.verify<int>(           "controller", "catalog_management_priority_level", PRIORITY_LOW);
+        test.verify<unsigned int>(  "controller", "request-timeout-sec", 600);
+        test.verify<unsigned int>(  "controller", "job-timeout-sec", 600);
+        test.verify<unsigned int>(  "controller", "job-heartbeat-sec", 0);
+        test.verify<std::string>(   "controller", "empty-chunks-dir", "/qserv/data/qserv");
+        test.verify<int>(           "controller", "worker-evict-priority-level", PRIORITY_VERY_HIGH);
+        test.verify<int>(           "controller", "health-monitor-priority-level", PRIORITY_VERY_HIGH);
+        test.verify<int>(           "controller", "ingest-priority-level", PRIORITY_HIGH);
+        test.verify<int>(           "controller", "catalog-management-priority-level", PRIORITY_LOW);
 
-        test.verify<size_t>(        "database", "services_pool_size", 2);
+        test.verify<size_t>(        "database", "services-pool-size", 2);
         test.verify<std::string>(   "database", "host", "localhost");
         test.verify<uint16_t>(      "database", "port", 23306);
         test.verify<std::string>(   "database", "user", "root");
         test.verify<std::string>(   "database", "password", "CHANGEME");
         test.verify<std::string>(   "database", "name", "qservReplica");
-        test.verify<std::string>(   "database", "qserv_master_user", "qsmaster");
-        test.verify<size_t>(        "database", "qserv_master_services_pool_size", 2);
-        test.verify<std::string>(   "database", "qserv_master_tmp_dir", "/qserv/data/ingest");
-        test.verify<unsigned int>(  "xrootd", "auto_notify", 1);
-        test.verify<unsigned int>(  "xrootd", "request_timeout_sec", 180);
+        test.verify<std::string>(   "database", "qserv-master-user", "qsmaster");
+        test.verify<size_t>(        "database", "qserv-master-services-pool-size", 2);
+        test.verify<std::string>(   "database", "qserv-master-tmp-dir", "/qserv/data/ingest");
+        test.verify<unsigned int>(  "xrootd", "auto-notify", 1);
+        test.verify<unsigned int>(  "xrootd", "request-timeout-sec", 180);
         test.verify<std::string>(   "xrootd", "host", "localhost");
         test.verify<uint16_t>(      "xrootd", "port", 1094);
+        test.verify<unsigned int>(  "xrootd", "allow-reconnect", 1);
+        test.verify<unsigned int>(  "xrootd", "reconnect-timeout", 3600);
         test.verify<std::string>(   "worker", "technology", "FS");
-        test.verify<size_t>(        "worker", "num_svc_processing_threads", 2);
-        test.verify<size_t>(        "worker", "num_fs_processing_threads", 2);
-        test.verify<size_t>(        "worker", "fs_buf_size_bytes", 4194304);
-        test.verify<size_t>(        "worker", "num_loader_processing_threads", 2);
-        test.verify<size_t>(        "worker", "num_exporter_processing_threads", 2);
-        test.verify<size_t>(        "worker", "num_http_loader_processing_threads", 2);
-        test.verify<size_t>(        "worker", "num_async_loader_processing_threads", 2);
-        test.verify<unsigned int>(  "worker", "async_loader_auto_resume", 1);
-        test.verify<unsigned int>(  "worker", "async_loader_cleanup_on_resume", 1);
-        test.verify<unsigned int>(  "worker", "http_max_listen_conn",
+        test.verify<size_t>(        "worker", "num-svc-processing-threads", 2);
+        test.verify<size_t>(        "worker", "num-fs-processing-threads", 2);
+        test.verify<size_t>(        "worker", "fs-buf-size-bytes", 4194304);
+        test.verify<size_t>(        "worker", "num-loader-processing-threads", 2);
+        test.verify<size_t>(        "worker", "num-exporter-processing-threads", 2);
+        test.verify<size_t>(        "worker", "num-http-loader-processing-threads", 2);
+        test.verify<size_t>(        "worker", "num-async-loader-processing-threads", 2);
+        test.verify<unsigned int>(  "worker", "async-loader-auto-resume", 1);
+        test.verify<unsigned int>(  "worker", "async-loader-cleanup-on-resume", 1);
+        test.verify<unsigned int>(  "worker", "http-max-listen-conn",
                                     boost::asio::socket_base::max_listen_connections);
-        test.verify<uint16_t>(      "worker_defaults", "svc_port", 25000);
-        test.verify<uint16_t>(      "worker_defaults", "fs_port", 25001);
-        test.verify<std::string>(   "worker_defaults", "data_dir", "/qserv/data/mysql");
-        test.verify<uint16_t>(      "worker_defaults", "loader_port", 25002);
-        test.verify<std::string>(   "worker_defaults", "loader_tmp_dir", "/qserv/data/ingest");
-        test.verify<uint16_t>(      "worker_defaults", "exporter_port", 25003);
-        test.verify<std::string>(   "worker_defaults", "exporter_tmp_dir", "/qserv/data/export");
-        test.verify<uint16_t>(      "worker_defaults", "http_loader_port", 25004);
-        test.verify<std::string>(   "worker_defaults", "http_loader_tmp_dir", "/qserv/data/ingest");
+        test.verify<uint16_t>(      "worker-defaults", "svc_port", 25000);
+        test.verify<uint16_t>(      "worker-defaults", "fs_port", 25001);
+        test.verify<std::string>(   "worker-defaults", "data_dir", "/qserv/data/mysql");
+        test.verify<uint16_t>(      "worker-defaults", "loader_port", 25002);
+        test.verify<std::string>(   "worker-defaults", "loader_tmp_dir", "/qserv/data/ingest");
+        test.verify<uint16_t>(      "worker-defaults", "exporter_port", 25003);
+        test.verify<std::string>(   "worker-defaults", "exporter_tmp_dir", "/qserv/data/export");
+        test.verify<uint16_t>(      "worker-defaults", "http_loader_port", 25004);
+        test.verify<std::string>(   "worker-defaults", "http_loader_tmp_dir", "/qserv/data/ingest");
         success = success && test.reportResults();
         cout << "\n";
     }
@@ -489,23 +486,23 @@ bool ConfigTestApp::_testGeneral() {
     //   "database.name"
     // These parameters be be skipped in the update sequence.
     {
-        config()->set<size_t>(        "common", "request_buf_size_bytes", 131072 + 1);
-        config()->set<unsigned int>(  "common", "request_retry_interval_sec", 1 + 1);
-        config()->set<size_t>(        "controller", "num_threads", 2 + 1);
-        config()->set<size_t>(        "controller", "http_server_threads", 2 + 1);
-        config()->set<uint16_t>(      "controller", "http_server_port", 25081 + 1);
-        config()->set<unsigned int>(  "controller", "http_max_listen_conn",
+        config()->set<size_t>(        "common", "request-buf-size-bytes", 131072 + 1);
+        config()->set<unsigned int>(  "common", "request-retry-interval-sec", 1 + 1);
+        config()->set<size_t>(        "controller", "num-threads", 2 + 1);
+        config()->set<size_t>(        "controller", "http-server-threads", 2 + 1);
+        config()->set<uint16_t>(      "controller", "http-server-port", 25081 + 1);
+        config()->set<unsigned int>(  "controller", "http-max-listen-conn",
                                       boost::asio::socket_base::max_listen_connections * 2);
-        config()->set<unsigned int>(  "controller", "request_timeout_sec", 600 + 1);
-        config()->set<unsigned int>(  "controller", "job_timeout_sec", 600 + 1);
-        config()->set<unsigned int>(  "controller", "job_heartbeat_sec", 0 + 1);
-        config()->set<std::string>(   "controller", "empty_chunks_dir", "/qserv/data/qserv-1");
-        config()->set<int>(           "controller", "worker_evict_priority_level", PRIORITY_VERY_HIGH + 1);
-        config()->set<int>(           "controller", "health_monitor_priority_level", PRIORITY_VERY_HIGH + 1);
-        config()->set<int>(           "controller", "ingest_priority_level", PRIORITY_HIGH + 1);
-        config()->set<int>(           "controller", "catalog_management_priority_level", PRIORITY_LOW + 1);
+        config()->set<unsigned int>(  "controller", "request-timeout-sec", 600 + 1);
+        config()->set<unsigned int>(  "controller", "job-timeout-sec", 600 + 1);
+        config()->set<unsigned int>(  "controller", "job-heartbeat-sec", 0 + 1);
+        config()->set<std::string>(   "controller", "empty-chunks-dir", "/qserv/data/qserv-1");
+        config()->set<int>(           "controller", "worker-evict-priority-level", PRIORITY_VERY_HIGH + 1);
+        config()->set<int>(           "controller", "health-monitor-priority-level", PRIORITY_VERY_HIGH + 1);
+        config()->set<int>(           "controller", "ingest-priority-level", PRIORITY_HIGH + 1);
+        config()->set<int>(           "controller", "catalog-management-priority-level", PRIORITY_LOW + 1);
 
-        config()->set<size_t>(        "database", "services_pool_size", 2 + 1);
+        config()->set<size_t>(        "database", "services-pool-size", 2 + 1);
         // These 5 parameters are deduced from 'configUrl'. Changing them here won't make
         // a sense since they're not stored within MySQL.
         if (false) {
@@ -515,53 +512,55 @@ bool ConfigTestApp::_testGeneral() {
             config()->set<std::string>("database", "password", "CHANGEME");
             config()->set<std::string>("database", "name", "qservReplica");
         }
-        config()->set<std::string>(   "database", "qserv_master_user", "qsmaster-1");
-        config()->set<size_t>(        "database", "qserv_master_services_pool_size", 2 + 1);
-        config()->set<std::string>(   "database", "qserv_master_tmp_dir", "/qserv/data/ingest-1");
-        config()->set<unsigned int>(  "xrootd", "auto_notify", 0);
-        config()->set<unsigned int>(  "xrootd", "request_timeout_sec", 180 + 1);
+        config()->set<std::string>(   "database", "qserv-master-user", "qsmaster-1");
+        config()->set<size_t>(        "database", "qserv-master-services-pool-size", 2 + 1);
+        config()->set<std::string>(   "database", "qserv-master-tmp-dir", "/qserv/data/ingest-1");
+        config()->set<unsigned int>(  "xrootd", "auto-notify", 0);
+        config()->set<unsigned int>(  "xrootd", "request-timeout-sec", 180 + 1);
         config()->set<std::string>(   "xrootd", "host", "localhost-1");
         config()->set<uint16_t>(      "xrootd", "port", 1094 + 1);
+        config()->set<unsigned int>(  "xrootd", "allow-reconnect", 0);
+        config()->set<unsigned int>(  "xrootd", "reconnect-timeout", 120);
         config()->set<std::string>(   "worker", "technology", "POSIX");
-        config()->set<size_t>(        "worker", "num_svc_processing_threads", 2 + 1);
-        config()->set<size_t>(        "worker", "num_fs_processing_threads", 2 + 1);
-        config()->set<size_t>(        "worker", "fs_buf_size_bytes", 4194304 + 1);
-        config()->set<size_t>(        "worker", "num_loader_processing_threads", 2 + 1);
-        config()->set<size_t>(        "worker", "num_exporter_processing_threads", 2 + 1);
-        config()->set<size_t>(        "worker", "num_http_loader_processing_threads", 2 + 1);
-        config()->set<size_t>(        "worker", "num_async_loader_processing_threads", 2 + 1);
-        config()->set<unsigned int>(  "worker", "async_loader_auto_resume", 0);
-        config()->set<unsigned int>(  "worker", "async_loader_cleanup_on_resume", 0);
-        config()->set<unsigned int>(  "worker", "http_max_listen_conn",
+        config()->set<size_t>(        "worker", "num-svc-processing-threads", 2 + 1);
+        config()->set<size_t>(        "worker", "num-fs-processing-threads", 2 + 1);
+        config()->set<size_t>(        "worker", "fs-buf-size-bytes", 4194304 + 1);
+        config()->set<size_t>(        "worker", "num-loader-processing-threads", 2 + 1);
+        config()->set<size_t>(        "worker", "num-exporter-processing-threads", 2 + 1);
+        config()->set<size_t>(        "worker", "num-http-loader-processing-threads", 2 + 1);
+        config()->set<size_t>(        "worker", "num-async-loader-processing-threads", 2 + 1);
+        config()->set<unsigned int>(  "worker", "async-loader-auto-resume", 0);
+        config()->set<unsigned int>(  "worker", "async-loader-cleanup-on-resume", 0);
+        config()->set<unsigned int>(  "worker", "http-max-listen-conn",
                                       boost::asio::socket_base::max_listen_connections * 4);
-        config()->set<uint16_t>(      "worker_defaults", "svc_port", 25000 + 1);
-        config()->set<uint16_t>(      "worker_defaults", "fs_port", 25001 + 1);
-        config()->set<std::string>(   "worker_defaults", "data_dir", "/qserv/data/mysql-1");
-        config()->set<uint16_t>(      "worker_defaults", "loader_port", 25002 + 1);
-        config()->set<std::string>(   "worker_defaults", "loader_tmp_dir", "/qserv/data/ingest-1");
-        config()->set<uint16_t>(      "worker_defaults", "exporter_port", 25003 + 1);
-        config()->set<std::string>(   "worker_defaults", "exporter_tmp_dir", "/qserv/data/export-1");
-        config()->set<uint16_t>(      "worker_defaults", "http_loader_port", 25004 + 1);
-        config()->set<std::string>(   "worker_defaults", "http_loader_tmp_dir", "/qserv/data/ingest-1");
+        config()->set<uint16_t>(      "worker-defaults", "svc_port", 25000 + 1);
+        config()->set<uint16_t>(      "worker-defaults", "fs_port", 25001 + 1);
+        config()->set<std::string>(   "worker-defaults", "data_dir", "/qserv/data/mysql-1");
+        config()->set<uint16_t>(      "worker-defaults", "loader_port", 25002 + 1);
+        config()->set<std::string>(   "worker-defaults", "loader_tmp_dir", "/qserv/data/ingest-1");
+        config()->set<uint16_t>(      "worker-defaults", "exporter_port", 25003 + 1);
+        config()->set<std::string>(   "worker-defaults", "exporter_tmp_dir", "/qserv/data/export-1");
+        config()->set<uint16_t>(      "worker-defaults", "http_loader_port", 25004 + 1);
+        config()->set<std::string>(   "worker-defaults", "http_loader_tmp_dir", "/qserv/data/ingest-1");
 
         config()->reload();
         TestGeneral test(config(), "READING UPDATED GENERAL PARAMETERS:", indent, verticalSeparator());
-        test.verify<size_t>(        "common", "request_buf_size_bytes", 131072 + 1);
-        test.verify<unsigned int>(  "common", "request_retry_interval_sec", 1 + 1);
-        test.verify<size_t>(        "controller", "num_threads", 2 + 1);
-        test.verify<size_t>(        "controller", "http_server_threads", 2 + 1);
-        test.verify<uint16_t>(      "controller", "http_server_port", 25081 + 1);
-        test.verify<unsigned int>(  "controller", "http_max_listen_conn",
+        test.verify<size_t>(        "common", "request-buf-size-bytes", 131072 + 1);
+        test.verify<unsigned int>(  "common", "request-retry-interval-sec", 1 + 1);
+        test.verify<size_t>(        "controller", "num-threads", 2 + 1);
+        test.verify<size_t>(        "controller", "http-server-threads", 2 + 1);
+        test.verify<uint16_t>(      "controller", "http-server-port", 25081 + 1);
+        test.verify<unsigned int>(  "controller", "http-max-listen-conn",
                                     boost::asio::socket_base::max_listen_connections * 2);
-        test.verify<unsigned int>(  "controller", "request_timeout_sec", 600 + 1);
-        test.verify<unsigned int>(  "controller", "job_timeout_sec", 600 + 1);
-        test.verify<unsigned int>(  "controller", "job_heartbeat_sec", 0 + 1);
-        test.verify<std::string>(   "controller", "empty_chunks_dir", "/qserv/data/qserv-1");
-        test.verify<int>(           "controller", "worker_evict_priority_level", PRIORITY_VERY_HIGH + 1);
-        test.verify<int>(           "controller", "health_monitor_priority_level", PRIORITY_VERY_HIGH + 1);
-        test.verify<int>(           "controller", "ingest_priority_level", PRIORITY_HIGH + 1);
-        test.verify<int>(           "controller", "catalog_management_priority_level", PRIORITY_LOW + 1);
-        test.verify<size_t>(        "database", "services_pool_size", 2 + 1);
+        test.verify<unsigned int>(  "controller", "request-timeout-sec", 600 + 1);
+        test.verify<unsigned int>(  "controller", "job-timeout-sec", 600 + 1);
+        test.verify<unsigned int>(  "controller", "job-heartbeat-sec", 0 + 1);
+        test.verify<std::string>(   "controller", "empty-chunks-dir", "/qserv/data/qserv-1");
+        test.verify<int>(           "controller", "worker-evict-priority-level", PRIORITY_VERY_HIGH + 1);
+        test.verify<int>(           "controller", "health-monitor-priority-level", PRIORITY_VERY_HIGH + 1);
+        test.verify<int>(           "controller", "ingest-priority-level", PRIORITY_HIGH + 1);
+        test.verify<int>(           "controller", "catalog-management-priority-level", PRIORITY_LOW + 1);
+        test.verify<size_t>(        "database", "services-pool-size", 2 + 1);
 
         // These 5 parameters deduced from 'configUrl' shouldn't be changed.
         test.verify<std::string>(   "database", "host", "localhost");
@@ -570,34 +569,36 @@ bool ConfigTestApp::_testGeneral() {
         test.verify<std::string>(   "database", "password", "CHANGEME");
         test.verify<std::string>(   "database", "name", "qservReplica");
 
-        test.verify<std::string>(   "database", "qserv_master_user", "qsmaster-1");
-        test.verify<size_t>(        "database", "qserv_master_services_pool_size", 2 + 1);
-        test.verify<std::string>(   "database", "qserv_master_tmp_dir", "/qserv/data/ingest-1");
-        test.verify<unsigned int>(  "xrootd", "auto_notify", 0);
-        test.verify<unsigned int>(  "xrootd", "request_timeout_sec", 180 + 1);
+        test.verify<std::string>(   "database", "qserv-master-user", "qsmaster-1");
+        test.verify<size_t>(        "database", "qserv-master-services-pool-size", 2 + 1);
+        test.verify<std::string>(   "database", "qserv-master-tmp-dir", "/qserv/data/ingest-1");
+        test.verify<unsigned int>(  "xrootd", "auto-notify", 0);
+        test.verify<unsigned int>(  "xrootd", "request-timeout-sec", 180 + 1);
         test.verify<std::string>(   "xrootd", "host", "localhost-1");
         test.verify<uint16_t>(      "xrootd", "port", 1094 + 1);
+        test.verify<unsigned int>(  "xrootd", "allow-reconnect", 0);
+        test.verify<unsigned int>(  "xrootd", "reconnect-timeout", 120);
         test.verify<std::string>(   "worker", "technology", "POSIX");
-        test.verify<size_t>(        "worker", "num_svc_processing_threads", 2 + 1);
-        test.verify<size_t>(        "worker", "num_fs_processing_threads", 2 + 1);
-        test.verify<size_t>(        "worker", "fs_buf_size_bytes", 4194304 + 1);
-        test.verify<size_t>(        "worker", "num_loader_processing_threads", 2 + 1);
-        test.verify<size_t>(        "worker", "num_exporter_processing_threads", 2 + 1);
-        test.verify<size_t>(        "worker", "num_http_loader_processing_threads", 2 + 1);
-        test.verify<size_t>(        "worker", "num_async_loader_processing_threads", 2 + 1);
-        test.verify<unsigned int>(  "worker", "async_loader_auto_resume", 0);
-        test.verify<unsigned int>(  "worker", "async_loader_cleanup_on_resume", 0);
-        test.verify<unsigned int>(  "worker", "http_max_listen_conn",
+        test.verify<size_t>(        "worker", "num-svc-processing-threads", 2 + 1);
+        test.verify<size_t>(        "worker", "num-fs-processing-threads", 2 + 1);
+        test.verify<size_t>(        "worker", "fs-buf-size-bytes", 4194304 + 1);
+        test.verify<size_t>(        "worker", "num-loader-processing-threads", 2 + 1);
+        test.verify<size_t>(        "worker", "num-exporter-processing-threads", 2 + 1);
+        test.verify<size_t>(        "worker", "num-http-loader-processing-threads", 2 + 1);
+        test.verify<size_t>(        "worker", "num-async-loader-processing-threads", 2 + 1);
+        test.verify<unsigned int>(  "worker", "async-loader-auto-resume", 0);
+        test.verify<unsigned int>(  "worker", "async-loader-cleanup-on-resume", 0);
+        test.verify<unsigned int>(  "worker", "http-max-listen-conn",
                                     boost::asio::socket_base::max_listen_connections * 4);
-        test.verify<uint16_t>(      "worker_defaults", "svc_port", 25000 + 1);
-        test.verify<uint16_t>(      "worker_defaults", "fs_port", 25001 + 1);
-        test.verify<std::string>(   "worker_defaults", "data_dir", "/qserv/data/mysql-1");
-        test.verify<uint16_t>(      "worker_defaults", "loader_port", 25002 + 1);
-        test.verify<std::string>(   "worker_defaults", "loader_tmp_dir", "/qserv/data/ingest-1");
-        test.verify<uint16_t>(      "worker_defaults", "exporter_port", 25003 + 1);
-        test.verify<std::string>(   "worker_defaults", "exporter_tmp_dir", "/qserv/data/export-1");
-        test.verify<uint16_t>(      "worker_defaults", "http_loader_port", 25004 + 1);
-        test.verify<std::string>(   "worker_defaults", "http_loader_tmp_dir", "/qserv/data/ingest-1");
+        test.verify<uint16_t>(      "worker-defaults", "svc_port", 25000 + 1);
+        test.verify<uint16_t>(      "worker-defaults", "fs_port", 25001 + 1);
+        test.verify<std::string>(   "worker-defaults", "data_dir", "/qserv/data/mysql-1");
+        test.verify<uint16_t>(      "worker-defaults", "loader_port", 25002 + 1);
+        test.verify<std::string>(   "worker-defaults", "loader_tmp_dir", "/qserv/data/ingest-1");
+        test.verify<uint16_t>(      "worker-defaults", "exporter_port", 25003 + 1);
+        test.verify<std::string>(   "worker-defaults", "exporter_tmp_dir", "/qserv/data/export-1");
+        test.verify<uint16_t>(      "worker-defaults", "http_loader_port", 25004 + 1);
+        test.verify<std::string>(   "worker-defaults", "http_loader_tmp_dir", "/qserv/data/ingest-1");
         success = success && test.reportResults();
         cout << "\n";
     }

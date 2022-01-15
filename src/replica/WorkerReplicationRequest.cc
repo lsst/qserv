@@ -468,7 +468,7 @@ WorkerReplicationRequestFS::WorkerReplicationRequestFS(
         _files(FileUtils::partitionedFiles(_databaseInfo, request.chunk())),
         _tmpFilePtr(nullptr),
         _buf(0),
-        _bufSize(serviceProvider->config()->get<size_t>("worker", "fs_buf_size_bytes")) {
+        _bufSize(serviceProvider->config()->get<size_t>("worker", "fs-buf-size-bytes")) {
 }
 
 

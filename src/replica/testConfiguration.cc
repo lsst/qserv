@@ -93,16 +93,6 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestStaticParameters) {
     BOOST_CHECK_THROW(Configuration::setSchemaUpgradeWaitTimeoutSec(0), std::invalid_argument);
     BOOST_REQUIRE_NO_THROW(Configuration::setSchemaUpgradeWaitTimeoutSec(4));
     BOOST_CHECK(Configuration::schemaUpgradeWaitTimeoutSec() == 4);
-
-    BOOST_REQUIRE_NO_THROW(Configuration::setXrootdAllowReconnect(true));
-    BOOST_CHECK(Configuration::xrootdAllowReconnect() == true);
-    BOOST_REQUIRE_NO_THROW(Configuration::setXrootdAllowReconnect(false));
-    BOOST_CHECK(Configuration::xrootdAllowReconnect() == false);
-
-
-    BOOST_CHECK_THROW(Configuration::setXrootdConnectTimeoutSec(0), std::invalid_argument);
-    BOOST_REQUIRE_NO_THROW(Configuration::setXrootdConnectTimeoutSec(5));
-    BOOST_CHECK(Configuration::xrootdConnectTimeoutSec() == 5);
 }
 
 BOOST_AUTO_TEST_CASE(ConfigurationInitTestJSON) {
@@ -131,26 +121,28 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestReadingGeneralParameters) {
     LOGS_INFO("Testing reading general parameters");
 
     // Fetching values of general parameters.
-    BOOST_CHECK(config->get<size_t>("common", "request_buf_size_bytes") == 8192);
-    BOOST_CHECK(config->get<unsigned int>("common", "request_retry_interval_sec") == 1);
+    BOOST_CHECK(config->get<size_t>("common", "request-buf-size-bytes") == 8192);
+    BOOST_CHECK(config->get<unsigned int>("common", "request-retry-interval-sec") == 1);
 
-    BOOST_CHECK(config->get<size_t>("controller", "num_threads") == 2);
-    BOOST_CHECK(config->get<uint16_t>("controller", "http_server_port") == 8080);
-    BOOST_CHECK(config->get<unsigned int>("controller", "http_max_listen_conn") == 256);
-    BOOST_CHECK(config->get<size_t>("controller", "http_server_threads") == 3);
-    BOOST_CHECK(config->get<unsigned int>("controller", "request_timeout_sec") == 100);
-    BOOST_CHECK(config->get<string>("controller", "empty_chunks_dir") == "/qserv/data/qserv");
-    BOOST_CHECK(config->get<unsigned int>("controller", "job_timeout_sec") == 200);
-    BOOST_CHECK(config->get<unsigned int>("controller", "job_heartbeat_sec") == 300);
-    BOOST_CHECK(config->get<int>("controller", "worker_evict_priority_level") == 1);
-    BOOST_CHECK(config->get<int>("controller", "health_monitor_priority_level") == 2);
-    BOOST_CHECK(config->get<int>("controller", "ingest_priority_level") == 3);
-    BOOST_CHECK(config->get<int>("controller", "catalog_management_priority_level") == 4);
+    BOOST_CHECK(config->get<size_t>("controller", "num-threads") == 2);
+    BOOST_CHECK(config->get<uint16_t>("controller", "http-server-port") == 8080);
+    BOOST_CHECK(config->get<unsigned int>("controller", "http-max-listen-conn") == 256);
+    BOOST_CHECK(config->get<size_t>("controller", "http-server-threads") == 3);
+    BOOST_CHECK(config->get<unsigned int>("controller", "request-timeout-sec") == 100);
+    BOOST_CHECK(config->get<string>("controller", "empty-chunks-dir") == "/qserv/data/qserv");
+    BOOST_CHECK(config->get<unsigned int>("controller", "job-timeout-sec") == 200);
+    BOOST_CHECK(config->get<unsigned int>("controller", "job-heartbeat-sec") == 300);
+    BOOST_CHECK(config->get<int>("controller", "worker-evict-priority-level") == 1);
+    BOOST_CHECK(config->get<int>("controller", "health-monitor-priority-level") == 2);
+    BOOST_CHECK(config->get<int>("controller", "ingest-priority-level") == 3);
+    BOOST_CHECK(config->get<int>("controller", "catalog-management-priority-level") == 4);
 
-    BOOST_CHECK(config->get<unsigned int>("xrootd", "auto_notify") == 0);
+    BOOST_CHECK(config->get<unsigned int>("xrootd", "auto-notify") == 0);
     BOOST_CHECK(config->get<string>("xrootd", "host") == "localhost");
     BOOST_CHECK(config->get<uint16_t>("xrootd", "port") == 1104);
-    BOOST_CHECK(config->get<unsigned int>("xrootd", "request_timeout_sec") == 400);
+    BOOST_CHECK(config->get<unsigned int>("xrootd", "request-timeout-sec") == 400);
+    BOOST_CHECK(config->get<unsigned int>("xrootd", "allow-reconnect") == 0);
+    BOOST_CHECK(config->get<unsigned int>("xrootd", "reconnect-timeout") == 500);
 
     BOOST_CHECK(config->get<string>("database", "host") == "localhost");
     BOOST_CHECK(config->get<uint16_t>("database", "port") == 13306);
@@ -158,96 +150,96 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestReadingGeneralParameters) {
     BOOST_CHECK(config->get<string>("database", "password") == "changeme");
     BOOST_CHECK(config->get<string>("database", "name") == "qservReplica");
 
-    BOOST_CHECK(config->get<string>("database", "qserv_master_user") == "qsmaster");
-    BOOST_CHECK(config->qservCzarDbUrl() == "mysql://qsreplica@localhost:3306/qservMeta");
-    BOOST_CHECK(config->qservWorkerDbUrl() == "mysql://qsreplica@localhost:3306/qservw_worker");
+    BOOST_CHECK(config->get<string>("database", "qserv-master-user") == "qsmaster");
+    BOOST_CHECK(config->qservCzarDbUrl() == "mysql://qsmaster@localhost:3306/qservMeta");
+    BOOST_CHECK(config->qservWorkerDbUrl() == "mysql://qsmaster@localhost:3306/qservw_worker");
 
-    BOOST_CHECK(config->get<size_t>("database", "services_pool_size") == 2);
+    BOOST_CHECK(config->get<size_t>("database", "services-pool-size") == 2);
 
     BOOST_CHECK(config->get<string>("worker", "technology") == "POSIX");
-    BOOST_CHECK(config->get<size_t>("worker", "num_svc_processing_threads") == 4);
-    BOOST_CHECK(config->get<size_t>("worker", "num_fs_processing_threads") == 5);
-    BOOST_CHECK(config->get<size_t>("worker", "fs_buf_size_bytes") == 1024);
-    BOOST_CHECK(config->get<size_t>("worker", "num_loader_processing_threads") == 6);
-    BOOST_CHECK(config->get<size_t>("worker", "num_exporter_processing_threads") == 7);
-    BOOST_CHECK(config->get<size_t>("worker", "num_http_loader_processing_threads") == 8);
-    BOOST_CHECK(config->get<size_t>("worker", "num_async_loader_processing_threads") == 9);
-    BOOST_CHECK(config->get<size_t>("worker", "async_loader_auto_resume") == 0);
-    BOOST_CHECK(config->get<size_t>("worker", "async_loader_cleanup_on_resume") == 0);
-    BOOST_CHECK(config->get<unsigned int>("worker", "http_max_listen_conn") == 512);
+    BOOST_CHECK(config->get<size_t>("worker", "num-svc-processing-threads") == 4);
+    BOOST_CHECK(config->get<size_t>("worker", "num-fs-processing-threads") == 5);
+    BOOST_CHECK(config->get<size_t>("worker", "fs-buf-size-bytes") == 1024);
+    BOOST_CHECK(config->get<size_t>("worker", "num-loader-processing-threads") == 6);
+    BOOST_CHECK(config->get<size_t>("worker", "num-exporter-processing-threads") == 7);
+    BOOST_CHECK(config->get<size_t>("worker", "num-http-loader-processing-threads") == 8);
+    BOOST_CHECK(config->get<size_t>("worker", "num-async-loader-processing-threads") == 9);
+    BOOST_CHECK(config->get<size_t>("worker", "async-loader-auto-resume") == 0);
+    BOOST_CHECK(config->get<size_t>("worker", "async-loader-cleanup-on-resume") == 0);
+    BOOST_CHECK(config->get<unsigned int>("worker", "http-max-listen-conn") == 512);
 }
 
 
 BOOST_AUTO_TEST_CASE(ConfigurationTestModifyingGeneralParameters) {
     LOGS_INFO("Testing modifying general parameters");
  
-    BOOST_CHECK_THROW(config->set<size_t>("common", "request_buf_size_bytes", 0), std::invalid_argument);
-    BOOST_REQUIRE_NO_THROW(config->set<size_t>("common", "request_buf_size_bytes", 8193));
-    BOOST_CHECK(config->get<size_t>("common", "request_buf_size_bytes") == 8193);
+    BOOST_CHECK_THROW(config->set<size_t>("common", "request-buf-size-bytes", 0), std::invalid_argument);
+    BOOST_REQUIRE_NO_THROW(config->set<size_t>("common", "request-buf-size-bytes", 8193));
+    BOOST_CHECK(config->get<size_t>("common", "request-buf-size-bytes") == 8193);
 
-    BOOST_CHECK_THROW(config->set<unsigned int>("common", "request_retry_interval_sec", 0), std::invalid_argument);
-    BOOST_REQUIRE_NO_THROW(config->set<unsigned int>("common", "request_retry_interval_sec", 2));
-    BOOST_CHECK(config->get<unsigned int>("common", "request_retry_interval_sec") == 2);
+    BOOST_CHECK_THROW(config->set<unsigned int>("common", "request-retry-interval-sec", 0), std::invalid_argument);
+    BOOST_REQUIRE_NO_THROW(config->set<unsigned int>("common", "request-retry-interval-sec", 2));
+    BOOST_CHECK(config->get<unsigned int>("common", "request-retry-interval-sec") == 2);
 
-    BOOST_CHECK_THROW(config->set<size_t>("controller", "num_threads", 0), std::invalid_argument);
-    BOOST_REQUIRE_NO_THROW(config->set<size_t>("controller", "num_threads", 3));
-    BOOST_CHECK(config->get<size_t>("controller", "num_threads") == 3);
+    BOOST_CHECK_THROW(config->set<size_t>("controller", "num-threads", 0), std::invalid_argument);
+    BOOST_REQUIRE_NO_THROW(config->set<size_t>("controller", "num-threads", 3));
+    BOOST_CHECK(config->get<size_t>("controller", "num-threads") == 3);
 
-    BOOST_CHECK_THROW(config->set<uint16_t>("controller", "http_server_port", 0), std::invalid_argument);
-    BOOST_REQUIRE_NO_THROW(config->set<uint16_t>("controller", "http_server_port", 8081));
-    BOOST_CHECK(config->get<uint16_t>("controller", "http_server_port") == 8081);
+    BOOST_CHECK_THROW(config->set<uint16_t>("controller", "http-server-port", 0), std::invalid_argument);
+    BOOST_REQUIRE_NO_THROW(config->set<uint16_t>("controller", "http-server-port", 8081));
+    BOOST_CHECK(config->get<uint16_t>("controller", "http-server-port") == 8081);
 
-    BOOST_CHECK_THROW(config->set<unsigned int>("controller", "http_max_listen_conn", 0), std::invalid_argument);
-    BOOST_REQUIRE_NO_THROW(config->set<unsigned int>("controller", "http_max_listen_conn", 1024));
-    BOOST_CHECK(config->get<unsigned int>("controller", "http_max_listen_conn") == 1024);
+    BOOST_CHECK_THROW(config->set<unsigned int>("controller", "http-max-listen-conn", 0), std::invalid_argument);
+    BOOST_REQUIRE_NO_THROW(config->set<unsigned int>("controller", "http-max-listen-conn", 1024));
+    BOOST_CHECK(config->get<unsigned int>("controller", "http-max-listen-conn") == 1024);
 
-    BOOST_CHECK_THROW(config->set<size_t>("controller", "http_server_threads", 0), std::invalid_argument);
-    BOOST_REQUIRE_NO_THROW(config->set<size_t>("controller", "http_server_threads", 4));
-    BOOST_CHECK(config->get<size_t>("controller", "http_server_threads") == 4);
+    BOOST_CHECK_THROW(config->set<size_t>("controller", "http-server-threads", 0), std::invalid_argument);
+    BOOST_REQUIRE_NO_THROW(config->set<size_t>("controller", "http-server-threads", 4));
+    BOOST_CHECK(config->get<size_t>("controller", "http-server-threads") == 4);
 
-    BOOST_CHECK_THROW(config->set<unsigned int>("controller", "request_timeout_sec", 0), std::invalid_argument);
-    BOOST_REQUIRE_NO_THROW(config->set<unsigned int>("controller", "request_timeout_sec", 101));
-    BOOST_CHECK(config->get<unsigned int>("controller", "request_timeout_sec") == 101);
+    BOOST_CHECK_THROW(config->set<unsigned int>("controller", "request-timeout-sec", 0), std::invalid_argument);
+    BOOST_REQUIRE_NO_THROW(config->set<unsigned int>("controller", "request-timeout-sec", 101));
+    BOOST_CHECK(config->get<unsigned int>("controller", "request-timeout-sec") == 101);
 
-    BOOST_CHECK_THROW(config->set<unsigned int>("controller", "job_timeout_sec", 0), std::invalid_argument);
-    BOOST_REQUIRE_NO_THROW(config->set<unsigned int>("controller", "job_timeout_sec", 201));
-    BOOST_CHECK(config->get<unsigned int>("controller", "job_timeout_sec") == 201);
+    BOOST_CHECK_THROW(config->set<unsigned int>("controller", "job-timeout-sec", 0), std::invalid_argument);
+    BOOST_REQUIRE_NO_THROW(config->set<unsigned int>("controller", "job-timeout-sec", 201));
+    BOOST_CHECK(config->get<unsigned int>("controller", "job-timeout-sec") == 201);
 
-    BOOST_REQUIRE_NO_THROW(config->set<unsigned int>("controller", "job_heartbeat_sec", 301));
-    BOOST_CHECK(config->get<unsigned int>("controller", "job_heartbeat_sec") == 301);
+    BOOST_REQUIRE_NO_THROW(config->set<unsigned int>("controller", "job-heartbeat-sec", 301));
+    BOOST_CHECK(config->get<unsigned int>("controller", "job-heartbeat-sec") == 301);
 
-    BOOST_REQUIRE_NO_THROW(config->set<unsigned int>("controller", "job_heartbeat_sec", 0));
-    BOOST_CHECK(config->get<unsigned int>("controller", "job_heartbeat_sec") == 0);
+    BOOST_REQUIRE_NO_THROW(config->set<unsigned int>("controller", "job-heartbeat-sec", 0));
+    BOOST_CHECK(config->get<unsigned int>("controller", "job-heartbeat-sec") == 0);
 
-    BOOST_REQUIRE_NO_THROW(config->set<int>("controller", "worker_evict_priority_level", 1));
-    BOOST_CHECK(config->get<int>("controller", "worker_evict_priority_level") == 1);
+    BOOST_REQUIRE_NO_THROW(config->set<int>("controller", "worker-evict-priority-level", 1));
+    BOOST_CHECK(config->get<int>("controller", "worker-evict-priority-level") == 1);
 
-    BOOST_REQUIRE_NO_THROW(config->set<int>("controller", "worker_evict_priority_level", 0));
-    BOOST_CHECK(config->get<int>("controller", "worker_evict_priority_level") == 0);
+    BOOST_REQUIRE_NO_THROW(config->set<int>("controller", "worker-evict-priority-level", 0));
+    BOOST_CHECK(config->get<int>("controller", "worker-evict-priority-level") == 0);
 
-    BOOST_REQUIRE_NO_THROW(config->set<int>("controller", "health_monitor_priority_level", 2));
-    BOOST_CHECK(config->get<int>("controller", "health_monitor_priority_level") == 2);
+    BOOST_REQUIRE_NO_THROW(config->set<int>("controller", "health-monitor-priority-level", 2));
+    BOOST_CHECK(config->get<int>("controller", "health-monitor-priority-level") == 2);
 
-    BOOST_REQUIRE_NO_THROW(config->set<int>("controller", "health_monitor_priority_level", 0));
-    BOOST_CHECK(config->get<int>("controller", "health_monitor_priority_level") == 0);
+    BOOST_REQUIRE_NO_THROW(config->set<int>("controller", "health-monitor-priority-level", 0));
+    BOOST_CHECK(config->get<int>("controller", "health-monitor-priority-level") == 0);
 
-    BOOST_REQUIRE_NO_THROW(config->set<int>("controller", "ingest_priority_level", 3));
-    BOOST_CHECK(config->get<int>("controller", "ingest_priority_level") == 3);
+    BOOST_REQUIRE_NO_THROW(config->set<int>("controller", "ingest-priority-level", 3));
+    BOOST_CHECK(config->get<int>("controller", "ingest-priority-level") == 3);
 
-    BOOST_REQUIRE_NO_THROW(config->set<int>("controller", "ingest_priority_level", 0));
-    BOOST_CHECK(config->get<int>("controller", "ingest_priority_level") == 0);
+    BOOST_REQUIRE_NO_THROW(config->set<int>("controller", "ingest-priority-level", 0));
+    BOOST_CHECK(config->get<int>("controller", "ingest-priority-level") == 0);
 
-    BOOST_REQUIRE_NO_THROW(config->set<int>("controller", "catalog_management_priority_level", 4));
-    BOOST_CHECK(config->get<int>("controller", "catalog_management_priority_level") == 4);
+    BOOST_REQUIRE_NO_THROW(config->set<int>("controller", "catalog-management-priority-level", 4));
+    BOOST_CHECK(config->get<int>("controller", "catalog-management-priority-level") == 4);
 
-    BOOST_REQUIRE_NO_THROW(config->set<int>("controller", "catalog_management_priority_level", 0));
-    BOOST_CHECK(config->get<int>("controller", "catalog_management_priority_level") == 0);
+    BOOST_REQUIRE_NO_THROW(config->set<int>("controller", "catalog-management-priority-level", 0));
+    BOOST_CHECK(config->get<int>("controller", "catalog-management-priority-level") == 0);
 
-    BOOST_REQUIRE_NO_THROW(config->set<unsigned int>("xrootd", "auto_notify", 1));
-    BOOST_CHECK(config->get<unsigned int>("xrootd", "auto_notify") != 0);
+    BOOST_REQUIRE_NO_THROW(config->set<unsigned int>("xrootd", "auto-notify", 1));
+    BOOST_CHECK(config->get<unsigned int>("xrootd", "auto-notify") != 0);
 
-    BOOST_REQUIRE_NO_THROW(config->set<unsigned int>("xrootd", "auto_notify", 0));
-    BOOST_CHECK(config->get<unsigned int>("xrootd", "auto_notify") == 0);
+    BOOST_REQUIRE_NO_THROW(config->set<unsigned int>("xrootd", "auto-notify", 0));
+    BOOST_CHECK(config->get<unsigned int>("xrootd", "auto-notify") == 0);
 
     BOOST_CHECK_THROW(config->set<string>("xrootd", "host", ""), std::invalid_argument);
     BOOST_REQUIRE_NO_THROW(config->set<string>("xrootd", "host", "localhost"));
@@ -257,59 +249,69 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestModifyingGeneralParameters) {
     BOOST_REQUIRE_NO_THROW(config->set<uint16_t>("xrootd", "port", 1105));
     BOOST_CHECK(config->get<uint16_t>("xrootd", "port") == 1105);
 
-    BOOST_CHECK_THROW(config->set<unsigned int>("xrootd", "request_timeout_sec", 0), std::invalid_argument);
-    BOOST_REQUIRE_NO_THROW(config->set<unsigned int>("xrootd", "request_timeout_sec", 401));
-    BOOST_CHECK(config->get<unsigned int>("xrootd", "request_timeout_sec") == 401);
+    BOOST_CHECK_THROW(config->set<unsigned int>("xrootd", "request-timeout-sec", 0), std::invalid_argument);
+    BOOST_REQUIRE_NO_THROW(config->set<unsigned int>("xrootd", "request-timeout-sec", 401));
+    BOOST_CHECK(config->get<unsigned int>("xrootd", "request-timeout-sec") == 401);
 
-    BOOST_CHECK_THROW(config->set<size_t>("database", "services_pool_size", 0), std::invalid_argument);
-    BOOST_REQUIRE_NO_THROW(config->set<size_t>("database", "services_pool_size", 3));
-    BOOST_CHECK(config->get<size_t>("database", "services_pool_size") == 3);
+    BOOST_REQUIRE_NO_THROW(config->set<unsigned int>("xrootd", "allow-reconnect", 1));
+    BOOST_CHECK(config->get<unsigned int>("xrootd", "allow-reconnect") != 0);
+
+    BOOST_REQUIRE_NO_THROW(config->set<unsigned int>("xrootd", "allow-reconnect", 0));
+    BOOST_CHECK(config->get<unsigned int>("xrootd", "allow-reconnect") == 0);
+
+    BOOST_CHECK_THROW(config->set<unsigned int>("xrootd", "reconnect-timeout", 0), std::invalid_argument);
+    BOOST_REQUIRE_NO_THROW(config->set<unsigned int>("xrootd", "reconnect-timeout", 403));
+    BOOST_CHECK(config->get<unsigned int>("xrootd", "reconnect-timeout") == 403);
+
+    BOOST_CHECK_THROW(config->set<size_t>("database", "services-pool-size", 0), std::invalid_argument);
+    BOOST_REQUIRE_NO_THROW(config->set<size_t>("database", "services-pool-size", 3));
+    BOOST_CHECK(config->get<size_t>("database", "services-pool-size") == 3);
 
     BOOST_CHECK_THROW(config->set<string>("worker", "technology", ""), std::invalid_argument);
     BOOST_REQUIRE_NO_THROW(config->set<string>("worker", "technology", "FS"));
     BOOST_CHECK(config->get<string>("worker", "technology") == "FS");
 
-    BOOST_CHECK_THROW(config->set<size_t>("worker", "num_svc_processing_threads", 0), std::invalid_argument);
-    BOOST_REQUIRE_NO_THROW(config->set<size_t>("worker", "num_svc_processing_threads", 5));
-    BOOST_CHECK(config->get<size_t>("worker", "num_svc_processing_threads") == 5);
+    BOOST_CHECK_THROW(config->set<size_t>("worker", "num-svc-processing-threads", 0), std::invalid_argument);
+    BOOST_REQUIRE_NO_THROW(config->set<size_t>("worker", "num-svc-processing-threads", 5));
+    BOOST_CHECK(config->get<size_t>("worker", "num-svc-processing-threads") == 5);
 
-    BOOST_CHECK_THROW(config->set<size_t>("worker", "num_fs_processing_threads", 0), std::invalid_argument);
-    BOOST_REQUIRE_NO_THROW(config->set<size_t>("worker", "num_fs_processing_threads", 6));
-    BOOST_CHECK(config->get<size_t>("worker", "num_fs_processing_threads") == 6);
+    BOOST_CHECK_THROW(config->set<size_t>("worker", "num-fs-processing-threads", 0), std::invalid_argument);
+    BOOST_REQUIRE_NO_THROW(config->set<size_t>("worker", "num-fs-processing-threads", 6));
+    BOOST_CHECK(config->get<size_t>("worker", "num-fs-processing-threads") == 6);
 
-    BOOST_CHECK_THROW(config->set<size_t>("worker", "fs_buf_size_bytes", 0), std::invalid_argument);
-    BOOST_REQUIRE_NO_THROW(config->set<size_t>("worker", "fs_buf_size_bytes", 1025));
-    BOOST_CHECK(config->get<size_t>("worker", "fs_buf_size_bytes") == 1025);
+    BOOST_CHECK_THROW(config->set<size_t>("worker", "fs-buf-size-bytes", 0), std::invalid_argument);
+    BOOST_REQUIRE_NO_THROW(config->set<size_t>("worker", "fs-buf-size-bytes", 1025));
+    BOOST_CHECK(config->get<size_t>("worker", "fs-buf-size-bytes") == 1025);
 
-    BOOST_CHECK_THROW(config->set<size_t>("worker", "num_loader_processing_threads", 0), std::invalid_argument);
-    BOOST_REQUIRE_NO_THROW(config->set<size_t>("worker", "num_loader_processing_threads", 7));
-    BOOST_CHECK(config->get<size_t>("worker", "num_loader_processing_threads") == 7);
+    BOOST_CHECK_THROW(config->set<size_t>("worker", "num-loader-processing-threads", 0), std::invalid_argument);
+    BOOST_REQUIRE_NO_THROW(config->set<size_t>("worker", "num-loader-processing-threads", 7));
+    BOOST_CHECK(config->get<size_t>("worker", "num-loader-processing-threads") == 7);
 
-    BOOST_CHECK_THROW(config->set<size_t>("worker", "num_exporter_processing_threads", 0), std::invalid_argument);
-    BOOST_REQUIRE_NO_THROW(config->set<size_t>("worker", "num_exporter_processing_threads", 8));
-    BOOST_CHECK(config->get<size_t>("worker", "num_exporter_processing_threads") == 8);
+    BOOST_CHECK_THROW(config->set<size_t>("worker", "num-exporter-processing-threads", 0), std::invalid_argument);
+    BOOST_REQUIRE_NO_THROW(config->set<size_t>("worker", "num-exporter-processing-threads", 8));
+    BOOST_CHECK(config->get<size_t>("worker", "num-exporter-processing-threads") == 8);
 
-    BOOST_CHECK_THROW(config->set<size_t>("worker", "num_http_loader_processing_threads", 0), std::invalid_argument);
-    BOOST_REQUIRE_NO_THROW(config->set<size_t>("worker", "num_http_loader_processing_threads", 9));
-    BOOST_CHECK(config->get<size_t>("worker", "num_http_loader_processing_threads") == 9);
+    BOOST_CHECK_THROW(config->set<size_t>("worker", "num-http-loader-processing-threads", 0), std::invalid_argument);
+    BOOST_REQUIRE_NO_THROW(config->set<size_t>("worker", "num-http-loader-processing-threads", 9));
+    BOOST_CHECK(config->get<size_t>("worker", "num-http-loader-processing-threads") == 9);
 
-    BOOST_CHECK_THROW(config->set<size_t>("worker", "num_async_loader_processing_threads", 0), std::invalid_argument);
-    BOOST_REQUIRE_NO_THROW(config->set<size_t>("worker", "num_async_loader_processing_threads", 10));
-    BOOST_CHECK(config->get<size_t>("worker", "num_async_loader_processing_threads") == 10);
+    BOOST_CHECK_THROW(config->set<size_t>("worker", "num-async-loader-processing-threads", 0), std::invalid_argument);
+    BOOST_REQUIRE_NO_THROW(config->set<size_t>("worker", "num-async-loader-processing-threads", 10));
+    BOOST_CHECK(config->get<size_t>("worker", "num-async-loader-processing-threads") == 10);
 
-    BOOST_REQUIRE_NO_THROW(config->set<unsigned int>("worker", "async_loader_auto_resume", 1));
-    BOOST_CHECK(config->get<unsigned int>("worker", "async_loader_auto_resume") != 0);
-    BOOST_REQUIRE_NO_THROW(config->set<unsigned int>("worker", "async_loader_auto_resume", 0));
-    BOOST_CHECK(config->get<unsigned int>("worker", "async_loader_auto_resume") == 0);
+    BOOST_REQUIRE_NO_THROW(config->set<unsigned int>("worker", "async-loader-auto-resume", 1));
+    BOOST_CHECK(config->get<unsigned int>("worker", "async-loader-auto-resume") != 0);
+    BOOST_REQUIRE_NO_THROW(config->set<unsigned int>("worker", "async-loader-auto-resume", 0));
+    BOOST_CHECK(config->get<unsigned int>("worker", "async-loader-auto-resume") == 0);
 
-    BOOST_REQUIRE_NO_THROW(config->set<unsigned int>("worker", "async_loader_cleanup_on_resume", 1));
-    BOOST_CHECK(config->get<unsigned int>("worker", "async_loader_cleanup_on_resume") != 0);
-    BOOST_REQUIRE_NO_THROW(config->set<unsigned int>("worker", "async_loader_cleanup_on_resume", 0));
-    BOOST_CHECK(config->get<unsigned int>("worker", "async_loader_cleanup_on_resume") == 0);
+    BOOST_REQUIRE_NO_THROW(config->set<unsigned int>("worker", "async-loader-cleanup-on-resume", 1));
+    BOOST_CHECK(config->get<unsigned int>("worker", "async-loader-cleanup-on-resume") != 0);
+    BOOST_REQUIRE_NO_THROW(config->set<unsigned int>("worker", "async-loader-cleanup-on-resume", 0));
+    BOOST_CHECK(config->get<unsigned int>("worker", "async-loader-cleanup-on-resume") == 0);
 
-    BOOST_CHECK_THROW(config->set<unsigned int>("worker", "http_max_listen_conn", 0), std::invalid_argument);
-    BOOST_REQUIRE_NO_THROW(config->set<unsigned int>("worker", "http_max_listen_conn", 2048));
-    BOOST_CHECK(config->get<unsigned int>("worker", "http_max_listen_conn") == 2048);
+    BOOST_CHECK_THROW(config->set<unsigned int>("worker", "http-max-listen-conn", 0), std::invalid_argument);
+    BOOST_REQUIRE_NO_THROW(config->set<unsigned int>("worker", "http-max-listen-conn", 2048));
+    BOOST_CHECK(config->get<unsigned int>("worker", "http-max-listen-conn") == 2048);
 }
 
 
@@ -477,19 +479,19 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestWorkerParameters) {
     BOOST_CHECK(addedWorkerF.isEnabled == workerF.isEnabled);
     BOOST_CHECK(addedWorkerF.isReadOnly == workerF.isReadOnly);
     BOOST_CHECK(addedWorkerF.svcHost == workerF.svcHost);
-    BOOST_CHECK(addedWorkerF.svcPort == config->get<uint16_t>("worker_defaults", "svc_port"));
+    BOOST_CHECK(addedWorkerF.svcPort == config->get<uint16_t>("worker-defaults", "svc_port"));
     BOOST_CHECK(addedWorkerF.fsHost == workerF.svcHost);
-    BOOST_CHECK(addedWorkerF.fsPort == config->get<uint16_t>("worker_defaults", "fs_port"));
-    BOOST_CHECK(addedWorkerF.dataDir == config->get<string>("worker_defaults", "data_dir"));
+    BOOST_CHECK(addedWorkerF.fsPort == config->get<uint16_t>("worker-defaults", "fs_port"));
+    BOOST_CHECK(addedWorkerF.dataDir == config->get<string>("worker-defaults", "data_dir"));
     BOOST_CHECK(addedWorkerF.loaderHost == workerF.svcHost);
-    BOOST_CHECK(addedWorkerF.loaderPort == config->get<uint16_t>("worker_defaults", "loader_port"));
-    BOOST_CHECK(addedWorkerF.loaderTmpDir == config->get<string>("worker_defaults", "loader_tmp_dir"));
+    BOOST_CHECK(addedWorkerF.loaderPort == config->get<uint16_t>("worker-defaults", "loader_port"));
+    BOOST_CHECK(addedWorkerF.loaderTmpDir == config->get<string>("worker-defaults", "loader_tmp_dir"));
     BOOST_CHECK(addedWorkerF.exporterHost == workerF.svcHost);
-    BOOST_CHECK(addedWorkerF.exporterPort == config->get<uint16_t>("worker_defaults", "exporter_port"));
-    BOOST_CHECK(addedWorkerF.exporterTmpDir == config->get<string>("worker_defaults", "exporter_tmp_dir"));
+    BOOST_CHECK(addedWorkerF.exporterPort == config->get<uint16_t>("worker-defaults", "exporter_port"));
+    BOOST_CHECK(addedWorkerF.exporterTmpDir == config->get<string>("worker-defaults", "exporter_tmp_dir"));
     BOOST_CHECK(addedWorkerF.httpLoaderHost == workerF.svcHost);
-    BOOST_CHECK(addedWorkerF.httpLoaderPort == config->get<uint16_t>("worker_defaults", "http_loader_port"));
-    BOOST_CHECK(addedWorkerF.httpLoaderTmpDir == config->get<string>("worker_defaults", "http_loader_tmp_dir"));
+    BOOST_CHECK(addedWorkerF.httpLoaderPort == config->get<uint16_t>("worker-defaults", "http_loader_port"));
+    BOOST_CHECK(addedWorkerF.httpLoaderTmpDir == config->get<string>("worker-defaults", "http_loader_tmp_dir"));
 
     // Deleting workers.
     BOOST_REQUIRE_NO_THROW(config->deleteWorker("worker-C"));

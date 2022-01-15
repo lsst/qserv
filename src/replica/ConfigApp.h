@@ -182,7 +182,7 @@ private:
     int _workerReadOnly = -1;
 
     /// General parameters
-    std::map<std::string, std::map<std::string, std::string>> _general;
+    std::map<std::string, std::map<std::string, std::string>> _generalParams;
 
     /// For database families
     DatabaseFamilyInfo _familyInfo;

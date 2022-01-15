@@ -138,7 +138,7 @@ WorkerServerConnection::WorkerServerConnection(ServiceProvider::Ptr const& servi
         _processor(processor),
         _socket(io_service),
         _bufferPtr(make_shared<ProtocolBuffer>(
-                serviceProvider->config()->get<size_t>("common", "request_buf_size_bytes"))) {
+                serviceProvider->config()->get<size_t>("common", "request-buf-size-bytes"))) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << " CREATED");
 }
 

@@ -80,7 +80,6 @@ string const description =
 bool const injectDatabaseOptions = true;
 bool const boostProtobufVersionCheck = true;
 bool const enableServiceProvider = true;
-bool const injectXrootdOptions = true;
 
 } /// namespace
 
@@ -101,8 +100,7 @@ MasterControllerHttpApp::MasterControllerHttpApp(int argc, char* argv[])
             description,
             injectDatabaseOptions,
             boostProtobufVersionCheck,
-            enableServiceProvider,
-            injectXrootdOptions
+            enableServiceProvider
         ),
         _healthProbeIntervalSec  (::defaultOptions.healthProbeIntervalSec),
         _replicationIntervalSec  (::defaultOptions.replicationIntervalSec),
@@ -113,7 +111,8 @@ MasterControllerHttpApp::MasterControllerHttpApp(int argc, char* argv[])
         _workerReconfigTimeoutSec(::defaultOptions.workerReconfigTimeoutSec),
         _purge                   (::defaultOptions.purge),
         _forceQservSync          (::defaultOptions.forceQservSync),
-        _permanentDelete         (::defaultOptions.permanentDelete) {
+        _permanentDelete         (::defaultOptions.permanentDelete),
+        _qservCzarDbUrl          (Configuration::qservCzarDbUrl()) {
 
     // Configure the command line parser
 

@@ -54,7 +54,6 @@ string const description =
 bool const injectDatabaseOptions = false;
 bool const boostProtobufVersionCheck = true;
 bool const enableServiceProvider = false;
-bool const injectXrootdOptions = false;
 
 string parse(string const& context, json const& jsonObj, string const& key) {
     if ((0 == jsonObj.count(key) or not jsonObj[key].is_string())) {
@@ -178,8 +177,7 @@ FileIngestApp::FileIngestApp(int argc, char* argv[])
             description,
             injectDatabaseOptions,
             boostProtobufVersionCheck,
-            enableServiceProvider,
-            injectXrootdOptions
+            enableServiceProvider
         ) {
 
     // Configure the command line parser

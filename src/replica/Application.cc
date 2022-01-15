@@ -28,6 +28,7 @@
 // Qserv headers
 #include "replica/Configuration.h"
 #include "replica/ConfigParserMySQL.h"
+#include "replica/ConfigurationSchema.h"
 #include "replica/protocol.pb.h"
 #include "util/Issue.h"
 
@@ -49,12 +50,10 @@ Application::Application(int argc,
                          string const& description,
                          bool const injectDatabaseOptions,
                          bool const boostProtobufVersionCheck,
-                         bool const enableServiceProvider,
-                         bool const injectXrootdOptions)
+                         bool const enableServiceProvider)
     :   _injectDatabaseOptions    (injectDatabaseOptions),
         _boostProtobufVersionCheck(boostProtobufVersionCheck),
         _enableServiceProvider    (enableServiceProvider),
-        _injectXrootdOptions      (injectXrootdOptions),
         _parser   (argc,argv, description),
         _debugFlag(false),
         _config   ("mysql://qsreplica@localhost:3306/qservReplica"),
@@ -62,8 +61,6 @@ Application::Application(int argc,
         _databaseConnectTimeoutSec    (Configuration::databaseConnectTimeoutSec()),
         _databaseMaxReconnects        (Configuration::databaseMaxReconnects()),
         _databaseTransactionTimeoutSec(Configuration::databaseTransactionTimeoutSec()),
-        _xrootdAllowReconnect         (Configuration::xrootdAllowReconnect() ? 1 : 0),
-        _xrootdConnectTimeoutSec      (Configuration::xrootdConnectTimeoutSec()),
         _schemaUpgradeWait            (Configuration::schemaUpgradeWait() ? 1 : 0),
         _schemaUpgradeWaitTimeoutSec  (Configuration::schemaUpgradeWaitTimeoutSec()) {
 
@@ -138,20 +135,19 @@ int Application::run() {
             " System's setups in case of an accidental mis-configuration.",
             _instanceId
         );
-    }
-    if (_injectXrootdOptions) {
-        parser().option(
-            "xrootd-allow-reconnect",
-            "Change the default XROOTD connection handling node. Set 0 to disable"
-            " automatic reconnects. Any other number would allow reconnects.",
-            _xrootdAllowReconnect
-        ).option(
-            "xrootd-reconnect-timeout",
-            "Change the default value limiting a duration of time for making automatic"
-            " reconnects to the XROOTD servers before failing and reporting error"
-            " (if the server is not up, or if it's not reachable for some reason)",
-            _xrootdConnectTimeoutSec
-        );
+        // Inject options for th egeneral configuration parameters.
+        for (auto&& itr: ConfigurationSchema::parameters()) {
+            string const& category = itr.first;
+            for (auto&& param: itr.second) {
+                // The read-only parameters can't be updated programmatically.
+                if (ConfigurationSchema::readOnly(category, param)) continue;
+                _generalParams[category][param] = ConfigurationSchema::defaultValueAsString(category, param);
+                parser().option(
+                    category + "-" + param,
+                    ConfigurationSchema::description(category, param),
+                    _generalParams[category][param]);
+            }
+        }
     }
     try {
         int const code = parser().parse();
@@ -182,19 +178,26 @@ int Application::run() {
         Configuration::setSchemaUpgradeWaitTimeoutSec(_schemaUpgradeWaitTimeoutSec);
     }
     if (_enableServiceProvider) {
+        _serviceProvider = ServiceProvider::create(_config, _instanceId);
 
-        // Create and then start the provider in its own thread pool before
-        // performing any asynchronous operations via BOOST ASIO.
-        //
+        // Update general configuration parameters.
+        // Note that options specified by a user will have non-empty values.
+        for (auto&& categoryItr: _generalParams) {
+            string const& category = categoryItr.first;
+            for (auto&& paramItr: categoryItr.second) {
+                string const& param = paramItr.first;
+                string const& value = paramItr.second;
+                if (!value.empty()) {
+                    _serviceProvider->config()->setFromString(category, param, value);
+                }
+            }
+        }
+
+        // Start the provider in its own thread pool before performing any asynchronous
+        // operations via BOOST ASIO.
         // Note that onFinish callbacks which are activated upon the completion of
         // the asynchronous activities will be run by a thread from the pool.
-        _serviceProvider = ServiceProvider::create(_config, _instanceId);
         _serviceProvider->run();
-    }
-    // Change default parameters of the XROOTD connectors
-    if (_injectXrootdOptions) {
-        Configuration::setXrootdAllowReconnect(_xrootdAllowReconnect != 0);
-        Configuration::setXrootdConnectTimeoutSec(_xrootdConnectTimeoutSec);
     }
 
     // Let the user's code to do its job

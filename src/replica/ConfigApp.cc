@@ -52,11 +52,6 @@ string const description =
     "The command-line tool for viewing and manipulating the configuration data"
     " of the Replication system stored in the MySQL/MariaDB database.";
 
-bool const injectDatabaseOptions = true;
-bool const boostProtobufVersionCheck = false;
-bool const enableServiceProvider = false;
-bool const injectXrootdOptions = false;
-
 /**
  * Register an option with a parser (which could also represent a command).
  * @param parser The handler responsible for processing options
@@ -147,7 +142,7 @@ ConfigApp::ConfigApp(int argc, char* argv[])
         " Other parameters are optional. The following defines rules for the optional parameters."
         " If no location will be given for some other service a location of the 'service-host' will"
         " be assumed. If no specific port will be provided for a service then the corresponding"
-        " default port defined in the 'worker_defaults' of the general configuration category"
+        " default port defined in the 'worker-defaults' of the general configuration category"
         " will be assumed. The later rule also applies to the temporary folders of all services."
     ).required(
         "worker",
@@ -186,11 +181,11 @@ ConfigApp::ConfigApp(int argc, char* argv[])
         for (auto&& param: itr.second) {
             // The read-only parameters can't be updated programmatically.
             if (ConfigurationSchema::readOnly(category, param)) continue;
-            _general[category][param] = string();
+            _generalParams[category][param] = ConfigurationSchema::defaultValueAsString(category, param);
             updateGeneralCmd.option(
-                category + "." + param,
+                category + "-" + param,
                 ConfigurationSchema::description(category, param),
-                _general[category][param]);
+                _generalParams[category][param]);
         }
     }
 
@@ -451,7 +446,7 @@ int ConfigApp::_configInitFile() const {
 int ConfigApp::_updateGeneral() {
     try {
         // Note that options specified by a user will have non-empty values.
-        for (auto&& categoryItr: _general) {
+        for (auto&& categoryItr: _generalParams) {
             string const& category = categoryItr.first;
             for (auto&& paramItr: categoryItr.second) {
                 string const& param = paramItr.first;

@@ -47,7 +47,6 @@ string const description =
 bool const injectDatabaseOptions = true;
 bool const boostProtobufVersionCheck = true;
 bool const enableServiceProvider = true;
-bool const injectXrootdOptions = false;
 
 } /// namespace
 
@@ -69,10 +68,10 @@ WorkerApp::WorkerApp(int argc, char* argv[])
             description,
             injectDatabaseOptions,
             boostProtobufVersionCheck,
-            enableServiceProvider,
-            injectXrootdOptions
+            enableServiceProvider
         ),
-        _log(LOG_GET("lsst.qserv.replica.WorkerApp")) {
+        _log(LOG_GET("lsst.qserv.replica.WorkerApp")),
+        _qservWorkerDbUrl(Configuration::qservWorkerDbUrl()) {
 
     // Configure the command line parser
 
@@ -143,7 +142,7 @@ int WorkerApp::runImpl() {
     // Configure the factory with a pool of persistent connectors
     auto const connectionPool = database::mysql::ConnectionPool::create(
         Configuration::qservWorkerDbParams(),
-        serviceProvider()->config()->get<size_t>("database", "services_pool_size")
+        serviceProvider()->config()->get<size_t>("database", "services-pool-size")
     );
     WorkerRequestFactory requestFactory(serviceProvider(), connectionPool);
 

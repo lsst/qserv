@@ -100,9 +100,9 @@ Job::Job(Controller::Ptr const& controller, string const& parentJobId,
         _beginTime(0),
         _endTime(0),
         _heartbeatTimerIvalSec(controller->serviceProvider()->config()->get<unsigned int>(
-                "controller", "job_heartbeat_sec")),
+                "controller", "job-heartbeat-sec")),
         _expirationIvalSec(controller->serviceProvider()->config()->get<unsigned int>(
-                "controller", "job_timeout_sec")) {
+                "controller", "job-timeout-sec")) {
 
     // This report is used solely for debugging purposes to allow tracking
     // potential memory leaks within applications.

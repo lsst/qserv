@@ -271,7 +271,7 @@ json HttpIngestModule::_addDatabase() {
     string const noParentJobId;
     auto const job = SqlCreateDbJob::create(
             database, allWorkers, controller(), noParentJobId, nullptr,
-            config->get<int>("controller", "ingest_priority_level"));
+            config->get<int>("controller", "ingest-priority-level"));
     job->start();
     logJobStartedEvent(SqlCreateDbJob::typeName(), job, family);
     job->wait();
@@ -357,7 +357,7 @@ json HttpIngestModule::_publishDatabase() {
             json const errorExt = _scanTableStatsImpl(
                     database, table, ChunkOverlapSelector::CHUNK_AND_OVERLAP,
                     SqlRowStatsJob::StateUpdatePolicy::ENABLED, rowCountersDeployAtQserv,
-                    forceRescan, allWorkers, config->get<int>("controller", "ingest_priority_level"));
+                    forceRescan, allWorkers, config->get<int>("controller", "ingest-priority-level"));
             if (!errorExt.empty()) {
                 throw HttpError(__func__, "Table rows scanning/deployment failed.", errorExt);
             }
@@ -464,7 +464,7 @@ json HttpIngestModule::_deleteDatabase() {
     string const noParentJobId;
     auto const dasableDbJob = SqlDisableDbJob::create(
             databaseInfo.name, allWorkers, controller(), noParentJobId, nullptr,
-            config->get<int>("controller", "catalog_management_priority_level"));
+            config->get<int>("controller", "catalog-management-priority-level"));
     dasableDbJob->start();
     logJobStartedEvent(SqlDisableDbJob::typeName(), dasableDbJob, databaseInfo.family);
     dasableDbJob->wait();
@@ -473,7 +473,7 @@ json HttpIngestModule::_deleteDatabase() {
     // Delete database entries at workers
     auto const deleteDbJob = SqlDeleteDbJob::create(
             databaseInfo.name, allWorkers, controller(), noParentJobId, nullptr,
-            config->get<int>("controller", "catalog_management_priority_level"));
+            config->get<int>("controller", "catalog-management-priority-level"));
     deleteDbJob->start();
     logJobStartedEvent(SqlDeleteDbJob::typeName(), deleteDbJob, databaseInfo.family);
     deleteDbJob->wait();
@@ -622,7 +622,7 @@ json HttpIngestModule::_addTable() {
         auto const job = SqlCreateTableJob::create(
             databaseInfo.name, table, engine, _partitionByColumn, columns,
             allWorkers, controller(), noParentJobId, nullptr,
-            config->get<int>("controller", "ingest_priority_level"));
+            config->get<int>("controller", "ingest-priority-level"));
         job->start();
         logJobStartedEvent(SqlCreateTableJob::typeName(), job, databaseInfo.family);
         job->wait();
@@ -715,7 +715,7 @@ json HttpIngestModule::_deleteTable() {
     string const noParentJobId;
     auto const job = SqlDeleteTableJob::create(
             databaseInfo.name, table, allWorkers, controller(), noParentJobId, nullptr,
-            config->get<int>("controller", "catalog_management_priority_level"));
+            config->get<int>("controller", "catalog-management-priority-level"));
     job->start();
     logJobStartedEvent(SqlDeleteTableJob::typeName(), job, databaseInfo.family);
     job->wait();
@@ -771,7 +771,7 @@ json HttpIngestModule::_scanTableStats() {
     json const errorExt = _scanTableStatsImpl(
             database, table, overlapSelector, rowCountersStateUpdatePolicy,
             rowCountersDeployAtQserv, forceRescan, allWorkers,
-            config->get<int>("controller", "catalog_management_priority_level"));
+            config->get<int>("controller", "catalog-management-priority-level"));
     if (!errorExt.empty()) {
         throw HttpError(__func__, "Table rows scanning/deployment failed.", errorExt);
     }
@@ -1048,9 +1048,9 @@ void HttpIngestModule::_grantDatabaseAccess(
     string const noParentJobId;
     auto const config = controller()->serviceProvider()->config();
     auto const job = SqlGrantAccessJob::create(
-            databaseInfo.name, config->get<string>("database", "qserv_master_user"),
+            databaseInfo.name, config->get<string>("database", "qserv-master-user"),
             allWorkers, controller(), noParentJobId, nullptr,
-            config->get<int>("controller", "ingest_priority_level"));
+            config->get<int>("controller", "ingest-priority-level"));
     job->start();
     logJobStartedEvent(SqlGrantAccessJob::typeName(), job, databaseInfo.family);
     job->wait();
@@ -1070,7 +1070,7 @@ void HttpIngestModule::_enableDatabase(
     auto const config = controller()->serviceProvider()->config();
     auto const job = SqlEnableDbJob::create(
             databaseInfo.name, allWorkers, controller(), noParentJobId, nullptr,
-            config->get<int>("controller", "ingest_priority_level"));
+            config->get<int>("controller", "ingest-priority-level"));
     job->start();
     logJobStartedEvent(SqlEnableDbJob::typeName(), job, databaseInfo.family);
     job->wait();
@@ -1098,7 +1098,7 @@ void HttpIngestModule::_createMissingChunkTables(
         auto const job = SqlCreateTablesJob::create(
                 databaseInfo.name, table, engine, _partitionByColumn, columnsItr->second,
                 allWorkers, controller(), noParentJobId, nullptr,
-                controller()->serviceProvider()->config()->get<int>("controller", "ingest_priority_level"));
+                controller()->serviceProvider()->config()->get<int>("controller", "ingest-priority-level"));
         job->start();
         logJobStartedEvent(SqlCreateTablesJob::typeName(), job, databaseInfo.family);
         job->wait();
@@ -1124,7 +1124,7 @@ void HttpIngestModule::_removeMySQLPartitions(
         auto const job = SqlRemoveTablePartitionsJob::create(
                 databaseInfo.name, table, allWorkers, ignoreNonPartitioned,
                 controller(), noParentJobId, nullptr,
-                controller()->serviceProvider()->config()->get<int>("controller", "ingest_priority_level"));
+                controller()->serviceProvider()->config()->get<int>("controller", "ingest-priority-level"));
         job->start();
         logJobStartedEvent(SqlRemoveTablePartitionsJob::typeName(), job, databaseInfo.family);
         job->wait();
@@ -1175,7 +1175,7 @@ void HttpIngestModule::_publishDatabaseInMaster(DatabaseInfo const& databaseInfo
         // to the Qserv account.
         statements.push_back(
                 "GRANT ALL ON " + h.conn->sqlId(databaseInfo.name) + ".* TO " +
-                h.conn->sqlValue(config->get<string>("database", "qserv_master_user")) + "@" +
+                h.conn->sqlValue(config->get<string>("database", "qserv-master-user")) + "@" +
                 h.conn->sqlValue("localhost"));
 
         h.conn->executeInOwnTransaction([&statements](decltype(h.conn) conn) {
@@ -1324,7 +1324,7 @@ json HttpIngestModule::_buildEmptyChunksListImpl(
         });
     } else {
         auto const file = "empty_" + database + ".txt";
-        auto const filePath = fs::path(config->get<string>("controller", "empty_chunks_dir")) / file;
+        auto const filePath = fs::path(config->get<string>("controller", "empty-chunks-dir")) / file;
 
         if (not force) {
             boost::system::error_code ec;
@@ -1364,7 +1364,7 @@ string HttpIngestModule::_reconfigureWorkers(
     string const noParentJobId;
     auto const job = ServiceReconfigJob::create(
             allWorkers, workerResponseTimeoutSec, controller(), noParentJobId, nullptr,
-            controller()->serviceProvider()->config()->get<int>("controller", "ingest_priority_level"));
+            controller()->serviceProvider()->config()->get<int>("controller", "ingest-priority-level"));
     job->start();
     logJobStartedEvent(ServiceReconfigJob::typeName(), job, databaseInfo.family);
     job->wait();
@@ -1476,7 +1476,7 @@ void HttpIngestModule::_qservSync(
     string const noParentJobId;
     auto const findAlljob = FindAllJob::create(
             databaseInfo.family,saveReplicaInfo, allWorkers, controller(), noParentJobId, nullptr,
-            controller()->serviceProvider()->config()->get<int>("controller", "ingest_priority_level"));
+            controller()->serviceProvider()->config()->get<int>("controller", "ingest-priority-level"));
     findAlljob->start();
     logJobStartedEvent(FindAllJob::typeName(), findAlljob, databaseInfo.family);
     findAlljob->wait();

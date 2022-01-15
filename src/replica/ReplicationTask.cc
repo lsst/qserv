@@ -60,7 +60,7 @@ bool ReplicationTask::onRun() {
     bool const saveReplicaInfo = true;
     bool const allWorkers = false;
     int const priority =
-            serviceProvider()->config()->get<int>("controller", "catalog_management_priority_level");
+            serviceProvider()->config()->get<int>("controller", "catalog-management-priority-level");
 
     launch<FindAllJob>(priority, saveReplicaInfo, allWorkers);
     sync(_qservSyncTimeoutSec);

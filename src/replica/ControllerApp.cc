@@ -72,7 +72,6 @@ string const description =
 bool const injectDatabaseOptions = true;
 bool const boostProtobufVersionCheck = true;
 bool const enableServiceProvider = true;
-bool const injectXrootdOptions = false;
 
 /**
  * This is the helper class for submitting the management requests
@@ -158,8 +157,7 @@ ControllerApp::ControllerApp(int argc, char* argv[])
             description,
             injectDatabaseOptions,
             boostProtobufVersionCheck,
-            enableServiceProvider,
-            injectXrootdOptions
+            enableServiceProvider
         ) {
     _configureParser();
 }
