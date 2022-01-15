@@ -129,10 +129,10 @@ FileServerConnection::FileServerConnection(ServiceProvider::Ptr const& servicePr
         _socket(io_service),
         _bufferPtr(
             make_shared<ProtocolBuffer>(
-                serviceProvider->config()->get<size_t>("common", "request_buf_size_bytes"))),
+                serviceProvider->config()->get<size_t>("common", "request-buf-size-bytes"))),
         _fileName(),
         _filePtr(0),
-        _fileBufSize(serviceProvider->config()->get<size_t>("worker", "fs_buf_size_bytes")),
+        _fileBufSize(serviceProvider->config()->get<size_t>("worker", "fs-buf-size-bytes")),
         _fileBuf(0) {
 
     if (not _fileBufSize or (_fileBufSize > maxFileBufSizeBytes)) {

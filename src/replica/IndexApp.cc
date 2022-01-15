@@ -153,7 +153,7 @@ int IndexApp::runImpl() {
     if (_timeoutSec != 0) {
         bool const updatePersistentState = false;
         serviceProvider()->config()->set<unsigned int>(
-                "controller", "request_timeout_sec", _timeoutSec, updatePersistentState);
+                "controller", "request-timeout-sec", _timeoutSec, updatePersistentState);
     }
 
     string const noParentJobId;

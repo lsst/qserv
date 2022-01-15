@@ -477,8 +477,8 @@ XrdSsiService* QservMgtServices::_xrdSsiService() {
         uint64_t const timeSinceStartedSec =
                 PerformanceUtils::now() / 1000 - startedConnectionAttemptsSec;
 
-        if (_serviceProvider->config()->get<unsigned int>("xrootd", "allow_reconnect") &&
-            timeSinceStartedSec < _serviceProvider->config()->get<unsigned int>("xrootd", "reconnect_timeout")) {
+        if (_serviceProvider->config()->get<unsigned int>("xrootd", "allow-reconnect") &&
+            timeSinceStartedSec < _serviceProvider->config()->get<unsigned int>("xrootd", "reconnect-timeout")) {
 
             LOGS(_log, LOG_LVL_WARN, "QservMgtServices::" << __func__
                 << "  failed to contact service provider at: " << serviceProviderLocation

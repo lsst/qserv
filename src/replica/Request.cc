@@ -117,12 +117,12 @@ Request::Request(ServiceProvider::Ptr const& serviceProvider,
         _extendedState(NONE),
         _extendedServerStatus(ProtocolStatusExt::NONE),
         _bufferPtr(new ProtocolBuffer(
-                serviceProvider->config()->get<size_t>("common", "request_buf_size_bytes"))),
+                serviceProvider->config()->get<size_t>("common", "request-buf-size-bytes"))),
         _workerInfo(serviceProvider->config()->workerInfo(worker)),
-        _timerIvalSec(serviceProvider->config()->get<unsigned int>("common", "request_retry_interval_sec")),
+        _timerIvalSec(serviceProvider->config()->get<unsigned int>("common", "request-retry-interval-sec")),
         _timer(io_service),
         _requestExpirationIvalSec(serviceProvider->config()->get<unsigned int>(
-                "controller", "request_timeout_sec")),
+                "controller", "request-timeout-sec")),
         _requestExpirationTimer(io_service) {
 
     _serviceProvider->config()->assertWorkerIsValid(worker);

@@ -81,7 +81,7 @@ void DeleteWorkerTask::onStart() {
             [&numFinishedJobs](DeleteWorkerJob::Ptr const& job) {
                 ++numFinishedJobs;
             },
-            serviceProvider()->config()->get<int>("controller", "worker_evict_priority_level")
+            serviceProvider()->config()->get<int>("controller", "worker-evict-priority-level")
         )
     );
     jobs[0]->start();

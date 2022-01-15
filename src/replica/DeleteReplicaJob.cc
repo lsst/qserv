@@ -220,7 +220,7 @@ void DeleteReplicaJob::startImpl(util::Lock const& lock) {
     // if the notification is required before actually deleting the replica.
     // ATTENTION: only for ACTUALLY participating databases
     ServiceProvider::Ptr const serviceProvider = controller()->serviceProvider();
-    if (serviceProvider->config()->get<unsigned int>("xrootd", "auto_notify") != 0) {
+    if (serviceProvider->config()->get<unsigned int>("xrootd", "auto-notify") != 0) {
         // Start right away
         _beginDeleteReplica(lock);
 

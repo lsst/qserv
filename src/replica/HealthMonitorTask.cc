@@ -99,7 +99,7 @@ bool HealthMonitorTask::onRun() {
             [self](ClusterHealthJob::Ptr const& job) {
                 self->_numFinishedJobs++;
             },
-            serviceProvider()->config()->get<int>("controller", "health_monitor_priority_level")
+            serviceProvider()->config()->get<int>("controller", "health-monitor-priority-level")
         )
     );
     jobs[0]->start();

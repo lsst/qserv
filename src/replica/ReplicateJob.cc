@@ -451,7 +451,7 @@ void ReplicateJob::_onPrecursorJobFinish() {
         destinationWorkers.insert(ptr->destinationWorker());
     }
     size_t const numJobs = destinationWorkers.size() *
-        controller()->serviceProvider()->config()->get<size_t>("worker", "num_svc_processing_threads");
+        controller()->serviceProvider()->config()->get<size_t>("worker", "num-svc-processing-threads");
 
     size_t const numJobsLaunched = _launchNextJobs(lock, numJobs);
     if (0 != numJobsLaunched) {

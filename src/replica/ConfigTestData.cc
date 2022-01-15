@@ -32,61 +32,61 @@ namespace replica {
 map<string, set<string>> ConfigTestData::parameters() {
     return map<string, set<string>>({
         {   "common", 
-            {   "request_buf_size_bytes",
-                "request_retry_interval_sec"
+            {   "request-buf-size-bytes",
+                "request-retry-interval-sec"
             }
         },
         {   "controller", 
-            {   "num_threads",
-                "http_server_threads",
-                "http_server_port",
-                "http_max_listen_conn",
-                "request_timeout_sec",
-                "job_timeout_sec",
-                "job_heartbeat_sec",
-                "empty_chunks_dir",
-                "worker_evict_priority_level",
-                "health_monitor_priority_level",
-                "ingest_priority_level",
-                "catalog_management_priority_level"
+            {   "num-threads",
+                "http-server-threads",
+                "http-server-port",
+                "http-max-listen-conn",
+                "request-timeout-sec",
+                "job-timeout-sec",
+                "job-heartbeat-sec",
+                "empty-chunks-dir",
+                "worker-evict-priority-level",
+                "health-monitor-priority-level",
+                "ingest-priority-level",
+                "catalog-management-priority-level"
             }
         },
         {   "database",
-            {   "services_pool_size",
+            {   "services-pool-size",
                 "host",
                 "port",
                 "user",
                 "password",
                 "name",
-                "qserv_master_user",
-                "qserv_master_services_pool_size",
-                "qserv_master_tmp_dir"
+                "qserv-master-user",
+                "qserv-master-services-pool-size",
+                "qserv-master-tmp-dir"
             }
         },
         {   "xrootd", 
-            {   "auto_notify",
-                "request_timeout_sec",
+            {   "auto-notify",
+                "request-timeout-sec",
                 "host",
                 "port",
-                "allow_reconnect",
-                "reconnect_timeout"
+                "allow-reconnect",
+                "reconnect-timeout"
             }
         },
         {   "worker", 
             {   "technology",
-                "num_svc_processing_threads",
-                "num_fs_processing_threads",
-                "fs_buf_size_bytes",
-                "num_loader_processing_threads",
-                "num_exporter_processing_threads",
-                "num_http_loader_processing_threads",
-                "num_async_loader_processing_threads",
-                "async_loader_auto_resume",
-                "async_loader_cleanup_on_resume",
-                "http_max_listen_conn"
+                "num-svc-processing-threads",
+                "num-fs-processing-threads",
+                "fs-buf-size-bytes",
+                "num-loader-processing-threads",
+                "num-exporter-processing-threads",
+                "num-http-loader-processing-threads",
+                "num-async-loader-processing-threads",
+                "async-loader-auto-resume",
+                "async-loader-cleanup-on-resume",
+                "http-max-listen-conn"
             }
         },
-        {   "worker_defaults", 
+        {   "worker-defaults", 
             {   "svc_port",
                 "fs_port",
                 "data_dir",
@@ -106,22 +106,22 @@ json ConfigTestData::data() {
     json obj;
     json& generalObj = obj["general"];
     generalObj["common"] = json::object({
-        {"request_buf_size_bytes", 8192},
-        {"request_retry_interval_sec", 1}
+        {"request-buf-size-bytes", 8192},
+        {"request-retry-interval-sec", 1}
     });
     generalObj["controller"] = json::object({
-        {"num_threads", 2},
-        {"http_server_port", 8080},
-        {"http_max_listen_conn", 256},
-        {"http_server_threads", 3},
-        {"request_timeout_sec", 100},
-        {"job_timeout_sec", 200},
-        {"job_heartbeat_sec", 300},
-        {"empty_chunks_dir", "/qserv/data/qserv"},
-        {"worker_evict_priority_level", 1},
-        {"health_monitor_priority_level", 2},
-        {"ingest_priority_level", 3},
-        {"catalog_management_priority_level", 4}
+        {"num-threads", 2},
+        {"http-server-port", 8080},
+        {"http-max-listen-conn", 256},
+        {"http-server-threads", 3},
+        {"request-timeout-sec", 100},
+        {"job-timeout-sec", 200},
+        {"job-heartbeat-sec", 300},
+        {"empty-chunks-dir", "/qserv/data/qserv"},
+        {"worker-evict-priority-level", 1},
+        {"health-monitor-priority-level", 2},
+        {"ingest-priority-level", 3},
+        {"catalog-management-priority-level", 4}
     });
     generalObj["database"] = json::object({
         {"host", "localhost"},
@@ -129,32 +129,32 @@ json ConfigTestData::data() {
         {"user", "qsreplica"},
         {"password", "changeme"},
         {"name", "qservReplica"},
-        {"qserv_master_user", "qsmaster"},
-        {"services_pool_size", 2},
-        {"qserv_master_tmp_dir", "/qserv/data/ingest"}
+        {"qserv-master-user", "qsmaster"},
+        {"services-pool-size", 2},
+        {"qserv-master-tmp-dir", "/qserv/data/ingest"}
     });
     generalObj["xrootd"] = json::object({
-        {"auto_notify", 0},
+        {"auto-notify", 0},
         {"host", "localhost"},
         {"port", 1104},
-        {"request_timeout_sec", 400},
-        {"allow_reconnect", 0},
-        {"reconnect_timeout", 500}
+        {"request-timeout-sec", 400},
+        {"allow-reconnect", 0},
+        {"reconnect-timeout", 500}
     });
     generalObj["worker"] = json::object({
         {"technology", "POSIX"},
-        {"num_svc_processing_threads", 4},
-        {"num_fs_processing_threads", 5},
-        {"fs_buf_size_bytes", 1024},
-        {"num_loader_processing_threads", 6},
-        {"num_exporter_processing_threads", 7},
-        {"num_http_loader_processing_threads", 8},
-        {"num_async_loader_processing_threads", 9},
-        {"async_loader_auto_resume", 0},
-        {"async_loader_cleanup_on_resume", 0},
-        {"http_max_listen_conn", 512}
+        {"num-svc-processing-threads", 4},
+        {"num-fs-processing-threads", 5},
+        {"fs-buf-size-bytes", 1024},
+        {"num-loader-processing-threads", 6},
+        {"num-exporter-processing-threads", 7},
+        {"num-http-loader-processing-threads", 8},
+        {"num-async-loader-processing-threads", 9},
+        {"async-loader-auto-resume", 0},
+        {"async-loader-cleanup-on-resume", 0},
+        {"http-max-listen-conn", 512}
     });
-    generalObj["worker_defaults"] = json::object({
+    generalObj["worker-defaults"] = json::object({
         {"svc_port", 51000},
         {"fs_port", 52000},
         {"data_dir", "/data"},

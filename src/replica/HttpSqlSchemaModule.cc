@@ -211,7 +211,7 @@ json HttpSqlSchemaModule::_alterTableSchema() {
     string const noParentJobId;
     auto const job = SqlAlterTablesJob::create(
             databaseInfo.name, table, spec, allWorkers, controller(), noParentJobId, nullptr,
-            config->get<int>("controller", "catalog_management_priority_level"));
+            config->get<int>("controller", "catalog-management-priority-level"));
     job->start();
     logJobStartedEvent(SqlAlterTablesJob::typeName(), job, databaseInfo.family);
     job->wait();

@@ -142,7 +142,7 @@ int WorkerApp::runImpl() {
     // Configure the factory with a pool of persistent connectors
     auto const connectionPool = database::mysql::ConnectionPool::create(
         Configuration::qservWorkerDbParams(),
-        serviceProvider()->config()->get<size_t>("database", "services_pool_size")
+        serviceProvider()->config()->get<size_t>("database", "services-pool-size")
     );
     WorkerRequestFactory requestFactory(serviceProvider(), connectionPool);
 

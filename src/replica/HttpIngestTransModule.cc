@@ -313,7 +313,7 @@ json HttpIngestTransModule::_endTransaction() {
             // Drop the transaction-specific MySQL partition from the relevant tables
             auto const job = AbortTransactionJob::create(
                     transaction.id, allWorkers, controller(), noParentJobId, nullptr,
-                    config->get<int>("controller", "ingest_priority_level"));
+                    config->get<int>("controller", "ingest-priority-level"));
             job->start();
             logJobStartedEvent(AbortTransactionJob::typeName(), job, databaseInfo.family);
             job->wait();
@@ -348,7 +348,7 @@ json HttpIngestTransModule::_endTransaction() {
                         controller(),
                         noParentJobId,
                         nullptr,        // no callback
-                        config->get<int>("controller", "ingest_priority_level")
+                        config->get<int>("controller", "ingest-priority-level")
                     );
                     job->start();
                     logJobStartedEvent(IndexJob::typeName(), job, databaseInfo.family);

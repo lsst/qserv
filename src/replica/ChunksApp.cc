@@ -224,9 +224,9 @@ int ChunksApp::runImpl() {
     if (_timeoutSec != 0) {
         bool const updatePersistentState = false;
         serviceProvider()->config()->set<unsigned int>(
-                "controller", "request_timeout_sec", _timeoutSec, updatePersistentState);
+                "controller", "request-timeout-sec", _timeoutSec, updatePersistentState);
         serviceProvider()->config()->set<unsigned int>(
-                "xrootd", "request_timeout_sec", _timeoutSec, updatePersistentState);
+                "xrootd", "request-timeout-sec", _timeoutSec, updatePersistentState);
     }
 
     ///////////////////////////////////////////////////////////////////

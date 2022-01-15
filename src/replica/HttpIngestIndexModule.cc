@@ -189,7 +189,7 @@ json HttpIngestIndexModule::_buildSecondaryIndex() {
             controller(),
             noParentJobId,
             nullptr,        // no callback
-            config->get<int>("controller", "catalog_management_priority_level")
+            config->get<int>("controller", "catalog-management-priority-level")
         );
         job->start();
         logJobStartedEvent(IndexJob::typeName(), job, databaseInfo.family);

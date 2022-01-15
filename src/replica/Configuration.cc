@@ -815,7 +815,7 @@ WorkerInfo Configuration::_updateWorker(util::Lock const& lock, WorkerInfo const
     // existing defaults for workers. This step is required to ensure user-provided
     // descriptors are complete before making any changes to the Configuration's
     // transient or persistent states.
-    WorkerInfo const completeInfo = WorkerInfo(inputInfo, _data.at("worker_defaults"));
+    WorkerInfo const completeInfo = WorkerInfo(inputInfo, _data.at("worker-defaults"));
 
     // Make sure no host/port conflicts would exist in the transient configuration after
     // adding/updating the worker. This step is not needed for the MySQL-based persistent

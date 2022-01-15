@@ -60,13 +60,13 @@ IngestHttpSvc::IngestHttpSvc(ServiceProvider::Ptr const& serviceProvider,
                              string const& adminAuthKey)
     :   HttpSvc(serviceProvider,
                 serviceProvider->config()->workerInfo(workerName).httpLoaderPort,
-                serviceProvider->config()->get<unsigned int>("worker", "http_max_listen_conn"),
-                serviceProvider->config()->get<size_t>("worker", "num_http_loader_processing_threads"),
+                serviceProvider->config()->get<unsigned int>("worker", "http-max-listen-conn"),
+                serviceProvider->config()->get<size_t>("worker", "num-http-loader-processing-threads"),
                 authKey,
                 adminAuthKey),
         _workerName(workerName),
         _requestMgr(IngestRequestMgr::create(serviceProvider, workerName)),
-        _threads(serviceProvider->config()->get<size_t>("worker", "num_async_loader_processing_threads")) {
+        _threads(serviceProvider->config()->get<size_t>("worker", "num-async-loader-processing-threads")) {
 }
 
 

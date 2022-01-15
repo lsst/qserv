@@ -142,7 +142,7 @@ ConfigApp::ConfigApp(int argc, char* argv[])
         " Other parameters are optional. The following defines rules for the optional parameters."
         " If no location will be given for some other service a location of the 'service-host' will"
         " be assumed. If no specific port will be provided for a service then the corresponding"
-        " default port defined in the 'worker_defaults' of the general configuration category"
+        " default port defined in the 'worker-defaults' of the general configuration category"
         " will be assumed. The later rule also applies to the temporary folders of all services."
     ).required(
         "worker",

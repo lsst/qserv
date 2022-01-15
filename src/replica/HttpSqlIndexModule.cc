@@ -163,7 +163,7 @@ json HttpSqlIndexModule::_getIndexes() {
     string const noParentJobId;
     auto const job = SqlGetIndexesJob::create(
             database, table, overlap, allWorkers, controller(), noParentJobId, nullptr,
-            config->get<int>("controller", "catalog_management_priority_level"));
+            config->get<int>("controller", "catalog-management-priority-level"));
     job->start();
     logJobStartedEvent(SqlGetIndexesJob::typeName(), job, databaseInfo.family);
     job->wait();
@@ -247,7 +247,7 @@ json HttpSqlIndexModule::_createIndexes() {
     auto const job = SqlCreateIndexesJob::create(
             database, table, overlap, spec, index, comment, columns,
             allWorkers, ignoreDuplicateKey, controller(), noParentJobId, nullptr,
-            config->get<int>("controller", "catalog_management_priority_level"));
+            config->get<int>("controller", "catalog-management-priority-level"));
     job->start();
     logJobStartedEvent(SqlCreateIndexesJob::typeName(), job, databaseInfo.family);
     job->wait();
@@ -286,7 +286,7 @@ json HttpSqlIndexModule::_dropIndexes() {
     string const noParentJobId;
     auto const job = SqlDropIndexesJob::create(
             database, table, overlap, index, allWorkers, controller(), noParentJobId, nullptr,
-            config->get<int>("controller", "catalog_management_priority_level"));
+            config->get<int>("controller", "catalog-management-priority-level"));
     job->start();
     logJobStartedEvent(SqlDropIndexesJob::typeName(), job, databaseInfo.family);
     job->wait();

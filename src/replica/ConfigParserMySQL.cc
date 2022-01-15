@@ -129,7 +129,7 @@ void ConfigParserMySQL::_parseGeneral() {
 
 
 void ConfigParserMySQL::_parseWorkers() {
-    json& defaults = _data.at("worker_defaults");
+    json& defaults = _data.at("worker-defaults");
     _conn->execute("SELECT * FROM " + _conn->sqlId("config_worker"));
     while (_conn->next(_row)) {
         WorkerInfo info;

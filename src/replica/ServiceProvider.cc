@@ -110,7 +110,7 @@ void ServiceProvider::run() {
     auto self = shared_from_this();
 
     _threads.clear();
-    for (size_t i = 0; i < config()->get<size_t>("controller", "num_threads"); ++i) {
+    for (size_t i = 0; i < config()->get<size_t>("controller", "num-threads"); ++i) {
         _threads.push_back(
             make_unique<thread>(
                 [self] () {
