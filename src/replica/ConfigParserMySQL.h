@@ -33,7 +33,6 @@
 #include "replica/ConfigDatabase.h"
 #include "replica/ConfigDatabaseFamily.h"
 #include "replica/ConfigWorker.h"
-#include "replica/ConfigurationSchema.h"
 #include "replica/DatabaseMySQL.h"
     
 // This header declarations
@@ -86,9 +85,6 @@ private:
      */
     void _parseVersion();
 
-    /// Parse general (category/parameter) parameters.
-    void _parseGeneral();
-
     /**
      * Parse a collection of workers.
      *
@@ -104,26 +100,6 @@ private:
 
     /// Parse a collection of the databases.
     void _parseDatabases();
-
-    /**
-     * Extract a value of the general parameter into the requested type, sanitize the value
-     * if needed, and store it in the transent state.
-     * @throws std::runtime_error If a required field has NULL.
-     * @throws std::invalid_argument If the parameter's value didn't pass the validation.
-     */
-    template <typename T>
-    void _storeGeneralParameter(std::string const& category, std::string const& param) {
-        T value;
-        if (!_row.get("value", value)) {
-            throw std::runtime_error(
-                    _context + " NULL is not allowed, category:'" + category
-                    + "' param: '" + param + "'.");
-        }
-        // Sanitize the input to ensure it matches schema requirements before
-        // pushing the value into the configuration.
-        ConfigurationSchema::validate<T>(category, param, value);
-        _data[category][param] = value;
-    }
 
     template <typename T>
     T _parseParam(std::string const& name) {

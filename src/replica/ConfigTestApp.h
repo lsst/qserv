@@ -66,7 +66,6 @@ private:
      * The complete integration test for the Configuration service.
      */
     int _test();
-    bool _testGeneral();
     bool _testWorkers();
     bool _testDatabasesAndFamilies();
     bool _testTables();

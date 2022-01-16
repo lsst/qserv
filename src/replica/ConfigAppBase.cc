@@ -75,33 +75,6 @@ int ConfigAppBase::runImpl() {
 }
 
 
-void ConfigAppBase::dumpGeneralAsTable(string const& indent) const {
-    // Extract general attributes and put them into the corresponding
-    // columns. Translate tables cell values into strings when required.
-    vector<string> categories;
-    vector<string> parameters;
-    vector<string> values;
-    vector<string> descriptions;
-    for (auto&& itr: ConfigurationSchema::parameters()) {
-        string const& category = itr.first;
-        for (auto&& param: itr.second) {
-            categories.push_back(category);
-            parameters.push_back(param);
-            values.push_back(ConfigurationSchema::securityContext(category, param) ?
-                    "xxxxxx" : _config->getAsString(category, param)
-            );
-            descriptions.push_back(ConfigurationSchema::description(category, param));
-        }
-    }
-    util::ColumnTablePrinter table("GENERAL PARAMETERS:", indent, verticalSeparator());
-    table.addColumn("category", categories, util::ColumnTablePrinter::LEFT);
-    table.addColumn("param", parameters, util::ColumnTablePrinter::LEFT);
-    table.addColumn("value", values);
-    table.addColumn("description", descriptions, util::ColumnTablePrinter::LEFT);
-    table.print(cout, false, false);
-}
-
-
 void ConfigAppBase::dumpWorkersAsTable(string const& indent, string const& caption) const {
 
     // Extract attributes of each worker and put them into the corresponding

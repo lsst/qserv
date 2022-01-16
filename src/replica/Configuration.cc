@@ -29,7 +29,7 @@
 // Qserv headers
 #include "replica/ConfigParserJSON.h"
 #include "replica/ConfigParserMySQL.h"
-#include "replica/DatabaseMySQL.h"
+#include "replica/DatabaseMySQLExceptions.h"
 #include "util/Timer.h"
 
 // LSST headers
@@ -281,20 +281,20 @@ string Configuration::getAsString(string const& category, string const& param) c
 
 
 void Configuration::setFromString(string const& category, string const& param,
-                                  string const& val, bool updatePersistentState) {
+                                  string const& val) {
     json obj;
     {
         util::Lock const lock(_mtx, _context(__func__));
         obj = _get(lock, category, param);
     }
     if (obj.is_string()) {
-        Configuration::set<string>(category, param, val, updatePersistentState);
+        Configuration::set<string>(category, param, val);
     } else if (obj.is_number_unsigned()) {
-        Configuration::set<uint64_t>(category, param, stoull(val), updatePersistentState);
+        Configuration::set<uint64_t>(category, param, stoull(val));
     } else if (obj.is_number_integer()) {
-        Configuration::set<int64_t>(category, param, stoll(val), updatePersistentState);
+        Configuration::set<int64_t>(category, param, stoll(val));
     } else if (obj.is_number_float()) {
-        Configuration::set<double>(category, param, stod(val), updatePersistentState);
+        Configuration::set<double>(category, param, stod(val));
     } else {
         throw invalid_argument(
                 _context(__func__) + " unsupported data type of category: '" + category + "' param: '" + param
@@ -779,24 +779,6 @@ json& Configuration::_get(
         util::Lock const& lock, string const& category, string const& param)
 {
     return _data[json::json_pointer("/" + category + "/" + param)];
-}
-
-
-void Configuration::_set(
-        string const& category, string const& param, string const& value) const
-{
-    _connectionPtr->executeInsertOrUpdate(
-        [&](decltype(_connectionPtr) conn) {
-            conn->executeInsertQuery("config", category, param, value);
-        },
-        [&](decltype(_connectionPtr) conn) {
-            conn->executeSimpleUpdateQuery(
-                "config",
-                conn->sqlEqual("category", category) + " AND " + conn->sqlEqual("param", param),
-                make_pair("value", value)
-            );
-        }
-    );
 }
 
 
