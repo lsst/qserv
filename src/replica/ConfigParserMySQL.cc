@@ -36,7 +36,7 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
-int const ConfigParserMySQL::expectedSchemaVersion = 6;
+int const ConfigParserMySQL::expectedSchemaVersion = 7;
 
 
 ConfigParserMySQL::ConfigParserMySQL(database::mysql::Connection::Ptr const& conn,
@@ -55,11 +55,6 @@ ConfigParserMySQL::ConfigParserMySQL(database::mysql::Connection::Ptr const& con
 void ConfigParserMySQL::parse() {
 
     _parseVersion();
-
-    // Read and update the transient state the general parameters and defaults
-    // shared by all components of the Replication system. The table also provides
-    // default values for some critical parameters of the worker-side services.
-    _parseGeneral();
 
     // Parse groupped parameters
     _parseWorkers();
@@ -90,40 +85,6 @@ void ConfigParserMySQL::_parseVersion() {
                 _context + " schema version " + to_string(version) + " found in the metadata table "
                 + databaseTableSql + " doesn't match the required version " + to_string(expectedSchemaVersion) + ".",
                 version, expectedSchemaVersion);
-    }
-}
-
-
-void ConfigParserMySQL::_parseGeneral() {
-    _conn->execute("SELECT * FROM " + _conn->sqlId("config"));
-    while (_conn->next(_row)) {
-        string category;
-        _row.get("category", category);
-
-        string param;
-        _row.get("param", param);
-
-        json obj;
-        try {
-            obj = _data.at(category).at(param);
-        } catch (exception const& ex) {
-            throw invalid_argument(
-                    _context + " no transient schema match for the parameter, category: '"
-                    + category + "' param: '" + param + "'.");
-        }
-        if (obj.is_string()) {
-            _storeGeneralParameter<string>(category, param);
-        } else if (obj.is_number_unsigned()) {
-            _storeGeneralParameter<uint64_t>(category, param);
-        } else if (obj.is_number_integer()) {
-            _storeGeneralParameter<int64_t>(category, param);
-        } else if (obj.is_number_float()) {
-            _storeGeneralParameter<double>(category, param);
-        } else {
-            throw invalid_argument(
-                    _context + " unsupported transient schema type for the parameter, category: '"
-                    + category + "' param: '" + param + "'.");
-        }
     }
 }
 

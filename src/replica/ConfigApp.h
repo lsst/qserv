@@ -93,12 +93,6 @@ private:
     int _configInitFile() const;
 
     /**
-     * Update the general configuration parameters
-     * @return A status code to be returned to the shell.
-     */
-    int _updateGeneral();
-
-    /**
      * Update parameters of a worker
      * @return A status code to be returned to the shell.
      */
@@ -180,9 +174,6 @@ private:
     /// of 0 means - turn the worker into the read-only state, and a value
     /// of 1 (or any positive number) means - enable the read-write mode for the worker .
     int _workerReadOnly = -1;
-
-    /// General parameters
-    std::map<std::string, std::map<std::string, std::string>> _generalParams;
 
     /// For database families
     DatabaseFamilyInfo _familyInfo;

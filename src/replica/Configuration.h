@@ -49,7 +49,7 @@
 #include "replica/ConfigWorker.h"
 #include "replica/ConfigurationExceptions.h"
 #include "replica/ConfigurationSchema.h"
-#include "replica/DatabaseMySQLExceptions.h"
+#include "replica/DatabaseMySQL.h"
 #include "replica/DatabaseMySQLTypes.h"
 #include "util/Mutex.h"
 
@@ -61,7 +61,6 @@ namespace replica {
 namespace database {
 namespace mysql {
     class Connection;
-    class ConnectionParams;
 }}}}}  // Forward declarations
 
 // This header declarations
@@ -92,10 +91,6 @@ struct TypeConversionTrait<std::string> {
 /**
  * Class Configuration is the main API class that provide configuration services
  * for the components of the Replication system.
- * @note The optional flag 'updatePersistentState' found in signatures of several
- *   "setter" methods will result in in propagating requested changes to the persistent
- *   store as well. The default value is set to 'true' since this would be a desired
- *   effect of the operations.
  * @note Exceptions mentioned in the documentation of the class's methods may not be
  *   complete. Additional exceptions may be thrown depending on a presence of a persistent
  *   backend for the configuration (such MySQL), Those which are mentioned explicitly are
@@ -369,7 +364,7 @@ public:
      * @throws std::invalid_argument If there was a problem during setting a value of the parameter.
      */
     template <typename T>
-    void set(std::string const& category, std::string const& param, T const& val, bool updatePersistentState=true) {
+    void set(std::string const& category, std::string const& param, T const& val) {
         std::string const context_ = _context(__func__) + " category='" + category + "' param='" + param + "' ";
         util::Lock const lock(_mtx, context_);
         // Some parameters can't be updated using this interface.
@@ -378,18 +373,10 @@ public:
         }
         // Validate the value in case if the schema enforces restrictions.
         ConfigurationSchema::validate(category, param, val);
-        // Update the persistent (if allowed) and then the transient states.
+        // Update transient states.
         try {
             nlohmann::json& obj = _get(lock, category, param);
-            if (updatePersistentState && (_connectionPtr != nullptr)) {
-                // Convert the value into a string. This is possible because values of
-                // the general parameters are stored as strings in the corresponding MySQL table.
-                _set(category, param,  detail::TypeConversionTrait<T>::to_string(val));
-            }
             obj = val;
-        } catch (database::mysql::Error const& ex) {
-            throw std::invalid_argument(
-                context_ + " failed to update the persistent state of the parameter, ex: " + std::string(ex.what()));
         } catch (std::exception const& ex) {
             throw std::invalid_argument(
                 context_ + " failed to set a new value of the parameter, ex: " + std::string(ex.what()) + "'.");
@@ -402,7 +389,7 @@ public:
      * @see Configuration::set()
      */
     void setFromString(std::string const& category, std::string const& param,
-                       std::string const& val, bool updatePersistentState=true);
+                       std::string const& val);
 
     /**
      * Return the names of known workers as per the selection criteria.
@@ -739,20 +726,6 @@ private:
     nlohmann::json& _get(util::Lock const& lock,
                          std::string const& category,
                          std::string const& param);
-
-    /**
-     * Update the general parameter parameter in the MySQL-based persistent store.
-     * @note This method won't check for correctness of the parameter values. It's expected
-     *   it has been done by a caller.
-     * @param category The name of the parameter's category.
-     * @param param The name of the parameter within its category.
-     * @param value A value to be updated that has been serialized into a string to break the type barrier.
-     * @throws database::mysql::Error (or any derivatives of that exception)in case of any
-     *   problems during the update.
-     */
-    void _set(std::string const& category,
-              std::string const& param,
-              std::string const& value) const;
 
     /**
      * Validate the input and add or update worker entry.

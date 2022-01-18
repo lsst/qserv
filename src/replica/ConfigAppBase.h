@@ -68,9 +68,8 @@ protected:
      * Dump the Configuration into the standard output stream
      * @return A status code to be returned to the shell.
      */
-    void dumpGeneralAsTable(std::string const& indent) const;
     void dumpWorkersAsTable(std::string const& indent, std::string const& caption="WORKERS:") const;
-    void dumpFamiliesAsTable(std::string const& indent, std::string const& caption="DATABASES FAMILIES") const;
+    void dumpFamiliesAsTable(std::string const& indent, std::string const& caption="DATABASE FAMILIES:") const;
     void dumpDatabasesAsTable(std::string const& indent, std::string const& caption="DATABASES:") const;
 
 private:

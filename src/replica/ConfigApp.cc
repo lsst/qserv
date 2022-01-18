@@ -81,7 +81,6 @@ ConfigApp::ConfigApp(int argc, char* argv[])
         "command",
         {"DUMP",
          "CONFIG_INIT_FILE",
-         "UPDATE_GENERAL",
          "UPDATE_WORKER", "ADD_WORKER", "DELETE_WORKER",
          "ADD_DATABASE_FAMILY", "DELETE_DATABASE_FAMILY",
          "ADD_DATABASE", "PUBLISH_DATABASE", "DELETE_DATABASE",
@@ -96,13 +95,13 @@ ConfigApp::ConfigApp(int argc, char* argv[])
         "Dump existing configuration parameters. The command allows specifying"
         " an optional scope to limit the output. If the parameter 'scope' is"
         " omitted then complete configuration will be printed. Allowed scopes:"
-        " 'GENERAL', 'WORKERS', 'FAMILIES', 'DATABASES'."
+        " 'WORKERS', 'FAMILIES', 'DATABASES'."
     ).optional(
         "scope",
         "This optional parameter narrows a scope of the operation down to a specific"
         " context. If no scope is specified then everything will be dumped.",
         _dumpScope,
-        vector<string>({"GENERAL", "WORKERS", "FAMILIES", "DATABASES"})
+        vector<string>({"WORKERS", "FAMILIES", "DATABASES"})
     );
 
     parser().command(
@@ -165,29 +164,6 @@ ConfigApp::ConfigApp(int argc, char* argv[])
         " This includes: replicas info and transaction contribution records."
     );
 
-    // Add options for the general parameters named as:
-    //   --<category>.<param>=<string>
-    // Note that since no database connection is available at this time (that would have
-    // required knowing a value of the parameter 'configUrl', and no parsing has been made
-    // yet) then the loop below will set the default value of each option to be the empty
-    // string. Any changes from that will be detected when processing the input. 
-    auto&& updateGeneralCmd = parser().command(
-        "UPDATE_GENERAL"
-    ).description(
-        "Update the general configuration parameters."
-    );
-    for (auto&& itr: ConfigurationSchema::parameters()) {
-        string const& category = itr.first;
-        for (auto&& param: itr.second) {
-            // The read-only parameters can't be updated programmatically.
-            if (ConfigurationSchema::readOnly(category, param)) continue;
-            _generalParams[category][param] = ConfigurationSchema::defaultValueAsString(category, param);
-            updateGeneralCmd.option(
-                category + "-" + param,
-                ConfigurationSchema::description(category, param),
-                _generalParams[category][param]);
-        }
-    }
 
     parser().command(
         "ADD_DATABASE_FAMILY"
@@ -335,7 +311,6 @@ int ConfigApp::runSubclassImpl() {
 
     if (_command == "DUMP") return _dump();
     if (_command == "CONFIG_INIT_FILE") return _configInitFile();
-    if (_command == "UPDATE_GENERAL") return _updateGeneral();
     if (_command == "UPDATE_WORKER") return _updateWorker();
     if (_command == "ADD_WORKER") return _addWorker();
     if (_command == "DELETE_WORKER") return _deleteWorker();
@@ -420,7 +395,6 @@ void ConfigApp::_configureWorkerOptions(detail::Command& command) {
 int ConfigApp::_dump() const {
     string const indent = "  ";
     cout << "\n" << indent << "CONFIG_URL: " << configUrl() << "\n" << "\n";
-    if (_dumpScope.empty() or _dumpScope == "GENERAL") dumpGeneralAsTable(indent);
     if (_dumpScope.empty() or _dumpScope == "WORKERS") dumpWorkersAsTable(indent);
     if (_dumpScope.empty() or _dumpScope == "FAMILIES") dumpFamiliesAsTable(indent);
     if (_dumpScope.empty() or _dumpScope == "DATABASES") dumpDatabasesAsTable(indent);
@@ -435,27 +409,6 @@ int ConfigApp::_configInitFile() const {
     }
     try {
         cout << config()->toJson().dump() << endl;
-    } catch (exception const& ex) {
-        LOGS(_log, LOG_LVL_ERROR, "ConfigApp::" << __func__ << ": " << ex.what());
-        throw;
-    }
-    return 0;
-}
-
-
-int ConfigApp::_updateGeneral() {
-    try {
-        // Note that options specified by a user will have non-empty values.
-        for (auto&& categoryItr: _generalParams) {
-            string const& category = categoryItr.first;
-            for (auto&& paramItr: categoryItr.second) {
-                string const& param = paramItr.first;
-                string const& value = paramItr.second;
-                if (!value.empty()) {
-                    config()->setFromString(category, param, value);
-                }
-            }
-        }
     } catch (exception const& ex) {
         LOGS(_log, LOG_LVL_ERROR, "ConfigApp::" << __func__ << ": " << ex.what());
         throw;

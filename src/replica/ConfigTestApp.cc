@@ -53,124 +53,13 @@ string const description =
     " ATTENTION: Plan carefully when using this flag to avoid destroying any"
     " valuable data. Avoid running this command in the production environment.";
 
-/**
- * Register an option with a parser (which could also represent a command).
- * @param parser The handler responsible for processing options
- * @param param Parameter handler.`
- */
-template <class PARSER, typename T>
-void addCommandOption(PARSER& parser, T& param) {
-    parser.option(param.key, param.description(), param.value);
-}
-
 // The strings for operaton completion reporting.
 
 string const PASSED_STR = "[PASSED]";
 string const FAILED_STR = "[FAILED]";
 string const OK_STR  = "OK";
 string const VALUE_MISMATCH_STR = "VALUE MISMATCH";
-string const TYPE_MISMATCH_STR = "TYPE MISMATCH";
-string const MISSING_STR = "MISSING";
-string const NOT_TESTED_STR = "NOT TESTED";
 
-/**
- * The class TestGeneral facilitates testing and reporting values of
- * the general defaults.
- */
-class TestGeneral {
-public:
-    TestGeneral() = delete;
-    TestGeneral(TestGeneral const&) = delete;
-    TestGeneral& operator=(TestGeneral const&) = delete;
-
-    TestGeneral(Configuration::Ptr const& config,
-                string const& caption,
-                string const& indent,
-                bool verticalSeparator)
-        :   _config(config),
-            _caption(caption),
-            _indent(indent),
-            _verticalSeparator(verticalSeparator) {
-    }
-
-    template <typename T>
-    void verify(string const& category, string const& parameter, T const& expectedValue) {
-        _testedParameters[category].insert(parameter);
-        _category.push_back(category);
-        _parameter.push_back(parameter);
-        try {
-            T const actualValue = _config->get<T>(category, parameter);
-            bool const equal = actualValue == expectedValue;
-            _result.push_back(equal ? OK_STR : VALUE_MISMATCH_STR);
-            _actual.push_back(detail::TypeConversionTrait<T>::to_string(actualValue));
-            if (!equal) ++_failed;
-        } catch(invalid_argument const& ex) {
-            _result.push_back(MISSING_STR);
-            _actual.push_back("");
-            ++_failed;
-        } catch(ConfigTypeMismatch const& ex) {
-            _result.push_back(TYPE_MISMATCH_STR);
-            _actual.push_back("");
-            ++_failed;
-        } catch(exception const& ex) {
-            _result.push_back(ex.what());
-            _actual.push_back("");
-            ++_failed;
-        }
-        _expected.push_back(detail::TypeConversionTrait<T>::to_string(expectedValue));
-    }
-
-    /// @return 'true' if the test was successful.
-    bool reportResults() {
-        // Locate and report parameters that as not been tested.
-        map<string, set<string>> const knownParameters = _config->parameters();
-        if (knownParameters != _testedParameters) {
-            for (auto&& categoryItr: knownParameters) {
-                string const& category = categoryItr.first;
-                for (string const& parameter: categoryItr.second) {
-                    if ((_testedParameters.count(category) == 0) ||
-                        (_testedParameters.at(category).count(parameter) == 0)) {
-                        _result.push_back(NOT_TESTED_STR);
-                        _category.push_back(category);
-                        _parameter.push_back(parameter);
-                        _actual.push_back("");
-                        _expected.push_back("");
-                        ++_failed;
-                    }
-                }
-            }
-        }
-        string const caption = (_failed == 0 ? PASSED_STR : FAILED_STR) + " " + _caption;
-        util::ColumnTablePrinter table(caption, _indent, _verticalSeparator);
-        table.addColumn("result", _result);
-        table.addColumn("category", _category, util::ColumnTablePrinter::LEFT);
-        table.addColumn("parameter", _parameter, util::ColumnTablePrinter::LEFT);
-        table.addColumn("actual", _actual);
-        table.addColumn("expected", _expected);
-        table.print(cout, false, false);
-        return _failed == 0;
-    }
-
-private:
-    // Input parameters
-    Configuration::Ptr const _config;
-    string const _caption;
-    string const _indent;
-    bool const _verticalSeparator;
-
-    // Parameters that have been tested so far
-    map<string, set<string>> _testedParameters;
-
-    // The number of failed tests.
-    int _failed = 0;
-
-    // Values accumulated along table columns.
-    vector<string> _result;
-    vector<string> _category;
-    vector<string> _parameter;
-    vector<string> _actual;
-    vector<string> _expected;
-};
 
 /**
  * The class ComparatorBase represents the base class for specific comparators
@@ -381,9 +270,9 @@ ConfigTestApp::ConfigTestApp(int argc, char* argv[])
     parser().optional(
         "scope",
         "This optional parameter narrows a scope of the operation down to a specific"
-        " context. Allowed values: ALL, GENERAL, WORKERS, DATABASES_AND_FAMILIES, TABLES.",
+        " context. Allowed values: ALL, WORKERS, DATABASES_AND_FAMILIES, TABLES.",
         _testScope,
-        vector<string>({"ALL", "GENERAL", "WORKERS", "DATABASES_AND_FAMILIES", "TABLES"})
+        vector<string>({"ALL", "WORKERS", "DATABASES_AND_FAMILIES", "TABLES"})
     );
 }
 
@@ -391,12 +280,9 @@ ConfigTestApp::ConfigTestApp(int argc, char* argv[])
 int ConfigTestApp::runSubclassImpl() {
     int result = 0;
     if (_testScope == "ALL") {
-        result += _testGeneral() ? 0 : 1;
         result += _testWorkers() ? 0 : 1;
         result += _testDatabasesAndFamilies()  ? 0 : 1;
         result += _testTables() ? 0 : 1;
-    } else if (_testScope == "GENERAL") {
-        result += _testGeneral() ? 0 : 1;
     } else if (_testScope == "WORKERS") {
         result += _testWorkers() ? 0 : 1;
     } else if (_testScope == "DATABASES_AND_FAMILIES") {
@@ -405,204 +291,6 @@ int ConfigTestApp::runSubclassImpl() {
         result += _testTables() ? 0 : 1;
     }
     return result;
-}
-
-
-bool ConfigTestApp::_testGeneral() {
-
-    string const indent = "";
-    bool success = true;
-
-    // Testing reading the default values using the generic API. results will be reported
-    // as a table onto the standard output.  Note that the last argument in each
-    // call represents an expected value of the parameter's value.
-    {
-        TestGeneral test(config(), "READING DEAFULT STATE OF THE GENERAL PARAMETERS:", indent, verticalSeparator());
-        test.verify<size_t>(        "common", "request-buf-size-bytes", 131072);
-        test.verify<unsigned int>(  "common", "request-retry-interval-sec", 1);
-        test.verify<size_t>(        "controller", "num-threads", 2);
-        test.verify<size_t>(        "controller", "http-server-threads", 2);
-        test.verify<uint16_t>(      "controller", "http-server-port", 25081);
-        test.verify<unsigned int>(  "controller", "http-max-listen-conn",
-                                    boost::asio::socket_base::max_listen_connections);
-        test.verify<unsigned int>(  "controller", "request-timeout-sec", 600);
-        test.verify<unsigned int>(  "controller", "job-timeout-sec", 600);
-        test.verify<unsigned int>(  "controller", "job-heartbeat-sec", 0);
-        test.verify<std::string>(   "controller", "empty-chunks-dir", "/qserv/data/qserv");
-        test.verify<int>(           "controller", "worker-evict-priority-level", PRIORITY_VERY_HIGH);
-        test.verify<int>(           "controller", "health-monitor-priority-level", PRIORITY_VERY_HIGH);
-        test.verify<int>(           "controller", "ingest-priority-level", PRIORITY_HIGH);
-        test.verify<int>(           "controller", "catalog-management-priority-level", PRIORITY_LOW);
-
-        test.verify<size_t>(        "database", "services-pool-size", 2);
-        test.verify<std::string>(   "database", "host", "localhost");
-        test.verify<uint16_t>(      "database", "port", 23306);
-        test.verify<std::string>(   "database", "user", "root");
-        test.verify<std::string>(   "database", "password", "CHANGEME");
-        test.verify<std::string>(   "database", "name", "qservReplica");
-        test.verify<std::string>(   "database", "qserv-master-user", "qsmaster");
-        test.verify<size_t>(        "database", "qserv-master-services-pool-size", 2);
-        test.verify<std::string>(   "database", "qserv-master-tmp-dir", "/qserv/data/ingest");
-        test.verify<unsigned int>(  "xrootd", "auto-notify", 1);
-        test.verify<unsigned int>(  "xrootd", "request-timeout-sec", 180);
-        test.verify<std::string>(   "xrootd", "host", "localhost");
-        test.verify<uint16_t>(      "xrootd", "port", 1094);
-        test.verify<unsigned int>(  "xrootd", "allow-reconnect", 1);
-        test.verify<unsigned int>(  "xrootd", "reconnect-timeout", 3600);
-        test.verify<std::string>(   "worker", "technology", "FS");
-        test.verify<size_t>(        "worker", "num-svc-processing-threads", 2);
-        test.verify<size_t>(        "worker", "num-fs-processing-threads", 2);
-        test.verify<size_t>(        "worker", "fs-buf-size-bytes", 4194304);
-        test.verify<size_t>(        "worker", "num-loader-processing-threads", 2);
-        test.verify<size_t>(        "worker", "num-exporter-processing-threads", 2);
-        test.verify<size_t>(        "worker", "num-http-loader-processing-threads", 2);
-        test.verify<size_t>(        "worker", "num-async-loader-processing-threads", 2);
-        test.verify<unsigned int>(  "worker", "async-loader-auto-resume", 1);
-        test.verify<unsigned int>(  "worker", "async-loader-cleanup-on-resume", 1);
-        test.verify<unsigned int>(  "worker", "http-max-listen-conn",
-                                    boost::asio::socket_base::max_listen_connections);
-        test.verify<uint16_t>(      "worker-defaults", "svc_port", 25000);
-        test.verify<uint16_t>(      "worker-defaults", "fs_port", 25001);
-        test.verify<std::string>(   "worker-defaults", "data_dir", "/qserv/data/mysql");
-        test.verify<uint16_t>(      "worker-defaults", "loader_port", 25002);
-        test.verify<std::string>(   "worker-defaults", "loader_tmp_dir", "/qserv/data/ingest");
-        test.verify<uint16_t>(      "worker-defaults", "exporter_port", 25003);
-        test.verify<std::string>(   "worker-defaults", "exporter_tmp_dir", "/qserv/data/export");
-        test.verify<uint16_t>(      "worker-defaults", "http_loader_port", 25004);
-        test.verify<std::string>(   "worker-defaults", "http_loader_tmp_dir", "/qserv/data/ingest");
-        success = success && test.reportResults();
-        cout << "\n";
-    }
-
-    // Test updating the defaults and reading them back after reopening the database
-    // to ensure the values are read from the database rather than from the transinet state.
-    //
-    // Note that database parameters that are computed from the configUrl can't be updated
-    // in this way:
-    //   "database.host"
-    //   "database.port"
-    //   "database.user"
-    //   "database.password"
-    //   "database.name"
-    // These parameters be be skipped in the update sequence.
-    {
-        config()->set<size_t>(        "common", "request-buf-size-bytes", 131072 + 1);
-        config()->set<unsigned int>(  "common", "request-retry-interval-sec", 1 + 1);
-        config()->set<size_t>(        "controller", "num-threads", 2 + 1);
-        config()->set<size_t>(        "controller", "http-server-threads", 2 + 1);
-        config()->set<uint16_t>(      "controller", "http-server-port", 25081 + 1);
-        config()->set<unsigned int>(  "controller", "http-max-listen-conn",
-                                      boost::asio::socket_base::max_listen_connections * 2);
-        config()->set<unsigned int>(  "controller", "request-timeout-sec", 600 + 1);
-        config()->set<unsigned int>(  "controller", "job-timeout-sec", 600 + 1);
-        config()->set<unsigned int>(  "controller", "job-heartbeat-sec", 0 + 1);
-        config()->set<std::string>(   "controller", "empty-chunks-dir", "/qserv/data/qserv-1");
-        config()->set<int>(           "controller", "worker-evict-priority-level", PRIORITY_VERY_HIGH + 1);
-        config()->set<int>(           "controller", "health-monitor-priority-level", PRIORITY_VERY_HIGH + 1);
-        config()->set<int>(           "controller", "ingest-priority-level", PRIORITY_HIGH + 1);
-        config()->set<int>(           "controller", "catalog-management-priority-level", PRIORITY_LOW + 1);
-
-        config()->set<size_t>(        "database", "services-pool-size", 2 + 1);
-        // These 5 parameters are deduced from 'configUrl'. Changing them here won't make
-        // a sense since they're not stored within MySQL.
-        if (false) {
-            config()->set<std::string>("database", "host", "localhost");
-            config()->set<uint16_t>(   "database", "port", 23306);
-            config()->set<std::string>("database", "user", "root");
-            config()->set<std::string>("database", "password", "CHANGEME");
-            config()->set<std::string>("database", "name", "qservReplica");
-        }
-        config()->set<std::string>(   "database", "qserv-master-user", "qsmaster-1");
-        config()->set<size_t>(        "database", "qserv-master-services-pool-size", 2 + 1);
-        config()->set<std::string>(   "database", "qserv-master-tmp-dir", "/qserv/data/ingest-1");
-        config()->set<unsigned int>(  "xrootd", "auto-notify", 0);
-        config()->set<unsigned int>(  "xrootd", "request-timeout-sec", 180 + 1);
-        config()->set<std::string>(   "xrootd", "host", "localhost-1");
-        config()->set<uint16_t>(      "xrootd", "port", 1094 + 1);
-        config()->set<unsigned int>(  "xrootd", "allow-reconnect", 0);
-        config()->set<unsigned int>(  "xrootd", "reconnect-timeout", 120);
-        config()->set<std::string>(   "worker", "technology", "POSIX");
-        config()->set<size_t>(        "worker", "num-svc-processing-threads", 2 + 1);
-        config()->set<size_t>(        "worker", "num-fs-processing-threads", 2 + 1);
-        config()->set<size_t>(        "worker", "fs-buf-size-bytes", 4194304 + 1);
-        config()->set<size_t>(        "worker", "num-loader-processing-threads", 2 + 1);
-        config()->set<size_t>(        "worker", "num-exporter-processing-threads", 2 + 1);
-        config()->set<size_t>(        "worker", "num-http-loader-processing-threads", 2 + 1);
-        config()->set<size_t>(        "worker", "num-async-loader-processing-threads", 2 + 1);
-        config()->set<unsigned int>(  "worker", "async-loader-auto-resume", 0);
-        config()->set<unsigned int>(  "worker", "async-loader-cleanup-on-resume", 0);
-        config()->set<unsigned int>(  "worker", "http-max-listen-conn",
-                                      boost::asio::socket_base::max_listen_connections * 4);
-        config()->set<uint16_t>(      "worker-defaults", "svc_port", 25000 + 1);
-        config()->set<uint16_t>(      "worker-defaults", "fs_port", 25001 + 1);
-        config()->set<std::string>(   "worker-defaults", "data_dir", "/qserv/data/mysql-1");
-        config()->set<uint16_t>(      "worker-defaults", "loader_port", 25002 + 1);
-        config()->set<std::string>(   "worker-defaults", "loader_tmp_dir", "/qserv/data/ingest-1");
-        config()->set<uint16_t>(      "worker-defaults", "exporter_port", 25003 + 1);
-        config()->set<std::string>(   "worker-defaults", "exporter_tmp_dir", "/qserv/data/export-1");
-        config()->set<uint16_t>(      "worker-defaults", "http_loader_port", 25004 + 1);
-        config()->set<std::string>(   "worker-defaults", "http_loader_tmp_dir", "/qserv/data/ingest-1");
-
-        config()->reload();
-        TestGeneral test(config(), "READING UPDATED GENERAL PARAMETERS:", indent, verticalSeparator());
-        test.verify<size_t>(        "common", "request-buf-size-bytes", 131072 + 1);
-        test.verify<unsigned int>(  "common", "request-retry-interval-sec", 1 + 1);
-        test.verify<size_t>(        "controller", "num-threads", 2 + 1);
-        test.verify<size_t>(        "controller", "http-server-threads", 2 + 1);
-        test.verify<uint16_t>(      "controller", "http-server-port", 25081 + 1);
-        test.verify<unsigned int>(  "controller", "http-max-listen-conn",
-                                    boost::asio::socket_base::max_listen_connections * 2);
-        test.verify<unsigned int>(  "controller", "request-timeout-sec", 600 + 1);
-        test.verify<unsigned int>(  "controller", "job-timeout-sec", 600 + 1);
-        test.verify<unsigned int>(  "controller", "job-heartbeat-sec", 0 + 1);
-        test.verify<std::string>(   "controller", "empty-chunks-dir", "/qserv/data/qserv-1");
-        test.verify<int>(           "controller", "worker-evict-priority-level", PRIORITY_VERY_HIGH + 1);
-        test.verify<int>(           "controller", "health-monitor-priority-level", PRIORITY_VERY_HIGH + 1);
-        test.verify<int>(           "controller", "ingest-priority-level", PRIORITY_HIGH + 1);
-        test.verify<int>(           "controller", "catalog-management-priority-level", PRIORITY_LOW + 1);
-        test.verify<size_t>(        "database", "services-pool-size", 2 + 1);
-
-        // These 5 parameters deduced from 'configUrl' shouldn't be changed.
-        test.verify<std::string>(   "database", "host", "localhost");
-        test.verify<uint16_t>(      "database", "port", 23306);
-        test.verify<std::string>(   "database", "user", "root");
-        test.verify<std::string>(   "database", "password", "CHANGEME");
-        test.verify<std::string>(   "database", "name", "qservReplica");
-
-        test.verify<std::string>(   "database", "qserv-master-user", "qsmaster-1");
-        test.verify<size_t>(        "database", "qserv-master-services-pool-size", 2 + 1);
-        test.verify<std::string>(   "database", "qserv-master-tmp-dir", "/qserv/data/ingest-1");
-        test.verify<unsigned int>(  "xrootd", "auto-notify", 0);
-        test.verify<unsigned int>(  "xrootd", "request-timeout-sec", 180 + 1);
-        test.verify<std::string>(   "xrootd", "host", "localhost-1");
-        test.verify<uint16_t>(      "xrootd", "port", 1094 + 1);
-        test.verify<unsigned int>(  "xrootd", "allow-reconnect", 0);
-        test.verify<unsigned int>(  "xrootd", "reconnect-timeout", 120);
-        test.verify<std::string>(   "worker", "technology", "POSIX");
-        test.verify<size_t>(        "worker", "num-svc-processing-threads", 2 + 1);
-        test.verify<size_t>(        "worker", "num-fs-processing-threads", 2 + 1);
-        test.verify<size_t>(        "worker", "fs-buf-size-bytes", 4194304 + 1);
-        test.verify<size_t>(        "worker", "num-loader-processing-threads", 2 + 1);
-        test.verify<size_t>(        "worker", "num-exporter-processing-threads", 2 + 1);
-        test.verify<size_t>(        "worker", "num-http-loader-processing-threads", 2 + 1);
-        test.verify<size_t>(        "worker", "num-async-loader-processing-threads", 2 + 1);
-        test.verify<unsigned int>(  "worker", "async-loader-auto-resume", 0);
-        test.verify<unsigned int>(  "worker", "async-loader-cleanup-on-resume", 0);
-        test.verify<unsigned int>(  "worker", "http-max-listen-conn",
-                                    boost::asio::socket_base::max_listen_connections * 4);
-        test.verify<uint16_t>(      "worker-defaults", "svc_port", 25000 + 1);
-        test.verify<uint16_t>(      "worker-defaults", "fs_port", 25001 + 1);
-        test.verify<std::string>(   "worker-defaults", "data_dir", "/qserv/data/mysql-1");
-        test.verify<uint16_t>(      "worker-defaults", "loader_port", 25002 + 1);
-        test.verify<std::string>(   "worker-defaults", "loader_tmp_dir", "/qserv/data/ingest-1");
-        test.verify<uint16_t>(      "worker-defaults", "exporter_port", 25003 + 1);
-        test.verify<std::string>(   "worker-defaults", "exporter_tmp_dir", "/qserv/data/export-1");
-        test.verify<uint16_t>(      "worker-defaults", "http_loader_port", 25004 + 1);
-        test.verify<std::string>(   "worker-defaults", "http_loader_tmp_dir", "/qserv/data/ingest-1");
-        success = success && test.reportResults();
-        cout << "\n";
-    }
-    return success;
 }
 
 
