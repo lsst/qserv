@@ -44,6 +44,7 @@ SqlConnMgr::ConnType SqlConnMgr::_take(bool scanQuery,
                                        std::shared_ptr<wbase::SendChannelShared> const& sendChannelShared,
                                        bool firstChannelSqlConn) {
     ++_totalCount;
+    LOGS(_log, LOG_LVL_DEBUG, "SqlConnMgr take " << dump());
     std::unique_lock<std::mutex> uLock(_mtx);
 
     SqlConnMgr::ConnType connType = SCAN;
@@ -62,8 +63,6 @@ SqlConnMgr::ConnType SqlConnMgr::_take(bool scanQuery,
             connType = SCAN;
         }
     }
-
-    LOGS(_log, LOG_LVL_INFO, "&&& SqlConnMgr take I:0,SC:1,SH:2 t=" << connType << " scanQ=" << scanQuery << " first=" << firstChannelSqlConn << " " << dump());
 
     _tCv.wait(uLock, [this, scanQuery, sendChannelShared, connType](){
         bool ok = false;
@@ -114,7 +113,7 @@ void SqlConnMgr::_release(SqlConnMgr::ConnType connType) {
     // causing _take() to block when it really should not.
     // When the SendChannelShared is finished, it is thrown away, effectively
     // clearing its count.
-    LOGS(_log, LOG_LVL_INFO, "&&& SqlConnMgr release" << dump());
+    LOGS(_log, LOG_LVL_DEBUG, "SqlConnMgr release " << dump());
     if (connType == SCAN) {
         --_sqlScanConnCount;
     } else {

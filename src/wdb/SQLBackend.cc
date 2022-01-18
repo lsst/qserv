@@ -97,7 +97,6 @@ bool SQLBackend::load(ScTableVector const& v, sql::SqlErrorObject& err) {
             % i->dbTable.db % i->dbTable.table % SUB_CHUNK_COLUMN
                 % i->chunkId % i->subChunkId).str();
 
-        LOGS(_log, LOG_LVL_INFO, "&&&QY load " << create);
         if (!_sqlConn->runQuery(create, err)) {
             LOGS(_log, LOG_LVL_ERROR, "sql query err=" << err.errMsg() << " with '" << create << "'");
             _discard(v.begin(), i);
@@ -136,7 +135,6 @@ void SQLBackend::_discard(ScTableVector::const_iterator begin,
         std::string discard = (boost::format(lsst::qserv::wbase::CLEANUP_SUBCHUNK_SCRIPT)
                 % i->dbTable.db % i->dbTable.table % i->chunkId % i->subChunkId).str();
         sql::SqlErrorObject err;
-        LOGS(_log, LOG_LVL_INFO, "&&&QY _discard " << discard);
         if (!_sqlConn->runQuery(discard, err)) {
             throw err;
         }

@@ -60,12 +60,12 @@ GroupQueue::GroupQueue(int maxAccepted, wbase::Task::Ptr const& task) : _maxAcce
     if (_hasChunkId) {
         _chunkId = task->msg->chunkid();
     }
-    assert(queTask(task));
+    assert(queTask(task, false));
 }
 
 /// Return true if this GroupQueue accepts this task.
 /// The task is acceptable if has the same chunk id.
-bool GroupQueue::queTask(wbase::Task::Ptr const& task) {
+bool GroupQueue::queTask(wbase::Task::Ptr const& task, bool keepInThisGroup) {
     /// Not having a chunk id is considered an id.
     auto hasChunkId = task->msg->has_chunkid();
     if (hasChunkId != _hasChunkId) {
@@ -75,9 +75,8 @@ bool GroupQueue::queTask(wbase::Task::Ptr const& task) {
     if (hasChunkId && chunkId != _chunkId) {
         return false; // Reject since chunk ids don't match.
     }
-    // Accept if not already full
-    //&&&if (_accepted < _maxAccepted) {
-    if (true) { /// &&& remove if it works, remove _maxAccepted as well
+    // Accept if not already full or keepInThisGroup
+    if (keepInThisGroup || (_accepted < _maxAccepted)) {
         ++_accepted;
         _tasks.push_back(task);
         return true;
@@ -99,19 +98,19 @@ wbase::Task::Ptr GroupQueue::peekTask() {
 
 /// Queue a Task in the GroupScheduler.
 /// Tasks in the same chunk are grouped together.
-void GroupScheduler::_queCmd(util::Command::Ptr const& cmd) {
+void GroupScheduler::_queCmd(util::Command::Ptr const& cmd, bool keepInThisGroup) {
+    // Caller must hold util::CommandQueue::_mx
     wbase::Task::Ptr t = std::dynamic_pointer_cast<wbase::Task>(cmd);
     if (t == nullptr) {
         LOGS(_log, LOG_LVL_WARN, getName() << " queCmd could not be converted to Task or was nullptr");
         return;
     }
     QSERV_LOGCONTEXT_QUERY_JOB(t->getQueryId(), t->getJobId());
-    //&&&std::lock_guard<std::mutex> lock(util::CommandQueue::_mx);
     // Start at the front of the queue looking for a group to accept the task.
     bool queued = false;
     for(auto iter = _queue.begin(), end = _queue.end(); iter != end && !queued; ++iter) {
         GroupQueue::Ptr group = *iter;
-        if (group->queTask(t)) {
+        if (group->queTask(t, keepInThisGroup)) {
             queued = true;
         }
     }
@@ -129,14 +128,19 @@ void GroupScheduler::_queCmd(util::Command::Ptr const& cmd) {
 
 void GroupScheduler::queCmd(std::vector<util::Command::Ptr> const& cmds) {
     std::lock_guard<std::mutex> lock(util::CommandQueue::_mx);
+    // All the 'cmd's in the vector must be kept in the same group.
+    // If there's only one cmd in cmds, it's impossible to split up.
+    bool keepInGroup = (cmds.size() > 1);
     for (auto const& cmd:cmds) {
-        _queCmd(cmd);
+        _queCmd(cmd, keepInGroup);
     }
 }
 
 void GroupScheduler::queCmd(util::Command::Ptr const& cmd) {
     std::lock_guard<std::mutex> lock(util::CommandQueue::_mx);
-    _queCmd(cmd);
+    // keepInThisGroup=false, there's no reason a single cmd needs
+    // to be kept in a group.
+    _queCmd(cmd, false);
 }
 
 /// Return a Task from the front of the queue. If no message is available, wait until one is.
