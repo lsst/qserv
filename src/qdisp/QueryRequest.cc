@@ -511,21 +511,22 @@ void QueryRequest::_processData(JobQuery::Ptr const& jq, int blen, bool xrdLast)
         throw Bug("_processData result had 'last' true, which cannot be allowed.");
     }
 
-    _totalRows += resultRows;
 
     bufPtr.reset(); // don't need the buffer anymore and it could be big.
     if (nextBufSize != protoHeaderSize) {
         throw Bug("Unexpected header size from flush(result) call QID="
                 + to_string(_qid) + "#" + to_string(_jobid));
     }
-    if (!flushOk) {
+    if (flushOk) {
+        _totalRows += resultRows;
+    } else {
         _flushError(jq);
         return;
     }
 
     // Read the next header
     // Values for last, largeResult, and nextBufSize filled in by flush
-    // resultRows ignored in headers.
+    // resultRows is ignored in headers, and should always be 0.
     flushOk = jq->getRespHandler()->flush(protoHeaderSize, nextHeaderBufPtr, last, largeResult, nextBufSize, resultRows);
 
     if (largeResult) {
@@ -548,6 +549,7 @@ void QueryRequest::_processData(JobQuery::Ptr const& jq, int blen, bool xrdLast)
 
             // If the query meets the limit row complete complete criteria, it will start
             // squashing superfluous results so the answer can be returned quickly.
+            executive->addResultRows(_totalRows);
             executive->checkLimitRowComplete();
             return;
         } else {
