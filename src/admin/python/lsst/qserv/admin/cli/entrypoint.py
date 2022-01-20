@@ -574,7 +574,13 @@ def worker_xrootd(
     help=f"{repl_connection_option.keywords['help']} {socket_option_help}"
 )
 @debug_option()
-@cmd_option(default="qserv-replica-worker --qserv-worker-db={{db_admin_uri}} {% for arg in extended_args %}{{arg}}  {% endfor %}")
+@cmd_option(default="qserv-replica-worker --qserv-worker-db={{db_admin_uri}} --config={{config}} {% for arg in extended_args %}{{arg}}  {% endfor %}")
+@click.option(
+    "--config",
+    help="The path to the configuration database for qserv-replica-worker.",
+    default="{{repl_connection}}",
+    show_default=True,
+)
 @targs_options()
 @run_option()
 @options_file_option()
@@ -584,6 +590,7 @@ def worker_repl(
     repl_connection: str,
     debug_port: Optional[int],
     cmd: str,
+    config: str,
     targs: Dict[str, str],
     targs_file: str,
     run: bool,
@@ -627,7 +634,22 @@ def worker_repl(
     help="The host name of the xrootd manager node.",
 )
 @log_cfg_file_option(default="/config-etc/log4cxx.replication.properties")
-@cmd_option(default="qserv-replica-master-http --config={{db_uri}} {% for arg in extended_args %}{{arg}}  {% endfor %}")
+@cmd_option(default="""qserv-replica-master-http
+    --config={{db_uri}}
+    --http-root={{http_root}}
+    --qserv-czar-db={{qserv_czar_db}}
+    {% for arg in extended_args %}{{arg}} {% endfor %}"""
+)
+@click.option(
+    "--http-root",
+    help="The root folder for the static content to be served by the built-in HTTP service.",
+    default="/usr/local/qserv/www",
+    show_default=True,
+)
+@click.option(
+    "--qserv-czar-db",
+    help="The connection URL to the MySQL server of the Qserv master database."
+)
 @targs_options()
 @run_option()
 @options_file_option()
@@ -638,9 +660,11 @@ def replication_controller(
     workers: List[str],
     xrootd_manager: str,
     log_cfg_file: str,
+    cmd: str,
+    http_root: str,
+    qserv_czar_db: str,
     targs: Dict[str, str],
     targs_file: str,
-    cmd: str,
     run: bool,
 ) -> None:
     """Start as a replication controller node."""

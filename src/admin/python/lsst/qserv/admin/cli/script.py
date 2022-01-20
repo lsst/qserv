@@ -850,6 +850,7 @@ def _run(
                 raise
             template = rendered
         args = shlex.split(rendered)
+        _log.debug("calling subprocess with args: %s", args) # TEMP security don't check in
         result = subprocess.run(args, env=env, cwd="/home/qserv")
     if check_returncode:
         result.check_returncode
