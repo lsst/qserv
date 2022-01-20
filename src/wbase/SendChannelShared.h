@@ -110,6 +110,7 @@ public:
     /// Set the number of Tasks that will be sent using this SendChannel.
     /// This should not be changed once set.
     void setTaskCount(int taskCount);
+    int getTaskCount() const { return _taskCount; }
 
 
     /// Try to transmit the data in tData.

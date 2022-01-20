@@ -192,8 +192,11 @@ bool QueryRunner::runQuery() {
     }
 
     _setDb();
-    LOGS(_log, LOG_LVL_DEBUG,  "Exec in flight for Db=" << _dbName << " sqlConnMgr " << _sqlConnMgr->dump());
-    wcontrol::SqlConnLock sqlConnLock(*_sqlConnMgr, not _task->getScanInteractive(), _task->getSendChannel());
+    LOGS(_log, LOG_LVL_INFO,  "Exec in flight for Db=" << _dbName << " sqlConnMgr " << _sqlConnMgr->dump());
+    //&&&wcontrol::SqlConnLock sqlConnLock(*_sqlConnMgr, not _task->getScanInteractive(), _task->getSendChannel());
+    // Queries that span multiple tasks should not be high priority for the SqlConMgr as it risks deadlock.
+    bool interactive = _task->getScanInteractive() && !(_task->getSendChannel()->getTaskCount() > 1); //&&&
+    wcontrol::SqlConnLock sqlConnLock(*_sqlConnMgr, not interactive, _task->getSendChannel());
     bool connOk = _initConnection();
     if (!connOk) {
         // Transmit the mysql connection error to the czar, which should trigger a re-try.
